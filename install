@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
+
+./scripts/install_packages
+
+rsync -avh --no-perms ./config/ ~
+
+git clone --depth 1 https://github.com/aswinkarthik93/neovim-dotfiles.git ~/.config/nvim
+
+rsync ./extra/extra.init.vim ~/.config/nvim/custom.vim
+
+curl -Lo ~/omz_install https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh
+sh ~/omz_install --keep-zshrc
+rm ~/omz_install

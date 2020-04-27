@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+
+# Install command-line tools using Homebrew.
+
+# Make sure we’re using the latest Homebrew.
+brew update
+
+# Upgrade any already-installed formulae.
+brew upgrade
+
+# Save Homebrew’s installed location.
+BREW_PREFIX=$(brew --prefix)
+
+# Install GNU core utilities (those that come with macOS are outdated).
+# Don’t forget to add `$(brew --prefix coreutils)/libexec/gnubin` to `$PATH`.
+brew install coreutils
+ln -s "${BREW_PREFIX}/bin/gsha256sum" "${BREW_PREFIX}/bin/sha256sum"
+
+brew cask install java
+brew tap homebrew/cask-fonts
+brew cask install font-fira-code
+
+# Install some other useful utilities like `sponge`.
+brew install moreutils
+# Install GNU `find`, `locate`, `updatedb`, and `xargs`, `g`-prefixed.
+brew install findutils
+# Install GNU `sed`, overwriting the built-in `sed`.
+brew install gnu-sed 
+
+# Install `wget` with IRI support.
+brew install wget
+
+
+brew install nvm
+mkdir ~/.nvm
+
+sudo mkdir -p usr/local/Frameworks
+sudo chown $(whoami):admin /usr/local/Frameworks
+brew install python3
+brew install go
+go get -u github.com/mdempsky/gocode
+pip2 install neovim
+pip3 install --upgrade neovim
+brew install neovim
+npm i -g neovim
+sudo gem install neovim
+
+# Complete suite of tools to assess WiFi network security
+brew install aircrack-ng
+# Remove large files or passwords from Git history like git-filter-branch
+brew install bfg
+# Crack zip passwords
+brew install fcrackzip
+# Fast password cracker
+brew install john
+# Toolkit for manipulation of graphic images
+brew install netpbm
+
+brew install git
+# Git extension for versioning large files
+brew install git-lfs
+# Interpreter for PostScript and PDF
+brew install gs
+brew install imagemagick
+brew install lua
+# Perl-powered file rename script with many helpful built-ins
+brew install rename
+# Install your public key in a remote machine's authorized_keys.
+brew install ssh-copy-id
+brew install tree
+brew install htop
+
+brew install yarn --ignore-dependencies
+
+brew install fd
+brew install bat
+brew install autojump
+brew install ripgrep
+brew install tldr
+brew install jq
+brew install jid
+brew install shfmt
+brew install yamllint
+
+# Remove outdated versions from the cellar.
+brew cleanup

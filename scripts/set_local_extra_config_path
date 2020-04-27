@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+if [[ -z "$1" ]]; then
+  echo "1st argument should be a gitdir path. For example \"~/work/projects/\""
+  exit 1
+fi
+
+if [[ -z "$2" ]]; then
+  echo "2nd argument should be a path to additional .gitconfig. For example \"~/workspace/projects/.gitconfig\""
+  exit 1
+fi
+
+echo "Setting gitconfig: $1 to be applied within $2"
+
+git config --global includeIf.gitdir:$1.path $2
