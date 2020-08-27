@@ -25,22 +25,23 @@ brew install moreutils
 # Install GNU `find`, `locate`, `updatedb`, and `xargs`, `g`-prefixed.
 brew install findutils
 # Install GNU `sed`, overwriting the built-in `sed`.
-brew install gnu-sed 
+brew install gnu-sed
 
 # Install `wget` with IRI support.
 brew install wget
-
 
 brew install nvm
 mkdir ~/.nvm
 
 sudo mkdir -p usr/local/Frameworks
-sudo chown $(whoami):admin /usr/local/Frameworks
+sudo chown "$(whoami):admin" /usr/local/Frameworks
 brew install python3
 brew install go
 go get -u github.com/mdempsky/gocode
 pip2 install neovim
+pip2 install pynvim
 pip3 install --upgrade neovim
+pip3 install pynvim
 brew install neovim
 npm i -g neovim
 sudo gem install neovim
@@ -81,6 +82,8 @@ brew install jq
 brew install jid
 brew install shfmt
 brew install yamllint
+brew install broot
+brew install shellcheck
 
 # Remove outdated versions from the cellar.
 brew cleanup
