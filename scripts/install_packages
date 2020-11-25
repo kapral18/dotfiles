@@ -35,12 +35,9 @@ mkdir ~/.nvm
 
 sudo mkdir -p usr/local/Frameworks
 sudo chown "$(whoami):admin" /usr/local/Frameworks
-brew install python3
 brew install go
 go get -u github.com/mdempsky/gocode
-pip2 install neovim
-pip2 install pynvim
-pip3 install --upgrade neovim
+pip install pynvim
 pip3 install pynvim
 brew install neovim
 npm i -g neovim
