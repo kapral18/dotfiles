@@ -1,0 +1,150 @@
+[core]
+  abbrev         = 12
+  attributesfile = "~/.gitattributes"
+  excludesfile   = "~/.gitignore"
+  fileMode       = false
+	# Treat spaces before tabs and all kinds of trailing whitespace as an error
+	# [default] trailing-space: looks for spaces at the end of a line
+	# [default] space-before-tab: looks for spaces before tabs at the beginning of a line
+	whitespace = space-before-tab,-indent-with-non-tab,trailing-space
+	# Make `git rebase` safer on macOS
+	# More info: http://www.git-tower.com/blog/make-git-rebase-safe-on-osx
+	trustctime = false
+	# Prevent showing files whose names contain non-ASCII symbols as unversioned.
+	# http://michael-kuehnel.de/git/2014/11/21/git-mac-osx-and-german-umlaute.html
+	precomposeunicode = false
+	# Speed up commands involving untracked files such as `git status`.
+	# https://git-scm.com/docs/git-update-index#_untracked_cache
+	untrackedCache = true
+  pager = "delta"
+
+[pager]
+  diff = delta
+  log = delta
+  reflog = delta
+  show = delta
+  blame = delta
+
+[interactive]
+  diffFilter = delta --color-only
+
+[delta]
+	navigate = true
+	light = false
+  side-by-side = true
+  line-numbers = true
+  features     = "decorations"
+
+[delta "interactive"]
+  keep-plus-minus-markers = false
+
+[delta "decorations"]
+  commit-decoration-style       = blue ol
+  commit-style                  = raw
+  file-style                    = omit
+  hunk-header-decoration-style  = blue box
+  hunk-header-file-style        = red
+  hunk-header-line-number-style = "#067a00"
+  hunk-header-style             = file line-number syntax
+
+[color]
+  ui = auto
+
+[alias]
+  s = 'status'
+  stat = "!git shortlog -sn --since='10 weeks' --until='2 weeks'"
+  recent = "!git for-each-ref --count=10 --sort=-committerdate refs/heads/ --format='%(refname:short)'"
+  overview = "!git log --all --oneline --no-merges"
+  recap = "!git log --all --oneline --no-merges --author=karen@karenjs.com"
+  today = "!git log --all --oneline --no-merges --author=karen@karenjs.com --since=00:00:00"
+  graph = "!git log --all --graph --decorate --stat --date=iso"
+  co = checkout
+	cb = checkout -b
+	c = commit -m
+	ca = commit --amend
+	b = branch -a
+	l = !git --no-pager log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%C(bold blue) <%an>%Creset' -15
+	ll = !git l --all --branches
+	lf = !git --no-pager log --pretty=format:'%C(yellow)%h%Cred%d\\ %Creset%s%Cblue\\ [%cn]' --decorate --numstat -1
+	shw = show --pretty=format:'hash:    %C(green)%h%C(reset) %nparent:  %C(red)%p%C(reset)%nref:     %C(yellow)%D%C(reset)%nauthor:  %an <%ae>%ndate:    %ad%nmessage: %s%n'
+	sh = !git shw --no-patch shp = !git shw --patch
+	df = "!f() { git diff --name-status -r "HEAD~$1"; }; f"
+	squash = "!f(){ git reset --soft HEAD~${1} && git commit --edit -m\"$(git log --format=%B --reverse HEAD..HEAD@{1})\" --no-verify; };f"
+	f = fetch -ptf
+	p = pull --rebase
+	purge = "!git branch --merged | grep -Ev '(\\*|master|develop|staging)' | xargs -r -n 1 git branch -d"
+	u = !git f && git p && git purge
+	hide = update-index --assume-unchanged
+	unhide = update-index --no-assume-unchanged
+	alias = !git config --get-regexp ^alias\\. | sed -e s/^alias\\.// -e s/\\ /\\ =\\ /
+
+[apply]
+	whitespace = fix
+
+[diff]
+  colorMoved = default
+
+[merge]
+  log = true
+  conflictStyle = diff3
+
+[pretty]
+  custom = "%C(magenta)%h%C(red)%d %C(yellow)%ar %C(green)%s %C(yellow)(%an)"
+#                     │        │            │            │             └─ author name
+#                     │        │            │            └─ message
+#                     │        │            └─ date (relative)
+#                     │        └─ decorations (branch, heads or tags)
+#                     └─ hash (abbreviated)
+
+[pull]
+  default = current
+
+[push]
+  default = current
+	followTags = true
+
+[init]
+	defaultBranch = main
+
+[branch]
+  autoSetupRebase = always
+  
+[branch "master"]
+  remote = origin
+  merge  = refs/heads/master
+  rebase = true
+
+[branch "main"]
+  remote = origin
+  merge  = refs/heads/main
+  rebase = true
+
+[init]
+  defaultBranch = main
+
+## GitHub
+[url "git@github.com:"]
+	pushInsteadOf = https://github.com/
+[url "git@github.com:"]
+  insteadOf = https://github.com/
+
+## GitLab
+[url "git@gitlab.com:"]
+  pushInsteadOf = https://gitlab.com
+[url "git@gitlab.com:"]
+  insteadOf = https://gitlab.com
+
+[user]
+	name = Karen Grigoryan
+  email = "{{- .email -}}"
+	signingkey = ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQChBVKXI9eeK/PmsnP7sMLLF0sUN4jPuoFX9uKkhjj9XGuXZcgbc15cuOBzjDQI9nwMyGge+vsgL/Lx1Ka4heBs/eWrkkj+lylNIxd/fP8rA99e8csuC9H9tYNUORKq51QyuF0cLBiNQJifCGLUba9wVox0M7/LC5Qgz1iVR2O4DDZKEyRKF+aRSilUilQobcBMeAsSJhlMzUDl/YYpxP6Aep0g9j98WqLp8yMGdJE3Q35JLJM3d73LFr4LF2V3BDhu42xMKJR26o8CJHt6DK96l6wd854Zc9Z2FMaMZoHI/Q/hMDXuTFD0omVxM7pUNV/Nyht8bThu+4jhVR5bDVHyoAjAQIfSUxKQyMi1bb60GTyZNOTtsIrolhW7/j28R6Jp3ed7BnFFFd40hpNIqSMdQ4UM2iKjWfwcIzFEE+9eDgG/fFYhHrUiFGPDIr8HnMFLPfNdw54NRR+DIhFZxyGUx+ZgUU4LoG65re8fApOtmo4nnVEQmO3sKHuRfaY+vavQZJZvVA5eFJAqGu+TJGxAC3SblaibG2BwKXroIVGBnycrWEB0DcEm8/T0tfga5Sa7PM0eFkNWY7aX86vZVWe8jgrG5FupRTRrAEePhhUXHftdsMWUUeOXeV+ZfBTpvuMBvUBUUaljyS/avfqrr0dEavP7l6Sf8UAQBMVpCAzIXw==
+[includeIf "gitdir:~/work/"]
+	path = ~/work/.gitconfig
+  useConfigOnly = true
+[gpg]
+	format = ssh
+[gpg "ssh"]
+	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
+	allowedSignersFile = /Users/kapral18/.ssh/allowed_signers
+[commit]
+	gpgsign = true

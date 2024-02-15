@@ -1,6 +1,4 @@
 {{- $email          := "" -}}
-{{- $name           := "" -}}
-{{- $gpg_signingkey := "" -}}
 
 {{- if (hasKey . "email") -}}
 {{-   $email = .email -}}
@@ -8,19 +6,6 @@
 {{-   $email = promptString "email" -}}
 {{- end -}}
 
-{{- if (hasKey . "name") -}}
-{{-   $name = .name -}}
-{{- else -}}
-{{-   $name = promptString "name" -}}
-{{- end -}}
-
-{{- if (hasKey . "gpg_signingkey") -}}
-{{-   $gpg_signingkey = .gpg_signingkey -}}
-{{- else  -}}
-{{-   $gpg_signingkey = promptString "GPG signing key" -}}
-{{- end }}
-
 [data]
     email           = {{ $email | quote }}
-    name            = {{ $name | quote }}
     gpg_signingkey  = {{ $gpg_signingkey | quote }}
