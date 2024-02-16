@@ -1,0 +1,94 @@
+# Lang
+export LC_ALL=en_US.UTF-8
+export LANG=en_US.UTF-8
+
+# My terminal editor is always Vim by default
+export EDITOR=nvim
+export VISUAL=nvim
+
+# Set terminal colors to 256
+export TERM=xterm-256color
+
+# XDG is used by lazygit and other tools
+export XDG_CONFIG_HOME="$HOME/.config"
+
+# System
+export XDG_DATA_DIRS=/usr/share:/usr/local/share
+export XDG_CONFIG_DIRS=/etc/xdg
+
+# User
+export XDG_CONFIG_HOME=$HOME/.config
+export XDG_CACHE_HOME=$HOME/.cache
+export XDG_DATA_HOME=$HOME/.local/share
+export XDG_DESKTOP_DIR=$HOME/Desktop
+export XDG_DOCUMENTS_DIR=$HOME/Documents
+export XDG_DOWNLOAD_DIR=$HOME/Downloads
+export XDG_MUSIC_DIR=$HOME/Music
+export XDG_PICTURES_DIR=$HOME/Pictures
+export XDG_VIDEOS_DIR=$HOME/Videos
+
+# nvm
+export nvm_default_version=lts
+
+# Go
+export GOPATH=$HOME/go
+
+# OpenAI
+export OPENAI_API_KEY=$(pass show openai/api/token)
+
+# Docker
+export DOCKER_HIDE_LEGACY_COMMANDS=true
+
+# PyEnv
+export PYENV_ROOT=$HOME/.pyenv
+
+# Rbenv
+export RBENV_ROOT=$HOME/.rbenv
+
+# FZF
+FD_OPTIONS="--hidden --follow"
+export FZF_DEFAULT_OPTS="--no-mouse --height 80% --reverse --multi --info=inline --preview='bat {} --color always' --preview-window='right:60%:wrap' --bind=ctrl-d:half-page-down,ctrl-u:half-page-up,ctrl-b:page-up,ctrl-f:page-down"
+export FZF_DEFAULT_COMMAND="git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l $FD_OPTIONS"
+export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+export FZF_ALT_C_COMMAND="fd --type d $FD_OPTIONS"
+
+# Paths
+export PATH="/usr/local/opt/libpq/bin:/usr/local/opt/ruby/bin:/usr/local/opt/ssh-copy-id/bin:/usr/local/opt/coreutils/libexec/gnubin:/usr/local/sbin:/opt/homebrew/sbin:/opt/homebrew/bin:$RBENV_ROOT/bin:$PYENV_ROOT/bin:$GOPATH/bin:/Users/kapral18/.cargo/bin:/Users/kapral18/.local/bin:/Users/kapral18/bin:$PATH"
+
+# Inits
+eval "$(rbenv init -)"
+eval "$(pyenv init --path)"
+eval "$(pyenv init -)"
+eval "$(pyenv virtualenv-init -)"
+eval "$(starship init bash)"
+eval "$(zoxide init bash)"
+# Broot
+source /Users/kapral18/.config/broot/launcher/bash/br
+. "$HOME/.cargo/env"
+
+# NVM
+export NVM_DIR="$HOME/.nvm"
+[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"                                       # This loads nvm
+[ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" # This loads nvm bash_completion
+
+# Aliases
+alias g="git"
+alias tree='tree -I ".git|node_modules"'
+alias t="tmux"
+alias v=nvim
+alias c=chezmoi
+alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l $FD_OPTIONS'
+alias ghs='gh copilot suggest'
+alias ghx='gh copilot explain'
+
+if hash lsd 2>/dev/null; then
+	alias ls='lsd -A'
+	alias l='lsd -lAh'
+	alias ll='lsd -lAtrh'
+	alias la='lsd -A'
+else
+	alias ls='ls -A'
+	alias l='ls -lAh'
+	alias ll='ls -lAtrh'
+	alias la='ls -A'
+fi
