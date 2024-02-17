@@ -75,6 +75,7 @@ rbenv init - | source
 pyenv init - | source
 starship init fish | source
 zoxide init fish | source
+fnm env --use-on-cd | source
 
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
