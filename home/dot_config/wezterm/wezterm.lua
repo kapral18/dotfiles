@@ -131,7 +131,7 @@ local keys = {
 
 return {
 	color_scheme = "Catppuccin Mocha",
-	enabled_scroll_bar = true,
+	enable_scroll_bar = true,
 	disable_default_key_bindings = true,
 	font = wezterm.font("JetBrainsMono Nerd Font"),
 	font_size = 12,
