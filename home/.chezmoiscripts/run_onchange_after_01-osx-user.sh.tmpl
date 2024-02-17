@@ -1,0 +1,14 @@
+#!{{ lookPath "bash" }}
+
+set -eou pipefail
+
+echo "------------------------------"
+echo "osx user settings: applying..."
+echo "------------------------------"
+# OSX hash: {{ joinPath .chezmoi.sourceDir "dot_osx.user" | include | sha256sum }}
+sudo bash $HOME/.osx.user
+echo "-----------------------"
+echo "osx user settings: done"
+echo "-----------------------"
+
+echo ""

@@ -1,0 +1,26 @@
+#!/bin/bash
+
+sudo -v
+
+# ==============================================
+# .osx.system
+# adapted from https://github.com/hjuutilainen/dotfiles/tree/45cb437288f7b0633a2c59ea7bcee184f11b028a/bin#
+# ==============================================
+
+# ==============================================
+# Software update
+# ==============================================
+
+# Enable automatic update check and download
+defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled -bool true
+defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -bool true
+
+# Enable app update installs
+defaults write /Library/Preferences/com.apple.commerce AutoUpdate -bool true
+
+# Enable system data files and security update installs
+defaults write /Library/Preferences/com.apple.SoftwareUpdate ConfigDataInstall -bool true
+defaults write /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdateInstall -bool true
+
+# Enable OS X update installs
+defaults write /Library/Preferences/com.apple.commerce AutoUpdateRestartRequired -bool true

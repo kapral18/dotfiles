@@ -1,0 +1,12 @@
+#!/usr/bin/env fish
+
+echo "---------------------------------------"
+echo "brew install from Brewfile: applying..."
+echo "---------------------------------------"
+# software.yml hash: {{ joinPath .chezmoi.sourceDir "Brewfile" | include | sha256sum }}
+brew bundle --no-lock --file "$HOME/Brewfile"
+echo "---------------------------------------"
+echo "brew install from Brewfile: done"
+echo "---------------------------------------"
+
+echo ""

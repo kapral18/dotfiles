@@ -1,0 +1,2 @@
+# This option tells readline to complete filenames regardless of case
+set completion-ignore-case on

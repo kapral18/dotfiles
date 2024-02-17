@@ -5,6 +5,9 @@ set fish_greeting
 set -gx LC_ALL en_US.UTF-8
 set -gx LANG en_US.UTF-8
 
+# No homebrew auto update during brew install
+set -gx HOMEBREW_NO_AUTO_UPDATE 1
+
 # My terminal editor is always Vim by default
 set -x EDITOR nvim
 set -x VISUAL nvim
@@ -56,13 +59,7 @@ set -gx FZF_CTRL_T_COMMAND "$FZF_DEFAULT_COMMAND"
 set -gx FZF_ALT_C_COMMAND "fd --type d $FD_OPTIONS"
 
 # Paths
-fish_add_path /usr/local/opt/libpq/bin
-fish_add_path /usr/local/opt/ruby/bin
-fish_add_path /usr/local/opt/ssh-copy-id/bin
-fish_add_path /usr/local/opt/coreutils/libexec/gnubin
-fish_add_path /usr/local/sbin
-fish_add_path /opt/homebrew/sbin
-fish_add_path /opt/homebrew/bin
+brew shellenv | source
 fish_add_path $RBENV_ROOT/bin
 fish_add_path $PYENV_ROOT/bin
 fish_add_path $GOPATH/bin
@@ -99,6 +96,7 @@ alias c=chezmoi
 alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l $FD_OPTIONS'
 alias ghs='gh copilot suggest'
 alias ghx='gh copilot explain'
+alias nvm='fnm'
 
 if hash lsd 2>/dev/null
     alias ls='lsd -A'
@@ -110,9 +108,4 @@ else
     alias l='ls -lAh'
     alias ll='ls -lAtrh'
     alias la='ls -A'
-end
-
-## bass enforced nvm
-function nvm
-    bass source ~/.nvm/nvm.sh --no-use ';' nvm $argv
 end
