@@ -7,19 +7,45 @@ set -euo pipefail
 # .osx.core
 # ==============================================
 
+# ==============================================
+# Kill affected applications
+# ==============================================
+function killallApps() {
+	killall "Finder" >/dev/null 2>&1
+	killall "SystemUIServer" >/dev/null 2>&1
+	killall "Dock" >/dev/null 2>&1
+
+	appsToKill=(
+		"Activity Monitor"
+		"Calendar"
+		"Disk Utility"
+		"Safari"
+		"System Preferences"
+		"App Store"
+	)
+
+	for app in "${appsToKill[@]}"; do
+		killall "${app}" >/dev/null 2>&1 && echo "Killed ${app}"
+	done
+
+	echo "Note that some of these changes require a logout/restart to take effect."
+}
+
+killallApps
+
 # Enable automatic update check and download
-defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled -bool true
-defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -bool true
+sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled -bool true
+sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -bool true
 
 # Enable app update installs
-defaults write /Library/Preferences/com.apple.commerce AutoUpdate -bool true
+sudo defaults write /Library/Preferences/com.apple.commerce AutoUpdate -bool true
 
 # Enable system data files and security update installs
-defaults write /Library/Preferences/com.apple.SoftwareUpdate ConfigDataInstall -bool true
-defaults write /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdateInstall -bool true
+sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate ConfigDataInstall -bool true
+sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdateInstall -bool true
 
 # Enable OS X update installs
-defaults write /Library/Preferences/com.apple.commerce AutoUpdateRestartRequired -bool true
+sudo defaults write /Library/Preferences/com.apple.commerce AutoUpdateRestartRequired -bool true
 
 #
 # Files and folders
@@ -78,6 +104,9 @@ defaults write -g AppleLiveTextEnabled -bool true
 # Turn off text smoothing for font sizes
 defaults write -g AppleAntiAliasingThreshold -int 4
 
+# Enable subpixel font rendering on non-Apple LCDs
+defaults write NSGlobalDomain AppleFontSmoothing -int 2
+
 # Double-click a window's title bar to zoom
 defaults write -g AppleMiniaturizeOnDoubleClick -bool true
 defaults write -g AppleActionOnDoubleClick -string "Maximize"
@@ -89,14 +118,17 @@ defaults write -g AppleScrollAnimationEnabled -bool true
 defaults write -g ApplePressAndHoldEnabled -bool false
 
 # Set keyboard repeat rate
-defaults write -g KeyRepeat -int 1
-defaults write -g InitialKeyRepeat -int 2
+
+# Set a blazingly fast keyboard repeat rate
+defaults write -g KeyRepeat -int 0.02
+# Set a shorter Delay until key repeat
+defaults write -g InitialKeyRepeat -int 12
 
 # Don't restore windows when quitting or re-opening apps
 defaults write -g NSQuitAlwaysKeepsWindows -bool false
 
 # Restart automatically if the computer freezes Y; then
-systemsetup -setrestartfreeze on
+sudo systemsetup -setrestartfreeze on
 
 # Don't reopen windows when logging back in
 defaults write com.apple.loginwindow LoginwindowLaunchesRelaunchApps -bool false
@@ -353,6 +385,9 @@ defaults write com.apple.finder ShowRemovableMediaOnDesktop -bool true
 # Finder: show all filename extensions
 defaults write -g AppleShowAllExtensions -bool true
 
+# Disable the warning when changing a file extension
+defaults write com.apple.finder FXEnableExtensionChangeWarning -bool false
+
 # Finder: show hidden files by default
 defaults write com.apple.finder AppleShowAllFiles -bool true
 
@@ -608,6 +643,13 @@ defaults write com.apple.DiskUtility SidebarShowAllDevices -bool true
 defaults write com.apple.DiskUtility WorkspaceShowAPFSSnapshots -bool true
 
 ###############################################################################
+# Printer settings                                                            #
+###############################################################################
+
+# Expand print panel by default
+defaults write NSGlobalDomain PMPrintingExpandedStateForPrint -bool true
+
+###############################################################################
 # Mac App Store                                                               #
 ###############################################################################
 
@@ -619,39 +661,5 @@ defaults write com.apple.appstore ShowDebugMenu -bool true
 
 # Add a context menu item for showing the Web Inspector in web views
 defaults write -g WebKitDeveloperExtras -bool true
-
-# ==============================================
-# Kill affected applications
-# ==============================================
-
-function killallApps() {
-	killall "Finder" >/dev/null 2>&1
-	killall "SystemUIServer" >/dev/null 2>&1
-	killall "Dock" >/dev/null 2>&1
-
-	appsToKill=(
-		"Activity Monitor"
-		"Calendar"
-		"Disk Utility"
-		"Safari"
-		"System Preferences"
-	)
-
-	for app in "${appsToKill[@]}"; do
-		killall "${app}" >/dev/null 2>&1
-		if [[ $? -eq 0 ]]; then
-			# We just killed an app so restart it
-			open -a "${app}"
-		fi
-	done
-
-	echo "Note that some of these changes require a logout/restart to take effect."
-}
-
-printf "Restart the affected applications? (y/n): "
-read killallReply
-if [[ $killallReply =~ ^[Yy]$ ]]; then
-	killallApps
-fi
 
 exit 0

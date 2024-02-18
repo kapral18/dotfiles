@@ -6,7 +6,7 @@ echo "------------------------------"
 echo "osx settings: applying..."
 echo "------------------------------"
 # OSX hash: {{ joinPath .chezmoi.sourceDir ".osx.core" | include | sha256sum }}
-sudo bash {{ joinPath .chezmoi.sourceDir ".osx.core" }}
+bash {{ joinPath .chezmoi.sourceDir ".osx.core" }}
 echo "-----------------------"
 echo "osx settings: done"
 echo "-----------------------"

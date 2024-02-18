@@ -4,75 +4,31 @@ set -x
 set -euo pipefail
 
 # ==============================================
+# Kill affected applications
+# ==============================================
+function killallApps() {
+	appsToKill=(
+		"Rectangle"
+		"AppCleaner"
+	)
+
+	for app in "${appsToKill[@]}"; do
+		killall "${app}" >/dev/null 2>&1 && echo "Killed ${app}"
+	done
+
+	echo "Note that some of these changes require a logout/restart to take effect."
+}
+
+killallApps
+
+# ==============================================
 # .osx.core
 # ==============================================
 
-# Rectangle
-defaults write com.knollsoft.Rectangle allowAnyShortcut -bool false
-defaults write com.knollsoft.Rectangle almostMaximizeHeight -float 0
-defaults write com.knollsoft.Rectangle almostMaximizeWidth -float 0
-defaults write com.knollsoft.Rectangle alternateDefaultShortcuts -bool true
-defaults write com.knollsoft.Rectangle altThirdCycle -int 0
-defaults write com.knollsoft.Rectangle alwaysAccountForStage -int 0
-defaults write com.knollsoft.Rectangle applyGapsToMaximize -int 0
-defaults write com.knollsoft.Rectangle applyGapsToMaximizeHeight -int 0
-defaults write com.knollsoft.Rectangle attemptMatchOnNextPrevDisplay -int 0
-defaults write com.knollsoft.Rectangle autoMaximize -int 0
-defaults write com.knollsoft.Rectangle cascadeAllDeltaSize -float 30
-defaults write com.knollsoft.Rectangle centeredDirectionalMove -int 0
-defaults write com.knollsoft.Rectangle centerHalfCycles -int 0
-defaults write com.knollsoft.Rectangle cornerSnapAreaSize -float 20
-defaults write com.knollsoft.Rectangle curtainChangeSize -int 0
-defaults write com.knollsoft.Rectangle doubleClickTitleBar -int 0
-defaults write com.knollsoft.Rectangle doubleClickTitleBarRestore -int 0
-defaults write com.knollsoft.Rectangle dragFromStage -int 0
-defaults write com.knollsoft.Rectangle enhancedUI -int 1
-defaults write com.knollsoft.Rectangle footprintAlpha -float 0.3
-defaults write com.knollsoft.Rectangle footprintAnimationDurationMultiplier -float 0.75
-defaults write com.knollsoft.Rectangle footprintBorderWidth -float 2
-defaults write com.knollsoft.Rectangle gapSize -float 5
-defaults write com.knollsoft.Rectangle hideMenubarIcon -bool false
-defaults write com.knollsoft.Rectangle ignoreDragSnapToo -int 0
-defaults write com.knollsoft.Rectangle ignoredSnapAreas -int 0
-defaults write com.knollsoft.Rectangle launchOnLogin -bool true
-defaults write com.knollsoft.Rectangle minimumWindowHeight -float 0
-defaults write com.knollsoft.Rectangle minimumWindowWidth -float 0
-defaults write com.knollsoft.Rectangle missionControlDragging -int 0
-defaults write com.knollsoft.Rectangle missionControlDraggingAllowedOffscreenDistance -float 25
-defaults write com.knollsoft.Rectangle missionControlDraggingDisallowedDuration -int 250
-defaults write com.knollsoft.Rectangle moveCursor -int 0
-defaults write com.knollsoft.Rectangle moveCursorAcrossDisplays -int 0
-defaults write com.knollsoft.Rectangle notifiedOfProblemApps -bool false
-defaults write com.knollsoft.Rectangle obtainWindowOnClick -int 0
-defaults write com.knollsoft.Rectangle relaunchOpensMenu -bool false
-defaults write com.knollsoft.Rectangle resizeOnDirectionalMove -bool false
-defaults write com.knollsoft.Rectangle screenEdgeGapBottom -float 0
-defaults write com.knollsoft.Rectangle screenEdgeGapLeft -float 0
-defaults write com.knollsoft.Rectangle screenEdgeGapRight -float 0
-defaults write com.knollsoft.Rectangle screenEdgeGapsOnMainScreenOnly -bool false
-defaults write com.knollsoft.Rectangle screenEdgeGapTop -float 0
-defaults write com.knollsoft.Rectangle shortEdgeSnapAreaSize -float 145
-defaults write com.knollsoft.Rectangle showAllActionsInMenu -int 0
-defaults write com.knollsoft.Rectangle sixthsSnapArea -int 0
-defaults write com.knollsoft.Rectangle sizeOffset -float 0
-defaults write com.knollsoft.Rectangle snapEdgeMarginBottom -float 5
-defaults write com.knollsoft.Rectangle snapEdgeMarginLeft -float 5
-defaults write com.knollsoft.Rectangle snapEdgeMarginRight -float 5
-defaults write com.knollsoft.Rectangle snapEdgeMarginTop -float 5
-defaults write com.knollsoft.Rectangle snapModifiers -int 0
-defaults write com.knollsoft.Rectangle specifiedHeight -float 1050
-defaults write com.knollsoft.Rectangle specifiedWidth -float 1680
-defaults write com.knollsoft.Rectangle stageSize -float 190
-defaults write com.knollsoft.Rectangle subsequentExecutionMode -int 1
-defaults write com.knollsoft.Rectangle SUEnableAutomaticChecks -bool false
-defaults write com.knollsoft.Rectangle systemWideMouseDown -int 0
-defaults write com.knollsoft.Rectangle todo -int 0
-defaults write com.knollsoft.Rectangle todoMode -bool false
-defaults write com.knollsoft.Rectangle todoSidebarSide -int 1
-defaults write com.knollsoft.Rectangle todoSidebarWidth -float 400
-defaults write com.knollsoft.Rectangle traverseSingleScreen -int 0
-defaults write com.knollsoft.Rectangle unsnapRestore -int 0
-defaults write com.knollsoft.Rectangle windowSnapping -int 0
+###############################################################################
+# Rectangle                                                                   #
+###############################################################################
+defaults import com.knollsoft.Rectangle ~/.local/share/chezmoi/home/.plists/.RectangleConfig.plist
 
 ###############################################################################
 # AppCleaner                                                                  #
@@ -81,28 +37,5 @@ defaults write com.knollsoft.Rectangle windowSnapping -int 0
 defaults write net.freemacsoft.AppCleaner SUAutomaticallyUpdate -bool true
 defaults write net.freemacsoft.AppCleaner SUEnableAutomaticChecks -bool true
 defaults write net.freemacsoft.AppCleaner SUSendProfileInfo -bool false
-
-function killallApps() {
-	appsToKill=(
-		"Rectangle"
-		"AppCleaner"
-	)
-
-	for app in "${appsToKill[@]}"; do
-		killall "${app}" >/dev/null 2>&1
-		if [[ $? -eq 0 ]]; then
-			# We just killed an app so restart it
-			open -a "${app}"
-		fi
-	done
-
-	echo "Note that some of these changes require a logout/restart to take effect."
-}
-
-printf "Restart the affected applications? (y/n): "
-read killallReply
-if [[ $killallReply =~ ^[Yy]$ ]]; then
-	killallApps
-fi
 
 exit 0
