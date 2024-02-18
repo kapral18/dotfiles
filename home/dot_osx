@@ -8,6 +8,20 @@ set -euo pipefail
 # adapted from https://github.com/hjuutilainen/dotfiles/tree/45cb437288f7b0633a2c59ea7bcee184f11b028a/bin#
 # ==============================================
 
+# Enable automatic update check and download
+defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled -bool true
+defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -bool true
+
+# Enable app update installs
+defaults write /Library/Preferences/com.apple.commerce AutoUpdate -bool true
+
+# Enable system data files and security update installs
+defaults write /Library/Preferences/com.apple.SoftwareUpdate ConfigDataInstall -bool true
+defaults write /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdateInstall -bool true
+
+# Enable OS X update installs
+defaults write /Library/Preferences/com.apple.commerce AutoUpdateRestartRequired -bool true
+
 #
 # Files and folders
 #
@@ -169,6 +183,19 @@ defaults write com.apple.screensaver askForPasswordDelay -int 5
 # Hot corners -> bottom left -> start screen saver
 defaults write com.apple.dock "wvous-bl-corner" -int 5
 defaults write com.apple.dock "wvous-bl-modifier" -int 0
+
+###############################################################################
+# Screen capture                                                              #
+###############################################################################
+
+# Save screenshots to the desktop
+defaults write com.apple.screencapture location -string "${HOME}/Downloads/ScreenShots"
+
+# Save screenshots in PNG format (other options: BMP, GIF, JPG, PDF, TIFF)
+defaults write com.apple.screencapture type -string "png"
+
+# Disable shadow in screenshots
+defaults write com.apple.screencapture disable-shadow -bool true
 
 #
 # Mouse and trackpad
@@ -510,33 +537,33 @@ defaults write com.apple.Terminal "Default Window Settings" -string "Basic Impro
 # ==============================================
 
 function killallApps() {
-  killall "Finder" >/dev/null 2>&1
-  killall "SystemUIServer" >/dev/null 2>&1
-  killall "Dock" >/dev/null 2>&1
+	killall "Finder" >/dev/null 2>&1
+	killall "SystemUIServer" >/dev/null 2>&1
+	killall "Dock" >/dev/null 2>&1
 
-  appsToKill=(
-    "Activity Monitor"
-    "Calendar"
-    "Disk Utility"
-    "Safari"
-    "System Preferences"
-  )
+	appsToKill=(
+		"Activity Monitor"
+		"Calendar"
+		"Disk Utility"
+		"Safari"
+		"System Preferences"
+	)
 
-  for app in "${appsToKill[@]}"; do
-    killall "${app}" >/dev/null 2>&1
-    if [[ $? -eq 0 ]]; then
-      # We just killed an app so restart it
-      open -a "${app}"
-    fi
-  done
+	for app in "${appsToKill[@]}"; do
+		killall "${app}" >/dev/null 2>&1
+		if [[ $? -eq 0 ]]; then
+			# We just killed an app so restart it
+			open -a "${app}"
+		fi
+	done
 
-  echo "Note that some of these changes require a logout/restart to take effect."
+	echo "Note that some of these changes require a logout/restart to take effect."
 }
 
 printf "Restart the affected applications? (y/n): "
 read killallReply
 if [[ $killallReply =~ ^[Yy]$ ]]; then
-  killallApps
+	killallApps
 fi
 
 exit 0

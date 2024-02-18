@@ -3,12 +3,12 @@
 set -eou pipefail
 
 echo "------------------------------"
-echo "osx user settings: applying..."
+echo "osx settings: applying..."
 echo "------------------------------"
-# OSX hash: {{ joinPath .chezmoi.sourceDir "dot_osx.user" | include | sha256sum }}
-sudo bash $HOME/.osx.user
+# OSX hash: {{ joinPath .chezmoi.sourceDir "dot_osx" | include | sha256sum }}
+sudo bash $HOME/.osx
 echo "-----------------------"
-echo "osx user settings: done"
+echo "osx settings: done"
 echo "-----------------------"
 
 echo ""
