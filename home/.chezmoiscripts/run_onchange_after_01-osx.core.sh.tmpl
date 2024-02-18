@@ -5,8 +5,8 @@ set -eou pipefail
 echo "------------------------------"
 echo "osx settings: applying..."
 echo "------------------------------"
-# OSX hash: {{ joinPath .chezmoi.sourceDir "dot_osx" | include | sha256sum }}
-sudo bash $HOME/.osx
+# OSX hash: {{ joinPath .chezmoi.sourceDir ".osx.core" | include | sha256sum }}
+sudo bash {{ joinPath .chezmoi.sourceDir ".osx.core" }}
 echo "-----------------------"
 echo "osx settings: done"
 echo "-----------------------"

@@ -1,12 +1,12 @@
 #!{{ lookPath "fish" }}
 
 echo "---------------------------------------"
-echo "brew install from Brewfile: applying..."
+echo "brew install from .Brewfile: applying..."
 echo "---------------------------------------"
-# software.yml hash: {{ joinPath .chezmoi.sourceDir "Brewfile" | include | sha256sum }}
-brew bundle --no-lock --file "$HOME/Brewfile"
+# software.yml hash: {{ joinPath .chezmoi.sourceDir ".Brewfile" | include | sha256sum }}
+brew bundle --no-lock --file {{ joinPath .chezmoi.sourceDir ".Brewfile" | quote }}
 echo "---------------------------------------"
-echo "brew install from Brewfile: done"
+echo "brew install from .Brewfile: done"
 echo "---------------------------------------"
 
 echo ""

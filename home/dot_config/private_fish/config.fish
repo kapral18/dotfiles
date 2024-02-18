@@ -114,12 +114,12 @@ else
 end
 
 # function that wraps brew
-# and adds brew bundle dump --file=~/.local/share/chezmoi/home/Brewfile
+# and adds brew bundle dump --file=~/.local/share/chezmoi/home/.Brewfile
 # after brew update, upgrade, install, uninstall commands
 function brew --wraps brew -d "brew with bundle dump"
     command brew $argv
     if contains -- update $argv || contains -- upgrade $argv || contains -- install $argv || contains -- uninstall $argv
-        command brew bundle dump --file=~/.local/share/chezmoi/home/Brewfile --no-lock --force
+        command brew bundle dump --file=~/.local/share/chezmoi/home/.Brewfile --no-lock --force
     end
 end
 
