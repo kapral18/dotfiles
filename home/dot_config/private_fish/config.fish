@@ -100,7 +100,6 @@ alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd 
 alias ghs='gh copilot suggest'
 alias ghx='gh copilot explain'
 alias nvm='fnm'
-alias appids='lsappinfo | grep 'bundleID="' | cut -d'"' -f2 | sort'
 
 if hash lsd 2>/dev/null
     alias ls='lsd -A'
@@ -117,9 +116,20 @@ end
 # function that wraps brew
 # and adds brew bundle dump --file=~/.local/share/chezmoi/home/Brewfile
 # after brew update, upgrade, install, uninstall commands
-function brew --wraps brew
+function brew --wraps brew -d "brew with bundle dump"
     command brew $argv
     if contains -- update $argv || contains -- upgrade $argv || contains -- install $argv || contains -- uninstall $argv
         command brew bundle dump --file=~/.local/share/chezmoi/home/Brewfile --no-lock --force
     end
+end
+
+function appid -d "Get the application id from the bundle identifier"
+    if test (count $argv) -eq 0
+        echo "Usage: appid <bundle_id>"
+        return
+    end
+
+    set -l bundle_id $argv[1]
+    set -l app_id (osascript -e "id of app \"$bundle_id\"")
+    echo $app_id
 end

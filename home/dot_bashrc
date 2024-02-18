@@ -86,7 +86,6 @@ alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd 
 alias ghs='gh copilot suggest'
 alias ghx='gh copilot explain'
 alias nvm='fnm'
-alias appids='lsappinfo | grep 'bundleID="' | cut -d'"' -f2 | sort'
 
 if hash lsd 2>/dev/null; then
 	alias ls='lsd -A'
@@ -108,4 +107,12 @@ brew() {
     if [[ "$1" == update || "$1" == upgrade || "$1" == install || "$1" == uninstall ]]; then
         command brew bundle dump --file=~/.local/share/chezmoi/home/Brewfile --no-lock --force
     fi
+}
+
+appid() {
+		if [ -z "$1" ]; then
+				echo "Usage: appid <app>"
+				return 1
+		fi
+		osascript -e "id of app \"$1\""
 }
