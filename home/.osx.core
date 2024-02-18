@@ -17,9 +17,6 @@ function killallApps() {
 
 	appsToKill=(
 		"Activity Monitor"
-		"Calendar"
-		"Disk Utility"
-		"Safari"
 		"System Preferences"
 		"App Store"
 	)
@@ -32,20 +29,6 @@ function killallApps() {
 }
 
 killallApps
-
-# Enable automatic update check and download
-sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticCheckEnabled -bool true
-sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -bool true
-
-# Enable app update installs
-sudo defaults write /Library/Preferences/com.apple.commerce AutoUpdate -bool true
-
-# Enable system data files and security update installs
-sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate ConfigDataInstall -bool true
-sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdateInstall -bool true
-
-# Enable OS X update installs
-sudo defaults write /Library/Preferences/com.apple.commerce AutoUpdateRestartRequired -bool true
 
 #
 # Files and folders
@@ -63,9 +46,6 @@ echo "Setting NSGlobalDomain preferences"
 
 # Disable the “Are you sure you want to open this application?” dialog
 defaults write com.apple.LaunchServices LSQuarantine -bool false
-
-# Remove duplicates in the “Open With” menu (also see `lscleanup` alias)
-/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -kill -r -domain local -domain system -domain user
 
 # Interface style: Light
 # defaults delete -g AppleInterfaceStyle >/dev/null 2>&1 || true
@@ -256,7 +236,7 @@ defaults write com.apple.finder _FXSortFoldersFirst -bool true
 echo "Setting Sound preferences"
 
 # Disable the sound effects on boot
-sudo nvram SystemAudioVolume=" "
+sudo nvram SystemAudioVolume="%00"
 
 # Enable feedback when changing volume
 defaults write -g com.apple.sound.beep.feedback -bool true
@@ -360,29 +340,12 @@ defaults write com.apple.universalaccess showToolbarButtonShapes -bool true
 # =====================
 
 #
-# Archive Utility
-#
-echo "Setting Archive Utility preferences"
-
-# Move archives to trash after extraction
-defaults write com.apple.archiveutility "dearchive-into" -string "."
-
-# Move archives to trash after extraction
-defaults write com.apple.archiveutility "dearchive-move-after" -string "$HOME/.Trash"
-
-# Move archives to trash after extraction
-defaults write com.apple.archiveutility "dearchive-recursively" -bool true
-
-# Don't reveal extracted items
-defaults write com.apple.archiveutility "dearchive-reveal-after" -bool false
-
-#
 # Finder
 #
 echo "Setting Finder preferences"
 
 # Expand the following File Info panes: 'General', 'Open with', and 'Sharing & Permissions'
-# defaults write com.apple.finder FXInfoPanesExpanded -dict-add "General" -bool true
+defaults write com.apple.finder FXInfoPanesExpanded -dict-add "General" -bool true
 defaults write com.apple.finder FXInfoPanesExpanded -dict-add "MetaData" -bool false
 defaults write com.apple.finder FXInfoPanesExpanded -dict-add "OpenWith" -bool true
 defaults write com.apple.finder FXInfoPanesExpanded -dict-add "Privileges" -bool true
@@ -400,13 +363,7 @@ defaults write com.apple.finder DisableAllAnimations -bool true
 defaults write -g NSUseAnimatedFocusRing -bool false
 
 # Adjust toolbar title rollover delay
-defaults write NSGlobalDomain NSToolbarTitleViewRolloverDelay -float 0
-
-# Show icons for hard drives, servers, and removable media on the desktop
-defaults write com.apple.finder ShowExternalHardDrivesOnDesktop -bool true
-defaults write com.apple.finder ShowHardDrivesOnDesktop -bool true
-defaults write com.apple.finder ShowMountedServersOnDesktop -bool true
-defaults write com.apple.finder ShowRemovableMediaOnDesktop -bool true
+defaults write -g NSToolbarTitleViewRolloverDelay -float 0
 
 # Finder: show all filename extensions
 defaults write -g AppleShowAllExtensions -bool true
@@ -442,21 +399,6 @@ defaults write com.apple.dock orientation -string "bottom"
 
 # Hide recent apps
 defaults write com.apple.dock show-recents -bool false
-
-# Disable click wallpaper to show desktop items
-defaults write com.apple.WindowManager EnableStandardClickToShowDesktop -bool false
-
-# Disable Stage Manager
-defaults write com.apple.WindowManager GloballyEnabled -bool false
-
-# Show desktop icons
-defaults write com.apple.WindowManager StandardHideDesktopIcons -bool false
-
-# Show widgets
-defaults write com.apple.WindowManager StandardHideWidgets -bool false
-
-# Animate opening applications from the Dock
-defaults write com.apple.dock launchanim -bool true
 
 # Set the icon size of Dock items to 35 pixels
 defaults write com.apple.dock tilesize -int 35
@@ -498,208 +440,16 @@ defaults write com.apple.dock "workspaces-swoosh-animation-off" -bool false
 # Remove the animation when hiding or showing the dock
 defaults write com.apple.dock "autohide-time-modier" -float 0
 
-# Enable iTunes pop-up notications
-defaults write com.apple.dock "itunes-notications" -boolean false
-
 # Remove the auto-hiding Dock delay
 defaults write com.apple.dock "autohide-delay" -float 0
 
 # Automatically hide and show the Dock
 defaults write com.apple.dock autohide -bool true
 
-# Automatically magnify the Dock
-defaults write com.apple.dock magnication -bool false
+# Disable magnify the Dock
+defaults write com.apple.dock magnification -bool false
 
 # Make Dock icons of hidden applications translucent
 defaults write com.apple.dock showhidden -bool false
-
-#
-# Safari & WebKit
-#
-echo "Setting Safari & WebKit preferences"
-
-# Appearance
-
-# Show status bar
-defaults write com.apple.Safari ShowStatusBar -bool true
-
-# Show favorites bar
-defaults write com.apple.Safari "ShowFavoritesBar-v2" -bool true
-
-# Don't show tab bar
-defaults write com.apple.Safari AlwaysShowTabBar -bool false
-
-# No background colors in toolbar
-defaults write com.apple.Safari NeverUseBackgroundColorInToolbar -bool true
-
-# General settings
-
-# Safari opens with: A new window
-defaults write com.apple.Safari AlwaysRestoreSessionAtLaunch -bool false
-
-# New windows open with: Empty Page
-defaults write com.apple.Safari NewWindowBehavior -int 1
-
-# New tabs open with: Empty Page
-defaults write com.apple.Safari NewTabBehavior -int 1
-
-# Homepage
-defaults write com.apple.Safari HomePage -string "about:blank"
-
-# Don't open "safe" files after downloading
-defaults write com.apple.Safari AutoOpenSafeDownloads -bool false
-
-# Tabs settings
-
-# Open pages in tabs instead of windows: automatically
-defaults write com.apple.Safari TabCreationPolicy -int 1
-
-# Don't make new tabs active
-defaults write com.apple.Safari OpenNewTabsInFront -bool false
-
-# Command-clicking a link creates tabs
-defaults write com.apple.Safari CommandClickMakesTabs -bool true
-
-# Autofill settings
-
-# Don't autofill anything
-defaults write com.apple.Safari AutoFillCreditCardData -bool false
-defaults write com.apple.Safari AutoFillFromAddressBook -bool false
-defaults write com.apple.Safari AutoFillMiscellaneousForms -bool false
-defaults write com.apple.Safari AutoFillPasswords -bool false
-
-# Search settings
-
-# Search engine: Google
-defaults write -g NSPreferredWebServices -dict 'NSWebServicesProviderWebSearch' '{ NSDefaultDisplayName = Google; NSProviderIdentifier = com.google.www; }'
-defaults write com.apple.Safari SearchProviderShortName -string "Google"
-
-# Search engine: Bing
-# defaults write -g NSPreferredWebServices -dict 'NSWebServicesProviderWebSearch' '{ NSDefaultDisplayName = Bing; NSProviderIdentifier = com.bing.www; }'
-# defaults write com.apple.Safari SearchProviderShortName -string "Bing"
-
-# Search engine: DuckDuckGo
-# defaults write -g NSPreferredWebServices -dict 'NSWebServicesProviderWebSearch' '{ NSDefaultDisplayName = DuckDuckGo; NSProviderIdentifier = com.duckduckgo; }'
-# defaults write com.apple.Safari SearchProviderShortName -string "DuckDuckGo"
-
-# Enable search engine suggestions
-defaults write com.apple.Safari SuppressSearchSuggestions -bool false
-
-# Smart search field:
-
-# Disable Safari suggestions
-defaults write com.apple.Safari UniversalSearchEnabled -bool false
-defaults write com.apple.Safari UniversalSearchFeatureNotificationHasBeenDisplayed -bool true
-
-# Disable top hit preloading
-defaults write com.apple.Safari PreloadTopHit -bool false
-
-# Disable quick website search
-defaults write com.apple.Safari WebsiteSpecificSearchEnabled -bool false
-
-# Security settings
-
-# Warn About Fraudulent Websites
-defaults write com.apple.Safari WarnAboutFraudulentWebsites -bool true
-
-# Enable plug-ins
-defaults write com.apple.Safari WebKitPluginsEnabled -bool true
-defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2PluginsEnabled -bool true
-
-# Enable Java
-defaults write com.apple.Safari WebKitJavaEnabled -bool true
-defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaEnabled -bool true
-
-# Enable JavaScript
-defaults write com.apple.Safari WebKitJavaScriptEnabled -bool true
-defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaScriptEnabled -bool true
-
-# Block pop-up windows
-defaults write com.apple.Safari WebKitJavaScriptCanOpenWindowsAutomatically -bool false
-defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2JavaScriptCanOpenWindowsAutomatically -bool false
-
-# Reading list
-defaults write com.apple.Safari com.apple.Safari.ReadingListFetcher.WebKit2PluginsEnabled -bool false
-defaults write com.apple.Safari com.apple.Safari.ReadingListFetcher.WebKit2LoadsImagesAutomatically -bool false
-defaults write com.apple.Safari com.apple.Safari.ReadingListFetcher.WebKit2LoadsSiteIconsIgnoringImageLoadingPreference -bool true
-defaults write com.apple.Safari com.apple.Safari.ReadingListFetcher.WebKit2JavaScriptEnabled -bool false
-
-# Privacy settings
-
-# Cookies and website data
-# - Always block
-#defaults write com.apple.Safari WebKitStorageBlockingPolicy -int 2
-#defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2StorageBlockingPolicy -int 2
-
-# Website use of location services
-# 0 = Deny without prompting
-# 1 = Prompt for each website once each day
-# 2 = Prompt for each website one time only
-defaults write com.apple.Safari SafariGeolocationPermissionPolicy -int 2
-
-# Do not track
-defaults write com.apple.Safari SendDoNotTrackHTTPHeader -bool true
-
-# Notifications
-
-# Don't even ask about the push notifications
-defaults write com.apple.Safari CanPromptForPushNotifications -bool false
-
-# Extensions settings
-
-# Update extensions automatically
-defaults write com.apple.Safari InstallExtensionUpdatesAutomatically -bool true
-
-# Advanced settings
-
-# Disable Safari’s thumbnail cache for History and Top Sites
-defaults write com.apple.Safari DebugSnapshotsUpdatePolicy -int 2
-
-# Make Safari’s search banners default to Contains instead of Starts With
-defaults write com.apple.Safari FindOnPageMatchesWordStartsOnly -bool false
-
-# Enable the Develop menu and the Web Inspector in Safari
-defaults write com.apple.Safari IncludeInternalDebugMenu -bool true
-defaults write com.apple.Safari WebKitDeveloperExtrasEnabledPreferenceKey -bool true
-defaults write com.apple.Safari com.apple.Safari.ContentPageGroupIdentifier.WebKit2DeveloperExtrasEnabled -bool true
-
-# Add a context menu item for showing the Web Inspector in web views
-defaults write -g WebKitDeveloperExtras -bool true
-
-#
-# Disk Utility
-#
-echo "Setting Disk Utility preferences"
-
-# Enable the debug menu in Disk Utility
-defaults write com.apple.DiskUtility DUDebugMenuEnabled -bool true
-defaults write com.apple.DiskUtility advanced-image-options -bool true
-
-# View -> Show All Devices
-defaults write com.apple.DiskUtility SidebarShowAllDevices -bool true
-
-# Show APFS snapshots
-defaults write com.apple.DiskUtility WorkspaceShowAPFSSnapshots -bool true
-
-###############################################################################
-# Printer settings                                                            #
-###############################################################################
-
-# Expand print panel by default
-defaults write -g PMPrintingExpandedStateForPrint -bool true
-defaults write -g PMPrintingExpandedStateForPrint2 -bool true
-
-###############################################################################
-# Mac App Store                                                               #
-###############################################################################
-
-# Enable the WebKit Developer Tools in the Mac App Store
-defaults write com.apple.appstore WebKitDeveloperExtras -bool true
-
-# Enable Debug Menu in the Mac App Store
-defaults write com.apple.appstore ShowDebugMenu -bool true
-
-# Add a context menu item for showing the Web Inspector in web views
-defaults write -g WebKitDeveloperExtras -bool true
 
 exit 0
