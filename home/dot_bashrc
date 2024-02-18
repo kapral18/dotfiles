@@ -36,6 +36,9 @@ export GOPATH=$HOME/go
 # OpenAI
 export OPENAI_API_KEY=$(pass show openai/api/token)
 
+# Chatblade
+export OPENAI_API_MODEL=4t
+
 # Docker
 export DOCKER_HIDE_LEGACY_COMMANDS=true
 
@@ -62,6 +65,8 @@ eval "$(pyenv init -)"
 eval "$(pyenv virtualenv-init -)"
 eval "$(starship init bash)"
 eval "$(zoxide init bash)"
+eval "$(fnm env --use-on-cd)"
+
 # Broot
 source /Users/kapral18/.config/broot/launcher/bash/br
 . "$HOME/.cargo/env"
@@ -80,6 +85,8 @@ alias c=chezmoi
 alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l $FD_OPTIONS'
 alias ghs='gh copilot suggest'
 alias ghx='gh copilot explain'
+alias nvm='fnm'
+alias appids='lsappinfo | grep 'bundleID="' | cut -d'"' -f2 | sort'
 
 if hash lsd 2>/dev/null; then
 	alias ls='lsd -A'
@@ -92,3 +99,13 @@ else
 	alias ll='ls -lAtrh'
 	alias la='ls -A'
 fi
+
+# function that wraps brew
+# and adds brew bundle dump --file=~/.local/share/chezmoi/home/Brewfile
+# after brew update, upgrade, install, uninstall commands
+brew() {
+    command brew "$@"
+    if [[ "$1" == update || "$1" == upgrade || "$1" == install || "$1" == uninstall ]]; then
+        command brew bundle dump --file=~/.local/share/chezmoi/home/Brewfile --no-lock --force
+    fi
+}
