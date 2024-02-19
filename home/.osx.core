@@ -324,16 +324,16 @@ defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad USBMouseStopsT
 #
 
 # Reduce motion
-defaults write com.apple.universalaccess reduceMotion -bool true
+sudo defaults write com.apple.universalaccess reduceMotion -bool true
 
 # Reduce transparency
-# defaults write com.apple.universalaccess reduceTransparency -bool true
+# sudo defaults write com.apple.universalaccess reduceTransparency -bool true
 
 # Show window title icons
-defaults write com.apple.universalaccess showWindowTitlebarIcons -bool true
+sudo defaults write com.apple.universalaccess showWindowTitlebarIcons -bool true
 
 # Show toolbar button shapes
-defaults write com.apple.universalaccess showToolbarButtonShapes -bool true
+sudo defaults write com.apple.universalaccess showToolbarButtonShapes -bool true
 
 # =====================
 # Applications
