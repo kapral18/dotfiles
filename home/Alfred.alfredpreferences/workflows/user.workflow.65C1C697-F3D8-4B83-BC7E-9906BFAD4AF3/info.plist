@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>bundleid</key>
+	<string>com.vwap.goincognitoprivate</string>
+	<key>connections</key>
+	<dict>
+		<key>9A753B99-150C-4628-BE6C-3FF0E28610E9</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>8618ACBB-0F26-4683-B56D-EA3F50EA7458</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+	</dict>
+	<key>createdby</key>
+	<string>vwap</string>
+	<key>description</key>
+	<string>Re-Open current browser tab in Incognito/Private mode with a keyboard shortcut.</string>
+	<key>disabled</key>
+	<false/>
+	<key>name</key>
+	<string>Go Incognito/Private</string>
+	<key>objects</key>
+	<array>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>action</key>
+				<integer>0</integer>
+				<key>argument</key>
+				<integer>0</integer>
+				<key>focusedappvariable</key>
+				<false/>
+				<key>focusedappvariablename</key>
+				<string></string>
+				<key>leftcursor</key>
+				<false/>
+				<key>modsmode</key>
+				<integer>0</integer>
+				<key>relatedAppsMode</key>
+				<integer>0</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.trigger.hotkey</string>
+			<key>uid</key>
+			<string>9A753B99-150C-4628-BE6C-3FF0E28610E9</string>
+			<key>version</key>
+			<integer>2</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>concurrently</key>
+				<false/>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>script</key>
+				<string>// JavaScript for Automation (JXA) //
+
+const frontmost_app_name = Application('System Events').applicationProcesses.where({ frontmost: true }).name()[0]
+const frontmost_app = Application(frontmost_app_name)
+
+if (['Google Chrome', 'Google Chrome Canary', 'Chromium', 'Opera', 'Vivaldi', 'Brave Browser'].indexOf(frontmost_app_name) &gt; -1) {
+  var current_tab_url = frontmost_app.windows[0].activeTab.url()
+  frontmost_app.Window({mode: 'incognito'}).make()
+  frontmost_app.windows[0].activeTab.url=current_tab_url
+
+} else if (['Safari', 'Safari Technology Preview', 'Webkit'].indexOf(frontmost_app_name) &gt; -1) {
+  var current_tab_url = frontmost_app.documents[0].url()
+  //since there isn't a better solution for safari, we simulate key presses
+  Application('System Events').keystroke('n', {using: ['command down', 'shift down']})
+  delay(0.5)
+  frontmost_app.documents[0].url=current_tab_url
+} else {
+  throw new Error('You need a supported browser as your frontmost app')
+}</string>
+				<key>scriptargtype</key>
+				<integer>1</integer>
+				<key>scriptfile</key>
+				<string></string>
+				<key>type</key>
+				<integer>7</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.action.script</string>
+			<key>uid</key>
+			<string>8618ACBB-0F26-4683-B56D-EA3F50EA7458</string>
+			<key>version</key>
+			<integer>2</integer>
+		</dict>
+	</array>
+	<key>readme</key>
+	<string>Re-Open current browser tab in Incognito/Private mode with a keyboard shortcut.
+
+Supported Browsers
+- Safari
+- Google Chrome
+- Google Chrome Canary
+- Opera
+- Vivaldi
+- Brave Browser
+
+(does NOT support Firefox, for now, sorry!)</string>
+	<key>uidata</key>
+	<dict>
+		<key>8618ACBB-0F26-4683-B56D-EA3F50EA7458</key>
+		<dict>
+			<key>xpos</key>
+			<integer>410</integer>
+			<key>ypos</key>
+			<integer>210</integer>
+		</dict>
+		<key>9A753B99-150C-4628-BE6C-3FF0E28610E9</key>
+		<dict>
+			<key>xpos</key>
+			<integer>190</integer>
+			<key>ypos</key>
+			<integer>210</integer>
+		</dict>
+	</dict>
+	<key>variablesdontexport</key>
+	<array/>
+	<key>version</key>
+	<string>1.0.0</string>
+	<key>webaddress</key>
+	<string>https://twitter.com/vinayw/</string>
+</dict>
+</plist>

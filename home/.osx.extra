@@ -31,6 +31,12 @@ killallApps
 defaults import com.knollsoft.Rectangle ~/.local/share/chezmoi/home/.plists/.RectangleConfig.plist
 
 ###############################################################################
+# Rectangle                                                                   #
+###############################################################################
+defaults import com.runningwithcrayons.Alfred.plist ~/.local/share/chezmoi/home/.plists/.Alfred.plist
+defaults import com.runningwithcrayons.Alfred-Preferences.plist ~/.local/share/chezmoi/home/.plists/.Alfred-Preferences.plist
+
+###############################################################################
 # AppCleaner                                                                  #
 ###############################################################################
 
