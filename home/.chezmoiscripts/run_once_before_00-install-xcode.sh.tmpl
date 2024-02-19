@@ -15,15 +15,24 @@ CLT_PACKAGE=$(softwareupdate --list \
   | sed -e 's/^ *Label: //' -e 's/^ *//' \
   | sort -V \
   | tail -n1)
-sudo softwareupdate --install "$CLT_PACKAGE"
 
-sudo xcode-select --install
+if [[ -z "$CLT_PACKAGE" ]]; then
+  echo "No new software updates available"
+else
+  sudo softwareupdate --install "$CLT_PACKAGE"
+  sudo xcode-select --install
+fi
+
+
+echo "--------------------------------------"
+echo "xcodebuild license accept: applying..."
+echo "--------------------------------------"
 
 # Accept T&Cs
 sudo xcodebuild -license accept
+echo "-------------------------------"
+echo "xcodebuild license accept: done"
+echo "-------------------------------"
 
-echo "------------------------------------"
-echo "xcode command line tools setup: done"
-echo "------------------------------------"
 
 echo ""
