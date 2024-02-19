@@ -39,8 +39,6 @@ set -gx nvm_default_version lts
 # Go
 set -gx GOPATH $HOME/go
 
-# OpenAI
-set -gx OPENAI_API_KEY (pass show openai/api/token)
 
 # Chatblade
 set -gx OPENAI_API_MODEL 4t
@@ -133,3 +131,6 @@ function appid -d "Get the application id from the bundle identifier"
     set -l app_id (osascript -e "id of app \"$bundle_id\"")
     echo $app_id
 end
+
+# OpenAI
+set -gx OPENAI_API_KEY (pass show openai/api/token)

@@ -33,9 +33,6 @@ export nvm_default_version=lts
 # Go
 export GOPATH=$HOME/go
 
-# OpenAI
-export OPENAI_API_KEY=$(pass show openai/api/token)
-
 # Chatblade
 export OPENAI_API_MODEL=4t
 
@@ -116,3 +113,7 @@ appid() {
 		fi
 		osascript -e "id of app \"$1\""
 }
+
+# OpenAI
+export OPENAI_API_KEY=$(pass show openai/api/token)
+
