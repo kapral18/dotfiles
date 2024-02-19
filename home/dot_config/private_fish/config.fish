@@ -126,7 +126,7 @@ end
 function brew --wraps brew -d "brew with bundle dump"
     command brew $argv
     if contains -- update $argv || contains -- upgrade $argv || contains -- install $argv || contains -- uninstall $argv
-        command brew bundle dump --file=~/.local/share/chezmoi/home/.Brewfile --no-lock --force
+        command brew bundle dump --file=~/.local/share/chezmoi/home/.Brewfile --no-lock --force --brews --casks --taps
     end
 end
 

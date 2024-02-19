@@ -108,7 +108,7 @@ fi
 brew() {
     command brew "$@"
     if [[ "$1" == update || "$1" == upgrade || "$1" == install || "$1" == uninstall ]]; then
-        command brew bundle dump --file=~/.local/share/chezmoi/home/.Brewfile --no-lock --force
+        command brew bundle dump --file=~/.local/share/chezmoi/home/.Brewfile --no-lock --force --brews --casks --taps
     fi
 }
 
