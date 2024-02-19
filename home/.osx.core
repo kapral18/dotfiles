@@ -35,9 +35,9 @@ killallApps
 #
 
 # Show the ~/Library directory
-chflags nohidden "${HOME}/Library"
+sudo chflags nohidden "${HOME}/Library"
 # Show the '/Volumes' folder
-chflags nohidden "/Volumes"
+sudo chflags nohidden "/Volumes"
 
 #
 # NSGlobalDomain settings
