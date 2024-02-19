@@ -59,8 +59,17 @@ set -gx FZF_DEFAULT_COMMAND "git ls-files --cached --others --exclude-standard 2
 set -gx FZF_CTRL_T_COMMAND "$FZF_DEFAULT_COMMAND"
 set -gx FZF_ALT_C_COMMAND "fd --type d $FD_OPTIONS"
 
+# Brew 
+set -gx HOMEBREW_PREFIX /opt/homebrew
+set -gx HOMEBREW_CELLAR /opt/homebrew/Cellar
+set -gx HOMEBREW_REPOSITORY /opt/homebrew
+set -gx MANPATH /opt/homebrew/share/man $MANPATH
+set -gx INFOPATH /opt/homebrew/share/info $INFOPATH
+
 # Paths
-brew shellenv | source
+fish_add_path /opt/homebrew/bin
+fish_add_path /opt/homebrew/sbin
+
 fish_add_path $RBENV_ROOT/bin
 fish_add_path $PYENV_ROOT/bin
 fish_add_path $GOPATH/bin
