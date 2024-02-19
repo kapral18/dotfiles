@@ -1,6 +1,6 @@
 #!{{ lookPath "bash" }}
 
-set -eou pipefail
+set -ou pipefail #
 
 # adapted from https://github.com/dNitza/dotfiles/blob/d75164b637713b91ee4f1b3d33f27dfa1d7bf748/.chezmoiscripts/run_once_00_install-xcode-devtools.sh.tmpl
 echo "-------------------------------------------"
@@ -9,19 +9,8 @@ echo "-------------------------------------------"
 
 echo "===> Installing Xcode Command Line Tools"
 
-CLT_PACKAGE=$(softwareupdate --list \
-  | grep -B 1 "Command Line Tools" \
-  | awk -F"*" '/^ *\*/ {print $2}' \
-  | sed -e 's/^ *Label: //' -e 's/^ *//' \
-  | sort -V \
-  | tail -n1)
-
-if [[ -z "$CLT_PACKAGE" ]]; then
-  echo "No new software updates available"
-else
-  sudo softwareupdate --install "$CLT_PACKAGE"
-  sudo xcode-select --install
-fi
+softwareupdate --install -a > /dev/null 2>&1
+sudo xcode-select --install > /dev/null 2>&1
 
 
 echo "--------------------------------------"
