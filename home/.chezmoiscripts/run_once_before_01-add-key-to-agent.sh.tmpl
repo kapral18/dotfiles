@@ -1,0 +1,17 @@
+#!{{ lookPath "bash" }}
+
+set -eou pipefail #
+
+echo "-------------------------------------------"
+echo "adding ssh key to ssh agent: applying...   "
+echo "-------------------------------------------"
+
+echo "===> Installing Xcode Command Line Tools"
+
+ssh-add {{ joinPath .chezmoi.homeDir ".ssh" "id_rsa" }}
+
+echo "----------------------------------"
+echo "adding ssh key to ssh agent: done "
+echo "----------------------------------"
+
+echo ""

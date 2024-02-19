@@ -9,6 +9,7 @@ set -euo pipefail
 function killallApps() {
 	appsToKill=(
 		"Rectangle"
+		"Alfred"
 		"AppCleaner"
 	)
 
