@@ -145,6 +145,6 @@
 	format = ssh
 [gpg "ssh"]
 	program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
-	allowedSignersFile = /Users/kapral18/.ssh/allowed_signers
+	allowedSignersFile = {{ joinPath .chezmoi.homeDir ".ssh" "allowed_signers" }}
 [commit]
 	gpgsign = true

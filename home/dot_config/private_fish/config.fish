@@ -73,9 +73,9 @@ fish_add_path /opt/homebrew/sbin
 fish_add_path $RBENV_ROOT/bin
 fish_add_path $PYENV_ROOT/bin
 fish_add_path $GOPATH/bin
-fish_add_path /Users/kapral18/.cargo/bin
-fish_add_path /Users/kapral18/.local/bin
-fish_add_path /Users/kapral18/bin
+fish_add_path $HOME/.cargo/bin
+fish_add_path $HOME/.local/bin
+fish_add_path $HOME/bin
 
 # Inits
 rbenv init - | source

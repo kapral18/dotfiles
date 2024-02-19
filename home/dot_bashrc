@@ -59,7 +59,7 @@ export MANPATH="/opt/homebrew/share/man${MANPATH+:$MANPATH}:";
 export INFOPATH="/opt/homebrew/share/info:${INFOPATH:-}";
 
 # Paths
-export PATH="/usr/local/opt/libpq/bin:/usr/local/opt/ruby/bin:/usr/local/opt/ssh-copy-id/bin:/usr/local/opt/coreutils/libexec/gnubin:/usr/local/sbin:/opt/homebrew/sbin:/opt/homebrew/bin:$RBENV_ROOT/bin:$PYENV_ROOT/bin:$GOPATH/bin:/Users/kapral18/.cargo/bin:/Users/kapral18/.local/bin:/Users/kapral18/bin:$PATH"
+export PATH="/usr/local/opt/libpq/bin:/usr/local/opt/ruby/bin:/usr/local/opt/ssh-copy-id/bin:/usr/local/opt/coreutils/libexec/gnubin:/usr/local/sbin:/opt/homebrew/sbin:/opt/homebrew/bin:$RBENV_ROOT/bin:$PYENV_ROOT/bin:$GOPATH/bin:$HOME/.cargo/bin:$HOME/.local/bin:$HOME/bin:$PATH"
 
 # Inits
 eval "$(rbenv init -)"
@@ -71,7 +71,7 @@ eval "$(zoxide init bash)"
 eval "$(fnm env --use-on-cd)"
 
 # Broot
-source /Users/kapral18/.config/broot/launcher/bash/br
+source $HOME.config/broot/launcher/bash/br
 . "$HOME/.cargo/env"
 
 # NVM
