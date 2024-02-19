@@ -21,7 +21,6 @@ set -gx XDG_CONFIG_HOME "$HOME/.config"
 # System
 set -gx XDG_DATA_DIRS /usr/share /usr/local/share
 set -gx XDG_CONFIG_DIRS /etc/xdg
-
 # User
 set -gx XDG_CONFIG_HOME $HOME/.config
 set -gx XDG_CACHE_HOME $HOME/.cache
@@ -77,68 +76,57 @@ fish_add_path $HOME/.cargo/bin
 fish_add_path $HOME/.local/bin
 fish_add_path $HOME/bin
 
-# Inits
-rbenv init - | source
-pyenv init - | source
-starship init fish | source
-zoxide init fish | source
-fnm env --use-on-cd | source
+if status --is-interactive
+    # Inits
+    rbenv init - | source
+    pyenv init - | source
+    starship init fish | source
+    zoxide init fish | source
+    fnm env --use-on-cd | source
 
-# >>> conda initialize >>>
-# !! Contents within this block are managed by 'conda init' !!
-if test -f /opt/homebrew/Caskroom/miniconda/base/bin/conda
-    eval /opt/homebrew/Caskroom/miniconda/base/bin/conda "shell.fish" hook $argv | source
-else
-    if test -f "/opt/homebrew/Caskroom/miniconda/base/etc/fish/conf.d/conda.fish"
-        . "/opt/homebrew/Caskroom/miniconda/base/etc/fish/conf.d/conda.fish"
+    # Aliases
+    alias g="git"
+    alias tree='tree -I ".git|node_modules"'
+    alias t="tmux"
+    alias v=nvim
+    alias c=chezmoi
+    alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l $FD_OPTIONS'
+    alias ghs='gh copilot suggest'
+    alias ghx='gh copilot explain'
+    alias nvm='fnm'
+
+    if hash lsd 2>/dev/null
+        alias ls='lsd -A'
+        alias l='lsd -lAh'
+        alias ll='lsd -lAtrh'
+        alias la='lsd -A'
     else
-        set -x PATH /opt/homebrew/Caskroom/miniconda/base/bin $PATH
-    end
-end
-# <<< conda initialize <<<
-
-# Aliases
-alias g="git"
-alias tree='tree -I ".git|node_modules"'
-alias t="tmux"
-alias v=nvim
-alias c=chezmoi
-alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l $FD_OPTIONS'
-alias ghs='gh copilot suggest'
-alias ghx='gh copilot explain'
-alias nvm='fnm'
-
-if hash lsd 2>/dev/null
-    alias ls='lsd -A'
-    alias l='lsd -lAh'
-    alias ll='lsd -lAtrh'
-    alias la='lsd -A'
-else
-    alias ls='ls -A'
-    alias l='ls -lAh'
-    alias ll='ls -lAtrh'
-    alias la='ls -A'
-end
-
-# function that wraps brew
-# and adds brew bundle dump --file=~/.local/share/chezmoi/home/.Brewfile
-# after brew update, upgrade, install, uninstall commands
-function brew --wraps brew -d "brew with bundle dump"
-    command brew $argv
-    if contains -- update $argv || contains -- upgrade $argv || contains -- install $argv || contains -- uninstall $argv
-        command brew bundle dump --file=~/.local/share/chezmoi/home/.Brewfile --no-lock --force --brews --casks --taps
-    end
-end
-
-function appid -d "Get the application id from the bundle identifier"
-    if test (count $argv) -eq 0
-        echo "Usage: appid <bundle_id>"
-        return
+        alias ls='ls -A'
+        alias l='ls -lAh'
+        alias ll='ls -lAtrh'
+        alias la='ls -A'
     end
 
-    set -l bundle_id $argv[1]
-    set -l app_id (osascript -e "id of app \"$bundle_id\"")
-    echo $app_id
+    # function that wraps brew
+    # and adds brew bundle dump --file=~/.local/share/chezmoi/home/.Brewfile
+    # after brew update, upgrade, install, uninstall commands
+    function brew --wraps brew -d "brew with bundle dump"
+        command brew $argv
+        if contains -- update $argv || contains -- upgrade $argv || contains -- install $argv || contains -- uninstall $argv
+            command brew bundle dump --file=~/.local/share/chezmoi/home/.Brewfile --no-lock --force --brews --casks --taps
+        end
+    end
+
+    function appid -d "Get the application id from the bundle identifier"
+        if test (count $argv) -eq 0
+            echo "Usage: appid <bundle_id>"
+            return
+        end
+
+        set -l bundle_id $argv[1]
+        set -l app_id (osascript -e "id of app \"$bundle_id\"")
+        echo $app_id
+    end
 end
 
 # OpenAI

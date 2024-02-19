@@ -6,28 +6,24 @@ set -eou pipefail
 echo "-------------------------------------------"
 echo "xcode command line tools setup: applying..."
 echo "-------------------------------------------"
-if ! [ -d "/Library/Developer/CommandLineTools" ]; then
-  echo "===> Installing Xcode Command Line Tools"
 
-  CLT_PACKAGE=$(softwareupdate --list \
-    | grep -B 1 "Command Line Tools" \
-    | awk -F"*" '/^ *\*/ {print $2}' \
-    | sed -e 's/^ *Label: //' -e 's/^ *//' \
-    | sort -V \
-    | tail -n1)
-  sudo softwareupdate --install "$CLT_PACKAGE"
+echo "===> Installing Xcode Command Line Tools"
 
-  sudo xcode-select --install
+CLT_PACKAGE=$(softwareupdate --list \
+  | grep -B 1 "Command Line Tools" \
+  | awk -F"*" '/^ *\*/ {print $2}' \
+  | sed -e 's/^ *Label: //' -e 's/^ *//' \
+  | sort -V \
+  | tail -n1)
+sudo softwareupdate --install "$CLT_PACKAGE"
 
-  # Accept T&Cs
-  sudo xcodebuild -license accept
-  echo "------------------------------------"
-  echo "xcode command line tools setup: done"
-  echo "------------------------------------"
-else
-  echo "--------------------------------------------------"
-  echo "xcode command line is already installed. Skipping."
-  echo "--------------------------------------------------"
-fi
+sudo xcode-select --install
+
+# Accept T&Cs
+sudo xcodebuild -license accept
+
+echo "------------------------------------"
+echo "xcode command line tools setup: done"
+echo "------------------------------------"
 
 echo ""

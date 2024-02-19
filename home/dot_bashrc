@@ -61,64 +61,68 @@ export INFOPATH="/opt/homebrew/share/info:${INFOPATH:-}";
 # Paths
 export PATH="/usr/local/opt/libpq/bin:/usr/local/opt/ruby/bin:/usr/local/opt/ssh-copy-id/bin:/usr/local/opt/coreutils/libexec/gnubin:/usr/local/sbin:/opt/homebrew/sbin:/opt/homebrew/bin:$RBENV_ROOT/bin:$PYENV_ROOT/bin:$GOPATH/bin:$HOME/.cargo/bin:$HOME/.local/bin:$HOME/bin:$PATH"
 
+# is shell interactive?
+if [[ $- == *i* ]]
+then
 # Inits
-eval "$(rbenv init -)"
-eval "$(pyenv init --path)"
-eval "$(pyenv init -)"
-eval "$(pyenv virtualenv-init -)"
-eval "$(starship init bash)"
-eval "$(zoxide init bash)"
-eval "$(fnm env --use-on-cd)"
+	eval "$(rbenv init -)"
+	eval "$(pyenv init --path)"
+	eval "$(pyenv init -)"
+	eval "$(pyenv virtualenv-init -)"
+	eval "$(starship init bash)"
+	eval "$(zoxide init bash)"
+	eval "$(fnm env --use-on-cd)"
 
 # Broot
-source $HOME.config/broot/launcher/bash/br
-. "$HOME/.cargo/env"
+	source $HOME/.config/broot/launcher/bash/br
+	. "$HOME/.cargo/env"
 
 # NVM
-export NVM_DIR="$HOME/.nvm"
-[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"                                       # This loads nvm
-[ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" # This loads nvm bash_completion
+	export NVM_DIR="$HOME/.nvm"
+	[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"                                       # This loads nvm
+	[ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" # This loads nvm bash_completion
 
 # Aliases
-alias g="git"
-alias tree='tree -I ".git|node_modules"'
-alias t="tmux"
-alias v=nvim
-alias c=chezmoi
-alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l $FD_OPTIONS'
-alias ghs='gh copilot suggest'
-alias ghx='gh copilot explain'
-alias nvm='fnm'
+	alias g="git"
+	alias tree='tree -I ".git|node_modules"'
+	alias t="tmux"
+	alias v=nvim
+	alias c=chezmoi
+	alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l $FD_OPTIONS'
+	alias ghs='gh copilot suggest'
+	alias ghx='gh copilot explain'
+	alias nvm='fnm'
 
-if hash lsd 2>/dev/null; then
-	alias ls='lsd -A'
-	alias l='lsd -lAh'
-	alias ll='lsd -lAtrh'
-	alias la='lsd -A'
-else
-	alias ls='ls -A'
-	alias l='ls -lAh'
-	alias ll='ls -lAtrh'
-	alias la='ls -A'
-fi
+	if hash lsd 2>/dev/null; then
+		alias ls='lsd -A'
+		alias l='lsd -lAh'
+		alias ll='lsd -lAtrh'
+		alias la='lsd -A'
+	else
+		alias ls='ls -A'
+		alias l='ls -lAh'
+		alias ll='ls -lAtrh'
+		alias la='ls -A'
+	fi
 
 # function that wraps brew
 # and adds brew bundle dump --file=~/.local/share/chezmoi/home/.Brewfile
 # after brew update, upgrade, install, uninstall commands
-brew() {
-    command brew "$@"
-    if [[ "$1" == update || "$1" == upgrade || "$1" == install || "$1" == uninstall ]]; then
-        command brew bundle dump --file=~/.local/share/chezmoi/home/.Brewfile --no-lock --force --brews --casks --taps
-    fi
-}
+	brew() {
+			command brew "$@"
+			if [[ "$1" == update || "$1" == upgrade || "$1" == install || "$1" == uninstall ]]; then
+					command brew bundle dump --file=~/.local/share/chezmoi/home/.Brewfile --no-lock --force --brews --casks --taps
+			fi
+	}
 
-appid() {
-		if [ -z "$1" ]; then
-				echo "Usage: appid <app>"
-				return 1
-		fi
-		osascript -e "id of app \"$1\""
-}
+	appid() {
+			if [ -z "$1" ]; then
+					echo "Usage: appid <app>"
+					return 1
+			fi
+			osascript -e "id of app \"$1\""
+	}
+fi
 
 # OpenAI
 export OPENAI_API_KEY=$(pass show openai/api/token)
