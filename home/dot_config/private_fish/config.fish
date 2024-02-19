@@ -38,6 +38,7 @@ set -gx nvm_default_version lts
 # Go
 set -gx GOPATH $HOME/go
 
+set -gx SSH_AUTH_SOCK "$HOME/Library/Group\ Containers/2BUA8C4S2C.com.1password/t/agent.sock"
 
 # Chatblade
 set -gx OPENAI_API_MODEL 4t

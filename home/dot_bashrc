@@ -61,6 +61,8 @@ export INFOPATH="/opt/homebrew/share/info:${INFOPATH:-}";
 # Paths
 export PATH="/usr/local/opt/libpq/bin:/usr/local/opt/ruby/bin:/usr/local/opt/ssh-copy-id/bin:/usr/local/opt/coreutils/libexec/gnubin:/usr/local/sbin:/opt/homebrew/sbin:/opt/homebrew/bin:$RBENV_ROOT/bin:$PYENV_ROOT/bin:$GOPATH/bin:$HOME/.cargo/bin:$HOME/.local/bin:$HOME/bin:$PATH"
 
+export SSH_AUTH_SOCK="$HOME/Library/Group\ Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+
 # is shell interactive?
 if [[ $- == *i* ]]
 then
