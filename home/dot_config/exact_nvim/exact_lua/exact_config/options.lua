@@ -8,6 +8,74 @@ vim.opt.wrap = false -- Dislable line wrap
 vim.opt.breakindent = true -- Keep indentation on wrapped lines
 vim.opt.pumblend = 0 -- disable transparency in popup menu
 
+-- Chars {{{
+vim.opt.list = true
+vim.opt.listchars = {
+  tab = "  ",
+  trail = "·",
+  extends = "◣",
+  precedes = "◢",
+  nbsp = "○",
+}
+vim.opt.fillchars = {
+  horizup = "┻",
+  horiz = "━",
+  horizdown = "┳",
+  vert = "┃",
+  vertright = "┣",
+  vertleft = "┫",
+  verthoriz = "╋",
+  foldopen = "",
+  foldclose = "",
+  -- fold = "⸱",
+  fold = " ",
+  foldsep = " ",
+  diff = "╱",
+  eob = " ",
+}
+-- }}}
+
+-- Folding {{{
+vim.opt.foldnestmax = 3
+vim.opt.foldlevelstart = 3
+vim.g.markdown_folding = 1
+-- }}}
+
+-- Wildmenu {{{
+vim.opt.wildignorecase = true
+
+-- stuff to ignore when tab completing
+vim.opt.wildignore = {
+  "*~",
+  "*.o",
+  "*.obj",
+  "*.so",
+  "*vim/backups*",
+  "*.git/**",
+  "**/.git/**",
+  "*sass-cache*",
+  "*DS_Store*",
+  "vendor/rails/**",
+  "vendor/cache/**",
+  "*.gem",
+  "*.pyc",
+  "log/**",
+  "*.gif",
+  "*.zip",
+  "*.bg2",
+  "*.gz",
+  "*.db",
+  "**/node_modules/**",
+  "**/bin/**",
+  "**/thesaurus/**",
+}
+-- }}}
+
+-- adds <> to % matchpairs
+vim.opt.matchpairs:append("<:>")
+vim.opt.complete = ".,w,b,u,t,i"
+vim.opt.nrformats = "bin,hex,alpha" -- can increment alphabetically too!
+
 -- https://vi.stackexchange.com/a/5318/12823
 vim.g.matchparen_timeout = 2
 vim.g.matchparen_insert_timeout = 2
@@ -33,9 +101,9 @@ vim.filetype.add({
   pattern = {
     -- INFO: Match filenames like - ".env.example", ".env.local" and so on
     ["%.env%.[%w_.-]+"] = "dotenv",
+    [".*%.yaml%.tmpl$"] = "gotexttmpl",
+    [".*%.toml%.tmpl$"] = "gotexttmpl",
+    [".*%.json%.tmpl$"] = "gotexttmpl",
+    [".*%.jsonc%.tmpl$"] = "gotexttmpl",
   },
 })
-
--- switch off regex syntax highlighting
--- to detect missing treesitter support
-vim.cmd("syntax off")

@@ -1,4 +1,5 @@
-{{- $email          := "" -}}
+{{- $email := "" -}}
+{{- $isWork := false -}}
 
 {{- if (hasKey . "email") -}}
 {{-   $email = .email -}}
@@ -6,5 +7,12 @@
 {{-   $email = promptString "email" -}}
 {{- end -}}
 
+{{- if (hasKey . "isWork") -}}
+{{-   $isWork = .isWork -}}
+{{- else -}}
+{{-   $isWork = promptBool "isWork" -}}
+{{- end -}}
+
 [data]
-    email           = {{ $email | quote }}
+email = {{ $email | quote }}
+isWork = {{ $isWork }}

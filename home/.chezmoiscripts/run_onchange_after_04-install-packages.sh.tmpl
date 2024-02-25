@@ -3,10 +3,15 @@
 echo "---------------------------------------"
 echo "brew install from .Brewfile: applying..."
 echo "---------------------------------------"
-# software.yml hash: {{ joinPath .chezmoi.sourceDir ".Brewfile" | include | sha256sum }}
-brew bundle --no-lock --file {{ joinPath .chezmoi.sourceDir ".Brewfile" | quote }}
+
+echo '
+{{ template "Brewfile" . }}
+' | brew bundle --no-lock --file=-
+
 echo "---------------------------------------"
 echo "brew install from .Brewfile: done"
 echo "---------------------------------------"
 
 echo ""
+
+

@@ -86,3 +86,40 @@ end, { desc = "Toggle Statusline" })
 
 -- close and go back to previous window
 vim.keymap.set("n", "<leader>wq", "<cmd>wincmd p | q<cr>", { desc = "Close window" })
+
+-- Set up key mappings for the scratch buffer
+local function setup_keymaps()
+  local opts = { buffer = true }
+  vim.keymap.set("n", "<C-c>", ":q<CR>", opts) -- Ctrl-C to close
+  vim.keymap.set("n", "q", ":q<CR>", opts) -- q to close
+  vim.keymap.set("n", "<Esc>", ":q<CR>", opts) -- Esc to close
+end
+-- Create a new scratch buffer
+vim.keymap.set("n", "<leader>ws", function()
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_option(buf, "buftype", "nofile")
+  vim.api.nvim_buf_set_option(buf, "bufhidden", "hide")
+  vim.api.nvim_buf_set_option(buf, "swapfile", false)
+
+  local width = vim.api.nvim_get_option("columns")
+  local height = vim.api.nvim_get_option("lines")
+  local win_height = math.ceil(height * 0.8 - 4)
+  local win_width = math.ceil(width * 0.8)
+  local row = math.ceil((height - win_height) / 2 - 1)
+  local col = math.ceil((width - win_width) / 2)
+
+  local opts = {
+    style = "minimal",
+    relative = "editor",
+    width = win_width,
+    height = win_height,
+    row = row,
+    col = col,
+  }
+
+  vim.api.nvim_open_win(buf, true, opts)
+  -- Set up key maps for the scratch buffer when it is created
+  setup_keymaps()
+end, { desc = "Scratch buffer" })
+
+vim.keymap.set("n", "<leader>cuf", ":norm difvafp<CR>", { desc = "Unwrap Func Body", silent = true })

@@ -32,9 +32,6 @@ set -gx XDG_MUSIC_DIR $HOME/Music
 set -gx XDG_PICTURES_DIR $HOME/Pictures
 set -gx XDG_VIDEOS_DIR $HOME/Videos
 
-# nvm
-set -gx nvm_default_version lts
-
 # Go
 set -gx GOPATH $HOME/go
 
@@ -45,9 +42,6 @@ set -gx OPENAI_API_MODEL 4t
 
 # Docker
 set -gx DOCKER_HIDE_LEGACY_COMMANDS true
-
-# PyEnv
-set -gx PYENV_ROOT $HOME/.pyenv
 
 # Rbenv
 set -gx RBENV_ROOT $HOME/.rbenv
@@ -67,25 +61,24 @@ set -gx MANPATH /opt/homebrew/share/man $MANPATH
 set -gx INFOPATH /opt/homebrew/share/info $INFOPATH
 
 # Paths
-fish_add_path /opt/homebrew/bin
-fish_add_path /opt/homebrew/sbin
-
-fish_add_path $RBENV_ROOT/bin
-fish_add_path $PYENV_ROOT/bin
-fish_add_path $GOPATH/bin
-fish_add_path $HOME/.cargo/bin
-fish_add_path $HOME/.local/bin
-fish_add_path $HOME/bin
+fish_add_path --path /opt/homebrew/bin
+fish_add_path --path /opt/homebrew/sbin
+fish_add_path --path $RBENV_ROOT/bin
+fish_add_path --path $GOPATH/bin
+fish_add_path --path $HOME/.cargo/bin
+fish_add_path --path $HOME/.local/bin
+fish_add_path --path $HOME/bin
 
 if status --is-interactive
     # Inits
     rbenv init - | source
-    pyenv init - | source
     starship init fish | source
     zoxide init fish | source
     fnm env --use-on-cd | source
+    navi widget fish | source
 
     # Aliases
+    alias b="chatblade"
     alias g="git"
     alias tree='tree -I ".git|node_modules"'
     alias t="tmux"
@@ -108,16 +101,6 @@ if status --is-interactive
         alias la='ls -A'
     end
 
-    # function that wraps brew
-    # and adds brew bundle dump --file=~/.local/share/chezmoi/home/.Brewfile
-    # after brew update, upgrade, install, uninstall commands
-    function brew --wraps brew -d "brew with bundle dump"
-        command brew $argv
-        if contains -- update $argv || contains -- upgrade $argv || contains -- install $argv || contains -- uninstall $argv
-            command brew bundle dump --file=~/.local/share/chezmoi/home/.Brewfile --no-lock --force --brews --casks --taps
-        end
-    end
-
     function appid -d "Get the application id from the bundle identifier"
         if test (count $argv) -eq 0
             echo "Usage: appid <bundle_id>"
@@ -128,6 +111,11 @@ if status --is-interactive
         set -l app_id (osascript -e "id of app \"$bundle_id\"")
         echo $app_id
     end
+
+    function dumputi -d "Dump list of UTI"
+        /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -dump | grep "uti:" | awk '{print $2}' | sort | uniq >~/.uti
+    end
+
 end
 
 # OpenAI

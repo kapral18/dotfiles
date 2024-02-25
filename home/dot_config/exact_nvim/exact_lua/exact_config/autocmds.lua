@@ -88,6 +88,7 @@ aucmd("FileType", {
     "neotest-output",
     "dap-float",
     "dap-repl",
+    "scratch",
   }),
   callback = function(event)
     vim.bo[event.buf].buflisted = false
