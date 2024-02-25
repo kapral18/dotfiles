@@ -1,7 +1,7 @@
 #!{{ lookPath "fish" }}
 
 echo "---------------------------------------"
-echo "brew install from .Brewfile: applying..."
+echo "brew install from Brewfile: applying..."
 echo "---------------------------------------"
 
 echo '
@@ -9,7 +9,17 @@ echo '
 ' | brew bundle --no-lock --file=-
 
 echo "---------------------------------------"
-echo "brew install from .Brewfile: done"
+echo "brew install from Brewfile: done"
+echo "---------------------------------------"
+
+echo "---------------------------------------"
+echo "cargo install: applying..."
+echo "---------------------------------------"
+
+cargo install ast-grep bandwhich cargo-update cargo-watch diskonaut git-brws hackernews_tui lemmeknow oatmeal tokei trippy viu
+
+echo "---------------------------------------"
+echo "cargo install: done"
 echo "---------------------------------------"
 
 echo ""
