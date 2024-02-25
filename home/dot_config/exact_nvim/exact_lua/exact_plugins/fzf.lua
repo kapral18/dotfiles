@@ -134,12 +134,6 @@ M.spec = {
         has = "definition",
       }
       keys[#keys + 1] = {
-        "gd",
-        M.fzf("lsp_definitions", { jump_to_single_result = true, winopts = M.win_presets.large.vertical }),
-        desc = "Goto Definition",
-        has = "definition",
-      }
-      keys[#keys + 1] = {
         "gr",
         M.fzf("lsp_references", { ignore_current_line = true, winopts = M.win_presets.large.vertical }),
         desc = "References",
@@ -501,7 +495,6 @@ M.spec = {
         },
         lsp = {
           prompt_postfix = "❯ ",
-          cwd_only = true,
           symbols = {
             file_icons = true,
             color_icons = true,
