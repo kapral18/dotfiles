@@ -116,6 +116,16 @@ if status --is-interactive
         /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -dump | grep "uti:" | awk '{print $2}' | sort | uniq >~/.uti
     end
 
+    # pass (password store)
+    {{ if ne .isWork true -}}
+    function wpass -d "point PASSWORD_STORE_DIR to work"
+        set -gx PASSWORD_STORE_DIR {{ joinPath .chezmoi.homeDir ".password-store-work" }} 
+    end
+
+    function ppass -d "point PASSWORD_STORE_DIR to personal"
+        set -gx PASSWORD_STORE_DIR {{ joinPath .chezmoi.homeDir ".password-store" }} 
+    end
+    {{- end }}
 end
 
 # OpenAI

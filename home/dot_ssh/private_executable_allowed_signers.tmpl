@@ -1,0 +1,5 @@
+{{ .primaryEmail }} ssh-rsa {{ .primaryPublicSshKey }}
+{{ if .secondaryEmail -}}
+{{ .secondaryEmail }} ssh-rsa {{ .secondaryPublicSshKey -}}
+{{ end }}
+

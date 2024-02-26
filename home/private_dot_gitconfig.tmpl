@@ -136,8 +136,8 @@
 
 [user]
   name = Karen Grigoryan
-  email = "{{- .email -}}"
-  signingkey = ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQChBVKXI9eeK/PmsnP7sMLLF0sUN4jPuoFX9uKkhjj9XGuXZcgbc15cuOBzjDQI9nwMyGge+vsgL/Lx1Ka4heBs/eWrkkj+lylNIxd/fP8rA99e8csuC9H9tYNUORKq51QyuF0cLBiNQJifCGLUba9wVox0M7/LC5Qgz1iVR2O4DDZKEyRKF+aRSilUilQobcBMeAsSJhlMzUDl/YYpxP6Aep0g9j98WqLp8yMGdJE3Q35JLJM3d73LFr4LF2V3BDhu42xMKJR26o8CJHt6DK96l6wd854Zc9Z2FMaMZoHI/Q/hMDXuTFD0omVxM7pUNV/Nyht8bThu+4jhVR5bDVHyoAjAQIfSUxKQyMi1bb60GTyZNOTtsIrolhW7/j28R6Jp3ed7BnFFFd40hpNIqSMdQ4UM2iKjWfwcIzFEE+9eDgG/fFYhHrUiFGPDIr8HnMFLPfNdw54NRR+DIhFZxyGUx+ZgUU4LoG65re8fApOtmo4nnVEQmO3sKHuRfaY+vavQZJZvVA5eFJAqGu+TJGxAC3SblaibG2BwKXroIVGBnycrWEB0DcEm8/T0tfga5Sa7PM0eFkNWY7aX86vZVWe8jgrG5FupRTRrAEePhhUXHftdsMWUUeOXeV+ZfBTpvuMBvUBUUaljyS/avfqrr0dEavP7l6Sf8UAQBMVpCAzIXw==
+  email = {{ .primaryEmail | quote }}
+  signingkey = {{ .primaryPublicSshKey }}
 [includeIf "gitdir:~/work/"]
   path = ~/work/.gitconfig
   useConfigOnly = true

@@ -1,18 +1,8 @@
-{{- $email := "" -}}
-{{- $isWork := false -}}
-
-{{- if (hasKey . "email") -}}
-{{-   $email = .email -}}
-{{- else -}}
-{{-   $email = promptString "email" -}}
-{{- end -}}
-
-{{- if (hasKey . "isWork") -}}
-{{-   $isWork = .isWork -}}
-{{- else -}}
-{{-   $isWork = promptBool "isWork" -}}
-{{- end -}}
-
 [data]
-email = {{ $email | quote }}
-isWork = {{ $isWork }}
+primaryEmail = {{ promptString "Enter your primary email*: " | quote }}
+primaryPublicSshKey = {{ promptString "Enter your primary public SSH key*: " | quote }}
+secondaryEmail = {{ promptString "Enter your secondary email (leave blank if not applicable): " | quote }}
+secondaryPublicSshKey = {{ promptString "Enter your secondary public SSH key (leave blank if not applicable): " | quote }}
+isWork = {{ promptBool "Is this a work machine? y/N" }}
+pgpCacheTtl = {{ promptString "Select Cache TTL for PGP config in sec:" "600" | quote -}}
+
