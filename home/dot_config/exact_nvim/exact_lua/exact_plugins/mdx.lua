@@ -1,7 +1,3 @@
-vim.filetype.add({
-  extension = { mdx = "mdx" },
-})
-
 return {
   {
     "williamboman/mason.nvim",

@@ -80,24 +80,19 @@ vim.opt.nrformats = "bin,hex,alpha" -- can increment alphabetically too!
 vim.g.matchparen_timeout = 2
 vim.g.matchparen_insert_timeout = 2
 
--- custom dockerfile filetype association
-vim.filetype.add({ pattern = { ["Dockerfile.*"] = "dockerfile" } })
-vim.filetype.add({ pattern = { [".gitconfig.*"] = "gitconfig" } })
-
 vim.filetype.add({
-  -- Detect and assign filetype based on the extension of the filename
   extension = {
     log = "log",
     conf = "conf",
     env = "dotenv",
+    mdx = "mdx",
+    jsonl = "jsonl",
   },
-  -- Detect and apply filetypes based on the entire filename
   filename = {
     [".env"] = "dotenv",
     ["env"] = "dotenv",
     ["tsconfig.json"] = "jsonc",
   },
-  -- Detect and apply filetypes based on certain patterns of the filenames
   pattern = {
     -- INFO: Match filenames like - ".env.example", ".env.local" and so on
     ["%.env%.[%w_.-]+"] = "dotenv",
@@ -105,5 +100,7 @@ vim.filetype.add({
     [".*%.toml%.tmpl$"] = "gotexttmpl",
     [".*%.json%.tmpl$"] = "gotexttmpl",
     [".*%.jsonc%.tmpl$"] = "gotexttmpl",
+    ["Dockerfile.*"] = "dockerfile",
+    [".gitconfig.*"] = "gitconfig",
   },
 })
