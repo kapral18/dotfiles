@@ -28,7 +28,6 @@ return {
     opts = {
       -- make sure mason installs the server
       servers = {
-        ---@type lspconfig.options.tsserver
         tsserver = {
           init_options = {
             preferences = {
@@ -74,9 +73,6 @@ return {
               completeFunctionCalls = true,
             },
           },
-        },
-        ---@type lspconfig.options.tsserver
-        tsserver = {
           keys = {
             {
               "<leader>co",
@@ -103,12 +99,6 @@ return {
                 })
               end,
               desc = "Remove Unused Imports",
-            },
-          },
-          ---@diagnostic disable-next-line: missing-fields
-          settings = {
-            completions = {
-              completeFunctionCalls = true,
             },
           },
         },
