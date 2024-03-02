@@ -12,15 +12,32 @@ echo "---------------------------------------"
 echo "brew install from Brewfile: done"
 echo "---------------------------------------"
 
-echo "---------------------------------------"
-echo "cargo install: applying..."
-echo "---------------------------------------"
 
-cargo install ast-grep bandwhich cargo-update cargo-watch diskonaut git-brws hackernews_tui lemmeknow oatmeal tokei trippy viu
+# store an array in fish
 
-echo "---------------------------------------"
-echo "cargo install: done"
-echo "---------------------------------------"
+set -l cargo_install_packages ast-grep bandwhich cargo-update cargo-watch diskonaut git-brws hackernews_tui lemmeknow oatmeal tokei trippy viu
+
+for package in $cargo_install_packages
+    if ! command -v $package &> /dev/null
+        echo "-------------------------"
+        echo "cargo install $package: applying..."
+        echo "-------------------------"
+        cargo install $package --locked
+        echo "-------------------------"
+        echo "cargo install $package: done"
+        echo "-------------------------"
+    end
+end
+
+if ! command -v tlm &> /dev/null
+    echo "-------------------------"
+    echo "install tlm: applying..."
+    echo "-------------------------"
+    curl -fsSL https://raw.githubusercontent.com/yusufcanb/tlm/main/install.sh | sudo bash -E
+    echo "-------------------------"
+    echo "install tlm: done"
+    echo "-------------------------"
+end
 
 echo ""
 
