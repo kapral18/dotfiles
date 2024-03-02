@@ -1,0 +1,131 @@
+{
+    AddedStandardMacOSPresetP2 = 1;
+    AdjustedPrefsForB5 = 1;
+    AdjustedPrefsForB5P2 = 1;
+    BartenderBarOnlyOnNotchScreens = 0;
+    HaveConvertedImageSFUsToTriggers = 1;
+    HaveConvertedSFUsToTriggers = 1;
+    HaveCreatedDefaultTriggers = 1;
+    HideItemsWhenShowingOthers = 0;
+    "LaunchAtLogin__hasMigratedNew" = 1;
+    "NSSplitView Subview Frames NSColorPanelSplitView" =     (
+        "0.000000, 0.000000, 224.000000, 258.000000, NO, NO",
+        "0.000000, 259.000000, 224.000000, 48.000000, NO, NO"
+    );
+    "NSStatusItem Preferred Position EItem" = 60000;
+    "NSStatusItem Preferred Position HISItem" = 410;
+    "NSStatusItem Preferred Position RHSItem" = 5804;
+    "NSStatusItem Preferred Position THSItem" = "50000.5";
+    "NSStatusItem Preferred Position statusItem" = 315;
+    "NSToolbar Configuration com.apple.NSColorPanel" =     {
+        "TB Is Shown" = 1;
+    };
+    "NSWindow Frame SU5AlertMessages" = "1708345318.252966";
+    ProfileSettings =     {
+        activeProfile =         {
+            AlwaysHide =             (
+            );
+            GapItemLabels =             {
+            };
+            GapItemWidths =             {
+            };
+            Hide =             (
+                "com.wulkano.kap-Item-0",
+                "special.AllOtherItems",
+                "com.apple.controlcenter-Bluetooth",
+                "com.apple.Spotlight-Item-0",
+                "ru.keepcoder.Telegram-Item-0",
+                "com.1password.1password-Item-0",
+                "org.cryptomator-Item-0",
+                "com.runningwithcrayons.Alfred-Item-0",
+                "com.google.drivefs-Item-0",
+                "org.pqrs.Karabiner-Menu-Item-0",
+                "com.electron.ollama-Item-0"
+            );
+            Show =             (
+                "com.apple.controlcenter-WiFi",
+                "com.apple.TextInputMenuAgent-Item-0",
+                "com.apple.controlcenter-Sound",
+                "com.apple.controlcenter-Battery",
+                "com.surteesstudios.Bartender-statusItem",
+                "com.robinlu.mac.Tooth-Fairy-Item-0"
+            );
+            description = "";
+            iconIsTemplate = 1;
+            isSpecial = 1;
+            leaveAlwaysHiddenItems = 0;
+            name = Profile;
+            subItemItems =             {
+            };
+            subItemTitles =             {
+            };
+        };
+    };
+    ReduceMenuItemSpacing = 1;
+    SUAutomaticallyUpdate = 0;
+    SUHasLaunchedBefore = 1;
+    SULastCheckTime = "2024-03-02 14:51:56 +0000";
+    TerminationReason = "Bartender Quitting due to system restart or logout";
+    TriggerSettings =     {
+        Battery1 =         {
+            description = "";
+            icon =             {
+                SFSymbolName = "battery.50";
+                isTemplate = 1;
+            };
+            isActive = 0;
+            isSpecial = 0;
+            menuBarItemsToActivate =             {
+                "com.apple.controlcenter-Battery" = Battery;
+            };
+            name = "Show Battery when battery condition met";
+            triggerSpecificDict =             {
+                "Battery-When" = OnBatteryPower;
+                "Battery-percentage" = 50;
+            };
+            type =             (
+                Battery
+            );
+        };
+        TimeMachine1 =         {
+            description = "";
+            icon =             {
+                SFSymbolName = "clock.arrow.circlepath";
+                isTemplate = 1;
+            };
+            isActive = 0;
+            isSpecial = 0;
+            menuBarItemsToActivate =             {
+                "com.apple.systemuiserver-TimeMachine.TMMenuExtraHost" = SystemUIServer;
+            };
+            name = "Show Time Machine when time machine is backing up.";
+            triggerSpecificDict =             {
+                Script = "tmutil status | awk -F'=' '/Running/ {print $2*1}'";
+            };
+            type =             (
+                Script
+            );
+        };
+        WiFi1 =         {
+            description = "";
+            icon =             {
+                SFSymbolName = "wifi.slash";
+                isTemplate = 1;
+            };
+            isActive = 0;
+            isSpecial = 0;
+            menuBarItemsToActivate =             {
+                "com.apple.controlcenter-WiFi" = "Wi-Fi";
+            };
+            name = "Show Wi-Fi when Wi-Fi condition met";
+            triggerSpecificDict =             {
+                ShowOn = AllDisconnected;
+            };
+            type =             (
+                WiFi
+            );
+        };
+    };
+    UpdateWelcomeMessageShowAgainB5 = 1;
+    UseBartenderBar = 1;
+}

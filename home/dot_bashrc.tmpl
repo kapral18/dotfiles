@@ -109,8 +109,9 @@ then
 	}
 
 	dumputi() {
-			/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -dump | grep "uti:" | awk '{print $2}' | sort | uniq >~/.uti
+			/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -dump | grep "uti:" | awk '{print $2}' | sort | uniq
 	}
+
 	{{ if ne .isWork true -}}
 	wpass()
 			export PASSWORD_STORE_DIR={{ joinPath .chezmoi.homeDir ".password-store-work" }} 

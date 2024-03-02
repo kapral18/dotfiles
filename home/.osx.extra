@@ -11,6 +11,7 @@ function killallApps() {
 		"Rectangle"
 		"Alfred"
 		"AppCleaner"
+		"Bartender"
 	)
 
 	for app in "${appsToKill[@]}"; do
@@ -23,13 +24,18 @@ function killallApps() {
 killallApps
 
 # ==============================================
-# .osx.core
+# .osx.extra
 # ==============================================
 
 ###############################################################################
 # Rectangle                                                                   #
 ###############################################################################
-defaults import com.knollsoft.Rectangle ~/.local/share/chezmoi/home/.plists/.RectangleConfig.plist
+defaults import com.knollsoft.Rectangle ~/.local/share/chezmoi/home/.plists/com.knollsoft.Rectangle
+
+###############################################################################
+# Bartender																																	  #
+# #############################################################################
+defaults import com.surteesstudios.Bartender ~/.local/share/chezmoi/home/.plists/com.surteesstudios.Bartender
 
 ###############################################################################
 # AppCleaner                                                                  #

@@ -29,16 +29,6 @@ for package in $cargo_install_packages
     end
 end
 
-if ! command -v tlm &> /dev/null
-    echo "-------------------------"
-    echo "install tlm: applying..."
-    echo "-------------------------"
-    curl -fsSL https://raw.githubusercontent.com/yusufcanb/tlm/main/install.sh | sudo bash -E
-    echo "-------------------------"
-    echo "install tlm: done"
-    echo "-------------------------"
-end
-
 echo ""
 
 

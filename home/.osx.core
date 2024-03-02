@@ -107,6 +107,9 @@ defaults write -g KeyRepeat -int 1
 # Set a shorter Delay until key repeat
 defaults write -g InitialKeyRepeat -int 10
 
+# import system keyboard settings
+defaults import com.apple.symbolichotkeys ~/.local/share/chezmoi/home/.plists/com.apple.symbolichotkeys
+
 # Don't restore windows when quitting or re-opening apps
 defaults write com.apple.systempreferences NSQuitAlwaysKeepsWindows -bool false
 
@@ -451,5 +454,8 @@ defaults write com.apple.dock magnification -bool false
 
 # Make Dock icons of hidden applications translucent
 defaults write com.apple.dock showhidden -bool false
+
+# activate system settings changes
+/System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u
 
 exit 0
