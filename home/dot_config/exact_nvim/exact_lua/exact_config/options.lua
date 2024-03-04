@@ -104,3 +104,5 @@ vim.filetype.add({
     [".gitconfig.*"] = "gitconfig",
   },
 })
+
+vim.g.python3_host_prog = "/opt/homebrew/Caskroom/miniconda/base/bin/python3"
