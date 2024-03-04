@@ -17,4 +17,18 @@ return {
       vim.keymap.del({ "x", "o" }, "X")
     end,
   },
+  {
+    "shebpamm/leap-spooky.nvim",
+    config = function()
+      require("leap-spooky").setup({
+        -- stylua: ignore start
+        extra_text_objects = {
+          "iq", "aq",
+          "iv", "av",
+          "ik", "ak",
+        },
+        -- stylua: ignore end
+      })
+    end,
+  },
 }

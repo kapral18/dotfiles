@@ -9,19 +9,50 @@ return {
     dependencies = {
       "nvim-treesitter/nvim-treesitter",
       opts = function(_, opts)
+        opts.highlight = {
+          enable = true,
+          use_languagetree = true,
+        }
+        opts.indent = { enable = true }
+        opts.playground = { enable = true }
+        opts.autotag = { enable = true }
+        opts.incremental_selection = {
+          enable = true,
+          keymaps = {
+            init_selection = "<Enter>",
+            node_incremental = "<Enter>",
+            node_decremental = "<BS>",
+          },
+        }
         opts.textobjects = { --{{{
           select = { -- {{{
             enable = true,
             keymaps = {
-              ["af"] = { query = "@function.outer", desc = "Select around a function" },
-              ["if"] = { query = "@function.inner", desc = "Select inside a function" },
-              ["am"] = { query = "@call.outer", desc = "Select around a method" },
-              ["im"] = { query = "@call.inner", desc = "Select inside a method" },
-              ["ab"] = { query = "@block.outer", desc = "Select around a block" },
-              ["ib"] = { query = "@block.inner", desc = "Select inside a block" },
-              ["aa"] = { query = "@parameter.outer", desc = "Select around a parameter" },
-              ["ia"] = { query = "@parameter.inner", desc = "Select inside a parameter" },
-              ["as"] = { query = "@statement.outer", desc = "Select around a statement" },
+              ["aC"] = "@class.outer",
+              ["aa"] = "@parameter.outer",
+              ["ab"] = "@block.outer",
+              ["ac"] = "@conditional.outer",
+              ["ad"] = "@comment.outer",
+              ["ae"] = "@block.outer",
+              ["af"] = "@function.outer",
+              ["ak"] = "@assignment.lhs",
+              ["al"] = "@loop.outer",
+              ["am"] = "@call.outer",
+              ["as"] = "@statement.outer",
+              ["au"] = "@call.outer",
+              ["av"] = "@assignment.rhs",
+              ["iC"] = "@class.inner",
+              ["ia"] = "@parameter.inner",
+              ["ib"] = "@block.inner",
+              ["ic"] = "@conditional.inner",
+              ["ie"] = "@block.inner",
+              ["if"] = "@function.inner",
+              ["ik"] = "@assignment.lhs",
+              ["il"] = "@loop.inner",
+              ["im"] = "@call.inner",
+              ["is"] = "@statement.inner",
+              ["iu"] = "@call.inner",
+              ["iv"] = "@assignment.rhs",
             },
           }, --}}}
 
