@@ -1,4 +1,11 @@
+{{ $is1PasswordReady := promptBool "Is 1Password ready? y/N" -}}
+
+{{ if not $is1PasswordReady -}}
+{{ exit 1 }}
+{{- end -}}
+
 [data]
+is1PasswordReady = {{ $is1PasswordReady }}
 primaryEmail = {{ promptString "Enter your primary email*: " | quote }}
 primaryPublicSshKey = {{ promptString "Enter your primary public SSH key*: " | quote }}
 secondaryEmail = {{ promptString "Enter your secondary email (leave blank if not applicable): " | quote }}
