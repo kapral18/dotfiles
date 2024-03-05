@@ -17,10 +17,10 @@ echo "---------------------------------------"
 gpg-connect-agent reloadagent /bye
 
 {{ if .isWork }}
-  git clone https://github.com/kapral18/.password-store-work ~/.password-store
+  git clone git@github.com/kapral18/.password-store-work.git ~/.password-store
   op read 'op://Work/work_pgp_keys/notesPlain' | gpg --import
 {{ else }}
-  git clone https://github.com/kapral18/.password-store ~/.password-store
+  git clone git@github.com/kapral18/.password-store.git ~/.password-store
   op read 'op://Personal/personal_pgp_keys/notesPlain' | gpg --import
 {{ end }}
 
