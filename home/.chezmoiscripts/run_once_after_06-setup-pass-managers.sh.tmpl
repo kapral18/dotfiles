@@ -1,0 +1,34 @@
+#!{{ lookPath "fish" }}
+
+echo "Take your time to manually setup 1Password. Hit enter when you're done."
+read
+
+echo "---------------------------------------"
+echo "brew install pass: applying..."
+echo "---------------------------------------"
+
+brew install pass
+
+echo "---------------------------------------"
+echo "brew install pass: done"
+echo "---------------------------------------"
+
+echo "---------------------------------------"
+echo "pass setup: applying..."
+echo "---------------------------------------"
+
+gpg-connect-agent reloadagent /bye
+
+{{ if .isWork }}
+  git clone https://github.com/kapral18/.password-store-work ~/.password-store
+  op read 'op://Work/work_pgp_keys/notesPlain' | gpg --import
+{{ else }}
+  git clone https://github.com/kapral18/.password-store ~/.password-store
+  op read 'op://Personal/personal_pgp_keys/notesPlain' | gpg --import
+{{ end }}
+
+echo -e "5\ny\n" | gpg --batch --yes  --command-fd 0 --edit-key {{ .primaryEmail }} trust
+
+echo "---------------------------------------"
+echo "pass setup: done"
+echo "---------------------------------------"

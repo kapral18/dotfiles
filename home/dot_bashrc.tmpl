@@ -124,5 +124,7 @@ then
 fi
 
 # OpenAI
-export OPENAI_API_KEY=$(pass show openai/api/token)
+if command -v pass &> /dev/null; then
+	export OPENAI_API_KEY=$(pass show openai/api/token)
+fi
 

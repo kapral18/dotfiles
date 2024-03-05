@@ -129,4 +129,6 @@ if status --is-interactive
 end
 
 # OpenAI
-set -gx OPENAI_API_KEY (pass show openai/api/token)
+if command -v pass &> /dev/null
+    set -gx OPENAI_API_KEY (pass show openai/api/token)
+end

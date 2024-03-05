@@ -20,7 +20,4 @@
 
 ## Manual part
 
-- git clone .password-store
-- gpg import .pgp/public and .pgp/private
-- brew install 1password pass
-- sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply kapral18
+`sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply kapral18`
