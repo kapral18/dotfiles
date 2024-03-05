@@ -20,4 +20,5 @@
 
 ## Manual part
 
-`sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply kapral18`
+- manually install and setup 1password
+- `sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply kapral18`
