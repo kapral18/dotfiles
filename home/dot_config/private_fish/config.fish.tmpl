@@ -35,7 +35,7 @@ set -gx XDG_VIDEOS_DIR $HOME/Videos
 # Go
 set -gx GOPATH $HOME/go
 
-set -gx SSH_AUTH_SOCK "$HOME/Library/Group\ Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+set -gx SSH_AUTH_SOCK "$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
 
 # Chatblade
 set -gx OPENAI_API_MODEL 4t
@@ -60,6 +60,9 @@ set -gx HOMEBREW_REPOSITORY /opt/homebrew
 set -gx MANPATH /opt/homebrew/share/man $MANPATH
 set -gx INFOPATH /opt/homebrew/share/info $INFOPATH
 
+# Bun
+set -gx BUN_INSTALL "$HOME/.bun"
+
 # Paths
 fish_add_path --path /opt/homebrew/bin
 fish_add_path --path /opt/homebrew/sbin
@@ -67,6 +70,7 @@ fish_add_path --path $RBENV_ROOT/bin
 fish_add_path --path $GOPATH/bin
 fish_add_path --path $HOME/.cargo/bin
 fish_add_path --path $HOME/.local/bin
+fish_add_path --path $BUN_INSTALL/bin
 fish_add_path --path $HOME/bin
 
 if status --is-interactive
