@@ -8,9 +8,9 @@ echo '
 {{ template "Brewfile" . }}
 ' | brew bundle --no-lock --file=-
 
-echo "---------------------------------------"
-echo "brew install from Brewfile: done"
-echo "---------------------------------------"
+echo "---------------------------------"
+echo "brew install from Brewfile: done "
+echo "---------------------------------"
 
 
 # store an array in fish
@@ -18,15 +18,35 @@ echo "---------------------------------------"
 set -l cargo_install_packages ast-grep bandwhich cargo-update cargo-watch diskonaut git-brws hackernews_tui lemmeknow oatmeal tokei trippy viu
 
 for package in $cargo_install_packages
-    if ! command -v $package &> /dev/null
-        echo "-------------------------"
+    if command -v $package &> /dev/null
+        echo "--------------------------------------------"
+        echo "cargo package: $package is already installed"
+        echo "--------------------------------------------"
+    else 
+        echo "-----------------------------------"
         echo "cargo install $package: applying..."
-        echo "-------------------------"
+        echo "-----------------------------------"
         cargo install $package --locked
-        echo "-------------------------"
+        echo "----------------------------"
         echo "cargo install $package: done"
-        echo "-------------------------"
+        echo "----------------------------"
     end
+end
+
+# check if bun is installed
+
+if command -v bun &> /dev/null
+    echo "------------------------"
+    echo "bun is already installed"
+    echo "------------------------"
+else 
+    echo "------------------------"
+    echo "install bun: applying..."
+    echo "------------------------"
+    curl -fsSL https://bun.sh/install | bash
+    echo "------------------------"
+    echo "install bun: done"
+    echo "------------------------"
 end
 
 echo ""
