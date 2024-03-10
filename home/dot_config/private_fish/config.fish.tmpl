@@ -131,6 +131,14 @@ if status --is-interactive
         set -gx PASSWORD_STORE_DIR {{ joinPath .chezmoi.homeDir ".password-store" }} 
     end
     {{- end }}
+
+    function sgst -d "Get suggestions from ChatBladeAI"
+        b -s -p code -e $argv | pbcopy
+    end
+
+    function xpln -d "Explain ChatBladeAI suggestion"
+        b -s -e $argv
+    end
 end
 
 # OpenAI
