@@ -138,9 +138,11 @@
   name = Karen Grigoryan
   email = {{ .primaryEmail | quote }}
   signingkey = {{ .primaryPublicSshKey }}
+{{ if ne .isWork true }}
 [includeIf "gitdir:~/work/"]
   path = ~/work/.gitconfig
   useConfigOnly = true
+{{ end }}
 [gpg]
   format = ssh
 [gpg "ssh"]
