@@ -201,6 +201,7 @@ M.spec = {
         "<leader>fr",
         M.fzf("oldfiles", {
           winopts = M.win_presets.medium.vertical,
+          cwd_only = true,
         }),
         desc = "Recent Files (Current Session)",
       },
@@ -208,6 +209,7 @@ M.spec = {
         "<leader>fR",
         M.fzf("oldfiles", {
           winopts = M.win_presets.medium.vertical,
+          cwd_only = true,
           include_current_session = false,
         }),
         desc = "Recent Files (All Sessions)",
@@ -354,6 +356,14 @@ M.spec = {
         },
         builtin = {
           prompt = "Builtin❯ ",
+          extensions = {
+            -- neovim terminal only supports `viu` block output
+            ["png"] = { "viu" },
+            -- by default the filename is added as last argument
+            -- if required, use `{file}` for argument positioning
+            ["svg"] = { "chafa", "{file}" },
+            ["jpg"] = { "viu" },
+          },
         },
         marks = {
           prompt = "Marks❯ ",
