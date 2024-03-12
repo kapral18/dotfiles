@@ -30,20 +30,6 @@ aucmd({ "FileType" }, {
   end,
 })
 
--- disable copilot for large files
--- disable syntax highlighting for large files
-aucmd({ "BufReadPre" }, {
-  group = "k18",
-  pattern = { "*" },
-  callback = function()
-    local file = vim.fn.expand("<afile>")
-    local file_size = vim.fn.getfsize(file)
-    if file_size > 100000 or file_size == -2 then
-      vim.b.copilot_enabled = false
-    end
-  end,
-})
-
 --persist folds
 aucmd({ "BufLeave", "BufWinLeave" }, {
   group = "k18",
