@@ -327,7 +327,7 @@ M.spec = {
           height = 0.50,
           width = 0.75,
           preview = {
-            default = "bat",
+            default = "builtin",
             border = "noborder",
             wrap = "wrap",
             vertical = "down:45%",
@@ -396,6 +396,7 @@ M.spec = {
           prompt = "Keymaps❯ ",
         },
         files = {
+          previewer = "bat",
           prompt = "Files❯ ",
           rg_opts = M.rg_opts,
           fd_opts = M.fd_opts,
@@ -431,6 +432,7 @@ M.spec = {
           },
         },
         grep = {
+          previewer = "bat",
           prompt = "Live Grep❯ ",
           input_prompt = "Grep❯ ",
           rg_opts = M.rg_opts,
@@ -480,12 +482,10 @@ M.spec = {
           },
         },
         tags = {
-          previewer = "bat",
           prompt = "Tags❯ ",
           input_prompt = "[tags] Grep For❯ ",
         },
         btags = {
-          previewer = "bat",
           prompt = "Buffer Tags❯ ",
         },
         colorschemes = {
@@ -496,14 +496,13 @@ M.spec = {
           prompt = "Highlights❯ ",
         },
         helptags = {
-          previewer = "help_native",
           prompt = "Help❯ ",
         },
         manpages = {
           prompt = "Man❯ ",
-          previewer = "man_native",
         },
         lsp = {
+          previewer = "bat",
           prompt_postfix = "❯ ",
           symbols = {
             file_icons = true,
