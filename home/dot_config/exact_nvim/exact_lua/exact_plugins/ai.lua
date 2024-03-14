@@ -44,7 +44,7 @@ return {
     "David-Kunz/gen.nvim",
     event = "VeryLazy",
     opts = {
-      model = "magicoder",
+      model = "dolphincoder",
       display_mode = "float",
       show_model = true,
     },
@@ -75,7 +75,7 @@ return {
     },
     opts = {
       backend = "ollama",
-      model = "phind-codellama:latest",
+      model = "dolphincoder:latest",
     },
     config = function(_, opts)
       require("oatmeal").setup(opts)
