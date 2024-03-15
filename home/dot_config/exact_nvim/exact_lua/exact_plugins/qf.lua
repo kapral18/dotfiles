@@ -8,6 +8,8 @@ return {
       vim.g.qf_auto_quit = 0
       -- if the path is too long, shorten each component to the first 3 chars
       vim.g.qf_shorten_path = 3
+      -- disable auto resize
+      vim.g.qf_auto_resize = 0
     end,
   },
 }
