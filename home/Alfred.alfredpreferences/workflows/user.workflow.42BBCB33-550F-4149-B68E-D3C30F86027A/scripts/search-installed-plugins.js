@@ -1,9 +1,7 @@
 #!/usr/bin/env osascript -l JavaScript
-
 ObjC.import("stdlib");
 const app = Application.currentApplication();
 app.includeStandardAdditions = true;
-
 //──────────────────────────────────────────────────────────────────────────────
 
 /** @param {string} str */
@@ -29,9 +27,10 @@ function readFile(path) {
 function run() {
 	const pluginLocation = $.getenv("plugin_installation_path");
 	const masonLocation = $.getenv("mason_installation_path");
+
+	/** @type {AlfredItem|{}[]} */
 	let pluginArray = [];
 	let masonArray = [];
-	//───────────────────────────────────────────────────────────────────────────
 
 	if (pluginLocation && fileExists(pluginLocation)) {
 		pluginArray = app
@@ -40,20 +39,20 @@ function run() {
 			)
 			.split("\r")
 			.map((remote) => {
-				const owner = remote.split("/")[3];
-				const name = remote.split("/")[4].slice(0, -4); // remove ".git"
-				const repo = `${owner}/${name}`;
+				const url = remote.replace(/\.git$/, "");
+				const repo = url.replace(/https?:\/\/github.com\//, "");
+				const [owner, name] = repo.split("/");
 				const installPath = $.getenv("plugin_installation_path") + "/" + name;
 
 				return {
 					title: name,
 					subtitle: owner,
 					match: alfredMatcher(repo) + "plugin",
-					arg: "https://github.com/" + repo,
+					arg: url,
+					quicklookurl: url,
 					mods: {
 						cmd: { arg: repo },
 						fn: { arg: installPath },
-						shift: { arg: "", variables: { repoID: repo } },
 					},
 					uid: repo,
 				};
@@ -81,6 +80,7 @@ function run() {
 					match: alfredMatcher(tool.name) + categoryList,
 					icon: { path: masonIcon },
 					arg: tool.homepage,
+					quicklookurl: tool.homepage,
 					uid: tool.name,
 					mods: {
 						cmd: { valid: false, subtitle: "🚫 Not for Mason Tool" },
@@ -91,5 +91,11 @@ function run() {
 			});
 	}
 
-	return JSON.stringify({ items: [...masonArray, ...pluginArray] });
+	return JSON.stringify({
+		items: [...pluginArray, ...masonArray],
+		cache: {
+			seconds: 15, // faster, since installs can change
+			loosereload: true,
+		},
+	});
 }
