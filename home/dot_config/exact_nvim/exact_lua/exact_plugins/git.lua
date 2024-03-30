@@ -64,7 +64,7 @@ return {
       })
     end,
     dependencies = {
-      { url = "https://gitlab.com/ibhagwan/fzf-lua" },
+      "ibhagwan/fzf-lua",
       -- to show diff splits and open commits in browser
       "tpope/vim-fugitive",
       -- to open commits in browser with fugitive

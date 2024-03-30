@@ -163,7 +163,7 @@ M.spec = {
     end,
   },
   {
-    url = "https://gitlab.com/ibhagwan/fzf-lua",
+    "ibhagwan/fzf-lua",
     lazy = false,
     priority = 200,
     dependencies = { "nvim-tree/nvim-web-devicons" },
