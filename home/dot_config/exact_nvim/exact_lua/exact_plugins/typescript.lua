@@ -9,21 +9,6 @@ return {
     end,
   },
   {
-    "dmmulroy/tsc.nvim",
-    opts = {
-      flags = {
-        watch = true,
-      },
-    },
-    keys = {
-      { "<leader>ct", ft = { "typescript", "typescriptreact" }, "<cmd>TSC<cr>", desc = "Type Check" },
-    },
-    ft = {
-      "typescript",
-      "typescriptreact",
-    },
-  },
-  {
     "neovim/nvim-lspconfig",
     opts = {
       -- make sure mason installs the server
@@ -102,6 +87,22 @@ return {
             },
           },
         },
+      },
+    },
+  },
+  {
+    "Redoxahmii/json-to-ts.nvim",
+    build = "sh install.sh yarn",
+    keys = {
+      {
+        "<leader>cu",
+        "<CMD>ConvertJSONtoTS<CR>",
+        desc = "Convert JSON to TS",
+      },
+      {
+        "<leader>ct",
+        "<CMD>ConvertJSONtoTSBuffer<CR>",
+        desc = "Convert JSON to TS in buffer",
       },
     },
   },

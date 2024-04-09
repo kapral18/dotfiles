@@ -121,5 +121,3 @@ vim.keymap.set("n", "<leader>ws", function()
   -- Set up key maps for the scratch buffer when it is created
   setup_keymaps()
 end, { desc = "Scratch buffer" })
-
-vim.keymap.set("n", "<leader>cuf", ":norm difvafp<CR>", { desc = "Unwrap Func Body", silent = true })
