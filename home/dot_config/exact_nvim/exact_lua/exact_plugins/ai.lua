@@ -44,7 +44,7 @@ return {
     "David-Kunz/gen.nvim",
     event = "VeryLazy",
     opts = {
-      model = "dolphincoder",
+      model = "llama3",
       display_mode = "float",
       show_model = true,
     },
@@ -75,7 +75,7 @@ return {
     },
     opts = {
       backend = "ollama",
-      model = "dolphincoder:latest",
+      model = "llama3:latest",
     },
     config = function(_, opts)
       require("oatmeal").setup(opts)
