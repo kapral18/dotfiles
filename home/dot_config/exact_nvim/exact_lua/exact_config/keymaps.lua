@@ -1,8 +1,3 @@
--- Tab and shift-tab to shift line or selection right or left
--- For normal mode
-vim.keymap.set("n", "<Tab>", ">>", { noremap = true })
-vim.keymap.set("n", "<S-Tab>", "<<", { noremap = true })
-
 -- For visual mode
 vim.keymap.set("v", "<Tab>", ">gv", { noremap = true })
 vim.keymap.set("v", "<S-Tab>", "<gv", { noremap = true })
