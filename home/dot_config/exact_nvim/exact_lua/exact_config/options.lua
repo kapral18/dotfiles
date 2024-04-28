@@ -17,29 +17,6 @@ vim.opt.listchars = {
   precedes = "◢",
   nbsp = "○",
 }
-vim.opt.fillchars = {
-  horizup = "┻",
-  horiz = "━",
-  horizdown = "┳",
-  vert = "┃",
-  vertright = "┣",
-  vertleft = "┫",
-  verthoriz = "╋",
-  foldopen = "",
-  foldclose = "",
-  -- fold = "⸱",
-  fold = " ",
-  foldsep = " ",
-  diff = "╱",
-  eob = " ",
-}
--- }}}
-
--- Folding {{{
-vim.opt.foldnestmax = 3
-vim.opt.foldlevelstart = 3
-vim.g.markdown_folding = 1
--- }}}
 
 -- Wildmenu {{{
 vim.opt.wildignorecase = true

@@ -143,7 +143,7 @@ return {
 	use_resize_increments = true,
 	use_fancy_tab_bar = false,
 	macos_window_background_blur = 30,
-	window_background_opacity = 0.9,
+	window_background_opacity = 1,
 	scroll_to_bottom_on_input = true,
 	quick_select_patterns = {
 		-- match things that look like sha1 hashes
@@ -161,5 +161,5 @@ return {
 	},
 	window_close_confirmation = "NeverPrompt",
 	adjust_window_size_when_changing_font_size = false,
-	text_background_opacity = 0.5,
+	text_background_opacity = 1,
 }
