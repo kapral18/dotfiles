@@ -10,80 +10,16 @@ return {
   },
   {
     "neovim/nvim-lspconfig",
+    dependencies = {
+      { "b0o/SchemaStore.nvim" },
+    },
     opts = {
-      -- make sure mason installs the server
       servers = {
-        tsserver = {
-          init_options = {
-            preferences = {
-              disableSuggestions = true,
-            },
-          },
+        jsonls = {
           settings = {
-            typescript = {
-              format = {
-                indentSize = vim.o.shiftwidth,
-                convertTabsToSpaces = vim.o.expandtab,
-                tabSize = vim.o.tabstop,
-              },
-              inlayHints = {
-                includeInlayParameterNameHints = "all",
-                includeInlayParameterNameHintsWhenArgumentMatchesName = true,
-                includeInlayFunctionParameterTypeHints = true,
-                includeInlayVariableTypeHints = true,
-                includeInlayVariableTypeHintsWhenTypeMatchesName = true,
-                includeInlayPropertyDeclarationTypeHints = true,
-                includeInlayFunctionLikeReturnTypeHints = true,
-                includeInlayEnumMemberValueHints = true,
-              },
-            },
-            javascript = {
-              format = {
-                indentSize = vim.o.shiftwidth,
-                convertTabsToSpaces = vim.o.expandtab,
-                tabSize = vim.o.tabstop,
-              },
-              inlayHints = {
-                includeInlayParameterNameHints = "all",
-                includeInlayParameterNameHintsWhenArgumentMatchesName = true,
-                includeInlayFunctionParameterTypeHints = true,
-                includeInlayVariableTypeHints = true,
-                includeInlayVariableTypeHintsWhenTypeMatchesName = true,
-                includeInlayPropertyDeclarationTypeHints = true,
-                includeInlayFunctionLikeReturnTypeHints = true,
-                includeInlayEnumMemberValueHints = true,
-              },
-            },
-            completions = {
-              completeFunctionCalls = true,
-            },
-          },
-          keys = {
-            {
-              "<leader>co",
-              function()
-                vim.lsp.buf.code_action({
-                  apply = true,
-                  context = {
-                    only = { "source.organizeImports.ts" },
-                    diagnostics = {},
-                  },
-                })
-              end,
-              desc = "Organize Imports",
-            },
-            {
-              "<leader>cR",
-              function()
-                vim.lsp.buf.code_action({
-                  apply = true,
-                  context = {
-                    only = { "source.removeUnused.ts" },
-                    diagnostics = {},
-                  },
-                })
-              end,
-              desc = "Remove Unused Imports",
+            json = {
+              schema = require("schemastore").json.schemas(),
+              validate = { enable = true },
             },
           },
         },
@@ -103,6 +39,22 @@ return {
         "<leader>ct",
         "<CMD>ConvertJSONtoTSBuffer<CR>",
         desc = "Convert JSON to TS in buffer",
+      },
+    },
+    {
+      "pmizio/typescript-tools.nvim",
+      event = "BufReadPre",
+      dependencies = { "nvim-lua/plenary.nvim", "neovim/nvim-lspconfig" },
+      opts = {
+        settings = {
+          expose_as_code_action = "all",
+          complete_function_calls = true,
+          include_completions_with_insert_text = true,
+          tsserver_file_preferences = {
+            includeCompletionsForModuleExports = true,
+            quotePreference = "auto",
+          },
+        },
       },
     },
   },
