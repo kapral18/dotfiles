@@ -56,4 +56,12 @@ return {
       },
     },
   },
+  {
+    "stevearc/conform.nvim",
+    opts = function(_, opts)
+      opts.formatters_by_ft.php = opts.formatters_by_ft.php or {}
+      table.insert(opts.formatters_by_ft.php, "php_cs_fixer")
+      return opts
+    end,
+  },
 }

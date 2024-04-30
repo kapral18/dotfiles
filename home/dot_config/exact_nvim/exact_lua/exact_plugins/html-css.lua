@@ -14,11 +14,13 @@ return {
     "williamboman/mason.nvim",
     opts = function(_, opts)
       vim.list_extend(opts.ensure_installed, {
-        "css-lsp",
-        "stylelint",
         "emmet-language-server",
         "html-lsp",
         "cssmodules-language-server",
+        "css-variables-language-server",
+        "css-lsp",
+        "htmlhint",
+        "stylelint",
       })
     end,
   },
@@ -30,6 +32,7 @@ return {
         emmet_language_server = {},
         html = {},
         cssmodules_ls = {},
+        css_variables = {},
         cssls = {
           lint = {
             compatibleVendorPrefixes = "ignore",
@@ -67,8 +70,13 @@ return {
     "mfussenegger/nvim-lint",
     opts = {
       linters_by_ft = {
-        css = { "stylelint" },
-        scss = { "stylelint" },
+        ["html"] = { "htmlhint" },
+        ["css"] = { "stylelint" },
+        ["scss"] = { "stylelint" },
+        ["less"] = { "stylelint" },
+        ["sugarss"] = { "stylelint" },
+        ["vue"] = { "stylelint" },
+        ["wxss"] = { "stylelint" },
       },
     },
   },

@@ -7,6 +7,7 @@ vim.opt.relativenumber = false -- Show relative line numbers
 vim.opt.wrap = false -- Dislable line wrap
 vim.opt.breakindent = true -- Keep indentation on wrapped lines
 vim.opt.pumblend = 0 -- disable transparency in popup menu
+vim.opt.swapfile = false -- Disable swap file
 
 -- Chars {{{
 vim.opt.list = true

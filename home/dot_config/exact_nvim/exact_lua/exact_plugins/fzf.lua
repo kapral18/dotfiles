@@ -128,37 +128,9 @@ M.spec = {
     init = function()
       local keys = require("lazyvim.plugins.lsp.keymaps").get()
       keys[#keys + 1] = {
-        "gd",
-        M.fzf("lsp_definitions", { jump_to_single_result = true, winopts = M.win_presets.large.vertical }),
-        desc = "Goto Definition",
-        has = "definition",
-      }
-      keys[#keys + 1] = {
-        "gr",
-        M.fzf("lsp_references", { ignore_current_line = true, winopts = M.win_presets.large.vertical }),
-        desc = "References",
-      }
-      keys[#keys + 1] = {
-        "gI",
-        M.fzf("lsp_implementations", { jump_to_single_result = true, winopts = M.win_presets.large.vertical }),
-        desc = "Goto Implementation",
-      }
-      keys[#keys + 1] = {
-        "gy",
-        M.fzf("lsp_typedefs", { jump_to_single_result = true, winopts = M.win_presets.large.vertical }),
-        desc = "Goto T[y]pe Definition",
-      }
-      keys[#keys + 1] = {
         "gD",
         M.fzf("lsp_declarations", { jump_to_single_result = true, winopts = M.win_presets.large.vertical }),
         desc = "Goto Declarations",
-      }
-      keys[#keys + 1] = {
-        "<leader>ca",
-        M.fzf("lsp_code_actions", { winopts = M.win_presets.small.no_preview }),
-        desc = "Code Action",
-        mode = { "n", "v" },
-        has = "codeAction",
       }
     end,
   },

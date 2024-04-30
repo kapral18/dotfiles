@@ -84,19 +84,19 @@ return {
       })
     end,
   },
-  {
-    "zbirenbaum/copilot.lua",
-    event = "InsertEnter",
-    opts = {
-      filetypes = {
-        ["*"] = function()
-          local file_size = vim.fn.getfsize(vim.fn.expand("%"))
-          if file_size > 100000 or file_size == -2 then
-            return false
-          end
-          return true
-        end,
-      },
-    },
-  },
+  -- {
+  --   "zbirenbaum/copilot.lua",
+  --   event = "InsertEnter",
+  --   opts = {
+  --     filetypes = {
+  --       ["*"] = function()
+  --         local file_size = vim.fn.getfsize(vim.fn.expand("%"))
+  --         if file_size > 100000 or file_size == -2 then
+  --           return false
+  --         end
+  --         return true
+  --       end,
+  --     },
+  --   },
+  -- },
 }
