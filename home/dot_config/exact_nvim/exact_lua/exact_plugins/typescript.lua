@@ -17,9 +17,7 @@ return {
     },
     opts = {
       servers = {
-        tsserver = {
-          enabled = false,
-        },
+        tsserver = {},
         jsonls = {
           settings = {
             json = {
