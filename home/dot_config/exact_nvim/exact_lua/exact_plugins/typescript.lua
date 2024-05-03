@@ -1,4 +1,5 @@
 local ft = { "typescript", "typescriptreact", "javascript", "javascriptreact" }
+local util = require("lspconfig.util")
 
 return {
   {
@@ -17,7 +18,13 @@ return {
     },
     opts = {
       servers = {
-        tsserver = {},
+        tsserver = {
+          on_init = function(client)
+            client.server_capabilities.documentFormattingProvider = false
+            client.server_capabilities.documentFormattingRangeProvider = false
+            client.server_capabilities.semanticTokensProvider = nil
+          end,
+        },
         jsonls = {
           settings = {
             json = {
@@ -57,24 +64,34 @@ return {
     opts = {
       cmd = { "typescript-language-server", "--stdio" },
       on_attach = function(client, bufnr)
-        client.server_capabilities.documentFormattingProvider = true
-        client.server_capabilities.documentRangeFormattingProvider = true
+        client.server_capabilities.documentFormattingProvider = false
+        client.server_capabilities.documentRangeFormattingProvider = false
+        client.server_capabilities.semanticTokensProvider = nil
         -- vim.api.nvim_set_hl(0, "@lsp.mod.readonly.typescriptreact", { link = "@variable" })
         -- vim.api.nvim_set_hl(0, "@lsp.typemod.variable.declaration.typescriptreact", { link = "@variable" })
         -- vim.api.nvim_set_hl(0, "@variable.member.tsx", { link = "@property" })
       end,
       settings = {
-        code_lens = "all",
+        code_lens = "off",
         expose_as_code_action = "all",
-        complete_function_calls = true,
+        complete_function_calls = false,
         include_completions_with_insert_text = true,
+        separate_diagnostic_server = true,
+        publish_diagnostic_on = "insert_leave",
+        tsserver_path = nil,
+        tsserver_plugins = {},
+        tsserver_max_memory = 16250,
+        tsserver_format_options = {},
         tsserver_file_preferences = {
-          completions = { completeFunctionCalls = true },
+          completions = { completeFunctionCalls = false },
           init_options = { preferences = { disableSuggestions = true } },
           includeCompletionsForModuleExports = true,
           quotePreference = "auto",
         },
+        tsserver_locale = "en",
+        disable_member_code_lens = true,
       },
+      root_dir = util.root_pattern(".git", "yarn.lock", "package-lock.json"),
     },
   },
 }
