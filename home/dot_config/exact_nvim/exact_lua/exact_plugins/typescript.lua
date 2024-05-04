@@ -1,4 +1,5 @@
-local ft = { "typescript", "typescriptreact", "javascript", "javascriptreact" }
+local ft_js = { "typescript", "typescriptreact", "javascript", "javascriptreact" }
+local ft_json = { "json", "jsonl", "jsonc" }
 local util = require("lspconfig.util")
 
 return {
@@ -39,16 +40,19 @@ return {
   {
     "Redoxahmii/json-to-ts.nvim",
     build = "sh install.sh yarn",
+    ft = ft_json,
     keys = {
       {
         "<leader>cu",
         "<CMD>ConvertJSONtoTS<CR>",
         desc = "Convert JSON to TS",
+        ft = ft_json,
       },
       {
         "<leader>ct",
         "<CMD>ConvertJSONtoTSBuffer<CR>",
         desc = "Convert JSON to TS in buffer",
+        ft = ft_json,
       },
     },
   },
@@ -57,9 +61,9 @@ return {
     event = "BufReadPre",
     dependencies = { "nvim-lua/plenary.nvim", "neovim/nvim-lspconfig" },
     keys = {
-      { "<leader>cO", ft = ft, "<cmd>TSToolsOrganizeImports<cr>", desc = "Organize Imports" },
-      { "<leader>cR", ft = ft, "<cmd>TSToolsRemoveUnusedImports<cr>", desc = "Remove Unused Imports" },
-      { "<leader>cM", ft = ft, "<cmd>TSToolsAddMissingImports<cr>", desc = "Add Missing Imports" },
+      { "<leader>cO", ft = ft_js, "<cmd>TSToolsOrganizeImports<cr>", desc = "Organize Imports" },
+      { "<leader>cR", ft = ft_js, "<cmd>TSToolsRemoveUnusedImports<cr>", desc = "Remove Unused Imports" },
+      { "<leader>cM", ft = ft_js, "<cmd>TSToolsAddMissingImports<cr>", desc = "Add Missing Imports" },
     },
     opts = {
       cmd = { "typescript-language-server", "--stdio" },
@@ -92,6 +96,29 @@ return {
         disable_member_code_lens = true,
       },
       root_dir = util.root_pattern(".git", "yarn.lock", "package-lock.json"),
+    },
+  },
+  {
+    "dmmulroy/tsc.nvim",
+    opts = {
+      auto_start_watch_mode = false,
+      use_trouble_qflist = true,
+      flags = {
+        watch = false,
+      },
+    },
+    keys = {
+      { "<leader>ct", ft = { "typescript", "typescriptreact" }, "<cmd>TSC<cr>", desc = "Type Check" },
+      { "<leader>xy", ft = { "typescript", "typescriptreact" }, "<cmd>TSCOpen<cr>", desc = "Type Check Quickfix" },
+    },
+    ft = {
+      "typescript",
+      "typescriptreact",
+    },
+    cmd = {
+      "TSC",
+      "TSCOpen",
+      "TSCClose",
     },
   },
 }

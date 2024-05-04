@@ -1,3 +1,5 @@
+local ft_js = { "typescript", "javascript", "typescriptreact", "javascriptreact" }
+
 return {
   {
     "nvim-treesitter/nvim-treesitter",
@@ -104,8 +106,14 @@ return {
   },
   {
     "MaximilianLloyd/tw-values.nvim",
+    ft = ft_js,
     keys = {
-      { "<leader>cT", "<cmd>TWValues<cr>", desc = "Tailwind CSS values" },
+      {
+        "<leader>cT",
+        "<cmd>TWValues<cr>",
+        desc = "Tailwind CSS values",
+        ft = ft_js,
+      },
     },
     opts = {},
   },
