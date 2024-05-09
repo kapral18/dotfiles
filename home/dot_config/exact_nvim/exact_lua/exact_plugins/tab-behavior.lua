@@ -83,9 +83,6 @@ return {
             table.insert(tabout_symbols, tabout.close)
           end
 
-          -- print(vim.inspect(cur_col))
-          -- print(vim.inspect(tabout_symbols))
-          -- print(vim.inspect(char_after_cursor))
           if vim.tbl_contains(tabout_symbols, char_after_cursor) and require("tabout").is_enabled() then
             require("tabout").tabout()
           elseif cmp.visible() then

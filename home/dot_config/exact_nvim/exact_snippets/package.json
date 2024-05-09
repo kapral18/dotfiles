@@ -40,5 +40,6 @@
         "path": "./languages/lua.json"
       }
     ]
-  }
+  },
+  "name": "scissors-snippets"
 }
