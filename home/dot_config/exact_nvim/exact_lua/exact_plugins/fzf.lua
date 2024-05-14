@@ -68,11 +68,13 @@ local fd_opts_unrestricted =
 
 local fd_opts = fd_opts_unrestricted .. " " .. fd_ignore_glob
 
-local function live_grep_with_patterns(rg_opts)
+local function live_grep_with_patterns(initial_search, opts)
   local search_patterns = {
-    "",
-    [[\b\b -- **/*.ts **/*.tsx !*.d.ts !*.test.ts !*.test.tsx !**/__mocks__/* !**/__jest__/* !**/fixtures/* !**/test/* !**/mock/*]],
-    [[\b\b -- **/*.ts **/*.tsx !*.d.ts]],
+    initial_search,
+    [[\b]]
+      .. initial_search
+      .. [[\b -- **/*.ts **/*.tsx !*.d.ts !*.test.ts !*.test.tsx !**/__mocks__/* !**/__jest__/* !**/fixtures/* !**/test/* !**/mock/*]],
+    [[\b]] .. initial_search .. [[\b -- **/*.ts **/*.tsx !*.d.ts]],
   }
   local current_index = 1
 
@@ -81,17 +83,16 @@ local function live_grep_with_patterns(rg_opts)
   end
 
   local function nested_live_grep()
-    require("fzf-lua").live_grep({
+    require("fzf-lua").live_grep(vim.tbl_deep_extend("force", {
       winopts = winopts.large.vertical,
       rg_glob = true,
       no_esc = true,
       actions = {
         ["ctrl-g"] = { nested_live_grep }, -- No need to pass rg_opts here
       },
-      rg_opts = rg_opts,
       search = search_patterns[current_index],
-      keymap = { fzf = { start = "beginning-of-line+forward-char+forward-char" } },
-    })
+      ["keymap.fzf.start"] = "beginning-of-line+forward-char+forward-char",
+    }, opts))
 
     cycle_current_index()
   end
@@ -235,16 +236,16 @@ return {
       {
         "<leader>sg",
         function()
-          live_grep_with_patterns(rg_opts)
+          live_grep_with_patterns("", { rg_opts = rg_opts })
         end,
         desc = "Live Grep",
       },
       {
         "<leader>sG",
         function()
-          live_grep_with_patterns(rg_opts_unrestricted)
+          live_grep_with_patterns("", { rg_opts = rg_opts_unrestricted })
         end,
-        desc = "Grep (-ignored, -tests)",
+        desc = "Live Grep (+ ignored)",
       },
       { '<leader>s"', get_fzf_fn("registers", { winopts = winopts.large.vertical }), desc = "Registers" },
       {
@@ -285,33 +286,41 @@ return {
       },
       {
         "<leader>sw",
-        get_fzf_fn("grep_cword", { winopts = winopts.large.vertical }),
-        desc = "Grep Word (excluding .git and node_modules)",
+        function()
+          live_grep_with_patterns(vim.fn.expand("<cword>"), {
+            rg_opts = rg_opts,
+          })
+        end,
+        desc = "Live Grep CWord",
+      },
+      {
+        "<leader>sW",
+        function()
+          live_grep_with_patterns(vim.fn.expand("<cword>"), {
+            rg_opts = rg_opts_unrestricted,
+          })
+        end,
+        desc = "Live Grep CWord (+ ignored)",
       },
       {
         "<leader>sv",
-        get_fzf_fn("grep_visual", {
-          winopts = winopts.large.vertical,
-        }),
+        function()
+          live_grep_with_patterns(require("fzf-lua").utils.get_visual_selection(), {
+            rg_opts = rg_opts,
+          })
+        end,
         mode = "v",
-        desc = "Grep Visual (excluding .git and node_modules)",
+        desc = "Live Grep Selection",
       },
       {
-        "<leader>sW",
-        get_fzf_fn("grep_cword", {
-          rg_opts = rg_opts_unrestricted,
-          winopts = winopts.large.vertical,
-        }),
-        desc = "Grep Word (excluding .git)",
-      },
-      {
-        "<leader>sW",
-        get_fzf_fn("grep_visual", {
-          rg_opts = rg_opts_unrestricted,
-          winopts = winopts.large.vertical,
-        }),
+        "<leader>sV",
+        function()
+          live_grep_with_patterns(require("fzf-lua").utils.get_visual_selection(), {
+            rg_opts = rg_opts_unrestricted,
+          })
+        end,
         mode = "v",
-        desc = "Grep Visual (excluding .git)",
+        desc = "Live Grep Selection (+ignored)",
       },
       {
         "<leader>uC",
