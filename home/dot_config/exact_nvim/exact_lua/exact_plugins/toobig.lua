@@ -1,6 +1,6 @@
 return {
   {
-    "LunarVim/bigfile.nvim",
+    "kapral18/bigfile.nvim",
     event = "BufReadPre",
     opts = {
       filesize = 0.1,
