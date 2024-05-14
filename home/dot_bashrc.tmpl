@@ -29,9 +29,6 @@ export XDG_VIDEOS_DIR=$HOME/Videos
 # Go
 export GOPATH=$HOME/go
 
-# Chatblade
-export OPENAI_API_MODEL=4t
-
 # Docker
 export DOCKER_HIDE_LEGACY_COMMANDS=true
 
@@ -94,7 +91,7 @@ then
 	[ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" # This loads nvm bash_completion
 
 # Aliases
-  alias b="chatblade"
+  alias b="chatblade -so -c gpt-4o"
 	alias g="git"
 	alias tree='tree -I ".git|node_modules"'
 	alias t="tmux"

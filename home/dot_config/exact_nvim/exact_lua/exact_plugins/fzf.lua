@@ -1,7 +1,4 @@
----@diagnostic disable: missing-fields
-local M = {}
-
-M.win_presets = {
+local winopts = {
   small = {
     no_preview = {
       height = 0.35,
@@ -49,30 +46,60 @@ M.win_presets = {
   },
 }
 
-local rg_ignore_glob =
-  "-g '!{node_modules,.next,dist,build,reports,.idea,.vscode,.yarn,.nyc_output,__generated__,reports,storybook-static},*.min.js,*.min.css,junit.xml,bazel-*,data,target,.buildkite,.chromium,.es,.yarn-*}'"
-local fd_ignore_glob =
-  "-E '{node_modules,.next,dist,build,reports,.idea,.vscode,.yarn,.nyc_output,__generated__,reports,storybook-static}/' -E '{*.min.js,*.min.css,junit.xml,bazel-*,data,target,.buildkite,.chromium,.es,.yarn-*}'"
-
-M.rg_opts_unrestricted =
-  "--column --line-number --no-heading --color=always --smart-case --max-columns=512 --hidden --no-ignore -g '!{.git, tsconfig.tsbuildinfo, *.map}'"
-
-M.rg_opts = M.rg_opts_unrestricted .. " " .. rg_ignore_glob
-
-M.fd_opts_unrestricted =
-  "--color=never --type f --hidden --no-ignore --follow -E '!{.git, tsconfig.tsbuildinfo, *.map}'"
-
-M.fd_opts = M.fd_opts_unrestricted .. " " .. fd_ignore_glob
-
-M.fzf = function(cmd, opts)
+local function get_fzf_fn(cmd, opts)
   opts = opts or {}
   return function()
     require("fzf-lua")[cmd](opts)
   end
 end
 
----@type LazySpec
-M.spec = {
+local rg_ignore_glob =
+  "-g '!{node_modules,.next,dist,build,reports,.idea,.vscode,.yarn,.nyc_output,__generated__,reports,storybook-static},*.min.js,*.min.css,junit.xml,bazel-*,data,target,.buildkite,.chromium,.es,.yarn-*}'"
+local fd_ignore_glob =
+  "-E '{node_modules,.next,dist,build,reports,.idea,.vscode,.yarn,.nyc_output,__generated__,reports,storybook-static}/' -E '{*.min.js,*.min.css,junit.xml,bazel-*,data,target,.buildkite,.chromium,.es,.yarn-*}'"
+
+local rg_opts_unrestricted =
+  "--column --line-number --no-heading --color=always --smart-case --max-columns=512 --hidden --no-ignore -g '!{.git, tsconfig.tsbuildinfo, *.map}'"
+
+local rg_opts = rg_opts_unrestricted .. " " .. rg_ignore_glob
+
+local fd_opts_unrestricted =
+  "--color=never --type f --hidden --no-ignore --follow -E '!{.git, tsconfig.tsbuildinfo, *.map}'"
+
+local fd_opts = fd_opts_unrestricted .. " " .. fd_ignore_glob
+
+local function live_grep_with_patterns(rg_opts)
+  local search_patterns = {
+    "",
+    [[\b\b -- **/*.ts **/*.tsx !*.d.ts !*.test.ts !*.test.tsx !**/__mocks__/* !**/__jest__/* !**/fixtures/* !**/test/* !**/mock/*]],
+    [[\b\b -- **/*.ts **/*.tsx !*.d.ts]],
+  }
+  local current_index = 1
+
+  local function cycle_current_index()
+    current_index = (current_index % #search_patterns) + 1
+  end
+
+  local function nested_live_grep()
+    require("fzf-lua").live_grep({
+      winopts = winopts.large.vertical,
+      rg_glob = true,
+      no_esc = true,
+      actions = {
+        ["ctrl-g"] = { nested_live_grep }, -- No need to pass rg_opts here
+      },
+      rg_opts = rg_opts,
+      search = search_patterns[current_index],
+      keymap = { fzf = { start = "beginning-of-line+forward-char+forward-char" } },
+    })
+
+    cycle_current_index()
+  end
+
+  nested_live_grep()
+end
+
+return {
   {
     "nvim-telescope/telescope.nvim",
     keys = {
@@ -129,58 +156,56 @@ M.spec = {
       local keys = require("lazyvim.plugins.lsp.keymaps").get()
       keys[#keys + 1] = {
         "gD",
-        M.fzf("lsp_declarations", { jump_to_single_result = true, winopts = M.win_presets.large.vertical }),
+        get_fzf_fn("lsp_declarations", { jump_to_single_result = true, winopts = winopts.large.vertical }),
         desc = "Goto Declarations",
       }
     end,
   },
   {
     "ibhagwan/fzf-lua",
-    lazy = false,
-    priority = 200,
     dependencies = { "nvim-tree/nvim-web-devicons" },
     keys = {
       {
         "<leader><leader>",
-        M.fzf("files", {
-          winopts = M.win_presets.medium.vertical,
+        get_fzf_fn("files", {
+          winopts = winopts.medium.vertical,
         }),
         desc = "Files",
       },
       {
         "<leader>i",
-        M.fzf("files", {
-          fd_opts = M.fd_opts_unrestricted,
-          winopts = M.win_presets.medium.vertical,
+        get_fzf_fn("files", {
+          fd_opts = fd_opts_unrestricted,
+          winopts = winopts.medium.vertical,
         }),
         desc = "Files",
       },
       {
         "<leader>gs",
-        M.fzf("git_status", {
-          winopts = M.win_presets.large.vertical,
+        get_fzf_fn("git_status", {
+          winopts = winopts.large.vertical,
         }),
         desc = "Git Status",
       },
       {
         "<leader>gc",
-        M.fzf("git_commits", {
-          winopts = M.win_presets.large.vertical,
+        get_fzf_fn("git_commits", {
+          winopts = winopts.large.vertical,
         }),
         desc = "Git Commits",
       },
       {
         "<leader>fr",
-        M.fzf("oldfiles", {
-          winopts = M.win_presets.medium.vertical,
+        get_fzf_fn("oldfiles", {
+          winopts = winopts.medium.vertical,
           cwd_only = true,
         }),
         desc = "Recent Files (Current Session)",
       },
       {
         "<leader>fR",
-        M.fzf("oldfiles", {
-          winopts = M.win_presets.medium.vertical,
+        get_fzf_fn("oldfiles", {
+          winopts = winopts.medium.vertical,
           cwd_only = true,
           include_current_session = false,
         }),
@@ -188,103 +213,114 @@ M.spec = {
       },
       {
         "<leader>ss",
-        M.fzf("lsp_document_symbols", {
-          winopts = M.win_presets.large.vertical,
+        get_fzf_fn("lsp_document_symbols", {
+          winopts = winopts.large.vertical,
         }),
         desc = "Document Symbols",
       },
       {
         "<leader>sS",
-        M.fzf("lsp_live_workspace_symbols", {
-          winopts = M.win_presets.large.vertical,
+        get_fzf_fn("lsp_live_workspace_symbols", {
+          winopts = winopts.large.vertical,
         }),
         desc = "Workspace Symbols",
       },
       {
         "<leader>/",
-        M.fzf("lgrep_curbuf", {
-          winopts = M.win_presets.large.vertical,
+        get_fzf_fn("lgrep_curbuf", {
+          winopts = winopts.large.vertical,
         }),
         desc = "Grep",
       },
       {
         "<leader>sg",
-        M.fzf("live_grep_glob", {
-          winopts = M.win_presets.large.vertical,
-        }),
-        desc = "Grep (excluding .git and node_modules)",
+        function()
+          live_grep_with_patterns(rg_opts)
+        end,
+        desc = "Live Grep",
       },
       {
         "<leader>sG",
-        M.fzf("live_grep_glob", {
-          rg_opts = M.rg_opts_unrestricted,
-          winopts = M.win_presets.large.vertical,
-        }),
-        desc = "Grep (excluding .git)",
+        function()
+          live_grep_with_patterns(rg_opts_unrestricted)
+        end,
+        desc = "Grep (-ignored, -tests)",
       },
-      { '<leader>s"', M.fzf("registers", { winopts = M.win_presets.large.vertical }), desc = "Registers" },
-      { "<leader>sa", M.fzf("autocmds", { winopts = M.win_presets.large.vertical }), desc = "Auto Commands" },
-      { "<leader>sc", M.fzf("command_history", { winopts = M.win_presets.large.vertical }), desc = "Command History" },
-      { "<leader>sC", M.fzf("commands", { winopts = M.win_presets.large.vertical }), desc = "Commands" },
+      { '<leader>s"', get_fzf_fn("registers", { winopts = winopts.large.vertical }), desc = "Registers" },
+      {
+        "<leader>sa",
+        get_fzf_fn("autocmds", { winopts = winopts.large.vertical }),
+        desc = "Auto Commands",
+      },
+      {
+        "<leader>sc",
+        get_fzf_fn("command_history", { winopts = winopts.large.vertical }),
+        desc = "Command History",
+      },
+      { "<leader>sC", get_fzf_fn("commands", { winopts = winopts.large.vertical }), desc = "Commands" },
       {
         "<leader>sd",
-        M.fzf("diagnostics_document", { winopts = M.win_presets.large.vertical }),
+        get_fzf_fn("diagnostics_document", { winopts = winopts.large.vertical }),
         desc = "Document Diagnostics",
       },
       {
         "<leader>sD",
-        M.fzf("diagnostics_workspace", { winopts = M.win_presets.large.vertical }),
+        get_fzf_fn("diagnostics_workspace", { winopts = winopts.large.vertical }),
         desc = "Workspace Diagnostics",
       },
-      { "<leader>sh", M.fzf("help_tags", { winopts = M.win_presets.large.vertical }), desc = "Help Pages" },
+      { "<leader>sh", get_fzf_fn("help_tags", { winopts = winopts.large.vertical }), desc = "Help Pages" },
       {
         "<leader>sH",
-        M.fzf("highlights", { winopts = M.win_presets.large.vertical }),
+        get_fzf_fn("highlights", { winopts = winopts.large.vertical }),
         desc = "Search Highlight Groups",
       },
-      { "<leader>sm", M.fzf("marks", { winopts = M.win_presets.large.vertical }), desc = "Marks" },
-      { "<leader>sk", M.fzf("keymaps", { winops = M.win_presets.large.vertical }), desc = "Key Maps" },
-      { "<leader>sM", M.fzf("man_pages", { winopts = M.win_presets.large.vertical }), desc = "Man Pages" },
+      { "<leader>sm", get_fzf_fn("marks", { winopts = winopts.large.vertical }), desc = "Marks" },
+      { "<leader>sk", get_fzf_fn("keymaps", { winops = winopts.large.vertical }), desc = "Key Maps" },
+      { "<leader>sM", get_fzf_fn("man_pages", { winopts = winopts.large.vertical }), desc = "Man Pages" },
       -- { "<leader>so", "<cmd>Telescope vim_options<cr>", desc = "Options" },
-      { "<leader>sR", M.fzf("resume", { winopts = M.win_presets.large.vertical }), desc = "Resume Picker List" },
+      {
+        "<leader>sR",
+        get_fzf_fn("resume", { winopts = winopts.large.vertical }),
+        desc = "Resume Picker List",
+      },
       {
         "<leader>sw",
-        M.fzf("grep_cword", { winopts = M.win_presets.large.vertical }),
+        get_fzf_fn("grep_cword", { winopts = winopts.large.vertical }),
         desc = "Grep Word (excluding .git and node_modules)",
       },
       {
-        "<leader>sw",
-        M.fzf("grep_visual", {
-          winopts = M.win_presets.large.vertical,
+        "<leader>sv",
+        get_fzf_fn("grep_visual", {
+          winopts = winopts.large.vertical,
         }),
         mode = "v",
         desc = "Grep Visual (excluding .git and node_modules)",
       },
       {
         "<leader>sW",
-        M.fzf("grep_cword", {
-          rg_opts = M.rg_opts_unrestricted,
-          winopts = M.win_presets.large.vertical,
+        get_fzf_fn("grep_cword", {
+          rg_opts = rg_opts_unrestricted,
+          winopts = winopts.large.vertical,
         }),
         desc = "Grep Word (excluding .git)",
       },
       {
         "<leader>sW",
-        M.fzf("grep_visual", {
-          rg_opts = M.rg_opts_unrestricted,
-          winopts = M.win_presets.large.vertical,
+        get_fzf_fn("grep_visual", {
+          rg_opts = rg_opts_unrestricted,
+          winopts = winopts.large.vertical,
         }),
         mode = "v",
         desc = "Grep Visual (excluding .git)",
       },
       {
         "<leader>uC",
-        M.fzf("colorschemes", { winopts = M.win_presets.large.vertical }),
+        get_fzf_fn("colorschemes", { winopts = winopts.large.vertical }),
         desc = "Colorscheme with preview",
       },
       {
         "<leader>sb",
-        M.fzf("buffers", { winopts = M.win_presets.large.vertical }),
+        get_fzf_fn("buffers", { winopts = winopts.large.vertical }),
         desc = "Buffers with preview",
       },
     },
@@ -370,8 +406,8 @@ M.spec = {
         files = {
           previewer = "bat",
           prompt = "Files❯ ",
-          rg_opts = M.rg_opts,
-          fd_opts = M.fd_opts,
+          rg_opts = rg_opts,
+          fd_opts = fd_opts,
           fzf_opts = { ["--ansi"] = false },
           actions = {
             ["ctrl-q"] = actions.file_sel_to_qf,
@@ -407,7 +443,7 @@ M.spec = {
           previewer = "bat",
           prompt = "Live Grep❯ ",
           input_prompt = "Grep❯ ",
-          rg_opts = M.rg_opts,
+          rg_opts = rg_opts,
         },
         args = {
           prompt = "Args❯ ",
@@ -499,10 +535,5 @@ M.spec = {
         },
       }
     end,
-    config = function(_, opts)
-      require("fzf-lua").setup(opts)
-    end,
   },
 }
-
-return M.spec
