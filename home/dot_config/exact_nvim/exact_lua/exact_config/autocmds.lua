@@ -65,17 +65,20 @@ vim.api.nvim_del_augroup_by_name("lazyvim_close_with_q")
 aucmd("FileType", {
   group = "k18",
   -- merge patterns with the new ones
-  pattern = vim.tbl_flatten({
-    M,
-    "aerial-nav",
-    "chatpgpt",
-    "diagmsg",
-    "fzf",
-    "neotest-output",
-    "dap-float",
-    "dap-repl",
-    "scratch",
-  }),
+  pattern = vim
+    .iter({
+      M,
+      "aerial-nav",
+      "chatpgpt",
+      "diagmsg",
+      "fzf",
+      "neotest-output",
+      "dap-float",
+      "dap-repl",
+      "scratch",
+    })
+    :flatten(math.huge)
+    :totable(),
   callback = function(event)
     vim.bo[event.buf].buflisted = false
     vim.keymap.set("n", "q", "<cmd>close<CR>", { buffer = event.buf, silent = true })

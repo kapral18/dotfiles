@@ -92,12 +92,12 @@ end
 -- Create a new scratch buffer
 vim.keymap.set("n", "<leader>ws", function()
   local buf = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_option(buf, "buftype", "nofile")
-  vim.api.nvim_buf_set_option(buf, "bufhidden", "hide")
-  vim.api.nvim_buf_set_option(buf, "swapfile", false)
+  vim.api.nvim_set_option_value("buftype", "nofile", { buf = buf })
+  vim.api.nvim_set_option_value("bufhidden", "hide", { buf = buf })
+  vim.api.nvim_set_option_value("swapfile", false, { buf = buf })
 
-  local width = vim.api.nvim_get_option("columns")
-  local height = vim.api.nvim_get_option("lines")
+  local width = vim.api.nvim_get_option_value("columns", {})
+  local height = vim.api.nvim_get_option_value("lines", {})
   local win_height = math.ceil(height * 0.8 - 4)
   local win_width = math.ceil(width * 0.8)
   local row = math.ceil((height - win_height) / 2 - 1)

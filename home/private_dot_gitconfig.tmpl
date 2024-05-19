@@ -52,6 +52,8 @@
 
 [alias]
   s = 'status'
+  [alias]
+  wtgrab = "!f() { mktemp | xargs -I{} sh -c 'git -C $1 diff > $0; git -C $1 reset --hard HEAD; git apply $0;' {} $1; }; f"
   stat = "!git shortlog -sn --since='10 weeks' --until='2 weeks'"
   recent = "!git for-each-ref --count=10 --sort=-committerdate refs/heads/ --format='%(refname:short)'"
   overview = "!git log --all --oneline --no-merges"

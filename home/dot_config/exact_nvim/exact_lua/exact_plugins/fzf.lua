@@ -305,8 +305,9 @@ return {
       {
         "<leader>sv",
         function()
-          live_grep_with_patterns(require("fzf-lua").utils.get_visual_selection(), {
-            rg_opts = rg_opts,
+          live_grep_with_patterns(vim.trim(require("fzf-lua").utils.get_visual_selection()), {
+            rg_opts = rg_opts .. " --multiline",
+            no_esc = false,
           })
         end,
         mode = "v",
@@ -315,8 +316,9 @@ return {
       {
         "<leader>sV",
         function()
-          live_grep_with_patterns(require("fzf-lua").utils.get_visual_selection(), {
-            rg_opts = rg_opts_unrestricted,
+          live_grep_with_patterns(vim.trim(require("fzf-lua").utils.get_visual_selection()), {
+            rg_opts = rg_opts_unrestricted .. " --multiline",
+            no_esc = false,
           })
         end,
         mode = "v",
@@ -519,7 +521,7 @@ return {
           prompt = "Man❯ ",
         },
         lsp = {
-          previewer = "bat",
+          previewer = false,
           prompt_postfix = "❯ ",
           symbols = {
             file_icons = true,

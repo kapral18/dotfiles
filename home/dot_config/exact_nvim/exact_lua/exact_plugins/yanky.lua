@@ -6,7 +6,7 @@ return {
       local mapping = require("yanky.telescope.mapping")
 
       opts.highlight = { timer = 250 }
-      opts.ring = { storage = "sqlite" }
+      opts.ring = { storage = "shada" }
       opts.picker = {
         telescope = {
           use_default_mappings = false,

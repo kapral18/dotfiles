@@ -23,10 +23,6 @@ return {
     -- this is equalent to setup({}) function
   },
   {
-    "nvim-treesitter/nvim-treesitter-context",
-    enabled = false,
-  },
-  {
     "Wansmer/sibling-swap.nvim",
     dependencies = "nvim-treesitter/nvim-treesitter",
     opts = {

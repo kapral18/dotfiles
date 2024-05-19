@@ -32,7 +32,7 @@ return {
       })
     end,
     cond = function()
-      return vim.loop.fs_stat(vim.loop.cwd() .. "/.git") or vim.fn.finddir(".git", ";") ~= ""
+      return vim.uv.fs_stat(vim.uv.cwd() .. "/.git") or vim.fn.finddir(".git", ";") ~= ""
     end,
     init = function()
       vim.g.git_messenger_no_default_mappings = true
