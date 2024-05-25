@@ -336,7 +336,7 @@ return {
       },
     },
     opts = function()
-      local actions = require("fzf-lua.actions")
+      local actions = require("fzf-lua").actions
       return {
         defaults = {
           git_icons = false,
