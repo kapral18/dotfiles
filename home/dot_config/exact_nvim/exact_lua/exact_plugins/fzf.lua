@@ -59,12 +59,12 @@ local fd_ignore_glob =
   "-E '{node_modules,.next,dist,build,reports,.idea,.vscode,.yarn,.nyc_output,__generated__,reports,storybook-static}/' -E '{*.min.js,*.min.css,junit.xml,bazel-*,data,target,.buildkite,.chromium,.es,.yarn-*}'"
 
 local rg_opts_unrestricted =
-  "--column --line-number --no-heading --color=always --smart-case --max-columns=512 --hidden --no-ignore -g '!{.git, tsconfig.tsbuildinfo, *.map}'"
+  "--column --line-number --no-heading --color=always --smart-case --max-columns=512 --hidden --no-ignore -g '!{.git,tsconfig.tsbuildinfo,*.map}'"
 
 local rg_opts = rg_opts_unrestricted .. " " .. rg_ignore_glob
 
 local fd_opts_unrestricted =
-  "--color=never --type f --hidden --no-ignore --follow -E '!{.git, tsconfig.tsbuildinfo, *.map}'"
+  "--color=never --type f --hidden --no-ignore --follow -E '{.git,tsconfig.tsbuildinfo,*.map}'"
 
 local fd_opts = fd_opts_unrestricted .. " " .. fd_ignore_glob
 
@@ -167,7 +167,7 @@ return {
     dependencies = { "nvim-tree/nvim-web-devicons" },
     keys = {
       {
-        "<leader><leader>",
+        "<leader><space>",
         get_fzf_fn("files", {
           winopts = winopts.medium.vertical,
         }),

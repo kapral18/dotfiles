@@ -62,12 +62,14 @@ return {
     },
     opts = {
       on_attach = function(client, bufnr)
-        client.server_capabilities.documentFormattingProvider = false
-        client.server_capabilities.documentRangeFormattingProvider = false
-        client.server_capabilities.semanticTokensProvider = nil
-        -- vim.api.nvim_set_hl(0, "@lsp.mod.readonly.typescriptreact", { link = "@variable" })
-        -- vim.api.nvim_set_hl(0, "@lsp.typemod.variable.declaration.typescriptreact", { link = "@variable" })
-        -- vim.api.nvim_set_hl(0, "@variable.member.tsx", { link = "@property" })
+        if client.server_capabilities then
+          client.server_capabilities.documentFormattingProvider = false
+          client.server_capabilities.documentRangeFormattingProvider = false
+          client.server_capabilities.semanticTokensProvider = nil
+          -- vim.api.nvim_set_hl(0, "@lsp.mod.readonly.typescriptreact", { link = "@variable" })
+          -- vim.api.nvim_set_hl(0, "@lsp.typemod.variable.declaration.typescriptreact", { link = "@variable" })
+          -- vim.api.nvim_set_hl(0, "@variable.member.tsx", { link = "@property" })
+        end
       end,
       settings = {
         code_lens = "off",
