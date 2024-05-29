@@ -1,4 +1,11 @@
-local ft_js = { "typescript", "typescriptreact", "javascript", "javascriptreact" }
+local ft_js = {
+  "javascript",
+  "javascriptreact",
+  "javascript.jsx",
+  "typescript",
+  "typescriptreact",
+  "typescript.tsx",
+}
 local ft_json = { "json", "jsonl", "jsonc" }
 local util = require("lspconfig.util")
 
@@ -21,6 +28,9 @@ return {
     },
     opts = {
       servers = {
+        tsserver = {
+          enabled = false,
+        },
         jsonls = {
           settings = {
             json = {
@@ -30,6 +40,12 @@ return {
           },
         },
       },
+      setup = {
+        tsserver = function()
+          -- disable tsserver
+          return true
+        end,
+      },
     },
   },
   {
@@ -38,13 +54,13 @@ return {
     ft = ft_json,
     keys = {
       {
-        "<leader>cu",
+        "<leader>cjt",
         "<CMD>ConvertJSONtoTS<CR>",
         desc = "Convert JSON to TS",
         ft = ft_json,
       },
       {
-        "<leader>ct",
+        "<leader>cjb",
         "<CMD>ConvertJSONtoTSBuffer<CR>",
         desc = "Convert JSON to TS in buffer",
         ft = ft_json,
@@ -56,9 +72,12 @@ return {
     event = "BufReadPre",
     dependencies = { "nvim-lua/plenary.nvim", "neovim/nvim-lspconfig" },
     keys = {
-      { "<leader>cO", ft = ft_js, "<cmd>TSToolsOrganizeImports<cr>", desc = "Organize Imports" },
-      { "<leader>cR", ft = ft_js, "<cmd>TSToolsRemoveUnusedImports<cr>", desc = "Remove Unused Imports" },
-      { "<leader>cM", ft = ft_js, "<cmd>TSToolsAddMissingImports<cr>", desc = "Add Missing Imports" },
+      { "gD", ft = ft_js, "<cmd>TSToolsGoToSourceDefinition", desc = "TSTools: Goto Source Definition" },
+      { "gR", ft = ft_js, "<cmd>TSToolsFileReferences", desc = "TSTools: File References" },
+      { "<leader>cia", ft = ft_js, "<cmd>TSToolsAddMissingImports", desc = "TSTools: Add missing imports" },
+      { "<leader>cir", ft = ft_js, "<cmd>TSToolsRemoveUnusedImports<cr>", desc = "TSTools: Remove Unused Imports" },
+      { "<leader>cD", ft = ft_js, "<cmd>TSToolsFixAll", desc = "TSTools: Fix all diagnostics" },
+      { "<leader>cR", ft = ft_js, "<cmd>TsToolsRenameFile", desc = "TSTools: Rename File" },
     },
     opts = {
       on_attach = function(client, bufnr)
@@ -74,7 +93,7 @@ return {
       settings = {
         code_lens = "off",
         expose_as_code_action = "all",
-        complete_function_calls = false,
+        complete_function_calls = true,
         include_completions_with_insert_text = true,
         separate_diagnostic_server = true,
         publish_diagnostic_on = "insert_leave",
@@ -83,7 +102,7 @@ return {
         tsserver_max_memory = 16250,
         tsserver_format_options = {},
         tsserver_file_preferences = {
-          completions = { completeFunctionCalls = false },
+          completions = { completeFunctionCalls = true },
           init_options = { preferences = { disableSuggestions = true } },
           includeCompletionsForModuleExports = true,
           quotePreference = "auto",
@@ -104,8 +123,8 @@ return {
       },
     },
     keys = {
-      { "<leader>ct", ft = { "typescript", "typescriptreact" }, "<cmd>TSC<cr>", desc = "Type Check" },
-      { "<leader>xy", ft = { "typescript", "typescriptreact" }, "<cmd>TSCOpen<cr>", desc = "Type Check Quickfix" },
+      { "<leader>cttc", ft = { "typescript", "typescriptreact" }, "<cmd>TSC<cr>", desc = "Type Check" },
+      { "<leader>cttq", ft = { "typescript", "typescriptreact" }, "<cmd>TSCOpen<cr>", desc = "Type Check Quickfix" },
     },
     ft = {
       "typescript",
