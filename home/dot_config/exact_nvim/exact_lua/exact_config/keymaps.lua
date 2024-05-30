@@ -1,3 +1,10 @@
+-- free the <leader>l
+vim.keymap.del("n", "<leader>l")
+vim.keymap.set("n", "<leader>lL", function()
+  LazyVim.news.changelog()
+end, { desc = "LazyVim Changelog" })
+vim.keymap.set("n", "<leader>ll", "<cmd>Lazy<cr>", { desc = "Lazy" })
+
 -- For visual mode
 vim.keymap.set("v", "<Tab>", ">gv", { noremap = true })
 vim.keymap.set("v", "<S-Tab>", "<gv", { noremap = true })

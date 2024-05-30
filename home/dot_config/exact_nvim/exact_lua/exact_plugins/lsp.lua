@@ -1,4 +1,4 @@
--- enable back if noice.nvim is off
+-- -- enable if noice.nvim is off
 -- vim.lsp.handlers["textDocument/hover"] = function(_, result, ctx, config)
 --   config = config or {}
 --   config.focus_id = ctx.method
