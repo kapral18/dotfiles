@@ -22,19 +22,18 @@ return {
       vim.list_extend(opts.ensure_installed, { "zls", "codelldb" })
     end,
   },
-  -- -- https://github.com/lawrence-laz/neotest-zig/issues/14
-  -- {
-  --   "nvim-neotest/neotest",
-  --   optional = true,
-  --   dependencies = {
-  --     "lawrence-laz/neotest-zig",
-  --   },
-  --   opts = {
-  --     adapters = {
-  --       ["neotest-zig"] = {},
-  --     },
-  --   },
-  -- },
+  {
+    "nvim-neotest/neotest",
+    optional = true,
+    dependencies = {
+      "lawrence-laz/neotest-zig",
+    },
+    opts = {
+      adapters = {
+        ["neotest-zig"] = {},
+      },
+    },
+  },
   {
     "mfussenegger/nvim-dap",
     optional = true,
