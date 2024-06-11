@@ -1,4 +1,5 @@
 return {
+  { import = "lazyvim.plugins.extras.ui.treesitter-context" },
   {
     "nvim-treesitter/nvim-treesitter",
     dependencies = {

@@ -7,6 +7,8 @@ local js_based_languages = {
 }
 
 return {
+  { import = "lazyvim.plugins.extras.dap.core" },
+  { import = "lazyvim.plugins.extras.dap.nlua" },
   {
     "mfussenegger/nvim-dap",
     config = function()

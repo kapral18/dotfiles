@@ -1,4 +1,5 @@
 return {
+  { import = "lazyvim.plugins.extras.lang.json" },
   {
     "gennaro-tedesco/nvim-jqx",
     ft = { "json", "yaml" },

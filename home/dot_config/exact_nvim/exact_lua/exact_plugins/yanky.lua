@@ -1,4 +1,5 @@
 return {
+  { import = "lazyvim.plugins.extras.coding.yanky" },
   {
     "gbprod/yanky.nvim",
     opts = function(_, opts)

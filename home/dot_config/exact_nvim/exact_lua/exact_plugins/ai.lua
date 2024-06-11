@@ -1,4 +1,5 @@
 return {
+  { import = "lazyvim.plugins.extras.coding.copilot-chat" },
   {
     "dustinblackman/oatmeal.nvim",
     event = "VeryLazy",

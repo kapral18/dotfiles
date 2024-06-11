@@ -53,6 +53,11 @@ local function get_fzf_fn(cmd, opts)
   end
 end
 
+local function symbols_filter(entry, ctx)
+  ctx.symbols_filter = ctx.symbols_filter or require("lazyvim.config").get_kind_filter(ctx.bufnr)
+  return vim.tbl_contains(ctx.symbols_filter, entry.kind)
+end
+
 local rg_ignore_glob =
   "-g '!{node_modules,.next,dist,build,reports,.idea,.vscode,.yarn,.nyc_output,__generated__,reports,storybook-static,*.min.js,*.min.css,junit.xml,bazel-*,data,target,.buildkite,.chromium,.es,.yarn-*}'"
 local fd_ignore_glob =
@@ -154,33 +159,77 @@ return {
   {
     "neovim/nvim-lspconfig",
     init = function()
-      local keys = require("lazyvim.plugins.lsp.keymaps").get()
-      keys[#keys + 1] = {
-        "gD",
-        get_fzf_fn("lsp_declarations", { jump_to_single_result = true, winopts = winopts.large.vertical }),
-        desc = "Goto Declarations",
-        ft = {
-          "lua",
-          "python",
-          "bash",
-          "sh",
-          "fish",
-          "go",
-          "ansible",
-          "docker",
-          "elixir",
-          "helm",
-          "json",
-          "markdown",
-          "python",
-          "ruby",
-          "rust",
-          "tailwind",
-          "terraform",
-          "tex",
-          "yaml",
-        },
+      local nonts_ft = {
+        "lua",
+        "python",
+        "bash",
+        "sh",
+        "fish",
+        "go",
+        "ansible",
+        "docker",
+        "elixir",
+        "helm",
+        "json",
+        "markdown",
+        "python",
+        "ruby",
+        "rust",
+        "tailwind",
+        "terraform",
+        "tex",
+        "yaml",
       }
+      local keys = require("lazyvim.plugins.lsp.keymaps").get()
+      vim.list_extend(keys, {
+        {
+          "gd",
+          get_fzf_fn(
+            "lsp_definitions",
+            { jump_to_single_result = true, ignore_current_line = true, winopts = winopts.large.vertical }
+          ),
+          desc = "Goto Definition",
+          has = "definition",
+          ft = nonts_ft,
+        },
+        {
+          "gD",
+          get_fzf_fn(
+            "lsp_declarations",
+            { jump_to_single_result = true, ignore_current_line = true, winopts = winopts.large.vertical }
+          ),
+          desc = "Goto Declarations",
+          ft = nonts_ft,
+        },
+        {
+          "gr",
+          get_fzf_fn(
+            "lsp_references",
+            { jump_to_single_result = true, ignore_current_line = true, winopts = winopts.large.vertical }
+          ),
+          desc = "References",
+          nowait = true,
+          ft = nonts_ft,
+        },
+        {
+          "gI",
+          get_fzf_fn(
+            "lsp_implementations",
+            { jump_to_single_result = true, ignore_current_line = true, winopts = winopts.large.vertical }
+          ),
+          desc = "Goto Implementation",
+          ft = nonts_ft,
+        },
+        {
+          "gy",
+          get_fzf_fn(
+            "lsp_typedefs",
+            { jump_to_single_result = true, ignore_current_line = true, winopts = winopts.large.vertical }
+          ),
+          desc = "Goto T[y]pe Definition",
+          ft = nonts_ft,
+        },
+      })
     end,
   },
   {
@@ -352,8 +401,26 @@ return {
       },
       {
         "<leader>sb",
-        get_fzf_fn("buffers", { winopts = winopts.large.vertical }),
+        get_fzf_fn("buffers", { sort_mru = true, sort_lastused = true, winopts = winopts.large.vertical }),
         desc = "Buffers with preview",
+      },
+      {
+        "<leader>ss",
+        function()
+          require("fzf-lua").lsp_document_symbols({
+            regex_filter = symbols_filter,
+          })
+        end,
+        desc = "Goto Symbol",
+      },
+      {
+        "<leader>sS",
+        function()
+          require("fzf-lua").lsp_dynamic_workspace_symbols({
+            regex_filter = symbols_filter,
+          })
+        end,
+        desc = "Goto Symbol (Workspace)",
       },
     },
     opts = function()

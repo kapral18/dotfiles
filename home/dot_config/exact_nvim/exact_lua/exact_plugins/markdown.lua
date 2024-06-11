@@ -13,6 +13,7 @@ return {
   --     })
   --   end,
   -- },
+  { import = "lazyvim.plugins.extras.lang.markdown" },
   {
     "lukas-reineke/headlines.nvim",
     enabled = false,
