@@ -119,6 +119,10 @@ then
 			done | pbcopy
 	}
 
+	vid_ipad() {
+			ffmpeg -i $1 -af "loudnorm=I=-14:TP=-1.5:LRA=7,acompressor=threshold=-20dB:ratio=4:attack=200:release=1000,equalizer=f=30:t=q:w=1:g=5" -c:v libx264 -crf 17 -preset slow -c:a aac -b:a 192k $2
+	}
+
 	{{ if ne .isWork true }}
 	wpass() {
 			export PASSWORD_STORE_DIR={{ joinPath .chezmoi.homeDir ".password-store-work" | quote }}

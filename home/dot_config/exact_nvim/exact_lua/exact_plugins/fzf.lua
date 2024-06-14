@@ -183,50 +183,12 @@ return {
       local keys = require("lazyvim.plugins.lsp.keymaps").get()
       vim.list_extend(keys, {
         {
-          "gd",
-          get_fzf_fn(
-            "lsp_definitions",
-            { jump_to_single_result = true, ignore_current_line = true, winopts = winopts.large.vertical }
-          ),
-          desc = "Goto Definition",
-          has = "definition",
-          ft = nonts_ft,
-        },
-        {
           "gD",
           get_fzf_fn(
             "lsp_declarations",
             { jump_to_single_result = true, ignore_current_line = true, winopts = winopts.large.vertical }
           ),
           desc = "Goto Declarations",
-          ft = nonts_ft,
-        },
-        {
-          "gr",
-          get_fzf_fn(
-            "lsp_references",
-            { jump_to_single_result = true, ignore_current_line = true, winopts = winopts.large.vertical }
-          ),
-          desc = "References",
-          nowait = true,
-          ft = nonts_ft,
-        },
-        {
-          "gI",
-          get_fzf_fn(
-            "lsp_implementations",
-            { jump_to_single_result = true, ignore_current_line = true, winopts = winopts.large.vertical }
-          ),
-          desc = "Goto Implementation",
-          ft = nonts_ft,
-        },
-        {
-          "gy",
-          get_fzf_fn(
-            "lsp_typedefs",
-            { jump_to_single_result = true, ignore_current_line = true, winopts = winopts.large.vertical }
-          ),
-          desc = "Goto T[y]pe Definition",
           ft = nonts_ft,
         },
       })

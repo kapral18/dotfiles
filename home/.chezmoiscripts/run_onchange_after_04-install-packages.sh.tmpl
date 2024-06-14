@@ -15,7 +15,22 @@ echo "---------------------------------"
 
 # store an array in fish
 
-set -l cargo_install_packages ast-grep bandwhich cargo-update cargo-watch diskonaut git-brws hackernews_tui lemmeknow oatmeal tokei trippy viu
+set -l \
+    cargo_install_packages \
+    ast-grep \
+    bandwhich \
+    cargo-update \
+    cargo-watch \
+    diskonaut \
+    git-brws \
+    hackernews_tui \
+    lemmeknow \
+    oatmeal \
+    presenterm \
+    tdf \
+    tokei \
+    trippy \
+    viu
 
 for package in $cargo_install_packages
     if command -v $package &> /dev/null

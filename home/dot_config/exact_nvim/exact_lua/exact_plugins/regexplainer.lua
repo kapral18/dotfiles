@@ -9,7 +9,7 @@ return {
   -- stylua: ignore
   keys = {
     {
-      "gR",
+      "<leader>r",
       function()
         require("regexplainer").show()
       end,
