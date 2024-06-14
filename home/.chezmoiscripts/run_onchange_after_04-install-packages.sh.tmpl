@@ -41,7 +41,11 @@ for package in $cargo_install_packages
         echo "-----------------------------------"
         echo "cargo install $package: applying..."
         echo "-----------------------------------"
-        cargo install $package --locked
+        if test $package = "tdf"
+            cargo install --git https://github.com/itsjunetime/tdf
+        else
+            cargo install $package --locked
+        end
         echo "----------------------------"
         echo "cargo install $package: done"
         echo "----------------------------"
