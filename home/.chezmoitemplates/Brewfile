@@ -167,4 +167,5 @@ cask "skype"
 cask "slack"
 cask "telegram"
 cask "whatsapp"
+cask "vlc"
 {{ end -}}
