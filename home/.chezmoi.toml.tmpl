@@ -11,5 +11,10 @@ primaryPublicSshKey = {{ promptString "Enter your primary public SSH key*: " | q
 secondaryEmail = {{ promptString "Enter your secondary email (leave blank if not applicable): " | quote }}
 secondaryPublicSshKey = {{ promptString "Enter your secondary public SSH key (leave blank if not applicable): " | quote }}
 isWork = {{ promptBool "Is this a work machine? y/N" }}
-pgpCacheTtl = {{ promptString "Select Cache TTL for PGP config in sec:" "600" | quote -}}
+pgpCacheTtl = {{ promptString "Select Cache TTL for PGP config in sec:" "600" | quote }}
+{{ if eq .chezmoi.arch "amd64" }}
+homebrewPrefix = "/usr/local"
+{{ else }}
+homebrewPrefix = "/opt/homebrew"
+{{ end }}
 

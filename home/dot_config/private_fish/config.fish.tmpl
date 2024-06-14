@@ -51,18 +51,18 @@ set -gx FZF_CTRL_T_COMMAND "$FZF_DEFAULT_COMMAND"
 set -gx FZF_ALT_C_COMMAND "fd --type d $FD_OPTIONS"
 
 # Brew 
-set -gx HOMEBREW_PREFIX /opt/homebrew
-set -gx HOMEBREW_CELLAR /opt/homebrew/Cellar
-set -gx HOMEBREW_REPOSITORY /opt/homebrew
-set -gx MANPATH /opt/homebrew/share/man $MANPATH
-set -gx INFOPATH /opt/homebrew/share/info $INFOPATH
+set -gx HOMEBREW_PREFIX {{ .homebrewPrefix }}
+set -gx HOMEBREW_CELLAR {{ .homebrewPrefix }}/Cellar
+set -gx HOMEBREW_REPOSITORY {{ .homebrewPrefix }}
+set -gx MANPATH {{ .homebrewPrefix }}/share/man $MANPATH
+set -gx INFOPATH {{ .homebrewPrefix }}/share/info $INFOPATH
 
 # Bun
 set -gx BUN_INSTALL "$HOME/.bun"
 
 # Paths
-fish_add_path --path /opt/homebrew/bin
-fish_add_path --path /opt/homebrew/sbin
+fish_add_path --path {{ .homebrewPrefix }}/bin
+fish_add_path --path {{ .homebrewPrefix }}/sbin
 fish_add_path --path $RBENV_ROOT/bin
 fish_add_path --path $GOPATH/bin
 fish_add_path --path $HOME/.cargo/bin
@@ -149,13 +149,13 @@ end
 
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
-if test -f /opt/homebrew/Caskroom/miniconda/base/bin/conda
-    eval /opt/homebrew/Caskroom/miniconda/base/bin/conda "shell.fish" hook $argv | source
+if test -f {{ .homebrewPrefix }}/Caskroom/miniconda/base/bin/conda
+    eval {{ .homebrewPrefix }}/Caskroom/miniconda/base/bin/conda "shell.fish" hook $argv | source
 else
-    if test -f "/opt/homebrew/Caskroom/miniconda/base/etc/fish/conf.d/conda.fish"
-        . "/opt/homebrew/Caskroom/miniconda/base/etc/fish/conf.d/conda.fish"
+    if test -f "{{ .homebrewPrefix }}/Caskroom/miniconda/base/etc/fish/conf.d/conda.fish"
+        . "{{ .homebrewPrefix }}/Caskroom/miniconda/base/etc/fish/conf.d/conda.fish"
     else
-        set -x PATH /opt/homebrew/Caskroom/miniconda/base/bin $PATH
+        set -x PATH {{ .homebrewPrefix }}/Caskroom/miniconda/base/bin $PATH
     end
 end
 # <<< conda initialize <<<
