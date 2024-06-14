@@ -26,6 +26,10 @@ export XDG_MUSIC_DIR=$HOME/Music
 export XDG_PICTURES_DIR=$HOME/Pictures
 export XDG_VIDEOS_DIR=$HOME/Videos
 
+{{ if eq .chezmoi.arch "amd64" }}
+export GPG_TTY=$(tty)
+{{ end }}
+
 # Go
 export GOPATH=$HOME/go
 
