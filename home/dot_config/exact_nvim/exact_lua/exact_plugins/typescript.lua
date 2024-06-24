@@ -72,12 +72,12 @@ return {
     event = "BufReadPre",
     dependencies = { "nvim-lua/plenary.nvim", "neovim/nvim-lspconfig" },
     keys = {
-      { "gD", ft = ft_js, "<cmd>TSToolsGoToSourceDefinition", desc = "TSTools: Goto Source Definition" },
-      { "gR", ft = ft_js, "<cmd>TSToolsFileReferences", desc = "TSTools: File References" },
-      { "<leader>cia", ft = ft_js, "<cmd>TSToolsAddMissingImports", desc = "TSTools: Add missing imports" },
+      { "gD", ft = ft_js, "<cmd>TSToolsGoToSourceDefinition<cr>", desc = "TSTools: Goto Source Definition" },
+      { "gR", ft = ft_js, "<cmd>TSToolsFileReferences<cr>", desc = "TSTools: File References" },
+      { "<leader>cia", ft = ft_js, "<cmd>TSToolsAddMissingImports<cr>", desc = "TSTools: Add missing imports" },
       { "<leader>cir", ft = ft_js, "<cmd>TSToolsRemoveUnusedImports<cr>", desc = "TSTools: Remove Unused Imports" },
-      { "<leader>cD", ft = ft_js, "<cmd>TSToolsFixAll", desc = "TSTools: Fix all diagnostics" },
-      { "<leader>cR", ft = ft_js, "<cmd>TsToolsRenameFile", desc = "TSTools: Rename File" },
+      { "<leader>cD", ft = ft_js, "<cmd>TSToolsFixAll<cr>", desc = "TSTools: Fix all diagnostics" },
+      { "<leader>cR", ft = ft_js, "<cmd>TsToolsRenameFile<cr>", desc = "TSTools: Rename File" },
     },
     opts = {
       on_attach = function(client, bufnr)

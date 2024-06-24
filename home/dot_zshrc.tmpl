@@ -110,7 +110,7 @@ then
 
 	get_source_for_llm() {
 			# Description: get source for llm
-			fd -e ts -e tsx -E '*.test.*' -E 'mock' -E 'setup_tests.ts' --search-path "$1" -0 | while IFS= read -rd '' file
+			fd -e ts -e tsx -E '*test*' -E '*mock*' -E 'setup_tests.ts' -E 'target' --search-path "$1" -0 | while IFS= read -rd '' file
 			do
 					echo "===== $file ====="
 					cat "$file"

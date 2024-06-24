@@ -127,7 +127,7 @@ if status --is-interactive
     end 
 
     function get_source_for_llm -d "get source for llm"
-        fd -e ts -e tsx -E '*.test.*' -E 'mock' -E 'setup_tests.ts' --search-path $argv[1] -0 | while read -lz file
+        fd -e ts -e tsx -E '*test*' -E '*mock*' -E 'setup_tests.ts' -E 'target' --search-path $argv[1] -0 | while read -lz file
             echo "===== $file ====="
             cat "$file"
             echo
