@@ -16,27 +16,28 @@
 return {
   {
     "aznhe21/actions-preview.nvim",
-    init = function()
+    event = "LspAttach",
+    opts = function()
       local keys = require("lazyvim.plugins.lsp.keymaps").get()
 
       keys[#keys + 1] = { "<leader>ca", false }
-    end,
-    event = "LspAttach",
-    opts = {
-      telescope = {
-        sorting_strategy = "ascending",
-        layout_strategy = "vertical",
-        layout_config = {
-          width = 0.6,
-          height = 0.7,
-          prompt_position = "top",
-          preview_cutoff = 20,
-          preview_height = function(_, _, max_lines)
-            return max_lines - 15
-          end,
+
+      return {
+        telescope = {
+          sorting_strategy = "ascending",
+          layout_strategy = "vertical",
+          layout_config = {
+            width = 0.6,
+            height = 0.7,
+            prompt_position = "top",
+            preview_cutoff = 20,
+            preview_height = function(_, _, max_lines)
+              return max_lines - 15
+            end,
+          },
         },
-      },
-    },
+      }
+    end,
     keys = {
       {
         "<leader>ca",
@@ -50,30 +51,61 @@ return {
   },
   {
     "dnlhc/glance.nvim",
-    init = function()
+    opts = function()
       local keys = require("lazyvim.plugins.lsp.keymaps").get()
 
       keys[#keys + 1] = { "gd", false }
       keys[#keys + 1] = { "gr", false }
       keys[#keys + 1] = { "gy", false }
       keys[#keys + 1] = { "gI", false }
+
+      return {
+        border = {
+          enable = true,
+        },
+        use_trouble_qf = true,
+        hooks = {
+          before_open = function(results, open, jump, method)
+            local filter = function(arr, fn)
+              if type(arr) ~= "table" then
+                return arr
+              end
+
+              local filtered = {}
+              for k, v in pairs(arr) do
+                if fn(v, k, arr) then
+                  table.insert(filtered, v)
+                end
+              end
+
+              return filtered
+            end
+
+            local filterReactDTS = function(value)
+              if value.uri then
+                return string.match(value.uri, "%.d.ts") == nil
+              elseif value.targetUri then
+                return string.match(value.targetUri, "%.d.ts") == nil
+              end
+            end
+
+            if #results == 1 then
+              jump(results[1])
+            elseif method == "definitions" then
+              results = filter(results, filterReactDTS)
+              if #results == 1 then
+                jump(results[1])
+              else
+                open(results)
+              end
+            else
+              open(results)
+            end
+          end,
+        },
+      }
     end,
     cmd = { "Glance" },
-    opts = {
-      border = {
-        enable = true,
-      },
-      use_trouble_qf = true,
-      hooks = {
-        before_open = function(results, open, jump, method)
-          if #results == 1 then
-            jump(results[1])
-          else
-            open(results)
-          end
-        end,
-      },
-    },
     keys = {
       { "gd", "<CMD>Glance definitions<CR>", desc = "Goto Definition" },
       { "gr", "<CMD>Glance references<CR>", desc = "References" },

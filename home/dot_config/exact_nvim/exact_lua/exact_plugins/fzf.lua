@@ -157,44 +157,6 @@ return {
     },
   },
   {
-    "neovim/nvim-lspconfig",
-    init = function()
-      local nonts_ft = {
-        "lua",
-        "python",
-        "bash",
-        "sh",
-        "fish",
-        "go",
-        "ansible",
-        "docker",
-        "elixir",
-        "helm",
-        "json",
-        "markdown",
-        "python",
-        "ruby",
-        "rust",
-        "tailwind",
-        "terraform",
-        "tex",
-        "yaml",
-      }
-      local keys = require("lazyvim.plugins.lsp.keymaps").get()
-      vim.list_extend(keys, {
-        {
-          "gD",
-          get_fzf_fn(
-            "lsp_declarations",
-            { jump_to_single_result = true, ignore_current_line = true, winopts = winopts.large.vertical }
-          ),
-          desc = "Goto Declarations",
-          ft = nonts_ft,
-        },
-      })
-    end,
-  },
-  {
     "ibhagwan/fzf-lua",
     dependencies = { "nvim-tree/nvim-web-devicons" },
     keys = {
