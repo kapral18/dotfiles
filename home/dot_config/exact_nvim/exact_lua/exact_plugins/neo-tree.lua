@@ -58,8 +58,8 @@ return {
     },
     window = {
       mappings = {
-        ["tf"] = "telescope_find",
-        ["tg"] = "telescope_grep",
+        ["<leader>nf"] = "telescope_find",
+        ["<leader>ng"] = "telescope_grep",
         ["K"] = "focus_parent",
         ["D"] = "diff_files",
         ["r"] = "git_rename",
