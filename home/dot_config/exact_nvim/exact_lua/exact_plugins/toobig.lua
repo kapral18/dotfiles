@@ -2,6 +2,7 @@ return {
   {
     "kapral18/bigfile.nvim",
     event = "BufReadPre",
+    enabled = false,
     opts = {
       pattern = function(bufnr)
         local filename = vim.api.nvim_buf_get_name(bufnr)

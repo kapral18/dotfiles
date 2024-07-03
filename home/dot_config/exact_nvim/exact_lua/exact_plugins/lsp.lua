@@ -92,20 +92,24 @@ return {
 
           local filterReactDTS = function(value)
             if value.uri then
-              return string.match(value.uri, "%.d.ts") == nil
+              return string.match(value.uri, "%.d%.ts") == nil
             elseif value.targetUri then
-              return string.match(value.targetUri, "%.d.ts") == nil
+              return string.match(value.targetUri, "%.d%.ts") == nil
             end
           end
 
           if #results == 1 then
             jump(results[1])
           elseif method == "definitions" then
-            results = filter(results, filterReactDTS)
-            if #results == 1 then
-              jump(results[1])
-            else
+            local filtered_results = filter(results, filterReactDTS)
+            if #filtered_results == 1 then
+              jump(filtered_results[1])
+            -- covering edge case when all results are d.ts so we want to show them
+            -- otherwise errors out with empty panel
+            elseif #filtered_results == 0 then
               open(results)
+            else
+              open(filtered_results)
             end
           else
             open(results)
