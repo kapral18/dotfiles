@@ -5,9 +5,13 @@ return {
     dependencies = {
       "RRethy/nvim-treesitter-endwise",
       "chrisgrieser/nvim-puppeteer",
+      "filNaj/tree-setter",
     },
     opts = {
       endwise = {
+        enable = true,
+      },
+      tree_setter = {
         enable = true,
       },
     },

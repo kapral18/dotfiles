@@ -70,7 +70,7 @@ return {
   {
     "pmizio/typescript-tools.nvim",
     event = "BufReadPre",
-    dependencies = { "nvim-lua/plenary.nvim", "neovim/nvim-lspconfig" },
+    dependencies = { "nvim-lua/plenary.nvim", "neovim/nvim-lspconfig", "artemave/workspace-diagnostics.nvim" },
     keys = {
       { "gD", ft = ft_js, "<cmd>TSToolsGoToSourceDefinition<cr>", desc = "TSTools: Goto Source Definition" },
       { "gR", ft = ft_js, "<cmd>TSToolsFileReferences<cr>", desc = "TSTools: File References" },

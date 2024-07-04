@@ -106,6 +106,21 @@ return {
     end,
   },
   {
+    "akinsho/git-conflict.nvim",
+    event = "VeryLazy",
+    opts = {
+      default_mappings = {
+        ours = "<leader>gxo",
+        theirs = "<leader>gxt",
+        none = "<leader>gx0",
+        both = "<leader>gxb",
+        next = "]x",
+        prev = "[x",
+      },
+      disable_diagnostics = true,
+    },
+  },
+  {
     "nvim-cmp",
     dependencies = {
       { "petertriho/cmp-git", opts = {} },

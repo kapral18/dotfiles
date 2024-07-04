@@ -103,4 +103,43 @@ return {
       )
     end,
   },
+  {
+    "andythigpen/nvim-coverage",
+    keys = {
+      { "<leader>tc", "<cmd>CoverageToggle<cr>", desc = "Coverage in gutter" },
+      { "<leader>tC", "<cmd>CoverageLoad<cr><cmd>CoverageSummary<cr>", desc = "Coverage summary" },
+    },
+    opts = {
+      auto_reload = true,
+      lang = {
+        go = {
+          coverage_file = vim.fn.getcwd() .. "/coverage.out",
+        },
+        python = {
+          coverage_file = vim.fn.getcwd() .. "/coverage.out",
+        },
+        rust = {
+          -- grcov cargo install grcov
+          coverage_command = table.concat({
+            "grcov ./ -s ./ --binary-path ./target/llvm-cov-target/ -t",
+            "coveralls --branch --ignore-not-existing --token NO_TOKEN",
+          }, " "),
+          project_files_only = true,
+          project_files = {
+            "src/*",
+            "tests/*",
+            "cortex/src/*",
+            "cortex/examples/*",
+            "cortex/examples",
+            "examples/*",
+            "examples",
+          },
+        },
+      },
+      signs = {
+        covered = { hl = "CoverageCovered", text = "▎" },
+        uncovered = { hl = "CoverageUncovered", text = "▎" },
+      },
+    },
+  },
 }

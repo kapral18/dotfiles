@@ -28,6 +28,10 @@ return {
       },
     },
     opts = {
+      diff = {
+        algorithm = "patience",
+        ignore_whitespace = true,
+      },
       telescope = {
         sorting_strategy = "ascending",
         layout_strategy = "vertical",
@@ -126,11 +130,6 @@ return {
     },
   },
   {
-    "smjonas/inc-rename.nvim",
-    cmd = "IncRename",
-    opts = {},
-  },
-  {
     "kosayoda/nvim-lightbulb",
     event = "LspAttach",
     opts = {
@@ -148,18 +147,75 @@ return {
     opts = {
       alpha = 0.60,
     },
-    -- enable after 0.10
-    enabled = false,
-  },
-  {
-    "artemave/workspace-diagnostics.nvim",
-    event = "LspAttach",
-    opts = {},
   },
   {
     "neovim/nvim-lspconfig",
     opts = {
       inlay_hints = { enabled = false },
     },
+  },
+  -- disagnostics off in input mode
+  {
+    "yorickpeterse/nvim-dd",
+    event = "LspAttach",
+    opts = {
+      timeout = 1000,
+    },
+  },
+  {
+    "lewis6991/hover.nvim",
+    dependencies = {
+      {
+        "neovim/nvim-lspconfig",
+        opts = function()
+          local keys = require("lazyvim.plugins.lsp.keymaps").get()
+
+          keys[#keys + 1] = { "K", false }
+          keys[#keys + 1] = { "gK", false }
+          keys[#keys + 1] = { "<c-k>", false }
+        end,
+      },
+    },
+    opts = {
+      init = function()
+        require("hover.providers.lsp")
+        require("hover.providers.gh")
+        require("hover.providers.gh_user")
+        require("hover.providers.jira")
+        require("hover.providers.dap")
+        require("hover.providers.fold_preview")
+        require("hover.providers.diagnostic")
+        require("hover.providers.man")
+        require("hover.providers.dictionary")
+      end,
+      preview_opts = {
+        border = "single",
+      },
+      preview_window = false,
+      title = true,
+      mouse_providers = {
+        "LSP",
+      },
+      mouse_delay = 1000,
+    },
+    keys = {
+      -- Setup keymaps
+      -- stylua: ignore start
+      { "K", function()require("hover").hover()end, desc = "hover.nvim",  },
+      { "<c-k>", function()require("hover").hover()end, mode = "i", desc = "hover.nvim",  },
+      { "gK", function()require("hover").hover_select()end, desc = "hover.nvim (select)",  },
+      { "[k", function()require("hover").hover_switch("previous")end, desc = "hover.nvim (previous source)",  },
+      { "]k", function()require("hover").hover_switch("next")end, desc = "hover.nvim (next source)",  },
+      -- Mouse support
+      { "<MouseMove>", function()require("hover").hover_mouse()end, desc = "hover.nvim (mouse)",  },
+      -- stylua: ignore end
+    },
+  },
+  {
+    "utilyre/barbecue.nvim",
+    event = "LspAttach",
+    version = "*",
+    dependencies = { "SmiteshP/nvim-navic" },
+    opts = {},
   },
 }

@@ -11,29 +11,6 @@ local tabouts = {
 return {
   {
     "hrsh7th/nvim-cmp",
-    dependencies = {
-      {
-        "abecodes/tabout.nvim",
-        config = function()
-          require("tabout").setup({
-            tabkey = "", -- key to trigger tabout, set to an empty string to disable
-            backwards_tabkey = "", -- key to trigger backwards tabout, set to an empty string to disable
-            act_as_tab = false, -- shift content if tab out is not possible
-            act_as_shift_tab = false, -- reverse shift content if tab out is not possible (if your keyboard/terminal supports <S-Tab>)
-            default_tab = "", -- shift default action (only at the beginning of a line, otherwise <TAB> is used)
-            default_shift_tab = "", -- reverse shift default action,
-            enable_backwards = true, -- well ...
-            completion = false, -- if the tabkey is used in a completion pum
-            tabouts = tabouts,
-            ignore_beginning = false, --[[ if the cursor is at the beginning of a filled element it will rather tab out than shift the content ]]
-            exclude = {}, -- tabout will ignore these filetypes
-          })
-        end,
-        dependencies = { -- These are optional
-          "nvim-treesitter/nvim-treesitter",
-        },
-      },
-    },
     -- overriding lazyvim native snippets tab behavior
     keys = function()
       return {}
@@ -61,7 +38,8 @@ return {
       opts.mapping = vim.tbl_extend("force", opts.mapping, {
         ["<Tab>"] = cmp.mapping(function(fallback)
           unpack = unpack or table.unpack
-          local _, cur_col = unpack(vim.api.nvim_win_get_cursor(0))
+          local cur_row, cur_col = unpack(vim.api.nvim_win_get_cursor(0))
+          print(cur_col)
           local current_line = vim.api.nvim_get_current_line()
           local char_after_cursor = current_line:sub(cur_col + 1, cur_col + 1)
           local tabout_symbols = {}
@@ -70,8 +48,8 @@ return {
             table.insert(tabout_symbols, tabout.close)
           end
 
-          if vim.tbl_contains(tabout_symbols, char_after_cursor) and require("tabout").is_enabled() then
-            require("tabout").tabout()
+          if vim.tbl_contains(tabout_symbols, char_after_cursor) then
+            vim.api.nvim_win_set_cursor(0, { cur_row, cur_col + 1 })
           elseif cmp.visible() then
             cmp.select_next_item()
             -- You could replace the expand_or_jumpable() calls with expand_or_locally_jumpable()
@@ -88,7 +66,7 @@ return {
         end, { "i", "s" }),
         ["<S-Tab>"] = cmp.mapping(function(fallback)
           unpack = unpack or table.unpack
-          local _, cur_col = unpack(vim.api.nvim_win_get_cursor(0))
+          local cur_row, cur_col = unpack(vim.api.nvim_win_get_cursor(0))
           local current_line = vim.api.nvim_get_current_line()
           local char_before_cursor = current_line:sub(cur_col, cur_col)
           local tabout_symbols = {}
@@ -97,8 +75,8 @@ return {
             table.insert(tabout_symbols, tabout.close)
           end
 
-          if vim.tbl_contains(tabout_symbols, char_before_cursor) and require("tabout").is_enabled() then
-            require("tabout").taboutBack()
+          if vim.tbl_contains(tabout_symbols, char_before_cursor) then
+            vim.api.nvim_win_set_cursor(0, { cur_row, cur_col - 1 })
           elseif cmp.visible() then
             cmp.select_prev_item()
           elseif vim.snippet.active({ direction = -1 }) then

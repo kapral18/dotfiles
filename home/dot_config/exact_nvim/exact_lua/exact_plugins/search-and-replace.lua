@@ -5,6 +5,7 @@ return {
   },
   {
     "dyng/ctrlsf.vim",
+    enabled = false,
     keys = {
       { "<leader>srr", "<Plug>CtrlSFCwordPath", desc = "S&R Word Under Cursor" },
       { "<leader>srb", "<Plug>CtrlSFCCwordPath", desc = "S&R Word Under Cursor (With Boundaries)" },
@@ -63,6 +64,42 @@ return {
         end,
         mode = { "n", "x" },
         desc = "Structural Replace",
+      },
+    },
+  },
+  {
+    "MagicDuck/grug-far.nvim",
+    event = "VeryLazy",
+    opts = function()
+      vim.api.nvim_create_autocmd("FileType", {
+        group = vim.api.nvim_create_augroup("extra-grug-far-keybinds", { clear = true }),
+        pattern = { "grug-far" },
+        callback = function()
+          vim.keymap.set("n", "<localleader>w", function()
+            require("grug-far").toggle_flags({ "--fixed-strings" })
+          end, { buffer = true })
+          vim.keymap.set("n", "<localleader>i", function()
+            require("grug-far").toggle_flags({ "--no-ignore" })
+          end, { buffer = true })
+          vim.keymap.set("n", "<localleader>h", function()
+            require("grug-far").toggle_flags({ "--hidden" })
+          end, { buffer = true })
+        end,
+      })
+    end,
+    keys = {
+      {
+        "<leader>srr",
+        function()
+          require("grug-far").grug_far({ prefills = { search = vim.fn.expand("<cword>") } })
+        end,
+        desc = "S&R Word Under Cursor",
+      },
+      {
+        "<leader>srr",
+        "<cmd><C-u>lua require('grug-far').with_visual_selection()",
+        desc = "S&R Word Under Cursor",
+        mode = "x",
       },
     },
   },
