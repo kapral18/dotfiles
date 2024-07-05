@@ -208,21 +208,14 @@ return {
     keys = {
       -- Setup keymaps
       -- stylua: ignore start
-      { "K", function()require("hover").hover()end, desc = "hover.nvim",  },
-      { "<c-k>", function()require("hover").hover()end, mode = "i", desc = "hover.nvim",  },
-      { "gK", function()require("hover").hover_select()end, desc = "hover.nvim (select)",  },
-      { "[k", function()require("hover").hover_switch("previous")end, desc = "hover.nvim (previous source)",  },
-      { "]k", function()require("hover").hover_switch("next")end, desc = "hover.nvim (next source)",  },
+      { "K", function() require("hover").hover() end, desc = "hover.nvim",  },
+      { "<c-k>", function() require("hover").hover() end, mode = "i", desc = "hover.nvim",  },
+      { "gK", function() require("hover").hover_select() end, desc = "hover.nvim (select)",  },
+      { "[k", function() require("hover").hover_switch("previous") end, desc = "hover.nvim (previous source)",  },
+      { "]k", function() require("hover").hover_switch("next") end, desc = "hover.nvim (next source)",  },
       -- Mouse support
-      { "<MouseMove>", function()require("hover").hover_mouse()end, desc = "hover.nvim (mouse)",  },
+      { "<MouseMove>", function() require("hover").hover_mouse() end, desc = "hover.nvim (mouse)",  },
       -- stylua: ignore end
     },
-  },
-  {
-    "utilyre/barbecue.nvim",
-    event = "LspAttach",
-    version = "*",
-    dependencies = { "SmiteshP/nvim-navic" },
-    opts = {},
   },
 }
