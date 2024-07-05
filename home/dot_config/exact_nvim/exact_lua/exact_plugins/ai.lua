@@ -38,38 +38,42 @@ return {
   {
     "zbirenbaum/copilot.lua",
     event = "InsertEnter",
-    opts = {
-      filetypes = {
-        ["*"] = function()
-          local file_size = vim.fn.getfsize(vim.fn.expand("%"))
-          if file_size > 100000 or file_size == -2 then
-            return false
-          end
-          return true
-        end,
-        gitcommit = false,
-        TelescopePrompt = false,
-      },
-      suggestion = {
-        enabled = false,
-        auto_trigger = false,
-        keymap = {
-          accept_word = false,
-          accept_line = false,
+    opts = function()
+      vim.api.nvim_set_hl(0, "CopilotSuggestion", { fg = "#83a598" })
+      vim.api.nvim_set_hl(0, "CopilotAnnotation", { fg = "#03a598" })
+      return {
+        filetypes = {
+          ["*"] = function()
+            local file_size = vim.fn.getfsize(vim.fn.expand("%"))
+            if file_size > 100000 or file_size == -2 then
+              return false
+            end
+            return true
+          end,
+          gitcommit = false,
+          TelescopePrompt = false,
         },
-      },
-      panel = {
-        enabled = false,
-      },
-      server_opts_overrides = {
-        trace = "verbose",
-        settings = {
-          advanced = {
-            listCount = 3,
-            inlineSuggestCount = 3,
+        suggestion = {
+          enabled = false,
+          auto_trigger = false,
+          keymap = {
+            accept_word = false,
+            accept_line = false,
           },
         },
-      },
-    },
+        panel = {
+          enabled = false,
+        },
+        server_opts_overrides = {
+          trace = "verbose",
+          settings = {
+            advanced = {
+              listCount = 3,
+              inlineSuggestCount = 3,
+            },
+          },
+        },
+      }
+    end,
   },
 }

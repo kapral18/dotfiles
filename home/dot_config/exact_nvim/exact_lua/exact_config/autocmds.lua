@@ -30,6 +30,20 @@ aucmd({ "FileType" }, {
   end,
 })
 
+-- Enable syntax highlighting for tmux configuration files when entering
+aucmd("BufEnter", {
+  group = "k18",
+  pattern = { "*.tmux.conf", "tmux.conf" },
+  command = "syntax on",
+})
+
+-- Disable syntax highlighting for tmux configuration files when leaving
+aucmd("BufLeave", {
+  group = "k18",
+  pattern = { "*.tmux.conf", "tmux.conf" },
+  command = "syntax off",
+})
+
 --persist folds
 aucmd({ "BufLeave", "BufWinLeave" }, {
   group = "k18",

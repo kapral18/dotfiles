@@ -141,11 +141,18 @@ return {
       },
     },
   },
+  -- {
+  --   "zbirenbaum/neodim",
+  --   event = "LspAttach",
+  --   opts = {
+  --     alpha = 0.60,
+  --   },
+  -- },
   {
-    "zbirenbaum/neodim",
+    "0oAstro/dim.lua",
     event = "LspAttach",
     opts = {
-      alpha = 0.60,
+      disable_lsp_decorations = true,
     },
   },
   {
