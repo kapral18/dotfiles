@@ -76,7 +76,7 @@ return {
       border = {
         enable = true,
       },
-      use_trouble_qf = true,
+      use_trouble_qf = false,
       hooks = {
         before_open = function(results, open, jump, method)
           local filter = function(arr, fn)

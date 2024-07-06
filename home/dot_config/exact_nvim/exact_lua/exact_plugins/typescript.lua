@@ -82,14 +82,13 @@ return {
     opts = {
       settings = {
         code_lens = "off",
-        expose_as_code_action = "all",
         complete_function_calls = true,
         include_completions_with_insert_text = true,
         separate_diagnostic_server = true,
         publish_diagnostic_on = "insert_leave",
         tsserver_path = nil,
         tsserver_plugins = {},
-        tsserver_max_memory = 16250,
+        tsserver_max_memory = 32500,
         tsserver_format_options = {},
         tsserver_file_preferences = {
           completions = { completeFunctionCalls = true },
@@ -107,7 +106,7 @@ return {
     "dmmulroy/tsc.nvim",
     opts = {
       auto_start_watch_mode = false,
-      use_trouble_qflist = true,
+      use_trouble_qflist = false,
       flags = {
         watch = false,
       },
