@@ -15,6 +15,12 @@
 
 return {
   {
+    "neovim/nvim-lspconfig",
+    opts = {
+      inlay_hints = { enabled = false },
+    },
+  },
+  {
     "aznhe21/actions-preview.nvim",
     event = "LspAttach",
     dependencies = {
@@ -141,24 +147,11 @@ return {
       },
     },
   },
-  -- {
-  --   "zbirenbaum/neodim",
-  --   event = "LspAttach",
-  --   opts = {
-  --     alpha = 0.60,
-  --   },
-  -- },
   {
     "0oAstro/dim.lua",
     event = "LspAttach",
     opts = {
       disable_lsp_decorations = true,
-    },
-  },
-  {
-    "neovim/nvim-lspconfig",
-    opts = {
-      inlay_hints = { enabled = false },
     },
   },
   -- disagnostics off in input mode

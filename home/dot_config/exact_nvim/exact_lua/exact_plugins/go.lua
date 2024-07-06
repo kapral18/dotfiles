@@ -3,12 +3,6 @@ return {
   {
     "ray-x/go.nvim",
     ft = { "go", "gomod", "gosum", "gowork", "gotmpl" },
-    dependencies = {
-      {
-        "ray-x/guihua.lua",
-        build = "cd lua/fzy && make",
-      },
-    },
     opts = function()
       vim.api.nvim_set_hl(0, "goCoverageUncover", { fg = "#f9e2af" })
       vim.api.nvim_set_hl(0, "goCoverageUncovered", { fg = "#F38BA8" })
@@ -42,6 +36,5 @@ return {
         dap_debug_vt = { enabled_commands = true, all_frames = true },
       }
     end,
-    build = ':lua require("go.install").update_all_sync()',
   },
 }

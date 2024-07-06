@@ -129,3 +129,14 @@ vim.keymap.set("n", "<leader>ws", function()
   -- Set up key maps for the scratch buffer when it is created
   setup_keymaps()
 end, { desc = "Scratch buffer" })
+
+-- Add a space before the current line
+vim.keymap.set(
+  "n",
+  "[<leader>",
+  "O<Esc><Down>",
+  { noremap = true, silent = true, desc = "Add space before current line" }
+)
+
+-- Add a space after the current line
+vim.keymap.set("n", "]<leader>", "o<Esc><Up>", { noremap = true, silent = true, desc = "Add space after current line" })

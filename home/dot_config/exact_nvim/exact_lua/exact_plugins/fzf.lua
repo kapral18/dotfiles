@@ -437,6 +437,7 @@ return {
             ["ctrl-y"] = function(selected)
               print(selected[1])
             end,
+            ["ctrl-r"] = { actions.toggle_ignore },
           },
         },
         git = {
@@ -467,6 +468,9 @@ return {
           prompt = "Live Grep❯ ",
           input_prompt = "Grep❯ ",
           rg_opts = rg_opts,
+          actions = {
+            ["ctrl-r"] = { actions.toggle_ignore },
+          },
         },
         args = {
           prompt = "Args❯ ",

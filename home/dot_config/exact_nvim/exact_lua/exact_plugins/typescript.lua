@@ -43,7 +43,7 @@ return {
       setup = {
         tsserver = function()
           -- disable tsserver
-          return true
+          return false
         end,
       },
     },
