@@ -82,6 +82,7 @@ return {
       border = {
         enable = true,
       },
+      height = 30,
       use_trouble_qf = false,
       hooks = {
         before_open = function(results, open, jump, method)
