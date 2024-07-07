@@ -5,60 +5,6 @@ vim.g.lazyvim_python_lsp = "basedpyright"
 return {
   { import = "lazyvim.plugins.extras.lang.python" },
   {
-    "neovim/nvim-lspconfig",
-    opts = {
-      servers = {
-        ---@type lspconfig.options.basedpyright
-        basedpyright = {
-          settings = {
-            basedpyright = {
-              analysis = {
-                diagnosticSeverityOverrides = {
-                  reportUnusedCallResult = "information",
-                  reportUnusedExpression = "information",
-                  reportUnknownMemberType = "none",
-                  reportUnknownLambdaType = "none",
-                  reportUnknownParameterType = "none",
-                  reportMissingParameterType = "none",
-                  reportUnknownVariableType = "none",
-                  reportUnknownArgumentType = "none",
-                  reportAny = "none",
-                },
-              },
-            },
-          },
-        },
-        ---@type lspconfig.options.pyright
-        pyright = {
-          settings = {
-            verboseOutput = true,
-            autoImportCompletion = true,
-            python = {
-              analysis = {
-                diagnosticSeverityOverrides = {
-                  reportWildcardImportFromLibrary = "none",
-                  reportUnusedImport = "information",
-                  reportUnusedClass = "information",
-                  reportUnusedFunction = "information",
-                },
-                typeCheckingMode = "strict",
-                autoSearchPaths = true,
-                useLibraryCodeForTypes = true,
-                diagnosticMode = "openFilesOnly",
-                indexing = true,
-              },
-            },
-          },
-        },
-        ruff = {
-          handlers = {
-            ["textDocument/publishDiagnostics"] = function() end,
-          },
-        },
-      },
-    },
-  },
-  {
     "nvim-treesitter/nvim-treesitter",
     opts = function(_, opts)
       if type(opts.ensure_installed) == "table" then

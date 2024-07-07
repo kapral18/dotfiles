@@ -3,26 +3,36 @@
 import argparse
 import subprocess
 import mimetypes
+from dataclasses import dataclass
 
 
-def is_image(file_path):
+def is_image(file_path: str):
     mime_type, _ = mimetypes.guess_type(file_path)
-    return mime_type and mime_type.startswith("image/")
+    return mime_type is not None and mime_type.startswith("image/")
+
+
+@dataclass
+class BatArgs(argparse.Namespace):
+    file: str
+    args: list[str]
 
 
 def main():
     parser = argparse.ArgumentParser(
         description="Wrapper for bat to handle image files with chafa."
     )
-    parser.add_argument("file", nargs="?", help="Filename")
+    parser.add_argument("file", help="Filename")
     parser.add_argument("args", nargs=argparse.REMAINDER, help="Arguments for bat")
 
-    options, unknown_args = parser.parse_known_args()
+    args: BatArgs
+    unknown_args: list[str]
+    args, unknown_args = parser.parse_known_args(namespace=BatArgs("", []))
 
-    if options.file and is_image(options.file):
-        subprocess.run(["chafa", options.file])
+    if is_image(args.file):
+        subprocess.run(["chafa", args.file])
     else:
-        subprocess.run(["bat", options.file] + options.args + unknown_args)
+        cmd = ["bat", args.file] + args.args + unknown_args
+        subprocess.run(cmd)
 
 
 if __name__ == "__main__":
