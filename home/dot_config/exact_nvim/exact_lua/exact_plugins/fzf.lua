@@ -385,15 +385,25 @@ return {
           ["--prompt"] = "  ",
           ["--keep-right"] = false,
         },
-        builtin = {
-          prompt = "Builtin❯ ",
-          extensions = {
-            -- neovim terminal only supports `viu` block output
-            ["png"] = { "viu" },
-            -- by default the filename is added as last argument
-            -- if required, use `{file}` for argument positioning
-            ["svg"] = { "chafa", "{file}" },
-            ["jpg"] = { "viu" },
+        previewers = {
+          bat = {
+            cmd = "bat_preview",
+            -- uncomment to set a bat theme, `bat --list-themes`
+            theme = "Catppuccin-mocha",
+          },
+          builtin = {
+            prompt = "Builtin❯ ",
+            extensions = {
+              -- neovim terminal only supports `viu` block output
+              ["png"] = { "chafa" },
+              ["jpg"] = { "chafa" },
+              ["svg"] = { "chafa" },
+              ["jpeg"] = { "chafa" },
+              ["bpm"] = { "chafa" },
+              ["tiff"] = { "chafa" },
+              ["webp"] = { "chafa" },
+              ["avif"] = { "chafa" },
+            },
           },
         },
         marks = {

@@ -52,8 +52,27 @@ export HOMEBREW_REPOSITORY="{{ .homebrewPrefix }}";
 export MANPATH="{{ .homebrewPrefix }}/share/man${MANPATH+:$MANPATH}:";
 export INFOPATH="{{ .homebrewPrefix }}/share/info:${INFOPATH:-}";
 
+# Bun
+export BUN_INSTALL="$HOME/.bun"
+
+# Bat
+export BAT_THEME="Catppuccin-mocha"
+
 # Paths
-export PATH="/usr/local/opt/libpq/bin:/usr/local/opt/ruby/bin:/usr/local/opt/ssh-copy-id/bin:/usr/local/opt/coreutils/libexec/gnubin:/usr/local/sbin:{{ .homebrewPrefix }}/sbin:{{ .homebrewPrefix }}/bin:$RBENV_ROOT/bin:$GOPATH/bin:$HOME/.cargo/bin:$HOME/.local/bin:$HOME/bin:$PATH"
+export PATH="/usr/local/opt/libpq/bin:$PATH"
+export PATH="/usr/local/opt/ruby/bin:$PATH"
+export PATH="/usr/local/opt/ssh-copy-id/bin:$PATH"
+export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
+export PATH="/usr/local/sbin:$PATH"
+export PATH="{{ .homebrewPrefix }}/sbin:$PATH"
+export PATH="{{ .homebrewPrefix }}/bin:$PATH"
+export PATH="$RBENV_ROOT/bin:$PATH"
+export PATH="$GOPATH/bin:$PATH"
+export PATH="$HOME/.cargo/bin:$PATH"
+export PATH="$HOME/.local/share/yarn/global/node_modules/.bin/:$PATH"
+export PATH="$HOME/.local/bin:$PATH"
+export PATH="$BUN_INSTALL/bin:$PATH"
+export PATH="$HOME/bin:$PATH"
 
 # 1Password ssh agent
 export SSH_AUTH_SOCK="$HOME/Library/Group\ Containers/2BUA8C4S2C.com.1password/t/agent.sock"

@@ -82,12 +82,13 @@ return {
       },
     },
     opts = {},
-    -- stylua: ignore
+    -- stylua: ignore start
     keys = {
       { "<leader>ppu", function() require("py-requirements").upgrade() end, desc = "Update Package" },
       { "<leader>ppi", function() require("py-requirements").show_description() end, desc = "Package Info" },
       { "<leader>ppa", function() require("py-requirements").upgrade_all() end, desc = "Update All Packages" },
     },
+    -- stylua: ignore end
   },
   {
     "folke/which-key.nvim",

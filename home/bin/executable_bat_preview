@@ -1,0 +1,29 @@
+#!/usr/bin/env python
+
+import argparse
+import subprocess
+import mimetypes
+
+
+def is_image(file_path):
+    mime_type, _ = mimetypes.guess_type(file_path)
+    return mime_type and mime_type.startswith("image/")
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Wrapper for bat to handle image files with chafa."
+    )
+    parser.add_argument("file", nargs="?", help="Filename")
+    parser.add_argument("args", nargs=argparse.REMAINDER, help="Arguments for bat")
+
+    options, unknown_args = parser.parse_known_args()
+
+    if options.file and is_image(options.file):
+        subprocess.run(["chafa", options.file])
+    else:
+        subprocess.run(["bat", options.file] + options.args + unknown_args)
+
+
+if __name__ == "__main__":
+    main()
