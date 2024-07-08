@@ -39,7 +39,6 @@ return {
         ["<Tab>"] = cmp.mapping(function(fallback)
           unpack = unpack or table.unpack
           local cur_row, cur_col = unpack(vim.api.nvim_win_get_cursor(0))
-          print(cur_col)
           local current_line = vim.api.nvim_get_current_line()
           local char_after_cursor = current_line:sub(cur_col + 1, cur_col + 1)
           local tabout_symbols = {}

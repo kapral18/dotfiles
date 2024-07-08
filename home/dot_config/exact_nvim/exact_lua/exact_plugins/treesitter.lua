@@ -171,21 +171,21 @@ return {
             },
           },
           -- Imitate word ignoring digits and punctuation (supports only Latin alphabet):
-          W = { {
-            "()()%f[%w%p][%w%p]+()[ \t]*()",
-          } },
+          -- W = { {
+          --   "()()%f[%w%p][%w%p]+()[ \t]*()",
+          -- } },
           -- Word, ignoring punctuation and digits
           -- w = { "()()%f[%w_][%w_]+()[ \t]*()" },
           -- Word, with camel case support (supports only Latin alphabet) TestTest
-          w = {
-            {
-              "%u[%l%d]+%f[^%l%d]",
-              "%f[%S][%l%d]+%f[^%l%d]",
-              "%f[%P][%l%d]+%f[^%l%d]",
-              "^[%l%d]+%f[^%l%d]",
-            },
-            "^().*()$",
-          },
+          -- w = {
+          --   {
+          --     "%u[%l%d]+%f[^%l%d]",
+          --     "%f[%S][%l%d]+%f[^%l%d]",
+          --     "%f[%P][%l%d]+%f[^%l%d]",
+          --     "^[%l%d]+%f[^%l%d]",
+          --   },
+          --   "^().*()$",
+          -- },
           -- Lua block '%[%[().-()%]%]'
           -- date '()%d%d%d%d%-%d%d%-%d%d()'
         },
