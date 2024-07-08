@@ -11,6 +11,7 @@ return {
     "ggandor/leap-spooky.nvim",
     opts = {
       paste_on_remote_yank = true,
+      prefix = true,
       -- stylua: ignore start
       extra_text_objects = { "iq", "aq", "iv", "av", "ik", "ak" },
       -- stylua: ignore end
