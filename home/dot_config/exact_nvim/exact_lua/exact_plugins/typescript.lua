@@ -1,4 +1,6 @@
 local ft_js = {
+  "tsx",
+  "jsx",
   "javascript",
   "javascriptreact",
   "javascript.jsx",
@@ -6,6 +8,7 @@ local ft_js = {
   "typescriptreact",
   "typescript.tsx",
 }
+
 local ft_json = { "json", "jsonl", "jsonc" }
 local util = require("lspconfig.util")
 
@@ -69,16 +72,74 @@ return {
   },
   {
     "pmizio/typescript-tools.nvim",
-    event = "BufReadPre",
-    dependencies = { "nvim-lua/plenary.nvim", "neovim/nvim-lspconfig", "artemave/workspace-diagnostics.nvim" },
-    keys = {
-      { "gD", ft = ft_js, "<cmd>TSToolsGoToSourceDefinition<cr>", desc = "TSTools: Goto Source Definition" },
-      { "gR", ft = ft_js, "<cmd>TSToolsFileReferences<cr>", desc = "TSTools: File References" },
-      { "<leader>cia", ft = ft_js, "<cmd>TSToolsAddMissingImports<cr>", desc = "TSTools: Add missing imports" },
-      { "<leader>cir", ft = ft_js, "<cmd>TSToolsRemoveUnusedImports<cr>", desc = "TSTools: Remove Unused Imports" },
-      { "<leader>cD", ft = ft_js, "<cmd>TSToolsFixAll<cr>", desc = "TSTools: Fix all diagnostics" },
-      { "<leader>cR", ft = ft_js, "<cmd>TsToolsRenameFile<cr>", desc = "TSTools: Rename File" },
+    lazy = false,
+    dependencies = {
+      "nvim-lua/plenary.nvim",
+      {
+        "neovim/nvim-lspconfig",
+        opts = function()
+          local Keys = require("lazyvim.plugins.lsp.keymaps").get()
+          local originalKeysCache = {}
+          -- stylua: ignore start
+          local TSToolsKeys = {
+            { key = "gD", ft = ft_js, cmd = "<cmd>TSToolsGoToSourceDefinition<cr>", desc = "TSTools: Goto Source Definition" },
+            { key = "gR", ft = ft_js, cmd = "<cmd>TSToolsFileReferences<cr>", desc = "TSTools: File References" },
+            { key = "<leader>cia", ft = ft_js, cmd = "<cmd>TSToolsAddMissingImports<cr>", desc = "TSTools: Add missing imports" },
+            { key = "<leader>cir", ft = ft_js, cmd = "<cmd>TSToolsRemoveUnusedImports<cr>", desc = "TSTools: Remove Unused Imports",  },
+            { key = "<leader>cD", ft = ft_js, cmd = "<cmd>TSToolsFixAll<cr>", desc = "TSTools: Fix all diagnostics" },
+            { key = "<leader>cR", ft = ft_js, cmd = "<cmd>TSToolsRenameFile<cr>", desc = "TSTools: Rename File" },
+          }
+          -- stylua: ignore end
+
+          -- Cache the original keys
+          for _, key in ipairs(Keys) do
+            local lhs = key[1]
+            originalKeysCache[lhs] = { table.unpack(key, 2) }
+          end
+
+          vim.api.nvim_create_autocmd("LspAttach", {
+            group = vim.api.nvim_create_augroup("k18.tstools", {}),
+            desc = "TSTools Keymaps Override",
+            callback = function(ev)
+              -- if the filetype is typescript or javascript
+              if vim.tbl_contains(ft_js, vim.bo[ev.buf].filetype) then
+                for cache_lhs, _ in pairs(originalKeysCache) do
+                  for _, tstools_keymap in ipairs(TSToolsKeys) do
+                    if cache_lhs == tstools_keymap.key then
+                      -- remove the original keymaps for the respective LSP keymaps
+                      Keys[#Keys + 1] = { cache_lhs, false }
+                      -- and add buffer local TSTools keymaps
+                      vim.keymap.set(
+                        "n",
+                        tstools_keymap.key,
+                        tstools_keymap.cmd,
+                        { desc = tstools_keymap.desc, buffer = true }
+                      )
+                    end
+                  end
+                end
+              else
+                -- If the filetype is not typescript or javascript
+                for lhs, key in pairs(originalKeysCache) do
+                  -- only add the original keymaps if they are not already present
+                  if
+                    not vim.tbl_contains(
+                      vim.tbl_map(function(k)
+                        return k[1]
+                      end, Keys),
+                      lhs
+                    )
+                  then
+                    Keys[#Keys + 1] = { lhs, table.unpack(key, 2) }
+                  end
+                end
+              end
+            end,
+          })
+        end,
+      },
     },
+    ft = ft_js,
     opts = {
       settings = {
         code_lens = "off",
