@@ -26,6 +26,7 @@ return {
   {
     "tpope/vim-dadbod",
     cmd = { "DBUI", "DBUIToggle", "DBUIAddConnection", "DBUIFindBuffer" },
+    event = "VeryLazy",
     dependencies = {
       { "kristijanhusak/vim-dadbod-ui" },
       { "kristijanhusak/vim-dadbod-completion", ft = sql_ft },

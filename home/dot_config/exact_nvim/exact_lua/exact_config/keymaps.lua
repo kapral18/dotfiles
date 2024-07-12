@@ -140,3 +140,17 @@ vim.keymap.set(
 
 -- Add a space after the current line
 vim.keymap.set("n", "]<leader>", "o<Esc><Up>", { noremap = true, silent = true, desc = "Add space after current line" })
+
+-- Remove quickfix item
+vim.cmd([[
+  function! RemoveQFItem()
+    let curqfidx = line('.') - 1
+    let qfall = getqflist()
+    call remove(qfall, curqfidx)
+    call setqflist(qfall, 'r')
+    execute curqfidx + 1 . "cfirst"
+    :copen
+  endfunction
+  :command! RemoveQFItem :call RemoveQFItem()
+  autocmd FileType qf map <buffer> dd :RemoveQFItem<CR>
+]])
