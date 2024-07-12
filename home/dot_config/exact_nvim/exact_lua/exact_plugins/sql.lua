@@ -48,8 +48,8 @@ return {
   {
     "folke/which-key.nvim",
     opts = {
-      defaults = {
-        ["<leader>D"] = { name = " database" },
+      spec = {
+        { "<leader>D", group = " database" },
       },
     },
   },

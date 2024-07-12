@@ -1,5 +1,17 @@
 local buf_rename_utils = require("utils.git-mv-buffers")
 local common_utils = require("utils.common")
+local winopts = {
+  large = {
+    vertical = {
+      height = 0.9,
+      width = 0.9,
+      preview = {
+        layout = "vertical",
+        vertical = "up:65%",
+      },
+    },
+  },
+}
 
 return {
   {
@@ -51,12 +63,12 @@ return {
         find_in_dir = function(state)
           local node = state.tree:get_node()
           local path = node:get_id()
-          require("fzf-lua").files({ cwd = path })
+          require("fzf-lua").files({ cwd = path, winopts = winopts.large.vertical })
         end,
         grep_in_dir = function(state)
           local node = state.tree:get_node()
           local path = node:get_id()
-          require("fzf-lua").live_grep({ cwd = path })
+          require("fzf-lua").live_grep({ cwd = path, winopts = winopts.large.vertical })
         end,
         focus_parent = function(state)
           local node = state.tree:get_node()

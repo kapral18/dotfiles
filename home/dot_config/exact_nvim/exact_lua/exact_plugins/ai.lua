@@ -1,5 +1,5 @@
 return {
-  { import = "lazyvim.plugins.extras.coding.copilot" },
+  { import = "lazyvim.plugins.extras.coding.copilot", enabled = false },
   { import = "lazyvim.plugins.extras.coding.copilot-chat" },
   {
     "dustinblackman/oatmeal.nvim",
@@ -14,30 +14,15 @@ return {
     },
     config = function(_, opts)
       require("oatmeal").setup(opts)
-      require("which-key").register({
-        ["<leader>om"] = { "<cmd>Oatmeal<CR>", "[AI] Oatmeal: toggle", mode = { "n", "x" } },
-      })
-    end,
-  },
-  {
-    "jonahgoldwastaken/copilot-status.nvim",
-    event = "LspAttach",
-    config = function()
-      require("copilot_status").setup({
-        icons = {
-          idle = " ",
-          error = " ",
-          offline = " ",
-          warning = " ",
-          loading = " ",
-        },
-        debug = false,
+      require("which-key").add({
+        { "<leader>om", "<cmd>Oatmeal<CR>", desc = "[AI] Oatmeal: toggle", mode = { "n", "x" } },
       })
     end,
   },
   {
     "zbirenbaum/copilot.lua",
     event = "InsertEnter",
+    enabled = false,
     opts = function()
       vim.api.nvim_set_hl(0, "CopilotSuggestion", { fg = "#83a598" })
       vim.api.nvim_set_hl(0, "CopilotAnnotation", { fg = "#03a598" })
@@ -74,6 +59,14 @@ return {
           },
         },
       }
+    end,
+  },
+  {
+    "github/copilot.vim",
+    lazy = false,
+    init = function()
+      vim.api.nvim_set_hl(0, "CopilotSuggestion", { fg = "#83a598" })
+      vim.api.nvim_set_hl(0, "CopilotAnnotation", { fg = "#03a598" })
     end,
   },
 }

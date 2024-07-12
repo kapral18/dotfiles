@@ -283,6 +283,7 @@ return {
         function()
           live_grep_with_patterns(vim.fn.expand("<cword>"), {
             rg_opts = rg_opts,
+            winopts = winopts.large.vertical,
           })
         end,
         desc = "Live Grep CWord",
@@ -292,27 +293,30 @@ return {
         function()
           live_grep_with_patterns(vim.fn.expand("<cword>"), {
             rg_opts = rg_opts_unrestricted,
+            winopts = winopts.large.vertical,
           })
         end,
         desc = "Live Grep CWord (+ ignored)",
       },
       {
-        "<leader>sv",
+        "<leader>sw",
         function()
           live_grep_with_patterns(vim.trim(require("fzf-lua").utils.get_visual_selection()), {
             rg_opts = rg_opts .. " --multiline",
             no_esc = false,
+            winopts = winopts.large.vertical,
           })
         end,
         mode = "v",
         desc = "Live Grep Selection",
       },
       {
-        "<leader>sV",
+        "<leader>sW",
         function()
           live_grep_with_patterns(vim.trim(require("fzf-lua").utils.get_visual_selection()), {
             rg_opts = rg_opts_unrestricted .. " --multiline",
             no_esc = false,
+            winopts = winopts.large.vertical,
           })
         end,
         mode = "v",

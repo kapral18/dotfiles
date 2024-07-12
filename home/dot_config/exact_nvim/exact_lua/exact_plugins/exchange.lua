@@ -18,8 +18,8 @@ return {
   {
     "folke/which-key.nvim",
     opts = {
-      defaults = {
-        ["<leader>X"] = { name = "exchange" },
+      spec = {
+        { "<leader>X", group = "exchange" },
       },
     },
   },

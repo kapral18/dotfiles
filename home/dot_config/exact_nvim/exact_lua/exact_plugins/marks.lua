@@ -13,14 +13,12 @@ return {
         cyclic = true,
       })
 
-      require("which-key").register({
-        m = {
-          name = "+marks",
-          t = { "<cmd>MarksToggleSigns<cr>", "toggle signs" },
-          l = { "<cmd>MarksQFListAll<cr>", "list all marks" },
-          b = { "<cmd>BookmarksQFListAll<cr>", "list all bookmarks" },
-        },
-      }, { prefix = "<leader>" })
+      require("which-key").add({
+        { "<leader>m", group = "+marks" },
+        { "<leader>t", "<cmd>MarksToggleSigns<cr>", desc = "toggle signs" },
+        { "<leader>l", "<cmd>MarksQFListAll<cr>", desc = "list all marks" },
+        { "<leader>b", "<cmd>BookmarksQFListAll<cr>", desc = "list all bookmarks" },
+      })
     end,
   },
 }

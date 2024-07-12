@@ -28,8 +28,8 @@ return {
     cmd = { "GitMessenger" },
     dependencies = { "folke/which-key.nvim" },
     config = function()
-      require("which-key").register({
-        ["<leader>gm"] = { ":GitMessenger<CR>", "GitMessenger", mode = { "n", "v" } },
+      require("which-key").add({
+        { "<leader>gm", ":GitMessenger<CR>", desc = "GitMessenger", mode = { "n", "v" } },
       })
     end,
     cond = function()
@@ -47,21 +47,17 @@ return {
         diff_plugin = "diffview.nvim",
       })
 
-      require("which-key").register({
-        ["<leader>ga"] = {
-          name = "Advanced Git Search",
-          s = { ":AdvancedGitSearch<CR>", "AdvancedGitSearch", mode = { "n", "v" } },
-          l = { ":AdvancedGitSearch search_log_content<CR>", "AGS Repo History Search", mode = { "n", "v" } },
-          f = { ":AdvancedGitSearch search_log_content_file<CR>", "AGS File History Search", mode = { "n", "v" } },
-          d = {
-            name = "AdvancedGitSearch Diff",
-            f = { ":AdvancedGitSearch diff_commit_file<CR>", "AGS File vs commit", mode = { "n", "v" } },
-            l = { ":AdvancedGitSearch diff_commit_line<CR>", "AGS Line vs commit", mode = { "n", "v" } },
-            b = { ":AdvancedGitSearch diff_branch_file<CR>", "AGS Branch vs commit", mode = { "n", "v" } },
-          },
-          r = { ":AdvancedGitSearch checkout_reflog<CR>", "AGS Checkout reflog", mode = { "n", "v" } },
-          x = { ":DiffviewClose<CR>", "DiffviewClose", mode = { "n", "v" } },
-        },
+      require("which-key").add({
+        { "<leader>ga", group = "Advanced Git Search", mode = { "n", "v" } },
+        { "<leader>gas", ":AdvancedGitSearch<CR>", desc = "AdvancedGitSearch" },
+        { "<leader>gal", ":AdvancedGitSearch search_log_content<CR>", desc = "AGS Repo History Search" },
+        { "<leader>gaf", ":AdvancedGitSearch search_log_content_file<CR>", desc = "AGS File History Search" },
+        { "<leader>gad", group = "AdvancedGitSearch Diff" },
+        { "<leader>gadf", ":AdvancedGitSearch diff_commit_file<CR>", desc = "AGS File vs commit" },
+        { "<leader>gadl", ":AdvancedGitSearch diff_commit_line<CR>", desc = "AGS Line vs commit" },
+        { "<leader>gadb", ":AdvancedGitSearch diff_branch_file<CR>", desc = "AGS Branch vs commit" },
+        { "<leader>gar", ":AdvancedGitSearch checkout_reflog<CR>", desc = "AGS Checkout reflog" },
+        { "<leader>gax", ":DiffviewClose<CR>", desc = "DiffviewClose" },
       })
     end,
     dependencies = {
@@ -83,11 +79,17 @@ return {
     config = function(_, opts)
       require("git-worktree").setup(opts)
       require("telescope").load_extension("git_worktree")
-      require("which-key").register({
-        ["<leader>gw"] = {
-          name = "worktrees",
-          m = { "<cmd>lua require('telescope').extensions.git_worktree.git_worktrees()<cr>", "Manage Worktrees" },
-          c = { "<cmd>lua require('telescope').extensions.git_worktree.create_git_worktree()<cr>", "Create Worktree" },
+      require("which-key").add({
+        { "<leader>gw", group = "worktrees" },
+        {
+          "<leader>gwm",
+          "<cmd>lua require('telescope').extensions.git_worktree.git_worktrees()<cr>",
+          desc = "Manage Worktrees",
+        },
+        {
+          "<leader>gwc",
+          "<cmd>lua require('telescope').extensions.git_worktree.create_git_worktree()<cr>",
+          desc = "Create Worktree",
         },
       })
     end,
