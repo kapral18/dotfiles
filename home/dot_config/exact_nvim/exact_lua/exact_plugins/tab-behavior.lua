@@ -55,7 +55,7 @@ return {
           local suggestion = vim.fn["copilot#GetDisplayedSuggestion"]()
 
           -- copilot completion
-          if suggestion.text ~= nil then
+          if suggestion.text ~= nil and suggestion.text ~= "" then
             local copilot_keys = vim.fn["copilot#Accept"]()
             if copilot_keys ~= "" then
               vim.api.nvim_feedkeys(copilot_keys, "i", true)
