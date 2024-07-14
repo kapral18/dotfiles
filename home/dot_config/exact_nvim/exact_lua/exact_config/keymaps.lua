@@ -24,14 +24,6 @@ vim.keymap.del({ "n", "s", "x" }, "<C-s>")
 vim.keymap.set({ "n", "v" }, "<S-M-j>", "10j", { noremap = true, silent = true, desc = "Jump 5 lines down" })
 vim.keymap.set({ "n", "v" }, "<S-M-k>", "10k", { noremap = true, silent = true, desc = "Jump 5 lines up" })
 
--- Remap Ctrl-^ to switch between alternate test and source files
-vim.keymap.set(
-  "n",
-  "<C-^>",
-  ":call SwitchSrcTestFile()<CR>",
-  { noremap = true, silent = true, desc = "Switch Src/Test File" }
-)
-
 -- Paste on cmd+v
 vim.keymap.set("v", "<D-c>", "y", { remap = true })
 vim.keymap.set({ "n", "v" }, "<D-v>", '"+p', { remap = true })
@@ -39,36 +31,6 @@ vim.keymap.set("i", "<D-v>", "<C-r>+", { remap = true })
 
 -- Delete a word by alt+backspace
 vim.keymap.set("i", "<A-BS>", "<C-w>", { noremap = true })
-
-vim.api.nvim_exec2(
-  [[
-  function! SwitchSrcTestFile()
-    let current_file = expand("%")
-    let alternate_file = substitute(
-      \ current_file,
-      \ '\v(\w+)(\.spec|\.test)?(\.\w+)$',
-      \ '\=submatch(1) . (empty(submatch(2)) ? GetFileExtension() : "") . submatch(3)',
-      \ ""
-    \)
-    if alternate_file != "" 
-      execute "e " . alternate_file
-    else
-      normal! <C-^>
-    endif
-  endfunction
-
-  function! GetFileExtension()
-    if filereadable(resolve(expand("%:.:h") . "/" . submatch(1) . ".spec" . submatch(3)))
-      return ".spec"
-    elseif filereadable(resolve(expand("%:.:h") . "/" . submatch(1) . ".test" . submatch(3)))
-      return ".test"
-    else
-      return ""
-    endif
-  endfunction
-  ]],
-  {}
-)
 
 -- Disable default window resize maps to allow visual multi to use them
 vim.keymap.del("n", "<C-Up>")
@@ -95,41 +57,6 @@ end, { desc = "Toggle Statusline" })
 -- close and go back to previous window
 vim.keymap.set("n", "<leader>wq", "<cmd>wincmd p | q<cr>", { desc = "Close window" })
 
--- Set up key mappings for the scratch buffer
-local function setup_keymaps()
-  local opts = { buffer = true }
-  vim.keymap.set("n", "<C-c>", ":q<CR>", opts) -- Ctrl-C to close
-  vim.keymap.set("n", "q", ":q<CR>", opts) -- q to close
-  vim.keymap.set("n", "<Esc>", ":q<CR>", opts) -- Esc to close
-end
--- Create a new scratch buffer
-vim.keymap.set("n", "<leader>ws", function()
-  local buf = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_set_option_value("buftype", "nofile", { buf = buf })
-  vim.api.nvim_set_option_value("bufhidden", "hide", { buf = buf })
-  vim.api.nvim_set_option_value("swapfile", false, { buf = buf })
-
-  local width = vim.api.nvim_get_option_value("columns", {})
-  local height = vim.api.nvim_get_option_value("lines", {})
-  local win_height = math.ceil(height * 0.8 - 4)
-  local win_width = math.ceil(width * 0.8)
-  local row = math.ceil((height - win_height) / 2 - 1)
-  local col = math.ceil((width - win_width) / 2)
-
-  local opts = {
-    style = "minimal",
-    relative = "editor",
-    width = win_width,
-    height = win_height,
-    row = row,
-    col = col,
-  }
-
-  vim.api.nvim_open_win(buf, true, opts)
-  -- Set up key maps for the scratch buffer when it is created
-  setup_keymaps()
-end, { desc = "Scratch buffer" })
-
 -- Add a space before the current line
 vim.keymap.set(
   "n",
@@ -141,16 +68,47 @@ vim.keymap.set(
 -- Add a space after the current line
 vim.keymap.set("n", "]<leader>", "o<Esc><Up>", { noremap = true, silent = true, desc = "Add space after current line" })
 
--- Remove quickfix item
-vim.cmd([[
-  function! RemoveQFItem()
-    let curqfidx = line('.') - 1
-    let qfall = getqflist()
-    call remove(qfall, curqfidx)
-    call setqflist(qfall, 'r')
-    execute curqfidx + 1 . "cfirst"
-    :copen
-  endfunction
-  :command! RemoveQFItem :call RemoveQFItem()
-  autocmd FileType qf map <buffer> dd :RemoveQFItem<CR>
-]])
+-- Define the function
+local function remove_qf_item()
+  local curqfidx = vim.api.nvim_win_get_cursor(0)[1] - 1
+  local qfall = vim.fn.getqflist()
+  table.remove(qfall, curqfidx)
+  vim.fn.setqflist(qfall, "r")
+  vim.api.nvim_command(curqfidx + 1 .. "cfirst")
+  vim.api.nvim_command("copen")
+end
+
+-- Set the keymap
+vim.keymap.set("n", "dd", remove_qf_item, { desc = "Remove current item from quickfix list" })
+
+local function switch_between_source_and_test()
+  local current_file = vim.fn.expand("%:p")
+  local test_file, source_file
+
+  -- Check if the current file is a source file or a test file
+  if current_file:match("%.test%.") or current_file:match("%.spec%.") then
+    -- It's a test file, find the corresponding source file
+    source_file = current_file:gsub("%.test%.", "."):gsub("%.spec%.", ".")
+    if vim.fn.filereadable(source_file) == 1 then
+      vim.cmd("edit " .. source_file)
+    else
+      print("Source file not found")
+    end
+  else
+    -- It's a source file, find the corresponding test file
+    local base_file = current_file:match("(.*)%.")
+    test_file = base_file .. ".test." .. vim.fn.expand("%:e")
+    if vim.fn.filereadable(test_file) == 1 then
+      vim.cmd("edit " .. test_file)
+    else
+      test_file = base_file .. ".spec." .. vim.fn.expand("%:e")
+      if vim.fn.filereadable(test_file) == 1 then
+        vim.cmd("edit " .. test_file)
+      else
+        print("Test file not found")
+      end
+    end
+  end
+end
+
+vim.keymap.set("n", "<C-^>", switch_between_source_and_test, { desc = "Switch between source and test" })

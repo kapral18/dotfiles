@@ -1,5 +1,4 @@
-_G.myfuncs = _G.myfuncs or {}
-_G.myfuncs.execute_my_command = function()
+local function summarize_commit()
   local prompt = "Give me commit message summary from git diff output above using conventional commits format."
   local command = "git diff --cached | chatblade -c gpt-4o -e " .. vim.fn.shellescape(prompt)
   local output = vim.fn.systemlist(command)
@@ -11,4 +10,4 @@ _G.myfuncs.execute_my_command = function()
   end
 end
 
-vim.api.nvim_set_keymap("n", "<leader>aid", ":lua _G.myfuncs.execute_my_command()<CR>", { noremap = true })
+vim.keymap.set("n", "<leader>aid", summarize_commit, { desc = "Summarize commit" })
