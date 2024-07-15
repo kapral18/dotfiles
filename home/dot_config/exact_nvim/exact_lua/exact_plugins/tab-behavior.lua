@@ -114,6 +114,10 @@ return {
 
       -- works in conjunction with <CR> mapping.confirm({select = false})
       opts.completion.completeopt = "menu,menuone,noinsert,noselect"
+      opts.preselect = cmp.PreselectMode.None
+      opts.experimental = {
+        ghost_text = false,
+      }
     end,
   },
 }

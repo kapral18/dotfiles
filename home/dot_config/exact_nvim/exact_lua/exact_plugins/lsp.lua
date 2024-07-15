@@ -18,16 +18,16 @@ return {
     "neovim/nvim-lspconfig",
     opts = {
       inlay_hints = { enabled = false },
-      capabilities = {
-        workspace = {
-          didChangeWatchedFiles = {
-            dynamicRegistration = false,
-          },
-        },
-        textDocument = {
-          formatting = { dynamicRegistration = false },
-        },
-      },
+      -- capabilities = {
+      --   workspace = {
+      --     didChangeWatchedFiles = {
+      --       dynamicRegistration = false,
+      --     },
+      --   },
+      --   textDocument = {
+      --     formatting = { dynamicRegistration = false },
+      --   },
+      -- },
     },
   },
   {

@@ -68,18 +68,33 @@ vim.keymap.set(
 -- Add a space after the current line
 vim.keymap.set("n", "]<leader>", "o<Esc><Up>", { noremap = true, silent = true, desc = "Add space after current line" })
 
--- Define the function
-local function remove_qf_item()
-  local curqfidx = vim.api.nvim_win_get_cursor(0)[1] - 1
+-- quickfix list delete keymap
+function Remove_qf_item()
+  local curqfidx = vim.fn.line(".")
   local qfall = vim.fn.getqflist()
+
+  -- Return if there are no items to remove
+  if #qfall == 0 then
+    return
+  end
+
+  -- Remove the item from the quickfix list
   table.remove(qfall, curqfidx)
   vim.fn.setqflist(qfall, "r")
-  vim.api.nvim_command(curqfidx + 1 .. "cfirst")
-  vim.api.nvim_command("copen")
+
+  -- Reopen quickfix window to refresh the list
+  vim.cmd("copen")
+
+  -- If not at the end of the list, stay at the same index, otherwise, go one up.
+  local new_idx = curqfidx < #qfall and curqfidx or math.max(curqfidx - 1, 1)
+
+  -- Set the cursor position directly in the quickfix window
+  local winid = vim.fn.win_getid() -- Get the window ID of the quickfix window
+  vim.api.nvim_win_set_cursor(winid, { new_idx, 0 })
 end
 
--- Set the keymap
-vim.keymap.set("n", "dd", remove_qf_item, { desc = "Remove current item from quickfix list" })
+vim.cmd("command! RemoveQFItem lua Remove_qf_item()")
+vim.api.nvim_command("autocmd FileType qf nnoremap <buffer> dd :RemoveQFItem<cr>")
 
 local function switch_between_source_and_test()
   local current_file = vim.fn.expand("%:p")

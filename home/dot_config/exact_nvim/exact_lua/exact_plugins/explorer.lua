@@ -20,6 +20,15 @@ return {
     dependencies = {
       "ibhagwan/fzf-lua",
     },
+    keys = {
+      {
+        "<leader>e",
+        function()
+          require("neo-tree.command").execute({ toggle = true, dir = vim.uv.cwd() })
+        end,
+        desc = "Explorer NeoTree (cwd)",
+      },
+    },
     opts = {
       filesystem = {
         filtered_items = {
@@ -45,10 +54,6 @@ return {
             --".null-ls_*",
           },
         },
-        follow_current_file = {
-          enabled = true,
-        },
-        use_libuv_file_watcher = true,
       },
       window = {
         mappings = {

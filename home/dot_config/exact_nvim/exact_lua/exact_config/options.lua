@@ -11,7 +11,6 @@ vim.opt.wrap = false -- Dislable line wrap
 vim.opt.breakindent = true -- Keep indentation on wrapped lines
 vim.opt.pumblend = 0 -- disable transparency in popup menu
 vim.opt.swapfile = false -- Disable swap file
-
 -- Chars {{{
 vim.opt.list = true
 vim.opt.listchars = {
@@ -93,3 +92,5 @@ vim.g.loaded_node_provider = 0
 vim.opt.syntax = "off"
 
 vim.o.foldenable = false
+
+vim.o.spell = false
