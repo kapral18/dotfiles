@@ -1,8 +1,7 @@
 local selected_colorscheme = "melange"
 
 local function apply_highlight_overwrites()
-  local current_colorscheme = vim.g.colors_name
-  if current_colorscheme == selected_colorscheme then
+  if vim.g.colors == "melange" then
     vim.api.nvim_set_hl(0, "Type", { fg = "lightblue" })
     vim.api.nvim_set_hl(0, "@lsp.type.namespace", { fg = "azure" })
   end
@@ -28,7 +27,6 @@ vim.api.nvim_create_autocmd("VimEnter", {
 })
 
 return {
-  { "ellisonleao/gruvbox.nvim" },
   { "savq/melange-nvim" },
   { "mhartington/oceanic-next" },
   { "LazyVim/LazyVim", opts = { colorscheme = selected_colorscheme } },

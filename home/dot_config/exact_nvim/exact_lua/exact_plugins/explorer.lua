@@ -28,6 +28,20 @@ return {
         end,
         desc = "Explorer NeoTree (cwd)",
       },
+      {
+        "<leader>ge",
+        function()
+          require("neo-tree.command").execute({ source = "git_status", toggle = true, dir = vim.uv.cwd() })
+        end,
+        desc = "Git Explorer NeoTree (cwd)",
+      },
+      {
+        "<leader>be",
+        function()
+          require("neo-tree.command").execute({ source = "buffers", toggle = true, dir = vim.uv.cwd() })
+        end,
+        desc = "Buffer Explorer NeoTree (cwd)",
+      },
     },
     opts = {
       filesystem = {
