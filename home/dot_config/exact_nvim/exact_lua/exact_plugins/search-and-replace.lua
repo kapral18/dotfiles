@@ -53,20 +53,6 @@ return {
       }
     end,
   },
-  -- Structural Search and Replace
-  {
-    "cshuaimin/ssr.nvim",
-    keys = {
-      {
-        "<leader>srs",
-        function()
-          require("ssr").open()
-        end,
-        mode = { "n", "x" },
-        desc = "Structural Replace",
-      },
-    },
-  },
   {
     "MagicDuck/grug-far.nvim",
     event = "VeryLazy",
@@ -86,19 +72,28 @@ return {
           end, { buffer = true })
         end,
       })
+
+      return { headerMaxWidth = 80 }
     end,
     keys = {
       {
-        "<leader>srr",
+        "<leader>sr",
         function()
           require("grug-far").grug_far({ prefills = { search = vim.fn.expand("<cword>") } })
         end,
-        desc = "S&R Word Under Cursor",
+        desc = "Search & Replace Word Under Cursor",
       },
       {
-        "<leader>srr",
-        "<cmd><C-u>lua require('grug-far').with_visual_selection()",
-        desc = "S&R Word Under Cursor",
+        "<leader>sr",
+        function()
+          local is_visual = vim.fn.mode():lower():find("v")
+          if is_visual then
+            vim.cmd([[normal! v]])
+          end
+          require("grug-far").with_visual_selection()
+        end,
+
+        desc = "Search & Replace Visual Selection",
         mode = "x",
       },
     },
