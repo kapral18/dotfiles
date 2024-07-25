@@ -1,6 +1,6 @@
 local function summarize_commit()
   local prompt = "Give me commit message summary from git diff output above using conventional commits format."
-  local command = "git diff --cached | chatblade -c gpt-4o -e " .. vim.fn.shellescape(prompt)
+  local command = "git diff --cached | chatblade -e " .. vim.fn.shellescape(prompt)
   local output = vim.fn.systemlist(command)
   local win = vim.api.nvim_get_current_win()
   local cursor = vim.api.nvim_win_get_cursor(win)

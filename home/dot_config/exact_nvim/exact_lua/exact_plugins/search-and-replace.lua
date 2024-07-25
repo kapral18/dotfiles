@@ -86,10 +86,6 @@ return {
       {
         "<leader>sr",
         function()
-          local is_visual = vim.fn.mode():lower():find("v")
-          if is_visual then
-            vim.cmd([[normal! v]])
-          end
           require("grug-far").with_visual_selection()
         end,
 
