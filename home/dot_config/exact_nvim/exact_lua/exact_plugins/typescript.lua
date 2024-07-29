@@ -82,7 +82,6 @@ return {
           local originalKeysCache = {}
           -- stylua: ignore start
           local TSToolsKeys = {
-            { key = "gD", ft = ft_js, cmd = "<cmd>TSToolsGoToSourceDefinition<cr>", desc = "TSTools: Goto Source Definition" },
             { key = "gR", ft = ft_js, cmd = "<cmd>TSToolsFileReferences<cr>", desc = "TSTools: File References" },
             { key = "<leader>cia", ft = ft_js, cmd = "<cmd>TSToolsAddMissingImports<cr>", desc = "TSTools: Add missing imports" },
             { key = "<leader>cir", ft = ft_js, cmd = "<cmd>TSToolsRemoveUnusedImports<cr>", desc = "TSTools: Remove Unused Imports",  },
