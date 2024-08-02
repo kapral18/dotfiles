@@ -21,8 +21,18 @@ vim.keymap.del({ "n", "s", "x" }, "<C-s>")
 
 -- jump 5 lines up and down at a time with shift-j and shift-k
 -- move faster with shift
-vim.keymap.set({ "n", "v" }, "<S-M-j>", "10j", { noremap = true, silent = true, desc = "Jump 5 lines down" })
-vim.keymap.set({ "n", "v" }, "<S-M-k>", "10k", { noremap = true, silent = true, desc = "Jump 5 lines up" })
+vim.keymap.set({ "n", "v" }, "<A-k>", "10k", { noremap = true, silent = true, desc = "Jump 10 lines up" })
+vim.keymap.set({ "n", "v" }, "<A-j>", "10j", { noremap = true, silent = true, desc = "Jump 10 lines down" })
+vim.keymap.del("i", "<A-k>")
+vim.keymap.del("i", "<A-j>")
+
+-- Move Lines
+vim.keymap.set("n", "<C-A-j>", "<cmd>m .+1<cr>==", { desc = "Move Down" })
+vim.keymap.set("n", "<C-A-k>", "<cmd>m .-2<cr>==", { desc = "Move Up" })
+vim.keymap.set("i", "<C-A-j>", "<esc><cmd>m .+1<cr>==gi", { desc = "Move Down" })
+vim.keymap.set("i", "<C-A-k>", "<esc><cmd>m .-2<cr>==gi", { desc = "Move Up" })
+vim.keymap.set("v", "<C-A-j>", ":m '>+1<cr>gv=gv", { desc = "Move Down" })
+vim.keymap.set("v", "<C-A-k>", ":m '<-2<cr>gv=gv", { desc = "Move Up" })
 
 -- Paste on cmd+v
 vim.keymap.set("v", "<D-c>", "y", { remap = true })

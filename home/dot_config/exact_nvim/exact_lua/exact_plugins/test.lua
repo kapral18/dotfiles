@@ -1,7 +1,9 @@
 return {
   { import = "lazyvim.plugins.extras.test.core" },
+  -- mem leaks severely
   {
     "nvim-neotest/neotest",
+    enabled = false,
     dependencies = { "nvim-treesitter/nvim-treesitter", "haydenmeade/neotest-jest" },
     keys = {
       {
@@ -101,6 +103,8 @@ return {
           end,
         })
       )
+
+      return opts
     end,
   },
   {
