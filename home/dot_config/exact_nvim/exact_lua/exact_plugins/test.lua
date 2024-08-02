@@ -3,7 +3,6 @@ return {
   -- mem leaks severely
   {
     "nvim-neotest/neotest",
-    enabled = false,
     dependencies = { "nvim-treesitter/nvim-treesitter", "haydenmeade/neotest-jest" },
     keys = {
       {
