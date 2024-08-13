@@ -148,7 +148,7 @@ return {
         publish_diagnostic_on = "insert_leave",
         tsserver_path = nil,
         tsserver_plugins = {},
-        tsserver_max_memory = 32500,
+        tsserver_max_memory = 8192,
         tsserver_format_options = {},
         tsserver_file_preferences = {
           completions = { completeFunctionCalls = true },

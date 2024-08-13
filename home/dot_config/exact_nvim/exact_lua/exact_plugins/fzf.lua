@@ -517,17 +517,17 @@ return {
         lines = {
           prompt = "Lines❯ ",
           actions = {
-            ["ctrl-s"] = actions.buf_split,
-            ["ctrl-v"] = actions.buf_vsplit,
-            ["ctrl-t"] = actions.buf_tabedit,
+            ["ctrl-s"] = actions.file_split,
+            ["ctrl-v"] = actions.file_vsplit,
+            ["ctrl-t"] = actions.file_tabedit,
           },
         },
         blines = {
           prompt = "BLines❯ ",
           actions = {
-            ["ctrl-s"] = actions.buf_split,
-            ["ctrl-v"] = actions.buf_vsplit,
-            ["ctrl-t"] = actions.buf_tabedit,
+            ["ctrl-s"] = actions.file_split,
+            ["ctrl-v"] = actions.file_vsplit,
+            ["ctrl-t"] = actions.file_tabedit,
           },
         },
         tags = {

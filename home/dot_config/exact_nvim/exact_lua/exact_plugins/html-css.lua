@@ -16,9 +16,7 @@ return {
     "williamboman/mason.nvim",
     opts = function(_, opts)
       vim.list_extend(opts.ensure_installed, {
-        "emmet-language-server",
         "html-lsp",
-        "cssmodules-language-server",
         "css-variables-language-server",
         "css-lsp",
         "htmlhint",
@@ -30,10 +28,7 @@ return {
     "neovim/nvim-lspconfig",
     opts = {
       servers = {
-        -- tailwindcss = {},
-        emmet_language_server = {},
         html = {},
-        cssmodules_ls = {},
         css_variables = {},
         cssls = {
           lint = {
@@ -85,36 +80,7 @@ return {
   {
     "NvChad/nvim-colorizer.lua",
     opts = {
-      user_default_options = {
-        -- tailwind = true,
-      },
+      user_default_options = {},
     },
   },
-  -- {
-  --   "hrsh7th/nvim-cmp",
-  --   dependencies = {
-  --     { "roobert/tailwindcss-colorizer-cmp.nvim", config = true },
-  --   },
-  --   opts = function(_, opts)
-  --     local format_kinds = opts.formatting.format
-  --
-  --     opts.formatting.format = function(entry, item)
-  --       format_kinds(entry, item)
-  --       return require("tailwindcss-colorizer-cmp").formatter(entry, item)
-  --     end
-  --   end,
-  -- },
-  -- {
-  --   "MaximilianLloyd/tw-values.nvim",
-  --   ft = ft_js,
-  --   keys = {
-  --     {
-  --       "<leader>cT",
-  --       "<cmd>TWValues<cr>",
-  --       desc = "Tailwind CSS values",
-  --       ft = ft_js,
-  --     },
-  --   },
-  --   opts = {},
-  -- },
 }
