@@ -1,0 +1,19 @@
+#!{{ lookPath "fish" }}
+
+# check if bun is installed
+
+if command -v bun &> /dev/null
+    echo "------------------------"
+    echo "bun is already installed"
+    echo "------------------------"
+else 
+    echo "------------------------"
+    echo "install bun: applying..."
+    echo "------------------------"
+    curl -fsSL https://bun.sh/install | bash
+    echo "------------------------"
+    echo "install bun: done"
+    echo "------------------------"
+end
+
+echo ""

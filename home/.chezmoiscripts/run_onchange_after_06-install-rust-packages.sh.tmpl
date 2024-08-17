@@ -1,0 +1,38 @@
+#!{{ lookPath "fish" }}
+
+set -l cargo_install_packages \
+    ast-grep \
+    bandwhich \
+    cargo-update \
+    cargo-watch \
+    diskonaut \
+    git-brws \
+    grcov \
+    hackernews_tui \
+    lemmeknow \
+    oatmeal \
+    presenterm \
+    tdf \
+    tokei \
+    trippy \
+    viu
+
+for package in $cargo_install_packages
+    if command -v $package &> /dev/null
+        echo "--------------------------------------------"
+        echo "cargo package: $package is already installed"
+        echo "--------------------------------------------"
+    else 
+        echo "-----------------------------------"
+        echo "cargo install $package: applying..."
+        echo "-----------------------------------"
+        if test $package = "tdf"
+            cargo install --git https://github.com/itsjunetime/tdf
+        else
+            cargo install $package --locked
+        end
+        echo "----------------------------"
+        echo "cargo install $package: done"
+        echo "----------------------------"
+    end
+end

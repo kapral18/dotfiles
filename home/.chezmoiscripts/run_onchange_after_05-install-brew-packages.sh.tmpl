@@ -1,0 +1,13 @@
+#!{{ lookPath "fish" }}
+
+echo "---------------------------------------"
+echo "brew install from Brewfile: applying..."
+echo "---------------------------------------"
+
+echo '
+{{ template "Brewfile" . }}
+' | brew bundle --no-lock --file=-
+
+echo "---------------------------------"
+echo "brew install from Brewfile: done "
+echo "---------------------------------"

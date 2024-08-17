@@ -1,9 +1,0 @@
-### Changelog
-- **refactor**: simplify a lot of code
-- **feat**: use html versions of plugin :help pages
-- **perf**: ship with pre-downloaded URL list
-- **chore**: update make recipes
-- **build(changelog)**: fix bold not being applied to all cc-keywords
-- **build**: fix release action checkout depth
-- **build**: improved release action
-- **improv(oldfiles)**: use better matcher

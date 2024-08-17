@@ -2,7 +2,6 @@
 ObjC.import("stdlib");
 const app = Application.currentApplication();
 app.includeStandardAdditions = true;
-
 //──────────────────────────────────────────────────────────────────────────────
 
 const fileExists = (/** @type {string} */ filePath) => Application("Finder").exists(Path(filePath));
@@ -14,6 +13,7 @@ function readFile(path) {
 	return ObjC.unwrap(str);
 }
 
+
 /** @param {string} filepath @param {string} text */
 function writeToFile(filepath, text) {
 	const str = $.NSString.alloc.initWithUTF8String(text);
@@ -24,7 +24,6 @@ function ensureCacheFolderExists() {
 	const finder = Application("Finder");
 	const cacheDir = $.getenv("alfred_workflow_cache");
 	if (!finder.exists(Path(cacheDir))) {
-		console.log("Cache Dir does not exist and is created.");
 		const cacheDirBasename = $.getenv("alfred_workflow_bundleid");
 		const cacheDirParent = cacheDir.slice(0, -cacheDirBasename.length);
 		finder.make({
@@ -37,11 +36,10 @@ function ensureCacheFolderExists() {
 
 /** @param {string} path */
 function cacheIsOutdated(path) {
-	let cacheAgeThresholdMins = Number.parseInt($.getenv("cache_age_threshold")) || 15;
-	if (cacheAgeThresholdMins < 1) cacheAgeThresholdMins = 1; // prevent 0 or negative numbers
+	const cacheAgeThresholdMins = Number.parseInt($.getenv("cache_age_threshold"));
 	const cacheObj = Application("System Events").aliases[path];
 	if (!cacheObj.exists()) return true;
-	const cacheAgeMins = (+new Date() - cacheObj.creationDate()) / 1000 / 60;
+	const cacheAgeMins = (Date.now() - +cacheObj.creationDate()) / 1000 / 60;
 	return cacheAgeMins > cacheAgeThresholdMins;
 }
 
@@ -51,9 +49,12 @@ function cacheIsOutdated(path) {
  * @returns {boolean} firstPathOlderThanSecond
  */
 function olderThan(firstPath, secondPath) {
-	const firstMdate = +Application("System Events").aliases[firstPath].modificationDate();
-	const secondMdate = +Application("System Events").aliases[secondPath].modificationDate();
-	const firstPathOlderThanSecond = firstMdate - secondMdate < 0;
+	const firstItem = Application("System Events").aliases[firstPath];
+	if (!firstItem.exists()) return true;
+	const secondItem = Application("System Events").aliases[secondPath];
+	if (!secondItem.exists()) return false;
+	const firstPathOlderThanSecond =
+		+firstItem.modificationDate() - +secondItem.modificationDate() < 0;
 	return firstPathOlderThanSecond;
 }
 
@@ -62,37 +63,28 @@ function olderThan(firstPath, secondPath) {
 /** @type {AlfredRun} */
 // biome-ignore lint/correctness/noUnusedVariables: Alfred run
 function run() {
-	const subredditConfig = $.getenv("subreddits");
-
-	// GUARD misconfiguration
-	if (subredditConfig.match(/^r\//m)) {
-		const msg = "Config error: subreddit names must not start with 'r/'";
-		return JSON.stringify({ items: [{ title: msg, valid: false }] });
-	}
-
-	//───────────────────────────────────────────────────────────────────────────
+	const subredditConfig = $.getenv("subreddits").trim().replace(/^\/?r\//gm, "");
+	const cachePath = $.getenv("alfred_workflow_cache");
 
 	// determine subreddit
-	const prevRunSubreddit = readFile($.getenv("alfred_workflow_cache") + "/current_subreddit");
+	const prevRunSubreddit = readFile(cachePath + "/current_subreddit");
 	const selectedWithAlfred =
 		$.NSProcessInfo.processInfo.environment.objectForKey("selected_subreddit").js;
 	const firstSubredditInConfig = subredditConfig.split("\n")[0]; // only needed for first run
 	const subredditName = selectedWithAlfred || prevRunSubreddit || firstSubredditInConfig;
-	const pathOfThisWorkflow = `${$.getenv("alfred_preferences")}/workflows/${$.getenv(
-		"alfred_workflow_uid",
-	)}`;
+	const pathOfThisWorkflow =
+		$.getenv("alfred_preferences") + "/workflows/" + $.getenv("alfred_workflow_uid");
 
 	ensureCacheFolderExists();
-	writeToFile($.getenv("alfred_workflow_cache") + "/current_subreddit", subredditName);
+	writeToFile(cachePath + "/current_subreddit", subredditName);
 
 	// read posts from cache
-	const subredditCache = `${$.getenv("alfred_workflow_cache")}/${subredditName}.json`;
+	const subredditCache = `${cachePath}/${subredditName}.json`;
 
 	let posts;
-	if (
-		!cacheIsOutdated(subredditCache) &&
-		olderThan(`${pathOfThisWorkflow}/prefs.plist`, subredditCache)
-	) {
+	const refreshIntervalPassed = cacheIsOutdated(subredditCache);
+	const userPrefsUnchanged = olderThan(`${pathOfThisWorkflow}/prefs.plist`, subredditCache);
+	if (!refreshIntervalPassed && userPrefsUnchanged) {
 		posts = JSON.parse(readFile(subredditCache));
 		return JSON.stringify({
 			variables: { cacheWasUpdated: "false" }, // Alfred vars always strings
@@ -101,8 +93,10 @@ function run() {
 		});
 	}
 
-	// IMPORT SUBREDDIT-LOADING-FUNCTIONS
-	// biome-ignore lint/nursery/noGlobalEval: JXA import HACK
+	//───────────────────────────────────────────────────────────────────────────
+
+	// HACK IMPORT SUBREDDIT-LOADING-FUNCTIONS
+	// biome-ignore lint/security/noGlobalEval: JXA import hack
 	eval(readFile(`${pathOfThisWorkflow}/scripts/get-new-posts.js`));
 
 	// marker for old posts
@@ -110,10 +104,12 @@ function run() {
 
 	// request new posts from API
 	if (subredditName === "hackernews") {
+		// biome-ignore lint/suspicious/noConsoleLog: intentional
 		console.log("Writing new cache for hackernews");
 		// biome-ignore lint/correctness/noUndeclaredVariables: JXA import HACK
 		posts = getHackernewsPosts(oldItems);
 	} else {
+		// biome-ignore lint/suspicious/noConsoleLog: intentional
 		console.log("Writing new cache for r/" + subredditName);
 		// biome-ignore lint/correctness/noUndeclaredVariables: JXA import HACK
 		posts = getRedditPosts(subredditName, oldItems);
@@ -124,7 +120,7 @@ function run() {
 		return JSON.stringify({ items: [{ title: "Error", subtitle: "No response from API." }] });
 	}
 	if (posts.length === 0) {
-		return JSON.stringify({ items: [{ title: "No Posts higher than minimum upvote count." }] });
+		return JSON.stringify({ items: [{ title: "No posts higher than minimum upvote count." }] });
 	}
 
 	writeToFile(subredditCache, JSON.stringify(posts));

@@ -2,10 +2,7 @@
 ObjC.import("stdlib");
 const app = Application.currentApplication();
 app.includeStandardAdditions = true;
-
 //──────────────────────────────────────────────────────────────────────────────
-
-const iconFolder = $.getenv("custom_subreddit_icons") || $.getenv("alfred_workflow_data");
 
 const fileExists = (/** @type {string} */ filePath) => Application("Finder").exists(Path(filePath));
 
@@ -26,7 +23,6 @@ function ensureCacheFolderExists() {
 	const finder = Application("Finder");
 	const cacheDir = $.getenv("alfred_workflow_cache");
 	if (!finder.exists(Path(cacheDir))) {
-		console.log("Cache Dir does not exist and is created.");
 		const cacheDirBasename = $.getenv("alfred_workflow_bundleid");
 		const cacheDirParent = cacheDir.slice(0, -cacheDirBasename.length);
 		finder.make({
@@ -48,6 +44,7 @@ function cacheAndReturnSubIcon(iconPath, subredditName) {
 	const redditApiCall = `curl -sL -H "User-Agent: Chrome/115.0.0.0" "https://www.reddit.com/r/${subredditName}/about.json"`;
 	const subredditInfo = JSON.parse(app.doShellScript(redditApiCall));
 	if (subredditInfo.error) {
+		// biome-ignore lint/suspicious/noConsoleLog: intentional
 		console.log(`${subredditInfo.error}: ${subredditInfo.message}`);
 		return false;
 	}
@@ -67,6 +64,7 @@ function cacheAndReturnSubCount(subredditName) {
 	const redditApiCall = `curl -sL -H "User-Agent: Chrome/115.0.0.0" "https://www.reddit.com/r/${subredditName}/about.json"`;
 	const subredditInfo = JSON.parse(app.doShellScript(redditApiCall));
 	if (subredditInfo.error) {
+		// biome-ignore lint/suspicious/noConsoleLog: intentional
 		console.log(`${subredditInfo.error}: ${subredditInfo.message}`);
 		return undefined;
 	}
@@ -91,15 +89,8 @@ function cacheAndReturnSubCount(subredditName) {
 /** @type {AlfredRun} */
 // biome-ignore lint/correctness/noUnusedVariables: Alfred run
 function run() {
-	const subredditConfig = $.getenv("subreddits");
-
-	// GUARD misconfiguration
-	if (subredditConfig.match(/^r\//m)) {
-		const msg = "Config error: subreddit names must not start with 'r/'";
-		return JSON.stringify({ items: [{ title: msg, valid: false }] });
-	}
-
-	//───────────────────────────────────────────────────────────────────────────
+	const iconFolder = $.getenv("custom_subreddit_icons") || $.getenv("alfred_workflow_data");
+	const subredditConfig = $.getenv("subreddits").trim().replace(/^\/?r\//gm, "");
 
 	const subreddits = subredditConfig.split("\n").map((subredditName) => {
 		let subtitle = "";
@@ -116,8 +107,7 @@ function run() {
 		const subscriberData = JSON.parse(
 			readFile($.getenv("alfred_workflow_cache") + "/subscriberCount.json") || "{}",
 		);
-		const subscriberCount =
-			subscriberData[subredditName] || cacheAndReturnSubCount(subredditName);
+		const subscriberCount = subscriberData[subredditName] || cacheAndReturnSubCount(subredditName);
 		if (!subscriberCount) subtitle += "⚠️ subscriber count error ";
 		subtitle += `👥 ${subscriberCount}`;
 
@@ -127,6 +117,11 @@ function run() {
 			subtitle: subtitle,
 			arg: subredditName,
 			icon: { path: iconPath },
+			mods: {
+				cmd: {
+					arg: `https://www.reddit.com/r/${subredditName}/`,
+				},
+			},
 		};
 		return alfredItem;
 	});
@@ -138,6 +133,11 @@ function run() {
 			title: "Hackernews",
 			arg: "hackernews",
 			icon: { path: "hackernews.png" },
+			mods: {
+				cmd: {
+					arg: "https://news.ycombinator.com/",
+				},
+			},
 		});
 	}
 
