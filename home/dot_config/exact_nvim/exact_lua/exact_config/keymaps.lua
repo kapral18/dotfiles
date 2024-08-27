@@ -34,6 +34,12 @@ vim.keymap.set("i", "<C-A-k>", "<esc><cmd>m .-2<cr>==gi", { desc = "Move Up" })
 vim.keymap.set("v", "<C-A-j>", ":m '>+1<cr>gv=gv", { desc = "Move Down" })
 vim.keymap.set("v", "<C-A-k>", ":m '<-2<cr>gv=gv", { desc = "Move Up" })
 
+-- Move In Insert Mode
+vim.keymap.set("i", "<A-h>", "<Left>", { desc = "Move left" })
+vim.keymap.set("i", "<A-l>", "<Right>", { desc = "Move right" })
+vim.keymap.set("i", "<A-j>", "<Down>", { desc = "Move down" })
+vim.keymap.set("i", "<A-k>", "<Up>", { desc = "Move up" })
+
 -- Paste on cmd+v
 vim.keymap.set("v", "<D-c>", "y", { remap = true })
 vim.keymap.set({ "n", "v" }, "<D-v>", '"+p', { remap = true })

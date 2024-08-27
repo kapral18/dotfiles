@@ -19,4 +19,7 @@ return {
       require("fundo").install()
     end,
   },
+  {
+    "pixelastic/vim-undodir-tree",
+  },
 }
