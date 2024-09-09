@@ -44,6 +44,17 @@ return {
       },
     },
     opts = {
+      default_component_configs = {
+        file_size = {
+          enabled = false,
+        },
+        type = {
+          enabled = false,
+        },
+        last_modified = {
+          enabled = false,
+        },
+      },
       filesystem = {
         filtered_items = {
           visible = true, -- when true, they will just be displayed differently than normal items
@@ -70,6 +81,7 @@ return {
         },
       },
       window = {
+        width = 50,
         mappings = {
           ["<leader>nf"] = "find_in_dir",
           ["<leader>ng"] = "grep_in_dir",
