@@ -9,7 +9,7 @@ return {
     },
     opts = {
       backend = "ollama",
-      model = "llama3.1:latest",
+      model = "phind-codellama:latest",
     },
     config = function(_, opts)
       require("oatmeal").setup(opts)
