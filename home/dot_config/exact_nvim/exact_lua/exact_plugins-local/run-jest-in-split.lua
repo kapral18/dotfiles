@@ -1,10 +1,12 @@
-local function get_current_test_name()
+local M = {}
+
+M.get_current_test_name = function()
   local current_line = vim.api.nvim_get_current_line()
   local test_name = current_line:match("[\"'](.-)[\"']")
   return test_name
 end
 
-local function run_jest_test(test_name)
+M.run_jest_test = function(test_name)
   local cmd = "node scripts/jest " .. vim.fn.expand("%") .. " -t '" .. test_name .. "'"
 
   vim.cmd.vsplit()
@@ -12,18 +14,16 @@ local function run_jest_test(test_name)
   vim.api.nvim_chan_send(vim.bo.channel, cmd .. "\n")
 end
 
-local function run_current_test()
-  local test_name = get_current_test_name()
+M.run_jest_in_split = function()
+  local test_name = M.get_current_test_name()
   if test_name then
-    run_jest_test(test_name)
+    M.run_jest_test(test_name)
   else
     print("No test name found on the current line.")
   end
 end
 
-vim.keymap.set("n", "<Leader>tx", run_current_test, { noremap = true, silent = true })
-
-local function close_terminal_buffer()
+M.close_terminal_buffer = function()
   local buf = vim.api.nvim_get_current_buf()
 
   if vim.bo[buf].buftype ~= "terminal" then
@@ -38,10 +38,4 @@ local function close_terminal_buffer()
   vim.cmd("bdelete! " .. buf)
 end
 
--- Set up the keymap only for terminal buffers
-vim.api.nvim_create_autocmd("TermOpen", {
-  pattern = "*",
-  callback = function()
-    vim.keymap.set("n", "q", close_terminal_buffer, { noremap = true, silent = true, buffer = true })
-  end,
-})
+return M

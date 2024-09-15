@@ -1,4 +1,6 @@
-local function add_virt_text_so_file()
+local M = {}
+
+M.add_virt_text_to_file = function()
   local cmd_str = ""
   if vim.bo.filetype == "lua" then
     cmd_str = "lua %"
@@ -68,22 +70,11 @@ local function add_virt_text_so_file()
   end
 end
 
-local function del_virt_text_so_file()
+M.del_virt_text_from_file = function()
   local ns_id = vim.api.nvim_create_namespace("k18")
   local bufnr = vim.api.nvim_get_current_buf()
   vim.api.nvim_buf_clear_namespace(bufnr, ns_id, 0, -1)
   vim.cmd.write()
 end
 
-vim.keymap.set(
-  { "n" },
-  "<leader>sff",
-  add_virt_text_so_file,
-  { noremap = true, desc = "Inline virt text of file execution" }
-)
-vim.keymap.set(
-  { "n" },
-  "<leader>sfd",
-  del_virt_text_so_file,
-  { noremap = true, desc = "Delete virt text of file execution" }
-)
+return M

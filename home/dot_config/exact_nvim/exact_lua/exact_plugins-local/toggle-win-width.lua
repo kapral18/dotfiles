@@ -1,6 +1,8 @@
 local prev_widths = {}
 
-local function toggle_win_width()
+local M = {}
+
+M.toggle_win_width = function()
   local win_id = vim.api.nvim_get_current_win()
   local buf_id = vim.api.nvim_win_get_buf(win_id)
   local width = vim.api.nvim_win_get_width(win_id)
@@ -30,4 +32,4 @@ local function toggle_win_width()
   end
 end
 
-vim.keymap.set("n", "<leader>=", toggle_win_width, { silent = true })
+return M

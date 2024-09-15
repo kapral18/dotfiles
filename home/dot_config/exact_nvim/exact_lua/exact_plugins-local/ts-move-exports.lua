@@ -1,6 +1,8 @@
 local ts_tools_api = require("typescript-tools.api")
 
-local function query_export_names(bufnr, start_row, end_row)
+local M = {}
+
+M.query_export_names = function(bufnr, start_row, end_row)
   local parser = vim.treesitter.get_parser(bufnr, "typescript")
   local tree = parser:parse()[1]
   local root = tree:root()
@@ -34,10 +36,10 @@ local function query_export_names(bufnr, start_row, end_row)
   return export_names
 end
 
-local function get_lsp_references_for_exports(start_row, end_row)
+M.get_lsp_references_for_exports = function(start_row, end_row)
   local unique_paths = {}
   local bufnr = vim.api.nvim_get_current_buf()
-  local export_nodes = query_export_names(bufnr, start_row, end_row)
+  local export_nodes = M.query_export_names(bufnr, start_row, end_row)
 
   for _, node in ipairs(export_nodes) do
     local node_range_start_row, node_range_start_col, _, _ = node:range()
@@ -64,7 +66,7 @@ local function get_lsp_references_for_exports(start_row, end_row)
   return vim.tbl_keys(unique_paths)
 end
 
-local function move_selection_to_new_path(new_path)
+M.move_selection_to_new_path = function(new_path)
   local start_row, start_col = unpack(vim.api.nvim_buf_get_mark(0, "<"))
   local end_row, end_col = unpack(vim.api.nvim_buf_get_mark(0, ">"))
 
@@ -87,7 +89,7 @@ local function move_selection_to_new_path(new_path)
   end
 end
 
-local function update_imports(paths, new_path)
+M.update_imports = function(paths, new_path)
   if not paths or type(paths) ~= "table" or #paths == 0 then
     vim.notify("No reference paths stored", vim.log.levels.ERROR)
     return
@@ -102,7 +104,7 @@ local function update_imports(paths, new_path)
   end
 end
 
-local function rename_export_to_unique(bufnr, node, unique_name)
+M.rename_export_to_unique = function(bufnr, node, unique_name)
   local start_row, start_col, _ = node:start()
   start_row = start_row + 1
   local params = {
@@ -120,7 +122,7 @@ local function rename_export_to_unique(bufnr, node, unique_name)
   vim.lsp.util.apply_workspace_edit(status.result, tstools_client.offset_encoding)
 end
 
-local function rename_export_back_to_original(bufnr, node, original_name)
+M.rename_export_back_to_original = function(bufnr, node, original_name)
   local start_row, start_col, _ = node:start()
   start_row = start_row + 1
   local params = {
@@ -138,13 +140,13 @@ local function rename_export_back_to_original(bufnr, node, original_name)
   vim.lsp.util.apply_workspace_edit(status.result, tstools_client.offset_encoding)
 end
 
-local function generate_unique_name(node)
+M.generate_unique_name = function(node)
   local start_row, start_col, _ = node:start()
   start_row = start_row + 1
   return string.format("unique_%s_%d_%d", node:type(), start_row, start_col)
 end
 
-vim.api.nvim_create_user_command("MoveExports", function()
+M.ts_move_exports = function()
   vim.ui.input({ prompt = "Enter new path: " }, function(input)
     if not input or input == "" then
       vim.notify("Please provide a new path", vim.log.levels.ERROR)
@@ -158,23 +160,23 @@ vim.api.nvim_create_user_command("MoveExports", function()
     start_row = start_row - 1
     end_row = end_row - 1
 
-    local reference_paths = get_lsp_references_for_exports(start_row, end_row)
+    local reference_paths = M.get_lsp_references_for_exports(start_row, end_row)
     local bufnr = vim.api.nvim_get_current_buf()
-    local export_nodes = query_export_names(bufnr, start_row, end_row)
+    local export_nodes = M.query_export_names(bufnr, start_row, end_row)
 
     for _, node in ipairs(export_nodes) do
-      local unique_name = generate_unique_name(node)
-      rename_export_to_unique(bufnr, node, unique_name)
+      local unique_name = M.generate_unique_name(node)
+      M.rename_export_to_unique(bufnr, node, unique_name)
     end
 
-    move_selection_to_new_path(new_path)
-    update_imports(reference_paths, new_path)
+    M.move_selection_to_new_path(new_path)
+    M.update_imports(reference_paths, new_path)
 
     for _, node in ipairs(export_nodes) do
       local original_name = vim.treesitter.get_node_text(node, bufnr)
-      rename_export_back_to_original(bufnr, node, original_name)
+      M.rename_export_back_to_original(bufnr, node, original_name)
     end
   end)
-end, { range = true })
+end
 
-vim.keymap.set("x", "<leader>]", "<CMD>MoveExports<CR>", { desc = "Move exports to new path" })
+return M

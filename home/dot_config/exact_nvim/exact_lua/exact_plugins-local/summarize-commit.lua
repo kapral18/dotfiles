@@ -1,4 +1,6 @@
-local function summarize_commit()
+local M = {}
+
+M.summarize_commit = function()
   local prompt = "Give me commit message summary from git diff output above using conventional commits format."
   local command = "git diff --cached | chatblade -e " .. vim.fn.shellescape(prompt)
   local output = vim.fn.systemlist(command)
@@ -10,4 +12,4 @@ local function summarize_commit()
   end
 end
 
-vim.keymap.set("n", "<leader>aid", summarize_commit, { desc = "Summarize commit" })
+return M
