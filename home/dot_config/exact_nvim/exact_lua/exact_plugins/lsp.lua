@@ -1,17 +1,17 @@
--- -- enable if noice.nvim is off
--- vim.lsp.handlers["textDocument/hover"] = function(_, result, ctx, config)
---   config = config or {}
---   config.focus_id = ctx.method
---   if not (result and result.contents) then
---     return
---   end
---   local markdown_lines = vim.lsp.util.convert_input_to_markdown_lines(result.contents)
---   markdown_lines = vim.lsp.util.trim_empty_lines(markdown_lines)
---   if vim.tbl_isempty(markdown_lines) then
---     return
---   end
---   return vim.lsp.util.open_floating_preview(markdown_lines, "markdown", config)
--- end
+-- enabled if noice.nvim is off
+vim.lsp.handlers["textDocument/hover"] = function(_, result, ctx, config)
+  config = config or {}
+  config.focus_id = ctx.method
+  if not (result and result.contents) then
+    return
+  end
+  local markdown_lines = vim.lsp.util.convert_input_to_markdown_lines(result.contents)
+  markdown_lines = vim.lsp.util.trim_empty_lines(markdown_lines)
+  if vim.tbl_isempty(markdown_lines) then
+    return
+  end
+  return vim.lsp.util.open_floating_preview(markdown_lines, "markdown", config)
+end
 
 return {
   {
@@ -81,6 +81,7 @@ return {
       border = {
         enable = true,
       },
+      detached = true,
       height = 30,
       use_trouble_qf = false,
       hooks = {
@@ -160,6 +161,37 @@ return {
     event = "LspAttach",
     opts = {
       timeout = 1000,
+    },
+  },
+  {
+    "linrongbin16/lsp-progress.nvim",
+    opts = {},
+    dependencies = {
+      {
+        "nvim-lualine/lualine.nvim",
+        config = function(_, opts)
+          local new_opts = {
+            sections = {
+              lualine_y = {
+                function()
+                  -- invoke `progress` here.
+                  return require("lsp-progress").progress()
+                end,
+              },
+            },
+          }
+          opts = vim.tbl_deep_extend("force", opts, new_opts)
+          require("lualine").setup(opts)
+
+          -- listen lsp-progress event and refresh lualine
+          vim.api.nvim_create_augroup("lualine_augroup", { clear = true })
+          vim.api.nvim_create_autocmd("User", {
+            group = "lualine_augroup",
+            pattern = "LspProgressStatusUpdated",
+            callback = require("lualine").refresh,
+          })
+        end,
+      },
     },
   },
 }

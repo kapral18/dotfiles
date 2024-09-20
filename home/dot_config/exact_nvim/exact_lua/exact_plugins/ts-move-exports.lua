@@ -4,11 +4,12 @@ return {
   dir = config_path .. "/lua/plugins-local/ts-move-exports",
   keys = {
     {
-      "<leader>aid",
+      "<leader>]",
       function()
         require("plugins-local.ts-move-exports").ts_move_exports()
       end,
       desc = "Move TS exports to new path",
+      mode = "x",
     },
   },
 }

@@ -1,13 +1,58 @@
 local M = {}
 
-M.get_current_test_name = function()
-  local current_line = vim.api.nvim_get_current_line()
-  local test_name = current_line:match("[\"'](.-)[\"']")
-  return test_name
+M.match_test_name_from_line = function(line)
+  local testNamePatterns = {
+    "it%(",
+    "test%(",
+    "describe%(",
+  }
+
+  local quotePatterns = {
+    '"',
+    "'",
+    "`",
+  }
+
+  for _, testNamePattern in ipairs(testNamePatterns) do
+    for _, quotePattern in ipairs(quotePatterns) do
+      local test_name = string.match(line, "^%s.*" .. testNamePattern .. quotePattern .. "(.-)" .. quotePattern)
+      if test_name then
+        return test_name
+      end
+    end
+  end
 end
 
-M.run_jest_test = function(test_name)
-  local cmd = "node scripts/jest " .. vim.fn.expand("%") .. " -t '" .. test_name .. "'"
+M.get_current_test_name = function()
+  local current_line = vim.api.nvim_get_current_line()
+  local current_line_test_name = M.match_test_name_from_line(current_line)
+
+  if current_line_test_name then
+    return current_line_test_name
+  end
+
+  local current_line_number = vim.api.nvim_win_get_cursor(0)[1]
+  local lines_from_top_to_current = vim.api.nvim_buf_get_lines(0, 0, current_line_number - 1, false)
+
+  local enclosing_test_name = nil
+  for i = #lines_from_top_to_current, 1, -1 do
+    local line = lines_from_top_to_current[i]
+    local matched_enclosing_test_name = M.match_test_name_from_line(line)
+    if matched_enclosing_test_name then
+      enclosing_test_name = matched_enclosing_test_name
+      break
+    end
+  end
+
+  return enclosing_test_name
+end
+
+M.run_jest_cmd = function(arg)
+  local cmd = "node scripts/jest " .. vim.fn.expand("%")
+
+  if arg then
+    cmd = cmd .. " " .. arg
+  end
 
   vim.cmd.vsplit()
   vim.cmd.terminal()
@@ -17,9 +62,10 @@ end
 M.run_jest_in_split = function()
   local test_name = M.get_current_test_name()
   if test_name then
-    M.run_jest_test(test_name)
+    local arg = " -t '" .. test_name .. "'"
+    M.run_jest_cmd(arg)
   else
-    print("No test name found on the current line.")
+    M.run_jest_cmd()
   end
 end
 

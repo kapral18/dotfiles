@@ -4,7 +4,7 @@ return {
   dir = config_path .. "/lua/plugins-local/toggle-win-width",
   keys = {
     {
-      "<leader>aid",
+      "<leader>=",
       function()
         require("plugins-local.toggle-win-width").toggle_win_width()
       end,
