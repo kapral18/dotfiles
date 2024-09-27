@@ -107,6 +107,8 @@ then
 	alias ghs='gh copilot suggest'
 	alias ghx='gh copilot explain'
 	alias nvm='fnm'
+  # Non-hanging way to reload gpg-agent
+  alias reload_gpg='pkill -9 gpg-agent'
 
 	if hash lsd 2>/dev/null; then
 		alias ls='lsd -A'

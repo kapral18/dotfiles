@@ -18,6 +18,9 @@ return {
     "neovim/nvim-lspconfig",
     opts = {
       inlay_hints = { enabled = false },
+      -- fixes issues with eslint format error when too nested folders
+      -- fixed in neovim v0.11
+      -- https://github.com/neovim/neovim/issues/26520#issuecomment-2338591652
       capabilities = {
         workspace = {
           didChangeWatchedFiles = {

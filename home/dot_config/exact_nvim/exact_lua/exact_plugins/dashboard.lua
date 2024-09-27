@@ -49,12 +49,12 @@ return {
           icon = " ",
           key = "c",
         },
-        {
-          action = 'lua require("persistence").load()',
-          desc = " Restore Session",
-          icon = " ",
-          key = "s",
-        },
+        -- {
+        --   action = 'lua require("persistence").load()',
+        --   desc = " Restore Session",
+        --   icon = " ",
+        --   key = "s",
+        -- },
         {
           action = "LazyExtras",
           desc = " Lazy Extras",

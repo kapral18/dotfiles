@@ -117,6 +117,7 @@ return {
       { "<leader>/", false },
       { "<leader>:", false },
       { "<leader><space>", false },
+      { "<leader>ca", false },
       { "<leader>fb", false },
       { "<leader>fc", false },
       { "<leader>ff", false },
