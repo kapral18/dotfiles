@@ -45,18 +45,6 @@ return {
     end,
   },
   {
-    "nvim-neotest/neotest",
-    optional = true,
-    dependencies = {
-      "olimorris/neotest-phpunit",
-    },
-    opts = {
-      adapters = {
-        ["neotest-phpunit"] = {},
-      },
-    },
-  },
-  {
     "stevearc/conform.nvim",
     opts = function(_, opts)
       opts.formatters_by_ft.php = opts.formatters_by_ft.php or {}

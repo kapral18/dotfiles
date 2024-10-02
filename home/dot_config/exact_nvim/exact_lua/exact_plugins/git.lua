@@ -73,28 +73,6 @@ return {
     },
   },
   {
-    "ThePrimeagen/git-worktree.nvim",
-    opts = {},
-    dependencies = { "folke/which-key.nvim", "nvim-telescope/telescope.nvim" },
-    config = function(_, opts)
-      require("git-worktree").setup(opts)
-      require("telescope").load_extension("git_worktree")
-      require("which-key").add({
-        { "<leader>gw", group = "worktrees" },
-        {
-          "<leader>gwm",
-          "<cmd>lua require('telescope').extensions.git_worktree.git_worktrees()<cr>",
-          desc = "Manage Worktrees",
-        },
-        {
-          "<leader>gwc",
-          "<cmd>lua require('telescope').extensions.git_worktree.create_git_worktree()<cr>",
-          desc = "Create Worktree",
-        },
-      })
-    end,
-  },
-  {
     "nvim-treesitter/nvim-treesitter",
     opts = function(_, opts)
       if type(opts.ensure_installed) == "table" then
@@ -107,21 +85,6 @@ return {
         })
       end
     end,
-  },
-  {
-    "akinsho/git-conflict.nvim",
-    event = "VeryLazy",
-    opts = {
-      default_mappings = {
-        ours = "<leader>gxo",
-        theirs = "<leader>gxt",
-        none = "<leader>gx0",
-        both = "<leader>gxb",
-        next = "]x",
-        prev = "[x",
-      },
-      disable_diagnostics = true,
-    },
   },
   {
     "nvim-cmp",

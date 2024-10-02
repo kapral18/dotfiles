@@ -30,16 +30,4 @@ return {
       return opts
     end,
   },
-  {
-    "nvim-neotest/neotest",
-    optional = true,
-    dependencies = {
-      "rcasia/neotest-bash",
-    },
-    opts = {
-      adapters = {
-        ["neotest-bash"] = {},
-      },
-    },
-  },
 }

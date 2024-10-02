@@ -53,11 +53,6 @@ local function get_fzf_fn(cmd, opts)
   end
 end
 
-local function symbols_filter(entry, ctx)
-  ctx.symbols_filter = ctx.symbols_filter or require("lazyvim.config").get_kind_filter(ctx.bufnr)
-  return vim.tbl_contains(ctx.symbols_filter, entry.kind)
-end
-
 local rg_ignore_glob =
   "-g '!{node_modules,.next,dist,build,reports,.idea,.vscode,.yarn,.nyc_output,__generated__,reports,storybook-static,*.min.js,*.min.css,junit.xml,bazel-*,data,target,.buildkite,.chromium,.es,.yarn-*}'"
 local fd_ignore_glob =
@@ -115,46 +110,13 @@ return {
         false,
       },
       { "<leader>/", false },
-      { "<leader>:", false },
       { "<leader><space>", false },
-      { "<leader>ca", false },
-      { "<leader>fb", false },
-      { "<leader>fc", false },
-      { "<leader>ff", false },
-      { "<leader>fF", false },
       { "<leader>fr", false },
       { "<leader>fR", false },
-      { "<leader>gc", false },
-      { "<leader>gs", false },
-      { "<leader>s", false },
-      { "<leader>sa", false },
-      { "<leader>sb", false },
-      { "<leader>sc", false },
-      { "<leader>sC", false },
-      { "<leader>sd", false },
-      { "<leader>sD", false },
       { "<leader>sg", false },
       { "<leader>sG", false },
-      { "<leader>sh", false },
-      { "<leader>sH", false },
-      { "<leader>sk", false },
-      { "<leader>sM", false },
-      { "<leader>sm", false },
-      { "<leader>so", false },
       { "<leader>sR", false },
       { "<leader>sw", false },
-      { "<leader>sW", false },
-      { "<leader>sw", false },
-      { "<leader>sW", false },
-      { "<leader>uC", false },
-      {
-        "<leader>ss",
-        false,
-      },
-      {
-        "<leader>sS",
-        false,
-      },
     },
   },
   {
@@ -177,20 +139,6 @@ return {
         desc = "Files",
       },
       {
-        "<leader>gs",
-        get_fzf_fn("git_status", {
-          winopts = winopts.large.vertical,
-        }),
-        desc = "Git Status",
-      },
-      {
-        "<leader>gc",
-        get_fzf_fn("git_commits", {
-          winopts = winopts.large.vertical,
-        }),
-        desc = "Git Commits",
-      },
-      {
         "<leader>fr",
         get_fzf_fn("oldfiles", {
           winopts = winopts.medium.vertical,
@@ -206,20 +154,6 @@ return {
           include_current_session = false,
         }),
         desc = "Recent Files (All Sessions)",
-      },
-      {
-        "<leader>ss",
-        get_fzf_fn("lsp_document_symbols", {
-          winopts = winopts.large.vertical,
-        }),
-        desc = "Document Symbols",
-      },
-      {
-        "<leader>sS",
-        get_fzf_fn("lsp_live_workspace_symbols", {
-          winopts = winopts.large.vertical,
-        }),
-        desc = "Workspace Symbols",
       },
       {
         "<leader>/",
@@ -242,38 +176,6 @@ return {
         end,
         desc = "Live Grep (+ ignored)",
       },
-      { '<leader>s"', get_fzf_fn("registers", { winopts = winopts.large.vertical }), desc = "Registers" },
-      {
-        "<leader>sa",
-        get_fzf_fn("autocmds", { winopts = winopts.large.vertical }),
-        desc = "Auto Commands",
-      },
-      {
-        "<leader>sc",
-        get_fzf_fn("command_history", { winopts = winopts.large.vertical }),
-        desc = "Command History",
-      },
-      { "<leader>sC", get_fzf_fn("commands", { winopts = winopts.large.vertical }), desc = "Commands" },
-      {
-        "<leader>sd",
-        get_fzf_fn("diagnostics_document", { winopts = winopts.large.vertical }),
-        desc = "Document Diagnostics",
-      },
-      {
-        "<leader>sD",
-        get_fzf_fn("diagnostics_workspace", { winopts = winopts.large.vertical }),
-        desc = "Workspace Diagnostics",
-      },
-      { "<leader>sh", get_fzf_fn("help_tags", { winopts = winopts.large.vertical }), desc = "Help Pages" },
-      {
-        "<leader>sH",
-        get_fzf_fn("highlights", { winopts = winopts.large.vertical }),
-        desc = "Search Highlight Groups",
-      },
-      { "<leader>sm", get_fzf_fn("marks", { winopts = winopts.large.vertical }), desc = "Marks" },
-      { "<leader>sk", get_fzf_fn("keymaps", { winops = winopts.large.vertical }), desc = "Key Maps" },
-      { "<leader>sM", get_fzf_fn("man_pages", { winopts = winopts.large.vertical }), desc = "Man Pages" },
-      -- { "<leader>so", "<cmd>Telescope vim_options<cr>", desc = "Options" },
       {
         "<leader>sR",
         get_fzf_fn("resume", { winopts = winopts.large.vertical }),
@@ -322,34 +224,6 @@ return {
         end,
         mode = "v",
         desc = "Live Grep Selection (+ignored)",
-      },
-      {
-        "<leader>uC",
-        get_fzf_fn("colorschemes", { winopts = winopts.large.vertical }),
-        desc = "Colorscheme with preview",
-      },
-      {
-        "<leader>sb",
-        get_fzf_fn("buffers", { sort_mru = true, sort_lastused = true, winopts = winopts.large.vertical }),
-        desc = "Buffers with preview",
-      },
-      {
-        "<leader>ss",
-        function()
-          require("fzf-lua").lsp_document_symbols({
-            regex_filter = symbols_filter,
-          })
-        end,
-        desc = "Goto Symbol",
-      },
-      {
-        "<leader>sS",
-        function()
-          require("fzf-lua").lsp_dynamic_workspace_symbols({
-            regex_filter = symbols_filter,
-          })
-        end,
-        desc = "Goto Symbol (Workspace)",
       },
     },
     opts = function()
@@ -411,36 +285,6 @@ return {
             },
           },
         },
-        marks = {
-          prompt = "Marks❯ ",
-        },
-        changes = {
-          prompt = "Changes❯ ",
-        },
-        jumps = {
-          prompt = "Jumps❯ ",
-        },
-        tagstack = {
-          prompt = "Tag Stack❯ ",
-        },
-        commands = {
-          prompt = "Commands❯ ",
-        },
-        autocmds = {
-          prompt = "Auto Commands❯ ",
-        },
-        command_history = {
-          prompt = "Command History❯ ",
-        },
-        search_history = {
-          prompt = "Search History❯ ",
-        },
-        registers = {
-          prompt = "Registers❯ ",
-        },
-        keymaps = {
-          prompt = "Keymaps❯ ",
-        },
         files = {
           previewer = "bat",
           prompt = "Files❯ ",
@@ -455,29 +299,6 @@ return {
             ["ctrl-r"] = { actions.toggle_ignore },
           },
         },
-        git = {
-          files = {
-            prompt = "Git Files❯ ",
-          },
-          status = {
-            prompt = "Git Status❯ ",
-          },
-          commits = {
-            prompt = "Git Commits❯ ",
-          },
-          bcommits = {
-            prompt = "Git Buffer Commits❯ ",
-          },
-          branches = {
-            prompt = "Git Branches❯ ",
-          },
-          tags = {
-            prompt = "Git Tags❯ ",
-          },
-          stash = {
-            prompt = "Git Stash❯ ",
-          },
-        },
         grep = {
           previewer = "bat",
           prompt = "Live Grep❯ ",
@@ -485,94 +306,6 @@ return {
           rg_opts = rg_opts,
           actions = {
             ["ctrl-r"] = { actions.toggle_ignore },
-          },
-        },
-        args = {
-          prompt = "Args❯ ",
-          actions = { ["ctrl-x"] = actions.arg_del },
-        },
-        oldfiles = {
-          prompt = "History❯ ",
-          include_current_session = true,
-        },
-        quickfix = {
-          prompt = "Quickfix❯ ",
-        },
-        quickfix_stack = {
-          prompt = "Quickfix Stack❯ ",
-          marker = "❯",
-        },
-        loclist = {
-          prompt = "Locations❯ ",
-        },
-        loclist_stack = {
-          prompt = "Locations Stack❯ ",
-          marker = "❯",
-        },
-        buffers = {
-          prompt = "Buffers❯ ",
-        },
-        tabs = {
-          prompt = "Tabs❯ ",
-        },
-        lines = {
-          prompt = "Lines❯ ",
-          actions = {
-            ["ctrl-s"] = actions.file_split,
-            ["ctrl-v"] = actions.file_vsplit,
-            ["ctrl-t"] = actions.file_tabedit,
-          },
-        },
-        blines = {
-          prompt = "BLines❯ ",
-          actions = {
-            ["ctrl-s"] = actions.file_split,
-            ["ctrl-v"] = actions.file_vsplit,
-            ["ctrl-t"] = actions.file_tabedit,
-          },
-        },
-        tags = {
-          prompt = "Tags❯ ",
-          input_prompt = "[tags] Grep For❯ ",
-        },
-        btags = {
-          prompt = "Buffer Tags❯ ",
-        },
-        colorschemes = {
-          prompt = "Colorschemes❯ ",
-          winopts = { height = 0.55, width = 0.30 },
-        },
-        highlights = {
-          prompt = "Highlights❯ ",
-        },
-        helptags = {
-          prompt = "Help❯ ",
-        },
-        manpages = {
-          prompt = "Man❯ ",
-        },
-        lsp = {
-          previewer = false,
-          prompt_postfix = "❯ ",
-          symbols = {
-            file_icons = true,
-            color_icons = true,
-            symbol_hl_prefix = "CmpItemKind",
-          },
-          code_actions = {
-            prompt = "LSP Code Actions❯ ",
-            ui_select = true, -- use 'vim.ui.select'?
-            winopts = {
-              row = 0.40,
-              height = 0.35,
-              width = 0.60,
-            },
-          },
-          finder = {
-            prompt = "LSP Finder❯ ",
-          },
-          diagnostics = {
-            prompt = "LSP Diagnostics❯ ",
           },
         },
       }

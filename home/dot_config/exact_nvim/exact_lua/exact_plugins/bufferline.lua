@@ -5,6 +5,8 @@ return {
   opts = {
     options = {
       separator_style = "slant",
+      diagnostics = false,
+      diagnostics_indicator = nil,
     },
   },
   init = function()

@@ -27,7 +27,7 @@ return {
       end
     end
 
-    vim.keymap.set("", "<f1>", toggle_profile)
+    vim.keymap.set("n", "<leader>(", toggle_profile, { desc = "Profile NVim perf" })
 
     -- NVIM_PROFILE=start nvim
     -- once done open https://ui.perfetto.dev

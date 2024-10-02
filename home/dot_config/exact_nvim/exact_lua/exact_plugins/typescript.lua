@@ -55,20 +55,6 @@ return {
     "Redoxahmii/json-to-ts.nvim",
     build = "sh install.sh yarn",
     ft = ft_json,
-    keys = {
-      {
-        "<leader>cjt",
-        "<CMD>ConvertJSONtoTS<CR>",
-        desc = "Convert JSON to TS",
-        ft = ft_json,
-      },
-      {
-        "<leader>cjb",
-        "<CMD>ConvertJSONtoTSBuffer<CR>",
-        desc = "Convert JSON to TS in buffer",
-        ft = ft_json,
-      },
-    },
   },
   {
     "pmizio/typescript-tools.nvim",
