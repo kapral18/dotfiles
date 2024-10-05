@@ -42,10 +42,19 @@ return {
   },
   {
     "aaronhallaert/advanced-git-search.nvim",
+    cmd = { "AdvancedGitSearch" },
     config = function()
-      require("advanced_git_search.fzf").setup({
-        diff_plugin = "diffview.nvim",
+      -- optional: setup telescope before loading the extension
+      require("telescope").setup({
+        -- move this to the place where you call the telescope setup function
+        extensions = {
+          advanced_git_search = {
+            diff_plugin = "diffview.nvim",
+          },
+        },
       })
+
+      require("telescope").load_extension("advanced_git_search")
 
       require("which-key").add({
         { "<leader>ga", group = "Advanced Git Search", mode = { "n", "v" } },
@@ -61,7 +70,7 @@ return {
       })
     end,
     dependencies = {
-      "ibhagwan/fzf-lua",
+      "nvim-telescope/telescope.nvim",
       -- to show diff splits and open commits in browser
       "tpope/vim-fugitive",
       -- to open commits in browser with fugitive

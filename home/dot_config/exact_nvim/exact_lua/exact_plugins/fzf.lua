@@ -40,7 +40,7 @@ local winopts = {
       fullscreen = true,
       preview = {
         layout = "vertical",
-        vertical = "down:75%",
+        vertical = "up:75%",
       },
     },
   },
@@ -84,7 +84,7 @@ local function live_grep_with_patterns(initial_search, opts)
 
   local function nested_live_grep()
     require("fzf-lua").live_grep(vim.tbl_deep_extend("force", {
-      winopts = winopts.large.vertical,
+      winopts = winopts.full.vertical,
       rg_glob = true,
       no_esc = true,
       actions = {
@@ -126,7 +126,8 @@ return {
       {
         "<leader><space>",
         get_fzf_fn("files", {
-          winopts = winopts.medium.vertical,
+          winopts = winopts.full.vertical,
+          cwd = vim.uv.cwd(),
         }),
         desc = "Files",
       },
@@ -134,23 +135,26 @@ return {
         "<leader>i",
         get_fzf_fn("files", {
           fd_opts = fd_opts_unrestricted,
-          winopts = winopts.medium.vertical,
+          winopts = winopts.full.vertical,
+          cwd = vim.uv.cwd(),
         }),
         desc = "Files",
       },
       {
         "<leader>fr",
         get_fzf_fn("oldfiles", {
-          winopts = winopts.medium.vertical,
+          winopts = winopts.full.vertical,
           cwd_only = true,
+          cwd = vim.uv.cwd(),
+          include_current_session = true,
         }),
         desc = "Recent Files (Current Session)",
       },
       {
         "<leader>fR",
         get_fzf_fn("oldfiles", {
-          winopts = winopts.medium.vertical,
-          cwd_only = true,
+          winopts = winopts.full.vertical,
+          cwd_only = false,
           include_current_session = false,
         }),
         desc = "Recent Files (All Sessions)",
@@ -158,27 +162,27 @@ return {
       {
         "<leader>/",
         get_fzf_fn("lgrep_curbuf", {
-          winopts = winopts.large.vertical,
+          winopts = winopts.full.vertical,
         }),
         desc = "Grep",
       },
       {
         "<leader>sg",
         function()
-          live_grep_with_patterns("", { rg_opts = rg_opts })
+          live_grep_with_patterns("", { rg_opts = rg_opts, cwd = vim.uv.cwd() })
         end,
         desc = "Live Grep",
       },
       {
         "<leader>sG",
         function()
-          live_grep_with_patterns("", { rg_opts = rg_opts_unrestricted })
+          live_grep_with_patterns("", { rg_opts = rg_opts_unrestricted, cwd = vim.uv.cwd() })
         end,
         desc = "Live Grep (+ ignored)",
       },
       {
         "<leader>sR",
-        get_fzf_fn("resume", { winopts = winopts.large.vertical }),
+        get_fzf_fn("resume", { winopts = winopts.full.vertical }),
         desc = "Resume Picker List",
       },
       {
@@ -186,7 +190,8 @@ return {
         function()
           live_grep_with_patterns(vim.fn.expand("<cword>"), {
             rg_opts = rg_opts,
-            winopts = winopts.large.vertical,
+            winopts = winopts.full.vertical,
+            cwd = vim.uv.cwd(),
           })
         end,
         desc = "Live Grep CWord",
@@ -196,7 +201,8 @@ return {
         function()
           live_grep_with_patterns(vim.fn.expand("<cword>"), {
             rg_opts = rg_opts_unrestricted,
-            winopts = winopts.large.vertical,
+            winopts = winopts.full.vertical,
+            cwd = vim.uv.cwd(),
           })
         end,
         desc = "Live Grep CWord (+ ignored)",
@@ -207,7 +213,8 @@ return {
           live_grep_with_patterns(vim.trim(require("fzf-lua").utils.get_visual_selection()), {
             rg_opts = rg_opts .. " --multiline",
             no_esc = false,
-            winopts = winopts.large.vertical,
+            winopts = winopts.full.vertical,
+            cwd = vim.uv.cwd(),
           })
         end,
         mode = "v",
@@ -219,7 +226,8 @@ return {
           live_grep_with_patterns(vim.trim(require("fzf-lua").utils.get_visual_selection()), {
             rg_opts = rg_opts_unrestricted .. " --multiline",
             no_esc = false,
-            winopts = winopts.large.vertical,
+            winopts = winopts.full.vertical,
+            cwd = vim.uv.cwd(),
           })
         end,
         mode = "v",

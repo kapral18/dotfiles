@@ -143,6 +143,14 @@ if status --is-interactive
         end | pbcopy
     end
 
+    function get_tests_for_llm -d "get tests for llm"
+        fd -e ts -e tsx -p '(/mock/|/stub/|\.test\.)' -E 'setup_tests.ts' -E 'target' --search-path $argv[1] -0 | while read -lz file
+            echo "===== $file ====="
+            cat "$file"
+            echo
+        end | pbcopy
+    end
+
     {{ if ne .isWork true -}}
     # pass (password store)
     function wpass -d "point PASSWORD_STORE_DIR to work"
