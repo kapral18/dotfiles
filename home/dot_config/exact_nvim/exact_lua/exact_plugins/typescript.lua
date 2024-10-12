@@ -9,7 +9,6 @@ local ft_js = {
   "typescript.tsx",
 }
 
-local ft_json = { "json", "jsonl", "jsonc" }
 local util = require("lspconfig.util")
 
 return {
@@ -50,11 +49,6 @@ return {
         end,
       },
     },
-  },
-  {
-    "Redoxahmii/json-to-ts.nvim",
-    build = "sh install.sh yarn",
-    ft = ft_json,
   },
   {
     "pmizio/typescript-tools.nvim",
