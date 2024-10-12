@@ -59,7 +59,7 @@ local fd_ignore_glob =
   "-E '{node_modules,.next,dist,build,reports,.idea,.vscode,.yarn,.nyc_output,__generated__,reports,storybook-static}/' -E '{*.min.js,*.min.css,junit.xml,bazel-*,data,target,.buildkite,.chromium,.es,.yarn-*}'"
 
 local rg_opts_unrestricted =
-  "--column --line-number --no-heading --color=always --smart-case --max-columns=512 --hidden --no-ignore -g '!{.git,tsconfig.tsbuildinfo,*.map}'"
+  "--column --line-number --no-heading --color=always --smart-case --max-columns=4096 --hidden --no-ignore -g '!{.git,tsconfig.tsbuildinfo,*.map}'"
 
 local rg_opts = rg_opts_unrestricted .. " " .. rg_ignore_glob
 
