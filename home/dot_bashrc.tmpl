@@ -1,190 +1,407 @@
-# Lang
-export LC_ALL=en_US.UTF-8
+# ====================================
+# Bash Shell Configuration
+# ====================================
+
+# ------------------------------------
+# Environment Variables
+# ------------------------------------
+
+## Language Settings
 export LANG=en_US.UTF-8
 
-# My terminal editor is always Vim by default
+## Terminal Settings
+if [ -z "$TERM" ]; then
+    export TERM="xterm-256color"
+fi
+
+## Editor Settings
+# Set default editor to Neovim
 export EDITOR=nvim
 export VISUAL=nvim
 
-# Set terminal colors to 256
-export TERM=xterm-256color
+## Homebrew Settings
+# Disable automatic updates during brew install
+export HOMEBREW_NO_AUTO_UPDATE=1
+# Homebrew paths (adjusted based on template variables)
+export HOMEBREW_PREFIX="{{ .homebrewPrefix }}"
+export HOMEBREW_CELLAR="{{ .homebrewPrefix }}/Cellar"
+export HOMEBREW_REPOSITORY="{{ .homebrewPrefix }}"
+export MANPATH="{{ .homebrewPrefix }}/share/man:$MANPATH"
+export INFOPATH="{{ .homebrewPrefix }}/share/info:$INFOPATH"
 
-# XDG is used by lazygit and other tools
-export XDG_CONFIG_HOME="$HOME/.config"
+## SSH Agent (1Password)
+export SSH_AUTH_SOCK="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
 
-# System export XDG_DATA_DIRS=/usr/share:/usr/local/share
-export XDG_CONFIG_DIRS=/etc/xdg
+## Go Path
+export GOPATH="$HOME/go"
 
-# User
-export XDG_CONFIG_HOME=$HOME/.config
-export XDG_CACHE_HOME=$HOME/.cache
-export XDG_DATA_HOME=$HOME/.local/share
-export XDG_DESKTOP_DIR=$HOME/Desktop
-export XDG_DOCUMENTS_DIR=$HOME/Documents
-export XDG_DOWNLOAD_DIR=$HOME/Downloads
-export XDG_MUSIC_DIR=$HOME/Music
-export XDG_PICTURES_DIR=$HOME/Pictures
-export XDG_VIDEOS_DIR=$HOME/Videos
-
-{{ if eq .chezmoi.arch "amd64" }}
-export GPG_TTY=$(tty)
-{{ end }}
-
-# Go
-export GOPATH=$HOME/go
-
-# Docker
-export DOCKER_HIDE_LEGACY_COMMANDS=true
-
-# Rbenv
-export RBENV_ROOT=$HOME/.rbenv
-
-# FZF
-FD_OPTIONS="--hidden --follow"
-export FZF_DEFAULT_OPTS="--no-mouse --height 80% --reverse --multi --info=inline --preview='bat {} --color always' --preview-window='right:60%:wrap' --bind=ctrl-d:half-page-down,ctrl-u:half-page-up,ctrl-b:page-up,ctrl-f:page-down"
-export FZF_DEFAULT_COMMAND="git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l $FD_OPTIONS"
-export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
-export FZF_ALT_C_COMMAND="fd --type d $FD_OPTIONS"
-
-# Homebrew
-export HOMEBREW_PREFIX="{{ .homebrewPrefix }}";
-export HOMEBREW_CELLAR="{{ .homebrewPrefix }}/Cellar";
-export HOMEBREW_REPOSITORY="{{ .homebrewPrefix }}";
-export MANPATH="{{ .homebrewPrefix }}/share/man${MANPATH+:$MANPATH}:";
-export INFOPATH="{{ .homebrewPrefix }}/share/info:${INFOPATH:-}";
-
-# Bun
+## Bun Installation Path
 export BUN_INSTALL="$HOME/.bun"
 
-# Bat
+## GPG TTY Configuration (for amd64 architecture)
+{{ if eq .chezmoi.arch "amd64" }}
+export GPG_TTY=$(tty)
+{{ end -}}
+
+## BAT Theme
 export BAT_THEME="Catppuccin-mocha"
 
-# Ollama
+## Ollama Settings
 export OLLAMA_NUM_PARALLEL=10
 export OLLAMA_MAX_QUEUE=2048
 
-# Paths
-export PATH="/usr/local/opt/libpq/bin:$PATH"
-export PATH="/usr/local/opt/ruby/bin:$PATH"
-export PATH="/usr/local/opt/ssh-copy-id/bin:$PATH"
-export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
-export PATH="/usr/local/sbin:$PATH"
-export PATH="{{ .homebrewPrefix }}/sbin:$PATH"
-export PATH="{{ .homebrewPrefix }}/bin:$PATH"
-export PATH="$RBENV_ROOT/bin:$PATH"
-export PATH="$GOPATH/bin:$PATH"
-export PATH="$HOME/.cargo/bin:$PATH"
-export PATH="$HOME/.local/share/yarn/global/node_modules/.bin/:$PATH"
-export PATH="$HOME/.local/bin:$PATH"
-export PATH="$BUN_INSTALL/bin:$PATH"
-export PATH="$HOME/bin:$PATH"
+# ------------------------------------
+# XDG Base Directory Specification
+# ------------------------------------
 
-# 1Password ssh agent
-export SSH_AUTH_SOCK="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+## System Directories
+export XDG_DATA_DIRS="/usr/share:/usr/local/share"
+export XDG_CONFIG_DIRS="/etc/xdg"
 
-# is shell interactive?
-if [[ $- == *i* ]]
-then
-# Inits
-	eval "$(rbenv init -)"
-	eval "$(starship init bash)"
-	eval "$(zoxide init bash)"
-	eval "$(fnm env --use-on-cd)"
-  eval "$(navi widget bash)"
+## User Directories
+export XDG_CONFIG_HOME="$HOME/.config"
+export XDG_CACHE_HOME="$HOME/.cache"
+export XDG_DATA_HOME="$HOME/.local/share"
+export XDG_DESKTOP_DIR="$HOME/Desktop"
+export XDG_DOCUMENTS_DIR="$HOME/Documents"
+export XDG_DOWNLOAD_DIR="$HOME/Downloads"
+export XDG_MUSIC_DIR="$HOME/Music"
+export XDG_PICTURES_DIR="$HOME/Pictures"
+export XDG_VIDEOS_DIR="$HOME/Videos"
 
-# Broot
-	source $HOME/.config/broot/launcher/bash/br
-	. "$HOME/.cargo/env"
+# ------------------------------------
+# Path Management
+# ------------------------------------
 
-# Aliases
-  alias b="chatblade -so"
-	alias g="git"
-	alias tree='tree -I ".git|node_modules"'
-	alias t="tmux"
-	alias v=nvim
-	alias c=chezmoi
-	alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l $FD_OPTIONS'
-	alias ghs='gh copilot suggest'
-	alias ghx='gh copilot explain'
-	alias nvm='fnm'
-  # Non-hanging way to reload gpg-agent
-  alias reload_gpg='pkill -9 gpg-agent'
+## Function to Prepend Paths if Missing
+prepend_to_path_if_missing() {
+    # Prepend a path to $PATH if it is not already in $PATH
+    path="$1"
+    if [[ ":$PATH:" != *":$path:"* ]]; then
+        export PATH="$path:$PATH"
+    fi
+}
 
-	if hash lsd 2>/dev/null; then
-		alias ls='lsd -A'
-		alias l='lsd -lAh'
-		alias ll='lsd -lAtrh'
-		alias la='lsd -A'
-	else
-		alias ls='ls -A'
-		alias l='ls -lAh'
-		alias ll='ls -lAtrh'
-		alias la='ls -A'
-	fi
+## Prepend Custom Paths
+prepend_to_path_if_missing "{{ .homebrewPrefix }}/bin"
+prepend_to_path_if_missing "{{ .homebrewPrefix }}/sbin"
+prepend_to_path_if_missing "$HOME/.rbenv/shims"
+prepend_to_path_if_missing "$GOPATH/bin"
+prepend_to_path_if_missing "$HOME/.cargo/bin"
+prepend_to_path_if_missing "$HOME/.local/share/yarn/global/node_modules/.bin/"
+prepend_to_path_if_missing "$HOME/.local/bin"
+prepend_to_path_if_missing "$BUN_INSTALL/bin"
+prepend_to_path_if_missing "$HOME/bin"
 
-	appid() {
-			if [ -z "$1" ]; then
-					echo "Usage: appid <app>"
-					return 1
-			fi
-			osascript -e "id of app \"$1\""
-	}
+# ------------------------------------
+# FZF Configuration
+# ------------------------------------
 
-	dumputi() {
-			/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -dump | grep "uti:" | awk '{print $2}' | sort | uniq
-	}
+export FD_OPTIONS="--hidden --follow"
 
-	get_source_for_llm() {
-			# Description: get source for llm
-			fd -e ts -e tsx -E '*test*' -E '*mock*' -E 'setup_tests.ts' -E 'target' --search-path "$1" -0 | while IFS= read -rd '' file
-			do
-					echo "===== $file ====="
-					cat "$file"
-					echo
-			done | pbcopy
-	}
+export FZF_DEFAULT_OPTS="
+    --no-mouse
+    --height 80%
+    --reverse
+    --multi
+    --info=inline
+    --preview='bat {} --color always'
+    --preview-window='right:60%:wrap'
+    --bind=ctrl-d:half-page-down,ctrl-u:half-page-up,ctrl-b:page-up,ctrl-f:page-down
+"
 
-	function get_tests_for_llm() {
-			local search_path="$1"
-			fd -e ts -e tsx -p '(/mock/|/stub/|\.test\.)' -E 'setup_tests.ts' -E 'target' --search-path "$search_path" -0 | while IFS= read -r -d '' file; do
-					echo "===== $file ====="
-					cat "$file"
-					echo
-			done | pbcopy
-	}
+export FZF_DEFAULT_COMMAND="
+    git ls-files --cached --others --exclude-standard 2>/dev/null \
+    || fd --type f --type l $FD_OPTIONS
+"
 
-	vid_ipad() {
-			ffmpeg -i $1 -af "loudnorm=I=-14:TP=-1.5:LRA=7,acompressor=threshold=-20dB:ratio=4:attack=200:release=1000,equalizer=f=30:t=q:w=1:g=5" -c:v libx264 -crf 17 -preset slow -c:a aac -b:a 192k $2
-	}
+export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+export FZF_ALT_C_COMMAND="fd --type d $FD_OPTIONS"
 
-	{{ if ne .isWork true }}
-	wpass() {
-			export PASSWORD_STORE_DIR={{ joinPath .chezmoi.homeDir ".password-store-work" | quote }}
-	}
+# ------------------------------------
+# OpenAI API Key Configuration
+# ------------------------------------
 
-	ppass() {
-			export PASSWORD_STORE_DIR={{ joinPath .chezmoi.homeDir ".password-store" | quote }}
-	}
-	{{ end }}
+if command -v pass >/dev/null && [ -z "$OPENAI_API_KEY" ]; then
+    export OPENAI_API_KEY=$(pass show openai/api/token)
 fi
 
-# OpenAI
-if command -v pass &> /dev/null; then
-	export OPENAI_API_KEY=$(pass show openai/api/token)
+# ------------------------------------
+# Conditional Configurations
+# ------------------------------------
+
+{{ if ne .isWork true -}}
+# Password Store Selection
+wpass() {
+    # Point PASSWORD_STORE_DIR to work
+    export PASSWORD_STORE_DIR="{{ joinPath .chezmoi.homeDir ".password-store-work" }}"
+}
+
+ppass() {
+    # Point PASSWORD_STORE_DIR to personal
+    export PASSWORD_STORE_DIR="{{ joinPath .chezmoi.homeDir ".password-store" }}"
+}
+{{- end }}
+
+# ------------------------------------
+# Interactive Session Configurations
+# ------------------------------------
+
+if [[ $- == *i* ]]; then
+
+    ## Aliases
+    alias b="chatblade -so"
+    alias c=chezmoi
+    alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l $FD_OPTIONS'
+    alias g=git
+    alias t=tmux
+    alias tree='tree -I ".git|node_modules"'
+    alias v=nvim
+
+    # LS Aliases with lsd support
+    if hash lsd 2>/dev/null; then
+        alias ls='lsd -A'
+        alias l='lsd -lAh'
+        alias ll='lsd -lAtrh'
+        alias la='lsd -A'
+    else
+        alias ls='ls -A'
+        alias l='ls -lAh'
+        alias ll='ls -lAtrh'
+        alias la='ls -A'
+    fi
+
+    # GPG Agent Reload Alias
+    alias reload_gpg='pkill -9 gpg-agent'
+
+    ## Initializations
+    if command -v starship >/dev/null; then
+        eval "$(starship init bash)"
+    fi
+
+    if command -v zoxide >/dev/null; then
+        eval "$(zoxide init bash)"
+    fi
+
+    if command -v navi >/dev/null; then
+        eval "$(navi widget bash)"
+    fi
+
 fi
 
+# ------------------------------------
+# Tool-Specific Configurations
+# ------------------------------------
+
+## RBENV Configuration
+# Hardcoded to avoid shell path issues
+export RBENV_SHELL="bash"
+rbenv rehash 2>/dev/null
+
+rbenv() {
+    command="$1"
+    shift
+
+    case "$command" in
+        rehash | shell)
+            eval "$(rbenv "sh-$command" "$@")" ;;
+        *)
+            command rbenv "$command" "$@" ;;
+    esac
+}
+
+## Conda Initialization
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
-__conda_setup="$('{{ .homebrewPrefix }}/Caskroom/miniconda/base/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
-if [ $? -eq 0 ]; then
-    eval "$__conda_setup"
+
+if [ -f "{{ .homebrewPrefix }}/Caskroom/miniconda/base/bin/conda" ]; then
+    eval "$({{ .homebrewPrefix }}/Caskroom/miniconda/base/bin/conda shell.bash hook)"
+elif [ -f "{{ .homebrewPrefix }}/Caskroom/miniconda/base/etc/profile.d/conda.sh" ]; then
+    . "{{ .homebrewPrefix }}/Caskroom/miniconda/base/etc/profile.d/conda.sh"
 else
-    if [ -f "{{ .homebrewPrefix }}/Caskroom/miniconda/base/etc/profile.d/conda.sh" ]; then
-        . "{{ .homebrewPrefix }}/Caskroom/miniconda/base/etc/profile.d/conda.sh"
-    else
-        export PATH="{{ .homebrewPrefix }}/Caskroom/miniconda/base/bin:$PATH"
-    fi
+    export PATH="{{ .homebrewPrefix }}/Caskroom/miniconda/base/bin:$PATH"
 fi
-unset __conda_setup
 # <<< conda initialize <<<
 
+## NVM (Node Version Manager) Configuration
+export NVM_DIR="$(brew --prefix nvm)"
+
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+
+nvm use --silent
+
+# ------------------------------------
+# Custom Functions
+# ------------------------------------
+
+## Function: get_risky_tests
+get_risky_tests() {
+    # Get tests close to or beyond default Jest threshold
+    if [ $# -eq 0 ]; then
+        echo "Usage: get_risky_tests <folder_path>"
+        return 1
+    fi
+
+    temp_output=$(mktemp -t jest-output)
+
+    cpulimit -l 2 -i -- node --max-old-space-size=12288 --trace-warnings scripts/jest "$1" \
+        --runInBand --coverage=false --passWithNoTests --silent --ci --json --outputFile="$temp_output"
+
+    cat "$temp_output" | jq '
+        .testResults[] as $test |
+        $test.assertionResults[] |
+        select(.duration > 4000) |
+        {fullPath: $test.name, fullName: .fullName, duration: .duration}
+    '
+}
+
+## Function: get_pr_worktree
+get_pr_worktree() {
+    # Fetch a PR from GitHub and create a worktree for it
+    pr_number="$1"
+
+    # Ensure a PR number is provided
+    if [ -z "$pr_number" ]; then
+        echo "Usage: get_pr_worktree <PR_NUMBER>"
+        return 1
+    fi
+
+    # Fetch PR details using GitHub CLI
+    pr_info=$(gh pr view "$pr_number" --json headRefName,headRepository,headRepositoryOwner \
+        --jq '.headRefName + " " + .headRepository.name + " " + .headRepositoryOwner.login')
+
+    # Extract branch name, repository name, and owner
+    branch_name=$(echo "$pr_info" | cut -d ' ' -f 1)
+    repo_name=$(echo "$pr_info" | cut -d ' ' -f 2)
+    repo_owner=$(echo "$pr_info" | cut -d ' ' -f 3)
+
+    # Validate extracted information
+    for var in branch_name repo_name repo_owner; do
+        if [ -z "${!var}" ]; then
+            echo "$var is empty"
+            return 1
+        fi
+    done
+
+    repo_url="git@github.com:$repo_owner/$repo_name.git"
+
+    # Add remote if it doesn't exist
+    if ! git remote get-url "$repo_owner" >/dev/null 2>&1; then
+        git remote add "$repo_owner" "$repo_url"
+    fi
+
+    # Fetch and create worktree
+    git fetch "$repo_owner" "$branch_name"
+    git worktree add "../$repo_owner/$branch_name" "$repo_owner/$branch_name"
+
+    echo "Created worktree for PR #$pr_number on branch '$branch_name' from '$repo_owner'."
+}
+
+## Function: search_pr
+search_pr() {
+    # Search for a PR via GitHub CLI and create a worktree
+    if [ $# -eq 0 ]; then
+        echo "Usage: search_pr <search_query>"
+        return 1
+    fi
+
+    # Search and select PR using fzf
+    pr_number=$(gh pr list --search "$1" --json number,title \
+        --jq '.[] | "\(.number) \(.title)"' \
+        | fzf --preview '
+            gh pr view {1} --json title,headRefName,headRepository,headRepositoryOwner --jq "
+                .title + \"\n\" + .headRefName + \" \" + .headRepository.name + \" \" + .headRepositoryOwner.login
+            "
+        ' | awk '{print $1}')
+
+    if [ -z "$pr_number" ]; then
+        echo "No PR selected."
+        return 1
+    fi
+
+    # Create worktree for the selected PR
+    get_pr_worktree "$pr_number"
+}
+
+## Function: appid
+appid() {
+    # Get the application ID from the bundle identifier
+    if [ $# -eq 0 ]; then
+        echo "Usage: appid <bundle_id>"
+        return 1
+    fi
+
+    bundle_id="$1"
+    app_id=$(osascript -e "id of app \"$bundle_id\"")
+    echo "$app_id"
+}
+
+## Function: dumputi
+dumputi() {
+    # Dump list of Uniform Type Identifiers (UTIs)
+    /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -dump \
+        | grep "uti:" \
+        | awk '{print $2}' \
+        | sort \
+        | uniq
+}
+
+## Function: vid_ipad
+vid_ipad() {
+    # Make video iPad-ready
+    if [ $# -ne 2 ]; then
+        echo "Usage: vid_ipad <input> <output>"
+        return 1
+    fi
+
+    ffmpeg -i "$1" -af '
+        loudnorm=I=-14:TP=-1.5:LRA=7,
+        acompressor=threshold=-20dB:ratio=4:attack=200:release=1000,
+        equalizer=f=30:t=q:w=1:g=5
+    ' -c:v libx264 -crf 17 -preset slow -c:a aac -b:a 192k "$2"
+}
+
+## Function: get_source_for_llm
+get_source_for_llm() {
+    # Get source code files for language models
+    fd -e ts -e tsx -E '*test*' -E '*mock*' -E 'setup_tests.ts' -E target --search-path "$1" -0 \
+        | while IFS= read -r -d '' file; do
+            echo "===== $file ====="
+            cat "$file"
+            echo
+        done | pbcopy
+}
+
+## Function: get_tests_for_llm
+get_tests_for_llm() {
+    # Get test files for language models
+    fd -e ts -e tsx -p '(/mock/|/stub/|\.test\.)' -E 'setup_tests.ts' -E target --search-path "$1" -0 \
+        | while IFS= read -r -d '' file; do
+            echo "===== $file ====="
+            cat "$file"
+            echo
+        done | pbcopy
+}
+
+# ------------------------------------
+# Deduplicate PATH
+# ------------------------------------
+
+## Function to Deduplicate PATH
+dedup_path() {
+    # Deduplicate entries in PATH
+    old_PATH="$PATH"
+    new_PATH=""
+    IFS=':' read -r -a path_array <<< "$PATH"
+    declare -A path_seen
+    for entry in "${path_array[@]}"; do
+        if [[ -n "$entry" && -z "${path_seen[$entry]}" ]]; then
+            new_PATH="${new_PATH:+$new_PATH:}$entry"
+            path_seen[$entry]=1
+        fi
+    done
+    export PATH="$new_PATH"
+}
+
+## Deduplicate PATH
+dedup_path

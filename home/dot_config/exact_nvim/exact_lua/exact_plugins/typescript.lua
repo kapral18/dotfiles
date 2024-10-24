@@ -127,7 +127,6 @@ return {
         separate_diagnostic_server = true,
         publish_diagnostic_on = "insert_leave",
         tsserver_path = nil,
-        tsserver_plugins = {},
         tsserver_max_memory = 8192,
         tsserver_format_options = {},
         tsserver_file_preferences = {

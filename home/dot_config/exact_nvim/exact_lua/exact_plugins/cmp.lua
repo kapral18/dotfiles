@@ -4,7 +4,6 @@ return {
     "hrsh7th/nvim-cmp",
     dependencies = {
       { "hrsh7th/cmp-nvim-lsp-signature-help" },
-      { "hrsh7th/cmp-cmdline" },
       {
         "rcarriga/cmp-dap",
         dependencies = {
@@ -13,7 +12,6 @@ return {
       },
       { "lukas-reineke/cmp-rg" },
       { "lukas-reineke/cmp-under-comparator" },
-      { "chrisgrieser/cmp-nerdfont" },
       { "petertriho/cmp-git", config = true },
       { "SergioRibera/cmp-dotenv" },
       { "hrsh7th/cmp-emoji" },
@@ -22,13 +20,11 @@ return {
     opts = function(_, opts)
       local cmp = require("cmp")
       table.insert(opts.sources, { name = "nvim_lsp_signature_help" })
-      table.insert(opts.sources, { name = "rg" })
       table.insert(opts.sources, { name = "rg", keyword_length = 3 })
       table.insert(opts.sorting.comparators, 4, require("cmp-under-comparator").under)
       table.insert(opts.sources, { name = "dotenv" })
       table.insert(opts.sources, { name = "emoji" })
       table.insert(opts.sources, { name = "fonts", option = { space_filter = "-" } })
-      table.insert(opts.sources, { name = "nerdfont" })
 
       opts.window = {
         completion = {
@@ -60,22 +56,6 @@ return {
           { name = "vim-dadbod-completion" },
           { name = "buffer" },
         },
-      })
-
-      cmp.setup.cmdline("/", {
-        mapping = cmp.mapping.preset.cmdline(),
-        sources = {
-          { name = "buffer" },
-        },
-      })
-
-      cmp.setup.cmdline(":", {
-        mapping = cmp.mapping.preset.cmdline(),
-        sources = cmp.config.sources({
-          { name = "path" },
-        }, {
-          { name = "cmdline" },
-        }),
       })
     end,
   },
