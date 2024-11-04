@@ -7,12 +7,9 @@ set -l cargo_install_packages \
     cargo-watch \
     diskonaut \
     git-brws \
-    grcov \
     hackernews_tui \
-    lemmeknow \
     oatmeal \
     presenterm \
-    tdf \
     tokei \
     trippy \
     viu
@@ -26,11 +23,7 @@ for package in $cargo_install_packages
         echo "-----------------------------------"
         echo "cargo install $package: applying..."
         echo "-----------------------------------"
-        if test $package = "tdf"
-            cargo install --git https://github.com/itsjunetime/tdf
-        else
-            cargo install $package --locked
-        end
+        cargo install $package --locked
         echo "----------------------------"
         echo "cargo install $package: done"
         echo "----------------------------"

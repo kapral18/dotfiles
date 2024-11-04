@@ -26,4 +26,12 @@ return {
       vim.api.nvim_set_hl(0, "CopilotAnnotation", { fg = "#03a598" })
     end,
   },
+
+  {
+    "CopilotC-Nvim/CopilotChat.nvim",
+    opts = {
+      model = "o1-preview",
+      temperature = 1,
+    },
+  },
 }
