@@ -30,7 +30,7 @@ return {
   {
     "CopilotC-Nvim/CopilotChat.nvim",
     opts = {
-      model = "o1-preview",
+      model = "o1-mini",
       temperature = 1,
     },
   },
