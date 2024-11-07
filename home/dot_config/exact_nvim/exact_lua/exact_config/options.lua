@@ -94,3 +94,5 @@ vim.opt.syntax = "off"
 vim.o.foldenable = false
 
 vim.o.spell = false
+
+vim.lsp.set_log_level("off")
