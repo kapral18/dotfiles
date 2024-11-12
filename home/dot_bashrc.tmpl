@@ -157,6 +157,8 @@ if [[ $- == *i* ]]; then
     alias t=tmux
     alias tree='tree -I ".git|node_modules"'
     alias v=nvim
+    alias ghe="gh copilot explain"
+    alias ghs="gh copilot suggest"
 
     # LS Aliases with lsd support
     if hash lsd 2>/dev/null; then
@@ -203,10 +205,12 @@ rbenv() {
     shift
 
     case "$command" in
-        rehash | shell)
-            eval "$(rbenv "sh-$command" "$@")" ;;
-        *)
-            command rbenv "$command" "$@" ;;
+    rehash | shell)
+        eval "$(rbenv "sh-$command" "$@")"
+        ;;
+    *)
+        command rbenv "$command" "$@"
+        ;;
     esac
 }
 
@@ -226,7 +230,7 @@ fi
 ## NVM (Node Version Manager) Configuration
 export NVM_DIR="$(brew --prefix nvm)"
 
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
 
 nvm use --silent
 
@@ -307,8 +311,8 @@ search_pr() {
 
     # Search and select PR using fzf
     pr_number=$(gh pr list --search "$1" --json number,title \
-        --jq '.[] | "\(.number) \(.title)"' \
-        | fzf --preview '
+        --jq '.[] | "\(.number) \(.title)"' |
+        fzf --preview '
             gh pr view {1} --json title,headRefName,headRepository,headRepositoryOwner --jq "
                 .title + \"\n\" + .headRefName + \" \" + .headRepository.name + \" \" + .headRepositoryOwner.login
             "
@@ -339,11 +343,11 @@ appid() {
 ## Function: dumputi
 dumputi() {
     # Dump list of Uniform Type Identifiers (UTIs)
-    /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -dump \
-        | grep "uti:" \
-        | awk '{print $2}' \
-        | sort \
-        | uniq
+    /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -dump |
+        grep "uti:" |
+        awk '{print $2}' |
+        sort |
+        uniq
 }
 
 ## Function: vid_ipad
@@ -364,8 +368,8 @@ vid_ipad() {
 ## Function: get_source_for_llm
 get_source_for_llm() {
     # Get source code files for language models
-    fd -e ts -e tsx -E '*test*' -E '*mock*' -E 'setup_tests.ts' -E target --search-path "$1" -0 \
-        | while IFS= read -r -d '' file; do
+    fd -e ts -e tsx -E '*test*' -E '*mock*' -E 'setup_tests.ts' -E target --search-path "$1" -0 |
+        while IFS= read -r -d '' file; do
             echo "===== $file ====="
             cat "$file"
             echo
@@ -375,8 +379,8 @@ get_source_for_llm() {
 ## Function: get_tests_for_llm
 get_tests_for_llm() {
     # Get test files for language models
-    fd -e ts -e tsx -p '(/mock/|/stub/|\.test\.)' -E 'setup_tests.ts' -E target --search-path "$1" -0 \
-        | while IFS= read -r -d '' file; do
+    fd -e ts -e tsx -p '(/mock/|/stub/|\.test\.)' -E 'setup_tests.ts' -E target --search-path "$1" -0 |
+        while IFS= read -r -d '' file; do
             echo "===== $file ====="
             cat "$file"
             echo
@@ -392,7 +396,7 @@ dedup_path() {
     # Deduplicate entries in PATH
     old_PATH="$PATH"
     new_PATH=""
-    IFS=':' read -r -a path_array <<< "$PATH"
+    IFS=':' read -r -a path_array <<<"$PATH"
     declare -A path_seen
     for entry in "${path_array[@]}"; do
         if [[ -n "$entry" && -z "${path_seen[$entry]}" ]]; then
