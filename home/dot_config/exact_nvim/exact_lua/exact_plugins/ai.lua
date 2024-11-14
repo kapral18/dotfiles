@@ -1,22 +1,19 @@
 return {
   { import = "lazyvim.plugins.extras.ai.copilot-chat" },
   {
-    "dustinblackman/oatmeal.nvim",
-    event = "VeryLazy",
-    cmd = { "Oatmeal" },
-    dependencies = {
-      "folke/which-key.nvim",
-    },
+    "David-Kunz/gen.nvim",
     opts = {
-      backend = "ollama",
-      model = "phind-codellama:latest",
+      model = "qwen2.5-coder:32b", -- The default model to use.
+      quit_map = "q", -- set keymap to close the response window
+      retry_map = "<c-r>", -- set keymap to re-send the current prompt
+      accept_map = "<c-cr>", -- set keymap to replace the previous selection with the last result
+      display_mode = "split", -- The display mode. Can be "float" or "split" or "horizontal-split".
+      show_prompt = false, -- Shows the prompt submitted to Ollama.
+      show_model = true,
     },
-    config = function(_, opts)
-      require("oatmeal").setup(opts)
-      require("which-key").add({
-        { "<leader>om", "<cmd>Oatmeal<CR>", desc = "[AI] Oatmeal: toggle", mode = { "n", "x" } },
-      })
-    end,
+    keys = {
+      { "<leader>om", ":Gen<CR>", mode = { "n", "x" }, desc = "Generate code" },
+    },
   },
   {
     "github/copilot.vim",
