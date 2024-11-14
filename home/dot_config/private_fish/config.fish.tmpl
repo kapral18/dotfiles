@@ -76,24 +76,18 @@ set -x XDG_VIDEOS_DIR $HOME/Videos
 # Path Management
 # ------------------------------------
 
-## Function to Prepend Paths if Missing
-function prepend_to_path_if_missing --description 'Prepend a path to $PATH if it is not already in $PATH'
-    set -l path $argv[1]
-    if not contains $path $PATH
-        set -x PATH $path $PATH
-    end
+if status --is-login
+    fish_add_path -g {{ .homebrewPrefix }}/bin
+    fish_add_path -g {{ .homebrewPrefix }}/sbin
+    fish_add_path -g $HOME/.rbenv/shims
+    fish_add_path -g $GOPATH/bin
+    fish_add_path -g $HOME/.cargo/bin
+    fish_add_path -g $HOME/bin
 end
 
-## Prepend Custom Paths
-prepend_to_path_if_missing {{ .homebrewPrefix }}/bin
-prepend_to_path_if_missing {{ .homebrewPrefix }}/sbin
-prepend_to_path_if_missing $HOME/.rbenv/shims
-prepend_to_path_if_missing $GOPATH/bin
-prepend_to_path_if_missing $HOME/.cargo/bin
-prepend_to_path_if_missing $HOME/.local/share/yarn/global/node_modules/.bin/
-prepend_to_path_if_missing $HOME/.local/bin
-prepend_to_path_if_missing $BUN_INSTALL/bin
-prepend_to_path_if_missing $HOME/bin
+fish_add_path -g $HOME/.local/share/yarn/global/node_modules/.bin/
+fish_add_path -g $HOME/.local/bin
+fish_add_path -g $BUN_INSTALL/bin
 
 # ------------------------------------
 # FZF Configuration
