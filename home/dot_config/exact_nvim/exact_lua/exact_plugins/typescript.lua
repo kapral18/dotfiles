@@ -30,6 +30,9 @@ return {
     },
     opts = {
       servers = {
+        ts_ls = {
+          enabled = false,
+        },
         tsserver = {
           enabled = false,
         },
@@ -45,6 +48,10 @@ return {
       setup = {
         tsserver = function()
           -- disable tsserver
+          return false
+        end,
+        ts_ls = function()
+          -- disable ts_ls
           return false
         end,
       },

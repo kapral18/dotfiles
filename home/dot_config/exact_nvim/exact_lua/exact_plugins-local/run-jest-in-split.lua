@@ -63,8 +63,7 @@ M.run_jest_cmd = function(arg)
   end
 
   vim.cmd.vsplit()
-  -- we need login shell to avoid mangling the PATH
-  vim.cmd.terminal("fish -l")
+  vim.cmd.terminal()
   vim.api.nvim_chan_send(vim.bo.channel, cmd .. "\n")
 end
 

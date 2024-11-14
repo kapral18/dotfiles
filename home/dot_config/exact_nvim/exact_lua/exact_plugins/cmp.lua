@@ -12,7 +12,6 @@ return {
       },
       { "lukas-reineke/cmp-rg" },
       { "lukas-reineke/cmp-under-comparator" },
-      { "petertriho/cmp-git", config = true },
       { "SergioRibera/cmp-dotenv" },
       { "hrsh7th/cmp-emoji" },
       { "amarakon/nvim-cmp-fonts" },
