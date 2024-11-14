@@ -30,12 +30,9 @@ return {
     },
     opts = {
       servers = {
-        ts_ls = {
-          enabled = false,
-        },
-        tsserver = {
-          enabled = false,
-        },
+        ts_ls = {},
+        -- @deprecated
+        tsserver = {},
         jsonls = {
           settings = {
             json = {
