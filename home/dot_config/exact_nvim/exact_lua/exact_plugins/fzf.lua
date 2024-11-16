@@ -104,15 +104,8 @@ return {
   {
     "nvim-telescope/telescope.nvim",
     keys = {
-
-      {
-        "<leader>,",
-        false,
-      },
       { "<leader>/", false },
       { "<leader><space>", false },
-      { "<leader>fr", false },
-      { "<leader>fR", false },
       { "<leader>sg", false },
       { "<leader>sG", false },
       { "<leader>sR", false },
@@ -139,25 +132,6 @@ return {
           cwd = vim.uv.cwd(),
         }),
         desc = "Files",
-      },
-      {
-        "<leader>fr",
-        get_fzf_fn("oldfiles", {
-          winopts = winopts.full.vertical,
-          cwd_only = true,
-          cwd = vim.uv.cwd(),
-          include_current_session = true,
-        }),
-        desc = "Recent Files (Current Session)",
-      },
-      {
-        "<leader>fR",
-        get_fzf_fn("oldfiles", {
-          winopts = winopts.full.vertical,
-          cwd_only = false,
-          include_current_session = false,
-        }),
-        desc = "Recent Files (All Sessions)",
       },
       {
         "<leader>/",
