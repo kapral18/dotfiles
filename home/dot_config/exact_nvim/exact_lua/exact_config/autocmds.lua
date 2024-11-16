@@ -109,3 +109,15 @@ aucmd("FileType", {
     vim.api.nvim_set_option_value("spell", false, { win = cur_win })
   end,
 })
+
+vim.api.nvim_create_user_command("LargeFiles", function()
+  local cmd = [[git ls-files -z | xargs -0 wc -l | grep -v total | awk '$1 > 5000 { print $2 ":1:" $1 " lines" }']]
+  local output = vim.fn.system(cmd)
+  vim.fn.setqflist({}, " ", {
+    title = "Large Files (>5000 lines)",
+    lines = vim.split(output, "\n"),
+  })
+  vim.cmd("copen")
+end, {
+  desc = "List files with more than 5000 lines in quickfix",
+})
