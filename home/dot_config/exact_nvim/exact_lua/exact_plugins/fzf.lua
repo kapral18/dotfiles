@@ -245,6 +245,7 @@ return {
         fzf_opts = {
           ["--prompt"] = "  ",
           ["--keep-right"] = false,
+          ["--preview"] = "bat --style=numbers --line-range :300 --color always {}",
         },
         previewers = {
           bat = {

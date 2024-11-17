@@ -88,6 +88,7 @@ return {
           ["K"] = "focus_parent",
           ["D"] = "diff_files",
           ["r"] = "git_rename",
+          [";"] = "open_in_oil",
         },
       },
       commands = {
@@ -104,6 +105,16 @@ return {
         focus_parent = function(state)
           local node = state.tree:get_node()
           require("neo-tree.ui.renderer").focus_node(state, node:get_parent_id())
+        end,
+        open_in_oil = function(state)
+          local node = state.tree:get_node()
+          local path = node:get_id()
+
+          -- make sure it's a directory
+          if vim.fn.isdirectory(path) == 0 then
+            return
+          end
+          require("oil").open_float(path)
         end,
         diff_files = function(state)
           local node = state.tree:get_node()
@@ -228,6 +239,33 @@ return {
     opts = {
       -- if you want to open yazi instead of netrw, see below for more info
       open_for_directories = false,
+    },
+  },
+  {
+    "stevearc/oil.nvim",
+    dependencies = { { "echasnovski/mini.icons", opts = {} } },
+    opts = {
+      default_file_explorer = true,
+      delete_to_trash = true,
+      keymaps = {
+        ["q"] = "actions.close",
+      },
+      lsp_file_methods = {
+        autosave_changes = true,
+      },
+      watch_for_changes = true,
+      view_options = {
+        show_hidden = true,
+      },
+    },
+    keys = {
+      {
+        "<leader>;",
+        function()
+          require("oil").toggle_float()
+        end,
+        desc = "Toggle oil",
+      },
     },
   },
 }
