@@ -38,17 +38,20 @@ function getHackernewsPosts(oldItems) {
 	// DOCS https://hn.algolia.com/api
 	// alternative "https://hacker-news.firebaseio.com/v0/topstories.json";
 	const url = `https://hn.algolia.com/api/v1/search_by_date?tags=front_page&hitsPerPage=${opts.pagesToRequest}`;
-	const response = app.doShellScript(`curl -sL "${url}"`);
-	if (!response) {
-		console.log(`Error: No response from ${url}`);
-		return;
+	let response;
+	const apiResponse = app.doShellScript(`curl -sL "${url}"`);
+	try {
+		response = JSON.parse(apiResponse);
+	} catch (_error) {
+		// biome-ignore lint/suspicious/noConsoleLog: intentional
+		console.log(`Error parsing JSON. curl response was: ${apiResponse}`);
 	}
 
 	const oldUrls = oldItems.map((item) => item.arg);
 	const oldTitles = oldItems.map((item) => item.title);
 
 	/** @type{AlfredItem[]} */
-	const hits = JSON.parse(response).hits.reduce(
+	const hits = response.hits.reduce(
 		(/** @type {AlfredItem[]} */ acc, /** @type {hackerNewsItem} */ item) => {
 			if (item.points < opts.minUpvotes) return acc;
 
@@ -145,8 +148,16 @@ function getRedditPosts(subredditName, oldItems) {
 	// HACK changing user agent because reddit API does not like curl (lol)
 	const curlCommand = `curl -sL -H "User-Agent: Chrome/115.0.0.0" \\
 		"https://www.reddit.com/r/${subredditName}/${opts.sortType}.json?limit=${opts.pagesToRequest}"`;
-	const response = JSON.parse(app.doShellScript(curlCommand));
+	let response;
+	const apiResponse = app.doShellScript(curlCommand);
+	try {
+		response = JSON.parse(apiResponse);
+	} catch (_error) {
+		// biome-ignore lint/suspicious/noConsoleLog: intentional
+		console.log(`Error parsing JSON. curl response was: ${apiResponse}`);
+	}
 	if (response.error) {
+		// biome-ignore lint/suspicious/noConsoleLog: intentional
 		console.log(`Error ${response.error}: ${response.message}`);
 		return;
 	}
@@ -194,7 +205,8 @@ function getRedditPosts(subredditName, oldItems) {
 			const cleanTitle = item.title
 				.replaceAll("&lt;", "<")
 				.replaceAll("&gt;", ">")
-				.replaceAll("&amp;", "&");
+				.replaceAll("&amp;", "&")
+				.trim();
 
 			/** @type{AlfredItem} */
 			const post = {

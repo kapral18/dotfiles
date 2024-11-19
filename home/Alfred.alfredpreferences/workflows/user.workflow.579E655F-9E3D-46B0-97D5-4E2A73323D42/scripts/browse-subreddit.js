@@ -13,7 +13,6 @@ function readFile(path) {
 	return ObjC.unwrap(str);
 }
 
-
 /** @param {string} filepath @param {string} text */
 function writeToFile(filepath, text) {
 	const str = $.NSString.alloc.initWithUTF8String(text);
@@ -63,22 +62,29 @@ function olderThan(firstPath, secondPath) {
 /** @type {AlfredRun} */
 // biome-ignore lint/correctness/noUnusedVariables: Alfred run
 function run() {
-	const subredditConfig = $.getenv("subreddits").trim().replace(/^\/?r\//gm, "");
+	const subreddits = $.getenv("subreddits")
+		.trim()
+		.replace(/^\/?r\//gm, "") // can be r/ or /r/ https://www.alfredforum.com/topic/20813-reddit-browser/page/2/#comment-114645// can be r/ or /r/ https://www.alfredforum.com/topic/20813-reddit-browser/page/2/#comment-114645
+		.split("\n");
+	if ($.getenv("add_hackernews") === "1") subreddits.push("hackernews");
 	const cachePath = $.getenv("alfred_workflow_cache");
 
 	// determine subreddit
-	const prevRunSubreddit = readFile(cachePath + "/current_subreddit");
+	/** @type {string?} */
+	let prevSubreddit = readFile(cachePath + "/current_subreddit");
+	// if user removed subreddit from config, do not display it
+	if (!subreddits.includes(prevSubreddit)) prevSubreddit = null;
+
 	const selectedWithAlfred =
 		$.NSProcessInfo.processInfo.environment.objectForKey("selected_subreddit").js;
-	const firstSubredditInConfig = subredditConfig.split("\n")[0]; // only needed for first run
-	const subredditName = selectedWithAlfred || prevRunSubreddit || firstSubredditInConfig;
-	const pathOfThisWorkflow =
-		$.getenv("alfred_preferences") + "/workflows/" + $.getenv("alfred_workflow_uid");
+	const subredditName = selectedWithAlfred || prevSubreddit || subreddits[0];
 
 	ensureCacheFolderExists();
 	writeToFile(cachePath + "/current_subreddit", subredditName);
 
 	// read posts from cache
+	const pathOfThisWorkflow =
+		$.getenv("alfred_preferences") + "/workflows/" + $.getenv("alfred_workflow_uid");
 	const subredditCache = `${cachePath}/${subredditName}.json`;
 
 	let posts;
@@ -117,7 +123,9 @@ function run() {
 
 	// GUARD no API response or no posts left after filtering for min upvote count
 	if (!posts) {
-		return JSON.stringify({ items: [{ title: "Error", subtitle: "No response from API." }] });
+		return JSON.stringify({
+			items: [{ title: "Error", subtitle: "Check the debugging log for more information." }],
+		});
 	}
 	if (posts.length === 0) {
 		return JSON.stringify({ items: [{ title: "No posts higher than minimum upvote count." }] });

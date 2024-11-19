@@ -126,7 +126,7 @@ elif [[ "${front_browser}" == 'Google Chrome'* || "${front_browser}" == 'Chromiu
       set active tab index to tabIndex
     end tell
   "
-# As of Orion 0.99.124.1 and Arc 0.105.3, neither exposes tab indexes via AppleScript
+# As of Orion 0.99 (127.2) and Arc 1.40.1 (49250), neither exposes tab indexes via AppleScript
 elif [[ "${front_browser}" == 'Orion' || "${front_browser}" == 'Arc' ]]; then
   osascript -e "
     tell application \"${front_browser}\" to tell front window
@@ -177,6 +177,8 @@ fi</string>
 				<integer>1</integer>
 				<key>keyword</key>
 				<string>{var:email_keyword}</string>
+				<key>skipuniversalaction</key>
+				<true/>
 				<key>subtext</key>
 				<string>Instant disposable email</string>
 				<key>text</key>
@@ -338,7 +340,7 @@ On supported web browsers, the email inbox will open in a background tab and the
 		</dict>
 	</array>
 	<key>version</key>
-	<string>2024.1</string>
+	<string>2024.2</string>
 	<key>webaddress</key>
 	<string>https://github.com/vitorgalvao/temporary-email-workflow/</string>
 </dict>
