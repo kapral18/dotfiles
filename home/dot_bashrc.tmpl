@@ -83,6 +83,7 @@ prepend_to_path_if_missing() {
 }
 
 ## Prepend Custom Paths
+prepend_to_path_if_missing "{{ .homebrewPrefix }}/opt/coreutils/libexec/gnubin"
 prepend_to_path_if_missing "{{ .homebrewPrefix }}/bin"
 prepend_to_path_if_missing "{{ .homebrewPrefix }}/sbin"
 prepend_to_path_if_missing "$HOME/.rbenv/shims"

@@ -28,14 +28,14 @@ function add_worktree --description "Add a worktree for a branch"
 
     set -l is_base_branch_specified (test (count $argv) -eq 2; and echo 1; or echo 0)
 
-    set -l branch_name $argv[1]
+    set -l branch_name "$argv[1]"
     set -l default_local_branch (basename (git rev-parse --abbrev-ref origin/HEAD))
     # Set the base branch to the default branch of the origin remote
     # Because any other remote base branch should be explicitly specified
-    set base_branch $default_local_branch
+    set base_branch "$default_local_branch"
 
     if test $is_base_branch_specified -eq 1
-        set base_branch $argv[2]
+        set base_branch "$argv[2]"
     end
 
     if git worktree list | grep -qw "$branch_name"
@@ -46,6 +46,8 @@ function add_worktree --description "Add a worktree for a branch"
     # Determine the parent directory for the new worktree
     set parent_dir (_get_worktree_parent_dir)
 
+    set -l worktree_path "$parent_dir/$branch_name"
+
     # is second argument was not provided, we assume base_branch is the default local branch
     # for origin remote and hence we make assumptions against origin only
     if test $is_base_branch_specified -eq 0
@@ -55,7 +57,7 @@ function add_worktree --description "Add a worktree for a branch"
             # feat/test-1 worktree should be created from feat/test-1 local branch
 
             echo "Branch '$branch_name' already exists locally. Reusing it."
-            git worktree add "$parent_dir/$branch_name" "$branch_name"
+            git worktree add $worktree_path $branch_name
 
             echo "
 
@@ -63,29 +65,29 @@ function add_worktree --description "Add a worktree for a branch"
 
             Created new worktree
             For Local Branch: $branch_name
-            At Path: $parent_dir/$branch_name"
+            At Path: $worktree_path"
 
         else if git show-ref --quiet --verify "refs/remotes/origin/$branch_name"
             # case: add_worktree feat/test-1
             # given feat/test-1 exists on origin remote
             # feat/test-1 worktree should be created from origin/feat/test-1 remote
 
-            git worktree add "$parent_dir/$branch_name" -b "$branch_name" "origin/$branch_name"
+            git worktree add "$worktree_path" -b "$branch_name" "origin/$branch_name"
 
-            _print_created_worktree_message $branch_name "origin/$branch_name" origin "$parent_dir/$branch_name"
+            _print_created_worktree_message "$branch_name" "origin/$branch_name" origin "$worktree_path"
 
         else if git show-ref --quiet --verify "refs/remotes/$branch_name" # Check if the branch exists on upstream remote
             # case: add_worktree upstream/feat/test-1
             # given feat/test-1 exists on upstream remote
-            # feat/test-1 worktree with upstream__feat/test-1 branch should be created from upstream/feat/test-1 remote
+            # upstream/feat/test-1 worktree with upstream__feat/test-1 branch should be created from upstream/feat/test-1 remote
 
-            set -l split_branch_name (string split -m 1 / $branch_name)
-            set -l inferred_remote_name $split_branch_name[1]
-            set -l inferred_branch_name $split_branch_name[2]
-            set -l composite_branch_name "$inferred_remote_name"__"$inferred_branch_name"
-            git worktree add "$parent_dir/$inferred_branch_name" -b "$composite_branch_name" "$branch_name"
+            set -l branch_name_split (string split -m 1 / "$branch_name")
+            set -l inferred_remote_name $branch_name_split[1]
+            set -l inferred_branch_name $branch_name_split[2]
+            set -l prefixed_branch_name "$inferred_remote_name"__"$inferred_branch_name"
+            git worktree add $worktree_path -b "$prefixed_branch_name" "$branch_name"
 
-            _print_created_worktree_message $composite_branch_name $branch_name $inferred_remote_name "$parent_dir/$inferred_branch_name"
+            _print_created_worktree_message "$prefixed_branch_name" "$branch_name" "$inferred_remote_name" "$worktree_path"
 
         else
             # case: add_worktree feat/test-1 
@@ -94,17 +96,17 @@ function add_worktree --description "Add a worktree for a branch"
             # and feat/test-1 doesn't exist on any remote
             # feat/test-1 worktree should be created from the default local branch (ex. main)
 
-            git worktree add "$parent_dir/$branch_name" -b "$branch_name" $default_local_branch
+            git worktree add "$worktree_path" -b "$branch_name" "$default_local_branch"
 
-            _print_created_worktree_message $branch_name $default_local_branch origin "$parent_dir/$branch_name"
+            _print_created_worktree_message "$branch_name" "$default_local_branch" origin "$worktree_path"
         end
     else
-        if git show-ref --verify --quiet "refs/heads/$base_branch" # Check if the base branch exists locally
+        if git show-ref --verify --quiet refs/heads/$base_branch # Check if the base branch exists locally
             # case: add_worktree feat/test-2 feat/test-1
             # given feat/test-1 exists locally
             # feat/test-2 worktree should be created from feat/test-1 local branch
 
-            git worktree add "$parent_dir/$branch_name" "$base_branch"
+            git worktree add "$worktree_path" "$base_branch"
 
             echo "
 
@@ -113,29 +115,29 @@ function add_worktree --description "Add a worktree for a branch"
             Created new worktree
             For Local Branch: $branch_name
             From Local Branch: $base_branch
-            At Path: $parent_dir/$branch_name"
+            At Path: $worktree_path"
 
         else if git show-ref --quiet --verify "refs/remotes/origin/$base_branch"
             # case: add_worktree feat/test-2 feat/test-1
             # given feat/test-1 exists on origin remote only
             # feat/test-2 worktree should be created from origin/feat/test-1 remote
 
-            git worktree add "$parent_dir/$branch_name" -b "$branch_name" "origin/$base_branch"
+            git worktree add "$worktree_path" -b "$branch_name" "origin/$base_branch"
 
-            _print_created_worktree_message $branch_name "origin/$base_branch" origin "$parent_dir/$branch_name"
+            _print_created_worktree_message "$branch_name" "origin/$base_branch" origin "$worktree_path"
 
         else if git show-ref --quiet --verify "refs/remotes/$base_branch"
             # case: add_worktree feat/test-2 upstream/feat/test-1
             # given feat/test-1 exists on upstream remote
-            # feat/test-2 worktree with upstream__feat/test-2 branch should be created from upstream/feat/test-1 remote
+            # upstream/feat/test-2 worktree with upstream__feat/test-2 branch should be created from upstream/feat/test-1 remote
 
-            set -l split_branch_name (string split -m 1 / $base_branch)
-            set -l inferred_remote_name $split_branch_name[1]
-            set -l inferred_branch_name $split_branch_name[2]
-            set -l composite_branch_name "$inferred_remote_name"__"$branch_name"
-            git worktree add "$parent_dir/$branch_name" -b "$composite_branch_name" "$base_branch"
+            set -l branch_name_split (string split -m 1 / "$base_branch")
+            set -l inferred_remote_name $branch_name_split[1]
+            set -l inferred_branch_name $branch_name_split[2]
+            set -l prefixed_branch_name "$inferred_remote_name"__"$inferred_branch_name"
+            git worktree add $worktree_path -b "$prefixed_branch_name" "$base_branch"
 
-            _print_created_worktree_message $composite_branch_name $base_branch $inferred_remote_name "$parent_dir/$branch_name"
+            _print_created_worktree_message "$prefixed_branch_name" "$base_branch" "$inferred_remote_name" "$worktree_path"
 
         else
             # case: add_worktree feat/test-2 feat/test-1
@@ -150,7 +152,7 @@ function add_worktree --description "Add a worktree for a branch"
     end
 
     # Add the new worktree to zoxide
-    zoxide add "$parent_dir/$branch_name"
+    zoxide add "$worktree_path"
 end
 
 # Helper function to get the number of positional arguments
@@ -275,7 +277,7 @@ function get_pr_worktree --description "Fetch a PR from GitHub and create a work
     zoxide add $worktree_path
 end
 
-function remove_pr_worktree --description "Remove a worktree using fzf and delete the associated branch"
+function remove_worktree --description "Remove a worktree using fzf and delete the associated branch"
     set -l worktree (git worktree list -v | fzf --no-preview --ansi)
 
     if test -z "$worktree"
