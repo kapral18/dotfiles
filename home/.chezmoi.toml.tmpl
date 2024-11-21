@@ -6,15 +6,27 @@
 
 [data]
 is1PasswordReady = {{ $is1PasswordReady }}
+isWork = {{ promptBool "Is this a work machine? y/N" }}
 primaryEmail = {{ promptString "Enter your primary email*: " | quote }}
 primaryPublicSshKey = {{ promptString "Enter your primary public SSH key*: " | quote }}
+
+{{ if ne .isWork true -}}
 secondaryEmail = {{ promptString "Enter your secondary email (leave blank if not applicable): " | quote }}
 secondaryPublicSshKey = {{ promptString "Enter your secondary public SSH key (leave blank if not applicable): " | quote }}
-isWork = {{ promptBool "Is this a work machine? y/N" }}
+{{ end -}}
+
+{{ if eq .chezmoi.os "darwin" -}}
+{{ end -}}
+
+{{ if eq .isWork true -}}
 pgpCacheTtl = {{ promptString "Select Cache TTL for PGP config in sec:" "600" | quote }}
-{{ if eq .chezmoi.arch "amd64" }}
+{{ else -}}
+pgpCacheTtl = {{ promptString "Select Cache TTL for PGP config in sec:" "86400" | quote }}
+{{ end -}}
+
+{{ if eq .chezmoi.arch "amd64" -}}
 homebrewPrefix = "/usr/local"
-{{ else }}
+{{ else -}}
 homebrewPrefix = "/opt/homebrew"
-{{ end }}
+{{ end -}}
 

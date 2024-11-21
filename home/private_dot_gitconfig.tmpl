@@ -17,6 +17,7 @@
   # https://git-scm.com/docs/git-update-index#_untracked_cache
   untrackedCache = true
   pager = "delta"
+  sshCommand = ssh -o IdentitiesOnly=yes -o IdentityFile="~/.ssh/primary_public_key.pub"
 
 [pager]
   diff = delta
@@ -138,12 +139,12 @@
 
 [user]
   name = Karen Grigoryan
-  email = {{ .primaryEmail | quote }}
+  email = {{ .primaryEmail }}
   signingkey = {{ .primaryPublicSshKey }}
+  useConfigOnly = true
 {{ if ne .isWork true }}
 [includeIf "gitdir:~/work/"]
   path = ~/work/.gitconfig
-  useConfigOnly = true
 {{ end }}
 [gpg]
   format = ssh
