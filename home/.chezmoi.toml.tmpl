@@ -15,9 +15,6 @@ secondaryEmail = {{ promptString "Enter your secondary email (leave blank if not
 secondaryPublicSshKey = {{ promptString "Enter your secondary public SSH key (leave blank if not applicable): " | quote }}
 {{ end -}}
 
-{{ if eq .chezmoi.os "darwin" -}}
-{{ end -}}
-
 {{ if eq .isWork true -}}
 pgpCacheTtl = {{ promptString "Select Cache TTL for PGP config in sec:" "600" | quote }}
 {{ else -}}

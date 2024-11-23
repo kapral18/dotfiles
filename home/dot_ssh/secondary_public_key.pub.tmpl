@@ -1,3 +1,3 @@
-{{ if .secondaryPublicSshKey -}}
+{{ if index . "secondaryPublicSshKey" -}}
 {{ .secondaryPublicSshKey }}
 {{ end -}}
