@@ -1,0 +1,6 @@
+os:
+  editPreset: nvim
+git:
+  paging:
+    pager: delta --features=mantis-shrimp --paging=never
+disableStartupPopups: true

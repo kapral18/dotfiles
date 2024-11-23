@@ -146,14 +146,6 @@ return {
       disable_lsp_decorations = true,
     },
   },
-  -- disagnostics off in input mode
-  {
-    "yorickpeterse/nvim-dd",
-    event = "LspAttach",
-    opts = {
-      timeout = 1000,
-    },
-  },
   {
     "linrongbin16/lsp-progress.nvim",
     opts = {},
