@@ -30,9 +30,13 @@ return {
     },
     opts = {
       servers = {
-        ts_ls = {},
+        ts_ls = {
+          enable = false,
+        },
         -- @deprecated
-        tsserver = {},
+        tsserver = {
+          enabled = false,
+        },
         jsonls = {
           settings = {
             json = {
@@ -45,11 +49,11 @@ return {
       setup = {
         tsserver = function()
           -- disable tsserver
-          return false
+          return true
         end,
         ts_ls = function()
           -- disable ts_ls
-          return false
+          return true
         end,
       },
     },
