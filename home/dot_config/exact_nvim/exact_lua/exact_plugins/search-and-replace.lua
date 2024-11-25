@@ -1,6 +1,11 @@
 return {
   {
+    "MagicDuck/grug-far.nvim",
+    enabled = false,
+  },
+  {
     "dyng/ctrlsf.vim",
+    lazy = false,
     keys = {
       { "<leader>srr", "<Plug>CtrlSFCwordPath", desc = "S&R Word Under Cursor" },
       { "<leader>srb", "<Plug>CtrlSFCCwordPath", desc = "S&R Word Under Cursor (With Boundaries)" },

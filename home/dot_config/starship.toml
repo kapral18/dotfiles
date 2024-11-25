@@ -1,18 +1,24 @@
 # Get editor completions based on the config schema
 "$schema" = 'https://starship.rs/config-schema.json'
 
-command_timeout = 1000
+command_timeout = 3000
 
 [status]
 map_symbol = true
 disabled = false
 format = '[\[$status\]]($style) '
 
+[shlvl]
+disabled = false
+format = '[$symbol]($style) '
+repeat = true
+repeat_offset = 1
+symbol = "󰆍 "
+
 [directory]
 read_only = " 󰌾"
-truncation_length = 0
 truncation_symbol = '…/'
-format = "[$path]($style)[$lock_symbol]($lock_style) "
+truncate_to_repo = false
 
 [git_commit]
 commit_hash_length = 8
