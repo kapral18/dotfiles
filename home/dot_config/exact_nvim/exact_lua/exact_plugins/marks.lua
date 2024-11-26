@@ -2,9 +2,7 @@ return {
   {
     "chentoast/marks.nvim",
     opts = {
-      default_mappings = true,
-      builtin_marks = { ".", "^", "<", ">" },
-      cyclic = true,
+      refresh_interval = 500,
     },
     config = function(_, opts)
       require("marks").setup(opts)
