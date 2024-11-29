@@ -4,8 +4,6 @@
 -- generally is super laggy vs ts-tools
 -- but I keep it here for reference in case it's fixed in the future
 
-local ft_json = { "json", "jsonl", "jsonc" }
-
 -- @opts table
 -- @opts.command string
 -- @opts.arguments table
@@ -104,13 +102,8 @@ local __unused__ = {
         tsserver = {
           enabled = false,
         },
-        jsonls = {
-          settings = {
-            json = {
-              schema = require("schemastore").json.schemas(),
-              validate = { enable = true },
-            },
-          },
+        ts_ls = {
+          enable = false,
         },
         vtsls = {
           -- explicitly add default filetypes, so that we can extend
@@ -140,12 +133,10 @@ local __unused__ = {
                 completeFunctionCalls = true,
               },
               inlayHints = {
-                enumMemberValues = { enabled = true },
-                functionLikeReturnTypes = { enabled = true },
-                parameterNames = { enabled = "literals" },
-                parameterTypes = { enabled = true },
-                propertyDeclarationTypes = { enabled = true },
-                variableTypes = { enabled = false },
+                enabled = false,
+              },
+              tsserver = {
+                log = "verbose",
               },
             },
           },
@@ -263,6 +254,10 @@ local __unused__ = {
       },
       setup = {
         tsserver = function()
+          -- disable tsserver
+          return true
+        end,
+        ts_ls = function()
           -- disable tsserver
           return true
         end,

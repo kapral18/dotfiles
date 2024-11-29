@@ -4,10 +4,6 @@ function _get_worktree_parent_dir
     dirname $main_repo_root
 end
 
-function _get_split_branch_name
-    echo $argv[1] | string split -m 1 /
-end
-
 function _print_created_worktree_message
     echo "
 
@@ -62,20 +58,50 @@ function add_worktree --description "Add a worktree for a branch"
         return 1
     end
 
+    set -l branch_name "$argv[1]"
+
+    set -l parent_dir (_get_worktree_parent_dir) # Get the parent directory for the worktree
+    set -l parent_name (basename $parent_dir)
+
     if git worktree list | grep -qw "$branch_name"
         echo "Branch '$branch_name' already exists as a worktree."
         return
     end
 
-    set -l branch_name "$argv[1]"
-    set -l parent_dir (_get_worktree_parent_dir) # Get the parent directory for the worktree
-    set -l parent_name (basename $parent_dir)
+    set -l branch_name_split (_get_split_branch_name $branch_name)
+    set -l inferred_branch_remote $branch_name_split[1]
+    set -l inferred_branch_name $branch_name_split[2]
+    set -l prefixed_branch_name "$inferred_branch_remote"__"$inferred_branch_name"
+
+    if git worktree list | grep -qw "$prefixed_branch_name"
+        echo "Branch '$prefixed_branch_name' already exists as a worktree."
+        return
+    end
+
     set -l is_base_branch_specified (test (count $argv) -eq 2; and echo 1; or echo 0)
+
+
+    if test "$is_base_branch_specified" -gt 0
+        set -l base_branch_split (_get_split_branch_name "$base_branch")
+        set -l inferred_base_branch_remote "$base_branch_split[1]"
+
+        if string match -q -r "\b$inferred_base_branch_remote__$branch_name\b" -- (git worktree list)
+            echo "Branch '$inferred_base_branch_remote"__"$branch_name' already exists as a worktree."
+            return
+        end
+    end
+
     set -l worktree_path "$parent_dir/$branch_name"
 
+
+    if string match -q -r "\b$inferred_branch_remote\b" -- (git remote)
+        git fetch --prune --prune-tags $inferred_branch_remote $inferred_branch_name
+    end
+
     # only-branch-specified case
-    if test $is_base_branch_specified -eq 0
-        if git show-ref --verify --quiet "refs/heads/$branch_name" # Check if the branch exists locally
+    if test "$is_base_branch_specified" -eq 0
+        # Check if the branch exists locally
+        if git show-ref --verify --quiet "refs/heads/$branch_name"
             # GIVEN feat/test-1 branch DOES exist locally
             #
             # WHEN add_worktree feat/test-1 is called
@@ -84,8 +110,9 @@ function add_worktree --description "Add a worktree for a branch"
 
             echo "Branch '$branch_name' already exists locally. Reusing it."
 
-            _add_worktree_tmux_session "$parent_name" "$branch_name" "$worktree_path"
             git worktree add $worktree_path $branch_name
+
+            _add_worktree_tmux_session "$parent_name" "$branch_name" "$worktree_path"
 
             echo "
 
@@ -93,6 +120,59 @@ function add_worktree --description "Add a worktree for a branch"
 
             Created new worktree
             For Local Branch: $branch_name
+            At Path: $worktree_path"
+
+        else if git show-ref --quiet --verify "refs/heads/$inferred_branch_name"
+            # GIVEN feat/test-1 branch DOES exist locally
+            #
+            # WHEN add_worktree origin/feat/test-1 is called
+            #
+            # THEN feat/test-1 branched worktree at feat/test-1 path SHOULD be created reusing feat/test-1 local branch
+            #
+            # OR
+            #
+            # GIVEN feat/test-1 branch DOES exist locally
+            #
+            # WHEN add_worktree upstream/feat/test-1 is called
+            #
+            # THEN feat/test-1 branched worktree at feat/test-1 path SHOULD be created reusing feat/test-1 local branch
+
+            echo "Branch '$inferred_branch_name' already exists locally. Reusing it."
+
+            git worktree add $worktree_path $inferred_branch_name
+
+            _add_worktree_tmux_session "$parent_name" "$inferred_branch_name" "$worktree_path"
+
+            echo "
+
+            -------------
+
+            Created new worktree
+            For Local Branch: $inferred_branch_name
+            At Path: $worktree_path"
+
+
+        else if git show-ref --quiet --verify "refs/heads/$inferred_branch_remote"__"$inferred_branch_name"
+            # GIVEN other_upstream__feat/test-1 branch DOES exist locally
+            #
+            # WHEN add_worktree other_upstream__feat/test-1 is called
+            #
+            # THEN other_upstream__feat/test-1 branched worktree at other_upstream/feat/test-1 path SHOULD be created reusing other_upstream__feat/test-1 local branch
+
+            set worktree_path "$parent_dir/$inferred_branch_remote/$inferred_branch_name"
+
+            echo "Branch '$prefixed_branch_name' already exists locally. Reusing it."
+
+            git worktree add $worktree_path $prefixed_branch_name
+
+            _add_worktree_tmux_session "$parent_name" "$prefixed_branch_name" "$worktree_path"
+
+            echo "
+
+            -------------
+
+            Created new worktree
+            For Local Branch: $prefixed_branch_name
             At Path: $worktree_path"
 
         else if git show-ref --quiet --verify "refs/remotes/origin/$branch_name"
@@ -127,13 +207,7 @@ function add_worktree --description "Add a worktree for a branch"
 
         else if git show-ref --quiet --verify "refs/remotes/$branch_name"
 
-            # handle cases when $branch_name includes origin or upstream as above
-            set -l branch_name_split (_get_split_branch_name $branch_name)
-            set -l inferred_remote_name $branch_name_split[1]
-            set -l inferred_branch_name $branch_name_split[2]
-
-
-            if contains "$inferred_remote_name" origin upstream
+            if string match -q -r "\b(origin|upstream)\b" -- $inferred_branch_remote
 
                 # GIVEN origin/feat/test-1 branch DOES exist
                 #
@@ -163,10 +237,7 @@ function add_worktree --description "Add a worktree for a branch"
                 #
                 # THEN other_upstream__feat/test-1 branched worktree at other_upstream/feat/test-1 path SHOULD be created from other_upstream/feat/test-1 remote branch
 
-                echo 'happens here'
-
-                set -l prefixed_branch_name "$inferred_remote_name"__"$inferred_branch_name"
-                set worktree_path "$parent_dir/$inferred_branch_name"
+                set worktree_path "$parent_dir/$inferred_branch_remote/$inferred_branch_name"
 
                 git worktree add $worktree_path -b "$prefixed_branch_name" "$branch_name"
 
@@ -235,17 +306,19 @@ function add_worktree --description "Add a worktree for a branch"
             return 1
         end
 
-        # Validate the edge case when $branch_name includes remote name
-
-        set -l branch_name_split (_get_split_branch_name $branch_name)
-        set -l inferred_branch_remote $branch_name_split[1]
-        set -l inferred_branch_name $branch_name_split[2]
-
-        if contains "$inferred_branch_remote" (git remote)
+        if string match -q -r "\b$infered_branch_remote\b" -- (git remote)
             echo "WHEN using base branch argument, main branch arugment SHOULD NOT include a remote name. Please provide a valid branch name."
 
             echo "For example, instead of add_worktree $branch_name $base_branch, use add_worktree $inferred_branch_name $base_branch."
             return 1
+        end
+
+        set -l base_branch_split (_get_split_branch_name $base_branch)
+        set -l inferred_base_branch_remote $base_branch_split[1]
+        set -l inferred_base_branch_name $base_branch_split[2]
+
+        if string match -q -r "\b$inferred_base_branch_remote\b" -- (git remote)
+            git fetch --prune --prune-tags $inferred_base_branch_remote $inferred_base_branch_name
         end
 
         # Now validate the $base_branch
@@ -293,10 +366,6 @@ function add_worktree --description "Add a worktree for a branch"
             # WHEN add_worktree feat/test-2 origin/feat/test-1 is called
             #
             # THEN feat/test-2 branched worktree at feat/test-2 path SHOULD be created from other_remote/feat/test-1 remote branch
-
-            set -l base_branch_split (_get_split_branch_name $base_branch)
-            set -l inferred_base_branch_remote $base_branch_split[1]
-            set -l inferred_base_branch_name $base_branch_split[2]
 
             set worktree_path "$parent_dir/$inferred_base_branch_remote/$branch_name"
             git worktree add "$worktree_path" -b "$inferred_base_branch_remote__$branch_name" "$base_branch"
@@ -401,10 +470,17 @@ function get_pr_worktree --description "Fetch a PR from GitHub and create a work
 
     # Validate extracted information
     for var in branch_name repo_name repo_owner
-        if test -z (eval echo \$$var)
+        if not set -q $var
             echo "$var is empty"
             return 1
         end
+    end
+
+    set -l upstream_remote_owner (git remote get-url upstream | awk -F'[:/]' '{print $2}')
+
+    if test $repo_owner = $upstream_remote_owner
+        echo "PR is from the upstream repository. Setting the remote to 'upstream'..."
+        set repo_owner upstream
     end
 
     set -l repo_url "git@github.com:$repo_owner/$repo_name.git"
@@ -414,25 +490,7 @@ function get_pr_worktree --description "Fetch a PR from GitHub and create a work
         git remote add $repo_owner $repo_url
     end
 
-    # Fetch the branch
-    git fetch $repo_owner $branch_name
-
-    set -l parent_dir (_get_worktree_parent_dir)
-    set -l parent_name (basename $parent_dir)
-
-    set -l remote_branch "$repo_owner/$branch_name"
-    set -l local_branch "$repo_owner"__"$branch_name"
-    set -l worktree_path "$parent_dir/$repo_owner/$branch_name"
-    # Create the worktree in the parent directory
-    # Set local branch to be able to do things like gh pr view --web
-    # Use remote in the local branch name to avoid conflicts between
-    # branches with the same name from different remotes
-    git worktree add $worktree_path -b $local_branch $remote_branch
-
-    _add_worktree_tmux_session $parent_name $branch_name $worktree_path
-    _print_created_worktree_message $local_branch $worktree_path $remote_branch
-
-    zoxide add $worktree_path
+    add_worktree "$repo_owner/$branch_name"
 end
 
 function remove_worktree --description "Remove a worktree using fzf and delete the associated branch"
@@ -454,6 +512,16 @@ function remove_worktree --description "Remove a worktree using fzf and delete t
 
     git worktree remove $worktree_path
 
+    # if remote is no longer in use in worktrees, remove it
+    # we add error redirection to suppress the error message if the branch doesn't show up
+    # in case of 'origin' or 'upstream' which is acceptable
+    set remote_branch (git rev-parse --abbrev-ref $worktree_branch@{upstream} 2>/dev/null)
+    set remote (echo $remote_branch | cut -d'/' -f1)
+
+    if not string match -q -r "\b$remote\b" -- (git worktree list -v)
+        git remote remove $remote
+    end
+
     # if the worktree_branch is HEAD then it's a detached HEAD
     # so we don't need to delete the branch
     if test $worktree_branch = HEAD
@@ -464,6 +532,8 @@ function remove_worktree --description "Remove a worktree using fzf and delete t
     git branch -D $worktree_branch
 
     _remove_worktree_tmux_session $worktree_branch
+
+    # if there are no more worktrees with that remote, remove the remote
 
     # cleanup all remaining empty scaffold, for example if the branch was named fix/DQD/fix-blabla
     # it would've created a fix/DQD folder in the worktree_path which would remain after worktree deletion

@@ -2,7 +2,10 @@
 # Custom Functions
 # ------------------------------------
 
+source ~/.config/fish/my/functions/utils.fish
+
 source ~/.config/fish/my/functions/gh.fish
+source ~/.config/fish/my/functions/git.fish
 source ~/.config/fish/my/functions/llm.fish
 source ~/.config/fish/my/functions/osx.fish
 source ~/.config/fish/my/functions/path.fish

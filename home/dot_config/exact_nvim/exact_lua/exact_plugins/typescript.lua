@@ -37,14 +37,6 @@ return {
         tsserver = {
           enabled = false,
         },
-        jsonls = {
-          settings = {
-            json = {
-              schema = require("schemastore").json.schemas(),
-              validate = { enable = true },
-            },
-          },
-        },
       },
       setup = {
         tsserver = function()
@@ -61,67 +53,89 @@ return {
   {
     "pmizio/typescript-tools.nvim",
     lazy = false,
+    keys = {
+      {
+        "gR",
+        "<cmd>TSToolsFileReferences<cr>",
+        ft = ft_js,
+        desc = "TSTools: File References",
+        buffer = true,
+      },
+    },
     dependencies = {
       "nvim-lua/plenary.nvim",
       {
         "neovim/nvim-lspconfig",
-        opts = function()
-          local Keys = require("lazyvim.plugins.lsp.keymaps").get()
-          local originalKeysCache = {}
-          -- stylua: ignore start
-          local TSToolsKeys = {
-            { key = "gR", ft = ft_js, cmd = "<cmd>TSToolsFileReferences<cr>", desc = "TSTools: File References" },
-            { key = "<leader>cia", ft = ft_js, cmd = "<cmd>TSToolsAddMissingImports<cr>", desc = "TSTools: Add missing imports" },
-            { key = "<leader>cir", ft = ft_js, cmd = "<cmd>TSToolsRemoveUnusedImports<cr>", desc = "TSTools: Remove Unused Imports",  },
-            { key = "<leader>cD", ft = ft_js, cmd = "<cmd>TSToolsFixAll<cr>", desc = "TSTools: Fix all diagnostics" },
-            { key = "<leader>cR", ft = ft_js, cmd = "<cmd>TSToolsRenameFile<cr>", desc = "TSTools: Rename File" },
-          }
-          -- stylua: ignore end
+        opts = function(_, opts)
+          local keys = require("lazyvim.plugins.lsp.keymaps").get()
 
-          -- Cache the original keys
-          for _, key in ipairs(Keys) do
-            local lhs = key[1]
-            originalKeysCache[lhs] = { table.unpack(key, 2) }
+          -- keys is a table of tables, where each table is a keymap, with 1st position being the key
+          -- and the 2nd position being the value
+          -- find me the keymap that has the key "<leader>CR"
+          local found = nil
+          for _, keymap in ipairs(keys) do
+            if keymap[1] == "<leader>cR" then
+              -- print the value of the keymap
+              found = keymap
+            end
           end
+
+          local lazyvim_cr_rhs = found and found[2] or 'echo "No keymap found"'
+
+          keys[#keys + 1] = {
+            "<leader>cR",
+            function()
+              if vim.tbl_contains(ft_js, vim.bo.filetype) then
+                vim.cmd("TSToolsRenameFile")
+              else
+                vim.cmd(lazyvim_cr_rhs)
+              end
+            end,
+            desc = "Rename File",
+            buffer = true,
+          }
 
           vim.api.nvim_create_autocmd("LspAttach", {
             group = vim.api.nvim_create_augroup("k18.tstools", {}),
             desc = "TSTools Keymaps Override",
             callback = function(ev)
-              -- if the filetype is typescript or javascript
-              if vim.tbl_contains(ft_js, vim.bo[ev.buf].filetype) then
-                for cache_lhs, _ in pairs(originalKeysCache) do
-                  for _, tstools_keymap in ipairs(TSToolsKeys) do
-                    if cache_lhs == tstools_keymap.key then
-                      -- remove the original keymaps for the respective LSP keymaps
-                      Keys[#Keys + 1] = { cache_lhs, false }
-                      -- and add buffer local TSTools keymaps
-                      vim.keymap.set(
-                        "n",
-                        tstools_keymap.key,
-                        tstools_keymap.cmd,
-                        { desc = tstools_keymap.desc, buffer = true }
-                      )
-                    end
-                  end
-                end
-              else
-                -- If the filetype is not typescript or javascript
-                for lhs, key in pairs(originalKeysCache) do
-                  -- only add the original keymaps if they are not already present
-                  if
-                    not vim.tbl_contains(
-                      vim.tbl_map(function(k)
-                        return k[1]
-                      end, Keys),
-                      lhs
-                    )
-                  then
-                    Keys[#Keys + 1] = { lhs, table.unpack(key, 2) }
-                  end
-                end
+              local client_id = ev.data.client_id
+
+              if not client_id then
+                return
               end
+
+              local client = vim.lsp.get_client_by_id(ev.data.client_id)
+
+              if not client then
+                return
+              end
+
+              if client.name ~= "typescript-tools" then
+                return
+              end
+
+              -- let eslint/prettier handle formatting
+              client.server_capabilities.documentFormattingProvider = false
+              client.server_capabilities.documentRangeFormattingProvider = false
             end,
+          })
+
+          -- deep merge the opts with the new object
+          return vim.tbl_deep_extend("force", opts, {
+            -- fixes issues with eslint format error when too nested folders
+            -- fixed in neovim v0.11
+            -- https://github.com/neovim/neovim/issues/26520#issuecomment-2338591652
+            capabilities = {
+              workspace = {
+                didChangeWatchedFiles = {
+                  dynamicRegistration = true,
+                },
+              },
+              textDocument = {
+                formatting = { dynamicRegistration = false },
+              },
+            },
           })
         end,
       },
@@ -135,13 +149,13 @@ return {
         separate_diagnostic_server = true,
         publish_diagnostic_on = "insert_leave",
         tsserver_path = nil,
-        tsserver_max_memory = 8192,
+        tsserver_max_memory = 20000,
         tsserver_format_options = {},
         tsserver_file_preferences = {
           completions = { completeFunctionCalls = true },
           init_options = { preferences = { disableSuggestions = true } },
-          includeCompletionsForModuleExports = true,
-          quotePreference = "auto",
+          importModuleSpecifierPreference = "project-relative",
+          jsxAttributeCompletionStyle = "braces",
         },
         tsserver_locale = "en",
         disable_member_code_lens = true,
@@ -216,7 +230,7 @@ return {
         end
       end
 
-      for _, language in ipairs({ "typescript", "javascript", "typescriptreact", "javascriptreact" }) do
+      for _, language in ipairs({ "typescript", "javascript", "typescriptreact", "javascriptreact", "tsx", "jsx" }) do
         if not dap.configurations[language] then
           dap.configurations[language] = {
             {
