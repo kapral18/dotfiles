@@ -7,67 +7,48 @@ return {
     end,
   },
   {
-    "almo7aya/openingh.nvim",
-    cmd = { "OpenInGHRepo", "OpenInGHFile", "OpenInGHFileLines" },
-    keys = {
-      { "<leader>grr", "<cmd>OpenInGHRepo<CR>", desc = "Open git repo in web", mode = { "n" } },
-      { "<leader>grf", "<cmd>OpenInGHFile<CR>", desc = "Open git file in web", mode = { "n" } },
-      { "<leader>grl", "<cmd>OpenInGHFileLines<CR>", desc = "Open current line in web", mode = { "n", "x", "v" } },
-    },
-  },
-  {
-    "ldelossa/gh.nvim",
+    "pwntester/octo.nvim",
+    cmd = "Octo",
     dependencies = {
-      {
-        "ldelossa/litee.nvim",
-        config = function()
-          require("litee.lib").setup()
-        end,
+      "nvim-lua/plenary.nvim",
+      "nvim-telescope/telescope.nvim",
+      "nvim-tree/nvim-web-devicons",
+    },
+    event = { { event = "BufReadCmd", pattern = "octo://*" } },
+    opts = {
+      use_local_fs = true,
+      enable_builtin = true,
+      default_to_projects_v2 = true,
+      default_merge_method = "squash",
+      picker = "telescope",
+      issues = {
+        order_by = {
+          field = "COMMENTS",
+          direction = "DESC",
+        },
       },
     },
-    config = function()
-      require("litee.gh").setup()
+    keys = {
+      { "<leader>go", "", desc = "+octo" },
+      { "<leader>goa", "<CMD>Octo actions<CR>", desc = "List Actions (Octo)" },
+      { "<leader>gop", "", desc = "PR Actions (Octo)" },
+      { "<leader>gops", "<CMD>Octo pr search<CR>", desc = "Search PR (Octo)" },
+      { "<leader>goi", "", desc = "Issue Actions (Octo)" },
+      { "<leader>gois", "<CMD>Octo issue search<CR>", desc = "Search PR (Octo)" },
 
-      local wk = require("which-key")
-      wk.add({
-        { "<leader>gp", group = "Pull Request" },
+      { "<localleader>a", "", desc = "+assignee (Octo)", ft = "octo" },
+      { "<localleader>c", "", desc = "+comment/code (Octo)", ft = "octo" },
+      { "<localleader>l", "", desc = "+label (Octo)", ft = "octo" },
+      { "<localleader>i", "", desc = "+issue (Octo)", ft = "octo" },
+      { "<localleader>r", "", desc = "+react (Octo)", ft = "octo" },
+      { "<localleader>p", "", desc = "+pr (Octo)", ft = "octo" },
+      { "<localleader>pr", "", desc = "+rebase (Octo)", ft = "octo" },
+      { "<localleader>ps", "", desc = "+squash (Octo)", ft = "octo" },
+      { "<localleader>v", "", desc = "+review (Octo)", ft = "octo" },
+      { "<localleader>g", "", desc = "+goto_issue (Octo)", ft = "octo" },
 
-        { "<leader>gpc", group = "Commit" },
-        { "<leader>gpcc", "<cmd>GHCloseCommit<cr>", desc = "Close" },
-        { "<leader>gpce", "<cmd>GHExpandCommit<cr>", desc = "Expand" },
-        { "<leader>gpco", "<cmd>GHOpenToCommit<cr>", desc = "Open To" },
-        { "<leader>gpcp", "<cmd>GHPopOutCommit<cr>", desc = "Pop Out" },
-        { "<leader>gpcz", "<cmd>GHCollapseCommit<cr>", desc = "Collapse" },
-
-        { "<leader>gpi", group = "Issues" },
-        { "<leader>gpip", "<cmd>GHPreviewIssue<cr>", desc = "Preview" },
-
-        { "<leader>gpl", group = "Litee" },
-        { "<leader>gplt", "<cmd>LTPanel<cr>", desc = "Toggle Panel" },
-
-        { "<leader>gpr", group = "Review" },
-        { "<leader>gprb", "<cmd>GHStartReview<cr>", desc = "Begin" },
-        { "<leader>gprc", "<cmd>GHCloseReview<cr>", desc = "Close" },
-        { "<leader>gprd", "<cmd>GHDeleteReview<cr>", desc = "Delete" },
-        { "<leader>gpre", "<cmd>GHExpandReview<cr>", desc = "Expand" },
-        { "<leader>gprs", "<cmd>GHSubmitReview<cr>", desc = "Submit" },
-        { "<leader>gprz", "<cmd>GHCollapseReview<cr>", desc = "Collapse" },
-
-        { "<leader>gpp", group = "Pull Request" },
-        { "<leader>gppc", "<cmd>GHClosePR<cr>", desc = "Close" },
-        { "<leader>gppd", "<cmd>GHPRDetails<cr>", desc = "Details" },
-        { "<leader>gppe", "<cmd>GHExpandPR<cr>", desc = "Expand" },
-        { "<leader>gppo", "<cmd>GHOpenPR<cr>", desc = "Open" },
-        { "<leader>gppp", "<cmd>GHPopOutPR<cr>", desc = "PopOut" },
-        { "<leader>gppr", "<cmd>GHRefreshPR<cr>", desc = "Refresh" },
-        { "<leader>gppt", "<cmd>GHOpenToPR<cr>", desc = "Open To" },
-        { "<leader>gppz", "<cmd>GHCollapsePR<cr>", desc = "Collapse" },
-
-        { "<leader>gpt", group = "Threads" },
-        { "<leader>gptc", "<cmd>GHCreateThread<cr>", desc = "Create" },
-        { "<leader>gptn", "<cmd>GHNextThread<cr>", desc = "Next" },
-        { "<leader>gptt", "<cmd>GHToggleThread<cr>", desc = "Toggle" },
-      })
-    end,
+      { "@", "@<C-x><C-o>", mode = "i", ft = "octo", silent = true },
+      { "#", "#<C-x><C-o>", mode = "i", ft = "octo", silent = true },
+    },
   },
 }
