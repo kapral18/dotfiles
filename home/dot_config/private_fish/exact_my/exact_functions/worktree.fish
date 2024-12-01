@@ -122,8 +122,10 @@ function add_worktree --description "Add a worktree for a branch"
             For Local Branch: $branch_name
             At Path: $worktree_path"
 
-        else if git show-ref --quiet --verify "refs/heads/$inferred_branch_name"
+        else if git show-ref --quiet --verify "refs/heads/$inferred_branch_name" && git rev-parse --abbrev-ref @{u} | grep -q "$inferred_branch_remote/"
             # GIVEN feat/test-1 branch DOES exist locally
+            #
+            # AND it looks on the remote like origin/feat/test-1 (this makes sure feat/test-1 looking at other_upstrea/feat/test-1 is not considered)
             #
             # WHEN add_worktree origin/feat/test-1 is called
             #
@@ -132,6 +134,8 @@ function add_worktree --description "Add a worktree for a branch"
             # OR
             #
             # GIVEN feat/test-1 branch DOES exist locally
+            #
+            # AND it looks on the remote like upstream/feat/test-1
             #
             # WHEN add_worktree upstream/feat/test-1 is called
             #
