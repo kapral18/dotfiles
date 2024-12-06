@@ -1,7 +1,7 @@
 local config_path = vim.fn.stdpath("config")
 
 return {
-  dir = config_path .. "/lua/plugins-local/run-jest-in-split",
+  dir = config_path .. "/lua/plugins-local",
   keys = {
     {
       "<leader>tx",

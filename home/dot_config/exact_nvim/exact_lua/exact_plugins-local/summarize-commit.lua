@@ -2,7 +2,7 @@ local M = {}
 
 M.summarize_commit = function()
   local prompt = "Give me commit message summary from git diff output above using conventional commits format."
-  local command = "git diff --cached | chatblade -c o1mini --temperature 1 -e " .. vim.fn.shellescape(prompt)
+  local command = "git diff --cached | chatblade -c 4o -e " .. vim.fn.shellescape(prompt)
   local output = vim.fn.systemlist(command)
   local win = vim.api.nvim_get_current_win()
   local cursor = vim.api.nvim_win_get_cursor(win)

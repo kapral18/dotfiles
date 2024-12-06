@@ -1,7 +1,7 @@
 local config_path = vim.fn.stdpath("config")
 
 return {
-  dir = config_path .. "/lua/plugins-local/toggle-win-width",
+  dir = config_path .. "/lua/plugins-local",
   keys = {
     {
       "<leader>=",

@@ -1,7 +1,14 @@
 vim.filetype.add({
-  extension = { mdx = "markdown.mdx" },
+  pattern = {
+    [".*%.mdx"] = "markdown",
+    ["README"] = "markdown",
+  },
 })
 
 return {
   { import = "lazyvim.plugins.extras.lang.markdown" },
+  {
+    "MeanderingProgrammer/render-markdown.nvim",
+    enabled = false,
+  },
 }

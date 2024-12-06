@@ -1,7 +1,7 @@
 local config_path = vim.fn.stdpath("config")
 
 return {
-  dir = config_path .. "/lua/plugins-local/show-file-owner",
+  dir = config_path .. "/lua/plugins-local",
   keys = {
     {
       "<leader>0",

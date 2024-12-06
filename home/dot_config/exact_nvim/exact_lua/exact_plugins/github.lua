@@ -7,6 +7,15 @@ return {
     end,
   },
   {
+    "almo7aya/openingh.nvim",
+    cmd = { "OpenInGHRepo", "OpenInGHFile", "OpenInGHFileLines" },
+    keys = {
+      { "<leader>gow", "<cmd>OpenInGHRepo<CR>", desc = "Open git repo in web", mode = { "n" } },
+      { "<leader>gof", "<cmd>OpenInGHFile<CR>", desc = "Open git file in web", mode = { "n" } },
+      { "<leader>gol", "<cmd>OpenInGHFileLines<CR>", desc = "Open current line in web", mode = { "n", "x", "v" } },
+    },
+  },
+  {
     "pwntester/octo.nvim",
     cmd = "Octo",
     dependencies = {

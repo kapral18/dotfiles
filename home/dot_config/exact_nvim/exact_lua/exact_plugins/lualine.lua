@@ -13,9 +13,10 @@ return {
         lualine_x = {},
         lualine_y = {
           { "progress", separator = " ", padding = { left = 1, right = 0 } },
+        },
+        lualine_z = {
           { "location", padding = { left = 0, right = 1 } },
         },
-        lualine_z = {},
       },
       extensions = {},
     },
