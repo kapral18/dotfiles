@@ -1,8 +1,9 @@
 return {
+  { import = "lazyvim.plugins.extras.ai.copilot-chat" },
   {
     "David-Kunz/gen.nvim",
     opts = {
-      model = "qwq", -- The model to use. Can be "gpt-3" or "gpt-4" or "gpt-j
+      model = "qwen2.5-coder:32b", -- The model to use. Can be "gpt-3" or "gpt-4" or "gpt-j
       quit_map = "q", -- set keymap to close the response window
       retry_map = "<c-r>", -- set keymap to re-send the current prompt
       accept_map = "<c-cr>", -- set keymap to replace the previous selection with the last result
@@ -21,5 +22,12 @@ return {
       vim.api.nvim_set_hl(0, "CopilotSuggestion", { fg = "#83a598" })
       vim.api.nvim_set_hl(0, "CopilotAnnotation", { fg = "#03a598" })
     end,
+  },
+  {
+    "CopilotC-Nvim/CopilotChat.nvim",
+    lazy = false,
+    opts = {
+      model = "claude-3.5-sonnet",
+    },
   },
 }

@@ -1,23 +1,65 @@
-table.unpack = table.unpack or unpack
 -- Options are automatically loaded before lazy.nvim startup
 -- Default options that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/options.lua
--- Add any additional options here
+
+table.unpack = table.unpack or unpack
+
 function _Get_path_from_cwd()
+  -- Get the full path of the current buffer
   local full_path = vim.fn.expand("%:p")
+  -- Get the current working directory
   local cwd = vim.fn.getcwd()
+  -- Remove the cwd from the full path (+2 to account for the trailing slash)
   local relative_path = full_path:sub(#cwd + 2)
   return relative_path
 end
+
+-- Set the window bar (top bar of each window)
+-- %=     : right-align the following items
+-- %m     : shows modified flag [+]
+-- [%{&filetype}] : shows file type in square brackets
+-- %{%v:lua._Get_path_from_cwd()%} : calls Lua function to show relative path
 vim.opt.winbar = "%=%m [%{&filetype}] %{%v:lua._Get_path_from_cwd()%}"
+
+-- Set specific highlights for the window bar
+-- Winbar:StatsLine      : use StatusLine highlight for active window's bar
+-- WinbarNC:StatusLineNC : use StatusLineNC highlight for inactive window's bar
 vim.opt.winhighlight = "Winbar:StatsLine,WinbarNC:StatusLineNC"
 
-vim.opt.conceallevel = 0 -- Do not hide * markup for bold and italic
+-- Set the completion options for insert mode
+-- .  - current buffer
+-- w  - buffers in windows
+-- b  - other loaded buffers
+-- u  - unloaded buffers
+-- t  - tags
+-- i  - included files
+-- k  - dictionary
+vim.opt.complete = ".,w,b,u,t,i,k"
+
+-- Set the number of commands to remember in history
+vim.opt.history = 10000
+
+-- Set the jump options
+-- 'jumpoptions' controls how Neovim handles the jump list (CTRL-O and CTRL-I navigation)
+-- Available options:
+--   'stack': Makes each window maintain its own separate jump list history
+--   'view': Saves the view (viewport position, folds, etc.) when adding a jump
+--   'clear': Removes jumps that do not resolve to valid buffer positions
+--   Multiple options can be combined like: "stack,view,clear"
+vim.opt.jumpoptions = "clean"
+
+-- Control whether Neovim adds a newline at end of file
+-- When false, Neovim will not automatically add a newline at EOF
+-- Useful for maintaining exact file contents without modifications
+-- Some file formats or systems don't require trailing newlines
+vim.opt.fixendofline = false
+
+vim.opt.conceallevel = 0
 vim.opt.relativenumber = false -- Show relative line numbers
 vim.opt.wrap = false -- Dislable line wrap
 vim.opt.breakindent = true -- Keep indentation on wrapped lines
 vim.opt.pumblend = 0 -- disable transparency in popup menu
 vim.opt.swapfile = false -- Disable swap file
--- Chars {{{
+
 vim.opt.list = true
 vim.opt.listchars = {
   tab = "  ",
@@ -27,10 +69,10 @@ vim.opt.listchars = {
   nbsp = "○",
 }
 
--- Wildmenu {{{
+-- Ignore case when completing file names
 vim.opt.wildignorecase = true
 
--- stuff to ignore when tab completing
+-- Ignore these files when using wildmenu
 vim.opt.wildignore = {
   "*~",
   "*.o",
@@ -55,12 +97,14 @@ vim.opt.wildignore = {
   "**/bin/**",
   "**/thesaurus/**",
 }
--- }}}
 
 -- adds <> to % matchpairs
 vim.opt.matchpairs:append("<:>")
-vim.opt.complete = ".,w,b,u,t,i"
-vim.opt.nrformats = "bin,hex,alpha" -- can increment alphabetically too!
+-- Set the number format options for <C-a> and <C-x> increment/decrement commands
+-- 'bin': recognize binary numbers (e.g. 0b1010)
+-- 'hex': recognize hexadecimal numbers (e.g. 0xFF)
+-- 'alpha': enable incrementing/decrementing letters (a->b->c)
+vim.opt.nrformats = "bin,hex,alpha"
 
 -- https://vi.stackexchange.com/a/5318/12823
 vim.g.matchparen_timeout = 2
