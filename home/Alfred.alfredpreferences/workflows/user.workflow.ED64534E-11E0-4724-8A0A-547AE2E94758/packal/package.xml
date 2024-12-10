@@ -1,8 +1,0 @@
-<?xml version='1.0' encoding='UTF-8' ?>
-<workflow>
-  <name>Strip clipboard text formatting</name>
-  <version>1.0</version>
-  <bundle>nl.staron.david.clipboardstripformatting</bundle>
-  <updated>1392493750</updated>
-  <file>alfred-strip.clipboard.text_.formatting.alfredworkflow</file>
-</workflow>
