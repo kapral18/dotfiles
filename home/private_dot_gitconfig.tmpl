@@ -16,79 +16,109 @@
   # Speed up commands involving untracked files such as `git status`.
   # https://git-scm.com/docs/git-update-index#_untracked_cache
   untrackedCache = true
-  pager = "delta"
   sshCommand = ssh -o IdentitiesOnly=yes -o IdentityFile="~/.ssh/primary_public_key.pub"
+  # Imrpove performance for large repos
+  preloadIndex = true
+  # Prevent line ending issues
+  autocrlf = input
 
 [pager]
-  diff = delta
-  log = delta
-  reflog = delta
-  show = delta
-  blame = delta
+  # if difftool output is larger than one screen, use the pager
+  difftool = true
 
-[interactive]
-  diffFilter = delta --color-only
-
-[delta]
-  navigate = true
-  light = false
-  side-by-side = true
-  line-numbers = true
-  features     = "decorations"
-
-[delta "interactive"]
-  keep-plus-minus-markers = false
-
-[delta "decorations"]
-  commit-decoration-style       = blue ol
-  commit-style                  = raw
-  file-style                    = omit
-  hunk-header-decoration-style  = blue box
-  hunk-header-file-style        = red
-  hunk-header-line-number-style = "#067a00"
-  hunk-header-style             = file line-number syntax
+[rebase]
+  autoStash = true
+  # Do not delete commits during rebase
+  missingCommitsCheck = error
+  # https://andrewlock.net/working-with-stacked-branches-in-git-is-easier-with-update-refs/
+  updateRefs = true
 
 [color]
   ui = auto
 
 [alias]
   s = 'status'
+  # Temporarily stores changes from another worktree, resets it, and applies changes to current worktree
   wtgrab = "!f() { mktemp | xargs -I{} sh -c 'git -C $1 diff > $0; git -C $1 reset --hard HEAD; git apply $0;' {} $1; }; f"
+  # Shows commit statistics (shortlog) for contributors in the last 8 weeks
   stat = "!git shortlog -sn --since='10 weeks' --until='2 weeks'"
+  # Lists 10 most recently modified branches
   recent = "!git for-each-ref --count=10 --sort=-committerdate refs/heads/ --format='%(refname:short)'"
+  # Shows all non-merge commits in one line format
   overview = "!git log --all --oneline --no-merges"
-  recap = "!git log --all --oneline --no-merges --author=karen@karenjs.com"
-  today = "!git log --all --oneline --no-merges --author=karen@karenjs.com --since=00:00:00"
+  # Shows your commits since midnight
+  recap = "!git log --all --oneline --no-merges --author=$(git config --get user.email) --since=00:00:00"
+  today = "!git log --all --oneline --no-merges --author=$(git config --get user.email) --since=00:00:00"
+  # Detailed graph view with commit stats and ISO dates
   graph = "!git log --all --graph --decorate --stat --date=iso"
   co = checkout
   cb = checkout -b
   c = commit -m
   ca = commit --amend
   b = branch -a
+  # Difftastic aliases, so `git dlog` is `git log` with difftastic and so on.
+  dlog = -c diff.external=difft log --ext-diff
+  dshow = -c diff.external=difft show --ext-diff
+  ddiff = -c diff.external=difft diff
+  # `git log` with patches shown with difftastic.
+  dl = -c diff.external=difft log -p --ext-diff
+  # Show the most recent commit with difftastic.
+  ds = -c diff.external=difft show --ext-diff
+  # `git diff` with difftastic.
+  dft = -c diff.external=difft diff
+  # Pretty formatted log with colors, limited to 15 entries
   l = !git --no-pager log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%C(bold blue) <%an>%Creset' -15
   ll = !git l --all --branches
+  # Shows detailed file changes for last commit
   lf = !git --no-pager log --pretty=format:'%C(yellow)%h%Cred%d\\ %Creset%s%Cblue\\ [%cn]' --decorate --numstat -1
+  # Detailed commit info display
   shw = show --pretty=format:'hash:    %C(green)%h%C(reset) %nparent:  %C(red)%p%C(reset)%nref:     %C(yellow)%D%C(reset)%nauthor:  %an <%ae>%ndate:    %ad%nmessage: %s%n'
-  sh = !git shw --no-patch shp = !git shw --patch
+  sh = !git shw --no-patch
+  shp = !git shw --patch
+  # Shows changed files compared to N commits ago
   df = "!f() { git diff --name-status -r "HEAD~$1"; }; f"
+  # Squashes last N commits into one
   squash = "!f(){ git reset --soft HEAD~${1} && git commit --edit -m\"$(git log --format=%B --reverse HEAD..HEAD@{1})\" --no-verify; };f"
   f = fetch -ptf
   p = pull --rebase
+  # Deletes all merged branches except master, develop, and staging
   purge = "!git branch --merged | grep -Ev '(\\*|master|develop|staging)' | xargs -r -n 1 git branch -d"
+  # Fetch, pull with rebase, and purge old branches
   u = !git f && git p && git purge
+  # Marks file as unchanged in git's index (useful for local config files)
   hide = update-index --assume-unchanged
   unhide = update-index --no-assume-unchanged
   wt=worktree
 
 [apply]
+  # Detect whitespace errors when applying patches
   whitespace = fix
 
 [diff]
+  # use better diff algorithm
   colorMoved = default
+  # use better diff algo
+  # https://luppeng.wordpress.com/2020/10/10/when-to-use-each-of-the-git-diff-algorithms/
+  algorithm = histogram
+  # more accurate renames (slower)
+  renames = true
+  tool = difftastic
+  external = difft
+  context = 10
+
+[difftool "difftastic"]
+    # See `man git-difftool` for a description of MERGED, LOCAL and REMOTE.
+    cmd = difft "$MERGED" "$LOCAL" "abcdef1" "100644" "$REMOTE" "abcdef2" "100644"
+
+[difftool]
+  # Run the difftool immediately, don't ask for confirmation
+  prompt = false
 
 [merge]
+  # Add summary after merge
   log = true
-  conflictStyle = diff3
+  # https://www.ductile.systems/zdiff3/
+  conflictStyle = zdiff3
 
 [pretty]
   custom = "%C(magenta)%h%C(red)%d %C(yellow)%ar %C(green)%s %C(yellow)(%an)"
@@ -102,14 +132,19 @@
   default = current
 
 [push]
-  default = current
+  # to avoid sitution where an existing branch with the same name is on upstream but not
+  # on the origin so when you push it goes into upstream. This is a safety measure
+  # to avoid that
+  default = simple
   followTags = true
+  verify = true
 
-[init]
-  defaultBranch = main
+[tag]
+  sort = -taggerdate
 
 [branch]
   autoSetupRebase = always
+  sort = -committerdate
   
 [branch "master"]
   remote = origin
@@ -126,15 +161,13 @@
 
 ## GitHub
 [url "git@github.com:"]
+  # we don't want to use insteadOf because it breaks brew installs from brew taps
   pushInsteadOf = https://github.com/
-## [url "git@github.com:"]
-##   insteadOf = https://github.com/
 
 ## GitLab
 [url "git@gitlab.com:"]
+  # we don't want to use insteadOf because it breaks brew installs from brew taps
   pushInsteadOf = https://gitlab.com
-## [url "git@gitlab.com:"]
-##   insteadOf = https://gitlab.com
 
 [user]
   name = Karen Grigoryan
@@ -145,10 +178,52 @@
 [includeIf "gitdir:~/work/"]
   path = ~/work/.gitconfig
 {{ end }}
+
 [gpg]
   format = ssh
+
 [gpg "ssh"]
   program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
   allowedSignersFile = {{ joinPath .chezmoi.homeDir ".ssh" "allowed_signers" }}
+
 [commit]
   gpgsign = true
+
+# reuse recovered resolution
+# https://git-scm.com/docs/git-rerere
+[rerere]
+  enabled = true
+
+[transfer]
+    # Enable integrity checking of objects during transfer operations
+    fsckobjects = true
+    # Set memory buffer size for integrity checks to 256 megabytes
+    fsckwindowsize = 256m
+    # Hide internal references that shouldn't be transferred
+    hideRefs = refs/original/ refs/replace/
+
+[fetch]
+    # Automatically remove remote-tracking references that no longer exist
+    prune = true
+    # Prune tags that are no longer on the remote
+    pruneTags = true
+    # Enable integrity checking when fetching objects
+    fsckobjects = true
+    # Set memory buffer size for fetch integrity checks
+    fsckwindowsize = 256m
+    # Hide internal references during fetch operations
+    hideRefs = refs/original/ refs/replace/
+
+[receive]
+    # Enable integrity checking when receiving objects
+    fsckobjects = true
+    # Set memory buffer size for receive integrity checks
+    fsckwindowsize = 256m
+    # Hide internal references during receive operations
+    hideRefs = refs/original/ refs/replace/
+
+[log]
+  date = iso
+
+[advice]
+  detachedHead = false

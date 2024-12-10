@@ -2,5 +2,5 @@ os:
   editPreset: nvim
 git:
   paging:
-    pager: delta --features=mantis-shrimp --paging=never
+    externalDiffCommand: difft --color=always
 disableStartupPopups: true

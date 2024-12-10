@@ -122,6 +122,7 @@ vim.filetype.add({
     [".env"] = "dotenv",
     ["env"] = "dotenv",
     ["tsconfig.json"] = "jsonc",
+    [".*/kitty/.+%.conf"] = "kitty",
   },
   pattern = {
     -- INFO: Match filenames like - ".env.example", ".env.local" and so on
