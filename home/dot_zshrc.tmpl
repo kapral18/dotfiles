@@ -129,6 +129,18 @@ if command -v pass >/dev/null && [[ -z "$OPENAI_API_KEY" ]]; then
 fi
 
 # ------------------------------------
+# Cloudflare API Key Configuration
+# ------------------------------------
+
+if command -v pass >/dev/null && [[ -z "$CLOUDFLARE_WORKERS_AI_ACCOUNT_ID" ]]; then
+    export CLOUDFLARE_WORKERS_AI_ACCOUNT_ID=$(pass show cloudflare/workers/ai/account/id)
+fi
+
+if command -v pass >/dev/null && [ -z "$CLOUDFLARE_WORKERS_AI_API_KEY" ]; then
+    export CLOUDFLARE_WORKERS_AI_API_KEY=$(pass cloudflare/workers/ai/api/token)
+fi
+
+# ------------------------------------
 # Conditional Configurations
 # ------------------------------------
 

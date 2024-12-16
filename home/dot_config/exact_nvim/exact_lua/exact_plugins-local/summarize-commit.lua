@@ -50,6 +50,7 @@ M.summarize_commit = function()
 
   if vim.v.shell_error ~= 0 then
     vim.notify("Failed to generate summary", vim.log.levels.ERROR)
+    print(vim.inspect(output))
     return
   end
 
@@ -82,6 +83,7 @@ M.summarize_commit_ollama = function()
 
   if vim.v.shell_error ~= 0 then
     vim.notify("Failed to generate summary", vim.log.levels.ERROR)
+    print(vim.inspect(output))
     return
   end
 
@@ -91,6 +93,79 @@ M.summarize_commit_ollama = function()
 
   vim.api.nvim_buf_set_lines(0, cursor[1] - 1, cursor[1] - 1, false, output)
   vim.api.nvim_win_set_cursor(win, { cursor[1] + #output, cursor[2] })
+end
+
+M.summarize_commit_cf = function()
+  -- Get the staged diff
+  local diff = vim.fn.system("git diff --cached")
+  if vim.v.shell_error ~= 0 then
+    vim.notify("Failed to get git diff", vim.log.levels.ERROR)
+    return
+  end
+
+  -- Build the payload as a Lua table
+  local payload = {
+    messages = {
+      {
+        role = "system",
+        content = "You are a conventional commits summarizer. You take in git diff data and only respond with a concise but not lacking distinguishing details commit message and bullet-listed commit body in the format of conventional commits.",
+      },
+      {
+        role = "user",
+        content = diff,
+      },
+    },
+    max_tokens = 2048,
+    stream = false,
+  }
+
+  -- Encode the payload to JSON
+  local payload_json = vim.json.encode(payload)
+
+  -- Write the JSON payload to a temporary file
+  local tmpfile = os.tmpname()
+  local f = io.open(tmpfile, "w")
+  if f then
+    f:write(payload_json)
+    f:close()
+  else
+    vim.notify("Failed to write temp file", vim.log.levels.ERROR)
+    return
+  end
+
+  -- Build the curl command, using the temporary file for the data
+  local command = string.format(
+    'curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/%s/ai/run/@cf/meta/llama-3.3-70b-instruct-fp8-fast" -H "Authorization: Bearer %s" -H "Content-Type: application/json" -d @%s',
+    os.getenv("CLOUDFLARE_WORKERS_AI_ACCOUNT_ID"),
+    os.getenv("CLOUDFLARE_WORKERS_AI_API_KEY"),
+    tmpfile
+  )
+
+  -- Execute the command
+  local output = vim.fn.systemlist(command)
+
+  -- Remove the temporary file
+  os.remove(tmpfile)
+
+  if vim.v.shell_error ~= 0 then
+    vim.notify("Failed to generate summary", vim.log.levels.ERROR)
+    print(vim.inspect(output))
+    return
+  end
+
+  local response = vim.json.decode(table.concat(output, "\n"))
+
+  if response and response.result and response.result.response then
+    local parsed_output = vim.split(response.result.response, "\n")
+    -- Insert output at cursor
+    local win = vim.api.nvim_get_current_win()
+    local cursor = vim.api.nvim_win_get_cursor(win)
+
+    vim.api.nvim_buf_set_lines(0, cursor[1] - 1, cursor[1] - 1, false, parsed_output)
+    vim.api.nvim_win_set_cursor(win, { cursor[1] + #parsed_output, cursor[2] })
+  else
+    vim.notify("Invalid response format", vim.log.levels.ERROR)
+  end
 end
 
 return M

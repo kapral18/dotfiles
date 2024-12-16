@@ -3,7 +3,7 @@
 # ====================================
 
 # Disable the default fish greeting
-set fish_greeting
+set -x fish_greeting
 
 # ------------------------------------
 # Environment Variables
@@ -14,7 +14,7 @@ set -x LANG en_US.UTF-8
 
 ## Terminal Settings
 if not set -q TERM
-    set -x TERM xterm-256color
+    set -gx TERM xterm-256color
 end
 
 ## Editor Settings
@@ -115,7 +115,19 @@ set -x FZF_ALT_C_COMMAND "fd --type d $FD_OPTIONS"
 # ------------------------------------
 
 if type -q pass; and test -z "$OPENAI_API_KEY"
-    set -x OPENAI_API_KEY (pass show openai/api/token)
+    set -gx OPENAI_API_KEY (pass openai/api/token)
+end
+
+# ------------------------------------
+# Cloudflare API Configuration
+# ------------------------------------
+
+if type -q pass; and test -z "$CLOUDFLARE_WORKERS_AI_ACCOUNT_ID"
+    set -gx CLOUDFLARE_WORKERS_AI_ACCOUNT_ID (pass cloudflare/workers/ai/account/id)
+end
+
+if type -q pass; and test -z "$CLOUDFLARE_WORKERS_AI_API_KEY"
+    set -gx CLOUDFLARE_WORKERS_AI_API_KEY (pass cloudflare/workers/ai/api/token)
 end
 
 # ------------------------------------
@@ -125,11 +137,11 @@ end
 {{ if ne .isWork true -}}
 # Password Store Selection
 function wpass --description "Point PASSWORD_STORE_DIR to work"
-    set -x PASSWORD_STORE_DIR {{ joinPath .chezmoi.homeDir ".password-store-work" }}
+    set -gx PASSWORD_STORE_DIR {{ joinPath .chezmoi.homeDir ".password-store-work" }}
 end
 
 function ppass --description "Point PASSWORD_STORE_DIR to personal"
-    set -x PASSWORD_STORE_DIR {{ joinPath .chezmoi.homeDir ".password-store" }}
+    set -ge PASSWORD_STORE_DIR
 end
 {{- end }}
 
@@ -211,7 +223,7 @@ if test -f {{ .homebrewPrefix }}/Caskroom/miniconda/base/bin/conda
 else if test -f "{{ .homebrewPrefix }}/Caskroom/miniconda/base/etc/fish/conf.d/conda.fish"
     . "{{ .homebrewPrefix }}/Caskroom/miniconda/base/etc/fish/conf.d/conda.fish"
 else
-    set -x PATH {{ .homebrewPrefix }}/Caskroom/miniconda/base/bin $PATH
+    set -gx PATH {{ .homebrewPrefix }}/Caskroom/miniconda/base/bin $PATH
 end
 # <<< conda initialize <<<
 

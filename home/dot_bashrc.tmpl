@@ -124,7 +124,19 @@ export FZF_ALT_C_COMMAND="fd --type d $FD_OPTIONS"
 # ------------------------------------
 
 if command -v pass >/dev/null && [ -z "$OPENAI_API_KEY" ]; then
-    export OPENAI_API_KEY=$(pass show openai/api/token)
+    export OPENAI_API_KEY=$(pass openai/api/token)
+fi
+
+# ------------------------------------
+# Cloudflare API Configuration
+# ------------------------------------
+
+if command -v pass >/dev/null && [ -z "$CLOUDFLARE_WORKERS_AI_ACCOUNT_ID" ]; then
+    export CLOUDFLARE_WORKERS_AI_ACCOUNT_ID=$(pass cloudflare/workers/ai/account/id)
+fi
+
+if command -v pass >/dev/null && [ -z "$CLOUDFLARE_WORKERS_AI_API_KEY" ]; then
+    export CLOUDFLARE_WORKERS_AI_API_KEY=$(pass cloudflare/workers/ai/api/token)
 fi
 
 # ------------------------------------

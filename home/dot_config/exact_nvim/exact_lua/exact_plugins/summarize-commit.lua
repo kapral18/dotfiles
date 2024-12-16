@@ -20,5 +20,13 @@ return {
       ft = "gitcommit",
       desc = "[Ollama] Summarize commit",
     },
+    {
+      "<leader>aic",
+      function()
+        require("plugins-local.summarize-commit").summarize_commit_cf()
+      end,
+      ft = "gitcommit",
+      desc = "[CloudFlareAI] Summarize commit",
+    },
   },
 }
