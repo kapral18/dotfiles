@@ -1,23 +1,31 @@
 local M = {
   prompt = [[
-    Give me commit message summary from git diff output below using following format:
+    Read my instruction and follow it carefully.
 
+    <<INSTRUCTION START>>
+    Generate a commit summary using conventional commit format from
+    the output of a git diff that starts after the word <<DIFF START>>
 
-    Example:
+    --------
+
+    Only respond with the generated commit text.
+
+    --------
+
+    Example commit message:
 
     feat: add new feature
 
-    - Add new feature...
-    - Fix bug...
-    - Refactor code...
+    - Add new feature
+    - Update documentation
+    - Fix bug in existing feature
+    ...
 
     --------
 
-    Only respond with the commit text and nothing more.
+    <<INSTRUCTION END>>
 
-    --------
-
-    Git diff output:
+    <<DIFF START>>
 
   ]],
 }
@@ -54,38 +62,35 @@ M.summarize_commit = function()
 end
 
 M.summarize_commit_ollama = function()
-  local diff_command = "git diff --cached"
-  local diff_output = vim.fn.systemlist(diff_command)
-
-  -- Handle potential empty diff output
-  if #diff_output == 0 then
-    vim.notify("No changes to commit.", vim.log.levels.WARN, {})
+  -- Get the staged diff
+  local diff = vim.fn.system("git diff --cached")
+  if vim.v.shell_error ~= 0 then
+    vim.notify("Failed to get git diff", vim.log.levels.ERROR)
     return
   end
 
-  local input_with_diff = table.concat(diff_output, "\n") .. "\n" .. M.prompt
+  -- Prepare input with prompt and diff
+  local input_with_diff = M.prompt .. "\n" .. diff -- Changed order here
   local json_payload = vim.json.encode({ model = "llama3.3", prompt = input_with_diff, stream = false })
 
-  local curl_command = "curl -s -X POST http://localhost:11434/api/generate -d " .. vim.fn.shellescape(json_payload)
-  local jq_command = "jq -r '.response'"
-  local command = curl_command .. " | " .. jq_command
+  -- Construct and execute command
+  local command = string.format(
+    "curl -s -X POST http://localhost:11434/api/generate -d %s | jq -r '.response'",
+    vim.fn.shellescape(json_payload)
+  )
+  local output = vim.fn.systemlist(command)
 
-  local output = vim.fn.system(command)
-
-  if output == nil or output == "" then
-    vim.notify("Ollama returned an empty response.", vim.log.levels.WARN, {})
+  if vim.v.shell_error ~= 0 then
+    vim.notify("Failed to generate summary", vim.log.levels.ERROR)
     return
   end
 
+  -- Insert output at cursor
   local win = vim.api.nvim_get_current_win()
   local cursor = vim.api.nvim_win_get_cursor(win)
 
-  local split_output = vim.split(output, "\n")
-
-  for _, line in ipairs(split_output) do
-    vim.api.nvim_buf_set_lines(0, cursor[1] - 1, cursor[1] - 1, false, { line })
-    cursor[1] = cursor[1] + 1
-  end
+  vim.api.nvim_buf_set_lines(0, cursor[1] - 1, cursor[1] - 1, false, output)
+  vim.api.nvim_win_set_cursor(win, { cursor[1] + #output, cursor[2] })
 end
 
 return M
