@@ -37,7 +37,7 @@ end
 function _remove_worktree_tmux_session
     if test -n "$TMUX"
 
-        set -l wizard_session_proof_branch_name (echo $argv[1] | tr '.' '-')
+        set -l wizard_session_proof_branch_name (echo $argv[1] | tr '.' '_')
         set -l session_name $(tmux list-sessions -F "#{session_name}" | grep -i "$wizard_session_proof_branch_name")
 
         echo "
