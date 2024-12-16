@@ -30,18 +30,28 @@ local M = {
   ]],
 }
 
-M.summarize_commit = function()
-  -- Escape the prompt properly for shell
-  local escaped_prompt = vim.fn.shellescape(M.prompt)
-
-  -- Get the staged diff
+-- Utility function to get the staged git diff
+local function get_staged_diff()
   local diff = vim.fn.system("git diff --cached")
   if vim.v.shell_error ~= 0 then
     vim.notify("Failed to get git diff", vim.log.levels.ERROR)
-    return
+    return nil
   end
+  return diff
+end
 
-  -- Escape the diff content
+-- Utility function to insert output at the cursor position
+local function insert_at_cursor(output)
+  local win = vim.api.nvim_get_current_win()
+  local cursor = vim.api.nvim_win_get_cursor(win)
+  vim.api.nvim_buf_set_lines(0, cursor[1] - 1, cursor[1] - 1, false, output)
+  vim.api.nvim_win_set_cursor(win, { cursor[1] + #output, cursor[2] })
+end
+
+-- Function to generate commit summary using chatblade
+local function generate_with_chatblade(prompt, diff)
+  -- Escape the prompt and diff properly for shell
+  local escaped_prompt = vim.fn.shellescape(prompt)
   local escaped_diff = vim.fn.shellescape(diff)
 
   -- Construct and execute command
@@ -51,58 +61,41 @@ M.summarize_commit = function()
   if vim.v.shell_error ~= 0 then
     vim.notify("Failed to generate summary", vim.log.levels.ERROR)
     print(vim.inspect(output))
-    return
+    return nil
   end
 
-  -- Insert output at cursor
-  local win = vim.api.nvim_get_current_win()
-  local cursor = vim.api.nvim_win_get_cursor(win)
-
-  vim.api.nvim_buf_set_lines(0, cursor[1] - 1, cursor[1] - 1, false, output)
-  vim.api.nvim_win_set_cursor(win, { cursor[1] + #output, cursor[2] })
+  return output
 end
 
-M.summarize_commit_ollama = function()
-  -- Get the staged diff
-  local diff = vim.fn.system("git diff --cached")
-  if vim.v.shell_error ~= 0 then
-    vim.notify("Failed to get git diff", vim.log.levels.ERROR)
-    return
-  end
-
+-- Function to generate commit summary using Ollama
+local function generate_with_ollama(prompt, diff)
   -- Prepare input with prompt and diff
-  local input_with_diff = M.prompt .. "\n" .. diff -- Changed order here
-  local json_payload = vim.json.encode({ model = "llama3.3", prompt = input_with_diff, stream = false })
+  local input_with_diff = prompt .. "\n" .. diff
+  local json_payload = vim.json.encode({ model = "qwen2.5-coder:32b", prompt = input_with_diff, stream = false })
 
   -- Construct and execute command
-  local command = string.format(
-    "curl -s -X POST http://localhost:11434/api/generate -d %s | jq -r '.response'",
-    vim.fn.shellescape(json_payload)
-  )
+  local command =
+    string.format("curl -s -X POST http://localhost:11434/api/generate -d %s", vim.fn.shellescape(json_payload))
   local output = vim.fn.systemlist(command)
 
   if vim.v.shell_error ~= 0 then
     vim.notify("Failed to generate summary", vim.log.levels.ERROR)
     print(vim.inspect(output))
-    return
+    return nil
   end
 
-  -- Insert output at cursor
-  local win = vim.api.nvim_get_current_win()
-  local cursor = vim.api.nvim_win_get_cursor(win)
-
-  vim.api.nvim_buf_set_lines(0, cursor[1] - 1, cursor[1] - 1, false, output)
-  vim.api.nvim_win_set_cursor(win, { cursor[1] + #output, cursor[2] })
+  -- Parse the JSON response
+  local response = vim.fn.json_decode(table.concat(output, "\n"))
+  if response and response.response then
+    return vim.split(response.response, "\n")
+  else
+    vim.notify("Invalid response format", vim.log.levels.ERROR)
+    return nil
+  end
 end
 
-M.summarize_commit_cf = function()
-  -- Get the staged diff
-  local diff = vim.fn.system("git diff --cached")
-  if vim.v.shell_error ~= 0 then
-    vim.notify("Failed to get git diff", vim.log.levels.ERROR)
-    return
-  end
-
+-- Function to generate commit summary using Cloudflare Workers AI
+local function generate_with_cloudflare(prompt, diff)
   -- Build the payload as a Lua table
   local payload = {
     messages = {
@@ -130,7 +123,7 @@ M.summarize_commit_cf = function()
     f:close()
   else
     vim.notify("Failed to write temp file", vim.log.levels.ERROR)
-    return
+    return nil
   end
 
   -- Build the curl command, using the temporary file for the data
@@ -150,21 +143,55 @@ M.summarize_commit_cf = function()
   if vim.v.shell_error ~= 0 then
     vim.notify("Failed to generate summary", vim.log.levels.ERROR)
     print(vim.inspect(output))
+    return nil
+  end
+
+  -- Parse the JSON response
+  local response = vim.json.decode(table.concat(output, "\n"))
+  if response and response.result and response.result.response then
+    return vim.split(response.result.response, "\n")
+  else
+    vim.notify("Invalid response format", vim.log.levels.ERROR)
+    return nil
+  end
+end
+
+-- Summarize commit using chatblade
+M.summarize_commit = function()
+  local diff = get_staged_diff()
+  if not diff then
     return
   end
 
-  local response = vim.json.decode(table.concat(output, "\n"))
+  local output = generate_with_chatblade(M.prompt, diff)
+  if output then
+    insert_at_cursor(output)
+  end
+end
 
-  if response and response.result and response.result.response then
-    local parsed_output = vim.split(response.result.response, "\n")
-    -- Insert output at cursor
-    local win = vim.api.nvim_get_current_win()
-    local cursor = vim.api.nvim_win_get_cursor(win)
+-- Summarize commit using Ollama
+M.summarize_commit_ollama = function()
+  local diff = get_staged_diff()
+  if not diff then
+    return
+  end
 
-    vim.api.nvim_buf_set_lines(0, cursor[1] - 1, cursor[1] - 1, false, parsed_output)
-    vim.api.nvim_win_set_cursor(win, { cursor[1] + #parsed_output, cursor[2] })
-  else
-    vim.notify("Invalid response format", vim.log.levels.ERROR)
+  local output = generate_with_ollama(M.prompt, diff)
+  if output then
+    insert_at_cursor(output)
+  end
+end
+
+-- Summarize commit using Cloudflare Workers AI
+M.summarize_commit_cf = function()
+  local diff = get_staged_diff()
+  if not diff then
+    return
+  end
+
+  local output = generate_with_cloudflare(M.prompt, diff)
+  if output then
+    insert_at_cursor(output)
   end
 end
 
