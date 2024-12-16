@@ -80,9 +80,10 @@
   # Squashes last N commits into one
   squash = "!f(){ git reset --soft HEAD~${1} && git commit --edit -m\"$(git log --format=%B --reverse HEAD..HEAD@{1})\" --no-verify; };f"
   f = fetch -ptf
-  p = pull --rebase
-  # Deletes all merged branches except master, develop, and staging
-  purge = "!git branch --merged | grep -Ev '(\\*|master|develop|staging)' | xargs -r -n 1 git branch -d"
+  pur = pull --rebase
+  pup = pull --rebase upstream $(git branch --show-current)
+  # Deletes all merged branches except main, master, develop, and staging
+  purge = "!git branch --merged | grep -Ev '(\\*|master|main|develop|staging)' | xargs -r -n 1 git branch -d"
   # Fetch, pull with rebase, and purge old branches
   u = !git f && git p && git purge
   # Marks file as unchanged in git's index (useful for local config files)

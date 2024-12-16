@@ -7,3 +7,9 @@ end
 function _get_split_branch_name
     echo $argv[1] | string split -m 1 /
 end
+
+function _confirm
+    read -P "Continue? [y/N] " reply
+    echo
+    string match -qr '^[Yy]$' -- $reply
+end

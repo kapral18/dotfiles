@@ -51,3 +51,31 @@ Ahead: $ahead commits"
 
     echo ------------------------------------
 end
+
+function pull_rebase --description 'Pull the latest changes from the remote and rebase'
+    set -l current_branch (git branch --show-current)
+    set -l fork_upstream (git reflog show $current_branch | grep 'branch: Created from' | grep -v HEAD | awk '{print $NF}')
+
+    if test -z "$fork_upstream"
+        echo "Could not find the forked upstream branch"
+        return 1
+    end
+
+    set -l upstream_split (_get_split_branch_name $fork_upstream)
+    set -l upstream_remote $upstream_split[1]
+    set -l upstream_branch $upstream_split[2]
+
+    if test -z "$upstream_remote" -o -z "$upstream_branch"
+        echo "Could not find $fork_upstream remote or branch"
+        return 1
+    end
+
+    # ask for confirmation
+    echo "Pulling the latest changes from $upstream_remote/$upstream_branch and rebasing on top of it"
+
+    if not _confirm
+        return 1
+    end
+
+    git pull --rebase $upstream_remote $upstream_branch
+end

@@ -3,12 +3,22 @@
 import argparse
 import subprocess
 import mimetypes
+import sys
 from dataclasses import dataclass
 
 
-def is_image(file_path: str):
+def is_image(file_path: str) -> bool:
     mime_type, _ = mimetypes.guess_type(file_path)
     return mime_type is not None and mime_type.startswith("image/")
+
+
+def is_binary(filepath: str) -> bool:
+    with open(filepath, "rb") as f:
+        data = f.read(512)  # read 512 bytes
+        null_bytes = data.count(b"\0")
+        return null_bytes > 0.1 * len(
+            data
+        )  # if more than 10% of the data is null bytes, it's likely binary
 
 
 @dataclass
@@ -17,22 +27,28 @@ class BatArgs(argparse.Namespace):
     args: list[str]
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Wrapper for bat to handle image files with chafa."
     )
-    parser.add_argument("file", help="Filename")
-    parser.add_argument("args", nargs=argparse.REMAINDER, help="Arguments for bat")
+    _ = parser.add_argument("file", help="Filename")
+    _ = parser.add_argument("args", nargs=argparse.REMAINDER, help="Arguments for bat")
 
     args: BatArgs
     unknown_args: list[str]
     args, unknown_args = parser.parse_known_args(namespace=BatArgs("", []))
 
-    if is_image(args.file):
-        subprocess.run(["chafa", args.file])
-    else:
-        cmd = ["bat", args.file] + args.args + unknown_args
-        subprocess.run(cmd)
+    try:
+        if is_image(args.file):
+            _ = subprocess.run(["chafa", "-f", "symbols", args.file], check=True)
+        elif is_binary(args.file):
+            _ = subprocess.run(["hexyl", args.file], check=True)
+        else:
+            cmd = ["bat", args.file] + args.args + unknown_args
+            _ = subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error running command: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

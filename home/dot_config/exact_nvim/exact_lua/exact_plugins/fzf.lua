@@ -1,50 +1,30 @@
-local winopts = {
-  small = {
-    no_preview = {
-      height = 0.35,
-      width = 0.65,
-      preview = {
-        hidden = "hidden",
-      },
-    },
-  },
-  medium = {
-    flex = {
-      height = 0.75,
-      width = 0.75,
-      preview = {
-        layout = "flex",
-      },
-    },
-    vertical = {
-      height = 0.75,
-      width = 0.75,
-      preview = {
-        layout = "vertical",
-        vertical = "up:65%",
-      },
-    },
-  },
-  large = {
-    vertical = {
-      height = 0.9,
-      width = 0.9,
-      preview = {
-        layout = "vertical",
-        vertical = "up:65%",
-      },
-    },
-  },
-  full = {
-    vertical = {
-      fullscreen = true,
-      preview = {
-        layout = "vertical",
-        vertical = "up:75%",
-      },
-    },
-  },
-}
+local function copy_to_clipboard(text)
+  -- Use pbcopy to copy text to the system clipboard
+  local handle = io.popen("pbcopy", "w")
+  if handle == nil then
+    return
+  end
+  handle:write(text)
+  handle:close()
+end
+
+local function is_image(file_path)
+  -- Use a library or a simple heuristic to detect images
+  -- For example, you can use the `file` command to check the file type
+  local file_type = io.popen("file -b --mime-type " .. file_path):read("*a")
+  return file_type:match("image/%w+")
+end
+
+local function open_file(selected, opts)
+  local file_path = selected[1]
+  if is_image(file_path) then
+    -- Open the image file with the default Mac associated application
+    io.popen("open " .. file_path)
+  else
+    -- Handle non-image files as needed
+    require("fzf-lua").actions.file_edit(selected, opts)
+  end
+end
 
 local function get_fzf_fn(cmd, opts)
   opts = opts or {}
@@ -84,7 +64,6 @@ local function live_grep_with_patterns(initial_search, opts)
 
   local function nested_live_grep()
     require("fzf-lua").live_grep(vim.tbl_deep_extend("force", {
-      winopts = winopts.full.vertical,
       rg_glob = true,
       no_esc = true,
       actions = {
@@ -102,24 +81,12 @@ end
 
 return {
   {
-    "nvim-telescope/telescope.nvim",
-    keys = {
-      { "<leader>/", false },
-      { "<leader><space>", false },
-      { "<leader>sg", false },
-      { "<leader>sG", false },
-      { "<leader>sR", false },
-      { "<leader>sw", false },
-    },
-  },
-  {
     "ibhagwan/fzf-lua",
     dependencies = { "nvim-tree/nvim-web-devicons" },
     keys = {
       {
         "<leader><space>",
         get_fzf_fn("files", {
-          winopts = winopts.full.vertical,
           cwd = vim.uv.cwd(),
         }),
         desc = "Files",
@@ -128,16 +95,13 @@ return {
         "<leader>i",
         get_fzf_fn("files", {
           fd_opts = fd_opts_unrestricted,
-          winopts = winopts.full.vertical,
           cwd = vim.uv.cwd(),
         }),
         desc = "Files",
       },
       {
         "<leader>/",
-        get_fzf_fn("lgrep_curbuf", {
-          winopts = winopts.full.vertical,
-        }),
+        get_fzf_fn("lgrep_curbuf"),
         desc = "Grep",
       },
       {
@@ -156,7 +120,7 @@ return {
       },
       {
         "<leader>sR",
-        get_fzf_fn("resume", { winopts = winopts.full.vertical }),
+        get_fzf_fn("resume"),
         desc = "Resume Picker List",
       },
       {
@@ -164,7 +128,6 @@ return {
         function()
           live_grep_with_patterns(vim.fn.expand("<cword>"), {
             rg_opts = rg_opts,
-            winopts = winopts.full.vertical,
             cwd = vim.uv.cwd(),
           })
         end,
@@ -175,7 +138,6 @@ return {
         function()
           live_grep_with_patterns(vim.fn.expand("<cword>"), {
             rg_opts = rg_opts_unrestricted,
-            winopts = winopts.full.vertical,
             cwd = vim.uv.cwd(),
           })
         end,
@@ -187,7 +149,6 @@ return {
           live_grep_with_patterns(vim.trim(require("fzf-lua").utils.get_visual_selection()), {
             rg_opts = rg_opts .. " --multiline",
             no_esc = false,
-            winopts = winopts.full.vertical,
             cwd = vim.uv.cwd(),
           })
         end,
@@ -200,7 +161,6 @@ return {
           live_grep_with_patterns(vim.trim(require("fzf-lua").utils.get_visual_selection()), {
             rg_opts = rg_opts_unrestricted .. " --multiline",
             no_esc = false,
-            winopts = winopts.full.vertical,
             cwd = vim.uv.cwd(),
           })
         end,
@@ -218,11 +178,13 @@ return {
         winopts = {
           height = 0.50,
           width = 0.75,
+          fullscreen = true,
           preview = {
             default = "builtin",
             border = "noborder",
             wrap = "wrap",
-            vertical = "down:45%",
+            layout = "vertical",
+            vertical = "up:75%",
             scrollbar = false,
             scrollchars = { "", "" },
             winopts = {
@@ -250,22 +212,8 @@ return {
         previewers = {
           bat = {
             cmd = "bat_preview",
-            -- uncomment to set a bat theme, `bat --list-themes`
+            -- set a bat theme, `bat --list-themes`
             theme = "Catppuccin-mocha",
-          },
-          builtin = {
-            prompt = "Builtin❯ ",
-            extensions = {
-              -- neovim terminal only supports `viu` block output
-              ["png"] = { "chafa" },
-              ["jpg"] = { "chafa" },
-              ["svg"] = { "chafa" },
-              ["jpeg"] = { "chafa" },
-              ["bpm"] = { "chafa" },
-              ["tiff"] = { "chafa" },
-              ["webp"] = { "chafa" },
-              ["avif"] = { "chafa" },
-            },
           },
         },
         files = {
@@ -275,11 +223,13 @@ return {
           fd_opts = fd_opts,
           fzf_opts = { ["--ansi"] = false },
           actions = {
+            ["enter"] = open_file,
             ["ctrl-q"] = actions.file_sel_to_qf,
             ["ctrl-y"] = function(selected)
-              print(selected[1])
+              copy_to_clipboard(selected[1])
             end,
-            ["ctrl-r"] = { actions.toggle_ignore },
+            -- we don't need alt-i, as it's covered by ctrl-g
+            ["alt-h"] = { actions.toggle_hidden },
           },
         },
         grep = {
@@ -288,7 +238,13 @@ return {
           input_prompt = "Grep❯ ",
           rg_opts = rg_opts,
           actions = {
-            ["ctrl-r"] = { actions.toggle_ignore },
+            ["ctrl-q"] = actions.file_sel_to_qf,
+            ["ctrl-y"] = function(selected)
+              copy_to_clipboard(selected[1])
+            end,
+            -- we need alt-i as ctrl-g is used for cycling search patterns
+            ["alt-i"] = { actions.toggle_ignore },
+            ["alt-h"] = { actions.toggle_hidden },
           },
         },
       }

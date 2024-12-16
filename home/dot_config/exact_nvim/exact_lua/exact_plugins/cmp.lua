@@ -1,5 +1,6 @@
 local win_highlight = "Normal:Normal,FloatBorder:Normal,CursorLine:Visual,Search:None"
 return {
+  { import = "lazyvim.plugins.extras.coding.nvim-cmp" },
   {
     "hrsh7th/nvim-cmp",
     dependencies = {
