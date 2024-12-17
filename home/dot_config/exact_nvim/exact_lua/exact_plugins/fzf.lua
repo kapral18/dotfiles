@@ -99,6 +99,10 @@ return {
         }),
         desc = "Files",
       },
+      { "<leader>fr", get_fzf_fn("oldfiles", {
+        cwd = vim.uv.cwd(),
+      }), desc = "Recent (cwd)" },
+      { "<leader>fR", get_fzf_fn("oldfiles"), { desc = "Recent (all)" } },
       {
         "<leader>/",
         get_fzf_fn("lgrep_curbuf"),

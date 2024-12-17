@@ -4,3 +4,13 @@ git:
   paging:
     externalDiffCommand: difft --color=always
 disableStartupPopups: true
+customCommands:
+  - key: "o"
+    command: "nvim -c ':Octo pr create'"
+    context: "localBranches"
+    loadingText: "Loading Octo"
+    description: "Open pull request with Octo"
+    subprocess: true
+keybinding:
+  branches:
+    createPullRequest: "O"

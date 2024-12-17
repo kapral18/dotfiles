@@ -1,0 +1,92 @@
+prSections:
+  - title: Elastic PRs
+    filters: is:open author:@me org:elastic
+    layout:
+      author:
+        hidden: true
+  - title: Needs My Review
+    filters: is:open review-requested:@me org:elastic
+  - title: Involved
+    filters: is:open involves:@me -author:@me org:elastic
+  - title: Non-Elastic PRs
+    filters: is:open -author:@me -org:elastic
+    layout:
+      author:
+        hidden: true
+  - title: Needs My Review
+    filters: is:open review-requested:@me -org:elastic
+  - title: Involved
+    filters: is:open involves:@me -author:@me -org:elastic
+issuesSections:
+  - title: Elastic Issues
+    filters: is:open author:@me org:elastic
+    layout:
+      author:
+        hidden: true
+  - title: Assigned
+    filters: is:open assignee:@me org:elastic
+  - title: Involved
+    filters: is:open involves:@me -author:@me org:elastic
+  - title: Non-Elastic Issues
+    filters: is:open -author:@me -org:elastic
+    layout:
+      author:
+        hidden: true
+  - title: Assigned
+    filters: is:open assignee:@me -org:elastic
+  - title: Involved
+    filters: is:open involves:@me -author:@me -org:elastic
+defaults:
+  preview:
+    open: true
+    width: 50
+  prsLimit: 20
+  issuesLimit: 20
+  view: prs
+  layout:
+    prs:
+      updatedAt:
+        width: 7
+      repo:
+        width: 15
+      author:
+        width: 15
+      assignees:
+        width: 20
+        hidden: true
+      base:
+        width: 15
+        hidden: true
+      lines:
+        width: 16
+    issues:
+      updatedAt:
+        width: 7
+      repo:
+        width: 15
+      creator:
+        width: 10
+      assignees:
+        width: 20
+        hidden: true
+  refetchIntervalMinutes: 30
+keybindings:
+  issues:
+    - key: e
+      command: >
+        tmux display-popup -d {{.RepoPath}} -w 80% -h 90% -E 'nvim -c ":Octo issue edit {{.IssueNumber}}"'
+    - key: i
+      command: >
+        tmux display-popup -d {{.RepoPath}} -w 80% -h 90% -E 'nvim -c ":Octo issue create"'
+  prs:
+    - key: O
+      command: >
+        tmux new-window -c {{.RepoPath}} 'nvim -c ":Octo pr edit {{.PrNumber}}"'
+repoPaths: {}
+theme:
+  ui:
+    table:
+      showSeparator: true
+pager:
+  diff: ""
+confirmQuit: false
