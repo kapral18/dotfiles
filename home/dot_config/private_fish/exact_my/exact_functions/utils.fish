@@ -13,3 +13,15 @@ function _confirm
     echo
     string match -qr '^[Yy]$' -- $reply
 end
+
+function _safe_exec_cmd
+    set -l cmd $argv
+    set -l output (eval $cmd ^ /dev/stderr)
+    set -l status $status
+    if test $status -ne 0
+        echo "Error executing command: $cmd" >&2
+        echo "Output: $output" >&2
+        return 1
+    end
+    echo $output
+end
