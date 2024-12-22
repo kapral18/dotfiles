@@ -1,0 +1,26 @@
+#!{{ lookPath "bash" }}
+
+# This script installs asdf plugins based on the asdf_plugins file
+# {{ include "asdf_plugins" | sha256sum }}
+
+asdf_plugins_file={{ joinPath .chezmoi.sourceDir "asdf_plugins" | quote }}
+
+# Read the file content into an array
+mapfile -t lines < "$asdf_plugins_file"
+
+# Iterate over the array using a for loop
+for line in "${lines[@]}"; do
+  if [[ -n "$line" && ! "$line" =~ ^\s*# ]]; then
+    plugin=$(echo "$line" | awk '{print $1}')
+    url=$(echo "$line" | awk '{print $2}')
+    
+    if ! asdf plugin list | grep -q "^$plugin$"; then
+      asdf plugin add "$plugin" "$url"
+    else
+      echo "Plugin $plugin is already installed"
+    fi
+  fi
+done
+
+# Install versions specified in .tool-versions
+asdf install

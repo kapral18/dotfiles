@@ -1,5 +1,4 @@
 return {
-  { import = "lazyvim.plugins.extras.ai.copilot-chat" },
   {
     "David-Kunz/gen.nvim",
     opts = {

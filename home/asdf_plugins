@@ -1,0 +1,14 @@
+bun https://github.com/cometkim/asdf-bun.git
+clojure https://github.com/asdf-community/asdf-clojure.git
+elixir https://github.com/asdf-vm/asdf-elixir.git
+elm https://github.com/asdf-community/asdf-elm.git
+erlang https://github.com/asdf-vm/asdf-erlang.git
+golang https://github.com/asdf-community/asdf-golang.git
+java https://github.com/halcyon/asdf-java.git
+lua https://github.com/Stratus3D/asdf-lua.git
+nodejs https://github.com/asdf-vm/asdf-nodejs.git
+python https://github.com/asdf-community/asdf-python.git
+ruby https://github.com/asdf-vm/asdf-ruby.git
+rust https://github.com/code-lever/asdf-rust.git
+yarn https://github.com/twuni/asdf-yarn.git
+zig https://github.com/cheetah/asdf-zig.git

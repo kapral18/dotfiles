@@ -6,7 +6,6 @@ vim.filetype.add({
 })
 
 return {
-  { import = "lazyvim.plugins.extras.lang.markdown" },
   {
     "MeanderingProgrammer/render-markdown.nvim",
     enabled = false,

@@ -1,5 +1,3 @@
-local buf_rename_utils = require("utils.git-mv-buffers")
-local common_utils = require("utils.common")
 local winopts = {
   large = {
     vertical = {
@@ -87,7 +85,6 @@ return {
           ["<leader>ng"] = "grep_in_dir",
           ["K"] = "focus_parent",
           ["D"] = "diff_files",
-          ["r"] = "git_rename",
           [";"] = "open_in_oil",
         },
       },
@@ -143,72 +140,6 @@ return {
               require("neo-tree.ui.renderer").redraw(state)
             end
           end
-        end,
-        git_rename = function(state)
-          local node = state.tree:get_node()
-          if node.type == "message" then
-            return
-          end
-
-          local cmds = require("neo-tree.sources.filesystem.commands")
-          local has_git = vim.fn.finddir(".git", ";") ~= ""
-
-          if not has_git then
-            return cmds.rename(state)
-          end
-
-          local path = node:get_id()
-
-          if not common_utils.is_git_tracked(path) then
-            return cmds.rename(state)
-          end
-
-          local name = node.name
-          local events = require("neo-tree.events")
-          vim.ui.input({ prompt = "New name: " .. name }, function(new_name)
-            if new_name == "" or new_name == nil then
-              return
-            end
-
-            local base_path = vim.fn.fnamemodify(path, ":h")
-            local cmd = { "git", "mv", path, base_path .. "/" .. new_name }
-            -- Execute the command and handle errors
-            local ok, err = pcall(function()
-              vim.fn.system(cmd)
-            end)
-            if not ok then
-              print("Error executing command: " .. err)
-              return
-            end
-
-            vim.schedule(function()
-              local main_win_id = buf_rename_utils.get_window_to_right()
-              local old_cursor_pos = nil
-
-              if main_win_id ~= nil then
-                local bufnr = vim.api.nvim_win_get_buf(main_win_id)
-                -- get buf name and check if it is the same as the current one
-                if vim.api.nvim_buf_get_name(bufnr) == path then
-                  old_cursor_pos = vim.api.nvim_win_get_cursor(main_win_id)
-                end
-              end
-
-              buf_rename_utils.rename_buffer(path, base_path .. "/" .. new_name)
-
-              if main_win_id ~= nil and old_cursor_pos ~= nil then
-                vim.api.nvim_win_set_cursor(main_win_id, old_cursor_pos)
-              end
-
-              events.fire_event(events.FILE_RENAMED, {
-                source = path,
-                destination = base_path .. "/" .. new_name,
-              })
-
-              require("gitsigns").refresh()
-
-              events.fire_event(events.GIT_EVENT)
-            end)
-          end)
         end,
       },
     },

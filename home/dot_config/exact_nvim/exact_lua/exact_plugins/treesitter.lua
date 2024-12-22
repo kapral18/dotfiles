@@ -20,7 +20,6 @@ local mini_ai_git_signs = function()
 end
 
 return {
-  { import = "lazyvim.plugins.extras.ui.treesitter-context" },
   {
     "nvim-treesitter/nvim-treesitter",
     dependencies = {
@@ -93,9 +92,6 @@ return {
     config = function()
       require("nvim-ts-autotag").setup({
         opts = {
-          -- Defaults
-          enable_close = true, -- Auto close tags
-          enable_rename = true, -- Auto rename pairs of tags
           enable_close_on_slash = true, -- Auto close on trailing </
         },
       })
@@ -127,8 +123,8 @@ return {
           L = MiniExtra.gen_ai_spec.line(),
           N = MiniExtra.gen_ai_spec.number(),
           O = ai.gen_spec.treesitter({
-            a = { "@function.outer", "@class.outer", "@testitem.outer" },
-            i = { "@function.inner", "@class.inner", "@testitem.inner" },
+            a = { "@function.outer", "@class.outer" },
+            i = { "@function.inner", "@class.inner" },
           }),
           -- mixes up with leap-spooky so not using it
           -- r = ai.gen_spec.treesitter({ a = "@return.outer", i = "@return.inner" }),

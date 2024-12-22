@@ -20,6 +20,15 @@ end
 -- %{%v:lua._Get_path_from_cwd()%} : calls Lua function to show relative path
 vim.opt.winbar = "%=%m [%{&filetype}] %{%v:lua._Get_path_from_cwd()%}"
 
+-- Set the session options to save and restore
+-- 'buffers'  : save and restore buffers
+-- 'tabpages' : save and restore tab pages
+-- 'winsize'  : save and restore window sizes
+-- 'winpos'   : save and restore window positions
+-- 'terminal' : save and restore terminal buffers
+-- 'localoptions' : save and restore local options
+vim.opt.sessionoptions = "buffers,tabpages,winsize,winpos,localoptions"
+
 -- Set specific highlights for the window bar
 -- Winbar:StatsLine      : use StatusLine highlight for active window's bar
 -- WinbarNC:StatusLineNC : use StatusLineNC highlight for inactive window's bar
@@ -149,3 +158,8 @@ vim.o.spell = false
 vim.lsp.set_log_level("off")
 
 vim.g.snacks_animate = false
+
+---
+
+vim.g.lazyvim_cmp = "nvim-cmp"
+vim.g.lazyvim_picker = "fzf"

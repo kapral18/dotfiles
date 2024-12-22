@@ -18,7 +18,6 @@ vim.filetype.add({
 })
 
 return {
-  { import = "lazyvim.plugins.extras.lang.ansible" },
   {
     "williamboman/mason.nvim",
     opts = function(_, opts)

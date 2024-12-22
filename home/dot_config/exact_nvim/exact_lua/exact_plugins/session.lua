@@ -2,22 +2,21 @@ return {
   {
     "folke/persistence.nvim",
     enabled = false,
-    event = "BufReadPre", -- this will only start session saving when an actual file was opened
-    opts = {
-      need = 0,
-      branch = false,
-    },
   },
   {
     "rmagatti/auto-session",
     lazy = false,
-
+    dependencies = {
+      { "nvim-telescope/telescope.nvim", opt = true },
+    },
+    keys = {
+      { "<localleader>ss", "<cmd>SessionSave<CR>", desc = "Save session" },
+    },
     ---enables autocomplete for opts
     ---@module "auto-session"
     ---@type AutoSession.Config
     opts = {
       suppressed_dirs = { "~/", "~/code", "~/Downloads", "/" },
-      -- log_level = 'debug',
     },
   },
 }

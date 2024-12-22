@@ -35,12 +35,6 @@ set -x INFOPATH {{ .homebrewPrefix }}/share/info $INFOPATH
 ## SSH Agent (1Password)
 set -x SSH_AUTH_SOCK "$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
 
-## Go Path
-set -x GOPATH $HOME/go
-
-## Bun Installation Path
-set -x BUN_INSTALL "$HOME/.bun"
-
 ## GPG TTY Configuration (for amd64 architecture)
 {{ if eq .chezmoi.arch "amd64" }}
 set -x GPG_TTY (tty)
@@ -72,6 +66,19 @@ set -x XDG_MUSIC_DIR $HOME/Music
 set -x XDG_PICTURES_DIR $HOME/Pictures
 set -x XDG_VIDEOS_DIR $HOME/Videos
 
+#-------------------------------------
+# colored man output
+# @see http://linuxtidbits.wordpress.com/2009/03/23/less-colors-for-man-pages/
+#-------------------------------------
+
+set -x LESS_TERMCAP_mb \e'[01;31m' # begin blinking
+set -x LESS_TERMCAP_md \e'[01;38;5;74m' # begin bold
+set -x LESS_TERMCAP_me \e'[0m' # end mode
+set -x LESS_TERMCAP_se \e'[0m' # end standout-mode
+set -x LESS_TERMCAP_so \e'[01;33m' # begin standout-mode - info box
+set -x LESS_TERMCAP_ue \e'[0m' # end underline
+set -x LESS_TERMCAP_us \e'[04;38;5;146m' # begin underline
+
 # ------------------------------------
 # Path Management
 # ------------------------------------
@@ -80,13 +87,18 @@ if status --is-login
     fish_add_path -g {{ .homebrewPrefix }}/opt/coreutils/libexec/gnubin
     fish_add_path -g {{ .homebrewPrefix }}/bin
     fish_add_path -g {{ .homebrewPrefix }}/sbin
-    fish_add_path -g $HOME/.rbenv/shims
-    fish_add_path -g $GOPATH/bin
-    fish_add_path -g $HOME/.cargo/bin
     fish_add_path -g $HOME/bin
-    fish_add_path -g $HOME/.local/share/yarn/global/node_modules/.bin/
     fish_add_path -g $HOME/.local/bin
-    fish_add_path -g $BUN_INSTALL/bin
+
+    if type -q asdf
+        source "$(brew --prefix asdf)"/libexec/asdf.fish
+
+        # we need to add the asdf shims to the PATH again
+        # because they are pushed down without fish_add_path
+        fish_add_path -g (brew --prefix asdf)/libexec/bin
+        fish_add_path -g $HOME/.asdf/shims
+    end
+
 end
 
 
@@ -192,40 +204,18 @@ if status --is-interactive
         navi widget fish | source
     end
 
-end
+    if type -q pyenv
+        pyenv init - | source
+    end
 
-# ------------------------------------
-# Tool-Specific Configurations
-# ------------------------------------
+    if test -f ~/.asdf/plugins/golang/set-env.fish
+        source ~/.asdf/plugins/golang/set-env.fish
+    end
 
-## RBENV Configuration
-# Hardcoded to avoid shell path issues
-set -x RBENV_SHELL fish
-command rbenv rehash 2>/dev/null
-
-function rbenv
-    set command $argv[1]
-    set -e argv[1]
-
-    switch "$command"
-        case rehash shell
-            rbenv "sh-$command" $argv | source
-        case '*'
-            command rbenv "$command" $argv
+    if test -f ~/.asdf/plugins/java/set-java-home.fish
+        source ~/.asdf/plugins/java/set-java-home.fish
     end
 end
-
-## Conda Initialization
-# >>> conda initialize >>>
-# !! Contents within this block are managed by 'conda init' !!
-if test -f {{ .homebrewPrefix }}/Caskroom/miniconda/base/bin/conda
-    eval {{ .homebrewPrefix }}/Caskroom/miniconda/base/bin/conda "shell.fish" hook $argv | source
-else if test -f "{{ .homebrewPrefix }}/Caskroom/miniconda/base/etc/fish/conf.d/conda.fish"
-    . "{{ .homebrewPrefix }}/Caskroom/miniconda/base/etc/fish/conf.d/conda.fish"
-else
-    set -gx PATH {{ .homebrewPrefix }}/Caskroom/miniconda/base/bin $PATH
-end
-# <<< conda initialize <<<
 
 # ------------------------------------
 # Custom Functions
@@ -236,21 +226,6 @@ source $HOME/.config/fish/my/my.functions.fish
 # ------------------------------------
 # Post Configuration
 # ------------------------------------
-
-## NVM (Node Version Manager) Configuration
-set -gx NVM_DIR (brew --prefix nvm)
-
-function nvm
-    bass source $NVM_DIR/nvm.sh --no-use ';' nvm $argv
-end
-
-function use_nvm_on_change --on-variable PWD
-    nvm use --silent
-end
-
-if status --is-interactive
-    nvm use --silent
-end
 
 ## Deduplicate PATH
 dedup_path

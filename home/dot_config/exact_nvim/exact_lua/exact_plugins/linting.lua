@@ -1,5 +1,4 @@
 return {
-  { import = "lazyvim.plugins.extras.linting.eslint" },
   {
     "williamboman/mason.nvim",
     opts = function(_, opts)

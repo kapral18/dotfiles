@@ -10,7 +10,7 @@
 export LANG=en_US.UTF-8
 
 ## Terminal Settings
-if [ -z "$TERM" ]; then
+if test -z "$TERM"; then
     export TERM="xterm-256color"
 fi
 
@@ -31,12 +31,6 @@ export INFOPATH="{{ .homebrewPrefix }}/share/info:$INFOPATH"
 
 ## SSH Agent (1Password)
 export SSH_AUTH_SOCK="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
-
-## Go Path
-export GOPATH="$HOME/go"
-
-## Bun Installation Path
-export BUN_INSTALL="$HOME/.bun"
 
 ## GPG TTY Configuration (for amd64 architecture)
 {{ if eq .chezmoi.arch "amd64" }}
@@ -69,30 +63,42 @@ export XDG_MUSIC_DIR="$HOME/Music"
 export XDG_PICTURES_DIR="$HOME/Pictures"
 export XDG_VIDEOS_DIR="$HOME/Videos"
 
+#-------------------------------------
+# colored man output
+# @see http://linuxtidbits.wordpress.com/2009/03/23/less-colors-for-man-pages/
+#-------------------------------------
+
+export LESS_TERMCAP_mb=\e'[01;31m'       # begin blinking
+export LESS_TERMCAP_md=\e'[01;38;5;74m'  # begin bold
+export LESS_TERMCAP_me=\e'[0m'           # end mode
+export LESS_TERMCAP_se=\e'[0m'           # end standout-mode
+export LESS_TERMCAP_so=\e'[01;33m'       # begin standout-mode - info box
+export LESS_TERMCAP_ue=\e'[0m'           # end underline
+export LESS_TERMCAP_us=\e'[04;38;5;146m' # begin underline
+
 # ------------------------------------
 # Path Management
 # ------------------------------------
 
-## Function to Prepend Paths if Missing
+# Function to Prepend Paths if Missing
 prepend_to_path_if_missing() {
-    # Prepend a path to $PATH if it is not already in $PATH
-    path="$1"
-    if [[ ":$PATH:" != *":$path:"* ]]; then
-        export PATH="$path:$PATH"
+    local dir="$1"
+    dir="${dir%/}"
+
+    if [[ -d "$dir" && ":$PATH:" != *":$dir:"* ]]; then
+        PATH="$dir:$PATH"
     fi
 }
 
-## Prepend Custom Paths
-prepend_to_path_if_missing "{{ .homebrewPrefix }}/opt/coreutils/libexec/gnubin"
-prepend_to_path_if_missing "{{ .homebrewPrefix }}/bin"
-prepend_to_path_if_missing "{{ .homebrewPrefix }}/sbin"
-prepend_to_path_if_missing "$HOME/.rbenv/shims"
-prepend_to_path_if_missing "$GOPATH/bin"
-prepend_to_path_if_missing "$HOME/.cargo/bin"
-prepend_to_path_if_missing "$HOME/.local/share/yarn/global/node_modules/.bin/"
+# Prepend Custom Paths
+prepend_to_path_if_missing "/usr/local/opt/coreutils/libexec/gnubin"
+prepend_to_path_if_missing "/usr/local/bin"
+prepend_to_path_if_missing "/usr/local/sbin"
 prepend_to_path_if_missing "$HOME/.local/bin"
-prepend_to_path_if_missing "$BUN_INSTALL/bin"
 prepend_to_path_if_missing "$HOME/bin"
+
+# Export PATH
+export PATH
 
 # ------------------------------------
 # FZF Configuration
@@ -123,7 +129,7 @@ export FZF_ALT_C_COMMAND="fd --type d $FD_OPTIONS"
 # OpenAI API Key Configuration
 # ------------------------------------
 
-if command -v pass >/dev/null && [ -z "$OPENAI_API_KEY" ]; then
+if command -v pass >/dev/null && test -z "$OPENAI_API_KEY"; then
     export OPENAI_API_KEY=$(pass openai/api/token)
 fi
 
@@ -131,7 +137,7 @@ fi
 # Cloudflare API Configuration
 # ------------------------------------
 
-if command -v pass >/dev/null && [ -z "$CLOUDFLARE_WORKERS_AI_ACCOUNT_ID" ]; then
+if command -v pass >/dev/null && test -z "$CLOUDFLARE_WORKERS_AI_ACCOUNT_ID"; then
     export CLOUDFLARE_WORKERS_AI_ACCOUNT_ID=$(pass cloudflare/workers/ai/account/id)
 fi
 
@@ -164,12 +170,12 @@ if [[ $- == *i* ]]; then
 
     ## Aliases
     alias b="chatblade -so"
-    alias c=chezmoi
+    alias c="chezmoi"
     alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l $FD_OPTIONS'
-    alias g=git
-    alias t=tmux
+    alias g="git"
+    alias t="tmux"
     alias tree='tree -I ".git|node_modules"'
-    alias v=nvim
+    alias v="nvim"
     alias ghe="gh copilot explain"
     alias ghs="gh copilot suggest"
     alias w="git worktree"
@@ -203,203 +209,17 @@ if [[ $- == *i* ]]; then
         eval "$(navi widget bash)"
     fi
 
-fi
-
-# ------------------------------------
-# Tool-Specific Configurations
-# ------------------------------------
-
-## RBENV Configuration
-# Hardcoded to avoid shell path issues
-export RBENV_SHELL="bash"
-rbenv rehash 2>/dev/null
-
-rbenv() {
-    command="$1"
-    shift
-
-    case "$command" in
-    rehash | shell)
-        eval "$(rbenv "sh-$command" "$@")"
-        ;;
-    *)
-        command rbenv "$command" "$@"
-        ;;
-    esac
-}
-
-## Conda Initialization
-# >>> conda initialize >>>
-# !! Contents within this block are managed by 'conda init' !!
-
-if [ -f "{{ .homebrewPrefix }}/Caskroom/miniconda/base/bin/conda" ]; then
-    eval "$({{ .homebrewPrefix }}/Caskroom/miniconda/base/bin/conda shell.bash hook)"
-elif [ -f "{{ .homebrewPrefix }}/Caskroom/miniconda/base/etc/profile.d/conda.sh" ]; then
-    . "{{ .homebrewPrefix }}/Caskroom/miniconda/base/etc/profile.d/conda.sh"
-else
-    export PATH="{{ .homebrewPrefix }}/Caskroom/miniconda/base/bin:$PATH"
-fi
-# <<< conda initialize <<<
-
-## NVM (Node Version Manager) Configuration
-export NVM_DIR="$(brew --prefix nvm)"
-
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
-
-nvm use --silent
-
-# ------------------------------------
-# Custom Functions
-# ------------------------------------
-
-## Function: get_risky_tests
-get_risky_tests() {
-    # Get tests close to or beyond default Jest threshold
-    if [ $# -eq 0 ]; then
-        echo "Usage: get_risky_tests <folder_path>"
-        return 1
-    fi
-
-    temp_output=$(mktemp -t jest-output)
-
-    cpulimit -l 2 -i -- node --max-old-space-size=12288 --trace-warnings scripts/jest "$1" \
-        --runInBand --coverage=false --passWithNoTests --silent --ci --json --outputFile="$temp_output"
-
-    cat "$temp_output" | jq '
-        .testResults[] as $test |
-        $test.assertionResults[] |
-        select(.duration > 4000) |
-        {fullPath: $test.name, fullName: .fullName, duration: .duration}
-    '
-}
-
-## Function: get_pr_worktree
-get_pr_worktree() {
-    # Fetch a PR from GitHub and create a worktree for it
-    pr_number="$1"
-
-    # Ensure a PR number is provided
-    if [ -z "$pr_number" ]; then
-        echo "Usage: get_pr_worktree <PR_NUMBER>"
-        return 1
-    fi
-
-    # Fetch PR details using GitHub CLI
-    pr_info=$(gh pr view "$pr_number" --json headRefName,headRepository,headRepositoryOwner \
-        --jq '.headRefName + " " + .headRepository.name + " " + .headRepositoryOwner.login')
-
-    # Extract branch name, repository name, and owner
-    branch_name=$(echo "$pr_info" | cut -d ' ' -f 1)
-    repo_name=$(echo "$pr_info" | cut -d ' ' -f 2)
-    repo_owner=$(echo "$pr_info" | cut -d ' ' -f 3)
-
-    # Validate extracted information
-    for var in branch_name repo_name repo_owner; do
-        if [ -z "${!var}" ]; then
-            echo "$var is empty"
-            return 1
+    if command -v asdf >/dev/null; then
+        source $(brew --prefix asdf)/libexec/asdf.sh
+        if test -f ~/.asdf/plugins/golang/set-env.bash; then
+            source ~/.asdf/plugins/golang/set-env.bash
         fi
-    done
 
-    repo_url="git@github.com:$repo_owner/$repo_name.git"
-
-    # Add remote if it doesn't exist
-    if ! git remote get-url "$repo_owner" >/dev/null 2>&1; then
-        git remote add "$repo_owner" "$repo_url"
+        if test -f ~/.asdf/plugins/java/set-java-home.bash; then
+            source ~/.asdf/plugins/java/set-java-home.bash
+        fi
     fi
-
-    # Fetch and create worktree
-    git fetch "$repo_owner" "$branch_name"
-    git worktree add "../$repo_owner/$branch_name" "$repo_owner/$branch_name"
-
-    echo "Created worktree for PR #$pr_number on branch '$branch_name' from '$repo_owner'."
-}
-
-## Function: search_pr
-search_pr() {
-    # Search for a PR via GitHub CLI and create a worktree
-    if [ $# -eq 0 ]; then
-        echo "Usage: search_pr <search_query>"
-        return 1
-    fi
-
-    # Search and select PR using fzf
-    pr_number=$(gh pr list --search "$1" --json number,title \
-        --jq '.[] | "\(.number) \(.title)"' |
-        fzf --preview '
-            gh pr view {1} --json title,headRefName,headRepository,headRepositoryOwner --jq "
-                .title + \"\n\" + .headRefName + \" \" + .headRepository.name + \" \" + .headRepositoryOwner.login
-            "
-        ' | awk '{print $1}')
-
-    if [ -z "$pr_number" ]; then
-        echo "No PR selected."
-        return 1
-    fi
-
-    # Create worktree for the selected PR
-    get_pr_worktree "$pr_number"
-}
-
-## Function: appid
-appid() {
-    # Get the application ID from the bundle identifier
-    if [ $# -eq 0 ]; then
-        echo "Usage: appid <bundle_id>"
-        return 1
-    fi
-
-    bundle_id="$1"
-    app_id=$(osascript -e "id of app \"$bundle_id\"")
-    echo "$app_id"
-}
-
-## Function: dumputi
-dumputi() {
-    # Dump list of Uniform Type Identifiers (UTIs)
-    /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -dump |
-        grep "uti:" |
-        awk '{print $2}' |
-        sort |
-        uniq
-}
-
-## Function: vid_ipad
-vid_ipad() {
-    # Make video iPad-ready
-    if [ $# -ne 2 ]; then
-        echo "Usage: vid_ipad <input> <output>"
-        return 1
-    fi
-
-    ffmpeg -i "$1" -af '
-        loudnorm=I=-14:TP=-1.5:LRA=7,
-        acompressor=threshold=-20dB:ratio=4:attack=200:release=1000,
-        equalizer=f=30:t=q:w=1:g=5
-    ' -c:v libx264 -crf 17 -preset slow -c:a aac -b:a 192k "$2"
-}
-
-## Function: get_source_for_llm
-get_source_for_llm() {
-    # Get source code files for language models
-    fd -e ts -e tsx -E '*test*' -E '*mock*' -E 'setup_tests.ts' -E target --search-path "$1" -0 |
-        while IFS= read -r -d '' file; do
-            echo "===== $file ====="
-            cat "$file"
-            echo
-        done | pbcopy
-}
-
-## Function: get_tests_for_llm
-get_tests_for_llm() {
-    # Get test files for language models
-    fd -e ts -e tsx -p '(/mock/|/stub/|\.test\.)' -E 'setup_tests.ts' -E target --search-path "$1" -0 |
-        while IFS= read -r -d '' file; do
-            echo "===== $file ====="
-            cat "$file"
-            echo
-        done | pbcopy
-}
+fi
 
 # ------------------------------------
 # Deduplicate PATH

@@ -16,6 +16,31 @@
   # Speed up commands involving untracked files such as `git status`.
   # https://git-scm.com/docs/git-update-index#_untracked_cache
   untrackedCache = true
+  # Why do we need this?
+  #
+  # If you check https://developer.1password.com/docs/ssh/agent/advanced#use-multiple-github-accounts
+  # you will see that 1Password allows you to use multiple SSH keys for different accounts
+  # by using the `IdentityFile` option in the `~/.ssh/config` file. This is a way to use
+  # the same feature but for Git. This way you can use different SSH keys for different
+  # repositories without changing the global `~/.ssh/config` file. The main catch is that
+  # usually, you would use the private key in the `IdentityFile` option, but in this case,
+  # 1Password allows you to use the public key. This is why we use the public key here.
+  #
+  # This solves 3 problems:
+  #
+  # 1. You don't have to change the global `~/.ssh/config` file to use different SSH keys
+  # 2. You don't have to use the private key in the `IdentityFile` option because it is not secure.
+  # 3. You can now invoke 1Password ssh key verification for Git commands not only
+  # for ssh aliases as described in the 1Password documentation but also nested
+  # .gitconfig architecture. Basically you can use 1Password ssh key verification
+  # from different .gitconfig files in different directories without need to create
+  # a separate ssh alias for each repository or directory.
+  #
+  # Example:
+  #
+  # you can find the secondary ssh key in this repos in the home/dot_ssh/secondary_public_key.pub.tmpl file
+  # and it's used in home/work/private_dot_gitconfig.tmpl file
+  #
   sshCommand = ssh -o IdentitiesOnly=yes -o IdentityFile="~/.ssh/primary_public_key.pub"
   # Imrpove performance for large repos
   preloadIndex = true
@@ -104,7 +129,6 @@
   # more accurate renames (slower)
   renames = true
   tool = difftastic
-  external = difft
   context = 10
 
 [difftool "difftastic"]
@@ -136,9 +160,10 @@
   # to avoid sitution where an existing branch with the same name is on upstream but not
   # on the origin so when you push it goes into upstream. This is a safety measure
   # to avoid that
-  default = simple
+  default = upstream
   followTags = true
   verify = true
+  autoSetupRemote = true
 
 [tag]
   sort = -taggerdate
@@ -146,16 +171,6 @@
 [branch]
   autoSetupRebase = always
   sort = -committerdate
-  
-[branch "master"]
-  remote = origin
-  merge  = refs/heads/master
-  rebase = true
-
-[branch "main"]
-  remote = origin
-  merge  = refs/heads/main
-  rebase = true
 
 [init]
   defaultBranch = main
@@ -228,3 +243,13 @@
 
 [advice]
   detachedHead = false
+
+[blame]
+  # Show email addresses instead of names
+  showEmail = true
+  # Colors lines from the same commit differently
+  coloring = repeatedLines
+
+[status]
+  # https://michaelheap.com/git-status-untracked/
+  showUntrackedFiles = all

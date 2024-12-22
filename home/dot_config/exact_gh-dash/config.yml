@@ -1,41 +1,37 @@
 prSections:
-  - title: Elastic PRs
+  - title: Elastic PRs Open
     filters: is:open author:@me org:elastic
     layout:
       author:
         hidden: true
-  - title: Needs My Review
-    filters: is:open review-requested:@me org:elastic
-  - title: Involved
-    filters: is:open involves:@me -author:@me org:elastic
-  - title: Non-Elastic PRs
+  - title: Elastic PRs Involved
+    filters: is:open commenter:@me -author:@me org:elastic
+  - title: Personal PRs Open
     filters: is:open -author:@me -org:elastic
     layout:
       author:
         hidden: true
-  - title: Needs My Review
-    filters: is:open review-requested:@me -org:elastic
-  - title: Involved
-    filters: is:open involves:@me -author:@me -org:elastic
+  - title: Personal PRs Involved
+    filters: is:open commented:@me -author:@me -org:elastic
 issuesSections:
-  - title: Elastic Issues
+  - title: Elastic Issues Open
     filters: is:open author:@me org:elastic
     layout:
       author:
         hidden: true
-  - title: Assigned
+  - title: Elastic Issues Assigned
     filters: is:open assignee:@me org:elastic
-  - title: Involved
-    filters: is:open involves:@me -author:@me org:elastic
-  - title: Non-Elastic Issues
+  - title: Elastic Issues Involved
+    filters: is:open commenter:@me -author:@me org:elastic
+  - title: Personal Issues Open
     filters: is:open -author:@me -org:elastic
     layout:
       author:
         hidden: true
-  - title: Assigned
+  - title: Personal Issues Assigned
     filters: is:open assignee:@me -org:elastic
-  - title: Involved
-    filters: is:open involves:@me -author:@me -org:elastic
+  - title: Personal Issues Involved
+    filters: is:open commenter:@me -author:@me -org:elastic
 defaults:
   preview:
     open: true
@@ -72,10 +68,10 @@ defaults:
   refetchIntervalMinutes: 30
 keybindings:
   issues:
-    - key: e
+    - key: 8
       command: >
         tmux display-popup -d {{.RepoPath}} -w 80% -h 90% -E 'nvim -c ":Octo issue edit {{.IssueNumber}}"'
-    - key: i
+    - key: 9
       command: >
         tmux display-popup -d {{.RepoPath}} -w 80% -h 90% -E 'nvim -c ":Octo issue create"'
   prs:

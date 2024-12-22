@@ -1,5 +1,4 @@
 return {
-  { import = "lazyvim.plugins.extras.lang.yaml" },
   {
     "neovim/nvim-lspconfig",
     dependencies = {
