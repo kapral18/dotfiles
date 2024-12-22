@@ -66,18 +66,6 @@ defaults:
         width: 20
         hidden: true
   refetchIntervalMinutes: 30
-keybindings:
-  issues:
-    - key: 8
-      command: >
-        tmux display-popup -d {{.RepoPath}} -w 80% -h 90% -E 'nvim -c ":Octo issue edit {{.IssueNumber}}"'
-    - key: 9
-      command: >
-        tmux display-popup -d {{.RepoPath}} -w 80% -h 90% -E 'nvim -c ":Octo issue create"'
-  prs:
-    - key: O
-      command: >
-        tmux new-window -c {{.RepoPath}} 'nvim -c ":Octo pr edit {{.PrNumber}}"'
 repoPaths: {}
 theme:
   ui:

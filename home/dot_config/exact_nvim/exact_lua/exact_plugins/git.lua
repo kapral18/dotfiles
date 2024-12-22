@@ -48,6 +48,15 @@ return {
   {
     "aaronhallaert/advanced-git-search.nvim",
     cmd = { "AdvancedGitSearch" },
+    keys = {
+      { "<leader>gas", ":AdvancedGitSearch<CR>", desc = "AdvancedGitSearch" },
+      { "<leader>gal", ":AdvancedGitSearch search_log_content<CR>", desc = "AGS Repo History Search" },
+      { "<leader>gaf", ":AdvancedGitSearch search_log_content_file<CR>", desc = "AGS File History Search" },
+      { "<leader>gadf", ":AdvancedGitSearch diff_commit_file<CR>", desc = "AGS File vs commit" },
+      { "<leader>gadl", ":AdvancedGitSearch diff_commit_line<CR>", desc = "AGS Line vs commit" },
+      { "<leader>gadb", ":AdvancedGitSearch diff_branch_file<CR>", desc = "AGS Branch vs commit" },
+      { "<leader>gar", ":AdvancedGitSearch checkout_reflog<CR>", desc = "AGS Checkout reflog" },
+    },
     config = function()
       -- optional: setup telescope before loading the extension
       require("telescope").setup({
@@ -63,15 +72,7 @@ return {
 
       require("which-key").add({
         { "<leader>ga", group = "Advanced Git Search", mode = { "n", "v" } },
-        { "<leader>gas", ":AdvancedGitSearch<CR>", desc = "AdvancedGitSearch" },
-        { "<leader>gal", ":AdvancedGitSearch search_log_content<CR>", desc = "AGS Repo History Search" },
-        { "<leader>gaf", ":AdvancedGitSearch search_log_content_file<CR>", desc = "AGS File History Search" },
         { "<leader>gad", group = "AdvancedGitSearch Diff" },
-        { "<leader>gadf", ":AdvancedGitSearch diff_commit_file<CR>", desc = "AGS File vs commit" },
-        { "<leader>gadl", ":AdvancedGitSearch diff_commit_line<CR>", desc = "AGS Line vs commit" },
-        { "<leader>gadb", ":AdvancedGitSearch diff_branch_file<CR>", desc = "AGS Branch vs commit" },
-        { "<leader>gar", ":AdvancedGitSearch checkout_reflog<CR>", desc = "AGS Checkout reflog" },
-        { "<leader>gax", ":DiffviewClose<CR>", desc = "DiffviewClose" },
       })
     end,
     dependencies = {
@@ -99,5 +100,14 @@ return {
         })
       end
     end,
+  },
+  { "tpope/vim-fugitive" },
+  {
+    "sindrets/diffview.nvim",
+    config = true,
+    keys = {
+
+      { "<leader>dfx", ":DiffviewClose<CR>", desc = "DiffviewClose" },
+    },
   },
 }
