@@ -1,245 +1,63 @@
 # ====================================
-# Bash Shell Configuration
+# Bash Interactive Shell Configuration
 # ====================================
 
-# ------------------------------------
-# Environment Variables
-# ------------------------------------
+# Source .profile for login shell settings
+[ -f ~/.profile ] && source ~/.profile
 
-## Language Settings
-export LANG=en_US.UTF-8
+# Source shared interactive shell configurations
+[ -f ~/.shellrc ] && source ~/.shellrc
 
-## Terminal Settings
-if test -z "$TERM"; then
-    export TERM="xterm-256color"
+# Bash-specific configurations
+
+# HISTCONTROL=ignoreboth combines:
+# - ignorespace: don't save lines starting with space
+# - ignoredups: don't save duplicate commands
+HISTCONTROL=ignoreboth
+
+# Append to history file instead of overwriting
+shopt -s histappend
+
+# Automatically adjust line wrapping on window resize
+shopt -s checkwinsize
+
+# History size limits
+HISTSIZE=50000      # 50k commands in memory
+HISTFILESIZE=500000 # 500k commands in file
+
+# Sync history across multiple terminal sessions
+PROMPT_COMMAND='history -a'
+
+# Initializations
+command -v starship >/dev/null && eval "$(starship init bash)"
+command -v zoxide >/dev/null && eval "$(zoxide init bash)"
+command -v navi >/dev/null && eval "$(navi widget bash)"
+
+if command -v asdf >/dev/null; then
+    [ -f ~/.asdf/plugins/golang/set-env.bash ] && source ~/.asdf/plugins/golang/set-env.bash
+    [ -f ~/.asdf/plugins/java/set-java-home.bash ] && source ~/.asdf/plugins/java/set-java-home.bash
 fi
 
-## Editor Settings
-# Set default editor to Neovim
-export EDITOR=nvim
-export VISUAL=nvim
-
-## Homebrew Settings
-# Disable automatic updates during brew install
-export HOMEBREW_NO_AUTO_UPDATE=1
-# Homebrew paths (adjusted based on template variables)
-export HOMEBREW_PREFIX="{{ .homebrewPrefix }}"
-export HOMEBREW_CELLAR="{{ .homebrewPrefix }}/Cellar"
-export HOMEBREW_REPOSITORY="{{ .homebrewPrefix }}"
-export MANPATH="{{ .homebrewPrefix }}/share/man:$MANPATH"
-export INFOPATH="{{ .homebrewPrefix }}/share/info:$INFOPATH"
-
-## SSH Agent (1Password)
-export SSH_AUTH_SOCK="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
-
-## GPG TTY Configuration (for amd64 architecture)
-{{ if eq .chezmoi.arch "amd64" }}
-export GPG_TTY=$(tty)
-{{ end -}}
-
-## BAT Theme
-export BAT_THEME="Catppuccin-mocha"
-
-## Ollama Settings
-export OLLAMA_NUM_PARALLEL=10
-export OLLAMA_MAX_QUEUE=2048
-
-# ------------------------------------
-# XDG Base Directory Specification
-# ------------------------------------
-
-## System Directories
-export XDG_DATA_DIRS="/usr/share:/usr/local/share"
-export XDG_CONFIG_DIRS="/etc/xdg"
-
-## User Directories
-export XDG_CONFIG_HOME="$HOME/.config"
-export XDG_CACHE_HOME="$HOME/.cache"
-export XDG_DATA_HOME="$HOME/.local/share"
-export XDG_DESKTOP_DIR="$HOME/Desktop"
-export XDG_DOCUMENTS_DIR="$HOME/Documents"
-export XDG_DOWNLOAD_DIR="$HOME/Downloads"
-export XDG_MUSIC_DIR="$HOME/Music"
-export XDG_PICTURES_DIR="$HOME/Pictures"
-export XDG_VIDEOS_DIR="$HOME/Videos"
-
-#-------------------------------------
-# colored man output
-# @see http://linuxtidbits.wordpress.com/2009/03/23/less-colors-for-man-pages/
-#-------------------------------------
-
-export LESS_TERMCAP_mb=\e'[01;31m'       # begin blinking
-export LESS_TERMCAP_md=\e'[01;38;5;74m'  # begin bold
-export LESS_TERMCAP_me=\e'[0m'           # end mode
-export LESS_TERMCAP_se=\e'[0m'           # end standout-mode
-export LESS_TERMCAP_so=\e'[01;33m'       # begin standout-mode - info box
-export LESS_TERMCAP_ue=\e'[0m'           # end underline
-export LESS_TERMCAP_us=\e'[04;38;5;146m' # begin underline
-
-# ------------------------------------
-# Path Management
-# ------------------------------------
-
-# Function to Prepend Paths if Missing
-prepend_to_path_if_missing() {
-    local dir="$1"
-    dir="${dir%/}"
-
-    if [[ -d "$dir" && ":$PATH:" != *":$dir:"* ]]; then
-        PATH="$dir:$PATH"
-    fi
-}
-
-# Prepend Custom Paths
-prepend_to_path_if_missing "/usr/local/opt/coreutils/libexec/gnubin"
-prepend_to_path_if_missing "/usr/local/bin"
-prepend_to_path_if_missing "/usr/local/sbin"
-prepend_to_path_if_missing "$HOME/.local/bin"
-prepend_to_path_if_missing "$HOME/bin"
-
-# Export PATH
-export PATH
-
-# ------------------------------------
-# FZF Configuration
-# ------------------------------------
-
-export FD_OPTIONS="--hidden --follow"
-
-export FZF_DEFAULT_OPTS="
-    --no-mouse
-    --height 80%
-    --reverse
-    --multi
-    --info=inline
-    --preview='bat {} --color always'
-    --preview-window='right:60%:wrap'
-    --bind=ctrl-d:half-page-down,ctrl-u:half-page-up,ctrl-b:page-up,ctrl-f:page-down
-"
-
-export FZF_DEFAULT_COMMAND="
-    git ls-files --cached --others --exclude-standard 2>/dev/null \
-    || fd --type f --type l $FD_OPTIONS
-"
-
-export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
-export FZF_ALT_C_COMMAND="fd --type d $FD_OPTIONS"
-
-# ------------------------------------
-# OpenAI API Key Configuration
-# ------------------------------------
-
-if command -v pass >/dev/null && test -z "$OPENAI_API_KEY"; then
-    export OPENAI_API_KEY=$(pass openai/api/token)
-fi
-
-# ------------------------------------
-# Cloudflare API Configuration
-# ------------------------------------
-
-if command -v pass >/dev/null && test -z "$CLOUDFLARE_WORKERS_AI_ACCOUNT_ID"; then
-    export CLOUDFLARE_WORKERS_AI_ACCOUNT_ID=$(pass cloudflare/workers/ai/account/id)
-fi
-
-if command -v pass >/dev/null && [ -z "$CLOUDFLARE_WORKERS_AI_API_KEY" ]; then
-    export CLOUDFLARE_WORKERS_AI_API_KEY=$(pass cloudflare/workers/ai/api/token)
-fi
-
-# ------------------------------------
-# Conditional Configurations
-# ------------------------------------
-
-{{ if ne .isWork true -}}
-# Password Store Selection
-wpass() {
-    # Point PASSWORD_STORE_DIR to work
-    export PASSWORD_STORE_DIR="{{ joinPath .chezmoi.homeDir ".password-store-work" }}"
-}
-
-ppass() {
-    # Point PASSWORD_STORE_DIR to personal
-    export PASSWORD_STORE_DIR="{{ joinPath .chezmoi.homeDir ".password-store" }}"
-}
-{{- end }}
-
-# ------------------------------------
-# Interactive Session Configurations
-# ------------------------------------
-
-if [[ $- == *i* ]]; then
-
-    ## Aliases
-    alias b="chatblade -so"
-    alias c="chezmoi"
-    alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l $FD_OPTIONS'
-    alias g="git"
-    alias t="tmux"
-    alias tree='tree -I ".git|node_modules"'
-    alias v="nvim"
-    alias ghe="gh copilot explain"
-    alias ghs="gh copilot suggest"
-    alias w="git worktree"
-
-    # LS Aliases with lsd support
-    if hash lsd 2>/dev/null; then
-        alias ls='lsd -A'
-        alias l='lsd -lAh'
-        alias ll='lsd -lAtrh'
-        alias la='lsd -A'
-    else
-        alias ls='ls -A'
-        alias l='ls -lAh'
-        alias ll='ls -lAtrh'
-        alias la='ls -A'
-    fi
-
-    # GPG Agent Reload Alias
-    alias reload_gpg='pkill -9 gpg-agent'
-
-    ## Initializations
-    if command -v starship >/dev/null; then
-        eval "$(starship init bash)"
-    fi
-
-    if command -v zoxide >/dev/null; then
-        eval "$(zoxide init bash)"
-    fi
-
-    if command -v navi >/dev/null; then
-        eval "$(navi widget bash)"
-    fi
-
-    if command -v asdf >/dev/null; then
-        source $(brew --prefix asdf)/libexec/asdf.sh
-        if test -f ~/.asdf/plugins/golang/set-env.bash; then
-            source ~/.asdf/plugins/golang/set-env.bash
-        fi
-
-        if test -f ~/.asdf/plugins/java/set-java-home.bash; then
-            source ~/.asdf/plugins/java/set-java-home.bash
-        fi
-    fi
-fi
-
-# ------------------------------------
-# Deduplicate PATH
-# ------------------------------------
-
-## Function to Deduplicate PATH
+# Deduplicate PATH entries while preserving order
 dedup_path() {
-    # Deduplicate entries in PATH
-    old_PATH="$PATH"
-    new_PATH=""
-    IFS=':' read -r -a path_array <<<"$PATH"
-    declare -A path_seen
-    for entry in "${path_array[@]}"; do
-        if [[ -n "$entry" && -z "${path_seen[$entry]}" ]]; then
-            new_PATH="${new_PATH:+$new_PATH:}$entry"
-            path_seen[$entry]=1
-        fi
-    done
-    export PATH="$new_PATH"
+    if [ -n "$PATH" ]; then
+        local old_PATH="$PATH:"
+        local new_PATH=""
+        declare -A seen
+
+        while IFS= read -r -d: entry; do
+            # Skip empty entries and process only unseen valid entries
+            if [ -n "$entry" ] && [ -z "${seen[$entry]:-}" ]; then
+                new_PATH+="${new_PATH:+:}${entry}"
+                seen[$entry]=1
+            fi
+        done <<<"$old_PATH"
+
+        export PATH="$new_PATH"
+    fi
 }
 
-## Deduplicate PATH
 dedup_path
+
+# Clean up
+unset -f dedup_path

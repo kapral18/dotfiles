@@ -4,9 +4,8 @@ echo "---------------------------------------"
 echo "brew install from Brewfile: applying..."
 echo "---------------------------------------"
 
-echo '
-{{ template "Brewfile" . }}
-' | brew bundle --no-lock --file=-
+# Brewfile hash: {{ include "dot_Brewfile.tmpl" | sha256sum }}
+brew bundle --global
 
 echo "---------------------------------"
 echo "brew install from Brewfile: done "

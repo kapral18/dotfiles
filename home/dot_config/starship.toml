@@ -57,6 +57,15 @@ added_style = 'fg:green'
 deleted_style = 'fg:red'
 format = '[+$added]($added_style)/[-$deleted]($deleted_style) '
 
+[shell]
+fish_indicator = ' 🐟 '
+bash_indicator = '  '
+zsh_indicator = ' 𖼶 '
+powershell_indicator = '_'
+unknown_indicator = 'mystery shell'
+style = 'cyan bold'
+disabled = false
+
 [character]
 error_symbol = "[✖](bold red) "
 

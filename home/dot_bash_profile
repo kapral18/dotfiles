@@ -1,0 +1,5 @@
+# ====================================
+# Bash Login Shell Configuration
+# ====================================
+
+[ -f ~/.profile ] && source ~/.profile

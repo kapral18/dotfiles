@@ -87,16 +87,16 @@ if status --is-login
     fish_add_path -g {{ .homebrewPrefix }}/opt/coreutils/libexec/gnubin
     fish_add_path -g {{ .homebrewPrefix }}/bin
     fish_add_path -g {{ .homebrewPrefix }}/sbin
-    fish_add_path -g $HOME/bin
-    fish_add_path -g $HOME/.local/bin
+    fish_add_path -g "$HOME"/.local/bin
+    fish_add_path -g "$HOME"/bin
 
     if type -q asdf
         source "$(brew --prefix asdf)"/libexec/asdf.fish
 
         # we need to add the asdf shims to the PATH again
         # because they are pushed down without fish_add_path
-        fish_add_path -g (brew --prefix asdf)/libexec/bin
-        fish_add_path -g $HOME/.asdf/shims
+        fish_add_path -g "$(brew --prefix asdf)"/libexec/bin
+        fish_add_path -g "$HOME"/.asdf/shims
     end
 
 end
