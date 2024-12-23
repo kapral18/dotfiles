@@ -52,4 +52,31 @@ function M.in_visual()
   return modes[current_mode]
 end
 
+function M.copy_to_clipboard(text)
+  -- Use pbcopy to copy text to the system clipboard
+  local handle = io.popen("pbcopy", "w")
+  if handle == nil then
+    return
+  end
+  handle:write(text)
+  handle:close()
+end
+
+function M.is_image(file_path)
+  -- Use a library or a simple heuristic to detect images
+  -- For example, you can use the `file` command to check the file type
+  local file_type = io.popen("file -b --mime-type " .. vim.fn.shellescape(file_path)):read("*a")
+  return file_type:match("image/%w+")
+end
+
+function M.open_image(img_path, fallback)
+  if M.is_image(img_path) then
+    -- Open the image file with the default Mac associated application
+    io.popen("open " .. vim.fn.shellescape(img_path))
+  else
+    -- Handle non-image files as needed
+    fallback()
+  end
+end
+
 return M

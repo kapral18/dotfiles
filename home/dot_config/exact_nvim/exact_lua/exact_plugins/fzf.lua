@@ -1,29 +1,9 @@
-local function copy_to_clipboard(text)
-  -- Use pbcopy to copy text to the system clipboard
-  local handle = io.popen("pbcopy", "w")
-  if handle == nil then
-    return
-  end
-  handle:write(text)
-  handle:close()
-end
-
-local function is_image(file_path)
-  -- Use a library or a simple heuristic to detect images
-  -- For example, you can use the `file` command to check the file type
-  local file_type = io.popen("file -b --mime-type " .. file_path):read("*a")
-  return file_type:match("image/%w+")
-end
+local common_utils = require("utils.common")
 
 local function open_file(selected, opts)
-  local file_path = selected[1]
-  if is_image(file_path) then
-    -- Open the image file with the default Mac associated application
-    io.popen("open " .. file_path)
-  else
-    -- Handle non-image files as needed
-    require("fzf-lua").actions.file_edit(selected, opts)
-  end
+  common_utils.open_image(selected[1], function()
+    require("fzf-lua.actions").file_edit(selected, opts)
+  end)
 end
 
 local function get_fzf_fn(cmd, opts)
@@ -227,10 +207,11 @@ return {
           fd_opts = fd_opts,
           fzf_opts = { ["--ansi"] = false },
           actions = {
+            ["default"] = open_file,
             ["enter"] = open_file,
             ["ctrl-q"] = actions.file_sel_to_qf,
             ["ctrl-y"] = function(selected)
-              copy_to_clipboard(selected[1])
+              common_utils.copy_to_clipboard(selected[1])
             end,
             -- we don't need alt-i, as it's covered by ctrl-g
             ["alt-h"] = { actions.toggle_hidden },
@@ -244,7 +225,7 @@ return {
           actions = {
             ["ctrl-q"] = actions.file_sel_to_qf,
             ["ctrl-y"] = function(selected)
-              copy_to_clipboard(selected[1])
+              common_utils.copy_to_clipboard(selected[1])
             end,
             -- we need alt-i as ctrl-g is used for cycling search patterns
             ["alt-i"] = { actions.toggle_ignore },

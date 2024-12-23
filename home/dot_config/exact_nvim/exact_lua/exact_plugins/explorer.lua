@@ -1,3 +1,5 @@
+local common_utils = require("utils.common")
+
 local winopts = {
   large = {
     vertical = {
@@ -10,6 +12,16 @@ local winopts = {
     },
   },
 }
+
+local function safe_open(action)
+  return function(state)
+    local node = state.tree:get_node()
+    local full_path = node:get_id()
+    common_utils.open_image(full_path, function()
+      require("neo-tree.sources.filesystem.commands")[action](state)
+    end)
+  end
+end
 
 return {
   {
@@ -86,6 +98,13 @@ return {
           ["K"] = "focus_parent",
           ["D"] = "diff_files",
           [";"] = "open_in_oil",
+          ["<2-leftmouse>"] = safe_open("open"),
+          ["<cr>"] = safe_open("open"),
+          ["S"] = safe_open("open_split"),
+          ["l"] = safe_open("open"),
+          ["s"] = safe_open("open_vsplit"),
+          ["t"] = safe_open("open_tabnew"),
+          ["w"] = safe_open("open_with_window_picker"),
         },
       },
       commands = {

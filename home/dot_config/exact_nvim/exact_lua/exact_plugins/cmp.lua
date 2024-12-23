@@ -4,6 +4,7 @@ return {
     "hrsh7th/nvim-cmp",
     dependencies = {
       { "hrsh7th/cmp-nvim-lsp-signature-help" },
+      { "hrsh7th/cmp-cmdline" },
       {
         "rcarriga/cmp-dap",
         dependencies = {
@@ -40,6 +41,15 @@ return {
         sources = {
           { name = "dap" },
         },
+      })
+
+      cmp.setup.cmdline(":", {
+        mapping = cmp.mapping.preset.cmdline(),
+        sources = cmp.config.sources({
+          { name = "path" },
+        }, {
+          { name = "cmdline" },
+        }),
       })
     end,
   },

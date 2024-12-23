@@ -143,3 +143,59 @@ local function switch_between_source_and_test()
 end
 
 vim.keymap.set("n", "<C-^>", switch_between_source_and_test, { desc = "Switch between source and test" })
+
+vim.api.nvim_create_user_command("LargeFiles", function()
+  local cmd = [[git ls-files -z | xargs -0 wc -l | grep -v total | awk '$1 > 5000 { print $2 ":1:" $1 " lines" }']]
+  local output = vim.fn.system(cmd)
+  vim.fn.setqflist({}, " ", {
+    title = "Large Files (>5000 lines)",
+    lines = vim.split(output, "\n"),
+  })
+  vim.cmd("copen")
+end, {
+  desc = "List files with more than 5000 lines in quickfix",
+})
+
+vim.api.nvim_create_user_command("CpFromDownloads", function()
+  -- Check if we're in a Neo-tree buffer
+  if vim.bo.filetype ~= "neo-tree" then
+    print("This command should be used in a Neo-tree buffer")
+    return
+  end
+
+  -- Get the current Neo-tree state
+  local state = require("neo-tree.sources.manager").get_state("filesystem")
+  if not state then
+    print("Unable to get Neo-tree state")
+    return
+  end
+
+  -- Get the currently selected node
+  local node = state.tree:get_node()
+  if not node then
+    print("No node selected")
+    return
+  end
+
+  -- Get the full path of the selected node
+  local path = node:get_id()
+  if vim.fn.isdirectory(path) ~= 1 then
+    -- If it's a file, get its parent directory
+    path = vim.fn.fnamemodify(path, ":h")
+  end
+
+  -- Construct the command
+  local cmd = string.format("!cp ~/Downloads/ %s/", vim.fn.fnameescape(path))
+
+  -- Open command-line with the constructed command and position cursor
+  vim.cmd('call feedkeys(":' .. cmd .. '\\<C-Left>\\<Left>", "n")')
+end, {})
+
+-- Add keymap for filetype neo-tree only
+vim.api.nvim_create_autocmd("FileType", {
+  group = "k18",
+  pattern = "neo-tree",
+  callback = function()
+    vim.keymap.set("n", "<leader>cp", "<cmd>CpFromDownloads<cr>", { buffer = true, desc = "Copy from Downloads" })
+  end,
+})
