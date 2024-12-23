@@ -144,18 +144,54 @@ end
 
 vim.keymap.set("n", "<C-^>", switch_between_source_and_test, { desc = "Switch between source and test" })
 
-vim.api.nvim_create_user_command("LargeFiles", function()
-  local cmd = [[git ls-files -z | xargs -0 wc -l | grep -v total | awk '$1 > 5000 { print $2 ":1:" $1 " lines" }']]
+vim.api.nvim_create_user_command("LargeFiles", function(opts)
+  local args = vim.split(opts.args or "", " ")
+  local min_lines = tonumber(args[1]) or 5000
+  local max_lines = tonumber(args[2])
+  local common_utils = require("utils.common")
+
+  local cmd = string.format(
+    [[git ls-files -z | xargs -0 wc -l | grep -v total | awk '$1 > %d %s { print $2 ":1:" $1 " lines" }']],
+    min_lines,
+    max_lines and string.format("&& $1 < %d", max_lines) or ""
+  )
   local output = vim.fn.system(cmd)
+
+  if output == "" then
+    print(string.format("No files found in specified range of %d-%s lines", min_lines, max_lines or "∞"))
+    return
+  end
+
+  -- Filter out image files
+  local filtered_lines = {}
+  for _, line in ipairs(vim.split(output, "\n")) do
+    if line ~= "" then
+      local file_path = line:match("(.-):1:")
+      if file_path and not common_utils.is_image(file_path) then
+        table.insert(filtered_lines, line)
+      end
+    end
+  end
+
+  if #filtered_lines == 0 then
+    print(string.format("No non-image files found in specified range of %d-%s lines", min_lines, max_lines or "∞"))
+    return
+  end
+
   vim.fn.setqflist({}, " ", {
-    title = "Large Files (>5000 lines)",
-    lines = vim.split(output, "\n"),
+    title = string.format("Large Files (%d-%s lines)", min_lines, max_lines and tostring(max_lines) or "∞"),
+    lines = filtered_lines,
   })
   vim.cmd("copen")
 end, {
-  desc = "List files with more than 5000 lines in quickfix",
+  desc = "List non-image files with lines between N and M (both optional). Default is 5000 lines",
+  nargs = "*",
 })
 
+-- Copy from Downloads
+-- This commands constructs a cp command to copy files from the ~/Downloads directory to the currently
+-- selected directory in Neo-tree. It opens the command-line with the constructed command -- cp ~/Downloads/ <selected_directory>
+-- and positions the cursor at the end of the ~/Downloads/ part so that you can type the rest of the command.
 vim.api.nvim_create_user_command("CpFromDownloads", function()
   -- Check if we're in a Neo-tree buffer
   if vim.bo.filetype ~= "neo-tree" then
@@ -189,7 +225,9 @@ vim.api.nvim_create_user_command("CpFromDownloads", function()
 
   -- Open command-line with the constructed command and position cursor
   vim.cmd('call feedkeys(":' .. cmd .. '\\<C-Left>\\<Left>", "n")')
-end, {})
+end, {
+  desc = "Construct a cp command to copy files from ~/Downloads to the selected directory",
+})
 
 -- Add keymap for filetype neo-tree only
 vim.api.nvim_create_autocmd("FileType", {
