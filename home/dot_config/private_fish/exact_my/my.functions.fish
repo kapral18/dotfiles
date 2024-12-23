@@ -14,3 +14,4 @@ source ~/.config/fish/my/functions/tests.fish
 source ~/.config/fish/my/functions/venv.fish
 source ~/.config/fish/my/functions/video.fish
 source ~/.config/fish/my/functions/worktree.fish
+source ~/.config/fish/my/functions/jq.fish

@@ -10,5 +10,6 @@ nodejs https://github.com/asdf-vm/asdf-nodejs.git
 python https://github.com/asdf-community/asdf-python.git
 ruby https://github.com/asdf-vm/asdf-ruby.git
 rust https://github.com/code-lever/asdf-rust.git
+vault https://github.com/asdf-community/asdf-hashicorp.git
 yarn https://github.com/twuni/asdf-yarn.git
 zig https://github.com/cheetah/asdf-zig.git

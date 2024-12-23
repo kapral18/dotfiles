@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+
+set -e
+
+log_error() {
+  echo "ERROR: $1" >&2
+}
+
+log_info() {
+  echo "INFO: $1"
+}
+
+show_usage() {
+  echo "Usage: $0 [-d density] [-f format] [-o output] <left-pdf-file> <right-pdf-file>" >&2
+  echo "  -d density   Set the image density (default: 300)" >&2
+  echo "  -f format    Set the output format (default: pdf)" >&2
+  echo "  -o output    Set the output file name (if not provided, output will be temporary)" >&2
+  exit 1
+}
+
+check_requirements() {
+  command -v magick >/dev/null 2>&1 || {
+    log_error "ImageMagick is required but not installed. Aborting."
+    exit 1
+  }
+}
+
+check_existence() {
+  if [ ! -f "$1" ]; then
+    log_error "File $1 does not exist"
+    exit 2
+  fi
+}
+
+process_pages() {
+  local n=$1
+  local backfile="${temp_dir}/back${n}.png"
+  local frontfile="${temp_dir}/front${n}.png"
+  local resultfile="${temp_dir}/result${n}.png"
+
+  if [ -f "$frontfile" ] && [ -f "$backfile" ]; then
+    magick composite "$frontfile" "$backfile" "$resultfile"
+    update_progress
+  else
+    log_error "Cannot find front${n}.png or back${n}.png"
+  fi
+}
+
+update_progress() {
+  current_page=$((current_page + 1))
+  printf "\rProcessing page %d of %d" "$current_page" "$total_pages"
+}
+
+# Main script starts here
+check_requirements
+
+density=300
+output_format="pdf"
+output_file=""
+persist_output=false
+
+while getopts "d:f:o:" opt; do
+  case $opt in
+  d) density="$OPTARG" ;;
+  f) output_format="$OPTARG" ;;
+  o)
+    output_file="$OPTARG"
+    persist_output=true
+    ;;
+  *) show_usage ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+if [ $# -ne 2 ]; then
+  show_usage
+fi
+
+leftarg="$1"
+rightarg="$2"
+check_existence "$leftarg"
+check_existence "$rightarg"
+
+temp_dir=$(mktemp -d)
+trap 'rm -rf "$temp_dir"; exit 1' EXIT INT TERM
+
+# Convert PDFs to images and process them
+log_info "Converting PDFs to images..."
+magick -density "$density" "$leftarg" -fill red -opaque black +antialias "${temp_dir}/back%02d.png"
+magick -density "$density" "$rightarg" -transparent white +antialias "${temp_dir}/front%02d.png"
+
+total_pages=$(find "${temp_dir}" -name "back*.png" | wc -l)
+current_page=0
+
+log_info "Processing pages..."
+export -f process_pages update_progress
+export temp_dir current_page total_pages
+
+find "${temp_dir}" -name "back*.png" -print0 |
+  xargs -0 -I {} basename {} .png |
+  sed 's/back//' |
+  xargs -P "$(sysctl -n hw.ncpu)" -I {} bash -c 'process_pages "$@"' _ {}
+
+echo # New line after progress indicator
+
+log_info "Generating final output..."
+if [ -n "$(find "${temp_dir}" -name "result*.png")" ]; then
+  if [ "$persist_output" = true ]; then
+    magick -density "$density" "${temp_dir}"/result*.png "$output_file"
+    log_info "Comparison complete. Output saved as $output_file"
+    open "$output_file"
+  else
+    temp_output="${temp_dir}/temp_output.${output_format}"
+    magick -density "$density" "${temp_dir}"/result*.png "$temp_output"
+    log_info "Comparison complete. Opening temporary output file."
+    open "$temp_output"
+  fi
+else
+  log_error "No result files found. Check if the processing step completed successfully."
+fi

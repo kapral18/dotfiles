@@ -10,5 +10,6 @@ nodejs 22.12.0 system
 python 3.13.1 2.7.18 system
 ruby 3.2.2 system
 rust 1.83.0
+vault 1.18.3
 yarn 1.22.22
 zig 0.13.0

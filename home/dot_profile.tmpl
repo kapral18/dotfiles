@@ -53,6 +53,7 @@ prepend_to_path_if_missing() {
 prepend_to_path_if_missing {{ .homebrewPrefix }}/opt/coreutils/libexec/gnubin
 prepend_to_path_if_missing {{ .homebrewPrefix }}/bin
 prepend_to_path_if_missing {{ .homebrewPrefix }}/sbin
+prepend_to_path_if_missing "$HOME"/.yarn/bin
 prepend_to_path_if_missing "$HOME"/.local/bin
 prepend_to_path_if_missing "$HOME"/bin
 

@@ -133,7 +133,7 @@ return {
 	color_scheme = "Catppuccin Mocha",
 	enable_scroll_bar = true,
 	disable_default_key_bindings = true,
-	font = wezterm.font("JetBrainsMono Nerd Font"),
+	font = wezterm.font("JetBrainsMono Nerd Font Mono"),
 	font_size = 14,
 	hide_tab_bar_if_only_one_tab = true,
 	hyperlink_rules = hyperlink_rules,

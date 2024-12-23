@@ -87,6 +87,7 @@ if status --is-login
     fish_add_path -g {{ .homebrewPrefix }}/opt/coreutils/libexec/gnubin
     fish_add_path -g {{ .homebrewPrefix }}/bin
     fish_add_path -g {{ .homebrewPrefix }}/sbin
+    fish_add_path -g "$HOME"/.yarn/bin
     fish_add_path -g "$HOME"/.local/bin
     fish_add_path -g "$HOME"/bin
 
@@ -164,7 +165,7 @@ end
 if status --is-interactive
 
     ## Aliases
-    alias b="chatblade -so"
+    alias b="chatblade -soe -p code"
     alias c=chezmoi
     alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l $FD_OPTIONS'
     alias g=git
