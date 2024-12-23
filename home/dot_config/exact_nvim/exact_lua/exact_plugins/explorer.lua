@@ -1,3 +1,6 @@
+---@module "lazy"
+---@module "yazi"
+
 local common_utils = require("utils.common")
 
 local winopts = {
@@ -23,6 +26,7 @@ local function safe_open(action)
   end
 end
 
+---@type LazySpec
 return {
   {
     "nvim-neo-tree/neo-tree.nvim",
@@ -134,36 +138,45 @@ return {
         end,
         diff_files = function(state)
           local node = state.tree:get_node()
-          local log = require("neo-tree.log")
-          state.clipboard = state.clipboard or {}
-          if diff_Node and diff_Node ~= tostring(node.id) then
-            local current_Diff = node.id
-            require("neo-tree.utils").open_file(state, diff_Node, open)
-            vim.cmd("vert diffs " .. current_Diff)
-            log.info("Diffing " .. diff_Name .. " against " .. node.name)
-            diff_Node = nil
-            current_Diff = nil
-            state.clipboard = {}
-            require("neo-tree.ui.renderer").redraw(state)
-          else
-            local existing = state.clipboard[node.id]
-            if existing and existing.action == "diff" then
-              state.clipboard[node.id] = nil
-              diff_Node = nil
-              require("neo-tree.ui.renderer").redraw(state)
-            else
-              state.clipboard[node.id] = { action = "diff", node = node }
-              diff_Name = state.clipboard[node.id].node.name
-              diff_Node = tostring(state.clipboard[node.id].node.id)
-              log.info("Diff source file " .. diff_Name)
-              require("neo-tree.ui.renderer").redraw(state)
-            end
+          if node.type ~= "file" then
+            return
           end
+
+          state.clipboard = state.clipboard or {}
+
+          if not state.__current_diff_node__ then
+            state.__current_diff_node__ = node
+            state.clipboard[node.id] = { action = "diff", node = node }
+          else
+            local first_file = state.clipboard[state.__current_diff_node__.id].node.path
+            local second_file = node.path
+
+            vim.cmd("tabnew " .. vim.fn.fnameescape(first_file))
+            vim.cmd("vertical diffsplit " .. vim.fn.fnameescape(second_file))
+
+            local cleanup_and_close = function()
+              vim.cmd("diffoff!")
+              vim.cmd("tabclose")
+            end
+
+            vim.keymap.set("n", "q", cleanup_and_close, {
+              buffer = true,
+              silent = true,
+              noremap = true,
+              desc = "Clear diff and close tab",
+            })
+
+            -- Clear the diff source
+            state.clipboard[node.id] = nil
+            state.clipboard[state.__current_diff_node__.id] = nil
+            state.__current_diff_node__ = nil
+          end
+
+          require("neo-tree.ui.renderer").redraw(state)
         end,
       },
     },
   },
-  ---@type LazySpec
   {
     "mikavilpas/yazi.nvim",
     event = "VeryLazy",
