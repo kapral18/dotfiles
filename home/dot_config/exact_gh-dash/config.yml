@@ -1,37 +1,45 @@
 prSections:
-  - title: Elastic PRs Open
-    filters: is:open author:@me org:elastic
+  - title: Work PRs
+    filters: author:@me org:elastic
     layout:
       author:
         hidden: true
-  - title: Elastic PRs Involved
-    filters: is:open commenter:@me -author:@me org:elastic
-  - title: Personal PRs Open
-    filters: is:open -author:@me -org:elastic
+  - title: Work PRs Commented
+    filters: commenter:@me -author:@me org:elastic
+  - title: Work PRs Mentioned
+    filters: mentions:@me org:elastic
+  - title: Home PRs
+    filters: author:@me -org:elastic
     layout:
       author:
         hidden: true
-  - title: Personal PRs Involved
-    filters: is:open commented:@me -author:@me -org:elastic
+  - title: Home Prs Commented
+    filters: commenter:@me -org:elastic
+  - title: Home Prs Mentioned
+    filters: mentions:@me -org:elastic
 issuesSections:
-  - title: Elastic Issues Open
-    filters: is:open author:@me org:elastic
+  - title: Work Issues
+    filters: author:@me org:elastic
     layout:
       author:
         hidden: true
-  - title: Elastic Issues Assigned
-    filters: is:open assignee:@me org:elastic
-  - title: Elastic Issues Involved
-    filters: is:open commenter:@me -author:@me org:elastic
-  - title: Personal Issues Open
-    filters: is:open -author:@me -org:elastic
+  - title: Work Issues Assigned
+    filters: assignee:@me org:elastic
+  - title: Work Issues Commented
+    filters: commenter:@me -author:@me org:elastic
+  - title: Work Issues Mentioned
+    filters: mentions:@me org:elastic
+  - title: Home Issues
+    filters: author:@me -org:elastic
     layout:
       author:
         hidden: true
-  - title: Personal Issues Assigned
-    filters: is:open assignee:@me -org:elastic
-  - title: Personal Issues Involved
-    filters: is:open commenter:@me -author:@me -org:elastic
+  - title: Home Issues Assigned
+    filters: assignee:@me -org:elastic
+  - title: Home Issues Commented
+    filters: commenter:@me -author:@me -org:elastic
+  - title: Home Issues Mentioned
+    filters: mentions:@me -org:elastic
 defaults:
   preview:
     open: true
@@ -67,10 +75,23 @@ defaults:
         hidden: true
   refetchIntervalMinutes: 30
 repoPaths: {}
+keybindings:
+  issues:
+    - key: e
+      command: >
+        tmux new-window -c {{.RepoPath}} 'nvim -c ":silent Octo issue edit {{.IssueNumber}}"'
+    - key: i
+      command: >
+        tmux display-popup -d {{.RepoPath}} -w 80% -h 90% -E 'nvim -c ":silent Octo issue create"'
+  prs:
+    - key: O
+      command: >
+        tmux new-window -c {{.RepoPath}} 'nvim -c ":silent Octo pr edit {{.PrNumber}}"'
 theme:
   ui:
     table:
       showSeparator: true
+      compact: false
 pager:
   diff: ""
 confirmQuit: false
