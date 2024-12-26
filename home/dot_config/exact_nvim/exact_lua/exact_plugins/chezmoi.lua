@@ -14,11 +14,23 @@ return {
       },
     },
     init = function()
-      -- run chezmoi edit on file enter
+      --  e.g. ~/.local/share/chezmoi/*
       vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
         pattern = { os.getenv("HOME") .. "/.local/share/chezmoi/*" },
-        callback = function()
-          vim.schedule(require("chezmoi.commands.__edit").watch)
+        callback = function(ev)
+          local bufnr = ev.buf
+          -- if file ends with .sh or .sh.tmpl skip
+          -- use :t to get the tail of the path because :e doesn't catch .sh.tmpl
+          local path = vim.fn.expand("%:t")
+
+          if path:match("%.sh$") or path:match("%.sh.tmpl$") then
+            return
+          end
+
+          local edit_watch = function()
+            require("chezmoi.commands.__edit").watch(bufnr)
+          end
+          vim.schedule(edit_watch)
         end,
       })
     end,

@@ -1,26 +1,60 @@
 #!{{ lookPath "bash" }}
 
+set -euo pipefail
+
 # This script installs asdf plugins based on the asdf_plugins file
 # {{ include "asdf_plugins" | sha256sum }}
 
 asdf_plugins_file={{ joinPath .chezmoi.sourceDir "asdf_plugins" | quote }}
 
-# Read the file content into an array
-mapfile -t lines < "$asdf_plugins_file"
+if [[ ! -f "$asdf_plugins_file" ]]; then
+    echo "Error: asdf plugins file not found at $asdf_plugins_file"
+    exit 1
+fi
 
-# Iterate over the array using a for loop
-for line in "${lines[@]}"; do
-  if [[ -n "$line" && ! "$line" =~ ^\s*# ]]; then
-    plugin=$(echo "$line" | awk '{print $1}')
-    url=$(echo "$line" | awk '{print $2}')
-    
+# Read the file content into an array
+if ! mapfile -t lines < "$asdf_plugins_file"; then
+    echo "Error: Failed to read asdf plugins file"
+    exit 1
+fi
+
+# install asdf plugin. 
+#
+# ex: install_plugin plugin_name plugin_url
+#
+install_plugin() {
+    local plugin=$1
+    local url=$2
+
+    echo "Checking plugin: $plugin"
     if ! asdf plugin list | grep -q "^$plugin$"; then
-      asdf plugin add "$plugin" "$url"
+        echo "Installing plugin: $plugin"
+        if ! asdf plugin add "$plugin" "$url"; then
+            echo "Error: Failed to install plugin $plugin"
+            return 1
+        fi
     else
-      echo "Plugin $plugin is already installed"
+        echo "Plugin $plugin is already installed"
     fi
-  fi
+    return 0
+}
+
+for line in "${lines[@]}"; do
+    # Skip empty lines and comments
+    [[ -z "$line" || "$line" =~ ^\s*# ]] && continue
+
+    if ! plugin=$(echo "$line" | awk '{print $1}') || ! url=$(echo "$line" | awk '{print $2}'); then
+        echo "Error: Invalid line format: $line"
+        continue
+    fi
+
+    install_plugin "$plugin" "$url"
 done
 
-# Install versions specified in .tool-versions
-asdf install
+echo "Installing tool versions specified in .tool-versions"
+if ! asdf install; then
+    echo "Error: Failed to install tool versions"
+    exit 1
+fi
+
+echo "All asdf plugins installed successfully"
