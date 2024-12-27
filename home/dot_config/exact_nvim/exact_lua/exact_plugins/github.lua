@@ -29,7 +29,7 @@ return {
       enable_builtin = true,
       default_to_projects_v2 = true,
       default_merge_method = "squash",
-      picker = "telescope",
+      timeout = 55000,
       issues = {
         order_by = {
           field = "COMMENTS",
@@ -43,7 +43,7 @@ return {
       { "<leader>gop", "", desc = "PR Actions (Octo)" },
       { "<leader>gops", "<CMD>Octo pr search<CR>", desc = "Search PR (Octo)" },
       { "<leader>goi", "", desc = "Issue Actions (Octo)" },
-      { "<leader>gois", "<CMD>Octo issue search<CR>", desc = "Search PR (Octo)" },
+      { "<leader>gois", "<CMD>Octo issue search<CR>", desc = "Search Issues (Octo)" },
 
       { "<localleader>a", "", desc = "+assignee (Octo)", ft = "octo" },
       { "<localleader>c", "", desc = "+comment/code (Octo)", ft = "octo" },

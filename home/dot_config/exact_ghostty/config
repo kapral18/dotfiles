@@ -1,0 +1,8 @@
+macos-option-as-alt           = left
+font-family                   = JetBrainsMono Nerd Font Mono
+font-size                     = 14.0
+cursor-style                  = block
+copy-on-select                = clipboard
+shell-integration-features    = cursor,sudo,no-title
+confirm-close-surface         = false
+quit-after-last-window-closed = true
