@@ -522,8 +522,13 @@ function remove_worktree --description "Remove a worktree using fzf and delete t
     set remote_branch (git rev-parse --abbrev-ref $worktree_branch@{upstream} 2>/dev/null)
     set remote (echo $remote_branch | cut -d'/' -f1)
 
-    if not string match -q -r "\b$remote\b" -- (git worktree list -v)
-        git remote remove $remote
+
+    # remove the remote if it's not origin or upstream (they are persistent for all worktrees)
+    if not test "$remote" = origin; and not test "$remote" = upstream
+        # additionally only remove this remote if it isn’t referenced by any existing worktree
+        if not string match -q -r "\b$remote\b" -- (git worktree list -v)
+            git remote remove $remote
+        end
     end
 
     # if the worktree_branch is HEAD then it's a detached HEAD
@@ -533,7 +538,12 @@ function remove_worktree --description "Remove a worktree using fzf and delete t
         return
     end
 
-    git branch -D $worktree_branch
+    # check if branch still appears in other worktrees
+    if string match -q -r "\b$worktree_branch\b" -- (git worktree list -v)
+        echo "Branch '$worktree_branch' is still used by other worktrees, skipping deletion."
+    else
+        git branch -D $worktree_branch
+    end
 
     _remove_worktree_tmux_session $worktree_branch
 
