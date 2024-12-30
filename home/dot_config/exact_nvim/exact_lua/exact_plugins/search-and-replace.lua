@@ -1,16 +1,12 @@
 return {
   {
-    "MagicDuck/grug-far.nvim",
-    enabled = false,
-  },
-  {
     "dyng/ctrlsf.vim",
     lazy = false,
     keys = {
-      { "<leader>srr", "<Plug>CtrlSFCwordPath", desc = "S&R Word Under Cursor" },
-      { "<leader>srb", "<Plug>CtrlSFCCwordPath", desc = "S&R Word Under Cursor (With Boundaries)" },
-      { "<leader>srl", "<Plug>CtrlSFPwordPath", desc = "S&R Last Search Path" },
-      { "<leader>srr", "<Plug>CtrlSFVwordPath", desc = "S&R Word Under Cursor", mode = "x" },
+      { "<leader>sfw", "<Plug>CtrlSFCwordPath", desc = "S&R Word Under Cursor" },
+      { "<leader>sfb", "<Plug>CtrlSFCCwordPath", desc = "S&R Word Under Cursor (With Boundaries)" },
+      { "<leader>sfl", "<Plug>CtrlSFPwordPath", desc = "S&R Last Search Path" },
+      { "<leader>sfv", "<Plug>CtrlSFVwordPath", desc = "S&R Word Under Cursor", mode = "x" },
     },
     init = function()
       vim.g.ctrlsf_backend = "rg"
