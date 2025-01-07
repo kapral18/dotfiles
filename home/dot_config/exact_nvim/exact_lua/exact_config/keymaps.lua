@@ -1,5 +1,6 @@
 -- Ctrl-C to <Esc>
 vim.keymap.set("i", "<C-c>", "<ESC>")
+vim.keymap.set("i", "jk", "<ESC>")
 
 -- free the <leader>l
 vim.keymap.del("n", "<leader>l")

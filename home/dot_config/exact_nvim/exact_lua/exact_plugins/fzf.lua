@@ -64,6 +64,7 @@ return {
     "ibhagwan/fzf-lua",
     dependencies = { "nvim-tree/nvim-web-devicons" },
     keys = {
+      { "<leader>,", false },
       {
         "<leader><space>",
         get_fzf_fn("files", {

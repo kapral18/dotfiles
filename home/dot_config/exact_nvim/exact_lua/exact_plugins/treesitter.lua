@@ -45,29 +45,36 @@ return {
     },
   },
   {
-    "Wansmer/sibling-swap.nvim",
-    dependencies = "nvim-treesitter/nvim-treesitter",
+    "aaronik/treewalker.nvim",
+    lazy = false,
+
+    -- The following options are the defaults.
+    -- Treewalker aims for sane defaults, so these are each individually optional,
+    -- and setup() does not need to be called, so the whole opts block is optional as well.
     opts = {
-      use_default_keymaps = false,
-      highlight_node_at_cursor = true,
+      -- Whether to briefly highlight the node after jumping to it
+      highlight = true,
+
+      -- How long should above highlight last (in ms)
+      highlight_duration = 250,
+
+      -- The color of the above highlight. Must be a valid vim highlight group.
+      -- (see :h highlight-group for options)
+      highlight_group = "CursorLine",
     },
+
     keys = {
-      {
-        "<leader>.",
-        function()
-          -- swap with right and change operator in between
-          require("sibling-swap").swap_with_right_with_opp()
-        end,
-        desc = "Move Node Right With Opp",
-      },
-      {
-        "<leader>,",
-        function()
-          -- swap with right and change operator in between
-          require("sibling-swap").swap_with_left_with_opp()
-        end,
-        desc = "Move Node Left With Opp",
-      },
+      -- movement
+      { "<A-S-k>", "<cmd>Treewalker Up<cr>", mode = { "n", "x" } },
+      { "<A-S-j>", "<cmd>Treewalker Down<cr>", mode = { "n", "x" } },
+      { "<A-S-l>", "<cmd>Treewalker Right<cr>", mode = { "n", "x" } },
+      { "<A-S-h>", "<cmd>Treewalker Left<cr>", mode = { "n", "x" } },
+
+      -- swapping
+      { "<C-S-j>", "<cmd>Treewalker SwapDown<cr>" },
+      { "<C-S-k>", "<cmd>Treewalker SwapUp<cr>" },
+      { "<C-S-l>", "<cmd>Treewalker SwapRight<CR>" },
+      { "<C-S-h>", "<cmd>Treewalker SwapLeft<CR>" },
     },
   },
   {

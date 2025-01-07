@@ -107,6 +107,8 @@ vim.opt.wildignore = {
   "**/thesaurus/**",
 }
 
+vim.opt.showmatch = true -- Show matching brackets
+vim.opt.matchtime = 2 -- Tenths of a second to show matching brackets
 -- adds <> to % matchpairs
 vim.opt.matchpairs:append("<:>")
 -- Set the number format options for <C-a> and <C-x> increment/decrement commands

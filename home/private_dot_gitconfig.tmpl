@@ -81,16 +81,6 @@
   c = commit -m
   ca = commit --amend
   b = branch -a
-  # Difftastic aliases, so `git dlog` is `git log` with difftastic and so on.
-  dlog = -c diff.external=difft log --ext-diff
-  dshow = -c diff.external=difft show --ext-diff
-  ddiff = -c diff.external=difft diff
-  # `git log` with patches shown with difftastic.
-  dl = -c diff.external=difft log -p --ext-diff
-  # Show the most recent commit with difftastic.
-  ds = -c diff.external=difft show --ext-diff
-  # `git diff` with difftastic.
-  dft = -c diff.external=difft diff
   # Pretty formatted log with colors, limited to 15 entries
   l = !git --no-pager log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%C(bold blue) <%an>%Creset' -15
   ll = !git l --all --branches
@@ -121,23 +111,17 @@
   whitespace = fix
 
 [diff]
-  # use better diff algorithm
+  # Shows moved lines in a different color
   colorMoved = default
-  # use better diff algo
+  # Uses histogram diff algorithm which is more accurate and efficient
   # https://luppeng.wordpress.com/2020/10/10/when-to-use-each-of-the-git-diff-algorithms/
   algorithm = histogram
-  # more accurate renames (slower)
+  # Enables Git to detect renamed files and show them as renames instead of deletion+addition
   renames = true
-  tool = difftastic
+  # Shows 10 lines of context around changes instead of the default 3
   context = 10
-
-[difftool "difftastic"]
-    # See `man git-difftool` for a description of MERGED, LOCAL and REMOTE.
-    cmd = difft "$MERGED" "$LOCAL" "abcdef1" "100644" "$REMOTE" "abcdef2" "100644"
-
-[difftool]
-  # Run the difftool immediately, don't ask for confirmation
-  prompt = false
+  # Increases the limit for rename detection (default is typically much lower)
+  renameLimit = 999999
 
 [merge]
   # Add summary after merge

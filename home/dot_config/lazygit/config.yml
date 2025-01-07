@@ -1,8 +1,5 @@
 os:
   editPreset: nvim
-git:
-  paging:
-    externalDiffCommand: difft --color=always
 disableStartupPopups: true
 customCommands:
   - key: "o"

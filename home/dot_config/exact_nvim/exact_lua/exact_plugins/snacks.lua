@@ -1,10 +1,6 @@
 return {
   {
     "folke/snacks.nvim",
-    keys = function() end,
-  },
-  {
-    "folke/snacks.nvim",
     opts = {
       indent = { enabled = false },
       input = { enabled = false },
@@ -16,6 +12,14 @@ return {
       words = { enabled = false },
     },
     keys = {
+      {
+        "<leader>n",
+        false,
+      },
+      {
+        "<leader>un",
+        false,
+      },
       {
         "<leader>nh",
         function()
