@@ -6,3 +6,11 @@ copy-on-select                = clipboard
 shell-integration-features    = cursor,sudo,no-title
 confirm-close-surface         = false
 quit-after-last-window-closed = true
+
+#tmux
+
+keybind = ctrl+shift+j=text:\x00\x0a
+keybind = ctrl+shift+h=text:\x00\x48
+keybind = ctrl+shift+k=text:\x00\x4b
+keybind = ctrl+shift+l=text:\x00\x4c
+

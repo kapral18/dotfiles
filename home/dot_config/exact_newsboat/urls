@@ -6,40 +6,52 @@
 #"query:Podcasts:unread = \"yes\" and tags # \"Podcasts\""
 #"query:All unread:unread = \"yes\""
 #"query:Starred:flags # \"s\""
-" "
-"===============================| Feeds |======================================="
-" "
-"=[ News ]="
-" "
-https://www.theguardian.com/uk/rss "News" "~The Guardian" #the_guardian
-https://www.buxtonadvertiser.co.uk/news/rss "News" "~Buxton Advertiser" #buxton_advertiser
-https://feeds.feedburner.com/obs-ultimas "News" "~Observador" #observador
-http://feeds.feedburner.com/PublicoRSS "News" "~Publico" #publico
-" "
-"=[ Tech ]="
-" "
-https://feeds.feedburner.com/TechCrunch "Technology" "~TechCrunch" #tech_crunch
-http://www.recode.net/rss/index.xml "Technology" "~Recode" #recode
-http://feeds.feedburner.com/Makeuseof "Technology" "~Make Use Of" #make_use_of
-http://www.cnet.com/rss/news "Technology" "~CNET" #cnet
-http://www.theverge.com/rss/frontpage "Technology" "~The Verge" #the_verge
-http://feeds.howtogeek.com/HowToGeek "Technology" "~How-to Geek" #how_to_geek
-https://www.linuxinsider.com/perl/syndication/rssfull.pl "Technology" "~Linux Insider" #linux_insider
-" "
-"=[ Vim/Neovim ]="
-" "
-https://this-week-in-neovim.org/rss "Vim" "~This week in Neovim" #this-week-in-neovim
-" "
-"=[ Reddit ]="
-" "
-https://www.reddit.com/r/commandline.rss "Reddit" "~Command Line" #command_line
-https://www.reddit.com/r/vim.rss "Reddit" "~Vim" #vim
-https://www.reddit.com/r/neovim.rss "Reddit" "~Neovim" #neovim
-https://www.reddit.com/r/unixporn.rss "Reddit" "~Unixporn" #unixporn
-" "
-"=[ Youtube ]="
-" "
-https://www.youtube.com/feeds/videos.xml?channel_id=UC2eYFnH61tmytImy1mTYvhA "Youtube" "~Luke Smith" #lukesmith
-https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ "Youtube" "~Marques Brownlee" #marques_brownlee
-https://www.youtube.com/feeds/videos.xml?channel_id=UCkf4VIqu3Acnfzuk3kRIFwA "Youtube" "~Gotbletu" #gotbletu
-https://www.youtube.com/feeds/videos.xml?channel_id=UCxJaNyXCQw0mghY0hA1wA9w "Youtube" "~Drifting Coding" #drifting_ruby
+
+https://waylonwalker.com/rss.xml
+https://www.24a11y.com/feed/
+https://feeds.feedburner.com/24ways
+https://feeds.feedburner.com/2ality
+https://addyosmani.com/rss.xml
+https://aerotwist.com/blog/feed/
+https://feeds.feedburner.com/brad-frosts-blog
+https://christianheilmann.com/feed/
+http://blog.chromium.org/feeds/posts/default
+https://css-weekly.com/feed/
+https://css-tricks.com/feed/
+https://daverupert.com/atom.xml
+https://davidwalsh.name/feed/atom
+https://dmitripavlutin.com/rss.xml
+https://ethanmarcotte.com/wrote/feed.xml
+http://feeds2.feedburner.com/blogspot/Egta
+https://feeds.feedburner.com/csswizardry
+http://feeds.feedburner.com/sarasoueidan
+https://jakearchibald.com/posts.rss
+https://blog.mozilla.org/javascript/feed/
+https://cprss.s3.amazonaws.com/javascriptweekly.com.xml
+https://adactio.com/articles/rss
+https://snook.ca/jonathan/index.rdf
+https://kentcdodds.com/blog/rss.xml
+https://www.kirupa.com/modular/kirupa.xml
+http://feeds.feedburner.com/leaverou
+https://elijahmanor.com/rss.xml
+https://mathiasbynens.be/notes.atom
+https://hacks.mozilla.org/feed/
+https://humanwhocodes.com/feeds/blog.xml
+https://www.quirksmode.org/blog/atom.xml
+https://feeds.feedburner.com/philipwalton
+https://rachelandrew.co.uk/archives/rss.php
+https://cprss.s3.amazonaws.com/react.statuscode.com.xml
+https://remysharp.com/feed.xml
+https://www.robinwieruch.de/index.xml
+http://feeds.feedburner.com/TheCSSNinja
+https://www.sarasoueidan.com/blog/index.xml
+https://www.sitepoint.com/feed/
+https://www.smashingmagazine.com/feed/
+https://www.phpied.com/feed/
+https://www.xanthir.com/blog/atom/
+https://devblogs.microsoft.com/typescript/feed/
+https://calendar.perfplanet.com/feed/
+https://web.dev/feed.xml
+https://www.zachleat.com/web/feed/
+https://ishadeed.com/feed.xml
+https://joshwcomeau.com/rss.xml

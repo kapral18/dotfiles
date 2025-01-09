@@ -1,81 +1,23 @@
-cookie-cache "~/.newsboat/cookies.txt"
-prepopulate-query-feeds yes
-browser open
-player mpv
+include ~/.config/newsboat/dark
+
+# general settings
 auto-reload yes
-reload-time 30
-reload-threads 4
-download-retries 4
-download-timeout 10
-download-path ~/Downloads
-download-full-page yes
-refresh-on-startup yes
-prepopulate-query-feeds yes
-external-url-viewer "urlscan"
-text-width 80
-max-downloads 3
-mark-as-read-on-hover yes
-scrolloff 5
-save-path "~/.newsboat/saved/"
+max-items 50
 
-# Formats
-feedlist-title-format "%u Unread Feeds"
-articlelist-title-format "%u Unread Articles"
-itemview-title-format "%T"
-urlview-title-format "URLs"
-datetime-format "%H:%M, %a, %d %b"
-feedlist-format "%4i %n %11u %t"
-podlist-format "%4i [%-5p %%] %-12S %F"
-articlelist-format "%4i %f %D   %?T?|%-17T|  ?%t"
-notify-format "%d new articles (%n unread articles, %f unread feeds)"
+# unbind keys
+unbind-key h
+unbind-key j
+unbind-key k
+unbind-key l
+unbind-key g # bound to `sort` by default
+unbind-key G # bound to `rev-sort` by default
 
-bind-key j down feedlist
-bind-key j next articlelist
-bind-key j down article
-bind-key k up feedlist
-bind-key k prev articlelist
-bind-key k up article
-bind-key J next-feed articlelist
-bind-key K prev-feed articlelist
-bind-key h quit articlelist
-bind-key h quit article
-bind-key l open feedlist
-bind-key l open articlelist
-bind-key u pageup all
-bind-key d pagedown all
-bind-key U show-urls
+# vim style bindings
+bind-key h quit
+bind-key j down
+bind-key k up
+bind-key l open
 bind-key g home
 bind-key G end
-
-confirm-exit no
-cleanup-on-quit yes
-keep-articles-days 7
-
-#===============================================================================
-#                             Colors
-#===============================================================================
-
-color background         color247 default
-color listnormal         color241 default
-color listnormal_unread  color4   default
-color listfocus          white    color240
-color listfocus_unread   color7   color240
-color info               color11  default
-color article            color245 default
-
-# highlights
-
-highlight all "══.*" magenta
-highlight all "═\\[.*" yellow
-highlight feedlist ".*(0/[0-9]+))" default
-
-highlight article "(^Feed:.*|^Title:.*|^Author:.*)" cyan default
-highlight article "(^Link:.*|^Date:.*)" default default
-highlight article "https?://[^ ]+" blue default
-highlight article "^(Title):.*$" yellow default
-highlight article "\\[[0-9][0-9]*\\]" magenta default
-highlight article "\\[image\\ [0-9]+\\]" green default
-highlight article "\\[embedded flash: [0-9][0-9]*\\]" green default
-highlight article ":.*\\(link\\)$" cyan default
-highlight article ":.*\\(image\\)$" blue default
-highlight article ":.*\\(embedded flash\\)$" magenta default
+bind-key ^U halfpageup
+bind-key ^D halfpagedown

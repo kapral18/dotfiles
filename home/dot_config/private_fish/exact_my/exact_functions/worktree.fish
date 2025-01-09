@@ -95,7 +95,7 @@ function add_worktree --description "Add a worktree for a branch"
 
 
     if string match -q -r "\b$inferred_branch_remote\b" -- (git remote)
-        git fetch --prune --prune-tags $inferred_branch_remote $inferred_branch_name
+        git fetch $inferred_branch_remote $inferred_branch_name
     end
 
     # only-branch-specified case
@@ -322,7 +322,7 @@ function add_worktree --description "Add a worktree for a branch"
         set -l inferred_base_branch_name $base_branch_split[2]
 
         if string match -q -r "\b$inferred_base_branch_remote\b" -- (git remote)
-            git fetch --prune --prune-tags $inferred_base_branch_remote $inferred_base_branch_name
+            git fetch $inferred_base_branch_remote $inferred_base_branch_name
         end
 
         # Now validate the $base_branch

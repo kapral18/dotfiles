@@ -16,6 +16,8 @@
   # Speed up commands involving untracked files such as `git status`.
   # https://git-scm.com/docs/git-update-index#_untracked_cache
   untrackedCache = true
+  # https://git-scm.com/docs/git-config#Documentation/git-config.txt-corefsmonitor
+  fsmonitor = true
   # Why do we need this?
   #
   # If you check https://developer.1password.com/docs/ssh/agent/advanced#use-multiple-github-accounts
@@ -51,13 +53,6 @@
   # if difftool output is larger than one screen, use the pager
   difftool = true
 
-[rebase]
-  autoStash = true
-  # Do not delete commits during rebase
-  missingCommitsCheck = error
-  # https://andrewlock.net/working-with-stacked-branches-in-git-is-easier-with-update-refs/
-  updateRefs = true
-
 [color]
   ui = auto
 
@@ -76,11 +71,6 @@
   today = "!git log --all --oneline --no-merges --author=$(git config --get user.email) --since=00:00:00"
   # Detailed graph view with commit stats and ISO dates
   graph = "!git log --all --graph --decorate --stat --date=iso"
-  co = checkout
-  cb = checkout -b
-  c = commit -m
-  ca = commit --amend
-  b = branch -a
   # Pretty formatted log with colors, limited to 15 entries
   l = !git --no-pager log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%C(bold blue) <%an>%Creset' -15
   ll = !git l --all --branches
@@ -124,10 +114,20 @@
   renameLimit = 999999
 
 [merge]
+  autoStash = true
   # Add summary after merge
   log = true
   # https://www.ductile.systems/zdiff3/
   conflictStyle = zdiff3
+
+[rebase]
+  autoStash = true
+  # https://andrewlock.net/smoother-rebases-with-auto-squashing-git-commits/
+  autoSquash = true
+  # Do not delete commits during rebase
+  missingCommitsCheck = error
+  # https://andrewlock.net/working-with-stacked-branches-in-git-is-easier-with-update-refs/
+  updateRefs = true
 
 [pretty]
   custom = "%C(magenta)%h%C(red)%d %C(yellow)%ar %C(green)%s %C(yellow)(%an)"
@@ -139,6 +139,7 @@
 
 [pull]
   default = current
+  twohead = ort
 
 [push]
   # to avoid sitution where an existing branch with the same name is on upstream but not
@@ -188,42 +189,47 @@
 
 [commit]
   gpgsign = true
+  verbose = true
 
 # reuse recovered resolution
 # https://git-scm.com/docs/git-rerere
 [rerere]
   enabled = true
+  autoUpdate = true
 
 [transfer]
-    # Enable integrity checking of objects during transfer operations
-    fsckobjects = true
-    # Set memory buffer size for integrity checks to 256 megabytes
-    fsckwindowsize = 256m
-    # Hide internal references that shouldn't be transferred
-    hideRefs = refs/original/ refs/replace/
+  # Enable integrity checking of objects during transfer operations
+  fsckobjects = true
+  # Set memory buffer size for integrity checks to 256 megabytes
+  fsckwindowsize = 256m
+  # Hide internal references that shouldn't be transferred
+  hideRefs = refs/original/ refs/replace/
 
 [fetch]
-    # Automatically remove remote-tracking references that no longer exist
-    prune = true
-    # Prune tags that are no longer on the remote
-    pruneTags = true
-    # Enable integrity checking when fetching objects
-    fsckobjects = true
-    # Set memory buffer size for fetch integrity checks
-    fsckwindowsize = 256m
-    # Hide internal references during fetch operations
-    hideRefs = refs/original/ refs/replace/
+  # Automatically remove remote-tracking references that no longer exist
+  prune = true
+  # Prune tags that are no longer on the remote
+  pruneTags = true
+  # Enable integrity checking when fetching objects
+  fsckobjects = true
+  # Set memory buffer size for fetch integrity checks
+  fsckwindowsize = 256m
+  # Hide internal references during fetch operations
+  hideRefs = refs/original/ refs/replace/
+  writeCommitGraph = true
 
 [receive]
-    # Enable integrity checking when receiving objects
-    fsckobjects = true
-    # Set memory buffer size for receive integrity checks
-    fsckwindowsize = 256m
-    # Hide internal references during receive operations
-    hideRefs = refs/original/ refs/replace/
+  # Enable integrity checking when receiving objects
+  fsckobjects = true
+  # Set memory buffer size for receive integrity checks
+  fsckwindowsize = 256m
+  # Hide internal references during receive operations
+  hideRefs = refs/original/ refs/replace/
 
 [log]
   date = iso
+  follow = true
+  decorate = short
 
 [advice]
   detachedHead = false
@@ -237,3 +243,13 @@
 [status]
   # https://michaelheap.com/git-status-untracked/
   showUntrackedFiles = all
+
+[feature]
+  # https://git-scm.com/docs/git-config#Documentation/git-config.txt-featuremanyFiles
+  manyFiles = true
+
+[index]
+  # enabled by feature.manyFiles
+  skipHash = true
+  # needed for feature.manyFiles
+  version = 4
