@@ -1,16 +1,15 @@
+macos-titlebar-style          = hidden
+window-padding-balance        = true
+macos-window-shadow           = false
+clipboard-read                = allow
+clipboard-write               = allow
 macos-option-as-alt           = left
 font-family                   = JetBrainsMono Nerd Font Mono
 font-size                     = 14.0
 cursor-style                  = block
+cursor-style-blink            = false
+cursor-opacity                = 0.96
 copy-on-select                = clipboard
 shell-integration-features    = cursor,sudo,no-title
 confirm-close-surface         = false
 quit-after-last-window-closed = true
-
-#tmux
-
-keybind = ctrl+shift+j=text:\x00\x0a
-keybind = ctrl+shift+h=text:\x00\x48
-keybind = ctrl+shift+k=text:\x00\x4b
-keybind = ctrl+shift+l=text:\x00\x4c
-

@@ -5,6 +5,11 @@ local mini_ai_git_signs = function()
     return
   end
   local hunks = gitsigns_cache.hunks
+
+  if not hunks then
+    return
+  end
+
   hunks = vim.tbl_map(function(hunk)
     local from_line = hunk.added.start
     local from_col = 1

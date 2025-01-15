@@ -74,6 +74,16 @@ return {
       detached = true,
       height = 30,
       use_trouble_qf = false,
+      mappings = {
+        list = {
+          ["<c-q>"] = function()
+            local glance = require("glance")
+            glance.actions.quickfix()
+            vim.cmd("cclose")
+            vim.cmd("Trouble quickfix")
+          end,
+        },
+      },
       hooks = {
         before_open = function(results, open, jump, method)
           local filter = function(arr, fn)

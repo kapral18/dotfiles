@@ -62,8 +62,8 @@ vim.keymap.set({ "n", "t" }, "<C-S-Right>", "<cmd>vertical resize -2<cr>", { des
 -- Remove snacks blame
 vim.keymap.del("n", "<leader>gb")
 vim.keymap.set("n", "<leader>gb", function()
-  vim.cmd("Gitsigns blame")
-end, { desc = "Gitsigns blame" })
+  vim.cmd("BlameToggle")
+end, { desc = "Blame" })
 
 -- open gd in vsplit
 vim.keymap.set("n", "<leader>vd", "<cmd>vsplit | lua vim.lsp.buf.definition()<CR>", { noremap = true, silent = true })
