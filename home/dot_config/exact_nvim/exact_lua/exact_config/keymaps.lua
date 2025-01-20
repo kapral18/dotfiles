@@ -119,33 +119,59 @@ end
 vim.cmd("command! RemoveQFItem lua Remove_qf_item()")
 vim.api.nvim_command("autocmd FileType qf nnoremap <buffer> dd :RemoveQFItem<cr>")
 
-local function switch_between_source_and_test()
-  local current_file = vim.fn.expand("%:p")
-  local test_file, source_file
+local test_patterns = {
+  test = {
+    "%.test%.",
+    "%.spec%.",
+    "_test%.",
+    "_spec%.",
+  },
+  separator = ".",
+}
 
-  -- Check if the current file is a source file or a test file
-  if current_file:match("%.test%.") or current_file:match("%.spec%.") then
-    -- It's a test file, find the corresponding source file
-    source_file = current_file:gsub("%.test%.", "."):gsub("%.spec%.", ".")
-    if vim.fn.filereadable(source_file) == 1 then
-      vim.cmd("edit " .. source_file)
-    else
-      print("Source file not found")
+local function is_test_file(current_file)
+  for _, pattern in ipairs(test_patterns.test) do
+    if current_file:find(pattern) then
+      return true
     end
+  end
+  return false
+end
+
+local function get_alternate_file(current_file)
+  local ext = vim.fn.expand("%:e")
+  local base_file = current_file:match("(.+)%." .. ext .. "$")
+
+  if is_test_file(current_file) then
+    local source_file = current_file
+    for _, pattern in ipairs(test_patterns.test) do
+      source_file = source_file:gsub(pattern, test_patterns.separator)
+    end
+    return source_file
   else
-    -- It's a source file, find the corresponding test file
-    local base_file = current_file:match("(.*)%.")
-    test_file = base_file .. ".test." .. vim.fn.expand("%:e")
-    if vim.fn.filereadable(test_file) == 1 then
-      vim.cmd("edit " .. test_file)
-    else
-      test_file = base_file .. ".spec." .. vim.fn.expand("%:e")
-      if vim.fn.filereadable(test_file) == 1 then
-        vim.cmd("edit " .. test_file)
-      else
-        print("Test file not found")
+    local potential_files = {}
+    for _, pattern in ipairs(test_patterns.test) do
+      table.insert(potential_files, base_file .. pattern:gsub("%%", "") .. ext)
+    end
+
+    for _, file in ipairs(potential_files) do
+      if vim.fn.filereadable(file) == 1 then
+        return file
       end
     end
+  end
+  return nil
+end
+
+-- Function to switch between source and test files
+local function switch_between_source_and_test()
+  local current_file = vim.fn.expand("%:p")
+  local alternate_file = get_alternate_file(current_file)
+
+  if alternate_file then
+    vim.cmd("edit " .. alternate_file)
+  else
+    vim.notify(is_test_file(current_file) and "Source file not found" or "Test file not found", vim.log.levels.WARN)
   end
 end
 

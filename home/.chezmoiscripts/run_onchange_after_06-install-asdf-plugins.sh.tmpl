@@ -52,6 +52,13 @@ for line in "${lines[@]}"; do
 done
 
 echo "Installing tool versions specified in .tool-versions"
+
+export LDFLAGS="-L$(brew --prefix tcl-tk)/lib" \
+export CPPFLAGS="-I$(brew --prefix tcl-tk)/include" \
+export PKG_CONFIG_PATH="$(brew --prefix tcl-tk)/lib/pkgconfig" \
+export CFLAGS="-I$(brew --prefix tcl-tk)/include" \
+export PYTHON_CONFIGURE_OPTS="--with-tcltk-includes='-I$(brew --prefix tcl-tk)/include' --with-tcltk-libs='-L$(brew --prefix tcl-tk)/lib -ltcl8.6 -ltk8.6' --enable-framework"
+
 if ! asdf install; then
     echo "Error: Failed to install tool versions"
     exit 1
