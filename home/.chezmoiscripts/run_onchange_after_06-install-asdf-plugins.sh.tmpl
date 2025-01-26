@@ -2,19 +2,20 @@
 
 set -euo pipefail
 
-# This script installs asdf plugins based on the asdf_plugins file
-# {{ include "asdf_plugins" | sha256sum }}
+# Track template changes
+# {{ include "asdf_plugins.tmpl" | sha256sum }}
+# {{ include "dot_tool-versions.tmpl" | sha256sum }}
 
-asdf_plugins_file={{ joinPath .chezmoi.sourceDir "asdf_plugins" | quote }}
+asdf_plugins_template={{ joinPath .chezmoi.sourceDir "asdf_plugins.tmpl" | quote }}
 
-if [[ ! -f "$asdf_plugins_file" ]]; then
-    echo "Error: asdf plugins file not found at $asdf_plugins_file"
+if [[ ! -f "$asdf_plugins_template" ]]; then
+    echo "Error: asdf plugins template not found at $asdf_plugins_template"
     exit 1
 fi
 
-# Read the file content into an array
-if ! mapfile -t lines < "$asdf_plugins_file"; then
-    echo "Error: Failed to read asdf plugins file"
+# Render template using chezmoi's binary (already in PATH)
+if ! mapfile -t lines < <(chezmoi execute-template < "$asdf_plugins_template"); then
+    echo "Error: Failed to render asdf plugins template"
     exit 1
 fi
 

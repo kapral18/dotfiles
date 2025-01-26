@@ -194,10 +194,6 @@
   autoUpdate = true
 
 [transfer]
-  # Enable integrity checking of objects during transfer operations
-  fsckobjects = true
-  # Set memory buffer size for integrity checks to 256 megabytes
-  fsckwindowsize = 256m
   # Hide internal references that shouldn't be transferred
   hideRefs = refs/original/ refs/replace/
 
@@ -206,19 +202,10 @@
   prune = true
   # Prune tags that are no longer on the remote
   pruneTags = true
-  # Enable integrity checking when fetching objects
-  fsckobjects = true
-  # Set memory buffer size for fetch integrity checks
-  fsckwindowsize = 256m
   # Hide internal references during fetch operations
   hideRefs = refs/original/ refs/replace/
-  writeCommitGraph = true
 
 [receive]
-  # Enable integrity checking when receiving objects
-  fsckobjects = true
-  # Set memory buffer size for receive integrity checks
-  fsckwindowsize = 256m
   # Hide internal references during receive operations
   hideRefs = refs/original/ refs/replace/
 
