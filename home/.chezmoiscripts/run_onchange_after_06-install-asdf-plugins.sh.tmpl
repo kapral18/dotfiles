@@ -19,6 +19,12 @@ if ! mapfile -t lines < <(chezmoi execute-template < "$asdf_plugins_template"); 
     exit 1
 fi
 
+# Get current plugins
+mapfile -t current_plugins < <(asdf plugin list)
+
+# Create an array to store plugins from template
+declare -a template_plugins
+
 # install asdf plugin. 
 #
 # ex: install_plugin plugin_name plugin_url
@@ -49,7 +55,16 @@ for line in "${lines[@]}"; do
         continue
     fi
 
+    template_plugins+=("$plugin")
     install_plugin "$plugin" "$url"
+done
+
+# remove unwanted plugins
+for plugin in "${current_plugins[@]}"; do
+    if [[ ! " ${template_plugins[@]} " =~ " ${plugin} " ]]; then
+        echo "Removing plugin: $plugin"
+        asdf plugin remove "$plugin"
+    fi
 done
 
 echo "Installing tool versions specified in .tool-versions"
