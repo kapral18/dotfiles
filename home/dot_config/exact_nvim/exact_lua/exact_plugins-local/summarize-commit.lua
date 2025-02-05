@@ -55,7 +55,7 @@ local function generate_with_chatblade(prompt, diff)
   local escaped_diff = vim.fn.shellescape(diff)
 
   -- Construct and execute command
-  local command = string.format("echo %s | chatblade -c 4o -e %s", escaped_prompt, escaped_diff)
+  local command = ("echo %s | chatblade -c 4o -e %s"):format(escaped_prompt, escaped_diff)
   local output = vim.fn.systemlist(command)
 
   if vim.v.shell_error ~= 0 then

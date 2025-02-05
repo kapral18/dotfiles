@@ -59,10 +59,7 @@ prepend_to_path_if_missing {{ .homebrewPrefix }}/sbin
 prepend_to_path_if_missing "$HOME"/.yarn/bin
 prepend_to_path_if_missing "$HOME"/.local/bin
 prepend_to_path_if_missing "$HOME"/bin
-
-if command -v asdf >/dev/null; then
-    source "$(brew --prefix asdf)"/libexec/asdf.sh
-fi
+prepend_to_path_if_missing "$HOME"/.asdf/shims
 
 export PATH
 

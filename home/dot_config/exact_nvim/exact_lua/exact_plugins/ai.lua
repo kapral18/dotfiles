@@ -26,7 +26,7 @@ return {
     "CopilotC-Nvim/CopilotChat.nvim",
     lazy = false,
     opts = {
-      model = "claude-3.5-sonnet",
+      model = "o3-mini",
     },
   },
 }

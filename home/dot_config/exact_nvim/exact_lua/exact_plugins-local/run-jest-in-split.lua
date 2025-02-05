@@ -47,12 +47,11 @@ M.get_current_test_name = function()
   return enclosing_test_name
 end
 
-M.escape_js_regex = function(str)
-  local special_chars = { ".", "*", "+", "?", "^", "$", "{", "}", "(", ")", "|", "[", "]", "\\", "/" }
-  for _, char in ipairs(special_chars) do
-    str = str:gsub("%" .. char, "\\" .. char)
-  end
-  return str
+M.escape_shell_arg = function(str)
+  str = str:gsub("'", "\\'")
+  str = str:gsub('"', '\\"')
+  str = str:gsub("`", "\\`")
+  return "'" .. str .. "'"
 end
 
 M.run_jest_cmd = function(arg)
@@ -70,8 +69,8 @@ end
 M.run_jest_in_split = function()
   local test_name = M.get_current_test_name()
   if test_name then
-    local escaped_test_name = M.escape_js_regex(test_name)
-    local arg = " -t '" .. escaped_test_name .. "'"
+    local escaped_test_name = M.escape_shell_arg(test_name)
+    local arg = " -t " .. escaped_test_name
     M.run_jest_cmd(arg)
   else
     M.run_jest_cmd()
