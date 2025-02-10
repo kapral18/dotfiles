@@ -95,8 +95,6 @@ if status --is-login
     fish_add_path -g "$HOME"/bin
 
     if type -q asdf
-        source "$(brew --prefix asdf)"/share/fish/vendor_completions.d/asdf.fish
-
         # we need to add the asdf shims to the PATH again
         # because they are pushed down without fish_add_path
         fish_add_path -g "$(brew --prefix asdf)"/bin
