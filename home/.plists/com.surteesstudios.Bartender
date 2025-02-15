@@ -2,70 +2,88 @@
     AddedStandardMacOSPresetP2 = 1;
     AdjustedPrefsForB5 = 1;
     AdjustedPrefsForB5P2 = 1;
-    BartenderBarOnlyOnNotchScreens = 0;
+    "FRFeedbackReporter.lastCrashCheckDate" = "2025-02-14 19:49:53 +0000";
     HaveConvertedImageSFUsToTriggers = 1;
     HaveConvertedSFUsToTriggers = 1;
     HaveCreatedDefaultTriggers = 1;
     HideItemsWhenShowingOthers = 0;
-    "LaunchAtLogin__hasMigratedNew" = 1;
+    HideShownItemsLeaveItemsToRightOfBartender = 0;
+    "MenuBarColoring-SpaceSettings" = {length = 557, bytes = 0x7b224465 6661756c 742d5370 6163652d ... 73706c61 79227d7d };
+    MouseExitDelay = "0.4";
     "NSSplitView Subview Frames NSColorPanelSplitView" =     (
         "0.000000, 0.000000, 224.000000, 258.000000, NO, NO",
         "0.000000, 259.000000, 224.000000, 48.000000, NO, NO"
     );
-    "NSStatusItem Preferred Position EItem" = 60000;
-    "NSStatusItem Preferred Position HISItem" = 410;
-    "NSStatusItem Preferred Position RHSItem" = 5804;
-    "NSStatusItem Preferred Position THSItem" = "50000.5";
-    "NSStatusItem Preferred Position statusItem" = 315;
+    "NSStatusItem Preferred Position EItem" = 15841;
+    "NSStatusItem Preferred Position HISItem" = 320;
+    "NSStatusItem Preferred Position RHSItem" = 5809;
+    "NSStatusItem Preferred Position THSItem" = 10825;
+    "NSStatusItem Preferred Position statusItem" = 256;
     "NSToolbar Configuration com.apple.NSColorPanel" =     {
         "TB Is Shown" = 1;
     };
-    "NSWindow Frame SU5AlertMessages" = "1708345318.252966";
+    "NSWindow Frame SU5AlertMessages" = "1739562510.531806";
     ProfileSettings =     {
         activeProfile =         {
             AlwaysHide =             (
             );
+            BartenderBarStyling = {length = 4, bytes = 0x6e756c6c};
             GapItemLabels =             {
             };
             GapItemWidths =             {
             };
             Hide =             (
-                "com.wulkano.kap-Item-0",
                 "special.AllOtherItems",
+                "com.apple.TextInputMenuAgent-Item-0",
+                "cc.ffitch.shottr-Item-0",
+                "com.objective-see.oversight-Item-0",
+                "com.objective-see.lulu.app-Item-0",
+                "com.0804Team.KeyClu-Item-0",
+                "com.rememberthemilk.Deskmilk-Item-0",
                 "com.apple.controlcenter-Bluetooth",
                 "com.apple.Spotlight-Item-0",
-                "ru.keepcoder.Telegram-Item-0",
-                "com.1password.1password-Item-0",
-                "org.cryptomator-Item-0",
                 "com.runningwithcrayons.Alfred-Item-0",
                 "com.google.drivefs-Item-0",
                 "org.pqrs.Karabiner-Menu-Item-0",
-                "com.electron.ollama-Item-0"
+                "com.electron.ollama-Item-0",
+                "com.knollsoft.Rectangle-Item-0",
+                "com.1password.1password-Item-0",
+                "us.zoom.xos-Item-0",
+                "net.mullvad.vpn-Item-0"
             );
             Show =             (
-                "com.apple.controlcenter-WiFi",
-                "com.apple.TextInputMenuAgent-Item-0",
-                "com.apple.controlcenter-Sound",
                 "com.apple.controlcenter-Battery",
+                "com.apple.controlcenter-WiFi",
                 "com.surteesstudios.Bartender-statusItem",
-                "com.robinlu.mac.Tooth-Fairy-Item-0"
+                "com.apple.controlcenter-Sound"
             );
             description = "";
+            icon = {length = 31106, bytes = 0x4d4d002a 000034a0 00000000 00000000 ... fe4bfedc ff6dffff };
             iconIsTemplate = 1;
             isSpecial = 1;
             leaveAlwaysHiddenItems = 0;
             name = Profile;
+            subBarStyling = {length = 2, bytes = 0x7b7d};
+            subItemIcons = {length = 2, bytes = 0x7b7d};
             subItemItems =             {
             };
             subItemTitles =             {
             };
         };
     };
-    ReduceMenuItemSpacing = 1;
+    ReduceUpdateCheckFrequencyWhenOnBattery = 1;
+    ResetPermissionCountKey = 1;
     SUAutomaticallyUpdate = 0;
+    SUEnableAutomaticChecks = 0;
     SUHasLaunchedBefore = 1;
-    SULastCheckTime = "2024-03-02 14:51:56 +0000";
+    SULastCheckTime = "2025-02-14 19:48:34 +0000";
+    SUUpdateGroupIdentifier = 2074481427;
     TerminationReason = "Bartender Quitting due to system restart or logout";
+    TerminationReasons =     (
+        "2025-02-14 19:49:50 +0000 Bartender Quitting due to system restart or logout (POWER OFF)",
+        "2025-02-14 19:49:50 +0000 Bartender Quitting due to system restart or logout"
+    );
+    TestingIdentifierKey = 76;
     TriggerSettings =     {
         Battery1 =         {
             description = "";
@@ -126,6 +144,7 @@
             );
         };
     };
-    UpdateWelcomeMessageShowAgainB5 = 1;
     UseBartenderBar = 1;
+    isNewUser = 1;
 }
+

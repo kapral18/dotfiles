@@ -196,7 +196,7 @@ return {
         },
         previewers = {
           bat = {
-            cmd = "bat_preview",
+            cmd = "bat-preview",
             -- set a bat theme, `bat --list-themes`
             theme = "Catppuccin-mocha",
           },
