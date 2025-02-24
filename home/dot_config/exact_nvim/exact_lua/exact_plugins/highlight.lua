@@ -1,3 +1,5 @@
+vim.hl = vim.hl or vim.highlight
+
 return {
   {
     "tzachar/local-highlight.nvim",

@@ -289,7 +289,7 @@ function add_worktree --description "Add a worktree for a branch"
             return 1
 
         else if git show-ref --quiet --verify "refs/remotes/upstream/$branch_name"
-            # GIVEN feat/test-1 exists on upstream remote
+            # GIVEN feat/test-1 DOES exist on upstream remote
             #
             # WHEN add_worktree feat/test-1 $base_branch is called
             #
@@ -300,7 +300,7 @@ function add_worktree --description "Add a worktree for a branch"
             return 1
 
         else if git show-ref --quiet --verify "refs/remotes/$branch_name"
-            # GIVEN feat/test-1 exists on a other remote
+            # GIVEN feat/test-1 DOES exist on another remote
             #
             # WHEN add_worktree feat/test-1 $base_branch is called
             #
@@ -409,6 +409,7 @@ function __fish_add_worktree_positional_arg_count
 end
 
 # Helper function to check if we are completing positional argument N
+# @fish-lsp-disable-next-line 4004
 function __fish_add_worktree_is_nth_positional_arg
     set -l n $argv[1]
     if test -z "$n"
@@ -428,6 +429,7 @@ complete -c add_worktree -n '__fish_add_worktree_is_nth_positional_arg 1' -f -a 
 # Completion for the second positional argument (base_branch)
 complete -c add_worktree -n '__fish_add_worktree_is_nth_positional_arg 2' -f -a '(git for-each-ref --format="%(refname:strip=2)" refs/heads/ refs/remotes/)'
 
+# @fish-lsp-disable-next-line 4004
 function get_pr_worktree --description "Fetch a PR from GitHub and create a worktree for it"
     if test (count $argv) -eq 0
         echo "Usage: get_pr_worktree <search_query>"
@@ -455,7 +457,7 @@ function get_pr_worktree --description "Fetch a PR from GitHub and create a work
 
 
 {{.body}}" | bat --style=auto --color always --wrap never --paging never --language Markdown
-        ' --preview-window="right:70%:nowrap" --ansi | awk '{print $1}')
+        ' --preview-window="right:70%:nowrap" --ansi | awk "{print \$1}")
     end
 
     if test -z "$pr_number"
@@ -469,18 +471,22 @@ function get_pr_worktree --description "Fetch a PR from GitHub and create a work
 
     # Extract branch name, repository name, and owner
     set -l branch_name (echo $pr_info | cut -d ' ' -f1)
+    if test -z "$branch_name"
+        echo "No branch name found in PR info."
+        return 1
+    end
     set -l repo_name (echo $pr_info | cut -d ' ' -f2)
+    if test -z "$repo_name"
+        echo "No repository name found in PR info."
+        return 1
+    end
     set -l repo_owner (echo $pr_info | cut -d ' ' -f3)
-
-    # Validate extracted information
-    for var in branch_name repo_name repo_owner
-        if not set -q $var
-            echo "$var is empty"
-            return 1
-        end
+    if test -z "$repo_owner"
+        echo "No repository owner found in PR info."
+        return 1
     end
 
-    set -l upstream_remote_owner (git remote get-url upstream | awk -F'[:/]' '{print $2}')
+    set -l upstream_remote_owner (git remote get-url upstream | awk -F'[:/]' "{print \$2}")
 
     if test $repo_owner = $upstream_remote_owner
         echo "PR is from the upstream repository. Setting the remote to 'upstream'..."
@@ -497,6 +503,7 @@ function get_pr_worktree --description "Fetch a PR from GitHub and create a work
     add_worktree "$repo_owner/$branch_name"
 end
 
+# @fish-lsp-disable-next-line 4004
 function remove_worktree --description "Remove a worktree using fzf and delete the associated branch"
     set -l worktree (git worktree list -v | fzf --no-preview --ansi)
 
@@ -505,7 +512,8 @@ function remove_worktree --description "Remove a worktree using fzf and delete t
         return 1
     end
 
-    set -l worktree_path (echo $worktree | awk '{print $1}')
+    set -l worktree_path (echo $worktree | awk "{print \$1}")
+    # @fish-lsp-disable-next-line 2001
     set -l worktree_branch (echo $worktree | awk '{
         last = $NF
         gsub(/^[[(]|[])]$/, "", last)
@@ -557,7 +565,7 @@ function remove_worktree --description "Remove a worktree using fzf and delete t
     # we need to string join the output of ls -A to check if it's empty
     # because ls -A will output the files space separated which test -z
     # will interpret as a list of arguments
-    while test -z (ls -A $current_dir | string join ' ')
+    while test -z "$(ls -A $current_dir | string join ' ')"
         set -l parent_dir (dirname $current_dir)
         rmdir $current_dir
         set current_dir $parent_dir
