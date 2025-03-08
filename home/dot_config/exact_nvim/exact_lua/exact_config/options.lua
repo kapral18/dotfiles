@@ -63,6 +63,7 @@ vim.opt.jumpoptions = "clean"
 vim.opt.fixendofline = false
 
 vim.opt.conceallevel = 0
+vim.opt.number = true -- Show line numbers
 vim.opt.relativenumber = false -- Show relative line numbers
 vim.opt.wrap = false -- Dislable line wrap
 vim.opt.breakindent = true -- Keep indentation on wrapped lines

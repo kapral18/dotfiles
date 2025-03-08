@@ -2,6 +2,7 @@ return {
   {
     "folke/snacks.nvim",
     opts = {
+      bigfile = { enabled = false },
       indent = { enabled = false },
       input = { enabled = false },
       notifier = { enabled = true },

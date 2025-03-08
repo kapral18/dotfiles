@@ -72,11 +72,12 @@ return {
           -- keys is a table of tables, where each table is a keymap, with 1st position being the key
           -- and the 2nd position being the value
           -- find me the keymap that has the key "<leader>CR"
-          local found = nil
+          local found
           for _, keymap in ipairs(keys) do
             if keymap[1] == "<leader>cR" then
               -- print the value of the keymap
               found = keymap
+              break
             end
           end
 
@@ -144,23 +145,39 @@ return {
     opts = {
       settings = {
         code_lens = "off",
-        complete_function_calls = true,
+        complete_function_calls = false,
         include_completions_with_insert_text = true,
         separate_diagnostic_server = true,
         publish_diagnostic_on = "insert_leave",
         tsserver_path = nil,
-        tsserver_max_memory = 20000,
-        tsserver_format_options = {},
+        tsserver_max_memory = 32000,
+        tsserver_format_options = {
+          allowIncompleteCompletions = false,
+        },
         tsserver_file_preferences = {
-          completions = { completeFunctionCalls = true },
-          init_options = { preferences = { disableSuggestions = true } },
+          completions = { completeFunctionCalls = false },
+          includeInlayParameterNameHints = "none",
+          includeCompletionsForModuleExports = true,
+          init_options = {
+            preferences = {
+              disableSuggestions = true,
+            },
+          },
           importModuleSpecifierPreference = "project-relative",
           jsxAttributeCompletionStyle = "braces",
         },
         tsserver_locale = "en",
         disable_member_code_lens = true,
+        jsx_close_tag = { enable = false },
       },
-      root_dir = util.root_pattern(".git", "yarn.lock", "package-lock.json"),
+      root_dir = util.root_pattern(
+        ".git",
+        "yarn.lock",
+        "package-lock.json",
+        "pnpm-lock.yaml",
+        "tsconfig.json",
+        "jsconfig.json"
+      ),
     },
   },
   {

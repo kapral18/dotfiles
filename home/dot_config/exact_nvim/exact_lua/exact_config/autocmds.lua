@@ -10,7 +10,7 @@ aucmd({ "FileType" }, {
   group = "k18",
   pattern = { "markdown" },
   callback = function()
-    vim.wo.spell = true
+    vim.opt_local.wrap = false
   end,
 })
 

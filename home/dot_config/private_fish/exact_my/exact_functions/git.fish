@@ -54,7 +54,7 @@ end
 
 function pull_rebase --description 'Pull the latest changes from the remote and rebase'
     set -l current_branch (git branch --show-current)
-    set -l fork_upstream (git reflog show $current_branch | grep 'branch: Created from' | grep -v HEAD | awk '{print $NF}')
+    set -l fork_upstream (git reflog show $current_branch | grep 'branch: Created from' | grep -v 'Create from HEAD' | awk "{print \$NF}")
 
     if test -z "$fork_upstream"
         echo "Could not find the forked upstream branch"
