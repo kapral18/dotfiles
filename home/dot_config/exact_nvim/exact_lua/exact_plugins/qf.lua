@@ -47,6 +47,15 @@ return {
         end,
         desc = "Exclude Quickfix Items by Pattern",
       },
+      {
+        "dd",
+        function()
+          local qf = require("plugins-local.qf")
+          qf.remove_qf_item()
+        end,
+        desc = "Remove Quickfix Item",
+        ft = { "qf" },
+      },
     },
   },
 }

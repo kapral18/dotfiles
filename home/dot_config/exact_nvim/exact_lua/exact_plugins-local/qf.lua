@@ -24,4 +24,24 @@ M.filter_qf_items_by_pattern = function(pattern, exclude)
   vim.fn.setqflist(new_list, "r")
 end
 
+M.remove_qf_item = function()
+  local curqfidx = vim.fn.line(".")
+  local qfall = vim.fn.getqflist()
+
+  -- Return if there are no items to remove
+  if #qfall == 0 then
+    return
+  end
+
+  -- Remove the item from the quickfix list
+  table.remove(qfall, curqfidx)
+  vim.fn.setqflist(qfall, "r")
+
+  -- If not at the end of the list, stay at the same index, otherwise, go one up
+  local new_idx = curqfidx <= #qfall and curqfidx or math.max(curqfidx - 1, 1)
+
+  -- Set the cursor position directly in the quickfix window
+  vim.api.nvim_win_set_cursor(0, { new_idx, 0 })
+end
+
 return M
