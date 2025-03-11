@@ -16,7 +16,7 @@ function venv --argument-names cmd --description "Manage Python virtual environm
         case "" -h --help
             _venv_help
 
-        case new
+        case create
             # Check if asdf is installed
             if not type -q asdf
                 echo "Error: 'asdf' is not installed or not in PATH."
@@ -24,27 +24,34 @@ function venv --argument-names cmd --description "Manage Python virtual environm
             end
 
             # Get a Python version from asdf
-            set -l python_list (asdf list python)
+            set python_list (asdf list python)
             if test -z "$python_list"
                 echo "Error: No Python versions installed under asdf."
                 return 1
             end
 
-            set -l python_version (echo $python_list | fzf)
+            # we need to xargs -n1 to split the list back into lines
+            set python_version (echo $python_list | xargs -n1 | tr -d '*' | fzf)
             if test -z "$python_version"
                 echo "No Python version selected."
                 return 1
             end
 
             # Check that the selected Python version is installed
-            set -l python_bin asdf which python "$python_version"
-            if not test -x "$python_bin"
-                echo "Error: Python $python_version is not installed or not executable."
+            set python_version_path (asdf where python "$python_version")
+            if test -z "$python_version_path"
+                echo "Error: Python $python_version is not installed."
+                return 1
+            end
+
+            set python_bin "$python_version_path/bin/python"
+            if not test -f "$python_bin"
+                echo "Error: Python $python_version is not installed"
                 return 1
             end
 
             # Derive the venv name from the current directory
-            set -l venv_name (basename "$PWD" | tr . -)
+            set venv_name (basename "$PWD" | tr . -)
             echo "Creating virtual environment '$venv_name' using Python $python_version ..."
 
             # Create and activate the virtual environment
@@ -53,20 +60,29 @@ function venv --argument-names cmd --description "Manage Python virtual environm
 
         case activate
             # Ensure there are venvs to activate
-            set -l venv_list (ls "$HOME/.virtualenvs")
+            set venv_list (ls "$HOME/.virtualenvs")
             if test -z "$venv_list"
                 echo "No virtual environments found."
                 return 1
             end
 
             # Select a venv with fzf
-            set -l venv_name (echo $venv_list | fzf)
+            set venv_name (echo $venv_list | fzf)
             if test -z "$venv_name"
                 echo "No virtual environment selected."
                 return 1
             end
 
             _venv_activate "$venv_name"
+
+        case list
+            set venv_list (ls "$HOME/.virtualenvs")
+            if test -z "$venv_list"
+                echo "No virtual environments found."
+            else
+                echo "Virtual environments:"
+                echo "$venv_list"
+            end
 
         case deactivate
             if test -n "$VIRTUAL_ENV"
@@ -78,14 +94,14 @@ function venv --argument-names cmd --description "Manage Python virtual environm
 
         case delete
             # Ensure there are venvs to delete
-            set -l venv_list (ls "$HOME/.virtualenvs")
+            set venv_list (ls "$HOME/.virtualenvs")
             if test -z "$venv_list"
                 echo "No virtual environments found."
                 return 1
             end
 
             # Pick a venv with fzf
-            set -l venv_name (echo $venv_list | fzf)
+            set venv_name (echo $venv_list | fzf)
             if test -z "$venv_name"
                 echo "No virtual environment selected."
                 return 1
@@ -115,7 +131,7 @@ function _venv_help
     echo "Usage: venv [COMMAND]"
     echo ""
     echo "Commands:"
-    echo "  new        Create a new virtual environment (requires 'asdf')"
+    echo "  create     Create a new virtual environment (requires 'asdf')"
     echo "  activate   Select and activate a virtual environment"
     echo "  deactivate Deactivate the current virtual environment"
     echo "  delete     Delete a virtual environment"
@@ -129,8 +145,8 @@ end
 # Activates an existing virtual environment by name.
 ##
 function _venv_activate --argument-names venv_name
-    set -l venv_path "$HOME/.virtualenvs/$venv_name"
-    if test -d "$venv_path" -a -x "$venv_path/bin/activate.fish"
+    set venv_path "$HOME/.virtualenvs/$venv_name"
+    if test -f "$venv_path/bin/activate.fish"
         echo "Activating virtual environment '$venv_name' ..."
         source "$venv_path/bin/activate.fish"
     else
@@ -141,13 +157,12 @@ end
 ##
 # __auto_venv
 # Automatically activates/deactivates a virtual environment based on the current directory.
-# Add this to your config if you want the auto-activation behavior.
 ##
 function __auto_venv --on-variable PWD --description "Automatically manage Python virtual environments based on directory"
-    set -l venv_name (basename "$PWD" | tr . -)
-    set -l venv_path "$HOME/.virtualenvs/$venv_name"
+    set venv_name (basename "$PWD" | tr . -)
+    set venv_path "$HOME/.virtualenvs/$venv_name"
 
-    if test -d "$venv_path" -a -x "$venv_path/bin/activate.fish"
+    if test -f "$venv_path/bin/activate.fish"
         # Activate if not already active
         if test "$VIRTUAL_ENV" != "$venv_path"
             echo "Auto-activating virtual environment '$venv_name' ..."
@@ -166,7 +181,7 @@ end
 # Command completions
 ##
 complete -c venv -l help -d "Show help"
-complete -c venv -a new -d "Create a new virtual environment"
+complete -c venv -a create -d "Create a new virtual environment"
 complete -c venv -a activate -d "Select and activate a virtual environment"
 complete -c venv -a deactivate -d "Deactivate the current virtual environment"
 complete -c venv -a delete -d "Delete a virtual environment"
