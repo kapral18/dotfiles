@@ -95,49 +95,6 @@ return {
             desc = "Rename File",
             buffer = true,
           }
-
-          vim.api.nvim_create_autocmd("LspAttach", {
-            group = vim.api.nvim_create_augroup("k18.tstools", {}),
-            desc = "TSTools Keymaps Override",
-            callback = function(ev)
-              local client_id = ev.data.client_id
-
-              if not client_id then
-                return
-              end
-
-              local client = vim.lsp.get_client_by_id(ev.data.client_id)
-
-              if not client then
-                return
-              end
-
-              if client.name ~= "typescript-tools" then
-                return
-              end
-
-              -- let eslint/prettier handle formatting
-              client.server_capabilities.documentFormattingProvider = false
-              client.server_capabilities.documentRangeFormattingProvider = false
-            end,
-          })
-
-          -- deep merge the opts with the new object
-          return vim.tbl_deep_extend("force", opts, {
-            -- fixes issues with eslint format error when too nested folders
-            -- fixed in neovim v0.11
-            -- https://github.com/neovim/neovim/issues/26520#issuecomment-2338591652
-            capabilities = {
-              workspace = {
-                didChangeWatchedFiles = {
-                  dynamicRegistration = true,
-                },
-              },
-              textDocument = {
-                formatting = { dynamicRegistration = false },
-              },
-            },
-          })
         end,
       },
     },
@@ -170,14 +127,7 @@ return {
         disable_member_code_lens = true,
         jsx_close_tag = { enable = false },
       },
-      root_dir = util.root_pattern(
-        ".git",
-        "yarn.lock",
-        "package-lock.json",
-        "pnpm-lock.yaml",
-        "tsconfig.json",
-        "jsconfig.json"
-      ),
+      root_dir = util.root_pattern(".git", "yarn.lock", "package-lock.json", "pnpm-lock.yaml"),
     },
   },
   {

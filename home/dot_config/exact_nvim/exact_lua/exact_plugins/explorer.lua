@@ -95,6 +95,7 @@ return {
         },
       },
       window = {
+        position = "float",
         width = 50,
         mappings = {
           ["<leader>nf"] = "find_in_dir",
