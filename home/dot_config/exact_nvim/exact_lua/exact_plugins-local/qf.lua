@@ -4,7 +4,7 @@ local M = {}
 ---@param pattern string
 ---@param exclude? boolean - exclude items that match the pattern
 ---@return nil
-M.filter_qf_items_by_pattern = function(pattern, exclude)
+function M.filter_qf_items_by_pattern(pattern, exclude)
   -- Get the current quickfix list
   local qf_list = vim.fn.getqflist()
 
@@ -24,7 +24,7 @@ M.filter_qf_items_by_pattern = function(pattern, exclude)
   vim.fn.setqflist(new_list, "r")
 end
 
-M.remove_qf_item = function()
+function M.remove_qf_item()
   local curqfidx = vim.fn.line(".")
   local qfall = vim.fn.getqflist()
 

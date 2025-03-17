@@ -71,8 +71,12 @@ return {
       border = {
         enable = true,
       },
-      detached = true,
-      height = 30,
+      list = {
+        position = "left",
+        width = 50,
+      },
+      detached = false,
+      height = 40,
       use_trouble_qf = false,
       hooks = {
         before_open = function(results, open, jump, method)

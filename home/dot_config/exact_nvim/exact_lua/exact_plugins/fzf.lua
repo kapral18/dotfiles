@@ -109,6 +109,20 @@ return {
         desc = "Resume Picker List",
       },
       {
+        "<leader>ss",
+        function()
+          vim.lsp.buf.document_symbol()
+        end,
+        desc = "Document Symbols",
+      },
+      {
+        "<leader>sS",
+        function()
+          vim.lsp.buf.workspace_symbol()
+        end,
+        desc = "Workspace Symbols",
+      },
+      {
         "<leader>sw",
         function()
           live_grep_with_patterns(vim.fn.expand("<cword>"), {

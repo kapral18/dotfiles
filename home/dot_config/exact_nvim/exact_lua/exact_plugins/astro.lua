@@ -1,7 +1,7 @@
 return {
   {
     "nvim-treesitter/nvim-treesitter",
-    opts = { ensure_installed = { "astro" } },
+    opts = { ensure_installed = { "astro", "css" } },
   },
   {
     "neovim/nvim-lspconfig",
@@ -10,18 +10,19 @@ return {
         astro = {},
       },
     },
-    dependencies = {
-      "typescript-tools.nvim",
-      opts = function(_, opts)
-        opts.settings = opts.settings or {}
-        opts.settings.tsserver = opts.settings.tsserver or {}
-        opts.settings.tsserver.plugins = opts.settings.tsserver.plugins or {}
-        opts.settings.tsserver.plugins = vim.list_extend(opts.settings.tsserver.plugins, {
-          vim.fn.stdpath("data") .. "/mason/packages/astro-language-server/node_modules/@astrojs/ts-plugin",
-        })
-      end,
-    },
   },
+  -- {
+  --   "neovim/nvim-lspconfig",
+  --   opts = function(_, opts)
+  --     LazyVim.extend(opts.servers.vtsls, "settings.vtsls.tsserver.globalPlugins", {
+  --       {
+  --         name = "@astrojs/ts-plugin",
+  --         location = LazyVim.get_pkg_path("astro-language-server", "/node_modules/@astrojs/ts-plugin"),
+  --         enableForWorkspaceTypeScriptVersions = true,
+  --       },
+  --     })
+  --   end,
+  -- },
   {
     "stevearc/conform.nvim",
     opts = function(_, opts)

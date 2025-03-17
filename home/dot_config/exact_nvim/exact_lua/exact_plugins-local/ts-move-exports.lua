@@ -1,4 +1,8 @@
-local ts_tools_api = require("typescript-tools.api")
+local exists, ts_tools_api = pcall(require, "typescript-tools.api")
+
+if not exists then
+  return
+end
 
 local M = {}
 
