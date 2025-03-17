@@ -101,7 +101,6 @@ return {
       end
     end,
   },
-  { "tpope/vim-fugitive" },
   {
     "sindrets/diffview.nvim",
     lazy = false,
@@ -183,25 +182,6 @@ return {
         end
         return line_with_hl
       end,
-    },
-  },
-  {
-    "akinsho/git-conflict.nvim",
-    lazy = false,
-    tag = "v2.1.0",
-    opts = {
-      disable_diagnostics = true,
-      default_mappings = false,
-    },
-    keys = {
-      { "gC0", "<CMD>GitConflictChooseNone<CR>", desc = "Choose None" },
-      { "gCB", "<CMD>GitConflictChooseBoth<CR>", desc = "Choose Both" },
-      { "gCo", "<CMD>GitConflictChooseOurs<CR>", desc = "Choose Ours" },
-      { "gCb", "<CMD>GitConflictChooseBase<CR>", desc = "Choose Base" },
-      { "gCt", "<CMD>GitConflictChooseTheirs<CR>", desc = "Choose Theirs" },
-      { "]x", "<CMD>GitConflictNextConflict<CR>", desc = "Next Conflict" },
-      { "[x", "<CMD>GitConflictPrevConflict<CR>", desc = "Prev Conflict" },
-      { "gCq", "<CMD>GitConflictListQf<CR>", desc = "Show Conflict List in QF" },
     },
   },
 }
