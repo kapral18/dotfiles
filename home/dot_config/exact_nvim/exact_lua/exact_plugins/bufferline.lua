@@ -19,7 +19,7 @@ return {
         return MiniTabline.default_format(buf_id, label) .. suffix
       end,
       -- Whether to show file icons (requires 'mini.icons')
-      show_icons = true,
+      show_icons = false,
       -- Whether to set Vim's settings for tabline (make it always shown and
       -- allow hidden buffers)
       set_vim_settings = true,
