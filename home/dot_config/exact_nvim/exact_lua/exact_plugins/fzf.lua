@@ -13,21 +13,6 @@ local function get_fzf_fn(cmd, opts)
   end
 end
 
-local rg_ignore_glob =
-  "-g '!{node_modules,.next,dist,build,reports,.idea,.vscode,.yarn,.nyc_output,__generated__,reports,storybook-static,*.min.js,*.min.css,junit.xml,bazel-*,data,target,.buildkite,.chromium,.es,.yarn-*}'"
-local fd_ignore_glob =
-  "-E '{node_modules,.next,dist,build,reports,.idea,.vscode,.yarn,.nyc_output,__generated__,reports,storybook-static}/' -E '{*.min.js,*.min.css,junit.xml,bazel-*,data,target,.buildkite,.chromium,.es,.yarn-*}'"
-
-local rg_opts_unrestricted =
-  "--column --line-number --no-heading --color=always --smart-case --max-columns=4096 --hidden --no-ignore -g '!{.git,tsconfig.tsbuildinfo,*.map}'"
-
-local rg_opts = rg_opts_unrestricted .. " " .. rg_ignore_glob
-
-local fd_opts_unrestricted =
-  "--color=never --type f --hidden --no-ignore --follow -E '{.git,tsconfig.tsbuildinfo,*.map}'"
-
-local fd_opts = fd_opts_unrestricted .. " " .. fd_ignore_glob
-
 local function live_grep_with_patterns(initial_search, opts)
   local search_patterns = {
     initial_search,
@@ -75,7 +60,6 @@ return {
       {
         "<leader>i",
         get_fzf_fn("files", {
-          fd_opts = fd_opts_unrestricted,
           cwd = vim.uv.cwd(),
         }),
         desc = "Files",
@@ -92,14 +76,14 @@ return {
       {
         "<leader>sg",
         function()
-          live_grep_with_patterns("", { rg_opts = rg_opts, cwd = vim.uv.cwd() })
+          live_grep_with_patterns("", { cwd = vim.uv.cwd() })
         end,
         desc = "Live Grep",
       },
       {
         "<leader>sG",
         function()
-          live_grep_with_patterns("", { rg_opts = rg_opts_unrestricted, cwd = vim.uv.cwd() })
+          live_grep_with_patterns("", { cwd = vim.uv.cwd() })
         end,
         desc = "Live Grep (+ ignored)",
       },
@@ -126,7 +110,6 @@ return {
         "<leader>sw",
         function()
           live_grep_with_patterns(vim.fn.expand("<cword>"), {
-            rg_opts = rg_opts,
             cwd = vim.uv.cwd(),
           })
         end,
@@ -136,7 +119,6 @@ return {
         "<leader>sW",
         function()
           live_grep_with_patterns(vim.fn.expand("<cword>"), {
-            rg_opts = rg_opts_unrestricted,
             cwd = vim.uv.cwd(),
           })
         end,
@@ -146,7 +128,6 @@ return {
         "<leader>sw",
         function()
           live_grep_with_patterns(vim.trim(require("fzf-lua").utils.get_visual_selection()), {
-            rg_opts = rg_opts .. " --multiline",
             no_esc = false,
             cwd = vim.uv.cwd(),
           })
@@ -158,7 +139,6 @@ return {
         "<leader>sW",
         function()
           live_grep_with_patterns(vim.trim(require("fzf-lua").utils.get_visual_selection()), {
-            rg_opts = rg_opts_unrestricted .. " --multiline",
             no_esc = false,
             cwd = vim.uv.cwd(),
           })
@@ -218,8 +198,6 @@ return {
         files = {
           previewer = "bat",
           prompt = "Files❯ ",
-          rg_opts = rg_opts,
-          fd_opts = fd_opts,
           fzf_opts = { ["--ansi"] = false },
           actions = {
             ["default"] = open_file,
@@ -236,7 +214,6 @@ return {
           previewer = "bat",
           prompt = "Live Grep❯ ",
           input_prompt = "Grep❯ ",
-          rg_opts = rg_opts,
           actions = {
             ["ctrl-q"] = actions.file_sel_to_qf,
             ["ctrl-y"] = function(selected)
