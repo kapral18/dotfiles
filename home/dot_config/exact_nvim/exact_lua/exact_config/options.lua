@@ -3,22 +3,181 @@
 
 table.unpack = table.unpack or unpack
 
-function _Get_path_from_cwd()
-  -- Get the full path of the current buffer
+local function _get_path_from_cwd()
   local full_path = vim.fn.expand("%:p")
-  -- Get the current working directory
+  if full_path == "" then
+    return nil, nil
+  end -- No path
+
   local cwd = vim.fn.getcwd()
-  -- Remove the cwd from the full path (+2 to account for the trailing slash)
-  local relative_path = full_path:sub(#cwd + 2)
-  return relative_path
+  local path_sep = package.config:sub(1, 1) -- '/' or '\'
+  if cwd:sub(-1) ~= path_sep then
+    cwd = cwd .. path_sep
+  end
+
+  local is_in_cwd = (full_path:find(cwd, 1, true) == 1)
+  local relative_path
+
+  if is_in_cwd then
+    relative_path = full_path:sub(#cwd + 1)
+    if relative_path == "" then
+      relative_path = "."
+    end -- Is CWD root
+  else
+    -- Outside CWD: Use path relative to root/drive as default
+    relative_path = vim.fn.fnamemodify(full_path, ":.")
+    -- Optional: Could fallback to filename if relative-to-root is still absolute
+  end
+  return relative_path, is_in_cwd
 end
 
--- Set the window bar (top bar of each window)
--- %=     : right-align the following items
--- %m     : shows modified flag [+]
--- [%{&filetype}] : shows file type in square brackets
--- %{%v:lua._Get_path_from_cwd()%} : calls Lua function to show relative path
-vim.opt.winbar = "%=%m [%{&filetype}] %{%v:lua._Get_path_from_cwd()%}"
+local function get_bufferline_component_count(num_total_components, is_in_cwd)
+  if num_total_components == 0 then
+    return 0
+  end
+
+  local count = 0
+  if is_in_cwd then
+    -- Bufferline shows filename + up to 2 parents = max 3 components
+    count = math.min(num_total_components, 3)
+  else
+    -- If outside CWD, assume bufferline shows only filename effectively
+    -- Adjust this assumption if your bufferline logic differs for non-CWD files
+    count = math.min(num_total_components, 1) -- Just filename assumption
+  end
+  return count
+end
+
+function Get_winbar_remainder_path()
+  -- 1. Get path info
+  local relative_path, is_in_cwd = _get_path_from_cwd()
+  if not relative_path or relative_path == "." then
+    return "" -- No path or is CWD root (handled by bufferline)
+  end
+
+  local path_sep = package.config:sub(1, 1)
+  local path_components = vim.split(relative_path, path_sep, { trimempty = true })
+  local num_total_components = #path_components
+
+  if num_total_components == 0 then
+    return "" -- Path was likely just "/" or empty after trim
+  end
+
+  -- 2. Determine components for winbar
+  local bufferline_count = get_bufferline_component_count(num_total_components, is_in_cwd)
+  local winbar_end_index = num_total_components - bufferline_count
+
+  if winbar_end_index <= 0 then
+    return "" -- All components covered by bufferline, winbar is empty
+  end
+
+  -- Extract components specifically for the winbar
+  local winbar_components = {}
+  for i = 1, winbar_end_index do
+    table.insert(winbar_components, path_components[i])
+  end
+
+  if #winbar_components == 0 then
+    return "" -- Should be redundant due to winbar_end_index check, but safe
+  end
+
+  -- 3. Define constants and get available width
+  local available_width = vim.fn.winwidth(0)
+  local trailing_sep = path_sep -- Separator *after* winbar content
+  local ellipsis = "..." -- Ellipsis for *leading* truncation within winbar part
+  local trailing_sep_width = vim.fn.strdisplaywidth(trailing_sep)
+  local ellipsis_width = vim.fn.strdisplaywidth(ellipsis)
+
+  -- Minimal space needed is for the trailing separator (if content exists)
+  -- Or potentially just the ellipsis if content gets fully truncated
+  if available_width < 1 then
+    return ""
+  end -- Practically no space
+
+  -- 4. Check if full winbar components fit *with* the trailing separator
+  local full_winbar_string = table.concat(winbar_components, path_sep)
+  local full_winbar_width = vim.fn.strdisplaywidth(full_winbar_string)
+
+  if full_winbar_width + trailing_sep_width <= available_width then
+    -- The whole winbar part fits, return it with the trailing separator
+    return full_winbar_string .. trailing_sep
+  end
+
+  -- 5. Truncation is needed. Calculate max width for content *between* ellipsis and trailing sep
+  local max_content_width = available_width - ellipsis_width - trailing_sep_width
+
+  -- If max_content_width is negative, only ellipsis/separator might fit
+  if max_content_width < 0 then
+    if ellipsis_width + trailing_sep_width <= available_width then
+      return ellipsis .. trailing_sep -- Fits ".../"
+    elseif ellipsis_width <= available_width then
+      return ellipsis -- Fits "..."
+    else
+      return "" -- Not even ellipsis fits
+    end
+  end
+
+  -- Find the rightmost components that fit within max_content_width
+  local truncated_content = ""
+  local current_content_width = 0
+  for i = #winbar_components, 1, -1 do
+    local component = winbar_components[i]
+    local component_width = vim.fn.strdisplaywidth(component)
+    -- Separator *before* this component if content already exists
+    local sep_to_add = (current_content_width > 0) and path_sep or ""
+    local sep_width = vim.fn.strdisplaywidth(sep_to_add)
+
+    if component_width + sep_width + current_content_width <= max_content_width then
+      -- Prepend component and separator
+      truncated_content = component .. sep_to_add .. truncated_content
+      current_content_width = current_content_width + component_width + sep_width
+    else
+      -- Cannot add this component (from the left); stop building
+      break
+    end
+  end
+
+  -- 6. Construct final string based on truncated_content
+  if truncated_content ~= "" then
+    -- We managed to fit some components
+    return ellipsis .. truncated_content .. trailing_sep
+  else
+    -- No components fit within max_content_width
+    -- Fallback to just ellipsis + separator or just ellipsis if possible
+    if ellipsis_width + trailing_sep_width <= available_width then
+      return ellipsis .. trailing_sep
+    elseif ellipsis_width <= available_width then
+      return ellipsis
+    else
+      return ""
+    end
+  end
+end
+
+-- ==========================================================================
+-- Configuration: Set winbar option and autocommands
+-- Place this where your Neovim options are set (e.g., your init.lua)
+-- ==========================================================================
+
+-- Ensure the Lua functions above are defined before this line
+
+-- Set the winbar option using dynamic evaluation '%{...%}' and right-alignment '%='
+vim.opt.winbar = "%{%v:lua.Get_winbar_remainder_path()%}%="
+
+-- Autocommands setup to refresh winbar on relevant events
+local winbar_update_group = vim.api.nvim_create_augroup("WinbarUpdate", { clear = true })
+vim.api.nvim_create_autocmd({ "WinResized", "BufEnter", "WinEnter", "DirChanged" }, {
+  group = winbar_update_group,
+  pattern = "*",
+  desc = "Update winbar remainder path",
+  callback = function()
+    -- Force re-evaluation by re-assigning the option to itself.
+    -- Neovim's expression evaluation will call the Lua function again.
+    vim.opt.winbar = vim.opt.winbar
+    -- Optional: If updates seem delayed, uncommenting this might help, but try without first.
+    -- vim.cmd('redrawstatus!')
+  end,
+})
 
 -- Set the session options to save and restore
 -- 'buffers'  : save and restore buffers
@@ -61,6 +220,9 @@ vim.opt.jumpoptions = "clean"
 -- Useful for maintaining exact file contents without modifications
 -- Some file formats or systems don't require trailing newlines
 vim.opt.fixendofline = false
+
+-- overriding lazyvim statuscolumn
+vim.opt.statuscolumn = [[]]
 
 vim.opt.conceallevel = 0
 vim.opt.number = true -- Show line numbers

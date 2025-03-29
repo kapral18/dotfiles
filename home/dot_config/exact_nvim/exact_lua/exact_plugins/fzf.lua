@@ -13,6 +13,13 @@ local function get_fzf_fn(cmd, opts)
   end
 end
 
+local function get_telescope_fn(cmd, opts)
+  opts = opts or {}
+  return function()
+    require("telescope.builtin")[cmd](opts)
+  end
+end
+
 local function live_grep_with_patterns(initial_search, opts)
   local search_patterns = {
     initial_search,
@@ -47,9 +54,31 @@ end
 return {
   {
     "ibhagwan/fzf-lua",
-    dependencies = { "nvim-tree/nvim-web-devicons" },
+    dependencies = {
+      { "nvim-tree/nvim-web-devicons" },
+      { "nvim-telescope/telescope.nvim" },
+      {
+        "leath-dub/snipe.nvim",
+        opts = {
+          navigate = {
+            cancel_snipe = "q",
+          },
+        },
+      },
+    },
     keys = {
-      { "<leader>,", false },
+      {
+        "<leader>,",
+        false,
+      },
+      {
+        "<leader>sb",
+        function()
+          require("snipe").open_buffer_menu()
+        end,
+        desc = "Open Snipe buffer menu",
+      },
+      { "<leader>:", "<cmd>Telescope command_history<cr>", desc = "Command History" },
       {
         "<leader><space>",
         get_fzf_fn("files", {
@@ -67,7 +96,8 @@ return {
       { "<leader>fr", get_fzf_fn("oldfiles", {
         cwd = vim.uv.cwd(),
       }), desc = "Recent (cwd)" },
-      { "<leader>fR", get_fzf_fn("oldfiles"), { desc = "Recent (all)" } },
+      { "<leader>fr", get_telescope_fn("oldfiles", { cwd = vim.uv.cwd() }), desc = "Recent (cwd)" },
+      { "<leader>fR", "<cmd>Telescope oldfiles<cr>", desc = "Recent (all)" },
       {
         "<leader>/",
         get_fzf_fn("lgrep_curbuf"),
@@ -94,17 +124,13 @@ return {
       },
       {
         "<leader>ss",
-        function()
-          vim.lsp.buf.document_symbol()
-        end,
-        desc = "Document Symbols",
+        get_telescope_fn("lsp_document_symbols"),
+        desc = "Goto Symbol",
       },
       {
         "<leader>sS",
-        function()
-          vim.lsp.buf.workspace_symbol()
-        end,
-        desc = "Workspace Symbols",
+        get_telescope_fn("lsp_dynamic_workspace_symbols"),
+        desc = "Goto Symbol (Workspace)",
       },
       {
         "<leader>sw",

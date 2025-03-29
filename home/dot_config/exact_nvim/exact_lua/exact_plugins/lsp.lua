@@ -142,35 +142,4 @@ return {
       disable_lsp_decorations = true,
     },
   },
-  {
-    "linrongbin16/lsp-progress.nvim",
-    opts = {},
-    dependencies = {
-      {
-        "nvim-lualine/lualine.nvim",
-        config = function(_, opts)
-          local new_opts = {
-            sections = {
-              lualine_y = {
-                function()
-                  -- invoke `progress` here.
-                  return require("lsp-progress").progress()
-                end,
-              },
-            },
-          }
-          opts = vim.tbl_deep_extend("force", opts, new_opts)
-          require("lualine").setup(opts)
-
-          -- listen lsp-progress event and refresh lualine
-          vim.api.nvim_create_augroup("lualine_augroup", { clear = true })
-          vim.api.nvim_create_autocmd("User", {
-            group = "lualine_augroup",
-            pattern = "LspProgressStatusUpdated",
-            callback = require("lualine").refresh,
-          })
-        end,
-      },
-    },
-  },
 }

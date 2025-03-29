@@ -13,7 +13,7 @@ return {
         attach_to_untracked = false,
       },
       current_line_blame_formatter = "<author>, <author_time> . <summary>",
-      update_debounce = 1000,
+      update_debounce = 500,
     },
     keys = {
       { "<leader>ghtn", [[:Gitsigns toggle_numhl<CR>]], desc = "Toggle Num Highlight" },

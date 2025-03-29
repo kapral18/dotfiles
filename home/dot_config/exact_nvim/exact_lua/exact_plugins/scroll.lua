@@ -31,16 +31,16 @@ return {
       },
       current_only = true,
       diagnostic = {
-        min_severity = vim.diagnostic.severity.WARN,
+        min_severity = vim.diagnostic.severity.ERROR,
       },
       search = {
-        enabled = false,
+        enable = false,
       },
       gitsigns = {
-        enabled = false,
+        enable = false,
       },
       marks = {
-        enabled = false,
+        enable = false,
       },
     },
   },

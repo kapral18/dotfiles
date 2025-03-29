@@ -20,6 +20,7 @@ return {
       pre_save_cmds = {
         "tabdo Neotree close",
       },
+      use_git_branch = true,
     },
   },
 }
