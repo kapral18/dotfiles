@@ -123,16 +123,6 @@ return {
         desc = "Resume Picker List",
       },
       {
-        "<leader>ss",
-        get_telescope_fn("lsp_document_symbols"),
-        desc = "Goto Symbol",
-      },
-      {
-        "<leader>sS",
-        get_telescope_fn("lsp_dynamic_workspace_symbols"),
-        desc = "Goto Symbol (Workspace)",
-      },
-      {
         "<leader>sw",
         function()
           live_grep_with_patterns(vim.fn.expand("<cword>"), {

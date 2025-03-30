@@ -111,10 +111,15 @@ local M = {
               tsserver = {
                 maxTsServerMemory = 32000,
               },
+              preferences = {
+                includePackageJsonAutoImports = "on",
+                preferTypeOnlyAutoImports = true,
+              },
+              preferGoToSourceDefinition = true,
             },
           },
           root_dir = function()
-            return vim.fs.root(0, { ".git", "yarn.lock", "package-lock.json" })
+            return vim.fn.getcwd()
           end,
           keys = {
             {
