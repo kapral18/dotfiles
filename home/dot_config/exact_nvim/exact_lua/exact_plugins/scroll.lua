@@ -1,9 +1,10 @@
 return {
   {
-    "lewis6991/satellite.nvim",
-    opts = {
-      winblend = 0,
-      excluded_filetypes = {
+    "Xuyuanp/scrollbar.nvim",
+    lazy = false,
+    init = function()
+      local group_id = vim.api.nvim_create_augroup("scrollbar_init", { clear = true })
+      vim.g.excluded_filetypes = {
         "NvimTree",
         "TelescopePrompt",
         "alpha",
@@ -28,20 +29,32 @@ return {
         "prompt",
         "startify",
         "telescope",
-      },
-      current_only = true,
-      diagnostic = {
-        min_severity = vim.diagnostic.severity.ERROR,
-      },
-      search = {
-        enable = false,
-      },
-      gitsigns = {
-        enable = false,
-      },
-      marks = {
-        enable = false,
-      },
-    },
+      }
+
+      vim.g.scrollbar_width = 1
+      vim.g.scrollbar_highlight = {
+        head = "Normal",
+        body = "Normal",
+        tail = "Normal",
+      }
+      vim.g.scrollbar_shape = {
+        head = "▲",
+        body = "|",
+        tail = "▼",
+      }
+
+      vim.g.scrollbar_right_offset = 0
+      vim.g.scrollbar_min_size = 3
+      vim.g.scrollbar_max_size = 7
+
+      vim.api.nvim_create_autocmd({ "BufEnter", "WinScrolled", "WinResized" }, {
+        group = group_id,
+        desc = "Show or refresh scrollbar",
+        pattern = { "*" },
+        callback = function()
+          require("scrollbar").show()
+        end,
+      })
+    end,
   },
 }

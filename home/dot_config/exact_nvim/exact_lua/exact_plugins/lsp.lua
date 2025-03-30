@@ -83,6 +83,9 @@ return {
       detached = false,
       height = 40,
       use_trouble_qf = false,
+      folds = {
+        folded = false,
+      },
       hooks = {
         before_open = function(results, open, jump, method)
           local filter = function(arr, fn)
