@@ -21,6 +21,14 @@ return {
       desc = "Run Lua test",
     },
     {
+      "<leader>tu",
+      ft = { "javascript", "typescript", "javascriptreact", "typescriptreact", "tsx" },
+      function()
+        require("plugins-local.run-jest-in-split").run_jest_in_split(true)
+      end,
+      desc = "Run Jest test in split and update snapshots",
+    },
+    {
       "<leader>tq",
       ft = { "javascript", "typescript", "javascriptreact", "typescriptreact", "tsx" },
       function()

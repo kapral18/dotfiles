@@ -318,6 +318,8 @@ vim.opt.syntax = "off"
 
 vim.o.spell = false
 
+vim.o.foldenable = false
+
 vim.lsp.set_log_level("off")
 
 vim.g.snacks_animate = false
