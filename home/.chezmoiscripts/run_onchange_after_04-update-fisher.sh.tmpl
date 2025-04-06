@@ -1,6 +1,6 @@
 #!{{ lookPath "fish" }}
 
-# fish_plugins hash: {{ joinPath .chezmoi.sourceDir "dot_config" "private_fish" "fish_plugins" | include | sha256sum }}
+# fish_plugins hash: {{ joinPath .chezmoi.sourceDir "private_dot_config" "fish" "fish_plugins" | include | sha256sum }}
 if type -q fisher
     echo "--------------------------"
     echo "fisher update: applying..."
