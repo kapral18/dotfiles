@@ -28,6 +28,5 @@ vim.api.nvim_create_autocmd("VimEnter", {
 
 return {
   { "savq/melange-nvim" },
-  { "mhartington/oceanic-next" },
   { "LazyVim/LazyVim", opts = { colorscheme = selected_colorscheme } },
 }

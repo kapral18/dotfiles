@@ -3,7 +3,7 @@
 # assume_yes = true
 
 # Disable specific steps - same options as the command line flag
-#disable = ["system", "emacs"]
+# disable = ["cargo", "rustup", "brew", "flatpak", "snap", "python", "npm", "composer"]
 
 # Ignore failures for these steps
 #ignore_failures = ["powershell"]
@@ -49,7 +49,7 @@
 #display_preamble = false
 
 [git]
-#max_concurrency = 5
+max_concurrency = 10
 # Additional git repositories to pull
 #repos = [
 #    "~/src/*/",

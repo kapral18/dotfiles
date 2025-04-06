@@ -4,7 +4,7 @@ set -euo pipefail
 
 # Track template changes
 # {{ include "asdf_plugins.tmpl" | sha256sum }}
-# {{ include "dot_tool-versions.tmpl" | sha256sum }}
+# {{ include "private_readonly_dot_tool-versions.tmpl" | sha256sum }}
 
 asdf_plugins_template={{ joinPath .chezmoi.sourceDir "asdf_plugins.tmpl" | quote }}
 
@@ -25,7 +25,7 @@ mapfile -t current_plugins < <(asdf plugin list)
 # Create an array to store plugins from template
 declare -a template_plugins
 
-# install asdf plugin. 
+# install asdf plugin.
 #
 # ex: install_plugin plugin_name plugin_url
 #

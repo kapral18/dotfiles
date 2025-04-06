@@ -115,7 +115,6 @@ local M = {
                 includePackageJsonAutoImports = "on",
                 preferTypeOnlyAutoImports = true,
               },
-              preferGoToSourceDefinition = true,
             },
           },
           root_dir = function()

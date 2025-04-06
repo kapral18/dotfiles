@@ -5,7 +5,7 @@ return {
   dependencies = { "nvim-lua/plenary.nvim" },
   keys = {
     {
-      "<leader>tx",
+      "<leader>tt",
       ft = { "javascript", "typescript", "javascriptreact", "typescriptreact", "tsx" },
       function()
         require("plugins-local.run-jest-in-split").run_jest_in_split()
@@ -13,12 +13,28 @@ return {
       desc = "Run Jest test in split",
     },
     {
-      "<leader>tx",
+      "<leader>tt",
       ft = { "lua" },
       function()
         require("plenary.test_harness").test_file(vim.fn.expand("%"))
       end,
       desc = "Run Lua test",
+    },
+    {
+      "<leader>tq",
+      ft = { "javascript", "typescript", "javascriptreact", "typescriptreact", "tsx" },
+      function()
+        require("plugins-local.run-jest-in-split").close_terminal_buffer()
+      end,
+      desc = "Close Jest terminal buffer",
+    },
+    {
+      "<leader>tq",
+      ft = { "lua" },
+      function()
+        require("plenary.test_harness").close_terminal_buffer()
+      end,
+      desc = "Close Lua test terminal buffer",
     },
   },
   config = function()

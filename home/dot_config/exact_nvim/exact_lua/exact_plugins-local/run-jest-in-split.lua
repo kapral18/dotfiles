@@ -61,12 +61,18 @@ M.run_jest_cmd = function(arg)
     cmd = cmd .. " " .. arg
   end
 
+  local original_win = vim.api.nvim_get_current_win()
+
   vim.cmd.vsplit()
   vim.cmd.terminal()
   vim.api.nvim_chan_send(vim.bo.channel, cmd .. "\n")
+
+  -- Return focus to the original window
+  vim.api.nvim_set_current_win(original_win)
 end
 
 M.run_jest_in_split = function()
+  M.close_terminal_buffer()
   local test_name = M.get_current_test_name()
   if test_name then
     local escaped_test_name = M.escape_shell_arg(test_name)
@@ -81,8 +87,19 @@ M.close_terminal_buffer = function()
   local buf = vim.api.nvim_get_current_buf()
 
   if vim.bo[buf].buftype ~= "terminal" then
-    print("This is not a terminal buffer.")
-    return
+    local term_buf = nil
+
+    for _, b in ipairs(vim.api.nvim_list_bufs()) do
+      if vim.bo[b].buftype == "terminal" then
+        term_buf = b
+        buf = b
+        break
+      end
+    end
+
+    if not term_buf then
+      return
+    end
   end
 
   local chan = vim.bo[buf].channel
