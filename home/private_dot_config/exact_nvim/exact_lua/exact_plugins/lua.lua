@@ -11,7 +11,6 @@ return {
           Lua = {
             workspace = {
               checkThirdParty = false,
-              library = nvim_runtime_file,
             },
             completion = {
               callSnippet = "Replace",
