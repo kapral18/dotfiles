@@ -87,21 +87,31 @@ M.run_jest_cmd = function(arg)
   vim.api.nvim_set_current_win(original_win)
 end
 
----@param shouldUpdateSnapshots boolean
-M.run_jest_in_split = function(shouldUpdateSnapshots)
-  M.close_terminal_buffer()
-  local test_name, test_type = M.get_current_test_name()
+---@param options? {update_snapshots?: boolean, entire_file?: boolean}
+M.run_jest_in_split = function(options)
+  options = options or {}
+  local update_snapshots = options.update_snapshots or false
+  local entireFile = options.entire_file or false
 
-  local update_snapshots_arg = shouldUpdateSnapshots and " --updateSnapshot" or nil
-  if test_name then
-    local escaped_test_name = "'" .. M.escape_shell_arg(test_name) .. (test_type == "describe" and "" or "$") .. "'"
-    local arg = " -t " .. escaped_test_name
-    if update_snapshots_arg then
-      arg = arg .. update_snapshots_arg
-    end
-    M.run_jest_cmd(arg)
-  else
+  M.close_terminal_buffer()
+
+  local update_snapshots_arg = update_snapshots and " --updateSnapshot" or nil
+
+  if entireFile then
     M.run_jest_cmd(update_snapshots_arg)
+  else
+    local test_name, test_type = M.get_current_test_name()
+
+    if test_name then
+      local escaped_test_name = "'" .. M.escape_shell_arg(test_name) .. (test_type == "describe" and "" or "$") .. "'"
+      local arg = " -t " .. escaped_test_name
+      if update_snapshots_arg then
+        arg = arg .. update_snapshots_arg
+      end
+      M.run_jest_cmd(arg)
+    else
+      M.run_jest_cmd(update_snapshots_arg)
+    end
   end
 end
 

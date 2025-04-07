@@ -8,7 +8,7 @@ return {
       "<leader>tt",
       ft = { "javascript", "typescript", "javascriptreact", "typescriptreact", "tsx" },
       function()
-        require("plugins-local.run-jest-in-split").run_jest_in_split(false)
+        require("plugins-local.run-jest-in-split").run_jest_in_split()
       end,
       desc = "Run Jest test in split",
     },
@@ -21,12 +21,35 @@ return {
       desc = "Run Lua test",
     },
     {
+      "<leader>tT",
+      ft = { "javascript", "typescript", "javascriptreact", "typescriptreact", "tsx" },
+      function()
+        require("plugins-local.run-jest-in-split").run_jest_in_split({
+          entire_file = true,
+        })
+      end,
+      desc = "Run Jest file in split",
+    },
+    {
       "<leader>tu",
       ft = { "javascript", "typescript", "javascriptreact", "typescriptreact", "tsx" },
       function()
-        require("plugins-local.run-jest-in-split").run_jest_in_split(true)
+        require("plugins-local.run-jest-in-split").run_jest_in_split({
+          update_snapshots = true,
+        })
       end,
       desc = "Run Jest test in split and update snapshots",
+    },
+    {
+      "<leader>tU",
+      ft = { "javascript", "typescript", "javascriptreact", "typescriptreact", "tsx" },
+      function()
+        require("plugins-local.run-jest-in-split").run_jest_in_split({
+          entire_file = true,
+          update_snapshots = true,
+        })
+      end,
+      desc = "Run Jest file in split and update snapshots",
     },
     {
       "<leader>tq",
