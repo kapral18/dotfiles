@@ -1,23 +1,23 @@
+local testNamePatterns = {
+  it = "it%(",
+  test = "test%(",
+  describe = "describe%(",
+}
+
+local quotePatterns = {
+  '"',
+  "'",
+  "`",
+}
+
 local M = {}
 
 M.match_test_name_from_line = function(line)
-  local testNamePatterns = {
-    "it%(",
-    "test%(",
-    "describe%(",
-  }
-
-  local quotePatterns = {
-    '"',
-    "'",
-    "`",
-  }
-
-  for _, testNamePattern in ipairs(testNamePatterns) do
+  for test_type, testNamePattern in pairs(testNamePatterns) do
     for _, quotePattern in ipairs(quotePatterns) do
       local test_name = string.match(line, "^%s*" .. testNamePattern .. quotePattern .. "(.-)" .. quotePattern)
       if test_name then
-        return test_name
+        return test_name, test_type
       end
     end
   end
@@ -25,26 +25,28 @@ end
 
 M.get_current_test_name = function()
   local current_line = vim.api.nvim_get_current_line()
-  local current_line_test_name = M.match_test_name_from_line(current_line)
+  local current_line_test_name, current_line_test_type = M.match_test_name_from_line(current_line)
 
   if current_line_test_name then
-    return current_line_test_name
+    return current_line_test_name, current_line_test_type
   end
 
   local current_line_number = vim.api.nvim_win_get_cursor(0)[1]
   local lines_from_top_to_current = vim.api.nvim_buf_get_lines(0, 0, current_line_number - 1, false)
 
   local enclosing_test_name = nil
+  local enclosing_test_type = nil
   for i = #lines_from_top_to_current, 1, -1 do
     local line = lines_from_top_to_current[i]
-    local matched_enclosing_test_name = M.match_test_name_from_line(line)
+    local matched_enclosing_test_name, matched_enclosing_test_type = M.match_test_name_from_line(line)
     if matched_enclosing_test_name then
       enclosing_test_name = matched_enclosing_test_name
+      enclosing_test_type = matched_enclosing_test_type
       break
     end
   end
 
-  return enclosing_test_name
+  return enclosing_test_name, enclosing_test_type
 end
 
 ---@param str string
@@ -88,11 +90,11 @@ end
 ---@param shouldUpdateSnapshots boolean
 M.run_jest_in_split = function(shouldUpdateSnapshots)
   M.close_terminal_buffer()
-  local test_name = M.get_current_test_name()
+  local test_name, test_type = M.get_current_test_name()
 
   local update_snapshots_arg = shouldUpdateSnapshots and " --updateSnapshot" or nil
   if test_name then
-    local escaped_test_name = "'" .. M.escape_shell_arg(test_name) .. "$'"
+    local escaped_test_name = "'" .. M.escape_shell_arg(test_name) .. (test_type == "describe" and "" or "$") .. "'"
     local arg = " -t " .. escaped_test_name
     if update_snapshots_arg then
       arg = arg .. update_snapshots_arg

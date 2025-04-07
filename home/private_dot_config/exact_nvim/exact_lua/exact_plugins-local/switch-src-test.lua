@@ -7,8 +7,10 @@ local test_patterns = {
   },
   separator = ".",
   extensions = {
-    ts = { "tsx" },
-    tsx = { "ts" },
+    ts = { "tsx", "js", "jsx" },
+    tsx = { "ts", "jsx", "js" },
+    js = { "jsx", "ts", "tsx" },
+    jsx = { "js", "tsx", "ts" },
     -- Add other extension mappings as needed
   },
 }

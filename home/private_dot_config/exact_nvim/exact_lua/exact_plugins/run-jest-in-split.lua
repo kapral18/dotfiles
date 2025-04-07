@@ -8,7 +8,7 @@ return {
       "<leader>tt",
       ft = { "javascript", "typescript", "javascriptreact", "typescriptreact", "tsx" },
       function()
-        require("plugins-local.run-jest-in-split").run_jest_in_split()
+        require("plugins-local.run-jest-in-split").run_jest_in_split(false)
       end,
       desc = "Run Jest test in split",
     },
