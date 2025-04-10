@@ -14,8 +14,7 @@ return {
         lualine_a = { "branch" },
         lualine_b = {},
         lualine_c = {},
-        lualine_x = {},
-        lualine_y = {
+        lualine_x = {
           -- { "progress", separator = " ", padding = { left = 1, right = 0 } },
           {
             "lsp_status",
@@ -32,6 +31,7 @@ return {
             ignore_lsp = {},
           },
         },
+        lualine_y = {},
         lualine_z = {
           { "location", padding = { left = 0, right = 1 } },
         },
