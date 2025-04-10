@@ -12,6 +12,7 @@ return {
     dependencies = {
       "neovim/nvim-lspconfig",
     },
+    ft = { "fish" },
     config = function()
       require("lspconfig").fish_lsp.setup({
         cmd = { "fish-lsp", "start" },

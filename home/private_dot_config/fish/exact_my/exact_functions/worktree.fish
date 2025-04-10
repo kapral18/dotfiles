@@ -37,8 +37,9 @@ end
 function _remove_worktree_tmux_session
     if test -n "$TMUX"
 
-        set -l wizard_session_proof_branch_name (echo $argv[1] | tr '.' '_')
-        set -l session_name $(tmux list-sessions -F "#{session_name}" | grep -i "$wizard_session_proof_branch_name")
+        set -l worktree_path $argv[1]
+
+        set -l session_name $(tmux list-sessions -F "#{session_name} #{session_path}" | grep -i "$worktree_path" | awk "{print \$1}")
 
         echo "
 
@@ -80,7 +81,6 @@ function add_worktree --description "Add a worktree for a branch"
 
     set -l is_base_branch_specified (test (count $argv) -eq 2; and echo 1; or echo 0)
 
-
     if test "$is_base_branch_specified" -gt 0
         set -l base_branch_split (_get_split_branch_name "$base_branch")
         set -l inferred_base_branch_remote "$base_branch_split[1]"
@@ -92,7 +92,6 @@ function add_worktree --description "Add a worktree for a branch"
     end
 
     set -l worktree_path "$parent_dir/$branch_name"
-
 
     if string match -q -r "\b$inferred_branch_remote\b" -- (git remote)
         git fetch $inferred_branch_remote $inferred_branch_name
@@ -154,7 +153,6 @@ function add_worktree --description "Add a worktree for a branch"
             Created new worktree
             For Local Branch: $inferred_branch_name
             At Path: $worktree_path"
-
 
         else if git show-ref --quiet --verify "refs/heads/$inferred_branch_remote"__"$inferred_branch_name"
             # GIVEN other_upstream__feat/test-1 branch DOES exist locally
@@ -332,7 +330,7 @@ function add_worktree --description "Add a worktree for a branch"
             # GIVEN feat/test-1 DOES exist locally
             #
             # WHEN add_worktree feat/test-2 feat/test-1 is called
-            # 
+            #
             # THEN feat/test-2 branched worktree at feat/test-2 path SHOULD be created from feat/test-1 local branch
 
             git worktree add "$worktree_path" -b "$branch_name" "$base_branch"
@@ -520,7 +518,17 @@ function remove_worktree --description "Remove a worktree using fzf and delete t
         print last
     }')
 
-    zoxide remove $worktree_path
+    # if the worktree_branch is HEAD then it's a detached HEAD
+    # so we stop until HEAD is checked out
+    if test $worktree_branch = HEAD
+        echo "Can't removed worktree at '$worktree_path'. It's in detached HEAD state."
+        return
+    end
+
+    if test $worktree_branch = $(git config --get init.defaultbranch)
+        echo "Can't remove default branch"
+        return
+    end
 
     git worktree remove $worktree_path
 
@@ -530,20 +538,12 @@ function remove_worktree --description "Remove a worktree using fzf and delete t
     set remote_branch (git rev-parse --abbrev-ref $worktree_branch@{upstream} 2>/dev/null)
     set remote (echo $remote_branch | cut -d'/' -f1)
 
-
     # remove the remote if it's not origin or upstream (they are persistent for all worktrees)
     if not test "$remote" = origin; and not test "$remote" = upstream
         # additionally only remove this remote if it isn’t referenced by any existing worktree
         if not string match -q -r "\b$remote\b" -- (git worktree list -v)
             git remote remove $remote
         end
-    end
-
-    # if the worktree_branch is HEAD then it's a detached HEAD
-    # so we don't need to delete the branch
-    if test $worktree_branch = HEAD
-        echo "Removed worktree at '$worktree_path'."
-        return
     end
 
     # check if branch still appears in other worktrees
@@ -553,7 +553,7 @@ function remove_worktree --description "Remove a worktree using fzf and delete t
         git branch -D $worktree_branch
     end
 
-    _remove_worktree_tmux_session $worktree_branch
+    _remove_worktree_tmux_session $worktree_path
 
     # if there are no more worktrees with that remote, remove the remote
 
@@ -570,4 +570,6 @@ function remove_worktree --description "Remove a worktree using fzf and delete t
         rmdir $current_dir
         set current_dir $parent_dir
     end
+
+    zoxide remove $worktree_path
 end
