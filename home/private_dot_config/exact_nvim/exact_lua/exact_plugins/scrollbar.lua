@@ -6,7 +6,7 @@ return {
       "nvim-lualine/lualine.nvim",
       opts = {
         sections = {
-          lualine_y = { "%{noscrollbar#statusline()}" },
+          lualine_y = { "%{noscrollbar#statusline(20,'■','◫',['◧'],['◨'])}" },
         },
         always_show_tabline = false,
       },
