@@ -14,8 +14,13 @@ return {
       },
       current_line_blame_formatter = "<author>, <author_time> . <summary>",
       update_debounce = 500,
+      diff_opts = {
+        algorithm = "histogram",
+        vertical = true,
+      },
     },
     keys = {
+      { "<leader>ghP", [[:Gitsigns preview_hunk<CR>]], desc = "Preview Hunk" },
       { "<leader>ghtn", [[:Gitsigns toggle_numhl<CR>]], desc = "Toggle Num Highlight" },
       { "<leader>ghtl", [[:Gitsigns toggle_linehl<CR>]], desc = "Toggle Line Highlight" },
       { "<leader>ghtw", [[:Gitsigns toggle_word_diff<CR>]], desc = "Toggle Word Diff" },

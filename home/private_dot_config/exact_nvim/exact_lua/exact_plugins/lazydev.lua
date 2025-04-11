@@ -6,7 +6,7 @@ return {
     lazy = false,
     opts = function(_, opts)
       vim.list_extend(opts.library, {
-        { path = vim.env.VIMRUNTIME .. "/lua", words = { "vim%." } },
+        -- { path = vim.env.VIMRUNTIME .. "/lua", words = { "vim%." } },
         { path = "luassert-types/library", words = { "assert" } },
         { path = "busted-types/library", words = { "describe" } },
         {

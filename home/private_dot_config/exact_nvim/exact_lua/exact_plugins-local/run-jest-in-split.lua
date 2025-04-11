@@ -2,9 +2,28 @@ local M = {}
 
 local test_types = { it = true, test = true, describe = true }
 
----@param str string
+local function escape_jest_regex(str)
+  local escapes = {
+    ["\\"] = "\\\\",
+    ["^"] = "\\^",
+    ["$"] = "\\$",
+    ["."] = "\\.",
+    ["|"] = "\\|",
+    ["?"] = "\\?",
+    ["*"] = "\\*",
+    ["+"] = "\\+",
+    ["("] = "\\(",
+    [")"] = "\\)",
+    ["["] = "\\[",
+    ["]"] = "\\]",
+    ["{"] = "\\{",
+    ["}"] = "\\}",
+  }
+  return str:gsub("[\\^$.|?*+()%[%]{}]", escapes)
+end
+
 M.escape_shell_arg = function(str)
-  return str:gsub("['`$\"%%%^%*%+%?%[%]{%}%(%)|]", "\\%0")
+  return "'" .. str:gsub("'", "'\\''") .. "'"
 end
 
 M.get_current_test_name = function()
@@ -16,32 +35,64 @@ M.get_current_test_name = function()
 
   local root = parser:parse()[1]:root()
   local cursor = vim.api.nvim_win_get_cursor(0)
-  local row = cursor[1] - 1 -- TS uses 0-based row
+  local row = cursor[1] - 1
   local col = cursor[2]
+
+  local function get_test_type(node)
+    while node do
+      local node_type = node:type()
+      if node_type == "identifier" then
+        return vim.treesitter.get_node_text(node, bufnr)
+      elseif node_type == "member_expression" then
+        node = node:field("object")[1]
+      else
+        break
+      end
+    end
+    return nil
+  end
+
+  local function process_template(node)
+    local parts = {}
+    for child in node:iter_children() do
+      local child_type = child:type()
+      if child_type == "string_fragment" then
+        local text = vim.treesitter.get_node_text(child, bufnr)
+        table.insert(parts, escape_jest_regex(text))
+      elseif child_type == "template_substitution" then
+        table.insert(parts, ".*")
+      end
+    end
+    return table.concat(parts)
+  end
 
   local node = root:named_descendant_for_range(row, col, row, col)
   while node do
     if node:type() == "call_expression" then
       local fn_node = node:field("function")[1]
-      if fn_node and fn_node:type() == "identifier" then
-        local test_type = vim.treesitter.get_node_text(fn_node, bufnr)
-        if test_types[test_type] then
-          local args = node:field("arguments")[1]
-          if args and args:named_child_count() > 0 then
-            local name_node = args:named_child(0)
+      local test_type = get_test_type(fn_node)
 
-            if not name_node then
-              return nil, nil
-            end
-
-            local name_text = vim.treesitter.get_node_text(name_node, bufnr)
-
-            if name_node:type() == "string" or name_node:type() == "template_string" then
-              name_text = name_text:sub(2, -2)
-            end
-
-            return name_text, test_type
+      if test_type and test_types[test_type] then
+        local args = node:field("arguments")[1]
+        if args and args:named_child_count() > 0 then
+          local name_node = args:named_child(0)
+          if not name_node then
+            return nil, nil
           end
+
+          local name_text
+          local node_type = name_node:type()
+
+          if node_type == "string" then
+            local raw_text = vim.treesitter.get_node_text(name_node, bufnr):sub(2, -2)
+            name_text = escape_jest_regex(raw_text)
+          elseif node_type == "template_string" then
+            name_text = process_template(name_node)
+          else
+            name_text = nil
+          end
+
+          return name_text, test_type
         end
       end
     end
@@ -94,8 +145,8 @@ M.run_jest_in_split = function(options)
   end
 
   local suffix = test_type == "describe" and "" or "$"
-  local escaped_name = M.escape_shell_arg(test_name)
-  local arg = "-t '" .. escaped_name .. suffix .. "'" .. update_arg
+  local pattern = test_name .. suffix
+  local arg = "-t " .. M.escape_shell_arg(pattern) .. update_arg
   M.run_jest_cmd(arg)
 end
 
