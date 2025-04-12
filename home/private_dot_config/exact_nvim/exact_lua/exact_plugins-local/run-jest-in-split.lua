@@ -26,12 +26,11 @@ local function escape_jest_regex(str, is_parametrized)
   end)
 
   if is_parametrized then
-    -- Handle printf format specifiers
+    -- Handle Jest parameter placeholders
     str = str:gsub("%%%%", "__DOUBLE_PERCENT__")
     str = str:gsub("%%[#pidjfso]", ".*")
     str = str:gsub("__DOUBLE_PERCENT__", "%%")
 
-    -- Handle $variable substitution
     str = str:gsub("%$%$", "__DOUBLE_DOLLAR__")
     str = str:gsub("%$[%a#][%.%w]*", ".*")
     str = str:gsub("__DOUBLE_DOLLAR__", "%$")
@@ -39,7 +38,6 @@ local function escape_jest_regex(str, is_parametrized)
 
   -- Handle template substitutions in all tests
   str = str:gsub("%${.-}", ".*")
-
   return str
 end
 
@@ -54,62 +52,66 @@ local function is_each_call(node, bufnr)
   return false
 end
 
-local function get_test_type(node, bufnr)
+local function get_test_name(node, bufnr)
+  local name_node = node:field("arguments")[1]:named_child(0)
+  if not name_node then
+    return nil
+  end
+
+  local node_type = name_node:type()
+  if node_type == "string" then
+    return vim.treesitter.get_node_text(name_node, bufnr):sub(2, -2)
+  elseif node_type == "template_string" then
+    local parts = {}
+    for child in name_node:iter_children() do
+      if child:type() == "string_fragment" then
+        table.insert(parts, vim.treesitter.get_node_text(child, bufnr))
+      end
+    end
+    return table.concat(parts)
+  end
+  return nil
+end
+
+local function get_full_test_context(node, bufnr)
+  local path = {}
   local current_node = node
-  local is_parametrized = false
+  local is_leaf = false
+  local has_parametrized = false
 
   while current_node do
-    if is_each_call(current_node, bufnr) then
-      local object_node = current_node:field("function")[1]:field("object")[1]
-      local test_type = vim.treesitter.get_node_text(object_node, bufnr)
-      return test_type, true
-    end
-
     if current_node:type() == "call_expression" then
-      local fn_node = current_node:field("function")[1]
-      local test_type = vim.treesitter.get_node_text(fn_node, bufnr)
-      if test_types[test_type] then
-        return test_type, false
+      local is_each = is_each_call(current_node, bufnr)
+      local test_type, name, parametrized = nil, nil, false
+
+      if is_each then
+        local parent_call = current_node:parent()
+        if parent_call and parent_call:type() == "call_expression" then
+          name = get_test_name(parent_call, bufnr)
+          test_type = "describe"
+          parametrized = true
+          current_node = parent_call
+        end
+      else
+        local fn_node = current_node:field("function")[1]
+        test_type = vim.treesitter.get_node_text(fn_node, bufnr)
+        name = get_test_name(current_node, bufnr)
+      end
+
+      if test_types[test_type] and name then
+        has_parametrized = has_parametrized or parametrized
+        is_leaf = is_leaf or (test_type == "it" or test_type == "test")
+        table.insert(path, 1, {
+          name = escape_jest_regex(name, parametrized),
+          is_leaf = test_type == "it" or test_type == "test",
+        })
       end
     end
 
     current_node = current_node:parent()
   end
 
-  return nil, false
-end
-
-local function get_test_name_node(node, bufnr)
-  local args = node:field("arguments")[1]
-  if not args then
-    return nil
-  end
-
-  -- Handle parameterized tests: describe.each()('name', ...)
-  if is_each_call(node, bufnr) then
-    local parent_call = node:parent()
-    if parent_call and parent_call:type() == "call_expression" then
-      local parent_args = parent_call:field("arguments")[1]
-      return parent_args:named_child(0)
-    end
-  end
-
-  -- Handle regular tests: describe('name', ...)
-  return args:named_child(0)
-end
-
-local function process_template(node, bufnr, is_parametrized)
-  local parts = {}
-  for child in node:iter_children() do
-    local child_type = child:type()
-    if child_type == "string_fragment" then
-      local text = vim.treesitter.get_node_text(child, bufnr)
-      table.insert(parts, escape_jest_regex(text, is_parametrized))
-    elseif child_type == "template_substitution" then
-      table.insert(parts, ".*")
-    end
-  end
-  return table.concat(parts)
+  return path, has_parametrized, is_leaf
 end
 
 M.get_current_test_name = function()
@@ -125,33 +127,18 @@ M.get_current_test_name = function()
   local col = cursor[2]
 
   local node = root:named_descendant_for_range(row, col, row, col)
-  while node do
-    if node:type() == "call_expression" then
-      local test_type, is_parametrized = get_test_type(node, bufnr)
-      if test_type and test_types[test_type] then
-        local name_node = get_test_name_node(node, bufnr)
-        if not name_node then
-          return nil, nil, is_parametrized
-        end
+  local path, has_parametrized, is_leaf = get_full_test_context(node, bufnr)
 
-        local node_type = name_node:type()
-        local name_text
-
-        if node_type == "string" then
-          local raw_text = vim.treesitter.get_node_text(name_node, bufnr):sub(2, -2)
-          name_text = escape_jest_regex(raw_text, is_parametrized)
-        elseif node_type == "template_string" then
-          name_text = process_template(name_node, bufnr, is_parametrized)
-        else
-          name_text = nil
-        end
-
-        return name_text, test_type, is_parametrized
-      end
-    end
-    node = node:parent()
+  if #path == 0 then
+    return nil, nil, false
   end
-  return nil, nil, false
+
+  local full_path = {}
+  for _, entry in ipairs(path) do
+    table.insert(full_path, entry.name)
+  end
+
+  return table.concat(full_path, " "), is_leaf, has_parametrized
 end
 
 M.escape_shell_arg = function(str)
@@ -217,18 +204,21 @@ M.run_jest_in_split = function(options)
     return
   end
 
-  local test_name, test_type, is_parametrized = M.get_current_test_name()
+  local test_name, is_leaf, is_parametrized = M.get_current_test_name()
   if not test_name then
     M.run_jest_cmd(update_arg)
     return
   end
 
+  -- Construct proper regex pattern
   local pattern
-  if test_type == "describe" then
-    pattern = "^" .. test_name
+  if is_leaf then
+    pattern = "^" .. test_name .. "$"
   else
-    pattern = test_name .. "$"
+    pattern = "^" .. test_name
   end
+
+  pattern = pattern:gsub("%s+", " ") -- Normalize spaces
 
   if is_parametrized then
     show_parametrized_prompt(pattern .. update_arg)
