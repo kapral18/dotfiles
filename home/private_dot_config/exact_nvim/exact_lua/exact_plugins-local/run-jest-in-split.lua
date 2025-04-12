@@ -20,34 +20,32 @@ local function escape_jest_regex(str, is_parametrized)
     ["}"] = "\\}",
   }
 
-  -- Temporary marker for parameterized parts
   local placeholder = "__PARAM_PATTERN__"
 
+  -- Handle template substitutions from non-parameterized tests
+  str = str:gsub("__SUB__", placeholder)
+
   if is_parametrized then
-    -- Phase 1: Replace all parameterized patterns with a marker
-    -- Handle ${...} in template strings
+    -- Handle Jest's parameterized test patterns
+    -- Replace ${...}, %s, $variable with placeholder
     str = str:gsub("%${.-}", placeholder)
 
-    -- Handle Jest's %s/%d style placeholders
     str = str:gsub("%%%%", "__DOUBLE_PERCENT__")
     str = str:gsub("%%[#pidjfso]", placeholder)
     str = str:gsub("__DOUBLE_PERCENT__", "%%")
 
-    -- Handle $variable and $variable.subprop
     str = str:gsub("%$%$", "__DOUBLE_DOLLAR__")
     str = str:gsub("%$[%a#][%.%w]*", placeholder)
     str = str:gsub("__DOUBLE_DOLLAR__", "%$")
   end
 
-  -- Phase 2: Escape regex special characters
+  -- Escape regex special characters
   str = str:gsub("[\\^$.|?*+()%[%]{}]", function(c)
-    return escapes[c]
+    return escapes[c] or c
   end)
 
-  if is_parametrized then
-    -- Phase 3: Replace markers with .* after escaping
-    str = str:gsub(placeholder, ".*")
-  end
+  -- Replace all placeholders with .*
+  str = str:gsub(placeholder, ".*")
 
   return str
 end
@@ -75,8 +73,11 @@ local function get_test_name(node, bufnr)
   elseif node_type == "template_string" then
     local parts = {}
     for child in name_node:iter_children() do
-      if child:type() == "string_fragment" then
+      local child_type = child:type()
+      if child_type == "string_fragment" then
         table.insert(parts, vim.treesitter.get_node_text(child, bufnr))
+      elseif child_type == "template_substitution" then
+        table.insert(parts, "__SUB__")
       end
     end
     return table.concat(parts)
