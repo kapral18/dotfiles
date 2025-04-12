@@ -20,24 +20,35 @@ local function escape_jest_regex(str, is_parametrized)
     ["}"] = "\\}",
   }
 
-  -- First escape special characters
+  -- Temporary marker for parameterized parts
+  local placeholder = "__PARAM_PATTERN__"
+
+  if is_parametrized then
+    -- Phase 1: Replace all parameterized patterns with a marker
+    -- Handle ${...} in template strings
+    str = str:gsub("%${.-}", placeholder)
+
+    -- Handle Jest's %s/%d style placeholders
+    str = str:gsub("%%%%", "__DOUBLE_PERCENT__")
+    str = str:gsub("%%[#pidjfso]", placeholder)
+    str = str:gsub("__DOUBLE_PERCENT__", "%%")
+
+    -- Handle $variable and $variable.subprop
+    str = str:gsub("%$%$", "__DOUBLE_DOLLAR__")
+    str = str:gsub("%$[%a#][%.%w]*", placeholder)
+    str = str:gsub("__DOUBLE_DOLLAR__", "%$")
+  end
+
+  -- Phase 2: Escape regex special characters
   str = str:gsub("[\\^$.|?*+()%[%]{}]", function(c)
     return escapes[c]
   end)
 
   if is_parametrized then
-    -- Handle Jest parameter placeholders
-    str = str:gsub("%%%%", "__DOUBLE_PERCENT__")
-    str = str:gsub("%%[#pidjfso]", ".*")
-    str = str:gsub("__DOUBLE_PERCENT__", "%%")
-
-    str = str:gsub("%$%$", "__DOUBLE_DOLLAR__")
-    str = str:gsub("%$[%a#][%.%w]*", ".*")
-    str = str:gsub("__DOUBLE_DOLLAR__", "%$")
+    -- Phase 3: Replace markers with .* after escaping
+    str = str:gsub(placeholder, ".*")
   end
 
-  -- Handle template substitutions in all tests
-  str = str:gsub("%${.-}", ".*")
   return str
 end
 
@@ -161,7 +172,7 @@ M.get_current_test_name = function()
 end
 
 M.escape_shell_arg = function(str)
-  return "'" .. str:gsub("'", "'\\''") .. "'"
+  return "'" .. str:gsub("'", [['\'']]) .. "'"
 end
 
 M.run_jest_cmd = function(arg)
@@ -229,7 +240,6 @@ M.run_jest_in_split = function(options)
     return
   end
 
-  -- Construct proper regex pattern
   local pattern
   if is_leaf then
     pattern = "^" .. test_name .. "$"
