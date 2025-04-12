@@ -73,6 +73,17 @@ local function get_test_name(node, bufnr)
   return nil
 end
 
+local function get_test_type_from_each_call(each_call_node, bufnr)
+  if each_call_node:type() == "call_expression" then
+    local fn_node = each_call_node:field("function")[1]
+    if fn_node:type() == "member_expression" then
+      local object_node = fn_node:field("object")[1]
+      return vim.treesitter.get_node_text(object_node, bufnr)
+    end
+  end
+  return nil
+end
+
 local function get_full_test_context(node, bufnr)
   local path = {}
   local current_node = node
@@ -85,17 +96,25 @@ local function get_full_test_context(node, bufnr)
       local test_type, name, parametrized = nil, nil, false
 
       if is_each then
+        -- Handle direct .each calls
         local parent_call = current_node:parent()
         if parent_call and parent_call:type() == "call_expression" then
           name = get_test_name(parent_call, bufnr)
-          test_type = "describe"
+          test_type = get_test_type_from_each_call(current_node, bufnr)
           parametrized = true
           current_node = parent_call
         end
       else
+        -- Handle nested .each calls (e.g., describe.each()())
         local fn_node = current_node:field("function")[1]
-        test_type = vim.treesitter.get_node_text(fn_node, bufnr)
-        name = get_test_name(current_node, bufnr)
+        if fn_node:type() == "call_expression" and is_each_call(fn_node, bufnr) then
+          test_type = get_test_type_from_each_call(fn_node, bufnr)
+          name = get_test_name(current_node, bufnr)
+          parametrized = true
+        else
+          test_type = vim.treesitter.get_node_text(fn_node, bufnr)
+          name = get_test_name(current_node, bufnr)
+        end
       end
 
       if test_types[test_type] and name then
