@@ -132,7 +132,8 @@ local function execute_search(command, team, pattern, search_type)
       if is_fd then
         -- Post-process fd output to ensure clean paths
         for _, line in ipairs(output) do
-          table.insert(results, line:gsub("%s*$", "")) -- Just trim trailing whitespace
+          local result = line:gsub("%s*$", "")
+          table.insert(results, result) -- Just trim trailing whitespace
         end
       else
         vim.list_extend(results, output) -- rg output stays unchanged
