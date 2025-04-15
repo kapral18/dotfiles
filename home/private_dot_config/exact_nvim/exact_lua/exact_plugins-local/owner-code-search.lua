@@ -68,19 +68,14 @@ M.parse_codeowners_line = function(line)
   return file_pattern, owners
 end
 
-M.owner_folder_search = function(team, search_pattern)
-  local parts = { team, search_pattern }
-  if #parts < 2 then
-    vim.notify("Usage: OwnerFolderSearch <team> <search-pattern>", vim.log.levels.ERROR)
-    return
-  end
-
+-- Common function to find directories owned by a team
+local function find_team_directories(team)
   -- find codeowners file in the root of the project
   local codeowners_file = vim.fs.root(0, ".git") .. "/.github/CODEOWNERS"
 
   if not vim.fn.filereadable(codeowners_file) then
     vim.notify("CODEOWNERS file not found", vim.log.levels.ERROR)
-    return
+    return nil
   end
 
   -- Read the codeowners file
@@ -88,7 +83,7 @@ M.owner_folder_search = function(team, search_pattern)
 
   local directories = {}
 
-  -- Collect directories owned by the team (same as before)
+  -- Collect directories owned by the team
   for _, line in ipairs(lines) do
     local pattern, owners = M.parse_codeowners_line(line)
     if pattern and owners then
@@ -103,45 +98,85 @@ M.owner_folder_search = function(team, search_pattern)
 
   if #directories == 0 then
     vim.notify("No directories found for team: " .. team, vim.log.levels.WARN)
+    return nil
+  end
+
+  return directories
+end
+
+local function execute_search(command, team, pattern, search_type)
+  local directories = find_team_directories(team)
+  if not directories then
     return
   end
 
   local results = {}
   local had_errors = false
+  local is_fd = command[1] == "fd"
 
   for _, dir in ipairs(directories) do
-    local cmd = { "rg", "--vimgrep", vim.fn.shellescape(search_pattern), vim.fn.shellescape(dir) }
-    local exit_code
-    local output
+    local cmd = vim.list_extend({}, command)
+    table.insert(cmd, vim.fn.shellescape(pattern))
+    table.insert(cmd, vim.fn.shellescape(dir))
 
-    -- Use explicit shell command form for better error handling
+    -- For fd, add --absolute-path to get clean output
+    if is_fd then
+      table.insert(cmd, "--absolute-path")
+    end
+
     local cmd_str = table.concat(cmd, " ")
-    output = vim.fn.systemlist(cmd_str)
-    exit_code = vim.v.shell_error
+    local output = vim.fn.systemlist(cmd_str)
+    local exit_code = vim.v.shell_error
 
     if exit_code == 0 then
-      vim.list_extend(results, output)
+      if is_fd then
+        -- Post-process fd output to ensure clean paths
+        for _, line in ipairs(output) do
+          table.insert(results, line:gsub("%s*$", "")) -- Just trim trailing whitespace
+        end
+      else
+        vim.list_extend(results, output) -- rg output stays unchanged
+      end
     elseif exit_code == 1 then
       -- No matches in this directory, continue
     else
       had_errors = true
-      print("rg error searching " .. dir .. " (code " .. exit_code .. ")", vim.log.levels.ERROR)
+      print(command[1] .. " error searching " .. dir .. " (code " .. exit_code .. ")", vim.log.levels.ERROR)
     end
   end
 
   -- Handle final results
   if #results == 0 then
-    local msg = had_errors and "No matches found (some directories had errors)" or "No matches found"
+    local msg = had_errors and ("No " .. search_type .. " found (some directories had errors)")
+      or ("No " .. search_type .. " found")
     print(msg, vim.log.levels.WARN)
     return
   end
 
-  -- Populate quickfix list
+  -- Populate quickfix list with appropriate error format
   vim.fn.setqflist({}, " ", {
     lines = results,
-    efm = "%f:%l:%c:%m",
+    efm = is_fd and "%f" or "%f:%l:%c:%m",
   })
   vim.cmd("copen")
+end
+
+M.owner_code_grep = function(team, search_pattern)
+  if not team or not search_pattern then
+    vim.notify("Usage: OwnerCodeSearch <team> <search-pattern>", vim.log.levels.ERROR)
+    return
+  end
+
+  execute_search({ "rg", "--vimgrep", "--hidden" }, team, search_pattern, "matches")
+end
+
+M.owner_code_fd = function(team, file_pattern)
+  if not team or not file_pattern then
+    vim.notify("Usage: OwnerCodeFd <team> <file-pattern>", vim.log.levels.ERROR)
+    return
+  end
+
+  execute_search({ "fd", "--color=never", "--type=file", "--hidden" }, team, file_pattern, "files")
 end
 
 return M

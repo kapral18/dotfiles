@@ -102,7 +102,7 @@ return {
         code_lens = "off",
         complete_function_calls = false,
         include_completions_with_insert_text = true,
-        separate_diagnostic_server = false,
+        separate_diagnostic_server = true,
         publish_diagnostic_on = "insert_leave",
         tsserver_path = nil,
         tsserver_max_memory = 32000,

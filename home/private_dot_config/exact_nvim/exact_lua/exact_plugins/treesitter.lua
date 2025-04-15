@@ -50,35 +50,6 @@ return {
     },
   },
   {
-    "junegunn/vim-after-object",
-    config = function()
-      local chars = { "=", ":", "-", "_", " ", "#", "?", "$", "!", "&", "/" }
-      vim.fn["after_object#enable"](unpack(chars))
-    end,
-  },
-  -- these go together
-  {
-    "gregorias/coerce.nvim",
-    lazy = false,
-    tag = "v4.1.0",
-    opts = {
-      default_mode_keymap_prefixes = {
-        normal_mode = "cx",
-        motion_mode = nil,
-        visual_mode = "cx",
-      },
-    },
-  },
-  {
-    "tpope/vim-abolish",
-    optional = true,
-    init = function()
-      vim.g.abolish_no_default_key_mappings = 1
-    end,
-  },
-  --
-
-  {
     "wellle/visual-split.vim",
   },
   {

@@ -13,23 +13,7 @@ return {
         lualine_a = { "branch" },
         lualine_b = {},
         lualine_c = {},
-        lualine_x = {
-          -- { "progress", separator = " ", padding = { left = 1, right = 0 } },
-          {
-            "lsp_status",
-            icon = "", -- f013
-            symbols = {
-              -- Standard unicode symbols to cycle through for LSP progress:
-              spinner = { "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" },
-              -- Standard unicode symbol for when LSP is done:
-              done = "✓",
-              -- Delimiter inserted between LSP names:
-              separator = " ",
-            },
-            -- List of LSP names to ignore (e.g., `null-ls`):
-            ignore_lsp = {},
-          },
-        },
+        lualine_x = {},
         lualine_y = {
           {
             function()
@@ -56,6 +40,38 @@ return {
         },
       },
       always_show_tabline = false,
+    },
+  },
+  {
+    "linrongbin16/lsp-progress.nvim",
+    opts = {},
+    lazy = false,
+    dependencies = {
+      {
+        "nvim-lualine/lualine.nvim",
+        config = function(_, opts)
+          local new_opts = {
+            sections = {
+              lualine_x = {
+                function()
+                  -- invoke `progress` here.
+                  return require("lsp-progress").progress()
+                end,
+              },
+            },
+          }
+          opts = vim.tbl_deep_extend("force", opts, new_opts)
+          require("lualine").setup(opts)
+
+          -- listen lsp-progress event and refresh lualine
+          vim.api.nvim_create_augroup("lualine_augroup", { clear = true })
+          vim.api.nvim_create_autocmd("User", {
+            group = "lualine_augroup",
+            pattern = "LspProgressStatusUpdated",
+            callback = require("lualine").refresh,
+          })
+        end,
+      },
     },
   },
 }
