@@ -6,13 +6,16 @@ return {
       servers = {
         eslint = {
           settings = {
-            workingDirectories = { mode = "location" },
+            workingDirectories = { mode = "auto" },
             codeActionOnSave = {
               mode = "all",
               enable = true,
             },
             format = true,
           },
+          root_dir = function()
+            return vim.uv.cwd()
+          end,
         },
       },
       setup = {

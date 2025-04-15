@@ -70,7 +70,7 @@ require("lazy").setup({
     { import = "plugins.numb" },
     { import = "plugins.nvim-notify" },
     { import = "plugins.osv" },
-    { import = "plugins.owner-folder-search" },
+    { import = "plugins.owner-code-search" },
     { import = "plugins.parinfer" },
     { import = "plugins.python" },
     { import = "plugins.qf" },

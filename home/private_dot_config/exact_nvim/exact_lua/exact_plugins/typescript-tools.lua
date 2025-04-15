@@ -126,7 +126,7 @@ return {
         jsx_close_tag = { enable = false },
       },
       root_dir = function()
-        return vim.fn.getcwd()
+        return vim.uv.cwd()
       end,
     },
   },
