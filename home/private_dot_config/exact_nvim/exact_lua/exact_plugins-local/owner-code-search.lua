@@ -1,5 +1,14 @@
 local M = {}
 
+-- Helper function to locate CODEOWNERS file
+local function find_codeowners_file()
+  local files = vim.fs.find(".github/CODEOWNERS", { upward = true })
+  if #files == 0 then
+    return nil, nil
+  end
+  return files[1]
+end
+
 -- Helper function to split line into pattern and owners section
 local function split_line_parts(input)
   local result = { pattern = "", owners_text = "" }
@@ -68,27 +77,23 @@ M.parse_codeowners_line = function(line)
   return file_pattern, owners
 end
 
--- Common function to find directories owned by a team
-local function find_team_directories(team)
-  -- find codeowners file in the root of the project
-  local codeowners_file = vim.fs.root(0, ".git") .. "/.github/CODEOWNERS"
+-- Generic directory finder with predicate
+local function find_directories_matching_owner(owner_predicate)
+  local codeowners_file = ".github/CODEOWNERS"
 
-  if not vim.fn.filereadable(codeowners_file) then
-    vim.notify("CODEOWNERS file not found", vim.log.levels.ERROR)
+  if vim.fn.filereadable(codeowners_file) ~= 1 then
+    vim.notify("CODEOWNERS file not found at: " .. codeowners_file, vim.log.levels.ERROR)
     return nil
   end
 
-  -- Read the codeowners file
   local lines = vim.fn.readfile(codeowners_file)
-
   local directories = {}
 
-  -- Collect directories owned by the team
   for _, line in ipairs(lines) do
     local pattern, owners = M.parse_codeowners_line(line)
     if pattern and owners then
       for _, owner in ipairs(owners) do
-        if string.find(owner, team, 1, true) then
+        if owner_predicate(owner) then
           table.insert(directories, pattern)
           break
         end
@@ -97,15 +102,29 @@ local function find_team_directories(team)
   end
 
   if #directories == 0 then
-    vim.notify("No directories found for team: " .. team, vim.log.levels.WARN)
+    vim.notify("No directories found matching owner predicate", vim.log.levels.WARN)
     return nil
   end
 
   return directories
 end
 
-local function execute_search(command, team, pattern, search_type)
-  local directories = find_team_directories(team)
+-- Substring matching (original functionality)
+local function find_team_directories(team)
+  return find_directories_matching_owner(function(owner)
+    return string.find(owner, team, 1, true) ~= nil
+  end)
+end
+
+-- Regex pattern matching (new functionality)
+local function find_team_directories_by_regex(regex_pattern)
+  return find_directories_matching_owner(function(owner)
+    return owner:match(regex_pattern) ~= nil
+  end)
+end
+
+local function execute_search(command, team_finder, pattern_arg, search_type)
+  local directories = team_finder()
   if not directories then
     return
   end
@@ -116,10 +135,9 @@ local function execute_search(command, team, pattern, search_type)
 
   for _, dir in ipairs(directories) do
     local cmd = vim.list_extend({}, command)
-    table.insert(cmd, vim.fn.shellescape(pattern))
+    table.insert(cmd, vim.fn.shellescape(pattern_arg))
     table.insert(cmd, vim.fn.shellescape(dir))
 
-    -- For fd, add --absolute-path to get clean output
     if is_fd then
       table.insert(cmd, "--absolute-path")
     end
@@ -130,31 +148,27 @@ local function execute_search(command, team, pattern, search_type)
 
     if exit_code == 0 then
       if is_fd then
-        -- Post-process fd output to ensure clean paths
         for _, line in ipairs(output) do
-          local result = line:gsub("%s*$", "")
-          table.insert(results, result) -- Just trim trailing whitespace
+          table.insert(results, line:gsub("%s*$", ""))
         end
       else
-        vim.list_extend(results, output) -- rg output stays unchanged
+        vim.list_extend(results, output)
       end
     elseif exit_code == 1 then
       -- No matches in this directory, continue
     else
       had_errors = true
-      print(command[1] .. " error searching " .. dir .. " (code " .. exit_code .. ")", vim.log.levels.ERROR)
+      print(command[1] .. " error searching " .. dir .. " (code " .. exit_code .. ")")
     end
   end
 
-  -- Handle final results
   if #results == 0 then
     local msg = had_errors and ("No " .. search_type .. " found (some directories had errors)")
       or ("No " .. search_type .. " found")
-    print(msg, vim.log.levels.WARN)
+    print(msg)
     return
   end
 
-  -- Populate quickfix list with appropriate error format
   vim.fn.setqflist({}, " ", {
     lines = results,
     efm = is_fd and "%f" or "%f:%l:%c:%m",
@@ -162,13 +176,15 @@ local function execute_search(command, team, pattern, search_type)
   vim.cmd("copen")
 end
 
+-- Original commands (substring match)
 M.owner_code_grep = function(team, search_pattern)
   if not team or not search_pattern then
-    vim.notify("Usage: OwnerCodeSearch <team> <search-pattern>", vim.log.levels.ERROR)
+    vim.notify("Usage: OwnerCodeGrep <team> <search-pattern>", vim.log.levels.ERROR)
     return
   end
-
-  execute_search({ "rg", "--vimgrep", "--hidden" }, team, search_pattern, "matches")
+  execute_search({ "rg", "--vimgrep", "--hidden" }, function()
+    return find_team_directories(team)
+  end, search_pattern, "matches")
 end
 
 M.owner_code_fd = function(team, file_pattern)
@@ -176,8 +192,30 @@ M.owner_code_fd = function(team, file_pattern)
     vim.notify("Usage: OwnerCodeFd <team> <file-pattern>", vim.log.levels.ERROR)
     return
   end
+  execute_search({ "fd", "--color=never", "--type=file", "--hidden" }, function()
+    return find_team_directories(team)
+  end, file_pattern, "files")
+end
 
-  execute_search({ "fd", "--color=never", "--type=file", "--hidden" }, team, file_pattern, "files")
+-- New regex pattern commands
+M.owner_code_grep_pattern = function(team_regex, search_pattern)
+  if not team_regex or not search_pattern then
+    vim.notify("Usage: OwnerCodeGrepPattern <owner-regex> <search-pattern>", vim.log.levels.ERROR)
+    return
+  end
+  execute_search({ "rg", "--vimgrep", "--hidden" }, function()
+    return find_team_directories_by_regex(team_regex)
+  end, search_pattern, "matches")
+end
+
+M.owner_code_fd_pattern = function(team_regex, file_pattern)
+  if not team_regex or not file_pattern then
+    vim.notify("Usage: OwnerCodeFdPattern <owner-regex> <file-pattern>", vim.log.levels.ERROR)
+    return
+  end
+  execute_search({ "fd", "--color=never", "--type=file", "--hidden" }, function()
+    return find_team_directories_by_regex(team_regex)
+  end, file_pattern, "files")
 end
 
 return M
