@@ -38,6 +38,7 @@ require("lazy").setup({
     { import = "plugins.bufferline" },
     { import = "plugins.chezmoi" },
     { import = "plugins.cmp" },
+    { import = "plugins.copy-to-qf" },
     -- { import = "plugins.colorscheme" },
     { import = "plugins.dashboard" },
     { import = "plugins.diff" },
