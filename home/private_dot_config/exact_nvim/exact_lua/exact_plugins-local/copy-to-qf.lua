@@ -1,5 +1,9 @@
 local M = {}
-M.copy_buffer_to_quickfix_dirs = function()
+
+---@param opts? { force?: boolean }
+M.copy_buffer_to_quickfix_dirs = function(opts)
+  local options = opts or {}
+
   local current_buf = vim.api.nvim_get_current_buf()
   local current_file = vim.api.nvim_buf_get_name(current_buf)
 
@@ -33,7 +37,7 @@ M.copy_buffer_to_quickfix_dirs = function()
     local target_path = target_dir .. "/" .. source_filename
 
     -- Skip existing files unless force flag is set
-    if vim.fn.filereadable(target_path) == 1 then
+    if vim.fn.filereadable(target_path) == 1 and not options.force then
       vim.notify("Skipping existing file: " .. target_path, vim.log.levels.WARN)
       goto continue
     end

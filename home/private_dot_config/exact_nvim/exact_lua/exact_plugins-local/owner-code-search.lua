@@ -149,7 +149,8 @@ local function execute_search(command, team_finder, pattern_arg, search_type)
     if exit_code == 0 then
       if is_fd then
         for _, line in ipairs(output) do
-          table.insert(results, line:gsub("%s*$", ""))
+          local result = line:gsub("%s*$", "")
+          table.insert(results, result)
         end
       else
         vim.list_extend(results, output)
