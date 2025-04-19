@@ -10,9 +10,9 @@
 -- h/j/k/l moves the mouse cursor by 20 pixels.  Holding alt moves by 100
 -- pixels, and holding alt moves by 5 pixels.
 --
--- Pressing <return or space> sends left mouse down.  Releasing <return or space> sends left mouse
--- up.  Holding <return or space> and pressing h/j/k/l is mouse dragging.  Tapping
--- <return or space> quickly sends double and triple clicks.  Holding ctrl sends right
+-- Pressing <return or space or m> sends left mouse down.  Releasing <return or space or m> sends left mouse
+-- up.  Holding <return or space or m> and pressing h/j/k/l is mouse dragging.  Tapping
+-- <return or space or m> quickly sends double and triple clicks.  Holding ctrl sends right
 -- mouse events.
 --
 -- <c-y> and <c-e> sends the scroll wheel event.  Holding the keys will speed
@@ -68,7 +68,7 @@ local function vimouse(tmod, tkey)
       return false
     end
 
-    if code == keycodes["return"] or code == keycodes.space then
+    if code == keycodes["return"] or code == keycodes.space or code == keycodes.m then
       -- Mouse clicking
       if repeating ~= 0 then
         return true
@@ -201,12 +201,12 @@ local function vimouse(tmod, tkey)
     return true
   end)
 
-  hs.hotkey.bind("cmd", "m", nil, function(event)
-    local screen = hs.mouse.getCurrentScreen()
-    if screen == nil then
-      return
-    end
-    local frame = screen:fullFrame()
+  hs.hotkey.bind("cmd", "a", nil, function(event)
+    -- local screen = hs.mouse.getCurrentScreen()
+    -- if screen == nil then
+    --   return
+    -- end
+    -- local frame = screen:fullFrame()
 
     -- overlay = hs.drawing.rectangle(frame)
     -- if overlay == nil then
@@ -223,4 +223,4 @@ local function vimouse(tmod, tkey)
   end)
 end
 
-return vimouse("cmd", "m")
+return vimouse("cmd", "a")
