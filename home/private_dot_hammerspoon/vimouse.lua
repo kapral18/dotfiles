@@ -7,12 +7,12 @@
 --
 -- This sets cmd-m as the key that toggles Vi Mouse.
 --
--- h/j/k/l moves the mouse cursor by 20 pixels.  Holding shift moves by 100
+-- h/j/k/l moves the mouse cursor by 20 pixels.  Holding alt moves by 100
 -- pixels, and holding alt moves by 5 pixels.
 --
--- Pressing <space> sends left mouse down.  Releasing <space> sends left mouse
--- up.  Holding <space> and pressing h/j/k/l is mouse dragging.  Tapping
--- <space> quickly sends double and triple clicks.  Holding ctrl sends right
+-- Pressing <return or space> sends left mouse down.  Releasing <return or space> sends left mouse
+-- up.  Holding <return or space> and pressing h/j/k/l is mouse dragging.  Tapping
+-- <return or space> quickly sends double and triple clicks.  Holding ctrl sends right
 -- mouse events.
 --
 -- <c-y> and <c-e> sends the scroll wheel event.  Holding the keys will speed
@@ -68,7 +68,7 @@ local function vimouse(tmod, tkey)
       return false
     end
 
-    if code == keycodes.space then
+    if code == keycodes["return"] or code == keycodes.space then
       -- Mouse clicking
       if repeating ~= 0 then
         return true
@@ -120,11 +120,11 @@ local function vimouse(tmod, tkey)
         end
       end
 
-      if flags.alt then
+      if flags.shift then
         step = 5
       end
 
-      if flags.shift then
+      if flags.alt then
         mul = 5
       else
         mul = 1
@@ -145,7 +145,7 @@ local function vimouse(tmod, tkey)
         end
         hs.mouse.absolutePosition(orig_coords)
         return true
-      elseif (code == keycodes["y"] or code == keycodes["e"]) and flags.ctrl then
+      elseif (code == keycodes["d"] or code == keycodes["u"]) and flags.ctrl then
         if repeating ~= 0 then
           scrolling = scrolling + 1
         else
@@ -153,7 +153,7 @@ local function vimouse(tmod, tkey)
         end
 
         local scroll_mul = 1 + math.log(scrolling)
-        if code == keycodes["y"] then
+        if code == keycodes["d"] then
           scroll_y_delta = math.ceil(-8 * scroll_mul)
         else
           scroll_y_delta = math.floor(8 * scroll_mul)
