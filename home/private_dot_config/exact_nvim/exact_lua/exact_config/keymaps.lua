@@ -184,3 +184,17 @@ vim.api.nvim_create_autocmd("FileType", {
     vim.keymap.set("n", "<leader>cp", "<cmd>CpFromDownloads<cr>", { buffer = true, desc = "Copy from Downloads" })
   end,
 })
+
+-- user command to noautocmd write
+vim.api.nvim_create_user_command("WW", function()
+  vim.cmd("noautocmd write")
+end, {
+  desc = "Write without triggering autocommands",
+})
+
+-- user command to noautocmd write all
+vim.api.nvim_create_user_command("WWW", function()
+  vim.cmd("noautocmd Wall")
+end, {
+  desc = "Write all without triggering autocommands",
+})

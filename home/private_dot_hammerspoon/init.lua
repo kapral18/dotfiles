@@ -1,1 +1,2 @@
-hs.ipc.cliInstall()
+local vimouse = require("vimouse")
+vimouse("cmd", "m")
