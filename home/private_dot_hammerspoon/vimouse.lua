@@ -1,3 +1,5 @@
+-- Credits: https://github.com/tweekmonster/hammerspoon-vimouse/blob/master/vimouse.lua
+--
 -- Save to ~/.hammerspoon
 -- In ~/.hammerspoon/init.lua:
 --    local vimouse = require('vimouse')
@@ -18,8 +20,26 @@
 --
 -- Press <esc> or the configured toggle key to end Vi Mouse mode.
 
-return function(tmod, tkey)
-  local overlay = nil
+local eventTypes = hs.eventtap.event.types
+local eventPropTypes = hs.eventtap.event.properties
+local keycodes = hs.keycodes.map
+
+local function postEvent(et, coords, modkeys, clicks)
+  local e = hs.eventtap.event.newMouseEvent(et, coords, modkeys)
+  if clicks > 3 then
+    clicks = 3
+  end
+  e:setProperty(eventPropTypes.mouseEventClickState, clicks)
+  e:post()
+end
+
+-- Helper to simulate mouse movement for Dock appearance
+local function simulateMouseMovement(coords)
+  hs.eventtap.event.newMouseEvent(eventTypes.mouseMoved, coords):post()
+end
+
+local function vimouse(tmod, tkey)
+  -- local overlay = nil
   local log = hs.logger.new("vimouse", "debug")
   local tap = nil
   local orig_coords = nil
@@ -38,27 +58,13 @@ return function(tmod, tkey)
     end
   end
 
-  local eventTypes = hs.eventtap.event.types
-  local eventPropTypes = hs.eventtap.event.properties
-  local keycodes = hs.keycodes.map
-
-  function postEvent(et, coords, modkeys, clicks)
-    local e = hs.eventtap.event.newMouseEvent(et, coords, modkeys)
-    if clicks > 3 then
-      clicks = 3
-    end
-    e:setProperty(eventPropTypes.mouseEventClickState, clicks)
-    e:post()
-  end
-
   tap = hs.eventtap.new({ eventTypes.keyDown, eventTypes.keyUp }, function(event)
     local code = event:getKeyCode()
     local flags = event:getFlags()
     local repeating = event:getProperty(eventPropTypes.keyboardEventAutorepeat)
-    local coords = hs.mouse.getAbsolutePosition()
+    local coords = hs.mouse.absolutePosition()
 
     if (code == keycodes.tab or code == keycodes["`"]) and flags.cmd then
-      -- Window cycling
       return false
     end
 
@@ -129,11 +135,15 @@ return function(tmod, tkey)
           postEvent(eventTypes.leftMouseUp, coords, flags, 0)
         end
         dragging = false
-        overlay:delete()
-        overlay = nil
+        -- if overlay then
+        --   overlay:delete()
+        --   overlay = nil
+        -- end
         hs.alert("Vi Mouse Off")
-        tap:stop()
-        hs.mouse.setAbsolutePosition(orig_coords)
+        if tap then
+          tap:stop()
+        end
+        hs.mouse.absolutePosition(orig_coords)
         return true
       elseif (code == keycodes["y"] or code == keycodes["e"]) and flags.ctrl then
         if repeating ~= 0 then
@@ -144,9 +154,9 @@ return function(tmod, tkey)
 
         local scroll_mul = 1 + math.log(scrolling)
         if code == keycodes["y"] then
-          scroll_y_delta = math.ceil(-1 * scroll_mul)
+          scroll_y_delta = math.ceil(-8 * scroll_mul)
         else
-          scroll_y_delta = math.floor(1 * scroll_mul)
+          scroll_y_delta = math.floor(8 * scroll_mul)
         end
         log.d("Scrolling", scrolling, "-", scroll_y_delta)
       elseif code == keycodes["h"] then
@@ -160,35 +170,57 @@ return function(tmod, tkey)
       end
 
       if scroll_y_delta ~= 0 then
-        hs.eventtap.event.newScrollEvent({ 0, scroll_y_delta }, flags, "line"):post()
+        -- Use pixel-based scrolling for better compatibility
+        hs.eventtap.event.newScrollEvent({ 0, scroll_y_delta }, flags, "pixel"):post()
       end
 
-      if x_delta or y_delta then
+      if x_delta ~= 0 or y_delta ~= 0 then
         coords.x = coords.x + x_delta
         coords.y = coords.y + y_delta
 
         if dragging then
           postEvent(eventTypes.leftMouseDragged, coords, flags, 0)
         else
-          hs.mouse.setAbsolutePosition(coords)
+          hs.mouse.absolutePosition(coords)
+          -- Simulate mouse movement to help Dock appear
+          simulateMouseMovement(coords)
+        end
+        -- If at bottom edge, jiggle to trigger Dock
+        local screen = hs.mouse.getCurrentScreen()
+        if screen == nil then
+          return true
+        end
+        local frame = screen:fullFrame()
+        if coords.y >= (frame.y + frame.h - 2) then
+          coords.y = frame.y + frame.h - 1
+          hs.mouse.absolutePosition(coords)
+          simulateMouseMovement(coords)
         end
       end
     end
     return true
   end)
 
-  hs.hotkey.bind(tmod, tkey, nil, function(event)
+  hs.hotkey.bind("cmd", "m", nil, function(event)
     local screen = hs.mouse.getCurrentScreen()
+    if screen == nil then
+      return
+    end
     local frame = screen:fullFrame()
 
-    overlay = hs.drawing.rectangle(frame)
-    overlay:setFillColor({ ["red"] = 0, ["blue"] = 0, ["green"] = 0, ["alpha"] = 0.2 })
-    overlay:setFill(true)
-    overlay:setLevel(hs.drawing.windowLevels["assistiveTechHigh"])
-    overlay:show()
+    -- overlay = hs.drawing.rectangle(frame)
+    -- if overlay == nil then
+    --   return
+    -- end
+    -- overlay:setFillColor({ ["red"] = 0, ["blue"] = 0, ["green"] = 0, ["alpha"] = 0.2 })
+    -- overlay:setFill(true)
+    -- overlay:setLevel(hs.drawing.windowLevels["assistiveTechHigh"])
+    -- overlay:show()
 
     hs.alert("Vi Mouse On")
-    orig_coords = hs.mouse.getAbsolutePosition()
+    orig_coords = hs.mouse.absolutePosition()
     tap:start()
   end)
 end
+
+return vimouse("cmd", "m")

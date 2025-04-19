@@ -11,6 +11,9 @@ return {
           Lua = {
             workspace = {
               checkThirdParty = false,
+              library = {
+                string.format("%s/.hammerspoon/Spoons/EmmyLua.spoon/annotations", os.getenv("HOME")),
+              },
             },
             completion = {
               callSnippet = "Replace",
@@ -23,7 +26,7 @@ return {
               setType = true,
             },
             diagnostics = {
-              globals = { "vim" },
+              globals = { "vim", "hs", "spoon" },
             },
             telemetry = {
               enable = false,
