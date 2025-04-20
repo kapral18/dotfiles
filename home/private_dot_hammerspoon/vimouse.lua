@@ -7,7 +7,7 @@
 -- grid-based navigation and mouse events.
 --
 -- Main Features:
--- <cmd-a> toggles Vi Mouse mode.
+-- <cmd-d> toggles Vi Mouse mode.
 -- h/j/k/l moves the mouse cursor by 20 pixels.
 -- alt-h/j/k/l moves the mouse cursor by 100 pixels.
 -- shift-h/j/k/l moves the mouse cursor by 5 pixels.
@@ -17,14 +17,14 @@
 -- Holding ctrl-<return or space or m> sends right mouse events.
 -- <c-j/k> sends the scroll wheel event.
 -- Holding <c-j/k> speeds up the scrolling.
--- <esc> or <cmd-a> ends Vi Mouse mode.
+-- <esc> or <cmd-d> ends Vi Mouse mode.
 --
 -- Grid Navigation:
 -- <g> enters or resets grid mode from within Vi Mouse mode.
 -- <cmd-g> activates or resets grid mode from outside of Vi Mouse mode.
 -- <q/w/e/a/s/d/z/x/c> moves the mouse to the corresponding grid cell.
 -- <f> zooms out to the previous grid level.
--- <esc> or <cmd-a> exits grid mode.
+-- <esc> or <cmd-d> exits grid mode.
 
 local eventTypes = hs.eventtap.event.types
 local eventPropTypes = hs.eventtap.event.properties
@@ -48,29 +48,101 @@ local GRID_COLORS = {
   stroke = { red = 0.2, green = 0.8, blue = 0.2, alpha = 0.7 },
   text = { red = 1, green = 1, blue = 1, alpha = 0.9 },
 }
-
-local gridStack = {}
-local currentGrid = nil
-local isMouseModeActive = false
-local gridEntryMode = nil
-local scrollAcceleration = 0
-
--- Proportional scaling parameters
 local BASE_TEXT_SIZE = 28
 local TEXT_SCALE_FACTOR = 0.8
 local MIN_TEXT_SIZE = 12
 local BASE_STROKE_WIDTH = 2
 
-local function postEvent(et, coords, modkeys, clicks)
-  local e = hs.eventtap.event.newMouseEvent(et, coords, modkeys)
-  e:setProperty(eventPropTypes.mouseEventClickState, math.min(clicks, 3))
-  e:post()
+-- Finite State Machine
+local FSM = {
+  states = {
+    INACTIVE = {
+      transitions = {
+        ACTIVATE_MOUSE = "MOUSE",
+        ACTIVATE_GRID = "GRID",
+      },
+    },
+    MOUSE = {
+      transitions = {
+        DEACTIVATE = "INACTIVE",
+        ACTIVATE_GRID = "GRID",
+      },
+    },
+    GRID = {
+      transitions = {
+        DEACTIVATE = "INACTIVE",
+        ZOOM_OUT = "GRID",
+      },
+    },
+  },
+  current = "INACTIVE",
+  context = {
+    grid = {
+      stack = {},
+      current = nil,
+    },
+    drag = {
+      active = false,
+      timer = nil,
+      button = "left",
+    },
+    scroll = {
+      acceleration = 0,
+    },
+  },
+  modals = {
+    escape = hs.hotkey.modal.new(),
+  },
+}
+
+-- State Transition System
+function FSM.transition(newState, ...)
+  local prevState = FSM.current
+  local args = { ... }
+
+  -- Exit actions
+  if prevState == "MOUSE" then
+    FSM.context.drag.active = false
+    if FSM.context.drag.timer then
+      FSM.context.drag.timer:stop()
+      FSM.context.drag.timer = nil
+    end
+  elseif prevState == "GRID" then
+    if FSM.context.grid.current then
+      for _, element in ipairs(FSM.context.grid.current) do
+        element:delete()
+      end
+      FSM.context.grid.current = nil
+    end
+    FSM.context.grid.stack = {}
+  end
+
+  -- State transition
+  FSM.current = newState
+
+  -- Enter actions
+  if newState == "MOUSE" then
+    hs.alert("Vi Mouse On")
+    FSM.mouseTap:start()
+    FSM.modals.escape:enter()
+  elseif newState == "GRID" then
+    local screen = hs.mouse.getCurrentScreen():frame()
+    FSM.context.grid.stack = { { boundary = screen } }
+    FSM.showGrid(screen)
+    hs.alert("Grid Mode Active")
+    FSM.modals.escape:enter()
+    FSM.mouseTap:start() -- Critical fix: Start eventtap in grid mode
+  elseif newState == "INACTIVE" then
+    hs.alert("Mode Deactivated")
+    FSM.mouseTap:stop()
+    FSM.modals.escape:exit()
+  end
 end
 
-local function createGridOverlay(boundary, scale)
+-- Grid Management
+function FSM.createGridOverlay(boundary, scale)
   local elements = {}
   local cellW, cellH = boundary.w / GRID_SIZE, boundary.h / GRID_SIZE
-
   local textSize = math.max(MIN_TEXT_SIZE, BASE_TEXT_SIZE * (TEXT_SCALE_FACTOR ^ (scale - 1)))
   local strokeWidth = math.max(1, BASE_STROKE_WIDTH * (TEXT_SCALE_FACTOR ^ (scale - 1)))
 
@@ -87,13 +159,12 @@ local function createGridOverlay(boundary, scale)
       rect:setStrokeWidth(strokeWidth)
 
       local hintKeys = { "q", "w", "e", "a", "s", "d", "z", "x", "c" }
-      local hint = hintKeys[row * GRID_SIZE + col + 1]
       local text = drawing.text({
         x = boundary.x + col * cellW + cellW * 0.05,
         y = boundary.y + row * cellH + cellH * 0.05,
         w = cellW * 0.9,
         h = cellH * 0.9,
-      }, hint:upper())
+      }, hintKeys[row * GRID_SIZE + col + 1]:upper())
       text:setTextSize(textSize)
       text:setTextColor(GRID_COLORS.text)
       text:setTextStyle({ paragraphStyle = { alignment = "center" } })
@@ -105,213 +176,165 @@ local function createGridOverlay(boundary, scale)
   return elements
 end
 
-local function showGrid(boundary)
-  local scale = #gridStack + 1
-  if currentGrid then
-    for _, element in ipairs(currentGrid) do
+function FSM.showGrid(boundary)
+  -- Clear previous grid
+  if FSM.context.grid.current then
+    for _, element in ipairs(FSM.context.grid.current) do
       element:delete()
     end
+    FSM.context.grid.current = nil
   end
-  currentGrid = createGridOverlay(boundary, scale)
-  for _, element in ipairs(currentGrid) do
+
+  -- Create new grid
+  FSM.context.grid.current = FSM.createGridOverlay(boundary, #FSM.context.grid.stack + 1)
+  for _, element in ipairs(FSM.context.grid.current) do
     element:show()
   end
 end
 
-local function cleanupAll()
-  if currentGrid then
-    for _, element in ipairs(currentGrid) do
-      element:delete()
-    end
-    currentGrid = nil
-  end
-  gridStack = {}
-
-  if gridEntryMode == "direct" then
-    isMouseModeActive = false
-  end
-  gridEntryMode = nil
-  scrollAcceleration = 0
-end
-
-local function handleGridKey(code)
-  if not GRID_HINTS[code] then
-    return false
-  end
-
-  local current = gridStack[#gridStack]
-  local cellW = current.boundary.w / GRID_SIZE
-  local cellH = current.boundary.h / GRID_SIZE
-  local col, row = GRID_HINTS[code].col, GRID_HINTS[code].row
-
-  local newBoundary = {
-    x = current.boundary.x + col * cellW,
-    y = current.boundary.y + row * cellH,
-    w = cellW,
-    h = cellH,
-  }
-
-  hs.mouse.absolutePosition({
-    x = newBoundary.x + newBoundary.w / 2,
-    y = newBoundary.y + newBoundary.h / 2,
-  })
-
-  table.insert(gridStack, {
-    boundary = newBoundary,
-    elements = currentGrid,
-  })
-  showGrid(newBoundary)
-  return true
-end
-
-local function enterGridMode(mode)
-  local screen = hs.mouse.getCurrentScreen():frame()
-  gridStack = { { boundary = { x = screen.x, y = screen.y, w = screen.w, h = screen.h } } }
-  gridEntryMode = mode
-  showGrid(gridStack[1].boundary)
-
-  if mode == "direct" then
-    hs.alert("Grid Mode Active")
-  end
-end
-
-local function exitGridMode()
-  cleanupAll()
-  if gridEntryMode == "direct" then
-    hs.alert("Grid Mode Off")
-  end
-end
-
-local function handleGridNavigation(event)
-  local code = event:getKeyCode()
-
-  if #gridStack > 0 then
-    if event:getType() == eventTypes.keyDown then
-      if code == keycodes["f"] then
-        table.remove(gridStack)
-        if #gridStack > 0 then
-          local prev = gridStack[#gridStack]
-          showGrid(prev.boundary)
-          hs.mouse.absolutePosition({
-            x = prev.boundary.x + prev.boundary.w / 2,
-            y = prev.boundary.y + prev.boundary.h / 2,
-          })
-        else
-          exitGridMode()
-        end
-        return true
-      else
-        return handleGridKey(code)
-      end
-    end
-    return true
-  end
-  return false
-end
-
--- Mouse mode tap (original functionality)
-local mouseTap = hs.eventtap.new({ eventTypes.keyDown, eventTypes.keyUp }, function(event)
-  if not isMouseModeActive then
-    return false
-  end
-
+-- Event Handling
+FSM.mouseTap = hs.eventtap.new({ eventTypes.keyDown, eventTypes.keyUp }, function(event)
   local code = event:getKeyCode()
   local flags = event:getFlags()
   local coords = hs.mouse.absolutePosition()
   local repeating = event:getProperty(eventPropTypes.keyboardEventAutorepeat)
 
-  -- Handle grid navigation first
-  if handleGridNavigation(event) then
-    return true
-  end
-
-  -- Exit handling
+  -- Global escape handling
   if code == keycodes.escape then
-    isMouseModeActive = false
-    cleanupAll()
-    hs.alert("Vi Mouse Off")
+    FSM.transition("INACTIVE")
     return true
   end
 
-  -- Scrolling handling
-  if (code == keycodes["j"] or code == keycodes["k"]) and flags.ctrl then
-    if event:getType() == eventTypes.keyDown then
-      scrollAcceleration = (repeating ~= 0) and (scrollAcceleration + 1) or 1
-      local scroll_mul = 1 + math.log(scrollAcceleration)
-      local delta = (code == keycodes["j"]) and math.ceil(-8 * scroll_mul) or math.floor(8 * scroll_mul)
-
-      hs.eventtap.event.newScrollEvent({ 0, delta }, flags, "pixel"):post()
-    end
-    return true
-  end
-
-  -- Original mouse functionality
-  if code == keycodes["return"] or code == keycodes.space or code == keycodes.m then
-    local btn = flags.ctrl and "right" or "left"
-    if event:getType() == eventTypes.keyUp then
-      postEvent(eventTypes[btn .. "MouseUp"], coords, flags, 1)
-    else
-      postEvent(eventTypes[btn .. "MouseDown"], coords, flags, 1)
-    end
-    return true
-  elseif event:getType() == eventTypes.keyDown then
-    -- Grid activation from mouse mode
+  -- State-specific handling
+  if FSM.current == "MOUSE" then
     if code == keycodes["g"] then
-      enterGridMode("mouse")
+      FSM.transition("GRID")
       return true
     end
 
-    local mul = flags.alt and 5 or 1
-    local step = flags.shift and 5 or 20
-    local x, y = 0, 0
-
-    if code == keycodes["h"] then
-      x = -step * mul
-    elseif code == keycodes["l"] then
-      x = step * mul
-    elseif code == keycodes["j"] then
-      y = step * mul
-    elseif code == keycodes["k"] then
-      y = -step * mul
+    -- Mouse buttons
+    if code == keycodes["return"] or code == keycodes.space or code == keycodes.m then
+      local btn = flags.ctrl and "right" or "left"
+      if event:getType() == eventTypes.keyUp then
+        hs.eventtap.event.newMouseEvent(eventTypes[btn .. "MouseUp"], coords, flags):post()
+        FSM.context.drag.active = false
+        if FSM.context.drag.timer then
+          FSM.context.drag.timer:stop()
+          FSM.context.drag.timer = nil
+        end
+      else
+        hs.eventtap.event.newMouseEvent(eventTypes[btn .. "MouseDown"], coords, flags):post()
+        FSM.context.drag.active = true
+        FSM.context.drag.button = btn
+        FSM.context.drag.timer = hs.timer.doWhile(function()
+          return FSM.context.drag.active
+        end, function()
+          hs.eventtap.event.newMouseEvent(eventTypes[btn .. "MouseDragged"], hs.mouse.absolutePosition(), flags):post()
+        end, 0.016)
+      end
+      return true
     end
 
-    if x ~= 0 or y ~= 0 then
-      coords.x = coords.x + x
-      coords.y = coords.y + y
-      hs.mouse.absolutePosition(coords)
-      return true
+    -- Mouse movement
+    if event:getType() == eventTypes.keyDown then
+      local mul = flags.alt and 5 or 1
+      local step = flags.shift and 5 or 20
+      local x, y = 0, 0
+
+      if code == keycodes["h"] then
+        x = -step * mul
+      elseif code == keycodes["l"] then
+        x = step * mul
+      elseif code == keycodes["j"] then
+        y = step * mul
+      elseif code == keycodes["k"] then
+        y = -step * mul
+      end
+
+      if x ~= 0 or y ~= 0 then
+        coords.x = coords.x + x
+        coords.y = coords.y + y
+        hs.mouse.absolutePosition(coords)
+
+        if FSM.context.drag.active then
+          hs.eventtap.event.newMouseEvent(eventTypes[FSM.context.drag.button .. "MouseDragged"], coords, flags):post()
+        end
+        return true
+      end
+    end
+  elseif FSM.current == "GRID" then
+    if event:getType() == eventTypes.keyDown then
+      -- Handle grid navigation
+      if code == keycodes["f"] then
+        table.remove(FSM.context.grid.stack)
+        if #FSM.context.grid.stack > 0 then
+          local prev = FSM.context.grid.stack[#FSM.context.grid.stack]
+          FSM.showGrid(prev.boundary)
+          hs.mouse.absolutePosition({
+            x = prev.boundary.x + prev.boundary.w / 2,
+            y = prev.boundary.y + prev.boundary.h / 2,
+          })
+        else
+          FSM.transition("INACTIVE")
+        end
+        return true
+      else
+        -- Handle grid cell selection
+        local hint = GRID_HINTS[code]
+        if hint then
+          local current = FSM.context.grid.stack[#FSM.context.grid.stack]
+          local cellW = current.boundary.w / GRID_SIZE
+          local cellH = current.boundary.h / GRID_SIZE
+
+          local newBoundary = {
+            x = current.boundary.x + hint.col * cellW,
+            y = current.boundary.y + hint.row * cellH,
+            w = cellW,
+            h = cellH,
+          }
+
+          hs.mouse.absolutePosition({
+            x = newBoundary.x + newBoundary.w / 2,
+            y = newBoundary.y + newBoundary.h / 2,
+          })
+
+          table.insert(FSM.context.grid.stack, {
+            boundary = newBoundary,
+            elements = FSM.context.grid.current,
+          })
+          FSM.showGrid(newBoundary)
+          return true
+        end
+      end
     end
   end
 
   return false
 end)
 
--- Toggle mouse mode (cmd+a)
-hs.hotkey.bind("cmd", "a", function()
-  isMouseModeActive = not isMouseModeActive
-  if isMouseModeActive then
-    hs.alert("Vi Mouse On")
-    mouseTap:start()
+-- Modal Bindings
+FSM.modals.escape:bind("", "escape", function()
+  FSM.transition("INACTIVE")
+end)
+
+-- Hotkey Bindings
+hs.hotkey.bind("cmd", "d", function()
+  if FSM.current == "INACTIVE" then
+    FSM.transition("MOUSE")
   else
-    cleanupAll()
-    hs.alert("Vi Mouse Off")
-    mouseTap:stop()
+    FSM.transition("INACTIVE")
   end
 end)
 
--- Direct grid mode entry (cmd+g)
 hs.hotkey.bind("cmd", "g", function()
-  if not isMouseModeActive then
-    enterGridMode("direct")
-    isMouseModeActive = true -- Allow mouse movement after grid selection
+  if FSM.current == "INACTIVE" then
+    FSM.transition("GRID")
   end
 end)
 
--- Global escape handler
-hs.hotkey.bind({}, "escape", function()
-  if isMouseModeActive or #gridStack > 0 then
-    isMouseModeActive = false
-    cleanupAll()
-    hs.alert("Mode Deactivated")
+-- Terminal Compatibility
+hs.urlevent.bind("openConsole", function()
+  if FSM.current ~= "INACTIVE" then
+    FSM.mouseTap:start()
   end
 end)
