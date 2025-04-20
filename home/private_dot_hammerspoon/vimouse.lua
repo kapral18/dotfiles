@@ -80,6 +80,7 @@ local FSM = {
     grid = {
       stack = {},
       current = nil,
+      previousState = "INACTIVE",
     },
     drag = {
       active = false,
@@ -128,10 +129,11 @@ function FSM.transition(newState, ...)
   elseif newState == "GRID" then
     local screen = hs.mouse.getCurrentScreen():frame()
     FSM.context.grid.stack = { { boundary = screen } }
+    FSM.context.grid.previousState = prevState
     FSM.showGrid(screen)
     hs.alert("Grid Mode Active")
     FSM.modals.escape:enter()
-    FSM.mouseTap:start() -- Critical fix: Start eventtap in grid mode
+    FSM.mouseTap:start()
   elseif newState == "INACTIVE" then
     hs.alert("Mode Deactivated")
     FSM.mouseTap:stop()
@@ -177,7 +179,6 @@ function FSM.createGridOverlay(boundary, scale)
 end
 
 function FSM.showGrid(boundary)
-  -- Clear previous grid
   if FSM.context.grid.current then
     for _, element in ipairs(FSM.context.grid.current) do
       element:delete()
@@ -185,7 +186,6 @@ function FSM.showGrid(boundary)
     FSM.context.grid.current = nil
   end
 
-  -- Create new grid
   FSM.context.grid.current = FSM.createGridOverlay(boundary, #FSM.context.grid.stack + 1)
   for _, element in ipairs(FSM.context.grid.current) do
     element:show()
@@ -207,6 +207,17 @@ FSM.mouseTap = hs.eventtap.new({ eventTypes.keyDown, eventTypes.keyUp }, functio
 
   -- State-specific handling
   if FSM.current == "MOUSE" then
+    -- Scrolling handling
+    if (code == keycodes["j"] or code == keycodes["k"]) and flags.ctrl then
+      if event:getType() == eventTypes.keyDown then
+        FSM.context.scroll.acceleration = (repeating ~= 0) and (FSM.context.scroll.acceleration + 1) or 1
+        local scroll_mul = 1 + math.log(FSM.context.scroll.acceleration)
+        local delta = (code == keycodes["j"]) and math.ceil(-8 * scroll_mul) or math.floor(8 * scroll_mul)
+        hs.eventtap.event.newScrollEvent({ 0, delta }, flags, "pixel"):post()
+      end
+      return true
+    end
+
     if code == keycodes["g"] then
       FSM.transition("GRID")
       return true
@@ -264,7 +275,6 @@ FSM.mouseTap = hs.eventtap.new({ eventTypes.keyDown, eventTypes.keyUp }, functio
     end
   elseif FSM.current == "GRID" then
     if event:getType() == eventTypes.keyDown then
-      -- Handle grid navigation
       if code == keycodes["f"] then
         table.remove(FSM.context.grid.stack)
         if #FSM.context.grid.stack > 0 then
@@ -275,11 +285,10 @@ FSM.mouseTap = hs.eventtap.new({ eventTypes.keyDown, eventTypes.keyUp }, functio
             y = prev.boundary.y + prev.boundary.h / 2,
           })
         else
-          FSM.transition("INACTIVE")
+          FSM.transition(FSM.context.grid.previousState)
         end
         return true
       else
-        -- Handle grid cell selection
         local hint = GRID_HINTS[code]
         if hint then
           local current = FSM.context.grid.stack[#FSM.context.grid.stack]
