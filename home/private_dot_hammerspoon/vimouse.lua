@@ -1,26 +1,31 @@
--- Credits: https://github.com/tweekmonster/hammerspoon-vimouse/blob/master/vimouse.lua
+-- Original Implementation Based on: https://github.com/tweekmonster/hammerspoon-vimouse/blob/master/vimouse.lua
 --
--- Save to ~/.hammerspoon
--- In ~/.hammerspoon/init.lua:
---    local vimouse = require('vimouse')
---    vimouse('cmd', 'm')
+-- Vi Mouse
 --
--- This sets cmd-m as the key that toggles Vi Mouse.
+-- This module provides a Vi-like mouse control mode for Hammerspoon. It allows
+-- you to control the mouse cursor using Vi-like keybindings, including
+-- grid-based navigation and mouse events.
 --
--- h/j/k/l moves the mouse cursor by 20 pixels.  Holding alt moves by 100
--- pixels, and holding shift moves by 5 pixels.
+-- Main Features:
+-- <cmd-a> toggles Vi Mouse mode.
+-- h/j/k/l moves the mouse cursor by 20 pixels.
+-- alt-h/j/k/l moves the mouse cursor by 100 pixels.
+-- shift-h/j/k/l moves the mouse cursor by 5 pixels.
+-- <return or space or m> sends left mousedown. Releasing <return or space or m> sends left mouse up.
+-- Holding <return or space or m> and pressing h/j/k/l is mouse dragging.
+-- Tapping <return or space or m> quickly sends double and triple clicks.
+-- Holding ctrl-<return or space or m> sends right mouse events.
+-- <c-j/k> sends the scroll wheel event.
+-- Holding <c-j/k> speeds up the scrolling.
+-- <esc> or <cmd-a> ends Vi Mouse mode.
 --
--- Pressing <return or space or m> sends left mouse down.  Releasing <return or space or m> sends left mouse
--- up.  Holding <return or space or m> and pressing h/j/k/l is mouse dragging.  Tapping
--- <return or space or m> quickly sends double and triple clicks.  Holding ctrl sends right
--- mouse events.
---
--- <c-j> and <c-k> sends the scroll wheel event.  Holding the keys will speed
--- up the scrolling.
---
--- Press <esc> or the configured toggle key to end Vi Mouse mode.
+-- Grid Navigation:
+-- <g> enters or resets grid mode from within Vi Mouse mode.
+-- <cmd-g> activates or resets grid mode from outside of Vi Mouse mode.
+-- <q/w/e/a/s/d/z/x/c> moves the mouse to the corresponding grid cell.
+-- <f> zooms out to the previous grid level.
+-- <esc> or <cmd-a> exits grid mode.
 
--- Final fully functional version with proper grid navigation and exit handling
 local eventTypes = hs.eventtap.event.types
 local eventPropTypes = hs.eventtap.event.properties
 local keycodes = hs.keycodes.map
@@ -47,6 +52,14 @@ local GRID_COLORS = {
 local gridStack = {}
 local currentGrid = nil
 local isMouseModeActive = false
+local gridEntryMode = nil
+local scrollAcceleration = 0
+
+-- Proportional scaling parameters
+local BASE_TEXT_SIZE = 28
+local TEXT_SCALE_FACTOR = 0.8
+local MIN_TEXT_SIZE = 12
+local BASE_STROKE_WIDTH = 2
 
 local function postEvent(et, coords, modkeys, clicks)
   local e = hs.eventtap.event.newMouseEvent(et, coords, modkeys)
@@ -54,13 +67,15 @@ local function postEvent(et, coords, modkeys, clicks)
   e:post()
 end
 
-local function createGridOverlay(boundary)
+local function createGridOverlay(boundary, scale)
   local elements = {}
   local cellW, cellH = boundary.w / GRID_SIZE, boundary.h / GRID_SIZE
 
+  local textSize = math.max(MIN_TEXT_SIZE, BASE_TEXT_SIZE * (TEXT_SCALE_FACTOR ^ (scale - 1)))
+  local strokeWidth = math.max(1, BASE_STROKE_WIDTH * (TEXT_SCALE_FACTOR ^ (scale - 1)))
+
   for col = 0, GRID_SIZE - 1 do
     for row = 0, GRID_SIZE - 1 do
-      -- Cell rectangle
       local rect = drawing.rectangle({
         x = boundary.x + col * cellW,
         y = boundary.y + row * cellH,
@@ -69,19 +84,19 @@ local function createGridOverlay(boundary)
       })
       rect:setStrokeColor(GRID_COLORS.stroke)
       rect:setFill(false)
-      rect:setStrokeWidth(2)
+      rect:setStrokeWidth(strokeWidth)
 
-      -- Hint label
       local hintKeys = { "q", "w", "e", "a", "s", "d", "z", "x", "c" }
       local hint = hintKeys[row * GRID_SIZE + col + 1]
       local text = drawing.text({
-        x = boundary.x + col * cellW + 15,
-        y = boundary.y + row * cellH + 15,
-        w = 40,
-        h = 40,
+        x = boundary.x + col * cellW + cellW * 0.05,
+        y = boundary.y + row * cellH + cellH * 0.05,
+        w = cellW * 0.9,
+        h = cellH * 0.9,
       }, hint:upper())
-      text:setTextSize(28)
+      text:setTextSize(textSize)
       text:setTextColor(GRID_COLORS.text)
+      text:setTextStyle({ paragraphStyle = { alignment = "center" } })
 
       table.insert(elements, rect)
       table.insert(elements, text)
@@ -91,19 +106,19 @@ local function createGridOverlay(boundary)
 end
 
 local function showGrid(boundary)
+  local scale = #gridStack + 1
   if currentGrid then
     for _, element in ipairs(currentGrid) do
       element:delete()
     end
   end
-  currentGrid = createGridOverlay(boundary)
+  currentGrid = createGridOverlay(boundary, scale)
   for _, element in ipairs(currentGrid) do
     element:show()
   end
 end
 
 local function cleanupAll()
-  -- Cleanup grid state
   if currentGrid then
     for _, element in ipairs(currentGrid) do
       element:delete()
@@ -112,8 +127,11 @@ local function cleanupAll()
   end
   gridStack = {}
 
-  -- Reset mouse mode
-  isMouseModeActive = false
+  if gridEntryMode == "direct" then
+    isMouseModeActive = false
+  end
+  gridEntryMode = nil
+  scrollAcceleration = 0
 end
 
 local function handleGridKey(code)
@@ -121,7 +139,6 @@ local function handleGridKey(code)
     return false
   end
 
-  -- Calculate new grid boundary
   local current = gridStack[#gridStack]
   local cellW = current.boundary.w / GRID_SIZE
   local cellH = current.boundary.h / GRID_SIZE
@@ -134,13 +151,11 @@ local function handleGridKey(code)
     h = cellH,
   }
 
-  -- Update mouse position
   hs.mouse.absolutePosition({
     x = newBoundary.x + newBoundary.w / 2,
     y = newBoundary.y + newBoundary.h / 2,
   })
 
-  -- Push new grid state
   table.insert(gridStack, {
     boundary = newBoundary,
     elements = currentGrid,
@@ -149,107 +164,154 @@ local function handleGridKey(code)
   return true
 end
 
-local function vimouse(tmod, tkey)
-  local tap = hs.eventtap.new({ eventTypes.keyDown, eventTypes.keyUp }, function(event)
-    if not isMouseModeActive then
-      return false
-    end
+local function enterGridMode(mode)
+  local screen = hs.mouse.getCurrentScreen():frame()
+  gridStack = { { boundary = { x = screen.x, y = screen.y, w = screen.w, h = screen.h } } }
+  gridEntryMode = mode
+  showGrid(gridStack[1].boundary)
 
-    local code = event:getKeyCode()
-    local flags = event:getFlags()
-    local coords = hs.mouse.absolutePosition()
-
-    -- Exit handling (works in any mode)
-    if code == keycodes.escape or (code == keycodes[tkey] and flags[tmod]) then
-      cleanupAll()
-      hs.alert("Vi Mouse Off")
-      return true
-    end
-
-    -- Grid navigation handling
-    if #gridStack > 0 then
-      if event:getType() == eventTypes.keyDown then
-        -- Zoom out with F
-        if code == keycodes["f"] then
-          table.remove(gridStack) -- Remove current level
-          if #gridStack > 0 then
-            local prev = gridStack[#gridStack]
-            showGrid(prev.boundary)
-            hs.mouse.absolutePosition({
-              x = prev.boundary.x + prev.boundary.w / 2,
-              y = prev.boundary.y + prev.boundary.h / 2,
-            })
-          else
-            cleanupAll()
-          end
-          return true
-        else
-          return handleGridKey(code)
-        end
-      end
-      return false -- Allow other key processing
-    end
-
-    -- Original Vimouse functionality
-    if code == keycodes["return"] or code == keycodes.space or code == keycodes.m then
-      local btn = flags.ctrl and "right" or "left"
-      local now = hs.timer.secondsSinceEpoch()
-      local mousepress = 0
-
-      if event:getType() == eventTypes.keyUp then
-        postEvent(eventTypes[btn .. "MouseUp"], coords, flags, mousepress)
-      else
-        mousepress = 1
-        postEvent(eventTypes[btn .. "MouseDown"], coords, flags, mousepress)
-      end
-      return true
-    elseif event:getType() == eventTypes.keyDown then
-      -- Grid activation
-      if code == keycodes["g"] then
-        local screen = hs.mouse.getCurrentScreen():frame()
-        gridStack = {
-          { boundary = { x = screen.x, y = screen.y, w = screen.w, h = screen.h } },
-        }
-        showGrid(gridStack[1].boundary)
-        return true
-      end
-
-      -- Movement logic
-      local mul = flags.alt and 5 or 1
-      local step = flags.shift and 5 or 20
-      local x, y = 0, 0
-
-      if code == keycodes["h"] then
-        x = -step * mul
-      elseif code == keycodes["l"] then
-        x = step * mul
-      elseif code == keycodes["j"] then
-        y = step * mul
-      elseif code == keycodes["k"] then
-        y = -step * mul
-      end
-
-      if x ~= 0 or y ~= 0 then
-        coords.x = coords.x + x
-        coords.y = coords.y + y
-        hs.mouse.absolutePosition(coords)
-        return true
-      end
-    end
-
-    return false
-  end)
-
-  hs.hotkey.bind(tmod, tkey, function()
-    if isMouseModeActive then
-      cleanupAll()
-      hs.alert("Vi Mouse Off")
-    else
-      isMouseModeActive = true
-      hs.alert("Vi Mouse On")
-      tap:start()
-    end
-  end)
+  if mode == "direct" then
+    hs.alert("Grid Mode Active")
+  end
 end
 
-return vimouse("cmd", "a")
+local function exitGridMode()
+  cleanupAll()
+  if gridEntryMode == "direct" then
+    hs.alert("Grid Mode Off")
+  end
+end
+
+local function handleGridNavigation(event)
+  local code = event:getKeyCode()
+
+  if #gridStack > 0 then
+    if event:getType() == eventTypes.keyDown then
+      if code == keycodes["f"] then
+        table.remove(gridStack)
+        if #gridStack > 0 then
+          local prev = gridStack[#gridStack]
+          showGrid(prev.boundary)
+          hs.mouse.absolutePosition({
+            x = prev.boundary.x + prev.boundary.w / 2,
+            y = prev.boundary.y + prev.boundary.h / 2,
+          })
+        else
+          exitGridMode()
+        end
+        return true
+      else
+        return handleGridKey(code)
+      end
+    end
+    return true
+  end
+  return false
+end
+
+-- Mouse mode tap (original functionality)
+local mouseTap = hs.eventtap.new({ eventTypes.keyDown, eventTypes.keyUp }, function(event)
+  if not isMouseModeActive then
+    return false
+  end
+
+  local code = event:getKeyCode()
+  local flags = event:getFlags()
+  local coords = hs.mouse.absolutePosition()
+  local repeating = event:getProperty(eventPropTypes.keyboardEventAutorepeat)
+
+  -- Handle grid navigation first
+  if handleGridNavigation(event) then
+    return true
+  end
+
+  -- Exit handling
+  if code == keycodes.escape then
+    isMouseModeActive = false
+    cleanupAll()
+    hs.alert("Vi Mouse Off")
+    return true
+  end
+
+  -- Scrolling handling
+  if (code == keycodes["j"] or code == keycodes["k"]) and flags.ctrl then
+    if event:getType() == eventTypes.keyDown then
+      scrollAcceleration = (repeating ~= 0) and (scrollAcceleration + 1) or 1
+      local scroll_mul = 1 + math.log(scrollAcceleration)
+      local delta = (code == keycodes["j"]) and math.ceil(-8 * scroll_mul) or math.floor(8 * scroll_mul)
+
+      hs.eventtap.event.newScrollEvent({ 0, delta }, flags, "pixel"):post()
+    end
+    return true
+  end
+
+  -- Original mouse functionality
+  if code == keycodes["return"] or code == keycodes.space or code == keycodes.m then
+    local btn = flags.ctrl and "right" or "left"
+    if event:getType() == eventTypes.keyUp then
+      postEvent(eventTypes[btn .. "MouseUp"], coords, flags, 1)
+    else
+      postEvent(eventTypes[btn .. "MouseDown"], coords, flags, 1)
+    end
+    return true
+  elseif event:getType() == eventTypes.keyDown then
+    -- Grid activation from mouse mode
+    if code == keycodes["g"] then
+      enterGridMode("mouse")
+      return true
+    end
+
+    local mul = flags.alt and 5 or 1
+    local step = flags.shift and 5 or 20
+    local x, y = 0, 0
+
+    if code == keycodes["h"] then
+      x = -step * mul
+    elseif code == keycodes["l"] then
+      x = step * mul
+    elseif code == keycodes["j"] then
+      y = step * mul
+    elseif code == keycodes["k"] then
+      y = -step * mul
+    end
+
+    if x ~= 0 or y ~= 0 then
+      coords.x = coords.x + x
+      coords.y = coords.y + y
+      hs.mouse.absolutePosition(coords)
+      return true
+    end
+  end
+
+  return false
+end)
+
+-- Toggle mouse mode (cmd+a)
+hs.hotkey.bind("cmd", "a", function()
+  isMouseModeActive = not isMouseModeActive
+  if isMouseModeActive then
+    hs.alert("Vi Mouse On")
+    mouseTap:start()
+  else
+    cleanupAll()
+    hs.alert("Vi Mouse Off")
+    mouseTap:stop()
+  end
+end)
+
+-- Direct grid mode entry (cmd+g)
+hs.hotkey.bind("cmd", "g", function()
+  if not isMouseModeActive then
+    enterGridMode("direct")
+    isMouseModeActive = true -- Allow mouse movement after grid selection
+  end
+end)
+
+-- Global escape handler
+hs.hotkey.bind({}, "escape", function()
+  if isMouseModeActive or #gridStack > 0 then
+    isMouseModeActive = false
+    cleanupAll()
+    hs.alert("Mode Deactivated")
+  end
+end)
