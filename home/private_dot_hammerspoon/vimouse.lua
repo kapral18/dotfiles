@@ -145,7 +145,7 @@ local function vimouse(tmod, tkey)
         end
         hs.mouse.absolutePosition(orig_coords)
         return true
-      elseif (code == keycodes["d"] or code == keycodes["u"]) and flags.ctrl then
+      elseif (code == keycodes["j"] or code == keycodes["k"]) and flags.ctrl then
         if repeating ~= 0 then
           scrolling = scrolling + 1
         else
@@ -153,7 +153,7 @@ local function vimouse(tmod, tkey)
         end
 
         local scroll_mul = 1 + math.log(scrolling)
-        if code == keycodes["d"] then
+        if code == keycodes["j"] then
           scroll_y_delta = math.ceil(-8 * scroll_mul)
         else
           scroll_y_delta = math.floor(8 * scroll_mul)
