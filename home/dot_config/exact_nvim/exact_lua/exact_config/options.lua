@@ -224,6 +224,8 @@ vim.opt.fixendofline = false
 -- overriding lazyvim statuscolumn
 vim.opt.statuscolumn = [[]]
 
+vim.opt.path:append("**")
+
 vim.opt.conceallevel = 0
 vim.opt.number = true -- Show line numbers
 vim.opt.relativenumber = false -- Show relative line numbers
