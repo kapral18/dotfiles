@@ -3,9 +3,9 @@
 set -euo pipefail
 
 # This script installs cargo crates from the default-cargo-crates file
-# {{ include "private_readonly_dot_default-cargo-crates" | sha256sum }}
+# {{ include "readonly_dot_default-cargo-crates" | sha256sum }}
 
-cargo_crates_file={{ joinPath .chezmoi.sourceDir "private_readonly_dot_default-cargo-crates" | quote }}
+cargo_crates_file={{ joinPath .chezmoi.sourceDir "readonly_dot_default-cargo-crates" | quote }}
 
 if [[ ! -f "$cargo_crates_file" ]]; then
     echo "Error: default-cargo-crates file not found at $cargo_crates_file"

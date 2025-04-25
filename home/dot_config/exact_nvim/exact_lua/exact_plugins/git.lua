@@ -62,18 +62,23 @@ return {
       { "<leader>gadb", ":AdvancedGitSearch diff_branch_file<CR>", desc = "AGS Branch vs commit" },
       { "<leader>gar", ":AdvancedGitSearch checkout_reflog<CR>", desc = "AGS Checkout reflog" },
     },
-    config = function()
+    opts = {
+      -- diff_plugin = "diffview",
+      show_builtin_git_pickers = true,
+      entry_default_author_or_date = "date", -- one of "author" or "date"
+    },
+    config = function(_, opts)
       -- optional: setup telescope before loading the extension
       require("telescope").setup({
         -- move this to the place where you call the telescope setup function
         extensions = {
-          advanced_git_search = {
-            diff_plugin = "diffview.nvim",
-          },
+          advanced_git_search = opts,
         },
       })
 
       require("telescope").load_extension("advanced_git_search")
+
+      -- require("advanced_git_search.fzf").setup(opts)
 
       require("which-key").add({
         { "<leader>ga", group = "Advanced Git Search", mode = { "n", "v" } },

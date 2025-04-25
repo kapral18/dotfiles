@@ -3,9 +3,9 @@
 set -euo pipefail
 
 # This script installs Ruby gems from the default-gems file
-# {{ include "private_readonly_dot_default-gems" | sha256sum }}
+# {{ include "readonly_dot_default-gems" | sha256sum }}
 
-gems_file={{ joinPath .chezmoi.sourceDir "private_readonly_dot_default-gems" | quote }}
+gems_file={{ joinPath .chezmoi.sourceDir "readonly_dot_default-gems" | quote }}
 
 if [[ ! -f "$gems_file" ]]; then
     echo "Error: default-gems file not found at $gems_file"

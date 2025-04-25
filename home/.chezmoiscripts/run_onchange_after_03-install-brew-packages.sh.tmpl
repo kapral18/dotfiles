@@ -4,7 +4,7 @@ echo "---------------------------------------"
 echo "brew install from Brewfile: applying..."
 echo "---------------------------------------"
 
-# Brewfile hash: {{ include "private_readonly_dot_Brewfile.tmpl" | sha256sum }}
+# Brewfile hash: {{ include "readonly_dot_Brewfile.tmpl" | sha256sum }}
 brew bundle --global
 
 echo "---------------------------------"

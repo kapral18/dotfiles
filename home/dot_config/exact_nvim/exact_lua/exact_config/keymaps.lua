@@ -198,3 +198,21 @@ vim.api.nvim_create_user_command("WWW", function()
 end, {
   desc = "Write all without triggering autocommands",
 })
+
+-- create a user command that does
+-- sed "s/\///" .gitignore > .ctagsignore
+-- ctags -R --exclude=@.ctagsignore
+-- called MakeTags
+
+vim.api.nvim_create_user_command("MakeTags", function()
+  local cmd = [[
+    sed "s/\///" .gitignore > .ctagsignore
+    ctags -R --exclude=@.ctagsignore
+  ]]
+  vim.fn.system(cmd)
+  print("Tags created")
+end, {
+  desc = "Create tags for the project",
+})
+
+vim.keymap.set("n", "<leader>mt", "<cmd>MakeTags<cr>", { desc = "Make Tags" })

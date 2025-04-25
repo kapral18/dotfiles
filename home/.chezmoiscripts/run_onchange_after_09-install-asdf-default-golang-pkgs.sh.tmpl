@@ -3,9 +3,9 @@
 set -euo pipefail
 
 # This script installs go packages from the default-golang-pkgs file
-# {{ include "private_readonly_dot_default-golang-pkgs" | sha256sum }}
+# {{ include "readonly_dot_default-golang-pkgs" | sha256sum }}
 
-golang_pkgs_file={{ joinPath .chezmoi.sourceDir "private_readonly_dot_default-golang-pkgs" | quote }}
+golang_pkgs_file={{ joinPath .chezmoi.sourceDir "readonly_dot_default-golang-pkgs" | quote }}
 
 if [[ ! -f "$golang_pkgs_file" ]]; then
     echo "Error: default-golang-pkgs file not found at $golang_pkgs_file"
