@@ -199,18 +199,23 @@ end, {
   desc = "Write all without triggering autocommands",
 })
 
--- create a user command that does
--- sed "s/\///" .gitignore > .ctagsignore
--- ctags -R --exclude=@.ctagsignore
--- called MakeTags
-
 vim.api.nvim_create_user_command("MakeTags", function()
   local cmd = [[
-    sed "s/\///" .gitignore > .ctagsignore
-    ctags -R --exclude=@.ctagsignore
+    if [ -f .gitignore ]; then sed "s/\///" .gitignore > .ctagsignore; fi
+    ctags -R --exclude=@.ctagsignore .
   ]]
-  vim.fn.system(cmd)
-  print("Tags created")
+  vim.fn.jobstart({ "bash", "-c", cmd }, {
+    on_exit = function(_, exit_code)
+      if exit_code == 0 then
+        print("Tags created successfully")
+      else
+        print(exit_code)
+        print("Error creating tags")
+      end
+    end,
+    stdout_buffered = true,
+    stderr_buffered = true,
+  })
 end, {
   desc = "Create tags for the project",
 })

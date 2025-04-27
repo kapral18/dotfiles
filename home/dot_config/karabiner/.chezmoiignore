@@ -1,2 +1,2 @@
-automatic_backups
-assets
+automatic_backups/**
+assets/**

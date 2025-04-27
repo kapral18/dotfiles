@@ -1,4 +1,4 @@
-completions
-conf.d
+completions/**
+conf.d/**
 fish_variables
-functions
+functions/**
