@@ -11,7 +11,7 @@ spoon.RecursiveBinder.helperEntryLengthInChar = 25
 -- plugins
 require("keymaps")
 require("launch")
-require("vimouse")
+require("gridmouse")
 require("window")
 
 -- config reload

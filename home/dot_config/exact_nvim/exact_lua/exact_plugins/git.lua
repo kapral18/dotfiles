@@ -1,6 +1,7 @@
 return {
   {
     "lewis6991/gitsigns.nvim",
+    tag = "v1.0.2",
     opts = {
       numhl = true, -- Toggle with `:Gitsigns toggle_numhl`
       linehl = false, -- Toggle with `:Gitsigns toggle_linehl`
@@ -55,12 +56,12 @@ return {
     cmd = { "AdvancedGitSearch" },
     keys = {
       { "<leader>gas", ":AdvancedGitSearch<CR>", desc = "AdvancedGitSearch" },
-      { "<leader>gal", ":AdvancedGitSearch search_log_content<CR>", desc = "AGS Repo History Search" },
+      { "<leader>gar", ":AdvancedGitSearch search_log_content<CR>", desc = "AGS Repo History Search" },
       { "<leader>gaf", ":AdvancedGitSearch search_log_content_file<CR>", desc = "AGS File History Search" },
       { "<leader>gadf", ":AdvancedGitSearch diff_commit_file<CR>", desc = "AGS File vs commit" },
-      { "<leader>gadl", ":AdvancedGitSearch diff_commit_line<CR>", desc = "AGS Line vs commit" },
+      { "<leader>gadl", ":AdvancedGitSearch diff_commit_line<CR>", mode = { "x" }, desc = "AGS Line vs commit" },
       { "<leader>gadb", ":AdvancedGitSearch diff_branch_file<CR>", desc = "AGS Branch vs commit" },
-      { "<leader>gar", ":AdvancedGitSearch checkout_reflog<CR>", desc = "AGS Checkout reflog" },
+      { "<leader>gal", ":AdvancedGitSearch checkout_reflog<CR>", desc = "AGS Checkout reflog" },
     },
     opts = {
       -- diff_plugin = "diffview",

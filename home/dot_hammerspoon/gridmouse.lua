@@ -1,13 +1,13 @@
--- Original Implementation Based on: https://github.com/tweekmonster/hammerspoon-vimouse/blob/master/vimouse.lua
+-- Non-grid implementation based on: https://github.com/tweekmonster/hammerspoon-vimouse/blob/master/vimouse.lua
 --
--- Vi Mouse
+-- GridMouse
 --
 -- This module provides a Vi-like mouse control mode for Hammerspoon. It allows
 -- you to control the mouse cursor using Vi-like keybindings, including
 -- grid-based navigation and mouse events.
 --
 -- Main Features:
--- <cmd-d> toggles Vi Mouse mode.
+-- <cmd-d> toggles GridMouse mode.
 -- h/j/k/l moves the mouse cursor by 20 pixels.
 -- alt-h/j/k/l moves the mouse cursor by 100 pixels.
 -- shift-h/j/k/l moves the mouse cursor by 5 pixels.
@@ -17,11 +17,11 @@
 -- Holding ctrl-<return or space or m> sends right mouse events.
 -- <c-j/k> sends the scroll wheel event.
 -- Holding <c-j/k> speeds up the scrolling.
--- <esc> or <cmd-d> ends Vi Mouse mode.
+-- <esc> or <cmd-d> ends GridMouse mode.
 --
 -- Grid Navigation:
--- <g> enters grid mode from within Vi Mouse mode.
--- <cmd-g> activates grid mode from outside of Vi Mouse mode.
+-- <g> enters grid mode from within GridMouse mode.
+-- <cmd-g> activates grid mode from outside of GridMouse mode.
 -- <q/w/e/a/s/d/z/x/c> moves the mouse to the corresponding grid cell.
 -- <f> zooms out to the previous grid level.
 -- <esc> or <cmd-d> exits grid mode.
