@@ -17,7 +17,6 @@ function hey_branch --description 'Check the status of the current branch'
     set -l inferred_remote_branch_remote $remote_branch_split[1]
     set -l inferred_remote_branch_name $remote_branch_split[2]
 
-
     echo "Tracked Branch: '$remote_branch'"
 
     echo ------------------------------------
@@ -54,7 +53,20 @@ end
 
 function pull_rebase --description 'Pull the latest changes from the remote and rebase'
     set -l current_branch (git branch --show-current)
-    set -l fork_upstream (git reflog show $current_branch | grep 'branch: Created from' | grep -v 'Create from HEAD' | awk "{print \$NF}")
+    set -l fork_upstream (git reflog show $current_branch | grep 'branch: Created from' | awk "{print \$NF}")
+
+    # if the fork_upstream is empty or HEAD, it means the branch was created locally
+    # so we need to find the upstream branch on origin
+    if test -z "$fork_upstream" -o "$fork_upstream" = HEAD
+        set fork_upstream (git branch -r --contains $current_branch | grep 'origin/' | grep -v 'HEAD' | awk "{print \$1}")
+
+        # if the fork_upstream is empty, try to git fetch the upstream branch
+        if test -z "$fork_upstream"
+            echo "Could not find the forked upstream branch, trying to fetch it from origin"
+            git fetch origin $current_branch
+            set fork_upstream (git branch -r --contains $current_branch | grep 'origin/' | grep -v 'HEAD' | awk "{print \$1}")
+        end
+    end
 
     if test -z "$fork_upstream"
         echo "Could not find the forked upstream branch"

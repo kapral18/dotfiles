@@ -535,11 +535,11 @@ function remove_worktree --description "Remove a worktree using fzf and delete t
     # if remote is no longer in use in worktrees, remove it
     # we add error redirection to suppress the error message if the branch doesn't show up
     # in case of 'origin' or 'upstream' which is acceptable
+    # it can also error if the branch is not tracked, i.e. if it was created locally
     set remote_branch (git rev-parse --abbrev-ref $worktree_branch@{upstream} 2>/dev/null)
     set remote (echo $remote_branch | cut -d'/' -f1)
 
-    # remove the remote if it's not origin or upstream (they are persistent for all worktrees)
-    if not test "$remote" = origin; and not test "$remote" = upstream
+    if test -n "$remote"; and not test "$remote" = origin; and not test "$remote" = upstream
         # additionally only remove this remote if it isn’t referenced by any existing worktree
         if not string match -q -r "\b$remote\b" -- (git worktree list -v)
             git remote remove $remote

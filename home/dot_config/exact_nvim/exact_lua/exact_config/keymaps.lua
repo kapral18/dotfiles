@@ -80,17 +80,6 @@ end, { desc = "Toggle Statusline" })
 -- close and go back to previous window
 vim.keymap.set("n", "<leader>wq", "<cmd>wincmd p | q<cr>", { desc = "Close window" })
 
--- Add a space before the current line
-vim.keymap.set(
-  "n",
-  "[<leader>",
-  "O<Esc><Down>",
-  { noremap = true, silent = true, desc = "Add space before current line" }
-)
-
--- Add a space after the current line
-vim.keymap.set("n", "]<leader>", "o<Esc><Up>", { noremap = true, silent = true, desc = "Add space after current line" })
-
 vim.api.nvim_create_user_command("LargeFiles", function(opts)
   local args = vim.split(opts.args or "", " ")
   local min_lines = tonumber(args[1]) or 5000
