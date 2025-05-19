@@ -4,6 +4,7 @@ import argparse
 import subprocess
 import mimetypes
 import sys
+import os
 from dataclasses import dataclass
 
 
@@ -37,6 +38,13 @@ def main() -> None:
     args: BatArgs
     unknown_args: list[str]
     args, unknown_args = parser.parse_known_args(namespace=BatArgs("", []))
+
+    # if it's a '.' or '..' or a directory, use ls -la instead of bat
+
+    if args.file in (".", "..") or os.path.isdir(args.file):
+        cmd = ["ls", "-la", "--color=always", args.file]
+        _ = subprocess.run(cmd, check=True)
+        return
 
     try:
         if is_image(args.file):

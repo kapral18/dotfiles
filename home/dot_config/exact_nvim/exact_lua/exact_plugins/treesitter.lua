@@ -29,7 +29,6 @@ return {
     "nvim-treesitter/nvim-treesitter",
     dependencies = {
       "RRethy/nvim-treesitter-endwise",
-      "chrisgrieser/nvim-puppeteer",
     },
     opts = {
       endwise = {

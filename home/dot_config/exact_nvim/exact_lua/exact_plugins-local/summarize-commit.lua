@@ -101,7 +101,7 @@ local function generate_with_cloudflare(prompt, diff)
     messages = {
       {
         role = "system",
-        content = "You are a conventional commits summarizer. You take in git diff data and only respond with a concise but not lacking distinguishing details commit message and bullet-listed commit body in the format of conventional commits.",
+        content = "You are a conventional commits summarizer. You take in git diff data and only respond with a concise but not lacking distinguishing details commit message and bullet-listed commit body in the format of conventional commits. Do not add any other text or formatting.",
       },
       {
         role = "user",
@@ -128,7 +128,7 @@ local function generate_with_cloudflare(prompt, diff)
 
   -- Build the curl command, using the temporary file for the data
   local command = string.format(
-    'curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/%s/ai/run/@cf/meta/llama-3.3-70b-instruct-fp8-fast" -H "Authorization: Bearer %s" -H "Content-Type: application/json" -d @%s',
+    'curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/%s/ai/run/@cf/qwen/qwen2.5-coder-32b-instruct" -H "Authorization: Bearer %s" -H "Content-Type: application/json" -d @%s',
     os.getenv("CLOUDFLARE_WORKERS_AI_ACCOUNT_ID"),
     os.getenv("CLOUDFLARE_WORKERS_AI_API_KEY"),
     tmpfile
