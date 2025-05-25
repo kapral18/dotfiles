@@ -11,7 +11,7 @@ return {
     "CopilotC-Nvim/CopilotChat.nvim",
     lazy = false,
     opts = {
-      model = "DeepSeek-V3-0324",
+      model = "claude-sonnet-4",
     },
   },
 }

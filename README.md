@@ -28,7 +28,6 @@ The repository manages configurations for the following tools and environments:
 - **Bartender:** Bartender configuration for managing menu bar items.
 - **Bash:** Bash shell configuration, including aliases and environment variables and custom functions.
 - **Bat:** Bat configuration for syntax highlighting.
-- **ChatBlade**: ChatBlade AI CLI configuration.
 - **Chezmoi:** Configuration for managing dotfiles.
 - **Curl:** Curl configuration.
 - **Fish:** Fish shell configuration, including aliases, environment variables and custom functions.
@@ -51,7 +50,6 @@ The repository manages configurations for the following tools and environments:
 - **iTerm2:** iTerm2 terminal emulator configuration.
 - **LazyGit:** lazygit configuration.
 - **macOS:** macOS system configurations, including defaults and settings.
-- **newsboat:** newsboat configuration.
 
 ## Manual Setup
 

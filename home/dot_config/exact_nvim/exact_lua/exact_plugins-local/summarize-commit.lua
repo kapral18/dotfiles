@@ -48,25 +48,6 @@ local function insert_at_cursor(output)
   vim.api.nvim_win_set_cursor(win, { cursor[1] + #output, cursor[2] })
 end
 
--- Function to generate commit summary using chatblade
-local function generate_with_chatblade(prompt, diff)
-  -- Escape the prompt and diff properly for shell
-  local escaped_prompt = vim.fn.shellescape(prompt)
-  local escaped_diff = vim.fn.shellescape(diff)
-
-  -- Construct and execute command
-  local command = ("echo %s | chatblade -c 4o -e %s"):format(escaped_prompt, escaped_diff)
-  local output = vim.fn.systemlist(command)
-
-  if vim.v.shell_error ~= 0 then
-    vim.notify("Failed to generate summary", vim.log.levels.ERROR)
-    print(vim.inspect(output))
-    return nil
-  end
-
-  return output
-end
-
 -- Function to generate commit summary using Ollama
 local function generate_with_ollama(prompt, diff)
   -- Prepare input with prompt and diff
@@ -153,19 +134,6 @@ local function generate_with_cloudflare(prompt, diff)
   else
     vim.notify("Invalid response format", vim.log.levels.ERROR)
     return nil
-  end
-end
-
--- Summarize commit using chatblade
-M.summarize_commit = function()
-  local diff = get_staged_diff()
-  if not diff then
-    return
-  end
-
-  local output = generate_with_chatblade(M.prompt, diff)
-  if output then
-    insert_at_cursor(output)
   end
 end
 

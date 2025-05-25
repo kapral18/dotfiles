@@ -6,7 +6,6 @@
 # .zshrc for interactive shell configurations
 
 # Aliases
-alias b="chatblade -soe -p code"
 alias c="chezmoi"
 alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l $FD_OPTIONS'
 alias g="git"

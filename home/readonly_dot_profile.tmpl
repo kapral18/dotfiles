@@ -49,11 +49,11 @@ export ASDF_GOLANG_MOD_VERSION_ENABLED=true
 
 # Path Management
 prepend_to_path_if_missing() {
-    local dir="$1"
-    dir="${dir%/}"
-    if [[ -d "$dir" && ":$PATH:" != *":$dir:"* ]]; then
-        PATH="$dir:$PATH"
-    fi
+  local dir="$1"
+  dir="${dir%/}"
+  if [[ -d "$dir" && ":$PATH:" != *":$dir:"* ]]; then
+    PATH="$dir:$PATH"
+  fi
 }
 
 prepend_to_path_if_missing {{ .homebrewPrefix }}/opt/coreutils/libexec/gnubin
@@ -75,17 +75,17 @@ export FZF_ALT_C_COMMAND="fd --type d $FD_OPTIONS"
 
 # API Key Configurations
 if command -v pass >/dev/null; then
-    [ -z "$OPENAI_API_KEY" ] && export OPENAI_API_KEY="$(pass openai/api/token)"
-    [ -z "$CLOUDFLARE_WORKERS_AI_ACCOUNT_ID" ] && export CLOUDFLARE_WORKERS_AI_ACCOUNT_ID="$(pass cloudflare/workers/ai/account/id)"
-    [ -z "$CLOUDFLARE_WORKERS_AI_API_KEY" ] && export CLOUDFLARE_WORKERS_AI_API_KEY="$(pass cloudflare/workers/ai/api/token)"
+  [ -z "$OPENAI_API_KEY" ] && export OPENAI_API_KEY="$(pass openai/api/token)"
+  [ -z "$CLOUDFLARE_WORKERS_AI_ACCOUNT_ID" ] && export CLOUDFLARE_WORKERS_AI_ACCOUNT_ID="$(pass cloudflare/workers/ai/account/id)"
+  [ -z "$CLOUDFLARE_WORKERS_AI_API_KEY" ] && export CLOUDFLARE_WORKERS_AI_API_KEY="$(pass cloudflare/workers/ai/api/token)"
 fi
 
 # Conditional Configurations
 {{ if ne .isWork true -}}
 wpass() {
-    export PASSWORD_STORE_DIR="{{ joinPath .chezmoi.homeDir ".password-store-work" }}"
+  export PASSWORD_STORE_DIR="{{ joinPath .chezmoi.homeDir ".password-store-work" }}"
 }
 ppass() {
-    export PASSWORD_STORE_DIR="{{ joinPath .chezmoi.homeDir ".password-store" }}"
+  export PASSWORD_STORE_DIR="{{ joinPath .chezmoi.homeDir ".password-store" }}"
 }
 {{- end }}

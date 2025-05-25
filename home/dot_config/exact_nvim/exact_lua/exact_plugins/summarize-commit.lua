@@ -5,14 +5,6 @@ return {
   ft = "gitcommit",
   keys = {
     {
-      "<leader>aid",
-      function()
-        require("plugins-local.summarize-commit").summarize_commit()
-      end,
-      ft = "gitcommit",
-      desc = "[ChatGPT] Summarize commit",
-    },
-    {
       "<leader>ail",
       function()
         require("plugins-local.summarize-commit").summarize_commit_ollama()
