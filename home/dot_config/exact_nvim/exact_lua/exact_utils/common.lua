@@ -79,4 +79,9 @@ function M.open_image(img_path, fallback)
   end
 end
 
+function M.file_exists(file_path)
+  local stat = vim.uv.fs_stat(file_path)
+  return stat and stat.type == "file" or false
+end
+
 return M

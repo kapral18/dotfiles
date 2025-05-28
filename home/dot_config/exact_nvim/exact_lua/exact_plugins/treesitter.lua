@@ -1,29 +1,3 @@
-local mini_ai_git_signs = function()
-  local bufnr = vim.api.nvim_get_current_buf()
-  local gitsigns_cache = require("gitsigns.cache").cache[bufnr]
-  if not gitsigns_cache then
-    return
-  end
-  local hunks = gitsigns_cache.hunks
-
-  if not hunks then
-    return
-  end
-
-  hunks = vim.tbl_map(function(hunk)
-    local from_line = hunk.added.start
-    local from_col = 1
-    local to_line = hunk.vend
-    local to_col = #vim.api.nvim_buf_get_lines(bufnr, to_line - 1, to_line, false)[1] + 1
-    return {
-      from = { line = from_line, col = from_col },
-      to = { line = to_line, col = to_col },
-    }
-  end, hunks)
-
-  return hunks
-end
-
 return {
   {
     "nvim-treesitter/nvim-treesitter",
@@ -38,6 +12,27 @@ return {
         enable = true,
       },
       textobjects = {
+        select = {
+          enable = true,
+          lookahead = true,
+          keymaps = {
+            ["aa"] = "@parameter.outer",
+            ["ia"] = "@parameter.inner",
+            ["af"] = "@function.outer",
+            ["if"] = "@function.inner",
+            ["ac"] = "@class.outer",
+            ["ic"] = "@class.inner",
+            ["a/"] = "@comment.outer",
+            ["i/"] = "@comment.inner",
+            ["a?"] = "@conditional.outer",
+            ["i?"] = "@conditional.inner",
+            ["a:"] = "@loop.outer",
+            ["i:"] = "@loop.inner",
+            ["aj"] = "@jsx_attr",
+            ["ij"] = "@jsx_attr",
+          },
+          include_surrounding_whitespace = true,
+        },
         move = {
           enable = true,
           goto_next_start = { ["]r"] = "@return.outer" },
@@ -120,42 +115,6 @@ return {
   },
   {
     "echasnovski/mini.ai",
-    dependencies = {
-      { "echasnovski/mini.extra", config = true },
-    },
-    event = "VeryLazy",
-    opts = function(_, opts)
-      local ai = require("mini.ai")
-      local MiniExtra = require("mini.extra")
-      return vim.tbl_deep_extend("force", opts, {
-        custom_textobjects = {
-          C = ai.gen_spec.treesitter({ a = "@comment.outer", i = "@comment.outer" }),
-          D = MiniExtra.gen_ai_spec.diagnostic(),
-          E = MiniExtra.gen_ai_spec.diagnostic({ severity = vim.diagnostic.severity.ERROR }),
-          h = mini_ai_git_signs,
-          j = ai.gen_spec.treesitter({
-            a = { "@jsx_attr" },
-            i = { "@jsx_attr" },
-          }),
-          k = ai.gen_spec.treesitter({
-            i = { "@assignment.lhs", "@key.inner" },
-            a = { "@assignment.outer", "@key.inner" },
-          }),
-          L = MiniExtra.gen_ai_spec.line(),
-          N = MiniExtra.gen_ai_spec.number(),
-          O = ai.gen_spec.treesitter({
-            a = { "@function.outer", "@class.outer" },
-            i = { "@function.inner", "@class.inner" },
-          }),
-          -- mixes up with leap-spooky so not using it
-          -- r = ai.gen_spec.treesitter({ a = "@return.outer", i = "@return.inner" }),
-          v = ai.gen_spec.treesitter({
-            i = { "@assignment.rhs", "@value.inner", "@return.inner" },
-            a = { "@assignment.outer", "@value.inner", "@return.outer" },
-          }),
-          ["$"] = ai.gen_spec.pair("$", "$", { type = "balanced" }),
-        },
-      })
-    end,
+    enabled = false,
   },
 }

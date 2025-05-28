@@ -1,3 +1,5 @@
+local common_utils = require("utils.common")
+
 local M = {}
 
 local test_types = { it = true, test = true, describe = true }
@@ -176,10 +178,118 @@ M.escape_shell_arg = function(str)
   return "'" .. str:gsub("'", [['\'']]) .. "'"
 end
 
-M.run_jest_cmd = function(arg)
-  local cmd = "node scripts/jest " .. vim.fn.expand("%:p")
-  if arg then
-    cmd = cmd .. " " .. arg
+---@param arg string Additional arguments to pass to Jest
+---@param debug_mode boolean|nil Whether to run Jest in debug mode
+M.run_jest_cmd = function(arg, debug_mode)
+  local root_git = vim.fs.find({ ".git" }, { upward = true })[1]
+
+  if not root_git then
+    vim.notify("No .git directory or yarn.lock or package-lock.json found", vim.log.levels.WARN)
+    return
+  end
+
+  local root_dir = vim.fn.fnamemodify(root_git, ":h")
+
+  -- check if package.json exists in root_dir using fs_stat
+  local found_pkg_json_path = common_utils.file_exists(root_dir .. "/package.json") and root_dir .. "/package.json"
+    or nil
+
+  if not found_pkg_json_path then
+    vim.notify("No package.json found in current or parent directories", vim.log.levels.ERROR)
+    return
+  end
+
+  local cmd
+
+  if debug_mode then
+    -- For debug mode, we need to run Jest directly with node inspector
+    local jest_path = nil
+
+    -- Try to find jest binary
+    local possible_jest_paths = {
+      root_dir .. "/node_modules/.bin/jest",
+      root_dir .. "/node_modules/jest/bin/jest.js",
+    }
+
+    for _, path in ipairs(possible_jest_paths) do
+      if common_utils.file_exists(path) then
+        jest_path = path
+        break
+      end
+    end
+
+    if not jest_path then
+      vim.notify("Jest binary not found in node_modules", vim.log.levels.ERROR)
+      return
+    end
+
+    -- Construct debug command
+    cmd = "node --inspect-brk " .. jest_path .. " --runInBand " .. vim.fn.expand("%:p")
+    if arg then
+      cmd = cmd .. " " .. arg
+    end
+
+    -- Notify user about debug port
+    vim.notify("Starting Jest in debug mode on port 9229. Attach your debugger.", vim.log.levels.INFO)
+  else
+    -- Normal mode - use package scripts
+    local package_json = vim.fn.json_decode(vim.fn.readfile(found_pkg_json_path)) --[[@as {scripts?: table<string, string>}]]
+
+    if not package_json.scripts then
+      vim.notify("No scripts found in package.json", vim.log.levels.ERROR)
+      return
+    end
+
+    local pkg_json_scripts = package_json.scripts --[[@as table<string, string>]]
+
+    local jest_script_names = {
+      "test",
+      "test:unit",
+      "test:jest",
+      "jest",
+      "jest:unit",
+      "test:all",
+      "jest:all",
+      "test:watch",
+      "jest:watch",
+      "test:coverage",
+      "jest:coverage",
+    }
+
+    local script_name = nil
+    for _, name in ipairs(jest_script_names) do
+      if pkg_json_scripts[name] then
+        script_name = name
+        break
+      end
+    end
+
+    if not script_name then
+      vim.notify("No jest script found in package.json", vim.log.levels.ERROR)
+      return
+    end
+
+    local script_runner = nil
+
+    if common_utils.file_exists(root_dir .. "/yarn.lock") then
+      script_runner = "yarn"
+    elseif common_utils.file_exists(root_dir .. "/package-lock.json") then
+      script_runner = "npm"
+    elseif common_utils.file_exists(root_dir .. "/pnpm-lock.yaml") then
+      script_runner = "pnpm"
+    elseif common_utils.file_exists(root_dir .. "/bun.lockb") then
+      script_runner = "bun"
+    end
+
+    if not script_runner then
+      vim.notify("No supported package manager lock file found", vim.log.levels.ERROR)
+      return
+    end
+
+    cmd = script_runner .. " " .. script_name .. " " .. vim.fn.expand("%:p")
+    if arg then
+      cmd = cmd .. " " .. arg
+    end
   end
 
   local original_win = vim.api.nvim_get_current_win()
@@ -198,7 +308,7 @@ M.close_terminal_buffer = function()
   end
 end
 
-local function show_parametrized_prompt(pattern)
+local function show_parametrized_prompt(pattern, debug_mode)
   local choices = {
     { label = "Run all parameterized tests", value = pattern },
     { label = "Enter custom regex pattern", value = "custom" },
@@ -215,29 +325,36 @@ local function show_parametrized_prompt(pattern)
       if choice.value == "custom" then
         vim.ui.input({ prompt = "Enter test regex: ", default = pattern }, function(input)
           if input then
-            M.run_jest_cmd("-t " .. M.escape_shell_arg(input))
+            M.run_jest_cmd("-t " .. M.escape_shell_arg(input), debug_mode)
           end
         end)
       else
-        M.run_jest_cmd("-t " .. M.escape_shell_arg(choice.value))
+        M.run_jest_cmd("-t " .. M.escape_shell_arg(choice.value), debug_mode)
       end
     end
   end)
 end
 
+---@class JestRunOptions
+---@field update_snapshots? boolean Whether to update Jest snapshots
+---@field entire_file? boolean Whether to run tests for the entire file
+---@field debug? boolean Whether to run tests in debug mode
+
+---Run Jest tests in a split terminal window
+---@param options? JestRunOptions Options for running Jest tests
 M.run_jest_in_split = function(options)
   options = options or {}
   M.close_terminal_buffer()
 
   local update_arg = options.update_snapshots and " --updateSnapshot" or ""
   if options.entire_file then
-    M.run_jest_cmd(update_arg)
+    M.run_jest_cmd(update_arg, options.debug)
     return
   end
 
   local test_name, is_leaf, is_parametrized = M.get_current_test_name()
   if not test_name then
-    M.run_jest_cmd(update_arg)
+    M.run_jest_cmd(update_arg, options.debug)
     return
   end
 
@@ -251,10 +368,10 @@ M.run_jest_in_split = function(options)
   pattern = pattern:gsub("%s+", " ") -- Normalize spaces
 
   if is_parametrized then
-    show_parametrized_prompt(pattern .. update_arg)
+    show_parametrized_prompt(pattern .. update_arg, options.debug)
   else
-    local arg = "-t " .. M.escape_shell_arg(pattern) .. update_arg
-    M.run_jest_cmd(arg)
+    local arg = "-t " .. M.escape_shell_arg(pattern) .. update_arg --[[@as string]]
+    M.run_jest_cmd(arg, options.debug)
   end
 end
 
