@@ -1,0 +1,40 @@
+#!{{ lookPath "bash" }}
+
+set -euo pipefail
+
+# This script installs Python versions using uv
+
+# Python versions to install
+python_versions=("3.9" "3.11")
+default_version="3.13"
+
+# install Python version using uv
+#
+# ex: install_python_version version
+install_python_version() {
+    local version=$1
+
+    echo "Installing Python version: $version"
+    if ! uv python install "$version" --preview &>/dev/null; then
+        echo "Error: Failed to install Python version $version"
+        return 1
+    fi
+    return 0
+}
+
+for version in "${python_versions[@]}"; do
+    # check if the version is already installed
+    if uv python list | grep -q "python-$version"; then
+        echo "Python $version is already installed"
+        continue
+    fi
+    install_python_version "$version"
+done
+
+# Set the default Python version system-wide
+echo "Setting Python $default_version as the default system-wide version"
+if ! uv python install "$default_version" --default --preview; then
+    echo "Warning: Failed to set Python $default_version as global default"
+fi
+
+echo "All Python versions installed successfully"
