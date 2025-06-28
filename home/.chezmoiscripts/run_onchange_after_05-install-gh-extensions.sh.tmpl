@@ -1,0 +1,44 @@
+#!{{ lookPath "fish" }}
+
+# install gh extensions
+
+# check if logged in or not, if not login
+if gh auth status | grep -q "Logged in to github.com"
+    echo "---------------------------------"
+    echo "gh is already logged in"
+    echo "---------------------------------"
+else 
+    echo "---------------------------------"
+    echo "gh login: applying..."
+    echo "---------------------------------"
+    gh auth login
+    echo "---------------------------------"
+    echo "gh login: done"
+    echo "---------------------------------"
+end
+
+set -l gh_extensions \
+    github/gh-copilot \
+    MohamedElashri/gh-cp \
+    dlvhdr/gh-dash \
+    gennaro-tedesco/gh-i \
+    gennaro-tedesco/gh-s
+
+# install exts one by one
+for gh_extension in $gh_extensions
+    if gh extension list | grep -q $gh_extension
+        echo "--------------------------------------------"
+        echo "gh extension: $gh_extension is already installed"
+        echo "--------------------------------------------"
+    else 
+        echo "-----------------------------------"
+        echo "gh extension $gh_extension: applying..."
+        echo "-----------------------------------"
+        gh extension install $gh_extension
+        echo "----------------------------"
+        echo "gh extension $gh_extension: done"
+        echo "----------------------------"
+    end
+end
+
+

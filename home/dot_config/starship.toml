@@ -1,0 +1,203 @@
+# Get editor completions based on the config schema
+"$schema" = 'https://starship.rs/config-schema.json'
+
+command_timeout = 3000
+
+[status]
+map_symbol = true
+disabled = false
+format = '[\[$status\]]($style) '
+
+[shlvl]
+disabled = false
+format = '[$symbol]($style) '
+repeat = true
+repeat_offset = 1
+symbol = "󰆍 "
+
+[directory]
+read_only = " 󰌾"
+truncation_symbol = '…/'
+truncate_to_repo = false
+
+[git_commit]
+commit_hash_length = 8
+style = "bold white"
+
+[git_state]
+format = '[\($state( $progress_current of $progress_total)\)]($style) '
+
+[git_status]
+conflicted = '${count}⚠ '
+ahead = "⇡${count}"
+behind = "⇣${count}"
+diverged = "⇕⇡${ahead_count}⇣${behind_count}"
+modified = "  ${count}"
+renamed = " 󰪹 ${count}"
+deleted = " 󰗨 ${count}"
+staged = " 󰋴 ${count}"
+stashed = "  ${count}"
+untracked = "  ${count}"
+format = """\
+[$ahead_behind](fg:green)\
+[$stashed](fg:white)\
+[$behind_behind](fg:red)\
+[$diverged](fg:purple)\
+[$conflicted](fg:red)\
+[$deleted](fg:red)\
+[$modified](fg:green)\
+[$untracked](fg:cyan)\
+[$staged](fg:#F5B700) \
+[$renamed](fg:#F5B700) \
+"""
+
+[git_metrics]
+disabled = false
+added_style = 'fg:green'
+deleted_style = 'fg:red'
+format = '[+$added]($added_style)/[-$deleted]($deleted_style) '
+
+[shell]
+fish_indicator = ' 🐟 '
+bash_indicator = '  '
+zsh_indicator = ' 𖼶 '
+powershell_indicator = '_'
+unknown_indicator = 'mystery shell'
+style = 'cyan bold'
+disabled = false
+
+[character]
+error_symbol = "[✖](bold red) "
+
+[python]
+symbol = " "
+format = "[$symbol$version]($style) "
+style = "bold green"
+
+[rust]
+symbol = " "
+format = "[$symbol$version]($style) "
+style = "bold green"
+
+[username]
+style_user = "bold dimmed blue"
+show_always = false
+
+[nodejs]
+symbol = " "
+# format = "via [ $version](bold green) "
+# symbol = ' '
+style = 'bold green'
+version_format = 'v${major}.${minor}'
+format = '[$symbol\[$version\]]($style) '
+detect_extensions = ['js', 'ts', 'jsx', 'tsx', 'mjs', 'cjs']
+
+[aws]
+symbol = "  "
+
+[buf]
+symbol = " "
+
+[c]
+symbol = " "
+
+[conda]
+symbol = " "
+
+[dart]
+symbol = " "
+
+[docker_context]
+symbol = " "
+
+[elixir]
+symbol = " "
+
+[elm]
+symbol = " "
+
+[fossil_branch]
+symbol = " "
+
+[golang]
+symbol = " "
+
+[guix_shell]
+symbol = " "
+
+[haskell]
+symbol = " "
+
+[haxe]
+symbol = " "
+
+[hg_branch]
+symbol = " "
+
+[java]
+symbol = " "
+
+[lua]
+symbol = " "
+
+[meson]
+symbol = "󰔷 "
+
+[nim]
+symbol = "󰆥 "
+
+[nix_shell]
+symbol = " "
+
+[os.symbols]
+Alpaquita = " "
+Alpine = " "
+Amazon = " "
+Android = " "
+Arch = " "
+Artix = " "
+CentOS = " "
+Debian = " "
+DragonFly = " "
+Emscripten = " "
+EndeavourOS = " "
+Fedora = " "
+FreeBSD = " "
+Garuda = "󰛓 "
+Gentoo = " "
+HardenedBSD = "󰞌 "
+Illumos = "󰈸 "
+Linux = " "
+Mabox = " "
+Macos = " "
+Manjaro = " "
+Mariner = " "
+MidnightBSD = " "
+Mint = " "
+NetBSD = " "
+NixOS = " "
+OpenBSD = "󰈺 "
+openSUSE = " "
+OracleLinux = "󰌷 "
+Pop = " "
+Raspbian = " "
+Redhat = " "
+RedHatEnterprise = " "
+Redox = "󰀘 "
+Solus = "󰠳 "
+SUSE = " "
+Ubuntu = " "
+Unknown = " "
+Windows = "󰍲 "
+
+[pijul_channel]
+symbol = " "
+
+[rlang]
+symbol = "󰟔 "
+
+[ruby]
+symbol = " "
+
+[scala]
+symbol = " "

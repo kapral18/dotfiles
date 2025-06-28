@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Check if the tmux session "lowfi" exists
+tmux_session_exists() {
+  tmux has-session -t lowfi 2>/dev/null
+}
+
+# Send the provided key to the lowfi pane. If the pane isn't running lowfi,
+# start it with the 'lowfi' command.
+send_lowfi_command() {
+  local pane_command
+  pane_command=$(tmux list-panes -t lowfi:lowfi.1 -F '#{pane_current_command}')
+  if [ "$pane_command" = "lowfi" ]; then
+    tmux send-keys -t lowfi:lowfi.1 "$1"
+  else
+    tmux send-keys -t lowfi:lowfi.1 'lowfi' Enter
+  fi
+}
+
+# Display usage information and exit
+print_usage() {
+  echo "Usage: $(basename "$0") [p|play|pause|s|skip|q|quit]"
+  exit 1
+}
+
+main() {
+  # Default action is play if no parameter is supplied.
+  local action="${1:-p}"
+  local action_lower
+  local key=""
+
+  action_lower=$(echo "$action" | tr '[:upper:]' '[:lower:]')
+
+  case "$action_lower" in
+  p | play | pause)
+    key="p"
+    ;;
+  s | skip)
+    key="s"
+    ;;
+  q | quit)
+    # Kill the session if it exists, otherwise do nothing.
+    tmux_session_exists && tmux kill-session -t lowfi
+    exit 0
+    ;;
+  *)
+    print_usage
+    ;;
+  esac
+
+  if tmux_session_exists; then
+    send_lowfi_command "$key"
+  else
+    # Create a new tmux session named "lowfi" with a window named "lowfi" separately from the default
+    # command so that killin that command doesn't throw us out of session
+    tmux new-session -n lowfi -d -s lowfi
+    tmux send-keys -t lowfi:lowfi.1 'lowfi' Enter
+  fi
+}
+
+main "$@"

@@ -1,0 +1,12 @@
+#!{{ lookPath "fish" }}
+
+echo "---------------------------------------"
+echo "brew install from Brewfile: applying..."
+echo "---------------------------------------"
+
+# Brewfile hash: {{ include "readonly_dot_Brewfile.tmpl" | sha256sum }}
+brew bundle --global
+
+echo "---------------------------------"
+echo "brew install from Brewfile: done "
+echo "---------------------------------"

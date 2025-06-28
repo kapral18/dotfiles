@@ -1,0 +1,40 @@
+# -------------------------------
+# Posix Interactive Shell Profile
+# -------------------------------
+
+# This file should be sourced by both .bashrc and
+# .zshrc for interactive shell configurations
+
+# Aliases
+alias c="chezmoi"
+alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l $FD_OPTIONS'
+alias g="git"
+alias t="tmux"
+alias tree='tree -I ".git|node_modules"'
+alias v="nvim"
+alias ghe="gh copilot explain"
+alias ghs="gh copilot suggest"
+alias wt="git worktree"
+alias reload_gpg='pkill -9 gpg-agent'
+
+# LS Aliases with lsd support
+if hash lsd 2>/dev/null; then
+    alias ls='lsd -A'
+    alias l='lsd -lAh'
+    alias ll='lsd -lAtrh'
+    alias la='lsd -A'
+else
+    alias ls='ls -A'
+    alias l='ls -lAh'
+    alias ll='ls -lAtrh'
+    alias la='ls -A'
+fi
+
+# Colored man pages
+export LESS_TERMCAP_mb=$'\e[01;31m'
+export LESS_TERMCAP_md=$'\e[01;38;5;74m'
+export LESS_TERMCAP_me=$'\e[0m'
+export LESS_TERMCAP_se=$'\e[0m'
+export LESS_TERMCAP_so=$'\e[01;33m'
+export LESS_TERMCAP_ue=$'\e[0m'
+export LESS_TERMCAP_us=$'\e[04;38;5;146m'

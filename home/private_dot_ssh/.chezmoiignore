@@ -1,0 +1,5 @@
+*
+!config
+!allowed_signers
+!primary_public_key.pub
+!secondary_public_key.pub

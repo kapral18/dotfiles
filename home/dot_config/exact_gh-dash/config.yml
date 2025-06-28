@@ -1,0 +1,84 @@
+prSections:
+  - title: Work PRs
+    filters: author:@me org:elastic
+    layout:
+      author:
+        hidden: true
+  - title: Work PRs Commented
+    filters: commenter:@me -author:@me org:elastic
+  - title: Work PRs Mentioned
+    filters: mentions:@me org:elastic
+  - title: Home PRs
+    filters: author:@me -org:elastic
+    layout:
+      author:
+        hidden: true
+  - title: Home Prs Commented
+    filters: commenter:@me -org:elastic
+  - title: Home Prs Mentioned
+    filters: mentions:@me -org:elastic
+issuesSections:
+  - title: Work Issues
+    filters: author:@me org:elastic
+    layout:
+      author:
+        hidden: true
+  - title: Work Issues Assigned
+    filters: assignee:@me org:elastic
+  - title: Work Issues Commented
+    filters: commenter:@me -author:@me org:elastic
+  - title: Work Issues Mentioned
+    filters: mentions:@me org:elastic
+  - title: Home Issues
+    filters: author:@me -org:elastic
+    layout:
+      author:
+        hidden: true
+  - title: Home Issues Assigned
+    filters: assignee:@me -org:elastic
+  - title: Home Issues Commented
+    filters: commenter:@me -author:@me -org:elastic
+  - title: Home Issues Mentioned
+    filters: mentions:@me -org:elastic
+defaults:
+  preview:
+    open: true
+    width: 50
+  prsLimit: 20
+  issuesLimit: 20
+  view: prs
+  layout:
+    prs:
+      updatedAt:
+        width: 7
+      repo:
+        width: 15
+      author:
+        width: 15
+      assignees:
+        width: 20
+        hidden: true
+      base:
+        width: 15
+        hidden: true
+      lines:
+        width: 16
+    issues:
+      updatedAt:
+        width: 7
+      repo:
+        width: 15
+      creator:
+        width: 10
+      assignees:
+        width: 20
+        hidden: true
+  refetchIntervalMinutes: 30
+repoPaths:
+  :owner/:repo: ~/code/github.com/:owner/:repo
+theme:
+  ui:
+    table:
+      showSeparator: true
+      compact: false
+confirmQuit: false

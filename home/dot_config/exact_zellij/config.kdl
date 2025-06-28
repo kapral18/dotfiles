@@ -1,0 +1,125 @@
+//////////////////////////////////////
+// KEYBINDINGS & WORKFLOW
+//////////////////////////////////////
+keybinds clear-defaults=true {
+    shared {
+        // Tmux prefix emulation
+        bind "Ctrl Space" { SwitchToMode "Tmux"; }
+        bind "Ctrl [" { SwitchToMode "Scroll"; } // Vi mode
+
+        // Pane management
+        bind "Ctrl Space -" { NewPane "Down"; SwitchToMode "Normal"; }
+        bind "Ctrl Space |" { NewPane "Right"; SwitchToMode "Normal"; }
+        bind "Ctrl Space x" { ClosePane; }
+        bind "Ctrl Space &" { CloseTab; }
+        bind "Ctrl Space f" { ToggleFocusFullscreen; }
+
+        // Session control
+        bind "Ctrl Space d" { Detach; }
+        bind "Ctrl Space r" { Run "zellij action write 'source ~/.config/zellij/config.kdl\n'"; } // Config reload
+
+        // Custom pane swapping (tmux-pain-control replacement)
+        bind "Ctrl Space H" { MovePane "Left"; }
+        bind "Ctrl Space L" { MovePane "Right"; }
+
+        // Vi-style selection
+        bind "Ctrl Space v" { ToggleSelection; }
+        bind "Ctrl Space C-v" { ToggleSelection "--rectangle"; }
+        bind "Ctrl Space y" { CopySelection; SwitchToMode "Normal"; }
+
+        // Passthrough for Neovim
+        bind "Ctrl Shift H" { Write 27 "[104;6u"; }
+        bind "Ctrl Shift J" { Write 27 "[106;6u"; }
+        bind "Ctrl Shift K" { Write 27 "[107;6u"; }
+        bind "Ctrl Shift L" { Write 27 "[108;6u"; }
+
+        // Lowfi controls
+        bind "F11" { Run "tmux-lowfi s"; SwitchToMode "Normal"; }
+        bind "F12" { Run "tmux-lowfi p"; SwitchToMode "Normal"; }
+    }
+
+    scroll { // Vi mode
+        bind "v" { ToggleSelection; }
+        bind "Ctrl v" { ToggleSelection "--rectangle"; }
+        bind "y" { CopySelection; SwitchToMode "Normal"; }
+    }
+}
+
+//////////////////////////////////////
+// CORE BEHAVIOR & INTEGRATION
+//////////////////////////////////////
+mouse_mode true
+pane_frames false
+scrollback_lines 50000
+scrollback_editor "nvim"
+default_shell "fish"
+mirror_session true // Session persistence
+default_layout "compact"
+pane_name_prompt "❯ "
+
+// Clipboard integration
+copy_on_select true
+copy_command "xclip -in -selection clipboard"
+copy_clipboard "primary" // primary|system|both
+
+// Terminal features
+terminal {
+    auto_align false
+    theme "catppuccin-frappe"
+}
+
+env {
+    COLORTERM "truecolor"
+    TERM "xterm-256color"
+    ZELLIJ_FOCUS_EVENTS "1" // For Neovim focus
+}
+
+//////////////////////////////////////
+// PLUGINS & SESSION MANAGEMENT
+//////////////////////////////////////
+plugins {
+    // tmux-session-wizard replacement
+    path "~/.config/zellij/plugins" {
+        session_wizard "session-manager.wasm"
+    }
+}
+
+// Custom session manager bindings
+keybinds {
+    shared {
+        bind "Ctrl Space s" { LaunchOrFocusPlugin "session-manager"; }
+    }
+}
+
+//////////////////////////////////////
+// ADVANCED TMUX COMPATIBILITY
+//////////////////////////////////////
+// Focus event workaround
+on_os_input "focus" {
+    Write 27 "[O"
+}
+
+// Pane index emulation (tmux-like 1-based)
+setup {
+    layout {
+        pane name="1" {
+            cwd "~"
+            command "zsh"
+        }
+    }
+}
+
+// Terminal overrides (tmux-256color)
+terminal_override "tmux*" {
+    clipboard true
+    true_color true
+}
+
+terminal_override "xterm*" {
+    clipboard true
+    true_color true
+}
+
+// Mouse behavior
+mouse_mode true
+clickable_actions false
