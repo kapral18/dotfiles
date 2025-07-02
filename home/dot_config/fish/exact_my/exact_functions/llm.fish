@@ -10,12 +10,12 @@ function cp_files_for_llm --description 'Prepare files for language models'
     end
 
     # Use remaining arguments as search paths, default to current directory
-    set -l search_paths $argv
-    if test (count $search_paths) -eq 0
-        set search_paths .
+    set -l search_path $argv[1]
+    if test (count $argv) -eq 0
+        set search_path .
     end
 
-    fd -t f $search_paths -0 $exclude_args \
+    fd -t f -0 $exclude_args . "$search_path" \
         | while read -lz file
         if file --mime-type "$file" | grep -q text/
             echo

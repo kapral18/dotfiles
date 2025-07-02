@@ -18,7 +18,8 @@ return {
       desc = "Copy current buffer to quickfix dirs (forced)",
     },
   },
-  init = function()
+  cmd = "CopyBufferToQfDirs",
+  config = function()
     local copy_buffer_to_quickfix_dirs = require("plugins-local.copy-to-qf").copy_buffer_to_quickfix_dirs
 
     vim.api.nvim_create_user_command("CopyBufferToQfDirs", function(opts)

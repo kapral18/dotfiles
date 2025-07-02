@@ -12,5 +12,15 @@ return {
         desc = "Show file code owner",
       },
     },
+    cmd = { "ShowFileOwner" },
+    config = function()
+      local show_file_owner = require("plugins-local.show-file-owner").show_file_owner
+
+      vim.api.nvim_create_user_command("ShowFileOwner", function()
+        show_file_owner()
+      end, {
+        desc = "Show the code owner of the current file",
+      })
+    end,
   },
 }

@@ -89,7 +89,7 @@ return {
       desc = "Close Lua test terminal buffer",
     },
   },
-  init = function()
+  config = function()
     local run_jest_in_split = require("plugins-local.run-jest-in-split")
     -- Set up the keymap only for terminal buffers
     vim.api.nvim_create_autocmd("TermOpen", {
