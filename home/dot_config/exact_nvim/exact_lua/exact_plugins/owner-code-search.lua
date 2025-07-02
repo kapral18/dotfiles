@@ -1,19 +1,19 @@
 local config_path = vim.fn.stdpath("config")
-
 return {
   dir = config_path .. "/lua/plugins-local",
+  name = "owner-code-search",
   keys = {
     {
       "<leader>rg",
       function()
         local team = vim.fn.input("Team: ")
-        local pattern = vim.fn.input("Pattern: ")
-
-        if not team or not pattern then
-          vim.notify("Usage: OwnerCodeGrep <team> <search-pattern>", vim.log.levels.ERROR)
+        if team == "" then
           return
         end
-
+        local pattern = vim.fn.input("Pattern: ")
+        if pattern == "" then
+          return
+        end
         require("plugins-local.owner-code-search").owner_code_grep(team, pattern)
       end,
       desc = "Owner Code Grep Search",
@@ -21,14 +21,14 @@ return {
     {
       "<leader>rG",
       function()
-        local team = vim.fn.input("Team: ")
-        local pattern = vim.fn.input("Pattern: ")
-
-        if not team or not pattern then
-          vim.notify("Usage: OwnerCodeGrepPattern <team> <search-pattern>", vim.log.levels.ERROR)
+        local team = vim.fn.input("Owner Regex: ")
+        if team == "" then
           return
         end
-
+        local pattern = vim.fn.input("Pattern: ")
+        if pattern == "" then
+          return
+        end
         require("plugins-local.owner-code-search").owner_code_grep_pattern(team, pattern)
       end,
       desc = "Owner Code Grep Search Pattern",
@@ -37,13 +37,13 @@ return {
       "<leader>fd",
       function()
         local team = vim.fn.input("Team: ")
-        local pattern = vim.fn.input("Pattern: ")
-
-        if not team or not pattern then
-          vim.notify("Usage: OwnerCodeFd <team> <search-pattern>", vim.log.levels.ERROR)
+        if team == "" then
           return
         end
-
+        local pattern = vim.fn.input("File Pattern: ")
+        if pattern == "" then
+          return
+        end
         require("plugins-local.owner-code-search").owner_code_fd(team, pattern)
       end,
       desc = "Owner Code Fd Search",
@@ -51,14 +51,14 @@ return {
     {
       "<leader>fD",
       function()
-        local team = vim.fn.input("Team: ")
-        local pattern = vim.fn.input("Pattern: ")
-
-        if not team or not pattern then
-          vim.notify("Usage: OwnerCodeFdPattern <team> <search-pattern>", vim.log.levels.ERROR)
+        local team = vim.fn.input("Owner Regex: ")
+        if team == "" then
           return
         end
-
+        local pattern = vim.fn.input("File Pattern: ")
+        if pattern == "" then
+          return
+        end
         require("plugins-local.owner-code-search").owner_code_fd_pattern(team, pattern)
       end,
       desc = "Owner Code Fd Search Pattern",
@@ -78,50 +78,87 @@ return {
       desc = "Clear CODEOWNERS cache",
     },
   },
-  cmd = { "OwnerCodeGrep", "OwnerCodeGrepPattern", "OwnerCodeFd", "OwnerCodeFdPattern" },
+  cmd = {
+    "OwnerCodeGrep",
+    "OwnerCodeGrepPattern",
+    "OwnerCodeFd",
+    "OwnerCodeFdPattern",
+    "ListOwners",
+    "ClearCodeownersCache",
+  },
   config = function()
-    local owner_code_grep = require("plugins-local.owner-code-search").owner_code_grep
+    local ocs = require("plugins-local.owner-code-search")
 
-    vim.api.nvim_create_user_command("OwnerCodeGrep", owner_code_grep, {
+    -- Setup the plugin with any custom config
+    ocs.setup()
+
+    -- Create user commands with proper argument handling
+    vim.api.nvim_create_user_command("OwnerCodeGrep", function(opts)
+      local args = vim.split(opts.args, " ", { trimempty = true })
+      if #args < 2 then
+        vim.notify("Usage: OwnerCodeGrep <team> <search-pattern>", vim.log.levels.ERROR)
+        return
+      end
+      local team = args[1]
+      local pattern = table.concat(args, " ", 2)
+      ocs.owner_code_grep(team, pattern)
+    end, {
       nargs = "+",
       desc = "Grep paths from CODEOWNERS with ripgrep",
     })
 
-    local owner_code_grep_pattern = require("plugins-local.owner-code-search").owner_code_grep_pattern
-
-    vim.api.nvim_create_user_command("OwnerCodeGrepPattern", owner_code_grep_pattern, {
+    vim.api.nvim_create_user_command("OwnerCodeGrepPattern", function(opts)
+      local args = vim.split(opts.args, " ", { trimempty = true })
+      if #args < 2 then
+        vim.notify("Usage: OwnerCodeGrepPattern <owner-regex> <search-pattern>", vim.log.levels.ERROR)
+        return
+      end
+      local owner_regex = args[1]
+      local pattern = table.concat(args, " ", 2)
+      ocs.owner_code_grep_pattern(owner_regex, pattern)
+    end, {
       nargs = "+",
       desc = "Grep path patterns from CODEOWNERS with ripgrep",
     })
 
-    local owner_code_fd = require("plugins-local.owner-code-search").owner_code_fd
-
-    vim.api.nvim_create_user_command("OwnerCodeFd", owner_code_fd, {
+    vim.api.nvim_create_user_command("OwnerCodeFd", function(opts)
+      local args = vim.split(opts.args, " ", { trimempty = true })
+      if #args < 2 then
+        vim.notify("Usage: OwnerCodeFd <team> <file-pattern>", vim.log.levels.ERROR)
+        return
+      end
+      local team = args[1]
+      local pattern = table.concat(args, " ", 2)
+      ocs.owner_code_fd(team, pattern)
+    end, {
       nargs = "+",
       desc = "Find paths from CODEOWNERS with fd",
     })
 
-    local owner_code_fd_pattern = require("plugins-local.owner-code-search").owner_code_fd_pattern
-
-    vim.api.nvim_create_user_command("OwnerCodeFdPattern", owner_code_fd_pattern, {
+    vim.api.nvim_create_user_command("OwnerCodeFdPattern", function(opts)
+      local args = vim.split(opts.args, " ", { trimempty = true })
+      if #args < 2 then
+        vim.notify("Usage: OwnerCodeFdPattern <owner-regex> <file-pattern>", vim.log.levels.ERROR)
+        return
+      end
+      local owner_regex = args[1]
+      local pattern = table.concat(args, " ", 2)
+      ocs.owner_code_fd_pattern(owner_regex, pattern)
+    end, {
       nargs = "+",
       desc = "Find path patterns from CODEOWNERS with fd",
     })
 
-    local list_owners = require("plugins-local.owner-code-search").list_owners
-
-    vim.api.nvim_create_user_command("ListOwners", list_owners, {
-      nargs = 0,
+    vim.api.nvim_create_user_command("ListOwners", function()
+      ocs.list_owners()
+    end, {
       desc = "List CODEOWNERS",
     })
 
-    local clear_cache = require("plugins-local.owner-code-search").clear_cache
-
-    vim.api.nvim_create_user_command("ClearCodeownersCache", clear_cache, {
-      nargs = 0,
+    vim.api.nvim_create_user_command("ClearCodeownersCache", function()
+      ocs.clear_cache()
+    end, {
       desc = "Clear CODEOWNERS cache",
     })
-
-    require("plugins-local.owner-code-search").setup()
   end,
 }
