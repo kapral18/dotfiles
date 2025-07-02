@@ -2,9 +2,46 @@
 -- Provides functionality to search code within directories owned by specific teams/users
 -- based on GitHub CODEOWNERS file patterns
 
+---@class CodeownersConfig
+---@field codeowners_paths string[] List of paths to search for CODEOWNERS file
+---@field cache_ttl integer Cache time-to-live in seconds
+---@field show_search_progress boolean Whether to show search progress
+---@field fd_extra_args string[] Extra arguments for fd command
+---@field rg_extra_args string[] Extra arguments for rg command
+
+---@class CodeownersEntry
+---@field pattern string The original pattern from CODEOWNERS
+---@field path string The converted filesystem path
+---@field owners string[] List of owners for this pattern
+---@field line_num integer Line number in CODEOWNERS file
+
+---@class CodeownersCache
+---@field data CodeownersEntry[]|nil Parsed CODEOWNERS data
+---@field timestamp integer Unix timestamp of last cache update
+---@field file_path string|nil Path to the cached CODEOWNERS file
+
+---@class SearchError
+---@field dir string Directory where error occurred
+---@field code integer Exit code from command
+---@field output string[] Command output
+
+---@class LineParts
+---@field pattern string The file pattern part
+---@field owners_text string The owners text part
+
+---@class SearchConfig
+---@field title string Title for quickfix list
+---@field command string[] Base command to execute
+---@field extra_args string[]|nil Extra arguments from config
+---@field pattern string Search pattern
+---@field result_type string Type of results (e.g., "matches", "files")
+---@field efm string Error format for quickfix
+---@field directory_finder fun(): string[]|nil Function to find directories
+---@field process_output fun(output: string[], results: string[], dir: string)|nil Optional output processor
+
 local M = {}
 
--- Configuration
+---@type CodeownersConfig
 M.config = {
   codeowners_paths = {
     "CODEOWNERS",
@@ -20,6 +57,7 @@ M.config = {
 }
 
 -- Cache for parsed CODEOWNERS data
+---@type CodeownersCache
 local cache = {
   data = nil,
   timestamp = 0,
@@ -27,6 +65,7 @@ local cache = {
 }
 
 -- Helper function to locate CODEOWNERS file
+---@return string|nil path Path to CODEOWNERS file or nil if not found
 local function find_codeowners_file()
   for _, path in ipairs(M.config.codeowners_paths) do
     local files = vim.fs.find(path, { upward = true, limit = 1 })
@@ -38,6 +77,8 @@ local function find_codeowners_file()
 end
 
 -- Helper function to check if cache is valid
+---@param file_path string Path to CODEOWNERS file
+---@return boolean is_valid Whether cache is still valid
 local function is_cache_valid(file_path)
   if not cache.data or cache.file_path ~= file_path then
     return false
@@ -48,7 +89,10 @@ local function is_cache_valid(file_path)
 end
 
 -- Helper function to split line into pattern and owners section
+---@param input string The line to split
+---@return LineParts parts The split parts
 local function split_line_parts(input)
+  ---@type LineParts
   local result = { pattern = "", owners_text = "" }
   local in_pattern = true
   local skip_next = false
@@ -89,7 +133,10 @@ local function split_line_parts(input)
 end
 
 -- Helper function to extract owners from owners text section
+---@param owners_text string The owners text to parse
+---@return string[] owners List of owner names
 local function extract_owners(owners_text)
+  ---@type string[]
   local owners_list = {}
   -- Remove leading/trailing whitespace and split by whitespace
   owners_text = owners_text:match("^%s*(.-)%s*$") or ""
@@ -105,6 +152,8 @@ local function extract_owners(owners_text)
 end
 
 -- Helper function to convert CODEOWNERS pattern to filesystem path
+---@param pattern string CODEOWNERS pattern
+---@return string path Converted filesystem path
 local function pattern_to_path(pattern)
   -- Remove leading slash if present
   pattern = pattern:gsub("^/", "")
@@ -120,6 +169,9 @@ local function pattern_to_path(pattern)
 end
 
 -- Parse a single CODEOWNERS line
+---@param line string Line to parse
+---@return string|nil pattern File pattern or nil if invalid
+---@return string[]|nil owners List of owners or nil if invalid
 function M.parse_codeowners_line(line)
   -- Remove leading/trailing whitespace
   line = line:match("^%s*(.-)%s*$") or ""
@@ -147,6 +199,8 @@ function M.parse_codeowners_line(line)
 end
 
 -- Load and parse CODEOWNERS file with caching
+---@return CodeownersEntry[]|nil data Parsed CODEOWNERS data
+---@return string|nil error Error message if failed
 local function load_codeowners_data()
   local file_path = find_codeowners_file()
   if not file_path then
@@ -164,6 +218,7 @@ local function load_codeowners_data()
     return nil, "Failed to read CODEOWNERS file: " .. file_path
   end
 
+  ---@type CodeownersEntry[]
   local data = {}
   for line_num, line in ipairs(lines) do
     local pattern, owners = M.parse_codeowners_line(line)
@@ -186,6 +241,9 @@ local function load_codeowners_data()
 end
 
 -- Find directories matching an owner predicate
+---@param owner_predicate fun(owner: string): boolean Function to test if owner matches
+---@param description string Description for error messages
+---@return string[]|nil directories List of matching directories or nil on error
 local function find_directories_matching_owner(owner_predicate, description)
   local data, err = load_codeowners_data()
   if not data then
@@ -193,7 +251,9 @@ local function find_directories_matching_owner(owner_predicate, description)
     return nil
   end
 
+  ---@type string[]
   local directories = {}
+  ---@type table<string, boolean>
   local seen = {}
 
   for _, entry in ipairs(data) do
@@ -218,13 +278,16 @@ local function find_directories_matching_owner(owner_predicate, description)
 end
 
 -- Execute search command
+---@param search_config SearchConfig Configuration for the search
 local function execute_search(search_config)
   local directories = search_config.directory_finder()
   if not directories then
     return
   end
 
+  ---@type string[]
   local results = {}
+  ---@type SearchError[]
   local errors = {}
   local total = #directories
   local processed = 0
@@ -286,6 +349,8 @@ end
 -- Public API Functions
 
 -- Search for code patterns in directories owned by teams (substring match)
+---@param team string Team name to search for (substring match)
+---@param search_pattern string Pattern to search for in code
 function M.owner_code_grep(team, search_pattern)
   if not team or team == "" or not search_pattern or search_pattern == "" then
     vim.notify("Usage: OwnerCodeGrep <team> <search-pattern>", vim.log.levels.ERROR)
@@ -308,6 +373,8 @@ function M.owner_code_grep(team, search_pattern)
 end
 
 -- Search for files in directories owned by teams (substring match)
+---@param team string Team name to search for (substring match)
+---@param file_pattern string Pattern to search for in filenames
 function M.owner_code_fd(team, file_pattern)
   if not team or team == "" or not file_pattern or file_pattern == "" then
     vim.notify("Usage: OwnerCodeFd <team> <file-pattern>", vim.log.levels.ERROR)
@@ -338,6 +405,8 @@ function M.owner_code_fd(team, file_pattern)
 end
 
 -- Search for code patterns in directories owned by teams (regex match)
+---@param owner_regex string Lua pattern to match owner names
+---@param search_pattern string Pattern to search for in code
 function M.owner_code_grep_pattern(owner_regex, search_pattern)
   if not owner_regex or owner_regex == "" or not search_pattern or search_pattern == "" then
     vim.notify("Usage: OwnerCodeGrepPattern <owner-regex> <search-pattern>", vim.log.levels.ERROR)
@@ -367,6 +436,8 @@ function M.owner_code_grep_pattern(owner_regex, search_pattern)
 end
 
 -- Search for files in directories owned by teams (regex match)
+---@param owner_regex string Lua pattern to match owner names
+---@param file_pattern string Pattern to search for in filenames
 function M.owner_code_fd_pattern(owner_regex, file_pattern)
   if not owner_regex or owner_regex == "" or not file_pattern or file_pattern == "" then
     vim.notify("Usage: OwnerCodeFdPattern <owner-regex> <file-pattern>", vim.log.levels.ERROR)
@@ -407,10 +478,13 @@ end
 function M.list_owners()
   local data, err = load_codeowners_data()
   if not data then
-    vim.notify(err, vim.log.levels.ERROR)
+    if err then
+      vim.notify(err, vim.log.levels.ERROR)
+    end
     return
   end
 
+  ---@type table<string, string[]>
   local owner_map = {}
   for _, entry in ipairs(data) do
     for _, owner in ipairs(entry.owners) do
@@ -421,6 +495,7 @@ function M.list_owners()
     end
   end
 
+  ---@type string[]
   local lines = {}
   for owner, paths in pairs(owner_map) do
     table.insert(lines, string.format("%s (%d paths)", owner, #paths))
@@ -445,6 +520,7 @@ function M.clear_cache()
 end
 
 -- Setup function for user configuration
+---@param opts CodeownersConfig|nil User configuration options
 function M.setup(opts)
   if opts then
     M.config = vim.tbl_deep_extend("force", M.config, opts)
