@@ -1,9 +1,8 @@
-local nvim_runtime_file = vim.api.nvim_get_runtime_file("", true)
-
-table.insert(nvim_runtime_file, vim.env.VIMRUNTIME)
-
 return {
   "neovim/nvim-lspconfig",
+  dependencies = {
+    "folke/lazydev.nvim", -- Ensure lazydev loads first
+  },
   opts = {
     servers = {
       lua_ls = {
