@@ -1,47 +1,59 @@
-local M = {}
+local config_path = vim.fn.stdpath("config")
 
--- Helper function to filter quickfix items by pattern
----@param pattern string
----@param exclude? boolean - exclude items that match the pattern
----@return nil
-function M.filter_qf_items_by_pattern(pattern, exclude)
-  -- Get the current quickfix list
-  local qf_list = vim.fn.getqflist()
+local qf = require("plugins-local-src.qf")
 
-  -- Create a Vim regex object from the pattern
-  local regex = vim.regex(pattern)
+return {
+  {
+    "romainl/vim-qf",
+    lazy = false,
+    init = function()
+      -- enable ack style mappings
+      vim.g.qf_mapping_ack_style = 1
+      -- disable auto quit if qf window is the only window
+      vim.g.qf_auto_quit = 0
+      -- if the path is too long, shorten each component to the first 3 chars
+      vim.g.qf_shorten_path = 3
+      -- disable auto resize
+      vim.g.qf_auto_resize = 0
+    end,
+  },
+  {
+    dir = config_path .. "/lua/plugins-local-src",
+    keys = {
+      {
+        "<leader>rqi",
+        function()
+          local pattern = vim.fn.input("Pattern(include): ")
 
-  -- Filter out items where the text matches the pattern
-  local new_list = vim.tbl_filter(function(item)
-    local match = regex:match_str(item.text)
-    if exclude then
-      return not match
-    end
-    return match and true or false
-  end, qf_list)
+          if pattern then
+            qf.filter_qf_items_by_pattern(pattern, false)
+          else
+            print("No pattern provided")
+          end
+        end,
+        desc = "Filter Quickfix Items by Pattern",
+      },
+      {
+        "<leader>rqx",
+        function()
+          local pattern = vim.fn.input("Pattern(exclude): ")
 
-  -- Set the new quickfix list with the filtered items and preserved title
-  vim.fn.setqflist(new_list, "r")
-end
-
-function M.remove_qf_item()
-  local curqfidx = vim.fn.line(".")
-  local qfall = vim.fn.getqflist()
-
-  -- Return if there are no items to remove
-  if #qfall == 0 then
-    return
-  end
-
-  -- Remove the item from the quickfix list
-  table.remove(qfall, curqfidx)
-  vim.fn.setqflist(qfall, "r")
-
-  -- If not at the end of the list, stay at the same index, otherwise, go one up
-  local new_idx = curqfidx <= #qfall and curqfidx or math.max(curqfidx - 1, 1)
-
-  -- Set the cursor position directly in the quickfix window
-  vim.api.nvim_win_set_cursor(0, { new_idx, 0 })
-end
-
-return M
+          if pattern then
+            qf.filter_qf_items_by_pattern(pattern, true)
+          else
+            print("No pattern provided")
+          end
+        end,
+        desc = "Exclude Quickfix Items by Pattern",
+      },
+      {
+        "dd",
+        function()
+          qf.remove_qf_item()
+        end,
+        desc = "Remove Quickfix Item",
+        ft = { "qf" },
+      },
+    },
+  },
+}

@@ -33,10 +33,10 @@ local owner_fmt = {
   _to = function()
     return [[
             return function(filepath, opts, context)
-                local show_file_owner = require("plugins-local.show-file-owner")
+                local sfo = require("plugins-local-src.show-file-owner")
 
                 -- Get owner information
-                local owner = show_file_owner.get_file_owner(filepath)
+                local owner = sfo.get_file_owner(filepath)
                 if owner then
                     -- Create multiline entry: owner(s) on first line, filename on second line
                     return "[" .. owner .. "]\n" .. filepath
