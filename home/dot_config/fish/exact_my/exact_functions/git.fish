@@ -14,8 +14,8 @@ function hey_branch --description 'Check the status of the current branch'
 
     # Extract the remote name and branch name
     set -l remote_branch_split (_get_split_branch_name $remote_branch)
-    set -l inferred_remote_branch_remote $remote_branch_split[1]
-    set -l inferred_remote_branch_name $remote_branch_split[2]
+    set -l remote_branch_remote $remote_branch_split[1]
+    set -l remote_branch_name $remote_branch_split[2]
 
     echo "Tracked Branch: '$remote_branch'"
 

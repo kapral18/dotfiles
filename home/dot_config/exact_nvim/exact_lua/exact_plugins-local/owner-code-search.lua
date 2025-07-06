@@ -41,16 +41,20 @@
 
 local M = {}
 
+-- Configuration constants
+local CACHE_TTL_24H = 60 * 60 * 24
+local DEFAULT_CODEOWNERS_PATHS = {
+  "CODEOWNERS",
+  ".github/CODEOWNERS",
+  ".gitlab/CODEOWNERS",
+  ".bitbucket/CODEOWNERS",
+  "docs/CODEOWNERS",
+}
+
 ---@type CodeownersConfig
 M.config = {
-  codeowners_paths = {
-    "CODEOWNERS",
-    ".github/CODEOWNERS",
-    ".gitlab/CODEOWNERS",
-    ".bitbucket/CODEOWNERS",
-    "docs/CODEOWNERS",
-  },
-  cache_ttl = 60 * 60 * 24, -- 24 hours
+  codeowners_paths = DEFAULT_CODEOWNERS_PATHS,
+  cache_ttl = CACHE_TTL_24H,
   show_search_progress = true,
   fd_extra_args = { "--hidden" },
   rg_extra_args = { "--hidden" },

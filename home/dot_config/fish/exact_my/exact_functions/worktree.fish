@@ -521,7 +521,7 @@ function remove_worktree --description "Remove a worktree using fzf and delete t
     # if the worktree_branch is HEAD then it's a detached HEAD
     # so we stop until HEAD is checked out
     if test $worktree_branch = HEAD
-        echo "Can't removed worktree at '$worktree_path'. It's in detached HEAD state."
+        echo "Can't remove worktree at '$worktree_path'. It's in detached HEAD state."
         return
     end
 

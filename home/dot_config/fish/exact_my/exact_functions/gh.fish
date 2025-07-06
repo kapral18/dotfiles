@@ -3,7 +3,7 @@ function _check_rate_limit
     or return 1
 
     if test $remaining -lt 100
-        echo "Warning: GitHub API rate limit is low ($remaining remaining)"
+        echo "Warning: GitHub API rate limit is low ($remaining remaining)" >&2
         return 1
     end
 end

@@ -1,3 +1,5 @@
+# Get the parent directory of the current git repository
+# This is used to organize worktrees in a consistent location
 function _get_worktree_parent_dir
     set -l git_common_dir (realpath (git rev-parse --git-common-dir))
     set -l main_repo_root (dirname $git_common_dir)
@@ -5,6 +7,10 @@ function _get_worktree_parent_dir
 end
 
 function _get_split_branch_name
+    if test (count $argv) -eq 0
+        echo "Error: _get_split_branch_name requires a branch name argument" >&2
+        return 1
+    end
     echo $argv[1] | string split -m 1 /
 end
 

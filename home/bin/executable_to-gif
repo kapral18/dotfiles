@@ -76,11 +76,18 @@ fi
 
 # Create a temporary file for the palette.
 palette="$(mktemp -t palette.XXXXXXXX.png)"
+trap 'rm -f "$palette"' EXIT
 
 filters="fps=${fps},scale=${scale}:-1:flags=lanczos,setpts=${pts}*PTS"
 
 # Generate palette.
-ffmpeg -i "$input" -vf "$filters,palettegen" -y "$palette"
+if ! ffmpeg -i "$input" -vf "$filters,palettegen" -y "$palette"; then
+  echo "Error: Failed to generate palette" >&2
+  exit 1
+fi
 
 # Generate GIF using the generated palette.
-ffmpeg -t "$duration" -i "$input" -i "$palette" -lavfi "$filters [x]; [x][1:v] paletteuse" -y "$output"
+if ! ffmpeg -t "$duration" -i "$input" -i "$palette" -lavfi "$filters [x]; [x][1:v] paletteuse" -y "$output"; then
+  echo "Error: Failed to generate GIF" >&2
+  exit 1
+fi
