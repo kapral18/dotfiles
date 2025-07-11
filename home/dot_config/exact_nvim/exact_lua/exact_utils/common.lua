@@ -183,7 +183,7 @@ end
 
 function M.get_fzf_rg_opts()
   local rg_ignore_glob =
-    "-g '!{node_modules,.next,dist,build,reports,tags,.idea,.vscode,.yarn,.nyc_output,__generated__,reports,storybook-static,*.min.js,*.min.css,junit.xml,bazel-*,data,target,.buildkite,.chromium,.es,.yarn-*}'"
+    "-g '!{node_modules,.next,dist,build,reports,tags,.idea,.vscode,.yarn,.nyc_output,__generated__,reports,storybook-static,*.min.js,*.min.css,junit.xml,bazel-*,data,target,.chromium,.es,.yarn-*}'"
 
   local rg_opts_unrestricted =
     "--column --multiline --line-number --no-heading --color=always --smart-case --max-columns=4096 --hidden --no-ignore -g '!{.git,tsconfig.tsbuildinfo,*.map}'"
@@ -195,7 +195,7 @@ end
 
 function M.get_fzf_fd_opts()
   local fd_ignore_glob =
-    "-E '{node_modules,.next,dist,build,reports,.idea,.vscode,.yarn,.nyc_output,__generated__,reports,storybook-static}/' -E '{*.min.js,*.min.css,junit.xml,bazel-*,data,target,.buildkite,.chromium,.es,.yarn-*}'"
+    "-E '{node_modules,.next,dist,build,reports,.idea,.vscode,.yarn,.nyc_output,__generated__,reports,storybook-static}/' -E '{*.min.js,*.min.css,junit.xml,bazel-*,data,target,.chromium,.es,.yarn-*}'"
 
   local fd_opts_unrestricted =
     "--color=never --type f --hidden --no-ignore --follow -E '{.git,tsconfig.tsbuildinfo,*.map}'"
