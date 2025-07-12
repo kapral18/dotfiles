@@ -11,6 +11,13 @@ return {
       statuscolumn = { enabled = false }, -- lazyvim handles that
       toggle = { enabled = false },
       words = { enabled = false },
+      scratch = {
+        enabled = true,
+        win = {
+          width = 0.8,
+          height = 0.8,
+        },
+      },
     },
     keys = {
       {

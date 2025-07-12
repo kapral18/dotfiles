@@ -98,6 +98,7 @@ require("lazy").setup({
     { import = "plugins-local.owner-code-search" },
     { import = "plugins-local.qf" },
     { import = "plugins-local.run-jest-in-split" },
+    { import = "plugins-local.save-ai-data" },
     { import = "plugins-local.show-file-owner" },
     { import = "plugins-local.summarize-commit" },
     { import = "plugins-local.switch-src-test" },
