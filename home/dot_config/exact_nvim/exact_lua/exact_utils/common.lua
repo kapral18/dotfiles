@@ -205,4 +205,41 @@ function M.get_fzf_fd_opts()
   return fd_opts, fd_opts_unrestricted
 end
 
+---@param glob string
+---@return string
+function M.glob_to_lua_pattern(glob)
+  local escaped_glob = glob
+    :gsub("%%", "%%%%")
+    :gsub("%.", "%%.")
+    :gsub("%+", "%%+")
+    :gsub("%-", "%%-")
+    :gsub("%(", "%%(")
+    :gsub("%)", "%%)")
+    :gsub("%[", "%%[")
+    :gsub("%]", "%%]")
+    :gsub("%^", "%%^")
+    :gsub("%$", "%%$")
+    :gsub("%?", "%%?")
+    :gsub("%*", "%%*")
+
+  -- Handle [! character class negation first
+  local partial_pattern = escaped_glob:gsub("%[!", "NEGATE_CLASS")
+
+  -- Use placeholders to avoid conflicts during substitution
+  partial_pattern = partial_pattern:gsub("%*%*/", "DOUBLE_ASTERISK_SLASH")
+  partial_pattern = partial_pattern:gsub("%*%*", "DOUBLE_ASTERISK")
+  partial_pattern = partial_pattern:gsub("%*", "SINGLE_ASTERISK")
+  partial_pattern = partial_pattern:gsub("%?", "QUESTION_MARK")
+
+  -- Replace placeholders with Lua patterns
+  partial_pattern = partial_pattern:gsub("DOUBLE_ASTERISK_SLASH", ".*") -- **/ matches zero or more chars including /
+  partial_pattern = partial_pattern:gsub("DOUBLE_ASTERISK", ".*") -- ** matches anything
+  partial_pattern = partial_pattern:gsub("SINGLE_ASTERISK", "[^/]*") -- * matches anything except /
+  partial_pattern = partial_pattern:gsub("QUESTION_MARK", "[^/]") -- ? matches single char except /
+
+  local pattern = partial_pattern:gsub("NEGATE_CLASS", "[^") -- [! becomes [^
+
+  return "^" .. pattern .. "$"
+end
+
 return M

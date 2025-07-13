@@ -1,3 +1,5 @@
+local common_utils = require("utils.common")
+
 local M = {}
 
 ---@class CodeOwnersEntry
@@ -36,9 +38,12 @@ local function find_codeowners_file()
 end
 
 ---@param glob string
----@return string, integer
-local function glob_to_lua_pattern(glob)
-  return glob:gsub("%.", "%%."):gsub("%*", ".*"):gsub("%?", "."):gsub("^/", "")
+---@return string
+local function slash_stripped_glob_to_lua_pattern(glob)
+  local lua_pattern = common_utils.glob_to_lua_pattern(glob)
+  local lua_pattern_with_stripped_slash = lua_pattern:gsub("^/", "")
+
+  return lua_pattern_with_stripped_slash
 end
 
 ---@param pattern string
@@ -105,8 +110,7 @@ local function get_cached_codeowners()
 
         owners_part = owners_part:gsub("%s+$", "") -- trim trailing whitespace
         if owners_part ~= "" then
-          local escaped_pattern = escape_non_lua_pattern_chars(pattern)
-          local globbed_pattern = glob_to_lua_pattern(escaped_pattern)
+          local globbed_pattern = slash_stripped_glob_to_lua_pattern(pattern)
           table.insert(codeowners, {
             pattern = globbed_pattern,
             owners = owners_part,

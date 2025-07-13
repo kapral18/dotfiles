@@ -1,3 +1,5 @@
+local common_utils = require("utils.common")
+
 local M = {}
 
 local TEST_PATTERNS = {
@@ -57,27 +59,9 @@ local PATTERNS = {
   },
 }
 
--- Convert glob pattern to Lua pattern
-local function glob_to_lua_pattern(glob)
-  -- Escape special Lua pattern characters except * and ?
-  local pattern = glob:gsub("[%(%)%.%+%-%^%$%[%]%%]", "%%%1")
-
-  -- Handle ** (match any directories)
-  pattern = pattern:gsub("%*%*", ".-")
-
-  -- Handle * (match anything except /)
-  pattern = pattern:gsub("%*", "[^/]*")
-
-  -- Handle ? (match single character except /)
-  pattern = pattern:gsub("%?", "[^/]")
-
-  -- Anchor the pattern
-  return "^" .. pattern .. "$"
-end
-
 local function matches_any_pattern(file_path, patterns)
   for _, pattern in ipairs(patterns) do
-    local lua_pattern = glob_to_lua_pattern(pattern)
+    local lua_pattern = common_utils.glob_to_lua_pattern(pattern)
     if file_path:match(lua_pattern) then
       return true
     end
