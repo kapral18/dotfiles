@@ -135,6 +135,14 @@ if type -q pass; and test -z "$OPENAI_API_KEY"
 end
 
 # ------------------------------------
+# GEMINI API Key Configuration
+# ------------------------------------
+
+if type -q pass; and test -z "$GEMINI_API_KEY"
+    set -gx GEMINI_API_KEY (pass google/gemini/api/token)
+end
+
+# ------------------------------------
 # Anthropic API Key Configuration
 # ------------------------------------
 
