@@ -85,10 +85,9 @@ local function matches_any_pattern(file_path, patterns)
   return false
 end
 
-local function get_relative_path(file_path)
-  local cwd = vim.uv.cwd()
-  if file_path:sub(1, #cwd) == cwd then
-    return file_path:sub(#cwd + 2) -- +2 to skip the trailing slash
+local function get_relative_path(file_path, git_root)
+  if vim.startswith(file_path, git_root) then
+    return file_path:sub(#git_root + 2)
   end
   return file_path
 end
@@ -143,7 +142,7 @@ local function write_content_if_needed(output_path, content, relative_path, appe
   end
 end
 
-local function discover_files(path, filter_type, custom_pattern)
+local function discover_files(path, filter_type, custom_pattern, git_root)
   local files = {}
 
   local result = vim
@@ -154,7 +153,7 @@ local function discover_files(path, filter_type, custom_pattern)
     :wait()
   if result.code == 0 then
     for line in result.stdout:gmatch("[^\r\n]+") do
-      table.insert(files, vim.fs.joinpath(path, line))
+      table.insert(files, vim.fs.joinpath(git_root, line))
     end
   end
 
@@ -169,7 +168,7 @@ local function discover_files(path, filter_type, custom_pattern)
 
     local filtered_files = {}
     for _, file in ipairs(files) do
-      local relative_file = get_relative_path(file)
+      local relative_file = get_relative_path(file, git_root)
       local success, match = pcall(string.match, relative_file, custom_pattern)
       if success and match then
         table.insert(filtered_files, file)
@@ -189,7 +188,7 @@ local function discover_files(path, filter_type, custom_pattern)
 
     local filtered_files = {}
     for _, file in ipairs(files) do
-      local relative_file = get_relative_path(file)
+      local relative_file = get_relative_path(file, git_root)
 
       local include = matches_any_pattern(relative_file, include_patterns)
 
@@ -206,8 +205,8 @@ local function discover_files(path, filter_type, custom_pattern)
   end
 end
 
-local function format_file_content(file_path)
-  local relative_path = get_relative_path(file_path)
+local function format_file_content(file_path, git_root)
+  local relative_path = get_relative_path(file_path, git_root)
   local file = io.open(file_path, "r")
 
   if not file then
@@ -235,7 +234,14 @@ end
 
 function M.save_buffer_to_ai_file(append)
   local output_path = vim.fs.normalize("~/ai_data.txt")
-  local relative_file_name = get_relative_path(vim.api.nvim_buf_get_name(0))
+  local git_path = vim.fs.find(".git", { upward = true })[1]
+  if not git_path then
+    vim.notify("Not in a git repository", vim.log.levels.ERROR)
+    return
+  end
+
+  local git_root = vim.fs.dirname(git_path)
+  local relative_file_name = get_relative_path(vim.api.nvim_buf_get_name(0), git_root)
   local file_content = vim.api.nvim_buf_get_lines(0, 0, -1, false)
 
   local content = string.format(
@@ -268,10 +274,14 @@ end
 -- Enhanced function for files/folders with filtering (append/replace controlled by keymap)
 function M.save_path_to_ai_file(path, append)
   -- check if no .git directory exists exit
-  if not vim.fs.find(".git", { path = path, upward = true })[1] then
+  local git_path = vim.fs.find(".git", { path = path, upward = true })[1]
+
+  if not git_path then
     vim.notify("Not in a git repository", vim.log.levels.ERROR)
     return
   end
+
+  local git_root = vim.fs.dirname(git_path)
 
   local output_path = vim.fs.normalize("~/ai_data.txt")
 
@@ -284,8 +294,8 @@ function M.save_path_to_ai_file(path, append)
 
   -- If it's a single file, save it directly
   if stat.type == "file" then
-    local relative_path = get_relative_path(path)
-    local content = format_file_content(path)
+    local relative_path = get_relative_path(path, git_root)
+    local content = format_file_content(path, git_root)
     local success, _ = write_content_if_needed(output_path, content, relative_path, append, true)
 
     if success then
@@ -324,7 +334,7 @@ function M.save_path_to_ai_file(path, append)
         default = "",
       }, function(pattern)
         if pattern and pattern ~= "" then
-          M.process_files(path, "custom", pattern, append)
+          M.process_files(path, "custom", pattern, append, git_root)
         end
       end)
     else
@@ -334,15 +344,15 @@ function M.save_path_to_ai_file(path, append)
         Test = "test",
         Config = "config",
       }
-      M.process_files(path, type_map[filter_type], nil, append)
+      M.process_files(path, type_map[filter_type], nil, append, git_root)
     end
   end)
 end
 
 -- Process discovered files with explicit append/replace mode
-function M.process_files(path, filter_type, custom_pattern, append)
+function M.process_files(path, filter_type, custom_pattern, append, git_root)
   local output_path = vim.fs.normalize("~/ai_data.txt")
-  local files = discover_files(path, filter_type, custom_pattern)
+  local files = discover_files(path, filter_type, custom_pattern, git_root)
 
   if #files == 0 then
     vim.notify("No files found matching criteria", vim.log.levels.WARN)
@@ -354,8 +364,8 @@ function M.process_files(path, filter_type, custom_pattern, append)
   local first_write = true
 
   for _, file_path in ipairs(files) do
-    local relative_path = get_relative_path(file_path)
-    local content = format_file_content(file_path)
+    local relative_path = get_relative_path(file_path, git_root)
+    local content = format_file_content(file_path, git_root)
     local success, new_first_write = write_content_if_needed(output_path, content, relative_path, append, first_write)
 
     if success then
