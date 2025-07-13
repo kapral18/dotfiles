@@ -2,6 +2,8 @@ local common_utils = require("utils.common")
 
 local M = {}
 
+local DELIMITER = "----------------------------------------------"
+
 local TEST_PATTERNS = {
   "**/*.test.*",
   "**/*.spec.*",
@@ -87,22 +89,114 @@ local function safe_write_to_file(output_path, content, mode)
   return false
 end
 
-local function file_exists_in_output(output_path, relative_file_name)
+local function file_exists_in_output_with_content(output_path, relative_file_name)
   if vim.uv.fs_stat(output_path) then
     local file = io.open(output_path, "r")
     if file then
       local content = file:read("*a")
       file:close()
       if content then
-        local file_pattern = "#FILE: " .. vim.pesc(relative_file_name)
-        return content:match(file_pattern) ~= nil
+        local escaped_delimiter = vim.pesc(DELIMITER)
+        local file_pattern = "#FILE: "
+          .. vim.pesc(relative_file_name)
+          .. "\n"
+          .. escaped_delimiter
+          .. "\n(.-)\n"
+          .. escaped_delimiter
+        local existing_content = content:match(file_pattern)
+        if existing_content then
+          return true, existing_content
+        end
       end
     end
+  end
+  return false, nil
+end
+
+-- Legacy function for backward compatibility
+local function file_exists_in_output(output_path, relative_file_name)
+  local exists, _ = file_exists_in_output_with_content(output_path, relative_file_name)
+  return exists
+end
+
+-- Replace existing file content in ai_data.txt
+local function replace_file_content_in_output(output_path, relative_file_name, new_content)
+  local file = io.open(output_path, "r")
+  if not file then
+    return false
+  end
+
+  local full_content = file:read("*a")
+  file:close()
+
+  local escaped_delimiter = vim.pesc(DELIMITER)
+  local section_pattern = "(#FILE: "
+    .. vim.pesc(relative_file_name)
+    .. "\n"
+    .. escaped_delimiter
+    .. "\n).-(\n"
+    .. escaped_delimiter
+    .. ")"
+  local new_section = "#FILE: " .. relative_file_name .. "\n" .. DELIMITER .. "\n" .. new_content .. "\n" .. DELIMITER
+
+  local updated_content = full_content:gsub(section_pattern, new_section, 1)
+
+  -- Write back the updated content
+  local write_file = io.open(output_path, "w")
+  if write_file then
+    write_file:write(updated_content)
+    write_file:close()
+    return true
   end
   return false
 end
 
--- Helper function to handle duplicate checking and writing
+-- Enhanced function to handle duplicate checking with content comparison
+local function write_content_with_smart_replace(
+  output_path,
+  content,
+  relative_path,
+  append,
+  first_write,
+  file_content_only
+)
+  if not content then
+    return false, first_write
+  end
+
+  local exists, existing_content = file_exists_in_output_with_content(output_path, relative_path)
+
+  if exists and existing_content then
+    -- Compare content (strip whitespace for reliable comparison)
+    local existing_trimmed = existing_content:gsub("^%s*(.-)%s*$", "%1")
+    local new_trimmed = file_content_only:gsub("^%s*(.-)%s*$", "%1")
+
+    if existing_trimmed == new_trimmed then
+      vim.notify("Content unchanged. Skipping: " .. relative_path, vim.log.levels.INFO)
+      return false, first_write
+    else
+      -- Content has changed, replace it
+      if replace_file_content_in_output(output_path, relative_path, file_content_only) then
+        vim.notify("Content changed. Replaced: " .. relative_path, vim.log.levels.INFO)
+        return true, first_write
+      else
+        vim.notify("Error replacing content for: " .. relative_path, vim.log.levels.ERROR)
+        return false, first_write
+      end
+    end
+  else
+    -- File doesn't exist, write normally
+    local write_mode = (append or not first_write) and "a" or "w"
+    if safe_write_to_file(output_path, content, write_mode) then
+      return true, false
+    else
+      vim.notify("Error: Could not write to file " .. output_path, vim.log.levels.ERROR)
+      return false, first_write
+    end
+  end
+end
+
+-- Helper function to handle duplicate checking and writing (legacy)
 local function write_content_if_needed(output_path, content, relative_path, append, first_write)
   if not content then
     return false, first_write
@@ -124,6 +218,86 @@ local function write_content_if_needed(output_path, content, relative_path, appe
     vim.notify("Error: Could not write to file " .. output_path, vim.log.levels.ERROR)
     return false, first_write
   end
+end
+
+function M.remove_entries_by_pattern(pattern_type, custom_pattern)
+  local output_path = vim.fs.normalize("~/ai_data.txt")
+
+  if not vim.uv.fs_stat(output_path) then
+    vim.notify("ai_data.txt does not exist", vim.log.levels.WARN)
+    return
+  end
+
+  local file = io.open(output_path, "r")
+  if not file then
+    vim.notify("Could not read ai_data.txt", vim.log.levels.ERROR)
+    return
+  end
+
+  local content = file:read("*a")
+  file:close()
+
+  local removed_count = 0
+  local sections = {}
+
+  local escaped_delimiter = vim.pesc(DELIMITER)
+  local section_pattern = "(#FILE: [^\n]+\n" .. escaped_delimiter .. "\n.-\n" .. escaped_delimiter .. ")"
+
+  for section in content:gmatch(section_pattern) do
+    local file_name = section:match("#FILE: ([^\n]+)")
+    local should_remove = false
+
+    if pattern_type == "custom" and custom_pattern then
+      should_remove = file_name:match(custom_pattern) ~= nil
+    elseif pattern_type and PATTERNS[pattern_type] then
+      should_remove = matches_any_pattern(file_name, PATTERNS[pattern_type].include or {})
+    end
+
+    if should_remove then
+      removed_count = removed_count + 1
+    else
+      table.insert(sections, section)
+    end
+  end
+
+  -- Write back the filtered content
+  local write_file = io.open(output_path, "w")
+  if write_file then
+    write_file:write(table.concat(sections, "\n"))
+    write_file:close()
+    vim.notify(string.format("Removed %d entries from ai_data.txt", removed_count), vim.log.levels.INFO)
+  else
+    vim.notify("Could not write to ai_data.txt", vim.log.levels.ERROR)
+  end
+end
+
+function M.remove_path_from_ai_data(node_path)
+  if not node_path then
+    vim.notify("No path provided", vim.log.levels.WARN)
+    return
+  end
+
+  -- Convert absolute path to relative path from git root
+  local git_path = vim.fs.find(".git", { upward = true, path = node_path })[1]
+  if not git_path then
+    vim.notify("Not in a git repository", vim.log.levels.ERROR)
+    return
+  end
+
+  local git_root = vim.fs.dirname(git_path)
+  local relative_path = get_relative_path(node_path, git_root)
+
+  -- check if the path is a directory
+  -- then we need to remove exact match
+
+  if vim.uv.fs_stat(node_path).type == "directory" then
+    -- Remove all entries that match the directory pattern
+    M.remove_entries_by_pattern("custom", "^" .. vim.pesc(relative_path) .. "/?.*$")
+    return
+  end
+
+  -- Remove entry by exact relative path pattern
+  M.remove_entries_by_pattern("custom", "^" .. vim.pesc(relative_path) .. "$")
 end
 
 local function discover_files(path, filter_type, custom_pattern, git_root)
@@ -204,18 +378,10 @@ local function format_file_content(file_path, git_root)
     return nil
   end
 
-  return string.format(
-    "\n---------------------------------------------\n"
-      .. "#FILE: %s"
-      .. "\n---------------------------------------------\n"
-      .. "%s"
-      .. "\n---------------------------------------------\n"
-      .. "\n",
-    relative_path,
-    content
-  )
+  return string.format("\n%s\n#FILE: %s\n%s\n%s\n%s\n\n", DELIMITER, relative_path, DELIMITER, content, DELIMITER)
 end
 
+-- Enhanced save_buffer_to_ai_file with smart replacement
 function M.save_buffer_to_ai_file(append)
   local output_path = vim.fs.normalize("~/ai_data.txt")
   local git_path = vim.fs.find(".git", { upward = true })[1]
@@ -226,33 +392,32 @@ function M.save_buffer_to_ai_file(append)
 
   local git_root = vim.fs.dirname(git_path)
   local relative_file_name = get_relative_path(vim.api.nvim_buf_get_name(0), git_root)
-  local file_content = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+  local file_content = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
 
-  local content = string.format(
-    "\n---------------------------------------------\n"
-      .. "#FILE: %s"
-      .. "\n---------------------------------------------\n"
-      .. "%s"
-      .. "\n---------------------------------------------\n"
-      .. "\n",
-    relative_file_name,
-    table.concat(file_content, "\n")
-  )
+  local formatted_content =
+    string.format("\n%s\n#FILE: %s\n%s\n%s\n%s\n\n", DELIMITER, relative_file_name, DELIMITER, file_content, DELIMITER)
 
-  if append and file_exists_in_output(output_path, relative_file_name) then
-    vim.notify("File already exists in " .. output_path .. ". Skipping to prevent duplicate.", vim.log.levels.WARN)
+  local success, _ =
+    write_content_with_smart_replace(output_path, formatted_content, relative_file_name, append, true, file_content)
+
+  if success then
+    vim.notify("Buffer content processed for " .. output_path, vim.log.levels.INFO)
+  end
+end
+
+-- Remove current buffer from ai_data.txt
+function M.remove_current_buffer_from_ai_file()
+  local git_path = vim.fs.find(".git", { upward = true })[1]
+  if not git_path then
+    vim.notify("Not in a git repository", vim.log.levels.ERROR)
     return
   end
 
-  local mode = append and "a" or "w"
-  if safe_write_to_file(output_path, content, mode) then
-    vim.notify(
-      "Buffer content saved to " .. output_path .. " (" .. (append and "append" or "replace") .. ")",
-      vim.log.levels.INFO
-    )
-  else
-    vim.notify("Error: Could not open file " .. output_path, vim.log.levels.ERROR)
-  end
+  local git_root = vim.fs.dirname(git_path)
+  local relative_file_name = get_relative_path(vim.api.nvim_buf_get_name(0), git_root)
+
+  -- Remove entry by exact relative path pattern
+  M.remove_entries_by_pattern("custom", "^" .. vim.pesc(relative_file_name) .. "$")
 end
 
 -- Enhanced function for files/folders with filtering (append/replace controlled by keymap)
@@ -276,15 +441,25 @@ function M.save_path_to_ai_file(path, append)
     return
   end
 
-  -- If it's a single file, save it directly
+  -- If it's a single file, save it directly with smart replacement
   if stat.type == "file" then
     local relative_path = get_relative_path(path, git_root)
-    local content = format_file_content(path, git_root)
-    local success, _ = write_content_if_needed(output_path, content, relative_path, append, true)
+    local file = io.open(path, "r")
+    if not file then
+      vim.notify("Could not read file: " .. path, vim.log.levels.ERROR)
+      return
+    end
+
+    local file_content = file:read("*a")
+    file:close()
+
+    local formatted_content = format_file_content(path, git_root)
+    local success, _ =
+      write_content_with_smart_replace(output_path, formatted_content, relative_path, append, true, file_content)
 
     if success then
       vim.notify(
-        "File saved: " .. relative_path .. " (" .. (append and "append" or "replace") .. ")",
+        "File processed: " .. relative_path .. " (" .. (append and "append" or "replace") .. ")",
         vim.log.levels.INFO
       )
     end
@@ -333,7 +508,6 @@ function M.save_path_to_ai_file(path, append)
   end)
 end
 
--- Process discovered files with explicit append/replace mode
 function M.process_files(path, filter_type, custom_pattern, append, git_root)
   local output_path = vim.fs.normalize("~/ai_data.txt")
   local files = discover_files(path, filter_type, custom_pattern, git_root)
@@ -345,28 +519,52 @@ function M.process_files(path, filter_type, custom_pattern, append, git_root)
 
   local saved_count = 0
   local skipped_count = 0
+  local replaced_count = 0
   local first_write = true
 
   for _, file_path in ipairs(files) do
     local relative_path = get_relative_path(file_path, git_root)
-    local content = format_file_content(file_path, git_root)
-    local success, new_first_write = write_content_if_needed(output_path, content, relative_path, append, first_write)
+    local file = io.open(file_path, "r")
+    if file then
+      local file_content = file:read("*a")
+      file:close()
 
-    if success then
-      saved_count = saved_count + 1
-      first_write = new_first_write
-    else
-      skipped_count = skipped_count + 1
+      local formatted_content = format_file_content(file_path, git_root)
+
+      -- Check if file exists and content changed
+      local exists, existing_content = file_exists_in_output_with_content(output_path, relative_path)
+
+      if exists and existing_content then
+        local existing_trimmed = existing_content:gsub("^%s*(.-)%s*$", "%1")
+        local new_trimmed = file_content:gsub("^%s*(.-)%s*$", "%1")
+
+        if existing_trimmed == new_trimmed then
+          skipped_count = skipped_count + 1
+        else
+          -- Content changed, replace it
+          if replace_file_content_in_output(output_path, relative_path, file_content) then
+            replaced_count = replaced_count + 1
+          end
+        end
+      else
+        -- New file, write normally
+        local success, new_first_write =
+          write_content_if_needed(output_path, formatted_content, relative_path, append, first_write)
+        if success then
+          saved_count = saved_count + 1
+          first_write = new_first_write
+        end
+      end
     end
   end
 
   vim.notify(
     string.format(
-      "Processed %d files: %d saved, %d skipped%s (%s mode)",
+      "Processed %d files: %d new, %d replaced, %d skipped (%s mode)",
       #files,
       saved_count,
+      replaced_count,
       skipped_count,
-      append and " (duplicates)" or "",
       append and "append" or "replace"
     ),
     vim.log.levels.INFO

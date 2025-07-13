@@ -208,31 +208,20 @@ end
 ---@param glob string
 ---@return string
 function M.glob_to_lua_pattern(glob)
-  local escaped_glob = glob
-    :gsub("%%", "%%%%")
-    :gsub("%.", "%%.")
-    :gsub("%+", "%%+")
-    :gsub("%-", "%%-")
-    :gsub("%(", "%%(")
-    :gsub("%)", "%%)")
-    :gsub("%[", "%%[")
-    :gsub("%]", "%%]")
-    :gsub("%^", "%%^")
-    :gsub("%$", "%%$")
-    :gsub("%?", "%%?")
-    :gsub("%*", "%%*")
+  local escaped_glob = vim.pesc(glob)
 
   -- Handle [! character class negation first
-  local partial_pattern = escaped_glob:gsub("%[!", "NEGATE_CLASS")
+  local partial_pattern = escaped_glob:gsub("%%%[!", "NEGATE_CLASS")
 
-  -- Use placeholders to avoid conflicts during substitution
-  partial_pattern = partial_pattern:gsub("%*%*/", "DOUBLE_ASTERISK_SLASH")
-  partial_pattern = partial_pattern:gsub("%*%*", "DOUBLE_ASTERISK")
-  partial_pattern = partial_pattern:gsub("%*", "SINGLE_ASTERISK")
-  partial_pattern = partial_pattern:gsub("%?", "QUESTION_MARK")
+  partial_pattern = partial_pattern:gsub(vim.pesc("%*%*/%*"), "TRIPLE_ASTERISK")
+  partial_pattern = partial_pattern:gsub(vim.pesc("%*%*/"), "DOUBLE_ASTERISK_SLASH")
+  partial_pattern = partial_pattern:gsub(vim.pesc("%*%*"), "DOUBLE_ASTERISK")
+  partial_pattern = partial_pattern:gsub(vim.pesc("%*"), "SINGLE_ASTERISK")
+  partial_pattern = partial_pattern:gsub(vim.pesc("%?"), "QUESTION_MARK")
 
   -- Replace placeholders with Lua patterns
-  partial_pattern = partial_pattern:gsub("DOUBLE_ASTERISK_SLASH", ".*") -- **/ matches zero or more chars including /
+  partial_pattern = partial_pattern:gsub("TRIPLE_ASTERISK", ".*") -- *** matches anything
+  partial_pattern = partial_pattern:gsub("DOUBLE_ASTERISK_SLASH", ".*/") -- **/ matches zero or more chars including /
   partial_pattern = partial_pattern:gsub("DOUBLE_ASTERISK", ".*") -- ** matches anything
   partial_pattern = partial_pattern:gsub("SINGLE_ASTERISK", "[^/]*") -- * matches anything except /
   partial_pattern = partial_pattern:gsub("QUESTION_MARK", "[^/]") -- ? matches single char except /
