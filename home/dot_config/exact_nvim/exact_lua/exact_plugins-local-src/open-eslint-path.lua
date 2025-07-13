@@ -1,3 +1,5 @@
+local common_utils = require("utils.common")
+
 local M = {}
 
 local function find_package_json(path)
@@ -74,7 +76,7 @@ end
 
 function M.get_eslint_path()
   local buf_dir = vim.fs.dirname(vim.api.nvim_buf_get_name(0))
-  local root_dir = vim.fs.find({ ".git", "yarn.lock", "package-lock.json" }, { upward = true, path = buf_dir })[1]
+  local root_dir = common_utils.get_project_root()
   if not root_dir then
     vim.notify("No .git directory or yarn.lock or package-lock.json found", vim.log.levels.WARN)
     return
@@ -93,6 +95,10 @@ function M.get_eslint_path()
 
   local bufnr = vim.api.nvim_get_current_buf()
   local parser = vim.treesitter.get_parser(bufnr, vim.bo.filetype)
+  if not parser then
+    vim.notify("No treesitter parser found for the current buffer", vim.log.levels.WARN)
+    return
+  end
   local tree = parser:parse()[1]
   local root = tree:root()
 

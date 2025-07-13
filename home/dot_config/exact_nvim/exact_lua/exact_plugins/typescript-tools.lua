@@ -1,3 +1,5 @@
+local common_utils = require("utils.common")
+
 local ft_js = {
   "tsx",
   "jsx",
@@ -126,7 +128,7 @@ return {
         jsx_close_tag = { enable = false },
       },
       root_dir = function()
-        return vim.uv.cwd()
+        return common_utils.get_project_root()
       end,
     },
   },

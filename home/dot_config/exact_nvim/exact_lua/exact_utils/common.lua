@@ -12,12 +12,14 @@ M.confirm = function(message, callback)
   end)
 end
 
+--- Get the current visual selection as a string
+---@return string?, number?, number?
 function M.get_visual()
   local start_pos = vim.fn.getpos("v")
   local end_pos = vim.fn.getpos(".")
 
   if start_pos == nil or end_pos == nil then
-    return ""
+    return nil, nil, nil
   end
 
   local start_row, start_col = start_pos[2], start_pos[3]
@@ -35,6 +37,8 @@ function M.get_visual()
   return table.concat(lines, "\n"), start_row, end_row
 end
 
+--- Check if the current mode is visual or select mode
+---@return boolean
 function M.in_visual()
   local modes = {
     Rv = true,
@@ -52,6 +56,8 @@ function M.in_visual()
   return modes[current_mode]
 end
 
+--- Copy text to the system clipboard
+---@param text string
 function M.copy_to_clipboard(text)
   -- Use pbcopy to copy text to the system clipboard
   local handle = io.popen("pbcopy", "w")
@@ -62,6 +68,9 @@ function M.copy_to_clipboard(text)
   handle:close()
 end
 
+--- Check if a file is an image
+---@param file_path string
+---@return boolean
 function M.is_image(file_path)
   -- Use a library or a simple heuristic to detect images
   -- For example, you can use the `file` command to check the file type
@@ -69,6 +78,9 @@ function M.is_image(file_path)
   return file_type:match("image/%w+")
 end
 
+--- Open an image file with the default application
+---@param img_path string
+---@param fallback function
 function M.open_image(img_path, fallback)
   if M.is_image(img_path) then
     -- Open the image file with the default Mac associated application
@@ -79,11 +91,16 @@ function M.open_image(img_path, fallback)
   end
 end
 
+--- Check if a file exists
+---@param file_path string
+---@return boolean
 function M.file_exists(file_path)
   local stat = vim.uv.fs_stat(file_path)
   return stat and stat.type == "file" or false
 end
 
+--- Get fzf options for files and grep
+---@return function
 function M.get_fzf_opts()
   return function()
     local rg_opts = M.get_fzf_rg_opts()
@@ -181,6 +198,8 @@ function M.fzf_open_file(selected, opts)
   end)
 end
 
+--- Get options for fzf rg command
+---@return string, string
 function M.get_fzf_rg_opts()
   local rg_ignore_glob =
     "-g '!{node_modules,.next,dist,build,reports,tags,.idea,.vscode,.yarn,.nyc_output,__generated__,reports,storybook-static,*.min.js,*.min.css,junit.xml,bazel-*,data,target,.chromium,.es,.yarn-*}'"
@@ -193,6 +212,8 @@ function M.get_fzf_rg_opts()
   return rg_opts, rg_opts_unrestricted
 end
 
+--- Get options for fzf fd command
+---@return string, string
 function M.get_fzf_fd_opts()
   local fd_ignore_glob =
     "-E '{node_modules,.next,dist,build,reports,.idea,.vscode,.yarn,.nyc_output,__generated__,reports,storybook-static}/' -E '{*.min.js,*.min.css,junit.xml,bazel-*,data,target,.chromium,.es,.yarn-*}'"
@@ -229,6 +250,18 @@ function M.glob_to_lua_pattern(glob)
   local pattern = partial_pattern:gsub("NEGATE_CLASS", "[^") -- [! becomes [^
 
   return "^" .. pattern .. "$"
+end
+
+--- Get the root directory of the current git repository
+---@return string|nil
+function M.get_git_root()
+  return vim.fs.root(0, ".git")
+end
+
+--- Get project root directory
+---@return string|nil
+function M.get_project_root()
+  return vim.fs.root(0, ".git") or vim.env.PWD
 end
 
 return M

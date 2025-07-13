@@ -181,14 +181,12 @@ end
 ---@param arg string Additional arguments to pass to Jest
 ---@param debug_mode boolean|nil Whether to run Jest in debug mode
 M.run_jest_cmd = function(arg, debug_mode)
-  local root_git = vim.fs.find({ ".git" }, { upward = true })[1]
+  local root_dir = common_utils.get_project_root()
 
-  if not root_git then
+  if not root_dir then
     vim.notify("No .git directory or yarn.lock or package-lock.json found", vim.log.levels.WARN)
     return
   end
-
-  local root_dir = vim.fn.fnamemodify(root_git, ":h")
 
   -- check if package.json exists in root_dir using fs_stat
   local found_pkg_json_path = common_utils.file_exists(root_dir .. "/package.json") and root_dir .. "/package.json"

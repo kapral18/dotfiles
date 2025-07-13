@@ -1,3 +1,5 @@
+local common_utils = require("utils.common")
+
 return {
   {
     "neovim/nvim-lspconfig",
@@ -14,7 +16,7 @@ return {
             format = true,
           },
           root_dir = function()
-            return vim.uv.cwd()
+            return common_utils.get_project_root()
           end,
         },
       },

@@ -278,13 +278,12 @@ function M.remove_path_from_ai_data(node_path)
   end
 
   -- Convert absolute path to relative path from git root
-  local git_path = vim.fs.find(".git", { upward = true, path = node_path })[1]
-  if not git_path then
+  local git_root = common_utils.get_git_root()
+  if not git_root then
     vim.notify("Not in a git repository", vim.log.levels.ERROR)
     return
   end
 
-  local git_root = vim.fs.dirname(git_path)
   local relative_path = get_relative_path(node_path, git_root)
 
   -- check if the path is a directory
@@ -384,13 +383,12 @@ end
 -- Enhanced save_buffer_to_ai_file with smart replacement
 function M.save_buffer_to_ai_file(append)
   local output_path = vim.fs.normalize("~/ai_data.txt")
-  local git_path = vim.fs.find(".git", { upward = true })[1]
-  if not git_path then
+  local git_root = common_utils.get_git_root()
+  if not git_root then
     vim.notify("Not in a git repository", vim.log.levels.ERROR)
     return
   end
 
-  local git_root = vim.fs.dirname(git_path)
   local relative_file_name = get_relative_path(vim.api.nvim_buf_get_name(0), git_root)
   local file_content = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
 
@@ -407,13 +405,12 @@ end
 
 -- Remove current buffer from ai_data.txt
 function M.remove_current_buffer_from_ai_file()
-  local git_path = vim.fs.find(".git", { upward = true })[1]
-  if not git_path then
+  local git_root = common_utils.get_git_root()
+  if not git_root then
     vim.notify("Not in a git repository", vim.log.levels.ERROR)
     return
   end
 
-  local git_root = vim.fs.dirname(git_path)
   local relative_file_name = get_relative_path(vim.api.nvim_buf_get_name(0), git_root)
 
   -- Remove entry by exact relative path pattern
@@ -422,15 +419,12 @@ end
 
 -- Enhanced function for files/folders with filtering (append/replace controlled by keymap)
 function M.save_path_to_ai_file(path, append)
-  -- check if no .git directory exists exit
-  local git_path = vim.fs.find(".git", { path = path, upward = true })[1]
+  local git_root = common_utils.get_git_root()
 
-  if not git_path then
+  if not git_root then
     vim.notify("Not in a git repository", vim.log.levels.ERROR)
     return
   end
-
-  local git_root = vim.fs.dirname(git_path)
 
   local output_path = vim.fs.normalize("~/ai_data.txt")
 

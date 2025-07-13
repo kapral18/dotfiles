@@ -1,3 +1,5 @@
+local common_utils = require("utils.common")
+
 return {
   {
     "lewis6991/gitsigns.nvim",
@@ -39,7 +41,7 @@ return {
       })
     end,
     cond = function()
-      return vim.uv.fs_stat(vim.uv.cwd() .. "/.git") or vim.fn.finddir(".git", ";") ~= ""
+      return common_utils.get_git_root() ~= nil
     end,
     init = function()
       vim.g.git_messenger_no_default_mappings = true
