@@ -63,7 +63,7 @@ local PATTERNS = {
 
 local function matches_any_pattern(file_path, patterns)
   for _, pattern in ipairs(patterns) do
-    local lua_pattern = common_utils.glob_to_lua_pattern(pattern)
+    local lua_pattern = "^" .. common_utils.glob_to_lua_pattern(pattern) .. "$"
     if file_path:match(lua_pattern) then
       return true
     end

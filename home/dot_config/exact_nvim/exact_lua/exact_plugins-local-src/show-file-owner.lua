@@ -43,25 +43,7 @@ local function slash_stripped_glob_to_lua_pattern(glob)
   local lua_pattern = common_utils.glob_to_lua_pattern(glob)
   local lua_pattern_with_stripped_slash = lua_pattern:gsub("^/", "")
 
-  return lua_pattern_with_stripped_slash
-end
-
----@param pattern string
----@return string, integer
-local function escape_non_lua_pattern_chars(pattern)
-  return pattern
-    :gsub("%%", "%%%%")
-    :gsub("%.", "%%.")
-    :gsub("%+", "%%+")
-    :gsub("%-", "%%-")
-    :gsub("%(", "%%(")
-    :gsub("%)", "%%)")
-    :gsub("%[", "%%[")
-    :gsub("%]", "%%]")
-    :gsub("%^", "%%^")
-    :gsub("%$", "%%$")
-    :gsub("%?", "%%?")
-    :gsub("%*", "%%*")
+  return "^" .. lua_pattern_with_stripped_slash
 end
 
 ---@return CodeOwnersEntry[]|nil

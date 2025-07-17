@@ -249,7 +249,7 @@ function M.glob_to_lua_pattern(glob)
 
   local pattern = partial_pattern:gsub("NEGATE_CLASS", "[^") -- [! becomes [^
 
-  return "^" .. pattern .. "$"
+  return pattern
 end
 
 --- Get the root directory of the current git repository
