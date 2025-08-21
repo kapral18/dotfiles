@@ -2,6 +2,17 @@
 
 set -euo pipefail
 
+if rustup default &>/dev/null; then
+    echo "Rust toolchain is already installed"
+else
+    echo "Installing Rust toolchain using rustup"
+    rustup default stable
+fi
+
+# Track general asdf plugins and tool versions changes
+# {{ include "readonly_dot_tool-versions.tmpl" | sha256sum }}
+# {{ include "asdf_plugins.tmpl" | sha256sum }}
+
 # This script installs cargo crates from the default-cargo-crates file
 # {{ include "readonly_dot_default-cargo-crates" | sha256sum }}
 

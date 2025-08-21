@@ -224,10 +224,6 @@ if status --is-interactive
         navi widget fish | source
     end
 
-    if type -q pyenv
-        pyenv init - | source
-    end
-
     if test -f ~/.asdf/plugins/golang/set-env.fish
         source ~/.asdf/plugins/golang/set-env.fish
     end

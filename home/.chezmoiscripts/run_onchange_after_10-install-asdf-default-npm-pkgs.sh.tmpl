@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Track general asdf plugins and tool versions changes
+# {{ include "readonly_dot_tool-versions.tmpl" | sha256sum }}
+# {{ include "asdf_plugins.tmpl" | sha256sum }}
+
 # This script installs npm packages from the default-npm-pkgs file
 # {{ include "readonly_dot_default-npm-pkgs" | sha256sum }}
 
