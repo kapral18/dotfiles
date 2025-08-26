@@ -84,15 +84,15 @@ some-user/feature-branch`).
   - Organizes worktrees by creating nested directories for branches with
     slashes (e.g., `feature/new-ui`).
 
-- **`get_pr_worktree <pr_number_or_search>`**: A massive time-saver. Type a PR
+- **`get_pr_worktrees <pr_numbers_or_search>`**: A massive time-saver. Type a PR
   number or search term, and it will:
   1.  Use `fzf` to let you select the exact PR with a rich preview.
   2.  Fetch PR details from the GitHub API.
   3.  Add the contributor's fork as a temporary remote.
   4.  Create a worktree for the PR's branch.
 
-- **`remove_worktree`**: An `fzf`-powered interactive worktree remover that:
-  1.  Removes the worktree directory.
+- **`remove_worktrees`**: An `fzf`-powered interactive worktrees remover that:
+  1.  Removes each selected worktree directory.
   2.  Deletes the associated local branch.
   3.  **Cleans up the remote**: If the worktree was from a fork, it removes
       the temporary remote if no other worktrees are using it.

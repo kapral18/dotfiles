@@ -185,3 +185,11 @@ function remove_wrong_comments --description "Remove comments with specific cont
 
     echo "Finished processing all PRs"
 end
+
+function view_my_issues --description "View your GitHub issues using fzf"
+    gh issue list --assignee @me --limit 100 --json number,title \
+        --jq '.[] | "\(.number)\t\(.title)"' |
+        fzf --delimiter="\t" --with-nth=2 |
+        cut -f1 |
+        xargs -r gh issue view --web
+end

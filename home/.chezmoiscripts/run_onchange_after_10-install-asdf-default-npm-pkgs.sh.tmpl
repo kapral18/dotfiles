@@ -29,7 +29,7 @@ install_npm_pkg() {
     local pkg=$1
 
     echo "Installing npm package: $pkg"
-    if ! yarn global add "$pkg@latest" &>/dev/null; then
+    if ! npm -g install "$pkg@latest" &>/dev/null; then
         echo "Error: Failed to install npm package $pkg@latest"
         return 1
     fi
@@ -41,7 +41,7 @@ for line in "${lines[@]}"; do
     [[ -z "$line" || "$line" =~ ^\s*# ]] && continue
 
     # check if the package is already installed
-    if yarn global list | grep -q "$line" &>/dev/null; then
+    if npm --global --silent ls | grep --quiet "$line" &>/dev/null; then
         echo "npm package $line is already installed"
         continue
     fi

@@ -428,20 +428,15 @@ complete -c add_worktree -n '__fish_add_worktree_is_nth_positional_arg 1' -f -a 
 complete -c add_worktree -n '__fish_add_worktree_is_nth_positional_arg 2' -f -a '(git for-each-ref --format="%(refname:strip=2)" refs/heads/ refs/remotes/)'
 
 # @fish-lsp-disable-next-line 4004
-function get_pr_worktree --description "Fetch a PR from GitHub and create a worktree for it"
-    if test (count $argv) -eq 0
-        echo "Usage: get_pr_worktree <search_query>"
-        return
-    end
-
-    set -l pr_number
+function get_pr_worktrees --description "Fetch PRs from GitHub and create a worktree for each"
+    set -l pr_numbers
 
     if string match -qr '^[0-9]+$' -- $argv[1]
-        set pr_number $argv[1]
+        set pr_numbers $argv[1]
     else
-        # Search and select PR using fzf with improved preview
-        set pr_number (gh pr list --search "$argv[1]" --json number,title \
-        --jq '.[] | "\(.number) \(.title)"' | fzf --preview '
+        # Search and select PR using fzf with improved preview (multi-select enabled)
+        set pr_numbers (gh pr list --search "$argv[1]" --json number,title \
+        --jq '.[] | "\(.number) \(.title)"' | fzf --multi --preview '
             gh pr view {1} --json number,title,body,author,labels,comments --template "
 # PR #{{.number}}: {{.title}}
 
@@ -458,118 +453,131 @@ function get_pr_worktree --description "Fetch a PR from GitHub and create a work
         ' --preview-window="right:70%:nowrap" --ansi | awk "{print \$1}")
     end
 
-    if test -z "$pr_number"
+    if test -z "$pr_numbers"
         echo "No PR selected."
         return 1
     end
 
-    # Fetch PR details using GitHub CLI
-    set -l pr_info (gh pr view $pr_number --json headRefName,headRepository,headRepositoryOwner \
-        --jq '.headRefName + " " + .headRepository.name + " " + .headRepositoryOwner.login')
+    # Process each selected PR
+    for pr_number in $pr_numbers
+        echo "Processing PR #$pr_number..."
 
-    # Extract branch name, repository name, and owner
-    set -l branch_name (echo $pr_info | cut -d ' ' -f1)
-    if test -z "$branch_name"
-        echo "No branch name found in PR info."
-        return 1
+        # Fetch PR details using GitHub CLI
+        set -l pr_info (gh pr view $pr_number --json headRefName,headRepository,headRepositoryOwner \
+            --jq '.headRefName + " " + .headRepository.name + " " + .headRepositoryOwner.login')
+
+        # Extract branch name, repository name, and owner
+        set -l branch_name (echo $pr_info | cut -d ' ' -f1)
+        if test -z "$branch_name"
+            echo "No branch name found in PR #$pr_number info."
+            continue
+        end
+        set -l repo_name (echo $pr_info | cut -d ' ' -f2)
+        if test -z "$repo_name"
+            echo "No repository name found in PR #$pr_number info."
+            continue
+        end
+        set -l repo_owner (echo $pr_info | cut -d ' ' -f3)
+        if test -z "$repo_owner"
+            echo "No repository owner found in PR #$pr_number info."
+            continue
+        end
+
+        set -l upstream_remote_owner (git remote get-url upstream | awk -F'[:/]' "{print \$2}")
+
+        if test $repo_owner = $upstream_remote_owner
+            echo "PR #$pr_number is from the upstream repository. Setting the remote to 'upstream'..."
+            set repo_owner upstream
+        end
+
+        set -l repo_url "git@github.com:$repo_owner/$repo_name.git"
+
+        # Add remote if it doesn't exist
+        if not git remote get-url $repo_owner >/dev/null 2>&1
+            git remote add $repo_owner $repo_url
+        end
+
+        add_worktree "$repo_owner/$branch_name"
+        echo "Completed PR #$pr_number worktree creation."
     end
-    set -l repo_name (echo $pr_info | cut -d ' ' -f2)
-    if test -z "$repo_name"
-        echo "No repository name found in PR info."
-        return 1
-    end
-    set -l repo_owner (echo $pr_info | cut -d ' ' -f3)
-    if test -z "$repo_owner"
-        echo "No repository owner found in PR info."
-        return 1
-    end
-
-    set -l upstream_remote_owner (git remote get-url upstream | awk -F'[:/]' "{print \$2}")
-
-    if test $repo_owner = $upstream_remote_owner
-        echo "PR is from the upstream repository. Setting the remote to 'upstream'..."
-        set repo_owner upstream
-    end
-
-    set -l repo_url "git@github.com:$repo_owner/$repo_name.git"
-
-    # Add remote if it doesn't exist
-    if not git remote get-url $repo_owner >/dev/null 2>&1
-        git remote add $repo_owner $repo_url
-    end
-
-    add_worktree "$repo_owner/$branch_name"
 end
 
 # @fish-lsp-disable-next-line 4004
-function remove_worktree --description "Remove a worktree using fzf and delete the associated branch"
-    set -l worktree (git worktree list -v | fzf --no-preview --ansi)
+function remove_worktrees --description "Remove multiple worktrees using fzf and delete the associated branches"
+    set -l worktrees (git worktree list -v | fzf --no-preview --ansi --multi)
 
-    if test -z "$worktree"
-        echo "No worktree selected."
+    if test -z "$worktrees"
+        echo "No worktrees selected."
         return 1
     end
 
-    set -l worktree_path (echo $worktree | awk "{print \$1}")
-    # @fish-lsp-disable-next-line 2001
-    set -l worktree_branch (echo $worktree | awk '{
-        last = $NF
-        gsub(/^[[(]|[])]$/, "", last)
-        print last
-    }')
+    set -l default_branch (git config --get init.defaultbranch)
+    set -l remotes_to_check
 
-    # if the worktree_branch is HEAD then it's a detached HEAD
-    # so we stop until HEAD is checked out
-    if test $worktree_branch = HEAD
-        echo "Can't remove worktree at '$worktree_path'. It's in detached HEAD state."
-        return
+    for worktree in $worktrees
+        set -l worktree_path (echo $worktree | awk "{print \$1}")
+        # @fish-lsp-disable-next-line 2001
+        set -l worktree_branch (echo $worktree | awk '{
+            last = $NF
+            gsub(/^[[(]|[])]$/, "", last)
+            print last
+        }')
+
+        # if the worktree_branch is HEAD then it's a detached HEAD
+        # so we skip it
+        if test $worktree_branch = HEAD
+            echo "Skipping worktree at '$worktree_path'. It's in detached HEAD state."
+            continue
+        end
+
+        if test $worktree_branch = $default_branch
+            echo "Skipping default branch at '$worktree_path'"
+            continue
+        end
+
+        echo "Removing worktree: $worktree_path ($worktree_branch)"
+        git worktree remove $worktree_path
+
+        # collect remotes for later cleanup
+        set remote_branch (git rev-parse --abbrev-ref $worktree_branch@{upstream} 2>/dev/null)
+        if test -n "$remote_branch"
+            set remote (echo $remote_branch | cut -d'/' -f1)
+            if test -n "$remote"; and not test "$remote" = origin; and not test "$remote" = upstream
+                set -a remotes_to_check $remote
+            end
+        end
+
+        # check if branch still appears in other worktrees
+        if git worktree list --porcelain | grep branch | grep -qw "$worktree_branch"
+            echo "Branch '$worktree_branch' is still used by other worktrees, skipping deletion."
+        else
+            git branch -D $worktree_branch
+        end
+
+        _remove_worktree_tmux_session $worktree_path
+
+        # cleanup all remaining empty scaffold, for example if the branch was named fix/DQD/fix-blabla
+        # it would've created a fix/DQD folder in the worktree_path which would remain after worktree deletion
+        # so we recursively clean up all empty directories first "DQD" then "fix" checking if they are empty
+        # and removing them if they are until we reach the first non-empty parent directory
+        set -l current_dir $(dirname $worktree_path)
+        # we need to string join the output of ls -A to check if it's empty
+        # because ls -A will output the files space separated which test -z
+        # will interpret as a list of arguments
+        while test -z "$(ls -A $current_dir | string join ' ')"
+            set -l parent_dir (dirname $current_dir)
+            rmdir $current_dir
+            set current_dir $parent_dir
+        end
+
+        zoxide remove $worktree_path
     end
 
-    if test $worktree_branch = $(git config --get init.defaultbranch)
-        echo "Can't remove default branch"
-        return
-    end
-
-    git worktree remove $worktree_path
-
-    # if remote is no longer in use in worktrees, remove it
-    # we add error redirection to suppress the error message if the branch doesn't show up
-    # in case of 'origin' or 'upstream' which is acceptable
-    # it can also error if the branch is not tracked, i.e. if it was created locally
-    set remote_branch (git rev-parse --abbrev-ref $worktree_branch@{upstream} 2>/dev/null)
-    set remote (echo $remote_branch | cut -d'/' -f1)
-
-    if test -n "$remote"; and not test "$remote" = origin; and not test "$remote" = upstream
-        # additionally only remove this remote if it isn’t referenced by any existing worktree
+    # cleanup remotes that are no longer referenced by any worktree
+    for remote in (printf '%s\n' $remotes_to_check | sort -u)
         if not string match -q -r "\b$remote\b" -- (git worktree list -v)
+            echo "Removing unused remote: $remote"
             git remote remove $remote
         end
     end
-
-    # check if branch still appears in other worktrees
-    if string match -q -r "\b$worktree_branch\b" -- (git worktree list -v)
-        echo "Branch '$worktree_branch' is still used by other worktrees, skipping deletion."
-    else
-        git branch -D $worktree_branch
-    end
-
-    _remove_worktree_tmux_session $worktree_path
-
-    # if there are no more worktrees with that remote, remove the remote
-
-    # cleanup all remaining empty scaffold, for example if the branch was named fix/DQD/fix-blabla
-    # it would've created a fix/DQD folder in the worktree_path which would remain after worktree deletion
-    # so we recursively clean up all empty directories first "DQD" then "fix" checking if they are empty
-    # and removing them if they are until we reach the first non-empty parent directory
-    set -l current_dir $(dirname $worktree_path)
-    # we need to string join the output of ls -A to check if it's empty
-    # because ls -A will output the files space separated which test -z
-    # will interpret as a list of arguments
-    while test -z "$(ls -A $current_dir | string join ' ')"
-        set -l parent_dir (dirname $current_dir)
-        rmdir $current_dir
-        set current_dir $parent_dir
-    end
-
-    zoxide remove $worktree_path
 end

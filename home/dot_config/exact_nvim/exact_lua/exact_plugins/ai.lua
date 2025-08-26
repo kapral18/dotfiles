@@ -10,6 +10,7 @@ return {
   {
     "CopilotC-Nvim/CopilotChat.nvim",
     lazy = false,
+    version = "*",
     opts = {
       model = "claude-sonnet-4",
     },

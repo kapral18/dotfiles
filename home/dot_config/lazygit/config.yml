@@ -14,7 +14,7 @@ keybinding:
     markCommitAsBaseForRebase: "<c-b>"
 customCommands:
   - key: <c-P>
-    command: get_pr_worktree "{{ .Form.PrNumber }}"
+    command: get_pr_worktrees "{{ .Form.PrNumber }}"
     context: localBranches
     loadingText: Checkout out PR {{ .Form.PrNumber }}
     prompts:
