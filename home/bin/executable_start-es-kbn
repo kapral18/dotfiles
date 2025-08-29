@@ -8,12 +8,16 @@ LOGFILE="/tmp/es.log"
 ES_DATA_FOLDER=${1:-"v9.2"}
 ES_DATA_PATH="$HOME/work/kibana/es_data/$ES_DATA_FOLDER"
 
+# Capture current tmux session and window info
+TMUX_SESSION=$(tmux display-message -p '#S')
+TMUX_WINDOW=$(tmux display-message -p '#I')
+
 yarn kbn bootstrap
 
 (
   tail -n 0 -F "$LOGFILE" | while read -r line; do
     if [[ "$line" == *"$TRIGGER_STRING"* ]]; then
-      tmux send-keys -t :.+1 "yarn start --no-base-path" C-m
+      tmux send-keys -t "${TMUX_SESSION}:${TMUX_WINDOW}.+1" "yarn start --no-base-path" C-m
       break
     fi
   done

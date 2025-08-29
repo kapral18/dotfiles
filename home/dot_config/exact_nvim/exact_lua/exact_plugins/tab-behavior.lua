@@ -28,6 +28,9 @@ end
 return {
   {
     "hrsh7th/nvim-cmp",
+    dependencies = {
+      { "github/copilot.vim" },
+    },
     -- overriding lazyvim native snippets tab behavior
     keys = function()
       return {}
