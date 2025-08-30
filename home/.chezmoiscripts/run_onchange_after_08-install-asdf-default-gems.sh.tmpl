@@ -33,7 +33,11 @@ install_gem() {
     echo "Installing gem: $gem"
     if ! gem install "$gem"; then
         echo "Error: Failed to install gem $gem"
-        return 1
+        echo "Retrying with sudo..."
+        if ! sudo gem install "$gem"; then
+            echo "Error: Failed to install gem $gem even with sudo"
+            return 1
+        fi
     fi
     return 0
 }
