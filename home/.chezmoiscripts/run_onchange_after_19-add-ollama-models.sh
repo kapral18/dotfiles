@@ -5,8 +5,6 @@
 MODELS=(
   "gpt-oss"
   "deepseek-r1"
-  "gemma3"
-  "qwen3"
 )
 
 for MODEL in "${MODELS[@]}"; do
