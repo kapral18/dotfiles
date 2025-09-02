@@ -1,0 +1,30 @@
+[".config/tmux/plugins/tpm"]
+type = "git-repo"
+url = "https://github.com/tmux-plugins/tpm"
+refreshPeriod = "168h"
+
+[".hammerspoon/Spoons/RecursiveBinder.spoon"]
+type = "archive"
+url = "https://github.com/Hammerspoon/Spoons/raw/master/Spoons/RecursiveBinder.spoon.zip"
+stripComponents = 1
+refreshPeriod = "168h"
+exact = true
+
+[".hammerspoon/Spoons/EmmyLua.spoon"]
+type = "archive"
+url = "https://github.com/Hammerspoon/Spoons/raw/master/Spoons/EmmyLua.spoon.zip"
+stripComponents = 1
+refreshPeriod = "168h"
+exact = true
+
+[".vim/autoload/plug.vim"]
+type = "file"
+url = "https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim"
+refreshPeriod = "168h"
+
+["Library/Application Support/lowfi"]
+type = "archive"
+url = "https://github.com/talwat/lowfi/archive/refs/heads/main.tar.gz"
+stripComponents = 2
+include = ["*/data/*.txt"]
+refreshPeriod = "24h"

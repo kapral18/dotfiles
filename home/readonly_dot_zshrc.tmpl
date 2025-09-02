@@ -1,0 +1,40 @@
+# ====================================
+# Zsh Interactive Shell Configuration
+# ====================================
+
+# Source .profile for login shell settings
+[ -f ~/.profile ] && source ~/.profile
+
+# Source .zprofile for login shell settings
+[ -f ~/.zprofile ] && source ~/.zprofile
+
+# Source shared interactive shell configurations
+[ -f ~/.shellrc ] && source ~/.shellrc
+
+# Zsh-specific history configurations
+
+HISTFILE="${HOME}/.zsh_history"
+HISTSIZE=50000                  # History size in memory
+SAVEHIST=500000                # History size in file
+
+# History options
+setopt HIST_IGNORE_ALL_DUPS    # Remove older duplicate entries from history
+setopt HIST_REDUCE_BLANKS      # Remove superfluous blanks from history items
+setopt HIST_VERIFY             # Show command with history expansion before running it
+setopt SHARE_HISTORY           # Share history between different instances of the shell
+setopt EXTENDED_HISTORY        # Record timestamp of command in HISTFILE
+setopt INC_APPEND_HISTORY      # Add commands to HISTFILE in order of execution
+setopt HIST_EXPIRE_DUPS_FIRST  # Expire duplicate entries first when trimming history
+
+# Initializations
+command -v starship >/dev/null && eval "$(starship init zsh)"
+command -v zoxide >/dev/null && eval "$(zoxide init zsh)"
+command -v navi >/dev/null && eval "$(navi widget zsh)"
+
+if command -v asdf >/dev/null; then
+    [ -f ~/.asdf/plugins/golang/set-env.zsh ] && source ~/.asdf/plugins/golang/set-env.zsh
+    [ -f ~/.asdf/plugins/java/set-java-home.zsh ] && source ~/.asdf/plugins/java/set-java-home.zsh
+fi
+
+# Ensure path array contains unique values
+typeset -U path

@@ -1,0 +1,15 @@
+macos-titlebar-style          = hidden
+window-padding-balance        = true
+macos-window-shadow           = false
+clipboard-read                = allow
+clipboard-write               = allow
+macos-option-as-alt           = left
+font-family                   = JetBrainsMono Nerd Font Mono
+font-size                     = 14.0
+cursor-style                  = block
+cursor-style-blink            = false
+cursor-opacity                = 0.96
+copy-on-select                = clipboard
+shell-integration-features    = cursor,sudo,no-title
+confirm-close-surface         = false
+quit-after-last-window-closed = true

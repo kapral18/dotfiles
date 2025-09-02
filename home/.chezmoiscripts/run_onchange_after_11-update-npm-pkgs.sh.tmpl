@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Track general asdf plugins and tool versions changes
+# {{ include "readonly_dot_tool-versions.tmpl" | sha256sum }}
+# {{ include "asdf_plugins.tmpl" | sha256sum }}
+
+# This script installs npm packages from the default-npm-pkgs file
+# {{ include "readonly_dot_default-npm-pkgs" | sha256sum }}
+
+npm_pkgs_file={{ joinPath .chezmoi.sourceDir "readonly_dot_default-npm-pkgs" | quote }}
+
+if [[ ! -f "$npm_pkgs_file" ]]; then
+    echo "Error: default-npm-pkgs file not found at $npm_pkgs_file"
+    exit 1
+fi
+
+# Read the file content into an array
+if ! mapfile -t lines < "$npm_pkgs_file"; then
+    echo "Error: Failed to read default-npm-pkgs file"
+    exit 1
+fi
+
+# install npm package.
+#
+# ex: install_npm_pkg pkg_name
+install_npm_pkg() {
+    local pkg=$1
+
+    echo "Installing npm package: $pkg"
+    if ! npm -g install "$pkg@latest" &>/dev/null; then
+        echo "Error: Failed to install npm package $pkg@latest"
+        return 1
+    fi
+    return 0
+}
+
+for line in "${lines[@]}"; do
+    # Skip empty lines and comments
+    [[ -z "$line" || "$line" =~ ^\s*# ]] && continue
+
+    # check if the package is already installed
+    if npm --global --silent ls | grep --quiet "$line" &>/dev/null; then
+        echo "npm package $line is already installed"
+        continue
+    fi
+    install_npm_pkg "$line"
+done
+
+# make it available in the current shell
+asdf reshim nodejs
+
+echo "All npm packages installed successfully"

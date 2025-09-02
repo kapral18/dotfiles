@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<EOF
+Usage: $(basename "$0") -i INPUT_VIDEO -o OUTPUT_GIF [options]
+
+Options:
+  -i, --input   INPUT_VIDEO   Input video file path.
+  -o, --output  OUTPUT_GIF    Output GIF file path.
+  -t, --time    DURATION      Number of seconds to convert (default: 35).
+  -s, --scale   WIDTH         Scale width in pixels (default: 680).
+  -f, --fps     FPS           Frames per second (default: 25).
+  -p, --pts     PTS_FACTOR    setpts factor multiplier (default: 0.8).
+  -h, --help                Display this help and exit.
+EOF
+}
+
+# Default values
+duration=35
+scale=680
+fps=25
+pts=0.8
+
+# If no arguments, show help.
+if [ "$#" -eq 0 ]; then
+  usage
+  exit 1
+fi
+
+# Parse command-line arguments.
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  -i | --input)
+    input="$2"
+    shift 2
+    ;;
+  -o | --output)
+    output="$2"
+    shift 2
+    ;;
+  -t | --time)
+    duration="$2"
+    shift 2
+    ;;
+  -s | --scale)
+    scale="$2"
+    shift 2
+    ;;
+  -f | --fps)
+    fps="$2"
+    shift 2
+    ;;
+  -p | --pts)
+    pts="$2"
+    shift 2
+    ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  *)
+    echo "Unknown option: $1"
+    usage
+    exit 1
+    ;;
+  esac
+done
+
+# Validate required arguments.
+if [ -z "${input:-}" ] || [ -z "${output:-}" ]; then
+  echo "Error: both --input and --output are required."
+  usage
+  exit 1
+fi
+
+# Create a temporary file for the palette.
+palette="$(mktemp -t palette.XXXXXXXX.png)"
+trap 'rm -f "$palette"' EXIT
+
+filters="fps=${fps},scale=${scale}:-1:flags=lanczos,setpts=${pts}*PTS"
+
+# Generate palette.
+if ! ffmpeg -i "$input" -vf "$filters,palettegen" -y "$palette"; then
+  echo "Error: Failed to generate palette" >&2
+  exit 1
+fi
+
+# Generate GIF using the generated palette.
+if ! ffmpeg -t "$duration" -i "$input" -i "$palette" -lavfi "$filters [x]; [x][1:v] paletteuse" -y "$output"; then
+  echo "Error: Failed to generate GIF" >&2
+  exit 1
+fi

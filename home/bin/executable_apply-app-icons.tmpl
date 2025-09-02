@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+set -e
+
+# Load icon mappings
+ICON_MAPPING="{{ .chezmoi.sourceDir }}/app_icons/icon_mapping.yaml"
+ICON_DIR="{{ .chezmoi.sourceDir }}/app_icons"
+
+# Function to apply icon to an app
+apply_icon() {
+    local app="$1"
+    local icon="$2"
+    local app_path="/Applications/${app}.app"
+    local icon_path="${ICON_DIR}/${icon}"
+
+    if [ -f "$icon_path" ] && [ -d "$app_path" ]; then
+        fileicon set "$app_path" "$icon_path"
+        echo "Applied custom icon ${icon} to $app"
+    else
+        echo "Error: Icon or application not found for $app"
+    fi
+}
+
+# Read and apply icon mappings
+for entry in $(yq e '.icons | to_entries | .[] | .key + ":" + .value' "$ICON_MAPPING"); do
+    app=$(echo "$entry" | cut -d':' -f1)
+    icon=$(echo "$entry" | cut -d':' -f2)
+    apply_icon "$app" "$icon"
+done
+
+# Force a refresh of the Dock
+killall Dock

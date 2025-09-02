@@ -1,0 +1,877 @@
+# ==============================================================================
+# Homebrew Package Manager Configuration
+# Organized by detailed category with metadata for each package
+# ==============================================================================
+
+# ==============================================================================
+# CORE DEPENDENCIES
+# System libraries and dependencies required by other packages
+# ==============================================================================
+
+# C/C++ and Java libraries for Unicode and globalization
+# https://icu.unicode.org/home
+brew "icu4c"
+
+# ==============================================================================
+# CHARMBRACELET ECOSYSTEM
+# Beautiful command-line tools from Charm
+# ==============================================================================
+
+tap "charmbracelet/tap"
+
+{{ if ne .isWork true -}}
+# A powerful terminal-based AI assistant for developers
+# https://charm.sh/crush
+brew "crush"
+{{ end -}}
+
+# Generate images of code and terminal output
+# https://github.com/charmbracelet/freeze
+brew "charmbracelet/tap/freeze"
+
+# Render markdown on the CLI
+# https://github.com/charmbracelet/glow
+brew "glow"
+
+# Tool for glamorous shell scripts
+# https://github.com/charmbracelet/gum
+brew "gum"
+
+# Personal readme generator
+# https://github.com/charmbracelet/markscribe
+brew "charmbracelet/tap/markscribe"
+
+{{ if ne .isWork true -}}
+# AI on the command line
+# https://github.com/charmbracelet/mods
+brew "charmbracelet/tap/mods"
+{{ end -}}
+
+# Human-readable ANSI sequences
+# https://github.com/charmbracelet/sequin
+brew "sequin"
+
+# Terminal Recording
+# Your CLI home video recorder
+# https://github.com/charmbracelet/vhs
+brew "vhs"
+
+# ==============================================================================
+# SHELL ENVIRONMENTS & PROMPTS
+# Command-line shells and prompt customization
+# ==============================================================================
+
+
+
+# Bourne-Again SHell, a UNIX command interpreter
+# https://www.gnu.org/software/bash/
+brew "bash"
+
+# User-friendly command-line shell
+# https://fishshell.com/
+brew "fish"
+
+# Modern shell for the GitHub era
+# https://www.nushell.sh/
+brew "nushell"
+
+# Language server for Fish shell
+# https://github.com/ndonfris/fish-lsp
+brew "fish-lsp"
+
+# Cross-shell prompt
+# https://starship.rs/
+brew "starship"
+
+# ==============================================================================
+# TERMINAL MULTIPLEXERS & SESSION MANAGEMENT
+# Tools for managing multiple terminal sessions
+# ==============================================================================
+
+# Terminal multiplexer
+# https://tmux.github.io/
+brew "tmux"
+
+# Terminal workspace with batteries included
+# https://zellij.dev/
+brew "zellij"
+
+# ==============================================================================
+# TEXT EDITORS & CODE EDITING
+# Advanced text editors for programming
+# ==============================================================================
+
+# Ambitious Vim-fork focused on extensibility and agility
+# https://neovim.io/
+brew "neovim"
+
+# ==============================================================================
+# FILE SYSTEM NAVIGATION & VISUALIZATION
+# Tools for exploring and visualizing file systems
+# ==============================================================================
+
+# Clone of cat(1) with syntax highlighting and Git integration
+# https://github.com/sharkdp/bat
+brew "bat"
+
+# Next gen ls command
+# https://github.com/lsd-rs/lsd
+brew "lsd"
+
+# Multi-threaded file-tree visualizer
+# https://github.com/solidiquis/erdtree
+brew "erdtree"
+
+# Display directories as trees
+# http://mama.indstate.edu/users/ice/tree/
+brew "tree"
+
+# Terminal disk space navigator
+# https://github.com/imsnif/diskonaut
+brew "diskonaut"
+
+# More intuitive version of du
+# https://github.com/bootandy/dust
+brew "dust"
+
+# Tool to analyze file system usage
+# https://github.com/nachoparker/dutree
+brew "dutree"
+
+# NCurses Disk Usage
+# https://dev.yorhel.nl/ncdu
+brew "ncdu"
+
+# Blazing fast terminal file manager
+# https://yazi-rs.github.io/
+brew "yazi"
+
+# Smarter cd command
+# https://github.com/ajeetdsouza/zoxide
+brew "zoxide"
+
+# ==============================================================================
+# FILE SEARCH & PATTERN MATCHING
+# Tools for finding files and searching content
+# ==============================================================================
+
+# Simple, fast alternative to find
+# https://github.com/sharkdp/fd
+brew "fd"
+
+# GNU find, xargs, and locate
+# https://www.gnu.org/software/findutils/
+brew "findutils"
+
+# Command-line fuzzy finder
+# https://github.com/junegunn/fzf
+brew "fzf"
+
+# Search files (+ PDFs, E-Books, Office documents, zip, tar.gz, etc.)
+# https://github.com/phiresky/ripgrep-all
+brew "ripgrep-all"
+
+# ==============================================================================
+# FILE OPERATIONS & MANIPULATION
+# Tools for renaming, deduplicating, and managing files
+# ==============================================================================
+
+# Command-line batch rename tool
+# https://github.com/ayoisaiah/f2
+brew "f2"
+
+# Identify and delete duplicate files
+# https://github.com/adrianlopezroche/fdupes
+brew "fdupes"
+
+# macOS command line utility for managing file icons
+# https://github.com/mklement0/fileicon
+brew "fileicon"
+
+# Select default apps for documents and URL schemes
+# https://github.com/moretension/duti
+brew "duti"
+
+# ==============================================================================
+# SYSTEM MONITORING & PERFORMANCE ANALYSIS
+# Tools for monitoring system resources and performance
+# ==============================================================================
+
+# Process Monitoring
+# Resource monitor
+# https://github.com/aristocratos/btop
+brew "btop"
+
+{{ if ne .isWork true -}}
+# Cross-platform application to monitor your network traffic
+# https://sniffnet.net/
+brew "sniffnet"
+{{ end -}}
+
+# Improved top
+# https://htop.dev/
+brew "htop"
+
+# Show running processes as a tree
+# http://www.thp.uni-duisburg.de/pstree/
+brew "pstree"
+
+# Perf monitoring CLI tool for Apple Silicon
+# https://tlkh.github.io/asitop/
+brew "asitop"
+
+# CPU usage limiter for macOS
+# https://github.com/opsengine/cpulimit
+brew "cpulimit"
+
+# Kill process running on given port
+# https://github.com/jkfran/killport
+brew "killport"
+
+# ==============================================================================
+# NETWORK UTILITIES & HTTP TOOLS
+# Networking utilities and HTTP clients
+# ==============================================================================
+
+# Ping, but with a graph
+# https://github.com/orf/gping
+brew "gping"
+
+# User-friendly cURL replacement
+# https://httpie.io/
+brew "httpie"
+
+# Internet file retriever
+# https://www.gnu.org/software/wget/
+brew "wget"
+
+# View HTTP traffic
+# https://github.com/ilijamt/vht
+tap "ilijamt/tap"
+brew "vht"
+
+# ==============================================================================
+# DATA PROCESSING & STRUCTURED DATA
+# Tools for processing JSON, YAML, XML, and other structured data
+# ==============================================================================
+
+# Lightweight and flexible command-line JSON processor
+# https://jqlang.github.io/jq/
+brew "jq"
+
+# Terminal JSON viewer
+# https://github.com/antonmedv/fx
+brew "fx"
+
+# Interactive jq
+# https://sr.ht/~gpanders/ijq/
+brew "ijq"
+
+# Command-line JSON viewer
+# https://jless.io/
+brew "jless"
+
+# TUI playground for exploring jq
+# https://github.com/noahgorstein/jqp
+tap "noahgorstein/tap"
+brew "noahgorstein/tap/jqp"
+
+# Process YAML, JSON, XML, CSV and properties documents
+# https://github.com/mikefarah/yq
+brew "yq"
+
+# Convert command output to JSON
+# https://github.com/kellyjonbrazil/jc
+brew "jc"
+
+# Like jq, but for HTML
+# https://github.com/mgdm/htmlq
+brew "htmlq"
+
+# Command-line CSV processor
+# https://github.com/medialab/xan
+brew "xan"
+
+# ==============================================================================
+# GIT CORE & HOSTING INTEGRATION
+# Essential Git tools and platform integration
+# ==============================================================================
+
+# Distributed revision control system
+# https://git-scm.com/
+brew "git"
+
+# Git extension for versioning large files
+# https://git-lfs.github.io/
+brew "git-lfs"
+
+# GitHub command-line tool
+# https://cli.github.com/
+brew "gh"
+
+# ==============================================================================
+# GIT WORKFLOW & PRODUCTIVITY
+# Tools for improving Git workflow and productivity
+# ==============================================================================
+
+# Simple terminal UI for git commands
+# https://github.com/jesseduffield/lazygit
+brew "lazygit", args: ["HEAD"]
+
+# Text interface for Git repositories
+# https://jonas.github.io/tig/
+brew "tig"
+
+# Git commit --fixup, but automatic
+# https://github.com/tummychow/git-absorb
+brew "git-absorb"
+
+# Use numbers for dealing with files in git
+# https://github.com/holygeek/git-number
+brew "git-number"
+
+# Syntax-highlighting pager for git
+# https://github.com/dandavison/delta
+brew "git-delta"
+
+# ==============================================================================
+# GIT ANALYSIS & STATISTICS
+# Tools for analyzing Git repositories and history
+# ==============================================================================
+
+# Compute various size metrics for a Git repository
+# https://github.com/github/git-sizer
+brew "git-sizer"
+
+# Git statistics
+# https://github.com/arzzen/git-quick-stats
+brew "git-quick-stats"
+
+# GitHub-like contributions calendar
+# https://github.com/k4rthik/git-cal
+brew "git-cal"
+
+# Git extension to show who contributed to a repository
+# https://github.com/schacon/git-who
+brew "git-who"
+
+# Find when a commit was merged into one or more branches
+# https://github.com/mhagger/git-when-merged
+brew "git-when-merged"
+
+# ==============================================================================
+# GIT UTILITIES & EXTENSIONS
+# Additional Git tools and utilities
+# ==============================================================================
+
+{{ if ne .isWork true -}}
+# Remove large files or passwords from Git history like git-filter-branch
+# https://rtyley.github.io/bfg-repo-cleaner/
+brew "bfg"
+{{ end -}}
+
+# GIT utilities
+# https://github.com/tj/git-extras
+brew "git-extras"
+
+# Assorted git-related scripts and tools
+# https://github.com/MestreLion/git-tools
+brew "git-tools"
+
+# Recursively substitute URLs in git repos
+# https://github.com/akatrevorjay/git-url-sub
+brew "git-url-sub"
+
+# CLI for making updates across multiple GitHub repositories
+# https://github.com/gruntwork-io/git-xargs
+brew "git-xargs"
+
+# Change dates of git commits
+# https://github.com/PotatoLabs/git-redate
+tap "potatolabs/git-redate"
+brew "potatolabs/git-redate/git-redate"
+
+# ==============================================================================
+# SECURITY & SECRET DETECTION
+# Tools for detecting secrets and security issues in code
+# ==============================================================================
+
+# Detect and prevent secrets in git repos
+# https://github.com/gitleaks/gitleaks
+brew "gitleaks"
+
+# Find credentials all over the place
+# https://github.com/trufflesecurity/trufflehog
+brew "trufflehog"
+
+# ==============================================================================
+# CRYPTOGRAPHY & PASSWORD MANAGEMENT
+# Encryption tools and password managers
+# ==============================================================================
+
+# Library access to GnuPG
+# https://www.gnupg.org/related_software/gpgme/
+brew "gpgme"
+
+# Password manager
+# https://www.passwordstore.org/
+brew "pass"
+
+# ==============================================================================
+# PROGRAMMING LANGUAGE MANAGEMENT
+# Tools for managing multiple programming language versions
+# ==============================================================================
+
+# Extendable version manager with support for Ruby, Node.js, Erlang & more
+# https://asdf-vm.com/
+brew "asdf"
+
+{{ if ne .isWork true -}}
+# Dependency Manager for PHP
+# https://getcomposer.org/
+brew "composer"
+{{ end -}}
+
+# Extremely fast Python package installer and resolver
+# https://github.com/astral-sh/uv
+brew "uv"
+
+# ==============================================================================
+# BUILD SYSTEMS & DEVELOPMENT TOOLS
+# Tools for building and compiling software
+# ==============================================================================
+
+# Cross-platform make
+# https://cmake.org/
+brew "cmake"
+
+# Tool for generating GNU Standards-compliant Makefiles
+# https://www.gnu.org/software/automake/
+brew "automake"
+
+# Code searching, linting, rewriting
+# https://github.com/ast-grep/ast-grep
+brew "ast-grep"
+
+# Maintained ctags implementation
+# https://ctags.io/
+brew "universal-ctags"
+
+# Program that displays statistics about your code
+# https://github.com/XAMPPRocky/tokei
+brew "tokei"
+
+# Tool Command Language
+# https://www.tcl-lang.org/
+brew "tcl-tk"
+
+# ==============================================================================
+# CONTAINERIZATION & ORCHESTRATION
+# Docker and container management tools
+# ==============================================================================
+
+{{ if ne .isWork true -}}
+# Container runtimes on MacOS (and Linux) with minimal setup
+# https://github.com/abiosoft/colima/blob/main/README.md
+brew "colima"
+{{ end -}}
+
+# Simple terminal UI for both docker and docker-compose
+# https://github.com/jesseduffield/lazydocker
+brew "lazydocker"
+
+# ==============================================================================
+# MEDIA PROCESSING & GRAPHICS
+# Tools for processing images, audio, and video
+# ==============================================================================
+
+# Tools and libraries to manipulate images
+# https://imagemagick.org/
+brew "imagemagick"
+
+{{ if ne .isWork true -}}
+# SOund eXchange: universal sound sample translator
+# https://sox.sourceforge.net/
+brew "sox"
+
+# Feature-rich command-line audio/video downloader
+# https://github.com/yt-dlp/yt-dlp
+brew "yt-dlp"
+{{ end -}}
+
+# Image processing tools collection
+# http://www.graphicsmagick.org/
+brew "graphicsmagick"
+
+# Terminal graphics for the 21st century
+# https://hpjansson.org/chafa/
+brew "chafa"
+
+# Display images in terminal
+# https://github.com/eddieantonio/imgcat
+tap "eddieantonio/eddieantonio"
+brew "eddieantonio/eddieantonio/imgcat"
+
+# Media player based on MPlayer and mplayer2
+# https://mpv.io/
+brew "mpv"
+
+# ==============================================================================
+# DOCUMENTATION & KNOWLEDGE MANAGEMENT
+# Tools for documentation and learning
+# ==============================================================================
+
+# Very fast implementation of tldr
+# https://github.com/dbrgn/tealdeer
+brew "tealdeer"
+
+{{ if ne .isWork true -}}
+# Hacker News in your terminal
+# https://github.com/bensadeh/circumflex
+brew "circumflex"
+{{ end -}}
+
+# Interactive cheatsheet tool
+# https://github.com/denisidoro/navi
+brew "navi"
+
+# Implementation of the standard Unix documentation system
+# https://www.nongnu.org/man-db/
+brew "man-db"
+
+# Swiss-army knife of markup format conversion
+# https://pandoc.org/
+brew "pandoc"
+
+{{ if ne .isWork true -}}
+# Small tool to convert Djvu files to PDF files
+# https://0x2a.at/site/projects/djvu2pdf/
+brew "djvu2pdf"
+{{ end -}}
+
+# ==============================================================================
+# SYSTEM UTILITIES & CORE TOOLS
+# Essential system utilities and GNU replacements
+# ==============================================================================
+
+# GNU File, Shell, and Text utilities
+# https://www.gnu.org/software/coreutils
+brew "coreutils"
+
+# GNU awk utility
+# https://www.gnu.org/software/gawk/
+brew "gawk"
+
+# GNU implementation of the famous stream editor
+# https://www.gnu.org/software/sed/
+brew "gnu-sed"
+
+# Human-friendly alternative to cut and awk
+# https://github.com/theryangeary/choose
+brew "choose-rust"
+
+# ==============================================================================
+# BINARY ANALYSIS & DEBUGGING
+# Tools for analyzing binary files and debugging
+# ==============================================================================
+
+# Command-line hex viewer
+# https://github.com/sharkdp/hexyl
+brew "hexyl"
+
+# ==============================================================================
+# PERFORMANCE MEASUREMENT & BENCHMARKING
+# Tools for measuring and benchmarking performance
+# ==============================================================================
+
+# Command-line benchmarking tool
+# https://github.com/sharkdp/hyperfine
+brew "hyperfine"
+
+# ==============================================================================
+# TASK AUTOMATION & SCHEDULING
+# Tools for automating tasks and monitoring changes
+# ==============================================================================
+
+# Execute commands when watched files change
+# https://github.com/watchexec/watchexec
+brew "watchexec"
+
+# Execute a program periodically
+# https://gitlab.com/procps-ng/procps
+brew "watch"
+
+# Shell command parallelization utility
+# https://www.gnu.org/software/parallel/
+brew "parallel"
+
+# ==============================================================================
+# DATA VISUALIZATION & PLOTTING
+# Tools for creating charts and visualizations
+# ==============================================================================
+
+# Command line tool that draw plots on the terminal
+# https://github.com/red-data-tools/YouPlot
+brew "youplot"
+
+# ==============================================================================
+# FILE TRANSFER & SHARING
+# Tools for transferring files between systems
+# ==============================================================================
+
+# Securely transfer data between computers
+# https://github.com/magic-wormhole/magic-wormhole
+brew "magic-wormhole"
+
+# Transfer files between computers via WireGuard
+# https://github.com/coder/wush
+brew "wush"
+
+# ==============================================================================
+# PRESENTATION & CONTENT CREATION
+# Tools for creating presentations and content
+# ==============================================================================
+
+# Terminal slideshow tool
+# https://github.com/mfontanini/presenterm
+brew "presenterm"
+
+{{ if ne .isWork true -}}
+# Cast text to speech
+# https://github.com/piqoni/cast-text
+tap "piqoni/cast-text"
+brew "cast-text"
+{{ end -}}
+
+# ==============================================================================
+# PERSONAL PRODUCTIVITY & JOURNALING
+# Tools for personal organization and note-taking
+# ==============================================================================
+
+# Terminal-based personal journal
+# https://github.com/antonmedv/lazyjournal
+brew "lazyjournal"
+
+# ==============================================================================
+# COMMAND LINE ENHANCEMENT
+# Tools for improving command-line experience
+# ==============================================================================
+
+# Readline wrapper
+# https://github.com/hanslub42/rlwrap
+brew "rlwrap"
+
+# CLI tool for adding spacing to terminal output
+# https://github.com/samwho/spacer
+brew "spacer"
+
+# ==============================================================================
+# PACKAGE MANAGEMENT UTILITIES
+# Tools for managing package managers
+# ==============================================================================
+
+# Brewfile manager
+# https://github.com/rcmdnk/homebrew-file
+tap "rcmdnk/file"
+brew "rcmdnk/file/brew-file"
+
+# ==============================================================================
+# TEXT SEARCH & REPLACEMENT
+# Tools for searching and replacing text
+# ==============================================================================
+
+# Simple terminal UI for search and replace
+# https://github.com/yassinebridi/serpl
+brew "serpl"
+
+# ==============================================================================
+# CRYPTOGRAPHY & SSL
+# Cryptographic libraries and SSL tools
+# ==============================================================================
+
+# Cryptography and SSL/TLS Toolkit
+# https://openssl.org/
+brew "openssl"
+
+# ==============================================================================
+# APPLICATIONS (CASKS)
+# GUI applications and desktop software
+# ==============================================================================
+
+{{ if ne .isWork true -}}
+# Allows connection to a computer remotely
+# https://anydesk.com/
+cask "anydesk"
+
+# Web browser
+# https://arc.net/
+cask "arc"
+
+# Web browser
+# https://brave.com/
+cask "brave-browser"
+
+# Web browser
+# https://www.google.com/chrome/
+cask "google-chrome"
+
+# Web browser
+# https://www.google.com/chrome/canary/
+cask "google-chrome@canary"
+
+# Automated testing of webapps for Google Chrome
+# https://chromedriver.chromium.org/
+cask "chromedriver"
+
+# Free app that makes your Internet safer
+# https://cloudflarewarp.com/
+cask "cloudflare-warp"
+
+# VPN client
+# https://mullvad.net/
+cask "mullvad-vpn"
+
+# Voice and text chat software
+# https://discord.com/
+cask "discord"
+
+# Messaging app with a focus on speed and security
+# https://telegram.org/
+cask "telegram"
+
+# Desktop client for WhatsApp
+# https://www.whatsapp.com/
+cask "whatsapp"
+
+# Team communication and collaboration software
+# https://slack.com/
+cask "slack"
+
+# RSS/Atom news aggregator
+# https://hyliu.me/fluent-reader/
+cask "fluent-reader"
+
+# Client for the Google Drive storage service
+# https://www.google.com/drive/
+cask "google-drive"
+
+# Graphically shows disk usage within a file system
+# https://grandperspectiv.sourceforge.io/
+cask "grandperspective"
+
+# Menu bar manager
+# https://github.com/jordanbaird/Ice
+cask "jordanbaird-ice"
+
+# Open-source software for live streaming and screen recording
+# https://obsproject.com/
+cask "obs"
+
+# Multimedia player
+# https://www.videolan.org/vlc/
+cask "vlc"
+
+# All-in-one bookmark manager
+# https://raindrop.io/
+cask "raindropio"
+
+# Task management application
+# https://www.rememberthemilk.com/
+cask "remember-the-milk"
+
+# Office suite
+# https://www.wps.com/
+cask "wpsoffice"
+{{ end -}}
+
+# Command-line interface for 1Password
+# https://developer.1password.com/docs/cli
+cask "1password-cli"
+
+# Application launcher and productivity software
+# https://www.alfredapp.com/
+cask "alfred"
+
+# Application uninstaller
+# https://freemacsoft.net/appcleaner/
+cask "appcleaner"
+
+# Monitors common persistence locations. Security tool
+# https://objective-see.org/products/blockblock.html
+cask "blockblock"
+
+# Tool to show what is persistently installed on the computer
+# https://objective-see.org/products/knockknock.html
+cask "knockknock"
+
+# Open-source firewall
+# https://objective-see.org/products/lulu.html
+cask "lulu"
+
+# Monitor mic and webcam
+# https://objective-see.org/products/oversight.html
+cask "oversight"
+
+# Scan and detect keyloggers
+# https://objective-see.org/products/reikey.html
+cask "reikey"
+
+# Convert potentially dangerous PDFs or Office documents into safe PDFs
+# https://dangerzone.rocks/
+cask "dangerzone"
+
+# App to build and share containerised applications and microservices
+# https://www.docker.com/products/docker-desktop
+cask "docker-desktop"
+
+# Set of tools to manage resources and applications hosted on Google Cloud
+# https://cloud.google.com/cli/
+cask "gcloud-cli"
+
+# Get up and running with large language models locally
+# https://ollama.ai/
+cask "ollama-app"
+
+# Fast, feature-rich, and cross-platform terminal emulator
+# https://mitchellh.com/ghostty
+cask "ghostty"
+
+# Rust-based terminal
+# https://www.warp.dev/
+cask "warp"
+
+# Desktop automation application
+# https://www.hammerspoon.org/
+cask "hammerspoon"
+
+# Keyboard customizer
+# https://karabiner-elements.pqrs.org/
+cask "karabiner-elements"
+
+# Screenshot measurement and annotation tool
+# https://shottr.cc/
+cask "shottr"
+
+# GUI Shows all open files, directories, sockets, pipes and devices
+# https://sveinbjorn.org/sloth
+cask "sloth"
+
+# ==============================================================================
+# FONTS & TYPOGRAPHY
+# Programming fonts and typography tools
+# ==============================================================================
+
+# https://github.com/tonsky/FiraCode
+cask "font-fira-code"
+
+# https://github.com/ryanoasis/nerd-fonts
+cask "font-fira-code-nerd-font"
+
+# https://github.com/ryanoasis/nerd-fonts
+cask "font-hack-nerd-font"
+
+# https://github.com/ryanoasis/nerd-fonts
+cask "font-jetbrains-mono-nerd-font"
+
+# https://github.com/ryanoasis/nerd-fonts
+cask "font-symbols-only-nerd-font"

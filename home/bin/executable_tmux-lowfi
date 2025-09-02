@@ -1,0 +1,145 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Path to lowfi tracklists directory
+LOWFI_CONFIG_DIR="$HOME/Library/Application Support/lowfi"
+SAVED_CURRENT_TRACKLIST_FILE="/tmp/tmux-lowfi-current-tracklist"
+
+TRACKLISTS=(
+  "chillhop.txt"
+  "lofigirl-new.txt"
+)
+
+DEFAULT_TRACKLIST="${TRACKLISTS[0]}"
+
+# Check if the tmux session "lowfi" exists
+tmux_session_exists() {
+  tmux has-session -t lowfi 2>/dev/null
+}
+
+# Get the next tracklist in rotation
+get_next_tracklist() {
+  local current_tracklist=""
+
+  # Read current tracklist from state file
+  if [ -f "$SAVED_CURRENT_TRACKLIST_FILE" ]; then
+    current_tracklist=$(cat "$SAVED_CURRENT_TRACKLIST_FILE")
+  fi
+
+  # Find current index and get next one
+  local next_index=0
+  for i in "${!TRACKLISTS[@]}"; do
+    if [ "${TRACKLISTS[$i]}" = "$current_tracklist" ]; then
+      next_index=$(((i + 1) % ${#TRACKLISTS[@]}))
+      break
+    fi
+  done
+
+  echo "${TRACKLISTS[$next_index]}"
+}
+
+# Send the provided key to the lowfi pane. If the pane isn't running lowfi,
+# start it with the default tracklist.
+send_lowfi_command() {
+  local pane_command
+  pane_command=$(tmux list-panes -t lowfi:lowfi.1 -F '#{pane_current_command}')
+  if [ "$pane_command" = "lowfi" ]; then
+    tmux send-keys -t lowfi:lowfi.1 "$1"
+  else
+    start_lowfi_with_tracklist "$DEFAULT_TRACKLIST"
+  fi
+}
+
+# Start lowfi with a specific tracklist
+start_lowfi_with_tracklist() {
+  local tracklist="$1"
+  local tracklist_name="${tracklist%.txt}" # Remove .txt extension
+
+  # Store current tracklist in state file
+  echo "$tracklist" >"$SAVED_CURRENT_TRACKLIST_FILE"
+
+  # Send the command to start lowfi with the tracklist
+  tmux send-keys -t lowfi:lowfi.1 "lowfi -t $tracklist_name" Enter
+}
+
+# Kill current lowfi process and start with new tracklist
+restart_lowfi_with_tracklist() {
+  local tracklist="$1"
+
+  # Kill current lowfi process if running
+  local pane_command
+  pane_command=$(tmux list-panes -t lowfi:lowfi.1 -F '#{pane_current_command}')
+  if [ "$pane_command" = "lowfi" ]; then
+    tmux send-keys -t lowfi:lowfi.1 'q'
+    sleep 0.5 # Give it a moment to quit
+  fi
+
+  # Start with new tracklist
+  start_lowfi_with_tracklist "$tracklist"
+}
+
+# Display usage information and exit
+print_usage() {
+  echo "Usage: $(basename "$0") [p|play|pause|s|skip|q|quit|nt|next-tracklist]"
+  exit 1
+}
+
+main() {
+  # Default action is play if no parameter is supplied.
+  local action="${1:-p}"
+  local action_lower
+  local key=""
+
+  action_lower=$(echo "$action" | tr '[:upper:]' '[:lower:]')
+
+  case "$action_lower" in
+  p | play | pause)
+    key="p"
+    ;;
+  s | skip)
+    key="s"
+    ;;
+  nt | next-tracklist)
+    local next_tracklist
+    next_tracklist=$(get_next_tracklist)
+
+    if [ -z "$next_tracklist" ]; then
+      tmux display-message "No tracklists found in $LOWFI_CONFIG_DIR"
+      exit 1
+    fi
+
+    if tmux_session_exists; then
+      restart_lowfi_with_tracklist "$next_tracklist"
+      tmux display-message "Switched to tracklist: ${next_tracklist%.txt}"
+    else
+      # Create session and start with the next tracklist
+      tmux new-session -n lowfi -d -s lowfi
+      start_lowfi_with_tracklist "$next_tracklist"
+      tmux display-message "Started lowfi session with tracklist: ${next_tracklist%.txt}"
+    fi
+
+    exit 0
+    ;;
+  q | quit)
+    # Kill the session if it exists, otherwise do nothing.
+    tmux_session_exists && tmux kill-session -t lowfi
+    # Clean up state file
+    [ -f "$SAVED_CURRENT_TRACKLIST_FILE" ] && rm "$SAVED_CURRENT_TRACKLIST_FILE"
+    exit 0
+    ;;
+  *)
+    print_usage
+    ;;
+  esac
+
+  if tmux_session_exists; then
+    send_lowfi_command "$key"
+  else
+    # Create a new tmux session named "lowfi" with a window named "lowfi" and start with default tracklist
+    tmux new-session -n lowfi -d -s lowfi
+    start_lowfi_with_tracklist "$DEFAULT_TRACKLIST"
+  fi
+}
+
+main "$@"

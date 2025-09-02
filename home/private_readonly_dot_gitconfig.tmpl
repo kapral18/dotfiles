@@ -1,0 +1,244 @@
+[core]
+  abbrev         = 12
+  attributesfile = "~/.gitattributes"
+  excludesfile   = "~/.gitignore"
+  fileMode       = false
+  # Treat spaces before tabs and all kinds of trailing whitespace as an error
+  # [default] trailing-space: looks for spaces at the end of a line
+  # [default] space-before-tab: looks for spaces before tabs at the beginning of a line
+  whitespace = space-before-tab,-indent-with-non-tab,trailing-space
+  # Make `git rebase` safer on macOS
+  # More info: http://www.git-tower.com/blog/make-git-rebase-safe-on-osx
+  trustctime = false
+  # Prevent showing files whose names contain non-ASCII symbols as unversioned.
+  # http://michael-kuehnel.de/git/2014/11/21/git-mac-osx-and-german-umlaute.html
+  precomposeunicode = false
+  # Speed up commands involving untracked files such as `git status`.
+  # https://git-scm.com/docs/git-update-index#_untracked_cache
+  untrackedCache = true
+  # Why do we need this?
+  #
+  # If you check https://developer.1password.com/docs/ssh/agent/advanced#use-multiple-github-accounts
+  # you will see that 1Password allows you to use multiple SSH keys for different accounts
+  # by using the `IdentityFile` option in the `~/.ssh/config` file. This is a way to use
+  # the same feature but for Git. This way you can use different SSH keys for different
+  # repositories without changing the global `~/.ssh/config` file. The main catch is that
+  # usually, you would use the private key in the `IdentityFile` option, but in this case,
+  # 1Password allows you to use the public key. This is why we use the public key here.
+  #
+  # This solves 3 problems:
+  #
+  # 1. You don't have to change the global `~/.ssh/config` file to use different SSH keys
+  # 2. You don't have to use the private key in the `IdentityFile` option because it is not secure.
+  # 3. You can now invoke 1Password ssh key verification for Git commands not only
+  # for ssh aliases as described in the 1Password documentation but also nested
+  # .gitconfig architecture. Basically you can use 1Password ssh key verification
+  # from different .gitconfig files in different directories without need to create
+  # a separate ssh alias for each repository or directory.
+  #
+  # Example:
+  #
+  # you can find the secondary ssh key in this repos in the home/dot_ssh/secondary_public_key.pub.tmpl file
+  # and it's used in home/work/private_dot_gitconfig.tmpl file
+  #
+  sshCommand = ssh -o IdentitiesOnly=yes -o IdentityFile="~/.ssh/primary_public_key.pub"
+  # Prevent line ending issues
+  autocrlf = input
+
+[pager]
+  # if difftool output is larger than one screen, use the pager
+  difftool = true
+
+[color]
+  ui = auto
+
+[alias]
+  s = 'status'
+  # Temporarily stores changes from another worktree, resets it, and applies changes to current worktree
+  wtgrab = "!f() { mktemp | xargs -I{} sh -c 'git -C $1 diff > $0; git -C $1 reset --hard HEAD; git apply $0;' {} $1; }; f"
+  # Shows commit statistics (shortlog) for contributors in the last 8 weeks
+  stat = "!git shortlog -sn --since='10 weeks' --until='2 weeks'"
+  # Lists 10 most recently modified branches
+  recent = "!git for-each-ref --count=10 --sort=-committerdate refs/heads/ --format='%(refname:short)'"
+  # Shows all non-merge commits in one line format
+  overview = "!git log --all --oneline --no-merges"
+  # Shows your commits since midnight
+  recap = "!git log --all --oneline --no-merges --author=$(git config --get user.email) --since=00:00:00"
+  today = "!git log --all --oneline --no-merges --author=$(git config --get user.email) --since=00:00:00"
+  # Detailed graph view with commit stats and ISO dates
+  graph = "!git log --all --graph --decorate --stat --date=iso"
+  # Pretty formatted log with colors, limited to 15 entries
+  l = !git --no-pager log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%C(bold blue) <%an>%Creset' -15
+  ll = !git l --all --branches
+  # Shows detailed file changes for last commit
+  lf = !git --no-pager log --pretty=format:'%C(yellow)%h%Cred%d\\ %Creset%s%Cblue\\ [%cn]' --decorate --numstat -1
+  # Detailed commit info display
+  shw = show --pretty=format:'hash:    %C(green)%h%C(reset) %nparent:  %C(red)%p%C(reset)%nref:     %C(yellow)%D%C(reset)%nauthor:  %an <%ae>%ndate:    %ad%nmessage: %s%n'
+  sh = !git shw --no-patch
+  shp = !git shw --patch
+  # Shows changed files compared to N commits ago
+  df = "!f() { git diff --name-status -r "HEAD~$1"; }; f"
+  # Squashes last N commits into one
+  squash = "!f(){ git reset --soft HEAD~${1} && git commit --edit -m\"$(git log --format=%B --reverse HEAD..HEAD@{1})\" --no-verify; };f"
+  f = fetch -ptf
+  pur = pull --rebase
+  pup = pull --rebase upstream $(git branch --show-current)
+  # Deletes all merged branches except main, master, develop, and staging
+  purge = "!git branch --merged | grep -Ev '(\\*|master|main|develop|staging)' | xargs -r -n 1 git branch -d"
+  # Fetch, pull with rebase, and purge old branches
+  u = !git f && git p && git purge
+  # Marks file as unchanged in git's index (useful for local config files)
+  hide = update-index --assume-unchanged
+  unhide = update-index --no-assume-unchanged
+  wt=worktree
+
+[apply]
+  # Detect whitespace errors when applying patches
+  whitespace = fix
+
+[diff]
+  # Shows moved lines in a different color
+  colorMoved = default
+  # Uses histogram diff algorithm which is more accurate and efficient
+  # https://luppeng.wordpress.com/2020/10/10/when-to-use-each-of-the-git-diff-algorithms/
+  algorithm = histogram
+  # Enables Git to detect renamed files and show them as renames instead of deletion+addition
+  renames = true
+  # Shows 10 lines of context around changes instead of the default 3
+  context = 10
+  # Increases the limit for rename detection (default is typically much lower)
+  renameLimit = 999999
+
+[merge]
+  autoStash = true
+  # Add summary after merge
+  log = true
+  # https://www.ductile.systems/zdiff3/
+  conflictStyle = zdiff3
+
+[rebase]
+  autoStash = true
+  # https://andrewlock.net/smoother-rebases-with-auto-squashing-git-commits/
+  autoSquash = true
+  # Do not delete commits during rebase
+  missingCommitsCheck = error
+  # https://andrewlock.net/working-with-stacked-branches-in-git-is-easier-with-update-refs/
+  updateRefs = true
+
+[pretty]
+  custom = "%C(magenta)%h%C(red)%d %C(yellow)%ar %C(green)%s %C(yellow)(%an)"
+#                     │        │            │            │             └─ author name
+#                     │        │            │            └─ message
+#                     │        │            └─ date (relative)
+#                     │        └─ decorations (branch, heads or tags)
+#                     └─ hash (abbreviated)
+
+[pull]
+  default = current
+  twohead = ort
+
+[push]
+  # to avoid sitution where an existing branch with the same name is on upstream but not
+  # on the origin so when you push it goes into upstream. This is a safety measure
+  # to avoid that
+  default = upstream
+  followTags = true
+  verify = true
+  autoSetupRemote = true
+
+[tag]
+  sort = -taggerdate
+
+[branch]
+  autoSetupRebase = always
+  sort = -committerdate
+
+[init]
+  defaultBranch = main
+
+## GitHub
+[url "git@github.com:"]
+  # we don't want to use insteadOf because it breaks brew installs from brew taps
+  pushInsteadOf = https://github.com/
+
+## GitLab
+[url "git@gitlab.com:"]
+  # we don't want to use insteadOf because it breaks brew installs from brew taps
+  pushInsteadOf = https://gitlab.com
+
+[user]
+  name = Karen Grigoryan
+  email = {{ .primaryEmail }}
+  signingkey = {{ .primaryPublicSshKey }}
+  useConfigOnly = true
+{{ if ne .isWork true }}
+[includeIf "gitdir:~/work/"]
+  path = ~/work/.gitconfig
+{{ end }}
+
+[gpg]
+  format = ssh
+
+[gpg "ssh"]
+  program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
+  allowedSignersFile = {{ joinPath .chezmoi.homeDir ".ssh" "allowed_signers" }}
+
+[commit]
+  gpgsign = true
+  verbose = true
+
+# reuse recovered resolution
+# https://git-scm.com/docs/git-rerere
+[rerere]
+  enabled = true
+  autoUpdate = true
+
+[transfer]
+  # Hide internal references that shouldn't be transferred
+  hideRefs = refs/original/ refs/replace/
+
+[fetch]
+  # Automatically remove remote-tracking references that no longer exist
+  prune = true
+  # Prune tags that are no longer on the remote
+  pruneTags = true
+  # Hide internal references during fetch operations
+  hideRefs = refs/original/ refs/replace/
+
+[receive]
+  # Hide internal references during receive operations
+  hideRefs = refs/original/ refs/replace/
+
+[log]
+  date = iso
+  follow = true
+  decorate = short
+
+[advice]
+  detachedHead = false
+
+[blame]
+  # Show email addresses instead of names
+  showEmail = true
+  # Colors lines from the same commit differently
+  coloring = repeatedLines
+
+[status]
+  # https://michaelheap.com/git-status-untracked/
+  showUntrackedFiles = all
+
+[feature]
+  # https://git-scm.com/docs/git-config#Documentation/git-config.txt-featuremanyFiles
+  manyFiles = true
+
+[index]
+  # enabled by feature.manyFiles
+  skipHash = true
+  # needed for feature.manyFiles
+  version = 4
+
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true

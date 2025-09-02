@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Track general asdf plugins and tool versions changes
+# {{ include "readonly_dot_tool-versions.tmpl" | sha256sum }}
+# {{ include "asdf_plugins.tmpl" | sha256sum }}
+
+# This script installs go packages from the default-golang-pkgs file
+# {{ include "readonly_dot_default-golang-pkgs" | sha256sum }}
+
+golang_pkgs_file={{ joinPath .chezmoi.sourceDir "readonly_dot_default-golang-pkgs" | quote }}
+
+if [[ ! -f "$golang_pkgs_file" ]]; then
+    echo "Error: default-golang-pkgs file not found at $golang_pkgs_file"
+    exit 1
+fi
+
+# Read the file content into an array
+if ! mapfile -t lines < "$golang_pkgs_file"; then
+    echo "Error: Failed to read default-golang-pkgs file"
+    exit 1
+fi
+
+# install Go package.
+#
+# ex: install_go_pkg pkg_name
+install_go_pkg() {
+    local pkg=$1
+
+    echo "Installing Go package: $pkg"
+    if ! go install "$pkg@latest" &>/dev/null; then
+        echo "Error: Failed to install Go package $pkg@latest"
+        if ! go install "$pkg@master" &>/dev/null; then
+            echo "Error: Failed to install Go package $pkg@master"
+            if ! go install "$pkg@main" &>/dev/null; then
+                echo "Error: Failed to install Go package $pkg@main"
+                return 1
+            fi
+        fi
+    fi
+    return 0
+}
+
+for line in "${lines[@]}"; do
+    # Skip empty lines and comments
+    [[ -z "$line" || "$line" =~ ^\s*# ]] && continue
+
+    # check if the package is already installed
+    if go list -m -versions "$line" &>/dev/null; then
+        echo "Go package $line is already installed"
+        continue
+    fi
+    install_go_pkg "$line"
+done
+
+# make it available in the current shell
+asdf reshim golang
+
+echo "All Go packages installed successfully"

@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if rustup default &>/dev/null; then
+    echo "Rust toolchain is already installed"
+else
+    echo "Installing Rust toolchain using rustup"
+    rustup default stable
+fi
+
+# Track general asdf plugins and tool versions changes
+# {{ include "readonly_dot_tool-versions.tmpl" | sha256sum }}
+# {{ include "asdf_plugins.tmpl" | sha256sum }}
+
+# This script installs cargo crates from the default-cargo-crates file
+# {{ include "readonly_dot_default-cargo-crates" | sha256sum }}
+
+cargo_crates_file={{ joinPath .chezmoi.sourceDir "readonly_dot_default-cargo-crates" | quote }}
+
+if [[ ! -f "$cargo_crates_file" ]]; then
+    echo "Error: default-cargo-crates file not found at $cargo_crates_file"
+    exit 1
+fi
+
+# Read the file content into an array
+if ! mapfile -t lines < "$cargo_crates_file"; then
+    echo "Error: Failed to read default-cargo-crates file"
+    exit 1
+fi
+
+# install cargo crate.
+#
+# ex: install_crate crate_name
+install_crate() {
+    local crate=$1
+
+    echo "Installing crate: $crate"
+    if ! cargo install "$crate"; then
+        echo "Regular install failed, trying with --locked option"
+        if ! cargo install --locked "$crate"; then
+            echo "Error: Failed to install crate $crate"
+            return 1
+        fi
+    fi
+    return 0
+}
+
+for line in "${lines[@]}"; do
+    # Skip empty lines and comments
+    [[ -z "$line" || "$line" =~ ^\s*# ]] && continue
+
+    install_crate "$line"
+done
+
+# make it available in the current shell
+asdf reshim rust
+
+echo "All cargo crates installed successfully"

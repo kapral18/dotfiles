@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Track general asdf plugins and tool versions changes
+# {{ include "readonly_dot_tool-versions.tmpl" | sha256sum }}
+# {{ include "asdf_plugins.tmpl" | sha256sum }}
+
+rm -rf ~/.gem
+
+# This script installs Ruby gems from the default-gems file
+# {{ include "readonly_dot_default-gems" | sha256sum }}
+
+gems_file={{ joinPath .chezmoi.sourceDir "readonly_dot_default-gems" | quote }}
+
+if [[ ! -f "$gems_file" ]]; then
+    echo "Error: default-gems file not found at $gems_file"
+    exit 1
+fi
+
+# Read the file content into an array
+if ! mapfile -t lines < "$gems_file"; then
+    echo "Error: Failed to read default-gems file"
+    exit 1
+fi
+
+# install Ruby gem.
+#
+# ex: install_gem gem_name
+install_gem() {
+    local gem=$1
+
+    echo "Installing gem: $gem"
+    if ! gem install "$gem"; then
+        echo "Error: Failed to install gem $gem"
+        echo "Retrying with sudo..."
+        if ! sudo gem install "$gem"; then
+            echo "Error: Failed to install gem $gem even with sudo"
+            return 1
+        fi
+    fi
+    return 0
+}
+
+for line in "${lines[@]}"; do
+    # Skip empty lines and comments
+    [[ -z "$line" || "$line" =~ ^\s*# ]] && continue
+
+    install_gem "$line"
+done
+
+# make it available in the current shell
+asdf reshim ruby
+
+echo "All Ruby gems installed successfully"

@@ -1,0 +1,9 @@
+# ====================================
+# Bash Login Shell Configuration
+# ====================================
+
+[ -f ~/.profile ] && source ~/.profile
+
+if command -v asdf >/dev/null; then
+  source <(asdf completion bash)
+fi

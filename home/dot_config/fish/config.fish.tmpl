@@ -1,0 +1,251 @@
+# ====================================
+# FISH Shell Configuration
+# ====================================
+
+# Disable the default fish greeting
+set -x fish_greeting
+
+# Up soft ulimit
+ulimit -Sn 2500000
+
+# ------------------------------------
+# Environment Variables
+# ------------------------------------
+
+## Language Settings
+set -x LANG en_US.UTF-8
+
+## Terminal Settings
+if not set -q TERM
+    set -gx TERM xterm-256color
+end
+
+## Editor Settings
+# Set default editor to Neovim
+set -x EDITOR nvim
+set -x VISUAL nvim
+
+## Homebrew Settings
+# Disable automatic updates during brew install
+set -x HOMEBREW_NO_AUTO_UPDATE 1
+# Homebrew paths (adjusted based on template variables)
+set -x HOMEBREW_PREFIX {{ .homebrewPrefix }}
+set -x HOMEBREW_CELLAR {{ .homebrewPrefix }}/Cellar
+set -x HOMEBREW_REPOSITORY {{ .homebrewPrefix }}
+set -x MANPATH {{ .homebrewPrefix }}/share/man $MANPATH
+set -x INFOPATH {{ .homebrewPrefix }}/share/info $INFOPATH
+
+## SSH Agent (1Password)
+set -x SSH_AUTH_SOCK "$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+
+## GPG TTY Configuration (for amd64 architecture)
+{{ if eq .chezmoi.arch "amd64" }}
+set -x GPG_TTY (tty)
+{{ end -}}
+
+## BAT Theme
+set -x BAT_THEME Catppuccin-mocha
+
+## Ollama Settings
+set -x OLLAMA_NUM_PARALLEL 10
+set -x OLLAMA_MAX_QUEUE 2048
+set -x OLLAMA_KEEP_ALIVE 30m
+
+# ------------------------------------
+# XDG Base Directory Specification
+# ------------------------------------
+
+## System Directories
+set -x XDG_DATA_DIRS /usr/share /usr/local/share
+set -x XDG_CONFIG_DIRS /etc/xdg
+
+## User Directories
+set -x XDG_CONFIG_HOME $HOME/.config
+set -x XDG_CACHE_HOME $HOME/.cache
+set -x XDG_DATA_HOME $HOME/.local/share
+set -x XDG_DESKTOP_DIR $HOME/Desktop
+set -x XDG_DOCUMENTS_DIR $HOME/Documents
+set -x XDG_DOWNLOAD_DIR $HOME/Downloads
+set -x XDG_MUSIC_DIR $HOME/Music
+set -x XDG_PICTURES_DIR $HOME/Pictures
+set -x XDG_VIDEOS_DIR $HOME/Videos
+
+## ASDF Configuration
+set -x ASDF_GOLANG_MOD_VERSION_ENABLED true
+
+#-------------------------------------
+# colored man output
+# @see http://linuxtidbits.wordpress.com/2009/03/23/less-colors-for-man-pages/
+#-------------------------------------
+
+set -x LESS_TERMCAP_mb \e'[01;31m' # begin blinking
+set -x LESS_TERMCAP_md \e'[01;38;5;74m' # begin bold
+set -x LESS_TERMCAP_me \e'[0m' # end mode
+set -x LESS_TERMCAP_se \e'[0m' # end standout-mode
+set -x LESS_TERMCAP_so \e'[01;33m' # begin standout-mode - info box
+set -x LESS_TERMCAP_ue \e'[0m' # end underline
+set -x LESS_TERMCAP_us \e'[04;38;5;146m' # begin underline
+
+# ------------------------------------
+# Path Management
+# ------------------------------------
+
+if status --is-login
+    fish_add_path -g {{ .homebrewPrefix }}/opt/coreutils/libexec/gnubin
+    fish_add_path -g {{ .homebrewPrefix }}/bin
+    fish_add_path -g {{ .homebrewPrefix }}/sbin
+    fish_add_path -g "$HOME"/.yarn/bin
+    fish_add_path -g "$HOME"/.local/bin
+    fish_add_path -g "$HOME"/bin
+
+    if type -q asdf
+        # we need to add the asdf shims to the PATH again
+        # because they are pushed down without fish_add_path
+        fish_add_path -g "$(brew --prefix asdf)"/bin
+        fish_add_path -g "$HOME"/.asdf/shims
+    end
+
+end
+
+# ------------------------------------
+# FZF Configuration
+# ------------------------------------
+
+set FD_OPTIONS "--hidden --follow"
+
+set -x FZF_DEFAULT_OPTS "
+    --no-mouse
+    --height 80%
+    --reverse
+    --multi
+    --info=inline
+    --preview-window='right:60%:nowrap'
+    --bind=ctrl-d:preview-down,ctrl-u:preview-up,ctrl-b:page-up,ctrl-f:page-down
+"
+
+set -x FZF_DEFAULT_COMMAND "git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l $FD_OPTIONS"
+set -x FZF_CTRL_T_COMMAND "$FZF_DEFAULT_COMMAND"
+set -x FZF_ALT_C_COMMAND "fd --type d $FD_OPTIONS"
+
+# ------------------------------------
+# GEMINI API Key Configuration
+# ------------------------------------
+
+if type -q pass; and test -z "$GEMINI_API_KEY"
+    set -gx GEMINI_API_KEY (pass google/gemini/api/token)
+end
+
+{{ if ne .isWork true -}}
+
+# ------------------------------------
+# OpenAI API Key Configuration
+# ------------------------------------
+
+if type -q pass; and test -z "$OPENAI_API_KEY"
+    set -gx OPENAI_API_KEY (pass openai/api/token)
+end
+
+# ------------------------------------
+# Anthropic API Key Configuration
+# ------------------------------------
+
+if type -q pass; and test -z "$ANTHROPIC_API_KEY"
+    set -gx ANTHROPIC_API_KEY (pass anthropic/api/token)
+end
+
+# ------------------------------------
+# Cloudflare API Configuration
+# ------------------------------------
+
+if type -q pass; and test -z "$CLOUDFLARE_WORKERS_AI_ACCOUNT_ID"
+    set -gx CLOUDFLARE_WORKERS_AI_ACCOUNT_ID (pass cloudflare/workers/ai/account/id)
+end
+
+if type -q pass; and test -z "$CLOUDFLARE_WORKERS_AI_API_KEY"
+    set -gx CLOUDFLARE_WORKERS_AI_API_KEY (pass cloudflare/workers/ai/api/token)
+end
+
+{{ end }}
+
+# ------------------------------------
+# Conditional Configurations
+# ------------------------------------
+
+{{ if ne .isWork true -}}
+# Password Store Selection
+function wpass --description "Point PASSWORD_STORE_DIR to work"
+    set -gx PASSWORD_STORE_DIR {{ joinPath .chezmoi.homeDir ".password-store-work" }}
+end
+
+function ppass --description "Point PASSWORD_STORE_DIR to personal"
+    set -ge PASSWORD_STORE_DIR
+end
+{{- end }}
+
+# ------------------------------------
+# Interactive Session Configurations
+# ------------------------------------
+
+if status --is-interactive
+
+    ## Aliases
+    alias c=chezmoi
+    alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l $FD_OPTIONS'
+    alias g=git
+    alias t=tmux
+    alias tree='tree -I ".git|node_modules"'
+    alias v=nvim
+    alias ghe="gh copilot explain"
+    alias ghs="gh copilot suggest"
+    alias wt="git worktree"
+
+    # LS Aliases with lsd support
+    if hash lsd 2>/dev/null
+        alias ls='lsd -A'
+        alias l='lsd -lAh'
+        alias ll='lsd -lAtrh'
+        alias la='lsd -A'
+    else
+        alias ls='ls -A'
+        alias l='ls -lAh'
+        alias ll='ls -lAtrh'
+        alias la='ls -A'
+    end
+
+    # GPG Agent Reload Alias
+    alias reload_gpg='pkill -9 gpg-agent'
+
+    ## Initializations
+    if type -q starship
+        starship init fish | source
+    end
+
+    if type -q zoxide
+        zoxide init fish | source
+    end
+
+    if type -q navi
+        navi widget fish | source
+    end
+
+    if test -f ~/.asdf/plugins/golang/set-env.fish
+        source ~/.asdf/plugins/golang/set-env.fish
+    end
+
+    if test -f ~/.asdf/plugins/java/set-java-home.fish
+        source ~/.asdf/plugins/java/set-java-home.fish
+    end
+end
+
+# ------------------------------------
+# Custom Functions
+# ------------------------------------
+
+source $HOME/.config/fish/my/my.functions.fish
+
+# ------------------------------------
+# Post Configuration
+# ------------------------------------
+
+## Deduplicate PATH
+dedup_path

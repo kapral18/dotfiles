@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+set -eou pipefail
+
+echo "------------------------------"
+echo "osx settings: applying..."
+echo "------------------------------"
+# OSX hash: {{ joinPath .chezmoi.sourceDir ".osx.core" | include | sha256sum }}
+bash {{ joinPath .chezmoi.sourceDir ".osx.core" }}
+echo "-----------------------"
+echo "osx settings: done"
+echo "-----------------------"
+
+echo "Please, rebooting to apply changes..."
+echo ""
+
