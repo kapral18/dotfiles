@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+# Exit immediately if a command exits with a non-zero status.
+set -e
+# Treat unset variables as an error when substituting.
+set -u
+# Pipelines return the exit status of the last command to exit non-zero.
+set -o pipefail
+# Optional: Enable tracing for debugging (remove or comment out for normal use)
+# set -x
+
+# ==============================================
+# Kill affected applications
+# ==============================================
+function killallApps() {
+  appsToKill=(
+    "Alfred"
+    "AppCleaner"
+    "Bartender"
+  )
+
+  for app in "${appsToKill[@]}"; do
+    killall "${app}" >/dev/null 2>&1 && echo "Killed ${app}"
+  done
+
+  echo "Note that some of these changes require a logout/restart to take effect."
+}
+
+killallApps
+
+# ==============================================
+# .osx.extra
+# ==============================================
+
+###############################################################################
+# AppCleaner                                                                  #
+###############################################################################
+
+defaults write net.freemacsoft.AppCleaner SUAutomaticallyUpdate -bool true
+defaults write net.freemacsoft.AppCleaner SUEnableAutomaticChecks -bool true
+defaults write net.freemacsoft.AppCleaner SUSendProfileInfo -bool false
+
+exit 0

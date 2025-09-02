@@ -1,0 +1,9 @@
+{{- if ne .isWork true -}}
+[core]
+  sshCommand = ssh -o IdentitiesOnly=yes -o IdentityFile="~/.ssh/secondary_public_key.pub"
+
+[user]
+  name = Karen Grigoryan
+  email = {{ .secondaryEmail }}
+  signingkey = {{ .secondaryPublicSshKey }}
+{{- end -}}

@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# {{ include "readonly_dot_python-version" | sha256sum }}
+
+# This script manages Python versions using uv from the global .python-version file
+
+python_version_file={{ joinPath .chezmoi.sourceDir "readonly_dot_python-version" | quote }}
+
+echo "Managing uv Python versions..."
+
+if [[ ! -f "$python_version_file" ]]; then
+  echo "Error: .python-version file not found at $python_version_file"
+  exit 1
+fi
+
+# Read the file content into an array
+if ! mapfile -t lines <"$python_version_file"; then
+  echo "Error: Failed to read .python-version file"
+  exit 1
+fi
+
+# cleanup versions not in the file
+installed_versions=$(uv python list --only-installed --managed-python | awk '{print $1}') # ex. cpython-3.11.4-macosx-aarch64-none, whereas our lines contain only 3.11 or 3.10
+
+for version in $installed_versions; do
+  short_version=$(echo "$version" | sed -E 's/cpython-([0-9]+\.[0-9]+).*/\1/')
+  if ! printf '%s\n' "${lines[@]}" | grep -q -E "^${short_version}(\.[0-9]+)?$"; then
+    echo "Removing uv Python version: $version"
+    if ! uv python uninstall "$version" &>/dev/null; then
+      echo "Error: Failed to remove uv Python version $version"
+      exit 1
+    fi
+  fi
+done
+
+uv python install --default --preview-features python-install-default
+
+echo "All Python versions managed successfully"

@@ -1,0 +1,36 @@
+#!/usr/bin/env fish
+
+echo "---------------------------------------"
+echo "brew install pass: applying..."
+echo "---------------------------------------"
+
+brew install pass
+
+echo "---------------------------------------"
+echo "brew install pass: done"
+echo "---------------------------------------"
+
+echo "---------------------------------------"
+echo "pass setup: applying..."
+echo "---------------------------------------"
+
+gpg-connect-agent reloadagent /bye
+
+if ! op account get >/dev/null 2>&1
+    echo "Please sign in to 1Password CLI"
+    op signin
+end
+
+{{ if .isWork }}
+  git clone git@github.com:kapral18/.password-store-work.git ~/.password-store
+  op read 'op://Work/work_pgp_keys/notesPlain' | gpg --import
+{{ else }}
+  git clone git@github.com:kapral18/.password-store.git ~/.password-store
+  op read 'op://Personal/personal_pgp_keys/notesPlain' | gpg --import
+{{ end }}
+
+echo -e "5\ny\n" | gpg --batch --yes  --command-fd 0 --edit-key {{ .primaryEmail }} trust
+
+echo "---------------------------------------"
+echo "pass setup: done"
+echo "---------------------------------------"

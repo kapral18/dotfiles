@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+show_help() {
+  cat <<EOF
+Usage: ${0##*/} [OPTIONS]
+
+Checks for missing backports and required labels in PRs.
+
+Required options:
+  --merged-label LABEL    Label identifying merged PRs needing backport
+  --required-labels LIST  Space-separated list of required labels for open PRs
+  --branches LIST         Space-separated list of target branches to check
+  --upstream NAME         Name of the upstream git remote
+
+Options:
+  -h, --help              Show this help message and exit
+
+Example:
+  ${0##*/} \\
+    --merged-label "Critical Fixes" \\
+    --required-labels "backport-v8.18 backport-v8.19" \\
+    --branches "8.x 8.18" \\
+    --upstream "origin"
+EOF
+}
+
+# Initialize parameters
+merged_label=""
+required_labels=()
+branches=()
+upstream_remote="origin"
+
+# Show help if no arguments or -h/--help is provided
+if [[ $# -eq 0 ]] || [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+  show_help
+  exit 0
+fi
+
+# Parse command-line arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+  --merged-label)
+    merged_label="$2"
+    shift
+    shift
+    ;;
+  --required-labels)
+    IFS=' ' read -r -a required_labels <<<"$2"
+    shift
+    shift
+    ;;
+  --branches)
+    IFS=' ' read -r -a branches <<<"$2"
+    shift
+    shift
+    ;;
+  --upstream)
+    upstream_remote="$2"
+    shift
+    shift
+    ;;
+  -h | --help)
+    show_help
+    exit 0
+    ;;
+  *)
+    echo "Error: Unknown option: $1"
+    show_help
+    exit 1
+    ;;
+  esac
+done
+
+# Validate required parameters
+validate_param() {
+  if [[ -z "$2" ]] || { [[ "$1" == "array" ]] && [[ ${#2} -eq 0 ]]; }; then
+    echo "Error: --${3} is required"
+    show_help
+    exit 1
+  fi
+}
+
+validate_param "string" "$merged_label" "merged-label"
+validate_param "array" "${required_labels[*]}" "required-labels"
+validate_param "array" "${branches[*]}" "branches"
+validate_param "string" "$upstream_remote" "upstream"
+
+# Ensure we are running in a git repository
+if ! git rev-parse --git-dir >/dev/null 2>&1; then
+  echo "Error: Not inside a git repository."
+  exit 1
+fi
+
+# Fetch latest branches from upstream
+git fetch "$upstream_remote" "${branches[@]}"
+
+echo "=== Checking merged PRs for missing backport commits ==="
+merged_prs=$(gh pr list --state merged --label "$merged_label" --json number,url --jq '.[] | @base64')
+
+for pr in $merged_prs; do
+  _jq() {
+    echo "$pr" | base64 --decode | jq -r "${1}"
+  }
+  pr_number=$(_jq '.number')
+  pr_url=$(_jq '.url')
+  for branch in "${branches[@]}"; do
+    if ! git log "$upstream_remote/$branch" --grep="#${pr_number}" --oneline | grep -q .; then
+      echo "Merged PR ${pr_url} has not been backported to branch ${branch}."
+    fi
+  done
+done
+
+echo ""
+echo "=== Checking open PRs for missing backport labels ==="
+open_prs=$(gh pr list --state open --label "$merged_label" --json number,url,labels,isDraft --jq '.[] | select(.isDraft==false) | @base64')
+
+for pr in $open_prs; do
+  _jq() {
+    echo "$pr" | base64 --decode | jq -r "${1}"
+  }
+  pr_number=$(_jq '.number')
+  pr_url=$(_jq '.url')
+  pr_labels=$(echo "$pr" | base64 --decode | jq -r '.labels[].name')
+
+  missing_labels=()
+  for label in "${required_labels[@]}"; do
+    if ! echo "$pr_labels" | grep -qxF "$label"; then
+      missing_labels+=("$label")
+    fi
+  done
+
+  if [ ${#missing_labels[@]} -gt 0 ]; then
+    echo "Open PR ${pr_url} is missing label(s): ${missing_labels[*]}"
+  fi
+done

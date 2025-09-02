@@ -1,0 +1,50 @@
+#!/usr/bin/env fish
+
+{{- $extensions := list
+    "MohamedElashri/gh-cp"
+    "dlvhdr/gh-dash"
+    "gennaro-tedesco/gh-i"
+    "gennaro-tedesco/gh-s"
+}}
+
+# Check authentication
+if not gh auth status >/dev/null 2>&1
+    echo "GitHub CLI not authenticated. Running login..."
+    gh auth login
+    or begin
+        echo "Login failed. Exiting."
+        exit 1
+    end
+end
+
+set -l desired_extensions \
+{{- range $extensions }}
+    {{ . | quote }} \
+{{- end }}
+
+# Get currently installed extensions
+set -l installed_extensions $(gh extension list | awk '{print $3}' 2>/dev/null)
+or set installed_extensions
+
+# Remove extensions no longer in desired list
+for installed_ext in $installed_extensions
+    if not contains $installed_ext $desired_extensions
+        echo "Removing $installed_ext (no longer in managed list)..."
+        if ! gh extension remove $installed_ext
+            echo "✗ Failed to remove $installed_ext"
+        end
+    end
+end
+
+# Install missing extensions
+for desired_ext in $desired_extensions
+    if contains $desired_ext $installed_extensions
+        echo "✓ $desired_ext already installed"
+    else
+        echo "Installing $desired_ext..."
+        if ! gh extension install $desired_ext
+            echo "✗ Failed to install $desired_ext"
+        end
+    end
+end
+

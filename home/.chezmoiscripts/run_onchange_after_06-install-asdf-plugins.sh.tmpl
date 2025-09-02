@@ -1,0 +1,287 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Track template changes
+# {{ include "asdf_plugins.tmpl" | sha256sum }}
+# {{ include "readonly_dot_tool-versions.tmpl" | sha256sum }}
+
+asdf_plugins_template={{ joinPath .chezmoi.sourceDir "asdf_plugins.tmpl" | quote }}
+tool_versions_template={{ joinPath .chezmoi.sourceDir "readonly_dot_tool-versions.tmpl" | quote }}
+
+# Validate template files exist
+for template in "$asdf_plugins_template" "$tool_versions_template"; do
+    if [[ ! -f "$template" ]]; then
+        echo "Error: Template not found at $template"
+        exit 1
+    fi
+done
+
+# Function to parse tool versions from template
+parse_tool_versions() {
+    local template_file=$1
+    declare -A tool_versions
+
+    while IFS= read -r line; do
+        # Skip empty lines and comments
+        [[ -z "$line" || "$line" =~ ^\s*# ]] && continue
+
+        # Parse plugin name and versions
+        local plugin
+        plugin=$(echo "$line" | awk '{print $1}')
+        local versions
+        versions=$(echo "$line" | cut -d' ' -f2-)
+
+        if [[ -n "$plugin" && -n "$versions" ]]; then
+            tool_versions["$plugin"]="$versions"
+        fi
+    done < <(chezmoi execute-template < "$template_file")
+
+    # Return associative array as formatted output
+    for key in "${!tool_versions[@]}"; do
+        echo "$key=${tool_versions[$key]}"
+    done
+}
+
+# Function to get currently installed versions for a plugin
+get_installed_versions() {
+    local plugin=$1
+    asdf list "$plugin" 2>/dev/null | sed 's/^[[:space:]]*//' | sed 's/^\*//' | tr -d ' ' || true
+}
+
+# Function to install asdf plugin
+install_plugin() {
+    local plugin=$1
+    local url=$2
+
+    echo "Checking plugin: $plugin"
+    if ! asdf plugin list | grep -q "^$plugin$"; then
+        echo "Installing plugin: $plugin"
+        if ! asdf plugin add "$plugin" "$url"; then
+            echo "Error: Failed to install plugin $plugin"
+            return 1
+        fi
+    else
+        echo "Plugin $plugin is already installed"
+    fi
+    return 0
+}
+
+# Function to uninstall specific version of a tool
+uninstall_version() {
+    local plugin=$1
+    local version=$2
+
+    echo "  Uninstalling $plugin version $version"
+    asdf uninstall "$plugin" "$version" 2>/dev/null || true
+}
+
+# Function to check if version is in wanted list
+is_version_wanted() {
+    local check_version=$1
+    shift
+    local wanted_versions=("$@")
+
+    for wanted_version in "${wanted_versions[@]}"; do
+        if [[ "$check_version" == "$wanted_version" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Function to check if plugin is in template list
+is_plugin_wanted() {
+    local check_plugin=$1
+    shift
+    local template_plugins=("$@")
+
+    for template_plugin in "${template_plugins[@]}"; do
+        if [[ "$check_plugin" == "$template_plugin" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+echo "=== Step 1: Managing ASDF Plugins ==="
+
+# Render plugins template
+if ! mapfile -t plugin_lines < <(chezmoi execute-template < "$asdf_plugins_template"); then
+    echo "Error: Failed to render asdf plugins template"
+    exit 1
+fi
+
+# Get current plugins
+mapfile -t current_plugins < <(asdf plugin list 2>/dev/null || true)
+
+# Create arrays to store plugins from template
+declare -a template_plugins
+declare -A plugin_urls
+
+# Parse and install plugins from template
+for line in "${plugin_lines[@]}"; do
+    # Skip empty lines and comments
+    [[ -z "$line" || "$line" =~ ^\s*# ]] && continue
+
+    plugin=$(echo "$line" | awk '{print $1}')
+    url=$(echo "$line" | awk '{print $2}')
+
+    if [[ -z "$plugin" || -z "$url" ]]; then
+        echo "Error: Invalid line format: $line"
+        continue
+    fi
+
+    template_plugins+=("$plugin")
+    plugin_urls["$plugin"]="$url"
+    install_plugin "$plugin" "$url"
+done
+
+echo ""
+echo "=== Step 2: Cleaning Up Old Tool Versions ==="
+
+# Parse desired tool versions from template
+declare -A desired_versions
+while IFS='=' read -r plugin versions; do
+    desired_versions["$plugin"]="$versions"
+done < <(parse_tool_versions "$tool_versions_template")
+
+# Clean up old versions for each plugin
+for plugin in "${template_plugins[@]}"; do
+    if [[ ! -v desired_versions["$plugin"] ]]; then
+        echo "Warning: No versions specified for $plugin in .tool-versions"
+        continue
+    fi
+
+    # Get currently installed versions
+    mapfile -t installed < <(get_installed_versions "$plugin")
+
+    if [[ ${#installed[@]} -eq 0 ]]; then
+        echo "No versions installed for $plugin"
+        continue
+    fi
+
+    # Convert desired versions string to array
+    IFS=' ' read -ra wanted <<< "${desired_versions[$plugin]}"
+
+    echo "Checking $plugin versions..."
+    echo "  Desired: ${wanted[*]}"
+    echo "  Installed: ${installed[*]}"
+
+    # Find and remove versions that are no longer wanted
+    versions_removed=false
+    for installed_version in "${installed[@]}"; do
+        [[ -z "$installed_version" ]] && continue
+
+        if ! is_version_wanted "$installed_version" "${wanted[@]}"; then
+            uninstall_version "$plugin" "$installed_version"
+            versions_removed=true
+        fi
+    done
+
+    if [[ "$versions_removed" == false ]]; then
+        echo "  No old versions to remove"
+    fi
+done
+
+echo ""
+echo "=== Step 3: Removing Unwanted Plugins ==="
+
+plugins_removed=false
+# Remove plugins not in template
+for plugin in "${current_plugins[@]}"; do
+    [[ -z "$plugin" ]] && continue
+
+    if ! is_plugin_wanted "$plugin" "${template_plugins[@]}"; then
+        echo "Removing plugin: $plugin"
+        plugins_removed=true
+
+        # First uninstall all versions of the plugin
+        mapfile -t installed < <(get_installed_versions "$plugin")
+        for version in "${installed[@]}"; do
+            [[ -n "$version" ]] && uninstall_version "$plugin" "$version"
+        done
+
+        # Then remove the plugin
+        asdf plugin remove "$plugin" 2>/dev/null || true
+    fi
+done
+
+if [[ "$plugins_removed" == false ]]; then
+    echo "No unwanted plugins to remove"
+fi
+
+echo ""
+echo "=== Step 4: Installing Tool Versions ==="
+
+# Set up Python build environment if python plugin exists
+if asdf plugin list | grep -q "^python$"; then
+    export LDFLAGS="-L$(brew --prefix tcl-tk)/lib"
+    export CPPFLAGS="-I$(brew --prefix tcl-tk)/include"
+    export PKG_CONFIG_PATH="$(brew --prefix tcl-tk)/lib/pkgconfig"
+    export CFLAGS="-I$(brew --prefix tcl-tk)/include"
+    export PYTHON_CONFIGURE_OPTS="--with-tcltk-includes='-I$(brew --prefix tcl-tk)/include' --with-tcltk-libs='-L$(brew --prefix tcl-tk)/lib -ltcl8.6 -ltk8.6' --enable-framework"
+fi
+
+# Install versions specified in .tool-versions
+# Note: chezmoi will place the .tool-versions file in the home directory
+# We'll use the temporary rendered version for installation
+echo "Installing tool versions..."
+
+# Create temporary .tool-versions file from template
+temp_tool_versions=$(mktemp)
+trap 'rm -f "$temp_tool_versions"' EXIT
+
+if ! chezmoi execute-template < "$tool_versions_template" > "$temp_tool_versions"; then
+    echo "Error: Failed to render tool versions template"
+    exit 1
+fi
+
+# Show what will be installed
+echo "Will install the following versions:"
+while IFS= read -r line; do
+    [[ -z "$line" || "$line" =~ ^\s*# ]] && continue
+    echo "  $line"
+done < "$temp_tool_versions"
+
+# Install each tool version explicitly
+while IFS= read -r line; do
+    # Skip empty lines and comments
+    [[ -z "$line" || "$line" =~ ^\s*# ]] && continue
+
+    plugin=$(echo "$line" | awk '{print $1}')
+    versions=$(echo "$line" | cut -d' ' -f2-)
+
+    if [[ -n "$plugin" && -n "$versions" ]]; then
+        # Install each version for this plugin
+        for version in $versions; do
+            echo ""
+            echo "Installing $plugin version $version..."
+            if asdf list "$plugin" 2>/dev/null | grep -q "^[[:space:]]*${version}[[:space:]]*$"; then
+                echo "  $plugin $version is already installed"
+            else
+                if ! asdf install "$plugin" "$version"; then
+                    echo "  Warning: Failed to install $plugin $version"
+                fi
+            fi
+        done
+    fi
+done < "$temp_tool_versions"
+
+echo ""
+echo "=== Summary ==="
+echo "ASDF plugin and version management complete!"
+echo ""
+echo "Currently installed plugins and versions:"
+for plugin in "${template_plugins[@]}"; do
+    installed_versions=$(get_installed_versions "$plugin" | tr '\n' ' ' | sed 's/ $//')
+    if [[ -n "$installed_versions" ]]; then
+        echo "  $plugin: $installed_versions"
+    else
+        echo "  $plugin: (no versions installed)"
+    fi
+done
+
+echo ""
+echo "Current tool versions in use (from .tool-versions):"
+asdf current --no-header || echo "No tools currently set in .tool-versions"

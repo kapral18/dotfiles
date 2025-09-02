@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# This script installs uv tools from the default-uv-tools file
+
+# {{ include "readonly_dot_python-version" | sha256sum }}
+# {{ include "readonly_dot_default-uv-tools" | sha256sum }}
+
+uv_tools_file={{ joinPath .chezmoi.sourceDir "readonly_dot_default-uv-tools" | quote }}
+
+echo "Updating uv global tools..."
+
+if [[ ! -f "$uv_tools_file" ]]; then
+    echo "Error: .default-uv-tools file not found at $uv_tools_file"
+    exit 1
+fi
+
+# Read the file content into an array
+if ! mapfile -t lines < "$uv_tools_file"; then
+    echo "Error: Failed to read .default-uv-tools file"
+    exit 1
+fi
+
+install_uv_tool() {
+    local tool=$1
+
+    echo "Installing uv tool: $tool"
+    if ! uv tool install "$tool" &>/dev/null; then
+        echo "Error: Failed to install uv tool $tool"
+        return 1
+    fi
+    return 0
+}
+
+# Parse tools from file FIRST
+declare -a tools_to_install
+
+for line in "${lines[@]}"; do
+    # Skip empty lines and comments
+    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+
+    # Extract tool name (everything before # or end of line)
+    tool_name=$(echo "$line" | sed 's/[[:space:]]*#.*$//' | xargs)
+    [[ -n "$tool_name" ]] && tools_to_install+=("$tool_name")
+done
+
+# Check if we have any tools to install
+if [[ ${#tools_to_install[@]} -eq 0 ]]; then
+    echo "No tools found in $uv_tools_file to install"
+    exit 0
+fi
+
+# Clean up unwanted tools (installed but not in our list)
+if uv tool list >/dev/null 2>&1; then
+    installed_tools=$(uv tool list | grep -v '^-' | awk '{print $1}' || true)
+    if [[ -n "$installed_tools" ]]; then
+        echo "$installed_tools" | while read -r tool; do
+            # Check if this tool is NOT in our desired list
+            if ! printf '%s\n' "${tools_to_install[@]}" | grep -q "^${tool}$"; then
+                echo "Uninstalling unwanted uv tool: $tool"
+                uv tool uninstall "$tool" &>/dev/null || echo "Warning: Failed to uninstall $tool"
+            fi
+        done
+    fi
+fi
+
+# Get currently installed tools (after cleanup)
+installed_tools=$(uv tool list | grep -v '^-' | awk '{print $1}' || true)
+
+# Install missing tools
+for tool in "${tools_to_install[@]}"; do
+    # Check if the tool is already installed
+    if [[ -n "$installed_tools" ]] && echo "$installed_tools" | grep -q "^${tool}$"; then
+        echo "uv tool $tool is already installed"
+        continue
+    fi
+
+    install_uv_tool "$tool"
+done
+
+echo "All uv tools processed successfully"
+

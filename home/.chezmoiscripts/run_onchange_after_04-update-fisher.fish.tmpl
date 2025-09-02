@@ -1,0 +1,22 @@
+#!/usr/bin/env fish
+
+# fish_plugins hash: {{ joinPath .chezmoi.sourceDir "dot_config" "fish" "fish_plugins" | include | sha256sum }}
+if type -q fisher
+    echo "--------------------------"
+    echo "fisher update: applying..."
+    echo "--------------------------"
+    fisher update
+    echo "-------------------"
+    echo "fisher update: done"
+    echo "-------------------"
+else
+    echo "-------------------------"
+    echo "fisher fetch: applying..."
+    echo "-------------------------"
+    curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source && fisher update
+    echo "------------------"
+    echo "fisher fetch: done"
+    echo "------------------"
+end
+
+echo ""

@@ -1,0 +1,96 @@
+# -------------------------------
+# Posix Login Shell Profile
+# -------------------------------
+
+# This file is sourced by login shells and should contain
+# environment variables and path modifications that are common to all shells
+
+# Up soft ulimit
+ulimit -Sn 2500000
+
+# Environment Variables
+export LANG=en_US.UTF-8
+export TERM="${TERM:-xterm-256color}"
+export EDITOR=nvim
+export VISUAL=nvim
+export BAT_THEME="Catppuccin-mocha"
+export OLLAMA_NUM_PARALLEL=10
+export OLLAMA_MAX_QUEUE=2048
+export OLLAMA_KEEP_ALIVE="30m"
+
+# Homebrew Settings
+export HOMEBREW_NO_AUTO_UPDATE=1
+export HOMEBREW_PREFIX="{{ .homebrewPrefix }}"
+export HOMEBREW_CELLAR="{{ .homebrewPrefix }}/Cellar"
+export HOMEBREW_REPOSITORY="{{ .homebrewPrefix }}"
+export MANPATH="{{ .homebrewPrefix }}/share/man:$MANPATH"
+export INFOPATH="{{ .homebrewPrefix }}/share/info:$INFOPATH"
+
+# SSH and GPG Settings
+export SSH_AUTH_SOCK="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+{{ if eq .chezmoi.arch "amd64" }}
+export GPG_TTY=$(tty)
+{{ end -}}
+
+# XDG Base Directory Specification
+export XDG_CONFIG_HOME="$HOME/.config"
+export XDG_CACHE_HOME="$HOME/.cache"
+export XDG_DATA_HOME="$HOME/.local/share"
+export XDG_DESKTOP_DIR="$HOME/Desktop"
+export XDG_DOCUMENTS_DIR="$HOME/Documents"
+export XDG_DOWNLOAD_DIR="$HOME/Downloads"
+export XDG_MUSIC_DIR="$HOME/Music"
+export XDG_PICTURES_DIR="$HOME/Pictures"
+export XDG_VIDEOS_DIR="$HOME/Videos"
+export XDG_DATA_DIRS="/usr/share:/usr/local/share"
+export XDG_CONFIG_DIRS="/etc/xdg"
+
+# ASDF Configuration
+export ASDF_GOLANG_MOD_VERSION_ENABLED=true
+
+# Path Management
+prepend_to_path_if_missing() {
+  local dir="$1"
+  dir="${dir%/}"
+  if [[ -d "$dir" && ":$PATH:" != *":$dir:"* ]]; then
+    PATH="$dir:$PATH"
+  fi
+}
+
+prepend_to_path_if_missing {{ .homebrewPrefix }}/opt/coreutils/libexec/gnubin
+prepend_to_path_if_missing {{ .homebrewPrefix }}/bin
+prepend_to_path_if_missing {{ .homebrewPrefix }}/sbin
+prepend_to_path_if_missing "$HOME"/.yarn/bin
+prepend_to_path_if_missing "$HOME"/.local/bin
+prepend_to_path_if_missing "$HOME"/bin
+prepend_to_path_if_missing "$HOME"/.asdf/shims
+
+export PATH
+
+# FZF Configuration
+export FD_OPTIONS="--hidden --follow"
+export FZF_DEFAULT_OPTS="--no-mouse --height 80% --reverse --multi --info=inline --preview='bat {} --color always' --preview-window='right:60%:wrap' --bind=ctrl-d:half-page-down,ctrl-u:half-page-up,ctrl-b:page-up,ctrl-f:page-down"
+export FZF_DEFAULT_COMMAND="git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l $FD_OPTIONS"
+export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+export FZF_ALT_C_COMMAND="fd --type d $FD_OPTIONS"
+
+# API Key Configurations
+if command -v pass >/dev/null; then
+  [ -z "$GEMINI_API_KEY" ] && export GEMINI_API_KEY="$(pass google/gemini/api/token)"
+  {{ if ne .isWork true -}}
+  [ -z "$OPENAI_API_KEY" ] && export OPENAI_API_KEY="$(pass openai/api/token)"
+  [ -z "$CLOUDFLARE_WORKERS_AI_ACCOUNT_ID" ] && export CLOUDFLARE_WORKERS_AI_ACCOUNT_ID="$(pass cloudflare/workers/ai/account/id)"
+  [ -z "$CLOUDFLARE_WORKERS_AI_API_KEY" ] && export CLOUDFLARE_WORKERS_AI_API_KEY="$(pass cloudflare/workers/ai/api/token)"
+  [ -z "$ANTHROPIC_API_KEY" ] && export ANTHROPIC_API_KEY="$(pass anthropic/api/token)"
+  {{- end }}
+fi
+
+# Conditional Configurations
+{{ if ne .isWork true -}}
+wpass() {
+  export PASSWORD_STORE_DIR="{{ joinPath .chezmoi.homeDir ".password-store-work" }}"
+}
+ppass() {
+  export PASSWORD_STORE_DIR="{{ joinPath .chezmoi.homeDir ".password-store" }}"
+}
+{{- end }}
