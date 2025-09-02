@@ -4,7 +4,6 @@
 
 MODELS=(
   "gpt-oss"
-  "gpt-oss:20b"
   "deepseek-r1"
   "gemma3"
   "qwen3"
@@ -14,4 +13,4 @@ for MODEL in "${MODELS[@]}"; do
   ollama pull "$MODEL"
 done
 
-echo "All models have been pulled successfully."
+echo "All models have been pulled successfully"
