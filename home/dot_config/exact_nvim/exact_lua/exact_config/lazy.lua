@@ -26,16 +26,11 @@ require("lazy").setup({
     { import = "lazyvim.plugins.extras.editor.inc-rename" },
     { import = "lazyvim.plugins.extras.coding.nvim-cmp" },
     { import = "lazyvim.plugins.extras.formatting.prettier" },
-{{ if ne .isWork true -}}
-    { import = "lazyvim.plugins.extras.ai.copilot-chat" },
-{{ end -}}
     { import = "lazyvim.plugins.extras.dap.core" },
     { import = "lazyvim.plugins.extras.dap.nlua" },
 
     -- Overrides of 3rd party plugins
-{{ if ne .isWork true -}}
     { import = "plugins.ai" },
-{{ end -}}
     { import = "plugins.bash" },
     { import = "plugins.bufferline" },
     { import = "plugins.chezmoi" },
@@ -87,7 +82,7 @@ require("lazy").setup({
     { import = "plugins.treesitter" },
     { import = "plugins.trouble" },
     { import = "plugins.typescript-tools" },
-    { import = "plugins.undotree" },
+    { import = "plugins.undo" },
     { import = "plugins.which-key" },
     { import = "plugins.xml" },
     { import = "plugins.yaml" },
@@ -102,9 +97,7 @@ require("lazy").setup({
     { import = "plugins-local.owner-code-search" },
     { import = "plugins-local.qf" },
     { import = "plugins-local.run-jest-in-split" },
-{{ if ne .isWork true -}}
     { import = "plugins-local.save-ai-data" },
-{{ end -}}
     { import = "plugins-local.show-file-owner" },
     { import = "plugins-local.summarize-commit" },
     { import = "plugins-local.switch-src-test" },

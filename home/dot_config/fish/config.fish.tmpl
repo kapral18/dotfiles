@@ -249,3 +249,8 @@ source $HOME/.config/fish/my/my.functions.fish
 
 ## Deduplicate PATH
 dedup_path
+
+# The next line updates PATH for the Google Cloud SDK.
+if [ -f '/opt/homebrew/share/google-cloud-sdk/path.fish.inc' ]
+    . '/opt/homebrew/share/google-cloud-sdk/path.fish.inc'
+end
