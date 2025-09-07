@@ -142,7 +142,7 @@ local providers = {
     },
     payload = function(diff)
       return {
-        model = (os.getenv("OPENROUTER_MODEL") or "openai/gpt-5-mini"),
+        model = (os.getenv("OPENROUTER_MODEL") or "openai/gpt-5-nano"),
         messages = {
           { role = "system", content = SYSTEM_MESSAGE },
           { role = "user", content = PROMPT .. diff },
