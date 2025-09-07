@@ -7,7 +7,7 @@ return {
   ft = "gitcommit",
   keys = {
     {
-      "<leader>ail",
+      "<leader>aisl",
       function()
         sc.summarize_commit_ollama()
       end,
@@ -15,12 +15,20 @@ return {
       desc = "[Ollama] Summarize commit",
     },
     {
-      "<leader>aic",
+      "<leader>aisc",
       function()
         sc.summarize_commit_cf()
       end,
       ft = "gitcommit",
       desc = "[CloudFlareAI] Summarize commit",
+    },
+    {
+      "<leader>aiso",
+      function()
+        sc.summarize_commit_openrouter()
+      end,
+      ft = "gitcommit",
+      desc = "[OpenRouter] Summarize commit",
     },
   },
 }

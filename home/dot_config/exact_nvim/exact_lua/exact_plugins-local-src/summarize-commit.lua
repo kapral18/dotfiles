@@ -1,171 +1,211 @@
-local M = {
-  prompt = [[
-    Read my instruction and follow it carefully.
+local M = {}
 
-    <<INSTRUCTION START>>
-    Generate a commit summary using conventional commit format from
-    the output of a git diff that starts after the word <<DIFF START>>
+-- ───────────────────────────────── SYSTEM CONSTANTS ────────────────────────────
+local PROMPT = [[
+Read my instruction and follow it carefully.
+<<INSTRUCTION START>>
+Generate a commit summary using conventional commit format from
+the output of a git diff that starts after the word <<DIFF START>>
+--------
+Only respond with the generated commit text.
+--------
+Example commit message:
+feat: add new feature
+- Add new feature
+- Update documentation
+- Fix bug in existing feature
+...
+--------
+<<INSTRUCTION END>>
+<<DIFF START>>
+]]
 
-    --------
+local SYSTEM_MESSAGE = "You are a conventional commits summarizer. You take in git diff"
+  .. " data and only respond with a concise yet detailed commit subject"
+  .. " plus bullet-listed body. Output nothing else."
 
-    Only respond with the generated commit text.
+-- ───────────────────────────── HELPERS (provider-agnostic) ─────────────────────
+local function run(cmd)
+  local out = vim.fn.systemlist(cmd)
+  if vim.v.shell_error ~= 0 then
+    return nil, out
+  end
+  return out, nil
+end
 
-    --------
+local function write_tmp_json(tbl)
+  local path = os.tmpname()
+  local f = io.open(path, "w")
+  if not f then
+    return nil
+  end
+  f:write(vim.json.encode(tbl))
+  f:close()
+  return path
+end
 
-    Example commit message:
+local function insert_at_cursor(lines)
+  local row = vim.api.nvim_win_get_cursor(0)[1]
+  vim.api.nvim_buf_set_lines(0, row - 1, row - 1, false, lines)
+  vim.api.nvim_win_set_cursor(0, { row + #lines, 0 })
+end
 
-    feat: add new feature
-
-    - Add new feature
-    - Update documentation
-    - Fix bug in existing feature
-    ...
-
-    --------
-
-    <<INSTRUCTION END>>
-
-    <<DIFF START>>
-
-  ]],
-}
-
--- Utility function to get the staged git diff
 local function get_staged_diff()
-  local diff = vim.fn.system("git diff --cached")
+  local out = vim.fn.system("git diff --cached")
   if vim.v.shell_error ~= 0 then
     vim.notify("Failed to get git diff", vim.log.levels.ERROR)
     return nil
   end
-  return diff
+  return out
 end
 
--- Utility function to insert output at the cursor position
-local function insert_at_cursor(output)
-  local win = vim.api.nvim_get_current_win()
-  local cursor = vim.api.nvim_win_get_cursor(win)
-  vim.api.nvim_buf_set_lines(0, cursor[1] - 1, cursor[1] - 1, false, output)
-  vim.api.nvim_win_set_cursor(win, { cursor[1] + #output, cursor[2] })
+local function json_at_path(obj, path)
+  local cur = obj
+  for _, key in ipairs(path) do
+    if type(key) == "number" then
+      cur = cur and cur[key]
+    else
+      cur = cur and cur[key]
+    end
+    if cur == nil then
+      return nil
+    end
+  end
+  return cur
 end
 
--- Function to generate commit summary using Ollama
-local function generate_with_ollama(prompt, diff)
-  -- Prepare input with prompt and diff
-  local input_with_diff = prompt .. "\n" .. diff
-  local json_payload = vim.json.encode({
-    model = "deepseek-r1",
-    prompt = input_with_diff,
-    think = true,
-    stream = false,
-  })
+local function build_curl_file(url, headers, payload_file)
+  local h = ""
+  for _, hdr in ipairs(headers or {}) do
+    h = h .. ' -H "' .. hdr .. '"'
+  end
+  return ('curl -s -X POST "%s"%s -d @%s'):format(url, h, payload_file)
+end
 
-  -- Construct and execute command
-  local command =
-    string.format("curl -s -X POST http://localhost:11434/api/generate -d %s", vim.fn.shellescape(json_payload))
-  local output = vim.fn.systemlist(command)
-
-  if vim.v.shell_error ~= 0 then
-    vim.notify("Failed to generate summary", vim.log.levels.ERROR)
-    print(vim.inspect(output))
+local function decode_and_extract(lines, path)
+  local ok, parsed = pcall(vim.fn.json_decode, table.concat(lines or {}, "\n"))
+  if not ok or not parsed then
     return nil
   end
-
-  -- Parse the JSON response
-  local response = vim.fn.json_decode(table.concat(output, "\n"))
-  if response and response.response then
-    return vim.split(response.response, "\n")
-  else
-    vim.notify("Invalid response format", vim.log.levels.ERROR)
-    return nil
-  end
+  return json_at_path(parsed, path)
 end
 
--- Function to generate commit summary using Cloudflare Workers AI
-local function generate_with_cloudflare(prompt, diff)
-  -- Build the payload as a Lua table
-  local payload = {
-    messages = {
-      {
-        role = "system",
-        content = "You are a conventional commits summarizer. You take in git diff data and only respond with a concise but not lacking distinguishing details commit message and bullet-listed commit body in the format of conventional commits. Do not add any other text or formatting.",
-      },
-      {
-        role = "user",
-        content = diff,
-      },
+-- ───────────────────────────────── PROVIDER CONFIG ─────────────────────────────
+local providers = {
+  -- Ollama local
+  ollama = {
+    url = "http://localhost:11434/api/generate",
+    headers = { "Content-Type: application/json" },
+    payload = function(diff)
+      return {
+        model = "deepseek-r1",
+        system = SYSTEM_MESSAGE,
+        prompt = PROMPT .. diff,
+        think = true,
+        stream = false,
+      }
+    end,
+    extract_path = { "response" }, -- string with the whole message
+  },
+
+  -- Cloudflare Workers AI
+  cloudflare = {
+    url = ("https://api.cloudflare.com/client/v4/accounts/%s/ai/run/@cf/openai/gpt-oss-120b"):format(
+      os.getenv("CLOUDFLARE_WORKERS_AI_ACCOUNT_ID") or ""
+    ),
+    headers = {
+      "Authorization: Bearer " .. (os.getenv("CLOUDFLARE_WORKERS_AI_API_KEY") or ""),
+      "Content-Type: application/json",
     },
-    max_tokens = 2048,
-    stream = false,
-  }
+    payload = function(diff)
+      return {
+        messages = {
+          { role = "system", content = SYSTEM_MESSAGE },
+          { role = "user", content = PROMPT .. diff },
+        },
+        max_tokens = 2048,
+        stream = false,
+      }
+    end,
+    extract_path = { "result", "response" }, -- plain text string
+  },
 
-  -- Encode the payload to JSON
-  local payload_json = vim.json.encode(payload)
+  -- OpenRouter (OpenAI-compatible Chat Completions)
+  openrouter = {
+    url = "https://openrouter.ai/api/v1/chat/completions", -- POST body uses OpenAI chat schema
+    headers = {
+      "Authorization: Bearer " .. (os.getenv("OPENROUTER_API_KEY") or ""),
+      "Content-Type: application/json",
+      -- Optional attribution headers per docs (safe to keep; remove if undesired)
+      "HTTP-Referer: https://neovim.org",
+      "X-Title: Neovim Commit Summarizer",
+    },
+    payload = function(diff)
+      return {
+        model = (os.getenv("OPENROUTER_MODEL") or "openai/gpt-5-mini"),
+        messages = {
+          { role = "system", content = SYSTEM_MESSAGE },
+          { role = "user", content = PROMPT .. diff },
+        },
+        max_tokens = 2048,
+        stream = false,
+      }
+    end,
+    -- Non-streaming: choices.message.content (Lua index 1)
+    extract_path = { "choices", 1, "message", "content" },
+  },
+}
 
-  -- Write the JSON payload to a temporary file
-  local tmpfile = os.tmpname()
-  local f = io.open(tmpfile, "w")
-  if f then
-    f:write(payload_json)
-    f:close()
-  else
-    vim.notify("Failed to write temp file", vim.log.levels.ERROR)
-    return nil
+-- ───────────────────────────── GENERIC WORKFLOW ───────────────────────────────
+local function summarize_with(provider_key)
+  local cfg = providers[provider_key]
+  if not cfg then
+    vim.notify("Unknown provider: " .. tostring(provider_key), vim.log.levels.ERROR)
+    return
   end
 
-  -- Build the curl command, using the temporary file for the data
-  local command = string.format(
-    'curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/%s/ai/run/@cf/qwen/qwen2.5-coder-32b-instruct" -H "Authorization: Bearer %s" -H "Content-Type: application/json" -d @%s',
-    os.getenv("CLOUDFLARE_WORKERS_AI_ACCOUNT_ID"),
-    os.getenv("CLOUDFLARE_WORKERS_AI_API_KEY"),
-    tmpfile
-  )
+  local diff = get_staged_diff()
+  if not diff or diff == "" then
+    vim.notify("No staged changes to summarize", vim.log.levels.WARN)
+    return
+  end
 
-  -- Execute the command
-  local output = vim.fn.systemlist(command)
+  local payload_file = write_tmp_json(cfg.payload(diff))
+  if not payload_file then
+    vim.notify("Failed to write temp JSON payload", vim.log.levels.ERROR)
+    return
+  end
 
-  -- Remove the temporary file
-  os.remove(tmpfile)
+  local cmd = build_curl_file(cfg.url, cfg.headers, payload_file)
+  local out, err = run(cmd)
+  os.remove(payload_file)
 
-  if vim.v.shell_error ~= 0 then
+  if not out then
     vim.notify("Failed to generate summary", vim.log.levels.ERROR)
-    print(vim.inspect(output))
-    return nil
+    if err then
+      print(vim.inspect(err))
+    end
+    return
   end
 
-  -- Parse the JSON response
-  local response = vim.json.decode(table.concat(output, "\n"))
-  if response and response.result and response.result.response then
-    return vim.split(response.result.response, "\n")
-  else
-    vim.notify("Invalid response format", vim.log.levels.ERROR)
-    return nil
+  local text = decode_and_extract(out, cfg.extract_path)
+  if type(text) ~= "string" or text == "" then
+    vim.notify("Invalid response format from " .. provider_key, vim.log.levels.ERROR)
+    return
   end
+
+  insert_at_cursor(vim.split(text, "\n"))
 end
 
--- Summarize commit using Ollama
+-- ────────────────────────── PUBLIC COMMANDS ───────────────────────────────────
 M.summarize_commit_ollama = function()
-  local diff = get_staged_diff()
-  if not diff then
-    return
-  end
-
-  local output = generate_with_ollama(M.prompt, diff)
-  if output then
-    insert_at_cursor(output)
-  end
+  summarize_with("ollama")
 end
-
--- Summarize commit using Cloudflare Workers AI
 M.summarize_commit_cf = function()
-  local diff = get_staged_diff()
-  if not diff then
-    return
-  end
-
-  local output = generate_with_cloudflare(M.prompt, diff)
-  if output then
-    insert_at_cursor(output)
-  end
+  summarize_with("cloudflare")
+end
+M.summarize_commit_openrouter = function()
+  summarize_with("openrouter")
 end
 
 return M

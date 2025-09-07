@@ -154,6 +154,14 @@ if type -q pass; and test -z "$ANTHROPIC_API_KEY"
 end
 
 # ------------------------------------
+# OpenRouter API Key Configuration
+# ------------------------------------
+
+if type -q pass; and test -z "$OPENROUTER_API_KEY"
+    set -gx OPENROUTER_API_KEY (pass openrouter/api/token)
+end
+
+# ------------------------------------
 # Cloudflare API Configuration
 # ------------------------------------
 

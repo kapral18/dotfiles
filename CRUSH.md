@@ -71,3 +71,12 @@
 - **Features**: Deduplicates commands, keeps most recent timestamps, preserves paths
 - **Usage**: `fish-history-merge.py <local_history> <remote_history> <output_file>`
 - **Integration**: Designed to work with 1Password for secure history synchronization
+
+### AI & LLM Configuration
+
+- Managed via pass: GEMINI_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY, OPENROUTER_API_KEY, CLOUDFLARE_WORKERS_AI_ACCOUNT_ID, CLOUDFLARE_WORKERS_AI_API_KEY
+- Providers used by Neovim commit summarizer: ollama (deepseek-r1), cloudflare workers ai, openrouter
+
+### Git Diff Tool
+
+- git difftool uses icdiff; run `git difftool` for side-by-side color diffs
