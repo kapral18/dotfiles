@@ -76,11 +76,43 @@ return {
     config = function(_, opts)
       local chat = require("CopilotChat")
 
+      -- Function to preload buffers for copilot-chat context
+      local function preload_buffers_for_chat()
+        local bufs = vim.api.nvim_list_bufs()
+        local chunk_size = 3 -- Load 3 buffers at a time
+        local i = 1
+
+        local function load_chunk()
+          local count = 0
+          while i <= #bufs and count < chunk_size do
+            local buf = bufs[i]
+            if vim.api.nvim_buf_is_valid(buf) and not vim.api.nvim_buf_is_loaded(buf) then
+              local name = vim.api.nvim_buf_get_name(buf)
+              if name ~= "" and vim.fn.filereadable(name) == 1 then
+                vim.fn.bufload(buf)
+              end
+            end
+            i = i + 1
+            count = count + 1
+          end
+
+          -- Schedule next chunk if there are more buffers
+          if i <= #bufs then
+            vim.defer_fn(load_chunk, 50) -- 50ms delay between chunks
+          end
+        end
+
+        -- Start loading after a small initial delay
+        vim.defer_fn(load_chunk, 100)
+      end
+
       vim.api.nvim_create_autocmd("BufEnter", {
         pattern = "copilot-chat",
         callback = function()
           vim.opt_local.relativenumber = false
           vim.opt_local.number = false
+          -- Preload buffers when entering copilot-chat so it can detect them with #buffers
+          preload_buffers_for_chat()
         end,
       })
 
