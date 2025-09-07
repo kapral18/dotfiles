@@ -131,11 +131,13 @@ set -x FZF_ALT_C_COMMAND "fd --type d $FD_OPTIONS"
 # GEMINI API Key Configuration
 # ------------------------------------
 
+{{ if eq .isWork true -}}
+
 if type -q pass; and test -z "$GEMINI_API_KEY"
     set -gx GEMINI_API_KEY (pass google/gemini/api/token)
 end
 
-{{ if ne .isWork true -}}
+{{ else -}}
 
 # ------------------------------------
 # OpenAI API Key Configuration

@@ -120,6 +120,13 @@
 [color]
   ui = auto
 
+[diff]
+  color = auto
+  # Detects renames with a threshold of 50% similarity
+  renames = copies
+  # Better diff algorithm that is slower but produces better results
+  algorithm = histogram
+
 [pager]
   diff = delta
   log = delta

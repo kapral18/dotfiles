@@ -44,34 +44,50 @@ return {
     opts = function(_, opts)
       local cmp = require("cmp")
 
-      ---@diagnostic disable-next-line: param-type-mismatch
-      local has_copilot, _ = pcall(vim.cmd, "Copilot")
-
       opts.mapping = vim.tbl_extend("force", opts.mapping, {
+
         ["<Tab>"] = cmp.mapping(function(fallback)
           local cur_row, cur_col = unpack(vim.api.nvim_win_get_cursor(0))
           local current_line = vim.api.nvim_get_current_line()
           local char_after_cursor = current_line:sub(cur_col + 1, cur_col + 1)
+
           local tabout_symbols = {}
           for _, tabout in ipairs(tabouts) do
             table.insert(tabout_symbols, tabout.open)
             table.insert(tabout_symbols, tabout.close)
           end
 
-          local suggestion = has_copilot and vim.fn["copilot#GetDisplayedSuggestion"]() or {}
-
-          -- copilot completion
-          if suggestion.text ~= nil and suggestion.text ~= "" then
-            local copilot_keys = vim.fn["copilot#Accept"]()
-            if copilot_keys ~= "" then
-              vim.api.nvim_feedkeys(copilot_keys, "i", true)
+          if vim.b.copilot_enabled == 1 or vim.b.copilot_enabled == true then
+            local suggestion = vim.fn["copilot#GetDisplayedSuggestion"]() or {}
+            if suggestion.text and suggestion.text ~= "" then
+              local copilot_keys = vim.fn["copilot#Accept"]()
+              if copilot_keys ~= "" then
+                vim.api.nvim_feedkeys(copilot_keys, "i", true)
+                return
+              end
             end
-          elseif vim.tbl_contains(tabout_symbols, char_after_cursor) then
+          end
+
+          if vim.g.codeium_enabled then
+            local ok_status, status = pcall(vim.fn["codeium#GetStatusString"])
+            status = ok_status and status or ""
+            -- Accept only if there is an actual suggestion (e.g. "3/8"); skip if "*" (pending) or "0" (none)
+            if type(status) == "string" and status:match("^%d+/%d+$") then
+              local ok_acc, ret = pcall(vim.fn["codeium#Accept"])
+              if ok_acc and type(ret) == "string" and ret ~= "" then
+                vim.api.nvim_feedkeys(ret, "i", true)
+                return
+              end
+            end
+          end
+
+          if vim.tbl_contains(tabout_symbols, char_after_cursor) then
             vim.api.nvim_win_set_cursor(0, { cur_row, cur_col + 1 })
           else
             fallback()
           end
         end, { "i", "s" }),
+
         ["<S-Tab>"] = cmp.mapping(function(fallback)
           local cur_row, cur_col = unpack(vim.api.nvim_win_get_cursor(0))
           local current_line = vim.api.nvim_get_current_line()
@@ -88,6 +104,7 @@ return {
             vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-d>", true, true, true), "n", {})
           end
         end, { "i", "s" }),
+
         ["<C-n>"] = cmp.mapping(function(fallback)
           if cmp.visible() then
             cmp.select_next_item()
@@ -103,6 +120,7 @@ return {
             fallback()
           end
         end, { "i", "s" }),
+
         ["<C-p>"] = cmp.mapping(function(fallback)
           if cmp.visible() then
             cmp.select_prev_item()
@@ -114,8 +132,25 @@ return {
             vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-d>", true, true, true), "n", {})
           end
         end, { "i", "s" }),
-        -- Accept currently selected item. Set `select` to `false` to only confirm explicitly selected items
-        ["<CR>"] = cmp.mapping.confirm({ select = false }),
+
+        ["<CR>"] = cmp.mapping(function(fallback)
+          -- if cmp has a selected item, keep your original confirm behavior
+          if cmp.visible() then
+            cmp.confirm({ select = false })
+            return
+          end
+
+          -- If Windsurf is enabled and currently waiting, clear it to avoid UI hangs
+          if vim.g.codeium_enabled then
+            local ok_status, status = pcall(vim.fn["codeium#GetStatusString"])
+            if ok_status and status == "*" then
+              pcall(vim.fn["codeium#Clear"])
+            end
+          end
+
+          -- Fallback to normal <CR>
+          fallback()
+        end, { "i", "s" }),
       })
 
       -- works in conjunction with <CR> mapping.confirm({select = false})
