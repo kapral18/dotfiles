@@ -13,30 +13,6 @@ return {
     end,
   },
   {
-    "MeanderingProgrammer/py-requirements.nvim",
-    event = {
-      "BufRead requirements.txt",
-    },
-    dependencies = {
-      { "nvim-lua/plenary.nvim" },
-      {
-        "hrsh7th/nvim-cmp",
-        dependencies = {},
-        opts = function(_, opts)
-          table.insert(opts.sources, { name = "py-requirements" })
-        end,
-      },
-    },
-    opts = {},
-    -- stylua: ignore start
-    keys = {
-      { "<leader>ppu", function() require("py-requirements").upgrade() end, desc = "Update Package" },
-      { "<leader>ppi", function() require("py-requirements").show_description() end, desc = "Package Info" },
-      { "<leader>ppa", function() require("py-requirements").upgrade_all() end, desc = "Update All Packages" },
-    },
-    -- stylua: ignore end
-  },
-  {
     "folke/which-key.nvim",
     opts = {
       spec = {
@@ -44,5 +20,9 @@ return {
         { "<leader>pp", group = "python" },
       },
     },
+  },
+  {
+    "mfussenegger/nvim-dap-python",
+    enabled = false,
   },
 }

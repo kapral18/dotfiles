@@ -1,0 +1,35 @@
+# Binary executables and libraries
+*.exe diff=hexdump
+*.dll diff=hexdump
+*.so diff=hexdump
+*.dylib diff=hexdump
+*.a diff=hexdump
+
+# Compiled/object files
+*.o diff=hexdump
+*.obj diff=hexdump
+*.class diff=hexdump
+
+# WebAssembly
+*.wasm diff=hexdump
+
+# Database files
+*.db diff=hexdump
+*.sqlite diff=hexdump
+*.sqlite3 diff=hexdump
+
+# Archive files
+*.zip diff=hexdump
+*.tar diff=hexdump
+*.gz diff=hexdump
+
+# Font files
+*.ttf diff=hexdump
+*.otf diff=hexdump
+*.woff diff=hexdump
+*.woff2 diff=hexdump
+
+# Image files (if you want hex view instead of "binary files differ")
+*.ico diff=hexdump
+*.bmp diff=hexdump
+
