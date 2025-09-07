@@ -55,7 +55,6 @@ require("lazy").setup({
     { import = "plugins.key-analyzer" },
     { import = "plugins.lazydev" },
     { import = "plugins.leap" },
-    { import = "plugins.linting" },
     { import = "plugins.live-command" },
     { import = "plugins.log" },
     { import = "plugins.lsp" },
