@@ -68,16 +68,22 @@ return {
             end
           end
 
-          if vim.g.codeium_enabled then
+          if vim.b.codeium_enabled then
             local ok_status, status = pcall(vim.fn["codeium#GetStatusString"])
             status = ok_status and status or ""
-            -- Accept only if there is an actual suggestion (e.g. "3/8"); skip if "*" (pending) or "0" (none)
             if type(status) == "string" and status:match("^%d+/%d+$") then
+              -- Temporarily disable diagnostics
+              vim.diagnostic.enable(false)
               local ok_acc, ret = pcall(vim.fn["codeium#Accept"])
               if ok_acc and type(ret) == "string" and ret ~= "" then
                 vim.api.nvim_feedkeys(ret, "i", true)
+                -- Re-enable diagnostics after a short delay
+                vim.defer_fn(function()
+                  vim.diagnostic.enable()
+                end, 100)
                 return
               end
+              vim.diagnostic.enable(true) -- Re-enable if insertion failed
             end
           end
 
@@ -141,7 +147,7 @@ return {
           end
 
           -- If Windsurf is enabled and currently waiting, clear it to avoid UI hangs
-          if vim.g.codeium_enabled then
+          if vim.b.codeium_enabled then
             local ok_status, status = pcall(vim.fn["codeium#GetStatusString"])
             if ok_status and status == "*" then
               pcall(vim.fn["codeium#Clear"])
