@@ -37,6 +37,10 @@
 ### Templates & Variables
 
 - Use `{{ .isWork }}` for work/personal conditional logic
+- Primary/Secondary identity model is set in `home/.chezmoi.toml.tmpl` prompts:
+  - Always prompt for `primaryEmail`/`primaryPublicSshKey`.
+  - On personal machines (`.isWork` false), also prompt for `secondaryEmail`/`secondaryPublicSshKey` (work creds).
+  - On work machines (`.isWork` true), secondary values are omitted.
 - Use `{{ .chezmoi.* }}` for system-specific values
 - Quote string values in templates: `{{ .email | quote }}`
 - Test template rendering before applying
@@ -80,3 +84,12 @@
 ### Git Diff Tool
 
 - git difftool uses icdiff; run `git difftool` for side-by-side color diffs
+
+### Work/Personal Environment Split
+
+- Toggle via `{{ .isWork }}` in `home/.chezmoi.toml.tmpl`; personal-only: `{{ if ne .isWork true }}`, work-only: `{{ if .isWork }}`.
+- Identity model:
+  - Personal device: primary = personal; secondary = work. Global `~/.gitconfig` (from `home/private_readonly_dot_gitconfig.tmpl`) uses primary identity and, only on personal, includes `~/work/.gitconfig` via `[includeIf "gitdir:~/work/"]`. The included `home/work/private_dot_gitconfig.tmpl` sets the work identity from the secondary values, so repos under `~/work/` use work creds only.
+  - Work device: primary = work; no secondary. `home/work/private_dot_gitconfig.tmpl` is gated by `{{ if ne .isWork true }}` and is not rendered, so there is no `~/work/.gitconfig`. The global `~/.gitconfig` is prefilled with work credentials and is the sole source.
+- 1Password SSH agent (`home/dot_config/private_exact_1Password/exact_ssh/agent.toml.tmpl`): on work, only the Work vault keys are configured; on personal, both Private (personal) and Work keys are configured. Primary identity is always available; work identity is scoped to `~/work/` on personal machines.
+- Fish/Brew/ASDF: personal environment exposes AI provider env vars and `wpass`/`ppass`; Brewfile and `asdf` plugin/version templates gate personal-only tools.

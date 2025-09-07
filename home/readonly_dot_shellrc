@@ -12,8 +12,6 @@ alias g="git"
 alias t="tmux"
 alias tree='tree -I ".git|node_modules"'
 alias v="nvim"
-alias ghe="gh copilot explain"
-alias ghs="gh copilot suggest"
 alias wt="git worktree"
 alias reload_gpg='pkill -9 gpg-agent'
 
