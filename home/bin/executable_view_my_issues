@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Description: View your GitHub issues using fzf
+
+set -euo pipefail
+
+gh issue list --assignee @me --limit 100 --json number,title \
+  --jq '.[] | "\(.number)\t\(.title)"' |
+  fzf --delimiter="\t" --with-nth=2 |
+  cut -f1 |
+  xargs -r gh issue view --web
+

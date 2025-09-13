@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Description: Grep for a string in files and open the results in fzf
+
+set -euo pipefail
+
+if [ $# -eq 0 ]; then
+  echo "Usage: grepo <search_pattern>"
+  exit 1
+fi
+
+EDITOR="${EDITOR:-vim}"
+editor_cmd="$EDITOR +/$1 +'norm! n'"
+
+rg -l "$1" | fzf --bind "enter:execute($editor_cmd {})" --preview "bat --style=numbers --color=always {}"
+

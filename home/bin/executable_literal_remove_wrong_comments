@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Description: Remove comments with specific content from PRs
+
+set -euo pipefail
+
+# Source the utility library
+source "$(dirname "$0")/bash_utils_lib.sh"
+
+if ! _check_rate_limit; then
+  echo "Aborting due to rate limit concerns"
+  exit 1
+fi
+
+if ! pr_numbers=$(_safe_exec_cmd gh pr list --base 8.x --state open --json number --jq '.[].number'); then
+  exit 1
+fi
+
+message_to_remove="Auto-merge has been re-enabled. Thank you for your patience. :heart:"
+
+for pr in $pr_numbers; do
+  echo "Processing PR #$pr"
+
+  if ! comments=$(_safe_exec_cmd gh pr view "$pr" --json comments --jq '.comments[].id'); then
+    continue
+  fi
+
+  for comment_id in $comments; do
+    if ! comment_body=$(_safe_exec_cmd gh pr view "$pr" --json comments --jq ".comments[] | select(.id == $comment_id).body"); then
+      continue
+    fi
+
+    if echo "$comment_body" | grep -q "$message_to_remove"; then
+      echo "Removing comment $comment_id from PR #$pr"
+      _safe_exec_cmd gh pr comment "$pr" --delete "$comment_id"
+    fi
+  done
+done
+
+echo "Finished processing all PRs"
+

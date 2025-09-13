@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Description: Pull the latest changes from the remote and rebase
+
+set -euo pipefail
+
+# Source the utility library
+source "$(dirname "$0")/bash_utils_lib.sh"
+
+current_branch=$(git branch --show-current)
+fork_upstream=$(git reflog show "$current_branch" | grep 'branch: Created from' | awk '{print $NF}')
+
+# if the fork_upstream is empty or HEAD, it means the branch was created locally
+# so we need to find the upstream branch on origin
+if [ -z "$fork_upstream" ] || [ "$fork_upstream" = "HEAD" ]; then
+  fork_upstream=$(git branch -r --contains "$current_branch" | grep 'origin/' | grep -v 'HEAD' | awk '{print $1}')
+
+  # if the fork_upstream is empty, try to git fetch the upstream branch
+  if [ -z "$fork_upstream" ]; then
+    echo "Could not find the forked upstream branch, trying to fetch it from origin"
+    git fetch origin "$current_branch"
+    fork_upstream=$(git branch -r --contains "$current_branch" | grep 'origin/' | grep -v 'HEAD' | awk '{print $1}')
+  fi
+fi
+
+if [ -z "$fork_upstream" ]; then
+  echo "Could not find the forked upstream branch"
+  exit 1
+fi
+
+upstream_remote=$(echo "$fork_upstream" | cut -d'/' -f1)
+upstream_branch=$(echo "$fork_upstream" | cut -d'/' -f2-)
+
+if [ -z "$upstream_remote" ] || [ -z "$upstream_branch" ]; then
+  echo "Could not find $fork_upstream remote or branch"
+  exit 1
+fi
+
+# ask for confirmation
+echo "Pulling the latest changes from $upstream_remote/$upstream_branch and rebasing on top of it"
+
+if ! _confirm; then
+  exit 1
+fi
+
+git pull --rebase "$upstream_remote" "$upstream_branch"
+

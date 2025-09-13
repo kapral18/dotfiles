@@ -1,0 +1,194 @@
+#!/usr/bin/env bash
+# Description: Add a worktree for a branch
+
+set -euo pipefail
+
+# Source the utility libraries
+source "$(dirname "$0")/bash_utils_lib.sh"
+source "$(dirname "$0")/worktree_lib.sh"
+
+if [ $# -eq 0 ]; then
+  echo "Usage: add_worktree <branch_name> [base_branch]"
+  exit 1
+fi
+
+branch_name="$1"
+parent_dir=$(_get_worktree_parent_dir)
+parent_name=$(basename "$parent_dir")
+
+if git worktree list | grep -qw "$branch_name"; then
+  echo "Branch '$branch_name' already exists as a worktree."
+  exit 0
+fi
+
+# Split branch name to get remote and branch parts
+IFS='/' read -r inferred_branch_remote inferred_branch_name <<<"$branch_name"
+if [ -z "${inferred_branch_name:-}" ]; then
+  inferred_branch_name="$inferred_branch_remote"
+  inferred_branch_remote=""
+else
+  # Reconstruct branch name if it contains multiple slashes
+  inferred_branch_name="${branch_name#*/}"
+fi
+
+prefixed_branch_name="${inferred_branch_remote}__${inferred_branch_name}"
+
+if git worktree list | grep -qw "$prefixed_branch_name"; then
+  echo "Branch '$prefixed_branch_name' already exists as a worktree."
+  exit 0
+fi
+
+is_base_branch_specified=0
+if [ $# -eq 2 ]; then
+  is_base_branch_specified=1
+  base_branch="$2"
+
+  # Split base branch
+  IFS='/' read -r inferred_base_branch_remote _ <<<"$base_branch"
+
+  if git worktree list | grep -qE "\b${inferred_base_branch_remote}__${branch_name}\b"; then
+    echo "Branch '${inferred_base_branch_remote}__${branch_name}' already exists as a worktree."
+    exit 0
+  fi
+fi
+
+worktree_path="$parent_dir/$branch_name"
+
+if [ -n "$inferred_branch_remote" ] && git remote | grep -q "\b$inferred_branch_remote\b"; then
+  git fetch "$inferred_branch_remote" "$inferred_branch_name"
+fi
+
+# only-branch-specified case
+if [ $is_base_branch_specified -eq 0 ]; then
+  # Check if the branch exists locally
+  if git show-ref --verify --quiet "refs/heads/$branch_name"; then
+    echo "Branch '$branch_name' already exists locally. Reusing it."
+    git worktree add "$worktree_path" "$branch_name"
+    _add_worktree_tmux_session "$parent_name" "$branch_name" "$worktree_path"
+    echo "
+
+-------------
+
+Created new worktree
+For Local Branch: $branch_name
+At Path: $worktree_path"
+
+  elif [ -n "$inferred_branch_name" ] && git show-ref --quiet --verify "refs/heads/$inferred_branch_name" && git rev-parse --abbrev-ref @{u} 2>/dev/null | grep -q "$inferred_branch_remote/"; then
+    echo "Branch '$inferred_branch_name' already exists locally. Reusing it."
+    git worktree add "$worktree_path" "$inferred_branch_name"
+    _add_worktree_tmux_session "$parent_name" "$inferred_branch_name" "$worktree_path"
+    echo "
+
+-------------
+
+Created new worktree
+For Local Branch: $inferred_branch_name
+At Path: $worktree_path"
+
+  elif git show-ref --quiet --verify "refs/heads/${prefixed_branch_name}"; then
+    worktree_path="$parent_dir/$inferred_branch_remote/$inferred_branch_name"
+    echo "Branch '$prefixed_branch_name' already exists locally. Reusing it."
+    git worktree add "$worktree_path" "$prefixed_branch_name"
+    _add_worktree_tmux_session "$parent_name" "$prefixed_branch_name" "$worktree_path"
+    echo "
+
+-------------
+
+Created new worktree
+For Local Branch: $prefixed_branch_name
+At Path: $worktree_path"
+
+  elif git show-ref --quiet --verify "refs/remotes/origin/$branch_name"; then
+    git worktree add "$worktree_path" -b "$branch_name" "origin/$branch_name"
+    _add_worktree_tmux_session "$parent_name" "$branch_name" "$worktree_path"
+    _print_created_worktree_message "$branch_name" "$worktree_path" "origin/$branch_name"
+
+  elif git show-ref --quiet --verify "refs/remotes/upstream/$branch_name"; then
+    git worktree add "$worktree_path" -b "$branch_name" "upstream/$branch_name"
+    _add_worktree_tmux_session "$parent_name" "$branch_name" "$worktree_path"
+    _print_created_worktree_message "$branch_name" "$worktree_path" "upstream/$branch_name"
+
+  elif git show-ref --quiet --verify "refs/remotes/$branch_name"; then
+    if [[ "$inferred_branch_remote" =~ ^(origin|upstream)$ ]]; then
+      worktree_path="$parent_dir/$inferred_branch_name"
+      git worktree add "$worktree_path" -b "$inferred_branch_name" "$branch_name"
+      _add_worktree_tmux_session "$parent_name" "$inferred_branch_name" "$worktree_path"
+      _print_created_worktree_message "$inferred_branch_name" "$worktree_path" "$branch_name"
+    else
+      worktree_path="$parent_dir/$inferred_branch_remote/$inferred_branch_name"
+      git worktree add "$worktree_path" -b "$prefixed_branch_name" "$branch_name"
+      _add_worktree_tmux_session "$parent_name" "$prefixed_branch_name" "$worktree_path"
+      _print_created_worktree_message "$prefixed_branch_name" "$worktree_path" "$branch_name"
+    fi
+  else
+    git worktree add "$worktree_path" -b "$branch_name"
+    _add_worktree_tmux_session "$parent_name" "$branch_name" "$worktree_path"
+    _print_created_worktree_message "$branch_name" "$worktree_path"
+  fi
+else
+  # Validate the preexisting $branch_name
+  if git show-ref --verify --quiet "refs/heads/$branch_name"; then
+    echo "Branch '$branch_name' already exists locally."
+    echo "Cannot create a new branch with the same name."
+    exit 1
+  elif git show-ref --quiet --verify "refs/remotes/origin/$branch_name"; then
+    echo "Branch '$branch_name' already exists on 'origin' remote."
+    echo "Cannot create a new branch with the same name."
+    exit 1
+  elif git show-ref --quiet --verify "refs/remotes/upstream/$branch_name"; then
+    echo "Branch '$branch_name' already exists on 'upstream' remote."
+    echo "Cannot create a new branch with the same name."
+    exit 1
+  elif git show-ref --quiet --verify "refs/remotes/$branch_name"; then
+    echo "Branch '$branch_name' already exists on a remote."
+    echo "Cannot create a new branch with the same name."
+    exit 1
+  fi
+
+  if [ -n "$inferred_branch_remote" ] && git remote | grep -q "\b$inferred_branch_remote\b"; then
+    echo "WHEN using base branch argument, main branch argument SHOULD NOT include a remote name. Please provide a valid branch name."
+    echo "For example, instead of add_worktree $branch_name $base_branch, use add_worktree $inferred_branch_name $base_branch."
+    exit 1
+  fi
+
+  # Split base branch
+  IFS='/' read -r inferred_base_branch_remote inferred_base_branch_name <<<"$base_branch"
+  if [ -z "${inferred_base_branch_name:-}" ]; then
+    inferred_base_branch_name="$inferred_base_branch_remote"
+    inferred_base_branch_remote=""
+  else
+    inferred_base_branch_name="${base_branch#*/}"
+  fi
+
+  if [ -n "$inferred_base_branch_remote" ] && git remote | grep -q "\b$inferred_base_branch_remote\b"; then
+    git fetch "$inferred_base_branch_remote" "$inferred_base_branch_name"
+  fi
+
+  # Now validate the $base_branch
+  if git show-ref --verify --quiet "refs/heads/$base_branch"; then
+    git worktree add "$worktree_path" -b "$branch_name" "$base_branch"
+    _add_worktree_tmux_session "$parent_name" "$branch_name" "$worktree_path"
+    _print_created_worktree_message "$branch_name" "$worktree_path" "$base_branch"
+  elif git show-ref --quiet --verify "refs/remotes/origin/$base_branch"; then
+    git worktree add "$worktree_path" -b "$branch_name" "origin/$base_branch"
+    _add_worktree_tmux_session "$parent_name" "$branch_name" "$worktree_path"
+    _print_created_worktree_message "$branch_name" "$worktree_path" "origin/$base_branch"
+  elif git show-ref --quiet --verify "refs/remotes/upstream/$base_branch"; then
+    git worktree add "$worktree_path" -b "$branch_name" "upstream/$base_branch"
+    _add_worktree_tmux_session "$parent_name" "$branch_name" "$worktree_path"
+    _print_created_worktree_message "$branch_name" "$worktree_path" "upstream/$base_branch"
+  elif git show-ref --quiet --verify "refs/remotes/$base_branch"; then
+    worktree_path="$parent_dir/$inferred_base_branch_remote/$branch_name"
+    git worktree add "$worktree_path" -b "${inferred_base_branch_remote}__${branch_name}" "$base_branch"
+    _add_worktree_tmux_session "$parent_name" "${inferred_base_branch_remote}__${branch_name}" "$worktree_path"
+    _print_created_worktree_message "$branch_name" "$worktree_path" "$base_branch"
+  else
+    echo "Base branch '$base_branch' does not exist."
+    exit 1
+  fi
+fi
+
+# Add the new worktree to zoxide
+if command -v zoxide &>/dev/null; then
+  zoxide add "$worktree_path"
+fi

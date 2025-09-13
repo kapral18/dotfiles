@@ -1,6 +1,6 @@
 local in_work_dir = require("utils.work_env").in_work_dir
 
-local is_work_machine = vim.fn.filereadable(vim.fn.expand("~/work/.gitconfig")) == 1
+local is_work_machine = vim.fn.filereadable(vim.fn.expand("~/work/.gitconfig")) == 0
 
 return {
   {

@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Description: Get tests close to or beyond default Jest threshold
+
+set -euo pipefail
+
+if [ $# -eq 0 ]; then
+  echo "Usage: get_risky_tests <folder_path>"
+  exit 1
+fi
+
+temp_output=$(mktemp -t jest-output)
+
+cpulimit -l 2 -i -- node --max-old-space-size=12288 --trace-warnings scripts/jest "$1" \
+  --runInBand --coverage=false --passWithNoTests --silent --ci --json --outputFile="$temp_output"
+
+cat "$temp_output" | jq "
+    .testResults[] as \$test |
+    \$test.assertionResults[] |
+    select(.duration > 4000) |
+    {fullPath: \$test.name, fullName: .fullName, duration: .duration}
+"
+
