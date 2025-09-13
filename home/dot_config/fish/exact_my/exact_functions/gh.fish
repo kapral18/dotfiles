@@ -193,3 +193,66 @@ function view_my_issues --description "View your GitHub issues using fzf"
         cut -f1 |
         xargs -r gh issue view --web
 end
+
+function add_patch_to_prs --description "Add a patch to my own PRs from my own fork"
+    set -l pr_numbers
+
+    if count $argv >0
+        for arg in $argv
+            if string match -qr '^[0-9]+$' -- $arg
+                set pr_numbers $pr_numbers $arg
+            end
+        end
+    end
+
+    if test -z "$pr_numbers"
+        # If no PRs are provided, search and select PR using fzf with improved preview (multi-select enabled)
+        set pr_numbers (gh pr list --search "$argv[1]" --json number,title \
+            --jq '.[] | "\(.number) \(.title)"' | fzf --multi --preview '
+                gh pr view {1} --json number,title,body,author,labels,comments --template "
+                # PR #{{.number}}: {{.title}}
+
+                ---
+
+                ## Author: {{.author.login}}
+
+                {{range .labels}}- {{.name}} {{end}}
+
+                ---
+
+                {{.body}}
+            ')
+    end
+
+    for pr in $pr_numbers
+        echo "Processing PR #$pr"
+        set branch (_safe_exec_cmd gh pr view $pr --json headRefName -q .headRefName)
+        or continue
+
+        _safe_exec_cmd git fetch origin $branch
+        or continue
+
+        _safe_exec_cmd git checkout $branch
+        or continue
+
+        # Apply the patch
+        _safe_exec_cmd git apply fix.patch
+        or continue
+
+        # Add only the changed files
+        _safe_exec_cmd git add -u
+        or continue
+
+        _safe_exec_cmd git commit -m "Apply additional fix"
+        or continue
+
+        _safe_exec_cmd git push
+        or continue
+
+        _safe_exec_cmd git checkout -
+        echo "Finished processing PR #$pr"
+
+        echo "Don't forget to clean up the patch file!"
+        read
+    end
+end

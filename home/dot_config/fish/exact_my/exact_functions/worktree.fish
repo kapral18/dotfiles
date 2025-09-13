@@ -1,9 +1,3 @@
-function _get_worktree_parent_dir
-    set -l git_common_dir (realpath (git rev-parse --git-common-dir))
-    set -l main_repo_root (dirname $git_common_dir)
-    dirname $main_repo_root
-end
-
 function _print_created_worktree_message
     echo "
 

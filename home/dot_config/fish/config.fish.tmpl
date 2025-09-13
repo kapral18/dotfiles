@@ -72,6 +72,7 @@ set -x XDG_VIDEOS_DIR $HOME/Videos
 
 ## ASDF Configuration
 set -x ASDF_GOLANG_MOD_VERSION_ENABLED true
+set -x ASDF_NODEJS_LEGACY_FILE_DYNAMIC_STRATEGY latest_available
 
 #-------------------------------------
 # colored man output
@@ -173,6 +174,14 @@ end
 
 if type -q pass; and test -z "$CLOUDFLARE_WORKERS_AI_API_KEY"
     set -gx CLOUDFLARE_WORKERS_AI_API_KEY (pass cloudflare/workers/ai/api/token)
+end
+
+# ------------------------------------
+# Perplexity API Key Configuration
+# ------------------------------------
+
+if type -q pass; and test -z "$PERPLEXITY_API_KEY"
+    set -gx PERPLEXITY_API_KEY (pass perplexity/api/token)
 end
 
 {{ end }}

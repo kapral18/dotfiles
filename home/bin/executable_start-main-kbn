@@ -5,7 +5,7 @@ set -euo pipefail
 TRIGGER_STRING="succ kbn/es setup complete"
 LOGFILE="/tmp/es.log"
 
-ES_DATA_FOLDER=${1:-"v9.2"}
+ES_DATA_FOLDER=${1:-"main-cluster"}
 ES_DATA_PATH="$HOME/work/kibana/es_data/$ES_DATA_FOLDER"
 
 # Capture current tmux session and window info
@@ -17,10 +17,10 @@ yarn kbn bootstrap
 (
   tail -n 0 -F "$LOGFILE" | while read -r line; do
     if [[ "$line" == *"$TRIGGER_STRING"* ]]; then
-      tmux send-keys -t "${TMUX_SESSION}:${TMUX_WINDOW}.+1" "yarn start --no-base-path" C-m
+      tmux send-keys -t "${TMUX_SESSION}:${TMUX_WINDOW}.+1" "yarn start --no-base-path --host=kibana-main.local --port=5602 --elasticsearch.hosts=http://localhost:9201" C-m
       break
     fi
   done
 ) &
 
-yarn es snapshot -E path.data="$ES_DATA_PATH" 2>&1 | tee "$LOGFILE"
+yarn es snapshot -E node.name=main -E http.port=9201 -E transport.port=9301 -E path.data="$ES_DATA_PATH" 2>&1 | tee -a "$LOGFILE"

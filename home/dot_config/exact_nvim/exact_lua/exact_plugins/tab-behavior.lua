@@ -139,10 +139,10 @@ return {
           end
         end, { "i", "s" }),
 
-        ["<CR>"] = cmp.mapping(function(fallback)
+        ["<CR>"] = vim.b.copilot_enabled and cmp.mapping.confirm({ select = false }) or cmp.mapping(function(fallback)
           -- if cmp has a selected item, keep your original confirm behavior
           if cmp.visible() then
-            cmp.confirm({ select = false })
+            cmp.mapping.confirm({ select = false })
             return
           end
 

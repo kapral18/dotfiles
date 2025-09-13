@@ -57,12 +57,14 @@
 - **Location**: `home/readonly_dot_Brewfile.tmpl`
 - **Structure**: Highly organized with detailed categorization and consistent formatting
 - **Section Format**:
+
   ```
   # ==============================================================================
   # SECTION NAME IN ALL CAPS
   # Brief description of what this section contains
   # ==============================================================================
   ```
+
 - **Entry Format**: Each brew/cask entry includes a descriptive comment with URL
 - **Categories**: Core dependencies, shell tools, editors, file operations, git tools, security, media, applications, etc.
 - **Conditional Logic**: Uses `{{ if ne .isWork true }}` for personal-only packages
