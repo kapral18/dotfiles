@@ -47,6 +47,7 @@ export XDG_CONFIG_DIRS="/etc/xdg"
 
 # ASDF Configuration
 export ASDF_GOLANG_MOD_VERSION_ENABLED=true
+export ASDF_NODEJS_LEGACY_FILE_DYNAMIC_STRATEGY=latest_available
 
 # Path Management
 prepend_to_path_if_missing() {
@@ -84,6 +85,7 @@ if command -v pass >/dev/null; then
   [ -z "$CLOUDFLARE_WORKERS_AI_API_KEY" ] && export CLOUDFLARE_WORKERS_AI_API_KEY="$(pass cloudflare/workers/ai/api/token)"
   [ -z "$ANTHROPIC_API_KEY" ] && export ANTHROPIC_API_KEY="$(pass anthropic/api/token)"
   [ -z "$OPENROUTER_API_KEY" ] && export OPENROUTER_API_KEY="$(pass openrouter/api/token)"
+  [ -z "$PERPLEXITY_API_KEY" ] && export PERPLEXITY_API_KEY="$(pass perplexity/api/token)"
   {{ end -}}
 fi
 

@@ -41,12 +41,6 @@ brew "gum"
 # https://github.com/charmbracelet/markscribe
 brew "charmbracelet/tap/markscribe"
 
-{{ if ne .isWork true -}}
-# AI on the command line
-# https://github.com/charmbracelet/mods
-brew "charmbracelet/tap/mods"
-{{ end -}}
-
 # Human-readable ANSI sequences
 # https://github.com/charmbracelet/sequin
 brew "sequin"
@@ -241,6 +235,10 @@ brew "gping"
 # https://httpie.io/
 brew "httpie"
 
+# Text-based web browser
+# https://lynx.invisible-island.net/
+brew "lynx"
+
 # Internet file retriever
 # https://www.gnu.org/software/wget/
 brew "wget"
@@ -318,6 +316,10 @@ brew "gh"
 # GIT WORKFLOW & PRODUCTIVITY
 # Tools for improving Git workflow and productivity
 # ==============================================================================
+
+# Blazing fast terminal-ui for git
+# https://github.com/extrawurst/gitui
+brew "gitui"
 
 # Simple terminal UI for git commands
 # https://github.com/jesseduffield/lazygit
@@ -506,6 +508,10 @@ brew "sox"
 # Feature-rich command-line audio/video downloader
 # https://github.com/yt-dlp/yt-dlp
 brew "yt-dlp"
+
+# Cross-platform audio recording/playback CLI tool with TUI
+# https://github.com/chaosprint/asak
+brew "asak"
 {{ end -}}
 
 # Image processing tools collection
@@ -703,6 +709,17 @@ brew "serpl"
 brew "openssl"
 
 # ==============================================================================
+# AI & LARGE LANGUAGE MODELS
+# Command-line AI tools and LLM clients
+# ==============================================================================
+
+{{ if ne .isWork true -}}
+# Terminal GPT client for ChatGPT, Claude, and other AI providers
+# https://github.com/aandrew-me/tgpt
+brew "tgpt"
+{{ end -}}
+
+# ==============================================================================
 # APPLICATIONS (CASKS)
 # GUI applications and desktop software
 # ==============================================================================
@@ -878,17 +895,12 @@ cask "sloth"
 # Programming fonts and typography tools
 # ==============================================================================
 
-# https://github.com/tonsky/FiraCode
 cask "font-fira-code"
 
-# https://github.com/ryanoasis/nerd-fonts
 cask "font-fira-code-nerd-font"
 
-# https://github.com/ryanoasis/nerd-fonts
 cask "font-hack-nerd-font"
 
-# https://github.com/ryanoasis/nerd-fonts
 cask "font-jetbrains-mono-nerd-font"
 
-# https://github.com/ryanoasis/nerd-fonts
 cask "font-symbols-only-nerd-font"

@@ -1,14 +1,15 @@
-local in_work_dir = require('utils.work_env').in_work_dir
+local in_work_dir = require("utils.work_env").in_work_dir
+
+local is_work_machine = vim.fn.filereadable(vim.fn.expand("~/work/.gitconfig")) == 1
 
 return {
   {
     "github/copilot.vim",
     lazy = false,
+    version = "*",
     init = function()
       vim.api.nvim_set_hl(0, "CopilotSuggestion", { fg = "#83a598" })
       vim.api.nvim_set_hl(0, "CopilotAnnotation", { fg = "#03a598" })
-
-      local is_work_machine = {{ if .isWork }}true{{ else }}false{{ end }}
 
       local function apply(buf)
         local path = vim.api.nvim_buf_get_name(buf)
@@ -33,7 +34,9 @@ return {
       end
 
       vim.api.nvim_create_autocmd({ "BufReadPost", "BufWinEnter", "BufEnter" }, {
-        callback = function(args) apply(args.buf) end,
+        callback = function(args)
+          apply(args.buf)
+        end,
       })
     end,
   },
@@ -49,6 +52,7 @@ return {
   {
     "CopilotC-Nvim/CopilotChat.nvim",
     lazy = false,
+    version = "*",
     cmd = "CopilotChat",
     opts = function()
       local user = vim.env.USER or "User"
@@ -58,13 +62,14 @@ return {
         question_header = "  " .. user .. " ",
         answer_header = "  Copilot ",
         window = { width = 0.4 },
-        model = "gpt-5",
+        model = "claude-sonnet-4",
       }
     end,
     keys = {
       { "<c-s>", "<CR>", ft = "copilot-chat", desc = "Submit Prompt", remap = true },
       { "<leader>a", "", desc = "+ai", mode = { "n", "v" } },
-      { "<leader>aa",
+      {
+        "<leader>aa",
         function()
           if vim.b.copilot_enabled then
             return require("CopilotChat").toggle()
@@ -72,9 +77,11 @@ return {
             vim.notify("CopilotChat is disabled in this buffer", vim.log.levels.WARN)
           end
         end,
-        desc = "Toggle (CopilotChat)", mode = { "n", "v" }
+        desc = "Toggle (CopilotChat)",
+        mode = { "n", "v" },
       },
-      { "<leader>ax",
+      {
+        "<leader>ax",
         function()
           if vim.b.copilot_enabled then
             return require("CopilotChat").reset()
@@ -82,9 +89,11 @@ return {
             vim.notify("CopilotChat is disabled in this buffer", vim.log.levels.WARN)
           end
         end,
-        desc = "Clear (CopilotChat)", mode = { "n", "v" }
+        desc = "Clear (CopilotChat)",
+        mode = { "n", "v" },
       },
-      { "<leader>ast",
+      {
+        "<leader>ast",
         function()
           if vim.b.copilot_enabled then
             return require("CopilotChat").stop()
@@ -92,21 +101,27 @@ return {
             vim.notify("CopilotChat is disabled in this buffer", vim.log.levels.WARN)
           end
         end,
-        desc = "Stop (CopilotChat)", mode = { "n", "v" }
+        desc = "Stop (CopilotChat)",
+        mode = { "n", "v" },
       },
-      { "<leader>aq",
+      {
+        "<leader>aq",
         function()
           if vim.b.copilot_enabled then
             vim.ui.input({ prompt = "Quick Chat:" }, function(input)
-              if input ~= "" then require("CopilotChat").ask(input) end
+              if input ~= "" then
+                require("CopilotChat").ask(input)
+              end
             end)
           else
             vim.notify("CopilotChat is disabled in this buffer", vim.log.levels.WARN)
           end
         end,
-        desc = "Quick Chat (CopilotChat)", mode = { "n", "v" },
+        desc = "Quick Chat (CopilotChat)",
+        mode = { "n", "v" },
       },
-      { "<leader>ap",
+      {
+        "<leader>ap",
         function()
           if vim.b.copilot_enabled then
             require("CopilotChat").select_prompt()
@@ -114,7 +129,8 @@ return {
             vim.notify("CopilotChat is disabled in this buffer", vim.log.levels.WARN)
           end
         end,
-        desc = "Prompt Actions (CopilotChat)", mode = { "n", "v" }
+        desc = "Prompt Actions (CopilotChat)",
+        mode = { "n", "v" },
       },
     },
     config = function(_, opts)
@@ -163,5 +179,8 @@ return {
       chat.setup(opts)
     end,
   },
+  {
+    "ntawileh/mods.nvim",
+    dependencies = { "folke/snacks.nvim" },
+  },
 }
-

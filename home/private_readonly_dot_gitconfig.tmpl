@@ -83,9 +83,6 @@
   # Prevent showing files whose names contain non-ASCII symbols as unversioned.
   # http://michael-kuehnel.de/git/2014/11/21/git-mac-osx-and-german-umlaute.html
   precomposeunicode = false
-  # Speed up commands involving untracked files such as `git status`.
-  # https://git-scm.com/docs/git-update-index#_untracked_cache
-  untrackedCache = true
   # Why do we need this?
   #
   # If you check https://developer.1password.com/docs/ssh/agent/advanced#use-multiple-github-accounts
@@ -114,7 +111,7 @@
   sshCommand = ssh -o IdentitiesOnly=yes -o IdentityFile="~/.ssh/primary_public_key.pub"
   # Prevent line ending issues
   autocrlf = input
-  # Enable file system monitoring to improve performance
+  # Uses the built-in file system monitor daemon so status/add/etc. ask “what changed?” instead of walking the whole tree; complements untracked-cache that manyFiles enables; safe on local filesystems.
   fsmonitor = true
 
 [color]
@@ -208,12 +205,22 @@
   hideRefs = refs/original/ refs/replace/
 
 [fetch]
-  # Automatically remove remote-tracking references that no longer exist
-  prune = true
-  # Prune tags that are no longer on the remote
-  pruneTags = true
   # Hide internal references during fetch operations
   hideRefs = refs/original/ refs/replace/
+  # Parallelizes object negotiation and pack download across remotes/submodules for faster fetch in big repos; tune per network/CPU.
+  # 0 for reasonable default based on CPU cores
+  parallel = 0
+  # Writes/updates the commit-graph on fetch so subsequent log/blame/merge-base are faster; no need to run maintenance commands to benefit.
+  writeCommitGraph = true
+
+[gc]
+  # Ensures the commit-graph stays present/updated when any auto-gc runs, accelerating history queries without explicit maintenance scheduling.
+  writeCommitGraph = true
+
+[submodule]
+  # Parallelizes submodule fetches to keep monorepos with many submodules from serial fetch bottlenecks; independent of other settings.
+  # 0 for reasonable default based on CPU cores
+  fetchJobs = 0
 
 [merge]
   autoStash = true
@@ -255,15 +262,22 @@
   # https://michaelheap.com/git-status-untracked/
   showUntrackedFiles = all
 
+[checkout]
+  # speed up checkout related operations on SSDs
+  # see https://matheustavares.dev/posts/parallel-checkout
+  workers = 0
+
 [feature]
   # https://git-scm.com/docs/git-config#Documentation/git-config.txt-featuremanyFiles
+  # enables index.skipHash, index.version 4 and core.untrackedCache
+  # for better performance with many files (e.g. large monorepos)
   manyFiles = true
-
-[index]
-  # enabled by feature.manyFiles
-  skipHash = true
-  # needed for feature.manyFiles
-  version = 4
+  # enables fetch.negotiationAlgorithm=skipping (better fetch performance)
+  # enables pack.useSparseBitmap (better bitmap traversal performance)
+  # enables pack.allowPackReuse=multi (better pack creation performance)
+  # enables pack.usePathWalk (smaller pack files)
+  # enables init.defaultRefFormat=reftable (better ref storage performance)
+  experimental = true
 
 [filter "lfs"]
   clean = git-lfs clean -- %f

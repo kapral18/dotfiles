@@ -8,6 +8,7 @@ source ~/.config/fish/my/functions/files.fish
 source ~/.config/fish/my/functions/gh.fish
 source ~/.config/fish/my/functions/git.fish
 source ~/.config/fish/my/functions/history.fish
+source ~/.config/fish/my/functions/homebrew.fish
 source ~/.config/fish/my/functions/llm.fish
 source ~/.config/fish/my/functions/osx.fish
 source ~/.config/fish/my/functions/path.fish

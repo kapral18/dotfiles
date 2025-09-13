@@ -3,31 +3,103 @@ local common_utils = require("utils.common")
 return {
   {
     "lewis6991/gitsigns.nvim",
-    tag = "v1.0.2",
+    version = "*",
+    event = "LazyFile",
     opts = {
-      numhl = true, -- Toggle with `:Gitsigns toggle_numhl`
-      linehl = false, -- Toggle with `:Gitsigns toggle_linehl`
-      word_diff = false, -- Toggle with `:Gitsigns toggle_word_diff`
-      current_line_blame = true, -- Toggle with `:Gitsigns toggle_current_line_blame`
+      -- visuals
+      signs = {
+        add = { text = "▎" },
+        change = { text = "▎" },
+        delete = { text = "" },
+        topdelete = { text = "" },
+        changedelete = { text = "▎" },
+        untracked = { text = "▎" },
+      },
+      signs_staged = {
+        add = { text = "▎" },
+        change = { text = "▎" },
+        delete = { text = "" },
+        topdelete = { text = "" },
+        changedelete = { text = "▎" },
+      },
+      signs_staged_enable = true,
+
+      -- highlights and word diff
+      numhl = true,
+      linehl = false,
+      word_diff = false,
+
+      -- blame
+      current_line_blame = true,
       current_line_blame_opts = {
         virt_text = true,
-        virt_text_pos = "eol", -- 'eol' | 'overlay' | 'right_align'
+        virt_text_pos = "eol",
         delay = 500,
-        attach_to_untracked = false,
       },
       current_line_blame_formatter = "<author>, <author_time> . <summary>",
+
+      -- core behavior
+      attach_to_untracked = false,
       update_debounce = 500,
-      diff_opts = {
-        algorithm = "histogram",
-        vertical = true,
-      },
+
+      -- buffer-local mappings
+      on_attach = function(buffer)
+        local gs = package.loaded.gitsigns
+        local function map(mode, lhs, rhs, desc)
+          vim.keymap.set(mode, lhs, rhs, { buffer = buffer, desc = desc })
+        end
+
+        -- navigation
+        map("n", "]h", function()
+          if vim.wo.diff then
+            vim.cmd.normal({ "]c", bang = true })
+          else
+            gs.nav_hunk("next")
+          end
+        end, "Next Hunk")
+        map("n", "[h", function()
+          if vim.wo.diff then
+            vim.cmd.normal({ "[c", bang = true })
+          else
+            gs.nav_hunk("prev")
+          end
+        end, "Prev Hunk")
+        map("n", "]H", function()
+          gs.nav_hunk("last")
+        end, "Last Hunk")
+        map("n", "[H", function()
+          gs.nav_hunk("first")
+        end, "First Hunk")
+
+        -- actions
+        map({ "n", "v" }, "<leader>ghs", ":Gitsigns stage_hunk<CR>", "Stage Hunk")
+        map({ "n", "v" }, "<leader>ghr", ":Gitsigns reset_hunk<CR>", "Reset Hunk")
+        map("n", "<leader>ghS", gs.stage_buffer, "Stage Buffer")
+        map("n", "<leader>ghu", gs.undo_stage_hunk, "Undo Stage Hunk")
+        map("n", "<leader>ghR", gs.reset_buffer, "Reset Buffer")
+
+        -- previews
+        map("n", "<leader>ghP", gs.preview_hunk_inline, "Preview Hunk Inline")
+        map("n", "<leader>ghp", function()
+          vim.cmd("Gitsigns preview_hunk")
+        end, "Preview Hunk Popup")
+
+        map("n", "<leader>ghd", gs.diffthis, "Diff This")
+        map("n", "<leader>ghD", function()
+          gs.diffthis("~")
+        end, "Diff This ~")
+
+        -- text object
+        map({ "o", "x" }, "ih", ":<C-U>Gitsigns select_hunk<CR>", "Select Hunk")
+      end,
     },
+
+    -- global UI toggles
     keys = {
-      { "<leader>ghP", [[:Gitsigns preview_hunk<CR>]], desc = "Preview Hunk" },
-      { "<leader>ghtn", [[:Gitsigns toggle_numhl<CR>]], desc = "Toggle Num Highlight" },
-      { "<leader>ghtl", [[:Gitsigns toggle_linehl<CR>]], desc = "Toggle Line Highlight" },
-      { "<leader>ghtw", [[:Gitsigns toggle_word_diff<CR>]], desc = "Toggle Word Diff" },
-      { "<leader>ghtb", [[:Gitsigns toggle_current_line_blame<CR>]], desc = "Toggle Blame Line" },
+      { "<leader>ghtn", "<Cmd>Gitsigns toggle_numhl<CR>", desc = "Toggle Num Highlight" },
+      { "<leader>ghtl", "<Cmd>Gitsigns toggle_linehl<CR>", desc = "Toggle Line Highlight" },
+      { "<leader>ghtw", "<Cmd>Gitsigns toggle_word_diff<CR>", desc = "Toggle Word Diff" },
+      { "<leader>ghtb", "<Cmd>Gitsigns toggle_current_line_blame<CR>", desc = "Toggle Blame Line" },
     },
   },
   -- git messages(commits, history, etc) under cursor

@@ -23,4 +23,17 @@ return {
       })
     end,
   },
+  {
+    "AlejandroSuero/freeze-code.nvim",
+    opts = {
+      copy = true,
+      open = true,
+      dir = vim.fn.expand("~/Downloads/screenshots"),
+      freeze_config = { -- configuration options for `freeze` command
+        output = "freeze.png",
+        config = "base",
+        theme = "pigments",
+      },
+    },
+  },
 }
