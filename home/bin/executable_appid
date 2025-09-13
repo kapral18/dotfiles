@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Description: Get the application ID from the bundle identifier
+
+set -euo pipefail
+
+if [ $# -eq 0 ]; then
+  echo "Usage: appid <bundle_id>"
+  exit 1
+fi
+
+bundle_id="$1"
+app_id=$(osascript -e "id of app \"$bundle_id\"")
+echo "$app_id"
+

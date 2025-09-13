@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Description: Remove a comment from current PR using gh and fzf
+
+set -euo pipefail
+
+COMMENT_TEMPLATE='Author: {{.user.login}}
+Updated At: {{.updated_at }}
+
+{{.body}}'
+
+OWNER_REPO=$(gh repo view --json owner,name --template '{{.owner.login}}/{{.name}}')
+
+SELECTED_COMMENT_ID=$(gh pr view --json comments --jq '.comments.[].url' |
+  awk -F'#issuecomment-' '{print $2}' |
+  fzf --preview "gh api repos/$OWNER_REPO/issues/comments/{} --template '$COMMENT_TEMPLATE'")
+
+if [ -n "$SELECTED_COMMENT_ID" ]; then
+  gh api --method DELETE "/repos/$OWNER_REPO/issues/comments/$SELECTED_COMMENT_ID"
+fi
+

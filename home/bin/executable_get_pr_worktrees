@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# Description: Fetch PRs from GitHub and create a worktree for each
+
+set -euo pipefail
+
+# Source the utility libraries
+source "$(dirname "$0")/bash_utils_lib.sh"
+
+pr_numbers=()
+
+if [[ "${1:-}" =~ ^[0-9]+$ ]]; then
+  pr_numbers=("$1")
+else
+  # Search and select PR using fzf with improved preview (multi-select enabled)
+  mapfile -t pr_numbers < <(gh pr list --search "${1:-}" --json number,title \
+    --jq '.[] | "\(.number) \(.title)"' | fzf --multi --preview '
+            gh pr view {1} --json number,title,body,author,labels,comments --template "
+# PR #{{.number}}: {{.title}}
+
+---
+
+## Author: {{.author.login}}
+
+{{range .labels}}- {{.name}} {{end}}
+
+---
+
+
+{{.body}}" | bat --style=auto --color always --wrap never --paging never --language Markdown
+        ' --preview-window="right:70%:nowrap" --ansi | awk '{print $1}')
+fi
+
+if [ ${#pr_numbers[@]} -eq 0 ]; then
+  echo "No PR selected."
+  exit 1
+fi
+
+# Process each selected PR
+for pr_number in "${pr_numbers[@]}"; do
+  echo "Processing PR #$pr_number..."
+
+  # Fetch PR details using GitHub CLI
+  pr_info=$(gh pr view "$pr_number" --json headRefName,headRepository,headRepositoryOwner \
+    --jq '.headRefName + " " + .headRepository.name + " " + .headRepositoryOwner.login')
+
+  # Extract branch name, repository name, and owner
+  branch_name=$(echo "$pr_info" | cut -d ' ' -f1)
+  if [ -z "$branch_name" ]; then
+    echo "No branch name found in PR #$pr_number info."
+    continue
+  fi
+
+  repo_name=$(echo "$pr_info" | cut -d ' ' -f2)
+  if [ -z "$repo_name" ]; then
+    echo "No repository name found in PR #$pr_number info."
+    continue
+  fi
+
+  repo_owner=$(echo "$pr_info" | cut -d ' ' -f3)
+  if [ -z "$repo_owner" ]; then
+    echo "No repository owner found in PR #$pr_number info."
+    continue
+  fi
+
+  upstream_remote_owner=$(git remote get-url upstream | awk -F'[:/]' '{print $2}')
+
+  if [ "$repo_owner" = "$upstream_remote_owner" ]; then
+    echo "PR #$pr_number is from the upstream repository. Setting the remote to 'upstream'..."
+    repo_owner="upstream"
+  fi
+
+  repo_url="git@github.com:$repo_owner/$repo_name.git"
+
+  # Add remote if it doesn't exist
+  if ! git remote get-url "$repo_owner" >/dev/null 2>&1; then
+    git remote add "$repo_owner" "$repo_url"
+  fi
+
+  add_worktree "$repo_owner/$branch_name"
+  echo "Completed PR #$pr_number worktree creation."
+done

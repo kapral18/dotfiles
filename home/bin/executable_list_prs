@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Description: List PRs using GitHub CLI
+
+set -euo pipefail
+
+if [ $# -eq 0 ]; then
+  gh pr list --limit 100 --json number,title --jq '.[] | "\(.number)\t\(.title)"' || true
+else
+  gh pr list --search "$1" --json number,title --jq '.[] | "\(.number)\t\(.title)"' || true
+fi
+
