@@ -69,29 +69,29 @@ reproducible environments.
 The primary shell is **Fish**, but Zsh and Bash are also fully configured for
 consistency.
 
-### 🌳 Advanced Git Worktree Management (`worktree.fish`)
+### 🌳 Advanced Git Worktree Management (worktree helpers)
 
 This is the crown jewel of the shell environment, turning Git's powerful but
 clunky `worktree` feature into a seamless, everyday tool.
 
-- **`add_worktree <branch> [base_branch]`**: An incredibly smart function that
+- **`f-add-worktree <branch> [base_branch]`**: An incredibly smart function that
   handles numerous scenarios:
   - Creates a worktree from an existing local branch.
   - Creates a worktree from a remote branch on `origin` or `upstream`.
-  - Handles branches from forks (e.g., `add_worktree
+  - Handles branches from forks (e.g., `f-add-worktree
 some-user/feature-branch`).
   - Creates a new branch from `HEAD` if the branch doesn't exist anywhere.
   - Organizes worktrees by creating nested directories for branches with
     slashes (e.g., `feature/new-ui`).
 
-- **`get_pr_worktrees <pr_numbers_or_search>`**: A massive time-saver. Type a PR
+- **`f-get-pr-worktrees <pr_numbers_or_search>`**: A massive time-saver. Type a PR
   number or search term, and it will:
   1.  Use `fzf` to let you select the exact PR with a rich preview.
   2.  Fetch PR details from the GitHub API.
   3.  Add the contributor's fork as a temporary remote.
   4.  Create a worktree for the PR's branch.
 
-- **`remove_worktrees`**: An `fzf`-powered interactive worktrees remover that:
+- **`f-remove-worktrees`**: An `fzf`-powered interactive worktrees remover that:
   1.  Removes each selected worktree directory.
   2.  Deletes the associated local branch.
   3.  **Cleans up the remote**: If the worktree was from a fork, it removes
@@ -105,21 +105,49 @@ some-user/feature-branch`).
 
 ### 🤖 Custom Functions & Utilities
 
-- **`check-backport-progress` (`~/bin`)**: A powerful script for repository
-  maintainers. It uses the `gh` CLI to find PRs with a specific label (e.g.,
-  "Critical Fix") and checks if they have been correctly backported to release
-  branches and if open PRs have the required backport labels.
-- **`tmux-lowfi` (`~/bin`)**: A clever script that controls a `lowfi` music
-  player running inside a dedicated, detached tmux session. You can play, pause,
-  and skip tracks from any terminal window without interrupting your workflow.
-- **`pdf-diff` (`~/bin`)**: A visual diff tool for PDFs. It uses ImageMagick
-  to render two PDFs as images and composites them, highlighting all differences
-  in red.
-- **`cp_files_for_llm` (`fish/functions`)**: Recursively finds all text files
-  in a directory, concatenates their contents (with file headers), and copies it
-  to the clipboard, ready for pasting into an LLM.
-- **GitHub PR Management (`gh.fish`)**: Functions to bulk-disable/enable
-  auto-merge on PRs, useful for managing release branches.
+The repository includes an extensive collection of custom scripts and utilities
+designed to enhance productivity and automate common development tasks. These
+scripts are located in `~/bin` (managed by chezmoi) and provide powerful
+functionality:
+
+- **`f-add-patch-to-prs`**: Adds patch files to existing PRs for easy updates
+- **`f-add-worktree`**: Enhanced git worktree management with automatic branch creation and remote handling
+- **`f-appid`**: Retrieves application identifiers for macOS apps for automation
+- **`f-apply-app-icons`**: Applies custom icons to applications based on YAML mapping definitions
+- **`f-bat-preview`**: Uses bat for file preview with syntax highlighting in fuzzy finders
+- **`f-check-backport-progress`**: A powerful script for repository maintainers.
+  It uses the `gh` CLI to find PRs with specific labels and checks if they have
+  been correctly backported to release branches.
+- **`f-cp-files-for-llm`**: Recursively finds all text files in a directory,
+  concatenates their contents (with file headers), and copies it to the
+  clipboard, ready for pasting into an LLM.
+- **`f-dumputi`**: Custom utility functions for various development tasks
+- **`f-get-pr-worktrees`**: Creates worktrees from GitHub PRs with automatic
+  remote handling and branch management
+- **`f-get-risky-tests`**: Identifies potentially flaky or risky tests in test suites
+- **`f-gh-subissues-create`**: Creates GitHub sub-issues for detailed task breakdown
+- **`f-grepo`**: Enhanced git repository operations and navigation utilities
+- **`f-history-sync`**: Synchronizes fish shell history via 1Password for seamless
+  history across devices
+- **`f-list-prs`**: Lists GitHub PRs with advanced filtering and search capabilities
+- **`f-pdf-diff`**: A visual diff tool for PDFs. It uses ImageMagick to render
+  two PDFs as images and composites them, highlighting all differences in red.
+- **`f-remove-worktrees`**: Interactive cleanup of git worktrees with intelligent
+  remote pruning and filesystem cleanup
+- **`f-search-brew-desc`**: Interactive search through Homebrew package descriptions
+- **`f-search-gh-topic`**: Searches GitHub repositories by topic with fuzzy filtering
+- **`f-tmux-lowfi`**: A clever script that controls a `lowfi` music player
+  running inside a dedicated, detached tmux session. You can play, pause, and
+  skip tracks from any terminal window without interrupting your workflow.
+- **`f-to-gif`**: Converts videos to optimized GIFs with quality and size controls
+- **`f-vid-ipad`**: Processes videos for iPad optimization and format conversion
+- **GitHub PR Management (`f-disable-auto-merge`, `f-enable-auto-merge`):
+  Functions to bulk-disable/enable auto-merge on PRs, useful for managing
+  release branches.
+
+All scripts are designed with consistent error handling, self-documenting help
+text, and follow established naming conventions. Fish shell completions are
+provided for all scripts for enhanced usability.
 
 ---
 
@@ -233,7 +261,7 @@ transformed into a bespoke IDE.
   that can run the specific `describe`/`it` block your cursor is in, handle
   parameterized tests, run in debug mode, and update snapshots.
 - **AI-Powered Commits (`summarize-commit.lua`):** Generate a conventional
-  commit message from your staged changes using Ollama or Cloudflare AI with a
+  commit message from your staged changes using Ollama, Cloudflare AI, or OpenRouter with a
   single keypress.
 - **TypeScript Refactoring (`ts-move-exports.lua`):** A custom tool to select
   a block of exported code, move it to a new file, and automatically update all
