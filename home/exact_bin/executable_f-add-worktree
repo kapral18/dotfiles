@@ -4,8 +4,8 @@
 set -euo pipefail
 
 # Source the utility libraries
-source "$(dirname "$0")/bash_utils_lib.sh"
-source "$(dirname "$0")/worktree_lib.sh"
+source "$(dirname "$0")/utils/bash_utils_lib.sh"
+source "$(dirname "$0")/utils/worktree_lib.sh"
 
 if [ $# -eq 0 ]; then
   echo "Usage: add_worktree <branch_name> [base_branch]"

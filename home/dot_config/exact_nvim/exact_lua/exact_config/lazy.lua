@@ -39,7 +39,7 @@ require("lazy").setup({
     { import = "plugins.diff" },
     { import = "plugins.disable-flash" },
     { import = "plugins.eslint" },
-    { import = "plugins.explorer" },
+    { import = "plugins.neo-tree" },
     { import = "plugins.fish" },
     { import = "plugins.fzf" },
     { import = "plugins.git" },

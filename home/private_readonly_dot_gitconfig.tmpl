@@ -159,9 +159,6 @@
   autoSetupRebase = always
   sort = -committerdate
 
-[init]
-  defaultBranch = main
-
 ## GitHub
 [url "git@github.com:"]
   # we don't want to use insteadOf because it breaks brew installs from brew taps
@@ -278,6 +275,11 @@
   # enables pack.usePathWalk (smaller pack files)
   # enables init.defaultRefFormat=reftable (better ref storage performance)
   experimental = true
+
+[init]
+  defaultBranch = main
+  defaultRefFormat = files
+
 
 [filter "lfs"]
   clean = git-lfs clean -- %f
