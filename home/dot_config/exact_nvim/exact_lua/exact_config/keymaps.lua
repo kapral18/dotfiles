@@ -1,3 +1,4 @@
+local common_utils = require("utils.common")
 -- Ctrl-C to <Esc>
 vim.keymap.set("i", "<C-c>", "<ESC>")
 vim.keymap.set("i", "jk", "<ESC>")
@@ -210,3 +211,8 @@ end, {
 })
 
 vim.keymap.set("n", "<leader>mt", "<cmd>MakeTags<cr>", { desc = "Make Tags" })
+
+vim.keymap.set("n", "<leader>yp", function()
+  local cur_file = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":~:.")
+  common_utils.copy_to_clipboard(cur_file)
+end, { desc = "Copy current file relative path" })
