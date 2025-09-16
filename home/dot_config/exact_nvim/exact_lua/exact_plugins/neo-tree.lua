@@ -26,6 +26,13 @@ local function safe_open(action)
   end
 end
 
+local function copy_relative_path_to_clipboard(state)
+  local node = state.tree:get_node()
+  local full_path = node:get_id()
+  local relative_path = vim.fn.fnamemodify(full_path, ":~:.")
+  common_utils.copy_to_clipboard(relative_path)
+end
+
 ---@type LazySpec
 return {
   {
@@ -97,6 +104,7 @@ return {
         mappings = {
           ["<leader>nf"] = "find_in_dir",
           ["<leader>ng"] = "grep_in_dir",
+          ["<leader>yp"] = copy_relative_path_to_clipboard,
           ["K"] = "focus_parent",
           ["D"] = "diff_files",
           [";"] = "open_in_oil",
