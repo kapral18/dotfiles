@@ -113,11 +113,13 @@ return {
         find_in_dir = function(state)
           local node = state.tree:get_node()
           local path = node:get_id()
+          -- close neo-tree
           require("fzf-lua").files({ cwd = path, winopts = winopts.large.vertical })
         end,
         grep_in_dir = function(state)
           local node = state.tree:get_node()
           local path = node:get_id()
+          -- close neo-tree
           require("fzf-lua").live_grep({ cwd = path, winopts = winopts.large.vertical })
         end,
         focus_parent = function(state)
@@ -175,6 +177,7 @@ return {
       },
     },
   },
+
   {
     "mikavilpas/yazi.nvim",
     event = "VeryLazy",

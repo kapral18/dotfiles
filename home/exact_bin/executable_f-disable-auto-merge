@@ -4,7 +4,7 @@
 set -euo pipefail
 
 # Source the utility library
-source "$(dirname "$0")/bash_utils_lib.sh"
+source "$(dirname "$0")/utils/bash_utils_lib.sh"
 
 if [ $# -lt 1 ]; then
   echo "Usage: disable_auto_merge <base_branch> [skip_pr_numbers...]"

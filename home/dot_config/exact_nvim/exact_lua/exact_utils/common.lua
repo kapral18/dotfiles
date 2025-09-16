@@ -99,6 +99,41 @@ function M.file_exists(file_path)
   return stat and stat.type == "file" or false
 end
 
+-- workaround for https://github.com/ibhagwan/fzf-lua/issues/2340#issuecomment-3294232666
+local function open_qf_window(opts)
+  -- If the current window is a float, we need to find a non-float
+  -- window to switch to before opening the quickfix/location list.
+  if vim.api.nvim_win_get_config(0).relative ~= "" then
+    local fzf_win = require("fzf-lua").win.__SELF()
+    local target_win = nil
+    -- Prefer the original window that launched fzf-lua
+    if
+      opts.__CTX
+      and vim.api.nvim_win_is_valid(opts.__CTX.winid)
+      and vim.api.nvim_win_get_config(opts.__CTX.winid).relative == ""
+    then
+      target_win = opts.__CTX.winid
+    else
+      -- Fallback: find the first valid, non-floating, non-fzf window
+      for _, win in ipairs(vim.api.nvim_list_wins()) do
+        if
+          vim.api.nvim_win_is_valid(win)
+          and vim.api.nvim_win_get_config(win).relative == ""
+          and (not fzf_win or win ~= fzf_win.fzf_winid)
+        then
+          target_win = win
+          break
+        end
+      end
+    end
+
+    if target_win then
+      vim.api.nvim_set_current_win(target_win)
+    end
+  end
+  vim.cmd(":copen")
+end
+
 --- Get fzf options for files and grep
 ---@return function
 function M.get_fzf_opts()
@@ -110,6 +145,9 @@ function M.get_fzf_opts()
       defaults = {
         git_icons = false,
         file_icons = false,
+        copen = function(sel, opts)
+          open_qf_window(opts)
+        end,
       },
       winopts = {
         height = 0.50,
@@ -147,7 +185,7 @@ function M.get_fzf_opts()
       },
       previewers = {
         bat = {
-          cmd = "bat-preview",
+          cmd = "f-bat-preview",
           -- set a bat theme, `bat --list-themes`
           theme = "Catppuccin-mocha",
         },

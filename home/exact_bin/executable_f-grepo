@@ -8,8 +8,6 @@ if [ $# -eq 0 ]; then
   exit 1
 fi
 
-EDITOR="${EDITOR:-vim}"
 editor_cmd="$EDITOR +/$1 +'norm! n'"
 
 rg -l "$1" | fzf --bind "enter:execute($editor_cmd {})" --preview "bat --style=numbers --color=always {}"
-
