@@ -1,6 +1,9 @@
 return {
   {
     "nvim-treesitter/nvim-treesitter",
+    lazy = false,
+    branch = "main",
+    build = ":TSUpdate",
     opts = {
       tree_setter = {
         enable = false,
@@ -78,7 +81,7 @@ return {
     opts = {},
   },
   {
-    "echasnovski/mini.pairs",
+    "nvim-mini/mini.pairs",
     enabled = false,
   },
   {
@@ -108,7 +111,7 @@ return {
     end,
   },
   {
-    "echasnovski/mini.ai",
+    "nvim-mini/mini.ai",
     enabled = false,
   },
 }
