@@ -142,13 +142,11 @@ set -x FZF_ALT_C_COMMAND "fd --type d $FD_OPTIONS"
 # GEMINI API Key Configuration
 # ------------------------------------
 
-{{ if eq .isWork true -}}
-
 if type -q pass; and test -z "$GEMINI_API_KEY"
     set -gx GEMINI_API_KEY (pass google/gemini/api/token)
 end
 
-{{ else -}}
+{{ if ne .isWork true -}}
 
 # ------------------------------------
 # OpenAI API Key Configuration
@@ -194,13 +192,10 @@ if type -q pass; and test -z "$PERPLEXITY_API_KEY"
     set -gx PERPLEXITY_API_KEY (pass perplexity/api/token)
 end
 
-{{ end }}
-
 # ------------------------------------
 # Conditional Configurations
 # ------------------------------------
 
-{{ if ne .isWork true -}}
 # Password Store Selection
 function wpass --description "Point PASSWORD_STORE_DIR to work"
     set -gx PASSWORD_STORE_DIR {{ joinPath .chezmoi.homeDir ".password-store-work" }}
