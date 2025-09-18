@@ -31,7 +31,7 @@ return {
     opts = {
       servers = {
         ts_ls = {
-          enable = false,
+          enabled = false,
         },
         -- @deprecated
         tsserver = {
