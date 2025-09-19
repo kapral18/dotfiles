@@ -139,24 +139,7 @@ return {
           end
         end, { "i", "s" }),
 
-        ["<CR>"] = vim.b.copilot_enabled and cmp.mapping.confirm({ select = false }) or cmp.mapping(function(fallback)
-          -- if cmp has a selected item, keep your original confirm behavior
-          if cmp.visible() then
-            cmp.mapping.confirm({ select = false })
-            return
-          end
-
-          -- If Windsurf is enabled and currently waiting, clear it to avoid UI hangs
-          if vim.b.codeium_enabled then
-            local ok_status, status = pcall(vim.fn["codeium#GetStatusString"])
-            if ok_status and status == "*" then
-              pcall(vim.fn["codeium#Clear"])
-            end
-          end
-
-          -- Fallback to normal <CR>
-          fallback()
-        end, { "i", "s" }),
+        ["<CR>"] = cmp.mapping.confirm({ select = false }),
       })
 
       -- works in conjunction with <CR> mapping.confirm({select = false})

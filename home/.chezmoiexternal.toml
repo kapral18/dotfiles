@@ -28,3 +28,12 @@ url = "https://github.com/talwat/lowfi/archive/refs/heads/main.tar.gz"
 stripComponents = 2
 include = ["*/data/*.txt"]
 refreshPeriod = "24h"
+
+[".config/bat/themes"]
+type = "archive"
+url = "https://github.com/catppuccin/bat/archive/refs/heads/main.tar.gz"
+stripComponents = 2
+include = ["*/themes/*"]
+exact = true
+refreshPeriod = "168h"
+
