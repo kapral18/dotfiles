@@ -143,8 +143,6 @@ if type -q pass; and test -z "$GEMINI_API_KEY"
     set -gx GEMINI_API_KEY (pass google/gemini/api/token)
 end
 
-{{ if ne .isWork true -}}
-
 # ------------------------------------
 # OpenAI API Key Configuration
 # ------------------------------------
@@ -189,6 +187,7 @@ if type -q pass; and test -z "$PERPLEXITY_API_KEY"
     set -gx PERPLEXITY_API_KEY (pass perplexity/api/token)
 end
 
+{{ if ne .isWork true -}}
 # ------------------------------------
 # Conditional Configurations
 # ------------------------------------
