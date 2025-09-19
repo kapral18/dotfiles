@@ -110,7 +110,7 @@ local providers = {
 
   -- Cloudflare Workers AI
   cloudflare = {
-    url = ("https://api.cloudflare.com/client/v4/accounts/%s/ai/run/@cf/openai/gpt-oss-120b"):format(
+    url = ("https://api.cloudflare.com/client/v4/accounts/%s/ai/run/@cf/qwen/qwen2.5-coder-32b-instruct"):format(
       os.getenv("CLOUDFLARE_WORKERS_AI_ACCOUNT_ID") or ""
     ),
     headers = {
@@ -142,7 +142,7 @@ local providers = {
     },
     payload = function(diff)
       return {
-        model = (os.getenv("OPENROUTER_MODEL") or "openai/gpt-5-nano"),
+        model = (os.getenv("OPENROUTER_MODEL") or "google/gemini-2.5-flash"),
         messages = {
           { role = "system", content = SYSTEM_MESSAGE },
           { role = "user", content = PROMPT .. diff },

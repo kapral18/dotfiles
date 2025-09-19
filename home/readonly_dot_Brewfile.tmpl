@@ -713,11 +713,11 @@ brew "openssl"
 # Command-line AI tools and LLM clients
 # ==============================================================================
 
-{{ if ne .isWork true -}}
-# Terminal GPT client for ChatGPT, Claude, and other AI providers
-# https://github.com/aandrew-me/tgpt
-brew "tgpt"
-{{ end -}}
+tap "sst/tap"
+
+# AI code agent
+# https://github.com/sst/opencode
+brew "sst/tap/opencode"
 
 # ==============================================================================
 # APPLICATIONS (CASKS)
