@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 set -e
 
 # Load icon mappings
@@ -13,20 +12,42 @@ apply_icon() {
   local app_path="/Applications/${app}.app"
   local icon_path="${ICON_DIR}/${icon}"
 
-  if [ -f "$icon_path" ] && [ -d "$app_path" ]; then
-    fileicon set "$app_path" "$icon_path"
-    echo "Applied custom icon ${icon} to $app"
-  else
-    echo "Error: Icon or application not found for $app"
+  # Verify inputs exist
+  if [ ! -f "$icon_path" ]; then
+    echo "Error: Icon file not found: $icon_path"
+    return 1
   fi
+
+  if [ ! -d "$app_path" ]; then
+    echo "Error: Application not found: $app_path"
+    return 1
+  fi
+
+  # Clear existing custom icon first
+  fileicon remove "$app_path"
+
+  # Apply new icon
+  if ! fileicon set "$app_path" "$icon_path"; then
+    echo "Error: Failed to set icon for $app"
+    return 1
+  fi
+
+  # Refresh system caches
+  touch "$app_path"
+
+  # Force refresh of Dock and Finder
+  killall Dock &>/dev/null || true
+  killall Finder &>/dev/null || true
+
+  echo "Successfully applied custom icon ${icon} to $app"
 }
 
 # Read and apply icon mappings
 for entry in $(yq e '.icons | to_entries | .[] | .key + ":" + .value' "$ICON_MAPPING"); do
   app=$(echo "$entry" | cut -d':' -f1)
   icon=$(echo "$entry" | cut -d':' -f2)
-  apply_icon "$app" "$icon"
-done
 
-# Force a refresh of the Dock
-killall Dock
+  if ! apply_icon "$app" "$icon"; then
+    echo "Warning: Failed to apply icon for $app"
+  fi
+done
