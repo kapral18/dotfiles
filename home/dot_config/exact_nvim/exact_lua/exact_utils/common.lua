@@ -186,8 +186,6 @@ function M.get_fzf_opts()
       previewers = {
         bat = {
           cmd = "f-bat-preview",
-          -- set a bat theme, `bat --list-themes`
-          theme = "Catppuccin-mocha",
         },
       },
       files = {

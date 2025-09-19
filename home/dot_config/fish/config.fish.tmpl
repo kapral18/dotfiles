@@ -53,9 +53,6 @@ set -x SSH_AUTH_SOCK "$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/
 set -x GPG_TTY (tty)
 {{ end -}}
 
-## BAT Theme
-set -x BAT_THEME Catppuccin-mocha
-
 ## Ollama Settings
 set -x OLLAMA_NUM_PARALLEL 10
 set -x OLLAMA_MAX_QUEUE 2048
@@ -213,6 +210,7 @@ end
 if status --is-interactive
 
     ## Aliases
+    alias cat=bat
     alias c=chezmoi
     alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l $FD_OPTIONS'
     alias g=git
