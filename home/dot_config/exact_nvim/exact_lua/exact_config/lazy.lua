@@ -62,6 +62,7 @@ require("lazy").setup({
     { import = "plugins.lualine" },
     { import = "plugins.markdown" },
     { import = "plugins.marks" },
+    { import = "plugins.mason-workaround" },
     { import = "plugins.multi-cursors" },
     { import = "plugins.noice" },
     { import = "plugins.numb" },

@@ -78,7 +78,7 @@ return {
     opts = {},
   },
   {
-    "nvim-mini/mini.pairs",
+    "echasnovski/mini.pairs",
     enabled = false,
   },
   {
@@ -108,7 +108,7 @@ return {
     end,
   },
   {
-    "nvim-mini/mini.ai",
+    "echasnovski/mini.ai",
     enabled = false,
   },
 }

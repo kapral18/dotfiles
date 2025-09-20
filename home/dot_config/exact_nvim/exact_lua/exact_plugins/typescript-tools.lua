@@ -160,7 +160,7 @@ return {
     optional = true,
     dependencies = {
       {
-        "mason-org/mason.nvim",
+        "williamboman/mason.nvim",
         opts = function(_, opts)
           opts.ensure_installed = opts.ensure_installed or {}
           table.insert(opts.ensure_installed, "js-debug-adapter")
@@ -170,10 +170,6 @@ return {
     opts = function()
       local dap = require("dap")
       if not dap.adapters["pwa-node"] then
-        pcall(require, "mason")
-        local root = vim.env.MASON or (vim.fn.stdpath("data") .. "/mason")
-        local path = root .. "/packages/js-debug-adapter/js-debug/src/dapDebugServer.js"
-
         require("dap").adapters["pwa-node"] = {
           type = "server",
           host = "localhost",
@@ -182,7 +178,8 @@ return {
             command = "node",
             -- 💀 Make sure to update this path to point to your installation
             args = {
-              path,
+              require("mason-registry").get_package("js-debug-adapter"):get_install_path()
+                .. "/js-debug/src/dapDebugServer.js",
               "${port}",
             },
           },
@@ -225,7 +222,7 @@ return {
     end,
   },
   {
-    "nvim-mini/mini.icons",
+    "echasnovski/mini.icons",
     opts = {
       file = {
         [".eslintrc.js"] = { glyph = "󰱺", hl = "MiniIconsYellow" },
