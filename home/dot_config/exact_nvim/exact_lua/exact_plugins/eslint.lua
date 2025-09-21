@@ -4,20 +4,17 @@ return {
   {
     "neovim/nvim-lspconfig",
     opts = {
-      ---@type lspconfig.options
+      ---@type table<string, vim.lsp.Config>
       servers = {
         eslint = {
           settings = {
-            workingDirectories = { mode = "auto" },
+            -- temporary until https://github.com/microsoft/vscode-eslint/pull/2076 is merged
+            workingDirectory = { mode = "location" },
             codeActionOnSave = {
               mode = "all",
-              enable = true,
             },
             format = true,
           },
-          root_dir = function()
-            return common_utils.get_project_root()
-          end,
         },
       },
       setup = {
