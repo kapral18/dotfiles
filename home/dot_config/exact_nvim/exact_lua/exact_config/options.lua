@@ -146,7 +146,7 @@ vim.o.spell = false
 
 vim.o.foldenable = false
 
-vim.lsp.set_log_level("off")
+-- vim.lsp.set_log_level("off")
 
 vim.g.snacks_animate = false
 
@@ -154,5 +154,4 @@ vim.g.snacks_animate = false
 
 vim.g.lazyvim_cmp = "nvim-cmp"
 vim.g.lazyvim_picker = "fzf"
-
-vim.g.neovide_input_macos_option_key_is_meta = "only_left"
+vim.g.lazyvim_prettier_needs_config = true
