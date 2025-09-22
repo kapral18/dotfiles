@@ -19,11 +19,9 @@ brew "icu4c"
 
 tap "charmbracelet/tap"
 
-{{ if ne .isWork true -}}
 # A powerful terminal-based AI assistant for developers
 # https://charm.sh/crush
 brew "crush"
-{{ end -}}
 
 # Generate images of code and terminal output
 # https://github.com/charmbracelet/freeze
@@ -472,11 +470,9 @@ brew "tcl-tk"
 # Docker and container management tools
 # ==============================================================================
 
-{{ if ne .isWork true -}}
 # Container runtimes on MacOS (and Linux) with minimal setup
 # https://github.com/abiosoft/colima/blob/main/README.md
 brew "colima"
-{{ end -}}
 
 # Simple terminal UI for both docker and docker-compose
 # https://github.com/jesseduffield/lazydocker
@@ -772,10 +768,6 @@ cask "whatsapp"
 # https://slack.com/
 cask "slack"
 
-# RSS/Atom news aggregator
-# https://hyliu.me/fluent-reader/
-cask "fluent-reader"
-
 # Client for the Google Drive storage service
 # https://www.google.com/drive/
 cask "google-drive"
@@ -783,10 +775,6 @@ cask "google-drive"
 # Graphically shows disk usage within a file system
 # https://grandperspectiv.sourceforge.io/
 cask "grandperspective"
-
-# Menu bar manager
-# https://github.com/jordanbaird/Ice
-cask "jordanbaird-ice"
 
 # Open-source software for live streaming and screen recording
 # https://obsproject.com/
@@ -824,6 +812,14 @@ cask "appcleaner"
 # Monitors common persistence locations. Security tool
 # https://objective-see.org/products/blockblock.html
 cask "blockblock"
+
+# RSS/Atom news aggregator
+# https://hyliu.me/fluent-reader/
+cask "fluent-reader"
+
+# Menu bar manager
+# https://github.com/jordanbaird/Ice
+cask "jordanbaird-ice"
 
 # Tool to show what is persistently installed on the computer
 # https://objective-see.org/products/knockknock.html
