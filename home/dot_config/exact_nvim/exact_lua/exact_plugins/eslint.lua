@@ -1,5 +1,3 @@
-local common_utils = require("utils.common")
-
 return {
   {
     "neovim/nvim-lspconfig",
