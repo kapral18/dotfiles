@@ -62,17 +62,8 @@ local resizeBottom = function()
   win:setFrame(f, 0)
 end
 
-{{ if eq .isWork true -}}
-hs.hotkey.bind(Hyper, "y", resizeLeft)
-hs.hotkey.bind(Hyper, "u", resizeBottom)
-hs.hotkey.bind(Hyper, "i", resizeTop)
-hs.hotkey.bind(Hyper, "o", resizeRight)
-hs.hotkey.bind(Hyper, "p", resizeFull)
-{{ else -}}
 hs.hotkey.bind(Hyper, "h", resizeLeft)
 hs.hotkey.bind(Hyper, "j", resizeBottom)
 hs.hotkey.bind(Hyper, "k", resizeTop)
 hs.hotkey.bind(Hyper, "l", resizeRight)
 hs.hotkey.bind(Hyper, "m", resizeFull)
-{{ end -}}
-
