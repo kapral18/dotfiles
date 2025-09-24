@@ -797,6 +797,16 @@ cask "wpsoffice"
 cask "windsurf"
 {{ end -}}
 
+{{ if .isWork -}}
+# AI-powered code editor
+# https://cursor.so/
+cask "cursor"
+
+# Command-line interface for Cursor
+# https://cursor.so/
+brew "cursor-cli"
+{{ end -}}
+
 # Command-line interface for 1Password
 # https://developer.1password.com/docs/cli
 cask "1password-cli"
