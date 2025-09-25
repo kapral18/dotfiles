@@ -226,6 +226,14 @@
   summary = true
   # https://www.ductile.systems/zdiff3/
   conflictStyle = zdiff3
+  tool = git-conflict
+
+[mergetool]
+    keepBackup = false
+
+[mergetool "git-conflict"]
+    cmd = nvim +DiffviewOpen
+    trustExitCode = true
 
 [rebase]
   autoStash = true
