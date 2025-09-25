@@ -3,7 +3,7 @@
 set -euo pipefail
 
 TRIGGER_STRING="succ kbn/es setup complete"
-LOGFILE="/tmp/es.log"
+LOGFILE="/tmp/es-feat.log"
 
 ES_DATA_FOLDER=${1:-"v9.2"}
 ES_DATA_PATH="$HOME/work/kibana/es_data/$ES_DATA_FOLDER"
