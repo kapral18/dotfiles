@@ -8,6 +8,26 @@ LOGFILE="/tmp/es-main.log"
 ES_DATA_FOLDER=${1:-"main-cluster"}
 ES_DATA_PATH="$HOME/work/kibana/es_data/$ES_DATA_FOLDER"
 
+# Build additional ES flags from remaining arguments
+ES_FLAGS=""
+shift || true  # Remove first argument (ES_DATA_FOLDER), ignore error if no args
+
+# Handle -E key=value format
+while [[ $# -gt 0 ]]; do
+  if [[ "$1" == "-E" ]]; then
+    if [[ $# -gt 1 ]]; then
+      ES_FLAGS="$ES_FLAGS -E $2"
+      shift 2
+    else
+      echo "Error: -E flag requires a value" >&2
+      exit 1
+    fi
+  else
+    echo "Error: Additional arguments must be in -E key=value format" >&2
+    exit 1
+  fi
+done
+
 # Capture current tmux session and window info
 TMUX_SESSION=$(tmux display-message -p '#S')
 TMUX_WINDOW=$(tmux display-message -p '#I')
@@ -23,4 +43,4 @@ yarn kbn bootstrap
   done
 ) &
 
-yarn es snapshot -E node.name=main -E http.port=9201 -E transport.port=9301 -E path.data="$ES_DATA_PATH" 2>&1 | tee -a "$LOGFILE"
+yarn es snapshot -E node.name=main -E http.port=9201 -E transport.port=9301 -E path.data="$ES_DATA_PATH"${ES_FLAGS} 2>&1 | tee -a "$LOGFILE"
