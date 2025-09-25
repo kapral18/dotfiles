@@ -5,12 +5,20 @@ set -euo pipefail
 TRIGGER_STRING="succ kbn/es setup complete"
 LOGFILE="/tmp/es-feat.log"
 
-ES_DATA_FOLDER=${1:-"v9.2"}
+# Check if first argument is -E flag or data folder
+if [[ $# -gt 0 && "$1" == "-E" ]]; then
+  # First argument is -E, use default data folder
+  ES_DATA_FOLDER="v9.2"
+else
+  # First argument is data folder (or no arguments)
+  ES_DATA_FOLDER=${1:-"v9.2"}
+  shift || true  # Remove first argument if it exists
+fi
+
 ES_DATA_PATH="$HOME/work/kibana/es_data/$ES_DATA_FOLDER"
 
 # Build additional ES flags from remaining arguments
 ES_FLAGS=""
-shift || true  # Remove first argument (ES_DATA_FOLDER), ignore error if no args
 
 # Handle -E key=value format
 while [[ $# -gt 0 ]]; do
