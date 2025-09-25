@@ -10,4 +10,4 @@ function __complete_es_data_folders
     end
 end
 
-complete --no-files --exclusive --command start-main-kbn --condition __fish_is_first_token --arguments '(__complete_es_data_folders)'
+complete --no-files --exclusive --command f-start-main-kbn --condition __fish_is_first_token --arguments '(__complete_es_data_folders)'
