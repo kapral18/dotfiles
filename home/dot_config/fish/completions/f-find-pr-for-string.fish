@@ -1,0 +1,1 @@
+complete -c f-find-pr-for-string -f -a "(__fish_complete_directories)" -d "Search path"

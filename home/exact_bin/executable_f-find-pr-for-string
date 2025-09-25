@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Description: Prepare files for language models
+
+set -euo pipefail
+
+regex="$1"
+search_path="$2"
+
+usage="Usage: f-find-pr-for-string <regex> <search_path>"
+
+if [ -z "$regex" ]; then
+  echo "Error: regex is required" >&2
+  echo
+  echo "$usage"
+  exit 1
+fi
+
+if [ -z "$search_path" ]; then
+  echo "Error: search_path is required" >&2
+  echo
+  echo "$usage"
+  exit 1
+fi
+
+git ls-files -z src/platform/plugins/shared/management/ |
+  xargs -I{} -0 -n1 -P10 sh -c 'git log --oneline --follow -G "$0" -- "$1"' "$regex" {} |
+  awk '!seen[$0]++' |
+  fzf |
+  sed -E 's/.*\(#([0-9]+)\)$/\1/' |
+  xargs -r gh pr view -w
