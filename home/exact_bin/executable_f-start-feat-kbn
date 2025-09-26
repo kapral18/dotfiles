@@ -8,11 +8,11 @@ LOGFILE="/tmp/es-feat.log"
 # Check if first argument is -E flag or data folder
 if [[ $# -gt 0 && "$1" == "-E" ]]; then
   # First argument is -E, use default data folder
-  ES_DATA_FOLDER="v9.2"
+  ES_DATA_FOLDER="feat-cluster"
 else
   # First argument is data folder (or no arguments)
-  ES_DATA_FOLDER=${1:-"v9.2"}
-  shift || true  # Remove first argument if it exists
+  ES_DATA_FOLDER=${1:-"feat-cluster"}
+  shift || true # Remove first argument if it exists
 fi
 
 ES_DATA_PATH="$HOME/work/kibana/es_data/$ES_DATA_FOLDER"
