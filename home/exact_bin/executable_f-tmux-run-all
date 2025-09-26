@@ -1,0 +1,164 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+function show_help() {
+  cat <<EOF
+Usage: f-tmux-run-all <pattern> [exclude_pattern] <command>
+
+Run a command in multiple tmux sessions matching a pattern.
+
+Arguments:
+    pattern         Pattern to match session names (supports wildcards)
+    exclude_pattern Optional pattern to exclude sessions (supports wildcards)
+    command         Command to run in matching sessions
+
+Examples:
+    f-tmux-run-all "work-*" "git status"
+    f-tmux-run-all "dev-*" "*test*" "npm run build"
+    f-tmux-run-all "*" "main" "echo 'hello world'"
+
+Notes:
+    - Uses shell pattern matching (*, ?, [])
+    - If exclude_pattern is omitted, no sessions are excluded
+    - Command is executed in the first window of each matching session
+    - Sessions that don't exist or aren't accessible are skipped
+EOF
+}
+
+function log_info() {
+  echo "ℹ️  $1" >&2
+}
+
+function log_error() {
+  echo "❌ $1" >&2
+}
+
+function validate_tmux() {
+  if ! command -v tmux >/dev/null 2>&1; then
+    log_error "tmux is not installed or not in PATH"
+    exit 1
+  fi
+
+  if ! tmux list-sessions >/dev/null 2>&1; then
+    log_error "No tmux server is running or no sessions exist"
+    exit 1
+  fi
+}
+
+function get_matching_sessions() {
+  local pattern="$1"
+  local exclude_pattern="${2:-}"
+
+  local sessions
+  sessions=$(tmux list-sessions -F '#{session_name}' 2>/dev/null || true)
+
+  if [[ -z "$sessions" ]]; then
+    return 0
+  fi
+
+  local matching_sessions=()
+
+  while IFS= read -r session; do
+    # Check if session matches the include pattern
+    if [[ $session == $pattern ]]; then
+      # Check if session should be excluded
+      if [[ -n "$exclude_pattern" && $session == $exclude_pattern ]]; then
+        continue
+      fi
+      matching_sessions+=("$session")
+    fi
+  done <<<"$sessions"
+
+  # Only print if we have matches
+  if [[ ${#matching_sessions[@]} -gt 0 ]]; then
+    printf '%s\n' "${matching_sessions[@]}"
+  fi
+}
+
+function run_command_in_session() {
+  local session="$1"
+  local command="$2"
+
+  log_info "Running command in session '$session'"
+
+  if tmux send-keys -t "$session" "$command" Enter 2>/dev/null; then
+    return 0
+  else
+    log_error "Failed to send command to session '$session'"
+    return 1
+  fi
+}
+
+function main() {
+  local pattern=""
+  local exclude_pattern=""
+  local command=""
+
+  # Parse arguments
+  case $# in
+  0 | 1)
+    show_help
+    exit 1
+    ;;
+  2)
+    pattern="$1"
+    command="$2"
+    ;;
+  3)
+    pattern="$1"
+    exclude_pattern="$2"
+    command="$3"
+    ;;
+  *)
+    log_error "Too many arguments"
+    show_help
+    exit 1
+    ;;
+  esac
+
+  # Handle help flags
+  if [[ "$pattern" == "-h" || "$pattern" == "--help" ]]; then
+    show_help
+    exit 0
+  fi
+
+  # Validate tmux is available
+  validate_tmux
+
+  # Get matching sessions
+  local matching_sessions
+  mapfile -t matching_sessions < <(get_matching_sessions "$pattern" "$exclude_pattern")
+
+  if [[ ${#matching_sessions[@]} -eq 0 ]]; then
+    log_error "No sessions match pattern '$pattern'"
+    if [[ -n "$exclude_pattern" ]]; then
+      log_error "  (excluding pattern '$exclude_pattern')"
+    fi
+    exit 1
+  fi
+
+  log_info "Found ${#matching_sessions[@]} matching session(s)"
+
+  # Run command in each matching session
+  local success_count=0
+  local failure_count=0
+
+  for session in "${matching_sessions[@]}"; do
+    if run_command_in_session "$session" "$command"; then
+      success_count=$((success_count + 1))
+    else
+      failure_count=$((failure_count + 1))
+    fi
+  done
+
+  # Summary
+  echo
+  log_info "Summary: $success_count successful, $failure_count failed"
+
+  if [[ $failure_count -gt 0 ]]; then
+    exit 1
+  fi
+}
+
+main "$@"
