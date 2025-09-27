@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+name="git-sandbox-$(date +%Y%m%d-%H%M%S)"
+main_n=6; rel_at=2; rel_n=3; feat_at=5; feat_n=6
+
+mkdir -p "$name" && cd "$name"
+git init -b main >/dev/null
+git config user.name Sandbox
+git config user.email sandbox@example.com
+
+mkdir -p src feature release
+echo "# Sandbox" > README.md
+: > src/app.txt
+
+ids=()
+for i in $(seq 1 $main_n); do
+  echo "m$i" >> src/app.txt
+  git add -A >/dev/null
+  git commit -m "m$i" >/dev/null
+  ids+=("$(git rev-parse HEAD)")
+done
+
+release_commit="${ids[$((rel_at-1))]}"
+feature_commit="${ids[$((feat_at-1))]}"
+
+git switch -c release "$release_commit" >/dev/null
+: > release/notes.txt
+for i in $(seq 1 $rel_n); do
+  echo "r$i" >> release/notes.txt
+  git add -A >/dev/null
+  git commit -m "r$i" >/dev/null
+done
+
+git switch main >/dev/null
+git switch -c feature "$feature_commit" >/dev/null
+: > feature/feature.txt
+for i in $(seq 1 $feat_n); do
+  echo "f$i" >> feature/feature.txt
+  git add -A >/dev/null
+  git commit -m "f$i" >/dev/null
+done
+
+git log --oneline --graph --decorate --all
