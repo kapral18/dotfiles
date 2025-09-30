@@ -8,6 +8,13 @@ end, {
   nargs = "*",
 })
 
+vim.api.nvim_create_user_command("QFDedupe", function(opts)
+  qf.dedupe_qf_by_path()
+end, {
+  desc = "Dedupe quickfix list by path (keep first)",
+  nargs = 0,
+})
+
 return {
   {
     "romainl/vim-qf",

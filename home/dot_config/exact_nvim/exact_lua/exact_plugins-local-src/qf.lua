@@ -119,4 +119,28 @@ function M.copy_qf_paths_to_clipboard()
   end
 end
 
+function M.dedupe_qf_by_path()
+  local info = vim.fn.getqflist({ items = 1 })
+  local items = info.items or {}
+  local base_dir = info.directory
+
+  local seen = {}
+  local deduped = {}
+
+  for _, item in ipairs(items) do
+    local path = extract_path_from_item(item, base_dir)
+
+    if path and not seen[path] then
+      seen[path] = true
+      table.insert(deduped, item)
+    end
+  end
+
+  vim.fn.setqflist(deduped, "r")
+  vim.notify(
+    string.format("Deduped: %d → %d items", #items, #deduped),
+    vim.log.levels.INFO
+  )
+end
+
 return M
