@@ -83,7 +83,7 @@ M.config = {
   cache_ttl = CACHE_TTL_24H,
   show_search_progress = true,
   fd_extra_args = { "--hidden" },
-  rg_extra_args = { "--hidden" },
+  rg_extra_args = { "--hidden", "--smart-case" },
 }
 
 local function resolve_path(path, base_dir)
