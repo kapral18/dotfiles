@@ -68,6 +68,29 @@ function M.copy_to_clipboard(text)
   handle:close()
 end
 
+--- Determine if a path is absolute (supports POSIX and Windows forms)
+---@param path string|nil
+---@return boolean
+function M.is_absolute_path(path)
+  return type(path) == "string" and (path:match("^/") ~= nil or path:match("^%a:[/\\]") ~= nil)
+end
+
+--- Normalize a filesystem path, optionally resolving relative to a base directory
+---@param path string|nil
+---@param base_dir string|nil
+---@return string|nil
+function M.normalize_path(path, base_dir)
+  if type(path) ~= "string" or path == "" then
+    return nil
+  end
+
+  if base_dir and base_dir ~= "" and not M.is_absolute_path(path) then
+    path = base_dir .. "/" .. path
+  end
+
+  return vim.fn.fnamemodify(path, ":p")
+end
+
 --- Check if a file is an image
 ---@param file_path string
 ---@return boolean
@@ -97,6 +120,54 @@ end
 function M.file_exists(file_path)
   local stat = vim.uv.fs_stat(file_path)
   return stat and stat.type == "file" or false
+end
+
+--- Safely read file contents
+---@param path string File path
+---@return string|nil content File content or nil
+---@return string|nil error Error message if failed
+function M.safe_file_read(path)
+  local file = io.open(path, "r")
+  if not file then
+    return nil, "Could not open file for reading: " .. path
+  end
+  local content = file:read("*a")
+  file:close()
+  return content, nil
+end
+
+--- Safely write content to file
+---@param path string File path
+---@param content string Content to write
+---@param mode string|nil File mode (default: "w")
+---@return boolean success True if successful
+---@return string|nil error Error message if failed
+function M.safe_file_write(path, content, mode)
+  mode = mode or "w"
+  local file = io.open(path, mode)
+  if not file then
+    return false, "Could not open file for writing: " .. path
+  end
+  file:write(content)
+  file:close()
+  return true, nil
+end
+
+--- Safely get user input with pcall protection
+---@param prompt string|table Prompt string or options table
+---@param callback fun(input: string|nil) Callback function
+function M.safe_input(prompt, callback)
+  local opts = type(prompt) == "string" and { prompt = prompt } or prompt
+  local ok, result = pcall(vim.fn.input, opts)
+  if ok and result and result ~= "" then
+    callback(result)
+  end
+end
+
+--- Get the plugin source directory path
+---@return string
+function M.get_plugin_src_dir()
+  return vim.fn.stdpath("config") .. "/lua/plugins-local-src"
 end
 
 -- workaround for https://github.com/ibhagwan/fzf-lua/issues/2340#issuecomment-3294232666

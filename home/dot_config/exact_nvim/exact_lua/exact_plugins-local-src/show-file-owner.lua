@@ -64,43 +64,30 @@ local function get_cached_codeowners()
     return cache.codeowners_data
   end
 
-  -- Parse and cache CODEOWNERS
   local codeowners = {}
-  for
-    line --[[@as string ]]
-  in io.lines(codeowners_file) do
-    line = line --[[ @as string ]]
-    if not line:match("^%s*#") and not line:match("^%s*$") then
-      local pattern, rest = line:match("([^%s]+)%s+(.+)")
-      if pattern and rest then
-        -- Extract owners by matching everything that looks like an owner (@username or team)
-        -- until we hit a comment that's clearly a comment (# followed by space or text that's not an owner)
-        local owners_part = ""
-        local i = 1
-        while i <= #rest do
-          local char = rest:sub(i, i)
-          if char == "#" then
-            -- Check if this # is followed by a space or end of line (indicating a comment)
-            local next_char = rest:sub(i + 1, i + 1)
-            if next_char == "" or next_char:match("%s") then
-              break -- This is a comment, stop here
-            end
-          end
-          owners_part = owners_part .. char
-          i = i + 1
-        end
-
-        owners_part = owners_part:gsub("%s+$", "") -- trim trailing whitespace
-        if owners_part ~= "" then
-          local globbed_pattern = slash_stripped_glob_to_lua_pattern(pattern)
-          table.insert(codeowners, {
-            pattern = globbed_pattern,
-            owners = owners_part,
-            specificity = #globbed_pattern,
-          })
-        end
-      end
+  for line in io.lines(codeowners_file) do
+    if line:match("^%s*#") or line:match("^%s*$") then
+      goto continue
     end
+
+    local pattern, owners_text = line:match("^(%S+)%s+(.+)$")
+    if not pattern or not owners_text then
+      goto continue
+    end
+
+    local owners_part = owners_text:match("^([^#]*)") or owners_text
+    owners_part = owners_part:gsub("%s+$", "")
+
+    if owners_part ~= "" then
+      local globbed_pattern = slash_stripped_glob_to_lua_pattern(pattern)
+      table.insert(codeowners, {
+        pattern = globbed_pattern,
+        owners = owners_part,
+        specificity = #globbed_pattern,
+      })
+    end
+
+    ::continue::
   end
 
   -- Sort patterns by specificity (longer patterns first)
@@ -125,8 +112,7 @@ function M.get_file_owner(file_path)
     return nil
   end
 
-  -- Check cache first
-  if cache.owner_cache[file_path] then
+  if cache.owner_cache[file_path] ~= nil then
     return cache.owner_cache[file_path]
   end
 

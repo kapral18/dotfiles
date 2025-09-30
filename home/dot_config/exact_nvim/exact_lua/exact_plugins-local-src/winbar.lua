@@ -4,6 +4,16 @@ local M = {}
 local MAX_BUFFERLINE_COMPONENTS = 3
 local FALLBACK_DISPLAY = " "
 
+-- Cache for strdisplaywidth results
+local width_cache = setmetatable({}, {
+  __mode = "k",
+  __index = function(t, str)
+    local width = vim.fn.strdisplaywidth(str)
+    t[str] = width
+    return width
+  end,
+})
+
 ---Get the relative path from current working directory
 ---@return string|nil relative_path The path relative to CWD, or nil if no path
 ---@return boolean is_in_cwd Whether the file is within the current working directory
@@ -112,8 +122,8 @@ end
 ---@param trailing_sep string Trailing separator string
 ---@return string fallback_content Fallback content that fits within available width
 local function handle_truncation_fallback(available_width, ellipsis, trailing_sep)
-  local ellipsis_width = vim.fn.strdisplaywidth(ellipsis)
-  local trailing_sep_width = vim.fn.strdisplaywidth(trailing_sep)
+  local ellipsis_width = width_cache[ellipsis]
+  local trailing_sep_width = width_cache[trailing_sep]
 
   if ellipsis_width + trailing_sep_width <= available_width then
     return ellipsis .. trailing_sep
@@ -135,9 +145,9 @@ local function build_truncated_content(winbar_components, max_content_width, pat
 
   for i = #winbar_components, 1, -1 do
     local component = winbar_components[i]
-    local component_width = vim.fn.strdisplaywidth(component)
+    local component_width = width_cache[component]
     local sep_to_add = (current_content_width > 0) and path_sep or ""
-    local sep_width = vim.fn.strdisplaywidth(sep_to_add)
+    local sep_width = width_cache[sep_to_add]
 
     if component_width + sep_width + current_content_width <= max_content_width then
       truncated_content = component .. sep_to_add .. truncated_content
@@ -162,8 +172,8 @@ local function format_winbar_path(winbar_components, path_info)
   local available_width = vim.fn.winwidth(0)
   local trailing_sep = path_info.path_sep
   local ellipsis = "..."
-  local trailing_sep_width = vim.fn.strdisplaywidth(trailing_sep)
-  local ellipsis_width = vim.fn.strdisplaywidth(ellipsis)
+  local trailing_sep_width = width_cache[trailing_sep]
+  local ellipsis_width = width_cache[ellipsis]
 
   if available_width < 1 then
     return FALLBACK_DISPLAY
@@ -171,7 +181,7 @@ local function format_winbar_path(winbar_components, path_info)
 
   -- Check if full content fits without truncation
   local full_winbar_string = table.concat(winbar_components, path_info.path_sep)
-  local full_winbar_width = vim.fn.strdisplaywidth(full_winbar_string)
+  local full_winbar_width = width_cache[full_winbar_string]
 
   if full_winbar_width + trailing_sep_width <= available_width then
     return full_winbar_string .. trailing_sep

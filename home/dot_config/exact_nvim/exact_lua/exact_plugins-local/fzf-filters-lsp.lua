@@ -93,23 +93,34 @@ local file_ignore_pattern_presets = {
   none = { files = { ["No filtering"] = {} }, content = { ["No filtering"] = {} } },
 }
 
--- Helper function to handle custom input
----@param patterns string[]|string The patterns to choose from or custom input trigger
----@param callback fun(final_patterns: string[]) Callback function to handle the final patterns
 local function handle_custom_input(patterns, callback)
   if patterns == "$$input$$" then
-    vim.ui.input({
-      prompt = "Enter pattern: ",
-    }, function(custom_pattern)
-      if custom_pattern and custom_pattern ~= "" then
-        callback({ custom_pattern })
-      else
-        callback({})
-      end
-    end)
+    local ok, custom_pattern = pcall(vim.ui.input, { prompt = "Enter pattern: " })
+    if ok and custom_pattern and custom_pattern ~= "" then
+      callback({ custom_pattern })
+    else
+      callback({})
+    end
   else
     callback(patterns --[[@as string[] ]])
   end
+end
+
+local function select_pattern_with_custom(presets, prompt, callback)
+  local pattern_labels = vim.tbl_keys(presets)
+  table.sort(pattern_labels)
+
+  vim.ui.select(pattern_labels, {
+    prompt = prompt,
+    kind = "pattern_select",
+  }, function(choice)
+    if not choice then
+      return
+    end
+
+    local selected = presets[choice]
+    handle_custom_input(selected, callback)
+  end)
 end
 
 -- Enhanced LSP function with owner information in entries
@@ -125,69 +136,35 @@ local function enhanced_lsp_function(lsp_function, method_name, opts)
   local content_presets = file_ignore_pattern_presets[ft] and file_ignore_pattern_presets[ft].content
     or file_ignore_pattern_presets.none.content
 
-  -- Get available file patterns
-  local file_pattern_labels = vim.tbl_keys(file_presets)
-  table.sort(file_pattern_labels)
-
-  vim.ui.select(file_pattern_labels, {
-    prompt = "Select file ignore patterns:",
-    kind = "file_patterns",
-  }, function(file_choice)
-    if not file_choice then
-      return
-    end
-
-    local selected_file_patterns = file_presets[file_choice]
-
-    handle_custom_input(selected_file_patterns, function(final_file_patterns)
-      -- Get available content patterns
-      local content_pattern_labels = vim.tbl_keys(content_presets) --[[@as string[] ]]
-      table.sort(content_pattern_labels)
-
-      vim.ui.select(content_pattern_labels, {
-        prompt = "Select content filter:",
-        kind = "content_patterns",
-      }, function(content_choice)
-        if not content_choice then
-          return
-        end
-
-        local selected_content_patterns = content_presets[content_choice]
-
-        handle_custom_input(selected_content_patterns, function(final_content_patterns)
-          local content_filter_predicate
-          if final_content_patterns and #final_content_patterns > 0 then
-            -- Build content filter predicate that works with LSP item objects
-            ---@param item LspItem The LSP item object
-            ---@return boolean true to keep the item, false to filter it out
-            content_filter_predicate = function(item)
-              -- The item is a table with filename, lnum, col, text, etc.
-              local text = item.text or ""
-              for _, pattern in ipairs(final_content_patterns) do
-                if text:match(pattern) then
-                  return false -- drop this entry
-                end
-              end
-              return true -- keep
+  select_pattern_with_custom(file_presets, "Select file ignore patterns:", function(final_file_patterns)
+    select_pattern_with_custom(content_presets, "Select content filter:", function(final_content_patterns)
+      local content_filter_predicate
+      if final_content_patterns and #final_content_patterns > 0 then
+        ---@param item LspItem The LSP item object
+        ---@return boolean true to keep the item, false to filter it out
+        content_filter_predicate = function(item)
+          local text = item.text or ""
+          for _, pattern in ipairs(final_content_patterns) do
+            if text:match(pattern) then
+              return false
             end
           end
+          return true
+        end
+      end
 
-          -- Call the fzf-lua LSP function with enhanced configuration
-          local fzf_opts = vim.tbl_deep_extend("force", common_utils.get_fzf_opts()(), {
-            prompt = opts.prompt_name or method_name,
-            multiline = 3, -- Now we have 3 lines: owners, file info, code content
-            file_ignore_patterns = final_file_patterns,
-            jump1 = true,
-            ignore_current_line = true,
-            unique_line_items = true,
-            regex_filter = content_filter_predicate,
-            formatter = "owner_fmt",
-          })
+      local fzf_opts = vim.tbl_deep_extend("force", common_utils.get_fzf_opts()(), {
+        prompt = opts.prompt_name or method_name,
+        multiline = 3,
+        file_ignore_patterns = final_file_patterns,
+        jump1 = true,
+        ignore_current_line = true,
+        unique_line_items = true,
+        regex_filter = content_filter_predicate,
+        formatter = "owner_fmt",
+      })
 
-          -- Use fzf-lua's native LSP function
-          lsp_function(fzf_opts)
-        end)
-      end)
+      lsp_function(fzf_opts)
     end)
   end)
 end

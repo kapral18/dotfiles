@@ -121,13 +121,11 @@ end
 
 -- Replace existing file content in ai_data.txt
 local function replace_file_content_in_output(output_path, relative_file_name, new_content)
-  local file = io.open(output_path, "r")
-  if not file then
+  local full_content, err = common_utils.safe_file_read(output_path)
+  if not full_content then
+    vim.notify(err or "Failed to read file", vim.log.levels.ERROR)
     return false
   end
-
-  local full_content = file:read("*a")
-  file:close()
 
   local escaped_delimiter = vim.pesc(DELIMITER)
   local section_pattern = "(#FILE: "
@@ -141,14 +139,12 @@ local function replace_file_content_in_output(output_path, relative_file_name, n
 
   local updated_content = full_content:gsub(section_pattern, new_section, 1)
 
-  -- Write back the updated content
-  local write_file = io.open(output_path, "w")
-  if write_file then
-    write_file:write(updated_content)
-    write_file:close()
-    return true
+  local ok, write_err = common_utils.safe_file_write(output_path, updated_content)
+  if not ok then
+    vim.notify(write_err or "Failed to write file", vim.log.levels.ERROR)
+    return false
   end
-  return false
+  return true
 end
 
 -- Enhanced function to handle duplicate checking with content comparison
@@ -228,14 +224,11 @@ function M.remove_entries_by_pattern(pattern_type, custom_pattern)
     return
   end
 
-  local file = io.open(output_path, "r")
-  if not file then
-    vim.notify("Could not read ai_data.txt", vim.log.levels.ERROR)
+  local content, err = common_utils.safe_file_read(output_path)
+  if not content then
+    vim.notify(err or "Could not read ai_data.txt", vim.log.levels.ERROR)
     return
   end
-
-  local content = file:read("*a")
-  file:close()
 
   local removed_count = 0
   local sections = {}
@@ -260,14 +253,12 @@ function M.remove_entries_by_pattern(pattern_type, custom_pattern)
     end
   end
 
-  -- Write back the filtered content
-  local write_file = io.open(output_path, "w")
-  if write_file then
-    write_file:write(table.concat(sections, "\n"))
-    write_file:close()
+  local filtered_content = table.concat(sections, "\n")
+  local ok, write_err = common_utils.safe_file_write(output_path, filtered_content)
+  if ok then
     vim.notify(string.format("Removed %d entries from ai_data.txt", removed_count), vim.log.levels.INFO)
   else
-    vim.notify("Could not write to ai_data.txt", vim.log.levels.ERROR)
+    vim.notify(write_err or "Could not write to ai_data.txt", vim.log.levels.ERROR)
   end
 end
 

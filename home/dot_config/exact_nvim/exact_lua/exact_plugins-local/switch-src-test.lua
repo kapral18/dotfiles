@@ -1,9 +1,8 @@
-local config_path = vim.fn.stdpath("config")
-
+local common_utils = require("utils.common")
 local sst = require("plugins-local-src.switch-src-test")
 
 return {
-  dir = config_path .. "/lua/plugins-local-src",
+  dir = common_utils.get_plugin_src_dir(),
   keys = {
     {
       "<C-^>",

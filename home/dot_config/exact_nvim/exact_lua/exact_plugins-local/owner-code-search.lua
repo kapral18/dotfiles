@@ -1,5 +1,4 @@
-local config_path = vim.fn.stdpath("config")
-
+local common_utils = require("utils.common")
 local ocs = require("plugins-local-src.owner-code-search")
 
 -- Setup the plugin with any custom config
@@ -74,18 +73,18 @@ end, {
   desc = "Clear CODEOWNERS cache",
 })
 return {
-  dir = config_path .. "/lua/plugins-local-src",
+  dir = common_utils.get_plugin_src_dir(),
   name = "owner-code-search",
   keys = {
     {
       "<leader>rg",
       function()
-        local team = vim.fn.input("Team: ")
-        if team == "" then
+        local ok, team = pcall(vim.fn.input, "Team: ")
+        if not ok or team == "" then
           return
         end
-        local pattern = vim.fn.input("Pattern: ")
-        if pattern == "" then
+        local ok2, pattern = pcall(vim.fn.input, "Pattern: ")
+        if not ok2 or pattern == "" then
           return
         end
         ocs.owner_code_grep(team, pattern)
@@ -95,12 +94,12 @@ return {
     {
       "<leader>rG",
       function()
-        local team = vim.fn.input("Owner Regex: ")
-        if team == "" then
+        local ok, team = pcall(vim.fn.input, "Owner Regex: ")
+        if not ok or team == "" then
           return
         end
-        local pattern = vim.fn.input("Pattern: ")
-        if pattern == "" then
+        local ok2, pattern = pcall(vim.fn.input, "Pattern: ")
+        if not ok2 or pattern == "" then
           return
         end
         ocs.owner_code_grep_pattern(team, pattern)
@@ -110,12 +109,12 @@ return {
     {
       "<leader>fd",
       function()
-        local team = vim.fn.input("Team: ")
-        if team == "" then
+        local ok, team = pcall(vim.fn.input, "Team: ")
+        if not ok or team == "" then
           return
         end
-        local pattern = vim.fn.input("File Pattern: ")
-        if pattern == "" then
+        local ok2, pattern = pcall(vim.fn.input, "File Pattern: ")
+        if not ok2 or pattern == "" then
           return
         end
         ocs.owner_code_fd(team, pattern)
@@ -125,12 +124,12 @@ return {
     {
       "<leader>fD",
       function()
-        local team = vim.fn.input("Owner Regex: ")
-        if team == "" then
+        local ok, team = pcall(vim.fn.input, "Owner Regex: ")
+        if not ok or team == "" then
           return
         end
-        local pattern = vim.fn.input("File Pattern: ")
-        if pattern == "" then
+        local ok2, pattern = pcall(vim.fn.input, "File Pattern: ")
+        if not ok2 or pattern == "" then
           return
         end
         ocs.owner_code_fd_pattern(team, pattern)

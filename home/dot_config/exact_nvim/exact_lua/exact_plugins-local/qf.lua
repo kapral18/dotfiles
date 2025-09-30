@@ -1,6 +1,12 @@
-local config_path = vim.fn.stdpath("config")
-
+local common_utils = require("utils.common")
 local qf = require("plugins-local-src.qf")
+
+vim.api.nvim_create_user_command("QFCopyPaths", function(opts)
+  qf.copy_qf_paths_to_clipboard()
+end, {
+  desc = "Copy quickfix paths to clipboard",
+  nargs = "*",
+})
 
 return {
   {
@@ -18,7 +24,7 @@ return {
     end,
   },
   {
-    dir = config_path .. "/lua/plugins-local-src",
+    dir = common_utils.get_plugin_src_dir(),
     keys = {
       {
         "<leader>rqi",

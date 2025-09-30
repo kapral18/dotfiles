@@ -35,11 +35,37 @@
 ---@field extra_args string[]|nil Extra arguments from config
 ---@field pattern string Search pattern
 ---@field result_type string Type of results (e.g., "matches", "files")
----@field efm string Error format for quickfix
 ---@field directory_finder fun(): string[]|nil Function to find directories
 ---@field process_output fun(output: string[], results: string[], dir: string)|nil Optional output processor
 
+local common_utils = require("utils.common")
+
 local M = {}
+
+local regex_cache = {}
+local function validate_and_cache_regex(pattern)
+  if regex_cache[pattern] ~= nil then
+    return regex_cache[pattern], nil
+  end
+
+  local ok, err = pcall(string.match, "", pattern)
+  if not ok then
+    regex_cache[pattern] = false
+    return false, err
+  end
+
+  regex_cache[pattern] = true
+  return true, nil
+end
+
+local function process_file_output(output, results)
+  for _, line in ipairs(output) do
+    local trimmed = line:gsub("%s*$", "")
+    if trimmed ~= "" then
+      table.insert(results, trimmed)
+    end
+  end
+end
 
 -- Configuration constants
 local CACHE_TTL_24H = 60 * 60 * 24
@@ -59,6 +85,59 @@ M.config = {
   fd_extra_args = { "--hidden" },
   rg_extra_args = { "--hidden" },
 }
+
+local function resolve_path(path, base_dir)
+  if not path or path == "" then
+    return nil
+  end
+
+  return common_utils.normalize_path(path, base_dir)
+end
+
+local function parse_vimgrep_line(line, base_dir)
+  local filename, lnum, col, text = line:match("^(.+):(%d+):(%d+):(.*)$")
+
+  if not filename then
+    filename, lnum, text = line:match("^(.+):(%d+):(.*)$")
+  end
+
+  if not filename then
+    return nil
+  end
+
+  local resolved = resolve_path(filename, base_dir)
+  if not resolved then
+    return nil
+  end
+
+  return {
+    filename = resolved,
+    lnum = tonumber(lnum) or 1,
+    col = tonumber(col) or 1,
+    text = text and text:gsub("^%s*", "") or line,
+  }
+end
+
+local function create_qf_item(line, base_dir, result_type)
+  local trimmed = line:gsub("%s*$", "")
+  if trimmed == "" then
+    return nil
+  end
+
+  if result_type == "matches" then
+    return parse_vimgrep_line(trimmed, base_dir)
+  elseif result_type == "files" then
+    local resolved = resolve_path(trimmed, base_dir)
+
+    if not resolved then
+      return nil
+    end
+
+    return { filename = resolved, text = trimmed }
+  end
+
+  return { text = trimmed }
+end
 
 -- Cache for parsed CODEOWNERS data
 ---@type CodeownersCache
@@ -283,15 +362,41 @@ end
 
 -- Execute search command
 ---@param search_config SearchConfig Configuration for the search
+local function run_command(cmd, dir)
+  local job = vim.system(cmd, { cwd = dir, text = true })
+  if not job then
+    return 1, {}, { "Failed to start command" }
+  end
+
+  local result = job:wait()
+  if not result then
+    return 1, {}, { "Command terminated unexpectedly" }
+  end
+
+  local stdout_lines = {}
+  if result.stdout and result.stdout ~= "" then
+    for line in vim.gsplit(result.stdout, "\n", { plain = true, trimempty = true }) do
+      table.insert(stdout_lines, line)
+    end
+  end
+
+  local stderr_lines = {}
+  if result.stderr and result.stderr ~= "" then
+    for line in vim.gsplit(result.stderr, "\n", { plain = true, trimempty = true }) do
+      table.insert(stderr_lines, line)
+    end
+  end
+
+  return result.code or 0, stdout_lines, stderr_lines
+end
+
 local function execute_search(search_config)
   local directories = search_config.directory_finder()
   if not directories then
     return
   end
 
-  ---@type string[]
   local results = {}
-  ---@type SearchError[]
   local errors = {}
   local total = #directories
   local processed = 0
@@ -304,7 +409,6 @@ local function execute_search(search_config)
 
     local cmd = vim.list_extend({}, search_config.command)
 
-    -- Add extra arguments from config
     if search_config.extra_args then
       vim.list_extend(cmd, search_config.extra_args)
     end
@@ -312,8 +416,7 @@ local function execute_search(search_config)
     table.insert(cmd, search_config.pattern)
     table.insert(cmd, dir)
 
-    local output = vim.fn.systemlist(cmd)
-    local exit_code = vim.v.shell_error
+    local exit_code, output = run_command(cmd, vim.uv.cwd())
 
     if exit_code == 0 then
       if search_config.process_output then
@@ -321,7 +424,7 @@ local function execute_search(search_config)
       else
         vim.list_extend(results, output)
       end
-    elseif exit_code ~= 1 then -- Exit code 1 usually means no matches
+    elseif exit_code ~= 1 then
       table.insert(errors, {
         dir = dir,
         code = exit_code,
@@ -330,7 +433,6 @@ local function execute_search(search_config)
     end
   end
 
-  -- Handle results
   if #results == 0 then
     local msg = #errors > 0
         and string.format("No %s found (%d directories had errors)", search_config.result_type, #errors)
@@ -339,14 +441,28 @@ local function execute_search(search_config)
     return
   end
 
-  -- Set quickfix list
+  local items = {}
+  local base_dir = vim.uv.cwd()
+
+  for _, line in ipairs(results) do
+    local item = create_qf_item(line, base_dir, search_config.result_type)
+    if item then
+      table.insert(items, item)
+    end
+  end
+
+  if #items == 0 then
+    print("Unable to parse results into quickfix entries")
+    return
+  end
+
   vim.fn.setqflist({}, " ", {
     title = search_config.title,
-    lines = results,
-    efm = search_config.efm,
+    items = items,
+    directory = base_dir,
   })
 
-  print(string.format("Found %d %s in %d directories", #results, search_config.result_type, total))
+  print(string.format("Found %d %s in %d directories", #items, search_config.result_type, total))
   vim.cmd("copen")
 end
 
@@ -397,14 +513,7 @@ function M.owner_code_fd(team, file_pattern)
         return owner:lower():find(team:lower(), 1, true) ~= nil
       end, "team containing '" .. team .. "'")
     end,
-    process_output = function(output, results)
-      for _, line in ipairs(output) do
-        local trimmed = line:gsub("%s*$", "")
-        if trimmed ~= "" then
-          table.insert(results, trimmed)
-        end
-      end
-    end,
+    process_output = process_file_output,
   })
 end
 
@@ -417,10 +526,9 @@ function M.owner_code_grep_pattern(owner_regex, search_pattern)
     return
   end
 
-  -- Validate regex
-  local ok, regex_err = pcall(string.match, "", owner_regex)
-  if not ok then
-    vim.notify("Invalid regex pattern: " .. regex_err, vim.log.levels.ERROR)
+  local valid, err = validate_and_cache_regex(owner_regex)
+  if not valid then
+    vim.notify("Invalid regex pattern: " .. err, vim.log.levels.ERROR)
     return
   end
 
@@ -448,10 +556,9 @@ function M.owner_code_fd_pattern(owner_regex, file_pattern)
     return
   end
 
-  -- Validate regex
-  local ok, regex_err = pcall(string.match, "", owner_regex)
-  if not ok then
-    vim.notify("Invalid regex pattern: " .. regex_err, vim.log.levels.ERROR)
+  local valid, err = validate_and_cache_regex(owner_regex)
+  if not valid then
+    vim.notify("Invalid regex pattern: " .. err, vim.log.levels.ERROR)
     return
   end
 
@@ -467,14 +574,7 @@ function M.owner_code_fd_pattern(owner_regex, file_pattern)
         return owner:match(owner_regex) ~= nil
       end, "owner regex '" .. owner_regex .. "'")
     end,
-    process_output = function(output, results)
-      for _, line in ipairs(output) do
-        local trimmed = line:gsub("%s*$", "")
-        if trimmed ~= "" then
-          table.insert(results, trimmed)
-        end
-      end
-    end,
+    process_output = process_file_output,
   })
 end
 

@@ -78,7 +78,7 @@ function M.get_eslint_path()
   local buf_dir = vim.fs.dirname(vim.api.nvim_buf_get_name(0))
   local root_dir = common_utils.get_project_root()
   if not root_dir then
-    vim.notify("No .git directory or yarn.lock or package-lock.json found", vim.log.levels.WARN)
+    vim.notify("No project root found", vim.log.levels.WARN)
     return
   end
 
@@ -94,12 +94,19 @@ function M.get_eslint_path()
   cursor_row = cursor_row - 1
 
   local bufnr = vim.api.nvim_get_current_buf()
-  local parser = vim.treesitter.get_parser(bufnr, vim.bo.filetype)
-  if not parser then
-    vim.notify("No treesitter parser found for the current buffer", vim.log.levels.WARN)
+  local ok, parser = pcall(vim.treesitter.get_parser, bufnr, vim.bo.filetype)
+  if not ok or not parser then
+    vim.notify("No treesitter parser available", vim.log.levels.WARN)
     return
   end
-  local tree = parser:parse()[1]
+
+  local ok_parse, trees = pcall(parser.parse, parser)
+  if not ok_parse or not trees or #trees == 0 then
+    vim.notify("Failed to parse buffer", vim.log.levels.WARN)
+    return
+  end
+
+  local tree = trees[1]
   local root = tree:root()
 
   local cursor_node = root:descendant_for_range(cursor_row, cursor_col, cursor_row, cursor_col)

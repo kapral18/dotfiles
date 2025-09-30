@@ -35,12 +35,16 @@ end
 
 local function write_tmp_json(tbl)
   local path = os.tmpname()
-  local f = io.open(path, "w")
-  if not f then
+  local ok, err = pcall(function()
+    local f = assert(io.open(path, "w"))
+    f:write(vim.json.encode(tbl))
+    f:close()
+  end)
+
+  if not ok then
+    pcall(os.remove, path)
     return nil
   end
-  f:write(vim.json.encode(tbl))
-  f:close()
   return path
 end
 
@@ -74,12 +78,13 @@ local function json_at_path(obj, path)
   return cur
 end
 
-local function build_curl_file(url, headers, payload_file)
+local function build_curl_file(url, headers, payload_file, timeout)
+  timeout = timeout or 30
   local h = ""
   for _, hdr in ipairs(headers or {}) do
     h = h .. ' -H "' .. hdr .. '"'
   end
-  return ('curl -s -X POST "%s"%s -d @%s'):format(url, h, payload_file)
+  return ('curl -s -X POST --max-time %d "%s"%s -d @%s'):format(timeout, url, h, payload_file)
 end
 
 local function decode_and_extract(lines, path)
@@ -158,43 +163,49 @@ local providers = {
 
 -- ───────────────────────────── GENERIC WORKFLOW ───────────────────────────────
 local function summarize_with(provider_key)
-  local cfg = providers[provider_key]
-  if not cfg then
-    vim.notify("Unknown provider: " .. tostring(provider_key), vim.log.levels.ERROR)
-    return
-  end
-
-  local diff = get_staged_diff()
-  if not diff or diff == "" then
-    vim.notify("No staged changes to summarize", vim.log.levels.WARN)
-    return
-  end
-
-  local payload_file = write_tmp_json(cfg.payload(diff))
-  if not payload_file then
-    vim.notify("Failed to write temp JSON payload", vim.log.levels.ERROR)
-    return
-  end
-
-  local cmd = build_curl_file(cfg.url, cfg.headers, payload_file)
-  local out, err = run(cmd)
-  os.remove(payload_file)
-
-  if not out then
-    vim.notify("Failed to generate summary", vim.log.levels.ERROR)
-    if err then
-      print(vim.inspect(err))
+  local ok, err = pcall(function()
+    local cfg = providers[provider_key]
+    if not cfg then
+      vim.notify("Unknown provider: " .. tostring(provider_key), vim.log.levels.ERROR)
+      return
     end
-    return
-  end
 
-  local text = decode_and_extract(out, cfg.extract_path)
-  if type(text) ~= "string" or text == "" then
-    vim.notify("Invalid response format from " .. provider_key, vim.log.levels.ERROR)
-    return
-  end
+    local diff = get_staged_diff()
+    if not diff or diff == "" then
+      vim.notify("No staged changes to summarize", vim.log.levels.WARN)
+      return
+    end
 
-  insert_at_cursor(vim.split(text, "\n"))
+    local payload_file = write_tmp_json(cfg.payload(diff))
+    if not payload_file then
+      vim.notify("Failed to write temp JSON payload", vim.log.levels.ERROR)
+      return
+    end
+
+    local cmd = build_curl_file(cfg.url, cfg.headers, payload_file)
+    local out, cmd_err = run(cmd)
+    pcall(os.remove, payload_file)
+
+    if not out then
+      vim.notify("Failed to generate summary", vim.log.levels.ERROR)
+      if cmd_err then
+        print(vim.inspect(cmd_err))
+      end
+      return
+    end
+
+    local text = decode_and_extract(out, cfg.extract_path)
+    if type(text) ~= "string" or text == "" then
+      vim.notify("Invalid response format from " .. provider_key, vim.log.levels.ERROR)
+      return
+    end
+
+    insert_at_cursor(vim.split(text, "\n"))
+  end)
+
+  if not ok then
+    vim.notify("Error during summarization: " .. tostring(err), vim.log.levels.ERROR)
+  end
 end
 
 -- ────────────────────────── PUBLIC COMMANDS ───────────────────────────────────

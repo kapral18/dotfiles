@@ -1,5 +1,4 @@
-local config_path = vim.fn.stdpath("config")
-
+local common_utils = require("utils.common")
 local sfo = require("plugins-local-src.show-file-owner")
 
 vim.api.nvim_create_user_command("ShowFileOwner", function()
@@ -10,7 +9,7 @@ end, {
 
 return {
   {
-    dir = config_path .. "/lua/plugins-local-src",
+    dir = common_utils.get_plugin_src_dir(),
     keys = {
       {
         "<leader>0",

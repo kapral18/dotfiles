@@ -85,7 +85,6 @@ vim.api.nvim_create_user_command("LargeFiles", function(opts)
   local args = vim.split(opts.args or "", " ")
   local min_lines = tonumber(args[1]) or 5000
   local max_lines = tonumber(args[2])
-  local common_utils = require("utils.common")
 
   local cmd = string.format(
     [[git ls-files -z | xargs -0 wc -l | grep -v total | awk '$1 > %d %s { print $2 ":1:" $1 " lines" }']],

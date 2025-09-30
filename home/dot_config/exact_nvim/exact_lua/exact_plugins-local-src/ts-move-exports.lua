@@ -108,40 +108,39 @@ M.update_imports = function(paths, new_path)
   end
 end
 
-M.rename_export_to_unique = function(bufnr, node, unique_name)
-  local start_row, start_col, _ = node:start()
-  start_row = start_row + 1
+local function rename_export(bufnr, node, new_name)
+  local start_row, start_col = node:start()
   local params = {
     textDocument = vim.lsp.util.make_text_document_params(bufnr),
-    position = { line = start_row, character = start_col },
-    newName = unique_name,
+    position = { line = start_row + 1, character = start_col },
+    newName = new_name,
     bufnr = bufnr,
   }
+
   local tstools_client = vim.lsp.get_active_clients({ bufnr = bufnr, name = "typescript-tools" })[1]
+
+  if not tstools_client then
+    vim.notify("typescript-tools LSP client not found", vim.log.levels.ERROR)
+    return false
+  end
+
   local status, err = tstools_client.request_sync("textDocument/rename", params, 10000, bufnr)
-  if status == nil or status.err or err or status.result == nil then
+
+  if not status or status.err or err or not status.result then
+    vim.notify("Rename failed: " .. vim.inspect(err or status.err), vim.log.levels.ERROR)
     return false
   end
 
   vim.lsp.util.apply_workspace_edit(status.result, tstools_client.offset_encoding)
+  return true
+end
+
+M.rename_export_to_unique = function(bufnr, node, unique_name)
+  return rename_export(bufnr, node, unique_name)
 end
 
 M.rename_export_back_to_original = function(bufnr, node, original_name)
-  local start_row, start_col, _ = node:start()
-  start_row = start_row + 1
-  local params = {
-    textDocument = vim.lsp.util.make_text_document_params(bufnr),
-    position = { line = start_row, character = start_col },
-    newName = original_name,
-    bufnr = bufnr,
-  }
-  local tstools_client = vim.lsp.get_active_clients({ bufnr = bufnr, name = "typescript-tools" })[1]
-  local status, err = tstools_client.request_sync("textDocument/rename", params, 10000, bufnr)
-  if status == nil or status.err or err or status.result == nil then
-    return false
-  end
-
-  vim.lsp.util.apply_workspace_edit(status.result, tstools_client.offset_encoding)
+  return rename_export(bufnr, node, original_name)
 end
 
 M.generate_unique_name = function(node)

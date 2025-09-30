@@ -1,5 +1,4 @@
-local config_path = vim.fn.stdpath("config")
-
+local common_utils = require("utils.common")
 local sad = require("plugins-local-src.save-ai-data")
 
 vim.api.nvim_create_user_command("SaveBufferToAIFile", function(opts)
@@ -79,7 +78,7 @@ end, {
 
 return {
   {
-    dir = config_path .. "/lua/plugins-local-src",
+    dir = common_utils.get_plugin_src_dir(),
     name = "save-ai-data",
     keys = {
       {

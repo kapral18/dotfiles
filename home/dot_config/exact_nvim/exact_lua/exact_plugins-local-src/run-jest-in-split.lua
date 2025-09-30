@@ -284,17 +284,23 @@ M.run_jest_cmd = function(arg, debug_mode)
       return
     end
 
-    cmd = script_runner .. " " .. script_name .. " " .. vim.fn.expand("%:p")
-    if arg then
-      cmd = cmd .. " " .. arg
-    end
+  cmd = script_runner .. " " .. script_name .. " " .. vim.fn.expand("%:p")
+  if arg then
+    cmd = cmd .. " " .. arg
   end
+end
 
+local ok, err = pcall(function()
   local original_win = vim.api.nvim_get_current_win()
   vim.cmd.vsplit()
   vim.cmd.terminal()
   vim.api.nvim_chan_send(vim.bo.channel, cmd .. "\n")
   vim.api.nvim_set_current_win(original_win)
+end)
+
+if not ok then
+  vim.notify("Failed to run Jest: " .. err, vim.log.levels.ERROR)
+end
 end
 
 M.close_terminal_buffer = function()

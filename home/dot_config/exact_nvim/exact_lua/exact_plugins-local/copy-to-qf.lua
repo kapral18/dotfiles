@@ -1,5 +1,4 @@
-local config_path = vim.fn.stdpath("config")
-
+local common_utils = require("utils.common")
 local ctq = require("plugins-local-src.copy-to-qf")
 
 vim.api.nvim_create_user_command("CopyBufferToQfDirs", function(opts)
@@ -7,7 +6,7 @@ vim.api.nvim_create_user_command("CopyBufferToQfDirs", function(opts)
 end, { nargs = "?" })
 
 return {
-  dir = config_path .. "/lua/plugins-local-src",
+  dir = common_utils.get_plugin_src_dir(),
   keys = {
     {
       "<leader>cb",
