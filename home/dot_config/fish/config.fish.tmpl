@@ -187,6 +187,14 @@ if type -q pass; and test -z "$PERPLEXITY_API_KEY"
     set -gx PERPLEXITY_API_KEY (pass perplexity/api/token)
 end
 
+# ------------------------------------
+# GitHub MCP PAT Configuration
+# ------------------------------------
+
+if type -q pass; and test -z "$GITHUB_MCP_PAT"
+    set -gx GITHUB_MCP_PAT (pass github/mcp/pat)
+end
+
 {{ if ne .isWork true -}}
 # ------------------------------------
 # Conditional Configurations

@@ -83,6 +83,7 @@ if command -v pass >/dev/null; then
   [ -z "$ANTHROPIC_API_KEY" ] && export ANTHROPIC_API_KEY="$(pass anthropic/api/token)"
   [ -z "$OPENROUTER_API_KEY" ] && export OPENROUTER_API_KEY="$(pass openrouter/api/token)"
   [ -z "$PERPLEXITY_API_KEY" ] && export PERPLEXITY_API_KEY="$(pass perplexity/api/token)"
+  [ -z "$GITHUB_MCP_PAT" ] && export GITHUB_MCP_PAT="$(pass github/mcp/pat)"
 fi
 
 # Conditional Configurations
