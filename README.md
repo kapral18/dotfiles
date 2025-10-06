@@ -9,9 +9,9 @@ and deep tool integration.
 
 ## 🛠️ Installation
 
-1.  **Install 1Password:** The entire setup hinges on the 1Password CLI and
+1. **Install 1Password:** The entire setup hinges on the 1Password CLI and
     its SSH agent for managing secrets and identities.
-2.  **Initialize Chezmoi:** This single command will bootstrap the entire
+2. **Initialize Chezmoi:** This single command will bootstrap the entire
     environment.
 
         ```bash sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply kapral18
@@ -38,7 +38,7 @@ machine.
 - **External Tools & Scripts**: Chezmoi manages a `~/bin` directory of custom
   scripts. The `executable_` prefix in a filename tells Chezmoi to set the
   executable bit, making these scripts instantly available in the `PATH`.
-- **Automated Setup Scripts**: The `apply-app-icons` script is a perfect
+- **Automated Setup Scripts**: The `f-apply-app-icons` script is a perfect
   example. It's a shell script template that uses `yq` to parse a YAML
   definition (`app_icons/icon_mapping.yaml`) and the `fileicon` utility to apply
   beautiful custom icons to applications in `/Applications`. This entire
@@ -86,18 +86,18 @@ some-user/feature-branch`).
 
 - **`f-get-pr-worktrees <pr_numbers_or_search>`**: A massive time-saver. Type a PR
   number or search term, and it will:
-  1.  Use `fzf` to let you select the exact PR with a rich preview.
-  2.  Fetch PR details from the GitHub API.
-  3.  Add the contributor's fork as a temporary remote.
-  4.  Create a worktree for the PR's branch.
+  1. Use `fzf` to let you select the exact PR with a rich preview.
+  2. Fetch PR details from the GitHub API.
+  3. Add the contributor's fork as a temporary remote.
+  4. Create a worktree for the PR's branch.
 
 - **`f-remove-worktrees`**: An `fzf`-powered interactive worktrees remover that:
-  1.  Removes each selected worktree directory.
-  2.  Deletes the associated local branch.
-  3.  **Cleans up the remote**: If the worktree was from a fork, it removes
+  1. Removes each selected worktree directory.
+  2. Deletes the associated local branch.
+  3. **Cleans up the remote**: If the worktree was from a fork, it removes
       the temporary remote if no other worktrees are using it.
-  4.  **Cleans up the filesystem**: Removes any empty parent directories.
-  5.  Removes the path from `zoxide`'s database.
+  4. **Cleans up the filesystem**: Removes any empty parent directories.
+  5. Removes the path from `zoxide`'s database.
 
 - **Tmux Integration**: The worktree functions are tightly integrated with
   Tmux. A new, named Tmux session is created when a worktree is added and killed
@@ -163,14 +163,14 @@ personal and work) on the same machine securely and automatically.
 
 > **How it works:**
 >
-> 1.  The global `.gitconfig` sets an `sshCommand` override: `sshCommand = ssh
+> 1. The global `.gitconfig` sets an `sshCommand` override: `sshCommand = ssh
 -o IdentitiesOnly=yes -o IdentityFile="~/.ssh/primary_public_key.pub"`
-> 2.  Crucially, `IdentityFile` points to the **public key**. 1Password's SSH
+> 2. Crucially, `IdentityFile` points to the **public key**. 1Password's SSH
 >     agent intercepts this and uses the corresponding private key from the
 >     vault for signing.
-> 3.  A conditional include, `[includeIf "gitdir:~/work/"]`, loads a separate
+> 3. A conditional include, `[includeIf "gitdir:~/work/"]`, loads a separate
 >     `.gitconfig` for work projects.
-> 4.  The work-specific `.gitconfig` overrides the `sshCommand` again, this
+> 4. The work-specific `.gitconfig` overrides the `sshCommand` again, this
 >     time pointing to the **work public key**.
 >
 > **The result:** Git automatically uses the correct SSH key for signing and
@@ -290,5 +290,5 @@ transformed into a bespoke IDE.
     cursor to precise screen locations with just a few keystrokes.
   - **Window Management (`window.lua`):** Simple, fast hotkeys (`Hyper +
 h/j/k/l/m`) to snap windows to half/full screen positions.
-- **Custom App Icons (`apply-app-icons`):** A script that applies beautiful
+- **Custom App Icons (`f-apply-app-icons`):** A script that applies beautiful
   custom icons to your applications for a clean, consistent look.

@@ -5,22 +5,23 @@ set -euo pipefail
 # This script installs uv tools from the default-uv-tools file
 
 # {{ include "readonly_dot_python-version" | sha256sum }}
-# {{ include "readonly_dot_default-uv-tools" | sha256sum }}
+# {{ include "readonly_dot_default-uv-tools.tmpl" | sha256sum }}
 
-uv_tools_file={{ joinPath .chezmoi.sourceDir "readonly_dot_default-uv-tools" | quote }}
+uv_tools_template={{ joinPath .chezmoi.sourceDir "readonly_dot_default-uv-tools.tmpl" | quote }}
 
 echo "Updating uv global tools..."
 
-if [[ ! -f "$uv_tools_file" ]]; then
-    echo "Error: .default-uv-tools file not found at $uv_tools_file"
+if [[ ! -f "$uv_tools_template" ]]; then
+    echo "Error: default-uv-tools template not found at $uv_tools_template"
     exit 1
 fi
 
-# Read the file content into an array
-if ! mapfile -t lines < "$uv_tools_file"; then
-    echo "Error: Failed to read .default-uv-tools file"
+# Render template into an array
+if ! mapfile -t lines < <(chezmoi execute-template < "$uv_tools_template"); then
+    echo "Error: Failed to render default-uv-tools template"
     exit 1
 fi
+
 
 install_uv_tool() {
     local tool=$1
@@ -33,7 +34,7 @@ install_uv_tool() {
     return 0
 }
 
-# Parse tools from file FIRST
+# Parse tools from rendered template FIRST
 declare -a tools_to_install
 
 for line in "${lines[@]}"; do
@@ -47,7 +48,7 @@ done
 
 # Check if we have any tools to install
 if [[ ${#tools_to_install[@]} -eq 0 ]]; then
-    echo "No tools found in $uv_tools_file to install"
+    echo "No tools found in rendered uv tools template to install"
     exit 0
 fi
 

@@ -84,6 +84,7 @@ if command -v pass >/dev/null; then
   [ -z "$OPENROUTER_API_KEY" ] && export OPENROUTER_API_KEY="$(pass openrouter/api/token)"
   [ -z "$PERPLEXITY_API_KEY" ] && export PERPLEXITY_API_KEY="$(pass perplexity/api/token)"
   [ -z "$GITHUB_MCP_PAT" ] && export GITHUB_MCP_PAT="$(pass github/mcp/pat)"
+  [ -z "$GITHUB_TOKEN" ] && export GITHUB_TOKEN="$(pass github/public/pat)"
 fi
 
 # Conditional Configurations

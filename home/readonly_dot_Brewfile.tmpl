@@ -105,6 +105,10 @@ brew "lsd"
 # https://github.com/solidiquis/erdtree
 brew "erdtree"
 
+# Select files with SQL-like queries
+# https://github.com/jhspetersson/fselect
+brew "fselect"
+
 # Display directories as trees
 # http://mama.indstate.edu/users/ice/tree/
 brew "tree"
@@ -112,6 +116,11 @@ brew "tree"
 # Terminal disk space navigator
 # https://github.com/imsnif/diskonaut
 brew "diskonaut"
+
+# Visual disk usage explorer
+# https://github.com/ikebastuz/wiper
+tap "ikebastuz/wiper"
+brew "ikebastuz/wiper/wiper"
 
 # More intuitive version of du
 # https://github.com/bootandy/dust
@@ -224,9 +233,21 @@ brew "gping"
 # https://httpie.io/
 brew "httpie"
 
+# High-performance HTTP load generator
+# https://github.com/hatoo/oha
+brew "oha"
+
+# Run and test HTTP requests defined in plain text
+# https://github.com/Orange-OpenSource/hurl
+brew "hurl"
+
 # Text-based web browser
 # https://lynx.invisible-island.net/
 brew "lynx"
+
+# DuckDuckGo search from the command-line
+# https://github.com/jarun/ddgr
+brew "ddgr"
 
 # Internet file retriever
 # https://www.gnu.org/software/wget/
@@ -237,10 +258,38 @@ brew "wget"
 tap "ilijamt/tap"
 brew "vht"
 
+# Analyze project dependencies and flag restrictive licenses
+# https://github.com/anistark/feluda
+brew "feluda"
+
+# A database tool for terminal
+# https://github.com/achristmascarl/rainfrog
+brew "rainfrog"
+
+# Interactive debugger for MCP servers
+# https://github.com/conikeec/mcp-probe
+tap "conikeec/tap"
+brew "conikeec/tap/mcp-probe"
+
+# Explore container image layers in a TUI
+# https://github.com/knqyf263/sou
+tap "knqyf263/sou"
+brew "knqyf263/sou/sou"
+
+# Check domain availability via RDAP/WHOIS
+# https://github.com/saidutt46/domain-check
+tap "saidutt46/domain-check"
+brew "saidutt46/domain-check/domain-check"
+
+# Analyze layers and wasted space in container images
+# https://github.com/wagoodman/dive
+brew "dive"
+
 # Local port management tool
 # https://github.com/diegoholiveira/localports
 tap "diegoholiveira/localports"
 brew "diegoholiveira/localports/localports"
+
 
 # ==============================================================================
 # DATA PROCESSING & STRUCTURED DATA
@@ -265,12 +314,16 @@ brew "jless"
 
 # TUI playground for exploring jq
 # https://github.com/noahgorstein/jqp
-tap "noahgorstein/tap"
-brew "noahgorstein/tap/jqp"
+brew "jqp"
 
 # Process YAML, JSON, XML, CSV and properties documents
 # https://github.com/mikefarah/yq
 brew "yq"
+
+# Like jq, but for binary formats
+# https://github.com/wader/fq
+tap "wader/tap"
+brew "wader/tap/fq"
 
 # Convert command output to JSON
 # https://github.com/kellyjonbrazil/jc
@@ -283,6 +336,19 @@ brew "htmlq"
 # Command-line CSV processor
 # https://github.com/medialab/xan
 brew "xan"
+
+# Interactive grep with live preview
+# https://github.com/konradsz/igrep
+brew "igrep"
+
+# Breadth-first alternative to find
+# https://github.com/tavianator/bfs
+brew "bfs"
+
+# Rich git commit graph TUI
+# https://github.com/lusingander/serie
+tap "lusingander/tap"
+brew "lusingander/tap/serie"
 
 # ==============================================================================
 # GIT CORE & HOSTING INTEGRATION
@@ -404,6 +470,10 @@ brew "gitleaks"
 # https://github.com/trufflesecurity/trufflehog
 brew "trufflehog"
 
+# Find if an email, username, phone or domain is in breached databases
+# https://github.com/swanandx/lemmeknow
+brew "lemmeknow"
+
 # ==============================================================================
 # CRYPTOGRAPHY & PASSWORD MANAGEMENT
 # Encryption tools and password managers
@@ -426,10 +496,14 @@ brew "pass"
 # https://asdf-vm.com/
 brew "asdf"
 
-{{ if ne .isWork true -}}
-# Dependency Manager for PHP
-# https://getcomposer.org/
-brew "composer"
+{{ if .isWork -}}
+# AI-powered code editor
+# https://cursor.so/
+cask "cursor"
+
+# Command-line interface for Cursor
+# https://cursor.so/
+cask "cursor-cli"
 {{ end -}}
 
 # Extremely fast Python package installer and resolver
@@ -511,6 +585,10 @@ brew "yt-dlp"
 # Cross-platform audio recording/playback CLI tool with TUI
 # https://github.com/chaosprint/asak
 brew "asak"
+
+# Console music player
+# https://cmus.github.io/
+brew "cmus"
 {{ end -}}
 
 # Image processing tools collection
@@ -539,11 +617,13 @@ brew "mpv"
 # https://github.com/dbrgn/tealdeer
 brew "tealdeer"
 
-{{ if ne .isWork true -}}
+# Cookbook of practical command-line examples
+# https://github.com/srsudar/eg
+brew "eg-examples"
+
 # Hacker News in your terminal
 # https://github.com/bensadeh/circumflex
 brew "circumflex"
-{{ end -}}
 
 # Interactive cheatsheet tool
 # https://github.com/denisidoro/navi
@@ -556,6 +636,10 @@ brew "man-db"
 # Swiss-army knife of markup format conversion
 # https://pandoc.org/
 brew "pandoc"
+
+# Fast link checker for websites and docs
+# https://github.com/lycheeverse/lychee
+brew "lychee"
 
 {{ if ne .isWork true -}}
 # Small tool to convert Djvu files to PDF files
@@ -602,6 +686,10 @@ brew "hexyl"
 # https://github.com/sharkdp/hyperfine
 brew "hyperfine"
 
+# Download prebuilt binaries from GitHub releases
+# https://github.com/zyedidia/eget
+brew "eget"
+
 # ==============================================================================
 # TASK AUTOMATION & SCHEDULING
 # Tools for automating tasks and monitoring changes
@@ -614,6 +702,10 @@ brew "watchexec"
 # Execute a program periodically
 # https://gitlab.com/procps-ng/procps
 brew "watch"
+
+# Diff-friendly alternative to watch for command output
+# https://github.com/aloglu/hwatch
+brew "hwatch"
 
 # Shell command parallelization utility
 # https://www.gnu.org/software/parallel/
@@ -637,9 +729,22 @@ brew "youplot"
 # https://github.com/magic-wormhole/magic-wormhole
 brew "magic-wormhole"
 
+# Simple, secure cross-platform file transfer
+# https://github.com/schollz/croc
+brew "croc"
+
 # Transfer files between computers via WireGuard
 # https://github.com/coder/wush
 brew "wush"
+
+# ==============================================================================
+# SSH & REMOTE ACCESS
+# Tools for managing SSH connections
+# ==============================================================================
+
+# Terminal UI to manage SSH hosts
+# https://github.com/quantumsheep/sshs
+brew "sshs"
 
 # ==============================================================================
 # PRESENTATION & CONTENT CREATION
@@ -650,6 +755,10 @@ brew "wush"
 # https://github.com/mfontanini/presenterm
 brew "presenterm"
 
+# Markdown-driven terminal presentations
+# https://github.com/maaslalani/slides
+brew "slides"
+
 {{ if ne .isWork true -}}
 # Cast text to speech
 # https://github.com/piqoni/cast-text
@@ -658,6 +767,10 @@ brew "cast-text"
 {{ end -}}
 
 # ==============================================================================
+# PACKAGE MANAGEMENT UTILITIES
+# Tools for managing package managers
+# ==============================================================================
+
 # PERSONAL PRODUCTIVITY & JOURNALING
 # Tools for personal organization and note-taking
 # ==============================================================================
@@ -675,11 +788,35 @@ brew "lazyjournal"
 # https://github.com/hanslub42/rlwrap
 brew "rlwrap"
 
+# Log file highlighter with automatic pattern detection
+# https://github.com/bensadeh/tailspin
+brew "tailspin"
+
+# Interactive TUI for composing command-line pipelines
+# https://github.com/akavel/up
+brew "up"
+
+# Swiss-army string transformer CLI
+# https://github.com/abhimanyu003/sttr
+brew "abhimanyu003/sttr/sttr"
+
+# Parallel process runner with interactive TUI
+# https://github.com/pvolok/mprocs
+brew "mprocs"
+
+# Font manager CLI with live previews
+# https://github.com/alexmyczko/fnt
+brew "fnt"
+
 # CLI tool for adding spacing to terminal output
 # https://github.com/samwho/spacer
 brew "spacer"
 
-# ==============================================================================
+# Command-line launcher for custom workflows
+# https://github.com/pomdtr/sunbeam
+tap "pomdtr/tap"
+brew "pomdtr/tap/sunbeam"
+
 # PACKAGE MANAGEMENT UTILITIES
 # Tools for managing package managers
 # ==============================================================================
@@ -689,6 +826,11 @@ brew "spacer"
 tap "rcmdnk/file"
 brew "rcmdnk/file/brew-file"
 
+# Utility scripts for managing multiple Homebrew taps
+# https://github.com/gromgit/brewtils
+tap "gromgit/brewtils"
+brew "gromgit/brewtils/taproom"
+
 # ==============================================================================
 # TEXT SEARCH & REPLACEMENT
 # Tools for searching and replacing text
@@ -697,6 +839,10 @@ brew "rcmdnk/file/brew-file"
 # Simple terminal UI for search and replace
 # https://github.com/yassinebridi/serpl
 brew "serpl"
+
+# Debugging tool for sed scripts
+# https://github.com/SoptikHa2/desed
+brew "desed"
 
 # ==============================================================================
 # CRYPTOGRAPHY & SSL
@@ -721,6 +867,11 @@ brew "sst/tap/opencode"
 # Lightweight coding agent that runs in your terminal
 # https://github.com/openai/codex
 brew "codex"
+
+# Minimal terminal emulator using half-baked context-aware autocomplete
+# https://github.com/ggerganov/hnterm
+brew "ggerganov/ggerganov/hnterm"
+
 
 # ==============================================================================
 # APPLICATIONS (CASKS)
@@ -874,6 +1025,12 @@ cask "gcloud-cli"
 # Get up and running with large language models locally
 # https://ollama.ai/
 cask "ollama-app"
+
+# Interactive HTTPS proxy
+# https://mitmproxy.org/
+{{ if ne .isWork true -}}
+cask "mitmproxy"
+{{ end -}}
 
 # All-in-one bookmark manager
 # https://raindrop.io/

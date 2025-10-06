@@ -188,7 +188,15 @@ if type -q pass; and test -z "$PERPLEXITY_API_KEY"
 end
 
 # ------------------------------------
-# GitHub MCP PAT Configuration
+# Github Public PAT
+# ------------------------------------
+
+if type -q pass; and test -z "$GITHUB_TOKEN"
+    set -gx GITHUB_TOKEN (pass github/public/pat)
+end
+
+# ------------------------------------
+# GitHub MCP PAT
 # ------------------------------------
 
 if type -q pass; and test -z "$GITHUB_MCP_PAT"
