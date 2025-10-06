@@ -1,9 +1,33 @@
+# Description: TUI for searching, adding, and installing crates
+# URL: https://github.com/tareqimbasher/cargo-seek
 cargo-seek
+# Description: Check and apply updates to installed cargo executables
+# URL: https://github.com/nabijaczleweli/cargo-update
 cargo-update
+# Description: Watches Cargo projects and runs commands on changes
+# URL: https://github.com/watchexec/cargo-watch
 cargo-watch
+# Description: Open repo resources in a browser from the command line
+# URL: https://github.com/rhysd/git-brws
 git-brws
+# Description: Terminal UI for browsing Hacker News
+# URL: https://github.com/aome510/hackernews-TUI
 hackernews_tui
+# Description: Minimal reading tool with focus-enhancing text flow
+# URL: https://github.com/kruseio/hygg
 hygg
+# Description: Terminal client for lobste.rs discussions
+# URL: https://github.com/pythops/lobtui
 lobtui
+# Description: Simple lofi music player for the terminal
+# URL: https://github.com/talwat/lowfi
 lowfi
+# Description: Command-line sampling profiler for macOS and Linux
+# URL: https://github.com/mstange/samply/
 samply
+# Description: Stop processes interactively
+# URL: https://github.com/jacek-kurlit/pik
+pik
+# Description: Generate gitignore files
+# URL: https://github.com/reemus-dev/gitnr
+gitnr

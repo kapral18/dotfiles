@@ -1,5 +1,15 @@
+# Description: Nvim msgpack API client and remote plugin provider
+# URL: https://github.com/neovim/node-client
 neovim
+# Description: Project and subproject manager
+# URL: https://github.com/hasardel/pake
 pake
+# Description: Web-based viewer for performance profiles
+# URL: https://github.com/jlfwong/speedscope
 speedscope
+# Description: Terminal access to Claude for coding workflows
+# URL: https://github.com/anthropics/claude-code
 @anthropic-ai/claude-code
+# Description: Command-line interface for Google Gemini models
+# URL: https://github.com/google-gemini/gemini-cli
 @google/gemini-cli
