@@ -21,7 +21,8 @@ Examples:
 Notes:
     - Uses shell pattern matching (*, ?, [])
     - If exclude_pattern is omitted, no sessions are excluded
-    - Command is executed in the first window of each matching session
+    - Command is executed in idle shell panes of each matching session
+    - Set F_TMUX_RUN_ALL_ALLOWED_SHELLS to override idle shell detection
     - Sessions that don't exist or aren't accessible are skipped
 EOF
 }
@@ -32,6 +33,29 @@ function log_info() {
 
 function log_error() {
   echo "❌ $1" >&2
+}
+
+function get_allowed_shells() {
+  if [[ -n "${F_TMUX_RUN_ALL_ALLOWED_SHELLS:-}" ]]; then
+    echo "$F_TMUX_RUN_ALL_ALLOWED_SHELLS"
+    return
+  fi
+
+  echo "bash zsh fish sh"
+}
+
+function is_idle_shell() {
+  local command="$1"
+  local allowed_shells
+  allowed_shells=$(get_allowed_shells)
+
+  for shell in $allowed_shells; do
+    if [[ "$command" == "$shell" ]]; then
+      return 0
+    fi
+  done
+
+  return 1
 }
 
 function validate_tmux() {
@@ -80,15 +104,99 @@ function run_command_in_session() {
   local session="$1"
   local command="$2"
 
-  log_info "Running command in session '$session'"
+  mapfile -t session_panes < <(tmux list-panes -t "$session" -F '#{pane_id}	#{session_name}:#{window_index}.#{pane_index}	#{pane_current_command}' 2>/dev/null || true)
 
-  if tmux send-keys -t "$session" "$command" Enter 2>/dev/null; then
-    return 0
-  else
-    log_error "Failed to send command to session '$session'"
+  if [[ ${#session_panes[@]} -eq 0 ]]; then
+    printf '0 0\n'
+    log_error "No panes found for session '$session'"
     return 1
   fi
+
+  log_info "Running command in ${#session_panes[@]} pane(s) of session '$session'"
+
+  local trimmed=()
+  for entry in "${session_panes[@]}"; do
+    trimmed+=("${entry%%$'\r'}")
+  done
+  session_panes=("${trimmed[@]}")
+
+  local success_count=0
+  local failure_count=0
+  local skipped_count=0
+
+  local current_pane_id="${TMUX_PANE:-}"
+  local CURRENT_PANE_ID="$current_pane_id"
+  local current_pane_command=""
+  local current_pane_display=""
+  local current_pane_info=""
+  local pane_queue=()
+
+  for pane_info in "${session_panes[@]}"; do
+    pane_id="${pane_info%%$'\t'*}"
+    rest="${pane_info#*$'\t'}"
+    pane_display="${rest%%$'\t'*}"
+    pane_command="${rest#*$'\t'}"
+
+    if [[ "$pane_id" == "$CURRENT_PANE_ID" ]]; then
+      current_pane_command="$pane_command"
+      current_pane_display="$pane_display"
+      current_pane_info="$pane_info"
+      continue
+    fi
+
+    if ! is_idle_shell "$pane_command"; then
+      log_info "Skipping pane '$pane_display' (active command: $pane_command)"
+      skipped_count=$((skipped_count + 1))
+      continue
+    fi
+
+    pane_queue+=("$pane_info")
+  done
+
+  if [[ -n "$CURRENT_PANE_ID" ]]; then
+    if [[ -n "$current_pane_info" ]]; then
+      pane_queue=("$current_pane_info" "${pane_queue[@]}")
+    fi
+  fi
+
+  for pane_info in "${pane_queue[@]}"; do
+    pane_id="${pane_info%%$'\t'*}"
+    rest="${pane_info#*$'\t'}"
+    pane_display="${rest%%$'\t'*}"
+    pane_command="${rest#*$'\t'}"
+
+    if [[ "$pane_id" == "$CURRENT_PANE_ID" ]]; then
+      if ! is_idle_shell "$pane_command"; then
+        log_info "Skipping current pane '$pane_display' (active command: $pane_command)"
+        skipped_count=$((skipped_count + 1))
+        continue
+      fi
+    else
+      if ! is_idle_shell "$pane_command"; then
+        log_info "Skipping pane '$pane_display' (active command: $pane_command)"
+        skipped_count=$((skipped_count + 1))
+        continue
+      fi
+    fi
+
+    if tmux send-keys -t "$pane_id" "$command" Enter 2>/dev/null; then
+      success_count=$((success_count + 1))
+    else
+      log_error "Failed to send command to pane '$pane_display'"
+      failure_count=$((failure_count + 1))
+    fi
+  done
+
+  printf '%s %s %s\n' "$success_count" "$failure_count" "$skipped_count"
+
+  if [[ $failure_count -gt 0 ]]; then
+    log_error "Session '$session': $failure_count pane(s) failed"
+    return 1
+  fi
+
+  return 0
 }
+
 
 function main() {
   local pattern=""
@@ -141,22 +249,38 @@ function main() {
   log_info "Found ${#matching_sessions[@]} matching session(s)"
 
   # Run command in each matching session
-  local success_count=0
-  local failure_count=0
+  local sessions_success_count=0
+  local sessions_failure_count=0
+  local panes_success=0
+  local panes_failure=0
+  local panes_skipped=0
 
   for session in "${matching_sessions[@]}"; do
-    if run_command_in_session "$session" "$command"; then
-      success_count=$((success_count + 1))
+    if output=$(run_command_in_session "$session" "$command"); then
+      status=0
     else
-      failure_count=$((failure_count + 1))
+      status=$?
+      log_error "Session '$session' failed to run command"
+    fi
+
+    read -r session_success session_failure session_skipped <<<"$output"
+    panes_success=$((panes_success + session_success))
+    panes_failure=$((panes_failure + session_failure))
+    panes_skipped=$((panes_skipped + session_skipped))
+
+    if [[ $status -eq 0 ]]; then
+      sessions_success_count=$((sessions_success_count + 1))
+    else
+      sessions_failure_count=$((sessions_failure_count + 1))
     fi
   done
 
   # Summary
   echo
-  log_info "Summary: $success_count successful, $failure_count failed"
+  log_info "Sessions: $sessions_success_count successful, $sessions_failure_count failed"
+  log_info "Panes: $panes_success successful, $panes_failure failed, $panes_skipped skipped"
 
-  if [[ $failure_count -gt 0 ]]; then
+  if [[ $sessions_failure_count -gt 0 || $panes_failure -gt 0 ]]; then
     exit 1
   fi
 }
