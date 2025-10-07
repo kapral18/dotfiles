@@ -191,8 +191,8 @@ end
 # Github Public PAT
 # ------------------------------------
 
-if type -q pass; and test -z "$GITHUB_TOKEN"
-    set -gx GITHUB_TOKEN (pass github/public/pat)
+if type -q pass; and test -z "$EGET_GITHUB_TOKEN"
+    set -gx EGET_GITHUB_TOKEN (pass github/public/pat)
 end
 
 # ------------------------------------
