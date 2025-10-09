@@ -6,19 +6,4 @@
 --column
 --line-number
 
---glob=!*.cache
---glob=!.Trash/*
---glob=!.elixir_ls/*
---glob=!.git/*
---glob=!.hg/*
---glob=!.jj/*
---glob=!.licenses/*
---glob=!.sass-cache/*
---glob=!.svn/*
---glob=!_build/*
---glob=!bower_components/*
---glob=!coverage/*
---glob=!deps/*
---glob=!node_modules/*
---glob=!priv/static/*
---glob=!tmp/*
+--ignore-file ~/.config/ignore-globs

@@ -119,7 +119,7 @@ end
 # FZF Configuration
 # ------------------------------------
 
-set FD_OPTIONS "--hidden --follow"
+set -x FD_DEFAULT_OPTS "--hidden --follow --ignore-file $HOME/.config/ignore-globs"
 
 set -x FZF_DEFAULT_OPTS "
     --no-mouse
@@ -131,9 +131,9 @@ set -x FZF_DEFAULT_OPTS "
     --bind=ctrl-d:preview-down,ctrl-u:preview-up,ctrl-b:page-up,ctrl-f:page-down
 "
 
-set -x FZF_DEFAULT_COMMAND "git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l $FD_OPTIONS"
+set -x FZF_DEFAULT_COMMAND "git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l"
 set -x FZF_CTRL_T_COMMAND "$FZF_DEFAULT_COMMAND"
-set -x FZF_ALT_C_COMMAND "fd --type d $FD_OPTIONS"
+set -x FZF_ALT_C_COMMAND "fd --type d"
 
 # ------------------------------------
 # GEMINI API Key Configuration
@@ -227,7 +227,7 @@ if status --is-interactive
     ## Aliases
     alias cat=bat
     alias c=chezmoi
-    alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l $FD_OPTIONS'
+    alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l'
     alias g=git
     alias t=tmux
     alias tree='tree -I ".git|node_modules"'

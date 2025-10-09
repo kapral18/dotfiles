@@ -171,6 +171,33 @@ function M.get_plugin_src_dir()
 end
 
 -- workaround for https://github.com/ibhagwan/fzf-lua/issues/2340#issuecomment-3294232666
+local RG_BASE_OPTS = table.concat({
+  "--column",
+  "--multiline",
+  "--line-number",
+  "--no-heading",
+  "--color=always",
+  "--smart-case",
+  "--max-columns=4096",
+  "--hidden",
+}, " ")
+
+local RG_OPTS_UNRESTRICTED = RG_BASE_OPTS .. " --no-ignore"
+
+local FD_BASE_OPTS = table.concat({
+  "--color=never",
+  "--type f",
+  "--hidden",
+  "--follow",
+}, " ")
+
+local FD_OPTS_UNRESTRICTED = FD_BASE_OPTS .. " --no-ignore"
+
+M.fzf_rg_opts = RG_BASE_OPTS
+M.fzf_rg_opts_unrestricted = RG_OPTS_UNRESTRICTED
+M.fzf_fd_opts = FD_BASE_OPTS
+M.fzf_fd_opts_unrestricted = FD_OPTS_UNRESTRICTED
+
 local function open_qf_window(opts)
   -- If the current window is a float, we need to find a non-float
   -- window to switch to before opening the quickfix/location list.
@@ -209,8 +236,8 @@ end
 ---@return function
 function M.get_fzf_opts()
   return function()
-    local rg_opts = M.get_fzf_rg_opts()
-    local fd_opts = M.get_fzf_fd_opts()
+    local rg_opts = M.fzf_rg_opts
+    local fd_opts = M.fzf_fd_opts
     local actions = require("fzf-lua").actions
     return {
       defaults = {
@@ -308,29 +335,11 @@ end
 --- Get options for fzf rg command
 ---@return string, string
 function M.get_fzf_rg_opts()
-  local rg_ignore_glob =
-    "-g '!{node_modules,.next,dist,build,reports,tags,.idea,.vscode,.yarn,.nyc_output,__generated__,reports,storybook-static,*.min.js,*.min.css,junit.xml,bazel-*,data,target,.chromium,.es,.yarn-*}'"
-
-  local rg_opts_unrestricted =
-    "--column --multiline --line-number --no-heading --color=always --smart-case --max-columns=4096 --hidden --no-ignore -g '!{.git,tsconfig.tsbuildinfo,*.map}'"
-
-  local rg_opts = rg_opts_unrestricted .. " " .. rg_ignore_glob
-
-  return rg_opts, rg_opts_unrestricted
+  return M.fzf_rg_opts, M.fzf_rg_opts_unrestricted
 end
 
---- Get options for fzf fd command
----@return string, string
 function M.get_fzf_fd_opts()
-  local fd_ignore_glob =
-    "-E '{node_modules,.next,dist,build,reports,.idea,.vscode,.yarn,.nyc_output,__generated__,reports,storybook-static}/' -E '{*.min.js,*.min.css,junit.xml,bazel-*,data,target,.chromium,.es,.yarn-*}'"
-
-  local fd_opts_unrestricted =
-    "--color=never --type f --hidden --no-ignore --follow -E '{.git,tsconfig.tsbuildinfo,*.map}'"
-
-  local fd_opts = fd_opts_unrestricted .. " " .. fd_ignore_glob
-
-  return fd_opts, fd_opts_unrestricted
+  return M.fzf_fd_opts, M.fzf_fd_opts_unrestricted
 end
 
 ---@param glob string

@@ -68,11 +68,11 @@ prepend_to_path_if_missing "$HOME"/.asdf/shims
 export PATH
 
 # FZF Configuration
-export FD_OPTIONS="--hidden --follow"
+export FD_DEFAULT_OPTS="--hidden --follow --ignore-file $HOME/.config/ignore-globs"
 export FZF_DEFAULT_OPTS="--no-mouse --height 80% --reverse --multi --info=inline --preview='bat {} --color always' --preview-window='right:60%:wrap' --bind=ctrl-d:half-page-down,ctrl-u:half-page-up,ctrl-b:page-up,ctrl-f:page-down"
-export FZF_DEFAULT_COMMAND="git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l $FD_OPTIONS"
+export FZF_DEFAULT_COMMAND="git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l"
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
-export FZF_ALT_C_COMMAND="fd --type d $FD_OPTIONS"
+export FZF_ALT_C_COMMAND="fd --type d"
 
 # API Key Configurations
 if command -v pass >/dev/null; then

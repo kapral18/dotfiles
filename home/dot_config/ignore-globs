@@ -1,0 +1,45 @@
+# Shared ignore patterns for ripgrep and fd
+# Uses gitignore-style syntax
+
+# VCS and tool metadata
+.git/
+.hg/
+.svn/
+.jj/
+.elixir_ls/
+.sass-cache/
+.Trash/
+.licenses/
+
+# Build and dependency caches
+node_modules/
+.next/
+dist/
+/build/
+bower_components/
+deps/
+coverage/
+priv/static/
+reports/
+storybook-static/
+tmp/
+_build/
+__generated__/
+.yarn/
+.yarn-*/
+.nyc_output/
+
+# Binary or generated artifacts
+.chromium/
+.es/
+target/
+data/
+
+# File-level ignores
+*.min.js
+*.min.css
+*.map
+junit.xml
+tsconfig.tsbuildinfo
+bazel-*
+*.cache
