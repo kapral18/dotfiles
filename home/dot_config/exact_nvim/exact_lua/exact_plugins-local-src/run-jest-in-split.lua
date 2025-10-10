@@ -67,31 +67,72 @@ local function find_jest_script(scripts)
   return nil, nil
 end
 
-local function detect_script_runner(root_dir)
-  if common_utils.file_exists(root_dir .. "/yarn.lock") then
-    return "yarn"
+local PACKAGE_MANAGER_LOCKS = {
+  yarn = "yarn.lock",
+  npm = "package-lock.json",
+  pnpm = "pnpm-lock.yaml",
+  bun = "bun.lockb",
+}
+
+local PACKAGE_MANAGER_PRIORITY = { "yarn", "npm", "pnpm", "bun" }
+
+local function detect_runner_in_dir(dir)
+  if not dir or dir == "" then
+    return nil
   end
-  if common_utils.file_exists(root_dir .. "/package-lock.json") then
-    return "npm"
+
+  local normalized = vim.fn.fnamemodify(dir, ":p")
+  for _, manager in ipairs(PACKAGE_MANAGER_PRIORITY) do
+    local lock = PACKAGE_MANAGER_LOCKS[manager]
+    if lock and common_utils.file_exists(normalized .. "/" .. lock) then
+      return manager
+    end
   end
-  if common_utils.file_exists(root_dir .. "/pnpm-lock.yaml") then
-    return "pnpm"
-  end
-  if common_utils.file_exists(root_dir .. "/bun.lockb") then
-    return "bun"
-  end
+
   return nil
 end
 
-local function find_jest_binary(root_dir)
-  local possible_jest_paths = {
-    root_dir .. "/node_modules/.bin/jest",
-    root_dir .. "/node_modules/jest/bin/jest.js",
-  }
+local function detect_script_runner(search_dirs)
+  if not search_dirs then
+    return nil
+  end
 
-  for _, path in ipairs(possible_jest_paths) do
-    if common_utils.file_exists(path) then
-      return path
+  if type(search_dirs) == "string" then
+    search_dirs = { search_dirs }
+  end
+
+  for _, dir in ipairs(search_dirs) do
+    local runner = detect_runner_in_dir(dir)
+    if runner then
+      return runner
+    end
+  end
+
+  return nil
+end
+
+local function find_jest_binary(search_dirs)
+  if not search_dirs then
+    return nil
+  end
+
+  if type(search_dirs) == "string" then
+    search_dirs = { search_dirs }
+  end
+
+  for _, dir in ipairs(search_dirs) do
+    if dir and dir ~= "" then
+      local normalized = vim.fn.fnamemodify(dir, ":p")
+      local possible_jest_paths = {
+        normalized .. "/node_modules/.bin/jest",
+        normalized .. "/node_modules/jest/bin/jest.js",
+      }
+
+      for _, path in ipairs(possible_jest_paths) do
+        if common_utils.file_exists(path) then
+          return path
+        end
+      end
     end
   end
 
@@ -123,6 +164,113 @@ local function find_nearest_jest_config(test_path, root_dir)
       break
     end
     dir = parent
+  end
+
+  return nil
+end
+
+local function discover_package_context(test_path, project_root)
+  local normalized_root = project_root and vim.fn.fnamemodify(project_root, ":p") or nil
+  local dir = test_path and vim.fn.fnamemodify(test_path, ":p:h") or nil
+
+  local function try_dir(current_dir)
+    if not current_dir or current_dir == "" then
+      return nil
+    end
+
+    local normalized = vim.fn.fnamemodify(current_dir, ":p")
+    local package_json_path = normalized .. "/package.json"
+    local has_package = common_utils.file_exists(package_json_path)
+    local runner = detect_runner_in_dir(normalized)
+
+    if has_package then
+      local scripts = {}
+      local ok_read, contents = pcall(vim.fn.readfile, package_json_path)
+      if ok_read then
+        local ok_decode, decoded = pcall(vim.fn.json_decode, table.concat(contents, "\n"))
+        if ok_decode and type(decoded) == "table" then
+          scripts = decoded.scripts or {}
+        end
+      end
+
+      local script_name, script_command = find_jest_script(scripts)
+
+      if runner then
+        return {
+          package_json_path = package_json_path,
+          package_root = normalized,
+          script_name = script_name,
+          script_command = script_command,
+          runner = runner,
+        }
+      end
+
+      if script_name then
+        return {
+          package_json_path = package_json_path,
+          package_root = normalized,
+          script_name = script_name,
+          script_command = script_command,
+          runner = detect_script_runner({ normalized, project_root }),
+        }
+      end
+    elseif runner then
+      return {
+        package_json_path = nil,
+        package_root = normalized,
+        script_name = nil,
+        script_command = nil,
+        runner = runner,
+      }
+    end
+
+    return nil
+  end
+
+  while dir and dir ~= "" do
+    local context = try_dir(dir)
+    if context then
+      if not context.package_root then
+        context.package_root = vim.fn.fnamemodify(dir, ":p")
+      end
+      if not context.package_json_path and common_utils.file_exists(context.package_root .. "/package.json") then
+        context.package_json_path = context.package_root .. "/package.json"
+      end
+      return context
+    end
+
+    if normalized_root and vim.fn.fnamemodify(dir, ":p") == normalized_root then
+      break
+    end
+
+    local parent = vim.fn.fnamemodify(dir, ":h")
+    if not parent or parent == dir then
+      break
+    end
+    dir = parent
+  end
+
+  if normalized_root then
+    local context = try_dir(normalized_root)
+    if context then
+      if not context.package_root then
+        context.package_root = normalized_root
+      end
+      if not context.package_json_path and common_utils.file_exists(context.package_root .. "/package.json") then
+        context.package_json_path = context.package_root .. "/package.json"
+      end
+      return context
+    end
+  end
+
+  if normalized_root then
+    return {
+      package_json_path = common_utils.file_exists(normalized_root .. "/package.json") and normalized_root .. "/package.json" or nil,
+      package_root = normalized_root,
+      script_name = nil,
+      script_command = nil,
+      runner = detect_runner_in_dir(normalized_root),
+    }
   end
 
   return nil
@@ -172,8 +320,8 @@ local function inject_inspect_into_node_script(script_command)
   return script_command:gsub("^node%s+", "node --inspect-brk ", 1)
 end
 
-local function build_manual_jest_command(root_dir, test_path, file_path_arg, arg, debug_mode)
-  local jest_path = find_jest_binary(root_dir)
+local function build_manual_jest_command(package_root, project_root, test_path, file_path_arg, arg, debug_mode)
+  local jest_path = find_jest_binary({ package_root, project_root })
   if not jest_path then
     vim.notify("Jest binary not found in node_modules", vim.log.levels.ERROR)
     return nil
@@ -190,7 +338,7 @@ local function build_manual_jest_command(root_dir, test_path, file_path_arg, arg
     table.insert(tokens, "--runInBand")
   end
 
-  local config_path = find_nearest_jest_config(test_path, root_dir)
+  local config_path = find_nearest_jest_config(test_path, package_root or project_root)
   if config_path then
     table.insert(tokens, "--config")
     table.insert(tokens, escape_shell_arg(config_path))
@@ -202,34 +350,46 @@ local function build_manual_jest_command(root_dir, test_path, file_path_arg, arg
   return append_optional_arg(cmd, arg)
 end
 
-local function build_debug_command(script_command, root_dir, test_path, escaped_path, arg)
-  if script_command then
-    local injected = inject_inspect_into_node_script(script_command)
+local function build_debug_command(context, project_root, test_path, escaped_path, arg)
+  if context and context.script_command then
+    local injected = inject_inspect_into_node_script(context.script_command)
     if injected then
       local base = string.format("%s %s", injected, escaped_path)
       return append_optional_arg(base, arg)
     end
   end
 
-  return build_manual_jest_command(root_dir, test_path, escaped_path, arg, true)
+  local package_root = context and context.package_root or nil
+  return build_manual_jest_command(package_root, project_root, test_path, escaped_path, arg, true)
 end
 
-local function build_regular_command(script_runner, script_name, root_dir, test_path, escaped_path, arg)
-  if script_name and script_runner then
-    return build_script_runner_command(script_runner, script_name, escaped_path, arg, root_dir)
+local function build_regular_command(context, project_root, test_path, escaped_path, arg)
+  if context then
+    local script_name = context.script_name
+    local script_runner = context.runner
+
+    if script_name and script_runner then
+      return build_script_runner_command(script_runner, script_name, escaped_path, arg, context.package_root)
+    end
   end
 
-  return build_manual_jest_command(root_dir, test_path, escaped_path, arg, false)
+  local package_root = context and context.package_root or nil
+  return build_manual_jest_command(package_root, project_root, test_path, escaped_path, arg, false)
 end
 
-local function open_jest_terminal(cmd, root_dir)
+local function open_jest_terminal(cmd, cwd)
   local shell = vim.o.shell ~= "" and vim.o.shell or "/bin/sh"
   local original_win = vim.api.nvim_get_current_win()
   vim.cmd.vsplit()
   vim.cmd("enew")
   local term_win = vim.api.nvim_get_current_win()
 
-  local ok, job_id = pcall(vim.fn.termopen, shell, { cwd = root_dir })
+  local term_opts = {}
+  if cwd and cwd ~= "" then
+    term_opts.cwd = cwd
+  end
+
+  local ok, job_id = pcall(vim.fn.termopen, shell, term_opts)
   if not ok or job_id <= 0 then
     vim.api.nvim_set_current_win(original_win)
     pcall(vim.api.nvim_win_close, term_win, true)
@@ -428,38 +588,32 @@ M.run_jest_cmd = function(arg, debug_mode)
     return
   end
 
-  -- check if package.json exists in root_dir using fs_stat
-  local found_pkg_json_path = common_utils.file_exists(root_dir .. "/package.json") and root_dir .. "/package.json"
-    or nil
-
-  if not found_pkg_json_path then
-    vim.notify("No package.json found in current or parent directories", vim.log.levels.ERROR)
-    return
-  end
-
-  local package_json = vim.fn.json_decode(vim.fn.readfile(found_pkg_json_path)) --[[@as {scripts?: table<string, string>}]]
-  local scripts = package_json and package_json.scripts or {}
-  local script_name, script_command = find_jest_script(scripts)
-  local script_runner = script_name and detect_script_runner(root_dir) or nil
-
   local test_file_path = vim.fn.expand("%:p")
   if not test_file_path or test_file_path == "" then
     vim.notify("Could not resolve test file path for current buffer", vim.log.levels.ERROR)
     return
   end
+
+  -- locate nearest package.json starting from the test file directory and walking up to the project root
+  local context = discover_package_context(test_file_path, root_dir)
+  if not context then
+    vim.notify("No package.json found in current or parent directories", vim.log.levels.ERROR)
+    return
+  end
+
   local escaped_test_path = escape_shell_arg(test_file_path)
   local cmd
   if debug_mode then
-    cmd = build_debug_command(script_command, root_dir, test_file_path, escaped_test_path, arg)
+    cmd = build_debug_command(context, root_dir, test_file_path, escaped_test_path, arg)
   else
-    cmd = build_regular_command(script_runner, script_name, root_dir, test_file_path, escaped_test_path, arg)
+    cmd = build_regular_command(context, root_dir, test_file_path, escaped_test_path, arg)
   end
 
   if not cmd then
     return
   end
 
-  open_jest_terminal(cmd, root_dir)
+  open_jest_terminal(cmd, context.package_root or root_dir)
 end
 
 M.close_terminal_buffer = function()
