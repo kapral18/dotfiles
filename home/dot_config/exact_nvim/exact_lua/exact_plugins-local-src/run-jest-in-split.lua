@@ -3,6 +3,248 @@ local common_utils = require("utils.common")
 local M = {}
 
 local test_types = { it = true, test = true, describe = true }
+local jest_script_priority = {
+  "test",
+  "test:unit",
+  "test:jest",
+  "jest",
+  "jest:unit",
+  "test:all",
+  "jest:all",
+  "test:watch",
+  "jest:watch",
+  "test:coverage",
+  "jest:coverage",
+}
+local jest_config_candidates = {
+  "jest.config.js",
+  "jest.config.dev.js",
+  "jest.integration.config.js",
+}
+
+local function escape_shell_arg(str)
+  return "'" .. str:gsub("'", [['\'']]) .. "'"
+end
+
+local script_runner_builders = {
+  yarn = function(script_name, file_path, root_dir)
+    if root_dir then
+      return string.format("yarn --cwd %s %s %s", escape_shell_arg(root_dir), script_name, file_path)
+    end
+    return string.format("yarn %s %s", script_name, file_path)
+  end,
+  npm = function(script_name, file_path, root_dir)
+    if root_dir then
+      return string.format("npm --prefix %s run %s -- %s", escape_shell_arg(root_dir), script_name, file_path)
+    end
+    return string.format("npm run %s -- %s", script_name, file_path)
+  end,
+  pnpm = function(script_name, file_path, root_dir)
+    if root_dir then
+      return string.format("pnpm --dir %s run %s -- %s", escape_shell_arg(root_dir), script_name, file_path)
+    end
+    return string.format("pnpm run %s -- %s", script_name, file_path)
+  end,
+  bun = function(script_name, file_path, root_dir)
+    if root_dir then
+      return string.format("bun --cwd %s run %s -- %s", escape_shell_arg(root_dir), script_name, file_path)
+    end
+    return string.format("bun run %s -- %s", script_name, file_path)
+  end,
+}
+
+local function find_jest_script(scripts)
+  if type(scripts) ~= "table" then
+    return nil, nil
+  end
+
+  for _, name in ipairs(jest_script_priority) do
+    if type(scripts[name]) == "string" then
+      return name, scripts[name]
+    end
+  end
+
+  return nil, nil
+end
+
+local function detect_script_runner(root_dir)
+  if common_utils.file_exists(root_dir .. "/yarn.lock") then
+    return "yarn"
+  end
+  if common_utils.file_exists(root_dir .. "/package-lock.json") then
+    return "npm"
+  end
+  if common_utils.file_exists(root_dir .. "/pnpm-lock.yaml") then
+    return "pnpm"
+  end
+  if common_utils.file_exists(root_dir .. "/bun.lockb") then
+    return "bun"
+  end
+  return nil
+end
+
+local function find_jest_binary(root_dir)
+  local possible_jest_paths = {
+    root_dir .. "/node_modules/.bin/jest",
+    root_dir .. "/node_modules/jest/bin/jest.js",
+  }
+
+  for _, path in ipairs(possible_jest_paths) do
+    if common_utils.file_exists(path) then
+      return path
+    end
+  end
+
+  return nil
+end
+
+local function find_nearest_jest_config(test_path, root_dir)
+  if not test_path or test_path == "" then
+    return nil
+  end
+
+  local dir = vim.fn.fnamemodify(test_path, ":p:h")
+  local normalized_root = root_dir and vim.fn.fnamemodify(root_dir, ":p") or nil
+
+  while dir and dir ~= "" do
+    for _, candidate in ipairs(jest_config_candidates) do
+      local config_path = dir .. "/" .. candidate
+      if common_utils.file_exists(config_path) then
+        return config_path
+      end
+    end
+
+    if normalized_root and dir == normalized_root then
+      break
+    end
+
+    local parent = vim.fn.fnamemodify(dir, ":h")
+    if not parent or parent == dir then
+      break
+    end
+    dir = parent
+  end
+
+  return nil
+end
+
+local function append_optional_arg(cmd, arg)
+  if not arg or arg == "" then
+    return cmd
+  end
+
+  if arg:sub(1, 1) == " " then
+    return cmd .. arg
+  end
+
+  return cmd .. " " .. arg
+end
+
+local function build_script_runner_command(script_runner, script_name, file_path, arg, root_dir)
+  local builder = script_runner_builders[script_runner]
+  local base
+  if builder then
+    base = builder(script_name, file_path, root_dir)
+  else
+    base = string.format("%s run %s -- %s", script_runner, script_name, file_path)
+  end
+
+  return append_optional_arg(base, arg)
+end
+
+local function inject_inspect_into_node_script(script_command)
+  if type(script_command) ~= "string" then
+    return nil
+  end
+
+  if not script_command:match("^node%s") then
+    return nil
+  end
+
+  if script_command:match("%-%-inspect%-brk") then
+    return script_command
+  end
+
+  if script_command:match("%-%-inspect") then
+    return script_command:gsub("%-%-inspect", "--inspect-brk", 1)
+  end
+
+  return script_command:gsub("^node%s+", "node --inspect-brk ", 1)
+end
+
+local function build_manual_jest_command(root_dir, test_path, file_path_arg, arg, debug_mode)
+  local jest_path = find_jest_binary(root_dir)
+  if not jest_path then
+    vim.notify("Jest binary not found in node_modules", vim.log.levels.ERROR)
+    return nil
+  end
+
+  local tokens = { "node" }
+  if debug_mode then
+    table.insert(tokens, "--inspect-brk")
+  end
+
+  table.insert(tokens, escape_shell_arg(jest_path))
+
+  if debug_mode then
+    table.insert(tokens, "--runInBand")
+  end
+
+  local config_path = find_nearest_jest_config(test_path, root_dir)
+  if config_path then
+    table.insert(tokens, "--config")
+    table.insert(tokens, escape_shell_arg(config_path))
+  end
+
+  table.insert(tokens, file_path_arg)
+
+  local cmd = table.concat(tokens, " ")
+  return append_optional_arg(cmd, arg)
+end
+
+local function build_debug_command(script_command, root_dir, test_path, escaped_path, arg)
+  if script_command then
+    local injected = inject_inspect_into_node_script(script_command)
+    if injected then
+      local base = string.format("%s %s", injected, escaped_path)
+      return append_optional_arg(base, arg)
+    end
+  end
+
+  return build_manual_jest_command(root_dir, test_path, escaped_path, arg, true)
+end
+
+local function build_regular_command(script_runner, script_name, root_dir, test_path, escaped_path, arg)
+  if script_name and script_runner then
+    return build_script_runner_command(script_runner, script_name, escaped_path, arg, root_dir)
+  end
+
+  return build_manual_jest_command(root_dir, test_path, escaped_path, arg, false)
+end
+
+local function open_jest_terminal(cmd, root_dir)
+  local shell = vim.o.shell ~= "" and vim.o.shell or "/bin/sh"
+  local original_win = vim.api.nvim_get_current_win()
+  vim.cmd.vsplit()
+  vim.cmd("enew")
+  local term_win = vim.api.nvim_get_current_win()
+
+  local ok, job_id = pcall(vim.fn.termopen, shell, { cwd = root_dir })
+  if not ok or job_id <= 0 then
+    vim.api.nvim_set_current_win(original_win)
+    pcall(vim.api.nvim_win_close, term_win, true)
+    local err = not ok and job_id or "termopen failed to start job"
+    vim.notify("Failed to run Jest: " .. tostring(err), vim.log.levels.ERROR)
+    return false
+  end
+
+  vim.fn.chansend(job_id, cmd .. "\n")
+  vim.api.nvim_set_current_win(term_win)
+  vim.cmd("startinsert")
+  vim.api.nvim_set_current_win(original_win)
+  vim.cmd("stopinsert")
+  return true
+end
 
 local function escape_jest_regex(str, is_parametrized)
   local escapes = {
@@ -174,9 +416,7 @@ M.get_current_test_name = function()
   return table.concat(full_path, " "), is_leaf, has_parametrized
 end
 
-M.escape_shell_arg = function(str)
-  return "'" .. str:gsub("'", [['\'']]) .. "'"
-end
+M.escape_shell_arg = escape_shell_arg
 
 ---@param arg string Additional arguments to pass to Jest
 ---@param debug_mode boolean|nil Whether to run Jest in debug mode
@@ -197,110 +437,29 @@ M.run_jest_cmd = function(arg, debug_mode)
     return
   end
 
-  local cmd
+  local package_json = vim.fn.json_decode(vim.fn.readfile(found_pkg_json_path)) --[[@as {scripts?: table<string, string>}]]
+  local scripts = package_json and package_json.scripts or {}
+  local script_name, script_command = find_jest_script(scripts)
+  local script_runner = script_name and detect_script_runner(root_dir) or nil
 
-  if debug_mode then
-    -- For debug mode, we need to run Jest directly with node inspector
-    local jest_path = nil
-
-    -- Try to find jest binary
-    local possible_jest_paths = {
-      root_dir .. "/node_modules/.bin/jest",
-      root_dir .. "/node_modules/jest/bin/jest.js",
-    }
-
-    for _, path in ipairs(possible_jest_paths) do
-      if common_utils.file_exists(path) then
-        jest_path = path
-        break
-      end
-    end
-
-    if not jest_path then
-      vim.notify("Jest binary not found in node_modules", vim.log.levels.ERROR)
-      return
-    end
-
-    -- Construct debug command
-    cmd = "node --inspect-brk " .. jest_path .. " --runInBand " .. vim.fn.expand("%:p")
-    if arg then
-      cmd = cmd .. " " .. arg
-    end
-
-    -- Notify user about debug port
-    vim.notify("Starting Jest in debug mode on port 9229. Attach your debugger.", vim.log.levels.INFO)
-  else
-    -- Normal mode - use package scripts
-    local package_json = vim.fn.json_decode(vim.fn.readfile(found_pkg_json_path)) --[[@as {scripts?: table<string, string>}]]
-
-    if not package_json.scripts then
-      vim.notify("No scripts found in package.json", vim.log.levels.ERROR)
-      return
-    end
-
-    local pkg_json_scripts = package_json.scripts --[[@as table<string, string>]]
-
-    local jest_script_names = {
-      "test",
-      "test:unit",
-      "test:jest",
-      "jest",
-      "jest:unit",
-      "test:all",
-      "jest:all",
-      "test:watch",
-      "jest:watch",
-      "test:coverage",
-      "jest:coverage",
-    }
-
-    local script_name = nil
-    for _, name in ipairs(jest_script_names) do
-      if pkg_json_scripts[name] then
-        script_name = name
-        break
-      end
-    end
-
-    if not script_name then
-      vim.notify("No jest script found in package.json", vim.log.levels.ERROR)
-      return
-    end
-
-    local script_runner = nil
-
-    if common_utils.file_exists(root_dir .. "/yarn.lock") then
-      script_runner = "yarn"
-    elseif common_utils.file_exists(root_dir .. "/package-lock.json") then
-      script_runner = "npm"
-    elseif common_utils.file_exists(root_dir .. "/pnpm-lock.yaml") then
-      script_runner = "pnpm"
-    elseif common_utils.file_exists(root_dir .. "/bun.lockb") then
-      script_runner = "bun"
-    end
-
-    if not script_runner then
-      vim.notify("No supported package manager lock file found", vim.log.levels.ERROR)
-      return
-    end
-
-  cmd = script_runner .. " " .. script_name .. " " .. vim.fn.expand("%:p")
-  if arg then
-    cmd = cmd .. " " .. arg
+  local test_file_path = vim.fn.expand("%:p")
+  if not test_file_path or test_file_path == "" then
+    vim.notify("Could not resolve test file path for current buffer", vim.log.levels.ERROR)
+    return
   end
-end
+  local escaped_test_path = escape_shell_arg(test_file_path)
+  local cmd
+  if debug_mode then
+    cmd = build_debug_command(script_command, root_dir, test_file_path, escaped_test_path, arg)
+  else
+    cmd = build_regular_command(script_runner, script_name, root_dir, test_file_path, escaped_test_path, arg)
+  end
 
-local ok, err = pcall(function()
-  local original_win = vim.api.nvim_get_current_win()
-  vim.cmd.vsplit()
-  vim.cmd.terminal()
-  vim.api.nvim_chan_send(vim.bo.channel, cmd .. "\n")
-  vim.api.nvim_set_current_win(original_win)
-end)
+  if not cmd then
+    return
+  end
 
-if not ok then
-  vim.notify("Failed to run Jest: " .. err, vim.log.levels.ERROR)
-end
+  open_jest_terminal(cmd, root_dir)
 end
 
 M.close_terminal_buffer = function()
@@ -312,12 +471,23 @@ M.close_terminal_buffer = function()
   end
 end
 
-local function show_parametrized_prompt(pattern, debug_mode)
+local function show_parametrized_prompt(pattern, update_arg, debug_mode)
   local choices = {
-    { label = "Run all parameterized tests", value = pattern },
-    { label = "Enter custom regex pattern", value = "custom" },
-    { label = "Run with update snapshots", value = pattern .. " --updateSnapshot" },
+    { label = "Run all parameterized tests", kind = "pattern", value = pattern, extra = update_arg },
+    { label = "Enter custom regex pattern", kind = "custom" },
   }
+
+  local toggle_label
+  local toggle_update_arg
+  if update_arg ~= "" then
+    toggle_label = "Run without update snapshots"
+    toggle_update_arg = ""
+  else
+    toggle_label = "Run with update snapshots"
+    toggle_update_arg = " --updateSnapshot"
+  end
+
+  table.insert(choices, { label = toggle_label, kind = "pattern", value = pattern, extra = toggle_update_arg })
 
   vim.ui.select(choices, {
     prompt = "Parameterized test detected:",
@@ -325,17 +495,28 @@ local function show_parametrized_prompt(pattern, debug_mode)
       return item.label
     end,
   }, function(choice)
-    if choice then
-      if choice.value == "custom" then
-        vim.ui.input({ prompt = "Enter test regex: ", default = pattern }, function(input)
-          if input then
-            M.run_jest_cmd("-t " .. M.escape_shell_arg(input), debug_mode)
-          end
-        end)
-      else
-        M.run_jest_cmd("-t " .. M.escape_shell_arg(choice.value), debug_mode)
-      end
+    if not choice then
+      return
     end
+
+    if choice.kind == "custom" then
+      vim.ui.input({ prompt = "Enter test regex: ", default = pattern }, function(input)
+        if input then
+          local arg = "-t " .. escape_shell_arg(input)
+          if update_arg ~= "" then
+            arg = arg .. update_arg
+          end
+          M.run_jest_cmd(arg, debug_mode)
+        end
+      end)
+      return
+    end
+
+    local arg = "-t " .. escape_shell_arg(choice.value)
+    if choice.extra ~= "" then
+      arg = arg .. choice.extra
+    end
+    M.run_jest_cmd(arg, debug_mode)
   end)
 end
 
@@ -372,9 +553,9 @@ M.run_jest_in_split = function(options)
   pattern = pattern:gsub("%s+", " ") -- Normalize spaces
 
   if is_parametrized then
-    show_parametrized_prompt(pattern .. update_arg, options.debug)
+    show_parametrized_prompt(pattern, update_arg, options.debug)
   else
-    local arg = "-t " .. M.escape_shell_arg(pattern) .. update_arg --[[@as string]]
+    local arg = "-t " .. escape_shell_arg(pattern) .. update_arg --[[@as string]]
     M.run_jest_cmd(arg, options.debug)
   end
 end
