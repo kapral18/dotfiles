@@ -9,10 +9,6 @@ local jest_script_priority = {
   "test:jest",
   "jest",
   "jest:unit",
-  "test:all",
-  "jest:all",
-  "test:watch",
-  "jest:watch",
   "test:coverage",
   "jest:coverage",
 }
@@ -123,9 +119,10 @@ local function find_jest_binary(search_dirs)
   for _, dir in ipairs(search_dirs) do
     if dir and dir ~= "" then
       local normalized = vim.fn.fnamemodify(dir, ":p")
+      -- Use joinpath to avoid accidental double slashes
       local possible_jest_paths = {
-        normalized .. "/node_modules/.bin/jest",
-        normalized .. "/node_modules/jest/bin/jest.js",
+        vim.fs.joinpath(normalized, "node_modules", ".bin", "jest"),
+        vim.fs.joinpath(normalized, "node_modules", "jest", "bin", "jest.js"),
       }
 
       for _, path in ipairs(possible_jest_paths) do
@@ -167,6 +164,120 @@ local function find_nearest_jest_config(test_path, root_dir)
   end
 
   return nil
+end
+
+-- Extended Jest config discovery with prompt-and-cache when multiple are found
+local JEST_CONFIG_EXTS_SET = { js = true, cjs = true, mjs = true, ts = true, cts = true, mts = true }
+
+local function is_jest_config_filename(name)
+  if type(name) ~= "string" then
+    return false
+  end
+  -- Accept names like: jest.config.js, jest.config.dev.js, jest.dev.config.js, jest.integration.config.ts, etc.
+  if
+    not name:match("^jest%..*config%..+$")
+    and not name:match("^jest%.config%..+$")
+    and not name:match("^jest.*config%..+$")
+  then
+    return false
+  end
+  local ext = name:match("%.([%w]+)$")
+  return ext and JEST_CONFIG_EXTS_SET[ext] or false
+end
+
+local function list_jest_configs_in_dir(dir)
+  if not dir or dir == "" then
+    return {}
+  end
+  local ok, entries = pcall(vim.fn.readdir, dir)
+  if not ok or type(entries) ~= "table" then
+    return {}
+  end
+  local results = {}
+  for _, name in ipairs(entries) do
+    if is_jest_config_filename(name) then
+      local full = dir .. "/" .. name
+      if common_utils.file_exists(full) then
+        table.insert(results, full)
+      end
+    end
+  end
+  return results
+end
+
+local function collect_jest_configs_upwards(start_dir, stop_dir)
+  local dir = start_dir and vim.fn.fnamemodify(start_dir, ":p") or nil
+  local stop = stop_dir and vim.fn.fnamemodify(stop_dir, ":p") or nil
+  local results = {}
+  while dir and dir ~= "" do
+    local found = list_jest_configs_in_dir(dir)
+    for _, p in ipairs(found) do
+      table.insert(results, p)
+    end
+    if stop and dir == stop then
+      break
+    end
+    local parent = vim.fn.fnamemodify(dir, ":h")
+    if not parent or parent == dir then
+      break
+    end
+    dir = parent
+  end
+  return results
+end
+
+local function get_git_branch(cwd)
+  local args = { "git" }
+  if cwd and cwd ~= "" then
+    table.insert(args, "-C")
+    table.insert(args, vim.fn.fnamemodify(cwd, ":p"))
+  end
+  table.insert(args, "rev-parse")
+  table.insert(args, "--abbrev-ref")
+  table.insert(args, "HEAD")
+  local lines = vim.fn.systemlist(args)
+  if vim.v.shell_error ~= 0 or not lines or #lines == 0 then
+    return "unknown"
+  end
+  return lines[1]
+end
+
+local function get_cache_file_path()
+  local cache_dir = vim.fn.stdpath("cache") .. "/run-jest-in-split"
+  if vim.fn.isdirectory(cache_dir) == 0 then
+    pcall(vim.fn.mkdir, cache_dir, "p")
+  end
+  return cache_dir .. "/jest-config-choices.json"
+end
+
+local function load_config_cache()
+  local path = get_cache_file_path()
+  if not common_utils.file_exists(path) then
+    return {}
+  end
+  local content = select(1, common_utils.safe_file_read(path))
+  if not content or content == "" then
+    return {}
+  end
+  local ok, data = pcall(vim.fn.json_decode, content)
+  if ok and type(data) == "table" then
+    return data
+  end
+  return {}
+end
+
+local function save_config_cache(cache_tbl)
+  local path = get_cache_file_path()
+  local ok, json = pcall(vim.fn.json_encode, cache_tbl)
+  if not ok then
+    return false
+  end
+  local success = select(1, common_utils.safe_file_write(path, json, "w"))
+  return success == true
+end
+
+local function make_cache_key(project_root, branch, test_path)
+  return (project_root or "") .. "|" .. (branch or "") .. "|" .. (vim.fn.fnamemodify(test_path or "", ":p"))
 end
 
 local function discover_package_context(test_path, project_root)
@@ -265,7 +376,9 @@ local function discover_package_context(test_path, project_root)
 
   if normalized_root then
     return {
-      package_json_path = common_utils.file_exists(normalized_root .. "/package.json") and normalized_root .. "/package.json" or nil,
+      package_json_path = common_utils.file_exists(normalized_root .. "/package.json")
+          and normalized_root .. "/package.json"
+        or nil,
       package_root = normalized_root,
       script_name = nil,
       script_command = nil,
@@ -288,16 +401,36 @@ local function append_optional_arg(cmd, arg)
   return cmd .. " " .. arg
 end
 
-local function build_script_runner_command(script_runner, script_name, file_path, arg, root_dir)
+local rel_to_base
+
+local function build_script_runner_command(
+  script_runner,
+  script_name,
+  file_path,
+  arg,
+  root_dir,
+  project_root,
+  explicit_config
+)
   local builder = script_runner_builders[script_runner]
-  local base
-  if builder then
-    base = builder(script_name, file_path, root_dir)
-  else
-    base = string.format("%s run %s -- %s", script_runner, script_name, file_path)
+  local rel_file = rel_to_base(file_path:gsub("^'(.*)'$", "%1"), root_dir or project_root)
+  local rel_escaped = escape_shell_arg(rel_file)
+
+  -- Normalize arg and inject relative --config if provided
+  local extra = arg or ""
+  if explicit_config and not extra:match("%-%-config") then
+    local rel_cfg = rel_to_base(explicit_config, root_dir or project_root)
+    extra = append_optional_arg("--config " .. escape_shell_arg(rel_cfg), extra)
   end
 
-  return append_optional_arg(base, arg)
+  local base
+  if builder then
+    base = builder(script_name, rel_escaped, root_dir)
+  else
+    base = string.format("%s run %s -- %s", script_runner, script_name, rel_escaped)
+  end
+
+  return append_optional_arg(base, extra)
 end
 
 local function inject_inspect_into_node_script(script_command)
@@ -320,7 +453,28 @@ local function inject_inspect_into_node_script(script_command)
   return script_command:gsub("^node%s+", "node --inspect-brk ", 1)
 end
 
-local function build_manual_jest_command(package_root, project_root, test_path, file_path_arg, arg, debug_mode)
+rel_to_base = function(path, base_dir)
+  if not path or path == "" then
+    return path
+  end
+  local abs = vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))
+  local base = vim.fs.normalize(vim.fn.fnamemodify(base_dir or vim.env.PWD or "", ":p"))
+  base = base:gsub("/+$", "")
+  if base ~= "" and abs:sub(1, #base + 1) == (base .. "/") then
+    return abs:sub(#base + 2)
+  end
+  return abs
+end
+
+local function build_manual_jest_command(
+  package_root,
+  project_root,
+  test_path,
+  file_path_arg,
+  arg,
+  debug_mode,
+  explicit_config
+)
   local jest_path = find_jest_binary({ package_root, project_root })
   if not jest_path then
     vim.notify("Jest binary not found in node_modules", vim.log.levels.ERROR)
@@ -332,49 +486,66 @@ local function build_manual_jest_command(package_root, project_root, test_path, 
     table.insert(tokens, "--inspect-brk")
   end
 
-  table.insert(tokens, escape_shell_arg(jest_path))
+  table.insert(tokens, escape_shell_arg(rel_to_base(jest_path, project_root)))
 
   if debug_mode then
     table.insert(tokens, "--runInBand")
   end
 
-  local config_path = find_nearest_jest_config(test_path, package_root or project_root)
+  local config_path = explicit_config or find_nearest_jest_config(test_path, package_root or project_root)
   if config_path then
     table.insert(tokens, "--config")
-    table.insert(tokens, escape_shell_arg(config_path))
+    table.insert(tokens, escape_shell_arg(rel_to_base(config_path, project_root)))
   end
 
-  table.insert(tokens, file_path_arg)
+  -- file_path_arg contains already-escaped path; rebuild with project-relative path
+  local raw_path = file_path_arg:match("^'(.*)'$") or file_path_arg
+  local rel_file = rel_to_base(raw_path, project_root)
+  local rel_escaped = escape_shell_arg(rel_file)
+  table.insert(tokens, rel_escaped)
 
   local cmd = table.concat(tokens, " ")
   return append_optional_arg(cmd, arg)
 end
 
-local function build_debug_command(context, project_root, test_path, escaped_path, arg)
+local function build_debug_command(context, project_root, test_path, escaped_path, arg, explicit_config)
   if context and context.script_command then
     local injected = inject_inspect_into_node_script(context.script_command)
     if injected then
-      local base = string.format("%s %s", injected, escaped_path)
-      return append_optional_arg(base, arg)
+      local raw_path = escaped_path:match("^'(.*)'$") or escaped_path
+      local base = string.format("%s %s", injected, escape_shell_arg(rel_to_base(raw_path, project_root)))
+      local extra = arg or ""
+      if explicit_config and not extra:match("%-%-config") then
+        extra = extra .. " --config " .. escape_shell_arg(rel_to_base(explicit_config, project_root))
+      end
+      return append_optional_arg(base, extra)
     end
   end
 
   local package_root = context and context.package_root or nil
-  return build_manual_jest_command(package_root, project_root, test_path, escaped_path, arg, true)
+  return build_manual_jest_command(package_root, project_root, test_path, escaped_path, arg, true, explicit_config)
 end
 
-local function build_regular_command(context, project_root, test_path, escaped_path, arg)
+local function build_regular_command(context, project_root, test_path, escaped_path, arg, explicit_config)
   if context then
     local script_name = context.script_name
     local script_runner = context.runner
 
     if script_name and script_runner then
-      return build_script_runner_command(script_runner, script_name, escaped_path, arg, context.package_root)
+      return build_script_runner_command(
+        script_runner,
+        script_name,
+        escaped_path,
+        arg,
+        context.package_root,
+        project_root,
+        explicit_config
+      )
     end
   end
 
   local package_root = context and context.package_root or nil
-  return build_manual_jest_command(package_root, project_root, test_path, escaped_path, arg, false)
+  return build_manual_jest_command(package_root, project_root, test_path, escaped_path, arg, false, explicit_config)
 end
 
 local function open_jest_terminal(cmd, cwd)
@@ -601,12 +772,53 @@ M.run_jest_cmd = function(arg, debug_mode)
     return
   end
 
+  -- Resolve explicit jest config with prompt-and-cache when multiple are present
+  local branch = get_git_branch(root_dir)
+  local cache = load_config_cache()
+  local key = make_cache_key(root_dir, branch, test_file_path)
+  local explicit_config = cache[key]
+
+  -- Invalidate stale cache entries
+  if explicit_config and not common_utils.file_exists(explicit_config) then
+    cache[key] = nil
+    save_config_cache(cache)
+    explicit_config = nil
+  end
+
+  if not explicit_config then
+    local start_dir = vim.fn.fnamemodify(test_file_path, ":p:h")
+    local configs = collect_jest_configs_upwards(start_dir, context.package_root or root_dir)
+    if #configs == 1 then
+      explicit_config = configs[1]
+    elseif #configs > 1 then
+      local choices = {}
+      for _, p in ipairs(configs) do
+        local rel = vim.fn.fnamemodify(p, ":.")
+        table.insert(choices, { label = rel ~= p and rel or p, value = p })
+      end
+      vim.ui.select(choices, {
+        prompt = "Multiple Jest configs found. Choose one to remember:",
+        format_item = function(item)
+          return item.label
+        end,
+      }, function(choice)
+        if not choice then
+          return
+        end
+        cache[key] = choice.value
+        save_config_cache(cache)
+        M.run_jest_cmd(arg, debug_mode) -- re-run to pick up cache
+      end)
+      return
+    end
+  end
+
   local escaped_test_path = escape_shell_arg(test_file_path)
   local cmd
   if debug_mode then
-    cmd = build_debug_command(context, root_dir, test_file_path, escaped_test_path, arg)
+    cmd = build_debug_command(context, root_dir, test_file_path, escaped_test_path, arg, explicit_config)
   else
-    cmd = build_regular_command(context, root_dir, test_file_path, escaped_test_path, arg)
+    cmd = build_regular_command(context, root_dir, test_file_path, escaped_test_path, arg, explicit_config)
   end
 
   if not cmd then
