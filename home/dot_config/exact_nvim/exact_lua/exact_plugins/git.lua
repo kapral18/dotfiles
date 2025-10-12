@@ -189,7 +189,13 @@ return {
   {
     "sindrets/diffview.nvim",
     lazy = false,
-    config = true,
+    opts = {
+      view = {
+        merge_tool = {
+          layout = "diff4_mixed",
+        },
+      },
+    },
     keys = {
       { "<leader>dfx", "<CMD>DiffviewClose<CR>", desc = "DiffviewClose" },
       { "<leader>dfh", ":DiffviewFileHistory --follow<CR>", desc = "DiffviewFileHistory", mode = { "n", "x" } },
