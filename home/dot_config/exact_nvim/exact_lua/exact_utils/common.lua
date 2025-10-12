@@ -182,6 +182,7 @@ local RG_BASE_OPTS = table.concat({
   "--hidden",
 }, " ")
 
+local RG_OPTS_DEFAULT = RG_BASE_OPTS .. " --glob '!.git/**'"
 local RG_OPTS_UNRESTRICTED = RG_BASE_OPTS .. " --no-ignore"
 
 local FD_BASE_OPTS = table.concat({
@@ -194,7 +195,7 @@ local FD_BASE_OPTS = table.concat({
 local FD_OPTS_DEFAULT = FD_BASE_OPTS .. " --exclude .git"
 local FD_OPTS_UNRESTRICTED = FD_BASE_OPTS .. " --no-ignore"
 
-M.fzf_rg_opts = RG_BASE_OPTS
+M.fzf_rg_opts = RG_OPTS_DEFAULT
 M.fzf_rg_opts_unrestricted = RG_OPTS_UNRESTRICTED
 M.fzf_fd_opts = FD_OPTS_DEFAULT
 M.fzf_fd_opts_unrestricted = FD_OPTS_UNRESTRICTED
