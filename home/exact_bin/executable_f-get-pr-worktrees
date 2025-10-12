@@ -8,11 +8,26 @@ source "$(dirname "$0")/utils/bash_utils_lib.sh"
 
 pr_numbers=()
 
-if [[ "${1:-}" =~ ^[0-9]+$ ]]; then
-  pr_numbers=("$1")
-else
+if (($# > 0)); then
+  all_numeric=true
+  for arg in "$@"; do
+    if [[ "$arg" =~ ^[0-9]+$ ]]; then
+      pr_numbers+=("$arg")
+    else
+      all_numeric=false
+      break
+    fi
+  done
+
+  if ! $all_numeric; then
+    pr_numbers=()
+  fi
+fi
+
+if [ ${#pr_numbers[@]} -eq 0 ]; then
+  search_query="$*"
   # Search and select PR using fzf with improved preview (multi-select enabled)
-  mapfile -t pr_numbers < <(gh pr list --search "${1:-}" --json number,title \
+  mapfile -t pr_numbers < <(gh pr list --search "${search_query}" --json number,title \
     --jq '.[] | "\(.number) \(.title)"' | fzf --multi --preview '
             gh pr view {1} --json number,title,body,author,labels,comments --template "
 # PR #{{.number}}: {{.title}}
