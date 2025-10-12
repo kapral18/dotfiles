@@ -191,11 +191,12 @@ local FD_BASE_OPTS = table.concat({
   "--follow",
 }, " ")
 
+local FD_OPTS_DEFAULT = FD_BASE_OPTS .. " --exclude .git"
 local FD_OPTS_UNRESTRICTED = FD_BASE_OPTS .. " --no-ignore"
 
 M.fzf_rg_opts = RG_BASE_OPTS
 M.fzf_rg_opts_unrestricted = RG_OPTS_UNRESTRICTED
-M.fzf_fd_opts = FD_BASE_OPTS
+M.fzf_fd_opts = FD_OPTS_DEFAULT
 M.fzf_fd_opts_unrestricted = FD_OPTS_UNRESTRICTED
 
 local function open_qf_window(opts)
