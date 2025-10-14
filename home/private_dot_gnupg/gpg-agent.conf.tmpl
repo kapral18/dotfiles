@@ -1,3 +1,6 @@
+{{- if eq .chezmoi.os "darwin" }}
+pinentry-program {{ .homebrewPrefix }}/bin/pinentry-mac
+{{ end -}}
+
 default-cache-ttl {{ .pgpCacheTtl }}
 max-cache-ttl {{ .pgpCacheTtl }}
-
