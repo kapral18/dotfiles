@@ -6,6 +6,40 @@ set -euo pipefail
 # Source the utility libraries
 source "$(dirname "$0")/utils/bash_utils_lib.sh"
 
+show_usage() {
+  echo "Usage: get_pr_worktrees [-q|--quiet] [pr_number ...|search terms]" >&2
+}
+
+quiet_mode=0
+quiet_flag=()
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -q|--quiet)
+      quiet_mode=1
+      quiet_flag=(-q)
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      show_usage
+      exit 1
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+info() {
+  if [ "$quiet_mode" -eq 0 ]; then
+    printf '%s\n' "$@"
+  fi
+}
+
 pr_numbers=()
 
 if (($# > 0)); then
@@ -46,13 +80,13 @@ if [ ${#pr_numbers[@]} -eq 0 ]; then
 fi
 
 if [ ${#pr_numbers[@]} -eq 0 ]; then
-  echo "No PR selected."
+  echo "No PR selected." >&2
   exit 1
 fi
 
 # Process each selected PR
 for pr_number in "${pr_numbers[@]}"; do
-  echo "Processing PR #$pr_number..."
+  info "Processing PR #$pr_number..."
 
   # Fetch PR details using GitHub CLI
   pr_info=$(gh pr view "$pr_number" --json headRefName,headRepository,headRepositoryOwner \
@@ -80,7 +114,7 @@ for pr_number in "${pr_numbers[@]}"; do
   upstream_remote_owner=$(git remote get-url upstream | awk -F'[:/]' '{print $2}')
 
   if [ "$repo_owner" = "$upstream_remote_owner" ]; then
-    echo "PR #$pr_number is from the upstream repository. Setting the remote to 'upstream'..."
+    info "PR #$pr_number is from the upstream repository. Setting the remote to 'upstream'..."
     repo_owner="upstream"
   fi
 
@@ -91,6 +125,6 @@ for pr_number in "${pr_numbers[@]}"; do
     git remote add "$repo_owner" "$repo_url"
   fi
 
-  f-add-worktree "$repo_owner/$branch_name"
-  echo "Completed PR #$pr_number worktree creation."
+  f-add-worktree "${quiet_flag[@]}" "$repo_owner/$branch_name"
+  info "Completed PR #$pr_number worktree creation."
 done

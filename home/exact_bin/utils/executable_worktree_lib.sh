@@ -3,6 +3,10 @@
 
 # Print created worktree message
 _print_created_worktree_message() {
+  if [ "${QUIET_MODE:-0}" -eq 1 ]; then
+    return
+  fi
+
   echo "
 
 -------------
@@ -21,13 +25,15 @@ At Path: $2"
 # Add worktree tmux session
 _add_worktree_tmux_session() {
   if [ -n "${TMUX:-}" ]; then
-    echo "
+    if [ "${QUIET_MODE:-0}" -eq 0 ]; then
+      echo "
 
 -------------
 
 Adding TMUX Session: $1|$2
 At Path: $3
 "
+    fi
     # add tmux session
     tmux new-session -d -s "$1|$2" -c "$3"
   fi
@@ -41,15 +47,16 @@ _remove_worktree_tmux_session() {
 
     session_name=$(tmux list-sessions -F "#{session_name} #{session_path}" | grep -i "$worktree_path" | awk '{print $1}')
 
-    echo "
+    if [ "${QUIET_MODE:-0}" -eq 0 ]; then
+      echo "
 
 -------------
 
 Removing TMUX Session: $session_name
 "
+    fi
     if [ -n "$session_name" ]; then
       tmux kill-session -t "$session_name"
     fi
   fi
 }
-
