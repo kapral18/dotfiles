@@ -112,7 +112,8 @@
   # Prevent line ending issues
   autocrlf = input
   # Uses the built-in file system monitor daemon so status/add/etc. ask “what changed?” instead of walking the whole tree; complements untracked-cache that manyFiles enables; safe on local filesystems.
-  fsmonitor = true
+  # For really large repos backfires
+  fsmonitor = false
 
 [color]
   ui = auto
