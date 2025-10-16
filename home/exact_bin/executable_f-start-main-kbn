@@ -39,13 +39,41 @@ done
 # Capture current tmux session and window info
 TMUX_SESSION=$(tmux display-message -p '#S')
 TMUX_WINDOW=$(tmux display-message -p '#I')
+TMUX_CURRENT_PANE=$(tmux display-message -p '#{pane_id}')
+TMUX_CURRENT_INDEX=$(tmux display-message -p '#{pane_index}')
+TMUX_TARGET_PANE=$(tmux list-panes -F '#{pane_index} #{pane_id}' | awk -v current="$TMUX_CURRENT_INDEX" '
+  $1 > current {
+    if (target == "" || $1 < best) {
+      target = $2
+      best = $1
+    }
+  }
+  END {
+    if (target != "") {
+      print target
+    }
+  }
+')
+
+if [[ -z "${TMUX_TARGET_PANE:-}" ]]; then
+  TMUX_TARGET_PANE=$(tmux list-panes -F '#{pane_index} #{pane_id}' | awk -v current="$TMUX_CURRENT_INDEX" '
+    $1 != current {
+      print $2
+      exit
+    }
+  ')
+fi
+
+if [[ -z "${TMUX_TARGET_PANE:-}" ]]; then
+  TMUX_TARGET_PANE="$TMUX_CURRENT_PANE"
+fi
 
 yarn kbn bootstrap
 
 (
   tail -n 0 -F "$LOGFILE" | while read -r line; do
     if [[ "$line" == *"$TRIGGER_STRING"* ]]; then
-      tmux send-keys -t "${TMUX_SESSION}:${TMUX_WINDOW}.+1" "yarn start --no-base-path --host=kibana-main.local --port=5602 --elasticsearch.hosts=http://localhost:9201" C-m
+      tmux send-keys -t "$TMUX_TARGET_PANE" "yarn start --no-base-path --host=kibana-main.local --port=5602 --elasticsearch.hosts=http://localhost:9201" C-m
       break
     fi
   done
