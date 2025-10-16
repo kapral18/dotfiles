@@ -51,4 +51,4 @@ yarn kbn bootstrap
   done
 ) &
 
-yarn es snapshot -E path.data="$ES_DATA_PATH"${ES_FLAGS} 2>&1 | tee "$LOGFILE"
+yarn es snapshot -E discovery.type=single-node -E path.data="$ES_DATA_PATH"${ES_FLAGS} 2>&1 | tee "$LOGFILE"
