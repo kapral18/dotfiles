@@ -36,7 +36,34 @@ if ! git ls-files -- "$search_path" | LC_ALL=C grep -q .; then
   exit 1
 fi
 
-max_jobs="${F_TRACE_STRING_PR_JOBS:-8}"
+determine_default_jobs() {
+  local cores
+
+  if command -v sysctl >/dev/null 2>&1; then
+    cores="$(sysctl -n hw.physicalcpu 2>/dev/null || echo "")"
+  fi
+
+  if [ -z "${cores:-}" ] && command -v nproc >/dev/null 2>&1; then
+    cores="$(nproc 2>/dev/null || echo "")"
+  fi
+
+  if [ -z "${cores:-}" ] && command -v getconf >/dev/null 2>&1; then
+    cores="$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo "")"
+  fi
+
+  if ! [[ "${cores:-}" =~ ^[0-9]+$ ]] || [ "${cores:-0}" -le 0 ]; then
+    cores=1
+  fi
+
+  echo $((cores * 2))
+}
+
+if [ -z "${F_TRACE_STRING_PR_JOBS:-}" ]; then
+  max_jobs="$(determine_default_jobs)"
+else
+  max_jobs="$F_TRACE_STRING_PR_JOBS"
+fi
+
 if ! [[ "$max_jobs" =~ ^[0-9]+$ ]] || [ "$max_jobs" -le 0 ]; then
   echo "$script_name: invalid F_TRACE_STRING_PR_JOBS value '$max_jobs'; expected positive integer" >&2
   exit 1
