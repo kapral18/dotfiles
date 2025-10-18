@@ -89,6 +89,7 @@ selection="$(fzf --info=inline-right --header="Searching for '$regex' in $search
 fzf_status=$?
 set -e
 
+kill "$search_pid" 2>/dev/null || true
 wait "$search_pid" 2>/dev/null || true
 
 if [ "$fzf_status" -ne 0 ] || [ -z "$selection" ]; then
