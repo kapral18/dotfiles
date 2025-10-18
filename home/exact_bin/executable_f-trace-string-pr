@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+# Description: Locate a PR that introduced a matching string and open it in the browser.
+
+set -euo pipefail
+
+script_name="${0##*/}"
+usage="Usage: $script_name <regex> <search_path>"
+
+if [ "$#" -ne 2 ]; then
+  echo "$script_name: invalid arguments" >&2
+  echo "$usage" >&2
+  exit 1
+fi
+
+regex="$1"
+search_path="$2"
+
+require_cmd() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "$script_name: required command not found: $1" >&2
+    exit 1
+  fi
+}
+
+for cmd in git fzf gh xargs; do
+  require_cmd "$cmd"
+done
+
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "$script_name: not inside a git repository" >&2
+  exit 1
+fi
+
+if ! git ls-files -- "$search_path" | LC_ALL=C grep -q .; then
+  echo "$script_name: no tracked files found under '$search_path'" >&2
+  exit 1
+fi
+
+max_jobs="${F_TRACE_STRING_PR_JOBS:-8}"
+if ! [[ "$max_jobs" =~ ^[0-9]+$ ]] || [ "$max_jobs" -le 0 ]; then
+  echo "$script_name: invalid F_TRACE_STRING_PR_JOBS value '$max_jobs'; expected positive integer" >&2
+  exit 1
+fi
+
+set +e
+results="$(
+  git ls-files -z -- "$search_path" |
+    xargs -0 -n1 -P"$max_jobs" bash -c '
+      regex="$1"
+      file="$2"
+      git -c log.showSignature=false log --oneline --follow -G "$regex" -- "$file"
+    ' _ "$regex" |
+    awk '!seen[$0]++'
+)"
+pipeline_status=$?
+set -e
+
+if [ "$pipeline_status" -ne 0 ]; then
+  echo "$script_name: failed while searching git history" >&2
+  exit "$pipeline_status"
+fi
+
+if [ -z "$results" ]; then
+  echo "$script_name: no commits found containing '$regex' under '$search_path'." >&2
+  exit 1
+fi
+
+set +e
+selection="$(printf '%s\n' "$results" | fzf)"
+fzf_status=$?
+set -e
+
+if [ "$fzf_status" -ne 0 ] || [ -z "$selection" ]; then
+  exit 0
+fi
+
+if [[ "$selection" =~ \(\#([0-9]+)\)$ ]]; then
+  gh pr view -w "${BASH_REMATCH[1]}"
+else
+  echo "$script_name: selected commit does not reference a PR number:" >&2
+  echo "$selection" >&2
+  exit 1
+fi
