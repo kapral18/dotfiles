@@ -85,7 +85,7 @@ trap 'rm -f "$temp_fifo"' EXIT INT TERM
 search_pid=$!
 
 set +e
-selection="$(fzf < "$temp_fifo")"
+selection="$(fzf --info=inline-right --header="Searching for '$regex' in $search_path..." --header-first < "$temp_fifo")"
 fzf_status=$?
 set -e
 
