@@ -22,7 +22,7 @@ require_cmd() {
   fi
 }
 
-for cmd in git fzf gh xargs; do
+for cmd in git fzf gh parallel; do
   require_cmd "$cmd"
 done
 
@@ -69,33 +69,27 @@ if ! [[ "$max_jobs" =~ ^[0-9]+$ ]] || [ "$max_jobs" -le 0 ]; then
   exit 1
 fi
 
-set +e
-results="$(
+temp_fifo="$(mktemp -u)"
+mkfifo "$temp_fifo"
+trap 'rm -f "$temp_fifo"' EXIT INT TERM
+
+(
+  export TRACE_REGEX="$regex"
+  
   git ls-files -z -- "$search_path" |
-    xargs -0 -n1 -P"$max_jobs" bash -c '
-      regex="$1"
-      file="$2"
-      git -c log.showSignature=false log --oneline --follow -G "$regex" -- "$file"
-    ' _ "$regex" |
-    awk '!seen[$0]++'
-)"
-pipeline_status=$?
-set -e
+    parallel -0 -j"$max_jobs" --line-buffer \
+      'git -c log.showSignature=false log --oneline --follow -G "$TRACE_REGEX" -- {}' |
+    awk '!seen[$0]++ { print; fflush() }' > "$temp_fifo"
+) &
 
-if [ "$pipeline_status" -ne 0 ]; then
-  echo "$script_name: failed while searching git history" >&2
-  exit "$pipeline_status"
-fi
-
-if [ -z "$results" ]; then
-  echo "$script_name: no commits found containing '$regex' under '$search_path'." >&2
-  exit 1
-fi
+search_pid=$!
 
 set +e
-selection="$(printf '%s\n' "$results" | fzf)"
+selection="$(fzf < "$temp_fifo")"
 fzf_status=$?
 set -e
+
+wait "$search_pid" 2>/dev/null || true
 
 if [ "$fzf_status" -ne 0 ] || [ -z "$selection" ]; then
   exit 0
