@@ -1,41 +1,62 @@
+local select_keymaps = {
+  ["aa"] = "@parameter.outer",
+  ["ia"] = "@parameter.inner",
+  ["af"] = "@function.outer",
+  ["if"] = "@function.inner",
+  ["ac"] = "@class.outer",
+  ["ic"] = "@class.inner",
+  ["a/"] = "@comment.outer",
+  ["i/"] = "@comment.inner",
+  ["a?"] = "@conditional.outer",
+  ["i?"] = "@conditional.inner",
+  ["a:"] = "@loop.outer",
+  ["i:"] = "@loop.inner",
+  ["aj"] = "@jsx_attr",
+  ["ij"] = "@jsx_attr",
+}
+
 return {
   {
-    "nvim-treesitter/nvim-treesitter",
-    opts = {
-      tree_setter = {
-        enable = false,
-      },
-      textobjects = {
-        select = {
-          enable = true,
-          lookahead = true,
-          keymaps = {
-            ["aa"] = "@parameter.outer",
-            ["ia"] = "@parameter.inner",
-            ["af"] = "@function.outer",
-            ["if"] = "@function.inner",
-            ["ac"] = "@class.outer",
-            ["ic"] = "@class.inner",
-            ["a/"] = "@comment.outer",
-            ["i/"] = "@comment.inner",
-            ["a?"] = "@conditional.outer",
-            ["i?"] = "@conditional.inner",
-            ["a:"] = "@loop.outer",
-            ["i:"] = "@loop.inner",
-            ["aj"] = "@jsx_attr",
-            ["ij"] = "@jsx_attr",
-          },
-          include_surrounding_whitespace = true,
-        },
-        move = {
-          enable = true,
-          goto_next_start = { ["]r"] = "@return.outer" },
-          goto_next_end = { ["]R"] = "@return.outer" },
-          goto_previous_start = { ["[r"] = "@return.outer" },
-          goto_previous_end = { ["[R"] = "@return.outer" },
-        },
-      },
-    },
+    "nvim-treesitter/nvim-treesitter-textobjects",
+    opts = function(_, opts)
+      opts = opts or {}
+      opts.select = vim.tbl_deep_extend("force", opts.select or {}, {
+        enable = true,
+        lookahead = true,
+        include_surrounding_whitespace = true,
+      })
+      opts.select.enable = true
+      opts.select.keymaps = vim.tbl_extend("force", opts.select.keymaps or {}, select_keymaps)
+
+      opts.move = opts.move or {}
+      opts.move.enable = true
+      opts.move.keys = opts.move.keys or {}
+      opts.move.keys.goto_next_start =
+        vim.tbl_extend("force", opts.move.keys.goto_next_start or {}, { ["]r"] = "@return.outer" })
+      opts.move.keys.goto_next_end =
+        vim.tbl_extend("force", opts.move.keys.goto_next_end or {}, { ["]R"] = "@return.outer" })
+      opts.move.keys.goto_previous_start =
+        vim.tbl_extend("force", opts.move.keys.goto_previous_start or {}, { ["[r"] = "@return.outer" })
+      opts.move.keys.goto_previous_end =
+        vim.tbl_extend("force", opts.move.keys.goto_previous_end or {}, { ["[R"] = "@return.outer" })
+      return opts
+    end,
+    keys = function(_, keys)
+      local select = {}
+      for lhs, query in pairs(select_keymaps) do
+        local desc = "Select " .. query:gsub("@", ""):gsub("%.", " "):gsub("^%l", string.upper)
+        table.insert(select, {
+          lhs,
+          function()
+            require("nvim-treesitter-textobjects.select").select_textobject(query, "textobjects")
+          end,
+          mode = { "x", "o" },
+          desc = desc,
+        })
+      end
+      vim.list_extend(keys, select)
+      return keys
+    end,
   },
   {
     "wellle/visual-split.vim",
