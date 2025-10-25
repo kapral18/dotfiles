@@ -74,24 +74,24 @@ consistency.
 This is the crown jewel of the shell environment, turning Git's powerful but
 clunky `worktree` feature into a seamless, everyday tool.
 
-- **`f-add-worktree <branch> [base_branch]`**: An incredibly smart function that
+- **`f-wtree add <branch> [base_branch]`**: An incredibly smart function that
   handles numerous scenarios:
   - Creates a worktree from an existing local branch.
   - Creates a worktree from a remote branch on `origin` or `upstream`.
-  - Handles branches from forks (e.g., `f-add-worktree
+  - Handles branches from forks (e.g., `f-wtree add
 some-user/feature-branch`).
   - Creates a new branch from `HEAD` if the branch doesn't exist anywhere.
   - Organizes worktrees by creating nested directories for branches with
     slashes (e.g., `feature/new-ui`).
 
-- **`f-get-pr-worktrees <pr_numbers_or_search>`**: A massive time-saver. Type a PR
+- **`f-wtree prs <pr_numbers_or_search>`**: A massive time-saver. Type a PR
   number or search term, and it will:
   1. Use `fzf` to let you select the exact PR with a rich preview.
   2. Fetch PR details from the GitHub API.
   3. Add the contributor's fork as a temporary remote.
   4. Create a worktree for the PR's branch.
 
-- **`f-remove-worktrees`**: An `fzf`-powered interactive worktrees remover that:
+- **`f-wtree remove`**: An `fzf`-powered interactive worktrees remover that:
   1. Removes each selected worktree directory.
   2. Deletes the associated local branch.
   3. **Cleans up the remote**: If the worktree was from a fork, it removes
@@ -111,7 +111,7 @@ scripts are located in `~/bin` (managed by chezmoi) and provide powerful
 functionality:
 
 - **`f-add-patch-to-prs`**: Adds patch files to existing PRs for easy updates
-- **`f-add-worktree`**: Enhanced git worktree management with automatic branch creation and remote handling
+- **`f-wtree`**: Enhanced git worktree management with automatic branch creation and remote handling
 - **`f-appid`**: Retrieves application identifiers for macOS apps for automation
 - **`f-apply-app-icons`**: Applies custom icons to applications based on YAML mapping definitions
 - **`f-bat-preview`**: Uses bat for file preview with syntax highlighting in fuzzy finders
@@ -122,8 +122,6 @@ functionality:
   concatenates their contents (with file headers), and copies it to the
   clipboard, ready for pasting into an LLM.
 - **`f-dumputi`**: Custom utility functions for various development tasks
-- **`f-get-pr-worktrees`**: Creates worktrees from GitHub PRs with automatic
-  remote handling and branch management
 - **`f-get-risky-tests`**: Identifies potentially flaky or risky tests in test suites
 - **`f-gh-subissues-create`**: Creates GitHub sub-issues for detailed task breakdown
 - **`f-grepo`**: Enhanced git repository operations and navigation utilities
@@ -132,8 +130,6 @@ functionality:
 - **`f-list-prs`**: Lists GitHub PRs with advanced filtering and search capabilities
 - **`f-pdf-diff`**: A visual diff tool for PDFs. It uses ImageMagick to render
   two PDFs as images and composites them, highlighting all differences in red.
-- **`f-remove-worktrees`**: Interactive cleanup of git worktrees with intelligent
-  remote pruning and filesystem cleanup
 - **`f-search-brew-desc`**: Interactive search through Homebrew package descriptions
 - **`f-search-gh-topic`**: Searches GitHub repositories by topic with fuzzy filtering
 - **`f-tmux-lowfi`**: A clever script that controls a `lowfi` music player

@@ -59,8 +59,6 @@
   unstage = reset HEAD
   uncommit = reset --soft HEAD~1
 
-  # Worktree operations
-  wt = worktree
   # Temporarily stores changes from another worktree, resets it, and applies changes to current worktree
   wtgrab = "!f() { mktemp | xargs -I{} sh -c 'git -C $1 diff > $0; git -C $1 reset --hard HEAD; git apply $0;' {} $1; }; f"
 

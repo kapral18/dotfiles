@@ -1,20 +1,43 @@
 #!/usr/bin/env bash
-# Description: Add a worktree for a branch
 
 set -euo pipefail
 
-# Source the utility libraries
-source "$(dirname "$0")/utils/bash_utils_lib.sh"
-source "$(dirname "$0")/utils/worktree_lib.sh"
+source "$(dirname "$0")/../bash_utils_lib.sh"
+source "$(dirname "$0")/../worktree_lib.sh"
 
 show_usage() {
-  echo "Usage: add_worktree [-q|--quiet] <branch_name> [base_branch]" >&2
+  cat <<EOF
+Usage: f-wtree add [-q|--quiet] <branch_name> [base_branch]
+
+Add a git worktree for a branch.
+
+Arguments:
+  <branch_name>     Branch name to create worktree for. Can be:
+                    - Local branch name (e.g., 'feature-branch')
+                    - Remote branch (e.g., 'origin/feature-branch')
+                    - Fork branch (e.g., 'username/feature-branch')
+  [base_branch]     Optional base branch to create new branch from
+
+Options:
+  -q, --quiet       Suppress informational output
+  -h, --help        Show this help message
+
+Examples:
+  f-wtree add feature-branch
+  f-wtree add origin/feature-branch
+  f-wtree add username/feature-branch
+  f-wtree add new-feature main
+EOF
 }
 
 quiet_mode=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
+    -h|--help)
+      show_usage
+      exit 0
+      ;;
     -q|--quiet)
       quiet_mode=1
       shift
@@ -99,13 +122,11 @@ if git worktree list | grep -qw "$branch_name"; then
   exit 0
 fi
 
-# Split branch name to get remote and branch parts
 IFS='/' read -r inferred_branch_remote inferred_branch_name <<<"$branch_name"
 if [ -z "${inferred_branch_name:-}" ]; then
   inferred_branch_name="$inferred_branch_remote"
   inferred_branch_remote=""
 else
-  # Reconstruct branch name if it contains multiple slashes
   inferred_branch_name="${branch_name#*/}"
 fi
 
@@ -117,7 +138,6 @@ if git worktree list | grep -qw "$prefixed_branch_name"; then
 fi
 
 if [ "$is_base_branch_specified" -eq 1 ]; then
-  # Split base branch
   IFS='/' read -r inferred_base_branch_remote _ <<<"$base_branch"
 
   if git worktree list | grep -qE "\b${inferred_base_branch_remote}__${branch_name}\b"; then
@@ -132,9 +152,7 @@ if [ -n "$inferred_branch_remote" ] && git remote | grep -q "\b$inferred_branch_
   git_fetch_ref "$inferred_branch_remote" "$inferred_branch_name"
 fi
 
-# only-branch-specified case
 if [ "$is_base_branch_specified" -eq 0 ]; then
-  # Check if the branch exists locally
   if git show-ref --verify --quiet "refs/heads/$branch_name"; then
     info "Branch '$branch_name' already exists locally. Reusing it."
     git_worktree_add "$worktree_path" "$branch_name"
@@ -181,7 +199,6 @@ if [ "$is_base_branch_specified" -eq 0 ]; then
     _print_created_worktree_message "$branch_name" "$worktree_path"
   fi
 else
-  # Validate the preexisting $branch_name
   if git show-ref --verify --quiet "refs/heads/$branch_name"; then
     echo "Branch '$branch_name' already exists locally." >&2
     echo "Cannot create a new branch with the same name." >&2
@@ -202,11 +219,10 @@ else
 
   if [ -n "$inferred_branch_remote" ] && git remote | grep -q "\b$inferred_branch_remote\b"; then
     echo "WHEN using base branch argument, main branch argument SHOULD NOT include a remote name. Please provide a valid branch name." >&2
-    echo "For example, instead of add_worktree $branch_name $base_branch, use add_worktree $inferred_branch_name $base_branch." >&2
+    echo "For example, instead of f-wtree add $branch_name $base_branch, use f-wtree add $inferred_branch_name $base_branch." >&2
     exit 1
   fi
 
-  # Split base branch
   IFS='/' read -r inferred_base_branch_remote inferred_base_branch_name <<<"$base_branch"
   if [ -z "${inferred_base_branch_name:-}" ]; then
     inferred_base_branch_name="$inferred_base_branch_remote"
@@ -219,7 +235,6 @@ else
     git_fetch_ref "$inferred_base_branch_remote" "$inferred_base_branch_name"
   fi
 
-  # Now validate the $base_branch
   if git show-ref --verify --quiet "refs/heads/$base_branch"; then
     git_worktree_add "$worktree_path" -b "$branch_name" "$base_branch"
     _add_worktree_tmux_session "$parent_name" "$branch_name" "$worktree_path"
@@ -243,7 +258,6 @@ else
   fi
 fi
 
-# Add the new worktree to zoxide
 if command -v zoxide &>/dev/null; then
   zoxide add "$worktree_path"
 fi

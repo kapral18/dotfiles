@@ -1,12 +1,48 @@
 #!/usr/bin/env bash
-# Description: Remove multiple worktrees using fzf and delete the associated branches
 
 set -euo pipefail
 
-# Source the utility libraries
-source "$(dirname "$0")/utils/worktree_lib.sh"
+source "$(dirname "$0")/../worktree_lib.sh"
 
-# Select worktrees to remove
+show_usage() {
+  cat <<EOF
+Usage: f-wtree remove
+
+Interactively remove git worktrees.
+
+Options:
+  -h, --help        Show this help message
+
+Description:
+  Opens an interactive fzf selector to choose worktrees to remove.
+  For each selected worktree:
+  - Removes the worktree directory
+  - Deletes the associated local branch
+  - Removes unused fork remotes
+  - Cleans up empty parent directories
+  - Removes path from zoxide database
+  - Kills associated tmux session
+
+Notes:
+  - The default branch (main/master) cannot be removed
+  - Worktrees in detached HEAD state will be skipped
+EOF
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -h|--help)
+      show_usage
+      exit 0
+      ;;
+    *)
+      echo "Error: Unknown option '$1'" >&2
+      show_usage
+      exit 1
+      ;;
+  esac
+done
+
 mapfile -t worktrees < <(git worktree list -v | fzf --no-preview --ansi --multi)
 
 if [ ${#worktrees[@]} -eq 0 ]; then
@@ -19,15 +55,12 @@ remotes_to_check=()
 
 for worktree in "${worktrees[@]}"; do
   worktree_path=$(echo "$worktree" | awk '{print $1}')
-  # Extract branch name from the last field in brackets
   worktree_branch=$(echo "$worktree" | awk '{
         last = $NF
         gsub(/^[[(]|[])]$/, "", last)
         print last
     }')
 
-  # if the worktree_branch is HEAD then it's a detached HEAD
-  # so we skip it
   if [ "$worktree_branch" = "HEAD" ]; then
     echo "Skipping worktree at '$worktree_path'. It's in detached HEAD state."
     continue
@@ -41,7 +74,6 @@ for worktree in "${worktrees[@]}"; do
   echo "Removing worktree: $worktree_path ($worktree_branch)"
   git worktree remove "$worktree_path"
 
-  # collect remotes for later cleanup
   remote_branch=$(git rev-parse --abbrev-ref "$worktree_branch"@{upstream} 2>/dev/null || true)
   if [ -n "$remote_branch" ]; then
     remote=$(echo "$remote_branch" | cut -d'/' -f1)
@@ -50,7 +82,6 @@ for worktree in "${worktrees[@]}"; do
     fi
   fi
 
-  # check if branch still appears in other worktrees
   if git worktree list --porcelain | grep branch | grep -qw "$worktree_branch"; then
     echo "Branch '$worktree_branch' is still used by other worktrees, skipping deletion."
   else
@@ -59,7 +90,6 @@ for worktree in "${worktrees[@]}"; do
 
   _remove_worktree_tmux_session "$worktree_path"
 
-  # cleanup all remaining empty scaffold
   current_dir=$(dirname "$worktree_path")
   while [ -z "$(ls -A "$current_dir" 2>/dev/null)" ]; do
     parent_dir=$(dirname "$current_dir")
@@ -72,7 +102,6 @@ for worktree in "${worktrees[@]}"; do
   fi
 done
 
-# cleanup remotes that are no longer referenced by any worktree
 if [ ${#remotes_to_check[@]} -gt 0 ]; then
   for remote in $(printf '%s\n' "${remotes_to_check[@]}" | sort -u); do
     if ! git worktree list -v | grep -q "\b$remote\b"; then

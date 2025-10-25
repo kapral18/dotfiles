@@ -1,13 +1,33 @@
 #!/usr/bin/env bash
-# Description: Fetch PRs from GitHub and create a worktree for each
 
 set -euo pipefail
 
-# Source the utility libraries
-source "$(dirname "$0")/utils/bash_utils_lib.sh"
+source "$(dirname "$0")/../bash_utils_lib.sh"
 
 show_usage() {
-  echo "Usage: get_pr_worktrees [-q|--quiet] [pr_number ...|search terms]" >&2
+  cat <<EOF
+Usage: f-wtree prs [-q|--quiet] [pr_number ...| search_terms]
+
+Create worktrees from GitHub pull requests.
+
+Arguments:
+  [pr_number ...]   One or more PR numbers to create worktrees for
+  [search_terms]    Search terms to find PRs (opens fzf selector)
+
+Options:
+  -q, --quiet       Suppress informational output
+  -h, --help        Show this help message
+
+Examples:
+  f-wtree prs 123                    # Create worktree for PR #123
+  f-wtree prs 123 456                # Create worktrees for PRs #123 and #456
+  f-wtree prs feature authentication # Search PRs and select with fzf
+
+Notes:
+  - Automatically adds contributor's fork as a remote
+  - Creates worktree using the PR's branch
+  - If no arguments provided, opens interactive fzf search
+EOF
 }
 
 quiet_mode=0
@@ -15,6 +35,10 @@ quiet_flag=()
 
 while [ $# -gt 0 ]; do
   case "$1" in
+    -h|--help)
+      show_usage
+      exit 0
+      ;;
     -q|--quiet)
       quiet_mode=1
       quiet_flag=(-q)
@@ -60,7 +84,6 @@ fi
 
 if [ ${#pr_numbers[@]} -eq 0 ]; then
   search_query="$*"
-  # Search and select PR using fzf with improved preview (multi-select enabled)
   mapfile -t pr_numbers < <(gh pr list --search "${search_query}" --json number,title \
     --jq '.[] | "\(.number) \(.title)"' | fzf --multi --preview '
             gh pr view {1} --json number,title,body,author,labels,comments --template "
@@ -84,15 +107,12 @@ if [ ${#pr_numbers[@]} -eq 0 ]; then
   exit 1
 fi
 
-# Process each selected PR
 for pr_number in "${pr_numbers[@]}"; do
   info "Processing PR #$pr_number..."
 
-  # Fetch PR details using GitHub CLI
   pr_info=$(gh pr view "$pr_number" --json headRefName,headRepository,headRepositoryOwner \
     --jq '.headRefName + " " + .headRepository.name + " " + .headRepositoryOwner.login')
 
-  # Extract branch name, repository name, and owner
   branch_name=$(echo "$pr_info" | cut -d ' ' -f1)
   if [ -z "$branch_name" ]; then
     echo "No branch name found in PR #$pr_number info."
@@ -120,11 +140,10 @@ for pr_number in "${pr_numbers[@]}"; do
 
   repo_url="git@github.com:$repo_owner/$repo_name.git"
 
-  # Add remote if it doesn't exist
   if ! git remote get-url "$repo_owner" >/dev/null 2>&1; then
     git remote add "$repo_owner" "$repo_url"
   fi
 
-  f-add-worktree "${quiet_flag[@]}" "$repo_owner/$branch_name"
+  "$(dirname "$0")/wt_add.sh" "${quiet_flag[@]}" "$repo_owner/$branch_name"
   info "Completed PR #$pr_number worktree creation."
 done
