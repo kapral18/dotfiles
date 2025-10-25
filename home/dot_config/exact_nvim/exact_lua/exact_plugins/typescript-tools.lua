@@ -24,33 +24,6 @@ return {
     end,
   },
   {
-    "neovim/nvim-lspconfig",
-    dependencies = {
-      { "b0o/SchemaStore.nvim" },
-    },
-    opts = {
-      servers = {
-        ts_ls = {
-          enabled = false,
-        },
-        -- @deprecated
-        tsserver = {
-          enabled = false,
-        },
-      },
-      setup = {
-        tsserver = function()
-          -- disable tsserver
-          return true
-        end,
-        ts_ls = function()
-          -- disable ts_ls
-          return true
-        end,
-      },
-    },
-  },
-  {
     "pmizio/typescript-tools.nvim",
     lazy = false,
     keys = {
@@ -66,36 +39,46 @@ return {
       "nvim-lua/plenary.nvim",
       {
         "neovim/nvim-lspconfig",
-        opts = function(_, opts)
-          local keys = require("lazyvim.plugins.lsp.keymaps").get()
-
-          -- keys is a table of tables, where each table is a keymap, with 1st position being the key
-          -- and the 2nd position being the value
-          -- find me the keymap that has the key "<leader>CR"
-          local found
-          for _, keymap in ipairs(keys) do
-            if keymap[1] == "<leader>cR" then
-              -- print the value of the keymap
-              found = keymap
-              break
-            end
-          end
-
-          local lazyvim_cr_rhs = found and found[2] or 'echo "No keymap found"'
-
-          keys[#keys + 1] = {
-            "<leader>cR",
-            function()
-              if vim.tbl_contains(ft_js, vim.bo.filetype) then
-                vim.cmd("TSToolsRenameFile")
-              else
-                vim.cmd(lazyvim_cr_rhs)
-              end
+        dependencies = {
+          { "b0o/SchemaStore.nvim" },
+        },
+        opts = {
+          servers = {
+            ts_ls = {
+              enabled = false,
+            },
+            -- @deprecated
+            tsserver = {
+              enabled = false,
+            },
+            ["*"] = {
+              keys = {
+                {
+                  "<leader>cR",
+                  function()
+                    if vim.tbl_contains(ft_js, vim.bo.filetype) then
+                      vim.cmd("TSToolsRenameFile")
+                    else
+                      vim.lsp.buf.rename()
+                    end
+                  end,
+                  desc = "Rename File",
+                  has = "rename",
+                },
+              },
+            },
+          },
+          setup = {
+            tsserver = function()
+              -- disable tsserver
+              return true
             end,
-            desc = "Rename File",
-            buffer = true,
-          }
-        end,
+            ts_ls = function()
+              -- disable ts_ls
+              return true
+            end,
+          },
+        },
       },
     },
     ft = ft_js,
