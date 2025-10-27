@@ -6,7 +6,9 @@ return {
       indent = { enabled = false },
       input = { enabled = false },
       notifier = { enabled = true },
-      picker = { enabled = true },
+      picker = {
+        enabled = true,
+      },
       scope = { enabled = false },
       scroll = { enabled = false },
       statuscolumn = { enabled = false }, -- managed manually in options.lua
@@ -22,7 +24,7 @@ return {
       },
     },
     keys = {
-      { "<leader>n", false },
+      { "<leader>n",  false },
       { "<leader>un", false },
       {
         "<leader>nh",
