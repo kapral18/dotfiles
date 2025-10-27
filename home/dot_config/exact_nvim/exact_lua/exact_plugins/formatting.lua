@@ -66,7 +66,7 @@ return {
           if disable_filetypes[vim.bo[args.buf].filetype] then
             return
           end
-          require("conform").format({ bufnr = args.buf, timeout_ms = 3000, lsp_fallback = true })
+          require("util").format.format({ buf = args.buf })
         end,
       })
     end,

@@ -1,5 +1,5 @@
 --- Formatting utilities and unified format system
-vim.g.autoformat = false
+vim.g.autoformat = true
 
 local M = {}
 
