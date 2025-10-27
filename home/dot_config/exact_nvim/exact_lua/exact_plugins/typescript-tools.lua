@@ -1,4 +1,4 @@
-local common_utils = require("utils.common")
+local util = require("util")
 
 local ft_js = {
   "tsx",
@@ -111,7 +111,7 @@ return {
         jsx_close_tag = { enable = false },
       },
       root_dir = function()
-        return common_utils.get_project_root()
+        return util.get_project_root()
       end,
     },
   },
@@ -137,75 +137,6 @@ return {
       "TSCOpen",
       "TSCClose",
     },
-  },
-  {
-    "mfussenegger/nvim-dap",
-    optional = true,
-    dependencies = {
-      {
-        "mason-org/mason.nvim",
-        opts = function(_, opts)
-          opts.ensure_installed = opts.ensure_installed or {}
-          table.insert(opts.ensure_installed, "js-debug-adapter")
-        end,
-      },
-    },
-    opts = function()
-      local dap = require("dap")
-      if not dap.adapters["pwa-node"] then
-        pcall(require, "mason")
-        local root = vim.env.MASON or (vim.fn.stdpath("data") .. "/mason")
-        local path = root .. "/packages/js-debug-adapter/js-debug/src/dapDebugServer.js"
-
-        require("dap").adapters["pwa-node"] = {
-          type = "server",
-          host = "localhost",
-          port = "${port}",
-          executable = {
-            command = "node",
-            -- 💀 Make sure to update this path to point to your installation
-            args = {
-              path,
-              "${port}",
-            },
-          },
-        }
-      end
-      if not dap.adapters["node"] then
-        dap.adapters["node"] = function(cb, config)
-          if config.type == "node" then
-            config.type = "pwa-node"
-          end
-          local nativeAdapter = dap.adapters["pwa-node"]
-          if type(nativeAdapter) == "function" then
-            nativeAdapter(cb, config)
-          else
-            cb(nativeAdapter)
-          end
-        end
-      end
-
-      for _, language in ipairs({ "typescript", "javascript", "typescriptreact", "javascriptreact", "tsx", "jsx" }) do
-        if not dap.configurations[language] then
-          dap.configurations[language] = {
-            {
-              type = "pwa-node",
-              request = "launch",
-              name = "Launch file",
-              program = "${file}",
-              cwd = "${workspaceFolder}",
-            },
-            {
-              type = "pwa-node",
-              request = "attach",
-              name = "Attach",
-              processId = require("dap.utils").pick_process,
-              cwd = "${workspaceFolder}",
-            },
-          }
-        end
-      end
-    end,
   },
   {
     "nvim-mini/mini.icons",

@@ -4,9 +4,11 @@ return {
   {
     "folke/lazydev.nvim",
     lazy = false,
+    cmd = "LazyDev",
     opts = function(_, opts)
+      opts.library = opts.library or {}
       vim.list_extend(opts.library, {
-        -- { path = vim.env.VIMRUNTIME .. "/lua", words = { "vim%." } },
+        { path = "${3rd}/luv/library", words = { "vim%.uv" } },
         { path = "luassert-types/library", words = { "assert" } },
         { path = "busted-types/library", words = { "describe" } },
         {

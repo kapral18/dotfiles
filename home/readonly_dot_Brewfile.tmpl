@@ -951,10 +951,6 @@ brew "jfryy/tap/qq"
 tap "sst/tap"
 brew "sst/tap/opencode"
 
-# Lightweight coding agent that runs in your terminal
-# https://github.com/openai/codex
-brew "codex"
-
 # Minimal terminal emulator using half-baked context-aware autocomplete
 # https://github.com/ggerganov/hnterm
 brew "ggerganov/ggerganov/hnterm"
@@ -1046,6 +1042,10 @@ cask "wpsoffice"
 # https://windsurf.com/editor
 cask "windsurf"
 {{ end -}}
+
+# AI-powered agent from OpenAI
+# https://github.com/openai/codex
+cask "codex"
 
 {{ if .isWork -}}
 # AI-powered code editor

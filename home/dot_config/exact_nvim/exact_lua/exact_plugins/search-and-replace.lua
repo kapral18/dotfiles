@@ -1,17 +1,13 @@
 return {
   {
-    "MagicDuck/grug-far.nvim",
-    enabled = false,
-  },
-  {
     "dyng/ctrlsf.vim",
     lazy = false,
     keys = {
-      { "<leader>srr", "<Plug>CtrlSFPrompt", desc = "S&R Prompt" },
-      { "<leader>srw", "<Plug>CtrlSFCwordPath", desc = "S&R Word Under Cursor" },
+      { "<leader>srr", "<Plug>CtrlSFPrompt",     desc = "S&R Prompt" },
+      { "<leader>srw", "<Plug>CtrlSFCwordPath",  desc = "S&R Word Under Cursor" },
       { "<leader>srb", "<Plug>CtrlSFCCwordPath", desc = "S&R Word Under Cursor (With Boundaries)" },
-      { "<leader>srl", "<Plug>CtrlSFPwordPath", desc = "S&R Last Search Path" },
-      { "<leader>srv", "<Plug>CtrlSFVwordPath", desc = "S&R Word Under Cursor", mode = "x" },
+      { "<leader>srl", "<Plug>CtrlSFPwordPath",  desc = "S&R Last Search Path" },
+      { "<leader>srv", "<Plug>CtrlSFVwordPath",  desc = "S&R Word Under Cursor",                  mode = "x" },
     },
     init = function()
       vim.g.ctrlsf_backend = "rg"
@@ -29,7 +25,7 @@ return {
       vim.g.ctrlsf_auto_preview = 1
       vim.g.ctrlsf_search_mode = "async"
       vim.g.ctrlsf_ignore_dir =
-        { "bower_components", "node_modules", "dist", "build", ".git", ".idea", "reports", ".nyc_output" }
+      { "bower_components", "node_modules", "dist", "build", ".git", ".idea", "reports", ".nyc_output" }
       vim.g.ctrlsf_extra_root_markers = { ".git", "package.json", "yarn.lock", "package-lock.json" }
       vim.g.ctrlsf_position = "bottom"
       vim.g.ctrlsf_context = "-C 0"

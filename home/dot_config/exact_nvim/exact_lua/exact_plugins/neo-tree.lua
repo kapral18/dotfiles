@@ -1,7 +1,7 @@
 ---@module "lazy"
 ---@module "yazi"
 
-local common_utils = require("utils.common")
+local util = require("util")
 
 local winopts = {
   large = {
@@ -20,7 +20,7 @@ local function safe_open(action)
   return function(state)
     local node = state.tree:get_node()
     local full_path = node:get_id()
-    common_utils.open_image(full_path, function()
+    util.open_image(full_path, function()
       require("neo-tree.sources.filesystem.commands")[action](state)
     end)
   end
@@ -30,7 +30,7 @@ local function copy_relative_path_to_clipboard(state)
   local node = state.tree:get_node()
   local full_path = node:get_id()
   local relative_path = vim.fn.fnamemodify(full_path, ":~:.")
-  common_utils.copy_to_clipboard(relative_path)
+  util.copy_to_clipboard(relative_path)
 end
 
 ---@type LazySpec
@@ -40,6 +40,9 @@ return {
     lazy = false,
     version = "*",
     dependencies = {
+      "nvim-lua/plenary.nvim",
+      "nvim-tree/nvim-web-devicons",
+      "MunifTanjim/nui.nvim",
       "ibhagwan/fzf-lua",
     },
     keys = {
@@ -68,6 +71,18 @@ return {
         },
         last_modified = {
           enabled = false,
+        },
+        indent = {
+          with_expanders = true,
+          expander_collapsed = "",
+          expander_expanded = "",
+          expander_highlight = "NeoTreeExpander",
+        },
+        git_status = {
+          symbols = {
+            unstaged = "󰄱",
+            staged = "󰱒",
+          },
         },
       },
       filesystem = {

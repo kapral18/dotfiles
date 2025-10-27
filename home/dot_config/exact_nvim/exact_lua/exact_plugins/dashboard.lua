@@ -1,3 +1,5 @@
+local util = require("util")
+
 local logo = [[
 
 
@@ -31,12 +33,11 @@ return {
           header = vim.split(logo, "\n"),
           -- stylua: ignore
           center = {
-            { action = 'lua LazyVim.pick()()',                           desc = " Find File",       icon = " ", key = "f" },
-            { action = "ene | startinsert",                              desc = " New File",        icon = " ", key = "n" },
-            { action = 'lua LazyVim.pick.config_files()()',              desc = " Config",          icon = " ", key = "c" },
-            { action = "LazyExtras",                                     desc = " Lazy Extras",     icon = " ", key = "x" },
+            { action = util.pick("files"),                               desc = " Find File",       icon = " ", key = "f" },
+            { action = "ene | startinsert",                              desc = " New File",        icon = " ", key = "n" },
+            { action = util.pick("files", { cwd = vim.fn.stdpath("config") }), desc = " Config",          icon = " ", key = "c" },
             { action = "Lazy",                                           desc = " Lazy",            icon = "󰒲 ", key = "l" },
-            { action = function() vim.api.nvim_input("<cmd>qa<cr>") end, desc = " Quit",            icon = " ", key = "q" },
+            { action = function() vim.api.nvim_input("<cmd>qa<cr>") end, desc = " Quit",            icon = " ", key = "q" },
           },
           footer = function()
             local stats = require("lazy").stats()

@@ -1,3 +1,5 @@
+local util = require("util")
+
 return {
   {
     "neovim/nvim-lspconfig",
@@ -17,15 +19,14 @@ return {
       },
       setup = {
         eslint = function()
-          local formatter = LazyVim.lsp.formatter({
+          local formatter = util.lsp.formatter({
             name = "eslint: lsp",
             primary = false,
             priority = 200,
             filter = "eslint",
           })
 
-          -- register the formatter with LazyVim
-          LazyVim.format.register(formatter)
+          util.format.register(formatter)
         end,
       },
     },

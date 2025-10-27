@@ -231,8 +231,7 @@ integrates perfectly with Neovim.
 
 ## 💎 Neovim: The IDE as a Force Multiplier
 
-This is a heavily customized [LazyVim](https://www.lazyvim.org/) setup,
-transformed into a bespoke IDE.
+This is a heavily customized setup, transformed into a bespoke IDE.
 
 ### ✨ UI & User Experience
 

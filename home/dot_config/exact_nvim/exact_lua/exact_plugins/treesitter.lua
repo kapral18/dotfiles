@@ -17,30 +17,153 @@ local select_keymaps = {
 
 return {
   {
+    "nvim-treesitter/nvim-treesitter",
+    branch = "main",
+    version = false,
+    lazy = false,
+    build = function()
+      local TS = require("nvim-treesitter")
+      if not TS.get_installed then
+        vim.notify("Please restart Neovim and run `:TSUpdate`", vim.log.levels.ERROR)
+        return
+      end
+      local util = require("util")
+      util.treesitter.build(function()
+        TS.update(nil, { summary = true })
+      end)
+    end,
+    event = { "BufReadPost", "BufNewFile" },
+    cmd = { "TSUpdate", "TSInstall" },
+    opts_extend = { "ensure_installed" },
+    opts = {
+      indent = { enable = true },
+      highlight = { enable = true },
+      folds = { enable = true },
+      ensure_installed = {
+        "bash",
+        "c",
+        "css",
+        "diff",
+        "dockerfile",
+        "gitignore",
+        "go",
+        "gomod",
+        "gosum",
+        "gowork",
+        "graphql",
+        "html",
+        "javascript",
+        "jsdoc",
+        "json",
+        "jsonc",
+        "lua",
+        "luadoc",
+        "luap",
+        "markdown",
+        "markdown_inline",
+        "printf",
+        "python",
+        "query",
+        "regex",
+        "toml",
+        "tsx",
+        "typescript",
+        "vim",
+        "vimdoc",
+        "xml",
+        "yaml",
+      },
+    },
+    config = function(_, opts)
+      local TS = require("nvim-treesitter")
+      local util = require("util")
+
+      if not TS.get_installed then
+        vim.notify("Please update nvim-treesitter", vim.log.levels.ERROR)
+        return
+      end
+
+      if type(opts.ensure_installed) ~= "table" then
+        vim.notify("ensure_installed must be a table", vim.log.levels.ERROR)
+        return
+      end
+
+      -- Setup treesitter
+      TS.setup(opts)
+      util.treesitter.get_installed(true)
+
+      -- Install missing parsers
+      local install = vim.tbl_filter(function(lang)
+        return not util.treesitter.have(lang)
+      end, opts.ensure_installed or {})
+
+      if #install > 0 then
+        util.treesitter.build(function()
+          TS.install(install, { summary = true }):await(function()
+            util.treesitter.get_installed(true)
+          end)
+        end)
+      end
+
+      -- Enable features per filetype
+      vim.api.nvim_create_autocmd("FileType", {
+        group = vim.api.nvim_create_augroup("treesitter_features", { clear = true }),
+        callback = function(ev)
+          local ft = ev.match
+          local lang = vim.treesitter.language.get_lang(ev.match)
+
+          if not util.treesitter.have(ft) then
+            return
+          end
+
+          local function enabled(feat, query)
+            local f = opts[feat] or {}
+            return f.enable ~= false
+                and not (type(f.disable) == "table" and vim.tbl_contains(f.disable, lang))
+                and util.treesitter.have(ft, query)
+          end
+
+          -- Highlighting
+          if enabled("highlight", "highlights") then
+            pcall(vim.treesitter.start, ev.buf)
+          end
+
+          -- Indentation
+          if enabled("indent", "indents") then
+            util.set_default("indentexpr", "v:lua.require'util.treesitter'.indentexpr()")
+          end
+
+          -- Folds
+          if enabled("folds", "folds") then
+            if util.set_default("foldmethod", "expr") then
+              util.set_default("foldexpr", "v:lua.require'util.treesitter'.foldexpr()")
+            end
+          end
+        end,
+      })
+    end,
+  },
+  {
     "nvim-treesitter/nvim-treesitter-textobjects",
-    opts = function(_, opts)
-      opts = opts or {}
-      opts.select = vim.tbl_deep_extend("force", opts.select or {}, {
+    branch = "main",
+    event = "VeryLazy",
+    opts = {
+      select = {
         enable = true,
         lookahead = true,
         include_surrounding_whitespace = true,
-      })
-      opts.select.enable = true
-      opts.select.keymaps = vim.tbl_extend("force", opts.select.keymaps or {}, select_keymaps)
-
-      opts.move = opts.move or {}
-      opts.move.enable = true
-      opts.move.keys = opts.move.keys or {}
-      opts.move.keys.goto_next_start =
-        vim.tbl_extend("force", opts.move.keys.goto_next_start or {}, { ["]r"] = "@return.outer" })
-      opts.move.keys.goto_next_end =
-        vim.tbl_extend("force", opts.move.keys.goto_next_end or {}, { ["]R"] = "@return.outer" })
-      opts.move.keys.goto_previous_start =
-        vim.tbl_extend("force", opts.move.keys.goto_previous_start or {}, { ["[r"] = "@return.outer" })
-      opts.move.keys.goto_previous_end =
-        vim.tbl_extend("force", opts.move.keys.goto_previous_end or {}, { ["[R"] = "@return.outer" })
-      return opts
-    end,
+        keymaps = select_keymaps,
+      },
+      move = {
+        enable = true,
+        keys = {
+          goto_next_start = { ["]r"] = "@return.outer" },
+          goto_next_end = { ["]R"] = "@return.outer" },
+          goto_previous_start = { ["[r"] = "@return.outer" },
+          goto_previous_end = { ["[R"] = "@return.outer" },
+        },
+      },
+    },
     keys = function(_, keys)
       local select = {}
       for lhs, query in pairs(select_keymaps) do
@@ -82,10 +205,10 @@ return {
 
     keys = {
       -- movement
-      { "<A-S-k>", "<cmd>Treewalker Up<cr>", mode = { "n", "x" } },
-      { "<A-S-j>", "<cmd>Treewalker Down<cr>", mode = { "n", "x" } },
-      { "<A-S-l>", "<cmd>Treewalker Right<cr>", mode = { "n", "x" } },
-      { "<A-S-h>", "<cmd>Treewalker Left<cr>", mode = { "n", "x" } },
+      { "<A-S-k>", "<cmd>Treewalker Up<cr>",       mode = { "n", "x" } },
+      { "<A-S-j>", "<cmd>Treewalker Down<cr>",     mode = { "n", "x" } },
+      { "<A-S-l>", "<cmd>Treewalker Right<cr>",    mode = { "n", "x" } },
+      { "<A-S-h>", "<cmd>Treewalker Left<cr>",     mode = { "n", "x" } },
 
       -- swapping
       { "<C-S-j>", "<cmd>Treewalker SwapDown<cr>" },
@@ -99,13 +222,9 @@ return {
     opts = {},
   },
   {
-    "nvim-mini/mini.pairs",
-    enabled = false,
-  },
-  {
     "junegunn/vim-easy-align",
     keys = {
-      { "<leader>la", "<Plug>(EasyAlign)", mode = { "n", "x" }, desc = "Easy align" },
+      { "<leader>la", "<Plug>(EasyAlign)",     mode = { "n", "x" }, desc = "Easy align" },
       { "<leader>lA", "<Plug>(LiveEasyAlign)", mode = { "n", "x" }, desc = "Live Easy align" },
     },
   },
@@ -127,9 +246,5 @@ return {
         },
       })
     end,
-  },
-  {
-    "nvim-mini/mini.ai",
-    enabled = false,
   },
 }

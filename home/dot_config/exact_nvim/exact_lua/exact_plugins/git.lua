@@ -1,104 +1,107 @@
-local common_utils = require("utils.common")
+local util = require("util")
 
 return {
   {
     "lewis6991/gitsigns.nvim",
     version = "*",
-    event = "LazyFile",
-    opts = {
-      -- visuals
-      signs = {
-        add = { text = "▎" },
-        change = { text = "▎" },
-        delete = { text = "" },
-        topdelete = { text = "" },
-        changedelete = { text = "▎" },
-        untracked = { text = "▎" },
-      },
-      signs_staged = {
-        add = { text = "▎" },
-        change = { text = "▎" },
-        delete = { text = "" },
-        topdelete = { text = "" },
-        changedelete = { text = "▎" },
-      },
-      signs_staged_enable = true,
+    event = { "BufReadPost", "BufNewFile" },
+    opts = function()
+      local icons = util.config.icons.git
+      return {
+        -- visuals (LazyVim style - icons from util.config)
+        signs = {
+          add = { text = icons.added },
+          change = { text = icons.modified },
+          delete = { text = icons.removed },
+          topdelete = { text = icons.removed },
+          changedelete = { text = icons.modified },
+          untracked = { text = icons.added },
+        },
+        signs_staged = {
+          add = { text = icons.added },
+          change = { text = icons.modified },
+          delete = { text = icons.removed },
+          topdelete = { text = icons.removed },
+          changedelete = { text = icons.modified },
+        },
+        signs_staged_enable = true,
 
-      -- highlights and word diff
-      numhl = true,
-      linehl = false,
-      word_diff = false,
+        -- highlights and word diff
+        numhl = true,
+        linehl = false,
+        word_diff = false,
 
-      -- blame
-      current_line_blame = true,
-      current_line_blame_opts = {
-        virt_text = true,
-        virt_text_pos = "eol",
-        delay = 500,
-      },
-      current_line_blame_formatter = "<author>, <author_time> . <summary>",
+        -- blame
+        current_line_blame = true,
+        current_line_blame_opts = {
+          virt_text = true,
+          virt_text_pos = "eol",
+          delay = 500,
+        },
+        current_line_blame_formatter = "<author>, <author_time> . <summary>",
 
-      -- core behavior
-      attach_to_untracked = false,
-      update_debounce = 500,
+        -- core behavior
+        attach_to_untracked = false,
+        update_debounce = 500,
 
-      -- buffer-local mappings
-      on_attach = function(buffer)
-        local gs = package.loaded.gitsigns
-        local function map(mode, lhs, rhs, desc)
-          vim.keymap.set(mode, lhs, rhs, { buffer = buffer, desc = desc })
-        end
-
-        -- navigation
-        map("n", "]h", function()
-          if vim.wo.diff then
-            vim.cmd.normal({ "]c", bang = true })
-          else
-            gs.nav_hunk("next")
+        -- buffer-local mappings
+        on_attach = function(buffer)
+          local gs = package.loaded.gitsigns
+          local function map(mode, lhs, rhs, desc)
+            vim.keymap.set(mode, lhs, rhs, { buffer = buffer, desc = desc })
           end
-        end, "Next Hunk")
-        map("n", "[h", function()
-          if vim.wo.diff then
-            vim.cmd.normal({ "[c", bang = true })
-          else
-            gs.nav_hunk("prev")
-          end
-        end, "Prev Hunk")
-        map("n", "]H", function()
-          gs.nav_hunk("last")
-        end, "Last Hunk")
-        map("n", "[H", function()
-          gs.nav_hunk("first")
-        end, "First Hunk")
 
-        -- actions
-        map({ "n", "v" }, "<leader>ghs", ":Gitsigns stage_hunk<CR>", "Stage Hunk")
-        map({ "n", "v" }, "<leader>ghr", ":Gitsigns reset_hunk<CR>", "Reset Hunk")
-        map("n", "<leader>ghS", gs.stage_buffer, "Stage Buffer")
-        map("n", "<leader>ghu", gs.undo_stage_hunk, "Undo Stage Hunk")
-        map("n", "<leader>ghR", gs.reset_buffer, "Reset Buffer")
+          -- navigation
+          map("n", "]h", function()
+            if vim.wo.diff then
+              vim.cmd.normal({ "]c", bang = true })
+            else
+              gs.nav_hunk("next")
+            end
+          end, "Next Hunk")
+          map("n", "[h", function()
+            if vim.wo.diff then
+              vim.cmd.normal({ "[c", bang = true })
+            else
+              gs.nav_hunk("prev")
+            end
+          end, "Prev Hunk")
+          map("n", "]H", function()
+            gs.nav_hunk("last")
+          end, "Last Hunk")
+          map("n", "[H", function()
+            gs.nav_hunk("first")
+          end, "First Hunk")
 
-        -- previews
-        map("n", "<leader>ghP", gs.preview_hunk_inline, "Preview Hunk Inline")
-        map("n", "<leader>ghp", function()
-          vim.cmd("Gitsigns preview_hunk")
-        end, "Preview Hunk Popup")
+          -- actions
+          map({ "n", "v" }, "<leader>ghs", ":Gitsigns stage_hunk<CR>", "Stage Hunk")
+          map({ "n", "v" }, "<leader>ghr", ":Gitsigns reset_hunk<CR>", "Reset Hunk")
+          map("n", "<leader>ghS", gs.stage_buffer, "Stage Buffer")
+          map("n", "<leader>ghu", gs.undo_stage_hunk, "Undo Stage Hunk")
+          map("n", "<leader>ghR", gs.reset_buffer, "Reset Buffer")
 
-        map("n", "<leader>ghd", gs.diffthis, "Diff This")
-        map("n", "<leader>ghD", function()
-          gs.diffthis("~")
-        end, "Diff This ~")
+          -- previews
+          map("n", "<leader>ghP", gs.preview_hunk_inline, "Preview Hunk Inline")
+          map("n", "<leader>ghp", function()
+            vim.cmd("Gitsigns preview_hunk")
+          end, "Preview Hunk Popup")
 
-        -- text object
-        map({ "o", "x" }, "ih", ":<C-U>Gitsigns select_hunk<CR>", "Select Hunk")
-      end,
-    },
+          map("n", "<leader>ghd", gs.diffthis, "Diff This")
+          map("n", "<leader>ghD", function()
+            gs.diffthis("~")
+          end, "Diff This ~")
+
+          -- text object
+          map({ "o", "x" }, "ih", ":<C-U>Gitsigns select_hunk<CR>", "Select Hunk")
+        end,
+      }
+    end,
 
     -- global UI toggles
     keys = {
-      { "<leader>ghtn", "<Cmd>Gitsigns toggle_numhl<CR>", desc = "Toggle Num Highlight" },
-      { "<leader>ghtl", "<Cmd>Gitsigns toggle_linehl<CR>", desc = "Toggle Line Highlight" },
-      { "<leader>ghtw", "<Cmd>Gitsigns toggle_word_diff<CR>", desc = "Toggle Word Diff" },
+      { "<leader>ghtn", "<Cmd>Gitsigns toggle_numhl<CR>",              desc = "Toggle Num Highlight" },
+      { "<leader>ghtl", "<Cmd>Gitsigns toggle_linehl<CR>",             desc = "Toggle Line Highlight" },
+      { "<leader>ghtw", "<Cmd>Gitsigns toggle_word_diff<CR>",          desc = "Toggle Word Diff" },
       { "<leader>ghtb", "<Cmd>Gitsigns toggle_current_line_blame<CR>", desc = "Toggle Blame Line" },
     },
   },
@@ -113,7 +116,7 @@ return {
       })
     end,
     cond = function()
-      return common_utils.get_git_root() ~= nil
+      return util.get_git_root() ~= nil
     end,
     init = function()
       vim.g.git_messenger_no_default_mappings = true
@@ -129,13 +132,13 @@ return {
     "aaronhallaert/advanced-git-search.nvim",
     cmd = { "AdvancedGitSearch" },
     keys = {
-      { "<leader>gas", ":AdvancedGitSearch<CR>", desc = "AdvancedGitSearch" },
-      { "<leader>gar", ":AdvancedGitSearch search_log_content<CR>", desc = "AGS Repo History Search" },
-      { "<leader>gaf", ":AdvancedGitSearch search_log_content_file<CR>", desc = "AGS File History Search" },
-      { "<leader>gadf", ":AdvancedGitSearch diff_commit_file<CR>", desc = "AGS File vs commit" },
-      { "<leader>gadl", ":AdvancedGitSearch diff_commit_line<CR>", mode = { "x" }, desc = "AGS Line vs commit" },
-      { "<leader>gadb", ":AdvancedGitSearch diff_branch_file<CR>", desc = "AGS Branch vs commit" },
-      { "<leader>gal", ":AdvancedGitSearch checkout_reflog<CR>", desc = "AGS Checkout reflog" },
+      { "<leader>gas",  ":AdvancedGitSearch<CR>",                         desc = "AdvancedGitSearch" },
+      { "<leader>gar",  ":AdvancedGitSearch search_log_content<CR>",      desc = "AGS Repo History Search" },
+      { "<leader>gaf",  ":AdvancedGitSearch search_log_content_file<CR>", desc = "AGS File History Search" },
+      { "<leader>gadf", ":AdvancedGitSearch diff_commit_file<CR>",        desc = "AGS File vs commit" },
+      { "<leader>gadl", ":AdvancedGitSearch diff_commit_line<CR>",        mode = { "x" },                  desc = "AGS Line vs commit" },
+      { "<leader>gadb", ":AdvancedGitSearch diff_branch_file<CR>",        desc = "AGS Branch vs commit" },
+      { "<leader>gal",  ":AdvancedGitSearch checkout_reflog<CR>",         desc = "AGS Checkout reflog" },
     },
     opts = {
       -- diff_plugin = "diffview",
@@ -156,7 +159,7 @@ return {
       -- require("advanced_git_search.fzf").setup(opts)
 
       require("which-key").add({
-        { "<leader>ga", group = "Advanced Git Search", mode = { "n", "v" } },
+        { "<leader>ga",  group = "Advanced Git Search",   mode = { "n", "v" } },
         { "<leader>gad", group = "AdvancedGitSearch Diff" },
       })
     end,
@@ -197,11 +200,11 @@ return {
       },
     },
     keys = {
-      { "<leader>dfx", "<CMD>DiffviewClose<CR>", desc = "DiffviewClose" },
+      { "<leader>dfx", "<CMD>DiffviewClose<CR>",            desc = "DiffviewClose" },
       { "<leader>dfh", ":DiffviewFileHistory --follow<CR>", desc = "DiffviewFileHistory", mode = { "n", "x" } },
-      { "<leader>dfe", "<CMD>DiffviewToggleFiles<CR>", desc = "DiffviewToggleFiles" },
-      { "<leader>dfo", "<CMD>DiffviewOpen<CR>", desc = "DiffviewOpen" },
-      { "q", ":DiffviewClose<CR>", desc = "DiffviewClose", ft = { "DiffviewFiles", "DiffviewFileHistory" } },
+      { "<leader>dfe", "<CMD>DiffviewToggleFiles<CR>",      desc = "DiffviewToggleFiles" },
+      { "<leader>dfo", "<CMD>DiffviewOpen<CR>",             desc = "DiffviewOpen" },
+      { "q",           ":DiffviewClose<CR>",                desc = "DiffviewClose",       ft = { "DiffviewFiles", "DiffviewFileHistory" } },
     },
   },
   {

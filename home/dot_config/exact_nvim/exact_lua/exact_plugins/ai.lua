@@ -1,4 +1,25 @@
-local in_work_dir = require("utils.work_env").in_work_dir
+--- Get the real path, resolving any symlinks
+--- @param p string The path to resolve.
+--- @return string The resolved real path, or the original path if resolution fails.
+local function realpath(p)
+  local ok, rp = pcall(vim.uv.fs_realpath, p)
+  ---@cast rp string
+  return ok and rp or p
+end
+
+--- Check if a given path is inside the work folder
+--- @param path string|nil The path to check. If nil, uses the current buffer's path.
+--- @return boolean True if the path is inside the work folder, false otherwise.
+local function in_work_dir(path)
+  local home = vim.uv.os_homedir()
+  local work_root = realpath(home .. "/work")
+  path = path or vim.api.nvim_buf_get_name(0)
+  if not path or path == "" then
+    return false
+  end
+  local rp = realpath(path)
+  return rp:sub(1, #work_root + 1) == (work_root .. "/")
+end
 
 local is_work_machine = vim.fn.filereadable(vim.fn.expand("~/work/.gitconfig")) == 0
 
@@ -25,7 +46,6 @@ return {
           vim.b[buf].copilot_disabled = true
         end
 
-        -- Per-buffer Codeium control (flips opposite to Copilot on personal; stays off on work)
         if is_work_machine then
           vim.b[buf].codeium_enabled = false
         else
@@ -41,7 +61,7 @@ return {
     end,
   },
   {
-    -- we use vim version because nvim version is new and buggy
+    -- we use the Vim version because the Neovim port is still stabilising
     "Exafunction/windsurf.vim",
     event = "BufEnter",
     lazy = false,
@@ -62,12 +82,12 @@ return {
         question_header = "  " .. user .. " ",
         answer_header = "  Copilot ",
         window = { width = 0.4 },
-        model = "claude-sonnet-4",
+        model = "claude-sonnet-4.5",
       }
     end,
     keys = {
-      { "<c-s>", "<CR>", ft = "copilot-chat", desc = "Submit Prompt", remap = true },
-      { "<leader>a", "", desc = "+ai", mode = { "n", "v" } },
+      { "<c-s>",     "<CR>", ft = "copilot-chat", desc = "Submit Prompt", remap = true },
+      { "<leader>a", "",     desc = "+ai",        mode = { "n", "v" } },
       {
         "<leader>aa",
         function()

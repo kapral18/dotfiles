@@ -25,6 +25,7 @@ return {
   {
     "mfussenegger/nvim-lint",
     opts = function(_, opts)
+      opts.linters_by_ft = opts.linters_by_ft or {}
       opts.linters_by_ft.bash = opts.linters_by_ft.bash or {}
       table.insert(opts.linters_by_ft.bash, "shellcheck")
       return opts
