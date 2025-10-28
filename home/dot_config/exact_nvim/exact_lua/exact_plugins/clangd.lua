@@ -1,25 +1,15 @@
 return {
   {
     "nvim-treesitter/nvim-treesitter",
-    opts = function(_, opts)
-      opts.ensure_installed = opts.ensure_installed or {}
-      for _, lang in ipairs({ "c", "cpp", "cuda" }) do
-        if not vim.tbl_contains(opts.ensure_installed, lang) then
-          table.insert(opts.ensure_installed, lang)
-        end
-      end
-    end,
+    opts = {
+      ensure_installed = { "c", "cpp", "cuda" },
+    },
   },
   {
     "mason-org/mason.nvim",
-    opts = function(_, opts)
-      opts.ensure_installed = opts.ensure_installed or {}
-      for _, pkg in ipairs({ "clangd", "clang-format", "codelldb" }) do
-        if not vim.tbl_contains(opts.ensure_installed, pkg) then
-          table.insert(opts.ensure_installed, pkg)
-        end
-      end
-    end,
+    opts = {
+      ensure_installed = { "clangd", "clang-format", "codelldb" },
+    },
   },
   {
     "p00f/clangd_extensions.nvim",

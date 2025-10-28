@@ -14,14 +14,9 @@ local ft_js = {
 return {
   {
     "nvim-treesitter/nvim-treesitter",
-    opts = function(_, opts)
-      vim.list_extend(opts.ensure_installed, {
-        "typescript",
-        "tsx",
-        "javascript",
-        "jsdoc",
-      })
-    end,
+    opts = {
+      ensure_installed = { "typescript", "tsx", "javascript", "jsdoc" },
+    },
   },
   {
     "pmizio/typescript-tools.nvim",

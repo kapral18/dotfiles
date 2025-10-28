@@ -8,25 +8,15 @@ vim.filetype.add({
 return {
   {
     "nvim-treesitter/nvim-treesitter",
-    opts = function(_, opts)
-      opts.ensure_installed = opts.ensure_installed or {}
-      for _, lang in ipairs({ "markdown", "markdown_inline" }) do
-        if not vim.tbl_contains(opts.ensure_installed, lang) then
-          table.insert(opts.ensure_installed, lang)
-        end
-      end
-    end,
+    opts = {
+      ensure_installed = { "markdown", "markdown_inline" },
+    },
   },
   {
     "mason-org/mason.nvim",
-    opts = function(_, opts)
-      opts.ensure_installed = opts.ensure_installed or {}
-      for _, pkg in ipairs({ "marksman", "markdownlint" }) do
-        if not vim.tbl_contains(opts.ensure_installed, pkg) then
-          table.insert(opts.ensure_installed, pkg)
-        end
-      end
-    end,
+    opts = {
+      ensure_installed = { "marksman", "markdownlint" },
+    },
   },
   {
     "neovim/nvim-lspconfig",

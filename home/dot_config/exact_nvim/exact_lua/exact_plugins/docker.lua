@@ -1,23 +1,15 @@
 return {
   {
     "nvim-treesitter/nvim-treesitter",
-    opts = function(_, opts)
-      opts.ensure_installed = opts.ensure_installed or {}
-      if not vim.tbl_contains(opts.ensure_installed, "dockerfile") then
-        table.insert(opts.ensure_installed, "dockerfile")
-      end
-    end,
+    opts = {
+      ensure_installed = { "dockerfile" },
+    },
   },
   {
     "mason-org/mason.nvim",
-    opts = function(_, opts)
-      opts.ensure_installed = opts.ensure_installed or {}
-      for _, pkg in ipairs({ "dockerls", "docker-compose-language-service", "hadolint" }) do
-        if not vim.tbl_contains(opts.ensure_installed, pkg) then
-          table.insert(opts.ensure_installed, pkg)
-        end
-      end
-    end,
+    opts = {
+      ensure_installed = { "dockerls", "docker-compose-language-service", "hadolint" },
+    },
   },
   {
     "neovim/nvim-lspconfig",

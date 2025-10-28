@@ -1,25 +1,15 @@
 return {
   {
     "nvim-treesitter/nvim-treesitter",
-    opts = function(_, opts)
-      opts.ensure_installed = opts.ensure_installed or {}
-      for _, lang in ipairs({ "go", "gomod", "gosum", "gowork" }) do
-        if not vim.tbl_contains(opts.ensure_installed, lang) then
-          table.insert(opts.ensure_installed, lang)
-        end
-      end
-    end,
+    opts = {
+      ensure_installed = { "go", "gomod", "gosum", "gowork" },
+    },
   },
   {
     "mason-org/mason.nvim",
-    opts = function(_, opts)
-      opts.ensure_installed = opts.ensure_installed or {}
-      for _, pkg in ipairs({ "gopls", "delve", "golangci-lint", "goimports", "gofumpt", "gomodifytags", "impl" }) do
-        if not vim.tbl_contains(opts.ensure_installed, pkg) then
-          table.insert(opts.ensure_installed, pkg)
-        end
-      end
-    end,
+    opts = {
+      ensure_installed = { "gopls", "delve", "golangci-lint", "goimports", "gofumpt", "gomodifytags", "impl" },
+    },
   },
   {
     "neovim/nvim-lspconfig",
