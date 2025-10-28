@@ -2,7 +2,7 @@ return {
   {
     "mason-org/mason.nvim",
     opts = {
-      ensure_installed = { "json-lsp", "prettierd" },
+      ensure_installed = { "json-lsp", "jsonlint", "prettierd" },
     },
   },
   {
