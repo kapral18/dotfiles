@@ -9,7 +9,7 @@ return {
   {
     "mason-org/mason.nvim",
     opts = function(_, opts)
-      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, { "stylua", "luacheck" })
+      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, { "stylua" })
       return opts
     end,
   },
@@ -56,15 +56,6 @@ return {
     opts = function(_, opts)
       opts.formatters_by_ft = vim.tbl_deep_extend("force", opts.formatters_by_ft or {}, {
         lua = { "stylua" },
-      })
-      return opts
-    end,
-  },
-  {
-    "mfussenegger/nvim-lint",
-    opts = function(_, opts)
-      opts.linters_by_ft = vim.tbl_deep_extend("force", opts.linters_by_ft or {}, {
-        lua = { "luacheck" },
       })
       return opts
     end,
