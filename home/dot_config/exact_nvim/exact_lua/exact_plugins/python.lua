@@ -7,9 +7,10 @@ local python_ruff = vim.g.python_ruff or "ruff"
 return {
   {
     "nvim-treesitter/nvim-treesitter",
-    opts = {
-      ensure_installed = { "requirements" },
-    },
+    opts = function(_, opts)
+      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, { "python", "requirements" })
+      return opts
+    end,
   },
   {
     "neovim/nvim-lspconfig",
@@ -55,16 +56,18 @@ return {
   },
   {
     "mason-org/mason.nvim",
-    opts = {
-      ensure_installed = { "black", "isort", "ruff" },
-    },
+    opts = function(_, opts)
+      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, { "black", "isort", "ruff" })
+      return opts
+    end,
   },
   {
     "stevearc/conform.nvim",
     opts = function(_, opts)
-      opts.formatters_by_ft = opts.formatters_by_ft or {}
-      local formatters = opts.formatters_by_ft.python or { "isort", "black" }
-      opts.formatters_by_ft.python = formatters
+      opts.formatters_by_ft = vim.tbl_deep_extend("force", opts.formatters_by_ft or {}, {
+        python = { "isort", "black", stop_after_first = true },
+      })
+      return opts
     end,
   },
   {

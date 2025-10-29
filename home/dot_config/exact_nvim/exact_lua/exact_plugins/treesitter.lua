@@ -34,46 +34,24 @@ return {
     end,
     event = { "BufReadPost", "BufNewFile" },
     cmd = { "TSUpdate", "TSInstall" },
-    opts_extend = { "ensure_installed" },
-    opts = {
-      indent = { enable = true },
-      highlight = { enable = true },
-      folds = { enable = true },
-      ensure_installed = {
+    opts = function(_, opts)
+      opts.indent = { enable = true }
+      opts.highlight = { enable = true }
+      opts.folds = { enable = true }
+      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, {
         "bash",
         "c",
-        "css",
         "diff",
         "dockerfile",
-        "gitignore",
-        "go",
-        "gomod",
-        "gosum",
-        "gowork",
         "graphql",
-        "html",
-        "javascript",
-        "jsdoc",
-        "json",
-        "jsonc",
-        "lua",
-        "luadoc",
-        "luap",
-        "markdown",
-        "markdown_inline",
         "printf",
-        "python",
         "query",
         "regex",
-        "toml",
-        "tsx",
-        "typescript",
         "vim",
         "vimdoc",
-        "xml",
-        "yaml",
-      },
-    },
+      })
+      return opts
+    end,
     config = function(_, opts)
       local TS = require("nvim-treesitter")
       local util = require("util")
@@ -119,8 +97,8 @@ return {
           local function enabled(feat, query)
             local f = opts[feat] or {}
             return f.enable ~= false
-                and not (type(f.disable) == "table" and vim.tbl_contains(f.disable, lang))
-                and util.treesitter.have(ft, query)
+              and not (type(f.disable) == "table" and vim.tbl_contains(f.disable, lang))
+              and util.treesitter.have(ft, query)
           end
 
           -- Highlighting
@@ -146,7 +124,7 @@ return {
   {
     "nvim-treesitter/nvim-treesitter-textobjects",
     branch = "main",
-    event = "VeryLazy",
+    lazy = false,
     opts = {
       select = {
         enable = true,
@@ -205,10 +183,10 @@ return {
 
     keys = {
       -- movement
-      { "<A-S-k>", "<cmd>Treewalker Up<cr>",       mode = { "n", "x" } },
-      { "<A-S-j>", "<cmd>Treewalker Down<cr>",     mode = { "n", "x" } },
-      { "<A-S-l>", "<cmd>Treewalker Right<cr>",    mode = { "n", "x" } },
-      { "<A-S-h>", "<cmd>Treewalker Left<cr>",     mode = { "n", "x" } },
+      { "<A-S-k>", "<cmd>Treewalker Up<cr>", mode = { "n", "x" } },
+      { "<A-S-j>", "<cmd>Treewalker Down<cr>", mode = { "n", "x" } },
+      { "<A-S-l>", "<cmd>Treewalker Right<cr>", mode = { "n", "x" } },
+      { "<A-S-h>", "<cmd>Treewalker Left<cr>", mode = { "n", "x" } },
 
       -- swapping
       { "<C-S-j>", "<cmd>Treewalker SwapDown<cr>" },
@@ -224,7 +202,7 @@ return {
   {
     "junegunn/vim-easy-align",
     keys = {
-      { "<leader>la", "<Plug>(EasyAlign)",     mode = { "n", "x" }, desc = "Easy align" },
+      { "<leader>la", "<Plug>(EasyAlign)", mode = { "n", "x" }, desc = "Easy align" },
       { "<leader>lA", "<Plug>(LiveEasyAlign)", mode = { "n", "x" }, desc = "Live Easy align" },
     },
   },

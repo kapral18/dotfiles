@@ -1,15 +1,24 @@
 return {
   {
     "nvim-treesitter/nvim-treesitter",
-    opts = {
-      ensure_installed = { "go", "gomod", "gosum", "gowork" },
-    },
+    opts = function(_, opts)
+      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, { "go", "gomod", "gosum", "gowork" })
+      return opts
+    end,
   },
   {
     "mason-org/mason.nvim",
-    opts = {
-      ensure_installed = { "gopls", "delve", "golangci-lint", "goimports", "gofumpt", "gomodifytags", "impl" },
-    },
+    opts = function(_, opts)
+      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, {
+        "delve",
+        "golangci-lint",
+        "goimports",
+        "gofumpt",
+        "gomodifytags",
+        "impl",
+      })
+      return opts
+    end,
   },
   {
     "neovim/nvim-lspconfig",
@@ -73,16 +82,20 @@ return {
   {
     "stevearc/conform.nvim",
     opts = function(_, opts)
-      opts.formatters_by_ft = opts.formatters_by_ft or {}
-      opts.formatters_by_ft.go = { "goimports", "gofumpt" }
+      opts.formatters_by_ft = vim.tbl_deep_extend("force", opts.formatters_by_ft or {}, {
+        go = { "goimports", "gofumpt" },
+      })
+      return opts
     end,
   },
   {
     "mfussenegger/nvim-lint",
     optional = true,
     opts = function(_, opts)
-      opts.linters_by_ft = opts.linters_by_ft or {}
-      opts.linters_by_ft.go = opts.linters_by_ft.go or { "golangcilint" }
+      opts.linters_by_ft = vim.tbl_deep_extend("force", opts.linters_by_ft or {}, {
+        go = { "golangci-lint" },
+      })
+      return opts
     end,
   },
   {

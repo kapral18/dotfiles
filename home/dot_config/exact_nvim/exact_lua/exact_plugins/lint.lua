@@ -2,16 +2,18 @@ return {
   {
     "mfussenegger/nvim-lint",
     event = "BufReadPost",
-    opts = {
-      events = { "BufWritePost", "BufReadPost", "InsertLeave" },
-      linters_by_ft = {
-        fish = { "fish" },
-      },
-      linters = {},
-    },
+    opts = function(_, opts)
+      opts.events = { "BufWritePost", "BufReadPost", "InsertLeave" }
+      opts.linters_by_ft = opts.linters_by_ft or {}
+      opts.linters = opts.linters or {}
+      return opts
+    end,
     config = function(_, opts)
       local augroup = vim.api.nvim_create_augroup("nvim-lint", { clear = true })
       local lint = require("lint")
+
+      -- reset default linters
+      lint.linters_by_ft = {}
 
       for name, linter in pairs(opts.linters or {}) do
         local registered = lint.linters[name]

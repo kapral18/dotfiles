@@ -91,22 +91,18 @@ function M.format(opts)
     return
   end
 
-  local formatters = {}
   -- Try conform.nvim first
   local have_conform, conform = pcall(require, "conform")
   if have_conform then
-    formatters = conform.list_formatters(buf)
-  end
-
-  -- Use conform if available, otherwise fallback to LSP
-  if have_conform and #formatters > 0 then
     conform.format(vim.tbl_extend("force", {
       timeout_ms = 3000,
-      lsp_fallback = true,
+      lsp_format = "fallback",
+      buf = buf,
     }, opts))
   else
     vim.lsp.buf.format(vim.tbl_extend("force", {
       timeout_ms = 3000,
+      buf = buf,
     }, opts))
   end
 end
@@ -155,6 +151,21 @@ end
 --- Format expression for gq
 function M.formatexpr()
   return vim.lsp.formatexpr({ timeout_ms = 3000 })
+end
+
+--- Get first available formatter
+---@param bufnr integer
+---@param ... string
+---@return string
+function M.first(bufnr, ...)
+  local conform = require("conform")
+  for i = 1, select("#", ...) do
+    local formatter = select(i, ...)
+    if conform.get_formatter_info(formatter, bufnr).available then
+      return formatter
+    end
+  end
+  return select(1, ...)
 end
 
 return M

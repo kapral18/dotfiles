@@ -14,9 +14,17 @@ local ft_js = {
 return {
   {
     "nvim-treesitter/nvim-treesitter",
-    opts = {
-      ensure_installed = { "typescript", "tsx", "javascript", "jsdoc" },
-    },
+    opts = function(_, opts)
+      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, { "typescript", "tsx", "javascript", "jsdoc" })
+      return opts
+    end,
+  },
+  {
+    "mason-org/mason.nvim",
+    opts = function(_, opts)
+      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, { "prettierd", "prettier" })
+      return opts
+    end,
   },
   {
     "pmizio/typescript-tools.nvim",
@@ -120,7 +128,7 @@ return {
       },
     },
     keys = {
-      { "<leader>cttc", ft = { "typescript", "typescriptreact" }, "<cmd>TSC<cr>", desc = "Type Check" },
+      { "<leader>cttc", ft = { "typescript", "typescriptreact" }, "<cmd>TSC<cr>",     desc = "Type Check" },
       { "<leader>cttq", ft = { "typescript", "typescriptreact" }, "<cmd>TSCOpen<cr>", desc = "Type Check Quickfix" },
     },
     ft = {
@@ -148,5 +156,17 @@ return {
         ["yarn.lock"] = { glyph = "", hl = "MiniIconsBlue" },
       },
     },
+  },
+  {
+    "stevearc/conform.nvim",
+    opts = function(_, opts)
+      opts.formatters_by_ft = vim.tbl_deep_extend("force", opts.formatters_by_ft or {}, {
+        javascript = { "prettierd", "prettier", stop_after_first = true },
+        javascriptreact = { "prettierd", "prettier", stop_after_first = true },
+        typescript = { "prettierd", "prettier", stop_after_first = true },
+        typescriptreact = { "prettierd", "prettier", stop_after_first = true },
+      })
+      return opts
+    end,
   },
 }

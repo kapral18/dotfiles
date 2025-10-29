@@ -9,9 +9,9 @@ and deep tool integration.
 
 ## 🛠️ Installation
 
-1. **Install 1Password:** The entire setup hinges on the 1Password CLI and
+1.  **Install 1Password:** The entire setup hinges on the 1Password CLI and
     its SSH agent for managing secrets and identities.
-2. **Initialize Chezmoi:** This single command will bootstrap the entire
+2.  **Initialize Chezmoi:** This single command will bootstrap the entire
     environment.
 
         ```bash sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply kapral18
@@ -95,7 +95,7 @@ some-user/feature-branch`).
   1. Removes each selected worktree directory.
   2. Deletes the associated local branch.
   3. **Cleans up the remote**: If the worktree was from a fork, it removes
-      the temporary remote if no other worktrees are using it.
+     the temporary remote if no other worktrees are using it.
   4. **Cleans up the filesystem**: Removes any empty parent directories.
   5. Removes the path from `zoxide`'s database.
 
@@ -137,7 +137,7 @@ functionality:
   skip tracks from any terminal window without interrupting your workflow.
 - **`f-to-gif`**: Converts videos to optimized GIFs with quality and size controls
 - **`f-vid-ipad`**: Processes videos for iPad optimization and format conversion
-- **GitHub PR Management (`f-disable-auto-merge`, `f-enable-auto-merge`):
+- \*\*GitHub PR Management (`f-disable-auto-merge`, `f-enable-auto-merge`):
   Functions to bulk-disable/enable auto-merge on PRs, useful for managing
   release branches.
 
@@ -162,12 +162,12 @@ personal and work) on the same machine securely and automatically.
 > 1. The global `.gitconfig` sets an `sshCommand` override: `sshCommand = ssh
 -o IdentitiesOnly=yes -o IdentityFile="~/.ssh/primary_public_key.pub"`
 > 2. Crucially, `IdentityFile` points to the **public key**. 1Password's SSH
->     agent intercepts this and uses the corresponding private key from the
->     vault for signing.
+>    agent intercepts this and uses the corresponding private key from the
+>    vault for signing.
 > 3. A conditional include, `[includeIf "gitdir:~/work/"]`, loads a separate
->     `.gitconfig` for work projects.
+>    `.gitconfig` for work projects.
 > 4. The work-specific `.gitconfig` overrides the `sshCommand` again, this
->     time pointing to the **work public key**.
+>    time pointing to the **work public key**.
 >
 > **The result:** Git automatically uses the correct SSH key for signing and
 > authentication based on the directory you're in, all without exposing

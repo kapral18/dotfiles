@@ -1,9 +1,17 @@
 return {
   {
+    "nvim-treesitter/nvim-treesitter",
+    opts = function(_, opts)
+      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, { "json", "json5", "jsonc" })
+      return opts
+    end,
+  },
+  {
     "mason-org/mason.nvim",
-    opts = {
-      ensure_installed = { "json-lsp", "jsonlint", "prettierd" },
-    },
+    opts = function(_, opts)
+      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, { "jsonlint", "prettierd" })
+      return opts
+    end,
   },
   {
     "neovim/nvim-lspconfig",
@@ -25,18 +33,21 @@ return {
   {
     "stevearc/conform.nvim",
     opts = function(_, opts)
-      opts.formatters_by_ft = opts.formatters_by_ft or {}
-      for _, ft in ipairs({ "json", "jsonc" }) do
-        opts.formatters_by_ft[ft] = opts.formatters_by_ft[ft] or { "prettierd", "prettier" }
-      end
+      opts.formatters_by_ft = vim.tbl_deep_extend("force", opts.formatters_by_ft or {}, {
+        json = { "prettierd", "prettier", stop_after_first = true },
+        jsonc = { "prettierd", "prettier", stop_after_first = true },
+      })
+      return opts
     end,
   },
   {
     "mfussenegger/nvim-lint",
     opts = function(_, opts)
-      opts.linters_by_ft = opts.linters_by_ft or {}
-      opts.linters_by_ft.json = opts.linters_by_ft.json or { "jsonlint" }
-      opts.linters_by_ft.jsonc = opts.linters_by_ft.jsonc or { "jsonlint" }
+      opts.linters_by_ft = vim.tbl_deep_extend("force", opts.linters_by_ft or {}, {
+        json = { "jsonlint" },
+        jsonc = { "jsonlint" },
+      })
+      return opts
     end,
   },
 }

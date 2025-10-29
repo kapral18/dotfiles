@@ -21,10 +21,10 @@ return {
     cmd = "Mason",
     event = "VeryLazy",
     build = ":MasonUpdate",
-    opts_extend = { "ensure_installed" },
-    opts = {
-      ensure_installed = {},
-    },
+    opts = function(_, opts)
+      opts.ensure_installed = opts.ensure_installed or {}
+      return opts
+    end,
     config = function(_, opts)
       require("mason").setup(opts)
       local registry = require("mason-registry")
@@ -70,7 +70,6 @@ return {
       "mason-org/mason.nvim",
       "mason-org/mason-lspconfig.nvim",
     },
-    opts_extend = { "servers.*.keys" },
     opts = {
       inlay_hints = { enabled = false },
 

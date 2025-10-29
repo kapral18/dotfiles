@@ -99,9 +99,9 @@ return {
 
     -- global UI toggles
     keys = {
-      { "<leader>ghtn", "<Cmd>Gitsigns toggle_numhl<CR>",              desc = "Toggle Num Highlight" },
-      { "<leader>ghtl", "<Cmd>Gitsigns toggle_linehl<CR>",             desc = "Toggle Line Highlight" },
-      { "<leader>ghtw", "<Cmd>Gitsigns toggle_word_diff<CR>",          desc = "Toggle Word Diff" },
+      { "<leader>ghtn", "<Cmd>Gitsigns toggle_numhl<CR>", desc = "Toggle Num Highlight" },
+      { "<leader>ghtl", "<Cmd>Gitsigns toggle_linehl<CR>", desc = "Toggle Line Highlight" },
+      { "<leader>ghtw", "<Cmd>Gitsigns toggle_word_diff<CR>", desc = "Toggle Word Diff" },
       { "<leader>ghtb", "<Cmd>Gitsigns toggle_current_line_blame<CR>", desc = "Toggle Blame Line" },
     },
   },
@@ -132,13 +132,18 @@ return {
     "aaronhallaert/advanced-git-search.nvim",
     cmd = { "AdvancedGitSearch" },
     keys = {
-      { "<leader>gas",  ":AdvancedGitSearch<CR>",                         desc = "AdvancedGitSearch" },
-      { "<leader>gar",  ":AdvancedGitSearch search_log_content<CR>",      desc = "AGS Repo History Search" },
-      { "<leader>gaf",  ":AdvancedGitSearch search_log_content_file<CR>", desc = "AGS File History Search" },
-      { "<leader>gadf", ":AdvancedGitSearch diff_commit_file<CR>",        desc = "AGS File vs commit" },
-      { "<leader>gadl", ":AdvancedGitSearch diff_commit_line<CR>",        mode = { "x" },                  desc = "AGS Line vs commit" },
-      { "<leader>gadb", ":AdvancedGitSearch diff_branch_file<CR>",        desc = "AGS Branch vs commit" },
-      { "<leader>gal",  ":AdvancedGitSearch checkout_reflog<CR>",         desc = "AGS Checkout reflog" },
+      { "<leader>gas", ":AdvancedGitSearch<CR>", desc = "AdvancedGitSearch" },
+      { "<leader>gar", ":AdvancedGitSearch search_log_content<CR>", desc = "AGS Repo History Search" },
+      { "<leader>gaf", ":AdvancedGitSearch search_log_content_file<CR>", desc = "AGS File History Search" },
+      { "<leader>gadf", ":AdvancedGitSearch diff_commit_file<CR>", desc = "AGS File vs commit" },
+      {
+        "<leader>gadl",
+        ":AdvancedGitSearch diff_commit_line<CR>",
+        mode = { "x" },
+        desc = "AGS Line vs commit",
+      },
+      { "<leader>gadb", ":AdvancedGitSearch diff_branch_file<CR>", desc = "AGS Branch vs commit" },
+      { "<leader>gal", ":AdvancedGitSearch checkout_reflog<CR>", desc = "AGS Checkout reflog" },
     },
     opts = {
       -- diff_plugin = "diffview",
@@ -159,7 +164,7 @@ return {
       -- require("advanced_git_search.fzf").setup(opts)
 
       require("which-key").add({
-        { "<leader>ga",  group = "Advanced Git Search",   mode = { "n", "v" } },
+        { "<leader>ga", group = "Advanced Git Search", mode = { "n", "v" } },
         { "<leader>gad", group = "AdvancedGitSearch Diff" },
       })
     end,
@@ -176,18 +181,6 @@ return {
     },
   },
   {
-    "nvim-treesitter/nvim-treesitter",
-    opts = {
-      ensure_installed = {
-        "git_config",
-        "git_rebase",
-        "gitattributes",
-        "gitcommit",
-        "gitignore",
-      },
-    },
-  },
-  {
     "sindrets/diffview.nvim",
     lazy = false,
     opts = {
@@ -198,11 +191,16 @@ return {
       },
     },
     keys = {
-      { "<leader>dfx", "<CMD>DiffviewClose<CR>",            desc = "DiffviewClose" },
+      { "<leader>dfx", "<CMD>DiffviewClose<CR>", desc = "DiffviewClose" },
       { "<leader>dfh", ":DiffviewFileHistory --follow<CR>", desc = "DiffviewFileHistory", mode = { "n", "x" } },
-      { "<leader>dfe", "<CMD>DiffviewToggleFiles<CR>",      desc = "DiffviewToggleFiles" },
-      { "<leader>dfo", "<CMD>DiffviewOpen<CR>",             desc = "DiffviewOpen" },
-      { "q",           ":DiffviewClose<CR>",                desc = "DiffviewClose",       ft = { "DiffviewFiles", "DiffviewFileHistory" } },
+      { "<leader>dfe", "<CMD>DiffviewToggleFiles<CR>", desc = "DiffviewToggleFiles" },
+      { "<leader>dfo", "<CMD>DiffviewOpen<CR>", desc = "DiffviewOpen" },
+      {
+        "q",
+        ":DiffviewClose<CR>",
+        desc = "DiffviewClose",
+        ft = { "DiffviewFiles", "DiffviewFileHistory" },
+      },
     },
   },
   {
@@ -274,6 +272,29 @@ return {
         end
         return line_with_hl
       end,
+    },
+  },
+  {
+    "nvim-treesitter/nvim-treesitter",
+    opts = function(_, opts)
+      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, {
+        "git_config",
+        "git_rebase",
+        "gitattributes",
+        "gitcommit",
+        "gitignore",
+      })
+      return opts
+    end,
+  },
+  {
+    "neovim/nvim-lspconfig",
+    opts = {
+      servers = {
+        harper_ls = {
+          filetypes = { "gitcommit" },
+        },
+      },
     },
   },
 }

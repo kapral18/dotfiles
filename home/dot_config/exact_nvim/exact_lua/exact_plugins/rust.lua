@@ -1,15 +1,17 @@
 return {
   {
     "nvim-treesitter/nvim-treesitter",
-    opts = {
-      ensure_installed = { "rust", "toml" },
-    },
+    opts = function(_, opts)
+      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, { "rust", "toml" })
+      return opts
+    end,
   },
   {
     "mason-org/mason.nvim",
-    opts = {
-      ensure_installed = { "rust-analyzer", "codelldb", "taplo" },
-    },
+    opts = function(_, opts)
+      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, { "codelldb", "taplo" })
+      return opts
+    end,
   },
   {
     "mrcjkb/rustaceanvim",
@@ -45,24 +47,19 @@ return {
   },
   {
     "neovim/nvim-lspconfig",
-    opts = function(_, opts)
-      opts.servers = opts.servers or {}
-      opts.servers.rust_analyzer = vim.tbl_deep_extend("force", {}, opts.servers.rust_analyzer or {})
-    end,
+    opts = {
+      servers = {
+        rust_analyzer = {},
+      },
+    },
   },
   {
     "stevearc/conform.nvim",
     opts = function(_, opts)
-      opts.formatters_by_ft = opts.formatters_by_ft or {}
-      opts.formatters_by_ft.toml = opts.formatters_by_ft.toml or {}
-      if not vim.tbl_contains(opts.formatters_by_ft.toml, "taplo") then
-        table.insert(opts.formatters_by_ft.toml, "taplo")
-      end
-
-      opts.formatters_by_ft.rust = opts.formatters_by_ft.rust or {}
-      if not vim.tbl_contains(opts.formatters_by_ft.rust, "rustfmt") then
-        table.insert(opts.formatters_by_ft.rust, "rustfmt")
-      end
+      opts.formatters_by_ft = vim.tbl_deep_extend("force", opts.formatters_by_ft or {}, {
+        rust = { "rustfmt" },
+        toml = { "taplo" },
+      })
       return opts
     end,
   },

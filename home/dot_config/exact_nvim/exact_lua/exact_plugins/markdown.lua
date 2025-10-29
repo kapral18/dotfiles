@@ -2,42 +2,58 @@ vim.filetype.add({
   pattern = {
     [".*%.mdx"] = "markdown",
     ["README"] = "markdown",
+    ["SECURITY"] = "markdown",
+    ["ARCHITECTURE"] = "markdown",
+    ["TROUBLESHOOTING"] = "markdown",
+    ["CONTRIBUTING"] = "markdown",
   },
 })
 
 return {
   {
     "nvim-treesitter/nvim-treesitter",
-    opts = {
-      ensure_installed = { "markdown", "markdown_inline" },
-    },
+    opts = function(_, opts)
+      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, { "markdown", "markdown_inline" })
+      return opts
+    end,
   },
   {
     "mason-org/mason.nvim",
-    opts = {
-      ensure_installed = { "marksman", "markdownlint" },
-    },
+    opts = function(_, opts)
+      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, {
+        "markdownlint",
+        "prettierd",
+        "prettier",
+      })
+      return opts
+    end,
   },
   {
     "neovim/nvim-lspconfig",
-    opts = function(_, opts)
-      opts.servers = opts.servers or {}
-      opts.servers.marksman = vim.tbl_deep_extend("force", {}, opts.servers.marksman or {})
-    end,
+    opts = {
+      servers = {
+        marksman = {},
+      },
+    },
   },
   {
     "stevearc/conform.nvim",
     opts = function(_, opts)
-      opts.formatters_by_ft = opts.formatters_by_ft or {}
-      opts.formatters_by_ft.markdown = opts.formatters_by_ft.markdown or { "prettierd", "prettier" }
-      opts.formatters_by_ft.mdx = opts.formatters_by_ft.mdx or { "prettierd", "prettier" }
+      opts.formatters_by_ft = vim.tbl_deep_extend("force", opts.formatters_by_ft or {}, {
+        markdown = { "prettierd", "prettier", stop_after_first = true },
+        mdx = { "prettierd", "prettier", stop_after_first = true },
+      })
+      return opts
     end,
   },
   {
     "mfussenegger/nvim-lint",
     opts = function(_, opts)
-      opts.linters_by_ft = opts.linters_by_ft or {}
-      opts.linters_by_ft.markdown = opts.linters_by_ft.markdown or { "markdownlint" }
+      opts.linters_by_ft = vim.tbl_deep_extend("force", opts.linters_by_ft or {}, {
+        markdown = { "markdownlint" },
+        mdx = { "markdownlint" },
+      })
+      return opts
     end,
   },
   {

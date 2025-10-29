@@ -14,47 +14,20 @@ return {
         desc = "Format Injected Langs",
       },
     },
-    opts = {
-      notify_on_error = false,
-      default_format_opts = {
+    opts = function(_, opts)
+      opts.notify_on_error = false
+      opts.default_format_opts = {
         timeout_ms = 3000,
         async = false,
         quiet = false,
         lsp_format = "fallback",
-      },
-      formatters_by_ft = {
-        lua = { "stylua" },
-        fish = { "fish_indent" },
-        go = { "goimports", "gofumpt" },
-        sh = { "shfmt" },
-        bash = { "shfmt" },
-        python = { "isort", "black" },
-        toml = { "taplo" },
-        rust = { "rustfmt" },
-        yaml = { "prettierd", "prettier" },
-        json = { "prettierd", "prettier" },
-        jsonc = { "prettierd", "prettier" },
-        markdown = { "prettierd", "prettier" },
-        mdx = { "prettierd", "prettier" },
-        javascript = { "prettierd", "prettier" },
-        javascriptreact = { "prettierd", "prettier" },
-        typescript = { "prettierd", "prettier" },
-        typescriptreact = { "prettierd", "prettier" },
-        css = { "stylelint", "prettierd", "prettier" },
-        scss = { "stylelint", "prettierd", "prettier" },
-        jsonl = { "jsonl" },
-        html = { "prettierd", "prettier" },
-        vue = { "prettierd", "prettier" },
-        graphql = { "prettierd", "prettier" },
-      },
-      formatters = {
+      }
+      opts.formatters_by_ft = opts.formatters_by_ft or {}
+      opts.formatters = vim.tbl_deep_extend("force", opts.formatters or {}, {
         injected = { options = { ignore_errors = true } },
-        jsonl = {
-          command = "jq",
-          args = { ".", "$FILENAME" },
-        },
-      },
-    },
+      })
+      return opts
+    end,
     config = function(_, opts)
       require("conform").setup(opts)
 
@@ -70,11 +43,5 @@ return {
         end,
       })
     end,
-  },
-  {
-    "mason-org/mason.nvim",
-    opts = {
-      ensure_installed = { "prettierd", "stylua", "shfmt" },
-    },
   },
 }

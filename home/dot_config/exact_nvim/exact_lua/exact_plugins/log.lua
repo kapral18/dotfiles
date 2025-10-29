@@ -1,4 +1,6 @@
 return {
-  "MTDL9/vim-log-highlighting",
-  ft = "log",
+  {
+    "MTDL9/vim-log-highlighting",
+    ft = "log",
+  },
 }

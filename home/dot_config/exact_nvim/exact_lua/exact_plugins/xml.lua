@@ -1,9 +1,10 @@
 return {
   {
     "nvim-treesitter/nvim-treesitter",
-    opts = {
-      ensure_installed = { "xml" },
-    },
+    opts = function(_, opts)
+      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, { "xml" })
+      return opts
+    end,
   },
   {
     "neovim/nvim-lspconfig",
@@ -11,12 +12,6 @@ return {
       servers = {
         lemminx = {},
       },
-    },
-  },
-  {
-    "mason-org/mason.nvim",
-    opts = {
-      ensure_installed = { "lemminx" },
     },
   },
 }

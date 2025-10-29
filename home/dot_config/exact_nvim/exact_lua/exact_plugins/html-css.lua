@@ -1,17 +1,17 @@
--- local ft_js = { "typescript", "javascript", "typescriptreact", "javascriptreact" }
-
 return {
   {
     "nvim-treesitter/nvim-treesitter",
-    opts = {
-      ensure_installed = { "html", "css", "scss" },
-    },
+    opts = function(_, opts)
+      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, { "html", "css", "scss" })
+      return opts
+    end,
   },
   {
     "mason-org/mason.nvim",
-    opts = {
-      ensure_installed = { "html-lsp", "css-variables-language-server", "css-lsp", "htmlhint", "stylelint" },
-    },
+    opts = function(_, opts)
+      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, { "htmlhint", "stylelint", "prettierd", "prettier" })
+      return opts
+    end,
   },
   {
     "neovim/nvim-lspconfig",
@@ -45,17 +45,21 @@ return {
   },
   {
     "stevearc/conform.nvim",
-    opts = {
-      formatters_by_ft = {
-        css = { "stylelint", "prettier" },
-        scss = { "stylelint", "prettier" },
-      },
-    },
+    opts = function(_, opts)
+      opts.formatters_by_ft = vim.tbl_deep_extend("force", opts.formatters_by_ft or {}, {
+        css = { "stylelint", "prettierd", "prettier", stop_after_first = true },
+        scss = { "stylelint", "prettierd", "prettier", stop_after_first = true },
+        html = { "prettierd", "prettier", stop_after_first = true },
+        vue = { "prettierd", "prettier", stop_after_first = true },
+        graphql = { "prettierd", "prettier", stop_after_first = true },
+      })
+      return opts
+    end,
   },
   {
     "mfussenegger/nvim-lint",
-    opts = {
-      linters_by_ft = {
+    opts = function(_, opts)
+      opts.linters_by_ft = vim.tbl_deep_extend("force", opts.linters_by_ft or {}, {
         ["html"] = { "htmlhint" },
         ["css"] = { "stylelint" },
         ["scss"] = { "stylelint" },
@@ -63,7 +67,8 @@ return {
         ["sugarss"] = { "stylelint" },
         ["vue"] = { "stylelint" },
         ["wxss"] = { "stylelint" },
-      },
-    },
+      })
+      return opts
+    end,
   },
 }

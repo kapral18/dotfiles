@@ -1,15 +1,17 @@
 return {
   {
     "nvim-treesitter/nvim-treesitter",
-    opts = {
-      ensure_installed = { "c", "cpp", "cuda" },
-    },
+    opts = function(_, opts)
+      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, { "c", "cpp", "cuda" })
+      return opts
+    end,
   },
   {
     "mason-org/mason.nvim",
-    opts = {
-      ensure_installed = { "clangd", "clang-format", "codelldb" },
-    },
+    opts = function(_, opts)
+      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, { "clang-format", "codelldb" })
+      return opts
+    end,
   },
   {
     "p00f/clangd_extensions.nvim",
