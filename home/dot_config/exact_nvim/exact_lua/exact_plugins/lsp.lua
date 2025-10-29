@@ -98,7 +98,6 @@ return {
           float = { border = "rounded" },
         },
 
-
         capabilities = {},
         servers = {
           ["*"] = {
@@ -140,7 +139,7 @@ return {
                 end,
                 desc = "Goto Declaration",
               },
-              { "K",  vim.lsp.buf.hover,          desc = "Hover" },
+              { "K", vim.lsp.buf.hover, desc = "Hover" },
               { "gK", vim.lsp.buf.signature_help, desc = "Signature Help", has = "signatureHelp" },
               {
                 "<c-k>",
@@ -247,12 +246,8 @@ return {
         end,
       })
 
-      local capabilities = vim.tbl_deep_extend(
-        "force",
-        {},
-        vim.lsp.protocol.make_client_capabilities(),
-        opts.capabilities or {}
-      )
+      local capabilities =
+        vim.tbl_deep_extend("force", {}, vim.lsp.protocol.make_client_capabilities(), opts.capabilities or {})
 
       local cmp_ok, cmp_nvim_lsp = pcall(require, "cmp_nvim_lsp")
       if cmp_ok then
@@ -263,7 +258,7 @@ return {
       local have_mason = pcall(require, "mason-lspconfig")
       local mason_all = have_mason
           and vim.tbl_keys(require("mason-lspconfig.mappings").get_mason_map().lspconfig_to_package)
-          or {}
+        or {}
       local mason_exclude = {}
 
       ---@return boolean? use_mason
@@ -280,11 +275,16 @@ return {
           return
         end
 
-        server_opts = vim.tbl_deep_extend("force", {
-          capabilities = vim.deepcopy(capabilities),
-        }, server_opts or {}, {
-          inlay_hints = opts.inlay_hints,
-        })
+        server_opts = vim.tbl_deep_extend(
+          "force",
+          {
+            capabilities = vim.deepcopy(capabilities),
+          },
+          server_opts or {},
+          {
+            inlay_hints = opts.inlay_hints,
+          }
+        )
 
         local use_mason = server_opts.mason ~= false and vim.tbl_contains(mason_all, server)
         local setup = opts.setup[server] or opts.setup["*"]

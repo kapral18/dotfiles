@@ -87,24 +87,8 @@ function M.format(opts)
     end
   end
 
-  if used_registered then
-    return
-  end
-
-  -- Try conform.nvim first
-  local have_conform, conform = pcall(require, "conform")
-  if have_conform then
-    conform.format(vim.tbl_extend("force", {
-      timeout_ms = 3000,
-      lsp_format = "fallback",
-      buf = buf,
-    }, opts))
-  else
-    vim.lsp.buf.format(vim.tbl_extend("force", {
-      timeout_ms = 3000,
-      buf = buf,
-    }, opts))
-  end
+  -- If no registered formatters ran, nothing to do
+  -- (conform and LSP are now both registered in the format registry)
 end
 
 --- Toggle autoformat globally or per-buffer
