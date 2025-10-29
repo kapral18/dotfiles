@@ -70,133 +70,138 @@ return {
       "mason-org/mason.nvim",
       "mason-org/mason-lspconfig.nvim",
     },
-    opts = {
-      inlay_hints = { enabled = false },
+    opts = function(_, opts)
+      opts = opts or {}
 
-      diagnostics = {
-        underline = true,
-        update_in_insert = false,
-        virtual_text = {
-          spacing = 4,
-          source = "if_many",
-          prefix = "●",
-          -- this will set set the prefix to a function that returns the diagnostics icon based on the severity
-          -- prefix = "icons",
-        },
-        severity_sort = true,
-        signs = {
-          text = {
-            [vim.diagnostic.severity.ERROR] = util.config.icons.diagnostics.Error,
-            [vim.diagnostic.severity.WARN] = util.config.icons.diagnostics.Warn,
-            [vim.diagnostic.severity.HINT] = util.config.icons.diagnostics.Hint,
-            [vim.diagnostic.severity.INFO] = util.config.icons.diagnostics.Info,
+      -- Define base configuration
+      local base = {
+        inlay_hints = { enabled = false },
+        diagnostics = {
+          underline = true,
+          update_in_insert = false,
+          virtual_text = {
+            spacing = 4,
+            source = "if_many",
+            prefix = "●",
+            -- this will set set the prefix to a function that returns the diagnostics icon based on the severity
+            -- prefix = "icons",
           },
-        },
-        float = { border = "rounded" },
-      },
-
-
-      capabilities = {},
-      servers = {
-        ["*"] = {
-          keys = {
-            {
-              "gd",
-              function()
-                require("fzf-lua").lsp_definitions({ jump1 = true })
-              end,
-              desc = "Goto Definition",
-              has = "definition",
-            },
-            {
-              "gr",
-              function()
-                require("fzf-lua").lsp_references({ jump1 = true })
-              end,
-              desc = "References",
-              nowait = true,
-            },
-            {
-              "gI",
-              function()
-                require("fzf-lua").lsp_implementations({ jump1 = true })
-              end,
-              desc = "Goto Implementation",
-            },
-            {
-              "gy",
-              function()
-                require("fzf-lua").lsp_typedefs({ jump1 = true })
-              end,
-              desc = "Goto T[y]pe Definition",
-            },
-            {
-              "gD",
-              function()
-                require("fzf-lua").lsp_declarations({ jump1 = true })
-              end,
-              desc = "Goto Declaration",
-            },
-            { "K",  vim.lsp.buf.hover,          desc = "Hover" },
-            { "gK", vim.lsp.buf.signature_help, desc = "Signature Help", has = "signatureHelp" },
-            {
-              "<c-k>",
-              vim.lsp.buf.signature_help,
-              mode = "i",
-              desc = "Signature Help",
-              has = "signatureHelp",
-            },
-            {
-              "<leader>ca",
-              vim.lsp.buf.code_action,
-              desc = "Code Action",
-              mode = { "n", "x" },
-              has = "codeAction",
-            },
-            {
-              "<leader>cA",
-              function()
-                vim.lsp.buf.code_action({
-                  context = {
-                    only = { "source" },
-                    diagnostics = {},
-                  },
-                })
-              end,
-              desc = "Source Action",
-              has = "codeAction",
-            },
-            {
-              "<leader>ss",
-              function()
-                require("fzf-lua").lsp_document_symbols()
-              end,
-              desc = "Document Symbols",
-              has = "documentSymbol",
-            },
-            {
-              "<leader>sS",
-              function()
-                require("fzf-lua").lsp_live_workspace_symbols()
-              end,
-              desc = "Workspace Symbols",
-              has = "workspaceSymbol",
-            },
-            {
-              "<leader>cl",
-              function()
-                require("snacks").picker.lsp_config()
-              end,
-              desc = "Lsp Info",
+          severity_sort = true,
+          signs = {
+            text = {
+              [vim.diagnostic.severity.ERROR] = util.config.icons.diagnostics.Error,
+              [vim.diagnostic.severity.WARN] = util.config.icons.diagnostics.Warn,
+              [vim.diagnostic.severity.HINT] = util.config.icons.diagnostics.Hint,
+              [vim.diagnostic.severity.INFO] = util.config.icons.diagnostics.Info,
             },
           },
+          float = { border = "rounded" },
         },
-      },
-      setup = {},
-    },
+
+
+        capabilities = {},
+        servers = {
+          ["*"] = {
+            keys = {
+              {
+                "gd",
+                function()
+                  require("fzf-lua").lsp_definitions({ jump1 = true })
+                end,
+                desc = "Goto Definition",
+                has = "definition",
+              },
+              {
+                "gr",
+                function()
+                  require("fzf-lua").lsp_references({ jump1 = true })
+                end,
+                desc = "References",
+                nowait = true,
+              },
+              {
+                "gI",
+                function()
+                  require("fzf-lua").lsp_implementations({ jump1 = true })
+                end,
+                desc = "Goto Implementation",
+              },
+              {
+                "gy",
+                function()
+                  require("fzf-lua").lsp_typedefs({ jump1 = true })
+                end,
+                desc = "Goto T[y]pe Definition",
+              },
+              {
+                "gD",
+                function()
+                  require("fzf-lua").lsp_declarations({ jump1 = true })
+                end,
+                desc = "Goto Declaration",
+              },
+              { "K",  vim.lsp.buf.hover,          desc = "Hover" },
+              { "gK", vim.lsp.buf.signature_help, desc = "Signature Help", has = "signatureHelp" },
+              {
+                "<c-k>",
+                vim.lsp.buf.signature_help,
+                mode = "i",
+                desc = "Signature Help",
+                has = "signatureHelp",
+              },
+              {
+                "<leader>ca",
+                vim.lsp.buf.code_action,
+                desc = "Code Action",
+                mode = { "n", "x" },
+                has = "codeAction",
+              },
+              {
+                "<leader>cA",
+                function()
+                  vim.lsp.buf.code_action({
+                    context = {
+                      only = { "source" },
+                      diagnostics = {},
+                    },
+                  })
+                end,
+                desc = "Source Action",
+                has = "codeAction",
+              },
+              {
+                "<leader>ss",
+                function()
+                  require("fzf-lua").lsp_document_symbols()
+                end,
+                desc = "Document Symbols",
+                has = "documentSymbol",
+              },
+              {
+                "<leader>sS",
+                function()
+                  require("fzf-lua").lsp_live_workspace_symbols()
+                end,
+                desc = "Workspace Symbols",
+                has = "workspaceSymbol",
+              },
+              {
+                "<leader>cl",
+                function()
+                  require("snacks").picker.lsp_config()
+                end,
+                desc = "Lsp Info",
+              },
+            },
+          },
+        },
+        setup = {},
+      }
+      -- Deep merge base with incoming opts
+      opts = vim.tbl_deep_extend("force", base, opts)
+      return opts
+    end,
     config = function(_, opts)
-      local util = require("util")
-
       vim.diagnostic.config(opts.diagnostics or {})
 
       -- Register LSP formatting

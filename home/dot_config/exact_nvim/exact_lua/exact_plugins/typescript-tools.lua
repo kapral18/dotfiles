@@ -15,7 +15,8 @@ return {
   {
     "nvim-treesitter/nvim-treesitter",
     opts = function(_, opts)
-      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, { "typescript", "tsx", "javascript", "jsdoc" })
+      opts.ensure_installed =
+        vim.list_extend(opts.ensure_installed or {}, { "typescript", "tsx", "javascript", "jsdoc" })
       return opts
     end,
   },
@@ -45,43 +46,39 @@ return {
         dependencies = {
           { "b0o/SchemaStore.nvim" },
         },
-        opts = {
-          servers = {
-            ts_ls = {
-              enabled = false,
-            },
-            -- @deprecated
-            tsserver = {
-              enabled = false,
-            },
-            ["*"] = {
-              keys = {
-                {
-                  "<leader>cR",
-                  function()
-                    if vim.tbl_contains(ft_js, vim.bo.filetype) then
-                      vim.cmd("TSToolsRenameFile")
-                    else
-                      vim.lsp.buf.rename()
-                    end
-                  end,
-                  desc = "Rename File",
-                  has = "rename",
-                },
-              },
-            },
-          },
-          setup = {
-            tsserver = function()
-              -- disable tsserver
-              return true
+        opts = function(_, opts)
+          opts.servers = opts.servers or {}
+          opts.servers.ts_ls = { enabled = false }
+          opts.servers.tsserver = { enabled = false } -- @deprecated
+
+          opts.servers["*"] = opts.servers["*"] or {}
+          opts.servers["*"].keys = opts.servers["*"].keys or {}
+
+          table.insert(opts.servers["*"].keys, {
+            "<leader>cR",
+            function()
+              if vim.tbl_contains(ft_js, vim.bo.filetype) then
+                vim.cmd("TSToolsRenameFile")
+              else
+                vim.lsp.buf.rename()
+              end
             end,
-            ts_ls = function()
-              -- disable ts_ls
-              return true
-            end,
-          },
-        },
+            desc = "Rename File",
+            has = "rename",
+          })
+
+          opts.setup = opts.setup or {}
+          opts.setup.tsserver = function()
+            -- disable tsserver
+            return true
+          end
+          opts.setup.ts_ls = function()
+            -- disable ts_ls
+            return true
+          end
+
+          return opts
+        end,
       },
     },
     ft = ft_js,
@@ -128,7 +125,7 @@ return {
       },
     },
     keys = {
-      { "<leader>cttc", ft = { "typescript", "typescriptreact" }, "<cmd>TSC<cr>",     desc = "Type Check" },
+      { "<leader>cttc", ft = { "typescript", "typescriptreact" }, "<cmd>TSC<cr>", desc = "Type Check" },
       { "<leader>cttq", ft = { "typescript", "typescriptreact" }, "<cmd>TSCOpen<cr>", desc = "Type Check Quickfix" },
     },
     ft = {
