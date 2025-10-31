@@ -1,16 +1,15 @@
 return {
   {
-    "ggandor/leap.nvim",
-    keys = {
-      { "s", "<Plug>(leap)", desc = "Leap" },
-      { "gs", "<Plug>(leap-from-window)", desc = "Leap from window" },
-    },
-    config = true,
-  },
-  {
     "rasulomaroff/telepath.nvim",
     dependencies = {
-      { "ggandor/leap.nvim" },
+      {
+        "ggandor/leap.nvim",
+        keys = {
+          { "s", "<Plug>(leap)", desc = "Leap" },
+          { "gs", "<Plug>(leap-from-window)", desc = "Leap from window" },
+        },
+        config = true,
+      },
       {
         "tpope/vim-abolish",
         init = function()
@@ -18,7 +17,6 @@ return {
         end,
       },
     },
-    lazy = false,
     config = function()
       require("telepath").use_default_mappings()
     end,
