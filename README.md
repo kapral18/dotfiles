@@ -130,7 +130,7 @@ functionality:
 - **`f-list-prs`**: Lists GitHub PRs with advanced filtering and search capabilities
 - **`f-pdf-diff`**: A visual diff tool for PDFs. It uses ImageMagick to render
   two PDFs as images and composites them, highlighting all differences in red.
-- **`f-search-brew-desc`**: Interactive search through Homebrew package descriptions
+- **`f-fuzzy-brew-search`**: Interactive search through Homebrew package descriptions with fzf selection
 - **`f-search-gh-topic`**: Searches GitHub repositories by topic with fuzzy filtering
 - **`f-tmux-lowfi`**: A clever script that controls a `lowfi` music player
   running inside a dedicated, detached tmux session. You can play, pause, and

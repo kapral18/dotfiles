@@ -19,6 +19,7 @@ return {
   {
     "nvimdev/dashboard-nvim",
     lazy = false,
+    event = "VimEnter",
     opts = function()
       logo = string.rep("\n", 8) .. logo .. "\n\n"
 

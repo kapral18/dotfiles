@@ -18,8 +18,7 @@ end
 return {
   {
     "mason-org/mason.nvim",
-    cmd = "Mason",
-    event = "VeryLazy",
+    cmd = { "Mason", "MasonInstall", "MasonUninstall", "MasonUninstallAll", "MasonLog", "MasonUpdate" },
     build = ":MasonUpdate",
     opts = function(_, opts)
       opts.ensure_installed = opts.ensure_installed or {}
@@ -55,6 +54,8 @@ return {
   {
     "mason-org/mason-lspconfig.nvim",
     dependencies = { "mason-org/mason.nvim" },
+    lazy = true,
+    event = "VeryLazy",
     opts = {
       ensure_installed = {},
     },

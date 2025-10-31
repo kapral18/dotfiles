@@ -26,7 +26,7 @@ local is_work_machine = vim.fn.filereadable(vim.fn.expand("~/work/.gitconfig")) 
 return {
   {
     "github/copilot.vim",
-    lazy = false,
+    event = "InsertEnter",
     version = "*",
     init = function()
       vim.api.nvim_set_hl(0, "CopilotSuggestion", { fg = "#83a598" })
@@ -63,15 +63,14 @@ return {
   {
     -- we use the Vim version because the Neovim port is still stabilising
     "Exafunction/windsurf.vim",
-    event = "BufEnter",
-    lazy = false,
+    event = "InsertEnter",
     init = function()
       vim.g.codeium_disable_bindings = 1
     end,
   },
   {
     "CopilotC-Nvim/CopilotChat.nvim",
-    lazy = false,
+    lazy = true,
     version = "*",
     cmd = "CopilotChat",
     opts = function()
@@ -86,8 +85,8 @@ return {
       }
     end,
     keys = {
-      { "<c-s>",     "<CR>", ft = "copilot-chat", desc = "Submit Prompt", remap = true },
-      { "<leader>a", "",     desc = "+ai",        mode = { "n", "v" } },
+      { "<c-s>", "<CR>", ft = "copilot-chat", desc = "Submit Prompt", remap = true },
+      { "<leader>a", "", desc = "+ai", mode = { "n", "v" } },
       {
         "<leader>aa",
         function()
@@ -198,9 +197,5 @@ return {
 
       chat.setup(opts)
     end,
-  },
-  {
-    "ntawileh/mods.nvim",
-    dependencies = { "folke/snacks.nvim" },
   },
 }

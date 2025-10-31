@@ -3,6 +3,7 @@ local util = require("util")
 return {
   {
     "mfussenegger/nvim-dap",
+    event = "VeryLazy",
     config = function()
       -- Set DAP icons (LazyVim style)
       local icons = util.config.icons.dap
