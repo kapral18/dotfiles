@@ -1,4 +1,4 @@
-# AI Agent Standard Operating Procedures
+# Standard Operating Procedures
 
 ## 1. Purpose, Scope & Audience
 
