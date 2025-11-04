@@ -216,6 +216,8 @@ When creating hierarchical issue structures:
 
 4. **Update parent issue** with clean description (no tasklist needed?GitHub UI handles visualization)
 5. **Verify with `trackedIssues` query** after linking to confirm relationships
+6. For a quick list of existing child issues, you can also call the REST endpoint:  
+   `gh api repos/:owner/:repo/issues/ISSUE_NUMBER/sub_issues --jq '.[].number'`
 
 #### Available Mutations
 
