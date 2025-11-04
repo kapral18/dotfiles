@@ -316,6 +316,14 @@ Beads is the canonical long-term memory system for this repository. Version 0.20
 - **Update:** `bd $BD_LOCAL_FLAGS update <id> --status in_progress|ready|blocked --note "..."` to log progress.
 - **Dependencies:** `bd $BD_LOCAL_FLAGS dep add <id> --blocks <dependency>` and visualise with `bd $BD_LOCAL_FLAGS dep tree <id>`.
 
+#### Epic Knowledge Capture
+
+1. **Mirror the epic.** Create (or locate) a bead that matches the GitHub epic issue and paste the canonical issue/PR links into its note log: `bd $BD_LOCAL_FLAGS update <epic-id> --note "Epic: https://github.com/.../issues/123"`.
+2. **Open a wisdom bead.** Capture distilled lessons from completed PRs in a dedicated reference bead (e.g. `bd $BD_LOCAL_FLAGS create "wisdom - auth hardening"`), then summarise the reusable guidance with `bd $BD_LOCAL_FLAGS update <wisdom-id> --note "...summary..."`. This bead is the single source of truth (no Markdown mirrors).
+3. **Wire the graph.** Link every active sub-issue that must follow the guidance by adding a dependency on the wisdom bead: `bd $BD_LOCAL_FLAGS dep add <epic-or-task-id> --blocks <wisdom-id>`. Also cross-reference IDs inside notes (`See [[bd-xxxx]] for auth rules`) so backlinks surface during `bd show`.
+4. **Roll new learnings forward.** When fresh PRs close, append or amend the wisdom bead note with the distilled takeaway and the PR URL; update the epic bead note to mention the change so future agents spot the refresh immediately.
+5. **Optional exports only.** If a document view is required, export the bead (`bd $BD_LOCAL_FLAGS export ...`) and regenerate Markdown from that snapshot—never treat the Markdown as authoritative.
+
 ### 12.4 Closure & Maintenance
 
 - Close finished work: `bd $BD_LOCAL_FLAGS close <id> --reason "Completed"`.
