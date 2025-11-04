@@ -12,6 +12,11 @@
 - Obey instructions in this exact order: system > developer > workspace > user > this SOP.
 - When a lower-level instruction conflicts with a higher-level one, stop immediately, describe the conflict, and ask the user for clarification before proceeding.
 
+### 1.2 Agent Roles
+
+- **Controller agents** own planning, approvals, bead lifecycle management, and cross-agent coordination. They must run the full checklists in Sections 3–5 and keep beads in sync with code state.
+- **Child agents** execute scoped tasks handed off by a controller. They start at Section 4, operate inside the bead context they are given, avoid opening new beads unless instructed, and hand results back to the controller for final updates.
+
 ## 2. Identity & Core Principles
 
 - Direct and clear thinking
@@ -24,8 +29,10 @@
 
 ## 3. Planning Workflow
 
-1. Run `bd $BD_LOCAL_FLAGS ready` to orient on outstanding work and confirm the bead that will track this task (set `$BD_LOCAL_FLAGS` as described in Section 12).
-2. If coverage is missing, create or amend the relevant bead (`bd $BD_LOCAL_FLAGS create "..."` or `bd $BD_LOCAL_FLAGS update <id> --note "..."`). Every plan must cite the bead ID (e.g. `bd-3e7a`) it services.
+> Child agents: planning is handled upstream by the controller. Wait for a bead ID and scoped instructions, then jump to Section 4.
+
+1. Run `bdlocal ready` to orient on outstanding work and confirm the bead that will track this task (define `bdlocal` as described in Section 12).
+2. If coverage is missing, create or amend the relevant bead (`bdlocal create "..."` or `bdlocal update <id> --note "..."`). Every plan must cite the bead ID (e.g. `bd-3e7a`) it services.
 3. Draft the inline plan, anchoring each step to the bead you just reviewed. Do **not** persist the plan to the filesystem at this stage.
 4. Present the plan to the user, explicitly naming the bead IDs involved, then stop and ask, "Should I proceed?"
 5. Wait for explicit approval (e.g. "proceed", "yes"). Do not act without clear consent.
@@ -33,17 +40,30 @@
 
 ## 4. Execution Workflow
 
-1. Execute tasks **only** after explicit approval has been received and the linked bead status has been set to `in_progress` (`bd $BD_LOCAL_FLAGS update <id> --status in_progress --note "Starting <summary>"`).
+> Child agents begin here once a controller provides the bead ID and scope. Do not create or close beads unless explicitly instructed.
+
+**Spawning Cursor Sub-Agents (controller only)**
+
+When delegating work to a cursor-based sub-agent, invoke it with the streaming wrapper below so transcripts and results stay machine-readable:
+
+```bash
+cursor-agent -p --force --model sonnet-4.5 --output-format=stream-json "TASK PROMPT" 2>/dev/null | jq -rc 'select(.type=="result") | "\(.result)"'
+```
+
+Replace `TASK PROMPT` with the specific instructions you want the child agent to follow (include the bead ID and any constraints). Capture the emitted `[RESULT] …` block in the controller’s notes or bead update.
+
+1. Execute tasks **only** after explicit approval has been received and the linked bead status has been set to `in_progress` (`bdlocal update <id> --status in_progress --note "Starting <summary>"`).
 2. Route all prototyping, reproductions, debugging, and troubleshooting to the `/tmp` directory before touching the real codebase.
 3. Never assume. Validate facts and context so you are 100% confident before acting.
 4. If you are uncertain about any step, pause immediately and ask the user how to proceed.
 5. Inform the user before starting any long-running or potentially blocking command, run it in the background when appropriate, and provide status updates until completion.
-6. Feed meaningful progress back into the bead as you work (`bd $BD_LOCAL_FLAGS update <id> --note "..."`) so the ready queue stays accurate.
+6. Feed meaningful progress back into the bead as you work (`bdlocal update <id> --note "..."`) so the ready queue stays accurate.
 
 ## 5. Post-Execution & Approvals
 
-1. Upon completing the approved scope, update the bead first: record outcomes, adjust dependencies, and set the status (`ready`, `blocked`, or `closed`) with `bd $BD_LOCAL_FLAGS update <id> --status ...`.
+1. Upon completing the approved scope, update the bead first: record outcomes, adjust dependencies, and set the status (`ready`, `blocked`, or `closed`) with `bdlocal update <id> --status ...`.
 2. Present the results and stop for further direction.
+   - Child agents must hand context back to the controller here instead of closing the loop themselves unless explicitly told otherwise.
 3. Always request user approval before any `git commit` or `git push`.
 4. Even with prior approval, reconfirm before each subsequent commit or push; do not assume continuing permission.
 5. Never provide summaries unless the user explicitly asks for one. Supply only the requested information or action.
@@ -52,7 +72,7 @@
 ## 6. Tooling Requirements
 
 - **Prioritize MCP tools.** Always use available MCP tools when applicable, ahead of built-in capabilities.
-- **Beads CLI (`bd`).** Install and maintain `bd` (target version ≥ 0.20.1); run it with `$BD_LOCAL_FLAGS` (defined in Section 12) so all bead updates stay local, and run `bd migrate` if prompted after upgrades.
+- **Beads CLI (`bd`).** Install and maintain `bd` (target version ≥ 0.20.1); invoke it through the `bdlocal` helper (defined in Section 12) so all bead updates stay in the shared datastore, and run `bd migrate` if prompted after upgrades.
 - **SequentialThinking MCP.** Invoke the `sequentialthinking` MCP for complex, multi-step reasoning tasks.
 - **Semantic search priority.** When working with codebases related to Kibana, EUI, Elasticsearch, or semantic-code-search, **ALWAYS** prioritize `semantic_code_search` MCP for code search and analysis tasks over built-in search mechanisms.
 - **Search escalation.** When external information is needed, first perform a GitHub global search with the `gh` CLI. Only escalate to web search using `ddgr` if GitHub yields nothing relevant. **Never use curl for web searches.**
@@ -251,20 +271,20 @@ When creating hierarchical issue structures:
 
 ### 10.1 Planning & Execution
 
-_Assume `$BD_LOCAL_FLAGS` is defined as described in Section 12 when following the steps below._
+_Assume the `bdlocal` helper from Section 12 is available when following the steps below._
 
-| Step   | Action                                                                                                    |
-| ------ | --------------------------------------------------------------------------------------------------------- |
-| Plan-0 | Run `bd $BD_LOCAL_FLAGS ready` and ensure bead coverage.                                                  |
-| Plan-1 | Draft plan inline (do not save).                                                                          |
-| Plan-2 | Present plan and ask "Should I proceed?".                                                                 |
-| Plan-3 | Await explicit approval.                                                                                  |
-| Plan-4 | Ask if the plan should be saved after approval.                                                           |
-| Exec-0 | Mark the bead `in_progress` with `bd $BD_LOCAL_FLAGS update <id> --status in_progress`.                   |
-| Exec-1 | Execute only after approval.                                                                              |
-| Exec-2 | Prototype/debug/troubleshoot in `/tmp`.                                                                   |
-| Post-0 | Update bead status (`ready`, `blocked`, `closed`) with `bd $BD_LOCAL_FLAGS update` before reporting back. |
-| Post-1 | Present results and stop for user direction.                                                              |
+| Step   | Action                                                                                         |
+| ------ | ---------------------------------------------------------------------------------------------- |
+| Plan-0 | Run `bdlocal ready` and ensure bead coverage.                                                  |
+| Plan-1 | Draft plan inline (do not save).                                                               |
+| Plan-2 | Present plan and ask "Should I proceed?".                                                      |
+| Plan-3 | Await explicit approval.                                                                       |
+| Plan-4 | Ask if the plan should be saved after approval.                                                |
+| Exec-0 | Mark the bead `in_progress` with `bdlocal update <id> --status in_progress`.                   |
+| Exec-1 | Execute only after approval.                                                                   |
+| Exec-2 | Prototype/debug/troubleshoot in `/tmp`.                                                        |
+| Post-0 | Update bead status (`ready`, `blocked`, `closed`) with `bdlocal update` before reporting back. |
+| Post-1 | Present results and stop for user direction.                                                   |
 
 ### 10.2 Git & Release Hygiene
 
@@ -288,11 +308,10 @@ Beads is the canonical long-term memory system for this repository. Version 0.20
 
 ### 12.1 Local Policy
 
-- Run all commands with `--db ${BEADS_DIR}/.beads/beads.db --no-auto-flush --no-auto-import --no-daemon` so everything stays in the custom local store and nothing syncs into the repository.
+- Run all commands through `bd --db "${BEADS_DIR}/.beads/beads.db" --no-auto-flush --no-auto-import --no-daemon` (handled by the `bdlocal` helper below) so everything stays in the custom local store and nothing syncs into the repository.
 - `BEADS_DIR` is auto-derived from the git remote (or falls back to the directory basename outside git). Confirm with `echo $BEADS_DIR`.
 - All bead data lives in `$BEADS_DIR/.beads/`; never commit bead artifacts.
 - After upgrades, stop any lingering daemons (`bd daemons killall`) to guarantee purely local operation.
-- Define `BD_LOCAL_FLAGS="--db ${BEADS_DIR}/.beads/beads.db --no-auto-flush --no-auto-import --no-daemon"` (or an alias such as `bdlocal="bd $BD_LOCAL_FLAGS"`) to keep commands short and consistent.
 
 ### 12.2 Installation & Upgrades
 
@@ -306,35 +325,99 @@ Beads is the canonical long-term memory system for this repository. Version 0.20
 
 2. Verify the version (`bd version`) and target ≥ 0.20.1 so you benefit from hash IDs.
 3. Initialise the per-repository database from the project root using the custom data directory (create it first if needed): `bd --db "${BEADS_DIR}/.beads/beads.db" init`.
-4. Run the onboarding wizard in local mode: `bd $BD_LOCAL_FLAGS onboard`.
+4. Run the onboarding wizard in local mode: `bdlocal onboard`.
 
 ### 12.3 Working the Queue
 
-- **Orient:** `bd $BD_LOCAL_FLAGS ready` to list unblocked work before planning.
-- **Create:** `bd $BD_LOCAL_FLAGS create "verb - summary"` whenever new scope appears.
-- **Review:** `bd $BD_LOCAL_FLAGS show <id>` to recall notes, status, and dependencies.
-- **Update:** `bd $BD_LOCAL_FLAGS update <id> --status in_progress|ready|blocked --note "..."` to log progress.
-- **Dependencies:** `bd $BD_LOCAL_FLAGS dep add <id> --blocks <dependency>` and visualise with `bd $BD_LOCAL_FLAGS dep tree <id>`.
+Always run beads through the CLI so we can fix the database location explicitly. The shell profile pre-loads a `bdlocal` helper that discovers the current `$BEADS_DIR` and injects the required flags; use it for every beads command. Do not commit `.beads` contents—the data lives exclusively under the central `$BEADS_DIR`.
+
+#### Quick Start Commands
+
+- Check ready work: `bdlocal ready --json`
+- Inspect context: `bdlocal show <id> --json`
+- Create scope (always pass type & priority):  
+  `bdlocal create "Issue title" -t bug|feature|task|epic|chore -p 0-4 --json`
+- Link discoveries:  
+  `bdlocal create "Found bug" -t bug -p 1 --deps discovered-from:bd-123 --json`
+- Update status/priority/notes:  
+  `bdlocal update bd-42 --status in_progress --json`
+- Close the bead: `bdlocal close bd-42 --reason "Completed" --json`
+- Dependency wiring: `bdlocal dep add bd-42 --blocks bd-333 --json`
+
+If the CLI ever fails, debug the environment instead of switching tools; the CLI path guarantees the correct database.
+
+#### Workflow for AI Agents
+
+1. **Check ready work first.** Run `bdlocal ready --json`; do not ask what to do if that list has items.
+2. **Claim and review.** Move the bead to `in_progress` with `bdlocal update <id> --status in_progress --json`, then pull context via `bdlocal show <id> --json`.
+3. **Execute and log.** Capture notes as you go: `bdlocal update <id> --note "..." --json`. Keep design/acceptance updates in the same command so history stays centralised.
+4. **Capture discovered scope.** Use `bdlocal create ... --deps discovered-from:<parent-id> --json` whenever new work emerges.
+5. **Hand-off or close.** If work remains, return status to `ready`; otherwise close the bead with `bdlocal close <id> --reason "Completed" --json`.
+6. **Stay detached from git.** `.beads/issues.jsonl` is not tracked; if stakeholders need snapshots, export them manually (see §12.4).
+
+#### Issue Types
+
+- `bug` - Something broken that must be fixed.
+- `feature` - New functionality or capability.
+- `task` - Supporting work (tests, docs, refactors).
+- `epic` - Program-level bead coordinating multiple tasks.
+- `chore` - Maintenance such as dependency bumps or tooling.
+
+Always pass `-t` when creating beads; defaulting to `task` is not allowed.
+
+#### Priorities
+
+- `0` - Critical (security, data loss, broken builds).
+- `1` - High (major features or urgent fixes).
+- `2` - Medium (default value).
+- `3` - Low (polish or optimisation).
+- `4` - Backlog (future ideas, icebox).
+
+#### Linking & Dependencies
+
+- Add blockers with `bdlocal dep add <id> --blocks <dependency> --json` (`discovered-from` links use `--blocks discovered-from:<id>`).
+- Visualise the graph using `bdlocal dep tree <id>` (no JSON output yet).
+- Always include a `discovered-from` link when new scope originates from active work.
+
+#### Planning Document Hygiene
+
+Ephemeral plans (PLAN.md, IMPLEMENTATION.md, DESIGN.md, TESTING_GUIDE.md, etc.) belong under a dedicated `history/` directory. Keep the project root focused on durable assets.
+
+```
+# AI planning documents (ephemeral)
+history/
+```
+
+Add the snippet above to `.gitignore` if the directory should stay out of version control.
+
+#### Non-Negotiables
+
+- ✅ Use beads for all task tracking—never Markdown TODO lists or external trackers.
+- ✅ Run beads commands through `bdlocal ... --json`.
+- ✅ Keep bead data inside `$BEADS_DIR/.beads/`; share snapshots via export, not git.
+- ✅ Link related work with `discovered-from` or explicit dependencies.
+- ✅ Check `bdlocal ready --json` before asking for direction.
+- ❌ Do not duplicate tracking systems or leave planning documents in the repo root.
 
 #### Epic Knowledge Capture
 
-1. **Mirror the epic.** Create (or locate) a bead that matches the GitHub epic issue and paste the canonical issue/PR links into its note log: `bd $BD_LOCAL_FLAGS update <epic-id> --note "Epic: https://github.com/.../issues/123"`.
-2. **Open a wisdom bead.** Capture distilled lessons from completed PRs in a dedicated reference bead (e.g. `bd $BD_LOCAL_FLAGS create "wisdom - auth hardening"`), then summarise the reusable guidance with `bd $BD_LOCAL_FLAGS update <wisdom-id> --note "...summary..."`. This bead is the single source of truth (no Markdown mirrors).
-3. **Wire the graph.** Link every active sub-issue that must follow the guidance by adding a dependency on the wisdom bead: `bd $BD_LOCAL_FLAGS dep add <epic-or-task-id> --blocks <wisdom-id>`. Also cross-reference IDs inside notes (`See [[bd-xxxx]] for auth rules`) so backlinks surface during `bd show`.
+1. **Mirror the epic.** Create (or locate) the epic bead and append canonical links: `bdlocal update <epic-id> --note "Epic: https://github.com/.../issues/123" --json`.
+2. **Open a wisdom bead.** `bdlocal create "wisdom - auth hardening" -t task -p 2 --json`, then record reusable guidance with `bdlocal update <wisdom-id> --note "...summary..." --json`. Treat this as the single source of truth (no Markdown mirrors).
+3. **Wire the graph.** Link sub-issues that must follow the guidance: `bdlocal dep add <task-id> --blocks <wisdom-id> --json`. Reinforce with inline references (`See [[bd-xxxx]]`) so backlinks surface during `bd show`.
 4. **Roll new learnings forward.** When fresh PRs close, append or amend the wisdom bead note with the distilled takeaway and the PR URL; update the epic bead note to mention the change so future agents spot the refresh immediately.
-5. **Optional exports only.** If a document view is required, export the bead (`bd $BD_LOCAL_FLAGS export ...`) and regenerate Markdown from that snapshot—never treat the Markdown as authoritative.
+5. **Optional exports only.** If a document view is required, export the bead (`bdlocal export ...`) and regenerate Markdown from that snapshot—never treat the Markdown as authoritative.
 
 ### 12.4 Closure & Maintenance
 
-- Close finished work: `bd $BD_LOCAL_FLAGS close <id> --reason "Completed"`.
-- Export manual backups: `bd $BD_LOCAL_FLAGS export -o ~/beads-backups/$(basename $(pwd))-issues.jsonl`.
-- Compact periodically to keep the database lean: `bd $BD_LOCAL_FLAGS compact --days 90 --all`.
+- Close finished work: `bdlocal close <id> --reason "Completed" --json`.
+- Export manual backups: `bdlocal export -o ~/beads-backups/$(basename $(pwd))-issues.jsonl`.
+- Compact periodically to keep the database lean: `bdlocal compact --days 90 --all`.
 - If a daemon starts unexpectedly, stop it (`bd daemons killall` or `bd daemons stop <path>`).
 
 ### 12.5 Troubleshooting
 
 - If commands fail, confirm `BEADS_DIR` is set and `bd version` reports the expected release.
-- Re-run `bd $BD_LOCAL_FLAGS onboard` if configuration drift occurs.
+- Re-run `bdlocal onboard` if configuration drift occurs.
 - No cross-machine sync is enabled; manual export/import is the only approved transfer mechanism.
 
 For deeper guidance, consult the [official Beads documentation](https://github.com/steveyegge/beads).

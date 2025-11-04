@@ -43,38 +43,7 @@ fi
 
 # Beads Directory (Local-Only Mode) - Dynamic per directory
 _update_beads_dir() {
-  local repo=""
-
-  if git rev-parse --show-toplevel >/dev/null 2>&1; then
-    local remote=""
-
-    if git config --get remote.origin.url >/dev/null 2>&1; then
-      remote="origin"
-    elif git config --get remote.upstream.url >/dev/null 2>&1; then
-      remote="upstream"
-    else
-      remote=$(git remote | head -n1)
-    fi
-
-    if [ -n "$remote" ]; then
-      local url
-      url=$(git config --get remote."$remote".url 2>/dev/null)
-      if [ -n "$url" ]; then
-        repo=${url##*/}
-        repo=${repo%.git}
-      fi
-    fi
-
-    if [ -z "$repo" ]; then
-      repo=$(basename "$(git rev-parse --show-toplevel 2>/dev/null)")
-    fi
-  fi
-
-  if [ -z "$repo" ]; then
-    repo=$(basename "$(pwd)")
-  fi
-
-  export BEADS_DIR="${HOME}/beads-data/${repo}"
+  export BEADS_DIR="$(_beads_resolve_dir)"
 }
 _update_beads_dir  # Set initially
 if [[ $PROMPT_COMMAND != *"_update_beads_dir"* ]]; then

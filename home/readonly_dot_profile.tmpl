@@ -96,3 +96,59 @@ ppass() {
   export PASSWORD_STORE_DIR="{{ joinPath .chezmoi.homeDir ".password-store" }}"
 }
 {{- end }}
+
+# Beads helpers ---------------------------------------------------------------
+_beads_resolve_dir() {
+  local repo=""
+  local remote=""
+  local url=""
+  local root=""
+
+  if git rev-parse --show-toplevel >/dev/null 2>&1; then
+    root=$(git rev-parse --show-toplevel 2>/dev/null)
+
+    if git config --get remote.origin.url >/dev/null 2>&1; then
+      remote="origin"
+    elif git config --get remote.upstream.url >/dev/null 2>&1; then
+      remote="upstream"
+    else
+      remote=$(git remote | head -n1)
+    fi
+
+    if [ -n "$remote" ]; then
+      url=$(git config --get remote."$remote".url 2>/dev/null)
+    fi
+
+    if [ -n "$url" ]; then
+      repo=${url##*/}
+      repo=${repo%.git}
+    elif [ -n "$root" ]; then
+      repo=$(basename "$root")
+    fi
+  fi
+
+  if [ -z "$repo" ]; then
+    repo=$(basename "$(pwd)")
+  fi
+
+  printf '%s\n' "${HOME}/beads-data/${repo}"
+}
+
+bdlocal() {
+  local beads_dir
+  beads_dir="$(_beads_resolve_dir)"
+  if [ -z "$beads_dir" ]; then
+    echo "bdlocal: unable to resolve BEADS_DIR" >&2
+    return 1
+  fi
+
+  if ! command -v bd >/dev/null 2>&1; then
+    echo "bdlocal: 'bd' command not found in PATH" >&2
+    return 127
+  fi
+
+  local beads_db="${beads_dir}/.beads/beads.db"
+  bd --db "$beads_db" --no-auto-flush --no-auto-import --no-daemon "$@"
+}
+
+export BEADS_DIR="${BEADS_DIR:-$(_beads_resolve_dir)}"

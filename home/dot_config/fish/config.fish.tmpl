@@ -50,51 +50,69 @@ set -x SSH_AUTH_SOCK "$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/
 
 ## Beads Directory (Local-Only Mode) - Dynamic per directory
 function __beads_resolve_repo
-    if not git rev-parse --show-toplevel >/dev/null 2>&1
-        return 1
-    end
+    if git rev-parse --show-toplevel >/dev/null 2>&1
+        set remote ""
+        if git remote get-url origin >/dev/null 2>&1
+            set remote origin
+        else if git remote get-url upstream >/dev/null 2>&1
+            set remote upstream
+        else
+            set remote (git remote | head -n1)
+        end
 
-    set remote ""
-    if git remote get-url origin >/dev/null 2>&1
-        set remote origin
-    else if git remote get-url upstream >/dev/null 2>&1
-        set remote upstream
-    else
-        set remote (git remote | head -n1)
-    end
+        if test -n "$remote"
+            set url (git remote get-url $remote 2>/dev/null)
+            if test -n "$url"
+                set repo (basename $url)
+                set repo (string replace -r '\.git$' '' -- $repo)
+                echo $repo
+                return 0
+            end
+        end
 
-    if test -n "$remote"
-        set url (git remote get-url $remote 2>/dev/null)
-        if test -n "$url"
-            set repo (basename $url)
-            set repo (string replace -r '\.git$' '' -- $repo)
-            echo $repo
+        set top (git rev-parse --show-toplevel 2>/dev/null)
+        if test -n "$top"
+            echo (basename $top)
             return 0
         end
-    end
-
-    set top (git rev-parse --show-toplevel 2>/dev/null)
-    if test -n "$top"
-        echo (basename $top)
-        return 0
     end
 
     return 1
 end
 
-function _update_beads_dir
+function __beads_resolve_dir
     set repo (__beads_resolve_repo 2>/dev/null)
     if test -z "$repo"
         set repo (basename (pwd))
     end
 
-    set -gx BEADS_DIR ~/beads-data/$repo
+    echo "$HOME/beads-data/$repo"
+end
+
+function _update_beads_dir
+    set -gx BEADS_DIR (__beads_resolve_dir)
 end
 
 _update_beads_dir # Set initially
 
 function __beads_dir_on_pwd --on-variable PWD --description 'Refresh BEADS_DIR after directory changes'
     _update_beads_dir
+end
+
+function bdlocal --description 'Beads CLI wrapper that pins the shared database'
+    set beads_dir (__beads_resolve_dir)
+    if test -z "$beads_dir"
+        echo "bdlocal: unable to resolve BEADS_DIR" >&2
+        return 1
+    end
+
+    if not type -q bd
+        echo "bdlocal: 'bd' command not found in PATH" >&2
+        return 127
+    end
+
+    set beads_db "$beads_dir/.beads/beads.db"
+    bd --db "$beads_db" --no-auto-flush --no-auto-import --no-daemon $argv
 end
 
 ## GPG TTY Configuration (for amd64 architecture)
