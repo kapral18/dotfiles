@@ -13,6 +13,7 @@ M.ui = require("util.ui")
 M.treesitter = require("util.treesitter")
 M.fzf = require("util.fzf")
 M.fs = require("util.fs")
+M.chezmoi = require("util.chezmoi")
 
 -- Re-export config from ui module
 M.config = M.ui.config

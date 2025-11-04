@@ -7,6 +7,12 @@ and continuously evolving development ecosystem, meticulously crafted for macOS.
 It's a testament to the power of a keyboard-centric workflow, intelligent automation,
 and deep tool integration.
 
+## 🤖 Beads: Agent Memory System
+
+This setup integrates [Beads](https://github.com/steveyegge/beads), a graph-based issue tracker that provides long-term memory for coding agents. Beads enables agents to track complex, multi-step tasks with dependencies, ensuring no work is lost and allowing seamless continuation across sessions.
+
+Agents in this environment will automatically use `bd` commands for planning and tracking, creating a shared, git-synced database of issues across machines.
+
 ## 🛠️ Installation
 
 1.  **Install 1Password:** The entire setup hinges on the 1Password CLI and

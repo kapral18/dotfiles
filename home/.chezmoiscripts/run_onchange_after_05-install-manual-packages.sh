@@ -19,3 +19,8 @@ if ! command -v lazygit &>/dev/null; then
   popd
   asdf reshim golang
 fi
+
+# amp
+if ! command -v amp &>/dev/null; then
+  curl -fsSL https://ampcode.com/install.sh | bash
+fi

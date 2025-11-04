@@ -60,11 +60,12 @@ return {
       vim.api.nvim_create_autocmd("BufWritePre", {
         pattern = "*",
         callback = function(args)
+          local bufnr = args.buf
           local disable_filetypes = { c = true, cpp = true }
-          if disable_filetypes[vim.bo[args.buf].filetype] then
+          if disable_filetypes[vim.bo[bufnr].filetype] then
             return
           end
-          require("util").format.format({ buf = args.buf })
+          require("util").format.format({ buf = bufnr })
         end,
       })
     end,

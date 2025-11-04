@@ -48,6 +48,55 @@ set -x INFOPATH {{ .homebrewPrefix }}/share/info $INFOPATH
 ## SSH Agent (1Password)
 set -x SSH_AUTH_SOCK "$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
 
+## Beads Directory (Local-Only Mode) - Dynamic per directory
+function __beads_resolve_repo
+    if not git rev-parse --show-toplevel >/dev/null 2>&1
+        return 1
+    end
+
+    set remote ""
+    if git remote get-url origin >/dev/null 2>&1
+        set remote origin
+    else if git remote get-url upstream >/dev/null 2>&1
+        set remote upstream
+    else
+        set remote (git remote | head -n1)
+    end
+
+    if test -n "$remote"
+        set url (git remote get-url $remote 2>/dev/null)
+        if test -n "$url"
+            set repo (basename $url)
+            set repo (string replace -r '\.git$' '' -- $repo)
+            echo $repo
+            return 0
+        end
+    end
+
+    set top (git rev-parse --show-toplevel 2>/dev/null)
+    if test -n "$top"
+        echo (basename $top)
+        return 0
+    end
+
+    return 1
+end
+
+function _update_beads_dir
+    set repo (__beads_resolve_repo 2>/dev/null)
+    if test -z "$repo"
+        set repo (basename (pwd))
+    end
+
+    set -gx BEADS_DIR ~/beads-data/$repo
+end
+
+_update_beads_dir # Set initially
+
+function __beads_dir_on_pwd --on-variable PWD --description 'Refresh BEADS_DIR after directory changes'
+    _update_beads_dir
+end
+
 ## GPG TTY Configuration (for amd64 architecture)
 {{ if eq .chezmoi.arch "amd64" }}
 set -x GPG_TTY (tty)
@@ -287,5 +336,5 @@ set -gx PATH $unique_paths
 
 # The next line updates PATH for the Google Cloud SDK.
 if [ -f '/opt/homebrew/share/google-cloud-sdk/path.fish.inc' ]
-    . '/opt/homebrew/share/google-cloud-sdk/path.fish.inc'
+    source '/opt/homebrew/share/google-cloud-sdk/path.fish.inc'
 end
