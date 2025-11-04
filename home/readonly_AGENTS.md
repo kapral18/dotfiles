@@ -288,11 +288,11 @@ Beads is the canonical long-term memory system for this repository. Version 0.20
 
 ### 12.1 Local Policy
 
-- Run all commands with `--no-auto-flush --no-auto-import --no-daemon` so nothing syncs or writes into the repository.
+- Run all commands with `--db ${BEADS_DIR}/.beads/beads.db --no-auto-flush --no-auto-import --no-daemon` so everything stays in the custom local store and nothing syncs into the repository.
 - `BEADS_DIR` is auto-derived from the git remote (or falls back to the directory basename outside git). Confirm with `echo $BEADS_DIR`.
 - All bead data lives in `$BEADS_DIR/.beads/`; never commit bead artifacts.
 - After upgrades, stop any lingering daemons (`bd daemons killall`) to guarantee purely local operation.
-- Define `BD_LOCAL_FLAGS="--no-auto-flush --no-auto-import --no-daemon"` (or an alias such as `bdlocal="bd $BD_LOCAL_FLAGS"`) to keep commands short and consistent.
+- Define `BD_LOCAL_FLAGS="--db ${BEADS_DIR}/.beads/beads.db --no-auto-flush --no-auto-import --no-daemon"` (or an alias such as `bdlocal="bd $BD_LOCAL_FLAGS"`) to keep commands short and consistent.
 
 ### 12.2 Installation & Upgrades
 
@@ -305,7 +305,7 @@ Beads is the canonical long-term memory system for this repository. Version 0.20
    ```
 
 2. Verify the version (`bd version`) and target ≥ 0.20.1 so you benefit from hash IDs.
-3. Initialise the per-repository database from the project root: `bd init`.
+3. Initialise the per-repository database from the project root using the custom data directory (create it first if needed): `bd --db "${BEADS_DIR}/.beads/beads.db" init`.
 4. Run the onboarding wizard in local mode: `bd $BD_LOCAL_FLAGS onboard`.
 
 ### 12.3 Working the Queue

@@ -125,11 +125,10 @@ return {
           [";"] = "open_in_oil",
           ["<2-leftmouse>"] = safe_open("open"),
           ["<cr>"] = safe_open("open"),
-          ["S"] = safe_open("open_split"),
           ["l"] = safe_open("open"),
-          ["s"] = safe_open("open_vsplit"),
+          ["s"] = safe_open("open_split"),
+          ["v"] = safe_open("open_vsplit"),
           ["t"] = safe_open("open_tabnew"),
-          ["w"] = safe_open("open_with_window_picker"),
         },
       },
       commands = {
