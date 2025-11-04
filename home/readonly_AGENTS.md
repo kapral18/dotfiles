@@ -36,7 +36,6 @@
 3. Draft the inline plan, anchoring each step to the bead you just reviewed. Do **not** persist the plan to the filesystem at this stage.
 4. Present the plan to the user, explicitly naming the bead IDs involved, then stop and ask, "Should I proceed?"
 5. Wait for explicit approval (e.g. "proceed", "yes"). Do not act without clear consent.
-6. Once approval is granted, ask the user whether the plan should be saved to the filesystem and whether any additional bead updates are required before execution.
 
 ## 4. Execution Workflow
 
@@ -72,7 +71,7 @@ Replace `TASK PROMPT` with the specific instructions you want the child agent to
 ## 6. Tooling Requirements
 
 - **Prioritize MCP tools.** Always use available MCP tools when applicable, ahead of built-in capabilities.
-- **Beads CLI (`bd`).** Install and maintain `bd` (target version ≥ 0.20.1); invoke it through the `bdlocal` helper (defined in Section 12) so all bead updates stay in the shared datastore, and run `bd migrate` if prompted after upgrades.
+- **Beads CLI (`bd`).** Install and maintain `bd` (target version ≥ 0.20.1); invoke it through the `bdlocal` helper (defined in Section 12) so all bead updates stay in the shared datastore, and run `bdlocal migrate` if prompted after upgrades.
 - **SequentialThinking MCP.** Invoke the `sequentialthinking` MCP for complex, multi-step reasoning tasks.
 - **Semantic search priority.** When working with codebases related to Kibana, EUI, Elasticsearch, or semantic-code-search, **ALWAYS** prioritize `semantic_code_search` MCP for code search and analysis tasks over built-in search mechanisms.
 - **Search escalation.** When external information is needed, first perform a GitHub global search with the `gh` CLI. Only escalate to web search using `ddgr` if GitHub yields nothing relevant. **Never use curl for web searches.**
@@ -279,7 +278,6 @@ _Assume the `bdlocal` helper from Section 12 is available when following the ste
 | Plan-1 | Draft plan inline (do not save).                                                               |
 | Plan-2 | Present plan and ask "Should I proceed?".                                                      |
 | Plan-3 | Await explicit approval.                                                                       |
-| Plan-4 | Ask if the plan should be saved after approval.                                                |
 | Exec-0 | Mark the bead `in_progress` with `bdlocal update <id> --status in_progress`.                   |
 | Exec-1 | Execute only after approval.                                                                   |
 | Exec-2 | Prototype/debug/troubleshoot in `/tmp`.                                                        |
@@ -304,14 +302,14 @@ _Assume the `bdlocal` helper from Section 12 is available when following the ste
 
 ## 12. Beads Integration (Local-Only Mode)
 
-Beads is the canonical long-term memory system for this repository. Version 0.20.1 introduced hash-based IDs (e.g. `bd-3e7a`) that unlock reliable multi-worker workflows—keep `bd` current and run `bd migrate` whenever the CLI prompts you. Every SOP above assumes the work is mirrored into bead issues.
+Beads is the canonical long-term memory system for this repository. Version 0.20.1 introduced hash-based IDs (e.g. `bd-3e7a`) that unlock reliable multi-worker workflows—keep `bd` current and run `bdlocal migrate` whenever the CLI prompts you. Every SOP above assumes the work is mirrored into bead issues.
 
 ### 12.1 Local Policy
 
-- Run all commands through `bd --db "${BEADS_DIR}/.beads/beads.db" --no-auto-flush --no-auto-import --no-daemon` (handled by the `bdlocal` helper below) so everything stays in the custom local store and nothing syncs into the repository.
+- Run all commands through `bdlocal` so everything stays in the custom local store and nothing syncs into the repository. The helper wraps the underlying `bd --db "${BEADS_DIR}/.beads/beads.db" --no-auto-flush --no-auto-import --no-daemon` invocation for you.
 - `BEADS_DIR` is auto-derived from the git remote (or falls back to the directory basename outside git). Confirm with `echo $BEADS_DIR`.
 - All bead data lives in `$BEADS_DIR/.beads/`; never commit bead artifacts.
-- After upgrades, stop any lingering daemons (`bd daemons killall`) to guarantee purely local operation.
+- After upgrades, stop any lingering daemons (`bdlocal daemons killall`) to guarantee purely local operation.
 
 ### 12.2 Installation & Upgrades
 
@@ -323,9 +321,8 @@ Beads is the canonical long-term memory system for this repository. Version 0.20
    curl -fsSL https://raw.githubusercontent.com/steveyegge/beads/main/scripts/install.sh | bash
    ```
 
-2. Verify the version (`bd version`) and target ≥ 0.20.1 so you benefit from hash IDs.
-3. Initialise the per-repository database from the project root using the custom data directory (create it first if needed): `bd --db "${BEADS_DIR}/.beads/beads.db" init`.
-4. Run the onboarding wizard in local mode: `bdlocal onboard`.
+2. Verify the version (`bdlocal version`) and target ≥ 0.20.1 so you benefit from hash IDs.
+3. Initialise the per-repository database from the project root using the wrapper: `bdlocal init`. The helper automatically points to `${BEADS_DIR}/.beads/beads.db`; create the directory first if needed.
 
 ### 12.3 Working the Queue
 
@@ -403,7 +400,7 @@ Add the snippet above to `.gitignore` if the directory should stay out of versio
 
 1. **Mirror the epic.** Create (or locate) the epic bead and append canonical links: `bdlocal update <epic-id> --note "Epic: https://github.com/.../issues/123" --json`.
 2. **Open a wisdom bead.** `bdlocal create "wisdom - auth hardening" -t task -p 2 --json`, then record reusable guidance with `bdlocal update <wisdom-id> --note "...summary..." --json`. Treat this as the single source of truth (no Markdown mirrors).
-3. **Wire the graph.** Link sub-issues that must follow the guidance: `bdlocal dep add <task-id> --blocks <wisdom-id> --json`. Reinforce with inline references (`See [[bd-xxxx]]`) so backlinks surface during `bd show`.
+3. **Wire the graph.** Link sub-issues that must follow the guidance: `bdlocal dep add <task-id> --blocks <wisdom-id> --json`. Reinforce with inline references (`See [[bd-xxxx]]`) so backlinks surface during `bdlocal show`.
 4. **Roll new learnings forward.** When fresh PRs close, append or amend the wisdom bead note with the distilled takeaway and the PR URL; update the epic bead note to mention the change so future agents spot the refresh immediately.
 5. **Optional exports only.** If a document view is required, export the bead (`bdlocal export ...`) and regenerate Markdown from that snapshot—never treat the Markdown as authoritative.
 
@@ -412,12 +409,11 @@ Add the snippet above to `.gitignore` if the directory should stay out of versio
 - Close finished work: `bdlocal close <id> --reason "Completed" --json`.
 - Export manual backups: `bdlocal export -o ~/beads-backups/$(basename $(pwd))-issues.jsonl`.
 - Compact periodically to keep the database lean: `bdlocal compact --days 90 --all`.
-- If a daemon starts unexpectedly, stop it (`bd daemons killall` or `bd daemons stop <path>`).
+- If a daemon starts unexpectedly, stop it (`bdlocal daemons killall` or `bdlocal daemons stop <path>`).
 
 ### 12.5 Troubleshooting
 
-- If commands fail, confirm `BEADS_DIR` is set and `bd version` reports the expected release.
-- Re-run `bdlocal onboard` if configuration drift occurs.
+- If commands fail, confirm `BEADS_DIR` is set and `bdlocal version` reports the expected release.
 - No cross-machine sync is enabled; manual export/import is the only approved transfer mechanism.
 
 For deeper guidance, consult the [official Beads documentation](https://github.com/steveyegge/beads).
