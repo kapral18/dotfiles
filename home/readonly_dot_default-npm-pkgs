@@ -13,3 +13,6 @@ speedscope
 # Description: Command-line interface for Google Gemini models
 # URL: https://github.com/google-gemini/gemini-cli
 @google/gemini-cli
+# Description: Command-line interface for copilot
+# URL: https://github.com/github/copilot
+@github/copilot
