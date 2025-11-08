@@ -246,6 +246,13 @@ if type -q pass; and test -z "$CLOUDFLARE_WORKERS_AI_API_KEY"
     set -gx CLOUDFLARE_WORKERS_AI_API_KEY (pass cloudflare/workers/ai/api/token)
 end
 
+{{ if ne .isWork true -}}
+# CF API Token (non-work)
+if type -q pass; and test -z "$CLOUDFLARE_API_TOKEN"
+    set -gx CLOUDFLARE_API_TOKEN (pass cloudflare/api/token)
+end
+{{- end }}
+
 # ------------------------------------
 # Perplexity API Key Configuration
 # ------------------------------------

@@ -85,6 +85,9 @@ if command -v pass >/dev/null; then
   [ -z "$PERPLEXITY_API_KEY" ] && export PERPLEXITY_API_KEY="$(pass perplexity/api/token)"
   [ -z "$GITHUB_MCP_PAT" ] && export GITHUB_MCP_PAT="$(pass github/mcp/pat)"
   [ -z "$EGET_GITHUB_TOKEN" ] && export EGET_GITHUB_TOKEN="$(pass github/public/pat)"
+  {{ if ne .isWork true -}}
+  [ -z "$CLOUDFLARE_API_TOKEN" ] && export CLOUDFLARE_API_TOKEN="$(pass cloudflare/api/token)"
+  {{- end }}
 fi
 
 # Conditional Configurations
