@@ -4,6 +4,7 @@ function __f_tmux_run_all_tmux_sessions
     end
 end
 
+complete -c f-tmux-run-all -l all -d "Run command in all idle panes (default: first idle pane of first window)"
 complete -c f-tmux-run-all -n __fish_is_first_token -f -a "(__f_tmux_run_all_tmux_sessions)" -d "Session pattern"
 complete -c f-tmux-run-all -n "__fish_seen_subcommand_from (__f_tmux_run_all_tmux_sessions)" -f -a "(__f_tmux_run_all_tmux_sessions)" -d "Exclude pattern"
 
