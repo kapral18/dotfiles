@@ -85,7 +85,7 @@ Provide context (paths, snippets, precise queries) when using semantic search to
 8. Don't implement suggestions immediately; restate understanding and ask for confirmation.
 9. Evaluate reviewer-requested changes; ask for clarification if uncertain.
 10. Align PR title/description with established style; keep concise and focused. Update if scope shifts.
-11. Add suggestions via `gh api POST /repos/OWNER/REPO/pulls/NUM/comments -f body="...\n\n\`\`\`suggestion\ncode\n\`\`\`" -f commit_id=SHA -f path=FILE -F start_line=N -F line=M`. Use conversational tone ("wdyt about...").
+11. Add suggestions with `gh api repos/OWNER/REPO/pulls/NUM/comments -f body=$'wdyt about...\n\n```suggestion\ncode\n```' -f commit_id=SHA -f path=FILE -f side=RIGHT -f line=M` (add `-f start_line=N` for multi-line snippets). Keep the tone conversational.
 
 **Sub-Issue API (GitHub):**
 
