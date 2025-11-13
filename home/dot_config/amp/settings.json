@@ -3,7 +3,7 @@
   "amp.mcpServers": {
     "playwright": {
       "command": "npx",
-      "args": ["@playwright/mcp@latest", "--headless", "--isolated"]
+      "args": ["-y", "@playwright/mcp@latest"]
     },
     "sequential-thinking": {
       "command": "npx",
