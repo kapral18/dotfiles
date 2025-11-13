@@ -1,24 +1,23 @@
 return {
   {
-    "rasulomaroff/telepath.nvim",
-    dependencies = {
+    "ggandor/leap.nvim",
+    keys = {
+      { "s", "<Plug>(leap-anywhere)", desc = "Leap" },
       {
-        "ggandor/leap.nvim",
-        keys = {
-          { "s", "<Plug>(leap)", desc = "Leap" },
-          { "gs", "<Plug>(leap-from-window)", desc = "Leap from window" },
-        },
-        config = true,
-      },
-      {
-        "tpope/vim-abolish",
-        init = function()
-          vim.g.abolish_no_mappings = 1
+        "gs",
+        function()
+          require("leap.remote").action()
         end,
+        mode = { "n", "x", "o" },
+        desc = "Leap remote action",
       },
     },
-    config = function()
-      require("telepath").use_default_mappings()
+    config = true,
+  },
+  {
+    "tpope/vim-abolish",
+    init = function()
+      vim.g.abolish_no_mappings = 1
     end,
   },
 }

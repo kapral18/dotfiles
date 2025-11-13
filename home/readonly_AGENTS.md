@@ -19,23 +19,23 @@
 
 ## 3. Planning Workflow
 
-1. Run `bdlocal ready` and confirm/create the tracking bead.
-2. If needed, amend the bead: `bdlocal create "..."` or `bdlocal update <id> --notes "..."`. Plans must cite the bead ID.
+1. Run `bdlocal ready` and confirm an existing matching tracking bead; only create one if none exists.
+2. If needed, amend the bead: first search for an existing bead that matches the scope and reuse it; only if none exists, create missing coverage with `bdlocal create "title" -t bug|feature|task|epic|chore -p 0-4 -d "short description" --json`, then curate the notes snapshot following §12.1 before proceeding (write back with `bdlocal update <id> --notes-file <path> --json` or an editor session). Plans must cite the bead ID.
 3. Draft inline plan anchored to the bead. Do **not** save to filesystem.
 4. Present plan with bead IDs, then ask "Should I proceed?" and await explicit approval.
 
 ## 4. Execution Workflow
 
-1. Execute **only** after approval and setting bead to `in_progress`: `bdlocal update <id> --status in_progress --notes "..."`.
+1. Execute **only** after approval: set the bead to `in_progress` (`bdlocal update <id> --status in_progress --json`), then immediately refresh the curated notes snapshot described in §12.1 so the starting state is captured.
 2. Prototype/debug/troubleshoot in `/tmp` before touching the real codebase.
 3. Validate facts and context; never assume.
 4. Pause if uncertain and ask the user.
 5. Inform user before long-running commands; run in background when appropriate.
-6. Feed progress into bead as you work: `bdlocal update <id> --notes "..."` to keep queue accurate.
+6. Feed progress into bead as you work by re-running the §12.1 curation workflow—each write must be a full, cleaned snapshot (never a throwaway one-liner).
 
 ## 5. Post-Execution & Approvals
 
-1. Update bead with outcomes and status (`ready`, `blocked`, `closed`): `bdlocal update <id> --status ...`.
+1. Update bead with outcomes and status (`open`, `in_progress`, `blocked`, `closed`): `bdlocal update <id> --status ... --json`, paired with a final curated notes refresh so the snapshot matches the reported state.
 2. Present results and stop for direction.
 3. Request approval before each `git commit` or `git push`; reconfirm before subsequent operations.
 4. Never summarize unless asked. Supply only requested information.
@@ -44,7 +44,7 @@
 ## 6. Tooling Requirements
 
 - **Prioritize MCP tools.** Always use available MCP tools when applicable, ahead of built-in capabilities.
-- **Beads CLI (`bd`).** Install and maintain `bd` (target version ≥ 0.20.1); invoke it through the `bdlocal` helper (defined in Section 12) so all bead updates stay in the shared datastore, and run `bdlocal migrate` if prompted after upgrades.
+- **Beads CLI (`bd`).** Confirm `bd` (target version ≥ 0.20.1) is available, invoke it through the `bdlocal` helper (defined in Section 12) so all bead updates stay in the shared datastore, and run `bdlocal migrate` if prompted after upgrades. Do not install or upgrade `bd` within the agent session (installation is managed externally).
 - **SequentialThinking MCP.** Invoke the `sequentialthinking` MCP for complex, multi-step reasoning tasks.
 - **Semantic search priority.** When working with codebases related to Kibana, EUI, Elasticsearch, or semantic-code-search, **ALWAYS** prioritize `semantic_code_search` MCP for code search and analysis tasks over built-in search mechanisms.
 - **Search escalation.** When external information is needed, first perform a GitHub global search with the `gh` CLI. Only escalate to web search using `ddgr` if GitHub yields nothing relevant. **Never use curl for web searches.**
@@ -131,7 +131,7 @@ GitHub provides a proper sub-issue API via GraphQL that creates hierarchical par
 ## 9. Communication Standards
 
 - Be concise and direct in all responses.
-- Tie every project update to the associated bead ID(s) and state the new bead status (`in_progress`, `ready`, `blocked`, or `closed`).
+- Tie every project update to the associated bead ID(s) and state the new bead status (`open`, `in_progress`, `blocked`, or `closed`).
 - Use bullet points or numbered lists where appropriate.
 - Format responses with Markdown.
 - Clearly separate plans, questions, and code blocks to aid readability.
@@ -150,10 +150,10 @@ _Assume the `bdlocal` helper from Section 12 is available when following the ste
 | Plan-1 | Draft plan inline (do not save).                                                               |
 | Plan-2 | Present plan and ask "Should I proceed?".                                                      |
 | Plan-3 | Await explicit approval.                                                                       |
-| Exec-0 | Mark the bead `in_progress` with `bdlocal update <id> --status in_progress`.                   |
-| Exec-1 | Execute only after approval.                                                                   |
-| Exec-2 | Prototype/debug/troubleshoot in `/tmp`.                                                        |
-| Post-0 | Update bead status (`ready`, `blocked`, `closed`) with `bdlocal update` before reporting back. |
+| Exec-0 | Mark the bead `in_progress` with `bdlocal update <id> --status in_progress --json`.           |
+| Exec-1 | Execute only after approval.                                                                  |
+| Exec-2 | Prototype/debug/troubleshoot in `/tmp`.                                                       |
+| Post-0 | Update bead status (`open`, `in_progress`, `blocked`, `closed`) with `bdlocal update <id> --status ... --json` before reporting back. |
 | Post-1 | Present results and stop for user direction.                                                   |
 
 ### 10.2 Git & Release Hygiene
@@ -171,40 +171,48 @@ _Assume the `bdlocal` helper from Section 12 is available when following the ste
 - If any instruction conflicts with a direct user request, stop immediately, describe the conflict, and ask the user for clarification before proceeding.
 - When unsure of facts or next steps, stop and ask the user for guidance immediately.
 - In urgent or ambiguous situations, restate your understanding and request confirmation before taking action.
+- A user can explicitly suspend the bead workflow by including `SOP_BYPASS` in the request. Confirm the scope, state that notes/status updates will be skipped for that task only, and resume normal procedures on the next interaction.
 
 ## 12. Beads Integration (Local-Only Mode)
 
 **Core:** Beads is the canonical memory system. Version 0.23.1 provides hash-based IDs and dependency API. Mirror all work as bead issues.
 
 **Local Policy:**
-- Run all commands through `bdlocal` (pre-configured helper with `--db` and `--no-auto-flush` flags).
+- Run all commands through `bdlocal` (shell helper that resolves `$BEADS_DIR`, verifies `bd` is installed, and invokes `bd --db "$BEADS_DIR/.beads/beads.db" --no-auto-flush --no-auto-import --no-daemon`).
 - `$BEADS_DIR` is auto-derived from git remote. Confirm: `echo $BEADS_DIR`.
 - Data lives in `$BEADS_DIR/.beads/`; never commit. After upgrades, run `bdlocal daemons killall`.
 
-**Installation:**
-```bash
-bdlocal version  # target ≥ 0.23.1
-bdlocal init     # initialize per-repo database
-```
+**Environment Verification:** Installation and upgrades are managed externally (Brewfile). Do **not** install, upgrade, or initialize `bd` within the agent session. Only run `bdlocal version` when you need to confirm availability; avoid `bdlocal init` unless explicitly instructed by the user.
 
 **Quick Commands:**
 
+- Statuses: `open`, `in_progress`, `blocked`, `closed`. Note: `ready` is a convenience view (no blockers and either `open` or `in_progress`), not a status.
+
 - Check ready: `bdlocal ready --json`
 - Show details: `bdlocal show <id> --json`
-- Create (require type & priority): `bdlocal create "title" -t bug|feature|task|epic|chore -p 0-4 --json`
+- Create (require type & priority): `bdlocal create "title" -t bug|feature|task|epic|chore -p 0-4 -d "short description" --json`
 - Link discovery: `bdlocal create "Found X" -t bug -p 1 --deps discovered-from:bd-123 --json`
-- Update: `bdlocal update <id> --status in_progress|ready|blocked|closed --notes "..." --json`
+- Update status/metadata: `bdlocal update <id> --status open|in_progress|blocked|closed --json`
+- Refresh notes snapshot (§12.1): `bdlocal update <id> --notes-file <path> --json` (or `bdlocal edit <id> --notes`)
 - Close: `bdlocal close <id> --reason "Completed" --json`
 - Wire deps: `bdlocal dep add <id> <dep-id> --type blocks|discovered-from|related|parent-child --json`
 - View tree: `bdlocal dep tree <id>`
+
+### 12.1 Note Curation Workflow
+
+1. Read the current state (`bdlocal show <id> --json` or `bdlocal edit <id> --notes`) and pull the existing notes into a temp file or `$EDITOR`.
+2. Merge intentionally: drop stale or conflicting items, keep only context that a future agent needs, and rewrite the full snapshot using the standard COMPLETED/IN_PROGRESS/NEXT (or team equivalent) structure. Ephemeral chatter belongs in comments (`bdlocal comments add`) instead of notes.
+3. Supporting tooling (diff viewers, note templates, etc.) may help draft the rewrite, but you must personally review the result and ensure no critical context was lost before saving.
+4. Write the refreshed snapshot back with `bdlocal update <id> --notes-file <path> --json` (or save-and-close from `bdlocal edit`). Each update replaces the full field, so never send throwaway strings like "working on it".
+5. Verify immediately by re-running `bdlocal show <id> --json` to confirm the note matches the new ground truth.
 
 **Agent Workflow:**
 1. Run `bdlocal ready --json` first; do not ask for direction if items exist.
 2. Claim: `bdlocal update <id> --status in_progress --json`.
 3. Review: `bdlocal show <id> --json`.
-4. Log progress: `bdlocal update <id> --notes "..." --json` as you work.
+4. Log progress by executing the §12.1 curation workflow each time context changes materially.
 5. Discover scope: Use `--deps discovered-from:<parent-id>` for new work.
-6. Close or hand off: `bdlocal close <id> --reason "..."` or return to `ready`.
+6. Close or hand off: `bdlocal close <id> --reason "..."` or return to `open`.
 
 **Types:** `bug`, `feature`, `task`, `epic`, `chore`. Always pass `-t` when creating.
 
@@ -219,8 +227,8 @@ bdlocal init     # initialize per-repo database
 - ❌ Never leave planning documents in repo root.
 
 **Epic Knowledge Capture:**
-1. Mirror epic: `bdlocal update <epic-id> --notes "Epic: https://github.com/.../issues/123" --json`.
-2. Create wisdom bead: `bdlocal create "wisdom - auth hardening" -t task -p 2 --json`. Update with guidance: `bdlocal update <wisdom-id> --notes "..." --json`.
+1. Mirror epic: curate notes per §12.1 so the snapshot captures key links (e.g., `bdlocal update <epic-id> --notes "Epic: https://github.com/.../issues/123" --json`).
+2. Create wisdom bead: `bdlocal create "wisdom - auth hardening" -t task -p 2 --json`. Update with guidance via the same curated workflow (`bdlocal update <wisdom-id> --notes-file <path> --json`).
 3. Wire graph: `bdlocal dep add <task-id> <wisdom-id> --type blocks --json`. Use inline refs (`See [[bd-xxxx]]`) for backlinks.
 4. Roll learnings forward: Append PR URLs and takeaways to wisdom bead; update epic note with changes.
 5. Export only: Use `bdlocal export ...` for document views; Markdown is not authoritative.

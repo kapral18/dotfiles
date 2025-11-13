@@ -52,6 +52,7 @@ local plugin_modules = {
   "plugins.lualine",
   "plugins.markdown",
   "plugins.marks",
+  "plugins.strudel",
   "plugins.multi-cursors",
   "plugins.outline",
   "plugins.neo-tree",
