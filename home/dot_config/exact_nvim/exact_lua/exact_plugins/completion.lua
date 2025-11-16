@@ -70,33 +70,12 @@ return {
             table.insert(tabout_symbols, tabout.close)
           end
 
-          if vim.b.copilot_enabled == 1 or vim.b.copilot_enabled == true then
-            local suggestion = vim.fn["copilot#GetDisplayedSuggestion"]() or {}
-            if suggestion.text and suggestion.text ~= "" then
-              local copilot_keys = vim.fn["copilot#Accept"]()
-              if copilot_keys ~= "" then
-                vim.api.nvim_feedkeys(copilot_keys, "i", true)
-                return
-              end
-            end
-          end
-
-          if vim.b.codeium_enabled then
-            local ok_status, status = pcall(vim.fn["codeium#GetStatusString"])
-            status = ok_status and status or ""
-            if type(status) == "string" and status:match("^%d+/%d+$") then
-              -- Temporarily disable diagnostics
-              vim.diagnostic.enable(false)
-              local ok_acc, ret = pcall(vim.fn["codeium#Accept"])
-              if ok_acc and type(ret) == "string" and ret ~= "" then
-                vim.api.nvim_feedkeys(ret, "i", true)
-                -- Re-enable diagnostics after a short delay
-                vim.defer_fn(function()
-                  vim.diagnostic.enable()
-                end, 100)
-                return
-              end
-              vim.diagnostic.enable(true) -- Re-enable if insertion failed
+          local suggestion = vim.fn["copilot#GetDisplayedSuggestion"]() or {}
+          if suggestion.text and suggestion.text ~= "" then
+            local copilot_keys = vim.fn["copilot#Accept"]()
+            if copilot_keys ~= "" then
+              vim.api.nvim_feedkeys(copilot_keys, "i", true)
+              return
             end
           end
 
@@ -185,10 +164,10 @@ return {
           { name = "path" },
           { name = "dotenv" },
           { name = "emoji" },
-          { name = "fonts",                  option = { space_filter = "-" } },
+          { name = "fonts", option = { space_filter = "-" } },
         }, {
           { name = "buffer" },
-          { name = "rg",    keyword_length = 3 },
+          { name = "rg", keyword_length = 3 },
         }),
         sorting = {
           priority_weight = 2,

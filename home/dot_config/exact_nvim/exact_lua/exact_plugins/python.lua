@@ -70,13 +70,4 @@ return {
       return opts
     end,
   },
-  {
-    "folke/which-key.nvim",
-    opts = {
-      spec = {
-        { "<leader>p", group = " packages/dependencies" },
-        { "<leader>pp", group = "python" },
-      },
-    },
-  },
 }

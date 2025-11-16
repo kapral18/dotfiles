@@ -4,11 +4,6 @@
   p = push
   f = fetch -ptf
 
-  # Diff and show operations
-  icdiff = difftool --no-prompt
-  ddiff = -c diff.external=icdiff diff
-  dshow = -c diff.external=icdiff show --ext-diff
-  dlog  = -c diff.external=icdiff log -p --ext-diff
   # Shows changed files compared to N commits ago
   df = "!f() { git diff --name-status -r "HEAD~$1"; }; f"
 
@@ -122,6 +117,25 @@
   renames = copies
   # Better diff algorithm that is slower but produces better results
   algorithm = histogram
+  tool = difft
+
+[difftool]
+  prompt = false
+  tool = difft
+
+[difftool "difft"]
+  cmd = difft "$LOCAL" "$REMOTE"
+
+[merge]
+  autoStash = true
+  # Add summary after merge
+  log = true
+  summary = true
+  conflictStyle = zdiff3
+
+[mergetool]
+  keepBackup = false
+  prompt = false
 
 [pager]
   diff = delta
@@ -130,6 +144,12 @@
   status = delta
   branch = delta
   reflog = delta
+
+[delta]
+  features = side-by-side line-numbers decorations
+  syntax-theme = Dracula
+  plus-style = syntax "#003800"
+  minus-style = syntax "#3f0001"
 
 [pretty]
   custom = "%C(magenta)%h%C(red)%d %C(yellow)%ar %C(green)%s %C(yellow)(%an)"
@@ -217,22 +237,6 @@
   # Parallelizes submodule fetches to keep monorepos with many submodules from serial fetch bottlenecks; independent of other settings.
   # 0 for reasonable default based on CPU cores
   fetchJobs = 0
-
-[merge]
-  autoStash = true
-  # Add summary after merge
-  log = true
-  summary = true
-  # https://www.ductile.systems/zdiff3/
-  conflictStyle = zdiff3
-  tool = git-conflict
-
-[mergetool]
-    keepBackup = false
-
-[mergetool "git-conflict"]
-    cmd = nvim +DiffviewOpen
-    trustExitCode = true
 
 [rebase]
   autoStash = true

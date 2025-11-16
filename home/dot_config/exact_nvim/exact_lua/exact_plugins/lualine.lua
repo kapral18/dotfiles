@@ -55,7 +55,6 @@ return {
             sections = {
               lualine_x = {
                 function()
-                  -- invoke `progress` here.
                   return require("lsp-progress").progress()
                 end,
               },

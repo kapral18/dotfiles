@@ -31,3 +31,9 @@ pik
 # Description: Generate gitignore files
 # URL: https://github.com/reemus-dev/gitnr
 gitnr
+# Description: A fast terminal Excel viewer with interactive TUI, search, formulas, and export capabilities
+# URL: https://github.com/bgreenwell/xleak
+xleak
+# Description: A terminal-based file tree diff viewer with flexible diff tool integration
+# URL: https://github.com/wtnqk/ftdv
+ftdv
