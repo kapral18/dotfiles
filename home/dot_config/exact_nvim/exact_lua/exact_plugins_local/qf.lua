@@ -15,6 +15,13 @@ end, {
   nargs = 0,
 })
 
+vim.api.nvim_create_user_command("QFCdoReverse", function(opts)
+  qf.cdo_reverse(opts.args)
+end, {
+  desc = "Execute command on quickfix entries in reverse order",
+  nargs = 1,
+})
+
 return {
   {
     "romainl/vim-qf",

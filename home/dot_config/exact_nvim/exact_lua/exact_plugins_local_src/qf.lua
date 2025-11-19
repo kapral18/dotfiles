@@ -8,16 +8,11 @@ local function extract_path_from_text(text)
 
   if trimmed:match("^%a:[/\\]") then
     -- Windows-style absolute path
-    local win_path = trimmed:match("^(%a:[/\\].-):%d+")
-      or trimmed:match("^(%a:[/\\].-):%d+:%d+")
-      or trimmed
+    local win_path = trimmed:match("^(%a:[/\\].-):%d+") or trimmed:match("^(%a:[/\\].-):%d+:%d+") or trimmed
     return win_path
   end
 
-  return trimmed:match("^(.-):%d+:%d+:")
-    or trimmed:match("^(.-):%d+:%d+")
-    or trimmed:match("^(.-):%d+")
-    or trimmed
+  return trimmed:match("^(.-):%d+:%d+:") or trimmed:match("^(.-):%d+:%d+") or trimmed:match("^(.-):%d+") or trimmed
 end
 
 local function extract_path_from_item(item, base_dir)
@@ -25,11 +20,7 @@ local function extract_path_from_item(item, base_dir)
     return util.normalize_path(item.filename, base_dir)
   end
 
-  if
-    item.bufnr
-    and item.bufnr > 0
-    and vim.api.nvim_buf_is_valid(item.bufnr)
-  then
+  if item.bufnr and item.bufnr > 0 and vim.api.nvim_buf_is_valid(item.bufnr) then
     local name = vim.api.nvim_buf_get_name(item.bufnr)
     if name and name ~= "" then
       return util.normalize_path(name, base_dir)
@@ -137,10 +128,25 @@ function M.dedupe_qf_by_path()
   end
 
   vim.fn.setqflist(deduped, "r")
-  vim.notify(
-    string.format("Deduped: %d → %d items", #items, #deduped),
-    vim.log.levels.INFO
-  )
+  vim.notify(string.format("Deduped: %d → %d items", #items, #deduped), vim.log.levels.INFO)
+end
+
+-- Execute a command on each quickfix entry in reverse order
+-- This prevents line number shifts when deleting lines
+function M.cdo_reverse(command)
+  local qflist = vim.fn.getqflist()
+
+  if #qflist == 0 then
+    vim.notify("Quickfix list is empty", vim.log.levels.WARN)
+    return
+  end
+
+  for i = #qflist, 1, -1 do
+    vim.cmd(i .. "cc")
+    vim.cmd(command)
+  end
+
+  vim.notify(string.format("Executed on %d items in reverse", #qflist), vim.log.levels.INFO)
 end
 
 return M

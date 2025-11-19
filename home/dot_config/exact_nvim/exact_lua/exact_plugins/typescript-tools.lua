@@ -29,6 +29,7 @@ return {
   },
   {
     "pmizio/typescript-tools.nvim",
+    commit = "675fe41a3d0d0b4482a4a783a7a92fbae2acbd61",
     lazy = false,
     cond = function()
       return vim.env.NVIM_MUSIC == nil

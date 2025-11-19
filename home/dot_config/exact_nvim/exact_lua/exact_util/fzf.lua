@@ -41,6 +41,7 @@ local function open_qf_window(opts)
     -- Prefer the original window that launched fzf-lua
     if
       opts.__CTX
+      and type(opts.__CTX.winid) == "number"
       and vim.api.nvim_win_is_valid(opts.__CTX.winid)
       and vim.api.nvim_win_get_config(opts.__CTX.winid).relative == ""
     then
