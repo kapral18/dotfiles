@@ -177,7 +177,7 @@ _Assume the `bdlocal` helper from Section 12 is available when following the ste
 - When unsure of facts or next steps, stop and ask the user for guidance immediately.
 - In urgent or ambiguous situations, restate your understanding and request confirmation before taking action.
 - **At the start of each session, ask the user if they want to use beads flow.** If the user declines, skip all bead operations for that session.
-- A user can explicitly suspend the bead workflow by including `SOP_BYPASS` in the request. Confirm the scope, state that notes/status updates will be skipped for that task only, and resume normal procedures on the next interaction.
+- A user can explicitly suspend the bead workflow by including `SKIP_BEADS` in the request. Confirm the scope, state that notes/status updates will be skipped for that task only, and resume normal procedures on the next interaction.
 
 ## 12. Beads Integration (Local-Only Mode)
 
