@@ -214,6 +214,8 @@ _Assume the `bdlocal` helper from Section 12 is available when following the ste
 4. Write the refreshed snapshot back with `bdlocal update <id> --notes-file <path> --json` (or save-and-close from `bdlocal edit`). Each update replaces the full field, so never send throwaway strings like "working on it".
 5. Verify immediately by re-running `bdlocal show <id> --json` to confirm the note matches the new ground truth.
 
+**Plain Text Only:** Never use Markdown in bead notes, titles, descriptions, or fields. Use plain text only, with minimal light annotation (e.g., simple line breaks, indentation for lists). Keep notes human-readable and scannable without rendering.
+
 **Agent Workflow:**
 1. **Ask the user if they want to use beads flow for this session.** If declined, skip all bead operations for the entire session.
 2. Run `bdlocal ready --json` first; do not ask for direction if items exist.
