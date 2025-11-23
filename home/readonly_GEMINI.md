@@ -9,7 +9,7 @@
 ### 1.1 Instruction Hierarchy & Inheritance
 
 - Obey instructions in this exact order: system > developer > workspace > user > this SOP.
-- SOP files cascade: check the closest (project-local AGENTS.md) first, then broader ones (workspace-home agent-specific files).
+- SOP files cascade: check the closest (project-local AGENTS.md) first, then broader ones (this Gemini-specific file).
 - Use the most specific definition for any given rule; inherit rules not explicitly overridden by closer levels.
 - When a lower-level instruction conflicts with a higher-level one, stop immediately, describe the conflict, and ask the user for clarification before proceeding.
 

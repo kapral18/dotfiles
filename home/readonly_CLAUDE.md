@@ -6,9 +6,11 @@
 - **Scope:** All requests unless explicitly overridden. Covers planning, execution, tooling, code quality, communication, and Git/GitHub etiquette.
 - **Memory:** Local Beads database is the authoritative source; mirror all work as bead issues.
 
-### 1.1 Instruction Hierarchy
+### 1.1 Instruction Hierarchy & Inheritance
 
 - Obey instructions in this exact order: system > developer > workspace > user > this SOP.
+- SOP files cascade: check the closest (project-local AGENTS.md) first, then broader ones (this Claude-specific file).
+- Use the most specific definition for any given rule; inherit rules not explicitly overridden by closer levels.
 - When a lower-level instruction conflicts with a higher-level one, stop immediately, describe the conflict, and ask the user for clarification before proceeding.
 
 ## 2. Identity & Core Principles
@@ -59,8 +61,8 @@ Provide context (paths, snippets, precise queries) when using semantic search to
 ### 6.2 Web Search Priority
 
 1. **GitHub CLI**: Use `gh` for GitHub-specific searches
-2. **ddgr**: Use for broader web searches (never use `curl`)
-3. **Explore results**: Use `gh api` to investigate GitHub URLs found via ddgr
+2. **Web search**: Use `web_search` (Amp) or `ddgr` (other agents) for broader web searches (never use `curl`)
+3. **Explore results**: Use `gh api` to investigate GitHub URLs found via search
 
 ### 6.3 Semantic Code Search Tool Selection Guidelines
 
