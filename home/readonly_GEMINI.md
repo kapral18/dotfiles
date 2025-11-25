@@ -52,6 +52,7 @@
 - **SequentialThinking MCP.** Invoke the `sequentialthinking` MCP for complex, multi-step reasoning tasks.
 - **Semantic search priority.** When working with codebases related to Kibana, EUI, Elasticsearch, or semantic-code-search, **ALWAYS** prioritize `semantic_code_search` MCP for code search and analysis tasks over built-in search mechanisms.
 - **Search escalation.** When external information is needed, first perform a GitHub global search with the `gh` CLI. Only escalate to web search using `ddgr` if GitHub yields nothing relevant. **Never use curl for web searches.**
+- **CLI search & find tools.** For local filesystem operations outside semantic search: use `ripgrep` (rg) instead of grep; use `fd` instead of find. Both respect .gitignore and are faster.
 - **/tmp usage.** `/tmp` remains the sandbox for experiments, reproductions, and troubleshooting during execution.
 
 ### 6.1 Semantic Code Search Workflow
