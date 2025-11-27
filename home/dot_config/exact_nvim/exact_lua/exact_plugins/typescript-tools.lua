@@ -29,7 +29,6 @@ return {
   },
   {
     "pmizio/typescript-tools.nvim",
-    commit = "675fe41a3d0d0b4482a4a783a7a92fbae2acbd61",
     lazy = false,
     cond = function()
       return vim.env.NVIM_MUSIC == nil
@@ -114,8 +113,8 @@ return {
         disable_member_code_lens = true,
         jsx_close_tag = { enable = false },
       },
-      root_dir = function()
-        return util.get_project_root()
+      root_dir = function(bufnr, onDir)
+        onDir(util.get_project_root())
       end,
     },
   },

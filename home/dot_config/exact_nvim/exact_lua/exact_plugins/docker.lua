@@ -21,7 +21,23 @@ return {
           filetypes = { "dockerfile" },
         },
         docker_compose_language_service = {
-          filetypes = { "yaml", "yaml.docker-compose" },
+          -- Only attach to docker-compose files, not all yaml
+          filetypes = { "yaml.docker-compose" },
+          root_dir = function(fname)
+            -- Only activate for docker-compose files
+            local basename = vim.fn.fnamemodify(fname, ":t")
+            if
+              basename:match("^docker%-compose")
+              or basename:match("^compose")
+              or basename == "docker-compose.yaml"
+              or basename == "docker-compose.yml"
+              or basename == "compose.yaml"
+              or basename == "compose.yml"
+            then
+              return vim.fn.fnamemodify(fname, ":h")
+            end
+            return nil
+          end,
         },
       },
     },

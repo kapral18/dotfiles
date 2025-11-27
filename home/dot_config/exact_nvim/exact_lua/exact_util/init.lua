@@ -14,6 +14,7 @@ M.treesitter = require("util.treesitter")
 M.fzf = require("util.fzf")
 M.fs = require("util.fs")
 M.chezmoi = require("util.chezmoi")
+M.k8s = require("util.k8s")
 
 -- Re-export config from ui module
 M.config = M.ui.config
@@ -140,20 +141,38 @@ end
 -- These are used throughout the config for backwards compatibility
 
 -- File system utilities
-M.get_plugin_src_dir = function() return M.fs.get_plugin_src_dir() end
-M.get_git_root = function() return M.fs.get_git_root() end
-M.get_project_root = function() return M.fs.get_project_root() end
-M.glob_to_lua_pattern = function(glob) return M.fs.glob_to_lua_pattern(glob) end
-M.file_exists = function(path) return M.fs.file_exists(path) end
-M.safe_file_read = function(path) return M.fs.safe_file_read(path) end
-M.safe_file_write = function(path, content, mode) return M.fs.safe_file_write(path, content, mode) end
-M.normalize_path = function(path, base_dir) return M.fs.normalize_path(path, base_dir) end
+M.get_plugin_src_dir = function()
+  return M.fs.get_plugin_src_dir()
+end
+M.get_git_root = function()
+  return M.fs.get_git_root()
+end
+M.get_project_root = function()
+  return M.fs.get_project_root()
+end
+M.glob_to_lua_pattern = function(glob)
+  return M.fs.glob_to_lua_pattern(glob)
+end
+M.file_exists = function(path)
+  return M.fs.file_exists(path)
+end
+M.safe_file_read = function(path)
+  return M.fs.safe_file_read(path)
+end
+M.safe_file_write = function(path, content, mode)
+  return M.fs.safe_file_write(path, content, mode)
+end
+M.normalize_path = function(path, base_dir)
+  return M.fs.normalize_path(path, base_dir)
+end
 
 -- FZF utilities
 M.fzf_rg_opts = M.fzf.rg_opts
 M.fzf_rg_opts_unrestricted = M.fzf.rg_opts_unrestricted
 M.fzf_fd_opts_unrestricted = M.fzf.fd_opts_unrestricted
-M.get_fzf_opts = function() return M.fzf.get_opts() end
+M.get_fzf_opts = function()
+  return M.fzf.get_opts()
+end
 
 -- Common utilities (from fzf module for backwards compatibility)
 M.is_image = M.fzf.is_image
