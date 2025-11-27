@@ -162,6 +162,7 @@ return {
   },
   {
     "wellle/visual-split.vim",
+    event = "VeryLazy",
   },
   {
     "aaronik/treewalker.nvim",
@@ -199,6 +200,7 @@ return {
   },
   {
     "nmac427/guess-indent.nvim",
+    event = "BufReadPre",
     opts = {},
   },
   {

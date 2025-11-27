@@ -21,6 +21,7 @@ return {
   },
   {
     "pixelastic/vim-undodir-tree",
+    event = "VeryLazy",
   },
   {
     "debugloop/telescope-undo.nvim",

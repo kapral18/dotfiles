@@ -1,7 +1,8 @@
 return {
   {
     "github/copilot.vim",
-    event = "InsertEnter",
+    -- otherwise for some reason it loads too late and doesn't work
+    lazy = false,
     version = "*",
     init = function()
       vim.api.nvim_set_hl(0, "CopilotSuggestion", { fg = "#83a598" })

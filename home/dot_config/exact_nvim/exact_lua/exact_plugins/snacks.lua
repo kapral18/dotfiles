@@ -2,6 +2,25 @@ return {
   {
     "folke/snacks.nvim",
     opts = {
+      dashboard = {
+        enabled = true,
+        preset = {
+          -- stylua: ignore
+          ---@type snacks.dashboard.Item[]
+          keys = {
+            { icon = " ", key = "f", desc = "Find File", action = ":lua require('util.pick')('files')" },
+            { icon = " ", key = "n", desc = "New File", action = ":ene | startinsert" },
+            { icon = " ", key = "c", desc = "Config", action = ":lua require('util.pick').config_files()" },
+            { icon = "󰒲 ", key = "l", desc = "Lazy", action = ":Lazy" },
+            { icon = " ", key = "q", desc = "Quit", action = ":qa" },
+          },
+        },
+        sections = {
+          { section = "header" },
+          { section = "keys", gap = 1, padding = 1 },
+          { section = "startup" },
+        },
+      },
       bigfile = { enabled = false },
       indent = { enabled = false },
       input = { enabled = false },

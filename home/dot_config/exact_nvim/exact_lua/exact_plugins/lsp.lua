@@ -314,8 +314,7 @@ return {
     end,
   },
   {
-    "kapral18/dim.lua",
-    branch = "feat/add-new-ts-support",
+    "0oAstro/dim.lua",
     event = "LspAttach",
     opts = {
       disable_lsp_decorations = true,

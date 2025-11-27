@@ -24,7 +24,6 @@ local plugin_modules = {
   "plugins.chezmoi",
   "plugins.completion",
   "plugins.dap",
-  "plugins.dashboard",
   "plugins.diff",
   "plugins.docker",
   "plugins.eslint",
@@ -112,7 +111,7 @@ require("lazy").setup(spec, {
   change_detection = { enabled = false, notify = false },
   concurrency = 100,
   defaults = {
-    lazy = false,
+    lazy = true,
     version = false,
   },
   checker = { enabled = true },
