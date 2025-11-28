@@ -36,7 +36,7 @@ return {
                 version = "LuaJIT",
               },
               hint = {
-                enable = true,
+                enable = false,
                 setType = true,
               },
               diagnostics = {

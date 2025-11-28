@@ -3,16 +3,16 @@
 Fish history merger - merges two fish history files chronologically
 Usage: fish-history-merge.py <local_history> <remote_history> <output_file>
 """
+from __future__ import annotations
 
 import sys
-from typing import Dict, Union, List
 
 
 def parse_fish_history(
     file_path: str,
-) -> Dict[str, Dict[str, Union[str, int, List[str]]]]:
+) -> dict[str, dict[str, str | int | list[str]]]:
     """Parse a fish history file and return a dict of commands with metadata"""
-    entries: Dict[str, Dict[str, Union[str, int, List[str]]]] = {}
+    entries: dict[str, dict[str, str | int | list[str]]] = {}
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
@@ -27,7 +27,7 @@ def parse_fish_history(
 
             # First line is the command (after "- cmd: " was removed)
             cmd = lines[0]
-            current_entry: Dict[str, Union[str, int, List[str]]] = {"cmd": cmd}
+            current_entry: dict[str, str | int | list[str]] = {"cmd": cmd}
 
             i = 1
             while i < len(lines):
@@ -101,7 +101,7 @@ def merge_histories(local_file: str, remote_file: str, output_file: str) -> bool
     # Sort by timestamp and write
     try:
 
-        def get_timestamp(entry_dict):
+        def get_timestamp(entry_dict: dict[str, str | int | list[str]]) -> int:
             when_val = entry_dict.get("when", 0)
             return int(when_val) if isinstance(when_val, (int, str)) else 0
 
@@ -109,13 +109,13 @@ def merge_histories(local_file: str, remote_file: str, output_file: str) -> bool
             for _, entry in sorted(
                 all_entries.items(), key=lambda x: get_timestamp(x[1])
             ):
-                f.write(f"- cmd: {entry['cmd']}\n")
+                _ = f.write(f"- cmd: {entry['cmd']}\n")
                 if "when" in entry:
-                    f.write(f"  when: {entry['when']}\n")
+                    _ = f.write(f"  when: {entry['when']}\n")
                 if "paths" in entry and isinstance(entry["paths"], list):
-                    f.write("  paths:\n")
+                    _ = f.write("  paths:\n")
                     for path in entry["paths"]:
-                        f.write(f"    - {path}\n")
+                        _ = f.write(f"    - {path}\n")
         return True
     except Exception as e:
         print(f"Error writing merged history: {e}", file=sys.stderr)

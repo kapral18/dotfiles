@@ -1,39 +1,56 @@
 #!/usr/bin/env python3
 """Tests for fish history merger"""
 
+from __future__ import annotations
+
+import importlib.util
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
-import subprocess
+from typing import TYPE_CHECKING, Protocol, cast
+
+if TYPE_CHECKING:
+    pass
 
 # Import the module to test
-import importlib.util
+# We resolve the path relative to this test file to test the local version
+current_dir = Path(__file__).resolve().parent
+history_merge_script_path = str(current_dir / "executable_fish-history-merge.py")
 
-history_merge_script_path = str(
-    Path.home()
-    / ".config"
-    / "fish"
-    / "my"
-    / "functions"
-    / "history"
-    / "fish-history-merge.py"
-)
+
+class FishHistoryMergeModule(Protocol):
+    def parse_fish_history(
+        self, file_path: str
+    ) -> dict[str, dict[str, str | int | list[str]]]: ...
+    def merge_histories(
+        self, local_file: str, remote_file: str, output_file: str
+    ) -> bool: ...
 
 
 spec = importlib.util.spec_from_file_location(
     "fish_history_merge", history_merge_script_path
 )
 if spec and spec.loader:
-    fish_history_merge = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(fish_history_merge)
+    # Load the module as a standard module first
+    _module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(_module)
+    # Then cast it to our protocol for type safety in the rest of the file
+    # We cast to object first to avoid "insufficient overlap" error
+    fish_history_merge = cast(FishHistoryMergeModule, cast(object, _module))
 else:
-    raise ImportError("Could not import fish-history-merge.py")
+    raise ImportError(f"Could not import {history_merge_script_path}")
 
 
 class TestFishHistoryMerge(unittest.TestCase):
     """Test cases for fish history merger"""
+
+    temp_dir: str = ""
+    local_file: str = ""
+    remote_file: str = ""
+    output_file: str = ""
 
     def setUp(self) -> None:
         """Set up test fixtures"""
@@ -47,12 +64,13 @@ class TestFishHistoryMerge(unittest.TestCase):
         for file in [self.local_file, self.remote_file, self.output_file]:
             if os.path.exists(file):
                 os.remove(file)
-        os.rmdir(self.temp_dir)
+        if os.path.exists(self.temp_dir):
+            os.rmdir(self.temp_dir)
 
     def write_history(self, file_path: str, content: str) -> None:
         """Helper to write history content to a file"""
         with open(file_path, "w", encoding="utf-8") as f:
-            f.write(content)
+            _ = f.write(content)
 
     def read_history(self, file_path: str) -> str:
         """Helper to read history content from a file"""
@@ -76,7 +94,7 @@ class TestFishHistoryMerge(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertIn("ls -la", result)
         entry = result["ls -la"]
-        self.assertEqual(entry["cmd"], "ls -la")
+        self.assertEqual(entry["cmd"], "ls -laa")
         self.assertEqual(entry["when"], 1700000000)
 
     def test_parse_entry_with_paths(self) -> None:
@@ -394,4 +412,4 @@ class TestFishHistoryMerge(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    _ = unittest.main()

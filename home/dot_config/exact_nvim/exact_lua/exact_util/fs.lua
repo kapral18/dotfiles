@@ -175,4 +175,11 @@ function M.get_project_root()
   return vim.fs.root(0, ".git") or vim.env.PWD
 end
 
+--- Escape a string for shell argument
+---@param str string
+---@return string
+function M.escape_shell_arg(str)
+  return "'" .. str:gsub("'", [['\'']]) .. "'"
+end
+
 return M

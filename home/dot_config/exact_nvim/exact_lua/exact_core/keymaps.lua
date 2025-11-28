@@ -274,3 +274,55 @@ map("n", "<leader>yp", function()
   util.copy_to_clipboard(cur_file)
   vim.notify(("Copied %s to clipboard"):format(cur_file), vim.log.levels.INFO, { title = "Path Copied" })
 end, { desc = "Copy current file relative path" })
+
+map("n", "<leader>ad", function()
+  local file_path = vim.api.nvim_buf_get_name(0)
+  local diagnostics = vim.diagnostic.get(0)
+
+  if #diagnostics == 0 then
+    vim.notify("No diagnostics found", vim.log.levels.INFO)
+    return
+  end
+
+  local diag_lines = {}
+  for _, d in ipairs(diagnostics) do
+    local severity = vim.diagnostic.severity[d.severity] or "UNKNOWN"
+    table.insert(diag_lines, string.format("Line %d: [%s] %s", d.lnum + 1, severity, d.message))
+  end
+
+  local message = string.format(
+    "Here are the diagnostics for file `%s`:\n\n```\n%s\n```",
+    file_path,
+    table.concat(diag_lines, "\n")
+  )
+
+  local tmp_file = os.tmpname()
+  local f = io.open(tmp_file, "w")
+  if f then
+    f:write(message)
+    f:close()
+  end
+
+  local current_pane = vim.fn.system("tmux display-message -p '#{pane_id}'"):gsub("%s+", "")
+  local target_pane = vim.fn
+    .system(
+      string.format(
+        "tmux select-pane -R -t %s \\; display-message -p '#{pane_id}' \\; select-pane -t %s",
+        current_pane,
+        current_pane
+      )
+    )
+    :gsub("%s+", "")
+
+  if target_pane == "" or target_pane == current_pane then
+    vim.notify("No pane to the right found", vim.log.levels.WARN)
+    os.remove(tmp_file)
+    return
+  end
+
+  vim.fn.system(string.format("tmux load-buffer %s", tmp_file))
+  vim.fn.system(string.format("tmux paste-buffer -t %s", target_pane))
+
+  os.remove(tmp_file)
+  vim.notify("Diagnostics sent to right pane", vim.log.levels.INFO)
+end, { desc = "Send diagnostics to right Tmux pane" })

@@ -16,9 +16,61 @@ return {
         "gofumpt",
         "gomodifytags",
         "impl",
+        "gotests",
+        "iferr",
       })
       return opts
     end,
+  },
+  {
+    "ray-x/go.nvim",
+    dependencies = {
+      "ray-x/guihua.lua",
+      "neovim/nvim-lspconfig",
+      "nvim-treesitter/nvim-treesitter",
+      "leoluz/nvim-dap-go",
+    },
+    config = function()
+      require("go").setup({
+        -- Disable auto-setup of LSP so it doesn't conflict with your existing nvim-lspconfig setup
+        lsp_cfg = false,
+        -- Enable DAP integration
+        dap_debug = true,
+        -- Test runner config
+        test_runner = "go", -- or 'richgo', 'ginkgo', 'gotestsum'
+        run_in_floaterm = true,
+      })
+      -- Configure nvim-dap-go as well for standard DAP setup
+      require("dap-go").setup()
+    end,
+    keys = {
+      {
+        "<leader>tt",
+        function()
+          require("go.term").test_func()
+        end,
+        desc = "Run Go test (func)",
+        ft = { "go", "gomod" },
+      },
+      {
+        "<leader>tT",
+        function()
+          require("go.term").test_file()
+        end,
+        desc = "Run Go test (file)",
+        ft = { "go", "gomod" },
+      },
+      {
+        "<leader>td",
+        function()
+          require("dap-go").debug_test()
+        end,
+        desc = "Debug Go test (func)",
+        ft = { "go", "gomod" },
+      },
+    },
+    event = { "CmdlineEnter" },
+    ft = { "go", "gomod" },
   },
   {
     "neovim/nvim-lspconfig",

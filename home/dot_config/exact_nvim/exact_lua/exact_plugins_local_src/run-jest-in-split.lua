@@ -18,9 +18,7 @@ local jest_config_candidates = {
   "jest.integration.config.js",
 }
 
-local function escape_shell_arg(str)
-  return "'" .. str:gsub("'", [['\'']]) .. "'"
-end
+local escape_shell_arg = util.fs.escape_shell_arg
 
 local script_runner_builders = {
   yarn = function(script_name, file_path, root_dir)
@@ -549,32 +547,7 @@ local function build_regular_command(context, project_root, test_path, escaped_p
 end
 
 local function open_jest_terminal(cmd, cwd)
-  local shell = vim.o.shell ~= "" and vim.o.shell or "/bin/sh"
-  local original_win = vim.api.nvim_get_current_win()
-  vim.cmd.vsplit()
-  vim.cmd("enew")
-  local term_win = vim.api.nvim_get_current_win()
-
-  local term_opts = {}
-  if cwd and cwd ~= "" then
-    term_opts.cwd = cwd
-  end
-
-  local ok, job_id = pcall(vim.fn.termopen, shell, term_opts)
-  if not ok or job_id <= 0 then
-    vim.api.nvim_set_current_win(original_win)
-    pcall(vim.api.nvim_win_close, term_win, true)
-    local err = not ok and job_id or "termopen failed to start job"
-    vim.notify("Failed to run Jest: " .. tostring(err), vim.log.levels.ERROR)
-    return false
-  end
-
-  vim.fn.chansend(job_id, cmd .. "\n")
-  vim.api.nvim_set_current_win(term_win)
-  vim.cmd("startinsert")
-  vim.api.nvim_set_current_win(original_win)
-  vim.cmd("stopinsert")
-  return true
+  return require("util.terminal").run_in_split(cmd, { cwd = cwd, focus_original = true })
 end
 
 local function escape_jest_regex(str, is_parametrized)
@@ -748,8 +721,6 @@ M.get_current_test_name = function()
 end
 
 M.escape_shell_arg = escape_shell_arg
-
----@param arg string Additional arguments to pass to Jest
 ---@param debug_mode boolean|nil Whether to run Jest in debug mode
 M.run_jest_cmd = function(arg, debug_mode)
   local root_dir = util.get_project_root()
@@ -829,12 +800,7 @@ M.run_jest_cmd = function(arg, debug_mode)
 end
 
 M.close_terminal_buffer = function()
-  for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-    if vim.bo[buf].buftype == "terminal" then
-      vim.fn.jobstop(vim.bo[buf].channel)
-      vim.cmd("silent! bdelete! " .. buf)
-    end
-  end
+  require("util.terminal").close_all_terminals()
 end
 
 local function show_parametrized_prompt(pattern, update_arg, debug_mode)

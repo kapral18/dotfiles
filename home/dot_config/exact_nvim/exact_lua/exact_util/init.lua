@@ -15,6 +15,7 @@ M.fzf = require("util.fzf")
 M.fs = require("util.fs")
 M.chezmoi = require("util.chezmoi")
 M.k8s = require("util.k8s")
+M.terminal = require("util.terminal")
 
 -- Re-export config from ui module
 M.config = M.ui.config

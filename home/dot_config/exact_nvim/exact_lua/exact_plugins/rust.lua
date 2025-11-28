@@ -18,32 +18,84 @@ return {
     version = "^4",
     ft = { "rust" },
     init = function()
-      vim.g.rustaceanvim = vim.tbl_deep_extend("force", {
-        tools = {
-          executor = require("rustaceanvim.executors").termopen,
-          hover_actions = {
-            auto_focus = true,
+      -- Configure rustaceanvim here
+      vim.g.rustaceanvim = function()
+        -- Get codelldb path from mason
+        local adapter
+        local mason_registry = require("mason-registry")
+        if mason_registry.is_installed("codelldb") then
+          local codelldb = mason_registry.get_package("codelldb")
+          ---@diagnostic disable-next-line: undefined-field
+          local extension_path = codelldb:get_install_path() .. "/extension/"
+          local codelldb_path = extension_path .. "adapter/codelldb"
+          local liblldb_path = extension_path .. "lldb/lib/liblldb.dylib" -- MacOS path
+          adapter = require("rustaceanvim.config").get_codelldb_adapter(codelldb_path, liblldb_path)
+        end
+
+        return {
+          dap = {
+            adapter = adapter,
           },
-        },
-        server = {
-          default_settings = {
-            ["rust-analyzer"] = {
-              cargo = {
-                allFeatures = true,
-              },
-              checkOnSave = {
-                command = "clippy",
-              },
-              completion = {
-                postfix = {
-                  enable = true,
+          tools = {
+            executor = require("rustaceanvim.executors").termopen,
+            hover_actions = {
+              auto_focus = true,
+            },
+          },
+          server = {
+            default_settings = {
+              ["rust-analyzer"] = {
+                cargo = {
+                  allFeatures = true,
+                },
+                checkOnSave = {
+                  command = "clippy",
+                },
+                completion = {
+                  postfix = {
+                    enable = true,
+                  },
                 },
               },
             },
           },
-        },
-      }, vim.g.rustaceanvim or {})
+        }
+      end
     end,
+    keys = {
+      {
+        "<leader>tt",
+        function()
+          vim.cmd.RustLsp("testables")
+        end,
+        desc = "Run Rust test (testables)",
+        ft = { "rust" },
+      },
+      {
+        "<leader>td",
+        function()
+          vim.cmd.RustLsp("debuggables")
+        end,
+        desc = "Debug Rust test (debuggables)",
+        ft = { "rust" },
+      },
+      {
+        "<leader>tT",
+        function()
+          vim.cmd.RustLsp("runnables")
+        end,
+        desc = "Run Rust runnable",
+        ft = { "rust" },
+      },
+      {
+        "<leader>ca",
+        function()
+          vim.cmd.RustLsp("codeAction")
+        end,
+        desc = "Rust Code Action",
+        ft = { "rust" },
+      },
+    },
   },
   {
     "neovim/nvim-lspconfig",

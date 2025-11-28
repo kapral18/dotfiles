@@ -1,7 +1,6 @@
 return {
   {
     "github/copilot.vim",
-    -- otherwise for some reason it loads too late and doesn't work
     lazy = false,
     version = "*",
     init = function()
@@ -11,8 +10,10 @@ return {
   },
   {
     "CopilotC-Nvim/CopilotChat.nvim",
-    lazy = true,
     version = "*",
+    dependencies = {
+      { "nvim-lua/plenary.nvim" },
+    },
     cmd = "CopilotChat",
     opts = function()
       local user = vim.env.USER or "User"
@@ -55,11 +56,10 @@ return {
       {
         "<leader>aq",
         function()
-          vim.ui.input({ prompt = "Quick Chat:" }, function(input)
-            if input ~= "" then
-              require("CopilotChat").ask(input)
-            end
-          end)
+          local input = vim.fn.input("Quick Chat: ")
+          if input ~= "" then
+            require("CopilotChat").ask(input, { selection = require("CopilotChat.select").buffer })
+          end
         end,
         desc = "Quick Chat (CopilotChat)",
         mode = { "n", "v" },
@@ -76,10 +76,10 @@ return {
     config = function(_, opts)
       local chat = require("CopilotChat")
 
-      -- Function to preload buffers for copilot-chat context
+      -- Restore optimized preloader for session support
       local function preload_buffers_for_chat()
         local bufs = vim.api.nvim_list_bufs()
-        local chunk_size = 3 -- Load 3 buffers at a time
+        local chunk_size = 5 -- Load 5 buffers at a time
         local i = 1
 
         local function load_chunk()
@@ -95,15 +95,11 @@ return {
             i = i + 1
             count = count + 1
           end
-
-          -- Schedule next chunk if there are more buffers
           if i <= #bufs then
-            vim.defer_fn(load_chunk, 50) -- 50ms delay between chunks
+            vim.defer_fn(load_chunk, 20)
           end
         end
-
-        -- Start loading after a small initial delay
-        vim.defer_fn(load_chunk, 100)
+        load_chunk()
       end
 
       vim.api.nvim_create_autocmd("BufEnter", {
@@ -111,7 +107,6 @@ return {
         callback = function()
           vim.opt_local.relativenumber = false
           vim.opt_local.number = false
-          -- Preload buffers when entering copilot-chat so it can detect them with #buffers
           preload_buffers_for_chat()
         end,
       })

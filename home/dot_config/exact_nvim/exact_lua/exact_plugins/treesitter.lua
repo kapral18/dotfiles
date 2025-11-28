@@ -33,7 +33,12 @@ return {
       end)
     end,
     event = { "BufReadPost", "BufNewFile" },
-    cmd = { "TSUpdate", "TSInstall", "TSInstallInfo", "TSUninstall", "TSEnable", "TSDisable", "TSEnableAll", "TSDisableAll" },
+    cmd = {
+      "TSUpdate",
+      "TSInstall",
+      "TSUninstall",
+      "TSInstallFromGrammar",
+    },
     opts = function(_, opts)
       opts.indent = { enable = true }
       opts.highlight = { enable = true }
