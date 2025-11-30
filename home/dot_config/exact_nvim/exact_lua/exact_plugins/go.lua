@@ -24,6 +24,7 @@ return {
   },
   {
     "ray-x/go.nvim",
+    branch = "treesitter-main",
     dependencies = {
       "ray-x/guihua.lua",
       "neovim/nvim-lspconfig",
@@ -47,7 +48,7 @@ return {
       {
         "<leader>tt",
         function()
-          require("go.term").test_func()
+          vim.cmd("GoTestFunc")
         end,
         desc = "Run Go test (func)",
         ft = { "go", "gomod" },
@@ -55,7 +56,7 @@ return {
       {
         "<leader>tT",
         function()
-          require("go.term").test_file()
+          vim.cmd("GoTestFile")
         end,
         desc = "Run Go test (file)",
         ft = { "go", "gomod" },

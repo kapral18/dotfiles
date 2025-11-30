@@ -48,7 +48,7 @@
 ## 6. Tooling Requirements
 
 - **Prioritize MCP tools.** Always use available MCP tools when applicable, ahead of built-in capabilities.
-- **Beads CLI (`bd`).** Confirm `bd` (target version ≥ 0.25.0) is available, invoke it through the `bdlocal` helper (defined in Section 12) so all bead updates stay in the shared datastore. Do not install or upgrade `bd` within the agent session (installation is managed externally).
+- **Beads CLI (`bd`).** Confirm `bd` (target version ≥ 0.26.0) is available, invoke it through the `bdlocal` helper (defined in Section 12) so all bead updates stay in the shared datastore. Do not install or upgrade `bd` within the agent session (installation is managed externally).
 - **SequentialThinking MCP.** Invoke the `sequentialthinking` MCP for complex, multi-step reasoning tasks.
 - **Semantic search priority.** When working with codebases related to Kibana, EUI, Elasticsearch, or semantic-code-search, **ALWAYS** prioritize `semantic_code_search` MCP for code search and analysis tasks over built-in search mechanisms.
 - **Search escalation.** When external information is needed, first perform a GitHub global search with the `gh` CLI. Only escalate to web search using `ddgr` if GitHub yields nothing relevant. **Never use curl for web searches.**
@@ -184,14 +184,21 @@ _Assume the `bdlocal` helper from Section 12 is available when following the ste
 
 ## 12. Beads Integration (Local-Only Mode)
 
-**Core:** Beads is the canonical memory system. Version 0.25.0+ provides hash-based IDs, dependency API, snapshot versioning, deletion tracking, and auto-compaction. Mirror all work as bead issues.
+**Core:** Beads is the canonical memory system. Version 0.26.0+ provides hash-based IDs, dependency API, snapshot versioning, deletion tracking, auto-compaction, and health checks. Mirror all work as bead issues.
 
 **Local Policy:**
 - Run all commands through `bdlocal` (shell helper that resolves `$BEADS_DIR`, verifies `bd` is installed, and invokes `bd --db "$BEADS_DIR/.beads/beads.db" --no-auto-flush --no-auto-import --no-daemon`).
 - `$BEADS_DIR` is auto-derived from git remote. Confirm: `echo $BEADS_DIR`.
 - Data lives in `$BEADS_DIR/.beads/`; never commit. After upgrades, run `bdlocal daemons killall`.
+- **Local-only mode**: No git sync, no cross-machine propagation. Use `bdlocal export` for backups.
 
 **Environment Verification:** Installation and upgrades are managed externally (Brewfile). Do **not** install, upgrade, or initialize `bd` within the agent session. Only run `bdlocal version` when you need to confirm availability; avoid `bdlocal init` unless explicitly instructed by the user.
+
+**Post-Upgrade Workflow:** When bd is upgraded:
+```bash
+bdlocal info --whats-new        # Check what changed (agent-relevant updates)
+bdlocal daemons killall         # Restart daemons with new version
+```
 
 **Quick Commands:**
 
@@ -199,20 +206,42 @@ _Assume the `bdlocal` helper from Section 12 is available when following the ste
 
 - Check ready: `bdlocal ready --json`
 - Show details: `bdlocal show <id> --json`
-- Create (require type & priority): `bdlocal create "title" -t bug|feature|task|epic|chore -p 0-4 -d "short description" --json`
-- Link discovery: `bdlocal create "Found X" -t bug -p 1 --deps discovered-from:bd-123 --json`
+- Find stale issues: `bdlocal stale --days 30 --json`
+- Create (require type, priority, description): `bdlocal create "title" -t bug|feature|task|epic|chore -p 0-4 --description="detailed context" --json`
+- Create with external link: `bdlocal create "title" -t task -p 2 --external-ref "https://github.com/.../issues/123" --json`
+- Link discovery: `bdlocal create "Found X" -t bug -p 1 --description="what was found and why" --deps discovered-from:bd-123 --json`
 - Update status/metadata: `bdlocal update <id> --status open|in_progress|blocked|closed --json`
-- Refresh notes snapshot (§12.1): `bdlocal edit <id>` (opens editor), or script updates via `bdlocal update <id>` with other flags
+- Update text fields: `bdlocal update <id> --notes "new notes" --json` (also: `--description`, `--design`, `--acceptance`, `--title`)
 - Close: `bdlocal close <id> --reason "Completed" --json`
+- Reopen: `bdlocal reopen <id> --reason "Reopening for X" --json`
 - Wire deps: `bdlocal dep add <id> <dep-id> --type blocks|discovered-from|related|parent-child --json`
 - View tree: `bdlocal dep tree <id>`
+- List with sorting: `bdlocal list --status open --sort priority --json`
+- Search issues: `bdlocal search "query" --json`
+- Batch update: `bdlocal update <id1> <id2> <id3> --status in_progress --json`
+- Batch close: `bdlocal close <id1> <id2> --reason "Done" --json`
+
+**Labels (for metadata without polluting notes):**
+- Add label: `bdlocal label add <id> <label> --json`
+- Remove label: `bdlocal label remove <id> <label> --json`
+- List labels: `bdlocal label list <id> --json`
+- Filter by labels (AND): `bdlocal list --label auth,backend --json`
+- Filter by labels (OR): `bdlocal list --label-any urgent,blocked-on-human --json`
+- Useful labels: `needs-human-review`, `context-stale`, `blocked-on-external`, `ai-generated`
 
 ### 12.1 Note Curation Workflow
 
-1. Read the current state with `bdlocal show <id> --json` or open editor with `bdlocal edit <id>`.
+1. Read the current state with `bdlocal show <id> --json`.
 2. Merge intentionally: drop stale or conflicting items, keep only context a future agent needs, and rewrite the full snapshot using COMPLETED/IN_PROGRESS/NEXT structure. Ephemeral chatter should be minimal.
-3. Use `bdlocal edit <id>` (opens `$EDITOR`) to write the refreshed snapshot. Each update replaces the full notes field, so never send throwaway strings.
+3. Update via CLI flags: `bdlocal update <id> --notes "full refreshed snapshot" --json`. Each update replaces the full notes field, so never send throwaway strings.
 4. Verify immediately by re-running `bdlocal show <id> --json` to confirm notes match the new ground truth.
+
+**Field Update Flags (for agents):**
+- `--notes "text"` - Session handoff notes (COMPLETED/IN_PROGRESS/NEXT)
+- `--description "text"` - Problem statement (usually set at creation)
+- `--design "text"` - Approach, architecture, decisions
+- `--acceptance "text"` - Success criteria checklist
+- `--title "text"` - Issue title
 
 **Plain Text Only:** Never use Markdown in bead notes, titles, descriptions, or fields. Use plain text only, with minimal light annotation (e.g., simple line breaks, indentation for lists). Keep notes human-readable and scannable without rendering.
 
@@ -240,20 +269,27 @@ _Assume the `bdlocal` helper from Section 12 is available when following the ste
 - ❌ **Never update a bead without explicit user permission.**
 
 **Epic Knowledge Capture:**
-1. Mirror epic: curate notes per §12.1 so snapshot captures key links (e.g., `Epic: https://github.com/.../issues/123`).
-2. Create wisdom bead: `bdlocal create "wisdom - auth hardening" -t task -p 2 --json`. Update notes via `bdlocal edit <wisdom-id>`.
-3. Wire graph: `bdlocal dep add <task-id> <wisdom-id> --type blocks --json`. Use inline refs (`See [[bd-xxxx]]`) for backlinks.
-4. Roll learnings forward: Append PR URLs and takeaways to wisdom bead; update epic note with changes.
+1. Mirror epic: use `--external-ref` for GitHub links (e.g., `bdlocal create "Auth epic" -t epic -p 1 --external-ref "https://github.com/.../issues/123" --json`). Keep notes for curated context only.
+2. Create wisdom bead: `bdlocal create "wisdom - auth hardening" -t task -p 2 --json`. Update notes via `bdlocal update <wisdom-id> --notes "..." --json`.
+3. Wire graph: `bdlocal dep add <task-id> <wisdom-id> --type related --json`. Use inline refs (`See [[bd-xxxx]]`) for backlinks.
+4. Roll learnings forward: Update wisdom bead notes with curated takeaways; link PRs via `--external-ref` on related beads.
 5. Export only: Use `bdlocal export ...` for document views; Markdown is not authoritative.
 
 **Maintenance:**
 - Close: `bdlocal close <id> --reason "Completed" --json`.
 - Backup: `bdlocal export -o ~/beads-backups/$(basename $(pwd))-issues.jsonl`.
 - Compact: `bdlocal compact --days 90 --all`.
+- Cleanup closed issues: `bdlocal cleanup --force` (permanently deletes closed issues).
 - Daemons: `bdlocal daemons killall` if needed.
+- Health check: `bdlocal doctor --check-health` (lightweight, silent on success).
 
-**Deletion Recovery:** Deleted issues are tracked in `$BEADS_DIR/.beads/deletions.jsonl` (auto-compacted on sync). Use git history to recover accidentally deleted issues: `git show HEAD~N:$BEADS_DIR/.beads/beads.jsonl | grep <id>`.
+**Deletion Tracking:** Deleted issues are tracked locally in `$BEADS_DIR/.beads/deletions.jsonl`.
+- View deletions: `bdlocal deleted` (last 7 days) or `bdlocal deleted --since=30d`.
+- Delete issue: `bdlocal delete <id>` (records to manifest).
 
-**Stealth Mode:** Use `bd init --stealth` to configure invisible beads (no visible `.beads/` directory). Useful for shared projects where beads infrastructure is hidden.
+**Duplicate Detection:** Proactively detect and merge duplicate issues:
+- Find duplicates: `bdlocal duplicates`
+- Auto-merge all: `bdlocal duplicates --auto-merge`
+- Manual merge: `bdlocal merge <source-id> --into <target-id> --json`
 
-**Troubleshooting:** Confirm `BEADS_DIR` is set and `bdlocal version ≥ 0.25.0`. No cross-machine sync; export/import only. See [Beads docs](https://github.com/steveyegge/beads) for details.
+**Troubleshooting:** Confirm `BEADS_DIR` is set and `bdlocal version ≥ 0.26.0`. No cross-machine sync; export/import only. See [Beads docs](https://github.com/steveyegge/beads) for details.

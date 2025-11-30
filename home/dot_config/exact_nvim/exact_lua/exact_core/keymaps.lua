@@ -275,6 +275,15 @@ map("n", "<leader>yp", function()
   vim.notify(("Copied %s to clipboard"):format(cur_file), vim.log.levels.INFO, { title = "Path Copied" })
 end, { desc = "Copy current file relative path" })
 
+map("n", "<leader>yP", function()
+  local cur_file = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":p")
+  if cur_file == "" then
+    return
+  end
+  util.copy_to_clipboard(cur_file)
+  vim.notify(("Copied %s to clipboard"):format(cur_file), vim.log.levels.INFO, { title = "Absolute Path Copied" })
+end, { desc = "Copy current file absolute path" })
+
 map("n", "<leader>ad", function()
   local file_path = vim.api.nvim_buf_get_name(0)
   local diagnostics = vim.diagnostic.get(0)
@@ -290,11 +299,8 @@ map("n", "<leader>ad", function()
     table.insert(diag_lines, string.format("Line %d: [%s] %s", d.lnum + 1, severity, d.message))
   end
 
-  local message = string.format(
-    "Here are the diagnostics for file `%s`:\n\n```\n%s\n```",
-    file_path,
-    table.concat(diag_lines, "\n")
-  )
+  local message =
+    string.format("Here are the diagnostics for file `%s`:\n\n```\n%s\n```", file_path, table.concat(diag_lines, "\n"))
 
   local tmp_file = os.tmpname()
   local f = io.open(tmp_file, "w")

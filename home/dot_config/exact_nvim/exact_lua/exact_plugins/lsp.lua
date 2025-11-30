@@ -238,7 +238,12 @@ return {
       -- Delete native Neovim 0.11 LSP mappings that conflict with our custom ones
       -- Native mappings: grr (references), gri (implementation), grt (type_definition), gra (code_action), grn (rename)
       vim.api.nvim_create_autocmd("LspAttach", {
-        callback = function()
+        callback = function(args)
+          -- Force disable inlay hints
+          if vim.lsp.inlay_hint then
+            vim.lsp.inlay_hint.enable(false, { bufnr = args.buf })
+          end
+
           pcall(vim.keymap.del, "n", "grr")
           pcall(vim.keymap.del, "n", "gri")
           pcall(vim.keymap.del, "n", "grt")
