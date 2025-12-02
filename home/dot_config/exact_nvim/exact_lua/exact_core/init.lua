@@ -32,7 +32,6 @@ local plugin_modules = {
   "plugins.git",
   "plugins.github",
   "plugins.gx",
-  "plugins.harper",
   "plugins.helm",
   "plugins.highlight",
   "plugins.hlargs",
