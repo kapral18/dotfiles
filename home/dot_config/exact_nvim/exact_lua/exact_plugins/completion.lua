@@ -1,3 +1,5 @@
+local util = require("util")
+
 local tabouts = {
   { open = "'", close = "'" },
   { open = '"', close = '"' },
@@ -8,133 +10,198 @@ local tabouts = {
   { open = "<", close = ">" },
 }
 
+local unpack = unpack or table.unpack
+
+local has_words_before = function()
+  local _, cur_col = unpack(vim.api.nvim_win_get_cursor(0))
+  if cur_col == 0 then
+    return false
+  end
+
+  local current_line = vim.api.nvim_get_current_line()
+  -- cur_row is 1 based but cur_col is 0-based so when used with 1-based api
+  -- like :sub() it actually points at -1 char from actual position of cur_col
+  -- so if previous char does not match empty string
+  -- we consider that there are words before
+  local char_before = current_line:sub(cur_col, cur_col)
+  return char_before:match("%s") == nil
+end
+
+local win_highlight = "Normal:Normal,FloatBorder:Normal,CursorLine:Visual,Search:None"
+
 return {
   {
-    "saghen/blink.compat",
-    lazy = true,
-    opts = {},
-    version = "*",
-  },
-  {
-    "saghen/blink.cmp",
-    version = "*",
+    "hrsh7th/nvim-cmp",
+    event = { "InsertEnter", "CmdlineEnter" },
     dependencies = {
-      "rafamadriz/friendly-snippets",
-      -- Compat sources
+      "hrsh7th/cmp-nvim-lsp",
+      "hrsh7th/cmp-buffer",
+      "hrsh7th/cmp-path",
+      "hrsh7th/cmp-cmdline",
+      "hrsh7th/cmp-nvim-lsp-signature-help",
       "lukas-reineke/cmp-rg",
-      "hrsh7th/cmp-emoji",
+      "lukas-reineke/cmp-under-comparator",
       "SergioRibera/cmp-dotenv",
+      "hrsh7th/cmp-emoji",
       "amarakon/nvim-cmp-fonts",
       { "github/copilot.vim", optional = true },
     },
+    -- overriding lazyvim native snippets tab behavior
+    keys = function()
+      return {}
+    end,
     init = function()
       vim.g.copilot_no_tab_map = true
       vim.g.copilot_assume_mapped = true
       vim.g.copilot_tab_fallback = ""
     end,
-    event = { "InsertEnter", "CmdlineEnter" },
     opts = function()
-      return {
-        keymap = {
-          preset = "none",
-          ["<C-space>"] = { "show", "show_documentation", "hide_documentation" },
-          ["<C-e>"] = { "hide", "fallback" },
-          ["<CR>"] = { "accept", "fallback" },
-          ["<Up>"] = { "select_prev", "fallback" },
-          ["<Down>"] = { "select_next", "fallback" },
-          ["<C-b>"] = { "scroll_documentation_up", "fallback" },
-          ["<C-f>"] = { "scroll_documentation_down", "fallback" },
-          ["<C-n>"] = { "select_next", "snippet_forward", "show", "fallback" },
-          ["<C-p>"] = { "select_prev", "snippet_backward", "fallback" },
+      local cmp = require("cmp")
 
-          ["<Tab>"] = {
-            function(cmp)
-              -- 1. Copilot
-              local copilot_keys = vim.fn["copilot#Accept"]()
-              if copilot_keys ~= "" and type(copilot_keys) == "string" then
-                vim.api.nvim_feedkeys(copilot_keys, "n", true)
-                return true
-              end
+      local mapping = {
+        ["<Tab>"] = cmp.mapping(function(fallback)
+          local cur_row, cur_col = unpack(vim.api.nvim_win_get_cursor(0))
+          local current_line = vim.api.nvim_get_current_line()
+          local char_after_cursor = current_line:sub(cur_col + 1, cur_col + 1)
 
-              -- 2. Tabout
-              local cursor = vim.api.nvim_win_get_cursor(0)
-              local cur_col = cursor[2]
-              local current_line = vim.api.nvim_get_current_line()
-              local char_after_cursor = current_line:sub(cur_col + 1, cur_col + 1)
+          local tabout_symbols = {}
+          for _, tabout in ipairs(tabouts) do
+            table.insert(tabout_symbols, tabout.open)
+            table.insert(tabout_symbols, tabout.close)
+          end
 
-              local should_tabout = false
-              for _, tabout in ipairs(tabouts) do
-                if tabout.close == char_after_cursor or tabout.open == char_after_cursor then
-                  should_tabout = true
-                  break
-                end
-              end
+          local suggestion = vim.fn["copilot#GetDisplayedSuggestion"]() or {}
+          if suggestion.text and suggestion.text ~= "" then
+            local copilot_keys = vim.fn["copilot#Accept"]()
+            if copilot_keys ~= "" then
+              vim.api.nvim_feedkeys(copilot_keys, "i", true)
+              return
+            end
+          end
 
-              if should_tabout then
-                vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Right>", true, true, true), "n", true)
-                return true
-              end
-            end,
-            "snippet_forward",
-            "fallback",
-          },
-          ["<S-Tab>"] = {
-            function(cmp)
-              -- Tabout backwards
-              local cursor = vim.api.nvim_win_get_cursor(0)
-              local cur_col = cursor[2]
-              local current_line = vim.api.nvim_get_current_line()
-              local char_before_cursor = current_line:sub(cur_col, cur_col)
+          if vim.tbl_contains(tabout_symbols, char_after_cursor) then
+            vim.api.nvim_win_set_cursor(0, { cur_row, cur_col + 1 })
+          else
+            fallback()
+          end
+        end, { "i", "s" }),
 
-              local should_tabout = false
-              for _, tabout in ipairs(tabouts) do
-                if tabout.close == char_before_cursor or tabout.open == char_before_cursor then
-                  should_tabout = true
-                  break
-                end
-              end
+        ["<S-Tab>"] = cmp.mapping(function(fallback)
+          local cur_row, cur_col = unpack(vim.api.nvim_win_get_cursor(0))
+          local current_line = vim.api.nvim_get_current_line()
+          local char_before_cursor = current_line:sub(cur_col, cur_col)
+          local tabout_symbols = {}
+          for _, tabout in ipairs(tabouts) do
+            table.insert(tabout_symbols, tabout.open)
+            table.insert(tabout_symbols, tabout.close)
+          end
 
-              if should_tabout then
-                vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Left>", true, true, true), "n", true)
-                return true
-              end
-            end,
-            "snippet_backward",
-            "fallback",
-          },
-        },
-        appearance = {
-          use_nvim_cmp_as_default = true,
-          nerd_font_variant = "mono",
-        },
-        sources = {
-          default = { "lsp", "path", "snippets", "buffer", "rg", "emoji", "dotenv", "fonts" },
-          providers = {
-            rg = {
-              name = "rg",
-              module = "blink.compat.source",
-              score_offset = -3,
-            },
-            emoji = {
-              name = "emoji",
-              module = "blink.compat.source",
-              score_offset = -3,
-            },
-            dotenv = {
-              name = "dotenv",
-              module = "blink.compat.source",
-              score_offset = -3,
-            },
-            fonts = {
-              name = "fonts",
-              module = "blink.compat.source",
-              score_offset = -3,
-              opts = { space_filter = "-" },
-            },
-          },
-        },
-        signature = { enabled = true },
+          if vim.tbl_contains(tabout_symbols, char_before_cursor) then
+            vim.api.nvim_win_set_cursor(0, { cur_row, cur_col - 1 })
+          else
+            vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-d>", true, true, true), "n", {})
+          end
+        end, { "i", "s" }),
+
+        ["<C-n>"] = cmp.mapping(function(fallback)
+          if cmp.visible() then
+            cmp.select_next_item()
+            -- You could replace the expand_or_jumpable() calls with expand_or_locally_jumpable()
+            -- this way you will only jump inside the snippet region
+          elseif vim.snippet.active({ direction = 1 }) then
+            vim.schedule(function()
+              vim.snippet.jump(1)
+            end)
+          elseif has_words_before() then
+            cmp.complete()
+          else
+            fallback()
+          end
+        end, { "i", "s" }),
+
+        ["<C-p>"] = cmp.mapping(function(fallback)
+          if cmp.visible() then
+            cmp.select_prev_item()
+          elseif vim.snippet.active({ direction = -1 }) then
+            vim.schedule(function()
+              vim.snippet.jump(-1)
+            end)
+          else
+            vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-d>", true, true, true), "n", {})
+          end
+        end, { "i", "s" }),
+
+        ["<CR>"] = cmp.mapping.confirm({ select = false }),
       }
+
+      return {
+        completion = { completeopt = "menu,menuone,noinsert,noselect" },
+        preselect = cmp.PreselectMode.None,
+        experimental = { ghost_text = false },
+        mapping = cmp.mapping.preset.insert(mapping),
+        window = {
+          completion = {
+            border = "rounded",
+            winhighlight = win_highlight,
+          },
+          documentation = {
+            border = "rounded",
+            winhighlight = win_highlight,
+          },
+        },
+        formatting = {
+          format = function(entry, item)
+            local icons = (util.config and util.config.icons and util.config.icons.kinds) or {}
+            if icons[item.kind] then
+              item.kind = icons[item.kind] .. item.kind
+            end
+            return item
+          end,
+        },
+        sources = cmp.config.sources({
+          { name = "nvim_lsp" },
+          { name = "nvim_lsp_signature_help" },
+          { name = "path" },
+          { name = "dotenv" },
+          { name = "emoji" },
+          { name = "fonts", option = { space_filter = "-" } },
+        }, {
+          { name = "buffer" },
+          { name = "rg", keyword_length = 3 },
+        }),
+        sorting = {
+          priority_weight = 2,
+          comparators = {
+            require("cmp-under-comparator").under,
+            cmp.config.compare.offset,
+            cmp.config.compare.exact,
+            cmp.config.compare.score,
+            cmp.config.compare.recently_used,
+            cmp.config.compare.locality,
+            cmp.config.compare.kind,
+            cmp.config.compare.sort_text,
+            cmp.config.compare.length,
+            cmp.config.compare.order,
+          },
+        },
+      }
+    end,
+    config = function(_, opts)
+      local cmp = require("cmp")
+      cmp.setup(opts)
+      cmp.setup.cmdline("/", {
+        mapping = cmp.mapping.preset.cmdline(),
+        sources = { { name = "buffer" } },
+      })
+      cmp.setup.cmdline(":", {
+        mapping = cmp.mapping.preset.cmdline(),
+        sources = cmp.config.sources({ { name = "path" } }, { { name = "cmdline" } }),
+      })
+      cmp.setup.filetype("dap-repl", {
+        sources = {
+          { name = "dap" },
+        },
+      })
     end,
   },
 }

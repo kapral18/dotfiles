@@ -101,7 +101,7 @@ return {
     end,
   },
   {
-    "saghen/blink.cmp",
+    "hrsh7th/nvim-cmp",
     optional = true,
     opts = function(_, opts)
       opts.sorting = opts.sorting or {}

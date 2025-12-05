@@ -50,34 +50,38 @@
 **Session Workflow:**
 
 **Start:**
-1. Check for upgrades: `bdlocal info --whats-new` (shows last 3 versions with workflow changes).
-2. Run `bdlocal ready --json` to find available work.
-3. If claiming existing bead: ask permission, then `bdlocal update <id> --status in_progress --json`.
-4. If creating new bead: ask permission, then `bdlocal create "title" -t <type> -p <priority> --description="context" --json`.
+1. Check for upgrades: `bdlocal info --whats-new` (shows last 3 versions).
+2. Check hooks: `bdlocal info` (warns if outdated) -> `bdlocal hooks install`.
+3. Run `bdlocal ready --json` to find available work.
+4. If claiming existing bead: ask permission, then `bdlocal update <id> --status in_progress --json`.
+5. If creating new bead: ask permission, then `bdlocal create "title" -t <type> -p <priority> --description="context" --estimate="30m" --json`.
 
 **During work:**
-5. Review bead: `bdlocal show <id> --json`.
-6. On material progress: ask permission, then update notes per Note Curation below.
-7. On discovering new scope: ask permission to create with `--deps discovered-from:<parent-id>`.
+6. Review bead: `bdlocal show <id> --json`.
+7. On material progress: ask permission, then update notes per Note Curation below.
+8. On discovering new scope: ask permission to create with `--deps discovered-from:<parent-id>`.
 
 **End:**
-7. Ask permission to close: `bdlocal close <id> --reason "Completed" --json`.
+9. Ask permission to close: `bdlocal close <id> --reason "Completed" --json`.
+10. **Local Backup:** `bdlocal export -o ~/beads-backups/$(basename $(pwd))-issues.jsonl`
 
 **Commands:**
 
 **Core:**
 - `bdlocal ready --json` — find unblocked work
 - `bdlocal show <id> --json` — view details
-- `bdlocal create "title" -t bug|feature|task|epic|chore -p 0-4 --description="..." --json`
+- `bdlocal create "title" -t bug|feature|task|epic|chore -p 0-4 --description="..." --estimate="1h" --json`
 - `bdlocal create "title" --external-ref "https://github.com/..." --json` — link external issue
 - `bdlocal update <id> --status open|in_progress|blocked|closed --json`
-- `bdlocal update <id> --notes|--description|--design|--acceptance|--title "text" --json`
+- `bdlocal update <id> --notes|--description|--design|--acceptance|--title "text" --estimate "2h" --json`
 - `bdlocal update <id> --status in_progress --add-label <label> --remove-label <label> --json` — update with labels
 - `bdlocal close <id> --reason "..." --json`
 - `bdlocal reopen <id> --reason "..." --json`
 - `bdlocal list --status open --sort priority --json`
 - `bdlocal search "query" --json`
 - `bdlocal stale --days 30 --json`
+- `bdlocal count --json` — count and group issues
+- `bdlocal init --quiet` — initialize in new repo (if needed)
 
 **Batch operations:**
 - `bdlocal update <id1> <id2> --status in_progress --json`
@@ -100,7 +104,17 @@
 3. Update: `bdlocal update <id> --notes "full refreshed snapshot" --json` (replaces entire field)
 4. Verify: Re-run `bdlocal show <id> --json`
 
-**Plain text only.** No Markdown in notes/titles/descriptions. Use simple line breaks and indentation.
+**Planning & Content Strategy:**
+- **Bead Content:** Plain text only. No Markdown. The `notes` field is the living plan.
+- **Scratchpad:** Use `/tmp/` for ephemeral thinking. Never save to project.
+- **Wisdom:** Maintain a single, accumulated source of truth. Append new knowledge to existing wisdom; do not overwrite valid historical knowledge.
+- **History:** We only care about the current state. Do not preserve old plans.
+
+**Dependency Thinking:**
+- **COGNITIVE TRAP:** Temporal language inverts dependencies.
+- Wrong: "Phase 1 blocks Phase 2" (Phase 1 -> Phase 2)
+- Right: "Phase 2 DEPENDS ON Phase 1" (`bdlocal dep add phase2 phase1`)
+- Always ask: "What does this task NEED before it can start?"
 
 **Reference:**
 
@@ -118,6 +132,7 @@
 1. Create: `bdlocal create "wisdom - <topic>" -t task -p 2 --json`
 2. Link: `bdlocal dep add <working-id> <wisdom-id> --type related --json`
 3. Maintain: Update wisdom bead notes with curated takeaways each session.
+4. **Load once:** When working with wisdom/knowledge beads, load entire content into memory once via `bdlocal show <id> --json`. After updating a wisdom bead, explicitly ask user to upload new contents into context. Do not repeatedly grep or query wisdom beads.
 
 **Epic with external link:**
 `bdlocal create "Auth epic" -t epic -p 1 --external-ref "https://github.com/.../issues/123" --json`
@@ -126,9 +141,11 @@
 - Backup: `bdlocal export -o ~/beads-backups/$(basename $(pwd))-issues.jsonl`
 - Compact: `bdlocal compact --days 90 --all`
 - Cleanup: `bdlocal cleanup --force` (deletes closed issues)
+- Clean: `bdlocal clean` (remove temp merge artifacts)
 - Health: `bdlocal doctor --check-health`
 - Daemons: `bdlocal daemons killall`
 - Post-upgrade: `bdlocal daemons killall` (restart daemons with new version)
+- Import Config: `bdlocal config set import.orphan_handling "resurrect"` (prevent data loss)
 
 **Deletion tracking:**
 - `bdlocal deleted` (last 7 days) or `bdlocal deleted --since=30d`
@@ -138,7 +155,7 @@
 - `bdlocal duplicates` / `bdlocal duplicates --auto-merge`
 - `bdlocal merge <source-id> --into <target-id> --json`
 
-**Troubleshooting:** Confirm `BEADS_DIR` is set and `bdlocal version ≥ 0.26.0`.
+**Troubleshooting:** Confirm `BEADS_DIR` is set and `bdlocal version ≥ 0.29.0`.
 
 ### 3.2 GitHub Workflow
 
@@ -219,8 +236,6 @@ Provide context (paths, snippets, precise queries) to maximize accuracy.
 
 ## 5. Tooling
 
-- **File finding:** Always use `fd` (not find, not Glob tool)
-- **Content search:** Always use `rg` (not grep, not Grep tool)
 - **File operations:** Use specialized tools (Read, StrReplace, Write, Delete, LS)
 - **MCP tools:** Prioritize SequentialThinking for complex reasoning
 - **Sandbox:** `/tmp` for experiments and troubleshooting
