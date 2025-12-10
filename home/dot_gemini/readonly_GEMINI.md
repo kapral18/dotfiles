@@ -261,7 +261,7 @@ When debugging or investigating issues, **use creative thinking** to explore mul
 ### 5.2 Web Search Priority
 
 1. **GitHub CLI**: `gh` for GitHub-specific searches
-2. **ddgr**: for broader web searches — never `curl`
+2. **ddgr --noua**: for broader web searches — never `curl`
 3. **Explore**: `gh api` to investigate URLs found via search
 
 ## 6. Code Quality
