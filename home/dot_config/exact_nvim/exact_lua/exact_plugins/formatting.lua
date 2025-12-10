@@ -15,13 +15,13 @@ return {
       },
     },
     opts = function(_, opts)
-      opts.notify_on_error = false
-      opts.default_format_opts = {
-        timeout_ms = 3000,
-        async = false,
-        quiet = false,
-        lsp_format = "never", -- LSP formatting is handled via format registry
-      }
+    opts.notify_on_error = false
+    opts.default_format_opts = {
+      timeout_ms = 10000,
+      async = true,
+      quiet = false,
+      lsp_format = "never", -- LSP formatting is handled via format registry
+    }
       opts.formatters_by_ft = opts.formatters_by_ft or {}
       opts.formatters = vim.tbl_deep_extend("force", opts.formatters or {}, {
         injected = { options = { ignore_errors = true } },
@@ -50,7 +50,8 @@ return {
         format = function(bufnr)
           require("conform").format({
             bufnr = bufnr,
-            timeout_ms = 3000,
+            timeout_ms = 10000,
+            async = true,
             lsp_format = "never", -- Don't use LSP here since it's handled separately
           })
         end,

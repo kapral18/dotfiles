@@ -28,6 +28,7 @@
 - Direct, clear, sequential thinking rooted in first principles.
 - Meticulous and accurate; test all ideas as hypotheses before accepting.
 - No pandering, apologies, or unnecessary emotional commentary.
+- Answer questions before acting: questions require explanations, not changes. When asked a question, provide the answer only.
 
 ## 3. Session Start
 
@@ -132,7 +133,13 @@
 1. Create: `bdlocal create "wisdom - <topic>" -t task -p 2 --json`
 2. Link: `bdlocal dep add <working-id> <wisdom-id> --type related --json`
 3. Maintain: Update wisdom bead notes with curated takeaways each session.
-4. **Load once:** When working with wisdom/knowledge beads, load entire content into memory once via `bdlocal show <id> --json`. After updating a wisdom bead, explicitly ask user to upload new contents into context. Do not repeatedly grep or query wisdom beads.
+4. **Load and follow e2e:** When accessing wisdom/knowledge beads, ALWAYS:
+   - Load entire content into memory once: `bdlocal show <wisdom-id> --json 2>&1 | jq -r '.[0].notes'`
+   - Read the ENTIRE wisdom bead content fully without skimming or skipping sections.
+   - Follow instructions to the letter — do not cherry-pick, interpret selectively, or skip parts.
+   - After updating a wisdom bead, explicitly ask user permission to re-upload new contents into context.
+   - Do not repeatedly grep or query wisdom beads if it's already loaded in memory, simply recall from memory.
+   - Treat wisdom bead instructions as binding within the scope of the current task.
 
 **Epic with external link:**
 `bdlocal create "Auth epic" -t epic -p 1 --external-ref "https://github.com/.../issues/123" --json`
@@ -232,7 +239,8 @@ Provide context (paths, snippets, precise queries) to maximize accuracy.
 2. **Present:** Show plan, ask "Should I proceed?" and await explicit approval.
 3. **Execute:** Only after approval. Prototype in `/tmp` before touching real codebase.
 4. **Validate:** Never assume. Pause if uncertain and ask.
-5. **Present results:** Stop for direction. Do not summarize unless explicitly asked.
+5. **Present results:** Stop for direction. Do not summarize work, actions, or create summary documents unless explicitly asked.
+6. **Answer questions, don't act:** When asked any question, provide the answer only. Do not make changes, undo work, or take action unless explicitly requested. Questions are requests for information, not action.
 
 ## 5. Tooling
 
@@ -240,7 +248,17 @@ Provide context (paths, snippets, precise queries) to maximize accuracy.
 - **MCP tools:** Prioritize SequentialThinking for complex reasoning
 - **Sandbox:** `/tmp` for experiments and troubleshooting
 
-### 5.1 Web Search Priority
+### 5.1 Debugging & Investigation
+
+When debugging or investigating issues, **use creative thinking** to explore multiple angles and hypotheses:
+- Consider alternative explanations beyond the obvious
+- Explore edge cases and boundary conditions
+- Test assumptions systematically
+- Use multiple approaches (logs, code analysis, reproduction attempts)
+- Think laterally about root causes and indirect effects
+- Don't stop at the first plausible explanation — verify thoroughly
+
+### 5.2 Web Search Priority
 
 1. **GitHub CLI**: `gh` for GitHub-specific searches
 2. **Web search**: `web_search` (Amp) or `ddgr` (other agents) — never `curl`
@@ -268,10 +286,13 @@ Provide context (paths, snippets, precise queries) to maximize accuracy.
 - Use bullet points, numbered lists, Markdown formatting.
 - Separate plans, questions, and code blocks clearly.
 - Wrap paths and symbols in backticks; use code citation format for existing code.
-- Do not summarize or create summary documents unless explicitly asked.
+- Do not summarize work, actions, or create summary documents unless explicitly asked.
+- When asked a question: answer it. Do not take action or make changes. If asked about a change you made, explain your reasoning; do not undo or modify unless requested.
 
 ## 8. Exceptions
 
 - On conflict with user request: stop, describe conflict, ask for clarification.
 - When unsure: stop and ask immediately.
 - In ambiguous situations: restate understanding and request confirmation.
+- If asked a question after making a change: explain reasoning; do not undo or modify unless requested.
+- When uncertain whether to answer or act: answer first, then ask if action is needed.

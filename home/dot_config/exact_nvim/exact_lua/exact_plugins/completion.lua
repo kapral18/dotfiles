@@ -43,7 +43,6 @@ return {
       "lukas-reineke/cmp-under-comparator",
       "SergioRibera/cmp-dotenv",
       "hrsh7th/cmp-emoji",
-      "amarakon/nvim-cmp-fonts",
       { "github/copilot.vim", optional = true },
     },
     -- overriding lazyvim native snippets tab behavior
@@ -164,7 +163,6 @@ return {
           { name = "path" },
           { name = "dotenv" },
           { name = "emoji" },
-          { name = "fonts", option = { space_filter = "-" } },
         }, {
           { name = "buffer" },
           { name = "rg", keyword_length = 3 },
