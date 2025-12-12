@@ -635,7 +635,6 @@ brew "derailed/k9s/k9s"
 # https://imagemagick.org/
 brew "imagemagick"
 
-{{ if ne .isWork true -}}
 # SOund eXchange: universal sound sample translator
 # https://sox.sourceforge.net/
 brew "sox"
@@ -644,10 +643,7 @@ brew "sox"
 # https://github.com/yt-dlp/yt-dlp
 brew "yt-dlp"
 
-# Cross-platform audio recording/playback CLI tool with TUI
-# https://github.com/chaosprint/asak
-brew "asak"
-
+{{ if ne .isWork true -}}
 # Console music player
 # https://cmus.github.io/
 brew "cmus"
