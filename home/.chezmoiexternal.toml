@@ -7,7 +7,7 @@ refreshPeriod = "168h"
 type = "archive"
 url = "https://github.com/Hammerspoon/Spoons/archive/refs/heads/master.tar.gz"
 stripComponents = 2
-include = ["*/Spoons/RecursiveBinder.spoon.zip", "*/Spoons/EmmyLua.spoon.zip"]
+include = ["*/Source/RecursiveBinder.spoon/**", "*/Source/EmmyLua.spoon/**"]
 refreshPeriod = "168h"
 exact = true
 

@@ -1,18 +1,24 @@
 Hyper = { "ctrl", "alt", "cmd" }
 
 -- spoons
-hs.loadSpoon("EmmyLua")
+pcall(function() hs.loadSpoon("EmmyLua") end)
 
-hs.loadSpoon("RecursiveBinder")
-spoon.RecursiveBinder.helperFormat.textFont = "Avenir Next Condensed"
-spoon.RecursiveBinder.helperFormat.atScreenEdge = 2
-spoon.RecursiveBinder.helperEntryLengthInChar = 25
+pcall(function()
+  hs.loadSpoon("RecursiveBinder")
+  if spoon.RecursiveBinder then
+    spoon.RecursiveBinder.helperFormat.textFont = "Avenir Next Condensed"
+    spoon.RecursiveBinder.helperFormat.atScreenEdge = 2
+    spoon.RecursiveBinder.helperEntryLengthInChar = 25
+  end
+end)
 
 -- plugins
-require("keymaps")
+local keymapsSetup = require("keymaps")
 require("launch")
 -- require("gridmouse")
 require("window")
+
+if keymapsSetup then keymapsSetup() end
 
 -- config reload
 hs.hotkey.bind(Hyper, "r", function()
