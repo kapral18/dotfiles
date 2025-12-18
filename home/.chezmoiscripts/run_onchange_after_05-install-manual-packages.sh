@@ -28,24 +28,25 @@ install_dmg_app() {
   temp_dir=$(mktemp -d)
   trap "rm -rf $temp_dir" EXIT
 
-  # Get latest release download URL
-  local download_url
-  download_url=$(curl -s "https://api.github.com/repos/$github_repo/releases/latest" |
-    grep -o "\"browser_download_url\": \"[^\"]*$asset_pattern\"" |
-    cut -d'"' -f4 | head -1)
-
-  if [[ -z "$download_url" ]]; then
-    echo "Error: Could not find $app_name DMG download URL" >&2
+  # Download latest release asset using gh CLI (handles auth automatically)
+  if ! gh release download --repo "$github_repo" --pattern "*$asset_pattern" --dir "$temp_dir"; then
+    echo "Error: Could not download $app_name from $github_repo" >&2
     return 1
   fi
 
-  local dmg_file="$temp_dir/$app_name.dmg"
-  curl -L "$download_url" -o "$dmg_file"
+  # Find the DMG file
+  local dmg_file
+  dmg_file=$(find "$temp_dir" -name "*$asset_pattern" | head -1)
+
+  if [[ -z "$dmg_file" ]]; then
+    echo "Error: Could not find downloaded DMG file" >&2
+    return 1
+  fi
 
   # Mount DMG and copy app
   hdiutil attach "$dmg_file" -quiet -nobrowse
 
-  # Find the mounted volume (try multiple patterns)
+  # Find the mounted volume
   local volume=""
   for vol in /Volumes/*; do
     if [[ -d "$vol/$app_bundle" ]]; then
