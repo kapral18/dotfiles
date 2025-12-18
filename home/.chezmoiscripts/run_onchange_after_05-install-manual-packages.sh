@@ -73,6 +73,9 @@ install_dmg_app() {
 # FluidVoice
 install_dmg_app "FluidVoice" "altic-dev/FluidVoice" "FluidVoice.app"
 
+# Squirrel Disk
+install_dmg_app "Squirrel Disk" "adileo/squirreldisk" "SquirrelDisk.app"
+
 # Add more DMG apps here:
 # install_dmg_app "AppName" "owner/repo" "AppName.app"
 
