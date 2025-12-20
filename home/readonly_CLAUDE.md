@@ -43,33 +43,34 @@
 
 **Local Policy:**
 - Run all commands through `bdlocal` (invokes `bd --db "$BEADS_DIR/.beads/beads.db" --no-auto-flush --no-auto-import --no-daemon).
-- `$BEADS_DIR` is auto-derived from git remote. Confirm: `echo $BEADS_DIR`.
-- Data lives in `$BEADS_DIR/.beads/`; never commit.
-- **Local-only mode**: No git sync, no cross-machine propagation. Use `bdlocal export` for backups.
+- `$BEADS_DIR` is the current workspace root. Confirm: `echo $BEADS_DIR`.
+- Data lives in `$BEADS_DIR/.beads/`.
+- **Git-free Beads mode**: We do not use beads' internal git sync or remotes. All beads data management is local-only. Use `bdlocal export` for backups. The project itself uses a standard Git/GitHub workflow (see section 3.2).
 - Installation managed externally (Brewfile). Do not install/upgrade `bd` in session.
 
 **Session Workflow:**
 
 **Start:**
 1. Check for upgrades: `bdlocal info --whats-new` (shows last 3 versions).
-2. Check hooks: `bdlocal info` (warns if outdated) -> `bdlocal hooks install`.
-3. Run `bdlocal ready --json` to find available work.
+2. Run `bdlocal ready --json` to find available work.
+3. Run `bdlocal blocked --json` to see what is waiting on other tasks.
 4. If claiming existing bead: ask permission, then `bdlocal update <id> --status in_progress --json`.
 5. If creating new bead: ask permission, then `bdlocal create "title" -t <type> -p <priority> --description="context" --estimate="30m" --json`.
 
 **During work:**
-6. Review bead: `bdlocal show <id> --json`.
-7. On material progress: ask permission, then update notes per Note Curation below.
-8. On discovering new scope: ask permission to create with `--deps discovered-from:<parent-id>`.
+7. Review bead: `bdlocal show <id> --json`.
+8. On material progress: ask permission, then update notes per Note Curation below.
+9. On discovering new scope: ask permission to create with `--deps discovered-from:<parent-id>`.
 
 **End:**
-9. Ask permission to close: `bdlocal close <id> --reason "Completed" --json`.
-10. **Local Backup:** `bdlocal export -o ~/beads-backups/$(basename $(pwd))-issues.jsonl`
+10. Ask permission to close: `bdlocal close <id> --reason "Completed" --json`.
+11. **Local Backup:** `bdlocal export -o ~/beads-backups/$(basename $(pwd))-issues.jsonl`
 
 **Commands:**
 
 **Core:**
 - `bdlocal ready --json` — find unblocked work
+- `bdlocal blocked --json` — find blocked work
 - `bdlocal show <id> --json` — view details
 - `bdlocal create "title" -t bug|feature|task|epic|chore -p 0-4 --description="..." --estimate="1h" --json`
 - `bdlocal create "title" --external-ref "https://github.com/..." --json` — link external issue
@@ -82,7 +83,8 @@
 - `bdlocal search "query" --json`
 - `bdlocal stale --days 30 --json`
 - `bdlocal count --json` — count and group issues
-- `bdlocal init --quiet` — initialize in new repo (if needed)
+- `bdlocal init --quiet --skip-hooks --skip-merge-driver` — initialize in new repo (ensure git-free)
+- `bdlocal deleted --json` — view deletion audit trail
 
 **Batch operations:**
 - `bdlocal update <id1> <id2> --status in_progress --json`
@@ -146,16 +148,19 @@
 
 **Maintenance:**
 - Backup: `bdlocal export -o ~/beads-backups/$(basename $(pwd))-issues.jsonl`
+- Manual Import: `bdlocal import -i "$BEADS_DIR/.beads/issues.jsonl"` (load from JSONL)
+- Manual Export: `bdlocal export -o "$BEADS_DIR/.beads/issues.jsonl"` (flush to JSONL)
 - Compact: `bdlocal compact --days 90 --all`
 - Cleanup: `bdlocal cleanup --force` (deletes closed issues)
 - Clean: `bdlocal clean` (remove temp merge artifacts)
 - Health: `bdlocal doctor --check-health`
+- Duplicates: `bdlocal duplicates --auto-merge --json`
 - Daemons: `bdlocal daemons killall`
 - Post-upgrade: `bdlocal daemons killall` (restart daemons with new version)
 - Import Config: `bdlocal config set import.orphan_handling "resurrect"` (prevent data loss)
 
 **Deletion tracking:**
-- `bdlocal deleted` (last 7 days) or `bdlocal deleted --since=30d`
+- `bdlocal deleted --json` (last 7 days) or `bdlocal deleted --since=30d --json`
 - `bdlocal delete <id>`
 
 **Duplicates:**

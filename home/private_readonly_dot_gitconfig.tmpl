@@ -163,11 +163,14 @@
   rebase = true
   ff = only
 
+[remote]
+  pushDefault = origin
+
 [push]
-  # to avoid sitution where an existing branch with the same name is on upstream but not
-  # on the origin so when you push it goes into upstream. This is a safety measure
-  # to avoid that
-  default = upstream
+  # "current" pushes the local branch to a branch of the same name on the remote.
+  # Combined with remote.pushDefault = origin, this allows pulling from 'upstream'
+  # while always pushing to 'origin' (Triangular Workflow).
+  default = current
   followTags = true
   autoSetupRemote = true
 

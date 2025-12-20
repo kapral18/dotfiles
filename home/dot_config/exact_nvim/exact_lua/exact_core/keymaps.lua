@@ -284,24 +284,7 @@ map("n", "<leader>yP", function()
   vim.notify(("Copied %s to clipboard"):format(cur_file), vim.log.levels.INFO, { title = "Absolute Path Copied" })
 end, { desc = "Copy current file absolute path" })
 
-map("n", "<leader>ad", function()
-  local file_path = vim.api.nvim_buf_get_name(0)
-  local diagnostics = vim.diagnostic.get(0)
-
-  if #diagnostics == 0 then
-    vim.notify("No diagnostics found", vim.log.levels.INFO)
-    return
-  end
-
-  local diag_lines = {}
-  for _, d in ipairs(diagnostics) do
-    local severity = vim.diagnostic.severity[d.severity] or "UNKNOWN"
-    table.insert(diag_lines, string.format("Line %d: [%s] %s", d.lnum + 1, severity, d.message))
-  end
-
-  local message =
-    string.format("Here are the diagnostics for file `%s`:\n\n```\n%s\n```", file_path, table.concat(diag_lines, "\n"))
-
+local function send_to_right_tmux_pane(message, success_notify)
   local tmp_file = os.tmpname()
   local f = io.open(tmp_file, "w")
   if f then
@@ -330,5 +313,50 @@ map("n", "<leader>ad", function()
   vim.fn.system(string.format("tmux paste-buffer -t %s", target_pane))
 
   os.remove(tmp_file)
-  vim.notify("Diagnostics sent to right pane", vim.log.levels.INFO)
+  if success_notify then
+    vim.notify(success_notify, vim.log.levels.INFO)
+  end
+end
+
+map("n", "<leader>ad", function()
+  local file_path = vim.api.nvim_buf_get_name(0)
+  local diagnostics = vim.diagnostic.get(0)
+
+  if #diagnostics == 0 then
+    vim.notify("No diagnostics found", vim.log.levels.INFO)
+    return
+  end
+
+  local diag_lines = {}
+  for _, d in ipairs(diagnostics) do
+    local severity = vim.diagnostic.severity[d.severity] or "UNKNOWN"
+    table.insert(diag_lines, string.format("Line %d: [%s] %s", d.lnum + 1, severity, d.message))
+  end
+
+  local message =
+    string.format("Here are the diagnostics for file `%s`:\n\n```\n%s\n```", file_path, table.concat(diag_lines, "\n"))
+
+  send_to_right_tmux_pane(message, "Diagnostics sent to right pane")
 end, { desc = "Send diagnostics to right Tmux pane" })
+
+map("n", "<leader>al", function()
+  local file_path = vim.api.nvim_buf_get_name(0)
+  local line_num = vim.api.nvim_win_get_cursor(0)[1]
+  local line_content = vim.api.nvim_get_current_line()
+
+  local message = string.format("File: `%s`:%d\n\n```\n%s\n```", file_path, line_num, line_content)
+
+  send_to_right_tmux_pane(message, "Current line sent to right pane")
+end, { desc = "Send current line to right Tmux pane" })
+
+map("v", "<leader>av", function()
+  local file_path = vim.api.nvim_buf_get_name(0)
+  -- Yank selection to v register
+  vim.cmd('noau normal! "vy')
+  local selection = vim.fn.getreg("v")
+  local line_num = vim.fn.getpos("'<")[2]
+
+  local message = string.format("File: `%s`:%d\n\n```\n%s\n```", file_path, line_num, selection)
+
+  send_to_right_tmux_pane(message, "Selection sent to right pane")
+end, { desc = "Send selection to right Tmux pane" })

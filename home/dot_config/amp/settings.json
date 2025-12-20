@@ -10,5 +10,6 @@
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
     }
   },
-  "amp.experimental.planMode": true
+  "amp.experimental.planMode": true,
+  "amp.notifications.enabled": false
 }
