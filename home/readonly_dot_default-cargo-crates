@@ -37,3 +37,10 @@ xleak
 # Description: A terminal-based file tree diff viewer with flexible diff tool integration
 # URL: https://github.com/wtnqk/ftdv
 ftdv
+# Description: TUI for browsing lobste.rs
+# URL: https://github.com/Rolv-Apneseth/omaro
+omaro
+# Description: A terminal-based EPUB Books reader
+# URL: https://github.com/bugzmanov/bookokrat
+bookokrat
+

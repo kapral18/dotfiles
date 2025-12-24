@@ -142,6 +142,10 @@ brew "ncdu"
 # https://yazi-rs.github.io/
 brew "yazi"
 
+# Hackable, minimal, fast TUI file explorer
+# https://github.com/sayanarijit/xplr
+brew "xplr"
+
 # Smarter cd command
 # https://github.com/ajeetdsouza/zoxide
 brew "zoxide"
@@ -316,6 +320,15 @@ brew "knqyf263/sou/sou"
 # https://github.com/saidutt46/domain-check
 tap "saidutt46/domain-check"
 brew "saidutt46/domain-check/domain-check"
+
+# Cross-platform network monitoring terminal UI tool
+# https://github.com/domcyrus/rustnet
+tap "domcyrus/rustnet"
+brew "domcyrus/rustnet/rustnet"
+
+# Prettier way to inspect network connections
+# https://github.com/karol-broda/snitch
+brew "snitch"
 
 # Analyze layers and wasted space in container images
 # https://github.com/wagoodman/dive
@@ -872,6 +885,17 @@ brew "slides"
 # https://github.com/piqoni/cast-text
 tap "piqoni/cast-text"
 brew "cast-text"
+{{ end -}}
+
+# ==============================================================================
+# MEDIA & ENTERTAINMENT
+# Tools for browsing and managing media content
+# ==============================================================================
+
+{{ if ne .isWork true -}}
+# Browse, inspect, and launch movie torrents from your terminal
+# https://github.com/eyeblech/cinecli
+brew "cinecli"
 {{ end -}}
 
 # ==============================================================================

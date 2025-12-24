@@ -30,6 +30,12 @@ fi
 install_gem() {
     local gem=$1
 
+    # Check if gem is already installed
+    if gem list --local | grep -q "^${gem} "; then
+        echo "Gem $gem is already installed, skipping"
+        return 0
+    fi
+
     echo "Installing gem: $gem"
     if ! gem install "$gem"; then
         echo "Error: Failed to install gem $gem"
