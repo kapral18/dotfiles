@@ -1,7 +1,9 @@
-Hyper = { "ctrl", "alt", "cmd" }
+-- Load EmmyLua first for type annotations
+pcall(function()
+  hs.loadSpoon("EmmyLua")
+end)
 
--- spoons
-pcall(function() hs.loadSpoon("EmmyLua") end)
+Hyper = { "ctrl", "alt", "cmd" }
 
 -- require("gridmouse")
 require("window")

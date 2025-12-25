@@ -18,12 +18,14 @@ local owner_fmt = {
     opts.fzf_opts = vim.tbl_extend("keep", opts.fzf_opts or {}, {
       ["--tabstop"] = 1,
       ["--read0"] = true, -- for null-separated multiline entries
+      ["--wrap"] = true,
     })
 
     -- For version 2: disable horizontal scrolling for better multiline display
     if tonumber(version) == 2 then
       opts.fzf_opts = vim.tbl_extend("keep", opts.fzf_opts or {}, {
-        ["--ellipsis"] = " ",
+        -- NOTE: avoid `--ellipsis=" "` (causes cursor offset/flicker in prompt)
+        ["--ellipsis"] = "··",
         ["--no-hscroll"] = true,
       })
     end

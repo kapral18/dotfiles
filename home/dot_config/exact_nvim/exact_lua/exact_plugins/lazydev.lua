@@ -22,6 +22,7 @@ return {
             "clear",
           },
         },
+        { path = vim.fn.expand("~/.hammerspoon/Spoons/EmmyLua.spoon/annotations"), words = { "hs" } },
       })
     end,
   },

@@ -1,4 +1,5 @@
 local util = require("util")
+local fzf_util = util.fzf
 
 local function get_fzf_fn(cmd, opts)
   opts = opts or {}
@@ -11,11 +12,26 @@ local rg_opts = util.fzf_rg_opts
 local rg_opts_unrestricted = util.fzf_rg_opts_unrestricted
 local fd_opts_unrestricted = util.fzf_fd_opts_unrestricted
 
-local function get_telescope_fn(cmd, opts)
-  opts = opts or {}
-  return function()
-    require("telescope.builtin")[cmd](opts)
-  end
+local function changed_files_fzf_live_opts(git_root, desc)
+  return {
+    cwd = git_root,
+    exec_empty_query = true,
+    query = "",
+    desc = desc,
+    actions = fzf_util.grep_entry_actions(),
+    fzf_opts = {
+      ["--read0"] = true,
+      -- NOTE: avoid `--ellipsis=" "` (causes cursor offset/flicker in prompt)
+      -- while still explicitly setting ellipsis for consistent wrapping UX.
+      ["--ellipsis"] = "··",
+      ["--no-hscroll"] = true,
+      ["--wrap"] = true,
+      ["--delimiter"] = "\t",
+      ["--with-nth"] = "1",
+      ["--preview"] = fzf_util.fzf_preview_follow_cmd("{2}", "{3}"),
+    },
+    multiline = 2,
+  }
 end
 
 return {
@@ -68,6 +84,59 @@ return {
           require("fzf-lua").live_grep({ rg_opts = rg_opts, cwd = vim.uv.cwd() })
         end,
         desc = "Live Grep",
+      },
+      {
+        "<leader>se",
+        function()
+          local git_root = util.get_git_root()
+          if not git_root then
+            vim.notify("Not a git repo; falling back to Live Grep", vim.log.levels.WARN)
+            require("fzf-lua").live_grep({ rg_opts = rg_opts, cwd = vim.uv.cwd() })
+            return
+          end
+
+          local ropts = fzf_util.rg_opts_without_color(rg_opts)
+          require("fzf-lua").fzf_live(
+            "(git diff --name-only --diff-filter=d HEAD;"
+              .. " git diff --cached --name-only --diff-filter=d HEAD;"
+              .. " git ls-files --others --exclude-standard)"
+              .. " | sort -u | tr '\\n' '\\0' | xargs -0 rg "
+              .. ropts
+              .. " --with-filename -e <query>"
+              .. fzf_util.rg_to_fzf_multiline_tab_fields_pipe(),
+            ---@diagnostic disable-next-line: missing-fields
+            changed_files_fzf_live_opts(git_root, "Grep in Changed Files (Status)")
+          )
+        end,
+        desc = "Grep in Changed Files (Status)",
+      },
+      {
+        "<leader>sE",
+        function()
+          local git_root = util.get_git_root()
+          if not git_root then
+            vim.notify("Not a git repo; falling back to Live Grep", vim.log.levels.WARN)
+            require("fzf-lua").live_grep({ rg_opts = rg_opts, cwd = vim.uv.cwd() })
+            return
+          end
+
+          local ropts = fzf_util.rg_opts_without_color(rg_opts)
+          require("fzf-lua").fzf_live(
+            "MAIN_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@');"
+              .. " MAIN_BRANCH=${MAIN_BRANCH:-main};"
+              .. ' BASE=$(git merge-base HEAD "origin/$MAIN_BRANCH" 2>/dev/null'
+              .. ' || git merge-base HEAD "$MAIN_BRANCH" 2>/dev/null'
+              .. ' || echo "HEAD^");'
+              .. ' git diff --name-only --diff-filter=d "$BASE"..HEAD'
+              .. " | rg -v '^\\s*$' | sort -u | tr '\\n' '\\0' | xargs -0 rg "
+              .. ropts
+              .. " --with-filename -e <query>"
+              .. fzf_util.rg_to_fzf_multiline_tab_fields_pipe(),
+            ---@diagnostic disable-next-line: missing-fields
+            changed_files_fzf_live_opts(git_root, "Grep in Changed Files (Branch)")
+          )
+        end,
+        desc = "Grep in Changed Files (Branch)",
       },
       {
         "<leader>sG",

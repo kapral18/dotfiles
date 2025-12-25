@@ -15,13 +15,13 @@ return {
       },
     },
     opts = function(_, opts)
-    opts.notify_on_error = false
-    opts.default_format_opts = {
-      timeout_ms = 10000,
-      async = true,
-      quiet = false,
-      lsp_format = "never", -- LSP formatting is handled via format registry
-    }
+      opts.notify_on_error = false
+      opts.default_format_opts = {
+        timeout_ms = 10000,
+        async = true,
+        quiet = false,
+        lsp_format = "never", -- LSP formatting is handled via format registry
+      }
       opts.formatters_by_ft = opts.formatters_by_ft or {}
       opts.formatters = vim.tbl_deep_extend("force", opts.formatters or {}, {
         injected = { options = { ignore_errors = true } },
@@ -34,7 +34,6 @@ return {
       -- Register conform as a formatter with higher priority than LSP
       require("util").format.register({
         name = "conform.nvim",
-        primary = true,
         priority = 100, -- Higher than LSP (10), lower than eslint (200)
         sources = function(bufnr)
           local conform = require("conform")

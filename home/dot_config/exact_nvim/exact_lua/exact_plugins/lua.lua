@@ -21,6 +21,10 @@ return {
     opts = {
       servers = {
         lua_ls = {
+          capabilities = {
+            documentFormattingProvider = false,
+            documentRangeFormattingProvider = false,
+          },
           settings = {
             Lua = {
               workspace = {
@@ -58,6 +62,33 @@ return {
         lua = { "stylua" },
       })
       return opts
+    end,
+    init = function()
+      vim.api.nvim_create_autocmd("FileType", {
+        pattern = "lua",
+        once = true,
+        callback = function()
+          require("util").format.register({
+            name = "lua.stylua",
+            primary = true,
+            priority = 150, -- Higher than default conform (100)
+            sources = function(bufnr)
+              if vim.bo[bufnr].filetype == "lua" then
+                return { "stylua" }
+              end
+              return {}
+            end,
+            format = function(bufnr)
+              require("conform").format({
+                bufnr = bufnr,
+                timeout_ms = 10000,
+                async = false,
+                lsp_format = "never",
+              })
+            end,
+          })
+        end,
+      })
     end,
   },
 }

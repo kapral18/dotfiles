@@ -1,65 +1,45 @@
 local resizeFull = function()
   local win = hs.window.focusedWindow()
-  local f = win:frame()
+  if not win then return end
   local screen = win:screen()
   local max = screen:frame()
 
-  f.x = 0
-  f.y = 0
-  f.w = max.w
-  f.h = max.h
-  win:setFrame(f, 0)
+  win:setFrame(hs.geometry(0, 0, max.w, max.h))
 end
 
 local resizeLeft = function()
   local win = hs.window.focusedWindow()
-  local f = win:frame()
+  if not win then return end
   local screen = win:screen()
   local max = screen:frame()
 
-  f.x = 0
-  f.y = 0
-  f.w = max.w / 2
-  f.h = max.h
-  win:setFrame(f, 0)
+  win:setFrame(hs.geometry(0, 0, max.w / 2, max.h))
 end
 
 local resizeRight = function()
   local win = hs.window.focusedWindow()
-  local f = win:frame()
+  if not win then return end
   local screen = win:screen()
   local max = screen:frame()
 
-  f.x = max.x + (max.w / 2)
-  f.y = max.y
-  f.w = max.w / 2
-  f.h = max.h
-  win:setFrame(f, 0)
+  win:setFrame(hs.geometry(max.x + (max.w / 2), max.y, max.w / 2, max.h))
 end
 
 local resizeTop = function()
   local win = hs.window.focusedWindow()
-  local f = win:frame()
+  if not win then return end
   local screen = win:screen()
   local max = screen:frame()
 
-  f.x = 0
-  f.y = 0
-  f.w = max.w
-  f.h = max.h / 2
-  win:setFrame(f, 0)
+  win:setFrame(hs.geometry(0, 0, max.w, max.h / 2))
 end
 
 local resizeBottom = function()
   local win = hs.window.focusedWindow()
-  local f = win:frame()
+  if not win then return end
   local screen = win:screen()
   local max = screen:frame()
-  f.x = 0
-  f.y = max.h / 2
-  f.w = max.w
-  f.h = max.h / 2
-  win:setFrame(f, 0)
+  win:setFrame(hs.geometry(0, max.h / 2, max.w, max.h / 2))
 end
 
 hs.hotkey.bind(Hyper, "h", resizeLeft)
