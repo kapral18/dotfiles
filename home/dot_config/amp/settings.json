@@ -1,29 +1,6 @@
 {
   "amp.dangerouslyAllowAll": true,
-  "amp.mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest"]
-    },
-    "sequential-thinking": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
-    },
-    "scsi-main": {
-      "command": "bash",
-      "args": [
-        "-lc",
-        "docker run --pull=always --rm -i -e ELASTICSEARCH_CLOUD_ID=\"$(pass scsi/simian/cloud_id)\" -e ELASTICSEARCH_API_KEY=\"$(pass scsi/simian/api_key)\" -e ELASTICSEARCH_INDEX=kibana-repo simianhacker/semantic-code-search-mcp-server node dist/src/mcp_server/bin.js stdio"
-      ]
-    },
-    "scsi-local": {
-      "command": "bash",
-      "args": [
-        "-lc",
-        "docker run --pull=always --rm -i -e ELASTICSEARCH_CLOUD_ID=\"$(pass scsi/k18/cloud_id)\" -e ELASTICSEARCH_API_KEY=\"$(pass scsi/k18/api_key)\" -e ELASTICSEARCH_INDEX=scsi-repo simianhacker/semantic-code-search-mcp-server node dist/src/mcp_server/bin.js stdio"
-      ]
-    }
-  },
+  "amp.mcpServers": {},
   "amp.experimental.planMode": true,
   "amp.notifications.enabled": false
 }
