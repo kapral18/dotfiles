@@ -18,7 +18,6 @@ return {
       opts.notify_on_error = false
       opts.default_format_opts = {
         timeout_ms = 10000,
-        async = true,
         quiet = false,
         lsp_format = "never", -- LSP formatting is handled via format registry
       }
@@ -49,9 +48,7 @@ return {
         format = function(bufnr)
           require("conform").format({
             bufnr = bufnr,
-            timeout_ms = 10000,
-            async = true,
-            lsp_format = "never", -- Don't use LSP here since it's handled separately
+            async = false,
           })
         end,
       })

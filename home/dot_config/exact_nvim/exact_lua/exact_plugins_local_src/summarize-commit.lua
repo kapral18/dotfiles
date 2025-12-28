@@ -147,7 +147,7 @@ local providers = {
     },
     payload = function(diff)
       return {
-        model = (os.getenv("OPENROUTER_MODEL") or "openrouter/minimax/minimax-m2.1"),
+        model = (os.getenv("OPENROUTER_MODEL") or "minimax/minimax-m2.1"),
         messages = {
           { role = "system", content = SYSTEM_MESSAGE },
           { role = "user", content = PROMPT .. diff },
