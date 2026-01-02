@@ -241,7 +241,7 @@ Provide context (paths, snippets, precise queries) to maximize accuracy.
 ## 4. Workflow
 
 1. **Plan:** Draft inline plan. Do **not** save to filesystem.
-2. **Present:** Show plan, ask "Should I proceed?" and await explicit approval.
+2. **Present:** Show plan, ask "Should I proceed?" and await explicit approval. (Skip this step if `SKIP_CONFIRM` is set)
 3. **Execute:** Only after approval. Prototype in `/tmp` before touching real codebase.
 4. **Validate:** Never assume. Pause if uncertain and ask.
 5. **Present results:** Stop for direction. Do not summarize work, actions, or create summary documents unless explicitly asked.
