@@ -1,295 +1,432 @@
 ![image](./banner.png)
 
-# 🚀 kapral18/dotfiles: An Operator's Manual
+# 🚀 kapral18/dotfiles
 
-This is not your regular collection of settings; it's a cohesive, highly-opinionated,
-and continuously evolving development ecosystem, meticulously crafted for macOS.
-It's a testament to the power of a keyboard-centric workflow, intelligent automation,
-and deep tool integration.
+Personal macOS development environment managed with Chezmoi. Keyboard-centric workflow with extensive automation and tool integration.
 
-## 🤖 Beads: Agent Memory System
+## 📋 Table of Contents
 
-This setup integrates [Beads](https://github.com/steveyegge/beads), a graph-based issue tracker that provides long-term memory for coding agents. Beads enables agents to track complex, multi-step tasks with dependencies, ensuring no work is lost and allowing seamless continuation across sessions.
+- [Key Features](#-key-features)
+- [Installation](#%EF%B8%8F-installation)
+- [Chezmoi & ASDF](#%EF%B8%8F-chezmoi--asdf)
+- [Shell Environment](#-shell-fish)
+- [Git & 1Password](#-git--1password)
+- [Terminal Tools](#-terminals--multiplexers)
+- [AI & LLM Integration](#-ai--llm-tools)
+- [Neovim](#-neovim)
+- [macOS Automation](#%EF%B8%8F-macos-automation)
 
-Agents in this environment will automatically use `bd` commands for planning and tracking, creating a shared, git-synced database of issues across machines.
+## ✨ Key Features
+
+| Feature                | Description                                      |
+| ---------------------- | ------------------------------------------------ |
+| 🤖 **Agent Memory**    | Beads integration for AI task tracking           |
+| 🔐 **Secure Identity** | 1Password SSH agent with work/personal switching |
+| 🌳 **Git Worktrees**   | Worktree management with PR integration          |
+| 💎 **Neovim**          | Custom LSP, AI commits, refactoring tools        |
+| 🐚 **Fish Shell**      | 30+ custom productivity functions                |
+| 📦 **Brewfile**        | 300+ formulas and casks                          |
+| ⚙️ **ASDF**            | Version manager with automatic switching         |
+
+---
 
 ## 🛠️ Installation
 
-1.  **Install 1Password:** The entire setup hinges on the 1Password CLI and
-    its SSH agent for managing secrets and identities.
-2.  **Initialize Chezmoi:** This single command will bootstrap the entire
-    environment.
+### Prerequisites
 
-        ```bash sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply kapral18
-        ```
+1. **Install 1Password**: Required for SSH agent and secret management.
+
+### Bootstrap
+
+```bash
+sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply kapral18
+```
+
+### What Happens?
+
+1. Chezmoi installs and initializes from this repository
+2. Prompts for:
+   - Primary email and SSH public key
+   - Secondary credentials (if personal machine)
+   - Work machine confirmation
+   - PGP cache TTL preference
+3. Applies all dotfiles, scripts, and configs
+4. Installs Homebrew packages
+5. Configures language version managers (cargo, go, npm, uv)
+6. Applies macOS system preferences
 
 ---
 
 ## 🏛️ Chezmoi & ASDF
 
-This setup's power comes from the deep integration between Chezmoi for
-management and ASDF for runtime versioning.
+### Chezmoi
 
-### Chezmoi: The Conductor
+Configuration management with templates and scripts.
 
-Chezmoi is more than a dotfile symlinker; it's the brain of the operation,
-using templates and scripts to build a configuration tailored to the specific
-machine.
+**Key Concepts:**
 
-- **Conditional Logic (`.isWork`)**: Many files are templates (`*.tmpl`). They
-  use a `{{ .isWork }}` variable to conditionally include or exclude
-  configurations. This is how the setup seamlessly manages different Git
-  identities, SSH keys, and even installed ASDF plugins for personal vs. work
-  machines.
-- **External Tools & Scripts**: Chezmoi manages a `~/bin` directory of custom
-  scripts. The `executable_` prefix in a filename tells Chezmoi to set the
-  executable bit, making these scripts instantly available in the `PATH`.
-- **Automated Setup Scripts**: The `f-apply-app-icons` script is a perfect
-  example. It's a shell script template that uses `yq` to parse a YAML
-  definition (`app_icons/icon_mapping.yaml`) and the `fileicon` utility to apply
-  beautiful custom icons to applications in `/Applications`. This entire
-  customization is applied automatically with `chezmoi apply`.
+- **Conditional Logic (`.isWork`)**: Templates use `{{ .isWork }}` to handle:
+  - Different Git identities and SSH keys
+  - Work-specific ASDF plugins
+  - Separate Homebrew cask installations
+  - Different PGP cache timeouts
 
-### ASDF: The Universal Version Manager
+- **Executable Scripts**: Files with `executable_` prefix go to `~/bin`:
 
-ASDF is used to manage versions of nearly every tool and language, ensuring
-reproducible environments.
+  ```
+  home/exact_bin/executable_f-wtree → ~/bin/f-wtree
+  ```
 
-- **Declarative Plugin Management (`asdf_plugins.tmpl`)**: The list of ASDF
-  plugins is not static; it's a Chezmoi template. This allows for conditionally
-  installing plugins (like `lua`) only in a personal environment.
-- **Declarative Versioning (`.tool-versions.tmpl`)**: The `.tool-versions`
-  file, the source of truth for what version of a tool to use, is also a
-  template. This allows for different tool versions between environments if
-  needed.
-- **Automatic Version Switching**: The shell configuration files
-  (`config.fish`, `.zshrc`, etc.) are set up to initialize ASDF. Thanks to
-  ASDF's shims and the `.tool-versions` file, simply `cd`-ing into a project
-  directory will automatically make the correct versions of Node.js, Ruby, Go,
-  etc., available in your shell. No manual switching is ever required.
+- **Automated Hooks**: Scripts in `.chezmoiscripts/` run automatically:
+  - `run_once_before_*` - One-time setup (e.g., Xcode installation)
+  - `run_once_after_*` - One-time post-install (e.g., Homebrew setup)
+  - `run_onchange_after_*` - Run when template changes (e.g., package updates)
+
+### ASDF
+
+Version manager for languages and tools.
+
+**How it works:**
+
+1. **Declarative Plugins** (`asdf_plugins.tmpl`): Conditionally install plugins
+
+   ```
+   nodejs
+   ruby
+   {{ if ne .isWork true }}lua{{ end }}
+   ```
+
+2. **Version Pinning** (`.tool-versions.tmpl`): Pin tool versions
+
+   ```
+   nodejs 20.11.0
+   ruby 3.2.2
+   ```
+
+3. **Automatic Switching**: `cd` into a project and the right versions activate via ASDF shims.
 
 ---
 
-## 🐚 The King of Shells: Fish
+## 🐚 Shell: Fish
 
-The primary shell is **Fish**, but Zsh and Bash are also fully configured for
-consistency.
+Fish is the primary shell, with Zsh and Bash also configured.
 
-### 🌳 Advanced Git Worktree Management (worktree helpers)
+### Git Worktree Management
 
-This is the crown jewel of the shell environment, turning Git's powerful but
-clunky `worktree` feature into a seamless, everyday tool.
+Git worktree helpers for easier branch management.
 
-- **`f-wtree add <branch> [base_branch]`**: An incredibly smart function that
-  handles numerous scenarios:
-  - Creates a worktree from an existing local branch.
-  - Creates a worktree from a remote branch on `origin` or `upstream`.
-  - Handles branches from forks (e.g., `f-wtree add
-some-user/feature-branch`).
-  - Creates a new branch from `HEAD` if the branch doesn't exist anywhere.
-  - Organizes worktrees by creating nested directories for branches with
-    slashes (e.g., `feature/new-ui`).
+#### `f-wtree add <branch> [base_branch]`
 
-- **`f-wtree prs <pr_numbers_or_search>`**: A massive time-saver. Type a PR
-  number or search term, and it will:
-  1. Use `fzf` to let you select the exact PR with a rich preview.
-  2. Fetch PR details from the GitHub API.
-  3. Add the contributor's fork as a temporary remote.
-  4. Create a worktree for the PR's branch.
+Create worktrees from:
 
-- **`f-wtree remove`**: An `fzf`-powered interactive worktrees remover that:
-  1. Removes each selected worktree directory.
-  2. Deletes the associated local branch.
-  3. **Cleans up the remote**: If the worktree was from a fork, it removes
-     the temporary remote if no other worktrees are using it.
-  4. **Cleans up the filesystem**: Removes any empty parent directories.
-  5. Removes the path from `zoxide`'s database.
+- Existing local branches
+- Remote branches (`origin`, `upstream`)
+- Fork branches (`f-wtree add user/branch`)
+- New branches from `HEAD`
+- Nested directories for `feature/new-ui` → `../feature/new-ui/`
 
-- **Tmux Integration**: The worktree functions are tightly integrated with
-  Tmux. A new, named Tmux session is created when a worktree is added and killed
-  when it's removed, making context-switching effortless.
+#### `f-wtree prs <pr_numbers_or_search>`
 
-### 🤖 Custom Functions & Utilities
+PR reviewer workflow:
 
-The repository includes an extensive collection of custom scripts and utilities
-designed to enhance productivity and automate common development tasks. These
-scripts are located in `~/bin` (managed by chezmoi) and provide powerful
-functionality:
+1. Search by PR number or keywords
+2. Select with `fzf` (shows diff, description, CI status)
+3. Fetch PR metadata via GitHub API
+4. Add contributor's fork temporarily
+5. Create worktree for PR branch
+6. Launch named tmux session
 
-- **`f-add-patch-to-prs`**: Adds patch files to existing PRs for easy updates
-- **`f-wtree`**: Enhanced git worktree management with automatic branch creation and remote handling
-- **`f-appid`**: Retrieves application identifiers for macOS apps for automation
-- **`f-apply-app-icons`**: Applies custom icons to applications based on YAML mapping definitions
-- **`f-bat-preview`**: Uses bat for file preview with syntax highlighting in fuzzy finders
-- **`f-check-backport-progress`**: A powerful script for repository maintainers.
-  It uses the `gh` CLI to find PRs with specific labels and checks if they have
-  been correctly backported to release branches.
-- **`f-cp-files-for-llm`**: Recursively finds all text files in a directory,
-  concatenates their contents (with file headers), and copies it to the
-  clipboard, ready for pasting into an LLM.
-- **`f-dumputi`**: Custom utility functions for various development tasks
-- **`f-get-risky-tests`**: Identifies potentially flaky or risky tests in test suites
-- **`f-gh-subissues-create`**: Creates GitHub sub-issues for detailed task breakdown
-- **`f-grepo`**: Enhanced git repository operations and navigation utilities
-- **`f-history-sync`**: Synchronizes fish shell history via 1Password for seamless
-  history across devices
-- **`f-list-prs`**: Lists GitHub PRs with advanced filtering and search capabilities
-- **`f-pdf-diff`**: A visual diff tool for PDFs. It uses ImageMagick to render
-  two PDFs as images and composites them, highlighting all differences in red.
-- **`f-fuzzy-brew-search`**: Interactive search through Homebrew package descriptions with fzf selection
-- **`f-search-gh-topic`**: Searches GitHub repositories by topic with fuzzy filtering
-- **`f-tmux-lowfi`**: A clever script that controls a `lowfi` music player
-  running inside a dedicated, detached tmux session. You can play, pause, and
-  skip tracks from any terminal window without interrupting your workflow.
-- **`f-to-gif`**: Converts videos to optimized GIFs with quality and size controls
-- **`f-vid-ipad`**: Processes videos for iPad optimization and format conversion
-- \*\*GitHub PR Management (`f-disable-auto-merge`, `f-enable-auto-merge`):
-  Functions to bulk-disable/enable auto-merge on PRs, useful for managing
-  release branches.
+#### `f-wtree remove`
 
-All scripts are designed with consistent error handling, self-documenting help
-text, and follow established naming conventions. Fish shell completions are
-provided for all scripts for enhanced usability.
+Interactive cleanup:
+
+- Removes worktree directories
+- Deletes local branches
+- Cleans up fork remotes
+- Removes empty parent directories
+- Purges paths from zoxide
+- Kills tmux sessions
+
+### Custom Functions
+
+30+ scripts in `~/bin`:
+
+| Script                      | Purpose                                   |
+| --------------------------- | ----------------------------------------- |
+| `f-add-patch-to-prs`        | Add `.patch` files to PRs                 |
+| `f-appid`                   | Get macOS bundle identifiers              |
+| `f-apply-app-icons`         | Apply custom app icons from YAML          |
+| `f-check-backport-progress` | Check backport status                     |
+| `f-cp-files-for-llm`        | Concatenate project files for LLM context |
+| `f-fuzzy-brew-search`       | Interactive Homebrew search               |
+| `f-gh-subissues-create`     | Create GitHub sub-issues                  |
+| `f-history-sync`            | Sync fish history via 1Password           |
+| `f-list-prs`                | Advanced PR filtering                     |
+| `f-pdf-diff`                | Visual PDF comparison                     |
+| `f-tmux-lowfi`              | Control `lowfi` music player              |
+| `f-to-gif` / `f-vid-ipad`   | Video processing                          |
+
+All scripts include error handling, `--help` text, and Fish completions.
 
 ---
 
 ## 🔐 Git & 1Password
 
-The Git configuration is a masterclass in efficiency, safety, and identity
-management.
+### 1Password SSH Identity
 
-### The 1Password SSH Identity Trick (`.gitconfig.tmpl`)
+Manage separate Git identities (personal/work) automatically.
 
-This is a game-changing solution for managing multiple Git identities (e.g.,
-personal and work) on the same machine securely and automatically.
+#### How It Works
 
-> **How it works:**
->
-> 1. The global `.gitconfig` sets an `sshCommand` override: `sshCommand = ssh
--o IdentitiesOnly=yes -o IdentityFile="~/.ssh/primary_public_key.pub"`
-> 2. Crucially, `IdentityFile` points to the **public key**. 1Password's SSH
->    agent intercepts this and uses the corresponding private key from the
->    vault for signing.
-> 3. A conditional include, `[includeIf "gitdir:~/work/"]`, loads a separate
->    `.gitconfig` for work projects.
-> 4. The work-specific `.gitconfig` overrides the `sshCommand` again, this
->    time pointing to the **work public key**.
->
-> **The result:** Git automatically uses the correct SSH key for signing and
-> authentication based on the directory you're in, all without exposing
-> private keys on disk or juggling complex `~/.ssh/config` files. It's secure,
-> seamless, and fully automated.
+1. Global config sets `sshCommand = ssh -o IdentityFile="~/.ssh/primary_public_key.pub"`
+2. Points to **public key** (safe on disk)
+3. 1Password SSH agent fetches matching **private key** from vault
+4. Conditional include `[includeIf "gitdir:~/work/"]` loads work config
+5. Work config points to `work_public_key.pub` for different private key
 
-### Git Aliases & Smarter Defaults
+Result: Automatic identity switching based on directory, no private keys on disk.
 
-- **Powerful Aliases**:
-  - `git wtgrab <worktree_path>`: "Grabs" uncommitted changes from another
-    worktree by creating a diff, resetting the source worktree, and applying the
-    diff to your current one.
-  - `git squash <n>`: An interactive one-liner to squash the last `n` commits,
-    pre-filling the new commit message with the old ones.
-  - `git u`: Your daily driver. A single command to fetch, pull with rebase,
-    and purge old, merged branches.
-  - `git hide`/`unhide <file>`: Uses `update-index --assume-unchanged` to tell
-    Git to ignore changes to a tracked file, perfect for local config overrides.
-- **Smarter Defaults**:
-  - **`rerere` (reuse recorded resolution) is enabled** to make resolving
-    repeated merge conflicts automatic.
-  - **`rebase.autoSquash = true`** makes `git rebase -i` automatically handle
-    `fixup!` and `squash!` commits.
-  - **`rebase.updateRefs = true`** makes rebasing stacked branches much safer.
-  - The superior `histogram` diff algorithm and `zdiff3` conflict style are
-    defaults.
-  - **`feature.manyFiles = true`**: Opts into a newer, faster index format for
-    repositories with a large number of files.
+### Git Configuration
+
+**Aliases:**
+
+- `git wtgrab <worktree>` - Transfer uncommitted changes between worktrees
+- `git squash <n>` - Interactive squash
+- `git u` - Fetch, rebase, and prune
+- `git hide` / `unhide` - Ignore local changes to tracked files
+
+**Defaults:**
+
+- `rerere` - Auto-resolve repeated conflicts
+- `rebase.autoSquash = true`
+- `rebase.updateRefs = true`
+- `diff.algorithm = histogram`
+- `merge.conflictStyle = zdiff3`
+- `feature.manyFiles = true`
+
+### Git Tools
+
+**gh-dash**: Terminal UI for GitHub PRs and issues
+
+- Separate views for work/personal repos
+- Custom filters and layouts
+- Config: `home/dot_config/exact_gh-dash/config.yml`
+
+**TUIs:**
+
+- **gitui** - Fast keyboard-driven UI
+- **lazygit** - Simple terminal interface
+- **tig** - History viewer
 
 ---
 
 ## 💻 Terminals & Multiplexers
 
-### Tmux: The Supercharged Multiplexer (`tmux.conf`)
+### Tmux
 
-The Tmux setup is designed for a seamless, keyboard-driven experience that
-integrates perfectly with Neovim.
+**Prefix**: `C-Space`
 
-- **Ergonomic Prefix**: The prefix is remapped from `C-b` to the more
-  accessible `C-Space`.
-- **Plugin-Powered Workflow**:
-  - **`tpm`**: The plugin manager itself.
-  - **`tmux-resurrect` & `tmux-continuum`**: Your session is automatically
-    saved every 15 minutes and restored on startup. Never lose your layout
-    again.
-  - **`tmux-pain-control`**: Provides easy, repeatable keybindings for
-    resizing and swapping panes.
-  - **`tmux-sessionist`**: A powerful session manager for quickly switching
-    between projects.
-  - **`tmux-fzf-url`**: A killer feature. Press a key to scan your entire
-    scrollback buffer for URLs and open one in your browser using `fzf`.
-  - **`tmux-theme-catppuccin`**: Provides the beautiful, consistent theme.
-- **Neovim Passthrough**: Keybindings like `Ctrl-Shift-h/j/k/l` are configured
-  to be passed _through_ Tmux directly to the running application, allowing for
-  seamless window resizing and navigation inside Neovim without conflicting with
-  Tmux's own keys.
-- **Vi Mode**: Pane navigation and copy mode use Vi keybindings for
-  consistency with Neovim.
+**Plugins:**
 
----
+| Plugin                              | Function                       |
+| ----------------------------------- | ------------------------------ |
+| `tpm`                               | Plugin manager                 |
+| `tmux-resurrect` + `tmux-continuum` | Auto-save sessions every 15min |
+| `tmux-pain-control`                 | Pane resize/swap               |
+| `tmux-sessionist`                   | Session switching              |
+| `tmux-fzf-url`                      | Extract URLs from scrollback   |
+| `tmux-theme-catppuccin`             | Theme                          |
 
-## 💎 Neovim: The IDE as a Force Multiplier
+**Neovim Integration:**
 
-This is a heavily customized setup, transformed into a bespoke IDE.
+- `Ctrl-Shift-h/j/k/l` - Passthrough to Neovim
+- Vi mode for navigation and copy
 
-### ✨ UI & User Experience
+### Ghostty
 
-- **The Dynamic Winbar (`options.lua`):** A custom-built marvel that displays
-  the truncated path of the current file relative to the project root, ensuring
-  you always know where you are without cluttering the bufferline.
-- **The Supercharged Tab Key (`tab-behavior.lua`):** A context-aware
-  powerhouse that accepts Copilot suggestions, jumps through snippets, and tabs
-  out of brackets/quotes.
-- **Minimalist Code View:** Long, noisy `className` attributes are concealed
-  to a single `…` character.
-- **Custom Keymaps (`keymaps.lua`):** `jk` is mapped to `<ESC>`, `<A-j/k>`
-  jumps 10 lines, and `<C-A-j/k>` moves lines up and down.
+Default terminal emulator (GPU-accelerated).
 
-### 🧠 Development & LSP Power-ups
+Config (`home/dot_config/exact_ghostty/config`):
 
-- **Interactive Filtered LSP (`fzf-filters-lsp.lua`):** A killer feature! When
-  searching for definitions or references, you get an interactive prompt to
-  filter out irrelevant files (tests, `node_modules`) and content (imports). It
-  even displays the file's **CODEOWNERS** in the results!
-- **Advanced Jest Runner (`run-jest-in-split.lua`):** A complete testing suite
-  that can run the specific `describe`/`it` block your cursor is in, handle
-  parameterized tests, run in debug mode, and update snapshots.
-- **AI-Powered Commits (`summarize-commit.lua`):** Generate a conventional
-  commit message from your staged changes using Ollama, Cloudflare AI, or OpenRouter with a
-  single keypress.
-- **TypeScript Refactoring (`ts-move-exports.lua`):** A custom tool to select
-  a block of exported code, move it to a new file, and automatically update all
-  import paths across the project.
-- **Source/Test Switching (`switch-src-test.lua`):** A smart `<C-^>` mapping
-  to instantly jump between a source file and its corresponding test file.
+- Hidden titlebar, no shadows
+- JetBrainsMono Nerd Font 14pt
+- Copy-on-select
+- Shell integration
 
-### 🛠️ Project & File Utilities
+### Fish LSP
 
-- **`LargeFiles` Command:** Finds files in your project that exceed a certain
-  line count.
-- **`CpFromDownloads` Command:** A Neo-tree helper to quickly construct a `cp`
-  command from your `~/Downloads` folder.
-- **`owner-code-search.lua`**: Custom commands to search _only_ within files
-  owned by a specific team, as defined in `CODEOWNERS`.
-- **`show-file-owner.lua`**: A quick command to display the owner of the
-  current file.
+Language server for Fish scripts:
+
+- Completions
+- Syntax checking
+- Go-to-definition
+- Diagnostics
 
 ---
 
-## 🖥️ macOS Automation: Hammerspoon & Beyond
+## 🤖 AI & LLM Tools
 
-- **Hammerspoon for Total Control:**
-  - **`gridmouse.lua`**: A complete, Vi-like mouse control system. Activate it
-    and use `h/j/k/l` to move the mouse, or enter **Grid Mode** to jump the
-    cursor to precise screen locations with just a few keystrokes.
-  - **Window Management (`window.lua`):** Simple, fast hotkeys (`Hyper +
-h/j/k/l/m`) to snap windows to half/full screen positions.
-- **Custom App Icons (`f-apply-app-icons`):** A script that applies beautiful
-  custom icons to your applications for a clean, consistent look.
+AI tools for CLI and editor. Credentials in 1Password, configs in repo.
+
+| Tool           | Purpose                 | Config                                       |
+| -------------- | ----------------------- | -------------------------------------------- |
+| **Crush**      | Terminal AI assistant   | Charmbracelet tap                            |
+| **Ollama**     | Local LLM runtime       | `run_onchange_after_05-add-ollama-models.sh` |
+| **OpenEncode** | CLI AI agent            | Homebrew                                     |
+| **Amp**        | AI coding tool with MCP | `dot_config/amp/settings.json`               |
+| **Cursor**     | AI code editor (work)   | `.isWork` conditional                        |
+
+**Ollama Models**:
+
+- `gpt-oss`
+- `deepseek-r1`
+
+**Neovim Integration**:
+
+- AI commit message generation
+- Backends: Ollama, Cloudflare AI, OpenRouter
+
+---
+
+## 💎 Neovim
+
+Custom IDE setup.
+
+### UI & Keymaps
+
+| Feature            | Description                                            |
+| ------------------ | ------------------------------------------------------ |
+| **Dynamic Winbar** | Project-relative file paths                            |
+| **Smart Tab**      | Copilot → snippets → bracket jumping                   |
+| **Minimal View**   | Conceal long `className` to `…`                        |
+| **Keymaps**        | `jk`→ESC, `Alt-j/k` jump 10, `Ctrl-Alt-j/k` move lines |
+
+### Development Tools
+
+#### Interactive Filtered LSP (`fzf-filters-lsp.lua`)
+
+Filter when searching definitions/references:
+
+- Exclude tests, `node_modules`
+- Exclude import statements
+- Show CODEOWNERS info
+
+#### Jest Runner (`run-jest-in-split.lua`)
+
+- Run `describe`/`it` block under cursor
+- Handle parameterized tests
+- Debug mode
+- Update snapshots
+
+#### AI Commits (`summarize-commit.lua`)
+
+Generate commit messages from staged changes:
+
+- Backends: Ollama, Cloudflare AI, OpenRouter
+- Conventional commits format
+
+#### TypeScript Refactoring (`ts-move-exports.lua`)
+
+Move code to new files:
+
+1. Select exported code
+2. Specify target file
+3. Auto-update import paths
+
+#### Source/Test Toggle (`switch-src-test.lua`)
+
+Jump between source and test files with `Ctrl-^`.
+
+### Utilities
+
+- `LargeFiles` - Find files by line count
+- `CpFromDownloads` - Copy from Downloads
+- `owner-code-search` - Search by CODEOWNERS
+- `show-file-owner` - Display file owner
+
+---
+
+## 🖥️ macOS Automation
+
+### Hammerspoon
+
+Lua-based automation.
+
+#### Grid Mouse (`gridmouse.lua`)
+
+Keyboard mouse control:
+
+- `h/j/k/l` to move cursor
+- Grid mode for precise positioning
+
+#### Window Management (`window.lua`)
+
+Hyper key + movement:
+
+- `Hyper + h` - Snap left
+- `Hyper + l` - Snap right
+- `Hyper + k` - Snap top
+- `Hyper + j` - Snap bottom
+- `Hyper + m` - Maximize
+
+### Custom App Icons
+
+Script: `f-apply-app-icons`
+
+1. YAML mapping (`app_icons/icon_mapping.yaml`)
+2. Uses `fileicon` to apply icons
+3. Assets in `app_icons/assets/`
+
+---
+
+## 📦 Package Management
+
+| System       | File                                      | Purpose                      |
+| ------------ | ----------------------------------------- | ---------------------------- |
+| **Homebrew** | `readonly_dot_Brewfile.tmpl`              | macOS apps, CLI tools, fonts |
+| **Cargo**    | `readonly_dot_default-cargo-crates`       | Rust packages                |
+| **Go**       | `readonly_dot_default-golang-pkgs`        | Go tools                     |
+| **Gems**     | `readonly_dot_default-gems`               | Ruby packages                |
+| **npm**      | `readonly_dot_default-npm-pkgs`           | Node.js globals              |
+| **uv**       | `readonly_dot_default-uv-tools.tmpl`      | Python tools                 |
+| **eget**     | `readonly_dot_default-eget-packages.tmpl` | GitHub releases              |
+
+Install scripts run via chezmoi hooks when files change.
+
+---
+
+## 🔄 Workflow
+
+### Typical Day
+
+1. Tmux sessions auto-restore
+2. `f-wtree add feature/new-ui` - new worktree + tmux session
+3. `f-wtree prs 12345` - checkout PR
+4. Jest runner in Neovim
+5. AI-generated commit
+6. `f-wtree remove` - cleanup
+
+### Update Packages
+
+```bash
+brew update && brew upgrade
+chezmoi apply
+```
+
+### Sync to New Machine
+
+```bash
+sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply kapral18
+```
+
+---
+
+## 📚 Further Reading
+
+- Chezmoi configs: `home/`
+- Neovim: `home/dot_config/exact_nvim/`
+- Fish: `home/dot_config/fish/`
+- Scripts: `home/exact_bin/`
+- Brewfile: `home/readonly_dot_Brewfile.tmpl`
+
+See also: `AGENTS.md` for AI agent instructions
