@@ -26,6 +26,7 @@ Description:
 Notes:
   - The default branch (main/master) cannot be removed
   - Worktrees in detached HEAD state will be skipped
+  - Set F_WTREE_PRUNE=0 to disable automatic `git worktree prune`
 EOF
 }
 
@@ -42,6 +43,8 @@ while [ $# -gt 0 ]; do
       ;;
   esac
 done
+
+_f_wtree_prune_stale_worktrees
 
 mapfile -t worktrees < <(git worktree list -v | fzf --no-preview --ansi --multi)
 

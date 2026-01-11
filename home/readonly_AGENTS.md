@@ -76,13 +76,14 @@
 - `bdlocal create "title" --external-ref "https://github.com/..." --json` — link external issue
 - `bdlocal update <id> --status open|in_progress|blocked|closed --json`
 - `bdlocal update <id> --notes|--description|--design|--acceptance|--title "text" --estimate "2h" --json`
-- `bdlocal update <id> --status in_progress --add-label <label> --remove-label <label> --json` — update with labels
+- `bdlocal update <id> --status in_progress --add-label <label>[,<label>...] --remove-label <label>[,<label>...] --json` — update with labels (repeatable; accepts comma-separated lists)
 - `bdlocal close <id> --reason "..." --json`
 - `bdlocal reopen <id> --reason "..." --json`
 - `bdlocal list --status open --sort priority --json`
 - `bdlocal search "query" --json`
 - `bdlocal stale --days 30 --json`
 - `bdlocal count --json` — count and group issues
+- `bdlocal status --no-activity --json` — database overview (skip git activity parsing)
 - `bdlocal init --quiet --skip-hooks --skip-merge-driver` — initialize in new repo (ensure git-free)
 - `bdlocal deleted --json` — view deletion audit trail
 

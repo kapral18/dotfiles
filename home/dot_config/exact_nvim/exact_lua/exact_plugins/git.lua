@@ -82,9 +82,7 @@ return {
 
           -- previews
           map("n", "<leader>ghP", gs.preview_hunk_inline, "Preview Hunk Inline")
-          map("n", "<leader>ghp", function()
-            vim.cmd("Gitsigns preview_hunk")
-          end, "Preview Hunk Popup")
+          map("n", "<leader>ghp", gs.preview_hunk, "Preview Hunk Popup")
 
           map("n", "<leader>ghd", gs.diffthis, "Diff This")
           map("n", "<leader>ghD", function()

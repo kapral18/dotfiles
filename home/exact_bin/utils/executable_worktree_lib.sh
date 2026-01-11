@@ -1,6 +1,31 @@
 #!/usr/bin/env bash
 # Worktree helper functions library
 
+_f_wtree_prune_stale_worktrees() {
+  if [ "${__F_WTREE_PRUNE_RAN:-0}" -eq 1 ]; then
+    return
+  fi
+  __F_WTREE_PRUNE_RAN=1
+
+  case "${F_WTREE_PRUNE:-1}" in
+    0|false|no|off)
+      return
+      ;;
+  esac
+
+  local dry_run_output
+  dry_run_output="$(git worktree prune --dry-run 2>&1 || true)"
+  if [ -z "${dry_run_output//[[:space:]]/}" ]; then
+    return
+  fi
+
+  if [ "${QUIET_MODE:-0}" -eq 0 ]; then
+    echo "Pruning stale git worktree metadata..."
+  fi
+
+  git worktree prune 2>&1 || true
+}
+
 # Print created worktree message
 _print_created_worktree_message() {
   if [ "${QUIET_MODE:-0}" -eq 1 ]; then

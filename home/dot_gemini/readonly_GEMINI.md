@@ -21,7 +21,7 @@
 - **Purpose:** Enforceable playbook for interactive CLI workflows.
 - **Scope:** All requests unless explicitly overridden.
 
-**Instruction Hierarchy:** user > workspace > this SOP > developer > system. On conflict, stop and ask user.
+**Instruction Hierarchy:** user > workspace > this SOP > developer > system. Check closest AGENTS.md first (project-local), then workspace-home. Use most specific rule; inherit others. On conflict, stop and ask user.
 
 ## 2. Core Principles
 
@@ -76,13 +76,14 @@
 - `bdlocal create "title" --external-ref "https://github.com/..." --json` — link external issue
 - `bdlocal update <id> --status open|in_progress|blocked|closed --json`
 - `bdlocal update <id> --notes|--description|--design|--acceptance|--title "text" --estimate "2h" --json`
-- `bdlocal update <id> --status in_progress --add-label <label> --remove-label <label> --json` — update with labels
+- `bdlocal update <id> --status in_progress --add-label <label>[,<label>...] --remove-label <label>[,<label>...] --json` — update with labels (repeatable; accepts comma-separated lists)
 - `bdlocal close <id> --reason "..." --json`
 - `bdlocal reopen <id> --reason "..." --json`
 - `bdlocal list --status open --sort priority --json`
 - `bdlocal search "query" --json`
 - `bdlocal stale --days 30 --json`
 - `bdlocal count --json` — count and group issues
+- `bdlocal status --no-activity --json` — database overview (skip git activity parsing)
 - `bdlocal init --quiet --skip-hooks --skip-merge-driver` — initialize in new repo (ensure git-free)
 - `bdlocal deleted --json` — view deletion audit trail
 
@@ -241,7 +242,7 @@ Provide context (paths, snippets, precise queries) to maximize accuracy.
 ## 4. Workflow
 
 1. **Plan:** Draft inline plan. Do **not** save to filesystem.
-2. **Present:** Show plan, ask "Should I proceed?" and await explicit approval.
+2. **Present:** Show plan, ask "Should I proceed?" and await explicit approval. (Skip this step if `SKIP_CONFIRM` is set)
 3. **Execute:** Only after approval. Prototype in `/tmp` before touching real codebase.
 4. **Validate:** Never assume. Pause if uncertain and ask.
 5. **Present results:** Stop for direction. Do not summarize work, actions, or create summary documents unless explicitly asked.
@@ -266,7 +267,7 @@ When debugging or investigating issues, **use creative thinking** to explore mul
 ### 5.2 Web Search Priority
 
 1. **GitHub CLI**: `gh` for GitHub-specific searches
-2. **Web search**: `exa_web_search_exa` (preferred). If unavailable: `ddgr --noua` — never `curl`
+2. **Web search**: `exa_web_search_exa` (preferred). If unavailable: `web_search` (Amp) or `ddgr --noua` — never `curl`
 3. **Explore**: `gh api` to investigate URLs found via search
 
 ## 6. Code Quality

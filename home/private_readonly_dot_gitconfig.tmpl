@@ -191,6 +191,13 @@
   # we don't want to use insteadOf because it breaks brew installs from brew taps
   pushInsteadOf = https://gitlab.com
 
+[credential "https://github.com"]
+	helper =
+	helper = !gh auth git-credential
+[credential "https://gist.github.com"]
+	helper =
+	helper = !gh auth git-credential
+
 [user]
   name = Karen Grigoryan
   email = {{ .primaryEmail }}

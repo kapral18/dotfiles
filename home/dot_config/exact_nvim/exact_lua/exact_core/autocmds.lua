@@ -37,25 +37,6 @@ autocmd("VimResized", {
   end,
 })
 
-local last_loc = augroup("k18_last_loc", { clear = true })
-
-autocmd("BufReadPost", {
-  group = last_loc,
-  callback = function(event)
-    local exclude = { "gitcommit" }
-    local buf = event.buf
-    if vim.tbl_contains(exclude, vim.bo[buf].filetype) or vim.b[buf].k18_last_loc then
-      return
-    end
-    vim.b[buf].k18_last_loc = true
-    local mark = vim.api.nvim_buf_get_mark(buf, '"')
-    local lcount = vim.api.nvim_buf_line_count(buf)
-    if mark[1] > 0 and mark[1] <= lcount then
-      pcall(vim.api.nvim_win_set_cursor, 0, mark)
-    end
-  end,
-})
-
 local close_with_q_patterns = {
   "PlenaryTestPopup",
   "checkhealth",
@@ -135,15 +116,6 @@ autocmd({ "BufLeave", "BufWinLeave" }, {
     pcall(vim.cmd, "silent! mkview")
   end,
   desc = "Remember folds on buffer exit",
-})
-
-autocmd("BufReadPost", {
-  group = augroup("k18_folds", { clear = false }),
-  pattern = "*",
-  callback = function()
-    pcall(vim.cmd, "silent! loadview")
-  end,
-  desc = "Restore folds on buffer enter",
 })
 
 autocmd("FileType", {

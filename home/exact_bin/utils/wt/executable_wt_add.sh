@@ -22,6 +22,9 @@ Options:
   -q, --quiet       Suppress informational output
   -h, --help        Show this help message
 
+Environment:
+  F_WTREE_PRUNE=0   Disable automatic `git worktree prune`
+
 Examples:
   f-wtree add feature-branch
   f-wtree add origin/feature-branch
@@ -116,6 +119,7 @@ parent_dir=$(_get_worktree_parent_dir)
 parent_name=$(basename "$parent_dir")
 
 QUIET_MODE="$quiet_mode"
+_f_wtree_prune_stale_worktrees
 
 if git worktree list | grep -qw "$branch_name"; then
   info "Branch '$branch_name' already exists as a worktree."
