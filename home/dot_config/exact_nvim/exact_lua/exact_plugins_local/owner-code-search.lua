@@ -1,4 +1,4 @@
-local util = require("util")
+local fs_util = require("util.fs")
 local ocs = require("plugins_local_src.owner-code-search")
 
 -- Setup the plugin with any custom config
@@ -73,7 +73,7 @@ end, {
   desc = "Clear CODEOWNERS cache",
 })
 return {
-  dir = util.get_plugin_src_dir(),
+  dir = fs_util.get_plugin_src_dir(),
   name = "owner-code-search",
   keys = {
     {

@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ "$#" -gt 0 ]; then
+  exec gh pr view -w "$@"
+fi
+
+base=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+up=$(git rev-parse --abbrev-ref --symbolic-full-name "@{upstream}" 2>/dev/null) || {
+  echo "No upstream configured" >&2
+  exit 1
+}
+
+remote=${up%%/*}
+head=${up#*/}
+remote_url=$(git remote get-url "$remote" 2>/dev/null) || {
+  echo "Unable to read remote URL for $remote" >&2
+  exit 1
+}
+
+owner=$(printf "%s" "$remote_url" | sed -E 's#^git@github.com:##; s#^https://github.com/##; s#^ssh://git@github.com/##; s#/.*##')
+
+command -v jq >/dev/null 2>&1 || {
+  echo "jq is required" >&2
+  exit 1
+}
+
+pr=$(
+  gh pr list \
+    -R "$base" \
+    --search "head:$head" \
+    --state open \
+    --json number,headRepositoryOwner \
+    | jq -r --arg owner "$owner" '.[] | select(.headRepositoryOwner.login == $owner) | .number' \
+    | head -n 1
+)
+
+if [ -z "$pr" ] || [ "$pr" = "null" ]; then
+  echo "No PR found for $owner:$head on $base" >&2
+  exit 1
+fi
+
+exec gh pr view -R "$base" -w "$pr"

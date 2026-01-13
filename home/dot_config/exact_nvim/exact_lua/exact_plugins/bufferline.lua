@@ -1,5 +1,3 @@
-local util = require("util")
-
 return {
   "akinsho/bufferline.nvim",
   lazy = false,
@@ -77,19 +75,7 @@ return {
     },
   },
   init = function()
-    if util.has("bufferline.nvim") then
-      vim.keymap.set(
-        "n",
-        "<A-h>",
-        util.has("bufferline.nvim") and "<cmd>BufferLineCyclePrev<CR>" or ":bprevious<CR>",
-        { noremap = true, silent = true, desc = "Previous buffer" }
-      )
-      vim.keymap.set(
-        "n",
-        "<A-l>",
-        util.has("bufferline.nvim") and "<cmd>BufferLineCycleNext<CR>" or ":bnext<CR>",
-        { noremap = true, silent = true, desc = "Next buffer" }
-      )
-    end
+    vim.keymap.set("n", "<A-h>", "<cmd>BufferLineCyclePrev<CR>", { noremap = true, silent = true, desc = "Previous buffer" })
+    vim.keymap.set("n", "<A-l>", "<cmd>BufferLineCycleNext<CR>", { noremap = true, silent = true, desc = "Next buffer" })
   end,
 }

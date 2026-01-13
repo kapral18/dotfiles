@@ -15,6 +15,15 @@ local select_keymaps = {
   ["ij"] = "@jsx_attr",
 }
 
+local function set_default(option, value)
+  local current = vim.api.nvim_get_option_value(option, { scope = "local" })
+  if current == nil or current == "" or current == 0 then
+    vim.opt_local[option] = value
+    return true
+  end
+  return false
+end
+
 return {
   {
     "nvim-treesitter/nvim-treesitter",
@@ -27,8 +36,8 @@ return {
         vim.notify("Please restart Neovim and run `:TSUpdate`", vim.log.levels.ERROR)
         return
       end
-      local util = require("util")
-      util.treesitter.build(function()
+      local ts_util = require("util.treesitter")
+      ts_util.build(function()
         TS.update(nil, { summary = true })
       end)
     end,
@@ -59,7 +68,7 @@ return {
     end,
     config = function(_, opts)
       local TS = require("nvim-treesitter")
-      local util = require("util")
+      local ts_util = require("util.treesitter")
 
       if not TS.get_installed then
         vim.notify("Please update nvim-treesitter", vim.log.levels.ERROR)
@@ -73,17 +82,17 @@ return {
 
       -- Setup treesitter
       TS.setup(opts)
-      util.treesitter.get_installed(true)
+      ts_util.get_installed(true)
 
       -- Install missing parsers
       local install = vim.tbl_filter(function(lang)
-        return not util.treesitter.have(lang)
+        return not ts_util.have(lang)
       end, opts.ensure_installed or {})
 
       if #install > 0 then
-        util.treesitter.build(function()
+        ts_util.build(function()
           TS.install(install, { summary = true }):await(function()
-            util.treesitter.get_installed(true)
+            ts_util.get_installed(true)
           end)
         end)
       end
@@ -95,7 +104,7 @@ return {
           local ft = ev.match
           local lang = vim.treesitter.language.get_lang(ev.match)
 
-          if not util.treesitter.have(ft) then
+          if not ts_util.have(ft) then
             return
           end
 
@@ -103,7 +112,7 @@ return {
             local f = opts[feat] or {}
             return f.enable ~= false
               and not (type(f.disable) == "table" and vim.tbl_contains(f.disable, lang))
-              and util.treesitter.have(ft, query)
+              and ts_util.have(ft, query)
           end
 
           -- Highlighting
@@ -113,13 +122,13 @@ return {
 
           -- Indentation
           if enabled("indent", "indents") then
-            util.set_default("indentexpr", "v:lua.require'util.treesitter'.indentexpr()")
+            set_default("indentexpr", "v:lua.require'util.treesitter'.indentexpr()")
           end
 
           -- Folds
           if enabled("folds", "folds") then
-            if util.set_default("foldmethod", "expr") then
-              util.set_default("foldexpr", "v:lua.require'util.treesitter'.foldexpr()")
+            if set_default("foldmethod", "expr") then
+              set_default("foldexpr", "v:lua.require'util.treesitter'.foldexpr()")
             end
           end
         end,

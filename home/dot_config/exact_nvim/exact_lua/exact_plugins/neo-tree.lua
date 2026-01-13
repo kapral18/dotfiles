@@ -1,7 +1,7 @@
 ---@module "lazy"
 ---@module "yazi"
 
-local util = require("util")
+local fzf_util = require("util.fzf")
 
 local winopts = {
   large = {
@@ -20,7 +20,7 @@ local function safe_open(action)
   return function(state)
     local node = state.tree:get_node()
     local full_path = node:get_id()
-    util.open_image(full_path, function()
+    fzf_util.open_image(full_path, function()
       require("neo-tree.sources.filesystem.commands")[action](state)
     end)
   end
@@ -30,7 +30,7 @@ local function copy_relative_path_to_clipboard(state)
   local node = state.tree:get_node()
   local full_path = node:get_id()
   local relative_path = vim.fn.fnamemodify(full_path, ":~:.")
-  util.copy_to_clipboard(relative_path)
+  fzf_util.copy_to_clipboard(relative_path)
 end
 
 ---@type LazySpec

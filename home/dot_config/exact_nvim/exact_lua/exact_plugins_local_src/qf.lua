@@ -1,4 +1,5 @@
-local util = require("util")
+local fs_util = require("util.fs")
+local fzf_util = require("util.fzf")
 
 local function extract_path_from_text(text)
   local trimmed = text:match("^%s*(.-)%s*$") or ""
@@ -17,20 +18,20 @@ end
 
 local function extract_path_from_item(item, base_dir)
   if item.filename and item.filename ~= "" then
-    return util.normalize_path(item.filename, base_dir)
+    return fs_util.normalize_path(item.filename, base_dir)
   end
 
   if item.bufnr and item.bufnr > 0 and vim.api.nvim_buf_is_valid(item.bufnr) then
     local name = vim.api.nvim_buf_get_name(item.bufnr)
     if name and name ~= "" then
-      return util.normalize_path(name, base_dir)
+      return fs_util.normalize_path(name, base_dir)
     end
   end
 
   if item.text and item.text ~= "" then
     local candidate = extract_path_from_text(item.text)
     if candidate then
-      return util.normalize_path(candidate, base_dir)
+      return fs_util.normalize_path(candidate, base_dir)
     end
   end
 
@@ -106,7 +107,7 @@ function M.copy_qf_paths_to_clipboard()
   end
 
   if #paths > 0 then
-    util.copy_to_clipboard(table.concat(paths, "\n"))
+    fzf_util.copy_to_clipboard(table.concat(paths, "\n"))
   end
 end
 

@@ -1,4 +1,5 @@
-local util = require("util")
+local format = require("util.format")
+local lsp = require("util.lsp")
 
 return {
   {
@@ -19,14 +20,14 @@ return {
       },
       setup = {
         eslint = function()
-          local formatter = util.lsp.formatter({
+          local formatter = lsp.formatter({
             name = "eslint: lsp",
             primary = false,
             priority = 200,
             filter = "eslint",
           })
 
-          util.format.register(formatter)
+          format.register(formatter)
         end,
       },
     },

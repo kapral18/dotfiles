@@ -1,4 +1,4 @@
-local util = require("util")
+local fs_util = require("util.fs")
 
 local M = {}
 
@@ -63,7 +63,7 @@ local PATTERNS = {
 
 local function matches_any_pattern(file_path, patterns)
   for _, pattern in ipairs(patterns) do
-    local lua_pattern = "^" .. util.glob_to_lua_pattern(pattern) .. "$"
+    local lua_pattern = "^" .. fs_util.glob_to_lua_pattern(pattern) .. "$"
     if file_path:match(lua_pattern) then
       return true
     end
@@ -121,7 +121,7 @@ end
 
 -- Replace existing file content in ai_data.txt
 local function replace_file_content_in_output(output_path, relative_file_name, new_content)
-  local full_content, err = util.safe_file_read(output_path)
+  local full_content, err = fs_util.safe_file_read(output_path)
   if not full_content then
     vim.notify(err or "Failed to read file", vim.log.levels.ERROR)
     return false
@@ -139,7 +139,7 @@ local function replace_file_content_in_output(output_path, relative_file_name, n
 
   local updated_content = full_content:gsub(section_pattern, new_section, 1)
 
-  local ok, write_err = util.safe_file_write(output_path, updated_content)
+  local ok, write_err = fs_util.safe_file_write(output_path, updated_content)
   if not ok then
     vim.notify(write_err or "Failed to write file", vim.log.levels.ERROR)
     return false
@@ -224,7 +224,7 @@ function M.remove_entries_by_pattern(pattern_type, custom_pattern)
     return
   end
 
-  local content, err = util.safe_file_read(output_path)
+  local content, err = fs_util.safe_file_read(output_path)
   if not content then
     vim.notify(err or "Could not read ai_data.txt", vim.log.levels.ERROR)
     return
@@ -254,7 +254,7 @@ function M.remove_entries_by_pattern(pattern_type, custom_pattern)
   end
 
   local filtered_content = table.concat(sections, "\n")
-  local ok, write_err = util.safe_file_write(output_path, filtered_content)
+  local ok, write_err = fs_util.safe_file_write(output_path, filtered_content)
   if ok then
     vim.notify(string.format("Removed %d entries from ai_data.txt", removed_count), vim.log.levels.INFO)
   else
@@ -269,7 +269,7 @@ function M.remove_path_from_ai_data(node_path)
   end
 
   -- Convert absolute path to relative path from git root
-  local git_root = util.get_git_root()
+  local git_root = fs_util.get_git_root()
   if not git_root then
     vim.notify("Not in a git repository", vim.log.levels.ERROR)
     return
@@ -374,7 +374,7 @@ end
 -- Enhanced save_buffer_to_ai_file with smart replacement
 function M.save_buffer_to_ai_file(append)
   local output_path = vim.fs.normalize("~/ai_data.txt")
-  local git_root = util.get_git_root()
+  local git_root = fs_util.get_git_root()
   if not git_root then
     vim.notify("Not in a git repository", vim.log.levels.ERROR)
     return
@@ -396,7 +396,7 @@ end
 
 -- Remove current buffer from ai_data.txt
 function M.remove_current_buffer_from_ai_file()
-  local git_root = util.get_git_root()
+  local git_root = fs_util.get_git_root()
   if not git_root then
     vim.notify("Not in a git repository", vim.log.levels.ERROR)
     return
@@ -410,7 +410,7 @@ end
 
 -- Enhanced function for files/folders with filtering (append/replace controlled by keymap)
 function M.save_path_to_ai_file(path, append)
-  local git_root = util.get_git_root()
+  local git_root = fs_util.get_git_root()
 
   if not git_root then
     vim.notify("Not in a git repository", vim.log.levels.ERROR)

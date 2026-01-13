@@ -1,4 +1,7 @@
-local util = require("util")
+local ui = require("util.ui")
+local format = require("util.format")
+local lsp = require("util.lsp")
+local lsp_references = require("util.lsp_references")
 
 -- enabled if noice.nvim is off
 vim.lsp.handlers["textDocument/hover"] = function(_, result, ctx, config)
@@ -90,10 +93,10 @@ return {
           severity_sort = true,
           signs = {
             text = {
-              [vim.diagnostic.severity.ERROR] = util.config.icons.diagnostics.Error,
-              [vim.diagnostic.severity.WARN] = util.config.icons.diagnostics.Warn,
-              [vim.diagnostic.severity.HINT] = util.config.icons.diagnostics.Hint,
-              [vim.diagnostic.severity.INFO] = util.config.icons.diagnostics.Info,
+              [vim.diagnostic.severity.ERROR] = ui.config.icons.diagnostics.Error,
+              [vim.diagnostic.severity.WARN] = ui.config.icons.diagnostics.Warn,
+              [vim.diagnostic.severity.HINT] = ui.config.icons.diagnostics.Hint,
+              [vim.diagnostic.severity.INFO] = ui.config.icons.diagnostics.Info,
             },
           },
           float = { border = "rounded" },
@@ -114,9 +117,17 @@ return {
               {
                 "gr",
                 function()
-                  require("fzf-lua").lsp_references({ jump1 = true })
+                  lsp_references.references_smart({ jump1 = true })
                 end,
                 desc = "References",
+                nowait = true,
+              },
+              {
+                "<leader>gr",
+                function()
+                  lsp_references.references_all({ jump1 = true })
+                end,
+                desc = "References (all)",
                 nowait = true,
               },
               {
@@ -205,7 +216,7 @@ return {
       vim.diagnostic.config(opts.diagnostics or {})
 
       -- Register LSP formatting
-      util.format.register(util.lsp.formatter())
+      format.register(lsp.formatter())
 
       -- Setup LSP keymaps using Snacks (LazyVim approach)
       for server, server_opts in pairs(opts.servers) do

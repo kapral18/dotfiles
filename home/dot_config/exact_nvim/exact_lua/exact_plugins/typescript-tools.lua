@@ -1,4 +1,4 @@
-local util = require("util")
+local fs_util = require("util.fs")
 
 local ft_js = {
   "tsx",
@@ -114,7 +114,7 @@ return {
         jsx_close_tag = { enable = false },
       },
       root_dir = function(bufnr, onDir)
-        onDir(util.get_project_root())
+        onDir(fs_util.get_project_root())
       end,
     },
   },

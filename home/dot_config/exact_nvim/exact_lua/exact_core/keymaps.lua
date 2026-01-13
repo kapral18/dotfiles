@@ -1,4 +1,6 @@
-local util = require("util")
+local cmp_util = require("util.cmp")
+local format = require("util.format")
+local fzf_util = require("util.fzf")
 
 local function map(mode, lhs, rhs, opts)
   opts = opts or {}
@@ -45,7 +47,7 @@ map({ "n", "v" }, "<S-l>", "$", { desc = "Go to end of line" })
 
 map({ "i", "n", "s" }, "<Esc>", function()
   vim.cmd.nohlsearch()
-  util.cmp.actions.snippet_stop()
+  cmp_util.actions.snippet_stop()
   return "<Esc>"
 end, { expr = true, desc = "Escape and Clear hlsearch" })
 
@@ -97,7 +99,7 @@ map("n", "[q", vim.cmd.cprev, { desc = "Previous Quickfix" })
 map("n", "]q", vim.cmd.cnext, { desc = "Next Quickfix" })
 
 map({ "n", "x" }, "<leader>cf", function()
-  util.format.format({ force = true })
+  format.format({ force = true })
 end, { desc = "Format" })
 
 local function diagnostic_goto(next, severity)
@@ -135,7 +137,7 @@ map("n", "<leader>uI", function()
 end, { desc = "Inspect Tree" })
 
 map("n", "<leader>lL", function()
-  util.news.changelog()
+  vim.notify("Changelog not available for this configuration", vim.log.levels.INFO)
 end, { desc = "Changelog" })
 map("n", "<leader>ll", "<cmd>Lazy<cr>", { desc = "Lazy" })
 map("n", "<leader>cm", "<cmd>Mason<cr>", { desc = "Mason" })
@@ -187,7 +189,7 @@ vim.api.nvim_create_user_command("LargeFiles", function(opts)
   for _, line in ipairs(vim.split(output, "\n")) do
     if line ~= "" then
       local file_path = line:match("(.-):1:")
-      if file_path and not util.is_image(file_path) then
+      if file_path and not fzf_util.is_image(file_path) then
         table.insert(filtered_lines, line)
       end
     end
@@ -271,7 +273,7 @@ map("n", "<leader>yp", function()
   if cur_file == "" then
     return
   end
-  util.copy_to_clipboard(cur_file)
+  fzf_util.copy_to_clipboard(cur_file)
   vim.notify(("Copied %s to clipboard"):format(cur_file), vim.log.levels.INFO, { title = "Path Copied" })
 end, { desc = "Copy current file relative path" })
 
@@ -280,83 +282,6 @@ map("n", "<leader>yP", function()
   if cur_file == "" then
     return
   end
-  util.copy_to_clipboard(cur_file)
+  fzf_util.copy_to_clipboard(cur_file)
   vim.notify(("Copied %s to clipboard"):format(cur_file), vim.log.levels.INFO, { title = "Absolute Path Copied" })
 end, { desc = "Copy current file absolute path" })
-
-local function send_to_right_tmux_pane(message, success_notify)
-  local tmp_file = os.tmpname()
-  local f = io.open(tmp_file, "w")
-  if f then
-    f:write(message)
-    f:close()
-  end
-
-  local current_pane = vim.fn.system("tmux display-message -p '#{pane_id}'"):gsub("%s+", "")
-  local target_pane = vim.fn
-    .system(
-      string.format(
-        "tmux select-pane -R -t %s \\; display-message -p '#{pane_id}' \\; select-pane -t %s",
-        current_pane,
-        current_pane
-      )
-    )
-    :gsub("%s+", "")
-
-  if target_pane == "" or target_pane == current_pane then
-    vim.notify("No pane to the right found", vim.log.levels.WARN)
-    os.remove(tmp_file)
-    return
-  end
-
-  vim.fn.system(string.format("tmux load-buffer %s", tmp_file))
-  vim.fn.system(string.format("tmux paste-buffer -t %s", target_pane))
-
-  os.remove(tmp_file)
-  if success_notify then
-    vim.notify(success_notify, vim.log.levels.INFO)
-  end
-end
-
-map("n", "<leader>ad", function()
-  local file_path = vim.api.nvim_buf_get_name(0)
-  local diagnostics = vim.diagnostic.get(0)
-
-  if #diagnostics == 0 then
-    vim.notify("No diagnostics found", vim.log.levels.INFO)
-    return
-  end
-
-  local diag_lines = {}
-  for _, d in ipairs(diagnostics) do
-    local severity = vim.diagnostic.severity[d.severity] or "UNKNOWN"
-    table.insert(diag_lines, string.format("Line %d: [%s] %s", d.lnum + 1, severity, d.message))
-  end
-
-  local message =
-    string.format("Here are the diagnostics for file `%s`:\n\n```\n%s\n```", file_path, table.concat(diag_lines, "\n"))
-
-  send_to_right_tmux_pane(message, "Diagnostics sent to right pane")
-end, { desc = "Send diagnostics to right Tmux pane" })
-
-map("n", "<leader>al", function()
-  local file_path = vim.api.nvim_buf_get_name(0)
-  local line_num = vim.api.nvim_win_get_cursor(0)[1]
-  local line_content = vim.api.nvim_get_current_line()
-
-  local message = string.format("File: `%s`:%d\n\n```\n%s\n```", file_path, line_num, line_content)
-
-  send_to_right_tmux_pane(message, "Current line sent to right pane")
-end, { desc = "Send current line to right Tmux pane" })
-
-map("v", "<leader>av", function()
-  local file_path = vim.api.nvim_buf_get_name(0)
-  -- Yank selection to v register
-  vim.cmd('noau normal! "vy')
-  local selection = vim.fn.getreg("v")
-  local line_num = vim.fn.getpos("'<")[2]
-
-  local message = string.format("File: `%s`:%d\n\n```\n%s\n```", file_path, line_num, selection)
-
-  send_to_right_tmux_pane(message, "Selection sent to right pane")
-end, { desc = "Send selection to right Tmux pane" })

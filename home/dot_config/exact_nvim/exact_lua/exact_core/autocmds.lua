@@ -1,9 +1,9 @@
 local augroup = vim.api.nvim_create_augroup
 local autocmd = vim.api.nvim_create_autocmd
 
-local util = require("util")
-if util.config and util.config.icons and util.config.icons.diagnostics then
-  local icons = util.config.icons.diagnostics
+local ui = require("util.ui")
+if ui.config and ui.config.icons and ui.config.icons.diagnostics then
+  local icons = ui.config.icons.diagnostics
   for name, icon in pairs(icons) do
     local hl = "DiagnosticSign" .. name
     vim.fn.sign_define(hl, { text = icon, texthl = hl, numhl = "" })
@@ -11,6 +11,8 @@ if util.config and util.config.icons and util.config.icons.diagnostics then
 end
 
 local general = augroup("k18_general", { clear = true })
+local hashed_undo_dir = vim.fn.stdpath("state") .. "/undo-hashed"
+vim.fn.mkdir(hashed_undo_dir, "p")
 
 autocmd({ "FocusGained", "TermClose", "TermLeave" }, {
   group = general,
@@ -160,4 +162,126 @@ autocmd("BufWritePre", {
     local file = vim.uv.fs_realpath(event.match) or event.match
     vim.fn.mkdir(vim.fn.fnamemodify(file, ":p:h"), "p")
   end,
+})
+
+local function hashed_undo_file_path(bufnr)
+  local abs_path = vim.api.nvim_buf_get_name(bufnr)
+  if abs_path == "" then
+    return nil
+  end
+
+  local real_path = vim.uv.fs_realpath(abs_path) or abs_path
+  local base = vim.fn.fnamemodify(real_path, ":t"):gsub("[^%w%._%-]", "_")
+  local hash = vim.fn.sha256(real_path):sub(1, 16)
+  return string.format("%s/%s-%s.undo", hashed_undo_dir, base, hash)
+end
+
+autocmd("BufReadPost", {
+  group = augroup("k18_hashed_undo", { clear = true }),
+  callback = function(event)
+    if vim.bo[event.buf].buftype ~= "" then
+      return
+    end
+
+    local undofile = hashed_undo_file_path(event.buf)
+    if not undofile or vim.fn.filereadable(undofile) ~= 1 then
+      return
+    end
+
+    pcall(vim.cmd, "silent! rundo " .. vim.fn.fnameescape(undofile))
+  end,
+})
+
+autocmd("BufWritePost", {
+  group = augroup("k18_hashed_undo", { clear = false }),
+  callback = function(event)
+    if vim.bo[event.buf].buftype ~= "" then
+      return
+    end
+
+    local undofile = hashed_undo_file_path(event.buf)
+    if not undofile then
+      return
+    end
+
+    vim.fn.mkdir(vim.fn.fnamemodify(undofile, ":h"), "p")
+    pcall(vim.cmd, "silent! wundo " .. vim.fn.fnameescape(undofile))
+  end,
+})
+
+vim.api.nvim_create_user_command("UndoHashedPrune", function(opts)
+  local args = vim.split(opts.args or "", "%s+", { trimempty = true })
+  local max_age_days = tonumber(args[1]) or 30
+  local max_total_mb = tonumber(args[2]) or 512
+
+  local max_age_sec = math.max(0, max_age_days) * 24 * 60 * 60
+  local max_total_bytes = math.max(0, max_total_mb) * 1024 * 1024
+  local now = os.time()
+
+  local entries = {}
+  local total_bytes = 0
+
+  local dir_obj = vim.uv.fs_scandir(hashed_undo_dir)
+  if not dir_obj then
+    vim.notify("UndoHashedPrune: cannot scan " .. hashed_undo_dir, vim.log.levels.WARN)
+    return
+  end
+
+  while true do
+    local name, t = vim.uv.fs_scandir_next(dir_obj)
+    if not name then
+      break
+    end
+    if t == "file" and name:match("%.undo$") then
+      local full = hashed_undo_dir .. "/" .. name
+      local stat = vim.uv.fs_stat(full)
+      if stat then
+        local mtime = stat.mtime and stat.mtime.sec or 0
+        local size = stat.size or 0
+        total_bytes = total_bytes + size
+        table.insert(entries, { path = full, mtime = mtime, size = size })
+      end
+    end
+  end
+
+  table.sort(entries, function(a, b)
+    return a.mtime < b.mtime
+  end)
+
+  local deleted = 0
+  local deleted_bytes = 0
+
+  for _, e in ipairs(entries) do
+    if max_age_sec > 0 and (now - e.mtime) > max_age_sec then
+      if vim.fn.delete(e.path) == 0 then
+        deleted = deleted + 1
+        deleted_bytes = deleted_bytes + e.size
+        total_bytes = total_bytes - e.size
+      end
+    end
+  end
+
+  if max_total_bytes > 0 and total_bytes > max_total_bytes then
+    for _, e in ipairs(entries) do
+      if vim.uv.fs_stat(e.path) and total_bytes > max_total_bytes then
+        if vim.fn.delete(e.path) == 0 then
+          deleted = deleted + 1
+          deleted_bytes = deleted_bytes + e.size
+          total_bytes = total_bytes - e.size
+        end
+      end
+    end
+  end
+
+  vim.notify(
+    string.format(
+      "UndoHashedPrune: deleted %d file(s), freed %.1fMB",
+      deleted,
+      deleted_bytes / (1024 * 1024)
+    ),
+    vim.log.levels.INFO
+  )
+end, {
+  nargs = "*",
+  desc = "Prune hashed undo files: :UndoHashedPrune [max_age_days] [max_total_mb]",
 })

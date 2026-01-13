@@ -1,4 +1,4 @@
-local util = require("util")
+local fs_util = require("util.fs")
 
 local M = {}
 
@@ -76,7 +76,7 @@ end
 
 function M.get_eslint_path()
   local buf_dir = vim.fs.dirname(vim.api.nvim_buf_get_name(0))
-  local root_dir = util.get_project_root()
+  local root_dir = fs_util.get_project_root()
   if not root_dir then
     vim.notify("No project root found", vim.log.levels.WARN)
     return

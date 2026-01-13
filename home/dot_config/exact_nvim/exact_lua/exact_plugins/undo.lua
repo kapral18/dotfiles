@@ -11,19 +11,6 @@ return {
     },
   },
   {
-    "kevinhwang91/nvim-fundo",
-    event = "BufReadPost",
-    dependencies = { "kevinhwang91/promise-async" },
-    opts = {},
-    build = function()
-      require("fundo").install()
-    end,
-  },
-  {
-    "pixelastic/vim-undodir-tree",
-    event = "VeryLazy",
-  },
-  {
     "debugloop/telescope-undo.nvim",
     lazy = false,
     dependencies = {

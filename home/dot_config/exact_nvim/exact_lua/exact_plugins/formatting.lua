@@ -31,7 +31,7 @@ return {
       require("conform").setup(opts)
 
       -- Register conform as a formatter with higher priority than LSP
-      require("util").format.register({
+      require("util.format").register({
         name = "conform.nvim",
         priority = 100, -- Higher than LSP (10), lower than eslint (200)
         sources = function(bufnr)
@@ -62,7 +62,7 @@ return {
           if disable_filetypes[vim.bo[bufnr].filetype] then
             return
           end
-          require("util").format.format({ buf = bufnr })
+          require("util.format").format({ buf = bufnr })
         end,
       })
     end,

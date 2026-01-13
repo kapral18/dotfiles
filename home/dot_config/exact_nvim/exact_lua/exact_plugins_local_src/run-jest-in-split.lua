@@ -1,4 +1,4 @@
-local util = require("util")
+local fs_util = require("util.fs")
 
 local M = {}
 
@@ -18,7 +18,7 @@ local jest_config_candidates = {
   "jest.integration.config.js",
 }
 
-local escape_shell_arg = util.fs.escape_shell_arg
+local escape_shell_arg = fs_util.escape_shell_arg
 
 local script_runner_builders = {
   yarn = function(script_name, file_path, root_dir)
@@ -78,7 +78,7 @@ local function detect_runner_in_dir(dir)
   local normalized = vim.fn.fnamemodify(dir, ":p")
   for _, manager in ipairs(PACKAGE_MANAGER_PRIORITY) do
     local lock = PACKAGE_MANAGER_LOCKS[manager]
-    if lock and util.file_exists(normalized .. "/" .. lock) then
+    if lock and fs_util.file_exists(normalized .. "/" .. lock) then
       return manager
     end
   end
@@ -124,7 +124,7 @@ local function find_jest_binary(search_dirs)
       }
 
       for _, path in ipairs(possible_jest_paths) do
-        if util.file_exists(path) then
+        if fs_util.file_exists(path) then
           return path
         end
       end
@@ -145,7 +145,7 @@ local function find_nearest_jest_config(test_path, root_dir)
   while dir and dir ~= "" do
     for _, candidate in ipairs(jest_config_candidates) do
       local config_path = dir .. "/" .. candidate
-      if util.file_exists(config_path) then
+      if fs_util.file_exists(config_path) then
         return config_path
       end
     end
@@ -195,7 +195,7 @@ local function list_jest_configs_in_dir(dir)
   for _, name in ipairs(entries) do
     if is_jest_config_filename(name) then
       local full = dir .. "/" .. name
-      if util.file_exists(full) then
+      if fs_util.file_exists(full) then
         table.insert(results, full)
       end
     end
@@ -250,10 +250,10 @@ end
 
 local function load_config_cache()
   local path = get_cache_file_path()
-  if not util.file_exists(path) then
+  if not fs_util.file_exists(path) then
     return {}
   end
-  local content = select(1, util.safe_file_read(path))
+  local content = select(1, fs_util.safe_file_read(path))
   if not content or content == "" then
     return {}
   end
@@ -270,7 +270,7 @@ local function save_config_cache(cache_tbl)
   if not ok then
     return false
   end
-  local success = select(1, util.safe_file_write(path, json, "w"))
+  local success = select(1, fs_util.safe_file_write(path, json, "w"))
   return success == true
 end
 
@@ -289,7 +289,7 @@ local function discover_package_context(test_path, project_root)
 
     local normalized = vim.fn.fnamemodify(current_dir, ":p")
     local package_json_path = normalized .. "/package.json"
-    local has_package = util.file_exists(package_json_path)
+    local has_package = fs_util.file_exists(package_json_path)
     local runner = detect_runner_in_dir(normalized)
 
     if has_package then
@@ -342,7 +342,7 @@ local function discover_package_context(test_path, project_root)
       if not context.package_root then
         context.package_root = vim.fn.fnamemodify(dir, ":p")
       end
-      if not context.package_json_path and util.file_exists(context.package_root .. "/package.json") then
+      if not context.package_json_path and fs_util.file_exists(context.package_root .. "/package.json") then
         context.package_json_path = context.package_root .. "/package.json"
       end
       return context
@@ -365,7 +365,7 @@ local function discover_package_context(test_path, project_root)
       if not context.package_root then
         context.package_root = normalized_root
       end
-      if not context.package_json_path and util.file_exists(context.package_root .. "/package.json") then
+      if not context.package_json_path and fs_util.file_exists(context.package_root .. "/package.json") then
         context.package_json_path = context.package_root .. "/package.json"
       end
       return context
@@ -374,7 +374,7 @@ local function discover_package_context(test_path, project_root)
 
   if normalized_root then
     return {
-      package_json_path = util.file_exists(normalized_root .. "/package.json")
+      package_json_path = fs_util.file_exists(normalized_root .. "/package.json")
           and normalized_root .. "/package.json"
         or nil,
       package_root = normalized_root,
@@ -723,7 +723,7 @@ end
 M.escape_shell_arg = escape_shell_arg
 ---@param debug_mode boolean|nil Whether to run Jest in debug mode
 M.run_jest_cmd = function(arg, debug_mode)
-  local root_dir = util.get_project_root()
+  local root_dir = fs_util.get_project_root()
 
   if not root_dir then
     vim.notify("No .git directory or yarn.lock or package-lock.json found", vim.log.levels.WARN)
@@ -750,7 +750,7 @@ M.run_jest_cmd = function(arg, debug_mode)
   local explicit_config = cache[key]
 
   -- Invalidate stale cache entries
-  if explicit_config and not util.file_exists(explicit_config) then
+  if explicit_config and not fs_util.file_exists(explicit_config) then
     cache[key] = nil
     save_config_cache(cache)
     explicit_config = nil

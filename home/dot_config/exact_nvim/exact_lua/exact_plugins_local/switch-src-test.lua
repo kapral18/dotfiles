@@ -1,8 +1,8 @@
-local util = require("util")
+local fs_util = require("util.fs")
 local sst = require("plugins_local_src.switch-src-test")
 
 return {
-  dir = util.get_plugin_src_dir(),
+  dir = fs_util.get_plugin_src_dir(),
   keys = {
     {
       "<C-^>",

@@ -25,7 +25,7 @@ Personal macOS development environment managed with Chezmoi. Keyboard-centric wo
 | 🌳 **Git Worktrees**   | Worktree management with PR integration          |
 | 💎 **Neovim**          | Custom LSP, AI commits, refactoring tools        |
 | 🐚 **Fish Shell**      | 30+ custom productivity functions                |
-| 📦 **Brewfile**        | 300+ formulas and casks                          |
+| 📦 **Brewfile**        | 250+ formulas and casks                          |
 | ⚙️ **ASDF**            | Version manager with automatic switching         |
 
 ---
@@ -272,8 +272,7 @@ AI tools for CLI and editor. Credentials in 1Password, configs in repo.
 | -------------- | ----------------------- | -------------------------------------------- |
 | **Crush**      | Terminal AI assistant   | Charmbracelet tap                            |
 | **Ollama**     | Local LLM runtime       | `run_onchange_after_05-add-ollama-models.sh` |
-| **OpenEncode** | CLI AI agent            | Homebrew                                     |
-| **Amp**        | AI coding tool with MCP | `dot_config/amp/settings.json`               |
+| **Amp**        | AI coding tool with MCP | `home/dot_config/amp/settings.json`          |
 | **Cursor**     | AI code editor (work)   | `.isWork` conditional                        |
 
 **Ollama Models**:
@@ -302,14 +301,6 @@ Custom IDE setup.
 | **Keymaps**        | `jk`→ESC, `Alt-j/k` jump 10, `Ctrl-Alt-j/k` move lines |
 
 ### Development Tools
-
-#### Interactive Filtered LSP (`fzf-filters-lsp.lua`)
-
-Filter when searching definitions/references:
-
-- Exclude tests, `node_modules`
-- Exclude import statements
-- Show CODEOWNERS info
 
 #### Jest Runner (`run-jest-in-split.lua`)
 

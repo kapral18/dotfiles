@@ -47,7 +47,7 @@ return {
       local Snacks = require("snacks")
       Snacks.setup(opts)
 
-      local util = require("util")
+      local format = require("util.format")
 
       -- Toggle mappings
       Snacks.toggle.option("spell", { name = "Spelling" }):map("<leader>us")
@@ -71,8 +71,8 @@ return {
       Snacks.toggle.inlay_hints():map("<leader>uh")
       Snacks.toggle.zoom():map("<leader>wm"):map("<leader>uZ")
       Snacks.toggle.zen():map("<leader>uz")
-      util.format.snacks_toggle():map("<leader>uf")
-      util.format.snacks_toggle(true):map("<leader>uF")
+      format.snacks_toggle():map("<leader>uf")
+      format.snacks_toggle(true):map("<leader>uF")
     end,
     keys = {
       -- Notifier
@@ -102,7 +102,7 @@ return {
       {
         "<leader>gg",
         function()
-          require("snacks").lazygit({ cwd = require("util").root.git() })
+          require("snacks").lazygit({ cwd = require("util.root").git() })
         end,
         desc = "Lazygit (Root Dir)",
       },
@@ -138,7 +138,7 @@ return {
       {
         "<leader>gl",
         function()
-          require("snacks").picker.git_log({ cwd = require("util").root.git() })
+          require("snacks").picker.git_log({ cwd = require("util.root").git() })
         end,
         desc = "Git Log (Root Dir)",
       },
@@ -190,14 +190,14 @@ return {
       {
         "<leader>ft",
         function()
-          require("snacks").terminal(nil, { cwd = require("util").root.get() })
+          require("snacks").terminal(nil, { cwd = require("util.root").get() })
         end,
         desc = "Terminal (Root Dir)",
       },
       {
         "<c-/>",
         function()
-          require("snacks").terminal(nil, { cwd = require("util").root.get() })
+          require("snacks").terminal(nil, { cwd = require("util.root").get() })
         end,
         desc = "Terminal (Root Dir)",
         mode = { "n", "t" },
@@ -205,7 +205,7 @@ return {
       {
         "<c-_>",
         function()
-          require("snacks").terminal(nil, { cwd = require("util").root.get() })
+          require("snacks").terminal(nil, { cwd = require("util.root").get() })
         end,
         desc = "which_key_ignore",
         mode = { "n", "t" },

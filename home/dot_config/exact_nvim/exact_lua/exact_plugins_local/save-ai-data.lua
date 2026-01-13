@@ -1,4 +1,4 @@
-local util = require("util")
+local fs_util = require("util.fs")
 local sad = require("plugins_local_src.save-ai-data")
 
 vim.api.nvim_create_user_command("SaveBufferToAIFile", function(opts)
@@ -78,7 +78,7 @@ end, {
 
 return {
   {
-    dir = util.get_plugin_src_dir(),
+    dir = fs_util.get_plugin_src_dir(),
     name = "save-ai-data",
     keys = {
       {

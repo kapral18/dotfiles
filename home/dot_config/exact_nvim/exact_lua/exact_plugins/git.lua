@@ -1,4 +1,5 @@
-local util = require("util")
+local ui = require("util.ui")
+local fs_util = require("util.fs")
 
 return {
   {
@@ -6,7 +7,7 @@ return {
     version = "*",
     event = { "BufReadPost", "BufNewFile" },
     opts = function()
-      local icons = util.config.icons.git
+      local icons = ui.config.icons.git
       return {
         -- visuals (LazyVim style - icons from util.config)
         signs = {
@@ -81,8 +82,8 @@ return {
           map("n", "<leader>ghR", gs.reset_buffer, "Reset Buffer")
 
           -- previews
-          map("n", "<leader>ghP", gs.preview_hunk_inline, "Preview Hunk Inline")
-          map("n", "<leader>ghp", gs.preview_hunk, "Preview Hunk Popup")
+          map("n", "<leader>ghp", gs.preview_hunk_inline, "Preview Hunk Inline")
+          map("n", "<leader>ghP", gs.preview_hunk, "Preview Hunk Popup")
 
           map("n", "<leader>ghd", gs.diffthis, "Diff This")
           map("n", "<leader>ghD", function()
@@ -114,7 +115,7 @@ return {
       })
     end,
     cond = function()
-      return util.get_git_root() ~= nil
+      return fs_util.get_git_root() ~= nil
     end,
     init = function()
       vim.g.git_messenger_no_default_mappings = true

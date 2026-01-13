@@ -57,7 +57,12 @@ opt.statuscolumn = [[]]
 opt.tabstop = 2
 opt.termguicolors = true
 opt.timeoutlen = vim.g.vscode and 1000 or 300
-opt.undofile = true
+opt.undofile = false
+do
+  local undodir = vim.fn.stdpath("state") .. "/undo-hashed"
+  vim.fn.mkdir(undodir, "p")
+  opt.undodir = undodir
+end
 opt.undolevels = 10000
 opt.updatetime = 200
 opt.virtualedit = "block"

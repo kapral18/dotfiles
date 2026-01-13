@@ -78,11 +78,11 @@ local plugin_modules = {
 
 local local_modules = {
   "plugins_local.copy-to-qf",
-  "plugins_local.fzf-filters-lsp",
   "plugins_local.owner-code-search",
   "plugins_local.qf",
   "plugins_local.run-jest-in-split",
   "plugins_local.save-ai-data",
+  "plugins_local.send-to-tmux-right-pane",
   "plugins_local.show-file-owner",
   "plugins_local.summarize-commit",
   "plugins_local.switch-src-test",

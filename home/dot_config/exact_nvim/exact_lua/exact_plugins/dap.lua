@@ -1,4 +1,4 @@
-local util = require("util")
+local ui = require("util.ui")
 -- Minimal DAP setup for osv.lua (Lua debugging)
 return {
   {
@@ -6,7 +6,7 @@ return {
     event = "VeryLazy",
     config = function()
       -- Set DAP icons (LazyVim style)
-      local icons = util.config.icons.dap
+      local icons = ui.config.icons.dap
 
       vim.api.nvim_set_hl(0, "DapStoppedLine", { default = true, link = "Visual" })
 

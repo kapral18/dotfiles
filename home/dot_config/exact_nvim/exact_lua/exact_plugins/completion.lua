@@ -1,4 +1,4 @@
-local util = require("util")
+local ui = require("util.ui")
 
 local tabouts = {
   { open = "'", close = "'" },
@@ -150,7 +150,7 @@ return {
         },
         formatting = {
           format = function(entry, item)
-            local icons = (util.config and util.config.icons and util.config.icons.kinds) or {}
+            local icons = (ui.config and ui.config.icons and ui.config.icons.kinds) or {}
             if icons[item.kind] then
               item.kind = icons[item.kind] .. item.kind
             end

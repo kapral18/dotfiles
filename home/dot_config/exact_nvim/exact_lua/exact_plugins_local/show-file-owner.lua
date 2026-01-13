@@ -1,4 +1,4 @@
-local util = require("util")
+local fs_util = require("util.fs")
 local sfo = require("plugins_local_src.show-file-owner")
 
 vim.api.nvim_create_user_command("ShowFileOwner", function()
@@ -9,7 +9,7 @@ end, {
 
 return {
   {
-    dir = util.get_plugin_src_dir(),
+    dir = fs_util.get_plugin_src_dir(),
     keys = {
       {
         "<leader>0",

@@ -1,4 +1,4 @@
-local util = require("util")
+local fs_util = require("util.fs")
 local rjis = require("plugins_local_src.run-jest-in-split")
 -- Set up the keymap only for terminal buffers
 vim.api.nvim_create_autocmd("TermOpen", {
@@ -9,7 +9,7 @@ vim.api.nvim_create_autocmd("TermOpen", {
 })
 
 return {
-  dir = util.get_plugin_src_dir(),
+  dir = fs_util.get_plugin_src_dir(),
   dependencies = { "nvim-lua/plenary.nvim" },
   keys = {
     {

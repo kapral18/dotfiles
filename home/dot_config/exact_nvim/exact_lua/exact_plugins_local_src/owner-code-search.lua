@@ -38,7 +38,7 @@
 ---@field directory_finder fun(): string[]|nil Function to find directories
 ---@field process_output fun(output: string[], results: string[], dir: string)|nil Optional output processor
 
-local util = require("util")
+local fs_util = require("util.fs")
 
 local M = {}
 
@@ -91,7 +91,7 @@ local function resolve_path(path, base_dir)
     return nil
   end
 
-  return util.normalize_path(path, base_dir)
+  return fs_util.normalize_path(path, base_dir)
 end
 
 local function parse_vimgrep_line(line, base_dir)

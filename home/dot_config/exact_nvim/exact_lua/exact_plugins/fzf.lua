@@ -1,5 +1,5 @@
-local util = require("util")
-local fzf_util = util.fzf
+local fzf_util = require("util.fzf")
+local fs_util = require("util.fs")
 
 local function get_fzf_fn(cmd, opts)
   opts = opts or {}
@@ -8,9 +8,9 @@ local function get_fzf_fn(cmd, opts)
   end
 end
 
-local rg_opts = util.fzf_rg_opts
-local rg_opts_unrestricted = util.fzf_rg_opts_unrestricted
-local fd_opts_unrestricted = util.fzf_fd_opts_unrestricted
+local rg_opts = fzf_util.rg_opts
+local rg_opts_unrestricted = fzf_util.rg_opts_unrestricted
+local fd_opts_unrestricted = fzf_util.fd_opts_unrestricted
 
 local function changed_files_fzf_live_opts(git_root, desc)
   return {
@@ -88,7 +88,7 @@ return {
       {
         "<leader>se",
         function()
-          local git_root = util.get_git_root()
+          local git_root = fs_util.get_git_root()
           if not git_root then
             vim.notify("Not a git repo; falling back to Live Grep", vim.log.levels.WARN)
             require("fzf-lua").live_grep({ rg_opts = rg_opts, cwd = vim.uv.cwd() })
@@ -113,7 +113,7 @@ return {
       {
         "<leader>sE",
         function()
-          local git_root = util.get_git_root()
+          local git_root = fs_util.get_git_root()
           if not git_root then
             vim.notify("Not a git repo; falling back to Live Grep", vim.log.levels.WARN)
             require("fzf-lua").live_grep({ rg_opts = rg_opts, cwd = vim.uv.cwd() })
@@ -366,7 +366,7 @@ return {
         desc = "Location List",
       },
     },
-    opts = util.get_fzf_opts(),
+    opts = fzf_util.get_opts(),
     config = function(_, opts)
       require("fzf-lua").setup(opts)
       -- Register fzf-lua as the vim.ui.select provider for LSP pickers

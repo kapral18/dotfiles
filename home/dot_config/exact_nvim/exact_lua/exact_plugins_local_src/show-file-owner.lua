@@ -1,4 +1,4 @@
-local util = require("util")
+local fs_util = require("util.fs")
 
 local M = {}
 
@@ -40,7 +40,7 @@ end
 ---@param glob string
 ---@return string
 local function slash_stripped_glob_to_lua_pattern(glob)
-  local lua_pattern = util.glob_to_lua_pattern(glob)
+  local lua_pattern = fs_util.glob_to_lua_pattern(glob)
   local lua_pattern_with_stripped_slash = lua_pattern:gsub("^/", "")
 
   return "^" .. lua_pattern_with_stripped_slash

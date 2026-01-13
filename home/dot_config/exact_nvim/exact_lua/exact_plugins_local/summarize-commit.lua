@@ -1,8 +1,8 @@
-local util = require("util")
+local fs_util = require("util.fs")
 local sc = require("plugins_local_src.summarize-commit")
 
 return {
-  dir = util.get_plugin_src_dir(),
+  dir = fs_util.get_plugin_src_dir(),
   ft = "gitcommit",
   keys = {
     {
