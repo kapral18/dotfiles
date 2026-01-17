@@ -344,6 +344,9 @@ function M.get_opts()
       },
       lsp = {
         multiline = 2,
+        -- fzf-lua uses `vim.lsp.buf_request_sync` for many LSP pickers; TS projects can
+        -- legitimately take longer than the default 5s to respond (esp. cold tsserver).
+        async_or_timeout = 15000,
       },
     }
   end
