@@ -1,0 +1,84 @@
+# Manual packages list (rendered by chezmoi).
+#
+# Format (pipe-delimited):
+# - dmg|App Name|owner/repo|release-tag|AppBundle.app|asset-pattern
+# - tar_gz_bin|tool-name|owner/repo|release-tag|asset-pattern|bin-in-archive|output-binary-name
+# - file|tool-name|owner/repo|release-tag|asset-pattern|output-binary-name
+#
+# Lines starting with `#` are ignored.
+
+# Template helpers
+{{ $os := .chezmoi.os }}
+{{ $arch := .chezmoi.arch }}
+
+# -----------------------------------------------
+# DMG-based macOS apps
+# -----------------------------------------------
+
+dmg|FluidVoice|altic-dev/FluidVoice|latest|FluidVoice.app|.dmg
+dmg|Squirrel Disk|adileo/squirreldisk|latest|SquirrelDisk.app|.dmg
+
+# -----------------------------------------------
+# GitHub release CLI tools
+# -----------------------------------------------
+
+# mdtt
+# https://github.com/szktkfm/mdtt
+{{ $mdttTag := "v0.3.1" }}
+{{ $mdttAsset := "" }}
+{{ if eq $os "darwin" }}
+  {{ if eq $arch "arm64" }}
+    {{ $mdttAsset = "mdtt_Darwin_arm64.tar.gz" }}
+  {{ else }}
+    {{ $mdttAsset = "mdtt_Darwin_x86_64.tar.gz" }}
+  {{ end }}
+{{ else if eq $os "linux" }}
+  {{ if eq $arch "arm64" }}
+    {{ $mdttAsset = "mdtt_Linux_arm64.tar.gz" }}
+  {{ else }}
+    {{ $mdttAsset = "mdtt_Linux_x86_64.tar.gz" }}
+  {{ end }}
+{{ end }}
+{{ if ne $mdttAsset "" }}
+tar_gz_bin|mdtt|szktkfm/mdtt|{{ $mdttTag }}|{{ $mdttAsset }}|mdtt|mdtt
+{{ end }}
+
+# dug
+# https://github.com/unfrl/dug
+{{ $dugTag := "0.0.94" }}
+{{ $dugAsset := "" }}
+{{ if eq $os "darwin" }}
+  {{ $dugAsset = "dug-osx-x64" }}
+{{ else if eq $os "linux" }}
+  {{ if eq $arch "arm64" }}
+    {{ $dugAsset = "dug-linux-arm64" }}
+  {{ else }}
+    {{ $dugAsset = "dug-linux-x64" }}
+  {{ end }}
+{{ end }}
+{{ if ne $dugAsset "" }}
+file|dug|unfrl/dug|{{ $dugTag }}|{{ $dugAsset }}|dug
+{{ end }}
+
+# enola (non-work)
+# https://github.com/TheYahya/enola
+{{ if ne .isWork true }}
+  {{ $enolaTag := "v0.4.0" }}
+  {{ $enolaAsset := "" }}
+  {{ if eq $os "darwin" }}
+    {{ if eq $arch "arm64" }}
+      {{ $enolaAsset = "enola_0.4.0_darwin_arm64.tar.gz" }}
+    {{ else }}
+      {{ $enolaAsset = "enola_0.4.0_darwin_amd64.tar.gz" }}
+    {{ end }}
+  {{ else if eq $os "linux" }}
+    {{ if eq $arch "arm64" }}
+      {{ $enolaAsset = "enola_0.4.0_linux_arm64.tar.gz" }}
+    {{ else }}
+      {{ $enolaAsset = "enola_0.4.0_linux_amd64.tar.gz" }}
+    {{ end }}
+  {{ end }}
+  {{ if ne $enolaAsset "" }}
+tar_gz_bin|enola|TheYahya/enola|{{ $enolaTag }}|{{ $enolaAsset }}|enola|enola
+  {{ end }}
+{{ end }}

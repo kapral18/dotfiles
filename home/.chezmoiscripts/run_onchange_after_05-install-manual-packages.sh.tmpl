@@ -1,0 +1,326 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+BIN_DIR="${HOME}/.local/bin"
+MANUAL_PACKAGES_TEMPLATE={{ joinPath .chezmoi.sourceDir "readonly_dot_default-manual-packages.tmpl" | quote }}
+
+mkdir -p "$BIN_DIR"
+
+require_cmd() {
+  local cmd="$1"
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "Error: '$cmd' is required but not found in PATH" >&2
+    return 1
+  fi
+}
+
+resolve_release_tag() {
+  local github_repo="$1"
+  local requested_tag="$2"
+
+  if [[ -z "$requested_tag" || "$requested_tag" == "latest" ]]; then
+    require_cmd gh
+    gh release view --repo "$github_repo" --json tagName --jq '.tagName'
+    return 0
+  fi
+
+  printf '%s' "$requested_tag"
+}
+
+find_single_file() {
+  local dir="$1"
+  local find_args="$2"
+  local what="$3"
+
+  local files=()
+  # shellcheck disable=SC2206
+  files=( $(eval "find \"$dir\" -maxdepth 1 -type f $find_args -print") )
+
+  if (( ${#files[@]} == 0 )); then
+    echo "Error: No $what downloaded in $dir" >&2
+    return 1
+  fi
+
+  if (( ${#files[@]} > 1 )); then
+    echo "Error: Multiple $what files matched in $dir:" >&2
+    local f
+    for f in "${files[@]}"; do
+      echo "- $f" >&2
+    done
+    echo "Tighten the asset-pattern to match exactly one file." >&2
+    return 1
+  fi
+
+  printf '%s' "${files[0]}"
+}
+
+# -----------------------------------------------
+# Function to download and install DMG-based macOS apps from GitHub releases
+# -----------------------------------------------
+
+# Usage: install_dmg_app "AppName" "owner/repo" "release-tag|latest" "app.bundle.name" [asset-pattern]
+# Example: install_dmg_app "FluidVoice" "altic-dev/FluidVoice" "FluidVoice.app"
+install_dmg_app() {
+  local app_name="$1"
+  local github_repo="$2"
+  local release_tag="$3"
+  local app_bundle="$4"
+  local asset_pattern="${5:-.dmg}"
+
+  local app_path="/Applications/$app_bundle"
+
+  if [[ -d "$app_path" ]]; then
+    echo "$app_name is already installed"
+    return 0
+  fi
+
+  require_cmd gh
+  require_cmd hdiutil
+
+  echo "Installing $app_name..."
+  local temp_dir
+  temp_dir=$(mktemp -d)
+  local mount_dir="$temp_dir/mount"
+  mkdir -p "$mount_dir"
+
+  local mounted=0
+  cleanup_dmg_install() {
+    trap - RETURN
+    if (( mounted == 1 )); then
+      hdiutil detach "$mount_dir" -quiet 2>/dev/null || true
+    fi
+    rm -rf "$temp_dir"
+  }
+  trap cleanup_dmg_install RETURN
+
+  # Download latest release asset using gh CLI (handles auth automatically)
+  if [[ "$release_tag" != "latest" && -n "$release_tag" ]]; then
+    if ! gh release download "$release_tag" --repo "$github_repo" --pattern "*$asset_pattern" --dir "$temp_dir"; then
+      echo "Error: Could not download $app_name from $github_repo" >&2
+      return 1
+    fi
+  else
+    if ! gh release download --repo "$github_repo" --pattern "*$asset_pattern" --dir "$temp_dir"; then
+      echo "Error: Could not download $app_name from $github_repo" >&2
+      return 1
+    fi
+  fi
+
+  # Find the DMG file
+  local dmg_file
+  dmg_file=$(find_single_file "$temp_dir" "-name '*$asset_pattern'" "DMG")
+
+  # Mount DMG and copy app
+  hdiutil attach "$dmg_file" -quiet -nobrowse -mountpoint "$mount_dir"
+  mounted=1
+
+  if [[ ! -d "$mount_dir/$app_bundle" ]]; then
+    echo "Error: Could not find $app_bundle in mounted DMG at $mount_dir" >&2
+    return 1
+  fi
+
+  cp -r "$mount_dir/$app_bundle" /Applications/
+
+  echo "$app_name installed successfully"
+}
+
+# -----------------------------------------------
+# Function to download and install GitHub release CLI binaries (no eget)
+# -----------------------------------------------
+
+download_latest_release_asset() {
+  local github_repo="$1"
+  local release_tag="$2"
+  local pattern="$3"
+  local out_dir="$4"
+
+  require_cmd gh
+
+  if [[ -n "$release_tag" ]]; then
+    gh release download "$release_tag" --repo "$github_repo" --pattern "$pattern" --dir "$out_dir" --clobber
+    return 0
+  fi
+
+  gh release download --repo "$github_repo" --pattern "$pattern" --dir "$out_dir" --clobber
+}
+
+normalize_version() {
+  local tag="$1"
+  printf '%s' "$tag" | sed 's/^v//'
+}
+
+escape_ere() {
+  # Escape string for use inside an ERE (grep -E).
+  printf '%s' "$1" | sed 's/[][(){}.^$*+?|\\]/\\&/g'
+}
+
+binary_matches_release_tag() {
+  local dest_path="$1"
+  local release_tag="$2"
+
+  [[ -x "$dest_path" ]] || return 1
+  [[ -n "$release_tag" ]] || return 0
+
+  local want
+  want=$(normalize_version "$release_tag")
+  local release_tag_esc want_esc
+  release_tag_esc=$(escape_ere "$release_tag")
+  want_esc=$(escape_ere "$want")
+
+  local out=""
+  if out=$(LC_ALL=C "$dest_path" --version 2>/dev/null); then
+    :
+  elif out=$(LC_ALL=C "$dest_path" version 2>/dev/null); then
+    :
+  else
+    return 1
+  fi
+
+  printf '%s' "$out" | grep -Eq "(^|[^0-9A-Za-z])(${release_tag_esc}|${want_esc})([^0-9A-Za-z]|$)"
+}
+
+install_release_file() {
+  local tool_name="$1"
+  local github_repo="$2"
+  local release_tag="$3"
+  local pattern="$4"
+  local output_name="$5"
+
+  local resolved_tag
+  resolved_tag=$(resolve_release_tag "$github_repo" "$release_tag")
+
+  local dest_path="$BIN_DIR/$output_name"
+  if binary_matches_release_tag "$dest_path" "$resolved_tag"; then
+    echo "$tool_name is up to date ($resolved_tag)"
+    return 0
+  fi
+
+  local temp_dir
+  temp_dir=$(mktemp -d)
+  trap 'rm -rf "$temp_dir"; trap - RETURN' RETURN
+
+  download_latest_release_asset "$github_repo" "$resolved_tag" "$pattern" "$temp_dir"
+
+  local asset_path
+  asset_path=$(find_single_file "$temp_dir" "" "asset")
+
+  install -m 0755 "$asset_path" "$dest_path"
+  echo "$tool_name installed ($resolved_tag)"
+}
+
+install_release_tar_gz_bin() {
+  local tool_name="$1"
+  local github_repo="$2"
+  local release_tag="$3"
+  local pattern="$4"
+  local bin_in_archive="$5"
+  local output_name="$6"
+
+  local resolved_tag
+  resolved_tag=$(resolve_release_tag "$github_repo" "$release_tag")
+
+  local dest_path="$BIN_DIR/$output_name"
+  if binary_matches_release_tag "$dest_path" "$resolved_tag"; then
+    echo "$tool_name is up to date ($resolved_tag)"
+    return 0
+  fi
+
+  local temp_dir
+  temp_dir=$(mktemp -d)
+  trap 'rm -rf "$temp_dir"; trap - RETURN' RETURN
+
+  download_latest_release_asset "$github_repo" "$resolved_tag" "$pattern" "$temp_dir"
+
+  local archive_path
+  archive_path=$(find_single_file "$temp_dir" "-name '*.tar.gz'" ".tar.gz")
+
+  tar -xzf "$archive_path" -C "$temp_dir" "$bin_in_archive"
+  install -m 0755 "$temp_dir/$bin_in_archive" "$dest_path"
+  echo "$tool_name installed ($resolved_tag)"
+}
+
+process_manual_package_line() {
+  local raw_line="$1"
+
+  local trimmed_line
+  trimmed_line=$(printf '%s' "$raw_line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+  [[ -z "$trimmed_line" || "$trimmed_line" =~ ^# ]] && return 0
+
+  local kind=""
+  kind=$(printf '%s' "$trimmed_line" | cut -d'|' -f1)
+
+  case "$kind" in
+    dmg)
+      local app_name repo release_tag app_bundle asset_pattern
+      IFS='|' read -r _ app_name repo release_tag app_bundle asset_pattern <<<"$trimmed_line"
+      if [[ -z "${app_name:-}" || -z "${repo:-}" || -z "${release_tag:-}" || -z "${app_bundle:-}" || -z "${asset_pattern:-}" ]]; then
+        echo "Error: invalid dmg line: $trimmed_line" >&2
+        return 1
+      fi
+      install_dmg_app "$app_name" "$repo" "$release_tag" "$app_bundle" "$asset_pattern"
+      ;;
+    tar_gz_bin)
+      local tool_name repo release_tag pattern bin_in_archive output_name
+      IFS='|' read -r _ tool_name repo release_tag pattern bin_in_archive output_name <<<"$trimmed_line"
+      if [[ -z "${tool_name:-}" || -z "${repo:-}" || -z "${release_tag:-}" || -z "${pattern:-}" || -z "${bin_in_archive:-}" || -z "${output_name:-}" ]]; then
+        echo "Error: invalid tar_gz_bin line: $trimmed_line" >&2
+        return 1
+      fi
+      install_release_tar_gz_bin "$tool_name" "$repo" "$release_tag" "$pattern" "$bin_in_archive" "$output_name"
+      ;;
+    file)
+      local tool_name repo release_tag pattern output_name
+      IFS='|' read -r _ tool_name repo release_tag pattern output_name <<<"$trimmed_line"
+      if [[ -z "${tool_name:-}" || -z "${repo:-}" || -z "${release_tag:-}" || -z "${pattern:-}" || -z "${output_name:-}" ]]; then
+        echo "Error: invalid file line: $trimmed_line" >&2
+        return 1
+      fi
+      install_release_file "$tool_name" "$repo" "$release_tag" "$pattern" "$output_name"
+      ;;
+    *)
+      echo "Error: unknown manual package kind '$kind' in line: $trimmed_line" >&2
+      return 1
+      ;;
+  esac
+}
+
+if [[ ! -f "$MANUAL_PACKAGES_TEMPLATE" ]]; then
+  echo "Error: manual packages template not found at $MANUAL_PACKAGES_TEMPLATE" >&2
+  exit 1
+fi
+
+if ! command -v chezmoi >/dev/null 2>&1; then
+  echo "Error: chezmoi CLI not available" >&2
+  exit 1
+fi
+
+if ! mapfile -t manual_lines < <(chezmoi execute-template < "$MANUAL_PACKAGES_TEMPLATE"); then
+  echo "Error: Failed to render manual packages template" >&2
+  exit 1
+fi
+
+status=0
+for line in "${manual_lines[@]}"; do
+  if ! process_manual_package_line "$line"; then
+    status=1
+  fi
+done
+
+if [[ $status -ne 0 ]]; then
+  echo "Completed with some errors while installing manual packages" >&2
+  exit $status
+fi
+
+# -----------------------------------------------
+# Install command-line tools
+# -----------------------------------------------
+
+# YtSurf
+curl -o ~/.local/bin/ytsurf https://raw.githubusercontent.com/kapral18/ytsurf/reduce-deps/ytsurf.sh
+chmod +x ~/.local/bin/ytsurf
+
+# amp
+if ! command -v amp &>/dev/null; then
+  curl -fsSL https://ampcode.com/install.sh | bash
+fi

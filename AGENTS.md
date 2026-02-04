@@ -10,8 +10,7 @@ When user requests to "add X" (app, package, cask, formula, or CLI tool), follow
 4. **Gems** (`home/readonly_dot_default-gems`) — Ruby packages
 5. **npm** (`home/readonly_dot_default-npm-pkgs`) — Node.js/JavaScript packages
 6. **uv** (`home/readonly_dot_default-uv-tools.tmpl`) — Python tools/packages
-7. **Manual packages** (`home/.chezmoiscripts/run_onchange_after_05-install-manual-packages.sh`) — .dmg or custom installers
-8. **eget** (`home/readonly_dot_default-eget-packages.tmpl`) — GitHub-released CLI tools
+7. **Manual packages** (`home/readonly_dot_default-manual-packages.tmpl`) — DMGs + GitHub release CLI tools (installed by `home/.chezmoiscripts/run_onchange_after_05-install-manual-packages.sh.tmpl`)
 
 **Workflow:**
 
@@ -29,7 +28,6 @@ When user requests to "add X" (app, package, cask, formula, or CLI tool), follow
    - **npm**: `npm search <package>` — Node.js packages
    - **uv**: `uv pip search <package>` — Python tools
    - **Manual (.dmg)**: `read_web_page` to GitHub releases — macOS apps
-   - **eget**: Verify GitHub releases structure — binary CLI tools
 4. **Stop at first match** — add to that location only
 5. **Never invent** package names, URLs, or sources — ask user if verification fails
 6. **Use existing patterns** — follow code style and format for each file type
@@ -41,10 +39,11 @@ When user requests to "add X" (app, package, cask, formula, or CLI tool), follow
 When adding formulas or casks to Brewfile:
 
 - **Brewfile location**: `home/readonly_dot_Brewfile.tmpl` (use `glob "**/dot_Brewfile*"` if needed)
-- **Verify on GitHub first**: Check the official repository's INSTALL.md, README, or releases page to confirm Homebrew is recommended and identify the correct formula/tap name
+- **Verify on GitHub first**: Check the official repository's INSTALL.md, README, or releases page to verify Homebrew is recommended and identify the correct formula/tap name
+- Prefer verification language; avoid adding "ask to confirm" patterns to this file.
 - **Search GitHub**: Look for official Homebrew taps (e.g., `owner/homebrew-tap`) in the project
 - **Verify locally**: Once you identify the formula/tap, test with `brew info <formula>` or `brew info <owner/tap>/<formula>` (works for both formulas and casks)
-- **Validate registries**: Use `formulae.brew.sh` search as secondary confirmation
+- **Validate registries**: Use `formulae.brew.sh` search as secondary verification
 - **Never invent** package names, URLs, or tap information — always verify against official sources first
 - **Correct sources**: homebrew-core (default, no tap needed), official project taps, or trusted community taps
 - **Report failures**: If verification fails, report findings to user instead of guessing
@@ -54,11 +53,8 @@ When adding formulas or casks to Brewfile:
 When a macOS app is not available via Homebrew but provides a .dmg release:
 
 1. **Verify repository first**: Always search for official GitHub repo before adding
-2. **Add to script**: Use `home/.chezmoiscripts/run_onchange_after_05-install-manual-packages.sh`
-3. **Use existing pattern**:
-   ```bash
-   install_dmg_app "App Name" "owner/repo" "AppName.app"
-   ```
+2. **Add to list**: Use `home/readonly_dot_default-manual-packages.tmpl`
+3. **Use existing pattern**: `dmg|App Name|owner/repo|AppName.app|.dmg`
 4. **Function handles**:
    - Latest release download from GitHub API
    - DMG mounting and app copy to /Applications
@@ -82,26 +78,15 @@ install_dmg_app "Squirrel Disk" "adileo/squirreldisk" "SquirrelDisk.app"
 
 When a CLI tool is not available via Homebrew and distributed via GitHub releases:
 
-1. **Prefer `eget`**: Use template file `home/readonly_dot_default-eget-packages.tmpl`
-2. **Add to template**: Include URL, description, and binary name following existing format
-3. **Template variables**:
-   - `{{- if ne .isWork true }}` sections for work-specific tools
-   - Standard format: `description` + `URL` + `binary-name`
-4. **Installation handled by**: chezmoi script `run_onchange_after_05-install-eget-packages.sh.tmpl`
+1. **Add to list**: Use `home/readonly_dot_default-manual-packages.tmpl`
+2. **Prefer release assets**: Use `file|...` (single binary asset) or `tar_gz_bin|...` (archive with a binary)
+3. **Template variables**: Use `{{- if ne .isWork true }}` blocks when needed
 
 **Example entry**:
 
-```yaml
-# Description: DNS propagation checker
-# URL: https://github.com/unfrl/dug
-dug unfrl/dug
+```text
+file|dug|unfrl/dug|dug-osx-x64|dug
+tar_gz_bin|mdtt|szktkfm/mdtt|mdtt_Darwin_arm64.tar.gz|mdtt|mdtt
 ```
 
-**Process flow**:
-
-- ChezMoi processes the template during apply
-- Script downloads binary and makes executable
-- No need for custom installation functions
-
-**For DMG apps**: Continue using `install_dmg_app` function in manual packages script
-**For CLI tools**: Use eget template approach
+**Installer**: `home/.chezmoiscripts/run_onchange_after_05-install-manual-packages.sh.tmpl`

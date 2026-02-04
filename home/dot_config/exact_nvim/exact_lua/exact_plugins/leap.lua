@@ -1,6 +1,6 @@
 return {
   {
-    "ggandor/leap.nvim",
+    url = "https://codeberg.org/andyg/leap.nvim",
     keys = {
       { "s", "<Plug>(leap-anywhere)", desc = "Leap" },
       {

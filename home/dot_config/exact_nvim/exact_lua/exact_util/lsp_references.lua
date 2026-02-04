@@ -198,12 +198,28 @@ function M.references_smart(opts)
     opts.includeDeclaration = false
   end
 
+  local current_file = vim.api.nvim_buf_get_name(0)
+  local current_file_real = nil
+  if type(current_file) == "string" and current_file ~= "" then
+    current_file_real = (vim.uv and vim.uv.fs_realpath and vim.uv.fs_realpath(current_file)) or current_file
+  end
+
   local definition_lnums_by_file = get_symbol_definition_lnums()
 
   return M.references_all(vim.tbl_extend("force", opts, {
     regex_filter = function(item, _)
       if not item or type(item.filename) ~= "string" or type(item.lnum) ~= "number" then
         return true
+      end
+
+      -- Never filter references from the current buffer's file. The "smart" filters below
+      -- (definition line, import/re-export blocks, test-path heuristics) can hide legit
+      -- intra-file references.
+      if current_file_real ~= nil then
+        local item_real = (vim.uv and vim.uv.fs_realpath and vim.uv.fs_realpath(item.filename)) or item.filename
+        if item_real == current_file_real then
+          return true
+        end
       end
 
       if definition_lnums_by_file[item.filename] and definition_lnums_by_file[item.filename][item.lnum] then
@@ -225,4 +241,3 @@ function M.references_smart(opts)
 end
 
 return M
-

@@ -1,0 +1,24 @@
+{
+  "security": {
+    "auth": {
+      "selectedType": "gemini-api-key"
+    },
+    "folderTrust": {
+      "enabled": true
+    }
+  },
+  "tools": {
+    "autoAccept": true
+  },
+  "general": {
+    "previewFeatures": true
+  },
+  "experimental": {
+    "codebaseInvestigatorSettings": {
+      "maxNumTurns": 100
+    }
+  },
+  "model": {
+    "name": "gemini-3-pro-preview"
+  }
+}

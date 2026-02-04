@@ -26,15 +26,19 @@
       "command": "bash",
       "args": [
         "-lc",
-        "docker run --pull=always --rm -i -e ELASTICSEARCH_CLOUD_ID=\"$(pass scsi/simian/cloud_id)\" -e ELASTICSEARCH_API_KEY=\"$(pass scsi/simian/api_key)\" -e ELASTICSEARCH_INDEX=kibana-repo simianhacker/semantic-code-search-mcp-server node dist/src/mcp_server/bin.js stdio"
+        "docker run --pull=always --rm -i -e ELASTICSEARCH_ENDPOINT=\"$(pass scsi/simian/cloud_endpoint)\" -e ELASTICSEARCH_API_KEY=\"$(pass scsi/simian/api_key)\" -e ELASTICSEARCH_INDEX=kibana-repo simianhacker/semantic-code-search-mcp-server node dist/src/mcp_server/bin.js stdio"
       ]
     },
     "scsi-local": {
       "command": "bash",
       "args": [
         "-lc",
-        "docker run --pull=always --rm -i -e ELASTICSEARCH_CLOUD_ID=\"$(pass scsi/k18/cloud_id)\" -e ELASTICSEARCH_API_KEY=\"$(pass scsi/k18/api_key)\" -e ELASTICSEARCH_INDEX=scsi-repo simianhacker/semantic-code-search-mcp-server node dist/src/mcp_server/bin.js stdio"
+        "cd \"$HOME/work/semantic-code-search-mcp-server/main\" && ELASTICSEARCH_CLOUD_ID=\"$(pass scsi/k18/cloud_id)\" ELASTICSEARCH_API_KEY=\"$(pass scsi/k18/api_key)\" ELASTICSEARCH_INDEX=scsi-repo node dist/src/mcp_server/bin.js stdio"
       ]
+    },
+    "exa": {
+      "type": "remote",
+      "url": "https://mcp.exa.ai/mcp"
     }
   }
 }

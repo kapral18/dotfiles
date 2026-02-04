@@ -253,30 +253,6 @@ if type -q pass; and test -z "$CLOUDFLARE_API_TOKEN"
 end
 {{- end }}
 
-# ------------------------------------
-# Perplexity API Key Configuration
-# ------------------------------------
-
-if type -q pass; and test -z "$PERPLEXITY_API_KEY"
-    set -gx PERPLEXITY_API_KEY (pass perplexity/api/token)
-end
-
-# ------------------------------------
-# Github Public PAT
-# ------------------------------------
-
-if type -q pass; and test -z "$EGET_GITHUB_TOKEN"
-    set -gx EGET_GITHUB_TOKEN (pass github/public/pat)
-end
-
-# ------------------------------------
-# GitHub MCP PAT
-# ------------------------------------
-
-if type -q pass; and test -z "$GITHUB_MCP_PAT"
-    set -gx GITHUB_MCP_PAT (pass github/mcp/pat)
-end
-
 {{ if ne .isWork true -}}
 # ------------------------------------
 # Conditional Configurations

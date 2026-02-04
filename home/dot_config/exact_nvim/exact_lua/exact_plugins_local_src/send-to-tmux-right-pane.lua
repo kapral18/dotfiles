@@ -277,9 +277,16 @@ function M.send_diagnostics()
     return
   end
 
+  local severity_names = {
+    [vim.diagnostic.severity.ERROR] = "ERROR",
+    [vim.diagnostic.severity.WARN] = "WARN",
+    [vim.diagnostic.severity.INFO] = "INFO",
+    [vim.diagnostic.severity.HINT] = "HINT",
+  }
+
   local diag_lines = {}
   for _, d in ipairs(diagnostics) do
-    local severity = vim.diagnostic.severity[d.severity] or "UNKNOWN"
+    local severity = severity_names[d.severity] or "UNKNOWN"
     table.insert(diag_lines, string.format("Line %d: [%s] %s", d.lnum + 1, severity, d.message))
   end
 

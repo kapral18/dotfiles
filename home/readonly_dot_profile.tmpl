@@ -82,9 +82,6 @@ if command -v pass >/dev/null; then
   [ -z "$CLOUDFLARE_WORKERS_AI_API_KEY" ] && export CLOUDFLARE_WORKERS_AI_API_KEY="$(pass cloudflare/workers/ai/api/token)"
   [ -z "$ANTHROPIC_API_KEY" ] && export ANTHROPIC_API_KEY="$(pass anthropic/api/token)"
   [ -z "$OPENROUTER_API_KEY" ] && export OPENROUTER_API_KEY="$(pass openrouter/api/token)"
-  [ -z "$PERPLEXITY_API_KEY" ] && export PERPLEXITY_API_KEY="$(pass perplexity/api/token)"
-  [ -z "$GITHUB_MCP_PAT" ] && export GITHUB_MCP_PAT="$(pass github/mcp/pat)"
-  [ -z "$EGET_GITHUB_TOKEN" ] && export EGET_GITHUB_TOKEN="$(pass github/public/pat)"
   {{ if ne .isWork true -}}
   [ -z "$CLOUDFLARE_API_TOKEN" ] && export CLOUDFLARE_API_TOKEN="$(pass cloudflare/api/token)"
   {{- end }}

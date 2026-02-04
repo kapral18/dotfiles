@@ -151,6 +151,24 @@ vim.g.loaded_ruby_provider = 0
 vim.g.loaded_perl_provider = 0
 vim.g.loaded_node_provider = 0
 
+-- Neovim 0.11.x: right-click popup menu (`MenuPopup`) calls `vim.ui._get_urls()`.
+-- In some Tree-sitter states, `_get_urls()` can assert (see `vim/ui.lua`), which
+-- breaks right-click anywhere. Make it defensive and always return at least one entry.
+do
+  local ok, ui = pcall(require, "vim.ui")
+  if ok and ui and type(ui._get_urls) == "function" then
+    local orig = ui._get_urls
+    ui._get_urls = function(...)
+      local ok_urls, urls = pcall(orig, ...)
+      if ok_urls and type(urls) == "table" and urls[1] ~= nil then
+        return urls
+      end
+      local cfile = vim.fn.expand("<cfile>")
+      return { (type(cfile) == "string" and cfile) or "" }
+    end
+  end
+end
+
 vim.opt.syntax = "off"
 vim.o.spell = false
 vim.o.foldenable = false

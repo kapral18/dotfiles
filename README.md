@@ -380,7 +380,7 @@ Script: `f-apply-app-icons`
 | **Gems**     | `readonly_dot_default-gems`               | Ruby packages                |
 | **npm**      | `readonly_dot_default-npm-pkgs`           | Node.js globals              |
 | **uv**       | `readonly_dot_default-uv-tools.tmpl`      | Python tools                 |
-| **eget**     | `readonly_dot_default-eget-packages.tmpl` | GitHub releases              |
+| **Manual**   | `readonly_dot_default-manual-packages.tmpl` | DMGs + GitHub releases |
 
 Install scripts run via chezmoi hooks when files change.
 

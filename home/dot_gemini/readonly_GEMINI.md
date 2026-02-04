@@ -8,6 +8,7 @@
 > - **DO NOT** summarize, skim, or selectively apply instructions.
 > - **DO NOT** assume familiarity — re-read fully each session.
 > - **DO NOT** deviate from specified procedures without explicit user approval.
+> - **ALWAYS** read the referenced `~/.agents/*.md` module in full (no skimming) before taking any action under a triggered workflow. Those modules are part of this SOP.
 > - **VIOLATION** of any instruction constitutes operational failure.
 >
 > Failure to comply invalidates your responses. Proceed only after full comprehension.
@@ -30,223 +31,52 @@
 - No pandering, apologies, or unnecessary emotional commentary.
 - Answer questions before acting: questions require explanations, not changes. When asked a question, provide the answer only.
 
-## 3. Session Start
+## 2.1 External Truth (No Guessing)
 
-### 3.1 Beads Workflow
+This is the baseline mode of operation. The agent must not substitute training-memory guesses for facts.
 
-**Trigger:** User explicitly requests bead operations, OR when ~10% context remains — **stop and suggest**:
-> "Running low on context. Want me to persist progress to a bead before continuing?"
+**Non-negotiables:**
+- Treat any behavior you cannot immediately verify as unknown until proven (CLIs, libraries, APIs, SaaS, OS tools, vendored deps).
+- Never assume "the library/tool at hand" matches a similarly-named thing from memory.
+- Do not build further reasoning on unverified external behavior (no forward-chaining on guesses).
 
-**This is mandatory** — always check context and offer to persist at ~10% remaining.
+**If it's local, inspect it:**
+- If the dependency/tool is present locally (repo source, `node_modules/`, vendored code, or system install paths), inspect the actual code/version there.
+- Prefer reading the local implementation over relying on prior knowledge or generic docs.
 
-**Golden Rule:** Always ask user permission before any bead operation — create, update, status change, close. No exceptions.
+**Identity before semantics:** prove what exact thing we are dealing with.
+- CLI: resolve the binary path and provenance, then read `--version` and `--help`.
+- Library: resolve exact package name + version (lockfile), import path, and where its docs/source live.
 
-**Local Policy:**
-- Run all commands through `bdlocal` (invokes `bd --db "$BEADS_DIR/.beads/beads.db" --no-auto-flush --no-auto-import --no-daemon).
-- `$BEADS_DIR` is the current workspace root. Confirm: `echo $BEADS_DIR`.
-- Data lives in `$BEADS_DIR/.beads/`.
-- **Git-free Beads mode**: We do not use beads' internal git sync or remotes. All beads data management is local-only. Use `bdlocal export` for backups. The project itself uses a standard Git/GitHub workflow (see section 3.2).
-- Installation managed externally (Brewfile). Do not install/upgrade `bd` in session.
+**Evidence-first:** prefer measuring reality over asking the user.
+- Run capability probes (minimal commands or `/tmp` harnesses) to answer one uncertainty at a time.
+- Use `/tmp` to safely test flags, outputs, exit codes, config discovery, and edge cases.
+- Any assumption/guess that is locally verifiable must be verified via probes; prefer `/tmp` harnesses and REPL-style invocations before relying on it.
+- Resolve material unknowns before proceeding (local probes, local source/tests, official docs fetched live, then user questions).
+- Ask questions when a required truth cannot be verified locally and proceeding would require guessing; prefer one batched set that closes all remaining forks.
 
-**Session Workflow:**
+**Evidence anchoring:**
+- Any claim about external behavior must be anchored in evidence (command output summary, file path, or fetched docs).
+- If something is still a hypothesis, label it explicitly as such and keep it from gating downstream steps.
 
-**Start:**
-1. Check for upgrades: `bdlocal info --whats-new` (shows last 3 versions).
-2. Run `bdlocal ready --json` to find available work.
-3. Run `bdlocal blocked --json` to see what is waiting on other tasks.
-4. If claiming existing bead: ask permission, then `bdlocal update <id> --status in_progress --json`.
-5. If creating new bead: ask permission, then `bdlocal create "title" -t <type> -p <priority> --description="context" --estimate="30m" --json`.
+## 3. Triggered Workflows
 
-**During work:**
-7. Review bead: `bdlocal show <id> --json`.
-8. On material progress: ask permission, then update notes per Note Curation below.
-9. On discovering new scope: ask permission to create with `--deps discovered-from:<parent-id>`.
+When a trigger matches, read the referenced module in `~/.agents/` fully (do not skim) and follow it.
 
-**End:**
-10. Ask permission to close: `bdlocal close <id> --reason "Completed" --json`.
-11. **Local Backup:** `bdlocal export -o ~/beads-backups/$(basename $(pwd))-issues.jsonl`
-
-**Commands:**
-
-**Core:**
-- `bdlocal ready --json` — find unblocked work
-- `bdlocal blocked --json` — find blocked work
-- `bdlocal show <id> --json` — view details
-- `bdlocal create "title" -t bug|feature|task|epic|chore -p 0-4 --description="..." --estimate="1h" --json`
-- `bdlocal create "title" --external-ref "https://github.com/..." --json` — link external issue
-- `bdlocal update <id> --status open|in_progress|blocked|closed --json`
-- `bdlocal update <id> --notes|--description|--design|--acceptance|--title "text" --estimate "2h" --json`
-- `bdlocal update <id> --status in_progress --add-label <label>[,<label>...] --remove-label <label>[,<label>...] --json` — update with labels (repeatable; accepts comma-separated lists)
-- `bdlocal close <id> --reason "..." --json`
-- `bdlocal reopen <id> --reason "..." --json`
-- `bdlocal list --status open --sort priority --json`
-- `bdlocal search "query" --json`
-- `bdlocal stale --days 30 --json`
-- `bdlocal count --json` — count and group issues
-- `bdlocal status --no-activity --json` — database overview (skip git activity parsing)
-- `bdlocal init --quiet --skip-hooks --skip-merge-driver` — initialize in new repo (ensure git-free)
-- `bdlocal deleted --json` — view deletion audit trail
-
-**Batch operations:**
-- `bdlocal update <id1> <id2> --status in_progress --json`
-- `bdlocal close <id1> <id2> --reason "Done" --json`
-
-**Dependencies:**
-- `bdlocal dep add <id> <dep-id> --type blocks|discovered-from|related|parent-child --json`
-- `bdlocal dep tree <id>`
-
-**Labels** (metadata without polluting notes):
-- `bdlocal label add|remove <id> <label> --json`
-- `bdlocal label list <id> --json`
-- `bdlocal list --label auth,backend --json` (AND)
-- `bdlocal list --label-any urgent,blocked --json` (OR)
-- Useful: `needs-human-review`, `context-stale`, `blocked-on-external`, `ai-generated`
-
-**Note Curation:**
-1. Read: `bdlocal show <id> --json`
-2. Curate: Drop stale items, keep only what future agent needs. Use COMPLETED/IN_PROGRESS/NEXT structure.
-3. Update: `bdlocal update <id> --notes "full refreshed snapshot" --json` (replaces entire field)
-4. Verify: Re-run `bdlocal show <id> --json`
-
-**Planning & Content Strategy:**
-- **Bead Content:** Plain text only. No Markdown. The `notes` field is the living plan.
-- **Scratchpad:** Use `/tmp/` for ephemeral thinking. Never save to project.
-- **Wisdom:** Maintain a single, accumulated source of truth. Append new knowledge to existing wisdom; do not overwrite valid historical knowledge.
-- **History:** We only care about the current state. Do not preserve old plans.
-
-**Dependency Thinking:**
-- **COGNITIVE TRAP:** Temporal language inverts dependencies.
-- Wrong: "Phase 1 blocks Phase 2" (Phase 1 -> Phase 2)
-- Right: "Phase 2 DEPENDS ON Phase 1" (`bdlocal dep add phase2 phase1`)
-- Always ask: "What does this task NEED before it can start?"
-
-**Reference:**
-
-**Types:** `bug`, `feature`, `task`, `epic`, `chore` — always pass `-t`
-
-**Priorities:** `0`=critical, `1`=high, `2`=medium (default), `3`=low, `4`=backlog
-
-**Statuses:** `open`, `in_progress`, `blocked`, `closed` (`ready` is a filtered view, not a status)
-
-**Dependencies:** `blocks` (hard), `related` (soft), `parent-child` (hierarchy), `discovered-from` (provenance)
-
-**Advanced Patterns:**
-
-**Wisdom beads** (accumulated knowledge):
-1. Create: `bdlocal create "wisdom - <topic>" -t task -p 2 --json`
-2. Link: `bdlocal dep add <working-id> <wisdom-id> --type related --json`
-3. Maintain: Update wisdom bead notes with curated takeaways each session.
-4. **Load and follow e2e:** When accessing wisdom/knowledge beads, ALWAYS:
-   - Load entire content into memory once: `bdlocal show <wisdom-id> --json 2>&1 | jq -r '.[0].notes'`
-   - Read the ENTIRE wisdom bead content fully without skimming or skipping sections.
-   - Follow instructions to the letter — do not cherry-pick, interpret selectively, or skip parts.
-   - After updating a wisdom bead, explicitly ask user permission to re-upload new contents into context.
-   - Do not repeatedly grep or query wisdom beads if it's already loaded in memory, simply recall from memory.
-   - Treat wisdom bead instructions as binding within the scope of the current task.
-
-**Epic with external link:**
-`bdlocal create "Auth epic" -t epic -p 1 --external-ref "https://github.com/.../issues/123" --json`
-
-**Maintenance:**
-- Backup: `bdlocal export -o ~/beads-backups/$(basename $(pwd))-issues.jsonl`
-- Manual Import: `bdlocal import -i "$BEADS_DIR/.beads/issues.jsonl"` (load from JSONL)
-- Manual Export: `bdlocal export -o "$BEADS_DIR/.beads/issues.jsonl"` (flush to JSONL)
-- Compact: `bdlocal compact --days 90 --all`
-- Cleanup: `bdlocal cleanup --force` (deletes closed issues)
-- Clean: `bdlocal clean` (remove temp merge artifacts)
-- Health: `bdlocal doctor --check-health`
-- Duplicates: `bdlocal duplicates --auto-merge --json`
-- Daemons: `bdlocal daemons killall`
-- Post-upgrade: `bdlocal daemons killall` (restart daemons with new version)
-- Import Config: `bdlocal config set import.orphan_handling "resurrect"` (prevent data loss)
-
-**Deletion tracking:**
-- `bdlocal deleted --json` (last 7 days) or `bdlocal deleted --since=30d --json`
-- `bdlocal delete <id>`
-
-**Duplicates:**
-- `bdlocal duplicates` / `bdlocal duplicates --auto-merge`
-- `bdlocal merge <source-id> --into <target-id> --json`
-
-**Troubleshooting:** Confirm `BEADS_DIR` is set and `bdlocal version ≥ 0.29.0`.
-
-### 3.2 GitHub Workflow
-
-**Trigger:** Any GitHub activity (PRs, issues, commits, reviews, comments, links).
-
-**Commits & PRs:**
-
-1. Use `gh` CLI for all GitHub activity.
-2. Apply Conventional Commits; semantic-release handles versioning.
-3. Consolidate changes into one commit; use fixup commits for follow-ups.
-4. Include short bullet points in commit body.
-5. Ask user: `Addresses #X` or `Closes #X`? Confirm commit type (`fix`, `feat`, `BREAKING CHANGE`).
-6. If a bead exists for this work: reference it in commit body (`Bead: bd-xxxx`).
-7. Request approval before each `git commit` or `git push`.
-
-**Review & Investigation:**
-
-1. Read PR description fully; view screenshots with `Read` tool.
-2. Read all comments; recursively follow linked issues/PRs.
-3. Don't implement suggestions immediately — restate understanding and ask for confirmation.
-4. Evaluate reviewer-requested changes; ask for clarification if uncertain.
-5. Keep PR title/description concise and aligned with established style. Update if scope shifts.
-6. Add suggestions conversationally:
-   ```
-   gh api repos/OWNER/REPO/pulls/NUM/comments \
-     -f body=$'wdyt about...\n\n```suggestion\ncode\n```' \
-     -f commit_id=SHA -f path=FILE -f side=RIGHT -f line=M
-   ```
-   Add `-f start_line=N` for multi-line.
-
-**Sub-Issues API:**
-
-GitHub's sub-issue API creates real parent-child relationships (not tasklists).
-
-**Create hierarchy:**
-1. Create child issues first with full descriptions.
-2. Get GraphQL IDs:
-   ```
-   gh api graphql -f query='{ repository(owner:"org",name:"repo") { issue(number:N) { id } } }'
-   ```
-3. Link:
-   ```
-   gh api graphql -f query="mutation { addSubIssue(input:{issueId:\"PARENT_ID\",subIssueId:\"CHILD_ID\"}) { issue { number } } }"
-   ```
-4. Verify: `gh api repos/:owner/:repo/issues/NUM/sub_issues`
-
-**Mutations:** `addSubIssue`, `removeSubIssue`, `reprioritizeSubIssue`
-
-### 3.3 Semantic Code Search Workflow
-
-**Trigger:** Kibana/EUI/Elasticsearch codebases, or user mentions semantic search, `semantic_code_search`, or "use/using X index". When triggered, **ALWAYS** prioritize `semantic_code_search` MCP over built-in search mechanisms.
-
-Provide context (paths, snippets, precise queries) to maximize accuracy.
-
-**Index Usage:**
-
-- **Never use `list_indices`** — always use the index name provided by the user directly.
-- If a search returns no results or the index is not found in one MCP (e.g., `semantic-code-search-simian`), **try the other MCP** (e.g., `semantic-code-search-personal`) before giving up.
-- Two MCP servers are available: `simian` (shared/team indices) and `personal` (user-specific indices).
-
-**Tool Selection Guidelines:**
-
-| Tool | Use Case | Output |
-|------|----------|--------|
-| `map_symbols_by_query` | Known symbol/directory names | All matching files; shows symbol density |
-| `semantic_code_search` | Conceptual/unfamiliar code | Top 25 snippets with scores; answers "How does X work?" |
-| `discover_directories` | Locate relevant directories | Top 20 directories ranked by relevance; use first |
-| `symbol_analysis` | Deep dive on one symbol | Definitions, usages, types, related symbols |
-| `read_file_from_chunks` | Read complete files | Full stitched view for examining implementations |
+- Beads: user requests beads / bdlocal, or you are running low on context -> `~/.agents/beads.md`
+- Git: anything related to `git` (status/diff/log/branch/commit/push/rebase/merge) -> `~/.agents/git.md`
+- GitHub + gh: anything related to GitHub or `gh`, or any GitHub URL, or PR/issue work -> `~/.agents/gh.md`
+- PR review: review/comment/approve/change-requests workflows -> `~/.agents/github_pr_review.md`
+- Semantic code search: "use/using <index-name> index", or user mentions `semantic_code_search`/"index"/"semantic search" -> `~/.agents/semantic_code_search.md`
 
 ## 4. Workflow
 
-1. **Plan:** Draft inline plan. Do **not** save to filesystem.
-2. **Present:** Show plan, ask "Should I proceed?" and await explicit approval. (Skip this step if `SKIP_CONFIRM` is set)
-3. **Execute:** Only after approval. Prototype in `/tmp` before touching real codebase.
-4. **Validate:** Never assume. Pause if uncertain and ask.
-5. **Present results:** Stop for direction. Do not summarize work, actions, or create summary documents unless explicitly asked.
-6. **Answer questions, don't act:** When asked any question, provide the answer only. Do not make changes, undo work, or take action unless explicitly requested. Questions are requests for information, not action.
+**Default mode (no `USE_CONFIRM` token in the user's message):**
+1. **Plan:** Start the response with a dedicated, in-depth plan/checklist.
+2. **Execute:** Proceed with implementation in the same response; do not ask "should I proceed?" and do not pause to confirm the plan.
+3. **Validate:** Never assume. Pause whenever required to resolve unknowns; stop for explicit approvals only for destructive/irreversible actions (e.g., `git commit`, `git push`).
+4. **Present results:** Keep the plan and results complete and easy to scan.
+5. **Answer questions, don't act:** When asked a question, answer it only.
 
 ## 5. Tooling
 
@@ -293,12 +123,10 @@ When debugging or investigating issues, **use creative thinking** to explore mul
 - Separate plans, questions, and code blocks clearly.
 - Wrap paths and symbols in backticks; use code citation format for existing code.
 - Do not summarize work, actions, or create summary documents unless explicitly asked.
-- When asked a question: answer it. Do not take action or make changes. If asked about a change you made, explain your reasoning; do not undo or modify unless requested.
 
 ## 8. Exceptions
 
 - On conflict with user request: stop, describe conflict, ask for clarification.
 - When unsure: stop and ask immediately.
-- In ambiguous situations: restate understanding and request confirmation.
 - If asked a question after making a change: explain reasoning; do not undo or modify unless requested.
 - When uncertain whether to answer or act: answer first, then ask if action is needed.
