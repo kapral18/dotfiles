@@ -78,6 +78,35 @@ When a trigger matches, read the referenced module in `~/.agents/` fully (do not
 4. **Present results:** Keep the plan and results complete and easy to scan.
 5. **Answer questions, don't act:** When asked a question, answer it only.
 
+**USE_CONFIRM mode (`USE_CONFIRM` token present):**
+1. **Investigate:** Gather evidence first (local inspection, minimal probes) to reduce guessing.
+2. **Propose:** Present a concrete plan plus explicit assumptions and acceptance criteria.
+3. **Clarify:** Ask only targeted, fork-closing questions for what cannot be verified from sources.
+4. **Pause:** Do not perform state-changing actions until the user confirms the plan.
+5. **Execute + validate:** After confirmation, implement and validate against the acceptance criteria.
+
+### 4.1 When Repeated Attempts Fail (Requirements Reset Interview)
+
+This mode exists to prevent looping when requirements are underspecified or misunderstood.
+When triggered, it overrides the Default and USE_CONFIRM workflows until alignment is restored.
+
+**Trigger (any):**
+- Two or more consecutive attempts where the user says the result is incorrect/unsatisfying.
+- The agent is repeating the same class of fix/question without producing new evidence.
+
+**Rules:**
+- Stop implementing. Do not make further speculative changes until alignment is restored.
+- Switch to "interview mode": build a shared, testable specification before continuing.
+- Prefer evidence over interpretation: reproduce, capture exact errors, and compare expected vs actual.
+
+**Interview procedure:**
+1. Restate the current understanding as a short bullet list: goal, constraints, assumptions, and the minimal description of what failed.
+2. Ask targeted questions that close the remaining decision forks (avoid broad or repetitive questions). Focus on clarifying desired behavior, current behavior, constraints, and acceptance criteria.
+3. Convert answers into explicit acceptance criteria and a single next-step plan.
+4. Resume execution only after the criteria are confirmed; validate against them.
+
+**If details are missing:** propose a reasonable default, label it as a default, and state what would change if the default is wrong.
+
 ## 5. Tooling
 
 - **File operations:** Use specialized tools (Read, StrReplace, Write, Delete, LS)
