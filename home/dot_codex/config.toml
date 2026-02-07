@@ -7,6 +7,7 @@ web_search = "cached"
 check_for_update_on_startup = true
 model = "gpt-5.2"
 model_reasoning_effort = "high"
+personality = "pragmatic"
 
 [notice.model_migrations]
 "gpt-5.2" = "gpt-5.2-codex"

@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+"""
+Convert ripgrep lines into fzf multi-line, NUL-delimited entries.
+
+Input (from rg --column --line-number --no-heading --with-filename --color=never):
+  path:line:col:match text...
+
+Output (NUL-delimited records; fzf with --read0 displays each record as multiple lines):
+  line 1: display header: "path:line:col:"
+  line 2: match text, followed by hidden TAB-separated fields:
+    match text<TAB>full_path<TAB>line<TAB>col
+
+The extra tab-separated fields let us:
+- Show only the display header in the list (via fzf --with-nth=1) while preserving full paths.
+- Drive preview/open actions using the hidden full_path + line/col, without being affected by --wrap.
+"""
+
+from __future__ import annotations
+
+import re
+import sys
+
+
+RG_LINE_RE = re.compile(r"^(.+?):(\d+):(\d+):(.*)$")
+
+
+def main() -> None:
+    out = sys.stdout
+    for raw in sys.stdin:
+        line = raw.rstrip("\n")
+        m = RG_LINE_RE.match(line)
+        if not m:
+            # Preserve non-matching lines as standalone entries.
+            out.write(line)
+            out.write("\0")
+            continue
+
+        path, lnum, col, text = m.group(1), m.group(2), m.group(3), m.group(4)
+        # Important: the first TAB must come *after* the visible match text.
+        # We use `fzf --delimiter '\t' --with-nth 1` so everything before the first TAB
+        # is displayed (header + match text), while the hidden fields stay available
+        # for preview/actions via {2}/{3}/{4}.
+        out.write(f"{path}:{lnum}:{col}:")
+        out.write("\n")
+        out.write(text)
+        out.write("\t")
+        out.write(path)
+        out.write("\t")
+        out.write(lnum)
+        out.write("\t")
+        out.write(col)
+        out.write("\0")
+
+
+if __name__ == "__main__":
+    main()

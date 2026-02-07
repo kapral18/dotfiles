@@ -1,0 +1,6 @@
+complete -c ,get-age-buckets --no-files -d "Compute git age buckets"
+complete -c ,get-age-buckets --long-option pattern -f -r -d "Comma-separated git pathspec patterns"
+complete -c ,get-age-buckets --long-option rename-limit -f -r -d "Adjust git rename detection effort"
+complete -c ,get-age-buckets --long-option format -f -r -a "table tsv json text" -d "Output format"
+complete -c ,get-age-buckets --long-option buckets -f -r -d "Custom bucket spec"
+complete -c ,get-age-buckets --long-option no-header -f -d "Suppress headers for text outputs"

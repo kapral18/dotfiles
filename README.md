@@ -74,7 +74,7 @@ Configuration management with templates and scripts.
 - **Executable Scripts**: Files with `executable_` prefix go to `~/bin`:
 
   ```
-  home/exact_bin/executable_f-wtree → ~/bin/f-wtree
+  home/exact_bin/executable_,w → ~/bin/,w
   ```
 
 - **Automated Hooks**: Scripts in `.chezmoiscripts/` run automatically:
@@ -115,17 +115,17 @@ Fish is the primary shell, with Zsh and Bash also configured.
 
 Git worktree helpers for easier branch management.
 
-#### `f-wtree add <branch> [base_branch]`
+#### `,w add <branch> [base_branch]`
 
 Create worktrees from:
 
 - Existing local branches
 - Remote branches (`origin`, `upstream`)
-- Fork branches (`f-wtree add user/branch`)
+- Fork branches (`,w add user/branch`)
 - New branches from `HEAD`
 - Nested directories for `feature/new-ui` → `../feature/new-ui/`
 
-#### `f-wtree prs <pr_numbers_or_search>`
+#### `,w prs <pr_numbers_or_search>`
 
 PR reviewer workflow:
 
@@ -136,7 +136,7 @@ PR reviewer workflow:
 5. Create worktree for PR branch
 6. Launch named tmux session
 
-#### `f-wtree remove`
+#### `,w remove`
 
 Interactive cleanup:
 
@@ -153,18 +153,18 @@ Interactive cleanup:
 
 | Script                      | Purpose                                   |
 | --------------------------- | ----------------------------------------- |
-| `f-add-patch-to-prs`        | Add `.patch` files to PRs                 |
-| `f-appid`                   | Get macOS bundle identifiers              |
-| `f-apply-app-icons`         | Apply custom app icons from YAML          |
-| `f-check-backport-progress` | Check backport status                     |
-| `f-cp-files-for-llm`        | Concatenate project files for LLM context |
-| `f-fuzzy-brew-search`       | Interactive Homebrew search               |
-| `f-gh-subissues-create`     | Create GitHub sub-issues                  |
-| `f-history-sync`            | Sync fish history via 1Password           |
-| `f-list-prs`                | Advanced PR filtering                     |
-| `f-pdf-diff`                | Visual PDF comparison                     |
-| `f-tmux-lowfi`              | Control `lowfi` music player              |
-| `f-to-gif` / `f-vid-ipad`   | Video processing                          |
+| `,add-patch-to-prs`        | Add `.patch` files to PRs                 |
+| `,appid`                   | Get macOS bundle identifiers              |
+| `,apply-app-icons`         | Apply custom app icons from YAML          |
+| `,check-backport-progress` | Check backport status                     |
+| `,cp-files-for-llm`        | Concatenate project files for LLM context |
+| `,fuzzy-brew-search`       | Interactive Homebrew search               |
+| `,gh-subissues-create`     | Create GitHub sub-issues                  |
+| `,history-sync`            | Sync fish history via 1Password           |
+| `,list-prs`                | Advanced PR filtering                     |
+| `,pdf-diff`                | Visual PDF comparison                     |
+| `,tmux-lowfi`              | Control `lowfi` music player              |
+| `,to-gif` / `,vid-ipad`    | Video processing                          |
 
 All scripts include error handling, `--help` text, and Fish completions.
 
@@ -362,7 +362,7 @@ Hyper key + movement:
 
 ### Custom App Icons
 
-Script: `f-apply-app-icons`
+Script: `,apply-app-icons`
 
 1. YAML mapping (`app_icons/icon_mapping.yaml`)
 2. Uses `fileicon` to apply icons
@@ -391,11 +391,11 @@ Install scripts run via chezmoi hooks when files change.
 ### Typical Day
 
 1. Tmux sessions auto-restore
-2. `f-wtree add feature/new-ui` - new worktree + tmux session
-3. `f-wtree prs 12345` - checkout PR
+2. `,w add feature/new-ui` - new worktree + tmux session
+3. `,w prs 12345` - checkout PR
 4. Jest runner in Neovim
 5. AI-generated commit
-6. `f-wtree remove` - cleanup
+6. `,w remove` - cleanup
 
 ### Update Packages
 

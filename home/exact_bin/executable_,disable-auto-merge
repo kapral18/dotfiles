@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Description: Automatically disable auto-merge for PRs targeting a specified branch
+
+set -euo pipefail
+
+# Source the utility library
+source "$(dirname "$0")/utils/bash_utils_lib.sh"
+
+if [ $# -lt 1 ]; then
+  echo "Usage: disable_auto_merge <base_branch> [skip_pr_numbers...]"
+  exit 1
+fi
+
+if ! _check_rate_limit; then
+  echo "Aborting due to rate limit concerns"
+  exit 1
+fi
+
+base_branch="$1"
+shift
+skip_prs=("$@")
+
+if ! prs=$(_safe_exec_cmd gh pr list --base "$base_branch" --state open --json number --jq '.[].number'); then
+  exit 1
+fi
+
+for pr_number in $prs; do
+  # Check if PR should be skipped
+  skip=false
+  for skip_pr in "${skip_prs[@]}"; do
+    if [ "$pr_number" = "$skip_pr" ]; then
+      echo "Skipping PR #$pr_number: Excluded from processing"
+      skip=true
+      break
+    fi
+  done
+
+  if [ "$skip" = true ]; then
+    continue
+  fi
+
+  echo "Processing PR #$pr_number..."
+  if ! _process_single_pr "$pr_number"; then
+    echo "Failed to process PR #$pr_number, continuing with next PR"
+    continue
+  fi
+done

@@ -14,6 +14,14 @@ local function bin_path(cmd)
   return cmd
 end
 
+--- Return the executable path for a helper binary.
+--- Falls back to `cmd` when not found (so shells can still resolve it via PATH).
+---@param cmd string
+---@return string
+function M.bin_path(cmd)
+  return bin_path(cmd)
+end
+
 -- workaround for https://github.com/ibhagwan/fzf-lua/issues/2340#issuecomment-3294232666
 local RG_BASE_OPTS = table.concat({
   "--column",
@@ -100,11 +108,11 @@ end
 --- - previews/actions to use the hidden tab fields reliably.
 ---@return string
 function M.rg_to_fzf_multiline_tab_fields_pipe()
-  -- Uses `f-fzf-rg-multiline` (installed from `home/exact_bin/executable_f-fzf-rg-multiline`).
+  -- Uses `,fzf-rg-multiline` (installed from `home/exact_bin/executable_,fzf-rg-multiline`).
   -- This avoids embedding an unreadable inline perl one-liner here.
   -- NOTE: do NOT shellescape the command here: fzf-lua already wraps commands,
   -- and nested quoting can prevent the helper from executing (breaking multiline).
-  return " | " .. bin_path("f-fzf-rg-multiline")
+  return " | " .. bin_path(",fzf-rg-multiline")
 end
 
 --- Build a native fzf `--preview` command that follows the match line.
@@ -118,7 +126,7 @@ end
 function M.fzf_preview_follow_cmd(file_field, line_field)
   -- Use the helper as $0, and pass file/line as $1/$2.
   -- Avoid nested shellescape/quotes for the same reason as above.
-  local preview_bin = bin_path("f-fzf-preview-follow")
+  local preview_bin = bin_path(",fzf-preview-follow")
   return "bash -lc 'exec \"$0\" --file \"$1\" --line \"$2\"' "
     .. preview_bin
     .. " "
@@ -297,7 +305,7 @@ function M.get_opts()
       },
       previewers = {
         bat = {
-          cmd = "f-bat-preview",
+          cmd = ",bat-preview",
         },
       },
       files = {
@@ -308,7 +316,7 @@ function M.get_opts()
         fzf_opts = {
           ["--ansi"] = false,
           ["--wrap"] = true,
-          ["--preview"] = "f-bat-preview {} --style=numbers --line-range :300 --color always",
+          ["--preview"] = ",bat-preview {} --style=numbers --line-range :300 --color always",
         },
         actions = {
           ["default"] = M.open_file,

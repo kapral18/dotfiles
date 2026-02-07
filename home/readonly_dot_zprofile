@@ -8,7 +8,7 @@ if command -v asdf >/dev/null; then
     asdf completion zsh >"$HOME/.asdf/completions/_asdf"
     # append completions to fpath
     fpath=($HOME/.asdf/completions $fpath)
+    fpath=($HOME/.zsh/completions $fpath)
     # initialise completions with ZSH's compinit
     autoload -Uz compinit && compinit
 fi
-

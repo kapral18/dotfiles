@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# Description: Add a patch to my own PRs from my own fork
+
+set -euo pipefail
+
+# Source the utility library
+source "$(dirname "$0")/utils/bash_utils_lib.sh"
+
+pr_numbers=()
+
+# Parse arguments for PR numbers
+for arg in "$@"; do
+  if [[ "$arg" =~ ^[0-9]+$ ]]; then
+    pr_numbers+=("$arg")
+  fi
+done
+
+if [ ${#pr_numbers[@]} -eq 0 ]; then
+  # If no PRs are provided, search and select PR using fzf with improved preview (multi-select enabled)
+  mapfile -t pr_numbers < <(gh pr list --search "${1:-}" --json number,title \
+    --jq '.[] | "\(.number) \(.title)"' | fzf --multi --preview '
+            gh pr view {1} --json number,title,body,author,labels,comments --template "
+            # PR #{{.number}}: {{.title}}
+
+            ---
+
+            ## Author: {{.author.login}}
+
+            {{range .labels}}- {{.name}} {{end}}
+
+            ---
+
+            {{.body}}
+        ' | awk '{print $1}')
+fi
+
+for pr in "${pr_numbers[@]}"; do
+  echo "Processing PR #$pr"
+
+  if ! branch=$(_safe_exec_cmd gh pr view "$pr" --json headRefName -q .headRefName); then
+    continue
+  fi
+
+  if ! _safe_exec_cmd git fetch origin "$branch"; then
+    continue
+  fi
+
+  if ! _safe_exec_cmd git checkout "$branch"; then
+    continue
+  fi
+
+  # Apply the patch
+  if ! _safe_exec_cmd git apply fix.patch; then
+    continue
+  fi
+
+  # Add only the changed files
+  if ! _safe_exec_cmd git add -u; then
+    continue
+  fi
+
+  if ! _safe_exec_cmd git commit -m "Apply additional fix"; then
+    continue
+  fi
+
+  if ! _safe_exec_cmd git push; then
+    continue
+  fi
+
+  _safe_exec_cmd git checkout -
+  echo "Finished processing PR #$pr"
+
+  echo "Don't forget to clean up the patch file!"
+  read -p "Press enter to continue..."
+done

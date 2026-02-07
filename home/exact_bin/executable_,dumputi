@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Description: Dump list of Uniform Type Identifiers (UTIs)
+
+set -euo pipefail
+
+/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -dump |
+  grep "uti:" |
+  awk '{print $2}' |
+  sort |
+  uniq

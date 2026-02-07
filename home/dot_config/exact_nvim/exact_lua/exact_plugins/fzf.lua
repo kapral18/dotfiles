@@ -111,6 +111,28 @@ return {
         desc = "Grep in Changed Files (Status)",
       },
       {
+        "<leader>sf",
+        function()
+          local git_root = fs_util.get_git_root()
+          if not git_root then
+            vim.notify("Not a git repo; falling back to Live Grep", vim.log.levels.WARN)
+            require("fzf-lua").live_grep({ rg_opts = rg_opts, cwd = vim.uv.cwd() })
+            return
+          end
+
+          local changed_lines_bin = fzf_util.bin_path(",fzf-git-changed-lines")
+          require("fzf-lua").fzf_live(
+            changed_lines_bin
+              .. " --mode status"
+              .. " | rg --color=never --smart-case -e <query>"
+              .. fzf_util.rg_to_fzf_multiline_tab_fields_pipe(),
+            ---@diagnostic disable-next-line: missing-fields
+            changed_files_fzf_live_opts(git_root, "Grep in Changed Lines (Status)")
+          )
+        end,
+        desc = "Grep in Changed Lines (Status)",
+      },
+      {
         "<leader>sE",
         function()
           local git_root = fs_util.get_git_root()
@@ -137,6 +159,34 @@ return {
           )
         end,
         desc = "Grep in Changed Files (Branch)",
+      },
+      {
+        "<leader>sF",
+        function()
+          local git_root = fs_util.get_git_root()
+          if not git_root then
+            vim.notify("Not a git repo; falling back to Live Grep", vim.log.levels.WARN)
+            require("fzf-lua").live_grep({ rg_opts = rg_opts, cwd = vim.uv.cwd() })
+            return
+          end
+
+          local changed_lines_bin = fzf_util.bin_path(",fzf-git-changed-lines")
+          require("fzf-lua").fzf_live(
+            "MAIN_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@');"
+              .. " MAIN_BRANCH=${MAIN_BRANCH:-main};"
+              .. ' BASE=$(git merge-base HEAD "origin/$MAIN_BRANCH" 2>/dev/null'
+              .. ' || git merge-base HEAD "$MAIN_BRANCH" 2>/dev/null'
+              .. ' || echo "HEAD^");'
+              .. " "
+              .. changed_lines_bin
+              .. ' --mode range --range "$BASE..HEAD"'
+              .. " | rg --color=never --smart-case -e <query>"
+              .. fzf_util.rg_to_fzf_multiline_tab_fields_pipe(),
+            ---@diagnostic disable-next-line: missing-fields
+            changed_files_fzf_live_opts(git_root, "Grep in Changed Lines (Branch)")
+          )
+        end,
+        desc = "Grep in Changed Lines (Branch)",
       },
       {
         "<leader>sG",

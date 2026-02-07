@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Description: Search through Homebrew package descriptions
+
+set -euo pipefail
+
+if [ $# -eq 0 ]; then
+  echo "Error: Please provide a search term"
+  echo "Usage: search_brew_desc SEARCH_TERM"
+  exit 1
+fi
+
+brew info --json=v2 --installed | jq -r --arg SEARCH "$1" '.formulae | map(select(.desc | ascii_downcase | contains($SEARCH | ascii_downcase)) | {name, desc, homepage})'

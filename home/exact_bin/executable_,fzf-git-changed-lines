@@ -1,0 +1,174 @@
+#!/usr/bin/env python3
+"""
+Emit "changed lines" as grep-like entries for fzf-lua.
+
+Output format (one entry per line):
+  path:line:col:text
+
+Intended use:
+  ,fzf-git-changed-lines --mode status | rg -e <query> | ,fzf-rg-multiline
+
+Notes:
+- Emits only the "right side" of diffs: added/modified lines (prefixed "+" in unified diff hunks).
+- In status mode, also includes untracked files (all lines are considered "changed").
+- Skips deleted files and binary/unreadable untracked files.
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import signal
+import subprocess
+import sys
+from pathlib import Path
+from typing import Iterator
+
+
+HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
+
+
+def run_git(args: list[str]) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [ "git", "-c", "core.quotePath=false", *args ],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+    )
+
+
+def is_probably_binary(path: Path) -> bool:
+    try:
+        with path.open("rb") as file:
+            chunk = file.read(4096)
+    except OSError:
+        return True
+    return b"\0" in chunk
+
+
+def iter_untracked_changed_lines() -> Iterator[tuple[str, int, str]]:
+    proc = run_git([ "ls-files", "--others", "--exclude-standard", "-z" ])
+    if proc.returncode != 0 or not proc.stdout:
+        return
+
+    # `text=True` means `\0` survives as a literal NUL in Python strings.
+    for raw in proc.stdout.split("\0"):
+        if not raw:
+            continue
+        rel = Path(raw)
+        if rel.is_absolute():
+            continue
+        if not rel.is_file():
+            continue
+        try:
+            size = rel.stat().st_size
+        except OSError:
+            continue
+        if size > 2_000_000:
+            continue
+        if is_probably_binary(rel):
+            continue
+
+        try:
+            with rel.open("r", encoding="utf-8", errors="replace") as file:
+                for idx, line in enumerate(file, start=1):
+                    yield str(rel), idx, line.rstrip("\n")
+        except OSError:
+            continue
+
+
+def iter_diff_added_lines(diff_text: str) -> Iterator[tuple[str, int, str]]:
+    current_file: str | None = None
+    old_line: int | None = None
+    new_line: int | None = None
+
+    for raw in diff_text.splitlines():
+        if raw.startswith("diff --git "):
+            current_file = None
+            old_line = None
+            new_line = None
+            continue
+
+        if raw.startswith("+++ "):
+            path = raw[4:].strip()
+            if path == "/dev/null":
+                current_file = None
+                continue
+            if path.startswith("b/"):
+                path = path[2:]
+            current_file = path
+            continue
+
+        m = HUNK_RE.match(raw)
+        if m:
+            old_line = int(m.group(1))
+            new_line = int(m.group(3))
+            continue
+
+        if not current_file or new_line is None or old_line is None:
+            continue
+
+        # Ignore "no newline" markers.
+        if raw.startswith("\\"):
+            continue
+
+        if raw.startswith("+") and not raw.startswith("+++"):
+            yield current_file, new_line, raw[1:]
+            new_line += 1
+            continue
+
+        if raw.startswith("-") and not raw.startswith("---"):
+            old_line += 1
+            continue
+
+        if raw.startswith(" "):
+            old_line += 1
+            new_line += 1
+            continue
+
+
+def main() -> int:
+    # When the consumer closes early (e.g. `| head`), default SIGPIPE handling
+    # avoids noisy BrokenPipeError tracebacks.
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
+    parser = argparse.ArgumentParser(description="Emit changed lines as path:line:col:text entries.")
+    parser.add_argument(
+        "--mode",
+        choices=[ "status", "range" ],
+        default="status",
+        help="status: working tree vs HEAD (plus untracked). range: git diff <range> only.",
+    )
+    parser.add_argument(
+        "--range",
+        dest="range_",
+        default=None,
+        help='Git diff range for --mode range (e.g. "BASE..HEAD").',
+    )
+    args = parser.parse_args()
+
+    diff_args: list[str]
+    include_untracked = False
+    if args.mode == "status":
+        diff_args = [ "diff", "--no-color", "--unified=0", "HEAD" ]
+        include_untracked = True
+    else:
+        if not args.range_:
+            return 0
+        diff_args = [ "diff", "--no-color", "--unified=0", args.range_ ]
+
+    proc = run_git(diff_args)
+    if proc.stdout:
+        for path, lnum, text in iter_diff_added_lines(proc.stdout):
+            sys.stdout.write(f"{path}:{lnum}:1:{text}\n")
+
+    if include_untracked:
+        for path, lnum, text in iter_untracked_changed_lines():
+            sys.stdout.write(f"{path}:{lnum}:1:{text}\n")
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

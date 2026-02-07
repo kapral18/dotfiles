@@ -35,6 +35,63 @@ return {
       vim.g.qf_shorten_path = 3
       -- disable auto resize
       vim.g.qf_auto_resize = 0
+
+      vim.cmd([[
+        if !exists('*ExactQfRejectKeepOpen')
+          function! ExactQfRejectKeepOpen(pat, lnum1, lnum2, cnt) abort
+            let l:is_loc = get(b:, 'qf_isLoc', 0)
+            call qf#filter#FilterList(a:pat, 1, a:lnum1, a:lnum2, a:cnt)
+
+            if l:is_loc
+              if getloclist(0, { 'winid': 0 }).winid == 0
+                lopen
+              endif
+            else
+              if getqflist({ 'winid': 0 }).winid == 0
+                copen
+              endif
+            endif
+          endfunction
+        endif
+
+        if !exists('*ExactQfKeepKeepOpen')
+          function! ExactQfKeepKeepOpen(pat, lnum1, lnum2, cnt) abort
+            let l:is_loc = get(b:, 'qf_isLoc', 0)
+            call qf#filter#FilterList(a:pat, 0, a:lnum1, a:lnum2, a:cnt)
+
+            if l:is_loc
+              if getloclist(0, { 'winid': 0 }).winid == 0
+                lopen
+              endif
+            else
+              if getqflist({ 'winid': 0 }).winid == 0
+                copen
+              endif
+            endif
+          endfunction
+        endif
+      ]])
+
+      local qf_overrides = vim.api.nvim_create_augroup("k18_qf_overrides", { clear = true })
+      vim.api.nvim_create_autocmd("FileType", {
+        group = qf_overrides,
+        pattern = "qf",
+        callback = function(event)
+          vim.schedule(function()
+            if not vim.api.nvim_buf_is_valid(event.buf) then
+              return
+            end
+
+            vim.api.nvim_buf_call(event.buf, function()
+              pcall(vim.cmd, "silent! delcommand Reject")
+              vim.cmd("command! -buffer -range -nargs=? Reject call ExactQfRejectKeepOpen(<q-args>, <line1>, <line2>, <count>)")
+
+              pcall(vim.cmd, "silent! delcommand Keep")
+              vim.cmd("command! -buffer -range -nargs=? Keep call ExactQfKeepKeepOpen(<q-args>, <line1>, <line2>, <count>)")
+            end)
+          end)
+        end,
+      })
     end,
   },
   {

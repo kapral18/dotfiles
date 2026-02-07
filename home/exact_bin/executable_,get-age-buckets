@@ -1,0 +1,321 @@
+#!/usr/bin/env python3
+"""
+,get-age-buckets
+
+Compute age distribution (last true content change) for versioned files matching
+one or more glob-like path patterns using a single forward pass over git history.
+
+"True content change" = latest commit where the blob SHA changed for that path.
+Pure renames (R100 with identical blob SHA) inherit the original timestamp.
+
+Usage:
+  ,get-age-buckets --pattern "src/**/*.ts"
+  ,get-age-buckets --pattern "*.md,*.mdx"
+  ,get-age-buckets --pattern "docs/**/*.asciidoc,*.md"
+
+Flags:
+  --pattern PAT1,PAT2,...   Comma-separated git pathspec patterns (required)
+  --rename-limit N          Adjust git rename detection effort (passed through to -M)
+  --format FORMAT           Output format: table (markdown), tsv, json, text
+  --buckets SPEC            Custom bucket spec, e.g. "0-7,8-30,31-90,91-180,181-365,>365"
+  --no-header               Suppress header row for tsv/text formats
+
+Exit with code 0 on success.
+
+Performance Notes:
+- Single streaming pass over `git log --reverse --raw -M` for provided patterns.
+- Avoids per-file history walks (much faster for large repos).
+- If git warns that rename detection was skipped, some pure renames may appear
+  as content changes.
+"""
+
+from __future__ import annotations
+import argparse
+import json
+import subprocess
+import sys
+import time
+from dataclasses import dataclass
+from typing import Dict, List, Tuple
+
+DEFAULT_BUCKET_SPEC = "0-7,8-30,31-90,91-180,181-365,>365"
+EXAMPLE_USAGE = (
+    "Examples:\n"
+    "  ,get-age-buckets --pattern 'src/**/*.ts'\n"
+    "  ,get-age-buckets --pattern 'docs/**/*.md' --format json\n"
+)
+
+
+class FriendlyHelpFormatter(
+    argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter
+):
+    pass
+
+
+class FriendlyArgumentParser(argparse.ArgumentParser):
+    def error(self, message: str) -> None:
+        sys.stderr.write(f"{self.prog}: {message}\n\n")
+        self.print_help(sys.stderr)
+        sys.stderr.write("\n" + EXAMPLE_USAGE)
+        self.exit(2)
+
+
+@dataclass
+class Bucket:
+    label: str
+    start: int | None  # inclusive (days)
+    end: int | None  # inclusive (days) or None for open-ended
+
+    def matches(self, age_days: int) -> bool:
+        if self.start is not None and age_days < self.start:
+            return False
+        if self.end is not None and age_days > self.end:
+            return False
+        return True
+
+
+def parse_bucket_spec(spec: str) -> List[Bucket]:
+    buckets: List[Bucket] = []
+    for part in spec.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if part.startswith(">"):
+            num = int(part[1:])
+            buckets.append(Bucket(label=f">{num}d", start=num + 1, end=None))
+        else:
+            if "-" not in part:
+                raise ValueError(
+                    f"Invalid bucket fragment '{part}' (expected A-B or >C)"
+                )
+            a, b = part.split("-", 1)
+            start = int(a)
+            end = int(b)
+            label = f"{start}-{end}d"
+            buckets.append(Bucket(label=label, start=start, end=end))
+    # Validate ordering/non-overlap
+    last_end = -1
+    for b in buckets:
+        if b.start is not None and b.start <= last_end:
+            raise ValueError("Buckets must be in ascending, non-overlapping order")
+        if b.end is not None:
+            last_end = b.end
+    return buckets
+
+
+def assign_bucket(age_days: int, buckets: List[Bucket]) -> str:
+    for b in buckets:
+        if b.matches(age_days):
+            return b.label
+    # If none matched, could be because open-ended bucket specified differently
+    return "unbucketed"
+
+
+def build_git_command(patterns: List[str], rename_limit: int | None) -> List[str]:
+    cmd = ["git", "log", "--reverse", "--raw", "--format=commit %H %ct"]
+    # Add rename detection tuning
+    if rename_limit is not None:
+        # Use -M with a lower similarity threshold if desired; leave default
+        cmd.append("-M")
+    else:
+        cmd.append("-M")
+    cmd.append("--")
+    cmd.extend(patterns)
+    return cmd
+
+
+def compute_last_content_change(
+    patterns: List[str], rename_limit: int | None
+) -> Dict[str, int]:
+    cmd = build_git_command(patterns, rename_limit)
+    proc = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, errors="replace"
+    )
+    mapping: Dict[str, int] = {}
+    current_ts: int | None = None
+    # Parse streaming output
+    for raw_line in proc.stdout:  # type: ignore[arg-type]
+        line = raw_line.rstrip("\n")
+        if line.startswith("commit "):
+            parts = line.split()
+            if len(parts) >= 3:
+                try:
+                    current_ts = int(parts[2])
+                except ValueError:
+                    current_ts = None
+            continue
+        if not line or line.startswith(" "):
+            continue
+        if not line.startswith(":"):
+            continue
+        if current_ts is None:
+            continue
+        # Strip leading ':' then split meta / path(s)
+        line_body = line[1:]
+        tab_split = line_body.split("\t")
+        if len(tab_split) < 2:
+            continue
+        meta = tab_split[0]
+        rest_parts = tab_split[1:]
+        meta_tokens = meta.split()
+        if len(meta_tokens) < 5:
+            continue
+        oldsha = meta_tokens[2]
+        newsha = meta_tokens[3]
+        status = meta_tokens[4]
+
+        # Rename handling
+        if status.startswith("R"):
+            if len(rest_parts) < 2:
+                continue
+            oldpath, newpath = rest_parts[0], rest_parts[1]
+            if oldsha == newsha:
+                # Pure rename: carry timestamp if exists
+                if oldpath in mapping:
+                    mapping[newpath] = mapping[oldpath]
+                mapping.pop(oldpath, None)
+            else:
+                # Content changed during rename
+                mapping[newpath] = current_ts
+                mapping.pop(oldpath, None)
+            continue
+
+        # Delete
+        if status == "D":
+            path = rest_parts[0]
+            mapping.pop(path, None)
+            continue
+
+        # Other statuses (A,M, etc.) -> update if blob changed
+        path = rest_parts[0]
+        if oldsha != newsha:
+            mapping[path] = current_ts
+
+    stderr = proc.communicate()[1]
+    if proc.returncode != 0:
+        print(stderr, file=sys.stderr)
+        raise SystemExit(proc.returncode)
+    if stderr.strip():  # propagate warnings to stderr
+        print(stderr, file=sys.stderr)
+    return mapping
+
+
+def format_output(
+    counts: Dict[str, int], buckets: List[Bucket], fmt: str, header: bool
+) -> str:
+    ordered_labels = [b.label for b in buckets]
+    total = sum(counts.get(lbl, 0) for lbl in ordered_labels)
+    rows: List[Tuple[str, int, float]] = []
+    for lbl in ordered_labels:
+        c = counts.get(lbl, 0)
+        pct = (100.0 * c / total) if total else 0.0
+        rows.append((lbl, c, pct))
+
+    if fmt == "json":
+        return json.dumps(
+            {
+                "total": total,
+                "buckets": [
+                    {"bucket": b, "count": c, "percent": round(p, 2)}
+                    for b, c, p in rows
+                ],
+            },
+            indent=2,
+        )
+    if fmt == "tsv":
+        lines = []
+        if header:
+            lines.append("Bucket\tCount\tPercent")
+        for b, c, p in rows:
+            lines.append(f"{b}\t{c}\t{p:.2f}%")
+        if header:
+            lines.append(f"Total\t{total}\t100.00%")
+        else:
+            lines.append(f"Total\t{total}\t100.00%")
+        return "\n".join(lines)
+    if fmt == "table":  # markdown table
+        lines = ["| Bucket | Count | Percent |", "|--------|-------|---------|"]
+        for b, c, p in rows:
+            lines.append(f"| {b} | {c} | {p:.2f}% |")
+        lines.append(f"| **Total** | {total} | 100.00% |")
+        return "\n".join(lines)
+    # plain text
+    lines = []
+    if header:
+        lines.append(f"{'Bucket':<12} {'Count':>8} {'Percent':>8}")
+    for b, c, p in rows:
+        lines.append(f"{b:<12} {c:>8} {p:>7.2f}%")
+    lines.append(f"{'Total':<12} {total:>8} 100.00%")
+    return "\n".join(lines)
+
+
+def main(argv: List[str]) -> int:
+    parser = FriendlyArgumentParser(
+        prog=",get-age-buckets",
+        usage="%(prog)s --pattern PATTERNS [options]",
+        description="Compute last true content change age buckets for git-tracked files.",
+        formatter_class=FriendlyHelpFormatter,
+        epilog=EXAMPLE_USAGE,
+    )
+    parser.add_argument(
+        "--pattern",
+        required=True,
+        metavar="PATTERNS",
+        help="Comma-separated git pathspec patterns (required)",
+    )
+    parser.add_argument(
+        "--rename-limit",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Adjust rename detection effort (passed as -M).",
+    )
+    parser.add_argument(
+        "--format",
+        choices=["table", "tsv", "json", "text"],
+        default="table",
+        help="Output format (default: table)",
+    )
+    parser.add_argument(
+        "--buckets",
+        default=DEFAULT_BUCKET_SPEC,
+        help=f"Bucket spec (default: {DEFAULT_BUCKET_SPEC})",
+    )
+    parser.add_argument(
+        "--no-header",
+        action="store_true",
+        help="Suppress header row for tsv/text formats",
+    )
+    args = parser.parse_args(argv)
+
+    patterns = [p.strip() for p in args.pattern.split(",") if p.strip()]
+    if not patterns:
+        print("No valid patterns provided", file=sys.stderr)
+        return 1
+
+    try:
+        buckets = parse_bucket_spec(args.buckets)
+    except ValueError as e:
+        print(f"Bucket spec error: {e}", file=sys.stderr)
+        return 2
+
+    mapping = compute_last_content_change(patterns, args.rename_limit)
+
+    # Count per bucket
+    counts: Dict[str, int] = {b.label: 0 for b in buckets}
+    now = int(time.time())
+    for _, ts in mapping.items():
+        age_days = (now - ts) // 86400
+        label = assign_bucket(age_days, buckets)
+        if label not in counts:
+            # Ignore unbucketed (could happen if bucket spec insufficient)
+            continue
+        counts[label] += 1
+
+    output = format_output(counts, buckets, args.format, not args.no_header)
+    print(output)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

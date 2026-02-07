@@ -1,0 +1,557 @@
+#!/usr/bin/env node
+/**
+ * Jest Test Title Reporter - Compare test titles between two worktrees
+ *
+ * This script scans Jest test files in two git worktrees (before and after) and generates
+ * a CSV report comparing test titles. It helps track test changes during refactors, migrations,
+ * or PR reviews.
+ *
+ * Features:
+ * - Scans .test.*, .spec.*, and __tests__/ directories for test files
+ * - Extracts titles from test(), it(), test.each(), it.each() patterns
+ * - Handles file renames (ts <-> tsx, js -> ts/tsx migrations, etc.)
+ * - Supports custom replacements for consolidated tests
+ * - Optional GitHub gist upload for sharing results
+ *
+ * Usage:
+ *   ,jest-test-title-report \
+ *     --before /path/to/before/worktree \
+ *     --after /path/to/after/worktree \
+ *     --scope src/core/server \
+ *     --out /tmp/test-title-report.csv
+ *
+ * Required Arguments:
+ *   --before <path>     Absolute path to the "before" worktree
+ *   --after <path>      Absolute path to the "after" worktree
+ *   --scope <path>      Relative directory path within the repo to scan
+ *   --out <path>        Absolute path for the output CSV file
+ *
+ * Optional Arguments:
+ *   --replacements <path>  JSON file mapping test titles that were consolidated (see below)
+ *   --gist                Upload the CSV to a GitHub gist
+ *   --gist-new            Force creating a new gist (don't update existing)
+ *   --gist-state <path>   Path to gist state file (default: <out>.gist.json)
+ *   --gist-filename <name> Filename for the gist (default: basename of --out)
+ *   --gist-public         Create a public gist (default: private)
+ *   --gist-desc <text>    Custom gist description
+ *   -h, --help           Show this help message
+ *
+ * Replacements File Format:
+ *
+ *   Use --replacements when you've manually consolidated multiple tests into one. The script
+ *   will mark deleted tests with "→ consolidated into: <new title>" instead of just showing
+ *   them as removed.
+ *
+ *   The replacements file maps file paths to objects mapping old test titles to new ones:
+ *
+ *   {
+ *     "src/core/server/index.test.ts": {
+ *       "should handle error case": "handles error case",
+ *       "should validate input": "validates input"
+ *     },
+ *     "src/core/http/index.test.ts": {
+ *       "handles GET request": "handles HTTP requests"
+ *     }
+ *   }
+ *
+ *   Use Cases:
+ *   - You merged 3 tests into 1 test with a parameterized approach (test.each)
+ *   - You renamed a test and want the report to show the relationship
+ *   - Multiple tests were consolidated into a single test covering all cases
+ *
+ * Examples:
+ *
+ *   Basic usage:
+ *   ,jest-test-title-report \
+ *     --before ~/work/kibana/kbn-main \
+ *     --after ~/work/kibana/kbn-feat \
+ *     --scope src/plugins/data \
+ *     --out /tmp/data-tests.csv
+ *
+ *   With replacements for consolidated tests:
+ *   ,jest-test-title-report \
+ *     --before ~/work/kibana/kbn-main \
+ *     --after ~/work/kibana/kbn-feat \
+ *     --scope src/core/server \
+ *     --out /tmp/server-tests.csv \
+ *     --replacements /tmp/replacements.json
+ *
+ *   Upload to gist for sharing:
+ *   ,jest-test-title-report \
+ *     --before ~/work/kibana/kbn-main \
+ *     --after ~/work/kibana/kbn-feat \
+ *     --scope src/plugins/discover \
+ *     --out /tmp/discover-tests.csv \
+ *     --gist \
+ *     --gist-public
+ *
+ * Output Format (CSV):
+ *   FILE,BEFORE,AFTER
+ *   src/plugin.tsx,test one,test one
+ *   ,,test two
+ *   src/old.test.ts,old test,
+ *   src/other.ts,test A,→ consolidated into: test B
+ *
+ *   Interpretation:
+ *   - Both columns filled: test title unchanged
+ *   - Before filled, After empty: test removed
+ *   - Before empty, After filled: test added
+ *   - Arrow in After: test consolidated into another test
+ *
+ * Installed by chezmoi to: ~/bin/,jest-test-title-report
+ *
+ * Source of truth lives in this file. Keep it self-contained (no local imports).
+ */
+
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+
+function die(msg) {
+  console.error(msg);
+  process.exit(2);
+}
+
+function showHelp() {
+  console.log(`
+Jest Test Title Reporter - Compare test titles between two worktrees
+
+USAGE:
+  ,jest-test-title-report [OPTIONS]
+
+REQUIRED OPTIONS:
+  --before <path>      Absolute path to the "before" worktree
+  --after <path>       Absolute path to the "after" worktree
+  --scope <path>       Relative directory path within the repo to scan
+  --out <path>         Absolute path for the output CSV file
+
+OPTIONAL OPTIONS:
+  --replacements <path>    JSON file mapping test titles that were consolidated
+  --gist                   Upload the CSV to a GitHub gist
+  --gist-new               Force creating a new gist (don't update existing)
+  --gist-state <path>      Path to gist state file (default: <out>.gist.json)
+  --gist-filename <name>   Filename for the gist (default: basename of --out)
+  --gist-public            Create a public gist (default: private)
+  --gist-desc <text>       Custom gist description
+  -h, --help               Show this help message
+
+REPLACEMENTS FILE FORMAT:
+
+  Use --replacements when you've manually consolidated multiple tests into one.
+  The script will mark deleted tests with "→ consolidated into: <new title>"
+  instead of just showing them as removed.
+
+  {
+    "src/core/server/index.test.ts": {
+      "should handle error case": "handles error case",
+      "should validate input": "validates input"
+    },
+    "src/core/http/index.test.ts": {
+      "handles GET request": "handles HTTP requests"
+    }
+  }
+
+  Use Cases:
+  - Merged 3 tests into 1 test with a parameterized approach (test.each)
+  - Renamed a test and want the report to show the relationship
+  - Multiple tests consolidated into a single test covering all cases
+
+EXAMPLES:
+
+  Basic usage:
+  ,jest-test-title-report \\
+    --before ~/work/kibana/kbn-main \\
+    --after ~/work/kibana/kbn-feat \\
+    --scope src/plugins/data \\
+    --out /tmp/data-tests.csv
+
+  With replacements for consolidated tests:
+  ,jest-test-title-report \\
+    --before ~/work/kibana/kbn-main \\
+    --after ~/work/kibana/kbn-feat \\
+    --scope src/core/server \\
+    --out /tmp/server-tests.csv \\
+    --replacements /tmp/replacements.json
+
+  Upload to gist for sharing:
+  ,jest-test-title-report \\
+    --before ~/work/kibana/kbn-main \\
+    --after ~/work/kibana/kbn-feat \\
+    --scope src/plugins/discover \\
+    --out /tmp/discover-tests.csv \\
+    --gist \\
+    --gist-public
+
+OUTPUT FORMAT (CSV):
+  FILE,BEFORE,AFTER
+  src/plugin.tsx,test one,test one
+  ,,test two
+  src/old.test.ts,old test,
+  src/other.ts,test A,→ consolidated into: test B
+
+  Interpretation:
+  - Both columns filled: test title unchanged
+  - Before filled, After empty: test removed
+  - Before empty, After filled: test added
+  - Arrow in After: test consolidated into another test
+`);
+}
+
+function parseArgs(argv) {
+  /** @type {Record<string, string>} */
+  const out = {};
+  for (let i = 2; i < argv.length; i++) {
+    const a = argv[i];
+    if (!a.startsWith('--') && a !== '-h') continue;
+    const key = a.slice(a.startsWith('--') ? 2 : 1);
+    if (key === 'help') {
+      showHelp();
+      process.exit(0);
+    }
+    const next = argv[i + 1];
+    // Support boolean flags (e.g. --gist) by treating missing value as "true".
+    if (!next || next.startsWith('-')) {
+      out[key] = 'true';
+      continue;
+    }
+    out[key] = next;
+    i++;
+  }
+  return out;
+}
+
+const args = parseArgs(process.argv);
+const beforeRoot = args.before;
+const afterRoot = args.after;
+const scopeRel = args.scope;
+const outPath = args.out;
+const replacementsPath = args.replacements;
+
+const gistFlag =
+  args.gist === 'true' ||
+  args.gist === '1' ||
+  args.gist === 'yes' ||
+  args.gist === 'on' ||
+  !!args.gist;
+const gistNew =
+  args['gist-new'] === 'true' ||
+  args['gist-new'] === '1' ||
+  args['gist-new'] === 'yes' ||
+  args['gist-new'] === 'on';
+const gistStatePath = args['gist-state'] || `${outPath}.gist.json`;
+const gistFilename = args['gist-filename'] || path.basename(outPath);
+const gistPublic =
+  args['gist-public'] === 'true' || args['gist-public'] === '1' || args['gist-public'] === 'yes';
+const gistDescription =
+  args['gist-desc'] ||
+  `Jest test titles: ${scopeRel} (before vs after)\nbefore=${beforeRoot}\nafter=${afterRoot}`;
+
+if (!beforeRoot) die('Missing --before <abs worktree path>');
+if (!afterRoot) die('Missing --after <abs worktree path>');
+if (!scopeRel) die('Missing --scope <relative dir inside repo>');
+if (!outPath) die('Missing --out <abs output csv path>');
+
+const beforeScope = path.resolve(beforeRoot, scopeRel);
+const afterScope = path.resolve(afterRoot, scopeRel);
+
+const SKIP_DIRS = new Set(['node_modules', '.git', 'target', 'build', 'coverage']);
+
+function sha1(content) {
+  return crypto.createHash('sha1').update(content).digest('hex');
+}
+
+function isCodeFile(rel) {
+  return /\.(ts|tsx|js|jsx)$/.test(rel);
+}
+
+function isTestFile(rel) {
+  if (!isCodeFile(rel)) return false;
+  if (/(^|\/)__tests__\//.test(rel)) return true;
+  return /(\.test|\.spec)\.(ts|tsx|js|jsx)$/.test(rel);
+}
+
+function walkFiles(rootDir) {
+  /** @type {string[]} */
+  const out = [];
+  /** @type {string[]} */
+  const stack = [rootDir];
+
+  while (stack.length) {
+    const cur = stack.pop();
+    let entries;
+    try {
+      entries = fs.readdirSync(cur, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const ent of entries) {
+      const full = path.join(cur, ent.name);
+      if (ent.isDirectory()) {
+        if (SKIP_DIRS.has(ent.name)) continue;
+        stack.push(full);
+      } else if (ent.isFile()) {
+        out.push(full);
+      }
+    }
+  }
+  return out;
+}
+
+function extractTestTitles(content) {
+  /** @type {{ title: string; line: number }[]} */
+  const titles = [];
+
+  const patterns = [
+    /\b(test|it)(?:\.(skip|only))?\s*\(\s*(['"`])((?:\\.|(?!\3)[\s\S]){0,500})\3/g,
+    /\b(test|it)\.each\s*\([\s\S]*?\)\s*\(\s*(['"`])((?:\\.|(?!\2)[\s\S]){0,500})\2/g,
+    /\b(test|it)\.each\s*\([\s\S]*?\)\s*\.(skip|only)\s*\(\s*(['"`])((?:\\.|(?!\3)[\s\S]){0,500})\3/g,
+  ];
+
+  for (const rx of patterns) {
+    let m;
+    while ((m = rx.exec(content)) !== null) {
+      const before = content.slice(0, m.index);
+      const line = before.split('\n').length;
+      const title = m.length === 5 ? m[4] : m.length === 4 ? m[3] : m[m.length - 1];
+      if (typeof title === 'string' && title.length) titles.push({ title, line });
+    }
+  }
+
+  titles.sort((a, b) => a.line - b.line);
+  return titles;
+}
+
+function normalizeScopeRel(rel) {
+  const scope = String(rel ?? '').split(path.sep).join('/');
+  if (scope === '.' || scope === './') return '.';
+  return scope.replace(/\/+$/, '');
+}
+
+function toRepoRelPath(scope, relFromScope) {
+  const s = normalizeScopeRel(scope);
+  const r = String(relFromScope ?? '').split(path.sep).join('/');
+  if (s === '.' || s === '') return r;
+  return `${s}/${r}`;
+}
+
+function buildInventory(scopeDir, scopeRelForKeys) {
+  const absFiles = walkFiles(scopeDir).filter((abs) => isTestFile(path.relative(scopeDir, abs)));
+  absFiles.sort((a, b) => a.localeCompare(b));
+
+  /** @type {Record<string, { rel: string; abs: string; sha1: string; titles: {title: string; line: number}[] }>} */
+  const files = {};
+
+  for (const abs of absFiles) {
+    const relFromScope = path.relative(scopeDir, abs).split(path.sep).join('/');
+    const rel = toRepoRelPath(scopeRelForKeys, relFromScope);
+    const content = fs.readFileSync(abs, 'utf8');
+    files[rel] = { rel, abs, sha1: sha1(content), titles: extractTestTitles(content) };
+  }
+  return files;
+}
+
+function normalizeTsToTsx(rel) {
+  return rel.replace(/\.ts$/, '.tsx');
+}
+function normalizeTsxToTs(rel) {
+  return rel.replace(/\.tsx$/, '.ts');
+}
+
+function normalizeJsToTs(rel) {
+  return rel.replace(/\.js$/, '.ts');
+}
+function normalizeJsToTsx(rel) {
+  return rel.replace(/\.js$/, '.tsx');
+}
+function normalizeJsxToTsx(rel) {
+  return rel.replace(/\.jsx$/, '.tsx');
+}
+function normalizeJsxToTs(rel) {
+  return rel.replace(/\.jsx$/, '.ts');
+}
+function normalizeTsToJs(rel) {
+  return rel.replace(/\.ts$/, '.js');
+}
+function normalizeTsxToJsx(rel) {
+  return rel.replace(/\.tsx$/, '.jsx');
+}
+
+function resolveAfterPathFor(beforeRel, afterFiles) {
+  if (afterFiles[beforeRel]) return beforeRel;
+  if (beforeRel.endsWith('.ts') && afterFiles[normalizeTsToTsx(beforeRel)]) return normalizeTsToTsx(beforeRel);
+  if (beforeRel.endsWith('.tsx') && afterFiles[normalizeTsxToTs(beforeRel)]) return normalizeTsxToTs(beforeRel);
+  // Handle JS/JSX -> TS/TSX migrations (common in refactors).
+  if (beforeRel.endsWith('.js')) {
+    if (afterFiles[normalizeJsToTs(beforeRel)]) return normalizeJsToTs(beforeRel);
+    if (afterFiles[normalizeJsToTsx(beforeRel)]) return normalizeJsToTsx(beforeRel);
+  }
+  if (beforeRel.endsWith('.jsx')) {
+    if (afterFiles[normalizeJsxToTsx(beforeRel)]) return normalizeJsxToTsx(beforeRel);
+    if (afterFiles[normalizeJsxToTs(beforeRel)]) return normalizeJsxToTs(beforeRel);
+  }
+  // Also allow TS/TSX -> JS/JSX if refactor went the other way.
+  if (beforeRel.endsWith('.ts') && afterFiles[normalizeTsToJs(beforeRel)]) return normalizeTsToJs(beforeRel);
+  if (beforeRel.endsWith('.tsx') && afterFiles[normalizeTsxToJsx(beforeRel)]) return normalizeTsxToJsx(beforeRel);
+  return null;
+}
+
+function toExpandedSortedTitles(titles) {
+  /** @type {Map<string, number>} */
+  const counts = new Map();
+  for (const t of titles ?? []) counts.set(t.title, (counts.get(t.title) ?? 0) + 1);
+
+  const sorted = [...counts.keys()].sort((a, b) => a.localeCompare(b));
+  /** @type {string[]} */
+  const expanded = [];
+  for (const name of sorted) {
+    const n = counts.get(name) ?? 0;
+    for (let i = 0; i < n; i++) expanded.push(name);
+  }
+  return expanded;
+}
+
+function csvEscape(value) {
+  const s = String(value ?? '');
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+/** @type {Record<string, Record<string, string>>} */
+let replacements = {};
+if (replacementsPath) replacements = JSON.parse(fs.readFileSync(replacementsPath, 'utf8'));
+
+const beforeFiles = buildInventory(beforeScope, scopeRel);
+const afterFiles = buildInventory(afterScope, scopeRel);
+
+/** @type {Set<string>} */
+const beforeRelSet = new Set(Object.keys(beforeFiles));
+/** @type {Set<string>} */
+const afterRelSet = new Set(Object.keys(afterFiles));
+
+/** @type {Array<{ beforeRel: string; afterRel: string|null }>} */
+const pairs = [];
+for (const beforeRel of beforeRelSet) pairs.push({ beforeRel, afterRel: resolveAfterPathFor(beforeRel, afterFiles) });
+for (const afterRel of afterRelSet) {
+  const mapped = pairs.some((p) => p.afterRel === afterRel);
+  if (!mapped) pairs.push({ beforeRel: afterRel, afterRel });
+}
+
+const changedPairs = pairs.filter(({ beforeRel, afterRel }) => {
+  const b = beforeFiles[beforeRel];
+  const a = afterRel ? afterFiles[afterRel] : null;
+  if (!b) return true;
+  if (!a) return true;
+  if (beforeRel !== afterRel) return true;
+  return b.sha1 !== a.sha1;
+});
+
+changedPairs.sort((x, y) => x.beforeRel.localeCompare(y.beforeRel));
+
+let csv = 'FILE,BEFORE,AFTER\n';
+
+for (const { beforeRel, afterRel } of changedPairs) {
+  const beforeInfo = beforeFiles[beforeRel] ?? null;
+  const afterInfo = afterRel ? afterFiles[afterRel] : null;
+
+  const fileCell =
+    afterRel && beforeInfo && afterInfo && beforeRel !== afterRel ? `${beforeRel} -> ${afterRel}` : beforeRel;
+
+  const beforeTitles = toExpandedSortedTitles(beforeInfo?.titles ?? []);
+  const afterTitles = toExpandedSortedTitles(afterInfo?.titles ?? []);
+
+  /** @type {Map<string, number>} */
+  const afterCounts = new Map();
+  for (const t of afterTitles) afterCounts.set(t, (afterCounts.get(t) ?? 0) + 1);
+
+  const replacementMap = replacements[beforeRel] ?? replacements[afterRel ?? ''] ?? {};
+
+  /** @type {Array<[string, string]>} */
+  const outRows = [];
+
+  for (const beforeTitle of beforeTitles) {
+    const directCount = afterCounts.get(beforeTitle) ?? 0;
+    if (directCount > 0) {
+      afterCounts.set(beforeTitle, directCount - 1);
+      outRows.push([beforeTitle, beforeTitle]);
+      continue;
+    }
+
+    const replacement = replacementMap[beforeTitle];
+    if (replacement) {
+      outRows.push([beforeTitle, `→ consolidated into: ${replacement}`]);
+      continue;
+    }
+
+    outRows.push([beforeTitle, '']);
+  }
+
+  const remainingAfter = [...afterCounts.entries()]
+    .flatMap(([title, count]) => Array.from({ length: count }, () => title))
+    .sort((a, b) => a.localeCompare(b));
+  for (const t of remainingAfter) outRows.push(['', t]);
+
+  if (!outRows.length) {
+    csv += `${csvEscape(fileCell)},,\n`;
+    continue;
+  }
+
+  for (let i = 0; i < outRows.length; i++) {
+    const fileCol = i === 0 ? fileCell : '';
+    const [b, a] = outRows[i];
+    csv += `${csvEscape(fileCol)},${csvEscape(b)},${csvEscape(a)}\n`;
+  }
+}
+
+fs.writeFileSync(outPath, csv);
+console.log(`Wrote ${outPath}`);
+
+function runGhApiJson(argsList, inputJson) {
+  const result = spawnSync('gh', argsList, {
+    input: inputJson ? JSON.stringify(inputJson) : undefined,
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+  if (result.error) die(`Failed to run gh: ${result.error.message}`);
+  if (result.status !== 0) die(`gh failed (${result.status}):\n${result.stderr || result.stdout}`);
+  try {
+    return JSON.parse(result.stdout);
+  } catch {
+    die(`gh output was not JSON:\n${result.stdout}`);
+  }
+}
+
+function readGistState(p) {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(p, 'utf8'));
+    if (parsed && typeof parsed.id === 'string' && parsed.id.length) return parsed;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function writeGistState(p, state) {
+  fs.writeFileSync(p, JSON.stringify(state, null, 2));
+}
+
+if (gistFlag) {
+  const content = fs.readFileSync(outPath, 'utf8');
+  const existing = !gistNew ? readGistState(gistStatePath) : null;
+
+  if (existing?.id) {
+    runGhApiJson(['api', '-X', 'PATCH', `gists/${existing.id}`, '--input', '-'], {
+      files: { [gistFilename]: { content } },
+    });
+    console.log(`Updated gist: ${existing.url || existing.id}`);
+  } else {
+    const created = runGhApiJson(['api', '-X', 'POST', 'gists', '--input', '-'], {
+      public: gistPublic,
+      description: gistDescription,
+      files: { [gistFilename]: { content } },
+    });
+    writeGistState(gistStatePath, { id: created.id, url: created.html_url, filename: gistFilename });
+    console.log(`Created gist: ${created.html_url}`);
+    console.log(`Saved gist state: ${gistStatePath}`);
+  }
+}

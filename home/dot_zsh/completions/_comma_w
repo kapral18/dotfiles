@@ -1,0 +1,92 @@
+#compdef ,w
+
+_comma_w_branches() {
+  local -a branches
+  branches=("${(@f)$(git for-each-ref --format='%(refname:strip=2)' refs/heads 2>/dev/null)}")
+  _describe -t branches branch branches
+}
+
+_comma_w_remotes() {
+  local -a remotes
+  remotes=("${(@f)$(git remote 2>/dev/null)}")
+  _describe -t remotes remote remotes
+}
+
+_comma_w_worktree_branches() {
+  local -a branches
+  branches=("${(@f)$(git worktree list --porcelain 2>/dev/null | awk '/^branch refs\\/heads\\//{sub(\"branch refs/heads/\", \"\"); print}' )}")
+  _describe -t worktrees worktree branches
+}
+
+_comma_w() {
+  local context state state_descr line
+  typeset -A opt_args
+
+  _arguments -C \
+    '(-h --help)'{-h,--help}'[Show help]' \
+    '1:command:(add prs ls list switch open mv prune doctor remove)' \
+    '*::args:->args'
+
+  case "$state" in
+    args)
+      case "$words[2]" in
+        add)
+          _arguments \
+            '(-q --quiet)'{-q,--quiet}'[Suppress informational output]' \
+            '1:branch name:_comma_w_branches' \
+            '2:base branch:_comma_w_branches'
+          ;;
+        prs)
+          _arguments \
+            '(-q --quiet)'{-q,--quiet}'[Suppress informational output]' \
+            '--focus[Switch/attach to tmux session]' \
+            '*:pr number or search term: '
+          ;;
+        ls|list)
+          _arguments \
+            '--porcelain[Print porcelain worktree list]' \
+            '--selectable[Print branch<TAB>path]' \
+            '--long[Include ahead/behind columns]' \
+            '--dirty[Compute and show dirty state (slow)]' \
+            '--full-path[Do not shorten paths]' \
+            '--no-header[Omit header row]' \
+            '--no-column[Do not align with column]' \
+            '--sort[Sort rows]:sort mode:(branch path)'
+          ;;
+        switch)
+          _arguments \
+            '(-q --quiet)'{-q,--quiet}'[Suppress informational output]' \
+            '*:query: '
+          ;;
+        open)
+          _arguments \
+            '(-q --quiet)'{-q,--quiet}'[Suppress informational output]' \
+            '1:branch or path:_comma_w_worktree_branches'
+          ;;
+        mv)
+          _arguments \
+            '(-q --quiet)'{-q,--quiet}'[Suppress informational output]' \
+            '--focus[Switch/attach to tmux session]' \
+            '--keep-path[Do not move directory]' \
+            '--path[Override destination path]:path:_files -/' \
+            '1:from branch:_comma_w_worktree_branches' \
+            '2:to branch:_comma_w_branches'
+          ;;
+        prune)
+          _arguments \
+            '(-q --quiet)'{-q,--quiet}'[Suppress informational output]' \
+            '--apply[Apply pruning actions]' \
+            '--all[Prune tmux sessions across repos]'
+          ;;
+        doctor)
+          _arguments
+          ;;
+        remove)
+          _arguments
+          ;;
+      esac
+      ;;
+  esac
+}
+
+_comma_w "$@"
