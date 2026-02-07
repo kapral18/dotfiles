@@ -29,25 +29,25 @@ quiet_mode=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    -h|--help)
-      show_usage
-      exit 0
-      ;;
-    -q|--quiet)
-      quiet_mode=1
-      shift
-      ;;
-    --)
-      shift
-      break
-      ;;
-    -*)
-      show_usage
-      exit 1
-      ;;
-    *)
-      break
-      ;;
+  -h | --help)
+    show_usage
+    exit 0
+    ;;
+  -q | --quiet)
+    quiet_mode=1
+    shift
+    ;;
+  --)
+    shift
+    break
+    ;;
+  -*)
+    show_usage
+    exit 1
+    ;;
+  *)
+    break
+    ;;
   esac
 done
 
