@@ -1,14 +1,18 @@
 # Semantic Code Search Workflow
 
-When triggered, ALWAYS prioritize the semantic-code-search MCP tools over built-in search mechanisms.
+When triggered, ALWAYS prioritize the semantic-code-search MCP tools over
+built-in search mechanisms.
 
 Provide context (paths, snippets, precise queries) to maximize accuracy.
 
 Index usage:
 
-- Never use `list_indices` — always use the index name provided by the user directly.
-- If a search returns no results or the index is not found in one MCP, try the other MCP before giving up.
-- Two MCP servers are available: `scsi-main` (shared/team indices) and `scsi-local` (user-specific indices).
+- Never use `list_indices` — always use the index name provided by the user
+  directly.
+- If a search returns no results or the index is not found in one MCP, try the
+  other MCP before giving up.
+- Two MCP servers are available: `scsi-main` (shared/team indices) and
+  `scsi-local` (user-specific indices).
 
 Tool selection guidelines:
 

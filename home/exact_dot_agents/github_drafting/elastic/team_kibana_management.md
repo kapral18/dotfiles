@@ -1,16 +1,21 @@
 # Kibana Management Ownership (Agent Guidance)
 
-This file captures Kibana Management-owned areas in `elastic/kibana` based on CODEOWNERS.
+This file captures Kibana Management-owned areas in `elastic/kibana` based on
+CODEOWNERS.
 
 Use it to:
+
 - infer `Team:Kibana Management` label proposals
 - infer likely reviewers/ownership when composing PRs/issues
 - sanity-check whether a change falls under the team's umbrella
 
 Source:
+
 - `elastic/kibana` `.github/CODEOWNERS`
 
-Owned areas (non-exhaustive excerpt; prefer checking CODEOWNERS when in doubt):
+Owned areas (non-exhaustive excerpt; prefer checking CODEOWNERS when in
+doubt):
+
 - `src/platform/plugins/shared/console`
 - `src/platform/plugins/shared/dev_tools`
 - `src/platform/plugins/shared/management`
@@ -32,4 +37,5 @@ Owned areas (non-exhaustive excerpt; prefer checking CODEOWNERS when in doubt):
 - `x-pack/platform/plugins/shared/license_management`
 - `x-pack/platform/plugins/shared/searchprofiler`
 
-Note: this list is derived from a point-in-time scan; always verify against the current CODEOWNERS in the repo.
+Note: this list is derived from a point-in-time scan; always verify against
+the current CODEOWNERS in the repo.
