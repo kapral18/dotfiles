@@ -25,24 +25,24 @@ list_worktrees_porcelain() {
     value="${line#* }"
 
     case "$key" in
-      worktree)
-        if [ -n "$worktree_path" ]; then
-          printf '%s\t%s\t%s\t%s\n' "$worktree_path" "$branch_ref" "$detached" "$locked"
-        fi
-        worktree_path="$value"
-        branch_ref=""
-        detached=0
-        locked=0
-        ;;
-      branch)
-        branch_ref="$value"
-        ;;
-      detached)
-        detached=1
-        ;;
-      locked)
-        locked=1
-        ;;
+    worktree)
+      if [ -n "$worktree_path" ]; then
+        printf '%s\t%s\t%s\t%s\n' "$worktree_path" "$branch_ref" "$detached" "$locked"
+      fi
+      worktree_path="$value"
+      branch_ref=""
+      detached=0
+      locked=0
+      ;;
+    branch)
+      branch_ref="$value"
+      ;;
+    detached)
+      detached=1
+      ;;
+    locked)
+      locked=1
+      ;;
     esac
   done < <(git worktree list --porcelain)
 
@@ -58,7 +58,7 @@ worktree_branch_in_use() {
 
   while IFS= read -r line; do
     case "$line" in
-      "$target") return 0 ;;
+    "$target") return 0 ;;
     esac
   done < <(git worktree list --porcelain)
 
@@ -87,21 +87,21 @@ Description:
 Notes:
   - The default branch (main/master) cannot be removed
   - Worktrees in detached HEAD state will be skipped
-  - Set COMMA_W_PRUNE=0 to disable automatic `git worktree prune`
+  - Set COMMA_W_PRUNE=0 to disable automatic $(git worktree prune)
 EOF
 }
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    -h|--help)
-      show_usage
-      exit 0
-      ;;
-    *)
-      echo "Error: Unknown option '$1'" >&2
-      show_usage
-      exit 1
-      ;;
+  -h | --help)
+    show_usage
+    exit 0
+    ;;
+  *)
+    echo "Error: Unknown option '$1'" >&2
+    show_usage
+    exit 1
+    ;;
   esac
 done
 
@@ -124,9 +124,9 @@ mapfile -t selectable_worktrees < <(
 
       if (detached == 1) next
       if (locked == 1) next
-      if (branch_ref !~ /^refs\\/heads\\//) next
+      if (branch_ref !~ "^refs/heads/") next
       branch=branch_ref
-      sub(/^refs\\/heads\\//, "", branch)
+      sub("^refs/heads/", "", branch)
 
       if (branch == default_branch) next
 
@@ -155,8 +155,8 @@ _get_branch_upstream_remote() {
 
   remote="$(git for-each-ref --format='%(upstream:remotename)' "refs/heads/$branch" 2>/dev/null || true)"
   case "$remote" in
-    ""|.) echo "" ;;
-    *) echo "$remote" ;;
+  "" | .) echo "" ;;
+  *) echo "$remote" ;;
   esac
 }
 
@@ -165,17 +165,17 @@ _infer_remote_from_prefixed_branch() {
   local candidate
 
   case "$branch" in
-    *__*)
-      candidate="${branch%%__*}"
-      if git remote get-url "$candidate" >/dev/null 2>&1; then
-        echo "$candidate"
-      else
-        echo ""
-      fi
-      ;;
-    *)
+  *__*)
+    candidate="${branch%%__*}"
+    if git remote get-url "$candidate" >/dev/null 2>&1; then
+      echo "$candidate"
+    else
       echo ""
-      ;;
+    fi
+    ;;
+  *)
+    echo ""
+    ;;
   esac
 }
 
@@ -228,7 +228,7 @@ if [ ${#remotes_to_check[@]} -gt 0 ]; then
 
     while IFS= read -r upstream_remote; do
       case "$upstream_remote" in
-        "$remote") return 0 ;;
+      "$remote") return 0 ;;
       esac
     done < <(git for-each-ref --format='%(upstream:remotename)' refs/heads)
 
@@ -241,7 +241,7 @@ if [ ${#remotes_to_check[@]} -gt 0 ]; then
 
     while IFS= read -r branch; do
       case "$branch" in
-        "${remote}"__*) return 0 ;;
+      "${remote}"__*) return 0 ;;
       esac
     done < <(git for-each-ref --format='%(refname:short)' refs/heads)
 
@@ -250,9 +250,9 @@ if [ ${#remotes_to_check[@]} -gt 0 ]; then
 
   for remote in $(printf '%s\n' "${remotes_to_check[@]}" | sort -u); do
     case "$remote" in
-      ""|origin|upstream|.)
-        continue
-        ;;
+    "" | origin | upstream | .)
+      continue
+      ;;
     esac
 
     if ! _remote_exists "$remote"; then

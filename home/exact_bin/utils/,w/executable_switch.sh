@@ -58,7 +58,7 @@ parent_name=$(basename "$parent_dir")
 
 query="$*"
 
-mapfile -t candidates < <("$(dirname "$0")/wt_ls.sh" --selectable)
+mapfile -t candidates < <("$(dirname "$0")/ls.sh" --selectable)
 if [ ${#candidates[@]} -eq 0 ]; then
   echo "No selectable worktrees found."
   exit 1

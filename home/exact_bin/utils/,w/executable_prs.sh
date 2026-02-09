@@ -19,21 +19,21 @@ parse_owner_repo_from_remote_url() {
 
   url="${url%.git}"
   case "$url" in
-    git@github.com:*)
-      path="${url#git@github.com:}"
-      ;;
-    ssh://git@github.com/*)
-      path="${url#ssh://git@github.com/}"
-      ;;
-    https://github.com/*)
-      path="${url#https://github.com/}"
-      ;;
-    http://github.com/*)
-      path="${url#http://github.com/}"
-      ;;
-    *)
-      return 1
-      ;;
+  git@github.com:*)
+    path="${url#git@github.com:}"
+    ;;
+  ssh://git@github.com/*)
+    path="${url#ssh://git@github.com/}"
+    ;;
+  https://github.com/*)
+    path="${url#https://github.com/}"
+    ;;
+  http://github.com/*)
+    path="${url#http://github.com/}"
+    ;;
+  *)
+    return 1
+    ;;
   esac
 
   if [[ "$path" != */* ]]; then
@@ -97,7 +97,8 @@ Examples:
 
 Notes:
   - Automatically adds contributor's fork as a remote
-  - Default behavior creates a stable local branch name: pr-<number>
+  - Default behavior creates a stable local branch name based on PR head: <remote>__<branch>
+  - Worktrees are created under <remote>/<branch> to keep paths readable
   - If no arguments provided, opens interactive fzf search
 EOF
 }
@@ -108,30 +109,30 @@ focus_mode=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    -h|--help)
-      show_usage
-      exit 0
-      ;;
-    -q|--quiet)
-      quiet_mode=1
-      quiet_flag=(-q)
-      shift
-      ;;
-    --focus)
-      focus_mode=1
-      shift
-      ;;
-    --)
-      shift
-      break
-      ;;
-    -*)
-      show_usage
-      exit 1
-      ;;
-    *)
-      break
-      ;;
+  -h | --help)
+    show_usage
+    exit 0
+    ;;
+  -q | --quiet)
+    quiet_mode=1
+    quiet_flag=(-q)
+    shift
+    ;;
+  --focus)
+    focus_mode=1
+    shift
+    ;;
+  --)
+    shift
+    break
+    ;;
+  -*)
+    show_usage
+    exit 1
+    ;;
+  *)
+    break
+    ;;
   esac
 done
 
@@ -254,7 +255,30 @@ for pr_number in "${pr_numbers[@]}"; do
     fi
   fi
 
-  local_branch="pr-$pr_number"
+  local_branch="${remote_name}__${branch_name}"
+  worktree_path="$parent_dir/$remote_name/$branch_name"
+
+  # If this PR was previously checked out using a pr-<number> branch name,
+  # rename/move it to the current naming scheme to avoid duplicate worktrees.
+  old_local_branch="pr-$pr_number"
+  if [ "$old_local_branch" != "$local_branch" ]; then
+    old_existing_path="$(_comma_w_find_worktree_path_for_branch "$old_local_branch" 2>/dev/null || true)"
+    if [ -n "$old_existing_path" ]; then
+      existing_path="$(_comma_w_find_worktree_path_for_branch "$local_branch" 2>/dev/null || true)"
+      if [ -z "$existing_path" ]; then
+        info "Migrating existing worktree '$old_local_branch' -> '$local_branch'..."
+        mv_args=()
+        if [ "$quiet_mode" -eq 1 ]; then
+          mv_args+=(--quiet)
+        fi
+        if [ "$focus_mode" -eq 1 ]; then
+          mv_args+=(--focus)
+        fi
+        "$(dirname "$0")/mv.sh" "${mv_args[@]}" --path "$worktree_path" "$old_local_branch" "$local_branch" >/dev/null || true
+      fi
+    fi
+  fi
+
   existing_path="$(_comma_w_find_worktree_path_for_branch "$local_branch" 2>/dev/null || true)"
   if [ -n "$existing_path" ]; then
     info "Worktree already exists for '$local_branch'."
@@ -275,15 +299,32 @@ for pr_number in "${pr_numbers[@]}"; do
     continue
   fi
 
-  base_ref="refs/remotes/${remote_name}/${branch_name}"
-  "$(dirname "$0")/wt_add.sh" "${quiet_flag[@]}" "$local_branch" "$base_ref"
+  base_ref="${remote_name}/${branch_name}"
+
+  mkdir -p "$(dirname "$worktree_path")"
+  if git show-ref --verify --quiet "refs/heads/$local_branch"; then
+    if [ "$quiet_mode" -eq 1 ]; then
+      git worktree add -q "$worktree_path" "$local_branch"
+    else
+      git worktree add "$worktree_path" "$local_branch"
+    fi
+  else
+    if [ "$quiet_mode" -eq 1 ]; then
+      git worktree add -q "$worktree_path" -b "$local_branch" "$base_ref"
+    else
+      git worktree add "$worktree_path" -b "$local_branch" "$base_ref"
+    fi
+  fi
+
+  _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$local_branch" "$worktree_path"
+  _print_created_worktree_message "$quiet_mode" "$local_branch" "$worktree_path" "$base_ref"
+
+  if command -v zoxide &>/dev/null; then
+    zoxide add "$worktree_path" 2>/dev/null || true
+  fi
 
   if [ "$focus_mode" -eq 1 ]; then
-    worktree_path="$(_comma_w_find_worktree_path_for_branch "$local_branch" || true)"
-    if [ -n "$worktree_path" ]; then
-      _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$local_branch" "$worktree_path"
-      _comma_w_focus_tmux_session "$quiet_mode" "$(_comma_w_tmux_session_name "$parent_name" "$local_branch")" "$worktree_path" || true
-    fi
+    _comma_w_focus_tmux_session "$quiet_mode" "$(_comma_w_tmux_session_name "$parent_name" "$local_branch")" "$worktree_path" || true
   fi
 
   info "Completed PR #$pr_number worktree creation."
