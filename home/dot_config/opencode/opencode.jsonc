@@ -91,4 +91,22 @@
       "url": "https://mcp.exa.ai/mcp",
     },
   },
+  "provider": {
+    "litellm": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "LiteLLM",
+      "options": {
+        "baseURL": "http://localhost:4000/v1",
+      },
+      "models": {
+        "llm-gateway/gpt-5.2": {
+          "name": "llm-gateway/gpt-5.2",
+          "limit": {
+            "output": 128000,
+            "context": 400000,
+          },
+        },
+      },
+    },
+  },
 }
