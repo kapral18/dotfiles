@@ -1,6 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "small_model": "openrouter/z.ai/glm-4.7",
+  "small_model": "openrouter/z.ai/glm-5",
   "theme": "catppuccin",
   "share": "disabled",
   "autoupdate": false,
@@ -34,22 +34,22 @@
     "worker_a": {
       "description": "Implements tasks and reports concise results back to main agent",
       "mode": "subagent",
-      "model": "openrouter/z.ai/glm-4.7",
+      "model": "openrouter/z.ai/glm-5",
     },
     "worker_b": {
       "description": "Second implementer for parallel work, reports concise results back to main agent",
       "mode": "subagent",
-      "model": "openrouter/z.ai/glm-4.7",
+      "model": "openrouter/z.ai/glm-5",
     },
     "worker_c": {
       "description": "Third implementer for parallel work, reports concise results back to main agent",
       "mode": "subagent",
-      "model": "openrouter/z.ai/glm-4.7",
+      "model": "openrouter/z.ai/glm-5",
     },
     "worker_d": {
       "description": "Fourth implementer for parallel work, reports concise results back to main agent",
       "mode": "subagent",
-      "model": "openrouter/z.ai/glm-4.7",
+      "model": "openrouter/z.ai/glm-5",
     },
   },
   "default_agent": "main",
@@ -85,10 +85,6 @@
         "docker run --pull=always --rm -i -e ELASTICSEARCH_CLOUD_ID=\"$(pass scsi/k18/cloud_id)\" -e ELASTICSEARCH_API_KEY=\"$(pass scsi/k18/api_key)\" -e ELASTICSEARCH_INDEX=scsi-repo simianhacker/semantic-code-search-mcp-server node dist/src/mcp_server/bin.js stdio",
       ],
       "enabled": true,
-    },
-    "exa": {
-      "type": "remote",
-      "url": "https://mcp.exa.ai/mcp",
     },
   },
   "provider": {

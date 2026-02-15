@@ -1,43 +1,143 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ "$#" -gt 0 ]; then
-  exec gh pr view -w "$@"
+usage() {
+  cat <<'EOF'
+Usage:
+  ,gh-prw [--number|--url] [<number|url|branch>]
+  ,gh-prw [<number|url|branch>]
+
+Behavior:
+  - Default: open the PR in a browser.
+  - --number: print the PR number and exit.
+  - --url: print the PR URL and exit.
+
+If no PR is provided, the PR for the current branch is used.
+EOF
+}
+
+mode="web"
+target=""
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -n|--number)
+      mode="number"
+      shift
+      ;;
+    -u|--url)
+      mode="url"
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -* )
+      # Unknown flag: pass through to gh (primarily for the default web mode).
+      break
+      ;;
+    *)
+      target="$1"
+      shift
+      break
+      ;;
+  esac
+done
+
+resolve_pr_number_fallback() {
+  base=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+  up=$(git rev-parse --abbrev-ref --symbolic-full-name "@{upstream}" 2>/dev/null) || {
+    echo "No upstream configured" >&2
+    return 1
+  }
+
+  remote=${up%%/*}
+  head=${up#*/}
+  remote_url=$(git remote get-url "$remote" 2>/dev/null) || {
+    echo "Unable to read remote URL for $remote" >&2
+    return 1
+  }
+
+  owner=$(printf "%s" "$remote_url" | sed -E 's#^git@github.com:##; s#^https://github.com/##; s#^ssh://git@github.com/##; s#/.*##')
+
+  command -v jq >/dev/null 2>&1 || {
+    echo "jq is required" >&2
+    return 1
+  }
+
+  pr=$(
+    gh pr list \
+      -R "$base" \
+      --search "head:$head" \
+      --state open \
+      --json number,headRepositoryOwner \
+      | jq -r --arg owner "$owner" '.[] | select(.headRepositoryOwner.login == $owner) | .number' \
+      | head -n 1
+  )
+
+  if [ -z "$pr" ] || [ "$pr" = "null" ]; then
+    echo "No PR found for $owner:$head on $base" >&2
+    return 1
+  fi
+
+  printf '%s\n' "$pr"
+}
+
+resolve_pr_number() {
+  if [ -n "$target" ]; then
+    gh pr view "$target" --json number --jq '.number'
+    return
+  fi
+
+  if pr=$(gh pr view --json number --jq '.number' 2>/dev/null); then
+    printf '%s\n' "$pr"
+    return
+  fi
+
+  resolve_pr_number_fallback
+}
+
+resolve_pr_url() {
+  if [ -n "$target" ]; then
+    gh pr view "$target" --json url --jq '.url'
+    return
+  fi
+
+  if url=$(gh pr view --json url --jq '.url' 2>/dev/null); then
+    printf '%s\n' "$url"
+    return
+  fi
+
+  base=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+  pr=$(resolve_pr_number_fallback)
+  gh pr view -R "$base" "$pr" --json url --jq '.url'
+}
+
+if [ "$mode" = "number" ]; then
+  resolve_pr_number
+  exit 0
+fi
+
+if [ "$mode" = "url" ]; then
+  resolve_pr_url
+  exit 0
+fi
+
+if [ -n "$target" ] || [ "$#" -gt 0 ]; then
+  # Includes unknown flags: let gh handle them.
+  exec gh pr view -w ${target:+"$target"} "$@"
+fi
+
+# No args: open PR for current branch (fast path).
+if gh pr view -w 2>/dev/null; then
+  exit 0
 fi
 
 base=$(gh repo view --json nameWithOwner -q .nameWithOwner)
-up=$(git rev-parse --abbrev-ref --symbolic-full-name "@{upstream}" 2>/dev/null) || {
-  echo "No upstream configured" >&2
-  exit 1
-}
-
-remote=${up%%/*}
-head=${up#*/}
-remote_url=$(git remote get-url "$remote" 2>/dev/null) || {
-  echo "Unable to read remote URL for $remote" >&2
-  exit 1
-}
-
-owner=$(printf "%s" "$remote_url" | sed -E 's#^git@github.com:##; s#^https://github.com/##; s#^ssh://git@github.com/##; s#/.*##')
-
-command -v jq >/dev/null 2>&1 || {
-  echo "jq is required" >&2
-  exit 1
-}
-
-pr=$(
-  gh pr list \
-    -R "$base" \
-    --search "head:$head" \
-    --state open \
-    --json number,headRepositoryOwner \
-    | jq -r --arg owner "$owner" '.[] | select(.headRepositoryOwner.login == $owner) | .number' \
-    | head -n 1
-)
-
-if [ -z "$pr" ] || [ "$pr" = "null" ]; then
-  echo "No PR found for $owner:$head on $base" >&2
-  exit 1
-fi
-
+pr=$(resolve_pr_number_fallback)
 exec gh pr view -R "$base" -w "$pr"

@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub + gh Workflow"
+  short_description: "gh-driven PR/issue ops with approvals"
+  default_prompt: "Use $github-gh-workflow to perform GitHub work via gh. Propose side effects before applying them; use github-compose-* for writing-only drafts and github-pr-review-* for review feedback."

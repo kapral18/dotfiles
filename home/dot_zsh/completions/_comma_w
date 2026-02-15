@@ -18,6 +18,38 @@ _comma_w_worktree_branches() {
   _describe -t worktrees worktree branches
 }
 
+_comma_w_prs_candidates() {
+  local -a lines
+  local -a candidates
+  local line num title
+
+  if ! command -v gh >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if (( ${words[(I)--awaiting]} )); then
+    if command -v ,w >/dev/null 2>&1; then
+      lines=("${(@f)$(,w prs --awaiting --complete 2>/dev/null)}")
+    else
+      lines=()
+    fi
+  else
+    lines=("${(@f)$(gh pr list --limit 200 --json number,title --jq '.[] | "\\(.number)\\t\\(.title)"' 2>/dev/null)}")
+  fi
+
+  for line in "${lines[@]}"; do
+    num="${line%%$'\t'*}"
+    title="${line#*$'\t'}"
+    if [ -n "$num" ] && [ "$title" != "$line" ]; then
+      candidates+=("${num}:${title}")
+    elif [ -n "$num" ]; then
+      candidates+=("${num}")
+    fi
+  done
+
+  _describe -t prs "PR" candidates
+}
+
 _comma_w() {
   local context state state_descr line
   typeset -A opt_args
@@ -40,7 +72,8 @@ _comma_w() {
           _arguments \
             '(-q --quiet)'{-q,--quiet}'[Suppress informational output]' \
             '--focus[Switch/attach to tmux session]' \
-            '*:pr number or search term: '
+            '--awaiting[Awaiting my/team review (autocomplete: last 7 days)]' \
+            '*:pr number or search term:_comma_w_prs_candidates'
           ;;
         ls|list)
           _arguments \

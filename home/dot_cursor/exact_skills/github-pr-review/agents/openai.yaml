@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub PR Review (Interactive)"
+  short_description: "One PR comment at a time (non-batch)"
+  default_prompt: "Use $github-pr-review to review the current branch PR (infer via gh prw --number) and draft exactly one next comment."

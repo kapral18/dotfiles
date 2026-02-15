@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kibana Management Ownership"
+  short_description: "CODEOWNERS-derived ownership hints"
+  default_prompt: "Use $kibana-management-ownership to infer ownership/labels for Kibana management areas."

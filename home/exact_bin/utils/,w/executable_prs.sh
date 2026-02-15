@@ -77,7 +77,7 @@ get_base_remote_name() {
 
 show_usage() {
   cat <<EOF
-Usage: ,w prs [-q|--quiet] [--focus] [pr_number ...| search_terms]
+Usage: ,w prs [-q|--quiet] [--focus] [--awaiting] [pr_number ...| search_terms]
 
 Create worktrees from GitHub pull requests.
 
@@ -88,12 +88,14 @@ Arguments:
 Options:
   -q, --quiet       Suppress informational output
   --focus           Switch/attach to the created worktree's tmux session
+  --awaiting        List PRs awaiting my/team review (autocomplete: last 7 days)
   -h, --help        Show this help message
 
 Examples:
   ,w prs 123                    # Create worktree for PR #123
   ,w prs 123 456                # Create worktrees for PRs #123 and #456
   ,w prs feature authentication # Search PRs and select with fzf
+  ,w prs --awaiting             # Pick from PRs awaiting my/team review
 
 Notes:
   - Automatically adds contributor's fork as a remote
@@ -106,6 +108,11 @@ EOF
 quiet_mode=0
 quiet_flag=()
 focus_mode=0
+awaiting_mode=0
+complete_mode=0
+
+awaiting_days_default=7
+awaiting_days="${COMMA_W_AWAITING_DAYS:-$awaiting_days_default}"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -120,6 +127,15 @@ while [ $# -gt 0 ]; do
     ;;
   --focus)
     focus_mode=1
+    shift
+    ;;
+  --awaiting)
+    awaiting_mode=1
+    shift
+    ;;
+  --complete)
+    # Internal: print completion candidates (number<TAB>title) and exit.
+    complete_mode=1
     shift
     ;;
   --)
@@ -137,6 +153,112 @@ while [ $# -gt 0 ]; do
 done
 
 require_cmd gh
+
+get_user_login() {
+  gh api user --jq '.login' 2>/dev/null || true
+}
+
+_iso_date_days_ago() {
+  local days="$1"
+
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "$days" <<'PY'
+import datetime
+import sys
+
+days = int(sys.argv[1])
+dt = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=days)
+print(dt.strftime('%Y-%m-%d'))
+PY
+    return 0
+  fi
+
+  if command -v gdate >/dev/null 2>&1; then
+    gdate -u -d "${days} days ago" +%Y-%m-%d
+    return 0
+  fi
+
+  date -u -d "${days} days ago" +%Y-%m-%d
+}
+
+_comma_w_collect_team_review_filters() {
+  local org_owner="$1"
+  local config_file="${GH_DASH_CONFIG:-$HOME/.config/gh-dash/config.yml}"
+
+  if [ ! -f "$config_file" ]; then
+    return 0
+  fi
+
+  # Parse strings like: team-review-requested:elastic/kibana-management.
+  # Important: grep returns 1 when there are no matches; don't treat that as a fatal error.
+  local matches=""
+  matches="$(grep -Eo 'team-review-requested:[^ ]+' "$config_file" 2>/dev/null || true)"
+  if [ -z "${matches}" ]; then
+    return 0
+  fi
+
+  printf '%s\n' "${matches}" |
+    sed 's/^team-review-requested://' |
+    awk -v org="${org_owner}/" '$0 ~ "^"org {print $0}' |
+    sort -u
+}
+
+_comma_w_build_awaiting_search_query() {
+  local user_login="$1"
+  local base_owner="$2"
+  local since_date="$3"
+  local extra_terms="$4"
+
+  local -a ors
+  ors+=("review-requested:${user_login}")
+
+  local team
+  while IFS= read -r team; do
+    [ -n "$team" ] || continue
+    ors+=("team-review-requested:${team}")
+  done < <(_comma_w_collect_team_review_filters "$base_owner")
+
+  local or_query=""
+  local i
+  for ((i = 0; i < ${#ors[@]}; i++)); do
+    if [ $i -eq 0 ]; then
+      or_query="${ors[$i]}"
+    else
+      or_query="${or_query} OR ${ors[$i]}"
+    fi
+  done
+
+  # Exclude drafts, my own PRs, and PRs I've already reviewed.
+  # Note: we also filter drafts client-side in _comma_w_list_prs_tsv to avoid
+  # showing draft PRs if the search qualifier isn't applied as expected.
+  # Time window is optional; we keep it for autocomplete, but not for fzf mode.
+  local updated_clause=""
+  if [ -n "${since_date}" ]; then
+    updated_clause="updated:>=${since_date} "
+  fi
+
+  local query="is:open is:pr -is:draft ${updated_clause}-author:${user_login} -reviewed-by:${user_login} (${or_query})"
+  if [ -n "${extra_terms//[[:space:]]/}" ]; then
+    query="${query} ${extra_terms}"
+  fi
+
+  printf '%s\n' "$query"
+}
+
+_comma_w_list_prs_tsv() {
+  # Prints: number<TAB>updated_day<TAB>title
+  local search_query="$1"
+  local exclude_drafts="${2:-0}"
+
+  if [ "$exclude_drafts" -eq 1 ]; then
+    gh pr list --search "${search_query}" --limit 200 --json number,title,updatedAt,isDraft \
+      --jq 'map(select(.isDraft == false)) | sort_by(.updatedAt) | reverse | .[] | [(.number|tostring), (.updatedAt[0:10]), .title] | @tsv' 2>/dev/null || true
+    return 0
+  fi
+
+  gh pr list --search "${search_query}" --limit 200 --json number,title,updatedAt \
+    --jq 'sort_by(.updatedAt) | reverse | .[] | [(.number|tostring), (.updatedAt[0:10]), .title] | @tsv' 2>/dev/null || true
+}
 
 info() {
   if [ "$quiet_mode" -eq 0 ]; then
@@ -187,14 +309,70 @@ if (($# > 0)); then
   fi
 fi
 
+if [ "$complete_mode" -eq 1 ]; then
+  if [ "$awaiting_mode" -eq 1 ]; then
+    user_login="$(get_user_login)"
+    if [ -z "$user_login" ]; then
+      exit 0
+    fi
+
+    if ! IFS=$'\t' read -r base_owner _base_repo < <(get_base_repo_owner_and_name); then
+      exit 0
+    fi
+
+    since_date="$(_iso_date_days_ago "$awaiting_days")"
+    awaiting_query="$(_comma_w_build_awaiting_search_query "$user_login" "$base_owner" "$since_date" "")"
+    _comma_w_list_prs_tsv "$awaiting_query" 1 | awk -F $'\t' '{print $1"\t"$3}'
+    exit 0
+  fi
+
+  gh pr list --limit 200 --json number,title --jq '.[] | "\(.number)\t\(.title)"' 2>/dev/null || true
+  exit 0
+fi
+
 if [ ${#pr_numbers[@]} -eq 0 ]; then
   require_cmd fzf
   require_cmd bat
-  search_query="$*"
-  mapfile -t pr_numbers < <(gh pr list --search "${search_query}" --json number,title \
-    --jq '.[] | "\(.number) \(.title)"' | fzf --multi --preview '
-            gh pr view {1} --json number,title,body,author,labels,comments --template "
+
+  if [ "$awaiting_mode" -eq 1 ]; then
+    user_login="$(get_user_login)"
+    if [ -z "$user_login" ]; then
+      echo "Failed to determine GitHub user login (are you authenticated?)." >&2
+      exit 1
+    fi
+
+    if ! IFS=$'\t' read -r base_owner _base_repo < <(get_base_repo_owner_and_name); then
+      echo "Failed to determine base repository owner/name." >&2
+      exit 1
+    fi
+
+    extra_terms="$*"
+    search_query="$(_comma_w_build_awaiting_search_query "$user_login" "$base_owner" "" "$extra_terms")"
+  else
+    search_query="$*"
+  fi
+
+  exclude_drafts=0
+  if [ "$awaiting_mode" -eq 1 ]; then
+    exclude_drafts=1
+  fi
+
+  mapfile -t pr_numbers < <(
+    _comma_w_list_prs_tsv "$search_query" "$exclude_drafts" |
+      fzf --multi --delimiter=$'\t' --with-nth=1,2,3 --preview '
+            gh pr view {1} --json number,title,body,author,labels,comments,createdAt,updatedAt,reviewDecision --template "
 # PR #{{.number}}: {{.title}}
+
+---
+
+## Dates
+
+- Created: {{.createdAt}}
+- Updated: {{.updatedAt}}
+
+## Review
+
+- Decision: {{.reviewDecision}}
 
 ---
 
@@ -204,9 +382,10 @@ if [ ${#pr_numbers[@]} -eq 0 ]; then
 
 ---
 
-
 {{.body}}" | bat --style=auto --color always --wrap never --paging never --language Markdown
-        ' --preview-window="right:70%:nowrap" --ansi | awk '{print $1}')
+        ' --preview-window="right:70%:nowrap" --ansi |
+      awk -F $'\t' '{print $1}'
+  )
 fi
 
 if [ ${#pr_numbers[@]} -eq 0 ]; then

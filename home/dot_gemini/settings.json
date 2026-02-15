@@ -20,5 +20,14 @@
   },
   "model": {
     "name": "gemini-3-pro-preview"
+  },
+  "agents": {
+    "overrides": {
+      "codebase_investigator": {
+        "runConfig": {
+          "maxTurns": 100
+        }
+      }
+    }
   }
 }

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Beads Workflow"
+  short_description: "bdlocal-only bead ops with strict approvals"
+  default_prompt: "Use $beads-workflow to manage a bead locally via bdlocal."

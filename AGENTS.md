@@ -90,3 +90,40 @@ tar_gz_bin|mdtt|szktkfm/mdtt|mdtt_Darwin_arm64.tar.gz|mdtt|mdtt
 ```
 
 **Installer**: `home/.chezmoiscripts/run_onchange_after_05-install-manual-packages.sh.tmpl`
+
+---
+
+## Updating Home SOP Files
+
+Home SOPs are installed into `$HOME` by chezmoi and are intentionally split into:
+
+- Entrypoints: small files defining global rules + triggers (e.g. `~/AGENTS.md`).
+- Modules: most of the detailed workflow playbooks live under `~/.agents/skills/` and are referenced by the entrypoints.
+
+**Source-of-truth (edit these in this repo, not in `$HOME`):**
+
+- Entrypoints:
+  - `home/readonly_AGENTS.md` -> `~/AGENTS.md`
+  - `home/readonly_CLAUDE.md` -> `~/CLAUDE.md`
+  - `home/dot_gemini/readonly_GEMINI.md` -> `~/.gemini/GEMINI.md`
+- Modules:
+  - `home/exact_dot_agents/` -> `~/.agents/` (skills live under `~/.agents/skills/`)
+
+**OpenCode wiring:**
+
+- `home/dot_config/opencode/symlink_AGENTS.md` -> `~/.config/opencode/AGENTS.md` (symlink target `../../AGENTS.md`)
+
+**Rules:**
+
+1. Do not edit the rendered `$HOME` files directly; edit the corresponding `home/...` source file in this repo.
+2. If an entrypoint references a skill/module path under `~/.agents/skills/`, keep the corresponding skill under `home/exact_dot_agents/skills/` in sync.
+3. Keep OpenCode/Claude/Gemini entrypoints aligned for shared rules; keep tool-specific differences explicit.
+
+**Workflow:**
+
+1. Edit the relevant `home/...` source files.
+2. Review rendered changes with `chezmoi diff`.
+3. Apply locally with `chezmoi apply`.
+4. Verify:
+   - `~/AGENTS.md` contains the expected changes
+   - `~/.config/opencode/AGENTS.md` still points at `~/AGENTS.md` (symlink)

@@ -74,6 +74,13 @@ _add_worktree_tmux_session() {
       return 0
     fi
 
+    local session_name
+    session_name="$(_comma_w_tmux_session_name "$parent_name" "$branch_name")"
+
+    if tmux has-session -t "$session_name" 2>/dev/null; then
+      return 0
+    fi
+
     if [ "$quiet_mode" -eq 0 ]; then
       echo "
 
@@ -82,12 +89,6 @@ _add_worktree_tmux_session() {
 Adding TMUX Session: $parent_name|$branch_name
 At Path: $worktree_path
 "
-    fi
-
-    local session_name
-    session_name="$(_comma_w_tmux_session_name "$parent_name" "$branch_name")"
-    if tmux has-session -t "$session_name" 2>/dev/null; then
-      return 0
     fi
 
     if ! tmux new-session -d -s "$session_name" -c "$worktree_path" 2>/dev/null; then
@@ -105,16 +106,28 @@ _remove_worktree_tmux_session() {
     local worktree_path="$2"
     local session_name_hint="${3:-}"
     local -a session_names=()
+    local session_names_seen=" "
     local session_name
     local session_path
 
+    _add_session_name() {
+      local name="$1"
+      case "$session_names_seen" in
+      *" ${name} "*)
+        return 0
+        ;;
+      esac
+      session_names+=("$name")
+      session_names_seen+="${name} "
+    }
+
     if [ -n "$session_name_hint" ] && tmux has-session -t "$session_name_hint" 2>/dev/null; then
-      session_names+=("$session_name_hint")
+      _add_session_name "$session_name_hint"
     fi
 
     while IFS=$'\t' read -r session_name session_path; do
       if [ "$session_path" = "$worktree_path" ]; then
-        session_names+=("$session_name")
+        _add_session_name "$session_name"
       fi
     done < <(tmux list-sessions -F $'#{session_name}\t#{session_path}' 2>/dev/null || true)
 

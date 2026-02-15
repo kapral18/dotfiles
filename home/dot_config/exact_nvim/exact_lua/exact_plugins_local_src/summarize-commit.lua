@@ -147,7 +147,7 @@ local providers = {
     },
     payload = function(diff)
       return {
-        model = (os.getenv("OPENROUTER_MODEL") or "z-ai/glm-4.7"),
+        model = (os.getenv("OPENROUTER_MODEL") or "z-ai/glm-5"),
         messages = {
           { role = "system", content = SYSTEM_MESSAGE },
           { role = "user", content = PROMPT .. diff },

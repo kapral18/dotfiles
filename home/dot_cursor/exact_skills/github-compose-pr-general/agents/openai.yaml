@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub Compose PR (General)"
+  short_description: "Draft PR body (non-Elastic); writing-only"
+  default_prompt: "Use $github-compose-pr-general to draft a PR description body."

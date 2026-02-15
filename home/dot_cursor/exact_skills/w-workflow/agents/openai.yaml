@@ -1,0 +1,4 @@
+interface:
+  display_name: ",w Worktrees"
+  short_description: "Worktrees + tmux workflow via ,w"
+  default_prompt: "Use $w-workflow to manage local worktrees via the ,w CLI."

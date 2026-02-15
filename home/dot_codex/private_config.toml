@@ -1,0 +1,42 @@
+#:schema https://developers.openai.com/codex/config-schema.json
+
+# Codex defaults (unrestricted: no approvals, no sandbox).
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+web_search = "cached"
+check_for_update_on_startup = true
+model = "gpt-5.2"
+model_reasoning_effort = "high"
+personality = "pragmatic"
+
+[notice.model_migrations]
+"gpt-5.2" = "gpt-5.3-codex"
+
+[mcp_servers.playwright]
+command = "npx"
+args = ["-y", "@playwright/mcp@latest"]
+
+[mcp_servers.sequentialthinking]
+command = "docker"
+args = [
+  "run",
+  "--pull=always",
+  "--rm",
+  "-i",
+  "--init",
+  "mcp/sequentialthinking",
+]
+
+[mcp_servers.scsi-main]
+command = "bash"
+args = [
+  "-lc",
+  'docker run --pull=always --rm -i -e ELASTICSEARCH_ENDPOINT="$(pass scsi/simian/cloud_endpoint)" -e ELASTICSEARCH_API_KEY="$(pass scsi/simian/api_key)" -e ELASTICSEARCH_INDEX=kibana-repo simianhacker/semantic-code-search-mcp-server node dist/src/mcp_server/bin.js stdio',
+]
+
+[mcp_servers.scsi-local]
+command = "bash"
+args = [
+  "-lc",
+  'cd "$HOME/work/semantic-code-search-mcp-server/main" && ELASTICSEARCH_CLOUD_ID="$(pass scsi/k18/cloud_id)" ELASTICSEARCH_API_KEY="$(pass scsi/k18/api_key)" ELASTICSEARCH_INDEX=scsi-repo node dist/src/mcp_server/bin.js stdio',
+]

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Walkthrough"
+  short_description: "Explain architecture/flows with diagrams"
+  default_prompt: "Use $walkthrough to explore the codebase and produce an interactive diagram for the requested flow. Do not modify code."

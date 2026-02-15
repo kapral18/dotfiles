@@ -229,8 +229,8 @@ Custom commands are shipped as scripts installed to `~/bin` (source: `home/exact
   - **Examples:** `,get-risky-tests "src/plugins/data"`; `,get-risky-tests "src/core/server" | jq -r '.fullName'`
 - **Name:** `,gh-prw`
   - **Description:** Open the PR for the current branch (or a given PR number)
-    in the browser.
-  - **Examples:** `,gh-prw`; `,gh-prw 12345`
+    in the browser, or print its number/URL for scripting.
+  - **Examples:** `,gh-prw`; `,gh-prw 12345`; `,gh-prw --number`; `,gh-prw --url`
 - **Name:** `,gh-subissues-create`
   - **Description:** Draft multiple sub-issues in your editor, create them,
     and attach them to a parent issue via GitHub’s sub-issue GraphQL API.
@@ -426,14 +426,15 @@ Language server for Fish scripts:
 
 AI tools for CLI and editor. Credentials in 1Password, configs in repo.
 
-| Tool          | Purpose                 | Config                                                            |
-| ------------- | ----------------------- | ----------------------------------------------------------------- |
-| **Crush**     | Terminal AI assistant   | Charmbracelet tap                                                 |
-| **Ollama**    | Local LLM runtime       | `home/.chezmoiscripts/run_onchange_after_05-add-ollama-models.sh` |
-| **Amp**       | AI coding tool with MCP | `home/dot_config/amp/settings.json`                               |
-| **Codex CLI** | Terminal coding agent   | `home/dot_codex/config.toml`                                      |
-| **OpenCode**  | Terminal agent runner   | `home/dot_config/opencode/opencode.jsonc`                         |
-| **Cursor**    | AI code editor (work)   | `home/dot_cursor/mcp.json` (`.isWork` conditional)                |
+| Tool           | Purpose                 | Config                                                            |
+| -------------- | ----------------------- | ----------------------------------------------------------------- |
+| **Crush**      | Terminal AI assistant   | Charmbracelet tap                                                 |
+| **Ollama**     | Local LLM runtime       | `home/.chezmoiscripts/run_onchange_after_05-add-ollama-models.sh` |
+| **Amp**        | AI coding tool with MCP | `home/dot_config/amp/private_settings.json`                       |
+| **Codex CLI**  | Terminal coding agent   | `home/dot_codex/private_config.toml`                              |
+| **OpenCode**   | Terminal agent runner   | `home/dot_config/opencode/opencode.jsonc`                         |
+| **Cursor**     | AI code editor (work)   | `home/dot_cursor/mcp.json` (`.isWork` conditional)                |
+| **Gemini CLI** | Terminal AI assistant   | `home/dot_gemini/settings.json`                                   |
 
 **Ollama Models**:
 
@@ -442,20 +443,48 @@ AI tools for CLI and editor. Credentials in 1Password, configs in repo.
 
 ### Assistant Instructions & SOPs
 
-This repo also ships “how I want assistants to operate” as files that get
-installed to your home directory:
+This repo ships "how I want assistants to operate" as files installed to your
+home directory:
 
 - `home/readonly_AGENTS.md` → `~/AGENTS.md`
 - `home/readonly_CLAUDE.md` → `~/CLAUDE.md`
 - `home/dot_gemini/readonly_GEMINI.md` → `~/.gemini/GEMINI.md`
-- `home/exact_dot_agents/` → `~/.agents/` (workflow modules like `gh.md`, `git.md`, `github_pr_review.md`, `github_drafting/`)
 
-`~/.agents/` is a personal convention (not a GitHub/Chezmoi standard): it’s a
-directory of **workflow modules** that the main SOP files reference. The
-“entrypoint” is `~/AGENTS.md` (and the equivalents for other tools), which
-defines triggers like “GitHub/gh work” → read `~/.agents/gh.md` and follow it.
-In other words: `~/AGENTS.md` contains the rules; `~/.agents/` contains the
-reusable, topic-specific playbooks those rules point to.
+### Skills
+
+Skills are reusable workflow modules that AI assistants discover automatically
+from standard skill directories. Each skill is a `SKILL.md` file with YAML
+frontmatter (`name`, `description`) plus Markdown instructions.
+
+**Source of truth** (real files, chezmoi-managed):
+
+- `home/dot_cursor/exact_skills/` → `~/.cursor/skills/`
+
+**Symlinked directories** (tools that follow symlinks discover from here):
+
+- `~/.claude/skills/` → symlinks to `~/.cursor/skills/`
+- `~/.codex/skills/` → symlinks to `~/.cursor/skills/`
+- `~/.gemini/skills/` → symlinks to `~/.cursor/skills/`
+- `~/.agents/skills/` → symlinks to `~/.cursor/skills/`
+
+Chezmoi sources for the symlink sets:
+
+- `home/dot_claude/exact_skills/` → `~/.claude/skills/`
+- `home/dot_codex/exact_skills/` → `~/.codex/skills/`
+- `home/dot_gemini/exact_skills/` → `~/.gemini/skills/`
+- `home/exact_dot_agents/skills/` → `~/.agents/skills/`
+
+Which harness uses which directory:
+
+- **Cursor**: reads `~/.cursor/skills/` (canonical; real files)
+- **Claude Code**: reads `~/.claude/skills/`
+- **Codex CLI**: reads `~/.codex/skills/`
+- **Gemini CLI**: reads `~/.gemini/skills/`
+- **OpenCode**: reads `~/.agents/skills/` and `~/.claude/skills/`
+- **Amp**: reads `~/.agents/skills/` and `~/.claude/skills/` (compat)
+
+**Why this layout?** Cursor doesn't follow symlinks for skill discovery, so
+its directory contains the canonical files. All other tools read via symlinks.
 
 ## 💎 Neovim
 
@@ -650,8 +679,8 @@ sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply kapral18
 - Fish: `home/dot_config/fish/`
 - Scripts: `home/exact_bin/`
 - Brewfile: `home/readonly_dot_Brewfile.tmpl`
-- Agent workflows: `home/exact_dot_agents/`
-- GitHub drafting assets: `home/exact_dot_agents/github_drafting/`
+- Skills (canonical, Cursor): `home/dot_cursor/exact_skills/`
+- Skills (symlink sets): `home/dot_claude/exact_skills/`, `home/dot_codex/exact_skills/`, `home/dot_gemini/exact_skills/`, `home/exact_dot_agents/skills/`
 - Codex CLI config: `home/dot_codex/`
 - OpenCode config: `home/dot_config/opencode/`
 - Alfred: `home/Alfred.alfredpreferences/`

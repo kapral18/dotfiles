@@ -9,9 +9,6 @@
 > - **DO NOT** assume familiarity — re-read fully each session.
 > - **DO NOT** deviate from specified procedures without explicit user
 >   approval.
-> - **ALWAYS** read the referenced `~/.agents/*.md` module in full (no
->   skimming) before taking any action under a triggered workflow. Those
->   modules are part of this SOP.
 > - **VIOLATION** of any instruction constitutes operational failure.
 >
 > Failure to comply invalidates your responses. Proceed only after full
@@ -96,24 +93,7 @@ training-memory guesses for facts.
 - If something is still a hypothesis, label it explicitly as such and keep it
   from gating downstream steps.
 
-## 3. Triggered Workflows
-
-When a trigger matches, read the referenced module in `~/.agents/` fully (do
-not skim) and follow it.
-
-- Beads: user requests beads / bdlocal, or you are running low on context ->
-  `~/.agents/beads.md`
-- Git: anything related to `git`
-  (status/diff/log/branch/commit/push/rebase/merge) -> `~/.agents/git.md`
-- GitHub + gh: anything related to GitHub or `gh`, or any GitHub URL, or
-  PR/issue work -> `~/.agents/gh.md`
-- PR review: review/comment/approve/change-requests workflows ->
-  `~/.agents/github_pr_review.md`
-- Semantic code search: "use/using <index-name> index", or user mentions
-  `semantic_code_search`/"index"/"semantic search" ->
-  `~/.agents/semantic_code_search.md`
-
-## 4. Workflow
+## 3. Workflow
 
 **Default mode (no `USE_CONFIRM` token in the user's message):**
 
@@ -139,7 +119,7 @@ not skim) and follow it.
 5. **Execute + validate:** After confirmation, implement and validate against
    the acceptance criteria.
 
-### 4.1 When Repeated Attempts Fail (Requirements Reset Interview)
+### 3.1 When Repeated Attempts Fail (Requirements Reset Interview)
 
 This mode exists to prevent looping when requirements are underspecified or
 misunderstood. When triggered, it overrides the Default and USE_CONFIRM
@@ -176,14 +156,14 @@ workflows until alignment is restored.
 **If details are missing:** propose a reasonable default, label it as a
 default, and state what would change if the default is wrong.
 
-## 5. Tooling
+## 4. Tooling
 
 - **File operations:** Use specialized tools (Read, StrReplace, Write, Delete,
   LS)
 - **MCP tools:** Prioritize SequentialThinking for complex reasoning
 - **Sandbox:** `/tmp` for experiments and troubleshooting
 
-### 5.1 Debugging & Investigation
+### 4.1 Debugging & Investigation
 
 When debugging or investigating issues, **use creative thinking** to explore
 multiple angles and hypotheses:
@@ -195,14 +175,14 @@ multiple angles and hypotheses:
 - Think laterally about root causes and indirect effects
 - Don't stop at the first plausible explanation — verify thoroughly
 
-### 5.2 Web Search Priority
+### 4.2 Web Search Priority
 
 1. **GitHub CLI**: `gh` for GitHub-specific searches
-2. **Web search**: `exa_web_search_exa` (preferred). If unavailable:
-   `web_search` (Amp) or `ddgr --noua` — never `curl`
+2. **Web search**: use the harness web search tool. If unavailable:
+   `ddgr --noua` — never `curl`
 3. **Explore**: `gh api` to investigate URLs found via search
 
-## 6. Code Quality
+## 5. Code Quality
 
 - Follow `.editorconfig` or existing project style; infer from surrounding
   code.
@@ -219,7 +199,7 @@ multiple angles and hypotheses:
 - Provide JSDoc/TSDoc for complex functions.
 - Run tests and linters when feasible; report results or state why skipped.
 
-## 7. Communication
+## 6. Communication
 
 - Be concise and direct.
 - Use bullet points, numbered lists, Markdown formatting.
@@ -229,7 +209,7 @@ multiple angles and hypotheses:
 - Do not summarize work, actions, or create summary documents unless
   explicitly asked.
 
-## 8. Exceptions
+## 7. Exceptions
 
 - On conflict with user request: stop, describe conflict, ask for
   clarification.

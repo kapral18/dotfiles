@@ -11,12 +11,6 @@ include = ["*/Source/EmmyLua.spoon/**"]
 refreshPeriod = "168h"
 exact = true
 
-[".vim/autoload"]
-type = "archive"
-url = "https://github.com/junegunn/vim-plug/archive/refs/heads/master.tar.gz"
-stripComponents = 1
-include = ["*/plug.vim"]
-
 ["Library/Application Support/lowfi"]
 type = "archive"
 url = "https://github.com/talwat/lowfi/archive/refs/heads/main.tar.gz"

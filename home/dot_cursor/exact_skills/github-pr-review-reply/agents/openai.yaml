@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub PR Review (Reply)"
+  short_description: "Iterate on existing PR threads; one reply at a time"
+  default_prompt: "Use $github-pr-review-reply to draft the next reply in an existing PR review thread on the current branch PR (infer via gh prw --number)."

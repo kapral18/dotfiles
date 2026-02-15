@@ -87,7 +87,7 @@ Description:
 Notes:
   - The default branch (main/master) cannot be removed
   - Worktrees in detached HEAD state will be skipped
-  - Set COMMA_W_PRUNE=0 to disable automatic $(git worktree prune)
+  - If you have stale worktree metadata, run $(,w prune) first
 EOF
 }
 
@@ -106,8 +106,6 @@ while [ $# -gt 0 ]; do
 done
 
 require_cmd fzf
-
-_comma_w_prune_stale_worktrees 0
 
 default_branch=$(git config --get init.defaultbranch || echo "main")
 

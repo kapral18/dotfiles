@@ -1,0 +1,4 @@
+interface:
+  display_name: "Elastic/Kibana Labels (Propose)"
+  short_description: "Label suggestions; approval required to apply"
+  default_prompt: "Use $elastic-kibana-labels-propose to propose a label set for an elastic/kibana PR."

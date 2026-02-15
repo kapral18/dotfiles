@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub Compose Issue (General)"
+  short_description: "Draft issue body (non-Elastic); writing-only"
+  default_prompt: "Use $github-compose-issue-general to draft an issue description body."
