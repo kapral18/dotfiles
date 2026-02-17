@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-npm_pkgs_file=~/.local/share/chezmoi/home/readonly_dot_default-npm-pkgs
+npm_pkgs_file="$HOME/.default-npm-pkgs"
 
 if [[ ! -f "$npm_pkgs_file" ]]; then
   echo "Error: default-npm-pkgs file not found at $npm_pkgs_file"

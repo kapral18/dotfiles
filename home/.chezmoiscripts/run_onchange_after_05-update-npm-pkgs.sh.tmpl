@@ -9,4 +9,4 @@ set -euo pipefail
 # This script installs npm packages from the default-npm-pkgs file
 # {{ include "readonly_dot_default-npm-pkgs" | sha256sum }}
 
-f-install-npm-pkgs
+{{ joinPath .chezmoi.homeDir "bin" ",install-npm-pkgs" | quote }}

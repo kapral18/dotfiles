@@ -1,4 +1,0 @@
-interface:
-  display_name: "Git Workflow"
-  short_description: "Safe git ops; approvals for commit/push"
-  default_prompt: "Use $git-workflow to inspect the repo and propose the next git commands."

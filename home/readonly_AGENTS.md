@@ -9,6 +9,8 @@
 > - **DO NOT** assume familiarity — re-read fully each session.
 > - **DO NOT** deviate from specified procedures without explicit user
 >   approval.
+> - When a `Use when` clause matches, you MUST load the referenced playbook file
+>   and follow it (do not rely on memory).
 > - **VIOLATION** of any instruction constitutes operational failure.
 >
 > Failure to comply invalidates your responses. Proceed only after full
@@ -208,6 +210,81 @@ multiple angles and hypotheses:
   code.
 - Do not summarize work, actions, or create summary documents unless
   explicitly asked.
+
+## 6.1 Playbook Routing (.agents)
+
+For common workflows, use playbooks under `~/.agents/playbooks/`. Treat these
+playbooks like skills: lazy-load only what you need, when you need it.
+
+Routing is intent-based (not keyword matching). Use the user's wording plus
+local context to choose playbook(s), then open and follow them.
+
+Rules:
+
+- Pick a primary playbook based on the user's main intent.
+- It is valid and expected to load secondary playbooks when the workflow spans
+  boundaries (example: review draft -> GitHub posting).
+- If ambiguous, ask one fork-closing question and state a default.
+- If the user's request refers to the current PR implicitly ("this PR", "current
+  PR", "on this branch PR", "the PR for this branch", "check my PR comment"),
+  first resolve the PR number via `GH_PAGER=cat gh prw --number`. If it fails
+  once, stop and ask for the PR URL/number.
+
+1. **Beads (bdlocal)**
+   Use when: the user mentions beads / bdlocal / `BEADS_DIR`, or asks to manage
+   tasks in the beads DB.
+   Playbook: `~/.agents/playbooks/beads/workflow.md`
+2. **Review (auto-route: local vs PR; start vs iterative vs replies)**
+   Use when: the user asks for a review of changes (local diff or PR), asks to
+   continue a review, asks for the next comment, asks to reply/address review
+   threads, OR asks to recheck/verify PR-related changes on the current branch
+   (even if they do not say the word "review").
+   Playbook: `~/.agents/playbooks/review/router.md`
+   Builds on: `~/.agents/playbooks/git/workflow.md` for local git commands, and
+   `~/.agents/playbooks/github/gh_workflow.md` if posting is requested.
+3. **GitHub/gh operations (side effects)**
+   Use when: the user asks you to perform any GitHub action (anything you would
+   do via `gh` / GitHub APIs), rather than only drafting text.
+   Examples (non-exhaustive): create/edit PRs or issues, post comments/reviews,
+   apply or change PR/issue metadata, manage assignees/milestones/projects, or
+   merge.
+   Playbook: `~/.agents/playbooks/github/gh_workflow.md`
+   Note: if the user also wants review content, draft it first via the review
+   playbook, then ask for approval to post.
+4. **Draft PR body (no side effects)**
+   Use when: the user wants writing only (no `gh` side effects), for example
+   "draft PR body" / "write PR description" / "compose PR".
+   Playbook: `~/.agents/playbooks/github/compose_pr_general.md` (use Elastic
+   variant when repo is `elastic/kibana`)
+5. **Draft issue body (no side effects)**
+   Use when: the user wants writing only (no `gh` side effects), for example
+   "draft issue" / "write issue" / "compose issue".
+   Playbook: `~/.agents/playbooks/github/compose_issue_general.md` (use Elastic
+   variant when repo is `elastic/kibana`)
+6. **Elastic/Kibana label proposals (propose-only)**
+   Use when: the user wants suggested labels/backports/version targeting for
+   `elastic/kibana` (no posting).
+   Playbook: `~/.agents/playbooks/github/labels_propose_elastic_kibana.md`
+7. **Kibana Management ownership hints**
+    Use when: the user asks about `CODEOWNERS` / ownership / reviewers for Kibana
+    Management areas.
+    Playbook: `~/.agents/playbooks/kibana/management_ownership.md`
+8. **Worktrees (,w)**
+    Use when: the user mentions `,w` or asks to create/switch/list/prune/remove
+    worktrees (including checking out PRs locally).
+    Playbook: `~/.agents/playbooks/worktrees/w_workflow.md`
+9. **Local git operations**
+    Use when: the user wants local repo operations (`git status/diff/log`,
+    staging, commit, rebase/merge, conflicts).
+    Playbook: `~/.agents/playbooks/git/workflow.md`
+10. **Semantic code search**
+    Use when: the user wants semantic investigation via SCSI tools (`scsi`,
+    `symbol_analysis`, `list_indices`).
+    Playbook: `~/.agents/playbooks/code_search/semantic_code_search.md`
+11. **Architecture walkthrough**
+    Use when: the user asks to walk through a system, explain flows, or build a
+    diagram/mental model ("walk me through", "architecture", "how does it work").
+    Playbook: `~/.agents/playbooks/architecture/walkthrough.md`
 
 ## 7. Exceptions
 

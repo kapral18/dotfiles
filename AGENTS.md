@@ -98,7 +98,7 @@ tar_gz_bin|mdtt|szktkfm/mdtt|mdtt_Darwin_arm64.tar.gz|mdtt|mdtt
 Home SOPs are installed into `$HOME` by chezmoi and are intentionally split into:
 
 - Entrypoints: small files defining global rules + triggers (e.g. `~/AGENTS.md`).
-- Modules: most of the detailed workflow playbooks live under `~/.agents/skills/` and are referenced by the entrypoints.
+- Modules: most of the detailed workflow playbooks live under `~/.agents/playbooks/` and are referenced by the entrypoints.
 
 **Source-of-truth (edit these in this repo, not in `$HOME`):**
 
@@ -107,7 +107,7 @@ Home SOPs are installed into `$HOME` by chezmoi and are intentionally split into
   - `home/readonly_CLAUDE.md` -> `~/CLAUDE.md`
   - `home/dot_gemini/readonly_GEMINI.md` -> `~/.gemini/GEMINI.md`
 - Modules:
-  - `home/exact_dot_agents/` -> `~/.agents/` (skills live under `~/.agents/skills/`)
+  - `home/exact_dot_agents/exact_playbooks/` -> `~/.agents/playbooks/`
 
 **OpenCode wiring:**
 
@@ -116,7 +116,7 @@ Home SOPs are installed into `$HOME` by chezmoi and are intentionally split into
 **Rules:**
 
 1. Do not edit the rendered `$HOME` files directly; edit the corresponding `home/...` source file in this repo.
-2. If an entrypoint references a skill/module path under `~/.agents/skills/`, keep the corresponding skill under `home/exact_dot_agents/skills/` in sync.
+2. If an entrypoint references a playbook path under `~/.agents/playbooks/`, keep the corresponding file under `home/exact_dot_agents/exact_playbooks/` in sync.
 3. Keep OpenCode/Claude/Gemini entrypoints aligned for shared rules; keep tool-specific differences explicit.
 
 **Workflow:**

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Semantic Code Search"
-  short_description: "Main-branch investigations via scsi index"
-  default_prompt: "Use $semantic-code-search for main-branch investigations/research in supported repos. Confirm the repo is indexed (list_indices) before relying on results; if not indexed, do not use semantic code search."

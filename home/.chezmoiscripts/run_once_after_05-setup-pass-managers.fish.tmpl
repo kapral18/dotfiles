@@ -26,6 +26,14 @@ end
   op read 'op://Work/work_pgp_keys/notesPlain' | gpg --import
 {{ else }}
   git clone git@github.com:kapral18/.password-store.git ~/.password-store
+
+  # Optional: also fetch the work store so `wpass` can switch to it.
+  # If you don't have access to the work repo on this machine, this is skipped.
+  if not test -d ~/.password-store-work
+      git clone git@github.com:kapral18/.password-store-work.git ~/.password-store-work
+      or echo "Warning: unable to clone work password store; wpass may not work until you set it up"
+  end
+
   op read 'op://Personal/personal_pgp_keys/notesPlain' | gpg --import
 {{ end }}
 

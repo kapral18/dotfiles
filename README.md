@@ -5,6 +5,8 @@
 Personal macOS development environment managed with Chezmoi. Keyboard-centric
 workflow with extensive automation and tool integration.
 
+New here? Start with [`docs/index.md`](docs/index.md).
+
 ## 📋 Table of Contents
 
 - [Key Features](#-key-features)
@@ -16,6 +18,9 @@ workflow with extensive automation and tool integration.
 - [AI & LLM Integration](#-ai--llm-tools)
 - [Neovim](#-neovim)
 - [macOS Automation](#%EF%B8%8F-macos-automation)
+- [Package Management](#-package-management)
+- [Workflow](#-workflow)
+- [Further Reading](#-further-reading)
 
 ## ✨ Key Features
 
@@ -75,7 +80,7 @@ Configuration management with templates and scripts.
 
 - **Executable Scripts**: Files with `executable_` prefix go to `~/bin`:
 
-  ```
+  ```text
   home/exact_bin/executable_,w → ~/bin/,w
   ```
 
@@ -84,23 +89,27 @@ Configuration management with templates and scripts.
   - `run_once_after_*` - One-time post-install (e.g., Homebrew setup)
   - `run_onchange_after_*` - Run when template changes (e.g., package updates)
 
+- **External Assets**: `home/.chezmoiexternal.toml` pulls a few third-party
+  dependencies so they stay up-to-date without being vendored here (e.g. tmux
+  `tpm`, Hammerspoon `EmmyLua.spoon`, `lowfi` data files, `bat` themes).
+
 ### ASDF
 
 Version manager for languages and tools.
 
 **How it works:**
 
-1. **Declarative Plugins** (`asdf_plugins.tmpl`): Conditionally install plugins
+1. **Declarative Plugins** (`home/asdf_plugins.tmpl`): Conditionally install plugins
 
-   ```
+   ```text
    nodejs
    ruby
    {{ if ne .isWork true }}lua{{ end }}
    ```
 
-2. **Version Pinning** (`.tool-versions.tmpl`): Pin tool versions
+2. **Version Pinning** (`home/readonly_dot_tool-versions.tmpl`): Pin tool versions
 
-   ```
+   ```text
    nodejs 20.11.0
    ruby 3.2.2
    ```
@@ -337,7 +346,7 @@ Manage separate Git identities (personal/work) automatically.
 2. Points to **public key** (safe on disk)
 3. 1Password SSH agent fetches matching **private key** from vault
 4. Conditional include `[includeIf "gitdir:~/work/"]` loads work config
-5. Work config points to `work_public_key.pub` for different private key
+5. Work config points to `secondary_public_key.pub` for different private key
 
 Result: Automatic identity switching based on directory, no private keys on disk.
 
@@ -450,41 +459,14 @@ home directory:
 - `home/readonly_CLAUDE.md` → `~/CLAUDE.md`
 - `home/dot_gemini/readonly_GEMINI.md` → `~/.gemini/GEMINI.md`
 
-### Skills
+### Playbooks
 
-Skills are reusable workflow modules that AI assistants discover automatically
-from standard skill directories. Each skill is a `SKILL.md` file with YAML
-frontmatter (`name`, `description`) plus Markdown instructions.
+Playbooks are reusable workflow modules referenced by the SOP entrypoints (for
+example: "When X happens, use playbook Y").
 
-**Source of truth** (real files, chezmoi-managed):
+**Source of truth** (chezmoi-managed, real files):
 
-- `home/dot_cursor/exact_skills/` → `~/.cursor/skills/`
-
-**Symlinked directories** (tools that follow symlinks discover from here):
-
-- `~/.claude/skills/` → symlinks to `~/.cursor/skills/`
-- `~/.codex/skills/` → symlinks to `~/.cursor/skills/`
-- `~/.gemini/skills/` → symlinks to `~/.cursor/skills/`
-- `~/.agents/skills/` → symlinks to `~/.cursor/skills/`
-
-Chezmoi sources for the symlink sets:
-
-- `home/dot_claude/exact_skills/` → `~/.claude/skills/`
-- `home/dot_codex/exact_skills/` → `~/.codex/skills/`
-- `home/dot_gemini/exact_skills/` → `~/.gemini/skills/`
-- `home/exact_dot_agents/skills/` → `~/.agents/skills/`
-
-Which harness uses which directory:
-
-- **Cursor**: reads `~/.cursor/skills/` (canonical; real files)
-- **Claude Code**: reads `~/.claude/skills/`
-- **Codex CLI**: reads `~/.codex/skills/`
-- **Gemini CLI**: reads `~/.gemini/skills/`
-- **OpenCode**: reads `~/.agents/skills/` and `~/.claude/skills/`
-- **Amp**: reads `~/.agents/skills/` and `~/.claude/skills/` (compat)
-
-**Why this layout?** Cursor doesn't follow symlinks for skill discovery, so
-its directory contains the canonical files. All other tools read via symlinks.
+- `home/exact_dot_agents/exact_playbooks/` → `~/.agents/playbooks/`
 
 ## 💎 Neovim
 
@@ -615,9 +597,9 @@ Hyper key + movement:
 
 Script: `,apply-app-icons`
 
-1. YAML mapping (`app_icons/icon_mapping.yaml`)
+1. YAML mapping (`home/app_icons/icon_mapping.yaml`)
 2. Uses `fileicon` to apply icons
-3. Assets in `app_icons/assets/`
+3. Assets in `home/app_icons/assets/`
 
 ### Alfred
 
@@ -631,17 +613,26 @@ Karabiner-Elements rules live in `home/dot_config/private_karabiner/karabiner.js
 
 ## 📦 Package Management
 
-| System       | File                                        | Purpose                      |
-| ------------ | ------------------------------------------- | ---------------------------- |
-| **Homebrew** | `readonly_dot_Brewfile.tmpl`                | macOS apps, CLI tools, fonts |
-| **Cargo**    | `readonly_dot_default-cargo-crates`         | Rust packages                |
-| **Go**       | `readonly_dot_default-golang-pkgs`          | Go tools                     |
-| **Gems**     | `readonly_dot_default-gems`                 | Ruby packages                |
-| **npm**      | `readonly_dot_default-npm-pkgs`             | Node.js globals              |
-| **uv**       | `readonly_dot_default-uv-tools.tmpl`        | Python tools                 |
-| **Manual**   | `readonly_dot_default-manual-packages.tmpl` | DMGs + GitHub releases       |
+| System       | File                                             | Purpose                      |
+| ------------ | ------------------------------------------------ | ---------------------------- |
+| **Homebrew** | `home/readonly_dot_Brewfile.tmpl`                | macOS apps, CLI tools, fonts |
+| **Cargo**    | `home/readonly_dot_default-cargo-crates`         | Rust packages                |
+| **Go**       | `home/readonly_dot_default-golang-pkgs`          | Go tools                     |
+| **Gems**     | `home/readonly_dot_default-gems`                 | Ruby packages                |
+| **npm**      | `home/readonly_dot_default-npm-pkgs`             | Node.js globals              |
+| **uv**       | `home/readonly_dot_default-uv-tools.tmpl`        | Python tools                 |
+| **Manual**   | `home/readonly_dot_default-manual-packages.tmpl` | DMGs + GitHub releases       |
 
 Install scripts run via chezmoi hooks when files change.
+
+Note: this setup is intentionally declarative. For example:
+
+- Homebrew sync runs `brew bundle cleanup --global --force` via
+  `home/.chezmoiscripts/run_onchange_after_03-install-brew-packages.fish.tmpl`
+  (so formulas/casks not in the Brewfile can be removed).
+- ASDF sync removes unwanted plugins/versions based on `home/asdf_plugins.tmpl` and
+  `home/readonly_dot_tool-versions.tmpl` via
+  `home/.chezmoiscripts/run_onchange_after_05-install-asdf-plugins.sh.tmpl`.
 
 ---
 
@@ -673,14 +664,16 @@ sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply kapral18
 
 ## 📚 Further Reading
 
+- Docs: [`docs/index.md`](docs/index.md)
 - Chezmoi configs: `home/`
+- Chezmoi data prompts: `home/.chezmoi.toml.tmpl`
+- Chezmoi externals: `home/.chezmoiexternal.toml`
 - Chezmoi hooks: `home/.chezmoiscripts/`
 - Neovim: `home/dot_config/exact_nvim/`
 - Fish: `home/dot_config/fish/`
 - Scripts: `home/exact_bin/`
 - Brewfile: `home/readonly_dot_Brewfile.tmpl`
-- Skills (canonical, Cursor): `home/dot_cursor/exact_skills/`
-- Skills (symlink sets): `home/dot_claude/exact_skills/`, `home/dot_codex/exact_skills/`, `home/dot_gemini/exact_skills/`, `home/exact_dot_agents/skills/`
+- Assistant playbooks: `home/exact_dot_agents/exact_playbooks/`
 - Codex CLI config: `home/dot_codex/`
 - OpenCode config: `home/dot_config/opencode/`
 - Alfred: `home/Alfred.alfredpreferences/`

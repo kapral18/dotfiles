@@ -1,4 +1,0 @@
-interface:
-  display_name: "GitHub PR Review (Start)"
-  short_description: "Initial PR review; batch draft pending comments"
-  default_prompt: "Use $github-pr-review-start to review the current branch PR (infer via gh prw --number) and produce an initial PR review draft without posting."

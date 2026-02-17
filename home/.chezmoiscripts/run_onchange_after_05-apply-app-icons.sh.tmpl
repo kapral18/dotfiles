@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # This script will be re-run whenever the contents of icon_mapping.yaml change
 # {{ include "app_icons/icon_mapping.yaml" | sha256sum }}
 
-f-apply-app-icons
-
+{{ joinPath .chezmoi.homeDir "bin" ",apply-app-icons" | quote }}

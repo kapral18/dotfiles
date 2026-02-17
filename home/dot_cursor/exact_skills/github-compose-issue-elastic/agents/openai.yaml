@@ -1,4 +1,0 @@
-interface:
-  display_name: "GitHub Compose Issue (Elastic)"
-  short_description: "Draft Elastic/Kibana issue body; writing-only"
-  default_prompt: "Use $github-compose-issue-elastic to draft an Elastic-style issue description body."

@@ -1,4 +1,0 @@
-interface:
-  display_name: "GitHub Compose PR (Elastic)"
-  short_description: "Draft Elastic/Kibana PR body; writing-only"
-  default_prompt: "Use $github-compose-pr-elastic to draft an Elastic-style PR description body."
