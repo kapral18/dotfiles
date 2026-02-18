@@ -54,14 +54,6 @@ When drafting PR thread replies:
 - Default: reply directly; do not quote when the whole parent comment is the reference.
 - If you need to point at a specific fragment, use a minimal blockquote (`> ...`) and then reply.
 
-## Buildkite
-
-When the user asks about Buildkite (pipelines, builds, logs):
-
-- Use the `bk` CLI (Buildkite CLI).
-- Do not use any Buildkite MCP server.
-- Note: `bk configure` is directory-scoped and creates a local `.bk.yaml` to store the selected org. This repo's global gitignore ignores `.bk.yaml`.
-
 ## Core Workflow: Change A Playbook
 
 1. Edit playbooks under:

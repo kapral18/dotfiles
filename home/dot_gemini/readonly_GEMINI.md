@@ -280,13 +280,7 @@ Rules:
      Use when: the user wants semantic investigation via SCSI tools (`scsi`,
      `symbol_analysis`, `list_indices`).
      Playbook: `~/.agents/playbooks/code_search/semantic_code_search.md`
-11. **Buildkite (bk CLI)**
-    Use when: the user asks to inspect or interact with Buildkite (pipelines,
-    builds, logs, annotations).
-    Tooling: use the `bk` CLI; do not use any Buildkite MCP server.
-    Auth: follow `bk configure` (per `buildkite/cli`) or ask one targeted
-    question if credentials/workspace context cannot be inferred.
-12. **Architecture walkthrough**
+11. **Architecture walkthrough**
      Use when: the user asks to walk through a system, explain flows, or build a
      diagram/mental model ("walk me through", "architecture", "how does it work").
      Playbook: `~/.agents/playbooks/architecture/walkthrough.md`

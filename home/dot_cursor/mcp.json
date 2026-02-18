@@ -15,6 +15,13 @@
         "mcp/sequentialthinking"
       ]
     },
+    "buildkite": {
+      "command": "bash",
+      "args": [
+        "-lc",
+        "docker run -i --rm -e BUILDKITE_API_TOKEN=\"$(pass buildkite/api/token)\" mcp/buildkite"
+      ]
+    },
     "scsi-main": {
       "command": "bash",
       "args": [

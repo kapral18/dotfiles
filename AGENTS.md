@@ -53,11 +53,6 @@ When adding formulas or casks to Brewfile:
 - **Correct sources**: homebrew-core (default, no tap needed), official project taps, or trusted community taps
 - **Report failures**: If verification fails, report findings to user instead of guessing
 
-Buildkite CLI note:
-
-- The Buildkite CLI lives at `buildkite/cli` and installs via Homebrew tap `buildkite/buildkite`.
-- Avoid the Homebrew-core `bk` formula name collision; use `brew info buildkite/buildkite/bk` and add `brew "buildkite/buildkite/bk@3"`.
-
 ## Manual App Installation (Non-Homebrew)
 
 When a macOS app is not available via Homebrew but provides a .dmg release:
