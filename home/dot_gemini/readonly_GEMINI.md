@@ -226,7 +226,7 @@ Rules:
 - If ambiguous, ask one fork-closing question and state a default.
 - If the user's request refers to the current PR implicitly ("this PR", "current
   PR", "on this branch PR", "the PR for this branch", "check my PR comment"),
-  first resolve the PR number via `GH_PAGER=cat gh prw --number`. If it fails
+  first resolve the PR number via `,gh-prw --number`. If it fails
   once, stop and ask for the PR URL/number.
 
 1. **Beads (bdlocal)**
@@ -273,17 +273,23 @@ Rules:
    worktrees (including checking out PRs locally).
    Playbook: `~/.agents/playbooks/worktrees/w_workflow.md`
 9. **Local git operations**
-   Use when: the user wants local repo operations (`git status/diff/log`,
-   staging, commit, rebase/merge, conflicts).
-   Playbook: `~/.agents/playbooks/git/workflow.md`
+     Use when: the user wants local repo operations (`git status/diff/log`,
+     staging, commit, rebase/merge, conflicts).
+     Playbook: `~/.agents/playbooks/git/workflow.md`
 10. **Semantic code search**
-   Use when: the user wants semantic investigation via SCSI tools (`scsi`,
-   `symbol_analysis`, `list_indices`).
-   Playbook: `~/.agents/playbooks/code_search/semantic_code_search.md`
-11. **Architecture walkthrough**
-   Use when: the user asks to walk through a system, explain flows, or build a
-   diagram/mental model ("walk me through", "architecture", "how does it work").
-   Playbook: `~/.agents/playbooks/architecture/walkthrough.md`
+     Use when: the user wants semantic investigation via SCSI tools (`scsi`,
+     `symbol_analysis`, `list_indices`).
+     Playbook: `~/.agents/playbooks/code_search/semantic_code_search.md`
+11. **Buildkite (bk CLI)**
+    Use when: the user asks to inspect or interact with Buildkite (pipelines,
+    builds, logs, annotations).
+    Tooling: use the `bk` CLI; do not use any Buildkite MCP server.
+    Auth: follow `bk configure` (per `buildkite/cli`) or ask one targeted
+    question if credentials/workspace context cannot be inferred.
+12. **Architecture walkthrough**
+     Use when: the user asks to walk through a system, explain flows, or build a
+     diagram/mental model ("walk me through", "architecture", "how does it work").
+     Playbook: `~/.agents/playbooks/architecture/walkthrough.md`
 
 ## 7. Exceptions
 

@@ -240,6 +240,11 @@ Custom commands are shipped as scripts installed to `~/bin` (source: `home/exact
   - **Description:** Open the PR for the current branch (or a given PR number)
     in the browser, or print its number/URL for scripting.
   - **Examples:** `,gh-prw`; `,gh-prw 12345`; `,gh-prw --number`; `,gh-prw --url`
+- **Name:** `,gh-tfork`
+  - **Description:** Fork + clone a repo into `./<repo>/main`, then create/focus
+    a tmux session named `<repo>|main` with a 2-window layout (each window split
+    vertically).
+  - **Examples:** `,gh-tfork elastic/integrations`
 - **Name:** `,gh-subissues-create`
   - **Description:** Draft multiple sub-issues in your editor, create them,
     and attach them to a parent issue via GitHub’s sub-issue GraphQL API.

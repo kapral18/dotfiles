@@ -5,6 +5,28 @@ local M = {}
 M._installed = nil ---@type table<string,boolean>?
 M._queries = {} ---@type table<string,boolean>
 
+--- Prefer Neovim's bundled parser for {lang} if present on runtimepath.
+---
+--- This is useful when a user "site" parser (stdpath('data')/site) is broken and
+--- can hang Neovim during startup.
+---
+---@param lang string
+---@return boolean ok
+function M.prefer_bundled_parser(lang)
+  local ok, files = pcall(vim.api.nvim_get_runtime_file, "parser/" .. lang .. ".*", true)
+  if not ok or type(files) ~= "table" then
+    return false
+  end
+
+  for _, path in ipairs(files) do
+    if type(path) == "string" and path:find("/lib/nvim/parser/", 1, true) then
+      return pcall(vim.treesitter.language.add, lang, { path = path })
+    end
+  end
+
+  return false
+end
+
 --- Get installed parsers
 ---@param update boolean?
 ---@return table<string,boolean>
@@ -43,8 +65,17 @@ function M.have(what, query)
   what = what or vim.api.nvim_get_current_buf()
   what = type(what) == "number" and vim.bo[what].filetype or what --[[@as string]]
   local lang = vim.treesitter.language.get_lang(what)
-  if lang == nil or M.get_installed()[lang] == nil then
+  if lang == nil then
     return false
+  end
+
+  -- Prefer treating bundled/runtime parsers as available, even if they were not
+  -- installed via nvim-treesitter.
+  if M.get_installed()[lang] == nil then
+    local ok = pcall(vim.treesitter.language.add, lang)
+    if not ok then
+      return false
+    end
   end
   if query and not M.have_query(lang, query) then
     return false

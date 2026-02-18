@@ -27,7 +27,7 @@ Common patterns:
 - Create a worktree for a PR (non-interactive):
   - `,w prs <pr_number>`
   - `,w prs <pr_url>`
-  - "current PR" -> `gh prw --number` then `,w prs <number>`
+  - "current PR" -> `,gh-prw --number` then `,w prs <number>`
 
 - Create a worktree for a branch:
   - `,w add <branch_name> [base_branch]`
@@ -56,7 +56,7 @@ Examples:
 ,w prs --focus 252693
 
 # "Current PR" -> worktree:
-pr="$(gh prw --number)"
+pr="$(,gh-prw --number)"
 ,w prs "$pr"
 
 # Switch to another worktree session:

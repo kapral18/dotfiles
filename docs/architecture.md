@@ -12,6 +12,15 @@ copies files into your `$HOME`.
 - `home/.chezmoi.toml.tmpl` defines interactive prompts and computed values.
 - `home/.chezmoiexternal.toml` pulls a few external assets (git repos/archives).
 
+## Documentation Hygiene
+
+This repo treats `docs/` as part of the configuration:
+
+- If you change dotfiles behavior (anything under `home/` that affects commands
+  or workflows), update `docs/` in the same change.
+- If a change truly has no user-facing impact, record that in the PR/commit
+  context so the docs/code divergence is explicit.
+
 ## Repo-Only Assets (Not Installed Into `$HOME`)
 
 Some directories in `home/` are intentionally ignored by `chezmoi` and are used

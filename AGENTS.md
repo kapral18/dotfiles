@@ -32,6 +32,11 @@ When user requests to "add X" (app, package, cask, formula, or CLI tool), follow
 5. **Never invent** package names, URLs, or sources — ask user if verification fails
 6. **Use existing patterns** — follow code style and format for each file type
 
+## Documentation Hygiene
+
+- Any change to dotfiles (anything under `home/`, including templates, scripts, and app/package install logic) that affects behavior, commands, or workflows MUST be reflected in `docs/`.
+- If a dotfiles change does not require a docs change, state why in the PR/commit context (briefly) so the docs/code divergence is explicit.
+
 ---
 
 ## Homebrew Package Management
@@ -47,6 +52,11 @@ When adding formulas or casks to Brewfile:
 - **Never invent** package names, URLs, or tap information — always verify against official sources first
 - **Correct sources**: homebrew-core (default, no tap needed), official project taps, or trusted community taps
 - **Report failures**: If verification fails, report findings to user instead of guessing
+
+Buildkite CLI note:
+
+- The Buildkite CLI lives at `buildkite/cli` and installs via Homebrew tap `buildkite/buildkite`.
+- Avoid the Homebrew-core `bk` formula name collision; use `brew info buildkite/buildkite/bk` and add `brew "buildkite/buildkite/bk@3"`.
 
 ## Manual App Installation (Non-Homebrew)
 

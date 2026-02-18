@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage:
+  ,gh-tfork <owner/repo>
+
+Behavior:
+  - Forks <owner/repo> using GitHub CLI.
+  - Clones into ./<repo>/main (relative to your current directory).
+  - Creates (or focuses) a tmux session named <repo>|main.
+  - Session layout: 2 windows, each with 2 panes split vertically.
+EOF
+}
+
+if [[ "${1:-}" = "-h" || "${1:-}" = "--help" ]]; then
+  usage
+  exit 0
+fi
+
+if [[ $# -ne 1 ]]; then
+  usage >&2
+  exit 2
+fi
+
+repo_spec="$1"
+
+if [[ ! "$repo_spec" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]]; then
+  echo "Error: expected <owner/repo>, got: $repo_spec" >&2
+  exit 2
+fi
+
+command -v gh >/dev/null 2>&1 || {
+  echo "Error: 'gh' is required." >&2
+  exit 1
+}
+
+repo_name="${repo_spec##*/}"
+branch_name="main"
+clone_dir="${repo_name}/${branch_name}"
+clone_path="$(pwd -P)/${clone_dir}"
+session_name="${repo_name}|${branch_name}"
+
+if [[ -e "$repo_name" ]]; then
+  echo "Error: repo directory already exists: $repo_name" >&2
+  exit 1
+fi
+
+if [[ -e "$clone_dir" ]]; then
+  echo "Error: clone target already exists: $clone_dir" >&2
+  exit 1
+fi
+
+gh repo fork "$repo_spec" --clone
+
+if [[ -e "$clone_dir/.git" ]]; then
+  :
+elif [[ -e "$repo_name/.git" ]]; then
+  tmp_dir="${repo_name}.tmp.$$"
+  mv "$repo_name" "$tmp_dir"
+  mkdir -p "$repo_name"
+  mv "$tmp_dir" "$clone_dir"
+else
+  echo "Error: unable to locate cloned repository for $repo_spec" >&2
+  exit 1
+fi
+
+command -v tmux >/dev/null 2>&1 || {
+  echo "Warning: 'tmux' is not available; skipping session creation." >&2
+  exit 0
+}
+
+if ! tmux has-session -t "$session_name" 2>/dev/null; then
+  tmux new-session -d -s "$session_name" -c "$clone_path" -n main
+  tmux split-window -h -t "${session_name}:1" -c "$clone_path"
+
+  tmux new-window -t "$session_name" -n shell -c "$clone_path"
+  tmux split-window -h -t "${session_name}:2" -c "$clone_path"
+fi
+
+if [[ -n "${TMUX:-}" ]]; then
+  tmux switch-client -t "$session_name"
+else
+  tmux attach-session -t "$session_name"
+fi

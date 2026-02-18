@@ -424,6 +424,13 @@ brew "git-lfs"
 # https://cli.github.com/
 brew "gh"
 
+{{ if .isWork -}}
+# Buildkite CLI
+# https://github.com/buildkite/cli
+tap "buildkite/buildkite"
+brew "buildkite/buildkite/bk@3"
+{{ end -}}
+
 # ==============================================================================
 # GIT WORKFLOW & PRODUCTIVITY
 # Tools for improving Git workflow and productivity

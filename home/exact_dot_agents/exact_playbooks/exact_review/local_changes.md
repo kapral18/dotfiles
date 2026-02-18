@@ -36,6 +36,19 @@ If there are no diffs at all:
 
 - Say so plainly and stop (nothing to review).
 
+Base-branch context gate (mandatory):
+
+- For any review that compares against base-branch behavior/invariants:
+  - Follow the router's base-branch context rule.
+  - If the user did not provide an index name: run `list_indices` (try both
+    `scsi-main` and `scsi-local`) to determine whether the repo is indexed.
+  - If the repo is indexed, semantic code search is required for base context:
+    - `~/.agents/playbooks/code_search/semantic_code_search.md`
+    - Select and record the index.
+    - Invoke at least one SCSI tool to establish base behavior/invariants.
+- If the repo is not indexed / tools unavailable, use local base context via
+  `git show <base>:<path>` + `rg`.
+
 Output:
 
 - Default: batch `Pending review draft` with:
@@ -43,6 +56,10 @@ Output:
   - optional `summary_comment`
 - End each drafted comment with `Wdyt`.
 - If the user asks for one-at-a-time, output exactly one finding and stop.
+
+- Always include one line near the top:
+  - `Base context: SCSI=<index>|none (list_indices checked; <reason>), base=<branch>, diff=<base>...HEAD`
+  - This is reviewer metadata; do not paste it into GitHub.
 
 Extra constraints:
 

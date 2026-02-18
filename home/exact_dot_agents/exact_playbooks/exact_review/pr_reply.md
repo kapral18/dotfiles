@@ -17,9 +17,9 @@ Resolve the PR target (avoid searching):
 - If the user provided a PR URL/number, use that.
 - Otherwise:
   - Set `GH_PAGER=cat` for all `gh` calls (prevents interactive pager hangs).
-  - Resolve PR number via `gh prw`:
-    - `GH_PAGER=cat gh prw --number`
-  - If `gh prw` fails once, stop and ask the user for the PR URL/number.
+  - Resolve PR number via `,gh-prw`:
+    - `,gh-prw --number`
+  - If `,gh-prw` fails once, stop and ask the user for the PR URL/number.
 
 Media evidence:
 
@@ -28,14 +28,26 @@ Media evidence:
   - if a claim depends on visuals and visuals are missing/unclear, ask for
     visuals
 
-Optional context pull (base branch patterns):
+Base-branch context gate (mandatory):
 
-- Use semantic code search primarily to learn base-branch context, then compare
-  against the PR branch changes:
-  - `~/.agents/playbooks/code_search/semantic_code_search.md`
-- If semantic tools are unavailable or the repo is not indexed, use local search
-  (`rg` + file reads) to build equivalent context.
-- If needed, cross-check base-branch source with git:
+- You must compare the PR against how base works today.
+
+Preflight (blocking):
+
+- If the user did not provide an index name, run `list_indices` now (try both
+  `scsi-main` and `scsi-local`) to determine whether the repo is indexed.
+
+If the repo is indexed:
+
+- Semantic code search is required for base context:
+  - Follow: `~/.agents/playbooks/code_search/semantic_code_search.md`
+  - Select and record the index.
+  - Invoke at least one SCSI tool to establish base behavior/invariants.
+
+If semantic tools are unavailable or the repo is not indexed:
+
+- Use local base context:
+  - `rg` + file reads
   - `git show <base>:<path>`
   - `git diff <base>...HEAD`
 
@@ -85,11 +97,16 @@ Thread workflow (repeat per thread):
 
 Reply style rules:
 
-- No quote replies inside threads.
+- Do not use `RE:` headers/prefixes.
+- Default: reply directly (no quoting) when you're responding to the entire comment.
+- If you must reference a specific fragment, quote only the minimum needed using a Markdown blockquote (`> ...`), then reply.
+- Avoid email-style quote/reply interleaving.
 - Keep it short; prefer a concrete change suggestion.
 
 Output (one reply per turn):
 
+- `Base context: SCSI=<index>|none (list_indices checked; <reason>), base=<branch>, diff=<base>...HEAD`
+  - reviewer metadata only; do not include in GitHub comment bodies
 - Where it goes (comment id / file thread)
 - Reply body (end with `Wdyt`)
 - Resolution recommendation: `resolve` | `keep_open`

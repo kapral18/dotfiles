@@ -24,6 +24,44 @@ Source of truth (this repo, chezmoi-managed):
 
 - `home/exact_dot_agents/exact_playbooks/` -> `~/.agents/playbooks/`
 
+## Reviews: Base-Branch Context And Semantic Search
+
+Review playbooks require comparing your local diff/PR against how base (usually
+`main`) works today.
+
+If semantic code search (SCSI) is available and the current repo is indexed, it
+is required for base-branch context:
+
+- Preflight is blocking: run `list_indices` first (do not guess an index; try
+  both `scsi-main` and `scsi-local` when both exist).
+- Use SCSI results as base-branch context only; validate the actual change via
+  local git diffs and file reads.
+
+Review outputs also include a single reviewer-metadata line so it's obvious
+what was used for base context:
+
+```text
+Base context: SCSI=<index>|none (list_indices checked; <reason>), base=<branch>, diff=<base>...HEAD
+```
+
+Do not paste that line into GitHub comment bodies.
+
+## Reviews: Reply Style
+
+When drafting PR thread replies:
+
+- Do not use `RE:`.
+- Default: reply directly; do not quote when the whole parent comment is the reference.
+- If you need to point at a specific fragment, use a minimal blockquote (`> ...`) and then reply.
+
+## Buildkite
+
+When the user asks about Buildkite (pipelines, builds, logs):
+
+- Use the `bk` CLI (Buildkite CLI).
+- Do not use any Buildkite MCP server.
+- Note: `bk configure` is directory-scoped and creates a local `.bk.yaml` to store the selected org. This repo's global gitignore ignores `.bk.yaml`.
+
 ## Core Workflow: Change A Playbook
 
 1. Edit playbooks under:

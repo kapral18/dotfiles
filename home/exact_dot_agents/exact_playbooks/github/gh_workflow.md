@@ -13,9 +13,9 @@ PR targeting (avoid searching):
 - If the user did not specify a PR URL/number, assume they mean the PR for the
   current branch in the current repo.
 - Resolve the PR number/URL with:
-  - `GH_PAGER=cat gh prw --number`
-  - `GH_PAGER=cat gh prw --url`
-- If `gh prw` fails once, stop and ask for the PR URL (or use `-R OWNER/REPO` if
+  - `,gh-prw --number`
+  - `,gh-prw --url`
+- If `,gh-prw` fails once, stop and ask for the PR URL (or use `-R OWNER/REPO` if
   the user clearly intends a different repo).
 
 When NOT to use:

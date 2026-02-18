@@ -23,8 +23,8 @@ Contract:
 If the user mentions or strongly implies a PR (PR/pull request, PR review,
 threads, "check my PR comment", "recheck this fix from the PR", etc.):
 
-- First step is PR discovery via `gh prw` (read-only):
-  - `GH_PAGER=cat gh prw --number`
+- First step is PR discovery via `,gh-prw` (read-only):
+  - `,gh-prw --number`
   - If it fails once, stop and ask for the PR URL/number.
 
 Continuity rule:
@@ -74,8 +74,8 @@ If the user's intent is still unclear, resolve via local context (do not guess):
   - Run `git status --porcelain=v1 -b` (read-only, do not ask to proceed).
   - If staged/unstaged changes exist: local changes mode.
   - If working tree is clean:
-    - Try PR discovery via `gh prw` (read-only):
-      - `GH_PAGER=cat gh prw --number`
+    - Try PR discovery via `,gh-prw` (read-only):
+      - `,gh-prw --number`
     - If a PR is found: PR start mode.
     - If no PR is found: local changes mode (branch delta).
 
@@ -105,18 +105,50 @@ Hard constraints:
   - if the user explicitly asks to create/switch a worktree, use
     `~/.agents/playbooks/worktrees/w_workflow.md` and prefer `,w`
 
-Base-branch context (mandatory when applicable):
+Base-branch context (mandatory):
 
 - Goal: compare the diff against how base (usually `main`) works today.
-- If semantic code search is available and the repo is indexed:
+
+Preflight (blocking, do first):
+
+- If the user did not provide an index name, you MUST determine whether the repo
+  is indexed before you proceed:
+  - run `list_indices` (try both `scsi-main` and `scsi-local`)
+  - if the repo is indexed, select an index only if you can justify it from
+    evidence; otherwise ask the user which index to use
+  - if the repo is not indexed / the tools are unavailable, record that fact and
+    proceed with local base-context sources
+- Do not move on to base-context reasoning or comment drafting until this
+  preflight is complete.
+
+If the repo is indexed:
+
+- Semantic code search is required for base-branch context.
   - Load and follow: `~/.agents/playbooks/code_search/semantic_code_search.md`
-  - Use it to understand the base-branch implementation and invariants, then
-    compare against the PR/local diff.
-- If semantic code search is unavailable or the repo is not indexed:
-  - Use local sources instead:
-    - `rg` + file reads
-    - `git show <base>:<path>` for base-branch behavior
-    - `git diff <base>...HEAD` for branch delta
+  - You MUST invoke at least one SCSI tool (for example:
+    `discover_directories`, `semantic_code_search`, `map_symbols_by_query`,
+    `symbol_analysis`, or `read_file_from_chunks`) to establish base invariants.
+- Use SCSI to learn base-branch implementation and invariants, then compare
+  against the PR/local diff (ground truth).
+
+If the repo is not indexed / tools unavailable:
+
+- Use local sources instead:
+  - `rg` + file reads
+  - `git show <base>:<path>` for base-branch behavior
+  - `git diff <base>...HEAD` for branch delta
+
+Base context reporting (required in every review output):
+
+- Include exactly one line near the top of the output:
+  - `Base context: SCSI=<index>|none (list_indices checked; <reason>), base=<branch>, diff=<base>...HEAD`
+  - `<reason>` MUST be one of:
+    - `SCSI used`
+    - `not indexed`
+    - `tools unavailable`
+    - `user-selected none`
+- This line is reviewer metadata for the assistant's output. Do not include it
+  in GitHub comment bodies.
 
 Coverage checklist (do not skip):
 

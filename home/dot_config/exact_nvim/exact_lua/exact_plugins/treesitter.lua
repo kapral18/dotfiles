@@ -70,6 +70,8 @@ return {
       local TS = require("nvim-treesitter")
       local ts_util = require("util.treesitter")
 
+      ts_util.prefer_bundled_parser("markdown")
+
       if not TS.get_installed then
         vim.notify("Please update nvim-treesitter", vim.log.levels.ERROR)
         return

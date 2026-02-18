@@ -47,6 +47,35 @@ Neovim itself is version-managed via ASDF:
 2. Launch Neovim: `nvim`
 3. Sync plugins: `:Lazy sync`
 
+## Tree-sitter: Bundled Parsers And Startup Hangs
+
+Neovim can load tree-sitter parsers from multiple places (runtimepath). In
+practice, a broken parser under the user "site" directory can hang Neovim at
+startup, especially if your last session opens a filetype that immediately
+triggers that parser.
+
+This config prefers Neovim's bundled parser for Markdown to reduce the chance
+of a bad user-installed parser taking down the editor:
+
+- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins/treesitter.lua`
+- Helper: `home/dot_config/exact_nvim/exact_lua/exact_util/treesitter.lua`
+
+Symptoms you might see:
+
+- `nvim` appears to "freeze" (often when opening `*.md`)
+- `nvim --clean` works but regular `nvim` does not
+
+Local fix (if you hit this):
+
+```bash
+ls -la ~/.local/share/nvim/site/parser
+rm -f ~/.local/share/nvim/site/parser/markdown.so
+```
+
+Note: the config also treats bundled/runtime parsers as "available" so
+`nvim-treesitter` doesn't repeatedly try to auto-install languages that Neovim
+already ships.
+
 If you are IDE-first, start by learning:
 
 - moving between files quickly

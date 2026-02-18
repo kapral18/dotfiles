@@ -62,6 +62,18 @@ Examples:
 ,gh-prw --url
 ```
 
+### Fork + clone + tmux: `,gh-tfork`
+
+- Source: `home/exact_bin/executable_,gh-tfork`
+- Clone target: `./<repo>/main`
+- tmux session: `<repo>|main` (2 windows, 2 panes each)
+
+Examples:
+
+```bash
+,gh-tfork elastic/integrations
+```
+
 ### Sync branch with upstream: `,pull-rebase`
 
 - Source: `home/exact_bin/executable_,pull-rebase`
