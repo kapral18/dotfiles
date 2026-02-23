@@ -16,7 +16,7 @@ Default terminal emulator config:
 
 ## Bat (Better `cat`)
 
-- Config: `home/dot_config/bat/config`
+- Config: `home/dot_config/exact_bat/config`
 
 Themes are pulled via externals into:
 
@@ -26,7 +26,7 @@ See `home/.chezmoiexternal.toml`.
 
 ## Tmux
 
-- Config: `home/dot_config/tmux/tmux.conf`
+- Config: `home/dot_config/exact_tmux/tmux.conf`
 
 Notable choices:
 
@@ -34,12 +34,12 @@ Notable choices:
 - vi copy-mode
 - passthrough bindings for Neovim navigation
 - no-prefix `C-S-h/j/k/l` are passed through as CSI-u sequences for terminal apps (Neovim)
-- split config via `home/dot_config/tmux/conf.d/*.conf`
+- split config via `home/dot_config/exact_tmux/conf.d/*.conf`
 - mouse on, `base-index 1`, renumber windows, focus events, aggressive resize
 
 ## Tmux Config Layout (`conf.d`)
 
-Keep the split config. `home/dot_config/tmux/tmux.conf` is a thin entrypoint that
+Keep the split config. `home/dot_config/exact_tmux/tmux.conf` is a thin entrypoint that
 only sources `conf.d` files in a fixed order.
 
 Conventions (recommended / current):
@@ -68,8 +68,8 @@ Current file map:
 
 ## Tmux Cheat Sheet (This Config)
 
-These are implemented by `home/dot_config/tmux/tmux.conf` plus
-`home/dot_config/tmux/conf.d/*.conf`.
+These are implemented by `home/dot_config/exact_tmux/tmux.conf` plus
+`home/dot_config/exact_tmux/conf.d/*.conf`.
 
 - Prefix: `Ctrl-Space`
 - Reload config: `prefix` then `R`
@@ -86,7 +86,7 @@ These are implemented by `home/dot_config/tmux/tmux.conf` plus
 
 There is also a popup bound to `prefix` then `r` that runs `,tmux-run-all`.
 
-Session / picker bindings from `home/dot_config/tmux/conf.d/40-session-tools.conf` and `home/dot_config/tmux/conf.d/41-pickers.conf`:
+Session / picker bindings from `home/dot_config/exact_tmux/conf.d/40-session-tools.conf` and `home/dot_config/exact_tmux/conf.d/41-pickers.conf`:
 
 - Goto session picker: `prefix` + `g`
 - Switch to last session: `prefix` + `S`
@@ -122,7 +122,7 @@ The tmux config loads it from (for theme + continuum + resurrect):
 
 - `~/.config/tmux/plugins/tpm/tpm`
 
-Configured plugin options (`home/dot_config/tmux/conf.d/90-plugins.conf`):
+Configured plugin options (`home/dot_config/exact_tmux/conf.d/90-plugins.conf`):
 
 - `@plugin` entries: TPM, Catppuccin, Continuum, Resurrect
 - `@catppuccin_flavor 'frappe'`
@@ -137,12 +137,12 @@ Small tmux helpers implemented directly in this repo (bindings + scripts).
 
 Entry points:
 
-- `home/dot_config/tmux/conf.d/40-session-tools.conf`
-- `home/dot_config/tmux/conf.d/41-pickers.conf`
+- `home/dot_config/exact_tmux/conf.d/40-session-tools.conf`
+- `home/dot_config/exact_tmux/conf.d/41-pickers.conf`
 
 Scripts:
 
-- `home/dot_config/tmux/scripts/`
+- `home/dot_config/exact_tmux/scripts/`
 
 Options (tmux `set -g`):
 
@@ -183,8 +183,8 @@ restore starts, via a `tmux-resurrect` pre-restore hook).
 
 Config:
 
-- `home/dot_config/tmux/conf.d/90-plugins.conf`
-- `home/dot_config/tmux/scripts/executable_resurrect_keep_last_sessions.sh`
+- `home/dot_config/exact_tmux/conf.d/90-plugins.conf`
+- `home/dot_config/exact_tmux/scripts/executable_resurrect_keep_last_sessions.sh`
 
 To change the limit, update `@resurrect_keep_sessions`.
 

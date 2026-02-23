@@ -10,7 +10,7 @@ person.
 
 If you use tmux with session restore, you can pick up where you left off.
 
-- tmux config: `home/dot_config/tmux/tmux.conf`
+- tmux config: `home/dot_config/exact_tmux/tmux.conf`
 
 ## Start Work: Isolate With Worktrees
 

@@ -396,7 +396,7 @@ Result: Automatic identity switching based on directory, no private keys on disk
 
 **Prefix**: `C-Space`
 
-Config: `home/dot_config/tmux/tmux.conf`
+Config: `home/dot_config/exact_tmux/tmux.conf`
 
 **Plugins:**
 
@@ -444,7 +444,7 @@ AI tools for CLI and editor. Credentials in 1Password, configs in repo.
 | -------------- | ----------------------- | ----------------------------------------------------------------- |
 | **Crush**      | Terminal AI assistant   | Charmbracelet tap                                                 |
 | **Ollama**     | Local LLM runtime       | `home/.chezmoiscripts/run_onchange_after_05-add-ollama-models.sh` |
-| **Amp**        | AI coding tool with MCP | `home/dot_config/amp/private_settings.json`                       |
+| **Amp**        | AI coding tool with MCP | `home/dot_config/exact_amp/private_settings.json`                 |
 | **Codex CLI**  | Terminal coding agent   | `home/dot_codex/private_config.toml`                              |
 | **OpenCode**   | Terminal agent runner   | `home/dot_config/opencode/opencode.jsonc`                         |
 | **Cursor**     | AI code editor (work)   | `home/dot_cursor/mcp.json` (`.isWork` conditional)                |
@@ -612,7 +612,7 @@ Alfred preferences and workflows live in `home/Alfred.alfredpreferences/`.
 
 ### Karabiner
 
-Karabiner-Elements rules live in `home/dot_config/private_karabiner/karabiner.json`.
+Karabiner-Elements rules live in `home/dot_config/exact_private_karabiner/karabiner.json`.
 
 ---
 
@@ -682,7 +682,7 @@ sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply kapral18
 - Codex CLI config: `home/dot_codex/`
 - OpenCode config: `home/dot_config/opencode/`
 - Alfred: `home/Alfred.alfredpreferences/`
-- Karabiner: `home/dot_config/private_karabiner/`
+- Karabiner: `home/dot_config/exact_private_karabiner/`
 - Hammerspoon: `home/dot_hammerspoon/`
 
 See also: `AGENTS.md` for AI agent instructions

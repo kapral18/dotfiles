@@ -61,9 +61,9 @@ This setup configures a few GitHub-related tools:
 
 Git TUIs:
 
-- `gitui` config: `home/dot_config/gitui/`
-- `lazygit` config: `home/dot_config/lazygit/config.yml`
-- `tig` config: `home/dot_config/tig/`
+- `gitui` config: `home/dot_config/exact_gitui/`
+- `lazygit` config: `home/dot_config/exact_lazygit/config.yml`
+- `tig` config: `home/dot_config/exact_tig/`
 
 ## Signing
 

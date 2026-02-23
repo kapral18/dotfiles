@@ -54,15 +54,15 @@ This page answers two questions:
 
 ## Terminal + Multiplexing
 
-- tmux: `home/dot_config/tmux/tmux.conf`
+- tmux: `home/dot_config/exact_tmux/tmux.conf`
 - Ghostty: `home/dot_config/exact_ghostty/config`
-- bat: `home/dot_config/bat/config`
+- bat: `home/dot_config/exact_bat/config`
 
 ## macOS Automation
 
 - Defaults scripts: `home/.osx.core`, `home/.osx.extra`
 - Hammerspoon: `home/dot_hammerspoon/`
-- Karabiner: `home/dot_config/private_karabiner/`
+- Karabiner: `home/dot_config/exact_private_karabiner/`
 - App icons mapping: `home/app_icons/icon_mapping.yaml`
 
 ## AI + Assistants

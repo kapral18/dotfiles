@@ -91,7 +91,7 @@ Examples of tool configs included here:
 
 - OpenCode: `home/dot_config/opencode/`
 - Codex: `home/dot_codex/`
-- Amp: `home/dot_config/amp/` (private settings)
+- Amp: `home/dot_config/exact_amp/private_settings.json` (private settings)
 - Gemini CLI: `home/dot_gemini/`
 
 ## Secrets

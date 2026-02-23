@@ -68,7 +68,7 @@ Workflow:
 
 ## Karabiner
 
-- `home/dot_config/private_karabiner/karabiner.json`
+- `home/dot_config/exact_private_karabiner/karabiner.json`
 
 Workflow:
 
