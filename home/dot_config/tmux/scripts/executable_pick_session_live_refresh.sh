@@ -132,18 +132,18 @@ items_cmd="$HOME/.config/tmux/scripts/pick_session_items.sh"
 command -v curl >/dev/null 2>&1 || exit 0
 
 interval_ms="$(tmux_opt '@pick_session_live_refresh_interval_ms' '1500')"
-live_ttl="$(tmux_opt '@pick_session_live_refresh_ttl' '5')"
+live_ttl="$(tmux_opt '@pick_session_live_refresh_ttl' '20')"
 pause_on_multi="$(tmux_opt '@pick_session_live_refresh_pause_on_multi' 'on')"
 pause_on_query="$(tmux_opt '@pick_session_live_refresh_pause_on_query' 'on')"
-start_delay_ms="$(tmux_opt '@pick_session_live_refresh_start_delay_ms' '700')"
+start_delay_ms="$(tmux_opt '@pick_session_live_refresh_start_delay_ms' '5000')"
 case "$interval_ms" in
   ''|*[!0-9]*) interval_ms=1500 ;;
 esac
 case "$live_ttl" in
-  ''|*[!0-9]*) live_ttl=5 ;;
+  ''|*[!0-9]*) live_ttl=20 ;;
 esac
 case "$start_delay_ms" in
-  ''|*[!0-9]*) start_delay_ms=700 ;;
+  ''|*[!0-9]*) start_delay_ms=5000 ;;
 esac
 
 sleep_s="0.5"

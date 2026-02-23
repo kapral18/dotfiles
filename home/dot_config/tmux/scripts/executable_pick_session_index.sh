@@ -526,8 +526,10 @@ for root in roots_with_sessions:
         exclude_worktree_roots.add(wt_path)
 
     for wt_path in sorted(wt_map.keys(), key=lambda p: wt_sort_key(p, root)):
-        if wt_path in sessions_by_wt:
-            continue
+        # Keep worktree rows even when a session exists for that path.
+        # The picker output de-duplicates (session wins), but having the worktree
+        # row in the cache allows immediate demotion after a session is killed,
+        # without waiting for a background re-index.
         br = wt_map[wt_path].get("branch", "")
         meta = f"wt_root:{br}" if wt_path == root else f"wt:{br}"
         print(f"{display_worktree_entry(tildefy(wt_path))}\tworktree\t{wt_path}\t{meta}\t{root}")
@@ -535,10 +537,7 @@ for root in roots_with_sessions:
 
 for root in roots_without_sessions:
     wt_map = groups[root]["wt_map"]
-    sessions_by_wt = groups[root]["sessions_by_wt"]
     for wt_path in sorted(wt_map.keys(), key=lambda p: wt_sort_key(p, root)):
-        if wt_path in sessions_by_wt:
-            continue
         br = wt_map[wt_path].get("branch", "")
         meta = f"wt_root:{br}" if wt_path == root else f"wt:{br}"
         print(f"{display_worktree_entry(tildefy(wt_path))}\tworktree\t{wt_path}\t{meta}\t{root}")

@@ -97,8 +97,8 @@ query="$*"
       --bind "start:execute-silent:$live_refresh_cmd >/dev/null 2>&1 &" \
       --bind "ctrl-r:reload($items_cmd)" \
       --bind "alt-r:execute-silent:$live_refresh_cmd --once --force >/dev/null 2>&1 &" \
-      --bind "ctrl-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp"))+execute-silent:$kill_cmd $(printf %q "$sel_tmp") >/dev/null 2>&1 &+clear-selection" \
-      --bind "alt-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp"))+execute-silent:$rm_cmd $(printf %q "$sel_tmp") >/dev/null 2>&1 &+clear-selection" \
+      --bind "ctrl-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") kill)+execute-silent($kill_cmd $(printf %q "$sel_tmp"))+reload($items_cmd)+clear-selection" \
+      --bind "alt-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") remove)+execute-silent($rm_cmd $(printf %q "$sel_tmp") >/dev/null 2>&1 &)+clear-selection" \
       --header "enter=open  tab=multi  ctrl-r=reload  alt-r=refresh  ctrl-x=kill-session  alt-x=remove-worktree" \
       ${fzf_args} \
     || true
@@ -121,21 +121,64 @@ repo_root_worktree_dir() {
   dirname "$common"
 }
 
-ensure_two_pane_session() {
+mark_lazy_split_pending() {
+  local target="$1"
+  tmux set-option -t "$target" -q "@pick_session_lazy_split_pending" "1" >/dev/null 2>&1 || true
+}
+
+clear_lazy_split_pending() {
+  local target="$1"
+  tmux set-option -t "$target" -q "@pick_session_lazy_split_pending" "0" >/dev/null 2>&1 || true
+}
+
+mark_lazy_spawn_pending() {
+  local target="$1"
+  tmux set-option -t "$target" -q "@pick_session_lazy_spawn_pending" "1" >/dev/null 2>&1 || true
+}
+
+split_first_window_in_session() {
   local name="$1"
   local dir="$2"
+  local win panes
+
+  win="$(tmux list-windows -t "$name" -F '#{window_id}' 2>/dev/null | head -n 1)"
+  [ -n "$win" ] || win="${name}:"
+  panes="$(tmux display-message -p -t "$win" '#{window_panes}' 2>/dev/null || printf '0')"
+  case "$panes" in
+    ''|*[!0-9]*) panes=0 ;;
+  esac
+  if [ "$panes" -ge 2 ]; then
+    clear_lazy_split_pending "$name"
+    return 0
+  fi
+
+  tmux split-window -h -t "$win" -c "$dir"
+  tmux select-layout -t "$win" even-horizontal >/dev/null 2>&1 || true
+  clear_lazy_split_pending "$name"
+}
+
+ensure_session_layout() {
+  local name="$1"
+  local dir="$2"
+  local layout="${3:-two-pane}"
 
   if tmux has-session -t "$name" 2>/dev/null; then
     return 0
   fi
 
+  if [ "$layout" = "deferred" ]; then
+    # Bulk session creation can freeze the UI if many shells render prompts at
+    # once (for example starship git metrics in very large repos). Create a
+    # placeholder pane first, and let the session-change hook respawn it into
+    # the real shell + layout when you actually enter the session.
+    tmux new-session -d -s "$name" -c "$dir" /usr/bin/tail -f /dev/null
+    mark_lazy_spawn_pending "$name"
+    mark_lazy_split_pending "$name"
+    return 0
+  fi
+
   tmux new-session -d -s "$name" -c "$dir"
-  # Don't assume window index 0; many configs use `base-index 1`.
-  local win
-  win="$(tmux list-windows -t "$name" -F '#{window_id}' 2>/dev/null | head -n 1)"
-  [ -n "$win" ] || win="${name}:"
-  tmux split-window -h -t "$win" -c "$dir"
-  tmux select-layout -t "$win" even-horizontal >/dev/null 2>&1 || true
+  split_first_window_in_session "$name" "$dir"
 }
 
 git_head_branch() {
@@ -178,6 +221,11 @@ remove_paths_in_background() {
 
 MODE="$(tmux_opt "@pick_session_mode" "directory")"
 
+selection_count="$(printf '%s\n' "$selections" | awk 'NF { c++ } END { print c + 0 }')"
+create_layout="two-pane"
+if [ "${selection_count:-0}" -gt 1 ]; then
+  create_layout="deferred"
+fi
 target_session=""
 while IFS=$'\t' read -r _display kind path meta target; do
   case "$kind" in
@@ -222,7 +270,7 @@ while IFS=$'\t' read -r _display kind path meta target; do
       else
         session_name="$(basename "$path")"
       fi
-      ensure_two_pane_session "$session_name" "$path"
+      ensure_session_layout "$session_name" "$path" "$create_layout"
       target_session="$session_name"
       ;;
     dir)
@@ -235,7 +283,7 @@ while IFS=$'\t' read -r _display kind path meta target; do
         "$HOME"/*) dir_with_tilde="~/${path#"$HOME"/}" ;;
       esac
       session="$(session_name --"${MODE}" "${dir_with_tilde}")"
-      ensure_two_pane_session "$session" "$path"
+      ensure_session_layout "$session" "$path" "$create_layout"
       target_session="$session"
       ;;
     *)

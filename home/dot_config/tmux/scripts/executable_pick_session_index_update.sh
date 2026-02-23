@@ -135,6 +135,7 @@ if pending and os.path.exists(pending):
 
 mutation_path_prefixes = set()
 mutation_session_targets = set()
+live_session_names = set()
 
 if mutations_file and os.path.exists(mutations_file):
     now = int(time.time())
@@ -173,6 +174,22 @@ if mutations_file and os.path.exists(mutations_file):
                 f.write(line + "\n")
         os.replace(tmp, mutations_file)
 
+try:
+    import subprocess
+    out = subprocess.run(
+        [ "tmux", "list-sessions", "-F", "#{session_name}" ],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+    ).stdout
+    for row in out.splitlines():
+        row = row.strip()
+        if row:
+            live_session_names.add(row)
+except Exception:
+    pass
+
 def path_is_tombstoned(kind, p):
     if kind not in ("dir", "worktree", "session"):
         return False
@@ -185,7 +202,7 @@ def path_is_tombstoned(kind, p):
     return False
 
 def session_is_tombstoned(kind, target):
-    return kind == "session" and target in mutation_session_targets
+    return kind == "session" and target in mutation_session_targets and target not in live_session_names
 
 out = []
 with open(cache_in, "r", encoding="utf-8", errors="ignore") as f:
