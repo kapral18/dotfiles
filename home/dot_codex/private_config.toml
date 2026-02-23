@@ -6,7 +6,7 @@ sandbox_mode = "danger-full-access"
 web_search = "cached"
 check_for_update_on_startup = true
 model = "gpt-5.2"
-model_reasoning_effort = "xhigh"
+model_reasoning_effort = "high"
 personality = "pragmatic"
 
 [notice.model_migrations]

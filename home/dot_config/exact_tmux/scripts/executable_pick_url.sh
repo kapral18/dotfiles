@@ -56,6 +56,32 @@ open_url() {
   fi
 }
 
+prune_prefix_urls() {
+  awk '
+    NF { lines[++n] = $0 }
+    END {
+      for (i = 1; i <= n; i++) {
+        cur = lines[i]
+        drop = 0
+        for (j = i + 1; j <= n; j++) {
+          nxt = lines[j]
+          if (index(nxt, cur) != 1) {
+            break
+          }
+          if (length(nxt) > length(cur)) {
+            if (cur ~ /\/$/ || substr(nxt, length(cur) + 1, 1) == "/") {
+              drop = 1
+              break
+            }
+          }
+        }
+        if (!drop) {
+          print cur
+        }
+      }
+    }'
+}
+
 if [[ -z "${TMUX:-}" ]]; then
   die "tmux: not running inside tmux"
 fi
@@ -69,25 +95,25 @@ fi
 urls="$(
   echo "${content}" |
     grep -oE '(https?|ftp|file)://[^[:space:]]+' |
-    sed -E 's/[)\]>}"'\''.,;:!?]+$//' || true
+    sed -E 's/[])>}"'\''.,;:!?]+$//' || true
 )"
 wwws="$(
   echo "${content}" |
     grep -oE 'www\\.[^[:space:]]+' |
-    sed -E 's/[)\]>}"'\''.,;:!?]+$//' |
+    sed -E 's/[])>}"'\''.,;:!?]+$//' |
     grep -vE '^https?://' |
     sed -E 's/^(.*)$/http:\\/\\/\\1/' || true
 )"
 ips="$(
   echo "${content}" |
     grep -oE '[0-9]{1,3}(\\.[0-9]{1,3}){3}(:[0-9]{1,5})?(/[^[:space:]]+)?' |
-    sed -E 's/[)\]>}"'\''.,;:!?]+$//' |
+    sed -E 's/[])>}"'\''.,;:!?]+$//' |
     sed -E 's/^(.*)$/http:\\/\\/\\1/' || true
 )"
 gits="$(
   echo "${content}" |
     grep -oE '(ssh://)?git@[^[:space:]]+' |
-    sed -E 's/[)\]>}"'\''.,;:!?]+$//' |
+    sed -E 's/[])>}"'\''.,;:!?]+$//' |
     sed 's/:/\\//g' |
     sed -E 's/^(ssh\\/\\/\\/){0,1}git@(.*)$/https:\\/\\/\\2/' || true
 )"
@@ -102,7 +128,8 @@ fi
 items="$(
   printf '%s\n' "${urls}" "${wwws}" "${gh}" "${ips}" "${gits}" "${extras}" |
     awk 'NF' |
-    sort -u |
+    LC_ALL=C sort -u |
+    prune_prefix_urls |
     nl -w3 -s '  '
 )"
 
