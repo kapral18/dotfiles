@@ -170,8 +170,10 @@ Repo search is centered around `fzf-lua`:
 Useful mappings (all are defined in that file):
 
 - `leader-sg` live grep in cwd
-- `leader-se` grep in changed files (git status)
-- `leader-sf` grep in changed lines (git status)
+- `leader-se` grep in changed lines (git status)
+- `leader-sE` grep in changed lines (branch)
+- `leader-sf` grep in changed files (git status)
+- `leader-sF` grep in changed files (branch)
 
 File explorers:
 

@@ -11,6 +11,11 @@ Use when:
 - the user provides a PR URL/number without asking for reply-only or
   one-at-a-time
 
+Out of scope:
+
+- If the user wants to apply requested changes while processing review feedback (one thread/comment at a time),
+  use `~/.agents/playbooks/review/pr_change_cycle.md` instead.
+
 ## PR Common Setup (All PR Modes)
 
 Resolve the PR target (avoid searching):
@@ -35,19 +40,20 @@ Base-branch context gate (mandatory):
 
 Preflight (blocking):
 
-- If the user did not provide an index name, run `list_indices` now (try both
-  `scsi-main` and `scsi-local`) to determine whether the repo is indexed.
+- Run `list_indices` first (try both `scsi-main` and `scsi-local`).
+- If the user provided an index name:
+  - verify it exists in `list_indices`
+  - if it does not exist, stop and ask which index to use
+- If the user did not provide an index name:
+  - select an index only if you can justify it from evidence; otherwise ask the user
+    which index represents the base branch for this repo
 
-If the repo is indexed:
+Base context sources:
 
-- Semantic code search is required for base context:
+- Preferred: semantic code search (when available):
   - Follow: `~/.agents/playbooks/code_search/semantic_code_search.md`
-  - Select and record the index.
   - Invoke at least one SCSI tool to establish base behavior/invariants.
-
-If semantic tools are unavailable or the repo is not indexed:
-
-- Use local base context:
+- Fallback: local base context:
   - `rg` + file reads
   - `git show <base>:<path>`
   - `git diff <base>...HEAD`

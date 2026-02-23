@@ -1,15 +1,8 @@
 prSections:
-  - title: Work PRs - Review (Me)
-    filters: is:open is:pr review-requested:kapral18 org:elastic -is:draft -reviewed-by:kapral18 -author:kapral18 -team-review-requested:elastic/kibana-management
   - title: "Work PRs - Review (Team: kibana-management)"
-    filters: is:open is:pr team-review-requested:elastic/kibana-management org:elastic -is:draft -reviewed-by:kapral18 -author:kapral18
-  - title: Work PRs - Mine (Ready)
-    filters: is:open is:pr author:kapral18 org:elastic -is:draft
-    layout:
-      author:
-        hidden: true
-  - title: Work PRs - Mine (Drafts)
-    filters: is:open is:pr author:kapral18 org:elastic is:draft
+    filters: is:open is:pr review-requested:@me team-review-requested:elastic/kibana-management org:elastic -is:draft -author:@me
+  - title: "Work PRs - Mine"
+    filters: is:open is:pr author:kapral18 org:elastic
     layout:
       author:
         hidden: true
@@ -19,12 +12,7 @@ prSections:
   - title: Home PRs - Review (Me)
     filters: is:open is:pr review-requested:kapral18 -org:elastic -is:draft -reviewed-by:kapral18 -author:kapral18
   - title: Home PRs - Mine (Ready)
-    filters: is:open is:pr author:kapral18 -org:elastic -is:draft
-    layout:
-      author:
-        hidden: true
-  - title: Home PRs - Mine (Drafts)
-    filters: is:open is:pr author:kapral18 -org:elastic is:draft
+    filters: is:open is:pr author:kapral18 -org:elastic
     layout:
       author:
         hidden: true

@@ -51,29 +51,29 @@ Commands:
 
 Core:
 
-- `bdlocal ready --json` — find unblocked work
-- `bdlocal blocked --json` — find blocked work
-- `bdlocal show <id> --json` — view details
+- `bdlocal ready --json` - find unblocked work
+- `bdlocal blocked --json` - find blocked work
+- `bdlocal show <id> --json` - view details
 - `bdlocal create "title" -t bug|feature|task|epic|chore -p 0-4
 --description="..." --estimate 60 --json`
-- `bdlocal create "title" --external-ref "https://github.com/..." --json` —
+- `bdlocal create "title" --external-ref "https://github.com/..." --json` -
   link external issue
 - `bdlocal update <id> --status open|in_progress|blocked|closed --json`
 - `bdlocal update <id> --notes|--description|--design|--acceptance|--title "text" --estimate 120 --json`
 - `bdlocal update <id> --status in_progress --add-label <label>[,<label>...]
---remove-label <label>[,<label>...] --json` — update with labels (repeatable;
+--remove-label <label>[,<label>...] --json` - update with labels (repeatable;
   accepts comma-separated lists)
 - `bdlocal close <id> --reason "..." --json`
 - `bdlocal reopen <id> --reason "..." --json`
 - `bdlocal list --status open --sort priority --json`
 - `bdlocal search "query" --json`
 - `bdlocal stale --days 30 --json`
-- `bdlocal count --json` — count and group issues
-- `bdlocal status --no-activity --json` — database overview (skip git activity
+- `bdlocal count --json` - count and group issues
+- `bdlocal status --no-activity --json` - database overview (skip git activity
   parsing)
-- `bdlocal init --quiet --skip-hooks --skip-merge-driver` — initialize in new
+- `bdlocal init --quiet --skip-hooks --skip-merge-driver` - initialize in new
   repo (ensure git-free)
-- `bdlocal deleted --json` — view deletion audit trail
+- `bdlocal deleted --json` - view deletion audit trail
 
 Batch operations:
 
@@ -122,7 +122,7 @@ Dependency thinking:
 
 Reference:
 
-Types: `bug`, `feature`, `task`, `epic`, `chore` — always pass `-t`
+Types: `bug`, `feature`, `task`, `epic`, `chore` - always pass `-t`
 
 Priorities: `0`=critical, `1`=high, `2`=medium (default), `3`=low, `4`=backlog
 

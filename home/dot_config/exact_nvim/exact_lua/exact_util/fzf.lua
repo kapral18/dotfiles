@@ -87,6 +87,84 @@ local function open_qf_window(opts)
   vim.cmd(":copen")
 end
 
+local function strip_ansi(entry)
+  if type(entry) ~= "string" then
+    return ""
+  end
+  local fzf_utils = require("fzf-lua.utils")
+  if type(fzf_utils.strip_ansi_coloring) == "function" then
+    return fzf_utils.strip_ansi_coloring(entry)
+  end
+  return entry:gsub("\27%[[0-9;]*m", "")
+end
+
+local function abs_path_from_opts(file, opts)
+  if type(file) ~= "string" or file == "" then
+    return nil
+  end
+  if file:sub(1, 1) == "/" then
+    return file
+  end
+  local cwd = (opts and opts.cwd) or vim.uv.cwd()
+  local base = type(cwd) == "string" and cwd or ""
+  base = base:gsub("/$", "")
+  return base .. "/" .. file
+end
+
+local function rg_entry_to_qf_item(entry, opts)
+  entry = strip_ansi(entry)
+
+  local header = entry:match("([^\n]*)") or entry
+  local body = entry:match("\n(.*)$") or ""
+
+  local parts = vim.split(header, "\t", { plain = true })
+  local file, line, col
+  if #parts >= 4 then
+    file = parts[2]
+    line = parts[3]
+    col = parts[4]
+  else
+    file, line, col = header:match("^(.-):(%d+):(%d+):")
+    if not file then
+      file, line = header:match("^(.-):(%d+):")
+    end
+  end
+
+  local path = abs_path_from_opts(file, opts)
+  local lnum = tonumber(line)
+  if not path or not lnum then
+    return nil
+  end
+  local cnum = tonumber(col) or 1
+
+  return {
+    filename = path,
+    lnum = lnum,
+    col = cnum,
+    text = body,
+  }
+end
+
+function M.entries_to_quickfix(selected, opts)
+  if type(selected) ~= "table" then
+    return
+  end
+  local items = {}
+  for _, entry in ipairs(selected) do
+    if type(entry) == "string" and entry ~= "" then
+      local item = rg_entry_to_qf_item(entry, opts)
+      if item then
+        table.insert(items, item)
+      end
+    end
+  end
+  if #items == 0 then
+    return
+  end
+  vim.fn.setqflist({}, " ", { title = (opts and opts.desc) or "FZF", items = items })
+  open_qf_window(opts)
+end
+
 --- Return `rg` options with ANSI coloring disabled.
 --- This is useful when the result lines are post-processed (e.g. split into multiline entries)
 --- and we don't want ANSI codes to interfere with parsing.
@@ -146,12 +224,7 @@ function M.open_rg_entry(selected, opts, opener)
     return
   end
 
-  local fzf_utils = require("fzf-lua.utils")
-  if type(fzf_utils.strip_ansi_coloring) == "function" then
-    entry = fzf_utils.strip_ansi_coloring(entry)
-  else
-    entry = entry:gsub("\27%[[0-9;]*m", "")
-  end
+  entry = strip_ansi(entry)
 
   local header = entry:match("([^\n]*)") or entry
   local parts = vim.split(header, "\t", { plain = true })
@@ -208,6 +281,9 @@ function M.grep_entry_actions()
     end,
     ["ctrl-t"] = function(selected, opts)
       M.open_rg_entry(selected, opts, "tabedit")
+    end,
+    ["ctrl-q"] = function(selected, opts)
+      M.entries_to_quickfix(selected, opts)
     end,
   }
 end
@@ -293,7 +369,6 @@ function M.get_opts()
           ["up"] = "up",
           ["ctrl-c"] = "abort",
           ["ctrl-a"] = "toggle-all",
-          ["ctrl-q"] = "select-all+accept",
           ["ctrl-d"] = "preview-page-down",
           ["ctrl-u"] = "preview-page-up",
         },

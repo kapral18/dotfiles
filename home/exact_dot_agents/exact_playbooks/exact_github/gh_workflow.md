@@ -52,7 +52,7 @@ PR review side effects (draft / pending reviews):
   waste time trying to PATCH. Delete the pending review and recreate it with the
   corrected payload.
 - Do not try to attach comments to an already-created pending review via the PR
-  comments endpoint (it won’t accept `pull_request_review_id`). If you need to
+  comments endpoint (it won't accept `pull_request_review_id`). If you need to
   change anchors/bodies, delete the pending review and recreate it.
 - File-level review comments (`subject_type=file`) are immediately visible; they
   are not part of a pending review. In practice, while you have a pending
@@ -67,7 +67,7 @@ If explicitly asked to POST a batch as a draft (PENDING) review:
   `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews`
 - Include all inline comments in the `comments` array in that same request.
 - Every inline comment must resolve to a valid diff anchor.
-  - Prefer `position` (diff-relative). Compute it from the PR’s unified diff.
+  - Prefer `position` (diff-relative). Compute it from the PR's unified diff.
   - If a file has multiple hunks (or repeated target lines), create separate comments and compute the correct anchor per hunk/occurrence.
 - Keep the review summary body empty unless the user explicitly wants a public summary.
 
@@ -139,9 +139,25 @@ gh api repos/OWNER/REPO/pulls/NUM/comments \
 Reply in an existing review thread (no quote reply):
 
 ```bash
-gh api repos/OWNER/REPO/pulls/comments/COMMENT_ID/replies \
-  -f body=$'Text.\n\nWdyt'
+# Threaded replies are represented as regular PR review comments with `in_reply_to_id`,
+# and there is no working `/pulls/comments/{comment_id}/replies` endpoint here (404).
+#
+# Use the PR review comment create endpoint with `in_reply_to`:
+gh api repos/OWNER/REPO/pulls/NUM/comments \
+  -f body=$'Text.\n\nWdyt' \
+  -F in_reply_to=COMMENT_ID
 ```
+
+Notes:
+
+- The request field is `in_reply_to` (integer). The response field is `in_reply_to_id`.
+- Do NOT use `in_reply_to_id` in the request; it may create a new top-level comment instead of a reply.
+- If you need to add query params to a GET `gh api` call, use `-X GET`.
+  In practice, adding `-f` or `-F` without `-X GET` can cause `gh` to hit the POST schema by default.
+- zsh gotcha: avoid unquoted `?ref=...` in endpoints (it can trigger `no matches found`). Prefer:
+  `gh api -X GET repos/OWNER/REPO/contents/PATH -F ref=main`
+- If you *are* posting an anchored comment that requires `commit_id`, and GitHub rejects it as
+  "commit_id is not part of the pull request", use the `commit_id` from the target review comment you're replying to.
 
 PR-level timeline comment (use sparingly):
 

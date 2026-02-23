@@ -35,8 +35,8 @@ Review output contract (when invoked from a review playbook):
 
 Review preflight (blocking):
 
-- If the review playbook requires base-branch context and the user did not
-  provide an index name, run `list_indices` BEFORE you proceed.
+- If the review playbook requires base-branch context, run `list_indices` BEFORE
+  you proceed (even if the user provided an index name).
 
 How to run `list_indices`:
 
@@ -68,13 +68,15 @@ Hard gate (required): repo must be indexed
 
 Index usage:
 
-- if the user provides an index name, use it directly
+- if the user provides an index name:
+  - verify it exists in `list_indices`
+  - if it does not exist, stop and ask which index to use
 - otherwise:
   - always run `list_indices` first (do not guess)
     - if you have both `scsi-main` and `scsi-local`, run `list_indices` on both before concluding "not indexed"
   - if `list_indices` returns no usable results, do not use semantic search (fall back to local sources)
   - if `list_indices` returns an obvious match for the current repo, use it
-    - "obvious" means you can justify the selection from evidence (for example: index name clearly includes the repo name, or it is the only index that matches the repo you’re in)
+    - "obvious" means you can justify the selection from evidence (for example: index name clearly includes the repo name, or it is the only index that matches the repo you're in)
   - if multiple indices look plausible, ask the user which index to use (default: the one that most clearly matches the current repo and base branch)
 
 Passing `index`:

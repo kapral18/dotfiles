@@ -67,12 +67,14 @@ worktree_branch_in_use() {
 
 show_usage() {
   cat <<EOF
-Usage: ,w remove
+Usage: ,w remove [--tmux-notify] [--paths <path...>]
 
 Interactively remove git worktrees.
 
 Options:
   -h, --help        Show this help message
+  --paths           Remove specific worktree path(s) (skip interactive picker)
+  --tmux-notify     If running inside tmux, show progress via tmux messages
 
 Description:
   Opens an interactive fzf selector to choose worktrees to remove.
@@ -91,11 +93,38 @@ Notes:
 EOF
 }
 
+tmux_notify=0
+paths_mode=0
+paths=()
+
 while [ $# -gt 0 ]; do
   case "$1" in
   -h | --help)
     show_usage
     exit 0
+    ;;
+  --tmux-notify)
+    tmux_notify=1
+    shift
+    ;;
+  --paths)
+    paths_mode=1
+    shift
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --)
+          shift
+          break
+          ;;
+        -*)
+          break
+          ;;
+        *)
+          paths+=("$1")
+          shift
+          ;;
+      esac
+    done
     ;;
   *)
     echo "Error: Unknown option '$1'" >&2
@@ -105,12 +134,18 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-require_cmd fzf
-
 default_branch=$(git config --get init.defaultbranch || echo "main")
 
 parent_dir=$(_get_worktree_parent_dir)
 parent_name=$(basename "$parent_dir")
+
+notify() {
+  local msg="$1"
+  echo "$msg"
+  if [ "$tmux_notify" -eq 1 ] && [ -n "${TMUX:-}" ] && command -v tmux >/dev/null 2>&1; then
+    tmux display-message -d 6000 "$msg" 2>/dev/null || true
+  fi
+}
 
 mapfile -t selectable_worktrees < <(
   list_worktrees_porcelain | awk -F'\t' -v default_branch="$default_branch" '
@@ -138,7 +173,40 @@ if [ ${#selectable_worktrees[@]} -eq 0 ]; then
   exit 1
 fi
 
-mapfile -t worktrees < <(printf '%s\n' "${selectable_worktrees[@]}" | fzf --no-preview --multi)
+worktrees=()
+if [ "$paths_mode" -eq 1 ]; then
+  if [ ${#paths[@]} -eq 0 ]; then
+    echo "No paths provided."
+    exit 1
+  fi
+
+  find_branch_for_path() {
+    local needle="$1"
+    local line p b
+    for line in "${selectable_worktrees[@]}"; do
+      IFS=$'\t' read -r p b <<<"$line"
+      [ -n "$p" ] || continue
+      if [ "$p" = "$needle" ]; then
+        printf '%s\n' "$b"
+        return 0
+      fi
+    done
+    return 1
+  }
+
+  for p in "${paths[@]}"; do
+    p="$(realpath "$p" 2>/dev/null || printf '%s' "$p")"
+    b="$(find_branch_for_path "$p" || true)"
+    if [ -z "${b}" ]; then
+      notify "Skipping (not removable or not found): $p"
+      continue
+    fi
+    worktrees+=("${p}"$'\t'"${b}")
+  done
+else
+  require_cmd fzf
+  mapfile -t worktrees < <(printf '%s\n' "${selectable_worktrees[@]}" | fzf --no-preview --multi)
+fi
 
 if [ ${#worktrees[@]} -eq 0 ]; then
   echo "No worktrees selected."
@@ -180,9 +248,9 @@ _infer_remote_from_prefixed_branch() {
 for worktree in "${worktrees[@]}"; do
   IFS=$'\t' read -r worktree_path worktree_branch _ <<<"$worktree"
 
-  echo "Removing worktree: $worktree_path ($worktree_branch)"
+  notify "Removing worktree: $worktree_path ($worktree_branch)"
   if ! git worktree remove "$worktree_path"; then
-    echo "Failed to remove worktree: $worktree_path" >&2
+    notify "Failed to remove worktree: $worktree_path"
     continue
   fi
 
@@ -212,6 +280,8 @@ for worktree in "${worktrees[@]}"; do
   if command -v zoxide &>/dev/null; then
     zoxide remove "$worktree_path"
   fi
+
+  notify "Removed worktree: $worktree_path ($worktree_branch)"
 done
 
 if [ ${#remotes_to_check[@]} -gt 0 ]; then

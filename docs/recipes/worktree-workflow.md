@@ -35,6 +35,12 @@ Clean up a worktree:
 ,w remove
 ```
 
+Non-interactive cleanup (useful from tmux pickers/scripts):
+
+```bash
+,w remove --paths /path/to/worktree1 /path/to/worktree2
+```
+
 ## Verification
 
 ```bash

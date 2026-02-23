@@ -10,6 +10,11 @@ Use when:
 - the user asks to reply to reviewer comments
 - the user asks to address/resolve review threads
 
+Out of scope:
+
+- If the user wants to apply code changes while processing threads (and run lint/type_check/tests per cycle),
+  use `~/.agents/playbooks/review/pr_change_cycle.md` instead.
+
 ## PR Common Setup (All PR Modes)
 
 Resolve the PR target (avoid searching):
@@ -34,19 +39,20 @@ Base-branch context gate (mandatory):
 
 Preflight (blocking):
 
-- If the user did not provide an index name, run `list_indices` now (try both
-  `scsi-main` and `scsi-local`) to determine whether the repo is indexed.
+- Run `list_indices` first (try both `scsi-main` and `scsi-local`).
+- If the user provided an index name:
+  - verify it exists in `list_indices`
+  - if it does not exist, stop and ask which index to use
+- If the user did not provide an index name:
+  - select an index only if you can justify it from evidence; otherwise ask the user
+    which index represents the base branch for this repo
 
-If the repo is indexed:
+Base context sources:
 
-- Semantic code search is required for base context:
+- Preferred: semantic code search (when available):
   - Follow: `~/.agents/playbooks/code_search/semantic_code_search.md`
-  - Select and record the index.
   - Invoke at least one SCSI tool to establish base behavior/invariants.
-
-If semantic tools are unavailable or the repo is not indexed:
-
-- Use local base context:
+- Fallback: local base context:
   - `rg` + file reads
   - `git show <base>:<path>`
   - `git diff <base>...HEAD`
@@ -85,6 +91,11 @@ Thread workflow (repeat per thread):
 1. Identify the next active thread (unresolved / awaiting reply).
 2. Read the entire thread end-to-end before replying (including earlier
    context).
+2A. Verify you are addressing the exact concern/line.
+   - If the reviewer comment is anchored to a specific line/guard, ensure your reply (or links you provide)
+      directly addresses that exact line. Avoid replying with adjacent-but-not-relevant tests/behavior.
+    - If you realize the thread is about adding a code comment/documentation, do not try to "explain it away"
+      in the PR reply. Switch to PR change-cycle and make the comment in code, then reply with a commit link.
 3. Restate the concern in one sentence.
 4. Choose response type:
    - accept + propose the smallest fix
@@ -102,6 +113,8 @@ Reply style rules:
 - If you must reference a specific fragment, quote only the minimum needed using a Markdown blockquote (`> ...`), then reply.
 - Avoid email-style quote/reply interleaving.
 - Keep it short; prefer a concrete change suggestion.
+- If a thread is obsolete because later commits superseded the hunk, prefer a single-line reply:
+  - `Superseded by <commit link>` (optionally add one link to the new canonical thread).
 
 Output (one reply per turn):
 

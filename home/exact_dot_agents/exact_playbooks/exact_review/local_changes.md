@@ -40,11 +40,15 @@ Base-branch context gate (mandatory):
 
 - For any review that compares against base-branch behavior/invariants:
   - Follow the router's base-branch context rule.
-  - If the user did not provide an index name: run `list_indices` (try both
-    `scsi-main` and `scsi-local`) to determine whether the repo is indexed.
-  - If the repo is indexed, semantic code search is required for base context:
+  - Run `list_indices` first (try both `scsi-main` and `scsi-local`).
+  - If the user provided an index name:
+    - verify it exists in `list_indices`
+    - if it does not exist, stop and ask which index to use
+  - If the user did not provide an index name:
+    - select an index only if you can justify it from evidence; otherwise ask the user
+      which index represents the base branch for this repo
+  - Preferred: semantic code search (when available) for base context:
     - `~/.agents/playbooks/code_search/semantic_code_search.md`
-    - Select and record the index.
     - Invoke at least one SCSI tool to establish base behavior/invariants.
 - If the repo is not indexed / tools unavailable, use local base context via
   `git show <base>:<path>` + `rg`.

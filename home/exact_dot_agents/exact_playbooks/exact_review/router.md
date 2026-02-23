@@ -14,6 +14,7 @@ Contract:
   - `~/.agents/playbooks/review/pr_start.md`
   - `~/.agents/playbooks/review/pr_iterative.md`
   - `~/.agents/playbooks/review/pr_reply.md`
+  - `~/.agents/playbooks/review/pr_change_cycle.md`
 - Do not load `~/.agents/playbooks/github/gh_workflow.md` for read-only PR
   inspection/review. Only load it when the user explicitly asks to post/submit
   anything to GitHub.
@@ -42,6 +43,13 @@ Mode: PR thread replies
 - Use when: the user asks to reply to reviewer comments, address conversations,
   or resolve existing review threads.
 - Then open: `~/.agents/playbooks/review/pr_reply.md`
+
+Mode: PR change-cycle (apply fixes one thread/comment at a time)
+
+- Use when: the user wants to address reviewer feedback by iterating on code
+  changes with verification after each cycle ("apply the requested changes",
+  "let's fix review comments", "one comment at a time until resolved").
+- Then open: `~/.agents/playbooks/review/pr_change_cycle.md`
 
 Mode: PR iterative (one new comment at a time)
 
@@ -97,7 +105,8 @@ Hard constraints:
 
 - External truth applies: verify behavior under review (tests, repros, `/tmp`
   simulations) before asserting when practical.
-- Do not implement fixes while reviewing.
+- Do not change code unless the user asked you to iterate on fixes.
+  - If the user wants to apply reviewer suggestions / make PR changes, use PR change-cycle mode.
 - Do not post to GitHub, submit reviews, apply labels, or resolve threads unless
   explicitly asked.
 - Assume the user started the agent inside the intended repo/worktree/session:
@@ -111,13 +120,16 @@ Base-branch context (mandatory):
 
 Preflight (blocking, do first):
 
-- If the user did not provide an index name, you MUST determine whether the repo
-  is indexed before you proceed:
-  - run `list_indices` (try both `scsi-main` and `scsi-local`)
-  - if the repo is indexed, select an index only if you can justify it from
-    evidence; otherwise ask the user which index to use
-  - if the repo is not indexed / the tools are unavailable, record that fact and
-    proceed with local base-context sources
+- You MUST run `list_indices` before selecting/using an index:
+  - try both `scsi-main` and `scsi-local`
+  - if both fail or neither exists, treat semantic search as unavailable
+- If the user provided an index name:
+  - verify it exists in the `list_indices` output
+  - if it does not exist, stop and ask which index to use (default: the best
+    evidence-based match for the current repo)
+- If the user did not provide an index name:
+  - select an index only if you can justify it from evidence; otherwise ask the
+    user which index represents the base branch for this repo
 - Do not move on to base-context reasoning or comment drafting until this
   preflight is complete.
 
@@ -149,6 +161,18 @@ Base context reporting (required in every review output):
     - `user-selected none`
 - This line is reviewer metadata for the assistant's output. Do not include it
   in GitHub comment bodies.
+
+Truth validation framework (use in every non-trivial review):
+
+- Treat every claim as a hypothesis until verified.
+- Establish base invariants first (SCSI when indexed; otherwise `git show <base>:<path>` + local `rg`).
+- Validate PR/branch reality second (local diff + file reads).
+- When evaluating a proposed change (review suggestion / reviewer request):
+  - prefer the smallest reproduction in `/tmp` when possible
+  - otherwise run the smallest safe experiment in the worktree
+- If you changed code as part of an iteration cycle, re-run the repo's quality gates:
+  - lint + type_check + tests (discover the correct commands from the repo; do not guess).
+- Keep an evidence log per comment/thread: what base does, what changed, what you tested, and what you observed.
 
 Coverage checklist (do not skip):
 

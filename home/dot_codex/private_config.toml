@@ -5,8 +5,8 @@ approval_policy = "never"
 sandbox_mode = "danger-full-access"
 web_search = "cached"
 check_for_update_on_startup = true
-model = "gpt-5.2"
-model_reasoning_effort = "high"
+model = "gpt-5.3-codex"
+model_reasoning_effort = "xhigh"
 personality = "pragmatic"
 
 [notice.model_migrations]
@@ -42,4 +42,4 @@ args = [
 ]
 
 [features]
-collab = true
+multi_agent = true

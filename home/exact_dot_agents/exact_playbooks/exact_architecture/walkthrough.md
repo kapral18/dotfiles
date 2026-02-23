@@ -69,21 +69,21 @@ User asks: "Walk me through how authentication works in this codebase"
 2. Render a diagram with the resulting structure:
 
 ```text
-                ┌─────────────────┐
-                │  Auth Service   │
-                └────────┬────────┘
-                         │
-           ┌─────────────┼──────────────┐
-           │             │              │
-    ┌──────▼────┐  ┌────▼────┐  ┌─────▼──────┐
-    │   Login   │  │  Token  │  │   Verify   │
-    │ Endpoint  │  │Generation│  │ Middleware │
-    └──────┬────┘  └────┬────┘  └─────┬──────┘
-           │            │             │
-      ┌────▼────┐  ┌────▼────┐  ┌────▼──────┐
-      │  Token  │  │ Validate│  │  Validate │
-      │ Storage │  │  Token  │  │   Token   │
-      └─────────┘  └─────────┘  └───────────┘
+             +-----------------+
+             |  Auth Service   |
+             +--------+--------+
+                      |
+        +-------------+-------------+
+        |             |             |
+ +------+-------+ +---+--------+ +--+-------------+
+ | Login        | | Token      | | Verify         |
+ | Endpoint     | | Generation | | Middleware     |
+ +------+-------+ +---+--------+ +--+-------------+
+        |             |             |
+  +-----+-----+ +-----+-----+ +-----+-----+
+  | Token     | | Validate  | | Validate  |
+  | Storage   | | Token     | | Token     |
+  +-----------+ +-----------+ +-----------+
 ```
 
 Then provide node metadata for each component with descriptions and links.

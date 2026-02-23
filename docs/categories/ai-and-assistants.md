@@ -34,6 +34,8 @@ is required for base-branch context:
 
 - Preflight is blocking: run `list_indices` first (do not guess an index; try
   both `scsi-main` and `scsi-local` when both exist).
+- If the user provided an index name, still run `list_indices` and verify the
+  index exists before using it.
 - Use SCSI results as base-branch context only; validate the actual change via
   local git diffs and file reads.
 
@@ -45,6 +47,21 @@ Base context: SCSI=<index>|none (list_indices checked; <reason>), base=<branch>,
 ```
 
 Do not paste that line into GitHub comment bodies.
+
+## Reviews: Truth Validation Loop
+
+For non-trivial review decisions (accepting a suggestion, pushing back, or proposing an alternative), use a strict verify-first loop:
+
+- Base truth: establish what base branch does today (SCSI when indexed; otherwise `git show <base>:<path>` + local search).
+- Change truth: validate what your branch/PR actually does (local diff + file reads).
+- Assumption tests: reproduce in `/tmp` when possible; otherwise run the smallest safe experiment in the worktree.
+- Quality gates: if you changed code as part of an iteration cycle, re-run the repo's lint/type_check/tests trio (discover the correct commands from the repo; do not guess).
+
+Playbook support:
+
+- Draft-only review modes live under `~/.agents/playbooks/review/`.
+- If you want to apply requested changes one thread/comment at a time (with verification after each cycle), use:
+  - `~/.agents/playbooks/review/pr_change_cycle.md`
 
 ## Reviews: Reply Style
 
