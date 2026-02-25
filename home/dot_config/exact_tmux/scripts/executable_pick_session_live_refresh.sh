@@ -32,7 +32,7 @@ post_action() {
   local action="$1"
   local -a hdr=()
   if [ -n "${FZF_API_KEY:-}" ]; then
-    hdr+=( -H "x-api-key: ${FZF_API_KEY}" )
+    hdr+=(-H "x-api-key: ${FZF_API_KEY}")
   fi
   if [ -n "${FZF_SOCK:-}" ]; then
     curl --silent --show-error --fail --unix-socket "$FZF_SOCK" \
@@ -54,7 +54,7 @@ post_action() {
 fzf_alive() {
   local -a hdr=()
   if [ -n "${FZF_API_KEY:-}" ]; then
-    hdr+=( -H "x-api-key: ${FZF_API_KEY}" )
+    hdr+=(-H "x-api-key: ${FZF_API_KEY}")
   fi
   if [ -n "${FZF_SOCK:-}" ]; then
     curl --silent --show-error --fail --unix-socket "$FZF_SOCK" \
@@ -72,7 +72,7 @@ fzf_alive() {
 fzf_state_json() {
   local -a hdr=()
   if [ -n "${FZF_API_KEY:-}" ]; then
-    hdr+=( -H "x-api-key: ${FZF_API_KEY}" )
+    hdr+=(-H "x-api-key: ${FZF_API_KEY}")
   fi
   if [ -n "${FZF_SOCK:-}" ]; then
     curl --silent --show-error --fail --unix-socket "$FZF_SOCK" \
@@ -116,8 +116,8 @@ force=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --once) once=1 ;;
-    --force) force=1 ;;
+  --once) once=1 ;;
+  --force) force=1 ;;
   esac
   shift
 done
@@ -137,13 +137,13 @@ pause_on_multi="$(tmux_opt '@pick_session_live_refresh_pause_on_multi' 'on')"
 pause_on_query="$(tmux_opt '@pick_session_live_refresh_pause_on_query' 'on')"
 start_delay_ms="$(tmux_opt '@pick_session_live_refresh_start_delay_ms' '5000')"
 case "$interval_ms" in
-  ''|*[!0-9]*) interval_ms=1500 ;;
+'' | *[!0-9]*) interval_ms=1500 ;;
 esac
 case "$live_ttl" in
-  ''|*[!0-9]*) live_ttl=20 ;;
+'' | *[!0-9]*) live_ttl=20 ;;
 esac
 case "$start_delay_ms" in
-  ''|*[!0-9]*) start_delay_ms=5000 ;;
+'' | *[!0-9]*) start_delay_ms=5000 ;;
 esac
 
 sleep_s="0.5"
@@ -154,21 +154,21 @@ else
 fi
 
 run_update() {
-  local -a args=( --quiet )
+  local -a args=(--quiet)
   if [ "$force" -eq 1 ]; then
-    args+=( --force )
+    args+=(--force)
   elif [ -n "$live_ttl" ]; then
-    args+=( "--ttl=${live_ttl}" )
+    args+=("--ttl=${live_ttl}")
   fi
   "$update_cmd" "${args[@]}" >/dev/null 2>&1 || true
 }
 
 run_update_quick_only() {
-  local -a args=( --quiet --quick-only )
+  local -a args=(--quiet --quick-only)
   if [ "$force" -eq 1 ]; then
-    args+=( --force )
+    args+=(--force)
   elif [ -n "$live_ttl" ]; then
-    args+=( "--ttl=${live_ttl}" )
+    args+=("--ttl=${live_ttl}")
   fi
   "$update_cmd" "${args[@]}" >/dev/null 2>&1 || true
 }
@@ -185,10 +185,10 @@ maybe_reload_on_change() {
   fi
 
   case "$pause_on_multi" in
-    1|true|yes|on) need_state=1 ;;
+  1 | true | yes | on) need_state=1 ;;
   esac
   case "$pause_on_query" in
-    1|true|yes|on) need_state=1 ;;
+  1 | true | yes | on) need_state=1 ;;
   esac
 
   if [ "$need_state" -eq 1 ]; then
@@ -196,23 +196,23 @@ maybe_reload_on_change() {
   fi
 
   case "$pause_on_multi" in
-    1|true|yes|on)
-      if fzf_has_selected_matches "$state"; then
-        # Keep the old mtime so we retry this reload once selection is cleared.
-        printf '%s\n' "$before"
-        return 0
-      fi
-      ;;
+  1 | true | yes | on)
+    if fzf_has_selected_matches "$state"; then
+      # Keep the old mtime so we retry this reload once selection is cleared.
+      printf '%s\n' "$before"
+      return 0
+    fi
+    ;;
   esac
 
   case "$pause_on_query" in
-    1|true|yes|on)
-      if fzf_has_nonempty_query "$state"; then
-        # Keep the old mtime so we retry this reload once the user clears query.
-        printf '%s\n' "$before"
-        return 0
-      fi
-      ;;
+  1 | true | yes | on)
+    if fzf_has_nonempty_query "$state"; then
+      # Keep the old mtime so we retry this reload once the user clears query.
+      printf '%s\n' "$before"
+      return 0
+    fi
+    ;;
   esac
 
   post_action "reload($items_cmd)" || return 1

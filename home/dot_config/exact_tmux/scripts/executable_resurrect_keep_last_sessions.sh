@@ -104,14 +104,14 @@ if [[ -z "${session_keep_list}" ]]; then
 fi
 
 keep_file="$(mktemp "${resurrect_file_path}.k18.keep.XXXXXX")"
-printf '%s\n' "${session_keep_list}" > "${keep_file}"
+printf '%s\n' "${session_keep_list}" >"${keep_file}"
 
 tmp_file="$(mktemp "${resurrect_file_path}.k18.XXXXXX")"
 keep_sessions_line="#k18_keep_sessions"
 while IFS= read -r name; do
   [[ -z "${name}" ]] && continue
   keep_sessions_line+=$'\t'"${name}"
-done < "${keep_file}"
+done <"${keep_file}"
 
 awk -v keep_file="${keep_file}" -v keep_count="${keep_count}" -v keep_sessions_line="${keep_sessions_line}" '
 BEGIN {
@@ -153,6 +153,6 @@ END {
     print "state", active, alt;
   }
 }
-' "${resurrect_file_path}" > "${tmp_file}"
+' "${resurrect_file_path}" >"${tmp_file}"
 rm -f "${keep_file}"
 mv "${tmp_file}" "${resurrect_file_path}"

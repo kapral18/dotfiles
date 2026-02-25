@@ -23,12 +23,7 @@ acquire_lock() {
 }
 release_lock() { rmdir "$lock_dir" 2>/dev/null || true; }
 
-declare -a sess=()
-while IFS=$'\t' read -r _display kind _path _meta target; do
-  [ "$kind" = "session" ] || continue
-  [ -n "$target" ] || continue
-  sess+=( "$target" )
-done <"$sel_file"
+mapfile -t sess < <(awk -F $'\t' '$2 == "session" && $5 != "" { print $5 }' "$sel_file" 2>/dev/null || true)
 
 [ ${#sess[@]} -gt 0 ] || exit 0
 

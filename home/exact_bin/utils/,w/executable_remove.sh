@@ -270,12 +270,7 @@ for worktree in "${worktrees[@]}"; do
 
   _remove_worktree_tmux_session 0 "$worktree_path" "$(_comma_w_tmux_session_name "$parent_name" "$worktree_branch")"
 
-  current_dir=$(dirname "$worktree_path")
-  while [ -z "$(ls -A "$current_dir" 2>/dev/null)" ]; do
-    parent_dir=$(dirname "$current_dir")
-    rmdir "$current_dir"
-    current_dir="$parent_dir"
-  done
+  _bag_and_rmdir_upwards_ignoring_ds_store "$(dirname "$worktree_path")" "$parent_dir"
 
   if command -v zoxide &>/dev/null; then
     zoxide remove "$worktree_path"

@@ -34,11 +34,11 @@ quick_only=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --force) force=1 ;;
-    --quiet) quiet=1 ;;
-    --ttl=*) ttl_override="${1#--ttl=}" ;;
-    --lock-stale-seconds=*) lock_stale_seconds="${1#--lock-stale-seconds=}" ;;
-    --quick-only) quick_only=1 ;;
+  --force) force=1 ;;
+  --quiet) quiet=1 ;;
+  --ttl=*) ttl_override="${1#--ttl=}" ;;
+  --lock-stale-seconds=*) lock_stale_seconds="${1#--lock-stale-seconds=}" ;;
+  --quick-only) quick_only=1 ;;
   esac
   shift
 done
@@ -55,12 +55,12 @@ if [ -n "$ttl_override" ]; then
   ttl="$ttl_override"
 fi
 case "$mutation_ttl" in
-  ''|*[!0-9]*) mutation_ttl=300 ;;
+'' | *[!0-9]*) mutation_ttl=300 ;;
 esac
 
 if [ "$force" -ne 1 ] && [ -f "$cache_file" ]; then
   mt="$(mtime_epoch "$cache_file" 2>/dev/null || echo 0)"
-  age="$(( $(now_epoch) - mt ))"
+  age="$(($(now_epoch) - mt))"
   if [ "$age" -ge 0 ] && [ "$age" -lt "$ttl" ]; then
     exit 0
   fi
@@ -78,7 +78,7 @@ if ! mkdir "$lock_dir" 2>/dev/null; then
     stale=1
   else
     mt="$(mtime_epoch "$lock_dir" 2>/dev/null || echo 0)"
-    age="$(( $(now_epoch) - mt ))"
+    age="$(($(now_epoch) - mt))"
     if [ "$age" -ge "$lock_stale_seconds" ]; then
       stale=1
     fi
@@ -91,12 +91,12 @@ if ! mkdir "$lock_dir" 2>/dev/null; then
   mkdir "$lock_dir" 2>/dev/null || exit 0
 fi
 cleanup() {
-  rm -f "${tmp_quick:-}" "${tmp_full:-}" 2>/dev/null || true
+  rm -f "${tmp_quick:-}" "${tmp_full:-}" "${tmp_combined:-}" "${tmp_sessions:-}" 2>/dev/null || true
   rm -f "${lock_dir}/pid" 2>/dev/null || true
   rmdir "$lock_dir" 2>/dev/null || true
 }
 trap cleanup EXIT
-printf '%s\n' "$$" > "${lock_dir}/pid" 2>/dev/null || true
+printf '%s\n' "$$" >"${lock_dir}/pid" 2>/dev/null || true
 
 gen="$HOME/.config/tmux/scripts/pick_session_index.sh"
 if [ ! -x "$gen" ]; then
@@ -110,10 +110,10 @@ publish_cache_from() {
   out_tmp="$(mktemp -t pick_session_items.XXXXXX)"
   if [ -f "$pending_file" ] || [ -f "$mutation_file" ]; then
     CACHE_FILE="$src" \
-    PENDING_FILE="$pending_file" \
-    MUTATIONS_FILE="$mutation_file" \
-    MUTATION_TTL="$mutation_ttl" \
-    CACHE_OUT="$out_tmp" python3 - <<'PY'
+      PENDING_FILE="$pending_file" \
+      MUTATIONS_FILE="$mutation_file" \
+      MUTATION_TTL="$mutation_ttl" \
+      CACHE_OUT="$out_tmp" python3 - <<'PY'
 import os
 import time
 
@@ -123,15 +123,16 @@ mutations_file = os.environ.get("MUTATIONS_FILE", "")
 mutation_ttl = int(os.environ.get("MUTATION_TTL", "300") or "300")
 
 pending_paths = set()
+pending_rows = []
 if pending and os.path.exists(pending):
     with open(pending, "r", encoding="utf-8", errors="ignore") as f:
-        for line in f:
-            line = line.strip()
+        for raw in f:
+            line = raw.strip()
             if not line:
                 continue
             tag, sep, p = line.partition("\t")
             if sep and tag == "WT" and p:
-                pending_paths.add(p)
+                pending_rows.append(p)
 
 mutation_path_prefixes = set()
 mutation_session_targets = set()
@@ -190,6 +191,40 @@ try:
 except Exception:
     pass
 
+def under_any_prefix(p: str, prefixes: set) -> bool:
+    if not p:
+        return False
+    for base in prefixes:
+        if p == base or p.startswith(base + "/"):
+            return True
+    return False
+
+# Prune stale pending entries: if the path still exists and there is no active
+# mutation tombstone covering it, it should not remain hidden forever.
+if pending and os.path.exists(pending) and pending_rows:
+    keep = []
+    changed = False
+    for p in pending_rows:
+        if not p:
+            changed = True
+            continue
+        if os.path.exists(p):
+            if under_any_prefix(p, mutation_path_prefixes):
+                keep.append(p)
+            else:
+                changed = True
+        else:
+            keep.append(p)
+    if changed:
+        tmp = pending + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            for p in keep:
+                f.write("WT\t" + p + "\n")
+        os.replace(tmp, pending)
+    pending_paths = set(keep)
+else:
+    pending_paths = set(pending_rows)
+
 def path_is_tombstoned(kind, p):
     if kind not in ("dir", "worktree", "session"):
         return False
@@ -227,8 +262,60 @@ PY
   mv -f "$out_tmp" "$cache_file"
 }
 
+file_has_dir_rows() {
+  local f="$1"
+  [ -f "$f" ] || return 1
+  awk -F $'\t' 'NF>=5 && $2 == "dir" { found=1; exit } END { exit(found?0:1) }' "$f" 2>/dev/null
+}
+
+file_has_worktree_rows() {
+  local f="$1"
+  [ -f "$f" ] || return 1
+  awk -F $'\t' 'NF>=5 && $2 == "worktree" { found=1; exit } END { exit(found?0:1) }' "$f" 2>/dev/null
+}
+
+file_has_non_session_rows() {
+  local f="$1"
+  [ -f "$f" ] || return 1
+  awk -F $'\t' 'NF>=5 && $2 != "session" { found=1; exit } END { exit(found?0:1) }' "$f" 2>/dev/null
+}
+
+build_cache_refreshing_sessions_preserving_others() {
+  local src="$1"
+  local out="$2"
+
+  : >"$out"
+  # Always refresh session rows from the new scan output.
+  awk -F $'\t' 'NF>=5 && $2 == "session" { print }' "$src" 2>/dev/null >>"$out" || true
+
+  # Preserve cached worktree/dir ordering to avoid UI reshuffles, but if the
+  # cache is missing an entire section (e.g. worktrees got pruned), repopulate
+  # it from the fresh scan output so it doesn't "disappear forever" until a
+  # full refresh happens.
+  if file_has_worktree_rows "$cache_file"; then
+    awk -F $'\t' 'NF>=5 && $2 == "worktree" { print }' "$cache_file" 2>/dev/null >>"$out" || true
+  else
+    awk -F $'\t' 'NF>=5 && $2 == "worktree" { print }' "$src" 2>/dev/null >>"$out" || true
+  fi
+
+  if file_has_dir_rows "$cache_file"; then
+    awk -F $'\t' 'NF>=5 && $2 == "dir" { print }' "$cache_file" 2>/dev/null >>"$out" || true
+  else
+    awk -F $'\t' 'NF>=5 && $2 == "dir" { print }' "$src" 2>/dev/null >>"$out" || true
+  fi
+
+  # Any other kinds: keep from cache when present, else fall back to src.
+  if file_has_non_session_rows "$cache_file"; then
+    awk -F $'\t' 'NF>=5 && $2 != "session" && $2 != "worktree" && $2 != "dir" { print }' "$cache_file" 2>/dev/null >>"$out" || true
+  else
+    awk -F $'\t' 'NF>=5 && $2 != "session" && $2 != "worktree" && $2 != "dir" { print }' "$src" 2>/dev/null >>"$out" || true
+  fi
+}
+
 tmp_quick="$(mktemp -t pick_session_items.quick.XXXXXX)"
 tmp_full="$(mktemp -t pick_session_items.full.XXXXXX)"
+tmp_sessions="$(mktemp -t pick_session_items.sessions.XXXXXX)"
+tmp_combined="$(mktemp -t pick_session_items.combined.XXXXXX)"
 
 if [ "$quiet" -ne 1 ] && command -v tmux >/dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
   tmux display-message -d 1500 "pick_session: updating list…" 2>/dev/null || true
@@ -238,11 +325,29 @@ quick_ok=0
 full_ok=0
 quick_published=0
 if [ "$quick_only" -eq 1 ]; then
-  if "$gen" --quick >"$tmp_quick" 2>/dev/null; then
-    quick_ok=1
-    if [ -s "$tmp_quick" ]; then
-      publish_cache_from "$tmp_quick" || true
-      quick_published=1
+  # `--sessions-only` output never includes worktree/dir rows. Only use it when
+  # the current cache already contains the full non-session sections; otherwise
+  # fall back to a regular `--quick` scan so worktrees/dirs don't "disappear".
+  if [ -f "$cache_file" ] && file_has_worktree_rows "$cache_file" && file_has_dir_rows "$cache_file"; then
+    if "$gen" --quick --sessions-only >"$tmp_sessions" 2>/dev/null; then
+      quick_ok=1
+      if [ -s "$tmp_sessions" ]; then
+        build_cache_refreshing_sessions_preserving_others "$tmp_sessions" "$tmp_combined" || true
+        if [ -s "$tmp_combined" ]; then
+          publish_cache_from "$tmp_combined" || true
+          quick_published=1
+        fi
+      fi
+    fi
+  fi
+
+  if [ "$quick_published" -eq 0 ]; then
+    if "$gen" --quick >"$tmp_quick" 2>/dev/null; then
+      quick_ok=1
+      if [ -s "$tmp_quick" ]; then
+        publish_cache_from "$tmp_quick" || true
+        quick_published=1
+      fi
     fi
   fi
   if [ "$quick_ok" -ne 1 ] || [ "$quick_published" -ne 1 ]; then
@@ -257,7 +362,12 @@ else
   if wait "$pid_quick"; then
     quick_ok=1
     if [ -s "$tmp_quick" ]; then
-      publish_cache_from "$tmp_quick" || true
+      build_cache_refreshing_sessions_preserving_others "$tmp_quick" "$tmp_combined" || true
+      if [ -s "$tmp_combined" ]; then
+        publish_cache_from "$tmp_combined" || true
+      else
+        publish_cache_from "$tmp_quick" || true
+      fi
       quick_published=1
     fi
   fi

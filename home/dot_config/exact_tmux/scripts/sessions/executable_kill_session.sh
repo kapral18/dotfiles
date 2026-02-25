@@ -7,11 +7,11 @@ source "${CURRENT_DIR}/helpers.sh"
 CURRENT_SESSION_ID="${1:-}"
 
 switch_to_next_session() {
-  tmux switch-client -n
+  tmux switch-client -n 2>/dev/null || true
 }
 
 switch_to_alternate_session() {
-  tmux switch-client -l
+  tmux switch-client -l 2>/dev/null || true
 }
 
 alternate_session_name() {
@@ -37,12 +37,22 @@ switch_session() {
   elif [ "${alt}" == "$(current_session_name)" ]; then
     switch_to_next_session
   else
-    switch_to_alternate_session
+    # `client_last_session` can be stale (session was killed/renamed elsewhere).
+    # Don't fail the entire kill flow if we can't switch to it.
+    if tmux has-session -t "${alt}" 2>/dev/null; then
+      switch_to_alternate_session
+    else
+      switch_to_next_session
+    fi
   fi
 }
 
 kill_current_session() {
-  tmux kill-session -t "${CURRENT_SESSION_ID}"
+  [ -n "${CURRENT_SESSION_ID}" ] || return 0
+  if ! tmux has-session -t "${CURRENT_SESSION_ID}" 2>/dev/null; then
+    return 0
+  fi
+  tmux kill-session -t "${CURRENT_SESSION_ID}" 2>/dev/null || true
 }
 
 main() {

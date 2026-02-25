@@ -35,6 +35,12 @@ Clean up a worktree:
 ,w remove
 ```
 
+Notes:
+
+- Cleanup treats `.DS_Store` as ignorable, so empty parent directories aren’t kept alive by Finder metadata.
+- If cleanup would otherwise leave behind empty parent directories *only because of unrelated leftover files/dirs*, `,w remove` moves those leftovers into a bag directory outside the wrapper:
+  `../.bag/worktree_remove/<wrapper>/<timestamp>/...` (relative to the wrapper’s parent).
+
 Non-interactive cleanup (useful from tmux pickers/scripts):
 
 ```bash

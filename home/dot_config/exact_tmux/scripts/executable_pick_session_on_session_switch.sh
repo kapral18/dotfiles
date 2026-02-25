@@ -46,7 +46,7 @@ if [ "$pending_split" = "1" ]; then
   if [ -n "$win" ]; then
     panes="$(tmux display-message -p -t "$win" '#{window_panes}' 2>/dev/null || printf '0')"
     case "$panes" in
-      ''|*[!0-9]*) panes=0 ;;
+    '' | *[!0-9]*) panes=0 ;;
     esac
     if [ "$panes" -lt 2 ]; then
       tmux split-window -h -t "$win" -c "$dir" 2>/dev/null || true

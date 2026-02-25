@@ -101,3 +101,105 @@ _get_worktree_parent_dir() {
   dirname "$main_repo_root"
 }
 
+_dir_is_effectively_empty_ignoring_ds_store() {
+  local dir="$1"
+  [ -n "$dir" ] || return 1
+  [ -d "$dir" ] || return 1
+
+  rm -f "$dir/.DS_Store" 2>/dev/null || true
+  local any
+  any="$(find "$dir" -mindepth 1 -maxdepth 1 ! -name '.DS_Store' -print -quit 2>/dev/null || true)"
+  [ -z "$any" ]
+}
+
+_rmdir_upwards_ignoring_ds_store() {
+  local start_dir="$1"
+  local stop_at="${2:-/}"
+  [ -n "$start_dir" ] || return 0
+
+  local cur
+  cur="$(realpath "$start_dir" 2>/dev/null || printf '%s' "$start_dir")"
+  stop_at="$(realpath "$stop_at" 2>/dev/null || printf '%s' "$stop_at")"
+
+  while [ -n "$cur" ] && [ "$cur" != "/" ] && [ "$cur" != "$stop_at" ]; do
+    if ! _dir_is_effectively_empty_ignoring_ds_store "$cur"; then
+      break
+    fi
+    rmdir "$cur" 2>/dev/null || break
+    cur="$(dirname "$cur")"
+  done
+}
+
+_bag_and_rmdir_upwards_ignoring_ds_store() {
+  local start_dir="$1"
+  local stop_at="${2:-/}"
+  local bag_root="${3:-}"
+  [ -n "$start_dir" ] || return 0
+
+  local cur anchor ts
+  cur="$(realpath "$start_dir" 2>/dev/null || printf '%s' "$start_dir")"
+  stop_at="$(realpath "$stop_at" 2>/dev/null || printf '%s' "$stop_at")"
+  anchor="$stop_at"
+
+  while [ -n "$cur" ] && [ "$cur" != "/" ] && [ "$cur" != "$stop_at" ]; do
+    if _dir_is_effectively_empty_ignoring_ds_store "$cur"; then
+      rmdir "$cur" 2>/dev/null || break
+      cur="$(dirname "$cur")"
+      continue
+    fi
+
+    # Try to preserve remaining content (excluding `.DS_Store`) into a bag
+    # outside the wrapper, then continue pruning.
+    rm -f "$cur/.DS_Store" 2>/dev/null || true
+
+    local any
+    any="$(find "$cur" -mindepth 1 -maxdepth 1 ! -name '.DS_Store' -print -quit 2>/dev/null || true)"
+    if [ -z "$any" ]; then
+      rmdir "$cur" 2>/dev/null || break
+      cur="$(dirname "$cur")"
+      continue
+    fi
+
+    if [ -z "$bag_root" ]; then
+      ts="$(date +%Y%m%d-%H%M%S)"
+      bag_root="$(dirname "$anchor")/.bag/worktree_remove/$(basename "$anchor")/$ts"
+    fi
+
+    local rel dest
+    case "$cur" in
+      "$anchor"/*) rel="${cur#"$anchor"/}" ;;
+      *) rel="$(basename "$cur")" ;;
+    esac
+    dest="$bag_root/$rel"
+    local moved_any=0
+    mkdir -p "$dest" 2>/dev/null || return 0
+
+    while IFS= read -r item; do
+      [ -n "$item" ] || continue
+      case "$(basename "$item")" in
+        .DS_Store) continue ;;
+      esac
+      if mv "$item" "$dest/" 2>/dev/null; then
+        moved_any=1
+      fi
+    done < <(find "$cur" -mindepth 1 -maxdepth 1 ! -name '.DS_Store' -print 2>/dev/null || true)
+
+    # If we couldn't move anything, avoid leaving empty timestamp dirs around.
+    if [ "$moved_any" -ne 1 ]; then
+      rmdir "$dest" 2>/dev/null || true
+      if _dir_is_effectively_empty_ignoring_ds_store "$bag_root"; then
+        _rmdir_upwards_ignoring_ds_store "$bag_root" "$(dirname "$anchor")/.bag"
+      fi
+      break
+    fi
+
+    if _dir_is_effectively_empty_ignoring_ds_store "$cur"; then
+      rmdir "$cur" 2>/dev/null || break
+      cur="$(dirname "$cur")"
+      continue
+    fi
+
+    # Still not removable -> stop.
+    break
+  done
+}

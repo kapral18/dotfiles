@@ -12,7 +12,7 @@ target="$(realpath "$target" 2>/dev/null || printf '%s' "$target")"
 stop_at="$(realpath "$stop_at" 2>/dev/null || printf '%s' "$stop_at")"
 
 case "$target" in
-  ""|"/") exit 0 ;;
+"" | "/") exit 0 ;;
 esac
 
 if [ "$target" = "$HOME" ]; then
@@ -39,9 +39,19 @@ if [ -d "$target" ]; then
   rm -rf "$target"
 fi
 
+dir_is_effectively_empty_ignoring_ds_store() {
+  local dir="$1"
+  [ -n "$dir" ] || return 1
+  [ -d "$dir" ] || return 1
+  rm -f "$dir/.DS_Store" 2>/dev/null || true
+  local any
+  any="$(find "$dir" -mindepth 1 -maxdepth 1 ! -name '.DS_Store' -print -quit 2>/dev/null || true)"
+  [ -z "$any" ]
+}
+
 cur="$(dirname "$target")"
 while [ "$cur" != "/" ] && [ "$cur" != "$stop_at" ]; do
-  if [ -n "$(ls -A "$cur" 2>/dev/null)" ]; then
+  if ! dir_is_effectively_empty_ignoring_ds_store "$cur"; then
     break
   fi
   rmdir "$cur" 2>/dev/null || break
