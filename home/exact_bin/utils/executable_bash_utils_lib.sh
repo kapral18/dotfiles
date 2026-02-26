@@ -167,8 +167,8 @@ _bag_and_rmdir_upwards_ignoring_ds_store() {
 
     local rel dest
     case "$cur" in
-      "$anchor"/*) rel="${cur#"$anchor"/}" ;;
-      *) rel="$(basename "$cur")" ;;
+    "$anchor"/*) rel="${cur#"$anchor"/}" ;;
+    *) rel="$(basename "$cur")" ;;
     esac
     dest="$bag_root/$rel"
     local moved_any=0
@@ -177,7 +177,7 @@ _bag_and_rmdir_upwards_ignoring_ds_store() {
     while IFS= read -r item; do
       [ -n "$item" ] || continue
       case "$(basename "$item")" in
-        .DS_Store) continue ;;
+      .DS_Store) continue ;;
       esac
       if mv "$item" "$dest/" 2>/dev/null; then
         moved_any=1

@@ -21,25 +21,25 @@ quiet_mode=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    -h|--help)
-      show_usage
-      exit 0
-      ;;
-    -q|--quiet)
-      quiet_mode=1
-      shift
-      ;;
-    --)
-      shift
-      break
-      ;;
-    -*)
-      show_usage
-      exit 1
-      ;;
-    *)
-      break
-      ;;
+  -h | --help)
+    show_usage
+    exit 0
+    ;;
+  -q | --quiet)
+    quiet_mode=1
+    shift
+    ;;
+  --)
+    shift
+    break
+    ;;
+  -*)
+    show_usage
+    exit 1
+    ;;
+  *)
+    break
+    ;;
   esac
 done
 
@@ -66,14 +66,14 @@ find_branch_for_worktree_path() {
     value="${line#* }"
 
     case "$key" in
-      worktree)
-        worktree_path="$value"
-        branch_ref=""
-        worktree_realpath="$(realpath "$worktree_path" 2>/dev/null || printf '%s' "$worktree_path")"
-        ;;
-      branch)
-        branch_ref="$value"
-        ;;
+    worktree)
+      worktree_path="$value"
+      branch_ref=""
+      worktree_realpath="$(realpath "$worktree_path" 2>/dev/null || printf '%s' "$worktree_path")"
+      ;;
+    branch)
+      branch_ref="$value"
+      ;;
     esac
 
     if [ -n "$worktree_path" ] && [ "$worktree_realpath" = "$needle_path" ] && [ -n "$branch_ref" ]; then

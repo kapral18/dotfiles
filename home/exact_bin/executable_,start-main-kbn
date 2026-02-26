@@ -12,7 +12,7 @@ if [[ $# -gt 0 && "$1" == "-E" ]]; then
 else
   # First argument is data folder (or no arguments)
   ES_DATA_FOLDER=${1:-"main-cluster"}
-  shift || true  # Remove first argument if it exists
+  shift || true # Remove first argument if it exists
 fi
 
 ES_DATA_PATH="$HOME/work/kibana/es_data/$ES_DATA_FOLDER"

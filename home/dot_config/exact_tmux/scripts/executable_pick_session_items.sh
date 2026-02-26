@@ -920,9 +920,9 @@ PY
     exit 0
   fi
 
-	  # If python isn't available, still emit a 6th "match key" field so fzf can
-	  # prioritize name matching before paths.
-	  awk -F $'\t' '
+  # If python isn't available, still emit a 6th "match key" field so fzf can
+  # prioritize name matching before paths.
+  awk -F $'\t' '
 	    BEGIN { OFS = "\t" }
 	    NF < 5 { print; next }
 	    NF >= 6 { print; next }
@@ -946,8 +946,8 @@ PY
 	      print $1, kind, path, meta, target, mk
 	    }
 	  ' "$cache_file"
-	  exit 0
-	fi
+  exit 0
+fi
 
 # Kick off a background refresh if we're inside tmux.
 if command -v tmux >/dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
@@ -976,13 +976,13 @@ if command -v tmux >/dev/null 2>&1; then
     case "$path" in
     "$HOME") tpath="~" ;;
     "$HOME"/*) tpath="~/${path#"$HOME"/}" ;;
-	    esac
-	    # shellcheck disable=SC2088
-	    base="$(basename "$path" 2>/dev/null || printf '%s' "$path")"
-	    mk="${name} ${base} ${tpath} ${path}"
-	    printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$(display_session_entry "$name" "$tpath")" "session" "$path" "" "$name" "$mk"
-	  done
-	fi
-	
-	mk="home ~ $HOME"
-	printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$(display_dir_entry '~')" "dir" "$HOME" "" "" "$mk"
+    esac
+    # shellcheck disable=SC2088
+    base="$(basename "$path" 2>/dev/null || printf '%s' "$path")"
+    mk="${name} ${base} ${tpath} ${path}"
+    printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$(display_session_entry "$name" "$tpath")" "session" "$path" "" "$name" "$mk"
+  done
+fi
+
+mk="home ~ $HOME"
+printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$(display_dir_entry '~')" "dir" "$HOME" "" "" "$mk"

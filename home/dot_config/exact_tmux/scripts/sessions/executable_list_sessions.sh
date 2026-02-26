@@ -40,12 +40,11 @@ print_multi_column_output() {
   local columns
   columns="$(get_column_number "${output_height}" "${pane_height}")"
 
-  # shellcheck disable=SC2086
-  eval session_array=( $(tmux list-sessions -F "'#{session_name}'") )
+  mapfile -t session_array < <(tmux list-sessions -F "#{session_name}")
   local width
   width="$(get_column_width session_array[@])"
 
-  local max_columns=$(( (pane_width + 2) / width ))
+  local max_columns=$(((pane_width + 2) / width))
   if [ "${columns}" -gt "${max_columns}" ]; then
     columns="${max_columns}"
     session_array[$((pane_height * columns - 1))]="..."

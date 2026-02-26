@@ -17,15 +17,15 @@ EOF
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    -h|--help)
-      show_usage
-      exit 0
-      ;;
-    *)
-      echo "Error: Unknown option '$1'" >&2
-      show_usage
-      exit 1
-      ;;
+  -h | --help)
+    show_usage
+    exit 0
+    ;;
+  *)
+    echo "Error: Unknown option '$1'" >&2
+    show_usage
+    exit 1
+    ;;
   esac
 done
 
@@ -63,12 +63,12 @@ line=""
 
 while IFS= read -r line; do
   case "$line" in
-    worktree\ *)
-      worktree_path="${line#worktree }"
-      if [ -n "$worktree_path" ] && [ ! -e "$worktree_path" ]; then
-        stale_paths+=("$worktree_path")
-      fi
-      ;;
+  worktree\ *)
+    worktree_path="${line#worktree }"
+    if [ -n "$worktree_path" ] && [ ! -e "$worktree_path" ]; then
+      stale_paths+=("$worktree_path")
+    fi
+    ;;
   esac
 done < <(git worktree list --porcelain 2>/dev/null || true)
 
@@ -103,11 +103,10 @@ if command -v tmux >/dev/null 2>&1; then
   while IFS=$'\t' read -r session_name _; do
     [ -z "$session_name" ] && continue
     case "$session_name" in
-      "${parent_name}"\|*)
-        ;;
-      *)
-        continue
-        ;;
+    "${parent_name}"\|*) ;;
+    *)
+      continue
+      ;;
     esac
 
     if ! session_has_any_existing_pane_path "$session_name"; then

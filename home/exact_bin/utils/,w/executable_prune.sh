@@ -24,35 +24,35 @@ all_mode=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    -h|--help)
-      show_usage
-      exit 0
-      ;;
-    -q|--quiet)
-      quiet_mode=1
-      shift
-      ;;
-    --apply)
-      apply_mode=1
-      shift
-      ;;
-    --all)
-      all_mode=1
-      shift
-      ;;
-    --)
-      shift
-      break
-      ;;
-    -*)
-      show_usage
-      exit 1
-      ;;
-    *)
-      echo "Error: Unknown argument '$1'." >&2
-      show_usage
-      exit 1
-      ;;
+  -h | --help)
+    show_usage
+    exit 0
+    ;;
+  -q | --quiet)
+    quiet_mode=1
+    shift
+    ;;
+  --apply)
+    apply_mode=1
+    shift
+    ;;
+  --all)
+    all_mode=1
+    shift
+    ;;
+  --)
+    shift
+    break
+    ;;
+  -*)
+    show_usage
+    exit 1
+    ;;
+  *)
+    echo "Error: Unknown argument '$1'." >&2
+    show_usage
+    exit 1
+    ;;
   esac
 done
 
@@ -112,11 +112,10 @@ while IFS=$'\t' read -r session_name _; do
 
   if [ "$all_mode" -eq 0 ]; then
     case "$session_name" in
-      "${parent_name}"\|*)
-        ;;
-      *)
-        continue
-        ;;
+    "${parent_name}"\|*) ;;
+    *)
+      continue
+      ;;
     esac
   fi
 

@@ -34,51 +34,51 @@ sort_mode="branch"
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    -h|--help)
-      show_usage
-      exit 0
-      ;;
-    --porcelain)
-      porcelain=1
-      shift
-      ;;
-    --selectable)
-      selectable=1
-      shift
-      ;;
-    --long)
-      long_mode=1
-      shift
-      ;;
-    --dirty)
-      dirty_mode=1
-      shift
-      ;;
-    --full-path)
-      full_path=1
-      shift
-      ;;
-    --no-header)
-      no_header=1
-      shift
-      ;;
-    --no-column)
-      no_column=1
-      shift
-      ;;
-    --sort)
-      if [ $# -lt 2 ]; then
-        show_usage
-        exit 1
-      fi
-      sort_mode="$2"
-      shift 2
-      ;;
-    *)
-      echo "Error: Unknown option '$1'" >&2
+  -h | --help)
+    show_usage
+    exit 0
+    ;;
+  --porcelain)
+    porcelain=1
+    shift
+    ;;
+  --selectable)
+    selectable=1
+    shift
+    ;;
+  --long)
+    long_mode=1
+    shift
+    ;;
+  --dirty)
+    dirty_mode=1
+    shift
+    ;;
+  --full-path)
+    full_path=1
+    shift
+    ;;
+  --no-header)
+    no_header=1
+    shift
+    ;;
+  --no-column)
+    no_column=1
+    shift
+    ;;
+  --sort)
+    if [ $# -lt 2 ]; then
       show_usage
       exit 1
-      ;;
+    fi
+    sort_mode="$2"
+    shift 2
+    ;;
+  *)
+    echo "Error: Unknown option '$1'" >&2
+    show_usage
+    exit 1
+    ;;
   esac
 done
 
@@ -87,11 +87,11 @@ if [ "$porcelain" -eq 1 ]; then
 fi
 
 case "$sort_mode" in
-  branch|path) ;;
-  *)
-    echo "Error: invalid --sort '$sort_mode' (use: branch|path)." >&2
-    exit 1
-    ;;
+branch | path) ;;
+*)
+  echo "Error: invalid --sort '$sort_mode' (use: branch|path)." >&2
+  exit 1
+  ;;
 esac
 
 line=""
@@ -125,20 +125,20 @@ relpath_for() {
     return 0
   fi
   case "$p" in
-    "$parent_dir"/*)
-      printf '%s\n' "${p#"$parent_dir"/}"
-      ;;
-    *)
-      printf '%s\n' "$p"
-      ;;
+  "$parent_dir"/*)
+    printf '%s\n' "${p#"$parent_dir"/}"
+    ;;
+  *)
+    printf '%s\n' "$p"
+    ;;
   esac
 }
 
 is_current() {
   local p="$1"
   case "$pwd_path" in
-    "$p") return 0 ;;
-    "$p"/*) return 0 ;;
+  "$p") return 0 ;;
+  "$p"/*) return 0 ;;
   esac
   return 1
 }
@@ -316,26 +316,26 @@ while IFS= read -r line; do
   value="${line#* }"
 
   case "$key" in
-    worktree)
-      emit >>"$rows_file"
-      worktree_path="$value"
-      branch_ref=""
-      head_sha=""
-      detached=0
-      locked=0
-      ;;
-    HEAD)
-      head_sha="$value"
-      ;;
-    branch)
-      branch_ref="$value"
-      ;;
-    detached)
-      detached=1
-      ;;
-    locked)
-      locked=1
-      ;;
+  worktree)
+    emit >>"$rows_file"
+    worktree_path="$value"
+    branch_ref=""
+    head_sha=""
+    detached=0
+    locked=0
+    ;;
+  HEAD)
+    head_sha="$value"
+    ;;
+  branch)
+    branch_ref="$value"
+    ;;
+  detached)
+    detached=1
+    ;;
+  locked)
+    locked=1
+    ;;
   esac
 done < <(git worktree list --porcelain)
 emit >>"$rows_file"

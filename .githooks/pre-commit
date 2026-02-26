@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v shfmt >/dev/null 2>&1; then
+  echo "pre-commit: shfmt not found (install with: brew install shfmt)" >&2
+  exit 1
+fi
+
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+if [ -z "$repo_root" ]; then
+  exit 0
+fi
+
+cd "$repo_root"
+
+staged_paths="$(
+  git diff --cached --name-only --diff-filter=ACMR
+)"
+
+if [ -z "$staged_paths" ]; then
+  exit 0
+fi
+
+is_shell_file() {
+  local path="$1"
+
+  case "$path" in
+  *.sh | *.bash | *.ksh) return 0 ;;
+  esac
+
+  if [ ! -f "$path" ]; then
+    return 1
+  fi
+
+  # Shebang detection for scripts without extensions.
+  # shfmt supports sh/bash/mksh; keep this conservative.
+  local first_line
+  first_line="$(head -n 1 "$path" 2>/dev/null || true)"
+  case "$first_line" in
+  '#!/usr/bin/env bash'*) return 0 ;;
+  '#!/usr/bin/env sh'*) return 0 ;;
+  '#!'*'/bash'*) return 0 ;;
+  '#!'*'/sh'*) return 0 ;;
+  esac
+
+  return 1
+}
+
+shell_paths=()
+while IFS= read -r path; do
+  [ -n "$path" ] || continue
+  if is_shell_file "$path"; then
+    shell_paths+=("$path")
+  fi
+done <<<"$staged_paths"
+
+if [ "${#shell_paths[@]}" -eq 0 ]; then
+  exit 0
+fi
+
+# Avoid breaking partial-staging: formatting rewrites the working tree file and
+# then stages it. If a file has unstaged changes, abort and let the user decide.
+for path in "${shell_paths[@]}"; do
+  if [ -n "$(git diff --name-only -- "$path")" ]; then
+    echo "pre-commit: refusing to shfmt with unstaged changes in: $path" >&2
+    echo "pre-commit: stage the whole file (or stash changes) then retry." >&2
+    exit 1
+  fi
+done
+
+for path in "${shell_paths[@]}"; do
+  shfmt -w -i 2 "$path"
+done
+
+git add -- "${shell_paths[@]}"

@@ -176,8 +176,8 @@ else
       --bind "ctrl-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") kill {q})+execute-silent($kill_async_cmd)+clear-selection" \
       --bind "alt-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") remove {q})+execute-silent($rm_async_cmd)+clear-selection" \
       --header $'ctrl-/=help' \
-      </dev/null \
-      ${fzf_args} ||
+      \
+      ${fzf_args} </dev/null ||
       true
   )"
 fi

@@ -9,9 +9,8 @@ echo "-------------------------------------------"
 
 echo "===> Installing Xcode Command Line Tools"
 
-softwareupdate --install -a > /dev/null 2>&1
-sudo xcode-select --install > /dev/null 2>&1
-
+softwareupdate --install -a >/dev/null 2>&1
+sudo xcode-select --install >/dev/null 2>&1
 
 echo "--------------------------------------"
 echo "xcodebuild license accept: applying..."
@@ -22,6 +21,5 @@ sudo xcodebuild -license accept
 echo "-------------------------------"
 echo "xcodebuild license accept: done"
 echo "-------------------------------"
-
 
 echo ""

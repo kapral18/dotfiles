@@ -237,8 +237,10 @@ Custom commands are shipped as scripts installed to `~/bin` (source: `home/exact
     threshold (helps target slow tests).
   - **Examples:** `,get-risky-tests "src/plugins/data"`; `,get-risky-tests "src/core/server" | jq -r '.fullName'`
 - **Name:** `,gh-prw`
-  - **Description:** Open the PR for the current branch (or a given PR number)
-    in the browser, or print its number/URL for scripting.
+  - **Description:** Open the PR for the current branch (or a given PR
+    number/URL/branch) in the browser, or print its number/URL for scripting.
+    Also attempts to resolve already-merged PRs even if the remote branch was
+    deleted.
   - **Examples:** `,gh-prw`; `,gh-prw 12345`; `,gh-prw --number`; `,gh-prw --url`
 - **Name:** `,gh-tfork`
   - **Description:** Fork + clone a repo into `./<repo>/main`, then create/focus
@@ -666,6 +668,18 @@ sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply kapral18
 ```
 
 ---
+
+## Repo Git Hooks (Dev)
+
+This repo includes a local pre-commit hook in `.githooks/pre-commit` that runs
+`shfmt` on staged shell scripts and re-stages them so formatting is included in
+the commit.
+
+Enable it for this repo only:
+
+```bash
+git config core.hooksPath .githooks
+```
 
 ## 📚 Further Reading
 

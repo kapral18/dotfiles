@@ -53,6 +53,7 @@ Examples:
 ### PR lookup/open: `,gh-prw`
 
 - Source: `home/exact_bin/executable_,gh-prw`
+- Note: attempts to resolve merged PRs even if the remote branch was deleted.
 
 Examples:
 

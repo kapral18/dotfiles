@@ -12,7 +12,9 @@ Behavior:
   - --number: print the PR number and exit.
   - --url: print the PR URL and exit.
 
-If no PR is provided, the PR for the current branch is used.
+If no PR is provided, the PR for the current branch is used. If the branch no
+longer exists on the remote (e.g. already merged + deleted), this command tries
+to resolve the PR via the current commit SHA as well.
 EOF
 }
 
@@ -21,77 +23,193 @@ target=""
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    -n|--number)
-      mode="number"
-      shift
-      ;;
-    -u|--url)
-      mode="url"
-      shift
-      ;;
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    --)
-      shift
-      break
-      ;;
-    -* )
-      # Unknown flag: pass through to gh (primarily for the default web mode).
-      break
-      ;;
-    *)
-      target="$1"
-      shift
-      break
-      ;;
+  -n | --number)
+    mode="number"
+    shift
+    ;;
+  -u | --url)
+    mode="url"
+    shift
+    ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  --)
+    shift
+    break
+    ;;
+  -*)
+    # Unknown flag: pass through to gh (primarily for the default web mode).
+    break
+    ;;
+  *)
+    target="$1"
+    shift
+    break
+    ;;
   esac
 done
 
-resolve_pr_number_fallback() {
-  base=$(gh repo view --json nameWithOwner -q .nameWithOwner)
-  up=$(git rev-parse --abbrev-ref --symbolic-full-name "@{upstream}" 2>/dev/null) || {
-    echo "No upstream configured" >&2
+gh_base_repo() {
+  gh repo view --json nameWithOwner -q .nameWithOwner
+}
+
+github_owner_from_remote_url() {
+  # Supports:
+  # - git@github.com:OWNER/REPO(.git)
+  # - https://github.com/OWNER/REPO(.git)
+  # - ssh://git@github.com/OWNER/REPO(.git)
+  local remote_url="${1:-}"
+  remote_url="${remote_url%.git}"
+  printf '%s' "$remote_url" | sed -E 's#^.*github.com[:/]##; s#/.*##'
+}
+
+resolve_pr_number_from_commit() {
+  local base="$1"
+  local sha="$2"
+
+  if [ -z "$sha" ]; then
     return 1
-  }
+  fi
 
-  remote=${up%%/*}
-  head=${up#*/}
-  remote_url=$(git remote get-url "$remote" 2>/dev/null) || {
-    echo "Unable to read remote URL for $remote" >&2
-    return 1
-  }
+  # Try stable API first; fall back to the older preview media type if needed.
+  local pr
+  pr=$(
+    gh api -H "Accept: application/vnd.github+json" \
+      "repos/$base/commits/$sha/pulls" \
+      --jq '
+        . as $prs
+        | ([$prs[] | select(.merged_at != null)] | sort_by(.number) | reverse | .[0].number)
+          // ([$prs[]] | sort_by(.number) | reverse | .[0].number)
+          // empty
+      ' 2>/dev/null || true
+  )
+  if [ -n "$pr" ] && [ "$pr" != "null" ]; then
+    printf '%s\n' "$pr"
+    return 0
+  fi
 
-  owner=$(printf "%s" "$remote_url" | sed -E 's#^git@github.com:##; s#^https://github.com/##; s#^ssh://git@github.com/##; s#/.*##')
+  pr=$(
+    gh api -H "Accept: application/vnd.github.groot-preview+json" \
+      "repos/$base/commits/$sha/pulls" \
+      --jq '
+        . as $prs
+        | ([$prs[] | select(.merged_at != null)] | sort_by(.number) | reverse | .[0].number)
+          // ([$prs[]] | sort_by(.number) | reverse | .[0].number)
+          // empty
+      ' 2>/dev/null || true
+  )
+  if [ -n "$pr" ] && [ "$pr" != "null" ]; then
+    printf '%s\n' "$pr"
+    return 0
+  fi
 
-  command -v jq >/dev/null 2>&1 || {
-    echo "jq is required" >&2
-    return 1
-  }
+  return 1
+}
 
+resolve_pr_number_from_head_search() {
+  local base="$1"
+  local head_search="$2"
+
+  local pr
   pr=$(
     gh pr list \
       -R "$base" \
-      --search "head:$head" \
-      --state open \
-      --json number,headRepositoryOwner \
-      | jq -r --arg owner "$owner" '.[] | select(.headRepositoryOwner.login == $owner) | .number' \
-      | head -n 1
+      --search "head:$head_search" \
+      --state all \
+      --limit 50 \
+      --json number,state,mergedAt \
+      --jq '
+        . as $prs
+        | ([$prs[] | select(.state == "OPEN")] | sort_by(.number) | reverse | .[0].number)
+          // ([$prs[] | select(.state == "MERGED" or (.mergedAt // empty) != empty)] | sort_by(.number) | reverse | .[0].number)
+          // ([$prs[]] | sort_by(.number) | reverse | .[0].number)
+          // empty
+      ' 2>/dev/null || true
   )
 
   if [ -z "$pr" ] || [ "$pr" = "null" ]; then
-    echo "No PR found for $owner:$head on $base" >&2
     return 1
   fi
 
   printf '%s\n' "$pr"
 }
 
+resolve_pr_number_fallback() {
+  local base
+  base=$(gh_base_repo)
+
+  local head=""
+  local owner=""
+  local up=""
+  local remote=""
+  local remote_url=""
+  local pr=""
+
+  if up=$(git rev-parse --abbrev-ref --symbolic-full-name "@{upstream}" 2>/dev/null); then
+    remote=${up%%/*}
+    head=${up#*/}
+    if remote_url=$(git remote get-url "$remote" 2>/dev/null); then
+      owner=$(github_owner_from_remote_url "$remote_url")
+    fi
+  fi
+
+  if [ -z "$head" ]; then
+    head=$(git branch --show-current 2>/dev/null || true)
+  fi
+
+  if [ -z "$head" ]; then
+    echo "Unable to resolve branch name (detached HEAD?)" >&2
+    return 1
+  fi
+
+  if [ -n "$owner" ]; then
+    if pr=$(resolve_pr_number_from_head_search "$base" "$owner:$head"); then
+      printf '%s\n' "$pr"
+      return 0
+    fi
+  fi
+
+  if pr=$(resolve_pr_number_from_head_search "$base" "$head"); then
+    printf '%s\n' "$pr"
+    return 0
+  fi
+
+  echo "No PR found for $head on $base" >&2
+  return 1
+}
+
 resolve_pr_number() {
+  local pr=""
+  local base=""
+  local sha=""
+
   if [ -n "$target" ]; then
-    gh pr view "$target" --json number --jq '.number'
-    return
+    if pr=$(gh pr view "$target" --json number --jq '.number' 2>/dev/null); then
+      printf '%s\n' "$pr"
+      return 0
+    fi
+
+    case "$target" in
+    *github.com*/*/pull/* | http://* | https://*)
+      echo "Unable to resolve PR from URL: $target" >&2
+      return 1
+      ;;
+    '')
+      echo "No target provided" >&2
+      return 1
+      ;;
+    *)
+      base=$(gh_base_repo)
+      if pr=$(resolve_pr_number_from_head_search "$base" "$target"); then
+        printf '%s\n' "$pr"
+        return 0
+      fi
+      echo "No PR found for $target on $base" >&2
+      return 1
+      ;;
+    esac
   fi
 
   if pr=$(gh pr view --json number --jq '.number' 2>/dev/null); then
@@ -99,13 +217,37 @@ resolve_pr_number() {
     return
   fi
 
+  base=$(gh_base_repo)
+  sha=$(git rev-parse HEAD 2>/dev/null || true)
+  if [ -n "$sha" ]; then
+    if pr=$(resolve_pr_number_from_commit "$base" "$sha"); then
+      printf '%s\n' "$pr"
+      return 0
+    fi
+  fi
+
   resolve_pr_number_fallback
 }
 
 resolve_pr_url() {
+  local url=""
+  local base=""
+  local pr=""
+
   if [ -n "$target" ]; then
-    gh pr view "$target" --json url --jq '.url'
-    return
+    if url=$(gh pr view "$target" --json url --jq '.url' 2>/dev/null); then
+      printf '%s\n' "$url"
+      return 0
+    fi
+
+    base=$(gh_base_repo)
+    if pr=$(resolve_pr_number_from_head_search "$base" "$target"); then
+      gh pr view -R "$base" "$pr" --json url --jq '.url'
+      return 0
+    fi
+
+    echo "No PR found for $target on $base" >&2
+    return 1
   fi
 
   if url=$(gh pr view --json url --jq '.url' 2>/dev/null); then
@@ -113,7 +255,12 @@ resolve_pr_url() {
     return
   fi
 
-  base=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+  base=$(gh_base_repo)
+  if pr=$(resolve_pr_number_from_commit "$base" "$(git rev-parse HEAD 2>/dev/null || true)"); then
+    gh pr view -R "$base" "$pr" --json url --jq '.url'
+    return 0
+  fi
+
   pr=$(resolve_pr_number_fallback)
   gh pr view -R "$base" "$pr" --json url --jq '.url'
 }
@@ -138,6 +285,10 @@ if gh pr view -w 2>/dev/null; then
   exit 0
 fi
 
-base=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+base=$(gh_base_repo)
+if pr=$(resolve_pr_number_from_commit "$base" "$(git rev-parse HEAD 2>/dev/null || true)"); then
+  exec gh pr view -R "$base" -w "$pr"
+fi
+
 pr=$(resolve_pr_number_fallback)
 exec gh pr view -R "$base" -w "$pr"

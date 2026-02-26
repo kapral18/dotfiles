@@ -75,17 +75,17 @@ trap 'rm -f "$temp_fifo"' EXIT INT TERM
 
 (
   export TRACE_REGEX="$regex"
-  
+
   git ls-files -z -- "$search_path" |
     parallel -0 -j"$max_jobs" --line-buffer \
       'git -c log.showSignature=false log --oneline --follow -G "$TRACE_REGEX" -- {}' |
-    awk '!seen[$0]++ { print; fflush() }' > "$temp_fifo"
+    awk '!seen[$0]++ { print; fflush() }' >"$temp_fifo"
 ) &
 
 search_pid=$!
 
 set +e
-selection="$(fzf --info=inline-right --header="Searching for '$regex' in $search_path..." --header-first < "$temp_fifo")"
+selection="$(fzf --info=inline-right --header="Searching for '$regex' in $search_path..." --header-first <"$temp_fifo")"
 fzf_status=$?
 set -e
 
