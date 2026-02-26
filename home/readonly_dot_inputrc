@@ -32,15 +32,5 @@ set visible-stats on
 # Readline used by Bash 4.)
 set skip-completed-text on
 
-# Allow UTF-8 input and output, instead of showing stuff like $'\0123\0456'
-set input-meta on
-set output-meta on
-set convert-meta off
-
 # Use Alt/Meta + Delete to delete the preceding word
 "\e[3;3~": kill-word
-
-# http://www.reddit.com/r/commandline/comments/kbeoe/you_can_make_readline_and_bash_much_more_user/
-Control-j: menu-complete
-Control-k: menu-complete-backward
-tab: complete
