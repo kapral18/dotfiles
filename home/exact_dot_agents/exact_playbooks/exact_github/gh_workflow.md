@@ -67,8 +67,21 @@ If explicitly asked to POST a batch as a draft (PENDING) review:
   `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews`
 - Include all inline comments in the `comments` array in that same request.
 - Every inline comment must resolve to a valid diff anchor.
-  - Prefer `position` (diff-relative). Compute it from the PR's unified diff.
-  - If a file has multiple hunks (or repeated target lines), create separate comments and compute the correct anchor per hunk/occurrence.
+- Prefer `line`/`side` anchoring over `position` (less error-prone):
+  - Use `line` (the file line number on the right side) + `side: "RIGHT"`.
+  - For left-side-only comments, use `side: "LEFT"` + the old-file line number.
+  - For multi-line ranges, add `start_line` + `start_side`.
+  - The `line`/`side` approach uses absolute file line numbers (visible in the
+    GitHub diff UI), so there is no off-by-one math to get wrong.
+- If you must use `position` (diff-relative, 1-indexed into the patch text):
+  - Fetch the file's `patch` from `GET /repos/{o}/{r}/pulls/{n}/files`.
+  - Split by newlines. Line 1 of the split = position 1 (the hunk header).
+  - The comment renders ON the line at that position. There is no off-by-one:
+    if you want the comment on the 5th line of the patch, use `position: 5`.
+  - If a file has multiple hunks (or repeated target lines), create separate
+    comments and verify the correct hunk/occurrence.
+  - Common trap: the patch changes when new commits are pushed. Always re-fetch
+    the patch from the current PR head before computing positions.
 - Keep the review summary body empty unless the user explicitly wants a public summary.
 
 After submitting, verify what actually posted:
@@ -82,7 +95,7 @@ After submitting, verify what actually posted:
 - Count posted inline comments and reconcile anything missing; if needed, post
   a follow-up (non-batch) comment with leftover deep links.
 
-Example (create a pending review with many draft comments):
+Example (create a pending review with line/side anchoring — preferred):
 
 ```bash
 cat > /tmp/review-payload.json <<'JSON'
@@ -90,8 +103,8 @@ cat > /tmp/review-payload.json <<'JSON'
   "commit_id": "HEAD_SHA",
   "body": "",
   "comments": [
-    { "path": "path/to/file.ts", "position": 6, "body": "Comment text.\n\nWdyt" },
-    { "path": "path/to/file.ts", "position": 19, "body": "Another comment.\n\nWdyt" }
+    { "path": "path/to/file.ts", "line": 42, "side": "RIGHT", "body": "Comment text.\n\nWdyt" },
+    { "path": "path/to/file.ts", "line": 78, "side": "RIGHT", "body": "Another comment.\n\nWdyt" }
   ]
 }
 JSON

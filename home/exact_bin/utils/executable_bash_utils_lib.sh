@@ -148,6 +148,26 @@ _bag_and_rmdir_upwards_ignoring_ds_store() {
       continue
     fi
 
+    # If this directory contains any *other* worktree roots, do not bag or
+    # delete it. The bag is only for leftover non-worktree items between the
+    # wrapper and a removed worktree.
+    if [ -e "$cur/.git" ]; then
+      break
+    fi
+    local has_other_worktree=0
+    local child
+    while IFS= read -r child; do
+      [ -n "$child" ] || continue
+      # A worktree root has a `.git` file or directory.
+      if [ -e "$child/.git" ]; then
+        has_other_worktree=1
+        break
+      fi
+    done < <(find "$cur" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null || true)
+    if [ "$has_other_worktree" -eq 1 ]; then
+      break
+    fi
+
     # Try to preserve remaining content (excluding `.DS_Store`) into a bag
     # outside the wrapper, then continue pruning.
     rm -f "$cur/.DS_Store" 2>/dev/null || true

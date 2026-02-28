@@ -112,8 +112,8 @@ rm_cmd="$HOME/.config/tmux/scripts/pick_session_action_remove_worktrees.sh"
 live_refresh_cmd="$HOME/.config/tmux/scripts/pick_session_live_refresh.sh"
 hide_selected_cmd="$HOME/.config/tmux/scripts/pick_session_items_hide_selected.sh"
 update_cmd="$HOME/.config/tmux/scripts/pick_session_index_update.sh"
-kill_async_cmd="tmux run-shell -b $(printf %q "$kill_cmd $(printf %q "$sel_tmp")")"
-rm_async_cmd="tmux run-shell -b $(printf %q "$rm_cmd $(printf %q "$sel_tmp")")"
+kill_async_cmd="tmux run-shell -b \"$(printf %q "$kill_cmd") $(printf %q "$sel_tmp")\""
+rm_async_cmd="tmux run-shell -b \"$(printf %q "$rm_cmd") $(printf %q "$sel_tmp")\""
 
 fzf_args="$(tmux_opt '@pick_session_fzf_options' '')"
 fzf_prompt="$(tmux_opt '@pick_session_fzf_prompt' '󰍉  ')"
@@ -130,38 +130,32 @@ help_cmd="$HOME/.config/tmux/scripts/pick_session_keyhelp.sh"
 
 # Avoid showing a stale list that re-sorts mid-picker. A quick-only refresh is
 # fast and preserves the existing directory section in the cache.
-if [ -x "$update_cmd" ]; then
-  "$update_cmd" --quiet --quick-only >/dev/null 2>&1 || true
-fi
+# Removed blocking call to ensure instant opening.
 
 selection_file="${PICK_SESSION_SELECTION_FILE:-}"
 if [ -n "$selection_file" ] && [ -f "$selection_file" ]; then
   pick="$(cat "$selection_file" 2>/dev/null || true)"
 else
   rm -f "$primary_tmp" 2>/dev/null || true
+  # shellcheck disable=SC2086
   pick="$(
-    # shellcheck disable=SC2086
-    FZF_DEFAULT_OPTS="" fzf \
+    FZF_DEFAULT_OPTS="" "$filter_cmd" | fzf \
       --ansi \
       --height=100% \
       --listen \
-      --disabled \
-      --phony \
-      --no-sort \
       --filepath-word \
       --reverse \
       --tiebreak=index \
       --delimiter=$'\t' \
-      --nth=1 \
+      --nth=1,6 \
       --with-nth=1 \
       --multi \
       "${fzf_ui_args[@]}" \
       --query "$query" \
       --preview "$help_cmd" \
       --preview-window 'down,80%,wrap,hidden,border-top' \
-      --bind "start:reload($filter_cmd {q})+execute-silent:case $live_refresh_on_start in 1|true|yes|on) $live_refresh_cmd >/dev/null 2>&1 & ;; esac" \
-      --bind "change:reload($filter_cmd {q})" \
-      --bind "ctrl-r:reload($filter_cmd {q})" \
+      --bind "start:execute-silent:case $live_refresh_on_start in 1|true|yes|on) $live_refresh_cmd >/dev/null 2>&1 & ;; esac" \
+      --bind "ctrl-r:reload($filter_cmd --refresh)+clear-query" \
       --bind "alt-r:execute-silent:$live_refresh_cmd --once --force >/dev/null 2>&1 &" \
       --bind "alt-j:page-down" \
       --bind "alt-k:page-up" \
@@ -172,16 +166,16 @@ else
       --bind "shift-left:preview-page-up" \
       --bind "shift-right:preview-page-down" \
       --bind "ctrl-/:toggle-preview" \
+      --bind "change:first" \
       --bind "enter:execute-silent(cp {f} $(printf %q "$primary_tmp"))+accept" \
       --bind "ctrl-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") kill {q})+execute-silent($kill_async_cmd)+clear-selection" \
       --bind "alt-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") remove {q})+execute-silent($rm_async_cmd)+clear-selection" \
       --header $'ctrl-/=help' \
       \
-      ${fzf_args} </dev/null ||
+      ${fzf_args} ||
       true
   )"
 fi
-
 if [ -z "$pick" ]; then
   exit 0
 fi
@@ -561,10 +555,10 @@ MODE="$(tmux_opt "@pick_session_mode" "directory")"
 AUTO_RENAME_SESSIONS="$(tmux_opt "@pick_session_auto_rename_sessions" "off")"
 
 selection_count="$(printf '%s\n' "$selections" | awk 'NF { c++ } END { print c + 0 }')"
-create_layout="two-pane"
-if [ "${selection_count:-0}" -gt 1 ]; then
-  create_layout="deferred"
-fi
+# Session creation should feel instant. Always create new sessions in a
+# lightweight placeholder mode, then let the session-switch hook respawn panes
+# into the real shell + layout when you actually enter the session.
+create_layout="deferred"
 created_any_session=0
 target_session=""
 primary_set=0
@@ -721,6 +715,24 @@ while IFS= read -r _line; do
       if [ -n "$candidate" ] && tmux_has_session_exact "$candidate"; then
         tmux rename-session -t "=${candidate}" "$canonical_name" 2>/dev/null || true
       fi
+    fi
+
+    # If there is already a session pointing at this worktree path but it has a
+    # different (often incomplete) name, rename it to the final chosen name so
+    # panes/windows are preserved and the picker entry is consistent.
+    if [ -n "$session_name" ] && ! tmux_has_session_exact "$session_name"; then
+      rp_sel="$(resolve_path "$path")"
+      while IFS=$'\t' read -r sname spath; do
+        [ -n "$sname" ] || continue
+        [ -n "$spath" ] || continue
+        rp_spath="$(resolve_path "$spath")"
+        if [ -n "$rp_sel" ] && [ "$rp_spath" = "$rp_sel" ]; then
+          if [ "$sname" != "$session_name" ] && ! tmux_has_session_exact "$session_name"; then
+            tmux rename-session -t "=${sname}" "$session_name" 2>/dev/null || true
+          fi
+          break
+        fi
+      done < <(tmux list-sessions -F $'#{session_name}\t#{session_path}' 2>/dev/null || true)
     fi
     ensure_session_layout "$session_name" "$path" "$create_layout"
     if [ "$is_primary" -eq 1 ] || [ "$primary_set" -eq 0 ]; then

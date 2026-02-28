@@ -78,6 +78,8 @@ def append_mutation_tombstones():
         for kind, _path, _meta, target in selected_rows:
             if kind == "session" and target:
                 lines.append(f"{now}\tSESSION_TARGET\t{target}\n")
+            elif kind == "dir" and _path:
+                lines.append(f"{now}\tPATH_PREFIX\t{resolve_path(_path)}\n")
     elif mode == "remove":
         for kind, path, meta, _target in selected_rows:
             if not path:
@@ -88,11 +90,12 @@ def append_mutation_tombstones():
             if kind == "session":
                 meta_base = (meta or "").split("|", 1)[0]
                 if meta_base.startswith("sess_root:") or meta_base.startswith("sess_wt:"):
-                    # Session paths can point at a subdir inside a worktree.
-                    # Tombstone the worktree root so the repo/worktree row
-                    # disappears immediately on the next reload.
                     wt = worktree_dir_for_path(path) or path
                     lines.append(f"{now}\tPATH_PREFIX\t{resolve_path(wt)}\n")
+                else:
+                    lines.append(f"{now}\tPATH_PREFIX\t{resolve_path(path)}\n")
+            if kind == "dir":
+                lines.append(f"{now}\tPATH_PREFIX\t{resolve_path(path)}\n")
     if not lines:
         return
     try:
@@ -114,64 +117,33 @@ for raw in proc.stdout.splitlines():
         continue
     _display, kind, path, _meta, target = parts[:5]
     if (kind, path, target) in selected:
-        continue
+        if mode == "kill" and kind == "worktree":
+            pass
+        else:
+            continue
     base_rows.append(raw)
 
-def norm_token(s: str) -> str:
-    s = (s or "").strip().lower()
-    if not s:
-        return ""
-    return re.sub(r"[^a-z0-9]+", "", s)
+# --- shared grouping logic ---
 
-def compute_mk(parts: list[str]) -> str:
-    if len(parts) >= 6 and (parts[5] or "").strip():
-        mk = parts[5].strip()
-        extra: list[str] = []
-        try:
-            _display, kind, path, meta, target = parts[:5]
-        except Exception:
-            target = ""
-            path = ""
-        extra.extend([norm_token(mk), norm_token(target), norm_token(path)])
-        extra = [t for t in extra if t]
-        return " ".join([mk] + extra)
-    if len(parts) < 5:
-        return ""
-    _display, kind, path, meta, target = parts[:5]
-    path = (path or "").rstrip("/")
-    base = path.split("/")[-1] if path else ""
-    meta = (meta or "").strip()
-    target = (target or "").strip()
-    tokens: list[str] = []
-    if kind == "session":
-        tokens = [p for p in [target, base, path] if p]
-        normed = [norm_token(t) for t in tokens]
-        normed = [t for t in normed if t]
-        return " ".join(tokens + normed)
-    # For worktree/dir rows, the cached match key should already be present,
-    # but keep a basic fallback here.
-    tokens = [p for p in [base, path] if p]
-    normed = [norm_token(t) for t in tokens]
-    normed = [t for t in normed if t]
-    return " ".join(tokens + normed)
+KIND_PRIO = {"session": 3, "worktree": 2, "dir": 1}
+DEFAULT_BRANCHES = {"main", "master", "trunk", "develop", "dev"}
 
-def dedup_best(rows: list[str]) -> list[str]:
-    kind_prio = {"session": 3, "worktree": 2, "dir": 1}
-    best_by_path: dict[str, tuple[int, int]] = {}
+
+def dedup_best(rows):
+    best_by_path = {}
     for i, line in enumerate(rows):
         parts = line.split("\t")
         if len(parts) < 5:
             continue
-        kind = parts[1]
-        path = parts[2] or ""
+        kind, path = parts[1], parts[2] or ""
         if not path:
             continue
-        pr = kind_prio.get(kind, 0)
+        pr = KIND_PRIO.get(kind, 0)
         prev = best_by_path.get(path)
         if prev is None or pr > prev[0]:
             best_by_path[path] = (pr, i)
-    out: list[str] = []
-    seen_paths: set[str] = set()
+    out = []
+    seen = set()
     for i, line in enumerate(rows):
         parts = line.split("\t")
         if len(parts) < 5:
@@ -187,73 +159,219 @@ def dedup_best(rows: list[str]) -> list[str]:
             continue
         if best[1] != i:
             continue
-        if path in seen_paths:
+        if path in seen:
             continue
-        seen_paths.add(path)
+        seen.add(path)
         out.append(line)
     return out
 
-def emit_buckets(rows: list[str]):
-    sessions: list[str] = []
-    worktrees: list[str] = []
-    dirs: list[str] = []
-    other: list[str] = []
-    for line in rows:
+
+def wrapper_for_root(root):
+    base = os.path.basename(root.rstrip("/"))
+    if base in DEFAULT_BRANCHES:
+        parent = os.path.dirname(root.rstrip("/"))
+        return parent if parent else root
+    return root
+
+
+def grouped_output(rows):
+    deduped = dedup_best(rows)
+
+    wt_path_to_root = {}
+    for line in deduped:
         parts = line.split("\t")
         if len(parts) < 5:
-            other.append(line)
             continue
-        kind = parts[1]
+        kind, path, target = parts[1], parts[2], parts[4]
+        if kind == "worktree" and target:
+            wt_path_to_root[path] = target
+
+    candidate_roots = set()
+    for line in deduped:
+        parts = line.split("\t")
+        if len(parts) < 5:
+            continue
+        kind, path, meta, target = parts[1], parts[2], parts[3], parts[4]
+        if kind == "worktree" and target:
+            candidate_roots.add(target)
         if kind == "session":
-            sessions.append(line)
-        elif kind == "worktree":
-            worktrees.append(line)
+            meta_base = (meta or "").split("|")[0]
+            if meta_base.startswith("sess_root:") and path:
+                candidate_roots.add(path)
+
+    wrapper_to_root = {}
+    def prefer_root(a: str, b: str) -> str:
+        abase = os.path.basename((a or "").rstrip("/"))
+        bbase = os.path.basename((b or "").rstrip("/"))
+        a_def = abase in DEFAULT_BRANCHES
+        b_def = bbase in DEFAULT_BRANCHES
+        if a_def and not b_def:
+            return a
+        if b_def and not a_def:
+            return b
+        return a if len(a) <= len(b) else b
+
+    for r in candidate_roots:
+        w = wrapper_for_root(r)
+        prev = wrapper_to_root.get(w)
+        wrapper_to_root[w] = r if prev is None else prefer_root(prev, r)
+
+    wrapper_prefixes = sorted(wrapper_to_root.keys(), key=len, reverse=True)
+    def root_for_path_by_wrapper(p: str):
+        if not p:
+            return None
+        for w in wrapper_prefixes:
+            if p == w or p.startswith(w + "/"):
+                return wrapper_to_root.get(w)
+        return None
+
+    root_order = []
+    root_groups = {}
+    ungrouped_sessions = []
+    dir_rows = []
+    other_rows = []
+
+    def ensure_group(root):
+        if root not in root_groups:
+            root_order.append(root)
+            root_groups[root] = {"sessions": [], "worktrees": []}
+        return root_groups[root]
+
+    for line in deduped:
+        parts = line.split("\t")
+        if len(parts) < 5:
+            other_rows.append(line)
+            continue
+        kind, path, meta, target = parts[1], parts[2], parts[3], parts[4]
+
+        if kind == "worktree":
+            root = target or path
+            ensure_group(root)["worktrees"].append(line)
+        elif kind == "session":
+            root = None
+            meta_base = (meta or "").split("|")[0]
+            if meta_base.startswith("sess_root:"):
+                root = path
+            elif meta_base.startswith("sess_wt:"):
+                root = wt_path_to_root.get(path)
+            if not root:
+                root = wt_path_to_root.get(path)
+            if not root:
+                root = root_for_path_by_wrapper(path)
+            if root:
+                ensure_group(root)["sessions"].append(line)
+            else:
+                ungrouped_sessions.append(line)
         elif kind == "dir":
-            dirs.append(line)
+            dir_rows.append(line)
         else:
-            other.append(line)
-    seen_paths: set[str] = set()
-    for bucket in (sessions, worktrees, dirs, other):
-        for line in dedup_best(bucket):
-            parts = line.split("\t")
-            if len(parts) >= 5:
-                path = parts[2] or ""
-                if path:
-                    if path in seen_paths:
-                        continue
-                    seen_paths.add(path)
-            print(line)
+            other_rows.append(line)
 
-if not (query or "").strip():
-    emit_buckets(base_rows)
-    raise SystemExit(0)
+    session_wrappers = set()
+    for root in root_order:
+        if root_groups[root]["sessions"]:
+            session_wrappers.add(wrapper_for_root(root))
+    for line in ungrouped_sessions:
+        parts = line.split("\t")
+        if len(parts) >= 3 and parts[2]:
+            session_wrappers.add(wrapper_for_root(parts[2]))
 
-filter_lines: list[str] = []
-for ln in base_rows:
-    parts = ln.split("\t")
-    mk = compute_mk(parts) or (parts[0] if parts else "")
-    mk = (mk or "").replace("\x1f", " ").strip()
-    filter_lines.append(f"{mk}\x1f{ln}")
+    wrapper_dirs = []
+    other_dirs = []
+    for line in dir_rows:
+        parts = line.split("\t")
+        path = parts[2] if len(parts) > 2 else ""
+        if path and path in session_wrappers:
+            wrapper_dirs.append(line)
+        else:
+            other_dirs.append(line)
 
-proc = subprocess.run(
-    ["fzf", "--exact", "--filter", query, "--delimiter", "\x1f", "--nth", "1"],
-    input="\n".join(filter_lines) + "\n",
-    text=True,
-    stdout=subprocess.PIPE,
-    stderr=subprocess.DEVNULL,
-    check=False,
-)
+    def session_name_for_row(line: str) -> str:
+        parts = line.split("\t")
+        if len(parts) >= 5:
+            return (parts[4] or "").strip().lower()
+        return ""
 
-matched: list[str] = []
-for raw in proc.stdout.splitlines():
-    line = raw.rstrip("\n")
-    if not line:
-        continue
-    try:
-        _mk, line = line.split("\x1f", 1)
-    except ValueError:
-        continue
-    matched.append(line)
+    def is_current_session_row(line: str) -> bool:
+        parts = line.split("\t")
+        if not parts:
+            return False
+        return " (current)" in parts[0]
 
-emit_buckets(matched)
+    def session_sort_key(line: str):
+        return (0 if is_current_session_row(line) else 1, session_name_for_row(line))
+
+    def worktree_sort_key(line: str):
+        parts = line.split("\t")
+        if len(parts) < 5:
+            return (1, "", "")
+        meta = (parts[3] or "")
+        path = (parts[2] or "")
+        is_root = 0 if meta.startswith("wt_root:") else 1
+        branch = meta.split(":", 1)[1] if ":" in meta else meta
+        return (is_root, (branch or "").lower(), path.lower())
+
+    result = []
+
+    session_groups = []
+    for root in root_order:
+        data = root_groups[root]
+        if not data["sessions"]:
+            continue
+        first_name = ""
+        for s in data["sessions"]:
+            n = session_name_for_row(s)
+            if n and (not first_name or n < first_name):
+                first_name = n
+        session_groups.append((first_name, root))
+    session_groups.sort()
+
+    emitted_worktree_roots = set()
+    for _name, root in session_groups:
+        data = root_groups[root]
+        result.extend(sorted(data["sessions"], key=session_sort_key))
+        if root not in emitted_worktree_roots:
+            result.extend(sorted(data["worktrees"], key=worktree_sort_key))
+            emitted_worktree_roots.add(root)
+
+    result.extend(sorted(ungrouped_sessions, key=session_sort_key))
+
+    for root in sorted([r for r in root_order if not root_groups[r]["sessions"]]):
+        result.extend(sorted(root_groups[root]["worktrees"], key=worktree_sort_key))
+
+    wrapper_by_path = {}
+    for line in wrapper_dirs:
+        parts = line.split("\t")
+        if len(parts) >= 3 and parts[2]:
+            wrapper_by_path[parts[2]] = line
+
+    emitted_wrappers = set()
+    for _name, root in session_groups:
+        w = wrapper_for_root(root)
+        if w in emitted_wrappers:
+            continue
+        dline = wrapper_by_path.get(w)
+        if dline:
+            result.append(dline)
+            emitted_wrappers.add(w)
+
+    for line in sorted(ungrouped_sessions, key=session_sort_key):
+        parts = line.split("\t")
+        if len(parts) < 3 or not parts[2]:
+            continue
+        w = wrapper_for_root(parts[2])
+        if w in emitted_wrappers:
+            continue
+        dline = wrapper_by_path.get(w)
+        if dline:
+            result.append(dline)
+            emitted_wrappers.add(w)
+
+    result.extend(other_dirs)
+    result.extend(other_rows)
+    return result
+
+
+for line in grouped_output(base_rows):
+    print(line)
 PY

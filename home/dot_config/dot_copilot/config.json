@@ -1,0 +1,17 @@
+{
+  "auto_update": true,
+  "include_coauthor": true,
+  "compact_paste": true,
+  "render_markdown": true,
+  "update_terminal_title": true,
+  "banner": "once",
+  "experimental": true,
+  "log_level": "default",
+  "model": "gpt-5.2",
+  "allowed_urls": [
+    "https://github.com",
+    "https://docs.github.com",
+    "*.github.com"
+  ],
+  "denied_urls": []
+}

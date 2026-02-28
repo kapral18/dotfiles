@@ -93,6 +93,20 @@ Examples of tool configs included here:
 - Codex: `home/dot_codex/`
 - Amp: `home/dot_config/exact_amp/private_settings.json` (private settings)
 - Gemini CLI: `home/dot_gemini/`
+- Copilot CLI: `home/dot_config/dot_copilot/`
+
+### Gemini CLI settings
+
+Source: `home/dot_gemini/settings.json` → `~/.gemini/settings.json`.
+
+- MCP servers are configured under `mcpServers`.
+- Tool approval is controlled by `general.defaultApprovalMode` (we use `auto_edit` to auto-approve edit tools).
+
+### Copilot CLI settings
+
+Source: `home/dot_config/dot_copilot/` → `~/.config/.copilot/`.
+
+- `config.json`, `mcp-config.json`, and `lsp-config.json` are managed directly by chezmoi.
 
 ## Secrets
 

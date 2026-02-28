@@ -27,7 +27,7 @@ list_worktrees_porcelain() {
     case "$key" in
     worktree)
       if [ -n "$worktree_path" ]; then
-        printf '%s\t%s\t%s\t%s\n' "$worktree_path" "$branch_ref" "$detached" "$locked"
+        printf '%s|%s|%s|%s\n' "$worktree_path" "$branch_ref" "$detached" "$locked"
       fi
       worktree_path="$value"
       branch_ref=""
@@ -47,7 +47,7 @@ list_worktrees_porcelain() {
   done < <(git worktree list --porcelain)
 
   if [ -n "$worktree_path" ]; then
-    printf '%s\t%s\t%s\t%s\n' "$worktree_path" "$branch_ref" "$detached" "$locked"
+    printf '%s|%s|%s|%s\n' "$worktree_path" "$branch_ref" "$detached" "$locked"
   fi
 }
 
@@ -147,8 +147,12 @@ notify() {
   fi
 }
 
-mapfile -t selectable_worktrees < <(
-  list_worktrees_porcelain | awk -F'\t' -v default_branch="$default_branch" '
+selectable_worktrees=()
+while IFS= read -r _line; do
+  [ -n "$_line" ] || continue
+  selectable_worktrees+=("$_line")
+done < <(
+  list_worktrees_porcelain | awk -F'|' -v default_branch="$default_branch" '
     {
       path=$1
       branch_ref=$2
@@ -180,32 +184,67 @@ if [ "$paths_mode" -eq 1 ]; then
     exit 1
   fi
 
-  find_branch_for_path() {
+  find_record_for_path() {
     local needle="$1"
-    local line p b
-    for line in "${selectable_worktrees[@]}"; do
-      IFS=$'\t' read -r p b <<<"$line"
+    local needle_rp
+    needle_rp="$(realpath "$needle" 2>/dev/null || printf '%s' "$needle")"
+    local line p branch_ref detached locked p_rp
+    while IFS='|' read -r p branch_ref detached locked; do
       [ -n "$p" ] || continue
-      if [ "$p" = "$needle" ]; then
-        printf '%s\n' "$b"
+      p_rp="$(realpath "$p" 2>/dev/null || printf '%s' "$p")"
+      if [ "$p" = "$needle" ] || [ "$p_rp" = "$needle" ] || [ "$p" = "$needle_rp" ] || [ "$p_rp" = "$needle_rp" ]; then
+        printf '%s|%s|%s|%s\n' "$p" "$branch_ref" "$detached" "$locked"
         return 0
       fi
-    done
+    done < <(list_worktrees_porcelain)
     return 1
   }
 
   for p in "${paths[@]}"; do
     p="$(realpath "$p" 2>/dev/null || printf '%s' "$p")"
-    b="$(find_branch_for_path "$p" || true)"
-    if [ -z "${b}" ]; then
-      notify "Skipping (not removable or not found): $p"
+    rec="$(find_record_for_path "$p" || true)"
+    if [ -z "${rec}" ]; then
+      notify "Skipping (not a git worktree path): $p"
       continue
     fi
-    worktrees+=("${p}"$'\t'"${b}")
+    IFS='|' read -r p_found branch_ref detached locked <<<"$rec"
+    case "$locked" in
+    1)
+      notify "Skipping locked worktree: $p_found"
+      continue
+      ;;
+    esac
+
+    branch=""
+    case "$branch_ref" in
+    refs/heads/*) branch="${branch_ref#refs/heads/}" ;;
+    esac
+
+    # Explicit paths: allow removing detached worktrees too.
+    if [ -z "$branch" ]; then
+      case "$detached" in
+      1) ;;
+      *)
+        notify "Skipping (not a local branch worktree): $p_found"
+        continue
+        ;;
+      esac
+    fi
+
+    if [ -n "$branch" ] && [ "$branch" = "$default_branch" ]; then
+      notify "Skipping default branch worktree: $p_found ($branch)"
+      continue
+    fi
+
+    worktrees+=("${p_found}"$'\t'"${branch}"$'\t'"${detached}")
   done
 else
   require_cmd fzf
-  mapfile -t worktrees < <(printf '%s\n' "${selectable_worktrees[@]}" | fzf --no-preview --multi)
+  worktrees=()
+  while IFS= read -r _line; do
+    [ -n "$_line" ] || continue
+    worktrees+=("$_line")
+  done < <(printf '%s\n' "${selectable_worktrees[@]}" | fzf --no-preview --multi)
 fi
 
 if [ ${#worktrees[@]} -eq 0 ]; then
@@ -246,29 +285,53 @@ _infer_remote_from_prefixed_branch() {
 }
 
 for worktree in "${worktrees[@]}"; do
-  IFS=$'\t' read -r worktree_path worktree_branch _ <<<"$worktree"
+  IFS=$'\t' read -r worktree_path worktree_branch worktree_detached <<<"$worktree"
 
-  notify "Removing worktree: $worktree_path ($worktree_branch)"
+  if [ -n "${worktree_detached:-}" ] && [ "$worktree_detached" = "1" ]; then
+    notify "Removing detached worktree: $worktree_path"
+  else
+    notify "Removing worktree: $worktree_path ($worktree_branch)"
+  fi
   if ! git worktree remove "$worktree_path"; then
     notify "Failed to remove worktree: $worktree_path"
     continue
   fi
 
-  remote="$(_get_branch_upstream_remote "$worktree_branch")"
-  if [ -z "$remote" ]; then
-    remote="$(_infer_remote_from_prefixed_branch "$worktree_branch")"
-  fi
-  if [ -n "$remote" ] && [ "$remote" != "origin" ] && [ "$remote" != "upstream" ]; then
-    remotes_to_check+=("$remote")
+  # `git worktree remove` can refuse to delete the directory if there are
+  # leftovers (permissions, races, etc.). Those should not be moved into `.bag`
+  # as a pseudo-worktree; delete the worktree dir itself and only bag leftover
+  # *intermediate* directories between the wrapper and the worktree path.
+  worktree_path_rp="$(realpath "$worktree_path" 2>/dev/null || printf '%s' "$worktree_path")"
+  if [ -e "$worktree_path_rp" ]; then
+    case "$worktree_path_rp" in
+    "" | "/" | "$HOME")
+      notify "Refusing to delete unsafe path: $worktree_path_rp"
+      continue
+      ;;
+    esac
+    notify "Worktree dir still exists; deleting: $worktree_path_rp"
+    rm -rf "$worktree_path_rp" 2>/dev/null || true
   fi
 
-  if worktree_branch_in_use "$worktree_branch"; then
-    echo "Branch '$worktree_branch' is still used by other worktrees, skipping deletion."
+  if [ -n "${worktree_detached:-}" ] && [ "$worktree_detached" = "1" ]; then
+    _remove_worktree_tmux_session 0 "$worktree_path" ""
   else
-    git branch -D "$worktree_branch"
-  fi
+    remote="$(_get_branch_upstream_remote "$worktree_branch")"
+    if [ -z "$remote" ]; then
+      remote="$(_infer_remote_from_prefixed_branch "$worktree_branch")"
+    fi
+    if [ -n "$remote" ] && [ "$remote" != "origin" ] && [ "$remote" != "upstream" ]; then
+      remotes_to_check+=("$remote")
+    fi
 
-  _remove_worktree_tmux_session 0 "$worktree_path" "$(_comma_w_tmux_session_name "$parent_name" "$worktree_branch")"
+    if worktree_branch_in_use "$worktree_branch"; then
+      echo "Branch '$worktree_branch' is still used by other worktrees, skipping deletion."
+    else
+      git branch -D "$worktree_branch"
+    fi
+
+    _remove_worktree_tmux_session 0 "$worktree_path" "$(_comma_w_tmux_session_name "$parent_name" "$worktree_branch")"
+  fi
 
   _bag_and_rmdir_upwards_ignoring_ds_store "$(dirname "$worktree_path")" "$parent_dir"
 

@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+{{- $srcJson := joinPath .chezmoi.sourceDir "dot_gemini/settings.json" -}}
+{{- if eq .isWork true }}
+# gemini settings desired hash (work): {{ output "jq" "-cS" "def strip_isWork: walk(if type == \"object\" then del(.\"__isWork__\") else . end); strip_isWork" $srcJson | trim | sha256sum }}
+{{- else }}
+# gemini settings desired hash (non-work): {{ output "jq" "-cS" "def strip_isWork: walk(if type == \"object\" then del(.\"__isWork__\") else . end); .mcpServers |= ((. // {}) | with_entries(select(.value.__isWork__ != true))) | strip_isWork" $srcJson | trim | sha256sum }}
+{{- end }}
+
+src="$(chezmoi source-path)/dot_gemini"
+target="$HOME/.gemini/settings.json"
+is_work="$(chezmoi data --format=json | jq -r '.isWork')"
+
+if [ "$is_work" = "true" ]; then
+  desired="$(jq '
+    def strip_isWork:
+      walk(if type == "object" then del(."__isWork__") else . end);
+    strip_isWork
+  ' "$src/settings.json")"
+else
+  desired="$(jq '
+    def strip_isWork:
+      walk(if type == "object" then del(."__isWork__") else . end);
+    .mcpServers |= ((. // {}) | with_entries(select(.value.__isWork__ != true)))
+    | strip_isWork
+  ' "$src/settings.json")"
+fi
+
+mkdir -p "$(dirname "$target")"
+
+if [ -f "$target" ] && [ "$(cat "$target")" = "$desired" ]; then
+  exit 0
+fi
+
+printf '%s\n' "$desired" >"$target"

@@ -1,152 +1,79 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-query="${*:-}"
-
 need_cmd() {
   command -v "$1" >/dev/null 2>&1
 }
 
-cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
-cache_file="${cache_dir}/pick_session_items.tsv"
-mutation_file="${cache_dir}/pick_session_mutations.tsv"
-
 items_cmd="$HOME/.config/tmux/scripts/pick_session_items.sh"
+update_cmd="$HOME/.config/tmux/scripts/pick_session_index_update.sh"
+
+refresh=0
+for arg in "$@"; do
+  case "$arg" in
+  --refresh) refresh=1 ;;
+  esac
+done
+
+if [ "$refresh" -eq 1 ] && [ -x "$update_cmd" ]; then
+  "$update_cmd" --force --quiet >/dev/null 2>&1 || true
+fi
 
 if [ ! -x "$items_cmd" ]; then
-  # Fallback: if items can't be generated, show whatever cache exists.
+  cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
+  cache_file="${cache_dir}/pick_session_items.tsv"
   [ -f "$cache_file" ] && cat "$cache_file"
   exit 0
 fi
 
-if ! need_cmd python3 || ! need_cmd fzf; then
+if ! need_cmd python3; then
   exec "$items_cmd"
 fi
 
-mutation_ttl="300"
-current_name=""
-if [ -n "${TMUX:-}" ] && need_cmd tmux; then
-  mutation_ttl="$(tmux show-option -gqv '@pick_session_mutation_tombstone_ttl' 2>/dev/null || printf '%s' "$mutation_ttl")"
-  current_name="$(tmux display-message -p '#S' 2>/dev/null || true)"
-fi
-case "$mutation_ttl" in
-'' | *[!0-9]*) mutation_ttl="300" ;;
-esac
-
-QUERY="$query" ITEMS_CMD="$items_cmd" CACHE_FILE="$cache_file" MUTATION_FILE="$mutation_file" MUTATION_TTL="$mutation_ttl" CURRENT_SESSION_NAME="$current_name" python3 - <<'PY'
+ITEMS_CMD="$items_cmd" python3 -u - <<'PY'
 import os
-import re
 import signal
 import subprocess
 import sys
-import time
-
-query = os.environ.get("QUERY", "")
-items_cmd = os.environ.get("ITEMS_CMD", "").strip()
 
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
-def norm_token(s: str) -> str:
-    s = (s or "").strip().lower()
-    if not s:
-        return ""
-    return re.sub(r"[^a-z0-9]+", "", s)
+items_cmd = os.environ.get("ITEMS_CMD", "").strip()
+if not items_cmd:
+    sys.exit(0)
 
-def compute_mk(parts: list[str]) -> str:
-    if len(parts) >= 6 and (parts[5] or "").strip():
-        mk = parts[5].strip()
-        # Augment cached match keys with normalized variants so queries like
-        # `kibanamain` still match `kibana|main`.
-        extra: list[str] = []
-        try:
-            _display, kind, path, meta, target = parts[:5]
-        except Exception:
-            target = ""
-            path = ""
-        extra.extend([norm_token(mk), norm_token(target), norm_token(path)])
-        extra = [t for t in extra if t]
-        return " ".join([mk] + extra)
-    if len(parts) < 5:
-        return ""
-    _display, kind, path, meta, target = parts[:5]
-    path = (path or "").rstrip("/")
-    base = path.split("/")[-1] if path else ""
-    meta = (meta or "").strip()
-    target = (target or "").strip()
-    tokens: list[str] = []
-    if kind == "session":
-        tokens = [p for p in [target, base, path] if p]
-        normed = [norm_token(t) for t in tokens]
-        normed = [t for t in normed if t]
-        return " ".join(tokens + normed)
-    if kind == "worktree":
-        branch = meta
-        if branch.startswith("wt_root:"):
-            branch = branch[len("wt_root:") :]
-        elif branch.startswith("wt:"):
-            branch = branch[len("wt:") :]
-        root = target.rstrip("/") if target else ""
-        repo = root.split("/")[-1] if root else ""
-        # Wrapper layout (`,w`): root worktree often lives in `<repo>/main`.
-        if repo in ("main", "master", "trunk", "develop", "dev") and "/" in root:
-            repo = root.split("/")[-2]
-        wt_name = f"{repo}|{branch}" if (repo and branch) else (repo or base)
-        tokens = [p for p in [wt_name, base, path] if p]
-        normed = [norm_token(t) for t in tokens]
-        normed = [t for t in normed if t]
-        return " ".join(tokens + normed)
-    if kind == "dir":
-        tokens = [p for p in [base, path] if p]
-        normed = [norm_token(t) for t in tokens]
-        normed = [t for t in normed if t]
-        return " ".join(tokens + normed)
-    tokens = [p for p in [base, path] if p]
-    normed = [norm_token(t) for t in tokens]
-    normed = [t for t in normed if t]
-    return " ".join(tokens + normed)
-
-base_out = ""
-if items_cmd:
-    try:
-        base_out = subprocess.run(
-            [items_cmd],
-            check=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-        ).stdout
-    except Exception:
-        base_out = ""
+try:
+    base_out = subprocess.run(
+        [items_cmd], check=False, stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL, text=True,
+    ).stdout
+except Exception:
+    sys.exit(0)
 
 if not base_out:
     sys.exit(0)
 
-lines: list[str] = []
-for raw in base_out.splitlines():
-    line = raw.rstrip("\n")
-    if not line:
-        continue
-    lines.append(line)
+lines = [l.rstrip("\n") for l in base_out.splitlines() if l.rstrip("\n")]
 
-def dedup_best(rows: list[str]) -> list[str]:
-    kind_prio = {"session": 3, "worktree": 2, "dir": 1}
-    best_by_path: dict[str, tuple[int, int]] = {}
-    # First pass: choose the best row index for each path.
+KIND_PRIO = {"session": 3, "worktree": 2, "dir": 1}
+DEFAULT_BRANCHES = {"main", "master", "trunk", "develop", "dev"}
+
+
+def dedup_best(rows):
+    best_by_path = {}
     for i, line in enumerate(rows):
         parts = line.split("\t")
         if len(parts) < 5:
             continue
-        kind = parts[1]
-        path = parts[2] or ""
+        kind, path = parts[1], parts[2] or ""
         if not path:
             continue
-        pr = kind_prio.get(kind, 0)
+        pr = KIND_PRIO.get(kind, 0)
         prev = best_by_path.get(path)
         if prev is None or pr > prev[0]:
             best_by_path[path] = (pr, i)
-    # Second pass: emit rows in original order, keeping only the best per path.
-    out: list[str] = []
-    seen_paths: set[str] = set()
+    out = []
+    seen = set()
     for i, line in enumerate(rows):
         parts = line.split("\t")
         if len(parts) < 5:
@@ -162,101 +89,240 @@ def dedup_best(rows: list[str]) -> list[str]:
             continue
         if best[1] != i:
             continue
-        if path in seen_paths:
+        if path in seen:
             continue
-        seen_paths.add(path)
+        seen.add(path)
         out.append(line)
     return out
 
-if not query.strip():
-    # When the query is empty, fzf shows the list as-is. Bucket by kind so
-    # sessions are always hoisted above worktrees/dirs, even if the base list
-    # contains "promoted" sessions in the middle (for example right after
-    # creating a session from a worktree and reopening the picker).
-    sessions: list[str] = []
-    worktrees: list[str] = []
-    dirs: list[str] = []
-    other: list[str] = []
-    for line in dedup_best(lines):
-        parts = line.split("\t")
-        if len(parts) < 5:
-            other.append(line)
-            continue
-        kind = parts[1]
-        if kind == "session":
-            sessions.append(line)
-        elif kind == "worktree":
-            worktrees.append(line)
-        elif kind == "dir":
-            dirs.append(line)
-        else:
-            other.append(line)
-    for bucket in (sessions, worktrees, dirs, other):
-        for line in bucket:
-            print(line)
-    sys.exit(0)
 
-filter_lines: list[str] = []
-for ln in lines:
-    parts = ln.split("\t")
-    mk = compute_mk(parts) or (parts[0] if parts else "")
-    mk = (mk or "").replace("\x1f", " ").strip()
-    filter_lines.append(f"{mk}\x1f{ln}")
+def wrapper_for_root(root):
+    base = os.path.basename(root.rstrip("/"))
+    if base in DEFAULT_BRANCHES:
+        parent = os.path.dirname(root.rstrip("/"))
+        return parent if parent else root
+    return root
 
-proc = subprocess.run(
-    # IMPORTANT: do not pass `--ansi` here. In `--filter` mode, fzf strips ANSI
-    # sequences from its output when `--ansi` is enabled, which would make the
-    # picker lose colors while typing.
-    ["fzf", "--exact", "--filter", query, "--delimiter", "\x1f", "--nth", "1"],
-    input="\n".join(filter_lines) + "\n",
-    text=True,
-    stdout=subprocess.PIPE,
-    stderr=subprocess.DEVNULL,
-    check=False,
-)
 
-sessions: list[str] = []
-worktrees: list[str] = []
-dirs: list[str] = []
-other: list[str] = []
+deduped = dedup_best(lines)
 
-for raw in proc.stdout.splitlines():
-    line = raw.rstrip("\n")
-    if not line:
-        continue
-    try:
-        _mk, line = line.split("\x1f", 1)
-    except ValueError:
-        continue
+# Build worktree path → root mapping from worktree rows.
+wt_path_to_root = {}
+for line in deduped:
     parts = line.split("\t")
     if len(parts) < 5:
-        other.append(line)
         continue
-    kind = parts[1]
+    kind, path, target = parts[1], parts[2], parts[4]
+    if kind == "worktree" and target:
+        wt_path_to_root[path] = target
+
+# Build wrapper → preferred root mapping so sessions can be grouped even when
+# their exact worktree path has no worktree row (because the session row
+# replaces it in the cache).
+candidate_roots = set()
+for line in deduped:
+    parts = line.split("\t")
+    if len(parts) < 5:
+        continue
+    kind, path, meta, target = parts[1], parts[2], parts[3], parts[4]
+    if kind == "worktree" and target:
+        candidate_roots.add(target)
     if kind == "session":
-        sessions.append(line)
-    elif kind == "worktree":
-        worktrees.append(line)
+        meta_base = (meta or "").split("|")[0]
+        if meta_base.startswith("sess_root:") and path:
+            candidate_roots.add(path)
+
+wrapper_to_root = {}
+def prefer_root(a: str, b: str) -> str:
+    abase = os.path.basename((a or "").rstrip("/"))
+    bbase = os.path.basename((b or "").rstrip("/"))
+    a_def = abase in DEFAULT_BRANCHES
+    b_def = bbase in DEFAULT_BRANCHES
+    if a_def and not b_def:
+        return a
+    if b_def and not a_def:
+        return b
+    # Prefer shorter path as a stable tie-breaker.
+    return a if len(a) <= len(b) else b
+
+for r in candidate_roots:
+    w = wrapper_for_root(r)
+    prev = wrapper_to_root.get(w)
+    wrapper_to_root[w] = r if prev is None else prefer_root(prev, r)
+
+wrapper_prefixes = sorted(wrapper_to_root.keys(), key=len, reverse=True)
+def root_for_path_by_wrapper(p: str):
+    if not p:
+        return None
+    for w in wrapper_prefixes:
+        if p == w or p.startswith(w + "/"):
+            return wrapper_to_root.get(w)
+    return None
+
+# Group entries by root, preserving insertion order.
+root_order = []
+root_groups = {}
+ungrouped_sessions = []
+dir_rows = []
+other_rows = []
+
+
+def ensure_group(root):
+    if root not in root_groups:
+        root_order.append(root)
+        root_groups[root] = {"sessions": [], "worktrees": []}
+    return root_groups[root]
+
+
+for line in deduped:
+    parts = line.split("\t")
+    if len(parts) < 5:
+        other_rows.append(line)
+        continue
+    kind, path, meta, target = parts[1], parts[2], parts[3], parts[4]
+
+    if kind == "worktree":
+        root = target or path
+        ensure_group(root)["worktrees"].append(line)
+
+    elif kind == "session":
+        root = None
+        meta_base = (meta or "").split("|")[0]
+        if meta_base.startswith("sess_root:"):
+            root = path
+        elif meta_base.startswith("sess_wt:"):
+            root = wt_path_to_root.get(path)
+        if not root:
+            root = wt_path_to_root.get(path)
+        if not root:
+            root = root_for_path_by_wrapper(path)
+        if root:
+            ensure_group(root)["sessions"].append(line)
+        else:
+            ungrouped_sessions.append(line)
+
     elif kind == "dir":
-        dirs.append(line)
+        dir_rows.append(line)
+
     else:
-        other.append(line)
+        other_rows.append(line)
 
-seen_paths: set[str] = set()
+# Determine wrapper dirs for roots that have sessions → used to tag related dirs.
+session_wrappers = set()
+for root in root_order:
+    if root_groups[root]["sessions"]:
+        session_wrappers.add(wrapper_for_root(root))
+for line in ungrouped_sessions:
+    parts = line.split("\t")
+    if len(parts) >= 3 and parts[2]:
+        session_wrappers.add(wrapper_for_root(parts[2]))
 
-def emit_bucket(rows: list[str]):
-    for line in dedup_best(rows):
-        parts = line.split("\t")
-        if len(parts) >= 5:
-            path = parts[2] or ""
-            if path:
-                if path in seen_paths:
-                    continue
-                seen_paths.add(path)
+wrapper_dirs = []
+other_dirs = []
+for line in dir_rows:
+    parts = line.split("\t")
+    path = parts[2] if len(parts) > 2 else ""
+    if path and path in session_wrappers:
+        wrapper_dirs.append(line)
+    else:
+        other_dirs.append(line)
+
+# --- Output in grouped order ---
+def session_name_for_row(line: str) -> str:
+    parts = line.split("\t")
+    if len(parts) >= 5:
+        return (parts[4] or "").strip().lower()
+    return ""
+
+# Prefer current session first, then name.
+def is_current_session_row(line: str) -> bool:
+    parts = line.split("\t")
+    if not parts:
+        return False
+    return " (current)" in parts[0]
+
+def session_sort_key(line: str):
+    return (0 if is_current_session_row(line) else 1, session_name_for_row(line))
+
+def worktree_sort_key(line: str):
+    parts = line.split("\t")
+    if len(parts) < 5:
+        return (1, "", "")
+    meta = (parts[3] or "")
+    path = (parts[2] or "")
+    # Root checkout first, then branch-ish meta, then path.
+    is_root = 0 if meta.startswith("wt_root:") else 1
+    branch = meta.split(":", 1)[1] if ":" in meta else meta
+    return (is_root, (branch or "").lower(), path.lower())
+
+# 1. Session groups sorted by session name: session, then related worktrees (same root).
+session_groups = []
+for root in root_order:
+    data = root_groups[root]
+    if not data["sessions"]:
+        continue
+    first_name = ""
+    for s in data["sessions"]:
+        n = session_name_for_row(s)
+        if n and (not first_name or n < first_name):
+            first_name = n
+    session_groups.append((first_name, root))
+session_groups.sort()
+
+emitted_worktree_roots = set()
+for _name, root in session_groups:
+    data = root_groups[root]
+    for line in sorted(data["sessions"], key=session_sort_key):
+        print(line)
+    if root not in emitted_worktree_roots:
+        for line in sorted(data["worktrees"], key=worktree_sort_key):
+            print(line)
+        emitted_worktree_roots.add(root)
+
+# 2. Ungrouped sessions (exist in tmux but have no cached worktree root), sorted.
+for line in sorted(ungrouped_sessions, key=session_sort_key):
+    print(line)
+
+# 3. Orphan worktree groups (root has no session), sorted by root path.
+for root in sorted([r for r in root_order if not root_groups[r]["sessions"]]):
+    for line in sorted(root_groups[root]["worktrees"], key=worktree_sort_key):
         print(line)
 
-emit_bucket(sessions)
-emit_bucket(worktrees)
-emit_bucket(dirs)
-emit_bucket(other)
+# 4. Wrapper dirs for session repos (in session group order).
+wrapper_by_path = {}
+for line in wrapper_dirs:
+    parts = line.split("\t")
+    if len(parts) >= 3 and parts[2]:
+        wrapper_by_path[parts[2]] = line
+
+emitted_wrappers = set()
+for _name, root in session_groups:
+    w = wrapper_for_root(root)
+    if w in emitted_wrappers:
+        continue
+    line = wrapper_by_path.get(w)
+    if line:
+        print(line)
+        emitted_wrappers.add(w)
+
+# Ungrouped sessions' wrapper dirs next.
+for line in sorted(ungrouped_sessions, key=session_sort_key):
+    parts = line.split("\t")
+    if len(parts) < 3 or not parts[2]:
+        continue
+    w = wrapper_for_root(parts[2])
+    if w in emitted_wrappers:
+        continue
+    dline = wrapper_by_path.get(w)
+    if dline:
+        print(dline)
+        emitted_wrappers.add(w)
+
+# 5. Other dirs.
+for line in other_dirs:
+    print(line)
+
+# 6. Anything else.
+for line in other_rows:
+    print(line)
 PY

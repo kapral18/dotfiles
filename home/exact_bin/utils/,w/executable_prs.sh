@@ -434,8 +434,13 @@ for pr_number in "${pr_numbers[@]}"; do
     fi
   fi
 
-  local_branch="${remote_name}__${branch_name}"
-  worktree_path="$parent_dir/$remote_name/$branch_name"
+  if [ "$remote_name" = "origin" ] || [ "$remote_name" = "upstream" ]; then
+    local_branch="$branch_name"
+    worktree_path="$parent_dir/$branch_name"
+  else
+    local_branch="${remote_name}__${branch_name}"
+    worktree_path="$parent_dir/$remote_name/$branch_name"
+  fi
 
   # If this PR was previously checked out using a pr-<number> branch name,
   # rename/move it to the current naming scheme to avoid duplicate worktrees.
@@ -497,6 +502,14 @@ for pr_number in "${pr_numbers[@]}"; do
 
   _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$local_branch" "$worktree_path"
   _print_created_worktree_message "$quiet_mode" "$local_branch" "$worktree_path" "$base_ref"
+
+  # Native Git Smart Push Routing for prefixed branches
+  if [[ "$local_branch" == *__* ]] && [ "$remote_name" != "origin" ] && [ "$remote_name" != "upstream" ]; then
+    git config extensions.worktreeConfig true
+    git -C "$worktree_path" config --worktree remote.pushDefault "$remote_name"
+    git -C "$worktree_path" config --worktree push.default upstream
+    info "Configured per-worktree smart push routing -> $remote_name"
+  fi
 
   if command -v zoxide &>/dev/null; then
     zoxide add "$worktree_path" 2>/dev/null || true

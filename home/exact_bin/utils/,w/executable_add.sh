@@ -202,6 +202,13 @@ if [ "$is_base_branch_specified" -eq 0 ]; then
       git_worktree_add "$worktree_path" -b "$local_branch" "${input_remote}/${input_remote_branch}"
       _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$local_branch" "$worktree_path"
       _print_created_worktree_message "$quiet_mode" "$local_branch" "$worktree_path" "${input_remote}/${input_remote_branch}"
+
+      if [[ "$local_branch" == *__* ]] && [ "$input_remote" != "origin" ] && [ "$input_remote" != "upstream" ]; then
+        git config extensions.worktreeConfig true
+        git -C "$worktree_path" config --worktree remote.pushDefault "$input_remote"
+        git -C "$worktree_path" config --worktree push.default upstream
+        info "Configured per-worktree smart push routing -> $input_remote"
+      fi
     fi
   else
     worktree_path="$parent_dir/$branch_name"
@@ -316,6 +323,13 @@ else
   git_worktree_add "$worktree_path" -b "$target_branch" "$base_ref"
   _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$target_branch" "$worktree_path"
   _print_created_worktree_message "$quiet_mode" "$target_branch" "$worktree_path" "$base_ref"
+
+  if [[ "$target_branch" == *__* ]] && [ -n "$base_remote" ] && [ "$base_remote" != "origin" ] && [ "$base_remote" != "upstream" ]; then
+    git config extensions.worktreeConfig true
+    git -C "$worktree_path" config --worktree remote.pushDefault "$base_remote"
+    git -C "$worktree_path" config --worktree push.default upstream
+    info "Configured per-worktree smart push routing -> $base_remote"
+  fi
 fi
 
 if command -v zoxide &>/dev/null; then

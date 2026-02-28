@@ -35,8 +35,7 @@ tildefy_to_reply() {
 print_dir_row() {
   local path="$1"
   tildefy_to_reply "$path"
-  local base
-  base="$(basename "$path")"
+  local base="${path##*/}"
   [ -n "$base" ] || base="$path"
   local mk
   mk="${base} ${REPLY} ${path}"
@@ -223,14 +222,24 @@ emit_home_dirs_seeded() {
   done
 }
 
-emit_sessions_and_worktrees() {
+emit_sessions_worktrees_and_dirs() {
   need_cmd tmux || return 0
 
   export PICK_SESSION_SCAN_ROOTS
   export PICK_SESSION_SCAN_DEPTH
   export PICK_SESSION_QUICK
+  export PICK_SESSION_SESSIONS_ONLY
+  export PICK_SESSION_EXCLUDE_LIST
+  export PICK_SESSION_DIR_MAX_DEPTH
+  export PICK_SESSION_DIR_INCLUDE_HIDDEN
+
   PICK_SESSION_SCAN_ROOTS="$(tmux_opt '@pick_session_worktree_scan_roots' "$HOME/work,$HOME/code,$HOME/.backport/repositories,$HOME/.local/share")"
   PICK_SESSION_SCAN_DEPTH="$(tmux_opt '@pick_session_worktree_scan_depth' '6')"
+  PICK_SESSION_EXCLUDE_LIST="$(tmux_opt '@pick_session_dir_exclude' '.git,.git/*,.git/**,.cache,.cache/*,.cache/**,.bazel-cache,.bazel-cache/*,.bazel-cache/**,.amp,.amp/*,.amp/**,Library,Library/*,Library/**,.gradle,.gradle/*,.gradle/**,.npm,.npm/*,.npm/**,.pnpm-store,.pnpm-store/*,.pnpm-store/**,node_modules,bazel-*,dist,build,out,target,__pycache__,.pytest_cache,.mypy_cache,.ruff_cache,.tox,.venv,venv,.terraform,.terragrunt-cache')"
+  PICK_SESSION_QUICK="$quick_mode"
+  PICK_SESSION_SESSIONS_ONLY="$sessions_only"
+  PICK_SESSION_DIR_MAX_DEPTH="$(tmux_opt '@pick_session_dir_max_depth' '4')"
+  PICK_SESSION_DIR_INCLUDE_HIDDEN="$(tmux_opt '@pick_session_dir_include_hidden' 'on')"
 
   python3 -u - <<'PY'
 import os
@@ -239,6 +248,8 @@ import subprocess
 from pathlib import Path
 import shutil
 import signal
+import time
+import concurrent.futures
 
 # If the consumer (fzf) exits early, don't spam tracebacks.
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
@@ -286,26 +297,15 @@ def head_branch(gitdir):
     return ""
 
 def tmux_sanitize_session_name(s: str) -> str:
-    """
-    Make a tmux-safe session name that matches tmux's normalization behavior
-    (notably '.' -> '_'), while preserving common branch separators like '/'.
-    """
     s = (s or "").strip().lower()
     if not s:
         return ""
-    # Replace any disallowed characters with underscores, and normalize '.'/':'
-    # which tmux itself treats specially.
     s = re.sub(r"[^a-z0-9_@|/~-]+", "_", s)
     s = re.sub(r"[.:]+", "_", s)
-    s = re.sub(r"_+", "_", s).strip("_")
+    s = s.strip("_")
     return s
 
 def git_config_path_for_root(root: str):
-    """
-    Return the git config path for a repo root.
-    - non-bare repo: <root>/.git/config
-    - bare repo: <root>/config
-    """
     cfg = Path(root) / ".git" / "config"
     if cfg.exists():
         return cfg
@@ -314,36 +314,18 @@ def git_config_path_for_root(root: str):
         return cfg
     return None
 
-def remote_url_for_root(root: str, remote: str) -> str:
+def origin_url_for_root(root: str) -> str:
     cfg = git_config_path_for_root(root)
     if cfg is None:
         return ""
-    remote = (remote or "").strip()
-    if not remote:
-        return ""
-    in_remote = False
     try:
-        for raw in cfg.read_text(encoding="utf-8", errors="replace").splitlines():
-            line = raw.strip()
-            if not line:
-                continue
-            if line.startswith("[") and line.endswith("]"):
-                in_remote = (line.lower() == f'[remote "{remote.lower()}"]')
-                continue
-            if not in_remote:
-                continue
-            m = re.match(r"^url\\s*=\\s*(.+)$", line, flags=re.IGNORECASE)
-            if m:
-                return m.group(1).strip()
+        text = cfg.read_text(encoding="utf-8", errors="replace")
+        m = re.search(r'\[remote "(origin|upstream)"\].*?url\s*=\s*(.+)', text, flags=re.IGNORECASE | re.DOTALL)
+        if m:
+            return m.group(2).splitlines()[0].strip()
     except Exception:
-        return ""
+        pass
     return ""
-
-def origin_url_for_root(root: str) -> str:
-    url = remote_url_for_root(root, "origin")
-    if url:
-        return url
-    return remote_url_for_root(root, "upstream")
 
 def repo_name_from_url(url: str) -> str:
     url = (url or "").strip().rstrip("/")
@@ -359,56 +341,29 @@ DEFAULT_BRANCH_DIRS = { "main", "master", "trunk", "develop", "dev" }
 DEFAULT_BRANCH_DIRS_ORDER = ("main", "master", "trunk", "develop", "dev")
 
 def repo_display_for_root(root: str) -> str:
+    try:
+        base = Path(root).name
+        if base in DEFAULT_BRANCH_DIRS:
+            return Path(root).parent.name or base
+        return base
+    except Exception:
+        pass
     repo = repo_name_from_url(origin_url_for_root(root))
     if repo:
         return repo
-    base = Path(root).name
-    if base in DEFAULT_BRANCH_DIRS:
-        try:
-            return Path(root).parent.name or base
-        except Exception:
-            return base
-    return base
-
-def remote_names_for_root(root: str) -> set[str]:
-    cfg = git_config_path_for_root(root)
-    if cfg is None:
-        return set()
-    remotes: set[str] = set()
-    try:
-        for raw in cfg.read_text(encoding="utf-8", errors="replace").splitlines():
-            line = raw.strip()
-            if not line:
-                continue
-            if line.lower().startswith("[remote ") and line.endswith("]") and '"' in line:
-                # [remote "origin"]
-                try:
-                    name = line.split('"', 2)[1].strip()
-                except Exception:
-                    name = ""
-                if name:
-                    remotes.add(name)
-    except Exception:
-        return remotes
-    return remotes
-
-def is_wrapper_layout_root(root: str) -> bool:
-    try:
-        return Path(root).name in DEFAULT_BRANCH_DIRS
-    except Exception:
-        return False
+    name = Path(root).name
+    if name.startswith(".") and len(name) > 1:
+        name = name.lstrip(".")
+    return name
 
 def is_git_repo_dir(p: str) -> bool:
     try:
-        return bool(p) and (Path(p) / ".git").exists()
+        path = Path(p)
+        return (path / ".git").exists() or (path / "HEAD").exists()
     except Exception:
         return False
 
 def find_wrapper_root_checkout_for_path(p: str, scan_roots_set: set[str]) -> str:
-    """
-    Wrapper layout (``,w``): checkouts are stored under `<wrapper>/<branch...>`,
-    and the "root" checkout lives under `<wrapper>/<default-branch>`.
-    """
     cur = Path(p)
     if cur.is_file():
         cur = cur.parent
@@ -430,431 +385,243 @@ def find_wrapper_root_checkout_for_path(p: str, scan_roots_set: set[str]) -> str
         cur = wrapper.parent
     return ""
 
+def remote_names_for_root(root: str) -> set[str]:
+    cfg = git_config_path_for_root(root)
+    if cfg is None:
+        return set()
+    remotes = set()
+    try:
+        for line in cfg.read_text(encoding="utf-8", errors="replace").splitlines():
+            m = re.match(r'\[remote "(.+)"\]', line, flags=re.IGNORECASE)
+            if m:
+                remotes.add(m.group(1))
+    except Exception:
+        pass
+    return remotes
+
 def branch_from_wrapper_path(root: str, wt_path: str, remotes: set[str]) -> str:
-    """
-    For wrapper layouts (`,w`): root worktree is usually `<repo>/main`, and
-    sibling worktrees live under `<repo>/<branch...>`. Derive the intended
-    branch from the path relative to the wrapper.
-    """
     try:
         wrapper = str(Path(root).parent)
+        w = resolve_path(wrapper)
+        p = resolve_path(wt_path)
+        if not (p == w or p.startswith(w + os.sep)):
+            return ""
+        rel = os.path.relpath(p, w)
+        rel = rel.replace(os.sep, "/").strip("./")
+        if not rel or rel == ".":
+            return ""
+        if "/" in rel:
+            first, rest = rel.split("/", 1)
+            if first in remotes and first not in ("origin", "upstream") and rest:
+                return f"{first}__{rest}"
+        return rel
     except Exception:
         return ""
-    if not wrapper:
-        return ""
-    w = resolve_path(wrapper)
-    p = resolve_path(wt_path)
-    if not (p == w or p.startswith(w + os.sep)):
-        return ""
-    rel = os.path.relpath(p, w)
-    rel = rel.replace(os.sep, "/").strip("./")
-    if not rel or rel == ".":
-        return ""
-    # Mirror `,w add` convention for fork remotes:
-    # `<wrapper>/<remote>/<branch>` -> local branch `<remote>__<branch>`
-    if "/" in rel:
-        first, rest = rel.split("/", 1)
-        if first in remotes and first not in ("origin", "upstream") and rest:
-            return f"{first}__{rest}"
-    return rel
 
 def worktree_info(worktree_dir):
-    """
-    Identify worktree root vs non-root by the `.git` shape:
-    - root repo: `.git` is a directory
-    - linked worktree: `.git` is a file that points to `.../.git/worktrees/<name>`
-    """
     wt = Path(worktree_dir)
     gitp = wt / ".git"
     if gitp.is_dir():
         gitdir = resolve_path(str(gitp))
         root_wt = resolve_path(str(wt))
         br = head_branch(gitdir)
-
-        # Support wrapper layouts created by `,w` even when the checkout is a
-        # standalone repo (not a linked git worktree). In that layout, branch
-        # naming is derived from the directory path under the wrapper.
         wrapper_root = find_wrapper_root_checkout_for_path(root_wt, scan_roots_set)
         if wrapper_root and wrapper_root != root_wt and is_git_repo_dir(wrapper_root):
             remotes = remote_names_for_root(wrapper_root)
             derived = branch_from_wrapper_path(wrapper_root, root_wt, remotes)
-            if derived:
-                br = derived
+            if derived: br = derived
             root_wt = wrapper_root
-
         return { "path": resolve_path(str(wt)), "root": root_wt, "gitdir": gitdir, "branch": br }
 
     if gitp.is_file():
         try:
             first = gitp.read_text(encoding="utf-8", errors="replace").splitlines()[0].strip()
-        except Exception:
-            return None
-        if not first.startswith("gitdir:"):
-            return None
-        raw = first.split(":", 1)[1].strip()
-        gitdir = raw
-        if not os.path.isabs(gitdir):
-            gitdir = str((wt / gitdir).resolve())
-        gitdir = resolve_path(gitdir)
-
-        norm = gitdir.replace("\\", "/")
-        if "/worktrees/" in norm:
-            common_dir = resolve_path(str(Path(gitdir).parent.parent))
-            try:
+            if not first.startswith("gitdir:"): return None
+            raw = first.split(":", 1)[1].strip()
+            gitdir = resolve_path(str(wt / raw) if not os.path.isabs(raw) else raw)
+            norm = gitdir.replace("\\", "/")
+            if "/worktrees/" in norm:
+                common_dir = resolve_path(str(Path(gitdir).parent.parent))
                 root_wt = resolve_path(str(Path(common_dir).parent)) if Path(common_dir).name == ".git" else common_dir
-            except Exception:
-                root_wt = common_dir
-        else:
-            # Submodules (and other layouts) keep gitdir elsewhere; treat the
-            # directory itself as its own "root".
-            root_wt = resolve_path(str(wt))
-        br = head_branch(gitdir)
-        return { "path": resolve_path(str(wt)), "root": root_wt, "gitdir": gitdir, "branch": br }
-
+            else:
+                root_wt = resolve_path(str(wt))
+            return { "path": resolve_path(str(wt)), "root": root_wt, "gitdir": gitdir, "branch": head_branch(gitdir) }
+        except Exception: pass
     return None
 
 def find_worktree_root_for_path(p, stop_at):
-    """
-    Walk upwards to find the nearest directory that has a `.git` file/dir.
-    This lets us associate tmux session paths that point to subdirs.
-    """
     cur = Path(p)
-    if cur.is_file():
-        cur = cur.parent
-    try:
-        cur = cur.resolve()
-    except Exception:
-        cur = Path(p)
-
+    if cur.is_file(): cur = cur.parent
+    try: cur = cur.resolve()
+    except Exception: cur = Path(p)
     stop_at = Path(stop_at).resolve() if stop_at else None
     for _ in range(12):
-        if (cur / ".git").exists():
-            return str(cur)
-        if stop_at and str(cur) == str(stop_at):
-            break
-        if cur.parent == cur:
-            break
+        if (cur / ".git").exists(): return str(cur)
+        if stop_at and str(cur) == str(stop_at): break
+        if cur.parent == cur: break
         cur = cur.parent
     return ""
 
-def expand_root(p):
-    p = p.strip()
-    if not p:
-        return ""
-    if p == "~":
-        return os.path.expanduser("~")
-    if p.startswith("~/"):
-        return os.path.join(os.path.expanduser("~"), p[2:])
-    return p
-
-current_session = subprocess.run([ "tmux", "display-message", "-p", "#S" ], check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True).stdout.strip()
-current_session_path = subprocess.run([ "tmux", "display-message", "-p", "#{session_path}" ], check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True).stdout.strip()
-exclude_file = os.environ.get("PICK_SESSION_EXCLUDE_FILE", "").strip()
-
-scan_roots_raw = os.environ.get("PICK_SESSION_SCAN_ROOTS", "").strip()
-scan_depth_raw = os.environ.get("PICK_SESSION_SCAN_DEPTH", "").strip()
-quick_raw = os.environ.get("PICK_SESSION_QUICK", "").strip().lower()
-quick = quick_raw in ("1", "true", "yes", "on")
-scan_depth = 6
-try:
-    if scan_depth_raw:
-        scan_depth = int(scan_depth_raw)
-except Exception:
-    scan_depth = 6
-
-scan_roots = [ expand_root(x) for x in scan_roots_raw.split(",") if x.strip() ] if scan_roots_raw else [ os.path.join(os.path.expanduser("~"), "work"), os.path.join(os.path.expanduser("~"), "code"), os.path.join(os.path.expanduser("~"), ".local", "share") ]
-scan_roots = [ resolve_path(r) for r in scan_roots if r and Path(r).is_dir() ]
-scan_roots_set = set(scan_roots)
-
-groups = {}  # root_wt -> { repo, wt_map, sessions_by_wt }
-
-def ensure_group(root_wt):
-    root_wt = resolve_path(root_wt)
-    if root_wt in groups:
-        return
-    groups[root_wt] = { "repo": "", "wt_map": {}, "sessions_by_wt": {} }
-
-# Scan for `.git` *files and dirs* (worktree roots have a `.git` dir; linked
-# worktrees have a `.git` file). In quick mode, skip the global scan and rely
-# on tmux sessions + per-repo `git worktree list` instead.
-if (not quick) and scan_roots and shutil.which("fd"):
-    candidates = set()
-    for r in scan_roots:
-        out = subprocess.run(
-            [
-                "fd",
-                "--hidden",
-                "--no-ignore",
-                "--absolute-path",
-                "--type",
-                "f",
-                "--type",
-                "d",
-                "--max-depth",
-                str(scan_depth),
-                "--glob",
-                ".git",
-                r,
-            ],
-            check=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-        ).stdout
-        for gitp in out.splitlines():
-            gitp = gitp.strip()
-            if not gitp:
-                continue
-
-            wt_dir = resolve_path(str(Path(gitp).parent))
-            if wt_dir:
-                candidates.add(wt_dir)
-
-    # Don't treat nested `.git` hits as new candidates once we already have a
-    # parent candidate. This avoids picking up submodules / nested repos as
-    # separate "worktrees" and reduces noise + cost.
-    accepted = []
-    for wt_dir in sorted(candidates, key=lambda p: (len(p), p)):
-        if any(wt_dir == a or wt_dir.startswith(a + os.sep) for a in accepted):
-            continue
-        accepted.append(wt_dir)
-
-        info = worktree_info(wt_dir)
-        if not info:
-            continue
-        ensure_group(info["root"])
-        groups[info["root"]]["wt_map"][info["path"]] = { "branch": info.get("branch", "") }
-
-# Collect tmux sessions and associate to worktrees (even outside scan roots).
-sess_out = subprocess.run([ "tmux", "list-sessions", "-F", "#{session_name}\t#{session_path}" ], check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True).stdout
-sessions = []
-for row in sess_out.splitlines():
-    if not row:
-        continue
-    name, _, path = row.partition("\t")
-    name = name.strip()
-    path = path.strip()
-    if not name:
-        continue
-    rp = resolve_path(path) if path else ""
-    sessions.append({ "name": name, "path": path, "rpath": rp, "is_current": (name == current_session) })
-
-home = os.path.expanduser("~")
-live_session_names = { s.get("name") for s in sessions if s.get("name") }
-worktree_backed_sessions = set()
-for s in sessions:
-    rp = s.get("rpath") or ""
-    if not rp:
-        continue
-    wt_root = find_worktree_root_for_path(rp, home)
-    if not wt_root:
-        continue
-    info = worktree_info(wt_root)
-    if not info:
-        continue
-    ensure_group(info["root"])
-    groups[info["root"]]["wt_map"].setdefault(info["path"], { "branch": info.get("branch", "") })
-    groups[info["root"]]["sessions_by_wt"].setdefault(info["path"], []).append(s["name"])
-    worktree_backed_sessions.add(s["name"])
-
 def list_worktrees_under_root(root: str):
-    """
-    Return { worktree_path: branch_name } for all worktrees in this repo.
-    """
-    out = subprocess.run(
-        [ "git", "-C", root, "worktree", "list", "--porcelain" ],
-        check=False,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        text=True,
-    ).stdout
-    worktree_path = ""
-    branch = ""
-    detached = False
-    results = {}
+    out = subprocess.run([ "git", "-C", root, "worktree", "list", "--porcelain" ], check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True).stdout
+    worktree_path, branch, detached, results = "", "", False, {}
     for line in out.splitlines():
         line = line.strip()
-        if not line:
-            continue
+        if not line: continue
         if line.startswith("worktree "):
-            if worktree_path:
-                results[resolve_path(worktree_path)] = branch if not detached else ""
+            if worktree_path: results[resolve_path(worktree_path)] = branch if not detached else ""
             worktree_path = line.split(" ", 1)[1].strip()
-            branch = ""
-            detached = False
-            continue
-        if line.startswith("branch "):
+            branch, detached = "", False
+        elif line.startswith("branch "):
             ref = line.split(" ", 1)[1].strip()
-            if ref.startswith("refs/heads/"):
-                branch = ref[len("refs/heads/") :]
-            else:
-                branch = ref
-            continue
-        if line == "detached":
-            detached = True
-            continue
-    if worktree_path:
-        results[resolve_path(worktree_path)] = branch if not detached else ""
+            branch = ref[len("refs/heads/"):] if ref.startswith("refs/heads/") else ref
+        elif line == "detached": detached = True
+    if worktree_path: results[resolve_path(worktree_path)] = branch if not detached else ""
     return results
 
-if groups:
-    # Always expand discovered repo roots with `git worktree list` so deep
-    # branch paths (for example `foo/bar/baz/...`) are present even when the
-    # fd max-depth scan would miss them and fall back to plain dir entries.
-    for root in list(groups.keys()):
+def has_worktrees(root_dir: str) -> bool:
+    gitp = Path(root_dir) / ".git"
+    if gitp.is_dir(): return (gitp / "worktrees").is_dir()
+    return (Path(root_dir) / "worktrees").is_dir()
+
+def scan_for_git_repos(roots, depth, exclude_list):
+    candidates = set()
+    fd_args = ["fd", "--hidden", "--no-ignore", "--absolute-path", "--type", "f", "--type", "d", "--max-depth", str(depth), "--glob", ".git"]
+    # Filter out .git patterns from the exclude list for the repo scan itself
+    for ex in exclude_list.split(","):
+        ex = ex.strip()
+        if ex and not ex.startswith(".git"):
+            fd_args.extend(["--exclude", ex])
+
+    for r in roots:
+        out = subprocess.run(fd_args + [r], check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True).stdout
+        for gitp in out.splitlines():
+            p = gitp.strip()
+            if p: candidates.add(resolve_path(str(Path(p).parent)))
+
+    accepted = []
+    for wt_dir in sorted(candidates, key=lambda p: (len(p), p)):
+        if not any(wt_dir == a or wt_dir.startswith(a + os.sep) for a in accepted):
+            accepted.append(wt_dir)
+    return accepted
+
+def get_home_dirs(root, depth, exclude_list, include_hidden):
+    fd_args = ["fd", "--type", "d", "--max-depth", str(depth), "--absolute-path"]
+    if include_hidden in ("1", "true", "yes", "on"): fd_args.append("--hidden")
+    for ex in exclude_list.split(","):
+        ex = ex.strip()
+        if ex: fd_args.extend(["--exclude", ex])
+
+    out = subprocess.run(fd_args + [".", root], check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True).stdout
+    return [line.strip() for line in out.splitlines() if line.strip()]
+
+scan_roots_raw = os.environ.get("PICK_SESSION_SCAN_ROOTS", "").strip()
+scan_roots = [resolve_path(os.path.expanduser(x.strip())) for x in scan_roots_raw.split(",") if x.strip()]
+scan_roots = [r for r in scan_roots if os.path.isdir(r)]
+scan_roots_set = set(scan_roots)
+quick = os.environ.get("PICK_SESSION_QUICK", "").lower() in ("1", "true", "yes", "on")
+sessions_only = os.environ.get("PICK_SESSION_SESSIONS_ONLY", "").lower() in ("1", "true", "yes", "on")
+exclude_list_raw = os.environ.get("PICK_SESSION_EXCLUDE_LIST", "").strip()
+
+groups = {}
+def ensure_group(root_wt):
+    root_wt = resolve_path(root_wt)
+    if root_wt not in groups: groups[root_wt] = { "repo": "", "wt_map": {}, "sessions_by_wt": {} }
+
+# 1. Discover worktrees
+if not quick and not sessions_only and shutil.which("fd"):
+    for wt_dir in scan_for_git_repos(scan_roots, int(os.environ.get("PICK_SESSION_SCAN_DEPTH", 6)), exclude_list_raw):
+        info = worktree_info(wt_dir)
+        if info:
+            ensure_group(info["root"])
+            groups[info["root"]]["wt_map"][info["path"]] = { "branch": info.get("branch", "") }
+
+# 2. Add sessions
+current_session = subprocess.run([ "tmux", "display-message", "-p", "#S" ], check=False, stdout=subprocess.PIPE, text=True).stdout.strip()
+sess_out = subprocess.run([ "tmux", "list-sessions", "-F", "#{session_name}\t#{session_path}" ], check=False, stdout=subprocess.PIPE, text=True).stdout
+sessions = []
+home = os.path.expanduser("~")
+for row in sess_out.splitlines():
+    if not row: continue
+    name, _, path = row.partition("\t")
+    name, path = name.strip(), path.strip()
+    rp = resolve_path(path)
+    sessions.append({ "name": name, "path": path, "rpath": rp, "is_current": (name == current_session) })
+    wt_root = find_worktree_root_for_path(rp, home)
+    if wt_root:
+        info = worktree_info(wt_root)
+        if info:
+            ensure_group(info["root"])
+            groups[info["root"]]["wt_map"].setdefault(info["path"], { "branch": info.get("branch", "") })
+            groups[info["root"]]["sessions_by_wt"].setdefault(info["path"], []).append(name)
+
+# 3. Parallel worktree expansion
+with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+    future_to_root = {executor.submit(list_worktrees_under_root, r): r for r in groups if has_worktrees(r)}
+    for future in concurrent.futures.as_completed(future_to_root):
+        root = future_to_root[future]
         try:
-            rootp = resolve_path(root)
-            if not rootp or not Path(rootp).is_dir():
-                continue
-            for wt_path, br in list_worktrees_under_root(rootp).items():
-                if wt_path and Path(wt_path).is_dir():
+            for wt_path, br in future.result().items():
+                if os.path.isdir(wt_path):
                     groups[root]["wt_map"].setdefault(wt_path, { "branch": br or "" })
-        except Exception:
-            continue
+        except Exception: pass
 
-cwd_root = ""
-cwd_wt = find_worktree_root_for_path(os.getcwd(), home)
-if cwd_wt:
-    info = worktree_info(cwd_wt)
-    if info:
-        cwd_root = info["root"]
-cwd_root_resolved = resolve_path(cwd_root) if cwd_root else ""
-
-current_root = ""
-current_wt = find_worktree_root_for_path(current_session_path, home) if current_session_path else ""
-if current_wt:
-    info = worktree_info(current_wt)
-    if info:
-        current_root = info["root"]
-current_root_resolved = resolve_path(current_root) if current_root else ""
-
-for root, g in groups.items():
-    g["repo"] = repo_display_for_root(root)
-    if is_wrapper_layout_root(root):
-        # Only apply wrapper-branch derivation when the wrapper folder matches
-        # the repo name (common `,w` layout: `<repo>/main`).
-        try:
-            wrapper_name = Path(root).parent.name.lower()
-        except Exception:
-            wrapper_name = ""
-        repo_name = (g.get("repo") or "").lower()
-        if wrapper_name and repo_name and wrapper_name == repo_name:
-            remotes = remote_names_for_root(root)
-            wt_map = g.get("wt_map", {})
-            for wt_path, rec in wt_map.items():
-                derived = branch_from_wrapper_path(root, wt_path, remotes)
-                if derived:
-                    rec["branch"] = derived
-
-def scan_root_order_key(root):
-    for i, scan_root in enumerate(scan_roots):
-        if root == scan_root or root.startswith(scan_root + os.sep):
-            return (0, i, root)
-    if root == home or root.startswith(home + os.sep):
-        return (1, 0, root)
-    return (2, 0, root)
-
-def group_order_key(root):
-    has_sessions = 1 if groups[root]["sessions_by_wt"] else 0
-    current_rank = 0 if (current_root_resolved and root == current_root_resolved) else (0 if (cwd_root_resolved and root == cwd_root_resolved) else 1)
-    return (0 if has_sessions else 1, current_rank, *scan_root_order_key(root), groups[root]["repo"])
-
-def wt_sort_key(path, root):
-    br = groups[root]["wt_map"].get(path, {}).get("branch", "")
-    return (0 if path == root else 1, br, path)
-
+# 4. Output results
 exclude_exact = set()
 exclude_worktree_roots = set()
 
-roots_sorted = sorted(groups.keys(), key=group_order_key)
-roots_with_sessions = [ r for r in roots_sorted if groups[r]["sessions_by_wt"] ]
-roots_without_sessions = [ r for r in roots_sorted if not groups[r]["sessions_by_wt"] ]
+def emit_sessions_and_worktrees():
+    for root in sorted(groups.keys(), key=lambda r: repo_display_for_root(r).lower()):
+        repo = repo_display_for_root(root)
+        wt_map = groups[root]["wt_map"]
+        sessions_by_wt = groups[root]["sessions_by_wt"]
 
-for root in roots_with_sessions:
-    repo = groups[root]["repo"]
-    wt_map = groups[root]["wt_map"]
-    sessions_by_wt = groups[root]["sessions_by_wt"]
+        # Sessions first
+        for wt_path in sorted(wt_map.keys()):
+            for sess_name in sorted(sessions_by_wt.get(wt_path, [])):
+                br = wt_map.get(wt_path, {}).get("branch", "")
+                expected = tmux_sanitize_session_name(f"{repo}|{br}" if br else repo)
+                meta = f"sess_root:{br}" if wt_path == root else f"sess_wt:{br}"
+                if expected and sess_name != expected: meta += f"|expected={expected}"
+                disp = display_session_entry(sess_name if not expected or sess_name.startswith(expected) else expected, tildefy(wt_path))
+                mk = match_key(sess_name, expected, repo, br, Path(wt_path).name, tildefy(wt_path))
+                print(f"{disp}\tsession\t{wt_path}\t{meta}\t{sess_name}\t{mk}")
+                exclude_worktree_roots.add(wt_path)
 
-    for wt_path in sorted(sessions_by_wt.keys(), key=lambda p: wt_sort_key(p, root)):
-        br = wt_map.get(wt_path, {}).get("branch", "")
-        sess_names = sorted(set(sessions_by_wt.get(wt_path, [])))
-        expected_raw = f"{repo}|{br}" if br else ""
-        expected = tmux_sanitize_session_name(expected_raw) if expected_raw else ""
-        chosen = expected if expected and expected in sess_names else sess_names[0]
-        # Display the expected/canonical name for truly misnamed sessions, but
-        # keep disambiguated names visible (e.g. `kibana|main@backport`) so
-        # multiple checkouts don't look like duplicates.
-        label = chosen
-        if expected and chosen and chosen != expected and not chosen.startswith(expected + "@"):
-            label = expected
-        meta_base = f"sess_root:{br}" if wt_path == root else f"sess_wt:{br}"
-        # If an existing session is "misnamed" (historical naming), keep the
-        # display as the expected name, but include the expectation in metadata
-        # so the picker can rename on selection.
-        meta = meta_base
-        if expected and chosen != expected:
-            meta = f"{meta_base}|expected={expected}"
-        disp = display_session_entry(label, tildefy(wt_path))
-        mk = match_key(chosen, expected_raw, expected, repo, br, Path(wt_path).name, tildefy(wt_path), wt_path)
-        print(f"{disp}\tsession\t{wt_path}\t{meta}\t{chosen}\t{mk}")
-        exclude_worktree_roots.add(wt_path)
+        # Worktrees second (skip entirely in sessions-only mode).
+        if not sessions_only:
+            for wt_path in sorted(wt_map.keys()):
+                if wt_path in sessions_by_wt: continue
+                br = wt_map[wt_path].get("branch", "")
+                meta = f"wt_root:{br}" if wt_path == root else f"wt:{br}"
+                wt_name = f"{repo}|{br}" if br else repo
+                mk = match_key(wt_name, Path(wt_path).name, tildefy(wt_path))
+                print(f"{display_worktree_entry(tildefy(wt_path))}\tworktree\t{wt_path}\t{meta}\t{root}\t{mk}")
+                exclude_worktree_roots.add(wt_path)
 
-    for wt_path in sorted(wt_map.keys(), key=lambda p: wt_sort_key(p, root)):
-        # Keep worktree rows even when a session exists for that path.
-        # The picker output de-duplicates (session wins), but having the worktree
-        # row in the cache allows immediate demotion after a session is killed,
-        # without waiting for a background re-index.
-        br = wt_map[wt_path].get("branch", "")
-        meta = f"wt_root:{br}" if wt_path == root else f"wt:{br}"
-        wt_name_raw = f"{repo}|{br}" if br else repo
-        wt_name = tmux_sanitize_session_name(wt_name_raw) if wt_name_raw else ""
-        mk = match_key(wt_name_raw, wt_name, Path(wt_path).name, tildefy(wt_path), wt_path)
-        disp = f"{display_worktree_entry(tildefy(wt_path))}"
-        print(f"{disp}\tworktree\t{wt_path}\t{meta}\t{root}\t{mk}")
-        exclude_worktree_roots.add(wt_path)
+emit_sessions_and_worktrees()
 
-for root in roots_without_sessions:
-    wt_map = groups[root]["wt_map"]
-    repo = groups[root]["repo"]
-    for wt_path in sorted(wt_map.keys(), key=lambda p: wt_sort_key(p, root)):
-        br = wt_map[wt_path].get("branch", "")
-        meta = f"wt_root:{br}" if wt_path == root else f"wt:{br}"
-        wt_name_raw = f"{repo}|{br}" if br else repo
-        wt_name = tmux_sanitize_session_name(wt_name_raw) if wt_name_raw else ""
-        mk = match_key(wt_name_raw, wt_name, Path(wt_path).name, tildefy(wt_path), wt_path)
-        disp = f"{display_worktree_entry(tildefy(wt_path))}"
-        print(f"{disp}\tworktree\t{wt_path}\t{meta}\t{root}\t{mk}")
-        exclude_worktree_roots.add(wt_path)
-
-for s in sorted(sessions, key=lambda x: x.get("name", "")):
-    name = s.get("name") or ""
-    if not name:
-        continue
-    if name in worktree_backed_sessions:
-        continue
-    path = s.get("path") or ""
-    rpath = s.get("rpath") or path
-    disp_path = tildefy(rpath) if rpath else ""
-    mk = match_key(name, Path(rpath).name if rpath else "", disp_path, rpath)
-    disp = f"{display_session_entry(name, disp_path)}"
-    print(f"{disp}\tsession\t{rpath}\t\t{name}\t{mk}")
-    if rpath:
-        exclude_exact.add(rpath)
-
-if current_session_path:
-    exclude_exact.add(resolve_path(current_session_path))
-
-if exclude_file:
-    try:
-        with open(exclude_file, "w", encoding="utf-8") as f:
-            for p in sorted(exclude_exact | exclude_worktree_roots):
-                if p:
-                    f.write("EX\t" + p + "\n")
-            for p in sorted(exclude_worktree_roots):
-                if p:
-                    f.write("WT\t" + p + "\n")
-    except Exception:
-        pass
+# 5. Directories
+if not sessions_only:
+    # Keep directory output intentionally small and stable:
+    # - emit wrapper directories for detected repo roots
+    # - plus $HOME
+    wrapper_dirs = set()
+    for root in groups.keys():
+        try:
+            base = Path(root).name
+        except Exception:
+            base = ""
+        if base in DEFAULT_BRANCH_DIRS:
+            wrapper_dirs.add(resolve_path(str(Path(root).parent)))
+        else:
+            wrapper_dirs.add(resolve_path(str(Path(root))))
+    wrapper_dirs.add(resolve_path(home))
+    for p in sorted(wrapper_dirs):
+        if not p or p in exclude_worktree_roots:
+            continue
+        mk = match_key(Path(p).name, tildefy(p), p)
+        print(f"{display_dir_entry(tildefy(p))}\tdir\t{p}\t\t\t{mk}")
 PY
 }
 
@@ -868,16 +635,4 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-exclude_file="$(mktemp -t pick_session_exclude.XXXXXX)"
-cleanup() { rm -f "$exclude_file" 2>/dev/null || true; }
-trap cleanup EXIT
-
-PICK_SESSION_EXCLUDE_FILE="$exclude_file" PICK_SESSION_QUICK="$quick_mode" emit_sessions_and_worktrees || true
-if [ "$sessions_only" -eq 1 ]; then
-  exit 0
-fi
-if [ "$quick_mode" -eq 1 ]; then
-  emit_home_dirs_seeded "$exclude_file" || true
-else
-  emit_home_dirs "$exclude_file" || true
-fi
+emit_sessions_worktrees_and_dirs

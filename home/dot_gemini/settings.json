@@ -1,33 +1,82 @@
 {
   "security": {
-    "auth": {
-      "selectedType": "gemini-api-key"
-    },
     "folderTrust": {
+      "enabled": true
+    },
+    "environmentVariableRedaction": {
       "enabled": true
     }
   },
-  "tools": {
-    "autoAccept": true
-  },
   "general": {
-    "previewFeatures": true
+    "defaultApprovalMode": "auto_edit",
+    "sessionRetention": {
+      "enabled": false,
+      "maxAge": "30d"
+    }
+  },
+  "context": {
+    "discoveryMaxDirs": 100000,
+    "loadMemoryFromIncludeDirectories": true,
+    "fileFiltering": {
+      "respectGitIgnore": false,
+      "respectGeminiIgnore": true,
+      "enableRecursiveFileSearch": true,
+      "enableFuzzySearch": true,
+      "customIgnoreFilePaths": []
+    }
+  },
+  "tools": {
+    "shell": {
+      "showColor": true
+    },
+    "useRipgrep": true,
+    "truncateToolOutputThreshold": 0,
+    "disableLLMCorrection": true
   },
   "experimental": {
     "codebaseInvestigatorSettings": {
-      "maxNumTurns": 100
+      "maxNumTurns": 200
     }
   },
   "model": {
     "name": "gemini-3.1-pro-preview"
   },
-  "agents": {
-    "overrides": {
-      "codebase_investigator": {
-        "runConfig": {
-          "maxTurns": 100
-        }
-      }
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"]
+    },
+    "sequentialthinking": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--pull=always",
+        "--rm",
+        "-i",
+        "--init",
+        "mcp/sequentialthinking"
+      ]
+    },
+    "buildkite": {
+      "command": "bash",
+      "args": [
+        "-lc",
+        "docker run -i --rm -e BUILDKITE_API_TOKEN=\"$(pass buildkite/api/token)\" mcp/buildkite"
+      ]
+    },
+    "scsi-main": {
+      "command": "bash",
+      "args": [
+        "-lc",
+        "docker run --pull=always --rm -i -e ELASTICSEARCH_ENDPOINT=\"$(pass scsi/simian/cloud_endpoint)\" -e ELASTICSEARCH_API_KEY=\"$(pass scsi/simian/api_key)\" -e ELASTICSEARCH_INDEX=kibana-repo simianhacker/semantic-code-search-mcp-server node dist/src/mcp_server/bin.js stdio"
+      ]
+    },
+    "scsi-local": {
+      "command": "bash",
+      "args": [
+        "-lc",
+        "cd \"$HOME/work/semantic-code-search-mcp-server/main\" && ELASTICSEARCH_CLOUD_ID=\"$(pass scsi/k18/cloud_id)\" ELASTICSEARCH_API_KEY=\"$(pass scsi/k18/api_key)\" ELASTICSEARCH_INDEX=scsi-repo node dist/src/mcp_server/bin.js stdio"
+      ]
     }
   }
 }

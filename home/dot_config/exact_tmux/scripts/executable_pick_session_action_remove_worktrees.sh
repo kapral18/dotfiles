@@ -10,6 +10,7 @@ cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 cache_file="${cache_dir}/pick_session_items.tsv"
 pending_file="${cache_dir}/pick_session_pending.tsv"
 mutation_file="${cache_dir}/pick_session_mutations.tsv"
+rm_log_file="${cache_dir}/pick_session_remove_worktrees.log"
 mkdir -p "$cache_dir"
 
 lock_dir="${cache_file}.lock"
@@ -165,19 +166,23 @@ remove_paths_in_background() {
 
   # Detach removal work from the picker UI:
   # - Do not use tmux `run-shell` (can steal popup focus).
-  # - Unset TMUX vars so `,w` won't `display-message` spam.
+  # - Keep TMUX so `,w` can kill matching sessions by path.
   local cmd
-  cmd="cd $(printf %q "$root") && env -u TMUX -u TMUX_PANE ,w remove --paths"
+  cmd="cd $(printf %q "$root") && ,w remove --paths"
   local p
   for p in "${paths[@]}"; do
     cmd+=" $(printf %q "$p")"
   done
-  nohup sh -c "$cmd" </dev/null >/dev/null 2>&1 &
+  {
+    printf '\n[%s] %s\n' "$(date +%Y-%m-%dT%H:%M:%S%z)" "$cmd"
+  } >>"$rm_log_file" 2>/dev/null || true
+  nohup sh -c "$cmd" </dev/null >>"$rm_log_file" 2>&1 &
 }
 
 declare -A roots_selected=()
 declare -A worktree_paths_by_root=()
 declare -a pending_wt_paths=()
+declare -a pending_plain_dirs=()
 
 while IFS= read -r _line; do
   [ -n "$_line" ] || continue
@@ -225,11 +230,20 @@ while IFS= read -r _line; do
       fi
     fi
 
+    if [ -z "$wt_path" ]; then
+      pending_plain_dirs+=("$path")
+      continue
+    fi
+
     [ -n "$wt_path" ] || continue
     root_wt_dir="$(worktree_root_dir_for_path "$wt_path" 2>/dev/null || true)"
     case "$meta_base" in
     sess_root:*) is_root_selection=1 ;;
     esac
+    ;;
+  dir)
+    pending_plain_dirs+=("$path")
+    continue
     ;;
   esac
 
@@ -262,28 +276,38 @@ while IFS= read -r _line; do
   pending_wt_paths+=("$wt_path")
 done <"$sel_file"
 
-if [ ${#pending_wt_paths[@]} -eq 0 ]; then
+if [ ${#pending_wt_paths[@]} -eq 0 ] && [ ${#pending_plain_dirs[@]} -eq 0 ]; then
   if command -v tmux >/dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
-    tmux display-message -d 4000 "pick_session: selection contains no worktrees" 2>/dev/null || true
+    tmux display-message -d 4000 "pick_session: selection contains nothing to remove" 2>/dev/null || true
   fi
   exit 0
 fi
-mapfile -t pending_wt_paths < <(printf '%s\n' "${pending_wt_paths[@]}" | sed '/^$/d' | LC_ALL=C sort -u)
 
-[ ${#pending_wt_paths[@]} -gt 0 ] || exit 0
+if [ ${#pending_wt_paths[@]} -gt 0 ]; then
+  mapfile -t pending_wt_paths < <(printf '%s\n' "${pending_wt_paths[@]}" | sed '/^$/d' | LC_ALL=C sort -u)
+fi
+if [ ${#pending_plain_dirs[@]} -gt 0 ]; then
+  mapfile -t pending_plain_dirs < <(printf '%s\n' "${pending_plain_dirs[@]}" | sed '/^$/d' | LC_ALL=C sort -u)
+fi
 
 # Record pending worktree removals so a subsequent index refresh doesn't re-add them.
-{
-  for p in "${pending_wt_paths[@]}"; do
-    printf 'WT\t%s\n' "$p"
-  done
-} >>"$pending_file"
+if [ ${#pending_wt_paths[@]} -gt 0 ]; then
+  {
+    for p in "${pending_wt_paths[@]}"; do
+      printf 'WT\t%s\n' "$p"
+    done
+  } >>"$pending_file"
+fi
 
 # Record path tombstones so long-running/stale scans cannot resurrect removed
 # rows while the actual filesystem cleanup is still in flight.
 now_epoch="$(date +%s)"
 {
   for p in "${pending_wt_paths[@]}"; do
+    [ -n "$p" ] || continue
+    printf '%s\tPATH_PREFIX\t%s\n' "$now_epoch" "$p"
+  done
+  for p in "${pending_plain_dirs[@]}"; do
     [ -n "$p" ] || continue
     printf '%s\tPATH_PREFIX\t%s\n' "$now_epoch" "$p"
   done
@@ -303,18 +327,32 @@ if command -v tmux >/dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
       remove_paths_in_background "$root" "${paths[@]}"
     fi
   done
+
+  if [ ${#pending_plain_dirs[@]} -gt 0 ]; then
+    for pd in "${pending_plain_dirs[@]}"; do
+      nohup env -u TMUX -u TMUX_PANE "$HOME/.config/tmux/scripts/pick_session_remove_plain_dir.sh" "$pd" </dev/null >/dev/null 2>&1 &
+    done
+  fi
+fi
+
+if [ ${#pending_plain_dirs[@]} -gt 0 ] && command -v zoxide >/dev/null 2>&1; then
+  for pd in "${pending_plain_dirs[@]}"; do
+    zoxide remove "$pd" 2>/dev/null || true
+  done
 fi
 
 # Prune selected worktrees (and their session rows) from the cache immediately.
 if [ -f "$cache_file" ] && acquire_lock; then
   trap release_lock EXIT
 
-  CACHE_FILE="$cache_file" PENDING_WT="$(printf '%s\n' "${pending_wt_paths[@]}")" python3 - <<'PY'
+  CACHE_FILE="$cache_file" PENDING_WT="$(printf '%s\n' "${pending_wt_paths[@]-}")" PENDING_DIRS="$(printf '%s\n' "${pending_plain_dirs[@]-}")" python3 - <<'PY'
 import os
 from pathlib import Path
 
 cache_file = os.environ["CACHE_FILE"]
-paths = { p for p in os.environ["PENDING_WT"].split("\n") if p }
+wt_paths = { p for p in os.environ.get("PENDING_WT", "").split("\n") if p }
+dir_paths = { p for p in os.environ.get("PENDING_DIRS", "").split("\n") if p }
+paths = wt_paths.union(dir_paths)
 
 def should_drop(kind, p):
     if not p:

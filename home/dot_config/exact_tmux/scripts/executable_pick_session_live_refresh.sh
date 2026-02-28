@@ -126,6 +126,10 @@ cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 cache_file="${cache_dir}/pick_session_items.tsv"
 update_cmd="$HOME/.config/tmux/scripts/pick_session_index_update.sh"
 items_cmd="$HOME/.config/tmux/scripts/pick_session_items.sh"
+filter_cmd="$HOME/.config/tmux/scripts/pick_session_filter.sh"
+if [ ! -x "$filter_cmd" ]; then
+  filter_cmd="$items_cmd"
+fi
 
 [ -x "$update_cmd" ] || exit 0
 [ -x "$items_cmd" ] || exit 0
@@ -215,7 +219,7 @@ maybe_reload_on_change() {
     ;;
   esac
 
-  post_action "reload($items_cmd)" || return 1
+  post_action "reload($filter_cmd)" || return 1
   printf '%s\n' "$after"
 }
 

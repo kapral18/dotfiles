@@ -47,6 +47,10 @@ Non-interactive cleanup (useful from tmux pickers/scripts):
 ,w remove --paths /path/to/worktree1 /path/to/worktree2
 ```
 
+Notes:
+
+- When you pass explicit `--paths`, detached worktrees are removable as well (interactive `,w remove` continues to hide detached worktrees by default).
+
 ## Verification
 
 ```bash

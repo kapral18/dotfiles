@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+{{- $srcJson := joinPath .chezmoi.sourceDir "dot_cursor/mcp.json" -}}
+{{- if eq .isWork true }}
+# cursor mcp desired hash (work): {{ output "jq" "-cS" "def strip_isWork: walk(if type == \"object\" then del(.\"__isWork__\") else . end); strip_isWork" $srcJson | trim | sha256sum }}
+{{- else }}
+# cursor mcp desired hash (non-work): {{ output "jq" "-cS" "def strip_isWork: walk(if type == \"object\" then del(.\"__isWork__\") else . end); .mcpServers |= with_entries(select(.value.__isWork__ != true)) | strip_isWork" $srcJson | trim | sha256sum }}
+{{- end }}
+
+src="$(chezmoi source-path)/dot_cursor"
+target="$HOME/.cursor/mcp.json"
+is_work="$(chezmoi data --format=json | jq -r '.isWork')"
+
+if [ "$is_work" = "true" ]; then
+  desired="$(jq '
+    def strip_isWork:
+      walk(if type == "object" then del(."__isWork__") else . end);
+    strip_isWork
+  ' "$src/mcp.json")"
+else
+  desired="$(jq '
+    def strip_isWork:
+      walk(if type == "object" then del(."__isWork__") else . end);
+    .mcpServers |= with_entries(select(.value.__isWork__ != true))
+    | strip_isWork
+  ' "$src/mcp.json")"
+fi
+
+mkdir -p "$(dirname "$target")"
+
+if [ -f "$target" ] && [ "$(cat "$target")" = "$desired" ]; then
+  exit 0
+fi
+
+printf '%s\n' "$desired" >"$target"

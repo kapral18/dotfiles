@@ -285,26 +285,33 @@ build_cache_refreshing_sessions_preserving_others() {
   local out="$2"
 
   : >"$out"
-  # Always refresh session rows from the new scan output.
-  awk -F $'\t' 'NF>=5 && $2 == "session" { print }' "$src" 2>/dev/null >>"$out" || true
+  # When src has both sessions and worktrees, preserve its repo-grouped order
+  # (sessions and worktrees from the same repo together). Only append dirs from
+  # cache. This keeps "kibana|main", "kibana|feature-x" grouped with kibana
+  # worktrees instead of flattening all sessions then all worktrees.
+  if file_has_worktree_rows "$src"; then
+    awk -F $'\t' 'NF>=5 && ($2 == "session" || $2 == "worktree") { print }' "$src" 2>/dev/null >>"$out" || true
+    if file_has_dir_rows "$src"; then
+      awk -F $'\t' 'NF>=5 && $2 == "dir" { print }' "$src" 2>/dev/null >>"$out" || true
+    elif file_has_dir_rows "$cache_file"; then
+      awk -F $'\t' 'NF>=5 && $2 == "dir" { print }' "$cache_file" 2>/dev/null >>"$out" || true
+    fi
+    awk -F $'\t' 'NF>=5 && $2 != "session" && $2 != "worktree" && $2 != "dir" { print }' "$src" 2>/dev/null >>"$out" || true
+    return 0
+  fi
 
-  # Preserve cached worktree/dir ordering to avoid UI reshuffles, but if the
-  # cache is missing an entire section (e.g. worktrees got pruned), repopulate
-  # it from the fresh scan output so it doesn't "disappear forever" until a
-  # full refresh happens.
+  # Fallback: kind-based merge when src has only sessions (e.g. minimal scan).
+  awk -F $'\t' 'NF>=5 && $2 == "session" { print }' "$src" 2>/dev/null >>"$out" || true
   if file_has_worktree_rows "$cache_file"; then
     awk -F $'\t' 'NF>=5 && $2 == "worktree" { print }' "$cache_file" 2>/dev/null >>"$out" || true
   else
     awk -F $'\t' 'NF>=5 && $2 == "worktree" { print }' "$src" 2>/dev/null >>"$out" || true
   fi
-
   if file_has_dir_rows "$cache_file"; then
     awk -F $'\t' 'NF>=5 && $2 == "dir" { print }' "$cache_file" 2>/dev/null >>"$out" || true
   else
     awk -F $'\t' 'NF>=5 && $2 == "dir" { print }' "$src" 2>/dev/null >>"$out" || true
   fi
-
-  # Any other kinds: keep from cache when present, else fall back to src.
   if file_has_non_session_rows "$cache_file"; then
     awk -F $'\t' 'NF>=5 && $2 != "session" && $2 != "worktree" && $2 != "dir" { print }' "$cache_file" 2>/dev/null >>"$out" || true
   else
@@ -325,46 +332,47 @@ quick_ok=0
 full_ok=0
 quick_published=0
 if [ "$quick_only" -eq 1 ]; then
-  # `--sessions-only` output never includes worktree/dir rows. Only use it when
-  # the current cache already contains the full non-session sections; otherwise
-  # fall back to a regular `--quick` scan so worktrees/dirs don't "disappear".
-  if [ -f "$cache_file" ] && file_has_worktree_rows "$cache_file" && file_has_dir_rows "$cache_file"; then
-    if "$gen" --quick --sessions-only >"$tmp_sessions" 2>/dev/null; then
-      quick_ok=1
-      if [ -s "$tmp_sessions" ]; then
-        build_cache_refreshing_sessions_preserving_others "$tmp_sessions" "$tmp_combined" || true
+  # Quick refresh: sessions only. We merge into the existing cache to preserve
+  # the full worktree/dir lists (quick scans do not discover all worktrees).
+  if "$gen" --quick --sessions-only >"$tmp_quick" 2>/dev/null; then
+    quick_ok=1
+    if [ -s "$tmp_quick" ]; then
+      # Always try to merge to preserve worktrees and directories in the cache.
+      if [ -f "$cache_file" ]; then
+        build_cache_refreshing_sessions_preserving_others "$tmp_quick" "$tmp_combined" || true
         if [ -s "$tmp_combined" ]; then
           publish_cache_from "$tmp_combined" || true
-          quick_published=1
+        else
+          publish_cache_from "$tmp_quick" || true
         fi
-      fi
-    fi
-  fi
-
-  if [ "$quick_published" -eq 0 ]; then
-    if "$gen" --quick >"$tmp_quick" 2>/dev/null; then
-      quick_ok=1
-      if [ -s "$tmp_quick" ]; then
+      else
         publish_cache_from "$tmp_quick" || true
-        quick_published=1
       fi
+      quick_published=1
     fi
   fi
   if [ "$quick_ok" -ne 1 ] || [ "$quick_published" -ne 1 ]; then
     exit 0
   fi
 else
-  "$gen" --quick >"$tmp_quick" 2>/dev/null &
+  # Quick scan: sessions only (merged into existing cache).
+  "$gen" --quick --sessions-only >"$tmp_quick" 2>/dev/null &
   pid_quick=$!
+  # Perform a full scan (including directories) in the background.
   "$gen" >"$tmp_full" 2>/dev/null &
   pid_full=$!
 
   if wait "$pid_quick"; then
     quick_ok=1
     if [ -s "$tmp_quick" ]; then
-      build_cache_refreshing_sessions_preserving_others "$tmp_quick" "$tmp_combined" || true
-      if [ -s "$tmp_combined" ]; then
-        publish_cache_from "$tmp_combined" || true
+      # Merge new sessions into existing cache immediately.
+      if [ -f "$cache_file" ]; then
+        build_cache_refreshing_sessions_preserving_others "$tmp_quick" "$tmp_combined" || true
+        if [ -s "$tmp_combined" ]; then
+          publish_cache_from "$tmp_combined" || true
+        else
+          publish_cache_from "$tmp_quick" || true
+        fi
       else
         publish_cache_from "$tmp_quick" || true
       fi

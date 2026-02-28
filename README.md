@@ -449,8 +449,8 @@ AI tools for CLI and editor. Credentials in 1Password, configs in repo.
 | **Amp**        | AI coding tool with MCP | `home/dot_config/exact_amp/private_settings.json`                 |
 | **Codex CLI**  | Terminal coding agent   | `home/dot_codex/private_config.toml`                              |
 | **OpenCode**   | Terminal agent runner   | `home/dot_config/opencode/opencode.jsonc`                         |
-| **Cursor**     | AI code editor (work)   | `home/dot_cursor/mcp.json` (`.isWork` conditional)                |
-| **Gemini CLI** | Terminal AI assistant   | `home/dot_gemini/settings.json`                                   |
+| **Cursor**     | AI code editor (work)   | `home/dot_cursor/mcp.json` (servers tagged with `__isWork__` and filtered by `home/.chezmoiscripts/run_onchange_after_07-merge-cursor-mcp.sh.tmpl`) |
+| **Gemini CLI** | Terminal AI assistant   | `home/dot_gemini/settings.json` (filtered by `run_onchange_after_07-merge-gemini-settings.sh.tmpl`) |
 
 **Ollama Models**:
 
