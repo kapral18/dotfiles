@@ -34,6 +34,12 @@ Show usage for a command:
 ,w --help
 ```
 
+## Useful Aliases
+
+This setup also defines a few cross-shell aliases (Fish + Bash/Zsh).
+
+- `dash`: shorthand for `gh dash`
+
 ## High-Leverage Workflows
 
 ### Worktree workflow: `,w`
@@ -46,6 +52,7 @@ Examples:
 ```bash
 ,w add feat/my-change main
 ,w prs 12345
+,w issue 12345
 ,w switch
 ,w doctor
 ```
@@ -66,8 +73,8 @@ Examples:
 ### Fork + clone + tmux: `,gh-tfork`
 
 - Source: `home/exact_bin/executable_,gh-tfork`
-- Clone target: `./<repo>/main`
-- tmux session: `<repo>|main` (2 windows, 2 panes each)
+- Clone target: `./<repo>/<default-branch>`
+- tmux session: `<wrapper/repo>|<default-branch>` (2 windows, 2 panes each)
 
 Examples:
 

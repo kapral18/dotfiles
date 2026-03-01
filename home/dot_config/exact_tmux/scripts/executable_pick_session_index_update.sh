@@ -226,7 +226,7 @@ else:
     pending_paths = set(pending_rows)
 
 def path_is_tombstoned(kind, p):
-    if kind not in ("dir", "worktree", "session"):
+    if kind not in ("dir", "worktree"):
         return False
     for base in pending_paths:
         if p == base or p.startswith(base + "/"):
@@ -287,7 +287,7 @@ build_cache_refreshing_sessions_preserving_others() {
   : >"$out"
   # When src has both sessions and worktrees, preserve its repo-grouped order
   # (sessions and worktrees from the same repo together). Only append dirs from
-  # cache. This keeps "kibana|main", "kibana|feature-x" grouped with kibana
+  # cache. This keeps repo session groups stable with their worktrees
   # worktrees instead of flattening all sessions then all worktrees.
   if file_has_worktree_rows "$src"; then
     awk -F $'\t' 'NF>=5 && ($2 == "session" || $2 == "worktree") { print }' "$src" 2>/dev/null >>"$out" || true

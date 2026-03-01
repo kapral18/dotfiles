@@ -12,6 +12,7 @@ Entrypoints installed into your home directory:
 - `home/readonly_AGENTS.md` -> `~/AGENTS.md`
 - `home/readonly_CLAUDE.md` -> `~/CLAUDE.md`
 - `home/dot_gemini/readonly_GEMINI.md` -> `~/.gemini/GEMINI.md`
+- `home/dot_cursor/symlink_AGENTS.md` -> `~/.cursor/AGENTS.md` (symlink to `~/AGENTS.md`)
 
 These files are policy entrypoints; playbooks are installed separately.
 

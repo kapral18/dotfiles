@@ -3,6 +3,7 @@
 set -euo pipefail
 
 source "$(dirname "$0")/../bash_utils_lib.sh"
+source "$(dirname "$0")/../worktree_lib.sh"
 
 show_usage() {
   cat <<EOF
@@ -105,7 +106,7 @@ detached=0
 locked=0
 
 parent_dir=$(_get_worktree_parent_dir)
-parent_name=$(basename "$parent_dir")
+parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
 pwd_path="$PWD"
 default_branch="$(git config --get init.defaultbranch 2>/dev/null || echo "main")"
 
@@ -115,7 +116,7 @@ if [ "$selectable" -eq 0 ] && command -v tmux >/dev/null 2>&1; then
   while IFS= read -r session; do
     [ -z "$session" ] && continue
     tmux_sessions+=("$session")
-  done < <(tmux list-sessions -F '#{session_name}' 2>/dev/null || true)
+  done < <(_comma_w_tmux list-sessions -F '#{session_name}' 2>/dev/null || true)
 fi
 
 relpath_for() {
@@ -188,7 +189,7 @@ tmux_has_session_for_branch() {
     return 0
   fi
   local session_name
-  session_name="${parent_name}|${branch}"
+  session_name="$(_comma_w_tmux_session_name "$parent_name" "$branch")"
   local s
   for s in "${tmux_sessions[@]}"; do
     if [ "$s" = "$session_name" ]; then

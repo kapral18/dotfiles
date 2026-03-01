@@ -51,7 +51,7 @@ fi
 target="$1"
 
 parent_dir=$(_get_worktree_parent_dir)
-parent_name=$(basename "$parent_dir")
+parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
 
 find_branch_for_worktree_path() {
   local needle_path="$1"

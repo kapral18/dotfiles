@@ -50,13 +50,37 @@ _comma_w_prs_candidates() {
   _describe -t prs "PR" candidates
 }
 
+_comma_w_issues_candidates() {
+  local -a lines
+  local -a candidates
+  local line num title
+
+  if ! command -v gh >/dev/null 2>&1; then
+    return 0
+  fi
+
+  lines=("${(@f)$(gh issue list --limit 200 --json number,title --jq '.[] | "\\(.number)\\t\\(.title)"' 2>/dev/null)}")
+
+  for line in "${lines[@]}"; do
+    num="${line%%$'\t'*}"
+    title="${line#*$'\t'}"
+    if [ -n "$num" ] && [ "$title" != "$line" ]; then
+      candidates+=("${num}:${title}")
+    elif [ -n "$num" ]; then
+      candidates+=("${num}")
+    fi
+  done
+
+  _describe -t issues "Issue" candidates
+}
+
 _comma_w() {
   local context state state_descr line
   typeset -A opt_args
 
   _arguments -C \
     '(-h --help)'{-h,--help}'[Show help]' \
-    '1:command:(add prs ls list switch open mv prune doctor remove)' \
+    '1:command:(add prs issue ls list switch open mv prune doctor remove)' \
     '*::args:->args'
 
   case "$state" in
@@ -74,6 +98,12 @@ _comma_w() {
             '--focus[Switch/attach to tmux session]' \
             '--awaiting[Awaiting my/team review (autocomplete: last 7 days)]' \
             '*:pr number or search term:_comma_w_prs_candidates'
+          ;;
+        issue)
+          _arguments \
+            '(-q --quiet)'{-q,--quiet}'[Suppress informational output]' \
+            '--focus[Switch/attach to tmux session]' \
+            '1:issue number or url:_comma_w_issues_candidates'
           ;;
         ls|list)
           _arguments \

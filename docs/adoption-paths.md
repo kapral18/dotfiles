@@ -40,7 +40,8 @@ What you get:
 Where to read:
 
 - [`docs/categories/shell-fish.md`](categories/shell-fish.md)
-- [`docs/categories/terminals-and-tmux.md`](categories/terminals-and-tmux.md)
+- [`docs/categories/terminals/index.md`](categories/terminals/index.md)
+- [`docs/categories/tmux/index.md`](categories/tmux/index.md)
 - [`docs/categories/custom-commands.md`](categories/custom-commands.md)
 
 ## Path 4: Neovim Editor Workflow (Optional)

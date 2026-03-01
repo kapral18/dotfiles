@@ -387,4 +387,5 @@ If keymaps/plugins seem missing:
 
 - Repo overview and install: [`README.md`](../../README.md)
 - Neovim local README (short pointer): [`home/dot_config/exact_nvim/README.md`](../../home/dot_config/exact_nvim/README.md)
-- Terminals + tmux: [`docs/categories/terminals-and-tmux.md`](terminals-and-tmux.md)
+- Terminals: [`docs/categories/terminals/index.md`](terminals/index.md)
+- Tmux: [`docs/categories/tmux/index.md`](tmux/index.md)

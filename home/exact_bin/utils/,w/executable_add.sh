@@ -102,34 +102,6 @@ remote_exists() {
   git remote get-url "$remote" >/dev/null 2>&1
 }
 
-worktree_has_branch() {
-  local branch="$1"
-  local target="branch refs/heads/${branch}"
-  local line
-
-  while IFS= read -r line; do
-    case "$line" in
-    "$target") return 0 ;;
-    esac
-  done < <(git worktree list --porcelain)
-
-  return 1
-}
-
-any_remote_has_branch() {
-  local branch="$1"
-  local remote
-
-  while IFS= read -r remote; do
-    [ -z "$remote" ] && continue
-    if git show-ref --verify --quiet "refs/remotes/${remote}/${branch}"; then
-      return 0
-    fi
-  done < <(git remote)
-
-  return 1
-}
-
 if [ $# -eq 0 ]; then
   show_usage
   exit 1
@@ -150,7 +122,7 @@ elif [ $# -eq 1 ]; then
 fi
 
 parent_dir=$(_get_worktree_parent_dir)
-parent_name=$(basename "$parent_dir")
+parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
 
 _comma_w_prune_stale_worktrees "$quiet_mode"
 
@@ -170,16 +142,19 @@ if [ "$is_base_branch_specified" -eq 0 ]; then
   if [ "$is_remote_branch_input" -eq 1 ]; then
     local_branch=""
     worktree_path=""
+    tracking_remote="$input_remote"
 
-    if [ "$input_remote" = "origin" ] || [ "$input_remote" = "upstream" ]; then
+    if _comma_w_remote_is_first_party "$input_remote"; then
       local_branch="$input_remote_branch"
       worktree_path="$parent_dir/$input_remote_branch"
+      tracking_remote="$(_comma_w_preferred_tracking_remote_for_branch "$input_remote" "$input_remote_branch")"
+      [ -n "$tracking_remote" ] || tracking_remote="$input_remote"
     else
       local_branch="${input_remote}__${input_remote_branch}"
       worktree_path="$parent_dir/$input_remote/$input_remote_branch"
     fi
 
-    if worktree_has_branch "$local_branch"; then
+    if _comma_w_worktree_has_branch "$local_branch"; then
       info "Branch '$local_branch' already exists as a worktree."
       exit 0
     fi
@@ -199,11 +174,15 @@ if [ "$is_base_branch_specified" -eq 0 ]; then
       _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$local_branch" "$worktree_path"
       print_local_worktree_message "$local_branch" "$worktree_path"
     else
-      git_worktree_add "$worktree_path" -b "$local_branch" "${input_remote}/${input_remote_branch}"
+      git_worktree_add "$worktree_path" -b "$local_branch" "${tracking_remote}/${input_remote_branch}"
       _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$local_branch" "$worktree_path"
-      _print_created_worktree_message "$quiet_mode" "$local_branch" "$worktree_path" "${input_remote}/${input_remote_branch}"
+      _print_created_worktree_message "$quiet_mode" "$local_branch" "$worktree_path" "${tracking_remote}/${input_remote_branch}"
 
-      if [[ "$local_branch" == *__* ]] && [ "$input_remote" != "origin" ] && [ "$input_remote" != "upstream" ]; then
+      if [[ "$local_branch" != *__* ]]; then
+        git branch --set-upstream-to="${tracking_remote}/${input_remote_branch}" "$local_branch" >/dev/null 2>&1 || true
+      fi
+
+      if [[ "$local_branch" == *__* ]] && ! _comma_w_remote_is_first_party "$input_remote"; then
         git config extensions.worktreeConfig true
         git -C "$worktree_path" config --worktree remote.pushDefault "$input_remote"
         git -C "$worktree_path" config --worktree push.default upstream
@@ -213,7 +192,7 @@ if [ "$is_base_branch_specified" -eq 0 ]; then
   else
     worktree_path="$parent_dir/$branch_name"
 
-    if worktree_has_branch "$branch_name"; then
+    if _comma_w_worktree_has_branch "$branch_name"; then
       info "Branch '$branch_name' already exists as a worktree."
       exit 0
     fi
@@ -258,7 +237,7 @@ else
     echo "Cannot create a new branch with the same name." >&2
     exit 1
   fi
-  if any_remote_has_branch "$branch_name"; then
+  if _comma_w_any_remote_has_branch "$branch_name"; then
     echo "Branch '$branch_name' already exists on a remote." >&2
     echo "Cannot create a new branch with the same name." >&2
     exit 1
@@ -270,6 +249,7 @@ else
 
   base_remote=""
   base_remote_branch=""
+  resolved_base_remote=""
   if [[ "$base_branch" == */* ]]; then
     base_remote="${base_branch%%/*}"
     base_remote_branch="${base_branch#*/}"
@@ -282,9 +262,14 @@ else
         echo "Base branch '$base_branch' does not exist." >&2
         exit 1
       fi
-      base_ref="${base_remote}/${base_remote_branch}"
+      resolved_base_remote="$base_remote"
+      if _comma_w_remote_is_first_party "$base_remote"; then
+        resolved_base_remote="$(_comma_w_preferred_tracking_remote_for_branch "$base_remote" "$base_remote_branch")"
+        [ -n "$resolved_base_remote" ] || resolved_base_remote="$base_remote"
+      fi
+      base_ref="${resolved_base_remote}/${base_remote_branch}"
 
-      if [ "$base_remote" = "origin" ] || [ "$base_remote" = "upstream" ]; then
+      if _comma_w_remote_is_first_party "$base_remote"; then
         target_branch="$branch_name"
         worktree_path="$parent_dir/$branch_name"
       else
@@ -309,7 +294,7 @@ else
     fi
   fi
 
-  if worktree_has_branch "$target_branch"; then
+  if _comma_w_worktree_has_branch "$target_branch"; then
     info "Branch '$target_branch' already exists as a worktree."
     exit 0
   fi
@@ -324,7 +309,11 @@ else
   _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$target_branch" "$worktree_path"
   _print_created_worktree_message "$quiet_mode" "$target_branch" "$worktree_path" "$base_ref"
 
-  if [[ "$target_branch" == *__* ]] && [ -n "$base_remote" ] && [ "$base_remote" != "origin" ] && [ "$base_remote" != "upstream" ]; then
+  if [[ "$target_branch" != *__* ]]; then
+    git branch --set-upstream-to="$base_ref" "$target_branch" >/dev/null 2>&1 || true
+  fi
+
+  if [[ "$target_branch" == *__* ]] && [ -n "$base_remote" ] && ! _comma_w_remote_is_first_party "$base_remote"; then
     git config extensions.worktreeConfig true
     git -C "$worktree_path" config --worktree remote.pushDefault "$base_remote"
     git -C "$worktree_path" config --worktree push.default upstream

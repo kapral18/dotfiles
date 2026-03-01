@@ -134,10 +134,10 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-default_branch=$(git config --get init.defaultbranch || echo "main")
+default_branch="$(_comma_w_detect_default_branch)"
 
 parent_dir=$(_get_worktree_parent_dir)
-parent_name=$(basename "$parent_dir")
+parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
 
 notify() {
   local msg="$1"
@@ -320,7 +320,7 @@ for worktree in "${worktrees[@]}"; do
     if [ -z "$remote" ]; then
       remote="$(_infer_remote_from_prefixed_branch "$worktree_branch")"
     fi
-    if [ -n "$remote" ] && [ "$remote" != "origin" ] && [ "$remote" != "upstream" ]; then
+    if [ -n "$remote" ] && ! _comma_w_remote_is_first_party "$remote"; then
       remotes_to_check+=("$remote")
     fi
 
@@ -376,10 +376,13 @@ if [ ${#remotes_to_check[@]} -gt 0 ]; then
 
   for remote in $(printf '%s\n' "${remotes_to_check[@]}" | sort -u); do
     case "$remote" in
-    "" | origin | upstream | .)
+    "" | .)
       continue
       ;;
     esac
+    if _comma_w_remote_is_first_party "$remote"; then
+      continue
+    fi
 
     if ! _remote_exists "$remote"; then
       echo "Skipping remote '$remote' (not found)."

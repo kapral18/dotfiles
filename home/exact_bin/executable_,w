@@ -11,6 +11,7 @@ Usage: ,w <command> [options]
 Commands:
   add <branch_name> [base_branch]    Add a worktree for a branch
   prs [pr_numbers... | search]       Fetch PRs and create worktrees
+  issue <issue_number|url>           Create/switch issue worktree
   ls|list                            List worktrees
   switch                             Switch/attach to a worktree tmux session
   open <branch|path>                 Focus a worktree tmux session
@@ -43,6 +44,10 @@ add)
 prs)
   shift
   exec bash "$SCRIPT_DIR/utils/,w/prs.sh" "$@"
+  ;;
+issue)
+  shift
+  exec bash "$SCRIPT_DIR/utils/,w/issue.sh" "$@"
   ;;
 ls | list)
   shift

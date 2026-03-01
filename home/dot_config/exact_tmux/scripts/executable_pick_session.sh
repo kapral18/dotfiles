@@ -461,6 +461,86 @@ remote_names_for_root_checkout() {
   awk 'match($0, /^\[remote \"([^\"]+)\"\]/, m) { print m[1] }' "$cfg" 2>/dev/null || true
 }
 
+parse_owner_from_remote_url() {
+  local url="$1"
+  local path=""
+
+  url="${url%.git}"
+  case "$url" in
+  git@*:*/*)
+    path="${url#git@*:}"
+    ;;
+  ssh://git@*/*/*)
+    path="${url#ssh://git@*/}"
+    ;;
+  https://*/*/*)
+    path="${url#https://*/}"
+    ;;
+  http://*/*/*)
+    path="${url#http://*/}"
+    ;;
+  *)
+    return 1
+    ;;
+  esac
+
+  if [[ "$path" != */* ]]; then
+    return 1
+  fi
+
+  printf '%s\n' "${path%%/*}"
+}
+
+remote_owner_for_root_checkout() {
+  local root_checkout="$1"
+  local remote_name="$2"
+  [ -n "$root_checkout" ] || return 1
+  [ -n "$remote_name" ] || return 1
+
+  local cfg remote_url
+  cfg="$(git_config_file_for_worktree_root "$root_checkout" 2>/dev/null || true)"
+  [ -n "$cfg" ] && [ -f "$cfg" ] || return 1
+
+  remote_url="$(
+    awk -v remote="$remote_name" '
+      BEGIN { section="" }
+      match($0, /^\[remote \"([^\"]+)\"\]/, m) { section=m[1]; next }
+      section == remote && match($0, /^[[:space:]]*url[[:space:]]*=[[:space:]]*(.+)$/, m) { print m[1]; exit }
+    ' "$cfg" 2>/dev/null || true
+  )"
+  [ -n "$remote_url" ] || return 1
+
+  parse_owner_from_remote_url "$remote_url"
+}
+
+first_party_owner_for_root_checkout() {
+  local root_checkout="$1"
+  local owner=""
+
+  owner="$(remote_owner_for_root_checkout "$root_checkout" origin 2>/dev/null || true)"
+  if [ -n "$owner" ]; then
+    printf '%s\n' "$owner"
+    return 0
+  fi
+
+  owner="$(remote_owner_for_root_checkout "$root_checkout" upstream 2>/dev/null || true)"
+  if [ -n "$owner" ]; then
+    printf '%s\n' "$owner"
+    return 0
+  fi
+
+  return 1
+}
+
+self_login_hint() {
+  local login
+  login="$(tmux_opt '@pick_session_github_login' '')"
+  if [ -z "$login" ]; then
+    login="${GITHUB_USER:-${USER:-}}"
+  fi
+  printf '%s\n' "$login"
+}
+
 worktree_root_dir_for_path() {
   local p="$1"
   [ -n "$p" ] || return 1
@@ -570,6 +650,20 @@ branch_from_wrapper_path() {
           fi
         done < <(remote_names_for_root_checkout "$root_checkout" 2>/dev/null || true)
         if [ "${has_remote:-0}" -eq 1 ]; then
+          local first_owner first_party_owner self_login
+          first_owner="$(remote_owner_for_root_checkout "$root_checkout" "$first" 2>/dev/null || true)"
+          first_party_owner="$(first_party_owner_for_root_checkout "$root_checkout" 2>/dev/null || true)"
+          self_login="$(self_login_hint)"
+          if [ -n "$first_owner" ]; then
+            if [ -n "$first_party_owner" ] && [ "$first_owner" = "$first_party_owner" ]; then
+              printf '%s\n' "$rest"
+              return 0
+            fi
+            if [ -n "$self_login" ] && [ "$first_owner" = "$self_login" ]; then
+              printf '%s\n' "$rest"
+              return 0
+            fi
+          fi
           printf '%s\n' "${first}__${rest}"
           return 0
         fi

@@ -16,7 +16,8 @@ then jump to recipes for step-by-step tasks.
 
 - Git + identity: [`git-and-identity.md`](git-and-identity.md)
 - Shell (Fish): [`shell-fish.md`](shell-fish.md)
-- Terminals + tmux: [`terminals-and-tmux.md`](terminals-and-tmux.md)
+- Terminals: [`terminals/index.md`](terminals/index.md)
+- Tmux: [`tmux/index.md`](tmux/index.md)
 - Custom commands: [`custom-commands.md`](custom-commands.md)
 
 ## Optional Systems

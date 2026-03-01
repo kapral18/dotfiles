@@ -3,6 +3,7 @@
 set -euo pipefail
 
 source "$(dirname "$0")/../bash_utils_lib.sh"
+source "$(dirname "$0")/../worktree_lib.sh"
 
 show_usage() {
   cat <<EOF
@@ -64,7 +65,9 @@ fi
 parent_name=""
 if [ "$in_git_repo" -eq 1 ]; then
   parent_dir=$(_get_worktree_parent_dir)
-  parent_name=$(basename "$parent_dir")
+  parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
+  session_prefix="$(_comma_w_tmux_session_name "$parent_name" "")"
+  session_prefix="${session_prefix%|}"
 fi
 
 git_has_stale=0
@@ -97,7 +100,7 @@ session_has_any_existing_pane_path() {
     if [ -e "$pane_path" ]; then
       return 0
     fi
-  done < <(tmux list-panes -t "$session_name" -F '#{pane_current_path}' 2>/dev/null || true)
+  done < <(_comma_w_tmux list-panes -t "$session_name" -F '#{pane_current_path}' 2>/dev/null || true)
 
   if [ "$saw_any" -eq 0 ]; then
     return 0
@@ -112,7 +115,7 @@ while IFS=$'\t' read -r session_name _; do
 
   if [ "$all_mode" -eq 0 ]; then
     case "$session_name" in
-    "${parent_name}"\|*) ;;
+    "${session_prefix}"\|*) ;;
     *)
       continue
       ;;
@@ -122,7 +125,7 @@ while IFS=$'\t' read -r session_name _; do
   if ! session_has_any_existing_pane_path "$session_name"; then
     stale_sessions+=("$session_name")
   fi
-done < <(tmux list-sessions -F $'#{session_name}\t#{session_path}' 2>/dev/null || true)
+done < <(_comma_w_tmux list-sessions -F $'#{session_name}\t#{session_path}' 2>/dev/null || true)
 
 if [ ${#stale_sessions[@]} -gt 0 ]; then
   tmux_has_stale=1
@@ -167,7 +170,7 @@ fi
 
 if [ "$tmux_has_stale" -eq 1 ]; then
   for session_name in "${stale_sessions[@]}"; do
-    tmux kill-session -t "$session_name" 2>/dev/null || true
+    _comma_w_tmux kill-session -t "$session_name" 2>/dev/null || true
   done
   did_any=1
 fi

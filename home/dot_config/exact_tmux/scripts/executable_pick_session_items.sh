@@ -160,7 +160,7 @@ if pending_file and os.path.exists(pending_file):
     pass
 
 def path_tombstoned(kind, p):
-    if kind not in ("dir", "worktree", "session") or not p:
+    if kind not in ("dir", "worktree") or not p:
         return False
     for base in path_prefixes:
         if p == base or p.startswith(base + "/"):
@@ -428,7 +428,7 @@ mutation_path_prefixes, mutation_session_targets, fresh_session_targets = load_m
 pending_path_prefixes = load_pending_path_prefixes()
 
 def path_tombstoned(kind: str, p: str) -> bool:
-    if kind not in ("dir", "worktree", "session") or not p:
+    if kind not in ("dir", "worktree") or not p:
         return False
     for base in mutation_path_prefixes:
         if p == base or p.startswith(base + "/"):

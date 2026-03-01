@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source "$(dirname "$0")/utils/worktree_lib.sh"
+
 usage() {
   cat <<'EOF'
 Usage:
@@ -8,8 +10,8 @@ Usage:
 
 Behavior:
   - Forks <owner/repo> using GitHub CLI.
-  - Clones into ./<repo>/main (relative to your current directory).
-  - Creates (or focuses) a tmux session named <repo>|main.
+  - Clones into ./<repo>/<default-branch> (relative to your current directory).
+  - Creates (or focuses) a tmux session named <wrapper/repo>|<default-branch>.
   - Session layout: 2 windows, each with 2 panes split vertically.
 EOF
 }
@@ -37,29 +39,52 @@ command -v gh >/dev/null 2>&1 || {
 }
 
 repo_name="${repo_spec##*/}"
-branch_name="main"
-clone_dir="${repo_name}/${branch_name}"
-clone_path="$(pwd -P)/${clone_dir}"
-session_name="${repo_name}|${branch_name}"
+repo_wrapper_path="$(pwd -P)/${repo_name}"
 
 if [[ -e "$repo_name" ]]; then
   echo "Error: repo directory already exists: $repo_name" >&2
   exit 1
 fi
 
-if [[ -e "$clone_dir" ]]; then
-  echo "Error: clone target already exists: $clone_dir" >&2
-  exit 1
-fi
-
 gh repo fork "$repo_spec" --clone
+
+detect_branch_name() {
+  local repo_dir="$1"
+  local branch=""
+
+  branch="$(git -C "$repo_dir" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+  if [ -n "$branch" ]; then
+    printf '%s\n' "$branch"
+    return 0
+  fi
+
+  branch="$(git -C "$repo_dir" symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null || true)"
+  if [ -n "$branch" ]; then
+    printf '%s\n' "${branch#origin/}"
+    return 0
+  fi
+
+  branch="$(git -C "$repo_dir" symbolic-ref -q --short refs/remotes/upstream/HEAD 2>/dev/null || true)"
+  if [ -n "$branch" ]; then
+    printf '%s\n' "${branch#upstream/}"
+    return 0
+  fi
+
+  printf '%s\n' "main"
+}
+
+branch_name="$(detect_branch_name "$repo_name")"
+clone_dir="${repo_name}/${branch_name}"
+clone_path="$(pwd -P)/${clone_dir}"
+parent_name="$(_comma_w_tmux_parent_name_from_dir "$repo_wrapper_path")"
+session_name="$(_comma_w_tmux_session_name "$parent_name" "$branch_name")"
 
 if [[ -e "$clone_dir/.git" ]]; then
   :
 elif [[ -e "$repo_name/.git" ]]; then
   tmp_dir="${repo_name}.tmp.$$"
   mv "$repo_name" "$tmp_dir"
-  mkdir -p "$repo_name"
+  mkdir -p "$(dirname "$clone_dir")"
   mv "$tmp_dir" "$clone_dir"
 else
   echo "Error: unable to locate cloned repository for $repo_spec" >&2
@@ -71,16 +96,18 @@ command -v tmux >/dev/null 2>&1 || {
   exit 0
 }
 
-if ! tmux has-session -t "$session_name" 2>/dev/null; then
-  tmux new-session -d -s "$session_name" -c "$clone_path" -n main
-  tmux split-window -h -t "${session_name}:1" -c "$clone_path"
+if ! _comma_w_tmux has-session -t "$session_name" 2>/dev/null; then
+  _comma_w_tmux new-session -d -s "$session_name" -c "$clone_path" -n "$branch_name"
+  _comma_w_tmux split-window -h -t "${session_name}:1" -c "$clone_path"
 
-  tmux new-window -t "$session_name" -n shell -c "$clone_path"
-  tmux split-window -h -t "${session_name}:2" -c "$clone_path"
+  _comma_w_tmux new-window -t "$session_name" -n shell -c "$clone_path"
+  _comma_w_tmux split-window -h -t "${session_name}:2" -c "$clone_path"
 fi
 
-if [[ -n "${TMUX:-}" ]]; then
-  tmux switch-client -t "$session_name"
+if [ -n "${OUTER_TMUX_SOCKET:-}" ] && [ -n "${OUTER_TMUX_CLIENT:-}" ]; then
+  _comma_w_tmux switch-client -c "${OUTER_TMUX_CLIENT}" -t "$session_name" 2>/dev/null || true
+elif [[ -n "${TMUX:-}" ]]; then
+  _comma_w_tmux switch-client -t "$session_name"
 else
-  tmux attach-session -t "$session_name"
+  _comma_w_tmux attach-session -t "$session_name"
 fi

@@ -40,6 +40,140 @@ with open(sel_file, "r", encoding="utf-8", errors="replace") as f:
         selected.add((kind, path, target))
         selected_rows.append((kind, path, meta, target))
 
+def resolve_path(p: str) -> str:
+    try:
+        return str(Path(p).resolve())
+    except Exception:
+        return p
+
+def path_under_prefix(path: str, prefix: str) -> bool:
+    if not path or not prefix:
+        return False
+    return path == prefix or path.startswith(prefix + "/")
+
+def path_under_any_prefix(path: str, prefixes) -> bool:
+    for pref in prefixes:
+        if path_under_prefix(path, pref):
+            return True
+    return False
+
+def worktree_dir_for_path(p: str) -> str:
+    cur = Path(resolve_path(p))
+    if cur.is_file():
+        cur = cur.parent
+    for _ in range(16):
+        if (cur / ".git").exists():
+            return str(cur)
+        if cur.parent == cur:
+            break
+        cur = cur.parent
+    return ""
+
+def list_worktree_paths(root: str):
+    if not root:
+        return []
+    try:
+        out = subprocess.run(
+            ["git", "-C", root, "worktree", "list", "--porcelain"],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).stdout
+    except Exception:
+        return []
+    paths = []
+    for row in (out or "").splitlines():
+        if row.startswith("worktree "):
+            wt = row[len("worktree ") :].strip()
+            if wt:
+                paths.append(resolve_path(wt))
+    return paths
+
+def repo_name_from_remote(root: str) -> str:
+    if not root:
+        return ""
+    url = ""
+    for remote in ("origin", "upstream"):
+        try:
+            out = subprocess.run(
+                ["git", "-C", root, "remote", "get-url", remote],
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+            ).stdout.strip()
+        except Exception:
+            out = ""
+        if out:
+            url = out
+            break
+    if not url:
+        return ""
+    url = url.rstrip("/")
+    if url.endswith(".git"):
+        url = url[: -len(".git")]
+    if "://" in url:
+        return url.rsplit("/", 1)[-1].strip()
+    if ":" in url:
+        tail = url.split(":", 1)[1]
+        return tail.rsplit("/", 1)[-1].strip()
+    return url.rsplit("/", 1)[-1].strip()
+
+def nuke_dir_for_root_worktree(root: str) -> str:
+    root = resolve_path(root)
+    if not root:
+        return ""
+    wrapper = resolve_path(str(Path(root).parent))
+    repo_name = repo_name_from_remote(root)
+    home = resolve_path(str(Path.home()))
+    if (
+        repo_name
+        and os.path.basename(wrapper) == repo_name
+        and wrapper not in ("", "/", home)
+    ):
+        return wrapper
+    return root
+
+def remove_path_prefixes_for_selection(rows):
+    prefixes = set()
+    for kind, path, meta, target in rows:
+        if not path:
+            continue
+        path_r = resolve_path(path)
+        meta_base = (meta or "").split("|", 1)[0]
+
+        if kind == "worktree":
+            if meta_base.startswith("wt_root:"):
+                root = resolve_path(target) if target else path_r
+                if root:
+                    prefixes.add(nuke_dir_for_root_worktree(root))
+                    for wt in list_worktree_paths(root):
+                        prefixes.add(resolve_path(wt))
+            else:
+                prefixes.add(path_r)
+            continue
+
+        if kind == "session":
+            if meta_base.startswith("sess_root:"):
+                root = path_r
+                prefixes.add(nuke_dir_for_root_worktree(root))
+                for wt in list_worktree_paths(root):
+                    prefixes.add(resolve_path(wt))
+            elif meta_base.startswith("sess_wt:"):
+                wt = worktree_dir_for_path(path_r) or path_r
+                prefixes.add(resolve_path(wt))
+            else:
+                prefixes.add(path_r)
+            continue
+
+        if kind == "dir":
+            prefixes.add(path_r)
+
+    return {p for p in prefixes if p}
+
+remove_mode_prefixes = remove_path_prefixes_for_selection(selected_rows) if mode == "remove" else set()
+
 def append_mutation_tombstones():
     if mode not in ("kill", "remove"):
         return
@@ -52,28 +186,6 @@ def append_mutation_tombstones():
     mutation_file = cache_dir / "pick_session_mutations.tsv"
     now = int(time.time())
     lines = []
-    def resolve_path(p: str) -> str:
-        try:
-            return str(Path(p).resolve())
-        except Exception:
-            return p
-
-    def worktree_dir_for_path(p: str) -> str:
-        cur = Path(p)
-        if cur.is_file():
-            cur = cur.parent
-        try:
-            cur = cur.resolve()
-        except Exception:
-            cur = Path(p)
-        for _ in range(16):
-            if (cur / ".git").exists():
-                return str(cur)
-            if cur.parent == cur:
-                break
-            cur = cur.parent
-        return ""
-
     if mode == "kill":
         for kind, _path, _meta, target in selected_rows:
             if kind == "session" and target:
@@ -81,21 +193,30 @@ def append_mutation_tombstones():
             elif kind == "dir" and _path:
                 lines.append(f"{now}\tPATH_PREFIX\t{resolve_path(_path)}\n")
     elif mode == "remove":
-        for kind, path, meta, _target in selected_rows:
-            if not path:
-                continue
-            if kind == "worktree":
-                lines.append(f"{now}\tPATH_PREFIX\t{resolve_path(path)}\n")
-                continue
-            if kind == "session":
-                meta_base = (meta or "").split("|", 1)[0]
-                if meta_base.startswith("sess_root:") or meta_base.startswith("sess_wt:"):
-                    wt = worktree_dir_for_path(path) or path
-                    lines.append(f"{now}\tPATH_PREFIX\t{resolve_path(wt)}\n")
-                else:
-                    lines.append(f"{now}\tPATH_PREFIX\t{resolve_path(path)}\n")
-            if kind == "dir":
-                lines.append(f"{now}\tPATH_PREFIX\t{resolve_path(path)}\n")
+        for pref in sorted(remove_mode_prefixes):
+            lines.append(f"{now}\tPATH_PREFIX\t{pref}\n")
+
+        if remove_mode_prefixes:
+            try:
+                out = subprocess.run(
+                    ["tmux", "list-sessions", "-F", "#{session_name}\t#{session_path}"],
+                    check=False,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                    text=True,
+                ).stdout
+            except Exception:
+                out = ""
+            for row in (out or "").splitlines():
+                if not row or "\t" not in row:
+                    continue
+                name, spath = row.split("\t", 1)
+                name = (name or "").strip()
+                spath = resolve_path((spath or "").strip())
+                if not name or not spath:
+                    continue
+                if path_under_any_prefix(spath, remove_mode_prefixes):
+                    lines.append(f"{now}\tSESSION_TARGET\t{name}\n")
     if not lines:
         return
     try:
@@ -123,18 +244,24 @@ for raw in proc.stdout.splitlines():
             continue
     base_rows.append(raw)
 
+if mode == "remove" and remove_mode_prefixes:
+    pruned_rows = []
+    for raw in base_rows:
+        parts = raw.split("\t")
+        if len(parts) < 5:
+            pruned_rows.append(raw)
+            continue
+        kind, path = parts[1], parts[2]
+        rp = resolve_path(path) if path else ""
+        if kind in ("session", "worktree", "dir") and rp and path_under_any_prefix(rp, remove_mode_prefixes):
+            continue
+        pruned_rows.append(raw)
+    base_rows = pruned_rows
+
 # --- shared grouping logic ---
 
 KIND_PRIO = {"session": 3, "worktree": 2, "dir": 1}
 DEFAULT_BRANCHES = {"main", "master", "trunk", "develop", "dev"}
-
-def resolve_path(p: str) -> str:
-    if not p:
-        return ""
-    try:
-        return str(Path(p).expanduser().resolve())
-    except Exception:
-        return p
 
 def scan_roots_from_tmux():
     roots_raw = ""

@@ -232,6 +232,7 @@ emit_sessions_worktrees_and_dirs() {
   export PICK_SESSION_EXCLUDE_LIST
   export PICK_SESSION_DIR_MAX_DEPTH
   export PICK_SESSION_DIR_INCLUDE_HIDDEN
+  export PICK_SESSION_GITHUB_LOGIN
 
   PICK_SESSION_SCAN_ROOTS="$(tmux_opt '@pick_session_worktree_scan_roots' "$HOME/work,$HOME/code,$HOME/.backport/repositories,$HOME/.local/share")"
   PICK_SESSION_SCAN_DEPTH="$(tmux_opt '@pick_session_worktree_scan_depth' '6')"
@@ -240,6 +241,7 @@ emit_sessions_worktrees_and_dirs() {
   PICK_SESSION_SESSIONS_ONLY="$sessions_only"
   PICK_SESSION_DIR_MAX_DEPTH="$(tmux_opt '@pick_session_dir_max_depth' '4')"
   PICK_SESSION_DIR_INCLUDE_HIDDEN="$(tmux_opt '@pick_session_dir_include_hidden' 'on')"
+  PICK_SESSION_GITHUB_LOGIN="$(tmux_opt '@pick_session_github_login' '')"
 
   python3 -u - <<'PY'
 import os
@@ -391,21 +393,54 @@ def find_wrapper_root_checkout_for_path(p: str, scan_roots_set: set[str]) -> str
         cur = wrapper.parent
     return ""
 
-def remote_names_for_root(root: str) -> set[str]:
+def parse_owner_from_remote_url(url: str) -> str:
+    url = (url or "").strip().rstrip("/")
+    if not url:
+        return ""
+    if url.endswith(".git"):
+        url = url[: -len(".git")]
+
+    path = ""
+    if url.startswith("git@") and ":" in url:
+        path = url.split(":", 1)[1]
+    elif url.startswith("ssh://git@"):
+        # ssh://git@<host>/owner/repo
+        parts = url.split("/", 3)
+        if len(parts) >= 4:
+            path = parts[3]
+    elif url.startswith("https://") or url.startswith("http://"):
+        parts = url.split("/", 3)
+        if len(parts) >= 4:
+            path = parts[3]
+
+    if "/" not in path:
+        return ""
+
+    return path.split("/", 1)[0].strip()
+
+def remote_names_for_root(root: str) -> dict[str, str]:
     cfg = git_config_path_for_root(root)
     if cfg is None:
-        return set()
-    remotes = set()
+        return {}
+    remotes = {}
+    section = ""
     try:
         for line in cfg.read_text(encoding="utf-8", errors="replace").splitlines():
             m = re.match(r'\[remote "(.+)"\]', line, flags=re.IGNORECASE)
             if m:
-                remotes.add(m.group(1))
+                section = m.group(1).strip()
+                remotes.setdefault(section, "")
+                continue
+            if section:
+                u = re.match(r"^\s*url\s*=\s*(.+)$", line)
+                if u:
+                    remotes[section] = parse_owner_from_remote_url(u.group(1).strip())
+                    section = ""
     except Exception:
         pass
     return remotes
 
-def branch_from_wrapper_path(root: str, wt_path: str, remotes: set[str]) -> str:
+def branch_from_wrapper_path(root: str, wt_path: str, remotes: dict[str, str]) -> str:
     try:
         wrapper = str(Path(root).parent)
         w = resolve_path(wrapper)
@@ -419,6 +454,19 @@ def branch_from_wrapper_path(root: str, wt_path: str, remotes: set[str]) -> str:
         if "/" in rel:
             first, rest = rel.split("/", 1)
             if first in remotes and first not in ("origin", "upstream") and rest:
+                first_owner = (remotes.get(first) or "").strip()
+                first_party_owner = (remotes.get("origin") or remotes.get("upstream") or "").strip()
+                self_login = (
+                    os.environ.get("PICK_SESSION_GITHUB_LOGIN")
+                    or os.environ.get("GITHUB_USER")
+                    or os.environ.get("USER")
+                    or ""
+                ).strip()
+                if first_owner:
+                    if first_party_owner and first_owner == first_party_owner:
+                        return rest
+                    if self_login and first_owner == self_login:
+                        return rest
                 return f"{first}__{rest}"
         return rel
     except Exception:

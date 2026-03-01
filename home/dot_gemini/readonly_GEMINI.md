@@ -67,6 +67,22 @@ training-memory guesses for facts.
 - Prefer reading the local implementation over relying on prior knowledge or
   generic docs.
 
+**Source-first research (clone + grep):**
+
+- When asked to "search the internet" or "figure out how X works" AND the thing
+  being investigated has a publicly cloneable codebase (or a library/tool with
+  source available), prefer inspecting the source locally over making many
+  network requests.
+- Default approach:
+  - identify the canonical repo with one small query (prefer `gh` / GitHub)
+  - clone into `/tmp` (reuse the clone if it already exists)
+  - **pull latest before reusing** (`git fetch` / `git pull`)
+  - use local code search (`rg`, file reads, `git log`) to answer the question
+  - only fall back to web fetches for non-code artifacts (docs, issues, release
+    notes) or when source inspection can't answer the question
+- Keep `/tmp` clones around for reuse unless cleanup is explicitly requested.
+  Treat `/tmp` as best-effort (it may be purged by the OS).
+
 **Identity before semantics:** prove what exact thing we are dealing with.
 
 - CLI: resolve the binary path and provenance, then read `--version` and
@@ -180,6 +196,8 @@ multiple angles and hypotheses:
 ### 4.2 Web Search Priority
 
 1. **GitHub CLI**: `gh` for GitHub-specific searches
+1. **If source is available**: clone to `/tmp` and inspect locally (see
+   `~/.agents/playbooks/research/source_first.md`)
 2. **Web search**: use the harness web search tool. If unavailable:
    `ddgr --noua` — never `curl`
 3. **Explore**: `gh api` to investigate URLs found via search

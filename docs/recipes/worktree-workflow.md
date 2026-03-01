@@ -29,6 +29,32 @@ Check out a PR into a worktree:
 ,w prs 12345
 ```
 
+Check out an Issue into a worktree:
+
+```bash
+,w issue 12345
+```
+
+Notes:
+
+- If the PR head repo is first-party (your `origin`/`upstream`, your GitHub login remote, or any remote URL owner matching your login), `,w prs` uses a normal local branch name like `feat/foo` instead of `kapral18__feat/foo`.
+- For first-party remotes, upstream tracking now prefers canonical refs (`origin/<branch>`, then `upstream/<branch>`) when present, instead of keeping a login-named remote like `kapral18/<branch>`.
+
+You can also use these shortcuts directly from `gh-dash` when viewing PRs:
+- `ctrl+t`: Create a worktree for the selected PR in the background (log: `${XDG_CACHE_HOME:-~/.cache}/gh-dash/w_prs_<PR>.log`).
+- `C` or `Space`: Create/switch to the PR worktree and focus its tmux session (`\,w prs --focus`).
+- `b`: Create/switch to the PR worktree, focus tmux, and open Octo review in a new tmux window.
+- If the repo does not exist locally yet, PR actions bootstrap it first with `,gh-tfork <owner/repo>` and then continue.
+- In the persistent `gh-dash` popup, sync PR actions (`C`/`Space`/`b`) show bootstrap progress in an overlay popup instead of replacing the `gh-dash` UI.
+- Bootstrap location follows conventions: `elastic/*` in `~/work/<repo>`, everything else in `~/code/<repo>`.
+
+You can also use these shortcuts directly from `gh-dash` when viewing Issues:
+- `ctrl+t`: Create a worktree for the selected Issue in the background (log: `${XDG_CACHE_HOME:-~/.cache}/gh-dash/w_issue_<ISSUE>.log`).
+- `C` or `Space`: Create/switch to the Issue worktree and focus its tmux session (`\,w issue --focus`).
+- If the repo does not exist locally yet, Issue actions bootstrap it first with `,gh-tfork <owner/repo>` and then continue.
+- In the persistent `gh-dash` popup, sync Issue actions (`C`/`Space`) show bootstrap progress in an overlay popup instead of replacing the `gh-dash` UI.
+- Bootstrap location follows conventions: `elastic/*` in `~/work/<repo>`, everything else in `~/code/<repo>`.
+
 Clean up a worktree:
 
 ```bash
@@ -38,6 +64,7 @@ Clean up a worktree:
 Notes:
 
 - Cleanup treats `.DS_Store` as ignorable, so empty parent directories aren’t kept alive by Finder metadata.
+- Cleanup protects the repository's actual default branch (detected from remote HEAD), not only `main`.
 - If cleanup would otherwise leave behind empty parent directories *only because of unrelated leftover files/dirs*, `,w remove` moves those leftovers into a bag directory outside the wrapper:
   `../.bag/worktree_remove/<wrapper>/<timestamp>/...` (relative to the wrapper’s parent).
 

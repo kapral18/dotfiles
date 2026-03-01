@@ -19,17 +19,21 @@ parse_owner_repo_from_remote_url() {
 
   url="${url%.git}"
   case "$url" in
-  git@github.com:*)
-    path="${url#git@github.com:}"
+  git@*:*/*)
+    # git@<host>:owner/repo
+    path="${url#git@*:}"
     ;;
-  ssh://git@github.com/*)
-    path="${url#ssh://git@github.com/}"
+  ssh://git@*/*/*)
+    # ssh://git@<host>/owner/repo
+    path="${url#ssh://git@*/}"
     ;;
-  https://github.com/*)
-    path="${url#https://github.com/}"
+  https://*/*/*)
+    # https://<host>/owner/repo
+    path="${url#https://*/}"
     ;;
-  http://github.com/*)
-    path="${url#http://github.com/}"
+  http://*/*/*)
+    # http://<host>/owner/repo
+    path="${url#http://*/}"
     ;;
   *)
     return 1
@@ -41,6 +45,21 @@ parse_owner_repo_from_remote_url() {
   fi
 
   printf '%s\t%s\n' "${path%%/*}" "${path#*/}"
+}
+
+get_remote_owner_and_name() {
+  local remote="$1"
+  local remote_url parsed
+
+  remote_url="$(git remote get-url "$remote" 2>/dev/null || true)"
+  if [ -z "$remote_url" ]; then
+    return 1
+  fi
+  if parsed="$(parse_owner_repo_from_remote_url "$remote_url")"; then
+    printf '%s\n' "$parsed"
+    return 0
+  fi
+  return 1
 }
 
 get_base_repo_owner_and_name() {
@@ -75,6 +94,34 @@ get_base_remote_name() {
   fi
 }
 
+find_existing_remote_for_owner_repo() {
+  local owner="$1"
+  local repo="$2"
+  local info remote
+
+  for remote in origin upstream; do
+    info="$(get_remote_owner_and_name "$remote" 2>/dev/null || true)"
+    if [ "$info" = "${owner}"$'\t'"${repo}" ]; then
+      printf '%s\n' "$remote"
+      return 0
+    fi
+  done
+
+  while IFS= read -r remote; do
+    [ -n "$remote" ] || continue
+    case "$remote" in
+    origin | upstream) continue ;;
+    esac
+    info="$(get_remote_owner_and_name "$remote" 2>/dev/null || true)"
+    if [ "$info" = "${owner}"$'\t'"${repo}" ]; then
+      printf '%s\n' "$remote"
+      return 0
+    fi
+  done < <(git remote 2>/dev/null || true)
+
+  return 1
+}
+
 show_usage() {
   cat <<EOF
 Usage: ,w prs [-q|--quiet] [--focus] [--awaiting] [pr_number ...| search_terms]
@@ -98,7 +145,8 @@ Examples:
   ,w prs --awaiting             # Pick from PRs awaiting my/team review
 
 Notes:
-  - Automatically adds contributor's fork as a remote
+  - Automatically adds contributor forks as remotes when needed
+  - If the PR head repo matches an existing $(origin)/$(upstream) remote, uses that remote (no new remote created)
   - Default behavior creates a stable local branch name based on PR head: <remote>__<branch>
   - Worktrees are created under <remote>/<branch> to keep paths readable
   - If no arguments provided, opens interactive fzf search
@@ -401,7 +449,7 @@ fi
 base_remote="$(get_base_remote_name)"
 
 parent_dir=$(_get_worktree_parent_dir)
-parent_name=$(basename "$parent_dir")
+parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
 
 _comma_w_prune_stale_worktrees "$quiet_mode"
 
@@ -420,21 +468,27 @@ for pr_number in "${pr_numbers[@]}"; do
     continue
   fi
 
-  remote_name="$repo_owner"
-  if [ "$repo_owner" = "$base_owner" ] && [ "$repo_name" = "$base_repo" ]; then
+  # Prefer existing remotes when they already point at the PR's head repo.
+  # This avoids creating redundant remotes like "kapral18" when origin is already the fork.
+  remote_name=""
+  existing_remote="$(find_existing_remote_for_owner_repo "$repo_owner" "$repo_name" 2>/dev/null || true)"
+  if [ -n "$existing_remote" ]; then
+    remote_name="$existing_remote"
+  elif [ "$repo_owner" = "$base_owner" ] && [ "$repo_name" = "$base_repo" ]; then
     if [ -z "$base_remote" ]; then
       echo "PR #$pr_number targets the base repo, but neither 'upstream' nor 'origin' remote exists." >&2
       continue
     fi
     remote_name="$base_remote"
   else
+    remote_name="$repo_owner"
     repo_url="git@github.com:$repo_owner/$repo_name.git"
     if ! git remote get-url "$remote_name" >/dev/null 2>&1; then
       git remote add "$remote_name" "$repo_url"
     fi
   fi
 
-  if [ "$remote_name" = "origin" ] || [ "$remote_name" = "upstream" ]; then
+  if _comma_w_remote_is_first_party "$remote_name"; then
     local_branch="$branch_name"
     worktree_path="$parent_dir/$branch_name"
   else
@@ -483,7 +537,9 @@ for pr_number in "${pr_numbers[@]}"; do
     continue
   fi
 
-  base_ref="${remote_name}/${branch_name}"
+  tracking_remote="$(_comma_w_preferred_tracking_remote_for_branch "$remote_name" "$branch_name")"
+  [ -n "$tracking_remote" ] || tracking_remote="$remote_name"
+  base_ref="${tracking_remote}/${branch_name}"
 
   mkdir -p "$(dirname "$worktree_path")"
   if git show-ref --verify --quiet "refs/heads/$local_branch"; then
@@ -503,8 +559,13 @@ for pr_number in "${pr_numbers[@]}"; do
   _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$local_branch" "$worktree_path"
   _print_created_worktree_message "$quiet_mode" "$local_branch" "$worktree_path" "$base_ref"
 
+  # For non-prefixed branches, keep upstream tracking sane.
+  if [[ "$local_branch" != *__* ]]; then
+    git branch --set-upstream-to="$base_ref" "$local_branch" >/dev/null 2>&1 || true
+  fi
+
   # Native Git Smart Push Routing for prefixed branches
-  if [[ "$local_branch" == *__* ]] && [ "$remote_name" != "origin" ] && [ "$remote_name" != "upstream" ]; then
+  if [[ "$local_branch" == *__* ]] && ! _comma_w_remote_is_first_party "$remote_name"; then
     git config extensions.worktreeConfig true
     git -C "$worktree_path" config --worktree remote.pushDefault "$remote_name"
     git -C "$worktree_path" config --worktree push.default upstream

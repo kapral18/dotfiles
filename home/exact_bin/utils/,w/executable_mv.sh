@@ -78,7 +78,7 @@ from="$1"
 to_branch="$2"
 
 parent_dir=$(_get_worktree_parent_dir)
-parent_name=$(basename "$parent_dir")
+parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
 
 _comma_w_prune_stale_worktrees "$quiet_mode"
 

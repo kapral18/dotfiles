@@ -243,8 +243,8 @@ Custom commands are shipped as scripts installed to `~/bin` (source: `home/exact
     deleted.
   - **Examples:** `,gh-prw`; `,gh-prw 12345`; `,gh-prw --number`; `,gh-prw --url`
 - **Name:** `,gh-tfork`
-  - **Description:** Fork + clone a repo into `./<repo>/main`, then create/focus
-    a tmux session named `<repo>|main` with a 2-window layout (each window split
+  - **Description:** Fork + clone a repo into `./<repo>/<default-branch>`, then create/focus
+    a tmux session named `<wrapper/repo>|<default-branch>` with a 2-window layout (each window split
     vertically).
   - **Examples:** `,gh-tfork elastic/integrations`
 - **Name:** `,gh-subissues-create`

@@ -55,7 +55,7 @@ while [ $# -gt 0 ]; do
 done
 
 parent_dir=$(_get_worktree_parent_dir)
-parent_name=$(basename "$parent_dir")
+parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
 
 query="$*"
 

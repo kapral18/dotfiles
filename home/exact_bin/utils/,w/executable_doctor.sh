@@ -3,6 +3,7 @@
 set -euo pipefail
 
 source "$(dirname "$0")/../bash_utils_lib.sh"
+source "$(dirname "$0")/../worktree_lib.sh"
 
 show_usage() {
   cat <<EOF
@@ -55,7 +56,9 @@ if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 fi
 
 parent_dir=$(_get_worktree_parent_dir)
-parent_name=$(basename "$parent_dir")
+parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
+session_prefix="$(_comma_w_tmux_session_name "$parent_name" "")"
+session_prefix="${session_prefix%|}"
 
 stale_paths=()
 worktree_path=""
@@ -95,7 +98,7 @@ if command -v tmux >/dev/null 2>&1; then
       if [ -e "$pane_path" ]; then
         return 0
       fi
-    done < <(tmux list-panes -t "$session_name" -F '#{pane_current_path}' 2>/dev/null || true)
+    done < <(_comma_w_tmux list-panes -t "$session_name" -F '#{pane_current_path}' 2>/dev/null || true)
 
     return 1
   }
@@ -103,7 +106,7 @@ if command -v tmux >/dev/null 2>&1; then
   while IFS=$'\t' read -r session_name _; do
     [ -z "$session_name" ] && continue
     case "$session_name" in
-    "${parent_name}"\|*) ;;
+    "${session_prefix}"\|*) ;;
     *)
       continue
       ;;
@@ -112,7 +115,7 @@ if command -v tmux >/dev/null 2>&1; then
     if ! session_has_any_existing_pane_path "$session_name"; then
       stale_sessions+=("$session_name")
     fi
-  done < <(tmux list-sessions -F $'#{session_name}\t#{session_path}' 2>/dev/null || true)
+  done < <(_comma_w_tmux list-sessions -F $'#{session_name}\t#{session_path}' 2>/dev/null || true)
 
   if [ ${#stale_sessions[@]} -gt 0 ]; then
     echo
