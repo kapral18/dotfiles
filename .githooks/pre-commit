@@ -25,6 +25,7 @@ is_shell_file() {
   local path="$1"
 
   case "$path" in
+  *.tmpl) return 1 ;;
   *.sh | *.bash | *.ksh) return 0 ;;
   esac
 

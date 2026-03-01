@@ -68,6 +68,7 @@
       ],
       "enabled": true,
     },
+    // __isWork__
     "scsi-main": {
       "type": "local",
       "command": [
@@ -77,6 +78,7 @@
       ],
       "enabled": true,
     },
+    // __isWork__
     "scsi-local": {
       "type": "local",
       "command": [

@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+{{- $srcJsonc := joinPath .chezmoi.sourceDir "dot_config/opencode/opencode.jsonc" -}}
+{{- $renderer := joinPath (dir .chezmoi.sourceDir) "scripts/render_tool_config.py" -}}
+{{- if eq .isWork true }}
+# opencode config desired hash (work): {{ output "python3" $renderer "--hash-only" "opencode" "true" $srcJsonc | trim }}
+{{- else }}
+# opencode config desired hash (non-work): {{ output "python3" $renderer "--hash-only" "opencode" "false" $srcJsonc | trim }}
+{{- end }}
+
+source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
+repo_root="$(dirname "$source_dir")"
+renderer="$repo_root/scripts/render_tool_config.py"
+src="$source_dir/dot_config/opencode"
+target="$HOME/.config/opencode/opencode.jsonc"
+is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
+
+desired="$(
+  python3 "$renderer" "opencode" "$is_work" "$src/opencode.jsonc"
+)"
+
+mkdir -p "$(dirname "$target")"
+
+if [ -f "$target" ] && [ "$(cat "$target")" = "$desired" ]; then
+  exit 0
+fi
+
+printf '%s\n' "$desired" >"$target"

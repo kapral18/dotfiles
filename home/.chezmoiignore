@@ -3,3 +3,5 @@ asdf_plugins
 app_icons/
 .cursor/mcp.json
 .gemini/settings.json
+.config/opencode/opencode.jsonc
+.codex/config.toml

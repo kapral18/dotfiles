@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+{{- $srcToml := joinPath .chezmoi.sourceDir "dot_codex/private_config.toml" -}}
+{{- $renderer := joinPath (dir .chezmoi.sourceDir) "scripts/render_tool_config.py" -}}
+{{- if eq .isWork true }}
+# codex config desired hash (work): {{ output "python3" $renderer "--hash-only" "codex" "true" $srcToml | trim }}
+{{- else }}
+# codex config desired hash (non-work): {{ output "python3" $renderer "--hash-only" "codex" "false" $srcToml | trim }}
+{{- end }}
+
+source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
+repo_root="$(dirname "$source_dir")"
+renderer="$repo_root/scripts/render_tool_config.py"
+src="$source_dir/dot_codex/private_config.toml"
+target="$HOME/.codex/config.toml"
+is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
+
+desired="$(
+  python3 "$renderer" "codex" "$is_work" "$src"
+)"
+
+mkdir -p "$(dirname "$target")"
+
+if [ -f "$target" ] && [ "$(cat "$target")" = "$desired" ]; then
+  exit 0
+fi
+
+tmp="$(mktemp)"
+trap 'rm -f "$tmp"' EXIT
+
+printf '%s\n' "$desired" >"$tmp"
+chmod 600 "$tmp"
+mv "$tmp" "$target"

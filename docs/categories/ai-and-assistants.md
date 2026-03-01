@@ -87,6 +87,20 @@ ls -la ~/.agents/playbooks
 
 ## Tool Configs
 
+### Cursor agent CLI
+
+A cross-shell alias `agent` is provided for `cursor-agent`:
+
+- POSIX interactive shells: `home/readonly_dot_shellrc` → `~/.shellrc`
+- fish: `home/dot_config/fish/config.fish.tmpl` → `~/.config/fish/config.fish`
+
+Verification:
+
+```bash
+command -v agent
+agent --help
+```
+
 Examples of tool configs included here:
 
 - OpenCode: `home/dot_config/opencode/`
@@ -94,6 +108,31 @@ Examples of tool configs included here:
 - Amp: `home/dot_config/exact_amp/private_settings.json` (private settings)
 - Gemini CLI: `home/dot_gemini/`
 - Copilot CLI: `home/dot_config/dot_copilot/`
+
+### MCP merge scripts
+
+Some tools rewrite their config files at runtime, so chezmoi ignores the on-disk
+target and a `run_onchange` script writes a filtered version from the repo
+source.
+
+Filtering rule: when `.isWork` is false, any MCP server entry marked
+as work-only is removed, and work-only markers are stripped from the final
+config.
+
+Implementation note: the merge scripts embed a “desired hash” that is computed
+from the filtered output (not the raw source). This keeps `run_onchange` from
+re-running when only work-only blocks change on non-work machines.
+
+Marker formats:
+
+- Cursor/Gemini JSON: `"__isWork__": true`
+- OpenCode JSONC: `// __isWork__` on the line before the MCP server key
+- Codex TOML: `# __isWork__` within the work-only table
+
+- Cursor MCP: `home/dot_cursor/mcp.json` → `~/.cursor/mcp.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-cursor-mcp.sh.tmpl`)
+- Gemini settings: `home/dot_gemini/settings.json` → `~/.gemini/settings.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-gemini-settings.sh.tmpl`)
+- OpenCode config: `home/dot_config/opencode/opencode.jsonc` → `~/.config/opencode/opencode.jsonc` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl`)
+- Codex config: `home/dot_codex/private_config.toml` → `~/.codex/config.toml` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-codex-config.sh.tmpl`)
 
 ### Gemini CLI settings
 

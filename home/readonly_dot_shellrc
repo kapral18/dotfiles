@@ -7,6 +7,7 @@
 
 # Aliases
 alias cat="bat"
+alias agent="cursor-agent"
 alias c="chezmoi"
 alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l'
 alias g="git"
