@@ -11,6 +11,8 @@ Usage:
 Behavior:
   - Forks <owner/repo> using GitHub CLI.
   - Clones into ./<repo>/<default-branch> (relative to your current directory).
+    - Uses git partial clone: --filter=blob:none
+    - For elastic/kibana: also uses a shallow clone (depth 15000; ~12 months of commits)
   - Creates (or focuses) a tmux session named <wrapper/repo>|<default-branch>.
   - Session layout: 2 windows, each with 2 panes split vertically.
 EOF
@@ -46,7 +48,12 @@ if [[ -e "$repo_name" ]]; then
   exit 1
 fi
 
-gh repo fork "$repo_spec" --clone
+clone_flags=(--filter=blob:none)
+if [ "$repo_spec" = "elastic/kibana" ]; then
+  clone_flags+=(--depth=15000)
+fi
+
+gh repo fork "$repo_spec" --clone -- "${clone_flags[@]}"
 
 detect_branch_name() {
   local repo_dir="$1"
