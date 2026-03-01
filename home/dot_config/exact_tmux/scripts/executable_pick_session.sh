@@ -30,7 +30,7 @@ tmux_sanitize_session_name() {
   [ -n "$s" ] || return 1
   printf '%s\n' "$s" |
     tr '[:upper:]' '[:lower:]' |
-    sed -E 's/[^a-z0-9_@|/~-]+/_/g; s/[.:]+/_/g; s/_+/_/g; s/^_+//; s/_+$//'
+    sed -E 's/[^a-z0-9_@|/~-]+/_/g; s/[.:]+/_/g; s/_+$//'
 }
 
 tmux_opt() {
@@ -86,9 +86,105 @@ if [[ -z "${TMUX:-}" ]]; then
   die "tmux: not running inside tmux"
 fi
 
+bulk_guard_key="@pick_session_bulk_create_in_progress"
+bulk_guard_set() {
+  tmux set-option -gq "$bulk_guard_key" "1" >/dev/null 2>&1 || true
+}
+bulk_guard_clear() {
+  tmux set-option -gq "$bulk_guard_key" "0" >/dev/null 2>&1 || true
+}
+bulk_guard_set
+trap 'bulk_guard_clear; exit 0' EXIT
+
+__sess_cache_loaded=0
+sess_names=()
+sess_paths=()
+sess_rpaths=()
+
+sess_cache_load() {
+  local out n p rp
+  out="$(tmux list-sessions -F $'#{session_name}\t#{session_path}' 2>/dev/null || true)"
+  sess_names=()
+  sess_paths=()
+  sess_rpaths=()
+  while IFS=$'\t' read -r n p; do
+    [ -n "$n" ] || continue
+    [ -n "$p" ] || continue
+    rp="$(resolve_path "$p" 2>/dev/null || printf '%s' "$p")"
+    sess_names+=("$n")
+    sess_paths+=("$p")
+    sess_rpaths+=("$rp")
+  done <<<"$out"
+  __sess_cache_loaded=1
+}
+
+sess_index_for_name() {
+  local name="$1"
+  [ -n "$name" ] || return 1
+  local i
+  for i in "${!sess_names[@]}"; do
+    if [ "${sess_names[$i]}" = "$name" ]; then
+      printf '%s\n' "$i"
+      return 0
+    fi
+  done
+  return 1
+}
+
+sess_has_name() {
+  local name="$1"
+  sess_index_for_name "$name" >/dev/null 2>&1
+}
+
+sess_path_for_name() {
+  local name="$1"
+  local i
+  i="$(sess_index_for_name "$name" 2>/dev/null || true)"
+  [ -n "$i" ] || return 1
+  printf '%s\n' "${sess_paths[$i]}"
+}
+
+sess_name_for_rpath() {
+  local rp="$1"
+  [ -n "$rp" ] || return 1
+  local i
+  for i in "${!sess_rpaths[@]}"; do
+    if [ "${sess_rpaths[$i]}" = "$rp" ]; then
+      printf '%s\n' "${sess_names[$i]}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+sess_add() {
+  local name="$1"
+  local path="$2"
+  [ -n "$name" ] || return 1
+  [ -n "$path" ] || return 1
+  sess_names+=("$name")
+  sess_paths+=("$path")
+  sess_rpaths+=("$(resolve_path "$path" 2>/dev/null || printf '%s' "$path")")
+}
+
+sess_rename() {
+  local old="$1"
+  local new="$2"
+  [ -n "$old" ] || return 1
+  [ -n "$new" ] || return 1
+  local i
+  i="$(sess_index_for_name "$old" 2>/dev/null || true)"
+  [ -n "$i" ] || return 1
+  sess_names[$i]="$new"
+}
+
 tmux_has_session_exact() {
   local name="$1"
   [ -n "$name" ] || return 1
+  if [ "${__sess_cache_loaded:-0}" -eq 1 ]; then
+    sess_has_name "$name"
+    return $?
+  fi
   tmux has-session -t "=${name}" 2>/dev/null
 }
 
@@ -191,10 +287,7 @@ primary_target=""
 if [ -f "$primary_tmp" ]; then
   primary_line="$(cat "$primary_tmp" 2>/dev/null | head -n 1 || true)"
   if [ -n "${primary_line:-}" ]; then
-    mapfile -t _pfields < <(awk -F $'\t' '{print $2; print $3; print $5}' <<<"$primary_line")
-    primary_kind="${_pfields[0]-}"
-    primary_path="${_pfields[1]-}"
-    primary_target="${_pfields[2]-}"
+    IFS=$'\t' read -r _pdisp primary_kind primary_path _pmeta primary_target _pmk <<<"$primary_line"
   fi
 fi
 
@@ -260,6 +353,9 @@ ensure_session_layout() {
       die "tmux: failed to create session: $name ($dir)"
     fi
     created_any_session=1
+    if [ "${__sess_cache_loaded:-0}" -eq 1 ]; then
+      sess_add "$name" "$dir" || true
+    fi
     mark_lazy_spawn_pending "$name"
     mark_lazy_split_pending "$name"
     return 0
@@ -269,6 +365,9 @@ ensure_session_layout() {
     die "tmux: failed to create session: $name ($dir)"
   fi
   created_any_session=1
+  if [ "${__sess_cache_loaded:-0}" -eq 1 ]; then
+    sess_add "$name" "$dir" || true
+  fi
   split_first_window_in_session "$name" "$dir"
 }
 
@@ -279,11 +378,22 @@ git_head_branch() {
 
 repo_display_for_worktree_root() {
   local wt_root="$1"
-  local repo_name origin_url
+  local repo_name origin_url cfg
 
-  origin_url="$(git -C "$wt_root" config --get remote.origin.url 2>/dev/null || true)"
-  if [ -z "$origin_url" ]; then
-    origin_url="$(git -C "$wt_root" config --get remote.upstream.url 2>/dev/null || true)"
+  cfg="$(git_config_file_for_worktree_root "$wt_root" 2>/dev/null || true)"
+  if [ -n "$cfg" ] && [ -f "$cfg" ]; then
+    origin_url="$(awk '
+      BEGIN { sec="" }
+      match($0, /^\[remote \"([^\"]+)\"\]/, m) { sec=m[1]; next }
+      sec=="origin" && match($0, /^[[:space:]]*url[[:space:]]*=[[:space:]]*(.+)$/, m) { print m[1]; exit }
+    ' "$cfg" 2>/dev/null || true)"
+    if [ -z "${origin_url:-}" ]; then
+      origin_url="$(awk '
+        BEGIN { sec="" }
+        match($0, /^\[remote \"([^\"]+)\"\]/, m) { sec=m[1]; next }
+        sec=="upstream" && match($0, /^[[:space:]]*url[[:space:]]*=[[:space:]]*(.+)$/, m) { print m[1]; exit }
+      ' "$cfg" 2>/dev/null || true)"
+    fi
   fi
   if [ -n "$origin_url" ]; then
     origin_url="${origin_url%/}"
@@ -306,6 +416,49 @@ repo_display_for_worktree_root() {
 
 resolve_path() {
   realpath "$1" 2>/dev/null || printf '%s' "$1"
+}
+
+git_config_file_for_worktree_root() {
+  local wt_root="$1"
+  [ -n "$wt_root" ] || return 1
+  wt_root="$(resolve_path "$wt_root")"
+  local gitp="$wt_root/.git"
+  local first gitdir cfg
+  if [ -d "$gitp" ] && [ -f "$gitp/config" ]; then
+    printf '%s\n' "$gitp/config"
+    return 0
+  fi
+  if [ -f "$gitp" ]; then
+    first="$(head -n 1 "$gitp" 2>/dev/null || true)"
+    case "$first" in
+    gitdir:*)
+      gitdir="${first#gitdir:}"
+      gitdir="${gitdir#"${gitdir%%[![:space:]]*}"}"
+      gitdir="${gitdir%"${gitdir##*[![:space:]]}"}"
+      [ -n "$gitdir" ] || return 1
+      case "$gitdir" in
+      /*) ;;
+      *) gitdir="$wt_root/$gitdir" ;;
+      esac
+      gitdir="$(resolve_path "$gitdir")"
+      cfg="$gitdir/config"
+      if [ -f "$cfg" ]; then
+        printf '%s\n' "$cfg"
+        return 0
+      fi
+      ;;
+    esac
+  fi
+  return 1
+}
+
+remote_names_for_root_checkout() {
+  local root_checkout="$1"
+  [ -n "$root_checkout" ] || return 1
+  local cfg
+  cfg="$(git_config_file_for_worktree_root "$root_checkout" 2>/dev/null || true)"
+  [ -n "$cfg" ] && [ -f "$cfg" ] || return 1
+  awk 'match($0, /^\[remote \"([^\"]+)\"\]/, m) { print m[1] }' "$cfg" 2>/dev/null || true
 }
 
 worktree_root_dir_for_path() {
@@ -408,7 +561,15 @@ branch_from_wrapper_path() {
       case "$first" in
       origin | upstream) ;;
       *)
-        if git -C "$root_checkout" remote get-url "$first" >/dev/null 2>&1; then
+        has_remote=0
+        while IFS= read -r r; do
+          [ -n "$r" ] || continue
+          if [ "$r" = "$first" ]; then
+            has_remote=1
+            break
+          fi
+        done < <(remote_names_for_root_checkout "$root_checkout" 2>/dev/null || true)
+        if [ "${has_remote:-0}" -eq 1 ]; then
           printf '%s\n' "${first}__${rest}"
           return 0
         fi
@@ -500,6 +661,10 @@ unique_session_name_for_root() {
 
 tmux_session_path() {
   local sess="$1"
+  if [ "${__sess_cache_loaded:-0}" -eq 1 ]; then
+    sess_path_for_name "$sess" 2>/dev/null || true
+    return 0
+  fi
   tmux display-message -p -t "$sess" '#{session_path}' 2>/dev/null || true
 }
 
@@ -510,8 +675,10 @@ find_disambiguated_session_for_root() {
   [ -n "$root" ] || return 1
   root="$(resolve_path "$root")"
 
-  local name spath sr
-  while IFS=$'\t' read -r name spath; do
+  local i name spath sr
+  for i in "${!sess_names[@]}"; do
+    name="${sess_names[$i]}"
+    spath="${sess_paths[$i]}"
     [ -n "$name" ] || continue
     [ -n "$spath" ] || continue
     case "$name" in
@@ -525,7 +692,7 @@ find_disambiguated_session_for_root() {
       printf '%s\n' "$name"
       return 0
     fi
-  done < <(tmux list-sessions -F $'#{session_name}\t#{session_path}' 2>/dev/null || true)
+  done
 
   return 1
 }
@@ -564,11 +731,7 @@ target_session=""
 primary_set=0
 while IFS= read -r _line; do
   [ -n "$_line" ] || continue
-  mapfile -t _fields < <(awk -F $'\t' '{print $1; print $2; print $3; print $4; print $5}' <<<"$_line")
-  kind="${_fields[1]-}"
-  path="${_fields[2]-}"
-  meta="${_fields[3]-}"
-  target="${_fields[4]-}"
+  IFS=$'\t' read -r _disp kind path meta target _mk <<<"$_line"
 
   is_primary=0
   if [ -n "${primary_kind:-}" ] && [ -n "${primary_path:-}" ]; then
@@ -582,39 +745,25 @@ while IFS= read -r _line; do
   case "$kind" in
   session)
     this_session="$target"
-    should_rename=0
-    case "$AUTO_RENAME_SESSIONS" in
-    1 | true | yes | on) should_rename=1 ;;
-    esac
-
-    # Targeted safety net: older versions derived repo name from the root
-    # worktree folder (often `main`/`master`) which produced sessions like
-    # `main|...` for wrapper layouts. Rename those on selection even when the
-    # global auto-rename option is off.
-    if [ "${should_rename:-0}" -eq 0 ]; then
-      case "$this_session" in
-      main\|* | master\|* | trunk\|* | develop\|* | dev\|*) should_rename=1 ;;
-      esac
-    fi
-
-    if [ "${should_rename:-0}" -eq 1 ]; then
-      # If this session was discovered via a worktree and it has a preferred
-      # name, rename it on-demand so the tmux session list matches the picker.
-      case "$meta" in
-      sess_root:* | sess_wt:*)
-        if [[ "$meta" == *"|expected="* ]]; then
-          expected="${meta#*|expected=}"
-          expected="$(tmux_sanitize_session_name "$expected" 2>/dev/null || printf '%s' "$expected")"
-          if [ -n "$expected" ] && [ "$expected" != "$this_session" ]; then
-            if ! tmux_has_session_exact "$expected"; then
-              tmux rename-session -t "$this_session" "$expected" 2>/dev/null || true
-              this_session="$expected"
+    # If this session was discovered via a worktree and it has a preferred name,
+    # rename it on selection so the tmux session list matches the picker.
+    case "$meta" in
+    sess_root:* | sess_wt:*)
+      if [[ "$meta" == *"|expected="* ]]; then
+        expected="${meta#*|expected=}"
+        expected="$(tmux_sanitize_session_name "$expected" 2>/dev/null || printf '%s' "$expected")"
+        if [ -n "$expected" ] && [ "$expected" != "$this_session" ]; then
+          if ! tmux_has_session_exact "$expected"; then
+            tmux rename-session -t "$this_session" "$expected" 2>/dev/null || true
+            if [ "${__sess_cache_loaded:-0}" -eq 1 ]; then
+              sess_rename "$this_session" "$expected" || true
             fi
+            this_session="$expected"
           fi
         fi
-        ;;
-      esac
-    fi
+      fi
+      ;;
+    esac
     if [ "$is_primary" -eq 1 ] || [ "$primary_set" -eq 0 ]; then
       target_session="$this_session"
       [ "$is_primary" -eq 1 ] && primary_set=1
@@ -623,116 +772,60 @@ while IFS= read -r _line; do
   worktree)
     [ -n "$path" ] || continue
     [ -d "$path" ] || continue
-    branch="${meta#wt_root:}"
-    branch="${branch#wt:}"
+    if [ "${__sess_cache_loaded:-0}" -ne 1 ]; then
+      sess_cache_load
+    fi
+    branch=""
+    case "$meta" in
+    wt_root:* | wt:*)
+      branch="${meta#wt_root:}"
+      branch="${branch#wt:}"
+      branch="${branch%%|*}"
+      ;;
+    esac
     branch="$(tmux_sanitize_session_name "$branch" 2>/dev/null || printf '%s' "$branch")"
+    repo_id=""
+    if [[ "$meta" == *"|repo="* ]]; then
+      repo_id="${meta#*|repo=}"
+      repo_id="${repo_id%%|*}"
+    fi
+    if [ -z "$repo_id" ]; then
+      # Fallback: use the worktree root path as a repo identifier.
+      case "$path" in
+      "$HOME"/*) repo_id="${path#"$HOME"/}" ;;
+      *) repo_id="$path" ;;
+      esac
+    fi
+    repo_id="$(tmux_sanitize_session_name "$repo_id" 2>/dev/null || printf '%s' "$repo_id")"
     session_name=""
     wt_root="$target"
     if [ -z "$wt_root" ]; then
       wt_root="$(worktree_root_dir_for_path "$path" 2>/dev/null || true)"
     fi
     [ -n "$wt_root" ] || wt_root="$path"
-    repo_name=""
-    if [ -n "$wt_root" ]; then
-      wt_root="$(realpath "$wt_root" 2>/dev/null || printf '%s' "$wt_root")"
-      repo_name="$(repo_display_for_worktree_root "$wt_root")"
-    fi
-    repo_name="$(tmux_sanitize_session_name "$repo_name" 2>/dev/null || printf '%s' "$repo_name")"
-
-    # If this repo follows the wrapper layout created by `,w` (e.g. `<repo>/main`
-    # plus siblings under `<repo>/<branch...>`), prefer the branch name derived
-    # from the worktree path relative to the wrapper. This preserves stable
-    # naming even when you temporarily check out a different branch inside a
-    # worktree directory.
-    wrapper_root_checkout="$(find_wrapper_root_checkout_for_path "$path" 2>/dev/null || true)"
-    if [ -n "$wrapper_root_checkout" ] && [ -d "$wrapper_root_checkout" ]; then
-      derived_branch="$(branch_from_wrapper_path "$wrapper_root_checkout" "$path" 2>/dev/null || true)"
-      if [ -n "$derived_branch" ]; then
-        branch="$(tmux_sanitize_session_name "$derived_branch" 2>/dev/null || printf '%s' "$derived_branch")"
-        wt_root="$wrapper_root_checkout"
-        if [ -z "${repo_name:-}" ] || [ "$repo_name" = "$(tmux_sanitize_session_name "$(basename "$path")" 2>/dev/null || true)" ]; then
-          repo_name="$(tmux_sanitize_session_name "$(basename "$(dirname "$wt_root")")" 2>/dev/null || printf '%s' "$(basename "$(dirname "$wt_root")")")"
-        fi
-      fi
-    fi
-
-    if [ -n "$branch" ] && [ -n "$repo_name" ]; then
-      session_name="${repo_name}|${branch}"
+    if [ -n "$branch" ] && [ -n "$repo_id" ]; then
+      session_name="${repo_id}|${branch}"
+    elif [ -n "$repo_id" ]; then
+      session_name="$repo_id"
     elif [ -n "$branch" ]; then
       session_name="$branch"
     else
       session_name="$(basename "$path")"
     fi
     session_name="$(tmux_sanitize_session_name "$session_name" 2>/dev/null || printf '%s' "$session_name")"
-    canonical_name="$session_name"
-
-    # Avoid clobbering an existing canonical session name when there are
-    # multiple checkouts of the same repo+branch (for example `kibana|main`
-    # under `~/work/...` and also under `~/.backport/...`).
-    if [ -n "$session_name" ] && tmux_has_session_exact "$session_name"; then
-      existing_path="$(tmux_session_path "$session_name")"
-      existing_root="$(worktree_root_dir_for_path "$existing_path" 2>/dev/null || true)"
-      [ -n "$existing_root" ] || existing_root="$(resolve_path "$existing_path")"
-      selected_root="$wt_root"
-      [ -n "$selected_root" ] || selected_root="$(resolve_path "$path")"
-      if [ -n "$existing_root" ] && [ -n "$selected_root" ]; then
-        existing_root="$(resolve_path "$existing_root")"
-        selected_root="$(resolve_path "$selected_root")"
-        if [ "$existing_root" != "$selected_root" ]; then
-          existing_rank="$(scan_root_rank_for_path "$existing_root")"
-          selected_rank="$(scan_root_rank_for_path "$selected_root")"
-          case "$existing_rank" in '' | *[!0-9]*) existing_rank=999 ;; esac
-          case "$selected_rank" in '' | *[!0-9]*) selected_rank=999 ;; esac
-
-          # If the selected worktree lives under a higher-priority scan root,
-          # rename the existing session out of the way so the canonical name
-          # belongs to the "primary" checkout.
-          if [ "$selected_rank" -lt "$existing_rank" ]; then
-            new_existing="$(unique_session_name_for_root "$session_name" "$existing_root")"
-            if [ -n "$new_existing" ] && ! tmux_has_session_exact "$new_existing"; then
-              tmux rename-session -t "=${session_name}" "$new_existing" 2>/dev/null || true
-            fi
-          fi
-
-          # If the canonical name is still taken, use a disambiguated name.
-          if tmux_has_session_exact "$session_name"; then
-            existing_disamb="$(find_disambiguated_session_for_root "$session_name" "$selected_root" 2>/dev/null || true)"
-            if [ -n "$existing_disamb" ] && tmux_has_session_exact "$existing_disamb"; then
-              session_name="$existing_disamb"
-            else
-              session_name="$(unique_session_name_for_root "$session_name" "$selected_root")"
-            fi
-          fi
-        fi
-      fi
-    fi
-
-    # If the canonical name is now free, prefer renaming an existing
-    # disambiguated session (same repo root) to the canonical name so panes
-    # and windows are preserved.
-    if [ -n "${canonical_name:-}" ] && [ "${session_name:-}" = "${canonical_name:-}" ] && ! tmux_has_session_exact "$canonical_name"; then
-      candidate="$(find_disambiguated_session_for_root "$canonical_name" "$wt_root" 2>/dev/null || true)"
-      if [ -n "$candidate" ] && tmux_has_session_exact "$candidate"; then
-        tmux rename-session -t "=${candidate}" "$canonical_name" 2>/dev/null || true
-      fi
-    fi
 
     # If there is already a session pointing at this worktree path but it has a
     # different (often incomplete) name, rename it to the final chosen name so
     # panes/windows are preserved and the picker entry is consistent.
     if [ -n "$session_name" ] && ! tmux_has_session_exact "$session_name"; then
       rp_sel="$(resolve_path "$path")"
-      while IFS=$'\t' read -r sname spath; do
-        [ -n "$sname" ] || continue
-        [ -n "$spath" ] || continue
-        rp_spath="$(resolve_path "$spath")"
-        if [ -n "$rp_sel" ] && [ "$rp_spath" = "$rp_sel" ]; then
-          if [ "$sname" != "$session_name" ] && ! tmux_has_session_exact "$session_name"; then
-            tmux rename-session -t "=${sname}" "$session_name" 2>/dev/null || true
-          fi
-          break
+      sname_at_path="$(sess_name_for_rpath "$rp_sel" 2>/dev/null || true)"
+      if [ -n "$sname_at_path" ] && [ "$sname_at_path" != "$session_name" ] && ! tmux_has_session_exact "$session_name"; then
+        tmux rename-session -t "=${sname_at_path}" "$session_name" 2>/dev/null || true
+        if [ "${__sess_cache_loaded:-0}" -eq 1 ]; then
+          sess_rename "$sname_at_path" "$session_name" || true
         fi
-      done < <(tmux list-sessions -F $'#{session_name}\t#{session_path}' 2>/dev/null || true)
+      fi
     fi
     ensure_session_layout "$session_name" "$path" "$create_layout"
     if [ "$is_primary" -eq 1 ] || [ "$primary_set" -eq 0 ]; then

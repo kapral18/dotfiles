@@ -204,6 +204,24 @@ Keymaps:
 - `leader-tU` update snapshots (file)
 - `leader-tq` close the test terminal
 
+## Git: Commit Message Summarizer (Local Plugin)
+
+In a `gitcommit` buffer, generate a Conventional Commit message from the staged diff (`git diff --cached`).
+
+- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/summarize-commit.lua`
+- Source: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/summarize-commit.lua`
+
+Keymaps:
+
+- `leader-aisl` summarize via Ollama (local)
+- `leader-aisc` summarize via Cloudflare Workers AI
+- `leader-aiso` summarize via OpenRouter
+
+Env (for hosted providers):
+
+- Cloudflare: `CLOUDFLARE_WORKERS_AI_ACCOUNT_ID`, `CLOUDFLARE_WORKERS_AI_API_KEY`
+- OpenRouter: `OPENROUTER_API_KEY` (optional: `OPENROUTER_MODEL`)
+
 ## Git Workflows
 
 Hunks, blame, and history search are configured here:

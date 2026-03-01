@@ -121,9 +121,9 @@ set -x GPG_TTY (tty)
 {{ end -}}
 
 ## Ollama Settings
-set -x OLLAMA_NUM_PARALLEL 10
+set -x OLLAMA_NUM_PARALLEL 1
 set -x OLLAMA_MAX_QUEUE 2048
-set -x OLLAMA_KEEP_ALIVE 30m
+set -x OLLAMA_KEEP_ALIVE -1
 
 # ------------------------------------
 # XDG Base Directory Specification

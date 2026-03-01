@@ -149,7 +149,7 @@ Options (tmux `set -g`):
 - URL picker:
   `@pick_url_history_limit` (default `screen`), `@pick_url_popup` (configured `center,60%,35%`; script fallback `center,100%,50%`), `@pick_url_fzf_flags`, `@pick_url_open_cmd`, `@pick_url_extra_filter`
 - Pick session:
-  `@pick_session_popup_height` (default `40`), `@pick_session_popup_width` (configured `60`; script default `80`),
+  `@pick_session_popup_height` (configured `70`; script default `40`), `@pick_session_popup_width` (configured `60`; script default `80`),
   `@pick_session_pre_refresh` (default `off`; set `on` to run cache update before fzf; off for snappy popup),
   `@pick_session_mode` (default `directory`),
   `@pick_session_fzf_options`, `@pick_session_fzf_prompt`, `@pick_session_fzf_ghost`, `@pick_session_fzf_color`,
@@ -169,12 +169,15 @@ Notes:
 - `pick_session` also styles the input line (`--prompt`, `--ghost`, `--color`) by default. Use `@pick_session_fzf_prompt`, `@pick_session_fzf_ghost`, or `@pick_session_fzf_color` to customize, and `@pick_session_fzf_options` for any extra `fzf` flags.
 - Plain `dir` entries (the fallback home-directory list) are path-sorted before rendering, so siblings/ancestors stay grouped instead of appearing in traversal order.
 - Plain `dir` entries are scanned with `fd` (no `find` fallback). When the cache is empty, recent dirs from `zoxide` (if installed) are shown in addition to tmux sessions and home.
-- While the query is empty, the picker buckets by kind (`session` → `worktree` → `dir`) and preserves source order within each bucket.
+- The picker output is pre-grouped and pre-sorted before it reaches `fzf`:
+  - session-backed repo/worktree groups are emitted first (sessions first within the group, then related worktrees)
+  - worktree-only groups come next
+  - all `dir` entries are emitted at the very end (still naturally clustered by scan root and path)
 - The picker uses fzf's native in-process filtering (no reload per keystroke). Queries like `kibana|main` or `kibana main` match; for `kibanamain`-style matching, type the separator or a space.
 - The picker de-duplicates rows by path: for the same path, it shows only one of `session` / `worktree` / `dir` (priority `session` → `worktree` → `dir`).
-- Worktree “repo name” (the left side of `repo|branch`) is derived from the worktree’s `origin` URL when available (and falls back to common wrapper layouts like `<repo>/main`), so a root worktree directory called `main` still shows as `backport|...` / `kibana|...` even if it’s currently checked out to a different branch.
-- For wrapper layouts created by `,w` (`<repo>/main`, siblings under `<repo>/<branch...>`), the “branch” part is derived from the worktree path relative to the wrapper (so `<repo>/main` stays `...|main` even if you temporarily check out a different branch inside that worktree).
-- Worktree discovery does a follow-up `git worktree list` expansion for each discovered repo root, so deep nested worktree paths (for example `foo/bar/baz/...`) are indexed as worktrees and keep full `repo|branch/path` naming instead of degrading to basename-only `dir` sessions.
+- Worktree-backed session names use a filesystem-derived identifier: the “repo” part is the home-relative wrapper/repo path (for example `work/kibana` or `.backport/repositories/elastic/kibana`) and the “branch” part is the wrapper-relative remainder path (for wrapper layouts created by `,w`). For remote-prefix wrappers, `<remote>/<branch...>` becomes `<remote>__<branch...>` when `<remote>` matches a configured git remote name.
+- Session entries do not render `#{session_path}` in the visible label (filtering is focused on the session name).
+- Worktree discovery is filesystem-based: it scans configured roots for `.git` directories/files. The directory containing a `.git` directory is treated as a “root checkout”, and directories containing a `.git` file are treated as sibling worktrees. This avoids expensive `git worktree list` calls and prevents external tool worktrees outside scan roots from leaking into the picker.
 - When creating sessions from worktrees/dirs, names are sanitized to tmux-safe identifiers so tmux doesn’t silently rename them and break switching (for example branch names like `1.8` become `1_8`; slashes like `feat/foo` are preserved).
 - The picker includes the current session (marked `(current)`), so renaming a session from inside it doesn’t make it “disappear” from the picker.
 - `pick_session.sh` loads from a cached list for fast startup. By default, no blocking pre-refresh runs before fzf (set `@pick_session_pre_refresh on` to restore the old behavior). When the cache is empty, the picker shows tmux sessions plus recent dirs from `zoxide` (if installed) and home immediately. Use `ctrl-r` to reload the list, and `alt-r` to force a background refresh and push the new results into the open picker. Background refresh updates the session/worktree sections and preserves the existing directory section from cache. By default, the picker does not auto-refresh while it’s open; to enable that behavior, set `@pick_session_live_refresh_on_start on` (it will pause while you have a multi-selection active or a non-empty query).
@@ -184,8 +187,8 @@ Notes:
 - With the help panel open, use `shift-up`/`shift-down` (line) and `shift-left`/`shift-right` (page) to scroll it.
 - Picker removals write short-lived tombstones (`session target` / `path prefix`) that are applied both when reading the cache and when publishing scan results, which prevents long-running in-flight reindexes from resurrecting removed entries. `@pick_session_mutation_tombstone_ttl` controls how long those tombstones are kept. `@pick_session_session_tombstone_live_grace_s` controls how long a freshly killed session name is hidden from the live tmux session overlay (used for immediate `ctrl-x` optimistic hide without hiding recreated sessions for minutes).
 - Hidden directories are included in the plain home-directory list by default (`@pick_session_dir_include_hidden on`). Worktree discovery scans hidden directories under `@pick_session_worktree_scan_roots` (with `fd --hidden`); the default roots include `~/.local/share` for hidden worktree hubs, and those roots are seeded into the quick refresh stage for immediate matching.
-- Worktree repo groups are ordered by bucket (`has session` first), then current-session/root affinity, then by repo name (so all `kibana|...` sessions stay together), and finally by scan-root order/path (`@pick_session_worktree_scan_roots`) for stable ordering within a repo across `~/work` / `~/code` / `~/.local/share`.
-- If multiple checkouts of the same repo+branch exist (for example `kibana|main` under `~/work/...` and also under `~/.backport/...`), the picker keeps the canonical name for the higher-priority scan root and disambiguates the others as `kibana|main@backport` (or similar).
+- Worktree repo groups are ordered by bucket (`has session` first), then current-session/root affinity, then by repo id (home-relative wrapper/repo path), and finally by scan-root order/path (`@pick_session_worktree_scan_roots`) for stable ordering within a repo across `~/work` / `~/code` / `~/.local/share`.
+- Because the repo id includes the home-relative wrapper/repo path, multiple checkouts naturally produce distinct session names (so the picker no longer needs `@backport`-style disambiguation).
 - `ctrl-x` kills selected tmux sessions. `alt-x` removes selected worktrees:
   - For normal worktree selections: non-blocking; runs `,w remove` in the background.
     - If cleanup would otherwise leave behind empty parent directories due to unrelated leftovers, `,w remove` moves those leftovers into `../.bag/worktree_remove/<wrapper>/<timestamp>/...` (relative to the wrapper’s parent).
@@ -193,7 +196,7 @@ Notes:
   - For a root worktree selection: nukes the local repo checkout (`rm -rf`), optionally deleting the “wrapper” folder when it matches the repo name (or when it becomes empty after the nuke, ignoring `.DS_Store`); non-worktree items under the wrapper are moved into `../.bag/pick_session/<repo>/<timestamp>/`.
 - Multi-select `Enter` creates new sessions in a deferred mode (placeholder panes). When you enter one of these sessions, a tmux `client-session-changed` hook respawns the pane into your real shell and applies the 2-pane layout. This avoids rendering many prompts at once for heavy repos (for example Kibana worktrees). After bulk creation, the picker switches to the item under the cursor (not the last entry in list order).
 - `pick_session_items.sh` re-groups worktree-backed rows against the live tmux session list on read, so newly opened worktrees are promoted into the repo group’s session-first block immediately (and `ctrl-x` demotes them back to `worktree`/`dir` rows after the kill completes) without waiting for reindex timing/TTL.
-- The picker prioritizes repo groups with sessions, then repo groups with worktrees (no sessions yet), then non-worktree sessions, and finally plain directories under `~`.
+- The picker prioritizes session-backed groups first, then worktree-only groups, and finally directories (always at the end).
 
 ## Session Restore (Resurrect)
 

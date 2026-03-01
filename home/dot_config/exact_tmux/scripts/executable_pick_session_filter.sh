@@ -30,17 +30,75 @@ if ! need_cmd python3; then
   exec "$items_cmd"
 fi
 
-ITEMS_CMD="$items_cmd" python3 -u - <<'PY'
+scan_roots_raw=""
+if command -v tmux >/dev/null 2>&1; then
+  scan_roots_raw="$(tmux show-option -gqv '@pick_session_worktree_scan_roots' 2>/dev/null || true)"
+fi
+if [ -z "${scan_roots_raw:-}" ]; then
+  scan_roots_raw="$HOME/work,$HOME/code,$HOME/.backport/repositories,$HOME/.local/share"
+fi
+
+ITEMS_CMD="$items_cmd" PICK_SESSION_SCAN_ROOTS="$scan_roots_raw" python3 -u - <<'PY'
 import os
 import signal
 import subprocess
 import sys
+from pathlib import Path
 
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 items_cmd = os.environ.get("ITEMS_CMD", "").strip()
 if not items_cmd:
     sys.exit(0)
+
+roots_raw = (os.environ.get("PICK_SESSION_SCAN_ROOTS", "") or "").strip()
+
+def resolve_path(p: str) -> str:
+    if not p:
+        return ""
+    try:
+        return str(Path(p).expanduser().resolve())
+    except Exception:
+        try:
+            return os.path.realpath(os.path.expanduser(p))
+        except Exception:
+            return p
+
+scan_roots = []
+for part in (roots_raw.split(",") if roots_raw else []):
+    part = part.strip()
+    if not part:
+        continue
+    scan_roots.append(resolve_path(part))
+home_root = resolve_path("~")
+if home_root and home_root not in scan_roots:
+    scan_roots.append(home_root)
+
+def scan_root_rank_for_path(p: str) -> int:
+    rp = resolve_path(p)
+    if not rp:
+        return 999
+    for i, r in enumerate(scan_roots):
+        if not r:
+            continue
+        if rp == r or rp.startswith(r + os.sep):
+            return i
+    return 999
+
+def scan_root_prefix_for_path(p: str, depth: int = 2) -> str:
+    rp = resolve_path(p)
+    if not rp:
+        return ""
+    for r in scan_roots:
+        if not r:
+            continue
+        if rp == r:
+            return ""
+        if rp.startswith(r + os.sep):
+            rel = rp[len(r):].lstrip(os.sep)
+            segs = [s for s in rel.split(os.sep) if s]
+            return "/".join(segs[:depth])
+    return ""
 
 try:
     base_out = subprocess.run(
@@ -68,10 +126,11 @@ def dedup_best(rows):
         kind, path = parts[1], parts[2] or ""
         if not path:
             continue
+        key = resolve_path(path)
         pr = KIND_PRIO.get(kind, 0)
-        prev = best_by_path.get(path)
+        prev = best_by_path.get(key)
         if prev is None or pr > prev[0]:
-            best_by_path[path] = (pr, i)
+            best_by_path[key] = (pr, i)
     out = []
     seen = set()
     for i, line in enumerate(rows):
@@ -83,15 +142,16 @@ def dedup_best(rows):
         if not path:
             out.append(line)
             continue
-        best = best_by_path.get(path)
+        key = resolve_path(path)
+        best = best_by_path.get(key)
         if best is None:
             out.append(line)
             continue
         if best[1] != i:
             continue
-        if path in seen:
+        if key in seen:
             continue
-        seen.add(path)
+        seen.add(key)
         out.append(line)
     return out
 
@@ -247,15 +307,22 @@ def session_sort_key(line: str):
 def worktree_sort_key(line: str):
     parts = line.split("\t")
     if len(parts) < 5:
-        return (1, "", "")
+        return (999, "", 1, "", "")
     meta = (parts[3] or "")
     path = (parts[2] or "")
     # Root checkout first, then branch-ish meta, then path.
     is_root = 0 if meta.startswith("wt_root:") else 1
     branch = meta.split(":", 1)[1] if ":" in meta else meta
-    return (is_root, (branch or "").lower(), path.lower())
+    return (
+        scan_root_rank_for_path(path),
+        scan_root_prefix_for_path(path),
+        is_root,
+        (branch or "").lower(),
+        path.lower(),
+    )
 
-# 1. Session groups sorted by session name: session, then related worktrees (same root).
+# --- Output in scan-root order, preserving hierarchy within each scan root ---
+
 session_groups = []
 for root in root_order:
     data = root_groups[root]
@@ -266,63 +333,119 @@ for root in root_order:
         n = session_name_for_row(s)
         if n and (not first_name or n < first_name):
             first_name = n
-    session_groups.append((first_name, root))
+    group_path = wrapper_for_root(root) if root else ""
+    session_groups.append(
+        (
+            scan_root_rank_for_path(group_path),
+            scan_root_prefix_for_path(group_path),
+            first_name,
+            group_path.lower(),
+            root,
+        )
+    )
 session_groups.sort()
 
-emitted_worktree_roots = set()
-for _name, root in session_groups:
-    data = root_groups[root]
-    for line in sorted(data["sessions"], key=session_sort_key):
-        print(line)
-    if root not in emitted_worktree_roots:
-        for line in sorted(data["worktrees"], key=worktree_sort_key):
-            print(line)
-        emitted_worktree_roots.add(root)
+def ungrouped_session_sort_key(line: str):
+    parts = line.split("\t")
+    p = parts[2] if len(parts) >= 3 else ""
+    w = wrapper_for_root(p) if p else ""
+    base = w or p
+    return (
+        scan_root_rank_for_path(base),
+        scan_root_prefix_for_path(base),
+        session_sort_key(line),
+        (base or "").lower(),
+    )
 
-# 2. Ungrouped sessions (exist in tmux but have no cached worktree root), sorted.
-for line in sorted(ungrouped_sessions, key=session_sort_key):
-    print(line)
+def orphan_root_sort_key(r: str):
+    gp = wrapper_for_root(r) if r else ""
+    base = gp or r
+    return (
+        scan_root_rank_for_path(base),
+        scan_root_prefix_for_path(base),
+        (base or "").lower(),
+        r,
+    )
 
-# 3. Orphan worktree groups (root has no session), sorted by root path.
-for root in sorted([r for r in root_order if not root_groups[r]["sessions"]]):
-    for line in sorted(root_groups[root]["worktrees"], key=worktree_sort_key):
-        print(line)
+def dir_sort_key(line: str):
+    parts = line.split("\t")
+    p = parts[2] if len(parts) >= 3 else ""
+    return (
+        scan_root_rank_for_path(p),
+        scan_root_prefix_for_path(p),
+        (p or "").lower(),
+    )
 
-# 4. Wrapper dirs for session repos (in session group order).
+session_groups_by_rank = {}
+for rank, pref, first_name, gpath, root in session_groups:
+    session_groups_by_rank.setdefault(rank, []).append((pref, first_name, gpath, root))
+for rank in session_groups_by_rank:
+    session_groups_by_rank[rank].sort()
+
+ungrouped_sessions_sorted = sorted(ungrouped_sessions, key=ungrouped_session_sort_key)
+ungrouped_by_rank = {}
+for line in ungrouped_sessions_sorted:
+    rank = ungrouped_session_sort_key(line)[0]
+    ungrouped_by_rank.setdefault(rank, []).append(line)
+
+orphan_roots_sorted = sorted([r for r in root_order if not root_groups[r]["sessions"]], key=orphan_root_sort_key)
+orphan_by_rank = {}
+for r in orphan_roots_sorted:
+    rank = orphan_root_sort_key(r)[0]
+    orphan_by_rank.setdefault(rank, []).append(r)
+
+other_dirs_sorted = sorted(other_dirs, key=dir_sort_key)
+other_dirs_by_rank = {}
+for line in other_dirs_sorted:
+    rank = dir_sort_key(line)[0]
+    other_dirs_by_rank.setdefault(rank, []).append(line)
+
 wrapper_by_path = {}
 for line in wrapper_dirs:
     parts = line.split("\t")
     if len(parts) >= 3 and parts[2]:
         wrapper_by_path[parts[2]] = line
 
-emitted_wrappers = set()
-for _name, root in session_groups:
-    w = wrapper_for_root(root)
-    if w in emitted_wrappers:
-        continue
-    line = wrapper_by_path.get(w)
-    if line:
+emitted_worktree_roots = set()
+
+def emit_rank(rank: int):
+    # Session groups (session rows first, then their worktrees).
+    for _pref, _first_name, _gpath, root in session_groups_by_rank.get(rank, []):
+        data = root_groups[root]
+        for line in sorted(data["sessions"], key=session_sort_key):
+            print(line)
+        if root not in emitted_worktree_roots:
+            for line in sorted(data["worktrees"], key=worktree_sort_key):
+                print(line)
+            emitted_worktree_roots.add(root)
+
+    # Ungrouped sessions.
+    for line in ungrouped_by_rank.get(rank, []):
         print(line)
-        emitted_wrappers.add(w)
 
-# Ungrouped sessions' wrapper dirs next.
-for line in sorted(ungrouped_sessions, key=session_sort_key):
-    parts = line.split("\t")
-    if len(parts) < 3 or not parts[2]:
-        continue
-    w = wrapper_for_root(parts[2])
-    if w in emitted_wrappers:
-        continue
-    dline = wrapper_by_path.get(w)
-    if dline:
-        print(dline)
-        emitted_wrappers.add(w)
+    # Orphan worktree groups (root has no session).
+    for root in orphan_by_rank.get(rank, []):
+        if root in emitted_worktree_roots:
+            continue
+        for line in sorted(root_groups[root]["worktrees"], key=worktree_sort_key):
+            print(line)
+        emitted_worktree_roots.add(root)
 
-# 5. Other dirs.
-for line in other_dirs:
+# 1) Ranks that have any sessions first (keeps related worktrees close).
+ranks_with_sessions = sorted(set(session_groups_by_rank.keys()).union(ungrouped_by_rank.keys()))
+for rank in ranks_with_sessions:
+    emit_rank(rank)
+
+# 2) Remaining ranks (worktrees-only) next.
+for rank in sorted(set(orphan_by_rank.keys()).difference(ranks_with_sessions)):
+    emit_rank(rank)
+
+# 4. Anything else (non-session/worktree/dir).
+for line in other_rows:
     print(line)
 
-# 6. Anything else.
-for line in other_rows:
+# 5. All directories at the end (still naturally grouped by scan root/prefix/path).
+all_dirs_sorted = sorted(dir_rows, key=dir_sort_key)
+for line in all_dirs_sorted:
     print(line)
 PY

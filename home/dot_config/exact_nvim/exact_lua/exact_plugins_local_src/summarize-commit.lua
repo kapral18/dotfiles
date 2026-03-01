@@ -25,12 +25,13 @@ local SYSTEM_MESSAGE = "You are a conventional commits summarizer. You take in g
   .. " plus bullet-listed body. Output nothing else."
 
 -- ───────────────────────────── HELPERS (provider-agnostic) ─────────────────────
-local function run(cmd)
-  local out = vim.fn.systemlist(cmd)
-  if vim.v.shell_error ~= 0 then
-    return nil, out
+local function run(argv_or_cmd)
+  local out = vim.fn.systemlist(argv_or_cmd)
+  local code = vim.v.shell_error
+  if code ~= 0 then
+    return nil, out, code
   end
-  return out, nil
+  return out, nil, code
 end
 
 local function write_tmp_json(tbl)
@@ -46,6 +47,25 @@ local function write_tmp_json(tbl)
     return nil
   end
   return path
+end
+
+local function read_file_lines(path)
+  local ok, lines = pcall(vim.fn.readfile, path)
+  if not ok then
+    return nil
+  end
+  return lines
+end
+
+local function take_first(lines, n)
+  local out = {}
+  if type(lines) ~= "table" or n <= 0 then
+    return out
+  end
+  for i = 1, math.min(#lines, n) do
+    out[i] = lines[i]
+  end
+  return out
 end
 
 local function insert_at_cursor(lines)
@@ -78,21 +98,113 @@ local function json_at_path(obj, path)
   return cur
 end
 
-local function build_curl_file(url, headers, payload_file, timeout)
+local function curl_post_json(url, headers, payload_file, timeout)
   timeout = timeout or 30
-  local h = ""
+
+  local body_file = os.tmpname()
+  local stderr_file = os.tmpname()
+  local argv = {
+    "curl",
+    "-sS",
+    "-X",
+    "POST",
+    "--max-time",
+    tostring(timeout),
+    url,
+  }
+
   for _, hdr in ipairs(headers or {}) do
-    h = h .. ' -H "' .. hdr .. '"'
+    table.insert(argv, "-H")
+    table.insert(argv, hdr)
   end
-  return ('curl -s -X POST --max-time %d "%s"%s -d @%s'):format(timeout, url, h, payload_file)
+
+  table.insert(argv, "--data-binary")
+  table.insert(argv, "@" .. payload_file)
+
+  table.insert(argv, "--output")
+  table.insert(argv, body_file)
+
+  table.insert(argv, "--stderr")
+  table.insert(argv, stderr_file)
+
+  table.insert(argv, "--write-out")
+  table.insert(argv, "__CURLMETA__%{http_code}|%{content_type}")
+
+  local meta_lines, cmd_err, exit_code = run(argv)
+  local body_lines = read_file_lines(body_file) or {}
+  local stderr_lines = read_file_lines(stderr_file) or {}
+  pcall(os.remove, body_file)
+  pcall(os.remove, stderr_file)
+
+  local meta = meta_lines and table.concat(meta_lines, "\n") or ""
+  if meta == "" and type(cmd_err) == "table" then
+    meta = table.concat(cmd_err, "\n")
+  end
+  local status, content_type = meta:match("__CURLMETA__(%d%d%d)|([^\r\n]*)")
+
+  return {
+    ok = meta_lines ~= nil,
+    cmd_err = cmd_err,
+    exit_code = exit_code,
+    status = tonumber(status),
+    content_type = content_type,
+    body_lines = body_lines,
+    stderr_lines = stderr_lines,
+  }
 end
 
-local function decode_and_extract(lines, path)
+local function decode_json(lines)
   local ok, parsed = pcall(vim.fn.json_decode, table.concat(lines or {}, "\n"))
   if not ok or not parsed then
     return nil
   end
-  return json_at_path(parsed, path)
+  return parsed
+end
+
+local function extract_text_with_fallbacks(parsed, path, fallbacks)
+  local text = path and json_at_path(parsed, path) or nil
+  if type(text) == "string" and text ~= "" then
+    return text
+  end
+
+  for _, p in ipairs(fallbacks or {}) do
+    local v = json_at_path(parsed, p)
+    if type(v) == "string" and v ~= "" then
+      return v
+    end
+  end
+
+  return nil
+end
+
+local function strip_thinking(text)
+  if type(text) ~= "string" then
+    return text
+  end
+
+  -- Common "reasoning" tags some models emit despite instructions.
+  text = text:gsub("<think>[%s%S]-</think>", "")
+  text = text:gsub("<thinking>[%s%S]-</thinking>", "")
+  text = text:gsub("<analysis>[%s%S]-</analysis>", "")
+
+  -- Trim leading/trailing whitespace after stripping.
+  text = text:gsub("^%s+", ""):gsub("%s+$", "")
+  return text
+end
+
+local function require_env(provider_key, vars)
+  local missing = {}
+  for _, v in ipairs(vars or {}) do
+    local val = os.getenv(v)
+    if not val or val == "" then
+      table.insert(missing, v)
+    end
+  end
+  if #missing > 0 then
+    vim.notify(("Missing env for %s: %s"):format(provider_key, table.concat(missing, ", ")), vim.log.levels.ERROR)
+    return false
+  end
+  return true
 end
 
 -- ───────────────────────────────── PROVIDER CONFIG ─────────────────────────────
@@ -100,13 +212,14 @@ local providers = {
   -- Ollama local
   ollama = {
     url = "http://localhost:11434/api/generate",
+    timeout = 60,
     headers = { "Content-Type: application/json" },
     payload = function(diff)
       return {
-        model = "deepseek-r1",
+        model = "gemma3",
         system = SYSTEM_MESSAGE,
         prompt = PROMPT .. diff,
-        think = true,
+        think = false,
         stream = false,
       }
     end,
@@ -115,9 +228,11 @@ local providers = {
 
   -- Cloudflare Workers AI
   cloudflare = {
-    url = ("https://api.cloudflare.com/client/v4/accounts/%s/ai/run/@cf/qwen/qwen2.5-coder-32b-instruct"):format(
+    url = ("https://api.cloudflare.com/client/v4/accounts/%s/ai/run/@cf/zai-org/glm-4.7-flash"):format(
       os.getenv("CLOUDFLARE_WORKERS_AI_ACCOUNT_ID") or ""
     ),
+    required_env = { "CLOUDFLARE_WORKERS_AI_ACCOUNT_ID", "CLOUDFLARE_WORKERS_AI_API_KEY" },
+    timeout = 90,
     headers = {
       "Authorization: Bearer " .. (os.getenv("CLOUDFLARE_WORKERS_AI_API_KEY") or ""),
       "Content-Type: application/json",
@@ -132,12 +247,25 @@ local providers = {
         stream = false,
       }
     end,
-    extract_path = { "result", "response" }, -- plain text string
+    -- Workers AI commonly returns an OpenAI-like Chat Completions object under `result`.
+    extract_path = { "result", "choices", 1, "message", "content" },
+    extract_fallbacks = {
+      { "result" }, -- some models return plain strings
+      { "result", "response" }, -- older/non-chat schema
+      { "result", "answer" },
+      { "result", "text" },
+      { "result", "output_text" },
+      { "result", "message", "content" },
+      { "result", "choices", 1, "message", "content" },
+      { "result", "messages", 1, "content" },
+    },
   },
 
   -- OpenRouter (OpenAI-compatible Chat Completions)
   openrouter = {
     url = "https://openrouter.ai/api/v1/chat/completions", -- POST body uses OpenAI chat schema
+    required_env = { "OPENROUTER_API_KEY" },
+    timeout = 90,
     headers = {
       "Authorization: Bearer " .. (os.getenv("OPENROUTER_API_KEY") or ""),
       "Content-Type: application/json",
@@ -152,6 +280,9 @@ local providers = {
           { role = "system", content = SYSTEM_MESSAGE },
           { role = "user", content = PROMPT .. diff },
         },
+        -- OpenRouter: disable reasoning when the upstream model supports it.
+        -- (If unsupported, OpenRouter/provider may ignore it.)
+        reasoning = { effort = "none" },
         max_tokens = 2048,
         stream = false,
       }
@@ -161,12 +292,65 @@ local providers = {
   },
 }
 
+local function format_api_errors(parsed)
+  local errs = parsed and parsed.errors
+  if type(errs) ~= "table" or #errs == 0 then
+    return nil
+  end
+
+  local parts = {}
+  for i, e in ipairs(errs) do
+    if i > 3 then
+      break
+    end
+    if type(e) == "table" then
+      local prefix = e.code and ("(" .. tostring(e.code) .. ") ") or ""
+      table.insert(parts, prefix .. (e.message or vim.inspect(e)))
+    else
+      table.insert(parts, tostring(e))
+    end
+  end
+  return table.concat(parts, "; ")
+end
+
+local function format_generic_error(parsed)
+  if type(parsed) ~= "table" then
+    return nil
+  end
+
+  local err = parsed.error
+  if type(err) == "string" and err ~= "" then
+    return err
+  end
+  if type(err) == "table" then
+    if type(err.message) == "string" and err.message ~= "" then
+      return err.message
+    end
+    if type(err.error) == "string" and err.error ~= "" then
+      return err.error
+    end
+  end
+
+  if type(parsed.message) == "string" and parsed.message ~= "" then
+    return parsed.message
+  end
+  if type(parsed.detail) == "string" and parsed.detail ~= "" then
+    return parsed.detail
+  end
+
+  return nil
+end
+
 -- ───────────────────────────── GENERIC WORKFLOW ───────────────────────────────
 local function summarize_with(provider_key)
   local ok, err = pcall(function()
     local cfg = providers[provider_key]
     if not cfg then
       vim.notify("Unknown provider: " .. tostring(provider_key), vim.log.levels.ERROR)
+      return
+    end
+
+    if cfg.required_env and not require_env(provider_key, cfg.required_env) then
       return
     end
 
@@ -182,24 +366,73 @@ local function summarize_with(provider_key)
       return
     end
 
-    local cmd = build_curl_file(cfg.url, cfg.headers, payload_file)
-    local out, cmd_err = run(cmd)
+    local resp = curl_post_json(cfg.url, cfg.headers, payload_file, cfg.timeout)
     pcall(os.remove, payload_file)
 
-    if not out then
-      vim.notify("Failed to generate summary", vim.log.levels.ERROR)
-      if cmd_err then
-        print(vim.inspect(cmd_err))
+    local parsed = decode_json(resp.body_lines)
+    if not parsed and not resp.ok then
+      local msg = ("Failed to generate summary (curl exit %s)"):format(tostring(resp.exit_code or "?"))
+      vim.notify(msg, vim.log.levels.ERROR)
+      local err_preview = table.concat(take_first(resp.stderr_lines, 10), "\n")
+      if err_preview ~= "" then
+        print(err_preview)
+      elseif resp.cmd_err then
+        print(vim.inspect(resp.cmd_err))
       end
       return
     end
 
-    local text = decode_and_extract(out, cfg.extract_path)
-    if type(text) ~= "string" or text == "" then
-      vim.notify("Invalid response format from " .. provider_key, vim.log.levels.ERROR)
+    if not parsed then
+      local preview = table.concat(take_first(resp.body_lines, 30), "\n")
+      vim.notify(
+        ("Invalid JSON from %s (HTTP %s, %s). See :messages for body preview."):format(
+          provider_key,
+          tostring(resp.status or "?"),
+          tostring(resp.content_type or "?")
+        ),
+        vim.log.levels.ERROR
+      )
+      if preview ~= "" then
+        print(preview)
+      end
       return
     end
 
+    if resp.status and resp.status >= 400 then
+      local msg = format_api_errors(parsed) or format_generic_error(parsed) or "HTTP error"
+      vim.notify(("%s HTTP %d: %s"):format(provider_key, resp.status, msg), vim.log.levels.ERROR)
+      return
+    end
+
+    if parsed.success == false then
+      local msg = format_api_errors(parsed) or format_generic_error(parsed) or "Unknown API error"
+      vim.notify(
+        ("%s API error (HTTP %s): %s"):format(provider_key, tostring(resp.status or "?"), msg),
+        vim.log.levels.ERROR
+      )
+      return
+    end
+
+    if parsed.error ~= nil then
+      local msg = format_generic_error(parsed) or "Unknown error"
+      vim.notify(("%s API error: %s"):format(provider_key, msg), vim.log.levels.ERROR)
+      return
+    end
+
+    local text = extract_text_with_fallbacks(parsed, cfg.extract_path, cfg.extract_fallbacks)
+    if type(text) ~= "string" or text == "" then
+      vim.notify(
+        ("Invalid response format from %s (HTTP %s). See :messages for parsed.result preview."):format(
+          provider_key,
+          tostring(resp.status or "?")
+        ),
+        vim.log.levels.ERROR
+      )
+      print(vim.inspect(parsed.result))
+      return
+    end
+
+    text = strip_thinking(text)
     insert_at_cursor(vim.split(text, "\n"))
   end)
 

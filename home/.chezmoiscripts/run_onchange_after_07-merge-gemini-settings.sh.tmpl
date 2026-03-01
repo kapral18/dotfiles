@@ -9,9 +9,9 @@ set -euo pipefail
 # gemini settings desired hash (non-work): {{ output "jq" "-cS" "def strip_isWork: walk(if type == \"object\" then del(.\"__isWork__\") else . end); .mcpServers |= ((. // {}) | with_entries(select(.value.__isWork__ != true))) | strip_isWork" $srcJson | trim | sha256sum }}
 {{- end }}
 
-src="$(chezmoi source-path)/dot_gemini"
+src="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}/dot_gemini"
 target="$HOME/.gemini/settings.json"
-is_work="$(chezmoi data --format=json | jq -r '.isWork')"
+is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
 
 if [ "$is_work" = "true" ]; then
   desired="$(jq '

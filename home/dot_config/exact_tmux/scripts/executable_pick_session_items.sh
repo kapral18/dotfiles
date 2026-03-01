@@ -17,11 +17,9 @@ ansi_wrap() {
 
 display_session_entry() {
   local name="$1"
-  local path_display="$2"
-  printf '%s  %s  %s' \
+  printf '%s  %s' \
     "$(ansi_wrap '38;5;42' '')" \
-    "$(ansi_wrap '1;38;5;81' "$name")" \
-    "$(ansi_wrap '2;38;5;246' "$path_display")"
+    "$(ansi_wrap '1;38;5;81' "$name")"
 }
 
 display_dir_entry() {
@@ -241,7 +239,7 @@ def color(code, text):
 
 def display_session_entry_with_suffix(name, path_display, suffix=""):
     suffix = suffix or ""
-    return f"{color('38;5;42', '')}  {color('1;38;5;81', name)}{suffix}  {color('2;38;5;246', path_display)}"
+    return f"{color('38;5;42', '')}  {color('1;38;5;81', name)}{suffix}"
 
 def display_worktree_entry(path_display):
     return f"{color('38;5;214', '')}  {color('38;5;221', path_display)}"
@@ -286,6 +284,33 @@ def is_git_dir(p: str) -> bool:
         return (pp / ".git").exists() or (pp / "HEAD").exists()
     except Exception:
         return False
+
+DEFAULT_BRANCH_DIRS = { "main", "master", "trunk", "develop", "dev" }
+
+def home_rel(p: str) -> str:
+    if not p:
+        return ""
+    try:
+        rp = resolve_path(p)
+    except Exception:
+        rp = p
+    home = os.path.expanduser("~")
+    if rp == home:
+        return ""
+    if rp.startswith(home + os.sep):
+        rel = rp[len(home) + 1 :]
+        return rel.strip("/").replace(os.sep, "/")
+    return rp.replace(os.sep, "/").strip("/")
+
+def repo_id_for_root_checkout(root_checkout: str) -> str:
+    if not root_checkout:
+        return ""
+    try:
+        rc = Path(root_checkout)
+        repo_path = str(rc.parent) if rc.name in DEFAULT_BRANCH_DIRS else str(rc)
+        return home_rel(repo_path)
+    except Exception:
+        return home_rel(root_checkout)
 
 def worktree_branch_for_path(p: str) -> str:
     p = resolve_path(p)
@@ -445,8 +470,8 @@ def emit_missing_sessions():
             continue
         raw = sess_raw_path.get(rp, rp)
         suffix = color("2;38;5;244", " (current)") if name == current_name else ""
-        disp = display_session_entry_with_suffix(name, tildefy(raw), suffix)
-        print(f"{disp}\tsession\t{rp}\t\t{name}\t{match_key(name, rp)}")
+        disp = display_session_entry_with_suffix(name, "", suffix)
+        print(f"{disp}\tsession\t{rp}\t\t{name}\t{match_key(name)}")
         printed_sessions.add(name)
 
 def parse_cache_row(raw_line: str):
@@ -479,7 +504,10 @@ with open(cache_file, "r", encoding="utf-8", errors="replace") as f:
                         root = worktree_root_for_path(rpath) or rpath
                         if root:
                             br = worktree_branch_for_path(rpath)
+                            repo_id = repo_id_for_root_checkout(root)
                             meta = f"wt_root:{br}" if br and root == rpath else (f"wt:{br}" if br else "")
+                            if repo_id:
+                                meta += f"|repo={repo_id}"
                             print(f"{display_worktree_entry(tildefy(rpath))}\tworktree\t{rpath}\t{meta}\t{root}\t{mk}")
                     elif os.path.isdir(rpath):
                         print(f"{display_dir_entry(tildefy(rpath))}\tdir\t{rpath}\t\t\t{mk}")
@@ -494,7 +522,10 @@ with open(cache_file, "r", encoding="utf-8", errors="replace") as f:
                         root = worktree_root_for_path(rpath) or rpath
                         if root:
                             br = worktree_branch_for_path(rpath)
+                            repo_id = repo_id_for_root_checkout(root)
                             meta = f"wt_root:{br}" if br and root == rpath else (f"wt:{br}" if br else "")
+                            if repo_id:
+                                meta += f"|repo={repo_id}"
                             print(f"{display_worktree_entry(tildefy(rpath))}\tworktree\t{rpath}\t{meta}\t{root}\t{mk}")
                     elif os.path.isdir(rpath):
                         print(f"{display_dir_entry(tildefy(rpath))}\tdir\t{rpath}\t\t\t{mk}")
@@ -502,7 +533,8 @@ with open(cache_file, "r", encoding="utf-8", errors="replace") as f:
             printed_sessions.add(target)
             printed_sessions.add(rpath)
             suffix = color("2;38;5;244", " (current)") if target == current_name else ""
-            print(f"{display_session_entry_with_suffix(target, tildefy(path), suffix)}\tsession\t{path}\t{meta}\t{target}\t{row['mk']}")
+            mk = match_key(target)
+            print(f"{display_session_entry_with_suffix(target, '', suffix)}\tsession\t{path}\t{meta}\t{target}\t{mk}")
             continue
 
         if rpath in sess_by_rpath:
@@ -530,7 +562,7 @@ PY
       sub(".*/", "", base)
       mk = ""
       if (kind == "session") {
-        mk = target " " base " " path
+        mk = target
       } else if (kind == "worktree") {
         mk = base " " path
       } else if (kind == "dir") {

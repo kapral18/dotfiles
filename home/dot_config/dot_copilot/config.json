@@ -4,7 +4,7 @@
   "compact_paste": true,
   "render_markdown": true,
   "update_terminal_title": true,
-  "banner": "once",
+  "banner": "never",
   "experimental": true,
   "log_level": "default",
   "model": "gpt-5.2",
@@ -13,5 +13,6 @@
     "https://docs.github.com",
     "*.github.com"
   ],
+  "reasoning_effort": "high",
   "denied_urls": []
 }

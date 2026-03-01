@@ -1,6 +1,3 @@
-# Description: Parallel file downloader with resumable transfers
-# URL: https://github.com/cjijcb/partdec
-github.com/cjijcb/partdec/cmd/partdec
 # Description: CLI to update globally installed Go binaries
 # URL: https://github.com/Gelio/go-global-update
 github.com/Gelio/go-global-update
