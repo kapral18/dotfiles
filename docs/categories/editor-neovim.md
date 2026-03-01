@@ -217,10 +217,11 @@ Keymaps:
 - `leader-aisc` summarize via Cloudflare Workers AI
 - `leader-aiso` summarize via OpenRouter
 
-Env (for hosted providers):
+Env:
 
-- Cloudflare: `CLOUDFLARE_WORKERS_AI_ACCOUNT_ID`, `CLOUDFLARE_WORKERS_AI_API_KEY`
-- OpenRouter: `OPENROUTER_API_KEY` (optional: `OPENROUTER_MODEL`)
+- Cloudflare: `CLOUDFLARE_WORKERS_AI_ACCOUNT_ID`, `CLOUDFLARE_WORKERS_AI_API_KEY` (optional: `CLOUDFLARE_WORKERS_AI_MODEL`, `CLOUDFLARE_REASONING_EFFORT`)
+- OpenRouter: `OPENROUTER_API_KEY` (optional: `OPENROUTER_MODEL`, `OPENROUTER_REASONING_EFFORT`)
+- Ollama (optional): `OLLAMA_MODEL`, `OLLAMA_THINK`, `OLLAMA_TEMPERATURE`
 
 ## Git Workflows
 

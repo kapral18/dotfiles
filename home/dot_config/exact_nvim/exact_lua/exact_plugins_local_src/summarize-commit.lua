@@ -2,27 +2,14 @@ local M = {}
 
 -- ───────────────────────────────── SYSTEM CONSTANTS ────────────────────────────
 local PROMPT = [[
-Read my instruction and follow it carefully.
-<<INSTRUCTION START>>
-Generate a commit summary using conventional commit format from
-the output of a git diff that starts after the word <<DIFF START>>
---------
-Only respond with the generated commit text.
---------
-Example commit message:
-feat: add new feature
-- Add new feature
-- Update documentation
-- Fix bug in existing feature
-...
---------
-<<INSTRUCTION END>>
+Generate a commit summary using conventional commit format from the output of a git diff.
+Only respond with the generated commit text (no reasoning, no explanation).
+
 <<DIFF START>>
 ]]
 
-local SYSTEM_MESSAGE = "You are a conventional commits summarizer. You take in git diff"
-  .. " data and only respond with a concise yet detailed commit subject"
-  .. " plus bullet-listed body. Output nothing else."
+local SYSTEM_MESSAGE =
+  "You are a conventional commits summarizer. Output only the final commit message text. Do not include reasoning."
 
 -- ───────────────────────────── HELPERS (provider-agnostic) ─────────────────────
 local function run(argv_or_cmd)
@@ -98,6 +85,36 @@ local function json_at_path(obj, path)
   return cur
 end
 
+local function normalize_text(v)
+  if type(v) == "string" then
+    return v
+  end
+  if type(v) ~= "table" then
+    return nil
+  end
+
+  -- Some OpenAI-like schemas represent content as an array of parts.
+  if vim.tbl_islist(v) then
+    local parts = {}
+    for _, item in ipairs(v) do
+      if type(item) == "string" then
+        table.insert(parts, item)
+      elseif type(item) == "table" then
+        if type(item.text) == "string" then
+          table.insert(parts, item.text)
+        elseif type(item.content) == "string" then
+          table.insert(parts, item.content)
+        end
+      end
+    end
+    if #parts > 0 then
+      return table.concat(parts, "")
+    end
+  end
+
+  return nil
+end
+
 local function curl_post_json(url, headers, payload_file, timeout)
   timeout = timeout or 30
 
@@ -162,13 +179,13 @@ local function decode_json(lines)
 end
 
 local function extract_text_with_fallbacks(parsed, path, fallbacks)
-  local text = path and json_at_path(parsed, path) or nil
+  local text = path and normalize_text(json_at_path(parsed, path)) or nil
   if type(text) == "string" and text ~= "" then
     return text
   end
 
   for _, p in ipairs(fallbacks or {}) do
-    local v = json_at_path(parsed, p)
+    local v = normalize_text(json_at_path(parsed, p))
     if type(v) == "string" and v ~= "" then
       return v
     end
@@ -190,6 +207,120 @@ local function strip_thinking(text)
   -- Trim leading/trailing whitespace after stripping.
   text = text:gsub("^%s+", ""):gsub("%s+$", "")
   return text
+end
+
+local function env_trim(name)
+  local v = os.getenv(name)
+  if not v then
+    return nil
+  end
+  v = v:gsub("^%s+", ""):gsub("%s+$", "")
+  if v == "" then
+    return nil
+  end
+  return v
+end
+
+local function env_bool_or_string(name)
+  local v = env_trim(name)
+  if not v then
+    return nil
+  end
+  local lower = v:lower()
+  if lower == "true" or lower == "1" or lower == "yes" or lower == "on" then
+    return true
+  end
+  if lower == "false" or lower == "0" or lower == "no" or lower == "off" then
+    return false
+  end
+  return v
+end
+
+local function env_number(name)
+  local v = env_trim(name)
+  if not v then
+    return nil
+  end
+  local n = tonumber(v)
+  return n
+end
+
+local function is_conventional_header(line)
+  if type(line) ~= "string" then
+    return false
+  end
+  local l = line:gsub("^%s+", ""):gsub("%s+$", "")
+  local typ = l:match("^([%a]+)")
+  if not typ then
+    return false
+  end
+  local allowed = {
+    feat = true,
+    fix = true,
+    docs = true,
+    style = true,
+    refactor = true,
+    perf = true,
+    test = true,
+    build = true,
+    ci = true,
+    chore = true,
+    revert = true,
+  }
+  if not allowed[typ] then
+    return false
+  end
+
+  local rest = l:sub(#typ + 1)
+  if rest:sub(1, 1) == "(" then
+    local scope = rest:match("^(%b())")
+    if not scope then
+      return false
+    end
+    rest = rest:sub(#scope + 1)
+  end
+
+  if rest:sub(1, 1) == "!" then
+    rest = rest:sub(2)
+  end
+
+  if rest:sub(1, 1) ~= ":" then
+    return false
+  end
+  local next_ch = rest:sub(2, 2)
+  if next_ch ~= " " and next_ch ~= "\t" then
+    return false
+  end
+  return true
+end
+
+local function extract_commit_from_reasoning(text)
+  if type(text) ~= "string" or text == "" then
+    return nil
+  end
+
+  local lines = vim.split(text, "\n", { plain = true })
+  for i, line in ipairs(lines) do
+    local trimmed = line:gsub("^%s+", ""):gsub("%s+$", "")
+    if is_conventional_header(trimmed) then
+      local out = { trimmed }
+      for j = i + 1, #lines do
+        local l = lines[j]:gsub("^%s+", ""):gsub("%s+$", "")
+        if l == "" then
+          if #out > 1 then
+            break
+          end
+        elseif l:match("^[-*+]%s+") then
+          table.insert(out, l)
+        else
+          break
+        end
+      end
+      return table.concat(out, "\n")
+    end
+  end
+
+  return nil
 end
 
 local function require_env(provider_key, vars)
@@ -215,11 +346,23 @@ local providers = {
     timeout = 60,
     headers = { "Content-Type: application/json" },
     payload = function(diff)
+      local think = env_bool_or_string("OLLAMA_THINK")
+      if think == nil then
+        think = false
+      end
+      local model = env_trim("OLLAMA_MODEL") or "gemma3"
+      local temperature = env_number("OLLAMA_TEMPERATURE")
+
+      local options = nil
+      if temperature ~= nil then
+        options = { temperature = temperature }
+      end
       return {
-        model = "gemma3",
+        model = model,
         system = SYSTEM_MESSAGE,
         prompt = PROMPT .. diff,
-        think = false,
+        think = think,
+        options = options,
         stream = false,
       }
     end,
@@ -228,24 +371,43 @@ local providers = {
 
   -- Cloudflare Workers AI
   cloudflare = {
-    url = ("https://api.cloudflare.com/client/v4/accounts/%s/ai/run/@cf/zai-org/glm-4.7-flash"):format(
-      os.getenv("CLOUDFLARE_WORKERS_AI_ACCOUNT_ID") or ""
-    ),
     required_env = { "CLOUDFLARE_WORKERS_AI_ACCOUNT_ID", "CLOUDFLARE_WORKERS_AI_API_KEY" },
     timeout = 90,
-    headers = {
-      "Authorization: Bearer " .. (os.getenv("CLOUDFLARE_WORKERS_AI_API_KEY") or ""),
-      "Content-Type: application/json",
-    },
-    payload = function(diff)
+    url = function()
+      local account_id = env_trim("CLOUDFLARE_WORKERS_AI_ACCOUNT_ID") or ""
+      local model = env_trim("CLOUDFLARE_WORKERS_AI_MODEL") or "@cf/zai-org/glm-4.7-flash"
+      return ("https://api.cloudflare.com/client/v4/accounts/%s/ai/run/%s"):format(account_id, model)
+    end,
+    headers = function()
       return {
+        "Authorization: Bearer " .. (os.getenv("CLOUDFLARE_WORKERS_AI_API_KEY") or ""),
+        "Content-Type: application/json",
+      }
+    end,
+    payload = function(diff)
+      local reasoning_effort = env_trim("CLOUDFLARE_REASONING_EFFORT")
+      if reasoning_effort ~= nil then
+        local allowed = { low = true, medium = true, high = true }
+        if not allowed[reasoning_effort:lower()] then
+          reasoning_effort = nil
+        end
+      end
+
+      local payload = {
         messages = {
           { role = "system", content = SYSTEM_MESSAGE },
           { role = "user", content = PROMPT .. diff },
         },
         max_tokens = 2048,
+        temperature = 0,
         stream = false,
       }
+
+      if reasoning_effort ~= nil then
+        payload.reasoning_effort = reasoning_effort
+      end
+
+      return payload
     end,
     -- Workers AI commonly returns an OpenAI-like Chat Completions object under `result`.
     extract_path = { "result", "choices", 1, "message", "content" },
@@ -266,14 +428,17 @@ local providers = {
     url = "https://openrouter.ai/api/v1/chat/completions", -- POST body uses OpenAI chat schema
     required_env = { "OPENROUTER_API_KEY" },
     timeout = 90,
-    headers = {
-      "Authorization: Bearer " .. (os.getenv("OPENROUTER_API_KEY") or ""),
-      "Content-Type: application/json",
-      -- Optional attribution headers per docs (safe to keep; remove if undesired)
-      "HTTP-Referer: https://neovim.org",
-      "X-Title: Neovim Commit Summarizer",
-    },
+    headers = function()
+      return {
+        "Authorization: Bearer " .. (os.getenv("OPENROUTER_API_KEY") or ""),
+        "Content-Type: application/json",
+        -- Optional attribution headers per docs (safe to keep; remove if undesired)
+        "HTTP-Referer: https://neovim.org",
+        "X-Title: Neovim Commit Summarizer",
+      }
+    end,
     payload = function(diff)
+      local effort = env_trim("OPENROUTER_REASONING_EFFORT") or "none"
       return {
         model = (os.getenv("OPENROUTER_MODEL") or "z-ai/glm-5"),
         messages = {
@@ -282,8 +447,9 @@ local providers = {
         },
         -- OpenRouter: disable reasoning when the upstream model supports it.
         -- (If unsupported, OpenRouter/provider may ignore it.)
-        reasoning = { effort = "none" },
+        reasoning = { effort = effort },
         max_tokens = 2048,
+        temperature = 0,
         stream = false,
       }
     end,
@@ -366,7 +532,9 @@ local function summarize_with(provider_key)
       return
     end
 
-    local resp = curl_post_json(cfg.url, cfg.headers, payload_file, cfg.timeout)
+    local url = type(cfg.url) == "function" and cfg.url() or cfg.url
+    local headers = type(cfg.headers) == "function" and cfg.headers() or cfg.headers
+    local resp = curl_post_json(url, headers, payload_file, cfg.timeout)
     pcall(os.remove, payload_file)
 
     local parsed = decode_json(resp.body_lines)
@@ -421,6 +589,17 @@ local function summarize_with(provider_key)
 
     local text = extract_text_with_fallbacks(parsed, cfg.extract_path, cfg.extract_fallbacks)
     if type(text) ~= "string" or text == "" then
+      if provider_key == "cloudflare" then
+        local reasoning_text =
+          normalize_text(json_at_path(parsed, { "result", "choices", 1, "message", "reasoning_content" }))
+          or normalize_text(json_at_path(parsed, { "result", "choices", 1, "message", "reasoning" }))
+        local extracted = extract_commit_from_reasoning(reasoning_text or "")
+        if type(extracted) == "string" and extracted ~= "" then
+          insert_at_cursor(vim.split(extracted, "\n"))
+          return
+        end
+      end
+
       vim.notify(
         ("Invalid response format from %s (HTTP %s). See :messages for parsed.result preview."):format(
           provider_key,
