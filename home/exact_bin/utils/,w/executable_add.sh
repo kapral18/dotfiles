@@ -156,6 +156,10 @@ if [ "$is_base_branch_specified" -eq 0 ]; then
 
     if _comma_w_worktree_has_branch "$local_branch"; then
       info "Branch '$local_branch' already exists as a worktree."
+      existing_path="$(_comma_w_find_worktree_path_for_branch "$local_branch" 2>/dev/null || true)"
+      if [[ "$local_branch" == *__* ]] && ! _comma_w_remote_is_first_party "$input_remote" && [ -n "$existing_path" ]; then
+        _comma_w_configure_prefixed_branch_push_routing "$existing_path" "$local_branch" "$input_remote" "$input_remote_branch" "$quiet_mode" || true
+      fi
       exit 0
     fi
 
@@ -173,6 +177,9 @@ if [ "$is_base_branch_specified" -eq 0 ]; then
       git_worktree_add "$worktree_path" "$local_branch"
       _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$local_branch" "$worktree_path"
       print_local_worktree_message "$local_branch" "$worktree_path"
+      if [[ "$local_branch" == *__* ]] && ! _comma_w_remote_is_first_party "$input_remote"; then
+        _comma_w_configure_prefixed_branch_push_routing "$worktree_path" "$local_branch" "$input_remote" "$input_remote_branch" "$quiet_mode" || true
+      fi
     else
       git_worktree_add "$worktree_path" -b "$local_branch" "${tracking_remote}/${input_remote_branch}"
       _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$local_branch" "$worktree_path"
@@ -183,10 +190,7 @@ if [ "$is_base_branch_specified" -eq 0 ]; then
       fi
 
       if [[ "$local_branch" == *__* ]] && ! _comma_w_remote_is_first_party "$input_remote"; then
-        git config extensions.worktreeConfig true
-        git -C "$worktree_path" config --worktree remote.pushDefault "$input_remote"
-        git -C "$worktree_path" config --worktree push.default upstream
-        info "Configured per-worktree smart push routing -> $input_remote"
+        _comma_w_configure_prefixed_branch_push_routing "$worktree_path" "$local_branch" "$input_remote" "$input_remote_branch" "$quiet_mode" || true
       fi
     fi
   else
@@ -296,6 +300,10 @@ else
 
   if _comma_w_worktree_has_branch "$target_branch"; then
     info "Branch '$target_branch' already exists as a worktree."
+    existing_path="$(_comma_w_find_worktree_path_for_branch "$target_branch" 2>/dev/null || true)"
+    if [[ "$target_branch" == *__* ]] && [ -n "$base_remote" ] && ! _comma_w_remote_is_first_party "$base_remote" && [ -n "$existing_path" ]; then
+      _comma_w_configure_prefixed_branch_push_routing "$existing_path" "$target_branch" "$base_remote" "$branch_name" "$quiet_mode" || true
+    fi
     exit 0
   fi
 
@@ -314,10 +322,7 @@ else
   fi
 
   if [[ "$target_branch" == *__* ]] && [ -n "$base_remote" ] && ! _comma_w_remote_is_first_party "$base_remote"; then
-    git config extensions.worktreeConfig true
-    git -C "$worktree_path" config --worktree remote.pushDefault "$base_remote"
-    git -C "$worktree_path" config --worktree push.default upstream
-    info "Configured per-worktree smart push routing -> $base_remote"
+    _comma_w_configure_prefixed_branch_push_routing "$worktree_path" "$target_branch" "$base_remote" "$branch_name" "$quiet_mode" || true
   fi
 fi
 

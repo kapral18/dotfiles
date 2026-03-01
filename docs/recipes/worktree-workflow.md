@@ -39,6 +39,7 @@ Notes:
 
 - If the PR head repo is first-party (your `origin`/`upstream`, your GitHub login remote, or any remote URL owner matching your login), `,w prs` uses a normal local branch name like `feat/foo` instead of `kapral18__feat/foo`.
 - For first-party remotes, upstream tracking now prefers canonical refs (`origin/<branch>`, then `upstream/<branch>`) when present, instead of keeping a login-named remote like `kapral18/<branch>`.
+- For fork-prefixed branches (for example `alice__feature/foo`), `,w` writes per-worktree push routing and explicit branch tracking, so plain `git push` targets the fork branch even on reused worktrees.
 
 You can also use these shortcuts directly from `gh-dash` when viewing PRs:
 - `ctrl+t`: Create a worktree for the selected PR in the background (log: `${XDG_CACHE_HOME:-~/.cache}/gh-dash/w_prs_<PR>.log`).

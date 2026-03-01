@@ -10,9 +10,11 @@ Usage:
 
 Behavior:
   - Forks <owner/repo> using GitHub CLI.
-  - Clones into ./<repo>/<default-branch> (relative to your current directory).
-    - Uses git partial clone: --filter=blob:none
-    - For elastic/kibana: also uses a shallow clone (depth 15000; ~12 months of commits)
+  - Clones into:
+    - ~/work/<repo>/<default-branch> (when owner is "elastic")
+    - ~/code/<repo>/<default-branch> (otherwise)
+    - For elastic/kibana: uses fast bootstrap flags:
+      --shallow-since=2022-01-01 --no-tags
   - Creates (or focuses) a tmux session named <wrapper/repo>|<default-branch>.
   - Session layout: 2 windows, each with 2 panes split vertically.
 EOF
@@ -39,21 +41,96 @@ command -v gh >/dev/null 2>&1 || {
   echo "Error: 'gh' is required." >&2
   exit 1
 }
+command -v git >/dev/null 2>&1 || {
+  echo "Error: 'git' is required." >&2
+  exit 1
+}
 
+repo_owner="${repo_spec%%/*}"
 repo_name="${repo_spec##*/}"
+
+parent_dir=""
+if [ "$repo_owner" = "elastic" ]; then
+  parent_dir="$HOME/work"
+else
+  parent_dir="$HOME/code"
+fi
+
+mkdir -p "$parent_dir"
+cd "$parent_dir"
+
 repo_wrapper_path="$(pwd -P)/${repo_name}"
 
-if [[ -e "$repo_name" ]]; then
-  echo "Error: repo directory already exists: $repo_name" >&2
+if [[ -e "$repo_wrapper_path" ]]; then
+  echo "Error: repo directory already exists: $repo_wrapper_path" >&2
   exit 1
 fi
 
-clone_flags=(--filter=blob:none)
+clone_flags=()
 if [ "$repo_spec" = "elastic/kibana" ]; then
-  clone_flags+=(--depth=15000)
+  clone_flags=(--shallow-since=2022-01-01 --no-tags)
 fi
 
-gh repo fork "$repo_spec" --clone -- "${clone_flags[@]}"
+gh_login="$(gh api user --jq '.login' 2>/dev/null || true)"
+if [ -z "$gh_login" ]; then
+  echo "Error: failed to determine GitHub login via 'gh api user'." >&2
+  exit 1
+fi
+
+git_protocol="$(gh config get git_protocol 2>/dev/null || true)"
+if [ -z "$git_protocol" ]; then
+  git_protocol="https"
+fi
+
+remote_url_for_repo() {
+  local owner_repo="$1"
+  if [ "$git_protocol" = "ssh" ]; then
+    printf 'git@github.com:%s.git\n' "$owner_repo"
+  else
+    printf 'https://github.com/%s.git\n' "$owner_repo"
+  fi
+}
+
+ensure_fork_exists() {
+  local upstream_repo="$1"
+  local fork_repo="$2"
+
+  if gh api "repos/${fork_repo}" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  # Fork creation is async; 202 is expected for new forks.
+  gh api -X POST "repos/${upstream_repo}/forks" >/dev/null 2>&1 || true
+
+  local i
+  for i in $(seq 1 45); do
+    if gh api "repos/${fork_repo}" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 2
+  done
+
+  echo "Error: fork did not become available in time: ${fork_repo}" >&2
+  exit 1
+}
+
+clone_owner="$gh_login"
+if [ "$repo_owner" = "$gh_login" ]; then
+  clone_owner="$repo_owner"
+else
+  ensure_fork_exists "$repo_spec" "${gh_login}/${repo_name}"
+fi
+
+clone_repo="${clone_owner}/${repo_name}"
+clone_url="$(remote_url_for_repo "$clone_repo")"
+git clone "${clone_flags[@]}" "$clone_url" "$repo_name"
+
+if [ "$clone_owner" != "$repo_owner" ]; then
+  upstream_url="$(remote_url_for_repo "$repo_spec")"
+  if ! git -C "$repo_name" remote get-url upstream >/dev/null 2>&1; then
+    git -C "$repo_name" remote add upstream "$upstream_url"
+  fi
+fi
 
 detect_branch_name() {
   local repo_dir="$1"

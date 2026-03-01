@@ -243,10 +243,11 @@ Custom commands are shipped as scripts installed to `~/bin` (source: `home/exact
     deleted.
   - **Examples:** `,gh-prw`; `,gh-prw 12345`; `,gh-prw --number`; `,gh-prw --url`
 - **Name:** `,gh-tfork`
-  - **Description:** Fork + clone a repo into `./<repo>/<default-branch>` using a partial clone
-    (`--filter=blob:none`), then create/focus a tmux session named
+  - **Description:** Fork + clone a repo into `~/work/<repo>/<default-branch>` (owner `elastic`) or
+    `~/code/<repo>/<default-branch>` (otherwise), then create/focus a tmux session named
     `<wrapper/repo>|<default-branch>` with a 2-window layout (each window split vertically).
-    For `elastic/kibana`, the clone is also shallow (`--depth=15000`).
+    For `elastic/kibana`, bootstrap uses date-anchored shallow history
+    (`--shallow-since=2022-01-01 --no-tags`).
   - **Examples:** `,gh-tfork elastic/integrations`
 - **Name:** `,gh-subissues-create`
   - **Description:** Draft multiple sub-issues in your editor, create them,
@@ -443,15 +444,15 @@ Language server for Fish scripts:
 
 AI tools for CLI and editor. Credentials in 1Password, configs in repo.
 
-| Tool           | Purpose                 | Config                                                            |
-| -------------- | ----------------------- | ----------------------------------------------------------------- |
-| **Crush**      | Terminal AI assistant   | Charmbracelet tap                                                 |
-| **Ollama**     | Local LLM runtime       | `home/.chezmoiscripts/run_onchange_after_05-add-ollama-models.sh` |
-| **Amp**        | AI coding tool with MCP | `home/dot_config/exact_amp/private_settings.json`                 |
-| **Codex CLI**  | Terminal coding agent   | `home/dot_codex/private_config.toml`                              |
-| **OpenCode**   | Terminal agent runner   | `home/dot_config/opencode/opencode.jsonc`                         |
+| Tool           | Purpose                 | Config                                                                                                                                              |
+| -------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Crush**      | Terminal AI assistant   | Charmbracelet tap                                                                                                                                   |
+| **Ollama**     | Local LLM runtime       | `home/.chezmoiscripts/run_onchange_after_05-add-ollama-models.sh`                                                                                   |
+| **Amp**        | AI coding tool with MCP | `home/dot_config/exact_amp/private_settings.json`                                                                                                   |
+| **Codex CLI**  | Terminal coding agent   | `home/dot_codex/private_config.toml`                                                                                                                |
+| **OpenCode**   | Terminal agent runner   | `home/dot_config/opencode/opencode.jsonc`                                                                                                           |
 | **Cursor**     | AI code editor (work)   | `home/dot_cursor/mcp.json` (servers tagged with `__isWork__` and filtered by `home/.chezmoiscripts/run_onchange_after_07-merge-cursor-mcp.sh.tmpl`) |
-| **Gemini CLI** | Terminal AI assistant   | `home/dot_gemini/settings.json` (filtered by `run_onchange_after_07-merge-gemini-settings.sh.tmpl`) |
+| **Gemini CLI** | Terminal AI assistant   | `home/dot_gemini/settings.json` (filtered by `run_onchange_after_07-merge-gemini-settings.sh.tmpl`)                                                 |
 
 **Ollama Models**:
 

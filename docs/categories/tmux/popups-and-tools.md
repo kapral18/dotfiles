@@ -20,6 +20,14 @@ Implementation notes:
 - The popup attaches to a **nested tmux server** (separate socket) running `gh dash`.
 - Hiding the popup detaches from that nested tmux client; the `gh-dash` process stays alive for fast reopen.
 
+## Repo bootstrap popup (`owner/repo` -> `,gh-tfork`)
+
+- Binding: `prefix` then `B`
+- Prompts for a GitHub repo spec like `elastic/kibana`, then runs `,gh-tfork`.
+- `,gh-tfork` decides the destination:
+  - `~/work` for owner `elastic`
+  - `~/code` for everything else
+
 ## Lowfi (music in tmux)
 
 This setup includes an integration that runs `lowfi` inside a dedicated tmux session.

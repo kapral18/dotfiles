@@ -73,8 +73,10 @@ Examples:
 ### Fork + clone + tmux: `,gh-tfork`
 
 - Source: `home/exact_bin/executable_,gh-tfork`
-- Clone target: `./<repo>/<default-branch>` (partial clone: `--filter=blob:none`)
-- For `elastic/kibana`: also shallow clone (`--depth=15000`)
+- Clone target:
+  - `~/work/<repo>/<default-branch>` when owner is `elastic`
+  - `~/code/<repo>/<default-branch>` otherwise
+- For `elastic/kibana`: date-anchored shallow history (`--shallow-since=2022-01-01 --no-tags`)
 - tmux session: `<wrapper/repo>|<default-branch>` (2 windows, 2 panes each)
 
 Examples:

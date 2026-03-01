@@ -455,3 +455,35 @@ _comma_w_preferred_tracking_remote_for_branch() {
 
   printf '%s\n' "$preferred_remote"
 }
+
+# Configure per-worktree push routing for prefixed local branches
+# (<remote>__<branch>) so plain `git push` targets the fork branch.
+_comma_w_configure_prefixed_branch_push_routing() {
+  local worktree_path="$1"
+  local local_branch="$2"
+  local push_remote="$3"
+  local remote_branch="$4"
+  local quiet_mode="${5:-0}"
+
+  if [ -z "$worktree_path" ] || [ -z "$local_branch" ] || [ -z "$push_remote" ] || [ -z "$remote_branch" ]; then
+    return 1
+  fi
+
+  if [ ! -d "$worktree_path" ]; then
+    return 1
+  fi
+
+  # Keep push routing isolated to this worktree.
+  git config extensions.worktreeConfig true
+  git -C "$worktree_path" config --worktree remote.pushDefault "$push_remote"
+  git -C "$worktree_path" config --worktree push.default upstream
+
+  # Always set tracking explicitly so behavior is stable even when
+  # branch.autoSetupMerge is disabled in user/global git config.
+  git -C "$worktree_path" config "branch.${local_branch}.remote" "$push_remote"
+  git -C "$worktree_path" config "branch.${local_branch}.merge" "refs/heads/${remote_branch}"
+
+  if [ "$quiet_mode" -eq 0 ]; then
+    echo "Configured per-worktree smart push routing -> ${push_remote}/${remote_branch}"
+  fi
+}

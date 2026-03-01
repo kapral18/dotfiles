@@ -520,6 +520,9 @@ for pr_number in "${pr_numbers[@]}"; do
   existing_path="$(_comma_w_find_worktree_path_for_branch "$local_branch" 2>/dev/null || true)"
   if [ -n "$existing_path" ]; then
     info "Worktree already exists for '$local_branch'."
+    if [[ "$local_branch" == *__* ]] && ! _comma_w_remote_is_first_party "$remote_name"; then
+      _comma_w_configure_prefixed_branch_push_routing "$existing_path" "$local_branch" "$remote_name" "$branch_name" "$quiet_mode" || true
+    fi
     if [ "$focus_mode" -eq 1 ]; then
       _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$local_branch" "$existing_path"
       _comma_w_focus_tmux_session "$quiet_mode" "$(_comma_w_tmux_session_name "$parent_name" "$local_branch")" "$existing_path" || true
@@ -566,10 +569,7 @@ for pr_number in "${pr_numbers[@]}"; do
 
   # Native Git Smart Push Routing for prefixed branches
   if [[ "$local_branch" == *__* ]] && ! _comma_w_remote_is_first_party "$remote_name"; then
-    git config extensions.worktreeConfig true
-    git -C "$worktree_path" config --worktree remote.pushDefault "$remote_name"
-    git -C "$worktree_path" config --worktree push.default upstream
-    info "Configured per-worktree smart push routing -> $remote_name"
+    _comma_w_configure_prefixed_branch_push_routing "$worktree_path" "$local_branch" "$remote_name" "$branch_name" "$quiet_mode" || true
   fi
 
   if command -v zoxide &>/dev/null; then
