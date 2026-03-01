@@ -74,19 +74,6 @@ export FZF_DEFAULT_COMMAND="git ls-files --cached --others --exclude-standard 2>
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 export FZF_ALT_C_COMMAND="fd --type d"
 
-# API Key Configurations
-if command -v pass >/dev/null; then
-  [ -z "$GEMINI_API_KEY" ] && export GEMINI_API_KEY="$(pass google/gemini/api/token)"
-  [ -z "$OPENAI_API_KEY" ] && export OPENAI_API_KEY="$(pass openai/api/token)"
-  [ -z "$CLOUDFLARE_WORKERS_AI_ACCOUNT_ID" ] && export CLOUDFLARE_WORKERS_AI_ACCOUNT_ID="$(pass cloudflare/workers/ai/account/id)"
-  [ -z "$CLOUDFLARE_WORKERS_AI_API_KEY" ] && export CLOUDFLARE_WORKERS_AI_API_KEY="$(pass cloudflare/workers/ai/api/token)"
-  [ -z "$ANTHROPIC_API_KEY" ] && export ANTHROPIC_API_KEY="$(pass anthropic/api/token)"
-  [ -z "$OPENROUTER_API_KEY" ] && export OPENROUTER_API_KEY="$(pass openrouter/api/token)"
-  {{ if ne .isWork true -}}
-  [ -z "$CLOUDFLARE_API_TOKEN" ] && export CLOUDFLARE_API_TOKEN="$(pass cloudflare/api/token)"
-  {{- end }}
-fi
-
 # Conditional Configurations
 {{ if ne .isWork true -}}
 wpass() {

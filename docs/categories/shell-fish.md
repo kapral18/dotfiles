@@ -45,6 +45,9 @@ Fish setup in this repo is split by shell mode:
 If a command works in one terminal but not another, check whether the shell is
 login vs non-login.
 
+Non-fish startup files are intentionally side-effect free for secret loading:
+`pass`-based API key exports run in fish config, not in `home/readonly_dot_profile.tmpl`.
+
 ## Verification Workflows
 
 ### Confirm effective shell + path

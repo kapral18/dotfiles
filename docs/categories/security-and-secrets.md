@@ -39,6 +39,7 @@ Fish loads several API keys from `pass` if they are not already set in the
 environment:
 
 - `home/dot_config/fish/config.fish.tmpl`
+- Non-fish login profiles are kept side-effect free and do not invoke `pass`.
 
 On first setup, `pass` is installed and the password store is cloned via:
 

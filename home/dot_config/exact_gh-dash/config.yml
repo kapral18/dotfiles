@@ -46,7 +46,7 @@ smartFilteringAtLaunch: false
 defaults:
   preview:
     open: true
-    width: 50
+    width: 100
   prsLimit: 30
   issuesLimit: 30
   view: prs
