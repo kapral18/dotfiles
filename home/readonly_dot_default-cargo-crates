@@ -43,4 +43,7 @@ omaro
 # Description: A terminal-based EPUB Books reader
 # URL: https://github.com/bugzmanov/bookokrat
 bookokrat
+# Description: Terminal tool to right-size LLM models to your hardware (RAM, CPU, GPU)
+# URL: https://github.com/AlexsJones/llmfit
+llmfit
 
