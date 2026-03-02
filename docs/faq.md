@@ -14,14 +14,9 @@ chezmoi apply --dry-run --verbose
 
 ## Do I need to use Neovim/tmux to use this setup?
 
-No. You can adopt slices.
+No. The installation is all-or-nothing, but your usage doesn't have to be. You can install the full setup and continue using your preferred IDE (like VSCode or JetBrains) while you slowly learn the terminal tools.
 
-Start with:
-
-- Git identity switching + 1Password SSH agent
-- Homebrew package lists
-
-See [`docs/adoption-paths.md`](adoption-paths.md).
+See [`docs/learning-paths.md`](learning-paths.md).
 
 ## Does this work without 1Password?
 

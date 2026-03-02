@@ -20,6 +20,7 @@ This page answers two questions:
 - Homebrew install: `home/.chezmoiscripts/run_once_after_01-install-brew.sh`
 - Fish install + login shell: `home/.chezmoiscripts/run_once_after_02-install-fish.sh`
 - Brew bundle: `home/.chezmoiscripts/run_onchange_after_03-install-brew-packages.fish.tmpl`
+- Fish packages: `home/.chezmoiscripts/run_onchange_after_04-update-fish-packages.fish.tmpl`
 
 ## Packages
 
@@ -32,6 +33,7 @@ This page answers two questions:
 - global npm: `home/readonly_dot_default-npm-pkgs`
 - uv tools: `home/readonly_dot_default-uv-tools.tmpl`
 - manual packages: `home/readonly_dot_default-manual-packages.tmpl`
+- GitHub CLI extensions: `home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl`
 
 ## Shell
 
@@ -65,13 +67,18 @@ This page answers two questions:
 - Karabiner: `home/dot_config/exact_private_karabiner/`
 - App icons mapping: `home/app_icons/icon_mapping.yaml`
 
-## AI + Assistants
+## Security + AI
 
+- Setup pass managers: `home/.chezmoiscripts/run_once_after_05-setup-pass-managers.fish.tmpl`
 - OpenCode: `home/dot_config/opencode/`
 - Codex: `home/dot_codex/`
 - Gemini: `home/dot_gemini/`
+- Copilot CLI: `home/dot_config/dot_copilot/`
+- Cursor: `home/dot_cursor/`
+- Amp: `home/dot_config/exact_amp/`
 - Assistant SOP entrypoints: `home/readonly_AGENTS.md`, `home/readonly_CLAUDE.md`
 - Assistant playbooks: `home/exact_dot_agents/exact_playbooks/`
+- Ollama models: `home/.chezmoiscripts/run_onchange_after_05-add-ollama-models.sh`
 
 ## Custom Commands
 

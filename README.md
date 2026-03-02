@@ -453,6 +453,7 @@ AI tools for CLI and editor. Credentials in 1Password, configs in repo.
 | **OpenCode**   | Terminal agent runner   | `home/dot_config/opencode/opencode.jsonc`                                                                                                           |
 | **Cursor**     | AI code editor (work)   | `home/dot_cursor/mcp.json` (servers tagged with `__isWork__` and filtered by `home/.chezmoiscripts/run_onchange_after_07-merge-cursor-mcp.sh.tmpl`) |
 | **Gemini CLI** | Terminal AI assistant   | `home/dot_gemini/settings.json` (filtered by `run_onchange_after_07-merge-gemini-settings.sh.tmpl`)                                                 |
+| **Copilot CLI**| Terminal AI assistant   | `home/dot_config/dot_copilot/` (config, mcp, lsp)                                                                                                   |
 
 **Ollama Models**:
 

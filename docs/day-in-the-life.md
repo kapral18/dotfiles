@@ -14,16 +14,17 @@ If you use tmux with session restore, you can pick up where you left off.
 
 ## Start Work: Isolate With Worktrees
 
-Instead of mixing multiple branches in one checkout, use worktrees:
+Instead of mixing multiple branches in one checkout, this setup uses git worktrees. We provide a custom comma command (`,w`) to make this ergonomic:
 
 ```bash
 ,w add feat/my-change main
 ```
 
-This creates a separate working directory for the branch and can attach a tmux
-session.
+This creates a separate working directory for the branch and can automatically attach a tmux session to it.
 
 ## Review: Check Out PRs Like They Are Local Branches
+
+You can also use the `,w` command to easily check out pull requests:
 
 ```bash
 ,w prs 12345

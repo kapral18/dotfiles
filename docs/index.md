@@ -1,25 +1,24 @@
-# Dotfiles Docs
+# Dotfiles Documentation
 
-These docs exist for people who are curious about this setup and want to adopt
-pieces of it without already being deep into terminal-driven development.
+Welcome! These docs exist for people who are curious about this setup and want to adopt pieces of it without already being deep into terminal-driven development.
 
 They are written for:
 
 - IDE-first folks (VSCode / JetBrains)
 - People who want a repeatable macOS dev environment
-- People who want to borrow *parts* of this repo without committing to all of it
+- People who want to use this as inspiration for their own setup
 
-If you are new to `chezmoi`, read `README.md` first, then start here.
+If you are new to `chezmoi`, read the repository `README.md` first, then start here.
 
 ## Start Here
 
-- Getting started safely: [`getting-started.md`](getting-started.md)
-- Architecture overview: [`architecture.md`](architecture.md)
-- Adoption paths (pick a slice): [`adoption-paths.md`](adoption-paths.md)
-- Troubleshooting: [`troubleshooting.md`](troubleshooting.md)
-- Reference map (where to change what): [`reference-map.md`](reference-map.md)
-- FAQ: [`faq.md`](faq.md)
-- A day in the life: [`day-in-the-life.md`](day-in-the-life.md)
+- **Getting started safely**: [`getting-started.md`](getting-started.md) — How to preview and apply changes without breaking your machine.
+- **Architecture overview**: [`architecture.md`](architecture.md) — How the repository is structured and how data flows.
+- **Learning paths**: [`learning-paths.md`](learning-paths.md) — How to incrementally learn the tools after installing the full setup.
+- **Troubleshooting**: [`troubleshooting.md`](troubleshooting.md) — What to do when things go wrong.
+- **Reference map**: [`reference-map.md`](reference-map.md) — A cheat sheet for where to find and change specific configurations.
+- **FAQ**: [`faq.md`](faq.md) — Common questions and answers.
+- **A day in the life**: [`day-in-the-life.md`](day-in-the-life.md) — A walkthrough of a typical daily workflow using these tools.
 
 ## Explore By Domain
 

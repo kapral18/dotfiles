@@ -13,9 +13,10 @@ If you are coming from VSCode/JetBrains and do not live in a terminal: think of
 
 ## Preconditions
 
-- 1Password app installed and signed in (this setup assumes 1Password is the
-  source of truth for SSH keys and a lot of secrets)
-- Willingness to let the bootstrap scripts install system tooling
+**⚠️ Important:** This setup has a hard dependency on 1Password.
+
+- **1Password app** must be installed and signed in. This setup assumes 1Password is the source of truth for SSH keys and many secrets. If you don't use 1Password, you will need to heavily modify the templates.
+- Willingness to let the bootstrap scripts install system tooling.
 
 ## Safe Preview Flow
 
@@ -64,6 +65,8 @@ should expect:
   `home/.chezmoiscripts/run_once_after_02-install-fish.sh`
 - Brew bundle install + cleanup:
   `home/.chezmoiscripts/run_onchange_after_03-install-brew-packages.fish.tmpl`
+- Fish packages update:
+  `home/.chezmoiscripts/run_onchange_after_04-update-fish-packages.fish.tmpl`
 
 There are also hooks that manage language/tool versions and global packages
 (ASDF, cargo, go, gems, npm, uv) and some macOS preferences.
