@@ -70,6 +70,19 @@ Examples:
 ,gh-prw --url
 ```
 
+### Issue lookup/open: `,gh-issuew`
+
+- Source: `home/exact_bin/executable_,gh-issuew`
+- Note: infers issue from branch suffix, worktree metadata, or PR body mentions.
+
+Examples:
+
+```bash
+,gh-issuew
+,gh-issuew --number
+,gh-issuew --url
+```
+
 ### Fork + clone + tmux: `,gh-tfork`
 
 - Source: `home/exact_bin/executable_,gh-tfork`

@@ -1,0 +1,161 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage:
+  ,gh-issuew [--number|--url] [<number|url|branch>]
+  ,gh-issuew [<number|url|branch>]
+
+Behavior:
+  - Default: open the issue(s) in a browser.
+  - --number: print the issue number(s) and exit.
+  - --url: print the issue URL(s) and exit.
+
+Resolution order:
+  1. Provided target
+  2. Worktree metadata (comma.w.issue.number)
+  3. Branch suffix (e.g. branch-name-123)
+  4. PR body (via ,gh-prw --number) looking for Closes/Fixes/Addresses/Mentions
+EOF
+}
+
+mode="web"
+target=""
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+  -n | --number)
+    mode="number"
+    shift
+    ;;
+  -u | --url)
+    mode="url"
+    shift
+    ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  --)
+    shift
+    break
+    ;;
+  -*)
+    break
+    ;;
+  *)
+    target="$1"
+    shift
+    break
+    ;;
+  esac
+done
+
+gh_base_repo() {
+  gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || true
+}
+
+resolve_issues() {
+  if [ -n "$target" ]; then
+    if [[ "$target" =~ ^[0-9]+$ ]]; then
+      echo "$target"
+      return 0
+    elif [[ "$target" =~ /issues/([0-9]+) ]]; then
+      echo "${BASH_REMATCH[1]}"
+      return 0
+    else
+      if [[ "$target" =~ -([0-9]+)$ ]] || [[ "$target" =~ /([0-9]+)$ ]]; then
+        echo "${BASH_REMATCH[1]}"
+        return 0
+      fi
+      # If it's something else, let gh handle it
+      echo "$target"
+      return 0
+    fi
+  fi
+
+  # 1. Worktree metadata
+  local wt_num
+  if wt_num=$(git config --worktree --get comma.w.issue.number 2>/dev/null); then
+    if [ -n "$wt_num" ]; then
+      echo "$wt_num"
+      return 0
+    fi
+  fi
+
+  # 2. Branch suffix
+  local head
+  head=$(git branch --show-current 2>/dev/null || true)
+  if [ -n "$head" ]; then
+    if [[ "$head" =~ -([0-9]+)$ ]] || [[ "$head" =~ /([0-9]+)$ ]]; then
+      echo "${BASH_REMATCH[1]}"
+      return 0
+    fi
+  fi
+
+  # 3. PR body
+  local pr_num
+  if pr_num=$(,gh-prw --number 2>/dev/null); then
+    if [ -n "$pr_num" ]; then
+      local pr_body
+      pr_body=$(gh pr view "$pr_num" --json body -q .body 2>/dev/null || true)
+      if [ -n "$pr_body" ]; then
+        local extracted
+        extracted=$(echo "$pr_body" | grep -ioE '(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved|address|addresses|addressed|mention|mentions)[[:space:]]*(:|,)?[[:space:]]*(https://github.com/[^[:space:]"]+/issues/|#)[0-9]+' | grep -oE '[0-9]+$' || true)
+
+        if [ -n "$extracted" ]; then
+          echo "$extracted" | sort -u
+          return 0
+        fi
+      fi
+    fi
+  fi
+
+  return 1
+}
+
+issues=$(resolve_issues || true)
+
+if [ -z "$issues" ]; then
+  if [ -n "$target" ]; then
+    issues="$target"
+  else
+    echo "No issue found." >&2
+    exit 1
+  fi
+fi
+
+if [ "$mode" = "number" ]; then
+  echo "$issues"
+  exit 0
+fi
+
+if [ "$mode" = "url" ]; then
+  base=$(gh_base_repo)
+  for issue in $issues; do
+    if [[ "$issue" =~ ^[0-9]+$ ]]; then
+      if [ -n "$base" ]; then
+        gh issue view -R "$base" "$issue" --json url -q .url
+      else
+        gh issue view "$issue" --json url -q .url
+      fi
+    else
+      echo "$issue"
+    fi
+  done
+  exit 0
+fi
+
+base=$(gh_base_repo)
+for issue in $issues; do
+  if [[ "$issue" =~ ^[0-9]+$ ]]; then
+    if [ -n "$base" ]; then
+      gh issue view -R "$base" -w "$issue"
+    else
+      gh issue view -w "$issue"
+    fi
+  else
+    gh issue view -w "$issue"
+  fi
+done

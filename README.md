@@ -242,6 +242,11 @@ Custom commands are shipped as scripts installed to `~/bin` (source: `home/exact
     Also attempts to resolve already-merged PRs even if the remote branch was
     deleted.
   - **Examples:** `,gh-prw`; `,gh-prw 12345`; `,gh-prw --number`; `,gh-prw --url`
+- **Name:** `,gh-issuew`
+  - **Description:** Open the issue(s) for the current branch/worktree (or a given issue
+    number/URL) in the browser, or print its number/URL for scripting. Infers issue from
+    branch suffix, worktree metadata, or PR body mentions.
+  - **Examples:** `,gh-issuew`; `,gh-issuew 12345`; `,gh-issuew --number`; `,gh-issuew --url`
 - **Name:** `,gh-tfork`
   - **Description:** Fork + clone a repo into `~/work/<repo>/<default-branch>` (owner `elastic`) or
     `~/code/<repo>/<default-branch>` (otherwise), then create/focus a tmux session named
