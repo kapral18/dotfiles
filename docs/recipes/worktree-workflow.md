@@ -50,8 +50,10 @@ You can also use these shortcuts directly from `gh-dash` when viewing PRs:
 - Bootstrap location follows conventions: `elastic/*` in `~/work/<repo>`, everything else in `~/code/<repo>`.
 
 You can also use these shortcuts directly from `gh-dash` when viewing Issues:
-- `ctrl+t`: Create a worktree for the selected Issue in the background (log: `${XDG_CACHE_HOME:-~/.cache}/gh-dash/w_issue_<ISSUE>.log`).
 - `C` or `Space`: Create/switch to the Issue worktree and focus its tmux session (`\,w issue --focus`).
+- New issue worktrees now use manual branch naming: `,w issue` prompts for a branch name and creates `<branch>-<issue_number>`.
+- If an issue worktree already exists (via worktree metadata or issue number in branch/path), `,w issue` reuses it immediately without prompting.
+- If you already created a matching worktree branch manually (for example via `,w add`), entering that exact branch name in the prompt links the issue metadata without renaming the branch.
 - If the repo does not exist locally yet, Issue actions bootstrap it first with `,gh-tfork <owner/repo>` and then continue.
 - In the persistent `gh-dash` popup, sync Issue actions (`C`/`Space`) show bootstrap progress in an overlay popup instead of replacing the `gh-dash` UI.
 - Bootstrap location follows conventions: `elastic/*` in `~/work/<repo>`, everything else in `~/code/<repo>`.

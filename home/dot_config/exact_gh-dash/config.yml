@@ -92,25 +92,22 @@ keybindings:
   prs:
     - key: C
       name: "worktree: checkout + focus"
-      command: $HOME/.config/gh-dash/scripts/pr_action.sh focus {{.RepoName}} {{.RepoPath}} {{.PrNumber}}
+      command: $HOME/.config/gh-dash/scripts/pr_action.sh focus "{{.RepoName}}" "{{.RepoPath}}" "{{.PrNumber}}"
     - key: " "
       name: "worktree: checkout + focus"
-      command: $HOME/.config/gh-dash/scripts/pr_action.sh focus {{.RepoName}} {{.RepoPath}} {{.PrNumber}}
+      command: $HOME/.config/gh-dash/scripts/pr_action.sh focus "{{.RepoName}}" "{{.RepoPath}}" "{{.PrNumber}}"
     - key: ctrl+t
       name: "worktree: create (background)"
-      command: $HOME/.config/gh-dash/scripts/pr_action.sh create_bg {{.RepoName}} {{.RepoPath}} {{.PrNumber}}
+      command: $HOME/.config/gh-dash/scripts/pr_action.sh create_bg "{{.RepoName}}" "{{.RepoPath}}" "{{.PrNumber}}"
 
     - key: b
       name: "octo: review (worktree + focus)"
-      command: $HOME/.config/gh-dash/scripts/pr_action.sh octo_review {{.RepoName}} {{.RepoPath}} {{.PrNumber}}
+      command: $HOME/.config/gh-dash/scripts/pr_action.sh octo_review "{{.RepoName}}" "{{.RepoPath}}" "{{.PrNumber}}"
 
   issues:
     - key: C
       name: "worktree: checkout + focus"
-      command: $HOME/.config/gh-dash/scripts/issue_action.sh focus {{.RepoName}} {{.RepoPath}} {{.IssueNumber}}
+      command: $HOME/.config/gh-dash/scripts/issue_action.sh focus "{{.RepoName}}" "{{.RepoPath}}" "{{.IssueNumber}}"
     - key: " "
       name: "worktree: checkout + focus"
-      command: $HOME/.config/gh-dash/scripts/issue_action.sh focus {{.RepoName}} {{.RepoPath}} {{.IssueNumber}}
-    - key: ctrl+t
-      name: "worktree: create (background)"
-      command: $HOME/.config/gh-dash/scripts/issue_action.sh create_bg {{.RepoName}} {{.RepoPath}} {{.IssueNumber}}
+      command: $HOME/.config/gh-dash/scripts/issue_action.sh focus "{{.RepoName}}" "{{.RepoPath}}" "{{.IssueNumber}}"

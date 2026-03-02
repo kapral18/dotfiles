@@ -7,7 +7,6 @@ Usage: issue_action.sh <action> <repo_name> <repo_path> <issue_number>
 
 Actions:
   focus             Create/switch issue worktree and focus tmux session (quiet).
-  create_bg          Create issue worktree in background (quiet, logs to cache).
 EOF
 }
 
@@ -141,20 +140,19 @@ require_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "missing command: $1"
 }
 
-outer_tmux() {
-  if [ -n "${OUTER_TMUX_SOCKET:-}" ]; then
-    tmux -S "${OUTER_TMUX_SOCKET}" "$@"
-    return $?
-  fi
-  tmux "$@"
-}
-
 action="${1:-}"
 repo_name="${2:-}"
-repo_path="${3:-}"
-issue_number="${4:-}"
 
-if [ -z "$action" ] || [ -z "$repo_name" ] || [ -z "$repo_path" ] || [ -z "$issue_number" ]; then
+# If repo_path is empty but issue_number is provided, shift them
+if [ $# -eq 3 ] && [[ "$3" =~ ^[0-9]+$ ]]; then
+  repo_path=""
+  issue_number="$3"
+else
+  repo_path="${3:-}"
+  issue_number="${4:-}"
+fi
+
+if [ -z "$action" ] || [ -z "$repo_name" ] || [ -z "$issue_number" ]; then
   usage >&2
   exit 1
 fi
@@ -169,6 +167,10 @@ bootstrap_progress_mode=0
 case "$action" in
 focus)
   bootstrap_progress_mode=1
+  ;;
+*)
+  usage >&2
+  exit 1
   ;;
 esac
 
@@ -185,20 +187,5 @@ focus)
   else
     ,w issue -q --focus "$issue_number"
   fi
-  ;;
-
-create_bg)
-  cd "$wt"
-  require_cmd gh
-  require_cmd ,w
-  log_dir="${XDG_CACHE_HOME:-$HOME/.cache}/gh-dash"
-  mkdir -p "$log_dir"
-  log="${log_dir}/w_issue_${issue_number}.log"
-  nohup ,w issue -q "$issue_number" >"$log" 2>&1 &
-  ;;
-
-*)
-  usage >&2
-  exit 1
   ;;
 esac

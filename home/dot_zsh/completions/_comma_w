@@ -103,6 +103,7 @@ _comma_w() {
           _arguments \
             '(-q --quiet)'{-q,--quiet}'[Suppress informational output]' \
             '--focus[Switch/attach to tmux session]' \
+            '(-b --branch)'{-b,--branch}'[Use explicit branch name]:branch name:_comma_w_branches' \
             '1:issue number or url:_comma_w_issues_candidates'
           ;;
         ls|list)

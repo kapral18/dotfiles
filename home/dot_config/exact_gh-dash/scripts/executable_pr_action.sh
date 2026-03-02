@@ -166,10 +166,17 @@ outer_tmux_fmt_for_client() {
 
 action="${1:-}"
 repo_name="${2:-}"
-repo_path="${3:-}"
-pr_number="${4:-}"
 
-if [ -z "$action" ] || [ -z "$repo_name" ] || [ -z "$repo_path" ] || [ -z "$pr_number" ]; then
+# If repo_path is empty but pr_number is provided, shift them
+if [ $# -eq 3 ] && [[ "$3" =~ ^[0-9]+$ ]]; then
+  repo_path=""
+  pr_number="$3"
+else
+  repo_path="${3:-}"
+  pr_number="${4:-}"
+fi
+
+if [ -z "$action" ] || [ -z "$repo_name" ] || [ -z "$pr_number" ]; then
   usage >&2
   exit 1
 fi

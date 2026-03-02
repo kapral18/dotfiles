@@ -21,7 +21,7 @@ if not functions -q __comma_w_args_before_cursor
           set after_double_dash 1
         case '-q' '--quiet' '--focus' '--awaiting' '--dirty' '--long' '--full-path' '--no-header' '--no-column' '--apply' '--all' '--keep-path'
           continue
-        case '--sort' '--path'
+        case '--sort' '--path' '-b' '--branch'
           set skip_next 1
           continue
         case '-*'
@@ -177,6 +177,7 @@ complete -c ,w -n '__fish_seen_subcommand_from prs; and set -l args (__comma_w_a
 
 complete -c ,w -n '__fish_seen_subcommand_from issue' -s q -l quiet -d 'Suppress informational output'
 complete -c ,w -n '__fish_seen_subcommand_from issue' -l focus -d 'Switch/attach to tmux session'
+complete -c ,w -n '__fish_seen_subcommand_from issue' -s b -l branch -x -a '(__comma_w_complete_branches)' -d 'Use explicit branch name'
 complete -c ,w -n '__fish_seen_subcommand_from issue; and set -l args (__comma_w_args_before_cursor); and test (count $args) -eq 1' -a '(__comma_w_issues_candidates)' -d 'Issue number'
 
 complete -c ,w -n '__fish_seen_subcommand_from ls list' -l porcelain -d 'Print porcelain worktree list'

@@ -16,28 +16,27 @@ require_cmd() {
 
 show_usage() {
   cat <<'EOF'
-Usage: ,w issue [-q|--quiet] [--focus] <issue_number|url>
+Usage: ,w issue [-q|--quiet] [--focus] [-b|--branch <name>] <issue_number|url>
 
 Create or reuse a worktree for a GitHub issue.
 
 This command:
-- Finds an existing worktree for the issue (via per-worktree git config metadata) when available
-- Otherwise creates a new branch + worktree and stores issue metadata in the worktree config
+- Reuses an existing issue worktree (metadata or issue-number heuristic) when available
+- Prompts for a branch name when creating a new issue worktree
+- Creates new branches as: <branch_name>-<issue_number>
+- Stores issue metadata in per-worktree git config
 
 Options:
   -q, --quiet       Suppress informational output
   --focus           Switch/attach to the worktree's tmux session
+  -b, --branch      Use the provided branch name instead of prompting
   -h, --help        Show this help message
-
-Notes:
-  - Branch names are generated as: <type>/<scope>/<slug> where slug is 5-8 words.
-  - If `ollama` (model: gemma3) is available, it is used to propose the slug and then strictly validated.
-  - Issue metadata is stored per-worktree using git's worktree config mechanism.
 EOF
 }
 
 quiet_mode=0
 focus_mode=0
+manual_branch="${COMMA_W_ISSUE_BRANCH:-}"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -52,6 +51,14 @@ while [ $# -gt 0 ]; do
   --focus)
     focus_mode=1
     shift
+    ;;
+  -b | --branch)
+    if [ $# -lt 2 ]; then
+      echo ",w issue: missing value for $1" >&2
+      exit 1
+    fi
+    manual_branch="$2"
+    shift 2
     ;;
   --)
     shift
@@ -76,6 +83,88 @@ info() {
 die() {
   echo ",w issue: $*" >&2
   exit 1
+}
+
+trim_whitespace() {
+  local s="$1"
+  s="${s#"${s%%[![:space:]]*}"}"
+  s="${s%"${s##*[![:space:]]}"}"
+  printf '%s\n' "$s"
+}
+
+normalize_branch_input() {
+  local branch="$1"
+  branch="$(trim_whitespace "$branch")"
+  branch="${branch#refs/heads/}"
+  while [[ "$branch" == /* ]]; do
+    branch="${branch#/}"
+  done
+  printf '%s\n' "$branch"
+}
+
+validate_branch_name() {
+  local branch="$1"
+  [ -n "$branch" ] || return 1
+  git check-ref-format --branch "$branch" >/dev/null 2>&1
+}
+
+with_issue_suffix() {
+  local branch="$1"
+  local issue_number="$2"
+  branch="${branch%-${issue_number}}"
+  printf '%s-%s\n' "$branch" "$issue_number"
+}
+
+prompt_branch_name() {
+  local issue_number="$1"
+  local issue_title="$2"
+  local ch=""
+  local buf=""
+  local esc=""
+  local ctrl_c=""
+  local cr=""
+  local nl=""
+  local bs=""
+  local prompt_prefix=""
+  local hint=""
+
+  # Inside tmux display-popup -E, stdin might not be a standard tty,
+  # but /dev/tty is available. We read from /dev/tty directly below.
+
+  esc="$(printf '\033')"
+  ctrl_c="$(printf '\003')"
+  cr="$(printf '\r')"
+  nl="$(printf '\n')"
+  bs="$(printf '\177')"
+  prompt_prefix="\033[38;5;111m\033[0m \033[38;5;244mbranch\033[0m \033[38;5;244m(without issue suffix)\033[0m \033[38;5;244m>\033[0m "
+  hint="\033[38;5;240m(e.g. feat/my-change, esc to cancel)\033[0m"
+
+  printf '\n\033[38;5;111mIssue #%s:\033[0m %s\n\n' "$issue_number" "$issue_title" >&2
+  printf "%b%b" "$prompt_prefix" "$hint" >&2
+  printf "\r%b" "$prompt_prefix" >&2
+
+  while IFS= read -rsn 1 ch </dev/tty; do
+    case "$ch" in
+    "$ctrl_c" | "$esc")
+      return 1
+      ;;
+    "$cr" | "$nl")
+      break
+      ;;
+    "$bs" | $'\b')
+      if [ -n "$buf" ]; then
+        buf="${buf%?}"
+      fi
+      ;;
+    *)
+      buf+="$ch"
+      ;;
+    esac
+    printf "\r%b%s\033[K" "$prompt_prefix" "$buf" >&2
+  done
+
+  printf '\n' >&2
+  normalize_branch_input "$buf"
 }
 
 if [ $# -ne 1 ]; then
@@ -113,32 +202,36 @@ if [ -n "$existing_path" ]; then
   exit 0
 fi
 
-if ! IFS=$'\t' read -r issue_title issue_body < <(
-  gh issue view "$issue_number" --json title,body --jq '[.title, (.body // "")] | @tsv' 2>/dev/null || true
-); then
-  die "failed to fetch issue #$issue_number metadata"
-fi
-if [ -z "$issue_title" ]; then
-  die "issue #$issue_number has empty title (unexpected)"
-fi
+manual_branch="$(normalize_branch_input "$manual_branch")"
 
-scope="$(_comma_w_issue_extract_scope "$issue_title")"
-type="$(_comma_w_issue_infer_type "$issue_title")"
+if [ -z "$manual_branch" ]; then
+  issue_title="$(gh issue view "$issue_number" --json title --jq '.title' 2>/dev/null || true)"
+  if [ -z "$issue_title" ]; then
+    issue_title="(unable to fetch title)"
+  fi
 
-title_for_slug="$(_comma_w_issue_strip_scope "$issue_title")"
-
-slug="$(_comma_w_issue_generate_slug_ollama "$scope" "$title_for_slug" "$issue_body" || true)"
-if [ -z "$slug" ]; then
-  slug="$(_comma_w_issue_words_to_kebab "$title_for_slug $issue_body")"
-fi
-slug="$(_comma_w_issue_slugify_kebab "$slug")"
-if ! _comma_w_issue_validate_slug "$slug"; then
-  die "failed to generate a valid 5-8 word slug for issue #$issue_number (got: '$slug')"
+  manual_branch="$(prompt_branch_name "$issue_number" "$issue_title")" || exit 0
+  manual_branch="$(normalize_branch_input "$manual_branch")"
+  if [ -z "$manual_branch" ]; then
+    exit 0
+  fi
 fi
 
-# Guarantee uniqueness by appending the issue number (strip it first if ollama included it)
-slug="${slug%-${issue_number}}"
-branch="${type}/${scope}/${slug}-${issue_number}"
+if ! validate_branch_name "$manual_branch"; then
+  die "invalid branch name: '$manual_branch'"
+fi
+
+existing_path="$(_comma_w_find_worktree_path_for_branch "$manual_branch" 2>/dev/null || true)"
+if [ -n "$existing_path" ]; then
+  info "Found existing worktree for branch '$manual_branch' at: $existing_path"
+  _comma_w_issue_store_metadata "$existing_path" "$repo_name" "$issue_number" || true
+  if [ "$focus_mode" -eq 1 ]; then
+    "$(dirname "$0")/open.sh" -q "$existing_path"
+  fi
+  exit 0
+fi
+
+branch="$(with_issue_suffix "$manual_branch" "$issue_number")"
 info "Issue #$issue_number -> branch: $branch"
 
 default_branch="$(_comma_w_detect_default_branch)"
