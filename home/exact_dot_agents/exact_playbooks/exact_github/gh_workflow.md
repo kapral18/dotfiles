@@ -18,6 +18,14 @@ PR targeting (avoid searching):
 - If `,gh-prw` fails once, stop and ask for the PR URL (or use `-R OWNER/REPO` if
   the user clearly intends a different repo).
 
+Issue targeting:
+
+- If the user refers to the current issue implicitly ("this issue", "current issue"),
+  resolve the issue number first:
+  - `,gh-issuew --number`
+  - `,gh-issuew --url`
+- If `,gh-issuew` fails once, stop and ask for the issue URL.
+
 When NOT to use:
 
 - The user wants to draft PR/issue text only (draft-only): use the compose playbooks.

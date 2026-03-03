@@ -247,6 +247,9 @@ Rules:
   PR", "on this branch PR", "the PR for this branch", "check my PR comment"),
   first resolve the PR number via `,gh-prw --number`. If it fails
   once, stop and ask for the PR URL/number.
+- If the user's request refers to the current issue implicitly ("this issue", "current
+  issue"), first resolve the issue number via `,gh-issuew --number`. If it fails
+  once, stop and ask for the issue URL/number.
 
 1. **Beads (bdlocal)**
    Use when: the user mentions beads / bdlocal / `BEADS_DIR`, or asks to manage

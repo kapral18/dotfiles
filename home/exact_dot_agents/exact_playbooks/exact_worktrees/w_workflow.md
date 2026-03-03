@@ -29,6 +29,10 @@ Common patterns:
   - `,w prs <pr_url>`
   - "current PR" -> `,gh-prw --number` then `,w prs <number>`
 
+- Create an issue worktree:
+  - `,w issue <issue_number>`
+  - "current issue" -> `,gh-issuew --number` then `,w issue <number>`
+
 - Create a worktree for a branch:
   - `,w add <branch_name> [base_branch]`
 
@@ -58,6 +62,10 @@ Examples:
 # "Current PR" -> worktree:
 pr="$(,gh-prw --number)"
 ,w prs "$pr"
+
+# "Current issue" -> worktree:
+issue="$(,gh-issuew --number)"
+,w issue "$issue"
 
 # Switch to another worktree session:
 ,w switch kibana

@@ -313,13 +313,9 @@ else
     exit 1
   fi
 
-  git_worktree_add "$worktree_path" -b "$target_branch" "$base_ref"
+  git_worktree_add "$worktree_path" --no-track -b "$target_branch" "$base_ref"
   _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$target_branch" "$worktree_path"
   _print_created_worktree_message "$quiet_mode" "$target_branch" "$worktree_path" "$base_ref"
-
-  if [[ "$target_branch" != *__* ]]; then
-    git branch --set-upstream-to="$base_ref" "$target_branch" >/dev/null 2>&1 || true
-  fi
 
   if [[ "$target_branch" == *__* ]] && [ -n "$base_remote" ] && ! _comma_w_remote_is_first_party "$base_remote"; then
     _comma_w_configure_prefixed_branch_push_routing "$worktree_path" "$target_branch" "$base_remote" "$branch_name" "$quiet_mode" || true
