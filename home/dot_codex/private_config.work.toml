@@ -28,7 +28,6 @@ args = [
 ]
 
 [mcp_servers.scsi-main]
-# __isWork__
 command = "bash"
 args = [
   "-lc",
@@ -36,7 +35,6 @@ args = [
 ]
 
 [mcp_servers.scsi-local]
-# __isWork__
 command = "bash"
 args = [
   "-lc",

@@ -1,0 +1,18 @@
+{
+  "defaultProvider": "google",
+  "defaultModel": "gemini-3.1-pro-preview-customtools",
+  "defaultThinkingLevel": "high",
+  "theme": "dark",
+  "compaction": {
+    "enabled": true,
+    "reserveTokens": 16384,
+    "keepRecentTokens": 20000
+  },
+  "retry": {
+    "enabled": true,
+    "maxRetries": 5
+  },
+  "enabledModels": ["gemini-3*"],
+  "packages": ["pi-skills", "~/.pi/agent/packages/pi-mcp-adapter"],
+  "lastChangelogVersion": "0.55.4"
+}

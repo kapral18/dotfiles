@@ -3,19 +3,19 @@
 set -euo pipefail
 
 {{- if eq .isWork true }}
-# cursor mcp desired hash (work): {{ include "dot_cursor/mcp.work.json" | sha256sum }}
+# pi mcp desired hash (work): {{ include "dot_pi/agent/mcp.work.json" | sha256sum }}
 {{- else }}
-# cursor mcp desired hash (non-work): {{ include "dot_cursor/mcp.personal.json" | sha256sum }}
+# pi mcp desired hash (non-work): {{ include "dot_pi/agent/mcp.personal.json" | sha256sum }}
 {{- end }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
-target="$HOME/.cursor/mcp.json"
+target="$HOME/.pi/agent/mcp.json"
 is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
 
 if [ "$is_work" = "true" ]; then
-  src="$source_dir/dot_cursor/mcp.work.json"
+  src="$source_dir/dot_pi/agent/mcp.work.json"
 else
-  src="$source_dir/dot_cursor/mcp.personal.json"
+  src="$source_dir/dot_pi/agent/mcp.personal.json"
 fi
 
 desired="$(cat "$src")"

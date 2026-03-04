@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
+      ]
+    },
+    "sequentialthinking": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--pull=always",
+        "--rm",
+        "-i",
+        "--init",
+        "mcp/sequentialthinking"
+      ]
+    }
+  }
+}

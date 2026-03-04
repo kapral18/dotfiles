@@ -110,30 +110,22 @@ Examples of tool configs included here:
 - Gemini CLI: `home/dot_gemini/`
 - Copilot CLI: `home/dot_config/dot_copilot/`
 
-### MCP merge scripts
+### Profile-based file merging
 
 Some tools rewrite their config files at runtime, so chezmoi ignores the on-disk
-target and a `run_onchange` script writes a filtered version from the repo
+target and a `run_onchange` script writes the correct profile-specific version from the repo
 source.
 
-Filtering rule: when `.isWork` is false, any MCP server entry marked
-as work-only is removed, and work-only markers are stripped from the final
-config.
+Instead of keeping complex templates or comment-based filtering logic, we use explicit
+`.work.*` and `.personal.*` files. The shell script checks the `.isWork` template variable
+and copies the correct source to the final destination, completely decoupling the formats.
 
-Implementation note: the merge scripts embed a “desired hash” that is computed
-from the filtered output (not the raw source). This keeps `run_onchange` from
-re-running when only work-only blocks change on non-work machines.
-
-Marker formats:
-
-- Cursor/Gemini JSON: `"__isWork__": true`
-- OpenCode JSONC: `// __isWork__` on the line before the MCP server key
-- Codex TOML: `# __isWork__` within the work-only table
-
-- Cursor MCP: `home/dot_cursor/mcp.json` → `~/.cursor/mcp.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-cursor-mcp.sh.tmpl`)
+- Cursor MCP: `home/dot_cursor/mcp.{work,personal}.json` → `~/.cursor/mcp.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-cursor-mcp.sh.tmpl`)
 - Gemini settings: `home/dot_gemini/settings.json` → `~/.gemini/settings.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-gemini-settings.sh.tmpl`)
-- OpenCode config: `home/dot_config/opencode/opencode.jsonc` → `~/.config/opencode/opencode.jsonc` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl`)
-- Codex config: `home/dot_codex/private_config.toml` → `~/.codex/config.toml` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-codex-config.sh.tmpl`)
+- OpenCode config: `home/dot_config/opencode/opencode.{work,personal}.jsonc` → `~/.config/opencode/opencode.jsonc` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl`)
+- Codex config: `home/dot_codex/private_config.{work,personal}.toml` → `~/.codex/config.toml` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-codex-config.sh.tmpl`)
+- Pi MCP config: `home/dot_pi/agent/mcp.{work,personal}.json` → `~/.pi/agent/mcp.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-pi-mcp.sh.tmpl`)
+- Pi configs: `home/dot_pi/agent/settings.{work,personal}.json` → `~/.pi/agent/settings.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-pi-config.sh.tmpl`)
 
 ### Gemini CLI settings
 
@@ -144,11 +136,14 @@ Source: `home/dot_gemini/settings.json` → `~/.gemini/settings.json`.
 
 ### Pi coding agent settings
 
-Source: `home/dot_pi/agent/settings.json` → `~/.pi/agent/settings.json`.
+Source: `home/dot_pi/agent/{settings,models}.{work,personal}.json` → `~/.pi/agent/`.
+Also manages MCP servers via `home/dot_pi/agent/mcp.{work,personal}.json`.
 
-- Defaults to Anthropic's Claude 3.5 Sonnet (`claude-sonnet-4-20250514` as per Pi docs).
+- For the work profile, defaults to `litellm` using the `llm-gateway/gemini-3.1-pro-preview` model. API keys are resolved securely via `!pass litellm/api/token` directly within the agent runtime.
+- For the personal profile, defaults to `google` using `gemini-3.1-pro-preview-customtools`.
 - Enables automatic context compaction to save tokens.
 - Enables exponential backoff retries.
+- Installs and enables the `pi-mcp-adapter` extension automatically.
 - Secrets (like `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`) are already picked up automatically by Pi from the environment variables exported via `pass` in `config.fish.tmpl`.
 
 ### Copilot CLI settings

@@ -1,0 +1,47 @@
+{
+  "providers": {
+    "litellm": {
+      "baseUrl": "http://localhost:4000/v1",
+      "api": "openai-completions",
+      "apiKey": "!pass litellm/api/token",
+      "models": [
+        {
+          "id": "llm-gateway/gemini-3-pro-preview",
+          "name": "Gemini 3 Pro Preview (LiteLLM)"
+        },
+        {
+          "id": "llm-gateway/gemini-3-flash-preview",
+          "name": "Gemini 3 Flash (LiteLLM)"
+        },
+        {
+          "id": "llm-gateway/gemini-3.1-pro-preview",
+          "name": "Gemini 3.1 Pro Preview (LiteLLM)"
+        },
+        {
+          "id": "llm-gateway/gemini-3.1-pro-preview-customtools",
+          "name": "Gemini 3.1 Pro Preview Custom Tools (LiteLLM)"
+        },
+        {
+          "id": "llm-gateway/gemini-3.1-flash-image-preview",
+          "name": "Gemini 3.1 Flash Image Preview (LiteLLM)"
+        },
+        {
+          "id": "llm-gateway/gpt-5.3-codex",
+          "name": "GPT-5.3 Codex (LiteLLM)"
+        },
+        {
+          "id": "llm-gateway/gpt-5.2",
+          "name": "GPT-5.2 (LiteLLM)"
+        },
+        {
+          "id": "llm-gateway/claude-sonnet-4-6",
+          "name": "Claude Sonnet 4-6 (LiteLLM)"
+        },
+        {
+          "id": "llm-gateway/claude-opus-4-6",
+          "name": "Claude Opus 4-6 (LiteLLM)"
+        }
+      ]
+    }
+  }
+}

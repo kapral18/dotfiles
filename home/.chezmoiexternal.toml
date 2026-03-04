@@ -25,3 +25,9 @@ stripComponents = 2
 include = ["*/themes/*"]
 exact = true
 refreshPeriod = "168h"
+
+[".pi/agent/packages/pi-mcp-adapter"]
+type = "archive"
+url = "https://github.com/nicobailon/pi-mcp-adapter/archive/refs/heads/main.tar.gz"
+stripComponents = 1
+refreshPeriod = "168h"

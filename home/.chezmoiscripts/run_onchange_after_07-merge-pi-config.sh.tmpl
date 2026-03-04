@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+{{- if eq .isWork true }}
+# pi settings desired hash (work): {{ include "dot_pi/agent/settings.work.json" | sha256sum }}
+# pi models desired hash (work): {{ include "dot_pi/agent/models.work.json" | sha256sum }}
+{{- else }}
+# pi settings desired hash (non-work): {{ include "dot_pi/agent/settings.personal.json" | sha256sum }}
+# pi models desired hash (non-work): {{ include "dot_pi/agent/models.personal.json" | sha256sum }}
+{{- end }}
+
+source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
+target_dir="$HOME/.pi/agent"
+is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
+
+if [ "$is_work" = "true" ]; then
+  src_settings="$source_dir/dot_pi/agent/settings.work.json"
+  src_models="$source_dir/dot_pi/agent/models.work.json"
+else
+  src_settings="$source_dir/dot_pi/agent/settings.personal.json"
+  src_models="$source_dir/dot_pi/agent/models.personal.json"
+fi
+
+desired_settings="$(cat "$src_settings")"
+desired_models="$(cat "$src_models")"
+
+mkdir -p "$target_dir"
+
+target_settings="$target_dir/settings.json"
+if [ ! -f "$target_settings" ] || [ "$(cat "$target_settings")" != "$desired_settings" ]; then
+  printf '%s\n' "$desired_settings" >"$target_settings"
+fi
+
+target_models="$target_dir/models.json"
+if [ ! -f "$target_models" ] || [ "$(cat "$target_models")" != "$desired_models" ]; then
+  printf '%s\n' "$desired_models" >"$target_models"
+fi

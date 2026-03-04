@@ -1,7 +1,6 @@
 {
   "mcpServers": {
     "playwright": {
-      "__isWork__": false,
       "command": "npx",
       "args": [
         "-y",
@@ -9,7 +8,6 @@
       ]
     },
     "sequentialthinking": {
-      "__isWork__": false,
       "command": "docker",
       "args": [
         "run",
@@ -21,7 +19,6 @@
       ]
     },
     "buildkite": {
-      "__isWork__": true,
       "command": "bash",
       "args": [
         "-lc",
@@ -29,7 +26,6 @@
       ]
     },
     "scsi-main": {
-      "__isWork__": true,
       "command": "bash",
       "args": [
         "-lc",
@@ -37,7 +33,6 @@
       ]
     },
     "scsi-local": {
-      "__isWork__": true,
       "command": "bash",
       "args": [
         "-lc",
