@@ -143,7 +143,7 @@ Also manages MCP servers via `home/dot_pi/agent/mcp.{work,personal}.json`.
 - For the personal profile, defaults to `google` using `gemini-3.1-pro-preview-customtools`.
 - Enables automatic context compaction to save tokens.
 - Enables exponential backoff retries.
-- Installs and enables the `pi-mcp-adapter` extension automatically.
+- Installs and enables the `npm:pi-mcp-adapter` extension automatically.
 - Secrets (like `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`) are already picked up automatically by Pi from the environment variables exported via `pass` in `config.fish.tmpl`.
 
 ### Copilot CLI settings

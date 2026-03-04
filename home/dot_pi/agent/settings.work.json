@@ -13,6 +13,6 @@
     "maxRetries": 5
   },
   "enabledModels": ["gemini-3*", "llm-gateway/*"],
-  "packages": ["pi-skills", "~/.pi/agent/packages/pi-mcp-adapter"],
+  "packages": ["pi-skills", "npm:pi-mcp-adapter"],
   "lastChangelogVersion": "0.55.4"
 }
