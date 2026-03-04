@@ -35,7 +35,7 @@ npm --global --silent ls | rg '<package-name>'
 
 ## What It Does
 
-The installer reads `~/.default-npm-pkgs`, installs missing packages, and then
+The installer reads `~/.default-npm-pkgs`, installs missing packages, uninstalls global packages not on the list (excluding core tools like `npm`), and then
 runs `asdf reshim nodejs`.
 
 ## Rollback / Undo
@@ -46,3 +46,5 @@ runs `asdf reshim nodejs`.
 ```bash
 chezmoi apply
 ```
+
+*(The package will be automatically uninstalled because it is no longer in the desired list).*

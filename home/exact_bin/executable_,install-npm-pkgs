@@ -15,6 +15,23 @@ if ! mapfile -t lines <"$npm_pkgs_file"; then
   exit 1
 fi
 
+# Get desired packages
+desired_pkgs=()
+for line in "${lines[@]}"; do
+  # Trim leading and trailing whitespace
+  line="${line#"${line%%[![:space:]]*}"}"
+  line="${line%"${line##*[![:space:]]}"}"
+
+  # Skip empty lines and comments
+  [[ -z "$line" || "$line" =~ ^# ]] && continue
+  desired_pkgs+=("$line")
+done
+
+# Get currently installed global packages
+# Using grep to extract the package name from the parseable output correctly
+# awk extracts the last part of the path if it's inside node_modules
+installed_pkgs=$(npm ls -g --depth=0 --parseable | awk -F '/node_modules/' '{if (NF>1) print $NF}' || true)
+
 # install npm package.
 #
 # ex: install_npm_pkg pkg_name
@@ -29,19 +46,32 @@ install_npm_pkg() {
   return 0
 }
 
-for line in "${lines[@]}"; do
-  # Skip empty lines and comments
-  [[ -z "$line" || "$line" =~ ^\s*# ]] && continue
+# Install missing packages
+for pkg in "${desired_pkgs[@]}"; do
+  if ! echo "$installed_pkgs" | grep -Fqx "$pkg"; then
+    install_npm_pkg "$pkg"
+  else
+    echo "npm package $pkg is already installed"
+  fi
+done
 
-  # check if the package is already installed
-  if npm --global --silent ls | grep --quiet "$line" &>/dev/null; then
-    echo "npm package $line is already installed"
+# Uninstall packages that are not in the desired list
+for pkg in $installed_pkgs; do
+  # Skip essential npm packages
+  if [[ "$pkg" == "npm" || "$pkg" == "corepack" ]]; then
     continue
   fi
-  install_npm_pkg "$line"
+
+  # If installed package is not in desired list, uninstall it
+  if ! printf "%s\n" "${desired_pkgs[@]}" | grep -Fqx "$pkg"; then
+    echo "Uninstalling npm package: $pkg"
+    if ! npm -g uninstall "$pkg" &>/dev/null; then
+      echo "Error: Failed to uninstall npm package $pkg"
+    fi
+  fi
 done
 
 # make it available in the current shell
-asdf reshim nodejs
+asdf reshim nodejs || true
 
-echo "All npm packages installed successfully"
+echo "All npm packages synced successfully"

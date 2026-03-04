@@ -142,6 +142,15 @@ Source: `home/dot_gemini/settings.json` → `~/.gemini/settings.json`.
 - MCP servers are configured under `mcpServers`.
 - Tool approval is controlled by `general.defaultApprovalMode` (we use `auto_edit` to auto-approve edit tools).
 
+### Pi coding agent settings
+
+Source: `home/dot_pi/agent/settings.json` → `~/.pi/agent/settings.json`.
+
+- Defaults to Anthropic's Claude 3.5 Sonnet (`claude-sonnet-4-20250514` as per Pi docs).
+- Enables automatic context compaction to save tokens.
+- Enables exponential backoff retries.
+- Secrets (like `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`) are already picked up automatically by Pi from the environment variables exported via `pass` in `config.fish.tmpl`.
+
 ### Copilot CLI settings
 
 Source: `home/dot_config/dot_copilot/` → `~/.config/.copilot/`.

@@ -79,8 +79,7 @@ This hook installs missing tools and attempts to clean up unused packages.
 - Hook: `home/.chezmoiscripts/run_onchange_after_05-update-npm-pkgs.sh.tmpl`
 - Manual command: `home/exact_bin/executable_,install-npm-pkgs`
 
-The `,install-npm-pkgs` command installs packages in the list and reshims
-`nodejs` in ASDF.
+The `,install-npm-pkgs` command installs packages in the list, uninstalls those no longer listed, and reshims `nodejs` in ASDF.
 
 If you do not want global npm packages, keep the list empty.
 
