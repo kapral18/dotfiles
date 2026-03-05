@@ -500,11 +500,6 @@ Local plugins are implemented in `home/dot_config/exact_nvim/exact_lua/exact_plu
   - **Description:** Generate a conventional-commit message from the staged
     diff and insert it into the `gitcommit` buffer.
   - **Examples:** `<leader>aisl` (Ollama); `<leader>aiso` (OpenRouter)
-- **Name:** `save-ai-data`
-  - **Description:** Build a curated `~/ai_data.txt` by appending/replacing
-    the current buffer or a selected path (and removing entries by
-    pattern/type).
-  - **Examples:** `<leader>ais` append current buffer; `:RemoveAIFileEntries <pattern>`
 - **Name:** `ts-move-exports`
   - **Description:** Move selected TypeScript exports to a new file path and
     update imports.

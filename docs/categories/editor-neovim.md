@@ -217,11 +217,17 @@ Keymaps:
 - `leader-aisc` summarize via Cloudflare Workers AI
 - `leader-aiso` summarize via OpenRouter
 
+Output format notes:
+
+- Header: `type(scope?): summary`
+- Bullet points: one bullet per changed functionality (or per distinct logical change)
+
 Env:
 
 - Cloudflare: `CLOUDFLARE_WORKERS_AI_ACCOUNT_ID`, `CLOUDFLARE_WORKERS_AI_API_KEY` (optional: `CLOUDFLARE_WORKERS_AI_MODEL`, `CLOUDFLARE_REASONING_EFFORT`)
 - OpenRouter: `OPENROUTER_API_KEY` (optional: `OPENROUTER_MODEL`, `OPENROUTER_REASONING_EFFORT`)
 - Ollama (optional): `OLLAMA_MODEL`, `OLLAMA_THINK`, `OLLAMA_TEMPERATURE`
+- Gemini (optional): `GEMINI_MODEL`, `GEMINI_MAX_OUTPUT_TOKENS`, `GEMINI_API_KEY`
 
 ## Git Workflows
 
@@ -252,14 +258,6 @@ Search only paths owned by a team/owner:
 
 - Visual mode mapping: `leader-]`
 - Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/ts-move-exports.lua`
-
-## AI Data Capture (Local Plugin)
-
-This config includes a local helper to build a curated `~/ai_data.txt`.
-
-- Keymaps: `leader-ais` (append buffer), `leader-aiS` (replace)
-- Neo-tree integration: save/remove selected path from the tree
-- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/save-ai-data.lua`
 
 ## tmux Bridge: Send Text To The Right Pane (Local Plugin)
 

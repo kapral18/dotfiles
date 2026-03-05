@@ -13,6 +13,16 @@ return {
       ft = "gitcommit",
       desc = "[Ollama] Summarize commit",
     },
+{{- if eq .isWork true }}
+    {
+      "<leader>aisc",
+      function()
+        sc.summarize_commit_gemini()
+      end,
+      ft = "gitcommit",
+      desc = "[Gemini] Summarize commit",
+    },
+{{- else }}
     {
       "<leader>aisc",
       function()
@@ -29,5 +39,14 @@ return {
       ft = "gitcommit",
       desc = "[OpenRouter] Summarize commit",
     },
+    {
+      "<leader>aisg",
+      function()
+        sc.summarize_commit_gemini()
+      end,
+      ft = "gitcommit",
+      desc = "[Gemini] Summarize commit",
+    },
+{{- end }}
   },
 }

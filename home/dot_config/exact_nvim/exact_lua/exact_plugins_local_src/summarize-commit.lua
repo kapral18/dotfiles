@@ -3,13 +3,19 @@ local M = {}
 -- ───────────────────────────────── SYSTEM CONSTANTS ────────────────────────────
 local PROMPT = [[
 Generate a commit summary using conventional commit format from the output of a git diff.
-Only respond with the generated commit text (no reasoning, no explanation).
+Return only the commit message, in this exact shape:
 
-<<DIFF START>>
+<type>(<scope optional>): <short summary>
+
+- one bullet for each distinct functional change (intent or behavior), not per file
+- use a separate bullet when a single file has multiple functional/intent changes
+- avoid bullets that are only file names
+
+Do not add explanations, no prose, no markdown wrappers, no JSON, and no extra text.
 ]]
 
 local SYSTEM_MESSAGE =
-  "You are a conventional commits summarizer. Output only the final commit message text. Do not include reasoning."
+  "You are a conventional commit message specialist. Return only valid commit message text in the requested format. Do not include reasoning."
 
 -- ───────────────────────────── HELPERS (provider-agnostic) ─────────────────────
 local function run(argv_or_cmd)
@@ -209,6 +215,19 @@ local function strip_thinking(text)
   return text
 end
 
+local function normalize_commit_output(text)
+  if type(text) ~= "string" then
+    return text
+  end
+
+  text = text:gsub("\\r\\n", "\n")
+  text = text:gsub("\\n", "\n")
+  text = strip_thinking(text)
+
+  return text
+end
+
+
 local function env_trim(name)
   local v = os.getenv(name)
   if not v then
@@ -360,7 +379,7 @@ local providers = {
       return {
         model = model,
         system = SYSTEM_MESSAGE,
-        prompt = PROMPT .. diff,
+        prompt = diff,
         think = think,
         options = options,
         stream = false,
@@ -396,7 +415,7 @@ local providers = {
       local payload = {
         messages = {
           { role = "system", content = SYSTEM_MESSAGE },
-          { role = "user", content = PROMPT .. diff },
+          { role = "user", content = diff },
         },
         max_tokens = 2048,
         temperature = 0,
@@ -443,7 +462,7 @@ local providers = {
         model = (os.getenv("OPENROUTER_MODEL") or "z-ai/glm-5"),
         messages = {
           { role = "system", content = SYSTEM_MESSAGE },
-          { role = "user", content = PROMPT .. diff },
+          { role = "user", content = diff },
         },
         -- OpenRouter: disable reasoning when the upstream model supports it.
         -- (If unsupported, OpenRouter/provider may ignore it.)
@@ -455,6 +474,46 @@ local providers = {
     end,
     -- Non-streaming: choices.message.content (Lua index 1)
     extract_path = { "choices", 1, "message", "content" },
+  },
+
+  -- Gemini API
+  gemini = {
+    url = function()
+      local base = "https://generativelanguage.googleapis.com"
+      local model = env_trim("GEMINI_MODEL") or "gemini-3.1-flash-lite-preview"
+      return ("%s/v1beta/models/%s:generateContent?key=%s"):format(
+        base,
+        model,
+        os.getenv("GEMINI_API_KEY") or ""
+      )
+    end,
+    required_env = { "GEMINI_API_KEY" },
+    timeout = 90,
+    headers = { "Content-Type: application/json" },
+    payload = function(diff)
+      local max_output_tokens = env_number("GEMINI_MAX_OUTPUT_TOKENS") or 768
+
+      return {
+        systemInstruction = {
+          parts = {
+            { text = SYSTEM_MESSAGE }
+          }
+        },
+        contents = {
+          {
+            parts = {
+              { text = diff }
+            }
+          }
+        },
+        generationConfig = {
+          temperature = 0,
+          maxOutputTokens = max_output_tokens,
+        }
+      }
+    end,
+    -- Gemini response structure: candidates[0].content.parts[0].text
+    extract_path = { "candidates", 1, "content", "parts", 1, "text" },
   },
 }
 
@@ -526,7 +585,9 @@ local function summarize_with(provider_key)
       return
     end
 
-    local payload_file = write_tmp_json(cfg.payload(diff))
+    local request = PROMPT .. "\n\n<<DIFF START>>\n" .. diff
+
+    local payload_file = write_tmp_json(cfg.payload(request))
     if not payload_file then
       vim.notify("Failed to write temp JSON payload", vim.log.levels.ERROR)
       return
@@ -611,7 +672,8 @@ local function summarize_with(provider_key)
       return
     end
 
-    text = strip_thinking(text)
+    text = normalize_commit_output(text)
+
     insert_at_cursor(vim.split(text, "\n"))
   end)
 
@@ -629,6 +691,9 @@ M.summarize_commit_cf = function()
 end
 M.summarize_commit_openrouter = function()
   summarize_with("openrouter")
+end
+M.summarize_commit_gemini = function()
+  summarize_with("gemini")
 end
 
 return M
