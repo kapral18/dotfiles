@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+cmd="${1:-start}"
+
+case "$cmd" in
+start)
+  if ! command -v litellm >/dev/null 2>&1; then
+    echo "LiteLLM is not installed." >&2
+    exit 1
+  fi
+
+  if pgrep -f "litellm --port 4000" >/dev/null; then
+    pkill -f "litellm --port 4000"
+    echo "LiteLLM stopped old instance"
+    sleep 1
+  fi
+
+  nohup litellm --port 4000 >/tmp/litellm.log 2>&1 &
+  echo "LiteLLM started in the background (logs at /tmp/litellm.log)"
+  ;;
+stop)
+  if pgrep -f "litellm --port 4000" >/dev/null; then
+    pkill -f "litellm --port 4000"
+    echo "LiteLLM stopped"
+  else
+    echo "LiteLLM is not running"
+  fi
+  ;;
+status)
+  if pgrep -f "litellm --port 4000" >/dev/null; then
+    echo "LiteLLM is running"
+  else
+    echo "LiteLLM is not running"
+  fi
+  ;;
+*)
+  echo "Usage: ,litellm {start|stop|status}" >&2
+  exit 1
+  ;;
+esac
