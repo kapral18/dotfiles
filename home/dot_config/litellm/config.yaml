@@ -1,0 +1,47 @@
+general_settings:
+  # Require an API key to use this proxy. The key is supplied at runtime
+  # via the `,litellm` wrapper (from `pass litellm/api/token`).
+  master_key: os.environ/LITELLM_PROXY_KEY
+
+model_list:
+  - model_name: llm-gateway/gpt-5.2
+    litellm_params:
+      model: openai/llm-gateway/gpt-5.2
+      api_base: os.environ/LITELLM_API_BASE
+      api_key: os.environ/LITELLM_PROXY_KEY
+
+  - model_name: llm-gateway/gpt-5.3-codex
+    litellm_params:
+      model: openai/llm-gateway/gpt-5.3-codex
+      api_base: os.environ/LITELLM_API_BASE
+      api_key: os.environ/LITELLM_PROXY_KEY
+
+  - model_name: llm-gateway/gemini-3-pro-preview
+    litellm_params:
+      model: openai/llm-gateway/gemini-3-pro-preview
+      api_base: os.environ/LITELLM_API_BASE
+      api_key: os.environ/LITELLM_PROXY_KEY
+
+  - model_name: llm-gateway/gemini-3-flash-preview
+    litellm_params:
+      model: openai/llm-gateway/gemini-3-flash-preview
+      api_base: os.environ/LITELLM_API_BASE
+      api_key: os.environ/LITELLM_PROXY_KEY
+
+  - model_name: llm-gateway/gemini-3.1-pro-preview
+    litellm_params:
+      model: openai/llm-gateway/gemini-3.1-pro-preview
+      api_base: os.environ/LITELLM_API_BASE
+      api_key: os.environ/LITELLM_PROXY_KEY
+
+  - model_name: llm-gateway/gemini-3.1-pro-preview-customtools
+    litellm_params:
+      model: openai/llm-gateway/gemini-3.1-pro-preview-customtools
+      api_base: os.environ/LITELLM_API_BASE
+      api_key: os.environ/LITELLM_PROXY_KEY
+
+  - model_name: llm-gateway/gemini-3.1-flash-image-preview
+    litellm_params:
+      model: openai/llm-gateway/gemini-3.1-flash-image-preview
+      api_base: os.environ/LITELLM_API_BASE
+      api_key: os.environ/LITELLM_PROXY_KEY

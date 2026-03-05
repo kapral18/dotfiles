@@ -139,7 +139,12 @@ Source: `home/dot_gemini/settings.json` → `~/.gemini/settings.json`.
 Source: `home/dot_pi/agent/{settings,models}.{work,personal}.json` → `~/.pi/agent/`.
 Also manages MCP servers via `home/dot_pi/agent/mcp.{work,personal}.json`.
 
-- For the work profile, defaults to `litellm` using the `llm-gateway/gemini-3.1-pro-preview` model. API keys are resolved securely via `!pass litellm/api/token` directly within the agent runtime.
+LiteLLM notes:
+- `,litellm start` expects `~/.config/litellm/config.yaml` (managed by chezmoi) and secrets in `pass`:
+  - `litellm/api/token`
+  - `litellm/api/base`
+
+- For the work profile, defaults to `litellm` using the `llm-gateway/gpt-5.2` model. API keys are resolved securely via `!pass litellm/api/token` directly within the agent runtime. Pi TUI is enabled via the `npm:@mariozechner/pi-tui` package.
 - For the personal profile, defaults to `google` using `gemini-3.1-pro-preview-customtools`.
 - Enables automatic context compaction to save tokens.
 - Enables exponential backoff retries.

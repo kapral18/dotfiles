@@ -9,15 +9,9 @@ if [[ ! -f "$npm_pkgs_file" ]]; then
   exit 1
 fi
 
-# Read the file content into an array
-if ! mapfile -t lines <"$npm_pkgs_file"; then
-  echo "Error: Failed to read default-npm-pkgs file"
-  exit 1
-fi
-
 # Get desired packages
 desired_pkgs=()
-for line in "${lines[@]}"; do
+while IFS= read -r line || [[ -n "$line" ]]; do
   # Trim leading and trailing whitespace
   line="${line#"${line%%[![:space:]]*}"}"
   line="${line%"${line##*[![:space:]]}"}"
@@ -25,7 +19,7 @@ for line in "${lines[@]}"; do
   # Skip empty lines and comments
   [[ -z "$line" || "$line" =~ ^# ]] && continue
   desired_pkgs+=("$line")
-done
+done <"$npm_pkgs_file"
 
 # Get currently installed global packages
 # Using grep to extract the package name from the parseable output correctly

@@ -13,6 +13,6 @@
     "maxRetries": 5
   },
   "enabledModels": ["gemini-3*"],
-  "packages": ["pi-skills", "npm:pi-mcp-adapter"],
+  "packages": ["pi-skills", "npm:pi-mcp-adapter", "npm:@mariozechner/pi-tui"],
   "lastChangelogVersion": "0.55.4"
 }
