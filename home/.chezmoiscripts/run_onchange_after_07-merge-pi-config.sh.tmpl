@@ -10,7 +10,7 @@ set -euo pipefail
 # pi models desired hash (non-work): {{ include "dot_pi/agent/models.personal.json" | sha256sum }}
 {{- end }}
 
-source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.commandDir }}}"
+source_dir="{{ .chezmoi.sourceDir }}"
 target_dir="$HOME/.pi/agent"
 is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
 
