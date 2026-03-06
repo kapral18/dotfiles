@@ -10,31 +10,67 @@ set -euo pipefail
 # pi models desired hash (non-work): {{ include "dot_pi/agent/models.personal.json" | sha256sum }}
 {{- end }}
 
-source_dir="{{ .chezmoi.sourceDir }}"
+source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
 target_dir="$HOME/.pi/agent"
 is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
+
+install_readonly_if_changed() {
+  local src="$1"
+  local target="$2"
+
+  mkdir -p "$(dirname "$target")"
+
+  if [ -f "$target" ] && cmp -s "$src" "$target"; then
+    return 0
+  fi
+
+  install -m 0444 "$src" "$target"
+}
 
 # CHEZMOI_SOURCE_DIR usually points at the chezmoi *source* root.
 # Our pi config files live under the repository's "home/" directory.
 if [ "$is_work" = "true" ]; then
   src_settings="$source_dir/dot_pi/agent/settings.work.json"
   src_models="$source_dir/dot_pi/agent/models.work.json"
+
+  if ! command -v pass >/dev/null 2>&1; then
+    echo "pass is required to render Pi work LiteLLM config" >&2
+    exit 1
+  fi
+
+  litellm_api_base="$(pass show litellm/api/base | tr -d '\n')"
+  if [ -z "$litellm_api_base" ]; then
+    echo "Missing pass entry: litellm/api/base" >&2
+    exit 1
+  fi
+
+  litellm_api_base="${litellm_api_base%/}"
+  case "$litellm_api_base" in
+    */v1) ;;
+    *) litellm_api_base="$litellm_api_base/v1" ;;
+  esac
+
+  tmp_models="$(mktemp)"
+  trap 'rm -f "$tmp_models"' EXIT
+  python3 - "$src_models" "$tmp_models" "$litellm_api_base" <<'PY'
+import json
+import sys
+from pathlib import Path
+src = Path(sys.argv[1])
+out = Path(sys.argv[2])
+base = sys.argv[3]
+data = json.loads(src.read_text())
+data["providers"]["litellm"]["baseUrl"] = base
+out.write_text(json.dumps(data, indent=2) + "\n")
+PY
 else
   src_settings="$source_dir/dot_pi/agent/settings.personal.json"
   src_models="$source_dir/dot_pi/agent/models.personal.json"
 fi
 
-desired_settings="$(cat "$src_settings")"
-desired_models="$(cat "$src_models")"
-
-mkdir -p "$target_dir"
-
-target_settings="$target_dir/settings.json"
-if [ ! -f "$target_settings" ] || [ "$(cat "$target_settings")" != "$desired_settings" ]; then
-  printf '%s\n' "$desired_settings" >"$target_settings"
-fi
-
-target_models="$target_dir/models.json"
-if [ ! -f "$target_models" ] || [ "$(cat "$target_models")" != "$desired_models" ]; then
-  printf '%s\n' "$desired_models" >"$target_models"
+install_readonly_if_changed "$src_settings" "$target_dir/settings.json"
+if [ "$is_work" = "true" ]; then
+  install_readonly_if_changed "$tmp_models" "$target_dir/models.json"
+else
+  install_readonly_if_changed "$src_models" "$target_dir/models.json"
 fi

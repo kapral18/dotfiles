@@ -18,12 +18,10 @@ else
   src="$source_dir/dot_pi/agent/mcp.personal.json"
 fi
 
-desired="$(cat "$src")"
-
 mkdir -p "$(dirname "$target")"
 
-if [ -f "$target" ] && [ "$(cat "$target")" = "$desired" ]; then
+if [ -f "$target" ] && cmp -s "$src" "$target"; then
   exit 0
 fi
 
-printf '%s\n' "$desired" >"$target"
+install -m 0444 "$src" "$target"

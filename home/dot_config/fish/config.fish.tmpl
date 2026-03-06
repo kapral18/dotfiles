@@ -234,6 +234,29 @@ if type -q pass; and test -z "$OPENROUTER_API_KEY"
     set -gx OPENROUTER_API_KEY (pass openrouter/api/token)
 end
 
+{{ if eq .isWork true -}}
+# ------------------------------------
+# LiteLLM API Configuration
+# ------------------------------------
+
+if type -q pass; and test -z "$LITELLM_PROXY_KEY"
+    if pass show litellm/api/token >/dev/null 2>&1
+        set -gx LITELLM_PROXY_KEY (pass litellm/api/token)
+    end
+end
+
+if type -q pass; and test -z "$LITELLM_API_BASE"
+    if pass show litellm/api/base >/dev/null 2>&1
+        set -l litellm_api_base (string trim -- (pass litellm/api/base))
+        set litellm_api_base (string replace -r '/+$' '' -- "$litellm_api_base")
+        if not string match -q '*/v1' -- "$litellm_api_base"
+            set litellm_api_base "$litellm_api_base/v1"
+        end
+        set -gx LITELLM_API_BASE "$litellm_api_base"
+    end
+end
+
+{{ end -}}
 # ------------------------------------
 # Cloudflare API Configuration
 # ------------------------------------

@@ -17,6 +17,25 @@ The core workflow is:
 2. Run `chezmoi apply`
 3. Verify the tool is installed / available
 
+## Scope-aware package lists
+
+Some package sources are plain lists and apply everywhere (`cargo`, `npm`, `gems`, `go`).
+Others are templates and can branch on `chezmoi` data like `.isWork`.
+
+Use template conditionals when a package should only exist on personal or work machines, for example:
+
+```gotemplate
+{{ if ne .isWork true -}}
+brew "torf-cli"
+{{ end -}}
+```
+
+In practice:
+
+- `home/readonly_dot_Brewfile.tmpl` supports personal/work scoping.
+- `home/readonly_dot_default-uv-tools.tmpl` supports personal/work scoping.
+- `home/readonly_dot_default-cargo-crates` and `home/readonly_dot_default-npm-pkgs` are shared lists.
+
 ## Homebrew (Brewfile)
 
 - Source: `home/readonly_dot_Brewfile.tmpl`

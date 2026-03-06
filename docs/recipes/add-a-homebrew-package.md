@@ -21,6 +21,8 @@ brew info <formula-or-cask>
 
 2. Add the entry (`brew "<formula>"` or `cask "<cask>"`) in the correct section.
 
+   If the package should only exist on personal or work machines, wrap it in the same `.isWork` template condition style already used elsewhere in the file.
+
 3. Apply:
 
 ```bash

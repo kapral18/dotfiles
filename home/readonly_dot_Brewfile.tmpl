@@ -911,6 +911,14 @@ brew "cinecli"
 # https://github.com/antonmedv/lazyjournal
 brew "lazyjournal"
 
+# Google Workspace CLI
+# https://github.com/googleworkspace/cli
+brew "googleworkspace-cli"
+
+# Google Suite CLI
+# https://gogcli.sh
+brew "gogcli"
+
 # ==============================================================================
 # COMMAND LINE ENHANCEMENT
 # Tools for improving command-line experience
@@ -1190,11 +1198,9 @@ cask "pinta"
 # https://www.docker.com/products/docker-desktop
 cask "docker-desktop"
 
-{{ if .isWork -}}
 # Set of tools to manage resources and applications hosted on Google Cloud
 # https://cloud.google.com/cli/
 cask "gcloud-cli"
-{{ end -}}
 
 # Get up and running with large language models locally
 # https://ollama.ai/

@@ -12,6 +12,12 @@ When user requests to "add X" (app, package, cask, formula, or CLI tool), follow
 6. **uv** (`home/readonly_dot_default-uv-tools.tmpl`) — Python tools/packages
 7. **Manual packages** (`home/readonly_dot_default-manual-packages.tmpl`) — DMGs + GitHub release CLI tools (installed by `home/.chezmoiscripts/run_onchange_after_05-install-manual-packages.sh.tmpl`)
 
+**Interpretation of the priority:**
+
+- Prefer Homebrew first, even when the available Homebrew formula/cask is a verified name variation or acceptable alternative for the requested tool.
+- Lower-priority package lists (`cargo`, `go`, `gems`, `npm`, `uv`, manual packages) are fallbacks only when Homebrew does not provide a suitable package.
+- Do not drop to a lower-priority registry just because the exact upstream/repo slug is not the Homebrew formula name.
+
 **Workflow:**
 
 1. **Identify what X is** — app, CLI tool, library, or language-specific package
@@ -21,14 +27,15 @@ When user requests to "add X" (app, package, cask, formula, or CLI tool), follow
    - Read INSTALL.md, README, or release notes to understand available installation options
    - Verify package name, repo owner, and latest version/status
 3. **VERIFY IN PRIORITY ORDER** — based on GitHub findings, check registries:
-   - **Homebrew**: `brew info <package>` — check for formula or cask
+   - **Homebrew first**: do not only test the exact upstream slug. Also check likely Homebrew name variations with `brew search <term>` and verify candidates with `brew info <formula-or-cask>`.
+     - Common variations to test: repo name, normalized name, `<name>-cli`, collapsed owner/repo names, and official tap names.
    - **Cargo**: `cargo search <package> --limit 5` — for Rust packages
    - **Go**: `go get -u <import-path>` — search pkg.go.dev or verify from GitHub
    - **Gems**: `gem search <package>` — Ruby packages
-   - **npm**: `npm search <package>` — Node.js packages
+   - **npm**: `npm search <package>` — Node.js/JavaScript packages
    - **uv**: `uv pip search <package>` — Python tools
    - **Manual (.dmg)**: `read_web_page` to GitHub releases — macOS apps
-4. **Stop at first match** — add to that location only
+4. **Stop at the first suitable match in priority order** — add to that location only
 5. **Never invent** package names, URLs, or sources — ask user if verification fails
 6. **Use existing patterns** — follow code style and format for each file type
 
@@ -48,6 +55,7 @@ When adding formulas or casks to Brewfile:
 - Prefer verification language; avoid adding "ask to confirm" patterns to this file.
 - **Search GitHub**: Look for official Homebrew taps (e.g., `owner/homebrew-tap`) in the project
 - **Verify locally**: Once you identify the formula/tap, test with `brew info <formula>` or `brew info <owner/tap>/<formula>` (works for both formulas and casks)
+- **Check variations before falling back**: use `brew search <term>` and verify reasonable candidate names before moving to Cargo/Go/Gems/npm/uv/manual packages
 - **Validate registries**: Use `formulae.brew.sh` search as secondary verification
 - **Never invent** package names, URLs, or tap information — always verify against official sources first
 - **Correct sources**: homebrew-core (default, no tap needed), official project taps, or trusted community taps

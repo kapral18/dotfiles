@@ -124,8 +124,8 @@ and copies the correct source to the final destination, completely decoupling th
 - Gemini settings: `home/dot_gemini/settings.json` → `~/.gemini/settings.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-gemini-settings.sh.tmpl`)
 - OpenCode config: `home/dot_config/opencode/opencode.{work,personal}.jsonc` → `~/.config/opencode/opencode.jsonc` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl`)
 - Codex config: `home/dot_codex/private_config.{work,personal}.toml` → `~/.codex/config.toml` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-codex-config.sh.tmpl`)
-- Pi MCP config: `home/dot_pi/agent/mcp.{work,personal}.json` → `~/.pi/agent/mcp.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-pi-mcp.sh.tmpl`)
-- Pi configs: `home/dot_pi/agent/settings.{work,personal}.json` → `~/.pi/agent/settings.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-pi-config.sh.tmpl`)
+- Pi MCP config: `home/dot_pi/agent/mcp.{work,personal}.json` → `~/.pi/agent/mcp.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-pi-mcp.sh.tmpl`; installed readonly)
+- Pi configs: `home/dot_pi/agent/{settings,models}.{work,personal}.json` → `~/.pi/agent/{settings,models}.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-pi-config.sh.tmpl`; installed readonly)
 
 ### Gemini CLI settings
 
@@ -140,12 +140,14 @@ Source: `home/dot_pi/agent/{settings,models}.{work,personal}.json` → `~/.pi/ag
 Also manages MCP servers via `home/dot_pi/agent/mcp.{work,personal}.json`.
 
 LiteLLM notes:
-- `,litellm start` expects `~/.config/litellm/config.yaml` (managed by chezmoi) and secrets in `pass`:
-  - `litellm/api/token`
-  - `litellm/api/base`
+- Work profile only: fish exports these values from `pass` when the entries exist:
+  - `LITELLM_PROXY_KEY` from `litellm/api/token`
+  - `LITELLM_API_BASE` from `litellm/api/base` (normalized to end in `/v1`)
+- OpenCode work config uses those shell exports directly via `home/dot_config/opencode/opencode.work.jsonc`.
+- Pi work config is rendered from `home/dot_pi/agent/models.work.json` by `home/.chezmoiscripts/run_onchange_after_07-merge-pi-config.sh.tmpl`, which injects the normalized upstream LiteLLM base URL at apply time.
 
-- For the work profile, defaults to `litellm` using the `llm-gateway/gpt-5.2` model. API keys are resolved securely via `!pass litellm/api/token` directly within the agent runtime. Pi TUI is enabled via the `npm:@mariozechner/pi-tui` package.
-- For the personal profile, defaults to `google` using `gemini-3.1-pro-preview-customtools`.
+- For the work profile, defaults to `google` using the `gemini-3.1-pro-preview-customtools` model, while also exposing LiteLLM gateway models and OpenAI Codex models via `home/dot_pi/agent/models.work.json`. Pi TUI is enabled via the `npm:@mariozechner/pi-tui` package.
+- For the personal profile, defaults to `openai-codex` using `gpt-5.4`.
 - Enables automatic context compaction to save tokens.
 - Enables exponential backoff retries.
 - Installs and enables the `npm:pi-mcp-adapter` extension automatically.

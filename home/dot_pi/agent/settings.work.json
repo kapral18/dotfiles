@@ -1,6 +1,6 @@
 {
-  "defaultProvider": "google",
-  "defaultModel": "gemini-3.1-pro-preview-customtools",
+  "defaultProvider": "litellm",
+  "defaultModel": "llm-gateway/gpt-5.4",
   "defaultThinkingLevel": "high",
   "theme": "dark",
   "compaction": {
@@ -12,7 +12,13 @@
     "enabled": true,
     "maxRetries": 5
   },
-  "enabledModels": ["gemini-3*", "llm-gateway/*", "gpt-5.4*"],
+  "enabledModels": [
+    "gemini-3*",
+    "llm-gateway/*",
+    "gpt-5.2*",
+    "gpt-5.3*",
+    "gpt-5.4*"
+  ],
   "packages": ["pi-skills", "npm:pi-mcp-adapter", "npm:@mariozechner/pi-tui"],
-  "lastChangelogVersion": "0.56.1"
+  "lastChangelogVersion": "0.56.2"
 }
