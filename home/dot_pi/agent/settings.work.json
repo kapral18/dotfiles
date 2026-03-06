@@ -12,7 +12,7 @@
     "enabled": true,
     "maxRetries": 5
   },
-  "enabledModels": ["gemini-3*", "llm-gateway/*"],
+  "enabledModels": ["gemini-3*", "llm-gateway/*", "gpt-5.4*"],
   "packages": ["pi-skills", "npm:pi-mcp-adapter", "npm:@mariozechner/pi-tui"],
   "lastChangelogVersion": "0.56.1"
 }
