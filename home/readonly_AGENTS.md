@@ -272,37 +272,41 @@ Rules:
    Playbook: `~/.agents/playbooks/github/gh_workflow.md`
    Note: if the user also wants review content, draft it first via the review
    playbook, then ask for approval to post.
-4. **Draft PR body (no side effects)**
+4. **Google Workspace (`gws`)**
+   Use when: the user asks to inspect or change Gmail / Drive / Calendar /
+   Admin / Docs / Sheets / other Google Workspace data or settings.
+   Playbook: `~/.agents/playbooks/google_workspace/workflow.md`
+5. **Draft PR body (no side effects)**
    Use when: the user wants writing only (no `gh` side effects), for example
    "draft PR body" / "write PR description" / "compose PR".
    Playbook: `~/.agents/playbooks/github/compose_pr_general.md` (use Elastic
    variant when repo is `elastic/kibana`)
-5. **Draft issue body (no side effects)**
+6. **Draft issue body (no side effects)**
    Use when: the user wants writing only (no `gh` side effects), for example
    "draft issue" / "write issue" / "compose issue".
    Playbook: `~/.agents/playbooks/github/compose_issue_general.md` (use Elastic
    variant when repo is `elastic/kibana`)
-6. **Elastic/Kibana label proposals (propose-only)**
+7. **Elastic/Kibana label proposals (propose-only)**
    Use when: the user wants suggested labels/backports/version targeting for
    `elastic/kibana` (no posting).
    Playbook: `~/.agents/playbooks/github/labels_propose_elastic_kibana.md`
-7. **Kibana Management ownership hints**
+8. **Kibana Management ownership hints**
     Use when: the user asks about `CODEOWNERS` / ownership / reviewers for Kibana
     Management areas.
     Playbook: `~/.agents/playbooks/kibana/management_ownership.md`
-8. **Worktrees (,w)**
+9. **Worktrees (,w)**
     Use when: the user mentions `,w` or asks to create/switch/list/prune/remove
     worktrees (including checking out PRs locally).
     Playbook: `~/.agents/playbooks/worktrees/w_workflow.md`
-9. **Local git operations**
+10. **Local git operations**
      Use when: the user wants local repo operations (`git status/diff/log`,
      staging, commit, rebase/merge, conflicts).
      Playbook: `~/.agents/playbooks/git/workflow.md`
-10. **Semantic code search**
+11. **Semantic code search**
      Use when: the user wants semantic investigation via SCSI tools (`scsi`,
      `symbol_analysis`, `list_indices`).
      Playbook: `~/.agents/playbooks/code_search/semantic_code_search.md`
-11. **Architecture walkthrough**
+12. **Architecture walkthrough**
      Use when: the user asks to walk through a system, explain flows, or build a
      diagram/mental model ("walk me through", "architecture", "how does it work").
      Playbook: `~/.agents/playbooks/architecture/walkthrough.md`

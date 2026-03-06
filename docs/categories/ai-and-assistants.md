@@ -16,6 +16,18 @@ Entrypoints installed into your home directory:
 
 These files are policy entrypoints; playbooks are installed separately.
 
+Shared SOP routing rule:
+
+- Google Workspace requests route to
+  `~/.agents/playbooks/google_workspace/workflow.md`.
+- Source file:
+  `home/exact_dot_agents/exact_playbooks/exact_google_workspace/workflow.md`
+- The playbook standardizes on `gws`, using `gws schema ...` before direct
+  `gws <service> ...` calls.
+- This routing is referenced from the tracked SOP entrypoints:
+  `home/readonly_AGENTS.md`, `home/readonly_CLAUDE.md`, and
+  `home/dot_gemini/readonly_GEMINI.md`.
+
 ## Playbooks Layout
 
 Playbooks are stored under `~/.agents/playbooks/` and referenced by the SOP
