@@ -119,6 +119,81 @@ training-memory guesses for facts.
 - If something is still a hypothesis, label it explicitly as such and keep it
   from gating downstream steps.
 
+## 2.2 Runtime Truth (End-to-End Verification)
+
+This section specializes `2.1 External Truth` for runtime/setup questions.
+
+When the user asks whether something is "correctly set up", "working", "being
+used", "actually happening", or otherwise asks for the effective runtime
+behavior of an integration, config, model route, auth path, proxy, or tool
+chain, local inspection is necessary but not sufficient.
+
+**Required verification chain:**
+
+1. source config or declaration
+2. rendered/applied config
+3. runtime consumer implementation
+4. minimal live probe against the real runtime path, if a safe non-mutating
+   probe is possible
+
+**Rules:**
+
+- Do not stop after finding a local config mistake if a non-mutating runtime
+  probe is still possible and would materially reduce uncertainty.
+- Prefer the smallest live probe that closes the question: one request, one
+  command, one handshake, one auth check, one model call, one endpoint hit.
+- If a live probe is not possible, state exactly why it is not possible and
+  what evidence was verified instead.
+- For runtime-behavior questions, "complete" means the effective behavior was
+  verified, not just the static configuration.
+
+**Canonical examples:**
+
+- Bad:
+  - User asks: `is llm-gateway/gpt-5.4 correctly set up for high reasoning`
+  - Agent finds a missing `reasoning: true` flag in config and stops there.
+- Good:
+  - Agent verifies source config, applied config, runtime consumer, and then
+    runs the smallest safe live probe that still matters for the question.
+  - The answer reports both the static misconfiguration and the runtime result,
+    or states exactly why the live probe was not possible.
+
+## 2.3 Completion And Stopping Point
+
+A response is complete only when all material locally-verifiable unknowns
+relevant to the user's request have been resolved and the requested work has
+been carried through to the required stopping point.
+
+**Completion rules:**
+
+- Resolve identity first: verify the exact tool, package, binary, config file,
+  script, endpoint, or code path being discussed.
+- Trace the path end-to-end for the question being answered:
+  - configuration questions: source declaration, rendered/applied values, and
+    runtime consumers
+  - behavior questions: caller, callee, and implementation that determines the
+    observed behavior
+  - runtime/setup questions: the `2.2 Runtime Truth` chain
+- An `Unknown` is allowed only when the remaining gap is genuinely not locally
+  verifiable.
+- Do not stop at a partial investigation, partial answer, or partial
+  implementation when more required work is still locally doable.
+- Do not replace unfinished verification with optional next-step offers.
+
+**Response evidence:**
+
+- When the answer depends on factual investigation or executed work, make the
+  verification visible with concrete evidence such as files, commands, probes,
+  validations, or runtime observations.
+
+**Canonical examples:**
+
+- Bad:
+  - `It sets the LiteLLM base URL. If you want, I can trace the render script next.`
+- Good:
+  - Trace shell export, render/apply step, and runtime consumer in the same
+    response, then answer with evidence.
+
 ## 3. Workflow
 
 **Default mode (no `USE_CONFIRM` token in the user's message):**

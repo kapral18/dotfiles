@@ -10,3 +10,9 @@ speedscope
 # Description: Coding agent CLI with read, bash, edit, write tools and session management
 # URL: https://pi.dev/
 @mariozechner/pi-coding-agent
+# Description: Terminal UI package used directly by Pi and enabled from Pi settings
+# URL: https://pi.dev/
+@mariozechner/pi-tui
+# Description: MCP adapter extension loaded by Pi from npm package settings
+# URL: https://github.com/nicobailon/pi-mcp-adapter
+pi-mcp-adapter
