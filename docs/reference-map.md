@@ -71,6 +71,8 @@ This page answers two questions:
 
 - Setup pass managers: `home/.chezmoiscripts/run_once_after_05-setup-pass-managers.fish.tmpl`
 - OpenCode: `home/dot_config/opencode/`
+- Pi config: `home/dot_pi/agent/`
+- Pi CLI package list entry: `home/readonly_dot_default-npm-pkgs`
 - Codex: `home/dot_codex/`
 - Gemini: `home/dot_gemini/`
 - Copilot CLI: `home/dot_config/dot_copilot/`

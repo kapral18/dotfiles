@@ -14,5 +14,5 @@
   },
   "enabledModels": ["gpt-5.2*", "gpt-5.3*", "gpt-5.4*", "gemini-3*"],
   "packages": ["pi-skills", "npm:pi-mcp-adapter", "npm:@mariozechner/pi-tui"],
-  "lastChangelogVersion": "0.56.1"
+  "lastChangelogVersion": "0.56.3"
 }

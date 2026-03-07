@@ -28,7 +28,7 @@
     "main": {
       "description": "Main workflow agent. Can invoke sub-agents as needed to accomplish independent tasks.",
       "mode": "primary",
-      "model": "openai/gpt-5.2",
+      "model": "openai/gpt-5.4",
       "reasoning_effort": "high",
     },
     "worker_a": {
@@ -96,12 +96,40 @@
         "apiKey": "{env:LITELLM_PROXY_KEY}",
       },
       "models": {
+        "llm-gateway/gemini-3-pro-preview": {
+          "name": "llm-gateway/gemini-3-pro-preview",
+          "limit": { "context": 1048576, "output": 65536 },
+        },
+        "llm-gateway/gemini-3-flash-preview": {
+          "name": "llm-gateway/gemini-3-flash-preview",
+          "limit": { "context": 1048576, "output": 65536 },
+        },
+        "llm-gateway/gemini-3.1-pro-preview": {
+          "name": "llm-gateway/gemini-3.1-pro-preview",
+          "limit": { "context": 1048576, "output": 65536 },
+        },
+        "llm-gateway/gemini-3.1-pro-preview-customtools": {
+          "name": "llm-gateway/gemini-3.1-pro-preview-customtools",
+          "limit": { "context": 1048576, "output": 65536 },
+        },
+        "llm-gateway/gemini-3.1-flash-image-preview": {
+          "name": "llm-gateway/gemini-3.1-flash-image-preview",
+          "limit": { "context": 131072, "output": 32762 },
+        },
+        "llm-gateway/gpt-5.3-codex": {
+          "name": "llm-gateway/gpt-5.3-codex",
+        },
         "llm-gateway/gpt-5.2": {
           "name": "llm-gateway/gpt-5.2",
-          "limit": {
-            "output": 128000,
-            "context": 400000,
-          },
+          "limit": { "context": 272000, "output": 128000 },
+        },
+        "llm-gateway/claude-sonnet-4-6": {
+          "name": "llm-gateway/claude-sonnet-4-6",
+          "limit": { "context": 200000, "output": 64000 },
+        },
+        "llm-gateway/claude-opus-4-6": {
+          "name": "llm-gateway/claude-opus-4-6",
+          "limit": { "context": 200000, "output": 128000 },
         },
       },
     },

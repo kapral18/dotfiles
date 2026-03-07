@@ -66,6 +66,11 @@ training-memory guesses for facts.
   there.
 - Prefer reading the local implementation over relying on prior knowledge or
   generic docs.
+- When both local docs and local source are available for the thing being
+  explained, do not stop at docs alone if source inspection can materially
+  close remaining uncertainty.
+- Do not report an `Unknown` that would disappear by reading locally available
+  source; inspect the source first.
 
 **Source-first research (clone + grep):**
 
@@ -108,6 +113,9 @@ training-memory guesses for facts.
 
 - Any claim about external behavior must be anchored in evidence (command
   output summary, file path, or fetched docs).
+- If local source code was available but not inspected, do not present the
+  remaining gap as an `Unknown`; keep investigating until source is inspected
+  or until you can prove the source is not locally available.
 - If something is still a hypothesis, label it explicitly as such and keep it
   from gating downstream steps.
 

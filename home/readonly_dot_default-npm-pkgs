@@ -7,3 +7,6 @@ pake
 # Description: Web-based viewer for performance profiles
 # URL: https://github.com/jlfwong/speedscope
 speedscope
+# Description: Coding agent CLI with read, bash, edit, write tools and session management
+# URL: https://pi.dev/
+@mariozechner/pi-coding-agent

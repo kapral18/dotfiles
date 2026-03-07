@@ -100,6 +100,8 @@ This hook installs missing tools and attempts to clean up unused packages.
 
 The `,install-npm-pkgs` command installs packages in the list, uninstalls those no longer listed, and reshims `nodejs` in ASDF.
 
+This list now includes some AI tooling that used to be managed elsewhere. For example, `@mariozechner/pi-coding-agent` is installed via npm from this list rather than from the Brewfile.
+
 If you do not want global npm packages, keep the list empty.
 
 ## uv (Python versions + global tools)

@@ -11,6 +11,8 @@ Global npm packages are managed via a plain list.
 
 ## Steps
 
+Example packages managed this way include `@mariozechner/pi-coding-agent`.
+
 1. Add the package name to:
 
    - `home/readonly_dot_default-npm-pkgs`

@@ -36,6 +36,7 @@ entrypoints (for example: "Use playbook X").
 Source of truth (this repo, chezmoi-managed):
 
 - `home/exact_dot_agents/exact_playbooks/` -> `~/.agents/playbooks/`
+- `home/exact_dot_agents/exact_skills/` -> `~/.agents/skills/`
 
 ## Reviews: Base-Branch Context And Semantic Search
 
@@ -148,6 +149,8 @@ Source: `home/dot_gemini/settings.json` → `~/.gemini/settings.json`.
 
 ### Pi coding agent settings
 
+CLI package source: `home/readonly_dot_default-npm-pkgs` → `~/.default-npm-pkgs` installs `@mariozechner/pi-coding-agent` globally via npm.
+
 Source: `home/dot_pi/agent/{settings,models}.{work,personal}.json` → `~/.pi/agent/`.
 Also manages MCP servers via `home/dot_pi/agent/mcp.{work,personal}.json`.
 
@@ -155,8 +158,8 @@ LiteLLM notes:
 - Work profile only: fish exports these values from `pass` when the entries exist:
   - `LITELLM_PROXY_KEY` from `litellm/api/token`
   - `LITELLM_API_BASE` from `litellm/api/base` (normalized to end in `/v1`)
-- OpenCode work config uses those shell exports directly via `home/dot_config/opencode/opencode.work.jsonc`.
-- Pi work config is rendered from `home/dot_pi/agent/models.work.json` by `home/.chezmoiscripts/run_onchange_after_07-merge-pi-config.sh.tmpl`, which injects the normalized upstream LiteLLM base URL at apply time.
+- OpenCode work config uses those shell exports directly via `home/dot_config/opencode/opencode.work.jsonc` and exposes the same LiteLLM gateway model set as Pi. The `llm-gateway/gpt-5.4` entry is marked non-reasoning in OpenCode to avoid unsupported `reasoningSummary` requests through the current LiteLLM/Azure path, and it has an explicit limit override of `context: 1050000` / `output: 128000` based on the current LiteLLM bundled model catalog entry for `gpt-5.4`. Other routed `llm-gateway/*` aliases intentionally omit explicit per-model token limits because the live LiteLLM `/models` response does not advertise them for those aliases, and OpenCode's `limit.input` semantics can affect compaction behavior.
+- Pi work config is rendered from `home/dot_pi/agent/models.work.json` by `home/.chezmoiscripts/run_onchange_after_07-merge-pi-config.sh.tmpl`, which injects the normalized upstream LiteLLM base URL at apply time. The `llm-gateway/gpt-5.4` Pi model entry explicitly sets `contextWindow: 272000` and `maxTokens: 128000` so Pi's footer and compaction thresholds use the correct LiteLLM-backed limits instead of Pi's `128000` fallback default for custom models.
 
 - For the work profile, defaults to `google` using the `gemini-3.1-pro-preview-customtools` model, while also exposing LiteLLM gateway models and OpenAI Codex models via `home/dot_pi/agent/models.work.json`. Pi TUI is enabled via the `npm:@mariozechner/pi-tui` package.
 - For the personal profile, defaults to `openai-codex` using `gpt-5.4`.

@@ -28,7 +28,7 @@ install_readonly_if_changed() {
 }
 
 # CHEZMOI_SOURCE_DIR usually points at the chezmoi *source* root.
-# Our pi config files live under the repository's "home/" directory.
+# Our pi config files live under the repository "home/" directory.
 if [ "$is_work" = "true" ]; then
   src_settings="$source_dir/dot_pi/agent/settings.work.json"
   src_models="$source_dir/dot_pi/agent/models.work.json"

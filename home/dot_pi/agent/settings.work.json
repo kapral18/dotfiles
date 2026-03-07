@@ -20,5 +20,5 @@
     "gpt-5.4*"
   ],
   "packages": ["pi-skills", "npm:pi-mcp-adapter", "npm:@mariozechner/pi-tui"],
-  "lastChangelogVersion": "0.56.2"
+  "lastChangelogVersion": "0.56.3"
 }
