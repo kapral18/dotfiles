@@ -1,10 +1,12 @@
-# Source-first Research (Clone + Grep)
+# Source-first Research (GitHub/ref resolution + local source inspection)
 
-Use this playbook when you are asked to "search the internet" or "figure out how
-X works" and X has a publicly cloneable codebase (or source is otherwise
-available).
+Use this playbook when you are asked to investigate an external/public project,
+library, or tool and the authoritative answer likely lives in its source repo.
+This includes explicit repo-inspection requests when the user gives repo URLs
+or asks you to inspect files/directories in that external repo.
 
-Goal: minimize network requests by preferring local source inspection.
+Goal: answer external-codebase questions by resolving the right upstream/ref and
+then inspecting source locally.
 
 Do not use:
 
@@ -16,18 +18,28 @@ Do not use:
 
 First actions:
 
-1. Identify the canonical upstream repo.
+1. Identify or confirm the canonical upstream repo.
 2. Resolve the exact ref that answers the user's question before reading code.
-3. Clone or refresh `/tmp/agent-src/<owner>/<repo>`, then inspect locally.
+3. Clone or refresh `/tmp/agent-src/<owner>/<repo>`, then inspect locally at
+   that ref.
 
 ## Procedure
 
-### 1) Identify the canonical repo (one small query)
+### 1) Resolve repo + ref with a small GitHub-first check
 
-Prefer GitHub CLI:
+If the user already provided repo/file/directory URLs:
+
+- extract owner/repo, ref, and path from those URLs
+- use the repo page/search only as needed to confirm the canonical repo or
+  default branch
+
+If they did not provide a repo yet, identify it first. Prefer GitHub CLI:
 
 - `gh search repos "<project name>" --limit 5`
 - If you already have an owner/repo, skip search.
+
+Do not start with raw content URLs or GitHub contents/tree APIs before you have
+resolved the repo/ref you intend to inspect.
 
 ### 2) Clone into `/tmp` (and reuse it)
 
@@ -63,6 +75,9 @@ If the target is a specific tag/branch/commit:
 
 ### 4) Search locally
 
+If the user pointed at specific files/directories, start there inside the local
+checkout, then expand outward as needed.
+
 Prefer fast, mechanical tools:
 
 - `rg -n "<symbol|keyword>" .`
@@ -73,7 +88,7 @@ Use `git log -S` to find semantic changes:
 
 - `git log -S "<string>" --oneline --decorate -- .`
 
-### 5) Only then use the web
+### 5) Use the web only after local source inspection when needed
 
 Use web fetches for:
 
@@ -89,5 +104,6 @@ explicitly requested. Always `git fetch` / `git pull` before relying on it.
 Output:
 
 - Report the repo and ref you actually inspected.
+- If the user gave repo URLs, say how they mapped to the inspected repo/ref.
 - Say explicitly when you needed web sources after local source inspection and
   why source alone was insufficient.

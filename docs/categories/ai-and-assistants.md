@@ -56,8 +56,13 @@ Shared SOP routing rules:
   `home/exact_dot_agents/exact_playbooks/exact_google_workspace/workflow.md`
 - The playbook standardizes on `gws`, using `gws schema ...` before direct
   `gws <service> ...` calls.
-- Source-first research is a dedicated route for external/public codebase
-  investigation and is not the default for the current repo.
+- Source-first research now also covers explicit external repo-inspection
+  requests when the user provides GitHub/GitLab repo URLs or asks to inspect
+  repo pages/files/directories directly.
+- The required order is GitHub/ref resolution first, then local source
+  inspection at that exact ref. Raw content URLs or repo APIs are not the first
+  inspection surface.
+- It is still not the default for the current repo.
 - This routing is referenced from the tracked SOP entrypoints:
   `home/readonly_AGENTS.md`, `home/readonly_CLAUDE.md`, and
   `home/dot_gemini/readonly_GEMINI.md`.
@@ -155,6 +160,10 @@ When drafting PR thread replies:
 
 ## Source-First Research
 
+- Explicit external repo-inspection requests now route to the same
+  source-first playbook instead of a separate variant.
+- The playbook now requires: resolve repo/ref first, then inspect the checked
+  out source locally.
 - Source-first research now resolves the target ref before inspecting code.
 - Use the default branch only for current/latest behavior questions.
 - For version-, branch-, tag-, or commit-specific questions, inspect that exact

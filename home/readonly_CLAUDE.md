@@ -337,6 +337,10 @@ Routing contract:
   draft -> GitHub posting).
 - If ambiguous after local context checks, ask one fork-closing question and
   state a default.
+- If the user provides external repo page URLs (repo root, `blob`, `tree`,
+  commit pages) or explicitly asks to inspect/read files in an external repo,
+  route to source-first research and use those URLs to resolve repo/ref before
+  any shell-first raw/API fetches.
 - If the user's request refers to the current PR implicitly ("this PR", "current
   PR", "on this branch PR", "the PR for this branch", "check my PR comment"),
   first resolve the PR number via `,gh-prw --number`. If it fails
@@ -430,8 +434,9 @@ Overlap / precedence rules:
 11. **Source-first research (external/public codebases)**
      Use when: the user asks to investigate how an external/public project,
      library, or tool works and the authoritative answer likely lives in a
-     source repo. This is for external/public codebases, not the current repo;
-     resolve the exact ref before inspection.
+     source repo, including when they give repo URLs or ask to inspect
+     external repo files/directories directly. This is for external/public
+     codebases, not the current repo; resolve the exact ref before inspection.
      Playbook: `~/.agents/playbooks/research/source_first.md`
 12. **Semantic code search**
      Use when: the user wants semantic investigation via SCSI tools (`scsi`,
