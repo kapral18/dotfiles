@@ -18,6 +18,13 @@ Create interactive exploratory diagrams for understanding codebase architecture 
 - Modifying or editing code
 - Quick lookups of specific symbols or functions
 
+## First Actions
+
+1. Restate the system/question you are explaining and the boundary of the
+   walkthrough.
+2. Identify likely entrypoints, main components, and evidence sources.
+3. Decide whether the user's goal needs a diagram or a written walkthrough.
+
 ## Workflow
 
 ### Step 1: Explore the Codebase
@@ -55,6 +62,13 @@ When rendering a diagram, provide:
 - `code`: ASCII diagram showing component relationships
 - `summary`: One-sentence description of what the diagram illustrates
 - `nodes`: Metadata for clickable nodes with titles, descriptions, and links
+
+## Output
+
+- Give an evidence-backed walkthrough with file/path references.
+- If you used semantic code search, say it was supporting base context rather
+  than the sole source of truth.
+- Render a diagram only when it materially improves understanding.
 
 ## Node Metadata
 

@@ -12,11 +12,19 @@ External truth applies:
 
 - verify behavior from the actual repo/version (`git --version`, `git help <cmd>`); do not rely on memory.
 
-When NOT to use:
+Do not use:
 
 - GitHub/`gh` operations (PRs, issues, labels, comments, reviews): `~/.agents/playbooks/github/gh_workflow.md`
 - Writing-only PR/issue composition: `~/.agents/playbooks/github/compose_pr_general.md`, `~/.agents/playbooks/github/compose_issue_general.md` (or Elastic variants)
 - Worktree management (create/switch/remove worktrees, PR worktrees): `~/.agents/playbooks/worktrees/w_workflow.md`
+
+First actions:
+
+1. Establish repo state with the smallest relevant read-only probes (`git
+   status`, `git diff`, `git log`, branch name).
+2. Use the actual repo's history/configuration as the source of truth for
+   workflow conventions.
+3. Before any commit/push, restate the exact command and get approval.
 
 Safety protocol:
 
@@ -50,3 +58,9 @@ Branching:
 Merge policy:
 
 - never merge into the base branch via CLI; merges happen via the GitHub UI
+
+Output:
+
+- Summarize repo state, the command(s) run, and the verification result.
+- If a requested action would be destructive or cross into another playbook's
+  scope, stop and route instead of improvising.

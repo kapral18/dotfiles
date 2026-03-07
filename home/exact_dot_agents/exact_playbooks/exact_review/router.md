@@ -21,6 +21,9 @@ Contract:
 - Do not load `~/.agents/playbooks/github/gh_workflow.md` for read-only PR
   inspection/review. Only load it when the user explicitly asks to post/submit
   anything to GitHub.
+- If the user wants review analysis and GitHub posting in the same request, the
+  review router stays primary. Draft/verify through review mode first, then
+  load `~/.agents/playbooks/github/gh_workflow.md` only for the posting step.
 
 ## PR Detection (Do First When PR Is Involved)
 

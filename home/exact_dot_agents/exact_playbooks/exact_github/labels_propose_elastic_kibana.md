@@ -1,6 +1,11 @@
 # Elastic / Kibana Label Guidance (Propose-Only)
 
-Use this playbook when deciding label sets for `elastic/kibana` PRs/issues.
+Use when:
+
+- the direct ask is "what labels/backports/version targeting should this
+  `elastic/kibana` PR/issue get?"
+- a loaded Elastic compose/GitHub playbook needs verified Kibana label
+  proposals
 
 These are common label patterns observed in `elastic/kibana`. Use them as
 suggestions only.
@@ -11,11 +16,25 @@ Non-negotiables:
 - always propose the exact label set and confirm before applying
 - verify labels exist in the target repo; do not propose from memory if you cannot verify the label set
 
-When NOT to use:
+Do not use:
 
 - repo is not `elastic/kibana` (or label set cannot be verified)
 - user asked to apply labels now:
   - use `~/.agents/playbooks/github/gh_workflow.md` (still requires explicit approval)
+
+First actions:
+
+1. Verify the target repo is `elastic/kibana`.
+2. Read the current repo label set before proposing anything.
+3. Map the change/issue to exact proposed labels, then separate verified labels
+   from heuristics.
+
+Output:
+
+- Return the exact proposed label set and a short rationale for each
+  non-obvious label.
+- If a label cannot be verified in the repo, say so and do not propose it as a
+  fact.
 
 Common patterns (verify in repo):
 

@@ -3,16 +3,38 @@
 This guidance is derived from a point-in-time scan of `elastic/kibana` `.github/CODEOWNERS`.
 Always verify against the current CODEOWNERS in the repo when in doubt.
 
+Use when:
+
+- the direct ask is about `CODEOWNERS`, reviewers, ownership, or whether a
+  change likely falls under Kibana Management
+- a loaded Elastic compose/label playbook needs Kibana reviewer/ownership
+  guidance
+
 Use it to:
 
 - infer `Team:Kibana Management` label proposals
 - infer likely reviewers/ownership when composing PRs/issues
 - sanity-check whether a change falls under the team's umbrella
 
-When NOT to use:
+Do not use:
 
 - you cannot verify the current repo is `elastic/kibana` or you don't have the repo's current CODEOWNERS available
 - the change is clearly outside the listed owned areas
+
+First actions:
+
+1. Verify the current repo is `elastic/kibana`.
+2. Read the current `.github/CODEOWNERS` in that repo before trusting this
+   guidance.
+3. Map the changed paths/areas to current CODEOWNERS first, then use the list
+   below only as a shortcut/sanity check.
+
+Output:
+
+- Return the exact paths or areas you mapped, the current ownership signal you
+  verified, and any remaining heuristic guess separately.
+- Do not present this file's excerpt as authoritative when the live
+  CODEOWNERS check is missing.
 
 Owned areas (non-exhaustive excerpt):
 

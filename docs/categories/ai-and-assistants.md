@@ -38,14 +38,26 @@ Shared runtime verification rule:
   `home/readonly_AGENTS.md`, `home/readonly_CLAUDE.md`, and
   `home/dot_gemini/readonly_GEMINI.md`.
 
-Shared SOP routing rule:
+Shared SOP routing rules:
 
+- Routed playbooks are binding procedures, not optional reference material.
+- A request must have exactly one primary playbook. Secondary playbooks load
+  only when the primary requires them or the user explicitly asks for the
+  cross-boundary action.
+- Review stays primary for PR review/recheck/reply flows even when the final
+  step is posting to GitHub.
+- Draft-only GitHub composition is its own route. The `gh` playbook now has to
+  load the compose playbook before creating/editing PR or issue text.
+- Semantic-code-search routing also covers explicit index-selection language
+  such as "use `<index>` index" or "which index should we use?".
 - Google Workspace requests route to
   `~/.agents/playbooks/google_workspace/workflow.md`.
 - Source file:
   `home/exact_dot_agents/exact_playbooks/exact_google_workspace/workflow.md`
 - The playbook standardizes on `gws`, using `gws schema ...` before direct
   `gws <service> ...` calls.
+- Source-first research is a dedicated route for external/public codebase
+  investigation and is not the default for the current repo.
 - This routing is referenced from the tracked SOP entrypoints:
   `home/readonly_AGENTS.md`, `home/readonly_CLAUDE.md`, and
   `home/dot_gemini/readonly_GEMINI.md`.
@@ -58,6 +70,17 @@ entrypoints (for example: "Use playbook X").
 Source of truth (this repo, chezmoi-managed):
 
 - `home/exact_dot_agents/exact_playbooks/` -> `~/.agents/playbooks/`
+
+Entry contract standard:
+
+- Each operational playbook should make four things obvious near the top:
+  `Use when`, `Do not use`, `First actions`, and `Output`.
+- The goal is to remove implied routing and implied next steps so the agent has
+  less room to "remember roughly" and skip the file.
+- The shared SOP trigger list should also carry the high-signal routing nuance
+  that changes behavior, for example: propose-only vs apply, current repo vs
+  external repo, read-only review vs GitHub posting, `gws`-supported tasks,
+  and `,w` over raw `git worktree`.
 
 Always-on rule source:
 

@@ -6,12 +6,25 @@ remaining.
 Golden rule: always ask user permission before any bead operation (create,
 update, status change, close). No exceptions.
 
-When NOT to use:
+Use when:
+
+- the user explicitly wants beads/bdlocal/`BEADS_DIR` work
+- the user wants to inspect, create, claim, update, close, export, or otherwise
+  manage tasks in the beads DB
+
+Do not use:
 
 - The user is asking for generic planning/task tracking not in Beads.
 - The user is asking for git or GitHub operations:
   - git: `~/.agents/playbooks/git/workflow.md`
   - GitHub/gh: `~/.agents/playbooks/github/gh_workflow.md`
+
+First actions:
+
+1. Confirm `BEADS_DIR` and use `bdlocal` only.
+2. Run the read-only intake sequence: `bdlocal info --whats-new`, `bdlocal
+   ready --json`, `bdlocal blocked --json`.
+3. If a mutation is needed, ask permission before naming the exact bead action.
 
 Local policy:
 
@@ -178,3 +191,10 @@ Duplicates:
 - `bdlocal merge <source-id> --into <target-id> --json`
 
 Troubleshooting: confirm `BEADS_DIR` is set and `bdlocal version >= 0.29.0`.
+
+Output:
+
+- Summarize the bead(s) involved, the exact mutation proposed or performed, and
+  the verification result.
+- Keep generic planning advice outside this playbook unless the user explicitly
+  wants it persisted in Beads.

@@ -6,6 +6,20 @@ available).
 
 Goal: minimize network requests by preferring local source inspection.
 
+Do not use:
+
+- for the current repo/worktree you are already in
+- when the authoritative answer is product/account/runtime state rather than
+  public source
+- when the question is primarily news/release timing and source inspection would
+  not answer it
+
+First actions:
+
+1. Identify the canonical upstream repo.
+2. Resolve the exact ref that answers the user's question before reading code.
+3. Clone or refresh `/tmp/agent-src/<owner>/<repo>`, then inspect locally.
+
 ## Procedure
 
 ### 1) Identify the canonical repo (one small query)
@@ -71,3 +85,9 @@ Use web fetches for:
 
 Keep the `/tmp/agent-src/...` clone around for reuse unless cleanup is
 explicitly requested. Always `git fetch` / `git pull` before relying on it.
+
+Output:
+
+- Report the repo and ref you actually inspected.
+- Say explicitly when you needed web sources after local source inspection and
+  why source alone was insufficient.

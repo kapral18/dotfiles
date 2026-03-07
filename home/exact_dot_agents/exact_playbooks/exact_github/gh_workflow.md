@@ -1,5 +1,11 @@
 # GitHub + gh Playbook
 
+Use when:
+
+- the user explicitly wants a GitHub side effect via `gh` or GitHub APIs
+- the user wants to create/edit/post/apply/merge something on GitHub, not just
+  draft text
+
 Defaults & constraints:
 
 - Use `gh` CLI for GitHub activity.
@@ -29,18 +35,28 @@ Issue targeting:
   - `,gh-issuew --url`
 - If `,gh-issuew` fails once, stop and ask for the issue URL.
 
-When NOT to use:
+Do not use:
 
 - The user wants to draft PR/issue text only (draft-only): use the compose playbooks.
   - PR (general): `~/.agents/playbooks/github/compose_pr_general.md`
   - PR (Elastic/Kibana): `~/.agents/playbooks/github/compose_pr_elastic.md`
   - Issue (general): `~/.agents/playbooks/github/compose_issue_general.md`
   - Issue (Elastic/Kibana): `~/.agents/playbooks/github/compose_issue_elastic.md`
-- The user wants PR review feedback:
+- The user wants PR review feedback, PR-fix verification, thread-by-thread
+  handling, or review-comment drafting:
   - Use: `~/.agents/playbooks/review/router.md`
   - It routes between local vs PR review, and PR modes (start/iterative/replies).
 - The user wants local git operations (status/diff/commit/rebase): `~/.agents/playbooks/git/workflow.md`.
 - The user wants worktree management (create/switch/remove worktrees): `~/.agents/playbooks/worktrees/w_workflow.md`.
+
+First actions:
+
+1. Set `GH_PAGER=cat`.
+2. Resolve the exact target repo/object (PR, issue, comment thread, release)
+   before mutating anything.
+3. If the user also needs authored text, reviewer reasoning, labels, or Kibana
+   ownership guidance, load the required secondary playbook(s) first and draft
+   that content before posting/applying it.
 
 Approvals:
 
@@ -217,14 +233,21 @@ PR creation:
 
 Composition (draft-only) guidance:
 
-- Draft PR bodies using:
+- Before creating/editing a PR body, load one of:
   - General repos: `~/.agents/playbooks/github/compose_pr_general.md`
   - Elastic/Kibana repos: `~/.agents/playbooks/github/compose_pr_elastic.md`
-- Draft issue bodies using:
+- Before creating/editing an issue body, load one of:
   - General repos: `~/.agents/playbooks/github/compose_issue_general.md`
   - Elastic/Kibana repos: `~/.agents/playbooks/github/compose_issue_elastic.md`
-- Label proposals for Elastic/Kibana (propose-only): `~/.agents/playbooks/github/labels_propose_elastic_kibana.md`
-- Kibana Management ownership hints: `~/.agents/playbooks/kibana/management_ownership.md`
+- For `elastic/kibana` label targeting, load: `~/.agents/playbooks/github/labels_propose_elastic_kibana.md`
+- For Kibana reviewer/ownership guidance, load: `~/.agents/playbooks/kibana/management_ownership.md`
+
+Output:
+
+- Before each side effect, restate the exact target and action you are about to
+  perform.
+- After each side effect, verify via read-back (`gh`/API) and report the URL,
+  identifier, or resulting state.
 
 Do not add/modify repo `.github/*` templates unless the user explicitly asks.
 

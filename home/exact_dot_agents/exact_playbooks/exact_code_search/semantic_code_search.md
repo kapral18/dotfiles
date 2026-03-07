@@ -6,19 +6,28 @@ When triggered:
 
 - prioritize semantic-code-search MCP tools over mechanical grepping
 - provide context (paths, snippets, precise queries) to maximize accuracy
+- treat explicit index-selection language as a trigger, even when the user does
+  not name SCSI tools directly (example: "use `<index>` index")
 
 Common trigger in reviews:
 
 - Base-branch context for reviews (PR or local changes): learn how base works and
   what invariants exist, then compare against the local diff.
 
-When NOT to use:
+Do not use:
 
 - simple string/filename lookup: use local `rg` or file listing
 - as a replacement for local review of branch changes: use local repo tools for
   exact state (`git diff`, file reads, tests). SCSI is for base context.
 - purely mechanical pattern matching to drive a replace/edit: use local `rg`
 - current repo is not indexed (not present in `list_indices`): do not use semantic code search
+
+First actions:
+
+1. Run `list_indices` before any semantic query.
+2. Verify whether the current repo is indexed and pick the single justified
+   index, or record why none can be used.
+3. Form precise semantic queries with paths/snippets from local context.
 
 Important limitation:
 
@@ -78,6 +87,13 @@ Index usage:
   - if `list_indices` returns an obvious match for the current repo, use it
     - "obvious" means you can justify the selection from evidence (for example: index name clearly includes the repo name, or it is the only index that matches the repo you're in)
   - if multiple equally plausible indices remain after evidence-based filtering, ask the user which index to use
+
+Output:
+
+- State the selected index (or `none`) and why.
+- Keep semantic findings tied to concrete paths/symbols/snippets.
+- For reviews, use semantic findings as base context only, then compare against
+  the local diff.
 
 Passing `index`:
 

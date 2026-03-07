@@ -10,11 +10,20 @@ Use this playbook when:
 - the user asks to create/switch/open/list/prune/remove worktrees
 - the user asks to check out a PR locally in a separate worktree
 
-When NOT to use:
+Do not use:
 
 - PR review feedback: `~/.agents/playbooks/review/router.md`
 - GitHub side effects (posting comments/reviews, creating PRs/issues): `~/.agents/playbooks/github/gh_workflow.md`
 - pure git operations unrelated to worktrees (commit/rebase/push): `~/.agents/playbooks/git/workflow.md`
+
+First actions:
+
+1. Resolve whether the user wants create, switch, list, prune, remove, or PR/
+   issue checkout.
+2. If the user says "current PR" or "current issue", resolve that identifier
+   first via `,gh-prw` or `,gh-issuew`.
+3. Prefer the matching `,w` subcommand instead of building the flow from raw
+   `git worktree` commands.
 
 Non-negotiables:
 
@@ -70,3 +79,8 @@ issue="$(,gh-issuew --number)"
 # Switch to another worktree session:
 ,w switch kibana
 ```
+
+Output:
+
+- Report the resulting worktree path/branch and whether tmux focus changed.
+- For prune/remove flows, state exactly what was removed.
