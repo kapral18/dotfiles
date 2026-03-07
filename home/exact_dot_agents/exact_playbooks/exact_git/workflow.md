@@ -31,7 +31,8 @@ Approvals:
 
 Commit quality:
 
-- use Conventional Commits
+- use Conventional Commits when the repo already uses them; otherwise match the
+  repo's existing commit style
 - infer `scope` from change surface (best effort)
 - each commit must be minimal and atomic, independently reviewable
 - commit body bullets are optional; include only when they add signal
@@ -41,7 +42,9 @@ Commit quality:
 
 Branching:
 
-- branch name: `<type>/<scope>/<kebab-description>` (example: `chore/opencode/update-sop-wording`)
+- follow repo/team branch naming if one exists; otherwise default to
+  `<type>/<scope>/<kebab-description>` (example:
+  `chore/opencode/update-sop-wording`)
 - if upstream is missing, it is OK to set it with `git push -u` (still requires approval)
 
 Merge policy:

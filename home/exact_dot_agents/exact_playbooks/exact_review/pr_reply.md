@@ -44,8 +44,9 @@ Preflight (blocking):
   - verify it exists in `list_indices`
   - if it does not exist, stop and ask which index to use
 - If the user did not provide an index name:
-  - select an index only if you can justify it from evidence; otherwise ask the user
-    which index represents the base branch for this repo
+  - use the single obvious repo-matching index from `list_indices`
+  - if multiple equally plausible repo-matching indices remain, ask the user
+    which one represents the base branch for this repo
 
 Base context sources:
 
@@ -121,5 +122,5 @@ Output (one reply per turn):
 - `Base context: SCSI=<index>|none (list_indices checked; <reason>), base=<branch>, diff=<base>...HEAD`
   - reviewer metadata only; do not include in GitHub comment bodies
 - Where it goes (comment id / file thread)
-- Reply body (end with `Wdyt`)
+- Reply body
 - Resolution recommendation: `resolve` | `keep_open`

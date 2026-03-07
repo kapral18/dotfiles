@@ -77,7 +77,7 @@ Index usage:
   - if `list_indices` returns no usable results, do not use semantic search (fall back to local sources)
   - if `list_indices` returns an obvious match for the current repo, use it
     - "obvious" means you can justify the selection from evidence (for example: index name clearly includes the repo name, or it is the only index that matches the repo you're in)
-  - if multiple indices look plausible, ask the user which index to use (default: the one that most clearly matches the current repo and base branch)
+  - if multiple equally plausible indices remain after evidence-based filtering, ask the user which index to use
 
 Passing `index`:
 

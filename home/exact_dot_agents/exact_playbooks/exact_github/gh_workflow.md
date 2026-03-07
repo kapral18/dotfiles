@@ -10,13 +10,16 @@ Defaults & constraints:
 
 PR targeting (avoid searching):
 
-- If the user did not specify a PR URL/number, assume they mean the PR for the
+- If the user uses implicit-current phrasing ("this PR", "current PR", "PR for
+  this branch") and does not specify a PR URL/number, resolve the PR for the
   current branch in the current repo.
 - Resolve the PR number/URL with:
   - `,gh-prw --number`
   - `,gh-prw --url`
 - If `,gh-prw` fails once, stop and ask for the PR URL (or use `-R OWNER/REPO` if
   the user clearly intends a different repo).
+- Do not assume an unspecified GitHub task targets the current branch PR unless
+  the wording clearly implies the current PR.
 
 Issue targeting:
 
@@ -111,8 +114,8 @@ cat > /tmp/review-payload.json <<'JSON'
   "commit_id": "HEAD_SHA",
   "body": "",
   "comments": [
-    { "path": "path/to/file.ts", "line": 42, "side": "RIGHT", "body": "Comment text.\n\nWdyt" },
-    { "path": "path/to/file.ts", "line": 78, "side": "RIGHT", "body": "Another comment.\n\nWdyt" }
+    { "path": "path/to/file.ts", "line": 42, "side": "RIGHT", "body": "Comment text." },
+    { "path": "path/to/file.ts", "line": 78, "side": "RIGHT", "body": "Another comment." }
   ]
 }
 JSON
@@ -128,12 +131,13 @@ gh api repos/OWNER/REPO/pulls/NUM/reviews -X POST --input /tmp/review-payload.js
 #   gh api repos/OWNER/REPO/pulls/NUM/comments --jq 'length'
 
 # Submit later (include body explicitly if you want a summary):
-# gh api repos/OWNER/REPO/pulls/NUM/reviews/REVIEW_ID/events -X POST -f event=APPROVE -f body=$'Looks good.\n\nWdyt'
+# gh api repos/OWNER/REPO/pulls/NUM/reviews/REVIEW_ID/events -X POST -f event=APPROVE -f body=$'Looks good.'
 ```
 
 Posting PR review comments (examples):
 
 - Use bash/zsh `$'...'` so `\n` becomes real line breaks. Do NOT send literal `\n`.
+- Add a soft close such as `Wdyt` only when the review style calls for it.
 - Follow the relevant PR review mode playbook for anchoring and comment placement behavior:
   - `~/.agents/playbooks/review/pr_start.md`
   - `~/.agents/playbooks/review/pr_iterative.md`
@@ -143,7 +147,7 @@ Inline review comment (line or range; supports GitHub suggestion blocks):
 
 ````bash
 gh api repos/OWNER/REPO/pulls/NUM/comments \
-  -f body=$'Text.\n\n```suggestion\ncode\n```\n\nWdyt' \
+  -f body=$'Text.\n\n```suggestion\ncode\n```' \
   -f commit_id=SHA -f path=FILE -f side=RIGHT -f line=LINE
 ````
 
@@ -153,7 +157,7 @@ File-level review comment (file-scoped, immediately visible):
 
 ```bash
 gh api repos/OWNER/REPO/pulls/NUM/comments \
-  -f body=$'Text.\n\nWdyt' \
+  -f body=$'Text.' \
   -f commit_id=SHA -f path=FILE -f subject_type=file
 ```
 
@@ -165,7 +169,7 @@ Reply in an existing review thread (no quote reply):
 #
 # Use the PR review comment create endpoint with `in_reply_to`:
 gh api repos/OWNER/REPO/pulls/NUM/comments \
-  -f body=$'Text.\n\nWdyt' \
+  -f body=$'Text.' \
   -F in_reply_to=COMMENT_ID
 ```
 

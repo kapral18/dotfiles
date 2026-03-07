@@ -16,6 +16,18 @@ Entrypoints installed into your home directory:
 
 These files are policy entrypoints; playbooks are installed separately.
 
+Shared SOP handling rules:
+
+- The entrypoints do not declare their own global instruction hierarchy. They
+  define local SOP selection only: check the closest repo-local `AGENTS.md`
+  first, then the broader home-level entrypoint, and defer to the runtime's
+  higher-priority instruction layers when conflicts exist.
+- "Questions" is scoped to information-seeking asks. Requests phrased as
+  questions still count as action requests when the user is asking for
+  investigation, verification, or edits.
+- If uncertainty remains after local inspection, probes, and any required
+  playbooks, ask one direct fork-closing question.
+
 Shared runtime verification rule:
 
 - For "is this correctly set up / working / actually being used" questions, the
@@ -69,6 +81,9 @@ is required for base-branch context:
   both `scsi-main` and `scsi-local` when both exist).
 - If the user provided an index name, still run `list_indices` and verify the
   index exists before using it.
+- If the user did not provide an index name, use the single obvious
+  repo-matching index from `list_indices`; ask only when multiple equally
+  plausible matches remain after evidence-based filtering.
 - Use SCSI results as base-branch context only; validate the actual change via
   local git diffs and file reads.
 
@@ -103,6 +118,24 @@ When drafting PR thread replies:
 - Do not use `RE:`.
 - Default: reply directly; do not quote when the whole parent comment is the reference.
 - If you need to point at a specific fragment, use a minimal blockquote (`> ...`) and then reply.
+- A closing prompt like `Wdyt` is optional, not mandatory. Use it only when it
+  fits the tone of the specific comment.
+
+## Reviews: Router Behavior
+
+- The review router selects exactly one primary review mode, then loads
+  secondary playbooks only when required by that mode.
+- When both a dirty working tree and a current-branch PR exist, the router now
+  asks which target to review instead of silently forcing local review first.
+- GitHub posting stays outside read-only review mode until the user explicitly
+  asks for a side effect.
+
+## Source-First Research
+
+- Source-first research now resolves the target ref before inspecting code.
+- Use the default branch only for current/latest behavior questions.
+- For version-, branch-, tag-, or commit-specific questions, inspect that exact
+  ref instead of defaulting to latest upstream.
 
 ## Core Workflow: Change A Playbook
 

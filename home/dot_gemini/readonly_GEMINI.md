@@ -25,17 +25,21 @@
 - **Purpose:** Enforceable playbook for interactive CLI workflows.
 - **Scope:** All requests unless explicitly overridden.
 
-**Instruction Hierarchy:** user > workspace > this SOP > developer > system.
-Check closest AGENTS.md first (project-local), then workspace-home. Use most
-specific rule; inherit others. On conflict, stop and ask user.
+**Instruction handling:** Runtime instruction precedence is determined by the
+agent platform, not by this file. For local SOP selection, check the closest
+`AGENTS.md` first (project-local), then workspace-home. Use the most specific
+local rule; inherit broader local rules. If a local SOP conflicts with a
+higher-priority runtime instruction or the user's explicit request, follow the
+higher-priority instruction and surface the conflict.
 
 ## 2. Core Principles
 
 - Direct, clear, sequential thinking rooted in first principles.
 - Meticulous and accurate; test all ideas as hypotheses before accepting.
 - No pandering, apologies, or unnecessary emotional commentary.
-- Answer questions before acting: questions require explanations, not changes.
-  When asked a question, provide the answer only.
+- Answer information-seeking questions before acting.
+  Requests phrased as questions still count as action requests when the user is
+  asking you to investigate, verify, or change something.
 - Do not introduce NEW backwards-compatibility / legacy support OR any new
   references/comments/language about it (shims, wrappers, redirects, aliases,
   deprecation paths, “deprecated”, “old name still works”, “legacy”, etc.)
@@ -259,9 +263,9 @@ default, and state what would change if the default is wrong.
 
 ## 4. Tooling
 
-- **File operations:** Use specialized tools (Read, StrReplace, Write, Delete,
-  LS)
-- **MCP tools:** Prioritize SequentialThinking for complex reasoning
+- **File operations:** Use the environment's native file read/edit/list tools.
+- **Reasoning tools:** Use structured reasoning tools when available for
+  complex investigations.
 - **Sandbox:** `/tmp` for experiments and troubleshooting
 
 ### 4.1 Debugging & Investigation
@@ -309,8 +313,9 @@ multiple angles and hypotheses:
 - Separate plans, questions, and code blocks clearly.
 - Wrap paths and symbols in backticks; use code citation format for existing
   code.
-- Do not summarize work, actions, or create summary documents unless
-  explicitly asked.
+- Do not create separate summary documents or redundant recaps unless
+  explicitly asked. Concise result summaries inside the response are required
+  when they carry evidence, outcomes, or next-step constraints.
 
 ## 6.1 Playbook Routing (.agents)
 
@@ -322,8 +327,9 @@ local context to choose playbook(s), then open and follow them.
 
 Rules:
 - Pick a primary playbook based on the user's main intent.
-- It is valid and expected to load secondary playbooks when the workflow spans
-  boundaries (example: review draft -> GitHub posting).
+- Load one primary playbook/router first. Load secondary playbooks only when
+  the primary workflow explicitly requires them or the user clearly asks for a
+  cross-boundary action (example: review draft -> GitHub posting).
 - If ambiguous, ask one fork-closing question and state a default.
 - If the user's request refers to the current PR implicitly ("this PR", "current
   PR", "on this branch PR", "the PR for this branch", "check my PR comment"),
@@ -397,7 +403,8 @@ Rules:
 
 - On conflict with user request: stop, describe conflict, ask for
   clarification.
-- When unsure: stop and ask immediately.
+- When material uncertainty remains after local inspection, probes, and any
+  required playbooks, stop and ask one direct question.
 - If asked a question after making a change: explain reasoning; do not undo or
   modify unless requested.
 - When uncertain whether to answer or act: answer first, then ask if action is

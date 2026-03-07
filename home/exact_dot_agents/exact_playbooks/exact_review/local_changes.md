@@ -45,8 +45,9 @@ Base-branch context gate (mandatory):
     - verify it exists in `list_indices`
     - if it does not exist, stop and ask which index to use
   - If the user did not provide an index name:
-    - select an index only if you can justify it from evidence; otherwise ask the user
-      which index represents the base branch for this repo
+    - use the single obvious repo-matching index from `list_indices`
+    - if multiple equally plausible repo-matching indices remain, ask the user
+      which one represents the base branch for this repo
   - Preferred: semantic code search (when available) for base context:
     - `~/.agents/playbooks/code_search/semantic_code_search.md`
     - Invoke at least one SCSI tool to establish base behavior/invariants.
@@ -58,7 +59,7 @@ Output:
 - Default: batch `Pending review draft` with:
   - `inline_comments`: where, issue, why, verification, smallest fix
   - optional `summary_comment`
-- End each drafted comment with `Wdyt`.
+- Use a collaborative close only when it fits naturally.
 - If the user asks for one-at-a-time, output exactly one finding and stop.
 
 - Always include one line near the top:

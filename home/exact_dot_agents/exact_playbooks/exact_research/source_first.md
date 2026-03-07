@@ -23,9 +23,16 @@ Pick a stable location:
 
 If it exists: reuse it and update it.
 
-### 3) Pull latest before inspecting
+### 3) Resolve the target ref before inspecting
 
-Run:
+- First prove what ref answers the user's question:
+  - current/latest behavior: use the upstream default branch
+  - version/tag/release question: use that exact tag or release branch
+  - branch- or commit-specific question: use that exact branch or commit
+- If the user did not specify a ref and the answer depends on a non-default
+  target, ask one direct question instead of assuming.
+
+If the target is the default branch:
 
 - `git fetch --prune --tags`
 - `git checkout <default-branch>`
@@ -34,6 +41,11 @@ Run:
 If you don't know the default branch:
 
 - `git remote show origin | rg -n "HEAD branch"`
+
+If the target is a specific tag/branch/commit:
+
+- `git fetch --prune --tags`
+- `git checkout <target-ref>`
 
 ### 4) Search locally
 
@@ -59,4 +71,3 @@ Use web fetches for:
 
 Keep the `/tmp/agent-src/...` clone around for reuse unless cleanup is
 explicitly requested. Always `git fetch` / `git pull` before relying on it.
-

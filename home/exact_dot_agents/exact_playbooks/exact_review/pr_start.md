@@ -45,8 +45,9 @@ Preflight (blocking):
   - verify it exists in `list_indices`
   - if it does not exist, stop and ask which index to use
 - If the user did not provide an index name:
-  - select an index only if you can justify it from evidence; otherwise ask the user
-    which index represents the base branch for this repo
+  - use the single obvious repo-matching index from `list_indices`
+  - if multiple equally plausible repo-matching indices remain, ask the user
+    which one represents the base branch for this repo
 
 Base context sources:
 
@@ -129,11 +130,11 @@ Output:
     - reviewer metadata only; do not include in GitHub comment bodies
   - `inline_comments`: one draft per finding worth commenting, each with:
     - Where (file path + line/range when possible)
-    - Comment body (end with `Wdyt`)
+    - Comment body
     - Why it matters (1-2 lines)
     - How to verify (minimal)
     - Proposed fix (smallest change)
-  - `summary_comment` (optional): short PR-level comment (end with `Wdyt`)
+  - `summary_comment` (optional): short PR-level comment
 
 Draft persistence:
 

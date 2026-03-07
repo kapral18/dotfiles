@@ -41,11 +41,16 @@ When semantic code search helps:
   indexed (present in `list_indices`). Run `list_indices` first; do not guess an index.
 - Treat semantic results as base-branch context only; validate the actual change by reading the local branch diff.
 
-### Step 2: Generate the Diagram
+### Step 2: Present The Walkthrough
 
-Once exploration is complete, render an interactive ASCII diagram.
+Once exploration is complete, present an evidence-backed walkthrough.
 
-Provide:
+- If the system is complex or the user asked for a diagram, render an
+  interactive ASCII diagram.
+- If a diagram would add little value, give a concise written walkthrough with
+  the same evidence trail instead.
+
+When rendering a diagram, provide:
 
 - `code`: ASCII diagram showing component relationships
 - `summary`: One-sentence description of what the diagram illustrates

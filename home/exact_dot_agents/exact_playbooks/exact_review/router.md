@@ -9,12 +9,15 @@ Contract:
 
 - This router is the entrypoint. If another playbook points you here for shared
   rules, you may skip routing and jump to the relevant section.
-- After you select a mode, open exactly one mode file and follow it:
+- After you select a mode, open exactly one primary mode file and follow it:
   - `~/.agents/playbooks/review/local_changes.md`
   - `~/.agents/playbooks/review/pr_start.md`
   - `~/.agents/playbooks/review/pr_iterative.md`
   - `~/.agents/playbooks/review/pr_reply.md`
   - `~/.agents/playbooks/review/pr_change_cycle.md`
+- Load secondary playbooks only when this router or the selected mode requires
+  them (for example: semantic code search for base context, or GitHub workflow
+  when the user explicitly asks to post).
 - Do not load `~/.agents/playbooks/github/gh_workflow.md` for read-only PR
   inspection/review. Only load it when the user explicitly asks to post/submit
   anything to GitHub.
@@ -80,12 +83,15 @@ If the user's intent is still unclear, resolve via local context (do not guess):
     review?"
 - If in a git repo:
   - Run `git status --porcelain=v1 -b` (read-only, do not ask to proceed).
-  - If staged/unstaged changes exist: local changes mode.
-  - If working tree is clean:
-    - Try PR discovery via `,gh-prw` (read-only):
-      - `,gh-prw --number`
-    - If a PR is found: PR start mode.
-    - If no PR is found: local changes mode (branch delta).
+  - Independently check both:
+    - whether staged/unstaged changes exist
+    - whether `,gh-prw --number` resolves a PR for the current branch
+  - If both are true, ask:
+    "Should I review the local working tree diff, or the GitHub PR diff/threads?"
+    Default: local working tree first.
+  - If only local changes exist: local changes mode.
+  - If only a PR exists: PR start mode.
+  - If neither exists: local changes mode (branch delta).
 
 Ambiguity rule:
 
@@ -128,8 +134,11 @@ Preflight (blocking, do first):
   - if it does not exist, stop and ask which index to use (default: the best
     evidence-based match for the current repo)
 - If the user did not provide an index name:
-  - select an index only if you can justify it from evidence; otherwise ask the
-    user which index represents the base branch for this repo
+  - use the single obvious repo-matching index from `list_indices`
+  - if multiple equally plausible repo-matching indices remain, ask the user
+    which one represents the base branch
+  - if no repo-matching index exists, treat semantic search as unavailable and
+    fall back to local sources
 - Do not move on to base-context reasoning or comment drafting until this
   preflight is complete.
 
@@ -201,7 +210,8 @@ Draft style (public-ready):
 - No headline summaries or category prefixes (exception: `nit:` allowed only for
   true nits).
 - Keep explanations simple; prefer tiny examples, pseudocode, or ASCII sketches.
-- End every drafted comment/reply with `Wdyt` as its final sentence.
+- A collaborative close such as `Wdyt` is optional; use it only when it fits
+  the comment naturally.
 - Keep claims honest: observed (evidence) vs inferred (hypothesis) vs
   recommended (action).
 - Do not mention internal tooling, agents, APIs, payloads, rate limits, or error
