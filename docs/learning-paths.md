@@ -53,3 +53,15 @@ What to focus on:
 
 Where to read:
 - [`docs/categories/editor-neovim.md`](categories/editor-neovim.md)
+
+## Phase 5: The Agentic Operating System (AI)
+
+Once the terminal feels like home, you can begin leveraging the AI integrations that turn this environment into an Agentic OS.
+
+What to focus on:
+- Learning to invoke Terminal Assistants (Pi, Gemini CLI, OpenCode).
+- Understanding how SOPs dictate agent behavior.
+- Utilizing MCP tools (like Semantic Code Search) to give agents context.
+
+Where to read:
+- [`docs/categories/ai-and-assistants.md`](categories/ai-and-assistants.md)

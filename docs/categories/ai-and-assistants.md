@@ -1,11 +1,10 @@
-# AI And Assistants
+# The Agentic Operating System (AI & Assistants)
 
 Back: [`docs/categories/index.md`](index.md)
 
-This setup treats "how my assistants should work" as configuration that can be
-installed alongside everything else.
+This setup does not just provide you with AI chat tools; it implements an **Agentic Operating System**. This treats "how my assistants should work" as strict, version-controlled configuration that is installed alongside everything else. The goal is deterministic, verifiable behavior instead of relying on unpredictable LLM heuristics.
 
-## Assistant SOPs
+## The Governance Layer (SOPs)
 
 Entrypoints installed into your home directory:
 

@@ -15,7 +15,7 @@ New here? Start with [`docs/index.md`](docs/index.md).
 - [Shell Environment](#-shell-fish)
 - [Git & 1Password](#-git--1password)
 - [Terminal Tools](#-terminals--multiplexers)
-- [AI & LLM Integration](#-ai--llm-tools)
+- [Agentic Operating System](#-the-agentic-operating-system)
 - [Neovim](#-neovim)
 - [macOS Automation](#%EF%B8%8F-macos-automation)
 - [Package Management](#-package-management)
@@ -370,7 +370,6 @@ Result: Automatic identity switching based on directory, no private keys on disk
 
 - `git wtgrab <worktree>` - Transfer uncommitted changes between worktrees
 - `git squash <n>` - Interactive squash
-- `git u` - Fetch, rebase, and prune
 - `git hide` / `unhide` - Ignore local changes to tracked files
 
 **Defaults:**
@@ -388,6 +387,7 @@ Result: Automatic identity switching based on directory, no private keys on disk
 
 - Separate views for work/personal repos
 - Custom filters and layouts
+- **Deep Tmux & Worktree Integration:** Press `prefix + G` to open a persistent `gh-dash` popup. From there, hit `Space` or `b` on any PR/Issue to instantly clone the repo (if missing), create a linked git worktree, and switch your active Tmux session to it seamlessly.
 - Config: `home/dot_config/exact_gh-dash/config.yml`
 - GitHub CLI (`gh`) config: `home/dot_config/exact_private_gh/`
 
@@ -413,9 +413,6 @@ Config: `home/dot_config/exact_tmux/tmux.conf`
 | ----------------------------------- | ------------------------------ |
 | `tpm`                               | Plugin manager                 |
 | `tmux-resurrect` + `tmux-continuum` | Auto-save sessions every 15min |
-| `tmux-pain-control`                 | Pane resize/swap               |
-| `tmux-sessionist`                   | Session switching              |
-| `tmux-fzf-url`                      | Extract URLs from scrollback   |
 | `tmux-theme-catppuccin`             | Theme                          |
 
 **Neovim Integration:**
@@ -445,43 +442,39 @@ Language server for Fish scripts:
 
 ---
 
-## 🤖 AI & LLM Tools
+## 🤖 The Agentic Operating System
 
-AI tools for CLI and editor. Credentials in 1Password, configs in repo.
+This environment doesn't just install AI tools; it configures an **Agentic Operating System**—a strict governance, context, and execution layer that treats LLMs as deterministic systems rather than chat bots.
 
-| Tool           | Purpose                 | Config                                                                                                                                              |
-| -------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Crush**      | Terminal AI assistant   | Charmbracelet tap                                                                                                                                   |
-| **Ollama**     | Local LLM runtime       | `home/.chezmoiscripts/run_onchange_after_05-add-ollama-models.sh`                                                                                   |
-| **Amp**        | AI coding tool with MCP | `home/dot_config/exact_amp/private_settings.json`                                                                                                   |
-| **Codex CLI**  | Terminal coding agent   | `home/dot_codex/private_config.toml`                                                                                                                |
-| **OpenCode**   | Terminal agent runner   | `home/dot_config/opencode/opencode.jsonc`                                                                                                           |
-| **Cursor**     | AI code editor (work)   | `home/dot_cursor/mcp.json` (servers tagged with `__isWork__` and filtered by `home/.chezmoiscripts/run_onchange_after_07-merge-cursor-mcp.sh.tmpl`) |
-| **Gemini CLI** | Terminal AI assistant   | `home/dot_gemini/settings.json` (filtered by `run_onchange_after_07-merge-gemini-settings.sh.tmpl`)                                                 |
-| **Copilot CLI**| Terminal AI assistant   | `home/dot_config/dot_copilot/` (config, mcp, lsp)                                                                                                   |
+Credentials never touch plaintext configs; they are injected at runtime via 1Password and `pass`.
 
-**Ollama Models**:
+### 1. The Governance Layer (SOPs & Playbooks)
 
-- `gpt-oss`
-- `deepseek-r1`
+Agents are bound by strict Standard Operating Procedures (SOPs) that mandate empirical verification (e.g., using `/tmp` for safe live probes) and forbid guessing.
 
-### Assistant Instructions & SOPs
+- **Entrypoints:** `~/AGENTS.md`, `~/CLAUDE.md`, `~/.gemini/GEMINI.md` (managed by chezmoi).
+- **Intent-Based Routing:** Agents dynamically load specific **Playbooks** (e.g., `~/.agents/playbooks/review/router.md`) based on the user's intent, preserving their context window for the actual task.
 
-This repo ships "how I want assistants to operate" as files installed to your
-home directory:
+### 2. The Context Layer (MCP & SCSI)
 
-- `home/readonly_AGENTS.md` → `~/AGENTS.md`
-- `home/readonly_CLAUDE.md` → `~/CLAUDE.md`
-- `home/dot_gemini/readonly_GEMINI.md` → `~/.gemini/GEMINI.md`
+A unified set of Model Context Protocol (MCP) servers is shared across all tools, granting agents deep, secure reach into the environment.
 
-### Playbooks
+- **Semantic Code Search (SCSI):** Agents are _required_ by their SOPs to query the base branch via Elasticsearch before reviewing PRs.
+- **Playwright & Buildkite:** For browser automation and CI pipeline inspection.
+- **Sequential Thinking:** For complex, multi-step debugging.
 
-Playbooks are reusable workflow modules referenced by the SOP entrypoints (for
-example: "When X happens, use playbook Y").
+### 3. The Execution Layer (Tools)
 
-**Source of truth** (chezmoi-managed, real files):
+Configs are strictly separated into `.work` and `.personal` profiles and dynamically merged by `chezmoi` based on your identity.
 
-- `home/exact_dot_agents/exact_playbooks/` → `~/.agents/playbooks/`
+| Tool                | Purpose               | Integration Highlights                                                                          |
+| ------------------- | --------------------- | ----------------------------------------------------------------------------------------------- |
+| **Pi Coding Agent** | Terminal coding agent | Defaults to LiteLLM (work) or OpenAI (personal). Injects MCPs and auto-reserves context tokens. |
+| **Gemini CLI**      | Terminal AI assistant | Auto-approves edits (`auto_edit`) and shares the unified MCP configuration.                     |
+| **Cursor**          | AI code editor        | MCPs are filtered securely via chezmoi scripts (`__isWork__` tagging).                          |
+| **OpenCode**        | Terminal agent runner | Leverages LiteLLM aliases with strict output constraints to prevent gateway timeouts.           |
+| **Ollama**          | Local LLM runtime     | Automatically pulls `gpt-oss` and `deepseek-r1` upon `chezmoi apply`.                           |
+| **Crush & Copilot** | Terminal assistants   | fully configured for shell integration.                                                         |
 
 ## 💎 Neovim
 
@@ -630,7 +623,8 @@ Karabiner-Elements rules live in `home/dot_config/exact_private_karabiner/karabi
 | **Go**       | `home/readonly_dot_default-golang-pkgs`          | Go tools                     |
 | **Gems**     | `home/readonly_dot_default-gems`                 | Ruby packages                |
 | **npm**      | `home/readonly_dot_default-npm-pkgs`             | Node.js globals              |
-| **uv**       | `home/readonly_dot_default-uv-tools.tmpl`        | Python tools                 |
+| **uv tools** | `home/readonly_dot_default-uv-tools.tmpl`        | Python CLI tools             |
+| **uv python**| `home/readonly_dot_python-version`               | Python runtime versions      |
 | **Manual**   | `home/readonly_dot_default-manual-packages.tmpl` | DMGs + GitHub releases       |
 
 Install scripts run via chezmoi hooks when files change.

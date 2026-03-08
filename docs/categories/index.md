@@ -28,4 +28,4 @@ then jump to recipes for step-by-step tasks.
 ## Security + AI
 
 - Security and secrets (1Password, pass, gpg-agent): [`security-and-secrets.md`](security-and-secrets.md)
-- AI and assistants: [`ai-and-assistants.md`](ai-and-assistants.md)
+- The Agentic Operating System (AI & Assistants): [`ai-and-assistants.md`](ai-and-assistants.md)

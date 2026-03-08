@@ -32,8 +32,11 @@ This page answers two questions:
 - ruby gems: `home/readonly_dot_default-gems`
 - global npm: `home/readonly_dot_default-npm-pkgs`
 - uv tools: `home/readonly_dot_default-uv-tools.tmpl`
+- uv python versions: `home/readonly_dot_python-version`
 - manual packages: `home/readonly_dot_default-manual-packages.tmpl`
 - GitHub CLI extensions: `home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl`
+- uv python installation: `home/.chezmoiscripts/run_onchange_after_05-install-uv-versions.sh.tmpl`
+- uv tools installation: `home/.chezmoiscripts/run_onchange_after_06-update-uv-tools.sh.tmpl`
 
 ## Shell
 

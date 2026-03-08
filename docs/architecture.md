@@ -65,6 +65,14 @@ This setup is intentionally declarative:
    config.
 4. Re-running `chezmoi apply` converges you back to the intended state.
 
+## Dynamic AI Context Merging
+
+Because AI tools (like OpenCode, Cursor, Gemini, and Pi) often rewrite their config files during runtime, rendering templates directly into those files causes conflicts.
+Instead, this architecture uses **Profile-Based Merging**:
+- Specific configurations are written into `home/dot_cursor/mcp.work.json` and `home/dot_cursor/mcp.personal.json` (as examples).
+- During `chezmoi apply`, shell scripts (e.g., `run_onchange_after_07-merge-cursor-mcp.sh.tmpl`) evaluate the `.isWork` variable and forcefully overwrite the tool's runtime config with the correct profile.
+- This creates a hard boundary between work contexts (which load work-specific MCP servers) and personal contexts.
+
 ## Hooks (Automation)
 
 The most important concept for understanding "what happens" is the hook naming:
@@ -80,6 +88,7 @@ Examples in this repo:
 - Fish install: `home/.chezmoiscripts/run_once_after_02-install-fish.sh`
 - Brew bundle: `home/.chezmoiscripts/run_onchange_after_03-install-brew-packages.fish.tmpl`
 - ASDF plugins + versions: `home/.chezmoiscripts/run_onchange_after_05-install-asdf-plugins.sh.tmpl`
+- UV Python versions: `home/.chezmoiscripts/run_onchange_after_05-install-uv-versions.sh.tmpl`
 
 Many hooks embed `sha256sum` comments that reference template content. That is
 how the "run on change" behavior is tied to specific files.

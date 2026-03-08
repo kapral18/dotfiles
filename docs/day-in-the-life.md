@@ -30,6 +30,10 @@ You can also use the `,w` command to easily check out pull requests:
 ,w prs 12345
 ```
 
+## Agentic Tasks: Offload Work to Assistants
+
+Invoke your CLI assistants (Gemini, Pi, OpenCode) to read context, debug failures, or execute refactors. They will automatically respect the repository's rules thanks to the Agentic OS governance layer and use MCP servers to query codebase context if needed.
+
 ## Code: Keep Your Editor
 
 You can run this workflow from VSCode/JetBrains using the integrated terminal.

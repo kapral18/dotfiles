@@ -2,6 +2,8 @@
 
 Welcome! These docs exist for people who are curious about this setup and want to adopt pieces of it without already being deep into terminal-driven development.
 
+**What is this?** This repository is a declarative macOS environment built around an **Agentic Operating System**. It combines traditional dotfiles (Fish, Neovim, Tmux) with strict AI governance. Instead of just installing AI tools, it provides LLMs with a unified context layer (MCP servers) and strict Standard Operating Procedures (SOPs) to ensure they behave predictably.
+
 They are written for:
 
 - IDE-first folks (VSCode / JetBrains)
