@@ -29,6 +29,19 @@ Shared SOP handling rules:
 - If uncertainty remains after local inspection, probes, and any required
   playbooks, ask one direct fork-closing question.
 
+Shared git push safety rule:
+
+- If the user asks to push, agents must treat that as
+  `git push --force-with-lease` (not plain `git push`).
+- Agents must never auto-run `git pull`, `git pull --rebase`, `git rebase`,
+  or `git merge` as a pre-push reconciliation step.
+- If push is rejected due to divergence/non-fast-forward/lease checks, agents
+  must stop and wait for explicit user direction.
+- Canonical sources:
+  `home/readonly_AGENTS.md`, `home/readonly_CLAUDE.md`,
+  `home/dot_gemini/readonly_GEMINI.md`, and
+  `home/exact_dot_agents/exact_playbooks/exact_git/workflow.md`.
+
 Shared runtime verification rule:
 
 - For "is this correctly set up / working / actually being used" questions, the

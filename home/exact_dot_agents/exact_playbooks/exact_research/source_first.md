@@ -62,7 +62,7 @@ If the target is the default branch:
 
 - `git fetch --prune --tags`
 - `git checkout <default-branch>`
-- `git pull --ff-only`
+- `git merge --ff-only origin/<default-branch>`
 
 If you don't know the default branch:
 
@@ -99,7 +99,9 @@ Use web fetches for:
 ## Reuse rule
 
 Keep the `/tmp/agent-src/...` clone around for reuse unless cleanup is
-explicitly requested. Always `git fetch` / `git pull` before relying on it.
+explicitly requested. Always run `git fetch --prune --tags` before relying on
+it. Do not run `git pull` unless the user explicitly asks to update a local
+tracking branch.
 
 Output:
 

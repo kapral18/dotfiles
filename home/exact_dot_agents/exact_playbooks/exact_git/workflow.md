@@ -29,13 +29,27 @@ First actions:
 Safety protocol:
 
 - never change git config unless explicitly requested
-- never run destructive/irreversible commands (hard resets, force pushes) unless explicitly requested
+- never run destructive/irreversible commands (hard resets, plain `--force`
+  pushes) unless explicitly requested
 - never bypass hooks (`--no-verify`, etc.) unless explicitly requested
 
 Approvals:
 
 - always get explicit approval before `git commit`
 - always get explicit approval before `git push`
+
+Push policy (mandatory):
+
+- interpret a user request to "push" as explicit approval for
+  `git push --force-with-lease`
+- prefer explicit remote/branch in the restated command (example:
+  `git push --force-with-lease origin <branch>`)
+- if upstream is missing, `git push --force-with-lease -u <remote> <branch>`
+  is allowed (still requires approval)
+- never run `git pull`, `git pull --rebase`, `git rebase <remote>/<branch>`,
+  or `git merge <remote>/<branch>` automatically before pushing
+- if push fails due to divergence/non-fast-forward/lease checks, stop and ask
+  for user direction; do not reconcile on your own
 
 Commit quality:
 
@@ -53,7 +67,6 @@ Branching:
 - follow repo/team branch naming if one exists; otherwise default to
   `<type>/<scope>/<kebab-description>` (example:
   `chore/opencode/update-sop-wording`)
-- if upstream is missing, it is OK to set it with `git push -u` (still requires approval)
 
 Merge policy:
 

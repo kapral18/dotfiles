@@ -96,7 +96,8 @@ training-memory guesses for facts.
 - Default approach:
   - identify the canonical repo with one small query (prefer `gh` / GitHub)
   - clone into `/tmp` (reuse the clone if it already exists)
-  - **pull latest before reusing** (`git fetch` / `git pull`)
+  - refresh remote refs before reusing (`git fetch --prune --tags`);
+    do not run `git pull` unless explicitly requested
   - use local code search (`rg`, file reads, `git log`) to answer the question
   - only fall back to web fetches for non-code artifacts (docs, issues, release
     notes) or when source inspection can't answer the question
@@ -234,6 +235,18 @@ been carried through to the required stopping point.
    the plan.
 5. **Execute + validate:** After confirmation, implement and validate against
    the acceptance criteria.
+
+### 3.0 Git Push Safety (No Auto-Reconcile)
+
+When the user asks to "push" changes:
+
+- treat that as explicit approval for `git push --force-with-lease`
+- never run `git pull`, `git pull --rebase`, `git rebase <remote>/<branch>`,
+  or `git merge <remote>/<branch>` automatically before pushing
+- if push is rejected (including non-fast-forward, lease failure, or diverged
+  history), stop immediately and ask the user how to proceed
+- do not reconcile branch history (pull/rebase/merge) unless the user
+  explicitly asks for that exact action
 
 ### 3.1 When Repeated Attempts Fail (Requirements Reset Interview)
 
