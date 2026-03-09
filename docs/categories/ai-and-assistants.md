@@ -24,6 +24,8 @@ Shared SOP handling rules:
 - "Questions" is scoped to information-seeking asks. Requests phrased as
   questions still count as action requests when the user is asking for
   investigation, verification, or edits.
+- A mandatory compatibility gate runs before edits; see the SOP entrypoints for
+  the exact classification, decision table, and summary-line format.
 - If uncertainty remains after local inspection, probes, and any required
   playbooks, ask one direct fork-closing question.
 

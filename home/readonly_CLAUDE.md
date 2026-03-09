@@ -40,14 +40,25 @@ higher-priority instruction and surface the conflict.
 - Answer information-seeking questions before acting.
   Requests phrased as questions still count as action requests when the user is
   asking you to investigate, verify, or change something.
-- Do not introduce NEW backwards-compatibility / legacy support OR any new
-  references/comments/language about it (shims, wrappers, redirects, aliases,
-  deprecation paths, “deprecated”, “old name still works”, “legacy”, etc.)
-  unless the user explicitly asks. If a compatibility path already exists in the
-  current behavior, keep it working unless the user explicitly asks to remove or
-  change it. Prefer direct edits that update all references/usages; if you can’t
-  update everything safely, stop and ask instead of adding new compatibility
-  layers or deprecation notes.
+- Apply the mandatory Compatibility Gate in `2.0` before edits.
+
+## 2.0 Compatibility Gate (Mandatory)
+
+Before any edit, perform and state a compatibility-impact classification.
+
+- Classification values:
+  `none` | `removed (requested)` | `kept existing (requested)`.
+- If the plan would add a new compatibility/legacy path and the user did not
+  explicitly request it, stop and revise the plan to a direct update with no
+  shim/alias/wrapper/deprecation path.
+- Decision table:
+  - User asks to simplify/remove/replace old behavior -> remove the existing
+    compatibility path; do not add a new one.
+  - User asks to preserve old behavior -> keep the existing compatibility path;
+    do not add a new one.
+  - User gives no compatibility instruction -> do not add compatibility paths.
+- Every implementation summary must include this line:
+  `Compatibility impact: none | removed (requested) | kept existing (requested)`
 
 ## 2.1 External Truth (No Guessing)
 

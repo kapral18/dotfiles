@@ -16,7 +16,10 @@ for arg in "$@"; do
 done
 
 if [ "$refresh" -eq 1 ] && [ -x "$update_cmd" ]; then
-  "$update_cmd" --force --quiet >/dev/null 2>&1 || true
+  (
+    "$update_cmd" --force --quiet --quick-only >/dev/null 2>&1 || true
+    "$update_cmd" --force --quiet >/dev/null 2>&1 || true
+  ) >/dev/null 2>&1 &
 fi
 
 if [ ! -x "$items_cmd" ]; then
@@ -112,6 +115,13 @@ if not base_out:
     sys.exit(0)
 
 lines = [l.rstrip("\n") for l in base_out.splitlines() if l.rstrip("\n")]
+
+# Large cache snapshots should stay responsive: keep the precomputed cache
+# order instead of doing an expensive full regroup/sort pass here.
+if len(lines) > 50000:
+    for line in lines:
+        print(line)
+    sys.exit(0)
 
 KIND_PRIO = {"session": 3, "worktree": 2, "dir": 1}
 DEFAULT_BRANCHES = {"main", "master", "trunk", "develop", "dev"}
@@ -444,8 +454,17 @@ for rank in sorted(set(orphan_by_rank.keys()).difference(ranks_with_sessions)):
 for line in other_rows:
     print(line)
 
-# 5. All directories at the end (still naturally grouped by scan root/prefix/path).
-all_dirs_sorted = sorted(dir_rows, key=dir_sort_key)
+# 5. All directories at the end, but prefer scan-root dirs before descendants
+# within the same rank so queries like `code`/`work` surface the root first.
+def final_dir_sort_key(line: str):
+    parts = line.split("\t")
+    p = parts[2] if len(parts) >= 3 else ""
+    return (
+        0 if p in scan_roots else 1,
+        *dir_sort_key(line),
+    )
+
+all_dirs_sorted = sorted(dir_rows, key=final_dir_sort_key)
 for line in all_dirs_sorted:
     print(line)
 PY

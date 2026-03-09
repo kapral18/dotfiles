@@ -319,6 +319,14 @@ build_cache_refreshing_sessions_preserving_others() {
   fi
 }
 
+sanitize_rows() {
+  local src="$1"
+  local out="$2"
+  [ -f "$src" ] || return 1
+  awk -F $'\t' 'NF>=5 { print }' "$src" 2>/dev/null >"$out" || true
+  [ -s "$out" ]
+}
+
 tmp_quick="$(mktemp -t pick_session_items.quick.XXXXXX)"
 tmp_full="$(mktemp -t pick_session_items.full.XXXXXX)"
 tmp_sessions="$(mktemp -t pick_session_items.sessions.XXXXXX)"
@@ -380,10 +388,42 @@ else
     fi
   fi
 
+  # Stream progressively-complete snapshots from the full scan into cache while
+  # index generation is still running. This keeps picker refresh responsive:
+  # fzf always reads the latest cache snapshot without waiting for scan end.
+  last_stream_size=-1
+  while kill -0 "$pid_full" 2>/dev/null; do
+    if [ -s "$tmp_full" ]; then
+      cur_size="$(wc -c <"$tmp_full" 2>/dev/null || echo 0)"
+      case "$cur_size" in
+      '' | *[!0-9]*) cur_size=0 ;;
+      esac
+      if [ "$cur_size" -gt 0 ] && [ "$cur_size" -ne "$last_stream_size" ]; then
+        if sanitize_rows "$tmp_full" "$tmp_sessions"; then
+          # Merge partial full-scan rows with current cache so in-flight
+          # results do not drop already-known dirs/worktrees/sessions.
+          if [ -f "$cache_file" ]; then
+            build_cache_refreshing_sessions_preserving_others "$tmp_sessions" "$tmp_combined" || true
+            if [ -s "$tmp_combined" ]; then
+              publish_cache_from "$tmp_combined" || true
+            else
+              publish_cache_from "$tmp_sessions" || true
+            fi
+          else
+            publish_cache_from "$tmp_sessions" || true
+          fi
+          quick_published=1
+        fi
+        last_stream_size="$cur_size"
+      fi
+    fi
+    sleep 0.2
+  done
+
   if wait "$pid_full"; then
     full_ok=1
-    if [ -s "$tmp_full" ]; then
-      publish_cache_from "$tmp_full" || true
+    if sanitize_rows "$tmp_full" "$tmp_sessions"; then
+      publish_cache_from "$tmp_sessions" || true
     elif [ "$quick_published" -eq 0 ] && [ "$quick_ok" -eq 1 ] && [ -s "$tmp_quick" ]; then
       publish_cache_from "$tmp_quick" || true
     fi

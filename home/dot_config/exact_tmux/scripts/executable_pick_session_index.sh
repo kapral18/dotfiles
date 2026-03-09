@@ -21,6 +21,38 @@ tmux_opt() {
 DIR_ICON_COLORED=$'\033[38;5;75m\033[0m'
 DIR_PATH_COLOR_PREFIX=$'\033[38;5;110m'
 ANSI_RESET=$'\033[0m'
+DEFAULT_PICK_SESSION_DIR_EXCLUDE_FILE="$HOME/.config/tmux/pick_session_dir_exclude.txt"
+
+normalize_path_opt() {
+  local p="${1:-}"
+  case "$p" in
+  "~") printf '%s\n' "$HOME" ;;
+  "~/"*) printf '%s\n' "$HOME/${p#"~/"}" ;;
+  *) printf '%s\n' "$p" ;;
+  esac
+}
+
+exclude_file_to_csv() {
+  local file_path="${1:-}"
+  [ -n "$file_path" ] || return 0
+  [ -f "$file_path" ] || return 0
+  awk '
+    {
+      sub(/\r$/, "", $0)
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
+      if ($0 == "" || $0 ~ /^#/) next
+      print $0
+    }
+  ' "$file_path" | paste -sd, -
+}
+
+pick_session_dir_exclude() {
+  local file_opt file_csv
+  file_opt="$(tmux_opt '@pick_session_dir_exclude_file' "$DEFAULT_PICK_SESSION_DIR_EXCLUDE_FILE")"
+  file_opt="$(normalize_path_opt "$file_opt")"
+  file_csv="$(exclude_file_to_csv "$file_opt")"
+  printf '%s\n' "$file_csv"
+}
 
 tildefy_to_reply() {
   local p="$1"
@@ -53,7 +85,7 @@ emit_home_dirs() {
   local max_depth exclude_list include_hidden
   local exclude_file="${1:-}"
   max_depth="$(tmux_opt '@pick_session_dir_max_depth' '4')"
-  exclude_list="$(tmux_opt '@pick_session_dir_exclude' '.git,.git/*,.git/**,.cache,.cache/*,.cache/**,.bazel-cache,.bazel-cache/*,.bazel-cache/**,.amp,.amp/*,.amp/**,Library,Library/*,Library/**,.gradle,.gradle/*,.gradle/**,.npm,.npm/*,.npm/**,.pnpm-store,.pnpm-store/*,.pnpm-store/**,node_modules,bazel-*,dist,build,out,target,__pycache__,.pytest_cache,.mypy_cache,.ruff_cache,.tox,.venv,venv,.terraform,.terragrunt-cache')"
+  exclude_list="$(pick_session_dir_exclude)"
   include_hidden="$(tmux_opt '@pick_session_dir_include_hidden' 'on')"
 
   declare -A exclude_exact=()
@@ -132,7 +164,7 @@ emit_home_dirs_seeded() {
   local root="$HOME"
   local exclude_list include_hidden
   local exclude_file="${1:-}"
-  exclude_list="$(tmux_opt '@pick_session_dir_exclude' '.git,.git/*,.git/**,.cache,.cache/*,.cache/**,.bazel-cache,.bazel-cache/*,.bazel-cache/**,.amp,.amp/*,.amp/**,Library,Library/*,Library/**,.gradle,.gradle/*,.gradle/**,.npm,.npm/*,.npm/**,.pnpm-store,.pnpm-store/*,.pnpm-store/**,node_modules,bazel-*,dist,build,out,target,__pycache__,.pytest_cache,.mypy_cache,.ruff_cache,.tox,.venv,venv,.terraform,.terragrunt-cache')"
+  exclude_list="$(pick_session_dir_exclude)"
   include_hidden="$(tmux_opt '@pick_session_dir_include_hidden' 'on')"
 
   declare -A exclude_exact=()
@@ -230,16 +262,14 @@ emit_sessions_worktrees_and_dirs() {
   export PICK_SESSION_QUICK
   export PICK_SESSION_SESSIONS_ONLY
   export PICK_SESSION_EXCLUDE_LIST
-  export PICK_SESSION_DIR_MAX_DEPTH
   export PICK_SESSION_DIR_INCLUDE_HIDDEN
   export PICK_SESSION_GITHUB_LOGIN
 
   PICK_SESSION_SCAN_ROOTS="$(tmux_opt '@pick_session_worktree_scan_roots' "$HOME/work,$HOME/code,$HOME/.backport/repositories,$HOME/.local/share")"
   PICK_SESSION_SCAN_DEPTH="$(tmux_opt '@pick_session_worktree_scan_depth' '6')"
-  PICK_SESSION_EXCLUDE_LIST="$(tmux_opt '@pick_session_dir_exclude' '.git,.git/*,.git/**,.cache,.cache/*,.cache/**,.bazel-cache,.bazel-cache/*,.bazel-cache/**,.amp,.amp/*,.amp/**,Library,Library/*,Library/**,.gradle,.gradle/*,.gradle/**,.npm,.npm/*,.npm/**,.pnpm-store,.pnpm-store/*,.pnpm-store/**,node_modules,bazel-*,dist,build,out,target,__pycache__,.pytest_cache,.mypy_cache,.ruff_cache,.tox,.venv,venv,.terraform,.terragrunt-cache')"
+  PICK_SESSION_EXCLUDE_LIST="$(pick_session_dir_exclude)"
   PICK_SESSION_QUICK="$quick_mode"
   PICK_SESSION_SESSIONS_ONLY="$sessions_only"
-  PICK_SESSION_DIR_MAX_DEPTH="$(tmux_opt '@pick_session_dir_max_depth' '4')"
   PICK_SESSION_DIR_INCLUDE_HIDDEN="$(tmux_opt '@pick_session_dir_include_hidden' 'on')"
   PICK_SESSION_GITHUB_LOGIN="$(tmux_opt '@pick_session_github_login' '')"
 
@@ -577,12 +607,22 @@ def scan_for_git_repos(roots, depth, exclude_list):
             accepted.append(wt_dir)
     return accepted
 
-def get_home_dirs(root, depth, exclude_list, include_hidden):
-    fd_args = ["fd", "--type", "d", "--max-depth", str(depth), "--absolute-path"]
+HOME_DIR_SCAN_DEPTH = 6
+
+def get_home_dirs(root, exclude_list, include_hidden, stop_prefixes=None):
+    fd_args = ["fd", "--type", "d", "--max-depth", str(HOME_DIR_SCAN_DEPTH), "--absolute-path"]
     if include_hidden in ("1", "true", "yes", "on"): fd_args.append("--hidden")
     for ex in exclude_list.split(","):
         ex = ex.strip()
         if ex: fd_args.extend(["--exclude", ex])
+    if stop_prefixes:
+        for sp in sorted(set(stop_prefixes)):
+            if not sp:
+                continue
+            if sp == root or sp.startswith(root + os.sep):
+                rel = os.path.relpath(sp, root).replace(os.sep, "/").strip("/")
+                if rel and rel != ".":
+                    fd_args.extend(["--exclude", rel])
 
     out = subprocess.run(fd_args + [".", root], check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True).stdout
     return [line.strip() for line in out.splitlines() if line.strip()]
@@ -590,10 +630,15 @@ def get_home_dirs(root, depth, exclude_list, include_hidden):
 scan_roots_raw = os.environ.get("PICK_SESSION_SCAN_ROOTS", "").strip()
 scan_roots = [resolve_path(os.path.expanduser(x.strip())) for x in scan_roots_raw.split(",") if x.strip()]
 scan_roots = [r for r in scan_roots if os.path.isdir(r)]
+home_scan_root = resolve_path(os.path.expanduser("~"))
+if home_scan_root and os.path.isdir(home_scan_root) and home_scan_root not in scan_roots:
+    scan_roots.append(home_scan_root)
 scan_roots_set = set(scan_roots)
 quick = os.environ.get("PICK_SESSION_QUICK", "").lower() in ("1", "true", "yes", "on")
 sessions_only = os.environ.get("PICK_SESSION_SESSIONS_ONLY", "").lower() in ("1", "true", "yes", "on")
 exclude_list_raw = os.environ.get("PICK_SESSION_EXCLUDE_LIST", "").strip()
+
+dir_include_hidden = os.environ.get("PICK_SESSION_DIR_INCLUDE_HIDDEN", "on").lower()
 
 groups = {}
 def ensure_group(repo_id: str, root_checkout: str, repo_path: str):
@@ -670,19 +715,60 @@ emit_sessions_and_worktrees()
 
 # 5. Directories
 if not sessions_only:
-    # Keep directory output intentionally small and stable:
-    # - emit wrapper directories for detected repo roots
-    # - plus $HOME
+    # Directory output combines:
+    # - configured scan roots (e.g. ~/work, ~/code)
+    # - wrapper directories for detected repos
+    # - depth-limited home directories (fd scan under $HOME)
     wrapper_dirs = set()
     for rid in groups.keys():
         rp = (groups.get(rid, {}) or {}).get("repo_path", "")
         if rp:
             wrapper_dirs.add(resolve_path(rp))
+    for r in scan_roots:
+        if r:
+            wrapper_dirs.add(resolve_path(r))
+    home_worktree_prefixes = []
+    home_worktree_seen = set()
+    for wt in exclude_worktree_roots:
+        if not wt:
+            continue
+        rwt = resolve_path(wt)
+        if not (rwt == home or rwt.startswith(home + os.sep)):
+            continue
+        if rwt in home_worktree_seen:
+            continue
+        home_worktree_seen.add(rwt)
+        home_worktree_prefixes.append(rwt)
+    home_worktree_prefixes.sort()
+    if shutil.which("fd"):
+        for p in get_home_dirs(home, exclude_list_raw, dir_include_hidden, home_worktree_prefixes):
+            rp = resolve_path(p)
+            if rp:
+                wrapper_dirs.add(rp)
     wrapper_dirs.add(resolve_path(home))
+    ordered_dirs = []
+    seen_dirs = set()
+    for p in scan_roots:
+        rp = resolve_path(p) if p else ""
+        if rp and rp in wrapper_dirs and rp not in seen_dirs:
+            ordered_dirs.append(rp)
+            seen_dirs.add(rp)
     for p in sorted(wrapper_dirs):
+        if p and p not in seen_dirs:
+            ordered_dirs.append(p)
+            seen_dirs.add(p)
+    for p in ordered_dirs:
         if not p or p in exclude_worktree_roots:
             continue
-        mk = match_key(Path(p).name, tildefy(p), p)
+        if any(p == wt or p.startswith(wt + os.sep) for wt in home_worktree_prefixes):
+            continue
+        base = Path(p).name
+        if p in scan_roots_set:
+            # Repeat the basename for scan roots so plain queries like `code` or
+            # `work` rank the root above descendants under that tree.
+            mk = match_key(base, base, base + "/", tildefy(p), p)
+        else:
+            mk = match_key(base, tildefy(p), p)
         print(f"{display_dir_entry(tildefy(p))}\tdir\t{p}\t\t\t{mk}")
 PY
 }

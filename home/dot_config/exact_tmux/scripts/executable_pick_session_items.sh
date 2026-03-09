@@ -44,6 +44,13 @@ case "$session_tombstone_live_grace_s" in
 '' | *[!0-9]*) session_tombstone_live_grace_s=2 ;;
 esac
 
+# Fast path for large snapshots: when there are no pending removals or
+# mutation tombstones, emit the cache as-is and avoid expensive rehydration.
+if [ "$cache_was_present" -eq 1 ] && [ ! -s "$mutation_file" ] && [ ! -s "$pending_file" ]; then
+  cat "$cache_file"
+  exit 0
+fi
+
 if [ "$cache_was_present" -eq 1 ]; then
   cache_has_dir_rows=0
   if awk -F $'\t' 'NF>=5 && $2 == "dir" { found=1; exit } END { exit(found?0:1) }' "$cache_file" 2>/dev/null; then

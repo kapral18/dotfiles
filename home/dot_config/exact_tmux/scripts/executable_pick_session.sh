@@ -213,7 +213,7 @@ rm_async_cmd="tmux run-shell -b \"$(printf %q "$rm_cmd") $(printf %q "$sel_tmp")
 
 fzf_args="$(tmux_opt '@pick_session_fzf_options' '')"
 fzf_prompt="$(tmux_opt '@pick_session_fzf_prompt' '󰍉  ')"
-fzf_ghost="$(tmux_opt '@pick_session_fzf_ghost' 'filter sessions, worktrees, dirs')"
+fzf_ghost="$(tmux_opt '@pick_session_fzf_ghost' 'filter: kibana, code, work')"
 fzf_color="$(tmux_opt '@pick_session_fzf_color' 'prompt:111,query:223,input-bg:-1,input-fg:252,ghost:240,header:244,spinner:110,info:244,pointer:81,marker:214')"
 fzf_ui_args=()
 [ -n "$fzf_prompt" ] && fzf_ui_args+=(--prompt "$fzf_prompt")
@@ -237,11 +237,12 @@ else
   pick="$(
     FZF_DEFAULT_OPTS="" "$filter_cmd" | fzf \
       --ansi \
+      --scheme=path \
       --height=100% \
       --listen \
       --filepath-word \
       --reverse \
-      --tiebreak=index \
+      --tiebreak=begin,length,index \
       --delimiter=$'\t' \
       --nth=1,6 \
       --with-nth=1 \
