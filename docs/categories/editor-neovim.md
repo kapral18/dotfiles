@@ -161,6 +161,15 @@ Git:
 - `[h` and `]h` prev/next hunk
 - `leader-ghp` preview hunk inline
 
+GitHub (Octo):
+
+- `leader-goa` open Octo actions
+- `leader-goil` / `leader-gois` list/search issues
+- `leader-gopl` / `leader-gops` list/search pull requests
+- `leader-godl` list discussions
+- `leader-gonl` list notifications
+- `leader-gos` run GitHub search in Octo
+
 ## Search And Navigation Workflows
 
 Repo search is centered around `fzf-lua`:

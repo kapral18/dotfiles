@@ -164,6 +164,56 @@ outer_tmux_fmt_for_client() {
   outer_tmux display-message -p -F "${fmt}" 2>/dev/null || true
 }
 
+shell_join_quoted() {
+  local out="" arg
+  for arg in "$@"; do
+    out+="$(printf '%q' "$arg") "
+  done
+  printf '%s' "${out% }"
+}
+
+popup_run_self() {
+  local start_dir="$1"
+  local title="$2"
+  shift 2
+
+  local cmd
+  cmd="$(shell_join_quoted env \
+    OUTER_TMUX_SOCKET="${OUTER_TMUX_SOCKET:-}" \
+    OUTER_TMUX_CLIENT="${OUTER_TMUX_CLIENT:-}" \
+    bash "$0" "$@")"
+
+  tmux display-popup -E -w 80% -h 80% -d "$start_dir" -T "$title" "$cmd"
+}
+
+run_focus_in_popup() {
+  local pr_number="$1"
+  if ! ,w prs --focus "$pr_number"; then
+    echo
+    echo "Failed. Press any key to close."
+    read -r -n 1
+    return 1
+  fi
+}
+
+open_octo_review_window() {
+  local review_cwd="$1"
+  local pr_number="$2"
+  local repo_name="$3"
+  local target_session nvim_cmd
+
+  target_session="$(outer_tmux_fmt_for_client '#{session_name}')"
+  nvim_cmd="$(shell_join_quoted \
+    nvim "$review_cwd/.git" \
+    "+silent! sleep 200m | Octo pr edit ${pr_number} ${repo_name}")"
+
+  if [ -n "$target_session" ]; then
+    outer_tmux new-window -t "${target_session}:" -c "$review_cwd" -n "octo#${pr_number}" "$nvim_cmd"
+  else
+    outer_tmux new-window -c "$review_cwd" -n "octo#${pr_number}" "$nvim_cmd"
+  fi
+}
+
 action="${1:-}"
 repo_name="${2:-}"
 
@@ -202,8 +252,7 @@ focus)
   require_cmd gh
   require_cmd ,w
   if [ "${GH_DASH_POPUP:-0}" = "1" ] && [ -n "${OUTER_TMUX_SOCKET:-}" ]; then
-    tmux display-popup -E -w 80% -h 80% -d "$wt" -T " Worktree: PR #$pr_number " \
-      "env OUTER_TMUX_SOCKET=\"${OUTER_TMUX_SOCKET}\" OUTER_TMUX_CLIENT=\"${OUTER_TMUX_CLIENT:-}\" bash -lc ',w prs --focus \"$pr_number\" || { echo; echo \"Failed. Press any key to close.\"; read -n 1; }'"
+    popup_run_self "$wt" " Worktree: PR #$pr_number " __popup_focus "$repo_name" "$repo_path" "$pr_number"
   else
     ,w prs -q --focus "$pr_number"
   fi
@@ -227,36 +276,28 @@ octo_review)
   require_cmd nvim
 
   if [ "${GH_DASH_POPUP:-0}" = "1" ] && [ -n "${OUTER_TMUX_SOCKET:-}" ]; then
-    tmux display-popup -E -w 80% -h 80% -d "$wt" -T " Worktree: PR #$pr_number " \
-      "env OUTER_TMUX_SOCKET=\"${OUTER_TMUX_SOCKET}\" OUTER_TMUX_CLIENT=\"${OUTER_TMUX_CLIENT:-}\" \
-       bash -lc '
-         ,w prs --focus \"$pr_number\" || { echo; echo \"Failed. Press any key to close.\"; read -n 1; exit 1; }
-         review_cwd=\"\$(tmux -S \"${OUTER_TMUX_SOCKET}\" display-message -p -c \"${OUTER_TMUX_CLIENT}\" -F \"#{session_path}\" 2>/dev/null || true)\"
-         if [ -z \"\$review_cwd\" ] || [ ! -d \"\$review_cwd\" ]; then
-           review_cwd=\"$wt\"
-         fi
-         target_session=\"\$(tmux -S \"${OUTER_TMUX_SOCKET}\" display-message -p -c \"${OUTER_TMUX_CLIENT}\" -F \"#{session_name}\" 2>/dev/null || true)\"
-         if [ -n \"\$target_session\" ]; then
-           tmux -S \"${OUTER_TMUX_SOCKET}\" new-window -t \"\${target_session}:\" -c \"\$review_cwd\" -n \"octo#${pr_number}\" \"nvim +\\\"Octo pr edit ${pr_number}\\\" +\\\"Octo review\\\"\"
-         else
-           tmux -S \"${OUTER_TMUX_SOCKET}\" new-window -c \"\$review_cwd\" -n \"octo#${pr_number}\" \"nvim +\\\"Octo pr edit ${pr_number}\\\" +\\\"Octo review\\\"\"
-         fi
-       '"
+    popup_run_self "$wt" " Worktree: PR #$pr_number " __popup_octo_review "$repo_name" "$repo_path" "$pr_number"
   else
     ,w prs -q --focus "$pr_number"
-
-    review_cwd="$(outer_tmux_fmt_for_client '#{session_path}')"
-    if [ -z "$review_cwd" ] || [ ! -d "$review_cwd" ]; then
-      review_cwd="$wt"
-    fi
-
-    target_session="$(outer_tmux_fmt_for_client '#{session_name}')"
-    if [ -n "$target_session" ]; then
-      outer_tmux new-window -t "${target_session}:" -c "$review_cwd" -n "octo#${pr_number}" "nvim +\"Octo pr edit ${pr_number}\" +\"Octo review\""
-    else
-      outer_tmux new-window -c "$review_cwd" -n "octo#${pr_number}" "nvim +\"Octo pr edit ${pr_number}\" +\"Octo review\""
-    fi
+    open_octo_review_window "$wt" "$pr_number" "$repo_name"
   fi
+  ;;
+
+__popup_focus)
+  cd "$wt"
+  require_cmd gh
+  require_cmd ,w
+  run_focus_in_popup "$pr_number"
+  ;;
+
+__popup_octo_review)
+  cd "$wt"
+  require_tmux
+  require_cmd gh
+  require_cmd ,w
+  require_cmd nvim
+  run_focus_in_popup "$pr_number"
+  open_octo_review_window "$wt" "$pr_number" "$repo_name"
   ;;
 
 *)

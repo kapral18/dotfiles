@@ -40,9 +40,14 @@ return {
     keys = {
       { "<leader>go", "", desc = "+octo" },
       { "<leader>goa", "<CMD>Octo actions<CR>", desc = "List Actions (Octo)" },
+      { "<leader>godl", "<CMD>Octo discussion list<CR>", desc = "List Discussions (Octo)" },
+      { "<leader>gonl", "<CMD>Octo notification list<CR>", desc = "List Notifications (Octo)" },
+      { "<leader>gos", "<CMD>Octo search<CR>", desc = "Search GitHub (Octo)" },
       { "<leader>gop", "", desc = "PR Actions (Octo)" },
+      { "<leader>gopl", "<CMD>Octo pr list<CR>", desc = "List PR (Octo)" },
       { "<leader>gops", "<CMD>Octo pr search<CR>", desc = "Search PR (Octo)" },
       { "<leader>goi", "", desc = "Issue Actions (Octo)" },
+      { "<leader>goil", "<CMD>Octo issue list<CR>", desc = "List Issues (Octo)" },
       { "<leader>gois", "<CMD>Octo issue search<CR>", desc = "Search Issues (Octo)" },
 
       { "<localleader>a", "", desc = "+assignee (Octo)", ft = "octo" },
@@ -55,6 +60,8 @@ return {
       { "<localleader>ps", "", desc = "+squash (Octo)", ft = "octo" },
       { "<localleader>v", "", desc = "+review (Octo)", ft = "octo" },
       { "<localleader>g", "", desc = "+goto_issue (Octo)", ft = "octo" },
+      { "<localleader>n", "", desc = "+notification (Octo)", ft = "octo" },
+      { "<localleader>s", "", desc = "+suggestion (Octo)", ft = "octo" },
 
       { "@", "@<C-x><C-o>", mode = "i", ft = "octo", silent = true },
       { "#", "#<C-x><C-o>", mode = "i", ft = "octo", silent = true },

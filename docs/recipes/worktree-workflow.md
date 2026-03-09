@@ -44,7 +44,7 @@ Notes:
 You can also use these shortcuts directly from `gh-dash` when viewing PRs:
 - `ctrl+t`: Create a worktree for the selected PR in the background (log: `${XDG_CACHE_HOME:-~/.cache}/gh-dash/w_prs_<PR>.log`).
 - `C` or `Space`: Create/switch to the PR worktree and focus its tmux session (`\,w prs --focus`).
-- `b`: Create/switch to the PR worktree, focus tmux, and open Octo review in a new tmux window.
+- `b`: Create/switch to the PR worktree, focus tmux, and open the PR in Octo (`Octo pr edit <number> <owner/repo>`) in a new tmux window rooted at that PR worktree.
 - If the repo does not exist locally yet, PR actions bootstrap it first with `,gh-tfork <owner/repo>` and then continue.
 - In the persistent `gh-dash` popup, sync PR actions (`C`/`Space`/`b`) show bootstrap progress in an overlay popup instead of replacing the `gh-dash` UI.
 - Bootstrap location follows conventions: `elastic/*` in `~/work/<repo>`, everything else in `~/code/<repo>`.

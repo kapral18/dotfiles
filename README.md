@@ -387,7 +387,7 @@ Result: Automatic identity switching based on directory, no private keys on disk
 
 - Separate views for work/personal repos
 - Custom filters and layouts
-- **Deep Tmux & Worktree Integration:** Press `prefix + G` to open a persistent `gh-dash` popup. From there, hit `Space` or `b` on any PR/Issue to instantly clone the repo (if missing), create a linked git worktree, and switch your active Tmux session to it seamlessly.
+- **Deep Tmux & Worktree Integration:** Press `prefix + G` to open a persistent `gh-dash` popup. From there, hit `Space` on PRs/Issues to clone (if missing), create/switch a linked worktree, and focus tmux; hit `b` on PRs to open the PR in Octo from the PR worktree.
 - Config: `home/dot_config/exact_gh-dash/config.yml`
 - GitHub CLI (`gh`) config: `home/dot_config/exact_private_gh/`
 
