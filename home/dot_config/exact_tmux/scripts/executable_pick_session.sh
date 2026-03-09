@@ -193,6 +193,11 @@ if [ ! -x "$items_cmd" ]; then
   die "tmux: missing script: $items_cmd"
 fi
 
+open_items_cmd="$HOME/.config/tmux/scripts/pick_session_open_items.sh"
+if [ ! -x "$open_items_cmd" ]; then
+  open_items_cmd="$items_cmd"
+fi
+
 filter_cmd="$HOME/.config/tmux/scripts/pick_session_filter.sh"
 if [ ! -x "$filter_cmd" ]; then
   filter_cmd="$items_cmd"
@@ -206,6 +211,10 @@ primary_tmp="${cache_dir}/pick_session_fzf_primary.tsv"
 kill_cmd="$HOME/.config/tmux/scripts/pick_session_action_kill_sessions.sh"
 rm_cmd="$HOME/.config/tmux/scripts/pick_session_action_remove_worktrees.sh"
 live_refresh_cmd="$HOME/.config/tmux/scripts/pick_session_live_refresh.sh"
+on_start_cmd="$HOME/.config/tmux/scripts/pick_session_on_start.sh"
+if [ ! -x "$on_start_cmd" ]; then
+  on_start_cmd=":"
+fi
 hide_selected_cmd="$HOME/.config/tmux/scripts/pick_session_items_hide_selected.sh"
 update_cmd="$HOME/.config/tmux/scripts/pick_session_index_update.sh"
 kill_async_cmd="tmux run-shell -b \"$(printf %q "$kill_cmd") $(printf %q "$sel_tmp")\""
@@ -221,7 +230,6 @@ fzf_ui_args=()
 [ -n "$fzf_color" ] && fzf_ui_args+=(--color "$fzf_color")
 query="$*"
 
-live_refresh_on_start="$(tmux_opt '@pick_session_live_refresh_on_start' 'off')"
 help_cmd="$HOME/.config/tmux/scripts/pick_session_keyhelp.sh"
 
 # Avoid showing a stale list that re-sorts mid-picker. A quick-only refresh is
@@ -235,7 +243,7 @@ else
   rm -f "$primary_tmp" 2>/dev/null || true
   # shellcheck disable=SC2086
   pick="$(
-    FZF_DEFAULT_OPTS="" "$filter_cmd" | fzf \
+    FZF_DEFAULT_OPTS="" "$open_items_cmd" | fzf \
       --ansi \
       --scheme=path \
       --height=100% \
@@ -251,8 +259,8 @@ else
       --query "$query" \
       --preview "$help_cmd" \
       --preview-window 'down,80%,wrap,hidden,border-top' \
-      --bind "start:execute-silent:case $live_refresh_on_start in 1|true|yes|on) $live_refresh_cmd >/dev/null 2>&1 & ;; esac" \
-      --bind "ctrl-r:reload($filter_cmd --refresh)+clear-query" \
+      --bind "start:execute-silent:$on_start_cmd" \
+      --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+clear-query" \
       --bind "alt-r:execute-silent:$live_refresh_cmd --once --force >/dev/null 2>&1 &" \
       --bind "alt-j:page-down" \
       --bind "alt-k:page-up" \
@@ -564,6 +572,51 @@ worktree_root_dir_for_path() {
   else
     printf '%s\n' "$common_path"
   fi
+}
+
+has_linked_worktrees_for_root_checkout() {
+  local root_checkout="$1"
+  [ -n "$root_checkout" ] || return 1
+  root_checkout="$(resolve_path "$root_checkout")"
+  local wt_dir="$root_checkout/.git/worktrees"
+  [ -d "$wt_dir" ] || return 1
+  find "$wt_dir" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null | grep -q .
+}
+
+default_branch_for_root_checkout() {
+  local root_checkout="$1"
+  [ -n "$root_checkout" ] || return 1
+  root_checkout="$(resolve_path "$root_checkout")"
+  [ -d "$root_checkout" ] || return 1
+
+  local out remote branch cand
+  for remote in origin upstream; do
+    out="$(git -C "$root_checkout" symbolic-ref --quiet --short "refs/remotes/$remote/HEAD" 2>/dev/null || true)"
+    [ -n "$out" ] || continue
+    case "$out" in
+    "$remote"/*) branch="${out#"$remote"/}" ;;
+    */*) branch="${out#*/}" ;;
+    *) branch="$out" ;;
+    esac
+    case "${branch,,}" in
+    ".invalid" | "invalid" | "(invalid)" | "") ;;
+    *)
+      printf '%s\n' "$branch"
+      return 0
+      ;;
+    esac
+  done
+
+  for cand in main master trunk develop dev; do
+    if git -C "$root_checkout" show-ref --verify --quiet "refs/heads/$cand" 2>/dev/null ||
+      git -C "$root_checkout" show-ref --verify --quiet "refs/remotes/origin/$cand" 2>/dev/null ||
+      git -C "$root_checkout" show-ref --verify --quiet "refs/remotes/upstream/$cand" 2>/dev/null; then
+      printf '%s\n' "$cand"
+      return 0
+    fi
+  done
+  printf 'main\n'
+  return 0
 }
 
 is_default_branch_dir() {
@@ -878,7 +931,6 @@ while IFS= read -r _line; do
       branch="${branch%%|*}"
       ;;
     esac
-    branch="$(tmux_sanitize_session_name "$branch" 2>/dev/null || printf '%s' "$branch")"
     repo_id=""
     if [[ "$meta" == *"|repo="* ]]; then
       repo_id="${meta#*|repo=}"
@@ -898,6 +950,13 @@ while IFS= read -r _line; do
       wt_root="$(worktree_root_dir_for_path "$path" 2>/dev/null || true)"
     fi
     [ -n "$wt_root" ] || wt_root="$path"
+    if [ -z "$branch" ] && ! has_linked_worktrees_for_root_checkout "$wt_root"; then
+      branch="$(default_branch_for_root_checkout "$wt_root" 2>/dev/null || true)"
+    fi
+    case "${branch,,}" in
+    ".invalid" | "invalid" | "(invalid)") branch="" ;;
+    esac
+    branch="$(tmux_sanitize_session_name "$branch" 2>/dev/null || printf '%s' "$branch")"
     if [ -n "$branch" ] && [ -n "$repo_id" ]; then
       session_name="${repo_id}|${branch}"
     elif [ -n "$repo_id" ]; then

@@ -22,6 +22,9 @@ This setup ships a URL picker and a session/worktree picker designed to run insi
   `@pick_session_auto_rename_sessions` (default `off`),
   `@pick_session_worktree_scan_roots` (default `~/work,~/code,~/.backport/repositories,~/.local/share`), `@pick_session_worktree_scan_depth` (default `6`),
   `@pick_session_cache_ttl` (default `60`), `@pick_session_cache_wait_ms` (default `0`), `@pick_session_mutation_tombstone_ttl` (default `300`), `@pick_session_session_tombstone_live_grace_s` (default `2`),
+  `@pick_session_filter_passthrough_rows` (default `2000`; for caches at or above this row count, picker uses cache order directly and skips expensive regroup/sort),
+  `@pick_session_reorder_after_open` (default `on`; fallback when ordered snapshot is stale: apply grouped ordering in background),
+  `@pick_session_reorder_after_open_delay_ms` (default `180`; delay before the fallback one-shot background reorder reload),
   `@pick_session_live_refresh_on_start` (default `off`),
   `@pick_session_live_refresh_ttl` (default `20`), `@pick_session_live_refresh_interval_ms` (default `1500`), `@pick_session_live_refresh_start_delay_ms` (default `5000`),
   `@pick_session_live_refresh_pause_on_multi` (default `on`), `@pick_session_live_refresh_pause_on_query` (default `on`),
@@ -37,15 +40,19 @@ This setup ships a URL picker and a session/worktree picker designed to run insi
 - Excludes are file-backed (`@pick_session_dir_exclude_file`). The file is line-based (one glob per line, `#` comments allowed).
 - Directory rows intentionally stop at discovered worktree roots: once a folder is identified as a worktree/session path, nested subdirectories under it are not emitted as `dir` rows.
 - When the cache is empty, the picker falls back to tmux sessions + `zoxide` recent dirs (if installed) + `~`.
-- The picker output is pre-grouped and pre-sorted before it reaches `fzf`:
-  - session-backed repo/worktree groups are emitted first (sessions first within the group, then related worktrees)
-  - worktree-only groups come next
-  - all `dir` entries are emitted at the very end (still naturally clustered by scan root and path)
-- Picker open and `ctrl-r` refresh stay cache-first and non-blocking: refresh triggers a quick sessions snapshot and then a full background scan that progressively publishes cache snapshots as rows arrive.
+- Grouped/sorted ordering is produced by `pick_session_filter.sh`:
+  - session-backed repo/worktree groups first (sessions first within group, then related worktrees)
+  - worktree-only groups next
+  - `dir` entries at the end (still clustered by scan root and path)
+- `pick_session_index_update.sh` also maintains `~/.cache/tmux/pick_session_items_ordered.tsv` (precomputed ordered snapshot) in the background.
+- Picker open now prefers that ordered snapshot directly for instant + stable first paint.
+- If the ordered snapshot is missing/stale (for example cache/mutation/pending changed), open falls back to two-phase mode: immediate rows from `pick_session_items.sh`, then one background `reload(pick_session_filter.sh --force-order)`.
+- Picker `ctrl-r` refresh keeps grouped ordering (`pick_session_filter.sh --refresh --force-order`) while still triggering quick+full background cache refresh.
+- For very large caches, `pick_session_filter.sh` automatically falls back to passthrough mode (default threshold `2000` rows) so popup open latency stays low; tune with `@pick_session_filter_passthrough_rows`.
 - The picker uses fzf's native in-process filtering (no reload per keystroke) across the visible label and the hidden match key column, with `--scheme=path` and tie-breakers `begin,length,index` so path-root matches (for example `~/work`) outrank unrelated long-path text hits. Queries like `work/kibana main` match.
 - The picker de-duplicates rows by path: for the same path, it shows only one of `session` / `worktree` / `dir` (priority `session` → `worktree` → `dir`).
 - On `alt-x` remove, selecting a root checkout/worktree now hides all impacted rows immediately (sibling worktrees and matching sessions), instead of only hiding the single selected row while cleanup is still running.
-- Worktree-backed session names use a filesystem-derived identifier: the “repo” part is the home-relative wrapper/repo path (for example `work/kibana` or `.backport/repositories/elastic/kibana`) and the “branch” part is the wrapper-relative remainder path (for wrapper layouts created by `,w`). For remote-prefix wrappers, `<remote>/<branch...>` becomes `<remote>__<branch...>` for third-party remotes, but first-party owners (origin/upstream owner match or your own login) keep plain `<branch...>`.
+- Worktree-backed session names use a filesystem-derived identifier: the “repo” part is the home-relative wrapper/repo path (for example `work/kibana` or `.backport/repositories/elastic/kibana`) and the “branch” part is the wrapper-relative remainder path (for wrapper layouts created by `,w`). For singular checkouts (no linked worktrees), the branch token uses the repo default branch (origin/upstream HEAD, then common defaults, finally `main`) regardless of current checkout. For remote-prefix wrappers, `<remote>/<branch...>` becomes `<remote>__<branch...>` for third-party remotes, but first-party owners (origin/upstream owner match or your own login) keep plain `<branch...>`.
 - Session entries do not render `#{session_path}` in the visible label (filtering is focused on the session name).
 - Worktree discovery is filesystem-based: it scans configured roots for `.git` directories/files. The directory containing a `.git` directory is treated as a “root checkout”, and directories containing a `.git` file are treated as sibling worktrees. This avoids expensive `git worktree list` calls and prevents external tool worktrees outside scan roots from leaking into the picker.
 - When creating sessions from worktrees/dirs, names are sanitized to tmux-safe identifiers so tmux doesn’t silently rename them and break switching (for example branch names like `1.8` become `1_8`; slashes like `feat/foo` are preserved).

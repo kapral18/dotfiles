@@ -120,6 +120,14 @@ def resolve_path(p):
     except Exception:
         return p
 
+def normalize_branch_name(br: str) -> str:
+    br = (br or "").strip()
+    if not br:
+        return ""
+    if br.lower() in (".invalid", "invalid", "(invalid)"):
+        return ""
+    return br
+
 def gitdir_for_path(p: str) -> str:
     try:
         cur = Path(p)
@@ -152,12 +160,67 @@ def head_branch(gitdir: str) -> str:
     if head.startswith("ref:"):
         ref = head.split(":", 1)[1].strip()
         if ref.startswith("refs/heads/"):
-            return ref[len("refs/heads/") :]
+            return normalize_branch_name(ref[len("refs/heads/") :])
     return ""
+
+def has_linked_worktrees(gitdir: str) -> bool:
+    try:
+        wt_dir = Path(gitdir) / "worktrees"
+        if not wt_dir.is_dir():
+            return False
+        return any(True for _ in wt_dir.iterdir())
+    except Exception:
+        return False
+
+def default_branch_for_repo(repo_root: str) -> str:
+    repo_root = resolve_path(repo_root)
+    if not repo_root:
+        return ""
+    try:
+        import subprocess
+    except Exception:
+        return ""
+    for remote in ("origin", "upstream"):
+        try:
+            out = subprocess.run(
+                ["git", "-C", repo_root, "symbolic-ref", "--quiet", "--short", f"refs/remotes/{remote}/HEAD"],
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+            ).stdout.strip()
+        except Exception:
+            out = ""
+        if out:
+            if out.startswith(remote + "/"):
+                out = out[len(remote) + 1 :]
+            else:
+                out = out.split("/", 1)[-1]
+            out = normalize_branch_name(out)
+            if out:
+                return out
+    for cand in ("main", "master", "trunk", "develop", "dev"):
+        for ref in (f"refs/heads/{cand}", f"refs/remotes/origin/{cand}", f"refs/remotes/upstream/{cand}"):
+            try:
+                rc = subprocess.run(
+                    ["git", "-C", repo_root, "show-ref", "--verify", "--quiet", ref],
+                    check=False,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                ).returncode
+            except Exception:
+                rc = 1
+            if rc == 0:
+                return cand
+    return "main"
 
 def worktree_meta_for_path(p: str) -> str:
     gd = gitdir_for_path(p)
     br = head_branch(gd)
+    if gd and Path(gd).name == ".git" and not has_linked_worktrees(gd):
+        default_br = default_branch_for_repo(str(Path(gd).parent))
+        if default_br:
+            br = default_br
     return f"wt_root:{br}" if br else ""
 
 if pending_file and os.path.exists(pending_file):
@@ -293,6 +356,62 @@ def is_git_dir(p: str) -> bool:
         return False
 
 DEFAULT_BRANCH_DIRS = { "main", "master", "trunk", "develop", "dev" }
+DEFAULT_BRANCH_DIRS_ORDER = ("main", "master", "trunk", "develop", "dev")
+
+def normalize_branch_name(br: str) -> str:
+    br = (br or "").strip()
+    if not br:
+        return ""
+    if br.lower() in (".invalid", "invalid", "(invalid)"):
+        return ""
+    return br
+
+def has_linked_worktrees(gitdir: str) -> bool:
+    try:
+        wt_dir = Path(gitdir) / "worktrees"
+        if not wt_dir.is_dir():
+            return False
+        return any(True for _ in wt_dir.iterdir())
+    except Exception:
+        return False
+
+def default_branch_for_repo(repo_root: str) -> str:
+    repo_root = resolve_path(repo_root)
+    if not repo_root:
+        return ""
+    for remote in ("origin", "upstream"):
+        try:
+            out = subprocess.run(
+                ["git", "-C", repo_root, "symbolic-ref", "--quiet", "--short", f"refs/remotes/{remote}/HEAD"],
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+            ).stdout.strip()
+        except Exception:
+            out = ""
+        if out:
+            if out.startswith(remote + "/"):
+                out = out[len(remote) + 1 :]
+            else:
+                out = out.split("/", 1)[-1]
+            out = normalize_branch_name(out)
+            if out:
+                return out
+    for cand in DEFAULT_BRANCH_DIRS_ORDER:
+        for ref in (f"refs/heads/{cand}", f"refs/remotes/origin/{cand}", f"refs/remotes/upstream/{cand}"):
+            try:
+                rc = subprocess.run(
+                    ["git", "-C", repo_root, "show-ref", "--verify", "--quiet", ref],
+                    check=False,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                ).returncode
+            except Exception:
+                rc = 1
+            if rc == 0:
+                return cand
+    return "main"
 
 def home_rel(p: str) -> str:
     if not p:
@@ -336,11 +455,15 @@ def worktree_branch_for_path(p: str) -> str:
                 gitdir = resolve_path(str(gp))
         if not gitdir:
             return ""
+        if Path(gitdir).name == ".git" and not has_linked_worktrees(gitdir):
+            default_br = default_branch_for_repo(str(Path(gitdir).parent))
+            if default_br:
+                return default_br
         head = Path(gitdir, "HEAD").read_text(encoding="utf-8", errors="replace").strip()
         if head.startswith("ref:"):
             ref = head.split(":", 1)[1].strip()
             if ref.startswith("refs/heads/"):
-                return ref[len("refs/heads/") :]
+                return normalize_branch_name(ref[len("refs/heads/") :])
         return ""
     except Exception:
         return ""

@@ -99,6 +99,7 @@ trap cleanup EXIT
 printf '%s\n' "$$" >"${lock_dir}/pid" 2>/dev/null || true
 
 gen="$HOME/.config/tmux/scripts/pick_session_index.sh"
+ordered_update_cmd="$HOME/.config/tmux/scripts/pick_session_ordered_cache_update.sh"
 if [ ! -x "$gen" ]; then
   exit 0
 fi
@@ -441,4 +442,9 @@ fi
 
 if [ "$quiet" -ne 1 ] && command -v tmux >/dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
   tmux display-message -d 1500 "pick_session: list updated" 2>/dev/null || true
+fi
+
+# Keep a precomputed ordered snapshot in sync so picker open can stay instant.
+if [ -x "$ordered_update_cmd" ] && [ -s "$cache_file" ]; then
+  "$ordered_update_cmd" --quiet >/dev/null 2>&1 &
 fi

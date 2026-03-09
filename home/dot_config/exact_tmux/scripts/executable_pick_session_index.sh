@@ -333,6 +333,14 @@ def resolve_path(p):
 def match_key(*parts):
     return " ".join([ (p or "").strip() for p in parts if (p or "").strip() ])
 
+def normalize_branch_name(br: str) -> str:
+    br = (br or "").strip()
+    if not br:
+        return ""
+    if br.lower() in (".invalid", "invalid", "(invalid)"):
+        return ""
+    return br
+
 def head_branch(gitdir):
     try:
         head = Path(gitdir, "HEAD").read_text(encoding="utf-8", errors="replace").strip()
@@ -341,7 +349,7 @@ def head_branch(gitdir):
     if head.startswith("ref:"):
         ref = head.split(":", 1)[1].strip()
         if ref.startswith("refs/heads/"):
-            return ref[len("refs/heads/") :]
+            return normalize_branch_name(ref[len("refs/heads/") :])
     return ""
 
 def tmux_sanitize_session_name(s: str) -> str:
@@ -389,6 +397,55 @@ def repo_name_from_url(url: str) -> str:
 
 DEFAULT_BRANCH_DIRS = { "main", "master", "trunk", "develop", "dev" }
 DEFAULT_BRANCH_DIRS_ORDER = ("main", "master", "trunk", "develop", "dev")
+
+def has_linked_worktrees(gitdir: str) -> bool:
+    try:
+        wt_dir = Path(gitdir) / "worktrees"
+        if not wt_dir.is_dir():
+            return False
+        return any(True for _ in wt_dir.iterdir())
+    except Exception:
+        return False
+
+def default_branch_for_repo(repo_root: str) -> str:
+    repo_root = resolve_path(repo_root)
+    if not repo_root:
+        return ""
+    for remote in ("origin", "upstream"):
+        try:
+            out = subprocess.run(
+                ["git", "-C", repo_root, "symbolic-ref", "--quiet", "--short", f"refs/remotes/{remote}/HEAD"],
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+            ).stdout.strip()
+        except Exception:
+            out = ""
+        if out:
+            if out.startswith(remote + "/"):
+                out = out[len(remote) + 1 :]
+            else:
+                out = out.split("/", 1)[-1]
+            out = normalize_branch_name(out)
+            if out:
+                return out
+    for cand in DEFAULT_BRANCH_DIRS_ORDER:
+        for ref in (f"refs/heads/{cand}", f"refs/remotes/origin/{cand}", f"refs/remotes/upstream/{cand}"):
+            try:
+                rc = subprocess.run(
+                    ["git", "-C", repo_root, "show-ref", "--verify", "--quiet", ref],
+                    check=False,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                ).returncode
+            except Exception:
+                rc = 1
+            if rc == 0:
+                return cand
+    # Last-resort fallback for narrow clones where only a topic branch exists
+    # locally and remote HEAD is unavailable.
+    return "main"
 
 def repo_display_for_root(root: str) -> str:
     # `root` is the computed repo id (home-relative path).
@@ -509,6 +566,13 @@ def worktree_info(worktree_dir):
         gitdir = resolve_path(str(gitp))
         root_wt = resolve_path(str(wt))
         br = head_branch(gitdir)
+        singular_checkout = not has_linked_worktrees(gitdir)
+        if singular_checkout:
+            # Singular checkout naming should use the repo default branch and
+            # stay stable regardless of what is currently checked out.
+            default_br = default_branch_for_repo(root_wt)
+            if default_br:
+                br = default_br
         # If the root checkout lives under a default-branch directory (e.g. `<repo>/main`)
         # then the directory name is the source of truth for naming.
         try:

@@ -5,13 +5,29 @@ need_cmd() {
   command -v "$1" >/dev/null 2>&1
 }
 
+tmux_opt() {
+  local key="$1"
+  local default_value="$2"
+  local value=""
+  if command -v tmux >/dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
+    value="$(tmux show-option -gqv "${key}" 2>/dev/null || true)"
+  fi
+  if [ -n "$value" ]; then
+    printf '%s\n' "$value"
+  else
+    printf '%s\n' "$default_value"
+  fi
+}
+
 items_cmd="$HOME/.config/tmux/scripts/pick_session_items.sh"
 update_cmd="$HOME/.config/tmux/scripts/pick_session_index_update.sh"
 
 refresh=0
+force_order=0
 for arg in "$@"; do
   case "$arg" in
   --refresh) refresh=1 ;;
+  --force-order) force_order=1 ;;
   esac
 done
 
@@ -33,15 +49,32 @@ if ! need_cmd python3; then
   exec "$items_cmd"
 fi
 
-scan_roots_raw=""
-if command -v tmux >/dev/null 2>&1; then
-  scan_roots_raw="$(tmux show-option -gqv '@pick_session_worktree_scan_roots' 2>/dev/null || true)"
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
+cache_file="${cache_dir}/pick_session_items.tsv"
+passthrough_rows_default="${PICK_SESSION_FILTER_PASSTHROUGH_ROWS:-2000}"
+passthrough_rows="$(tmux_opt '@pick_session_filter_passthrough_rows' "$passthrough_rows_default")"
+case "$passthrough_rows" in
+'' | *[!0-9]*) passthrough_rows=2000 ;;
+esac
+
+# Keep open latency flat for very large lists by skipping expensive regrouping.
+if [ "$force_order" -ne 1 ] && [ "$passthrough_rows" -gt 0 ] && [ -f "$cache_file" ]; then
+  cache_rows="$(wc -l <"$cache_file" 2>/dev/null || echo 0)"
+  case "$cache_rows" in
+  '' | *[!0-9]*) cache_rows=0 ;;
+  esac
+  if [ "$cache_rows" -ge "$passthrough_rows" ]; then
+    exec "$items_cmd"
+  fi
 fi
+
+scan_roots_raw=""
+scan_roots_raw="$(tmux_opt '@pick_session_worktree_scan_roots' '')"
 if [ -z "${scan_roots_raw:-}" ]; then
   scan_roots_raw="$HOME/work,$HOME/code,$HOME/.backport/repositories,$HOME/.local/share"
 fi
 
-ITEMS_CMD="$items_cmd" PICK_SESSION_SCAN_ROOTS="$scan_roots_raw" python3 -u - <<'PY'
+ITEMS_CMD="$items_cmd" PICK_SESSION_SCAN_ROOTS="$scan_roots_raw" PICK_SESSION_FILTER_PASSTHROUGH_ROWS="$passthrough_rows" PICK_SESSION_FILTER_FORCE_ORDER="$force_order" python3 -u - <<'PY'
 import os
 import signal
 import subprocess
@@ -55,17 +88,30 @@ if not items_cmd:
     sys.exit(0)
 
 roots_raw = (os.environ.get("PICK_SESSION_SCAN_ROOTS", "") or "").strip()
+try:
+    passthrough_rows = int((os.environ.get("PICK_SESSION_FILTER_PASSTHROUGH_ROWS", "0") or "0").strip())
+except Exception:
+    passthrough_rows = 0
+force_order_raw = (os.environ.get("PICK_SESSION_FILTER_FORCE_ORDER", "") or "").strip().lower()
+force_order = force_order_raw in ("1", "true", "yes", "on")
+
+_resolve_cache = {}
 
 def resolve_path(p: str) -> str:
     if not p:
         return ""
+    cached = _resolve_cache.get(p)
+    if cached is not None:
+        return cached
     try:
-        return str(Path(p).expanduser().resolve())
+        rp = str(Path(p).expanduser().resolve())
     except Exception:
         try:
-            return os.path.realpath(os.path.expanduser(p))
+            rp = os.path.realpath(os.path.expanduser(p))
         except Exception:
-            return p
+            rp = p
+    _resolve_cache[p] = rp
+    return rp
 
 scan_roots = []
 for part in (roots_raw.split(",") if roots_raw else []):
@@ -118,7 +164,7 @@ lines = [l.rstrip("\n") for l in base_out.splitlines() if l.rstrip("\n")]
 
 # Large cache snapshots should stay responsive: keep the precomputed cache
 # order instead of doing an expensive full regroup/sort pass here.
-if len(lines) > 50000:
+if (not force_order) and passthrough_rows > 0 and len(lines) >= passthrough_rows:
     for line in lines:
         print(line)
     sys.exit(0)
