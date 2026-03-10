@@ -40,10 +40,10 @@ This page answers two questions:
 
 ## Shell
 
-- Fish main config: `home/dot_config/fish/config.fish.tmpl`
-- Fish plugins: `home/dot_config/fish/fish_plugins`
-- Starship prompt: `home/dot_config/starship.toml`
-- Shared ignores (fd/fzf): `home/dot_config/ignore-globs`
+- Fish main config: `home/dot_config/fish/readonly_config.fish.tmpl`
+- Fish plugins: `home/dot_config/fish/readonly_fish_plugins`
+- Starship prompt: `home/dot_config/readonly_starship.toml`
+- Shared ignores (fd/fzf): `home/dot_config/readonly_ignore-globs`
 
 ## Git + Identity
 
@@ -59,16 +59,16 @@ This page answers two questions:
 
 ## Terminal + Multiplexing
 
-- tmux: `home/dot_config/exact_tmux/tmux.conf`
-- Ghostty: `home/dot_config/exact_ghostty/config`
-- bat: `home/dot_config/exact_bat/config`
+- tmux: `home/dot_config/exact_tmux/readonly_tmux.conf`
+- Ghostty: `home/dot_config/exact_ghostty/readonly_config`
+- bat: `home/dot_config/exact_bat/readonly_config`
 
 ## macOS Automation
 
 - Defaults scripts: `home/.osx.core`, `home/.osx.extra`
 - Hammerspoon: `home/dot_hammerspoon/`
 - Karabiner: `home/dot_config/exact_private_karabiner/`
-- App icons mapping: `home/app_icons/icon_mapping.yaml`
+- App icons mapping: `home/app_icons/readonly_icon_mapping.yaml`
 
 ## Security + AI
 
@@ -83,6 +83,7 @@ This page answers two questions:
 - Amp: `home/dot_config/exact_amp/`
 - Assistant SOP entrypoints: `home/readonly_AGENTS.md`, `home/readonly_CLAUDE.md`
 - Assistant playbooks: `home/exact_dot_agents/exact_playbooks/`
+- Assistant skills: `home/exact_dot_agents/exact_skills/`
 - Ollama models: `home/.chezmoiscripts/run_onchange_after_05-add-ollama-models.sh`
 
 ## Custom Commands

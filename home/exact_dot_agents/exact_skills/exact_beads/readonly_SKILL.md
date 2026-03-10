@@ -16,8 +16,8 @@ Do not use:
 
 - The user is asking for generic planning/task tracking not in Beads.
 - The user is asking for git or GitHub operations:
-  - git: `~/.agents/playbooks/git/workflow.md`
-  - GitHub/gh: `~/.agents/playbooks/github/gh_workflow.md`
+  - git: `~/.agents/playbooks/git/PLAYBOOK.md`
+  - GitHub/gh: `~/.agents/playbooks/github/PLAYBOOK.md`
 
 First actions:
 

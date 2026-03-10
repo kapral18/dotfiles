@@ -8,6 +8,7 @@ This setup includes a few tmux-native popups and helpers to keep your workflow i
 
 - Binding: `prefix` then `r`
 - Purpose: quick launcher for common commands.
+- Popup spawn temporarily overrides `default-shell` to `/bin/sh` via `command_palette_popup.sh` to avoid heavy-shell initialization overhead (~1s with fish).
 
 ## Persistent `gh-dash` popup
 
@@ -19,6 +20,8 @@ Implementation notes:
 
 - The popup attaches to a **nested tmux server** (separate socket) running `gh dash`.
 - Hiding the popup detaches from that nested tmux client; the `gh-dash` process stays alive for fast reopen.
+- **Fast path**: when the nested session already exists, the popup skips all dependency checks (`gh`, `gh dash --version`) and jumps straight to `display-popup`. This saves ~80ms on every subsequent open.
+- Popup spawn temporarily overrides `default-shell` to `/bin/sh` to avoid heavy-shell initialization overhead (~1s with fish).
 
 ## Repo bootstrap popup (`owner/repo` -> `,gh-tfork`)
 
@@ -27,6 +30,7 @@ Implementation notes:
 - `,gh-tfork` decides the destination:
   - `~/work` for owner `elastic`
   - `~/code` for everything else
+- Popup spawn temporarily overrides `default-shell` to `/bin/sh` to avoid heavy-shell initialization overhead (~1s with fish).
 
 ## Lowfi (music in tmux)
 

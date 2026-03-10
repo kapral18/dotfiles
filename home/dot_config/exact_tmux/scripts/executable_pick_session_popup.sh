@@ -1,28 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-tmux_opt() {
-  local key="$1"
-  local default_value="$2"
-  local value
-  value="$(tmux show-option -gqv "${key}")"
-  if [[ -n "${value}" ]]; then
-    echo "${value}"
-  else
-    echo "${default_value}"
-  fi
-}
+IFS='|' read -r height width orig_shell < <(
+  tmux display-message -p \
+    '#{@pick_session_popup_height}|#{@pick_session_popup_width}|#{default-shell}' \
+    2>/dev/null || true
+)
+[ -n "${height:-}" ] || height="40"
+[ -n "${width:-}" ] || width="80"
+[ -n "${orig_shell:-}" ] || orig_shell="/bin/sh"
 
-height="$(tmux_opt '@pick_session_popup_height' '40')"
-width="$(tmux_opt '@pick_session_popup_width' '80')"
-
-set +e
-tmux display-popup -E -h "${height}%" -w "${width}%" -d "#{pane_current_path}" "$HOME/.config/tmux/scripts/pick_session.sh"
-rc="$?"
-set -e
-
-# User-cancel should not show as "returned 130".
-if [ "$rc" -eq 130 ]; then
-  exit 0
-fi
-exit "$rc"
+# Swap default-shell to /bin/sh for the popup so heavy shells (fish, zsh with
+# plugins) don't add ~1 s of startup overhead.  The three tmux commands execute
+# atomically in the server's command queue, so the restore fires as soon as the
+# popup process is spawned.
+tmux set-option -g default-shell /bin/sh \; \
+  display-popup -E -h "${height}%" -w "${width}%" -d "#{pane_current_path}" \
+  "$HOME/.config/tmux/scripts/pick_session.sh" \; \
+  set-option -g default-shell "$orig_shell" 2>/dev/null || true

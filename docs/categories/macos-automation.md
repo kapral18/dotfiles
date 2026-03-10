@@ -47,12 +47,12 @@ bash home/.osx.extra
 
 ## Hammerspoon
 
-- Config: `home/dot_hammerspoon/init.lua`
+- Config: `home/dot_hammerspoon/readonly_init.lua`
 
 Key pieces:
 
-- Window management hotkeys: `home/dot_hammerspoon/window.lua`
-- Grid-mouse (keyboard mouse): `home/dot_hammerspoon/gridmouse.lua` (currently not enabled in `init.lua`)
+- Window management hotkeys: `home/dot_hammerspoon/readonly_window.lua`
+- Grid-mouse (keyboard mouse): `home/dot_hammerspoon/readonly_gridmouse.lua` (currently not enabled in `init.lua`)
 
 In `init.lua`, `Hyper` is configured as `ctrl+alt+cmd`.
 
@@ -86,7 +86,7 @@ installed.
 
 ## Custom App Icons
 
-- Mapping: `home/app_icons/icon_mapping.yaml`
+- Mapping: `home/app_icons/readonly_icon_mapping.yaml`
 - Script: `home/exact_bin/executable_,apply-app-icons.tmpl`
 - Hook: `home/.chezmoiscripts/run_onchange_after_05-apply-app-icons.sh.tmpl`
 
@@ -115,7 +115,7 @@ command -v ,apply-app-icons
   - restart affected apps (`Finder`, `Dock`, `SystemUIServer`) or reboot.
 - `,apply-app-icons` fails:
   - verify `fileicon` and `yq` are installed.
-  - verify `home/app_icons/icon_mapping.yaml` and asset files exist.
+  - verify `home/app_icons/readonly_icon_mapping.yaml` and asset files exist.
 - Hook runs but nothing changed:
   - confirm the script hash-trigger input actually changed.
 

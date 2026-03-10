@@ -23,8 +23,8 @@ Default interface:
 
 When NOT to use:
 
-- GitHub activity: `~/.agents/playbooks/github/gh_workflow.md`
-- Local git activity: `~/.agents/playbooks/git/workflow.md`
+- GitHub activity: `~/.agents/playbooks/github/PLAYBOOK.md`
+- Local git activity: `~/.agents/playbooks/git/PLAYBOOK.md`
 - Browser automation for a Google Workspace task that `gws` already supports
 - Unsupported Google products or UI-only flows that `gws` cannot perform
   (in that case, say `gws` does not cover the task and ask before switching

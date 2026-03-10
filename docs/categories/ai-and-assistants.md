@@ -13,7 +13,7 @@ Entrypoints installed into your home directory:
 - `home/dot_gemini/readonly_GEMINI.md` -> `~/.gemini/GEMINI.md`
 - `home/dot_cursor/symlink_AGENTS.md` -> `~/.cursor/AGENTS.md` (symlink to `~/AGENTS.md`)
 
-These files are policy entrypoints; playbooks are installed separately.
+These files are policy entrypoints; playbooks and skills are installed separately.
 
 Shared SOP handling rules:
 
@@ -27,7 +27,7 @@ Shared SOP handling rules:
 - A mandatory compatibility gate runs before edits; see the SOP entrypoints for
   the exact classification, decision table, and summary-line format.
 - If uncertainty remains after local inspection, probes, and any required
-  playbooks, ask one direct fork-closing question.
+  playbooks or skills, ask one direct fork-closing question.
 
 Shared git push safety rule:
 
@@ -40,7 +40,7 @@ Shared git push safety rule:
 - Canonical sources:
   `home/readonly_AGENTS.md`, `home/readonly_CLAUDE.md`,
   `home/dot_gemini/readonly_GEMINI.md`, and
-  `home/exact_dot_agents/exact_playbooks/exact_git/workflow.md`.
+  `home/exact_dot_agents/exact_playbooks/exact_git/readonly_PLAYBOOK.md`.
 
 Shared runtime verification rule:
 
@@ -54,21 +54,22 @@ Shared runtime verification rule:
 
 Shared SOP routing rules:
 
-- Routed playbooks are binding procedures, not optional reference material.
-- A request must have exactly one primary playbook. Secondary playbooks load
-  only when the primary requires them or the user explicitly asks for the
+- Routed playbooks and skills are binding procedures, not optional reference
+  material.
+- A request must have exactly one primary route. Secondary files load only
+  when the primary requires them or the user explicitly asks for the
   cross-boundary action.
 - Review stays primary for PR review/recheck/reply flows even when the final
   step is posting to GitHub.
-- Draft-only GitHub composition is its own route. The `gh` playbook now has to
-  load the compose playbook before creating/editing PR or issue text.
+- Draft-only GitHub composition is its own route. The `gh` playbook loads the
+  compose skill before creating/editing PR or issue text.
 - Semantic-code-search routing also covers explicit index-selection language
   such as "use `<index>` index" or "which index should we use?".
 - Google Workspace requests route to
-  `~/.agents/playbooks/google_workspace/workflow.md`.
+  `~/.agents/skills/google_workspace/SKILL.md`.
 - Source file:
-  `home/exact_dot_agents/exact_playbooks/exact_google_workspace/workflow.md`
-- The playbook standardizes on `gws`, using `gws schema ...` before direct
+  `home/exact_dot_agents/exact_skills/exact_google_workspace/readonly_SKILL.md`
+- The skill standardizes on `gws`, using `gws schema ...` before direct
   `gws <service> ...` calls.
 - Source-first research now also covers explicit external repo-inspection
   requests when the user provides GitHub/GitLab repo URLs or asks to inspect
@@ -81,18 +82,23 @@ Shared SOP routing rules:
   `home/readonly_AGENTS.md`, `home/readonly_CLAUDE.md`, and
   `home/dot_gemini/readonly_GEMINI.md`.
 
-## Playbooks Layout
+## Playbooks & Skills Layout
 
-Playbooks are stored under `~/.agents/playbooks/` and referenced by the SOP
-entrypoints (for example: "Use playbook X").
+Two kinds of routable files live under `~/.agents/`:
+
+- **Playbooks** (`~/.agents/playbooks/`): Multi-step workflow orchestration.
+  Each folder has a `PLAYBOOK.md` entrypoint (plus optional sub-mode files).
+- **Skills** (`~/.agents/skills/`): Self-contained tool or integration
+  capabilities. Each folder has a `SKILL.md` entrypoint.
 
 Source of truth (this repo, chezmoi-managed):
 
 - `home/exact_dot_agents/exact_playbooks/` -> `~/.agents/playbooks/`
+- `home/exact_dot_agents/exact_skills/` -> `~/.agents/skills/`
 
 Entry contract standard:
 
-- Each operational playbook should make four things obvious near the top:
+- Each playbook or skill should make four things obvious near the top:
   `Use when`, `Do not use`, `First actions`, and `Output`.
 - The goal is to remove implied routing and implied next steps so the agent has
   less room to "remember roughly" and skip the file.
@@ -151,7 +157,7 @@ Playbook support:
 
 - Draft-only review modes live under `~/.agents/playbooks/review/`.
 - If you want to apply requested changes one thread/comment at a time (with verification after each cycle), use:
-  - `~/.agents/playbooks/review/pr_change_cycle.md`
+  - `~/.agents/playbooks/review/pr_change_cycle.md` (loaded by the review `PLAYBOOK.md` router)
 
 ## Reviews: Reply Style
 
@@ -166,7 +172,7 @@ When drafting PR thread replies:
 ## Reviews: Router Behavior
 
 - The review router selects exactly one primary review mode, then loads
-  secondary playbooks only when required by that mode.
+  secondary playbooks or skills only when required by that mode.
 - When both a dirty working tree and a current-branch PR exist, the router now
   asks which target to review instead of silently forcing local review first.
 - GitHub posting stays outside read-only review mode until the user explicitly
@@ -176,25 +182,26 @@ When drafting PR thread replies:
 
 - Explicit external repo-inspection requests now route to the same
   source-first playbook instead of a separate variant.
-- The playbook now requires: resolve repo/ref first, then inspect the checked
+- The research playbook now requires: resolve repo/ref first, then inspect the checked
   out source locally.
 - Source-first research now resolves the target ref before inspecting code.
 - Use the default branch only for current/latest behavior questions.
 - For version-, branch-, tag-, or commit-specific questions, inspect that exact
   ref instead of defaulting to latest upstream.
 
-## Core Workflow: Change A Playbook
+## Core Workflow: Change A Playbook Or Skill
 
-1. Edit playbooks under:
+1. Edit files under:
 
-- `home/exact_dot_agents/exact_playbooks/`
+- `home/exact_dot_agents/exact_playbooks/` (playbooks)
+- `home/exact_dot_agents/exact_skills/` (skills)
 
 2. Apply and verify:
 
 ```bash
 chezmoi diff
 chezmoi apply
-ls -la ~/.agents/playbooks
+ls -la ~/.agents/playbooks ~/.agents/skills
 ```
 
 ## Tool Configs
@@ -204,7 +211,7 @@ ls -la ~/.agents/playbooks
 A cross-shell alias `agent` is provided for `cursor-agent`:
 
 - POSIX interactive shells: `home/readonly_dot_shellrc` → `~/.shellrc`
-- fish: `home/dot_config/fish/config.fish.tmpl` → `~/.config/fish/config.fish`
+- fish: `home/dot_config/fish/readonly_config.fish.tmpl` → `~/.config/fish/config.fish`
 
 Verification:
 
@@ -217,7 +224,7 @@ Examples of tool configs included here:
 
 - OpenCode: `home/dot_config/opencode/`
 - Codex: `home/dot_codex/`
-- Amp: `home/dot_config/exact_amp/private_settings.json` (private settings)
+- Amp: `home/dot_config/exact_amp/private_readonly_settings.json` (private settings)
 - Gemini CLI: `home/dot_gemini/`
 - Copilot CLI: `home/dot_config/dot_copilot/`
 
@@ -233,10 +240,10 @@ and copies the correct source to the final destination, completely decoupling th
 
 - Cursor MCP: `home/dot_cursor/mcp.{work,personal}.json` → `~/.cursor/mcp.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-cursor-mcp.sh.tmpl`)
 - Gemini settings: `home/dot_gemini/settings.json` → `~/.gemini/settings.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-gemini-settings.sh.tmpl`)
-- OpenCode config: `home/dot_config/opencode/opencode.{work,personal}.jsonc` → `~/.config/opencode/opencode.jsonc` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl`)
+- OpenCode config: `home/dot_config/opencode/readonly_opencode.{work,personal}.jsonc` → `~/.config/opencode/opencode.jsonc` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl`)
 - Codex config: `home/dot_codex/private_config.{work,personal}.toml` → `~/.codex/config.toml` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-codex-config.sh.tmpl`)
-- Pi MCP config: `home/dot_pi/agent/mcp.{work,personal}.json` → `~/.pi/agent/mcp.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-pi-mcp.sh.tmpl`; installed readonly)
-- Pi configs: `home/dot_pi/agent/{settings,models}.{work,personal}.json` → `~/.pi/agent/{settings,models}.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-pi-config.sh.tmpl`; installed readonly)
+- Pi MCP config: `home/dot_pi/agent/readonly_mcp.{work,personal}.json` → `~/.pi/agent/mcp.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-pi-mcp.sh.tmpl`; installed readonly)
+- Pi configs: `home/dot_pi/agent/readonly_{settings,models}.{work,personal}.json` → `~/.pi/agent/{settings,models}.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-pi-config.sh.tmpl`; installed readonly)
 
 ### Gemini CLI settings
 
@@ -249,17 +256,17 @@ Source: `home/dot_gemini/settings.json` → `~/.gemini/settings.json`.
 
 CLI package source: `home/readonly_dot_default-npm-pkgs` → `~/.default-npm-pkgs` installs Pi globals via npm, including `@mariozechner/pi-coding-agent`, `@mariozechner/pi-tui`, and `pi-mcp-adapter`.
 
-Source: `home/dot_pi/agent/{settings,models}.{work,personal}.json` → `~/.pi/agent/`.
-Also manages MCP servers via `home/dot_pi/agent/mcp.{work,personal}.json`.
+Source: `home/dot_pi/agent/readonly_{settings,models}.{work,personal}.json` → `~/.pi/agent/`.
+Also manages MCP servers via `home/dot_pi/agent/readonly_mcp.{work,personal}.json`.
 
 LiteLLM notes:
 - Work profile only: fish exports these values from `pass` when the entries exist:
   - `LITELLM_PROXY_KEY` from `litellm/api/token`
   - `LITELLM_API_BASE` from `litellm/api/base` (normalized to end in `/v1`)
-- OpenCode work config uses those shell exports directly via `home/dot_config/opencode/opencode.work.jsonc` and exposes the same LiteLLM gateway model set as Pi. The `llm-gateway/gpt-5.4` entry is marked non-reasoning in OpenCode to avoid unsupported `reasoningSummary` requests through the current LiteLLM/Azure path, and it has an explicit limit override of `context: 1050000` / `output: 128000` based on the current LiteLLM bundled model catalog entry for `gpt-5.4`. Other routed `llm-gateway/*` aliases intentionally omit explicit per-model token limits because the live LiteLLM `/models` response does not advertise them for those aliases, and OpenCode's `limit.input` semantics can affect compaction behavior.
-- Pi work config is rendered from `home/dot_pi/agent/models.work.json` by `home/.chezmoiscripts/run_onchange_after_07-merge-pi-config.sh.tmpl`, which injects the normalized upstream LiteLLM base URL at apply time. The `llm-gateway/gpt-5.4` Pi model entry explicitly sets `contextWindow: 272000` and `maxTokens: 128000` so Pi's footer and compaction thresholds use the correct LiteLLM-backed limits instead of Pi's `128000` fallback default for custom models.
+- OpenCode work config uses those shell exports directly via `home/dot_config/opencode/readonly_opencode.work.jsonc` and exposes the same LiteLLM gateway model set as Pi. The `llm-gateway/gpt-5.4` entry is marked non-reasoning in OpenCode to avoid unsupported `reasoningSummary` requests through the current LiteLLM/Azure path, and it has an explicit limit override of `context: 1050000` / `output: 128000` based on the current LiteLLM bundled model catalog entry for `gpt-5.4`. Other routed `llm-gateway/*` aliases intentionally omit explicit per-model token limits because the live LiteLLM `/models` response does not advertise them for those aliases, and OpenCode's `limit.input` semantics can affect compaction behavior.
+- Pi work config is rendered from `home/dot_pi/agent/readonly_models.work.json` by `home/.chezmoiscripts/run_onchange_after_07-merge-pi-config.sh.tmpl`, which injects the normalized upstream LiteLLM base URL at apply time. The `llm-gateway/gpt-5.4` Pi model entry explicitly sets `contextWindow: 272000` and `maxTokens: 128000` so Pi's footer and compaction thresholds use the correct LiteLLM-backed limits instead of Pi's `128000` fallback default for custom models.
 
-- For the work profile, defaults to `google` using the `gemini-3.1-pro-preview-customtools` model, while also exposing LiteLLM gateway models and OpenAI Codex models via `home/dot_pi/agent/models.work.json`. Pi TUI is enabled via the `npm:@mariozechner/pi-tui` package, and that package is also kept in the global npm convergence list.
+- For the work profile, defaults to `google` using the `gemini-3.1-pro-preview-customtools` model, while also exposing LiteLLM gateway models and OpenAI Codex models via `home/dot_pi/agent/readonly_models.work.json`. Pi TUI is enabled via the `npm:@mariozechner/pi-tui` package, and that package is also kept in the global npm convergence list.
 - For the personal profile, defaults to `openai-codex` using `gpt-5.4`.
 - Enables automatic context compaction to save tokens.
 - Enables exponential backoff retries.
@@ -275,7 +282,7 @@ Source: `home/dot_config/dot_copilot/` → `~/.config/.copilot/`.
 ## Secrets
 
 Some API keys are loaded into the shell from `pass` in
-`home/dot_config/fish/config.fish.tmpl`. That means your password-store is part
+`home/dot_config/fish/readonly_config.fish.tmpl`. That means your password-store is part
 of the runtime wiring for AI tools.
 
 Verification:
@@ -297,7 +304,7 @@ This setup includes a hook that pulls a small list of models:
 
 Environment tuning for Ollama lives in:
 
-- `home/dot_config/fish/config.fish.tmpl`
+- `home/dot_config/fish/readonly_config.fish.tmpl`
 
 Workflow:
 
@@ -310,7 +317,7 @@ ollama list
 
 Beads is integrated as a CLI (`bd`) with a repo-aware wrapper command:
 
-- Wrapper function: `bdlocal` in `home/dot_config/fish/config.fish.tmpl`
+- Wrapper function: `bdlocal` in `home/dot_config/fish/readonly_config.fish.tmpl`
 
 The wrapper chooses a per-repo `$BEADS_DIR` under `~/beads-data/` and pins the
 database to `$BEADS_DIR/.beads/beads.db`.
@@ -335,14 +342,15 @@ High-signal checks:
 ```bash
 chezmoi diff
 chezmoi apply
-ls -la ~/.agents/playbooks
+ls -la ~/.agents/playbooks ~/.agents/skills
 ```
 
 If assistant behavior is not picking up expected instructions:
 
 - verify the correct entrypoint file exists in `$HOME` (`~/AGENTS.md`,
   `~/CLAUDE.md`, `~/.gemini/GEMINI.md`).
-- verify the playbook files exist under `~/.agents/playbooks/`.
+- verify playbook/skill files exist under `~/.agents/playbooks/` and
+  `~/.agents/skills/`.
 - verify secrets expected at runtime are present in `pass`.
 
 ## Related

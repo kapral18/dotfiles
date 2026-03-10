@@ -3,11 +3,11 @@
 set -euo pipefail
 
 {{- if eq .isWork true }}
-# pi settings desired hash (work): {{ include "dot_pi/agent/settings.work.json" | sha256sum }}
-# pi models desired hash (work): {{ include "dot_pi/agent/models.work.json" | sha256sum }}
+# pi settings desired hash (work): {{ include "dot_pi/agent/readonly_settings.work.json" | sha256sum }}
+# pi models desired hash (work): {{ include "dot_pi/agent/readonly_models.work.json" | sha256sum }}
 {{- else }}
-# pi settings desired hash (non-work): {{ include "dot_pi/agent/settings.personal.json" | sha256sum }}
-# pi models desired hash (non-work): {{ include "dot_pi/agent/models.personal.json" | sha256sum }}
+# pi settings desired hash (non-work): {{ include "dot_pi/agent/readonly_settings.personal.json" | sha256sum }}
+# pi models desired hash (non-work): {{ include "dot_pi/agent/readonly_models.personal.json" | sha256sum }}
 {{- end }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
@@ -30,8 +30,8 @@ install_readonly_if_changed() {
 # CHEZMOI_SOURCE_DIR usually points at the chezmoi *source* root.
 # Our pi config files live under the repository "home/" directory.
 if [ "$is_work" = "true" ]; then
-  src_settings="$source_dir/dot_pi/agent/settings.work.json"
-  src_models="$source_dir/dot_pi/agent/models.work.json"
+  src_settings="$source_dir/dot_pi/agent/readonly_settings.work.json"
+  src_models="$source_dir/dot_pi/agent/readonly_models.work.json"
 
   if ! command -v pass >/dev/null 2>&1; then
     echo "pass is required to render Pi work LiteLLM config" >&2
@@ -64,8 +64,8 @@ data["providers"]["litellm"]["baseUrl"] = base
 out.write_text(json.dumps(data, indent=2) + "\n")
 PY
 else
-  src_settings="$source_dir/dot_pi/agent/settings.personal.json"
-  src_models="$source_dir/dot_pi/agent/models.personal.json"
+  src_settings="$source_dir/dot_pi/agent/readonly_settings.personal.json"
+  src_models="$source_dir/dot_pi/agent/readonly_models.personal.json"
 fi
 
 install_readonly_if_changed "$src_settings" "$target_dir/settings.json"

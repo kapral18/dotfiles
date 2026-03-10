@@ -7,12 +7,12 @@ This setup supports applying custom macOS app icons based on a YAML mapping.
 ## Preconditions
 
 - You have icon files under `home/app_icons/assets/`.
-- Mapping exists in `home/app_icons/icon_mapping.yaml`.
+- Mapping exists in `home/app_icons/readonly_icon_mapping.yaml`.
 - Dependencies are installed: `fileicon`, `yq`.
 
 ## Files
 
-- Mapping: `home/app_icons/icon_mapping.yaml`
+- Mapping: `home/app_icons/readonly_icon_mapping.yaml`
 - Icon assets: `home/app_icons/assets/`
 - Script: `home/exact_bin/executable_,apply-app-icons.tmpl` (installs as `,apply-app-icons`)
 

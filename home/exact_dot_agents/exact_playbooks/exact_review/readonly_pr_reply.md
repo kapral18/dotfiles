@@ -2,7 +2,7 @@
 
 Precondition:
 
-- You already loaded `~/.agents/playbooks/review/router.md`.
+- You already loaded `~/.agents/playbooks/review/PLAYBOOK.md`.
 - Follow the router's shared rules.
 
 Use when:
@@ -51,7 +51,7 @@ Preflight (blocking):
 Base context sources:
 
 - Preferred: semantic code search (when available):
-  - Follow: `~/.agents/playbooks/code_search/semantic_code_search.md`
+  - Follow: `~/.agents/skills/semantic_code_search/SKILL.md`
   - Invoke at least one SCSI tool to establish base behavior/invariants.
 - Fallback: local base context:
   - `rg` + file reads
@@ -84,7 +84,7 @@ Deep links to exact source lines (PR head SHA):
 
 If posting is requested:
 
-- Follow `~/.agents/playbooks/github/gh_workflow.md` for exact anchoring and API
+- Follow `~/.agents/playbooks/github/PLAYBOOK.md` for exact anchoring and API
   constraints.
 
 Thread workflow (repeat per thread):

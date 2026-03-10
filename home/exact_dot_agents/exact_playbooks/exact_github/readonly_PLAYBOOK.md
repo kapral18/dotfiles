@@ -38,16 +38,14 @@ Issue targeting:
 Do not use:
 
 - The user wants to draft PR/issue text only (draft-only): use the compose playbooks.
-  - PR (general): `~/.agents/playbooks/github/compose_pr_general.md`
-  - PR (Elastic/Kibana): `~/.agents/playbooks/github/compose_pr_elastic.md`
-  - Issue (general): `~/.agents/playbooks/github/compose_issue_general.md`
-  - Issue (Elastic/Kibana): `~/.agents/playbooks/github/compose_issue_elastic.md`
+  - PR: `~/.agents/skills/compose_pr/SKILL.md`
+  - Issue: `~/.agents/skills/compose_issue/SKILL.md`
 - The user wants PR review feedback, PR-fix verification, thread-by-thread
   handling, or review-comment drafting:
-  - Use: `~/.agents/playbooks/review/router.md`
+  - Use: `~/.agents/playbooks/review/PLAYBOOK.md`
   - It routes between local vs PR review, and PR modes (start/iterative/replies).
-- The user wants local git operations (status/diff/commit/rebase): `~/.agents/playbooks/git/workflow.md`.
-- The user wants worktree management (create/switch/remove worktrees): `~/.agents/playbooks/worktrees/w_workflow.md`.
+- The user wants local git operations (status/diff/commit/rebase): `~/.agents/playbooks/git/PLAYBOOK.md`.
+- The user wants worktree management (create/switch/remove worktrees): `~/.agents/skills/worktrees/SKILL.md`.
 
 First actions:
 
@@ -233,14 +231,10 @@ PR creation:
 
 Composition (draft-only) guidance:
 
-- Before creating/editing a PR body, load one of:
-  - General repos: `~/.agents/playbooks/github/compose_pr_general.md`
-  - Elastic/Kibana repos: `~/.agents/playbooks/github/compose_pr_elastic.md`
-- Before creating/editing an issue body, load one of:
-  - General repos: `~/.agents/playbooks/github/compose_issue_general.md`
-  - Elastic/Kibana repos: `~/.agents/playbooks/github/compose_issue_elastic.md`
-- For `elastic/kibana` label targeting, load: `~/.agents/playbooks/github/labels_propose_elastic_kibana.md`
-- For Kibana reviewer/ownership guidance, load: `~/.agents/playbooks/kibana/management_ownership.md`
+- Before creating/editing a PR body, load: `~/.agents/skills/compose_pr/SKILL.md`
+- Before creating/editing an issue body, load: `~/.agents/skills/compose_issue/SKILL.md`
+- For `elastic/kibana` label targeting, load: `~/.agents/skills/labels_propose/SKILL.md`
+- For Kibana reviewer/ownership guidance, load: `~/.agents/skills/kibana/SKILL.md`
 
 Output:
 

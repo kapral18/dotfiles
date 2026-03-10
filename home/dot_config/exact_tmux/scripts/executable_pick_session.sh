@@ -33,16 +33,39 @@ tmux_sanitize_session_name() {
     sed -E 's/[^a-z0-9_@|/~-]+/_/g; s/[.:]+/_/g; s/_+$//'
 }
 
+_tmux_gopts_cache=""
+_tmux_gopts_loaded=0
+
 tmux_opt() {
   local key="$1"
   local default_value="$2"
-  local value
-  value="$(tmux show-option -gqv "${key}")"
-  if [[ -n "${value}" ]]; then
-    echo "${value}"
-  else
-    echo "${default_value}"
+  if [ "$_tmux_gopts_loaded" -eq 0 ]; then
+    _tmux_gopts_cache="$(tmux show-options -g 2>/dev/null || true)"
+    _tmux_gopts_loaded=1
   fi
+  local value="" line
+  while IFS= read -r line; do
+    case "$line" in
+    "$key "*)
+      value="${line#"$key "}"
+      break
+      ;;
+    esac
+  done <<<"$_tmux_gopts_cache"
+  # show-options -g preserves tmux quoting ('...' / "..."); strip it to match
+  # the behaviour of show-option -gqv.
+  local _q="'"
+  case "$value" in
+  \"*\")
+    value="${value#\"}"
+    value="${value%\"}"
+    ;;
+  "$_q"*"$_q")
+    value="${value#"$_q"}"
+    value="${value%"$_q"}"
+    ;;
+  esac
+  printf '%s\n' "${value:-$default_value}"
 }
 
 session_name() {
@@ -211,10 +234,6 @@ primary_tmp="${cache_dir}/pick_session_fzf_primary.tsv"
 kill_cmd="$HOME/.config/tmux/scripts/pick_session_action_kill_sessions.sh"
 rm_cmd="$HOME/.config/tmux/scripts/pick_session_action_remove_worktrees.sh"
 live_refresh_cmd="$HOME/.config/tmux/scripts/pick_session_live_refresh.sh"
-on_start_cmd="$HOME/.config/tmux/scripts/pick_session_on_start.sh"
-if [ ! -x "$on_start_cmd" ]; then
-  on_start_cmd=":"
-fi
 hide_selected_cmd="$HOME/.config/tmux/scripts/pick_session_items_hide_selected.sh"
 update_cmd="$HOME/.config/tmux/scripts/pick_session_index_update.sh"
 kill_async_cmd="tmux run-shell -b \"$(printf %q "$kill_cmd") $(printf %q "$sel_tmp")\""
@@ -259,7 +278,6 @@ else
       --query "$query" \
       --preview "$help_cmd" \
       --preview-window 'down,80%,wrap,hidden,border-top' \
-      --bind "start:execute-silent:$on_start_cmd" \
       --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+clear-query" \
       --bind "alt-r:execute-silent:$live_refresh_cmd --once --force >/dev/null 2>&1 &" \
       --bind "alt-j:page-down" \

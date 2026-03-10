@@ -3,9 +3,9 @@
 set -euo pipefail
 
 {{- if eq .isWork true }}
-# pi mcp desired hash (work): {{ include "dot_pi/agent/mcp.work.json" | sha256sum }}
+# pi mcp desired hash (work): {{ include "dot_pi/agent/readonly_mcp.work.json" | sha256sum }}
 {{- else }}
-# pi mcp desired hash (non-work): {{ include "dot_pi/agent/mcp.personal.json" | sha256sum }}
+# pi mcp desired hash (non-work): {{ include "dot_pi/agent/readonly_mcp.personal.json" | sha256sum }}
 {{- end }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
@@ -13,9 +13,9 @@ target="$HOME/.pi/agent/mcp.json"
 is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
 
 if [ "$is_work" = "true" ]; then
-  src="$source_dir/dot_pi/agent/mcp.work.json"
+  src="$source_dir/dot_pi/agent/readonly_mcp.work.json"
 else
-  src="$source_dir/dot_pi/agent/mcp.personal.json"
+  src="$source_dir/dot_pi/agent/readonly_mcp.personal.json"
 fi
 
 mkdir -p "$(dirname "$target")"

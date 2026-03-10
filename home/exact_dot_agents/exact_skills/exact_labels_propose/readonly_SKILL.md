@@ -20,7 +20,7 @@ Do not use:
 
 - repo is not `elastic/kibana` (or label set cannot be verified)
 - user asked to apply labels now:
-  - use `~/.agents/playbooks/github/gh_workflow.md` (still requires explicit approval)
+  - use `~/.agents/playbooks/github/PLAYBOOK.md` (still requires explicit approval)
 
 First actions:
 

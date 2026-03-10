@@ -2,7 +2,7 @@
 
 Precondition:
 
-- You already loaded `~/.agents/playbooks/review/router.md` and are following
+- You already loaded `~/.agents/playbooks/review/PLAYBOOK.md` and are following
   its shared rules.
 
 Use when:
@@ -49,7 +49,7 @@ Base-branch context gate (mandatory):
     - if multiple equally plausible repo-matching indices remain, ask the user
       which one represents the base branch for this repo
   - Preferred: semantic code search (when available) for base context:
-    - `~/.agents/playbooks/code_search/semantic_code_search.md`
+    - `~/.agents/skills/semantic_code_search/SKILL.md`
     - Invoke at least one SCSI tool to establish base behavior/invariants.
 - If the repo is not indexed / tools unavailable, use local base context via
   `git show <base>:<path>` + `rg`.

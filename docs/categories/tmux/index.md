@@ -10,7 +10,7 @@ test watchers) while keeping your main editor unchanged.
 
 ## Config location
 
-- `home/dot_config/exact_tmux/tmux.conf`
+- `home/dot_config/exact_tmux/readonly_tmux.conf`
 
 This is a thin entrypoint that sources `conf.d` files in a fixed order.
 

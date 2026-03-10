@@ -55,7 +55,7 @@ If you see missing API keys or tools failing to authenticate, check whether
 `pass` is set up and your password store repo is present.
 
 - Setup script: `home/.chezmoiscripts/run_once_after_05-setup-pass-managers.fish.tmpl`
-- Shell wiring: `home/dot_config/fish/config.fish.tmpl`
+- Shell wiring: `home/dot_config/fish/readonly_config.fish.tmpl`
 
 ## See Also
 

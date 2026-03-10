@@ -3,9 +3,9 @@
 set -euo pipefail
 
 {{- if eq .isWork true }}
-# opencode config desired hash (work): {{ include "dot_config/opencode/opencode.work.jsonc" | sha256sum }}
+# opencode config desired hash (work): {{ include "dot_config/opencode/readonly_opencode.work.jsonc" | sha256sum }}
 {{- else }}
-# opencode config desired hash (non-work): {{ include "dot_config/opencode/opencode.personal.jsonc" | sha256sum }}
+# opencode config desired hash (non-work): {{ include "dot_config/opencode/readonly_opencode.personal.jsonc" | sha256sum }}
 {{- end }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
@@ -13,9 +13,9 @@ target="$HOME/.config/opencode/opencode.jsonc"
 is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
 
 if [ "$is_work" = "true" ]; then
-  src="$source_dir/dot_config/opencode/opencode.work.jsonc"
+  src="$source_dir/dot_config/opencode/readonly_opencode.work.jsonc"
 else
-  src="$source_dir/dot_config/opencode/opencode.personal.jsonc"
+  src="$source_dir/dot_config/opencode/readonly_opencode.personal.jsonc"
 fi
 
 desired="$(cat "$src")"

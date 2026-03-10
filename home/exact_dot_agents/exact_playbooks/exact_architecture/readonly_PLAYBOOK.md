@@ -44,7 +44,7 @@ When using a walkthrough tool, provide:
 When semantic code search helps:
 
 - If you are investigating a PR and need additional context from `main` (existing behavior, patterns, related call sites),
-  use `~/.agents/playbooks/code_search/semantic_code_search.md` to query the indexed snapshot, but ONLY if the current repo is
+  use `~/.agents/skills/semantic_code_search/SKILL.md` to query the indexed snapshot, but ONLY if the current repo is
   indexed (present in `list_indices`). Run `list_indices` first; do not guess an index.
 - Treat semantic results as base-branch context only; validate the actual change by reading the local branch diff.
 

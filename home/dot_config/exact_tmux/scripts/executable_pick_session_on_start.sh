@@ -43,6 +43,27 @@ cache_file="${cache_dir}/pick_session_items.tsv"
 ordered_file="${cache_dir}/pick_session_items_ordered.tsv"
 mutation_file="${cache_dir}/pick_session_mutations.tsv"
 pending_file="${cache_dir}/pick_session_pending.tsv"
+defer_dir_rows_threshold="$(tmux_opt '@pick_session_defer_dir_rows_threshold' '2500')"
+defer_dir_rows_reload_delay_ms="$(tmux_opt '@pick_session_defer_dir_rows_reload_delay_ms' '220')"
+
+case "$defer_dir_rows_threshold" in
+'' | *[!0-9]*) defer_dir_rows_threshold=2500 ;;
+esac
+case "$defer_dir_rows_reload_delay_ms" in
+'' | *[!0-9]*) defer_dir_rows_reload_delay_ms=220 ;;
+esac
+
+cache_rows="$(wc -l <"$cache_file" 2>/dev/null || echo 0)"
+case "$cache_rows" in
+'' | *[!0-9]*) cache_rows=0 ;;
+esac
+
+defer_dir_rows_active=0
+if [ "$defer_dir_rows_threshold" -gt 0 ] && [ "$cache_rows" -ge "$defer_dir_rows_threshold" ]; then
+  if awk -F $'\t' 'NF>=5 && $2 == "dir" { found=1; exit } END { exit(found?0:1) }' "$cache_file" 2>/dev/null; then
+    defer_dir_rows_active=1
+  fi
+fi
 
 cache_mt="$(mtime_epoch "$cache_file" 2>/dev/null || printf '0')"
 ordered_mt="$(mtime_epoch "$ordered_file" 2>/dev/null || printf '0')"
@@ -65,11 +86,15 @@ esac
 
 case "$reorder_after_open" in
 1 | true | yes | on)
-  if [ "$ordered_fresh" -ne 1 ] && [ -x "$reload_cmd" ]; then
+  if [ "$ordered_fresh" -ne 1 ] && [ "$defer_dir_rows_active" -ne 1 ] && [ -x "$reload_cmd" ]; then
     "$reload_cmd" "$filter_cmd --force-order" "$reorder_delay_ms" >/dev/null 2>&1 &
   fi
   ;;
 esac
+
+if [ "$defer_dir_rows_active" -eq 1 ] && [ -x "$reload_cmd" ]; then
+  "$reload_cmd" "$filter_cmd" "$defer_dir_rows_reload_delay_ms" >/dev/null 2>&1 &
+fi
 
 live_refresh_on_start="$(tmux_opt '@pick_session_live_refresh_on_start' 'off')"
 case "$live_refresh_on_start" in

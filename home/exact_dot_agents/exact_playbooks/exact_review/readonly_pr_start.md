@@ -1,19 +1,19 @@
-# Mode: PR Review Iterative (One New Comment At A Time)
+# Mode: PR Review Start (Batch Draft)
 
 Precondition:
 
-- You already loaded `~/.agents/playbooks/review/router.md`.
+- You already loaded `~/.agents/playbooks/review/PLAYBOOK.md`.
 - Follow the router's shared rules.
 
 Use when:
 
-- the user asks "what's the next comment"
-- the user says "continue the review"
-- the user wants "one comment at a time"
+- the user wants an initial full PR review drafted in one go
+- the user provides a PR URL/number without asking for reply-only or
+  one-at-a-time
 
 Out of scope:
 
-- If the user wants to apply code changes while iterating (and run lint/type_check/tests per cycle),
+- If the user wants to apply requested changes while processing review feedback (one thread/comment at a time),
   use `~/.agents/playbooks/review/pr_change_cycle.md` instead.
 
 ## PR Common Setup (All PR Modes)
@@ -52,7 +52,7 @@ Preflight (blocking):
 Base context sources:
 
 - Preferred: semantic code search (when available):
-  - Follow: `~/.agents/playbooks/code_search/semantic_code_search.md`
+  - Follow: `~/.agents/skills/semantic_code_search/SKILL.md`
   - Invoke at least one SCSI tool to establish base behavior/invariants.
 - Fallback: local base context:
   - `rg` + file reads
@@ -106,38 +106,38 @@ Deep links to exact source lines (PR head SHA):
 
 If posting is requested:
 
-- Follow `~/.agents/playbooks/github/gh_workflow.md` for exact anchoring and API
+- Follow `~/.agents/playbooks/github/PLAYBOOK.md` for exact anchoring and API
   constraints.
 
-Context before drafting:
+Complete pass before drafting (do not skip):
 
-- On the first turn of an iterative PR session, do a complete pass before
-  drafting:
-  - PR description + linked issues/PRs/docs (follow until nothing left to open)
-  - all review threads/replies (end-to-end)
-  - full diff
-  - referenced screenshots/GIFs/videos
-  - targeted local verification for risky claims
-- On later turns, keep working from the internal findings queue (do not re-read
-  everything unless needed).
+- PR description + all links (follow recursively until nothing left to
+  investigate)
+- all review threads/replies (end-to-end)
+- full diff
+- referenced screenshots/GIFs/videos
+- targeted local verification for risky claims
 
 Review contract:
 
-- Maintain a full internal findings queue ordered by severity.
-- Each turn: draft exactly one new review comment for the highest-priority
-  unresolved finding, then stop.
+- Build a complete internal findings queue ordered by severity.
+- Draft highest-risk items first.
 
-Output (exactly one finding per turn):
+Output:
 
-- `Base context: SCSI=<index>|none (list_indices checked; <reason>), base=<branch>, diff=<base>...HEAD`
-  - reviewer metadata only; do not include in GitHub comment bodies
-- Where (file path + line/range when possible)
-- What's wrong (concrete)
-- Why it matters (impact)
-- How to verify (minimal repro/test)
-- Proposed fix (smallest change)
-- Use a collaborative close only when it fits naturally.
+- Return a batch `Pending review draft` containing:
+  - `Base context: SCSI=<index>|none (list_indices checked; <reason>), base=<branch>, diff=<base>...HEAD`
+    - reviewer metadata only; do not include in GitHub comment bodies
+  - `inline_comments`: one draft per finding worth commenting, each with:
+    - Where (file path + line/range when possible)
+    - Comment body
+    - Why it matters (1-2 lines)
+    - How to verify (minimal)
+    - Proposed fix (smallest change)
+  - `summary_comment` (optional): short PR-level comment
 
-If you need to reply to an existing review thread:
+Draft persistence:
 
-- Use PR thread replies mode instead of mixing reply drafting into this mode.
+- If the user says "consult before sending", keep the full batch draft in a
+  single scratch file under `/tmp/` so it can be reviewed/edited before
+  posting. Do not post until explicitly asked.

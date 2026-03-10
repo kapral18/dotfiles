@@ -18,12 +18,12 @@ Contract:
 - Load secondary playbooks only when this router or the selected mode requires
   them (for example: semantic code search for base context, or GitHub workflow
   when the user explicitly asks to post).
-- Do not load `~/.agents/playbooks/github/gh_workflow.md` for read-only PR
+- Do not load `~/.agents/playbooks/github/PLAYBOOK.md` for read-only PR
   inspection/review. Only load it when the user explicitly asks to post/submit
   anything to GitHub.
 - If the user wants review analysis and GitHub posting in the same request, the
   review router stays primary. Draft/verify through review mode first, then
-  load `~/.agents/playbooks/github/gh_workflow.md` only for the posting step.
+  load `~/.agents/playbooks/github/PLAYBOOK.md` only for the posting step.
 
 ## PR Detection (Do First When PR Is Involved)
 
@@ -121,7 +121,7 @@ Hard constraints:
 - Assume the user started the agent inside the intended repo/worktree/session:
   - do not create/switch worktrees proactively
   - if the user explicitly asks to create/switch a worktree, use
-    `~/.agents/playbooks/worktrees/w_workflow.md` and prefer `,w`
+    `~/.agents/skills/worktrees/SKILL.md` and prefer `,w`
 
 Base-branch context (mandatory):
 
@@ -148,7 +148,7 @@ Preflight (blocking, do first):
 If the repo is indexed:
 
 - Semantic code search is required for base-branch context.
-  - Load and follow: `~/.agents/playbooks/code_search/semantic_code_search.md`
+  - Load and follow: `~/.agents/skills/semantic_code_search/SKILL.md`
   - You MUST invoke at least one SCSI tool (for example:
     `discover_directories`, `semantic_code_search`, `map_symbols_by_query`,
     `symbol_analysis`, or `read_file_from_chunks`) to establish base invariants.
@@ -235,5 +235,5 @@ Posting boundary:
 - Draft in chat first.
 - If the user asks to post/submit/apply anything to GitHub:
   - keep the draft content from the review mode playbook
-  - then switch to `~/.agents/playbooks/github/gh_workflow.md`
+  - then switch to `~/.agents/playbooks/github/PLAYBOOK.md`
   - get explicit approval for the GitHub side effect

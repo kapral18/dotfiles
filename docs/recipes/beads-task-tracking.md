@@ -14,7 +14,7 @@ daemon and without mixing data across unrelated repos.
 
 `bdlocal` is defined in:
 
-- `home/dot_config/fish/config.fish.tmpl`
+- `home/dot_config/fish/readonly_config.fish.tmpl`
 
 It resolves a per-repo `$BEADS_DIR` under `~/beads-data/<repo>` and pins the DB
 to:

@@ -14,9 +14,9 @@ External truth applies:
 
 Do not use:
 
-- GitHub/`gh` operations (PRs, issues, labels, comments, reviews): `~/.agents/playbooks/github/gh_workflow.md`
-- Writing-only PR/issue composition: `~/.agents/playbooks/github/compose_pr_general.md`, `~/.agents/playbooks/github/compose_issue_general.md` (or Elastic variants)
-- Worktree management (create/switch/remove worktrees, PR worktrees): `~/.agents/playbooks/worktrees/w_workflow.md`
+- GitHub/`gh` operations (PRs, issues, labels, comments, reviews): `~/.agents/playbooks/github/PLAYBOOK.md`
+- Writing-only PR/issue composition: `~/.agents/skills/compose_pr/SKILL.md`, `~/.agents/skills/compose_issue/SKILL.md`
+- Worktree management (create/switch/remove worktrees, PR worktrees): `~/.agents/skills/worktrees/SKILL.md`
 
 First actions:
 

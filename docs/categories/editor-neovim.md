@@ -34,7 +34,7 @@ Leader keys:
 - `mapleader` is space (`vim.g.mapleader = " "`)
 - `maplocalleader` is `\`
 
-See `home/dot_config/exact_nvim/exact_lua/exact_core/options.lua`.
+See `home/dot_config/exact_nvim/exact_lua/exact_core/readonly_options.lua`.
 
 Neovim itself is version-managed via ASDF:
 
@@ -57,8 +57,8 @@ triggers that parser.
 This config prefers Neovim's bundled parser for Markdown to reduce the chance
 of a bad user-installed parser taking down the editor:
 
-- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins/treesitter.lua`
-- Helper: `home/dot_config/exact_nvim/exact_lua/exact_util/treesitter.lua`
+- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_treesitter.lua`
+- Helper: `home/dot_config/exact_nvim/exact_lua/exact_util/readonly_treesitter.lua`
 
 Symptoms you might see:
 
@@ -86,11 +86,11 @@ If you are IDE-first, start by learning:
 
 This config installs `which-key`:
 
-- Plugin: `home/dot_config/exact_nvim/exact_lua/exact_plugins/which-key.lua`
+- Plugin: `home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_which-key.lua`
 
 Most mappings are defined with descriptions in:
 
-- `home/dot_config/exact_nvim/exact_lua/exact_core/keymaps.lua`
+- `home/dot_config/exact_nvim/exact_lua/exact_core/readonly_keymaps.lua`
 
 If you forget a shortcut, use `which-key` and your leader mappings as the
 primary discovery mechanism.
@@ -99,8 +99,8 @@ primary discovery mechanism.
 
 Start here if you want to change behavior without spelunking the entire tree:
 
-- Core options: `home/dot_config/exact_nvim/exact_lua/exact_core/options.lua`
-- Core keymaps: `home/dot_config/exact_nvim/exact_lua/exact_core/keymaps.lua`
+- Core options: `home/dot_config/exact_nvim/exact_lua/exact_core/readonly_options.lua`
+- Core keymaps: `home/dot_config/exact_nvim/exact_lua/exact_core/readonly_keymaps.lua`
 - Plugin configs: `home/dot_config/exact_nvim/exact_lua/exact_plugins/`
 
 The corresponding installed paths are:
@@ -125,7 +125,7 @@ place to look when you want to understand *why* something exists.
 
 The load list is explicitly declared in:
 
-- `home/dot_config/exact_nvim/exact_lua/exact_core/init.lua`
+- `home/dot_config/exact_nvim/exact_lua/exact_core/readonly_init.lua`
 
 ## Starter Keymaps (High Signal)
 
@@ -174,7 +174,7 @@ GitHub (Octo):
 
 Repo search is centered around `fzf-lua`:
 
-- Config: `home/dot_config/exact_nvim/exact_lua/exact_plugins/fzf.lua`
+- Config: `home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_fzf.lua`
 
 Useful mappings (all are defined in that file):
 
@@ -186,7 +186,7 @@ Useful mappings (all are defined in that file):
 
 File explorers:
 
-- Neo-tree: `home/dot_config/exact_nvim/exact_lua/exact_plugins/neo-tree.lua`
+- Neo-tree: `home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_neo-tree.lua`
 - Yazi: same file (`mikavilpas/yazi.nvim`)
 - Oil: same file (`stevearc/oil.nvim`)
 
@@ -200,8 +200,8 @@ Neo-tree has a couple of "workflow" mappings inside the tree:
 
 This is one of the most valuable "hidden" workflows.
 
-- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/run-jest-in-split.lua`
-- Source: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/run-jest-in-split.lua`
+- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_run-jest-in-split.lua`
+- Source: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_run-jest-in-split.lua`
 
 Keymaps:
 
@@ -217,8 +217,8 @@ Keymaps:
 
 In a `gitcommit` buffer, generate a Conventional Commit message from the staged diff (`git diff --cached`).
 
-- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/summarize-commit.lua`
-- Source: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/summarize-commit.lua`
+- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_summarize-commit.lua.tmpl`
+- Source: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_summarize-commit.lua`
 
 Keymaps:
 
@@ -242,7 +242,7 @@ Env:
 
 Hunks, blame, and history search are configured here:
 
-- `home/dot_config/exact_nvim/exact_lua/exact_plugins/git.lua`
+- `home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_git.lua`
 
 Highlights:
 
@@ -255,18 +255,18 @@ Highlights:
 Show owner of the current file:
 
 - Keymap: `leader-0`
-- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/show-file-owner.lua`
+- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_show-file-owner.lua`
 
 Search only paths owned by a team/owner:
 
 - Keymaps: `leader-rg`, `leader-rG`, `leader-fd`, `leader-fD`
 - Commands: `:OwnerCodeGrep`, `:OwnerCodeFd`, `:ListOwners`
-- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/owner-code-search.lua`
+- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_owner-code-search.lua`
 
 ## Refactors: Move TS Exports (Local Plugin)
 
 - Visual mode mapping: `leader-]`
-- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/ts-move-exports.lua`
+- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_ts-move-exports.lua`
 
 ## tmux Bridge: Send Text To The Right Pane (Local Plugin)
 
@@ -279,7 +279,7 @@ pane to the right.
 - `leader-ah` send git hunk
 - `leader-ag` send git diff (file)
 
-Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/send-to-tmux-right-pane.lua`
+Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_send-to-tmux-right-pane.lua`
 
 ## Jump Between Source And Test Files (Local Plugin)
 
@@ -287,8 +287,8 @@ If you keep `foo.ts` and `foo.test.ts` (or `.spec`, `_test`, etc) side-by-side,
 this mapping toggles between them.
 
 - Keymap: `Ctrl-^`
-- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/switch-src-test.lua`
-- Source: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/switch-src-test.lua`
+- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_switch-src-test.lua`
+- Source: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_switch-src-test.lua`
 
 It supports extension fallbacks (ts <-> tsx <-> js <-> jsx) when the exact match
 does not exist.
@@ -299,7 +299,7 @@ When your cursor is on an ESLint `extends`/plugin reference, this opens the
 actual file on disk (from `node_modules`).
 
 - Keymap: `leader-sfe`
-- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/open-eslint-path.lua`
+- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_open-eslint-path.lua`
 
 ## Copy Current Buffer To Quickfix Directories (Local Plugin)
 
@@ -310,7 +310,7 @@ file-based fix across multiple worktrees/sandboxes).
 - Keymap: `leader-cb` (copy)
 - Keymap: `leader-cB` (copy forced)
 - Command: `:CopyBufferToQfDirs` (optional `force`)
-- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/copy-to-qf.lua`
+- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_copy-to-qf.lua`
 
 ## Toggle Window Width (Local Plugin)
 
@@ -318,14 +318,14 @@ Toggles the current window width between the previous value and a "fit to
 content" width.
 
 - Keymap: `leader-=`
-- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/toggle-win-width.lua`
+- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_toggle-win-width.lua`
 
 ## Winbar: Show Remainder Path (Local Plugin)
 
 This config sets a custom winbar that shows the remainder of the current path
 in a compact way.
 
-- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/winbar.lua`
+- Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_winbar.lua`
 
 ## Quickfix Ergonomics (Local Plugin)
 
@@ -336,11 +336,11 @@ Quickfix is treated as a first-class workflow. Add-ons:
 - `leader-rqx` filter exclude pattern
 - inside quickfix window: `dd` removes an entry
 
-Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/qf.lua`
+Loader: `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_qf.lua`
 
 ## Small Quality-Of-Life Commands
 
-Defined in `home/dot_config/exact_nvim/exact_lua/exact_core/keymaps.lua`:
+Defined in `home/dot_config/exact_nvim/exact_lua/exact_core/readonly_keymaps.lua`:
 
 - `:LargeFiles` populate quickfix with very large tracked files
 - `:WW` / `:WWW` write without triggering autocmds

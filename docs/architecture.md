@@ -47,6 +47,7 @@ Common patterns in this setup:
 - `home/dot_*` -> `~/.<name>` (for example: `home/dot_zsh/` -> `~/.zsh/`)
 - `home/private_dot_ssh/...` -> `~/.ssh/...` (and treated as private by chezmoi)
 - `executable_foo` -> installs as an executable file named `foo`
+- `readonly_foo` -> installs as `foo` with `0444` permissions (read-only); used for config files that should not be modified by external tools at runtime
 - `exact_` prefix in a directory name means "exact directory" (chezmoi does not
   merge it with existing contents)
 

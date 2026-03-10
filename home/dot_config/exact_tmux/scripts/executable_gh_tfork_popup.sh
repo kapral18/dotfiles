@@ -1,20 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-tmux_opt() {
-  local key="$1"
-  local default_value="$2"
-  local value
-  value="$(tmux show-option -gqv "${key}")"
-  if [[ -n "${value}" ]]; then
-    echo "${value}"
-  else
-    echo "${default_value}"
-  fi
-}
-
-width="$(tmux_opt '@gh_tfork_popup_width' '90')"
-height="$(tmux_opt '@gh_tfork_popup_height' '3')"
+IFS='|' read -r width height orig_shell < <(
+  tmux display-message -p \
+    '#{@gh_tfork_popup_width}|#{@gh_tfork_popup_height}|#{default-shell}' \
+    2>/dev/null || true
+)
+[ -n "${width:-}" ] || width="90"
+[ -n "${height:-}" ] || height="3"
+[ -n "${orig_shell:-}" ] || orig_shell="/bin/sh"
 
 prompt_cmd="$HOME/.config/tmux/scripts/gh_tfork_prompt.sh"
 
@@ -23,13 +17,7 @@ if [ ! -x "$prompt_cmd" ]; then
   exit 0
 fi
 
-set +e
-tmux display-popup -E -h "${height}" -w "${width}" -d "#{pane_current_path}" -T "Bootstrap repo (,gh-tfork)" \
-  "$prompt_cmd"
-rc="$?"
-set -e
-
-if [ "$rc" -eq 130 ]; then
-  exit 0
-fi
-exit "$rc"
+tmux set-option -g default-shell /bin/sh \; \
+  display-popup -E -h "${height}" -w "${width}" -d "#{pane_current_path}" \
+  -T "Bootstrap repo (,gh-tfork)" "$prompt_cmd" \; \
+  set-option -g default-shell "$orig_shell" 2>/dev/null || true

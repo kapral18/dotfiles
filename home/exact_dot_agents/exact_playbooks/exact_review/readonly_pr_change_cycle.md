@@ -2,7 +2,7 @@
 
 Precondition:
 
-- You already loaded `~/.agents/playbooks/review/router.md`.
+- You already loaded `~/.agents/playbooks/review/PLAYBOOK.md`.
 - Follow the router's shared rules (especially base-branch context + truth validation).
 
 Use when:
@@ -41,7 +41,7 @@ Base-branch context gate (mandatory):
   - if multiple equally plausible repo-matching indices remain, ask the user
     which one represents the base branch for this repo
 - Preferred: semantic code search (when available):
-  - Follow: `~/.agents/playbooks/code_search/semantic_code_search.md`
+  - Follow: `~/.agents/skills/semantic_code_search/SKILL.md`
   - Invoke at least one SCSI tool to establish base behavior/invariants for the area under review.
 - Fallback: local base context:
   - `rg` + file reads

@@ -12,9 +12,9 @@ Use this playbook when:
 
 Do not use:
 
-- PR review feedback: `~/.agents/playbooks/review/router.md`
-- GitHub side effects (posting comments/reviews, creating PRs/issues): `~/.agents/playbooks/github/gh_workflow.md`
-- pure git operations unrelated to worktrees (commit/rebase/push): `~/.agents/playbooks/git/workflow.md`
+- PR review feedback: `~/.agents/playbooks/review/PLAYBOOK.md`
+- GitHub side effects (posting comments/reviews, creating PRs/issues): `~/.agents/playbooks/github/PLAYBOOK.md`
+- pure git operations unrelated to worktrees (commit/rebase/push): `~/.agents/playbooks/git/PLAYBOOK.md`
 
 First actions:
 

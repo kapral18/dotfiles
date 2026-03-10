@@ -8,11 +8,11 @@ This repo is designed around a tmux-first workflow, but you still need a solid t
 
 Default terminal emulator config:
 
-- `home/dot_config/exact_ghostty/config`
+- `home/dot_config/exact_ghostty/readonly_config`
 
 ## Bat (better `cat`)
 
-- Config: `home/dot_config/exact_bat/config`
+- Config: `home/dot_config/exact_bat/readonly_config`
 
 Themes are pulled via externals into:
 

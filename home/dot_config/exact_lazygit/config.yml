@@ -13,6 +13,11 @@ keybinding:
   commits:
     markCommitAsBaseForRebase: "<c-b>"
 customCommands:
+  - key: C
+    command: git commit --no-verify
+    context: files
+    description: Commit (--no-verify)
+    output: terminal
   - key: <c-P>
     command: get_pr_worktrees "{{ .Form.PrNumber }}"
     context: localBranches

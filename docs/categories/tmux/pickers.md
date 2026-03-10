@@ -23,9 +23,7 @@ This setup ships a URL picker and a session/worktree picker designed to run insi
   `@pick_session_worktree_scan_roots` (default `~/work,~/code,~/.backport/repositories,~/.local/share`), `@pick_session_worktree_scan_depth` (default `6`),
   `@pick_session_cache_ttl` (default `60`), `@pick_session_cache_wait_ms` (default `0`), `@pick_session_mutation_tombstone_ttl` (default `300`), `@pick_session_session_tombstone_live_grace_s` (default `2`),
   `@pick_session_filter_passthrough_rows` (default `2000`; for caches at or above this row count, picker uses cache order directly and skips expensive regroup/sort),
-  `@pick_session_reorder_after_open` (default `on`; fallback when ordered snapshot is stale: apply grouped ordering in background),
-  `@pick_session_reorder_after_open_delay_ms` (default `180`; delay before the fallback one-shot background reorder reload),
-  `@pick_session_live_refresh_on_start` (default `off`),
+  `@pick_session_defer_dir_rows_threshold` (default `0` = disabled; when set to a positive number and cache row count is at/above that threshold, first paint omits `dir` rows to reduce open latency),
   `@pick_session_live_refresh_ttl` (default `20`), `@pick_session_live_refresh_interval_ms` (default `1500`), `@pick_session_live_refresh_start_delay_ms` (default `5000`),
   `@pick_session_live_refresh_pause_on_multi` (default `on`), `@pick_session_live_refresh_pause_on_query` (default `on`),
   `@pick_session_dir_exclude_file` (default `~/.config/tmux/pick_session_dir_exclude.txt`), `@pick_session_dir_include_hidden` (default `on`)
@@ -45,8 +43,12 @@ This setup ships a URL picker and a session/worktree picker designed to run insi
   - worktree-only groups next
   - `dir` entries at the end (still clustered by scan root and path)
 - `pick_session_index_update.sh` also maintains `~/.cache/tmux/pick_session_items_ordered.tsv` (precomputed ordered snapshot) in the background.
-- Picker open now prefers that ordered snapshot directly for instant + stable first paint.
-- If the ordered snapshot is missing/stale (for example cache/mutation/pending changed), open falls back to two-phase mode: immediate rows from `pick_session_items.sh`, then one background `reload(pick_session_filter.sh --force-order)`.
+- Picker open prefers the ordered snapshot for instant + stable first paint, but validates it against mutation/pending timestamps first (bash `-nt` check, zero subprocess overhead).
+- For very large caches, first paint can defer `dir` rows and render only `session`/`worktree` rows. This is disabled by default (`@pick_session_defer_dir_rows_threshold` = `0`); set to a positive row count to enable.
+- Popup spawn temporarily overrides `default-shell` to `/bin/sh` during `display-popup` creation to avoid heavy-shell (fish, zsh with plugins) initialization overhead (~1 s with fish). The original shell is restored atomically in the same tmux command chain. `pick_session.sh` itself runs under `bash` via its shebang.
+- `tmux_opt` reads in `pick_session.sh` are cached: a single `tmux show-options -g` call replaces multiple sequential `tmux show-option` round-trips.
+- First paint comes from `pick_session_items_ordered.tsv` when fresh; after `ctrl-x` kill or `alt-x` remove (which write mutation tombstones), the ordered snapshot is stale so `pick_session_items.sh` runs with mutation filtering (~250 ms) to ensure killed/removed entries never reappear.
+- Picker open does not auto-reload anymore (prevents visible rerender/churn); use `ctrl-r` (or `alt-r` for force refresh) when you want a fresh full rebuild while the picker is open.
 - Picker `ctrl-r` refresh keeps grouped ordering (`pick_session_filter.sh --refresh --force-order`) while still triggering quick+full background cache refresh.
 - For very large caches, `pick_session_filter.sh` automatically falls back to passthrough mode (default threshold `2000` rows) so popup open latency stays low; tune with `@pick_session_filter_passthrough_rows`.
 - The picker uses fzf's native in-process filtering (no reload per keystroke) across the visible label and the hidden match key column, with `--scheme=path` and tie-breakers `begin,length,index` so path-root matches (for example `~/work`) outrank unrelated long-path text hits. Queries like `work/kibana main` match.

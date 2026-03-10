@@ -15,7 +15,7 @@ Relevant files:
 
 ## Core Config
 
-- Template: `home/dot_config/fish/config.fish.tmpl`
+- Template: `home/dot_config/fish/readonly_config.fish.tmpl`
 
 Notable responsibilities in this file:
 
@@ -28,7 +28,7 @@ Notable responsibilities in this file:
 
 It also initializes a few tools if present:
 
-- Starship prompt (`home/dot_config/starship.toml`)
+- Starship prompt (`home/dot_config/readonly_starship.toml`)
 - zoxide (smarter `cd`)
 - fzf integration via `PatrickF1/fzf.fish`
 
@@ -78,11 +78,11 @@ echo "${GEMINI_API_KEY:+set}"
 
 This setup keeps a shared ignore-globs file used by `fd`/`fzf` defaults:
 
-- `home/dot_config/ignore-globs`
+- `home/dot_config/readonly_ignore-globs`
 
 In fish, it's wired via:
 
-- `FD_DEFAULT_OPTS` in `home/dot_config/fish/config.fish.tmpl`
+- `FD_DEFAULT_OPTS` in `home/dot_config/fish/readonly_config.fish.tmpl`
 
 ## Password-Store Switching (Non-Work Machines)
 
@@ -104,7 +104,7 @@ echo "$PASSWORD_STORE_DIR"
 
 Fish plugins are managed with Fisher:
 
-- Plugin list: `home/dot_config/fish/fish_plugins`
+- Plugin list: `home/dot_config/fish/readonly_fish_plugins`
 - Hook: `home/.chezmoiscripts/run_onchange_after_04-update-fish-packages.fish.tmpl`
 
 ## Troubleshooting

@@ -38,7 +38,7 @@ Relevant files:
 Fish loads several API keys from `pass` if they are not already set in the
 environment:
 
-- `home/dot_config/fish/config.fish.tmpl`
+- `home/dot_config/fish/readonly_config.fish.tmpl`
 - Non-fish login profiles are kept side-effect free and do not invoke `pass`.
 
 On first setup, `pass` is installed and the password store is cloned via:
@@ -57,7 +57,7 @@ On non-work machines, fish defines helpers to switch the `PASSWORD_STORE_DIR`:
 
 Implementation:
 
-- `home/dot_config/fish/config.fish.tmpl`
+- `home/dot_config/fish/readonly_config.fish.tmpl`
 
 On first setup, the pass bootstrap script attempts to clone both password-store
 repositories on non-work machines:
@@ -91,7 +91,7 @@ echo "$PASSWORD_STORE_DIR"
 If secrets are missing at runtime:
 
 - confirm `pass` is initialized and unlocked.
-- confirm secret paths referenced in `home/dot_config/fish/config.fish.tmpl`
+- confirm secret paths referenced in `home/dot_config/fish/readonly_config.fish.tmpl`
   exist.
 - confirm work store clone exists at `~/.password-store-work` on non-work
   machines if using `wpass`.
