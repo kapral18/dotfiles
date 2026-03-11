@@ -1,3 +1,13 @@
+---
+name: semantic_code_search
+description: |-
+  Use when the user wants semantic investigation via SCSI tools (scsi,
+  symbol_analysis, list_indices), asks to use/select/verify a specific
+  semantic index, or a loaded review/walkthrough playbook requires semantic
+  base-context. Use it for semantic/base-context work, not as a replacement
+  for local diff/file inspection.
+---
+
 # Semantic Code Search Playbook
 
 Use this playbook for conceptual investigations using semantic-code-search MCP tools.

@@ -1,3 +1,11 @@
+---
+name: kibana
+description: |-
+  Use when the user asks about CODEOWNERS / ownership / reviewers for
+  elastic/kibana Management areas. Verify current repo/CODEOWNERS first;
+  do not answer from the excerpt alone.
+---
+
 # Kibana Management Ownership Guidance
 
 This guidance is derived from a point-in-time scan of `elastic/kibana` `.github/CODEOWNERS`.

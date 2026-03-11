@@ -1,3 +1,11 @@
+---
+name: labels_propose
+description: |-
+  Use when the user wants suggested labels/backports/version targeting for
+  elastic/kibana (no posting). Propose exact verified labels only; applying
+  labels routes to GitHub side effects.
+---
+
 # Elastic / Kibana Label Guidance (Propose-Only)
 
 Use when:

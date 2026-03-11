@@ -1,3 +1,12 @@
+---
+name: beads
+description: |-
+  Use when the user explicitly wants beads / bdlocal / BEADS_DIR, or wants
+  work persisted in the beads DB (inspect/create/claim/update/close/export).
+  Not for generic planning outside Beads. Bead mutations still require
+  explicit user permission.
+---
+
 # Beads Playbook
 
 This is mandatory: always check context and offer to persist at ~10%

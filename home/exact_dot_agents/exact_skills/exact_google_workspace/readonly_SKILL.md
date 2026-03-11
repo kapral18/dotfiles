@@ -1,3 +1,12 @@
+---
+name: google_workspace
+description: |-
+  Use when the user asks to inspect or change Gmail / Drive / Calendar /
+  Admin / Docs / Sheets / other Google Workspace data or settings that gws
+  supports. Prefer gws over browser/manual HTTP and inspect gws schema
+  before direct calls.
+---
+
 # Google Workspace (`gws`) Playbook
 
 Use this playbook when the user asks to inspect or change Google Workspace

@@ -439,54 +439,6 @@ Overlap / precedence rules:
    across components/flows, rather than a simple file or symbol lookup.
    Playbook: `~/.agents/playbooks/architecture/PLAYBOOK.md`
 
-### Skills
-
-1. **Beads (bdlocal)**
-   Use when: the user explicitly wants beads / bdlocal / `BEADS_DIR`, or wants
-   work persisted in the beads DB (inspect/create/claim/update/close/export).
-   Not for generic planning outside Beads. Bead mutations still require
-   explicit user permission.
-   Skill: `~/.agents/skills/beads/SKILL.md`
-2. **Google Workspace (`gws`)**
-   Use when: the user asks to inspect or change Gmail / Drive / Calendar /
-   Admin / Docs / Sheets / other Google Workspace data or settings that `gws`
-   supports. Prefer `gws` over browser/manual HTTP and inspect `gws schema`
-   before direct calls.
-   Skill: `~/.agents/skills/google_workspace/SKILL.md`
-3. **Draft PR body (no side effects)**
-   Use when: the user wants writing only (no `gh` side effects), for example
-   "draft PR body" / "write PR description" / "compose PR", or when the GitHub
-   workflow needs draft PR text before creating/editing the PR.
-   Skill: `~/.agents/skills/compose_pr/SKILL.md`
-4. **Draft issue body (no side effects)**
-   Use when: the user wants writing only (no `gh` side effects), for example
-   "draft issue" / "write issue" / "compose issue", or when the GitHub
-   workflow needs draft issue text before creating/editing the issue.
-   Skill: `~/.agents/skills/compose_issue/SKILL.md`
-5. **Elastic/Kibana label proposals (propose-only)**
-   Use when: the user wants suggested labels/backports/version targeting for
-   `elastic/kibana` (no posting). Propose exact verified labels only; applying
-   labels routes to GitHub side effects.
-   Skill: `~/.agents/skills/labels_propose/SKILL.md`
-6. **Kibana Management ownership hints**
-   Use when: the user asks about `CODEOWNERS` / ownership / reviewers for
-   `elastic/kibana` Management areas. Verify current repo/CODEOWNERS first;
-   do not answer from the excerpt alone.
-   Skill: `~/.agents/skills/kibana/SKILL.md`
-7. **Worktrees (,w)**
-   Use when: the user mentions `,w` or asks to create/switch/open/list/prune/
-   remove worktrees, including checking out PRs/issues locally. Prefer `,w`
-   subcommands over raw `git worktree`.
-   Skill: `~/.agents/skills/worktrees/SKILL.md`
-8. **Semantic code search**
-   Use when: the user wants semantic investigation via SCSI tools (`scsi`,
-   `symbol_analysis`, `list_indices`), asks to use/select/verify a specific
-   semantic index ("use `<index>` index", "using the `<index>` index",
-   "which index should we use?"), or a loaded review/walkthrough playbook
-   requires semantic base-context. Use it for semantic/base-context work, not
-   as a replacement for local diff/file inspection.
-   Skill: `~/.agents/skills/semantic_code_search/SKILL.md`
-
 ## 7. Exceptions
 
 - On conflict with user request: stop, describe conflict, ask for

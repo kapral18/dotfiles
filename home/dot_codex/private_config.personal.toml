@@ -1,6 +1,5 @@
 #:schema https://developers.openai.com/codex/config-schema.json
 
-# Codex defaults (unrestricted: no approvals, no sandbox).
 approval_policy = "never"
 sandbox_mode = "danger-full-access"
 web_search = "cached"

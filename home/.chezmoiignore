@@ -4,10 +4,10 @@ app_icons/
 .cursor/mcp.json
 .gemini/settings.json
 .config/opencode/opencode.jsonc
-.codex/config.toml
 **/*.work.json
 **/*.personal.json
 **/*.work.jsonc
 **/*.personal.jsonc
 **/*.work.toml
 **/*.personal.toml
+.codex/config.toml

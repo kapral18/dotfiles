@@ -1,3 +1,11 @@
+---
+name: compose_issue
+description: |-
+  Use when the user wants writing only (no gh side effects), for example
+  "draft issue" / "write issue" / "compose issue", or when the GitHub
+  workflow needs draft issue text before creating/editing the issue.
+---
+
 # Compose Issue Body
 
 Use when:

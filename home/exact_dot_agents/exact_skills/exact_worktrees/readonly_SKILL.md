@@ -1,3 +1,11 @@
+---
+name: worktrees
+description: |-
+  Use when the user mentions ,w or asks to create/switch/open/list/prune/
+  remove worktrees, including checking out PRs/issues locally. Prefer ,w
+  subcommands over raw git worktree.
+---
+
 # ,w Worktree Playbook (Worktrees + tmux)
 
 Primary goal:

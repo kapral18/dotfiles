@@ -1,3 +1,11 @@
+---
+name: compose_pr
+description: |-
+  Use when the user wants writing only (no gh side effects), for example
+  "draft PR body" / "write PR description" / "compose PR", or when the GitHub
+  workflow needs draft PR text before creating/editing the PR.
+---
+
 # Compose PR Body
 
 Use when:
