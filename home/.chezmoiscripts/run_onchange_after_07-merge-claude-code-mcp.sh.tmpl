@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+{{- if eq .isWork true }}
+# claude code mcp desired hash (work): {{ include "dot_claude/mcp.work.json" | sha256sum }}
+{{- else }}
+# claude code mcp desired hash (non-work): {{ include "dot_claude/mcp.personal.json" | sha256sum }}
+{{- end }}
+
+source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
+target="$HOME/.claude.json"
+is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
+
+if [ "$is_work" = "true" ]; then
+  src="$source_dir/dot_claude/mcp.work.json"
+else
+  src="$source_dir/dot_claude/mcp.personal.json"
+fi
+
+python3 - "$src" "$target" <<'PY'
+import json, sys
+
+src_path, target_path = sys.argv[1], sys.argv[2]
+desired = json.load(open(src_path)).get("mcpServers", {})
+
+try:
+    data = json.load(open(target_path))
+except (FileNotFoundError, json.JSONDecodeError):
+    data = {}
+
+current = data.get("mcpServers", {})
+if current == desired:
+    sys.exit(0)
+
+data["mcpServers"] = desired
+open(target_path, "w").write(json.dumps(data, indent=2) + "\n")
+PY

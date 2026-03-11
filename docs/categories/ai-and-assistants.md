@@ -222,6 +222,7 @@ agent --help
 
 Examples of tool configs included here:
 
+- Claude Code: `home/dot_claude/`
 - OpenCode: `home/dot_config/opencode/`
 - Codex: `home/dot_codex/`
 - Amp: `home/dot_config/exact_amp/private_readonly_settings.json` (private settings)
@@ -238,12 +239,65 @@ Instead of keeping complex templates or comment-based filtering logic, we use ex
 `.work.*` and `.personal.*` files. The shell script checks the `.isWork` template variable
 and copies the correct source to the final destination, completely decoupling the formats.
 
+- Claude Code settings: `home/dot_claude/settings.{work,personal}.json` → `~/.claude/settings.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-claude-code-settings.sh.tmpl`)
+- Claude Code MCP: `home/dot_claude/mcp.{work,personal}.json` → `~/.claude.json` mcpServers field (script: `home/.chezmoiscripts/run_onchange_after_07-merge-claude-code-mcp.sh.tmpl`)
 - Cursor MCP: `home/dot_cursor/mcp.{work,personal}.json` → `~/.cursor/mcp.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-cursor-mcp.sh.tmpl`)
 - Gemini settings: `home/dot_gemini/settings.json` → `~/.gemini/settings.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-gemini-settings.sh.tmpl`)
 - OpenCode config: `home/dot_config/opencode/readonly_opencode.{work,personal}.jsonc` → `~/.config/opencode/opencode.jsonc` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl`)
 - Codex config: `home/dot_codex/private_config.{work,personal}.toml` → `~/.codex/config.toml` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-codex-config.sh.tmpl`)
 - Pi MCP config: `home/dot_pi/agent/readonly_mcp.{work,personal}.json` → `~/.pi/agent/mcp.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-pi-mcp.sh.tmpl`; installed readonly)
 - Pi configs: `home/dot_pi/agent/readonly_{settings,models}.{work,personal}.json` → `~/.pi/agent/{settings,models}.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-pi-config.sh.tmpl`; installed readonly)
+
+### Claude Code settings
+
+Source: `home/dot_claude/settings.{work,personal}.json` → `~/.claude/settings.json`.
+
+Both profiles enable extended thinking and skip the dangerous-mode permission
+prompt.
+
+Work profile additions:
+
+- `apiKeyHelper`: runs `pass show litellm/api/token` so Claude Code
+  authenticates against the LiteLLM proxy without hardcoding secrets.
+- `env.ANTHROPIC_BASE_URL`: the LiteLLM base URL, injected from
+  `pass litellm/api/base` at `chezmoi apply` time by the merge script.
+
+MCP servers are stored separately in `~/.claude.json` (top-level `mcpServers`
+field) because that file contains runtime state managed by Claude Code. The
+merge script surgically updates only the `mcpServers` key, leaving other fields
+intact.
+
+Work MCP servers: playwright, sequentialthinking, buildkite, scsi-main,
+scsi-local (matching the Cursor work profile).
+Personal MCP servers: playwright, sequentialthinking.
+
+### Codex model catalog (work profile)
+
+Codex rejects the hyphen in `llm-gateway` during namespace resolution
+([openai/codex#14276](https://github.com/openai/codex/issues/14276)), so
+`llm-gateway/*` slugs never match bundled metadata. A custom model catalog
+works around this.
+
+Pipeline:
+
+1. Codex itself writes `~/.codex/models_cache.json` on first run. This cache
+   contains only OpenAI's bundled models (the `gpt-*` family).
+2. `home/.chezmoiscripts/run_onchange_after_07-generate-codex-model-catalog.sh.tmpl`
+   reads the cache, clones a template entry (`gpt-5.4`) to get all required
+   schema fields, then overrides `slug`, `display_name`, and optionally
+   `context_window` for each `llm-gateway/*` alias.
+3. The result is written to `~/.codex/models_catalog_litellm.json`.
+4. The work config (`home/dot_codex/private_config.work.toml`) points Codex at
+   this catalog via `model_catalog_json`.
+
+The hardcoded `MODELS` list in the script defines entries that do not exist in
+the cache — that is the entire point. Non-OpenAI models (Claude, Gemini) are
+also cloned from `gpt-5.4` as a structural template with correct overrides.
+
+Bootstrap dependency: on a fresh machine `models_cache.json` does not exist
+yet. The script exits silently on first `chezmoi apply`. After running Codex
+once (which populates the cache), a second `chezmoi apply` generates the
+catalog.
 
 ### Gemini CLI settings
 

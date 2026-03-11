@@ -1,0 +1,8 @@
+{
+  "alwaysThinkingEnabled": true,
+  "skipDangerousModePermissionPrompt": true,
+  "apiKeyHelper": "pass show litellm/api/token",
+  "env": {
+    "ANTHROPIC_BASE_URL": "__LITELLM_API_BASE__"
+  }
+}

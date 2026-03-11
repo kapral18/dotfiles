@@ -10,4 +10,5 @@ app_icons/
 **/*.personal.jsonc
 **/*.work.toml
 **/*.personal.toml
+.claude/settings.json
 .codex/config.toml

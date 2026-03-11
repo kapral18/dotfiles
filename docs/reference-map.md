@@ -76,7 +76,9 @@ This page answers two questions:
 - OpenCode: `home/dot_config/opencode/`
 - Pi config: `home/dot_pi/agent/`
 - Pi CLI package list entry: `home/readonly_dot_default-npm-pkgs`
+- Claude Code: `home/dot_claude/`
 - Codex: `home/dot_codex/`
+- Codex model catalog generator: `home/.chezmoiscripts/run_onchange_after_07-generate-codex-model-catalog.sh.tmpl`
 - Gemini: `home/dot_gemini/`
 - Copilot CLI: `home/dot_config/dot_copilot/`
 - Cursor: `home/dot_cursor/`

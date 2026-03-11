@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+{{- if eq .isWork true }}
+# claude code settings desired hash (work): {{ include "dot_claude/settings.work.json" | sha256sum }}
+{{- else }}
+# claude code settings desired hash (non-work): {{ include "dot_claude/settings.personal.json" | sha256sum }}
+{{- end }}
+
+source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
+target="$HOME/.claude/settings.json"
+is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
+
+mkdir -p "$(dirname "$target")"
+
+if [ "$is_work" = "true" ]; then
+  src="$source_dir/dot_claude/settings.work.json"
+
+  if ! command -v pass >/dev/null 2>&1; then
+    echo "pass is required to render Claude Code work settings" >&2
+    exit 1
+  fi
+
+  litellm_api_base="$(pass show litellm/api/base | tr -d '\n')"
+  if [ -z "$litellm_api_base" ]; then
+    echo "Missing pass entry: litellm/api/base" >&2
+    exit 1
+  fi
+
+  litellm_api_base="${litellm_api_base%/}"
+
+  tmp="$(mktemp)"
+  trap 'rm -f "$tmp"' EXIT
+
+  sed \
+    -e "s|__LITELLM_API_BASE__|$litellm_api_base|g" \
+    "$src" > "$tmp"
+
+  install -m 0644 "$tmp" "$target"
+else
+  src="$source_dir/dot_claude/settings.personal.json"
+  install -m 0644 "$src" "$target"
+fi
