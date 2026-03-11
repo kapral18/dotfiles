@@ -9,6 +9,37 @@ pending_file="${cache_dir}/pick_session_pending.tsv"
 items_cmd="$HOME/.config/tmux/scripts/pick_session_items.sh"
 ordered_update_cmd="$HOME/.config/tmux/scripts/pick_session_ordered_cache_update.sh"
 
+# The (current) marker is baked into cached/ordered output at generation time.
+# Dynamically fix it up so it always reflects the *active* session.
+fixup_current_marker() {
+  local file="$1"
+  local cur=""
+  if [ -n "${TMUX:-}" ]; then
+    cur="$(tmux display-message -p '#S' 2>/dev/null || true)"
+  fi
+  if [ -z "$cur" ]; then
+    cat "$file"
+    return
+  fi
+  CURRENT="$cur" python3 -u - "$file" <<'PY'
+import os, signal, sys
+signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+current = os.environ.get("CURRENT", "")
+suffix = "\033[2;38;5;244m (current)\033[0m"
+with open(sys.argv[1], "r", encoding="utf-8", errors="replace") as f:
+    for line in f:
+        line = line.rstrip("\n")
+        if not line:
+            continue
+        parts = line.split("\t")
+        if len(parts) >= 5:
+            parts[0] = parts[0].replace(suffix, "")
+            if parts[1] == "session" and parts[4] == current:
+                parts[0] += suffix
+        print("\t".join(parts))
+PY
+}
+
 # Fast path: precomputed ordered snapshot exists and is not invalidated by
 # recent mutations (ctrl-x kill / alt-x remove) or pending items.
 if [ -s "$ordered_file" ]; then
@@ -16,7 +47,8 @@ if [ -s "$ordered_file" ]; then
   [ -s "$mutation_file" ] && [ "$mutation_file" -nt "$ordered_file" ] && stale=1
   [ -s "$pending_file" ] && [ "$pending_file" -nt "$ordered_file" ] && stale=1
   if [ "$stale" -eq 0 ]; then
-    exec cat "$ordered_file"
+    fixup_current_marker "$ordered_file"
+    exit 0
   fi
 fi
 

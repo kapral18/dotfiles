@@ -292,7 +292,7 @@ for worktree in "${worktrees[@]}"; do
   else
     notify "Removing worktree: $worktree_path ($worktree_branch)"
   fi
-  if ! git worktree remove "$worktree_path"; then
+  if ! git worktree remove --force "$worktree_path"; then
     notify "Failed to remove worktree: $worktree_path"
     continue
   fi

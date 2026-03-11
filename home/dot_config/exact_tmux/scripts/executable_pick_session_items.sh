@@ -44,10 +44,39 @@ case "$session_tombstone_live_grace_s" in
 '' | *[!0-9]*) session_tombstone_live_grace_s=2 ;;
 esac
 
+fixup_current_marker() {
+  local file="$1"
+  local cur=""
+  if [ -n "${TMUX:-}" ]; then
+    cur="$(tmux display-message -p '#S' 2>/dev/null || true)"
+  fi
+  if [ -z "$cur" ]; then
+    cat "$file"
+    return
+  fi
+  CURRENT="$cur" python3 -u - "$file" <<'PY'
+import os, signal, sys
+signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+current = os.environ.get("CURRENT", "")
+suffix = "\033[2;38;5;244m (current)\033[0m"
+with open(sys.argv[1], "r", encoding="utf-8", errors="replace") as f:
+    for line in f:
+        line = line.rstrip("\n")
+        if not line:
+            continue
+        parts = line.split("\t")
+        if len(parts) >= 5:
+            parts[0] = parts[0].replace(suffix, "")
+            if parts[1] == "session" and parts[4] == current:
+                parts[0] += suffix
+        print("\t".join(parts))
+PY
+}
+
 # Fast path for large snapshots: when there are no pending removals or
 # mutation tombstones, emit the cache as-is and avoid expensive rehydration.
 if [ "$cache_was_present" -eq 1 ] && [ ! -s "$mutation_file" ] && [ ! -s "$pending_file" ]; then
-  cat "$cache_file"
+  fixup_current_marker "$cache_file"
   exit 0
 fi
 
