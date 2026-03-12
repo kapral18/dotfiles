@@ -12,3 +12,4 @@ app_icons/
 **/*.personal.toml
 .claude/settings.json
 .codex/config.toml
+.config/gh-dash/gh-dash-shared.yml

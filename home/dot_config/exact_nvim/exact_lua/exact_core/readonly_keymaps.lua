@@ -250,24 +250,6 @@ vim.api.nvim_create_user_command("WWW", function()
   vim.cmd("noautocmd Wall")
 end, { desc = "Write all without autocmds" })
 
-vim.api.nvim_create_user_command("MakeTags", function()
-  local cmd = [[
-    if [ -f .gitignore ]; then sed "s/\///" .gitignore > .ctagsignore; fi
-    ctags -R --exclude=@.ctagsignore .
-  ]]
-  vim.fn.jobstart({ "bash", "-c", cmd }, {
-    on_exit = function(_, exit_code)
-      if exit_code == 0 then
-        print("Tags created successfully")
-      else
-        print("Failed to create tags")
-      end
-    end,
-  })
-end, { desc = "Generate ctags respecting .gitignore" })
-
-map("n", "<leader>mt", "<cmd>MakeTags<cr>", { desc = "Make Tags" })
-
 map("n", "<leader>yp", function()
   local cur_file = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":~:.")
   if cur_file == "" then

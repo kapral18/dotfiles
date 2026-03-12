@@ -169,9 +169,9 @@ Custom commands are shipped as scripts installed to `~/bin` (source: `home/exact
     without losing context.
   - **Examples:** `,w add feat/my-change main`; `,w prs 12345`
 - **Name:** `,add-patch-to-prs`
-  - **Description:** Apply a local `fix.patch` onto one or more of your PR
-    branches, commit, and push—useful for “same fix across multiple PRs”.
-  - **Examples:** `,add-patch-to-prs 12345`; `,add-patch-to-prs "is:open author:@me label:backport"`
+  - **Description:** Apply one patch file onto one or more PR branches
+    (explicit PR numbers or picker-driven selection), then commit and push.
+  - **Examples:** `,add-patch-to-prs ./fix.patch 12345 12346`; `,add-patch-to-prs ./fix.patch --search "is:open author:@me"`; `,add-patch-to-prs ./fix.patch --message "Apply follow-up fix"`
 - **Name:** `,appid`
   - **Description:** Print the bundle identifier for a macOS app name/path
     (useful for scripting macOS automation).
@@ -200,6 +200,11 @@ Custom commands are shipped as scripts installed to `~/bin` (source: `home/exact
   - **Description:** Turn off auto-merge for all open PRs targeting a base
     branch (optionally skipping specific PRs).
   - **Examples:** `,disable-auto-merge main`; `,disable-auto-merge 8.18 12345 23456`
+- **Name:** `,doctor`
+  - **Description:** Run a system-wide health check for the dotfiles setup
+    (chezmoi state, package managers, shells, tmux, git/signing, SSH, editors,
+    AI tooling, key CLIs, and worktrees).
+  - **Examples:** `,doctor`; `,doctor --quiet`; `,doctor --verbose`
 - **Name:** `,dumputi`
   - **Description:** Dump the system’s registered Uniform Type Identifiers
     (UTIs), useful when debugging file associations.
@@ -278,10 +283,6 @@ Custom commands are shipped as scripts installed to `~/bin` (source: `home/exact
   - **Description:** Compare Jest test titles between two worktrees and emit a
     CSV (useful for refactors/migrations and review diffs).
   - **Examples:** `,jest-test-title-report --before ~/work/repo/main --after ~/work/repo/feat --scope src/plugins/data --out /tmp/data-tests.csv`; `,jest-test-title-report --before ~/work/repo/main --after ~/work/repo/feat --scope src/plugins/data --out /tmp/data-tests.csv --gist`
-- **Name:** `,list-prs`
-  - **Description:** Print PR numbers + titles (optionally with a search
-    query) for quick piping into `fzf`/scripts.
-  - **Examples:** `,list-prs`; `,list-prs "is:open label:bug"`
 - **Name:** `,pdf-diff`
   - **Description:** Visual diff two PDFs by compositing pages and opening the
     output.
@@ -554,10 +555,6 @@ Local plugins are implemented in `home/dot_config/exact_nvim/exact_lua/exact_plu
 - **Name:** `:WW` / `:WWW`
   - **Description:** Write (or write-all) without triggering write autocmds.
   - **Examples:** `:WW`; `:WWW`
-- **Name:** `:MakeTags`
-  - **Description:** Generate `ctags` respecting `.gitignore`.
-  - **Examples:** `:MakeTags`; `<leader>mt`
-
 ### Filetype & Tree-sitter Customization (written here)
 
 - Filetype detection for Helm chart YAML/templates, Docker Compose YAML, and

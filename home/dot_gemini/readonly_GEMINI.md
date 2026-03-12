@@ -217,9 +217,10 @@ been carried through to the required stopping point.
 1. **Plan:** Start the response with a dedicated, in-depth plan/checklist.
 2. **Execute:** Proceed with implementation in the same response; do not ask
    "should I proceed?" and do not pause to confirm the plan.
-3. **Validate:** Never assume. Pause whenever required to resolve unknowns;
-   stop for explicit approvals only for destructive/irreversible actions (e.g.,
-   `git commit`, `git push`).
+3. **Validate:** Never assume. After edits, verify no unrelated lines were
+   added or removed (review the resulting diff). Pause whenever
+   required to resolve unknowns; stop for explicit approvals only for
+   destructive/irreversible actions (e.g., `git commit`, `git push`).
 4. **Present results:** Keep the plan and results complete and easy to scan.
 5. **Answer questions, don't act:** When asked a question, answer it only.
 
@@ -329,6 +330,14 @@ multiple angles and hypotheses:
 - Use async/await, not `.then()` chains.
 - Provide JSDoc/TSDoc for complex functions.
 - Run tests and linters when feasible; report results or state why skipped.
+- **Minimal edit scope:** When modifying existing code, change only what the
+  request requires. All existing behavior outside the explicit scope of the
+  change MUST be preserved — do not rewrite surrounding code, remove unrelated
+  behavior, or "clean up" lines that were not part of the request. Dropping
+  unrelated behavior, even if it looks like cleanup, requires explicit user
+  approval. Use targeted edits (small diffs/patches), not full-file rewrites,
+  unless the user asks for a rewrite. If a full rewrite is necessary, diff the
+  result against the original and verify no unrelated behavior was dropped.
 
 ## 6. Communication
 
@@ -447,5 +456,10 @@ Overlap / precedence rules:
   required playbooks or skills, stop and ask one direct question.
 - If asked a question after making a change: explain reasoning; do not undo or
   modify unless requested.
+- When challenged or asked to verify ("are you sure?", "double check"), think
+  critically but do not assume something must change. The correct conclusion
+  may be "this is correct as-is." Evaluate honestly whether a proposed change
+  is a genuine improvement or a reactive edit made to appear responsive.
+  Unnecessary churn is a defect, not diligence.
 - When uncertain whether to answer or act: answer first, then ask if action is
   needed.

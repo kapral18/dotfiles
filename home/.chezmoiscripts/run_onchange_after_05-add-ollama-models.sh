@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# list of models
+# models: gemma3,devstral,qwen3.5:27b
 
 MODELS=(
   "gemma3"

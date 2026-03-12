@@ -1,23 +1,81 @@
 #!/usr/bin/env bash
-# Description: Add a patch to my own PRs from my own fork
+# Description: Apply a patch file to multiple PRs
 
 set -euo pipefail
 
-# Source the utility library
 source "$(dirname "$0")/utils/bash_utils_lib.sh"
 
+show_usage() {
+  cat <<'EOF'
+Usage: ,add-patch-to-prs <patch-file> [--message <msg>] [pr_numbers...] [--search <query>]
+
+Apply a patch file to one or more PRs. If no PR numbers are given,
+opens an fzf picker (with optional --search filter).
+
+Arguments:
+  patch-file          Path to the patch file to apply
+  pr_numbers          One or more PR numbers (optional)
+
+Options:
+  -m, --message <msg> Commit message (default: "Apply patch <filename>")
+  -s, --search <q>    Search query for fzf PR picker
+  -h, --help          Show this help message
+EOF
+}
+
+patch_file=""
+commit_msg=""
+search_query=""
 pr_numbers=()
 
-# Parse arguments for PR numbers
-for arg in "$@"; do
-  if [[ "$arg" =~ ^[0-9]+$ ]]; then
-    pr_numbers+=("$arg")
-  fi
+while [ $# -gt 0 ]; do
+  case "$1" in
+  -h | --help)
+    show_usage
+    exit 0
+    ;;
+  -m | --message)
+    commit_msg="$2"
+    shift 2
+    ;;
+  -s | --search)
+    search_query="$2"
+    shift 2
+    ;;
+  [0-9]*)
+    pr_numbers+=("$1")
+    shift
+    ;;
+  *)
+    if [ -z "$patch_file" ]; then
+      patch_file="$1"
+    else
+      echo "Error: unexpected argument '$1'" >&2
+      show_usage
+      exit 1
+    fi
+    shift
+    ;;
+  esac
 done
 
+if [ -z "$patch_file" ]; then
+  echo "Error: patch file is required" >&2
+  show_usage
+  exit 1
+fi
+
+if [ ! -f "$patch_file" ]; then
+  echo "Error: patch file not found: $patch_file" >&2
+  exit 1
+fi
+
+patch_file="$(realpath "$patch_file")"
+patch_basename="$(basename "$patch_file")"
+: "${commit_msg:="Apply patch ${patch_basename}"}"
+
 if [ ${#pr_numbers[@]} -eq 0 ]; then
-  # If no PRs are provided, search and select PR using fzf with improved preview (multi-select enabled)
-  mapfile -t pr_numbers < <(gh pr list --search "${1:-}" --json number,title \
+  mapfile -t pr_numbers < <(gh pr list --search "${search_query:-}" --json number,title \
     --jq '.[] | "\(.number) \(.title)"' | fzf --multi --preview '
             gh pr view {1} --json number,title,body,author,labels,comments --template "
             # PR #{{.number}}: {{.title}}
@@ -32,6 +90,11 @@ if [ ${#pr_numbers[@]} -eq 0 ]; then
 
             {{.body}}
         ' | awk '{print $1}')
+fi
+
+if [ ${#pr_numbers[@]} -eq 0 ]; then
+  echo "No PRs selected." >&2
+  exit 0
 fi
 
 for pr in "${pr_numbers[@]}"; do
@@ -49,17 +112,17 @@ for pr in "${pr_numbers[@]}"; do
     continue
   fi
 
-  # Apply the patch
-  if ! _safe_exec_cmd git apply fix.patch; then
+  if ! _safe_exec_cmd git apply "$patch_file"; then
+    echo "Patch failed on PR #$pr, skipping" >&2
+    _safe_exec_cmd git checkout - || true
     continue
   fi
 
-  # Add only the changed files
   if ! _safe_exec_cmd git add -u; then
     continue
   fi
 
-  if ! _safe_exec_cmd git commit -m "Apply additional fix"; then
+  if ! _safe_exec_cmd git commit -m "$commit_msg"; then
     continue
   fi
 
@@ -70,6 +133,5 @@ for pr in "${pr_numbers[@]}"; do
   _safe_exec_cmd git checkout -
   echo "Finished processing PR #$pr"
 
-  echo "Don't forget to clean up the patch file!"
   read -p "Press enter to continue..."
 done

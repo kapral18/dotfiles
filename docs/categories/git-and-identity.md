@@ -56,7 +56,10 @@ repos under `~/work/` automatically use the secondary identity.
 This setup configures a few GitHub-related tools:
 
 - GitHub CLI config directory: `home/dot_config/exact_private_gh/` (private)
-- `gh-dash` config: `home/dot_config/exact_gh-dash/readonly_config.yml`
+- `gh-dash` shared defaults + keybindings: `home/dot_config/exact_gh-dash/gh-dash-shared.yml`
+- `gh-dash` work dashboard template: `home/dot_config/exact_gh-dash/readonly_config-work.yml.tmpl`
+- `gh-dash` home dashboard template: `home/dot_config/exact_gh-dash/readonly_config-home.yml.tmpl`
+- `gh-dash` base/default template: `home/dot_config/exact_gh-dash/readonly_config.yml.tmpl`
 - Managed extensions hook: `home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl`
 
 Git TUIs:

@@ -6,8 +6,6 @@ set -euo pipefail
 # {{ include "readonly_dot_tool-versions.tmpl" | sha256sum }}
 # {{ include "asdf_plugins.tmpl" | sha256sum }}
 
-rm -rf ~/.gem
-
 # This script installs Ruby gems from the default-gems file
 # {{ include "readonly_dot_default-gems" | sha256sum }}
 

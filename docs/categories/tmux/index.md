@@ -71,7 +71,7 @@ Current file map:
 - URL picker popup: `prefix` + `u`
 - Session picker popup: `prefix` + `T`
 - Command palette popup: `prefix` + `r` (`\,tmux-run-all`)
-- Persistent `gh-dash` popup: `prefix` + `G` (hide with `q`, `Ctrl-C`, or `prefix` + `G`; restart with `prefix` + `C-g`)
+- Persistent `gh-dash` popup: `prefix` + `G` (hide with `q`, `Ctrl-C`, or `prefix` + `G`; switch work/home with `Tab`; restart with `prefix` + `C-g`)
 
 For details:
 

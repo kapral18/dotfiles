@@ -52,13 +52,24 @@ with fish).
 
 - Binding: `prefix` then `G`
 - Hide without quitting: `q`, `Ctrl-C`, or `prefix` + `G`
+- Switch dashboards: `Tab` (work <-> home)
 - Restart the persistent instance: `prefix` + `C-g`
 
 Implementation notes:
 
-- The popup attaches to a **nested tmux server** (separate socket) running `gh dash`.
-- Hiding the popup detaches from that nested tmux client; the `gh-dash` process stays alive for fast reopen.
-- **Fast path**: when the nested session already exists, the popup skips all dependency checks (`gh`, `gh dash --version`) and jumps straight to `display-popup`. This saves ~80ms on every subsequent open.
+- The popup attaches to a **nested tmux server** (separate socket) with two sessions:
+  `work` and `home`.
+- Each session runs `gh dash` with a dedicated config:
+  `~/.config/gh-dash/config-work.yml` or `~/.config/gh-dash/config-home.yml`.
+- The nested tmux status bar shows the active dashboard (`#{session_name}`) and
+  inline hints (`Tab=switch`, `q=hide`).
+- Hiding the popup detaches from the nested tmux client; both `gh-dash`
+  processes stay alive for fast reopen.
+- **Fast path**: when either nested session already exists, popup open skips
+  dependency checks (`gh`, `gh dash --version`) and jumps straight to
+  `display-popup`.
+- `gh dash` runs in an auto-respawn loop inside each nested session, so a crash
+  restarts quickly without manual recovery.
 - Popup spawn temporarily overrides `default-shell` to `/bin/sh` to avoid heavy-shell initialization overhead (~1s with fish).
 
 ## Repo bootstrap popup (`owner/repo` -> `,gh-tfork`)

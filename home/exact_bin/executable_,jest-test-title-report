@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Jest Test Title Reporter - Compare test titles between two worktrees
+ * Test Title Reporter - Compare test titles between two worktrees
  *
  * This script scans Jest test files in two git worktrees (before and after) and generates
  * a CSV report comparing test titles. It helps track test changes during refactors, migrations,

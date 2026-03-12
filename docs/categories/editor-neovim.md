@@ -344,7 +344,6 @@ Defined in `home/dot_config/exact_nvim/exact_lua/exact_core/readonly_keymaps.lua
 
 - `:LargeFiles` populate quickfix with very large tracked files
 - `:WW` / `:WWW` write without triggering autocmds
-- `:MakeTags` generate ctags respecting `.gitignore`
 - `leader-yp` / `leader-yP` copy path to clipboard (relative / absolute)
 
 ## What Problems This Setup Focuses On

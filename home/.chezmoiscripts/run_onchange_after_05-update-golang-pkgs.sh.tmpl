@@ -74,7 +74,6 @@ done
 # Uninstall packages that are no longer in the config
 echo ""
 echo "Cleaning up unused Go packages..."
-go get github.com/golang/tools/cmd/goimports@latest 2>/dev/null || true
 while IFS= read -r pkg; do
     [[ -z "$pkg" ]] && continue
     pkg_name=$(echo "$pkg" | sed 's/ .*//')

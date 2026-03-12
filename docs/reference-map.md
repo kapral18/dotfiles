@@ -52,6 +52,8 @@ This page answers two questions:
 - SSH config (1Password agent socket): `home/private_dot_ssh/private_executable_config`
 - Allowed signers (SSH signing): `home/private_dot_ssh/private_executable_allowed_signers.tmpl`
 - 1Password SSH agent config: `home/dot_config/exact_private_1Password/exact_ssh/agent.toml.tmpl`
+- gh-dash shared config: `home/dot_config/exact_gh-dash/gh-dash-shared.yml`
+- gh-dash work/home templates: `home/dot_config/exact_gh-dash/readonly_config-work.yml.tmpl`, `home/dot_config/exact_gh-dash/readonly_config-home.yml.tmpl`
 
 ## Editor
 

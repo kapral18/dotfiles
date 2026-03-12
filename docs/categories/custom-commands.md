@@ -42,6 +42,20 @@ This setup also defines a few cross-shell aliases (Fish + Bash/Zsh).
 
 ## High-Leverage Workflows
 
+### System health check: `,doctor`
+
+- Source: `home/exact_bin/executable_,doctor`
+- Checks: chezmoi state, Homebrew, shell, tmux+TPM, git+signing, SSH agent,
+  pass/GPG, editors, AI tools, key CLIs, worktrees.
+
+Examples:
+
+```bash
+,doctor            # full check
+,doctor --quiet    # only warnings/failures
+,doctor --verbose  # extra detail (e.g. outdated Homebrew count)
+```
+
 ### Worktree workflow: `,w`
 
 - Source: `home/exact_bin/executable_,w`
@@ -81,6 +95,20 @@ Examples:
 ,gh-issuew
 ,gh-issuew --number
 ,gh-issuew --url
+```
+
+### Apply one patch across multiple PRs: `,add-patch-to-prs`
+
+- Source: `home/exact_bin/executable_,add-patch-to-prs`
+- Behavior: applies one patch file across selected PRs; if you do not pass PR
+  numbers, it opens an interactive multi-select picker.
+
+Examples:
+
+```bash
+,add-patch-to-prs ./fix.patch 12345 12346
+,add-patch-to-prs ./fix.patch --search "is:open author:@me"
+,add-patch-to-prs ./fix.patch --message "Apply follow-up fix"
 ```
 
 ### Fork + clone + tmux: `,gh-tfork`
@@ -140,7 +168,6 @@ Examples:
 
 - GitHub helpers:
   - `home/exact_bin/executable_,view-my-issues`
-  - `home/exact_bin/executable_,list-prs`
   - `home/exact_bin/executable_,add-patch-to-prs`
 - Search/discovery helpers:
   - `home/exact_bin/executable_,search-brew-desc`

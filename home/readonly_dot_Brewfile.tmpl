@@ -151,6 +151,10 @@ brew "zoxide"
 # Tools for finding files and searching content
 # ==============================================================================
 
+# Breadth-first alternative to find
+# https://github.com/tavianator/bfs
+brew "bfs"
+
 # Simple, fast alternative to find
 # https://github.com/sharkdp/fd
 brew "fd"
@@ -228,6 +232,10 @@ brew "procs"
 # https://tlkh.github.io/asitop/
 brew "asitop"
 
+# TUI system monitor for Apple Silicon
+# https://github.com/caioricciuti/dev-cockpit
+brew "devcockpit"
+
 {{ if ne .isWork true -}}
 # List USB buses and devices on macOS
 # https://github.com/tuna-f1sh/cyme
@@ -286,32 +294,6 @@ brew "wget"
 tap "ilijamt/tap"
 brew "vht"
 
-# Analyze project dependencies and flag restrictive licenses
-# https://github.com/anistark/feluda
-brew "feluda"
-
-# A database tool for terminal
-# https://github.com/achristmascarl/rainfrog
-brew "rainfrog"
-
-# Cross-platform TUI database management tool
-# https://github.com/jorgerojas26/lazysql
-brew "lazysql"
-
-# Command-line tree viewer for JSON, YAML, and TOML
-# https://github.com/fioncat/otree
-brew "otree"
-
-# Interactive debugger for MCP servers
-# https://github.com/conikeec/mcp-probe
-tap "conikeec/tap"
-brew "conikeec/tap/mcp-probe"
-
-# Explore container image layers in a TUI
-# https://github.com/knqyf263/sou
-tap "knqyf263/sou"
-brew "knqyf263/sou/sou"
-
 # Check domain availability via RDAP/WHOIS
 # https://github.com/saidutt46/domain-check
 tap "saidutt46/domain-check"
@@ -326,18 +308,9 @@ brew "domcyrus/rustnet/rustnet"
 # https://github.com/karol-broda/snitch
 brew "snitch"
 
-# Analyze layers and wasted space in container images
-# https://github.com/wagoodman/dive
-brew "dive"
-
 # Utility for changing MAC addresses on macOS
 # https://github.com/shilch/macchanger
 brew "macchanger"
-
-# Deep clean and optimize your Mac
-# https://github.com/tw93/mole
-tap "tw93/tap"
-brew "tw93/tap/mole"
 
 # Local port management tool
 # https://github.com/diegoholiveira/localports
@@ -352,6 +325,18 @@ brew "rsyncy"
 # DATA PROCESSING & STRUCTURED DATA
 # Tools for processing JSON, YAML, XML, and other structured data
 # ==============================================================================
+
+# Command-line tree viewer for JSON, YAML, and TOML
+# https://github.com/fioncat/otree
+brew "otree"
+
+# A database tool for terminal
+# https://github.com/achristmascarl/rainfrog
+brew "rainfrog"
+
+# Cross-platform TUI database management tool
+# https://github.com/jorgerojas26/lazysql
+brew "lazysql"
 
 # Lightweight and flexible command-line JSON processor
 # https://jqlang.github.io/jq/
@@ -398,14 +383,7 @@ brew "xan"
 # https://github.com/konradsz/igrep
 brew "igrep"
 
-# Breadth-first alternative to find
-# https://github.com/tavianator/bfs
-brew "bfs"
 
-# Rich git commit graph TUI
-# https://github.com/lusingander/serie
-tap "lusingander/tap"
-brew "lusingander/tap/serie"
 
 # ==============================================================================
 # GIT CORE & HOSTING INTEGRATION
@@ -428,6 +406,11 @@ brew "gh"
 # GIT WORKFLOW & PRODUCTIVITY
 # Tools for improving Git workflow and productivity
 # ==============================================================================
+
+# Rich git commit graph TUI
+# https://github.com/lusingander/serie
+tap "lusingander/tap"
+brew "lusingander/tap/serie"
 
 # Blazing fast terminal-ui for git
 # https://github.com/extrawurst/gitui
@@ -584,6 +567,10 @@ brew "uv"
 # Tools for building and compiling software
 # ==============================================================================
 
+# Analyze project dependencies and flag restrictive licenses
+# https://github.com/anistark/feluda
+brew "feluda"
+
 # Cross-platform make
 # https://cmake.org/
 brew "cmake"
@@ -608,10 +595,6 @@ brew "shfmt"
 # https://github.com/bats-core/bats-core
 brew "bats-core"
 
-# Maintained ctags implementation
-# https://ctags.io/
-brew "universal-ctags"
-
 # Program that displays statistics about your code
 # https://github.com/XAMPPRocky/tokei
 brew "tokei"
@@ -624,6 +607,15 @@ brew "tcl-tk"
 # CONTAINERIZATION & ORCHESTRATION
 # Docker and container management tools
 # ==============================================================================
+
+# Explore container image layers in a TUI
+# https://github.com/knqyf263/sou
+tap "knqyf263/sou"
+brew "knqyf263/sou/sou"
+
+# Analyze layers and wasted space in container images
+# https://github.com/wagoodman/dive
+brew "dive"
 
 # Container runtimes on MacOS (and Linux) with minimal setup
 # https://github.com/abiosoft/colima/blob/main/README.md
@@ -750,6 +742,11 @@ brew "djvu2pdf"
 # Essential system utilities and GNU replacements
 # ==============================================================================
 
+# Deep clean and optimize your Mac
+# https://github.com/tw93/mole
+tap "tw93/tap"
+brew "tw93/tap/mole"
+
 # GNU File, Shell, and Text utilities
 # https://www.gnu.org/software/coreutils
 brew "coreutils"
@@ -833,10 +830,6 @@ brew "magic-wormhole"
 tap "abdfnx/tap"
 brew "abdfnx/tap/tran"
 
-# Progress viewer for rsync transfers
-# https://github.com/laktak/rsyncy
-brew "rsyncy"
-
 # Command-line tool to download GitHub release assets
 # https://github.com/devmatteini/dra
 brew "dra"
@@ -895,10 +888,6 @@ brew "cinecli"
 {{ end -}}
 
 # ==============================================================================
-# PACKAGE MANAGEMENT UTILITIES
-# Tools for managing package managers
-# ==============================================================================
-
 # PERSONAL PRODUCTIVITY & JOURNALING
 # Tools for personal organization and note-taking
 # ==============================================================================
@@ -963,6 +952,7 @@ brew "pastel"
 tap "pomdtr/tap"
 brew "pomdtr/tap/sunbeam"
 
+# ==============================================================================
 # PACKAGE MANAGEMENT UTILITIES
 # Tools for managing package managers
 # ==============================================================================
@@ -1004,14 +994,15 @@ brew "openssl"
 # Command-line AI tools and LLM clients
 # ==============================================================================
 
+# Interactive debugger for MCP servers
+# https://github.com/conikeec/mcp-probe
+tap "conikeec/tap"
+brew "conikeec/tap/mcp-probe"
+
 # Graph-based issue tracker for coding agents
 # https://github.com/steveyegge/beads
 tap "steveyegge/beads"
 brew "steveyegge/beads/bd"
-
-# TUI system monitor for Apple Silicon
-# https://github.com/caioricciuti/dev-cockpit
-brew "devcockpit"
 
 # Structured query and transcoding toolkit
 # https://github.com/jfryy/qq

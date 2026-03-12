@@ -1,8 +1,8 @@
 # Directory excludes for pick_session dir/worktree scans.
-# Uses .gitignore syntax — passed directly to fd via --ignore-file.
-# Trailing slash means "directory and everything under it".
+# Parsed as line-based fd --exclude patterns.
+# Trailing slash is normalized automatically.
+# .git is excluded by the scanner even when not listed here.
 
-.git/
 .cache/
 .bazel-cache/
 .amp/

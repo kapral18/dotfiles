@@ -120,7 +120,17 @@ emit_home_dirs() {
   if [ -n "$max_depth" ]; then
     fd_args+=(--max-depth "$max_depth")
   fi
-  [ -n "$ignore_file" ] && fd_args+=(--ignore-file "$ignore_file")
+  fd_args+=(--exclude .git)
+  if [ -n "$ignore_file" ] && [ -f "$ignore_file" ]; then
+    while IFS= read -r _pat; do
+      _pat="${_pat%%#*}"
+      _pat="$(printf '%s' "$_pat" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+      [ -n "$_pat" ] || continue
+      _pat="${_pat%/}"
+      [ -n "$_pat" ] || continue
+      fd_args+=(--exclude "$_pat")
+    done <"$ignore_file"
+  fi
   if [ ${#wt_roots[@]} -gt 0 ]; then
     local wr rel
     for wr in "${wt_roots[@]}"; do
@@ -183,7 +193,17 @@ emit_home_dirs_seeded() {
   case "$include_hidden" in
   1 | true | yes | on) fd_args+=(--hidden) ;;
   esac
-  [ -n "$ignore_file" ] && fd_args+=(--ignore-file "$ignore_file")
+  fd_args+=(--exclude .git)
+  if [ -n "$ignore_file" ] && [ -f "$ignore_file" ]; then
+    while IFS= read -r _pat; do
+      _pat="${_pat%%#*}"
+      _pat="$(printf '%s' "$_pat" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+      [ -n "$_pat" ] || continue
+      _pat="${_pat%/}"
+      [ -n "$_pat" ] || continue
+      fd_args+=(--exclude "$_pat")
+    done <"$ignore_file"
+  fi
 
   while IFS= read -r p; do
     [ -z "$p" ] && continue
@@ -262,6 +282,29 @@ import concurrent.futures
 
 # If the consumer (fzf) exits early, don't spam tracebacks.
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
+def parse_ignore_file_to_excludes(ignore_file: str) -> list[str]:
+    """Read a .gitignore-style ignore file and return fd --exclude patterns.
+
+    fd's --ignore-file silently drops multi-component patterns (e.g.
+    `.asdf/installs/`).  Converting every pattern to an --exclude flag
+    works reliably for both single- and multi-component patterns.
+    """
+    if not ignore_file or not os.path.isfile(ignore_file):
+        return []
+    excludes: list[str] = []
+    try:
+        with open(ignore_file, "r", encoding="utf-8", errors="replace") as f:
+            for raw in f:
+                line = raw.strip()
+                if not line or line.startswith("#"):
+                    continue
+                line = line.rstrip("/")
+                if line:
+                    excludes.append(line)
+    except Exception:
+        pass
+    return excludes
 
 RESET = "\033[0m"
 
@@ -630,8 +673,8 @@ def find_worktree_root_for_path(p, stop_at):
 def scan_for_git_repos(roots, depth, ignore_file):
     candidates = set()
     fd_args = ["fd", "--hidden", "--no-ignore", "--absolute-path", "--type", "f", "--type", "d", "--max-depth", str(depth), "--glob", ".git"]
-    if ignore_file and os.path.isfile(ignore_file):
-        fd_args.extend(["--ignore-file", ignore_file])
+    for pat in parse_ignore_file_to_excludes(ignore_file):
+        fd_args.extend(["--exclude", pat])
 
     for r in roots:
         out = subprocess.run(fd_args + [r], check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True).stdout
@@ -650,8 +693,9 @@ HOME_DIR_SCAN_DEPTH = 6
 def get_home_dirs(root, ignore_file, include_hidden, stop_prefixes=None):
     fd_args = ["fd", "--type", "d", "--max-depth", str(HOME_DIR_SCAN_DEPTH), "--absolute-path"]
     if include_hidden in ("1", "true", "yes", "on"): fd_args.append("--hidden")
-    if ignore_file and os.path.isfile(ignore_file):
-        fd_args.extend(["--ignore-file", ignore_file])
+    fd_args.extend(["--exclude", ".git"])
+    for pat in parse_ignore_file_to_excludes(ignore_file):
+        fd_args.extend(["--exclude", pat])
     if stop_prefixes:
         for sp in sorted(set(stop_prefixes)):
             if not sp:
