@@ -1,12 +1,5 @@
 {
   "mcpServers": {
-    "playwright": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest"],
-      "env": {},
-      "tools": ["*"]
-    },
     "sequentialthinking": {
       "type": "stdio",
       "command": "docker",

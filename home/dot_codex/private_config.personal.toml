@@ -11,10 +11,6 @@ personality = "pragmatic"
 [notice.model_migrations]
 "gpt-5.2" = "gpt-5.3-codex"
 
-[mcp_servers.playwright]
-command = "npx"
-args = ["-y", "@playwright/mcp@latest"]
-
 [mcp_servers.sequentialthinking]
 command = "docker"
 args = [

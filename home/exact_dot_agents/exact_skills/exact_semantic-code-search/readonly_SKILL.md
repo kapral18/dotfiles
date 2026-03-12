@@ -1,5 +1,5 @@
 ---
-name: semantic_code_search
+name: semantic-code-search
 description: |-
   Use when the user wants semantic investigation via SCSI tools (scsi,
   symbol_analysis, list_indices), asks to use/select/verify a specific

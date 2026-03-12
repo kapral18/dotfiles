@@ -134,7 +134,8 @@ At Path: $worktree_path
 "
     fi
 
-    if ! _comma_w_tmux new-session -d -s "$session_name" -c "$worktree_path" 2>/dev/null; then
+    local shell="${SHELL:-/opt/homebrew/bin/fish}"
+    if ! _comma_w_tmux new-session -d -s "$session_name" -c "$worktree_path" "$shell" 2>/dev/null; then
       if [ "$quiet_mode" -eq 0 ]; then
         echo "Warning: Failed to create tmux session '$session_name'." >&2
       fi
@@ -254,7 +255,8 @@ _comma_w_focus_tmux_session() {
   if _comma_w_tmux attach-session -t "$session_name" 2>/dev/null; then
     return 0
   fi
-  _comma_w_tmux new-session -s "$session_name" -c "$worktree_path"
+  local shell="${SHELL:-/opt/homebrew/bin/fish}"
+  _comma_w_tmux new-session -s "$session_name" -c "$worktree_path" "$shell"
 }
 
 _comma_w_worktree_has_branch() {

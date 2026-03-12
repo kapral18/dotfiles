@@ -34,11 +34,6 @@
   },
   "default_agent": "main",
   "mcp": {
-    "playwright": {
-      "type": "local",
-      "command": ["npx", "-y", "@playwright/mcp@latest"],
-      "enabled": true,
-    },
     "sequential-thinking": {
       "type": "local",
       "command": [

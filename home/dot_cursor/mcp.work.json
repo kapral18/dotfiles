@@ -1,12 +1,5 @@
 {
   "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@playwright/mcp@latest"
-      ]
-    },
     "sequentialthinking": {
       "command": "docker",
       "args": [

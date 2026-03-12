@@ -1,5 +1,5 @@
 ---
-name: compose_pr
+name: compose-pr
 description: |-
   Use when the user wants writing only (no gh side effects), for example
   "draft PR body" / "write PR description" / "compose PR", or when the GitHub

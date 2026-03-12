@@ -248,6 +248,44 @@ and copies the correct source to the final destination, completely decoupling th
 - Pi MCP config: `home/dot_pi/agent/readonly_mcp.{work,personal}.json` → `~/.pi/agent/mcp.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-pi-mcp.sh.tmpl`; installed readonly)
 - Pi configs: `home/dot_pi/agent/readonly_{settings,models}.{work,personal}.json` → `~/.pi/agent/{settings,models}.json` (script: `home/.chezmoiscripts/run_onchange_after_07-merge-pi-config.sh.tmpl`; installed readonly)
 
+### Claude Code installation and context window patch
+
+Claude Code is installed via npm (`@anthropic-ai/claude-code` in
+`home/readonly_dot_default-npm-pkgs`) instead of the Homebrew cask. The npm
+package contains raw `cli.js` which can be patched, unlike the compiled
+Homebrew binary. The brew cask is commented out in the Brewfile.
+
+A post-install patch (`home/exact_bin/executable_,patch-claude-code`) modifies
+`cli.js` so the context window default (hardcoded to 200k) reads from the
+`CLAUDE_CODE_CONTEXT_WINDOW` env var. This allows third-party models routed
+through LLM gateways (e.g. Gemini with 1M context) to use their native window
+size instead of being capped at 200k.
+
+The patch is re-applied automatically by a post-install hook in
+`home/exact_bin/executable_,install-npm-pkgs` — it runs `,patch-claude-code`
+after every npm sync, but only when `@anthropic-ai/claude-code` is in the
+desired packages list.
+
+Usage: `CLAUDE_CODE_CONTEXT_WINDOW=1000000 claude --model llm-gateway/gemini-3.1-pro-preview-customtools`
+
+Fish shell shortcut functions (work profile only) wrap each LiteLLM model with
+the correct `CLAUDE_CODE_CONTEXT_WINDOW` and `CLAUDE_CODE_MAX_OUTPUT_TOKENS`:
+
+| Function | Model | Context | Max Output |
+|---|---|---|---|
+| `claude-gemini3p` | gemini-3-pro-preview | 1048576 | 65536 |
+| `claude-gemini3f` | gemini-3-flash-preview | 1048576 | 65536 |
+| `claude-gemini31p` | gemini-3.1-pro-preview | 1048576 | 65536 |
+| `claude-gemini31pct` | gemini-3.1-pro-preview-customtools | 1048576 | 65536 |
+| `claude-gemini31fi` | gemini-3.1-flash-image-preview | 131072 | 32762 |
+| `claude-gpt54` | gpt-5.4 | 272000 | 128000 |
+| `claude-gpt53` | gpt-5.3-codex | 272000 | 128000 |
+| `claude-gpt52` | gpt-5.2 | 272000 | 128000 |
+| `claude-sonnet46` | claude-sonnet-4-6 | native | native |
+| `claude-opus46` | claude-opus-4-6 | native | native |
+
+All functions accept extra `claude` arguments, e.g. `claude-gemini31pct --effort high`.
+
 ### Claude Code settings
 
 Source: `home/dot_claude/settings.{work,personal}.json` → `~/.claude/settings.json`.

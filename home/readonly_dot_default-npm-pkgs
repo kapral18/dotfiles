@@ -16,6 +16,9 @@ speedscope
 # Description: MCP adapter extension loaded by Pi from npm package settings
 # URL: https://github.com/nicobailon/pi-mcp-adapter
 pi-mcp-adapter
+# Description: Terminal-based AI coding assistant by Anthropic
+# URL: https://www.anthropic.com/claude-code
+@anthropic-ai/claude-code
 # Description: Code generation and editing agent with read, bash, edit, write tools and session management
 # URL: https://github.com/remorses/playwriter
 playwriter

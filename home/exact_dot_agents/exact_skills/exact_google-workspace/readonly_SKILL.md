@@ -1,5 +1,5 @@
 ---
-name: google_workspace
+name: google-workspace
 description: |-
   Use when the user asks to inspect or change Gmail / Drive / Calendar /
   Admin / Docs / Sheets / other Google Workspace data or settings that gws

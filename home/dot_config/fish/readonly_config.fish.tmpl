@@ -256,6 +256,46 @@ if type -q pass; and test -z "$LITELLM_API_BASE"
     end
 end
 
+## Claude Code: pin LiteLLM-proxied Anthropic models as defaults
+set -gx ANTHROPIC_DEFAULT_SONNET_MODEL llm-gateway/claude-sonnet-4-6
+set -gx ANTHROPIC_DEFAULT_OPUS_MODEL llm-gateway/claude-opus-4-6
+
+## Claude Code LiteLLM model shortcuts (non-Anthropic models only)
+## Each function sets the correct context window and max output tokens
+## for the target model, then forwards all arguments to claude.
+
+function claude-gemini3p --wraps claude --description 'Claude Code → Gemini 3 Pro Preview'
+    CLAUDE_CODE_CONTEXT_WINDOW=1048576 CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536 claude --model llm-gateway/gemini-3-pro-preview --effort high $argv
+end
+
+function claude-gemini3f --wraps claude --description 'Claude Code → Gemini 3 Flash Preview'
+    CLAUDE_CODE_CONTEXT_WINDOW=1048576 CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536 claude --model llm-gateway/gemini-3-flash-preview --effort high $argv
+end
+
+function claude-gemini31p --wraps claude --description 'Claude Code → Gemini 3.1 Pro Preview'
+    CLAUDE_CODE_CONTEXT_WINDOW=1048576 CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536 claude --model llm-gateway/gemini-3.1-pro-preview --effort high $argv
+end
+
+function claude-gemini31pct --wraps claude --description 'Claude Code → Gemini 3.1 Pro Preview Custom Tools'
+    CLAUDE_CODE_CONTEXT_WINDOW=1048576 CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536 claude --model llm-gateway/gemini-3.1-pro-preview-customtools --effort high $argv
+end
+
+function claude-gemini31fi --wraps claude --description 'Claude Code → Gemini 3.1 Flash Image Preview'
+    CLAUDE_CODE_CONTEXT_WINDOW=131072 CLAUDE_CODE_MAX_OUTPUT_TOKENS=32768 claude --model llm-gateway/gemini-3.1-flash-image-preview --effort high $argv
+end
+
+function claude-gpt54 --wraps claude --description 'Claude Code → GPT-5.4'
+    CLAUDE_CODE_CONTEXT_WINDOW=272000 CLAUDE_CODE_MAX_OUTPUT_TOKENS=128000 claude --model llm-gateway/gpt-5.4 --effort high $argv
+end
+
+function claude-gpt53 --wraps claude --description 'Claude Code → GPT-5.3 Codex'
+    CLAUDE_CODE_CONTEXT_WINDOW=272000 CLAUDE_CODE_MAX_OUTPUT_TOKENS=128000 claude --model llm-gateway/gpt-5.3-codex --effort high $argv
+end
+
+function claude-gpt52 --wraps claude --description 'Claude Code → GPT-5.2'
+    CLAUDE_CODE_CONTEXT_WINDOW=272000 CLAUDE_CODE_MAX_OUTPUT_TOKENS=128000 claude --model llm-gateway/gpt-5.2 --effort high $argv
+end
+
 {{ end -}}
 # ------------------------------------
 # Cloudflare API Configuration

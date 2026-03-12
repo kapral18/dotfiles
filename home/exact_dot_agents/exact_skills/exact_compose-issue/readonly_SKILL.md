@@ -1,5 +1,5 @@
 ---
-name: compose_issue
+name: compose-issue
 description: |-
   Use when the user wants writing only (no gh side effects), for example
   "draft issue" / "write issue" / "compose issue", or when the GitHub

@@ -68,4 +68,9 @@ done
 # make it available in the current shell
 asdf reshim nodejs || true
 
+# Post-install hooks for packages that need patching
+if printf "%s\n" "${desired_pkgs[@]}" | grep -Fqx "@anthropic-ai/claude-code"; then
+  ,patch-claude-code
+fi
+
 echo "All npm packages synced successfully"

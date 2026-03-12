@@ -182,7 +182,7 @@ remove_paths_in_background() {
   {
     printf '\n[%s] %s\n' "$(date +%Y-%m-%dT%H:%M:%S%z)" "$cmd"
   } >>"$rm_log_file" 2>/dev/null || true
-  nohup sh -c "$cmd" </dev/null >>"$rm_log_file" 2>&1 &
+  nohup bash -c "$cmd" </dev/null >>"$rm_log_file" 2>&1 &
 }
 
 declare -A roots_selected=()

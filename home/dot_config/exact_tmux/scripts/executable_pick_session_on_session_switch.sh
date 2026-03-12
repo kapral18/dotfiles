@@ -30,8 +30,9 @@ if [ -z "$dir" ] || [ ! -d "$dir" ]; then
   dir="$HOME"
 fi
 
-shell="$(tmux show-option -gqv default-shell 2>/dev/null || true)"
-[ -n "$shell" ] || shell="${SHELL:-/bin/sh}"
+# Use $SHELL (login shell) rather than tmux's default-shell, which may be
+# temporarily set to /bin/sh by popup scripts for snappy popup rendering.
+shell="${SHELL:-/opt/homebrew/bin/fish}"
 
 if [ "$pending_spawn" = "1" ]; then
   pane_id="$(tmux list-panes -t "$session" -F '#{pane_id}' 2>/dev/null | head -n 1)"
@@ -49,7 +50,7 @@ if [ "$pending_split" = "1" ]; then
     '' | *[!0-9]*) panes=0 ;;
     esac
     if [ "$panes" -lt 2 ]; then
-      tmux split-window -h -t "$win" -c "$dir" 2>/dev/null || true
+      tmux split-window -h -t "$win" -c "$dir" "$shell" 2>/dev/null || true
       tmux select-layout -t "$win" even-horizontal >/dev/null 2>&1 || true
     fi
   fi

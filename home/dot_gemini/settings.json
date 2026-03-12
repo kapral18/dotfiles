@@ -42,10 +42,6 @@
     "name": "gemini-3.1-pro-preview"
   },
   "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest"]
-    },
     "sequentialthinking": {
       "command": "docker",
       "args": [

@@ -363,7 +363,8 @@ split_first_window_in_session() {
     return 0
   fi
 
-  tmux split-window -h -t "$win" -c "$dir" >/dev/null 2>&1 || true
+  local shell="${SHELL:-/opt/homebrew/bin/fish}"
+  tmux split-window -h -t "$win" -c "$dir" "$shell" >/dev/null 2>&1 || true
   tmux select-layout -t "$win" even-horizontal >/dev/null 2>&1 || true
   clear_lazy_split_pending "$name"
 }
@@ -394,7 +395,8 @@ ensure_session_layout() {
     return 0
   fi
 
-  if ! tmux new-session -d -s "$name" -c "$dir" 2>/dev/null; then
+  local shell="${SHELL:-/opt/homebrew/bin/fish}"
+  if ! tmux new-session -d -s "$name" -c "$dir" "$shell" 2>/dev/null; then
     die "tmux: failed to create session: $name ($dir)"
   fi
   created_any_session=1
@@ -936,6 +938,11 @@ while IFS= read -r _line; do
       fi
       ;;
     esac
+    if ! tmux_has_session_exact "$this_session"; then
+      if [ -n "$path" ] && [ -d "$path" ]; then
+        ensure_session_layout "$this_session" "$path" "$create_layout"
+      fi
+    fi
     if [ "$is_primary" -eq 1 ] || [ "$primary_set" -eq 0 ]; then
       target_session="$this_session"
       [ "$is_primary" -eq 1 ] && primary_set=1

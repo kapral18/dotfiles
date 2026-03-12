@@ -1,5 +1,5 @@
 ---
-name: labels_propose
+name: labels-propose
 description: |-
   Use when the user wants suggested labels/backports/version targeting for
   elastic/kibana (no posting). Propose exact verified labels only; applying
