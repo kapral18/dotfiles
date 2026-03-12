@@ -286,8 +286,8 @@ else
       --preview-window 'down,80%,wrap,hidden,border-top' \
       --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+clear-query" \
       --bind "alt-r:execute-silent:$live_refresh_cmd --once --force >/dev/null 2>&1 &" \
-      --bind "alt-j:page-down" \
-      --bind "alt-k:page-up" \
+      --bind "alt-j:half-page-down" \
+      --bind "alt-k:half-page-up" \
       --bind "alt-h:first" \
       --bind "alt-l:last" \
       --bind "shift-up:preview-up" \

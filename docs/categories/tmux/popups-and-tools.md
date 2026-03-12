@@ -4,11 +4,49 @@ Back: [`docs/categories/tmux/index.md`](index.md)
 
 This setup includes a few tmux-native popups and helpers to keep your workflow inside tmux.
 
-## Command palette popup: `,tmux-run-all`
+## Command palette
 
 - Binding: `prefix` then `r`
-- Purpose: quick launcher for common commands.
-- Popup spawn temporarily overrides `default-shell` to `/bin/sh` via `command_palette_popup.sh` to avoid heavy-shell initialization overhead (~1s with fish).
+- Purpose: unified fuzzy launcher that surfaces all custom tooling from a single
+  keystroke — the "Cmd+K" for your terminal.
+
+Sources indexed (in display order, with recency boost):
+
+1. **`~/bin/,*` commands** — every executable `,*` script; descriptions are
+   extracted from `# Description:` header comments when present.
+2. **Tmux prefix keybindings** — parsed from `tmux list-keys -T prefix` (and
+   the `k18` swap table) with human-readable labels.
+3. **Git aliases** — global `git config` aliases shown as `git <alias>`.
+4. **Drop-in extras** — any `.tsv` files in `~/.config/tmux/palette.d/` are
+   appended verbatim (three tab-separated columns: display, key, exec).
+
+Recency tracking:
+
+- Each executed entry is timestamped in `~/.cache/tmux/palette_history.tsv`.
+- On next open, recently used entries float to the top.
+
+Execution model:
+
+- **`,*` commands and git aliases**: sent to the active pane via
+  `tmux send-keys … Enter` so the command runs in your shell with full
+  environment context.
+- **Tmux bindings**: re-invoked via `tmux send-keys C-Space <key>` so the
+  binding fires exactly as if you pressed it.
+
+Options (tmux `set -g`):
+
+- `@command_palette_popup_height` (default `60`)
+- `@command_palette_popup_width` (default `70`)
+
+Extensibility:
+
+- Drop a `.tsv` file into `~/.config/tmux/palette.d/` with three tab-separated
+  columns per line: `<display>\t<unique-key>\t<exec-command>`. Entries appear
+  automatically on next palette open.
+
+Popup spawn temporarily overrides `default-shell` to `/bin/sh` via
+`command_palette_popup.sh` to avoid heavy-shell initialization overhead (~1s
+with fish).
 
 ## Persistent `gh-dash` popup
 

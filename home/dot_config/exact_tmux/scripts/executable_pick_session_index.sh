@@ -38,26 +38,11 @@ normalize_path_opt() {
   esac
 }
 
-exclude_file_to_csv() {
-  local file_path="${1:-}"
-  [ -n "$file_path" ] || return 0
-  [ -f "$file_path" ] || return 0
-  awk '
-    {
-      sub(/\r$/, "", $0)
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
-      if ($0 == "" || $0 ~ /^#/) next
-      print $0
-    }
-  ' "$file_path" | paste -sd, -
-}
-
-pick_session_dir_exclude() {
-  local file_opt file_csv
+pick_session_ignore_file() {
+  local file_opt
   file_opt="$(tmux_opt '@pick_session_dir_exclude_file' "$DEFAULT_PICK_SESSION_DIR_EXCLUDE_FILE")"
   file_opt="$(normalize_path_opt "$file_opt")"
-  file_csv="$(exclude_file_to_csv "$file_opt")"
-  printf '%s\n' "$file_csv"
+  [ -f "$file_opt" ] && printf '%s\n' "$file_opt"
 }
 
 tildefy_to_reply() {
@@ -88,11 +73,11 @@ is_git_repo() {
 
 emit_home_dirs() {
   local root="$HOME"
-  local max_depth exclude_list include_hidden
+  local max_depth include_hidden ignore_file
   local exclude_file="${1:-}"
   max_depth="$(tmux_opt '@pick_session_dir_max_depth' '4')"
-  exclude_list="$(pick_session_dir_exclude)"
   include_hidden="$(tmux_opt '@pick_session_dir_include_hidden' 'on')"
+  ignore_file="$(pick_session_ignore_file)"
 
   declare -A exclude_exact=()
   local -a wt_roots=()
@@ -135,14 +120,7 @@ emit_home_dirs() {
   if [ -n "$max_depth" ]; then
     fd_args+=(--max-depth "$max_depth")
   fi
-  if [ -n "$exclude_list" ]; then
-    local exclude
-    IFS=',' read -r -a exclude_items <<<"$exclude_list"
-    for exclude in "${exclude_items[@]}"; do
-      [ -n "$exclude" ] || continue
-      fd_args+=(--exclude "$exclude")
-    done
-  fi
+  [ -n "$ignore_file" ] && fd_args+=(--ignore-file "$ignore_file")
   if [ ${#wt_roots[@]} -gt 0 ]; then
     local wr rel
     for wr in "${wt_roots[@]}"; do
@@ -168,10 +146,10 @@ emit_home_dirs() {
 
 emit_home_dirs_seeded() {
   local root="$HOME"
-  local exclude_list include_hidden
+  local include_hidden ignore_file
   local exclude_file="${1:-}"
-  exclude_list="$(pick_session_dir_exclude)"
   include_hidden="$(tmux_opt '@pick_session_dir_include_hidden' 'on')"
+  ignore_file="$(pick_session_ignore_file)"
 
   declare -A exclude_exact=()
   if [ -n "$exclude_file" ] && [ -f "$exclude_file" ]; then
@@ -205,14 +183,7 @@ emit_home_dirs_seeded() {
   case "$include_hidden" in
   1 | true | yes | on) fd_args+=(--hidden) ;;
   esac
-  if [ -n "$exclude_list" ]; then
-    local exclude
-    IFS=',' read -r -a exclude_items <<<"$exclude_list"
-    for exclude in "${exclude_items[@]}"; do
-      [ -n "$exclude" ] || continue
-      fd_args+=(--exclude "$exclude")
-    done
-  fi
+  [ -n "$ignore_file" ] && fd_args+=(--ignore-file "$ignore_file")
 
   while IFS= read -r p; do
     [ -z "$p" ] && continue
@@ -267,13 +238,13 @@ emit_sessions_worktrees_and_dirs() {
   export PICK_SESSION_SCAN_DEPTH
   export PICK_SESSION_QUICK
   export PICK_SESSION_SESSIONS_ONLY
-  export PICK_SESSION_EXCLUDE_LIST
+  export PICK_SESSION_IGNORE_FILE
   export PICK_SESSION_DIR_INCLUDE_HIDDEN
   export PICK_SESSION_GITHUB_LOGIN
 
   PICK_SESSION_SCAN_ROOTS="$(tmux_opt '@pick_session_worktree_scan_roots' "$HOME/work,$HOME/code,$HOME/.backport/repositories,$HOME/.local/share")"
   PICK_SESSION_SCAN_DEPTH="$(tmux_opt '@pick_session_worktree_scan_depth' '6')"
-  PICK_SESSION_EXCLUDE_LIST="$(pick_session_dir_exclude)"
+  PICK_SESSION_IGNORE_FILE="$(pick_session_ignore_file)"
   PICK_SESSION_QUICK="$quick_mode"
   PICK_SESSION_SESSIONS_ONLY="$sessions_only"
   PICK_SESSION_DIR_INCLUDE_HIDDEN="$(tmux_opt '@pick_session_dir_include_hidden' 'on')"
@@ -656,14 +627,11 @@ def find_worktree_root_for_path(p, stop_at):
         cur = cur.parent
     return ""
 
-def scan_for_git_repos(roots, depth, exclude_list):
+def scan_for_git_repos(roots, depth, ignore_file):
     candidates = set()
     fd_args = ["fd", "--hidden", "--no-ignore", "--absolute-path", "--type", "f", "--type", "d", "--max-depth", str(depth), "--glob", ".git"]
-    # Filter out .git patterns from the exclude list for the repo scan itself
-    for ex in exclude_list.split(","):
-        ex = ex.strip()
-        if ex and not ex.startswith(".git"):
-            fd_args.extend(["--exclude", ex])
+    if ignore_file and os.path.isfile(ignore_file):
+        fd_args.extend(["--ignore-file", ignore_file])
 
     for r in roots:
         out = subprocess.run(fd_args + [r], check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True).stdout
@@ -679,12 +647,11 @@ def scan_for_git_repos(roots, depth, exclude_list):
 
 HOME_DIR_SCAN_DEPTH = 6
 
-def get_home_dirs(root, exclude_list, include_hidden, stop_prefixes=None):
+def get_home_dirs(root, ignore_file, include_hidden, stop_prefixes=None):
     fd_args = ["fd", "--type", "d", "--max-depth", str(HOME_DIR_SCAN_DEPTH), "--absolute-path"]
     if include_hidden in ("1", "true", "yes", "on"): fd_args.append("--hidden")
-    for ex in exclude_list.split(","):
-        ex = ex.strip()
-        if ex: fd_args.extend(["--exclude", ex])
+    if ignore_file and os.path.isfile(ignore_file):
+        fd_args.extend(["--ignore-file", ignore_file])
     if stop_prefixes:
         for sp in sorted(set(stop_prefixes)):
             if not sp:
@@ -706,7 +673,7 @@ if home_scan_root and os.path.isdir(home_scan_root) and home_scan_root not in sc
 scan_roots_set = set(scan_roots)
 quick = os.environ.get("PICK_SESSION_QUICK", "").lower() in ("1", "true", "yes", "on")
 sessions_only = os.environ.get("PICK_SESSION_SESSIONS_ONLY", "").lower() in ("1", "true", "yes", "on")
-exclude_list_raw = os.environ.get("PICK_SESSION_EXCLUDE_LIST", "").strip()
+ignore_file = os.environ.get("PICK_SESSION_IGNORE_FILE", "").strip()
 
 dir_include_hidden = os.environ.get("PICK_SESSION_DIR_INCLUDE_HIDDEN", "on").lower()
 
@@ -718,7 +685,7 @@ def ensure_group(repo_id: str, root_checkout: str, repo_path: str):
 
 # 1. Discover worktrees
 if not quick and not sessions_only and shutil.which("fd"):
-    for wt_dir in scan_for_git_repos(scan_roots, int(os.environ.get("PICK_SESSION_SCAN_DEPTH", 6)), exclude_list_raw):
+    for wt_dir in scan_for_git_repos(scan_roots, int(os.environ.get("PICK_SESSION_SCAN_DEPTH", 6)), ignore_file):
         info = worktree_info(wt_dir)
         if info:
             rid = info.get("repo_id", "")
@@ -811,7 +778,7 @@ if not sessions_only:
         home_worktree_prefixes.append(rwt)
     home_worktree_prefixes.sort()
     if shutil.which("fd"):
-        for p in get_home_dirs(home, exclude_list_raw, dir_include_hidden, home_worktree_prefixes):
+        for p in get_home_dirs(home, ignore_file, dir_include_hidden, home_worktree_prefixes):
             rp = resolve_path(p)
             if rp:
                 wrapper_dirs.add(rp)

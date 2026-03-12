@@ -35,7 +35,7 @@ This setup ships a URL picker and a session/worktree picker designed to run insi
 - `pick_session` entries render with ANSI colors and Nerd Font icons (`session`, `worktree`, `dir`) in the first column; `fzf` is run with `--ansi` so filtering still works on the visible text.
 - `pick_session` also styles the input line (`--prompt`, `--ghost`, `--color`) by default. Use `@pick_session_fzf_prompt`, `@pick_session_fzf_ghost`, or `@pick_session_fzf_color` to customize, and `@pick_session_fzf_options` for any extra `fzf` flags.
 - Full refresh indexes configured scan roots plus `$HOME` by default. Home directory discovery is capped to depth `6` so root folders and practical descendants remain discoverable without unbounded crawl cost; `@pick_session_dir_exclude_file` and `@pick_session_dir_include_hidden` constrain scope.
-- Excludes are file-backed (`@pick_session_dir_exclude_file`). The file is line-based (one glob per line, `#` comments allowed).
+- Excludes are file-backed (`@pick_session_dir_exclude_file`). The file uses `.gitignore` syntax (passed to `fd` via `--ignore-file`); trailing `/` marks directory-recursive excludes, `#` comments are supported.
 - Directory rows intentionally stop at discovered worktree roots: once a folder is identified as a worktree/session path, nested subdirectories under it are not emitted as `dir` rows.
 - When the cache is empty, the picker falls back to tmux sessions + `zoxide` recent dirs (if installed) + `~`.
 - Grouped/sorted ordering is produced by `pick_session_filter.sh`:
