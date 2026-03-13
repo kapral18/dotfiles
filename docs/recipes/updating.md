@@ -2,14 +2,33 @@
 
 Back: [`docs/recipes/index.md`](index.md)
 
-There are two common update loops:
+## Quick: One Command
 
-## Preconditions
+```bash
+,update
+```
 
-- Working tree is in a state you are comfortable updating from.
-- You can authenticate to remotes and package registries if needed.
+This pulls dotfiles, updates all package managers (Homebrew, asdf, Cargo, npm,
+Gems, Go, uv, manual GitHub releases), and reports what changed.
 
-## Steps
+### Useful flags
+
+| Flag | Effect |
+| --- | --- |
+| `--dry-run` / `-n` | Preview what would happen without changing anything |
+| `--only brew,npm` | Update only the listed categories |
+| `--skip cargo,gems` | Update everything except the listed categories |
+| `--verbose` / `-v` | Show extra detail and per-step timings |
+
+Categories: `dotfiles`, `brew`, `gh`, `asdf`, `cargo`, `npm`, `gems`, `go`,
+`uv`, `manual`.
+
+When multiple categories run in parallel, `,update` launches
+[mprocs](https://github.com/pvolok/mprocs) to give each step its own scrollable
+terminal pane. Press `q` to exit after reviewing the logs. If `mprocs` is not
+installed, steps run sequentially instead.
+
+## Manual Steps (if you prefer granular control)
 
 ### Update Dotfiles From GitHub (Chezmoi)
 
@@ -45,6 +64,7 @@ chezmoi apply
 ## Verification
 
 ```bash
+,doctor          # full ecosystem health check
 chezmoi status
 chezmoi diff
 ```

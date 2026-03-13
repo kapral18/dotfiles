@@ -1,0 +1,504 @@
+#!/usr/bin/env bash
+# Description: Unified update orchestrator for the dotfiles ecosystem.
+# Pulls dotfiles, updates all package managers, and reports what changed.
+
+set -euo pipefail
+
+# ── ANSI helpers ─────────────────────────────────────────────────────────────
+
+C_PASS=$'\033[38;5;42m'
+C_WARN=$'\033[38;5;214m'
+C_FAIL=$'\033[38;5;196m'
+C_DIM=$'\033[38;5;244m'
+C_HEAD=$'\033[1;38;5;81m'
+C_BOLD=$'\033[1m'
+C_R=$'\033[0m'
+
+ICON_PASS="${C_PASS}✓${C_R}"
+ICON_WARN="${C_WARN}⚠${C_R}"
+ICON_FAIL="${C_FAIL}✗${C_R}"
+ICON_SKIP="${C_DIM}–${C_R}"
+ICON_RUN="${C_HEAD}→${C_R}"
+
+# ── State ────────────────────────────────────────────────────────────────────
+
+dry_run=0
+verbose=0
+only=""
+skip_list=""
+total_updated=0
+total_skipped=0
+total_failed=0
+step_timings=()
+
+# ── CLI ──────────────────────────────────────────────────────────────────────
+
+show_usage() {
+  cat <<'EOF'
+Usage: ,update [options]
+
+Unified update orchestrator for the dotfiles ecosystem.
+Pulls dotfiles, updates all package managers, and reports what changed.
+
+Categories: dotfiles, brew, gh, asdf, cargo, npm, gems, go, uv, manual
+
+Options:
+  -n, --dry-run       Show what would be updated without doing it
+  -o, --only <cat>    Update only the specified category (comma-separated)
+  -s, --skip <cat>    Skip the specified category (comma-separated)
+  -v, --verbose       Show extra detail on each step
+  -h, --help          Show this help message
+
+Examples:
+  ,update                     # Update everything
+  ,update --dry-run           # Preview what would happen
+  ,update --only brew,npm     # Update only Homebrew and npm
+  ,update --skip cargo,gems   # Update everything except cargo and gems
+EOF
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+  -n | --dry-run) dry_run=1 ;;
+  -v | --verbose) verbose=1 ;;
+  -o | --only)
+    shift
+    only="$1"
+    ;;
+  -s | --skip)
+    shift
+    skip_list="$1"
+    ;;
+  -h | --help)
+    show_usage
+    exit 0
+    ;;
+  *)
+    echo "Unknown option: $1" >&2
+    show_usage
+    exit 1
+    ;;
+  esac
+  shift
+done
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+has_cmd() { command -v "$1" >/dev/null 2>&1; }
+
+should_run() {
+  local category="$1"
+  if [ -n "$only" ]; then
+    echo ",$only," | grep -q ",$category," && return 0
+    return 1
+  fi
+  if [ -n "$skip_list" ]; then
+    echo ",$skip_list," | grep -q ",$category," && return 1
+  fi
+  return 0
+}
+
+section() {
+  printf '\n%s── %s%s\n' "$C_HEAD" "$1" "$C_R"
+}
+
+step_pass() {
+  total_updated=$((total_updated + 1))
+  printf '  %s  %s' "$ICON_PASS" "$1"
+  [ -n "${2:-}" ] && printf '  %s%s%s' "$C_DIM" "$2" "$C_R"
+  printf '\n'
+}
+
+step_skip() {
+  total_skipped=$((total_skipped + 1))
+  printf '  %s  %s' "$ICON_SKIP" "$1"
+  [ -n "${2:-}" ] && printf '  %s%s%s' "$C_DIM" "$2" "$C_R"
+  printf '\n'
+}
+
+step_fail() {
+  total_failed=$((total_failed + 1))
+  printf '  %s  %s' "$ICON_FAIL" "$1"
+  [ -n "${2:-}" ] && printf '  %s%s%s' "$C_DIM" "$2" "$C_R"
+  printf '\n'
+}
+
+step_info() {
+  printf '  %s  %s\n' "$ICON_RUN" "$1"
+}
+
+run_timed() {
+  local label="$1"
+  shift
+  local start_ts end_ts elapsed
+
+  start_ts=$(date +%s)
+  if [ "$dry_run" -eq 1 ]; then
+    step_info "${C_DIM}[dry-run]${C_R} would run: $*"
+    step_timings+=("$label: skipped (dry-run)")
+    total_skipped=$((total_skipped + 1))
+    return 0
+  fi
+
+  step_info "$label"
+
+  local rc=0
+  set +e
+  "$@" 2>&1 | sed "s/^/    ${C_DIM}│${C_R} /"
+  rc=${PIPESTATUS[0]}
+  set -e
+
+  end_ts=$(date +%s)
+  elapsed=$((end_ts - start_ts))
+  step_timings+=("$label: ${elapsed}s")
+
+  if [ "$rc" -eq 0 ]; then
+    step_pass "$label" "${elapsed}s"
+  else
+    step_fail "$label" "exit $rc (${elapsed}s)"
+  fi
+  return "$rc"
+}
+
+# ── Parallel execution via mprocs ─────────────────────────────────────────────
+
+_tmpdir=""
+
+_cleanup() {
+  [ -n "$_tmpdir" ] && rm -rf "$_tmpdir"
+  _tmpdir=""
+  return 0
+}
+trap _cleanup EXIT
+
+_short_label() {
+  printf '%s' "${1#update_}"
+}
+
+run_parallel() {
+  local -a funcs=("$@")
+
+  local -a active_funcs=()
+  local -a active_labels=()
+  for fn in "${funcs[@]}"; do
+    local cat
+    cat=$(_short_label "$fn")
+    if should_run "$cat"; then
+      active_funcs+=("$fn")
+      active_labels+=("$cat")
+    fi
+  done
+
+  [ ${#active_funcs[@]} -eq 0 ] && return 0
+
+  if [ ${#active_funcs[@]} -eq 1 ] || ! has_cmd mprocs || [ "$dry_run" -eq 1 ]; then
+    for fn in "${active_funcs[@]}"; do
+      "$fn"
+    done
+    return 0
+  fi
+
+  _tmpdir=$(mktemp -d)
+  local self
+  self=$(realpath "$0")
+
+  local -a fwd_args=()
+  [ "$verbose" -eq 1 ] && fwd_args+=(--verbose)
+
+  # Write a wrapper script per process to avoid YAML escaping issues
+  for i in "${!active_funcs[@]}"; do
+    local cat="${active_labels[$i]}"
+    local wrapper="$_tmpdir/${cat}.sh"
+    local rcfile="$_tmpdir/${cat}.rc"
+    local cmd="$self"
+    [ ${#fwd_args[@]} -gt 0 ] && cmd="$cmd ${fwd_args[*]}"
+    cmd="$cmd --only $cat"
+    cat > "$wrapper" <<WRAPPER
+#!/usr/bin/env bash
+$cmd
+echo \$? > "$rcfile"
+WRAPPER
+    chmod +x "$wrapper"
+  done
+
+  # Build mprocs YAML config
+  local config="$_tmpdir/mprocs.yaml"
+  {
+    printf 'procs:\n'
+    for i in "${!active_funcs[@]}"; do
+      local cat="${active_labels[$i]}"
+      printf '  %s:\n' "$cat"
+      printf "    shell: 'bash %s'\n" "$_tmpdir/${cat}.sh"
+    done
+  } >"$config"
+
+  step_info "running ${#active_funcs[@]} steps in parallel (mprocs TUI — press q when done)"
+
+  mprocs -c "$config" || true
+
+  # Collect results from .rc files
+  for i in "${!active_labels[@]}"; do
+    local cat="${active_labels[$i]}"
+    local rcfile="$_tmpdir/${cat}.rc"
+    if [ -f "$rcfile" ]; then
+      local rc
+      rc=$(<"$rcfile")
+      rc="${rc%%[^0-9]*}"
+      if [ "${rc:-1}" -eq 0 ]; then
+        total_updated=$((total_updated + 1))
+      else
+        total_failed=$((total_failed + 1))
+      fi
+    else
+      total_failed=$((total_failed + 1))
+    fi
+  done
+
+  rm -rf "$_tmpdir"
+  _tmpdir=""
+}
+
+# ── Update steps ─────────────────────────────────────────────────────────────
+
+update_dotfiles() {
+  should_run "dotfiles" || return 0
+  section "Dotfiles (chezmoi)"
+
+  if ! has_cmd chezmoi; then
+    step_fail "chezmoi not installed"
+    return 1
+  fi
+
+  local diff_before
+  diff_before=$(chezmoi diff --no-pager 2>/dev/null | wc -l | tr -d ' ')
+
+  if [ "$dry_run" -eq 1 ]; then
+    step_info "${C_DIM}[dry-run]${C_R} would run: chezmoi update"
+    if [ "$diff_before" -gt 0 ]; then
+      step_info "$diff_before lines of pending local changes"
+    fi
+    total_skipped=$((total_skipped + 1))
+    return 0
+  fi
+
+  run_timed "pull & apply dotfiles" chezmoi update || true
+
+  local diff_after
+  diff_after=$(chezmoi diff --no-pager 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$diff_after" -gt 0 ]; then
+    step_info "$diff_after lines still pending after update"
+  fi
+}
+
+update_brew() {
+  should_run "brew" || return 0
+  section "Homebrew"
+
+  if ! has_cmd brew; then
+    step_fail "Homebrew not installed"
+    return 1
+  fi
+
+  local outdated_before
+  outdated_before=$(brew outdated --quiet 2>/dev/null | wc -l | tr -d ' ')
+  [ "$verbose" -eq 1 ] && step_info "$outdated_before packages outdated before update"
+
+  run_timed "brew update (fetch)" brew update || true
+  run_timed "brew upgrade" brew upgrade || true
+  run_timed "brew bundle (Brewfile)" brew bundle --global || true
+  run_timed "brew cleanup" brew cleanup --prune=30 -s || true
+
+  local outdated_after
+  outdated_after=$(brew outdated --quiet 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$outdated_after" -gt 0 ]; then
+    step_info "$outdated_after packages still outdated"
+  fi
+}
+
+update_gh() {
+  should_run "gh" || return 0
+  section "GitHub CLI extensions"
+
+  if ! has_cmd gh; then
+    step_skip "gh not installed"
+    return 0
+  fi
+
+  run_timed "gh extension upgrade --all" gh extension upgrade --all || true
+}
+
+update_asdf() {
+  should_run "asdf" || return 0
+  section "asdf (language runtimes)"
+
+  if ! has_cmd asdf; then
+    step_skip "asdf not installed"
+    return 0
+  fi
+
+  run_timed "asdf plugin update --all" asdf plugin update --all || true
+
+  local tool_versions="$HOME/.tool-versions"
+  if [ -f "$tool_versions" ]; then
+    while IFS= read -r line; do
+      [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+      local plugin version
+      plugin=$(echo "$line" | awk '{print $1}')
+      version=$(echo "$line" | awk '{print $2}')
+      [ -z "$plugin" ] || [ -z "$version" ] && continue
+
+      if asdf list "$plugin" 2>/dev/null | grep -q "^[[:space:]]*${version}[[:space:]]*$"; then
+        [ "$verbose" -eq 1 ] && step_skip "$plugin $version (installed)"
+      else
+        run_timed "install $plugin $version" asdf install "$plugin" "$version" || true
+      fi
+    done <"$tool_versions"
+  else
+    step_skip "no ~/.tool-versions found"
+  fi
+}
+
+update_cargo() {
+  should_run "cargo" || return 0
+  section "Cargo crates"
+
+  if ! has_cmd cargo; then
+    step_skip "cargo not installed"
+    return 0
+  fi
+
+  if has_cmd cargo-install-update; then
+    run_timed "cargo install-update --all" cargo install-update --all || true
+  else
+    step_skip "cargo-update not installed" "install via: cargo install cargo-update"
+  fi
+}
+
+update_npm() {
+  should_run "npm" || return 0
+  section "npm global packages"
+
+  if ! has_cmd npm; then
+    step_skip "npm not installed"
+    return 0
+  fi
+
+  local install_script="$HOME/bin/,install-npm-pkgs"
+  if [ -x "$install_script" ]; then
+    run_timed "sync npm packages" "$install_script" || true
+  else
+    step_skip ",install-npm-pkgs not found"
+  fi
+}
+
+update_gems() {
+  should_run "gems" || return 0
+  section "Ruby gems"
+
+  if ! has_cmd gem; then
+    step_skip "gem not installed"
+    return 0
+  fi
+
+  run_timed "gem update" gem update --no-document || true
+}
+
+update_go() {
+  should_run "go" || return 0
+  section "Go packages"
+
+  if ! has_cmd go; then
+    step_skip "go not installed"
+    return 0
+  fi
+
+  if has_cmd go-global-update; then
+    run_timed "go-global-update" go-global-update || true
+  else
+    step_skip "go-global-update not installed"
+  fi
+}
+
+update_uv() {
+  should_run "uv" || return 0
+  section "uv tools (Python)"
+
+  if ! has_cmd uv; then
+    step_skip "uv not installed"
+    return 0
+  fi
+
+  run_timed "uv tool upgrade --all" uv tool upgrade --all || true
+}
+
+update_manual() {
+  should_run "manual" || return 0
+  section "Manual packages (GitHub releases)"
+
+  local script="$HOME/.local/share/chezmoi/home/.chezmoiscripts/run_onchange_after_05-install-manual-packages.sh.tmpl"
+  if [ ! -f "$script" ]; then
+    step_skip "manual packages script not found"
+    return 0
+  fi
+
+  if ! has_cmd chezmoi; then
+    step_fail "chezmoi required for manual packages"
+    return 1
+  fi
+
+  local rendered
+  rendered=$(mktemp)
+
+  if chezmoi execute-template <"$script" >"$rendered" 2>/dev/null; then
+    chmod +x "$rendered"
+    run_timed "install/update manual packages" bash "$rendered" || true
+  else
+    step_fail "failed to render manual packages script"
+  fi
+  rm -f "$rendered"
+}
+
+# ── Main ─────────────────────────────────────────────────────────────────────
+
+printf '%s,update%s — dotfiles ecosystem update' "$C_HEAD" "$C_R"
+if [ "$dry_run" -eq 1 ]; then
+  printf ' %s[dry-run]%s' "$C_WARN" "$C_R"
+fi
+printf '\n'
+
+overall_start=$(date +%s)
+
+# Phase 1: dotfiles must run first (pulls new package lists / tool-versions)
+update_dotfiles
+
+# Phase 2: all package managers in parallel
+run_parallel update_brew update_gh update_asdf update_uv update_manual \
+  update_cargo update_npm update_gems update_go || true
+
+overall_end=$(date +%s)
+overall_elapsed=$((overall_end - overall_start))
+
+# ── Summary ──────────────────────────────────────────────────────────────────
+
+printf '\n%s── Summary%s  %s(%ds total)%s\n' "$C_HEAD" "$C_R" "$C_DIM" "$overall_elapsed" "$C_R"
+printf '  %s %s updated' "$ICON_PASS" "$total_updated"
+if [ "$total_skipped" -gt 0 ]; then
+  printf '   %s %s skipped' "$ICON_SKIP" "$total_skipped"
+fi
+if [ "$total_failed" -gt 0 ]; then
+  printf '   %s %s failed' "$ICON_FAIL" "$total_failed"
+fi
+printf '\n'
+
+if [ "$verbose" -eq 1 ] && [ "${#step_timings[@]:-0}" -gt 0 ]; then
+  printf '\n%s── Timings%s\n' "$C_HEAD" "$C_R"
+  for timing in "${step_timings[@]}"; do
+    printf '  %s%s%s\n' "$C_DIM" "$timing" "$C_R"
+  done
+fi
+
+if [ "$total_failed" -gt 0 ]; then
+  printf '\n  %sTip:%s Run %s,doctor%s to diagnose failures\n' "$C_WARN" "$C_R" "$C_BOLD" "$C_R"
+  exit 1
+fi
+exit 0
