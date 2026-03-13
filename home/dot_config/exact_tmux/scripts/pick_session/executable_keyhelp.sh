@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cat <<'EOF'
+cat << 'EOF'
 pick_session keybindings
 
 Navigation

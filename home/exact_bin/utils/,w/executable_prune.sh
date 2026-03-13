@@ -6,7 +6,7 @@ source "$(dirname "$0")/../bash_utils_lib.sh"
 source "$(dirname "$0")/../worktree_lib.sh"
 
 show_usage() {
-  cat <<EOF
+  cat << EOF
 Usage: ,w prune [-q|--quiet] [--apply] [--all]
 
 Prune stale worktree metadata and (optionally) kill stale tmux sessions.
@@ -25,40 +25,40 @@ all_mode=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
-  -h | --help)
-    show_usage
-    exit 0
-    ;;
-  -q | --quiet)
-    quiet_mode=1
-    shift
-    ;;
-  --apply)
-    apply_mode=1
-    shift
-    ;;
-  --all)
-    all_mode=1
-    shift
-    ;;
-  --)
-    shift
-    break
-    ;;
-  -*)
-    show_usage
-    exit 1
-    ;;
-  *)
-    echo "Error: Unknown argument '$1'." >&2
-    show_usage
-    exit 1
-    ;;
+    -h | --help)
+      show_usage
+      exit 0
+      ;;
+    -q | --quiet)
+      quiet_mode=1
+      shift
+      ;;
+    --apply)
+      apply_mode=1
+      shift
+      ;;
+    --all)
+      all_mode=1
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      show_usage
+      exit 1
+      ;;
+    *)
+      echo "Error: Unknown argument '$1'." >&2
+      show_usage
+      exit 1
+      ;;
   esac
 done
 
 in_git_repo=0
-if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
   in_git_repo=1
 fi
 
@@ -85,7 +85,7 @@ else
   fi
 fi
 
-if ! command -v tmux >/dev/null 2>&1; then
+if ! command -v tmux > /dev/null 2>&1; then
   exit 0
 fi
 
@@ -100,7 +100,7 @@ session_has_any_existing_pane_path() {
     if [ -e "$pane_path" ]; then
       return 0
     fi
-  done < <(_comma_w_tmux list-panes -t "$session_name" -F '#{pane_current_path}' 2>/dev/null || true)
+  done < <(_comma_w_tmux list-panes -t "$session_name" -F '#{pane_current_path}' 2> /dev/null || true)
 
   if [ "$saw_any" -eq 0 ]; then
     return 0
@@ -115,17 +115,17 @@ while IFS=$'\t' read -r session_name _; do
 
   if [ "$all_mode" -eq 0 ]; then
     case "$session_name" in
-    "${session_prefix}"\|*) ;;
-    *)
-      continue
-      ;;
+      "${session_prefix}"\|*) ;;
+      *)
+        continue
+        ;;
     esac
   fi
 
   if ! session_has_any_existing_pane_path "$session_name"; then
     stale_sessions+=("$session_name")
   fi
-done < <(_comma_w_tmux list-sessions -F $'#{session_name}\t#{session_path}' 2>/dev/null || true)
+done < <(_comma_w_tmux list-sessions -F $'#{session_name}\t#{session_path}' 2> /dev/null || true)
 
 if [ ${#stale_sessions[@]} -gt 0 ]; then
   tmux_has_stale=1
@@ -170,7 +170,7 @@ fi
 
 if [ "$tmux_has_stale" -eq 1 ]; then
   for session_name in "${stale_sessions[@]}"; do
-    _comma_w_tmux kill-session -t "$session_name" 2>/dev/null || true
+    _comma_w_tmux kill-session -t "$session_name" 2> /dev/null || true
   done
   did_any=1
 fi

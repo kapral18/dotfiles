@@ -14,8 +14,7 @@ Global npm packages are managed via a plain list.
 Example packages managed this way include `@mariozechner/pi-coding-agent`.
 
 1. Add the package name to:
-
-   - `home/readonly_dot_default-npm-pkgs`
+   - [`home/readonly_dot_default-npm-pkgs`](../../home/readonly_dot_default-npm-pkgs)
 
    This file is installed as `~/.default-npm-pkgs`.
 
@@ -27,7 +26,7 @@ Example packages managed this way include `@mariozechner/pi-coding-agent`.
 
 Or run the installer command directly:
 
-- `home/exact_bin/executable_,install-npm-pkgs`
+- [`home/exact_bin/executable_,install-npm-pkgs`](../../home/exact_bin/executable_,install-npm-pkgs)
 
 ## Verification
 
@@ -37,16 +36,19 @@ npm --global --silent ls | rg '<package-name>'
 
 ## What It Does
 
-The installer reads `~/.default-npm-pkgs`, installs missing packages, uninstalls global packages not on the list (excluding core tools like `npm`), and then
-runs `asdf reshim nodejs`.
+The installer reads `~/.default-npm-pkgs`, installs missing packages, uninstalls
+global packages not on the list (excluding core tools like `npm`), and then runs
+`asdf reshim nodejs`.
 
 ## Rollback / Undo
 
-1. Remove the package from `home/readonly_dot_default-npm-pkgs`.
+1. Remove the package from
+   [`home/readonly_dot_default-npm-pkgs`](../../home/readonly_dot_default-npm-pkgs).
 2. Re-apply:
 
 ```bash
 chezmoi apply
 ```
 
-*(The package will be automatically uninstalled because it is no longer in the desired list).*
+_(The package will be automatically uninstalled because it is no longer in the
+desired list)._

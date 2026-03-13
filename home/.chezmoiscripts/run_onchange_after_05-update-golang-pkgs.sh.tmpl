@@ -12,76 +12,76 @@ set -euo pipefail
 golang_pkgs_file={{ joinPath .chezmoi.sourceDir "readonly_dot_default-golang-pkgs" | quote }}
 
 if [[ ! -f "$golang_pkgs_file" ]]; then
-    echo "Error: default-golang-pkgs file not found at $golang_pkgs_file"
-    exit 1
+  echo "Error: default-golang-pkgs file not found at $golang_pkgs_file"
+  exit 1
 fi
 
 # Read the file content into an array
-if ! mapfile -t lines < "$golang_pkgs_file"; then
-    echo "Error: Failed to read default-golang-pkgs file"
-    exit 1
+if ! mapfile -t lines <"$golang_pkgs_file"; then
+  echo "Error: Failed to read default-golang-pkgs file"
+  exit 1
 fi
 
 # Get list of installed Go packages once
 declare -a installed_go_pkgs
 while IFS= read -r line; do
-    [[ -z "$line" ]] && continue
-    pkg_name=$(echo "$line" | sed 's/ .*//')
-    [[ -n "$pkg_name" ]] && installed_go_pkgs+=("$pkg_name")
+  [[ -z "$line" ]] && continue
+  pkg_name=$(echo "$line" | sed 's/ .*//')
+  [[ -n "$pkg_name" ]] && installed_go_pkgs+=("$pkg_name")
 done < <(go list -m all 2>/dev/null || true)
 
 # Check if a Go package is already installed (in-memory lookup)
 is_go_pkg_installed() {
-    local pkg=$1
-    [[ " ${installed_go_pkgs[@]} " =~ " ${pkg} " ]]
+  local pkg=$1
+  [[ " ${installed_go_pkgs[@]} " =~ " ${pkg} " ]]
 }
 
 # install Go package.
 #
 # ex: install_go_pkg pkg_name
 install_go_pkg() {
-    local pkg=$1
+  local pkg=$1
 
-    if is_go_pkg_installed "$pkg"; then
-        echo "Go package $pkg is already installed, skipping"
-        return 0
-    fi
-
-    echo "Installing Go package: $pkg"
-    if ! go install "$pkg@latest" &>/dev/null; then
-        echo "Error: Failed to install Go package $pkg@latest"
-        if ! go install "$pkg@master" &>/dev/null; then
-            echo "Error: Failed to install Go package $pkg@master"
-            if ! go install "$pkg@main" &>/dev/null; then
-                echo "Error: Failed to install Go package $pkg@main"
-                return 1
-            fi
-        fi
-    fi
+  if is_go_pkg_installed "$pkg"; then
+    echo "Go package $pkg is already installed, skipping"
     return 0
+  fi
+
+  echo "Installing Go package: $pkg"
+  if ! go install "$pkg@latest" &>/dev/null; then
+    echo "Error: Failed to install Go package $pkg@latest"
+    if ! go install "$pkg@master" &>/dev/null; then
+      echo "Error: Failed to install Go package $pkg@master"
+      if ! go install "$pkg@main" &>/dev/null; then
+        echo "Error: Failed to install Go package $pkg@main"
+        return 1
+      fi
+    fi
+  fi
+  return 0
 }
 
 # Track which packages should be installed
 declare -a desired_go_pkgs
 for line in "${lines[@]}"; do
-    # Skip empty lines and comments
-    [[ -z "$line" || "$line" =~ ^\s*# ]] && continue
+  # Skip empty lines and comments
+  [[ -z "$line" || "$line" =~ ^\s*# ]] && continue
 
-    desired_go_pkgs+=("$line")
-    install_go_pkg "$line"
+  desired_go_pkgs+=("$line")
+  install_go_pkg "$line"
 done
 
 # Uninstall packages that are no longer in the config
 echo ""
 echo "Cleaning up unused Go packages..."
 while IFS= read -r pkg; do
-    [[ -z "$pkg" ]] && continue
-    pkg_name=$(echo "$pkg" | sed 's/ .*//')
-    [[ -n "$pkg_name" ]] || continue
-    if [[ ! " ${desired_go_pkgs[@]} " =~ " ${pkg_name} " ]]; then
-        echo "Removing unused Go package: $pkg_name"
-        go clean -i "$pkg_name" || true
-    fi
+  [[ -z "$pkg" ]] && continue
+  pkg_name=$(echo "$pkg" | sed 's/ .*//')
+  [[ -n "$pkg_name" ]] || continue
+  if [[ ! " ${desired_go_pkgs[@]} " =~ " ${pkg_name} " ]]; then
+    echo "Removing unused Go package: $pkg_name"
+    go clean -i "$pkg_name" || true
+  fi
 done < <(go list -m all 2>/dev/null || true)
 
 # make it available in the current shell

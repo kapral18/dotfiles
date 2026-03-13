@@ -8,14 +8,14 @@ source "$(dirname "$0")/issue_lib.sh"
 
 require_cmd() {
   local cmd="$1"
-  if ! command -v "$cmd" >/dev/null 2>&1; then
+  if ! command -v "$cmd" > /dev/null 2>&1; then
     echo "Missing required dependency: '$cmd'." >&2
     exit 1
   fi
 }
 
 show_usage() {
-  cat <<'EOF'
+  cat << 'EOF'
 Usage: ,w issue [-q|--quiet] [--focus] [-b|--branch <name>] <issue_number|url>
 
 Create or reuse a worktree for a GitHub issue.
@@ -40,37 +40,37 @@ manual_branch="${COMMA_W_ISSUE_BRANCH:-}"
 
 while [ $# -gt 0 ]; do
   case "$1" in
-  -h | --help)
-    show_usage
-    exit 0
-    ;;
-  -q | --quiet)
-    quiet_mode=1
-    shift
-    ;;
-  --focus)
-    focus_mode=1
-    shift
-    ;;
-  -b | --branch)
-    if [ $# -lt 2 ]; then
-      echo ",w issue: missing value for $1" >&2
+    -h | --help)
+      show_usage
+      exit 0
+      ;;
+    -q | --quiet)
+      quiet_mode=1
+      shift
+      ;;
+    --focus)
+      focus_mode=1
+      shift
+      ;;
+    -b | --branch)
+      if [ $# -lt 2 ]; then
+        echo ",w issue: missing value for $1" >&2
+        exit 1
+      fi
+      manual_branch="$2"
+      shift 2
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      show_usage >&2
       exit 1
-    fi
-    manual_branch="$2"
-    shift 2
-    ;;
-  --)
-    shift
-    break
-    ;;
-  -*)
-    show_usage >&2
-    exit 1
-    ;;
-  *)
-    break
-    ;;
+      ;;
+    *)
+      break
+      ;;
   esac
 done
 
@@ -105,7 +105,7 @@ normalize_branch_input() {
 validate_branch_name() {
   local branch="$1"
   [ -n "$branch" ] || return 1
-  git check-ref-format --branch "$branch" >/dev/null 2>&1
+  git check-ref-format --branch "$branch" > /dev/null 2>&1
 }
 
 with_issue_suffix() {
@@ -143,22 +143,22 @@ prompt_branch_name() {
   printf "%b%b" "$prompt_prefix" "$hint" >&2
   printf "\r%b" "$prompt_prefix" >&2
 
-  while IFS= read -rsn 1 ch </dev/tty; do
+  while IFS= read -rsn 1 ch < /dev/tty; do
     case "$ch" in
-    "$ctrl_c" | "$esc")
-      return 1
-      ;;
-    "$cr" | "$nl")
-      break
-      ;;
-    "$bs" | $'\b')
-      if [ -n "$buf" ]; then
-        buf="${buf%?}"
-      fi
-      ;;
-    *)
-      buf+="$ch"
-      ;;
+      "$ctrl_c" | "$esc")
+        return 1
+        ;;
+      "$cr" | "$nl")
+        break
+        ;;
+      "$bs" | $'\b')
+        if [ -n "$buf" ]; then
+          buf="${buf%?}"
+        fi
+        ;;
+      *)
+        buf+="$ch"
+        ;;
     esac
     printf "\r%b%s\033[K" "$prompt_prefix" "$buf" >&2
   done
@@ -188,9 +188,9 @@ fi
 
 _comma_w_prune_stale_worktrees "$quiet_mode"
 
-existing_path="$(_comma_w_issue_find_by_metadata "$repo_name" "$issue_number" 2>/dev/null || true)"
+existing_path="$(_comma_w_issue_find_by_metadata "$repo_name" "$issue_number" 2> /dev/null || true)"
 if [ -z "$existing_path" ]; then
-  existing_path="$(_comma_w_issue_find_by_heuristics "$issue_number" 2>/dev/null || true)"
+  existing_path="$(_comma_w_issue_find_by_heuristics "$issue_number" 2> /dev/null || true)"
 fi
 
 if [ -n "$existing_path" ]; then
@@ -205,7 +205,7 @@ fi
 manual_branch="$(normalize_branch_input "$manual_branch")"
 
 if [ -z "$manual_branch" ]; then
-  issue_title="$(gh issue view "$issue_number" --json title --jq '.title' 2>/dev/null || true)"
+  issue_title="$(gh issue view "$issue_number" --json title --jq '.title' 2> /dev/null || true)"
   if [ -z "$issue_title" ]; then
     issue_title="(unable to fetch title)"
   fi
@@ -221,7 +221,7 @@ if ! validate_branch_name "$manual_branch"; then
   die "invalid branch name: '$manual_branch'"
 fi
 
-existing_path="$(_comma_w_find_worktree_path_for_branch "$manual_branch" 2>/dev/null || true)"
+existing_path="$(_comma_w_find_worktree_path_for_branch "$manual_branch" 2> /dev/null || true)"
 if [ -n "$existing_path" ]; then
   info "Found existing worktree for branch '$manual_branch' at: $existing_path"
   _comma_w_issue_store_metadata "$existing_path" "$repo_name" "$issue_number" || true
@@ -252,7 +252,7 @@ else
   fi
 fi
 
-worktree_path="$(_comma_w_find_worktree_path_for_branch "$branch" 2>/dev/null || true)"
+worktree_path="$(_comma_w_find_worktree_path_for_branch "$branch" 2> /dev/null || true)"
 if [ -z "$worktree_path" ]; then
   die "failed to determine created worktree path for branch: $branch"
 fi

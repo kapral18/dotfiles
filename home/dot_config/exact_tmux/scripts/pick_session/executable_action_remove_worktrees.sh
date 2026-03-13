@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Re-exec under a modern bash when macOS ships bash 3.2 as /bin/bash.
 if [ "${BASH_VERSINFO[0]:-0}" -lt 4 ]; then
-  _b="$(brew --prefix bash 2>/dev/null)/bin/bash"
+  _b="$(brew --prefix bash 2> /dev/null)/bin/bash"
   [ -x "$_b" ] && exec "$_b" "$0" "$@"
   exit 1
 fi
@@ -22,25 +22,25 @@ mkdir -p "$cache_dir"
 lock_dir="${cache_file}.lock"
 acquire_lock() {
   local waited=0
-  while ! mkdir "$lock_dir" 2>/dev/null; do
+  while ! mkdir "$lock_dir" 2> /dev/null; do
     sleep 0.02
     waited="$((waited + 20))"
     [ "$waited" -ge 200 ] && return 1
   done
   return 0
 }
-release_lock() { rmdir "$lock_dir" 2>/dev/null || true; }
+release_lock() { rmdir "$lock_dir" 2> /dev/null || true; }
 
 realpath_or_self() {
-  realpath "$1" 2>/dev/null || printf '%s' "$1"
+  realpath "$1" 2> /dev/null || printf '%s' "$1"
 }
 
 repo_name_from_remote() {
   local dir="$1"
   local url=""
-  url="$(git -C "$dir" remote get-url origin 2>/dev/null || true)"
+  url="$(git -C "$dir" remote get-url origin 2> /dev/null || true)"
   if [ -z "$url" ]; then
-    url="$(git -C "$dir" remote get-url upstream 2>/dev/null || true)"
+    url="$(git -C "$dir" remote get-url upstream 2> /dev/null || true)"
   fi
   [ -n "$url" ] || return 1
 
@@ -49,12 +49,12 @@ repo_name_from_remote() {
 
   local name="$url"
   case "$url" in
-  *://*) name="${url##*/}" ;;
-  *:*)
-    name="${url#*:}"
-    name="${name##*/}"
-    ;;
-  *) name="${url##*/}" ;;
+    *://*) name="${url##*/}" ;;
+    *:*)
+      name="${url#*:}"
+      name="${name##*/}"
+      ;;
+    *) name="${url##*/}" ;;
   esac
   [ -n "$name" ] || return 1
   printf '%s\n' "$name"
@@ -70,20 +70,20 @@ nuke_dir_for_root_worktree() {
   }
 
   local repo_name wrapper
-  repo_name="$(repo_name_from_remote "$root" 2>/dev/null || true)"
+  repo_name="$(repo_name_from_remote "$root" 2> /dev/null || true)"
   wrapper="$(realpath_or_self "$(dirname "$root")")"
 
   if [ -n "$repo_name" ] && [ "$(basename "$wrapper")" = "$repo_name" ]; then
     case "$wrapper" in
-    "" | "/") ;;
-    *)
-      if [ -n "${HOME:-}" ] && [ "$wrapper" = "$(realpath_or_self "$HOME")" ]; then
-        printf '%s\n' "$root"
+      "" | "/") ;;
+      *)
+        if [ -n "${HOME:-}" ] && [ "$wrapper" = "$(realpath_or_self "$HOME")" ]; then
+          printf '%s\n' "$root"
+          return 0
+        fi
+        printf '%s\n' "$wrapper"
         return 0
-      fi
-      printf '%s\n' "$wrapper"
-      return 0
-      ;;
+        ;;
     esac
   fi
 
@@ -93,7 +93,7 @@ nuke_dir_for_root_worktree() {
 list_worktree_paths() {
   local root="$1"
   [ -n "$root" ] || return 1
-  git -C "$root" worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2}' | sed '/^$/d' || true
+  git -C "$root" worktree list --porcelain 2> /dev/null | awk '/^worktree /{print $2}' | sed '/^$/d' || true
 }
 
 worktree_root_dir_for_path() {
@@ -104,35 +104,35 @@ worktree_root_dir_for_path() {
   p="$(realpath_or_self "$p")"
 
   if [ -d "$p/.git" ]; then
-    realpath "$p" 2>/dev/null || printf '%s\n' "$p"
+    realpath "$p" 2> /dev/null || printf '%s\n' "$p"
     return 0
   fi
 
   if [ -f "$p/.git" ]; then
     local gitdir
-    gitdir="$(sed -n '1s/^gitdir: //p' "$p/.git" 2>/dev/null | head -n 1 || true)"
+    gitdir="$(sed -n '1s/^gitdir: //p' "$p/.git" 2> /dev/null | head -n 1 || true)"
     [ -n "$gitdir" ] || return 1
     case "$gitdir" in
-    /*) ;;
-    *) gitdir="$p/$gitdir" ;;
+      /*) ;;
+      *) gitdir="$p/$gitdir" ;;
     esac
-    gitdir="$(realpath "$gitdir" 2>/dev/null || printf '%s' "$gitdir")"
+    gitdir="$(realpath "$gitdir" 2> /dev/null || printf '%s' "$gitdir")"
     case "$gitdir" in
-    */.git/worktrees/*)
-      printf '%s\n' "$(dirname "$(dirname "$(dirname "$gitdir")")")"
-      return 0
-      ;;
+      */.git/worktrees/*)
+        printf '%s\n' "$(dirname "$(dirname "$(dirname "$gitdir")")")"
+        return 0
+        ;;
     esac
   fi
 
   local common common_path
-  common="$(git -C "$p" rev-parse --git-common-dir 2>/dev/null || true)"
+  common="$(git -C "$p" rev-parse --git-common-dir 2> /dev/null || true)"
   [ -n "$common" ] || return 1
   case "$common" in
-  /*) common_path="$common" ;;
-  *) common_path="$p/$common" ;;
+    /*) common_path="$common" ;;
+    *) common_path="$p/$common" ;;
   esac
-  common_path="$(realpath "$common_path" 2>/dev/null || printf '%s' "$common_path")"
+  common_path="$(realpath "$common_path" 2> /dev/null || printf '%s' "$common_path")"
   dirname "$common_path"
 }
 
@@ -165,7 +165,7 @@ remove_paths_in_background() {
   local -a paths=("$@")
   [ ${#paths[@]} -gt 0 ] || return 0
 
-  if ! command -v ,w >/dev/null 2>&1; then
+  if ! command -v ,w > /dev/null 2>&1; then
     tmux display-message "tmux: missing command: ,w"
     return 0
   fi
@@ -181,8 +181,8 @@ remove_paths_in_background() {
   done
   {
     printf '\n[%s] %s\n' "$(date +%Y-%m-%dT%H:%M:%S%z)" "$cmd"
-  } >>"$rm_log_file" 2>/dev/null || true
-  nohup bash -c "$cmd" </dev/null >>"$rm_log_file" 2>&1 &
+  } >> "$rm_log_file" 2> /dev/null || true
+  nohup bash -c "$cmd" < /dev/null >> "$rm_log_file" 2>&1 &
 }
 
 declare -A roots_selected=()
@@ -192,7 +192,7 @@ declare -a pending_plain_dirs=()
 
 while IFS= read -r _line; do
   [ -n "$_line" ] || continue
-  mapfile -t _fields < <(awk -F $'\t' '{print $1; print $2; print $3; print $4; print $5}' <<<"$_line")
+  mapfile -t _fields < <(awk -F $'\t' '{print $1; print $2; print $3; print $4; print $5}' <<< "$_line")
   kind="${_fields[1]-}"
   path="${_fields[2]-}"
   meta="${_fields[3]-}"
@@ -207,50 +207,50 @@ while IFS= read -r _line; do
   is_root_selection=0
 
   case "$kind" in
-  worktree)
-    wt_path="$path"
-    root_wt_dir="$target"
-    case "$meta_base" in
-    wt_root:*) is_root_selection=1 ;;
-    esac
-    ;;
-  session)
-    wt_path="$(worktree_dir_for_path "$path" 2>/dev/null || true)"
-    if [ -z "$wt_path" ] && [ -n "${target:-}" ] && [ -f "$cache_file" ]; then
-      # Fallback: if the selected row came from the live session overlay (or
-      # otherwise has a non-git path), try to map the session name back to a
-      # cached worktree-backed session row.
-      cached="$(
-        awk -F $'\t' -v t="$target" '
+    worktree)
+      wt_path="$path"
+      root_wt_dir="$target"
+      case "$meta_base" in
+        wt_root:*) is_root_selection=1 ;;
+      esac
+      ;;
+    session)
+      wt_path="$(worktree_dir_for_path "$path" 2> /dev/null || true)"
+      if [ -z "$wt_path" ] && [ -n "${target:-}" ] && [ -f "$cache_file" ]; then
+        # Fallback: if the selected row came from the live session overlay (or
+        # otherwise has a non-git path), try to map the session name back to a
+        # cached worktree-backed session row.
+        cached="$(
+          awk -F $'\t' -v t="$target" '
             $2 == "session" && $5 == t { print $3 "\t" $4; exit }
-          ' "$cache_file" 2>/dev/null || true
-      )"
-      if [ -n "$cached" ]; then
-        IFS=$'\t' read -r cached_path cached_meta <<<"$cached"
-        if [ -n "$cached_path" ]; then
-          wt_path="$(realpath_or_self "$cached_path")"
-        fi
-        if [ -n "$cached_meta" ]; then
-          meta_base="${cached_meta%%|*}"
+          ' "$cache_file" 2> /dev/null || true
+        )"
+        if [ -n "$cached" ]; then
+          IFS=$'\t' read -r cached_path cached_meta <<< "$cached"
+          if [ -n "$cached_path" ]; then
+            wt_path="$(realpath_or_self "$cached_path")"
+          fi
+          if [ -n "$cached_meta" ]; then
+            meta_base="${cached_meta%%|*}"
+          fi
         fi
       fi
-    fi
 
-    if [ -z "$wt_path" ]; then
+      if [ -z "$wt_path" ]; then
+        pending_plain_dirs+=("$path")
+        continue
+      fi
+
+      [ -n "$wt_path" ] || continue
+      root_wt_dir="$(worktree_root_dir_for_path "$wt_path" 2> /dev/null || true)"
+      case "$meta_base" in
+        sess_root:*) is_root_selection=1 ;;
+      esac
+      ;;
+    dir)
       pending_plain_dirs+=("$path")
       continue
-    fi
-
-    [ -n "$wt_path" ] || continue
-    root_wt_dir="$(worktree_root_dir_for_path "$wt_path" 2>/dev/null || true)"
-    case "$meta_base" in
-    sess_root:*) is_root_selection=1 ;;
-    esac
-    ;;
-  dir)
-    pending_plain_dirs+=("$path")
-    continue
-    ;;
+      ;;
   esac
 
   [ -n "$wt_path" ] || continue
@@ -266,7 +266,7 @@ while IFS= read -r _line; do
   if [ "$is_root_selection" -eq 1 ]; then
     roots_selected["$root_wt_dir"]=1
 
-    base="$(nuke_dir_for_root_worktree "$root_wt_dir" 2>/dev/null || printf '%s' "$root_wt_dir")"
+    base="$(nuke_dir_for_root_worktree "$root_wt_dir" 2> /dev/null || printf '%s' "$root_wt_dir")"
     base="$(realpath_or_self "$base")"
     pending_wt_paths+=("$base")
 
@@ -280,11 +280,11 @@ while IFS= read -r _line; do
 
   worktree_paths_by_root["$root_wt_dir"]+=$'\n'"$wt_path"
   pending_wt_paths+=("$wt_path")
-done <"$sel_file"
+done < "$sel_file"
 
 if [ ${#pending_wt_paths[@]} -eq 0 ] && [ ${#pending_plain_dirs[@]} -eq 0 ]; then
-  if command -v tmux >/dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
-    tmux display-message -d 4000 "pick_session: selection contains nothing to remove" 2>/dev/null || true
+  if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
+    tmux display-message -d 4000 "pick_session: selection contains nothing to remove" 2> /dev/null || true
   fi
   exit 0
 fi
@@ -302,7 +302,7 @@ if [ ${#pending_wt_paths[@]} -gt 0 ]; then
     for p in "${pending_wt_paths[@]}"; do
       printf 'WT\t%s\n' "$p"
     done
-  } >>"$pending_file"
+  } >> "$pending_file"
 fi
 
 # Record path tombstones so long-running/stale scans cannot resurrect removed
@@ -317,11 +317,11 @@ now_epoch="$(date +%s)"
     [ -n "$p" ] || continue
     printf '%s\tPATH_PREFIX\t%s\n' "$now_epoch" "$p"
   done
-} >>"$mutation_file"
+} >> "$mutation_file"
 
-if command -v tmux >/dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
+if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
   for root in "${!roots_selected[@]}"; do
-    nohup env -u TMUX -u TMUX_PANE "$HOME/.config/tmux/scripts/pick_session/remove_all_worktrees.sh" "$root" </dev/null >/dev/null 2>&1 &
+    nohup env -u TMUX -u TMUX_PANE "$HOME/.config/tmux/scripts/pick_session/remove_all_worktrees.sh" "$root" < /dev/null > /dev/null 2>&1 &
   done
 
   for root in "${!worktree_paths_by_root[@]}"; do
@@ -336,14 +336,14 @@ if command -v tmux >/dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
 
   if [ ${#pending_plain_dirs[@]} -gt 0 ]; then
     for pd in "${pending_plain_dirs[@]}"; do
-      nohup env -u TMUX -u TMUX_PANE "$HOME/.config/tmux/scripts/pick_session/remove_plain_dir.sh" "$pd" </dev/null >/dev/null 2>&1 &
+      nohup env -u TMUX -u TMUX_PANE "$HOME/.config/tmux/scripts/pick_session/remove_plain_dir.sh" "$pd" < /dev/null > /dev/null 2>&1 &
     done
   fi
 fi
 
-if [ ${#pending_plain_dirs[@]} -gt 0 ] && command -v zoxide >/dev/null 2>&1; then
+if [ ${#pending_plain_dirs[@]} -gt 0 ] && command -v zoxide > /dev/null 2>&1; then
   for pd in "${pending_plain_dirs[@]}"; do
-    zoxide remove "$pd" 2>/dev/null || true
+    zoxide remove "$pd" 2> /dev/null || true
   done
 fi
 
@@ -351,7 +351,7 @@ fi
 if [ -f "$cache_file" ] && acquire_lock; then
   trap release_lock EXIT
 
-  CACHE_FILE="$cache_file" PENDING_WT="$(printf '%s\n' "${pending_wt_paths[@]-}")" PENDING_DIRS="$(printf '%s\n' "${pending_plain_dirs[@]-}")" python3 - <<'PY'
+  CACHE_FILE="$cache_file" PENDING_WT="$(printf '%s\n' "${pending_wt_paths[@]-}")" PENDING_DIRS="$(printf '%s\n' "${pending_plain_dirs[@]-}")" python3 - << 'PY'
 import os
 from pathlib import Path
 

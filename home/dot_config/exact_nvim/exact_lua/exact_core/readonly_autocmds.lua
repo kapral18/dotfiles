@@ -274,11 +274,7 @@ vim.api.nvim_create_user_command("UndoHashedPrune", function(opts)
   end
 
   vim.notify(
-    string.format(
-      "UndoHashedPrune: deleted %d file(s), freed %.1fMB",
-      deleted,
-      deleted_bytes / (1024 * 1024)
-    ),
+    string.format("UndoHashedPrune: deleted %d file(s), freed %.1fMB", deleted, deleted_bytes / (1024 * 1024)),
     vim.log.levels.INFO
   )
 end, {

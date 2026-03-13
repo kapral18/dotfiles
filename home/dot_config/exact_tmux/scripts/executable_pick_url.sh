@@ -8,7 +8,7 @@ die() {
 
 need_cmd() {
   local cmd="$1"
-  if ! command -v "${cmd}" >/dev/null 2>&1; then
+  if ! command -v "${cmd}" > /dev/null 2>&1; then
     die "tmux: missing command: ${cmd}"
   fi
 }
@@ -47,12 +47,12 @@ custom_open="$(tmux_opt '@pick_url_open_cmd' '')"
 open_url() {
   if [[ -n "${custom_open}" ]]; then
     "${custom_open}" "$@"
-  elif command -v xdg-open >/dev/null 2>&1; then
-    nohup xdg-open "$@" >/dev/null 2>&1 &
-  elif command -v open >/dev/null 2>&1; then
-    nohup open "$@" >/dev/null 2>&1 &
+  elif command -v xdg-open > /dev/null 2>&1; then
+    nohup xdg-open "$@" > /dev/null 2>&1 &
+  elif command -v open > /dev/null 2>&1; then
+    nohup open "$@" > /dev/null 2>&1 &
   elif [[ -n "${BROWSER:-}" ]]; then
-    nohup "${BROWSER}" "$@" >/dev/null 2>&1 &
+    nohup "${BROWSER}" "$@" > /dev/null 2>&1 &
   fi
 }
 
@@ -93,29 +93,29 @@ else
 fi
 
 urls="$(
-  echo "${content}" |
-    grep -oE '(https?|ftp|file)://[^[:space:]]+' |
-    sed -E 's/[])>}"'\''.,;:!?]+$//' || true
+  echo "${content}" \
+    | grep -oE '(https?|ftp|file)://[^[:space:]]+' \
+    | sed -E 's/[])>}"'\''.,;:!?]+$//' || true
 )"
 wwws="$(
-  echo "${content}" |
-    grep -oE 'www\\.[^[:space:]]+' |
-    sed -E 's/[])>}"'\''.,;:!?]+$//' |
-    grep -vE '^https?://' |
-    sed -E 's/^(.*)$/http:\\/\\/\\1/' || true
+  echo "${content}" \
+    | grep -oE 'www\\.[^[:space:]]+' \
+    | sed -E 's/[])>}"'\''.,;:!?]+$//' \
+    | grep -vE '^https?://' \
+    | sed -E 's/^(.*)$/http:\\/\\/\\1/' || true
 )"
 ips="$(
-  echo "${content}" |
-    grep -oE '[0-9]{1,3}(\\.[0-9]{1,3}){3}(:[0-9]{1,5})?(/[^[:space:]]+)?' |
-    sed -E 's/[])>}"'\''.,;:!?]+$//' |
-    sed -E 's/^(.*)$/http:\\/\\/\\1/' || true
+  echo "${content}" \
+    | grep -oE '[0-9]{1,3}(\\.[0-9]{1,3}){3}(:[0-9]{1,5})?(/[^[:space:]]+)?' \
+    | sed -E 's/[])>}"'\''.,;:!?]+$//' \
+    | sed -E 's/^(.*)$/http:\\/\\/\\1/' || true
 )"
 gits="$(
-  echo "${content}" |
-    grep -oE '(ssh://)?git@[^[:space:]]+' |
-    sed -E 's/[])>}"'\''.,;:!?]+$//' |
-    sed 's/:/\\//g' |
-    sed -E 's/^(ssh\\/\\/\\/){0,1}git@(.*)$/https:\\/\\/\\2/' || true
+  echo "${content}" \
+    | grep -oE '(ssh://)?git@[^[:space:]]+' \
+    | sed -E 's/[])>}"'\''.,;:!?]+$//' \
+    | sed 's/:/\\//g' \
+    | sed -E 's/^(ssh\\/\\/\\/){0,1}git@(.*)$/https:\\/\\/\\2/' || true
 )"
 gh="$(echo "${content}" | grep -oE "['\"]([_A-Za-z0-9-]*/[_.A-Za-z0-9-]*)['\"]" | sed -E "s/['\"]//g" | sed 's#.#https://github.com/&#' || true)"
 
@@ -126,11 +126,11 @@ if [[ -n "${extra_filter}" ]]; then
 fi
 
 items="$(
-  printf '%s\n' "${urls}" "${wwws}" "${gh}" "${ips}" "${gits}" "${extras}" |
-    awk 'NF' |
-    LC_ALL=C sort -u |
-    prune_prefix_urls |
-    nl -w3 -s '  '
+  printf '%s\n' "${urls}" "${wwws}" "${gh}" "${ips}" "${gits}" "${extras}" \
+    | awk 'NF' \
+    | LC_ALL=C sort -u \
+    | prune_prefix_urls \
+    | nl -w3 -s '  '
 )"
 
 if [[ -z "${items}" ]]; then
@@ -138,11 +138,11 @@ if [[ -z "${items}" ]]; then
   exit 0
 fi
 
-selected="$(fzf_filter <<<"${items}" || true)"
+selected="$(fzf_filter <<< "${items}" || true)"
 if [[ -z "${selected}" ]]; then
   exit 0
 fi
 
 echo "${selected}" | awk '{print $2}' | while read -r chosen; do
-  open_url "${chosen}" &>"/tmp/tmux-$(id -u)-pick-url.log"
+  open_url "${chosen}" &> "/tmp/tmux-$(id -u)-pick-url.log"
 done

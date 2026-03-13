@@ -139,7 +139,7 @@ function M.check()
     curl = have("curl"),
     node = have("node"),
   }
-  
+
   local ok = true
   for _, v in pairs(ret) do
     ok = ok and v

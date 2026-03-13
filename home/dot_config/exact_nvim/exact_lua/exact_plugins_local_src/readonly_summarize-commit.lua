@@ -227,7 +227,6 @@ local function normalize_commit_output(text)
   return text
 end
 
-
 local function env_trim(name)
   local v = os.getenv(name)
   if not v then
@@ -481,11 +480,7 @@ local providers = {
     url = function()
       local base = "https://generativelanguage.googleapis.com"
       local model = env_trim("GEMINI_MODEL") or "gemini-3.1-flash-lite-preview"
-      return ("%s/v1beta/models/%s:generateContent?key=%s"):format(
-        base,
-        model,
-        os.getenv("GEMINI_API_KEY") or ""
-      )
+      return ("%s/v1beta/models/%s:generateContent?key=%s"):format(base, model, os.getenv("GEMINI_API_KEY") or "")
     end,
     required_env = { "GEMINI_API_KEY" },
     timeout = 90,
@@ -496,20 +491,20 @@ local providers = {
       return {
         systemInstruction = {
           parts = {
-            { text = SYSTEM_MESSAGE }
-          }
+            { text = SYSTEM_MESSAGE },
+          },
         },
         contents = {
           {
             parts = {
-              { text = diff }
-            }
-          }
+              { text = diff },
+            },
+          },
         },
         generationConfig = {
           temperature = 0,
           maxOutputTokens = max_output_tokens,
-        }
+        },
       }
     end,
     -- Gemini response structure: candidates[0].content.parts[0].text
@@ -651,9 +646,9 @@ local function summarize_with(provider_key)
     local text = extract_text_with_fallbacks(parsed, cfg.extract_path, cfg.extract_fallbacks)
     if type(text) ~= "string" or text == "" then
       if provider_key == "cloudflare" then
-        local reasoning_text =
-          normalize_text(json_at_path(parsed, { "result", "choices", 1, "message", "reasoning_content" }))
-          or normalize_text(json_at_path(parsed, { "result", "choices", 1, "message", "reasoning" }))
+        local reasoning_text = normalize_text(
+          json_at_path(parsed, { "result", "choices", 1, "message", "reasoning_content" })
+        ) or normalize_text(json_at_path(parsed, { "result", "choices", 1, "message", "reasoning" }))
         local extracted = extract_commit_from_reasoning(reasoning_text or "")
         if type(extracted) == "string" and extracted ~= "" then
           insert_at_cursor(vim.split(extracted, "\n"))

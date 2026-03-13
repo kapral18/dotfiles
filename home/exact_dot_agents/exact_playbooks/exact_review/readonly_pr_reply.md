@@ -12,8 +12,9 @@ Use when:
 
 Out of scope:
 
-- If the user wants to apply code changes while processing threads (and run lint/type_check/tests per cycle),
-  use `~/.agents/playbooks/review/pr_change_cycle.md` instead.
+- If the user wants to apply code changes while processing threads (and run
+  lint/type_check/tests per cycle), use
+  `~/.agents/playbooks/review/pr_change_cycle.md` instead.
 
 ## PR Common Setup (All PR Modes)
 
@@ -91,12 +92,13 @@ Thread workflow (repeat per thread):
 
 1. Identify the next active thread (unresolved / awaiting reply).
 2. Read the entire thread end-to-end before replying (including earlier
-   context).
-2A. Verify you are addressing the exact concern/line.
-   - If the reviewer comment is anchored to a specific line/guard, ensure your reply (or links you provide)
-      directly addresses that exact line. Avoid replying with adjacent-but-not-relevant tests/behavior.
-    - If you realize the thread is about adding a code comment/documentation, do not try to "explain it away"
-      in the PR reply. Switch to PR change-cycle and make the comment in code, then reply with a commit link.
+   context). 2A. Verify you are addressing the exact concern/line.
+   - If the reviewer comment is anchored to a specific line/guard, ensure your
+     reply (or links you provide) directly addresses that exact line. Avoid
+     replying with adjacent-but-not-relevant tests/behavior.
+   - If you realize the thread is about adding a code comment/documentation, do
+     not try to "explain it away" in the PR reply. Switch to PR change-cycle and
+     make the comment in code, then reply with a commit link.
 3. Restate the concern in one sentence.
 4. Choose response type:
    - accept + propose the smallest fix
@@ -110,12 +112,16 @@ Thread workflow (repeat per thread):
 Reply style rules:
 
 - Do not use `RE:` headers/prefixes.
-- Default: reply directly (no quoting) when you're responding to the entire comment.
-- If you must reference a specific fragment, quote only the minimum needed using a Markdown blockquote (`> ...`), then reply.
+- Default: reply directly (no quoting) when you're responding to the entire
+  comment.
+- If you must reference a specific fragment, quote only the minimum needed using
+  a Markdown blockquote (`> ...`), then reply.
 - Avoid email-style quote/reply interleaving.
 - Keep it short; prefer a concrete change suggestion.
-- If a thread is obsolete because later commits superseded the hunk, prefer a single-line reply:
-  - `Superseded by <commit link>` (optionally add one link to the new canonical thread).
+- If a thread is obsolete because later commits superseded the hunk, prefer a
+  single-line reply:
+  - `Superseded by <commit link>` (optionally add one link to the new canonical
+    thread).
 
 Output (one reply per turn):
 

@@ -663,4 +663,3 @@ function K8sSchema.show_property()
 end
 
 return K8sSchema
-

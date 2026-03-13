@@ -160,8 +160,8 @@ await state.page.waitForTimeout(2500); // autocomplete needs time to load
 
 **Important behaviors:**
 
-- Autocomplete requires the endpoint to be recognized by the Console's API
-  spec. Unknown endpoints won't produce body suggestions.
+- Autocomplete requires the endpoint to be recognized by the Console's API spec.
+  Unknown endpoints won't produce body suggestions.
 - After triggering, dismiss with `Escape` before trying again.
 - Accept a suggestion with `Enter`.
 - The autocomplete popup renders as a Monaco widget overlay, visible in
@@ -183,8 +183,8 @@ Monaco API via `page.evaluate()`. Use DOM-based approaches instead.
 
 ## Screenshots
 
-Always use `scale: 'css'` to avoid oversized images on Retina displays. Crop
-to the editor area for focused verification shots:
+Always use `scale: 'css'` to avoid oversized images on Retina displays. Crop to
+the editor area for focused verification shots:
 
 ```js
 const editorArea = state.page.locator(".monaco-editor").first();

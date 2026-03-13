@@ -2,7 +2,7 @@
 # Worktree helper functions library
 
 _comma_w_tmux() {
-  if ! command -v tmux >/dev/null 2>&1; then
+  if ! command -v tmux > /dev/null 2>&1; then
     return 127
   fi
 
@@ -25,9 +25,9 @@ _comma_w_prune_stale_worktrees() {
   __COMMA_W_PRUNE_RAN=1
 
   case "${COMMA_W_PRUNE:-1}" in
-  0 | false | no | off)
-    return
-    ;;
+    0 | false | no | off)
+      return
+      ;;
   esac
 
   local dry_run_output
@@ -74,28 +74,28 @@ _comma_w_tmux_session_name() {
   local branch_name="$2"
   # tmux normalizes some session name characters (for example '.' -> '_').
   # Normalize up-front so create/switch/remove paths all target the same name.
-  printf '%s|%s\n' "$parent_name" "$branch_name" |
-    tr '[:upper:]' '[:lower:]' |
-    sed -E 's/[^a-z0-9_@|/~-]+/_/g; s/[.:]+/_/g; s/_+$//'
+  printf '%s|%s\n' "$parent_name" "$branch_name" \
+    | tr '[:upper:]' '[:lower:]' \
+    | sed -E 's/[^a-z0-9_@|/~-]+/_/g; s/[.:]+/_/g; s/_+$//'
 }
 
 _comma_w_tmux_parent_name_from_dir() {
   local parent_dir="$1"
   local rp home_rp
 
-  rp="$(realpath "$parent_dir" 2>/dev/null || printf '%s' "$parent_dir")"
-  home_rp="$(realpath "${HOME:-}" 2>/dev/null || printf '%s' "${HOME:-}")"
+  rp="$(realpath "$parent_dir" 2> /dev/null || printf '%s' "$parent_dir")"
+  home_rp="$(realpath "${HOME:-}" 2> /dev/null || printf '%s' "${HOME:-}")"
 
   if [ -n "$home_rp" ]; then
     case "$rp" in
-    "$home_rp")
-      printf '%s\n' "home"
-      return 0
-      ;;
-    "$home_rp"/*)
-      printf '%s\n' "${rp#"$home_rp"/}"
-      return 0
-      ;;
+      "$home_rp")
+        printf '%s\n' "home"
+        return 0
+        ;;
+      "$home_rp"/*)
+        printf '%s\n' "${rp#"$home_rp"/}"
+        return 0
+        ;;
     esac
   fi
 
@@ -110,7 +110,7 @@ _add_worktree_tmux_session() {
   local worktree_path="$4"
 
   if [ -n "${TMUX:-}" ]; then
-    if ! command -v tmux >/dev/null 2>&1; then
+    if ! command -v tmux > /dev/null 2>&1; then
       if [ "$quiet_mode" -eq 0 ]; then
         echo "Warning: TMUX is set but 'tmux' is not available; skipping session creation." >&2
       fi
@@ -120,7 +120,7 @@ _add_worktree_tmux_session() {
     local session_name
     session_name="$(_comma_w_tmux_session_name "$parent_name" "$branch_name")"
 
-    if _comma_w_tmux has-session -t "$session_name" 2>/dev/null; then
+    if _comma_w_tmux has-session -t "$session_name" 2> /dev/null; then
       return 0
     fi
 
@@ -135,7 +135,7 @@ At Path: $worktree_path
     fi
 
     local shell="${SHELL:-/opt/homebrew/bin/fish}"
-    if ! _comma_w_tmux new-session -d -s "$session_name" -c "$worktree_path" "$shell" 2>/dev/null; then
+    if ! _comma_w_tmux new-session -d -s "$session_name" -c "$worktree_path" "$shell" 2> /dev/null; then
       if [ "$quiet_mode" -eq 0 ]; then
         echo "Warning: Failed to create tmux session '$session_name'." >&2
       fi
@@ -157,15 +157,15 @@ _remove_worktree_tmux_session() {
     _add_session_name() {
       local name="$1"
       case "$session_names_seen" in
-      *" ${name} "*)
-        return 0
-        ;;
+        *" ${name} "*)
+          return 0
+          ;;
       esac
       session_names+=("$name")
       session_names_seen+="${name} "
     }
 
-    if [ -n "$session_name_hint" ] && _comma_w_tmux has-session -t "$session_name_hint" 2>/dev/null; then
+    if [ -n "$session_name_hint" ] && _comma_w_tmux has-session -t "$session_name_hint" 2> /dev/null; then
       _add_session_name "$session_name_hint"
     fi
 
@@ -173,7 +173,7 @@ _remove_worktree_tmux_session() {
       if [ "$session_path" = "$worktree_path" ]; then
         _add_session_name "$session_name"
       fi
-    done < <(_comma_w_tmux list-sessions -F $'#{session_name}\t#{session_path}' 2>/dev/null || true)
+    done < <(_comma_w_tmux list-sessions -F $'#{session_name}\t#{session_path}' 2> /dev/null || true)
 
     if [ "$quiet_mode" -eq 0 ]; then
       echo "
@@ -184,7 +184,7 @@ Removing TMUX Session: ${session_names[*]:-}
 "
     fi
     for session_name in "${session_names[@]}"; do
-      _comma_w_tmux kill-session -t "$session_name" 2>/dev/null || true
+      _comma_w_tmux kill-session -t "$session_name" 2> /dev/null || true
     done
   fi
 }
@@ -197,15 +197,15 @@ _comma_w_find_worktree_path_for_branch() {
 
   while IFS= read -r line; do
     case "$line" in
-    worktree\ *)
-      worktree_path="${line#worktree }"
-      ;;
-    "$target")
-      if [ -n "$worktree_path" ]; then
-        printf '%s\n' "$worktree_path"
-        return 0
-      fi
-      ;;
+      worktree\ *)
+        worktree_path="${line#worktree }"
+        ;;
+      "$target")
+        if [ -n "$worktree_path" ]; then
+          printf '%s\n' "$worktree_path"
+          return 0
+        fi
+        ;;
     esac
   done < <(git worktree list --porcelain)
 
@@ -218,7 +218,7 @@ _comma_w_focus_tmux_session() {
   local worktree_path="$3"
   local fallback_client=""
 
-  if ! command -v tmux >/dev/null 2>&1; then
+  if ! command -v tmux > /dev/null 2>&1; then
     if [ "$quiet_mode" -eq 0 ]; then
       echo "Warning: 'tmux' is not available; cannot focus session '$session_name'." >&2
     fi
@@ -226,24 +226,24 @@ _comma_w_focus_tmux_session() {
   fi
 
   if [ -n "${OUTER_TMUX_SOCKET:-}" ]; then
-    if [ -n "${OUTER_TMUX_CLIENT:-}" ] &&
-      _comma_w_tmux switch-client -c "${OUTER_TMUX_CLIENT}" -t "$session_name" 2>/dev/null; then
+    if [ -n "${OUTER_TMUX_CLIENT:-}" ] \
+      && _comma_w_tmux switch-client -c "${OUTER_TMUX_CLIENT}" -t "$session_name" 2> /dev/null; then
       return 0
     fi
 
-    fallback_client="$(_comma_w_tmux list-clients -F '#{client_name}' 2>/dev/null | sed -n '1p')"
-    if [ -n "$fallback_client" ] &&
-      _comma_w_tmux switch-client -c "$fallback_client" -t "$session_name" 2>/dev/null; then
+    fallback_client="$(_comma_w_tmux list-clients -F '#{client_name}' 2> /dev/null | sed -n '1p')"
+    if [ -n "$fallback_client" ] \
+      && _comma_w_tmux switch-client -c "$fallback_client" -t "$session_name" 2> /dev/null; then
       return 0
     fi
 
-    if _comma_w_tmux switch-client -t "$session_name" 2>/dev/null; then
+    if _comma_w_tmux switch-client -t "$session_name" 2> /dev/null; then
       return 0
     fi
   fi
 
   if [ -n "${TMUX:-}" ]; then
-    if _comma_w_tmux switch-client -t "$session_name" 2>/dev/null; then
+    if _comma_w_tmux switch-client -t "$session_name" 2> /dev/null; then
       return 0
     fi
     if [ "$quiet_mode" -eq 0 ]; then
@@ -252,7 +252,7 @@ _comma_w_focus_tmux_session() {
     return 1
   fi
 
-  if _comma_w_tmux attach-session -t "$session_name" 2>/dev/null; then
+  if _comma_w_tmux attach-session -t "$session_name" 2> /dev/null; then
     return 0
   fi
   local shell="${SHELL:-/opt/homebrew/bin/fish}"
@@ -266,9 +266,9 @@ _comma_w_worktree_has_branch() {
 
   while IFS= read -r line; do
     case "$line" in
-    "$target") return 0 ;;
+      "$target") return 0 ;;
     esac
-  done < <(git worktree list --porcelain 2>/dev/null)
+  done < <(git worktree list --porcelain 2> /dev/null)
 
   return 1
 }
@@ -279,17 +279,17 @@ _comma_w_any_remote_has_branch() {
 
   while IFS= read -r remote; do
     [ -z "$remote" ] && continue
-    if git show-ref --verify --quiet "refs/remotes/${remote}/${branch}" 2>/dev/null; then
+    if git show-ref --verify --quiet "refs/remotes/${remote}/${branch}" 2> /dev/null; then
       return 0
     fi
-  done < <(git remote 2>/dev/null || true)
+  done < <(git remote 2> /dev/null || true)
 
   return 1
 }
 
 _comma_w_branch_exists_locally_or_remote() {
   local branch="$1"
-  if git show-ref --verify --quiet "refs/heads/${branch}" 2>/dev/null; then
+  if git show-ref --verify --quiet "refs/heads/${branch}" 2> /dev/null; then
     return 0
   fi
   _comma_w_any_remote_has_branch "$branch"
@@ -299,7 +299,7 @@ _comma_w_detect_default_branch() {
   local ref
   local remote
   for remote in upstream origin; do
-    ref="$(git symbolic-ref -q --short "refs/remotes/${remote}/HEAD" 2>/dev/null || true)"
+    ref="$(git symbolic-ref -q --short "refs/remotes/${remote}/HEAD" 2> /dev/null || true)"
     if [ -n "$ref" ]; then
       printf '%s\n' "${ref#${remote}/}"
       return 0
@@ -308,9 +308,9 @@ _comma_w_detect_default_branch() {
 
   local b
   for b in main master dev develop trunk; do
-    if git show-ref --verify --quiet "refs/heads/${b}" 2>/dev/null ||
-      git show-ref --verify --quiet "refs/remotes/origin/${b}" 2>/dev/null ||
-      git show-ref --verify --quiet "refs/remotes/upstream/${b}" 2>/dev/null; then
+    if git show-ref --verify --quiet "refs/heads/${b}" 2> /dev/null \
+      || git show-ref --verify --quiet "refs/remotes/origin/${b}" 2> /dev/null \
+      || git show-ref --verify --quiet "refs/remotes/upstream/${b}" 2> /dev/null; then
       printf '%s\n' "$b"
       return 0
     fi
@@ -331,8 +331,8 @@ _comma_w_get_github_login() {
   __COMMA_W_GH_LOGIN_CACHE_SET=1
   __COMMA_W_GH_LOGIN_CACHE=""
 
-  if command -v gh >/dev/null 2>&1; then
-    __COMMA_W_GH_LOGIN_CACHE="$(gh api user --jq '.login' 2>/dev/null || true)"
+  if command -v gh > /dev/null 2>&1; then
+    __COMMA_W_GH_LOGIN_CACHE="$(gh api user --jq '.login' 2> /dev/null || true)"
   fi
 
   if [ -z "${__COMMA_W_GH_LOGIN_CACHE}" ]; then
@@ -348,25 +348,25 @@ _comma_w_parse_owner_repo_from_remote_url() {
 
   url="${url%.git}"
   case "$url" in
-  git@*:*/*)
-    # git@<host>:owner/repo
-    path="${url#git@*:}"
-    ;;
-  ssh://git@*/*/*)
-    # ssh://git@<host>/owner/repo
-    path="${url#ssh://git@*/}"
-    ;;
-  https://*/*/*)
-    # https://<host>/owner/repo
-    path="${url#https://*/}"
-    ;;
-  http://*/*/*)
-    # http://<host>/owner/repo
-    path="${url#http://*/}"
-    ;;
-  *)
-    return 1
-    ;;
+    git@*:*/*)
+      # git@<host>:owner/repo
+      path="${url#git@*:}"
+      ;;
+    ssh://git@*/*/*)
+      # ssh://git@<host>/owner/repo
+      path="${url#ssh://git@*/}"
+      ;;
+    https://*/*/*)
+      # https://<host>/owner/repo
+      path="${url#https://*/}"
+      ;;
+    http://*/*/*)
+      # http://<host>/owner/repo
+      path="${url#http://*/}"
+      ;;
+    *)
+      return 1
+      ;;
   esac
 
   if [[ "$path" != */* ]]; then
@@ -380,12 +380,12 @@ _comma_w_get_remote_owner() {
   local remote="$1"
   local remote_url parsed
 
-  remote_url="$(git remote get-url "$remote" 2>/dev/null || true)"
+  remote_url="$(git remote get-url "$remote" 2> /dev/null || true)"
   if [ -z "$remote_url" ]; then
     return 1
   fi
 
-  parsed="$(_comma_w_parse_owner_repo_from_remote_url "$remote_url" 2>/dev/null || true)"
+  parsed="$(_comma_w_parse_owner_repo_from_remote_url "$remote_url" 2> /dev/null || true)"
   if [ -z "$parsed" ]; then
     return 1
   fi
@@ -398,9 +398,9 @@ _comma_w_remote_is_first_party() {
   local github_login remote_owner
 
   case "$remote" in
-  origin | upstream)
-    return 0
-    ;;
+    origin | upstream)
+      return 0
+      ;;
   esac
 
   github_login="$(_comma_w_get_github_login)"
@@ -408,7 +408,7 @@ _comma_w_remote_is_first_party() {
     return 0
   fi
 
-  remote_owner="$(_comma_w_get_remote_owner "$remote" 2>/dev/null || true)"
+  remote_owner="$(_comma_w_get_remote_owner "$remote" 2> /dev/null || true)"
   if [ -n "$github_login" ] && [ -n "$remote_owner" ] && [ "$remote_owner" = "$github_login" ]; then
     return 0
   fi
@@ -419,7 +419,7 @@ _comma_w_remote_is_first_party() {
 _comma_w_remote_has_branch_ref() {
   local remote="$1"
   local branch="$2"
-  git show-ref --verify --quiet "refs/remotes/${remote}/${branch}" 2>/dev/null
+  git show-ref --verify --quiet "refs/remotes/${remote}/${branch}" 2> /dev/null
 }
 
 _comma_w_preferred_tracking_remote_for_branch() {
@@ -433,7 +433,7 @@ _comma_w_preferred_tracking_remote_for_branch() {
   fi
 
   for remote in origin upstream; do
-    if git remote get-url "$remote" >/dev/null 2>&1 && _comma_w_remote_has_branch_ref "$remote" "$branch"; then
+    if git remote get-url "$remote" > /dev/null 2>&1 && _comma_w_remote_has_branch_ref "$remote" "$branch"; then
       printf '%s\n' "$remote"
       return 0
     fi
@@ -447,13 +447,13 @@ _comma_w_preferred_tracking_remote_for_branch() {
   while IFS= read -r remote; do
     [ -n "$remote" ] || continue
     case "$remote" in
-    origin | upstream | "$preferred_remote") continue ;;
+      origin | upstream | "$preferred_remote") continue ;;
     esac
     if _comma_w_remote_is_first_party "$remote" && _comma_w_remote_has_branch_ref "$remote" "$branch"; then
       printf '%s\n' "$remote"
       return 0
     fi
-  done < <(git remote 2>/dev/null || true)
+  done < <(git remote 2> /dev/null || true)
 
   printf '%s\n' "$preferred_remote"
 }

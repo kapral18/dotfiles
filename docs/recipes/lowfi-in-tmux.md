@@ -17,7 +17,7 @@ that runs `lowfi` inside a tmux session.
 
 Source:
 
-- `home/exact_bin/executable_,tmux-lowfi`
+- [`home/exact_bin/executable_,tmux-lowfi`](../../home/exact_bin/executable_,tmux-lowfi)
 
 ## Steps
 
@@ -78,4 +78,4 @@ Tracklists live under:
 
 They are pulled via `chezmoi` externals:
 
-- `home/.chezmoiexternal.toml`
+- [`home/.chezmoiexternal.toml`](../../home/.chezmoiexternal.toml)

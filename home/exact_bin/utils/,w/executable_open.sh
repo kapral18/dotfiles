@@ -6,7 +6,7 @@ source "$(dirname "$0")/../bash_utils_lib.sh"
 source "$(dirname "$0")/../worktree_lib.sh"
 
 show_usage() {
-  cat <<EOF
+  cat << EOF
 Usage: ,w open [-q|--quiet] <branch|path>
 
 Focus a worktree by switching/attaching to its tmux session.
@@ -21,25 +21,25 @@ quiet_mode=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
-  -h | --help)
-    show_usage
-    exit 0
-    ;;
-  -q | --quiet)
-    quiet_mode=1
-    shift
-    ;;
-  --)
-    shift
-    break
-    ;;
-  -*)
-    show_usage
-    exit 1
-    ;;
-  *)
-    break
-    ;;
+    -h | --help)
+      show_usage
+      exit 0
+      ;;
+    -q | --quiet)
+      quiet_mode=1
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      show_usage
+      exit 1
+      ;;
+    *)
+      break
+      ;;
   esac
 done
 
@@ -55,7 +55,7 @@ parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
 
 find_branch_for_worktree_path() {
   local needle_path="$1"
-  needle_path="$(realpath "$needle_path" 2>/dev/null || printf '%s' "$needle_path")"
+  needle_path="$(realpath "$needle_path" 2> /dev/null || printf '%s' "$needle_path")"
   local line key value
   local worktree_path=""
   local branch_ref=""
@@ -66,14 +66,14 @@ find_branch_for_worktree_path() {
     value="${line#* }"
 
     case "$key" in
-    worktree)
-      worktree_path="$value"
-      branch_ref=""
-      worktree_realpath="$(realpath "$worktree_path" 2>/dev/null || printf '%s' "$worktree_path")"
-      ;;
-    branch)
-      branch_ref="$value"
-      ;;
+      worktree)
+        worktree_path="$value"
+        branch_ref=""
+        worktree_realpath="$(realpath "$worktree_path" 2> /dev/null || printf '%s' "$worktree_path")"
+        ;;
+      branch)
+        branch_ref="$value"
+        ;;
     esac
 
     if [ -n "$worktree_path" ] && [ "$worktree_realpath" = "$needle_path" ] && [ -n "$branch_ref" ]; then

@@ -1,6 +1,8 @@
 local resizeFull = function()
   local win = hs.window.focusedWindow()
-  if not win then return end
+  if not win then
+    return
+  end
   local screen = win:screen()
   local max = screen:frame()
 
@@ -9,7 +11,9 @@ end
 
 local resizeLeft = function()
   local win = hs.window.focusedWindow()
-  if not win then return end
+  if not win then
+    return
+  end
   local screen = win:screen()
   local max = screen:frame()
 
@@ -18,7 +22,9 @@ end
 
 local resizeRight = function()
   local win = hs.window.focusedWindow()
-  if not win then return end
+  if not win then
+    return
+  end
   local screen = win:screen()
   local max = screen:frame()
 
@@ -27,7 +33,9 @@ end
 
 local resizeTop = function()
   local win = hs.window.focusedWindow()
-  if not win then return end
+  if not win then
+    return
+  end
   local screen = win:screen()
   local max = screen:frame()
 
@@ -36,7 +44,9 @@ end
 
 local resizeBottom = function()
   local win = hs.window.focusedWindow()
-  if not win then return end
+  if not win then
+    return
+  end
   local screen = win:screen()
   local max = screen:frame()
   win:setFrame(hs.geometry(0, max.h / 2, max.w, max.h / 2))

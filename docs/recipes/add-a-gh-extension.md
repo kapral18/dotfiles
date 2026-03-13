@@ -11,15 +11,15 @@ GitHub CLI extensions are managed as a curated list.
 
 ## File
 
-- Hook: `home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl`
+- Hook:
+  [`home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl)
 
 The list currently lives inside the hook template.
 
 ## Steps
 
 1. Add the extension repo (like `owner/gh-something`) to the list in:
-
-   - `home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl`
+   - [`home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl)
 
 2. Apply:
 
@@ -37,7 +37,7 @@ gh extension list
 
 1. Remove the extension entry from:
 
-- `home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl`
+- [`home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl)
 
 2. Uninstall it:
 

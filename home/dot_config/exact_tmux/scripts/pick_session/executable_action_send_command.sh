@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 if [ "${BASH_VERSINFO[0]:-0}" -lt 4 ]; then
-  _b="$(brew --prefix bash 2>/dev/null)/bin/bash"
+  _b="$(brew --prefix bash 2> /dev/null)/bin/bash"
   [ -x "$_b" ] && exec "$_b" "$0" "$@"
   exit 1
 fi
@@ -16,8 +16,8 @@ if [ -z "$cmd_file" ] || [ ! -f "$cmd_file" ]; then
   exit 0
 fi
 
-cmd="$(cat "$cmd_file" 2>/dev/null || true)"
-rm -f "$cmd_file" 2>/dev/null || true
+cmd="$(cat "$cmd_file" 2> /dev/null || true)"
+rm -f "$cmd_file" 2> /dev/null || true
 
 if [ -z "$cmd" ]; then
   exit 0
@@ -28,7 +28,7 @@ declare -a paths_to_check=()
 
 while IFS= read -r _line; do
   [ -n "$_line" ] || continue
-  mapfile -t _fields < <(awk -F $'\t' '{print $1; print $2; print $3; print $4; print $5}' <<<"$_line")
+  mapfile -t _fields < <(awk -F $'\t' '{print $1; print $2; print $3; print $4; print $5}' <<< "$_line")
   kind="${_fields[1]-}"
   path="${_fields[2]-}"
   target="${_fields[4]-}"
@@ -40,21 +40,21 @@ while IFS= read -r _line; do
       paths_to_check+=("$path")
     fi
   fi
-done <"$sel_file"
+done < "$sel_file"
 
-if [ ${#paths_to_check[@]} -gt 0 ] && command -v tmux >/dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
+if [ ${#paths_to_check[@]} -gt 0 ] && command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
   while IFS=$'\t' read -r name spath; do
     [ -n "$name" ] || continue
     [ -n "$spath" ] || continue
-    spath="$(realpath "$spath" 2>/dev/null || printf '%s' "$spath")"
+    spath="$(realpath "$spath" 2> /dev/null || printf '%s' "$spath")"
     for d in "${paths_to_check[@]}"; do
-      rd="$(realpath "$d" 2>/dev/null || printf '%s' "$d")"
+      rd="$(realpath "$d" 2> /dev/null || printf '%s' "$d")"
       if [ "$spath" = "$rd" ] || [[ "$spath" == "$rd"/* ]]; then
         sess+=("$name")
         break
       fi
     done
-  done < <(tmux list-sessions -F $'#{session_name}\t#{session_path}' 2>/dev/null || true)
+  done < <(tmux list-sessions -F $'#{session_name}\t#{session_path}' 2> /dev/null || true)
 fi
 
 if [ ${#sess[@]} -gt 0 ]; then
@@ -66,20 +66,20 @@ if [ ${#sess[@]} -eq 0 ]; then
 fi
 
 for s in "${sess[@]}"; do
-  panes="$(tmux list-panes -s -t "$s" -F '#{window_index}.#{pane_index} #{pane_current_command}' 2>/dev/null || true)"
+  panes="$(tmux list-panes -s -t "$s" -F '#{window_index}.#{pane_index} #{pane_current_command}' 2> /dev/null || true)"
 
   target_pane=""
   while read -r pane_id p_cmd; do
     case "$p_cmd" in
-    fish | zsh | bash | sh)
-      target_pane="$pane_id"
-      break
-      ;;
+      fish | zsh | bash | sh)
+        target_pane="$pane_id"
+        break
+        ;;
     esac
-  done <<<"$panes"
+  done <<< "$panes"
 
   if [ -z "$target_pane" ]; then
-    target_pane="$(tmux list-panes -s -t "$s" -F '#{window_index}.#{pane_index}' 2>/dev/null | head -n 1)"
+    target_pane="$(tmux list-panes -s -t "$s" -F '#{window_index}.#{pane_index}' 2> /dev/null | head -n 1)"
   fi
 
   if [ -n "$target_pane" ]; then

@@ -4,7 +4,7 @@ set -euo pipefail
 IFS='|' read -r height width orig_shell < <(
   tmux display-message -p \
     '#{@pick_session_popup_height}|#{@pick_session_popup_width}|#{default-shell}' \
-    2>/dev/null || true
+    2> /dev/null || true
 )
 [ -n "${height:-}" ] || height="40"
 [ -n "${width:-}" ] || width="80"
@@ -17,4 +17,4 @@ IFS='|' read -r height width orig_shell < <(
 tmux set-option -g default-shell /bin/sh \; \
   display-popup -E -h "${height}%" -w "${width}%" -d "#{pane_current_path}" \
   "$HOME/.config/tmux/scripts/pick_session/pick_session.sh" \; \
-  set-option -g default-shell "$orig_shell" 2>/dev/null || true
+  set-option -g default-shell "$orig_shell" 2> /dev/null || true

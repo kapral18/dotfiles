@@ -45,8 +45,8 @@ if [[ ! -f "${resurrect_file_path}" ]]; then
 fi
 
 file_session_count="$(
-  awk -F $'\t' '$1 == "pane" { print $2 }' "${resurrect_file_path}" |
-    awk '!seen[$0]++ { c++ } END { print c + 0 }'
+  awk -F $'\t' '$1 == "pane" { print $2 }' "${resurrect_file_path}" \
+    | awk '!seen[$0]++ { c++ } END { print c + 0 }'
 )"
 
 # Prefer a keep list captured during the last save (so pre-restore can be fast and correct).
@@ -58,20 +58,20 @@ session_keep_list="$(
       }
       exit
     }
-  ' "${resurrect_file_path}" |
-    head -n "${keep_count}"
+  ' "${resurrect_file_path}" \
+    | head -n "${keep_count}"
 )"
 
 if [[ -z "${session_keep_list}" ]]; then
-  tmux_session_count="$(tmux list-sessions 2>/dev/null | wc -l | tr -d ' ')"
+  tmux_session_count="$(tmux list-sessions 2> /dev/null | wc -l | tr -d ' ')"
 
   if [[ -n "${tmux_session_count}" ]] && [[ "${tmux_session_count}" =~ ^[0-9]+$ ]] && [[ "${tmux_session_count}" -ge "${file_session_count}" ]] && [[ "${file_session_count}" -gt 0 ]]; then
     # Likely running as a post-save hook (tmux state matches what was saved).
     session_keep_list="$(
-      tmux list-sessions -F $'#{session_name}\t#{session_activity}' 2>/dev/null |
-        sort -nr -k2,2 -t $'\t' |
-        head -n "${keep_count}" |
-        cut -f1
+      tmux list-sessions -F $'#{session_name}\t#{session_activity}' 2> /dev/null \
+        | sort -nr -k2,2 -t $'\t' \
+        | head -n "${keep_count}" \
+        | cut -f1
     )"
   else
     # Likely running as a pre-restore hook (tmux state is minimal).
@@ -83,18 +83,18 @@ if [[ -z "${session_keep_list}" ]]; then
           if ($3 != "") print $3;
           exit
         }
-      ' "${resurrect_file_path}" |
-        awk '!seen[$0]++'
+      ' "${resurrect_file_path}" \
+        | awk '!seen[$0]++'
     )"
     file_sessions="$(
-      awk -F $'\t' '$1 == "pane" { print $2 }' "${resurrect_file_path}" |
-        awk '!seen[$0]++'
+      awk -F $'\t' '$1 == "pane" { print $2 }' "${resurrect_file_path}" \
+        | awk '!seen[$0]++'
     )"
 
     session_keep_list="$(
-      printf '%s\n%s\n' "${state_sessions}" "${file_sessions}" |
-        awk '!seen[$0]++' |
-        head -n "${keep_count}"
+      printf '%s\n%s\n' "${state_sessions}" "${file_sessions}" \
+        | awk '!seen[$0]++' \
+        | head -n "${keep_count}"
     )"
   fi
 fi
@@ -104,14 +104,14 @@ if [[ -z "${session_keep_list}" ]]; then
 fi
 
 keep_file="$(mktemp "${resurrect_file_path}.k18.keep.XXXXXX")"
-printf '%s\n' "${session_keep_list}" >"${keep_file}"
+printf '%s\n' "${session_keep_list}" > "${keep_file}"
 
 tmp_file="$(mktemp "${resurrect_file_path}.k18.XXXXXX")"
 keep_sessions_line="#k18_keep_sessions"
 while IFS= read -r name; do
   [[ -z "${name}" ]] && continue
   keep_sessions_line+=$'\t'"${name}"
-done <"${keep_file}"
+done < "${keep_file}"
 
 awk -v keep_file="${keep_file}" -v keep_count="${keep_count}" -v keep_sessions_line="${keep_sessions_line}" '
 BEGIN {
@@ -153,6 +153,6 @@ END {
     print "state", active, alt;
   }
 }
-' "${resurrect_file_path}" >"${tmp_file}"
+' "${resurrect_file_path}" > "${tmp_file}"
 rm -f "${keep_file}"
 mv "${tmp_file}" "${resurrect_file_path}"

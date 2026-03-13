@@ -30,8 +30,8 @@ if [ "$is_work" = "true" ]; then
 
   litellm_api_base="${litellm_api_base%/}"
   case "$litellm_api_base" in
-    */v1) ;;
-    *) litellm_api_base="$litellm_api_base/v1" ;;
+  */v1) ;;
+  *) litellm_api_base="$litellm_api_base/v1" ;;
   esac
 
   tmp="$(mktemp)"
@@ -40,7 +40,7 @@ if [ "$is_work" = "true" ]; then
   sed \
     -e "s|__LITELLM_API_BASE__|$litellm_api_base|g" \
     -e "s|__CODEX_HOME__|$HOME/.codex|g" \
-    "$src" > "$tmp"
+    "$src" >"$tmp"
 
   install -m 0600 "$tmp" "$target"
 else

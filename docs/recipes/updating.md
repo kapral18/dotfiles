@@ -58,7 +58,8 @@ asdf current
 
 ## Rollback / Undo
 
-- If a specific repo change caused issues, revert that change in the source repo.
+- If a specific repo change caused issues, revert that change in the source
+  repo.
 - Re-apply the previous known-good state:
 
 ```bash

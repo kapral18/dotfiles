@@ -1,8 +1,8 @@
 if not functions -q __comma_is_completing_option
-  function __comma_is_completing_option
-    set -l cur (commandline -ct 2>/dev/null)
-    test -n "$cur"; and string match -qr '^-+' -- $cur
-  end
+    function __comma_is_completing_option
+        set -l cur (commandline -ct 2>/dev/null)
+        test -n "$cur"; and string match -qr '^-+' -- $cur
+    end
 end
 
 complete -c ,check-backport-progress -l merged-label -r -d 'Label identifying merged PRs needing backport' -n 'not __comma_is_completing_option' -a '(gh label list --limit 200 --json name --jq ".[].name" 2>/dev/null)'

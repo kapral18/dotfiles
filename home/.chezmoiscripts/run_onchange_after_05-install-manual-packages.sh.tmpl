@@ -35,14 +35,14 @@ find_single_file() {
 
   local files=()
   # shellcheck disable=SC2206
-  files=( $(eval "find \"$dir\" -maxdepth 1 -type f $find_args -print") )
+  files=($(eval "find \"$dir\" -maxdepth 1 -type f $find_args -print"))
 
-  if (( ${#files[@]} == 0 )); then
+  if ((${#files[@]} == 0)); then
     echo "Error: No $what downloaded in $dir" >&2
     return 1
   fi
 
-  if (( ${#files[@]} > 1 )); then
+  if ((${#files[@]} > 1)); then
     echo "Error: Multiple $what files matched in $dir:" >&2
     local f
     for f in "${files[@]}"; do
@@ -87,7 +87,7 @@ install_dmg_app() {
   local mounted=0
   cleanup_dmg_install() {
     trap - RETURN
-    if (( mounted == 1 )); then
+    if ((mounted == 1)); then
       hdiutil detach "$mount_dir" -quiet 2>/dev/null || true
     fi
     rm -rf "$temp_dir"
@@ -262,37 +262,37 @@ process_manual_package_line() {
   kind=$(printf '%s' "$trimmed_line" | cut -d'|' -f1)
 
   case "$kind" in
-    dmg)
-      local app_name repo release_tag app_bundle asset_pattern
-      IFS='|' read -r _ app_name repo release_tag app_bundle asset_pattern <<<"$trimmed_line"
-      if [[ -z "${app_name:-}" || -z "${repo:-}" || -z "${release_tag:-}" || -z "${app_bundle:-}" || -z "${asset_pattern:-}" ]]; then
-        echo "Error: invalid dmg line: $trimmed_line" >&2
-        return 1
-      fi
-      install_dmg_app "$app_name" "$repo" "$release_tag" "$app_bundle" "$asset_pattern"
-      ;;
-    tar_gz_bin)
-      local tool_name repo release_tag pattern bin_in_archive output_name
-      IFS='|' read -r _ tool_name repo release_tag pattern bin_in_archive output_name <<<"$trimmed_line"
-      if [[ -z "${tool_name:-}" || -z "${repo:-}" || -z "${release_tag:-}" || -z "${pattern:-}" || -z "${bin_in_archive:-}" || -z "${output_name:-}" ]]; then
-        echo "Error: invalid tar_gz_bin line: $trimmed_line" >&2
-        return 1
-      fi
-      install_release_tar_gz_bin "$tool_name" "$repo" "$release_tag" "$pattern" "$bin_in_archive" "$output_name"
-      ;;
-    file)
-      local tool_name repo release_tag pattern output_name
-      IFS='|' read -r _ tool_name repo release_tag pattern output_name <<<"$trimmed_line"
-      if [[ -z "${tool_name:-}" || -z "${repo:-}" || -z "${release_tag:-}" || -z "${pattern:-}" || -z "${output_name:-}" ]]; then
-        echo "Error: invalid file line: $trimmed_line" >&2
-        return 1
-      fi
-      install_release_file "$tool_name" "$repo" "$release_tag" "$pattern" "$output_name"
-      ;;
-    *)
-      echo "Error: unknown manual package kind '$kind' in line: $trimmed_line" >&2
+  dmg)
+    local app_name repo release_tag app_bundle asset_pattern
+    IFS='|' read -r _ app_name repo release_tag app_bundle asset_pattern <<<"$trimmed_line"
+    if [[ -z "${app_name:-}" || -z "${repo:-}" || -z "${release_tag:-}" || -z "${app_bundle:-}" || -z "${asset_pattern:-}" ]]; then
+      echo "Error: invalid dmg line: $trimmed_line" >&2
       return 1
-      ;;
+    fi
+    install_dmg_app "$app_name" "$repo" "$release_tag" "$app_bundle" "$asset_pattern"
+    ;;
+  tar_gz_bin)
+    local tool_name repo release_tag pattern bin_in_archive output_name
+    IFS='|' read -r _ tool_name repo release_tag pattern bin_in_archive output_name <<<"$trimmed_line"
+    if [[ -z "${tool_name:-}" || -z "${repo:-}" || -z "${release_tag:-}" || -z "${pattern:-}" || -z "${bin_in_archive:-}" || -z "${output_name:-}" ]]; then
+      echo "Error: invalid tar_gz_bin line: $trimmed_line" >&2
+      return 1
+    fi
+    install_release_tar_gz_bin "$tool_name" "$repo" "$release_tag" "$pattern" "$bin_in_archive" "$output_name"
+    ;;
+  file)
+    local tool_name repo release_tag pattern output_name
+    IFS='|' read -r _ tool_name repo release_tag pattern output_name <<<"$trimmed_line"
+    if [[ -z "${tool_name:-}" || -z "${repo:-}" || -z "${release_tag:-}" || -z "${pattern:-}" || -z "${output_name:-}" ]]; then
+      echo "Error: invalid file line: $trimmed_line" >&2
+      return 1
+    fi
+    install_release_file "$tool_name" "$repo" "$release_tag" "$pattern" "$output_name"
+    ;;
+  *)
+    echo "Error: unknown manual package kind '$kind' in line: $trimmed_line" >&2
+    return 1
+    ;;
   esac
 }
 
@@ -306,7 +306,7 @@ if ! command -v chezmoi >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! mapfile -t manual_lines < <(chezmoi execute-template < "$MANUAL_PACKAGES_TEMPLATE"); then
+if ! mapfile -t manual_lines < <(chezmoi execute-template <"$MANUAL_PACKAGES_TEMPLATE"); then
   echo "Error: Failed to render manual packages template" >&2
   exit 1
 fi
@@ -335,4 +335,3 @@ chmod +x ~/.local/bin/ytsurf
 if ! command -v amp &>/dev/null; then
   curl -fsSL https://ampcode.com/install.sh | bash
 fi
-

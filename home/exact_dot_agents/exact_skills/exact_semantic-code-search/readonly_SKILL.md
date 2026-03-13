@@ -10,7 +10,8 @@ description: |-
 
 # Semantic Code Search Playbook
 
-Use this playbook for conceptual investigations using semantic-code-search MCP tools.
+Use this playbook for conceptual investigations using semantic-code-search MCP
+tools.
 
 When triggered:
 
@@ -21,8 +22,8 @@ When triggered:
 
 Common trigger in reviews:
 
-- Base-branch context for reviews (PR or local changes): learn how base works and
-  what invariants exist, then compare against the local diff.
+- Base-branch context for reviews (PR or local changes): learn how base works
+  and what invariants exist, then compare against the local diff.
 
 Do not use:
 
@@ -30,7 +31,8 @@ Do not use:
 - as a replacement for local review of branch changes: use local repo tools for
   exact state (`git diff`, file reads, tests). SCSI is for base context.
 - purely mechanical pattern matching to drive a replace/edit: use local `rg`
-- current repo is not indexed (not present in `list_indices`): do not use semantic code search
+- current repo is not indexed (not present in `list_indices`): do not use
+  semantic code search
 
 First actions:
 
@@ -43,7 +45,8 @@ Important limitation:
 
 - the semantic index is a snapshot (typically of `main`)
 - use it to learn base-branch context and patterns
-- for PRs/branches, compare semantic (base) findings against local branch diff for what actually changed
+- for PRs/branches, compare semantic (base) findings against local branch diff
+  for what actually changed
 
 Review output contract (when invoked from a review playbook):
 
@@ -83,7 +86,8 @@ Allowed `<reason>` values (reviews):
 Hard gate (required): repo must be indexed
 
 - semantic search is only valid for repos present in `list_indices`
-- if current repo is not represented, fall back to local search (`rg`/file reads) and normal git comparisons
+- if current repo is not represented, fall back to local search (`rg`/file
+  reads) and normal git comparisons
 
 Index usage:
 
@@ -92,11 +96,16 @@ Index usage:
   - if it does not exist, stop and ask which index to use
 - otherwise:
   - always run `list_indices` first (do not guess)
-    - if you have both `scsi-main` and `scsi-local`, run `list_indices` on both before concluding "not indexed"
-  - if `list_indices` returns no usable results, do not use semantic search (fall back to local sources)
+    - if you have both `scsi-main` and `scsi-local`, run `list_indices` on both
+      before concluding "not indexed"
+  - if `list_indices` returns no usable results, do not use semantic search
+    (fall back to local sources)
   - if `list_indices` returns an obvious match for the current repo, use it
-    - "obvious" means you can justify the selection from evidence (for example: index name clearly includes the repo name, or it is the only index that matches the repo you're in)
-  - if multiple equally plausible indices remain after evidence-based filtering, ask the user which index to use
+    - "obvious" means you can justify the selection from evidence (for example:
+      index name clearly includes the repo name, or it is the only index that
+      matches the repo you're in)
+  - if multiple equally plausible indices remain after evidence-based filtering,
+    ask the user which index to use
 
 Output:
 
@@ -107,10 +116,14 @@ Output:
 
 Passing `index`:
 
-- once you have a candidate index from `list_indices`, pass it explicitly to SCSI tools instead of relying on an implicit/default index
-  - exception: only omit `index` if you can prove (via evidence) that the MCP default points at the same index you selected
-- if a search returns no results or index not found in one MCP, try the other MCP before giving up
-- two MCP servers may exist: `scsi-main` (shared/team indices) and `scsi-local` (user-specific)
+- once you have a candidate index from `list_indices`, pass it explicitly to
+  SCSI tools instead of relying on an implicit/default index
+  - exception: only omit `index` if you can prove (via evidence) that the MCP
+    default points at the same index you selected
+- if a search returns no results or index not found in one MCP, try the other
+  MCP before giving up
+- two MCP servers may exist: `scsi-main` (shared/team indices) and `scsi-local`
+  (user-specific)
 
 Tool selection guidelines:
 

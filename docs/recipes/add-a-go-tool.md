@@ -12,8 +12,7 @@ Go-installed tools are managed via a list.
 ## Steps
 
 1. Add the module path to:
-
-   - `home/readonly_dot_default-golang-pkgs`
+   - [`home/readonly_dot_default-golang-pkgs`](../../home/readonly_dot_default-golang-pkgs)
 
    This installs as `~/.default-golang-pkgs`.
 
@@ -25,7 +24,7 @@ Go-installed tools are managed via a list.
 
 Hook:
 
-- `home/.chezmoiscripts/run_onchange_after_05-update-golang-pkgs.sh.tmpl`
+- [`home/.chezmoiscripts/run_onchange_after_05-update-golang-pkgs.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-update-golang-pkgs.sh.tmpl)
 
 ## Verification
 
@@ -36,7 +35,8 @@ which <tool>
 
 ## Rollback / Undo
 
-1. Remove the module path from `home/readonly_dot_default-golang-pkgs`.
+1. Remove the module path from
+   [`home/readonly_dot_default-golang-pkgs`](../../home/readonly_dot_default-golang-pkgs).
 2. Re-apply:
 
 ```bash

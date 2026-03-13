@@ -7,7 +7,7 @@ source "$(dirname "$0")/../worktree_lib.sh"
 
 require_cmd() {
   local cmd="$1"
-  if ! command -v "$cmd" >/dev/null 2>&1; then
+  if ! command -v "$cmd" > /dev/null 2>&1; then
     echo "Missing required dependency: '$cmd'." >&2
     exit 1
   fi
@@ -25,24 +25,24 @@ list_worktrees_porcelain() {
     value="${line#* }"
 
     case "$key" in
-    worktree)
-      if [ -n "$worktree_path" ]; then
-        printf '%s|%s|%s|%s\n' "$worktree_path" "$branch_ref" "$detached" "$locked"
-      fi
-      worktree_path="$value"
-      branch_ref=""
-      detached=0
-      locked=0
-      ;;
-    branch)
-      branch_ref="$value"
-      ;;
-    detached)
-      detached=1
-      ;;
-    locked)
-      locked=1
-      ;;
+      worktree)
+        if [ -n "$worktree_path" ]; then
+          printf '%s|%s|%s|%s\n' "$worktree_path" "$branch_ref" "$detached" "$locked"
+        fi
+        worktree_path="$value"
+        branch_ref=""
+        detached=0
+        locked=0
+        ;;
+      branch)
+        branch_ref="$value"
+        ;;
+      detached)
+        detached=1
+        ;;
+      locked)
+        locked=1
+        ;;
     esac
   done < <(git worktree list --porcelain)
 
@@ -58,7 +58,7 @@ worktree_branch_in_use() {
 
   while IFS= read -r line; do
     case "$line" in
-    "$target") return 0 ;;
+      "$target") return 0 ;;
     esac
   done < <(git worktree list --porcelain)
 
@@ -66,7 +66,7 @@ worktree_branch_in_use() {
 }
 
 show_usage() {
-  cat <<EOF
+  cat << EOF
 Usage: ,w remove [--tmux-notify] [--paths <path...>]
 
 Interactively remove git worktrees.
@@ -99,38 +99,38 @@ paths=()
 
 while [ $# -gt 0 ]; do
   case "$1" in
-  -h | --help)
-    show_usage
-    exit 0
-    ;;
-  --tmux-notify)
-    tmux_notify=1
-    shift
-    ;;
-  --paths)
-    paths_mode=1
-    shift
-    while [ $# -gt 0 ]; do
-      case "$1" in
-      --)
-        shift
-        break
-        ;;
-      -*)
-        break
-        ;;
-      *)
-        paths+=("$1")
-        shift
-        ;;
-      esac
-    done
-    ;;
-  *)
-    echo "Error: Unknown option '$1'" >&2
-    show_usage
-    exit 1
-    ;;
+    -h | --help)
+      show_usage
+      exit 0
+      ;;
+    --tmux-notify)
+      tmux_notify=1
+      shift
+      ;;
+    --paths)
+      paths_mode=1
+      shift
+      while [ $# -gt 0 ]; do
+        case "$1" in
+          --)
+            shift
+            break
+            ;;
+          -*)
+            break
+            ;;
+          *)
+            paths+=("$1")
+            shift
+            ;;
+        esac
+      done
+      ;;
+    *)
+      echo "Error: Unknown option '$1'" >&2
+      show_usage
+      exit 1
+      ;;
   esac
 done
 
@@ -142,8 +142,8 @@ parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
 notify() {
   local msg="$1"
   echo "$msg"
-  if [ "$tmux_notify" -eq 1 ] && [ -n "${TMUX:-}" ] && command -v tmux >/dev/null 2>&1; then
-    tmux display-message -d 6000 "$msg" 2>/dev/null || true
+  if [ "$tmux_notify" -eq 1 ] && [ -n "${TMUX:-}" ] && command -v tmux > /dev/null 2>&1; then
+    tmux display-message -d 6000 "$msg" 2> /dev/null || true
   fi
 }
 
@@ -187,11 +187,11 @@ if [ "$paths_mode" -eq 1 ]; then
   find_record_for_path() {
     local needle="$1"
     local needle_rp
-    needle_rp="$(realpath "$needle" 2>/dev/null || printf '%s' "$needle")"
+    needle_rp="$(realpath "$needle" 2> /dev/null || printf '%s' "$needle")"
     local line p branch_ref detached locked p_rp
     while IFS='|' read -r p branch_ref detached locked; do
       [ -n "$p" ] || continue
-      p_rp="$(realpath "$p" 2>/dev/null || printf '%s' "$p")"
+      p_rp="$(realpath "$p" 2> /dev/null || printf '%s' "$p")"
       if [ "$p" = "$needle" ] || [ "$p_rp" = "$needle" ] || [ "$p" = "$needle_rp" ] || [ "$p_rp" = "$needle_rp" ]; then
         printf '%s|%s|%s|%s\n' "$p" "$branch_ref" "$detached" "$locked"
         return 0
@@ -201,33 +201,33 @@ if [ "$paths_mode" -eq 1 ]; then
   }
 
   for p in "${paths[@]}"; do
-    p="$(realpath "$p" 2>/dev/null || printf '%s' "$p")"
+    p="$(realpath "$p" 2> /dev/null || printf '%s' "$p")"
     rec="$(find_record_for_path "$p" || true)"
     if [ -z "${rec}" ]; then
       notify "Skipping (not a git worktree path): $p"
       continue
     fi
-    IFS='|' read -r p_found branch_ref detached locked <<<"$rec"
+    IFS='|' read -r p_found branch_ref detached locked <<< "$rec"
     case "$locked" in
-    1)
-      notify "Skipping locked worktree: $p_found"
-      continue
-      ;;
+      1)
+        notify "Skipping locked worktree: $p_found"
+        continue
+        ;;
     esac
 
     branch=""
     case "$branch_ref" in
-    refs/heads/*) branch="${branch_ref#refs/heads/}" ;;
+      refs/heads/*) branch="${branch_ref#refs/heads/}" ;;
     esac
 
     # Explicit paths: allow removing detached worktrees too.
     if [ -z "$branch" ]; then
       case "$detached" in
-      1) ;;
-      *)
-        notify "Skipping (not a local branch worktree): $p_found"
-        continue
-        ;;
+        1) ;;
+        *)
+          notify "Skipping (not a local branch worktree): $p_found"
+          continue
+          ;;
       esac
     fi
 
@@ -258,10 +258,10 @@ _get_branch_upstream_remote() {
   local branch="$1"
   local remote
 
-  remote="$(git for-each-ref --format='%(upstream:remotename)' "refs/heads/$branch" 2>/dev/null || true)"
+  remote="$(git for-each-ref --format='%(upstream:remotename)' "refs/heads/$branch" 2> /dev/null || true)"
   case "$remote" in
-  "" | .) echo "" ;;
-  *) echo "$remote" ;;
+    "" | .) echo "" ;;
+    *) echo "$remote" ;;
   esac
 }
 
@@ -270,22 +270,22 @@ _infer_remote_from_prefixed_branch() {
   local candidate
 
   case "$branch" in
-  *__*)
-    candidate="${branch%%__*}"
-    if git remote get-url "$candidate" >/dev/null 2>&1; then
-      echo "$candidate"
-    else
+    *__*)
+      candidate="${branch%%__*}"
+      if git remote get-url "$candidate" > /dev/null 2>&1; then
+        echo "$candidate"
+      else
+        echo ""
+      fi
+      ;;
+    *)
       echo ""
-    fi
-    ;;
-  *)
-    echo ""
-    ;;
+      ;;
   esac
 }
 
 for worktree in "${worktrees[@]}"; do
-  IFS=$'\t' read -r worktree_path worktree_branch worktree_detached <<<"$worktree"
+  IFS=$'\t' read -r worktree_path worktree_branch worktree_detached <<< "$worktree"
 
   if [ -n "${worktree_detached:-}" ] && [ "$worktree_detached" = "1" ]; then
     notify "Removing detached worktree: $worktree_path"
@@ -301,16 +301,16 @@ for worktree in "${worktrees[@]}"; do
   # leftovers (permissions, races, etc.). Those should not be moved into `.bag`
   # as a pseudo-worktree; delete the worktree dir itself and only bag leftover
   # *intermediate* directories between the wrapper and the worktree path.
-  worktree_path_rp="$(realpath "$worktree_path" 2>/dev/null || printf '%s' "$worktree_path")"
+  worktree_path_rp="$(realpath "$worktree_path" 2> /dev/null || printf '%s' "$worktree_path")"
   if [ -e "$worktree_path_rp" ]; then
     case "$worktree_path_rp" in
-    "" | "/" | "$HOME")
-      notify "Refusing to delete unsafe path: $worktree_path_rp"
-      continue
-      ;;
+      "" | "/" | "$HOME")
+        notify "Refusing to delete unsafe path: $worktree_path_rp"
+        continue
+        ;;
     esac
     notify "Worktree dir still exists; deleting: $worktree_path_rp"
-    rm -rf "$worktree_path_rp" 2>/dev/null || true
+    rm -rf "$worktree_path_rp" 2> /dev/null || true
   fi
 
   if [ -n "${worktree_detached:-}" ] && [ "$worktree_detached" = "1" ]; then
@@ -335,7 +335,7 @@ for worktree in "${worktrees[@]}"; do
 
   _bag_and_rmdir_upwards_ignoring_ds_store "$(dirname "$worktree_path")" "$parent_dir"
 
-  if command -v zoxide &>/dev/null; then
+  if command -v zoxide &> /dev/null; then
     zoxide remove "$worktree_path"
   fi
 
@@ -345,7 +345,7 @@ done
 if [ ${#remotes_to_check[@]} -gt 0 ]; then
   _remote_exists() {
     local remote="$1"
-    git remote get-url "$remote" >/dev/null 2>&1
+    git remote get-url "$remote" > /dev/null 2>&1
   }
 
   _remote_has_any_local_tracking_branch() {
@@ -354,7 +354,7 @@ if [ ${#remotes_to_check[@]} -gt 0 ]; then
 
     while IFS= read -r upstream_remote; do
       case "$upstream_remote" in
-      "$remote") return 0 ;;
+        "$remote") return 0 ;;
       esac
     done < <(git for-each-ref --format='%(upstream:remotename)' refs/heads)
 
@@ -367,7 +367,7 @@ if [ ${#remotes_to_check[@]} -gt 0 ]; then
 
     while IFS= read -r branch; do
       case "$branch" in
-      "${remote}"__*) return 0 ;;
+        "${remote}"__*) return 0 ;;
       esac
     done < <(git for-each-ref --format='%(refname:short)' refs/heads)
 
@@ -376,9 +376,9 @@ if [ ${#remotes_to_check[@]} -gt 0 ]; then
 
   for remote in $(printf '%s\n' "${remotes_to_check[@]}" | sort -u); do
     case "$remote" in
-    "" | .)
-      continue
-      ;;
+      "" | .)
+        continue
+        ;;
     esac
     if _comma_w_remote_is_first_party "$remote"; then
       continue

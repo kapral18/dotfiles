@@ -35,7 +35,7 @@ if [ "$is_work" = "true" ]; then
 
   sed \
     -e "s|__LITELLM_API_BASE__|$litellm_api_base|g" \
-    "$src" > "$tmp"
+    "$src" >"$tmp"
 
   install -m 0644 "$tmp" "$target"
 else

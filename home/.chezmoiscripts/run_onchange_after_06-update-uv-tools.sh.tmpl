@@ -12,58 +12,57 @@ uv_tools_template={{ joinPath .chezmoi.sourceDir "readonly_dot_default-uv-tools.
 echo "Updating uv global tools..."
 
 if [[ ! -f "$uv_tools_template" ]]; then
-    echo "Error: default-uv-tools template not found at $uv_tools_template"
-    exit 1
+  echo "Error: default-uv-tools template not found at $uv_tools_template"
+  exit 1
 fi
 
 # Render template into an array
-if ! mapfile -t lines < <(chezmoi execute-template < "$uv_tools_template"); then
-    echo "Error: Failed to render default-uv-tools template"
-    exit 1
+if ! mapfile -t lines < <(chezmoi execute-template <"$uv_tools_template"); then
+  echo "Error: Failed to render default-uv-tools template"
+  exit 1
 fi
 
-
 install_uv_tool() {
-    local tool=$1
+  local tool=$1
 
-    echo "Installing uv tool: $tool"
-    if ! uv tool install "$tool" &>/dev/null; then
-        echo "Error: Failed to install uv tool $tool"
-        return 1
-    fi
-    return 0
+  echo "Installing uv tool: $tool"
+  if ! uv tool install "$tool" &>/dev/null; then
+    echo "Error: Failed to install uv tool $tool"
+    return 1
+  fi
+  return 0
 }
 
 # Parse tools from rendered template FIRST
 declare -a tools_to_install
 
 for line in "${lines[@]}"; do
-    # Skip empty lines and comments
-    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+  # Skip empty lines and comments
+  [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
 
-    # Extract tool name (everything before # or end of line)
-    tool_name=$(echo "$line" | sed 's/[[:space:]]*#.*$//' | xargs)
-    [[ -n "$tool_name" ]] && tools_to_install+=("$tool_name")
+  # Extract tool name (everything before # or end of line)
+  tool_name=$(echo "$line" | sed 's/[[:space:]]*#.*$//' | xargs)
+  [[ -n "$tool_name" ]] && tools_to_install+=("$tool_name")
 done
 
 # Check if we have any tools to install
 if [[ ${#tools_to_install[@]} -eq 0 ]]; then
-    echo "No tools found in rendered uv tools template to install"
-    exit 0
+  echo "No tools found in rendered uv tools template to install"
+  exit 0
 fi
 
 # Clean up unwanted tools (installed but not in our list)
 if uv tool list >/dev/null 2>&1; then
-    installed_tools=$(uv tool list | grep -v '^-' | awk '{print $1}' || true)
-    if [[ -n "$installed_tools" ]]; then
-        echo "$installed_tools" | while read -r tool; do
-            # Check if this tool is NOT in our desired list
-            if ! printf '%s\n' "${tools_to_install[@]}" | grep -q "^${tool}$"; then
-                echo "Uninstalling unwanted uv tool: $tool"
-                uv tool uninstall "$tool" &>/dev/null || echo "Warning: Failed to uninstall $tool"
-            fi
-        done
-    fi
+  installed_tools=$(uv tool list | grep -v '^-' | awk '{print $1}' || true)
+  if [[ -n "$installed_tools" ]]; then
+    echo "$installed_tools" | while read -r tool; do
+      # Check if this tool is NOT in our desired list
+      if ! printf '%s\n' "${tools_to_install[@]}" | grep -q "^${tool}$"; then
+        echo "Uninstalling unwanted uv tool: $tool"
+        uv tool uninstall "$tool" &>/dev/null || echo "Warning: Failed to uninstall $tool"
+      fi
+    done
+  fi
 fi
 
 # Get currently installed tools (after cleanup)
@@ -71,14 +70,13 @@ installed_tools=$(uv tool list | grep -v '^-' | awk '{print $1}' || true)
 
 # Install missing tools
 for tool in "${tools_to_install[@]}"; do
-    # Check if the tool is already installed
-    if [[ -n "$installed_tools" ]] && echo "$installed_tools" | grep -q "^${tool}$"; then
-        echo "uv tool $tool is already installed"
-        continue
-    fi
+  # Check if the tool is already installed
+  if [[ -n "$installed_tools" ]] && echo "$installed_tools" | grep -q "^${tool}$"; then
+    echo "uv tool $tool is already installed"
+    continue
+  fi
 
-    install_uv_tool "$tool"
+  install_uv_tool "$tool"
 done
 
 echo "All uv tools processed successfully"
-

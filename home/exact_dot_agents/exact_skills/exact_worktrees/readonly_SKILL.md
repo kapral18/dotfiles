@@ -10,7 +10,8 @@ description: |-
 
 Primary goal:
 
-- manage local git worktrees using the user's `,w` CLI instead of raw `git worktree` commands.
+- manage local git worktrees using the user's `,w` CLI instead of raw
+  `git worktree` commands.
 
 Use this playbook when:
 
@@ -21,8 +22,10 @@ Use this playbook when:
 Do not use:
 
 - PR review feedback: `~/.agents/playbooks/review/PLAYBOOK.md`
-- GitHub side effects (posting comments/reviews, creating PRs/issues): `~/.agents/playbooks/github/PLAYBOOK.md`
-- pure git operations unrelated to worktrees (commit/rebase/push): `~/.agents/playbooks/git/PLAYBOOK.md`
+- GitHub side effects (posting comments/reviews, creating PRs/issues):
+  `~/.agents/playbooks/github/PLAYBOOK.md`
+- pure git operations unrelated to worktrees (commit/rebase/push):
+  `~/.agents/playbooks/git/PLAYBOOK.md`
 
 First actions:
 

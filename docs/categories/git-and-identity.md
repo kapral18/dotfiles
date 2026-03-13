@@ -14,11 +14,11 @@ The mechanics are implemented through a combination of 1Password's SSH agent,
 
 SSH is wired to use the 1Password agent socket:
 
-- `home/private_dot_ssh/private_executable_config`
+- [`home/private_dot_ssh/private_executable_config`](../../home/private_dot_ssh/private_executable_config)
 
 The 1Password agent key set is configured via:
 
-- `home/dot_config/exact_private_1Password/exact_ssh/agent.toml.tmpl`
+- [`home/dot_config/exact_private_1Password/exact_ssh/agent.toml.tmpl`](../../home/dot_config/exact_private_1Password/exact_ssh/agent.toml.tmpl)
 
 Installed as:
 
@@ -31,14 +31,14 @@ matching private keys are held by 1Password.
 
 Relevant templates:
 
-- `home/private_dot_ssh/primary_public_key.pub.tmpl`
-- `home/private_dot_ssh/secondary_public_key.pub.tmpl`
+- [`home/private_dot_ssh/primary_public_key.pub.tmpl`](../../home/private_dot_ssh/primary_public_key.pub.tmpl)
+- [`home/private_dot_ssh/secondary_public_key.pub.tmpl`](../../home/private_dot_ssh/secondary_public_key.pub.tmpl)
 
 ## Git Config
 
 Primary git config:
 
-- `home/private_readonly_dot_gitconfig.tmpl`
+- [`home/private_readonly_dot_gitconfig.tmpl`](../../home/private_readonly_dot_gitconfig.tmpl)
 
 Installed as:
 
@@ -46,35 +46,37 @@ Installed as:
 
 Work override (included conditionally):
 
-- `home/work/private_dot_gitconfig.tmpl`
+- [`home/work/private_dot_gitconfig.tmpl`](../../home/work/private_dot_gitconfig.tmpl)
 
 The primary config uses `includeIf "gitdir:~/work/"` on non-work machines so
 repos under `~/work/` automatically use the secondary identity.
 
 ## GitHub CLI + Dashboards
 
-This setup configures a few GitHub-related tools:
-
-- GitHub CLI config directory: `home/dot_config/exact_private_gh/` (private)
-- `gh-dash` shared defaults + keybindings: `home/dot_config/exact_gh-dash/gh-dash-shared.yml`
-- `gh-dash` work dashboard template: `home/dot_config/exact_gh-dash/readonly_config-work.yml.tmpl`
-- `gh-dash` home dashboard template: `home/dot_config/exact_gh-dash/readonly_config-home.yml.tmpl`
-- `gh-dash` base/default template: `home/dot_config/exact_gh-dash/readonly_config.yml.tmpl`
-- Managed extensions hook: `home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl`
+| Component                               | Source                                                                                                                                                           |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GitHub CLI config directory             | [`home/dot_config/exact_private_gh/`](../../home/dot_config/exact_private_gh/) (private)                                                                         |
+| `gh-dash` shared defaults + keybindings | [`home/dot_config/exact_gh-dash/gh-dash-shared.yml`](../../home/dot_config/exact_gh-dash/gh-dash-shared.yml)                                                     |
+| `gh-dash` work dashboard                | [`home/dot_config/exact_gh-dash/readonly_config-work.yml.tmpl`](../../home/dot_config/exact_gh-dash/readonly_config-work.yml.tmpl)                               |
+| `gh-dash` home dashboard                | [`home/dot_config/exact_gh-dash/readonly_config-home.yml.tmpl`](../../home/dot_config/exact_gh-dash/readonly_config-home.yml.tmpl)                               |
+| `gh-dash` base/default                  | [`home/dot_config/exact_gh-dash/readonly_config.yml.tmpl`](../../home/dot_config/exact_gh-dash/readonly_config.yml.tmpl)                                         |
+| Managed extensions hook                 | [`home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl) |
 
 Git TUIs:
 
-- `gitui` config: `home/dot_config/exact_gitui/`
-- `lazygit` config: `home/dot_config/exact_lazygit/config.yml`
-- `tig` config: `home/dot_config/exact_tig/`
+| Tool      | Config                                                                                       |
+| --------- | -------------------------------------------------------------------------------------------- |
+| `gitui`   | [`home/dot_config/exact_gitui/`](../../home/dot_config/exact_gitui/)                         |
+| `lazygit` | [`home/dot_config/exact_lazygit/config.yml`](../../home/dot_config/exact_lazygit/config.yml) |
+| `tig`     | [`home/dot_config/exact_tig/`](../../home/dot_config/exact_tig/)                             |
 
 ## Signing
 
 Git commit signing is configured for SSH signing, using the 1Password signing
 helper:
 
-- `home/private_readonly_dot_gitconfig.tmpl`
-- `home/private_dot_ssh/private_executable_allowed_signers.tmpl`
+- [`home/private_readonly_dot_gitconfig.tmpl`](../../home/private_readonly_dot_gitconfig.tmpl)
+- [`home/private_dot_ssh/private_executable_allowed_signers.tmpl`](../../home/private_dot_ssh/private_executable_allowed_signers.tmpl)
 
 ## Verify
 
@@ -107,6 +109,9 @@ git config --show-origin --get core.sshCommand
 
 ## Related
 
-- Identity switching: [`docs/recipes/switching-work-personal-identity.md`](../recipes/switching-work-personal-identity.md)
-- Worktrees: [`docs/recipes/worktree-workflow.md`](../recipes/worktree-workflow.md)
-- Security model: [`docs/categories/security-and-secrets.md`](security-and-secrets.md)
+- Identity switching:
+  [`docs/recipes/switching-work-personal-identity.md`](../recipes/switching-work-personal-identity.md)
+- Worktrees:
+  [`docs/recipes/worktree-workflow.md`](../recipes/worktree-workflow.md)
+- Security model:
+  [`docs/categories/security-and-secrets.md`](security-and-secrets.md)

@@ -14,7 +14,9 @@ chezmoi apply --dry-run --verbose
 
 ## Do I need to use Neovim/tmux to use this setup?
 
-No. The installation is all-or-nothing, but your usage doesn't have to be. You can install the full setup and continue using your preferred IDE (like VSCode or JetBrains) while you slowly learn the terminal tools.
+No. The installation is all-or-nothing, but your usage doesn't have to be. You
+can install the full setup and continue using your preferred IDE (like VSCode or
+JetBrains) while you slowly learn the terminal tools.
 
 See [`docs/learning-paths.md`](learning-paths.md).
 
@@ -27,7 +29,8 @@ This setup assumes 1Password provides:
 - SSH agent keys (no private keys on disk)
 - 1Password CLI access for some bootstrap steps
 
-See [`docs/categories/security-and-secrets.md`](categories/security-and-secrets.md).
+See
+[`docs/categories/security-and-secrets.md`](categories/security-and-secrets.md).
 
 ## Why does applying packages remove things?
 

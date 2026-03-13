@@ -15,7 +15,9 @@ If you are coming from VSCode/JetBrains and do not live in a terminal: think of
 
 **⚠️ Important:** This setup has a hard dependency on 1Password.
 
-- **1Password app** must be installed and signed in. This setup assumes 1Password is the source of truth for SSH keys and many secrets. If you don't use 1Password, you will need to heavily modify the templates.
+- **1Password app** must be installed and signed in. This setup assumes
+  1Password is the source of truth for SSH keys and many secrets. If you don't
+  use 1Password, you will need to heavily modify the templates.
 - Willingness to let the bootstrap scripts install system tooling.
 
 ## Safe Preview Flow
@@ -54,26 +56,25 @@ still recommended for first-time adopters.
 
 ## What `chezmoi apply` Can Trigger Here
 
-This setup uses `chezmoi` hooks under `home/.chezmoiscripts/`. On first run, you
-should expect:
+This setup uses `chezmoi` hooks under
+[`home/.chezmoiscripts/`](../home/.chezmoiscripts/). On first run, you should
+expect:
 
-- Xcode Command Line Tools install + license acceptance:
-  `home/.chezmoiscripts/run_once_before_00-install-xcode.sh`
-- Homebrew install:
-  `home/.chezmoiscripts/run_once_after_01-install-brew.sh`
-- Fish install + switching your login shell:
-  `home/.chezmoiscripts/run_once_after_02-install-fish.sh`
-- Brew bundle install + cleanup:
-  `home/.chezmoiscripts/run_onchange_after_03-install-brew-packages.fish.tmpl`
-- Fish packages update:
-  `home/.chezmoiscripts/run_onchange_after_04-update-fish-packages.fish.tmpl`
+| Hook                                                    | What it does                                          |
+| ------------------------------------------------------- | ----------------------------------------------------- |
+| `run_once_before_00-install-xcode.sh`                   | Xcode Command Line Tools install + license acceptance |
+| `run_once_after_01-install-brew.sh`                     | Homebrew install                                      |
+| `run_once_after_02-install-fish.sh`                     | Fish install + switching your login shell             |
+| `run_onchange_after_03-install-brew-packages.fish.tmpl` | Brew bundle install + cleanup                         |
+| `run_onchange_after_04-update-fish-packages.fish.tmpl`  | Fish packages update                                  |
 
 There are also hooks that manage language/tool versions and global packages
 (ASDF, cargo, go, gems, npm, uv) and some macOS preferences.
 
 ## Work vs Personal Machines
 
-During init/apply, `chezmoi` will prompt for values via `home/.chezmoi.toml.tmpl`:
+During init/apply, `chezmoi` will prompt for values via
+[`home/.chezmoi.toml.tmpl`](../home/.chezmoi.toml.tmpl):
 
 - `isWork` (drives conditional config)
 - emails / SSH public keys

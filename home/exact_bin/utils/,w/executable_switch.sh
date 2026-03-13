@@ -7,14 +7,14 @@ source "$(dirname "$0")/../worktree_lib.sh"
 
 require_cmd() {
   local cmd="$1"
-  if ! command -v "$cmd" >/dev/null 2>&1; then
+  if ! command -v "$cmd" > /dev/null 2>&1; then
     echo "Missing required dependency: '$cmd'." >&2
     exit 1
   fi
 }
 
 show_usage() {
-  cat <<EOF
+  cat << EOF
 Usage: ,w switch [-q|--quiet] [query...]
 
 Interactively pick a worktree and switch/attach to its tmux session.
@@ -32,25 +32,25 @@ quiet_mode=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
-  -h | --help)
-    show_usage
-    exit 0
-    ;;
-  -q | --quiet)
-    quiet_mode=1
-    shift
-    ;;
-  --)
-    shift
-    break
-    ;;
-  -*)
-    show_usage
-    exit 1
-    ;;
-  *)
-    break
-    ;;
+    -h | --help)
+      show_usage
+      exit 0
+      ;;
+    -q | --quiet)
+      quiet_mode=1
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      show_usage
+      exit 1
+      ;;
+    *)
+      break
+      ;;
   esac
 done
 
@@ -72,7 +72,7 @@ direct_pick() {
   local line branch worktree_path
 
   for line in "${candidates[@]}"; do
-    IFS=$'\t' read -r branch worktree_path <<<"$line"
+    IFS=$'\t' read -r branch worktree_path <<< "$line"
     if [ "$branch" = "$needle" ] || [ "$worktree_path" = "$needle" ]; then
       match="$line"
       count=$((count + 1))
@@ -89,7 +89,7 @@ direct_pick() {
 
 if [ -n "$query" ] && [ "$#" -eq 1 ]; then
   if selected="$(direct_pick "$query")"; then
-    IFS=$'\t' read -r branch worktree_path <<<"$selected"
+    IFS=$'\t' read -r branch worktree_path <<< "$selected"
     _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$branch" "$worktree_path"
 
     session_name="$(_comma_w_tmux_session_name "$parent_name" "$branch")"
@@ -113,7 +113,7 @@ if [ -z "$selected" ]; then
   exit 1
 fi
 
-IFS=$'\t' read -r branch worktree_path <<<"$selected"
+IFS=$'\t' read -r branch worktree_path <<< "$selected"
 if [ -z "$branch" ] || [ -z "$worktree_path" ]; then
   echo "Invalid selection." >&2
   exit 1

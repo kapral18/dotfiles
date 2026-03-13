@@ -3,12 +3,14 @@
 Precondition:
 
 - You already loaded `~/.agents/playbooks/review/PLAYBOOK.md`.
-- Follow the router's shared rules (especially base-branch context + truth validation).
+- Follow the router's shared rules (especially base-branch context + truth
+  validation).
 
 Use when:
 
 - the user wants to apply requested PR changes from review comments
-- the user wants to go one thread/comment at a time and decide together what to do
+- the user wants to go one thread/comment at a time and decide together what to
+  do
 - the user wants experiments + lint/type_check/tests after each iteration cycle
 
 ## PR Common Setup
@@ -42,7 +44,8 @@ Base-branch context gate (mandatory):
     which one represents the base branch for this repo
 - Preferred: semantic code search (when available):
   - Follow: `~/.agents/skills/semantic_code_search/SKILL.md`
-  - Invoke at least one SCSI tool to establish base behavior/invariants for the area under review.
+  - Invoke at least one SCSI tool to establish base behavior/invariants for the
+    area under review.
 - Fallback: local base context:
   - `rg` + file reads
   - `git show <base>:<path>`
@@ -53,7 +56,8 @@ Base-branch context gate (mandatory):
 Iteration contract:
 
 - Pick exactly one reviewer thread/comment.
-- Do not move to the next thread/comment until you and the user agree on what to do.
+- Do not move to the next thread/comment until you and the user agree on what to
+  do.
 
 Per-thread workflow:
 
@@ -71,7 +75,8 @@ Per-thread workflow:
 
 4. Establish base context for this exact concern:
    - use SCSI (when indexed) to learn how base currently does it
-   - extract 1-3 concrete base invariants (types, call sites, ownership boundaries, runtime expectations)
+   - extract 1-3 concrete base invariants (types, call sites, ownership
+     boundaries, runtime expectations)
 
 5. Self-critique your current diff:
    - why your change originally made sense
@@ -84,33 +89,42 @@ Per-thread workflow:
    - ask exactly one blocking question (include the default assumption)
 
 6A. Scope guardrail (reduce review noise):
-   - If the reviewer request is a "clarity" ask (add comment, rename, tiny refactor), prefer the smallest
-     localized change that satisfies the request.
-   - If the reviewer request is out-of-scope cleanup, you may treat it as a "graceful gesture" only when:
-     - it is cheap
-     - it does not change runtime behavior
-     - it reduces future confusion
-     Otherwise: reply proposing a follow-up (do not expand the change-set).
+
+- If the reviewer request is a "clarity" ask (add comment, rename, tiny
+  refactor), prefer the smallest localized change that satisfies the request.
+- If the reviewer request is out-of-scope cleanup, you may treat it as a
+  "graceful gesture" only when:
+  - it is cheap
+  - it does not change runtime behavior
+  - it reduces future confusion Otherwise: reply proposing a follow-up (do not
+    expand the change-set).
 
 7. Experiment and verify assumptions:
    - Prefer the smallest reproduction in `/tmp` when possible.
-   - If the change needs integration context, apply a minimal patch in the worktree.
-   - For type changes: validate the full type chain (call sites + inference + exported types), not just the edited file.
+   - If the change needs integration context, apply a minimal patch in the
+     worktree.
+   - For type changes: validate the full type chain (call sites + inference +
+     exported types), not just the edited file.
 
 8. Quality gates (required after each code-change iteration cycle):
    - Run lint + type_check + tests.
    - Discover the correct commands from the repo (do not guess):
-     - check `package.json` scripts (or equivalent build tooling) for `lint`, `typecheck`, `test`
-     - if monorepo, prefer scoped/targeted commands for the affected package first
-     - if you cannot determine the commands from repo sources, stop and ask the user
+     - check `package.json` scripts (or equivalent build tooling) for `lint`,
+       `typecheck`, `test`
+     - if monorepo, prefer scoped/targeted commands for the affected package
+       first
+     - if you cannot determine the commands from repo sources, stop and ask the
+       user
 
 9. Re-evaluate:
    - If checks fail or types get worse, back out or adjust and repeat steps 6-8.
    - If checks pass, draft the reply for that thread (and only that thread).
-     - If the thread asked for code comments/documentation: make the change in code, then reply with a short
-        "Fixed in <commit link>" message (avoid long explanations in the thread).
-     - If your fix ended up elsewhere (different file/thread): reply with a link to the canonical thread/commit
-       rather than re-explaining, to avoid duplicated discussion.
+     - If the thread asked for code comments/documentation: make the change in
+       code, then reply with a short "Fixed in <commit link>" message (avoid
+       long explanations in the thread).
+     - If your fix ended up elsewhere (different file/thread): reply with a link
+       to the canonical thread/commit rather than re-explaining, to avoid
+       duplicated discussion.
 
 ## Output (Exactly One Thread/Comment Per Turn)
 

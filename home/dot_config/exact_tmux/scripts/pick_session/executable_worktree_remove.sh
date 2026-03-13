@@ -7,9 +7,9 @@ shift || true
 [ -n "$root" ] || exit 0
 [ $# -gt 0 ] || exit 0
 
-if ! command -v ,w >/dev/null 2>&1; then
-  if command -v tmux >/dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
-    tmux display-message "tmux: missing command: ,w" 2>/dev/null || true
+if ! command -v ,w > /dev/null 2>&1; then
+  if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
+    tmux display-message "tmux: missing command: ,w" 2> /dev/null || true
   fi
   exit 0
 fi
@@ -28,7 +28,7 @@ if [ -f "$pending_file" ]; then
   p=""
   for p in "$@"; do
     if [ ! -d "$p" ]; then
-      grep -v -F $'WT\t'"$p" "$tmp" >"${tmp}.2" || true
+      grep -v -F $'WT\t'"$p" "$tmp" > "${tmp}.2" || true
       mv -f "${tmp}.2" "$tmp"
     fi
   done
@@ -36,6 +36,6 @@ if [ -f "$pending_file" ]; then
 fi
 
 # Opportunistically refresh the cache after removals finish.
-if command -v tmux >/dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
-  tmux run-shell -b "$HOME/.config/tmux/scripts/pick_session/index_update.sh --force --quiet" 2>/dev/null || true
+if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
+  tmux run-shell -b "$HOME/.config/tmux/scripts/pick_session/index_update.sh --force --quiet" 2> /dev/null || true
 fi

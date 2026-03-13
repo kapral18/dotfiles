@@ -15,13 +15,13 @@ fixup_current_marker() {
   local file="$1"
   local cur=""
   if [ -n "${TMUX:-}" ]; then
-    cur="$(tmux display-message -p '#S' 2>/dev/null || true)"
+    cur="$(tmux display-message -p '#S' 2> /dev/null || true)"
   fi
   if [ -z "$cur" ]; then
     cat "$file"
     return
   fi
-  CURRENT="$cur" python3 -u - "$file" <<'PY'
+  CURRENT="$cur" python3 -u - "$file" << 'PY'
 import os, signal, sys
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 current = os.environ.get("CURRENT", "")
@@ -55,7 +55,7 @@ fi
 # Ordered file missing or stale — items_cmd handles mutation tombstones
 # internally, so prefer it over serving the raw cache.
 if [ -x "$items_cmd" ]; then
-  [ -x "$ordered_update_cmd" ] && "$ordered_update_cmd" --quiet >/dev/null 2>&1 &
+  [ -x "$ordered_update_cmd" ] && "$ordered_update_cmd" --quiet > /dev/null 2>&1 &
   exec "$items_cmd"
 fi
 

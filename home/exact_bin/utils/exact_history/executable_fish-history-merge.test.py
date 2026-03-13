@@ -22,17 +22,11 @@ history_merge_script_path = str(current_dir / "executable_fish-history-merge.py"
 
 
 class FishHistoryMergeModule(Protocol):
-    def parse_fish_history(
-        self, file_path: str
-    ) -> dict[str, dict[str, str | int | list[str]]]: ...
-    def merge_histories(
-        self, local_file: str, remote_file: str, output_file: str
-    ) -> bool: ...
+    def parse_fish_history(self, file_path: str) -> dict[str, dict[str, str | int | list[str]]]: ...
+    def merge_histories(self, local_file: str, remote_file: str, output_file: str) -> bool: ...
 
 
-spec = importlib.util.spec_from_file_location(
-    "fish_history_merge", history_merge_script_path
-)
+spec = importlib.util.spec_from_file_location("fish_history_merge", history_merge_script_path)
 if spec and spec.loader:
     # Load the module as a standard module first
     _module = importlib.util.module_from_spec(spec)
@@ -188,9 +182,7 @@ class TestFishHistoryMerge(unittest.TestCase):
         self.write_history(self.local_file, local_content)
         self.write_history(self.remote_file, remote_content)
 
-        success = fish_history_merge.merge_histories(
-            self.local_file, self.remote_file, self.output_file
-        )
+        success = fish_history_merge.merge_histories(self.local_file, self.remote_file, self.output_file)
         self.assertTrue(success)
 
         output = self.read_history(self.output_file)
@@ -224,9 +216,7 @@ class TestFishHistoryMerge(unittest.TestCase):
         self.write_history(self.local_file, local_content)
         self.write_history(self.remote_file, remote_content)
 
-        success = fish_history_merge.merge_histories(
-            self.local_file, self.remote_file, self.output_file
-        )
+        success = fish_history_merge.merge_histories(self.local_file, self.remote_file, self.output_file)
         self.assertTrue(success)
 
         output = self.read_history(self.output_file)
@@ -246,9 +236,7 @@ class TestFishHistoryMerge(unittest.TestCase):
         self.write_history(self.local_file, "")
         self.write_history(self.remote_file, "")
 
-        success = fish_history_merge.merge_histories(
-            self.local_file, self.remote_file, self.output_file
-        )
+        success = fish_history_merge.merge_histories(self.local_file, self.remote_file, self.output_file)
         self.assertTrue(success)
 
         output = self.read_history(self.output_file)
@@ -262,9 +250,7 @@ class TestFishHistoryMerge(unittest.TestCase):
         self.write_history(self.local_file, local_content)
         self.write_history(self.remote_file, "")
 
-        success = fish_history_merge.merge_histories(
-            self.local_file, self.remote_file, self.output_file
-        )
+        success = fish_history_merge.merge_histories(self.local_file, self.remote_file, self.output_file)
         self.assertTrue(success)
 
         output = self.read_history(self.output_file)
@@ -293,9 +279,7 @@ class TestFishHistoryMerge(unittest.TestCase):
         self.write_history(self.local_file, local_content)
         self.write_history(self.remote_file, remote_content)
 
-        success = fish_history_merge.merge_histories(
-            self.local_file, self.remote_file, self.output_file
-        )
+        success = fish_history_merge.merge_histories(self.local_file, self.remote_file, self.output_file)
         self.assertTrue(success)
 
         output = self.read_history(self.output_file)
@@ -323,9 +307,7 @@ class TestFishHistoryMerge(unittest.TestCase):
         self.write_history(self.local_file, local_content)
         self.write_history(self.remote_file, remote_content)
 
-        success = fish_history_merge.merge_histories(
-            self.local_file, self.remote_file, self.output_file
-        )
+        success = fish_history_merge.merge_histories(self.local_file, self.remote_file, self.output_file)
         self.assertTrue(success)
 
         output = self.read_history(self.output_file)
@@ -401,9 +383,7 @@ class TestFishHistoryMerge(unittest.TestCase):
         self.write_history(self.local_file, local_content)
         self.write_history(self.remote_file, "")
 
-        success = fish_history_merge.merge_histories(
-            self.local_file, self.remote_file, self.output_file
-        )
+        success = fish_history_merge.merge_histories(self.local_file, self.remote_file, self.output_file)
         self.assertTrue(success)
 
         output = self.read_history(self.output_file)

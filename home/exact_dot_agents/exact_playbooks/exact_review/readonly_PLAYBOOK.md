@@ -2,7 +2,8 @@
 
 Goal:
 
-- route "review" requests to the smallest correct mode playbook (natural discovery)
+- route "review" requests to the smallest correct mode playbook (natural
+  discovery)
 - keep shared review rules always loaded, while mode details are lazy-loaded
 
 Contract:
@@ -22,8 +23,8 @@ Contract:
   inspection/review. Only load it when the user explicitly asks to post/submit
   anything to GitHub.
 - If the user wants review analysis and GitHub posting in the same request, the
-  review router stays primary. Draft/verify through review mode first, then
-  load `~/.agents/playbooks/github/PLAYBOOK.md` only for the posting step.
+  review router stays primary. Draft/verify through review mode first, then load
+  `~/.agents/playbooks/github/PLAYBOOK.md` only for the posting step.
 
 ## PR Detection (Do First When PR Is Involved)
 
@@ -89,9 +90,8 @@ If the user's intent is still unclear, resolve via local context (do not guess):
   - Independently check both:
     - whether staged/unstaged changes exist
     - whether `,gh-prw --number` resolves a PR for the current branch
-  - If both are true, ask:
-    "Should I review the local working tree diff, or the GitHub PR diff/threads?"
-    Default: local working tree first.
+  - If both are true, ask: "Should I review the local working tree diff, or the
+    GitHub PR diff/threads?" Default: local working tree first.
   - If only local changes exist: local changes mode.
   - If only a PR exists: PR start mode.
   - If neither exists: local changes mode (branch delta).
@@ -99,9 +99,8 @@ If the user's intent is still unclear, resolve via local context (do not guess):
 Ambiguity rule:
 
 - If both a PR exists and the working tree has local changes and the user just
-  says "review", ask:
-  "Should I review the local working tree diff, or the GitHub PR diff/threads?"
-  Default: local working tree first.
+  says "review", ask: "Should I review the local working tree diff, or the
+  GitHub PR diff/threads?" Default: local working tree first.
 
 ## Shared Rules (All Modes)
 
@@ -115,7 +114,8 @@ Hard constraints:
 - External truth applies: verify behavior under review (tests, repros, `/tmp`
   simulations) before asserting when practical.
 - Do not change code unless the user asked you to iterate on fixes.
-  - If the user wants to apply reviewer suggestions / make PR changes, use PR change-cycle mode.
+  - If the user wants to apply reviewer suggestions / make PR changes, use PR
+    change-cycle mode.
 - Do not post to GitHub, submit reviews, apply labels, or resolve threads unless
   explicitly asked.
 - Assume the user started the agent inside the intended repo/worktree/session:
@@ -149,9 +149,9 @@ If the repo is indexed:
 
 - Semantic code search is required for base-branch context.
   - Load and follow: `~/.agents/skills/semantic_code_search/SKILL.md`
-  - You MUST invoke at least one SCSI tool (for example:
-    `discover_directories`, `semantic_code_search`, `map_symbols_by_query`,
-    `symbol_analysis`, or `read_file_from_chunks`) to establish base invariants.
+  - You MUST invoke at least one SCSI tool (for example: `discover_directories`,
+    `semantic_code_search`, `map_symbols_by_query`, `symbol_analysis`, or
+    `read_file_from_chunks`) to establish base invariants.
 - Use SCSI to learn base-branch implementation and invariants, then compare
   against the PR/local diff (ground truth).
 
@@ -177,14 +177,18 @@ Base context reporting (required in every review output):
 Truth validation framework (use in every non-trivial review):
 
 - Treat every claim as a hypothesis until verified.
-- Establish base invariants first (SCSI when indexed; otherwise `git show <base>:<path>` + local `rg`).
+- Establish base invariants first (SCSI when indexed; otherwise
+  `git show <base>:<path>` + local `rg`).
 - Validate PR/branch reality second (local diff + file reads).
 - When evaluating a proposed change (review suggestion / reviewer request):
   - prefer the smallest reproduction in `/tmp` when possible
   - otherwise run the smallest safe experiment in the worktree
-- If you changed code as part of an iteration cycle, re-run the repo's quality gates:
-  - lint + type_check + tests (discover the correct commands from the repo; do not guess).
-- Keep an evidence log per comment/thread: what base does, what changed, what you tested, and what you observed.
+- If you changed code as part of an iteration cycle, re-run the repo's quality
+  gates:
+  - lint + type_check + tests (discover the correct commands from the repo; do
+    not guess).
+- Keep an evidence log per comment/thread: what base does, what changed, what
+  you tested, and what you observed.
 
 Coverage checklist (do not skip):
 
@@ -213,8 +217,8 @@ Draft style (public-ready):
 - No headline summaries or category prefixes (exception: `nit:` allowed only for
   true nits).
 - Keep explanations simple; prefer tiny examples, pseudocode, or ASCII sketches.
-- A collaborative close such as `Wdyt` is optional; use it only when it fits
-  the comment naturally.
+- A collaborative close such as `Wdyt` is optional; use it only when it fits the
+  comment naturally.
 - Keep claims honest: observed (evidence) vs inferred (hypothesis) vs
   recommended (action).
 - Do not mention internal tooling, agents, APIs, payloads, rate limits, or error
@@ -227,8 +231,8 @@ Draft style (public-ready):
   line.
 - If you need to reference nearby lines, include a deep link to the exact source
   location (PR head SHA for PRs).
-- Use `suggestion` blocks only when confident the replacement matches the
-  exact anchored line(s).
+- Use `suggestion` blocks only when confident the replacement matches the exact
+  anchored line(s).
 
 Posting boundary:
 

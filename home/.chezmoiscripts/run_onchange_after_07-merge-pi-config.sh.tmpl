@@ -46,8 +46,8 @@ if [ "$is_work" = "true" ]; then
 
   litellm_api_base="${litellm_api_base%/}"
   case "$litellm_api_base" in
-    */v1) ;;
-    *) litellm_api_base="$litellm_api_base/v1" ;;
+  */v1) ;;
+  *) litellm_api_base="$litellm_api_base/v1" ;;
   esac
 
   tmp_models="$(mktemp)"

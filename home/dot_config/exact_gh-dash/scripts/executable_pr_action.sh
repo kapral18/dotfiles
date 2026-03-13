@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  cat <<'EOF'
+  cat << 'EOF'
 Usage: pr_action.sh <action> <repo_name> <repo_path> <pr_number>
 
 Actions:
@@ -20,9 +20,9 @@ die() {
 expand_tilde() {
   local p="$1"
   case "$p" in
-  "~") printf '%s\n' "$HOME" ;;
-  "~/"*) printf '%s\n' "$HOME/${p#~/}" ;;
-  *) printf '%s\n' "$p" ;;
+    "~") printf '%s\n' "$HOME" ;;
+    "~/"*) printf '%s\n' "$HOME/${p#~/}" ;;
+    *) printf '%s\n' "$p" ;;
   esac
 }
 
@@ -30,7 +30,7 @@ resolve_repo_worktree() {
   local p="$1"
   local d child_git child common root
   p="$(expand_tilde "$p")"
-  cd "$p" 2>/dev/null || return 1
+  cd "$p" 2> /dev/null || return 1
 
   if [ -e ".git" ]; then
     pwd -P
@@ -51,13 +51,13 @@ resolve_repo_worktree() {
   for child_git in "$p"/*/.git "$p"/*/*/.git "$p"/*/*/*/.git; do
     [ -e "$child_git" ] || continue
     child="$(dirname "$child_git")"
-    common="$(git -C "$child" rev-parse --git-common-dir 2>/dev/null || true)"
+    common="$(git -C "$child" rev-parse --git-common-dir 2> /dev/null || true)"
     [ -n "$common" ] || continue
     case "$common" in
-    /*) ;;
-    *) common="$child/$common" ;;
+      /*) ;;
+      *) common="$child/$common" ;;
     esac
-    common="$(realpath "$common" 2>/dev/null || printf '%s' "$common")"
+    common="$(realpath "$common" 2> /dev/null || printf '%s' "$common")"
     if [ "$(basename "$common")" = ".git" ]; then
       root="$(dirname "$common")"
       if [ -e "$root/.git" ]; then
@@ -81,8 +81,8 @@ bootstrap_repo_with_tfork() {
 
   if [ "$show_progress_popup" = "1" ] && [ "${GH_DASH_POPUP:-0}" = "1" ] && [ -n "${OUTER_TMUX_SOCKET:-}" ]; then
     tmux display-popup -E -w 80% -h 80% -d "$parent_path" -T " Bootstrap: $repo_name " \
-      "env OUTER_TMUX_SOCKET=\"${OUTER_TMUX_SOCKET}\" OUTER_TMUX_CLIENT=\"${OUTER_TMUX_CLIENT:-}\" bash -lc ',gh-tfork \"$repo_name\" || { echo; echo \"Bootstrap failed. Press any key to close.\"; read -n 1; exit 1; }'" ||
-      die "failed to initialize missing repo via ,gh-tfork: $repo_name"
+      "env OUTER_TMUX_SOCKET=\"${OUTER_TMUX_SOCKET}\" OUTER_TMUX_CLIENT=\"${OUTER_TMUX_CLIENT:-}\" bash -lc ',gh-tfork \"$repo_name\" || { echo; echo \"Bootstrap failed. Press any key to close.\"; read -n 1; exit 1; }'" \
+      || die "failed to initialize missing repo via ,gh-tfork: $repo_name"
     return 0
   fi
 
@@ -116,23 +116,23 @@ ensure_repo_worktree() {
   local show_progress_popup="${3:-0}"
   local wt="" conventional_repo_path=""
 
-  if wt="$(resolve_repo_worktree "$repo_path" 2>/dev/null)"; then
+  if wt="$(resolve_repo_worktree "$repo_path" 2> /dev/null)"; then
     printf '%s\n' "$wt"
     return 0
   fi
 
   conventional_repo_path="$(_conventional_repo_wrapper_path "$repo_name")"
-  if [ "$conventional_repo_path" != "$(expand_tilde "$repo_path")" ] &&
-    wt="$(resolve_repo_worktree "$conventional_repo_path" 2>/dev/null)"; then
+  if [ "$conventional_repo_path" != "$(expand_tilde "$repo_path")" ] \
+    && wt="$(resolve_repo_worktree "$conventional_repo_path" 2> /dev/null)"; then
     printf '%s\n' "$wt"
     return 0
   fi
 
   bootstrap_repo_with_tfork "$repo_name" "$show_progress_popup"
 
-  wt="$(resolve_repo_worktree "$conventional_repo_path" 2>/dev/null || true)"
+  wt="$(resolve_repo_worktree "$conventional_repo_path" 2> /dev/null || true)"
   if [ -z "$wt" ]; then
-    wt="$(resolve_repo_worktree "$repo_path" 2>/dev/null || true)"
+    wt="$(resolve_repo_worktree "$repo_path" 2> /dev/null || true)"
   fi
   [ -n "$wt" ] || die "could not find a git worktree under: $(expand_tilde "$conventional_repo_path")"
   printf '%s\n' "$wt"
@@ -140,11 +140,11 @@ ensure_repo_worktree() {
 
 require_tmux() {
   [ -n "${TMUX:-}" ] || die "TMUX is empty (this action expects tmux)"
-  command -v tmux >/dev/null 2>&1 || die "missing command: tmux"
+  command -v tmux > /dev/null 2>&1 || die "missing command: tmux"
 }
 
 require_cmd() {
-  command -v "$1" >/dev/null 2>&1 || die "missing command: $1"
+  command -v "$1" > /dev/null 2>&1 || die "missing command: $1"
 }
 
 outer_tmux() {
@@ -158,10 +158,10 @@ outer_tmux() {
 outer_tmux_fmt_for_client() {
   local fmt="$1"
   if [ -n "${OUTER_TMUX_SOCKET:-}" ] && [ -n "${OUTER_TMUX_CLIENT:-}" ]; then
-    outer_tmux display-message -p -c "${OUTER_TMUX_CLIENT}" -F "${fmt}" 2>/dev/null || true
+    outer_tmux display-message -p -c "${OUTER_TMUX_CLIENT}" -F "${fmt}" 2> /dev/null || true
     return 0
   fi
-  outer_tmux display-message -p -F "${fmt}" 2>/dev/null || true
+  outer_tmux display-message -p -F "${fmt}" 2> /dev/null || true
 }
 
 shell_join_quoted() {
@@ -232,76 +232,76 @@ if [ -z "$action" ] || [ -z "$repo_name" ] || [ -z "$pr_number" ]; then
 fi
 
 case "$pr_number" in
-*[!0-9]* | "") die "invalid pr number: $pr_number" ;;
+  *[!0-9]* | "") die "invalid pr number: $pr_number" ;;
 esac
 
 # Ensure chezmoi-installed commands are available.
 PATH="$HOME/bin:$PATH"
 bootstrap_progress_mode=0
 case "$action" in
-focus | octo_review)
-  bootstrap_progress_mode=1
-  ;;
+  focus | octo_review)
+    bootstrap_progress_mode=1
+    ;;
 esac
 
 wt="$(ensure_repo_worktree "$repo_name" "$repo_path" "$bootstrap_progress_mode")"
 
 case "$action" in
-focus)
-  cd "$wt"
-  require_cmd gh
-  require_cmd ,w
-  if [ "${GH_DASH_POPUP:-0}" = "1" ] && [ -n "${OUTER_TMUX_SOCKET:-}" ]; then
-    popup_run_self "$wt" " Worktree: PR #$pr_number " __popup_focus "$repo_name" "$repo_path" "$pr_number"
-  else
-    ,w prs -q --focus "$pr_number"
-  fi
-  ;;
+  focus)
+    cd "$wt"
+    require_cmd gh
+    require_cmd ,w
+    if [ "${GH_DASH_POPUP:-0}" = "1" ] && [ -n "${OUTER_TMUX_SOCKET:-}" ]; then
+      popup_run_self "$wt" " Worktree: PR #$pr_number " __popup_focus "$repo_name" "$repo_path" "$pr_number"
+    else
+      ,w prs -q --focus "$pr_number"
+    fi
+    ;;
 
-create_bg)
-  cd "$wt"
-  require_cmd gh
-  require_cmd ,w
-  log_dir="${XDG_CACHE_HOME:-$HOME/.cache}/gh-dash"
-  mkdir -p "$log_dir"
-  log="${log_dir}/w_prs_${pr_number}.log"
-  nohup ,w prs -q "$pr_number" >"$log" 2>&1 &
-  ;;
+  create_bg)
+    cd "$wt"
+    require_cmd gh
+    require_cmd ,w
+    log_dir="${XDG_CACHE_HOME:-$HOME/.cache}/gh-dash"
+    mkdir -p "$log_dir"
+    log="${log_dir}/w_prs_${pr_number}.log"
+    nohup ,w prs -q "$pr_number" > "$log" 2>&1 &
+    ;;
 
-octo_review)
-  cd "$wt"
-  require_tmux
-  require_cmd gh
-  require_cmd ,w
-  require_cmd nvim
+  octo_review)
+    cd "$wt"
+    require_tmux
+    require_cmd gh
+    require_cmd ,w
+    require_cmd nvim
 
-  if [ "${GH_DASH_POPUP:-0}" = "1" ] && [ -n "${OUTER_TMUX_SOCKET:-}" ]; then
-    popup_run_self "$wt" " Worktree: PR #$pr_number " __popup_octo_review "$repo_name" "$repo_path" "$pr_number"
-  else
-    ,w prs -q --focus "$pr_number"
+    if [ "${GH_DASH_POPUP:-0}" = "1" ] && [ -n "${OUTER_TMUX_SOCKET:-}" ]; then
+      popup_run_self "$wt" " Worktree: PR #$pr_number " __popup_octo_review "$repo_name" "$repo_path" "$pr_number"
+    else
+      ,w prs -q --focus "$pr_number"
+      open_octo_review_window "$wt" "$pr_number" "$repo_name"
+    fi
+    ;;
+
+  __popup_focus)
+    cd "$wt"
+    require_cmd gh
+    require_cmd ,w
+    run_focus_in_popup "$pr_number"
+    ;;
+
+  __popup_octo_review)
+    cd "$wt"
+    require_tmux
+    require_cmd gh
+    require_cmd ,w
+    require_cmd nvim
+    run_focus_in_popup "$pr_number"
     open_octo_review_window "$wt" "$pr_number" "$repo_name"
-  fi
-  ;;
+    ;;
 
-__popup_focus)
-  cd "$wt"
-  require_cmd gh
-  require_cmd ,w
-  run_focus_in_popup "$pr_number"
-  ;;
-
-__popup_octo_review)
-  cd "$wt"
-  require_tmux
-  require_cmd gh
-  require_cmd ,w
-  require_cmd nvim
-  run_focus_in_popup "$pr_number"
-  open_octo_review_window "$wt" "$pr_number" "$repo_name"
-  ;;
-
-*)
-  usage >&2
-  exit 1
-  ;;
+  *)
+    usage >&2
+    exit 1
+    ;;
 esac

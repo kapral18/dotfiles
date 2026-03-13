@@ -9,37 +9,40 @@ If you have not used `chezmoi` before, start at
 
 ## Source Layout
 
-- `home/` contains files that will be written into `$HOME`.
+- [`home/`](../../home/) contains files that will be written into `$HOME`.
 - Templates use `*.tmpl` and access `chezmoi` data (like `.isWork`).
-- Hooks live in `home/.chezmoiscripts/`.
-- Externals live in `home/.chezmoiexternal.toml`.
+- Hooks live in [`home/.chezmoiscripts/`](../../home/.chezmoiscripts/).
+- Externals live in
+  [`home/.chezmoiexternal.toml`](../../home/.chezmoiexternal.toml).
 
-If you are reading the source on GitHub, you can treat `home/` as "what gets
-installed".
+If you are reading the source on GitHub, you can treat [`home/`](../../home/) as
+"what gets installed".
 
 ## Render Model
 
 Prompt definitions and computed values are defined in:
 
-- `home/.chezmoi.toml.tmpl`
+- [`home/.chezmoi.toml.tmpl`](../../home/.chezmoi.toml.tmpl)
 
-This is where machine-specific values are decided (for example `isWork`,
-emails, `homebrewPrefix`, and cache TTL values).
+This is where machine-specific values are decided (for example `isWork`, emails,
+`homebrewPrefix`, and cache TTL values).
 
 If something renders differently than expected, start by inspecting this file.
 
 ## Hook Pipeline (High Signal)
 
 The first-run and converge flow is driven by ordered scripts in
-`home/.chezmoiscripts/`:
+[`home/.chezmoiscripts/`](../../home/.chezmoiscripts/):
 
-- `run_once_before_00-install-xcode.sh`
-- `run_once_after_01-install-brew.sh`
-- `run_once_after_02-install-fish.sh`
-- `run_onchange_after_03-install-brew-packages.fish.tmpl`
-- `run_onchange_after_04-update-fish-packages.fish.tmpl`
-- `run_onchange_after_05-*` package, OS, and integration scripts
-- `run_onchange_after_06-update-uv-tools.sh.tmpl`
+| Order | Hook                                                    | Purpose                              |
+| ----- | ------------------------------------------------------- | ------------------------------------ |
+| 00    | `run_once_before_00-install-xcode.sh`                   | Xcode CLT                            |
+| 01    | `run_once_after_01-install-brew.sh`                     | Homebrew install                     |
+| 02    | `run_once_after_02-install-fish.sh`                     | Fish install + login shell           |
+| 03    | `run_onchange_after_03-install-brew-packages.fish.tmpl` | Brew bundle                          |
+| 04    | `run_onchange_after_04-update-fish-packages.fish.tmpl`  | Fish plugins                         |
+| 05    | `run_onchange_after_05-*`                               | Package, OS, and integration scripts |
+| 06    | `run_onchange_after_06-update-uv-tools.sh.tmpl`         | uv global tools                      |
 
 This is the first place to look when `chezmoi apply` fails.
 
@@ -99,7 +102,10 @@ If a script fails with `command not found`, check whether its prerequisite hook
 
 ## Related
 
-- New machine bootstrap: [`docs/recipes/new-machine-bootstrap.md`](../recipes/new-machine-bootstrap.md)
-- Debugging hooks: [`docs/recipes/debugging-chezmoi-hooks.md`](../recipes/debugging-chezmoi-hooks.md)
-- Refreshing externals: [`docs/recipes/refreshing-externals.md`](../recipes/refreshing-externals.md)
+- New machine bootstrap:
+  [`docs/recipes/new-machine-bootstrap.md`](../recipes/new-machine-bootstrap.md)
+- Debugging hooks:
+  [`docs/recipes/debugging-chezmoi-hooks.md`](../recipes/debugging-chezmoi-hooks.md)
+- Refreshing externals:
+  [`docs/recipes/refreshing-externals.md`](../recipes/refreshing-externals.md)
 - Updating: [`docs/recipes/updating.md`](../recipes/updating.md)

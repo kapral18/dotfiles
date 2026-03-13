@@ -30,31 +30,31 @@ display_dir_entry() {
 wait_ms="${PICK_SESSION_CACHE_WAIT_MS:-0}"
 mutation_ttl="${PICK_SESSION_MUTATION_TOMBSTONE_TTL:-300}"
 if [ -n "${TMUX:-}" ]; then
-  wait_ms="$(tmux show-option -gqv '@pick_session_cache_wait_ms' 2>/dev/null || printf '%s' "$wait_ms")"
-  mutation_ttl="$(tmux show-option -gqv '@pick_session_mutation_tombstone_ttl' 2>/dev/null || printf '%s' "$mutation_ttl")"
-  session_tombstone_live_grace_s="$(tmux show-option -gqv '@pick_session_session_tombstone_live_grace_s' 2>/dev/null || printf '%s' "$session_tombstone_live_grace_s")"
+  wait_ms="$(tmux show-option -gqv '@pick_session_cache_wait_ms' 2> /dev/null || printf '%s' "$wait_ms")"
+  mutation_ttl="$(tmux show-option -gqv '@pick_session_mutation_tombstone_ttl' 2> /dev/null || printf '%s' "$mutation_ttl")"
+  session_tombstone_live_grace_s="$(tmux show-option -gqv '@pick_session_session_tombstone_live_grace_s' 2> /dev/null || printf '%s' "$session_tombstone_live_grace_s")"
 fi
 case "$wait_ms" in
-'' | *[!0-9]*) wait_ms=0 ;;
+  '' | *[!0-9]*) wait_ms=0 ;;
 esac
 case "$mutation_ttl" in
-'' | *[!0-9]*) mutation_ttl=300 ;;
+  '' | *[!0-9]*) mutation_ttl=300 ;;
 esac
 case "$session_tombstone_live_grace_s" in
-'' | *[!0-9]*) session_tombstone_live_grace_s=2 ;;
+  '' | *[!0-9]*) session_tombstone_live_grace_s=2 ;;
 esac
 
 fixup_current_marker() {
   local file="$1"
   local cur=""
   if [ -n "${TMUX:-}" ]; then
-    cur="$(tmux display-message -p '#S' 2>/dev/null || true)"
+    cur="$(tmux display-message -p '#S' 2> /dev/null || true)"
   fi
   if [ -z "$cur" ]; then
     cat "$file"
     return
   fi
-  CURRENT="$cur" python3 -u - "$file" <<'PY'
+  CURRENT="$cur" python3 -u - "$file" << 'PY'
 import os, signal, sys
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 current = os.environ.get("CURRENT", "")
@@ -82,15 +82,15 @@ fi
 
 if [ "$cache_was_present" -eq 1 ]; then
   cache_has_dir_rows=0
-  if awk -F $'\t' 'NF>=5 && $2 == "dir" { found=1; exit } END { exit(found?0:1) }' "$cache_file" 2>/dev/null; then
+  if awk -F $'\t' 'NF>=5 && $2 == "dir" { found=1; exit } END { exit(found?0:1) }' "$cache_file" 2> /dev/null; then
     cache_has_dir_rows=1
   fi
 
   # Light path: when cache has only session rows, skip full Python rehydration.
   # Tombstone filtering only (no worktree promotion).
-  if awk -F $'\t' 'NF>=5 && ($2=="worktree" || $2=="dir") { exit 1 }' "$cache_file" 2>/dev/null; then
-    if command -v tmux >/dev/null 2>&1 && [ -n "${TMUX:-}" ] && command -v python3 >/dev/null 2>&1; then
-      MUTATIONS_FILE="$mutation_file" PENDING_FILE="$pending_file" MUTATION_TTL="$mutation_ttl" SESSION_TOMBSTONE_LIVE_GRACE_S="$session_tombstone_live_grace_s" python3 -u - "$cache_file" <<'PYLIGHT'
+  if awk -F $'\t' 'NF>=5 && ($2=="worktree" || $2=="dir") { exit 1 }' "$cache_file" 2> /dev/null; then
+    if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ] && command -v python3 > /dev/null 2>&1; then
+      MUTATIONS_FILE="$mutation_file" PENDING_FILE="$pending_file" MUTATION_TTL="$mutation_ttl" SESSION_TOMBSTONE_LIVE_GRACE_S="$session_tombstone_live_grace_s" python3 -u - "$cache_file" << 'PYLIGHT'
 import os
 import signal
 import sys
@@ -315,9 +315,9 @@ PYLIGHT
   fi
 
   # Full rehydration when cache has worktree/dir rows (session promotion, etc.)
-  if command -v tmux >/dev/null 2>&1 && [ -n "${TMUX:-}" ] && command -v python3 >/dev/null 2>&1; then
-    scan_roots_raw="$(tmux show-option -gqv '@pick_session_worktree_scan_roots' 2>/dev/null || printf '%s' "$HOME/work,$HOME/code,$HOME/.backport/repositories,$HOME/.local/share")"
-    MUTATIONS_FILE="$mutation_file" PENDING_FILE="$pending_file" MUTATION_TTL="$mutation_ttl" SESSION_TOMBSTONE_LIVE_GRACE_S="$session_tombstone_live_grace_s" PICK_SESSION_SCAN_ROOTS="$scan_roots_raw" python3 -u - "$cache_file" <<'PY'
+  if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ] && command -v python3 > /dev/null 2>&1; then
+    scan_roots_raw="$(tmux show-option -gqv '@pick_session_worktree_scan_roots' 2> /dev/null || printf '%s' "$HOME/work,$HOME/code,$HOME/.backport/repositories,$HOME/.local/share")"
+    MUTATIONS_FILE="$mutation_file" PENDING_FILE="$pending_file" MUTATION_TTL="$mutation_ttl" SESSION_TOMBSTONE_LIVE_GRACE_S="$session_tombstone_live_grace_s" PICK_SESSION_SCAN_ROOTS="$scan_roots_raw" python3 -u - "$cache_file" << 'PY'
 import os
 import re
 import signal
@@ -753,13 +753,13 @@ PY
 fi
 
 # Kick off a background refresh if we're inside tmux.
-if command -v tmux >/dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
+if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
   # If the cache is missing, prefer a full refresh in the background so the
   # next open (or a ctrl-r) has complete data.
   if [ "$cache_was_present" -eq 1 ]; then
-    tmux run-shell -b "$HOME/.config/tmux/scripts/pick_session/index_update.sh --quiet --quick-only" 2>/dev/null || true
+    tmux run-shell -b "$HOME/.config/tmux/scripts/pick_session/index_update.sh --quiet --quick-only" 2> /dev/null || true
   else
-    tmux run-shell -b "$HOME/.config/tmux/scripts/pick_session/index_update.sh --quiet" 2>/dev/null || true
+    tmux run-shell -b "$HOME/.config/tmux/scripts/pick_session/index_update.sh --quiet" 2> /dev/null || true
   fi
 fi
 
@@ -777,40 +777,40 @@ done
 
 # Fallback: tmux sessions + zoxide recent dirs (if available) + home.
 # Sort sessions by path so same-repo sessions (e.g. ~/work/kibana, ~/code/kibana) group together.
-if command -v tmux >/dev/null 2>&1; then
-  cur="$(tmux display-message -p '#S' 2>/dev/null || true)"
+if command -v tmux > /dev/null 2>&1; then
+  cur="$(tmux display-message -p '#S' 2> /dev/null || true)"
   tmp_sessions="$(mktemp -t pick_session_fallback.XXXXXX)"
-  tmux list-sessions -F $'#{session_name}\t#{session_path}' 2>/dev/null | while IFS=$'\t' read -r name path; do
+  tmux list-sessions -F $'#{session_name}\t#{session_path}' 2> /dev/null | while IFS=$'\t' read -r name path; do
     [ -n "$name" ] || continue
     [ "$name" = "$cur" ] && continue
     tpath="$path"
     # shellcheck disable=SC2088
     case "$path" in
-    "$HOME") tpath="~" ;;
-    "$HOME"/*) tpath="~/${path#"$HOME"/}" ;;
+      "$HOME") tpath="~" ;;
+      "$HOME"/*) tpath="~/${path#"$HOME"/}" ;;
     esac
     # shellcheck disable=SC2088
-    base="$(basename "$path" 2>/dev/null || printf '%s' "$path")"
+    base="$(basename "$path" 2> /dev/null || printf '%s' "$path")"
     mk="${name} ${base} ${tpath} ${path}"
     printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$(display_session_entry "$name" "$tpath")" "session" "$path" "" "$name" "$mk"
-  done >"$tmp_sessions"
+  done > "$tmp_sessions"
   [ -s "$tmp_sessions" ] && sort -t$'\t' -k3 "$tmp_sessions"
   rm -f "$tmp_sessions"
 fi
 
 # Add zoxide recent dirs (if available) for snappy discovery like tmux-session-wizard.
-if command -v zoxide >/dev/null 2>&1; then
-  zoxide query -l 2>/dev/null | while IFS= read -r path; do
+if command -v zoxide > /dev/null 2>&1; then
+  zoxide query -l 2> /dev/null | while IFS= read -r path; do
     [ -n "$path" ] || continue
     [ -d "$path" ] || continue
     [ "$path" = "$HOME" ] && continue
     tpath="$path"
     # shellcheck disable=SC2088
     case "$path" in
-    "$HOME") tpath="~" ;;
-    "$HOME"/*) tpath="~/${path#"$HOME"/}" ;;
+      "$HOME") tpath="~" ;;
+      "$HOME"/*) tpath="~/${path#"$HOME"/}" ;;
     esac
-    base="$(basename "$path" 2>/dev/null || printf '%s' "$path")"
+    base="$(basename "$path" 2> /dev/null || printf '%s' "$path")"
     mk="${base} ${tpath} ${path}"
     printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$(display_dir_entry "$tpath")" "dir" "$path" "" "" "$mk"
   done

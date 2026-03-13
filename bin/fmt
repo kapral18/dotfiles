@@ -1,0 +1,198 @@
+#!/usr/bin/env bash
+if [ "${BASH_VERSINFO[0]:-0}" -lt 4 ]; then
+  _b="$(brew --prefix bash 2>/dev/null)/bin/bash"
+  [ -x "$_b" ] && exec "$_b" "$0" "$@"
+  printf 'error: bash 4+ required (mapfile)\n' >&2
+  exit 1
+fi
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
+
+usage() {
+  cat <<'EOF'
+Usage: bin/fmt [--check] [--type TYPE] [FILES...]
+
+Format source files in this dotfiles repo.
+
+Options:
+  --check       Check formatting without writing (exit 1 if unformatted)
+  --type TYPE   Only run one formatter: md, json, yaml, sh, lua, fish, py
+  (no args)     Format all tracked files
+
+Formatters:
+  md, json, yaml  prettier
+  sh               shfmt (2-space, bash)
+  lua              stylua
+  fish             fish_indent
+  py               ruff format
+EOF
+  exit 0
+}
+
+check_mode=false
+type_filter=""
+files=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --check) check_mode=true; shift ;;
+    --type)  type_filter="$2"; shift 2 ;;
+    --help|-h) usage ;;
+    *) files+=("$1"); shift ;;
+  esac
+done
+
+need_cmd() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    printf 'missing: %s (install via: brew install %s)\n' "$1" "${2:-$1}" >&2
+    return 1
+  fi
+}
+
+ok=true
+
+IGNORE_PATTERNS=(
+  "home/Alfred.alfredpreferences/"
+)
+
+is_ignored() {
+  local f="$1"
+  for pat in "${IGNORE_PATTERNS[@]}"; do
+    [[ "$f" == "$pat"* ]] && return 0
+  done
+  return 1
+}
+
+collect_files() {
+  local ext="$1"
+  if [[ ${#files[@]} -gt 0 ]]; then
+    for f in "${files[@]}"; do
+      case "$f" in *"$ext") is_ignored "$f" || echo "$f" ;; esac
+    done
+  else
+    while IFS= read -r f; do
+      is_ignored "$f" || echo "$f"
+    done < <(git ls-files -- "*$ext" 2>/dev/null || true)
+  fi
+}
+
+should_run() {
+  [[ -z "$type_filter" || "$type_filter" == "$1" ]]
+}
+
+# --- prettier: md, json, yaml (bulk invocation) ---
+if should_run md || should_run json || should_run yaml; then
+  need_cmd prettier || exit 1
+  mapfile -t prettier_files < <(
+    {
+      should_run md   && collect_files .md
+      should_run json && { collect_files .json; collect_files .jsonc; }
+      should_run yaml && { collect_files .yaml; collect_files .yml; }
+    } | sort -u
+  )
+  if [[ ${#prettier_files[@]} -gt 0 ]]; then
+    if $check_mode; then
+      printf 'prettier: checking %d files\n' "${#prettier_files[@]}"
+      if ! prettier --check "${prettier_files[@]}" 2>/dev/null; then
+        ok=false
+      fi
+    else
+      printf 'prettier: formatting %d files\n' "${#prettier_files[@]}"
+      prettier --write "${prettier_files[@]}" 2>/dev/null
+    fi
+  fi
+fi
+
+# --- shfmt: shell scripts (bulk invocation) ---
+if should_run sh; then
+  need_cmd shfmt || exit 1
+  mapfile -t sh_files < <(
+    { collect_files .sh; collect_files .sh.tmpl; } | sort -u
+  )
+  if [[ ${#sh_files[@]} -gt 0 ]]; then
+    if $check_mode; then
+      printf 'shfmt: checking %d files\n' "${#sh_files[@]}"
+      if ! shfmt -d "${sh_files[@]}" >/dev/null 2>&1; then
+        ok=false
+        shfmt -l "${sh_files[@]}" 2>/dev/null | sed 's/^/  unformatted: /'
+      fi
+    else
+      printf 'shfmt: formatting %d files\n' "${#sh_files[@]}"
+      shfmt -w "${sh_files[@]}"
+    fi
+  fi
+fi
+
+# --- stylua: lua (bulk invocation) ---
+if should_run lua; then
+  need_cmd stylua || exit 1
+  mapfile -t lua_files < <(collect_files .lua | sort -u)
+  if [[ ${#lua_files[@]} -gt 0 ]]; then
+    if $check_mode; then
+      printf 'stylua: checking %d files\n' "${#lua_files[@]}"
+      if ! stylua --check "${lua_files[@]}" >/dev/null 2>&1; then
+        ok=false
+        stylua --check "${lua_files[@]}" 2>&1 | grep 'Diff' | sed 's/^.*in /  unformatted: /' || true
+      fi
+    else
+      printf 'stylua: formatting %d files\n' "${#lua_files[@]}"
+      stylua "${lua_files[@]}"
+    fi
+  fi
+fi
+
+# --- fish_indent: fish (one at a time — fish_indent has no bulk mode) ---
+if should_run fish; then
+  need_cmd fish_indent fish || exit 1
+  mapfile -t fish_files < <(collect_files .fish | sort -u)
+  if [[ ${#fish_files[@]} -gt 0 ]]; then
+    fish_bad=0
+    if $check_mode; then
+      printf 'fish_indent: checking %d files\n' "${#fish_files[@]}"
+      for f in "${fish_files[@]}"; do
+        [[ -f "$f" ]] || continue
+        if ! diff -q <(fish_indent < "$f") "$f" >/dev/null 2>&1; then
+          printf '  unformatted: %s\n' "$f"
+          ((fish_bad++)) || true
+        fi
+      done
+      [[ $fish_bad -eq 0 ]] || ok=false
+    else
+      printf 'fish_indent: formatting %d files\n' "${#fish_files[@]}"
+      for f in "${fish_files[@]}"; do
+        [[ -f "$f" ]] || continue
+        fish_indent -w "$f"
+      done
+    fi
+  fi
+fi
+
+# --- ruff: python (bulk invocation) ---
+if should_run py; then
+  need_cmd ruff || exit 1
+  mapfile -t py_files < <(collect_files .py | sort -u)
+  if [[ ${#py_files[@]} -gt 0 ]]; then
+    if $check_mode; then
+      printf 'ruff: checking %d files\n' "${#py_files[@]}"
+      if ! ruff format --check "${py_files[@]}" >/dev/null 2>&1; then
+        ok=false
+        ruff format --check "${py_files[@]}" 2>&1 | grep 'Would reformat' | sed 's/^/  /' || true
+      fi
+    else
+      printf 'ruff: formatting %d files\n' "${#py_files[@]}"
+      ruff format "${py_files[@]}" >/dev/null 2>&1
+    fi
+  fi
+fi
+
+# --- summary ---
+if $check_mode; then
+  if $ok; then
+    printf '\nAll files formatted correctly.\n'
+  else
+    printf '\nSome files need formatting. Run bin/fmt to fix.\n'
+    exit 1
+  fi
+fi

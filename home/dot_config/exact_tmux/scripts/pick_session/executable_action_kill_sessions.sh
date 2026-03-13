@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Re-exec under a modern bash when macOS ships bash 3.2 as /bin/bash.
 if [ "${BASH_VERSINFO[0]:-0}" -lt 4 ]; then
-  _b="$(brew --prefix bash 2>/dev/null)/bin/bash"
+  _b="$(brew --prefix bash 2> /dev/null)/bin/bash"
   [ -x "$_b" ] && exec "$_b" "$0" "$@"
   exit 1
 fi
@@ -20,14 +20,14 @@ mkdir -p "$cache_dir"
 lock_dir="${cache_file}.lock"
 acquire_lock() {
   local waited=0
-  while ! mkdir "$lock_dir" 2>/dev/null; do
+  while ! mkdir "$lock_dir" 2> /dev/null; do
     sleep 0.02
     waited="$((waited + 20))"
     [ "$waited" -ge 200 ] && return 1
   done
   return 0
 }
-release_lock() { rmdir "$lock_dir" 2>/dev/null || true; }
+release_lock() { rmdir "$lock_dir" 2> /dev/null || true; }
 
 declare -a sess=()
 declare -a dirs_to_remove=()
@@ -35,7 +35,7 @@ declare -a wt_paths=()
 
 while IFS= read -r _line; do
   [ -n "$_line" ] || continue
-  mapfile -t _fields < <(awk -F $'\t' '{print $1; print $2; print $3; print $4; print $5}' <<<"$_line")
+  mapfile -t _fields < <(awk -F $'\t' '{print $1; print $2; print $3; print $4; print $5}' <<< "$_line")
   kind="${_fields[1]-}"
   path="${_fields[2]-}"
   target="${_fields[4]-}"
@@ -51,28 +51,28 @@ while IFS= read -r _line; do
       wt_paths+=("$path")
     fi
   fi
-done <"$sel_file"
+done < "$sel_file"
 
 declare -a paths_to_check=("${dirs_to_remove[@]}" "${wt_paths[@]}")
 
-if [ ${#paths_to_check[@]} -gt 0 ] && command -v tmux >/dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
+if [ ${#paths_to_check[@]} -gt 0 ] && command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
   while IFS=$'\t' read -r name spath; do
     [ -n "$name" ] || continue
     [ -n "$spath" ] || continue
-    spath="$(realpath "$spath" 2>/dev/null || printf '%s' "$spath")"
+    spath="$(realpath "$spath" 2> /dev/null || printf '%s' "$spath")"
     for d in "${paths_to_check[@]}"; do
-      rd="$(realpath "$d" 2>/dev/null || printf '%s' "$d")"
+      rd="$(realpath "$d" 2> /dev/null || printf '%s' "$d")"
       if [ "$spath" = "$rd" ] || [[ "$spath" == "$rd"/* ]]; then
         sess+=("$name")
         break
       fi
     done
-  done < <(tmux list-sessions -F $'#{session_name}\t#{session_path}' 2>/dev/null || true)
+  done < <(tmux list-sessions -F $'#{session_name}\t#{session_path}' 2> /dev/null || true)
 fi
 
-if [ ${#dirs_to_remove[@]} -gt 0 ] && command -v zoxide >/dev/null 2>&1; then
+if [ ${#dirs_to_remove[@]} -gt 0 ] && command -v zoxide > /dev/null 2>&1; then
   for d in "${dirs_to_remove[@]}"; do
-    zoxide remove "$d" 2>/dev/null || true
+    zoxide remove "$d" 2> /dev/null || true
   done
 fi
 
@@ -82,9 +82,9 @@ fi
 
 [ ${#sess[@]} -gt 0 ] || [ ${#dirs_to_remove[@]} -gt 0 ] || exit 0
 
-if [ ${#sess[@]} -gt 0 ] && command -v tmux >/dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
+if [ ${#sess[@]} -gt 0 ] && command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
   for s in "${sess[@]}"; do
-    tmux kill-session -t "$s" 2>/dev/null || true
+    tmux kill-session -t "$s" 2> /dev/null || true
   done
 fi
 
@@ -98,7 +98,7 @@ now_epoch="$(date +%s)"
     [ -n "$d" ] || continue
     printf '%s\tPATH_PREFIX\t%s\n' "$now_epoch" "$d"
   done
-} >>"$mutation_file"
+} >> "$mutation_file"
 
 if [ ! -f "$cache_file" ]; then
   exit 0
@@ -109,7 +109,7 @@ if ! acquire_lock; then
 fi
 trap release_lock EXIT
 
-CACHE_FILE="$cache_file" SESSIONS="$(printf '%s\n' "${sess[@]}")" DIRS="$(printf '%s\n' "${dirs_to_remove[@]}")" python3 - <<'PY'
+CACHE_FILE="$cache_file" SESSIONS="$(printf '%s\n' "${sess[@]}")" DIRS="$(printf '%s\n' "${dirs_to_remove[@]}")" python3 - << 'PY'
 import os
 import sys
 

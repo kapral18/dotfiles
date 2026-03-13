@@ -8,8 +8,9 @@ description: |-
 
 # Kibana Management Ownership Guidance
 
-This guidance is derived from a point-in-time scan of `elastic/kibana` `.github/CODEOWNERS`.
-Always verify against the current CODEOWNERS in the repo when in doubt.
+This guidance is derived from a point-in-time scan of `elastic/kibana`
+`.github/CODEOWNERS`. Always verify against the current CODEOWNERS in the repo
+when in doubt.
 
 Use when:
 
@@ -26,7 +27,8 @@ Use it to:
 
 Do not use:
 
-- you cannot verify the current repo is `elastic/kibana` or you don't have the repo's current CODEOWNERS available
+- you cannot verify the current repo is `elastic/kibana` or you don't have the
+  repo's current CODEOWNERS available
 - the change is clearly outside the listed owned areas
 
 First actions:
@@ -41,8 +43,8 @@ Output:
 
 - Return the exact paths or areas you mapped, the current ownership signal you
   verified, and any remaining heuristic guess separately.
-- Do not present this file's excerpt as authoritative when the live
-  CODEOWNERS check is missing.
+- Do not present this file's excerpt as authoritative when the live CODEOWNERS
+  check is missing.
 
 Owned areas (non-exhaustive excerpt):
 

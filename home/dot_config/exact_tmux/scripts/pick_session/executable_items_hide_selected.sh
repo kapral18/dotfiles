@@ -10,7 +10,7 @@ if [ -z "$sel_file" ] || [ ! -f "$sel_file" ] || [ ! -x "$items_cmd" ]; then
   exec "$items_cmd"
 fi
 
-python3 -u - "$sel_file" "$items_cmd" "$mode" "$query" <<'PY'
+python3 -u - "$sel_file" "$items_cmd" "$mode" "$query" << 'PY'
 import os
 import re
 import signal

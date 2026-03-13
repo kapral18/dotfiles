@@ -6,7 +6,7 @@ source "$(dirname "$0")/../bash_utils_lib.sh"
 source "$(dirname "$0")/../worktree_lib.sh"
 
 show_usage() {
-  cat <<EOF
+  cat << EOF
 Usage: ,w ls [--porcelain] [--selectable] [--long] [--dirty] [--full-path] [--no-header] [--no-column] [--sort branch|path]
 
 List git worktrees.
@@ -35,51 +35,51 @@ sort_mode="branch"
 
 while [ $# -gt 0 ]; do
   case "$1" in
-  -h | --help)
-    show_usage
-    exit 0
-    ;;
-  --porcelain)
-    porcelain=1
-    shift
-    ;;
-  --selectable)
-    selectable=1
-    shift
-    ;;
-  --long)
-    long_mode=1
-    shift
-    ;;
-  --dirty)
-    dirty_mode=1
-    shift
-    ;;
-  --full-path)
-    full_path=1
-    shift
-    ;;
-  --no-header)
-    no_header=1
-    shift
-    ;;
-  --no-column)
-    no_column=1
-    shift
-    ;;
-  --sort)
-    if [ $# -lt 2 ]; then
+    -h | --help)
+      show_usage
+      exit 0
+      ;;
+    --porcelain)
+      porcelain=1
+      shift
+      ;;
+    --selectable)
+      selectable=1
+      shift
+      ;;
+    --long)
+      long_mode=1
+      shift
+      ;;
+    --dirty)
+      dirty_mode=1
+      shift
+      ;;
+    --full-path)
+      full_path=1
+      shift
+      ;;
+    --no-header)
+      no_header=1
+      shift
+      ;;
+    --no-column)
+      no_column=1
+      shift
+      ;;
+    --sort)
+      if [ $# -lt 2 ]; then
+        show_usage
+        exit 1
+      fi
+      sort_mode="$2"
+      shift 2
+      ;;
+    *)
+      echo "Error: Unknown option '$1'" >&2
       show_usage
       exit 1
-    fi
-    sort_mode="$2"
-    shift 2
-    ;;
-  *)
-    echo "Error: Unknown option '$1'" >&2
-    show_usage
-    exit 1
-    ;;
+      ;;
   esac
 done
 
@@ -88,11 +88,11 @@ if [ "$porcelain" -eq 1 ]; then
 fi
 
 case "$sort_mode" in
-branch | path) ;;
-*)
-  echo "Error: invalid --sort '$sort_mode' (use: branch|path)." >&2
-  exit 1
-  ;;
+  branch | path) ;;
+  *)
+    echo "Error: invalid --sort '$sort_mode' (use: branch|path)." >&2
+    exit 1
+    ;;
 esac
 
 line=""
@@ -108,15 +108,15 @@ locked=0
 parent_dir=$(_get_worktree_parent_dir)
 parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
 pwd_path="$PWD"
-default_branch="$(git config --get init.defaultbranch 2>/dev/null || echo "main")"
+default_branch="$(git config --get init.defaultbranch 2> /dev/null || echo "main")"
 
 tmux_sessions_file=""
 tmux_sessions=()
-if [ "$selectable" -eq 0 ] && command -v tmux >/dev/null 2>&1; then
+if [ "$selectable" -eq 0 ] && command -v tmux > /dev/null 2>&1; then
   while IFS= read -r session; do
     [ -z "$session" ] && continue
     tmux_sessions+=("$session")
-  done < <(_comma_w_tmux list-sessions -F '#{session_name}' 2>/dev/null || true)
+  done < <(_comma_w_tmux list-sessions -F '#{session_name}' 2> /dev/null || true)
 fi
 
 relpath_for() {
@@ -126,20 +126,20 @@ relpath_for() {
     return 0
   fi
   case "$p" in
-  "$parent_dir"/*)
-    printf '%s\n' "${p#"$parent_dir"/}"
-    ;;
-  *)
-    printf '%s\n' "$p"
-    ;;
+    "$parent_dir"/*)
+      printf '%s\n' "${p#"$parent_dir"/}"
+      ;;
+    *)
+      printf '%s\n' "$p"
+      ;;
   esac
 }
 
 is_current() {
   local p="$1"
   case "$pwd_path" in
-  "$p") return 0 ;;
-  "$p"/*) return 0 ;;
+    "$p") return 0 ;;
+    "$p"/*) return 0 ;;
   esac
   return 1
 }
@@ -155,7 +155,7 @@ if [ "$selectable" -eq 0 ]; then
     fi
     upstream_branches+=("$branch")
     upstream_values+=("$upstream")
-  done < <(git for-each-ref --format="%(refname:short)${tab_char}%(upstream:short)" refs/heads 2>/dev/null || true)
+  done < <(git for-each-ref --format="%(refname:short)${tab_char}%(upstream:short)" refs/heads 2> /dev/null || true)
 fi
 
 upstream_for_branch() {
@@ -174,7 +174,7 @@ ahead_behind_for() {
   local left="$1"
   local right="$2"
   local counts
-  counts="$(git rev-list --left-right --count "${left}...${right}" 2>/dev/null || true)"
+  counts="$(git rev-list --left-right --count "${left}...${right}" 2> /dev/null || true)"
   if [ -z "$counts" ]; then
     printf '%s\t%s\n' "-" "-"
     return 0
@@ -217,7 +217,7 @@ dirty_for_path() {
     return 0
   fi
 
-  if IFS= read -r -d '' _ < <(GIT_OPTIONAL_LOCKS=0 git -C "$p" status --porcelain=v1 -uno -z 2>/dev/null); then
+  if IFS= read -r -d '' _ < <(GIT_OPTIONAL_LOCKS=0 git -C "$p" status --porcelain=v1 -uno -z 2> /dev/null); then
     printf '%s\n' "!"
     return 0
   fi
@@ -317,38 +317,38 @@ while IFS= read -r line; do
   value="${line#* }"
 
   case "$key" in
-  worktree)
-    emit >>"$rows_file"
-    worktree_path="$value"
-    branch_ref=""
-    head_sha=""
-    detached=0
-    locked=0
-    ;;
-  HEAD)
-    head_sha="$value"
-    ;;
-  branch)
-    branch_ref="$value"
-    ;;
-  detached)
-    detached=1
-    ;;
-  locked)
-    locked=1
-    ;;
+    worktree)
+      emit >> "$rows_file"
+      worktree_path="$value"
+      branch_ref=""
+      head_sha=""
+      detached=0
+      locked=0
+      ;;
+    HEAD)
+      head_sha="$value"
+      ;;
+    branch)
+      branch_ref="$value"
+      ;;
+    detached)
+      detached=1
+      ;;
+    locked)
+      locked=1
+      ;;
   esac
 done < <(git worktree list --porcelain)
-emit >>"$rows_file"
+emit >> "$rows_file"
 
 sorted_file="$(mktemp -t ,w-ls-sorted.XXXXXX)"
 trap 'rm -f "$sorted_file" || true; cleanup' EXIT
 
 if [ "$selectable" -eq 1 ]; then
   if [ "$sort_mode" = "path" ]; then
-    sort -t $'\t' -k 2,2 "$rows_file" >"$sorted_file"
+    sort -t $'\t' -k 2,2 "$rows_file" > "$sorted_file"
   else
-    sort -t $'\t' -k 1,1 "$rows_file" >"$sorted_file"
+    sort -t $'\t' -k 1,1 "$rows_file" > "$sorted_file"
   fi
   cat "$sorted_file"
   exit 0
@@ -359,7 +359,7 @@ if [ "$sort_mode" = "path" ]; then
 else
   sort_key=3
 fi
-sort -t $'\t' -k 1,1n -k "${sort_key},${sort_key}" "$rows_file" >"$sorted_file"
+sort -t $'\t' -k 1,1n -k "${sort_key},${sort_key}" "$rows_file" > "$sorted_file"
 
 output_file="$(mktemp -t ,w-ls-out.XXXXXX)"
 trap 'rm -f "$output_file" || true; rm -f "$sorted_file" || true; cleanup' EXIT
@@ -393,10 +393,10 @@ trap 'rm -f "$output_file" || true; rm -f "$sorted_file" || true; cleanup' EXIT
       cut -f 2,3,4,5,9,10 "$sorted_file"
     fi
   fi
-} >"$output_file"
+} > "$output_file"
 
-if [ "$no_column" -eq 0 ] && command -v column >/dev/null 2>&1 && [ -t 1 ]; then
-  column -t -s $'\t' <"$output_file"
+if [ "$no_column" -eq 0 ] && command -v column > /dev/null 2>&1 && [ -t 1 ]; then
+  column -t -s $'\t' < "$output_file"
 else
   cat "$output_file"
 fi

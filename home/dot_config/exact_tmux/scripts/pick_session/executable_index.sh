@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Re-exec under a modern bash when macOS ships bash 3.2 as /bin/bash.
 if [ "${BASH_VERSINFO[0]:-0}" -lt 4 ]; then
-  _b="$(brew --prefix bash 2>/dev/null)/bin/bash"
+  _b="$(brew --prefix bash 2> /dev/null)/bin/bash"
   [ -x "$_b" ] && exec "$_b" "$0" "$@"
   exit 1
 fi
@@ -9,14 +9,14 @@ set -euo pipefail
 
 need_cmd() {
   local cmd="$1"
-  command -v "${cmd}" >/dev/null 2>&1
+  command -v "${cmd}" > /dev/null 2>&1
 }
 
 tmux_opt() {
   local key="$1"
   local default_value="$2"
   local value=""
-  value="$(tmux show-option -gqv "${key}" 2>/dev/null || true)"
+  value="$(tmux show-option -gqv "${key}" 2> /dev/null || true)"
   if [ -n "$value" ]; then
     printf '%s\n' "$value"
   else
@@ -32,9 +32,9 @@ DEFAULT_PICK_SESSION_DIR_EXCLUDE_FILE="$HOME/.config/tmux/pick_session_dir_exclu
 normalize_path_opt() {
   local p="${1:-}"
   case "$p" in
-  "~") printf '%s\n' "$HOME" ;;
-  "~/"*) printf '%s\n' "$HOME/${p#"~/"}" ;;
-  *) printf '%s\n' "$p" ;;
+    "~") printf '%s\n' "$HOME" ;;
+    "~/"*) printf '%s\n' "$HOME/${p#"~/"}" ;;
+    *) printf '%s\n' "$p" ;;
   esac
 }
 
@@ -49,9 +49,9 @@ tildefy_to_reply() {
   local p="$1"
   # shellcheck disable=SC2034,SC2088
   case "$p" in
-  "$HOME") REPLY="~" ;;
-  "$HOME"/*) REPLY="~/${p#"$HOME"/}" ;;
-  *) REPLY="$p" ;;
+    "$HOME") REPLY="~" ;;
+    "$HOME"/*) REPLY="~/${p#"$HOME"/}" ;;
+    *) REPLY="$p" ;;
   esac
 }
 
@@ -68,7 +68,7 @@ print_dir_row() {
 }
 
 is_git_repo() {
-  git rev-parse --is-inside-work-tree >/dev/null 2>&1
+  git rev-parse --is-inside-work-tree > /dev/null 2>&1
 }
 
 emit_home_dirs() {
@@ -86,24 +86,24 @@ emit_home_dirs() {
       [ -n "$line" ] || continue
       if printf '%s' "$line" | grep -q $'\t'; then
         local tag p
-        IFS=$'\t' read -r tag p <<<"$line"
+        IFS=$'\t' read -r tag p <<< "$line"
         [ -n "$p" ] || continue
         case "$tag" in
-        WT)
-          wt_roots+=("$p")
-          exclude_exact["$p"]=1
-          ;;
-        EX)
-          exclude_exact["$p"]=1
-          ;;
-        *)
-          exclude_exact["$p"]=1
-          ;;
+          WT)
+            wt_roots+=("$p")
+            exclude_exact["$p"]=1
+            ;;
+          EX)
+            exclude_exact["$p"]=1
+            ;;
+          *)
+            exclude_exact["$p"]=1
+            ;;
         esac
       else
         exclude_exact["$line"]=1
       fi
-    done <"$exclude_file"
+    done < "$exclude_file"
   fi
 
   if [ -z "${exclude_exact["$root"]+x}" ]; then
@@ -115,7 +115,7 @@ emit_home_dirs() {
   local fd_args=()
   fd_args+=(--type d)
   case "$include_hidden" in
-  1 | true | yes | on) fd_args+=(--hidden) ;;
+    1 | true | yes | on) fd_args+=(--hidden) ;;
   esac
   if [ -n "$max_depth" ]; then
     fd_args+=(--max-depth "$max_depth")
@@ -129,21 +129,21 @@ emit_home_dirs() {
       _pat="${_pat%/}"
       [ -n "$_pat" ] || continue
       fd_args+=(--exclude "$_pat")
-    done <"$ignore_file"
+    done < "$ignore_file"
   fi
   if [ ${#wt_roots[@]} -gt 0 ]; then
     local wr rel
     for wr in "${wt_roots[@]}"; do
       case "$wr" in
-      "$root"/*)
-        rel="${wr#"$root"/}"
-        [ -n "$rel" ] || continue
-        fd_args+=(--exclude "$rel")
-        ;;
+        "$root"/*)
+          rel="${wr#"$root"/}"
+          [ -n "$rel" ] || continue
+          fd_args+=(--exclude "$rel")
+          ;;
       esac
     done
   fi
-  fd "${fd_args[@]}" . "$root" 2>/dev/null | LC_ALL=C sort -u | while IFS= read -r p; do
+  fd "${fd_args[@]}" . "$root" 2> /dev/null | LC_ALL=C sort -u | while IFS= read -r p; do
     [ -z "$p" ] && continue
     p="${p%/}"
     [ "$p" = "$root" ] && continue
@@ -167,13 +167,13 @@ emit_home_dirs_seeded() {
       [ -n "$line" ] || continue
       if printf '%s' "$line" | grep -q $'\t'; then
         local tag p
-        IFS=$'\t' read -r tag p <<<"$line"
+        IFS=$'\t' read -r tag p <<< "$line"
         [ -n "$p" ] || continue
         exclude_exact["$p"]=1
       else
         exclude_exact["$line"]=1
       fi
-    done <"$exclude_file"
+    done < "$exclude_file"
   fi
 
   declare -A seeded=()
@@ -191,7 +191,7 @@ emit_home_dirs_seeded() {
   local fd_args=()
   fd_args+=(--type d --max-depth 1)
   case "$include_hidden" in
-  1 | true | yes | on) fd_args+=(--hidden) ;;
+    1 | true | yes | on) fd_args+=(--hidden) ;;
   esac
   fd_args+=(--exclude .git)
   if [ -n "$ignore_file" ] && [ -f "$ignore_file" ]; then
@@ -202,7 +202,7 @@ emit_home_dirs_seeded() {
       _pat="${_pat%/}"
       [ -n "$_pat" ] || continue
       fd_args+=(--exclude "$_pat")
-    done <"$ignore_file"
+    done < "$ignore_file"
   fi
 
   while IFS= read -r p; do
@@ -211,37 +211,37 @@ emit_home_dirs_seeded() {
     [ "$p" = "$root" ] && continue
     [ -n "${exclude_exact["$p"]+x}" ] && continue
     seeded["$p"]=1
-  done < <(fd "${fd_args[@]}" . "$root" 2>/dev/null || true)
+  done < <(fd "${fd_args[@]}" . "$root" 2> /dev/null || true)
 
   # Seed configured worktree roots (and their home-relative ancestors) so
   # hidden hubs like ~/.local/share are matchable immediately on first refresh.
   local roots_raw wr cur
   roots_raw="$(tmux_opt '@pick_session_worktree_scan_roots' "$HOME/work,$HOME/code,$HOME/.backport/repositories,$HOME/.local/share")"
-  IFS=',' read -r -a wt_roots <<<"$roots_raw"
+  IFS=',' read -r -a wt_roots <<< "$roots_raw"
   for wr in "${wt_roots[@]}"; do
     wr="${wr#"${wr%%[![:space:]]*}"}"
     wr="${wr%"${wr##*[![:space:]]}"}"
     [ -n "$wr" ] || continue
     case "$wr" in
-    "~") wr="$HOME" ;;
-    "~/"*) wr="$HOME/${wr#~/}" ;;
+      "~") wr="$HOME" ;;
+      "~/"*) wr="$HOME/${wr#~/}" ;;
     esac
     if [ -d "$wr" ]; then
       wr="$(cd "$wr" && pwd -P)"
     fi
     case "$wr" in
-    "$root"/*)
-      cur="$wr"
-      while :; do
-        [ -n "${exclude_exact["$cur"]+x}" ] || seeded["$cur"]=1
-        [ "$cur" = "$root" ] && break
-        cur="$(dirname "$cur")"
-        case "$cur" in
-        "$root" | "$root"/*) ;;
-        *) break ;;
-        esac
-      done
-      ;;
+      "$root"/*)
+        cur="$wr"
+        while :; do
+          [ -n "${exclude_exact["$cur"]+x}" ] || seeded["$cur"]=1
+          [ "$cur" = "$root" ] && break
+          cur="$(dirname "$cur")"
+          case "$cur" in
+            "$root" | "$root"/*) ;;
+            *) break ;;
+          esac
+        done
+        ;;
     esac
   done
 
@@ -270,7 +270,7 @@ emit_sessions_worktrees_and_dirs() {
   PICK_SESSION_DIR_INCLUDE_HIDDEN="$(tmux_opt '@pick_session_dir_include_hidden' 'on')"
   PICK_SESSION_GITHUB_LOGIN="$(tmux_opt '@pick_session_github_login' '')"
 
-  python3 -u - <<'PY'
+  python3 -u - << 'PY'
 import os
 import re
 import subprocess
@@ -922,8 +922,8 @@ quick_mode=0
 sessions_only=0
 while [ $# -gt 0 ]; do
   case "$1" in
-  --quick) quick_mode=1 ;;
-  --sessions-only) sessions_only=1 ;;
+    --quick) quick_mode=1 ;;
+    --sessions-only) sessions_only=1 ;;
   esac
   shift
 done

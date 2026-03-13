@@ -4,8 +4,8 @@ Back: [`docs/recipes/index.md`](index.md)
 
 This setup ships a worktree helper command called `,w`.
 
-- Source: `home/exact_bin/executable_,w`
-- Helpers: `home/exact_bin/utils/,w/`
+- Source: [`home/exact_bin/executable_,w`](../../home/exact_bin/executable_,w)
+- Helpers: [`home/exact_bin/utils/,w/`](../../home/exact_bin/utils/,w/)
 
 The goal is to make branch isolation + review + context switching cheap.
 
@@ -41,8 +41,8 @@ The goal is to make branch isolation + review + context switching cheap.
 
 - No arguments opens an interactive fzf multi-select picker.
 - `--focus` switches/attaches to the created worktree's tmux session.
-- `--awaiting` lists PRs awaiting your review (last 7 days by default; tune
-  with `COMMA_W_AWAITING_DAYS`).
+- `--awaiting` lists PRs awaiting your review (last 7 days by default; tune with
+  `COMMA_W_AWAITING_DAYS`).
 - Automatically adds contributor forks as remotes when needed.
 - First-party PRs use a plain branch name (`feat/foo`); third-party forks use
   `<remote>__<branch>` and write per-worktree push routing so `git push` targets
@@ -82,8 +82,8 @@ The goal is to make branch isolation + review + context switching cheap.
 - `--long` adds AHEAD/BEHIND columns.
 - `--dirty` computes and shows dirty state (slow in large repos).
 - `--porcelain` prints raw `git worktree list --porcelain` output.
-- `--selectable` prints `branch<TAB>path` for non-detached, non-locked
-  worktrees (used by other subcommands).
+- `--selectable` prints `branch<TAB>path` for non-detached, non-locked worktrees
+  (used by other subcommands).
 - `--full-path` disables path shortening.
 - `--sort branch|path` controls row order.
 
@@ -134,8 +134,8 @@ The goal is to make branch isolation + review + context switching cheap.
 
 - Interactive fzf multi-select by default.
 - For each selected worktree: removes directory, deletes local branch, removes
-  unused fork remotes, cleans empty parent dirs, purges from zoxide, kills
-  tmux session.
+  unused fork remotes, cleans empty parent dirs, purges from zoxide, kills tmux
+  session.
 - Protects the repository's actual default branch (detected from remote HEAD).
 - `.DS_Store` is treated as ignorable so Finder metadata does not keep empty
   dirs alive.
@@ -177,8 +177,8 @@ PR shortcuts (inside the `gh-dash` popup):
 
 Issue shortcuts:
 
-- `C` or `Space`: create/switch to the issue worktree and focus its tmux
-  session (`,w issue --focus`).
+- `C` or `Space`: create/switch to the issue worktree and focus its tmux session
+  (`,w issue --focus`).
 
 Shared behavior:
 

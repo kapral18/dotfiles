@@ -18,7 +18,7 @@ _comma_w_issue_normalize_number() {
 }
 
 _comma_w_issue_get_repo_name() {
-  gh repo view --json nameWithOwner --jq '.nameWithOwner' 2>/dev/null || true
+  gh repo view --json nameWithOwner --jq '.nameWithOwner' 2> /dev/null || true
 }
 
 _comma_w_issue_find_by_metadata() {
@@ -30,22 +30,22 @@ _comma_w_issue_find_by_metadata() {
     key="${line%% *}"
     value="${line#* }"
     case "$key" in
-    worktree)
-      worktree_path="$value"
-      if [ -z "$worktree_path" ] || [ ! -e "$worktree_path/.git" ]; then
-        continue
-      fi
+      worktree)
+        worktree_path="$value"
+        if [ -z "$worktree_path" ] || [ ! -e "$worktree_path/.git" ]; then
+          continue
+        fi
 
-      local wt_repo wt_num
-      wt_repo="$(git -C "$worktree_path" config --worktree --get comma.w.issue.repo 2>/dev/null || true)"
-      wt_num="$(git -C "$worktree_path" config --worktree --get comma.w.issue.number 2>/dev/null || true)"
-      if [ "$wt_repo" = "$repo_name" ] && [ "$wt_num" = "$issue_number" ]; then
-        printf '%s\n' "$worktree_path"
-        return 0
-      fi
-      ;;
+        local wt_repo wt_num
+        wt_repo="$(git -C "$worktree_path" config --worktree --get comma.w.issue.repo 2> /dev/null || true)"
+        wt_num="$(git -C "$worktree_path" config --worktree --get comma.w.issue.number 2> /dev/null || true)"
+        if [ "$wt_repo" = "$repo_name" ] && [ "$wt_num" = "$issue_number" ]; then
+          printf '%s\n' "$worktree_path"
+          return 0
+        fi
+        ;;
     esac
-  done < <(git worktree list --porcelain 2>/dev/null)
+  done < <(git worktree list --porcelain 2> /dev/null)
 
   return 1
 }
@@ -81,7 +81,7 @@ _comma_w_issue_find_by_heuristics() {
 
     if [ "$matched" -eq 1 ]; then
       case "$candidates_seen" in
-      *" ${p} "*) return 0 ;;
+        *" ${p} "*) return 0 ;;
       esac
       candidates+=("$p")
       if [ -n "$branch" ] && _branch_prefers_issue_number "$branch"; then
@@ -95,16 +95,16 @@ _comma_w_issue_find_by_heuristics() {
     key="${line%% *}"
     value="${line#* }"
     case "$key" in
-    worktree)
-      _maybe_add_candidate "$worktree_path" "$branch_ref"
-      worktree_path="$value"
-      branch_ref=""
-      ;;
-    branch)
-      branch_ref="$value"
-      ;;
+      worktree)
+        _maybe_add_candidate "$worktree_path" "$branch_ref"
+        worktree_path="$value"
+        branch_ref=""
+        ;;
+      branch)
+        branch_ref="$value"
+        ;;
     esac
-  done < <(git worktree list --porcelain 2>/dev/null)
+  done < <(git worktree list --porcelain 2> /dev/null)
 
   _maybe_add_candidate "$worktree_path" "$branch_ref"
 

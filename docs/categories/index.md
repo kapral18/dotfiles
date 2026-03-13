@@ -4,8 +4,8 @@ Back: [`docs/index.md`](../index.md)
 
 Categories explain the "why" and "how" behind each area of this dotfiles repo.
 
-If you want to get productive quickly, pick the category you care about and
-then jump to recipes for step-by-step tasks.
+If you want to get productive quickly, pick the category you care about and then
+jump to recipes for step-by-step tasks.
 
 ## Core
 
@@ -20,6 +20,10 @@ then jump to recipes for step-by-step tasks.
 - Tmux: [`tmux/index.md`](tmux/index.md)
 - Custom commands: [`custom-commands.md`](custom-commands.md)
 
+## Code Quality
+
+- Formatting: [`formatting.md`](formatting.md)
+
 ## Optional Systems
 
 - Editor (Neovim): [`editor-neovim.md`](editor-neovim.md)
@@ -27,5 +31,7 @@ then jump to recipes for step-by-step tasks.
 
 ## Security + AI
 
-- Security and secrets (1Password, pass, gpg-agent): [`security-and-secrets.md`](security-and-secrets.md)
-- The Agentic Operating System (AI & Assistants): [`ai-and-assistants.md`](ai-and-assistants.md)
+- Security and secrets (1Password, pass, gpg-agent):
+  [`security-and-secrets.md`](security-and-secrets.md)
+- The Agentic Operating System (AI & Assistants):
+  [`ai-and-assistants.md`](ai-and-assistants.md)

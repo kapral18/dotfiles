@@ -8,18 +8,22 @@ template in this repo.
 ## Preconditions
 
 - ASDF is installed and on `PATH`.
-- The plugin exists in `home/asdf_plugins.tmpl` (add it first if missing).
+- The plugin exists in [`home/asdf_plugins.tmpl`](../../home/asdf_plugins.tmpl)
+  (add it first if missing).
 
 ## Files
 
-- Plugins: `home/asdf_plugins.tmpl`
-- Versions: `home/readonly_dot_tool-versions.tmpl` (installs as `~/.tool-versions`)
-- Hook: `home/.chezmoiscripts/run_onchange_after_05-install-asdf-plugins.sh.tmpl`
+- Plugins: [`home/asdf_plugins.tmpl`](../../home/asdf_plugins.tmpl)
+- Versions:
+  [`home/readonly_dot_tool-versions.tmpl`](../../home/readonly_dot_tool-versions.tmpl)
+  (installs as `~/.tool-versions`)
+- Hook:
+  [`home/.chezmoiscripts/run_onchange_after_05-install-asdf-plugins.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-install-asdf-plugins.sh.tmpl)
 
 ## Steps
 
 1. Update the pinned version in:
-   - `home/readonly_dot_tool-versions.tmpl`
+   - [`home/readonly_dot_tool-versions.tmpl`](../../home/readonly_dot_tool-versions.tmpl)
 
 2. Apply:
 
@@ -41,12 +45,14 @@ asdf list
 
 If you add a brand new tool, you usually need to add both:
 
-- a plugin entry in `home/asdf_plugins.tmpl`
-- a version pin in `home/readonly_dot_tool-versions.tmpl`
+- a plugin entry in [`home/asdf_plugins.tmpl`](../../home/asdf_plugins.tmpl)
+- a version pin in
+  [`home/readonly_dot_tool-versions.tmpl`](../../home/readonly_dot_tool-versions.tmpl)
 
 ## Rollback / Undo
 
-1. Revert the version line in `home/readonly_dot_tool-versions.tmpl`.
+1. Revert the version line in
+   [`home/readonly_dot_tool-versions.tmpl`](../../home/readonly_dot_tool-versions.tmpl).
 2. Re-apply:
 
 ```bash

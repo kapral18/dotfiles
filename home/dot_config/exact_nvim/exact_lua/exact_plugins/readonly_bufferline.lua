@@ -75,7 +75,17 @@ return {
     },
   },
   init = function()
-    vim.keymap.set("n", "<A-h>", "<cmd>BufferLineCyclePrev<CR>", { noremap = true, silent = true, desc = "Previous buffer" })
-    vim.keymap.set("n", "<A-l>", "<cmd>BufferLineCycleNext<CR>", { noremap = true, silent = true, desc = "Next buffer" })
+    vim.keymap.set(
+      "n",
+      "<A-h>",
+      "<cmd>BufferLineCyclePrev<CR>",
+      { noremap = true, silent = true, desc = "Previous buffer" }
+    )
+    vim.keymap.set(
+      "n",
+      "<A-l>",
+      "<cmd>BufferLineCycleNext<CR>",
+      { noremap = true, silent = true, desc = "Next buffer" }
+    )
   end,
 }

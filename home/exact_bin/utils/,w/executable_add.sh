@@ -6,7 +6,7 @@ source "$(dirname "$0")/../bash_utils_lib.sh"
 source "$(dirname "$0")/../worktree_lib.sh"
 
 show_usage() {
-  cat <<EOF
+  cat << EOF
 Usage: ,w add [-q|--quiet] <branch_name> [base_branch]
 
 Add a git worktree for a branch.
@@ -37,25 +37,25 @@ quiet_mode=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
-  -h | --help)
-    show_usage
-    exit 0
-    ;;
-  -q | --quiet)
-    quiet_mode=1
-    shift
-    ;;
-  --)
-    shift
-    break
-    ;;
-  -*)
-    show_usage
-    exit 1
-    ;;
-  *)
-    break
-    ;;
+    -h | --help)
+      show_usage
+      exit 0
+      ;;
+    -q | --quiet)
+      quiet_mode=1
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      show_usage
+      exit 1
+      ;;
+    *)
+      break
+      ;;
   esac
 done
 
@@ -69,7 +69,7 @@ print_local_worktree_message() {
   if [ "$quiet_mode" -eq 0 ]; then
     local local_branch="$1"
     local local_path="$2"
-    cat <<EOM
+    cat << EOM
 
 -------------
 
@@ -99,7 +99,7 @@ git_fetch_ref() {
 
 remote_exists() {
   local remote="$1"
-  git remote get-url "$remote" >/dev/null 2>&1
+  git remote get-url "$remote" > /dev/null 2>&1
 }
 
 if [ $# -eq 0 ]; then
@@ -156,7 +156,7 @@ if [ "$is_base_branch_specified" -eq 0 ]; then
 
     if _comma_w_worktree_has_branch "$local_branch"; then
       info "Branch '$local_branch' already exists as a worktree."
-      existing_path="$(_comma_w_find_worktree_path_for_branch "$local_branch" 2>/dev/null || true)"
+      existing_path="$(_comma_w_find_worktree_path_for_branch "$local_branch" 2> /dev/null || true)"
       if [[ "$local_branch" == *__* ]] && ! _comma_w_remote_is_first_party "$input_remote" && [ -n "$existing_path" ]; then
         _comma_w_configure_prefixed_branch_push_routing "$existing_path" "$local_branch" "$input_remote" "$input_remote_branch" "$quiet_mode" || true
       fi
@@ -186,7 +186,7 @@ if [ "$is_base_branch_specified" -eq 0 ]; then
       _print_created_worktree_message "$quiet_mode" "$local_branch" "$worktree_path" "${tracking_remote}/${input_remote_branch}"
 
       if [[ "$local_branch" != *__* ]]; then
-        git branch --set-upstream-to="${tracking_remote}/${input_remote_branch}" "$local_branch" >/dev/null 2>&1 || true
+        git branch --set-upstream-to="${tracking_remote}/${input_remote_branch}" "$local_branch" > /dev/null 2>&1 || true
       fi
 
       if [[ "$local_branch" == *__* ]] && ! _comma_w_remote_is_first_party "$input_remote"; then
@@ -290,7 +290,7 @@ else
       base_ref="origin/$base_branch"
     elif git show-ref --verify --quiet "refs/remotes/upstream/$base_branch"; then
       base_ref="upstream/$base_branch"
-    elif git rev-parse --verify --quiet "${base_branch}^{commit}" >/dev/null; then
+    elif git rev-parse --verify --quiet "${base_branch}^{commit}" > /dev/null; then
       base_ref="$base_branch"
     else
       echo "Base branch '$base_branch' does not exist." >&2
@@ -300,7 +300,7 @@ else
 
   if _comma_w_worktree_has_branch "$target_branch"; then
     info "Branch '$target_branch' already exists as a worktree."
-    existing_path="$(_comma_w_find_worktree_path_for_branch "$target_branch" 2>/dev/null || true)"
+    existing_path="$(_comma_w_find_worktree_path_for_branch "$target_branch" 2> /dev/null || true)"
     if [[ "$target_branch" == *__* ]] && [ -n "$base_remote" ] && ! _comma_w_remote_is_first_party "$base_remote" && [ -n "$existing_path" ]; then
       _comma_w_configure_prefixed_branch_push_routing "$existing_path" "$target_branch" "$base_remote" "$branch_name" "$quiet_mode" || true
     fi
@@ -322,6 +322,6 @@ else
   fi
 fi
 
-if command -v zoxide &>/dev/null; then
-  zoxide add "$worktree_path" 2>/dev/null || true
+if command -v zoxide &> /dev/null; then
+  zoxide add "$worktree_path" 2> /dev/null || true
 fi

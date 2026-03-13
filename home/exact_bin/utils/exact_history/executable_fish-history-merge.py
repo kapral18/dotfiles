@@ -3,6 +3,7 @@
 Fish history merger - merges two fish history files chronologically
 Usage: fish-history-merge.py <local_history> <remote_history> <output_file>
 """
+
 from __future__ import annotations
 
 import sys
@@ -54,11 +55,7 @@ def parse_fish_history(
                     entries[cmd_str] = current_entry
                 else:
                     existing_when = entries[cmd_str].get("when", 0)
-                    existing_timestamp = (
-                        int(existing_when)
-                        if isinstance(existing_when, (int, str))
-                        else 0
-                    )
+                    existing_timestamp = int(existing_when) if isinstance(existing_when, (int, str)) else 0
                     if timestamp > existing_timestamp:
                         entries[cmd_str] = current_entry
 
@@ -88,12 +85,8 @@ def merge_histories(local_file: str, remote_file: str, output_file: str) -> bool
             local_when = all_entries[cmd].get("when", 0)
             remote_when = remote_entry.get("when", 0)
 
-            local_timestamp = (
-                int(local_when) if isinstance(local_when, (int, str)) else 0
-            )
-            remote_timestamp = (
-                int(remote_when) if isinstance(remote_when, (int, str)) else 0
-            )
+            local_timestamp = int(local_when) if isinstance(local_when, (int, str)) else 0
+            remote_timestamp = int(remote_when) if isinstance(remote_when, (int, str)) else 0
 
             if remote_timestamp > local_timestamp:
                 all_entries[cmd] = remote_entry
@@ -106,9 +99,7 @@ def merge_histories(local_file: str, remote_file: str, output_file: str) -> bool
             return int(when_val) if isinstance(when_val, (int, str)) else 0
 
         with open(output_file, "w", encoding="utf-8") as f:
-            for _, entry in sorted(
-                all_entries.items(), key=lambda x: get_timestamp(x[1])
-            ):
+            for _, entry in sorted(all_entries.items(), key=lambda x: get_timestamp(x[1])):
                 _ = f.write(f"- cmd: {entry['cmd']}\n")
                 if "when" in entry:
                     _ = f.write(f"  when: {entry['when']}\n")
@@ -124,9 +115,7 @@ def merge_histories(local_file: str, remote_file: str, output_file: str) -> bool
 
 if __name__ == "__main__":
     if len(sys.argv) != 4:
-        print(
-            "Usage: fish-history-merge.py <local_history> <remote_history> <output_file>"
-        )
+        print("Usage: fish-history-merge.py <local_history> <remote_history> <output_file>")
         sys.exit(1)
 
     local_file, remote_file, output_file = sys.argv[1:4]

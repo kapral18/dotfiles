@@ -9,8 +9,7 @@ description: |-
 
 # Beads Playbook
 
-This is mandatory: always check context and offer to persist at ~10%
-remaining.
+This is mandatory: always check context and offer to persist at ~10% remaining.
 
 Golden rule: always ask user permission before any bead operation (create,
 update, status change, close). No exceptions.
@@ -31,8 +30,8 @@ Do not use:
 First actions:
 
 1. Confirm `BEADS_DIR` and use `bdlocal` only.
-2. Run the read-only intake sequence: `bdlocal info --whats-new`, `bdlocal
-   ready --json`, `bdlocal blocked --json`.
+2. Run the read-only intake sequence: `bdlocal info --whats-new`,
+   `bdlocal ready --json`, `bdlocal blocked --json`.
 3. If a mutation is needed, ask permission before naming the exact bead action.
 
 Local policy:
@@ -41,8 +40,8 @@ Local policy:
   "$BEADS_DIR/.beads/beads.db" --no-auto-flush --no-auto-import --no-daemon).
 - `$BEADS_DIR` is the current workspace root. Confirm: `echo $BEADS_DIR`.
 - Data lives in `$BEADS_DIR/.beads/`.
-- Git-free beads mode: do not use beads' internal git sync or remotes. All
-  beads data management is local-only. Use `bdlocal export` for backups.
+- Git-free beads mode: do not use beads' internal git sync or remotes. All beads
+  data management is local-only. Use `bdlocal export` for backups.
 - Installation managed externally (Brewfile). Do not install/upgrade `bd` in
   session.
 
@@ -53,21 +52,24 @@ Start:
 1. Check for upgrades: `bdlocal info --whats-new` (shows last 3 versions).
 2. Run `bdlocal ready --json` to find available work.
 3. Run `bdlocal blocked --json` to see what is waiting on other tasks.
-4. If claiming existing bead: ask permission, then `bdlocal update <id>
---status in_progress --json`.
-5. If creating new bead: ask permission, then `bdlocal create "title" -t
-<type> -p <priority> --description="context" --estimate 30 --json`.
+4. If claiming existing bead: ask permission, then
+   `bdlocal update <id> --status in_progress --json`.
+5. If creating new bead: ask permission, then
+   `bdlocal create "title" -t <type> -p <priority> --description="context" --estimate 30 --json`.
 
 During work:
 
 7. Review bead: `bdlocal show <id> --json`.
-8. On material progress: ask permission, then update notes per Note Curation below.
-9. On discovering new scope: ask permission to create with `--deps discovered-from:<parent-id>`.
+8. On material progress: ask permission, then update notes per Note Curation
+   below.
+9. On discovering new scope: ask permission to create with
+   `--deps discovered-from:<parent-id>`.
 
 End:
 
 10. Ask permission to close: `bdlocal close <id> --reason "Completed" --json`.
-11. Local backup: `bdlocal export -o ~/beads-backups/$(basename $(pwd))-issues.jsonl`
+11. Local backup:
+    `bdlocal export -o ~/beads-backups/$(basename $(pwd))-issues.jsonl`
 
 Commands:
 
@@ -76,15 +78,13 @@ Core:
 - `bdlocal ready --json` - find unblocked work
 - `bdlocal blocked --json` - find blocked work
 - `bdlocal show <id> --json` - view details
-- `bdlocal create "title" -t bug|feature|task|epic|chore -p 0-4
---description="..." --estimate 60 --json`
-- `bdlocal create "title" --external-ref "https://github.com/..." --json` -
-  link external issue
+- `bdlocal create "title" -t bug|feature|task|epic|chore -p 0-4 --description="..." --estimate 60 --json`
+- `bdlocal create "title" --external-ref "https://github.com/..." --json` - link
+  external issue
 - `bdlocal update <id> --status open|in_progress|blocked|closed --json`
 - `bdlocal update <id> --notes|--description|--design|--acceptance|--title "text" --estimate 120 --json`
-- `bdlocal update <id> --status in_progress --add-label <label>[,<label>...]
---remove-label <label>[,<label>...] --json` - update with labels (repeatable;
-  accepts comma-separated lists)
+- `bdlocal update <id> --status in_progress --add-label <label>[,<label>...] --remove-label <label>[,<label>...] --json` -
+  update with labels (repeatable; accepts comma-separated lists)
 - `bdlocal close <id> --reason "..." --json`
 - `bdlocal reopen <id> --reason "..." --json`
 - `bdlocal list --status open --sort priority --json`
@@ -104,8 +104,7 @@ Batch operations:
 
 Dependencies:
 
-- `bdlocal dep add <id> <dep-id> --type
-blocks|discovered-from|related|parent-child --json`
+- `bdlocal dep add <id> <dep-id> --type blocks|discovered-from|related|parent-child --json`
 - `bdlocal dep tree <id>`
 
 Labels (metadata without polluting notes):
@@ -162,14 +161,15 @@ Wisdom beads (accumulated knowledge):
 2. Link: `bdlocal dep add <working-id> <wisdom-id> --type related --json`
 3. Maintain: update wisdom bead notes with curated takeaways each session.
 4. Load and follow e2e when accessing wisdom/knowledge beads:
-   - Load entire content into memory once: `bdlocal show <wisdom-id> --json 2>&1 | jq -r '.[0].notes'`
+   - Load entire content into memory once:
+     `bdlocal show <wisdom-id> --json 2>&1 | jq -r '.[0].notes'`
    - Read the entire wisdom bead content fully without skimming or skipping
      sections.
    - Follow instructions to the letter; do not cherry-pick or skip parts.
-   - After updating a wisdom bead, ask user permission to re-upload new
-     contents into context.
-   - Do not repeatedly grep/query wisdom beads if it's already loaded in
-     memory; recall from memory.
+   - After updating a wisdom bead, ask user permission to re-upload new contents
+     into context.
+   - Do not repeatedly grep/query wisdom beads if it's already loaded in memory;
+     recall from memory.
    - Treat wisdom bead instructions as binding within the scope of the current
      task.
 

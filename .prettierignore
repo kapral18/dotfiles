@@ -1,0 +1,13 @@
+home/Alfred.alfredpreferences/
+home/app_icons/
+home/dot_config/exact_nvim/
+*.lua
+*.lua.tmpl
+*.fish
+*.fish.tmpl
+*.sh
+*.sh.tmpl
+*.py
+*.conf
+*.toml
+*.toml.tmpl

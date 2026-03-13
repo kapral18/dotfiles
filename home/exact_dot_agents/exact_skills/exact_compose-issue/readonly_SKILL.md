@@ -17,11 +17,13 @@ Use when:
 Scope:
 
 - produces an issue body draft only
-- do not create issues via `gh` here; use `~/.agents/playbooks/github/PLAYBOOK.md` for GitHub side effects
+- do not create issues via `gh` here; use
+  `~/.agents/playbooks/github/PLAYBOOK.md` for GitHub side effects
 
 Do not use:
 
-- user wants to create/edit the issue in GitHub: `~/.agents/playbooks/github/PLAYBOOK.md`
+- user wants to create/edit the issue in GitHub:
+  `~/.agents/playbooks/github/PLAYBOOK.md`
 
 First actions:
 

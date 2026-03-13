@@ -205,12 +205,7 @@ function M.fzf_preview_follow_cmd(file_field, line_field)
   -- Use the helper as $0, and pass file/line as $1/$2.
   -- Avoid nested shellescape/quotes for the same reason as above.
   local preview_bin = bin_path(",fzf-preview-follow")
-  return "bash -lc 'exec \"$0\" --file \"$1\" --line \"$2\"' "
-    .. preview_bin
-    .. " "
-    .. file_field
-    .. " "
-    .. line_field
+  return 'bash -lc \'exec "$0" --file "$1" --line "$2"\' ' .. preview_bin .. " " .. file_field .. " " .. line_field
 end
 
 --- Open a grep-like entry (`file:line:col:` or tab-metadata multiline entry).

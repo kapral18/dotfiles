@@ -15,8 +15,7 @@ This setup uses `uv` for:
 ## Steps
 
 1. Edit the template:
-
-   - `home/readonly_dot_default-uv-tools.tmpl`
+   - [`home/readonly_dot_default-uv-tools.tmpl`](../../home/readonly_dot_default-uv-tools.tmpl)
 
    It installs as `~/.default-uv-tools`.
 
@@ -28,7 +27,7 @@ This setup uses `uv` for:
 
 Hook:
 
-- `home/.chezmoiscripts/run_onchange_after_06-update-uv-tools.sh.tmpl`
+- [`home/.chezmoiscripts/run_onchange_after_06-update-uv-tools.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_06-update-uv-tools.sh.tmpl)
 
 ## Verification
 
@@ -38,7 +37,8 @@ uv tool list
 
 ## Rollback / Undo
 
-1. Remove the tool from `home/readonly_dot_default-uv-tools.tmpl`.
+1. Remove the tool from
+   [`home/readonly_dot_default-uv-tools.tmpl`](../../home/readonly_dot_default-uv-tools.tmpl).
 2. Re-apply:
 
 ```bash

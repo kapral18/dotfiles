@@ -89,7 +89,8 @@ local function git_diff_lines_for_file(git_root, relpath, opts)
     return out, nil
   end
 
-  local untracked = vim.fn.systemlist({ "git", "-C", git_root, "ls-files", "--others", "--exclude-standard", "--", relpath })
+  local untracked =
+    vim.fn.systemlist({ "git", "-C", git_root, "ls-files", "--others", "--exclude-standard", "--", relpath })
   if vim.v.shell_error ~= 0 then
     return nil, "git ls-files failed"
   end
@@ -129,7 +130,8 @@ local function git_diff_lines_for_buffer(git_root, relpath, bufnr, opts)
   local tmp_new = os.tmpname()
   local tmp_old = os.tmpname()
 
-  local ok_new, err_new = fs_util.safe_file_write(tmp_new, table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), "\n") .. "\n")
+  local ok_new, err_new =
+    fs_util.safe_file_write(tmp_new, table.concat(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false), "\n") .. "\n")
   if not ok_new then
     os.remove(tmp_new)
     os.remove(tmp_old)

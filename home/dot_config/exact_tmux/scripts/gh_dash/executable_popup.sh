@@ -16,18 +16,18 @@ show_popup() {
     attach_args=(-t "$1")
   fi
   local orig_shell
-  orig_shell="$(tmux show-option -gqv default-shell 2>/dev/null || echo /bin/sh)"
+  orig_shell="$(tmux show-option -gqv default-shell 2> /dev/null || echo /bin/sh)"
   tmux set-option -g default-shell /bin/sh \; \
     display-popup -E -h 90% -w 90% -d "${start_dir}" -T "gh-dash" \
     "tmux -L '${sock}' attach ${attach_args[*]:-}" \; \
-    set-option -g default-shell "$orig_shell" 2>/dev/null || true
+    set-option -g default-shell "$orig_shell" 2> /dev/null || true
 }
 
 # Fast path: if either session is alive, skip dependency checks.
 # tmux attach (no -t) reconnects to the most recently used session.
-if tmux -L "${sock}" has-session -t "${session_work}" 2>/dev/null ||
-   tmux -L "${sock}" has-session -t "${session_home}" 2>/dev/null; then
-  tmux -L "${sock}" source-file "${tmux_conf}" >/dev/null 2>&1 || true
+if tmux -L "${sock}" has-session -t "${session_work}" 2> /dev/null \
+  || tmux -L "${sock}" has-session -t "${session_home}" 2> /dev/null; then
+  tmux -L "${sock}" source-file "${tmux_conf}" > /dev/null 2>&1 || true
   show_popup
   exit 0
 fi
@@ -37,15 +37,15 @@ outer_socket=""
 outer_client=""
 if [ -n "${TMUX:-}" ]; then
   outer_socket="${TMUX%%,*}"
-  outer_client="$(tmux display-message -p '#{client_name}' 2>/dev/null || true)"
+  outer_client="$(tmux display-message -p '#{client_name}' 2> /dev/null || true)"
 fi
 
-if ! command -v gh >/dev/null 2>&1; then
+if ! command -v gh > /dev/null 2>&1; then
   tmux display-message "gh not found"
   exit 127
 fi
 
-if ! gh dash --version >/dev/null 2>&1; then
+if ! gh dash --version > /dev/null 2>&1; then
   tmux display-message "gh dash not available (is gh-dash installed?)"
   exit 127
 fi

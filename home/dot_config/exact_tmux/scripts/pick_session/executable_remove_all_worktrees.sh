@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Re-exec under a modern bash when macOS ships bash 3.2 as /bin/bash.
 if [ "${BASH_VERSINFO[0]:-0}" -lt 4 ]; then
-  _b="$(brew --prefix bash 2>/dev/null)/bin/bash"
+  _b="$(brew --prefix bash 2> /dev/null)/bin/bash"
   [ -x "$_b" ] && exec "$_b" "$0" "$@"
   exit 1
 fi
@@ -13,24 +13,24 @@ if [ -z "$root_wt_dir" ]; then
 fi
 
 realpath_or_self() {
-  realpath "$1" 2>/dev/null || printf '%s' "$1"
+  realpath "$1" 2> /dev/null || printf '%s' "$1"
 }
 
 notify_tmux() {
   local msg="$1"
   # Only notify when running inside a tmux client. When this is launched from
   # the picker we intentionally unset TMUX to avoid stealing popup focus.
-  if [ -n "${TMUX:-}" ] && command -v tmux >/dev/null 2>&1; then
-    tmux display-message -d 6000 "$msg" 2>/dev/null || true
+  if [ -n "${TMUX:-}" ] && command -v tmux > /dev/null 2>&1; then
+    tmux display-message -d 6000 "$msg" 2> /dev/null || true
   fi
 }
 
 repo_name_from_remote() {
   local dir="$1"
   local url=""
-  url="$(git -C "$dir" remote get-url origin 2>/dev/null || true)"
+  url="$(git -C "$dir" remote get-url origin 2> /dev/null || true)"
   if [ -z "$url" ]; then
-    url="$(git -C "$dir" remote get-url upstream 2>/dev/null || true)"
+    url="$(git -C "$dir" remote get-url upstream 2> /dev/null || true)"
   fi
   [ -n "$url" ] || return 1
 
@@ -39,16 +39,16 @@ repo_name_from_remote() {
 
   local path="$url"
   case "$url" in
-  *://*)
-    path="${url##*/}"
-    ;;
-  *:*)
-    path="${url#*:}"
-    path="${path##*/}"
-    ;;
-  *)
-    path="${url##*/}"
-    ;;
+    *://*)
+      path="${url##*/}"
+      ;;
+    *:*)
+      path="${url#*:}"
+      path="${path##*/}"
+      ;;
+    *)
+      path="${url##*/}"
+      ;;
   esac
   [ -n "$path" ] || return 1
   printf '%s\n' "$path"
@@ -58,7 +58,7 @@ safe_rm_rf() {
   local target="$1"
   target="$(realpath_or_self "$target")"
   case "$target" in
-  "" | "/") return 1 ;;
+    "" | "/") return 1 ;;
   esac
   if [ -n "${HOME:-}" ] && [ "$target" = "$(realpath_or_self "$HOME")" ]; then
     return 1
@@ -66,38 +66,38 @@ safe_rm_rf() {
   rm -rf "$target"
 }
 
-cd "$root_wt_dir" 2>/dev/null || exit 0
+cd "$root_wt_dir" 2> /dev/null || exit 0
 root="$(pwd -P)"
 
-if ! git -C "$root" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+if ! git -C "$root" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
   exit 0
 fi
 
 current_session=""
-if [ -n "${TMUX:-}" ] && command -v tmux >/dev/null 2>&1; then
-  current_session="$(tmux display-message -p '#S' 2>/dev/null || true)"
+if [ -n "${TMUX:-}" ] && command -v tmux > /dev/null 2>&1; then
+  current_session="$(tmux display-message -p '#S' 2> /dev/null || true)"
 fi
 
-mapfile -t worktrees < <(git -C "$root" worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2}' | sed '/^$/d' || true)
+mapfile -t worktrees < <(git -C "$root" worktree list --porcelain 2> /dev/null | awk '/^worktree /{print $2}' | sed '/^$/d' || true)
 if [ ${#worktrees[@]} -eq 0 ]; then
   exit 0
 fi
 
-repo_name="$(repo_name_from_remote "$root" 2>/dev/null || true)"
+repo_name="$(repo_name_from_remote "$root" 2> /dev/null || true)"
 wrapper="$(dirname "$root")"
 wrapper="$(realpath_or_self "$wrapper")"
 
 should_nuke_wrapper=0
 if [ -n "$repo_name" ] && [ "$(basename "$wrapper")" = "$repo_name" ]; then
   case "$wrapper" in
-  "" | "/") should_nuke_wrapper=0 ;;
-  *)
-    if [ -n "${HOME:-}" ] && [ "$wrapper" = "$(realpath_or_self "$HOME")" ]; then
-      should_nuke_wrapper=0
-    else
-      should_nuke_wrapper=1
-    fi
-    ;;
+    "" | "/") should_nuke_wrapper=0 ;;
+    *)
+      if [ -n "${HOME:-}" ] && [ "$wrapper" = "$(realpath_or_self "$HOME")" ]; then
+        should_nuke_wrapper=0
+      else
+        should_nuke_wrapper=1
+      fi
+      ;;
   esac
 fi
 
@@ -115,8 +115,8 @@ dir_is_effectively_empty_ignoring_ds_store() {
   local dir="$1"
   [ -n "$dir" ] || return 1
   [ -d "$dir" ] || return 1
-  rm -f "$dir/.DS_Store" 2>/dev/null || true
-  [ -z "$(find "$dir" -mindepth 1 -maxdepth 1 ! -name '.DS_Store' -print -quit 2>/dev/null || true)" ]
+  rm -f "$dir/.DS_Store" 2> /dev/null || true
+  [ -z "$(find "$dir" -mindepth 1 -maxdepth 1 ! -name '.DS_Store' -print -quit 2> /dev/null || true)" ]
 }
 
 cleanup_pending_entries() {
@@ -129,7 +129,7 @@ cleanup_pending_entries() {
     [ -n "$p" ] || continue
     rp="$(realpath_or_self "$p")"
     if [ ! -e "$rp" ]; then
-      grep -v -F $'WT\t'"$rp" "$tmp" >"${tmp}.2" || true
+      grep -v -F $'WT\t'"$rp" "$tmp" > "${tmp}.2" || true
       mv -f "${tmp}.2" "$tmp"
     fi
   done
@@ -137,7 +137,7 @@ cleanup_pending_entries() {
 }
 
 kill_sessions_under_prefixes() {
-  command -v tmux >/dev/null 2>&1 || return 0
+  command -v tmux > /dev/null 2>&1 || return 0
 
   local -a prefixes_raw=("$@")
   [ ${#prefixes_raw[@]} -gt 0 ] || return 0
@@ -160,13 +160,13 @@ kill_sessions_under_prefixes() {
     rspath="$(realpath_or_self "$spath")"
     for pref in "${prefixes[@]}"; do
       case "$rspath" in
-      "$pref" | "$pref"/*)
-        to_kill+=("$sname")
-        break
-        ;;
+        "$pref" | "$pref"/*)
+          to_kill+=("$sname")
+          break
+          ;;
       esac
     done
-  done < <(tmux list-sessions -F $'#{session_name}\t#{session_path}' 2>/dev/null || true)
+  done < <(tmux list-sessions -F $'#{session_name}\t#{session_path}' 2> /dev/null || true)
 
   if [ ${#to_kill[@]} -eq 0 ]; then
     return 0
@@ -178,12 +178,12 @@ kill_sessions_under_prefixes() {
   for s in "${to_kill[@]}"; do
     [ -n "$s" ] || continue
     [ "$s" = "${current_session:-}" ] && continue
-    tmux kill-session -t "$s" 2>/dev/null || true
+    tmux kill-session -t "$s" 2> /dev/null || true
   done
   for s in "${to_kill[@]}"; do
     [ -n "$s" ] || continue
     [ "$s" != "${current_session:-}" ] && continue
-    tmux kill-session -t "$s" 2>/dev/null || true
+    tmux kill-session -t "$s" 2> /dev/null || true
   done
 }
 
@@ -211,14 +211,14 @@ for wt in "${worktrees[@]}"; do
   wt="$(realpath_or_self "$wt")"
   [ -n "$wt" ] || continue
   case "$wt" in
-  */.git/* | */.git) continue ;;
+    */.git/* | */.git) continue ;;
   esac
   case "$wt" in
-  "$nuke_dir" | "$nuke_dir"/*) ;;
-  *)
-    # Worktrees outside the wrapper/root still need cleanup.
-    safe_rm_rf "$wt" || true
-    ;;
+    "$nuke_dir" | "$nuke_dir"/*) ;;
+    *)
+      # Worktrees outside the wrapper/root still need cleanup.
+      safe_rm_rf "$wt" || true
+      ;;
   esac
 done
 
@@ -229,19 +229,19 @@ if [ "$should_nuke_wrapper" -eq 1 ]; then
   bag_root="$(dirname "$wrapper")/.bag/pick_session/$(basename "$wrapper")/$ts"
 
   mapfile -t wt_rels < <(
-    printf '%s\n' "${worktrees[@]}" |
-      while IFS= read -r p; do
+    printf '%s\n' "${worktrees[@]}" \
+      | while IFS= read -r p; do
         p="$(realpath_or_self "$p")"
         case "$p" in
-        "$wrapper"/*) printf '%s\n' "${p#"$wrapper"/}" ;;
+          "$wrapper"/*) printf '%s\n' "${p#"$wrapper"/}" ;;
         esac
-      done |
-      sed '/^$/d' |
-      LC_ALL=C sort -u
+      done \
+      | sed '/^$/d' \
+      | LC_ALL=C sort -u
   )
 
   moved_count="$(
-    WRAPPER="$wrapper" BAG_ROOT="$bag_root" WT_RELS="$(printf '%s\n' "${wt_rels[@]}")" python3 - <<'PY'
+    WRAPPER="$wrapper" BAG_ROOT="$bag_root" WT_RELS="$(printf '%s\n' "${wt_rels[@]}")" python3 - << 'PY'
 import os
 import shutil
 from pathlib import Path
@@ -339,7 +339,7 @@ PY
   )"
 
   case "${moved_count:-0}" in
-  '' | *[!0-9]*) moved_count=0 ;;
+    '' | *[!0-9]*) moved_count=0 ;;
   esac
   if [ "$moved_count" -gt 0 ]; then
     notify_tmux "pick_session: preserved $moved_count non-worktree item(s) to $bag_root"
@@ -354,7 +354,7 @@ PY
         if ! dir_is_effectively_empty_ignoring_ds_store "$cur"; then
           break
         fi
-        rmdir "$cur" 2>/dev/null || break
+        rmdir "$cur" 2> /dev/null || break
         cur="$(dirname "$cur")"
       done
     fi
@@ -363,14 +363,14 @@ PY
   # If nothing needed preserving, don't leave empty bag dirs. `.DS_Store` does
   # not count as content.
   if [ -d "$bag_root" ] && dir_is_effectively_empty_ignoring_ds_store "$bag_root"; then
-    rmdir "$bag_root" 2>/dev/null || true
+    rmdir "$bag_root" 2> /dev/null || true
     cur="$(dirname "$bag_root")"
     stop="$(dirname "$wrapper")/.bag"
     while [ -n "$cur" ] && [ "$cur" != "/" ] && [ "$cur" != "$stop" ]; do
       if ! dir_is_effectively_empty_ignoring_ds_store "$cur"; then
         break
       fi
-      rmdir "$cur" 2>/dev/null || break
+      rmdir "$cur" 2> /dev/null || break
       cur="$(dirname "$cur")"
     done
   fi
@@ -378,9 +378,9 @@ PY
   safe_rm_rf "$wrapper" || exit 0
   notify_tmux "pick_session: removed $wrapper"
   cleanup_pending_entries "${pending_cleanup_paths[@]}"
-  if command -v tmux >/dev/null 2>&1; then
+  if command -v tmux > /dev/null 2>&1; then
     # Run directly; avoid `tmux run-shell` which can steal focus from popups.
-    nohup "$HOME/.config/tmux/scripts/pick_session/index_update.sh" --force --quiet </dev/null >/dev/null 2>&1 &
+    nohup "$HOME/.config/tmux/scripts/pick_session/index_update.sh" --force --quiet < /dev/null > /dev/null 2>&1 &
   fi
   exit 0
 fi
@@ -394,19 +394,19 @@ notify_tmux "pick_session: removed $nuke_dir"
 if [ "$should_nuke_wrapper" -ne 1 ] && [ -d "$wrapper" ]; then
   wrapper_rp="$(realpath_or_self "$wrapper")"
   case "$wrapper_rp" in
-  "" | "/") ;;
-  *)
-    if [ -n "${HOME:-}" ] && [ "$wrapper_rp" = "$(realpath_or_self "$HOME")" ]; then
-      :
-    elif dir_is_effectively_empty_ignoring_ds_store "$wrapper_rp"; then
-      rmdir "$wrapper_rp" 2>/dev/null || safe_rm_rf "$wrapper_rp" || true
-      notify_tmux "pick_session: removed empty wrapper $wrapper_rp"
-    fi
-    ;;
+    "" | "/") ;;
+    *)
+      if [ -n "${HOME:-}" ] && [ "$wrapper_rp" = "$(realpath_or_self "$HOME")" ]; then
+        :
+      elif dir_is_effectively_empty_ignoring_ds_store "$wrapper_rp"; then
+        rmdir "$wrapper_rp" 2> /dev/null || safe_rm_rf "$wrapper_rp" || true
+        notify_tmux "pick_session: removed empty wrapper $wrapper_rp"
+      fi
+      ;;
   esac
 fi
 
 cleanup_pending_entries "${pending_cleanup_paths[@]}"
-if command -v tmux >/dev/null 2>&1; then
-  nohup "$HOME/.config/tmux/scripts/pick_session/index_update.sh" --force --quiet </dev/null >/dev/null 2>&1 &
+if command -v tmux > /dev/null 2>&1; then
+  nohup "$HOME/.config/tmux/scripts/pick_session/index_update.sh" --force --quiet < /dev/null > /dev/null 2>&1 &
 fi

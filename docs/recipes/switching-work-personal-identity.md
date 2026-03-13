@@ -14,7 +14,8 @@ This setup uses two related mechanisms:
 
 ## Steps
 
-1. For git identity switching, use directory placement (`~/work/...` vs personal paths).
+1. For git identity switching, use directory placement (`~/work/...` vs personal
+   paths).
 2. For password-store switching:
 
 ```bash
@@ -28,8 +29,10 @@ On non-work machines, repos under `~/work/` load a secondary git config.
 
 Relevant files:
 
-- `home/private_readonly_dot_gitconfig.tmpl` (primary, installed as `~/.gitconfig`)
-- `home/work/private_dot_gitconfig.tmpl` (work override)
+- [`home/private_readonly_dot_gitconfig.tmpl`](../../home/private_readonly_dot_gitconfig.tmpl)
+  (primary, installed as `~/.gitconfig`)
+- [`home/work/private_dot_gitconfig.tmpl`](../../home/work/private_dot_gitconfig.tmpl)
+  (work override)
 
 In practice: if you clone a repo under `~/work/...`, commits and SSH identity
 selection switch automatically.
@@ -43,7 +46,7 @@ On non-work machines, fish defines helpers:
 
 Setup script:
 
-- `home/.chezmoiscripts/run_once_after_05-setup-pass-managers.fish.tmpl`
+- [`home/.chezmoiscripts/run_once_after_05-setup-pass-managers.fish.tmpl`](../../home/.chezmoiscripts/run_once_after_05-setup-pass-managers.fish.tmpl)
 
 ## Verification
 

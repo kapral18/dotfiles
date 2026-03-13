@@ -6,7 +6,7 @@ source "$(dirname "$0")/../bash_utils_lib.sh"
 source "$(dirname "$0")/../worktree_lib.sh"
 
 show_usage() {
-  cat <<EOF
+  cat << EOF
 Usage: ,w doctor
 
 Check ,w dependencies and repository state.
@@ -18,15 +18,15 @@ EOF
 
 while [ $# -gt 0 ]; do
   case "$1" in
-  -h | --help)
-    show_usage
-    exit 0
-    ;;
-  *)
-    echo "Error: Unknown option '$1'" >&2
-    show_usage
-    exit 1
-    ;;
+    -h | --help)
+      show_usage
+      exit 0
+      ;;
+    *)
+      echo "Error: Unknown option '$1'" >&2
+      show_usage
+      exit 1
+      ;;
   esac
 done
 
@@ -35,7 +35,7 @@ missing=0
 check_cmd() {
   local cmd="$1"
   local label="${2:-$cmd}"
-  if command -v "$cmd" >/dev/null 2>&1; then
+  if command -v "$cmd" > /dev/null 2>&1; then
     printf 'ok   %s\n' "$label"
   else
     printf 'miss %s\n' "$label"
@@ -50,7 +50,7 @@ check_cmd tmux
 check_cmd zoxide
 check_cmd bat
 
-if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
   echo "Error: not inside a git work tree." >&2
   exit 1
 fi
@@ -66,14 +66,14 @@ line=""
 
 while IFS= read -r line; do
   case "$line" in
-  worktree\ *)
-    worktree_path="${line#worktree }"
-    if [ -n "$worktree_path" ] && [ ! -e "$worktree_path" ]; then
-      stale_paths+=("$worktree_path")
-    fi
-    ;;
+    worktree\ *)
+      worktree_path="${line#worktree }"
+      if [ -n "$worktree_path" ] && [ ! -e "$worktree_path" ]; then
+        stale_paths+=("$worktree_path")
+      fi
+      ;;
   esac
-done < <(git worktree list --porcelain 2>/dev/null || true)
+done < <(git worktree list --porcelain 2> /dev/null || true)
 
 if [ ${#stale_paths[@]} -gt 0 ]; then
   echo
@@ -82,12 +82,12 @@ if [ ${#stale_paths[@]} -gt 0 ]; then
   echo "Run: ,w prune"
 fi
 
-if [ -n "${TMUX:-}" ] && ! command -v tmux >/dev/null 2>&1; then
+if [ -n "${TMUX:-}" ] && ! command -v tmux > /dev/null 2>&1; then
   echo
   echo "Warning: TMUX is set but 'tmux' is missing."
 fi
 
-if command -v tmux >/dev/null 2>&1; then
+if command -v tmux > /dev/null 2>&1; then
   stale_sessions=()
   session_has_any_existing_pane_path() {
     local session_name="$1"
@@ -98,7 +98,7 @@ if command -v tmux >/dev/null 2>&1; then
       if [ -e "$pane_path" ]; then
         return 0
       fi
-    done < <(_comma_w_tmux list-panes -t "$session_name" -F '#{pane_current_path}' 2>/dev/null || true)
+    done < <(_comma_w_tmux list-panes -t "$session_name" -F '#{pane_current_path}' 2> /dev/null || true)
 
     return 1
   }
@@ -106,16 +106,16 @@ if command -v tmux >/dev/null 2>&1; then
   while IFS=$'\t' read -r session_name _; do
     [ -z "$session_name" ] && continue
     case "$session_name" in
-    "${session_prefix}"\|*) ;;
-    *)
-      continue
-      ;;
+      "${session_prefix}"\|*) ;;
+      *)
+        continue
+        ;;
     esac
 
     if ! session_has_any_existing_pane_path "$session_name"; then
       stale_sessions+=("$session_name")
     fi
-  done < <(_comma_w_tmux list-sessions -F $'#{session_name}\t#{session_path}' 2>/dev/null || true)
+  done < <(_comma_w_tmux list-sessions -F $'#{session_name}\t#{session_path}' 2> /dev/null || true)
 
   if [ ${#stale_sessions[@]} -gt 0 ]; then
     echo

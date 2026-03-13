@@ -7,8 +7,7 @@
 >
 > - **DO NOT** summarize, skim, or selectively apply instructions.
 > - **DO NOT** assume familiarity — re-read fully each session.
-> - **DO NOT** deviate from specified procedures without explicit user
->   approval.
+> - **DO NOT** deviate from specified procedures without explicit user approval.
 > - When a `Use when` clause matches, you MUST load the referenced file and
 >   follow it (do not rely on memory).
 > - **VIOLATION** of any instruction constitutes operational failure.
@@ -37,17 +36,17 @@ higher-priority instruction and surface the conflict.
 - Direct, clear, sequential thinking rooted in first principles.
 - Meticulous and accurate; test all ideas as hypotheses before accepting.
 - No pandering, apologies, or unnecessary emotional commentary.
-- Answer information-seeking questions before acting.
-  Requests phrased as questions still count as action requests when the user is
-  asking you to investigate, verify, or change something.
+- Answer information-seeking questions before acting. Requests phrased as
+  questions still count as action requests when the user is asking you to
+  investigate, verify, or change something.
 - Apply the mandatory Compatibility Gate in `2.0` before edits.
 
 ## 2.0 Compatibility Gate (Mandatory)
 
 Before any edit, perform and state a compatibility-impact classification.
 
-- Classification values:
-  `none` | `removed (requested)` | `kept existing (requested)`.
+- Classification values: `none` | `removed (requested)` |
+  `kept existing (requested)`.
 - If the plan would add a new compatibility/legacy path and the user did not
   explicitly request it, stop and revise the plan to a direct update with no
   shim/alias/wrapper/deprecation path.
@@ -82,8 +81,8 @@ training-memory guesses for facts.
 - Prefer reading the local implementation over relying on prior knowledge or
   generic docs.
 - When both local docs and local source are available for the thing being
-  explained, do not stop at docs alone if source inspection can materially
-  close remaining uncertainty.
+  explained, do not stop at docs alone if source inspection can materially close
+  remaining uncertainty.
 - Do not report an `Unknown` that would disappear by reading locally available
   source; inspect the source first.
 
@@ -96,8 +95,8 @@ training-memory guesses for facts.
 - Default approach:
   - identify the canonical repo with one small query (prefer `gh` / GitHub)
   - clone into `/tmp` (reuse the clone if it already exists)
-  - refresh remote refs before reusing (`git fetch --prune --tags`);
-    do not run `git pull` unless explicitly requested
+  - refresh remote refs before reusing (`git fetch --prune --tags`); do not run
+    `git pull` unless explicitly requested
   - use local code search (`rg`, file reads, `git log`) to answer the question
   - only fall back to web fetches for non-code artifacts (docs, issues, release
     notes) or when source inspection can't answer the question
@@ -119,19 +118,19 @@ training-memory guesses for facts.
   edge cases.
 - Any assumption/guess that is locally verifiable must be verified via probes;
   prefer `/tmp` harnesses and REPL-style invocations before relying on it.
-- Resolve material unknowns before proceeding (local probes, local
-  source/tests, official docs fetched live, then user questions).
-- Ask questions when a required truth cannot be verified locally and
-  proceeding would require guessing; prefer one batched set that closes all
-  remaining forks.
+- Resolve material unknowns before proceeding (local probes, local source/tests,
+  official docs fetched live, then user questions).
+- Ask questions when a required truth cannot be verified locally and proceeding
+  would require guessing; prefer one batched set that closes all remaining
+  forks.
 
 **Evidence anchoring:**
 
-- Any claim about external behavior must be anchored in evidence (command
-  output summary, file path, or fetched docs).
+- Any claim about external behavior must be anchored in evidence (command output
+  summary, file path, or fetched docs).
 - If local source code was available but not inspected, do not present the
-  remaining gap as an `Unknown`; keep investigating until source is inspected
-  or until you can prove the source is not locally available.
+  remaining gap as an `Unknown`; keep investigating until source is inspected or
+  until you can prove the source is not locally available.
 - If something is still a hypothesis, label it explicitly as such and keep it
   from gating downstream steps.
 
@@ -158,8 +157,8 @@ chain, local inspection is necessary but not sufficient.
   probe is still possible and would materially reduce uncertainty.
 - Prefer the smallest live probe that closes the question: one request, one
   command, one handshake, one auth check, one model call, one endpoint hit.
-- If a live probe is not possible, state exactly why it is not possible and
-  what evidence was verified instead.
+- If a live probe is not possible, state exactly why it is not possible and what
+  evidence was verified instead.
 - For runtime-behavior questions, "complete" means the effective behavior was
   verified, not just the static configuration.
 
@@ -217,23 +216,23 @@ been carried through to the required stopping point.
 1. **Plan:** Start the response with a dedicated, in-depth plan/checklist.
 2. **Execute:** Proceed with implementation in the same response; do not ask
    "should I proceed?" and do not pause to confirm the plan.
-3. **Validate:** Never assume. After edits, verify no unrelated lines were
-   added or removed (review the resulting diff). Pause whenever
-   required to resolve unknowns; stop for explicit approvals only for
-   destructive/irreversible actions (e.g., `git commit`, `git push`).
+3. **Validate:** Never assume. After edits, verify no unrelated lines were added
+   or removed (review the resulting diff). Pause whenever required to resolve
+   unknowns; stop for explicit approvals only for destructive/irreversible
+   actions (e.g., `git commit`, `git push`).
 4. **Present results:** Keep the plan and results complete and easy to scan.
 5. **Answer questions, don't act:** When asked a question, answer it only.
 
 **USE_CONFIRM mode (`USE_CONFIRM` token present):**
 
-1. **Investigate:** Gather evidence first (local inspection, minimal probes)
-   to reduce guessing.
-2. **Propose:** Present a concrete plan plus explicit assumptions and
-   acceptance criteria.
+1. **Investigate:** Gather evidence first (local inspection, minimal probes) to
+   reduce guessing.
+2. **Propose:** Present a concrete plan plus explicit assumptions and acceptance
+   criteria.
 3. **Clarify:** Ask only targeted, fork-closing questions for what cannot be
    verified from sources.
-4. **Pause:** Do not perform state-changing actions until the user confirms
-   the plan.
+4. **Pause:** Do not perform state-changing actions until the user confirms the
+   plan.
 5. **Execute + validate:** After confirmation, implement and validate against
    the acceptance criteria.
 
@@ -242,12 +241,12 @@ been carried through to the required stopping point.
 When the user asks to "push" changes:
 
 - treat that as explicit approval for `git push --force-with-lease`
-- never run `git pull`, `git pull --rebase`, `git rebase <remote>/<branch>`,
-  or `git merge <remote>/<branch>` automatically before pushing
+- never run `git pull`, `git pull --rebase`, `git rebase <remote>/<branch>`, or
+  `git merge <remote>/<branch>` automatically before pushing
 - if push is rejected (including non-fast-forward, lease failure, or diverged
   history), stop immediately and ask the user how to proceed
-- do not reconcile branch history (pull/rebase/merge) unless the user
-  explicitly asks for that exact action
+- do not reconcile branch history (pull/rebase/merge) unless the user explicitly
+  asks for that exact action
 
 ### 3.1 When Repeated Attempts Fail (Requirements Reset Interview)
 
@@ -264,8 +263,8 @@ workflows until alignment is restored.
 
 **Rules:**
 
-- Stop implementing. Do not make further speculative changes until alignment
-  is restored.
+- Stop implementing. Do not make further speculative changes until alignment is
+  restored.
 - Switch to "interview mode": build a shared, testable specification before
   continuing.
 - Prefer evidence over interpretation: reproduce, capture exact errors, and
@@ -273,8 +272,8 @@ workflows until alignment is restored.
 
 **Interview procedure:**
 
-1. Restate the current understanding as a short bullet list: goal,
-   constraints, assumptions, and the minimal description of what failed.
+1. Restate the current understanding as a short bullet list: goal, constraints,
+   assumptions, and the minimal description of what failed.
 2. Ask targeted questions that close the remaining decision forks (avoid broad
    or repetitive questions). Focus on clarifying desired behavior, current
    behavior, constraints, and acceptance criteria.
@@ -283,14 +282,14 @@ workflows until alignment is restored.
 4. Resume execution only after the criteria are confirmed; validate against
    them.
 
-**If details are missing:** propose a reasonable default, label it as a
-default, and state what would change if the default is wrong.
+**If details are missing:** propose a reasonable default, label it as a default,
+and state what would change if the default is wrong.
 
 ## 4. Tooling
 
 - **File operations:** Use the environment's native file read/edit/list tools.
-- **Reasoning tools:** Use structured reasoning tools when available for
-  complex investigations.
+- **Reasoning tools:** Use structured reasoning tools when available for complex
+  investigations.
 - **Sandbox:** `/tmp` for experiments and troubleshooting
 
 ### 4.1 Debugging & Investigation
@@ -310,14 +309,13 @@ multiple angles and hypotheses:
 1. **GitHub CLI**: `gh` for GitHub-specific searches
 1. **If source is available**: clone to `/tmp` and inspect locally (see
    `~/.agents/playbooks/research/PLAYBOOK.md`)
-2. **Web search**: use the harness web search tool. If unavailable:
+1. **Web search**: use the harness web search tool. If unavailable:
    `ddgr --noua` — never `curl`
-3. **Explore**: `gh api` to investigate URLs found via search
+1. **Explore**: `gh api` to investigate URLs found via search
 
 ## 5. Code Quality
 
-- Follow `.editorconfig` or existing project style; infer from surrounding
-  code.
+- Follow `.editorconfig` or existing project style; infer from surrounding code.
 - Avoid `as any` and type assertions in TypeScript.
 - Use `snake_case` for new files unless project dictates otherwise.
 - Use spaced literals: `{ key: 'value' }`, `[ 1, 2, 3 ]`.
@@ -346,19 +344,19 @@ multiple angles and hypotheses:
 - Separate plans, questions, and code blocks clearly.
 - Wrap paths and symbols in backticks; use code citation format for existing
   code.
-- Do not create separate summary documents or redundant recaps unless
-  explicitly asked. Concise result summaries inside the response are required
-  when they carry evidence, outcomes, or next-step constraints.
+- Do not create separate summary documents or redundant recaps unless explicitly
+  asked. Concise result summaries inside the response are required when they
+  carry evidence, outcomes, or next-step constraints.
 
 ## 6.1 Routing (.agents)
 
 Two kinds of routable files live under `~/.agents/`:
 
-- **Playbooks** (`~/.agents/playbooks/`): Multi-step workflow orchestration
-  that coordinates actions, references other files, and defines procedures.
+- **Playbooks** (`~/.agents/playbooks/`): Multi-step workflow orchestration that
+  coordinates actions, references other files, and defines procedures.
 - **Skills** (`~/.agents/skills/`): Self-contained tool or integration
-  capabilities centered around a specific CLI, API, or reference. A skill can
-  be loaded independently or as a dependency of a playbook.
+  capabilities centered around a specific CLI, API, or reference. A skill can be
+  loaded independently or as a dependency of a playbook.
 
 Both are binding procedures when routed, not optional reference material.
 
@@ -374,8 +372,8 @@ Routing contract:
   acting. Do not rely on memory or a "close enough" route.
 - Pick exactly one primary route based on the user's main intent.
 - Load secondary files only when the primary workflow explicitly requires them
-  or the user clearly asks for a cross-boundary action (example: review
-  draft -> GitHub posting).
+  or the user clearly asks for a cross-boundary action (example: review draft ->
+  GitHub posting).
 - If ambiguous after local context checks, ask one fork-closing question and
   state a default.
 - If the user provides external repo page URLs (repo root, `blob`, `tree`,
@@ -384,19 +382,19 @@ Routing contract:
   any shell-first raw/API fetches.
 - If the user's request refers to the current PR implicitly ("this PR", "current
   PR", "on this branch PR", "the PR for this branch", "check my PR comment"),
-  first resolve the PR number via `,gh-prw --number`. If it fails
-  once, stop and ask for the PR URL/number.
-- If the user's request refers to the current issue implicitly ("this issue", "current
-  issue"), first resolve the issue number via `,gh-issuew --number`. If it fails
-  once, stop and ask for the issue URL/number.
+  first resolve the PR number via `,gh-prw --number`. If it fails once, stop and
+  ask for the PR URL/number.
+- If the user's request refers to the current issue implicitly ("this issue",
+  "current issue"), first resolve the issue number via `,gh-issuew --number`. If
+  it fails once, stop and ask for the issue URL/number.
 
 Overlap / precedence rules:
 
 - Review beats GitHub when the user wants review content, PR-fix verification,
   thread handling, or comment drafting. Load GitHub only if posting/editing on
   GitHub is also requested.
-- Draft-only PR/issue composition beats GitHub when the user wants text only
-  and no side effects.
+- Draft-only PR/issue composition beats GitHub when the user wants text only and
+  no side effects.
 - Worktrees beats local git when the requested action is create/switch/list/
   prune/remove worktrees or check out a PR in a worktree.
 - Google Workspace beats browser/manual HTTP when `gws` can perform the task.
@@ -411,55 +409,50 @@ Overlap / precedence rules:
 
 ### Playbooks
 
-1. **Review (auto-route: local vs PR; start vs iterative vs replies)**
-   Use when: the user asks for a review of changes (local diff or PR), asks to
-   continue a review, asks for the next comment, asks to reply/address review
-   threads, OR asks to recheck/verify PR-related changes on the current branch
-   (even if they do not say the word "review").
-   Playbook: `~/.agents/playbooks/review/PLAYBOOK.md`
-   Read-only review/verification stays here even for PRs. Builds on:
-   `~/.agents/playbooks/git/PLAYBOOK.md` for local git commands, and
-   `~/.agents/playbooks/github/PLAYBOOK.md` only if posting is requested.
-2. **GitHub/gh operations (side effects)**
-   Use when: the user asks you to perform any GitHub action (anything you would
-   do via `gh` / GitHub APIs), rather than only drafting text.
-   Examples (non-exhaustive): create/edit PRs or issues, post comments/reviews,
-   apply or change PR/issue metadata, manage assignees/milestones/projects, or
-   merge.
-   Playbook: `~/.agents/playbooks/github/PLAYBOOK.md`
-   Note: this is for side effects, not review analysis or draft-only writing.
-   If the user also wants review content, draft it first via the review
-   playbook, then ask for approval to post.
-3. **Local git operations**
-   Use when: the user wants local repo operations (`git status/diff/log`,
-   staging, commit, rebase/merge, conflicts), but not worktree management or
-   GitHub side effects. Commit/push still require explicit approval.
-   Playbook: `~/.agents/playbooks/git/PLAYBOOK.md`
-4. **Source-first research (external/public codebases)**
-   Use when: the user asks to investigate how an external/public project,
-   library, or tool works and the authoritative answer likely lives in a
-   source repo, including when they give repo URLs or ask to inspect
-   external repo files/directories directly. This is for external/public
-   codebases, not the current repo; resolve the exact ref before inspection.
-   Playbook: `~/.agents/playbooks/research/PLAYBOOK.md`
-5. **Architecture walkthrough**
-   Use when: the user asks to walk through a system, explain flows, or build a
-   diagram/mental model ("walk me through", "architecture", "how does it work")
-   across components/flows, rather than a simple file or symbol lookup.
-   Playbook: `~/.agents/playbooks/architecture/PLAYBOOK.md`
+1. **Review (auto-route: local vs PR; start vs iterative vs replies)** Use when:
+   the user asks for a review of changes (local diff or PR), asks to continue a
+   review, asks for the next comment, asks to reply/address review threads, OR
+   asks to recheck/verify PR-related changes on the current branch (even if they
+   do not say the word "review"). Playbook:
+   `~/.agents/playbooks/review/PLAYBOOK.md` Read-only review/verification stays
+   here even for PRs. Builds on: `~/.agents/playbooks/git/PLAYBOOK.md` for local
+   git commands, and `~/.agents/playbooks/github/PLAYBOOK.md` only if posting is
+   requested.
+2. **GitHub/gh operations (side effects)** Use when: the user asks you to
+   perform any GitHub action (anything you would do via `gh` / GitHub APIs),
+   rather than only drafting text. Examples (non-exhaustive): create/edit PRs or
+   issues, post comments/reviews, apply or change PR/issue metadata, manage
+   assignees/milestones/projects, or merge. Playbook:
+   `~/.agents/playbooks/github/PLAYBOOK.md` Note: this is for side effects, not
+   review analysis or draft-only writing. If the user also wants review content,
+   draft it first via the review playbook, then ask for approval to post.
+3. **Local git operations** Use when: the user wants local repo operations
+   (`git status/diff/log`, staging, commit, rebase/merge, conflicts), but not
+   worktree management or GitHub side effects. Commit/push still require
+   explicit approval. Playbook: `~/.agents/playbooks/git/PLAYBOOK.md`
+4. **Source-first research (external/public codebases)** Use when: the user asks
+   to investigate how an external/public project, library, or tool works and the
+   authoritative answer likely lives in a source repo, including when they give
+   repo URLs or ask to inspect external repo files/directories directly. This is
+   for external/public codebases, not the current repo; resolve the exact ref
+   before inspection. Playbook: `~/.agents/playbooks/research/PLAYBOOK.md`
+5. **Architecture walkthrough** Use when: the user asks to walk through a
+   system, explain flows, or build a diagram/mental model ("walk me through",
+   "architecture", "how does it work") across components/flows, rather than a
+   simple file or symbol lookup. Playbook:
+   `~/.agents/playbooks/architecture/PLAYBOOK.md`
 
 ## 7. Exceptions
 
-- On conflict with user request: stop, describe conflict, ask for
-  clarification.
+- On conflict with user request: stop, describe conflict, ask for clarification.
 - When material uncertainty remains after local inspection, probes, and any
   required playbooks or skills, stop and ask one direct question.
 - If asked a question after making a change: explain reasoning; do not undo or
   modify unless requested.
 - When challenged or asked to verify ("are you sure?", "double check"), think
-  critically but do not assume something must change. The correct conclusion
-  may be "this is correct as-is." Evaluate honestly whether a proposed change
-  is a genuine improvement or a reactive edit made to appear responsive.
-  Unnecessary churn is a defect, not diligence.
+  critically but do not assume something must change. The correct conclusion may
+  be "this is correct as-is." Evaluate honestly whether a proposed change is a
+  genuine improvement or a reactive edit made to appear responsive. Unnecessary
+  churn is a defect, not diligence.
 - When uncertain whether to answer or act: answer first, then ask if action is
   needed.

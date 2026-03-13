@@ -4,10 +4,10 @@ set -euo pipefail
 PATH="$HOME/bin:$PATH"
 trap 'exit 0' INT HUP TERM
 
-if ! command -v ,gh-tfork >/dev/null 2>&1; then
+if ! command -v ,gh-tfork > /dev/null 2>&1; then
   printf "\033[38;5;203mMissing:\033[0m ,gh-tfork (is chezmoi applied?)\n" >&2
   printf "\033[38;5;244mpress any key to close\033[0m" >&2
-  read -rsn 1 </dev/tty || true
+  read -rsn 1 < /dev/tty || true
   exit 127
 fi
 
@@ -24,22 +24,22 @@ buf=""
 printf "%b%b" "$prompt_prefix" "$hint"
 printf "\r%b" "$prompt_prefix"
 
-while IFS= read -rsn 1 ch </dev/tty; do
+while IFS= read -rsn 1 ch < /dev/tty; do
   case "$ch" in
-  "$ctrl_c" | "$esc")
-    exit 0
-    ;;
-  "$cr" | "$nl")
-    break
-    ;;
-  "$bs" | $'\b')
-    if [ -n "$buf" ]; then
-      buf="${buf%?}"
-    fi
-    ;;
-  *)
-    buf+="$ch"
-    ;;
+    "$ctrl_c" | "$esc")
+      exit 0
+      ;;
+    "$cr" | "$nl")
+      break
+      ;;
+    "$bs" | $'\b')
+      if [ -n "$buf" ]; then
+        buf="${buf%?}"
+      fi
+      ;;
+    *)
+      buf+="$ch"
+      ;;
   esac
   printf "\r%b%s\033[K" "$prompt_prefix" "$buf"
 done
@@ -58,4 +58,4 @@ if ,gh-tfork "$repo_spec"; then
 fi
 
 printf "\n\033[38;5;203mfailed\033[0m (press any key to close)" >&2
-read -rsn 1 </dev/tty || true
+read -rsn 1 < /dev/tty || true

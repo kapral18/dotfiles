@@ -13,8 +13,9 @@ Use when:
 
 Out of scope:
 
-- If the user wants to apply requested changes while processing review feedback (one thread/comment at a time),
-  use `~/.agents/playbooks/review/pr_change_cycle.md` instead.
+- If the user wants to apply requested changes while processing review feedback
+  (one thread/comment at a time), use
+  `~/.agents/playbooks/review/pr_change_cycle.md` instead.
 
 ## PR Common Setup (All PR Modes)
 
@@ -91,8 +92,8 @@ Anchoring constraints (only if posting is requested):
     the PR diff; GitHub will 422 if it cannot resolve)
 - If the specific source line you care about is not shown in the diff context:
   - do NOT anchor the comment to an unrelated line
-  - anchor on the nearest relevant diff line in the same file and include a
-    deep link to the exact source location on the PR head SHA
+  - anchor on the nearest relevant diff line in the same file and include a deep
+    link to the exact source location on the PR head SHA
 - If you cannot find a relevant diff anchor without confusing the author:
   - use a file-level comment (`subject_type=file`)
   - or a PR-level comment that links to the exact source lines
@@ -139,5 +140,5 @@ Output:
 Draft persistence:
 
 - If the user says "consult before sending", keep the full batch draft in a
-  single scratch file under `/tmp/` so it can be reviewed/edited before
-  posting. Do not post until explicitly asked.
+  single scratch file under `/tmp/` so it can be reviewed/edited before posting.
+  Do not post until explicitly asked.

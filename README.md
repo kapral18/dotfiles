@@ -99,7 +99,8 @@ Version manager for languages and tools.
 
 **How it works:**
 
-1. **Declarative Plugins** (`home/asdf_plugins.tmpl`): Conditionally install plugins
+1. **Declarative Plugins** (`home/asdf_plugins.tmpl`): Conditionally install
+   plugins
 
    ```text
    nodejs
@@ -107,15 +108,16 @@ Version manager for languages and tools.
    {{ if ne .isWork true }}lua{{ end }}
    ```
 
-2. **Version Pinning** (`home/readonly_dot_tool-versions.tmpl`): Pin tool versions
+2. **Version Pinning** (`home/readonly_dot_tool-versions.tmpl`): Pin tool
+   versions
 
    ```text
    nodejs 20.11.0
    ruby 3.2.2
    ```
 
-3. **Automatic Switching**: `cd` into a project and the right versions
-   activate via ASDF shims.
+3. **Automatic Switching**: `cd` into a project and the right versions activate
+   via ASDF shims.
 
 ---
 
@@ -161,7 +163,10 @@ Interactive cleanup:
 
 ### Custom Functions
 
-Custom commands are shipped as scripts installed to `~/bin` (source: `home/exact_bin/`). Fish completions live in `home/dot_config/fish/completions/`. A few helpers are defined directly in Fish config (`home/dot_config/fish/config.fish.tmpl`).
+Custom commands are shipped as scripts installed to `~/bin` (source:
+`home/exact_bin/`). Fish completions live in
+`home/dot_config/fish/completions/`. A few helpers are defined directly in Fish
+config (`home/dot_config/fish/config.fish.tmpl`).
 
 - **Name:** `,w`
   - **Description:** Manage git worktrees with a consistent, tmux-friendly
@@ -169,9 +174,11 @@ Custom commands are shipped as scripts installed to `~/bin` (source: `home/exact
     without losing context.
   - **Examples:** `,w add feat/my-change main`; `,w prs 12345`
 - **Name:** `,add-patch-to-prs`
-  - **Description:** Apply one patch file onto one or more PR branches
-    (explicit PR numbers or picker-driven selection), then commit and push.
-  - **Examples:** `,add-patch-to-prs ./fix.patch 12345 12346`; `,add-patch-to-prs ./fix.patch --search "is:open author:@me"`; `,add-patch-to-prs ./fix.patch --message "Apply follow-up fix"`
+  - **Description:** Apply one patch file onto one or more PR branches (explicit
+    PR numbers or picker-driven selection), then commit and push.
+  - **Examples:** `,add-patch-to-prs ./fix.patch 12345 12346`;
+    `,add-patch-to-prs ./fix.patch --search "is:open author:@me"`;
+    `,add-patch-to-prs ./fix.patch --message "Apply follow-up fix"`
 - **Name:** `,appid`
   - **Description:** Print the bundle identifier for a macOS app name/path
     (useful for scripting macOS automation).
@@ -186,20 +193,25 @@ Custom commands are shipped as scripts installed to `~/bin` (source: `home/exact
 - **Name:** `,bat-preview`
   - **Description:** Smart preview for `fzf`/terminal workflows: images via
     `chafa`, binaries via `hexyl`, directories via `ls -la`, and text via `bat`.
-  - **Examples:** `,bat-preview README.md --style=numbers`; `,bat-preview path/to/image.png`
+  - **Examples:** `,bat-preview README.md --style=numbers`;
+    `,bat-preview path/to/image.png`
 - **Name:** `,check-backport-progress`
   - **Description:** Inspect PRs via `gh` to find missing backports and/or
     missing required labels across target branches.
-  - **Examples:** `,check-backport-progress --merged-label "Critical Fixes" --required-labels "backport-v8.18 backport-v8.19" --branches "8.x 8.18" --upstream origin`; `,check-backport-progress --merged-label "needs-backport" --required-labels "backport-v1 backport-v2" --branches "main release-1.0" --upstream upstream`
+  - **Examples:**
+    `,check-backport-progress --merged-label "Critical Fixes" --required-labels "backport-v8.18 backport-v8.19" --branches "8.x 8.18" --upstream origin`;
+    `,check-backport-progress --merged-label "needs-backport" --required-labels "backport-v1 backport-v2" --branches "main release-1.0" --upstream upstream`
 - **Name:** `,cp-files-for-llm`
-  - **Description:** Copy the text contents of a directory tree to the
-    clipboard with file headers (skips non-text), so you can paste a curated
-    snapshot into an assistant.
-  - **Examples:** `,cp-files-for-llm .`; `,cp-files-for-llm src -E node_modules -E dist`
+  - **Description:** Copy the text contents of a directory tree to the clipboard
+    with file headers (skips non-text), so you can paste a curated snapshot into
+    an assistant.
+  - **Examples:** `,cp-files-for-llm .`;
+    `,cp-files-for-llm src -E node_modules -E dist`
 - **Name:** `,disable-auto-merge`
   - **Description:** Turn off auto-merge for all open PRs targeting a base
     branch (optionally skipping specific PRs).
-  - **Examples:** `,disable-auto-merge main`; `,disable-auto-merge 8.18 12345 23456`
+  - **Examples:** `,disable-auto-merge main`;
+    `,disable-auto-merge 8.18 12345 23456`
 - **Name:** `,doctor`
   - **Description:** Run a system-wide health check for the dotfiles setup
     (chezmoi state, package managers, shells, tmux, git/signing, SSH, editors,
@@ -208,124 +220,150 @@ Custom commands are shipped as scripts installed to `~/bin` (source: `home/exact
 - **Name:** `,dumputi`
   - **Description:** Dump the system’s registered Uniform Type Identifiers
     (UTIs), useful when debugging file associations.
-  - **Examples:** `,dumputi | rg -n "public\\.json"`; `,dumputi | rg -n "com\\.adobe"`
+  - **Examples:** `,dumputi | rg -n "public\\.json"`;
+    `,dumputi | rg -n "com\\.adobe"`
 - **Name:** `,enable-auto-merge`
   - **Description:** Re-enable auto-merge for all open PRs targeting a base
     branch (also leaves a comment).
   - **Examples:** `,enable-auto-merge main`; `,enable-auto-merge 8.18`
 - **Name:** `,fuzzy-brew-search`
-  - **Description:** Fuzzy search Homebrew descriptions with preview, then
-    drive an “add this to Brewfile” workflow.
+  - **Description:** Fuzzy search Homebrew descriptions with preview, then drive
+    an “add this to Brewfile” workflow.
   - **Examples:** `,fuzzy-brew-search ripgrep`; `,fuzzy-brew-search "postgres"`
 - **Name:** `,fzf-git-changed-lines`
   - **Description:** Emit “changed lines” for your working tree as grep-like
     entries so you can search within just the diff.
-  - **Examples:** `,fzf-git-changed-lines --mode status | rg -n "TODO"`; `,fzf-git-changed-lines --mode range --range "main..HEAD" | ,fzf-rg-multiline | fzf --read0`
+  - **Examples:** `,fzf-git-changed-lines --mode status | rg -n "TODO"`;
+    `,fzf-git-changed-lines --mode range --range "main..HEAD" | ,fzf-rg-multiline | fzf --read0`
 - **Name:** `,fzf-preview-follow`
-  - **Description:** Preview helper that centers the view around the match
-    line (works well with `,fzf-rg-multiline`).
-  - **Examples:** `,fzf-preview-follow --file README.md --line 120`; `rg -n --column --no-heading --color=never PATTERN | ,fzf-rg-multiline | fzf --read0 --delimiter '\t' --with-nth 1 --preview ',fzf-preview-follow --file {2} --line {3}'`
+  - **Description:** Preview helper that centers the view around the match line
+    (works well with `,fzf-rg-multiline`).
+  - **Examples:** `,fzf-preview-follow --file README.md --line 120`;
+    `rg -n --column --no-heading --color=never PATTERN | ,fzf-rg-multiline | fzf --read0 --delimiter '\t' --with-nth 1 --preview ',fzf-preview-follow --file {2} --line {3}'`
 - **Name:** `,fzf-rg-multiline`
   - **Description:** Convert ripgrep output into NUL-delimited multi-line fzf
     entries so wrapped text doesn’t break actions/preview.
-  - **Examples:** `rg -n --column --no-heading --color=never PATTERN | ,fzf-rg-multiline | fzf --read0`; `,fzf-git-changed-lines --mode status | rg -n PATTERN | ,fzf-rg-multiline | fzf --read0`
+  - **Examples:**
+    `rg -n --column --no-heading --color=never PATTERN | ,fzf-rg-multiline | fzf --read0`;
+    `,fzf-git-changed-lines --mode status | rg -n PATTERN | ,fzf-rg-multiline | fzf --read0`
 - **Name:** `,generate-git-sandbox`
   - **Description:** Create a throwaway git repo with branches/commits for
     testing rebases/merges/scripts without touching real repos.
-  - **Examples:** `,generate-git-sandbox`; `cd git-sandbox-* && git log --oneline --graph --decorate --all`
+  - **Examples:** `,generate-git-sandbox`;
+    `cd git-sandbox-* && git log --oneline --graph --decorate --all`
 - **Name:** `,get-age-buckets`
   - **Description:** Compute file “age buckets” from git history (last true
     content change) for path patterns, which helps spot stale areas.
-  - **Examples:** `,get-age-buckets --pattern "src/**/*.ts"`; `,get-age-buckets --pattern "docs/**/*.md,*.mdx" --format json`
+  - **Examples:** `,get-age-buckets --pattern "src/**/*.ts"`;
+    `,get-age-buckets --pattern "docs/**/*.md,*.mdx" --format json`
 - **Name:** `,get-risky-tests`
-  - **Description:** Run Jest and report tests whose runtime exceeds a
-    threshold (helps target slow tests).
-  - **Examples:** `,get-risky-tests "src/plugins/data"`; `,get-risky-tests "src/core/server" | jq -r '.fullName'`
+  - **Description:** Run Jest and report tests whose runtime exceeds a threshold
+    (helps target slow tests).
+  - **Examples:** `,get-risky-tests "src/plugins/data"`;
+    `,get-risky-tests "src/core/server" | jq -r '.fullName'`
 - **Name:** `,gh-prw`
   - **Description:** Open the PR for the current branch (or a given PR
     number/URL/branch) in the browser, or print its number/URL for scripting.
     Also attempts to resolve already-merged PRs even if the remote branch was
     deleted.
-  - **Examples:** `,gh-prw`; `,gh-prw 12345`; `,gh-prw --number`; `,gh-prw --url`
+  - **Examples:** `,gh-prw`; `,gh-prw 12345`; `,gh-prw --number`;
+    `,gh-prw --url`
 - **Name:** `,gh-issuew`
-  - **Description:** Open the issue(s) for the current branch/worktree (or a given issue
-    number/URL) in the browser, or print its number/URL for scripting. Infers issue from
-    branch suffix, worktree metadata, or PR body mentions.
-  - **Examples:** `,gh-issuew`; `,gh-issuew 12345`; `,gh-issuew --number`; `,gh-issuew --url`
+  - **Description:** Open the issue(s) for the current branch/worktree (or a
+    given issue number/URL) in the browser, or print its number/URL for
+    scripting. Infers issue from branch suffix, worktree metadata, or PR body
+    mentions.
+  - **Examples:** `,gh-issuew`; `,gh-issuew 12345`; `,gh-issuew --number`;
+    `,gh-issuew --url`
 - **Name:** `,gh-tfork`
-  - **Description:** Fork + clone a repo into `~/work/<repo>/<default-branch>` (owner `elastic`) or
-    `~/code/<repo>/<default-branch>` (otherwise), then create/focus a tmux session named
-    `<wrapper/repo>|<default-branch>` with a 2-window layout (each window split vertically).
-    For `elastic/kibana`, bootstrap uses date-anchored shallow history
+  - **Description:** Fork + clone a repo into `~/work/<repo>/<default-branch>`
+    (owner `elastic`) or `~/code/<repo>/<default-branch>` (otherwise), then
+    create/focus a tmux session named `<wrapper/repo>|<default-branch>` with a
+    2-window layout (each window split vertically). For `elastic/kibana`,
+    bootstrap uses date-anchored shallow history
     (`--shallow-since=2022-01-01 --no-tags`).
   - **Examples:** `,gh-tfork elastic/integrations`
 - **Name:** `,gh-subissues-create`
-  - **Description:** Draft multiple sub-issues in your editor, create them,
-    and attach them to a parent issue via GitHub’s sub-issue GraphQL API.
-  - **Examples:** `,gh-subissues-create`; re-run `,gh-subissues-create` to reuse defaults from `/tmp/github-sub-issue-creator-session.json`
+  - **Description:** Draft multiple sub-issues in your editor, create them, and
+    attach them to a parent issue via GitHub’s sub-issue GraphQL API.
+  - **Examples:** `,gh-subissues-create`; re-run `,gh-subissues-create` to reuse
+    defaults from `/tmp/github-sub-issue-creator-session.json`
 - **Name:** `,grepo`
-  - **Description:** Find files containing a pattern and open the selected
-    file in `$EDITOR` at the next match.
+  - **Description:** Find files containing a pattern and open the selected file
+    in `$EDITOR` at the next match.
   - **Examples:** `,grepo "owner:"`; `,grepo "TODO"`
 - **Name:** `,hey-branch`
-  - **Description:** Quick “am I in sync with upstream?” status for the
-    current branch (ahead/behind + missing remote).
+  - **Description:** Quick “am I in sync with upstream?” status for the current
+    branch (ahead/behind + missing remote).
   - **Examples:** `,hey-branch`; run `,hey-branch` after `git fetch`
 - **Name:** `,history-sync`
-  - **Description:** Merge local Fish history with a 1Password document and
-    push the merged result back, so multiple machines stay in sync.
-  - **Examples:** `,history-sync`; run `,history-sync` on each machine periodically
+  - **Description:** Merge local Fish history with a 1Password document and push
+    the merged result back, so multiple machines stay in sync.
+  - **Examples:** `,history-sync`; run `,history-sync` on each machine
+    periodically
 - **Name:** `,install-npm-pkgs`
   - **Description:** Install global npm packages listed in
     `home/readonly_dot_default-npm-pkgs` and re-shim via ASDF.
-  - **Examples:** update `home/readonly_dot_default-npm-pkgs` then run `,install-npm-pkgs`; run `,install-npm-pkgs` on a new machine
+  - **Examples:** update `home/readonly_dot_default-npm-pkgs` then run
+    `,install-npm-pkgs`; run `,install-npm-pkgs` on a new machine
 - **Name:** `,jest-test-title-report`
   - **Description:** Compare Jest test titles between two worktrees and emit a
     CSV (useful for refactors/migrations and review diffs).
-  - **Examples:** `,jest-test-title-report --before ~/work/repo/main --after ~/work/repo/feat --scope src/plugins/data --out /tmp/data-tests.csv`; `,jest-test-title-report --before ~/work/repo/main --after ~/work/repo/feat --scope src/plugins/data --out /tmp/data-tests.csv --gist`
+  - **Examples:**
+    `,jest-test-title-report --before ~/work/repo/main --after ~/work/repo/feat --scope src/plugins/data --out /tmp/data-tests.csv`;
+    `,jest-test-title-report --before ~/work/repo/main --after ~/work/repo/feat --scope src/plugins/data --out /tmp/data-tests.csv --gist`
 - **Name:** `,pdf-diff`
   - **Description:** Visual diff two PDFs by compositing pages and opening the
     output.
-  - **Examples:** `,pdf-diff left.pdf right.pdf`; `,pdf-diff -d 200 -o /tmp/diff.pdf left.pdf right.pdf`
+  - **Examples:** `,pdf-diff left.pdf right.pdf`;
+    `,pdf-diff -d 200 -o /tmp/diff.pdf left.pdf right.pdf`
 - **Name:** `,pull-rebase`
-  - **Description:** Pull and rebase your current branch onto the branch it
-    was created from (or its remote equivalent), with a confirmation prompt.
+  - **Description:** Pull and rebase your current branch onto the branch it was
+    created from (or its remote equivalent), with a confirmation prompt.
   - **Examples:** `,pull-rebase`; run `,pull-rebase` before pushing
 - **Name:** `,remove-comment`
   - **Description:** Delete a comment from the current PR by selecting it via
     `fzf` (uses `gh api`).
-  - **Examples:** `,remove-comment`; use `,remove-comment` after posting a mistaken comment
+  - **Examples:** `,remove-comment`; use `,remove-comment` after posting a
+    mistaken comment
 - **Name:** `,search-brew-desc`
   - **Description:** Search installed Homebrew formula descriptions and emit
     JSON (name/desc/homepage).
-  - **Examples:** `,search-brew-desc "json" | jq -r '.[].name'`; `,search-brew-desc "kubernetes"`
+  - **Examples:** `,search-brew-desc "json" | jq -r '.[].name'`;
+    `,search-brew-desc "kubernetes"`
 - **Name:** `,search-gh-topic`
-  - **Description:** Search GitHub repos by topic (default: `gh-extension`)
-    with preview, then open the selected repo.
+  - **Description:** Search GitHub repos by topic (default: `gh-extension`) with
+    preview, then open the selected repo.
   - **Examples:** `,search-gh-topic "mcp"`; `,search-gh-topic "kibana" "kibana"`
 - **Name:** `,start-feat-kbn`
   - **Description:** Kibana helper that boots ES (snapshot) and then starts
     Kibana in a tmux pane when bootstrap completes.
-  - **Examples:** `,start-feat-kbn feat-cluster`; `,start-feat-kbn -E xpack.security.enabled=false`
+  - **Examples:** `,start-feat-kbn feat-cluster`;
+    `,start-feat-kbn -E xpack.security.enabled=false`
 - **Name:** `,start-main-kbn`
   - **Description:** Same as `,start-feat-kbn`, but for the “main” cluster
     defaults/ports.
-  - **Examples:** `,start-main-kbn main-cluster`; `,start-main-kbn -E xpack.security.enabled=false`
+  - **Examples:** `,start-main-kbn main-cluster`;
+    `,start-main-kbn -E xpack.security.enabled=false`
 - **Name:** `,tmux-lowfi`
   - **Description:** Control/launch `lowfi` in a dedicated tmux session for
     quick play/pause/skip and tracklist switching.
   - **Examples:** `,tmux-lowfi play`; `,tmux-lowfi next-tracklist`
 - **Name:** `,tmux-run-all`
-  - **Description:** Run a command across multiple tmux sessions matching a pattern (optionally excluding a pattern).
-  - **Examples:** `,tmux-run-all "work-*" "git status"`; `,tmux-run-all --all "dev-*" "*test*" "npm test"`
+  - **Description:** Run a command across multiple tmux sessions matching a
+    pattern (optionally excluding a pattern).
+  - **Examples:** `,tmux-run-all "work-*" "git status"`;
+    `,tmux-run-all --all "dev-*" "*test*" "npm test"`
 - **Name:** `,to-gif`
   - **Description:** Convert a video clip to a GIF using an ffmpeg palette
     workflow (tunable duration/scale/fps).
-  - **Examples:** `,to-gif -i in.mp4 -o out.gif`; `,to-gif -i in.mp4 -o out.gif -t 10 -s 900 -f 15`
+  - **Examples:** `,to-gif -i in.mp4 -o out.gif`;
+    `,to-gif -i in.mp4 -o out.gif -t 10 -s 900 -f 15`
 - **Name:** `,trace-string-pr`
   - **Description:** Search git history for when a regex was introduced in a
     path, then open the PR referenced by the selected commit.
-  - **Examples:** `,trace-string-pr "mySymbol" src/`; `,trace-string-pr "TODO\\(" .`
+  - **Examples:** `,trace-string-pr "mySymbol" src/`;
+    `,trace-string-pr "TODO\\(" .`
 - **Name:** `,vid-ipad`
   - **Description:** Re-encode a video with audio normalization/compression/EQ
     so it’s more “iPad friendly”.
@@ -336,8 +374,8 @@ Custom commands are shipped as scripts installed to `~/bin` (source: `home/exact
   - **Examples:** `,view-my-issues`; use `,view-my-issues` as a quick “what
     should I do next?” launcher
 - **Name:** `bdlocal`
-  - **Description:** Beads wrapper that pins a per-repo local DB (based on
-    your current directory’s git remote/repo name).
+  - **Description:** Beads wrapper that pins a per-repo local DB (based on your
+    current directory’s git remote/repo name).
   - **Examples:** `bdlocal status --no-activity --json`; `bdlocal ready --json`
 - **Name:** `wpass` (non-work)
   - **Description:** Point `PASSWORD_STORE_DIR` to the work password-store.
@@ -357,13 +395,15 @@ Manage separate Git identities (personal/work) automatically.
 
 #### How It Works
 
-1. Global config sets `sshCommand = ssh -o IdentityFile="~/.ssh/primary_public_key.pub"`
+1. Global config sets
+   `sshCommand = ssh -o IdentityFile="~/.ssh/primary_public_key.pub"`
 2. Points to **public key** (safe on disk)
 3. 1Password SSH agent fetches matching **private key** from vault
 4. Conditional include `[includeIf "gitdir:~/work/"]` loads work config
 5. Work config points to `secondary_public_key.pub` for different private key
 
-Result: Automatic identity switching based on directory, no private keys on disk.
+Result: Automatic identity switching based on directory, no private keys on
+disk.
 
 ### Git Configuration
 
@@ -388,7 +428,10 @@ Result: Automatic identity switching based on directory, no private keys on disk
 
 - Separate views for work/personal repos
 - Custom filters and layouts
-- **Deep Tmux & Worktree Integration:** Press `prefix + G` to open a persistent `gh-dash` popup. From there, hit `Space` on PRs/Issues to clone (if missing), create/switch a linked worktree, and focus tmux; hit `b` on PRs to open the PR in Octo from the PR worktree.
+- **Deep Tmux & Worktree Integration:** Press `prefix + G` to open a persistent
+  `gh-dash` popup. From there, hit `Space` on PRs/Issues to clone (if missing),
+  create/switch a linked worktree, and focus tmux; hit `b` on PRs to open the PR
+  in Octo from the PR worktree.
 - Config: `home/dot_config/exact_gh-dash/config.yml`
 - GitHub CLI (`gh`) config: `home/dot_config/exact_private_gh/`
 
@@ -445,28 +488,40 @@ Language server for Fish scripts:
 
 ## 🤖 The Agentic Operating System
 
-This environment doesn't just install AI tools; it configures an **Agentic Operating System**—a strict governance, context, and execution layer that treats LLMs as deterministic systems rather than chat bots.
+This environment doesn't just install AI tools; it configures an **Agentic
+Operating System**—a strict governance, context, and execution layer that treats
+LLMs as deterministic systems rather than chat bots.
 
-Credentials never touch plaintext configs; they are injected at runtime via 1Password and `pass`.
+Credentials never touch plaintext configs; they are injected at runtime via
+1Password and `pass`.
 
 ### 1. The Governance Layer (SOPs & Playbooks)
 
-Agents are bound by strict Standard Operating Procedures (SOPs) that mandate empirical verification (e.g., using `/tmp` for safe live probes) and forbid guessing.
+Agents are bound by strict Standard Operating Procedures (SOPs) that mandate
+empirical verification (e.g., using `/tmp` for safe live probes) and forbid
+guessing.
 
-- **Entrypoints:** `~/AGENTS.md`, `~/CLAUDE.md`, `~/.gemini/GEMINI.md` (managed by chezmoi).
-- **Intent-Based Routing:** Agents dynamically load specific **Playbooks** (e.g., `~/.agents/playbooks/review/PLAYBOOK.md`) or **Skills** (e.g., `~/.agents/skills/worktrees/SKILL.md`) based on the user's intent, preserving their context window for the actual task.
+- **Entrypoints:** `~/AGENTS.md`, `~/CLAUDE.md`, `~/.gemini/GEMINI.md` (managed
+  by chezmoi).
+- **Intent-Based Routing:** Agents dynamically load specific **Playbooks**
+  (e.g., `~/.agents/playbooks/review/PLAYBOOK.md`) or **Skills** (e.g.,
+  `~/.agents/skills/worktrees/SKILL.md`) based on the user's intent, preserving
+  their context window for the actual task.
 
 ### 2. The Context Layer (MCP & SCSI)
 
-A unified set of Model Context Protocol (MCP) servers is shared across all tools, granting agents deep, secure reach into the environment.
+A unified set of Model Context Protocol (MCP) servers is shared across all
+tools, granting agents deep, secure reach into the environment.
 
-- **Semantic Code Search (SCSI):** Agents are _required_ by their SOPs to query the base branch via Elasticsearch before reviewing PRs.
+- **Semantic Code Search (SCSI):** Agents are _required_ by their SOPs to query
+  the base branch via Elasticsearch before reviewing PRs.
 - **Playwright & Buildkite:** For browser automation and CI pipeline inspection.
 - **Sequential Thinking:** For complex, multi-step debugging.
 
 ### 3. The Execution Layer (Tools)
 
-Configs are strictly separated into `.work` and `.personal` profiles and dynamically merged by `chezmoi` based on your identity.
+Configs are strictly separated into `.work` and `.personal` profiles and
+dynamically merged by `chezmoi` based on your identity.
 
 | Tool                | Purpose               | Integration Highlights                                                                          |
 | ------------------- | --------------------- | ----------------------------------------------------------------------------------------------- |
@@ -483,7 +538,9 @@ Config lives in `home/dot_config/exact_nvim/` (installed to `~/.config/nvim/`).
 
 ### Local Plugins (written here)
 
-Local plugins are implemented in `home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/` and loaded via `home/dot_config/exact_nvim/exact_lua/exact_plugins_local/`.
+Local plugins are implemented in
+`home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/` and loaded via
+`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/`.
 
 - **Name:** `run-jest-in-split`
   - **Description:** Run the nearest Jest test (or entire file) in a split
@@ -491,8 +548,8 @@ Local plugins are implemented in `home/dot_config/exact_nvim/exact_lua/exact_plu
   - **Examples:** `<leader>tt` run test under cursor; `<leader>tD` debug whole
     file
 - **Name:** `summarize-commit`
-  - **Description:** Generate a conventional-commit message from the staged
-    diff and insert it into the `gitcommit` buffer.
+  - **Description:** Generate a conventional-commit message from the staged diff
+    and insert it into the `gitcommit` buffer.
   - **Examples:** `<leader>aisl` (Ollama); `<leader>aiso` (OpenRouter)
 - **Name:** `ts-move-exports`
   - **Description:** Move selected TypeScript exports to a new file path and
@@ -530,8 +587,8 @@ Local plugins are implemented in `home/dot_config/exact_nvim/exact_lua/exact_plu
     plus interactive include/exclude filtering.
   - **Examples:** `:QFDedupe`; `<leader>rqi` include-filter quickfix items
 - **Name:** `toggle-win-width`
-  - **Description:** Toggle the current window width between the previous
-    value and the longest visible line width in the buffer.
+  - **Description:** Toggle the current window width between the previous value
+    and the longest visible line width in the buffer.
   - **Examples:** `<leader>=` expand-to-content; `<leader>=` restore
 - **Name:** `winbar`
   - **Description:** Winbar shows the “remainder” of the current path
@@ -541,8 +598,8 @@ Local plugins are implemented in `home/dot_config/exact_nvim/exact_lua/exact_plu
 ### Core Commands & Tweaks (written here)
 
 - **Name:** `:LargeFiles [min_lines] [max_lines]`
-  - **Description:** Populate quickfix with tracked files exceeding a
-    line-count threshold (filters out image files).
+  - **Description:** Populate quickfix with tracked files exceeding a line-count
+    threshold (filters out image files).
   - **Examples:** `:LargeFiles 5000`; `:LargeFiles 2000 10000`
 - **Name:** `:UndoHashedPrune [max_age_days] [max_total_mb]`
   - **Description:** Prune the custom hashed-undo store by age/size.
@@ -555,6 +612,7 @@ Local plugins are implemented in `home/dot_config/exact_nvim/exact_lua/exact_plu
 - **Name:** `:WW` / `:WWW`
   - **Description:** Write (or write-all) without triggering write autocmds.
   - **Examples:** `:WW`; `:WWW`
+
 ### Filetype & Tree-sitter Customization (written here)
 
 - Filetype detection for Helm chart YAML/templates, Docker Compose YAML, and
@@ -573,8 +631,10 @@ Lua-based automation.
 
 Defaults scripts:
 
-- `home/.osx.core` + `home/.chezmoiscripts/run_onchange_after_05-osx.core.sh.tmpl`
-- `home/.osx.extra` + `home/.chezmoiscripts/run_onchange_after_05-osx.extra.sh.tmpl`
+- `home/.osx.core` +
+  `home/.chezmoiscripts/run_onchange_after_05-osx.core.sh.tmpl`
+- `home/.osx.extra` +
+  `home/.chezmoiscripts/run_onchange_after_05-osx.extra.sh.tmpl`
 
 #### Grid Mouse (`gridmouse.lua`)
 
@@ -607,22 +667,23 @@ Alfred preferences and workflows live in `home/Alfred.alfredpreferences/`.
 
 ### Karabiner
 
-Karabiner-Elements rules live in `home/dot_config/exact_private_karabiner/karabiner.json`.
+Karabiner-Elements rules live in
+`home/dot_config/exact_private_karabiner/karabiner.json`.
 
 ---
 
 ## 📦 Package Management
 
-| System       | File                                             | Purpose                      |
-| ------------ | ------------------------------------------------ | ---------------------------- |
-| **Homebrew** | `home/readonly_dot_Brewfile.tmpl`                | macOS apps, CLI tools, fonts |
-| **Cargo**    | `home/readonly_dot_default-cargo-crates`         | Rust packages                |
-| **Go**       | `home/readonly_dot_default-golang-pkgs`          | Go tools                     |
-| **Gems**     | `home/readonly_dot_default-gems`                 | Ruby packages                |
-| **npm**      | `home/readonly_dot_default-npm-pkgs`             | Node.js globals              |
-| **uv tools** | `home/readonly_dot_default-uv-tools.tmpl`        | Python CLI tools             |
-| **uv python**| `home/readonly_dot_python-version`               | Python runtime versions      |
-| **Manual**   | `home/readonly_dot_default-manual-packages.tmpl` | DMGs + GitHub releases       |
+| System        | File                                             | Purpose                      |
+| ------------- | ------------------------------------------------ | ---------------------------- |
+| **Homebrew**  | `home/readonly_dot_Brewfile.tmpl`                | macOS apps, CLI tools, fonts |
+| **Cargo**     | `home/readonly_dot_default-cargo-crates`         | Rust packages                |
+| **Go**        | `home/readonly_dot_default-golang-pkgs`          | Go tools                     |
+| **Gems**      | `home/readonly_dot_default-gems`                 | Ruby packages                |
+| **npm**       | `home/readonly_dot_default-npm-pkgs`             | Node.js globals              |
+| **uv tools**  | `home/readonly_dot_default-uv-tools.tmpl`        | Python CLI tools             |
+| **uv python** | `home/readonly_dot_python-version`               | Python runtime versions      |
+| **Manual**    | `home/readonly_dot_default-manual-packages.tmpl` | DMGs + GitHub releases       |
 
 Install scripts run via chezmoi hooks when files change.
 
@@ -631,8 +692,8 @@ Note: this setup is intentionally declarative. For example:
 - Homebrew sync runs `brew bundle cleanup --global --force` via
   `home/.chezmoiscripts/run_onchange_after_03-install-brew-packages.fish.tmpl`
   (so formulas/casks not in the Brewfile can be removed).
-- ASDF sync removes unwanted plugins/versions based on `home/asdf_plugins.tmpl` and
-  `home/readonly_dot_tool-versions.tmpl` via
+- ASDF sync removes unwanted plugins/versions based on `home/asdf_plugins.tmpl`
+  and `home/readonly_dot_tool-versions.tmpl` via
   `home/.chezmoiscripts/run_onchange_after_05-install-asdf-plugins.sh.tmpl`.
 
 ---

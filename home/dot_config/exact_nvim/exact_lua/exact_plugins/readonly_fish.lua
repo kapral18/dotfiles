@@ -65,7 +65,11 @@ local function build_linter()
   end
 
   local function render_template(path)
-    local system_ok, handle = pcall(vim.system, { "chezmoi", "execute-template", "--source-path", path }, { text = true })
+    local system_ok, handle = pcall(
+      vim.system,
+      { "chezmoi", "execute-template", "--source-path", path },
+      { text = true }
+    )
     if not system_ok or not handle then
       return nil, "chezmoi execute-template failed to start"
     end
@@ -108,10 +112,7 @@ local function build_linter()
     if not wrote_tmp then
       local message = write_err or render_err or "unknown error"
       vim.schedule(function()
-        vim.notify(
-          ("chezmoi fish lint: failed to prepare temporary file (%s)"):format(message),
-          vim.log.levels.WARN
-        )
+        vim.notify(("chezmoi fish lint: failed to prepare temporary file (%s)"):format(message), vim.log.levels.WARN)
       end)
       return base
     end

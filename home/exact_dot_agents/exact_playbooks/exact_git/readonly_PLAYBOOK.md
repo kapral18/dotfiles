@@ -10,18 +10,22 @@ Use this playbook for local git repo operations:
 
 External truth applies:
 
-- verify behavior from the actual repo/version (`git --version`, `git help <cmd>`); do not rely on memory.
+- verify behavior from the actual repo/version (`git --version`,
+  `git help <cmd>`); do not rely on memory.
 
 Do not use:
 
-- GitHub/`gh` operations (PRs, issues, labels, comments, reviews): `~/.agents/playbooks/github/PLAYBOOK.md`
-- Writing-only PR/issue composition: `~/.agents/skills/compose_pr/SKILL.md`, `~/.agents/skills/compose_issue/SKILL.md`
-- Worktree management (create/switch/remove worktrees, PR worktrees): `~/.agents/skills/worktrees/SKILL.md`
+- GitHub/`gh` operations (PRs, issues, labels, comments, reviews):
+  `~/.agents/playbooks/github/PLAYBOOK.md`
+- Writing-only PR/issue composition: `~/.agents/skills/compose_pr/SKILL.md`,
+  `~/.agents/skills/compose_issue/SKILL.md`
+- Worktree management (create/switch/remove worktrees, PR worktrees):
+  `~/.agents/skills/worktrees/SKILL.md`
 
 First actions:
 
-1. Establish repo state with the smallest relevant read-only probes (`git
-   status`, `git diff`, `git log`, branch name).
+1. Establish repo state with the smallest relevant read-only probes
+   (`git status`, `git diff`, `git log`, branch name).
 2. Use the actual repo's history/configuration as the source of truth for
    workflow conventions.
 3. Before any commit/push, restate the exact command and get approval.
@@ -44,10 +48,10 @@ Push policy (mandatory):
   `git push --force-with-lease`
 - prefer explicit remote/branch in the restated command (example:
   `git push --force-with-lease origin <branch>`)
-- if upstream is missing, `git push --force-with-lease -u <remote> <branch>`
-  is allowed (still requires approval)
-- never run `git pull`, `git pull --rebase`, `git rebase <remote>/<branch>`,
-  or `git merge <remote>/<branch>` automatically before pushing
+- if upstream is missing, `git push --force-with-lease -u <remote> <branch>` is
+  allowed (still requires approval)
+- never run `git pull`, `git pull --rebase`, `git rebase <remote>/<branch>`, or
+  `git merge <remote>/<branch>` automatically before pushing
 - if push fails due to divergence/non-fast-forward/lease checks, stop and ask
   for user direction; do not reconcile on your own
 
@@ -59,8 +63,10 @@ Commit quality:
 - each commit must be minimal and atomic, independently reviewable
 - commit body bullets are optional; include only when they add signal
 - do not invent issue numbers
-- do not put `Closes #X` / `Addresses #X` in commit messages; prefer PR description for issue linking
-- if the repo uses semantic-release, do not manually version bump unless the repo requires it
+- do not put `Closes #X` / `Addresses #X` in commit messages; prefer PR
+  description for issue linking
+- if the repo uses semantic-release, do not manually version bump unless the
+  repo requires it
 
 Branching:
 

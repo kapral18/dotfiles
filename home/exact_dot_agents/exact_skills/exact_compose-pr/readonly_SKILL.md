@@ -17,12 +17,15 @@ Use when:
 Scope:
 
 - produces a PR body draft only
-- do not run `gh` or change PR metadata; use `~/.agents/playbooks/github/PLAYBOOK.md` for side effects
+- do not run `gh` or change PR metadata; use
+  `~/.agents/playbooks/github/PLAYBOOK.md` for side effects
 
 Do not use:
 
-- user wants to create/edit PR in GitHub: `~/.agents/playbooks/github/PLAYBOOK.md`
-- user is asking for PR review feedback: `~/.agents/playbooks/review/PLAYBOOK.md`
+- user wants to create/edit PR in GitHub:
+  `~/.agents/playbooks/github/PLAYBOOK.md`
+- user is asking for PR review feedback:
+  `~/.agents/playbooks/review/PLAYBOOK.md`
 
 First actions:
 
@@ -83,7 +86,8 @@ Additional rules:
 Optional guidance:
 
 - label proposals (propose-only): `~/.agents/skills/labels_propose/SKILL.md`
-- Kibana Management ownership signals: `~/.agents/skills/kibana-management-ownership/SKILL.md`
+- Kibana Management ownership signals:
+  `~/.agents/skills/kibana-management-ownership/SKILL.md`
 
 Default template (copy then delete unused sections):
 
@@ -126,7 +130,8 @@ Closes #X | Addresses #X
 
 ## Release Note
 
-- Single sentence describing user-facing behavior change (or lack thereof, if `skip`).
+- Single sentence describing user-facing behavior change (or lack thereof, if
+  `skip`).
 ```
 
 Chore/Migration:
@@ -164,5 +169,6 @@ Closes #X | Addresses #X
 
 ## Release Note
 
-- Single sentence describing user-facing behavior change (or lack thereof, if `skip`).
+- Single sentence describing user-facing behavior change (or lack thereof, if
+  `skip`).
 ```

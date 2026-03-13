@@ -84,10 +84,14 @@ return {
 
             vim.api.nvim_buf_call(event.buf, function()
               pcall(vim.cmd, "silent! delcommand Reject")
-              vim.cmd("command! -buffer -range -nargs=? Reject call ExactQfRejectKeepOpen(<q-args>, <line1>, <line2>, <count>)")
+              vim.cmd(
+                "command! -buffer -range -nargs=? Reject call ExactQfRejectKeepOpen(<q-args>, <line1>, <line2>, <count>)"
+              )
 
               pcall(vim.cmd, "silent! delcommand Keep")
-              vim.cmd("command! -buffer -range -nargs=? Keep call ExactQfKeepKeepOpen(<q-args>, <line1>, <line2>, <count>)")
+              vim.cmd(
+                "command! -buffer -range -nargs=? Keep call ExactQfKeepKeepOpen(<q-args>, <line1>, <line2>, <count>)"
+              )
             end)
           end)
         end,

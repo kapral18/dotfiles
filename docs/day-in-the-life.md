@@ -2,25 +2,27 @@
 
 Back: [`docs/index.md`](index.md)
 
-This page is for people coming from a traditional IDE workflow who want
-to see what "terminal-driven" can look like without becoming a full-time shell
-person.
+This page is for people coming from a traditional IDE workflow who want to see
+what "terminal-driven" can look like without becoming a full-time shell person.
 
 ## Morning: Restore Context
 
 If you use tmux with session restore, you can pick up where you left off.
 
-- tmux config: `home/dot_config/exact_tmux/readonly_tmux.conf`
+- tmux config:
+  [`home/dot_config/exact_tmux/readonly_tmux.conf`](../home/dot_config/exact_tmux/readonly_tmux.conf)
 
 ## Start Work: Isolate With Worktrees
 
-Instead of mixing multiple branches in one checkout, this setup uses git worktrees. We provide a custom comma command (`,w`) to make this ergonomic:
+Instead of mixing multiple branches in one checkout, this setup uses git
+worktrees. We provide a custom comma command (`,w`) to make this ergonomic:
 
 ```bash
 ,w add feat/my-change main
 ```
 
-This creates a separate working directory for the branch and can automatically attach a tmux session to it.
+This creates a separate working directory for the branch and can automatically
+attach a tmux session to it.
 
 ## Review: Check Out PRs Like They Are Local Branches
 
@@ -32,7 +34,10 @@ You can also use the `,w` command to easily check out pull requests:
 
 ## Agentic Tasks: Offload Work to Assistants
 
-Invoke your CLI assistants (Gemini, Pi, OpenCode) to read context, debug failures, or execute refactors. They will automatically respect the repository's rules thanks to the Agentic OS governance layer and use MCP servers to query codebase context if needed.
+Invoke your CLI assistants (Gemini, Pi, OpenCode) to read context, debug
+failures, or execute refactors. They will automatically respect the repository's
+rules thanks to the Agentic OS governance layer and use MCP servers to query
+codebase context if needed.
 
 ## Code: Keep Your Editor
 

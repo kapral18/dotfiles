@@ -1,6 +1,7 @@
 # Walkthrough Playbook
 
-Create interactive exploratory diagrams for understanding codebase architecture and system design.
+Create interactive exploratory diagrams for understanding codebase architecture
+and system design.
 
 ## When to Use
 
@@ -29,7 +30,8 @@ Create interactive exploratory diagrams for understanding codebase architecture 
 
 ### Step 1: Explore the Codebase
 
-Explore codebase structure and relationships by following references, imports, and call sites.
+Explore codebase structure and relationships by following references, imports,
+and call sites.
 
 If your environment provides dedicated walkthrough tooling (for example a
 `walkthrough(...)` explorer and a `walkthrough_diagram(...)` renderer), prefer
@@ -38,15 +40,19 @@ workflow using local file reads and searches.
 
 When using a walkthrough tool, provide:
 
-- `topic`: the specific question/area to explore (example: "How does auth flow work?")
+- `topic`: the specific question/area to explore (example: "How does auth flow
+  work?")
 - `context`: optional extra constraints or what the user cares about
 
 When semantic code search helps:
 
-- If you are investigating a PR and need additional context from `main` (existing behavior, patterns, related call sites),
-  use `~/.agents/skills/semantic_code_search/SKILL.md` to query the indexed snapshot, but ONLY if the current repo is
-  indexed (present in `list_indices`). Run `list_indices` first; do not guess an index.
-- Treat semantic results as base-branch context only; validate the actual change by reading the local branch diff.
+- If you are investigating a PR and need additional context from `main`
+  (existing behavior, patterns, related call sites), use
+  `~/.agents/skills/semantic_code_search/SKILL.md` to query the indexed
+  snapshot, but ONLY if the current repo is indexed (present in `list_indices`).
+  Run `list_indices` first; do not guess an index.
+- Treat semantic results as base-branch context only; validate the actual change
+  by reading the local branch diff.
 
 ### Step 2: Present The Walkthrough
 
@@ -78,7 +84,8 @@ Each node in the diagram can include:
 - `description`: Detailed explanation of the component (supports Markdown)
 - `links`: Array of `{label, url}` for related files or documentation
 - `codeSnippet`: Optional code snippet to display
-- `threadID`: Optional thread ID linking to a subthread that explores the node in detail
+- `threadID`: Optional thread ID linking to a subthread that explores the node
+  in detail
 
 ## Example Usage
 
@@ -112,7 +119,8 @@ Then provide node metadata for each component with descriptions and links.
 - Progressive disclosure: start high-level, then explore specific components
 - Follow the code: use actual imports, function calls, and file structure
 - Link to evidence: provide file paths and small snippets for nodes
-- Clarify relationships: show data flow, control flow, and dependency relationships
+- Clarify relationships: show data flow, control flow, and dependency
+  relationships
 - Use concrete examples: reference actual functions, files, and configurations
 
 ## Tools (If Available)

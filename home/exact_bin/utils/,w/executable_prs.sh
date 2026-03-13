@@ -7,7 +7,7 @@ source "$(dirname "$0")/../worktree_lib.sh"
 
 require_cmd() {
   local cmd="$1"
-  if ! command -v "$cmd" >/dev/null 2>&1; then
+  if ! command -v "$cmd" > /dev/null 2>&1; then
     echo "Missing required dependency: '$cmd'." >&2
     exit 1
   fi
@@ -19,25 +19,25 @@ parse_owner_repo_from_remote_url() {
 
   url="${url%.git}"
   case "$url" in
-  git@*:*/*)
-    # git@<host>:owner/repo
-    path="${url#git@*:}"
-    ;;
-  ssh://git@*/*/*)
-    # ssh://git@<host>/owner/repo
-    path="${url#ssh://git@*/}"
-    ;;
-  https://*/*/*)
-    # https://<host>/owner/repo
-    path="${url#https://*/}"
-    ;;
-  http://*/*/*)
-    # http://<host>/owner/repo
-    path="${url#http://*/}"
-    ;;
-  *)
-    return 1
-    ;;
+    git@*:*/*)
+      # git@<host>:owner/repo
+      path="${url#git@*:}"
+      ;;
+    ssh://git@*/*/*)
+      # ssh://git@<host>/owner/repo
+      path="${url#ssh://git@*/}"
+      ;;
+    https://*/*/*)
+      # https://<host>/owner/repo
+      path="${url#https://*/}"
+      ;;
+    http://*/*/*)
+      # http://<host>/owner/repo
+      path="${url#http://*/}"
+      ;;
+    *)
+      return 1
+      ;;
   esac
 
   if [[ "$path" != */* ]]; then
@@ -51,7 +51,7 @@ get_remote_owner_and_name() {
   local remote="$1"
   local remote_url parsed
 
-  remote_url="$(git remote get-url "$remote" 2>/dev/null || true)"
+  remote_url="$(git remote get-url "$remote" 2> /dev/null || true)"
   if [ -z "$remote_url" ]; then
     return 1
   fi
@@ -65,13 +65,13 @@ get_remote_owner_and_name() {
 get_base_repo_owner_and_name() {
   local base_info remote_url parsed
 
-  base_info="$(gh repo view --json owner,name --jq '[.owner.login, .name] | @tsv' 2>/dev/null || true)"
+  base_info="$(gh repo view --json owner,name --jq '[.owner.login, .name] | @tsv' 2> /dev/null || true)"
   if [ -n "$base_info" ]; then
     printf '%s\n' "$base_info"
     return 0
   fi
 
-  remote_url="$(git remote get-url upstream 2>/dev/null || git remote get-url origin 2>/dev/null || true)"
+  remote_url="$(git remote get-url upstream 2> /dev/null || git remote get-url origin 2> /dev/null || true)"
   if [ -z "$remote_url" ]; then
     return 1
   fi
@@ -85,9 +85,9 @@ get_base_repo_owner_and_name() {
 }
 
 get_base_remote_name() {
-  if git remote get-url upstream >/dev/null 2>&1; then
+  if git remote get-url upstream > /dev/null 2>&1; then
     echo "upstream"
-  elif git remote get-url origin >/dev/null 2>&1; then
+  elif git remote get-url origin > /dev/null 2>&1; then
     echo "origin"
   else
     echo ""
@@ -100,7 +100,7 @@ find_existing_remote_for_owner_repo() {
   local info remote
 
   for remote in origin upstream; do
-    info="$(get_remote_owner_and_name "$remote" 2>/dev/null || true)"
+    info="$(get_remote_owner_and_name "$remote" 2> /dev/null || true)"
     if [ "$info" = "${owner}"$'\t'"${repo}" ]; then
       printf '%s\n' "$remote"
       return 0
@@ -110,20 +110,20 @@ find_existing_remote_for_owner_repo() {
   while IFS= read -r remote; do
     [ -n "$remote" ] || continue
     case "$remote" in
-    origin | upstream) continue ;;
+      origin | upstream) continue ;;
     esac
-    info="$(get_remote_owner_and_name "$remote" 2>/dev/null || true)"
+    info="$(get_remote_owner_and_name "$remote" 2> /dev/null || true)"
     if [ "$info" = "${owner}"$'\t'"${repo}" ]; then
       printf '%s\n' "$remote"
       return 0
     fi
-  done < <(git remote 2>/dev/null || true)
+  done < <(git remote 2> /dev/null || true)
 
   return 1
 }
 
 show_usage() {
-  cat <<EOF
+  cat << EOF
 Usage: ,w prs [-q|--quiet] [--focus] [--awaiting] [pr_number ...| search_terms]
 
 Create worktrees from GitHub pull requests.
@@ -164,53 +164,53 @@ awaiting_days="${COMMA_W_AWAITING_DAYS:-$awaiting_days_default}"
 
 while [ $# -gt 0 ]; do
   case "$1" in
-  -h | --help)
-    show_usage
-    exit 0
-    ;;
-  -q | --quiet)
-    quiet_mode=1
-    quiet_flag=(-q)
-    shift
-    ;;
-  --focus)
-    focus_mode=1
-    shift
-    ;;
-  --awaiting)
-    awaiting_mode=1
-    shift
-    ;;
-  --complete)
-    # Internal: print completion candidates (number<TAB>title) and exit.
-    complete_mode=1
-    shift
-    ;;
-  --)
-    shift
-    break
-    ;;
-  -*)
-    show_usage
-    exit 1
-    ;;
-  *)
-    break
-    ;;
+    -h | --help)
+      show_usage
+      exit 0
+      ;;
+    -q | --quiet)
+      quiet_mode=1
+      quiet_flag=(-q)
+      shift
+      ;;
+    --focus)
+      focus_mode=1
+      shift
+      ;;
+    --awaiting)
+      awaiting_mode=1
+      shift
+      ;;
+    --complete)
+      # Internal: print completion candidates (number<TAB>title) and exit.
+      complete_mode=1
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      show_usage
+      exit 1
+      ;;
+    *)
+      break
+      ;;
   esac
 done
 
 require_cmd gh
 
 get_user_login() {
-  gh api user --jq '.login' 2>/dev/null || true
+  gh api user --jq '.login' 2> /dev/null || true
 }
 
 _iso_date_days_ago() {
   local days="$1"
 
-  if command -v python3 >/dev/null 2>&1; then
-    python3 - "$days" <<'PY'
+  if command -v python3 > /dev/null 2>&1; then
+    python3 - "$days" << 'PY'
 import datetime
 import sys
 
@@ -221,7 +221,7 @@ PY
     return 0
   fi
 
-  if command -v gdate >/dev/null 2>&1; then
+  if command -v gdate > /dev/null 2>&1; then
     gdate -u -d "${days} days ago" +%Y-%m-%d
     return 0
   fi
@@ -240,15 +240,15 @@ _comma_w_collect_team_review_filters() {
   # Parse strings like: team-review-requested:elastic/kibana-management.
   # Important: grep returns 1 when there are no matches; don't treat that as a fatal error.
   local matches=""
-  matches="$(grep -Eo 'team-review-requested:[^ ]+' "$config_file" 2>/dev/null || true)"
+  matches="$(grep -Eo 'team-review-requested:[^ ]+' "$config_file" 2> /dev/null || true)"
   if [ -z "${matches}" ]; then
     return 0
   fi
 
-  printf '%s\n' "${matches}" |
-    sed 's/^team-review-requested://' |
-    awk -v org="${org_owner}/" '$0 ~ "^"org {print $0}' |
-    sort -u
+  printf '%s\n' "${matches}" \
+    | sed 's/^team-review-requested://' \
+    | awk -v org="${org_owner}/" '$0 ~ "^"org {print $0}' \
+    | sort -u
 }
 
 _comma_w_build_awaiting_search_query() {
@@ -300,12 +300,12 @@ _comma_w_list_prs_tsv() {
 
   if [ "$exclude_drafts" -eq 1 ]; then
     gh pr list --search "${search_query}" --limit 200 --json number,title,updatedAt,isDraft \
-      --jq 'map(select(.isDraft == false)) | sort_by(.updatedAt) | reverse | .[] | [(.number|tostring), (.updatedAt[0:10]), .title] | @tsv' 2>/dev/null || true
+      --jq 'map(select(.isDraft == false)) | sort_by(.updatedAt) | reverse | .[] | [(.number|tostring), (.updatedAt[0:10]), .title] | @tsv' 2> /dev/null || true
     return 0
   fi
 
   gh pr list --search "${search_query}" --limit 200 --json number,title,updatedAt \
-    --jq 'sort_by(.updatedAt) | reverse | .[] | [(.number|tostring), (.updatedAt[0:10]), .title] | @tsv' 2>/dev/null || true
+    --jq 'sort_by(.updatedAt) | reverse | .[] | [(.number|tostring), (.updatedAt[0:10]), .title] | @tsv' 2> /dev/null || true
 }
 
 info() {
@@ -374,7 +374,7 @@ if [ "$complete_mode" -eq 1 ]; then
     exit 0
   fi
 
-  gh pr list --limit 200 --json number,title --jq '.[] | "\(.number)\t\(.title)"' 2>/dev/null || true
+  gh pr list --limit 200 --json number,title --jq '.[] | "\(.number)\t\(.title)"' 2> /dev/null || true
   exit 0
 fi
 
@@ -406,8 +406,8 @@ if [ ${#pr_numbers[@]} -eq 0 ]; then
   fi
 
   mapfile -t pr_numbers < <(
-    _comma_w_list_prs_tsv "$search_query" "$exclude_drafts" |
-      fzf --multi --delimiter=$'\t' --with-nth=1,2,3 --preview '
+    _comma_w_list_prs_tsv "$search_query" "$exclude_drafts" \
+      | fzf --multi --delimiter=$'\t' --with-nth=1,2,3 --preview '
             gh pr view {1} --json number,title,body,author,labels,comments,createdAt,updatedAt,reviewDecision --template "
 # PR #{{.number}}: {{.title}}
 
@@ -431,8 +431,8 @@ if [ ${#pr_numbers[@]} -eq 0 ]; then
 ---
 
 {{.body}}" | bat --style=auto --color always --wrap never --paging never --language Markdown
-        ' --preview-window="right:70%:nowrap" --ansi |
-      awk -F $'\t' '{print $1}'
+        ' --preview-window="right:70%:nowrap" --ansi \
+      | awk -F $'\t' '{print $1}'
   )
 fi
 
@@ -471,7 +471,7 @@ for pr_number in "${pr_numbers[@]}"; do
   # Prefer existing remotes when they already point at the PR's head repo.
   # This avoids creating redundant remotes like "kapral18" when origin is already the fork.
   remote_name=""
-  existing_remote="$(find_existing_remote_for_owner_repo "$repo_owner" "$repo_name" 2>/dev/null || true)"
+  existing_remote="$(find_existing_remote_for_owner_repo "$repo_owner" "$repo_name" 2> /dev/null || true)"
   if [ -n "$existing_remote" ]; then
     remote_name="$existing_remote"
   elif [ "$repo_owner" = "$base_owner" ] && [ "$repo_name" = "$base_repo" ]; then
@@ -483,7 +483,7 @@ for pr_number in "${pr_numbers[@]}"; do
   else
     remote_name="$repo_owner"
     repo_url="git@github.com:$repo_owner/$repo_name.git"
-    if ! git remote get-url "$remote_name" >/dev/null 2>&1; then
+    if ! git remote get-url "$remote_name" > /dev/null 2>&1; then
       git remote add "$remote_name" "$repo_url"
     fi
   fi
@@ -500,9 +500,9 @@ for pr_number in "${pr_numbers[@]}"; do
   # rename/move it to the current naming scheme to avoid duplicate worktrees.
   old_local_branch="pr-$pr_number"
   if [ "$old_local_branch" != "$local_branch" ]; then
-    old_existing_path="$(_comma_w_find_worktree_path_for_branch "$old_local_branch" 2>/dev/null || true)"
+    old_existing_path="$(_comma_w_find_worktree_path_for_branch "$old_local_branch" 2> /dev/null || true)"
     if [ -n "$old_existing_path" ]; then
-      existing_path="$(_comma_w_find_worktree_path_for_branch "$local_branch" 2>/dev/null || true)"
+      existing_path="$(_comma_w_find_worktree_path_for_branch "$local_branch" 2> /dev/null || true)"
       if [ -z "$existing_path" ]; then
         info "Migrating existing worktree '$old_local_branch' -> '$local_branch'..."
         mv_args=()
@@ -512,12 +512,12 @@ for pr_number in "${pr_numbers[@]}"; do
         if [ "$focus_mode" -eq 1 ]; then
           mv_args+=(--focus)
         fi
-        "$(dirname "$0")/mv.sh" "${mv_args[@]}" --path "$worktree_path" "$old_local_branch" "$local_branch" >/dev/null || true
+        "$(dirname "$0")/mv.sh" "${mv_args[@]}" --path "$worktree_path" "$old_local_branch" "$local_branch" > /dev/null || true
       fi
     fi
   fi
 
-  existing_path="$(_comma_w_find_worktree_path_for_branch "$local_branch" 2>/dev/null || true)"
+  existing_path="$(_comma_w_find_worktree_path_for_branch "$local_branch" 2> /dev/null || true)"
   if [ -n "$existing_path" ]; then
     info "Worktree already exists for '$local_branch'."
     if [[ "$local_branch" == *__* ]] && ! _comma_w_remote_is_first_party "$remote_name"; then
@@ -564,7 +564,7 @@ for pr_number in "${pr_numbers[@]}"; do
 
   # For non-prefixed branches, keep upstream tracking sane.
   if [[ "$local_branch" != *__* ]]; then
-    git branch --set-upstream-to="$base_ref" "$local_branch" >/dev/null 2>&1 || true
+    git branch --set-upstream-to="$base_ref" "$local_branch" > /dev/null 2>&1 || true
   fi
 
   # Native Git Smart Push Routing for prefixed branches
@@ -572,8 +572,8 @@ for pr_number in "${pr_numbers[@]}"; do
     _comma_w_configure_prefixed_branch_push_routing "$worktree_path" "$local_branch" "$remote_name" "$branch_name" "$quiet_mode" || true
   fi
 
-  if command -v zoxide &>/dev/null; then
-    zoxide add "$worktree_path" 2>/dev/null || true
+  if command -v zoxide &> /dev/null; then
+    zoxide add "$worktree_path" 2> /dev/null || true
   fi
 
   if [ "$focus_mode" -eq 1 ]; then

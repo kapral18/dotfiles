@@ -2,12 +2,12 @@
 
 Back: [`docs/recipes/index.md`](index.md)
 
-This setup uses `chezmoi` externals for a few third-party assets (TPM, bat themes,
-Hammerspoon spoons, lowfi tracklists).
+This setup uses `chezmoi` externals for a few third-party assets (TPM, bat
+themes, Hammerspoon spoons, lowfi tracklists).
 
 Externals are defined in:
 
-- `home/.chezmoiexternal.toml`
+- [`home/.chezmoiexternal.toml`](../../home/.chezmoiexternal.toml)
 
 ## Preconditions
 
@@ -40,7 +40,8 @@ and confirm no unexpected churn remains.
 
 ## Rollback / Undo
 
-- Revert the external declaration changes in `home/.chezmoiexternal.toml`.
+- Revert the external declaration changes in
+  [`home/.chezmoiexternal.toml`](../../home/.chezmoiexternal.toml).
 - Apply normally:
 
 ```bash

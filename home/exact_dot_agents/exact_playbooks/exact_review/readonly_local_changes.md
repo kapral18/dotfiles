@@ -7,8 +7,8 @@ Precondition:
 
 Use when:
 
-- the user asks to review local work ("review local changes", "review this diff",
-  "check what changed")
+- the user asks to review local work ("review local changes", "review this
+  diff", "check what changed")
 - or the repo has staged/unstaged changes
 - or there is no PR for the current branch and the user still wants a review
 

@@ -17,11 +17,12 @@ brew info <formula-or-cask>
 
 1. Edit:
 
-- `home/readonly_dot_Brewfile.tmpl`
+- [`home/readonly_dot_Brewfile.tmpl`](../../home/readonly_dot_Brewfile.tmpl)
 
 2. Add the entry (`brew "<formula>"` or `cask "<cask>"`) in the correct section.
 
-   If the package should only exist on personal or work machines, wrap it in the same `.isWork` template condition style already used elsewhere in the file.
+   If the package should only exist on personal or work machines, wrap it in the
+   same `.isWork` template condition style already used elsewhere in the file.
 
 3. Apply:
 
@@ -31,7 +32,7 @@ chezmoi apply
 
 The brew hook is:
 
-- `home/.chezmoiscripts/run_onchange_after_03-install-brew-packages.fish.tmpl`
+- [`home/.chezmoiscripts/run_onchange_after_03-install-brew-packages.fish.tmpl`](../../home/.chezmoiscripts/run_onchange_after_03-install-brew-packages.fish.tmpl)
 
 It runs `brew bundle cleanup --global --force` and `brew bundle --global`, so
 your Brewfile should be treated as the source-of-truth.
@@ -51,7 +52,8 @@ chezmoi diff
 
 ## Rollback / Undo
 
-1. Remove the package entry from `home/readonly_dot_Brewfile.tmpl`.
+1. Remove the package entry from
+   [`home/readonly_dot_Brewfile.tmpl`](../../home/readonly_dot_Brewfile.tmpl).
 2. Re-apply:
 
 ```bash

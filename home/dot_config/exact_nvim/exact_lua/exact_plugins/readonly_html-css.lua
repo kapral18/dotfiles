@@ -9,7 +9,8 @@ return {
   {
     "mason-org/mason.nvim",
     opts = function(_, opts)
-      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, { "htmlhint", "stylelint", "prettierd", "prettier" })
+      opts.ensure_installed =
+        vim.list_extend(opts.ensure_installed or {}, { "htmlhint", "stylelint", "prettierd", "prettier" })
       return opts
     end,
   },

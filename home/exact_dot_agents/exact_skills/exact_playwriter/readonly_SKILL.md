@@ -1,6 +1,10 @@
 ---
 name: playwriter
-description: Control the user's own Chrome browser via Playwriter extension with Playwright code snippets in a stateful local js sandbox via playwriter cli. Only use when the user explicitly mentions "playwriter". Run `playwriter skill` command to read the complete up to date skill
+description:
+  Control the user's own Chrome browser via Playwriter extension with Playwright
+  code snippets in a stateful local js sandbox via playwriter cli. Only use when
+  the user explicitly mentions "playwriter". Run `playwriter skill` command to
+  read the complete up to date skill
 ---
 
 ## REQUIRED: Read Full Documentation First
@@ -19,9 +23,13 @@ This outputs the complete documentation including:
 - Best practices for slow pages and SPAs
 - Context variables, utility functions, and more
 
-**Do NOT skip this step.** The quick examples below will fail without understanding timeouts, selector rules, and common pitfalls from the full docs.
+**Do NOT skip this step.** The quick examples below will fail without
+understanding timeouts, selector rules, and common pitfalls from the full docs.
 
-**Read the ENTIRE output.** Do NOT pipe through `head`, `tail`, or any truncation command. The skill output must be read in its entirety — critical rules about timeouts, selectors, and common pitfalls are spread throughout the document, not just at the top.
+**Read the ENTIRE output.** Do NOT pipe through `head`, `tail`, or any
+truncation command. The skill output must be read in its entirety — critical
+rules about timeouts, selectors, and common pitfalls are spread throughout the
+document, not just at the top.
 
 ## Minimal Example (after reading full docs)
 
@@ -30,6 +38,9 @@ playwriter session new
 playwriter -s 1 -e 'await page.goto("https://example.com")'
 ```
 
-**Always use single quotes** for the `-e` argument. Single quotes prevent bash from interpreting `$`, backticks, and backslashes inside your JS code. Use double quotes or backtick template literals for strings inside the JS.
+**Always use single quotes** for the `-e` argument. Single quotes prevent bash
+from interpreting `$`, backticks, and backslashes inside your JS code. Use
+double quotes or backtick template literals for strings inside the JS.
 
-If `playwriter` is not found, use `npx playwriter@latest` or `bunx playwriter@latest`.
+If `playwriter` is not found, use `npx playwriter@latest` or
+`bunx playwriter@latest`.

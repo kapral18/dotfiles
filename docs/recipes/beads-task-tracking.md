@@ -14,7 +14,7 @@ daemon and without mixing data across unrelated repos.
 
 `bdlocal` is defined in:
 
-- `home/dot_config/fish/readonly_config.fish.tmpl`
+- [`home/dot_config/fish/readonly_config.fish.tmpl`](../../home/dot_config/fish/readonly_config.fish.tmpl)
 
 It resolves a per-repo `$BEADS_DIR` under `~/beads-data/<repo>` and pins the DB
 to:
@@ -48,7 +48,8 @@ Confirm that `BEADS_DIR` changes as you move between repositories.
 
 - Stop using wrapper in current shell:
   - run `bd ...` directly instead of `bdlocal`.
-- Remove local repo data directory (only if you want to delete local Beads data):
+- Remove local repo data directory (only if you want to delete local Beads
+  data):
 
 ```bash
 rm -rf "$BEADS_DIR"

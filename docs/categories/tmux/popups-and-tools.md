@@ -2,7 +2,8 @@
 
 Back: [`docs/categories/tmux/index.md`](index.md)
 
-This setup includes a few tmux-native popups and helpers to keep your workflow inside tmux.
+This setup includes a few tmux-native popups and helpers to keep your workflow
+inside tmux.
 
 ## Command palette
 
@@ -14,8 +15,8 @@ Sources indexed (in display order, with recency boost):
 
 1. **`~/bin/,*` commands** — every executable `,*` script; descriptions are
    extracted from `# Description:` header comments when present.
-2. **Tmux prefix keybindings** — parsed from `tmux list-keys -T prefix` (and
-   the `k18` swap table) with human-readable labels.
+2. **Tmux prefix keybindings** — parsed from `tmux list-keys -T prefix` (and the
+   `k18` swap table) with human-readable labels.
 3. **Git aliases** — global `git config` aliases shown as `git <alias>`.
 4. **Drop-in extras** — any `.tsv` files in `~/.config/tmux/palette.d/` are
    appended verbatim (three tab-separated columns: display, key, exec).
@@ -35,8 +36,10 @@ Execution model:
 
 Options (tmux `set -g`):
 
-- `@command_palette_popup_height` (default `60`)
-- `@command_palette_popup_width` (default `70`)
+| Option                          | Default |
+| ------------------------------- | ------- |
+| `@command_palette_popup_height` | `60`    |
+| `@command_palette_popup_width`  | `70`    |
 
 Extensibility:
 
@@ -57,8 +60,8 @@ with fish).
 
 Implementation notes:
 
-- The popup attaches to a **nested tmux server** (separate socket) with two sessions:
-  `work` and `home`.
+- The popup attaches to a **nested tmux server** (separate socket) with two
+  sessions: `work` and `home`.
 - Each session runs `gh dash` with a dedicated config:
   `~/.config/gh-dash/config-work.yml` or `~/.config/gh-dash/config-home.yml`.
 - The nested tmux status bar shows the active dashboard (`#{session_name}`) and
@@ -70,7 +73,8 @@ Implementation notes:
   `display-popup`.
 - `gh dash` runs in an auto-respawn loop inside each nested session, so a crash
   restarts quickly without manual recovery.
-- Popup spawn temporarily overrides `default-shell` to `/bin/sh` to avoid heavy-shell initialization overhead (~1s with fish).
+- Popup spawn temporarily overrides `default-shell` to `/bin/sh` to avoid
+  heavy-shell initialization overhead (~1s with fish).
 
 ## Repo bootstrap popup (`owner/repo` -> `,gh-tfork`)
 
@@ -79,20 +83,25 @@ Implementation notes:
 - `,gh-tfork` decides the destination:
   - `~/work` for owner `elastic`
   - `~/code` for everything else
-- Popup spawn temporarily overrides `default-shell` to `/bin/sh` to avoid heavy-shell initialization overhead (~1s with fish).
+- Popup spawn temporarily overrides `default-shell` to `/bin/sh` to avoid
+  heavy-shell initialization overhead (~1s with fish).
 
 ## Lowfi (music in tmux)
 
-This setup includes an integration that runs `lowfi` inside a dedicated tmux session.
+This setup includes an integration that runs `lowfi` inside a dedicated tmux
+session.
 
-- Command: `home/exact_bin/executable_,tmux-lowfi` (installs as `,tmux-lowfi`)
-- Global keys (no tmux prefix): `F10` play/pause, `F11` skip, `F12` next tracklist
+- Command:
+  [`home/exact_bin/executable_,tmux-lowfi`](../../../home/exact_bin/executable_,tmux-lowfi)
+  (installs as `,tmux-lowfi`)
+- Global keys (no tmux prefix): `F10` play/pause, `F11` skip, `F12` next
+  tracklist
 
 Tracklist data is pulled via externals into:
 
 - `~/Library/Application Support/lowfi`
 
-See `home/.chezmoiexternal.toml`.
+See [`home/.chezmoiexternal.toml`](../../../home/.chezmoiexternal.toml).
 
 ## Verification and troubleshooting
 
@@ -113,5 +122,5 @@ tmux source-file ~/.config/tmux/tmux.conf
 
 ## Related
 
-- Worktree workflow: [`docs/recipes/worktree-workflow.md`](../../recipes/worktree-workflow.md)
-
+- Worktree workflow:
+  [`docs/recipes/worktree-workflow.md`](../../recipes/worktree-workflow.md)
