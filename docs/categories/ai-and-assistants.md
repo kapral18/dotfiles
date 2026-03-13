@@ -107,6 +107,33 @@ Entry contract standard:
   external repo, read-only review vs GitHub posting, `gws`-supported tasks,
   and `,w` over raw `git worktree`.
 
+Current playbooks:
+
+| Playbook | Use when |
+|---|---|
+| `review` | Review local changes or PR (start, iterative, reply, change-cycle modes) |
+| `github` | GitHub side effects (create/edit PRs/issues, post comments, apply metadata) |
+| `git` | Local git operations (status, diff, log, staging, commit, rebase/merge) |
+| `research` | Investigate external/public codebases (source-first clone + grep) |
+| `architecture` | Walk through a system, explain flows, or build a diagram/mental model |
+
+Current skills:
+
+| Skill | Use when |
+|---|---|
+| `semantic-code-search` | Semantic investigation via SCSI tools (symbol analysis, index selection) |
+| `google-workspace` | Gmail / Drive / Calendar / Admin / Docs / Sheets via `gws` |
+| `worktrees` | Create/switch/open/list/prune/remove worktrees via `,w` |
+| `compose-pr` | Draft PR description text only (no `gh` side effects) |
+| `compose-issue` | Draft issue text only (no `gh` side effects) |
+| `labels-propose` | Propose labels/backports/version targeting for elastic/kibana |
+| `kibana` | CODEOWNERS / ownership / reviewer guidance for elastic/kibana |
+| `kibana-console-monaco` | Automate/test Kibana Dev Tools Console editor via Playwright |
+| `playwriter` | Control the user's Chrome browser via Playwriter extension |
+| `beads` | Inspect/create/claim/update/close/export beads in the beads DB |
+| `improve-one` | Suggest the single smartest addition to the current codebase |
+| `improve-branch` | Suggest the single smartest addition for the current branch/PR/issue |
+
 Always-on rule source:
 
 - The SOP entrypoints are the only canonical always-on mechanism for assistant

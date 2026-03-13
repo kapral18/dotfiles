@@ -579,6 +579,12 @@ def branch_from_wrapper_path(root: str, wt_path: str, remotes: dict[str, str]) -
     except Exception:
         return ""
 
+def _gitdir_exists(gitdir: str) -> bool:
+    try:
+        return Path(gitdir).is_dir()
+    except Exception:
+        return False
+
 def worktree_info(worktree_dir):
     wt = Path(worktree_dir)
     gitp = wt / ".git"
@@ -588,13 +594,9 @@ def worktree_info(worktree_dir):
         br = head_branch(gitdir)
         singular_checkout = not has_linked_worktrees(gitdir)
         if singular_checkout:
-            # Singular checkout naming should use the repo default branch and
-            # stay stable regardless of what is currently checked out.
             default_br = default_branch_for_repo(root_wt)
             if default_br:
                 br = default_br
-        # If the root checkout lives under a default-branch directory (e.g. `<repo>/main`)
-        # then the directory name is the source of truth for naming.
         try:
             if wt.name in DEFAULT_BRANCH_DIRS:
                 br = wt.name
@@ -610,8 +612,6 @@ def worktree_info(worktree_dir):
             repo_path = resolve_path(str(Path(wrapper_root_checkout).parent))
             root_wt = wrapper_root_checkout
 
-        # If this checkout itself is a default-branch directory (e.g. `<wrapper>/main`),
-        # treat the wrapper directory as the repo id to avoid `.../main|main`.
         try:
             if wt.name in DEFAULT_BRANCH_DIRS:
                 repo_path = resolve_path(str(wt.parent))
@@ -621,11 +621,12 @@ def worktree_info(worktree_dir):
         repo_id = home_rel(repo_path)
         return {
             "path": resolve_path(str(wt)),
-            "root": root_wt,             # root checkout path (often `<wrapper>/main`)
-            "repo_path": repo_path,      # absolute wrapper/repo path
-            "repo_id": repo_id,          # home-relative repo identifier
+            "root": root_wt,
+            "repo_path": repo_path,
+            "repo_id": repo_id,
             "gitdir": gitdir,
             "branch": br,
+            "stale": False,
         }
 
     if gitp.is_file():
@@ -634,17 +635,21 @@ def worktree_info(worktree_dir):
             if not first.startswith("gitdir:"): return None
             raw = first.split(":", 1)[1].strip()
             gitdir = resolve_path(str(wt / raw) if not os.path.isabs(raw) else raw)
+            stale = not _gitdir_exists(gitdir)
             root_wt = resolve_path(str(wt))
-            br = head_branch(gitdir)
-            wrapper_root_checkout = find_wrapper_root_checkout_for_path(root_wt, scan_roots_set)
-            repo_path = root_wt
-            if wrapper_root_checkout and is_git_repo_dir(wrapper_root_checkout):
-                remotes = remote_names_for_root(wrapper_root_checkout)
-                derived = branch_from_wrapper_path(wrapper_root_checkout, root_wt, remotes)
-                if derived:
-                    br = derived
-                repo_path = resolve_path(str(Path(wrapper_root_checkout).parent))
-                root_wt = wrapper_root_checkout
+            br = "" if stale else head_branch(gitdir)
+            if not stale:
+                wrapper_root_checkout = find_wrapper_root_checkout_for_path(root_wt, scan_roots_set)
+                repo_path = root_wt
+                if wrapper_root_checkout and is_git_repo_dir(wrapper_root_checkout):
+                    remotes = remote_names_for_root(wrapper_root_checkout)
+                    derived = branch_from_wrapper_path(wrapper_root_checkout, root_wt, remotes)
+                    if derived:
+                        br = derived
+                    repo_path = resolve_path(str(Path(wrapper_root_checkout).parent))
+                    root_wt = wrapper_root_checkout
+            else:
+                repo_path = root_wt
             repo_id = home_rel(repo_path)
             return {
                 "path": resolve_path(str(wt)),
@@ -653,6 +658,7 @@ def worktree_info(worktree_dir):
                 "repo_id": repo_id,
                 "gitdir": gitdir,
                 "branch": br,
+                "stale": stale,
             }
         except Exception: pass
     return None
@@ -721,11 +727,40 @@ ignore_file = os.environ.get("PICK_SESSION_IGNORE_FILE", "").strip()
 
 dir_include_hidden = os.environ.get("PICK_SESSION_DIR_INCLUDE_HIDDEN", "on").lower()
 
+BADGE_STALE = color("2;38;5;214", " ⚠ stale")
+BADGE_GONE  = color("2;38;5;196", " ✗ gone")
+BADGE_DIRTY = color("2;38;5;214", " ∗")
+
+def _check_dirty(wt_path: str) -> bool:
+    try:
+        r = subprocess.run(
+            ["git", "-C", wt_path, "status", "--porcelain", "--untracked-files=no"],
+            check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
+            timeout=10,
+        )
+        return bool((r.stdout or "").strip())
+    except Exception:
+        return False
+
+def status_badge(flags: set) -> str:
+    if "gone" in flags:
+        return BADGE_GONE
+    if "stale" in flags:
+        return BADGE_STALE
+    if "dirty" in flags:
+        return BADGE_DIRTY
+    return ""
+
+def status_meta_flags(flags: set) -> str:
+    return ",".join(sorted(flags)) if flags else ""
+
 groups = {}
 def ensure_group(repo_id: str, root_checkout: str, repo_path: str):
     rid = (repo_id or "").strip()
     if rid not in groups:
         groups[rid] = { "repo_id": rid, "root_checkout": root_checkout, "repo_path": repo_path, "wt_map": {}, "sessions_by_wt": {} }
+
+wt_status: dict[str, set] = {}
 
 # 1. Discover worktrees
 if not quick and not sessions_only and shutil.which("fd"):
@@ -735,6 +770,29 @@ if not quick and not sessions_only and shutil.which("fd"):
             rid = info.get("repo_id", "")
             ensure_group(rid, info.get("root", ""), info.get("repo_path", ""))
             groups[rid]["wt_map"][info["path"]] = { "branch": info.get("branch", ""), "repo_id": rid }
+            flags: set[str] = set()
+            if not os.path.isdir(info["path"]):
+                flags.add("gone")
+            elif info.get("stale"):
+                flags.add("stale")
+            if flags:
+                wt_status[info["path"]] = flags
+
+# 1b. Parallel dirty scan for worktrees that aren't already stale/gone.
+_dirty_candidates = [
+    p for rid in groups for p in groups[rid]["wt_map"]
+    if p not in wt_status
+]
+if _dirty_candidates:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+        _futures = { pool.submit(_check_dirty, p): p for p in _dirty_candidates }
+        for fut in concurrent.futures.as_completed(_futures):
+            p = _futures[fut]
+            try:
+                if fut.result():
+                    wt_status.setdefault(p, set()).add("dirty")
+            except Exception:
+                pass
 
 # 2. Add sessions
 current_session = subprocess.run([ "tmux", "display-message", "-p", "#S" ], check=False, stdout=subprocess.PIPE, text=True).stdout.strip()
@@ -775,7 +833,10 @@ def emit_sessions_and_worktrees():
                 meta = f"sess_root:{br}" if wt_path == root_checkout else f"sess_wt:{br}"
                 meta += f"|repo={repo}"
                 if expected and sess_name != expected: meta += f"|expected={expected}"
-                disp = display_session_entry(sess_name)
+                flags = wt_status.get(wt_path, set())
+                sf = status_meta_flags(flags)
+                if sf: meta += f"|status={sf}"
+                disp = display_session_entry(sess_name) + status_badge(flags)
                 mk = match_key(sess_name, expected, repo, br)
                 print(f"{disp}\tsession\t{wt_path}\t{meta}\t{sess_name}\t{mk}")
                 exclude_worktree_roots.add(wt_path)
@@ -787,9 +848,12 @@ def emit_sessions_and_worktrees():
                 br = wt_map[wt_path].get("branch", "")
                 meta = f"wt_root:{br}" if wt_path == root_checkout else f"wt:{br}"
                 meta += f"|repo={repo}"
+                flags = wt_status.get(wt_path, set())
+                sf = status_meta_flags(flags)
+                if sf: meta += f"|status={sf}"
                 wt_name = f"{repo}|{br}" if br else repo
                 mk = match_key(wt_name, Path(wt_path).name, tildefy(wt_path))
-                print(f"{display_worktree_entry(tildefy(wt_path))}\tworktree\t{wt_path}\t{meta}\t{root_checkout}\t{mk}")
+                print(f"{display_worktree_entry(tildefy(wt_path))}{status_badge(flags)}\tworktree\t{wt_path}\t{meta}\t{root_checkout}\t{mk}")
                 exclude_worktree_roots.add(wt_path)
 
 emit_sessions_and_worktrees()

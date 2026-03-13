@@ -234,7 +234,7 @@ Composition (draft-only) guidance:
 - Before creating/editing a PR body, load: `~/.agents/skills/compose_pr/SKILL.md`
 - Before creating/editing an issue body, load: `~/.agents/skills/compose_issue/SKILL.md`
 - For `elastic/kibana` label targeting, load: `~/.agents/skills/labels_propose/SKILL.md`
-- For Kibana reviewer/ownership guidance, load: `~/.agents/skills/kibana/SKILL.md`
+- For Kibana reviewer/ownership guidance, load: `~/.agents/skills/kibana-management-ownership/SKILL.md`
 
 Output:
 

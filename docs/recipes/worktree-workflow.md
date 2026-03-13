@@ -5,6 +5,7 @@ Back: [`docs/recipes/index.md`](index.md)
 This setup ships a worktree helper command called `,w`.
 
 - Source: `home/exact_bin/executable_,w`
+- Helpers: `home/exact_bin/utils/,w/`
 
 The goal is to make branch isolation + review + context switching cheap.
 
@@ -13,73 +14,180 @@ The goal is to make branch isolation + review + context switching cheap.
 - You are inside a git repository.
 - `,w` is installed and on `PATH`.
 
-## Steps
+## Subcommands
 
-### Common Flows
-
-Create a new worktree:
+### `add` — create a worktree
 
 ```bash
 ,w add feat/my-change main
+,w add origin/some-branch
+,w add -q feat/quick
 ```
 
-Check out a PR into a worktree:
+- `<branch_name>` can be a local branch, `origin/<branch>`, or `user/<branch>`.
+- `[base_branch]` is optional; defaults to the current branch.
+- `-q`/`--quiet` suppresses informational output.
+- Adds a zoxide entry for the new path when zoxide is installed.
+
+### `prs` — check out PRs into worktrees
 
 ```bash
 ,w prs 12345
+,w prs 12345 12346
+,w prs --focus 12345
+,w prs --awaiting
+,w prs "label:bug"
 ```
 
-Check out an Issue into a worktree:
+- No arguments opens an interactive fzf multi-select picker.
+- `--focus` switches/attaches to the created worktree's tmux session.
+- `--awaiting` lists PRs awaiting your review (last 7 days by default; tune
+  with `COMMA_W_AWAITING_DAYS`).
+- Automatically adds contributor forks as remotes when needed.
+- First-party PRs use a plain branch name (`feat/foo`); third-party forks use
+  `<remote>__<branch>` and write per-worktree push routing so `git push` targets
+  the fork.
+- Upstream tracking prefers canonical refs (`origin/<branch>`, then
+  `upstream/<branch>`) for first-party remotes.
+
+### `issue` — create/reuse an issue worktree
 
 ```bash
 ,w issue 12345
+,w issue --focus 12345
+,w issue --branch my-fix 12345
+,w issue https://github.com/elastic/kibana/issues/12345
 ```
 
-Notes:
+- Reuses an existing issue worktree (metadata or issue-number heuristic) when
+  one exists.
+- Prompts for a branch name when creating a new worktree; branch is created as
+  `<name>-<issue_number>`.
+- `-b`/`--branch` provides the branch name non-interactively.
+- `--focus` switches/attaches to the worktree's tmux session.
+- If you already created a matching branch manually (via `,w add`), entering
+  that exact branch name links the issue metadata without renaming.
 
-- If the PR head repo is first-party (your `origin`/`upstream`, your GitHub login remote, or any remote URL owner matching your login), `,w prs` uses a normal local branch name like `feat/foo` instead of `kapral18__feat/foo`.
-- For first-party remotes, upstream tracking now prefers canonical refs (`origin/<branch>`, then `upstream/<branch>`) when present, instead of keeping a login-named remote like `kapral18/<branch>`.
-- For fork-prefixed branches (for example `alice__feature/foo`), `,w` writes per-worktree push routing and explicit branch tracking, so plain `git push` targets the fork branch even on reused worktrees.
+### `ls` — list worktrees
 
-You can also use these shortcuts directly from `gh-dash` when viewing PRs:
-- `ctrl+t`: Create a worktree for the selected PR in the background (log: `${XDG_CACHE_HOME:-~/.cache}/gh-dash/w_prs_<PR>.log`).
-- `C` or `Space`: Create/switch to the PR worktree and focus its tmux session (`\,w prs --focus`).
-- `b`: Create/switch to the PR worktree, focus tmux, and open the PR in Octo (`Octo pr edit <number> <owner/repo>`) in a new tmux window rooted at that PR worktree.
-- If the repo does not exist locally yet, PR actions bootstrap it first with `,gh-tfork <owner/repo>` and then continue.
-- In the persistent `gh-dash` popup, sync PR actions (`C`/`Space`/`b`) show bootstrap progress in an overlay popup instead of replacing the `gh-dash` UI.
-- Bootstrap location follows conventions: `elastic/*` in `~/work/<repo>`, everything else in `~/code/<repo>`.
+```bash
+,w ls
+,w ls --long
+,w ls --dirty
+,w ls --porcelain
+,w ls --sort path --no-header
+```
 
-You can also use these shortcuts directly from `gh-dash` when viewing Issues:
-- `C` or `Space`: Create/switch to the Issue worktree and focus its tmux session (`\,w issue --focus`).
-- New issue worktrees now use manual branch naming: `,w issue` prompts for a branch name and creates `<branch>-<issue_number>`.
-- If an issue worktree already exists (via worktree metadata or issue number in branch/path), `,w issue` reuses it immediately without prompting.
-- If you already created a matching worktree branch manually (for example via `,w add`), entering that exact branch name in the prompt links the issue metadata without renaming the branch.
-- If the repo does not exist locally yet, Issue actions bootstrap it first with `,gh-tfork <owner/repo>` and then continue.
-- In the persistent `gh-dash` popup, sync Issue actions (`C`/`Space`) show bootstrap progress in an overlay popup instead of replacing the `gh-dash` UI.
-- Bootstrap location follows conventions: `elastic/*` in `~/work/<repo>`, everything else in `~/code/<repo>`.
+- Default table: CUR, BRANCH, PATH, UPSTREAM, TMUX, STATE.
+- `--long` adds AHEAD/BEHIND columns.
+- `--dirty` computes and shows dirty state (slow in large repos).
+- `--porcelain` prints raw `git worktree list --porcelain` output.
+- `--selectable` prints `branch<TAB>path` for non-detached, non-locked
+  worktrees (used by other subcommands).
+- `--full-path` disables path shortening.
+- `--sort branch|path` controls row order.
 
-Clean up a worktree:
+### `switch` — interactive worktree picker
+
+```bash
+,w switch
+,w switch kibana
+```
+
+- Opens an fzf picker over selectable worktrees.
+- If the argument exactly matches a branch or path, switches directly without
+  opening fzf.
+- Creates a tmux session for the worktree if one does not exist.
+
+### `open` — focus a worktree by name/path
+
+```bash
+,w open feat/my-change
+,w open /path/to/worktree
+```
+
+- Accepts a branch name or absolute path.
+- Creates a tmux session if needed and switches/attaches to it.
+
+### `mv` — move/rename a worktree
+
+```bash
+,w mv old-branch new-branch
+,w mv --keep-path old-branch new-branch
+,w mv --path ~/work/repo/new-dir old-branch new-branch
+,w mv --focus old-branch new-branch
+```
+
+- Renames the branch and moves the worktree directory as a unit.
+- Updates tmux session name and zoxide entries.
+- `--keep-path` renames only the branch (directory stays).
+- `--path <dir>` overrides the destination directory.
+- `--focus` switches to the resulting tmux session after the move.
+
+### `remove` — clean up worktrees
 
 ```bash
 ,w remove
+,w remove --paths /path/to/wt1 /path/to/wt2
+,w remove --tmux-notify
 ```
 
-Notes:
+- Interactive fzf multi-select by default.
+- For each selected worktree: removes directory, deletes local branch, removes
+  unused fork remotes, cleans empty parent dirs, purges from zoxide, kills
+  tmux session.
+- Protects the repository's actual default branch (detected from remote HEAD).
+- `.DS_Store` is treated as ignorable so Finder metadata does not keep empty
+  dirs alive.
+- Leftover files in otherwise-empty parents are bagged to
+  `../.bag/worktree_remove/<wrapper>/<timestamp>/...`.
+- `--paths` skips the picker and also allows removing detached worktrees.
+- `--tmux-notify` shows progress via tmux messages (useful from scripts).
 
-- Cleanup treats `.DS_Store` as ignorable, so empty parent directories aren’t kept alive by Finder metadata.
-- Cleanup protects the repository's actual default branch (detected from remote HEAD), not only `main`.
-- If cleanup would otherwise leave behind empty parent directories *only because of unrelated leftover files/dirs*, `,w remove` moves those leftovers into a bag directory outside the wrapper:
-  `../.bag/worktree_remove/<wrapper>/<timestamp>/...` (relative to the wrapper’s parent).
-
-Non-interactive cleanup (useful from tmux pickers/scripts):
+### `prune` — clean stale metadata
 
 ```bash
-,w remove --paths /path/to/worktree1 /path/to/worktree2
+,w prune
+,w prune --apply
+,w prune --apply --all
 ```
 
-Notes:
+- Default is dry-run (shows what would be cleaned).
+- `--apply` runs `git worktree prune` and kills stale tmux sessions.
+- `--all` considers tmux sessions across all repos, not just the current one.
 
-- When you pass explicit `--paths`, detached worktrees are removable as well (interactive `,w remove` continues to hide detached worktrees by default).
+### `doctor` — check dependencies and state
+
+```bash
+,w doctor
+```
+
+- Checks for `git`, `fzf`, `gh`, `tmux`, `zoxide`, `bat`.
+- Reports stale worktree paths and stale tmux sessions.
+- Suggests `,w prune --apply` when issues are found.
+
+## gh-dash Integration
+
+PR shortcuts (inside the `gh-dash` popup):
+
+- `ctrl+t`: create a worktree in the background.
+- `C` or `Space`: create/switch to the PR worktree and focus its tmux session
+  (`,w prs --focus`).
+- `b`: same as above plus open the PR in Octo in a new tmux window.
+
+Issue shortcuts:
+
+- `C` or `Space`: create/switch to the issue worktree and focus its tmux
+  session (`,w issue --focus`).
+
+Shared behavior:
+
+- If the repo does not exist locally, actions bootstrap it first with
+  `,gh-tfork <owner/repo>`.
+- In the persistent popup, sync actions show bootstrap progress in an overlay
+  instead of replacing the `gh-dash` UI.
+- Bootstrap location: `elastic/*` in `~/work/<repo>`, everything else in
+  `~/code/<repo>`.
 
 ## Verification
 
@@ -90,23 +198,16 @@ Notes:
 
 Confirm the expected worktree exists and tmux session switching works.
 
-## What It Does
-
-The `,w` command is a wrapper around `git worktree` plus extra conveniences
-(directory naming, remote handling, tmux session integration).
-
-For the high-level overview, see the root `README.md` section about `,w`.
-
 ## Rollback / Undo
 
-- Remove the created worktree:
+Remove a worktree:
 
 ```bash
 ,w remove
 ```
 
-- If metadata is stale:
+If metadata is stale:
 
 ```bash
-,w prune
+,w prune --apply
 ```

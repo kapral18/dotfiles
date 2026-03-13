@@ -336,6 +336,25 @@ RESET = "\033[0m"
 def color(code, text):
     return f"\033[{code}m{text}{RESET}"
 
+BADGE_STALE = color("2;38;5;214", " \u26a0 stale")
+BADGE_GONE  = color("2;38;5;196", " \u2717 gone")
+BADGE_DIRTY = color("2;38;5;214", " \u2217")
+
+def _parse_status_flags(meta: str) -> set:
+    for part in (meta or "").split("|"):
+        if part.startswith("status="):
+            return set(part[7:].split(",")) if part[7:] else set()
+    return set()
+
+def _status_badge(flags: set) -> str:
+    if "gone" in flags:
+        return BADGE_GONE
+    if "stale" in flags:
+        return BADGE_STALE
+    if "dirty" in flags:
+        return BADGE_DIRTY
+    return ""
+
 def display_session_entry_with_suffix(name, path_display, suffix=""):
     suffix = suffix or ""
     return f"{color('38;5;42', '')}  {color('1;38;5;81', name)}{suffix}"
@@ -652,11 +671,12 @@ with open(cache_file, "r", encoding="utf-8", errors="replace") as f:
         if is_bag_path(rpath):
             continue
         if path_tombstoned(kind, rpath): continue
+        cached_flags = _parse_status_flags(meta)
+        badge = _status_badge(cached_flags)
         if kind == "session":
             if target in printed_sessions:
                 continue
             if target in fresh_session_targets:
-                # Optimistic hide while the kill is in-flight; keep the path selectable.
                 if rpath:
                     mk = match_key(Path(rpath).name, tildefy(rpath), rpath)
                     if is_git_dir(rpath):
@@ -667,14 +687,11 @@ with open(cache_file, "r", encoding="utf-8", errors="replace") as f:
                             meta = f"wt_root:{br}" if br and root == rpath else (f"wt:{br}" if br else "")
                             if repo_id:
                                 meta += f"|repo={repo_id}"
-                            print(f"{display_worktree_entry(tildefy(rpath))}\tworktree\t{rpath}\t{meta}\t{root}\t{mk}")
+                            print(f"{display_worktree_entry(tildefy(rpath))}{badge}\tworktree\t{rpath}\t{meta}\t{root}\t{mk}")
                     elif os.path.isdir(rpath):
                         print(f"{display_dir_entry(tildefy(rpath))}\tdir\t{rpath}\t\t\t{mk}")
                 continue
             if target not in live_session_names:
-                # The cache can contain session rows that temporarily replaced a
-                # worktree row for the same path. If the session no longer
-                # exists, emit a worktree entry so the path stays selectable.
                 if rpath:
                     mk = match_key(Path(rpath).name, tildefy(rpath), rpath)
                     if is_git_dir(rpath):
@@ -685,7 +702,7 @@ with open(cache_file, "r", encoding="utf-8", errors="replace") as f:
                             meta = f"wt_root:{br}" if br and root == rpath else (f"wt:{br}" if br else "")
                             if repo_id:
                                 meta += f"|repo={repo_id}"
-                            print(f"{display_worktree_entry(tildefy(rpath))}\tworktree\t{rpath}\t{meta}\t{root}\t{mk}")
+                            print(f"{display_worktree_entry(tildefy(rpath))}{badge}\tworktree\t{rpath}\t{meta}\t{root}\t{mk}")
                     elif os.path.isdir(rpath):
                         print(f"{display_dir_entry(tildefy(rpath))}\tdir\t{rpath}\t\t\t{mk}")
                 continue
@@ -693,7 +710,7 @@ with open(cache_file, "r", encoding="utf-8", errors="replace") as f:
             printed_sessions.add(rpath)
             suffix = color("2;38;5;244", " (current)") if target == current_name else ""
             mk = match_key(target)
-            print(f"{display_session_entry_with_suffix(target, '', suffix)}\tsession\t{path}\t{meta}\t{target}\t{mk}")
+            print(f"{display_session_entry_with_suffix(target, '', suffix)}{badge}\tsession\t{path}\t{meta}\t{target}\t{mk}")
             continue
 
         if rpath in sess_by_rpath:
@@ -740,9 +757,9 @@ if command -v tmux >/dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
   # If the cache is missing, prefer a full refresh in the background so the
   # next open (or a ctrl-r) has complete data.
   if [ "$cache_was_present" -eq 1 ]; then
-    tmux run-shell -b "$HOME/.config/tmux/scripts/pick_session_index_update.sh --quiet --quick-only" 2>/dev/null || true
+    tmux run-shell -b "$HOME/.config/tmux/scripts/pick_session/index_update.sh --quiet --quick-only" 2>/dev/null || true
   else
-    tmux run-shell -b "$HOME/.config/tmux/scripts/pick_session_index_update.sh --quiet" 2>/dev/null || true
+    tmux run-shell -b "$HOME/.config/tmux/scripts/pick_session/index_update.sh --quiet" 2>/dev/null || true
   fi
 fi
 

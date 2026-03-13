@@ -19,11 +19,14 @@ Selection / Actions
   tab             toggle multi-select on current row
   ctrl-x          kill selected session(s) (optimistic hide)
   alt-x           remove selected worktree(s) (optimistic hide)
+  ctrl-s          send command to selected session(s)
+                    enters send mode: type command, enter=send, esc=cancel
 
-Help
-  ctrl-/          toggle this help panel
-  shift-up/down   scroll help (line)
-  shift-left/right scroll help (page)
+Preview
+  ctrl-/          toggle preview panel (pane capture / git info)
+  ?               show this help in the preview panel
+  shift-up/down   scroll preview (line)
+  shift-left/right scroll preview (page)
 
 Notes
   - actions operate on the selected rows (multi-select aware)

@@ -4,7 +4,7 @@ set -euo pipefail
 sel_file="${1:-}"
 mode="${2:-}"
 query="${3:-}"
-items_cmd="$HOME/.config/tmux/scripts/pick_session_items.sh"
+items_cmd="$HOME/.config/tmux/scripts/pick_session/items.sh"
 
 if [ -z "$sel_file" ] || [ ! -f "$sel_file" ] || [ ! -x "$items_cmd" ]; then
   exec "$items_cmd"

@@ -16,5 +16,5 @@ IFS='|' read -r height width orig_shell < <(
 # popup process is spawned.
 tmux set-option -g default-shell /bin/sh \; \
   display-popup -E -h "${height}%" -w "${width}%" -d "#{pane_current_path}" \
-  "$HOME/.config/tmux/scripts/pick_session.sh" \; \
+  "$HOME/.config/tmux/scripts/pick_session/pick_session.sh" \; \
   set-option -g default-shell "$orig_shell" 2>/dev/null || true

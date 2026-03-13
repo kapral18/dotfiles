@@ -45,7 +45,7 @@ Extensibility:
   automatically on next palette open.
 
 Popup spawn temporarily overrides `default-shell` to `/bin/sh` via
-`command_palette_popup.sh` to avoid heavy-shell initialization overhead (~1s
+`command_palette/popup.sh` to avoid heavy-shell initialization overhead (~1s
 with fish).
 
 ## Persistent `gh-dash` popup

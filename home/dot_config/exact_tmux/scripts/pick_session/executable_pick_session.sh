@@ -217,17 +217,17 @@ tmux_has_session_exact() {
   tmux has-session -t "=${name}" 2>/dev/null
 }
 
-items_cmd="$HOME/.config/tmux/scripts/pick_session_items.sh"
+items_cmd="$HOME/.config/tmux/scripts/pick_session/items.sh"
 if [ ! -x "$items_cmd" ]; then
   die "tmux: missing script: $items_cmd"
 fi
 
-open_items_cmd="$HOME/.config/tmux/scripts/pick_session_open_items.sh"
+open_items_cmd="$HOME/.config/tmux/scripts/pick_session/open_items.sh"
 if [ ! -x "$open_items_cmd" ]; then
   open_items_cmd="$items_cmd"
 fi
 
-filter_cmd="$HOME/.config/tmux/scripts/pick_session_filter.sh"
+filter_cmd="$HOME/.config/tmux/scripts/pick_session/filter.sh"
 if [ ! -x "$filter_cmd" ]; then
   filter_cmd="$items_cmd"
 fi
@@ -237,13 +237,17 @@ mkdir -p "$cache_dir" 2>/dev/null || true
 sel_tmp="${cache_dir}/pick_session_fzf_selected.tsv"
 primary_tmp="${cache_dir}/pick_session_fzf_primary.tsv"
 
-kill_cmd="$HOME/.config/tmux/scripts/pick_session_action_kill_sessions.sh"
-rm_cmd="$HOME/.config/tmux/scripts/pick_session_action_remove_worktrees.sh"
-live_refresh_cmd="$HOME/.config/tmux/scripts/pick_session_live_refresh.sh"
-hide_selected_cmd="$HOME/.config/tmux/scripts/pick_session_items_hide_selected.sh"
-update_cmd="$HOME/.config/tmux/scripts/pick_session_index_update.sh"
+kill_cmd="$HOME/.config/tmux/scripts/pick_session/action_kill_sessions.sh"
+rm_cmd="$HOME/.config/tmux/scripts/pick_session/action_remove_worktrees.sh"
+live_refresh_cmd="$HOME/.config/tmux/scripts/pick_session/live_refresh.sh"
+hide_selected_cmd="$HOME/.config/tmux/scripts/pick_session/items_hide_selected.sh"
+update_cmd="$HOME/.config/tmux/scripts/pick_session/index_update.sh"
 kill_async_cmd="tmux run-shell -b \"$(printf %q "$kill_cmd") $(printf %q "$sel_tmp")\""
 rm_async_cmd="tmux run-shell -b \"$(printf %q "$rm_cmd") $(printf %q "$sel_tmp")\""
+
+send_cmd="$HOME/.config/tmux/scripts/pick_session/action_send_command.sh"
+cmd_tmp="${cache_dir}/pick_session_cmd.txt"
+mode_flag="${cache_dir}/pick_session_send_mode"
 
 fzf_args="$(tmux_opt '@pick_session_fzf_options' '')"
 fzf_prompt="$(tmux_opt '@pick_session_fzf_prompt' '󰍉  ')"
@@ -255,17 +259,19 @@ fzf_ui_args=()
 [ -n "$fzf_color" ] && fzf_ui_args+=(--color "$fzf_color")
 query="$*"
 
-help_cmd="$HOME/.config/tmux/scripts/pick_session_keyhelp.sh"
+help_cmd="$HOME/.config/tmux/scripts/pick_session/keyhelp.sh"
+preview_cmd="$HOME/.config/tmux/scripts/pick_session/preview.sh"
 
-# Avoid showing a stale list that re-sorts mid-picker. A quick-only refresh is
-# fast and preserves the existing directory section in the cache.
-# Removed blocking call to ensure instant opening.
+# fzf send-mode: ctrl-s enters a modal where the query line becomes a command
+# prompt. enter dispatches the command to selected sessions; esc cancels.
+send_restore="enable-search+change-prompt($fzf_prompt)+change-ghost($fzf_ghost)+change-header(?=help  ctrl-/=preview)+clear-query+deselect-all+rebind(ctrl-s,ctrl-x,alt-x,change)+unbind(esc)"
+send_mode="execute-silent(cp {+f} $sel_tmp)+execute-silent(touch $mode_flag)+disable-search+change-prompt(❯ send: )+change-ghost()+change-header(enter=send  esc=cancel)+clear-query+unbind(ctrl-s,ctrl-x,alt-x,change)+rebind(esc)"
 
 selection_file="${PICK_SESSION_SELECTION_FILE:-}"
 if [ -n "$selection_file" ] && [ -f "$selection_file" ]; then
   pick="$(cat "$selection_file" 2>/dev/null || true)"
 else
-  rm -f "$primary_tmp" 2>/dev/null || true
+  rm -f "$primary_tmp" "$cmd_tmp" "$mode_flag" 2>/dev/null || true
   # shellcheck disable=SC2086
   pick="$(
     FZF_DEFAULT_OPTS="" "$open_items_cmd" | fzf \
@@ -282,8 +288,8 @@ else
       --multi \
       "${fzf_ui_args[@]}" \
       --query "$query" \
-      --preview "$help_cmd" \
-      --preview-window 'down,80%,wrap,hidden,border-top' \
+      --preview "$preview_cmd {f}" \
+      --preview-window 'right,50%,border-left' \
       --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+clear-query" \
       --bind "alt-r:execute-silent:$live_refresh_cmd --once --force >/dev/null 2>&1 &" \
       --bind "alt-j:half-page-down" \
@@ -295,11 +301,16 @@ else
       --bind "shift-left:preview-page-up" \
       --bind "shift-right:preview-page-down" \
       --bind "ctrl-/:toggle-preview" \
+      --bind "?:change-preview($help_cmd)+show-preview" \
+      --bind "focus:change-preview($preview_cmd {f})" \
       --bind "change:first" \
-      --bind "enter:execute-silent(cp {f} $(printf %q "$primary_tmp"))+accept" \
-      --bind "ctrl-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") kill {q})+execute-silent($kill_async_cmd)+clear-selection" \
-      --bind "alt-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") remove {q})+execute-silent($rm_async_cmd)+clear-selection" \
-      --header $'ctrl-/=help' \
+      --bind "load:unbind(esc)" \
+      --bind "enter:transform:[ -f $mode_flag ] && { printf '%s' {q} > $cmd_tmp; echo 'execute-silent(tmux run-shell -b \"$send_cmd $sel_tmp $cmd_tmp\")+execute-silent(rm -f $mode_flag)+$send_restore'; } || echo 'execute-silent(cp {f} $primary_tmp)+accept'" \
+      --bind "ctrl-s:$send_mode" \
+      --bind "esc:execute-silent(rm -f $mode_flag)+$send_restore" \
+      --bind "ctrl-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") kill {q})+execute-silent($kill_async_cmd)+deselect-all" \
+      --bind "alt-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") remove {q})+execute-silent($rm_async_cmd)+deselect-all" \
+      --header $'?=help  ctrl-/=preview' \
       \
       ${fzf_args} ||
       true
@@ -1058,5 +1069,5 @@ fi
 # If we created any new sessions, refresh the cache quickly so the next picker
 # open shows them in their "true" group/position without waiting for TTL.
 if [ "${created_any_session:-0}" -eq 1 ]; then
-  tmux run-shell -b "$HOME/.config/tmux/scripts/pick_session_index_update.sh --force --quiet --quick-only" 2>/dev/null || true
+  tmux run-shell -b "$HOME/.config/tmux/scripts/pick_session/index_update.sh --force --quiet --quick-only" 2>/dev/null || true
 fi

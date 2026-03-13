@@ -30,7 +30,7 @@ This setup ships a URL picker and a session/worktree picker designed to run insi
 
 ## Notes
 
-- `pick_url.sh` and `pick_session.sh` run `fzf` with `FZF_DEFAULT_OPTS` cleared so global defaults (height/preview/etc.) don't distort the popup UI. Use the `@pick_*` options above to customize.
+- `pick_url.sh` and `pick_session/pick_session.sh` run `fzf` with `FZF_DEFAULT_OPTS` cleared so global defaults (height/preview/etc.) don't distort the popup UI. Use the `@pick_*` options above to customize.
 - `pick_url` de-duplicates path-prefix URLs, so if both `https://site/x` and `https://site/x/y` are detected, it keeps the deeper path entry.
 - `pick_session` entries render with ANSI colors and Nerd Font icons (`session`, `worktree`, `dir`) in the first column; `fzf` is run with `--ansi` so filtering still works on the visible text.
 - `pick_session` also styles the input line (`--prompt`, `--ghost`, `--color`) by default. Use `@pick_session_fzf_prompt`, `@pick_session_fzf_ghost`, or `@pick_session_fzf_color` to customize, and `@pick_session_fzf_options` for any extra `fzf` flags.
@@ -38,19 +38,19 @@ This setup ships a URL picker and a session/worktree picker designed to run insi
 - Excludes are file-backed (`@pick_session_dir_exclude_file`). The file is parsed as line-based `fd --exclude` patterns (with `#` comments and surrounding whitespace removed); trailing `/` is normalized automatically, and `.git` is always excluded even if not listed.
 - Directory rows intentionally stop at discovered worktree roots: once a folder is identified as a worktree/session path, nested subdirectories under it are not emitted as `dir` rows.
 - When the cache is empty, the picker falls back to tmux sessions + `zoxide` recent dirs (if installed) + `~`.
-- Grouped/sorted ordering is produced by `pick_session_filter.sh`:
+- Grouped/sorted ordering is produced by `pick_session/filter.sh`:
   - session-backed repo/worktree groups first (sessions first within group, then related worktrees)
   - worktree-only groups next
   - `dir` entries at the end (still clustered by scan root and path)
-- `pick_session_index_update.sh` also maintains `~/.cache/tmux/pick_session_items_ordered.tsv` (precomputed ordered snapshot) in the background.
+- `pick_session/index_update.sh` also maintains `~/.cache/tmux/pick_session_items_ordered.tsv` (precomputed ordered snapshot) in the background.
 - Picker open prefers the ordered snapshot for instant + stable first paint, but validates it against mutation/pending timestamps first (bash `-nt` check, zero subprocess overhead).
 - For very large caches, first paint can defer `dir` rows and render only `session`/`worktree` rows. This is disabled by default (`@pick_session_defer_dir_rows_threshold` = `0`); set to a positive row count to enable.
-- Popup spawn temporarily overrides `default-shell` to `/bin/sh` during `display-popup` creation to avoid heavy-shell (fish, zsh with plugins) initialization overhead (~1 s with fish). The original shell is restored atomically in the same tmux command chain. `pick_session.sh` itself runs under `bash` via its shebang.
-- `tmux_opt` reads in `pick_session.sh` are cached: a single `tmux show-options -g` call replaces multiple sequential `tmux show-option` round-trips.
-- First paint comes from `pick_session_items_ordered.tsv` when fresh; after `ctrl-x` kill or `alt-x` remove (which write mutation tombstones), the ordered snapshot is stale so `pick_session_items.sh` runs with mutation filtering (~250 ms) to ensure killed/removed entries never reappear.
+- Popup spawn temporarily overrides `default-shell` to `/bin/sh` during `display-popup` creation to avoid heavy-shell (fish, zsh with plugins) initialization overhead (~1 s with fish). The original shell is restored atomically in the same tmux command chain. `pick_session/pick_session.sh` itself runs under `bash` via its shebang.
+- `tmux_opt` reads in `pick_session/pick_session.sh` are cached: a single `tmux show-options -g` call replaces multiple sequential `tmux show-option` round-trips.
+- First paint comes from `pick_session_items_ordered.tsv` when fresh; after `ctrl-x` kill or `alt-x` remove (which write mutation tombstones), the ordered snapshot is stale so `pick_session/items.sh` runs with mutation filtering (~250 ms) to ensure killed/removed entries never reappear.
 - Picker open does not auto-reload anymore (prevents visible rerender/churn); use `ctrl-r` (or `alt-r` for force refresh) when you want a fresh full rebuild while the picker is open.
-- Picker `ctrl-r` refresh keeps grouped ordering (`pick_session_filter.sh --refresh --force-order`) while still triggering quick+full background cache refresh.
-- For very large caches, `pick_session_filter.sh` automatically falls back to passthrough mode (default threshold `2000` rows) so popup open latency stays low; tune with `@pick_session_filter_passthrough_rows`.
+- Picker `ctrl-r` refresh keeps grouped ordering (`pick_session/filter.sh --refresh --force-order`) while still triggering quick+full background cache refresh.
+- For very large caches, `pick_session/filter.sh` automatically falls back to passthrough mode (default threshold `2000` rows) so popup open latency stays low; tune with `@pick_session_filter_passthrough_rows`.
 - The picker uses fzf's native in-process filtering (no reload per keystroke) across the visible label and the hidden match key column, with `--scheme=path` and tie-breakers `begin,length,index` so path-root matches (for example `~/work`) outrank unrelated long-path text hits. Queries like `work/kibana main` match.
 - The picker de-duplicates rows by path: for the same path, it shows only one of `session` / `worktree` / `dir` (priority `session` → `worktree` → `dir`).
 - On `alt-x` remove, selecting a root checkout/worktree now hides all impacted rows immediately (sibling worktrees and matching sessions), instead of only hiding the single selected row while cleanup is still running.

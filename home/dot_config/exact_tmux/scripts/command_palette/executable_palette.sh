@@ -108,12 +108,12 @@ human_key() {
 describe_tmux_action() {
   local action="$1"
   case "$action" in
-  *pick_session.sh*) printf 'Session picker' ;;
-  *pick_session_popup.sh*) printf 'Session picker (popup)' ;;
+  *pick_session/pick_session.sh*) printf 'Session picker' ;;
+  *pick_session/popup.sh*) printf 'Session picker (popup)' ;;
   *command_palette*) printf 'Command palette' ;;
-  *gh_dash_popup.sh*) printf 'GitHub dashboard (gh-dash)' ;;
-  *gh_dash_popup_restart.sh*) printf 'Restart gh-dash' ;;
-  *gh_tfork_popup.sh*) printf 'Bootstrap repo (fork+clone)' ;;
+  *gh_dash/popup.sh*) printf 'GitHub dashboard (gh-dash)' ;;
+  *gh_dash/restart.sh*) printf 'Restart gh-dash' ;;
+  *gh_tfork/popup.sh*) printf 'Bootstrap repo (fork+clone)' ;;
   *pick_url.sh*) printf 'URL picker' ;;
   *promote_pane.sh*) printf 'Promote pane to session' ;;
   *promote_window.sh*) printf 'Promote window to session' ;;

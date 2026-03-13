@@ -48,11 +48,13 @@ Common patterns (verify in repo):
 
 - team ownership: `Team:*` (for management-owned areas, `Team:Kibana Management` is common)
 - feature tags: `Feature:<area>` (varies)
-- release notes: `release_note:feature` | `release_note:enhancement` | `release_note:skip`
+- release notes: `release_note:feature` | `release_note:enhancement` | `release_note:fix` | `release_note:skip`
   - often required by PR checks
   - default to `release_note:skip` unless user confirms public-facing change
-- backports: `backport`, `backport:skip`, `backport:<version>` (varies)
-- version targeting: `vX.Y.Z` (varies)
+- backports:
+  - `backport:skip` (default if no backport is needed) (no version tag if skipping)
+  - `backport:all-open` (backport to all open minor versions) (no version tag)
+  - `backport:version` + `vX.Y.Z` (backport to a specific version) (version tag required)
 - docs tags: `docs`
 
 When relevant, capture intended release-note behavior explicitly in the PR body so labels can be applied consistently.

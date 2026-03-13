@@ -1,5 +1,5 @@
 ---
-name: kibana
+name: kibana-management-ownership
 description: |-
   Use when the user asks about CODEOWNERS / ownership / reviewers for
   elastic/kibana Management areas. Verify current repo/CODEOWNERS first;

@@ -10,7 +10,7 @@ IFS='|' read -r width height orig_shell < <(
 [ -n "${height:-}" ] || height="3"
 [ -n "${orig_shell:-}" ] || orig_shell="/bin/sh"
 
-prompt_cmd="$HOME/.config/tmux/scripts/gh_tfork_prompt.sh"
+prompt_cmd="$HOME/.config/tmux/scripts/gh_tfork/prompt.sh"
 
 if [ ! -x "$prompt_cmd" ]; then
   tmux display-message "Missing script: $prompt_cmd"

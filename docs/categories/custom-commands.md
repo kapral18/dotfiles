@@ -164,19 +164,76 @@ Examples:
 ,tmux-lowfi q
 ```
 
-## Additional Command Families
+## Additional Commands
 
-- GitHub helpers:
-  - `home/exact_bin/executable_,view-my-issues`
-  - `home/exact_bin/executable_,add-patch-to-prs`
-- Search/discovery helpers:
-  - `home/exact_bin/executable_,search-brew-desc`
-  - `home/exact_bin/executable_,fuzzy-brew-search`
-  - `home/exact_bin/executable_,search-gh-topic`
-- Utility helpers:
-  - `home/exact_bin/executable_,to-gif`
-  - `home/exact_bin/executable_,pdf-diff`
-  - `home/exact_bin/executable_,history-sync`
+### GitHub / PR helpers
+
+- `,view-my-issues` — browse your GitHub issues with fzf preview.
+- `,remove-comment` — delete a comment from the current PR via fzf picker.
+- `,gh-subissues-create` — draft multiple sub-issues in your editor, create
+  them, and attach them to a parent issue via GitHub's sub-issue GraphQL API.
+- `,check-backport-progress` — find PRs missing backports or required labels
+  across target branches.
+- `,disable-auto-merge` / `,enable-auto-merge` — toggle auto-merge for all
+  open PRs targeting a base branch.
+- `,trace-string-pr` — locate the PR that introduced a matching string and
+  open it in the browser.
+- `,hey-branch` — quick "am I in sync with upstream?" status for the current
+  branch (ahead/behind + missing remote).
+
+### Search / discovery helpers
+
+- `,grepo` — grep for a pattern across files and open the selected match in
+  `$EDITOR` at the right line.
+- `,search-brew-desc` — search installed Homebrew formula descriptions (JSON
+  output).
+- `,fuzzy-brew-search` — fuzzy search Homebrew descriptions with preview, then
+  drive an "add this to Brewfile" workflow.
+- `,search-gh-topic` — search GitHub repos by topic with preview, then open
+  the selected repo.
+
+### Testing / analysis helpers
+
+- `,jest-test-title-report` — compare Jest test titles between two worktrees
+  and emit a CSV report.
+- `,get-risky-tests` — run Jest and report tests whose runtime exceeds a
+  threshold.
+- `,get-age-buckets` — compute file "age buckets" from git history to spot
+  stale areas.
+- `,generate-git-sandbox` — create a throwaway git repo with branches/commits
+  for testing rebases/merges/scripts.
+
+### Kibana development helpers
+
+- `,start-feat-kbn` — boot ES (snapshot) and start Kibana in a tmux pane when
+  bootstrap completes (feature cluster).
+- `,start-main-kbn` — same as above for the "main" cluster defaults/ports.
+
+### Utility helpers
+
+- `,cp-files-for-llm` — copy a directory tree's text contents to the clipboard
+  with file headers, ready to paste into an assistant.
+- `,appid` — print the macOS bundle identifier for an app name/path.
+- `,dumputi` — dump the system's registered Uniform Type Identifiers.
+- `,to-gif` — convert a video to an optimized GIF.
+- `,vid-ipad` — re-encode a video for iPad playback.
+- `,pdf-diff` — visual diff two PDFs by compositing pages.
+- `,history-sync` — merge local Fish history with a 1Password document and
+  push the merged result back.
+- `,patch-claude-code` — patch Claude Code's context window default so it
+  reads from `CLAUDE_CODE_CONTEXT_WINDOW` env var.
+
+### Internal / plumbing helpers
+
+These are used by other scripts, fzf integrations, and Neovim — you rarely
+invoke them directly:
+
+- `,bat-preview` — smart preview for fzf (images via chafa, binaries via
+  hexyl, directories via ls, text via bat).
+- `,fzf-git-changed-lines` — emit changed lines as grep-like entries for fzf.
+- `,fzf-preview-follow` — center fzf preview around a match line.
+- `,fzf-rg-multiline` — convert ripgrep output into NUL-delimited multi-line
+  fzf entries.
 
 ## Verification And Troubleshooting
 

@@ -210,6 +210,10 @@ if type -q pass; and test -z "$GEMINI_API_KEY"
     set -gx GEMINI_API_KEY (pass google/gemini/api/token)
 end
 
+if type -q pass; and test -z "$GOOGLE_GENERATIVE_AI_API_KEY"
+    set -gx GOOGLE_GENERATIVE_AI_API_KEY (pass google/gemini/api/token)
+end
+
 # ------------------------------------
 # OpenAI API Key Configuration
 # ------------------------------------

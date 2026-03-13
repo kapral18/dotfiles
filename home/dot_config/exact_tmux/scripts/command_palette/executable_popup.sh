@@ -10,4 +10,4 @@ IFS='|' read -r height width < <(
 [ -n "${width:-}" ] || width="70"
 
 tmux display-popup -E -h "${height}%" -w "${width}%" \
-  "$HOME/.config/tmux/scripts/command_palette.sh" 2>/dev/null || true
+  "$HOME/.config/tmux/scripts/command_palette/palette.sh" 2>/dev/null || true

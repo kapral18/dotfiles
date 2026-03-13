@@ -28,11 +28,11 @@ mtime_epoch() {
   stat -f %m "$f"
 }
 
-live_refresh_cmd="$HOME/.config/tmux/scripts/pick_session_live_refresh.sh"
-items_cmd="$HOME/.config/tmux/scripts/pick_session_items.sh"
-filter_cmd="$HOME/.config/tmux/scripts/pick_session_filter.sh"
-reload_cmd="$HOME/.config/tmux/scripts/pick_session_fzf_reload.sh"
-ordered_update_cmd="$HOME/.config/tmux/scripts/pick_session_ordered_cache_update.sh"
+live_refresh_cmd="$HOME/.config/tmux/scripts/pick_session/live_refresh.sh"
+items_cmd="$HOME/.config/tmux/scripts/pick_session/items.sh"
+filter_cmd="$HOME/.config/tmux/scripts/pick_session/filter.sh"
+reload_cmd="$HOME/.config/tmux/scripts/pick_session/fzf_reload.sh"
+ordered_update_cmd="$HOME/.config/tmux/scripts/pick_session/ordered_cache_update.sh"
 
 if [ ! -x "$filter_cmd" ]; then
   filter_cmd="$items_cmd"

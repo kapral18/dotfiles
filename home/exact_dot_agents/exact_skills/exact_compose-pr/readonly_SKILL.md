@@ -83,7 +83,7 @@ Additional rules:
 Optional guidance:
 
 - label proposals (propose-only): `~/.agents/skills/labels_propose/SKILL.md`
-- Kibana Management ownership signals: `~/.agents/skills/kibana/SKILL.md`
+- Kibana Management ownership signals: `~/.agents/skills/kibana-management-ownership/SKILL.md`
 
 Default template (copy then delete unused sections):
 
@@ -95,15 +95,6 @@ Closes #X | Addresses #X
 -
 
 ## Test Plan
-
--
-
-## Notes
-
-- Impacted areas (Kibana app, API, ES query, saved objects, UI):
-- Migration considerations (if any):
-- Performance considerations (if any):
-- Release note intent: skip | enhancement | feature
 ```
 
 Bugfix:
@@ -123,16 +114,19 @@ Closes #X | Addresses #X
 
 -
 
+## Before/After Screenshots (or Video)
+
+### Before
+
+### After
+
 ## Test Plan
 
 -
 
-## Notes
+## Release Note
 
-- Impacted areas:
-- Migration considerations (if any):
-- Performance considerations (if any):
-- Release note intent:
+- Single sentence describing user-facing behavior change (or lack thereof, if `skip`).
 ```
 
 Chore/Migration:
@@ -149,15 +143,6 @@ Closes #X | Addresses #X
 -
 
 ## Test Plan
-
--
-
-## Notes
-
-- Impacted areas:
-- Migration considerations (if any):
-- Performance considerations (if any):
-- Release note intent:
 ```
 
 Feature:
@@ -177,10 +162,7 @@ Closes #X | Addresses #X
 
 -
 
-## Notes
+## Release Note
 
-- Impacted areas:
-- Migration considerations (if any):
-- Performance considerations (if any):
-- Release note intent:
+- Single sentence describing user-facing behavior change (or lack thereof, if `skip`).
 ```

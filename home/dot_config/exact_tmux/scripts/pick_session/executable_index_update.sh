@@ -98,8 +98,8 @@ cleanup() {
 trap cleanup EXIT
 printf '%s\n' "$$" >"${lock_dir}/pid" 2>/dev/null || true
 
-gen="$HOME/.config/tmux/scripts/pick_session_index.sh"
-ordered_update_cmd="$HOME/.config/tmux/scripts/pick_session_ordered_cache_update.sh"
+gen="$HOME/.config/tmux/scripts/pick_session/index.sh"
+ordered_update_cmd="$HOME/.config/tmux/scripts/pick_session/ordered_cache_update.sh"
 if [ ! -x "$gen" ]; then
   exit 0
 fi

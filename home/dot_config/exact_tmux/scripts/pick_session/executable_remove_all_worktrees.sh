@@ -380,7 +380,7 @@ PY
   cleanup_pending_entries "${pending_cleanup_paths[@]}"
   if command -v tmux >/dev/null 2>&1; then
     # Run directly; avoid `tmux run-shell` which can steal focus from popups.
-    nohup "$HOME/.config/tmux/scripts/pick_session_index_update.sh" --force --quiet </dev/null >/dev/null 2>&1 &
+    nohup "$HOME/.config/tmux/scripts/pick_session/index_update.sh" --force --quiet </dev/null >/dev/null 2>&1 &
   fi
   exit 0
 fi
@@ -408,5 +408,5 @@ fi
 
 cleanup_pending_entries "${pending_cleanup_paths[@]}"
 if command -v tmux >/dev/null 2>&1; then
-  nohup "$HOME/.config/tmux/scripts/pick_session_index_update.sh" --force --quiet </dev/null >/dev/null 2>&1 &
+  nohup "$HOME/.config/tmux/scripts/pick_session/index_update.sh" --force --quiet </dev/null >/dev/null 2>&1 &
 fi

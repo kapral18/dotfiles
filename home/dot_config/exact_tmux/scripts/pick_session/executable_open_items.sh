@@ -6,8 +6,8 @@ ordered_file="${cache_dir}/pick_session_items_ordered.tsv"
 cache_file="${cache_dir}/pick_session_items.tsv"
 mutation_file="${cache_dir}/pick_session_mutations.tsv"
 pending_file="${cache_dir}/pick_session_pending.tsv"
-items_cmd="$HOME/.config/tmux/scripts/pick_session_items.sh"
-ordered_update_cmd="$HOME/.config/tmux/scripts/pick_session_ordered_cache_update.sh"
+items_cmd="$HOME/.config/tmux/scripts/pick_session/items.sh"
+ordered_update_cmd="$HOME/.config/tmux/scripts/pick_session/ordered_cache_update.sh"
 
 # The (current) marker is baked into cached/ordered output at generation time.
 # Dynamically fix it up so it always reflects the *active* session.

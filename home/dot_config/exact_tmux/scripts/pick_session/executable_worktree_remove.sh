@@ -37,5 +37,5 @@ fi
 
 # Opportunistically refresh the cache after removals finish.
 if command -v tmux >/dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
-  tmux run-shell -b "$HOME/.config/tmux/scripts/pick_session_index_update.sh --force --quiet" 2>/dev/null || true
+  tmux run-shell -b "$HOME/.config/tmux/scripts/pick_session/index_update.sh --force --quiet" 2>/dev/null || true
 fi
