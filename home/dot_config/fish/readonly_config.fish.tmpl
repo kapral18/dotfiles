@@ -238,14 +238,6 @@ if type -q pass; and test -z "$OPENROUTER_API_KEY"
     set -gx OPENROUTER_API_KEY (pass openrouter/api/token)
 end
 
-# ------------------------------------
-# GitHub Token Configuration
-# ------------------------------------
-
-if type -q pass; and test -z "$GITHUB_TOKEN"
-    set -gx GITHUB_TOKEN (pass github/public/pat)
-end
-
 {{ if eq .isWork true -}}
 # ------------------------------------
 # LiteLLM API Configuration
