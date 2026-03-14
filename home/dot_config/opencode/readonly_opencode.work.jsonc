@@ -1,7 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "small_model": "openrouter/z.ai/glm-5",
-  "theme": "catppuccin",
+  "small_model": "openrouter/z-ai/glm-5",
   "share": "disabled",
   "autoupdate": false,
   "permission": {
@@ -34,22 +33,22 @@
     "worker_a": {
       "description": "Implements tasks and reports concise results back to main agent",
       "mode": "subagent",
-      "model": "openrouter/z.ai/glm-5",
+      "model": "openrouter/z-ai/glm-5",
     },
     "worker_b": {
       "description": "Second implementer for parallel work, reports concise results back to main agent",
       "mode": "subagent",
-      "model": "openrouter/z.ai/glm-5",
+      "model": "openrouter/z-ai/glm-5",
     },
     "worker_c": {
       "description": "Third implementer for parallel work, reports concise results back to main agent",
       "mode": "subagent",
-      "model": "openrouter/z.ai/glm-5",
+      "model": "openrouter/z-ai/glm-5",
     },
     "worker_d": {
       "description": "Fourth implementer for parallel work, reports concise results back to main agent",
       "mode": "subagent",
-      "model": "openrouter/z.ai/glm-5",
+      "model": "openrouter/z-ai/glm-5",
     },
   },
   "default_agent": "main",
@@ -90,47 +89,7 @@
         "baseURL": "{env:LITELLM_API_BASE}",
         "apiKey": "{env:LITELLM_PROXY_KEY}",
       },
-      "models": {
-        "llm-gateway/gemini-3-pro-preview": {
-          "name": "llm-gateway/gemini-3-pro-preview",
-          "limit": { "context": 1048576, "output": 65536 },
-        },
-        "llm-gateway/gemini-3-flash-preview": {
-          "name": "llm-gateway/gemini-3-flash-preview",
-          "limit": { "context": 1048576, "output": 65536 },
-        },
-        "llm-gateway/gemini-3.1-pro-preview": {
-          "name": "llm-gateway/gemini-3.1-pro-preview",
-          "limit": { "context": 1048576, "output": 65536 },
-        },
-        "llm-gateway/gemini-3.1-pro-preview-customtools": {
-          "name": "llm-gateway/gemini-3.1-pro-preview-customtools",
-          "limit": { "context": 1048576, "output": 65536 },
-        },
-        "llm-gateway/gemini-3.1-flash-image-preview": {
-          "name": "llm-gateway/gemini-3.1-flash-image-preview",
-          "limit": { "context": 131072, "output": 32762 },
-        },
-        "llm-gateway/gpt-5.4": {
-          "name": "llm-gateway/gpt-5.4",
-          "limit": { "context": 272000, "output": 128000 },
-        },
-        "llm-gateway/gpt-5.3-codex": {
-          "name": "llm-gateway/gpt-5.3-codex",
-        },
-        "llm-gateway/gpt-5.2": {
-          "name": "llm-gateway/gpt-5.2",
-          "limit": { "context": 272000, "output": 128000 },
-        },
-        "llm-gateway/claude-sonnet-4-6": {
-          "name": "llm-gateway/claude-sonnet-4-6",
-          "limit": { "context": 200000, "output": 64000 },
-        },
-        "llm-gateway/claude-opus-4-6": {
-          "name": "llm-gateway/claude-opus-4-6",
-          "limit": { "context": 200000, "output": 128000 },
-        },
-      },
+      "models": "__LITELLM_MODELS__",
     },
   },
 }

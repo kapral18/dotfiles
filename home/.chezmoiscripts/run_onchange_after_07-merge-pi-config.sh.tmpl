@@ -4,7 +4,7 @@ set -euo pipefail
 
 {{- if eq .isWork true }}
 # pi settings desired hash (work): {{ include "dot_pi/agent/readonly_settings.work.json" | sha256sum }}
-# pi models desired hash (work): {{ include "dot_pi/agent/readonly_models.work.json" | sha256sum }}
+# litellm models hash: {{ include ".chezmoidata/litellm_models.yaml" | sha256sum }}
 {{- else }}
 # pi settings desired hash (non-work): {{ include "dot_pi/agent/readonly_settings.personal.json" | sha256sum }}
 # pi models desired hash (non-work): {{ include "dot_pi/agent/readonly_models.personal.json" | sha256sum }}
@@ -27,11 +27,9 @@ install_readonly_if_changed() {
   install -m 0444 "$src" "$target"
 }
 
-# CHEZMOI_SOURCE_DIR usually points at the chezmoi *source* root.
-# Our pi config files live under the repository "home/" directory.
 if [ "$is_work" = "true" ]; then
   src_settings="$source_dir/dot_pi/agent/readonly_settings.work.json"
-  src_models="$source_dir/dot_pi/agent/readonly_models.work.json"
+  models_yaml="$source_dir/.chezmoidata/litellm_models.yaml"
 
   if ! command -v pass >/dev/null 2>&1; then
     echo "pass is required to render Pi work LiteLLM config" >&2
@@ -52,17 +50,7 @@ if [ "$is_work" = "true" ]; then
 
   tmp_models="$(mktemp)"
   trap 'rm -f "$tmp_models"' EXIT
-  python3 - "$src_models" "$tmp_models" "$litellm_api_base" <<'PY'
-import json
-import sys
-from pathlib import Path
-src = Path(sys.argv[1])
-out = Path(sys.argv[2])
-base = sys.argv[3]
-data = json.loads(src.read_text())
-data["providers"]["litellm"]["baseUrl"] = base
-out.write_text(json.dumps(data, indent=2) + "\n")
-PY
+  python3 "$source_dir/../scripts/generate_pi_models.py" "$models_yaml" "$litellm_api_base" >"$tmp_models"
 else
   src_settings="$source_dir/dot_pi/agent/readonly_settings.personal.json"
   src_models="$source_dir/dot_pi/agent/readonly_models.personal.json"

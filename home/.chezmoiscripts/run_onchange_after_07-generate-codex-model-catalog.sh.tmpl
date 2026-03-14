@@ -4,9 +4,10 @@ set -euo pipefail
 
 {{- if eq .isWork true }}
 # catalog hash trigger: {{ include "dot_codex/private_config.work.toml" | sha256sum }}
+# litellm models hash: {{ include ".chezmoidata/litellm_models.yaml" | sha256sum }}
 
 # Codex rejects the hyphen in "llm-gateway" during namespace resolution
-# (openai/codex#14276), so llm-gateway/* slugs never match bundled metadata.
+# (openai/codex#14276), so llm-gateway slugs never match bundled metadata.
 # Work around by cloning known base models under their llm-gateway/ aliases
 # in a custom catalog that Codex loads via model_catalog_json.
 #
@@ -24,47 +25,8 @@ if [ ! -f "$ctlg_src" ]; then
   exit 0
 fi
 
-python3 - "$ctlg_src" "$ctlg_dst" <<'PY'
-import json, sys
+source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
+models_yaml="$source_dir/.chezmoidata/litellm_models.yaml"
 
-# Every entry is cloned from gpt-5.4 (the "template" model) so that all
-# required schema fields are present, then overridden with the values below.
-MODELS = [
-    {"slug": "llm-gateway/gpt-5.4",       "base": "gpt-5.4",       "display_name": "GPT-5.4 (LiteLLM)"},
-    {"slug": "llm-gateway/gpt-5.3-codex", "base": "gpt-5.3-codex", "display_name": "GPT-5.3 Codex (LiteLLM)"},
-    {"slug": "llm-gateway/gpt-5.2",       "base": "gpt-5.2",       "display_name": "GPT-5.2 (LiteLLM)"},
-    {"slug": "llm-gateway/claude-sonnet-4-6",  "base": "gpt-5.4", "display_name": "Claude Sonnet 4.6 (LiteLLM)",  "context_window": 200000},
-    {"slug": "llm-gateway/claude-opus-4-6",    "base": "gpt-5.4", "display_name": "Claude Opus 4.6 (LiteLLM)",    "context_window": 200000},
-    {"slug": "llm-gateway/gemini-3-pro-preview",               "base": "gpt-5.4", "display_name": "Gemini 3 Pro Preview (LiteLLM)",               "context_window": 1048576},
-    {"slug": "llm-gateway/gemini-3-flash-preview",             "base": "gpt-5.4", "display_name": "Gemini 3 Flash (LiteLLM)",                     "context_window": 1048576},
-    {"slug": "llm-gateway/gemini-3.1-pro-preview",             "base": "gpt-5.4", "display_name": "Gemini 3.1 Pro Preview (LiteLLM)",             "context_window": 1048576},
-    {"slug": "llm-gateway/gemini-3.1-pro-preview-customtools", "base": "gpt-5.4", "display_name": "Gemini 3.1 Pro Preview Custom Tools (LiteLLM)","context_window": 1048576},
-    {"slug": "llm-gateway/gemini-3.1-flash-image-preview",     "base": "gpt-5.4", "display_name": "Gemini 3.1 Flash Image Preview (LiteLLM)",     "context_window": 131072},
-]
-
-src, dst = sys.argv[1], sys.argv[2]
-data = json.loads(open(src).read())
-models = data.get("models", [])
-existing = {m["slug"] for m in models}
-by_slug = {m["slug"]: m for m in models}
-changed = False
-
-for spec in MODELS:
-    if spec["slug"] in existing:
-        continue
-    base_model = by_slug.get(spec["base"])
-    if not base_model:
-        continue
-    entry = dict(base_model)
-    entry["slug"] = spec["slug"]
-    entry["display_name"] = spec["display_name"]
-    if "context_window" in spec:
-        entry["context_window"] = spec["context_window"]
-    models.append(entry)
-    changed = True
-
-if changed:
-    data["models"] = models
-    open(dst, "w").write(json.dumps(data, separators=(",", ":")) + "\n")
-PY
+python3 "$source_dir/../scripts/generate_codex_catalog.py" "$models_yaml" "$ctlg_src" "$ctlg_dst"
 {{- end }}

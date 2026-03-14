@@ -13,12 +13,12 @@ Gems, Go, uv, manual GitHub releases), and reports what changed.
 
 ### Useful flags
 
-| Flag | Effect |
-| --- | --- |
-| `--dry-run` / `-n` | Preview what would happen without changing anything |
-| `--only brew,npm` | Update only the listed categories |
-| `--skip cargo,gems` | Update everything except the listed categories |
-| `--verbose` / `-v` | Show extra detail and per-step timings |
+| Flag                | Effect                                              |
+| ------------------- | --------------------------------------------------- |
+| `--dry-run` / `-n`  | Preview what would happen without changing anything |
+| `--only brew,npm`   | Update only the listed categories                   |
+| `--skip cargo,gems` | Update everything except the listed categories      |
+| `--verbose` / `-v`  | Show extra detail and per-step timings              |
 
 Categories: `dotfiles`, `brew`, `gh`, `asdf`, `cargo`, `npm`, `gems`, `go`,
 `uv`, `manual`.

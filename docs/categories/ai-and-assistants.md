@@ -336,21 +336,19 @@ The patch is re-applied automatically by a post-install hook in
 Usage:
 `CLAUDE_CODE_CONTEXT_WINDOW=1000000 claude --model llm-gateway/gemini-3.1-pro-preview-customtools`
 
-Fish shell shortcut functions (work profile only) wrap each LiteLLM model with
-the correct `CLAUDE_CODE_CONTEXT_WINDOW` and `CLAUDE_CODE_MAX_OUTPUT_TOKENS`:
+Fish shell shortcut functions (work profile only) route through the LiteLLM
+proxy. Each function sets `ANTHROPIC_BASE_URL` and `ANTHROPIC_API_KEY` per
+invocation so bare `claude` (without a wrapper) uses native Claude enterprise
+auth by default.
 
-| Function             | Model                              | Context | Max Output |
-| -------------------- | ---------------------------------- | ------- | ---------- |
-| `claude-gemini3p`    | gemini-3-pro-preview               | 1048576 | 65536      |
-| `claude-gemini3f`    | gemini-3-flash-preview             | 1048576 | 65536      |
-| `claude-gemini31p`   | gemini-3.1-pro-preview             | 1048576 | 65536      |
-| `claude-gemini31pct` | gemini-3.1-pro-preview-customtools | 1048576 | 65536      |
-| `claude-gemini31fi`  | gemini-3.1-flash-image-preview     | 131072  | 32762      |
-| `claude-gpt54`       | gpt-5.4                            | 272000  | 128000     |
-| `claude-gpt53`       | gpt-5.3-codex                      | 272000  | 128000     |
-| `claude-gpt52`       | gpt-5.2                            | 272000  | 128000     |
-| `claude-sonnet46`    | claude-sonnet-4-6                  | native  | native     |
-| `claude-opus46`      | claude-opus-4-6                    | native  | native     |
+The model catalog is defined in a single source of truth:
+[`home/.chezmoidata/litellm_models.yaml`](../../home/.chezmoidata/litellm_models.yaml).
+All consumer configs (fish, OpenCode, Pi, Codex) are generated from this catalog
+via chezmoi templates. To add or modify a model, edit the YAML file only.
+
+`claude-litellm` is a generic passthrough that routes the default model through
+LiteLLM. Per-model functions (e.g. `claude-gemini31pct`, `claude-gpt54`) set the
+correct context window and max output tokens from the catalog.
 
 All functions accept extra `claude` arguments, e.g.
 `claude-gemini31pct --effort high`.
@@ -362,14 +360,9 @@ Source:
 → `~/.claude/settings.json`.
 
 Both profiles enable extended thinking and skip the dangerous-mode permission
-prompt.
-
-Work profile additions:
-
-- `apiKeyHelper`: runs `pass show litellm/api/token` so Claude Code
-  authenticates against the LiteLLM proxy without hardcoding secrets.
-- `env.ANTHROPIC_BASE_URL`: the LiteLLM base URL, injected from
-  `pass litellm/api/base` at `chezmoi apply` time by the merge script.
+prompt. The work profile uses native Claude enterprise auth by default (no
+`apiKeyHelper` or `ANTHROPIC_BASE_URL` override). LiteLLM is available as an
+alternative via the fish shell wrapper functions (see above).
 
 MCP servers are stored separately in `~/.claude.json` (top-level `mcpServers`
 field) because that file contains runtime state managed by Claude Code. The

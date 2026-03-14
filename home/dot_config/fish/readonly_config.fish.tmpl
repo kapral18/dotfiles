@@ -238,6 +238,14 @@ if type -q pass; and test -z "$OPENROUTER_API_KEY"
     set -gx OPENROUTER_API_KEY (pass openrouter/api/token)
 end
 
+# ------------------------------------
+# GitHub Token Configuration
+# ------------------------------------
+
+if type -q pass; and test -z "$GITHUB_TOKEN"
+    set -gx GITHUB_TOKEN (pass github/public/pat)
+end
+
 {{ if eq .isWork true -}}
 # ------------------------------------
 # LiteLLM API Configuration
@@ -260,44 +268,56 @@ if type -q pass; and test -z "$LITELLM_API_BASE"
     end
 end
 
-## Claude Code: pin LiteLLM-proxied Anthropic models as defaults
-set -gx ANTHROPIC_DEFAULT_SONNET_MODEL llm-gateway/claude-sonnet-4-6
-set -gx ANTHROPIC_DEFAULT_OPUS_MODEL llm-gateway/claude-opus-4-6
+## Claude Code LiteLLM model shortcuts
+## __litellm_base strips the /v1 suffix that LITELLM_API_BASE carries,
+## because ANTHROPIC_BASE_URL must not include it.
 
-## Claude Code LiteLLM model shortcuts (non-Anthropic models only)
-## Each function sets the correct context window and max output tokens
-## for the target model, then forwards all arguments to claude.
-
-function claude-gemini3p --wraps claude --description 'Claude Code → Gemini 3 Pro Preview'
-    CLAUDE_CODE_CONTEXT_WINDOW=1048576 CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536 claude --model llm-gateway/gemini-3-pro-preview --effort high $argv
+function __litellm_base --description 'Return LITELLM_API_BASE without /v1 suffix'
+    string replace -r '/v1$' '' -- "$LITELLM_API_BASE"
 end
 
-function claude-gemini3f --wraps claude --description 'Claude Code → Gemini 3 Flash Preview'
-    CLAUDE_CODE_CONTEXT_WINDOW=1048576 CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536 claude --model llm-gateway/gemini-3-flash-preview --effort high $argv
+function claude-litellm --wraps claude --description 'Claude Code via LiteLLM proxy'
+    ANTHROPIC_BASE_URL=(__litellm_base) ANTHROPIC_API_KEY=$LITELLM_PROXY_KEY claude $argv
 end
 
-function claude-gemini31p --wraps claude --description 'Claude Code → Gemini 3.1 Pro Preview'
-    CLAUDE_CODE_CONTEXT_WINDOW=1048576 CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536 claude --model llm-gateway/gemini-3.1-pro-preview --effort high $argv
+function claude-sonnet46 --wraps claude --description 'Claude Code → Sonnet 4.6 via LiteLLM'
+    ANTHROPIC_BASE_URL=(__litellm_base) ANTHROPIC_API_KEY=$LITELLM_PROXY_KEY claude --model llm-gateway/claude-sonnet-4-6 $argv
 end
 
-function claude-gemini31pct --wraps claude --description 'Claude Code → Gemini 3.1 Pro Preview Custom Tools'
-    CLAUDE_CODE_CONTEXT_WINDOW=1048576 CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536 claude --model llm-gateway/gemini-3.1-pro-preview-customtools --effort high $argv
+function claude-opus46 --wraps claude --description 'Claude Code → Opus 4.6 via LiteLLM'
+    ANTHROPIC_BASE_URL=(__litellm_base) ANTHROPIC_API_KEY=$LITELLM_PROXY_KEY claude --model llm-gateway/claude-opus-4-6 $argv
 end
 
-function claude-gemini31fi --wraps claude --description 'Claude Code → Gemini 3.1 Flash Image Preview'
-    CLAUDE_CODE_CONTEXT_WINDOW=131072 CLAUDE_CODE_MAX_OUTPUT_TOKENS=32768 claude --model llm-gateway/gemini-3.1-flash-image-preview --effort high $argv
+function claude-gemini3p --wraps claude --description 'Claude Code → Gemini 3 Pro Preview via LiteLLM'
+    ANTHROPIC_BASE_URL=(__litellm_base) ANTHROPIC_API_KEY=$LITELLM_PROXY_KEY CLAUDE_CODE_CONTEXT_WINDOW=1048576 CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536 claude --model llm-gateway/gemini-3-pro-preview --effort high $argv
 end
 
-function claude-gpt54 --wraps claude --description 'Claude Code → GPT-5.4'
-    CLAUDE_CODE_CONTEXT_WINDOW=272000 CLAUDE_CODE_MAX_OUTPUT_TOKENS=128000 claude --model llm-gateway/gpt-5.4 --effort high $argv
+function claude-gemini3f --wraps claude --description 'Claude Code → Gemini 3 Flash Preview via LiteLLM'
+    ANTHROPIC_BASE_URL=(__litellm_base) ANTHROPIC_API_KEY=$LITELLM_PROXY_KEY CLAUDE_CODE_CONTEXT_WINDOW=1048576 CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536 claude --model llm-gateway/gemini-3-flash-preview --effort high $argv
 end
 
-function claude-gpt53 --wraps claude --description 'Claude Code → GPT-5.3 Codex'
-    CLAUDE_CODE_CONTEXT_WINDOW=272000 CLAUDE_CODE_MAX_OUTPUT_TOKENS=128000 claude --model llm-gateway/gpt-5.3-codex --effort high $argv
+function claude-gemini31p --wraps claude --description 'Claude Code → Gemini 3.1 Pro Preview via LiteLLM'
+    ANTHROPIC_BASE_URL=(__litellm_base) ANTHROPIC_API_KEY=$LITELLM_PROXY_KEY CLAUDE_CODE_CONTEXT_WINDOW=1048576 CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536 claude --model llm-gateway/gemini-3.1-pro-preview --effort high $argv
 end
 
-function claude-gpt52 --wraps claude --description 'Claude Code → GPT-5.2'
-    CLAUDE_CODE_CONTEXT_WINDOW=272000 CLAUDE_CODE_MAX_OUTPUT_TOKENS=128000 claude --model llm-gateway/gpt-5.2 --effort high $argv
+function claude-gemini31pct --wraps claude --description 'Claude Code → Gemini 3.1 Pro Preview Custom Tools via LiteLLM'
+    ANTHROPIC_BASE_URL=(__litellm_base) ANTHROPIC_API_KEY=$LITELLM_PROXY_KEY CLAUDE_CODE_CONTEXT_WINDOW=1048576 CLAUDE_CODE_MAX_OUTPUT_TOKENS=65536 claude --model llm-gateway/gemini-3.1-pro-preview-customtools --effort high $argv
+end
+
+function claude-gemini31fi --wraps claude --description 'Claude Code → Gemini 3.1 Flash Image Preview via LiteLLM'
+    ANTHROPIC_BASE_URL=(__litellm_base) ANTHROPIC_API_KEY=$LITELLM_PROXY_KEY CLAUDE_CODE_CONTEXT_WINDOW=131072 CLAUDE_CODE_MAX_OUTPUT_TOKENS=32768 claude --model llm-gateway/gemini-3.1-flash-image-preview --effort high $argv
+end
+
+function claude-gpt54 --wraps claude --description 'Claude Code → GPT-5.4 via LiteLLM'
+    ANTHROPIC_BASE_URL=(__litellm_base) ANTHROPIC_API_KEY=$LITELLM_PROXY_KEY CLAUDE_CODE_CONTEXT_WINDOW=272000 CLAUDE_CODE_MAX_OUTPUT_TOKENS=128000 claude --model llm-gateway/gpt-5.4 --effort high $argv
+end
+
+function claude-gpt53 --wraps claude --description 'Claude Code → GPT-5.3 Codex via LiteLLM'
+    ANTHROPIC_BASE_URL=(__litellm_base) ANTHROPIC_API_KEY=$LITELLM_PROXY_KEY CLAUDE_CODE_CONTEXT_WINDOW=272000 CLAUDE_CODE_MAX_OUTPUT_TOKENS=128000 claude --model llm-gateway/gpt-5.3-codex --effort high $argv
+end
+
+function claude-gpt52 --wraps claude --description 'Claude Code → GPT-5.2 via LiteLLM'
+    ANTHROPIC_BASE_URL=(__litellm_base) ANTHROPIC_API_KEY=$LITELLM_PROXY_KEY CLAUDE_CODE_CONTEXT_WINDOW=272000 CLAUDE_CODE_MAX_OUTPUT_TOKENS=128000 claude --model llm-gateway/gpt-5.2 --effort high $argv
 end
 
 {{ end -}}

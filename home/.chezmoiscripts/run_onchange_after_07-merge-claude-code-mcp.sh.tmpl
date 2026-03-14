@@ -18,21 +18,4 @@ else
   src="$source_dir/dot_claude/mcp.personal.json"
 fi
 
-python3 - "$src" "$target" <<'PY'
-import json, sys
-
-src_path, target_path = sys.argv[1], sys.argv[2]
-desired = json.load(open(src_path)).get("mcpServers", {})
-
-try:
-    data = json.load(open(target_path))
-except (FileNotFoundError, json.JSONDecodeError):
-    data = {}
-
-current = data.get("mcpServers", {})
-if current == desired:
-    sys.exit(0)
-
-data["mcpServers"] = desired
-open(target_path, "w").write(json.dumps(data, indent=2) + "\n")
-PY
+python3 "$source_dir/../scripts/merge_claude_mcp.py" "$src" "$target"
