@@ -144,7 +144,8 @@ Current skills:
 | `kibana-console-monaco` | Automate/test Kibana Dev Tools Console editor via Playwright             |
 | `playwriter`            | Control the user's Chrome browser via Playwriter extension               |
 | `beads`                 | Inspect/create/claim/update/close/export beads in the beads DB           |
-| `improve-one`           | Suggest the single smartest addition to the current codebase             |
+| `improve-codebase`      | Suggest the single smartest addition to the current codebase             |
+| `improve-local`         | Suggest the single smartest addition to the local changes                |
 | `improve-branch`        | Suggest the single smartest addition for the current branch/PR/issue     |
 
 Always-on rule source:

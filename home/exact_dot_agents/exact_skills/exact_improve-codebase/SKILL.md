@@ -1,5 +1,5 @@
 ---
-name: improve-one
+name: improve-codebase
 description:
   Suggest the single smartest, most impactful addition to the current codebase.
 disable-model-invocation: true
