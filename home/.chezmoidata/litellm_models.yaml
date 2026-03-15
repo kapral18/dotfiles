@@ -1,51 +1,71 @@
 litellm_models:
   - slug: "llm-gateway/gemini-3-pro-preview"
     display_name: "Gemini 3 Pro Preview"
+    fish_alias: "claude-gemini3p"
     codex_base: "gpt-5.4"
     context: 1048576
     output: 65536
+    effort: true
   - slug: "llm-gateway/gemini-3-flash-preview"
     display_name: "Gemini 3 Flash"
+    fish_alias: "claude-gemini3f"
     codex_base: "gpt-5.4"
     context: 1048576
     output: 65536
+    effort: true
   - slug: "llm-gateway/gemini-3.1-pro-preview"
     display_name: "Gemini 3.1 Pro Preview"
+    fish_alias: "claude-gemini31p"
     codex_base: "gpt-5.4"
     context: 1048576
     output: 65536
+    effort: true
   - slug: "llm-gateway/gemini-3.1-pro-preview-customtools"
     display_name: "Gemini 3.1 Pro Preview Custom Tools"
+    fish_alias: "claude-gemini31pct"
     codex_base: "gpt-5.4"
     context: 1048576
     output: 65536
+    effort: true
   - slug: "llm-gateway/gemini-3.1-flash-image-preview"
     display_name: "Gemini 3.1 Flash Image Preview"
+    fish_alias: "claude-gemini31fi"
     codex_base: "gpt-5.4"
     context: 131072
     output: 32768
+    effort: true
   - slug: "llm-gateway/gpt-5.4"
     display_name: "GPT-5.4"
+    fish_alias: "claude-gpt54"
     codex_base: "gpt-5.4"
     context: 272000
     output: 128000
+    effort: true
   - slug: "llm-gateway/gpt-5.3-codex"
     display_name: "GPT-5.3 Codex"
+    fish_alias: "claude-gpt53"
     codex_base: "gpt-5.3-codex"
     context: 272000
     output: 128000
+    effort: true
   - slug: "llm-gateway/gpt-5.2"
     display_name: "GPT-5.2"
+    fish_alias: "claude-gpt52"
     codex_base: "gpt-5.2"
     context: 272000
     output: 128000
+    effort: true
   - slug: "llm-gateway/claude-sonnet-4-6"
     display_name: "Claude Sonnet 4.6"
+    fish_alias: "claude-sonnet46"
     codex_base: "gpt-5.4"
     context: 200000
     output: 64000
+    effort: false
   - slug: "llm-gateway/claude-opus-4-6"
     display_name: "Claude Opus 4.6"
+    fish_alias: "claude-opus46"
     codex_base: "gpt-5.4"
     context: 200000
     output: 128000
+    effort: false

@@ -40,7 +40,7 @@ chezmoi_write_if_changed() {
     return 0
   fi
 
-  printf '%s\n' "$desired" >"$target"
+  printf '%s\n' "$desired" > "$target"
   chmod "$mode" "$target"
 }
 
@@ -66,7 +66,7 @@ chezmoi_install_if_changed() {
 #   chezmoi_get_litellm_api_base
 # Prints the normalized URL to stdout.
 chezmoi_get_litellm_api_base() {
-  if ! command -v pass >/dev/null 2>&1; then
+  if ! command -v pass > /dev/null 2>&1; then
     echo "pass is required to resolve LiteLLM API base" >&2
     return 1
   fi
@@ -80,8 +80,8 @@ chezmoi_get_litellm_api_base() {
 
   base="${base%/}"
   case "$base" in
-  */v1) ;;
-  *) base="$base/v1" ;;
+    */v1) ;;
+    *) base="$base/v1" ;;
   esac
 
   printf '%s' "$base"
