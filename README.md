@@ -424,15 +424,17 @@ disk.
 
 ### Git Tools
 
-**gh-dash**: Terminal UI for GitHub PRs and issues
+**GitHub picker**: fzf-based PR/issue picker with worktree integration
 
-- Separate views for work/personal repos
-- Custom filters and layouts
-- **Deep Tmux & Worktree Integration:** Press `prefix + G` to open a persistent
-  `gh-dash` popup. From there, hit `Space` on PRs/Issues to clone (if missing),
-  create/switch a linked worktree, and focus tmux; hit `b` on PRs to open the PR
-  in Octo from the PR worktree.
-- Config: `home/dot_config/exact_gh-dash/config.yml`
+- Separate work/home modes (`ctrl-s` to switch)
+- Reads search filters from standalone YAML configs (same syntax as gh-dash
+  sections)
+- **Deep Tmux & Worktree Integration:** Press `prefix + G` to open the picker.
+  `enter` on a PR/issue creates/switches a linked worktree and focuses tmux;
+  `alt-b` on PRs opens Octo review. Shows inline CI, review, and worktree
+  badges.
+- Config:
+  `home/dot_config/exact_tmux/scripts/pick_session/readonly_gh-picker-{work,home}.yml`
 - GitHub CLI (`gh`) config: `home/dot_config/exact_private_gh/`
 
 **TUIs:**

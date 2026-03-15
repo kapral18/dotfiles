@@ -34,6 +34,10 @@ BADGE_REVIEW_APPROVED = color("38;5;42", " \u2713")
 BADGE_REVIEW_CHANGES = color("38;5;196", " \u2717")
 BADGE_REVIEW_PENDING = color("38;5;214", " \u25cb")
 
+BADGE_CI_SUCCESS = color("38;5;42", "\u25cf")
+BADGE_CI_FAILURE = color("38;5;196", "\u25cf")
+BADGE_CI_PENDING = color("38;5;220", "\u25cf")
+
 
 def _parse_status_flags(meta: str) -> set:
     for part in (meta or "").split("|"):
@@ -83,20 +87,33 @@ def _issue_badge(state: str) -> str:
     return ""
 
 
+def _ci_badge(state: str) -> str:
+    s = (state or "").upper()
+    if s == "SUCCESS":
+        return BADGE_CI_SUCCESS
+    if s in ("FAILURE", "ERROR"):
+        return BADGE_CI_FAILURE
+    if s in ("PENDING", "EXPECTED"):
+        return BADGE_CI_PENDING
+    return ""
+
+
 def _gh_badges_from_meta(meta: str) -> str:
     """Parse GH meta and return badge string.
 
-    PR format: pr=NUMBER:STATE:REVIEW:URL
+    PR format: pr=NUMBER:STATE:REVIEW:CI:URL
     Issue format: issue=NUMBER:STATE:URL
     """
     out = ""
     for part in (meta or "").split("|"):
         if part.startswith("pr="):
-            fields = part[3:].split(":", 3)
+            fields = part[3:].split(":", 4)
             if len(fields) >= 2:
                 out += _pr_badge(fields[1])
             if len(fields) >= 3:
                 out += _review_badge(fields[2])
+            if len(fields) >= 4:
+                out += _ci_badge(fields[3])
         elif part.startswith("issue="):
             fields = part[6:].split(":", 2)
             if len(fields) >= 2:

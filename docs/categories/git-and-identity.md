@@ -51,16 +51,14 @@ Work override (included conditionally):
 The primary config uses `includeIf "gitdir:~/work/"` on non-work machines so
 repos under `~/work/` automatically use the secondary identity.
 
-## GitHub CLI + Dashboards
+## GitHub CLI + GitHub Picker
 
-| Component                               | Source                                                                                                                                                           |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GitHub CLI config directory             | [`home/dot_config/exact_private_gh/`](../../home/dot_config/exact_private_gh/) (private)                                                                         |
-| `gh-dash` shared defaults + keybindings | [`home/dot_config/exact_gh-dash/gh-dash-shared.yml`](../../home/dot_config/exact_gh-dash/gh-dash-shared.yml)                                                     |
-| `gh-dash` work dashboard                | [`home/dot_config/exact_gh-dash/readonly_config-work.yml.tmpl`](../../home/dot_config/exact_gh-dash/readonly_config-work.yml.tmpl)                               |
-| `gh-dash` home dashboard                | [`home/dot_config/exact_gh-dash/readonly_config-home.yml.tmpl`](../../home/dot_config/exact_gh-dash/readonly_config-home.yml.tmpl)                               |
-| `gh-dash` base/default                  | [`home/dot_config/exact_gh-dash/readonly_config.yml.tmpl`](../../home/dot_config/exact_gh-dash/readonly_config.yml.tmpl)                                         |
-| Managed extensions hook                 | [`home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl) |
+| Component                   | Source                                                                                                                                                             |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| GitHub CLI config directory | [`home/dot_config/exact_private_gh/`](../../home/dot_config/exact_private_gh/) (private)                                                                           |
+| gh picker work config       | [`home/dot_config/exact_tmux/scripts/pick_session/readonly_gh-picker-work.yml`](../../home/dot_config/exact_tmux/scripts/pick_session/readonly_gh-picker-work.yml) |
+| gh picker home config       | [`home/dot_config/exact_tmux/scripts/pick_session/readonly_gh-picker-home.yml`](../../home/dot_config/exact_tmux/scripts/pick_session/readonly_gh-picker-home.yml) |
+| Managed extensions hook     | [`home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl)   |
 
 Git TUIs:
 

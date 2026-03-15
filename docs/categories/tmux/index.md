@@ -53,7 +53,7 @@ Current file map:
 - `40-session-tools.conf`: session helper bindings
   (`goto/new/promote/join/kill`)
 - `41-pickers.conf`: URL/session picker bindings + picker-related tmux options
-- `42-gh-dash.conf`: `gh-dash` popup integration
+- `42-gh-dash.conf`: GitHub picker popup (fzf-based, standalone config)
 - `90-plugins.conf`: TPM plugin declarations + plugin options
 - `99-tpm.conf`: TPM init (must stay last)
 
@@ -80,12 +80,13 @@ Current file map:
 - URL picker popup: `prefix` + `u`
 - Session picker popup: `prefix` + `T`
 - Command palette popup: `prefix` + `r` (`\,tmux-run-all`)
-- Persistent `gh-dash` popup: `prefix` + `G` (hide with `q`, `Ctrl-C`, or
-  `prefix` + `G`; switch work/home with `Tab`; restart with `prefix` + `C-g`)
+- GitHub picker popup: `prefix` + `G` (fzf PR/issue picker, standalone config;
+  `alt-g` switches to/from session picker; `ctrl-s` switches work/home; `?`
+  help)
 
 For details:
 
 - Popups + tools:
   [`docs/categories/tmux/popups-and-tools.md`](popups-and-tools.md)
-- Pickers (URL/session) + options:
+- Pickers (URL/session/GitHub) + options:
   [`docs/categories/tmux/pickers.md`](pickers.md)

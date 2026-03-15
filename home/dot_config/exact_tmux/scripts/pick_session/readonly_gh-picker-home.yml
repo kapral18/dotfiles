@@ -1,0 +1,52 @@
+prSections:
+  - title: "PRs waiting for My Review"
+    filters: >-
+      is:open is:pr
+      review-requested:kapral18
+      -org:elastic
+      -is:draft
+      -reviewed-by:kapral18
+      -author:kapral18
+  - title: "PRs Created by Me"
+    filters: >-
+      is:open is:pr
+      author:kapral18
+      -org:elastic
+  - title: "PRs Involving Me"
+    filters: >-
+      is:open is:pr
+      involves:@me
+      -org:elastic
+      -author:kapral18
+      -is:draft
+      -review-requested:kapral18
+issuesSections:
+  - title: "Issues Created by Me"
+    filters: >-
+      is:open is:issue
+      author:@me
+      -org:elastic
+  - title: Issues Assigned to Me
+    filters: >-
+      is:open is:issue
+      assignee:@me
+      -org:elastic
+  - title: "Issues Mentioning Me"
+    filters: >-
+      is:open is:issue
+      mentions:@me
+      -assignee:@me
+      -author:@me
+      -org:elastic
+  - title: "Issues Involving Me"
+    filters: >-
+      is:open is:issue
+      involves:@me
+      -org:elastic
+      -assignee:@me
+      -mentions:@me
+      -author:@me
+repoPaths:
+  elastic/kibana: ~/work/kibana
+  elastic/*: ~/work/*
+  :owner/:repo: ~/code/:repo

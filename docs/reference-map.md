@@ -55,15 +55,15 @@ This page answers two questions:
 
 ## Git + Identity
 
-| Component                           | Source path                                                                                                                                   |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Git main config template            | [`home/private_readonly_dot_gitconfig.tmpl`](../home/private_readonly_dot_gitconfig.tmpl)                                                     |
-| Work override gitconfig             | [`home/work/private_dot_gitconfig.tmpl`](../home/work/private_dot_gitconfig.tmpl)                                                             |
-| SSH config (1Password agent socket) | [`home/private_dot_ssh/private_executable_config`](../home/private_dot_ssh/private_executable_config)                                         |
-| Allowed signers (SSH signing)       | [`home/private_dot_ssh/private_executable_allowed_signers.tmpl`](../home/private_dot_ssh/private_executable_allowed_signers.tmpl)             |
-| 1Password SSH agent config          | [`home/dot_config/exact_private_1Password/exact_ssh/agent.toml.tmpl`](../home/dot_config/exact_private_1Password/exact_ssh/agent.toml.tmpl)   |
-| gh-dash shared config               | [`home/dot_config/exact_gh-dash/gh-dash-shared.yml`](../home/dot_config/exact_gh-dash/gh-dash-shared.yml)                                     |
-| gh-dash work/home templates         | [`home/dot_config/exact_gh-dash/readonly_config-{work,home}.yml.tmpl`](../home/dot_config/exact_gh-dash/readonly_config-{work,home}.yml.tmpl) |
+| Component                           | Source path                                                                                                                                                     |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Git main config template            | [`home/private_readonly_dot_gitconfig.tmpl`](../home/private_readonly_dot_gitconfig.tmpl)                                                                       |
+| Work override gitconfig             | [`home/work/private_dot_gitconfig.tmpl`](../home/work/private_dot_gitconfig.tmpl)                                                                               |
+| SSH config (1Password agent socket) | [`home/private_dot_ssh/private_executable_config`](../home/private_dot_ssh/private_executable_config)                                                           |
+| Allowed signers (SSH signing)       | [`home/private_dot_ssh/private_executable_allowed_signers.tmpl`](../home/private_dot_ssh/private_executable_allowed_signers.tmpl)                               |
+| 1Password SSH agent config          | [`home/dot_config/exact_private_1Password/exact_ssh/agent.toml.tmpl`](../home/dot_config/exact_private_1Password/exact_ssh/agent.toml.tmpl)                     |
+| gh picker work config               | [`home/dot_config/exact_tmux/scripts/pick_session/readonly_gh-picker-work.yml`](../home/dot_config/exact_tmux/scripts/pick_session/readonly_gh-picker-work.yml) |
+| gh picker home config               | [`home/dot_config/exact_tmux/scripts/pick_session/readonly_gh-picker-home.yml`](../home/dot_config/exact_tmux/scripts/pick_session/readonly_gh-picker-home.yml) |
 
 ## Editor
 

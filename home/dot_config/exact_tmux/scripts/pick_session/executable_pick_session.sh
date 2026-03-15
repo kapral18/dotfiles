@@ -265,8 +265,8 @@ preview_cmd="$HOME/.config/tmux/scripts/pick_session/preview.sh"
 
 # fzf send-mode: ctrl-s enters a modal where the query line becomes a command
 # prompt. enter dispatches the command to selected sessions; esc cancels.
-send_restore="enable-search+change-prompt($fzf_prompt)+change-ghost($fzf_ghost)+change-header(?=help  ctrl-/=preview  alt-p=PR  alt-i=issue)+clear-query+deselect-all+rebind(ctrl-s,ctrl-x,alt-x,alt-p,alt-i,change)+unbind(esc)"
-send_mode="execute-silent(cp {+f} $sel_tmp)+execute-silent(touch $mode_flag)+disable-search+change-prompt(❯ send: )+change-ghost()+change-header(enter=send  esc=cancel)+clear-query+unbind(ctrl-s,ctrl-x,alt-x,alt-p,alt-i,change)+rebind(esc)"
+send_restore="enable-search+change-prompt($fzf_prompt)+change-ghost($fzf_ghost)+change-header(?=help  ctrl-/=preview  alt-p=PR  alt-i=issue  alt-g=GitHub)+clear-query+deselect-all+rebind(ctrl-s,ctrl-x,alt-x,alt-p,alt-i,alt-g,change)+unbind(esc)"
+send_mode="execute-silent(cp {+f} $sel_tmp)+execute-silent(touch $mode_flag)+disable-search+change-prompt(❯ send: )+change-ghost()+change-header(enter=send  esc=cancel)+clear-query+unbind(ctrl-s,ctrl-x,alt-x,alt-p,alt-i,alt-g,change)+rebind(esc)"
 
 selection_file="${PICK_SESSION_SELECTION_FILE:-}"
 if [ -n "$selection_file" ] && [ -f "$selection_file" ]; then
@@ -313,12 +313,18 @@ else
       --bind "alt-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") remove {q})+execute-silent($rm_async_cmd)+deselect-all" \
       --bind "alt-p:execute-silent($open_gh_cmd pr {f})" \
       --bind "alt-i:execute-silent($open_gh_cmd issue {f})" \
-      --header $'?=help  ctrl-/=preview  alt-p=PR  alt-i=issue' \
+      --bind "alt-g:execute-silent(touch ${cache_dir}/pick_session_switch_gh)+abort" \
+      --header $'?=help  ctrl-/=preview  alt-p=PR  alt-i=issue  alt-g=GitHub' \
       \
       ${fzf_args} \
       || true
   )"
 fi
+
+if [ -f "${cache_dir}/pick_session_switch_gh" ]; then
+  exit 0
+fi
+
 if [ -z "$pick" ]; then
   exit 0
 fi

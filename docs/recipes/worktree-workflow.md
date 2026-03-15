@@ -166,28 +166,35 @@ The goal is to make branch isolation + review + context switching cheap.
 - Reports stale worktree paths and stale tmux sessions.
 - Suggests `,w prune --apply` when issues are found.
 
-## gh-dash Integration
+## GitHub Picker Integration
 
-PR shortcuts (inside the `gh-dash` popup):
+The fzf-based GitHub picker (`prefix` + `G`) connects directly to `,w` for
+worktree creation and session management.
 
-- `ctrl+t`: create a worktree in the background.
-- `C` or `Space`: create/switch to the PR worktree and focus its tmux session
+PR shortcuts (inside the GitHub picker):
+
+- `enter`: create/switch to the PR worktree and focus its tmux session
   (`,w prs --focus`).
-- `b`: same as above plus open the PR in Octo in a new tmux window.
+- `alt-b`: same as above plus open the PR in Octo review in a new tmux window.
+- `alt-o`: open the PR/issue in the browser.
+- `alt-y`: copy the PR/issue URL to the clipboard.
+- `ctrl-t`: batch worktree creation for all marked items.
 
 Issue shortcuts:
 
-- `C` or `Space`: create/switch to the issue worktree and focus its tmux session
-  (`,w issue --focus`).
+- `enter`: create/switch to the issue worktree and focus its tmux session
+  (`,w issue --focus`). Presents an interactive branch name prompt if the
+  worktree doesn't exist yet.
 
 Shared behavior:
 
 - If the repo does not exist locally, actions bootstrap it first with
   `,gh-tfork <owner/repo>`.
-- In the persistent popup, sync actions show bootstrap progress in an overlay
-  instead of replacing the `gh-dash` UI.
 - Bootstrap location: `elastic/*` in `~/work/<repo>`, everything else in
   `~/code/<repo>`.
+- The picker shows `◆` markers for PRs/issues that already have local worktrees,
+  review status badges (`✓` approved, `✗` changes requested, `○` pending), and
+  CI status badges (`●` green/red/yellow for success/failure/pending).
 
 ## Verification
 

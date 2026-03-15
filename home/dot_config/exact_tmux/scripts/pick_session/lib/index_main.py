@@ -15,6 +15,9 @@ from pathlib import Path
 # If the consumer (fzf) exits early, don't spam tracebacks.
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
+HALF_CORES = max(1, (os.cpu_count() or 2) // 2)
+HALF_CORES_STR = str(HALF_CORES)
+
 
 def parse_ignore_file_to_excludes(ignore_file: str) -> list[str]:
     """Read a .gitignore-style ignore file and return fd --exclude patterns.
@@ -485,6 +488,8 @@ def scan_for_git_repos(roots, depth, ignore_file):
         "--hidden",
         "--no-ignore",
         "--absolute-path",
+        "--threads",
+        HALF_CORES_STR,
         "--type",
         "f",
         "--type",
@@ -517,7 +522,16 @@ HOME_DIR_SCAN_DEPTH = 6
 
 
 def get_home_dirs(root, ignore_file, include_hidden, stop_prefixes=None):
-    fd_args = ["fd", "--type", "d", "--max-depth", str(HOME_DIR_SCAN_DEPTH), "--absolute-path"]
+    fd_args = [
+        "fd",
+        "--type",
+        "d",
+        "--max-depth",
+        str(HOME_DIR_SCAN_DEPTH),
+        "--absolute-path",
+        "--threads",
+        HALF_CORES_STR,
+    ]
     if include_hidden in ("1", "true", "yes", "on"):
         fd_args.append("--hidden")
     fd_args.extend(["--exclude", ".git"])
@@ -565,10 +579,62 @@ BADGE_REVIEW_APPROVED = color("38;5;42", " \u2713")
 BADGE_REVIEW_CHANGES = color("38;5;196", " \u2717")
 BADGE_REVIEW_PENDING = color("38;5;214", " \u25cb")
 
+BADGE_CI_SUCCESS = color("38;5;42", "\u25cf")
+BADGE_CI_FAILURE = color("38;5;196", "\u25cf")
+BADGE_CI_PENDING = color("38;5;220", "\u25cf")
+
 GH_CACHE_FILE = Path(os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))) / "tmux" / "pick_session_gh.json"
+GH_PICKER_CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))) / "tmux"
 GH_TTL_OPEN = 600
 GH_TTL_TERMINAL = 86400
 GH_TTL_MISS = 3600
+
+
+def _load_gh_picker_ci_index() -> dict[str, dict[int, tuple[str, str]]]:
+    """Read CI + review status from the gh picker TSV caches (work + home).
+
+    Returns {nwo: {pr_number: (review, ci)}} from the metadata column (col 7).
+    TSV format: display\\tkind\\trepo\\tnumber\\turl\\tmatchkey\\treview,ci
+    """
+    index: dict[str, dict[int, tuple[str, str]]] = {}
+    for mode in ("work", "home"):
+        cache = GH_PICKER_CACHE_DIR / f"gh_picker_{mode}.tsv"
+        if not cache.is_file():
+            continue
+        try:
+            for line in cache.read_text(encoding="utf-8", errors="replace").splitlines():
+                parts = line.split("\t")
+                if len(parts) < 5:
+                    continue
+                kind = parts[1]
+                if kind != "pr":
+                    continue
+                repo = parts[2]
+                try:
+                    num = int(parts[3])
+                except (ValueError, IndexError):
+                    continue
+                review = ""
+                ci = ""
+                if len(parts) >= 7 and parts[6]:
+                    meta_parts = parts[6].split(",", 1)
+                    review = meta_parts[0] if meta_parts else ""
+                    ci = meta_parts[1] if len(meta_parts) > 1 else ""
+                index.setdefault(repo, {})[num] = (review, ci)
+        except Exception:
+            continue
+    return index
+
+
+_gh_picker_ci_index: dict[str, dict[int, tuple[str, str]]] | None = None
+
+
+def _get_gh_picker_meta(nwo: str, pr_number: int) -> tuple[str, str]:
+    """Look up (review, ci) for a PR from the gh picker cache. Zero-cost local read."""
+    global _gh_picker_ci_index
+    if _gh_picker_ci_index is None:
+        _gh_picker_ci_index = _load_gh_picker_ci_index()
+    return _gh_picker_ci_index.get(nwo, {}).get(pr_number, ("", ""))
 
 
 def _gh_cache_load() -> dict:
@@ -691,7 +757,12 @@ def _gh_pr_for_wt(wt_path: str, nwo: str) -> dict | None:
     try:
         r = subprocess.run(
             ["gh", "pr", "view", "--json", "number,state,url,reviewDecision,closingIssuesReferences"],
-            check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=15, cwd=wt_path,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=15,
+            cwd=wt_path,
         )
         if r.returncode != 0 or not (r.stdout or "").strip():
             return None
@@ -715,7 +786,13 @@ def _gh_issue_state(wt_path: str, issue_num: str, repo_override: str = "") -> di
         if repo_override:
             args.extend(["-R", repo_override])
         r = subprocess.run(
-            args, check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=15, cwd=wt_path,
+            args,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=15,
+            cwd=wt_path,
         )
         if r.returncode != 0 or not (r.stdout or "").strip():
             return None
@@ -748,6 +825,165 @@ def _closing_issue_from_pr(pr_data: dict | None) -> dict | None:
     return None
 
 
+_TRIVIAL_STATUS_RE = re.compile(
+    r"^(CLA|prbot:|renovate/|license/|security/|buildkite/docs|CodeRabbit)",
+    re.IGNORECASE,
+)
+_TRIVIAL_CHECK_RE = re.compile(
+    r"^(Analyze new dependencies|docs-preview|CodeRabbit)",
+    re.IGNORECASE,
+)
+
+
+def _extract_ci_state(commit_node: dict, repo_name: str) -> str:
+    """Extract meaningful CI state from status check contexts.
+
+    Priority:
+    1. StatusContext named '{repo_name}-ci' (e.g. 'kibana-ci')
+    2. Buildkite StatusContext for the repo (excluding docs)
+    3. CheckRun whose name contains the repo name (excluding docs)
+    4. Aggregate state of non-trivial checks (excludes bots/CLA/docs/snyk)
+    5. Empty string if only trivial contexts exist (no real CI ran)
+    """
+    try:
+        rollup = commit_node["statusCheckRollup"]
+    except (KeyError, TypeError):
+        return ""
+    if rollup is None:
+        return ""
+
+    contexts = []
+    try:
+        contexts = (rollup.get("contexts") or {}).get("nodes") or []
+    except (AttributeError, TypeError):
+        pass
+
+    if not contexts:
+        return rollup.get("state", "")
+
+    canonical = f"{repo_name}-ci"
+    for ctx in contexts:
+        if ctx.get("__typename") == "StatusContext" and ctx.get("context") == canonical:
+            return ctx.get("state", "")
+
+    for ctx in contexts:
+        if ctx.get("__typename") != "StatusContext":
+            continue
+        name = ctx.get("context", "")
+        if name.startswith("buildkite/") and repo_name in name and "docs" not in name:
+            return ctx.get("state", "")
+
+    for ctx in contexts:
+        if ctx.get("__typename") != "CheckRun":
+            continue
+        name = ctx.get("name", "")
+        if repo_name in name.lower() and "docs" not in name.lower():
+            conclusion = ctx.get("conclusion", "")
+            status = ctx.get("status", "")
+            if conclusion == "SUCCESS":
+                return "SUCCESS"
+            if conclusion in ("FAILURE", "TIMED_OUT", "CANCELLED"):
+                return "FAILURE"
+            if status in ("IN_PROGRESS", "QUEUED", "WAITING"):
+                return "PENDING"
+
+    has_failure = False
+    has_pending = False
+    has_success = False
+    real_count = 0
+    for ctx in contexts:
+        typename = ctx.get("__typename", "")
+        name = ctx.get("context", "") or ctx.get("name", "")
+        if typename == "StatusContext" and _TRIVIAL_STATUS_RE.search(name):
+            continue
+        if typename == "CheckRun" and _TRIVIAL_CHECK_RE.search(name):
+            continue
+        real_count += 1
+        if typename == "StatusContext":
+            st = (ctx.get("state") or "").upper()
+            if st == "FAILURE":
+                has_failure = True
+            elif st == "PENDING":
+                has_pending = True
+            elif st == "SUCCESS":
+                has_success = True
+        elif typename == "CheckRun":
+            conclusion = (ctx.get("conclusion") or "").upper()
+            status = (ctx.get("status") or "").upper()
+            if conclusion in ("FAILURE", "TIMED_OUT", "CANCELLED"):
+                has_failure = True
+            elif conclusion == "SUCCESS":
+                has_success = True
+            elif status in ("IN_PROGRESS", "QUEUED", "WAITING"):
+                has_pending = True
+
+    if real_count == 0:
+        return ""
+    if has_failure:
+        return "FAILURE"
+    if has_pending:
+        return "PENDING"
+    if has_success:
+        return "SUCCESS"
+    return ""
+
+
+def _batch_ci_graphql(pr_numbers: dict[str, set[int]]) -> dict[str, dict[int, tuple[str, str]]]:
+    """Single batched GraphQL call for reviewDecision + CI status.
+
+    Returns {nwo: {number: (review, ci), ...}}.
+    """
+    aliases: list[str] = []
+    alias_map: dict[str, tuple[str, int]] = {}
+    for nwo, nums in pr_numbers.items():
+        owner, name = nwo.split("/", 1) if "/" in nwo else ("", nwo)
+        if not owner:
+            continue
+        for n in nums:
+            alias = f"_p{owner}_{name}_{n}".replace("-", "_")
+            aliases.append(
+                f'{alias}: repository(owner: "{owner}", name: "{name}") '
+                f"{{ pullRequest(number: {n}) {{ number reviewDecision "
+                f"commits(last:1) {{ nodes {{ commit {{ statusCheckRollup {{ state "
+                f"contexts(first:100) {{ nodes {{ "
+                f"... on CheckRun {{ __typename name conclusion status }} "
+                f"... on StatusContext {{ __typename context state }} "
+                f"}} }} }} }} }} }} }} }}"
+            )
+            alias_map[alias] = (nwo, n)
+    if not aliases:
+        return {}
+    query = "query { " + " ".join(aliases) + " }"
+    try:
+        result = subprocess.run(
+            ["gh", "api", "graphql", "-f", f"query={query}"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        if not result.stdout.strip():
+            return {}
+        data = json.loads(result.stdout).get("data", {})
+    except Exception:
+        return {}
+    out: dict[str, dict[int, tuple[str, str]]] = {}
+    for alias, (nwo, num) in alias_map.items():
+        node = (data.get(alias) or {}).get("pullRequest")
+        if not node:
+            continue
+        review = node.get("reviewDecision", "")
+        repo_name = nwo.split("/", 1)[-1] if "/" in nwo else nwo
+        ci_state = ""
+        try:
+            commit = node["commits"]["nodes"][0]["commit"]
+            ci_state = _extract_ci_state(commit, repo_name)
+        except (KeyError, IndexError, TypeError):
+            pass
+        out.setdefault(nwo, {})[num] = (review, ci_state)
+    return out
+
+
 def _lookup_gh_info(wt_path: str, branch: str, nwo: str) -> dict:
     """Return {"pr": {...} | None, "issue": {...} | None} for a worktree.
 
@@ -763,11 +999,14 @@ def _lookup_gh_info(wt_path: str, branch: str, nwo: str) -> dict:
         return result
     pr_data = _gh_pr_for_wt(wt_path, nwo)
     if pr_data:
+        pr_num = pr_data["number"]
+        picker_review, picker_ci = _get_gh_picker_meta(nwo, pr_num) if nwo else ("", "")
         result["pr"] = {
-            "number": pr_data["number"],
+            "number": pr_num,
             "state": pr_data.get("state", ""),
             "url": pr_data.get("url", ""),
-            "review": pr_data.get("reviewDecision", ""),
+            "review": pr_data.get("reviewDecision", "") or picker_review,
+            "ci": picker_ci,
         }
     issue_num = _wt_issue_number(wt_path) or extract_issue_number(branch)
     issue_repo_override = _wt_issue_repo(wt_path)
@@ -813,6 +1052,17 @@ def issue_badge(state: str) -> str:
     return ""
 
 
+def ci_badge(state: str) -> str:
+    s = (state or "").upper()
+    if s == "SUCCESS":
+        return BADGE_CI_SUCCESS
+    if s in ("FAILURE", "ERROR"):
+        return BADGE_CI_FAILURE
+    if s in ("PENDING", "EXPECTED"):
+        return BADGE_CI_PENDING
+    return ""
+
+
 def gh_badges(gh_info: dict | None) -> str:
     if not gh_info:
         return ""
@@ -821,6 +1071,9 @@ def gh_badges(gh_info: dict | None) -> str:
     if pr:
         out += pr_badge(pr.get("state", ""))
         out += review_badge(pr.get("review", ""))
+        ci_state = pr.get("ci", "")
+        if ci_state:
+            out += ci_badge(ci_state)
     issue = gh_info.get("issue")
     if issue:
         out += issue_badge(issue.get("state", ""))
@@ -830,15 +1083,17 @@ def gh_badges(gh_info: dict | None) -> str:
 def gh_meta(gh_info: dict | None) -> str:
     """Encode GH info into the TSV meta column.
 
-    PR format: pr=NUMBER:STATE:REVIEW:URL  (review before URL because URL
-    contains colons and is always the last field).
+    PR format: pr=NUMBER:STATE:REVIEW:CI:URL  (URL is always last because it
+    contains colons).
     """
     if not gh_info:
         return ""
     parts = []
     pr = gh_info.get("pr")
     if pr and pr.get("number"):
-        parts.append(f"pr={pr['number']}:{pr.get('state', '')}:{pr.get('review', '')}:{pr.get('url', '')}")
+        parts.append(
+            f"pr={pr['number']}:{pr.get('state', '')}:{pr.get('review', '')}:{pr.get('ci', '')}:{pr.get('url', '')}"
+        )
     issue = gh_info.get("issue")
     if issue and issue.get("number"):
         parts.append(f"issue={issue['number']}:{issue.get('state', '')}:{issue.get('url', '')}")
@@ -910,7 +1165,7 @@ if not quick and not sessions_only and shutil.which("fd"):
 # 1b. Parallel dirty scan for worktrees that aren't already stale/gone.
 _dirty_candidates = [p for rid in groups for p in groups[rid]["wt_map"] if p not in wt_status]
 if _dirty_candidates:
-    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=HALF_CORES) as pool:
         _futures = {pool.submit(_check_dirty, p): p for p in _dirty_candidates}
         for fut in concurrent.futures.as_completed(_futures):
             p = _futures[fut]
@@ -924,6 +1179,8 @@ if _dirty_candidates:
 # Uses a persistent file cache to avoid redundant API calls across refreshes.
 # Skips stale/gone worktrees (no valid git context).
 wt_gh_info: dict[str, dict] = {}
+_gh_pruned: dict[str, dict] = {}
+_gh_save_pending = False
 _gh_all: list[tuple[str, str, str]] = []
 _nwo_cache: dict[str, str] = {}
 for rid in groups:
@@ -953,7 +1210,7 @@ if _gh_all:
 
     if _gh_need_fetch and shutil.which("gh"):
         _fetch_meta = {p: (br, nwo) for p, br, nwo in _gh_need_fetch}
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=HALF_CORES) as pool:
             _gh_futures = {pool.submit(_lookup_gh_info, p, br, nwo): p for p, br, nwo in _gh_need_fetch}
             for fut in concurrent.futures.as_completed(_gh_futures):
                 p = _gh_futures[fut]
@@ -973,8 +1230,8 @@ if _gh_all:
                     _gh_entries[p] = {"pr": None, "issue": None, "branch": br, "nwo": nwo, "ts": _now}
 
     _live_paths = {p for p, _, _ in _gh_all}
-    pruned = {k: v for k, v in _gh_entries.items() if k in _live_paths}
-    _gh_cache_save({"version": 1, "entries": pruned})
+    _gh_pruned = {k: v for k, v in _gh_entries.items() if k in _live_paths}
+    _gh_save_pending = True
 
 # 2. Add sessions
 current_session = subprocess.run(
@@ -1004,10 +1261,10 @@ for row in sess_out.splitlines():
 # 2a. In quick/sessions-only mode, step 1b (dirty scan) was skipped because no
 # worktrees were discovered yet. Now that step 2 found session worktree paths,
 # run dirty checks for them so session entries keep their dirty badge.
-if (quick or sessions_only):
+if quick or sessions_only:
     _new_wt_paths = [p for rid in groups for p in groups[rid]["wt_map"] if p not in wt_status]
     if _new_wt_paths:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=HALF_CORES) as pool:
             _dirty_futs = {pool.submit(_check_dirty, p): p for p in _new_wt_paths}
             for fut in concurrent.futures.as_completed(_dirty_futs):
                 p = _dirty_futs[fut]
@@ -1028,6 +1285,61 @@ if (quick or sessions_only) and not wt_gh_info:
                 cached = _gh_disk.get(wt_path)
                 if cached and (cached.get("pr") or cached.get("issue")):
                     wt_gh_info[wt_path] = {"pr": cached.get("pr"), "issue": cached.get("issue")}
+
+# 2c. Enrich PR entries with CI + review from the gh picker cache first,
+# then batch-fetch remaining PRs via a single GraphQL call.
+_prs_needing_ci: dict[str, set[int]] = {}
+if wt_gh_info:
+    for wt_path, gh in wt_gh_info.items():
+        pr = gh.get("pr")
+        if not pr or not pr.get("number"):
+            continue
+        pr_url = pr.get("url", "")
+        upstream_nwo = ""
+        if "github.com/" in pr_url:
+            url_parts = pr_url.split("github.com/", 1)[1].split("/")
+            if len(url_parts) >= 2:
+                upstream_nwo = f"{url_parts[0]}/{url_parts[1]}"
+        if upstream_nwo:
+            picker_review, picker_ci = _get_gh_picker_meta(upstream_nwo, pr["number"])
+            if picker_ci and not pr.get("ci"):
+                pr["ci"] = picker_ci
+            if picker_review and not pr.get("review"):
+                pr["review"] = picker_review
+        if not pr.get("ci") and upstream_nwo and (pr.get("state", "").upper() == "OPEN"):
+            _prs_needing_ci.setdefault(upstream_nwo, set()).add(pr["number"])
+
+# 2c-ii. Batch GraphQL for PRs still missing CI (not in gh picker cache).
+if _prs_needing_ci and not quick and not sessions_only and shutil.which("gh"):
+    _gql_ci = _batch_ci_graphql(_prs_needing_ci)
+    if _gql_ci:
+        for wt_path, gh in wt_gh_info.items():
+            pr = gh.get("pr")
+            if not pr or pr.get("ci") or not pr.get("number"):
+                continue
+            pr_url = pr.get("url", "")
+            upstream_nwo = ""
+            if "github.com/" in pr_url:
+                url_parts = pr_url.split("github.com/", 1)[1].split("/")
+                if len(url_parts) >= 2:
+                    upstream_nwo = f"{url_parts[0]}/{url_parts[1]}"
+            if upstream_nwo:
+                meta = _gql_ci.get(upstream_nwo, {}).get(pr["number"])
+                if meta:
+                    review_gql, ci_gql = meta
+                    if ci_gql:
+                        pr["ci"] = ci_gql
+                    if review_gql and not pr.get("review"):
+                        pr["review"] = review_gql
+
+# 2d. Save the GH disk cache (deferred from step 1c so CI enrichment is included).
+if _gh_save_pending:
+    for p, gh in wt_gh_info.items():
+        if p in _gh_pruned and gh.get("pr"):
+            cached_pr = _gh_pruned[p].get("pr") or {}
+            if cached_pr and gh["pr"].get("ci") and not cached_pr.get("ci"):
+                cached_pr["ci"] = gh["pr"]["ci"]
+    _gh_cache_save({"version": 1, "entries": _gh_pruned})
 
 # 3. Output results
 exclude_exact = set()

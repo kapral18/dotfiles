@@ -1,0 +1,59 @@
+prSections:
+  - title: "PRs waiting Team Review"
+    filters: >-
+      is:open is:pr
+      review-requested:@me
+      team-review-requested:elastic/kibana-management
+      org:elastic
+      -is:draft
+      -author:@me
+  - title: "PRs Created by Me"
+    filters: >-
+      is:open is:pr
+      author:kapral18
+      org:elastic
+  - title: "PRs Involving Me"
+    filters: >-
+      is:open is:pr
+      involves:@me
+      org:elastic
+      -author:kapral18
+      -is:draft
+      -review-requested:kapral18
+      -team-review-requested:elastic/kibana-management
+issuesSections:
+  - title: "Issues with Team Failed Tests"
+    filters: >-
+      is:open is:issue
+      label:"failed-test"
+      org:elastic
+      label:"Team:Kibana Management"
+  - title: "Issues Created by Me"
+    filters: >-
+      is:open is:issue
+      author:@me
+      org:elastic
+  - title: Issues Assigned to Me
+    filters: >-
+      is:open is:issue
+      assignee:@me
+      org:elastic
+  - title: "Issues Mentioning Me"
+    filters: >-
+      is:open is:issue
+      mentions:@me
+      -assignee:@me
+      -author:@me
+      org:elastic
+  - title: "Issues Involving Me"
+    filters: >-
+      is:open is:issue
+      involves:@me
+      org:elastic
+      -assignee:@me
+      -mentions:@me
+      -author:@me
+repoPaths:
+  elastic/kibana: ~/work/kibana
+  elastic/*: ~/work/*
+  :owner/:repo: ~/code/:repo

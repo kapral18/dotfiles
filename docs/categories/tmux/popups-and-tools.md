@@ -51,30 +51,31 @@ Popup spawn temporarily overrides `default-shell` to `/bin/sh` via
 `command_palette/popup.sh` to avoid heavy-shell initialization overhead (~1s
 with fish).
 
-## Persistent `gh-dash` popup
+## GitHub picker popup
 
 - Binding: `prefix` then `G`
-- Hide without quitting: `q`, `Ctrl-C`, or `prefix` + `G`
-- Switch dashboards: `Tab` (work <-> home)
-- Restart the persistent instance: `prefix` + `C-g`
+- Switch work/home: `Tab`
+- Switch to session picker: `alt-g`
+
+A standalone fzf-based PR/issue picker. It reads PR and issue sections from its
+own YAML configs
+(`~/.config/tmux/scripts/pick_session/gh-picker-{work,home}.yml`) and displays
+them in `fzf` with rich preview, worktree markers, and review status badges.
+gh-dash is not a dependency.
 
 Implementation notes:
 
-- The popup attaches to a **nested tmux server** (separate socket) with two
-  sessions: `work` and `home`.
-- Each session runs `gh dash` with a dedicated config:
-  `~/.config/gh-dash/config-work.yml` or `~/.config/gh-dash/config-home.yml`.
-- The nested tmux status bar shows the active dashboard (`#{session_name}`) and
-  inline hints (`Tab=switch`, `q=hide`).
-- Hiding the popup detaches from the nested tmux client; both `gh-dash`
-  processes stay alive for fast reopen.
-- **Fast path**: when either nested session already exists, popup open skips
-  dependency checks (`gh`, `gh dash --version`) and jumps straight to
-  `display-popup`.
-- `gh dash` runs in an auto-respawn loop inside each nested session, so a crash
-  restarts quickly without manual recovery.
+- Single `fzf` popup (no nested tmux server). Popup opens at 95%×95%.
+- Items are fetched by `gh_items.sh` / `lib/gh_items_main.py`, which parses the
+  gh-picker config files and runs GitHub Search API queries.
+- `alt-g` closes the popup and reopens the session picker at its configured
+  dimensions (and vice versa). The close-and-reopen loop lives in the outer
+  wrapper scripts (`popup.sh` / `gh_popup.sh`).
 - Popup spawn temporarily overrides `default-shell` to `/bin/sh` to avoid
   heavy-shell initialization overhead (~1s with fish).
+
+For full keybindings and details, see
+[`docs/categories/tmux/pickers.md` — GitHub picker](pickers.md#github-picker).
 
 ## Repo bootstrap popup (`owner/repo` -> `,gh-tfork`)
 
@@ -111,7 +112,8 @@ tmux list-sessions
 command -v ,w
 command -v ,tmux-run-all
 command -v ,tmux-lowfi
-gh dash --version
+command -v gh
+command -v fzf
 ```
 
 If tmux config changes are not reflected:

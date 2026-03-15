@@ -1,0 +1,672 @@
+#!/usr/bin/env python3
+"""Fetch GitHub PRs/issues from gh-picker config sections via GitHub Search API.
+
+Outputs TSV rows suitable for fzf consumption in the GitHub picker.
+Uses concurrent fetching for all sections in parallel.
+"""
+
+from __future__ import annotations
+
+import argparse
+import concurrent.futures
+import json
+import os
+import re
+import signal
+
+HALF_CORES = max(1, (os.cpu_count() or 2) // 2)
+import subprocess
+import sys
+import time
+from datetime import datetime, timezone
+
+signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
+RESET = "\033[0m"
+
+
+def c(code: str, text: str) -> str:
+    return f"\033[{code}m{text}{RESET}"
+
+
+ICON_PR = c("38;5;42", "")
+ICON_PR_DRAFT = c("38;5;242", "")
+ICON_ISSUE = c("38;5;141", "")
+SECTION_SEP = c("2;38;5;244", "─" * 60)
+
+
+def relative_date(iso: str) -> str:
+    if not iso:
+        return ""
+    try:
+        date_str = iso.split("T")[0]
+        then = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+        diff = (now - then).days
+        if diff == 0:
+            return "today"
+        if diff == 1:
+            return "1d"
+        if diff < 7:
+            return f"{diff}d"
+        if diff < 30:
+            return f"{diff // 7}w"
+        if diff < 365:
+            return f"{diff // 30}mo"
+        return f"{diff // 365}y"
+    except Exception:
+        return iso[:10] if len(iso) >= 10 else iso
+
+
+def short_repo(nwo: str) -> str:
+    return nwo.split("/", 1)[-1] if "/" in nwo else nwo
+
+
+def resolve_repo_path(nwo: str, repo_paths: dict[str, str]) -> str | None:
+    """Resolve a repo (owner/name) to a local path using gh-dash repoPaths patterns."""
+    if nwo in repo_paths:
+        return os.path.expanduser(repo_paths[nwo])
+
+    owner, name = nwo.split("/", 1) if "/" in nwo else ("", nwo)
+    for pattern, path_tmpl in repo_paths.items():
+        if pattern == nwo:
+            continue
+        pat_owner, pat_name = pattern.split("/", 1) if "/" in pattern else ("", pattern)
+        if pat_owner in (owner, ":owner", "*") and pat_name in (name, ":repo", "*"):
+            result = path_tmpl
+            result = result.replace(":owner", owner).replace(":repo", name).replace("*", name)
+            return os.path.expanduser(result)
+    return None
+
+
+_ISSUE_SUFFIX_RE = re.compile(r"[-/](\d+)$")
+
+
+def _find_git_dir(repo_path: str) -> str | None:
+    """Find a usable git working directory under repo_path."""
+    for candidate in [repo_path, os.path.join(repo_path, "main")]:
+        if os.path.isdir(candidate) and (
+            os.path.exists(os.path.join(candidate, ".git")) or os.path.exists(os.path.join(candidate, "HEAD"))
+        ):
+            return candidate
+    return None
+
+
+def _git_worktree_entries(repo_path: str) -> list[tuple[str, str]]:
+    """Return (worktree_path, branch) pairs from git worktree list --porcelain."""
+    git_dir = _find_git_dir(repo_path)
+    if not git_dir:
+        return []
+    try:
+        result = subprocess.run(
+            ["git", "-C", git_dir, "worktree", "list", "--porcelain"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except Exception:
+        return []
+
+    entries: list[tuple[str, str]] = []
+    wt_path = ""
+    branch = ""
+    for line in result.stdout.splitlines():
+        if line.startswith("worktree "):
+            if wt_path and branch:
+                entries.append((wt_path, branch))
+            wt_path = line.split(" ", 1)[1]
+            branch = ""
+        elif line.startswith("branch refs/heads/"):
+            branch = line.split("refs/heads/", 1)[1]
+        elif line == "":
+            if wt_path and branch:
+                entries.append((wt_path, branch))
+            wt_path = ""
+            branch = ""
+    if wt_path and branch:
+        entries.append((wt_path, branch))
+    return entries
+
+
+def _wt_issue_number(wt_path: str) -> str:
+    """Read issue number from worktree-local git config (comma.w.issue.number).
+
+    Set by `,w issue` when creating worktrees linked to issues. Zero-cost local lookup.
+    """
+    try:
+        r = subprocess.run(
+            ["git", "-C", wt_path, "config", "--worktree", "--get", "comma.w.issue.number"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
+        return r.stdout.strip() if r.returncode == 0 else ""
+    except Exception:
+        return ""
+
+
+class _ItemInfo:
+    __slots__ = ("has_wt", "review", "ci", "mergeable")
+
+    def __init__(self, has_wt: bool = False, review: str = "", ci: str = "", mergeable: str = ""):
+        self.has_wt = has_wt
+        self.review = review
+        self.ci = ci
+        self.mergeable = mergeable
+
+
+def _scan_local_worktrees(nwo: str, repo_path: str) -> tuple[set[int], set[str]]:
+    """Collect issue/PR numbers and branch names from local worktrees (no network).
+
+    Returns (wt_nums, branches) where wt_nums are numbers detected via metadata
+    or branch name heuristics, and branches are all local worktree branch names.
+    """
+    entries = _git_worktree_entries(repo_path)
+    branches: set[str] = set()
+    wt_nums: set[int] = set()
+
+    for wt_path, branch in entries:
+        meta_num = _wt_issue_number(wt_path)
+        if meta_num:
+            try:
+                wt_nums.add(int(meta_num))
+            except ValueError:
+                pass
+
+        m = _ISSUE_SUFFIX_RE.search(branch)
+        if m:
+            wt_nums.add(int(m.group(1)))
+
+        branches.add(branch)
+
+    return wt_nums, branches
+
+
+_TRIVIAL_STATUS_RE = re.compile(
+    r"^(CLA|prbot:|renovate/|license/|security/|buildkite/docs|CodeRabbit)",
+    re.IGNORECASE,
+)
+_TRIVIAL_CHECK_RE = re.compile(
+    r"^(Analyze new dependencies|docs-preview|CodeRabbit)",
+    re.IGNORECASE,
+)
+
+
+def _extract_ci_state(commit_node: dict, repo_name: str) -> str:
+    """Extract meaningful CI state from status check contexts.
+
+    Priority:
+    1. StatusContext named '{repo_name}-ci' (e.g. 'kibana-ci')
+    2. Buildkite StatusContext for the repo (excluding docs)
+    3. CheckRun whose name contains the repo name (excluding docs)
+    4. Aggregate state of non-trivial checks (excludes bots/CLA/docs/snyk)
+    5. Empty string if only trivial contexts exist (no real CI ran)
+    """
+    try:
+        rollup = commit_node["statusCheckRollup"]
+    except (KeyError, TypeError):
+        return ""
+    if rollup is None:
+        return ""
+
+    contexts = []
+    try:
+        contexts = (rollup.get("contexts") or {}).get("nodes") or []
+    except (AttributeError, TypeError):
+        pass
+
+    if not contexts:
+        return rollup.get("state", "")
+
+    canonical = f"{repo_name}-ci"
+    for ctx in contexts:
+        if ctx.get("__typename") == "StatusContext" and ctx.get("context") == canonical:
+            return ctx.get("state", "")
+
+    for ctx in contexts:
+        if ctx.get("__typename") != "StatusContext":
+            continue
+        name = ctx.get("context", "")
+        if name.startswith("buildkite/") and repo_name in name and "docs" not in name:
+            return ctx.get("state", "")
+
+    for ctx in contexts:
+        if ctx.get("__typename") != "CheckRun":
+            continue
+        name = ctx.get("name", "")
+        if repo_name in name.lower() and "docs" not in name.lower():
+            conclusion = ctx.get("conclusion", "")
+            status = ctx.get("status", "")
+            if conclusion == "SUCCESS":
+                return "SUCCESS"
+            if conclusion in ("FAILURE", "TIMED_OUT", "CANCELLED"):
+                return "FAILURE"
+            if status in ("IN_PROGRESS", "QUEUED", "WAITING"):
+                return "PENDING"
+
+    has_failure = False
+    has_pending = False
+    has_success = False
+    real_count = 0
+    for ctx in contexts:
+        typename = ctx.get("__typename", "")
+        name = ctx.get("context", "") or ctx.get("name", "")
+        if typename == "StatusContext" and _TRIVIAL_STATUS_RE.search(name):
+            continue
+        if typename == "CheckRun" and _TRIVIAL_CHECK_RE.search(name):
+            continue
+        real_count += 1
+        if typename == "StatusContext":
+            st = (ctx.get("state") or "").upper()
+            if st == "FAILURE":
+                has_failure = True
+            elif st == "PENDING":
+                has_pending = True
+            elif st == "SUCCESS":
+                has_success = True
+        elif typename == "CheckRun":
+            conclusion = (ctx.get("conclusion") or "").upper()
+            status = (ctx.get("status") or "").upper()
+            if conclusion in ("FAILURE", "TIMED_OUT", "CANCELLED"):
+                has_failure = True
+            elif conclusion == "SUCCESS":
+                has_success = True
+            elif status in ("IN_PROGRESS", "QUEUED", "WAITING"):
+                has_pending = True
+
+    if real_count == 0:
+        return ""
+    if has_failure:
+        return "FAILURE"
+    if has_pending:
+        return "PENDING"
+    if has_success:
+        return "SUCCESS"
+    return ""
+
+
+def _graphql_pr_metadata(pr_numbers: dict[str, set[int]]) -> dict[str, dict[int, tuple[str, str, str, str]]]:
+    """Batch-fetch headRefName, reviewDecision, CI status, and mergeable for known PR numbers.
+
+    Returns:
+        {nwo: {number: (headRefName, reviewDecision, ciState, mergeable), ...}}
+    """
+    aliases: list[str] = []
+    alias_map: dict[str, tuple[str, int]] = {}
+
+    for nwo, nums in pr_numbers.items():
+        owner, name = nwo.split("/", 1) if "/" in nwo else ("", nwo)
+        for n in nums:
+            alias = f"_p{owner}_{name}_{n}".replace("-", "_")
+            aliases.append(
+                f'{alias}: repository(owner: "{owner}", name: "{name}") '
+                f"{{ pullRequest(number: {n}) {{ number headRefName reviewDecision mergeable "
+                f"commits(last:1) {{ nodes {{ commit {{ statusCheckRollup {{ state "
+                f"contexts(first:100) {{ nodes {{ "
+                f"... on CheckRun {{ __typename name conclusion status }} "
+                f"... on StatusContext {{ __typename context state }} "
+                f"}} }} }} }} }} }} }} }}"
+            )
+            alias_map[alias] = (nwo, n)
+
+    if not aliases:
+        return {}
+
+    query = "query { " + " ".join(aliases) + " }"
+    try:
+        result = subprocess.run(
+            ["gh", "api", "graphql", "-f", f"query={query}"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        if not result.stdout.strip():
+            return {}
+        data = json.loads(result.stdout).get("data", {})
+    except Exception:
+        return {}
+
+    out: dict[str, dict[int, tuple[str, str, str, str]]] = {}
+    for alias, (nwo, num) in alias_map.items():
+        node = (data.get(alias) or {}).get("pullRequest")
+        if not node:
+            continue
+        head = node.get("headRefName", "")
+        review = node.get("reviewDecision", "")
+        mergeable = node.get("mergeable", "")
+        repo_name = nwo.split("/", 1)[-1] if "/" in nwo else nwo
+        ci_state = ""
+        try:
+            commit = node["commits"]["nodes"][0]["commit"]
+            ci_state = _extract_ci_state(commit, repo_name)
+        except (KeyError, IndexError, TypeError):
+            pass
+        out.setdefault(nwo, {})[num] = (head, review, ci_state, mergeable)
+
+    return out
+
+
+def parse_config(config_path: str) -> tuple[list[dict], list[dict], dict[str, str]]:
+    """Parse gh-dash YAML config using yq. Returns (pr_sections, issue_sections, repo_paths)."""
+    pr_sections: list[dict] = []
+    issue_sections: list[dict] = []
+    repo_paths: dict[str, str] = {}
+
+    try:
+        raw = subprocess.run(
+            ["yq", "-o", "json", ".", config_path],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        ).stdout
+        data = json.loads(raw)
+    except Exception as e:
+        print(f"Failed to parse config: {e}", file=sys.stderr)
+        return [], [], {}
+
+    for s in data.get("prSections") or []:
+        title = s.get("title", "")
+        filters = s.get("filters", "")
+        if title and filters:
+            pr_sections.append({"title": title, "filters": filters.strip()})
+
+    for s in data.get("issuesSections") or []:
+        title = s.get("title", "")
+        filters = s.get("filters", "")
+        if title and filters:
+            issue_sections.append({"title": title, "filters": filters.strip()})
+
+    for k, v in (data.get("repoPaths") or {}).items():
+        repo_paths[str(k)] = str(v)
+
+    return pr_sections, issue_sections, repo_paths
+
+
+ICON_LOCAL = c("38;5;81", "◆")
+ICON_LOCAL_SPACER = " "
+REVIEW_APPROVED = c("38;5;42", "✓")
+REVIEW_CHANGES = c("38;5;209", "✗")
+REVIEW_PENDING = c("38;5;244", "○")
+REVIEW_SPACER = " "
+CI_SUCCESS = c("38;5;42", "●")
+CI_FAILURE = c("38;5;196", "●")
+CI_PENDING = c("38;5;220", "●")
+CI_SPACER = " "
+COMMENT_ICON = "\033[38;5;244m\U0001f4ac\033[0m"
+CONFLICT_BADGE = c("38;5;209", "⚡")
+CONFLICT_SPACER = " "
+
+
+def fetch_section(kind: str, idx: int, title: str, filters: str, limit: int = 30) -> list[dict]:
+    """Fetch a single section from GitHub Search API. Returns item dicts."""
+    jq_expr = (
+        "[.items[] | {"
+        "n: .number, "
+        "t: .title, "
+        'r: (.repository_url | split("/") | .[-2:] | join("/")), '
+        'u: (.updated_at | split("T")[0]), '
+        "url: .html_url, "
+        "d: .draft, "
+        "a: .user.login, "
+        "c: .comments"
+        "}]"
+    )
+
+    try:
+        result = subprocess.run(
+            [
+                "gh",
+                "api",
+                "search/issues",
+                "--method",
+                "GET",
+                "-f",
+                f"q={filters}",
+                "-f",
+                f"per_page={limit}",
+                "-f",
+                "sort=updated",
+                "-f",
+                "order=desc",
+                "--jq",
+                jq_expr,
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if result.returncode != 0 or not result.stdout.strip():
+            return []
+        items = json.loads(result.stdout)
+    except Exception:
+        return []
+
+    if not items:
+        return []
+
+    result: list[dict] = [{"_header": True, "kind": kind, "idx": idx, "title": title}]
+    for item in items:
+        if not item.get("n"):
+            continue
+        result.append(
+            {
+                "num": item["n"],
+                "title": item.get("t", ""),
+                "repo": item.get("r", ""),
+                "updated": item.get("u", ""),
+                "url": item.get("url", ""),
+                "draft": item.get("d", False),
+                "author": item.get("a", ""),
+                "comments": item.get("c", 0) or 0,
+                "kind": kind,
+            }
+        )
+    return result
+
+
+def _terminal_columns() -> int:
+    try:
+        return os.get_terminal_size().columns
+    except Exception:
+        return 200
+
+
+def _review_badge(decision: str) -> str:
+    d = (decision or "").upper()
+    if d == "APPROVED":
+        return REVIEW_APPROVED
+    if d == "CHANGES_REQUESTED":
+        return REVIEW_CHANGES
+    if d == "REVIEW_REQUIRED":
+        return REVIEW_PENDING
+    return REVIEW_SPACER
+
+
+def _ci_badge(state: str) -> str:
+    s = (state or "").upper()
+    if s == "SUCCESS":
+        return CI_SUCCESS
+    if s in ("FAILURE", "ERROR"):
+        return CI_FAILURE
+    if s in ("PENDING", "EXPECTED"):
+        return CI_PENDING
+    return CI_SPACER
+
+
+def format_lines(items: list[dict], wt_index: dict[str, dict[int, _ItemInfo]]) -> list[str]:
+    """Format item dicts into TSV lines for fzf, with worktree + review markers."""
+    cols = _terminal_columns()
+    visible = int(cols * 0.45)
+    # Fixed: icon(1) + marker(1) + review(1) + ci(1) + spaces(5) + #number(~8) + repo(~17) + author(~20) + date(~6) + padding(~6)
+    fixed_width = 66
+    max_title = max(40, visible - fixed_width)
+
+    lines: list[str] = []
+    for item in items:
+        if item.get("_header"):
+            header = c("1;38;5;244", f"── {item['title']} ──")
+            lines.append(f"{header}\theader\t\t{item['kind']}:{item['idx']}\t\t{item['title']}\t")
+            continue
+
+        kind = item["kind"]
+        num = item["num"]
+        repo = item["repo"]
+        item_kind = "issue" if kind == "issue" else "pr"
+
+        if kind == "issue":
+            icon = ICON_ISSUE
+        elif item.get("draft"):
+            icon = ICON_PR_DRAFT
+        else:
+            icon = ICON_PR
+
+        item_info = wt_index.get(repo, {}).get(int(num))
+        local_marker = ICON_LOCAL if (item_info and item_info.has_wt) else ICON_LOCAL_SPACER
+        review = _review_badge(item_info.review if item_info else "") if item_kind == "pr" else REVIEW_SPACER
+        ci = _ci_badge(item_info.ci if item_info else "") if item_kind == "pr" else CI_SPACER
+        conflict = CONFLICT_BADGE if (item_info and item_info.mergeable == "CONFLICTING") else CONFLICT_SPACER
+
+        title_text = item["title"]
+        if len(title_text) > max_title:
+            title_text = title_text[: max_title - 1] + "…"
+
+        comments = item.get("comments", 0)
+        comment_col = f" {COMMENT_ICON}{c('38;5;244', str(comments))}" if comments > 0 else ""
+
+        num_col = c("38;5;81", f"#{num}")
+        repo_col = c("38;5;244", short_repo(repo))
+        author_col = c("38;5;244", f"@{item['author']}")
+        date_col = c("38;5;244", relative_date(item["updated"]))
+
+        display = f"{icon} {local_marker}{review}{ci}{conflict} {num_col} {title_text}  {repo_col}  {author_col}  {date_col}{comment_col}"
+        mk = f"#{num} {title_text} {repo} @{item['author']}"
+        meta_review = (item_info.review if item_info else "") or ""
+        meta_ci = (item_info.ci if item_info else "") or ""
+        meta_col = f"{meta_review},{meta_ci}" if (meta_review or meta_ci) else ""
+        lines.append(f"{display}\t{item_kind}\t{repo}\t{num}\t{item['url']}\t{mk}\t{meta_col}")
+
+    return lines
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mode", default="work")
+    parser.add_argument("--config", required=True)
+    parser.add_argument("--cache-file", required=True)
+    parser.add_argument("--refresh", action="store_true")
+    args = parser.parse_args()
+
+    pr_sections, issue_sections, repo_paths = parse_config(args.config)
+
+    all_lines: list[str] = []
+
+    tasks = []
+    for i, s in enumerate(pr_sections):
+        tasks.append(("pr", i, s["title"], s["filters"]))
+    for i, s in enumerate(issue_sections):
+        tasks.append(("issue", i, s["title"], s["filters"]))
+
+    if not tasks:
+        return
+
+    # Phase 1: fetch all sections concurrently
+    results: dict[int, list[dict]] = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=HALF_CORES) as pool:
+        section_futs: dict[concurrent.futures.Future, int] = {}
+        for task_idx, (kind, idx, title, filters) in enumerate(tasks):
+            fut = pool.submit(fetch_section, kind, idx, title, filters)
+            section_futs[fut] = task_idx
+
+        for fut in concurrent.futures.as_completed(section_futs):
+            task_idx = section_futs[fut]
+            try:
+                results[task_idx] = fut.result()
+            except Exception:
+                results[task_idx] = []
+
+    all_items: list[dict] = []
+    wt_repos: set[str] = set()
+    pr_nums_by_repo: dict[str, set[int]] = {}
+    for task_idx in sorted(results.keys()):
+        for item in results[task_idx]:
+            all_items.append(item)
+            if not item.get("_header") and item.get("repo"):
+                wt_repos.add(item["repo"])
+                if item.get("kind") == "pr":
+                    pr_nums_by_repo.setdefault(item["repo"], set()).add(int(item["num"]))
+
+    # Phase 2: local worktree scan + GraphQL review data (concurrent)
+    resolved_repos: dict[str, str] = {}
+    for nwo in wt_repos:
+        local = resolve_repo_path(nwo, repo_paths)
+        if local:
+            resolved_repos[nwo] = local
+
+    local_data: dict[str, tuple[set[int], set[str]]] = {}
+    gql_data: dict[str, dict[int, tuple[str, str]]] = {}
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=HALF_CORES) as pool:
+        wt_futs: dict[concurrent.futures.Future, str] = {}
+        for nwo, path in resolved_repos.items():
+            fut = pool.submit(_scan_local_worktrees, nwo, path)
+            wt_futs[fut] = nwo
+
+        gql_fut = pool.submit(_graphql_pr_metadata, pr_nums_by_repo) if pr_nums_by_repo else None
+
+        for fut in concurrent.futures.as_completed(wt_futs):
+            nwo = wt_futs[fut]
+            try:
+                local_data[nwo] = fut.result()
+            except Exception:
+                pass
+
+        if gql_fut is not None:
+            try:
+                gql_data = gql_fut.result()
+            except Exception:
+                pass
+
+    wt_index: dict[str, dict[int, _ItemInfo]] = {}
+    all_nwos = set(local_data.keys()) | set(gql_data.keys())
+    for nwo in all_nwos:
+        wt_nums, branches = local_data.get(nwo, (set(), set()))
+        gql_prs = gql_data.get(nwo, {})
+        info: dict[int, _ItemInfo] = {}
+
+        for n in wt_nums:
+            info[n] = _ItemInfo(has_wt=True)
+
+        for num, (head, review, ci, mergeable) in gql_prs.items():
+            has_local = head in branches or num in wt_nums
+            if num in info:
+                info[num].review = review
+                info[num].ci = ci
+                info[num].mergeable = mergeable
+                info[num].has_wt = info[num].has_wt or has_local
+            elif has_local or review or ci or mergeable:
+                info[num] = _ItemInfo(has_wt=has_local, review=review, ci=ci, mergeable=mergeable)
+
+        if info:
+            wt_index[nwo] = info
+
+    all_lines = format_lines(all_items, wt_index)
+
+    output = "\n".join(all_lines)
+    if output.strip():
+        try:
+            with open(args.cache_file, "w", encoding="utf-8") as f:
+                f.write(output + "\n")
+        except Exception:
+            pass
+
+    sys.stdout.write(output + "\n")
+    sys.stdout.flush()
+
+
+if __name__ == "__main__":
+    main()

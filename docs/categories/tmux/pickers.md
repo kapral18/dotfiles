@@ -2,8 +2,8 @@
 
 Back: [`docs/categories/tmux/index.md`](index.md)
 
-This setup ships a URL picker and a session/worktree picker designed to run
-inside a tmux popup.
+This setup ships a URL picker, a session/worktree picker, and a GitHub picker
+(PRs/issues) designed to run inside tmux popups.
 
 ---
 
@@ -48,10 +48,19 @@ inside a tmux popup.
 | `alt-r`            | Force full refresh                                                                                        |
 | `alt-p`            | Open PR in browser (if the entry's branch has a linked PR)                                                |
 | `alt-i`            | Open issue in browser (if the entry's branch references an issue number)                                  |
+| `alt-g`            | Switch to GitHub picker (PRs/issues)                                                                      |
 | `ctrl-/`           | Toggle preview panel visibility                                                                           |
 | `?`                | Show keybinding help in the preview panel                                                                 |
 | `shift-up/down`    | Scroll preview (line)                                                                                     |
 | `shift-left/right` | Scroll preview (page)                                                                                     |
+
+### Switching between pickers
+
+`alt-g` switches between the session picker and the GitHub picker. The current
+popup closes and a new one opens with the correct dimensions (session picker
+uses configured `@pick_session_popup_*` sizes, GitHub picker uses 95%×95%). The
+loop logic lives in the outer wrapper scripts (`popup.sh` / `gh_popup.sh`), not
+in the inner picker scripts, because `tmux resize-popup` is not available.
 
 ### Entry types
 
@@ -79,7 +88,8 @@ Badges appear inline after the entry name/path. They are computed at index time
 | `✗ gone` (dim red)     | Gone — path no longer exists on disk   | `os.path.isdir()` fails                       |
 
 - Session entries inherit the status of their backing worktree.
-- Dirty detection runs in parallel (8 threads) during the background index.
+- Dirty detection runs in parallel (half available cores) during the background
+  index.
 - Status flags are stored in the cache `meta` column (`status=dirty`,
   `status=stale`, etc.) and survive rehydration.
 
@@ -88,41 +98,45 @@ Badges appear inline after the entry name/path. They are computed at index time
 For non-default branches, the indexer queries `gh` to detect linked pull
 requests and issues. Badges appear inline after status badges.
 
-| Badge       | Meaning        | Icon (Nerd Font)                   | Color               |
-| ----------- | -------------- | ---------------------------------- | ------------------- |
-| `` (green)  | PR — open      | `oct-git_pull_request` F407        | green (`38;5;42`)   |
-| `` (purple) | PR — merged    | `oct-git_pull_request` F407        | purple (`38;5;141`) |
-| `` (red)    | PR — closed    | `oct-git_pull_request_closed` F4DC | red (`38;5;196`)    |
-| `` (green)  | Issue — open   | `oct-issue_opened` F41B            | green (`38;5;42`)   |
-| `` (purple) | Issue — closed | `oct-issue_closed` F41D            | purple (`38;5;141`) |
-| `✓` (green)  | Review — approved         | Unicode check mark U+2713  | green (`38;5;42`)   |
-| `✗` (red)    | Review — changes requested | Unicode ballot X U+2717   | red (`38;5;196`)    |
-| `○` (yellow) | Review — pending          | Unicode circle U+25CB     | yellow (`38;5;214`) |
+| Badge        | Meaning                    | Icon (Nerd Font)                   | Color               |
+| ------------ | -------------------------- | ---------------------------------- | ------------------- |
+| `` (green)   | PR — open                  | `oct-git_pull_request` F407        | green (`38;5;42`)   |
+| `` (purple)  | PR — merged                | `oct-git_pull_request` F407        | purple (`38;5;141`) |
+| `` (red)     | PR — closed                | `oct-git_pull_request_closed` F4DC | red (`38;5;196`)    |
+| `` (green)   | Issue — open               | `oct-issue_opened` F41B            | green (`38;5;42`)   |
+| `` (purple)  | Issue — closed             | `oct-issue_closed` F41D            | purple (`38;5;141`) |
+| `✓` (green)  | Review — approved          | Unicode check mark U+2713          | green (`38;5;42`)   |
+| `✗` (red)    | Review — changes requested | Unicode ballot X U+2717            | red (`38;5;196`)    |
+| `○` (yellow) | Review — pending           | Unicode circle U+25CB              | yellow (`38;5;214`) |
+| `●` (green)  | CI — success               | Unicode bullet U+25CF              | green (`38;5;42`)   |
+| `●` (red)    | CI — failure               | Unicode bullet U+25CF              | red (`38;5;196`)    |
+| `●` (yellow) | CI — pending               | Unicode bullet U+25CF              | yellow (`38;5;220`) |
 
-- **PR detection**: `gh pr view --json number,state,url,reviewDecision,closingIssuesReferences`
+- **PR detection**:
+  `gh pr view --json number,state,url,reviewDecision,closingIssuesReferences`
   with `cwd` set to the worktree path (infers repo and branch from git context).
 - **Issue detection** (resolved in order, first match wins):
-  1. `comma.w.issue.number` worktree-local git config (set by `,w` / gh-dash)
+  1. `comma.w.issue.number` worktree-local git config (set by `,w`)
   2. Branch name suffix heuristic (`-NNN` or `/NNN`, e.g. `fix/1234-desc` →
      issue `1234`)
   3. PR `closingIssuesReferences` — issues linked via `Closes #N`, `Fixes #N`,
      etc. in the PR description (extracted from the same `gh pr view` call, zero
      extra network cost). The exact `owner/repo` from the reference is used as
      the `-R` override for `gh issue view`, so cross-repo closing issues and
-     fork workflows resolve correctly without relying on `cwd` inference.
-  Once a number is found, `gh issue view <num>` fetches the current state.
-- Lookups run in parallel (4 threads) during the background index, adding no
-  latency to picker open.
+     fork workflows resolve correctly without relying on `cwd` inference. Once a
+     number is found, `gh issue view <num>` fetches the current state.
+- Lookups run in parallel (half available cores) during the background index,
+  adding no latency to picker open.
 - Results are cached on disk (`~/.cache/tmux/pick_session_gh.json`) with smart
   TTLs: open items refresh every 10 min, merged/closed items every 24 h, cache
   misses every 1 h. Branch or remote changes invalidate immediately. Stale
   worktree paths are pruned on each write.
 - PR/issue metadata is stored in the TSV cache `meta` column
-  (`pr=NUMBER:STATE:REVIEW:URL`, `issue=NUMBER:STATE:URL`). `REVIEW` is the
+  (`pr=NUMBER:STATE:REVIEW:CI:URL`, `issue=NUMBER:STATE:URL`). `REVIEW` is the
   PR review decision (`APPROVED`, `CHANGES_REQUESTED`, `REVIEW_REQUIRED`, or
-  empty).
-- The preview pane shows PR/issue details (number, state, review status, URL)
-  at the top for session and worktree entries.
+  empty). `CI` is the CI status (`SUCCESS`, `FAILURE`, `PENDING`, or empty).
+- The preview pane shows PR/issue details (number, state, review status, URL) at
+  the top for session and worktree entries.
 - `alt-p` opens the PR URL in the browser; `alt-i` opens the issue URL.
 
 ### Preview pane
@@ -278,8 +292,8 @@ unrelated long-path hits. Queries like `work/kibana main` work.
   `display-popup` to avoid heavy-shell (fish, zsh with plugins) initialization
   overhead (~1 s). The original shell is restored atomically.
   `pick_session/pick_session.sh` itself runs under `bash` via its shebang.
-- Both pickers run `fzf` with `FZF_DEFAULT_OPTS` cleared so global defaults
-  don't distort the popup UI.
+- All pickers (URL, session, GitHub) run `fzf` with `FZF_DEFAULT_OPTS` cleared
+  so global defaults don't distort the popup UI.
 - For very large caches, `pick_session/filter.sh` automatically falls back to
   passthrough mode (default threshold `2000` rows); tune with
   `@pick_session_filter_passthrough_rows`.
@@ -289,3 +303,107 @@ unrelated long-path hits. Queries like `work/kibana main` work.
   immediately (sibling worktrees and matching sessions).
 - When the cache is empty, the picker falls back to tmux sessions + `zoxide`
   recent dirs (if installed) + `~`.
+
+---
+
+## GitHub picker
+
+A standalone fzf-based PR/issue picker. It reads PR and issue sections from its
+own YAML configs and displays them in `fzf` with rich preview, worktree markers,
+and review status badges. gh-dash is not a dependency.
+
+### Bindings
+
+| Key                | Action                                          |
+| ------------------ | ----------------------------------------------- |
+| `prefix` + `G`     | Open GitHub picker popup (95%×95%)              |
+| `enter`            | Checkout PR/issue worktree + focus tmux session |
+| `alt-b`            | Checkout + open Octo review (PRs only)          |
+| `ctrl-t`           | Batch worktree create (marked items)            |
+| `alt-o`            | Open in browser                                 |
+| `alt-y`            | Copy URL to clipboard                           |
+| `tab`              | Mark/unmark item (multi-select)                 |
+| `alt-space`        | Mark/unmark item (alternate toggle)             |
+| `ctrl-s`           | Switch work/home mode                           |
+| `ctrl-r`           | Refresh from GitHub (current mode)              |
+| `alt-g`            | Switch to session picker                        |
+| `alt-c`            | New comment (opens `$EDITOR`)                   |
+| `alt-r`            | Quote-reply a comment                           |
+| `alt-d`            | Edit your own comment                           |
+| `alt-e`            | Cycle preview: collapsed → body → all expanded  |
+| `ctrl-/`           | Toggle preview                                  |
+| `?`                | Show keybinding help                            |
+| `alt-j` / `alt-k`  | Page down / up                                  |
+| `shift-up/down`    | Scroll preview (line)                           |
+| `shift-left/right` | Scroll preview (page)                           |
+
+### Entry source
+
+Items come from the gh picker's standalone config files
+(`~/.config/tmux/scripts/pick_session/gh-picker-work.yml` and
+`~/.config/tmux/scripts/pick_session/gh-picker-home.yml`). Each file defines
+`prSections` and `issuesSections` with `title` and `filters` (GitHub Search
+syntax). The Python fetcher (`lib/gh_items_main.py`) parses these YAML files,
+runs GitHub Search API queries, and formats results as `fzf`-consumable TSV.
+
+### Inline badges
+
+| Badge        | Meaning                      | Color               |
+| ------------ | ---------------------------- | ------------------- |
+| `◆`          | Local worktree exists        | cyan (`38;5;81`)    |
+| `✓`          | PR review — approved         | green (`38;5;42`)   |
+| `✗`          | PR review — changes req.     | orange (`38;5;209`) |
+| `○`          | PR review — pending          | dim (`38;5;244`)    |
+| `●` (green)  | CI — success                 | green (`38;5;42`)   |
+| `●` (red)    | CI — failure                 | red (`38;5;196`)    |
+| `●` (yellow) | CI — pending                 | yellow (`38;5;220`) |
+| `⚡`         | Merge conflict (CONFLICTING) | orange (`38;5;209`) |
+
+Review and CI badges are fetched via a batched GraphQL call that piggybacks on
+the section fetch, at zero extra round-trip cost.
+
+### Worktree detection
+
+The picker detects whether a PR or issue has a local worktree using a 3-tier
+heuristic:
+
+1. `comma.w.issue.number` worktree-local git config (authoritative, set by `,w`)
+2. Branch name suffix extraction (`-NNN` or `/NNN`)
+3. Batched GraphQL `headRefName` matching against local worktree branches
+   (catches PRs checked out by `,w prs`)
+
+### Actions
+
+- **`enter` on a PR**: runs `,w prs --focus <number>` to create/reuse the
+  worktree and switch to its tmux session.
+- **`enter` on an issue**: runs `,w issue --focus <number>`, which presents an
+  interactive branch name prompt if the worktree doesn't exist yet.
+- **`alt-b` on a PR**: same as `enter`, then opens Octo review in a new tmux
+  window.
+- **`ctrl-t`**: batch worktree creation for all marked items. PRs are created
+  automatically; issues open `$EDITOR` with a batch naming buffer.
+- **`alt-o`**: opens the PR/issue URL in the browser.
+- **`alt-y`**: copies the URL to the clipboard.
+- **`alt-c`**: new comment — opens `$EDITOR`, posts on save.
+- **`alt-r`**: quote-reply — pick a comment via fzf, quote it, open `$EDITOR`.
+- **`alt-d`**: edit own comment — pick one of your comments via fzf, edit in
+  `$EDITOR`.
+- If the repo does not exist locally, `,gh-tfork` bootstraps it first.
+
+### Cache
+
+- TTL: 300 seconds (5 minutes).
+- Cache file: `~/.cache/tmux/gh_picker_{work,home}.tsv`.
+- `ctrl-r` forces a refresh bypassing the cache.
+
+### Preview pane
+
+Shows PR/issue details: state, review decision, branches, author, changed files,
+labels, and body text. Uses `gh pr view` / `gh issue view` with `bat` for
+Markdown rendering.
+
+### Popup dimensions
+
+The GitHub picker popup opens at 95%×95%. When switching to the session picker
+via `alt-g`, the popup closes and reopens at the session picker's configured
+dimensions. See [Switching between pickers](#switching-between-pickers) above.

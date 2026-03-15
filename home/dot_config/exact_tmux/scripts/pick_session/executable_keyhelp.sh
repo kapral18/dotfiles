@@ -25,6 +25,7 @@ Selection / Actions
 GitHub
   alt-p           open PR in browser (if branch has a PR)
   alt-i           open issue in browser (if branch references an issue)
+  alt-g           switch to GitHub picker (PRs/issues from gh-dash sections)
 
 Preview
   ctrl-/          toggle preview panel (pane capture / git info)
