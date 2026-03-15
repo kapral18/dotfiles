@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Unified MCP config generator — single source of truth for Cursor, Claude, Pi.
+# Triggers on changes to the canonical mcp_servers.yaml.
+# mcp_servers hash: {{ include ".chezmoidata/mcp_servers.yaml" | sha256sum }}
+
+source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
+# shellcheck source=../../../scripts/chezmoi_lib.sh
+source "$source_dir/../scripts/chezmoi_lib.sh"
+
+is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
+yaml_src="$source_dir/.chezmoidata/mcp_servers.yaml"
+gen="$source_dir/../scripts/generate_mcp_configs.py"
+
+tmp="$(mktemp)"
+trap 'rm -f "$tmp"' EXIT
+
+python3 "$gen" "$yaml_src" "$is_work" >"$tmp"
+
+# Cursor — write full MCP file
+chezmoi_write_if_changed "$(cat "$tmp")" "$HOME/.cursor/mcp.json"
+
+# Claude Code — merge mcpServers into existing .claude.json
+python3 "$source_dir/../scripts/merge_claude_mcp.py" "$tmp" "$HOME/.claude.json"
+chezmoi_record_checksum "$HOME/.claude.json"
+
+# Pi — install with restricted permissions
+chezmoi_install_if_changed "$tmp" "$HOME/.pi/agent/mcp.json" 0444

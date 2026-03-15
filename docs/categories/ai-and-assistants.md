@@ -302,12 +302,12 @@ destination, completely decoupling the formats.
 | Tool                 | Source files                                                                                                                                   | Target                               | Merge script                                               |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ---------------------------------------------------------- |
 | Claude Code settings | [`home/dot_claude/settings.{work,personal}.json`](../../home/dot_claude/settings.{work,personal}.json)                                         | `~/.claude/settings.json`            | `run_onchange_after_07-merge-claude-code-settings.sh.tmpl` |
-| Claude Code MCP      | [`home/dot_claude/mcp.{work,personal}.json`](../../home/dot_claude/mcp.{work,personal}.json)                                                   | `~/.claude.json` (mcpServers field)  | `run_onchange_after_07-merge-claude-code-mcp.sh.tmpl`      |
-| Cursor MCP           | [`home/dot_cursor/mcp.{work,personal}.json`](../../home/dot_cursor/mcp.{work,personal}.json)                                                   | `~/.cursor/mcp.json`                 | `run_onchange_after_07-merge-cursor-mcp.sh.tmpl`           |
+| Claude Code MCP      | [`home/.chezmoidata/mcp_servers.yaml`](../../home/.chezmoidata/mcp_servers.yaml) (shared registry)                                             | `~/.claude.json` (mcpServers field)  | `run_onchange_after_07-generate-mcp-configs.sh.tmpl`       |
+| Cursor MCP           | [`home/.chezmoidata/mcp_servers.yaml`](../../home/.chezmoidata/mcp_servers.yaml) (shared registry)                                             | `~/.cursor/mcp.json`                 | `run_onchange_after_07-generate-mcp-configs.sh.tmpl`       |
 | Gemini settings      | [`home/dot_gemini/settings.json`](../../home/dot_gemini/settings.json)                                                                         | `~/.gemini/settings.json`            | `run_onchange_after_07-merge-gemini-settings.sh.tmpl`      |
 | OpenCode config      | [`home/dot_config/opencode/readonly_opencode.{work,personal}.jsonc`](../../home/dot_config/opencode/readonly_opencode.{work,personal}.jsonc)   | `~/.config/opencode/opencode.jsonc`  | `run_onchange_after_07-merge-opencode-config.sh.tmpl`      |
 | Codex config         | [`home/dot_codex/private_config.{work,personal}.toml`](../../home/dot_codex/private_config.{work,personal}.toml)                               | `~/.codex/config.toml`               | `run_onchange_after_07-merge-codex-config.sh.tmpl`         |
-| Pi MCP               | [`home/dot_pi/agent/readonly_mcp.{work,personal}.json`](../../home/dot_pi/agent/readonly_mcp.{work,personal}.json)                             | `~/.pi/agent/mcp.json`               | `run_onchange_after_07-merge-pi-mcp.sh.tmpl`               |
+| Pi MCP               | [`home/.chezmoidata/mcp_servers.yaml`](../../home/.chezmoidata/mcp_servers.yaml) (shared registry)                                             | `~/.pi/agent/mcp.json`               | `run_onchange_after_07-generate-mcp-configs.sh.tmpl`       |
 | Pi settings/models   | [`home/dot_pi/agent/readonly_{settings,models}.{work,personal}.json`](../../home/dot_pi/agent/readonly_{settings,models}.{work,personal}.json) | `~/.pi/agent/{settings,models}.json` | `run_onchange_after_07-merge-pi-config.sh.tmpl`            |
 
 All merge scripts live under
@@ -428,7 +428,7 @@ Source: [`home/dot_gemini/settings.json`](../../home/dot_gemini/settings.json) �
 | Config            | Source                                                                                                                                                          |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Settings + models | [`home/dot_pi/agent/readonly_{settings,models}.{work,personal}.json`](../../home/dot_pi/agent/readonly_{settings,models}.{work,personal}.json) → `~/.pi/agent/` |
-| MCP servers       | [`home/dot_pi/agent/readonly_mcp.{work,personal}.json`](../../home/dot_pi/agent/readonly_mcp.{work,personal}.json) → `~/.pi/agent/mcp.json`                     |
+| MCP servers       | [`home/.chezmoidata/mcp_servers.yaml`](../../home/.chezmoidata/mcp_servers.yaml) (shared registry) → `~/.pi/agent/mcp.json`                                     |
 
 **Profile defaults:**
 

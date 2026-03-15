@@ -82,14 +82,18 @@ Because AI tools (like OpenCode, Cursor, Gemini, and Pi) often rewrite their
 config files during runtime, rendering templates directly into those files
 causes conflicts. Instead, this architecture uses **Profile-Based Merging**:
 
-- Specific configurations are written into
-  [`home/dot_cursor/mcp.work.json`](../home/dot_cursor/mcp.work.json) and
-  [`home/dot_cursor/mcp.personal.json`](../home/dot_cursor/mcp.personal.json)
-  (as examples).
-- During `chezmoi apply`, shell scripts (e.g.,
-  `run_onchange_after_07-merge-cursor-mcp.sh.tmpl`) evaluate the `.isWork`
-  variable and forcefully overwrite the tool's runtime config with the correct
-  profile.
+- MCP server definitions for Cursor, Claude Code, and Pi share a single
+  canonical registry at
+  [`home/.chezmoidata/mcp_servers.yaml`](../home/.chezmoidata/mcp_servers.yaml).
+  Each entry declares a `work_only` flag so work-specific servers are filtered
+  at generation time.
+- During `chezmoi apply`, the unified script
+  `run_onchange_after_07-generate-mcp-configs.sh.tmpl` calls
+  [`scripts/generate_mcp_configs.py`](../scripts/generate_mcp_configs.py) once
+  and writes the result to all three tools (Cursor, Claude Code, Pi).
+- Other tools with different MCP schemas (Gemini, Copilot) keep their own source
+  files but follow the same work/personal profile-based merging via separate
+  scripts.
 - This creates a hard boundary between work contexts (which load work-specific
   MCP servers) and personal contexts.
 

@@ -1,0 +1,42 @@
+# Canonical MCP server registry.
+# Single source of truth for Cursor, Claude Code, and Pi MCP configs.
+# Gemini and Copilot use their own formats (see their source files).
+#
+# Each entry:
+#   name        – server key in the mcpServers object
+#   work_only   – true = only included when isWork is set
+#   command     – executable to run
+#   args        – argument list passed to the command
+
+mcp_servers:
+  - name: sequentialthinking
+    work_only: false
+    command: docker
+    args:
+      - run
+      - "--pull=always"
+      - "--rm"
+      - "-i"
+      - "--init"
+      - mcp/sequentialthinking
+
+  - name: buildkite
+    work_only: true
+    command: bash
+    args:
+      - "-lc"
+      - 'docker run -i --rm -e BUILDKITE_API_TOKEN="$(pass buildkite/api/token)" mcp/buildkite'
+
+  - name: scsi-main
+    work_only: true
+    command: bash
+    args:
+      - "-lc"
+      - 'docker run --pull=always --rm -i -e ELASTICSEARCH_ENDPOINT="$(pass scsi/simian/cloud_endpoint)" -e ELASTICSEARCH_API_KEY="$(pass scsi/simian/api_key)" -e ELASTICSEARCH_INDEX=kibana-repo simianhacker/semantic-code-search-mcp-server node dist/src/mcp_server/bin.js stdio'
+
+  - name: scsi-local
+    work_only: true
+    command: bash
+    args:
+      - "-lc"
+      - 'cd "$HOME/work/semantic-code-search-mcp-server/main" && ELASTICSEARCH_CLOUD_ID="$(pass scsi/k18/cloud_id)" ELASTICSEARCH_API_KEY="$(pass scsi/k18/api_key)" ELASTICSEARCH_INDEX=scsi-repo node dist/src/mcp_server/bin.js stdio'

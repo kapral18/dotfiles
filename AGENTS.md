@@ -62,6 +62,42 @@ this priority order:
 - If a dotfiles change does not require a docs change, state why in the
   PR/commit context (briefly) so the docs/code divergence is explicit.
 
+## Script Architecture: Shell vs Dedicated Languages
+
+Shell scripts (`.sh` / `.sh.tmpl`) in this repo must stay **thin
+orchestrators**. Non-trivial logic belongs in colocated scripts written in an
+appropriate language (Python, etc.) under `scripts/`.
+
+**Rules:**
+
+- **Shell is for glue only**: sourcing `chezmoi_lib.sh`, resolving paths,
+  evaluating chezmoi template variables, calling external programs, and wiring
+  inputs/outputs between them.
+- **Move logic out of shell when it involves**: data transformation (JSON, YAML,
+  TOML parsing/generation), string manipulation beyond simple variable
+  expansion, conditional structures more than a few lines deep, or anything that
+  would benefit from real data structures, error types, or testability.
+- **Colocate helper scripts in `scripts/`**: name them after the data or task
+  they handle (e.g., `generate_mcp_configs.py`, `merge_claude_mcp.py`). The
+  shell `.tmpl` script calls them, passing file paths or piped data.
+- **No external dependencies in helper scripts**: use only the standard library
+  of the chosen language (the existing `litellm_models.py` and
+  `generate_mcp_configs.py` hand-parse YAML without PyYAML — follow that
+  precedent).
+- **Existing precedent**: `scripts/chezmoi_lib.sh` (shared shell helpers),
+  `scripts/generate_mcp_configs.py`, `scripts/merge_claude_mcp.py`,
+  `scripts/generate_pi_models.py`, `scripts/litellm_models.py`.
+
+**When writing or modifying a chezmoi script** (`home/.chezmoiscripts/`):
+
+1. If the script is already pure shell glue calling a `scripts/` helper, keep it
+   that way.
+2. If the change would add more than ~10 lines of non-trivial logic to the shell
+   script, extract it into a new or existing `scripts/` helper instead.
+3. When creating a new `scripts/` helper, follow the existing style: shebang,
+   docstring/usage, `sys.exit` on bad args, read from file paths passed as
+   arguments, write to stdout or a target path.
+
 ---
 
 ## Homebrew Package Management
