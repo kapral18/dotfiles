@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Description: Set default microphone with fallback
+# Prefers PHL34E1C5600 (external monitor USB mic), falls back to MacBook Pro Microphone.
+
+set -euo pipefail
+
+PREFERRED="PHL34E1C5600"
+FALLBACK="MacBook Pro Microphone"
+
+if ! command -v SwitchAudioSource &>/dev/null; then
+  echo "SwitchAudioSource not found (brew install switchaudio-osx)" >&2
+  exit 1
+fi
+
+available=$(SwitchAudioSource -a -t input)
+
+if echo "$available" | grep -qF "$PREFERRED"; then
+  SwitchAudioSource -t input -s "$PREFERRED"
+  echo "Default input set to: $PREFERRED"
+elif echo "$available" | grep -qF "$FALLBACK"; then
+  SwitchAudioSource -t input -s "$FALLBACK"
+  echo "Default input set to: $FALLBACK (preferred '$PREFERRED' not available)"
+else
+  echo "Neither '$PREFERRED' nor '$FALLBACK' found in available inputs:" >&2
+  echo "$available" >&2
+  exit 1
+fi
