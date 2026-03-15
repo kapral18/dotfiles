@@ -6,6 +6,7 @@ if [ "${BASH_VERSINFO[0]:-0}" -lt 4 ]; then
   exit 1
 fi
 set -euo pipefail
+script_dir="$(cd "$(dirname "$0")" && pwd)"
 
 sel_file="${1:-}"
 if [ -z "$sel_file" ] || [ ! -f "$sel_file" ]; then
@@ -109,33 +110,4 @@ if ! acquire_lock; then
 fi
 trap release_lock EXIT
 
-CACHE_FILE="$cache_file" SESSIONS="$(printf '%s\n' "${sess[@]}")" DIRS="$(printf '%s\n' "${dirs_to_remove[@]}")" python3 - << 'PY'
-import os
-import sys
-
-cache_file = os.environ["CACHE_FILE"]
-sel = os.environ["SESSIONS"].split("\n")
-sel = { s for s in sel if s }
-dirs = os.environ["DIRS"].split("\n")
-dirs = { d for d in dirs if d }
-
-out = []
-with open(cache_file, "r", encoding="utf-8", errors="ignore") as f:
-    for line in f:
-        parts = line.rstrip("\n").split("\t")
-        if len(parts) < 5:
-            continue
-        kind = parts[1]
-        path = parts[2]
-        target = parts[4]
-
-        if kind == "dir" and path in dirs:
-            continue
-
-        out.append(line)
-
-tmp = cache_file + ".tmp"
-with open(tmp, "w", encoding="utf-8") as f:
-    f.writelines(out)
-os.replace(tmp, cache_file)
-PY
+CACHE_FILE="$cache_file" SESSIONS="$(printf '%s\n' "${sess[@]}")" DIRS="$(printf '%s\n' "${dirs_to_remove[@]}")" python3 "$script_dir/lib/cache_prune_sessions.py"

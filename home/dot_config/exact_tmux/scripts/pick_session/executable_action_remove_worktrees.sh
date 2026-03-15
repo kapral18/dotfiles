@@ -6,6 +6,7 @@ if [ "${BASH_VERSINFO[0]:-0}" -lt 4 ]; then
   exit 1
 fi
 set -euo pipefail
+script_dir="$(cd "$(dirname "$0")" && pwd)"
 
 sel_file="${1:-}"
 if [ -z "$sel_file" ] || [ ! -f "$sel_file" ]; then
@@ -351,40 +352,5 @@ fi
 if [ -f "$cache_file" ] && acquire_lock; then
   trap release_lock EXIT
 
-  CACHE_FILE="$cache_file" PENDING_WT="$(printf '%s\n' "${pending_wt_paths[@]-}")" PENDING_DIRS="$(printf '%s\n' "${pending_plain_dirs[@]-}")" python3 - << 'PY'
-import os
-from pathlib import Path
-
-cache_file = os.environ["CACHE_FILE"]
-wt_paths = { p for p in os.environ.get("PENDING_WT", "").split("\n") if p }
-dir_paths = { p for p in os.environ.get("PENDING_DIRS", "").split("\n") if p }
-paths = wt_paths.union(dir_paths)
-
-def should_drop(kind, p):
-    if not p:
-        return False
-    for base in paths:
-        if p == base or p.startswith(base + "/"):
-            # Drop dir rows under removed worktrees too.
-            if kind in ("dir", "worktree", "session"):
-                return True
-    return False
-
-out = []
-with open(cache_file, "r", encoding="utf-8", errors="ignore") as f:
-    for line in f:
-        parts = line.rstrip("\n").split("\t")
-        if len(parts) < 5:
-            continue
-        kind = parts[1]
-        path = parts[2]
-        if should_drop(kind, path):
-            continue
-        out.append(line)
-
-tmp = cache_file + ".tmp"
-with open(tmp, "w", encoding="utf-8") as f:
-    f.writelines(out)
-os.replace(tmp, cache_file)
-PY
+  CACHE_FILE="$cache_file" PENDING_WT="$(printf '%s\n' "${pending_wt_paths[@]-}")" PENDING_DIRS="$(printf '%s\n' "${pending_plain_dirs[@]-}")" python3 "$script_dir/lib/cache_prune_paths.py"
 fi

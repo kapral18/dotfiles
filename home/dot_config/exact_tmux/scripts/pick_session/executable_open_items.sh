@@ -8,6 +8,7 @@ mutation_file="${cache_dir}/pick_session_mutations.tsv"
 pending_file="${cache_dir}/pick_session_pending.tsv"
 items_cmd="$HOME/.config/tmux/scripts/pick_session/items.sh"
 ordered_update_cmd="$HOME/.config/tmux/scripts/pick_session/ordered_cache_update.sh"
+script_dir="$(cd "$(dirname "$0")" && pwd)"
 
 # The (current) marker is baked into cached/ordered output at generation time.
 # Dynamically fix it up so it always reflects the *active* session.
@@ -21,23 +22,7 @@ fixup_current_marker() {
     cat "$file"
     return
   fi
-  CURRENT="$cur" python3 -u - "$file" << 'PY'
-import os, signal, sys
-signal.signal(signal.SIGPIPE, signal.SIG_DFL)
-current = os.environ.get("CURRENT", "")
-suffix = "\033[2;38;5;244m (current)\033[0m"
-with open(sys.argv[1], "r", encoding="utf-8", errors="replace") as f:
-    for line in f:
-        line = line.rstrip("\n")
-        if not line:
-            continue
-        parts = line.split("\t")
-        if len(parts) >= 5:
-            parts[0] = parts[0].replace(suffix, "")
-            if parts[1] == "session" and parts[4] == current:
-                parts[0] += suffix
-        print("\t".join(parts))
-PY
+  CURRENT="$cur" python3 -u "$script_dir/lib/fixup_current_marker.py" "$file"
 }
 
 # Fast path: precomputed ordered snapshot exists and is not invalidated by

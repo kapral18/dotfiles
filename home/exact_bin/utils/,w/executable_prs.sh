@@ -4,6 +4,7 @@ set -euo pipefail
 
 source "$(dirname "$0")/../bash_utils_lib.sh"
 source "$(dirname "$0")/../worktree_lib.sh"
+script_dir="$(cd "$(dirname "$0")" && pwd)"
 
 require_cmd() {
   local cmd="$1"
@@ -210,14 +211,7 @@ _iso_date_days_ago() {
   local days="$1"
 
   if command -v python3 > /dev/null 2>&1; then
-    python3 - "$days" << 'PY'
-import datetime
-import sys
-
-days = int(sys.argv[1])
-dt = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=days)
-print(dt.strftime('%Y-%m-%d'))
-PY
+    python3 "$script_dir/lib/iso_date_days_ago.py" "$days"
     return 0
   fi
 

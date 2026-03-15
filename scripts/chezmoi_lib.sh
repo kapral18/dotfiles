@@ -47,7 +47,7 @@ chezmoi_record_checksum() {
   tmp_manifest="$(mktemp "${_CHEZMOI_MANIFEST}.XXXXXX")"
 
   if [ -f "$_CHEZMOI_MANIFEST" ]; then
-    grep -v "^${target}	" "$_CHEZMOI_MANIFEST" > "$tmp_manifest" 2>/dev/null || true
+    grep -v "^${target}	" "$_CHEZMOI_MANIFEST" > "$tmp_manifest" 2> /dev/null || true
   fi
 
   printf '%s\t%s\t%s\n' "$target" "$checksum" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$tmp_manifest"

@@ -91,7 +91,7 @@ check_core() {
   if has_cmd chezmoi; then
     pass "chezmoi installed"
     local diff_lines
-    diff_lines="$(chezmoi diff --no-pager 2>/dev/null | head -5 | wc -l | tr -d ' ')"
+    diff_lines="$(chezmoi diff --no-pager 2>/dev/null | wc -l | tr -d ' ')"
     if [ "$diff_lines" -gt 0 ]; then
       warn "chezmoi has pending changes" "chezmoi diff"
     else

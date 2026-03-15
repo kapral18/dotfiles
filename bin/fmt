@@ -169,19 +169,24 @@ if should_run fish; then
   fi
 fi
 
-# --- ruff: python (bulk invocation) ---
+# --- ruff: python (fix + format, matching neovim conform's ruff_fix + ruff_format) ---
 if should_run py; then
   need_cmd ruff || exit 1
   mapfile -t py_files < <(collect_files .py | sort -u)
   if [[ ${#py_files[@]} -gt 0 ]]; then
     if $check_mode; then
       printf 'ruff: checking %d files\n' "${#py_files[@]}"
+      if ! ruff check --select I --diff "${py_files[@]}" >/dev/null 2>&1; then
+        ok=false
+        printf '  import sorting needed\n'
+      fi
       if ! ruff format --check "${py_files[@]}" >/dev/null 2>&1; then
         ok=false
         ruff format --check "${py_files[@]}" 2>&1 | grep 'Would reformat' | sed 's/^/  /' || true
       fi
     else
       printf 'ruff: formatting %d files\n' "${#py_files[@]}"
+      ruff check --select I --fix "${py_files[@]}" >/dev/null 2>&1
       ruff format "${py_files[@]}" >/dev/null 2>&1
     fi
   fi

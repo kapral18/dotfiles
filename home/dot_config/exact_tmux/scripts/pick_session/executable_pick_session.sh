@@ -882,27 +882,6 @@ find_disambiguated_session_for_root() {
   return 1
 }
 
-remove_paths_in_background() {
-  local start_dir="$1"
-  shift
-  local -a paths=("$@")
-  [ ${#paths[@]} -eq 0 ] && return 0
-
-  if ! command -v ,w > /dev/null 2>&1; then
-    tmux display-message "tmux: missing command: ,w"
-    return 0
-  fi
-
-  # Run in the repo context we were launched from.
-  local cmd
-  cmd="cd $(printf %q "$start_dir") && ,w remove --tmux-notify --paths"
-  local p
-  for p in "${paths[@]}"; do
-    cmd+=" $(printf %q "$p")"
-  done
-  tmux run-shell -b "$cmd"
-}
-
 MODE="$(tmux_opt "@pick_session_mode" "directory")"
 AUTO_RENAME_SESSIONS="$(tmux_opt "@pick_session_auto_rename_sessions" "off")"
 

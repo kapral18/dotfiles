@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+script_dir="$(cd "$(dirname "$0")" && pwd)"
 
 die() {
   tmux display-message "$1"
@@ -87,9 +88,9 @@ if [[ -z "${TMUX:-}" ]]; then
 fi
 
 if [[ "${limit}" == 'screen' ]]; then
-  content="$(tmux capture-pane -J -p -e | sed -E 's/\x1B\[[0-9;]*[mK]//g' | python3 -c 'import sys; text=sys.stdin.read(); lines=text.split("\n"); sys.stdout.write("\n".join([ln.split("\r")[-1] for ln in lines]))')"
+  content="$(tmux capture-pane -J -p -e | sed -E 's/\x1B\[[0-9;]*[mK]//g' | python3 "$script_dir/lib/strip_cr.py")"
 else
-  content="$(tmux capture-pane -J -p -e -S -"${limit}" | sed -E 's/\x1B\[[0-9;]*[mK]//g' | python3 -c 'import sys; text=sys.stdin.read(); lines=text.split("\n"); sys.stdout.write("\n".join([ln.split("\r")[-1] for ln in lines]))')"
+  content="$(tmux capture-pane -J -p -e -S -"${limit}" | sed -E 's/\x1B\[[0-9;]*[mK]//g' | python3 "$script_dir/lib/strip_cr.py")"
 fi
 
 urls="$(
