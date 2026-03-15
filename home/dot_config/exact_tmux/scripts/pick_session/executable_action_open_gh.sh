@@ -16,7 +16,7 @@ if [ -z "$mode" ] || [ -z "$file" ] || [ ! -f "$file" ]; then
   exit 0
 fi
 
-line="$(head -n 1 "$file" 2>/dev/null || true)"
+line="$(head -n 1 "$file" 2> /dev/null || true)"
 [ -n "$line" ] || exit 0
 
 meta="$(printf '%s' "$line" | awk -F $'\t' '{print $4}')"
@@ -50,29 +50,29 @@ if [ -n "$meta" ]; then
 fi
 
 if [ -n "$url" ]; then
-  open "$url" 2>/dev/null || xdg-open "$url" 2>/dev/null || true
+  open "$url" 2> /dev/null || xdg-open "$url" 2> /dev/null || true
   exit 0
 fi
 
 if [ -n "$path" ] && [ -d "$path" ]; then
   case "$mode" in
     pr)
-      if command -v ,gh-prw >/dev/null 2>&1; then
-        (cd "$path" && ,gh-prw 2>/dev/null) || \
-          tmux display-message "No PR found for this entry" 2>/dev/null || true
+      if command -v ,gh-prw > /dev/null 2>&1; then
+        (cd "$path" && ,gh-prw 2> /dev/null) \
+          || tmux display-message "No PR found for this entry" 2> /dev/null || true
       else
-        tmux display-message "No PR found for this entry" 2>/dev/null || true
+        tmux display-message "No PR found for this entry" 2> /dev/null || true
       fi
       ;;
     issue)
-      if command -v ,gh-issuew >/dev/null 2>&1; then
-        (cd "$path" && ,gh-issuew 2>/dev/null) || \
-          tmux display-message "No issue found for this entry" 2>/dev/null || true
+      if command -v ,gh-issuew > /dev/null 2>&1; then
+        (cd "$path" && ,gh-issuew 2> /dev/null) \
+          || tmux display-message "No issue found for this entry" 2> /dev/null || true
       else
-        tmux display-message "No issue found for this entry" 2>/dev/null || true
+        tmux display-message "No issue found for this entry" 2> /dev/null || true
       fi
       ;;
   esac
 else
-  tmux display-message "No ${mode} found for this entry" 2>/dev/null || true
+  tmux display-message "No ${mode} found for this entry" 2> /dev/null || true
 fi

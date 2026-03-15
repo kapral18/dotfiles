@@ -103,11 +103,11 @@ requests and issues. Badges appear inline after status badges.
 - Lookups run in parallel (4 threads) during the background index, adding no
   latency to picker open.
 - Results are cached on disk (`~/.cache/tmux/pick_session_gh.json`) with smart
-  TTLs: open items refresh every 10 min, merged/closed items every 24 h,
-  cache misses every 5 min. Branch or remote changes invalidate immediately.
-  Stale worktree paths are pruned on each write.
-- PR/issue metadata is stored in the TSV cache `meta` column (`pr=NUMBER:STATE:URL`,
-  `issue=NUMBER:STATE:URL`).
+  TTLs: open items refresh every 10 min, merged/closed items every 24 h, cache
+  misses every 5 min. Branch or remote changes invalidate immediately. Stale
+  worktree paths are pruned on each write.
+- PR/issue metadata is stored in the TSV cache `meta` column
+  (`pr=NUMBER:STATE:URL`, `issue=NUMBER:STATE:URL`).
 - The preview pane shows PR/issue details (number, state, URL) at the top for
   session and worktree entries.
 - `alt-p` opens the PR URL in the browser; `alt-i` opens the issue URL.
