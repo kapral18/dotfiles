@@ -1,0 +1,19 @@
+{
+  "include": ["scripts", "home"],
+  "pythonVersion": "3.13",
+  "typeCheckingMode": "standard",
+  "reportImplicitRelativeImport": false,
+  "reportUnknownVariableType": false,
+  "reportUnknownMemberType": false,
+  "reportUnknownArgumentType": false,
+  "reportUnknownParameterType": false,
+  "reportUnknownLambdaType": false,
+  "reportMissingParameterType": false,
+  "reportAny": false,
+  "reportUnusedCallResult": false,
+  "reportUnannotatedClassAttribute": false,
+  "reportImplicitStringConcatenation": false,
+  "reportImplicitOverride": false,
+  "reportUnnecessaryComparison": false,
+  "reportUnusedParameter": false
+}

@@ -55,7 +55,7 @@ def main():
     if not base_out:
         sys.exit(0)
 
-    lines = [l.rstrip("\n") for l in base_out.splitlines() if l.rstrip("\n")]
+    lines = [line.rstrip("\n") for line in base_out.splitlines() if line.rstrip("\n")]
 
     if (not force_order) and passthrough_rows > 0 and len(lines) >= passthrough_rows:
         for line in lines:

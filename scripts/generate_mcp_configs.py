@@ -7,9 +7,12 @@ Usage:
 Output: JSON with { "mcpServers": { ... } } on stdout.
 """
 
+from __future__ import annotations
+
 import json
 import re
 import sys
+from typing import Any
 
 
 def _parse_scalar(raw):
@@ -29,12 +32,12 @@ def _parse_scalar(raw):
     return raw
 
 
-def load_servers(path, is_work):
+def load_servers(path: str, is_work: bool) -> dict[str, dict[str, Any]]:
     with open(path, "r") as f:
         lines = f.readlines()
 
     servers = []
-    current = None
+    current: dict[str, Any] | None = None
     in_args = False
     args_indent = 0
 
@@ -56,7 +59,7 @@ def load_servers(path, is_work):
             current[key] = _parse_scalar(val)
             continue
 
-        if in_args:
+        if in_args and current is not None:
             item = re.match(r"^\s+-\s+(.*)", stripped)
             if item and indent >= args_indent:
                 current["args"].append(_parse_scalar(item.group(1)))

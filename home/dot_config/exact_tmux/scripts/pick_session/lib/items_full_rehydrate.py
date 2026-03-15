@@ -39,14 +39,14 @@ BADGE_CI_FAILURE = color("38;5;196", "\u25cf")
 BADGE_CI_PENDING = color("38;5;220", "\u25cf")
 
 
-def _parse_status_flags(meta: str) -> set:
+def _parse_status_flags(meta: str) -> set[str]:
     for part in (meta or "").split("|"):
         if part.startswith("status="):
             return set(part[7:].split(",")) if part[7:] else set()
     return set()
 
 
-def _status_badge(flags: set) -> str:
+def _status_badge(flags: set[str]) -> str:
     if "gone" in flags:
         return BADGE_GONE
     if "stale" in flags:
@@ -442,7 +442,6 @@ def emit_missing_sessions():
     for rp, name in sorted(sess_by_rpath.items()):
         if name in printed_sessions or rp in printed_sessions:
             continue
-        raw = sess_raw_path.get(rp, rp)
         suffix = color("2;38;5;244", " (current)") if name == current_name else ""
         disp = display_session_entry_with_suffix(name, "", suffix)
         print(f"{disp}\tsession\t{rp}\t\t{name}\t{match_key(name)}")

@@ -78,7 +78,7 @@ except Exception:
     pass
 
 
-def under_any_prefix(p: str, prefixes: set) -> bool:
+def under_any_prefix(p: str, prefixes: set[str]) -> bool:
     if not p:
         return False
     for base in prefixes:

@@ -13,12 +13,12 @@ import json
 import os
 import re
 import signal
-
-HALF_CORES = max(1, (os.cpu_count() or 2) // 2)
 import subprocess
 import sys
-import time
 from datetime import datetime, timezone
+from typing import Any
+
+HALF_CORES = max(1, (os.cpu_count() or 2) // 2)
 
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
@@ -194,7 +194,7 @@ _TRIVIAL_CHECK_RE = re.compile(
 )
 
 
-def _extract_ci_state(commit_node: dict, repo_name: str) -> str:
+def _extract_ci_state(commit_node: dict[str, Any], repo_name: str) -> str:
     """Extract meaningful CI state from status check contexts.
 
     Priority:
@@ -349,10 +349,10 @@ def _graphql_pr_metadata(pr_numbers: dict[str, set[int]]) -> dict[str, dict[int,
     return out
 
 
-def parse_config(config_path: str) -> tuple[list[dict], list[dict], dict[str, str]]:
+def parse_config(config_path: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, str]]:
     """Parse gh-dash YAML config using yq. Returns (pr_sections, issue_sections, repo_paths)."""
-    pr_sections: list[dict] = []
-    issue_sections: list[dict] = []
+    pr_sections: list[dict[str, Any]] = []
+    issue_sections: list[dict[str, Any]] = []
     repo_paths: dict[str, str] = {}
 
     try:
@@ -401,7 +401,7 @@ CONFLICT_BADGE = c("38;5;209", "⚡")
 CONFLICT_SPACER = " "
 
 
-def fetch_section(kind: str, idx: int, title: str, filters: str, limit: int = 30) -> list[dict]:
+def fetch_section(kind: str, idx: int, title: str, filters: str, limit: int = 30) -> list[dict[str, Any]]:
     """Fetch a single section from GitHub Search API. Returns item dicts."""
     jq_expr = (
         "[.items[] | {"
@@ -417,7 +417,7 @@ def fetch_section(kind: str, idx: int, title: str, filters: str, limit: int = 30
     )
 
     try:
-        result = subprocess.run(
+        proc = subprocess.run(
             [
                 "gh",
                 "api",
@@ -440,16 +440,16 @@ def fetch_section(kind: str, idx: int, title: str, filters: str, limit: int = 30
             text=True,
             timeout=30,
         )
-        if result.returncode != 0 or not result.stdout.strip():
+        if proc.returncode != 0 or not proc.stdout.strip():
             return []
-        items = json.loads(result.stdout)
+        items = json.loads(proc.stdout)
     except Exception:
         return []
 
     if not items:
         return []
 
-    result: list[dict] = [{"_header": True, "kind": kind, "idx": idx, "title": title}]
+    result: list[dict[str, Any]] = [{"_header": True, "kind": kind, "idx": idx, "title": title}]
     for item in items:
         if not item.get("n"):
             continue
@@ -498,7 +498,7 @@ def _ci_badge(state: str) -> str:
     return CI_SPACER
 
 
-def format_lines(items: list[dict], wt_index: dict[str, dict[int, _ItemInfo]]) -> list[str]:
+def format_lines(items: list[dict[str, Any]], wt_index: dict[str, dict[int, _ItemInfo]]) -> list[str]:
     """Format item dicts into TSV lines for fzf, with worktree + review markers."""
     cols = _terminal_columns()
     visible = int(cols * 0.45)
@@ -575,9 +575,9 @@ def main():
         return
 
     # Phase 1: fetch all sections concurrently
-    results: dict[int, list[dict]] = {}
+    results: dict[int, list[dict[str, Any]]] = {}
     with concurrent.futures.ThreadPoolExecutor(max_workers=HALF_CORES) as pool:
-        section_futs: dict[concurrent.futures.Future, int] = {}
+        section_futs: dict[concurrent.futures.Future[list[dict[str, Any]]], int] = {}
         for task_idx, (kind, idx, title, filters) in enumerate(tasks):
             fut = pool.submit(fetch_section, kind, idx, title, filters)
             section_futs[fut] = task_idx
@@ -589,7 +589,7 @@ def main():
             except Exception:
                 results[task_idx] = []
 
-    all_items: list[dict] = []
+    all_items: list[dict[str, Any]] = []
     wt_repos: set[str] = set()
     pr_nums_by_repo: dict[str, set[int]] = {}
     for task_idx in sorted(results.keys()):
@@ -608,10 +608,10 @@ def main():
             resolved_repos[nwo] = local
 
     local_data: dict[str, tuple[set[int], set[str]]] = {}
-    gql_data: dict[str, dict[int, tuple[str, str]]] = {}
+    gql_data: dict[str, dict[int, tuple[str, str, str, str]]] = {}
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=HALF_CORES) as pool:
-        wt_futs: dict[concurrent.futures.Future, str] = {}
+        wt_futs: dict[concurrent.futures.Future[tuple[set[int], set[str]]], str] = {}
         for nwo, path in resolved_repos.items():
             fut = pool.submit(_scan_local_worktrees, nwo, path)
             wt_futs[fut] = nwo

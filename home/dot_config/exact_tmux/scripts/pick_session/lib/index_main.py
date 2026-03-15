@@ -11,6 +11,7 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
+from typing import Any
 
 # If the consumer (fzf) exits early, don't spam tracebacks.
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
@@ -637,7 +638,7 @@ def _get_gh_picker_meta(nwo: str, pr_number: int) -> tuple[str, str]:
     return _gh_picker_ci_index.get(nwo, {}).get(pr_number, ("", ""))
 
 
-def _gh_cache_load() -> dict:
+def _gh_cache_load() -> dict[str, Any]:
     try:
         if GH_CACHE_FILE.is_file():
             return json.loads(GH_CACHE_FILE.read_text(encoding="utf-8"))
@@ -646,7 +647,7 @@ def _gh_cache_load() -> dict:
     return {}
 
 
-def _gh_cache_save(data: dict) -> None:
+def _gh_cache_save(data: dict[str, Any]) -> None:
     """Atomic write: temp file + os.replace so a crash never corrupts the cache."""
     try:
         GH_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -673,7 +674,7 @@ _TERMINAL_PR = frozenset({"MERGED", "CLOSED"})
 _TERMINAL_ISSUE = frozenset({"CLOSED", "COMPLETED", "NOT_PLANNED"})
 
 
-def _gh_cache_fresh(entry: dict, branch: str, nwo: str, now: float) -> bool:
+def _gh_cache_fresh(entry: dict[str, Any], branch: str, nwo: str, now: float) -> bool:
     """Return True if a cache entry is still valid."""
     if not entry or entry.get("branch") != branch or entry.get("nwo") != nwo:
         return False
@@ -740,7 +741,7 @@ def extract_issue_number(branch: str) -> str:
     return m.group(1) if m else ""
 
 
-def _gh_pr_for_wt(wt_path: str, nwo: str) -> dict | None:
+def _gh_pr_for_wt(wt_path: str, nwo: str) -> dict[str, Any] | None:
     """Query gh for the PR associated with the current branch at wt_path.
 
     Uses `gh pr view` (no args) which infers the branch from git context.
@@ -772,7 +773,7 @@ def _gh_pr_for_wt(wt_path: str, nwo: str) -> dict | None:
     return None
 
 
-def _gh_issue_state(wt_path: str, issue_num: str, repo_override: str = "") -> dict | None:
+def _gh_issue_state(wt_path: str, issue_num: str, repo_override: str = "") -> dict[str, Any] | None:
     """Query gh for an issue by number. Returns {number, state, url} or None.
 
     Uses cwd to let gh resolve the repo from git context (handles forks
@@ -802,7 +803,7 @@ def _gh_issue_state(wt_path: str, issue_num: str, repo_override: str = "") -> di
     return None
 
 
-def _closing_issue_from_pr(pr_data: dict | None) -> dict | None:
+def _closing_issue_from_pr(pr_data: dict[str, Any] | None) -> dict[str, Any] | None:
     """Extract the first closing issue from a PR's closingIssuesReferences.
 
     Returns {number, url, nwo} or None.  ``nwo`` is the ``owner/repo`` of the
@@ -835,7 +836,7 @@ _TRIVIAL_CHECK_RE = re.compile(
 )
 
 
-def _extract_ci_state(commit_node: dict, repo_name: str) -> str:
+def _extract_ci_state(commit_node: dict[str, Any], repo_name: str) -> str:
     """Extract meaningful CI state from status check contexts.
 
     Priority:
@@ -984,7 +985,7 @@ def _batch_ci_graphql(pr_numbers: dict[str, set[int]]) -> dict[str, dict[int, tu
     return out
 
 
-def _lookup_gh_info(wt_path: str, branch: str, nwo: str) -> dict:
+def _lookup_gh_info(wt_path: str, branch: str, nwo: str) -> dict[str, Any]:
     """Return {"pr": {...} | None, "issue": {...} | None} for a worktree.
 
     Issue number resolution order:
@@ -994,7 +995,7 @@ def _lookup_gh_info(wt_path: str, branch: str, nwo: str) -> dict:
     PR resolution: gh pr view (single network call, infers branch from cwd).
     Issue state: gh issue view (single network call, only if number found).
     """
-    result: dict = {"pr": None, "issue": None}
+    result: dict[str, Any] = {"pr": None, "issue": None}
     if not branch:
         return result
     pr_data = _gh_pr_for_wt(wt_path, nwo)
@@ -1063,7 +1064,7 @@ def ci_badge(state: str) -> str:
     return ""
 
 
-def gh_badges(gh_info: dict | None) -> str:
+def gh_badges(gh_info: dict[str, Any] | None) -> str:
     if not gh_info:
         return ""
     out = ""
@@ -1080,7 +1081,7 @@ def gh_badges(gh_info: dict | None) -> str:
     return out
 
 
-def gh_meta(gh_info: dict | None) -> str:
+def gh_meta(gh_info: dict[str, Any] | None) -> str:
     """Encode GH info into the TSV meta column.
 
     PR format: pr=NUMBER:STATE:REVIEW:CI:URL  (URL is always last because it
@@ -1115,7 +1116,7 @@ def _check_dirty(wt_path: str) -> bool:
         return False
 
 
-def status_badge(flags: set) -> str:
+def status_badge(flags: set[str]) -> str:
     if "gone" in flags:
         return BADGE_GONE
     if "stale" in flags:
@@ -1125,7 +1126,7 @@ def status_badge(flags: set) -> str:
     return ""
 
 
-def status_meta_flags(flags: set) -> str:
+def status_meta_flags(flags: set[str]) -> str:
     return ",".join(sorted(flags)) if flags else ""
 
 
@@ -1144,16 +1145,16 @@ def ensure_group(repo_id: str, root_checkout: str, repo_path: str):
         }
 
 
-wt_status: dict[str, set] = {}
+wt_status: dict[str, set[str]] = {}
 
 # 1. Discover worktrees
 if not quick and not sessions_only and shutil.which("fd"):
     for wt_dir in scan_for_git_repos(scan_roots, int(os.environ.get("PICK_SESSION_SCAN_DEPTH", 6)), ignore_file):
         info = worktree_info(wt_dir)
         if info:
-            rid = info.get("repo_id", "")
-            ensure_group(rid, info.get("root", ""), info.get("repo_path", ""))
-            groups[rid]["wt_map"][info["path"]] = {"branch": info.get("branch", ""), "repo_id": rid}
+            rid = str(info.get("repo_id", ""))
+            ensure_group(rid, str(info.get("root", "")), str(info.get("repo_path", "")))
+            groups[rid]["wt_map"][info["path"]] = {"branch": str(info.get("branch", "")), "repo_id": rid}
             flags: set[str] = set()
             if not os.path.isdir(info["path"]):
                 flags.add("gone")
@@ -1171,15 +1172,15 @@ if _dirty_candidates:
             p = _futures[fut]
             try:
                 if fut.result():
-                    wt_status.setdefault(p, set()).add("dirty")
+                    wt_status.setdefault(p, set[str]()).add("dirty")
             except Exception:
                 pass
 
 # 1c. Parallel GitHub PR/issue lookup for non-default branches.
 # Uses a persistent file cache to avoid redundant API calls across refreshes.
 # Skips stale/gone worktrees (no valid git context).
-wt_gh_info: dict[str, dict] = {}
-_gh_pruned: dict[str, dict] = {}
+wt_gh_info: dict[str, dict[str, Any]] = {}
+_gh_pruned: dict[str, dict[str, Any]] = {}
 _gh_save_pending = False
 _gh_all: list[tuple[str, str, str]] = []
 _nwo_cache: dict[str, str] = {}
@@ -1191,13 +1192,14 @@ for rid in groups:
     nwo = _nwo_cache.get(root_checkout, "")
     for wt_path, wt_data in groups[rid]["wt_map"].items():
         br = wt_data.get("branch", "")
-        flags = wt_status.get(wt_path, set())
+        flags = wt_status.get(wt_path, set[str]())
         if br and br not in DEFAULT_BRANCH_DIRS and not (flags & {"gone", "stale"}):
             _gh_all.append((wt_path, br, nwo))
 
 if _gh_all:
     _gh_disk_cache = _gh_cache_load()
-    _gh_entries = _gh_disk_cache.get("entries") if isinstance(_gh_disk_cache.get("entries"), dict) else {}
+    _raw_entries = _gh_disk_cache.get("entries")
+    _gh_entries: dict[str, dict[str, Any]] = _raw_entries if isinstance(_raw_entries, dict) else {}
     _now = time.time()
     _gh_need_fetch: list[tuple[str, str, str]] = []
     for p, br, nwo in _gh_all:
@@ -1234,12 +1236,12 @@ if _gh_all:
     _gh_save_pending = True
 
 # 2. Add sessions
-current_session = subprocess.run(
-    ["tmux", "display-message", "-p", "#S"], check=False, stdout=subprocess.PIPE, text=True
-).stdout.strip()
-sess_out = subprocess.run(
+_tmux_session = subprocess.run(["tmux", "display-message", "-p", "#S"], check=False, stdout=subprocess.PIPE, text=True)
+current_session = (_tmux_session.stdout or "").strip()
+_tmux_sessions = subprocess.run(
     ["tmux", "list-sessions", "-F", "#{session_name}\t#{session_path}"], check=False, stdout=subprocess.PIPE, text=True
-).stdout
+)
+sess_out = _tmux_sessions.stdout or ""
 sessions = []
 home = os.path.expanduser("~")
 for row in sess_out.splitlines():
@@ -1253,9 +1255,9 @@ for row in sess_out.splitlines():
     if wt_root:
         info = worktree_info(wt_root)
         if info:
-            rid = info.get("repo_id", "")
-            ensure_group(rid, info.get("root", ""), info.get("repo_path", ""))
-            groups[rid]["wt_map"].setdefault(info["path"], {"branch": info.get("branch", ""), "repo_id": rid})
+            rid = str(info.get("repo_id", ""))
+            ensure_group(rid, str(info.get("root", "")), str(info.get("repo_path", "")))
+            groups[rid]["wt_map"].setdefault(info["path"], {"branch": str(info.get("branch", "")), "repo_id": rid})
             groups[rid]["sessions_by_wt"].setdefault(info["path"], []).append(name)
 
 # 2a. In quick/sessions-only mode, step 1b (dirty scan) was skipped because no
@@ -1270,7 +1272,7 @@ if quick or sessions_only:
                 p = _dirty_futs[fut]
                 try:
                     if fut.result():
-                        wt_status.setdefault(p, set()).add("dirty")
+                        wt_status.setdefault(p, set[str]()).add("dirty")
                 except Exception:
                     pass
 
@@ -1307,7 +1309,7 @@ if wt_gh_info:
             if picker_review and not pr.get("review"):
                 pr["review"] = picker_review
         if not pr.get("ci") and upstream_nwo and (pr.get("state", "").upper() == "OPEN"):
-            _prs_needing_ci.setdefault(upstream_nwo, set()).add(pr["number"])
+            _prs_needing_ci.setdefault(upstream_nwo, set[int]()).add(pr["number"])
 
 # 2c-ii. Batch GraphQL for PRs still missing CI (not in gh picker cache).
 if _prs_needing_ci and not quick and not sessions_only and shutil.which("gh"):
@@ -1362,7 +1364,7 @@ def emit_sessions_and_worktrees():
                 meta += f"|repo={repo}"
                 if expected and sess_name != expected:
                     meta += f"|expected={expected}"
-                flags = wt_status.get(wt_path, set())
+                flags = wt_status.get(wt_path, set[str]())
                 sf = status_meta_flags(flags)
                 if sf:
                     meta += f"|status={sf}"
@@ -1383,7 +1385,7 @@ def emit_sessions_and_worktrees():
                 br = wt_map[wt_path].get("branch", "")
                 meta = f"wt_root:{br}" if wt_path == root_checkout else f"wt:{br}"
                 meta += f"|repo={repo}"
-                flags = wt_status.get(wt_path, set())
+                flags = wt_status.get(wt_path, set[str]())
                 sf = status_meta_flags(flags)
                 if sf:
                     meta += f"|status={sf}"
