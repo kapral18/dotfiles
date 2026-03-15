@@ -21,13 +21,13 @@ def color(code, text):
 
 BADGE_STALE = color("2;38;5;214", " \u26a0 stale")
 BADGE_GONE = color("2;38;5;196", " \u2717 gone")
-BADGE_DIRTY = color("2;38;5;214", " \u2217")
+BADGE_DIRTY = color("1;38;5;214", " \u2217")
 
-BADGE_PR_OPEN = color("38;5;42", " \uf407")
-BADGE_PR_MERGED = color("38;5;141", " \uf407")
-BADGE_PR_CLOSED = color("38;5;196", " \uf4dc")
-BADGE_ISSUE_OPEN = color("38;5;42", " \uf41b")
-BADGE_ISSUE_CLOSED = color("38;5;141", " \uf41d")
+BADGE_PR_OPEN = color("38;5;42", " ")
+BADGE_PR_MERGED = color("38;5;141", " ")
+BADGE_PR_CLOSED = color("38;5;196", " ")
+BADGE_ISSUE_OPEN = color("38;5;42", " ")
+BADGE_ISSUE_CLOSED = color("38;5;141", " ")
 
 
 def _parse_status_flags(meta: str) -> set:
@@ -81,17 +81,22 @@ def _gh_badges_from_meta(meta: str) -> str:
     return out
 
 
+ICON_SESSION = ""
+ICON_WORKTREE = ""
+ICON_DIR = ""
+
+
 def display_session_entry_with_suffix(name, path_display, suffix=""):
     suffix = suffix or ""
-    return f"{color('38;5;42', '')}  {color('1;38;5;81', name)}{suffix}"
+    return f"{color('38;5;42', ICON_SESSION)}  {color('1;38;5;81', name)}{suffix}"
 
 
 def display_worktree_entry(path_display):
-    return f"{color('38;5;214', '')}  {color('38;5;221', path_display)}"
+    return f"{color('38;5;214', ICON_WORKTREE)}  {color('38;5;221', path_display)}"
 
 
 def display_dir_entry(path_display):
-    return f"{color('38;5;75', '')}  {color('38;5;110', path_display)}"
+    return f"{color('38;5;75', ICON_DIR)}  {color('38;5;110', path_display)}"
 
 
 def tildefy(p: str) -> str:

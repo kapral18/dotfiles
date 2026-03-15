@@ -45,16 +45,21 @@ def color(code, text):
     return f"\033[{code}m{text}{RESET}"
 
 
+ICON_SESSION = ""
+ICON_WORKTREE = ""
+ICON_DIR = ""
+
+
 def display_session_entry(name):
-    return f"{color('38;5;42', '')}  {color('1;38;5;81', name)}"
+    return f"{color('38;5;42', ICON_SESSION)}  {color('1;38;5;81', name)}"
 
 
 def display_worktree_entry(path_display):
-    return f"{color('38;5;214', '')}  {color('38;5;221', path_display)}"
+    return f"{color('38;5;214', ICON_WORKTREE)}  {color('38;5;221', path_display)}"
 
 
 def display_dir_entry(path_display):
-    return f"{color('38;5;75', '')}  {color('38;5;110', path_display)}"
+    return f"{color('38;5;75', ICON_DIR)}  {color('38;5;110', path_display)}"
 
 
 def tildefy(p):
@@ -546,18 +551,18 @@ dir_include_hidden = os.environ.get("PICK_SESSION_DIR_INCLUDE_HIDDEN", "on").low
 
 BADGE_STALE = color("2;38;5;214", " stale")
 BADGE_GONE = color("2;38;5;196", " gone")
-BADGE_DIRTY = color("2;38;5;214", " *")
+BADGE_DIRTY = color("1;38;5;214", " *")
 
-BADGE_PR_OPEN = color("38;5;42", " \uf407")
-BADGE_PR_MERGED = color("38;5;141", " \uf407")
-BADGE_PR_CLOSED = color("38;5;196", " \uf4dc")
-BADGE_ISSUE_OPEN = color("38;5;42", " \uf41b")
-BADGE_ISSUE_CLOSED = color("38;5;141", " \uf41d")
+BADGE_PR_OPEN = color("38;5;42", " ")
+BADGE_PR_MERGED = color("38;5;141", " ")
+BADGE_PR_CLOSED = color("38;5;196", " ")
+BADGE_ISSUE_OPEN = color("38;5;42", " ")
+BADGE_ISSUE_CLOSED = color("38;5;141", " ")
 
 GH_CACHE_FILE = Path(os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))) / "tmux" / "pick_session_gh.json"
 GH_TTL_OPEN = 600
 GH_TTL_TERMINAL = 86400
-GH_TTL_MISS = 300
+GH_TTL_MISS = 60
 
 
 def _gh_cache_load() -> dict:
@@ -926,6 +931,34 @@ for row in sess_out.splitlines():
             ensure_group(rid, info.get("root", ""), info.get("repo_path", ""))
             groups[rid]["wt_map"].setdefault(info["path"], {"branch": info.get("branch", ""), "repo_id": rid})
             groups[rid]["sessions_by_wt"].setdefault(info["path"], []).append(name)
+
+# 2a. In quick/sessions-only mode, step 1b (dirty scan) was skipped because no
+# worktrees were discovered yet. Now that step 2 found session worktree paths,
+# run dirty checks for them so session entries keep their dirty badge.
+if (quick or sessions_only):
+    _new_wt_paths = [p for rid in groups for p in groups[rid]["wt_map"] if p not in wt_status]
+    if _new_wt_paths:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+            _dirty_futs = {pool.submit(_check_dirty, p): p for p in _new_wt_paths}
+            for fut in concurrent.futures.as_completed(_dirty_futs):
+                p = _dirty_futs[fut]
+                try:
+                    if fut.result():
+                        wt_status.setdefault(p, set()).add("dirty")
+                except Exception:
+                    pass
+
+# 2b. In quick/sessions-only mode, step 1c was skipped (no worktree discovery).
+# Hydrate wt_gh_info from the persistent gh disk cache so session entries still
+# get PR/issue badges. Zero-cost: just a local JSON read, no network calls.
+if (quick or sessions_only) and not wt_gh_info:
+    _gh_disk = _gh_cache_load().get("entries")
+    if isinstance(_gh_disk, dict):
+        for rid in groups:
+            for wt_path in groups[rid]["wt_map"]:
+                cached = _gh_disk.get(wt_path)
+                if cached and (cached.get("pr") or cached.get("issue")):
+                    wt_gh_info[wt_path] = {"pr": cached.get("pr"), "issue": cached.get("issue")}
 
 # 3. Output results
 exclude_exact = set()
