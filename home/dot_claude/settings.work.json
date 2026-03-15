@@ -1,4 +1,6 @@
 {
   "alwaysThinkingEnabled": false,
-  "skipDangerousModePermissionPrompt": true
+  "skipDangerousModePermissionPrompt": true,
+  "model": "opus[1m]",
+  "effortLevel": "high"
 }
