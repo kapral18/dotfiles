@@ -9,19 +9,12 @@ set -euo pipefail
 {{- end }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
-target="$HOME/.pi/agent/mcp.json"
+# shellcheck source=../../../scripts/chezmoi_lib.sh
+source "$source_dir/../scripts/chezmoi_lib.sh"
+
 is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
+src="$(chezmoi_pick_src "$is_work" "$source_dir" \
+  "dot_pi/agent/readonly_mcp.work.json" \
+  "dot_pi/agent/readonly_mcp.personal.json")"
 
-if [ "$is_work" = "true" ]; then
-  src="$source_dir/dot_pi/agent/readonly_mcp.work.json"
-else
-  src="$source_dir/dot_pi/agent/readonly_mcp.personal.json"
-fi
-
-mkdir -p "$(dirname "$target")"
-
-if [ -f "$target" ] && cmp -s "$src" "$target"; then
-  exit 0
-fi
-
-install -m 0444 "$src" "$target"
+chezmoi_install_if_changed "$src" "$HOME/.pi/agent/mcp.json" 0444

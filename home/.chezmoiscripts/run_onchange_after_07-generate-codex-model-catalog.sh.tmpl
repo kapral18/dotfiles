@@ -26,7 +26,7 @@ if [ ! -f "$ctlg_src" ]; then
 fi
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
-models_yaml="$source_dir/.chezmoidata/litellm_models.yaml"
 
-python3 "$source_dir/../scripts/generate_codex_catalog.py" "$models_yaml" "$ctlg_src" "$ctlg_dst"
+python3 "$source_dir/../scripts/generate_codex_catalog.py" \
+  "$source_dir/.chezmoidata/litellm_models.yaml" "$ctlg_src" "$ctlg_dst"
 {{- end }}

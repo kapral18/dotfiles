@@ -9,13 +9,10 @@ set -euo pipefail
 {{- end }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
-target="$HOME/.claude.json"
+# shellcheck source=../../../scripts/chezmoi_lib.sh
+source "$source_dir/../scripts/chezmoi_lib.sh"
+
 is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
+src="$(chezmoi_pick_src "$is_work" "$source_dir" "dot_claude/mcp.work.json" "dot_claude/mcp.personal.json")"
 
-if [ "$is_work" = "true" ]; then
-  src="$source_dir/dot_claude/mcp.work.json"
-else
-  src="$source_dir/dot_claude/mcp.personal.json"
-fi
-
-python3 "$source_dir/../scripts/merge_claude_mcp.py" "$src" "$target"
+python3 "$source_dir/../scripts/merge_claude_mcp.py" "$src" "$HOME/.claude.json"

@@ -9,30 +9,17 @@ set -euo pipefail
 {{- end }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
-target="$HOME/.codex/config.toml"
-is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
+# shellcheck source=../../../scripts/chezmoi_lib.sh
+source "$source_dir/../scripts/chezmoi_lib.sh"
 
-mkdir -p "$(dirname "$target")"
+is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
+target="$HOME/.codex/config.toml"
+src="$(chezmoi_pick_src "$is_work" "$source_dir" \
+  "dot_codex/private_config.work.toml" \
+  "dot_codex/private_config.personal.toml")"
 
 if [ "$is_work" = "true" ]; then
-  src="$source_dir/dot_codex/private_config.work.toml"
-
-  if ! command -v pass >/dev/null 2>&1; then
-    echo "pass is required to render Codex work config" >&2
-    exit 1
-  fi
-
-  litellm_api_base="$(pass show litellm/api/base | tr -d '\n')"
-  if [ -z "$litellm_api_base" ]; then
-    echo "Missing pass entry: litellm/api/base" >&2
-    exit 1
-  fi
-
-  litellm_api_base="${litellm_api_base%/}"
-  case "$litellm_api_base" in
-  */v1) ;;
-  *) litellm_api_base="$litellm_api_base/v1" ;;
-  esac
+  litellm_api_base="$(chezmoi_get_litellm_api_base)"
 
   tmp="$(mktemp)"
   trap 'rm -f "$tmp"' EXIT
@@ -42,8 +29,7 @@ if [ "$is_work" = "true" ]; then
     -e "s|__CODEX_HOME__|$HOME/.codex|g" \
     "$src" >"$tmp"
 
-  install -m 0600 "$tmp" "$target"
+  chezmoi_install_if_changed "$tmp" "$target" 0600
 else
-  src="$source_dir/dot_codex/private_config.personal.toml"
-  install -m 0600 "$src" "$target"
+  chezmoi_install_if_changed "$src" "$target" 0600
 fi

@@ -9,15 +9,10 @@ set -euo pipefail
 {{- end }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
-target="$HOME/.claude/settings.json"
+# shellcheck source=../../../scripts/chezmoi_lib.sh
+source "$source_dir/../scripts/chezmoi_lib.sh"
+
 is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
+src="$(chezmoi_pick_src "$is_work" "$source_dir" "dot_claude/settings.work.json" "dot_claude/settings.personal.json")"
 
-mkdir -p "$(dirname "$target")"
-
-if [ "$is_work" = "true" ]; then
-  src="$source_dir/dot_claude/settings.work.json"
-else
-  src="$source_dir/dot_claude/settings.personal.json"
-fi
-
-install -m 0644 "$src" "$target"
+chezmoi_install_if_changed "$src" "$HOME/.claude/settings.json"

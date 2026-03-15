@@ -107,6 +107,8 @@ This page answers two questions:
 | Assistant playbooks           | [`home/exact_dot_agents/exact_playbooks/`](../home/exact_dot_agents/exact_playbooks/)                                                                                   |
 | Assistant skills              | [`home/exact_dot_agents/exact_skills/`](../home/exact_dot_agents/exact_skills/)                                                                                         |
 | Ollama models                 | [`home/.chezmoiscripts/run_onchange_after_05-add-ollama-models.sh`](../home/.chezmoiscripts/run_onchange_after_05-add-ollama-models.sh)                                 |
+| Merge script shared library   | [`scripts/chezmoi_lib.sh`](../scripts/chezmoi_lib.sh)                                                                                                                   |
+| LiteLLM model definitions     | [`home/.chezmoidata/litellm_models.yaml`](../home/.chezmoidata/litellm_models.yaml)                                                                                     |
 
 ## Formatting
 

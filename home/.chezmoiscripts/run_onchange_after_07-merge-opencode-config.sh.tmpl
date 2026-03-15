@@ -10,23 +10,19 @@ set -euo pipefail
 {{- end }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
-target="$HOME/.config/opencode/opencode.jsonc"
+# shellcheck source=../../../scripts/chezmoi_lib.sh
+source "$source_dir/../scripts/chezmoi_lib.sh"
+
 is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
+src="$(chezmoi_pick_src "$is_work" "$source_dir" \
+  "dot_config/opencode/readonly_opencode.work.jsonc" \
+  "dot_config/opencode/readonly_opencode.personal.jsonc")"
 
 if [ "$is_work" = "true" ]; then
-  src="$source_dir/dot_config/opencode/readonly_opencode.work.jsonc"
-  models_yaml="$source_dir/.chezmoidata/litellm_models.yaml"
-
-  desired="$(python3 "$source_dir/../scripts/merge_opencode_models.py" "$src" "$models_yaml")"
+  desired="$(python3 "$source_dir/../scripts/merge_opencode_models.py" \
+    "$src" "$source_dir/.chezmoidata/litellm_models.yaml")"
 else
-  src="$source_dir/dot_config/opencode/readonly_opencode.personal.jsonc"
   desired="$(cat "$src")"
 fi
 
-mkdir -p "$(dirname "$target")"
-
-if [ -f "$target" ] && [ "$(cat "$target")" = "$desired" ]; then
-  exit 0
-fi
-
-printf '%s\n' "$desired" >"$target"
+chezmoi_write_if_changed "$desired" "$HOME/.config/opencode/opencode.jsonc"

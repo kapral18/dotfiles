@@ -377,6 +377,58 @@ check_worktrees() {
   fi
 }
 
+check_ai_configs() {
+  section "AI Tool Configs"
+
+  local -a config_checks=(
+    "$HOME/.cursor/mcp.json:Cursor MCP"
+    "$HOME/.claude/settings.json:Claude Code settings"
+    "$HOME/.claude.json:Claude Code MCP"
+    "$HOME/.gemini/settings.json:Gemini settings"
+    "$HOME/.config/opencode/opencode.jsonc:OpenCode config"
+    "$HOME/.codex/config.toml:Codex config"
+    "$HOME/.pi/agent/settings.json:Pi settings"
+    "$HOME/.pi/agent/mcp.json:Pi MCP"
+    "$HOME/.pi/agent/models.json:Pi models"
+  )
+
+  for entry in "${config_checks[@]}"; do
+    local path="${entry%%:*}"
+    local label="${entry#*:}"
+    if [ -f "$path" ]; then
+      local size
+      size="$(wc -c <"$path" | tr -d ' ')"
+      if [ "$size" -gt 2 ]; then
+        pass "$label"
+        if [ "$verbose" -eq 1 ]; then
+          local age_days
+          if age_days="$(( ( $(date +%s) - $(stat -f %m "$path" 2>/dev/null || stat -c %Y "$path" 2>/dev/null || echo 0) ) / 86400 ))"; then
+            if [ "$age_days" -gt 30 ]; then
+              warn "$label last modified ${age_days}d ago" "chezmoi apply"
+            fi
+          fi
+        fi
+      else
+        warn "$label exists but appears empty" "chezmoi apply"
+      fi
+    else
+      if has_cmd "$(echo "$label" | awk '{print tolower($1)}')" 2>/dev/null; then
+        warn "$label missing" "chezmoi apply"
+      else
+        [ "$verbose" -eq 1 ] && pass "$label (skipped — tool not installed)"
+      fi
+    fi
+  done
+
+  if has_cmd chezmoi && [ "$verbose" -eq 1 ]; then
+    local diff_lines
+    diff_lines="$(chezmoi diff --no-pager 2>/dev/null | wc -l | tr -d ' ')"
+    if [ "$diff_lines" -gt 0 ]; then
+      warn "chezmoi has $diff_lines lines of pending changes" "chezmoi apply"
+    fi
+  fi
+}
+
 # ── main ─────────────────────────────────────────────────────────────────────
 
 if [ "$quiet" -eq 0 ]; then
@@ -391,6 +443,7 @@ check_security
 check_editors_ai
 check_tools
 check_worktrees
+check_ai_configs
 
 # ── summary ──────────────────────────────────────────────────────────────────
 

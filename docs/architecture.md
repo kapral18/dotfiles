@@ -93,6 +93,21 @@ causes conflicts. Instead, this architecture uses **Profile-Based Merging**:
 - This creates a hard boundary between work contexts (which load work-specific
   MCP servers) and personal contexts.
 
+### Shared Library (`scripts/chezmoi_lib.sh`)
+
+All `run_onchange_after_07-merge-*` scripts source a shared shell library at
+[`scripts/chezmoi_lib.sh`](../scripts/chezmoi_lib.sh) for common operations:
+
+| Function                       | Purpose                                              |
+| ------------------------------ | ---------------------------------------------------- |
+| `chezmoi_pick_src`             | Resolve work vs personal source path                 |
+| `chezmoi_write_if_changed`     | Atomic string write, skip if content unchanged       |
+| `chezmoi_install_if_changed`   | File copy via `install(1)`, skip if content unchanged |
+| `chezmoi_get_litellm_api_base` | Fetch and normalize LiteLLM URL from `pass`          |
+
+To add a new AI tool config, create work/personal source files and a merge
+script that sources the library — typically 5–10 lines of tool-specific logic.
+
 ## Hooks (Automation)
 
 The most important concept for understanding "what happens" is the hook naming:
