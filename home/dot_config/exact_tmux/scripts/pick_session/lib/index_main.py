@@ -6,6 +6,8 @@ import re
 import shutil
 import signal
 import subprocess
+import tempfile
+import time
 from pathlib import Path
 
 # If the consumer (fzf) exits early, don't spam tracebacks.
@@ -552,6 +554,63 @@ BADGE_PR_CLOSED = color("38;5;196", " \uf4dc")
 BADGE_ISSUE_OPEN = color("38;5;42", " \uf41b")
 BADGE_ISSUE_CLOSED = color("38;5;141", " \uf41d")
 
+GH_CACHE_FILE = Path(os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))) / "tmux" / "pick_session_gh.json"
+GH_TTL_OPEN = 600
+GH_TTL_TERMINAL = 86400
+GH_TTL_MISS = 300
+
+
+def _gh_cache_load() -> dict:
+    try:
+        if GH_CACHE_FILE.is_file():
+            return json.loads(GH_CACHE_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return {}
+
+
+def _gh_cache_save(data: dict) -> None:
+    """Atomic write: temp file + os.replace so a crash never corrupts the cache."""
+    try:
+        GH_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp = tempfile.mkstemp(dir=GH_CACHE_FILE.parent, suffix=".tmp")
+        closed = False
+        try:
+            os.write(fd, json.dumps(data, separators=(",", ":")).encode("utf-8"))
+            os.close(fd)
+            closed = True
+            os.replace(tmp, GH_CACHE_FILE)
+        except BaseException:
+            if not closed:
+                os.close(fd)
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
+    except Exception:
+        pass
+
+
+_TERMINAL_PR = frozenset({"MERGED", "CLOSED"})
+_TERMINAL_ISSUE = frozenset({"CLOSED", "COMPLETED", "NOT_PLANNED"})
+
+
+def _gh_cache_fresh(entry: dict, branch: str, nwo: str, now: float) -> bool:
+    """Return True if a cache entry is still valid."""
+    if not entry or entry.get("branch") != branch or entry.get("nwo") != nwo:
+        return False
+    age = now - entry.get("ts", 0)
+    pr = entry.get("pr")
+    issue = entry.get("issue")
+    if not pr and not issue:
+        return age < GH_TTL_MISS
+    all_settled = (not pr or (pr.get("state") or "").upper() in _TERMINAL_PR) and (
+        not issue or (issue.get("state") or "").upper() in _TERMINAL_ISSUE
+    )
+    return age < (GH_TTL_TERMINAL if all_settled else GH_TTL_OPEN)
+
+
 _ISSUE_SUFFIX_RE = re.compile(r"[-/](\d+)$")
 
 
@@ -788,9 +847,10 @@ if _dirty_candidates:
                 pass
 
 # 1c. Parallel GitHub PR/issue lookup for non-default branches.
+# Uses a persistent file cache to avoid redundant API calls across refreshes.
 # Skips stale/gone worktrees (no valid git context).
 wt_gh_info: dict[str, dict] = {}
-_gh_candidates: list[tuple[str, str, str]] = []
+_gh_all: list[tuple[str, str, str]] = []
 _nwo_cache: dict[str, str] = {}
 for rid in groups:
     root_checkout = groups[rid].get("root_checkout", "")
@@ -802,18 +862,45 @@ for rid in groups:
         br = wt_data.get("branch", "")
         flags = wt_status.get(wt_path, set())
         if br and br not in DEFAULT_BRANCH_DIRS and not (flags & {"gone", "stale"}):
-            _gh_candidates.append((wt_path, br, nwo))
-if _gh_candidates and shutil.which("gh"):
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-        _gh_futures = {pool.submit(_lookup_gh_info, p, br, nwo): p for p, br, nwo in _gh_candidates}
-        for fut in concurrent.futures.as_completed(_gh_futures):
-            p = _gh_futures[fut]
-            try:
-                info = fut.result()
-                if info and (info.get("pr") or info.get("issue")):
-                    wt_gh_info[p] = info
-            except Exception:
-                pass
+            _gh_all.append((wt_path, br, nwo))
+
+if _gh_all:
+    _gh_disk_cache = _gh_cache_load()
+    _gh_entries = _gh_disk_cache.get("entries") if isinstance(_gh_disk_cache.get("entries"), dict) else {}
+    _now = time.time()
+    _gh_need_fetch: list[tuple[str, str, str]] = []
+    for p, br, nwo in _gh_all:
+        cached = _gh_entries.get(p)
+        if cached and _gh_cache_fresh(cached, br, nwo, _now):
+            if cached.get("pr") or cached.get("issue"):
+                wt_gh_info[p] = {"pr": cached.get("pr"), "issue": cached.get("issue")}
+        else:
+            _gh_need_fetch.append((p, br, nwo))
+
+    if _gh_need_fetch and shutil.which("gh"):
+        _fetch_meta = {p: (br, nwo) for p, br, nwo in _gh_need_fetch}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+            _gh_futures = {pool.submit(_lookup_gh_info, p, br, nwo): p for p, br, nwo in _gh_need_fetch}
+            for fut in concurrent.futures.as_completed(_gh_futures):
+                p = _gh_futures[fut]
+                br, nwo = _fetch_meta[p]
+                try:
+                    info = fut.result()
+                    _gh_entries[p] = {
+                        "pr": info.get("pr"),
+                        "issue": info.get("issue"),
+                        "branch": br,
+                        "nwo": nwo,
+                        "ts": _now,
+                    }
+                    if info.get("pr") or info.get("issue"):
+                        wt_gh_info[p] = info
+                except Exception:
+                    _gh_entries[p] = {"pr": None, "issue": None, "branch": br, "nwo": nwo, "ts": _now}
+
+    _live_paths = {p for p, _, _ in _gh_all}
+    pruned = {k: v for k, v in _gh_entries.items() if k in _live_paths}
+    _gh_cache_save({"version": 1, "entries": pruned})
 
 # 2. Add sessions
 current_session = subprocess.run(
