@@ -16,3 +16,4 @@ is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
 src="$(chezmoi_pick_src "$is_work" "$source_dir" "dot_claude/mcp.work.json" "dot_claude/mcp.personal.json")"
 
 python3 "$source_dir/../scripts/merge_claude_mcp.py" "$src" "$HOME/.claude.json"
+chezmoi_record_checksum "$HOME/.claude.json"

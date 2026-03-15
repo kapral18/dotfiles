@@ -332,7 +332,7 @@ if status --is-interactive
     alias dash="gh dash"
 
     # LS Aliases with lsd support
-    if hash lsd 2>/dev/null
+    if type -q lsd
         alias ls='lsd -A'
         alias l='lsd -lAh'
         alias ll='lsd -lAtrh'

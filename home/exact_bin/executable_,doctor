@@ -429,6 +429,44 @@ check_ai_configs() {
   fi
 }
 
+check_config_drift() {
+  section "Config Drift"
+
+  local manifest="${XDG_STATE_HOME:-$HOME/.local/state}/chezmoi/managed_configs.tsv"
+  if [ ! -f "$manifest" ]; then
+    warn "no managed-configs manifest found" "chezmoi apply"
+    return
+  fi
+
+  local drifted=0 checked=0
+  while IFS=$'\t' read -r target expected_hash _timestamp; do
+    [ -z "$target" ] && continue
+    [[ "$target" == \#* ]] && continue
+
+    if [ ! -f "$target" ]; then
+      warn "$(basename "$target") missing (was managed)" "chezmoi apply"
+      drifted=$((drifted + 1))
+      checked=$((checked + 1))
+      continue
+    fi
+
+    local actual_hash
+    actual_hash="$(shasum -a 256 "$target" | cut -d' ' -f1)"
+    checked=$((checked + 1))
+
+    if [ "$actual_hash" != "$expected_hash" ]; then
+      warn "$(basename "$target") has drifted from managed state" "chezmoi apply"
+      drifted=$((drifted + 1))
+    else
+      [ "$verbose" -eq 1 ] && pass "$(basename "$target") matches managed state"
+    fi
+  done < "$manifest"
+
+  if [ "$drifted" -eq 0 ] && [ "$checked" -gt 0 ]; then
+    pass "$checked managed config(s) in sync"
+  fi
+}
+
 # ── main ─────────────────────────────────────────────────────────────────────
 
 if [ "$quiet" -eq 0 ]; then
@@ -444,6 +482,7 @@ check_editors_ai
 check_tools
 check_worktrees
 check_ai_configs
+check_config_drift
 
 # ── summary ──────────────────────────────────────────────────────────────────
 

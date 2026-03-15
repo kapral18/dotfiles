@@ -26,7 +26,10 @@ if [ ! -f "$ctlg_src" ]; then
 fi
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
+# shellcheck source=../../../scripts/chezmoi_lib.sh
+source "$source_dir/../scripts/chezmoi_lib.sh"
 
 python3 "$source_dir/../scripts/generate_codex_catalog.py" \
   "$source_dir/.chezmoidata/litellm_models.yaml" "$ctlg_src" "$ctlg_dst"
+chezmoi_record_checksum "$ctlg_dst"
 {{- end }}

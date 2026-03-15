@@ -104,6 +104,12 @@ All `run_onchange_after_07-merge-*` scripts source a shared shell library at
 | `chezmoi_write_if_changed`     | Atomic string write, skip if content unchanged        |
 | `chezmoi_install_if_changed`   | File copy via `install(1)`, skip if content unchanged |
 | `chezmoi_get_litellm_api_base` | Fetch and normalize LiteLLM URL from `pass`           |
+| `chezmoi_record_checksum`      | Record file sha256 in the managed-configs manifest    |
+
+After each write, the helpers record the target file's sha256 checksum in
+`~/.local/state/chezmoi/managed_configs.tsv`. The `,doctor` command reads this
+manifest to detect config drift — files modified externally by AI tools at
+runtime.
 
 To add a new AI tool config, create work/personal source files and a merge
 script that sources the library — typically 5–10 lines of tool-specific logic.
