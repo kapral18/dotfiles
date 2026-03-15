@@ -30,6 +30,11 @@ BADGE_ISSUE_OPEN = color("38;5;42", " ")
 BADGE_ISSUE_CLOSED = color("38;5;141", " ")
 
 
+BADGE_REVIEW_APPROVED = color("38;5;42", " \u2713")
+BADGE_REVIEW_CHANGES = color("38;5;196", " \u2717")
+BADGE_REVIEW_PENDING = color("38;5;214", " \u25cb")
+
+
 def _parse_status_flags(meta: str) -> set:
     for part in (meta or "").split("|"):
         if part.startswith("status="):
@@ -58,22 +63,40 @@ def _pr_badge(state: str) -> str:
     return ""
 
 
+def _review_badge(decision: str) -> str:
+    s = (decision or "").upper()
+    if s == "APPROVED":
+        return BADGE_REVIEW_APPROVED
+    if s == "CHANGES_REQUESTED":
+        return BADGE_REVIEW_CHANGES
+    if s == "REVIEW_REQUIRED":
+        return BADGE_REVIEW_PENDING
+    return ""
+
+
 def _issue_badge(state: str) -> str:
     s = (state or "").upper()
     if s == "OPEN":
         return BADGE_ISSUE_OPEN
-    if s in ("CLOSED", "COMPLETED", "NOT_PLANNED"):
+    if s in ("CLOSED", "COMPLETED", "NOT_PLANNED", "MERGED"):
         return BADGE_ISSUE_CLOSED
     return ""
 
 
 def _gh_badges_from_meta(meta: str) -> str:
+    """Parse GH meta and return badge string.
+
+    PR format: pr=NUMBER:STATE:REVIEW:URL
+    Issue format: issue=NUMBER:STATE:URL
+    """
     out = ""
     for part in (meta or "").split("|"):
         if part.startswith("pr="):
-            fields = part[3:].split(":", 2)
+            fields = part[3:].split(":", 3)
             if len(fields) >= 2:
                 out += _pr_badge(fields[1])
+            if len(fields) >= 3:
+                out += _review_badge(fields[2])
         elif part.startswith("issue="):
             fields = part[6:].split(":", 2)
             if len(fields) >= 2:

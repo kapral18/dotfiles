@@ -36,7 +36,7 @@ gh_info_from_meta() {
   for part in $m; do
     case "$part" in
       pr=*)
-        IFS=':' read -r num state url <<< "${part#pr=}"
+        IFS=':' read -r num state review url <<< "${part#pr=}"
         if [ -n "$num" ]; then
           local sc="$C_GREEN"
           local icon="open"
@@ -50,7 +50,16 @@ gh_info_from_meta() {
               icon="closed"
               ;;
           esac
+          local review_label=""
+          case "${review^^}" in
+            APPROVED) review_label="${C_GREEN}approved${C_R}" ;;
+            CHANGES_REQUESTED) review_label="${C_RED}changes requested${C_R}" ;;
+            REVIEW_REQUIRED) review_label="${C_YELLOW}review pending${C_R}" ;;
+          esac
           printf '%s  %sPR #%s%s %s(%s)%s' "$(dim 'gh')" "$sc" "$num" "$C_R" "$C_DIM" "$icon" "$C_R"
+          if [ -n "$review_label" ]; then
+            printf '  %s' "$review_label"
+          fi
           if [ -n "$url" ]; then
             printf '  %s%s%s' "$C_DIM" "$url" "$C_R"
           fi
@@ -66,6 +75,10 @@ gh_info_from_meta() {
             CLOSED | COMPLETED | NOT_PLANNED)
               ic="$C_PURPLE"
               ilabel="closed"
+              ;;
+            MERGED)
+              ic="$C_PURPLE"
+              ilabel="merged"
               ;;
           esac
           printf '%s  %sIssue #%s%s %s(%s)%s' "$(dim 'gh')" "$ic" "$num" "$C_R" "$C_DIM" "$ilabel" "$C_R"

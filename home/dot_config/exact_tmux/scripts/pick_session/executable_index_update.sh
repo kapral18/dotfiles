@@ -48,7 +48,25 @@ cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 cache_file="${cache_dir}/pick_session_items.tsv"
 pending_file="${cache_dir}/pick_session_pending.tsv"
 mutation_file="${cache_dir}/pick_session_mutations.tsv"
+error_log="${cache_dir}/pick_session_index_error.log"
 mkdir -p "$cache_dir"
+
+notify_error() {
+  local phase="$1"
+  local log="$2"
+  local msg="pick_session index ${phase} failed"
+  if [ -s "$log" ]; then
+    local last_line
+    last_line="$(tail -1 "$log" 2> /dev/null || true)"
+    if [ -n "$last_line" ]; then
+      msg="${msg}: ${last_line}"
+    fi
+  fi
+  if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
+    tmux display-message -d 5000 "$msg" 2> /dev/null || true
+  fi
+  printf '%s [%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$$" "$msg" >> "$error_log" 2> /dev/null || true
+}
 
 ttl="$(tmux_opt '@pick_session_cache_ttl' '60')"
 mutation_ttl="$(tmux_opt '@pick_session_mutation_tombstone_ttl' '300')"
@@ -92,7 +110,7 @@ if ! mkdir "$lock_dir" 2> /dev/null; then
   mkdir "$lock_dir" 2> /dev/null || exit 0
 fi
 cleanup() {
-  rm -f "${tmp_quick:-}" "${tmp_full:-}" "${tmp_combined:-}" "${tmp_sessions:-}" 2> /dev/null || true
+  rm -f "${tmp_quick:-}" "${tmp_full:-}" "${tmp_combined:-}" "${tmp_sessions:-}" "${tmp_err_quick:-}" "${tmp_err_full:-}" 2> /dev/null || true
   rm -f "${lock_dir}/pid" 2> /dev/null || true
   rmdir "$lock_dir" 2> /dev/null || true
 }
@@ -191,6 +209,8 @@ tmp_quick="$(mktemp -t pick_session_items.quick.XXXXXX)"
 tmp_full="$(mktemp -t pick_session_items.full.XXXXXX)"
 tmp_sessions="$(mktemp -t pick_session_items.sessions.XXXXXX)"
 tmp_combined="$(mktemp -t pick_session_items.combined.XXXXXX)"
+tmp_err_quick="$(mktemp -t pick_session_err.quick.XXXXXX)"
+tmp_err_full="$(mktemp -t pick_session_err.full.XXXXXX)"
 
 if [ "$quiet" -ne 1 ] && command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
   tmux display-message -d 1500 "pick_session: updating list…" 2> /dev/null || true
@@ -202,7 +222,7 @@ quick_published=0
 if [ "$quick_only" -eq 1 ]; then
   # Quick refresh: sessions only. We merge into the existing cache to preserve
   # the full worktree/dir lists (quick scans do not discover all worktrees).
-  if "$gen" --quick --sessions-only > "$tmp_quick" 2> /dev/null; then
+  if "$gen" --quick --sessions-only > "$tmp_quick" 2> "$tmp_err_quick"; then
     quick_ok=1
     if [ -s "$tmp_quick" ]; then
       # Always try to merge to preserve worktrees and directories in the cache.
@@ -218,16 +238,18 @@ if [ "$quick_only" -eq 1 ]; then
       fi
       quick_published=1
     fi
+  else
+    notify_error "quick scan" "$tmp_err_quick"
   fi
   if [ "$quick_ok" -ne 1 ] || [ "$quick_published" -ne 1 ]; then
     exit 0
   fi
 else
   # Quick scan: sessions only (merged into existing cache).
-  "$gen" --quick --sessions-only > "$tmp_quick" 2> /dev/null &
+  "$gen" --quick --sessions-only > "$tmp_quick" 2> "$tmp_err_quick" &
   pid_quick=$!
   # Perform a full scan (including directories) in the background.
-  "$gen" > "$tmp_full" 2> /dev/null &
+  "$gen" > "$tmp_full" 2> "$tmp_err_full" &
   pid_full=$!
 
   if wait "$pid_quick"; then
@@ -246,6 +268,8 @@ else
       fi
       quick_published=1
     fi
+  else
+    notify_error "quick scan" "$tmp_err_quick"
   fi
 
   # Stream progressively-complete snapshots from the full scan into cache while
@@ -287,6 +311,8 @@ else
     elif [ "$quick_published" -eq 0 ] && [ "$quick_ok" -eq 1 ] && [ -s "$tmp_quick" ]; then
       publish_cache_from "$tmp_quick" || true
     fi
+  else
+    notify_error "full scan" "$tmp_err_full"
   fi
 
   if [ "$full_ok" -ne 1 ] && [ "$quick_ok" -eq 1 ] && [ "$quick_published" -eq 0 ] && [ -s "$tmp_quick" ]; then
@@ -295,7 +321,7 @@ else
   fi
 
   if [ "$full_ok" -ne 1 ] && [ "$quick_ok" -ne 1 ]; then
-    exit 0
+    exit 1
   fi
 fi
 

@@ -33,6 +33,7 @@ if [ -n "$meta" ]; then
             val="${part#pr=}"
             url="${val#*:}"
             url="${url#*:}"
+            url="${url#*:}"
             ;;
         esac
         ;;

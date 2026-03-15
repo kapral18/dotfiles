@@ -95,21 +95,34 @@ requests and issues. Badges appear inline after status badges.
 | `` (red)    | PR — closed    | `oct-git_pull_request_closed` F4DC | red (`38;5;196`)    |
 | `` (green)  | Issue — open   | `oct-issue_opened` F41B            | green (`38;5;42`)   |
 | `` (purple) | Issue — closed | `oct-issue_closed` F41D            | purple (`38;5;141`) |
+| `✓` (green)  | Review — approved         | Unicode check mark U+2713  | green (`38;5;42`)   |
+| `✗` (red)    | Review — changes requested | Unicode ballot X U+2717   | red (`38;5;196`)    |
+| `○` (yellow) | Review — pending          | Unicode circle U+25CB     | yellow (`38;5;214`) |
 
-- **PR detection**: `gh pr list --head BRANCH --state all` for each worktree's
-  branch.
-- **Issue detection**: extracts a number from the branch name (e.g.,
-  `fix/1234-desc` → issue `1234`) and verifies with `gh issue view`.
+- **PR detection**: `gh pr view --json number,state,url,reviewDecision,closingIssuesReferences`
+  with `cwd` set to the worktree path (infers repo and branch from git context).
+- **Issue detection** (resolved in order, first match wins):
+  1. `comma.w.issue.number` worktree-local git config (set by `,w` / gh-dash)
+  2. Branch name suffix heuristic (`-NNN` or `/NNN`, e.g. `fix/1234-desc` →
+     issue `1234`)
+  3. PR `closingIssuesReferences` — issues linked via `Closes #N`, `Fixes #N`,
+     etc. in the PR description (extracted from the same `gh pr view` call, zero
+     extra network cost). The exact `owner/repo` from the reference is used as
+     the `-R` override for `gh issue view`, so cross-repo closing issues and
+     fork workflows resolve correctly without relying on `cwd` inference.
+  Once a number is found, `gh issue view <num>` fetches the current state.
 - Lookups run in parallel (4 threads) during the background index, adding no
   latency to picker open.
 - Results are cached on disk (`~/.cache/tmux/pick_session_gh.json`) with smart
   TTLs: open items refresh every 10 min, merged/closed items every 24 h, cache
-  misses every 5 min. Branch or remote changes invalidate immediately. Stale
+  misses every 1 h. Branch or remote changes invalidate immediately. Stale
   worktree paths are pruned on each write.
 - PR/issue metadata is stored in the TSV cache `meta` column
-  (`pr=NUMBER:STATE:URL`, `issue=NUMBER:STATE:URL`).
-- The preview pane shows PR/issue details (number, state, URL) at the top for
-  session and worktree entries.
+  (`pr=NUMBER:STATE:REVIEW:URL`, `issue=NUMBER:STATE:URL`). `REVIEW` is the
+  PR review decision (`APPROVED`, `CHANGES_REQUESTED`, `REVIEW_REQUIRED`, or
+  empty).
+- The preview pane shows PR/issue details (number, state, review status, URL)
+  at the top for session and worktree entries.
 - `alt-p` opens the PR URL in the browser; `alt-i` opens the issue URL.
 
 ### Preview pane

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 import concurrent.futures
 import json
 import os
@@ -559,10 +561,14 @@ BADGE_PR_CLOSED = color("38;5;196", " ")
 BADGE_ISSUE_OPEN = color("38;5;42", " ")
 BADGE_ISSUE_CLOSED = color("38;5;141", " ")
 
+BADGE_REVIEW_APPROVED = color("38;5;42", " \u2713")
+BADGE_REVIEW_CHANGES = color("38;5;196", " \u2717")
+BADGE_REVIEW_PENDING = color("38;5;214", " \u25cb")
+
 GH_CACHE_FILE = Path(os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))) / "tmux" / "pick_session_gh.json"
 GH_TTL_OPEN = 600
 GH_TTL_TERMINAL = 86400
-GH_TTL_MISS = 60
+GH_TTL_MISS = 3600
 
 
 def _gh_cache_load() -> dict:
@@ -673,15 +679,19 @@ def _gh_pr_for_wt(wt_path: str, nwo: str) -> dict | None:
 
     Uses `gh pr view` (no args) which infers the branch from git context.
     This is the same fast-path that ,gh-prw uses and handles forks correctly.
+    The -R flag is intentionally omitted: it requires an explicit branch
+    argument and breaks the automatic branch inference that gh performs
+    from the local git checkout.
+
+    Also fetches closingIssuesReferences so callers can resolve linked
+    issues without an extra network call.
     """
     if not shutil.which("gh"):
         return None
     try:
-        args = ["gh", "pr", "view", "--json", "number,state,url"]
-        if nwo:
-            args.extend(["-R", nwo])
         r = subprocess.run(
-            args, check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=15, cwd=wt_path
+            ["gh", "pr", "view", "--json", "number,state,url,reviewDecision,closingIssuesReferences"],
+            check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=15, cwd=wt_path,
         )
         if r.returncode != 0 or not (r.stdout or "").strip():
             return None
@@ -691,42 +701,84 @@ def _gh_pr_for_wt(wt_path: str, nwo: str) -> dict | None:
     return None
 
 
-def _gh_issue_state(wt_path: str, issue_num: str, nwo: str) -> dict | None:
-    """Query gh for an issue by number. Returns {number, state, url} or None."""
+def _gh_issue_state(wt_path: str, issue_num: str, repo_override: str = "") -> dict | None:
+    """Query gh for an issue by number. Returns {number, state, url} or None.
+
+    Uses cwd to let gh resolve the repo from git context (handles forks
+    correctly).  Only passes -R when an explicit repo override is provided
+    (e.g. from comma.w.issue.repo worktree config).
+    """
     if not shutil.which("gh"):
         return None
     try:
         args = ["gh", "issue", "view", issue_num, "--json", "number,state,url"]
-        if nwo:
-            args.extend(["-R", nwo])
+        if repo_override:
+            args.extend(["-R", repo_override])
         r = subprocess.run(
-            args, check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=15, cwd=wt_path
+            args, check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=15, cwd=wt_path,
         )
         if r.returncode != 0 or not (r.stdout or "").strip():
             return None
         return json.loads(r.stdout)
     except Exception:
         pass
+    return None
+
+
+def _closing_issue_from_pr(pr_data: dict | None) -> dict | None:
+    """Extract the first closing issue from a PR's closingIssuesReferences.
+
+    Returns {number, url, nwo} or None.  ``nwo`` is the ``owner/repo`` of the
+    issue's repository (extracted from the response) so callers can pass it as
+    an explicit ``-R`` override to ``gh issue view`` — this handles cross-repo
+    closing issues and fork workflows where cwd would resolve to the wrong repo.
+    """
+    if not pr_data:
+        return None
+    refs = pr_data.get("closingIssuesReferences") or []
+    for ref in refs:
+        num = ref.get("number")
+        url = ref.get("url", "")
+        if num:
+            repo = ref.get("repository") or {}
+            owner = (repo.get("owner") or {}).get("login", "")
+            name = repo.get("name", "")
+            nwo = f"{owner}/{name}" if owner and name else ""
+            return {"number": num, "url": url, "nwo": nwo}
     return None
 
 
 def _lookup_gh_info(wt_path: str, branch: str, nwo: str) -> dict:
     """Return {"pr": {...} | None, "issue": {...} | None} for a worktree.
 
-    Issue number resolution (all local, zero network cost):
+    Issue number resolution order:
       1. comma.w.issue.number worktree metadata (set by ,w / gh-dash)
       2. Branch name suffix heuristic (-NNN or /NNN)
+      3. PR closingIssuesReferences (linked via "Closes #N" in PR body)
     PR resolution: gh pr view (single network call, infers branch from cwd).
     Issue state: gh issue view (single network call, only if number found).
     """
     result: dict = {"pr": None, "issue": None}
     if not branch:
         return result
-    result["pr"] = _gh_pr_for_wt(wt_path, nwo)
+    pr_data = _gh_pr_for_wt(wt_path, nwo)
+    if pr_data:
+        result["pr"] = {
+            "number": pr_data["number"],
+            "state": pr_data.get("state", ""),
+            "url": pr_data.get("url", ""),
+            "review": pr_data.get("reviewDecision", ""),
+        }
     issue_num = _wt_issue_number(wt_path) or extract_issue_number(branch)
+    issue_repo_override = _wt_issue_repo(wt_path)
+    if not issue_num:
+        closing = _closing_issue_from_pr(pr_data)
+        if closing:
+            issue_num = str(closing["number"])
+            if not issue_repo_override and closing.get("nwo"):
+                issue_repo_override = closing["nwo"]
     if issue_num:
-        issue_nwo = _wt_issue_repo(wt_path) or nwo
-        result["issue"] = _gh_issue_state(wt_path, issue_num, issue_nwo)
+        result["issue"] = _gh_issue_state(wt_path, issue_num, issue_repo_override)
     return result
 
 
@@ -741,11 +793,22 @@ def pr_badge(state: str) -> str:
     return ""
 
 
+def review_badge(decision: str) -> str:
+    s = (decision or "").upper()
+    if s == "APPROVED":
+        return BADGE_REVIEW_APPROVED
+    if s == "CHANGES_REQUESTED":
+        return BADGE_REVIEW_CHANGES
+    if s == "REVIEW_REQUIRED":
+        return BADGE_REVIEW_PENDING
+    return ""
+
+
 def issue_badge(state: str) -> str:
     s = (state or "").upper()
     if s == "OPEN":
         return BADGE_ISSUE_OPEN
-    if s in ("CLOSED", "COMPLETED", "NOT_PLANNED"):
+    if s in ("CLOSED", "COMPLETED", "NOT_PLANNED", "MERGED"):
         return BADGE_ISSUE_CLOSED
     return ""
 
@@ -757,6 +820,7 @@ def gh_badges(gh_info: dict | None) -> str:
     pr = gh_info.get("pr")
     if pr:
         out += pr_badge(pr.get("state", ""))
+        out += review_badge(pr.get("review", ""))
     issue = gh_info.get("issue")
     if issue:
         out += issue_badge(issue.get("state", ""))
@@ -764,12 +828,17 @@ def gh_badges(gh_info: dict | None) -> str:
 
 
 def gh_meta(gh_info: dict | None) -> str:
+    """Encode GH info into the TSV meta column.
+
+    PR format: pr=NUMBER:STATE:REVIEW:URL  (review before URL because URL
+    contains colons and is always the last field).
+    """
     if not gh_info:
         return ""
     parts = []
     pr = gh_info.get("pr")
     if pr and pr.get("number"):
-        parts.append(f"pr={pr['number']}:{pr.get('state', '')}:{pr.get('url', '')}")
+        parts.append(f"pr={pr['number']}:{pr.get('state', '')}:{pr.get('review', '')}:{pr.get('url', '')}")
     issue = gh_info.get("issue")
     if issue and issue.get("number"):
         parts.append(f"issue={issue['number']}:{issue.get('state', '')}:{issue.get('url', '')}")

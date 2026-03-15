@@ -5,10 +5,24 @@ cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 cache_file="${cache_dir}/pick_session_items.tsv"
 mutation_file="${cache_dir}/pick_session_mutations.tsv"
 pending_file="${cache_dir}/pick_session_pending.tsv"
+error_log="${cache_dir}/pick_session_index_error.log"
 session_tombstone_live_grace_s="${PICK_SESSION_SESSION_TOMBSTONE_LIVE_GRACE_S:-2}"
 cache_was_present=0
 [ -f "$cache_file" ] && cache_was_present=1
 script_dir="$(cd "$(dirname "$0")" && pwd)"
+
+notify_error() {
+  local phase="$1"
+  local err="$2"
+  local msg="pick_session ${phase} failed"
+  if [ -n "$err" ]; then
+    msg="${msg}: ${err}"
+  fi
+  if [ -n "${TMUX:-}" ]; then
+    tmux display-message -d 5000 "$msg" 2> /dev/null || true
+  fi
+  printf '%s [%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$$" "$msg" >> "$error_log" 2> /dev/null || true
+}
 
 ansi_wrap() {
   local code="$1"
@@ -75,16 +89,28 @@ if [ "$cache_was_present" -eq 1 ]; then
   # Tombstone filtering only (no worktree promotion).
   if awk -F $'\t' 'NF>=5 && ($2=="worktree" || $2=="dir") { exit 1 }' "$cache_file" 2> /dev/null; then
     if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ] && command -v python3 > /dev/null 2>&1; then
-      MUTATIONS_FILE="$mutation_file" PENDING_FILE="$pending_file" MUTATION_TTL="$mutation_ttl" SESSION_TOMBSTONE_LIVE_GRACE_S="$session_tombstone_live_grace_s" python3 -u "$script_dir/lib/items_light_rehydrate.py" "$cache_file"
-      exit 0
+      _rehydrate_err="$(mktemp -t pick_session_rehydrate_err.XXXXXX)"
+      if MUTATIONS_FILE="$mutation_file" PENDING_FILE="$pending_file" MUTATION_TTL="$mutation_ttl" SESSION_TOMBSTONE_LIVE_GRACE_S="$session_tombstone_live_grace_s" python3 -u "$script_dir/lib/items_light_rehydrate.py" "$cache_file" 2> "$_rehydrate_err"; then
+        rm -f "$_rehydrate_err" 2> /dev/null || true
+        exit 0
+      else
+        notify_error "light rehydrate" "$(tail -1 "$_rehydrate_err" 2> /dev/null || true)"
+        rm -f "$_rehydrate_err" 2> /dev/null || true
+      fi
     fi
   fi
 
   # Full rehydration when cache has worktree/dir rows (session promotion, etc.)
   if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ] && command -v python3 > /dev/null 2>&1; then
     scan_roots_raw="$(tmux show-option -gqv '@pick_session_worktree_scan_roots' 2> /dev/null || printf '%s' "$HOME/work,$HOME/code,$HOME/.backport/repositories,$HOME/.local/share")"
-    MUTATIONS_FILE="$mutation_file" PENDING_FILE="$pending_file" MUTATION_TTL="$mutation_ttl" SESSION_TOMBSTONE_LIVE_GRACE_S="$session_tombstone_live_grace_s" PICK_SESSION_SCAN_ROOTS="$scan_roots_raw" python3 -u "$script_dir/lib/items_full_rehydrate.py" "$cache_file"
-    exit 0
+    _rehydrate_err="$(mktemp -t pick_session_rehydrate_err.XXXXXX)"
+    if MUTATIONS_FILE="$mutation_file" PENDING_FILE="$pending_file" MUTATION_TTL="$mutation_ttl" SESSION_TOMBSTONE_LIVE_GRACE_S="$session_tombstone_live_grace_s" PICK_SESSION_SCAN_ROOTS="$scan_roots_raw" python3 -u "$script_dir/lib/items_full_rehydrate.py" "$cache_file" 2> "$_rehydrate_err"; then
+      rm -f "$_rehydrate_err" 2> /dev/null || true
+      exit 0
+    else
+      notify_error "full rehydrate" "$(tail -1 "$_rehydrate_err" 2> /dev/null || true)"
+      rm -f "$_rehydrate_err" 2> /dev/null || true
+    fi
   fi
 
   # If python isn't available, still emit a 6th "match key" field so fzf can
