@@ -22,6 +22,10 @@ Selection / Actions
   ctrl-s          send command to selected session(s)
                     enters send mode: type command, enter=send, esc=cancel
 
+GitHub
+  alt-p           open PR in browser (if branch has a PR)
+  alt-i           open issue in browser (if branch references an issue)
+
 Preview
   ctrl-/          toggle preview panel (pane capture / git info)
   ?               show this help in the preview panel

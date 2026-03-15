@@ -246,6 +246,7 @@ kill_async_cmd="tmux run-shell -b \"$(printf %q "$kill_cmd") $(printf %q "$sel_t
 rm_async_cmd="tmux run-shell -b \"$(printf %q "$rm_cmd") $(printf %q "$sel_tmp")\""
 
 send_cmd="$HOME/.config/tmux/scripts/pick_session/action_send_command.sh"
+open_gh_cmd="$HOME/.config/tmux/scripts/pick_session/action_open_gh.sh"
 cmd_tmp="${cache_dir}/pick_session_cmd.txt"
 mode_flag="${cache_dir}/pick_session_send_mode"
 
@@ -264,8 +265,8 @@ preview_cmd="$HOME/.config/tmux/scripts/pick_session/preview.sh"
 
 # fzf send-mode: ctrl-s enters a modal where the query line becomes a command
 # prompt. enter dispatches the command to selected sessions; esc cancels.
-send_restore="enable-search+change-prompt($fzf_prompt)+change-ghost($fzf_ghost)+change-header(?=help  ctrl-/=preview)+clear-query+deselect-all+rebind(ctrl-s,ctrl-x,alt-x,change)+unbind(esc)"
-send_mode="execute-silent(cp {+f} $sel_tmp)+execute-silent(touch $mode_flag)+disable-search+change-prompt(❯ send: )+change-ghost()+change-header(enter=send  esc=cancel)+clear-query+unbind(ctrl-s,ctrl-x,alt-x,change)+rebind(esc)"
+send_restore="enable-search+change-prompt($fzf_prompt)+change-ghost($fzf_ghost)+change-header(?=help  ctrl-/=preview  alt-p=PR  alt-i=issue)+clear-query+deselect-all+rebind(ctrl-s,ctrl-x,alt-x,alt-p,alt-i,change)+unbind(esc)"
+send_mode="execute-silent(cp {+f} $sel_tmp)+execute-silent(touch $mode_flag)+disable-search+change-prompt(❯ send: )+change-ghost()+change-header(enter=send  esc=cancel)+clear-query+unbind(ctrl-s,ctrl-x,alt-x,alt-p,alt-i,change)+rebind(esc)"
 
 selection_file="${PICK_SESSION_SELECTION_FILE:-}"
 if [ -n "$selection_file" ] && [ -f "$selection_file" ]; then
@@ -310,7 +311,9 @@ else
       --bind "esc:execute-silent(rm -f $mode_flag)+$send_restore" \
       --bind "ctrl-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") kill {q})+execute-silent($kill_async_cmd)+deselect-all" \
       --bind "alt-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") remove {q})+execute-silent($rm_async_cmd)+deselect-all" \
-      --header $'?=help  ctrl-/=preview' \
+      --bind "alt-p:execute-silent($open_gh_cmd pr {f})" \
+      --bind "alt-i:execute-silent($open_gh_cmd issue {f})" \
+      --header $'?=help  ctrl-/=preview  alt-p=PR  alt-i=issue' \
       \
       ${fzf_args} \
       || true

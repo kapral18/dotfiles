@@ -10,6 +10,7 @@ fi
 
 kind="$(printf '%s' "$line" | awk -F $'\t' '{print $2}')"
 path="$(printf '%s' "$line" | awk -F $'\t' '{print $3}')"
+meta="$(printf '%s' "$line" | awk -F $'\t' '{print $4}')"
 target="$(printf '%s' "$line" | awk -F $'\t' '{print $5}')"
 
 C_DIM=$'\033[2m'
@@ -20,8 +21,62 @@ C_YELLOW=$'\033[38;5;214m'
 C_CYAN=$'\033[38;5;81m'
 C_R=$'\033[0m'
 
+C_PURPLE=$'\033[38;5;141m'
+C_RED=$'\033[38;5;196m'
+
 header() {
   printf '%s%s%s\n' "$C_BOLD$C_CYAN" "$1" "$C_R"
+}
+
+gh_info_from_meta() {
+  local m="$1"
+  [ -n "$m" ] || return 0
+  local IFS='|'
+  local part num state url
+  for part in $m; do
+    case "$part" in
+      pr=*)
+        IFS=':' read -r num state url <<< "${part#pr=}"
+        if [ -n "$num" ]; then
+          local sc="$C_GREEN"
+          local icon="open"
+          case "${state^^}" in
+            MERGED)
+              sc="$C_PURPLE"
+              icon="merged"
+              ;;
+            CLOSED)
+              sc="$C_RED"
+              icon="closed"
+              ;;
+          esac
+          printf '%s  %sPR #%s%s %s(%s)%s' "$(dim 'gh')" "$sc" "$num" "$C_R" "$C_DIM" "$icon" "$C_R"
+          if [ -n "$url" ]; then
+            printf '  %s%s%s' "$C_DIM" "$url" "$C_R"
+          fi
+          printf '\n'
+        fi
+        ;;
+      issue=*)
+        IFS=':' read -r num state url <<< "${part#issue=}"
+        if [ -n "$num" ]; then
+          local ic="$C_GREEN"
+          local ilabel="open"
+          case "${state^^}" in
+            CLOSED | COMPLETED | NOT_PLANNED)
+              ic="$C_PURPLE"
+              ilabel="closed"
+              ;;
+          esac
+          printf '%s  %sIssue #%s%s %s(%s)%s' "$(dim 'gh')" "$ic" "$num" "$C_R" "$C_DIM" "$ilabel" "$C_R"
+          if [ -n "$url" ]; then
+            printf '  %s%s%s' "$C_DIM" "$url" "$C_R"
+          fi
+          printf '\n'
+        fi
+        ;;
+    esac
+  done
 }
 
 dim() {
@@ -139,6 +194,7 @@ dir_preview() {
 
 case "$kind" in
   session)
+    gh_info_from_meta "$meta"
     if [ -n "$target" ]; then
       pane_capture "$target"
     elif [ -n "$path" ] && [ -d "$path" ]; then
@@ -146,6 +202,7 @@ case "$kind" in
     fi
     ;;
   worktree)
+    gh_info_from_meta "$meta"
     if [ -n "$path" ] && [ -d "$path" ]; then
       dir_preview "$path"
     fi

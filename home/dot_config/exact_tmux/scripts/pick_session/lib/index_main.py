@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import concurrent.futures
+import json
 import os
 import re
 import shutil
@@ -157,6 +158,34 @@ def repo_name_from_url(url: str) -> str:
     if tail.endswith(".git"):
         tail = tail[: -len(".git")]
     return tail.strip()
+
+
+def nwo_from_url(url: str) -> str:
+    """Extract owner/repo (name-with-owner) from a git remote URL."""
+    url = (url or "").strip().rstrip("/")
+    if not url:
+        return ""
+    if url.endswith(".git"):
+        url = url[: -len(".git")]
+
+    path = ""
+    if url.startswith("git@") and ":" in url:
+        path = url.split(":", 1)[1]
+    elif url.startswith("ssh://git@"):
+        parts = url.split("/", 3)
+        if len(parts) >= 4:
+            path = parts[3]
+    elif url.startswith("https://") or url.startswith("http://"):
+        parts = url.split("/", 3)
+        if len(parts) >= 4:
+            path = parts[3]
+
+    if "/" not in path:
+        return ""
+    segments = path.split("/")
+    if len(segments) >= 2:
+        return f"{segments[0]}/{segments[1]}"
+    return ""
 
 
 DEFAULT_BRANCH_DIRS = {"main", "master", "trunk", "develop", "dev"}
@@ -517,6 +546,171 @@ BADGE_STALE = color("2;38;5;214", " stale")
 BADGE_GONE = color("2;38;5;196", " gone")
 BADGE_DIRTY = color("2;38;5;214", " *")
 
+BADGE_PR_OPEN = color("38;5;42", " \uf407")
+BADGE_PR_MERGED = color("38;5;141", " \uf407")
+BADGE_PR_CLOSED = color("38;5;196", " \uf4dc")
+BADGE_ISSUE_OPEN = color("38;5;42", " \uf41b")
+BADGE_ISSUE_CLOSED = color("38;5;141", " \uf41d")
+
+_ISSUE_SUFFIX_RE = re.compile(r"[-/](\d+)$")
+
+
+def _wt_issue_number(wt_path: str) -> str:
+    """Read issue number from worktree-local git config (comma.w.issue.number).
+
+    This is set by ,w when creating worktrees linked to issues via gh-dash.
+    Zero-cost local lookup — no network call.
+    """
+    try:
+        r = subprocess.run(
+            ["git", "-C", wt_path, "config", "--worktree", "--get", "comma.w.issue.number"],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=2,
+        )
+        num = (r.stdout or "").strip()
+        if num and num.isdigit():
+            return num
+    except Exception:
+        pass
+    return ""
+
+
+def _wt_issue_repo(wt_path: str) -> str:
+    """Read repo NWO from worktree-local git config (comma.w.issue.repo)."""
+    try:
+        r = subprocess.run(
+            ["git", "-C", wt_path, "config", "--worktree", "--get", "comma.w.issue.repo"],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=2,
+        )
+        return (r.stdout or "").strip()
+    except Exception:
+        return ""
+
+
+def extract_issue_number(branch: str) -> str:
+    """Extract a GitHub issue number from a branch name suffix.
+
+    Matches -NNN or /NNN at the end of the branch name, consistent with
+    ,gh-issuew heuristics.
+    """
+    m = _ISSUE_SUFFIX_RE.search(branch or "")
+    return m.group(1) if m else ""
+
+
+def _gh_pr_for_wt(wt_path: str, nwo: str) -> dict | None:
+    """Query gh for the PR associated with the current branch at wt_path.
+
+    Uses `gh pr view` (no args) which infers the branch from git context.
+    This is the same fast-path that ,gh-prw uses and handles forks correctly.
+    """
+    if not shutil.which("gh"):
+        return None
+    try:
+        args = ["gh", "pr", "view", "--json", "number,state,url"]
+        if nwo:
+            args.extend(["-R", nwo])
+        r = subprocess.run(
+            args, check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=15, cwd=wt_path
+        )
+        if r.returncode != 0 or not (r.stdout or "").strip():
+            return None
+        return json.loads(r.stdout)
+    except Exception:
+        pass
+    return None
+
+
+def _gh_issue_state(wt_path: str, issue_num: str, nwo: str) -> dict | None:
+    """Query gh for an issue by number. Returns {number, state, url} or None."""
+    if not shutil.which("gh"):
+        return None
+    try:
+        args = ["gh", "issue", "view", issue_num, "--json", "number,state,url"]
+        if nwo:
+            args.extend(["-R", nwo])
+        r = subprocess.run(
+            args, check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=15, cwd=wt_path
+        )
+        if r.returncode != 0 or not (r.stdout or "").strip():
+            return None
+        return json.loads(r.stdout)
+    except Exception:
+        pass
+    return None
+
+
+def _lookup_gh_info(wt_path: str, branch: str, nwo: str) -> dict:
+    """Return {"pr": {...} | None, "issue": {...} | None} for a worktree.
+
+    Issue number resolution (all local, zero network cost):
+      1. comma.w.issue.number worktree metadata (set by ,w / gh-dash)
+      2. Branch name suffix heuristic (-NNN or /NNN)
+    PR resolution: gh pr view (single network call, infers branch from cwd).
+    Issue state: gh issue view (single network call, only if number found).
+    """
+    result: dict = {"pr": None, "issue": None}
+    if not branch:
+        return result
+    result["pr"] = _gh_pr_for_wt(wt_path, nwo)
+    issue_num = _wt_issue_number(wt_path) or extract_issue_number(branch)
+    if issue_num:
+        issue_nwo = _wt_issue_repo(wt_path) or nwo
+        result["issue"] = _gh_issue_state(wt_path, issue_num, issue_nwo)
+    return result
+
+
+def pr_badge(state: str) -> str:
+    s = (state or "").upper()
+    if s == "OPEN":
+        return BADGE_PR_OPEN
+    if s == "MERGED":
+        return BADGE_PR_MERGED
+    if s == "CLOSED":
+        return BADGE_PR_CLOSED
+    return ""
+
+
+def issue_badge(state: str) -> str:
+    s = (state or "").upper()
+    if s == "OPEN":
+        return BADGE_ISSUE_OPEN
+    if s in ("CLOSED", "COMPLETED", "NOT_PLANNED"):
+        return BADGE_ISSUE_CLOSED
+    return ""
+
+
+def gh_badges(gh_info: dict | None) -> str:
+    if not gh_info:
+        return ""
+    out = ""
+    pr = gh_info.get("pr")
+    if pr:
+        out += pr_badge(pr.get("state", ""))
+    issue = gh_info.get("issue")
+    if issue:
+        out += issue_badge(issue.get("state", ""))
+    return out
+
+
+def gh_meta(gh_info: dict | None) -> str:
+    if not gh_info:
+        return ""
+    parts = []
+    pr = gh_info.get("pr")
+    if pr and pr.get("number"):
+        parts.append(f"pr={pr['number']}:{pr.get('state', '')}:{pr.get('url', '')}")
+    issue = gh_info.get("issue")
+    if issue and issue.get("number"):
+        parts.append(f"issue={issue['number']}:{issue.get('state', '')}:{issue.get('url', '')}")
+    return "|".join(parts)
+
 
 def _check_dirty(wt_path: str) -> bool:
     try:
@@ -593,6 +787,34 @@ if _dirty_candidates:
             except Exception:
                 pass
 
+# 1c. Parallel GitHub PR/issue lookup for non-default branches.
+# Skips stale/gone worktrees (no valid git context).
+wt_gh_info: dict[str, dict] = {}
+_gh_candidates: list[tuple[str, str, str]] = []
+_nwo_cache: dict[str, str] = {}
+for rid in groups:
+    root_checkout = groups[rid].get("root_checkout", "")
+    if root_checkout and root_checkout not in _nwo_cache:
+        url = origin_url_for_root(root_checkout)
+        _nwo_cache[root_checkout] = nwo_from_url(url)
+    nwo = _nwo_cache.get(root_checkout, "")
+    for wt_path, wt_data in groups[rid]["wt_map"].items():
+        br = wt_data.get("branch", "")
+        flags = wt_status.get(wt_path, set())
+        if br and br not in DEFAULT_BRANCH_DIRS and not (flags & {"gone", "stale"}):
+            _gh_candidates.append((wt_path, br, nwo))
+if _gh_candidates and shutil.which("gh"):
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+        _gh_futures = {pool.submit(_lookup_gh_info, p, br, nwo): p for p, br, nwo in _gh_candidates}
+        for fut in concurrent.futures.as_completed(_gh_futures):
+            p = _gh_futures[fut]
+            try:
+                info = fut.result()
+                if info and (info.get("pr") or info.get("issue")):
+                    wt_gh_info[p] = info
+            except Exception:
+                pass
+
 # 2. Add sessions
 current_session = subprocess.run(
     ["tmux", "display-message", "-p", "#S"], check=False, stdout=subprocess.PIPE, text=True
@@ -643,7 +865,11 @@ def emit_sessions_and_worktrees():
                 sf = status_meta_flags(flags)
                 if sf:
                     meta += f"|status={sf}"
-                disp = display_session_entry(sess_name) + status_badge(flags)
+                ghi = wt_gh_info.get(wt_path)
+                gm = gh_meta(ghi)
+                if gm:
+                    meta += f"|{gm}"
+                disp = display_session_entry(sess_name) + status_badge(flags) + gh_badges(ghi)
                 mk = match_key(sess_name, expected, repo, br)
                 print(f"{disp}\tsession\t{wt_path}\t{meta}\t{sess_name}\t{mk}")
                 exclude_worktree_roots.add(wt_path)
@@ -660,10 +886,14 @@ def emit_sessions_and_worktrees():
                 sf = status_meta_flags(flags)
                 if sf:
                     meta += f"|status={sf}"
+                ghi = wt_gh_info.get(wt_path)
+                gm = gh_meta(ghi)
+                if gm:
+                    meta += f"|{gm}"
                 wt_name = f"{repo}|{br}" if br else repo
                 mk = match_key(wt_name, Path(wt_path).name, tildefy(wt_path))
                 print(
-                    f"{display_worktree_entry(tildefy(wt_path))}{status_badge(flags)}\tworktree\t{wt_path}\t{meta}\t{root_checkout}\t{mk}"
+                    f"{display_worktree_entry(tildefy(wt_path))}{status_badge(flags)}{gh_badges(ghi)}\tworktree\t{wt_path}\t{meta}\t{root_checkout}\t{mk}"
                 )
                 exclude_worktree_roots.add(wt_path)
 

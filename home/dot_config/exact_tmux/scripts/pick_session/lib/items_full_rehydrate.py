@@ -23,6 +23,12 @@ BADGE_STALE = color("2;38;5;214", " \u26a0 stale")
 BADGE_GONE = color("2;38;5;196", " \u2717 gone")
 BADGE_DIRTY = color("2;38;5;214", " \u2217")
 
+BADGE_PR_OPEN = color("38;5;42", " \uf407")
+BADGE_PR_MERGED = color("38;5;141", " \uf407")
+BADGE_PR_CLOSED = color("38;5;196", " \uf4dc")
+BADGE_ISSUE_OPEN = color("38;5;42", " \uf41b")
+BADGE_ISSUE_CLOSED = color("38;5;141", " \uf41d")
+
 
 def _parse_status_flags(meta: str) -> set:
     for part in (meta or "").split("|"):
@@ -39,6 +45,40 @@ def _status_badge(flags: set) -> str:
     if "dirty" in flags:
         return BADGE_DIRTY
     return ""
+
+
+def _pr_badge(state: str) -> str:
+    s = (state or "").upper()
+    if s == "OPEN":
+        return BADGE_PR_OPEN
+    if s == "MERGED":
+        return BADGE_PR_MERGED
+    if s == "CLOSED":
+        return BADGE_PR_CLOSED
+    return ""
+
+
+def _issue_badge(state: str) -> str:
+    s = (state or "").upper()
+    if s == "OPEN":
+        return BADGE_ISSUE_OPEN
+    if s in ("CLOSED", "COMPLETED", "NOT_PLANNED"):
+        return BADGE_ISSUE_CLOSED
+    return ""
+
+
+def _gh_badges_from_meta(meta: str) -> str:
+    out = ""
+    for part in (meta or "").split("|"):
+        if part.startswith("pr="):
+            fields = part[3:].split(":", 2)
+            if len(fields) >= 2:
+                out += _pr_badge(fields[1])
+        elif part.startswith("issue="):
+            fields = part[6:].split(":", 2)
+            if len(fields) >= 2:
+                out += _issue_badge(fields[1])
+    return out
 
 
 def display_session_entry_with_suffix(name, path_display, suffix=""):
@@ -437,9 +477,10 @@ with open(cache_file, "r", encoding="utf-8", errors="replace") as f:
             printed_sessions.add(target)
             printed_sessions.add(rpath)
             suffix = color("2;38;5;244", " (current)") if target == current_name else ""
+            gh_b = _gh_badges_from_meta(meta)
             mk = match_key(target)
             print(
-                f"{display_session_entry_with_suffix(target, '', suffix)}{badge}\tsession\t{path}\t{meta}\t{target}\t{mk}"
+                f"{display_session_entry_with_suffix(target, '', suffix)}{badge}{gh_b}\tsession\t{path}\t{meta}\t{target}\t{mk}"
             )
             continue
 

@@ -46,6 +46,8 @@ inside a tmux popup.
 | `ctrl-s`           | **Send command** — enters a modal: type a command, `enter` sends it to selected session(s), `esc` cancels |
 | `ctrl-r`           | Refresh list (grouped ordering + background cache rebuild)                                                |
 | `alt-r`            | Force full refresh                                                                                        |
+| `alt-p`            | Open PR in browser (if the entry's branch has a linked PR)                                                |
+| `alt-i`            | Open issue in browser (if the entry's branch references an issue number)                                  |
 | `ctrl-/`           | Toggle preview panel visibility                                                                           |
 | `?`                | Show keybinding help in the preview panel                                                                 |
 | `shift-up/down`    | Scroll preview (line)                                                                                     |
@@ -80,6 +82,31 @@ Badges appear inline after the entry name/path. They are computed at index time
 - Dirty detection runs in parallel (8 threads) during the background index.
 - Status flags are stored in the cache `meta` column (`status=dirty`,
   `status=stale`, etc.) and survive rehydration.
+
+### GitHub PR/issue badges
+
+For non-default branches, the indexer queries `gh` to detect linked pull
+requests and issues. Badges appear inline after status badges.
+
+| Badge       | Meaning        | Icon (Nerd Font)                   | Color               |
+| ----------- | -------------- | ---------------------------------- | ------------------- |
+| `` (green)  | PR — open      | `oct-git_pull_request` F407        | green (`38;5;42`)   |
+| `` (purple) | PR — merged    | `oct-git_pull_request` F407        | purple (`38;5;141`) |
+| `` (red)    | PR — closed    | `oct-git_pull_request_closed` F4DC | red (`38;5;196`)    |
+| `` (green)  | Issue — open   | `oct-issue_opened` F41B            | green (`38;5;42`)   |
+| `` (purple) | Issue — closed | `oct-issue_closed` F41D            | purple (`38;5;141`) |
+
+- **PR detection**: `gh pr list --head BRANCH --state all` for each worktree's
+  branch.
+- **Issue detection**: extracts a number from the branch name (e.g.,
+  `fix/1234-desc` → issue `1234`) and verifies with `gh issue view`.
+- Lookups run in parallel (4 threads) during the background index, adding no
+  latency to picker open.
+- PR/issue metadata is stored in the cache `meta` column (`pr=NUMBER:STATE:URL`,
+  `issue=NUMBER:STATE:URL`).
+- The preview pane shows PR/issue details (number, state, URL) at the top for
+  session and worktree entries.
+- `alt-p` opens the PR URL in the browser; `alt-i` opens the issue URL.
 
 ### Preview pane
 
