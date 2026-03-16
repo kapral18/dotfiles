@@ -1,6 +1,6 @@
 # Canonical MCP server registry.
 # Single source of truth for Cursor, Claude Code, and Pi MCP configs.
-# Gemini and Copilot use their own formats (see their source files).
+# Gemini uses its own format (see its source file).
 #
 # Each entry:
 #   name        – server key in the mcpServers object

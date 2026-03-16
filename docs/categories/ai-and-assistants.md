@@ -286,7 +286,6 @@ Tool configs included here:
 | Codex       | [`home/dot_codex/`](../../home/dot_codex/)                                                                                   |
 | Amp         | [`home/dot_config/exact_amp/private_readonly_settings.json`](../../home/dot_config/exact_amp/private_readonly_settings.json) |
 | Gemini CLI  | [`home/dot_gemini/`](../../home/dot_gemini/)                                                                                 |
-| Copilot CLI | [`home/dot_config/dot_copilot/`](../../home/dot_config/dot_copilot/)                                                         |
 
 ### Profile-based file merging
 
@@ -474,14 +473,6 @@ uses the same LiteLLM gateway model set as Pi. Notable per-model overrides:
 LiteLLM base URL at apply time. The `llm-gateway/gpt-5.4` entry explicitly sets
 `contextWindow: 272000` / `maxTokens: 128000` so Pi's footer and compaction
 thresholds use correct limits instead of Pi's `128000` fallback default.
-
-### Copilot CLI settings
-
-Source: [`home/dot_config/dot_copilot/`](../../home/dot_config/dot_copilot/) →
-`~/.config/.copilot/`.
-
-- `config.json`, `mcp-config.json`, and `lsp-config.json` are managed directly
-  by chezmoi.
 
 ## Secrets
 

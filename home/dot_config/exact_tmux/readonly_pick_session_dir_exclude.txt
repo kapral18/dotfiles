@@ -42,4 +42,3 @@ work/kibana/es_data/
 .config/cursor/chats/
 .bun/install/cache/
 .codex/sessions/
-.copilot/session-state/

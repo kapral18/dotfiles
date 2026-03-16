@@ -532,7 +532,7 @@ dynamically merged by `chezmoi` based on your identity.
 | **Cursor**          | AI code editor        | MCPs are filtered securely via chezmoi scripts (`__isWork__` tagging).                          |
 | **OpenCode**        | Terminal agent runner | Leverages LiteLLM aliases with strict output constraints to prevent gateway timeouts.           |
 | **Ollama**          | Local LLM runtime     | Automatically pulls `gpt-oss` and `deepseek-r1` upon `chezmoi apply`.                           |
-| **Crush & Copilot** | Terminal assistants   | fully configured for shell integration.                                                         |
+| **Crush**           | Terminal assistant    | Fully configured for shell integration.                                                         |
 
 ## 💎 Neovim
 

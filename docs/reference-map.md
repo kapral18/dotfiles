@@ -100,7 +100,6 @@ This page answers two questions:
 | Codex                         | [`home/dot_codex/`](../home/dot_codex/)                                                                                                                                 |
 | Codex model catalog generator | [`home/.chezmoiscripts/run_onchange_after_07-generate-codex-model-catalog.sh.tmpl`](../home/.chezmoiscripts/run_onchange_after_07-generate-codex-model-catalog.sh.tmpl) |
 | Gemini                        | [`home/dot_gemini/`](../home/dot_gemini/)                                                                                                                               |
-| Copilot CLI                   | [`home/dot_config/dot_copilot/`](../home/dot_config/dot_copilot/)                                                                                                       |
 | Cursor                        | [`home/dot_cursor/`](../home/dot_cursor/)                                                                                                                               |
 | Amp                           | [`home/dot_config/exact_amp/`](../home/dot_config/exact_amp/)                                                                                                           |
 | Assistant SOP entrypoints     | [`home/readonly_AGENTS.md`](../home/readonly_AGENTS.md), [`home/readonly_CLAUDE.md`](../home/readonly_CLAUDE.md)                                                        |
