@@ -322,7 +322,7 @@ now_epoch="$(date +%s)"
 
 if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
   for root in "${!roots_selected[@]}"; do
-    nohup env -u TMUX -u TMUX_PANE "$HOME/.config/tmux/scripts/pick_session/remove_all_worktrees.sh" "$root" < /dev/null > /dev/null 2>&1 &
+    nohup env -u TMUX -u TMUX_PANE "$HOME/.config/tmux/scripts/pickers/session/remove_all_worktrees.sh" "$root" < /dev/null > /dev/null 2>&1 &
   done
 
   for root in "${!worktree_paths_by_root[@]}"; do
@@ -337,7 +337,7 @@ if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
 
   if [ ${#pending_plain_dirs[@]} -gt 0 ]; then
     for pd in "${pending_plain_dirs[@]}"; do
-      nohup env -u TMUX -u TMUX_PANE "$HOME/.config/tmux/scripts/pick_session/remove_plain_dir.sh" "$pd" < /dev/null > /dev/null 2>&1 &
+      nohup env -u TMUX -u TMUX_PANE "$HOME/.config/tmux/scripts/pickers/session/remove_plain_dir.sh" "$pd" < /dev/null > /dev/null 2>&1 &
     done
   fi
 fi

@@ -154,7 +154,7 @@ _notify_fzf_reload() {
   mode="$(cat "${cache_dir}/gh_picker_mode" 2> /dev/null || echo work)"
   port="$(cat "${cache_dir}/gh_picker_port" 2> /dev/null || true)"
   [ -n "$port" ] || return 0
-  items_cmd="$HOME/.config/tmux/scripts/pick_session/gh_items.sh"
+  items_cmd="$HOME/.config/tmux/scripts/pickers/github/gh_items.sh"
   cache_load_cmd="GH_PICKER_MODE=$(printf %q "$mode") $(printf %q "$items_cmd") --cache-only"
   # Use IPv4 explicitly; on macOS `localhost` may resolve to ::1 while fzf binds 127.0.0.1.
   curl -s --max-time 1 -XPOST "http://127.0.0.1:${port}" -d "reload($cache_load_cmd)+track" 2> /dev/null > /dev/null || true
@@ -165,7 +165,7 @@ _mark_local_in_cache() {
   local mode cache_file script_dir patcher
   mode="$(cat "${cache_dir}/gh_picker_mode" 2> /dev/null || echo work)"
   cache_file="${cache_dir}/gh_picker_${mode}.tsv"
-  script_dir="$HOME/.config/tmux/scripts/pick_session"
+  script_dir="$HOME/.config/tmux/scripts/pickers/github"
   patcher="${script_dir}/lib/gh_patch_picker_cache.py"
   if [ -x "$patcher" ] && [ -f "$cache_file" ]; then
     python3 -u "$patcher" --cache-file "$cache_file" --kind "$kind" --repo "$repo" --num "$num" 2> /dev/null || true

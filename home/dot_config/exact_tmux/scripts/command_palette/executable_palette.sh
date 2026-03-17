@@ -108,8 +108,8 @@ human_key() {
 describe_tmux_action() {
   local action="$1"
   case "$action" in
-    *pick_session/pick_session.sh*) printf 'Session picker' ;;
-    *pick_session/popup.sh*) printf 'Session picker (popup)' ;;
+    *pickers/session/pick_session.sh*) printf 'Session picker' ;;
+    *pickers/session/popup.sh*) printf 'Session picker (popup)' ;;
     *command_palette*) printf 'Command palette' ;;
     *gh_dash/popup.sh*) printf 'GitHub dashboard (gh-dash)' ;;
     *gh_dash/restart.sh*) printf 'Restart gh-dash' ;;

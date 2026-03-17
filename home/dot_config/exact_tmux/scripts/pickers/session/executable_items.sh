@@ -147,9 +147,9 @@ if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
   # If the cache is missing, prefer a full refresh in the background so the
   # next open (or a ctrl-r) has complete data.
   if [ "$cache_was_present" -eq 1 ]; then
-    tmux run-shell -b "$HOME/.config/tmux/scripts/pick_session/index_update.sh --quiet --quick-only" 2> /dev/null || true
+    tmux run-shell -b "$HOME/.config/tmux/scripts/pickers/session/index_update.sh --quiet --quick-only" 2> /dev/null || true
   else
-    tmux run-shell -b "$HOME/.config/tmux/scripts/pick_session/index_update.sh --quiet" 2> /dev/null || true
+    tmux run-shell -b "$HOME/.config/tmux/scripts/pickers/session/index_update.sh --quiet" 2> /dev/null || true
   fi
 fi
 

@@ -59,7 +59,7 @@ with fish).
 
 A standalone fzf-based PR/issue picker. It reads PR and issue sections from its
 own YAML configs
-(`~/.config/tmux/scripts/pick_session/gh-picker-{work,home}.yml`) and displays
+(`~/.config/tmux/scripts/pickers/github/gh-picker-{work,home}.yml`) and displays
 them in `fzf` with rich preview, worktree markers, and review status badges.
 gh-dash is not a dependency.
 

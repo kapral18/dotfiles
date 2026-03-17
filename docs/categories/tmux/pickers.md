@@ -43,6 +43,7 @@ This setup ships a URL picker, a session/worktree picker, and a GitHub picker
 | `tab`              | Toggle multi-select on current row                                                                        |
 | `ctrl-x`           | Kill selected session(s) — optimistic hide                                                                |
 | `alt-x`            | Remove selected worktree(s) — optimistic hide                                                             |
+| `alt-y`            | Copy underlying path(s) to clipboard                                                                      |
 | `ctrl-s`           | **Send command** — enters a modal: type a command, `enter` sends it to selected session(s), `esc` cancels |
 | `ctrl-r`           | Refresh list (grouped ordering + background cache rebuild)                                                |
 | `alt-r`            | Force full refresh                                                                                        |
@@ -225,7 +226,7 @@ Enters a modal where the fzf query line becomes a command prompt:
 
 ### How ordering works
 
-Grouped/sorted ordering is produced by `pick_session/filter.sh`:
+Grouped/sorted ordering is produced by `pickers/session/filter.sh`:
 
 1. **Session-backed repo/worktree groups** first (sessions first within each
    group, then related worktrees)
@@ -239,14 +240,14 @@ unrelated long-path hits. Queries like `work/kibana main` work.
 
 ### How caching works
 
-- `pick_session/index_update.sh` builds the cache
+- `pickers/session/index_update.sh` builds the cache
   (`~/.cache/tmux/pick_session_items.tsv`) and a precomputed ordered snapshot
   (`pick_session_items_ordered.tsv`) in the background.
 - Picker open prefers the ordered snapshot for instant first paint, validated
   against mutation/pending timestamps (bash `-nt` check, zero subprocess
   overhead).
 - After `ctrl-x` kill or `alt-x` remove (which write mutation tombstones), the
-  ordered snapshot is stale, so `pick_session/items.sh` runs with mutation
+  ordered snapshot is stale, so `pickers/session/items.sh` runs with mutation
   filtering (~250 ms) to ensure killed/removed entries never reappear.
 - `tmux_opt` reads are cached: a single `tmux show-options -g` call replaces
   multiple sequential round-trips.
@@ -291,10 +292,10 @@ unrelated long-path hits. Queries like `work/kibana main` work.
 - Popup spawn temporarily overrides `default-shell` to `/bin/sh` during
   `display-popup` to avoid heavy-shell (fish, zsh with plugins) initialization
   overhead (~1 s). The original shell is restored atomically.
-  `pick_session/pick_session.sh` itself runs under `bash` via its shebang.
+  `pickers/session/pick_session.sh` itself runs under `bash` via its shebang.
 - All pickers (URL, session, GitHub) run `fzf` with `FZF_DEFAULT_OPTS` cleared
   so global defaults don't distort the popup UI.
-- For very large caches, `pick_session/filter.sh` automatically falls back to
+- For very large caches, `pickers/session/filter.sh` automatically falls back to
   passthrough mode (default threshold `2000` rows); tune with
   `@pick_session_filter_passthrough_rows`.
 - For very large caches, first paint can defer `dir` rows
@@ -321,7 +322,7 @@ and review status badges. gh-dash is not a dependency.
 | `alt-b`            | Checkout + open Octo review (PRs only)            |
 | `ctrl-t`           | Batch worktree create (marked items)              |
 | `alt-o`            | Open in browser                                   |
-| `alt-y`            | Copy URL to clipboard                             |
+| `alt-y`            | Copy URL(s) to clipboard                          |
 | `tab`              | Mark/unmark item (multi-select)                   |
 | `alt-space`        | Mark/unmark item (alternate toggle)               |
 | `ctrl-s`           | Switch work/home mode                             |
@@ -340,8 +341,8 @@ and review status badges. gh-dash is not a dependency.
 ### Entry source
 
 Items come from the gh picker's standalone config files
-(`~/.config/tmux/scripts/pick_session/gh-picker-work.yml` and
-`~/.config/tmux/scripts/pick_session/gh-picker-home.yml`). Each file defines
+(`~/.config/tmux/scripts/pickers/github/gh-picker-work.yml` and
+`~/.config/tmux/scripts/pickers/github/gh-picker-home.yml`). Each file defines
 `prSections` and `issuesSections` with `title` and `filters` (GitHub Search
 syntax). The Python fetcher (`lib/gh_items_main.py`) parses these YAML files,
 runs GitHub Search API queries, and formats results as `fzf`-consumable TSV.
@@ -361,6 +362,12 @@ runs GitHub Search API queries, and formats results as `fzf`-consumable TSV.
 
 Review and CI badges are fetched via a batched GraphQL call that piggybacks on
 the section fetch, at zero extra round-trip cost.
+
+The conflict badge is also sourced from GraphQL (`mergeable=CONFLICTING`). If
+GraphQL metadata is temporarily unavailable during a refresh, the picker keeps
+the last-known conflict badge until fresh metadata is fetched; in that case the
+badge is shown **dim** to indicate it may be stale (use `ctrl-r` to force
+revalidation).
 
 ### Worktree detection
 
@@ -385,7 +392,7 @@ heuristic:
 - **`alt-b` on a PR**: same as single `enter`, then opens Octo review in a new
   tmux window.
 - **`alt-o`**: opens the PR/issue URL in the browser.
-- **`alt-y`**: copies the URL to the clipboard.
+- **`alt-y`**: copies the URL(s) to the clipboard.
 - **`alt-c`**: new comment — opens `$EDITOR`, posts on save.
 - **`alt-r`**: quote-reply — pick a comment via fzf, quote it, open `$EDITOR`.
 - **`alt-d`**: edit own comment — pick one of your comments via fzf, edit in

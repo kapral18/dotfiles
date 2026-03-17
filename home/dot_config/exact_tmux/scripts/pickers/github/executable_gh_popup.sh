@@ -4,7 +4,8 @@
 set -euo pipefail
 
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
-script_dir="$HOME/.config/tmux/scripts/pick_session"
+session_dir="$HOME/.config/tmux/scripts/pickers/session"
+github_dir="$HOME/.config/tmux/scripts/pickers/github"
 
 IFS='|' read -r ps_h ps_w orig_shell < <(
   tmux display-message -p \
@@ -27,14 +28,14 @@ run_popup() {
     set-option -g default-shell "$orig_shell" 2> /dev/null || true
 }
 
-run_popup "$gh_h" "$gh_w" "$script_dir/gh_picker.sh"
+run_popup "$gh_h" "$gh_w" "$github_dir/gh_picker.sh"
 
 while [ -f "${cache_dir}/gh_picker_switch_sessions" ]; do
   rm -f "${cache_dir}/gh_picker_switch_sessions" 2> /dev/null || true
-  run_popup "$ps_h" "$ps_w" "$script_dir/pick_session.sh"
+  run_popup "$ps_h" "$ps_w" "$session_dir/pick_session.sh"
 
   if [ -f "${cache_dir}/pick_session_switch_gh" ]; then
     rm -f "${cache_dir}/pick_session_switch_gh" 2> /dev/null || true
-    run_popup "$gh_h" "$gh_w" "$script_dir/gh_picker.sh"
+    run_popup "$gh_h" "$gh_w" "$github_dir/gh_picker.sh"
   fi
 done

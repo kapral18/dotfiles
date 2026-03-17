@@ -28,4 +28,4 @@ trap cleanup EXIT
 # Let multiple events arrive before refreshing.
 sleep 0.4
 
-exec "$HOME/.config/tmux/scripts/pick_session/index_update.sh" --force --quiet --quick-only
+exec "$HOME/.config/tmux/scripts/pickers/session/index_update.sh" --force --quiet --quick-only

@@ -217,17 +217,17 @@ tmux_has_session_exact() {
   tmux has-session -t "=${name}" 2> /dev/null
 }
 
-items_cmd="$HOME/.config/tmux/scripts/pick_session/items.sh"
+items_cmd="$HOME/.config/tmux/scripts/pickers/session/items.sh"
 if [ ! -x "$items_cmd" ]; then
   die "tmux: missing script: $items_cmd"
 fi
 
-open_items_cmd="$HOME/.config/tmux/scripts/pick_session/open_items.sh"
+open_items_cmd="$HOME/.config/tmux/scripts/pickers/session/open_items.sh"
 if [ ! -x "$open_items_cmd" ]; then
   open_items_cmd="$items_cmd"
 fi
 
-filter_cmd="$HOME/.config/tmux/scripts/pick_session/filter.sh"
+filter_cmd="$HOME/.config/tmux/scripts/pickers/session/filter.sh"
 if [ ! -x "$filter_cmd" ]; then
   filter_cmd="$items_cmd"
 fi
@@ -238,19 +238,19 @@ sel_tmp="${cache_dir}/pick_session_fzf_selected.tsv"
 primary_tmp="${cache_dir}/pick_session_fzf_primary.tsv"
 pin_file="${cache_dir}/pick_session_pin"
 gh_pin_file="${cache_dir}/gh_picker_pin"
-handoff_to_gh_cmd="$HOME/.config/tmux/scripts/pick_session/handoff_to_gh.sh"
-pin_first_cmd="$HOME/.config/tmux/scripts/pick_session/pin_session_first.sh"
+handoff_to_gh_cmd="$HOME/.config/tmux/scripts/pickers/lib/handoff_to_gh.sh"
+pin_first_cmd="$HOME/.config/tmux/scripts/pickers/lib/pin_session_first.sh"
 
-kill_cmd="$HOME/.config/tmux/scripts/pick_session/action_kill_sessions.sh"
-rm_cmd="$HOME/.config/tmux/scripts/pick_session/action_remove_worktrees.sh"
-live_refresh_cmd="$HOME/.config/tmux/scripts/pick_session/live_refresh.sh"
-hide_selected_cmd="$HOME/.config/tmux/scripts/pick_session/items_hide_selected.sh"
-update_cmd="$HOME/.config/tmux/scripts/pick_session/index_update.sh"
+kill_cmd="$HOME/.config/tmux/scripts/pickers/session/action_kill_sessions.sh"
+rm_cmd="$HOME/.config/tmux/scripts/pickers/session/action_remove_worktrees.sh"
+live_refresh_cmd="$HOME/.config/tmux/scripts/pickers/session/live_refresh.sh"
+hide_selected_cmd="$HOME/.config/tmux/scripts/pickers/session/items_hide_selected.sh"
+update_cmd="$HOME/.config/tmux/scripts/pickers/session/index_update.sh"
 kill_async_cmd="tmux run-shell -b \"$(printf %q "$kill_cmd") $(printf %q "$sel_tmp")\""
 rm_async_cmd="tmux run-shell -b \"$(printf %q "$rm_cmd") $(printf %q "$sel_tmp")\""
 
-send_cmd="$HOME/.config/tmux/scripts/pick_session/action_send_command.sh"
-open_gh_cmd="$HOME/.config/tmux/scripts/pick_session/action_open_gh.sh"
+send_cmd="$HOME/.config/tmux/scripts/pickers/session/action_send_command.sh"
+open_gh_cmd="$HOME/.config/tmux/scripts/pickers/session/action_open_gh.sh"
 cmd_tmp="${cache_dir}/pick_session_cmd.txt"
 mode_flag="${cache_dir}/pick_session_send_mode"
 
@@ -271,13 +271,13 @@ if [ -f "$pin_file" ]; then
   rm -f "$pin_file" 2> /dev/null || true
 fi
 
-help_cmd="$HOME/.config/tmux/scripts/pick_session/keyhelp.sh"
-preview_cmd="$HOME/.config/tmux/scripts/pick_session/preview.sh"
+help_cmd="$HOME/.config/tmux/scripts/pickers/session/keyhelp.sh"
+preview_cmd="$HOME/.config/tmux/scripts/pickers/session/preview.sh"
 
 # fzf send-mode: ctrl-s enters a modal where the query line becomes a command
 # prompt. enter dispatches the command to selected sessions; esc cancels.
-send_restore="enable-search+change-prompt($fzf_prompt)+change-ghost($fzf_ghost)+change-header(?=help  ctrl-/=preview  alt-p=PR  alt-i=issue  alt-g=GitHub)+clear-query+deselect-all+rebind(ctrl-s,ctrl-x,alt-x,alt-p,alt-i,alt-g,change)+unbind(esc)"
-send_mode="execute-silent(cp {+f} $sel_tmp)+execute-silent(touch $mode_flag)+disable-search+change-prompt(❯ send: )+change-ghost()+change-header(enter=send  esc=cancel)+clear-query+unbind(ctrl-s,ctrl-x,alt-x,alt-p,alt-i,alt-g,change)+rebind(esc)"
+send_restore="enable-search+change-prompt($fzf_prompt)+change-ghost($fzf_ghost)+change-header(?=help  ctrl-/=preview  alt-p=PR  alt-i=issue  alt-g=GitHub)+clear-query+deselect-all+rebind(ctrl-s,ctrl-x,alt-x,alt-y,alt-p,alt-i,alt-g,change)+unbind(esc)"
+send_mode="execute-silent(cp {+f} $sel_tmp)+execute-silent(touch $mode_flag)+disable-search+change-prompt(❯ send: )+change-ghost()+change-header(enter=send  esc=cancel)+clear-query+unbind(ctrl-s,ctrl-x,alt-x,alt-y,alt-p,alt-i,alt-g,change)+rebind(esc)"
 
 selection_file="${PICK_SESSION_SELECTION_FILE:-}"
 if [ -n "$selection_file" ] && [ -f "$selection_file" ]; then
@@ -324,10 +324,11 @@ else
         --bind "esc:execute-silent(rm -f $mode_flag)+$send_restore" \
         --bind "ctrl-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") kill {q})+execute-silent($kill_async_cmd)+deselect-all" \
         --bind "alt-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") remove {q})+execute-silent($rm_async_cmd)+deselect-all" \
+        --bind "alt-y:execute-silent(printf '%s\n' {+} | cut -f3 | sed '/^[[:space:]]*$/d' | pbcopy 2>/dev/null || printf '%s\n' {+} | cut -f3 | sed '/^[[:space:]]*$/d' | xclip -sel clip 2>/dev/null)" \
         --bind "alt-p:execute-silent($open_gh_cmd pr {f})" \
         --bind "alt-i:execute-silent($open_gh_cmd issue {f})" \
         --bind "alt-g:execute-silent($(printf %q "$handoff_to_gh_cmd") {4} $(printf %q "$gh_pin_file") 2>/dev/null || true; touch ${cache_dir}/pick_session_switch_gh)+abort" \
-        --header $'?=help  ctrl-/=preview  alt-p=PR  alt-i=issue  alt-g=GitHub' \
+        --header $'?=help  ctrl-/=preview  alt-y=copy path(s)  alt-p=PR  alt-i=issue  alt-g=GitHub' \
         \
         ${fzf_args} \
         || true
@@ -369,10 +370,11 @@ else
         --bind "esc:execute-silent(rm -f $mode_flag)+$send_restore" \
         --bind "ctrl-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") kill {q})+execute-silent($kill_async_cmd)+deselect-all" \
         --bind "alt-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") remove {q})+execute-silent($rm_async_cmd)+deselect-all" \
+        --bind "alt-y:execute-silent(printf '%s\n' {+} | cut -f3 | sed '/^[[:space:]]*$/d' | pbcopy 2>/dev/null || printf '%s\n' {+} | cut -f3 | sed '/^[[:space:]]*$/d' | xclip -sel clip 2>/dev/null)" \
         --bind "alt-p:execute-silent($open_gh_cmd pr {f})" \
         --bind "alt-i:execute-silent($open_gh_cmd issue {f})" \
         --bind "alt-g:execute-silent($(printf %q "$handoff_to_gh_cmd") {4} $(printf %q "$gh_pin_file") 2>/dev/null || true; touch ${cache_dir}/pick_session_switch_gh)+abort" \
-        --header $'?=help  ctrl-/=preview  alt-p=PR  alt-i=issue  alt-g=GitHub' \
+        --header $'?=help  ctrl-/=preview  alt-y=copy path(s)  alt-p=PR  alt-i=issue  alt-g=GitHub' \
         \
         ${fzf_args} \
         || true
@@ -1124,5 +1126,5 @@ fi
 # If we created any new sessions, refresh the cache quickly so the next picker
 # open shows them in their "true" group/position without waiting for TTL.
 if [ "${created_any_session:-0}" -eq 1 ]; then
-  tmux run-shell -b "$HOME/.config/tmux/scripts/pick_session/index_update.sh --force --quiet --quick-only" 2> /dev/null || true
+  tmux run-shell -b "$HOME/.config/tmux/scripts/pickers/session/index_update.sh --force --quiet --quick-only" 2> /dev/null || true
 fi

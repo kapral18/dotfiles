@@ -64,8 +64,8 @@ cleanup() {
 trap cleanup EXIT
 printf '%s\n' "$$" > "${lock_dir}/pid" 2> /dev/null || true
 
-filter_cmd="$HOME/.config/tmux/scripts/pick_session/filter.sh"
-items_cmd="$HOME/.config/tmux/scripts/pick_session/items.sh"
+filter_cmd="$HOME/.config/tmux/scripts/pickers/session/filter.sh"
+items_cmd="$HOME/.config/tmux/scripts/pickers/session/items.sh"
 tmp_out="$(mktemp -t pick_session_items_ordered.XXXXXX)"
 
 if [ -x "$filter_cmd" ]; then

@@ -16,6 +16,7 @@ import signal
 import subprocess
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 HALF_CORES = max(1, (os.cpu_count() or 2) // 2)
@@ -398,7 +399,41 @@ CI_PENDING = c("38;5;220", "●")
 CI_SPACER = " "
 COMMENT_ICON = "\033[38;5;244m\U0001f4ac\033[0m"
 CONFLICT_BADGE = c("38;5;209", "⚡")
+CONFLICT_BADGE_STALE = c("2;38;5;209", "⚡")
 CONFLICT_SPACER = " "
+
+
+def _read_prior_conflicts(cache_file: str) -> set[tuple[str, int]]:
+    """Best-effort: preserve merge-conflict badges across partial refreshes.
+
+    If GitHub GraphQL metadata fetch fails, mergeable state can go missing and the
+    conflict badge would disappear. Since the picker is stale-while-revalidate,
+    prefer keeping the last-known conflict marker until fresh metadata is available.
+    """
+    try:
+        raw = Path(cache_file).read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return set()
+
+    out: set[tuple[str, int]] = set()
+    for line in raw.splitlines():
+        if "\t" not in line:
+            continue
+        parts = line.split("\t")
+        if len(parts) < 4:
+            continue
+        display, kind, repo, num_s = parts[0], parts[1], parts[2], parts[3]
+        if kind != "pr":
+            continue
+        # Avoid false positives if a title contains ⚡; the badge is near the prefix.
+        pos = display.find("⚡")
+        if pos < 0 or pos > 40:
+            continue
+        try:
+            out.add((repo, int(num_s)))
+        except ValueError:
+            continue
+    return out
 
 
 def fetch_section(kind: str, idx: int, title: str, filters: str, limit: int = 30) -> list[dict[str, Any]]:
@@ -498,7 +533,11 @@ def _ci_badge(state: str) -> str:
     return CI_SPACER
 
 
-def format_lines(items: list[dict[str, Any]], wt_index: dict[str, dict[int, _ItemInfo]]) -> list[str]:
+def format_lines(
+    items: list[dict[str, Any]],
+    wt_index: dict[str, dict[int, _ItemInfo]],
+    prior_conflicts: set[tuple[str, int]] | None = None,
+) -> list[str]:
     """Format item dicts into TSV lines for fzf, with worktree + review markers."""
     cols = _terminal_columns()
     visible = int(cols * 0.45)
@@ -507,6 +546,7 @@ def format_lines(items: list[dict[str, Any]], wt_index: dict[str, dict[int, _Ite
     max_title = max(40, visible - fixed_width)
 
     lines: list[str] = []
+    prior = prior_conflicts or set()
     for item in items:
         if item.get("_header"):
             header = c("1;38;5;244", f"── {item['title']} ──")
@@ -529,7 +569,11 @@ def format_lines(items: list[dict[str, Any]], wt_index: dict[str, dict[int, _Ite
         local_marker = ICON_LOCAL if (item_info and item_info.has_wt) else ICON_LOCAL_SPACER
         review = _review_badge(item_info.review if item_info else "") if item_kind == "pr" else REVIEW_SPACER
         ci = _ci_badge(item_info.ci if item_info else "") if item_kind == "pr" else CI_SPACER
-        conflict = CONFLICT_BADGE if (item_info and item_info.mergeable == "CONFLICTING") else CONFLICT_SPACER
+        conflict = CONFLICT_SPACER
+        if item_info and item_info.mergeable == "CONFLICTING":
+            conflict = CONFLICT_BADGE
+        elif (not (item_info and item_info.mergeable)) and ((repo, int(num)) in prior):
+            conflict = CONFLICT_BADGE_STALE
 
         title_text = item["title"]
         if len(title_text) > max_title:
@@ -562,6 +606,7 @@ def main():
     args = parser.parse_args()
 
     pr_sections, issue_sections, repo_paths = parse_config(args.config)
+    prior_conflicts = _read_prior_conflicts(args.cache_file)
 
     all_lines: list[str] = []
 
@@ -668,7 +713,7 @@ def main():
         if info:
             wt_index[nwo] = info
 
-    all_lines = format_lines(all_items, wt_index)
+    all_lines = format_lines(all_items, wt_index, prior_conflicts=prior_conflicts)
 
     output = "\n".join(all_lines)
     if output.strip():

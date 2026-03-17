@@ -434,7 +434,7 @@ disk.
   `alt-b` on PRs opens Octo review. Shows inline CI, review, and worktree
   badges.
 - Config:
-  `home/dot_config/exact_tmux/scripts/pick_session/readonly_gh-picker-{work,home}.yml`
+  `home/dot_config/exact_tmux/scripts/pickers/github/readonly_gh-picker-{work,home}.yml`
 - GitHub CLI (`gh`) config: `home/dot_config/exact_private_gh/`
 
 **TUIs:**

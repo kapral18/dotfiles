@@ -53,12 +53,12 @@ repos under `~/work/` automatically use the secondary identity.
 
 ## GitHub CLI + GitHub Picker
 
-| Component                   | Source                                                                                                                                                             |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| GitHub CLI config directory | [`home/dot_config/exact_private_gh/`](../../home/dot_config/exact_private_gh/) (private)                                                                           |
-| gh picker work config       | [`home/dot_config/exact_tmux/scripts/pick_session/readonly_gh-picker-work.yml`](../../home/dot_config/exact_tmux/scripts/pick_session/readonly_gh-picker-work.yml) |
-| gh picker home config       | [`home/dot_config/exact_tmux/scripts/pick_session/readonly_gh-picker-home.yml`](../../home/dot_config/exact_tmux/scripts/pick_session/readonly_gh-picker-home.yml) |
-| Managed extensions hook     | [`home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl)   |
+| Component                   | Source                                                                                                                                                                 |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GitHub CLI config directory | [`home/dot_config/exact_private_gh/`](../../home/dot_config/exact_private_gh/) (private)                                                                               |
+| gh picker work config       | [`home/dot_config/exact_tmux/scripts/pickers/github/readonly_gh-picker-work.yml`](../../home/dot_config/exact_tmux/scripts/pickers/github/readonly_gh-picker-work.yml) |
+| gh picker home config       | [`home/dot_config/exact_tmux/scripts/pickers/github/readonly_gh-picker-home.yml`](../../home/dot_config/exact_tmux/scripts/pickers/github/readonly_gh-picker-home.yml) |
+| Managed extensions hook     | [`home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl)       |
 
 Git TUIs:
 

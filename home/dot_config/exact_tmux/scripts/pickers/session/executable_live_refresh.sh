@@ -124,9 +124,9 @@ done
 
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 cache_file="${cache_dir}/pick_session_items.tsv"
-update_cmd="$HOME/.config/tmux/scripts/pick_session/index_update.sh"
-items_cmd="$HOME/.config/tmux/scripts/pick_session/items.sh"
-filter_cmd="$HOME/.config/tmux/scripts/pick_session/filter.sh"
+update_cmd="$HOME/.config/tmux/scripts/pickers/session/index_update.sh"
+items_cmd="$HOME/.config/tmux/scripts/pickers/session/items.sh"
+filter_cmd="$HOME/.config/tmux/scripts/pickers/session/filter.sh"
 if [ ! -x "$filter_cmd" ]; then
   filter_cmd="$items_cmd"
 fi

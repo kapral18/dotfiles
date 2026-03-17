@@ -19,6 +19,7 @@ Selection / Actions
   tab             toggle multi-select on current row
   ctrl-x          kill selected session(s) (optimistic hide)
   alt-x           remove selected worktree(s) (optimistic hide)
+  alt-y           copy underlying path(s) to clipboard
   ctrl-s          send command to selected session(s)
                     enters send mode: type command, enter=send, esc=cancel
 

@@ -227,15 +227,16 @@ if [ "$should_nuke_wrapper" -eq 1 ]; then
   # Preserve any non-worktree files/dirs that live anywhere under the wrapper,
   # then nuke the wrapper in one shot. `.DS_Store` is ignored.
   ts="$(date +%Y%m%d-%H%M%S)"
-  bag_root="$(dirname "$wrapper")/.bag/pick_session/$(basename "$wrapper")/$ts"
+  bag_root="$(dirname "$wrapper")/.bag/pickers/session/$(basename "$wrapper")/$ts"
 
   mapfile -t wt_rels < <(
     printf '%s\n' "${worktrees[@]}" \
       | while IFS= read -r p; do
         p="$(realpath_or_self "$p")"
-        case "$p" in
-          "$wrapper"/*) printf '%s\n' "${p#"$wrapper"/}" ;;
-        esac
+        prefix="${wrapper}/"
+        if [[ "$p" == "$prefix"* ]]; then
+          printf '%s\n' "${p:${#prefix}}"
+        fi
       done \
       | sed '/^$/d' \
       | LC_ALL=C sort -u
@@ -287,7 +288,7 @@ if [ "$should_nuke_wrapper" -eq 1 ]; then
   cleanup_pending_entries "${pending_cleanup_paths[@]}"
   if command -v tmux > /dev/null 2>&1; then
     # Run directly; avoid `tmux run-shell` which can steal focus from popups.
-    nohup "$HOME/.config/tmux/scripts/pick_session/index_update.sh" --force --quiet < /dev/null > /dev/null 2>&1 &
+    nohup "$HOME/.config/tmux/scripts/pickers/session/index_update.sh" --force --quiet < /dev/null > /dev/null 2>&1 &
   fi
   exit 0
 fi
@@ -315,5 +316,5 @@ fi
 
 cleanup_pending_entries "${pending_cleanup_paths[@]}"
 if command -v tmux > /dev/null 2>&1; then
-  nohup "$HOME/.config/tmux/scripts/pick_session/index_update.sh" --force --quiet < /dev/null > /dev/null 2>&1 &
+  nohup "$HOME/.config/tmux/scripts/pickers/session/index_update.sh" --force --quiet < /dev/null > /dev/null 2>&1 &
 fi

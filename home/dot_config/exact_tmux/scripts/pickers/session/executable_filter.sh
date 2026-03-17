@@ -19,8 +19,8 @@ tmux_opt() {
   fi
 }
 
-items_cmd="$HOME/.config/tmux/scripts/pick_session/items.sh"
-update_cmd="$HOME/.config/tmux/scripts/pick_session/index_update.sh"
+items_cmd="$HOME/.config/tmux/scripts/pickers/session/items.sh"
+update_cmd="$HOME/.config/tmux/scripts/pickers/session/index_update.sh"
 
 refresh=0
 force_order=0
