@@ -32,15 +32,17 @@ gh_info_from_meta() {
   local m="$1"
   [ -n "$m" ] || return 0
   local IFS='|'
-  local part num state url
+  local part num state review ci url
   for part in $m; do
     case "$part" in
       pr=*)
-        IFS=':' read -r num state review url <<< "${part#pr=}"
+        IFS=':' read -r num state review ci url <<< "${part#pr=}"
         if [ -n "$num" ]; then
           local sc="$C_GREEN"
           local icon="open"
-          case "${state^^}" in
+          local state_upper
+          state_upper="$(printf '%s' "$state" | tr '[:lower:]' '[:upper:]')"
+          case "$state_upper" in
             MERGED)
               sc="$C_PURPLE"
               icon="merged"
@@ -51,7 +53,9 @@ gh_info_from_meta() {
               ;;
           esac
           local review_label=""
-          case "${review^^}" in
+          local review_upper
+          review_upper="$(printf '%s' "$review" | tr '[:lower:]' '[:upper:]')"
+          case "$review_upper" in
             APPROVED) review_label="${C_GREEN}approved${C_R}" ;;
             CHANGES_REQUESTED) review_label="${C_RED}changes requested${C_R}" ;;
             REVIEW_REQUIRED) review_label="${C_YELLOW}review pending${C_R}" ;;
@@ -62,6 +66,26 @@ gh_info_from_meta() {
           fi
           if [ -n "$url" ]; then
             printf '  %s%s%s' "$C_DIM" "$url" "$C_R"
+
+            local repo=""
+            case "$url" in
+              https://github.com/*/*)
+                local url_path="${url#https://github.com/}"
+                local owner="${url_path%%/*}"
+                local rest="${url_path#*/}"
+                local name="${rest%%/*}"
+                if [ -n "$owner" ] && [ -n "$name" ]; then
+                  repo="${owner}/${name}"
+                fi
+                ;;
+            esac
+            if [ -n "$repo" ]; then
+              local title=""
+              title="$(awk -F $'\t' -v k="pr" -v r="$repo" -v n="$num" '$2==k && $3==r && $4==n {print $1; exit}' "${XDG_CACHE_HOME:-$HOME/.cache}/tmux/gh_picker_work.tsv" "${XDG_CACHE_HOME:-$HOME/.cache}/tmux/gh_picker_home.tsv" 2> /dev/null || true)"
+              if [ -n "$title" ]; then
+                printf '\n%s  %s' "$(dim 'title')" "$title"
+              fi
+            fi
           fi
           printf '\n'
         fi
@@ -71,7 +95,9 @@ gh_info_from_meta() {
         if [ -n "$num" ]; then
           local ic="$C_GREEN"
           local ilabel="open"
-          case "${state^^}" in
+          local state_upper
+          state_upper="$(printf '%s' "$state" | tr '[:lower:]' '[:upper:]')"
+          case "$state_upper" in
             CLOSED | COMPLETED | NOT_PLANNED)
               ic="$C_PURPLE"
               ilabel="closed"
@@ -84,6 +110,26 @@ gh_info_from_meta() {
           printf '%s  %sIssue #%s%s %s(%s)%s' "$(dim 'gh')" "$ic" "$num" "$C_R" "$C_DIM" "$ilabel" "$C_R"
           if [ -n "$url" ]; then
             printf '  %s%s%s' "$C_DIM" "$url" "$C_R"
+
+            local repo=""
+            case "$url" in
+              https://github.com/*/*)
+                local url_path="${url#https://github.com/}"
+                local owner="${url_path%%/*}"
+                local rest="${url_path#*/}"
+                local name="${rest%%/*}"
+                if [ -n "$owner" ] && [ -n "$name" ]; then
+                  repo="${owner}/${name}"
+                fi
+                ;;
+            esac
+            if [ -n "$repo" ]; then
+              local title=""
+              title="$(awk -F $'\t' -v k="issue" -v r="$repo" -v n="$num" '$2==k && $3==r && $4==n {print $1; exit}' "${XDG_CACHE_HOME:-$HOME/.cache}/tmux/gh_picker_work.tsv" "${XDG_CACHE_HOME:-$HOME/.cache}/tmux/gh_picker_home.tsv" 2> /dev/null || true)"
+              if [ -n "$title" ]; then
+                printf '\n%s  %s' "$(dim 'title')" "$title"
+              fi
+            fi
           fi
           printf '\n'
         fi
