@@ -2,7 +2,7 @@
 # Batch worktree creation for the GitHub picker.
 # Accepts one or more TSV lines (from fzf selection file).
 # PRs: creates worktrees automatically (branch comes from the PR).
-# Issues: opens $EDITOR with a batch naming buffer, then creates worktrees.
+# Issues: opens $EDITOR with a naming buffer, then creates worktrees.
 #
 # Usage: gh_batch_worktree.sh <selection_file> [--background]
 #
@@ -18,9 +18,35 @@ die() {
   exit 1
 }
 
-selection_file="${1:-}"
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
+mkdir -p "$cache_dir" 2> /dev/null || true
+
+selection_file=""
 background=0
-[ "${2:-}" = "--background" ] && background=1
+branches_file=""
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --background)
+      background=1
+      shift
+      ;;
+    --branches-file)
+      [ $# -ge 2 ] || die "missing value for --branches-file"
+      branches_file="$2"
+      shift 2
+      ;;
+    -*)
+      die "unknown flag: $1"
+      ;;
+    *)
+      if [ -z "$selection_file" ]; then
+        selection_file="$1"
+      fi
+      shift
+      ;;
+  esac
+done
 
 [ -n "$selection_file" ] && [ -f "$selection_file" ] || die "missing or invalid selection file"
 
@@ -82,13 +108,14 @@ resolve_repo_path() {
 issue_branches=()
 
 if [ ${#issues[@]} -gt 0 ]; then
-  tmpfile="$(mktemp /tmp/gh_batch_worktree_XXXXXX.md)"
+  tmpfile="$(mktemp /tmp/gh_batch_worktree_XXXXXX.conf)"
   trap 'rm -f "$tmpfile"' EXIT
 
   {
     printf '# Branch names for issue worktrees\n'
     printf '# Format: <number>|<branch-name>  (empty branch = skip)\n'
     printf '# Branch will be created as: <branch-name>-<number>\n'
+    printf '# Tip: do NOT include tmux/session prefixes like work/kibana|...; just use the branch name (e.g. chore/foo)\n'
     printf '#\n'
     for i in "${!issues[@]}"; do
       printf '# %s — %s (%s)\n' "${issues[$i]}" "${issue_titles[$i]}" "${issue_repos[$i]}"
@@ -96,20 +123,55 @@ if [ ${#issues[@]} -gt 0 ]; then
     done
   } > "$tmpfile"
 
-  $EDITOR "$tmpfile"
+  if [ "$background" -eq 0 ]; then
+    $EDITOR "$tmpfile"
 
-  while IFS='|' read -r num branch; do
-    [ -n "$num" ] || continue
-    [[ "$num" =~ ^# ]] && continue
-    num="$(printf '%s' "$num" | tr -d '[:space:]')"
-    branch="$(printf '%s' "$branch" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-    issue_branches+=("${num}:${branch}")
-  done < "$tmpfile"
+    branches_file="$(mktemp "${cache_dir}/gh_batch_worktree_branches_XXXXXX.conf")"
+    cp "$tmpfile" "$branches_file" 2> /dev/null || die "failed to persist branches file"
+
+    tmux run-shell -b "$(printf %q "$0") $(printf %q "$selection_file") --background --branches-file $(printf %q "$branches_file")" \
+      2> /dev/null || true
+    exit 0
+  fi
+
+  if [ -n "$branches_file" ] && [ -f "$branches_file" ]; then
+    while IFS='|' read -r num branch; do
+      [ -n "$num" ] || continue
+      [[ "$num" =~ ^# ]] && continue
+      num="$(printf '%s' "$num" | tr -d '[:space:]')"
+      branch="$(printf '%s' "$branch" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+      issue_branches+=("${num}:${branch}")
+    done < "$branches_file"
+  fi
 fi
 
 created=0
 skipped=0
 failed=0
+
+_notify_fzf_reload() {
+  local mode port items_cmd cache_load_cmd
+  mode="$(cat "${cache_dir}/gh_picker_mode" 2> /dev/null || echo work)"
+  port="$(cat "${cache_dir}/gh_picker_port" 2> /dev/null || true)"
+  [ -n "$port" ] || return 0
+  items_cmd="$HOME/.config/tmux/scripts/pick_session/gh_items.sh"
+  cache_load_cmd="GH_PICKER_MODE=$(printf %q "$mode") $(printf %q "$items_cmd") --cache-only"
+  # Use IPv4 explicitly; on macOS `localhost` may resolve to ::1 while fzf binds 127.0.0.1.
+  curl -s --max-time 1 -XPOST "http://127.0.0.1:${port}" -d "reload($cache_load_cmd)+track" 2> /dev/null > /dev/null || true
+}
+
+_mark_local_in_cache() {
+  local kind="$1" repo="$2" num="$3"
+  local mode cache_file script_dir patcher
+  mode="$(cat "${cache_dir}/gh_picker_mode" 2> /dev/null || echo work)"
+  cache_file="${cache_dir}/gh_picker_${mode}.tsv"
+  script_dir="$HOME/.config/tmux/scripts/pick_session"
+  patcher="${script_dir}/lib/gh_patch_picker_cache.py"
+  if [ -x "$patcher" ] && [ -f "$cache_file" ]; then
+    python3 -u "$patcher" --cache-file "$cache_file" --kind "$kind" --repo "$repo" --num "$num" 2> /dev/null || true
+  fi
+  _notify_fzf_reload
+}
 
 _create_pr_worktree() {
   local repo="$1" num="$2"
@@ -123,6 +185,7 @@ _create_pr_worktree() {
   if (cd "$repo_path" && ,w prs -q "$num") 2> /dev/null; then
     printf 'OK   PR #%s (%s)\n' "$num" "$repo"
     created=$((created + 1))
+    _mark_local_in_cache "pr" "$repo" "$num"
   else
     printf 'FAIL PR #%s (%s)\n' "$num" "$repo"
     failed=$((failed + 1))
@@ -146,6 +209,7 @@ _create_issue_worktree() {
   if (cd "$repo_path" && ,w issue -q -b "$branch" "$num") 2> /dev/null; then
     printf 'OK   issue #%s → %s\n' "$num" "$branch"
     created=$((created + 1))
+    _mark_local_in_cache "issue" "$repo" "$num"
   else
     printf 'FAIL issue #%s → %s\n' "$num" "$branch"
     failed=$((failed + 1))
@@ -166,6 +230,10 @@ for entry in "${issue_branches[@]+"${issue_branches[@]}"}"; do
     fi
   done
 done
+
+if [ "$background" -eq 1 ] && [ -n "${branches_file:-}" ]; then
+  rm -f "$branches_file" 2> /dev/null || true
+fi
 
 printf '\nDone: %d created, %d skipped, %d failed\n' "$created" "$skipped" "$failed"
 

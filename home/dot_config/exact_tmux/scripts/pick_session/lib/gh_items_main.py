@@ -590,10 +590,24 @@ def main():
                 results[task_idx] = []
 
     all_items: list[dict[str, Any]] = []
+    seen_items: set[tuple[str, str, str]] = set()
     wt_repos: set[str] = set()
     pr_nums_by_repo: dict[str, set[int]] = {}
     for task_idx in sorted(results.keys()):
         for item in results[task_idx]:
+            if item.get("_header"):
+                all_items.append(item)
+                continue
+
+            k = str(item.get("kind") or "")
+            r = str(item.get("repo") or "")
+            n = str(item.get("num") or "")
+            if k and r and n:
+                key = (k, r, n)
+                if key in seen_items:
+                    continue
+                seen_items.add(key)
+
             all_items.append(item)
             if not item.get("_header") and item.get("repo"):
                 wt_repos.add(item["repo"])

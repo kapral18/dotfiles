@@ -30,9 +30,23 @@ if [ -z "$dir" ] || [ ! -d "$dir" ]; then
   dir="$HOME"
 fi
 
-# Use $SHELL (login shell) rather than tmux's default-shell, which may be
-# temporarily set to /bin/sh by popup scripts for snappy popup rendering.
-shell="${SHELL:-/opt/homebrew/bin/fish}"
+login_shell() {
+  local s=""
+  s="$(python3 -c 'import os,pwd; print(pwd.getpwuid(os.getuid()).pw_shell)' 2> /dev/null || true)"
+  if [ -n "$s" ] && [ -x "$s" ]; then
+    printf '%s\n' "$s"
+    return 0
+  fi
+  if command -v fish > /dev/null 2>&1; then
+    command -v fish
+    return 0
+  fi
+  printf '%s\n' "/bin/sh"
+}
+
+# Use the configured login shell rather than $SHELL (tmux may set SHELL=/bin/sh
+# inside popups for snappy rendering).
+shell="$(login_shell)"
 
 if [ "$pending_spawn" = "1" ]; then
   pane_id="$(tmux list-panes -t "$session" -F '#{pane_id}' 2> /dev/null | head -n 1)"

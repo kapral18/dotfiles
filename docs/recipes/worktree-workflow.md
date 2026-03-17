@@ -173,18 +173,21 @@ worktree creation and session management.
 
 PR shortcuts (inside the GitHub picker):
 
-- `enter`: create/switch to the PR worktree and focus its tmux session
-  (`,w prs --focus`).
-- `alt-b`: same as above plus open the PR in Octo review in a new tmux window.
+- `enter` (no marks): create/switch to the PR worktree and focus its tmux
+  session (`,w prs --focus`). Exits the picker.
+- `enter` (items marked): batch worktree creation for all marked items (same as
+  `ctrl-t`). Stays in the picker.
+- `alt-b`: same as single enter plus open the PR in Octo review in a new tmux
+  window.
 - `alt-o`: open the PR/issue in the browser.
 - `alt-y`: copy the PR/issue URL to the clipboard.
-- `ctrl-t`: batch worktree creation for all marked items.
+- `ctrl-t`: explicit batch worktree creation for marked items.
 
 Issue shortcuts:
 
-- `enter`: create/switch to the issue worktree and focus its tmux session
-  (`,w issue --focus`). Presents an interactive branch name prompt if the
-  worktree doesn't exist yet.
+- `enter` (no marks): create/switch to the issue worktree and focus its tmux
+  session (`,w issue --focus`). Presents an interactive branch name prompt if
+  the worktree doesn't exist yet.
 
 Shared behavior:
 

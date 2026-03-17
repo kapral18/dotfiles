@@ -34,6 +34,7 @@ if [ -n "$meta" ]; then
             url="${val#*:}"
             url="${url#*:}"
             url="${url#*:}"
+            url="${url#*:}"
             ;;
         esac
         ;;

@@ -441,6 +441,12 @@ Overlap / precedence rules:
    "architecture", "how does it work") across components/flows, rather than a
    simple file or symbol lookup. Playbook:
    `~/.agents/playbooks/architecture/PLAYBOOK.md`
+6. **Agent skills management** Use when: the user asks to find, add, install,
+   update, remove, or audit an agent skill from the `npx skills` ecosystem or
+   any community/third-party skill repo. Covers discovery (search, explore,
+   compare candidates), the full install lifecycle (install via `npx skills`,
+   security audit, `chezmoi add`), updates, and removal. Playbook:
+   `~/.agents/playbooks/skills/PLAYBOOK.md`
 
 ## 7. Exceptions
 

@@ -1,6 +1,5 @@
 # Canonical MCP server registry.
-# Single source of truth for Cursor, Claude Code, and Pi MCP configs.
-# Gemini uses its own format (see its source file).
+# Single source of truth for Cursor, Claude Code, Gemini, and Pi MCP configs.
 #
 # Each entry:
 #   name        – server key in the mcpServers object
@@ -19,13 +18,6 @@ mcp_servers:
       - "-i"
       - "--init"
       - mcp/sequentialthinking
-
-  - name: buildkite
-    work_only: true
-    command: bash
-    args:
-      - "-lc"
-      - 'docker run -i --rm -e BUILDKITE_API_TOKEN="$(pass buildkite/api/token)" mcp/buildkite'
 
   - name: scsi-main
     work_only: true

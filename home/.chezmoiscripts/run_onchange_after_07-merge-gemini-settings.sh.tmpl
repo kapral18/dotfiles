@@ -2,32 +2,21 @@
 
 set -euo pipefail
 
-{{- $srcJson := joinPath .chezmoi.sourceDir "dot_gemini/settings.json" -}}
-{{- if eq .isWork true }}
-# gemini settings desired hash (work): {{ output "jq" "-cS" "def strip_isWork: walk(if type == \"object\" then del(.\"__isWork__\") else . end); strip_isWork" $srcJson | trim | sha256sum }}
-{{- else }}
-# gemini settings desired hash (non-work): {{ output "jq" "-cS" "def strip_isWork: walk(if type == \"object\" then del(.\"__isWork__\") else . end); .mcpServers |= ((. // {}) | with_entries(select(.value.__isWork__ != true))) | strip_isWork" $srcJson | trim | sha256sum }}
-{{- end }}
+# gemini settings hash: {{ include "dot_gemini/settings.json" | sha256sum }}
+# mcp_servers hash: {{ include ".chezmoidata/mcp_servers.yaml" | sha256sum }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
 # shellcheck source=../../../scripts/chezmoi_lib.sh
 source "$source_dir/../scripts/chezmoi_lib.sh"
 
 is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
+yaml_src="$source_dir/.chezmoidata/mcp_servers.yaml"
+gen="$source_dir/../scripts/generate_mcp_configs.py"
 
-if [ "$is_work" = "true" ]; then
-  desired="$(jq '
-    def strip_isWork:
-      walk(if type == "object" then del(."__isWork__") else . end);
-    strip_isWork
-  ' "$source_dir/dot_gemini/settings.json")"
-else
-  desired="$(jq '
-    def strip_isWork:
-      walk(if type == "object" then del(."__isWork__") else . end);
-    .mcpServers |= ((. // {}) | with_entries(select(.value.__isWork__ != true)))
-    | strip_isWork
-  ' "$source_dir/dot_gemini/settings.json")"
-fi
+mcp_json="$(python3 "$gen" "$yaml_src" "$is_work")"
+
+desired="$(jq -s '.[0] * .[1]' \
+  "$source_dir/dot_gemini/settings.json" \
+  <(echo "$mcp_json"))"
 
 chezmoi_write_if_changed "$desired" "$HOME/.gemini/settings.json"

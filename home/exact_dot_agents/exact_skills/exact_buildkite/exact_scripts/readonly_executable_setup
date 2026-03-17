@@ -1,0 +1,181 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ENV_FILE="${HOME}/.buildkite-env"
+
+# --- Colors ---
+
+if command -v tput &>/dev/null && [[ -t 2 ]]; then
+  GREEN=$(tput setaf 2)
+  RED=$(tput setaf 1)
+  BOLD=$(tput bold)
+  RESET=$(tput sgr0)
+else
+  GREEN=""
+  RED=""
+  BOLD=""
+  RESET=""
+fi
+
+# --- Helpers ---
+
+info()    { echo "${BOLD}==> $*${RESET}" >&2; }
+success() { echo "${GREEN}✓ $*${RESET}" >&2; }
+fail()    { echo "${RED}✗ $*${RESET}" >&2; }
+die()     { fail "$@"; exit 1; }
+
+# --- Usage ---
+
+usage() {
+  cat <<'EOF'
+Usage: setup [--help]
+
+One-command onboarding for the Buildkite skill.
+
+What it does:
+  1. Checks for bk CLI (suggests install if missing)
+  2. Runs bk configure for API token setup
+  3. Collects org slug and stores in ~/.buildkite-env
+  4. Validates connectivity with bk whoami
+  5. Adds .buildkite-env to global gitignore
+
+Prerequisites:
+  - macOS with Homebrew installed
+  - A Buildkite account
+  - An API access token from https://buildkite.com/user/api-access-tokens
+
+Options:
+  --help    Show this help message
+
+Exit codes:
+  0  Setup completed successfully
+  1  Setup failed
+EOF
+}
+
+# --- Arg parsing ---
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --help) usage; exit 0 ;;
+    *) echo "Unknown option: $1" >&2; usage >&2; exit 1 ;;
+  esac
+done
+
+# --- Step 1: Check dependencies ---
+
+info "Checking dependencies"
+
+if ! command -v brew &>/dev/null; then
+  die "Homebrew is required but not installed. See https://brew.sh"
+fi
+
+if ! command -v jq &>/dev/null; then
+  info "Installing jq via Homebrew"
+  brew install jq
+fi
+success "jq available"
+
+if ! command -v bk &>/dev/null; then
+  info "Installing Buildkite CLI via Homebrew"
+  brew tap buildkite/buildkite && brew install buildkite/buildkite/bk
+fi
+success "bk CLI available"
+
+# --- Step 2: Configure bk CLI ---
+
+info "Configuring Buildkite CLI"
+
+bk configure
+
+success "bk CLI configured"
+
+# --- Step 3: Collect org slug ---
+
+info "Configuring organization"
+
+if [[ -f "$ENV_FILE" ]]; then
+  # shellcheck source=/dev/null
+  source "$ENV_FILE"
+  echo "  Existing config found: org=${BUILDKITE_ORG:-<unset>}" >&2
+
+  printf "  Reconfigure? [y/N] " >&2
+  read -r answer
+  if [[ "${answer,,}" != "y" ]]; then
+    info "Keeping existing configuration"
+  else
+    unset BUILDKITE_ORG
+  fi
+fi
+
+if [[ -z "${BUILDKITE_ORG:-}" ]]; then
+  printf "  Buildkite organization slug (from your Buildkite URL): " >&2
+  read -r BUILDKITE_ORG
+  [[ -n "$BUILDKITE_ORG" ]] || die "Organization slug is required"
+fi
+
+cat > "$ENV_FILE" <<EOF
+BUILDKITE_ORG=${BUILDKITE_ORG}
+EOF
+chmod 600 "$ENV_FILE"
+success "Wrote ${ENV_FILE} (mode 600)"
+
+# --- Step 4: Validate connectivity ---
+
+info "Validating connectivity"
+
+if bk whoami &>/dev/null; then
+  success "Buildkite: connected"
+  bk_ok=true
+else
+  fail "Buildkite: connection failed"
+  bk_ok=false
+fi
+
+# --- Step 5: Global gitignore ---
+
+info "Configuring global gitignore"
+
+excludes_file=$(git config --global core.excludesfile 2>/dev/null || true)
+
+if [[ -z "$excludes_file" ]]; then
+  excludes_file="${HOME}/.config/git/ignore"
+  mkdir -p "$(dirname "$excludes_file")"
+  touch "$excludes_file"
+  git config --global core.excludesfile "$excludes_file"
+fi
+
+excludes_file="${excludes_file/#\~/$HOME}"
+
+if ! grep -qF '.buildkite-env' "$excludes_file" 2>/dev/null; then
+  echo '.buildkite-env' >> "$excludes_file"
+  success "Added .buildkite-env to ${excludes_file}"
+else
+  success ".buildkite-env already in ${excludes_file}"
+fi
+
+# --- Step 6: Summary ---
+
+echo "" >&2
+info "Setup complete"
+echo "" >&2
+
+echo "  Organization: ${BUILDKITE_ORG}" >&2
+echo "  Env file:     ${ENV_FILE}" >&2
+echo "" >&2
+
+if $bk_ok; then
+  echo "  ${GREEN}Buildkite: connected${RESET}" >&2
+else
+  echo "  ${RED}Buildkite: FAILED${RESET}" >&2
+fi
+
+echo "" >&2
+echo "  Next steps:" >&2
+echo "    bk pipeline list        # List pipelines" >&2
+echo "    bk build list           # List recent builds" >&2
+echo "" >&2
+
+if ! $bk_ok; then
+  die "Setup completed with connectivity errors — check your API token"
+fi

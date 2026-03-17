@@ -314,28 +314,28 @@ and review status badges. gh-dash is not a dependency.
 
 ### Bindings
 
-| Key                | Action                                          |
-| ------------------ | ----------------------------------------------- |
-| `prefix` + `G`     | Open GitHub picker popup (95%×95%)              |
-| `enter`            | Checkout PR/issue worktree + focus tmux session |
-| `alt-b`            | Checkout + open Octo review (PRs only)          |
-| `ctrl-t`           | Batch worktree create (marked items)            |
-| `alt-o`            | Open in browser                                 |
-| `alt-y`            | Copy URL to clipboard                           |
-| `tab`              | Mark/unmark item (multi-select)                 |
-| `alt-space`        | Mark/unmark item (alternate toggle)             |
-| `ctrl-s`           | Switch work/home mode                           |
-| `ctrl-r`           | Refresh from GitHub (current mode)              |
-| `alt-g`            | Switch to session picker                        |
-| `alt-c`            | New comment (opens `$EDITOR`)                   |
-| `alt-r`            | Quote-reply a comment                           |
-| `alt-d`            | Edit your own comment                           |
-| `alt-e`            | Cycle preview: collapsed → body → all expanded  |
-| `ctrl-/`           | Toggle preview                                  |
-| `?`                | Show keybinding help                            |
-| `alt-j` / `alt-k`  | Page down / up                                  |
-| `shift-up/down`    | Scroll preview (line)                           |
-| `shift-left/right` | Scroll preview (page)                           |
+| Key                | Action                                            |
+| ------------------ | ------------------------------------------------- |
+| `prefix` + `G`     | Open GitHub picker popup (95%×95%)                |
+| `enter`            | Checkout worktree + focus (batch if items marked) |
+| `alt-b`            | Checkout + open Octo review (PRs only)            |
+| `ctrl-t`           | Batch worktree create (marked items)              |
+| `alt-o`            | Open in browser                                   |
+| `alt-y`            | Copy URL to clipboard                             |
+| `tab`              | Mark/unmark item (multi-select)                   |
+| `alt-space`        | Mark/unmark item (alternate toggle)               |
+| `ctrl-s`           | Switch work/home mode                             |
+| `ctrl-r`           | Refresh from GitHub (current mode)                |
+| `alt-g`            | Switch to session picker                          |
+| `alt-c`            | New comment (opens `$EDITOR`)                     |
+| `alt-r`            | Quote-reply a comment                             |
+| `alt-d`            | Edit your own comment                             |
+| `alt-e`            | Cycle preview: collapsed → body → all expanded    |
+| `ctrl-/`           | Toggle preview                                    |
+| `?`                | Show keybinding help                              |
+| `alt-j` / `alt-k`  | Page down / up                                    |
+| `shift-up/down`    | Scroll preview (line)                             |
+| `shift-left/right` | Scroll preview (page)                             |
 
 ### Entry source
 
@@ -374,14 +374,16 @@ heuristic:
 
 ### Actions
 
-- **`enter` on a PR**: runs `,w prs --focus <number>` to create/reuse the
-  worktree and switch to its tmux session.
-- **`enter` on an issue**: runs `,w issue --focus <number>`, which presents an
-  interactive branch name prompt if the worktree doesn't exist yet.
-- **`alt-b` on a PR**: same as `enter`, then opens Octo review in a new tmux
-  window.
-- **`ctrl-t`**: batch worktree creation for all marked items. PRs are created
-  automatically; issues open `$EDITOR` with a batch naming buffer.
+- **`enter` (no marks)**: single-item checkout. On a PR, runs
+  `,w prs --focus <number>`; on an issue, runs `,w issue --focus <number>`
+  (interactive branch prompt if the worktree doesn't exist yet). Exits the
+  picker.
+- **`enter` (items marked)**: batch worktree creation for all marked items (same
+  as `ctrl-t`). PRs are created automatically; issues open `$EDITOR` with a
+  batch naming buffer. Stays in the picker.
+- **`ctrl-t`**: explicit batch worktree creation (same as `enter` with marks).
+- **`alt-b` on a PR**: same as single `enter`, then opens Octo review in a new
+  tmux window.
 - **`alt-o`**: opens the PR/issue URL in the browser.
 - **`alt-y`**: copies the URL to the clipboard.
 - **`alt-c`**: new comment — opens `$EDITOR`, posts on save.

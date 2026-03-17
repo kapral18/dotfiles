@@ -17,6 +17,16 @@ _comma_w_tmux() {
   tmux "$@"
 }
 
+_comma_w_login_shell() {
+  local s=""
+  s="$(python3 -c 'import os,pwd; print(pwd.getpwuid(os.getuid()).pw_shell)' 2> /dev/null || true)"
+  if [ -n "$s" ] && [ -x "$s" ]; then
+    printf '%s\n' "$s"
+    return 0
+  fi
+  command -v fish 2> /dev/null || printf '%s\n' /bin/sh
+}
+
 _comma_w_prune_stale_worktrees() {
   local quiet_mode="${1:-0}"
   if [ "${__COMMA_W_PRUNE_RAN:-0}" -eq 1 ]; then
@@ -134,7 +144,7 @@ At Path: $worktree_path
 "
     fi
 
-    local shell="${SHELL:-$(command -v fish 2> /dev/null || echo /bin/sh)}"
+    local shell="$(_comma_w_login_shell)"
     if ! _comma_w_tmux new-session -d -s "$session_name" -c "$worktree_path" "$shell" 2> /dev/null; then
       if [ "$quiet_mode" -eq 0 ]; then
         echo "Warning: Failed to create tmux session '$session_name'." >&2
@@ -255,7 +265,7 @@ _comma_w_focus_tmux_session() {
   if _comma_w_tmux attach-session -t "$session_name" 2> /dev/null; then
     return 0
   fi
-  local shell="${SHELL:-$(command -v fish 2> /dev/null || echo /bin/sh)}"
+  local shell="$(_comma_w_login_shell)"
   _comma_w_tmux new-session -s "$session_name" -c "$worktree_path" "$shell"
 }
 

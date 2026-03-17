@@ -517,7 +517,6 @@ tools, granting agents deep, secure reach into the environment.
 
 - **Semantic Code Search (SCSI):** Agents are _required_ by their SOPs to query
   the base branch via Elasticsearch before reviewing PRs.
-- **Playwright & Buildkite:** For browser automation and CI pipeline inspection.
 - **Sequential Thinking:** For complex, multi-step debugging.
 
 ### 3. The Execution Layer (Tools)
@@ -529,7 +528,7 @@ dynamically merged by `chezmoi` based on your identity.
 | ------------------- | --------------------- | ----------------------------------------------------------------------------------------------- |
 | **Pi Coding Agent** | Terminal coding agent | Defaults to LiteLLM (work) or OpenAI (personal). Injects MCPs and auto-reserves context tokens. |
 | **Gemini CLI**      | Terminal AI assistant | Auto-approves edits (`auto_edit`) and shares the unified MCP configuration.                     |
-| **Cursor**          | AI code editor        | MCPs are filtered securely via chezmoi scripts (`__isWork__` tagging).                          |
+| **Cursor**          | AI code editor        | MCPs are filtered securely via chezmoi scripts (`work_only` in `mcp_servers.yaml`).             |
 | **OpenCode**        | Terminal agent runner | Leverages LiteLLM aliases with strict output constraints to prevent gateway timeouts.           |
 | **Ollama**          | Local LLM runtime     | Automatically pulls `gpt-oss` and `deepseek-r1` upon `chezmoi apply`.                           |
 | **Crush**           | Terminal assistant    | Fully configured for shell integration.                                                         |

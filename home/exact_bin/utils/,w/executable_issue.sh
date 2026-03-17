@@ -95,6 +95,12 @@ trim_whitespace() {
 normalize_branch_input() {
   local branch="$1"
   branch="$(trim_whitespace "$branch")"
+  # Users sometimes paste tmux session names (parent|branch) into this prompt.
+  # Branch names must be git-valid and our tooling uses '|' as a session separator,
+  # so treat anything before the last '|' as a prefix and strip it.
+  case "$branch" in
+    *'|'*) branch="${branch##*|}" ;;
+  esac
   branch="${branch#refs/heads/}"
   while [[ "$branch" == /* ]]; do
     branch="${branch#/}"
@@ -105,6 +111,9 @@ normalize_branch_input() {
 validate_branch_name() {
   local branch="$1"
   [ -n "$branch" ] || return 1
+  case "$branch" in
+    *'|'*) return 1 ;;
+  esac
   git check-ref-format --branch "$branch" > /dev/null 2>&1
 }
 
@@ -145,8 +154,18 @@ prompt_branch_name() {
 
   while IFS= read -rsn 1 ch < /dev/tty; do
     case "$ch" in
-      "$ctrl_c" | "$esc")
+      "$ctrl_c")
         return 1
+        ;;
+      "$esc")
+        # Distinguish bare ESC from arrow/function key escape sequences.
+        # If another byte arrives within 10ms it's part of a sequence — consume and ignore it.
+        if IFS= read -rsn 1 -t 0.01 seq_ch < /dev/tty 2> /dev/null; then
+          # Consume the rest of the CSI sequence (e.g. [A, [B, [C, [D, [H, [F, …)
+          while IFS= read -rsn 1 -t 0.01 _ < /dev/tty 2> /dev/null; do :; done
+        else
+          return 1
+        fi
         ;;
       "$cr" | "$nl")
         break

@@ -236,6 +236,10 @@ cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 mkdir -p "$cache_dir" 2> /dev/null || true
 sel_tmp="${cache_dir}/pick_session_fzf_selected.tsv"
 primary_tmp="${cache_dir}/pick_session_fzf_primary.tsv"
+pin_file="${cache_dir}/pick_session_pin"
+gh_pin_file="${cache_dir}/gh_picker_pin"
+handoff_to_gh_cmd="$HOME/.config/tmux/scripts/pick_session/handoff_to_gh.sh"
+pin_first_cmd="$HOME/.config/tmux/scripts/pick_session/pin_session_first.sh"
 
 kill_cmd="$HOME/.config/tmux/scripts/pick_session/action_kill_sessions.sh"
 rm_cmd="$HOME/.config/tmux/scripts/pick_session/action_remove_worktrees.sh"
@@ -259,6 +263,13 @@ fzf_ui_args=()
 [ -n "$fzf_ghost" ] && fzf_ui_args+=(--ghost "$fzf_ghost")
 [ -n "$fzf_color" ] && fzf_ui_args+=(--color "$fzf_color")
 query="$*"
+pin_kind=""
+pin_repo=""
+pin_num=""
+if [ -f "$pin_file" ]; then
+  IFS=$'\t' read -r pin_kind pin_repo pin_num < "$pin_file" 2> /dev/null || true
+  rm -f "$pin_file" 2> /dev/null || true
+fi
 
 help_cmd="$HOME/.config/tmux/scripts/pick_session/keyhelp.sh"
 preview_cmd="$HOME/.config/tmux/scripts/pick_session/preview.sh"
@@ -275,49 +286,97 @@ else
   rm -f "$primary_tmp" "$cmd_tmp" "$mode_flag" 2> /dev/null || true
   # shellcheck disable=SC2086
   pick="$(
-    FZF_DEFAULT_OPTS="" "$open_items_cmd" | fzf \
-      --ansi \
-      --scheme=path \
-      --height=100% \
-      --listen \
-      --filepath-word \
-      --reverse \
-      --tiebreak=begin,length,index \
-      --delimiter=$'\t' \
-      --nth=1,6 \
-      --with-nth=1 \
-      --multi \
-      "${fzf_ui_args[@]}" \
-      --query "$query" \
-      --preview "$preview_cmd {f}" \
-      --preview-window 'right,50%,border-left' \
-      --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+clear-query" \
-      --bind "alt-r:execute-silent:$live_refresh_cmd --once --force >/dev/null 2>&1 &" \
-      --bind "alt-j:half-page-down" \
-      --bind "alt-k:half-page-up" \
-      --bind "alt-h:first" \
-      --bind "alt-l:last" \
-      --bind "shift-up:preview-up" \
-      --bind "shift-down:preview-down" \
-      --bind "shift-left:preview-page-up" \
-      --bind "shift-right:preview-page-down" \
-      --bind "ctrl-/:toggle-preview" \
-      --bind "?:change-preview($help_cmd)+show-preview" \
-      --bind "focus:change-preview($preview_cmd {f})" \
-      --bind "change:first" \
-      --bind "load:unbind(esc)" \
-      --bind "enter:transform:[ -f $mode_flag ] && { printf '%s' {q} > $cmd_tmp; echo 'execute-silent(tmux run-shell -b \"$send_cmd $sel_tmp $cmd_tmp\")+execute-silent(rm -f $mode_flag)+$send_restore'; } || echo 'execute-silent(cp {f} $primary_tmp)+accept'" \
-      --bind "ctrl-s:$send_mode" \
-      --bind "esc:execute-silent(rm -f $mode_flag)+$send_restore" \
-      --bind "ctrl-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") kill {q})+execute-silent($kill_async_cmd)+deselect-all" \
-      --bind "alt-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") remove {q})+execute-silent($rm_async_cmd)+deselect-all" \
-      --bind "alt-p:execute-silent($open_gh_cmd pr {f})" \
-      --bind "alt-i:execute-silent($open_gh_cmd issue {f})" \
-      --bind "alt-g:execute-silent(touch ${cache_dir}/pick_session_switch_gh)+abort" \
-      --header $'?=help  ctrl-/=preview  alt-p=PR  alt-i=issue  alt-g=GitHub' \
-      \
-      ${fzf_args} \
-      || true
+    if [ -n "$pin_kind" ] && [ -n "$pin_num" ] && [ -x "$pin_first_cmd" ]; then
+      FZF_DEFAULT_OPTS="" "$open_items_cmd" | "$pin_first_cmd" "$pin_kind" "$pin_repo" "$pin_num" | fzf \
+        --ansi \
+        --scheme=path \
+        --height=100% \
+        --listen \
+        --filepath-word \
+        --reverse \
+        --tiebreak=begin,length,index \
+        --delimiter=$'\t' \
+        --nth=1,6 \
+        --with-nth=1 \
+        --multi \
+        "${fzf_ui_args[@]}" \
+        --query "$query" \
+        --preview "$preview_cmd {f}" \
+        --preview-window 'right,50%,border-left' \
+        --bind "start:execute-silent:$live_refresh_cmd >/dev/null 2>&1 &" \
+        --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+clear-query" \
+        --bind "alt-r:execute-silent:$live_refresh_cmd --once --force >/dev/null 2>&1 &" \
+        --bind "alt-j:half-page-down" \
+        --bind "alt-k:half-page-up" \
+        --bind "alt-h:first" \
+        --bind "alt-l:last" \
+        --bind "shift-up:preview-up" \
+        --bind "shift-down:preview-down" \
+        --bind "shift-left:preview-page-up" \
+        --bind "shift-right:preview-page-down" \
+        --bind "ctrl-/:toggle-preview" \
+        --bind "?:change-preview($help_cmd)+show-preview" \
+        --bind "focus:change-preview($preview_cmd {f})" \
+        --bind "change:first" \
+        --bind "load:unbind(esc)" \
+        --bind "enter:transform:[ -f $mode_flag ] && { printf '%s' {q} > $cmd_tmp; echo 'execute-silent(tmux run-shell -b \"$send_cmd $sel_tmp $cmd_tmp\")+execute-silent(rm -f $mode_flag)+$send_restore'; } || echo 'execute-silent(cp {f} $primary_tmp)+accept'" \
+        --bind "ctrl-s:$send_mode" \
+        --bind "esc:execute-silent(rm -f $mode_flag)+$send_restore" \
+        --bind "ctrl-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") kill {q})+execute-silent($kill_async_cmd)+deselect-all" \
+        --bind "alt-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") remove {q})+execute-silent($rm_async_cmd)+deselect-all" \
+        --bind "alt-p:execute-silent($open_gh_cmd pr {f})" \
+        --bind "alt-i:execute-silent($open_gh_cmd issue {f})" \
+        --bind "alt-g:execute-silent($(printf %q "$handoff_to_gh_cmd") {4} $(printf %q "$gh_pin_file") 2>/dev/null || true; touch ${cache_dir}/pick_session_switch_gh)+abort" \
+        --header $'?=help  ctrl-/=preview  alt-p=PR  alt-i=issue  alt-g=GitHub' \
+        \
+        ${fzf_args} \
+        || true
+    else
+      FZF_DEFAULT_OPTS="" "$open_items_cmd" | fzf \
+        --ansi \
+        --scheme=path \
+        --height=100% \
+        --listen \
+        --filepath-word \
+        --reverse \
+        --tiebreak=begin,length,index \
+        --delimiter=$'\t' \
+        --nth=1,6 \
+        --with-nth=1 \
+        --multi \
+        "${fzf_ui_args[@]}" \
+        --query "$query" \
+        --preview "$preview_cmd {f}" \
+        --preview-window 'right,50%,border-left' \
+        --bind "start:execute-silent:$live_refresh_cmd >/dev/null 2>&1 &" \
+        --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+clear-query" \
+        --bind "alt-r:execute-silent:$live_refresh_cmd --once --force >/dev/null 2>&1 &" \
+        --bind "alt-j:half-page-down" \
+        --bind "alt-k:half-page-up" \
+        --bind "alt-h:first" \
+        --bind "alt-l:last" \
+        --bind "shift-up:preview-up" \
+        --bind "shift-down:preview-down" \
+        --bind "shift-left:preview-page-up" \
+        --bind "shift-right:preview-page-down" \
+        --bind "ctrl-/:toggle-preview" \
+        --bind "?:change-preview($help_cmd)+show-preview" \
+        --bind "focus:change-preview($preview_cmd {f})" \
+        --bind "change:first" \
+        --bind "load:unbind(esc)" \
+        --bind "enter:transform:[ -f $mode_flag ] && { printf '%s' {q} > $cmd_tmp; echo 'execute-silent(tmux run-shell -b \"$send_cmd $sel_tmp $cmd_tmp\")+execute-silent(rm -f $mode_flag)+$send_restore'; } || echo 'execute-silent(cp {f} $primary_tmp)+accept'" \
+        --bind "ctrl-s:$send_mode" \
+        --bind "esc:execute-silent(rm -f $mode_flag)+$send_restore" \
+        --bind "ctrl-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") kill {q})+execute-silent($kill_async_cmd)+deselect-all" \
+        --bind "alt-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") remove {q})+execute-silent($rm_async_cmd)+deselect-all" \
+        --bind "alt-p:execute-silent($open_gh_cmd pr {f})" \
+        --bind "alt-i:execute-silent($open_gh_cmd issue {f})" \
+        --bind "alt-g:execute-silent($(printf %q "$handoff_to_gh_cmd") {4} $(printf %q "$gh_pin_file") 2>/dev/null || true; touch ${cache_dir}/pick_session_switch_gh)+abort" \
+        --header $'?=help  ctrl-/=preview  alt-p=PR  alt-i=issue  alt-g=GitHub' \
+        \
+        ${fzf_args} \
+        || true
+    fi
   )"
 fi
 
@@ -383,7 +442,11 @@ split_first_window_in_session() {
     return 0
   fi
 
-  local shell="${SHELL:-/opt/homebrew/bin/fish}"
+  local shell=""
+  shell="$(python3 -c 'import os,pwd; print(pwd.getpwuid(os.getuid()).pw_shell)' 2> /dev/null || true)"
+  if [ -z "$shell" ] || [ ! -x "$shell" ]; then
+    shell="$(command -v fish 2> /dev/null || echo /bin/sh)"
+  fi
   tmux split-window -h -t "$win" -c "$dir" "$shell" > /dev/null 2>&1 || true
   tmux select-layout -t "$win" even-horizontal > /dev/null 2>&1 || true
   clear_lazy_split_pending "$name"
@@ -415,7 +478,11 @@ ensure_session_layout() {
     return 0
   fi
 
-  local shell="${SHELL:-/opt/homebrew/bin/fish}"
+  local shell=""
+  shell="$(python3 -c 'import os,pwd; print(pwd.getpwuid(os.getuid()).pw_shell)' 2> /dev/null || true)"
+  if [ -z "$shell" ] || [ ! -x "$shell" ]; then
+    shell="$(command -v fish 2> /dev/null || echo /bin/sh)"
+  fi
   if ! tmux new-session -d -s "$name" -c "$dir" "$shell" 2> /dev/null; then
     die "tmux: failed to create session: $name ($dir)"
   fi

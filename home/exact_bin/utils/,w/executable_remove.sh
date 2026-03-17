@@ -27,7 +27,7 @@ list_worktrees_porcelain() {
     case "$key" in
       worktree)
         if [ -n "$worktree_path" ]; then
-          printf '%s|%s|%s|%s\n' "$worktree_path" "$branch_ref" "$detached" "$locked"
+          printf '%s\t%s\t%s\t%s\n' "$worktree_path" "$branch_ref" "$detached" "$locked"
         fi
         worktree_path="$value"
         branch_ref=""
@@ -47,7 +47,7 @@ list_worktrees_porcelain() {
   done < <(git worktree list --porcelain)
 
   if [ -n "$worktree_path" ]; then
-    printf '%s|%s|%s|%s\n' "$worktree_path" "$branch_ref" "$detached" "$locked"
+    printf '%s\t%s\t%s\t%s\n' "$worktree_path" "$branch_ref" "$detached" "$locked"
   fi
 }
 
@@ -152,7 +152,7 @@ while IFS= read -r _line; do
   [ -n "$_line" ] || continue
   selectable_worktrees+=("$_line")
 done < <(
-  list_worktrees_porcelain | awk -F'|' -v default_branch="$default_branch" '
+  list_worktrees_porcelain | awk -F'\t' -v default_branch="$default_branch" '
     {
       path=$1
       branch_ref=$2
@@ -189,11 +189,11 @@ if [ "$paths_mode" -eq 1 ]; then
     local needle_rp
     needle_rp="$(realpath "$needle" 2> /dev/null || printf '%s' "$needle")"
     local line p branch_ref detached locked p_rp
-    while IFS='|' read -r p branch_ref detached locked; do
+    while IFS=$'\t' read -r p branch_ref detached locked; do
       [ -n "$p" ] || continue
       p_rp="$(realpath "$p" 2> /dev/null || printf '%s' "$p")"
       if [ "$p" = "$needle" ] || [ "$p_rp" = "$needle" ] || [ "$p" = "$needle_rp" ] || [ "$p_rp" = "$needle_rp" ]; then
-        printf '%s|%s|%s|%s\n' "$p" "$branch_ref" "$detached" "$locked"
+        printf '%s\t%s\t%s\t%s\n' "$p" "$branch_ref" "$detached" "$locked"
         return 0
       fi
     done < <(list_worktrees_porcelain)
@@ -207,7 +207,7 @@ if [ "$paths_mode" -eq 1 ]; then
       notify "Skipping (not a git worktree path): $p"
       continue
     fi
-    IFS='|' read -r p_found branch_ref detached locked <<< "$rec"
+    IFS=$'\t' read -r p_found branch_ref detached locked <<< "$rec"
     case "$locked" in
       1)
         notify "Skipping locked worktree: $p_found"

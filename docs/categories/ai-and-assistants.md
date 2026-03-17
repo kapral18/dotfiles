@@ -303,7 +303,7 @@ destination, completely decoupling the formats.
 | Claude Code settings | [`home/dot_claude/settings.{work,personal}.json`](../../home/dot_claude/settings.{work,personal}.json)                                         | `~/.claude/settings.json`            | `run_onchange_after_07-merge-claude-code-settings.sh.tmpl` |
 | Claude Code MCP      | [`home/.chezmoidata/mcp_servers.yaml`](../../home/.chezmoidata/mcp_servers.yaml) (shared registry)                                             | `~/.claude.json` (mcpServers field)  | `run_onchange_after_07-generate-mcp-configs.sh.tmpl`       |
 | Cursor MCP           | [`home/.chezmoidata/mcp_servers.yaml`](../../home/.chezmoidata/mcp_servers.yaml) (shared registry)                                             | `~/.cursor/mcp.json`                 | `run_onchange_after_07-generate-mcp-configs.sh.tmpl`       |
-| Gemini settings      | [`home/dot_gemini/settings.json`](../../home/dot_gemini/settings.json)                                                                         | `~/.gemini/settings.json`            | `run_onchange_after_07-merge-gemini-settings.sh.tmpl`      |
+| Gemini settings+MCP  | [`home/dot_gemini/settings.json`](../../home/dot_gemini/settings.json) + [`mcp_servers.yaml`](../../home/.chezmoidata/mcp_servers.yaml)        | `~/.gemini/settings.json`            | `run_onchange_after_07-merge-gemini-settings.sh.tmpl`      |
 | OpenCode config      | [`home/dot_config/opencode/readonly_opencode.{work,personal}.jsonc`](../../home/dot_config/opencode/readonly_opencode.{work,personal}.jsonc)   | `~/.config/opencode/opencode.jsonc`  | `run_onchange_after_07-merge-opencode-config.sh.tmpl`      |
 | Codex config         | [`home/dot_codex/private_config.{work,personal}.toml`](../../home/dot_codex/private_config.{work,personal}.toml)                               | `~/.codex/config.toml`               | `run_onchange_after_07-merge-codex-config.sh.tmpl`         |
 | Pi MCP               | [`home/.chezmoidata/mcp_servers.yaml`](../../home/.chezmoidata/mcp_servers.yaml) (shared registry)                                             | `~/.pi/agent/mcp.json`               | `run_onchange_after_07-generate-mcp-configs.sh.tmpl`       |
@@ -369,9 +369,8 @@ field) because that file contains runtime state managed by Claude Code. The
 merge script surgically updates only the `mcpServers` key, leaving other fields
 intact.
 
-Work MCP servers: playwright, sequentialthinking, buildkite, scsi-main,
-scsi-local (matching the Cursor work profile). Personal MCP servers: playwright,
-sequentialthinking.
+Work MCP servers: sequentialthinking, scsi-main, scsi-local. Personal MCP
+servers: sequentialthinking.
 
 ### Codex model catalog (work profile)
 
@@ -406,7 +405,9 @@ The script exits silently on first `chezmoi apply`. After running Codex once
 Source: [`home/dot_gemini/settings.json`](../../home/dot_gemini/settings.json) →
 `~/.gemini/settings.json`.
 
-- MCP servers are configured under `mcpServers`.
+- MCP servers are injected from the shared
+  [`mcp_servers.yaml`](../../home/.chezmoidata/mcp_servers.yaml) registry at
+  apply time (no longer hardcoded in the settings file).
 - Tool approval is controlled by `general.defaultApprovalMode` (we use
   `auto_edit` to auto-approve edit tools).
 

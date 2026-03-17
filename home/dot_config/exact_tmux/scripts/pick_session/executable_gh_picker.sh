@@ -58,6 +58,11 @@ action_flag="${cache_dir}/gh_picker_action"
 multi_tmp="${cache_dir}/gh_picker_multi.tsv"
 expand_flag="${cache_dir}/gh_preview_expand"
 help_flag="${cache_dir}/gh_picker_help"
+port_file="${cache_dir}/gh_picker_port"
+pin_file="${cache_dir}/gh_picker_pin"
+pick_session_pin_file="${cache_dir}/pick_session_pin"
+handoff_to_sessions_cmd="$script_dir/handoff_to_sessions.sh"
+pin_first_cmd="$script_dir/pin_gh_first.sh"
 
 fzf_color="prompt:111,query:223,input-bg:-1,input-fg:252,ghost:240,header:244,spinner:110,info:244,pointer:81,marker:214"
 
@@ -73,16 +78,35 @@ cache_load_cmd="GH_PICKER_MODE=$(printf %q "$mode") $(printf %q "$items_cmd") --
 full_load_cmd="GH_PICKER_MODE=$(printf %q "$mode") $(printf %q "$items_cmd")"
 
 fzf_port="$(python3 -c 'import socket; s=socket.socket(); s.bind(("",0)); print(s.getsockname()[1]); s.close()')"
+printf '%s' "$fzf_port" > "$port_file" 2> /dev/null || true
+
+pin_kind=""
+pin_repo=""
+pin_num=""
+if [ -f "$pin_file" ]; then
+  IFS=$'\t' read -r pin_kind pin_repo pin_num < "$pin_file" 2> /dev/null || true
+  rm -f "$pin_file" 2> /dev/null || true
+fi
+
+initial_items_cmd="$cache_load_cmd"
+reload_items_cmd="$cache_load_cmd"
+if [ -n "$pin_kind" ] && [ -n "$pin_repo" ] && [ -n "$pin_num" ] && [ -x "$pin_first_cmd" ]; then
+  initial_items_cmd="$cache_load_cmd | $(printf %q "$pin_first_cmd") $(printf %q "$pin_kind") $(printf %q "$pin_repo") $(printf %q "$pin_num")"
+  reload_items_cmd="$initial_items_cmd"
+fi
 
 (
+  # Let the UI paint before doing heavier background fetches.
+  sleep 0.15
   eval "$full_load_cmd" > /dev/null 2>&1 || true
-  curl -s --max-time 5 -XPOST "http://localhost:${fzf_port}" \
-    -d "reload($cache_load_cmd)+track" 2> /dev/null || true
+  # Use IPv4 explicitly; on macOS `localhost` may resolve to ::1 while fzf binds 127.0.0.1.
+  curl -s --max-time 5 -XPOST "http://127.0.0.1:${fzf_port}" \
+    -d "reload($reload_items_cmd)+track" 2> /dev/null || true
 ) &
 bg_pid=$!
 
 pick="$(
-  fzf \
+  eval "$initial_items_cmd" | fzf \
     --listen-unsafe=$fzf_port \
     --ansi \
     --height=100% \
@@ -97,11 +121,10 @@ pick="$(
     --color "$fzf_color" \
     --preview "$preview_cmd --expand=\$(cat $(printf %q "$expand_flag") 2>/dev/null || echo 0) {f}" \
     --preview-window 'right,55%,border-left,wrap' \
-    --header $'enter=checkout  alt-b=octo  ctrl-t=worktree  alt-o=browser  alt-y=copy  tab=mark  ctrl-s=work/home  alt-c=comment  ?=help' \
-    --bind "start:reload($cache_load_cmd)" \
+    --header $'enter=checkout (batch if marked)  alt-b=octo  alt-o=browser  alt-y=copy  tab=mark  ctrl-s=work/home  alt-c=comment  ?=help' \
     --bind "ctrl-r:transform:m=\$(cat $(printf %q "$mode_flag_file")); echo \"reload(GH_PICKER_MODE=\$m $items_cmd --refresh)+clear-query\"" \
     --bind "ctrl-s:transform:$(printf %q "$toggle_cmd") $(printf %q "$mode_flag_file") $(printf %q "$items_cmd")" \
-    --bind "alt-g:execute-silent(touch ${cache_dir}/gh_picker_switch_sessions)+abort" \
+    --bind "alt-g:execute-silent($(printf %q "$handoff_to_sessions_cmd") {2} {3} {4} $(printf %q "$pick_session_pin_file") 2>/dev/null || true; touch ${cache_dir}/gh_picker_switch_sessions)+abort" \
     --bind "alt-o:execute-silent($action_cmd open {2} {3} {4} {5})" \
     --bind "alt-y:execute-silent(printf '%s' {5} | pbcopy 2>/dev/null || printf '%s' {5} | xclip -sel clip 2>/dev/null)" \
     --bind "alt-space:toggle" \
@@ -117,10 +140,10 @@ pick="$(
     --bind "shift-left:preview-page-up" \
     --bind "shift-right:preview-page-down" \
     --bind "ctrl-/:toggle-preview" \
-    --bind "?:transform:if [ -f $(printf %q "$help_flag") ]; then rm -f $(printf %q "$help_flag"); echo 'change-preview($preview_cmd --expand=\$(cat $(printf %q "$expand_flag") 2>/dev/null || echo 0) {f})+show-preview'; else touch $(printf %q "$help_flag"); echo 'change-preview(printf \"GitHub Picker Keybindings\n\nActions\nenter       checkout worktree + focus\nalt-b       checkout + Octo review (PRs)\nctrl-t      batch worktree (marked items)\nalt-o       open in browser\nalt-y       copy URL to clipboard\n\nMulti-select\ntab         mark/unmark item\nshift-tab   unmark item\nalt-space   mark/unmark item\n\nComments\nalt-c       new comment (opens \\\$EDITOR)\nalt-r       quote-reply a comment\nalt-d       edit your own comment\n\nPreview\nalt-e       cycle: collapsed → body → all expanded\nctrl-/      toggle preview\n\nNavigation\nctrl-s      switch work/home\nctrl-r      refresh from GitHub\nalt-g       switch to sessions picker\nalt-j/k     page down/up\nshift-↑/↓   scroll preview\n\")+show-preview'; fi" \
+    --bind "?:transform:if [ -f $(printf %q "$help_flag") ]; then rm -f $(printf %q "$help_flag"); echo 'change-preview($preview_cmd --expand=\$(cat $(printf %q "$expand_flag") 2>/dev/null || echo 0) {f})+show-preview'; else touch $(printf %q "$help_flag"); echo 'change-preview(printf \"GitHub Picker Keybindings\n\nActions\nenter       checkout (batch if items marked)\nalt-b       checkout + Octo review (PRs)\nalt-o       open in browser\nalt-y       copy URL to clipboard\n\nMulti-select\ntab         mark/unmark item\nshift-tab   unmark item\nalt-space   mark/unmark item\n\nComments\nalt-c       new comment (opens \\\$EDITOR)\nalt-r       quote-reply a comment\nalt-d       edit your own comment\n\nPreview\nalt-e       cycle: collapsed → body → all expanded\nctrl-/      toggle preview\n\nNavigation\nctrl-s      switch work/home\nctrl-r      refresh from GitHub\nalt-g       switch to sessions picker\nalt-j/k     page down/up\nshift-↑/↓   scroll preview\n\")+show-preview'; fi" \
     --bind "focus:execute-silent(rm -f $(printf %q "$help_flag") 2>/dev/null)+change-preview($preview_cmd --expand=\$(cat $(printf %q "$expand_flag") 2>/dev/null || echo 0) {f})" \
     --bind "change:first" \
-    --bind "enter:execute-silent(printf checkout > $(printf %q "$action_flag"))+execute-silent(cp {f} $(printf %q "$primary_tmp"))+accept" \
+    --bind "enter:transform:[[ \$FZF_SELECT_COUNT -gt 0 ]] && echo 'execute(cat {+f} > $(printf %q "$multi_tmp"); $(printf %q "$batch_wt_cmd") $(printf %q "$multi_tmp"))+deselect-all+refresh-preview' || echo 'execute-silent(printf checkout > $(printf %q "$action_flag"))+execute-silent(cp {f} $(printf %q "$primary_tmp"))+accept'" \
     --bind "alt-b:execute-silent(printf octo > $(printf %q "$action_flag"))+execute-silent(cp {f} $(printf %q "$primary_tmp"))+accept" \
     || true
 )"
@@ -158,3 +181,4 @@ case "$kind" in
 esac
 
 rm -f "$primary_tmp" "$action_flag" "$expand_flag" "$help_flag" "$multi_tmp" 2> /dev/null || true
+rm -f "$port_file" 2> /dev/null || true
