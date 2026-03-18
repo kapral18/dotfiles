@@ -293,6 +293,8 @@ unrelated long-path hits. Queries like `work/kibana main` work.
   `display-popup` to avoid heavy-shell (fish, zsh with plugins) initialization
   overhead (~1 s). The original shell is restored atomically.
   `pickers/session/pick_session.sh` itself runs under `bash` via its shebang.
+- The session picker and GitHub picker run `fzf` with `SHELL=bash` so preview /
+  execute commands don't pay fish startup cost on every selection change.
 - All pickers (URL, session, GitHub) run `fzf` with `FZF_DEFAULT_OPTS` cleared
   so global defaults don't distort the popup UI.
 - For very large caches, `pickers/session/filter.sh` automatically falls back to
@@ -369,6 +371,10 @@ the last-known conflict badge until fresh metadata is fetched; in that case the
 badge is shown **dim** to indicate it may be stale (use `ctrl-r` to force
 revalidation).
 
+Similarly, when GraphQL metadata is temporarily unavailable, the picker may show
+last-known **review** / **CI** badges in a **dim** style rather than dropping
+them abruptly.
+
 ### Worktree detection
 
 The picker detects whether a PR or issue has a local worktree using a 3-tier
@@ -409,7 +415,8 @@ heuristic:
 
 Shows PR/issue details: state, review decision, branches, author, changed files,
 labels, and body text. Uses `gh pr view` / `gh issue view` with `bat` for
-Markdown rendering.
+Markdown rendering. For PRs, it also shows `mergeable` (e.g. `MERGEABLE`,
+`CONFLICTING`) so the preview stays authoritative even if list badges are stale.
 
 ### Popup dimensions
 

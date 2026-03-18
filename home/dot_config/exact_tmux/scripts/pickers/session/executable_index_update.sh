@@ -137,7 +137,11 @@ publish_cache_from() {
   else
     cp "$src" "$out_tmp"
   fi
-  mv -f "$out_tmp" "$cache_file"
+  if [ -f "$cache_file" ] && cmp -s "$out_tmp" "$cache_file"; then
+    rm -f "$out_tmp"
+  else
+    mv -f "$out_tmp" "$cache_file"
+  fi
 }
 
 file_has_dir_rows() {

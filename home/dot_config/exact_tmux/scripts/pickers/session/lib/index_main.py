@@ -16,8 +16,12 @@ from typing import Any
 # If the consumer (fzf) exits early, don't spam tracebacks.
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
-HALF_CORES = max(1, (os.cpu_count() or 2) // 2)
-HALF_CORES_STR = str(HALF_CORES)
+threads_env = os.environ.get("PICK_SESSION_THREADS")
+if threads_env and threads_env.isdigit():
+    WORKER_THREADS = max(1, int(threads_env))
+else:
+    WORKER_THREADS = max(1, (os.cpu_count() or 2) // 2)
+WORKER_THREADS_STR = str(WORKER_THREADS)
 
 
 def parse_ignore_file_to_excludes(ignore_file: str) -> list[str]:
@@ -238,18 +242,23 @@ def default_branch_for_repo(repo_root: str) -> str:
             out = normalize_branch_name(out)
             if out:
                 return out
+
+    # Fallback: get all refs once and check candidates
+    try:
+        out = subprocess.run(
+            ["git", "-C", repo_root, "show-ref"],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).stdout
+        refs = {line.split()[1] for line in out.splitlines() if line.strip()}
+    except Exception:
+        refs = set()
+
     for cand in DEFAULT_BRANCH_DIRS_ORDER:
         for ref in (f"refs/heads/{cand}", f"refs/remotes/origin/{cand}", f"refs/remotes/upstream/{cand}"):
-            try:
-                rc = subprocess.run(
-                    ["git", "-C", repo_root, "show-ref", "--verify", "--quiet", ref],
-                    check=False,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                ).returncode
-            except Exception:
-                rc = 1
-            if rc == 0:
+            if ref in refs:
                 return cand
     # Last-resort fallback for narrow clones where only a topic branch exists
     # locally and remote HEAD is unavailable.
@@ -490,7 +499,7 @@ def scan_for_git_repos(roots, depth, ignore_file):
         "--no-ignore",
         "--absolute-path",
         "--threads",
-        HALF_CORES_STR,
+        WORKER_THREADS_STR,
         "--type",
         "f",
         "--type",
@@ -531,7 +540,7 @@ def get_home_dirs(root, ignore_file, include_hidden, stop_prefixes=None):
         str(HOME_DIR_SCAN_DEPTH),
         "--absolute-path",
         "--threads",
-        HALF_CORES_STR,
+        WORKER_THREADS_STR,
     ]
     if include_hidden in ("1", "true", "yes", "on"):
         fd_args.append("--hidden")
@@ -589,6 +598,7 @@ GH_PICKER_CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", os.path.expanduser("
 GH_TTL_OPEN = 600
 GH_TTL_TERMINAL = 86400
 GH_TTL_MISS = 3600
+GH_PICKER_TTL = 300
 
 
 def _load_gh_picker_ci_index() -> dict[str, dict[int, tuple[str, str]]]:
@@ -598,9 +608,16 @@ def _load_gh_picker_ci_index() -> dict[str, dict[int, tuple[str, str]]]:
     TSV format: display\\tkind\\trepo\\tnumber\\turl\\tmatchkey\\treview,ci
     """
     index: dict[str, dict[int, tuple[str, str]]] = {}
+    now = time.time()
     for mode in ("work", "home"):
         cache = GH_PICKER_CACHE_DIR / f"gh_picker_{mode}.tsv"
         if not cache.is_file():
+            continue
+        try:
+            age = now - cache.stat().st_mtime
+            if age < 0 or age > GH_PICKER_TTL:
+                continue
+        except Exception:
             continue
         try:
             for line in cache.read_text(encoding="utf-8", errors="replace").splitlines():
@@ -853,6 +870,13 @@ def _extract_ci_state(commit_node: dict[str, Any], repo_name: str) -> str:
     if rollup is None:
         return ""
 
+    # Never show green when the rollup is failing. This prevents a single
+    # "canonical" success context (e.g. kibana-ci) from masking other failing
+    # required checks.
+    overall_state = (rollup.get("state") or "").upper()
+    if overall_state in ("FAILURE", "ERROR"):
+        return "FAILURE"
+
     contexts = []
     try:
         contexts = (rollup.get("contexts") or {}).get("nodes") or []
@@ -1104,7 +1128,7 @@ def gh_meta(gh_info: dict[str, Any] | None) -> str:
 def _check_dirty(wt_path: str) -> bool:
     try:
         r = subprocess.run(
-            ["git", "-C", wt_path, "status", "--porcelain", "--untracked-files=no"],
+            ["git", "-c", "core.threads=1", "-C", wt_path, "status", "--porcelain", "--untracked-files=no"],
             check=False,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
@@ -1166,7 +1190,7 @@ if not quick and not sessions_only and shutil.which("fd"):
 # 1b. Parallel dirty scan for worktrees that aren't already stale/gone.
 _dirty_candidates = [p for rid in groups for p in groups[rid]["wt_map"] if p not in wt_status]
 if _dirty_candidates:
-    with concurrent.futures.ThreadPoolExecutor(max_workers=HALF_CORES) as pool:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=WORKER_THREADS) as pool:
         _futures = {pool.submit(_check_dirty, p): p for p in _dirty_candidates}
         for fut in concurrent.futures.as_completed(_futures):
             p = _futures[fut]
@@ -1212,7 +1236,7 @@ if _gh_all:
 
     if _gh_need_fetch and shutil.which("gh"):
         _fetch_meta = {p: (br, nwo) for p, br, nwo in _gh_need_fetch}
-        with concurrent.futures.ThreadPoolExecutor(max_workers=HALF_CORES) as pool:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=WORKER_THREADS) as pool:
             _gh_futures = {pool.submit(_lookup_gh_info, p, br, nwo): p for p, br, nwo in _gh_need_fetch}
             for fut in concurrent.futures.as_completed(_gh_futures):
                 p = _gh_futures[fut]
@@ -1266,7 +1290,7 @@ for row in sess_out.splitlines():
 if quick or sessions_only:
     _new_wt_paths = [p for rid in groups for p in groups[rid]["wt_map"] if p not in wt_status]
     if _new_wt_paths:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=HALF_CORES) as pool:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=WORKER_THREADS) as pool:
             _dirty_futs = {pool.submit(_check_dirty, p): p for p in _new_wt_paths}
             for fut in concurrent.futures.as_completed(_dirty_futs):
                 p = _dirty_futs[fut]

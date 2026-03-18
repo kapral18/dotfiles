@@ -14,6 +14,8 @@ set -euo pipefail
 bg_pid=""
 cleanup() {
   [ -n "$bg_pid" ] && kill "$bg_pid" 2> /dev/null || true
+  # Also kill any descendant processes of the background job
+  [ -n "$bg_pid" ] && pkill -P "$bg_pid" 2> /dev/null || true
 }
 trap 'cleanup; exit 0' INT HUP TERM EXIT
 
@@ -77,6 +79,14 @@ toggle_cmd="$script_dir/lib/gh_picker_toggle.sh"
 cache_load_cmd="GH_PICKER_MODE=$(printf %q "$mode") $(printf %q "$items_cmd") --cache-only"
 full_load_cmd="GH_PICKER_MODE=$(printf %q "$mode") $(printf %q "$items_cmd")"
 
+fzf_shell="$(command -v bash 2> /dev/null || printf '%s' /bin/bash)"
+
+help_text="GitHub Picker Keybindings\n\nActions\nenter       checkout (batch if items marked)\nalt-b       checkout + Octo review (PRs)\nalt-o       open in browser\nalt-y       copy URL(s) to clipboard (marked items; falls back to current)\n\nMulti-select\ntab         mark/unmark item\nshift-tab   unmark item\nalt-space   mark/unmark item\n\nComments\nalt-c       new comment (opens \$EDITOR)\nalt-r       quote-reply a comment\nalt-d       edit your own comment\n\nPreview\nalt-e       cycle: collapsed → body → all expanded\nctrl-/      toggle preview\n\nNavigation\nctrl-s      switch work/home\nctrl-r      refresh from GitHub\nalt-g       switch to sessions picker\nalt-j/k     page down/up\nshift-↑/↓   scroll preview\n"
+
+preview_cmd_0="$preview_cmd --expand=0 {f}"
+preview_cmd_1="$preview_cmd --expand=1 {f}"
+preview_cmd_2="$preview_cmd --expand=2 {f}"
+
 fzf_port="$(python3 -c 'import socket; s=socket.socket(); s.bind(("",0)); print(s.getsockname()[1]); s.close()')"
 printf '%s' "$fzf_port" > "$port_file" 2> /dev/null || true
 
@@ -106,7 +116,8 @@ fi
 bg_pid=$!
 
 pick="$(
-  eval "$initial_items_cmd" | fzf \
+  eval "$initial_items_cmd" | SHELL="$fzf_shell" fzf \
+    --with-shell "$fzf_shell -c" \
     --listen-unsafe=$fzf_port \
     --ansi \
     --height=100% \
@@ -119,7 +130,7 @@ pick="$(
     --prompt "  ${mode}  " \
     --ghost "filter PRs and issues" \
     --color "$fzf_color" \
-    --preview "$preview_cmd --expand=\$(cat $(printf %q "$expand_flag") 2>/dev/null || echo 0) {f}" \
+    --preview "$preview_cmd_0" \
     --preview-window 'right,55%,border-left,wrap' \
     --header $'enter=checkout (batch if marked)  alt-b=octo  alt-o=browser  alt-y=copy url(s)  tab=mark  ctrl-s=work/home  alt-c=comment  ?=help' \
     --bind "ctrl-r:transform:m=\$(cat $(printf %q "$mode_flag_file")); echo \"reload(GH_PICKER_MODE=\$m $items_cmd --refresh)+clear-query\"" \
@@ -129,7 +140,7 @@ pick="$(
     --bind "alt-y:execute-silent(printf '%s\n' {+} | cut -f5 | grep -E '^https?://' | pbcopy 2>/dev/null || printf '%s\n' {+} | cut -f5 | grep -E '^https?://' | xclip -sel clip 2>/dev/null)" \
     --bind "alt-space:toggle" \
     --bind "ctrl-t:execute(cat {+f} > $(printf %q "$multi_tmp"); $batch_wt_cmd $(printf %q "$multi_tmp"))+deselect-all+refresh-preview" \
-    --bind "alt-e:execute-silent(m=\$(cat $(printf %q "$expand_flag") 2>/dev/null || echo 0); m=\$(( (m + 1) %% 3 )); printf '%%s' \"\$m\" > $(printf %q "$expand_flag"))+refresh-preview" \
+    --bind "alt-e:transform:m=\$(cat $(printf %q "$expand_flag") 2>/dev/null || echo 0); m=\$(( (m + 1) % 3 )); printf '%s' \"\$m\" > $(printf %q "$expand_flag"); case \"\$m\" in 0) echo 'change-preview($preview_cmd_0)+refresh-preview' ;; 1) echo 'change-preview($preview_cmd_1)+refresh-preview' ;; *) echo 'change-preview($preview_cmd_2)+refresh-preview' ;; esac" \
     --bind "alt-c:execute($comment_cmd new {2} {3} {4})+refresh-preview" \
     --bind "alt-r:execute($comment_cmd reply {2} {3} {4})+refresh-preview" \
     --bind "alt-d:execute($comment_cmd edit {2} {3} {4})+refresh-preview" \
@@ -140,8 +151,7 @@ pick="$(
     --bind "shift-left:preview-page-up" \
     --bind "shift-right:preview-page-down" \
     --bind "ctrl-/:toggle-preview" \
-    --bind "?:transform:if [ -f $(printf %q "$help_flag") ]; then rm -f $(printf %q "$help_flag"); echo 'change-preview($preview_cmd --expand=\$(cat $(printf %q "$expand_flag") 2>/dev/null || echo 0) {f})+show-preview'; else touch $(printf %q "$help_flag"); echo 'change-preview(printf \"GitHub Picker Keybindings\n\nActions\nenter       checkout (batch if items marked)\nalt-b       checkout + Octo review (PRs)\nalt-o       open in browser\nalt-y       copy URL(s) to clipboard (marked items; falls back to current)\n\nMulti-select\ntab         mark/unmark item\nshift-tab   unmark item\nalt-space   mark/unmark item\n\nComments\nalt-c       new comment (opens \\\$EDITOR)\nalt-r       quote-reply a comment\nalt-d       edit your own comment\n\nPreview\nalt-e       cycle: collapsed → body → all expanded\nctrl-/      toggle preview\n\nNavigation\nctrl-s      switch work/home\nctrl-r      refresh from GitHub\nalt-g       switch to sessions picker\nalt-j/k     page down/up\nshift-↑/↓   scroll preview\n\")+show-preview'; fi" \
-    --bind "focus:execute-silent(rm -f $(printf %q "$help_flag") 2>/dev/null)+change-preview($preview_cmd --expand=\$(cat $(printf %q "$expand_flag") 2>/dev/null || echo 0) {f})" \
+    --bind "?:transform:if [ -f $(printf %q "$help_flag") ]; then rm -f $(printf %q "$help_flag"); m=\$(cat $(printf %q "$expand_flag") 2>/dev/null || echo 0); case \"\$m\" in 1) echo 'change-preview($preview_cmd_1)+show-preview' ;; 2) echo 'change-preview($preview_cmd_2)+show-preview' ;; *) echo 'change-preview($preview_cmd_0)+show-preview' ;; esac; else touch $(printf %q "$help_flag"); echo 'change-preview(printf %b $(printf %q "$help_text"))+show-preview'; fi" \
     --bind "change:first" \
     --bind "enter:transform:[[ \$FZF_SELECT_COUNT -gt 0 ]] && echo 'execute(cat {+f} > $(printf %q "$multi_tmp"); $(printf %q "$batch_wt_cmd") $(printf %q "$multi_tmp"))+deselect-all+refresh-preview' || echo 'execute-silent(printf checkout > $(printf %q "$action_flag"))+execute-silent(cp {f} $(printf %q "$primary_tmp"))+accept'" \
     --bind "alt-b:execute-silent(printf octo > $(printf %q "$action_flag"))+execute-silent(cp {f} $(printf %q "$primary_tmp"))+accept" \

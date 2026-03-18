@@ -59,6 +59,28 @@ if [ "$cache_only" -eq 1 ]; then
   exit 0
 fi
 
+lock_dir="${cache_file}.lock"
+if ! mkdir "$lock_dir" 2> /dev/null; then
+  pid_file="${lock_dir}/pid"
+  if [ -f "$pid_file" ]; then
+    pid="$(cat "$pid_file" 2> /dev/null || true)"
+    if [ -n "$pid" ] && kill -0 "$pid" 2> /dev/null; then
+      # Another refresh is already running; serve cache if available.
+      [ -f "$cache_file" ] && cat "$cache_file"
+      exit 0
+    fi
+  fi
+  rm -rf "$lock_dir" 2> /dev/null || true
+  mkdir "$lock_dir" 2> /dev/null || true
+fi
+
+cleanup_lock() {
+  rm -f "${lock_dir}/pid" 2> /dev/null || true
+  rmdir "$lock_dir" 2> /dev/null || true
+}
+trap cleanup_lock EXIT
+printf '%s\n' "$$" > "${lock_dir}/pid" 2> /dev/null || true
+
 if [ "$refresh" -eq 0 ] && [ -f "$cache_file" ]; then
   mt="$(stat -c %Y "$cache_file" 2> /dev/null || stat -f %m "$cache_file" 2> /dev/null || echo 0)"
   now="$(date +%s)"

@@ -524,14 +524,14 @@ tools, granting agents deep, secure reach into the environment.
 Configs are strictly separated into `.work` and `.personal` profiles and
 dynamically merged by `chezmoi` based on your identity.
 
-| Tool                | Purpose               | Integration Highlights                                                                          |
-| ------------------- | --------------------- | ----------------------------------------------------------------------------------------------- |
-| **Pi Coding Agent** | Terminal coding agent | Defaults to LiteLLM (work) or OpenAI (personal). Injects MCPs and auto-reserves context tokens. |
-| **Gemini CLI**      | Terminal AI assistant | Auto-approves edits (`auto_edit`) and shares the unified MCP configuration.                     |
-| **Cursor**          | AI code editor        | MCPs are filtered securely via chezmoi scripts (`work_only` in `mcp_servers.yaml`).             |
-| **OpenCode**        | Terminal agent runner | Leverages LiteLLM aliases with strict output constraints to prevent gateway timeouts.           |
-| **Ollama**          | Local LLM runtime     | Automatically pulls `gpt-oss` and `deepseek-r1` upon `chezmoi apply`.                           |
-| **Crush**           | Terminal assistant    | Fully configured for shell integration.                                                         |
+| Tool                | Purpose               | Integration Highlights                                                                                                                           |
+| ------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Pi Coding Agent** | Terminal coding agent | Defaults to Gemini 3.1 Pro Preview Custom Tools via Google direct in both work and personal envs. Injects MCPs and auto-reserves context tokens. |
+| **Gemini CLI**      | Terminal AI assistant | Auto-approves edits (`auto_edit`) and shares the unified MCP configuration.                                                                      |
+| **Cursor**          | AI code editor        | MCPs are filtered securely via chezmoi scripts (`work_only` in `mcp_servers.yaml`).                                                              |
+| **OpenCode**        | Terminal agent runner | Leverages LiteLLM aliases with strict output constraints to prevent gateway timeouts.                                                            |
+| **Ollama**          | Local LLM runtime     | Automatically pulls `gpt-oss` and `deepseek-r1` upon `chezmoi apply`.                                                                            |
+| **Crush**           | Terminal assistant    | Fully configured for shell integration.                                                                                                          |
 
 ## 💎 Neovim
 

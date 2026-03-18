@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+old_picker_dir="${HOME}/.config/tmux/scripts/pick_session"
+current_picker_dir="${HOME}/.config/tmux/scripts/pickers"
+
+# Only clean up once the current picker tree exists.
+[ -d "$current_picker_dir" ] || exit 0
+[ -d "$old_picker_dir" ] || exit 0
+
+# Only remove if it looks like the known old picker tree.
+[ -f "${old_picker_dir}/pick_session.sh" ] || exit 0
+[ -f "${old_picker_dir}/gh_picker.sh" ] || exit 0
+
+# Terminate any still-running picker processes from the old path so they stop
+# writing caches.
+if command -v pgrep >/dev/null 2>&1; then
+  # -f matches full command line; we only target the old path.
+  pids="$(pgrep -f "${old_picker_dir}/" 2>/dev/null || true)"
+  if [ -n "${pids:-}" ]; then
+    # shellcheck disable=SC2086
+    kill $pids 2>/dev/null || true
+    sleep 0.2
+  fi
+fi
+
+rm -rf "$old_picker_dir" 2>/dev/null || true

@@ -7,7 +7,7 @@ if [ "${BASH_VERSINFO[0]:-0}" -lt 4 ]; then
 fi
 set -euo pipefail
 
-trap 'exit 0' INT HUP TERM
+trap 'pkill -P $$ 2>/dev/null || true; exit 0' INT HUP TERM
 
 die() {
   tmux display-message "$1"
@@ -115,6 +115,8 @@ if [[ -z "${TMUX:-}" ]]; then
   die "tmux: not running inside tmux"
 fi
 
+fzf_shell="$(command -v bash 2> /dev/null || printf '%s' /bin/bash)"
+
 bulk_guard_key="@pick_session_bulk_create_in_progress"
 bulk_guard_set() {
   tmux set-option -gq "$bulk_guard_key" "1" > /dev/null 2>&1 || true
@@ -123,7 +125,7 @@ bulk_guard_clear() {
   tmux set-option -gq "$bulk_guard_key" "0" > /dev/null 2>&1 || true
 }
 bulk_guard_set
-trap 'bulk_guard_clear; exit 0' EXIT
+trap 'bulk_guard_clear; pkill -P $$ 2>/dev/null || true; exit 0' EXIT
 
 __sess_cache_loaded=0
 sess_names=()
@@ -274,6 +276,13 @@ fi
 help_cmd="$HOME/.config/tmux/scripts/pickers/session/keyhelp.sh"
 preview_cmd="$HOME/.config/tmux/scripts/pickers/session/preview.sh"
 
+help_flag="${cache_dir}/pick_session_help_flag"
+rm -f "$help_flag" 2> /dev/null || true
+
+help_text="pick_session keybindings\n\nNavigation\n  up/down arrows  move selection\n  alt-j / alt-k   page down / page up\n  alt-h / alt-l   first item / last item\n\nFilter / Refresh\n  type            filter\n  ctrl-r          reload from cache+live overlay (immediate)\n  alt-r           force background refresh (updates open picker)\n\nSelection / Actions\n  enter           open (switch/create)\n  tab             toggle multi-select on current row\n  ctrl-x          kill selected session(s) (optimistic hide)\n  alt-x           remove selected worktree(s) (optimistic hide)\n  alt-y           copy underlying path(s) to clipboard\n  ctrl-s          send command to selected session(s)\n                    enters send mode: type command, enter=send, esc=cancel\n\nGitHub\n  alt-p           open PR in browser (if branch has a PR)\n  alt-i           open issue in browser (if branch references an issue)\n  alt-g           switch to GitHub picker (PRs/issues from gh-dash sections)\n\nPreview\n  ctrl-/          toggle preview panel (pane capture / git info)\n  ?               show this help in the preview panel\n  shift-up/down   scroll preview (line)\n  shift-left/right scroll preview (page)\n\nNotes\n  - actions operate on the selected rows (multi-select aware)\n  - killing/removing writes short-lived tombstones to avoid reappearing items\n"
+
+preview_cmd_0="$preview_cmd {f}"
+
 # fzf send-mode: ctrl-s enters a modal where the query line becomes a command
 # prompt. enter dispatches the command to selected sessions; esc cancels.
 send_restore="enable-search+change-prompt($fzf_prompt)+change-ghost($fzf_ghost)+change-header(?=help  ctrl-/=preview  alt-p=PR  alt-i=issue  alt-g=GitHub)+clear-query+deselect-all+rebind(ctrl-s,ctrl-x,alt-x,alt-y,alt-p,alt-i,alt-g,change)+unbind(esc)"
@@ -287,7 +296,8 @@ else
   # shellcheck disable=SC2086
   pick="$(
     if [ -n "$pin_kind" ] && [ -n "$pin_num" ] && [ -x "$pin_first_cmd" ]; then
-      FZF_DEFAULT_OPTS="" "$open_items_cmd" | "$pin_first_cmd" "$pin_kind" "$pin_repo" "$pin_num" | fzf \
+      FZF_DEFAULT_OPTS="" "$open_items_cmd" | "$pin_first_cmd" "$pin_kind" "$pin_repo" "$pin_num" | SHELL="$fzf_shell" fzf \
+        --with-shell "$fzf_shell -c" \
         --ansi \
         --scheme=path \
         --height=100% \
@@ -301,7 +311,7 @@ else
         --multi \
         "${fzf_ui_args[@]}" \
         --query "$query" \
-        --preview "$preview_cmd {f}" \
+        --preview "$preview_cmd_0" \
         --preview-window 'right,50%,border-left' \
         --bind "start:execute-silent:$live_refresh_cmd >/dev/null 2>&1 &" \
         --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+clear-query" \
@@ -315,8 +325,7 @@ else
         --bind "shift-left:preview-page-up" \
         --bind "shift-right:preview-page-down" \
         --bind "ctrl-/:toggle-preview" \
-        --bind "?:change-preview($help_cmd)+show-preview" \
-        --bind "focus:change-preview($preview_cmd {f})" \
+        --bind "?:transform:if [ -f $(printf %q "$help_flag") ]; then rm -f $(printf %q "$help_flag"); echo 'change-preview($preview_cmd_0)+show-preview'; else touch $(printf %q "$help_flag"); echo 'change-preview(printf %b $(printf %q "$help_text"))+show-preview'; fi" \
         --bind "change:first" \
         --bind "load:unbind(esc)" \
         --bind "enter:transform:[ -f $mode_flag ] && { printf '%s' {q} > $cmd_tmp; echo 'execute-silent(tmux run-shell -b \"$send_cmd $sel_tmp $cmd_tmp\")+execute-silent(rm -f $mode_flag)+$send_restore'; } || echo 'execute-silent(cp {f} $primary_tmp)+accept'" \
@@ -333,7 +342,8 @@ else
         ${fzf_args} \
         || true
     else
-      FZF_DEFAULT_OPTS="" "$open_items_cmd" | fzf \
+      FZF_DEFAULT_OPTS="" "$open_items_cmd" | SHELL="$fzf_shell" fzf \
+        --with-shell "$fzf_shell -c" \
         --ansi \
         --scheme=path \
         --height=100% \
@@ -347,7 +357,7 @@ else
         --multi \
         "${fzf_ui_args[@]}" \
         --query "$query" \
-        --preview "$preview_cmd {f}" \
+        --preview "$preview_cmd_0" \
         --preview-window 'right,50%,border-left' \
         --bind "start:execute-silent:$live_refresh_cmd >/dev/null 2>&1 &" \
         --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+clear-query" \
@@ -361,8 +371,7 @@ else
         --bind "shift-left:preview-page-up" \
         --bind "shift-right:preview-page-down" \
         --bind "ctrl-/:toggle-preview" \
-        --bind "?:change-preview($help_cmd)+show-preview" \
-        --bind "focus:change-preview($preview_cmd {f})" \
+        --bind "?:transform:if [ -f $(printf %q "$help_flag") ]; then rm -f $(printf %q "$help_flag"); echo 'change-preview($preview_cmd_0)+show-preview'; else touch $(printf %q "$help_flag"); echo 'change-preview(printf %b $(printf %q "$help_text"))+show-preview'; fi" \
         --bind "change:first" \
         --bind "load:unbind(esc)" \
         --bind "enter:transform:[ -f $mode_flag ] && { printf '%s' {q} > $cmd_tmp; echo 'execute-silent(tmux run-shell -b \"$send_cmd $sel_tmp $cmd_tmp\")+execute-silent(rm -f $mode_flag)+$send_restore'; } || echo 'execute-silent(cp {f} $primary_tmp)+accept'" \

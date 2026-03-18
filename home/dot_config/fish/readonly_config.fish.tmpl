@@ -260,22 +260,6 @@ if type -q pass; and test -z "$LITELLM_API_BASE"
     end
 end
 
-## Claude Code LiteLLM model shortcuts (auto-generated from litellm_models.yaml)
-## __litellm_base strips the /v1 suffix that LITELLM_API_BASE carries,
-## because ANTHROPIC_BASE_URL must not include it.
-
-function __litellm_base --description 'Return LITELLM_API_BASE without /v1 suffix'
-    string replace -r '/v1$' '' -- "$LITELLM_API_BASE"
-end
-
-function claude-litellm --wraps claude --description 'Claude Code via LiteLLM proxy'
-    ANTHROPIC_BASE_URL=(__litellm_base) ANTHROPIC_API_KEY=$LITELLM_PROXY_KEY claude $argv
-end
-{{ range .litellm_models }}{{ if .fish_alias }}
-function {{ .fish_alias }} --wraps claude --description 'Claude Code → {{ .display_name }} via LiteLLM'
-    ANTHROPIC_BASE_URL=(__litellm_base) ANTHROPIC_API_KEY=$LITELLM_PROXY_KEY{{ if .effort }} CLAUDE_CODE_CONTEXT_WINDOW={{ .context }} CLAUDE_CODE_MAX_OUTPUT_TOKENS={{ .output }}{{ end }} claude --model {{ .slug }}{{ if .effort }} --effort high{{ end }} $argv
-end
-{{ end }}{{ end -}}
 
 {{ end -}}
 # ------------------------------------

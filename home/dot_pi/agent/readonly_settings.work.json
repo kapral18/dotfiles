@@ -1,6 +1,6 @@
 {
-  "defaultProvider": "litellm",
-  "defaultModel": "llm-gateway/gpt-5.4",
+  "defaultProvider": "google",
+  "defaultModel": "gemini-3.1-pro-preview-customtools",
   "defaultThinkingLevel": "high",
   "theme": "dark",
   "compaction": {

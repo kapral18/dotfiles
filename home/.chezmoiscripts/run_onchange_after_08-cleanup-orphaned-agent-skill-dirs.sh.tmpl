@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Remove orphaned empty skill directories after skill renames.
+
+old_dir="${HOME}/.agents/skills/labels-propose"
+new_dir="${HOME}/.agents/skills/kibana-labels-propose"
+
+[ -d "$new_dir" ] || exit 0
+[ -d "$old_dir" ] || exit 0
+
+# Only remove when empty to avoid deleting anything unexpected.
+if command rmdir "$old_dir" 2>/dev/null; then
+  exit 0
+fi

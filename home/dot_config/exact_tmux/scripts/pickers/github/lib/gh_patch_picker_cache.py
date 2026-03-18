@@ -17,11 +17,14 @@ creation.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 RESET_SPACE = "\x1b[0m "
 MARK = "◆"
+MARK_COLORED = "\x1b[38;5;81m◆\x1b[0m"
 
 
 def patch_display(display: str) -> str:
@@ -31,9 +34,16 @@ def patch_display(display: str) -> str:
     idx = pos + len(RESET_SPACE)
     if idx >= len(display):
         return display
-    if display[idx] == MARK:
+    # If the marker is already rendered via ANSI, do nothing.
+    if display[idx : idx + 2] == "\x1b[":
         return display
-    return display[:idx] + MARK + display[idx + 1 :]
+    # If a previous patch wrote the raw marker, upgrade it to the colored marker.
+    if display[idx] == MARK:
+        return display[:idx] + MARK_COLORED + display[idx + 1 :]
+    # Only patch the expected spacer (a single literal space).
+    if display[idx] != " ":
+        return display
+    return display[:idx] + MARK_COLORED + display[idx + 1 :]
 
 
 def main() -> int:
@@ -75,7 +85,28 @@ def main() -> int:
 
     if changed:
         try:
-            cache.write_text("".join(out), encoding="utf-8")
+            tmp_name = ""
+            try:
+                with tempfile.NamedTemporaryFile(
+                    mode="w",
+                    encoding="utf-8",
+                    delete=False,
+                    dir=str(cache.parent),
+                    prefix=f".{cache.name}.",
+                    suffix=".tmp",
+                ) as f:
+                    tmp_name = f.name
+                    f.write("".join(out))
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(tmp_name, str(cache))
+                tmp_name = ""
+            finally:
+                if tmp_name:
+                    try:
+                        os.unlink(tmp_name)
+                    except Exception:
+                        pass
         except Exception:
             return 0
 

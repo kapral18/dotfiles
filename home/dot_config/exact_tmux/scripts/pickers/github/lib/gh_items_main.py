@@ -15,6 +15,7 @@ import re
 import signal
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -212,6 +213,13 @@ def _extract_ci_state(commit_node: dict[str, Any], repo_name: str) -> str:
     if rollup is None:
         return ""
 
+    # Never show green when the rollup is failing. This prevents a single
+    # "canonical" success context (e.g. kibana-ci) from masking other failing
+    # required checks.
+    overall_state = (rollup.get("state") or "").upper()
+    if overall_state in ("FAILURE", "ERROR"):
+        return "FAILURE"
+
     contexts = []
     try:
         contexts = (rollup.get("contexts") or {}).get("nodes") or []
@@ -338,6 +346,11 @@ def _graphql_pr_metadata(pr_numbers: dict[str, set[int]]) -> dict[str, dict[int,
         head = node.get("headRefName", "")
         review = node.get("reviewDecision", "")
         mergeable = node.get("mergeable", "")
+        # GitHub often returns UNKNOWN transiently while computing mergeability.
+        # Treat it as missing so we preserve last-known state instead of clearing
+        # conflict indicators spuriously.
+        if mergeable == "UNKNOWN":
+            mergeable = ""
         repo_name = nwo.split("/", 1)[-1] if "/" in nwo else nwo
         ci_state = ""
         try:
@@ -393,44 +406,61 @@ REVIEW_APPROVED = c("38;5;42", "✓")
 REVIEW_CHANGES = c("38;5;209", "✗")
 REVIEW_PENDING = c("38;5;244", "○")
 REVIEW_SPACER = " "
+REVIEW_APPROVED_STALE = c("2;38;5;42", "✓")
+REVIEW_CHANGES_STALE = c("2;38;5;209", "✗")
+REVIEW_PENDING_STALE = c("2;38;5;244", "○")
 CI_SUCCESS = c("38;5;42", "●")
 CI_FAILURE = c("38;5;196", "●")
 CI_PENDING = c("38;5;220", "●")
 CI_SPACER = " "
+CI_SUCCESS_STALE = c("2;38;5;42", "●")
+CI_FAILURE_STALE = c("2;38;5;196", "●")
+CI_PENDING_STALE = c("2;38;5;220", "●")
 COMMENT_ICON = "\033[38;5;244m\U0001f4ac\033[0m"
 CONFLICT_BADGE = c("38;5;209", "⚡")
 CONFLICT_BADGE_STALE = c("2;38;5;209", "⚡")
 CONFLICT_SPACER = " "
 
 
-def _read_prior_conflicts(cache_file: str) -> set[tuple[str, int]]:
-    """Best-effort: preserve merge-conflict badges across partial refreshes.
+def _read_prior_pr_badges(cache_file: str) -> dict[tuple[str, int], tuple[str, str, str]]:
+    """Best-effort: preserve PR badges across partial refreshes.
 
-    If GitHub GraphQL metadata fetch fails, mergeable state can go missing and the
-    conflict badge would disappear. Since the picker is stale-while-revalidate,
-    prefer keeping the last-known conflict marker until fresh metadata is available.
+    If GitHub GraphQL metadata fetch fails, mergeable/review/ci state can go
+    missing and badges would disappear. Since the picker is stale-while-revalidate,
+    keep last-known badges in a clearly-stale (dim) style until fresh metadata
+    is available.
     """
     try:
         raw = Path(cache_file).read_text(encoding="utf-8", errors="replace")
     except Exception:
-        return set()
+        return {}
 
-    out: set[tuple[str, int]] = set()
+    out: dict[tuple[str, int], tuple[str, str, str]] = {}
     for line in raw.splitlines():
         if "\t" not in line:
             continue
-        parts = line.split("\t")
+        parts = line.rstrip("\n").split("\t")
         if len(parts) < 4:
             continue
         display, kind, repo, num_s = parts[0], parts[1], parts[2], parts[3]
         if kind != "pr":
             continue
-        # Avoid false positives if a title contains ⚡; the badge is near the prefix.
-        pos = display.find("⚡")
-        if pos < 0 or pos > 40:
-            continue
+        review = ""
+        ci = ""
+        if len(parts) >= 7 and parts[6]:
+            meta_parts = parts[6].split(",", 1)
+            review = meta_parts[0] if meta_parts else ""
+            ci = meta_parts[1] if len(meta_parts) > 1 else ""
+        mergeable = ""
+        if len(parts) >= 8 and parts[7]:
+            mergeable = parts[7]
+        else:
+            # Backward-compatible fallback: infer conflict from display.
+            pos = display.find("⚡")
+            if 0 <= pos:
+                mergeable = "CONFLICTING"
         try:
-            out.add((repo, int(num_s)))
+            out[(repo, int(num_s))] = (review, ci, mergeable)
         except ValueError:
             continue
     return out
@@ -512,31 +542,39 @@ def _terminal_columns() -> int:
 
 
 def _review_badge(decision: str) -> str:
+    return _review_badge2(decision, stale=False)
+
+
+def _review_badge2(decision: str, stale: bool) -> str:
     d = (decision or "").upper()
     if d == "APPROVED":
-        return REVIEW_APPROVED
+        return REVIEW_APPROVED_STALE if stale else REVIEW_APPROVED
     if d == "CHANGES_REQUESTED":
-        return REVIEW_CHANGES
+        return REVIEW_CHANGES_STALE if stale else REVIEW_CHANGES
     if d == "REVIEW_REQUIRED":
-        return REVIEW_PENDING
+        return REVIEW_PENDING_STALE if stale else REVIEW_PENDING
     return REVIEW_SPACER
 
 
 def _ci_badge(state: str) -> str:
+    return _ci_badge2(state, stale=False)
+
+
+def _ci_badge2(state: str, stale: bool) -> str:
     s = (state or "").upper()
     if s == "SUCCESS":
-        return CI_SUCCESS
+        return CI_SUCCESS_STALE if stale else CI_SUCCESS
     if s in ("FAILURE", "ERROR"):
-        return CI_FAILURE
+        return CI_FAILURE_STALE if stale else CI_FAILURE
     if s in ("PENDING", "EXPECTED"):
-        return CI_PENDING
+        return CI_PENDING_STALE if stale else CI_PENDING
     return CI_SPACER
 
 
 def format_lines(
     items: list[dict[str, Any]],
     wt_index: dict[str, dict[int, _ItemInfo]],
-    prior_conflicts: set[tuple[str, int]] | None = None,
+    prior_pr_badges: dict[tuple[str, int], tuple[str, str, str]] | None = None,
 ) -> list[str]:
     """Format item dicts into TSV lines for fzf, with worktree + review markers."""
     cols = _terminal_columns()
@@ -546,11 +584,11 @@ def format_lines(
     max_title = max(40, visible - fixed_width)
 
     lines: list[str] = []
-    prior = prior_conflicts or set()
+    prior = prior_pr_badges or {}
     for item in items:
         if item.get("_header"):
             header = c("1;38;5;244", f"── {item['title']} ──")
-            lines.append(f"{header}\theader\t\t{item['kind']}:{item['idx']}\t\t{item['title']}\t")
+            lines.append(f"{header}\theader\t\t{item['kind']}:{item['idx']}\t\t{item['title']}\t\t")
             continue
 
         kind = item["kind"]
@@ -567,12 +605,30 @@ def format_lines(
 
         item_info = wt_index.get(repo, {}).get(int(num))
         local_marker = ICON_LOCAL if (item_info and item_info.has_wt) else ICON_LOCAL_SPACER
-        review = _review_badge(item_info.review if item_info else "") if item_kind == "pr" else REVIEW_SPACER
-        ci = _ci_badge(item_info.ci if item_info else "") if item_kind == "pr" else CI_SPACER
+        gql_known = bool(item_info and (item_info.mergeable or item_info.review or item_info.ci))
+        prior_key = (repo, int(num))
+        prior_review, prior_ci, prior_mergeable = prior.get(prior_key, ("", "", ""))
+        review = (
+            _review_badge2(item_info.review, stale=False)
+            if (item_kind == "pr" and item_info and gql_known)
+            else _review_badge2(prior_review, stale=True)
+            if (item_kind == "pr" and (not gql_known) and prior_review)
+            else REVIEW_SPACER
+        )
+        ci = (
+            _ci_badge2(item_info.ci, stale=False)
+            if (item_kind == "pr" and item_info and gql_known)
+            else _ci_badge2(prior_ci, stale=True)
+            if (item_kind == "pr" and (not gql_known) and prior_ci)
+            else CI_SPACER
+        )
         conflict = CONFLICT_SPACER
-        if item_info and item_info.mergeable == "CONFLICTING":
+        mergeable_val = (
+            item_info.mergeable if (item_info and gql_known and item_info.mergeable) else ""
+        ) or prior_mergeable
+        if mergeable_val == "CONFLICTING" and (item_info and gql_known and item_info.mergeable):
             conflict = CONFLICT_BADGE
-        elif (not (item_info and item_info.mergeable)) and ((repo, int(num)) in prior):
+        elif mergeable_val == "CONFLICTING":
             conflict = CONFLICT_BADGE_STALE
 
         title_text = item["title"]
@@ -589,12 +645,44 @@ def format_lines(
 
         display = f"{icon} {local_marker}{review}{ci}{conflict} {num_col} {title_text}  {repo_col}  {author_col}  {date_col}{comment_col}"
         mk = f"#{num} {title_text} {repo} @{item['author']}"
-        meta_review = (item_info.review if item_info else "") or ""
-        meta_ci = (item_info.ci if item_info else "") or ""
+        # Preserve last-known review/ci if GraphQL is missing so badges don't
+        # disappear on the next refresh.
+        meta_review = (item_info.review if (item_info and gql_known) else prior_review) or ""
+        meta_ci = (item_info.ci if (item_info and gql_known) else prior_ci) or ""
         meta_col = f"{meta_review},{meta_ci}" if (meta_review or meta_ci) else ""
-        lines.append(f"{display}\t{item_kind}\t{repo}\t{num}\t{item['url']}\t{mk}\t{meta_col}")
+        mergeable_col = (
+            item_info.mergeable if (item_info and gql_known and item_info.mergeable) else (prior_mergeable or "")
+        )
+        lines.append(f"{display}\t{item_kind}\t{repo}\t{num}\t{item['url']}\t{mk}\t{meta_col}\t{mergeable_col}")
 
     return lines
+
+
+def _atomic_write_text(path: str, text: str) -> None:
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp_name = ""
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            delete=False,
+            dir=str(p.parent),
+            prefix=f".{p.name}.",
+            suffix=".tmp",
+        ) as f:
+            tmp_name = f.name
+            f.write(text)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_name, str(p))
+        tmp_name = ""
+    finally:
+        if tmp_name:
+            try:
+                os.unlink(tmp_name)
+            except Exception:
+                pass
 
 
 def main():
@@ -606,7 +694,7 @@ def main():
     args = parser.parse_args()
 
     pr_sections, issue_sections, repo_paths = parse_config(args.config)
-    prior_conflicts = _read_prior_conflicts(args.cache_file)
+    prior_pr_badges = _read_prior_pr_badges(args.cache_file)
 
     all_lines: list[str] = []
 
@@ -713,13 +801,12 @@ def main():
         if info:
             wt_index[nwo] = info
 
-    all_lines = format_lines(all_items, wt_index, prior_conflicts=prior_conflicts)
+    all_lines = format_lines(all_items, wt_index, prior_pr_badges=prior_pr_badges)
 
     output = "\n".join(all_lines)
     if output.strip():
         try:
-            with open(args.cache_file, "w", encoding="utf-8") as f:
-                f.write(output + "\n")
+            _atomic_write_text(args.cache_file, output + "\n")
         except Exception:
             pass
 

@@ -4,17 +4,11 @@ approval_policy = "never"
 sandbox_mode = "danger-full-access"
 web_search = "cached"
 check_for_update_on_startup = true
-model = "llm-gateway/gpt-5.4"
-model_provider = "litellm"
-model_catalog_json = "__CODEX_HOME__/models_catalog_litellm.json"
-model_reasoning_effort = "high"
 personality = "pragmatic"
 
-[model_providers.litellm]
-name = "LiteLLM"
-base_url = "__LITELLM_API_BASE__"
-env_key = "LITELLM_PROXY_KEY"
-wire_api = "responses"
+[profiles.native]
+model = "gpt-5.3-codex"
+model_reasoning_effort = "high"
 
 [notice.model_migrations]
 "gpt-5.2" = "gpt-5.3-codex"

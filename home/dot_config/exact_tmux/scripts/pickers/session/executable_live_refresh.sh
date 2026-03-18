@@ -246,6 +246,10 @@ prev_mtime="$(maybe_reload_on_change "$prev_mtime")" || exit 0
 while :; do
   fzf_alive || exit 0
   sleep "$sleep_s"
-  run_update
+
+  # Run a full update in the background, but limit it to a single thread
+  # so it doesn't starve fzf/tmux of CPU and cause stuttering.
+  PICK_SESSION_THREADS=1 run_update
+
   prev_mtime="$(maybe_reload_on_change "$prev_mtime")" || exit 0
 done

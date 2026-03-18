@@ -90,26 +90,25 @@ This page answers two questions:
 
 ## Security + AI
 
-| Component                     | Source path                                                                                                                                                             |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Setup pass managers           | [`home/.chezmoiscripts/run_once_after_05-setup-pass-managers.fish.tmpl`](../home/.chezmoiscripts/run_once_after_05-setup-pass-managers.fish.tmpl)                       |
-| OpenCode                      | [`home/dot_config/opencode/`](../home/dot_config/opencode/)                                                                                                             |
-| Pi config                     | [`home/dot_pi/agent/`](../home/dot_pi/agent/)                                                                                                                           |
-| Pi CLI package list entry     | [`home/readonly_dot_default-npm-pkgs`](../home/readonly_dot_default-npm-pkgs)                                                                                           |
-| Claude Code                   | [`home/dot_claude/`](../home/dot_claude/)                                                                                                                               |
-| Codex                         | [`home/dot_codex/`](../home/dot_codex/)                                                                                                                                 |
-| Codex model catalog generator | [`home/.chezmoiscripts/run_onchange_after_07-generate-codex-model-catalog.sh.tmpl`](../home/.chezmoiscripts/run_onchange_after_07-generate-codex-model-catalog.sh.tmpl) |
-| Gemini                        | [`home/dot_gemini/`](../home/dot_gemini/)                                                                                                                               |
-| Cursor                        | [`home/dot_cursor/`](../home/dot_cursor/)                                                                                                                               |
-| Amp                           | [`home/dot_config/exact_amp/`](../home/dot_config/exact_amp/)                                                                                                           |
-| Assistant SOP entrypoints     | [`home/readonly_AGENTS.md`](../home/readonly_AGENTS.md), [`home/readonly_CLAUDE.md`](../home/readonly_CLAUDE.md)                                                        |
-| Assistant playbooks           | [`home/exact_dot_agents/exact_playbooks/`](../home/exact_dot_agents/exact_playbooks/)                                                                                   |
-| Assistant skills              | [`home/exact_dot_agents/exact_skills/`](../home/exact_dot_agents/exact_skills/)                                                                                         |
-| Ollama models                 | [`home/.chezmoiscripts/run_onchange_after_05-add-ollama-models.sh`](../home/.chezmoiscripts/run_onchange_after_05-add-ollama-models.sh)                                 |
-| Merge script shared library   | [`scripts/chezmoi_lib.sh`](../scripts/chezmoi_lib.sh)                                                                                                                   |
-| LiteLLM model definitions     | [`home/.chezmoidata/litellm_models.yaml`](../home/.chezmoidata/litellm_models.yaml)                                                                                     |
-| MCP server registry           | [`home/.chezmoidata/mcp_servers.yaml`](../home/.chezmoidata/mcp_servers.yaml)                                                                                           |
-| MCP config generator          | [`scripts/generate_mcp_configs.py`](../scripts/generate_mcp_configs.py)                                                                                                 |
+| Component                   | Source path                                                                                                                                       |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Setup pass managers         | [`home/.chezmoiscripts/run_once_after_05-setup-pass-managers.fish.tmpl`](../home/.chezmoiscripts/run_once_after_05-setup-pass-managers.fish.tmpl) |
+| OpenCode                    | [`home/dot_config/opencode/`](../home/dot_config/opencode/)                                                                                       |
+| Pi config                   | [`home/dot_pi/agent/`](../home/dot_pi/agent/)                                                                                                     |
+| Pi CLI package list entry   | [`home/readonly_dot_default-npm-pkgs`](../home/readonly_dot_default-npm-pkgs)                                                                     |
+| Claude Code                 | [`home/dot_claude/`](../home/dot_claude/)                                                                                                         |
+| Codex                       | [`home/dot_codex/`](../home/dot_codex/)                                                                                                           |
+| Gemini                      | [`home/dot_gemini/`](../home/dot_gemini/)                                                                                                         |
+| Cursor                      | [`home/dot_cursor/`](../home/dot_cursor/)                                                                                                         |
+| Amp                         | [`home/dot_config/exact_amp/`](../home/dot_config/exact_amp/)                                                                                     |
+| Assistant SOP entrypoints   | [`home/readonly_AGENTS.md`](../home/readonly_AGENTS.md), [`home/readonly_CLAUDE.md`](../home/readonly_CLAUDE.md)                                  |
+| Assistant playbooks         | [`home/exact_dot_agents/exact_playbooks/`](../home/exact_dot_agents/exact_playbooks/)                                                             |
+| Assistant skills            | [`home/exact_dot_agents/exact_skills/`](../home/exact_dot_agents/exact_skills/)                                                                   |
+| Ollama models               | [`home/.chezmoiscripts/run_onchange_after_05-add-ollama-models.sh`](../home/.chezmoiscripts/run_onchange_after_05-add-ollama-models.sh)           |
+| Merge script shared library | [`scripts/chezmoi_lib.sh`](../scripts/chezmoi_lib.sh)                                                                                             |
+| LiteLLM model definitions   | [`home/.chezmoidata/litellm_models.yaml`](../home/.chezmoidata/litellm_models.yaml)                                                               |
+| MCP server registry         | [`home/.chezmoidata/mcp_servers.yaml`](../home/.chezmoidata/mcp_servers.yaml)                                                                     |
+| MCP config generator        | [`scripts/generate_mcp_configs.py`](../scripts/generate_mcp_configs.py)                                                                           |
 
 ## Formatting
 

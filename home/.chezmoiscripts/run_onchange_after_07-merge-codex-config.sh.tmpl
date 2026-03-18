@@ -18,18 +18,4 @@ src="$(chezmoi_pick_src "$is_work" "$source_dir" \
   "dot_codex/private_config.work.toml" \
   "dot_codex/private_config.personal.toml")"
 
-if [ "$is_work" = "true" ]; then
-  litellm_api_base="$(chezmoi_get_litellm_api_base)"
-
-  tmp="$(mktemp)"
-  trap 'rm -f "$tmp"' EXIT
-
-  sed \
-    -e "s|__LITELLM_API_BASE__|$litellm_api_base|g" \
-    -e "s|__CODEX_HOME__|$HOME/.codex|g" \
-    "$src" >"$tmp"
-
-  chezmoi_install_if_changed "$tmp" "$target" 0600
-else
-  chezmoi_install_if_changed "$src" "$target" 0600
-fi
+chezmoi_install_if_changed "$src" "$target" 0600

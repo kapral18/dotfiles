@@ -139,7 +139,7 @@ Current skills:
 | `worktrees`             | Create/switch/open/list/prune/remove worktrees via `,w`                  |
 | `compose-pr`            | Draft PR description text only (no `gh` side effects)                    |
 | `compose-issue`         | Draft issue text only (no `gh` side effects)                             |
-| `labels-propose`        | Propose labels/backports/version targeting for elastic/kibana            |
+| `kibana-labels-propose` | Propose labels/backports/version targeting for elastic/kibana            |
 | `kibana`                | CODEOWNERS / ownership / reviewer guidance for elastic/kibana            |
 | `kibana-console-monaco` | Automate/test Kibana Dev Tools Console editor via Playwright             |
 | `playwriter`            | Control the user's Chrome browser via Playwriter extension               |
@@ -334,24 +334,12 @@ The patch is re-applied automatically by a post-install hook in
 `@anthropic-ai/claude-code` is in the desired packages list.
 
 Usage:
-`CLAUDE_CODE_CONTEXT_WINDOW=1000000 claude --model llm-gateway/gemini-3.1-pro-preview-customtools`
-
-Fish shell shortcut functions (work profile only) route through the LiteLLM
-proxy. Each function sets `ANTHROPIC_BASE_URL` and `ANTHROPIC_API_KEY` per
-invocation so bare `claude` (without a wrapper) uses native Claude enterprise
-auth by default.
+`CLAUDE_CODE_CONTEXT_WINDOW=1000000 claude --model gemini-3.1-pro-preview-customtools`
 
 The model catalog is defined in a single source of truth:
 [`home/.chezmoidata/litellm_models.yaml`](../../home/.chezmoidata/litellm_models.yaml).
-All consumer configs (fish, OpenCode, Pi, Codex) are generated from this catalog
-via chezmoi templates. To add or modify a model, edit the YAML file only.
-
-`claude-litellm` is a generic passthrough that routes the default model through
-LiteLLM. Per-model functions (e.g. `claude-gemini31pct`, `claude-gpt54`) set the
-correct context window and max output tokens from the catalog.
-
-All functions accept extra `claude` arguments, e.g.
-`claude-gemini31pct --effort high`.
+Consumer configs (OpenCode, Pi) are generated from this catalog via chezmoi
+templates. To add or modify a model, edit the YAML file only.
 
 ### Claude Code settings
 
@@ -361,8 +349,7 @@ Source:
 
 Both profiles enable extended thinking and skip the dangerous-mode permission
 prompt. The work profile uses native Claude enterprise auth by default (no
-`apiKeyHelper` or `ANTHROPIC_BASE_URL` override). LiteLLM is available as an
-alternative via the fish shell wrapper functions (see above).
+`apiKeyHelper` or `ANTHROPIC_BASE_URL` override).
 
 MCP servers are stored separately in `~/.claude.json` (top-level `mcpServers`
 field) because that file contains runtime state managed by Claude Code. The
@@ -371,34 +358,6 @@ intact.
 
 Work MCP servers: sequentialthinking, scsi-main, scsi-local. Personal MCP
 servers: sequentialthinking.
-
-### Codex model catalog (work profile)
-
-Codex rejects the hyphen in `llm-gateway` during namespace resolution
-([openai/codex#14276](https://github.com/openai/codex/issues/14276)), so
-`llm-gateway/*` slugs never match bundled metadata. A custom model catalog works
-around this.
-
-Pipeline:
-
-1. Codex itself writes `~/.codex/models_cache.json` on first run. This cache
-   contains only OpenAI's bundled models (the `gpt-*` family).
-2. [`home/.chezmoiscripts/run_onchange_after_07-generate-codex-model-catalog.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-generate-codex-model-catalog.sh.tmpl)
-   reads the cache, clones a template entry (`gpt-5.4`) to get all required
-   schema fields, then overrides `slug`, `display_name`, and optionally
-   `context_window` for each `llm-gateway/*` alias.
-3. The result is written to `~/.codex/models_catalog_litellm.json`.
-4. The work config
-   ([`home/dot_codex/private_config.work.toml`](../../home/dot_codex/private_config.work.toml))
-   points Codex at this catalog via `model_catalog_json`.
-
-The hardcoded `MODELS` list in the script defines entries that do not exist in
-the cache â€” that is the entire point. Non-OpenAI models (Claude, Gemini) are
-also cloned from `gpt-5.4` as a structural template with correct overrides.
-
-Bootstrap dependency: on a fresh machine `models_cache.json` does not exist yet.
-The script exits silently on first `chezmoi apply`. After running Codex once
-(which populates the cache), a second `chezmoi apply` generates the catalog.
 
 ### Gemini CLI settings
 
@@ -435,10 +394,10 @@ Source: [`home/dot_gemini/settings.json`](../../home/dot_gemini/settings.json) â
 | Profile  | Default provider | Default model                        |
 | -------- | ---------------- | ------------------------------------ |
 | Work     | `google`         | `gemini-3.1-pro-preview-customtools` |
-| Personal | `openai-codex`   | `gpt-5.4`                            |
+| Personal | `google`         | `gemini-3.1-pro-preview-customtools` |
 
-Work profile also exposes LiteLLM gateway models and OpenAI Codex models via
-`readonly_models.work.json`.
+Work profile also exposes additional configured models alongside the Google
+direct default.
 
 **Shared settings:**
 
@@ -460,20 +419,13 @@ Fish exports these values from `pass` when the entries exist:
 
 **OpenCode specifics:** The work config
 ([`home/dot_config/opencode/readonly_opencode.work.jsonc`](../../home/dot_config/opencode/readonly_opencode.work.jsonc))
-uses the same LiteLLM gateway model set as Pi. Notable per-model overrides:
+uses Google direct Gemini as the primary default now.
 
-- `llm-gateway/gpt-5.4`: marked non-reasoning (avoids unsupported
-  `reasoningSummary` requests through LiteLLM/Azure), explicit limit override
-  `context: 1050000` / `output: 128000`.
-- Other `llm-gateway/*` aliases: no explicit per-model token limits (live
-  LiteLLM `/models` response does not advertise them; OpenCode's `limit.input`
-  semantics can affect compaction behavior).
+- Main agent default: `google/gemini-3.1-pro-preview-customtools`
+- Additional LiteLLM aliases may still be available for explicit selection.
 
-**Pi specifics:** The work model config is rendered by
-`run_onchange_after_07-merge-pi-config.sh.tmpl`, which injects the normalized
-LiteLLM base URL at apply time. The `llm-gateway/gpt-5.4` entry explicitly sets
-`contextWindow: 272000` / `maxTokens: 128000` so Pi's footer and compaction
-thresholds use correct limits instead of Pi's `128000` fallback default.
+**Pi specifics:** The work config is rendered by
+`run_onchange_after_07-merge-pi-config.sh.tmpl` into `~/.pi/agent/`.
 
 ## Secrets
 

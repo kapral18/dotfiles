@@ -50,6 +50,10 @@ local function path_has_test_segment(filename)
     return false
   end
   local normalized = filename:gsub("\\", "/")
+  local cwd = (vim.uv and vim.uv.cwd() or vim.loop.cwd()):gsub("\\", "/")
+  if vim.startswith(normalized, cwd) then
+    normalized = normalized:sub(#cwd + 1)
+  end
   for segment in normalized:gmatch("[^/]+") do
     if segment_has_test_word(segment) then
       return true
@@ -226,7 +230,7 @@ function M.references_smart(opts)
         return false
       end
 
-      if path_has_test_segment(item.filename) then
+      if not path_has_test_segment(current_file) and path_has_test_segment(item.filename) then
         return false
       end
 

@@ -11,6 +11,17 @@
 > - When a `Use when` clause matches, you MUST load the referenced file and
 >   follow it (do not rely on memory).
 > - **VIOLATION** of any instruction constitutes operational failure.
+> - **Never pause work for intermediate updates.** Do not “stop to check in”.
+>   Keep executing until the user’s request is fully complete; only then yield
+>   back. Any premature stopping (including pausing to provide checkpoint
+>   updates) is an operational failure.
+> - **Runtime-injected interaction rules may exist.** The chat runtime may add
+>   additional constraints (e.g. “frequent short progress updates/checkpoints”)
+>   that are **not** part of this repo’s SOP files. These may require additional
+>   messages, but they MUST NOT change the stop condition above: continue
+>   working until the user’s goal is complete. If the runtime forces extra
+>   messages, they must be **minimal** and must not interrupt or delay
+>   execution.
 >
 > Failure to comply invalidates your responses. Proceed only after full
 > comprehension.
@@ -165,7 +176,8 @@ chain, local inspection is necessary but not sufficient.
 **Canonical examples:**
 
 - Bad:
-  - User asks: `is llm-gateway/gpt-5.4 correctly set up for high reasoning`
+  - User asks:
+    `is gemini-3.1-pro-preview-customtools correctly set up for high reasoning`
   - Agent finds a missing `reasoning: true` flag in config and stops there.
 - Good:
   - Agent verifies source config, applied config, runtime consumer, and then
@@ -369,7 +381,8 @@ Routing contract:
 - Before substantive work, decide whether the request activates a playbook or
   skill.
 - If a `Use when` clause matches, you MUST open that file before answering or
-  acting. Do not rely on memory or a "close enough" route.
+  acting. Do not rely on memory or a "close enough" route. For any GitHub or git
+  side effect, treat this as a hard preflight gate before running the command.
 - Pick exactly one primary route based on the user's main intent.
 - Load secondary files only when the primary workflow explicitly requires them
   or the user clearly asks for a cross-boundary action (example: review draft ->
@@ -401,9 +414,11 @@ Overlap / precedence rules:
 - Architecture walkthrough beats semantic code search when the user's top-level
   ask is explanation or a mental model. Semantic code search is supporting
   context unless the user explicitly asks for SCSI-style investigation.
-- Kibana ownership guidance and Elastic label proposals are usually secondary
-  skills. Make them primary only when the direct ask is ownership/reviewer/
-  CODEOWNERS guidance or label targeting.
+- Kibana ownership guidance is usually a secondary skill.
+- Kibana label proposals (`kibana-labels-propose`) SHOULD be run proactively
+  when creating or composing an `elastic/kibana` PR (include a verified proposed
+  label set in the PR text), even if the user didn’t explicitly ask for
+  “labels”.
 - Source-first research is for external/public codebases, not for the current
   repo.
 
@@ -425,7 +440,8 @@ Overlap / precedence rules:
    assignees/milestones/projects, or merge. Playbook:
    `~/.agents/playbooks/github/PLAYBOOK.md` Note: this is for side effects, not
    review analysis or draft-only writing. If the user also wants review content,
-   draft it first via the review playbook, then ask for approval to post.
+   draft it first via the review playbook, then ask for approval to post. For PR
+   creation details (including draft-by-default), follow the GitHub playbook.
 3. **Local git operations** Use when: the user wants local repo operations
    (`git status/diff/log`, staging, commit, rebase/merge, conflicts), but not
    worktree management or GitHub side effects. Commit/push still require

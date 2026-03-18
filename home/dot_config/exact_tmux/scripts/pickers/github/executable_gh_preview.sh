@@ -49,14 +49,37 @@ mkdir -p "$cache_dir" 2> /dev/null || true
 safe_repo="$(printf '%s' "$repo" | tr '/' '_')"
 cache_file="${cache_dir}/${kind}_${safe_repo}_${num}.md"
 cache_ttl=120
+fetch_lock_dir="${cache_file}.fetch.lock"
+
+# fast path for collapsed mode
+if [ "${expand_mode:-0}" -eq 0 ]; then
+  if [ -f "$cache_file" ]; then
+    mt="$(stat -c %Y "$cache_file" 2> /dev/null || stat -f %m "$cache_file" 2> /dev/null || echo 0)"
+    now="$(date +%s)"
+    age=$((now - mt))
+    if [ "$age" -lt "$cache_ttl" ]; then
+      if command -v bat > /dev/null 2>&1; then
+        head -n 30 "$cache_file" 2> /dev/null | bat --style=plain --color=always --wrap=never --paging=never --language=Markdown 2> /dev/null || true
+      else
+        head -n 30 "$cache_file" 2> /dev/null || true
+      fi
+      exit 0
+    fi
+  fi
+fi
+
+active_key_file="${cache_dir}/active_key"
+global_fetch_lock_dir="${cache_dir}/fetch_global.lock"
+debounce_lock_dir="${cache_dir}/debounce.lock"
+active_key="${kind}:${safe_repo}:${num}"
 
 _render_pr() {
   gh pr view "$num" -R "$repo" \
-    --json number,title,body,author,labels,createdAt,updatedAt,reviewDecision,state,additions,deletions,headRefName,baseRefName,isDraft,comments,reviews \
+    --json number,title,body,author,labels,createdAt,updatedAt,reviewDecision,state,mergeable,additions,deletions,headRefName,baseRefName,isDraft,comments,reviews \
     --jq '
       "# PR #\(.number): \(.title)" +
       (if .isDraft then " (DRAFT)" else "" end) + "\n\n" +
-      "**State:** \(.state)  **Review:** \(.reviewDecision)\n" +
+      "**State:** \(.state)  **Review:** \(.reviewDecision // "")  **Mergeable:** \(.mergeable // "")\n" +
       "**Branch:** \(.headRefName) → \(.baseRefName)\n" +
       "**Author:** \(.author.login)\n" +
       "**Created:** \(.createdAt)  **Updated:** \(.updatedAt)\n" +
@@ -157,6 +180,76 @@ _colorize() {
   fi
 }
 
+_atomic_write() {
+  local dest="$1"
+  local tmp
+  tmp="$(mktemp "${dest}.XXXXXX.tmp")"
+  cat > "$tmp"
+  mv -f "$tmp" "$dest"
+}
+
+_spawn_fetch() {
+  # At most one debounce worker at a time; avoids accumulating sleepers while scrolling.
+  if ! mkdir "$debounce_lock_dir" 2> /dev/null; then
+    return 0
+  fi
+
+  # Debounce: only fetch if selection remains stable briefly.
+  printf '%s\n' "$active_key" > "$active_key_file" 2> /dev/null || true
+
+  (
+    set +e
+    sleep 0.25
+    cur="$(cat "$active_key_file" 2> /dev/null || true)"
+    if [ "$cur" != "$active_key" ]; then
+      rm -rf "$debounce_lock_dir" 2> /dev/null || true
+      exit 0
+    fi
+
+    # Global limiter: avoid accumulating many concurrent gh calls while scrolling.
+    if ! mkdir "$global_fetch_lock_dir" 2> /dev/null; then
+      # If global lock is held, check if the process is still alive.
+      # If it's a stale lock from a killed process, clear it.
+      pid="$(cat "${global_fetch_lock_dir}/pid" 2> /dev/null || true)"
+      if [ -n "$pid" ] && ! kill -0 "$pid" 2> /dev/null; then
+        rm -rf "$global_fetch_lock_dir" 2> /dev/null || true
+        mkdir "$global_fetch_lock_dir" 2> /dev/null || exit 0
+      else
+        rm -rf "$debounce_lock_dir" 2> /dev/null || true
+        exit 0
+      fi
+    fi
+    printf '%s\n' "$BASHPID" > "${global_fetch_lock_dir}/pid" 2> /dev/null || true
+
+    # Per-item lock to avoid redundant fetches.
+    if ! mkdir "$fetch_lock_dir" 2> /dev/null; then
+      pid="$(cat "${fetch_lock_dir}/pid" 2> /dev/null || true)"
+      if [ -n "$pid" ] && ! kill -0 "$pid" 2> /dev/null; then
+        rm -rf "$fetch_lock_dir" 2> /dev/null || true
+        mkdir "$fetch_lock_dir" 2> /dev/null || exit 0
+      else
+        rm -rf "$global_fetch_lock_dir" 2> /dev/null || true
+        rm -rf "$debounce_lock_dir" 2> /dev/null || true
+        exit 0
+      fi
+    fi
+    printf '%s\n' "$BASHPID" > "${fetch_lock_dir}/pid" 2> /dev/null || true
+
+    local content=""
+    case "$kind" in
+      pr) content="$(timeout 10 _render_pr)" ;;
+      issue) content="$(timeout 10 _render_issue)" ;;
+    esac
+    if [ -n "$content" ]; then
+      printf '%s\n' "$content" | _atomic_write "$cache_file" 2> /dev/null || true
+    fi
+    rm -rf "$fetch_lock_dir" 2> /dev/null || true
+    rm -rf "$global_fetch_lock_dir" 2> /dev/null || true
+    rm -rf "$debounce_lock_dir" 2> /dev/null || true
+  ) > /dev/null 2>&1 &
+  disown 2> /dev/null || true
+}
+
 _show_cache() {
   if [ -f "$cache_file" ]; then
     mt="$(stat -c %Y "$cache_file" 2> /dev/null || stat -f %m "$cache_file" 2> /dev/null || echo 0)"
@@ -172,21 +265,6 @@ _show_cache() {
   return 2
 }
 
-_fetch_and_cache() {
-  local content
-  case "$kind" in
-    pr) content="$(_render_pr)" ;;
-    issue) content="$(_render_issue)" ;;
-    *) return 1 ;;
-  esac
-  if [ -n "$content" ]; then
-    printf '%s\n' "$content" > "$cache_file"
-    printf '%s\n' "$content" | _truncate_body | _colorize
-    return 0
-  fi
-  return 1
-}
-
 rc=0
 _show_cache || rc=$?
 
@@ -195,11 +273,12 @@ case $rc in
     exit 0
     ;;
   1)
-    (_fetch_and_cache > /dev/null 2>&1) &
-    disown 2> /dev/null || true
+    _spawn_fetch
     exit 0
     ;;
   *)
-    _fetch_and_cache || printf 'Failed to fetch %s #%s from %s\n' "$kind" "$num" "$repo"
+    # Cold miss: never block the UI; fetch in the background.
+    printf '\033[2;38;5;244m  Loading…\033[0m\n'
+    _spawn_fetch
     ;;
 esac
