@@ -1,10 +1,6 @@
-local exists, ts_tools_api = pcall(require, "typescript-tools.api")
-
-if not exists then
-  return
-end
-
 local M = {}
+
+local TS_CLIENT_NAME = "tsgo"
 
 M.query_export_names = function(bufnr, start_row, end_row)
   local parser = vim.treesitter.get_parser(bufnr, "typescript")
@@ -52,7 +48,7 @@ M.get_lsp_references_for_exports = function(start_row, end_row)
     params.position.line = node_range_start_row
     params.position.character = node_range_start_col
 
-    local tstools_client = vim.lsp.get_active_clients({ bufnr = bufnr, name = "typescript-tools" })[1]
+    local tstools_client = vim.lsp.get_clients({ bufnr = bufnr, name = TS_CLIENT_NAME })[1]
     local client_response = tstools_client.request_sync("textDocument/references", params, 10000, bufnr)
 
     if client_response and client_response.result then
@@ -102,7 +98,10 @@ M.update_imports = function(paths, new_path)
   for _, path in ipairs(paths) do
     local bufnr = vim.fn.bufadd(path)
     vim.api.nvim_buf_call(bufnr, function()
-      ts_tools_api.add_missing_imports(true)
+      vim.lsp.buf.code_action({
+        context = { only = { "source.addMissingImports" }, diagnostics = {} },
+        apply = true,
+      })
       vim.cmd("write")
     end)
   end
@@ -117,21 +116,21 @@ local function rename_export(bufnr, node, new_name)
     bufnr = bufnr,
   }
 
-  local tstools_client = vim.lsp.get_active_clients({ bufnr = bufnr, name = "typescript-tools" })[1]
+  local client = vim.lsp.get_clients({ bufnr = bufnr, name = TS_CLIENT_NAME })[1]
 
-  if not tstools_client then
-    vim.notify("typescript-tools LSP client not found", vim.log.levels.ERROR)
+  if not client then
+    vim.notify(TS_CLIENT_NAME .. " LSP client not found", vim.log.levels.ERROR)
     return false
   end
 
-  local status, err = tstools_client.request_sync("textDocument/rename", params, 10000, bufnr)
+  local status, err = client.request_sync("textDocument/rename", params, 10000, bufnr)
 
   if not status or status.err or err or not status.result then
     vim.notify("Rename failed: " .. vim.inspect(err or status.err), vim.log.levels.ERROR)
     return false
   end
 
-  vim.lsp.util.apply_workspace_edit(status.result, tstools_client.offset_encoding)
+  vim.lsp.util.apply_workspace_edit(status.result, client.offset_encoding)
   return true
 end
 
