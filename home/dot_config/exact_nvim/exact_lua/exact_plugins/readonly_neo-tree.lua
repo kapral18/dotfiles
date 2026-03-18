@@ -62,6 +62,13 @@ return {
       },
     },
     opts = {
+      enable_git_status = true,
+      git_status_async = true,
+      git_status_async_options = {
+        batch_size = 250,
+        batch_delay = 20,
+        max_lines = 5000,
+      },
       default_component_configs = {
         file_size = {
           enabled = false,
@@ -86,6 +93,7 @@ return {
         },
       },
       filesystem = {
+        async_directory_scan = "always",
         filtered_items = {
           visible = true, -- when true, they will just be displayed differently than normal items
           hide_dotfiles = false,
