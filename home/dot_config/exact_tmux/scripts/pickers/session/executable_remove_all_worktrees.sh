@@ -74,8 +74,8 @@ if ! git -C "$root" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
   exit 0
 fi
 
-current_session=""
-if [ -n "${TMUX:-}" ] && command -v tmux > /dev/null 2>&1; then
+current_session="${PICK_SESSION_CURRENT_SESSION:-}"
+if [ -z "$current_session" ] && [ -n "${TMUX:-}" ] && command -v tmux > /dev/null 2>&1; then
   current_session="$(tmux display-message -p '#S' 2> /dev/null || true)"
 fi
 
@@ -178,12 +178,9 @@ kill_sessions_under_prefixes() {
   local s
   for s in "${to_kill[@]}"; do
     [ -n "$s" ] || continue
-    [ "$s" = "${current_session:-}" ] && continue
-    tmux kill-session -t "$s" 2> /dev/null || true
-  done
-  for s in "${to_kill[@]}"; do
-    [ -n "$s" ] || continue
-    [ "$s" != "${current_session:-}" ] && continue
+    # Never kill the initiating/current session from an async picker action.
+    # This avoids "alt-x on sibling worktree" tearing down the active session.
+    [ -n "${current_session:-}" ] && [ "$s" = "${current_session:-}" ] && continue
     tmux kill-session -t "$s" 2> /dev/null || true
   done
 }

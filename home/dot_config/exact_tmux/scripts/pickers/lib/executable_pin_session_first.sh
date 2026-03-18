@@ -19,8 +19,8 @@ needle="|${kind}=${num}:"
 
 awk -F $'\t' -v needle="$needle" -v mf="$match" -v rf="$rest" '
   NF < 5 { print > rf; next }
-  # meta is field 4; only pin session rows
-  ($2 == "session" && index($4, needle) > 0) { print > mf; next }
+  # meta is field 4; pin session + worktree rows
+  (($2 == "session" || $2 == "worktree") && index($4, needle) > 0) { print > mf; next }
   { print > rf }
 '
 

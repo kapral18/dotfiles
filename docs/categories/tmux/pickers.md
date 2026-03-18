@@ -304,6 +304,9 @@ unrelated long-path hits. Queries like `work/kibana main` work.
   (`@pick_session_defer_dir_rows_threshold`).
 - On `alt-x` remove, selecting a root checkout/worktree hides all impacted rows
   immediately (sibling worktrees and matching sessions).
+- `alt-x` removal will **not** tear down the active tmux session unless you
+  explicitly selected it (prevents “remove sibling worktree” from killing the
+  current session).
 - When the cache is empty, the picker falls back to tmux sessions + `zoxide`
   recent dirs (if installed) + `~`.
 
@@ -349,6 +352,11 @@ Items come from the gh picker's standalone config files
 syntax). The Python fetcher (`lib/gh_items_main.py`) parses these YAML files,
 runs GitHub Search API queries, and formats results as `fzf`-consumable TSV.
 
+In work mode, the default config separates PRs that request **your** review
+(excluding those already in your team queue) from PRs that request **team**
+review, so the sections stay meaningfully distinct while global dedupe remains
+useful.
+
 ### Inline badges
 
 | Badge        | Meaning                      | Color               |
@@ -384,6 +392,11 @@ heuristic:
 2. Branch name suffix extraction (`-NNN` or `/NNN`)
 3. Batched GraphQL `headRefName` matching against local worktree branches
    (catches PRs checked out by `,w prs`)
+
+For issues, the picker also treats an issue as "local" when it is linked from
+an existing session/worktree entry in the session picker cache (e.g. via PR
+closing-issue references). This keeps issue indicators consistent across
+pickers.
 
 ### Actions
 

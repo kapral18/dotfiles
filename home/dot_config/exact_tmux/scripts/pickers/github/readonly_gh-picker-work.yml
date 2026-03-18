@@ -1,8 +1,16 @@
 prSections:
-  - title: "PRs waiting Team Review"
+  - title: "PRs waiting for My Review"
     filters: >-
       is:open is:pr
       review-requested:@me
+      org:elastic
+      -is:draft
+      -author:@me
+      -reviewed-by:@me
+      -team-review-requested:elastic/kibana-management
+  - title: "PRs waiting Team Review"
+    filters: >-
+      is:open is:pr
       team-review-requested:elastic/kibana-management
       org:elastic
       -is:draft

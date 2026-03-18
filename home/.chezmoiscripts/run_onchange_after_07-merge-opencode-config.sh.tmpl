@@ -8,12 +8,15 @@ set -euo pipefail
 {{- else }}
 # opencode config desired hash (non-work): {{ include "dot_config/opencode/readonly_opencode.personal.jsonc" | sha256sum }}
 {{- end }}
+# mcp_servers hash: {{ include ".chezmoidata/mcp_servers.yaml" | sha256sum }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
 # shellcheck source=../../../scripts/chezmoi_lib.sh
 source "$source_dir/../scripts/chezmoi_lib.sh"
 
 is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
+yaml_src="$source_dir/.chezmoidata/mcp_servers.yaml"
+inject="$source_dir/../scripts/inject_mcp_into_opencode_jsonc.py"
 src="$(chezmoi_pick_src "$is_work" "$source_dir" \
   "dot_config/opencode/readonly_opencode.work.jsonc" \
   "dot_config/opencode/readonly_opencode.personal.jsonc")"
@@ -24,5 +27,7 @@ if [ "$is_work" = "true" ]; then
 else
   desired="$(cat "$src")"
 fi
+
+desired="$(printf '%s\n' "$desired" | python3 "$inject" "$yaml_src" "$is_work")"
 
 chezmoi_write_if_changed "$desired" "$HOME/.config/opencode/opencode.jsonc"

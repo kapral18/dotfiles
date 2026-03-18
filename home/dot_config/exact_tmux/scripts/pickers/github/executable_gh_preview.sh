@@ -183,15 +183,52 @@ _colorize() {
 _atomic_write() {
   local dest="$1"
   local tmp
-  tmp="$(mktemp "${dest}.XXXXXX.tmp")"
+  tmp="$(mktemp "${dest}.XXXXXX")"
   cat > "$tmp"
   mv -f "$tmp" "$dest"
+}
+
+_render_with_timeout() {
+  local seconds="$1"
+  shift
+  local tmp
+  tmp="$(mktemp "${cache_file}.render.XXXXXX")"
+  local start
+  start="$(date +%s)"
+
+  (
+    "$@" > "$tmp" 2> /dev/null
+  ) &
+  local pid=$!
+
+  while kill -0 "$pid" 2> /dev/null; do
+    if [ $(( $(date +%s) - start )) -ge "$seconds" ]; then
+      kill "$pid" 2> /dev/null || true
+      sleep 0.1
+      kill -9 "$pid" 2> /dev/null || true
+      break
+    fi
+    sleep 0.1
+  done
+
+  wait "$pid" 2> /dev/null || true
+  cat "$tmp" 2> /dev/null || true
+  rm -f "$tmp" 2> /dev/null || true
 }
 
 _spawn_fetch() {
   # At most one debounce worker at a time; avoids accumulating sleepers while scrolling.
   if ! mkdir "$debounce_lock_dir" 2> /dev/null; then
-    return 0
+    # bash 3.2 doesn't expose BASHPID reliably; use lock age to clear stale dirs.
+    mt="$(stat -c %Y "$debounce_lock_dir" 2> /dev/null || stat -f %m "$debounce_lock_dir" 2> /dev/null || echo 0)"
+    now="$(date +%s)"
+    age=$((now - mt))
+    if [ "$age" -gt 2 ]; then
+      rm -rf "$debounce_lock_dir" 2> /dev/null || true
+      mkdir "$debounce_lock_dir" 2> /dev/null || return 0
+    else
+      return 0
+    fi
   fi
 
   # Debounce: only fetch if selection remains stable briefly.
@@ -208,23 +245,35 @@ _spawn_fetch() {
 
     # Global limiter: avoid accumulating many concurrent gh calls while scrolling.
     if ! mkdir "$global_fetch_lock_dir" 2> /dev/null; then
-      # If global lock is held, check if the process is still alive.
-      # If it's a stale lock from a killed process, clear it.
-      pid="$(cat "${global_fetch_lock_dir}/pid" 2> /dev/null || true)"
-      if [ -n "$pid" ] && ! kill -0 "$pid" 2> /dev/null; then
+      mt="$(stat -c %Y "$global_fetch_lock_dir" 2> /dev/null || stat -f %m "$global_fetch_lock_dir" 2> /dev/null || echo 0)"
+      now="$(date +%s)"
+      age=$((now - mt))
+      if [ "$age" -gt 30 ]; then
         rm -rf "$global_fetch_lock_dir" 2> /dev/null || true
         mkdir "$global_fetch_lock_dir" 2> /dev/null || exit 0
       else
-        rm -rf "$debounce_lock_dir" 2> /dev/null || true
-        exit 0
+        # The lock is fresh: wait briefly for the in-flight fetch to finish.
+        i=0
+        while [ "$i" -lt 15 ]; do
+          sleep 0.1
+          if mkdir "$global_fetch_lock_dir" 2> /dev/null; then
+            break
+          fi
+          i=$((i + 1))
+        done
+        if [ ! -d "$global_fetch_lock_dir" ]; then
+          rm -rf "$debounce_lock_dir" 2> /dev/null || true
+          exit 0
+        fi
       fi
     fi
-    printf '%s\n' "$BASHPID" > "${global_fetch_lock_dir}/pid" 2> /dev/null || true
 
     # Per-item lock to avoid redundant fetches.
     if ! mkdir "$fetch_lock_dir" 2> /dev/null; then
-      pid="$(cat "${fetch_lock_dir}/pid" 2> /dev/null || true)"
-      if [ -n "$pid" ] && ! kill -0 "$pid" 2> /dev/null; then
+      mt="$(stat -c %Y "$fetch_lock_dir" 2> /dev/null || stat -f %m "$fetch_lock_dir" 2> /dev/null || echo 0)"
+      now="$(date +%s)"
+      age=$((now - mt))
+      if [ "$age" -gt 30 ]; then
         rm -rf "$fetch_lock_dir" 2> /dev/null || true
         mkdir "$fetch_lock_dir" 2> /dev/null || exit 0
       else
@@ -233,12 +282,11 @@ _spawn_fetch() {
         exit 0
       fi
     fi
-    printf '%s\n' "$BASHPID" > "${fetch_lock_dir}/pid" 2> /dev/null || true
 
     local content=""
     case "$kind" in
-      pr) content="$(timeout 10 _render_pr)" ;;
-      issue) content="$(timeout 10 _render_issue)" ;;
+      pr) content="$(_render_with_timeout 10 _render_pr)" ;;
+      issue) content="$(_render_with_timeout 10 _render_issue)" ;;
     esac
     if [ -n "$content" ]; then
       printf '%s\n' "$content" | _atomic_write "$cache_file" 2> /dev/null || true
@@ -278,7 +326,7 @@ case $rc in
     ;;
   *)
     # Cold miss: never block the UI; fetch in the background.
-    printf '\033[2;38;5;244m  Loading…\033[0m\n'
+    printf '\033[2;38;5;244m  Loading… (reselect or alt-e to refresh)\033[0m\n'
     _spawn_fetch
     ;;
 esac

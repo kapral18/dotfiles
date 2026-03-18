@@ -11,16 +11,7 @@ personality = "pragmatic"
 [notice.model_migrations]
 "gpt-5.2" = "gpt-5.3-codex"
 
-[mcp_servers.sequentialthinking]
-command = "docker"
-args = [
-  "run",
-  "--pull=always",
-  "--rm",
-  "-i",
-  "--init",
-  "mcp/sequentialthinking",
-]
+# __MCP_SERVERS__
 
 [features]
 multi_agent = true

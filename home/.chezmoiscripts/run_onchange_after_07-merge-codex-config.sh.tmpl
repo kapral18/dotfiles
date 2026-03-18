@@ -7,6 +7,7 @@ set -euo pipefail
 {{- else }}
 # codex config desired hash (non-work): {{ include "dot_codex/private_config.personal.toml" | sha256sum }}
 {{- end }}
+# mcp_servers hash: {{ include ".chezmoidata/mcp_servers.yaml" | sha256sum }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
 # shellcheck source=../../../scripts/chezmoi_lib.sh
@@ -18,4 +19,8 @@ src="$(chezmoi_pick_src "$is_work" "$source_dir" \
   "dot_codex/private_config.work.toml" \
   "dot_codex/private_config.personal.toml")"
 
-chezmoi_install_if_changed "$src" "$target" 0600
+yaml_src="$source_dir/.chezmoidata/mcp_servers.yaml"
+inject="$source_dir/../scripts/inject_mcp_into_codex_toml.py"
+
+desired="$(python3 "$inject" "$src" "$yaml_src" "$is_work")"
+chezmoi_write_if_changed "$desired" "$target" 0600

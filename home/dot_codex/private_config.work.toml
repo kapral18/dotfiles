@@ -13,30 +13,7 @@ model_reasoning_effort = "high"
 [notice.model_migrations]
 "gpt-5.2" = "gpt-5.3-codex"
 
-[mcp_servers.sequentialthinking]
-command = "docker"
-args = [
-  "run",
-  "--pull=always",
-  "--rm",
-  "-i",
-  "--init",
-  "mcp/sequentialthinking",
-]
-
-[mcp_servers.scsi-main]
-command = "bash"
-args = [
-  "-lc",
-  'docker run --pull=always --rm -i -e ELASTICSEARCH_ENDPOINT="$(pass scsi/simian/cloud_endpoint)" -e ELASTICSEARCH_API_KEY="$(pass scsi/simian/api_key)" -e ELASTICSEARCH_INDEX=kibana-repo simianhacker/semantic-code-search-mcp-server node dist/src/mcp_server/bin.js stdio',
-]
-
-[mcp_servers.scsi-local]
-command = "bash"
-args = [
-  "-lc",
-  'cd "$HOME/work/semantic-code-search-mcp-server/main" && ELASTICSEARCH_CLOUD_ID="$(pass scsi/k18/cloud_id)" ELASTICSEARCH_API_KEY="$(pass scsi/k18/api_key)" ELASTICSEARCH_INDEX=scsi-repo node dist/src/mcp_server/bin.js stdio',
-]
+# __MCP_SERVERS__
 
 [features]
 multi_agent = true

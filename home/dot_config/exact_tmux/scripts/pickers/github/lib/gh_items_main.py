@@ -186,6 +186,66 @@ def _scan_local_worktrees(nwo: str, repo_path: str) -> tuple[set[int], set[str]]
     return wt_nums, branches
 
 
+_GITHUB_ISSUE_URL_RE = re.compile(r"https?://github\.com/([^/]+/[^/]+)/issues/(\d+)\b")
+
+
+def _pick_session_cache_paths() -> list[str]:
+    cache_home = os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache")
+    base = os.path.join(cache_home, "tmux")
+    return [
+        os.path.join(base, "pick_session_items_ordered.tsv"),
+        os.path.join(base, "pick_session_items.tsv"),
+    ]
+
+
+def _linked_issue_numbers_from_pick_session_cache() -> dict[str, set[int]]:
+    """Best-effort: map repo NWO -> issue numbers from session/worktree cache.
+
+    This lets the GitHub picker show the local-worktree marker for issues that
+    are already linked to an existing session/worktree entry (e.g. via PR
+    closing issues references), even if the worktree itself doesn't encode the
+    issue number in its branch name or metadata.
+    """
+    paths = [p for p in _pick_session_cache_paths() if os.path.isfile(p)]
+    if not paths:
+        return {}
+
+    out: dict[str, set[int]] = {}
+    for p in paths:
+        try:
+            raw = Path(p).read_text(encoding="utf-8", errors="replace")
+        except Exception:
+            continue
+
+        for line in raw.splitlines():
+            if "\t" not in line:
+                continue
+            parts = line.split("\t")
+            if len(parts) < 4:
+                continue
+            kind = parts[1]
+            # Only trust session/worktree rows where meta is present.
+            if kind not in ("session", "worktree"):
+                continue
+            meta = parts[3]
+            if "|issue=" not in meta:
+                continue
+
+            for m in _GITHUB_ISSUE_URL_RE.finditer(meta):
+                nwo, num_s = m.group(1), m.group(2)
+                try:
+                    num = int(num_s)
+                except ValueError:
+                    continue
+                out.setdefault(nwo, set()).add(num)
+
+        # Prefer ordered snapshot when available (first path in list).
+        if p.endswith("pick_session_items_ordered.tsv") and out:
+            break
+
+    return out
+
+
 _TRIVIAL_STATUS_RE = re.compile(
     r"^(CLA|prbot:|renovate/|license/|security/|buildkite/docs|CodeRabbit)",
     re.IGNORECASE,
@@ -695,6 +755,7 @@ def main():
 
     pr_sections, issue_sections, repo_paths = parse_config(args.config)
     prior_pr_badges = _read_prior_pr_badges(args.cache_file)
+    linked_issues = _linked_issue_numbers_from_pick_session_cache()
 
     all_lines: list[str] = []
 
@@ -780,8 +841,11 @@ def main():
 
     wt_index: dict[str, dict[int, _ItemInfo]] = {}
     all_nwos = set(local_data.keys()) | set(gql_data.keys())
+    all_nwos |= set(linked_issues.keys())
     for nwo in all_nwos:
         wt_nums, branches = local_data.get(nwo, (set(), set()))
+        # Include issue numbers linked from the sessions/worktrees picker cache.
+        wt_nums |= linked_issues.get(nwo, set())
         gql_prs = gql_data.get(nwo, {})
         info: dict[int, _ItemInfo] = {}
 

@@ -9,22 +9,32 @@ out_file="${2:-}"
 kind=""
 num=""
 url=""
+extract_url() {
+  local s="${1:-}"
+  case "$s" in
+    *https://*)
+      printf 'https://%s' "${s#*https://}"
+      return 0
+      ;;
+    *http://*)
+      printf 'http://%s' "${s#*http://}"
+      return 0
+      ;;
+  esac
+  return 1
+}
 case "$meta" in
   *'|issue='*)
     kind="issue"
     tmp="${meta##*|issue=}"
     num="${tmp%%:*}"
-    url="${tmp#*:}"
-    url="${url#*:}"
+    url="$(extract_url "$tmp" 2> /dev/null || true)"
     ;;
   *'|pr='*)
     kind="pr"
     tmp="${meta##*|pr=}"
     num="${tmp%%:*}"
-    url="${tmp#*:}"
-    url="${url#*:}"
-    url="${url#*:}"
-    url="${url#*:}"
+    url="$(extract_url "$tmp" 2> /dev/null || true)"
     ;;
 esac
 

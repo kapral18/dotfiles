@@ -36,6 +36,11 @@ realpath_or_self() {
   realpath "$1" 2> /dev/null || printf '%s' "$1"
 }
 
+current_session=""
+if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
+  current_session="$(tmux display-message -p '#S' 2> /dev/null || true)"
+fi
+
 repo_name_from_remote() {
   local dir="$1"
   local url=""
@@ -160,6 +165,59 @@ worktree_dir_for_path() {
   return 1
 }
 
+kill_tmux_sessions_for_paths() {
+  local cur_sess="$1"
+  shift || true
+  local explicit_list="${1:-}"
+  shift || true
+  local -a paths=("$@")
+
+  command -v tmux > /dev/null 2>&1 || return 0
+  [ -n "${TMUX:-}" ] || return 0
+  [ ${#paths[@]} -gt 0 ] || return 0
+
+  local explicit_seen=" ${explicit_list} "
+  local -a to_kill=()
+  local to_kill_seen=" "
+
+  _add_kill() {
+    local name="$1"
+    [ -n "$name" ] || return 0
+    case "$to_kill_seen" in
+      *" ${name} "*) return 0 ;;
+    esac
+    to_kill+=("$name")
+    to_kill_seen+="${name} "
+  }
+
+  local sname spath rspath p rp
+  while IFS=$'\t' read -r sname spath; do
+    [ -n "$sname" ] || continue
+    [ -n "$spath" ] || continue
+    rspath="$(realpath_or_self "$spath")"
+    for p in "${paths[@]}"; do
+      [ -n "$p" ] || continue
+      rp="$(realpath_or_self "$p")"
+      if [ "$rspath" = "$rp" ]; then
+        _add_kill "$sname"
+        break
+      fi
+    done
+  done < <(tmux list-sessions -F $'#{session_name}\t#{session_path}' 2> /dev/null || true)
+
+  local s
+  for s in "${to_kill[@]}"; do
+    [ -n "$s" ] || continue
+    if [ -n "$cur_sess" ] && [ "$s" = "$cur_sess" ]; then
+      case "$explicit_seen" in
+        *" ${s} "*) ;;
+        *) continue ;;
+      esac
+    fi
+    tmux kill-session -t "$s" 2> /dev/null || true
+  done
+}
+
 remove_paths_in_background() {
   local root="$1"
   shift
@@ -173,7 +231,9 @@ remove_paths_in_background() {
 
   # Detach removal work from the picker UI:
   # - Do not use tmux `run-shell` (can steal popup focus).
-  # - Keep TMUX so `,w` can kill matching sessions by path.
+  # - Kill matching sessions ourselves (protecting the current session unless it
+  #   was explicitly selected), then run `,w remove` with TMUX unset so it can't
+  #   accidentally kill the current session by path.
   local cmd
   cmd="cd $(printf %q "$root") && ,w remove --paths"
   local p
@@ -183,13 +243,16 @@ remove_paths_in_background() {
   {
     printf '\n[%s] %s\n' "$(date +%Y-%m-%dT%H:%M:%S%z)" "$cmd"
   } >> "$rm_log_file" 2> /dev/null || true
-  nohup bash -c "$cmd" < /dev/null >> "$rm_log_file" 2>&1 &
+
+  kill_tmux_sessions_for_paths "$current_session" "$explicit_sessions_list" "${paths[@]}" || true
+  nohup env -u TMUX -u TMUX_PANE bash -c "$cmd" < /dev/null >> "$rm_log_file" 2>&1 &
 }
 
 declare -A roots_selected=()
 declare -A worktree_paths_by_root=()
 declare -a pending_wt_paths=()
 declare -a pending_plain_dirs=()
+explicit_sessions_list=""
 
 while IFS= read -r _line; do
   [ -n "$_line" ] || continue
@@ -216,6 +279,9 @@ while IFS= read -r _line; do
       esac
       ;;
     session)
+      if [ -n "${target:-}" ]; then
+        explicit_sessions_list+="${target} "
+      fi
       wt_path="$(worktree_dir_for_path "$path" 2> /dev/null || true)"
       if [ -z "$wt_path" ] && [ -n "${target:-}" ] && [ -f "$cache_file" ]; then
         # Fallback: if the selected row came from the live session overlay (or
@@ -322,7 +388,7 @@ now_epoch="$(date +%s)"
 
 if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
   for root in "${!roots_selected[@]}"; do
-    nohup env -u TMUX -u TMUX_PANE "$HOME/.config/tmux/scripts/pickers/session/remove_all_worktrees.sh" "$root" < /dev/null > /dev/null 2>&1 &
+    nohup env -u TMUX -u TMUX_PANE PICK_SESSION_CURRENT_SESSION="$current_session" "$HOME/.config/tmux/scripts/pickers/session/remove_all_worktrees.sh" "$root" < /dev/null > /dev/null 2>&1 &
   done
 
   for root in "${!worktree_paths_by_root[@]}"; do

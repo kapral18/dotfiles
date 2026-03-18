@@ -139,7 +139,7 @@ pick="$(
     --bind "alt-o:execute-silent($action_cmd open {2} {3} {4} {5})" \
     --bind "alt-y:execute-silent(printf '%s\n' {+} | cut -f5 | grep -E '^https?://' | pbcopy 2>/dev/null || printf '%s\n' {+} | cut -f5 | grep -E '^https?://' | xclip -sel clip 2>/dev/null)" \
     --bind "alt-space:toggle" \
-    --bind "ctrl-t:execute(cat {+f} > $(printf %q "$multi_tmp"); $batch_wt_cmd $(printf %q "$multi_tmp"))+deselect-all+refresh-preview" \
+    --bind "ctrl-t:execute(awk -F $'\\t' '\$2 != \"header\"' {+f} > $(printf %q "$multi_tmp"); $batch_wt_cmd $(printf %q "$multi_tmp"))+deselect-all+refresh-preview" \
     --bind "alt-e:transform:m=\$(cat $(printf %q "$expand_flag") 2>/dev/null || echo 0); m=\$(( (m + 1) % 3 )); printf '%s' \"\$m\" > $(printf %q "$expand_flag"); case \"\$m\" in 0) echo 'change-preview($preview_cmd_0)+refresh-preview' ;; 1) echo 'change-preview($preview_cmd_1)+refresh-preview' ;; *) echo 'change-preview($preview_cmd_2)+refresh-preview' ;; esac" \
     --bind "alt-c:execute($comment_cmd new {2} {3} {4})+refresh-preview" \
     --bind "alt-r:execute($comment_cmd reply {2} {3} {4})+refresh-preview" \
@@ -153,8 +153,8 @@ pick="$(
     --bind "ctrl-/:toggle-preview" \
     --bind "?:transform:if [ -f $(printf %q "$help_flag") ]; then rm -f $(printf %q "$help_flag"); m=\$(cat $(printf %q "$expand_flag") 2>/dev/null || echo 0); case \"\$m\" in 1) echo 'change-preview($preview_cmd_1)+show-preview' ;; 2) echo 'change-preview($preview_cmd_2)+show-preview' ;; *) echo 'change-preview($preview_cmd_0)+show-preview' ;; esac; else touch $(printf %q "$help_flag"); echo 'change-preview(printf %b $(printf %q "$help_text"))+show-preview'; fi" \
     --bind "change:first" \
-    --bind "enter:transform:[[ \$FZF_SELECT_COUNT -gt 0 ]] && echo 'execute(cat {+f} > $(printf %q "$multi_tmp"); $(printf %q "$batch_wt_cmd") $(printf %q "$multi_tmp"))+deselect-all+refresh-preview' || echo 'execute-silent(printf checkout > $(printf %q "$action_flag"))+execute-silent(cp {f} $(printf %q "$primary_tmp"))+accept'" \
-    --bind "alt-b:execute-silent(printf octo > $(printf %q "$action_flag"))+execute-silent(cp {f} $(printf %q "$primary_tmp"))+accept" \
+    --bind "enter:transform:if [ {2} = header ]; then echo 'down'; else echo 'accept'; fi" \
+    --bind "alt-b:execute-silent(printf octo > $(printf %q "$action_flag"))+accept" \
     || true
 )"
 
@@ -165,7 +165,9 @@ fi
 [ -n "$pick" ] || exit 0
 
 if [ ! -f "$primary_tmp" ]; then
-  exit 0
+  # Fallback: some fzf paths (or errors in execute bindings) may fail to copy {f}.
+  # If fzf returned a selected line, use it directly.
+  printf '%s\n' "$pick" | head -n 1 > "$primary_tmp" 2> /dev/null || exit 0
 fi
 
 line="$(head -n 1 "$primary_tmp" 2> /dev/null || true)"
