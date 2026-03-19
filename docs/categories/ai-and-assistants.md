@@ -166,11 +166,15 @@ proposing an alternative), use a strict verify-first loop:
 
 Skill support:
 
-- Draft-only review modes live under `~/.agents/skills/review/references/`.
-- If you want to apply requested changes one thread/comment at a time (with
-  verification after each cycle), use:
-  - `~/.agents/skills/review/references/pr_change_cycle.md` (loaded by the
-    review `SKILL.md` router)
+- Review modes live under `~/.agents/skills/review/references/`:
+  - `shared_rules.md` — base-context gate, truth validation, coverage checklist,
+    severity, draft style, posting boundary (loaded once by the router)
+  - `pr_common.md` — PR resolution, media evidence, anchoring, deep links
+    (loaded once for PR modes)
+  - `local_changes.md` — local diff / branch delta review
+  - `pr_review.md` — initial or continued PR review (batch or one-at-a-time)
+  - `pr_fix.md` — address reviewer feedback (reply and/or code changes per
+    thread)
 
 ## Reviews: Reply Style
 
@@ -186,10 +190,11 @@ When drafting PR thread replies:
 
 ## Reviews: Router Behavior
 
-- The review router selects exactly one primary review mode, then loads
-  secondary skills only when required by that mode.
-- When both a dirty working tree and a current-branch PR exist, the router now
-  asks which target to review instead of silently forcing local review first.
+- The review router selects exactly one of three modes: local changes, PR
+  review, or PR fix (address feedback). Shared rules and PR-common setup are
+  loaded once by the router, not duplicated per mode.
+- When both a dirty working tree and a current-branch PR exist, the router asks
+  which target to review instead of silently forcing local review first.
 - GitHub posting stays outside read-only review mode until the user explicitly
   asks for a side effect.
 
@@ -274,34 +279,6 @@ destination, completely decoupling the formats.
 All merge scripts live under
 [`home/.chezmoiscripts/`](../../home/.chezmoiscripts/). Pi targets are installed
 readonly.
-
-### Claude Code installation and context window patch
-
-Claude Code is installed via npm (`@anthropic-ai/claude-code` in
-[`home/readonly_dot_default-npm-pkgs`](../../home/readonly_dot_default-npm-pkgs))
-instead of the Homebrew cask. The npm package contains raw `cli.js` which can be
-patched, unlike the compiled Homebrew binary. The brew cask is commented out in
-the Brewfile.
-
-A post-install patch
-([`home/exact_bin/executable_,patch-claude-code`](../../home/exact_bin/executable_,patch-claude-code))
-modifies `cli.js` so the context window default (hardcoded to 200k) reads from
-the `CLAUDE_CODE_CONTEXT_WINDOW` env var. This allows third-party models routed
-through LLM gateways (e.g. Gemini with 1M context) to use their native window
-size instead of being capped at 200k.
-
-The patch is re-applied automatically by a post-install hook in
-[`home/exact_bin/executable_,install-npm-pkgs`](../../home/exact_bin/executable_,install-npm-pkgs)
-— it runs `,patch-claude-code` after every npm sync, but only when
-`@anthropic-ai/claude-code` is in the desired packages list.
-
-Usage:
-`CLAUDE_CODE_CONTEXT_WINDOW=1000000 claude --model gemini-3.1-pro-preview-customtools`
-
-The model catalog is defined in a single source of truth:
-[`home/.chezmoidata/litellm_models.yaml`](../../home/.chezmoidata/litellm_models.yaml).
-Consumer configs (OpenCode, Pi) are generated from this catalog via chezmoi
-templates. To add or modify a model, edit the YAML file only.
 
 ### Claude Code settings
 

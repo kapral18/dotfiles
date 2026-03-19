@@ -2,8 +2,9 @@
 
 Precondition:
 
-- You already loaded `~/.agents/skills/review/SKILL.md` and are following its
-  shared rules.
+- You already loaded `~/.agents/skills/review/SKILL.md`.
+- Follow `~/.agents/skills/review/references/shared_rules.md` (loaded once by
+  the router; do not re-load).
 
 Use when:
 
@@ -12,7 +13,7 @@ Use when:
 - or the repo has staged/unstaged changes
 - or there is no PR for the current branch and the user still wants a review
 
-Investigation (read-only, start immediately):
+## Investigation (Read-Only, Start Immediately)
 
 - `git status --porcelain=v1 -b`
 - `git diff --stat`
@@ -36,40 +37,21 @@ If there are no diffs at all:
 
 - Say so plainly and stop (nothing to review).
 
-Base-branch context gate (mandatory):
+## Base-Branch Context
 
-- For any review that compares against base-branch behavior/invariants:
-  - Follow the router's base-branch context rule.
-  - Run `list_indices` first (try both `scsi-main` and `scsi-local`).
-  - If the user provided an index name:
-    - verify it exists in `list_indices`
-    - if it does not exist, stop and ask which index to use
-  - If the user did not provide an index name:
-    - use the single obvious repo-matching index from `list_indices`
-    - if multiple equally plausible repo-matching indices remain, ask the user
-      which one represents the base branch for this repo
-  - Preferred: semantic code search (when available) for base context:
-    - `~/.agents/skills/semantic_code_search/SKILL.md`
-    - Invoke at least one SCSI tool to establish base behavior/invariants.
-- If the repo is not indexed / tools unavailable, use local base context via
-  `git show <base>:<path>` + `rg`.
+Follow the base-branch context gate in `shared_rules.md`. This is mandatory.
 
-Output:
+## Output
 
 - Default: batch `Pending review draft` with:
+  - `Base context:` line (see shared_rules.md)
   - `inline_comments`: where, issue, why, verification, smallest fix
   - optional `summary_comment`
 - Use a collaborative close only when it fits naturally.
 - If the user asks for one-at-a-time, output exactly one finding and stop.
 
-- Always include one line near the top:
-  - `Base context: SCSI=<index>|none (list_indices checked; <reason>), base=<branch>, diff=<base>...HEAD`
-  - This is reviewer metadata; do not paste it into GitHub.
-
-Extra constraints:
+## Extra Constraints
 
 - Do not commit/push unless explicitly asked.
 - Keep an internal findings queue ordered by severity; draft highest-risk items
   first.
-- Follow the router's mandatory base-branch context step when applicable
-  (semantic code search if indexed; otherwise `git show`/`rg`).

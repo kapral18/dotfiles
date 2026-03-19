@@ -167,11 +167,9 @@ Posting PR review comments (examples):
 - Use bash/zsh `$'...'` so `\n` becomes real line breaks. Do NOT send literal
   `\n`.
 - Add a soft close such as `Wdyt` only when the review style calls for it.
-- Follow the relevant PR review mode skill for anchoring and comment placement
-  behavior:
-  - `~/.agents/skills/review/references/pr_start.md`
-  - `~/.agents/skills/review/references/pr_iterative.md`
-  - `~/.agents/skills/review/references/pr_reply.md`
+- Follow the relevant PR review mode for anchoring and comment placement:
+  - `~/.agents/skills/review/references/pr_review.md`
+  - `~/.agents/skills/review/references/pr_fix.md`
 
 Inline review comment (line or range; supports GitHub suggestion blocks):
 
