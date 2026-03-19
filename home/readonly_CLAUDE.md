@@ -260,7 +260,26 @@ When the user asks to "push" changes:
 - do not reconcile branch history (pull/rebase/merge) unless the user explicitly
   asks for that exact action
 
-### 3.1 When Repeated Attempts Fail (Requirements Reset Interview)
+### 3.1 Ownership Gate (CODEOWNERS)
+
+Before any action or side effect that touches file paths in a repo with a
+CODEOWNERS file, verify that the affected paths belong to the user's team. Use
+`,codeowners` to check:
+
+```bash
+,codeowners <team-pattern>          # list paths owned by team
+,codeowners -p <team-pattern>       # paths only, for scripting
+```
+
+In `elastic/kibana` repos the user's team is `@elastic/kibana-management`. For
+other repos, ask once and remember for the session.
+
+- All changed paths within team ownership: proceed normally.
+- Any changed path outside team ownership: stop, list the out-of-scope paths and
+  their owners, and get explicit approval before the side effect.
+- `,codeowners` unavailable or no CODEOWNERS file: skip this gate.
+
+### 3.2 When Repeated Attempts Fail (Requirements Reset Interview)
 
 This mode exists to prevent looping when requirements are underspecified or
 misunderstood. When triggered, it overrides the Default and USE_CONFIRM

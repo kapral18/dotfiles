@@ -5,6 +5,7 @@ description: |-
   builds, reading build logs, debugging CI failures, or managing pipelines.
   Trigger words include "buildkite", "build", "CI", "build failed". Only for
   elastic org repos.
+tool_version: bk 3.32.2
 allowed-tools: Bash(bk:*)
 ---
 

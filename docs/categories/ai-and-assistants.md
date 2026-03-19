@@ -85,30 +85,30 @@ Entry contract standard:
 
 Current skills:
 
-| Skill                         | Use when                                                                               | Gated to       |
-| ----------------------------- | -------------------------------------------------------------------------------------- | -------------- |
-| `review`                      | Reviewing changes, continuing a review, addressing threads, rechecking PR changes      |                |
-| `github`                      | Any GitHub mutation (PRs, issues, comments, reviews, labels, releases, merges)         |                |
-| `git`                         | Any local git operation (branching, committing, pushing, rebasing, merging, conflicts) |                |
-| `research`                    | Investigating a third-party project/library/tool by cloning its GitHub repo            |                |
-| `architecture`                | Walking through a system, explaining flows, building a diagram/mental model            |                |
-| `semantic-code-search`        | Semantic search, base-branch context, or when another skill requires SCSI              |                |
-| `google-workspace`            | Gmail / Drive / Calendar / Admin / Docs / Sheets via `gws` CLI                         |                |
-| `worktrees`                   | Create/switch/open/list/prune/remove worktrees via `,w`                                |                |
-| `compose-pr`                  | Drafting a PR title and body as text (before creating/editing a PR)                    |                |
-| `compose-issue`               | Drafting an issue title and body as text (before creating/editing an issue)            |                |
-| `buildkite`                   | Checking build status, triggering builds, reading logs, debugging CI failures          | elastic org    |
-| `coderabbit`                  | CodeRabbit review-fix loop on local changes (explicit mention only)                    | elastic org    |
-| `kibana-labels-propose`       | Proposing labels/backports/version targeting when composing or creating a Kibana PR    | elastic/kibana |
-| `kibana-management-ownership` | CODEOWNERS / ownership / reviewer guidance for Kibana Management paths                 | elastic/kibana |
-| `kibana-console-monaco`       | Automating/testing the Kibana Dev Tools Console editor via Playwright                  | elastic/kibana |
-| `playwriter`                  | Controlling Chrome browser via Playwriter (explicit mention only)                      |                |
-| `beads`                       | Persisting work in the beads DB (explicit mention of beads/bdlocal/BEADS_DIR only)     |                |
-| `knip`                        | Finding unused files, dependencies, and exports in JS/TS projects                      |                |
-| `jscpd`                       | Detecting duplicates during refactoring, code cleanup, or DRY improvement              |                |
-| `improve-codebase`            | Suggest the single smartest addition to the current codebase                           |                |
-| `improve-local`               | Suggest the single smartest addition to the local changes                              |                |
-| `improve-branch`              | Suggest the single smartest addition for the current branch/PR/issue                   |                |
+| Skill                   | Use when                                                                               | Gated to       |
+| ----------------------- | -------------------------------------------------------------------------------------- | -------------- |
+| `review`                | Reviewing changes, continuing a review, addressing threads, rechecking PR changes      |                |
+| `github`                | Any GitHub mutation (PRs, issues, comments, reviews, labels, releases, merges)         |                |
+| `git`                   | Any local git operation (branching, committing, pushing, rebasing, merging, conflicts) |                |
+| `research`              | Investigating a third-party project/library/tool by cloning its GitHub repo            |                |
+| `architecture`          | Walking through a system, explaining flows, building a diagram/mental model            |                |
+| `skills-management`     | Creating, updating, upgrading, or auditing agent skills in this repo                   |                |
+| `semantic-code-search`  | Semantic search, base-branch context, or when another skill requires SCSI              |                |
+| `google-workspace`      | Gmail / Drive / Calendar / Admin / Docs / Sheets via `gws` CLI                         |                |
+| `worktrees`             | Create/switch/open/list/prune/remove worktrees via `,w`                                |                |
+| `compose-pr`            | Drafting a PR title and body as text (before creating/editing a PR)                    |                |
+| `compose-issue`         | Drafting an issue title and body as text (before creating/editing an issue)            |                |
+| `buildkite`             | Checking build status, triggering builds, reading logs, debugging CI failures          | elastic org    |
+| `coderabbit`            | CodeRabbit review-fix loop on local changes (explicit mention only)                    | elastic org    |
+| `kibana-labels-propose` | Proposing labels/backports/version targeting when composing or creating a Kibana PR    | elastic/kibana |
+| `kibana-console-monaco` | Automating/testing the Kibana Dev Tools Console editor via Playwright                  | elastic/kibana |
+| `playwriter`            | Controlling Chrome browser via Playwriter (explicit mention only)                      |                |
+| `beads`                 | Persisting work in the beads DB (explicit mention of beads/bdlocal/BEADS_DIR only)     |                |
+| `knip`                  | Finding unused files, dependencies, and exports in JS/TS projects                      |                |
+| `jscpd`                 | Detecting duplicates during refactoring, code cleanup, or DRY improvement              |                |
+| `improve-codebase`      | Suggest the single smartest addition to the current codebase                           |                |
+| `improve-local`         | Suggest the single smartest addition to the local changes                              |                |
+| `improve-branch`        | Suggest the single smartest addition for the current branch/PR/issue                   |                |
 
 Always-on rule source:
 

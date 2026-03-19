@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: ,codeowners [options] [<owner-pattern>]
+
+List paths from .github/CODEOWNERS matching an owner pattern (case-insensitive
+substring). Without a pattern, lists all owners with path counts.
+
+Options:
+  -p, --paths-only   Print only paths (no owner prefix)
+  -h, --help         Show this help
+
+Examples:
+  ,codeowners management          # paths owned by teams matching "management"
+  ,codeowners -p management       # paths only, one per line
+  ,codeowners                     # list all owners with path counts
+EOF
+}
+
+paths_only=false
+pattern=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -p|--paths-only) paths_only=true; shift ;;
+    -h|--help) usage; exit 0 ;;
+    -*) echo "Unknown option: $1" >&2; usage >&2; exit 1 ;;
+    *) pattern="$1"; shift ;;
+  esac
+done
+
+git_root=$(git rev-parse --show-toplevel 2>/dev/null) || {
+  echo "Error: not in a git repository" >&2; exit 1
+}
+
+codeowners=""
+for candidate in .github/CODEOWNERS CODEOWNERS docs/CODEOWNERS; do
+  if [[ -f "${git_root}/${candidate}" ]]; then
+    codeowners="${git_root}/${candidate}"
+    break
+  fi
+done
+
+if [[ -z "$codeowners" ]]; then
+  echo "Error: no CODEOWNERS file found" >&2; exit 1
+fi
+
+if [[ -z "$pattern" ]]; then
+  awk '
+    /^[[:space:]]*#/ || /^[[:space:]]*$/ { next }
+    {
+      sub(/^[[:space:]]+/, "")
+      path = $1
+      for (i = 2; i <= NF; i++) {
+        if ($i ~ /^#/) break
+        owners[$i]++
+      }
+    }
+    END {
+      for (o in owners) printf "%s\t%d paths\n", o, owners[o]
+    }
+  ' "$codeowners" | sort -t$'\t' -k2 -rn | column -t -s$'\t'
+  exit 0
+fi
+
+lc_pattern=$(printf '%s' "$pattern" | tr '[:upper:]' '[:lower:]')
+
+awk -v pat="$lc_pattern" -v po="$paths_only" '
+  /^[[:space:]]*#/ || /^[[:space:]]*$/ { next }
+  {
+    sub(/^[[:space:]]+/, "")
+    path = $1
+    matched = 0
+    owners_str = ""
+    for (i = 2; i <= NF; i++) {
+      if ($i ~ /^#/) break
+      lc = tolower($i)
+      if (index(lc, pat) > 0) matched = 1
+      owners_str = (owners_str == "" ? $i : owners_str " " $i)
+    }
+    if (matched) {
+      if (po == "true") print path
+      else printf "%s\t%s\n", path, owners_str
+    }
+  }
+' "$codeowners" | if [[ "$paths_only" == "true" ]]; then cat; else column -t -s$'\t'; fi

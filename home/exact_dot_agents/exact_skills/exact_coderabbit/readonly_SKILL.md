@@ -4,6 +4,7 @@ description: |-
   Review-fix loop on local changes using CodeRabbit before opening a PR.
   Use only when coderabbit is explicitly mentioned and the current repo
   is under the elastic GitHub org.
+tool_version: coderabbit 0.3.9
 ---
 
 # CodeRabbit Review-Fix Loop

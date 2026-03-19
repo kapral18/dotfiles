@@ -3,6 +3,7 @@ name: google-workspace
 description: |-
   Inspect or change Gmail / Drive / Calendar / Admin / Docs / Sheets and
   other Google Workspace data via gws CLI.
+tool_version: gws 0.18.1
 ---
 
 # Google Workspace (`gws`) Skill
