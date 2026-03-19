@@ -4,31 +4,7 @@ Step-by-step workflow for diagnosing and resolving Buildkite build failures.
 
 ---
 
-## Triage Workflow
-
-The wrapper script provides a `triage` subcommand that fetches failed builds,
-downloads logs, and categorizes failures by pattern:
-
-```bash
-# Triage the most recent failed build
-skills/buildkite/scripts/buildkite triage PIPELINE_SLUG
-
-# Triage a specific build
-skills/buildkite/scripts/buildkite triage PIPELINE_SLUG --build 456
-
-# Triage the last 5 failed builds
-skills/buildkite/scripts/buildkite triage PIPELINE_SLUG --last 5
-```
-
-The triage command outputs a table of failed jobs with their failure category
-and the key log line that triggered the match. Use this to quickly identify root
-cause, then apply the remediation guidance below.
-
----
-
-## Manual Debugging Sequence
-
-When triage is not sufficient or you need deeper investigation:
+## Debugging Sequence
 
 ### 1. Find the failed build
 

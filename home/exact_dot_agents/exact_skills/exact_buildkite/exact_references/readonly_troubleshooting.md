@@ -81,25 +81,6 @@ bk configure
 
 ---
 
-### `~/.buildkite-env` not found
-
-**Symptom:** First-time use of the triage wrapper triggers interactive setup.
-
-**Cause:** The env file doesn't exist — this is expected on first run. The
-wrapper auto-detects and launches `scripts/setup`.
-
-**Fix:** If setup was interrupted, re-run manually:
-
-```bash
-skills/buildkite/scripts/setup
-
-# Or create manually
-echo "BUILDKITE_ORG=your-org-slug" > ~/.buildkite-env
-chmod 600 ~/.buildkite-env
-```
-
----
-
 ## Rate Limiting
 
 ### 429 Too Many Requests
@@ -173,6 +154,6 @@ bk pipeline list
 # Test API access directly
 bk api /pipelines | jq 'length'
 
-# Re-run triage wrapper setup
-skills/buildkite/scripts/setup
+# Re-run auth setup
+bk auth login
 ```

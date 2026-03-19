@@ -112,18 +112,6 @@ When a build fails, follow this sequence:
 
 For detailed debugging patterns, load `references/build-debugging.md`.
 
-## Triage (Wrapper Extension)
-
-The `triage` subcommand is provided by the wrapper script at
-`skills/buildkite/scripts/buildkite`. It fetches failed builds and categorizes
-failures by pattern:
-
-```bash
-skills/buildkite/scripts/buildkite triage PIPELINE_SLUG
-skills/buildkite/scripts/buildkite triage PIPELINE_SLUG --build 456
-skills/buildkite/scripts/buildkite triage PIPELINE_SLUG --last 5
-```
-
 ## Output Conventions
 
 - `bk` outputs text/table format by default. Use `--json`, `--yaml`, or
