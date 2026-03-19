@@ -2,7 +2,7 @@
 
 Precondition:
 
-- You already loaded `~/.agents/playbooks/review/PLAYBOOK.md`.
+- You already loaded `~/.agents/skills/review/SKILL.md`.
 - Follow the router's shared rules (especially base-branch context + truth
   validation).
 

@@ -2,8 +2,8 @@
 
 Precondition:
 
-- You already loaded `~/.agents/playbooks/review/PLAYBOOK.md` and are following
-  its shared rules.
+- You already loaded `~/.agents/skills/review/SKILL.md` and are following its
+  shared rules.
 
 Use when:
 

@@ -1,10 +1,8 @@
 ---
 name: playwriter
 description:
-  Control the user's own Chrome browser via Playwriter extension with Playwright
-  code snippets in a stateful local js sandbox via playwriter cli. Only use when
-  the user explicitly mentions "playwriter". Run `playwriter skill` command to
-  read the complete up to date skill
+  Control the user's browser via Playwriter extension with Playwright code
+  snippets. Only use when "playwriter" is explicitly mentioned.
 ---
 
 ## REQUIRED: Read Full Documentation First

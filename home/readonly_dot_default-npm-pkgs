@@ -22,3 +22,6 @@ pi-mcp-adapter
 # Description: Code generation and editing agent with read, bash, edit, write tools and session management
 # URL: https://github.com/remorses/playwriter
 playwriter
+# Description: Find unused dependencies, exports, and files in JS/TS projects
+# URL: https://knip.dev/
+knip

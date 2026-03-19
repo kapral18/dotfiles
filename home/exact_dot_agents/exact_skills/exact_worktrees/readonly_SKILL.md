@@ -6,14 +6,14 @@ description: |-
   subcommands over raw git worktree.
 ---
 
-# ,w Worktree Playbook (Worktrees + tmux)
+# ,w Worktree Skill (Worktrees + tmux)
 
 Primary goal:
 
 - manage local git worktrees using the user's `,w` CLI instead of raw
   `git worktree` commands.
 
-Use this playbook when:
+Use this skill when:
 
 - the user mentions `,w`
 - the user asks to create/switch/open/list/prune/remove worktrees
@@ -21,11 +21,11 @@ Use this playbook when:
 
 Do not use:
 
-- PR review feedback: `~/.agents/playbooks/review/PLAYBOOK.md`
+- PR review feedback: `~/.agents/skills/review/SKILL.md`
 - GitHub side effects (posting comments/reviews, creating PRs/issues):
-  `~/.agents/playbooks/github/PLAYBOOK.md`
+  `~/.agents/skills/github/SKILL.md`
 - pure git operations unrelated to worktrees (commit/rebase/push):
-  `~/.agents/playbooks/git/PLAYBOOK.md`
+  `~/.agents/skills/git/SKILL.md`
 
 First actions:
 

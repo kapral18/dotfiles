@@ -1,4 +1,13 @@
-# GitHub + gh Playbook
+---
+name: github
+description: |-
+  GitHub side effects via gh CLI. Use before any GitHub mutation — PRs,
+  issues, comments, reviews, labels, releases, merges, sub-issues, or
+  any gh/API call that changes state. Not for review analysis or
+  draft-only writing.
+---
+
+# GitHub + gh Skill
 
 Use when:
 
@@ -38,16 +47,16 @@ Issue targeting:
 Do not use:
 
 - The user wants to draft PR/issue text only (draft-only): use the compose
-  playbooks.
-  - PR: `~/.agents/skills/compose_pr/SKILL.md`
-  - Issue: `~/.agents/skills/compose_issue/SKILL.md`
+  skills.
+  - PR: `~/.agents/skills/compose-pr/SKILL.md`
+  - Issue: `~/.agents/skills/compose-issue/SKILL.md`
 - The user wants PR review feedback, PR-fix verification, thread-by-thread
   handling, or review-comment drafting:
-  - Use: `~/.agents/playbooks/review/PLAYBOOK.md`
+  - Use: `~/.agents/skills/review/SKILL.md`
   - It routes between local vs PR review, and PR modes
     (start/iterative/replies).
 - The user wants local git operations (status/diff/commit/rebase):
-  `~/.agents/playbooks/git/PLAYBOOK.md`.
+  `~/.agents/skills/git/SKILL.md`.
 - The user wants worktree management (create/switch/remove worktrees):
   `~/.agents/skills/worktrees/SKILL.md`.
 
@@ -57,8 +66,8 @@ First actions:
 2. Resolve the exact target repo/object (PR, issue, comment thread, release)
    before mutating anything.
 3. If the user also needs authored text, reviewer reasoning, labels, or Kibana
-   ownership guidance, load the required secondary playbook(s) first and draft
-   that content before posting/applying it.
+   ownership guidance, load the required secondary skill(s) first and draft that
+   content before posting/applying it.
 
 Approvals:
 
@@ -158,11 +167,11 @@ Posting PR review comments (examples):
 - Use bash/zsh `$'...'` so `\n` becomes real line breaks. Do NOT send literal
   `\n`.
 - Add a soft close such as `Wdyt` only when the review style calls for it.
-- Follow the relevant PR review mode playbook for anchoring and comment
-  placement behavior:
-  - `~/.agents/playbooks/review/pr_start.md`
-  - `~/.agents/playbooks/review/pr_iterative.md`
-  - `~/.agents/playbooks/review/pr_reply.md`
+- Follow the relevant PR review mode skill for anchoring and comment placement
+  behavior:
+  - `~/.agents/skills/review/references/pr_start.md`
+  - `~/.agents/skills/review/references/pr_iterative.md`
+  - `~/.agents/skills/review/references/pr_reply.md`
 
 Inline review comment (line or range; supports GitHub suggestion blocks):
 
@@ -244,11 +253,11 @@ PR creation:
 Composition (draft-only) guidance:
 
 - Before creating/editing a PR body, load:
-  `~/.agents/skills/compose_pr/SKILL.md`
+  `~/.agents/skills/compose-pr/SKILL.md`
 - Before creating/editing an issue body, load:
-  `~/.agents/skills/compose_issue/SKILL.md`
+  `~/.agents/skills/compose-issue/SKILL.md`
 - For `elastic/kibana` label targeting, load:
-  `~/.agents/skills/labels_propose/SKILL.md`
+  `~/.agents/skills/kibana-labels-propose/SKILL.md`
 - For Kibana reviewer/ownership guidance, load:
   `~/.agents/skills/kibana-management-ownership/SKILL.md`
 

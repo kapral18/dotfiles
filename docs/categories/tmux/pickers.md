@@ -393,8 +393,8 @@ heuristic:
 3. Batched GraphQL `headRefName` matching against local worktree branches
    (catches PRs checked out by `,w prs`)
 
-For issues, the picker also treats an issue as "local" when it is linked from
-an existing session/worktree entry in the session picker cache (e.g. via PR
+For issues, the picker also treats an issue as "local" when it is linked from an
+existing session/worktree entry in the session picker cache (e.g. via PR
 closing-issue references). This keeps issue indicators consistent across
 pickers.
 

@@ -1,13 +1,11 @@
 ---
 name: beads
 description: |-
-  Use when the user explicitly wants beads / bdlocal / BEADS_DIR, or wants
-  work persisted in the beads DB (inspect/create/claim/update/close/export).
-  Not for generic planning outside Beads. Bead mutations still require
-  explicit user permission.
+  Persist work in the beads DB (inspect/create/claim/update/close/export).
+  Use when beads / bdlocal / BEADS_DIR is explicitly mentioned.
 ---
 
-# Beads Playbook
+# Beads Skill
 
 This is mandatory: always check context and offer to persist at ~10% remaining.
 
@@ -24,8 +22,8 @@ Do not use:
 
 - The user is asking for generic planning/task tracking not in Beads.
 - The user is asking for git or GitHub operations:
-  - git: `~/.agents/playbooks/git/PLAYBOOK.md`
-  - GitHub/gh: `~/.agents/playbooks/github/PLAYBOOK.md`
+  - git: `~/.agents/skills/git/SKILL.md`
+  - GitHub/gh: `~/.agents/skills/github/SKILL.md`
 
 First actions:
 
@@ -78,14 +76,25 @@ Core:
 - `bdlocal ready --json` - find unblocked work
 - `bdlocal blocked --json` - find blocked work
 - `bdlocal show <id> --json` - view details
-- `bdlocal create "title" -t bug|feature|task|epic|chore -p 0-4 --description="..." --estimate 60 --json`
-- `bdlocal create "title" --external-ref "https://github.com/..." --json` - link
-  external issue
-- `bdlocal update <id> --status open|in_progress|blocked|closed --json`
+- `bdlocal create "title" -t bug|feature|task|epic|chore|decision -p 0-4 --description="..." --estimate 60 --json`
+- `bdlocal create "title" --defer "+2d" --due "+1w" --json` (defer/due dates)
+- `bdlocal create "title" --parent <id> --json` (create as child of parent)
+- `bdlocal create "title" --external-ref "https://github.com/..." --json` (link
+  external issue)
+- `bdlocal update <id> --status open|in_progress|blocked|deferred|closed --json`
+- `bdlocal update <id> --claim --json` (atomic: sets assignee +
+  status=in_progress; fails if already claimed)
 - `bdlocal update <id> --notes|--description|--design|--acceptance|--title "text" --estimate 120 --json`
-- `bdlocal update <id> --status in_progress --add-label <label>[,<label>...] --remove-label <label>[,<label>...] --json` -
-  update with labels (repeatable; accepts comma-separated lists)
+- `bdlocal update <id> --append-notes "new info" --json` (appends instead of
+  replacing)
+- `bdlocal update <id> --defer "+2d" --json` (hide from `ready` until date)
+- `bdlocal update <id> --due "+1w" --json` (set due date)
+- `bdlocal update <id> --add-label <label> --remove-label <label> --json`
 - `bdlocal close <id> --reason "..." --json`
+- `bdlocal close <id> --reason "..." --suggest-next --json` (show newly
+  unblocked issues)
+- `bdlocal close <id> --reason "..." --claim-next --json` (auto-claim next
+  highest priority)
 - `bdlocal reopen <id> --reason "..." --json`
 - `bdlocal list --status open --sort priority --json`
 - `bdlocal search "query" --json`
@@ -95,22 +104,32 @@ Core:
   parsing)
 - `bdlocal init --quiet --skip-hooks --skip-merge-driver` - initialize in new
   repo (ensure git-free)
-- `bdlocal deleted --json` - view deletion audit trail
 
 Batch operations:
 
 - `bdlocal update <id1> <id2> --status in_progress --json`
 - `bdlocal close <id1> <id2> --reason "Done" --json`
 
+Comments:
+
+- `bdlocal comments <id> --json` (list comments)
+- `bdlocal comments add <id> "text" --json` (add a comment)
+
 Dependencies:
 
-- `bdlocal dep add <id> <dep-id> --type blocks|discovered-from|related|parent-child --json`
+- `bdlocal dep add <id> <dep-id> --type blocks|related|parent-child|discovered-from|tracks|until|caused-by|validates|relates-to|supersedes --json`
+- `bdlocal dep relate <id1> <id2> --json` (bidirectional relates-to link)
+- `bdlocal dep unrelate <id1> <id2> --json` (remove relates-to link)
 - `bdlocal dep tree <id>`
+- `bdlocal dep cycles` (detect circular dependencies)
 
 Labels (metadata without polluting notes):
 
-- `bdlocal label add|remove <id> <label> --json`
+- `bdlocal label add <id> <label> --json`
+- `bdlocal label remove <id> <label> --json`
 - `bdlocal label list <id> --json`
+- `bdlocal label list-all --json` (all unique labels in DB)
+- `bdlocal label propagate <parent-id> --json` (propagate label to children)
 - `bdlocal list --label auth,backend --json` (AND)
 - `bdlocal list --label-any urgent,blocked --json` (OR)
 - Useful: `needs-human-review`, `context-stale`, `blocked-on-external`,
@@ -143,15 +162,17 @@ Dependency thinking:
 
 Reference:
 
-Types: `bug`, `feature`, `task`, `epic`, `chore` - always pass `-t`
+Types: `bug`, `feature`, `task`, `epic`, `chore`, `decision` — always pass `-t`
+(aliases: `enhancement`/`feat`→`feature`, `dec`/`adr`→`decision`)
 
 Priorities: `0`=critical, `1`=high, `2`=medium (default), `3`=low, `4`=backlog
 
-Statuses: `open`, `in_progress`, `blocked`, `closed` (`ready` is a filtered
-view, not a status)
+Statuses: `open`, `in_progress`, `blocked`, `deferred`, `closed` (`ready` is a
+filtered view, not a status)
 
 Dependencies: `blocks` (hard), `related` (soft), `parent-child` (hierarchy),
-`discovered-from` (provenance)
+`discovered-from` (provenance), `tracks`, `until`, `caused-by`, `validates`,
+`relates-to`, `supersedes`
 
 Advanced patterns:
 
@@ -180,30 +201,33 @@ Epic with external link:
 Maintenance:
 
 - Backup: `bdlocal export -o ~/beads-backups/$(basename $(pwd))-issues.jsonl`
-- Compact: `bdlocal admin compact --days 90`
-- Cleanup: `bdlocal admin cleanup --force` (deletes closed issues; prunes
-  expired tombstones)
-- Clean: `bdlocal clean` (remove temp merge artifacts)
+- Cleanup: `bdlocal admin cleanup --force` (delete all closed issues)
+- Cleanup old: `bdlocal admin cleanup --older-than 30 --force` (closed 30+ days)
+- Compact: `bdlocal admin compact --analyze --json` (get candidates for agent
+  review)
+- Compact apply: `bdlocal admin compact --apply --id <id> --summary summary.txt`
 - Health: `bdlocal doctor --check-health`
 - Duplicates: `bdlocal duplicates --auto-merge --json`
 - Import config: `bdlocal config set import.orphan_handling "resurrect"`
   (prevent data loss)
 
-Deletion tracking:
+Deletion:
 
-- `bdlocal deleted --json` (last 7 days) or `bdlocal deleted --since=30d --json`
-- `bdlocal delete <id>`
+- `bdlocal delete <id>` (preview mode by default; add `--force` to actually
+  delete)
+- `bdlocal delete <id> --cascade --force` (recursively delete dependents)
+- `bdlocal delete <id> --dry-run` (preview what would be deleted)
 
 Duplicates:
 
 - `bdlocal duplicates` / `bdlocal duplicates --auto-merge`
 - `bdlocal merge <source-id> --into <target-id> --json`
 
-Troubleshooting: confirm `BEADS_DIR` is set and `bdlocal version >= 0.29.0`.
+Troubleshooting: confirm `BEADS_DIR` is set and `bdlocal version >= 0.61.0`.
 
 Output:
 
 - Summarize the bead(s) involved, the exact mutation proposed or performed, and
   the verification result.
-- Keep generic planning advice outside this playbook unless the user explicitly
+- Keep generic planning advice outside this skill unless the user explicitly
   wants it persisted in Beads.

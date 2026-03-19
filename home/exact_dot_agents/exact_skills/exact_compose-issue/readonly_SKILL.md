@@ -1,9 +1,8 @@
 ---
 name: compose-issue
 description: |-
-  Use when the user wants writing only (no gh side effects), for example
-  "draft issue" / "write issue" / "compose issue", or when the GitHub
-  workflow needs draft issue text before creating/editing the issue.
+  Draft an issue title and body as text. Use before creating or editing an
+  issue to compose the description. Text only — no gh side effects.
 ---
 
 # Compose Issue Body
@@ -11,19 +10,19 @@ description: |-
 Use when:
 
 - the user wants an issue body draft only (no `gh` side effects)
-- `~/.agents/playbooks/github/PLAYBOOK.md` needs issue text before
-  creating/editing an issue
+- `~/.agents/skills/github/SKILL.md` needs issue text before creating/editing an
+  issue
 
 Scope:
 
 - produces an issue body draft only
-- do not create issues via `gh` here; use
-  `~/.agents/playbooks/github/PLAYBOOK.md` for GitHub side effects
+- do not create issues via `gh` here; use `~/.agents/skills/github/SKILL.md` for
+  GitHub side effects
 
 Do not use:
 
 - user wants to create/edit the issue in GitHub:
-  `~/.agents/playbooks/github/PLAYBOOK.md`
+  `~/.agents/skills/github/SKILL.md`
 
 First actions:
 

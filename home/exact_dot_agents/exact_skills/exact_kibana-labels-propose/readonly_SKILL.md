@@ -1,10 +1,10 @@
 ---
 name: kibana-labels-propose
 description: |-
-  Propose labels/backports/version targeting for `elastic/kibana` (propose-only;
-  no posting). Use when: drafting/composing an `elastic/kibana` PR description, immediately
-  after creating an `elastic/kibana` PR (given PR URL/number), or when asked
-  what labels/backports/version targeting a Kibana PR/issue should get.
+  Propose labels/backports/version targeting for `elastic/kibana` PRs and
+  issues (propose-only; no posting). Use when composing a Kibana PR, right
+  after creating one, or when asked about labels/backports. Only for
+  elastic/kibana repos.
 ---
 
 # Elastic / Kibana Label Guidance (Propose-Only)
@@ -28,8 +28,7 @@ Do not use:
 
 - repo is not `elastic/kibana` (or label set cannot be verified)
 - user asked to apply labels now:
-  - use `~/.agents/playbooks/github/PLAYBOOK.md` (still requires explicit
-    approval)
+  - use `~/.agents/skills/github/SKILL.md` (still requires explicit approval)
 
 First actions:
 

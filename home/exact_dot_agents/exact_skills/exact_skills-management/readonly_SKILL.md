@@ -1,3 +1,11 @@
+---
+name: skills-management
+description: |-
+  Manage agent skills from the npx skills ecosystem. Use when finding, adding,
+  installing, updating, removing, or auditing skills from community/third-party
+  skill repos.
+---
+
 # Agent Skills Management (npx skills + chezmoi)
 
 Use when: the user asks to add, install, find, update, remove, or audit an agent
@@ -16,8 +24,8 @@ Do not use:
 
 Builds on:
 
-- `~/.agents/playbooks/research/PLAYBOOK.md` — for inspecting skill source repos
-- `~/.agents/playbooks/git/PLAYBOOK.md` — for committing the result
+- `~/.agents/skills/research/SKILL.md` — for inspecting skill source repos
+- `~/.agents/skills/git/SKILL.md` — for committing the result
 
 ## Key Paths
 
@@ -188,8 +196,7 @@ Summarize to the user:
 - Files added to chezmoi source
 - Any additional files beyond `SKILL.md`
 
-Do not commit automatically — follow the git playbook and wait for user
-approval.
+Do not commit automatically — follow the git skill and wait for user approval.
 
 ## Procedure: Update a Skill
 
@@ -313,8 +320,8 @@ similar), clone or browse the source repo to check:
 - Quality of instructions (specificity, actionability, edge-case coverage)
 - Maintenance signals (last commit date, open issues, contributor count)
 
-Use the research playbook (`~/.agents/playbooks/research/PLAYBOOK.md`) for
-deeper source inspection.
+Use the research skill (`~/.agents/skills/research/SKILL.md`) for deeper source
+inspection.
 
 ### 3) Compare and recommend
 

@@ -184,8 +184,7 @@ into:
 
 - Entrypoints: small files defining global rules + triggers (e.g.
   `~/AGENTS.md`).
-- Modules: playbooks (`~/.agents/playbooks/`) and skills (`~/.agents/skills/`)
-  are referenced by the entrypoints.
+- Modules: skills (`~/.agents/skills/`) are referenced by the entrypoints.
 
 **Source-of-truth (edit these in this repo, not in `$HOME`):**
 
@@ -194,7 +193,6 @@ into:
   - `home/readonly_CLAUDE.md` -> `~/CLAUDE.md`
   - `home/dot_gemini/readonly_GEMINI.md` -> `~/.gemini/GEMINI.md`
 - Modules:
-  - `home/exact_dot_agents/exact_playbooks/` -> `~/.agents/playbooks/`
   - `home/exact_dot_agents/exact_skills/` -> `~/.agents/skills/`
 
 **OpenCode wiring:**
@@ -206,9 +204,8 @@ into:
 
 1. Do not edit the rendered `$HOME` files directly; edit the corresponding
    `home/...` source file in this repo.
-2. If an entrypoint references a path under `~/.agents/playbooks/` or
-   `~/.agents/skills/`, keep the corresponding file under
-   `home/exact_dot_agents/` in sync.
+2. If an entrypoint references a path under `~/.agents/skills/`, keep the
+   corresponding file under `home/exact_dot_agents/` in sync.
 3. Keep OpenCode/Claude/Gemini entrypoints aligned for shared rules; keep
    tool-specific differences explicit.
 

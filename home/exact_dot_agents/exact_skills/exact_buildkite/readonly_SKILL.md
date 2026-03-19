@@ -1,10 +1,10 @@
 ---
 name: buildkite
 description:
-  Buildkite CI/CD integration. Use when the user needs to check build status,
-  trigger builds, read build logs, debug failures, manage pipelines, or any
-  Buildkite workflow. Triggers include "buildkite", "build", "pipeline", "CI",
-  "deploy", "build log", "build failed".
+  Buildkite CI/CD integration. Use when checking build status, triggering
+  builds, reading build logs, debugging CI failures, or managing pipelines.
+  Trigger words include "buildkite", "build", "CI", "build failed". Only for
+  elastic org repos.
 allowed-tools: Bash(buildkite:*)
 ---
 

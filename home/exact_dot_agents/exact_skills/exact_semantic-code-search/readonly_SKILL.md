@@ -1,16 +1,15 @@
 ---
 name: semantic-code-search
 description: |-
-  Use when the user wants semantic investigation via SCSI tools (scsi,
-  symbol_analysis, list_indices), asks to use/select/verify a specific
-  semantic index, or a loaded review/walkthrough playbook requires semantic
-  base-context. Use it for semantic/base-context work, not as a replacement
-  for local diff/file inspection.
+  Semantic code investigation via SCSI tools (scsi, symbol_analysis,
+  list_indices). Use when semantic search or base-branch context is needed,
+  the user asks to use/select/verify a specific semantic index, or a loaded
+  skill requires semantic base-context.
 ---
 
-# Semantic Code Search Playbook
+# Semantic Code Search Skill
 
-Use this playbook for conceptual investigations using semantic-code-search MCP
+Use this skill for conceptual investigations using semantic-code-search MCP
 tools.
 
 When triggered:
@@ -48,7 +47,7 @@ Important limitation:
 - for PRs/branches, compare semantic (base) findings against local branch diff
   for what actually changed
 
-Review output contract (when invoked from a review playbook):
+Review output contract (when invoked from a review skill):
 
 - Record the selected index (or "none") and include a `Base context:` line in
   the review output:
@@ -57,7 +56,7 @@ Review output contract (when invoked from a review playbook):
 
 Review preflight (blocking):
 
-- If the review playbook requires base-branch context, run `list_indices` BEFORE
+- If the review skill requires base-branch context, run `list_indices` BEFORE
   you proceed (even if the user provided an index name).
 
 How to run `list_indices`:

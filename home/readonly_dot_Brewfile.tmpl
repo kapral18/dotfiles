@@ -567,6 +567,21 @@ brew "asdf"
 brew "uv"
 
 # ==============================================================================
+# CODE QUALITY & ANALYSIS
+# Linters, duplicate detectors, and code review tools
+# ==============================================================================
+
+{{ if eq .isWork true -}}
+# AI code review CLI
+# https://www.coderabbit.ai/cli
+cask "coderabbit"
+{{ end -}}
+
+# Copy/paste detector for programming source code
+# https://github.com/kucherenko/jscpd
+brew "jscpd"
+
+# ==============================================================================
 # BUILD SYSTEMS & DEVELOPMENT TOOLS
 # Tools for building and compiling software
 # ==============================================================================

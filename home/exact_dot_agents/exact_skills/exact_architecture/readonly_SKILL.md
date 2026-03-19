@@ -1,4 +1,11 @@
-# Walkthrough Playbook
+---
+name: architecture
+description: |-
+  Walk through a system, explain flows, or build a diagram/mental model
+  across components.
+---
+
+# Walkthrough Skill
 
 Create interactive exploratory diagrams for understanding codebase architecture
 and system design.
@@ -14,6 +21,8 @@ and system design.
 
 ## When NOT to Use
 
+- Semantic code search alone (use `semantic-code-search` directly when the user
+  explicitly asks for SCSI-style investigation, not a walkthrough)
 - Simple file reading
 - Single file analysis without relationship context
 - Modifying or editing code
@@ -48,7 +57,7 @@ When semantic code search helps:
 
 - If you are investigating a PR and need additional context from `main`
   (existing behavior, patterns, related call sites), use
-  `~/.agents/skills/semantic_code_search/SKILL.md` to query the indexed
+  `~/.agents/skills/semantic-code-search/SKILL.md` to query the indexed
   snapshot, but ONLY if the current repo is indexed (present in `list_indices`).
   Run `list_indices` first; do not guess an index.
 - Treat semantic results as base-branch context only; validate the actual change

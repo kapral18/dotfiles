@@ -1,9 +1,8 @@
 ---
 name: compose-pr
 description: |-
-  Use when the user wants writing only (no gh side effects), for example
-  "draft PR body" / "write PR description" / "compose PR", or when the GitHub
-  workflow needs draft PR text before creating/editing the PR.
+  Draft a PR title and body as text. Use before creating or editing a PR
+  to compose the description. Text only — no gh side effects.
 ---
 
 # Compose PR Body
@@ -11,21 +10,19 @@ description: |-
 Use when:
 
 - the user wants a PR body draft only (no `gh` side effects)
-- `~/.agents/playbooks/github/PLAYBOOK.md` needs a draft body before
-  creating/editing a PR
+- `~/.agents/skills/github/SKILL.md` needs a draft body before creating/editing
+  a PR
 
 Scope:
 
 - produces a PR body draft only
-- do not run `gh` or change PR metadata; use
-  `~/.agents/playbooks/github/PLAYBOOK.md` for side effects
+- do not run `gh` or change PR metadata; use `~/.agents/skills/github/SKILL.md`
+  for side effects
 
 Do not use:
 
-- user wants to create/edit PR in GitHub:
-  `~/.agents/playbooks/github/PLAYBOOK.md`
-- user is asking for PR review feedback:
-  `~/.agents/playbooks/review/PLAYBOOK.md`
+- user wants to create/edit PR in GitHub: `~/.agents/skills/github/SKILL.md`
+- user is asking for PR review feedback: `~/.agents/skills/review/SKILL.md`
 
 First actions:
 
@@ -48,7 +45,7 @@ Rules:
 Output:
 
 - Return only the PR body draft, ready to paste or hand to
-  `~/.agents/playbooks/github/PLAYBOOK.md`.
+  `~/.agents/skills/github/SKILL.md`.
 - If important inputs are missing, say exactly which placeholders still need
   confirmation.
 

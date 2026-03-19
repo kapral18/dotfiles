@@ -1,6 +1,14 @@
-# Git Workflow Playbook
+---
+name: git
+description: |-
+  Local git workflow: branching, committing, pushing, rebasing, merging,
+  conflict resolution, and repo safety rules. Use before any local git
+  operation. Not for GitHub side effects or worktree management.
+---
 
-Use this playbook for local git repo operations:
+# Git Workflow Skill
+
+Use this skill for local git repo operations:
 
 - status/diff/log
 - staging/unstaging
@@ -16,9 +24,9 @@ External truth applies:
 Do not use:
 
 - GitHub/`gh` operations (PRs, issues, labels, comments, reviews):
-  `~/.agents/playbooks/github/PLAYBOOK.md`
-- Writing-only PR/issue composition: `~/.agents/skills/compose_pr/SKILL.md`,
-  `~/.agents/skills/compose_issue/SKILL.md`
+  `~/.agents/skills/github/SKILL.md`
+- Writing-only PR/issue composition: `~/.agents/skills/compose-pr/SKILL.md`,
+  `~/.agents/skills/compose-issue/SKILL.md`
 - Worktree management (create/switch/remove worktrees, PR worktrees):
   `~/.agents/skills/worktrees/SKILL.md`
 
@@ -81,5 +89,5 @@ Merge policy:
 Output:
 
 - Summarize repo state, the command(s) run, and the verification result.
-- If a requested action would be destructive or cross into another playbook's
+- If a requested action would be destructive or cross into another skill's
   scope, stop and route instead of improvising.

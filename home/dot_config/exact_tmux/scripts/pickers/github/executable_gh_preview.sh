@@ -202,7 +202,7 @@ _render_with_timeout() {
   local pid=$!
 
   while kill -0 "$pid" 2> /dev/null; do
-    if [ $(( $(date +%s) - start )) -ge "$seconds" ]; then
+    if [ $(($(date +%s) - start)) -ge "$seconds" ]; then
       kill "$pid" 2> /dev/null || true
       sleep 0.1
       kill -9 "$pid" 2> /dev/null || true

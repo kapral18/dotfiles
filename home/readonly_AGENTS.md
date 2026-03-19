@@ -320,7 +320,7 @@ multiple angles and hypotheses:
 
 1. **GitHub CLI**: `gh` for GitHub-specific searches
 1. **If source is available**: clone to `/tmp` and inspect locally (see
-   `~/.agents/playbooks/research/PLAYBOOK.md`)
+   `~/.agents/skills/research/SKILL.md`)
 1. **Web search**: use the harness web search tool. If unavailable:
    `ddgr --noua` — never `curl`
 1. **Explore**: `gh api` to investigate URLs found via search
@@ -359,116 +359,15 @@ multiple angles and hypotheses:
 - Do not create separate summary documents or redundant recaps unless explicitly
   asked. Concise result summaries inside the response are required when they
   carry evidence, outcomes, or next-step constraints.
-
-## 6.1 Routing (.agents)
-
-Two kinds of routable files live under `~/.agents/`:
-
-- **Playbooks** (`~/.agents/playbooks/`): Multi-step workflow orchestration that
-  coordinates actions, references other files, and defines procedures.
-- **Skills** (`~/.agents/skills/`): Self-contained tool or integration
-  capabilities centered around a specific CLI, API, or reference. A skill can be
-  loaded independently or as a dependency of a playbook.
-
-Both are binding procedures when routed, not optional reference material.
-
-Routing is intent-based (not keyword matching). Use the user's wording plus
-local context to choose the smallest correct file, then open and follow it
-before doing substantive work.
-
-Routing contract:
-
-- Before substantive work, decide whether the request activates a playbook or
-  skill.
-- If a `Use when` clause matches, you MUST open that file before answering or
-  acting. Do not rely on memory or a "close enough" route. For any GitHub or git
-  side effect, treat this as a hard preflight gate before running the command.
-- Pick exactly one primary route based on the user's main intent.
-- Load secondary files only when the primary workflow explicitly requires them
-  or the user clearly asks for a cross-boundary action (example: review draft ->
-  GitHub posting).
-- If ambiguous after local context checks, ask one fork-closing question and
-  state a default.
-- If the user provides external repo page URLs (repo root, `blob`, `tree`,
-  commit pages) or explicitly asks to inspect/read files in an external repo,
-  route to source-first research and use those URLs to resolve repo/ref before
-  any shell-first raw/API fetches.
-- If the user's request refers to the current PR implicitly ("this PR", "current
-  PR", "on this branch PR", "the PR for this branch", "check my PR comment"),
-  first resolve the PR number via `,gh-prw --number`. If it fails once, stop and
-  ask for the PR URL/number.
-- If the user's request refers to the current issue implicitly ("this issue",
-  "current issue"), first resolve the issue number via `,gh-issuew --number`. If
-  it fails once, stop and ask for the issue URL/number.
-
-Overlap / precedence rules:
-
-- Review beats GitHub when the user wants review content, PR-fix verification,
-  thread handling, or comment drafting. Load GitHub only if posting/editing on
-  GitHub is also requested.
-- Draft-only PR/issue composition beats GitHub when the user wants text only and
-  no side effects.
-- Worktrees beats local git when the requested action is create/switch/list/
-  prune/remove worktrees or check out a PR in a worktree.
-- Google Workspace beats browser/manual HTTP when `gws` can perform the task.
-- Architecture walkthrough beats semantic code search when the user's top-level
-  ask is explanation or a mental model. Semantic code search is supporting
-  context unless the user explicitly asks for SCSI-style investigation.
-- Kibana ownership guidance is usually a secondary skill.
-- Kibana label proposals (`kibana-labels-propose`) SHOULD be run proactively
-  when creating or composing an `elastic/kibana` PR (include a verified proposed
-  label set in the PR text), even if the user didn’t explicitly ask for
-  “labels”.
-- Source-first research is for external/public codebases, not for the current
-  repo.
-
-### Playbooks
-
-1. **Review (auto-route: local vs PR; start vs iterative vs replies)** Use when:
-   the user asks for a review of changes (local diff or PR), asks to continue a
-   review, asks for the next comment, asks to reply/address review threads, OR
-   asks to recheck/verify PR-related changes on the current branch (even if they
-   do not say the word "review"). Playbook:
-   `~/.agents/playbooks/review/PLAYBOOK.md` Read-only review/verification stays
-   here even for PRs. Builds on: `~/.agents/playbooks/git/PLAYBOOK.md` for local
-   git commands, and `~/.agents/playbooks/github/PLAYBOOK.md` only if posting is
-   requested.
-2. **GitHub/gh operations (side effects)** Use when: the user asks you to
-   perform any GitHub action (anything you would do via `gh` / GitHub APIs),
-   rather than only drafting text. Examples (non-exhaustive): create/edit PRs or
-   issues, post comments/reviews, apply or change PR/issue metadata, manage
-   assignees/milestones/projects, or merge. Playbook:
-   `~/.agents/playbooks/github/PLAYBOOK.md` Note: this is for side effects, not
-   review analysis or draft-only writing. If the user also wants review content,
-   draft it first via the review playbook, then ask for approval to post. For PR
-   creation details (including draft-by-default), follow the GitHub playbook.
-3. **Local git operations** Use when: the user wants local repo operations
-   (`git status/diff/log`, staging, commit, rebase/merge, conflicts), but not
-   worktree management or GitHub side effects. Commit/push still require
-   explicit approval. Playbook: `~/.agents/playbooks/git/PLAYBOOK.md`
-4. **Source-first research (external/public codebases)** Use when: the user asks
-   to investigate how an external/public project, library, or tool works and the
-   authoritative answer likely lives in a source repo, including when they give
-   repo URLs or ask to inspect external repo files/directories directly. This is
-   for external/public codebases, not the current repo; resolve the exact ref
-   before inspection. Playbook: `~/.agents/playbooks/research/PLAYBOOK.md`
-5. **Architecture walkthrough** Use when: the user asks to walk through a
-   system, explain flows, or build a diagram/mental model ("walk me through",
-   "architecture", "how does it work") across components/flows, rather than a
-   simple file or symbol lookup. Playbook:
-   `~/.agents/playbooks/architecture/PLAYBOOK.md`
-6. **Agent skills management** Use when: the user asks to find, add, install,
-   update, remove, or audit an agent skill from the `npx skills` ecosystem or
-   any community/third-party skill repo. Covers discovery (search, explore,
-   compare candidates), the full install lifecycle (install via `npx skills`,
-   security audit, `chezmoi add`), updates, and removal. Playbook:
-   `~/.agents/playbooks/skills/PLAYBOOK.md`
+- Skills (`~/.agents/skills/`) are binding procedures — when a `Use when` clause
+  matches, load and follow the file before acting. Do not approximate from
+  memory.
 
 ## 7. Exceptions
 
 - On conflict with user request: stop, describe conflict, ask for clarification.
 - When material uncertainty remains after local inspection, probes, and any
-  required playbooks or skills, stop and ask one direct question.
+  required skills, stop and ask one direct question.
 - If asked a question after making a change: explain reasoning; do not undo or
   modify unless requested.
 - When challenged or asked to verify ("are you sure?", "double check"), think

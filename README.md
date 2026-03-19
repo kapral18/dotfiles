@@ -497,7 +497,7 @@ LLMs as deterministic systems rather than chat bots.
 Credentials never touch plaintext configs; they are injected at runtime via
 1Password and `pass`.
 
-### 1. The Governance Layer (SOPs & Playbooks)
+### 1. The Governance Layer (SOPs & Skills)
 
 Agents are bound by strict Standard Operating Procedures (SOPs) that mandate
 empirical verification (e.g., using `/tmp` for safe live probes) and forbid
@@ -505,10 +505,10 @@ guessing.
 
 - **Entrypoints:** `~/AGENTS.md`, `~/CLAUDE.md`, `~/.gemini/GEMINI.md` (managed
   by chezmoi).
-- **Intent-Based Routing:** Agents dynamically load specific **Playbooks**
-  (e.g., `~/.agents/playbooks/review/PLAYBOOK.md`) or **Skills** (e.g.,
-  `~/.agents/skills/worktrees/SKILL.md`) based on the user's intent, preserving
-  their context window for the actual task.
+- **Intent-Based Routing:** Agents dynamically load specific **Skills** (e.g.,
+  `~/.agents/skills/review/SKILL.md`, `~/.agents/skills/worktrees/SKILL.md`)
+  based on the user's intent, preserving their context window for the actual
+  task.
 
 ### 2. The Context Layer (MCP & SCSI)
 
@@ -748,7 +748,6 @@ git config core.hooksPath .githooks
 - Fish: `home/dot_config/fish/`
 - Scripts: `home/exact_bin/`
 - Brewfile: `home/readonly_dot_Brewfile.tmpl`
-- Assistant playbooks: `home/exact_dot_agents/exact_playbooks/`
 - Assistant skills: `home/exact_dot_agents/exact_skills/`
 - Codex CLI config: `home/dot_codex/`
 - OpenCode config: `home/dot_config/opencode/`

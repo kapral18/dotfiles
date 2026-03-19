@@ -1,6 +1,15 @@
+---
+name: research
+description: |-
+  Clone and inspect the source of a public GitHub repository to answer
+  questions about it. Use when the user asks how a third-party project,
+  library, or tool works, or gives a GitHub repo/file/directory URL to
+  investigate.
+---
+
 # Source-first Research (GitHub/ref resolution + local source inspection)
 
-Use this playbook when you are asked to investigate an external/public project,
+Use this skill when you are asked to investigate an external/public project,
 library, or tool and the authoritative answer likely lives in its source repo.
 This includes explicit repo-inspection requests when the user gives repo URLs or
 asks you to inspect files/directories in that external repo.

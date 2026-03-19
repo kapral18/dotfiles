@@ -2,7 +2,7 @@
 
 Precondition:
 
-- You already loaded `~/.agents/playbooks/review/PLAYBOOK.md`.
+- You already loaded `~/.agents/skills/review/SKILL.md`.
 - Follow the router's shared rules.
 
 Use when:
@@ -15,7 +15,7 @@ Out of scope:
 
 - If the user wants to apply requested changes while processing review feedback
   (one thread/comment at a time), use
-  `~/.agents/playbooks/review/pr_change_cycle.md` instead.
+  `~/.agents/skills/review/references/pr_change_cycle.md` instead.
 
 ## PR Common Setup (All PR Modes)
 
@@ -107,7 +107,7 @@ Deep links to exact source lines (PR head SHA):
 
 If posting is requested:
 
-- Follow `~/.agents/playbooks/github/PLAYBOOK.md` for exact anchoring and API
+- Follow `~/.agents/skills/github/SKILL.md` for exact anchoring and API
   constraints.
 
 Complete pass before drafting (do not skip):

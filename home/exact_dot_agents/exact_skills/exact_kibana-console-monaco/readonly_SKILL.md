@@ -2,9 +2,8 @@
 name: kibana-console-monaco
 description: |-
   Interact with the Kibana Dev Tools Console Monaco editor via Playwright /
-  Playwriter. Covers clicking into the editor, setting content, positioning
-  the cursor, triggering autocomplete, and taking verification screenshots.
-  Use when automating or testing the Console editor in a real browser.
+  Playwriter. Use when automating or testing the Console editor in a real
+  browser. Only for elastic/kibana repos.
 ---
 
 # Kibana Dev Tools Console — Monaco Editor Interaction
@@ -14,9 +13,7 @@ Console editor in a headed browser via Playwright or Playwriter.
 
 ## Navigation
 
-```
-http://<host>:5601/app/dev_tools#/console
-```
+`http://<host>:5601/app/dev_tools#/console`
 
 If the instance requires login, authenticate first or reuse an already-logged-in
 tab via `context.pages()`.

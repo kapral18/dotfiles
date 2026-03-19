@@ -1,30 +1,36 @@
+---
+name: review
+description: |-
+  Review local changes or PRs. Use when reviewing changes, continuing a
+  review, addressing review threads, or rechecking PR-related changes.
+---
+
 # Review Router
 
 Goal:
 
-- route "review" requests to the smallest correct mode playbook (natural
-  discovery)
+- route "review" requests to the smallest correct mode (natural discovery)
 - keep shared review rules always loaded, while mode details are lazy-loaded
 
 Contract:
 
-- This router is the entrypoint. If another playbook points you here for shared
+- This router is the entrypoint. If another skill points you here for shared
   rules, you may skip routing and jump to the relevant section.
 - After you select a mode, open exactly one primary mode file and follow it:
-  - `~/.agents/playbooks/review/local_changes.md`
-  - `~/.agents/playbooks/review/pr_start.md`
-  - `~/.agents/playbooks/review/pr_iterative.md`
-  - `~/.agents/playbooks/review/pr_reply.md`
-  - `~/.agents/playbooks/review/pr_change_cycle.md`
-- Load secondary playbooks only when this router or the selected mode requires
-  them (for example: semantic code search for base context, or GitHub workflow
-  when the user explicitly asks to post).
-- Do not load `~/.agents/playbooks/github/PLAYBOOK.md` for read-only PR
+  - `~/.agents/skills/review/references/local_changes.md`
+  - `~/.agents/skills/review/references/pr_start.md`
+  - `~/.agents/skills/review/references/pr_iterative.md`
+  - `~/.agents/skills/review/references/pr_reply.md`
+  - `~/.agents/skills/review/references/pr_change_cycle.md`
+- Load secondary skills only when this router or the selected mode requires them
+  (for example: semantic code search for base context, or GitHub workflow when
+  the user explicitly asks to post).
+- Do not load `~/.agents/skills/github/SKILL.md` for read-only PR
   inspection/review. Only load it when the user explicitly asks to post/submit
   anything to GitHub.
 - If the user wants review analysis and GitHub posting in the same request, the
   review router stays primary. Draft/verify through review mode first, then load
-  `~/.agents/playbooks/github/PLAYBOOK.md` only for the posting step.
+  `~/.agents/skills/github/SKILL.md` only for the posting step.
 
 ## PR Detection (Do First When PR Is Involved)
 
@@ -49,20 +55,20 @@ Mode: PR thread replies
 
 - Use when: the user asks to reply to reviewer comments, address conversations,
   or resolve existing review threads.
-- Then open: `~/.agents/playbooks/review/pr_reply.md`
+- Then open: `~/.agents/skills/review/references/pr_reply.md`
 
 Mode: PR change-cycle (apply fixes one thread/comment at a time)
 
 - Use when: the user wants to address reviewer feedback by iterating on code
   changes with verification after each cycle ("apply the requested changes",
   "let's fix review comments", "one comment at a time until resolved").
-- Then open: `~/.agents/playbooks/review/pr_change_cycle.md`
+- Then open: `~/.agents/skills/review/references/pr_change_cycle.md`
 
 Mode: PR iterative (one new comment at a time)
 
 - Use when: the user wants one new top-level review comment per turn for a PR
   ("what's the next comment", "continue the review", "one comment at a time").
-- Then open: `~/.agents/playbooks/review/pr_iterative.md`
+- Then open: `~/.agents/skills/review/references/pr_iterative.md`
 
 Mode: PR start (initial batch draft)
 
@@ -72,13 +78,13 @@ Mode: PR start (initial batch draft)
 - Also use when: the user asks you to recheck/verify whether a PR fix resolves a
   bug ("does this PR fix it", "can you recheck", "verify this fix", "check my
   comment", "is it resolved on the updated branch").
-- Then open: `~/.agents/playbooks/review/pr_start.md`
+- Then open: `~/.agents/skills/review/references/pr_start.md`
 
 Mode: local changes review (working tree or branch delta)
 
 - Use when: the user asks to review local changes/diff, or when there is no PR
   for the current branch and the user still wants a review.
-- Then open: `~/.agents/playbooks/review/local_changes.md`
+- Then open: `~/.agents/skills/review/references/local_changes.md`
 
 If the user's intent is still unclear, resolve via local context (do not guess):
 
@@ -152,6 +158,13 @@ If the repo is indexed:
   - You MUST invoke at least one SCSI tool (for example: `discover_directories`,
     `semantic_code_search`, `map_symbols_by_query`, `symbol_analysis`, or
     `read_file_from_chunks`) to establish base invariants.
+- Query strategy — generate questions from the diff:
+  1. Read the diff to identify what changed.
+  2. Generate semantic questions about the contracts, invariants, and patterns
+     the changed code touches (e.g. "how is X validated elsewhere?", "what calls
+     this function?", "what pattern does the codebase use for Y?").
+  3. Query each question via SCSI tools against the repo index.
+  4. Carry the answers as working context into the review.
 - Use SCSI to learn base-branch implementation and invariants, then compare
   against the PR/local diff (ground truth).
 
@@ -238,6 +251,6 @@ Posting boundary:
 
 - Draft in chat first.
 - If the user asks to post/submit/apply anything to GitHub:
-  - keep the draft content from the review mode playbook
-  - then switch to `~/.agents/playbooks/github/PLAYBOOK.md`
+  - keep the draft content from the review mode
+  - then switch to `~/.agents/skills/github/SKILL.md`
   - get explicit approval for the GitHub side effect

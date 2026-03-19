@@ -1,9 +1,9 @@
 ---
 name: kibana-management-ownership
 description: |-
-  Use when the user asks about CODEOWNERS / ownership / reviewers for
-  elastic/kibana Management areas. Verify current repo/CODEOWNERS first;
-  do not answer from the excerpt alone.
+  CODEOWNERS / ownership / reviewer guidance for elastic/kibana Management
+  areas. Use when asked about CODEOWNERS, ownership, or reviewers for
+  Kibana Management paths. Only for elastic/kibana repos.
 ---
 
 # Kibana Management Ownership Guidance
@@ -16,8 +16,7 @@ Use when:
 
 - the direct ask is about `CODEOWNERS`, reviewers, ownership, or whether a
   change likely falls under Kibana Management
-- a loaded Elastic compose/label playbook needs Kibana reviewer/ownership
-  guidance
+- a loaded Elastic compose/label skill needs Kibana reviewer/ownership guidance
 
 Use it to:
 
