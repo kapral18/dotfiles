@@ -91,7 +91,7 @@ Current skills:
 | `github`                | Any GitHub mutation (PRs, issues, comments, reviews, labels, releases, merges)         |                |
 | `git`                   | Any local git operation (branching, committing, pushing, rebasing, merging, conflicts) |                |
 | `research`              | Investigating a third-party project/library/tool by cloning its GitHub repo            |                |
-| `architecture`          | Walking through a system, explaining flows, building a diagram/mental model            |                |
+| `walkthrough`           | Explore codebase flows, map component relationships, render diagrams (manual only)     |                |
 | `cli-skills`            | Creating or upgrading CLI tool skills                                                  |                |
 | `semantic-code-search`  | Semantic search, base-branch context, or when another skill requires SCSI              |                |
 | `google-workspace`      | Gmail / Drive / Calendar / Admin / Docs / Sheets via `gws` CLI                         |                |

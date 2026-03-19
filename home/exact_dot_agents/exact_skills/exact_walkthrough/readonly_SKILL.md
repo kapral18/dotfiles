@@ -1,8 +1,9 @@
 ---
-name: architecture
+name: walkthrough
 description: |-
-  Walk through a system, explain flows, or build a diagram/mental model
-  across components.
+  Explore a codebase interactively: trace execution flows, map component
+  relationships, and render architectural diagrams.
+disable-model-invocation: true
 ---
 
 # Walkthrough Skill
