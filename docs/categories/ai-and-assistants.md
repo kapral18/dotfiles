@@ -92,7 +92,6 @@ Current skills:
 | `git`                         | Any local git operation (branching, committing, pushing, rebasing, merging, conflicts) |                |
 | `research`                    | Investigating a third-party project/library/tool by cloning its GitHub repo            |                |
 | `architecture`                | Walking through a system, explaining flows, building a diagram/mental model            |                |
-| `skills-management`           | Finding, adding, installing, updating, removing, or auditing agent skills              |                |
 | `semantic-code-search`        | Semantic search, base-branch context, or when another skill requires SCSI              |                |
 | `google-workspace`            | Gmail / Drive / Calendar / Admin / Docs / Sheets via `gws` CLI                         |                |
 | `worktrees`                   | Create/switch/open/list/prune/remove worktrees via `,w`                                |                |

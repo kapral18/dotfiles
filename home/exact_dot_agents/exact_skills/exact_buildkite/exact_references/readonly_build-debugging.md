@@ -6,23 +6,63 @@ Step-by-step workflow for diagnosing and resolving Buildkite build failures.
 
 ## Triage Workflow
 
-Run `buildkite triage <pipeline-slug>` to automatically fetch failed builds,
-analyze logs, and categorize failures.
+The wrapper script provides a `triage` subcommand that fetches failed builds,
+downloads logs, and categorizes failures by pattern:
 
 ```bash
 # Triage the most recent failed build
-buildkite triage my-pipeline
+skills/buildkite/scripts/buildkite triage PIPELINE_SLUG
 
 # Triage a specific build
-buildkite triage my-pipeline --build 456
+skills/buildkite/scripts/buildkite triage PIPELINE_SLUG --build 456
 
 # Triage the last 5 failed builds
-buildkite triage my-pipeline --last 5
+skills/buildkite/scripts/buildkite triage PIPELINE_SLUG --last 5
 ```
 
 The triage command outputs a table of failed jobs with their failure category
 and the key log line that triggered the match. Use this to quickly identify root
 cause, then apply the remediation guidance below.
+
+---
+
+## Manual Debugging Sequence
+
+When triage is not sufficient or you need deeper investigation:
+
+### 1. Find the failed build
+
+```bash
+bk build list -p SLUG --state failed
+bk build list -p SLUG --state failed --since 24h
+```
+
+### 2. View build details
+
+```bash
+bk build view BUILD_NUMBER -p SLUG
+bk build view BUILD_NUMBER -p SLUG -o json | jq '.jobs[] | select(.state == "failed")'
+```
+
+### 3. List failed jobs
+
+```bash
+bk job list -p SLUG --state failed --since 24h
+```
+
+### 4. Get the failed job's log
+
+```bash
+bk job log JOB_UUID -p SLUG -b BUILD_NUMBER
+bk job log JOB_UUID -p SLUG -b BUILD_NUMBER --no-timestamps
+```
+
+### 5. Check artifacts
+
+```bash
+bk artifacts list BUILD_NUMBER -p SLUG
+bk artifacts download ARTIFACT_UUID
+```
 
 ---
 
@@ -39,7 +79,7 @@ cause, then apply the remediation guidance below.
 **Log patterns to grep:**
 
 ```bash
-buildkite job log JOB_ID | grep -E '(FAIL|ERROR|AssertionError|Expected.*got)'
+bk job log JOB_UUID -p SLUG -b BUILD_NUMBER | grep -E '(FAIL|ERROR|AssertionError|Expected.*got)'
 ```
 
 **Action:** Read the specific test failures, check if they reproduce locally,
@@ -56,7 +96,7 @@ fix the code.
 **Log patterns to grep:**
 
 ```bash
-buildkite job log JOB_ID | grep -iE '(ERR!|could not resolve|not found|403|401)'
+bk job log JOB_UUID -p SLUG -b BUILD_NUMBER | grep -iE '(ERR!|could not resolve|not found|403|401)'
 ```
 
 **Action:** Check lock files, verify registry access, pin problematic versions.
@@ -95,7 +135,7 @@ split into smaller jobs.
 
 ```bash
 # Rebuild to confirm flakiness
-buildkite build rebuild BUILD_NUMBER --pipeline SLUG
+bk build rebuild BUILD_NUMBER -p SLUG
 
 # Compare logs between failing and passing runs
 ```
@@ -112,8 +152,8 @@ quarantine flaky tests.
 - Network connectivity errors
 - `No agents available`
 
-**Action:** Check agent status (`buildkite agent list`), verify Docker registry
-access, check network connectivity.
+**Action:** Check agent status (`bk agent list`), verify Docker registry access,
+check network connectivity.
 
 ### Permission / Auth Failures
 
@@ -126,7 +166,7 @@ access, check network connectivity.
 **Log patterns to grep:**
 
 ```bash
-buildkite job log JOB_ID | grep -iE '(403|401|forbidden|unauthorized|permission denied|access denied)'
+bk job log JOB_UUID -p SLUG -b BUILD_NUMBER | grep -iE '(403|401|forbidden|unauthorized|permission denied|access denied)'
 ```
 
 **Action:** Rotate credentials, verify environment variables are set in pipeline
@@ -141,5 +181,7 @@ settings, check IAM/role permissions.
 - **Compare with last passing build** — diff the logs to find what changed.
 - **Check the commit diff** — the failure is usually in the code that changed
   between the last green build and this one.
-- **Use `buildkite api`** for detailed job metadata if `buildkite job list`
-  output is insufficient.
+- **Use `bk api`** for detailed job metadata if standard commands are
+  insufficient.
+- **Filter by duration** to find slow builds:
+  `bk build list -p SLUG --duration ">30m"`

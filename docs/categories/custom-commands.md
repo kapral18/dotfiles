@@ -220,15 +220,15 @@ Examples:
 
 ### Utility helpers
 
-| Command              | Description                                                                                                |
-| -------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `,cp-files-for-llm`  | Copy a directory tree's text contents to the clipboard with file headers, ready to paste into an assistant |
-| `,appid`             | Print the macOS bundle identifier for an app name/path                                                     |
-| `,dumputi`           | Dump the system's registered Uniform Type Identifiers                                                      |
-| `,to-gif`            | Convert a video to an optimized GIF                                                                        |
-| `,vid-ipad`          | Re-encode a video for iPad playback                                                                        |
-| `,pdf-diff`          | Visual diff two PDFs by compositing pages                                                                  |
-| `,history-sync`      | Merge local Fish history with a 1Password document and push the merged result back                         |
+| Command             | Description                                                                                                |
+| ------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `,cp-files-for-llm` | Copy a directory tree's text contents to the clipboard with file headers, ready to paste into an assistant |
+| `,appid`            | Print the macOS bundle identifier for an app name/path                                                     |
+| `,dumputi`          | Dump the system's registered Uniform Type Identifiers                                                      |
+| `,to-gif`           | Convert a video to an optimized GIF                                                                        |
+| `,vid-ipad`         | Re-encode a video for iPad playback                                                                        |
+| `,pdf-diff`         | Visual diff two PDFs by compositing pages                                                                  |
+| `,history-sync`     | Merge local Fish history with a 1Password document and push the merged result back                         |
 
 ### Internal / plumbing helpers
 

@@ -48,12 +48,12 @@ Goal: compare the diff against how base (usually `main`) works today.
   - You MUST invoke at least one SCSI tool (for example: `discover_directories`,
     `semantic_code_search`, `map_symbols_by_query`, `symbol_analysis`, or
     `read_file_from_chunks`) to establish base invariants.
-- **SCSI reflects the latest main branch, not the current branch or PR.**
-  All code returned by SCSI represents the base (pre-change) state. Use it
-  strictly as comparison/background context to understand the codebase the
-  changes are targeting. The PR/local diff is the ground truth for what is
-  actually changing. When SCSI results conflict with the diff, the diff wins —
-  the conflict is expected and simply means the PR modifies that code.
+- **SCSI reflects the latest main branch, not the current branch or PR.** All
+  code returned by SCSI represents the base (pre-change) state. Use it strictly
+  as comparison/background context to understand the codebase the changes are
+  targeting. The PR/local diff is the ground truth for what is actually
+  changing. When SCSI results conflict with the diff, the diff wins — the
+  conflict is expected and simply means the PR modifies that code.
 - Query strategy — generate questions from the diff:
   1. Read the diff to identify what changed.
   2. Generate semantic questions about the contracts, invariants, and patterns
