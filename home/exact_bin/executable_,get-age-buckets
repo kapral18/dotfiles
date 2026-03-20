@@ -30,6 +30,7 @@ Performance Notes:
 """
 
 from __future__ import annotations
+
 import argparse
 import json
 import subprocess
@@ -40,15 +41,11 @@ from typing import Dict, List, Tuple
 
 DEFAULT_BUCKET_SPEC = "0-7,8-30,31-90,91-180,181-365,>365"
 EXAMPLE_USAGE = (
-    "Examples:\n"
-    "  ,get-age-buckets --pattern 'src/**/*.ts'\n"
-    "  ,get-age-buckets --pattern 'docs/**/*.md' --format json\n"
+    "Examples:\n  ,get-age-buckets --pattern 'src/**/*.ts'\n  ,get-age-buckets --pattern 'docs/**/*.md' --format json\n"
 )
 
 
-class FriendlyHelpFormatter(
-    argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter
-):
+class FriendlyHelpFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter):
     pass
 
 
@@ -85,9 +82,7 @@ def parse_bucket_spec(spec: str) -> List[Bucket]:
             buckets.append(Bucket(label=f">{num}d", start=num + 1, end=None))
         else:
             if "-" not in part:
-                raise ValueError(
-                    f"Invalid bucket fragment '{part}' (expected A-B or >C)"
-                )
+                raise ValueError(f"Invalid bucket fragment '{part}' (expected A-B or >C)")
             a, b = part.split("-", 1)
             start = int(a)
             end = int(b)
@@ -124,13 +119,9 @@ def build_git_command(patterns: List[str], rename_limit: int | None) -> List[str
     return cmd
 
 
-def compute_last_content_change(
-    patterns: List[str], rename_limit: int | None
-) -> Dict[str, int]:
+def compute_last_content_change(patterns: List[str], rename_limit: int | None) -> Dict[str, int]:
     cmd = build_git_command(patterns, rename_limit)
-    proc = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, errors="replace"
-    )
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, errors="replace")
     mapping: Dict[str, int] = {}
     current_ts: int | None = None
     # Parse streaming output
@@ -200,9 +191,7 @@ def compute_last_content_change(
     return mapping
 
 
-def format_output(
-    counts: Dict[str, int], buckets: List[Bucket], fmt: str, header: bool
-) -> str:
+def format_output(counts: Dict[str, int], buckets: List[Bucket], fmt: str, header: bool) -> str:
     ordered_labels = [b.label for b in buckets]
     total = sum(counts.get(lbl, 0) for lbl in ordered_labels)
     rows: List[Tuple[str, int, float]] = []
@@ -215,10 +204,7 @@ def format_output(
         return json.dumps(
             {
                 "total": total,
-                "buckets": [
-                    {"bucket": b, "count": c, "percent": round(p, 2)}
-                    for b, c, p in rows
-                ],
+                "buckets": [{"bucket": b, "count": c, "percent": round(p, 2)} for b, c, p in rows],
             },
             indent=2,
         )

@@ -402,7 +402,7 @@ check_ai_configs() {
         pass "$label"
         if [ "$verbose" -eq 1 ]; then
           local age_days
-          if age_days="$(( ( $(date +%s) - $(stat -f %m "$path" 2>/dev/null || stat -c %Y "$path" 2>/dev/null || echo 0) ) / 86400 ))"; then
+          if age_days="$((($(date +%s) - $(stat -f %m "$path" 2>/dev/null || stat -c %Y "$path" 2>/dev/null || echo 0)) / 86400))"; then
             if [ "$age_days" -gt 30 ]; then
               warn "$label last modified ${age_days}d ago" "chezmoi apply"
             fi
@@ -460,7 +460,7 @@ check_config_drift() {
     else
       [ "$verbose" -eq 1 ] && pass "$(basename "$target") matches managed state"
     fi
-  done < "$manifest"
+  done <"$manifest"
 
   if [ "$drifted" -eq 0 ] && [ "$checked" -gt 0 ]; then
     pass "$checked managed config(s) in sync"

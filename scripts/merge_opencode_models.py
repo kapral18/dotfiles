@@ -3,6 +3,7 @@ import json
 import sys
 
 import litellm_models
+from model_display import format_display_name
 
 
 def main():
@@ -13,18 +14,18 @@ def main():
     models_yaml_path = sys.argv[2]
     models = litellm_models.load(models_yaml_path)
 
-    models_block = {
-        m["slug"]: {
-            "name": m["slug"],
-            "limit": {"context": m["context"], "output": m["output"]},
+    models_block = {}
+    for m in models:
+        name = format_display_name(m)
+        models_block[m["id"]] = {
+            "name": name,
+            "limit": {"context": m["contextWindow"], "output": m.get("maxTokens", 8192)},
         }
-        for m in models
-    }
 
     with open(src_path, "r") as f:
         src = f.read()
 
-    replacement = json.dumps(models_block, indent=2)
+    replacement = json.dumps(models_block, indent=2, ensure_ascii=False)
     indented = replacement.replace("\n", "\n      ")
     print(src.replace('"__LITELLM_MODELS__"', indented))
 

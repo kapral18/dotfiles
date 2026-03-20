@@ -214,6 +214,12 @@ if type -q pass; and test -z "$GOOGLE_GENERATIVE_AI_API_KEY"
     set -gx GOOGLE_GENERATIVE_AI_API_KEY (pass google/gemini/api/token)
 end
 
+if type -q pass; and test -z "$GOOGLE_CLOUD_PROJECT"
+    set -gx GOOGLE_CLOUD_PROJECT (pass google/vertex/project)
+    set -gx GOOGLE_GENAI_USE_VERTEXAI true
+    set -gx GOOGLE_CLOUD_LOCATION global
+end
+
 # ------------------------------------
 # OpenAI API Key Configuration
 # ------------------------------------
@@ -260,7 +266,6 @@ if type -q pass; and test -z "$LITELLM_API_BASE"
     end
 end
 
-
 {{ end -}}
 # ------------------------------------
 # Cloudflare API Configuration
@@ -306,6 +311,7 @@ if status --is-interactive
     alias cat=bat
     alias agent=cursor-agent
     alias c=chezmoi
+    alias claude-vertex='env CLAUDE_CODE_USE_VERTEX=1 CLOUD_ML_REGION=global ANTHROPIC_VERTEX_PROJECT_ID=(pass google/vertex/project) claude'
     alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l'
     alias g=git
     alias t=tmux

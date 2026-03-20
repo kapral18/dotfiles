@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -ou pipefail #
+set -ou pipefail # -e omitted: xcode-select --install exits non-zero when already installed
 
 # adapted from https://github.com/dNitza/dotfiles/blob/d75164b637713b91ee4f1b3d33f27dfa1d7bf748/.chezmoiscripts/run_once_00_install-xcode-devtools.sh.tmpl
 echo "-------------------------------------------"

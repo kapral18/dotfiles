@@ -15,9 +15,7 @@ import urllib.request
 import zlib
 
 # pylint: disable=consider-using-with
-__version__ = open(
-    os.path.join(os.path.dirname(__file__), "version"), encoding="utf-8"
-).read()
+__version__ = open(os.path.join(os.path.dirname(__file__), "version"), encoding="utf-8").read()
 
 USER_AGENT = f"Alpynist/{__version__}"
 
@@ -98,7 +96,7 @@ class CaseInsensitiveDictionary(dict):
             for key, value in initval.items():
                 self.__setitem__(key, value)
         elif isinstance(initval, list):
-            for (key, value) in initval:
+            for key, value in initval:
                 self.__setitem__(key, value)
 
     def __contains__(self, key):
@@ -239,9 +237,7 @@ class Response:
             # Transfer-Encoding appears to not be used in the wild
             # (contrary to the HTTP standard), but no harm in testing
             # for it
-            if "gzip" in headers.get("content-encoding", "") or "gzip" in headers.get(
-                "transfer-encoding", ""
-            ):
+            if "gzip" in headers.get("content-encoding", "") or "gzip" in headers.get("transfer-encoding", ""):
                 self._gzipped = True
 
     @property
@@ -415,20 +411,15 @@ class Response:
         if not self.stream:  # Try sniffing response content
             # Encoding declared in document should override HTTP headers
             if self.mimetype == "text/html":  # sniff HTML headers
-                match = re.search(
-                    r"""<meta.+charset=["']{0,1}(.+?)["'].*>""", self.content
-                )
+                match = re.search(r"""<meta.+charset=["']{0,1}(.+?)["'].*>""", self.content)
 
                 if match:
                     encoding = match.group(1)
 
             elif (
-                self.mimetype.startswith("application/")
-                or self.mimetype.startswith("text/")
+                self.mimetype.startswith("application/") or self.mimetype.startswith("text/")
             ) and "xml" in self.mimetype:  # noqa
-                match = re.search(
-                    r"""<?xml.+encoding=["'](.+?)["'][^>]*\?>""", self.content
-                )
+                match = re.search(r"""<?xml.+encoding=["'](.+?)["'][^>]*\?>""", self.content)
 
                 if match:
                     encoding = match.group(1)
@@ -674,9 +665,7 @@ def put(
     :returns: :class:`Response` instance
 
     """
-    return request(
-        "PUT", url, params, data, headers, files, auth, timeout, allow_redirects, stream
-    )
+    return request("PUT", url, params, data, headers, files, auth, timeout, allow_redirects, stream)
 
 
 def _encode_multipart_formdata(fields, files):
@@ -724,7 +713,7 @@ def _encode_multipart_formdata(fields, files):
     output = []
 
     # Normal form fields
-    for (k, v) in list(fields.items()):
+    for k, v in list(fields.items()):
         if isinstance(k, str):
             k = k.encode("utf-8")
 

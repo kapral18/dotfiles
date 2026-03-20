@@ -1,49 +1,75 @@
 #!/usr/bin/env python3
 """Parse litellm_models.yaml without external dependencies.
 
-Only handles the specific flat-list-of-dicts structure used by this project.
+Only handles the specific list-of-dicts structure used by this project.
 """
 
 import re
 
+from yaml_parser import parse_scalar
+
 
 def load(path):
+    return _load_section(path, "litellm_models")
+
+
+def _load_section(path, section_key):
+    """Load a list-of-dicts section with up to one level of nested dicts."""
     with open(path, "r") as f:
         lines = f.readlines()
 
-    models = []
+    items = []
     current = None
+    in_section = False
+    nested = None
+    nested_indent = None
 
     for line in lines:
         stripped = line.rstrip()
-        if not stripped or stripped.startswith("litellm_models:"):
+        if not stripped or stripped.startswith("#"):
             continue
+
+        if stripped.startswith(f"{section_key}:"):
+            in_section = True
+            current = None
+            nested = None
+            nested_indent = None
+            continue
+
+        if not in_section:
+            continue
+
+        # Stop once we hit a new top-level key
+        if stripped and not stripped.startswith(" ") and not stripped.startswith("-"):
+            break
+
+        indent = len(line) - len(line.lstrip(" "))
 
         m = re.match(r"^\s+-\s+(\w+):\s*(.*)", stripped)
         if m:
-            current = {m.group(1): _parse_value(m.group(2))}
-            models.append(current)
+            current = {m.group(1): parse_scalar(m.group(2))}
+            items.append(current)
+            nested = None
+            nested_indent = None
             continue
 
         m = re.match(r"^\s+(\w+):\s*(.*)", stripped)
-        if m and current is not None:
-            current[m.group(1)] = _parse_value(m.group(2))
+        if not (m and current is not None):
+            continue
 
-    return models
+        key = m.group(1)
+        raw = m.group(2)
 
+        if raw == "":
+            nested = {}
+            current[key] = nested
+            nested_indent = indent + 2
+            continue
 
-def _parse_value(raw):
-    raw = raw.strip()
-    if raw.startswith('"') and raw.endswith('"'):
-        return raw[1:-1]
-    if raw.startswith("'") and raw.endswith("'"):
-        return raw[1:-1]
-    try:
-        return int(raw)
-    except ValueError:
-        pass
-    try:
-        return float(raw)
-    except ValueError:
-        pass
-    return raw
+        if nested is not None and nested_indent is not None and indent >= nested_indent:
+            nested[key] = parse_scalar(raw)
+            continue
+
+        current[key] = parse_scalar(raw)
+
+    return items

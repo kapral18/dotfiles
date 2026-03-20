@@ -37,10 +37,19 @@ files=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --check) check_mode=true; shift ;;
-    --type)  type_filter="$2"; shift 2 ;;
-    --help|-h) usage ;;
-    *) files+=("$1"); shift ;;
+  --check)
+    check_mode=true
+    shift
+    ;;
+  --type)
+    type_filter="$2"
+    shift 2
+    ;;
+  --help | -h) usage ;;
+  *)
+    files+=("$1")
+    shift
+    ;;
   esac
 done
 
@@ -65,16 +74,47 @@ is_ignored() {
   return 1
 }
 
-collect_files() {
-  local ext="$1"
+is_sh_file() {
+  local f="$1"
+  [[ "$f" == *.sh || "$f" == *.sh.tmpl || "$f" == *.bash || "$f" == *.ksh ]] && return 0
+  [[ ! -f "$f" ]] && return 1
+  local head
+  head="$(head -n 1 "$f" 2>/dev/null || true)"
+  [[ "$head" == '#!/usr/bin/env bash'* || "$head" == '#!/usr/bin/env sh'* || "$head" == '#!'*'/bash'* || "$head" == '#!'*'/sh'* ]] && return 0
+  return 1
+}
+
+is_py_file() {
+  local f="$1"
+  [[ "$f" == *.py ]] && return 0
+  [[ ! -f "$f" ]] && return 1
+  local head
+  head="$(head -n 1 "$f" 2>/dev/null || true)"
+  [[ "$head" == '#!/usr/bin/env python'* || "$head" == '#!'*'/python'* ]] && return 0
+  return 1
+}
+
+is_md_file() { [[ "$1" == *.md ]]; }
+is_json_file() { [[ "$1" == *.json || "$1" == *.jsonc ]]; }
+is_yaml_file() { [[ "$1" == *.yaml || "$1" == *.yml ]]; }
+is_lua_file() { [[ "$1" == *.lua ]]; }
+is_fish_file() { [[ "$1" == *.fish ]]; }
+
+collect_by_func() {
+  local func="$1"
   if [[ ${#files[@]} -gt 0 ]]; then
     for f in "${files[@]}"; do
-      case "$f" in *"$ext") is_ignored "$f" || echo "$f" ;; esac
+      if "$func" "$f"; then
+        is_ignored "$f" || echo "$f"
+      fi
     done
   else
     while IFS= read -r f; do
-      is_ignored "$f" || echo "$f"
-    done < <(git ls-files -- "*$ext" 2>/dev/null || true)
+      [[ -e "$f" ]] || continue
+      if "$func" "$f"; then
+        is_ignored "$f" || echo "$f"
+      fi
+    done < <(git ls-files 2>/dev/null || true)
   fi
 }
 
@@ -87,9 +127,9 @@ if should_run md || should_run json || should_run yaml; then
   need_cmd prettier || exit 1
   mapfile -t prettier_files < <(
     {
-      should_run md   && collect_files .md
-      should_run json && { collect_files .json; collect_files .jsonc; }
-      should_run yaml && { collect_files .yaml; collect_files .yml; }
+      should_run md && collect_by_func is_md_file
+      should_run json && collect_by_func is_json_file
+      should_run yaml && collect_by_func is_yaml_file
     } | sort -u
   )
   if [[ ${#prettier_files[@]} -gt 0 ]]; then
@@ -100,7 +140,7 @@ if should_run md || should_run json || should_run yaml; then
       fi
     else
       printf 'prettier: formatting %d files\n' "${#prettier_files[@]}"
-      prettier --write "${prettier_files[@]}" 2>/dev/null
+      prettier --write "${prettier_files[@]}" >/dev/null 2>&1
     fi
   fi
 fi
@@ -108,9 +148,7 @@ fi
 # --- shfmt: shell scripts (bulk invocation) ---
 if should_run sh; then
   need_cmd shfmt || exit 1
-  mapfile -t sh_files < <(
-    { collect_files .sh; collect_files .sh.tmpl; } | sort -u
-  )
+  mapfile -t sh_files < <(collect_by_func is_sh_file | sort -u)
   if [[ ${#sh_files[@]} -gt 0 ]]; then
     if $check_mode; then
       printf 'shfmt: checking %d files\n' "${#sh_files[@]}"
@@ -128,7 +166,7 @@ fi
 # --- stylua: lua (bulk invocation) ---
 if should_run lua; then
   need_cmd stylua || exit 1
-  mapfile -t lua_files < <(collect_files .lua | sort -u)
+  mapfile -t lua_files < <(collect_by_func is_lua_file | sort -u)
   if [[ ${#lua_files[@]} -gt 0 ]]; then
     if $check_mode; then
       printf 'stylua: checking %d files\n' "${#lua_files[@]}"
@@ -146,14 +184,14 @@ fi
 # --- fish_indent: fish (one at a time — fish_indent has no bulk mode) ---
 if should_run fish; then
   need_cmd fish_indent fish || exit 1
-  mapfile -t fish_files < <(collect_files .fish | sort -u)
+  mapfile -t fish_files < <(collect_by_func is_fish_file | sort -u)
   if [[ ${#fish_files[@]} -gt 0 ]]; then
     fish_bad=0
     if $check_mode; then
       printf 'fish_indent: checking %d files\n' "${#fish_files[@]}"
       for f in "${fish_files[@]}"; do
         [[ -f "$f" ]] || continue
-        if ! diff -q <(fish_indent < "$f") "$f" >/dev/null 2>&1; then
+        if ! diff -q <(fish_indent <"$f") "$f" >/dev/null 2>&1; then
           printf '  unformatted: %s\n' "$f"
           ((fish_bad++)) || true
         fi
@@ -172,7 +210,7 @@ fi
 # --- ruff: python (fix + format, matching neovim conform's ruff_fix + ruff_format) ---
 if should_run py; then
   need_cmd ruff || exit 1
-  mapfile -t py_files < <(collect_files .py | sort -u)
+  mapfile -t py_files < <(collect_by_func is_py_file | sort -u)
   if [[ ${#py_files[@]} -gt 0 ]]; then
     if $check_mode; then
       printf 'ruff: checking %d files\n' "${#py_files[@]}"

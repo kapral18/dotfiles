@@ -20,7 +20,6 @@ import os
 import re
 import subprocess
 
-
 RG_HEADER_RE = re.compile(r"^(.*?):(\d+):(\d+):")
 
 
@@ -62,9 +61,7 @@ def parse_entry(entry: str) -> tuple[str | None, int]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="fzf preview helper that follows the match line."
-    )
+    parser = argparse.ArgumentParser(description="fzf preview helper that follows the match line.")
     parser.add_argument("--file", dest="file", default=None)
     parser.add_argument("--line", dest="line", default=None)
     parser.add_argument("entry", nargs="?", default=None)

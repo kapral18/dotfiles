@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 """A helper library for `Alfred <http://www.alfredapp.com/>`_ workflows."""
+
 import os
 
 from .workflow import (
@@ -43,9 +44,7 @@ from .workflow import (
 )
 
 # pylint: disable=consider-using-with
-__version__ = open(
-    os.path.join(os.path.dirname(__file__), "version"), encoding="utf-8"
-).read()
+__version__ = open(os.path.join(os.path.dirname(__file__), "version"), encoding="utf-8").read()
 __title__ = "Alpynist"
 __author__ = "Arthur Pinheiro"
 __license__ = "MIT"

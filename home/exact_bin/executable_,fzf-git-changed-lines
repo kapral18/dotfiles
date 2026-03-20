@@ -24,13 +24,12 @@ import sys
 from pathlib import Path
 from typing import Iterator
 
-
 HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 
 
 def run_git(args: list[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [ "git", "-c", "core.quotePath=false", *args ],
+        ["git", "-c", "core.quotePath=false", *args],
         check=False,
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
@@ -48,7 +47,7 @@ def is_probably_binary(path: Path) -> bool:
 
 
 def iter_untracked_changed_lines() -> Iterator[tuple[str, int, str]]:
-    proc = run_git([ "ls-files", "--others", "--exclude-standard", "-z" ])
+    proc = run_git(["ls-files", "--others", "--exclude-standard", "-z"])
     if proc.returncode != 0 or not proc.stdout:
         return
 
@@ -136,7 +135,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Emit changed lines as path:line:col:text entries.")
     parser.add_argument(
         "--mode",
-        choices=[ "status", "range" ],
+        choices=["status", "range"],
         default="status",
         help="status: working tree vs HEAD (plus untracked). range: git diff <range> only.",
     )
@@ -151,12 +150,12 @@ def main() -> int:
     diff_args: list[str]
     include_untracked = False
     if args.mode == "status":
-        diff_args = [ "diff", "--no-color", "--unified=0", "HEAD" ]
+        diff_args = ["diff", "--no-color", "--unified=0", "HEAD"]
         include_untracked = True
     else:
         if not args.range_:
             return 0
-        diff_args = [ "diff", "--no-color", "--unified=0", args.range_ ]
+        diff_args = ["diff", "--no-color", "--unified=0", args.range_]
 
     proc = run_git(diff_args)
     if proc.stdout:

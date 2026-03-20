@@ -24,15 +24,29 @@ pattern=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -p|--paths-only) paths_only=true; shift ;;
-    -h|--help) usage; exit 0 ;;
-    -*) echo "Unknown option: $1" >&2; usage >&2; exit 1 ;;
-    *) pattern="$1"; shift ;;
+  -p | --paths-only)
+    paths_only=true
+    shift
+    ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  -*)
+    echo "Unknown option: $1" >&2
+    usage >&2
+    exit 1
+    ;;
+  *)
+    pattern="$1"
+    shift
+    ;;
   esac
 done
 
 git_root=$(git rev-parse --show-toplevel 2>/dev/null) || {
-  echo "Error: not in a git repository" >&2; exit 1
+  echo "Error: not in a git repository" >&2
+  exit 1
 }
 
 codeowners=""
@@ -44,7 +58,8 @@ for candidate in .github/CODEOWNERS CODEOWNERS docs/CODEOWNERS; do
 done
 
 if [[ -z "$codeowners" ]]; then
-  echo "Error: no CODEOWNERS file found" >&2; exit 1
+  echo "Error: no CODEOWNERS file found" >&2
+  exit 1
 fi
 
 if [[ -z "$pattern" ]]; then

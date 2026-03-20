@@ -686,9 +686,7 @@ class Item:
         """
         return self.variables.get(name, default)
 
-    def add_modifier(
-        self, key, subtitle=None, arg=None, valid=None, icon=None, icontype=None
-    ):
+    def add_modifier(self, key, subtitle=None, arg=None, valid=None, icon=None, icontype=None):
         """Add alternative values for a modifier key.
 
         Args:
@@ -938,9 +936,7 @@ class Modifier:
 
     """
 
-    def __init__(
-        self, key, subtitle=None, arg=None, valid=None, icon=None, icontype=None
-    ):
+    def __init__(self, key, subtitle=None, arg=None, valid=None, icon=None, icontype=None):
         """Create a new :class:`Modifier`.
 
         Don't use this class directly (as it won't be associated with any
@@ -1478,9 +1474,7 @@ class Workflow:
             dirpath = self.alfred_env.get("workflow_cache")
         else:
             dirpath = os.path.join(
-                os.path.expanduser(
-                    "~/Library/Caches/com.runningwithcrayons.Alfred/Workflow Data/"
-                ),
+                os.path.expanduser("~/Library/Caches/com.runningwithcrayons.Alfred/Workflow Data/"),
                 self.bundleid,
             )
 
@@ -1630,9 +1624,7 @@ class Workflow:
                 datefmt="%H:%M:%S",
             )
 
-            logfile = logging.handlers.RotatingFileHandler(
-                self.logfile, maxBytes=1024 * 1024, backupCount=1
-            )
+            logfile = logging.handlers.RotatingFileHandler(self.logfile, maxBytes=1024 * 1024, backupCount=1)
             logfile.setFormatter(fmt)
             logger.addHandler(logfile)
 
@@ -1726,8 +1718,7 @@ class Workflow:
         """
         if manager.serializer(serializer_name) is None:
             raise ValueError(
-                f"Unknown serializer : `{serializer_name}`. "
-                "Register your serializer with `manager` first."
+                f"Unknown serializer : `{serializer_name}`. Register your serializer with `manager` first."
             )
 
         self.logger.debug("default cache serializer: %s", serializer_name)
@@ -1765,8 +1756,7 @@ class Workflow:
         """
         if manager.serializer(serializer_name) is None:
             raise ValueError(
-                f"Unknown serializer : `{serializer_name}`. "
-                "Register your serializer with `manager` first."
+                f"Unknown serializer : `{serializer_name}`. Register your serializer with `manager` first."
             )
 
         self.logger.debug("default data serializer: %s", serializer_name)
@@ -1819,8 +1809,7 @@ class Workflow:
 
         if serializer is None:
             raise ValueError(
-                f"Invalid serializer `{serializer_name}`. "
-                "Register your serializer with `manager.register()` first."
+                f"Invalid serializer `{serializer_name}`. Register your serializer with `manager.register()` first."
             )
 
         if data is None:  # Delete cached data
@@ -1912,9 +1901,7 @@ class Workflow:
         def _is_session_file(filename):
             if current:
                 return filename.startswith("_wfsess-")
-            return filename.startswith("_wfsess-") and not filename.startswith(
-                self._session_prefix
-            )
+            return filename.startswith("_wfsess-") and not filename.startswith(self._session_prefix)
 
         self.clear_cache(_is_session_file)
 
@@ -2144,9 +2131,7 @@ class Workflow:
             return items
 
         # Use user override if there is one
-        fold_diacritics = self.settings.get(
-            "__workflow_diacritic_folding", fold_diacritics
-        )
+        fold_diacritics = self.settings.get("__workflow_diacritic_folding", fold_diacritics)
 
         results = []
 
@@ -2177,9 +2162,7 @@ class Workflow:
                 # use "reversed" `score` (i.e. highest becomes lowest) and
                 # `value` as sort key. This means items with the same score
                 # will be sorted in alphabetical not reverse alphabetical order
-                results.append(
-                    ((100.0 / score, value.lower(), score), (item, score, rule))
-                )
+                results.append(((100.0 / score, value.lower(), score), (item, score, rule)))
 
         # sort on keys, then discard the keys
         results.sort(key=lambda x: x[0], reverse=ascending)
@@ -2234,11 +2217,7 @@ class Workflow:
 
         # split the item into "atoms", i.e. words separated by
         # spaces or other non-word characters
-        if (
-            match_on & MATCH_ATOM
-            or match_on & MATCH_INITIALS_CONTAIN
-            or match_on & MATCH_INITIALS_STARTSWITH
-        ):
+        if match_on & MATCH_ATOM or match_on & MATCH_INITIALS_CONTAIN or match_on & MATCH_INITIALS_STARTSWITH:
             atoms = [s.lower() for s in split_on_delimiters(value)]
             # initials of the atoms
             initials = "".join([s[0] for s in atoms if s])
@@ -2276,9 +2255,7 @@ class Workflow:
             search = self._search_for_query(query)
             match = search(value)
             if match:
-                score = 100.0 / (
-                    (1 + match.start()) * (match.end() - match.start() + 1)
-                )
+                score = 100.0 / ((1 + match.start()) * (match.end() - match.start() + 1))
                 return (score, MATCH_ALLCHARS)
 
         # Nothing matched
@@ -2329,9 +2306,7 @@ class Workflow:
         # to catch any errors and display an error message in Alfred
         try:
             if self.version:
-                self.logger.debug(
-                    "---------- %s (%s) ----------", self.name, self.version
-                )
+                self.logger.debug("---------- %s (%s) ----------", self.name, self.version)
             else:
                 self.logger.debug("---------- %s ----------", self.name)
 
@@ -2367,15 +2342,11 @@ class Workflow:
                     else:  # pragma: no cover
                         name = os.path.dirname(__file__)
 
-                    self.add_item(
-                        f"Error in workflow '{name}'", str(err), icon=ICON_ERROR
-                    )
+                    self.add_item(f"Error in workflow '{name}'", str(err), icon=ICON_ERROR)
                     self.send_feedback()
             return 1
         finally:
-            self.logger.debug(
-                "---------- finished in %0.3fs ----------", time.time() - start
-            )
+            self.logger.debug("---------- finished in %0.3fs ----------", time.time() - start)
 
         return 0
 
@@ -2429,9 +2400,7 @@ class Workflow:
         self.variables[name] = value
         if persist:
             set_config(name, value, self.bundleid)
-            self.logger.debug(
-                "saved variable %r with value %r to info.plist", name, value
-            )
+            self.logger.debug("saved variable %r with value %r to info.plist", name, value)
 
     def getvar(self, name, default=None):
         """Return value of workflow variable for ``name`` or ``default``.
@@ -2789,9 +2758,7 @@ class Workflow:
             service = self.bundleid
 
         try:
-            self._call_security(
-                "add-generic-password", service, account, "-w", password
-            )
+            self._call_security("add-generic-password", service, account, "-w", password)
             self.logger.debug("saved password : %s:%s", service, account)
         except PasswordExists:
             self.logger.debug("password exists : %s:%s", service, account)
@@ -2801,9 +2768,7 @@ class Workflow:
                 self.logger.debug("password unchanged")
             else:
                 self.delete_password(account, service)
-                self._call_security(
-                    "add-generic-password", service, account, "-w", password
-                )
+                self._call_security("add-generic-password", service, account, "-w", password)
                 self.logger.debug("save_password : %s:%s", service, account)
 
     def get_password(self, account, service=None):
@@ -2826,9 +2791,7 @@ class Workflow:
         # Parsing of `security` output is adapted from python-keyring
         # by Jason R. Coombs
         # https://pypi.python.org/pypi/keyring
-        match = re.search(
-            r'password:\s*(?:0x(?P<hex>[0-9A-F]+)\s*)?(?:"(?P<pw>.*)")?', output
-        )
+        match = re.search(r'password:\s*(?:0x(?P<hex>[0-9A-F]+)\s*)?(?:"(?P<pw>.*)")?', output)
 
         if match:
             groups = match.groupdict()
@@ -2875,31 +2838,15 @@ class Workflow:
 
             return wrapper
 
-        self.magic_arguments["delcache"] = callback(
-            self.clear_cache, "Deleted workflow cache"
-        )
-        self.magic_arguments["deldata"] = callback(
-            self.clear_data, "Deleted workflow data"
-        )
-        self.magic_arguments["delsettings"] = callback(
-            self.clear_settings, "Deleted workflow settings"
-        )
+        self.magic_arguments["delcache"] = callback(self.clear_cache, "Deleted workflow cache")
+        self.magic_arguments["deldata"] = callback(self.clear_data, "Deleted workflow data")
+        self.magic_arguments["delsettings"] = callback(self.clear_settings, "Deleted workflow settings")
         self.magic_arguments["reset"] = callback(self.reset, "Reset workflow")
-        self.magic_arguments["openlog"] = callback(
-            self.open_log, "Opening workflow log file"
-        )
-        self.magic_arguments["opencache"] = callback(
-            self.open_cachedir, "Opening workflow cache directory"
-        )
-        self.magic_arguments["opendata"] = callback(
-            self.open_datadir, "Opening workflow data directory"
-        )
-        self.magic_arguments["openworkflow"] = callback(
-            self.open_workflowdir, "Opening workflow directory"
-        )
-        self.magic_arguments["openterm"] = callback(
-            self.open_terminal, "Opening workflow root directory in Terminal"
-        )
+        self.magic_arguments["openlog"] = callback(self.open_log, "Opening workflow log file")
+        self.magic_arguments["opencache"] = callback(self.open_cachedir, "Opening workflow cache directory")
+        self.magic_arguments["opendata"] = callback(self.open_datadir, "Opening workflow data directory")
+        self.magic_arguments["openworkflow"] = callback(self.open_workflowdir, "Opening workflow directory")
+        self.magic_arguments["openterm"] = callback(self.open_terminal, "Opening workflow root directory in Terminal")
 
         # Diacritic folding
         def fold_on():
@@ -3042,9 +2989,7 @@ class Workflow:
 
     def open_terminal(self):
         """Open a Terminal window at workflow's :attr:`workflowdir`."""
-        subprocess.run(
-            ["/usr/bin/open", "-a", "Terminal", self.workflowdir], check=True
-        )
+        subprocess.run(["/usr/bin/open", "-a", "Terminal", self.workflowdir], check=True)
 
     def open_help(self):
         """Open :attr:`help_url` in default browser."""
@@ -3183,9 +3128,7 @@ class Workflow:
         :rtype: ``str``
         """
         cmd = ["security", action, "-s", service, "-a", account] + list(args)
-        with subprocess.Popen(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-        ) as proc:
+        with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as proc:
             stdout, _ = proc.communicate()
             if proc.returncode == 44:  # password does not exist
                 raise PasswordNotFound()

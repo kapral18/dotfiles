@@ -12,22 +12,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-
-def _parse_scalar(raw: str):
-    raw = raw.strip()
-    if raw.startswith('"') and raw.endswith('"'):
-        return raw[1:-1].replace('\\"', '"')
-    if raw.startswith("'") and raw.endswith("'"):
-        return raw[1:-1]
-    if raw == "true":
-        return True
-    if raw == "false":
-        return False
-    try:
-        return int(raw)
-    except ValueError:
-        pass
-    return raw
+from yaml_parser import parse_scalar
 
 
 def load_servers(path: str, is_work: bool) -> dict[str, dict[str, Any]]:
@@ -59,13 +44,13 @@ def load_servers(path: str, is_work: bool) -> dict[str, dict[str, Any]]:
             current = {"name": None, "work_only": False, "command": None, "args": []}
             servers.append(current)
             key, val = new_entry.group(1), new_entry.group(2).strip()
-            current[key] = _parse_scalar(val)
+            current[key] = parse_scalar(val)
             continue
 
         if in_args and current is not None:
             item = re.match(r"^\s+-\s+(.*)", stripped)
             if item and indent >= args_indent:
-                current["args"].append(_parse_scalar(item.group(1)))
+                current["args"].append(parse_scalar(item.group(1)))
                 continue
             else:
                 in_args = False
@@ -77,7 +62,7 @@ def load_servers(path: str, is_work: bool) -> dict[str, dict[str, Any]]:
                 in_args = True
                 args_indent = indent + 2
             else:
-                current[key] = _parse_scalar(val)
+                current[key] = parse_scalar(val)
 
     result: dict[str, dict[str, Any]] = {}
     for s in servers:

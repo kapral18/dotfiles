@@ -157,12 +157,7 @@ class Download:
     def __str__(self):
         """Format `Download` for printing."""
         return (
-            "Download("
-            "url={dl.url!r}, "
-            "filename={dl.filename!r}, "
-            "version={dl.version!r}, "
-            "prerelease={dl.prerelease!r}"
-            ")"
+            "Download(url={dl.url!r}, filename={dl.filename!r}, version={dl.version!r}, prerelease={dl.prerelease!r})"
         ).format(dl=self)
 
     def __repr__(self):
@@ -316,9 +311,7 @@ class Version:
                     return True
                 if other_suffix is None:  # longer value loses
                     return False
-                if isinstance(self_suffix, str) != isinstance(
-                    other_suffix, str
-                ):  # type coersion
+                if isinstance(self_suffix, str) != isinstance(other_suffix, str):  # type coersion
                     self_suffix, other_suffix = str(self_suffix), str(other_suffix)
                 elif self_suffix == other_suffix:  # next if the same compare
                     continue
@@ -506,9 +499,7 @@ def check_update(repo, current_version, prereleases=False, alfred_version=None):
     wf.logger.debug("latest=%r, installed=%r", dl.version, current)
 
     if dl.version > current:
-        wf.cache_data(
-            key, {"version": str(dl.version), "download": dl.dict, "available": True}
-        )
+        wf.cache_data(key, {"version": str(dl.version), "download": dl.dict, "available": True})
         return True
 
     wf.cache_data(key, no_update)

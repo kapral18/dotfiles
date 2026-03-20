@@ -5,6 +5,9 @@ set -euo pipefail
 # Unified MCP config generator — single source of truth for Cursor, Claude, Pi.
 # Triggers on changes to the canonical mcp_servers.yaml.
 # mcp_servers hash: {{ include ".chezmoidata/mcp_servers.yaml" | sha256sum }}
+# generate_mcp_configs.py hash: {{ include "../scripts/generate_mcp_configs.py" | sha256sum }}
+# merge_claude_mcp.py hash: {{ include "../scripts/merge_claude_mcp.py" | sha256sum }}
+# mcp_registry.py hash: {{ include "../scripts/mcp_registry.py" | sha256sum }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
 # shellcheck source=../../../scripts/chezmoi_lib.sh

@@ -213,7 +213,7 @@ run_parallel() {
     local cmd="$self"
     [ ${#fwd_args[@]} -gt 0 ] && cmd="$cmd ${fwd_args[*]}"
     cmd="$cmd --only $cat"
-    cat > "$wrapper" <<WRAPPER
+    cat >"$wrapper" <<WRAPPER
 #!/usr/bin/env bash
 $cmd
 echo \$? > "$rcfile"
@@ -383,12 +383,7 @@ update_npm() {
     return 0
   fi
 
-  local install_script="$HOME/bin/,install-npm-pkgs"
-  if [ -x "$install_script" ]; then
-    run_timed "sync npm packages" "$install_script" || true
-  else
-    step_skip ",install-npm-pkgs not found"
-  fi
+  run_timed "npm -g update" npm -g update || true
 }
 
 update_gems() {
@@ -490,7 +485,7 @@ if [ "$total_failed" -gt 0 ]; then
 fi
 printf '\n'
 
-if [ "$verbose" -eq 1 ] && [ "${#step_timings[@]:-0}" -gt 0 ]; then
+if [ "$verbose" -eq 1 ] && [ "${#step_timings[@]}" -gt 0 ]; then
   printf '\n%s── Timings%s\n' "$C_HEAD" "$C_R"
   for timing in "${step_timings[@]}"; do
     printf '  %s%s%s\n' "$C_DIM" "$timing" "$C_R"

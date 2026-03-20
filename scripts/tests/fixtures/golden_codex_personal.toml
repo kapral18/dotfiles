@@ -1,0 +1,12 @@
+[model]
+id = "test-model"
+
+[mcp_servers.public-tool]
+command = "docker"
+args = [
+  "run",
+  "--rm",
+  "-i",
+  "public/image",
+]
+

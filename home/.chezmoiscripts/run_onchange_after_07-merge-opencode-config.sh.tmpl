@@ -5,6 +5,7 @@ set -euo pipefail
 {{- if eq .isWork true }}
 # opencode config desired hash (work): {{ include "dot_config/opencode/readonly_opencode.work.jsonc" | sha256sum }}
 # litellm models hash: {{ include ".chezmoidata/litellm_models.yaml" | sha256sum }}
+# merge_opencode_models.py hash: {{ include "../scripts/merge_opencode_models.py" | sha256sum }}
 {{- else }}
 # opencode config desired hash (non-work): {{ include "dot_config/opencode/readonly_opencode.personal.jsonc" | sha256sum }}
 {{- end }}

@@ -20,7 +20,6 @@ from __future__ import annotations
 import re
 import sys
 
-
 RG_LINE_RE = re.compile(r"^(.+?):(\d+):(\d+):(.*)$")
 
 

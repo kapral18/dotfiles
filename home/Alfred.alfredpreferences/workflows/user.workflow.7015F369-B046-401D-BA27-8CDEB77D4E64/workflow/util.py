@@ -291,9 +291,7 @@ def reload_workflow(bundleid=None):
     """
     bundleid = bundleid or os.getenv("alfred_workflow_bundleid")
     appname = "com.runningwithcrayons.Alfred"
-    script = JXA_RELOAD_WORKFLOW.format(
-        app=json.dumps(appname), arg=json.dumps(bundleid)
-    )
+    script = JXA_RELOAD_WORKFLOW.format(app=json.dumps(appname), arg=json.dumps(bundleid))
     run_applescript(script, lang="JavaScript")
 
 

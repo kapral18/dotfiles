@@ -4,6 +4,8 @@ set -euo pipefail
 
 # gemini settings hash: {{ include "dot_gemini/settings.json" | sha256sum }}
 # mcp_servers hash: {{ include ".chezmoidata/mcp_servers.yaml" | sha256sum }}
+# generate_mcp_configs.py hash: {{ include "../scripts/generate_mcp_configs.py" | sha256sum }}
+# mcp_registry.py hash: {{ include "../scripts/mcp_registry.py" | sha256sum }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
 # shellcheck source=../../../scripts/chezmoi_lib.sh

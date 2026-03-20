@@ -31,4 +31,4 @@ mcp_servers:
     command: bash
     args:
       - "-lc"
-      - 'cd "$HOME/work/semantic-code-search-mcp-server/feat/oauth-resource-server" && ELASTICSEARCH_CLOUD_ID="$(pass scsi/k18/cloud_id)" ELASTICSEARCH_API_KEY="$(pass scsi/k18/api_key)" ELASTICSEARCH_INDEX=scsi-repo node dist/src/mcp_server/bin.js stdio'
+      - 'cd "$HOME/work/semantic-code-search-mcp-server" && ELASTICSEARCH_CLOUD_ID="$(pass scsi/k18/cloud_id)" ELASTICSEARCH_API_KEY="$(pass scsi/k18/api_key)" ELASTICSEARCH_INDEX=scsi-repo node dist/src/mcp_server/bin.js stdio'

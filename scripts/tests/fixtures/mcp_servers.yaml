@@ -1,0 +1,16 @@
+mcp_servers:
+  - name: public-tool
+    work_only: false
+    command: docker
+    args:
+      - run
+      - "--rm"
+      - "-i"
+      - public/image
+
+  - name: work-tool
+    work_only: true
+    command: bash
+    args:
+      - "-lc"
+      - 'echo "hello from work"'

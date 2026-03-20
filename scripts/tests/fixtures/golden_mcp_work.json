@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "public-tool": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "public/image"
+      ]
+    },
+    "work-tool": {
+      "command": "bash",
+      "args": [
+        "-lc",
+        "echo \"hello from work\""
+      ]
+    }
+  }
+}

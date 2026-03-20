@@ -5,6 +5,7 @@ set -euo pipefail
 {{- if eq .isWork true }}
 # pi settings desired hash (work): {{ include "dot_pi/agent/readonly_settings.work.json" | sha256sum }}
 # litellm models hash: {{ include ".chezmoidata/litellm_models.yaml" | sha256sum }}
+# generate_pi_models.py hash: {{ include "../scripts/generate_pi_models.py" | sha256sum }}
 {{- else }}
 # pi settings desired hash (non-work): {{ include "dot_pi/agent/readonly_settings.personal.json" | sha256sum }}
 # pi models desired hash (non-work): {{ include "dot_pi/agent/readonly_models.personal.json" | sha256sum }}

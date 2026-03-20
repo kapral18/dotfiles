@@ -42,7 +42,7 @@ def _render_mcp_value(mcp_yaml: str, is_work: bool) -> str:
         return lines[0]
 
     # Indent lines after the first by 2 spaces so it aligns under `"mcp": {`.
-    return "\n".join([lines[0], *[f"  {l}" for l in lines[1:]]])
+    return "\n".join([lines[0], *[f"  {line}" for line in lines[1:]]])
 
 
 def main() -> None:

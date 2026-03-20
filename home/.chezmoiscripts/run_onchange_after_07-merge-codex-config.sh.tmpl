@@ -8,6 +8,8 @@ set -euo pipefail
 # codex config desired hash (non-work): {{ include "dot_codex/private_config.personal.toml" | sha256sum }}
 {{- end }}
 # mcp_servers hash: {{ include ".chezmoidata/mcp_servers.yaml" | sha256sum }}
+# inject_mcp_into_codex_toml.py hash: {{ include "../scripts/inject_mcp_into_codex_toml.py" | sha256sum }}
+# mcp_registry.py hash: {{ include "../scripts/mcp_registry.py" | sha256sum }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
 # shellcheck source=../../../scripts/chezmoi_lib.sh

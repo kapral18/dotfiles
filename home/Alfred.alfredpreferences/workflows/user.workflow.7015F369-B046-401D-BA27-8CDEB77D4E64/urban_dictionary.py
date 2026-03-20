@@ -4,7 +4,7 @@
 #
 # MIT Licence. See http://opensource.org/licenses/MIT
 
-""""Alfred workflow aimed to search Urban Dictionary."""
+""" "Alfred workflow aimed to search Urban Dictionary."""
 
 import sys
 
