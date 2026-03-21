@@ -1,6 +1,8 @@
 return {
   {
     "folke/snacks.nvim",
+    priority = 1000,
+    lazy = false,
     opts = {
       dashboard = {
         enabled = true,
@@ -113,52 +115,53 @@ return {
         end,
         desc = "Lazygit (cwd)",
       },
-      -- Serpl
+      -- Scooter (search & replace)
       {
         "<leader>sr",
         function()
           local root = require("util.root").get()
-          require("snacks").terminal({ "serpl", "--project-root", root }, { cwd = root })
+          require("snacks").terminal({ "scooter", root }, { cwd = root })
         end,
-        desc = "Serpl (Root Dir)",
+        desc = "Scooter (Root Dir)",
       },
       {
         "<leader>sr",
         function()
           local fs_util = require("util.fs")
           local root = require("util.root").get()
-          local selection = fs_util.get_visual() or ""
-          selection = vim.trim(selection):gsub("%s+", " ")
+          local selection = vim.trim(fs_util.get_visual() or ""):gsub("%s+", " ")
 
           vim.cmd("normal! \027")
-          local term = require("snacks").terminal({ "serpl", "--project-root", root }, { cwd = root })
-
-          if selection == "" then
-            return
+          local cmd = { "scooter", root }
+          if selection ~= "" then
+            table.insert(cmd, "--search-text")
+            table.insert(cmd, selection)
           end
-
-          local function try_send(attempts_left)
-            if not (term and term.buf and vim.api.nvim_buf_is_valid(term.buf)) then
-              return
-            end
-            local job_id = vim.b[term.buf].terminal_job_id
-            if type(job_id) == "number" and job_id > 0 then
-              vim.api.nvim_chan_send(job_id, selection)
-              return
-            end
-            if attempts_left <= 0 then
-              return
-            end
-            vim.defer_fn(function()
-              try_send(attempts_left - 1)
-            end, 50)
-          end
-
-          vim.defer_fn(function()
-            try_send(10)
-          end, 60)
+          require("snacks").terminal(cmd, { cwd = root })
         end,
-        desc = "Serpl (Selection)",
+        desc = "Scooter (Selection)",
+        mode = { "x" },
+      },
+      -- Lasr (search & replace)
+      {
+        "<leader>srr",
+        function()
+          local root = require("util.root").get()
+          require("snacks").terminal({ "lasr", root }, { cwd = root })
+        end,
+        desc = "Lasr (Root Dir)",
+      },
+      {
+        "<leader>srr",
+        function()
+          local fs_util = require("util.fs")
+          local root = require("util.root").get()
+          local selection = vim.trim(fs_util.get_visual() or ""):gsub("%s+", " ")
+
+          vim.cmd("normal! \027")
+          require("snacks").terminal({ "lasr", root }, { cwd = root })
+        end,
+        desc = "Lasr (Selection)",
         mode = { "x" },
       },
       -- Git pickers

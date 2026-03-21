@@ -102,4 +102,7 @@ done <<<"$installed_binaries"
 # make it available in the current shell
 asdf reshim rust
 
+# lasr requires its cache directory to exist
+mkdir -p ~/.cache/lasr
+
 echo "All cargo crates installed successfully"

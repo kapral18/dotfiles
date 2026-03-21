@@ -13,34 +13,21 @@ git-brws
 # Description: Terminal UI for browsing Hacker News
 # URL: https://github.com/aome510/hackernews-TUI
 hackernews_tui
-# Description: Minimal reading tool with focus-enhancing text flow
-# URL: https://github.com/kruseio/hygg
-hygg
 # Description: Terminal client for lobste.rs discussions
 # URL: https://github.com/pythops/lobtui
 lobtui
 # Description: Simple lofi music player for the terminal
 # URL: https://github.com/talwat/lowfi
 lowfi
-# Description: Command-line sampling profiler for macOS and Linux
-# URL: https://github.com/mstange/samply/
-samply
 # Description: Stop processes interactively
 # URL: https://github.com/jacek-kurlit/pik
 pik
-# Description: Generate gitignore files
-# URL: https://github.com/reemus-dev/gitnr
-gitnr
 # Description: A terminal-based file tree diff viewer with flexible diff tool integration
 # URL: https://github.com/wtnqk/ftdv
 ftdv
 # Description: TUI for browsing lobste.rs
 # URL: https://github.com/Rolv-Apneseth/omaro
 omaro
-# Description: A terminal-based EPUB Books reader
-# URL: https://github.com/bugzmanov/bookokrat
-bookokrat
-# Description: Terminal tool to right-size LLM models to your hardware (RAM, CPU, GPU)
-# URL: https://github.com/AlexsJones/llmfit
-llmfit
-
+# Description: Live Action Search and Replace TUI
+# URL: https://github.com/rcorre/lasr
+lasr

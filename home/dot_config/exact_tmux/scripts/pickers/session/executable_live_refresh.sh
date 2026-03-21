@@ -219,7 +219,7 @@ maybe_reload_on_change() {
       ;;
   esac
 
-  post_action "reload($filter_cmd)" || return 1
+  post_action "reload($filter_cmd --force-order)" || return 1
   printf '%s\n' "$after"
 }
 
