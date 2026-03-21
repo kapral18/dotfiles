@@ -30,7 +30,8 @@ First actions:
 2. Extract only evidence you can verify (summary, test plan, migration notes).
 3. If issue linkage or test evidence is missing, keep placeholders instead of
    inventing details.
-4. If the repo is Elastic/Kibana, use the Elastic variant section below.
+4. If the repo belongs to the `elastic` org, use the Elastic org variant section
+   below.
 
 Rules:
 
@@ -63,28 +64,68 @@ Closes #X | Addresses #X
 -
 ```
 
-## Elastic / Kibana variant
+## Elastic org variant
 
-Use when the repo is Elastic/Kibana.
+Use when the repo belongs to the `elastic` GitHub org.
 
 Additional first actions:
 
-1. Verify the repo/context is Elastic/Kibana.
+1. Verify the repo belongs to the `elastic` org.
 2. Gather only verified evidence for summary, root cause/fix, test plan, and
-   release-note intent.
-3. If the user also asks for label/reviewer guidance, load the Kibana label
-   and/or ownership skills before finalizing the draft.
+   (for Kibana) release-note intent.
 
 Additional rules:
 
-- make release note intent explicit (even if labels are applied later)
 - never invent issue numbers; use `Closes #X` vs `Addresses #X` intentionally
+- append an "Assisted with" footer at the very end of every PR body (see footer
+  table below)
+
+Assisted-with footer (elastic org repos only):
+
+Every PR body must end with a one-line attribution identifying the AI tool and
+model used. Format: `Assisted with <Tool> using <Model>`.
+
+Known tool labels:
+
+| Tool            | Label example                                 |
+| --------------- | --------------------------------------------- |
+| Cursor          | `Assisted with Cursor using <model>`          |
+| Claude Code     | `Assisted with Claude Code using <model>`     |
+| Copilot         | `Assisted with Copilot using <model>`         |
+| OpenCode        | `Assisted with OpenCode using <model>`        |
+| pi-coding-agent | `Assisted with pi-coding-agent using <model>` |
+
+- Replace `<model>` with the actual model name you are running as (e.g.
+  `Claude 4.6 Opus`, `GPT-5.4`, `Gemini 2.5 Pro`).
+- If the current tool is not in the table, use a reasonable label and ask the
+  user to confirm.
+- The footer goes after all other sections, separated by a blank line.
+
+### Kibana-specific rules
+
+Additional rules when the repo is `elastic/kibana`:
+
+- Always load `~/.agents/skills/kibana-labels-propose/SKILL.md` to determine the
+  correct release note label — the `## Release Note` section inclusion depends
+  on it.
+- Include a `## Release Note` section only when the change warrants
+  `release_note:fix` or `release_note:feature`; omit the section entirely for
+  all other release note labels (`release_note:enhancement`,
+  `release_note:skip`).
+- If the user also asks for reviewer/ownership guidance, load the Kibana
+  ownership skill before finalizing the draft.
+
+Required guidance:
+
+- label proposals (propose-only):
+  `~/.agents/skills/kibana-labels-propose/SKILL.md`
 
 Optional guidance:
 
-- label proposals (propose-only): `~/.agents/skills/labels_propose/SKILL.md`
 - Kibana Management ownership signals:
   `~/.agents/skills/kibana-management-ownership/SKILL.md`
+
+### Templates (Elastic org)
 
 Default template (copy then delete unused sections):
 
@@ -96,6 +137,8 @@ Closes #X | Addresses #X
 -
 
 ## Test Plan
+
+Assisted with <Tool> using <Model>
 ```
 
 Bugfix:
@@ -127,8 +170,9 @@ Closes #X | Addresses #X
 
 ## Release Note
 
-- Single sentence describing user-facing behavior change (or lack thereof, if
-  `skip`).
+- Single sentence describing the user-facing behavior change.
+
+Assisted with <Tool> using <Model>
 ```
 
 Chore/Migration:
@@ -145,6 +189,8 @@ Closes #X | Addresses #X
 -
 
 ## Test Plan
+
+Assisted with <Tool> using <Model>
 ```
 
 Feature:
@@ -166,6 +212,7 @@ Closes #X | Addresses #X
 
 ## Release Note
 
-- Single sentence describing user-facing behavior change (or lack thereof, if
-  `skip`).
+- Single sentence describing the user-facing behavior change.
+
+Assisted with <Tool> using <Model>
 ```

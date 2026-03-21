@@ -2,12 +2,7 @@
   "mcpServers": {
     "public-tool": {
       "command": "docker",
-      "args": [
-        "run",
-        "--rm",
-        "-i",
-        "public/image"
-      ]
+      "args": ["run", "--rm", "-i", "public/image"]
     }
   }
 }

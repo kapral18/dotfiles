@@ -51,6 +51,9 @@ Common patterns (verify in repo):
 - release notes: `release_note:feature` | `release_note:enhancement` |
   `release_note:fix` | `release_note:skip`
   - default to `release_note:skip` unless user confirms public-facing change
+  - include a `## Release Note` section in the PR body only when the label is
+    `release_note:fix` or `release_note:feature`; omit the section entirely for
+    all other release note labels
 - backports:
   - `backport:skip` (default if no backport is needed) (no version tag if
     skipping)

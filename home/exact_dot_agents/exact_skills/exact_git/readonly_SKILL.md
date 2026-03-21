@@ -76,6 +76,32 @@ Commit quality:
 - if the repo uses semantic-release, do not manually version bump unless the
   repo requires it
 
+Co-author trailer (elastic org repos only):
+
+When the repo belongs to the `elastic` GitHub org, every commit must include a
+`Co-authored-by` trailer identifying the AI tool that authored the change.
+Append `--trailer` to the `git commit` command.
+
+Known tool identities:
+
+| Tool            | Trailer value                                     |
+| --------------- | ------------------------------------------------- |
+| Cursor          | `Co-authored-by: Cursor <cursoragent@cursor.com>` |
+| Claude Code     | `Co-authored-by: Claude <noreply@anthropic.com>`  |
+| Copilot         | `Co-authored-by: Copilot <noreply@github.com>`    |
+| OpenCode        | `Co-authored-by: opencode <noreply@opencode.ai>`  |
+| pi-coding-agent | `Co-authored-by: pi <noreply@anthropic.com>`      |
+
+- Use the identity row matching the tool you are running inside.
+- pi-coding-agent note: pi normally overrides `GIT_AUTHOR_NAME/EMAIL` directly
+  (embedding provider + model). If pi handles attribution on its own, skip the
+  trailer to avoid duplication. Otherwise use the table row above, replacing the
+  email with the active provider's email if known.
+- If the current tool is not in the table, ask the user for the correct
+  name/email before committing.
+- Example:
+  `git commit -m "fix: ..." --trailer="Co-authored-by: Cursor <cursoragent@cursor.com>"`
+
 Branching:
 
 - follow repo/team branch naming if one exists; otherwise default to

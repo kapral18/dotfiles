@@ -234,7 +234,7 @@ WRAPPER
 
   step_info "running ${#active_funcs[@]} steps in parallel (mprocs TUI — press q when done)"
 
-  mprocs -c "$config" || true
+  mprocs -c "$config" --on-all-finished '{"c":"focus-procs"}' || true
 
   # Collect results from .rc files
   for i in "${!active_labels[@]}"; do

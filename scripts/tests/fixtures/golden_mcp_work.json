@@ -2,19 +2,11 @@
   "mcpServers": {
     "public-tool": {
       "command": "docker",
-      "args": [
-        "run",
-        "--rm",
-        "-i",
-        "public/image"
-      ]
+      "args": ["run", "--rm", "-i", "public/image"]
     },
     "work-tool": {
       "command": "bash",
-      "args": [
-        "-lc",
-        "echo \"hello from work\""
-      ]
+      "args": ["-lc", "echo \"hello from work\""]
     }
   }
 }
