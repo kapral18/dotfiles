@@ -151,5 +151,5 @@ Use in every non-trivial review.
 - Draft in chat first.
 - If the user asks to post/submit/apply anything to GitHub:
   - keep the draft content from the review mode
-  - then switch to `~/.agents/skills/github/SKILL.md`
+  - then invoke the `github` skill via the Skill tool
   - get explicit approval for the GitHub side effect

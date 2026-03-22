@@ -1,5 +1,4 @@
 local format = require("util.format")
-local lsp = require("util.lsp")
 
 local eslint_filetypes = {
   javascript = true,
@@ -74,9 +73,9 @@ return {
               "eslint.config.cts",
             }
             root_file = util.insert_package_json(root_file, "eslintConfig", fname)
-            local git_dir = vim.fs.find(".git", { path = vim.fs.dirname(fname), upward = true })[1]
-            local git_root = git_dir and vim.fs.dirname(git_dir) or nil
-            local root = util.root_pattern(unpack(root_file))(fname) or git_root
+            -- Do not start eslint LSP just because we're in a git repo.
+            -- Only enable it when an eslint config (or eslintConfig in package.json) exists.
+            local root = util.root_pattern(unpack(root_file))(fname)
             if on_dir then
               if root then
                 on_dir(root)
@@ -113,15 +112,6 @@ return {
             end,
             format = eslint_fix_all,
           })
-
-          local formatter = lsp.formatter({
-            name = "eslint: lsp",
-            primary = false,
-            priority = 200,
-            filter = "eslint",
-          })
-
-          format.register(formatter)
         end,
       },
     },

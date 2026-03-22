@@ -65,5 +65,5 @@ Where to comment:
 
 ## If Posting Is Requested
 
-- Follow `~/.agents/skills/github/SKILL.md` for exact anchoring and API
+- Invoke the `github` skill via the Skill tool for exact anchoring and API
   constraints.

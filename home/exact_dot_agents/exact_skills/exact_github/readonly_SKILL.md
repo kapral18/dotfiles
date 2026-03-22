@@ -2,7 +2,7 @@
 name: github
 description: |-
   GitHub side effects via gh CLI. Use before any GitHub mutation — PRs,
-  issues, comments, reviews, labels, releases, merges, sub-issues, or
+  issues, comments, reviews, labels, releases, merges, sub-issues, gists, or
   any gh/API call that changes state. Not for review analysis or
   draft-only writing.
 ---
@@ -14,6 +14,8 @@ Use when:
 - the user explicitly wants a GitHub side effect via `gh` or GitHub APIs
 - the user wants to create/edit/post/apply/merge something on GitHub, not just
   draft text
+- the user provides a GitHub gist URL (`gist.github.com/...` or `gist.githubusercontent.com/...`)
+  or asks to create/update/list a gist
 
 Defaults & constraints:
 
@@ -22,6 +24,8 @@ Defaults & constraints:
   strategy.
 - Never merge into the base branch via CLI; merges happen via the GitHub UI.
 - For non-interactive reliability, set `GH_PAGER=cat` for all `gh` calls.
+- GitHub gists: use `gh gist` (or `gh api`) for all gist interactions; do not
+  fetch gist URLs directly (HTML wrappers, auth/rate limits, non-canonical).
 
 PR targeting (avoid searching):
 
@@ -66,8 +70,8 @@ First actions:
 2. Resolve the exact target repo/object (PR, issue, comment thread, release)
    before mutating anything.
 3. If the user also needs authored text, reviewer reasoning, labels, or Kibana
-   ownership guidance, load the required secondary skill(s) first and draft that
-   content before posting/applying it.
+   ownership guidance, invoke the required secondary skill(s) via the Skill tool
+   first and use their output before posting/applying.
 
 Approvals:
 
@@ -250,12 +254,12 @@ PR creation:
 
 Composition (draft-only) guidance:
 
-- Before creating/editing a PR body, load:
-  `~/.agents/skills/compose-pr/SKILL.md`
-- Before creating/editing an issue body, load:
-  `~/.agents/skills/compose-issue/SKILL.md`
-- For `elastic/kibana` label targeting, load:
-  `~/.agents/skills/kibana-labels-propose/SKILL.md`
+- Before creating/editing a PR body, invoke the `compose-pr` skill via the Skill
+  tool.
+- Before creating/editing an issue body, invoke the `compose-issue` skill via
+  the Skill tool.
+- For `elastic/kibana` label targeting, invoke the `kibana-labels-propose` skill
+  via the Skill tool.
 - For Kibana reviewer/ownership guidance, load:
   `~/.agents/skills/kibana-management-ownership/SKILL.md`
 

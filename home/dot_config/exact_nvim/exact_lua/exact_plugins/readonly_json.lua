@@ -33,9 +33,10 @@ return {
   {
     "stevearc/conform.nvim",
     opts = function(_, opts)
+      local web_toolchain = require("util.web_toolchain")
       opts.formatters_by_ft = vim.tbl_deep_extend("force", opts.formatters_by_ft or {}, {
-        json = { "prettierd", "prettier", stop_after_first = true },
-        jsonc = { "prettierd", "prettier", stop_after_first = true },
+        json = web_toolchain.web_formatters,
+        jsonc = web_toolchain.web_formatters,
       })
       return opts
     end,

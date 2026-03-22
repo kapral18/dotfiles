@@ -30,23 +30,18 @@ if [ -z "$dir" ] || [ ! -d "$dir" ]; then
   dir="$HOME"
 fi
 
-login_shell() {
-  local s=""
-  s="$(python3 -c 'import os,pwd; print(pwd.getpwuid(os.getuid()).pw_shell)' 2> /dev/null || true)"
-  if [ -n "$s" ] && [ -x "$s" ]; then
-    printf '%s\n' "$s"
-    return 0
-  fi
-  if command -v fish > /dev/null 2>&1; then
-    command -v fish
-    return 0
-  fi
-  printf '%s\n' "/bin/sh"
-}
-
-# Use the configured login shell rather than $SHELL (tmux may set SHELL=/bin/sh
-# inside popups for snappy rendering).
-shell="$(login_shell)"
+# Use $SHELL when it looks like a real login shell; fall back to passwd lookup
+# only if $SHELL is /bin/sh (tmux popups override SHELL for snappy rendering,
+# but this hook runs in a regular run-shell context where SHELL is correct).
+shell="${SHELL:-/bin/sh}"
+case "$shell" in
+  */sh)
+    shell="$(python3 -c 'import os,pwd; print(pwd.getpwuid(os.getuid()).pw_shell)' 2> /dev/null || true)"
+    if [ -z "$shell" ] || [ ! -x "$shell" ]; then
+      shell="$(command -v fish 2> /dev/null || echo /bin/sh)"
+    fi
+    ;;
+esac
 
 if [ "$pending_spawn" = "1" ]; then
   pane_id="$(tmux list-panes -t "$session" -F '#{pane_id}' 2> /dev/null | head -n 1)"
@@ -57,16 +52,20 @@ if [ "$pending_spawn" = "1" ]; then
 fi
 
 if [ "$pending_split" = "1" ]; then
-  win="$(tmux list-windows -t "$session" -F '#{window_id}' 2> /dev/null | head -n 1)"
-  if [ -n "$win" ]; then
-    panes="$(tmux display-message -p -t "$win" '#{window_panes}' 2> /dev/null || printf '0')"
-    case "$panes" in
-      '' | *[!0-9]*) panes=0 ;;
-    esac
-    if [ "$panes" -lt 2 ]; then
-      tmux split-window -h -t "$win" -c "$dir" "$shell" 2> /dev/null || true
-      tmux select-layout -t "$win" even-horizontal > /dev/null 2>&1 || true
-    fi
-  fi
-  set_opt "@pick_session_lazy_split_pending" "0"
+  # Defer the split so the first pane renders immediately. Without this,
+  # both panes launch shell+prompt (e.g. fish+starship) synchronously,
+  # which can take several seconds on large repos like kibana.
+  _qs="$(printf %q "$session")"
+  _qd="$(printf %q "$dir")"
+  _qsh="$(printf %q "$shell")"
+  tmux run-shell -b "sleep 0.3; \
+    win=\$(tmux list-windows -t ${_qs} -F '##{window_id}' 2>/dev/null | head -n 1); \
+    [ -n \"\$win\" ] || exit 0; \
+    panes=\$(tmux display-message -p -t \"\$win\" '##{window_panes}' 2>/dev/null || printf 0); \
+    case \"\$panes\" in ''|*[!0-9]*) panes=0;; esac; \
+    [ \"\$panes\" -lt 2 ] || exit 0; \
+    tmux split-window -h -t \"\$win\" -c ${_qd} ${_qsh} 2>/dev/null; \
+    tmux select-layout -t \"\$win\" even-horizontal 2>/dev/null; \
+    tmux set-option -t ${_qs} -q @pick_session_lazy_split_pending 0 2>/dev/null" \
+    2> /dev/null || true
 fi

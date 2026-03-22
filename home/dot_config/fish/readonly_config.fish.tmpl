@@ -311,7 +311,7 @@ if status --is-interactive
     alias cat=bat
     alias agent=cursor-agent
     alias c=chezmoi
-    alias claude-vertex='env CLAUDE_CODE_USE_VERTEX=1 CLOUD_ML_REGION=global ANTHROPIC_VERTEX_PROJECT_ID=(pass google/vertex/project) claude'
+    alias vlaude='env CLAUDE_CODE_USE_VERTEX=1 CLOUD_ML_REGION=global ANTHROPIC_VERTEX_PROJECT_ID=(pass google/vertex/project) claude'
     alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l'
     alias g=git
     alias t=tmux
@@ -340,6 +340,74 @@ if status --is-interactive
     ## Initializations
     if type -q starship
         starship init fish | source
+
+        # Async first-prompt: when the session picker creates a new session it
+        # sets @pick_session_async_prompt=1.  On the very first prompt we show a
+        # fast placeholder, compute starship in the background, then swap it in
+        # via SIGWINCH.  After that single swap the wrapper removes itself and
+        # all subsequent prompts use normal synchronous starship.
+        functions -c fish_prompt __starship_sync_prompt
+
+        function fish_prompt
+            set -l last_status $status
+            set -l last_pipestatus $pipestatus
+            set -l last_duration "$CMD_DURATION$cmd_duration"
+
+            # Fast path: once the async first-prompt is done, call starship directly.
+            if test "$__starship_first_prompt_done" = 1
+                __starship_sync_prompt
+                return
+            end
+
+            # Check if the session picker requested an async first prompt.
+            if not set -q __starship_first_prompt_checked
+                set -g __starship_first_prompt_checked 1
+                set -l flag ""
+                if set -q TMUX
+                    set flag (tmux show-option -qv @pick_session_async_prompt 2>/dev/null)
+                end
+                if test "$flag" != 1
+                    # Not a picker-created session — use sync prompt forever.
+                    set -g __starship_first_prompt_done 1
+                    __starship_sync_prompt
+                    return
+                end
+                # Clear the flag so re-entering this session later is sync.
+                tmux set-option -q @pick_session_async_prompt 0 2>/dev/null
+            end
+
+            set -l cache /tmp/.starship_cache_{$fish_pid}
+
+            # Second call (SIGWINCH repaint): emit cached result, switch to sync.
+            if test -f $cache
+                cat $cache
+                rm -f $cache
+                set -g __starship_first_prompt_done 1
+                return
+            end
+
+            # First call: start background starship, return placeholder.
+            set -l cols $COLUMNS
+            fish -c "
+                set -x STARSHIP_SHELL fish
+                starship prompt --terminal-width=$cols --status=$last_status --pipestatus='$last_pipestatus' --keymap=insert --cmd-duration=$last_duration --jobs=0 > /tmp/.starship_cache_$fish_pid 2>/dev/null
+                kill -WINCH $fish_pid 2>/dev/null
+            " &
+            disown $last_pid 2>/dev/null
+
+            set_color cyan --bold
+            echo -n (prompt_pwd)
+            set_color normal
+            echo -n ' '
+            set_color green --bold
+            echo -n '❯'
+            set_color normal
+            echo -n ' '
+        end
+
+        function __starship_async_cleanup --on-event fish_exit
+            rm -f /tmp/.starship_cache_$fish_pid 2>/dev/null
+        end
     end
 
     if type -q zoxide

@@ -25,12 +25,12 @@ Contract:
 - Load secondary skills only when this router or the selected mode requires them
   (for example: semantic code search for base context, or GitHub workflow when
   the user explicitly asks to post).
-- Do not load `~/.agents/skills/github/SKILL.md` for read-only PR
-  inspection/review. Only load it when the user explicitly asks to post/submit
+- Do not invoke the `github` skill for read-only PR inspection/review. Only
+  invoke it (via the Skill tool) when the user explicitly asks to post/submit
   anything to GitHub.
 - If the user wants review analysis and GitHub posting in the same request, the
-  review router stays primary. Draft/verify through review mode first, then load
-  `~/.agents/skills/github/SKILL.md` only for the posting step.
+  review router stays primary. Draft/verify through review mode first, then
+  invoke the `github` skill via the Skill tool only for the posting step.
 
 ## PR Detection (Do First When PR Is Involved)
 

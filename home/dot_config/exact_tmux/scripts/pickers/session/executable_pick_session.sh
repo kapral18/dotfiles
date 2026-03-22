@@ -437,6 +437,11 @@ mark_lazy_spawn_pending() {
   tmux set-option -t "$target" -q "@pick_session_lazy_spawn_pending" "1" > /dev/null 2>&1 || true
 }
 
+mark_async_prompt() {
+  local target="$1"
+  tmux set-option -t "$target" -q "@pick_session_async_prompt" "1" > /dev/null 2>&1 || true
+}
+
 split_first_window_in_session() {
   local name="$1"
   local dir="$2"
@@ -481,11 +486,13 @@ ensure_session_layout() {
       die "tmux: failed to create session: $name ($dir)"
     fi
     created_any_session=1
+    created_session_lines+=("${name}"$'\t'"${dir}")
     if [ "${__sess_cache_loaded:-0}" -eq 1 ]; then
       sess_add "$name" "$dir" || true
     fi
     mark_lazy_spawn_pending "$name"
     mark_lazy_split_pending "$name"
+    mark_async_prompt "$name"
     return 0
   fi
 
@@ -498,9 +505,20 @@ ensure_session_layout() {
     die "tmux: failed to create session: $name ($dir)"
   fi
   created_any_session=1
+  created_session_lines+=("${name}"$'\t'"${dir}")
   if [ "${__sess_cache_loaded:-0}" -eq 1 ]; then
     sess_add "$name" "$dir" || true
   fi
+  mark_async_prompt "$name"
+
+  if [ "$layout" = "single" ]; then
+    # Single selection: shell is already running; defer the split so it
+    # doesn't block the popup from closing. The on_session_switch hook
+    # will add the second pane in the background.
+    mark_lazy_split_pending "$name"
+    return 0
+  fi
+
   split_first_window_in_session "$name" "$dir"
 }
 
@@ -973,11 +991,19 @@ MODE="$(tmux_opt "@pick_session_mode" "directory")"
 AUTO_RENAME_SESSIONS="$(tmux_opt "@pick_session_auto_rename_sessions" "off")"
 
 selection_count="$(printf '%s\n' "$selections" | awk 'NF { c++ } END { print c + 0 }')"
-# Session creation should feel instant. Always create new sessions in a
-# lightweight placeholder mode, then let the session-switch hook respawn panes
-# into the real shell + layout when you actually enter the session.
-create_layout="deferred"
+# For single selections, create the session with the real shell immediately so
+# it starts initializing while pick_session.sh finishes (overlapping ~400ms of
+# shell startup with the remaining script work). For multi-selections, use
+# deferred mode to avoid freezing the UI with many concurrent shell starts.
+if [ "$selection_count" -le 1 ]; then
+  create_layout="single"
+else
+  create_layout="deferred"
+fi
 created_any_session=0
+# Collect (name\tpath) pairs for sessions created during this run so we can
+# inject them into the cache instantly without a full reindex.
+created_session_lines=()
 target_session=""
 primary_set=0
 while IFS= read -r _line; do
@@ -1132,8 +1158,33 @@ if ! tmux switch-client -t "=${target_session}" 2> /dev/null; then
   die "tmux: failed to switch to: ${target_session}"
 fi
 
-# If we created any new sessions, refresh the cache quickly so the next picker
-# open shows them in their "true" group/position without waiting for TTL.
-if [ "${created_any_session:-0}" -eq 1 ]; then
-  tmux run-shell -b "$HOME/.config/tmux/scripts/pickers/session/index_update.sh --force --quiet --quick-only" 2> /dev/null || true
+# If we created any new sessions, inject them into the cache immediately so the
+# next picker open shows them without waiting for a full reindex (~5s).
+if [ "${created_any_session:-0}" -eq 1 ] && [ "${#created_session_lines[@]}" -gt 0 ]; then
+  _cache_file="${cache_dir}/pick_session_items.tsv"
+  _ordered_file="${cache_dir}/pick_session_items_ordered.tsv"
+  _sess_icon=$'\033[38;5;42m\033[0m'
+  _sess_color=$'\033[1;38;5;81m'
+  _reset=$'\033[0m'
+  for _csl in "${created_session_lines[@]}"; do
+    IFS=$'\t' read -r _cname _cpath <<< "$_csl"
+    [ -n "$_cname" ] || continue
+    [ -n "$_cpath" ] || continue
+    _mk="${_cname} ${_cpath}"
+    _row="${_sess_icon}  ${_sess_color}${_cname}${_reset}"$'\t'"session"$'\t'"${_cpath}"$'\t'$'\t'"${_cname}"$'\t'"${_mk}"
+    if [ -f "$_cache_file" ]; then
+      # Prepend session row so it appears at the top of its kind.
+      _tmp_cache="$(mktemp "${cache_dir}/pick_session_inject.XXXXXX")"
+      printf '%s\n' "$_row" > "$_tmp_cache"
+      cat "$_cache_file" >> "$_tmp_cache"
+      mv -f "$_tmp_cache" "$_cache_file"
+    else
+      printf '%s\n' "$_row" > "$_cache_file"
+    fi
+  done
+  # Invalidate the ordered snapshot so the next open regenerates it.
+  rm -f "$_ordered_file" 2> /dev/null || true
+  # Schedule a proper reindex in the background for full group/position accuracy.
+  # Delay 5s so it doesn't compete with shell/starship startup for CPU.
+  tmux run-shell -b "sleep 5; $HOME/.config/tmux/scripts/pickers/session/index_update.sh --force --quiet --quick-only" 2> /dev/null || true
 fi

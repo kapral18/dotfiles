@@ -71,7 +71,10 @@ Use when the repo belongs to the `elastic` GitHub org.
 Additional first actions:
 
 1. Verify the repo belongs to the `elastic` org.
-2. Gather only verified evidence for summary, root cause/fix, test plan, and
+2. If the repo is `elastic/kibana`, invoke the `kibana-labels-propose` skill via
+   the Skill tool **now** (before drafting). The result determines whether to
+   include a `## Release Note` section — see Kibana-specific rules below.
+3. Gather only verified evidence for summary, root cause/fix, test plan, and
    (for Kibana) release-note intent.
 
 Additional rules:
@@ -105,20 +108,17 @@ Known tool labels:
 
 Additional rules when the repo is `elastic/kibana`:
 
-- Always load `~/.agents/skills/kibana-labels-propose/SKILL.md` to determine the
-  correct release note label — the `## Release Note` section inclusion depends
-  on it.
-- Include a `## Release Note` section only when the change warrants
-  `release_note:fix` or `release_note:feature`; omit the section entirely for
-  all other release note labels (`release_note:enhancement`,
-  `release_note:skip`).
+- **Before drafting the PR body**, invoke the `kibana-labels-propose` skill via
+  the Skill tool to determine the correct label set (including the release note
+  label). The `## Release Note` section inclusion depends on the label result:
+  - Include the section only when the proposed label is `release_note:fix` or
+    `release_note:feature`.
+  - Omit the section entirely for all other release note labels
+    (`release_note:enhancement`, `release_note:skip`).
+- Do not skip or defer the label proposal step — the PR body cannot be finalized
+  without it.
 - If the user also asks for reviewer/ownership guidance, load the Kibana
   ownership skill before finalizing the draft.
-
-Required guidance:
-
-- label proposals (propose-only):
-  `~/.agents/skills/kibana-labels-propose/SKILL.md`
 
 Optional guidance:
 
