@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 # Worktree helper functions library
 
+# Sanitize a branch name for use as a filesystem path component.
+# Replaces characters that break URL-based path resolution (e.g. Node.js
+# import.meta.url parsed via new URL().pathname) where # is a fragment
+# delimiter and ? starts a query string.  Git branch names allow these
+# characters but filesystem paths containing them silently corrupt
+# URL-derived __dirname calculations.
+_comma_w_sanitize_path_component() {
+  printf '%s\n' "$1" | sed 's/[#?%]/_/g'
+}
+
 _comma_w_tmux() {
   if ! command -v tmux > /dev/null 2>&1; then
     return 127

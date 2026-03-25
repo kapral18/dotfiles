@@ -144,14 +144,15 @@ if [ "$is_base_branch_specified" -eq 0 ]; then
     worktree_path=""
     tracking_remote="$input_remote"
 
+    safe_remote_branch_path="$(_comma_w_sanitize_path_component "$input_remote_branch")"
     if _comma_w_remote_is_first_party "$input_remote"; then
       local_branch="$input_remote_branch"
-      worktree_path="$parent_dir/$input_remote_branch"
+      worktree_path="$parent_dir/$safe_remote_branch_path"
       tracking_remote="$(_comma_w_preferred_tracking_remote_for_branch "$input_remote" "$input_remote_branch")"
       [ -n "$tracking_remote" ] || tracking_remote="$input_remote"
     else
       local_branch="${input_remote}__${input_remote_branch}"
-      worktree_path="$parent_dir/$input_remote/$input_remote_branch"
+      worktree_path="$parent_dir/$input_remote/$safe_remote_branch_path"
     fi
 
     if _comma_w_worktree_has_branch "$local_branch"; then
@@ -194,7 +195,7 @@ if [ "$is_base_branch_specified" -eq 0 ]; then
       fi
     fi
   else
-    worktree_path="$parent_dir/$branch_name"
+    worktree_path="$parent_dir/$(_comma_w_sanitize_path_component "$branch_name")"
 
     if _comma_w_worktree_has_branch "$branch_name"; then
       info "Branch '$branch_name' already exists as a worktree."
@@ -249,7 +250,8 @@ else
 
   target_branch="$branch_name"
   base_ref=""
-  worktree_path="$parent_dir/$branch_name"
+  safe_branch_path="$(_comma_w_sanitize_path_component "$branch_name")"
+  worktree_path="$parent_dir/$safe_branch_path"
 
   base_remote=""
   base_remote_branch=""
@@ -275,10 +277,10 @@ else
 
       if _comma_w_remote_is_first_party "$base_remote"; then
         target_branch="$branch_name"
-        worktree_path="$parent_dir/$branch_name"
+        worktree_path="$parent_dir/$safe_branch_path"
       else
         target_branch="${base_remote}__${branch_name}"
-        worktree_path="$parent_dir/$base_remote/$branch_name"
+        worktree_path="$parent_dir/$base_remote/$safe_branch_path"
       fi
     fi
   fi

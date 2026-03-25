@@ -35,11 +35,9 @@ ordered_has_session_rows() {
 # recent mutations (ctrl-x kill / alt-x remove) or pending items.
 if [ -s "$ordered_file" ]; then
   stale=0
-  # If the underlying cache changed, regenerate ordering only when the ordered
-  # snapshot is missing session rows (otherwise keep the fast ordered path).
-  if [ -s "$cache_file" ] && [ "$cache_file" -nt "$ordered_file" ]; then
-    ordered_has_session_rows "$ordered_file" || stale=1
-  fi
+  # If the underlying cache changed, treat the ordered snapshot as stale so we
+  # don't reopen with an out-of-date list (e.g. after ctrl-r refresh).
+  [ -s "$cache_file" ] && [ "$cache_file" -nt "$ordered_file" ] && stale=1
   [ -s "$mutation_file" ] && [ "$mutation_file" -nt "$ordered_file" ] && stale=1
   [ -s "$pending_file" ] && [ "$pending_file" -nt "$ordered_file" ] && stale=1
   if [ "$stale" -eq 0 ]; then

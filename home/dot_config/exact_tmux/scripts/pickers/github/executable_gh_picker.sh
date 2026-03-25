@@ -133,7 +133,7 @@ pick="$(
     --preview "$preview_cmd_0" \
     --preview-window 'right,55%,border-left,wrap' \
     --header $'enter=checkout (batch if marked)  alt-b=octo  alt-o=browser  alt-y=copy url(s)  tab=mark  ctrl-s=work/home  alt-c=comment  ?=help' \
-    --bind "ctrl-r:transform:m=\$(cat $(printf %q "$mode_flag_file")); echo \"reload(GH_PICKER_MODE=\$m $items_cmd --refresh)+clear-query\"" \
+    --bind "ctrl-r:transform:m=\$(cat $(printf %q "$mode_flag_file")); echo \"reload(GH_PICKER_MODE=\$m $items_cmd --refresh)+track+clear-query\"" \
     --bind "ctrl-s:transform:$(printf %q "$toggle_cmd") $(printf %q "$mode_flag_file") $(printf %q "$items_cmd")" \
     --bind "alt-g:execute-silent($(printf %q "$handoff_to_sessions_cmd") {2} {3} {4} $(printf %q "$pick_session_pin_file") 2>/dev/null || true; touch ${cache_dir}/gh_picker_switch_sessions)+abort" \
     --bind "alt-o:execute-silent($action_cmd open {2} {3} {4} {5})" \

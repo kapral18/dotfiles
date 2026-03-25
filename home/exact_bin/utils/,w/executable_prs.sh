@@ -482,12 +482,13 @@ for pr_number in "${pr_numbers[@]}"; do
     fi
   fi
 
+  safe_branch_path="$(_comma_w_sanitize_path_component "$branch_name")"
   if _comma_w_remote_is_first_party "$remote_name"; then
     local_branch="$branch_name"
-    worktree_path="$parent_dir/$branch_name"
+    worktree_path="$parent_dir/$safe_branch_path"
   else
     local_branch="${remote_name}__${branch_name}"
-    worktree_path="$parent_dir/$remote_name/$branch_name"
+    worktree_path="$parent_dir/$remote_name/$safe_branch_path"
   fi
 
   # If this PR was previously checked out using a pr-<number> branch name,

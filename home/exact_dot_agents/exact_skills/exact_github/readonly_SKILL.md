@@ -82,6 +82,10 @@ Approvals:
 
 PR review side effects (draft / pending reviews):
 
+- Definition: a "pending review" is a PR review whose API `state` is `PENDING`.
+  It is visible only to the reviewer who created it until submission
+  (COMMENT/APPROVE/REQUEST_CHANGES), and it does not appear to the PR author as
+  posted review comments while pending.
 - Creating a PENDING (draft) PR review requires the reviews API. Omit `event`
   in: `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews`
 - Batch draft comments: include all inline review comments in the `comments`
@@ -99,6 +103,10 @@ PR review side effects (draft / pending reviews):
   are not part of a pending review. In practice, while you have a pending
   review, you may not be able to create additional file-level review comments
   from the same user.
+- Verification rule of thumb:
+  - `GET /repos/{o}/{r}/pulls/{n}/reviews` will show the `PENDING` review
+  - `GET /repos/{o}/{r}/pulls/{n}/comments` should remain unchanged until you
+    submit (draft comments are attached to the review, not publicly posted)
 - Arrays: prefer `gh api ... --input /path/to.json` for payloads containing
   arrays (avoids accidentally sending arrays as strings via `-f/-F`).
 

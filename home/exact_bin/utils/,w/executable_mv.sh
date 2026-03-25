@@ -141,7 +141,7 @@ fi
 old_path="$from_path"
 
 if [ -z "$new_path" ]; then
-  new_path="$parent_dir/$to_branch"
+  new_path="$parent_dir/$(_comma_w_sanitize_path_component "$to_branch")"
 fi
 
 old_session="$(_comma_w_tmux_session_name "$parent_name" "$from_branch")"

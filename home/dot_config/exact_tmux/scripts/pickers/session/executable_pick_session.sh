@@ -314,7 +314,7 @@ else
         --preview "$preview_cmd_0" \
         --preview-window 'right,50%,border-left' \
         --bind "start:execute-silent:$live_refresh_cmd >/dev/null 2>&1 &" \
-        --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+clear-query" \
+        --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+track+clear-query" \
         --bind "alt-r:execute-silent:$live_refresh_cmd --once --force >/dev/null 2>&1 &" \
         --bind "alt-j:half-page-down" \
         --bind "alt-k:half-page-up" \
@@ -360,7 +360,7 @@ else
         --preview "$preview_cmd_0" \
         --preview-window 'right,50%,border-left' \
         --bind "start:execute-silent:$live_refresh_cmd >/dev/null 2>&1 &" \
-        --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+clear-query" \
+        --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+track+clear-query" \
         --bind "alt-r:execute-silent:$live_refresh_cmd --once --force >/dev/null 2>&1 &" \
         --bind "alt-j:half-page-down" \
         --bind "alt-k:half-page-up" \

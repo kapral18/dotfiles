@@ -146,6 +146,28 @@ Use in every non-trivial review.
 - Use `suggestion` blocks only when confident the replacement matches the exact
   anchored line(s).
 
+## Pending Review Semantics (Definition + Content Boundary)
+
+Terminology used in these skills:
+
+- "pending review" means a GitHub PR review whose API `state` is `PENDING` (draft):
+  - it is visible only to the reviewer who created it until they submit it
+    (COMMENT/APPROVE/REQUEST_CHANGES)
+  - it is *not* visible to the PR author or other reviewers while pending
+  - assume everything in it may become public once submitted; draft accordingly
+
+Content boundary:
+
+- A pending review must contain only public-ready review content: objective,
+  presentable, and directly related to the code under review.
+- Never include the agent's internal reasoning, excerpts of internal
+  conversation, tool outputs, or meta-justifications. The PR author should not
+  learn that internal discussion exists.
+- Prefer concrete fixes:
+  - best: GitHub `suggestion` blocks with exact replacement code
+  - otherwise: small code snippets or precise, actionable steps (avoid vague
+    descriptions).
+
 ## Posting Boundary
 
 - Draft in chat first.
