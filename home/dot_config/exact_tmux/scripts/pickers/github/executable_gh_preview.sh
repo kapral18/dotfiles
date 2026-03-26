@@ -290,6 +290,16 @@ _spawn_fetch() {
     esac
     if [ -n "$content" ]; then
       printf '%s\n' "$content" | _atomic_write "$cache_file" 2> /dev/null || true
+      # If the user is still looking at this item, ask fzf to refresh the preview.
+      cur="$(cat "$active_key_file" 2> /dev/null || true)"
+      if [ "$cur" = "$active_key" ]; then
+        local pf="${XDG_CACHE_HOME:-$HOME/.cache}/tmux/gh_picker_port"
+        local port=""
+        port="$(cat "$pf" 2> /dev/null || true)"
+        if [ -n "$port" ]; then
+          curl -s --max-time 2 -XPOST "http://127.0.0.1:${port}" -d 'refresh-preview' 2> /dev/null || true
+        fi
+      fi
     fi
     rm -rf "$fetch_lock_dir" 2> /dev/null || true
     rm -rf "$global_fetch_lock_dir" 2> /dev/null || true

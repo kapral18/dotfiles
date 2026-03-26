@@ -11,13 +11,7 @@
 # Usage: gh_picker.sh [--mode work|home]
 set -euo pipefail
 
-bg_pid=""
-cleanup() {
-  [ -n "$bg_pid" ] && kill "$bg_pid" 2> /dev/null || true
-  # Also kill any descendant processes of the background job
-  [ -n "$bg_pid" ] && pkill -P "$bg_pid" 2> /dev/null || true
-}
-trap 'cleanup; exit 0' INT HUP TERM EXIT
+trap 'exit 0' INT HUP TERM
 
 die() {
   if [ -n "${TMUX:-}" ]; then
@@ -87,9 +81,6 @@ preview_cmd_0="$preview_cmd --expand=0 {f}"
 preview_cmd_1="$preview_cmd --expand=1 {f}"
 preview_cmd_2="$preview_cmd --expand=2 {f}"
 
-fzf_port="$(python3 -c 'import socket; s=socket.socket(); s.bind(("",0)); print(s.getsockname()[1]); s.close()')"
-printf '%s' "$fzf_port" > "$port_file" 2> /dev/null || true
-
 pin_kind=""
 pin_repo=""
 pin_num=""
@@ -105,20 +96,14 @@ if [ -n "$pin_kind" ] && [ -n "$pin_repo" ] && [ -n "$pin_num" ] && [ -x "$pin_f
   reload_items_cmd="$initial_items_cmd"
 fi
 
-(
-  # Let the UI paint before doing heavier background fetches.
-  sleep 0.15
-  eval "$full_load_cmd" > /dev/null 2>&1 || true
-  # Use IPv4 explicitly; on macOS `localhost` may resolve to ::1 while fzf binds 127.0.0.1.
-  curl -s --max-time 5 -XPOST "http://127.0.0.1:${fzf_port}" \
-    -d "reload($reload_items_cmd)+track" 2> /dev/null || true
-) &
-bg_pid=$!
+# Background fetch: launched from fzf's start binding where $FZF_PORT is available.
+# Fetches fresh data from GitHub, then POSTs a reload to the running fzf instance.
+bg_fetch_cmd="(sleep 0.15; eval $(printf %q "$full_load_cmd") >/dev/null 2>&1 || true; printf '%s' \"\$FZF_PORT\" > $(printf %q "$port_file") 2>/dev/null || true; curl -s --max-time 5 -XPOST \"http://127.0.0.1:\${FZF_PORT}\" -d 'reload($reload_items_cmd)+track' 2>/dev/null || true) &"
 
 pick="$(
   eval "$initial_items_cmd" | SHELL="$fzf_shell" fzf \
     --with-shell "$fzf_shell -c" \
-    --listen-unsafe=$fzf_port \
+    --listen-unsafe \
     --ansi \
     --height=100% \
     --reverse \
@@ -133,6 +118,7 @@ pick="$(
     --preview "$preview_cmd_0" \
     --preview-window 'right,55%,border-left,wrap' \
     --header $'enter=checkout (batch if marked)  alt-b=octo  alt-o=browser  alt-y=copy url(s)  tab=mark  ctrl-s=work/home  alt-c=comment  ?=help' \
+    --bind "start:execute-silent:$bg_fetch_cmd" \
     --bind "ctrl-r:transform:m=\$(cat $(printf %q "$mode_flag_file")); echo \"reload(GH_PICKER_MODE=\$m $items_cmd --refresh)+track+clear-query\"" \
     --bind "ctrl-s:transform:$(printf %q "$toggle_cmd") $(printf %q "$mode_flag_file") $(printf %q "$items_cmd")" \
     --bind "alt-g:execute-silent($(printf %q "$handoff_to_sessions_cmd") {2} {3} {4} $(printf %q "$pick_session_pin_file") 2>/dev/null || true; touch ${cache_dir}/gh_picker_switch_sessions)+abort" \

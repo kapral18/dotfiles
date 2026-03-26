@@ -4,7 +4,7 @@ set -euo pipefail
 
 {{- if eq .isWork true }}
 # opencode config desired hash (work): {{ include "dot_config/opencode/readonly_opencode.work.jsonc" | sha256sum }}
-# litellm models hash: {{ include ".chezmoidata/litellm_models.yaml" | sha256sum }}
+# ai models hash: {{ include ".chezmoidata/ai_models.yaml" | sha256sum }}
 # merge_opencode_models.py hash: {{ include "../scripts/merge_opencode_models.py" | sha256sum }}
 {{- else }}
 # opencode config desired hash (non-work): {{ include "dot_config/opencode/readonly_opencode.personal.jsonc" | sha256sum }}
@@ -24,7 +24,7 @@ src="$(chezmoi_pick_src "$is_work" "$source_dir" \
 
 if [ "$is_work" = "true" ]; then
   desired="$(python3 "$source_dir/../scripts/merge_opencode_models.py" \
-    "$src" "$source_dir/.chezmoidata/litellm_models.yaml")"
+    "$src" "$source_dir/.chezmoidata/ai_models.yaml")"
 else
   desired="$(cat "$src")"
 fi

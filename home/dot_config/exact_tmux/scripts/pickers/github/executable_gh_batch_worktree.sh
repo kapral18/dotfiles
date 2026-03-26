@@ -67,7 +67,11 @@ while IFS=$'\t' read -r _display kind repo num _rest; do
     issue)
       issues+=("$num")
       issue_repos+=("$repo")
-      title="$(gh issue view "$num" -R "$repo" --json title --jq .title 2> /dev/null || echo "")"
+      if [ "$background" -eq 0 ]; then
+        title="$(gh issue view "$num" -R "$repo" --json title --jq .title 2> /dev/null || echo "")"
+      else
+        title=""
+      fi
       issue_titles+=("$title")
       ;;
   esac
@@ -107,23 +111,24 @@ resolve_repo_path() {
 
 issue_branches=()
 
-if [ ${#issues[@]} -gt 0 ]; then
-  tmpfile="$(mktemp /tmp/gh_batch_worktree_XXXXXX.conf)"
-  trap 'rm -f "$tmpfile"' EXIT
+if [ "$background" -eq 0 ]; then
+  # Foreground: collect issue branch names (if any), then dispatch everything to background.
+  if [ ${#issues[@]} -gt 0 ]; then
+    tmpfile="$(mktemp /tmp/gh_batch_worktree_XXXXXX.conf)"
+    trap 'rm -f "$tmpfile"' EXIT
 
-  {
-    printf '# Branch names for issue worktrees\n'
-    printf '# Format: <number>|<branch-name>  (empty branch = skip)\n'
-    printf '# Branch will be created as: <branch-name>-<number>\n'
-    printf '# Tip: do NOT include tmux/session prefixes like work/kibana|...; just use the branch name (e.g. chore/foo)\n'
-    printf '#\n'
-    for i in "${!issues[@]}"; do
-      printf '# %s — %s (%s)\n' "${issues[$i]}" "${issue_titles[$i]}" "${issue_repos[$i]}"
-      printf '%s|\n' "${issues[$i]}"
-    done
-  } > "$tmpfile"
+    {
+      printf '# Branch names for issue worktrees\n'
+      printf '# Format: <number>|<branch-name>  (empty branch = skip)\n'
+      printf '# Branch will be created as: <branch-name>-<number>\n'
+      printf '# Tip: do NOT include tmux/session prefixes like work/kibana|...; just use the branch name (e.g. chore/foo)\n'
+      printf '#\n'
+      for i in "${!issues[@]}"; do
+        printf '# %s — %s (%s)\n' "${issues[$i]}" "${issue_titles[$i]}" "${issue_repos[$i]}"
+        printf '%s|\n' "${issues[$i]}"
+      done
+    } > "$tmpfile"
 
-  if [ "$background" -eq 0 ]; then
     $EDITOR "$tmpfile"
 
     branches_file="$(mktemp "${cache_dir}/gh_batch_worktree_branches_XXXXXX.conf")"
@@ -131,18 +136,21 @@ if [ ${#issues[@]} -gt 0 ]; then
 
     tmux run-shell -b "$(printf %q "$0") $(printf %q "$selection_file") --background --branches-file $(printf %q "$branches_file")" \
       2> /dev/null || true
-    exit 0
+  else
+    tmux run-shell -b "$(printf %q "$0") $(printf %q "$selection_file") --background" \
+      2> /dev/null || true
   fi
+  exit 0
+fi
 
-  if [ -n "$branches_file" ] && [ -f "$branches_file" ]; then
-    while IFS='|' read -r num branch; do
-      [ -n "$num" ] || continue
-      [[ "$num" =~ ^# ]] && continue
-      num="$(printf '%s' "$num" | tr -d '[:space:]')"
-      branch="$(printf '%s' "$branch" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-      issue_branches+=("${num}:${branch}")
-    done < "$branches_file"
-  fi
+if [ ${#issues[@]} -gt 0 ] && [ -n "$branches_file" ] && [ -f "$branches_file" ]; then
+  while IFS='|' read -r num branch; do
+    [ -n "$num" ] || continue
+    [[ "$num" =~ ^# ]] && continue
+    num="$(printf '%s' "$num" | tr -d '[:space:]')"
+    branch="$(printf '%s' "$branch" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    issue_branches+=("${num}:${branch}")
+  done < "$branches_file"
 fi
 
 created=0
@@ -235,9 +243,6 @@ if [ "$background" -eq 1 ] && [ -n "${branches_file:-}" ]; then
   rm -f "$branches_file" 2> /dev/null || true
 fi
 
-printf '\nDone: %d created, %d skipped, %d failed\n' "$created" "$skipped" "$failed"
-
-if [ "$background" -eq 0 ]; then
-  printf '\nPress any key to continue...'
-  read -r -n 1
+if [ -n "${TMUX:-}" ]; then
+  tmux display-message "batch worktree: ${created} created, ${skipped} skipped, ${failed} failed" 2> /dev/null || true
 fi

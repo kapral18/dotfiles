@@ -246,6 +246,31 @@ end
 
 {{ if eq .isWork true -}}
 # ------------------------------------
+# Azure Foundry API Configuration
+# ------------------------------------
+
+if type -q pass; and test -z "$AZURE_FOUNDRY_API_KEY"
+    if pass show azure/foundry/api/key >/dev/null 2>&1
+        set -gx AZURE_FOUNDRY_API_KEY (pass azure/foundry/api/key)
+    end
+end
+
+if type -q pass; and test -z "$AZURE_FOUNDRY_ENDPOINT"
+    if pass show azure/foundry/endpoint >/dev/null 2>&1
+        set -l azure_endpoint (string trim -- (pass azure/foundry/endpoint))
+        set azure_endpoint (string replace -r '/+$' '' -- "$azure_endpoint")
+        if not string match -q '*/openai/v1' -- "$azure_endpoint"
+            if string match -q '*/openai' -- "$azure_endpoint"
+                set azure_endpoint "$azure_endpoint/v1"
+            else
+                set azure_endpoint "$azure_endpoint/openai/v1"
+            end
+        end
+        set -gx AZURE_FOUNDRY_ENDPOINT "$azure_endpoint"
+    end
+end
+
+# ------------------------------------
 # LiteLLM API Configuration
 # ------------------------------------
 

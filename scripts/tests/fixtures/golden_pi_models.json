@@ -36,6 +36,16 @@
           }
         }
       ]
+    },
+    "azure-foundry": {
+      "baseUrl": "https://test-resource.services.ai.azure.com/openai/v1",
+      "api": "openai-completions",
+      "apiKey": "AZURE_FOUNDRY_API_KEY",
+      "authHeader": true,
+      "compat": {
+        "supportsDeveloperRole": false
+      },
+      "models": []
     }
   }
 }

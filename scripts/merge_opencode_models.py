@@ -2,7 +2,7 @@
 import json
 import sys
 
-import litellm_models
+import ai_models
 from model_display import format_display_name
 
 
@@ -12,22 +12,36 @@ def main():
 
     src_path = sys.argv[1]
     models_yaml_path = sys.argv[2]
-    models = litellm_models.load(models_yaml_path)
 
-    models_block = {}
-    for m in models:
-        name = format_display_name(m)
-        models_block[m["id"]] = {
-            "name": name,
-            "limit": {"context": m["contextWindow"], "output": m.get("maxTokens", 8192)},
-        }
+    litellm_models = ai_models.load_litellm(models_yaml_path)
+    azure_models = ai_models.load_azure(models_yaml_path)
 
     with open(src_path, "r") as f:
         src = f.read()
 
-    replacement = json.dumps(models_block, indent=2, ensure_ascii=False)
+    litellm_block = {}
+    for m in litellm_models:
+        name = format_display_name(m)
+        litellm_block[m["id"]] = {
+            "name": name,
+            "limit": {"context": m["contextWindow"], "output": m.get("maxTokens", 8192)},
+        }
+    replacement = json.dumps(litellm_block, indent=2, ensure_ascii=False)
     indented = replacement.replace("\n", "\n      ")
-    print(src.replace('"__LITELLM_MODELS__"', indented))
+    src = src.replace('"__LITELLM_MODELS__"', indented)
+
+    azure_block = {}
+    for m in azure_models:
+        name = format_display_name(m)
+        azure_block[m["id"]] = {
+            "name": name,
+            "limit": {"context": m["contextWindow"], "output": m.get("maxTokens", 8192)},
+        }
+    replacement = json.dumps(azure_block, indent=2, ensure_ascii=False)
+    indented = replacement.replace("\n", "\n      ")
+    src = src.replace('"__AZURE_MODELS__"', indented)
+
+    sys.stdout.write(src)
 
 
 if __name__ == "__main__":

@@ -36,7 +36,10 @@ fi
 shell="${SHELL:-/bin/sh}"
 case "$shell" in
   */sh)
-    shell="$(python3 -c 'import os,pwd; print(pwd.getpwuid(os.getuid()).pw_shell)' 2> /dev/null || true)"
+    shell="$(dscl . -read /Users/"$USER" UserShell 2> /dev/null | awk '{print $2}')"
+    if [ -z "$shell" ] || [ ! -x "$shell" ]; then
+      shell="$(getent passwd "$USER" 2> /dev/null | cut -d: -f7)"
+    fi
     if [ -z "$shell" ] || [ ! -x "$shell" ]; then
       shell="$(command -v fish 2> /dev/null || echo /bin/sh)"
     fi

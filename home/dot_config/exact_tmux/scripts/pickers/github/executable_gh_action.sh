@@ -80,6 +80,19 @@ bootstrap_repo() {
   fi
 }
 
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
+
+_mark_local_in_cache() {
+  local k="$1" repo="$2" num="$3"
+  local mode cache_file patcher
+  mode="$(cat "${cache_dir}/gh_picker_mode" 2> /dev/null || echo work)"
+  cache_file="${cache_dir}/gh_picker_${mode}.tsv"
+  patcher="$(cd "$(dirname "$0")" && pwd)/lib/gh_patch_picker_cache.py"
+  if [ -x "$patcher" ] && [ -f "$cache_file" ]; then
+    python3 -u "$patcher" --cache-file "$cache_file" --kind "$k" --repo "$repo" --num "$num" 2> /dev/null || true
+  fi
+}
+
 action="${1:-}"
 kind="${2:-}"
 repo_nwo="${3:-}"
@@ -114,9 +127,11 @@ case "$action" in
     case "$kind" in
       pr)
         ,w prs --focus "$number"
+        _mark_local_in_cache "pr" "$repo_nwo" "$number"
         ;;
       issue)
         ,w issue --focus "$number"
+        _mark_local_in_cache "issue" "$repo_nwo" "$number"
         ;;
       *)
         die "unknown kind: $kind"

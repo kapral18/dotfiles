@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Re-exec under a modern bash when macOS ships bash 3.2 as /bin/bash.
 if [ "${BASH_VERSINFO[0]:-0}" -lt 4 ]; then
-  _b="$(brew --prefix bash 2> /dev/null)/bin/bash"
-  [ -x "$_b" ] && exec "$_b" "$0" "$@"
+  for _b in /opt/homebrew/bin/bash /usr/local/bin/bash; do
+    [ -x "$_b" ] && exec "$_b" "$0" "$@"
+  done
   exit 1
 fi
 set -euo pipefail
@@ -19,6 +20,22 @@ need_cmd() {
   if ! command -v "${cmd}" > /dev/null 2>&1; then
     die "tmux: missing command: ${cmd}"
   fi
+}
+
+_cached_login_shell=""
+login_shell() {
+  if [ -n "$_cached_login_shell" ]; then
+    printf '%s\n' "$_cached_login_shell"
+    return 0
+  fi
+  _cached_login_shell="$(dscl . -read /Users/"$USER" UserShell 2> /dev/null | awk '{print $2}')"
+  if [ -z "$_cached_login_shell" ] || [ ! -x "$_cached_login_shell" ]; then
+    _cached_login_shell="$(getent passwd "$USER" 2> /dev/null | cut -d: -f7)"
+  fi
+  if [ -z "$_cached_login_shell" ] || [ ! -x "$_cached_login_shell" ]; then
+    _cached_login_shell="$(command -v fish 2> /dev/null || echo /bin/sh)"
+  fi
+  printf '%s\n' "$_cached_login_shell"
 }
 
 normalize() {
@@ -459,10 +476,7 @@ split_first_window_in_session() {
   fi
 
   local shell=""
-  shell="$(python3 -c 'import os,pwd; print(pwd.getpwuid(os.getuid()).pw_shell)' 2> /dev/null || true)"
-  if [ -z "$shell" ] || [ ! -x "$shell" ]; then
-    shell="$(command -v fish 2> /dev/null || echo /bin/sh)"
-  fi
+  shell="$(login_shell)"
   tmux split-window -h -t "$win" -c "$dir" "$shell" > /dev/null 2>&1 || true
   tmux select-layout -t "$win" even-horizontal > /dev/null 2>&1 || true
   clear_lazy_split_pending "$name"
@@ -497,10 +511,7 @@ ensure_session_layout() {
   fi
 
   local shell=""
-  shell="$(python3 -c 'import os,pwd; print(pwd.getpwuid(os.getuid()).pw_shell)' 2> /dev/null || true)"
-  if [ -z "$shell" ] || [ ! -x "$shell" ]; then
-    shell="$(command -v fish 2> /dev/null || echo /bin/sh)"
-  fi
+  shell="$(login_shell)"
   if ! tmux new-session -d -s "$name" -c "$dir" "$shell" 2> /dev/null; then
     die "tmux: failed to create session: $name ($dir)"
   fi
@@ -1151,15 +1162,8 @@ if [ -z "$target_session" ]; then
   exit 0
 fi
 
-if [ "$target_session" = "~" ]; then
-  target_session="\\~"
-fi
-if ! tmux switch-client -t "=${target_session}" 2> /dev/null; then
-  die "tmux: failed to switch to: ${target_session}"
-fi
-
-# If we created any new sessions, inject them into the cache immediately so the
-# next picker open shows them without waiting for a full reindex (~5s).
+# Inject newly created sessions into the cache before switching, so it happens
+# within the bulk guard and the cache is ready before the user could reopen.
 if [ "${created_any_session:-0}" -eq 1 ] && [ "${#created_session_lines[@]}" -gt 0 ]; then
   _cache_file="${cache_dir}/pick_session_items.tsv"
   _ordered_file="${cache_dir}/pick_session_items_ordered.tsv"
@@ -1185,6 +1189,13 @@ if [ "${created_any_session:-0}" -eq 1 ] && [ "${#created_session_lines[@]}" -gt
   # Invalidate the ordered snapshot so the next open regenerates it.
   rm -f "$_ordered_file" 2> /dev/null || true
   # Schedule a proper reindex in the background for full group/position accuracy.
-  # Delay 5s so it doesn't compete with shell/starship startup for CPU.
-  tmux run-shell -b "sleep 5; $HOME/.config/tmux/scripts/pickers/session/index_update.sh --force --quiet --quick-only" 2> /dev/null || true
+  # Delay 1s so it doesn't compete with the initial shell render for CPU.
+  tmux run-shell -b "sleep 1; $HOME/.config/tmux/scripts/pickers/session/index_update.sh --force --quiet --quick-only" 2> /dev/null || true
+fi
+
+if [ "$target_session" = "~" ]; then
+  target_session="\\~"
+fi
+if ! tmux switch-client -t "=${target_session}" 2> /dev/null; then
+  die "tmux: failed to switch to: ${target_session}"
 fi

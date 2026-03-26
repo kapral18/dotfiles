@@ -21,3 +21,5 @@ litellm_models:
       output: 1.5
       cacheRead: 0
       cacheWrite: 0
+
+azure_models:

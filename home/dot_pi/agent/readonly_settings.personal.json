@@ -1,6 +1,6 @@
 {
-  "defaultProvider": "google-vertex",
-  "defaultModel": "gemini-3.1-pro-preview",
+  "defaultProvider": "openrouter",
+  "defaultModel": "qwen/qwen3.5-397b-a17b",
   "defaultThinkingLevel": "high",
   "theme": "dark",
   "compaction": {
@@ -12,7 +12,6 @@
     "enabled": true,
     "maxRetries": 5
   },
-  "enabledModels": ["gpt-5.2*", "gpt-5.3*", "gpt-5.4*", "gemini-3*"],
   "packages": ["pi-skills", "npm:pi-mcp-adapter", "npm:@mariozechner/pi-tui"],
   "lastChangelogVersion": "0.56.3"
 }

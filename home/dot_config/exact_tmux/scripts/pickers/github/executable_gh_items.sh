@@ -65,7 +65,12 @@ if ! mkdir "$lock_dir" 2> /dev/null; then
   if [ -f "$pid_file" ]; then
     pid="$(cat "$pid_file" 2> /dev/null || true)"
     if [ -n "$pid" ] && kill -0 "$pid" 2> /dev/null; then
-      # Another refresh is already running; serve cache if available.
+      if [ "$refresh" -eq 1 ]; then
+        # Wait for the in-flight fetch so fzf keeps its spinner until fresh data lands.
+        while kill -0 "$pid" 2> /dev/null; do sleep 0.2; done
+        [ -f "$cache_file" ] && cat "$cache_file"
+        exit 0
+      fi
       [ -f "$cache_file" ] && cat "$cache_file"
       exit 0
     fi

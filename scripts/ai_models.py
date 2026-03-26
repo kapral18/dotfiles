@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Parse litellm_models.yaml without external dependencies.
+"""Parse ai_models.yaml without external dependencies.
 
 Only handles the specific list-of-dicts structure used by this project.
 """
@@ -9,8 +9,12 @@ import re
 from yaml_parser import parse_scalar
 
 
-def load(path):
+def load_litellm(path):
     return _load_section(path, "litellm_models")
+
+
+def load_azure(path):
+    return _load_section(path, "azure_models")
 
 
 def _load_section(path, section_key):

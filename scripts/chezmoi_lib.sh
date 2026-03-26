@@ -91,7 +91,7 @@ chezmoi_install_if_changed() {
   chezmoi_record_checksum "$target"
 }
 
-# ── LiteLLM / pass helpers ───────────────────────────────────────────────────
+# ── Provider / pass helpers ──────────────────────────────────────────────────
 
 # Fetch and normalize the LiteLLM API base URL from pass.
 # Ensures the URL ends with /v1. Exits 1 on missing prerequisites.
@@ -114,6 +114,33 @@ chezmoi_get_litellm_api_base() {
   case "$base" in
     */v1) ;;
     *) base="$base/v1" ;;
+  esac
+
+  printf '%s' "$base"
+}
+
+# Fetch the Azure Foundry endpoint from pass.
+# Ensures the URL ends with /openai/v1. Exits 1 on missing prerequisites.
+#   chezmoi_get_azure_foundry_endpoint
+# Prints the normalized URL to stdout.
+chezmoi_get_azure_foundry_endpoint() {
+  if ! command -v pass > /dev/null 2>&1; then
+    echo "pass is required to resolve Azure Foundry endpoint" >&2
+    return 1
+  fi
+
+  local base
+  base="$(pass show azure/foundry/endpoint | tr -d '\n')"
+  if [ -z "$base" ]; then
+    echo "Missing pass entry: azure/foundry/endpoint" >&2
+    return 1
+  fi
+
+  base="${base%/}"
+  case "$base" in
+    */openai/v1) ;;
+    */openai) base="$base/v1" ;;
+    *) base="$base/openai/v1" ;;
   esac
 
   printf '%s' "$base"

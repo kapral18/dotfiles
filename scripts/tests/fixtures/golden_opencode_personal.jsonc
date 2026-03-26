@@ -3,9 +3,15 @@
   "mcp": {
     "public-tool": {
       "type": "local",
-      "command": ["docker", "run", "--rm", "-i", "public/image"],
-      "enabled": true,
-    },
+      "command": [
+        "docker",
+        "run",
+        "--rm",
+        "-i",
+        "public/image"
+      ],
+      "enabled": true
+    }
   },
   "provider": {},
 }

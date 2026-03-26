@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Re-exec under a modern bash when macOS ships bash 3.2 as /bin/bash.
 if [ "${BASH_VERSINFO[0]:-0}" -lt 4 ]; then
-  _b="$(brew --prefix bash 2> /dev/null)/bin/bash"
-  [ -x "$_b" ] && exec "$_b" "$0" "$@"
+  for _b in /opt/homebrew/bin/bash /usr/local/bin/bash; do
+    [ -x "$_b" ] && exec "$_b" "$0" "$@"
+  done
   exit 1
 fi
 set -euo pipefail

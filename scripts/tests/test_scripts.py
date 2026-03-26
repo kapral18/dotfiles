@@ -68,20 +68,27 @@ class TestMcpRegistry(unittest.TestCase):
         assert "work-tool" in servers
 
 
-class TestLitellmModels(unittest.TestCase):
-    """WHEN loading LiteLLM models from YAML."""
+class TestAiModels(unittest.TestCase):
+    """WHEN loading AI models from YAML."""
 
-    def test_load_models(self):
+    def test_load_litellm_models(self):
         sys.path.insert(0, str(SCRIPTS))
-        from litellm_models import load
+        from ai_models import load_litellm
 
-        models = load(str(FIXTURES / "litellm_models.yaml"))
+        models = load_litellm(str(FIXTURES / "ai_models.yaml"))
         assert len(models) == 2
         assert models[0]["id"] == "llm-gateway/model-a"
         assert models[0]["reasoning"] is True
         assert models[0]["cost"]["input"] == 5
         assert models[1]["reasoning"] is False
         assert models[1]["cost"]["input"] == 0.5
+
+    def test_load_azure_models_empty(self):
+        sys.path.insert(0, str(SCRIPTS))
+        from ai_models import load_azure
+
+        models = load_azure(str(FIXTURES / "ai_models.yaml"))
+        assert len(models) == 0
 
 
 class TestModelDisplay(unittest.TestCase):
@@ -127,7 +134,7 @@ class TestGeneratePiModels(unittest.TestCase):
     """WHEN generating Pi models JSON."""
 
     def test_golden(self):
-        actual = _run(["generate_pi_models.py", str(FIXTURES / "litellm_models.yaml"), "http://localhost:4000/v1"])
+        actual = _run(["generate_pi_models.py", str(FIXTURES / "ai_models.yaml"), "http://localhost:4000/v1", "https://test-resource.services.ai.azure.com/openai/v1"])
         expected = (FIXTURES / "golden_pi_models.json").read_text()
         assert json.loads(actual) == json.loads(expected)
 
@@ -162,14 +169,14 @@ class TestInjectMcpIntoOpencode(unittest.TestCase):
 
 
 class TestMergeOpencodeModels(unittest.TestCase):
-    """WHEN merging LiteLLM models into OpenCode JSONC."""
+    """WHEN merging AI models into OpenCode JSONC."""
 
     def test_golden(self):
         actual = _run(
             [
                 "merge_opencode_models.py",
-                str(FIXTURES / "opencode_base.jsonc"),
-                str(FIXTURES / "litellm_models.yaml"),
+                str(FIXTURES / "opencode_work_base.jsonc"),
+                str(FIXTURES / "ai_models.yaml"),
             ]
         )
         expected = (FIXTURES / "golden_opencode_models.jsonc").read_text()

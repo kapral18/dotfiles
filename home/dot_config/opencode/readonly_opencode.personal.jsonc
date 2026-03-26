@@ -28,7 +28,7 @@
     "main": {
       "description": "Main workflow agent",
       "mode": "primary",
-      "model": "google-vertex/gemini-3.1-pro-preview",
+      "model": "openrouter/qwen/qwen3.5-397b-a17b",
       "reasoning_effort": "high",
     },
   },

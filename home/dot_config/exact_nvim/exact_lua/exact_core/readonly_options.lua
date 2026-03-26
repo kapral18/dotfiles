@@ -39,7 +39,7 @@ opt.pumheight = 10
 opt.relativenumber = false
 opt.ruler = false
 opt.scrolloff = 4
-opt.sessionoptions = { "buffers", "tabpages", "winsize", "winpos", "localoptions" }
+opt.sessionoptions = { "tabpages", "winsize", "winpos", "localoptions" }
 opt.shiftround = true
 opt.shiftwidth = 2
 opt.shortmess:append({ W = true, I = true, c = true, C = true })

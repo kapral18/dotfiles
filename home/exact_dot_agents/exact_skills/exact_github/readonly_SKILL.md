@@ -82,6 +82,26 @@ Approvals:
 
 PR review side effects (draft / pending reviews):
 
+> **CRITICAL — pending vs published reviews:**
+>
+> - When the user says "pending review", "draft review", or "post pending":
+>   the review MUST stay in `PENDING` state (visible only to you, not the PR
+>   author).
+> - **NEVER include `event` in the create-review payload.** If you include
+>   `"event": "COMMENT"` (or `APPROVE` / `REQUEST_CHANGES`), the review is
+>   **immediately and irreversibly published** to the PR author and all
+>   subscribers.
+> - The default behavior of `POST /reviews` **without** `event` is `PENDING`.
+>   That is the only safe way to create a draft review.
+>
+> **Pre-flight checklist (mandatory before every review POST):**
+>
+> 1. Read back the JSON payload you are about to send.
+> 2. Confirm the `event` key is **absent** from the payload.
+> 3. If `event` is present, **remove it** before sending.
+> 4. Only add `event` in a **separate** submit call after the user explicitly
+>    asks to publish.
+
 - Definition: a "pending review" is a PR review whose API `state` is `PENDING`.
   It is visible only to the reviewer who created it until submission
   (COMMENT/APPROVE/REQUEST_CHANGES), and it does not appear to the PR author as

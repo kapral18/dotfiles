@@ -9,22 +9,7 @@
         "baseURL": "{env:LITELLM_API_BASE}",
         "apiKey": "{env:LITELLM_PROXY_KEY}",
       },
-      "models": {
-        "llm-gateway/model-a": {
-          "name": "Model A 🧠 ($5in/$25out)",
-          "limit": {
-            "context": 100000,
-            "output": 8192
-          }
-        },
-        "llm-gateway/model-b": {
-          "name": "Model B ($0.5in/$1.5out)",
-          "limit": {
-            "context": 50000,
-            "output": 8192
-          }
-        }
-      },
+      "models": "__LITELLM_MODELS__",
     },
     "azure-foundry": {
       "npm": "@ai-sdk/openai-compatible",
@@ -33,7 +18,7 @@
         "baseURL": "{env:AZURE_FOUNDRY_ENDPOINT}",
         "apiKey": "{env:AZURE_FOUNDRY_API_KEY}",
       },
-      "models": {},
+      "models": "__AZURE_MODELS__",
     },
   },
 }
