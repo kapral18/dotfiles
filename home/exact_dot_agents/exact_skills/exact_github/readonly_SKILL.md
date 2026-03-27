@@ -14,8 +14,8 @@ Use when:
 - the user explicitly wants a GitHub side effect via `gh` or GitHub APIs
 - the user wants to create/edit/post/apply/merge something on GitHub, not just
   draft text
-- the user provides a GitHub gist URL (`gist.github.com/...` or `gist.githubusercontent.com/...`)
-  or asks to create/update/list a gist
+- the user provides a GitHub gist URL (`gist.github.com/...` or
+  `gist.githubusercontent.com/...`) or asks to create/update/list a gist
 
 Defaults & constraints:
 
@@ -84,8 +84,8 @@ PR review side effects (draft / pending reviews):
 
 > **CRITICAL — pending vs published reviews:**
 >
-> - When the user says "pending review", "draft review", or "post pending":
->   the review MUST stay in `PENDING` state (visible only to you, not the PR
+> - When the user says "pending review", "draft review", or "post pending": the
+>   review MUST stay in `PENDING` state (visible only to you, not the PR
 >   author).
 > - **NEVER include `event` in the create-review payload.** If you include
 >   `"event": "COMMENT"` (or `APPROVE` / `REQUEST_CHANGES`), the review is

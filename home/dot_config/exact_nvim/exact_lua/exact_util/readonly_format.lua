@@ -1,69 +1,27 @@
---- Formatting utilities and unified format system
+--- Formatting utilities
 vim.g.autoformat = true
 
 local M = {}
 
+--- Registered formatters, sorted by priority (highest first)
+---@type table[]
 M._formatters = {}
 
-local function sort_formatters()
-  table.sort(M._formatters, function(a, b)
-    local ap = a.priority or 0
-    local bp = b.priority or 0
-    return ap > bp
-  end)
-end
-
 --- Register a formatter descriptor
----@param formatter table
+---@param formatter table {name, priority, primary, format(buf), sources(buf)}
 function M.register(formatter)
-  formatter = formatter or {}
   formatter.name = formatter.name or "formatter"
   if formatter.primary == nil then
     formatter.primary = true
   end
-  if formatter.priority == nil then
-    formatter.priority = 0
-  end
+  formatter.priority = formatter.priority or 0
   table.insert(M._formatters, formatter)
-  sort_formatters()
+  table.sort(M._formatters, function(a, b)
+    return a.priority > b.priority
+  end)
 end
 
---- Resolve registered formatters for a buffer
----@param buf? number
----@return table[]
-function M.resolve(buf)
-  buf = buf or vim.api.nvim_get_current_buf()
-  local resolved = {}
-  local have_primary = false
-
-  for _, formatter in ipairs(M._formatters) do
-    local sources = {}
-    if type(formatter.sources) == "function" then
-      local ok, result = pcall(formatter.sources, buf)
-      if ok and type(result) == "table" then
-        sources = result
-      end
-    end
-
-    local active = #sources > 0
-    if formatter.primary and have_primary then
-      active = false
-    end
-    if active and formatter.primary then
-      have_primary = true
-    end
-
-    table.insert(resolved, {
-      formatter = formatter,
-      sources = sources,
-      active = active,
-    })
-  end
-
-  return resolved
-end
-
---- Format the current buffer or range
+--- Format the current buffer
 ---@param opts? {force?: boolean, buf?: number}
 function M.format(opts)
   opts = opts or {}
@@ -73,43 +31,49 @@ function M.format(opts)
     return
   end
 
-  local used_registered = false
-  for _, item in ipairs(M.resolve(buf)) do
-    if item.active then
-      used_registered = true
-      local ok, err = pcall(item.formatter.format, buf)
-      if not ok then
-        vim.notify(("Formatter %s failed: %s"):format(item.formatter.name, err), vim.log.levels.ERROR)
+  if not opts.force then
+    local last_tick = vim.b[buf].format_changedtick
+    if last_tick and last_tick == vim.api.nvim_buf_get_changedtick(buf) then
+      return
+    end
+  end
+
+  local have_primary = false
+  for _, formatter in ipairs(M._formatters) do
+    local sources = {}
+    if type(formatter.sources) == "function" then
+      local ok, result = pcall(formatter.sources, buf)
+      if ok and type(result) == "table" then
+        sources = result
       end
-      if item.formatter.primary then
+    end
+
+    if #sources > 0 and not (formatter.primary and have_primary) then
+      if formatter.primary then
+        have_primary = true
+      end
+      local ok, err = pcall(formatter.format, buf)
+      if not ok then
+        vim.notify(("Formatter %s failed: %s"):format(formatter.name, err), vim.log.levels.ERROR)
+      end
+      if formatter.primary then
         break
       end
     end
   end
 
-  -- If no registered formatters ran, nothing to do
-  -- (conform and LSP are now both registered in the format registry)
+  vim.b[buf].format_changedtick = vim.api.nvim_buf_get_changedtick(buf)
 end
 
---- Toggle autoformat globally or per-buffer
----@param buf? boolean|number If true, uses current buffer. If number, uses that buffer. If nil/false, toggles globally.
+--- Toggle autoformat via Snacks
+---@param buf? boolean|number
 ---@return table
 function M.snacks_toggle(buf)
-  local ok, snacks = pcall(require, "snacks")
-  if not ok then
-    return {
-      map = function()
-        return function() end
-      end,
-    }
-  end
+  local snacks = require("snacks")
 
-  -- Convert true to current buffer number
   if buf == true then
     buf = vim.api.nvim_get_current_buf()
   end
-
-  -- Validate buffer
   if buf and not vim.api.nvim_buf_is_valid(buf) then
     buf = nil
   end
@@ -137,7 +101,7 @@ function M.formatexpr()
   return vim.lsp.formatexpr({ timeout_ms = 3000 })
 end
 
---- Get first available formatter
+--- Get first available formatter from conform
 ---@param bufnr integer
 ---@param ... string
 ---@return string

@@ -32,3 +32,11 @@ mcp_servers:
     args:
       - "-lc"
       - 'cd "$HOME/work/semantic-code-search-mcp-server/main" && ELASTICSEARCH_CLOUD_ID="$(pass scsi/k18/cloud_id)" ELASTICSEARCH_API_KEY="$(pass scsi/k18/api_key)" ELASTICSEARCH_INDEX=scsi-repo node dist/src/mcp_server/bin.js stdio'
+
+  - name: slack
+    work_only: true
+    type: http
+    url: https://mcp.slack.com/mcp
+    oauth:
+      clientId: "$(pass slack/mcp/client_id)"
+      callbackPort: 3118

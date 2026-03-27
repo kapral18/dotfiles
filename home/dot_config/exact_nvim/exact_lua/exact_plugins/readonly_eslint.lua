@@ -1,5 +1,3 @@
-local format = require("util.format")
-
 local eslint_filetypes = {
   javascript = true,
   javascriptreact = true,
@@ -13,17 +11,19 @@ local eslint_filetypes = {
 }
 
 ---@param bufnr number
-local function eslint_fix_all(bufnr)
+local function eslint_fix_all_async(bufnr)
+  if not eslint_filetypes[vim.bo[bufnr].filetype] then
+    return
+  end
+
   local client = vim.lsp.get_clients({ bufnr = bufnr, name = "eslint" })[1]
   if not client then
     return
   end
 
-  -- Keep parity with lspconfig's legacy `EslintFixAll` implementation.
-  local versions = (vim.lsp.util and vim.lsp.util.buf_versions) or {}
-  local version = versions[bufnr]
+  local version = (vim.lsp.util.buf_versions or {})[bufnr]
 
-  client.request_sync("workspace/executeCommand", {
+  client.request("workspace/executeCommand", {
     command = "eslint.applyAllFixes",
     arguments = {
       {
@@ -31,7 +31,21 @@ local function eslint_fix_all(bufnr)
         version = version,
       },
     },
-  }, 3000, bufnr)
+  }, function(err)
+    if err then
+      return
+    end
+    -- Eslint fixes are semantic (unused vars, autofixable rules), not stylistic —
+    -- prettier won't restyle them differently, so just save without re-formatting.
+    vim.schedule(function()
+      if vim.api.nvim_buf_is_valid(bufnr) and vim.bo[bufnr].modified then
+        vim.api.nvim_buf_call(bufnr, function()
+          vim.cmd("noautocmd silent! write")
+        end)
+        vim.b[bufnr].format_changedtick = vim.api.nvim_buf_get_changedtick(bufnr)
+      end
+    end)
+  end, bufnr)
 end
 
 return {
@@ -41,18 +55,8 @@ return {
       ---@type table<string, vim.lsp.Config>
       servers = {
         eslint = {
-          -- Nvim 0.11 uses `root_dir(bufnr, on_dir)`; older lspconfig-style configs use `root_dir(fname)`.
-          root_dir = function(a, b)
-            local fname ---@type string
-            local on_dir ---@type fun(dir: string)|nil
-
-            if type(a) == "number" and type(b) == "function" then
-              fname = vim.api.nvim_buf_get_name(a)
-              on_dir = b
-            else
-              fname = a
-            end
-
+          root_dir = function(bufnr, on_dir)
+            local fname = vim.api.nvim_buf_get_name(bufnr)
             if type(fname) ~= "string" or fname == "" then
               return
             end
@@ -73,16 +77,10 @@ return {
               "eslint.config.cts",
             }
             root_file = util.insert_package_json(root_file, "eslintConfig", fname)
-            -- Do not start eslint LSP just because we're in a git repo.
-            -- Only enable it when an eslint config (or eslintConfig in package.json) exists.
             local root = util.root_pattern(unpack(root_file))(fname)
-            if on_dir then
-              if root then
-                on_dir(root)
-              end
-              return
+            if root then
+              on_dir(root)
             end
-            return root
           end,
           settings = {
             -- temporary until https://github.com/microsoft/vscode-eslint/pull/2076 is merged
@@ -97,20 +95,13 @@ return {
       },
       setup = {
         eslint = function()
-          -- eslint fixes (applyAllFixes) are conceptually "formatting" for many workflows.
-          -- Run these before conform / other formatters so the final formatter sees the updated buffer.
-          format.register({
-            name = "eslint: fixAll",
-            primary = false,
-            priority = 250,
-            sources = function(bufnr)
-              if not eslint_filetypes[vim.bo[bufnr].filetype] then
-                return {}
-              end
-              local client = vim.lsp.get_clients({ bufnr = bufnr, name = "eslint" })[1]
-              return client and { "eslint.applyAllFixes" } or {}
+          -- Run eslint fixAll asynchronously after save to avoid blocking the UI.
+          vim.api.nvim_create_autocmd("BufWritePost", {
+            group = vim.api.nvim_create_augroup("k18_eslint_fix_all", { clear = true }),
+            pattern = "*",
+            callback = function(args)
+              eslint_fix_all_async(args.buf)
             end,
-            format = eslint_fix_all,
           })
         end,
       },

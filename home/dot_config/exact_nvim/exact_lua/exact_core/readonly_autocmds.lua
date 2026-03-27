@@ -12,7 +12,6 @@ end
 
 local general = augroup("k18_general", { clear = true })
 local hashed_undo_dir = vim.fn.stdpath("state") .. "/undo-hashed"
-vim.fn.mkdir(hashed_undo_dir, "p")
 
 autocmd({ "FocusGained", "TermClose", "TermLeave" }, {
   group = general,
@@ -26,7 +25,7 @@ autocmd({ "FocusGained", "TermClose", "TermLeave" }, {
 autocmd("TextYankPost", {
   group = general,
   callback = function()
-    pcall(vim.highlight.on_yank, { higroup = "IncSearch", timeout = 250 })
+    pcall(vim.hl.on_yank, { higroup = "IncSearch", timeout = 250 })
   end,
 })
 

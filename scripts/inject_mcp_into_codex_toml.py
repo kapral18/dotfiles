@@ -32,6 +32,8 @@ def _render_codex_mcp_toml(mcp_yaml: str, is_work: bool) -> str:
     servers = load_servers(mcp_yaml, is_work)
     out_lines: list[str] = []
     for name, spec in servers.items():
+        if spec.get("type") == "http":
+            continue
         out_lines.append(f"[mcp_servers.{name}]")
         out_lines.append(f"command = {_toml_string(spec['command'])}")
         out_lines.append("args = [")

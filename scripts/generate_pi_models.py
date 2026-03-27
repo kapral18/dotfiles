@@ -17,25 +17,27 @@ def main():
     litellm_models = ai_models.load_litellm(models_yaml_path)
     azure_models = ai_models.load_azure(models_yaml_path)
 
-    data = {"providers": {
-        "litellm": {
-            "baseUrl": litellm_api_base,
-            "api": "openai-completions",
-            "apiKey": "LITELLM_PROXY_KEY",
-            "authHeader": True,
-            "models": [_to_pi_model(m, "LiteLLM") for m in litellm_models],
-        },
-        "azure-foundry": {
-            "baseUrl": azure_endpoint,
-            "api": "openai-completions",
-            "apiKey": "AZURE_FOUNDRY_API_KEY",
-            "authHeader": True,
-            "compat": {
-                "supportsDeveloperRole": False,
+    data = {
+        "providers": {
+            "litellm": {
+                "baseUrl": litellm_api_base,
+                "api": "openai-completions",
+                "apiKey": "LITELLM_PROXY_KEY",
+                "authHeader": True,
+                "models": [_to_pi_model(m, "LiteLLM") for m in litellm_models],
             },
-            "models": [_to_pi_model(m, "Azure") for m in azure_models],
-        },
-    }}
+            "azure-foundry": {
+                "baseUrl": azure_endpoint,
+                "api": "openai-completions",
+                "apiKey": "AZURE_FOUNDRY_API_KEY",
+                "authHeader": True,
+                "compat": {
+                    "supportsDeveloperRole": False,
+                },
+                "models": [_to_pi_model(m, "Azure") for m in azure_models],
+            },
+        }
+    }
 
     print(json.dumps(data, indent=2, ensure_ascii=False))
 

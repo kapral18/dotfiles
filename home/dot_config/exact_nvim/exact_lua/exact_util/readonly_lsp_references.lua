@@ -12,10 +12,7 @@ local function is_ts_js_filetype()
 end
 
 local function is_list(value)
-  if vim.islist then
-    return vim.islist(value)
-  end
-  return type(value) == "table" and value[1] ~= nil
+  return vim.islist(value)
 end
 
 local function buf_has_method(method)
@@ -41,8 +38,8 @@ local function segment_has_test_word(segment)
   end
   segment = segment:lower()
   -- Treat "word characters" as alphanumeric only (underscore counts as a separator),
-  -- so segments like "foo_test.ts" and "__tests__" are matched but "latest" isn't.
-  return segment:match("%f[%a%d]tests?%f[^%a%d]") ~= nil
+  -- so segments like "foo_test.ts", "__tests__", "foo.spec.ts" are matched but "latest" isn't.
+  return segment:match("%f[%a%d]tests?%f[^%a%d]") ~= nil or segment:match("%f[%a%d]specs?%f[^%a%d]") ~= nil
 end
 
 local function path_has_test_segment(filename)
@@ -50,7 +47,7 @@ local function path_has_test_segment(filename)
     return false
   end
   local normalized = filename:gsub("\\", "/")
-  local cwd = (vim.uv and vim.uv.cwd() or vim.loop.cwd()):gsub("\\", "/")
+  local cwd = vim.uv.cwd():gsub("\\", "/")
   if vim.startswith(normalized, cwd) then
     normalized = normalized:sub(#cwd + 1)
   end
@@ -184,6 +181,9 @@ end
 function M.references_all(opts)
   local actions = require("fzf-lua.actions")
   opts = opts or {}
+  if opts.includeDeclaration == nil then
+    opts.includeDeclaration = false
+  end
   return require("fzf-lua").lsp_references(vim.tbl_deep_extend("force", {
     fzf_opts = { ["--multi"] = true },
     actions = {
@@ -205,7 +205,7 @@ function M.references_smart(opts)
   local current_file = vim.api.nvim_buf_get_name(0)
   local current_file_real = nil
   if type(current_file) == "string" and current_file ~= "" then
-    current_file_real = (vim.uv and vim.uv.fs_realpath and vim.uv.fs_realpath(current_file)) or current_file
+    current_file_real = vim.uv.fs_realpath(current_file) or current_file
   end
 
   local definition_lnums_by_file = get_symbol_definition_lnums()
@@ -220,7 +220,7 @@ function M.references_smart(opts)
       -- (definition line, import/re-export blocks, test-path heuristics) can hide legit
       -- intra-file references.
       if current_file_real ~= nil then
-        local item_real = (vim.uv and vim.uv.fs_realpath and vim.uv.fs_realpath(item.filename)) or item.filename
+        local item_real = vim.uv.fs_realpath(item.filename) or item.filename
         if item_real == current_file_real then
           return true
         end

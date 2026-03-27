@@ -150,10 +150,11 @@ Use in every non-trivial review.
 
 Terminology used in these skills:
 
-- "pending review" means a GitHub PR review whose API `state` is `PENDING` (draft):
+- "pending review" means a GitHub PR review whose API `state` is `PENDING`
+  (draft):
   - it is visible only to the reviewer who created it until they submit it
     (COMMENT/APPROVE/REQUEST_CHANGES)
-  - it is *not* visible to the PR author or other reviewers while pending
+  - it is _not_ visible to the PR author or other reviewers while pending
   - assume everything in it may become public once submitted; draft accordingly
 
 Content boundary:

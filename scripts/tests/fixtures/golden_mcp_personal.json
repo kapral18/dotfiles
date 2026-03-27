@@ -3,6 +3,14 @@
     "public-tool": {
       "command": "docker",
       "args": ["run", "--rm", "-i", "public/image"]
+    },
+    "http-tool": {
+      "type": "http",
+      "url": "https://mcp.example.com/mcp",
+      "oauth": {
+        "clientId": "resolved-client-id",
+        "callbackPort": 3118
+      }
     }
   }
 }

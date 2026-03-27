@@ -64,7 +64,6 @@ local plugin_modules = {
   "plugins.search-and-replace",
   "plugins.session",
   "plugins.snacks",
-  "plugins.notify",
   "plugins.telescope",
   "plugins.tmux",
   "plugins.tpope",

@@ -218,7 +218,7 @@ return {
       -- Register LSP formatting
       format.register(lsp.formatter())
 
-      -- Setup LSP keymaps using Snacks (LazyVim approach)
+      -- Setup LSP keymaps using Snacks
       for server, server_opts in pairs(opts.servers) do
         if type(server_opts) == "table" and server_opts.keys then
           local Keys = require("lazy.core.handler.keys")

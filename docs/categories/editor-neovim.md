@@ -15,8 +15,10 @@ understand the practical benefits and adopt useful parts gradually.
 - Tight test loops for JS/TS (Jest) in an editor split
 - Git ergonomics (hunks, history search, diffs)
 - A set of local plugins that solve specific daily problems
-- Project-aware formatting for web files (JS/TS/JSON): prefer Oxfmt when the repo declares it, else Biome, else Prettier
-- ESLint and Oxlint diagnostics can coexist; formatting remains single-tool to avoid conflicts
+- Project-aware formatting for web files (JS/TS/JSON): prefer Oxfmt when the
+  repo declares it, else Biome, else Prettier
+- ESLint and Oxlint diagnostics can coexist; formatting remains single-tool to
+  avoid conflicts
 
 ## Where The Config Lives
 

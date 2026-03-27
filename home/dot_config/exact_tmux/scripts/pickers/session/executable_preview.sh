@@ -59,8 +59,14 @@ gh_info_from_meta() {
           local sc="$C_GREEN"
           local icon="open"
           case "${state^^}" in
-            MERGED) sc="$C_PURPLE"; icon="merged" ;;
-            CLOSED) sc="$C_RED"; icon="closed" ;;
+            MERGED)
+              sc="$C_PURPLE"
+              icon="merged"
+              ;;
+            CLOSED)
+              sc="$C_RED"
+              icon="closed"
+              ;;
           esac
           local review_label=""
           case "${review^^}" in
@@ -97,8 +103,14 @@ gh_info_from_meta() {
           local ic="$C_GREEN"
           local ilabel="open"
           case "${state^^}" in
-            CLOSED | COMPLETED | NOT_PLANNED) ic="$C_PURPLE"; ilabel="closed" ;;
-            MERGED) ic="$C_PURPLE"; ilabel="merged" ;;
+            CLOSED | COMPLETED | NOT_PLANNED)
+              ic="$C_PURPLE"
+              ilabel="closed"
+              ;;
+            MERGED)
+              ic="$C_PURPLE"
+              ilabel="merged"
+              ;;
           esac
           printf '%s  %sIssue #%s%s %s(%s)%s' "${C_DIM}gh${C_R}" "$ic" "$num" "$C_R" "$C_DIM" "$ilabel" "$C_R"
           if [ -n "$url" ]; then

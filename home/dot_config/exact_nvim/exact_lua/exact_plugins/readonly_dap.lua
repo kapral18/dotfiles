@@ -5,7 +5,7 @@ return {
     "mfussenegger/nvim-dap",
     event = "VeryLazy",
     config = function()
-      -- Set DAP icons (LazyVim style)
+      -- Set DAP icons
       local icons = ui.config.icons.dap
 
       vim.api.nvim_set_hl(0, "DapStoppedLine", { default = true, link = "Visual" })

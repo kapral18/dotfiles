@@ -1,5 +1,3 @@
-table.unpack = table.unpack or unpack
-
 local opt = vim.opt
 
 vim.g.mapleader = " "
@@ -56,7 +54,7 @@ opt.splitright = true
 opt.statuscolumn = [[]]
 opt.tabstop = 2
 opt.termguicolors = true
-opt.timeoutlen = vim.g.vscode and 1000 or 300
+opt.timeoutlen = 300
 opt.undofile = false
 do
   local undodir = vim.fn.stdpath("state") .. "/undo-hashed"
@@ -121,31 +119,6 @@ vim.g.matchparen_insert_timeout = 2
 opt.path:append("**")
 opt.conceallevel = 0
 
-vim.filetype.add({
-  extension = {
-    log = "log",
-    conf = "conf",
-    env = "dotenv",
-    mdx = "mdx",
-    jsonl = "jsonl",
-  },
-  filename = {
-    [".env"] = "dotenv",
-    ["env"] = "dotenv",
-    ["tsconfig.json"] = "jsonc",
-    [".*/kitty/.+%.conf"] = "kitty",
-  },
-  pattern = {
-    ["%.env%.[%w_.-]+"] = "dotenv",
-    [".*%.yaml%.tmpl$"] = "gotexttmpl",
-    [".*%.toml%.tmpl$"] = "gotexttmpl",
-    [".*%.json%.tmpl$"] = "gotexttmpl",
-    [".*%.jsonc%.tmpl$"] = "gotexttmpl",
-    ["Dockerfile.*"] = "dockerfile",
-    [".gitconfig.*"] = "gitconfig",
-  },
-})
-
 vim.g.loaded_python3_provider = 0
 vim.g.loaded_ruby_provider = 0
 vim.g.loaded_perl_provider = 0
@@ -168,6 +141,8 @@ do
     end
   end
 end
+
+opt.shell = "/bin/sh"
 
 vim.opt.syntax = "off"
 vim.o.spell = false

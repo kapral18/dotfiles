@@ -58,6 +58,7 @@ class TestMcpRegistry(unittest.TestCase):
         servers = load_servers(str(FIXTURES / "mcp_servers.yaml"), is_work=False)
         assert "public-tool" in servers
         assert "work-tool" not in servers
+        assert "http-tool" in servers
 
     def test_work_includes_all(self):
         sys.path.insert(0, str(SCRIPTS))
@@ -66,6 +67,18 @@ class TestMcpRegistry(unittest.TestCase):
         servers = load_servers(str(FIXTURES / "mcp_servers.yaml"), is_work=True)
         assert "public-tool" in servers
         assert "work-tool" in servers
+        assert "http-tool" in servers
+
+    def test_http_server_shape(self):
+        sys.path.insert(0, str(SCRIPTS))
+        from mcp_registry import load_servers
+
+        servers = load_servers(str(FIXTURES / "mcp_servers.yaml"), is_work=False)
+        http = servers["http-tool"]
+        assert http["type"] == "http"
+        assert http["url"] == "https://mcp.example.com/mcp"
+        assert http["oauth"]["clientId"] == "resolved-client-id"
+        assert http["oauth"]["callbackPort"] == 3118
 
 
 class TestAiModels(unittest.TestCase):
@@ -134,7 +147,14 @@ class TestGeneratePiModels(unittest.TestCase):
     """WHEN generating Pi models JSON."""
 
     def test_golden(self):
-        actual = _run(["generate_pi_models.py", str(FIXTURES / "ai_models.yaml"), "http://localhost:4000/v1", "https://test-resource.services.ai.azure.com/openai/v1"])
+        actual = _run(
+            [
+                "generate_pi_models.py",
+                str(FIXTURES / "ai_models.yaml"),
+                "http://localhost:4000/v1",
+                "https://test-resource.services.ai.azure.com/openai/v1",
+            ]
+        )
         expected = (FIXTURES / "golden_pi_models.json").read_text()
         assert json.loads(actual) == json.loads(expected)
 

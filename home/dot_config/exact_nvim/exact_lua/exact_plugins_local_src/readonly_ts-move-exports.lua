@@ -44,11 +44,10 @@ M.get_lsp_references_for_exports = function(start_row, end_row)
   for _, node in ipairs(export_nodes) do
     local node_range_start_row, node_range_start_col, _, _ = node:range()
 
-    local params = vim.lsp.util.make_position_params()
+    local tstools_client = vim.lsp.get_clients({ bufnr = bufnr, name = TS_CLIENT_NAME })[1]
+    local params = vim.lsp.util.make_position_params(0, tstools_client.offset_encoding)
     params.position.line = node_range_start_row
     params.position.character = node_range_start_col
-
-    local tstools_client = vim.lsp.get_clients({ bufnr = bufnr, name = TS_CLIENT_NAME })[1]
     local client_response = tstools_client.request_sync("textDocument/references", params, 10000, bufnr)
 
     if client_response and client_response.result then

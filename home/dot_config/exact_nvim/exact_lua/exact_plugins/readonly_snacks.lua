@@ -10,9 +10,9 @@ return {
           -- stylua: ignore
           ---@type snacks.dashboard.Item[]
           keys = {
-            { icon = " ", key = "f", desc = "Find File", action = ":lua require('util.pick')('files')" },
+            { icon = " ", key = "f", desc = "Find File", action = ":lua require('fzf-lua').files()" },
             { icon = " ", key = "n", desc = "New File", action = ":ene | startinsert" },
-            { icon = " ", key = "c", desc = "Config", action = ":lua require('util.pick').config_files()" },
+            { icon = " ", key = "c", desc = "Config", action = ":lua require('fzf-lua').files({ cwd = vim.fn.stdpath('config') })" },
             { icon = "󰒲 ", key = "l", desc = "Lazy", action = ":Lazy" },
             { icon = " ", key = "q", desc = "Quit", action = ":qa" },
           },
@@ -37,6 +37,7 @@ return {
       toggle = { enabled = true },
       words = { enabled = false },
       quickfile = { enabled = false },
+      terminal = { shell = vim.env.SHELL },
       scratch = {
         enabled = true,
         win = {

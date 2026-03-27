@@ -10,16 +10,45 @@ This module intentionally avoids external dependencies (no PyYAML).
 from __future__ import annotations
 
 import re
+import subprocess
 from typing import Any
 
 from yaml_parser import parse_scalar
+
+_SHELL_SUBST = re.compile(r"^\$\((.+)\)$")
+
+
+def _resolve_shell(value: Any) -> Any:
+    """Resolve a ``$(command)`` string by running it in a login shell.
+
+    Only full-value substitutions are resolved (the entire string must be
+    ``$(…)``).  Partial substitutions embedded in larger strings are left
+    as-is — those are intended for runtime expansion (e.g. stdio server
+    args executed by bash -lc).
+    """
+    if not isinstance(value, str):
+        return value
+    m = _SHELL_SUBST.match(value)
+    if not m:
+        return value
+    result = subprocess.run(
+        ["bash", "-lc", m.group(1)],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"shell eval failed: {m.group(1)!r}\n{result.stderr}")
+    return result.stdout.strip()
 
 
 def load_servers(path: str, is_work: bool) -> dict[str, dict[str, Any]]:
     """Load servers from the canonical YAML registry.
 
     Returns mapping:
-      name -> { "command": str, "args": list[str] }
+      name -> server spec dict
+
+    Stdio servers:  { "command": str, "args": list[str] }
+    HTTP servers:   { "type": "http", "url": str, "oauth": { ... } }
     """
     with open(path, "r") as f:
         lines = f.readlines()
@@ -28,6 +57,8 @@ def load_servers(path: str, is_work: bool) -> dict[str, dict[str, Any]]:
     current: dict[str, Any] | None = None
     in_args = False
     args_indent = 0
+    in_oauth = False
+    oauth_indent = 0
 
     for line in lines:
         stripped = line.rstrip()
@@ -41,6 +72,7 @@ def load_servers(path: str, is_work: bool) -> dict[str, dict[str, Any]]:
         new_entry = re.match(r"^\s+-\s+(\w[\w_]*):\s*(.*)", stripped)
         if new_entry:
             in_args = False
+            in_oauth = False
             current = {"name": None, "work_only": False, "command": None, "args": []}
             servers.append(current)
             key, val = new_entry.group(1), new_entry.group(2).strip()
@@ -55,12 +87,23 @@ def load_servers(path: str, is_work: bool) -> dict[str, dict[str, Any]]:
             else:
                 in_args = False
 
+        if in_oauth and current is not None:
+            kv = re.match(r"^\s+(\w[\w_]*):\s*(.*)", stripped)
+            if kv and indent >= oauth_indent:
+                current.setdefault("oauth", {})[kv.group(1)] = parse_scalar(kv.group(2).strip())
+                continue
+            else:
+                in_oauth = False
+
         kv = re.match(r"^\s+(\w[\w_]*):\s*(.*)", stripped)
         if kv and current is not None:
             key, val = kv.group(1), kv.group(2).strip()
             if key == "args" and not val:
                 in_args = True
                 args_indent = indent + 2
+            elif key == "oauth" and not val:
+                in_oauth = True
+                oauth_indent = indent + 2
             else:
                 current[key] = parse_scalar(val)
 
@@ -68,5 +111,11 @@ def load_servers(path: str, is_work: bool) -> dict[str, dict[str, Any]]:
     for s in servers:
         if s.get("work_only") and not is_work:
             continue
-        result[s["name"]] = {"command": s["command"], "args": s["args"]}
+        if s.get("type") == "http":
+            spec: dict[str, Any] = {"type": "http", "url": _resolve_shell(s["url"])}
+            if "oauth" in s:
+                spec["oauth"] = {k: _resolve_shell(v) for k, v in s["oauth"].items()}
+            result[s["name"]] = spec
+        else:
+            result[s["name"]] = {"command": s["command"], "args": s["args"]}
     return result

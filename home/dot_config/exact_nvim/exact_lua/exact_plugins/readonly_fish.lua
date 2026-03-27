@@ -1,5 +1,5 @@
 local chezmoi = require("util.chezmoi")
-local uv = vim.uv or vim.loop
+local uv = vim.uv
 
 local function build_formatter()
   local default = require("conform.formatters.fish_indent")

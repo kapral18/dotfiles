@@ -30,6 +30,8 @@ def _render_mcp_value(mcp_yaml: str, is_work: bool) -> str:
     servers = load_servers(mcp_yaml, is_work)
     mcp_obj = {}
     for name, spec in servers.items():
+        if spec.get("type") == "http":
+            continue
         mcp_obj[name] = {
             "type": "local",
             "command": [spec["command"], *spec["args"]],

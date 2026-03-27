@@ -44,7 +44,7 @@ function K8sSchema.find_chart_root()
   local root = vim.fs.find("Chart.yaml", {
     path = vim.fs.dirname(current_buf),
     upward = true,
-    stop = vim.loop.os_homedir(),
+    stop = vim.uv.os_homedir(),
   })[1]
 
   if root then

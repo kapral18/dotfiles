@@ -17,37 +17,50 @@ end
 
 vim.filetype.add({
   extension = {
+    log = "log",
+    conf = "conf",
+    env = "dotenv",
+    mdx = "mdx",
+    jsonl = "jsonl",
     ["http"] = "http",
   },
   filename = {
-    -- Explicit helm files
+    [".env"] = "dotenv",
+    ["env"] = "dotenv",
+    ["tsconfig.json"] = "jsonc",
+    [".*/kitty/.+%.conf"] = "kitty",
+    -- Helm
     ["helmfile.yaml"] = "helm",
     ["helmfile.yml"] = "helm",
-    -- Docker compose files
+    -- Docker compose
     ["docker-compose.yaml"] = "yaml.docker-compose",
     ["docker-compose.yml"] = "yaml.docker-compose",
     ["compose.yaml"] = "yaml.docker-compose",
     ["compose.yml"] = "yaml.docker-compose",
   },
   pattern = {
-    -- Docker compose files (with environment suffix like docker-compose.prod.yaml)
+    ["%.env%.[%w_.-]+"] = "dotenv",
+    [".*%.yaml%.tmpl$"] = "gotexttmpl",
+    [".*%.toml%.tmpl$"] = "gotexttmpl",
+    [".*%.json%.tmpl$"] = "gotexttmpl",
+    [".*%.jsonc%.tmpl$"] = "gotexttmpl",
+    ["Dockerfile.*"] = "dockerfile",
+    [".gitconfig.*"] = "gitconfig",
+    -- Docker compose (with environment suffix like docker-compose.prod.yaml)
     ["docker%-compose%..*%.ya?ml"] = "yaml.docker-compose",
     ["compose%..*%.ya?ml"] = "yaml.docker-compose",
-
     -- All YAML files in Helm chart directories get helm filetype
     [".*%.ya?ml"] = function(path)
       if is_helm_chart_file(path) then
         return "helm"
       end
     end,
-
     -- Helm template partials (.tpl files)
     [".*%.tpl"] = function(path)
       if is_helm_chart_file(path) then
         return "helm"
       end
     end,
-
     -- NOTES.txt in templates is also helm
     [".*/templates/NOTES%.txt"] = "helm",
   },

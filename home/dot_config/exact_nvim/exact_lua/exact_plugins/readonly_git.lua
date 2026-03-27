@@ -9,7 +9,7 @@ return {
     opts = function()
       local icons = ui.config.icons.git
       return {
-        -- visuals (LazyVim style - icons from util.config)
+        -- visuals
         signs = {
           add = { text = icons.added },
           change = { text = icons.modified },

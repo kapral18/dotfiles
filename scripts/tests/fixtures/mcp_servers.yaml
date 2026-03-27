@@ -14,3 +14,11 @@ mcp_servers:
     args:
       - "-lc"
       - 'echo "hello from work"'
+
+  - name: http-tool
+    work_only: false
+    type: http
+    url: https://mcp.example.com/mcp
+    oauth:
+      clientId: "$(echo resolved-client-id)"
+      callbackPort: 3118

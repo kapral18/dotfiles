@@ -10,8 +10,6 @@ local tabouts = {
   { open = "<", close = ">" },
 }
 
-local unpack = unpack or table.unpack
-
 local has_words_before = function()
   local _, cur_col = unpack(vim.api.nvim_win_get_cursor(0))
   if cur_col == 0 then
@@ -45,7 +43,6 @@ return {
       "hrsh7th/cmp-emoji",
       { "github/copilot.vim", optional = true },
     },
-    -- overriding lazyvim native snippets tab behavior
     keys = function()
       return {}
     end,
