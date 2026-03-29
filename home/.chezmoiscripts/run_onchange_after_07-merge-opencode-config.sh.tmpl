@@ -29,6 +29,6 @@ else
   desired="$(cat "$src")"
 fi
 
-desired="$(printf '%s\n' "$desired" | python3 "$inject" "$yaml_src" "$is_work")"
+desired="$(printf '%s\n' "$desired" | python3 "$inject" "$yaml_src" "$is_work" opencode)"
 
 chezmoi_write_if_changed "$desired" "$HOME/.config/opencode/opencode.jsonc"

@@ -24,5 +24,5 @@ src="$(chezmoi_pick_src "$is_work" "$source_dir" \
 yaml_src="$source_dir/.chezmoidata/mcp_servers.yaml"
 inject="$source_dir/../scripts/inject_mcp_into_codex_toml.py"
 
-desired="$(python3 "$inject" "$src" "$yaml_src" "$is_work")"
+desired="$(python3 "$inject" "$src" "$yaml_src" "$is_work" codex)"
 chezmoi_write_if_changed "$desired" "$target" 0600

@@ -28,11 +28,10 @@ Out of scope:
 
 On the first turn (or when starting a fresh review):
 
-- PR description + all links (follow recursively until nothing left to
-  investigate)
+- complete the Reference Resolution gate in pr_common.md (blocking — all links,
+  media, and recursive references must be resolved before proceeding)
 - all review threads/replies (end-to-end)
 - full diff
-- referenced screenshots/GIFs/videos (see pr_common.md media evidence)
 - targeted local verification for risky claims (see pr_common.md)
 
 On later turns (iterative/continued): keep working from the internal findings
@@ -45,6 +44,8 @@ Follow the base-branch context gate in `shared_rules.md`. This is mandatory.
 ## Review Contract
 
 - Build a complete internal findings queue ordered by severity.
+- Before drafting, run the queue through the Deduplication + Truth Filter in
+  `pr_common.md`; only net-new, implementation-verified findings remain.
 - Draft highest-risk items first.
 
 ## Output Mode

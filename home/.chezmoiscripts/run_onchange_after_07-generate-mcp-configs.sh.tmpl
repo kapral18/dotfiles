@@ -20,14 +20,15 @@ gen="$source_dir/../scripts/generate_mcp_configs.py"
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 
-python3 "$gen" "$yaml_src" "$is_work" >"$tmp"
-
 # Cursor — write full MCP file
+python3 "$gen" "$yaml_src" "$is_work" cursor >"$tmp"
 chezmoi_write_if_changed "$(cat "$tmp")" "$HOME/.cursor/mcp.json"
 
 # Claude Code — merge mcpServers into existing .claude.json
+python3 "$gen" "$yaml_src" "$is_work" claude >"$tmp"
 python3 "$source_dir/../scripts/merge_claude_mcp.py" "$tmp" "$HOME/.claude.json"
 chezmoi_record_checksum "$HOME/.claude.json"
 
 # Pi — install with restricted permissions
+python3 "$gen" "$yaml_src" "$is_work" pi >"$tmp"
 chezmoi_install_if_changed "$tmp" "$HOME/.pi/agent/mcp.json" 0444

@@ -28,8 +28,8 @@ def _toml_string(value: str) -> str:
     return f'"{escaped}"'
 
 
-def _render_codex_mcp_toml(mcp_yaml: str, is_work: bool) -> str:
-    servers = load_servers(mcp_yaml, is_work)
+def _render_codex_mcp_toml(mcp_yaml: str, is_work: bool, tool: str | None = None) -> str:
+    servers = load_servers(mcp_yaml, is_work, tool=tool)
     out_lines: list[str] = []
     for name, spec in servers.items():
         if spec.get("type") == "http":
@@ -45,16 +45,17 @@ def _render_codex_mcp_toml(mcp_yaml: str, is_work: bool) -> str:
 
 
 def main() -> None:
-    if len(sys.argv) != 4:
-        sys.exit("Usage: inject_mcp_into_codex_toml.py <base_toml_path> <mcp_servers_yaml> <is_work>")
+    if len(sys.argv) not in (4, 5):
+        sys.exit("Usage: inject_mcp_into_codex_toml.py <base_toml_path> <mcp_servers_yaml> <is_work> [tool]")
 
     base_path, mcp_yaml, is_work_raw = sys.argv[1], sys.argv[2], sys.argv[3]
     is_work = is_work_raw == "true"
+    tool = sys.argv[4] if len(sys.argv) == 5 else None
 
     with open(base_path, "r") as f:
         base = f.read()
 
-    snippet = _render_codex_mcp_toml(mcp_yaml, is_work)
+    snippet = _render_codex_mcp_toml(mcp_yaml, is_work, tool=tool)
 
     if MARKER in base:
         before, after = base.split(MARKER, 1)

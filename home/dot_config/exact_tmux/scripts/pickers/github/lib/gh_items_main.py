@@ -31,9 +31,14 @@ def c(code: str, text: str) -> str:
     return f"\033[{code}m{text}{RESET}"
 
 
-ICON_PR = c("38;5;42", "")
-ICON_PR_DRAFT = c("38;5;242", "")
-ICON_ISSUE = c("38;5;141", "")
+# Nerd Font Octicons (matches session picker + docs)
+ICON_PR_OPEN = c("38;5;42", "\uf407")
+ICON_PR_MERGED = c("38;5;141", "\uf407")
+ICON_PR_CLOSED = c("38;5;196", "\uf4dc")
+ICON_PR_DRAFT = c("38;5;242", "\uf407")
+ICON_ISSUE_OPEN = c("38;5;42", "\uf41b")
+ICON_ISSUE_CLOSED = c("38;5;141", "\uf41d")
+ICON_ISSUE_NOT_PLANNED = c("38;5;244", "\uf41d")
 SECTION_SEP = c("2;38;5;244", "─" * 60)
 
 
@@ -159,15 +164,19 @@ class _ItemInfo:
         self.mergeable = mergeable
 
 
-def _scan_local_worktrees(nwo: str, repo_path: str) -> tuple[set[int], set[str]]:
+def _scan_local_worktrees(nwo: str, repo_path: str) -> tuple[set[int], set[str], dict[int, str]]:
     """Collect issue/PR numbers and branch names from local worktrees (no network).
 
-    Returns (wt_nums, branches) where wt_nums are numbers detected via metadata
-    or branch name heuristics, and branches are all local worktree branch names.
+    Returns (wt_nums, branches, branch_num_source) where wt_nums are numbers
+    detected via metadata or branch name heuristics, branches are all local
+    worktree branch names, and branch_num_source maps numbers extracted from
+    branch names to the branch they came from (so callers can detect false
+    positives when a branch is claimed by a different PR via GraphQL).
     """
     entries = _git_worktree_entries(repo_path)
     branches: set[str] = set()
     wt_nums: set[int] = set()
+    branch_num_source: dict[int, str] = {}
 
     for wt_path, branch in entries:
         meta_num = _wt_issue_number(wt_path)
@@ -179,11 +188,13 @@ def _scan_local_worktrees(nwo: str, repo_path: str) -> tuple[set[int], set[str]]
 
         m = _ISSUE_SUFFIX_RE.search(branch)
         if m:
-            wt_nums.add(int(m.group(1)))
+            num = int(m.group(1))
+            wt_nums.add(num)
+            branch_num_source[num] = branch
 
         branches.add(branch)
 
-    return wt_nums, branches
+    return wt_nums, branches, branch_num_source
 
 
 _GITHUB_ISSUE_URL_RE = re.compile(r"https?://github\.com/([^/]+/[^/]+)/issues/(\d+)\b")
@@ -446,7 +457,10 @@ def parse_config(config_path: str) -> tuple[list[dict[str, Any]], list[dict[str,
         title = s.get("title", "")
         filters = s.get("filters", "")
         if title and filters:
-            pr_sections.append({"title": title, "filters": filters.strip()})
+            entry: dict[str, Any] = {"title": title, "filters": filters.strip()}
+            if s.get("source"):
+                entry["source"] = s["source"]
+            pr_sections.append(entry)
 
     for s in data.get("issuesSections") or []:
         title = s.get("title", "")
@@ -462,20 +476,20 @@ def parse_config(config_path: str) -> tuple[list[dict[str, Any]], list[dict[str,
 
 ICON_LOCAL = c("38;5;81", "◆")
 ICON_LOCAL_SPACER = " "
-REVIEW_APPROVED = c("38;5;42", "✓")
-REVIEW_CHANGES = c("38;5;209", "✗")
-REVIEW_PENDING = c("38;5;244", "○")
+REVIEW_APPROVED = c("38;5;42", "\U000f012c")
+REVIEW_CHANGES = c("38;5;196", "\U000f0028")
+REVIEW_PENDING = c("38;5;220", "\uf444")
 REVIEW_SPACER = " "
-REVIEW_APPROVED_STALE = c("2;38;5;42", "✓")
-REVIEW_CHANGES_STALE = c("2;38;5;209", "✗")
-REVIEW_PENDING_STALE = c("2;38;5;244", "○")
-CI_SUCCESS = c("38;5;42", "●")
-CI_FAILURE = c("38;5;196", "●")
-CI_PENDING = c("38;5;220", "●")
+REVIEW_APPROVED_STALE = c("2;38;5;42", "\U000f012c")
+REVIEW_CHANGES_STALE = c("2;38;5;196", "\U000f0028")
+REVIEW_PENDING_STALE = c("2;38;5;220", "\uf444")
+CI_SUCCESS = c("38;5;42", "\uf4a4")
+CI_FAILURE = c("38;5;196", "\uf530")
+CI_PENDING = c("38;5;220", "\uf43a")
 CI_SPACER = " "
-CI_SUCCESS_STALE = c("2;38;5;42", "●")
-CI_FAILURE_STALE = c("2;38;5;196", "●")
-CI_PENDING_STALE = c("2;38;5;220", "●")
+CI_SUCCESS_STALE = c("2;38;5;42", "\uf4a4")
+CI_FAILURE_STALE = c("2;38;5;196", "\uf530")
+CI_PENDING_STALE = c("2;38;5;220", "\uf43a")
 COMMENT_ICON = "\033[38;5;244m\U0001f4ac\033[0m"
 CONFLICT_BADGE = c("38;5;209", "⚡")
 CONFLICT_BADGE_STALE = c("2;38;5;209", "⚡")
@@ -537,7 +551,11 @@ def fetch_section(kind: str, idx: int, title: str, filters: str, limit: int = 30
         "url: .html_url, "
         "d: .draft, "
         "a: .user.login, "
-        "c: .comments"
+        'as: (.assignees[0].login // ""), '
+        "c: .comments, "
+        "s: .state, "
+        "sr: .state_reason, "
+        "m: .pull_request.merged_at"
         "}]"
     )
 
@@ -574,11 +592,37 @@ def fetch_section(kind: str, idx: int, title: str, filters: str, limit: int = 30
     if not items:
         return []
 
-    result: list[dict[str, Any]] = [{"_header": True, "kind": kind, "idx": idx, "title": title}]
+    def _section_sort_key(it: dict[str, Any]) -> tuple[int, str, str, int]:
+        assignee = str(it.get("assignee") or "").strip().lstrip("@").lower()
+        author = str(it.get("author") or "").strip().lstrip("@").lower()
+        try:
+            num = int(it.get("num") or 0)
+        except Exception:
+            num = 0
+        # Assigned first; unassigned later.
+        assignee_rank = 0 if assignee else 1
+        return (assignee_rank, assignee, author, num)
+
+    header = {"_header": True, "kind": kind, "idx": idx, "title": title}
+    result: list[dict[str, Any]] = [header]
+    section_items: list[dict[str, Any]] = []
     for item in items:
         if not item.get("n"):
             continue
-        result.append(
+        is_pr = kind == "pr"
+        state = (item.get("s") or "open").lower()
+        merged = is_pr and bool(item.get("m"))
+        if merged:
+            effective_state = "merged"
+        elif state == "closed" and not is_pr:
+            sr = (item.get("sr") or "").lower()
+            effective_state = "not_planned" if sr == "not_planned" else "closed"
+        elif state == "closed":
+            effective_state = "closed"
+        else:
+            effective_state = "open"
+
+        section_items.append(
             {
                 "num": item["n"],
                 "title": item.get("t", ""),
@@ -587,11 +631,237 @@ def fetch_section(kind: str, idx: int, title: str, filters: str, limit: int = 30
                 "url": item.get("url", ""),
                 "draft": item.get("d", False),
                 "author": item.get("a", ""),
+                "assignee": item.get("as", ""),
                 "comments": item.get("c", 0) or 0,
                 "kind": kind,
+                "state": effective_state,
             }
         )
+    section_items.sort(key=_section_sort_key)
+    result.extend(section_items)
     return result
+
+
+_BACKPORT_STATUS_RE = re.compile(r"## (\U0001f494|\U0001f49a)")
+_BACKPORT_ROW_RE = re.compile(
+    r"\|([^|]*)\|([^|]+)\|(.+)\|",
+)
+_TABLE_NOISE_RE = re.compile(r"^[-:\s]+$")
+_BACKPORT_PR_URL_RE = re.compile(r"github\.com/([^/]+/[^/]+)/pull/(\d+)")
+
+
+def _parse_backport_state(comments: list[dict[str, Any]]) -> dict[str, int | None]:
+    """Parse backport comments to build per-branch state.
+
+    Returns {branch: backport_pr_number | None}.
+    None means the branch still needs a backport (failed, no PR created).
+    A PR number means a backport was created for that branch.
+
+    Later comments override earlier ones (retry scenarios).
+    """
+    branches: dict[str, int | None] = {}
+    for comment in comments:
+        body = comment.get("body", "")
+        if not _BACKPORT_STATUS_RE.search(body):
+            continue
+        for row_m in _BACKPORT_ROW_RE.finditer(body):
+            status_cell = row_m.group(1).strip()
+            branch = row_m.group(2).strip()
+            if branch == "Branch" or _TABLE_NOISE_RE.match(branch):
+                continue
+            if "\u2705" in status_cell:  # ✅
+                result_cell = row_m.group(3)
+                pr_m = _BACKPORT_PR_URL_RE.search(result_cell)
+                branches[branch] = int(pr_m.group(2)) if pr_m else None
+            elif "\u274c" in status_cell:  # ❌
+                branches[branch] = None
+    return branches
+
+
+def fetch_backport_failures(kind: str, idx: int, title: str, filters: str, limit: int = 30) -> list[dict[str, Any]]:
+    """Fetch merged PRs with incomplete backports.
+
+    A PR is shown if any target branch either has no backport PR or has a
+    backport PR that is not yet merged.
+    """
+    candidates = fetch_section(kind, idx, title, filters, limit=limit)
+    items = [i for i in candidates if not i.get("_header") and i.get("num")]
+    if not items:
+        return []
+
+    # Phase 1: fetch comments to find backport status
+    by_repo: dict[str, list[dict[str, Any]]] = {}
+    for item in items:
+        by_repo.setdefault(item["repo"], []).append(item)
+
+    aliases: list[str] = []
+    alias_map: dict[str, dict[str, Any]] = {}
+    for nwo, repo_items in by_repo.items():
+        owner, name = nwo.split("/", 1) if "/" in nwo else ("", nwo)
+        for item in repo_items:
+            n = item["num"]
+            alias = f"_bp{owner}_{name}_{n}".replace("-", "_")
+            aliases.append(
+                f'{alias}: repository(owner: "{owner}", name: "{name}") '
+                f"{{ pullRequest(number: {n}) {{ number "
+                f"comments(last: 100) {{ nodes {{ body }} }} }} }}"
+            )
+            alias_map[alias] = item
+
+    if not aliases:
+        return []
+
+    query = "query { " + " ".join(aliases) + " }"
+    try:
+        result = subprocess.run(
+            ["gh", "api", "graphql", "-f", f"query={query}"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if not result.stdout.strip():
+            return []
+        data = json.loads(result.stdout).get("data", {})
+    except Exception:
+        return []
+
+    # Build per-item backport state and collect backport PR numbers to check
+    item_branches: dict[str, dict[str, int | None]] = {}
+    bp_pr_nums: dict[str, set[int]] = {}
+    for alias, item in alias_map.items():
+        pr_node = (data.get(alias) or {}).get("pullRequest")
+        if not pr_node:
+            continue
+        comments = (pr_node.get("comments") or {}).get("nodes") or []
+        branches = _parse_backport_state(comments)
+        if not branches:
+            continue
+        item_branches[alias] = branches
+        for _branch, bp_num in branches.items():
+            if bp_num is not None:
+                nwo = item["repo"]
+                bp_pr_nums.setdefault(nwo, set()).add(bp_num)
+
+    if not item_branches:
+        return []
+
+    # Phase 2: batch-check backport PR state and title
+    bp_info: dict[tuple[str, int], tuple[str, str, str]] = {}  # (nwo, num) -> (state, title, url)
+    bp_aliases: list[str] = []
+    bp_alias_map: dict[str, tuple[str, int]] = {}
+    for nwo, nums in bp_pr_nums.items():
+        owner, name = nwo.split("/", 1) if "/" in nwo else ("", nwo)
+        for n in nums:
+            alias = f"_bps{owner}_{name}_{n}".replace("-", "_")
+            bp_aliases.append(
+                f'{alias}: repository(owner: "{owner}", name: "{name}") '
+                f"{{ pullRequest(number: {n}) {{ number state title url }} }}"
+            )
+            bp_alias_map[alias] = (nwo, n)
+
+    if bp_aliases:
+        bp_query = "query { " + " ".join(bp_aliases) + " }"
+        try:
+            bp_result = subprocess.run(
+                ["gh", "api", "graphql", "-f", f"query={bp_query}"],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            if bp_result.stdout.strip():
+                bp_data = json.loads(bp_result.stdout).get("data", {})
+                for alias, (nwo, n) in bp_alias_map.items():
+                    node = (bp_data.get(alias) or {}).get("pullRequest")
+                    if node:
+                        bp_info[(nwo, n)] = (
+                            node.get("state", ""),
+                            node.get("title", ""),
+                            node.get("url", ""),
+                        )
+        except Exception:
+            pass
+
+    def _parent_sort_key(it: dict[str, Any]) -> tuple[int, str, str, int]:
+        assignee = str(it.get("assignee") or "").strip().lstrip("@").lower()
+        author = str(it.get("author") or "").strip().lstrip("@").lower()
+        try:
+            num = int(it.get("num") or 0)
+        except Exception:
+            num = 0
+        assignee_rank = 0 if assignee else 1
+        return (assignee_rank, assignee, author, num)
+
+    # Phase 3: filter and build grouped output (keep parent + its sub-rows together)
+    grouped: list[tuple[dict[str, Any], list[dict[str, Any]]]] = []
+    for alias, branches in item_branches.items():
+        item = alias_map[alias]
+        nwo = item["repo"]
+        pending: list[tuple[str, int | None]] = []
+        for branch, bp_num in branches.items():
+            if bp_num is None:
+                pending.append((branch, None))
+            else:
+                info = bp_info.get((nwo, bp_num))
+                state = info[0] if info else ""
+                if state != "MERGED":
+                    pending.append((branch, bp_num))
+
+        if not pending:
+            continue
+        subs: list[dict[str, Any]] = []
+        for branch, bp_num in pending:
+            if bp_num is not None:
+                info = bp_info.get((nwo, bp_num))
+                state = info[0] if info else "OPEN"
+                bp_title = info[1] if info else ""
+                bp_url = info[2] if info else f"https://github.com/{nwo}/pull/{bp_num}"
+                subs.append(
+                    {
+                        "_backport_sub": True,
+                        "kind": "pr",
+                        "num": bp_num,
+                        "repo": nwo,
+                        "title": bp_title,
+                        "url": bp_url,
+                        "branch": branch,
+                        "state": state,
+                    }
+                )
+            else:
+                subs.append(
+                    {
+                        "_backport_sub": True,
+                        "kind": "pr",
+                        "num": 0,
+                        "repo": nwo,
+                        "title": "",
+                        "url": "",
+                        "branch": branch,
+                        "state": "MISSING",
+                    }
+                )
+        grouped.append((item, subs))
+
+    if not grouped:
+        return []
+
+    grouped.sort(key=lambda t: _parent_sort_key(t[0]))
+    result_items: list[dict[str, Any]] = []
+    for parent, subs in grouped:
+        result_items.append(parent)
+        # Keep a deterministic order for sub-rows: branch name then PR number (0 last).
+        subs.sort(
+            key=lambda s: (
+                str(s.get("branch") or "").lower(),
+                1 if int(s.get("num") or 0) == 0 else 0,
+                int(s.get("num") or 0),
+            )
+        )
+        result_items.extend(subs)
+
+    return [{"_header": True, "kind": kind, "idx": idx, "title": title}] + result_items
 
 
 def _terminal_columns() -> int:
@@ -639,8 +909,8 @@ def format_lines(
     """Format item dicts into TSV lines for fzf, with worktree + review markers."""
     cols = _terminal_columns()
     visible = int(cols * 0.45)
-    # Fixed: icon(1) + marker(1) + review(1) + ci(1) + spaces(5) + #number(~8) + repo(~17) + author(~20) + date(~6) + padding(~6)
-    fixed_width = 66
+    # Fixed: icon(1) + marker(1) + review(1) + ci(1) + conflict(1) + spaces(~8) + #number(~8) + repo(~17) + author(~20) + date(~6) + padding(~6)
+    fixed_width = 69
     max_title = max(40, visible - fixed_width)
 
     lines: list[str] = []
@@ -651,17 +921,93 @@ def format_lines(
             lines.append(f"{header}\theader\t\t{item['kind']}:{item['idx']}\t\t{item['title']}\t\t")
             continue
 
+        if item.get("_backport_sub"):
+            branch = item["branch"]
+            state = item["state"]
+            num = item["num"]
+            repo = item["repo"]
+            url = item.get("url", "")
+            title_text = item.get("title", "")
+            if len(title_text) > max_title:
+                title_text = title_text[: max_title - 1] + "…"
+            arrow = c("2;38;5;244", "↳")
+            branch_col = c("38;5;141", branch)
+            if state == "MISSING":
+                state_col = c("38;5;196", "no backport PR")
+                display = f"{arrow} {branch_col}  {state_col}"
+                mk = f"{branch} backport missing {repo}"
+                lines.append(f"{display}\theader\t{repo}\t0\t\t{mk}\t\t")
+            else:
+                item_info = wt_index.get(repo, {}).get(int(num))
+                local_marker = ICON_LOCAL if (item_info and item_info.has_wt) else ICON_LOCAL_SPACER
+                gql_known = bool(item_info and (item_info.mergeable or item_info.review or item_info.ci))
+                prior_key = (repo, int(num))
+                prior_review, prior_ci, prior_mergeable = prior.get(prior_key, ("", "", ""))
+                review = (
+                    _review_badge2(item_info.review, stale=False)
+                    if (item_info and gql_known)
+                    else _review_badge2(prior_review, stale=True)
+                    if ((not gql_known) and prior_review)
+                    else REVIEW_SPACER
+                )
+                ci = (
+                    _ci_badge2(item_info.ci, stale=False)
+                    if (item_info and gql_known)
+                    else _ci_badge2(prior_ci, stale=True)
+                    if ((not gql_known) and prior_ci)
+                    else CI_SPACER
+                )
+                conflict = CONFLICT_SPACER
+                mergeable_val = (
+                    item_info.mergeable if (item_info and gql_known and item_info.mergeable) else ""
+                ) or prior_mergeable
+                if mergeable_val == "CONFLICTING" and (item_info and gql_known and item_info.mergeable):
+                    conflict = CONFLICT_BADGE
+                elif mergeable_val == "CONFLICTING":
+                    conflict = CONFLICT_BADGE_STALE
+                if state == "MERGED":
+                    state_icon = ICON_PR_MERGED
+                elif state == "CLOSED":
+                    state_icon = ICON_PR_CLOSED
+                else:
+                    state_icon = ICON_PR_OPEN
+                num_col = c("38;5;81", f"#{num}")
+                display = (
+                    f"{state_icon} {local_marker} {review} {ci} {conflict} {arrow} {branch_col}  {num_col} {title_text}"
+                )
+                mk = f"#{num} {title_text} {repo} {branch}"
+                meta_review = (item_info.review if (item_info and gql_known) else prior_review) or ""
+                meta_ci = (item_info.ci if (item_info and gql_known) else prior_ci) or ""
+                meta_col = f"{meta_review},{meta_ci}" if (meta_review or meta_ci) else ""
+                mergeable_col = (
+                    item_info.mergeable
+                    if (item_info and gql_known and item_info.mergeable)
+                    else (prior_mergeable or "")
+                )
+                lines.append(f"{display}\tpr\t{repo}\t{num}\t{url}\t{mk}\t{meta_col}\t{mergeable_col}")
+            continue
+
         kind = item["kind"]
         num = item["num"]
         repo = item["repo"]
         item_kind = "issue" if kind == "issue" else "pr"
 
+        state = item.get("state", "open")
         if kind == "issue":
-            icon = ICON_ISSUE
+            if state == "not_planned":
+                icon = ICON_ISSUE_NOT_PLANNED
+            elif state == "closed":
+                icon = ICON_ISSUE_CLOSED
+            else:
+                icon = ICON_ISSUE_OPEN
         elif item.get("draft"):
             icon = ICON_PR_DRAFT
+        elif state == "merged":
+            icon = ICON_PR_MERGED
+        elif state == "closed":
+            icon = ICON_PR_CLOSED
         else:
-            icon = ICON_PR
+            icon = ICON_PR_OPEN
 
         item_info = wt_index.get(repo, {}).get(int(num))
         local_marker = ICON_LOCAL if (item_info and item_info.has_wt) else ICON_LOCAL_SPACER
@@ -700,11 +1046,26 @@ def format_lines(
 
         num_col = c("38;5;81", f"#{num}")
         repo_col = c("38;5;244", short_repo(repo))
-        author_col = c("38;5;244", f"@{item['author']}")
+        author = item.get("author", "")
+        assignee = item.get("assignee", "")
+        who = author
+        who_extra = ""
+        if item_kind == "issue":
+            if assignee:
+                who = f"@{assignee}"
+                if author and author != assignee:
+                    who_extra = c("2;38;5;244", f" (@{author})")
+            else:
+                who = "<unassigned>"
+                if author:
+                    who_extra = c("2;38;5;244", f" (@{author})")
+        else:
+            who = f"@{author}" if author else ""
+        who_col = (c("38;5;244", who) + who_extra) if who else c("38;5;244", "@—")
         date_col = c("38;5;244", relative_date(item["updated"]))
 
-        display = f"{icon} {local_marker}{review}{ci}{conflict} {num_col} {title_text}  {repo_col}  {author_col}  {date_col}{comment_col}"
-        mk = f"#{num} {title_text} {repo} @{item['author']}"
+        display = f"{icon} {local_marker} {review} {ci} {conflict} {num_col} {title_text}  {repo_col}  {who_col}  {date_col}{comment_col}"
+        mk = f"#{num} {title_text} {repo} {who} @{author} @{assignee} <unassigned>"
         # Preserve last-known review/ci if GraphQL is missing so badges don't
         # disappear on the next refresh.
         meta_review = (item_info.review if (item_info and gql_known) else prior_review) or ""
@@ -759,21 +1120,26 @@ def main():
 
     all_lines: list[str] = []
 
-    tasks = []
+    tasks: list[tuple[str, int, str, str, str]] = []
     for i, s in enumerate(pr_sections):
-        tasks.append(("pr", i, s["title"], s["filters"]))
+        tasks.append(("pr", i, s["title"], s["filters"], s.get("source", "")))
     for i, s in enumerate(issue_sections):
-        tasks.append(("issue", i, s["title"], s["filters"]))
+        tasks.append(("issue", i, s["title"], s["filters"], ""))
 
     if not tasks:
         return
+
+    _SOURCE_FETCHERS = {
+        "backport-failures": fetch_backport_failures,
+    }
 
     # Phase 1: fetch all sections concurrently
     results: dict[int, list[dict[str, Any]]] = {}
     with concurrent.futures.ThreadPoolExecutor(max_workers=HALF_CORES) as pool:
         section_futs: dict[concurrent.futures.Future[list[dict[str, Any]]], int] = {}
-        for task_idx, (kind, idx, title, filters) in enumerate(tasks):
-            fut = pool.submit(fetch_section, kind, idx, title, filters)
+        for task_idx, (kind, idx, title, filters, source) in enumerate(tasks):
+            fetcher = _SOURCE_FETCHERS.get(source, fetch_section)
+            fut = pool.submit(fetcher, kind, idx, title, filters)
             section_futs[fut] = task_idx
 
         for fut in concurrent.futures.as_completed(section_futs):
@@ -791,6 +1157,18 @@ def main():
         for item in results[task_idx]:
             if item.get("_header"):
                 all_items.append(item)
+                continue
+            if item.get("_backport_sub"):
+                all_items.append(item)
+                repo = item.get("repo") or ""
+                if repo:
+                    wt_repos.add(str(repo))
+                    try:
+                        num = int(item.get("num") or 0)
+                    except Exception:
+                        num = 0
+                    if num > 0:
+                        pr_nums_by_repo.setdefault(str(repo), set()).add(num)
                 continue
 
             k = str(item.get("kind") or "")
@@ -815,11 +1193,11 @@ def main():
         if local:
             resolved_repos[nwo] = local
 
-    local_data: dict[str, tuple[set[int], set[str]]] = {}
+    local_data: dict[str, tuple[set[int], set[str], dict[int, str]]] = {}
     gql_data: dict[str, dict[int, tuple[str, str, str, str]]] = {}
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=HALF_CORES) as pool:
-        wt_futs: dict[concurrent.futures.Future[tuple[set[int], set[str]]], str] = {}
+        wt_futs: dict[concurrent.futures.Future[tuple[set[int], set[str], dict[int, str]]], str] = {}
         for nwo, path in resolved_repos.items():
             fut = pool.submit(_scan_local_worktrees, nwo, path)
             wt_futs[fut] = nwo
@@ -843,7 +1221,7 @@ def main():
     all_nwos = set(local_data.keys()) | set(gql_data.keys())
     all_nwos |= set(linked_issues.keys())
     for nwo in all_nwos:
-        wt_nums, branches = local_data.get(nwo, (set(), set()))
+        wt_nums, branches, branch_num_source = local_data.get(nwo, (set(), set(), {}))
         # Include issue numbers linked from the sessions/worktrees picker cache.
         wt_nums |= linked_issues.get(nwo, set())
         gql_prs = gql_data.get(nwo, {})
@@ -852,8 +1230,22 @@ def main():
         for n in wt_nums:
             info[n] = _ItemInfo(has_wt=True)
 
+        # Build suffix index for fork-PR detection: ,w prs names fork branches
+        # as <remote>__<headRefName>, so a PR's headRefName won't match directly.
+        branch_heads: set[str] = set()
+        for b in branches:
+            dunder = b.find("__")
+            if dunder >= 0:
+                branch_heads.add(b[dunder + 2 :])
+
+        # Track which branches are claimed by a PR via GraphQL head matching,
+        # so we can remove false-positive wt_nums extracted from those branches.
+        claimed_branches: set[str] = set()
+
         for num, (head, review, ci, mergeable) in gql_prs.items():
-            has_local = head in branches or num in wt_nums
+            has_local = head in branches or head in branch_heads or num in wt_nums
+            if has_local and head in branches:
+                claimed_branches.add(head)
             if num in info:
                 info[num].review = review
                 info[num].ci = ci
@@ -861,6 +1253,20 @@ def main():
                 info[num].has_wt = info[num].has_wt or has_local
             elif has_local or review or ci or mergeable:
                 info[num] = _ItemInfo(has_wt=has_local, review=review, ci=ci, mergeable=mergeable)
+
+        # Remove false-positive has_wt for numbers extracted from a branch
+        # that is actually the headRef of a different PR.  Example: branch
+        # `backport/9.3/pr-258942` belongs to PR 260061 — the regex extracts
+        # 258942, but that number is the parent PR, not a local worktree.
+        branch_to_pr: dict[str, int] = {head: num for num, (head, *_) in gql_prs.items() if head in claimed_branches}
+        for n, src_branch in branch_num_source.items():
+            owning_pr = branch_to_pr.get(src_branch)
+            if owning_pr is not None and owning_pr != n:
+                entry = info.get(n)
+                if entry and entry.has_wt and not entry.review and not entry.ci and not entry.mergeable:
+                    del info[n]
+                elif entry:
+                    entry.has_wt = False
 
         if info:
             wt_index[nwo] = info

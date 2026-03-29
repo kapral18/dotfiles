@@ -2,24 +2,24 @@ prSections:
   - title: "PRs waiting for My Review"
     filters: >-
       is:open is:pr
-      review-requested:kapral18
+      review-requested:@me
       -org:elastic
       -is:draft
-      -reviewed-by:kapral18
-      -author:kapral18
+      -author:@me
   - title: "PRs Created by Me"
     filters: >-
       is:open is:pr
-      author:kapral18
+      author:@me
       -org:elastic
   - title: "PRs Involving Me"
     filters: >-
       is:open is:pr
       involves:@me
       -org:elastic
-      -author:kapral18
+      -author:@me
       -is:draft
-      -review-requested:kapral18
+      -review-requested:@me
+      -reviewed-by:@me
 issuesSections:
   - title: "Issues Created by Me"
     filters: >-

@@ -26,8 +26,8 @@ from mcp_registry import load_servers
 PLACEHOLDER = '"__MCP_SERVERS__"'
 
 
-def _render_mcp_value(mcp_yaml: str, is_work: bool) -> str:
-    servers = load_servers(mcp_yaml, is_work)
+def _render_mcp_value(mcp_yaml: str, is_work: bool, tool: str | None = None) -> str:
+    servers = load_servers(mcp_yaml, is_work, tool=tool)
     mcp_obj = {}
     for name, spec in servers.items():
         if spec.get("type") == "http":
@@ -48,17 +48,18 @@ def _render_mcp_value(mcp_yaml: str, is_work: bool) -> str:
 
 
 def main() -> None:
-    if len(sys.argv) != 3:
-        sys.exit("Usage: inject_mcp_into_opencode_jsonc.py <mcp_servers_yaml> <is_work>")
+    if len(sys.argv) not in (3, 4):
+        sys.exit("Usage: inject_mcp_into_opencode_jsonc.py <mcp_servers_yaml> <is_work> [tool]")
 
     mcp_yaml = sys.argv[1]
     is_work = sys.argv[2] == "true"
+    tool = sys.argv[3] if len(sys.argv) == 4 else None
 
     base = sys.stdin.read()
     if PLACEHOLDER not in base:
         sys.exit('Missing placeholder in JSONC: "mcp": "__MCP_SERVERS__"')
 
-    rendered = _render_mcp_value(mcp_yaml, is_work)
+    rendered = _render_mcp_value(mcp_yaml, is_work, tool=tool)
     sys.stdout.write(base.replace(PLACEHOLDER, rendered, 1))
 
 

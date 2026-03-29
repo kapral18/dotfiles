@@ -85,7 +85,7 @@ resolve_pr_number_from_commit() {
           // empty
       ' 2>/dev/null || true
   )
-  if [ -n "$pr" ] && [ "$pr" != "null" ]; then
+  if [ -n "$pr" ] && [ "$pr" != "null" ] && [[ "$pr" =~ ^[0-9]+$ ]]; then
     printf '%s\n' "$pr"
     return 0
   fi
@@ -100,7 +100,7 @@ resolve_pr_number_from_commit() {
           // empty
       ' 2>/dev/null || true
   )
-  if [ -n "$pr" ] && [ "$pr" != "null" ]; then
+  if [ -n "$pr" ] && [ "$pr" != "null" ] && [[ "$pr" =~ ^[0-9]+$ ]]; then
     printf '%s\n' "$pr"
     return 0
   fi

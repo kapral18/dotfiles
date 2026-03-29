@@ -88,7 +88,7 @@ _mark_local_in_cache() {
   mode="$(cat "${cache_dir}/gh_picker_mode" 2> /dev/null || echo work)"
   cache_file="${cache_dir}/gh_picker_${mode}.tsv"
   patcher="$(cd "$(dirname "$0")" && pwd)/lib/gh_patch_picker_cache.py"
-  if [ -x "$patcher" ] && [ -f "$cache_file" ]; then
+  if [ -f "$patcher" ] && [ -f "$cache_file" ]; then
     python3 -u "$patcher" --cache-file "$cache_file" --kind "$k" --repo "$repo" --num "$num" 2> /dev/null || true
   fi
 }
@@ -126,8 +126,11 @@ case "$action" in
 
     case "$kind" in
       pr)
-        ,w prs --focus "$number"
-        _mark_local_in_cache "pr" "$repo_nwo" "$number"
+        if ,w prs --focus "$number"; then
+          _mark_local_in_cache "pr" "$repo_nwo" "$number"
+        elif [ -n "$url" ]; then
+          open "$url" 2> /dev/null || xdg-open "$url" 2> /dev/null || true
+        fi
         ;;
       issue)
         ,w issue --focus "$number"

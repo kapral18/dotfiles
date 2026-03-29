@@ -397,7 +397,7 @@ pending_path_prefixes = load_pending_path_prefixes()
 
 
 def path_tombstoned(kind: str, p: str) -> bool:
-    if kind not in ("dir", "worktree") or not p:
+    if kind not in ("dir", "worktree", "session") or not p:
         return False
     for base in mutation_path_prefixes:
         if p == base or p.startswith(base + "/"):

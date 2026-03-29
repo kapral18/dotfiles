@@ -6,7 +6,7 @@ return {
     "nvim-treesitter/nvim-treesitter",
     opts = function(_, opts)
       opts.ensure_installed =
-        vim.list_extend(opts.ensure_installed or {}, { "typescript", "tsx", "javascript", "jsdoc" })
+        vim.list_extend(opts.ensure_installed or {}, { "typescript", "tsx", "javascript", "jsx", "jsdoc" })
       return opts
     end,
   },

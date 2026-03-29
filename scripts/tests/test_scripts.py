@@ -69,7 +69,29 @@ class TestMcpRegistry(unittest.TestCase):
         assert "work-tool" in servers
         assert "http-tool" in servers
 
-    def test_http_server_shape(self):
+    def test_http_server_shape_with_tool(self):
+        sys.path.insert(0, str(SCRIPTS))
+        from mcp_registry import load_servers
+
+        servers = load_servers(str(FIXTURES / "mcp_servers.yaml"), is_work=False, tool="claude")
+        http = servers["http-tool"]
+        assert http["type"] == "http"
+        assert http["url"] == "https://mcp.example.com/mcp"
+        assert http["oauth"]["clientId"] == "resolved-client-id"
+        assert http["oauth"]["callbackPort"] == 3118
+
+    def test_http_server_oauth_by_tool_cursor(self):
+        sys.path.insert(0, str(SCRIPTS))
+        from mcp_registry import load_servers
+
+        servers = load_servers(str(FIXTURES / "mcp_servers.yaml"), is_work=False, tool="cursor")
+        http = servers["http-tool"]
+        assert http["type"] == "http"
+        assert http["url"] == "https://mcp.example.com/mcp"
+        assert http["oauth"]["clientId"] == "cursor-client-id"
+        assert "callbackPort" not in http["oauth"]
+
+    def test_http_server_no_tool_no_oauth(self):
         sys.path.insert(0, str(SCRIPTS))
         from mcp_registry import load_servers
 
@@ -77,8 +99,16 @@ class TestMcpRegistry(unittest.TestCase):
         http = servers["http-tool"]
         assert http["type"] == "http"
         assert http["url"] == "https://mcp.example.com/mcp"
-        assert http["oauth"]["clientId"] == "resolved-client-id"
-        assert http["oauth"]["callbackPort"] == 3118
+        assert "oauth" not in http
+
+    def test_http_server_unknown_tool_no_oauth(self):
+        sys.path.insert(0, str(SCRIPTS))
+        from mcp_registry import load_servers
+
+        servers = load_servers(str(FIXTURES / "mcp_servers.yaml"), is_work=False, tool="gemini")
+        http = servers["http-tool"]
+        assert http["type"] == "http"
+        assert "oauth" not in http
 
 
 class TestAiModels(unittest.TestCase):
@@ -133,12 +163,12 @@ class TestGenerateMcpConfigs(unittest.TestCase):
     """WHEN generating MCP JSON configs."""
 
     def test_personal_golden(self):
-        actual = _run(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "false"])
+        actual = _run(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "false", "claude"])
         expected = (FIXTURES / "golden_mcp_personal.json").read_text()
         assert json.loads(actual) == json.loads(expected)
 
     def test_work_golden(self):
-        actual = _run(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "true"])
+        actual = _run(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "true", "claude"])
         expected = (FIXTURES / "golden_mcp_work.json").read_text()
         assert json.loads(actual) == json.loads(expected)
 

@@ -6,7 +6,6 @@ prSections:
       org:elastic
       -is:draft
       -author:@me
-      -reviewed-by:@me
       -team-review-requested:elastic/kibana-management
   - title: "PRs waiting Team Review"
     filters: >-
@@ -18,16 +17,23 @@ prSections:
   - title: "PRs Created by Me"
     filters: >-
       is:open is:pr
-      author:kapral18
+      author:@me
+      org:elastic
+  - title: "Pending Backports"
+    source: backport-failures
+    filters: >-
+      is:pr is:merged
+      author:@me
       org:elastic
   - title: "PRs Involving Me"
     filters: >-
       is:open is:pr
       involves:@me
       org:elastic
-      -author:kapral18
+      -author:@me
       -is:draft
-      -review-requested:kapral18
+      -review-requested:@me
+      -reviewed-by:@me
       -team-review-requested:elastic/kibana-management
 issuesSections:
   - title: "Issues with Team Failed Tests"

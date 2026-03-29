@@ -196,8 +196,9 @@ Shared behavior:
 - Bootstrap location: `elastic/*` in `~/work/<repo>`, everything else in
   `~/code/<repo>`.
 - The picker shows `◆` markers for PRs/issues that already have local worktrees,
-  review status badges (`✓` approved, `✗` changes requested, `○` pending), and
-  CI status badges (`●` green/red/yellow for success/failure/pending).
+  review status badges (`󰄬` approved, `󰀨` changes requested,
+  `` pending), and CI status badges (`●` green/red/yellow for
+  success/failure/pending).
 
 ## Verification
 

@@ -183,7 +183,7 @@ if pending_file and os.path.exists(pending_file):
 
 
 def path_tombstoned(kind, p):
-    if kind not in ("dir", "worktree") or not p:
+    if kind not in ("dir", "worktree", "session") or not p:
         return False
     for base in path_prefixes:
         if p == base or p.startswith(base + "/"):

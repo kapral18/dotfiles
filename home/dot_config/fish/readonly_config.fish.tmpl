@@ -336,9 +336,23 @@ if status --is-interactive
     alias cat=bat
     alias agent=cursor-agent
     alias c=chezmoi
-    alias vlaude='env CLAUDE_CODE_USE_VERTEX=1 CLOUD_ML_REGION=global ANTHROPIC_VERTEX_PROJECT_ID=(pass google/vertex/project) claude'
+    alias vlaude='env CLAUDE_CODE_USE_VERTEX=1 CLOUD_ML_REGION=global ANTHROPIC_VERTEX_PROJECT_ID=(pass google/vertex/project) claude --effort max'
     alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l'
-    alias g=git
+    function g --wraps git --description 'git with fsmonitor auto-recovery'
+        set -l tmpfile (mktemp)
+        command git $argv 2>$tmpfile
+        set -l git_status $status
+        set -l errs (cat $tmpfile)
+        rm -f $tmpfile
+        if test $git_status -ne 0; and string match -q '*could not read IPC response*' "$errs"
+            command git fsmonitor--daemon stop 2>/dev/null
+            command git fsmonitor--daemon start 2>/dev/null
+            command git $argv
+        else
+            test -n "$errs"; and echo $errs >&2
+            return $git_status
+        end
+    end
     alias t=tmux
     alias tree='tree -I ".git|node_modules"'
     alias v=nvim

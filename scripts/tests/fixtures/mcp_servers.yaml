@@ -19,6 +19,9 @@ mcp_servers:
     work_only: false
     type: http
     url: https://mcp.example.com/mcp
-    oauth:
-      clientId: "$(echo resolved-client-id)"
-      callbackPort: 3118
+    oauth_by_tool:
+      claude:
+        clientId: "$(echo resolved-client-id)"
+        callbackPort: 3118
+      cursor:
+        clientId: "$(echo cursor-client-id)"

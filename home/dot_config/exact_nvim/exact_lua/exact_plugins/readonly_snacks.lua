@@ -152,19 +152,6 @@ return {
         end,
         desc = "Lasr (Root Dir)",
       },
-      {
-        "<leader>srr",
-        function()
-          local fs_util = require("util.fs")
-          local root = require("util.root").get()
-          local selection = vim.trim(fs_util.get_visual() or ""):gsub("%s+", " ")
-
-          vim.cmd("normal! \027")
-          require("snacks").terminal({ "lasr", root }, { cwd = root })
-        end,
-        desc = "Lasr (Selection)",
-        mode = { "x" },
-      },
       -- Git pickers
       {
         "<leader>gL",

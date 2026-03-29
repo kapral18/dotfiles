@@ -11,12 +11,37 @@ All PR review modes load this file. Do not duplicate these rules in mode files.
     - `,gh-prw --number`
   - If `,gh-prw` fails once, stop and ask the user for the PR URL/number.
 
-## Media Evidence
+## Reference Resolution (blocking — complete before diff analysis)
 
-- Treat screenshots/GIFs/videos as first-class evidence:
-  - open every inline image/attachment in the PR description and comment threads
-  - if a claim depends on visuals and visuals are missing/unclear, ask for
-    visuals
+1. Extract all URLs, PR/issue refs, and image/media links from:
+   - PR description
+   - All review comments and threads
+2. Open each one. For each:
+   - PRs: read description, state, and diff summary
+   - Issues: read full body
+   - Images/GIFs/videos: download to `/tmp` with
+     `curl -sL -o /tmp/<name> <url>`, then read the local file (direct GitHub
+     media URLs are not readable)
+   - Other URLs: fetch if they could inform the review
+3. From whatever you just read, extract any new references not yet visited.
+4. Repeat steps 2-3 until no unvisited references remain.
+5. State the full list of references visited and what you learned from each
+   before proceeding to diff analysis.
+
+If a claim depends on visuals and visuals are missing/unclear, ask for visuals.
+
+## Deduplication + Truth Filter (Required Before Drafting)
+
+- Using artifacts from Reference Resolution, classify each candidate finding:
+  - `covered`: already addressed by accurate PR description clarifications or
+    existing review threads/replies (regardless of comment author) after
+    verifying against the current implementation/diff; do not draft a new
+    comment.
+  - `new`: not already covered and verified against the current
+    implementation/diff; eligible for draft feedback.
+  - `incorrect`: prior clarification/comment conflicts with the current
+    implementation/diff; add one correction with evidence (do not echo the
+    incorrect claim).
 
 ## Comment Placement (Draft Guidance)
 
@@ -34,8 +59,9 @@ Where to comment:
 - For API calls, do not assume a source-file line number is a valid anchor.
   Prefer:
   - `position` (diff-relative), computed from the PR's unified diff:
-    - 1-based count of lines starting at the first `@@` hunk header in that file
-    - continues across subsequent hunks until the next file
+    - the `@@` hunk header line itself is **not counted** (position 0)
+    - the first line after the `@@` header is position 1
+    - counting continues sequentially across all subsequent hunks in the file
   - or `line` + `side` / `start_line` + `start_side` (still must resolve against
     the PR diff; GitHub will 422 if it cannot resolve)
 - If the specific source line you care about is not shown in the diff context:

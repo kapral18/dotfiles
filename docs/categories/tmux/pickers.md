@@ -106,9 +106,9 @@ requests and issues. Badges appear inline after status badges.
 | `` (red)     | PR — closed                | `oct-git_pull_request_closed` F4DC | red (`38;5;196`)    |
 | `` (green)   | Issue — open               | `oct-issue_opened` F41B            | green (`38;5;42`)   |
 | `` (purple)  | Issue — closed             | `oct-issue_closed` F41D            | purple (`38;5;141`) |
-| `✓` (green)  | Review — approved          | Unicode check mark U+2713          | green (`38;5;42`)   |
-| `✗` (red)    | Review — changes requested | Unicode ballot X U+2717            | red (`38;5;196`)    |
-| `○` (yellow) | Review — pending           | Unicode circle U+25CB              | yellow (`38;5;214`) |
+| `󰄬` (green)  | Review — approved          | `nf-md-check_circle` U+F012C       | green (`38;5;42`)   |
+| `󰀨` (red)    | Review — changes requested | `nf-md-alert_circle` U+F0028       | red (`38;5;196`)    |
+| `` (yellow)  | Review — pending           | `nf-oct-dot_fill` U+F444           | yellow (`38;5;220`) |
 | `●` (green)  | CI — success               | Unicode bullet U+25CF              | green (`38;5;42`)   |
 | `●` (red)    | CI — failure               | Unicode bullet U+25CF              | red (`38;5;196`)    |
 | `●` (yellow) | CI — pending               | Unicode bullet U+25CF              | yellow (`38;5;220`) |
@@ -362,9 +362,9 @@ useful.
 | Badge        | Meaning                      | Color               |
 | ------------ | ---------------------------- | ------------------- |
 | `◆`          | Local worktree exists        | cyan (`38;5;81`)    |
-| `✓`          | PR review — approved         | green (`38;5;42`)   |
-| `✗`          | PR review — changes req.     | orange (`38;5;209`) |
-| `○`          | PR review — pending          | dim (`38;5;244`)    |
+| `󰄬`          | PR review — approved         | green (`38;5;42`)   |
+| `󰀨`          | PR review — changes req.     | red (`38;5;196`)    |
+| ``           | PR review — pending          | yellow (`38;5;220`) |
 | `●` (green)  | CI — success                 | green (`38;5;42`)   |
 | `●` (red)    | CI — failure                 | red (`38;5;196`)    |
 | `●` (yellow) | CI — pending                 | yellow (`38;5;220`) |
@@ -426,10 +426,11 @@ pickers.
 
 ### Preview pane
 
-Shows PR/issue details: state, review decision, branches, author, changed files,
-labels, and body text. Uses `gh pr view` / `gh issue view` with `bat` for
-Markdown rendering. For PRs, it also shows `mergeable` (e.g. `MERGEABLE`,
-`CONFLICTING`) so the preview stays authoritative even if list badges are stale.
+Shows PR/issue details: state, review decision, branches, author/assignee,
+changed files, labels, and body text. Uses `gh pr view` / `gh issue view` with
+`bat` for Markdown rendering. For PRs, it also shows `mergeable` (e.g.
+`MERGEABLE`, `CONFLICTING`) so the preview stays authoritative even if list
+badges are stale.
 
 ### Popup dimensions
 

@@ -68,7 +68,7 @@ local plugin_modules = {
   "plugins.tmux",
   "plugins.tpope",
   "plugins.treesitter",
-  "plugins.tsgo",
+  "plugins.typescript-tools",
   "plugins.undo",
   "plugins.which-key",
   "plugins.xml",

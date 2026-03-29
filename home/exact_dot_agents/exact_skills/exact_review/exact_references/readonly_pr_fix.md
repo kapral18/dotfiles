@@ -23,10 +23,10 @@ Out of scope:
 ## Context Intake (First Turn Only)
 
 - Read:
-  - PR description + linked issues/PRs/docs
+  - complete the Reference Resolution gate in pr_common.md (blocking — all
+    links, media, and recursive references must be resolved before proceeding)
   - all review threads (end-to-end)
   - full diff
-  - referenced screenshots/GIFs/videos (see pr_common.md)
 
 ## Base-Branch Context
 

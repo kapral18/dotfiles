@@ -24,15 +24,15 @@ extract_url() {
   return 1
 }
 case "$meta" in
-  *'|issue='*)
-    kind="issue"
-    tmp="${meta##*|issue=}"
-    num="${tmp%%:*}"
-    url="$(extract_url "$tmp" 2> /dev/null || true)"
-    ;;
   *'|pr='*)
     kind="pr"
     tmp="${meta##*|pr=}"
+    num="${tmp%%:*}"
+    url="$(extract_url "$tmp" 2> /dev/null || true)"
+    ;;
+  *'|issue='*)
+    kind="issue"
+    tmp="${meta##*|issue=}"
     num="${tmp%%:*}"
     url="$(extract_url "$tmp" 2> /dev/null || true)"
     ;;

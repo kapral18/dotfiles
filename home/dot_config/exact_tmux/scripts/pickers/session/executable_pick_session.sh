@@ -296,9 +296,8 @@ preview_cmd="$HOME/.config/tmux/scripts/pickers/session/preview.sh"
 help_flag="${cache_dir}/pick_session_help_flag"
 rm -f "$help_flag" 2> /dev/null || true
 
-help_text="pick_session keybindings\n\nNavigation\n  up/down arrows  move selection\n  alt-j / alt-k   page down / page up\n  alt-h / alt-l   first item / last item\n\nFilter / Refresh\n  type            filter\n  ctrl-r          reload from cache+live overlay (immediate)\n  alt-r           force background refresh (updates open picker)\n\nSelection / Actions\n  enter           open (switch/create)\n  tab             toggle multi-select on current row\n  ctrl-x          kill selected session(s) (optimistic hide)\n  alt-x           remove selected worktree(s) (optimistic hide)\n  alt-y           copy underlying path(s) to clipboard\n  ctrl-s          send command to selected session(s)\n                    enters send mode: type command, enter=send, esc=cancel\n\nGitHub\n  alt-p           open PR in browser (if branch has a PR)\n  alt-i           open issue in browser (if branch references an issue)\n  alt-g           switch to GitHub picker (PRs/issues from gh-dash sections)\n\nPreview\n  ctrl-/          toggle preview panel (pane capture / git info)\n  ?               show this help in the preview panel\n  shift-up/down   scroll preview (line)\n  shift-left/right scroll preview (page)\n\nNotes\n  - actions operate on the selected rows (multi-select aware)\n  - killing/removing writes short-lived tombstones to avoid reappearing items\n"
-
 preview_cmd_0="$preview_cmd {f}"
+preview_with_help="if [ -f $(printf %q "$help_flag") ]; then $(printf %q "$help_cmd"); else $(printf %q "$preview_cmd") {f}; fi"
 
 # fzf send-mode: ctrl-s enters a modal where the query line becomes a command
 # prompt. enter dispatches the command to selected sessions; esc cancels.
@@ -328,7 +327,7 @@ else
         --multi \
         "${fzf_ui_args[@]}" \
         --query "$query" \
-        --preview "$preview_cmd_0" \
+        --preview "$preview_with_help" \
         --preview-window 'right,50%,border-left' \
         --bind "start:execute-silent:$live_refresh_cmd >/dev/null 2>&1 &" \
         --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+track+clear-query" \
@@ -342,7 +341,7 @@ else
         --bind "shift-left:preview-page-up" \
         --bind "shift-right:preview-page-down" \
         --bind "ctrl-/:toggle-preview" \
-        --bind "?:transform:if [ -f $(printf %q "$help_flag") ]; then rm -f $(printf %q "$help_flag"); echo 'change-preview($preview_cmd_0)+show-preview'; else touch $(printf %q "$help_flag"); echo 'change-preview(printf %b $(printf %q "$help_text"))+show-preview'; fi" \
+        --bind "?:execute-silent(if [ -f $(printf %q "$help_flag") ]; then rm -f $(printf %q "$help_flag"); else touch $(printf %q "$help_flag"); fi)+refresh-preview" \
         --bind "change:first" \
         --bind "load:unbind(esc)" \
         --bind "enter:transform:[ -f $mode_flag ] && { printf '%s' {q} > $cmd_tmp; echo 'execute-silent(tmux run-shell -b \"$send_cmd $sel_tmp $cmd_tmp\")+execute-silent(rm -f $mode_flag)+$send_restore'; } || echo 'execute-silent(cp {f} $primary_tmp)+accept'" \
@@ -374,7 +373,7 @@ else
         --multi \
         "${fzf_ui_args[@]}" \
         --query "$query" \
-        --preview "$preview_cmd_0" \
+        --preview "$preview_with_help" \
         --preview-window 'right,50%,border-left' \
         --bind "start:execute-silent:$live_refresh_cmd >/dev/null 2>&1 &" \
         --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+track+clear-query" \
@@ -388,7 +387,7 @@ else
         --bind "shift-left:preview-page-up" \
         --bind "shift-right:preview-page-down" \
         --bind "ctrl-/:toggle-preview" \
-        --bind "?:transform:if [ -f $(printf %q "$help_flag") ]; then rm -f $(printf %q "$help_flag"); echo 'change-preview($preview_cmd_0)+show-preview'; else touch $(printf %q "$help_flag"); echo 'change-preview(printf %b $(printf %q "$help_text"))+show-preview'; fi" \
+        --bind "?:execute-silent(if [ -f $(printf %q "$help_flag") ]; then rm -f $(printf %q "$help_flag"); else touch $(printf %q "$help_flag"); fi)+refresh-preview" \
         --bind "change:first" \
         --bind "load:unbind(esc)" \
         --bind "enter:transform:[ -f $mode_flag ] && { printf '%s' {q} > $cmd_tmp; echo 'execute-silent(tmux run-shell -b \"$send_cmd $sel_tmp $cmd_tmp\")+execute-silent(rm -f $mode_flag)+$send_restore'; } || echo 'execute-silent(cp {f} $primary_tmp)+accept'" \

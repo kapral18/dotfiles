@@ -168,17 +168,16 @@ _notify_fzf_reload() {
   curl -s --max-time 1 -XPOST "http://127.0.0.1:${port}" -d "reload($cache_load_cmd)+track" 2> /dev/null > /dev/null || true
 }
 
-_mark_local_in_cache() {
+_patch_cache_entry() {
   local kind="$1" repo="$2" num="$3"
   local mode cache_file script_dir patcher
   mode="$(cat "${cache_dir}/gh_picker_mode" 2> /dev/null || echo work)"
   cache_file="${cache_dir}/gh_picker_${mode}.tsv"
   script_dir="$HOME/.config/tmux/scripts/pickers/github"
   patcher="${script_dir}/lib/gh_patch_picker_cache.py"
-  if [ -x "$patcher" ] && [ -f "$cache_file" ]; then
+  if [ -f "$patcher" ] && [ -f "$cache_file" ]; then
     python3 -u "$patcher" --cache-file "$cache_file" --kind "$kind" --repo "$repo" --num "$num" 2> /dev/null || true
   fi
-  _notify_fzf_reload
 }
 
 _create_pr_worktree() {
@@ -193,7 +192,7 @@ _create_pr_worktree() {
   if (cd "$repo_path" && ,w prs -q "$num") 2> /dev/null; then
     printf 'OK   PR #%s (%s)\n' "$num" "$repo"
     created=$((created + 1))
-    _mark_local_in_cache "pr" "$repo" "$num"
+    _patch_cache_entry "pr" "$repo" "$num"
   else
     printf 'FAIL PR #%s (%s)\n' "$num" "$repo"
     failed=$((failed + 1))
@@ -217,7 +216,7 @@ _create_issue_worktree() {
   if (cd "$repo_path" && ,w issue -q -b "$branch" "$num") 2> /dev/null; then
     printf 'OK   issue #%s → %s\n' "$num" "$branch"
     created=$((created + 1))
-    _mark_local_in_cache "issue" "$repo" "$num"
+    _patch_cache_entry "issue" "$repo" "$num"
   else
     printf 'FAIL issue #%s → %s\n' "$num" "$branch"
     failed=$((failed + 1))
@@ -238,6 +237,12 @@ for entry in "${issue_branches[@]+"${issue_branches[@]}"}"; do
     fi
   done
 done
+
+# Single reload after all cache patches are applied, so fzf picks up all
+# markers at once instead of racing with per-item reloads.
+if [ "$created" -gt 0 ]; then
+  _notify_fzf_reload
+fi
 
 if [ "$background" -eq 1 ] && [ -n "${branches_file:-}" ]; then
   rm -f "$branches_file" 2> /dev/null || true

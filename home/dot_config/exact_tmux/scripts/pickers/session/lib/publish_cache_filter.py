@@ -115,7 +115,7 @@ else:
 
 
 def path_is_tombstoned(kind, p):
-    if kind not in ("dir", "worktree"):
+    if kind not in ("dir", "worktree", "session"):
         return False
     for base in pending_paths:
         if p == base or p.startswith(base + "/"):

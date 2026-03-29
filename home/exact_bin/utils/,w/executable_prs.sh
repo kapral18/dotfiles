@@ -447,6 +447,8 @@ parent_name="$(_comma_w_tmux_parent_name_from_dir "$parent_dir")"
 
 _comma_w_prune_stale_worktrees "$quiet_mode"
 
+_processed=0
+
 for pr_number in "${pr_numbers[@]}"; do
   info "Processing PR #$pr_number..."
 
@@ -522,6 +524,7 @@ for pr_number in "${pr_numbers[@]}"; do
       _add_worktree_tmux_session "$quiet_mode" "$parent_name" "$local_branch" "$existing_path"
       _comma_w_focus_tmux_session "$quiet_mode" "$(_comma_w_tmux_session_name "$parent_name" "$local_branch")" "$existing_path" || true
     fi
+    _processed=$((_processed + 1))
     info "Completed PR #$pr_number worktree creation."
     continue
   fi
@@ -575,5 +578,10 @@ for pr_number in "${pr_numbers[@]}"; do
     _comma_w_focus_tmux_session "$quiet_mode" "$(_comma_w_tmux_session_name "$parent_name" "$local_branch")" "$worktree_path" || true
   fi
 
+  _processed=$((_processed + 1))
   info "Completed PR #$pr_number worktree creation."
 done
+
+if [ "$_processed" -eq 0 ]; then
+  exit 1
+fi

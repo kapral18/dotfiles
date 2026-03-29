@@ -15,7 +15,7 @@ is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
 yaml_src="$source_dir/.chezmoidata/mcp_servers.yaml"
 gen="$source_dir/../scripts/generate_mcp_configs.py"
 
-mcp_json="$(python3 "$gen" "$yaml_src" "$is_work")"
+mcp_json="$(python3 "$gen" "$yaml_src" "$is_work" gemini)"
 
 desired="$(jq -s '.[0] * .[1]' \
   "$source_dir/dot_gemini/settings.json" \

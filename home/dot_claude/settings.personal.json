@@ -4,5 +4,5 @@
     "defaultMode": "bypassPermissions"
   },
   "model": "opus[1m]",
-  "effortLevel": "high"
+  "effortLevel": "max"
 }

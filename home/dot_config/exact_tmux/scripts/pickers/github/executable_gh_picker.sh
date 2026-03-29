@@ -46,6 +46,8 @@ preview_cmd="$script_dir/gh_preview.sh"
 action_cmd="$script_dir/gh_action.sh"
 comment_cmd="$script_dir/gh_comment.sh"
 batch_wt_cmd="$script_dir/gh_batch_worktree.sh"
+help_cmd="$script_dir/keyhelp.sh"
+preview_warm_cmd="$script_dir/lib/gh_preview_warm.sh"
 
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 mkdir -p "$cache_dir" 2> /dev/null || true
@@ -75,11 +77,7 @@ full_load_cmd="GH_PICKER_MODE=$(printf %q "$mode") $(printf %q "$items_cmd")"
 
 fzf_shell="$(command -v bash 2> /dev/null || printf '%s' /bin/bash)"
 
-help_text="GitHub Picker Keybindings\n\nActions\nenter       checkout (batch if items marked)\nalt-b       checkout + Octo review (PRs)\nalt-o       open in browser\nalt-y       copy URL(s) to clipboard (marked items; falls back to current)\n\nMulti-select\ntab         mark/unmark item\nshift-tab   unmark item\nalt-space   mark/unmark item\n\nComments\nalt-c       new comment (opens \$EDITOR)\nalt-r       quote-reply a comment\nalt-d       edit your own comment\n\nPreview\nalt-e       cycle: collapsed → body → all expanded\nctrl-/      toggle preview\n\nNavigation\nctrl-s      switch work/home\nctrl-r      refresh from GitHub\nalt-g       switch to sessions picker\nalt-j/k     page down/up\nshift-↑/↓   scroll preview\n"
-
-preview_cmd_0="$preview_cmd --expand=0 {f}"
-preview_cmd_1="$preview_cmd --expand=1 {f}"
-preview_cmd_2="$preview_cmd --expand=2 {f}"
+preview_with_help="if [ -f $(printf %q "$help_flag") ]; then $(printf %q "$help_cmd"); else m=\$(cat $(printf %q "$expand_flag") 2>/dev/null || echo 0); $(printf %q "$preview_cmd") --expand=\$m {f}; fi"
 
 pin_kind=""
 pin_repo=""
@@ -96,9 +94,12 @@ if [ -n "$pin_kind" ] && [ -n "$pin_repo" ] && [ -n "$pin_num" ] && [ -x "$pin_f
   reload_items_cmd="$initial_items_cmd"
 fi
 
+items_cache="${cache_dir}/gh_picker_${mode}.tsv"
+
 # Background fetch: launched from fzf's start binding where $FZF_PORT is available.
 # Fetches fresh data from GitHub, then POSTs a reload to the running fzf instance.
-bg_fetch_cmd="(sleep 0.15; eval $(printf %q "$full_load_cmd") >/dev/null 2>&1 || true; printf '%s' \"\$FZF_PORT\" > $(printf %q "$port_file") 2>/dev/null || true; curl -s --max-time 5 -XPOST \"http://127.0.0.1:\${FZF_PORT}\" -d 'reload($reload_items_cmd)+track' 2>/dev/null || true) &"
+# After reload, kicks off preview pre-warm for uncached items.
+bg_fetch_cmd="($(printf %q "$preview_warm_cmd") $(printf %q "$items_cache") >/dev/null 2>&1 & sleep 0.15; eval $(printf %q "$full_load_cmd") >/dev/null 2>&1 || true; printf '%s' \"\$FZF_PORT\" > $(printf %q "$port_file") 2>/dev/null || true; curl -s --max-time 5 -XPOST \"http://127.0.0.1:\${FZF_PORT}\" -d 'reload($reload_items_cmd)+track' 2>/dev/null || true; $(printf %q "$preview_warm_cmd") $(printf %q "$items_cache") >/dev/null 2>&1 || true) &"
 
 pick="$(
   eval "$initial_items_cmd" | SHELL="$fzf_shell" fzf \
@@ -115,7 +116,7 @@ pick="$(
     --prompt "  ${mode}  " \
     --ghost "filter PRs and issues" \
     --color "$fzf_color" \
-    --preview "$preview_cmd_0" \
+    --preview "$preview_with_help" \
     --preview-window 'right,55%,border-left,wrap' \
     --header $'enter=checkout (batch if marked)  alt-b=octo  alt-o=browser  alt-y=copy url(s)  tab=mark  ctrl-s=work/home  alt-c=comment  ?=help' \
     --bind "start:execute-silent:$bg_fetch_cmd" \
@@ -126,7 +127,7 @@ pick="$(
     --bind "alt-y:execute-silent(printf '%s\n' {+} | cut -f5 | grep -E '^https?://' | pbcopy 2>/dev/null || printf '%s\n' {+} | cut -f5 | grep -E '^https?://' | xclip -sel clip 2>/dev/null)" \
     --bind "alt-space:toggle" \
     --bind "ctrl-t:execute(awk -F $'\\t' '\$2 != \"header\"' {+f} > $(printf %q "$multi_tmp"); $batch_wt_cmd $(printf %q "$multi_tmp"))+deselect-all+refresh-preview" \
-    --bind "alt-e:transform:m=\$(cat $(printf %q "$expand_flag") 2>/dev/null || echo 0); m=\$(( (m + 1) % 3 )); printf '%s' \"\$m\" > $(printf %q "$expand_flag"); case \"\$m\" in 0) echo 'change-preview($preview_cmd_0)+refresh-preview' ;; 1) echo 'change-preview($preview_cmd_1)+refresh-preview' ;; *) echo 'change-preview($preview_cmd_2)+refresh-preview' ;; esac" \
+    --bind "alt-e:execute-silent(m=\$(cat $(printf %q "$expand_flag") 2>/dev/null || echo 0); m=\$(( (m + 1) %% 3 )); printf '%s' \"\$m\" > $(printf %q "$expand_flag"))+refresh-preview" \
     --bind "alt-c:execute($comment_cmd new {2} {3} {4})+refresh-preview" \
     --bind "alt-r:execute($comment_cmd reply {2} {3} {4})+refresh-preview" \
     --bind "alt-d:execute($comment_cmd edit {2} {3} {4})+refresh-preview" \
@@ -137,7 +138,7 @@ pick="$(
     --bind "shift-left:preview-page-up" \
     --bind "shift-right:preview-page-down" \
     --bind "ctrl-/:toggle-preview" \
-    --bind "?:transform:if [ -f $(printf %q "$help_flag") ]; then rm -f $(printf %q "$help_flag"); m=\$(cat $(printf %q "$expand_flag") 2>/dev/null || echo 0); case \"\$m\" in 1) echo 'change-preview($preview_cmd_1)+show-preview' ;; 2) echo 'change-preview($preview_cmd_2)+show-preview' ;; *) echo 'change-preview($preview_cmd_0)+show-preview' ;; esac; else touch $(printf %q "$help_flag"); echo 'change-preview(printf %b $(printf %q "$help_text"))+show-preview'; fi" \
+    --bind "?:execute-silent(if [ -f $(printf %q "$help_flag") ]; then rm -f $(printf %q "$help_flag"); else touch $(printf %q "$help_flag"); fi)+refresh-preview" \
     --bind "change:first" \
     --bind "enter:transform:if [ {2} = header ]; then echo 'down'; else echo 'accept'; fi" \
     --bind "alt-b:execute-silent(printf octo > $(printf %q "$action_flag"))+accept" \

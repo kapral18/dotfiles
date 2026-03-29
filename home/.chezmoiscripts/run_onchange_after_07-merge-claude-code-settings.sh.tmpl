@@ -15,4 +15,5 @@ source "$source_dir/../scripts/chezmoi_lib.sh"
 is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
 src="$(chezmoi_pick_src "$is_work" "$source_dir" "dot_claude/settings.work.json" "dot_claude/settings.personal.json")"
 
-chezmoi_install_if_changed "$src" "$HOME/.claude/settings.json"
+python3 "$source_dir/../scripts/merge_claude_settings.py" "$src" "$HOME/.claude/settings.json"
+chezmoi_record_checksum "$HOME/.claude/settings.json"

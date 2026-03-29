@@ -142,11 +142,11 @@ If explicitly asked to POST a batch as a draft (PENDING) review:
   - For multi-line ranges, add `start_line` + `start_side`.
   - The `line`/`side` approach uses absolute file line numbers (visible in the
     GitHub diff UI), so there is no off-by-one math to get wrong.
-- If you must use `position` (diff-relative, 1-indexed into the patch text):
+- If you must use `position` (diff-relative, 0-indexed from the `@@` header):
   - Fetch the file's `patch` from `GET /repos/{o}/{r}/pulls/{n}/files`.
-  - Split by newlines. Line 1 of the split = position 1 (the hunk header).
-  - The comment renders ON the line at that position. There is no off-by-one: if
-    you want the comment on the 5th line of the patch, use `position: 5`.
+  - Split by newlines. The `@@` hunk header at index 0 = position 0 (not a
+    valid comment target). The first content line at index 1 = position 1.
+  - In short: the 0-based array index of the split **is** the position value.
   - If a file has multiple hunks (or repeated target lines), create separate
     comments and verify the correct hunk/occurrence.
   - Common trap: the patch changes when new commits are pushed. Always re-fetch
