@@ -12,7 +12,6 @@ return {
   },
   {
     "debugloop/telescope-undo.nvim",
-    lazy = false,
     dependencies = {
       {
         "nvim-telescope/telescope.nvim",

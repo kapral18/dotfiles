@@ -2,7 +2,6 @@ return {
   {
     "folke/snacks.nvim",
     priority = 1000,
-    lazy = false,
     opts = {
       dashboard = {
         enabled = true,
@@ -13,14 +12,20 @@ return {
             { icon = " ", key = "f", desc = "Find File", action = ":lua require('fzf-lua').files()" },
             { icon = " ", key = "n", desc = "New File", action = ":ene | startinsert" },
             { icon = " ", key = "c", desc = "Config", action = ":lua require('fzf-lua').files({ cwd = vim.fn.stdpath('config') })" },
-            { icon = "󰒲 ", key = "l", desc = "Lazy", action = ":Lazy" },
+            { icon = "󰒲 ", key = "p", desc = "Plugins", action = ":PackSync" },
             { icon = " ", key = "q", desc = "Quit", action = ":qa" },
           },
         },
         sections = {
           { section = "header" },
           { section = "keys", gap = 1, padding = 1 },
-          { section = "startup" },
+          {
+            align = "center",
+            padding = 1,
+            text = {
+              { "Plugins: <leader>ll", hl = "footer" },
+            },
+          },
         },
       },
       bigfile = { enabled = false },

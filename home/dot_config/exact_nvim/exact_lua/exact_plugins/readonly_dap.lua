@@ -3,7 +3,6 @@ local ui = require("util.ui")
 return {
   {
     "mfussenegger/nvim-dap",
-    event = "VeryLazy",
     config = function()
       -- Set DAP icons
       local icons = ui.config.icons.dap

@@ -60,7 +60,7 @@ return {
     "iamcco/markdown-preview.nvim",
     cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
     build = function()
-      require("lazy").load({ plugins = { "markdown-preview.nvim" } })
+      pcall(vim.cmd.packadd, "markdown-preview.nvim")
       vim.fn["mkdp#util#install"]()
     end,
     ft = { "markdown", "mdx" },

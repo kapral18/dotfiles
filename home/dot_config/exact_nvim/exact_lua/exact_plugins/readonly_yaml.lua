@@ -17,7 +17,6 @@ return {
   {
     "cenk1cenk2/schema-companion.nvim",
     dependencies = { "nvim-lua/plenary.nvim" },
-    lazy = true,
     config = function()
       require("schema-companion").setup({
         log_level = vim.log.levels.WARN,

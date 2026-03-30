@@ -29,7 +29,6 @@ return {
     "nvim-treesitter/nvim-treesitter",
     branch = "main",
     version = false,
-    lazy = true,
     build = function()
       local TS = require("nvim-treesitter")
       if not TS.get_installed then
@@ -140,8 +139,6 @@ return {
   {
     "nvim-treesitter/nvim-treesitter-textobjects",
     branch = "main",
-    lazy = true,
-    event = "VeryLazy",
     opts = {
       select = {
         enable = true,
@@ -178,12 +175,9 @@ return {
   },
   {
     "wellle/visual-split.vim",
-    event = "VeryLazy",
   },
   {
     "aaronik/treewalker.nvim",
-    lazy = true,
-    event = "VeryLazy",
 
     -- The following options are the defaults.
     -- Treewalker aims for sane defaults, so these are each individually optional,
@@ -236,7 +230,6 @@ return {
   },
   {
     "windwp/nvim-ts-autotag",
-    lazy = true,
     event = { "BufReadPost", "BufNewFile" },
     config = function()
       require("nvim-ts-autotag").setup({

@@ -4,7 +4,6 @@ local fs_util = require("util.fs")
 return {
   {
     "lewis6991/gitsigns.nvim",
-    version = "*",
     event = { "BufReadPost", "BufNewFile" },
     opts = function()
       local icons = ui.config.icons.git
@@ -181,7 +180,6 @@ return {
   },
   {
     "sindrets/diffview.nvim",
-    lazy = false,
     opts = {
       view = {
         merge_tool = {
@@ -204,7 +202,6 @@ return {
   },
   {
     "rbong/vim-flog",
-    lazy = true,
     cmd = { "Flog", "Flogsplit", "Floggit" },
     dependencies = {
       "tpope/vim-fugitive",

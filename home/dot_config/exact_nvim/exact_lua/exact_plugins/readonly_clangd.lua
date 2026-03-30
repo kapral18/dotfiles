@@ -1,3 +1,28 @@
+local clangd_extensions_opts = {
+  inlay_hints = {
+    inline = false,
+  },
+  ast = {
+    role_icons = {
+      type = "󰜁",
+      declaration = "󰙠",
+      expression = "󰫈",
+      statement = ";",
+      specifier = "󰪥",
+      ["template argument"] = "󰫈",
+    },
+    kind_icons = {
+      Compound = "󰪥",
+      Recovery = "",
+      TranslationUnit = "󰉿",
+      PackExpansion = "",
+      TemplateTypeParm = "󰊄",
+      TemplateTemplateParm = "󰊄",
+      TemplateParamObject = "󰊄",
+    },
+  },
+}
+
 return {
   {
     "nvim-treesitter/nvim-treesitter",
@@ -15,31 +40,7 @@ return {
   },
   {
     "p00f/clangd_extensions.nvim",
-    lazy = true,
-    opts = {
-      inlay_hints = {
-        inline = false,
-      },
-      ast = {
-        role_icons = {
-          type = "󰜁",
-          declaration = "󰙠",
-          expression = "󰫈",
-          statement = ";",
-          specifier = "󰪥",
-          ["template argument"] = "󰫈",
-        },
-        kind_icons = {
-          Compound = "󰪥",
-          Recovery = "",
-          TranslationUnit = "󰉿",
-          PackExpansion = "",
-          TemplateTypeParm = "󰊄",
-          TemplateTemplateParm = "󰊄",
-          TemplateParamObject = "󰊄",
-        },
-      },
-    },
+    opts = clangd_extensions_opts,
     config = function() end,
   },
   {
@@ -94,10 +95,9 @@ return {
 
       opts.setup = opts.setup or {}
       opts.setup.clangd = function(_, server_opts)
-        local lazy = require("lazy.core.config")
-        local Plugin = require("lazy.core.plugin")
-        local clangd_opts = Plugin.values(lazy.plugins["clangd_extensions.nvim"], "opts", false) or {}
-        require("clangd_extensions").setup(vim.tbl_deep_extend("force", clangd_opts, { server = server_opts }))
+        require("clangd_extensions").setup(
+          vim.tbl_deep_extend("force", vim.deepcopy(clangd_extensions_opts), { server = server_opts })
+        )
         return false
       end
     end,

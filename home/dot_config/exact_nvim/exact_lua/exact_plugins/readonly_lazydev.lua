@@ -1,9 +1,8 @@
 return {
-  { "LuaCATS/luassert", name = "luassert-types", lazy = true },
-  { "LuaCATS/busted", name = "busted-types", lazy = true },
+  { "LuaCATS/luassert", name = "luassert-types" },
+  { "LuaCATS/busted", name = "busted-types" },
   {
     "folke/lazydev.nvim",
-    lazy = false,
     cmd = "LazyDev",
     opts = function(_, opts)
       opts.library = opts.library or {}

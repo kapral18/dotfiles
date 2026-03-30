@@ -144,8 +144,8 @@ If explicitly asked to POST a batch as a draft (PENDING) review:
     GitHub diff UI), so there is no off-by-one math to get wrong.
 - If you must use `position` (diff-relative, 0-indexed from the `@@` header):
   - Fetch the file's `patch` from `GET /repos/{o}/{r}/pulls/{n}/files`.
-  - Split by newlines. The `@@` hunk header at index 0 = position 0 (not a
-    valid comment target). The first content line at index 1 = position 1.
+  - Split by newlines. The `@@` hunk header at index 0 = position 0 (not a valid
+    comment target). The first content line at index 1 = position 1.
   - In short: the 0-based array index of the split **is** the position value.
   - If a file has multiple hunks (or repeated target lines), create separate
     comments and verify the correct hunk/occurrence.

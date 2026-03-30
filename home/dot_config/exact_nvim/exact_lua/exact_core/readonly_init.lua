@@ -1,17 +1,3 @@
-local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
-
-if not vim.uv.fs_stat(lazypath) then
-  vim.fn.system({
-    "git",
-    "clone",
-    "--filter=blob:none",
-    "https://github.com/folke/lazy.nvim.git",
-    "--branch=stable",
-    lazypath,
-  })
-end
-vim.opt.rtp:prepend(lazypath)
-
 require("core.options")
 
 local plugin_modules = {
@@ -89,41 +75,11 @@ local local_modules = {
   "plugins_local.winbar",
 }
 
--- Build spec by importing each module individually
--- This allows easy batch disabling by commenting out ranges
-local spec = {}
+local all_modules = {}
+vim.list_extend(all_modules, plugin_modules)
+vim.list_extend(all_modules, local_modules)
 
--- Add plugin modules
-for _, module in ipairs(plugin_modules) do
-  table.insert(spec, { import = module })
-end
-
--- Add local plugin modules
-for _, module in ipairs(local_modules) do
-  table.insert(spec, { import = module })
-end
-
-require("lazy").setup(spec, {
-  rocks = { hererocks = true },
-  change_detection = { enabled = false, notify = false },
-  concurrency = 100,
-  defaults = {
-    lazy = true,
-    version = false,
-  },
-  checker = { enabled = true },
-  performance = {
-    rtp = {
-      disabled_plugins = {
-        "gzip",
-        "tarPlugin",
-        "tohtml",
-        "tutor",
-        "zipPlugin",
-      },
-    },
-  },
-})
+require("core.plugins").setup(all_modules)
 
 require("core.autocmds")
 require("core.keymaps")

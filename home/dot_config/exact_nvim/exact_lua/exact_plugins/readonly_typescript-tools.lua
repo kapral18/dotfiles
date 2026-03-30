@@ -31,7 +31,6 @@ return {
   },
   {
     "pmizio/typescript-tools.nvim",
-    lazy = false,
     cond = function()
       return vim.env.NVIM_MUSIC == nil
     end,

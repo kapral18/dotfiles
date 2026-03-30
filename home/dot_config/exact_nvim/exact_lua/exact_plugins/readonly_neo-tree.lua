@@ -1,4 +1,3 @@
----@module "lazy"
 ---@module "yazi"
 
 local fzf_util = require("util.fzf")
@@ -33,12 +32,9 @@ local function copy_relative_path_to_clipboard(state)
   fzf_util.copy_to_clipboard(relative_path)
 end
 
----@type LazySpec
 return {
   {
     "nvim-neo-tree/neo-tree.nvim",
-    lazy = true,
-    version = "*",
     dependencies = {
       "nvim-lua/plenary.nvim",
       "nvim-tree/nvim-web-devicons",
@@ -210,7 +206,6 @@ return {
 
   {
     "mikavilpas/yazi.nvim",
-    event = "VeryLazy",
     keys = {
       -- 👇 in this section, choose your own keymappings!
       {

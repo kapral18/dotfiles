@@ -1,15 +1,6 @@
 local augroup = vim.api.nvim_create_augroup
 local autocmd = vim.api.nvim_create_autocmd
 
-local ui = require("util.ui")
-if ui.config and ui.config.icons and ui.config.icons.diagnostics then
-  local icons = ui.config.icons.diagnostics
-  for name, icon in pairs(icons) do
-    local hl = "DiagnosticSign" .. name
-    vim.fn.sign_define(hl, { text = icon, texthl = hl, numhl = "" })
-  end
-end
-
 local general = augroup("k18_general", { clear = true })
 local hashed_undo_dir = vim.fn.stdpath("state") .. "/undo-hashed"
 

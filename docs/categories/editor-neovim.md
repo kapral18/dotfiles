@@ -49,12 +49,64 @@ Neovim itself is version-managed via ASDF:
 - Plugins list: [`home/asdf_plugins.tmpl`](../../home/asdf_plugins.tmpl)
 - Version pin:
   [`home/readonly_dot_tool-versions.tmpl`](../../home/readonly_dot_tool-versions.tmpl)
+  (`neovim 0.12.0`)
 
 ## Quick Start
 
-1. Apply dotfiles: `chezmoi apply`
-2. Launch Neovim: `nvim`
-3. Sync plugins: `:Lazy sync`
+1. Install the pinned Neovim version: `asdf install neovim 0.12.0`
+2. Apply dotfiles: `chezmoi apply`
+3. Launch Neovim: `nvim`
+4. Open plugin dashboard: `:PackDashboard` (or use `:PackSync` for raw report)
+
+## Plugin Manager On 0.12
+
+This config now uses Neovim's built-in `vim.pack`.
+
+Plugin specs are still declared in lazy-style tables, but loading is now
+trigger-aware in `core/plugins.lua`: `cmd`, `event`, `ft`, and key-triggered
+plugins are deferred until first use while always-on specs load at startup.
+
+Practical commands:
+
+- `:PackDashboard` -> compact floating plugin dashboard with:
+  - per-plugin update status
+  - breaking-risk hint (best-effort)
+  - icon-based links column (`diff` / `repo`) with direct compare URL for
+    pending updates
+  - single update (`<CR>`), multi-select update (`u`), update all pending (`U`)
+  - inline selection/filter/sort/search and details popup (`?` for full key
+    help)
+- `:PackSync` -> raw online `vim.pack` report (fetch remotes first)
+- `:PackStatus` -> raw offline `vim.pack` report (local refs only)
+- `:PackTrace [plugin-name]` -> show current load state, trigger metadata, and
+  load reason
+- `:PackLoad <plugin-name>` -> force-load one plugin by name (useful for
+  debugging)
+- `<localleader>ss` or `:AutoSession save` -> save the current session
+
+Dashboard/trace popup buffers are treated as transient and excluded from session
+persistence to avoid polluting `auto-session` restores. Session search
+integrations are loaded on demand to keep startup leaner.
+
+### Dashboard Tuning (Optional)
+
+The dashboard defaults to an icon-first compact view and can be tuned with
+globals:
+
+- `vim.g.pack_dashboard_width_ratio` (default `0.68`)
+- `vim.g.pack_dashboard_height_ratio` (default `0.68`)
+- `vim.g.pack_dashboard_min_width` (default `84`)
+- `vim.g.pack_dashboard_min_height` (default `18`)
+- `vim.g.pack_dashboard_margin` (default `6`)
+- `vim.g.pack_dashboard_fast_scroll` (default `true`)
+- `vim.g.pack_dashboard_ascii` (default `false`; when `true`, use ASCII
+  labels/icons)
+
+Current links column behavior is compact availability:
+
+- `diff` marker when a compare URL exists
+- otherwise `repo` marker when a repository URL exists
+- `-` when no URL is available
 
 ## Tree-sitter: Bundled Parsers And Startup Hangs
 
@@ -414,7 +466,8 @@ High-signal checks:
 
 ```bash
 nvim --version
-nvim "+Lazy! sync" +qa
+asdf current neovim
+nvim "+PackSync" +qa
 nvim "+checkhealth" +qa
 ```
 
@@ -428,7 +481,7 @@ If keymaps/plugins seem missing:
 
 - confirm `chezmoi apply` succeeded for
   [`home/dot_config/exact_nvim/`](../../home/dot_config/exact_nvim/).
-- confirm plugin install completed (`:Lazy` UI / sync output).
+- confirm plugin sync completed (`:PackSync` / `:PackStatus` output).
 - confirm you are running the expected Neovim binary/version from ASDF.
 
 ## Related

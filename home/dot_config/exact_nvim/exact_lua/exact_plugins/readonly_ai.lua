@@ -1,8 +1,6 @@
 return {
   {
     "github/copilot.vim",
-    lazy = false,
-    version = "*",
     init = function()
       vim.api.nvim_set_hl(0, "CopilotSuggestion", { fg = "#83a598" })
       vim.api.nvim_set_hl(0, "CopilotAnnotation", { fg = "#03a598" })
@@ -10,7 +8,6 @@ return {
   },
   {
     "CopilotC-Nvim/CopilotChat.nvim",
-    version = "*",
     dependencies = {
       { "nvim-lua/plenary.nvim" },
     },

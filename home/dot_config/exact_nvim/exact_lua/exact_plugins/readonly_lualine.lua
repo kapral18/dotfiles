@@ -1,8 +1,6 @@
 return {
   {
     "nvim-lualine/lualine.nvim",
-    lazy = false,
-    event = "VeryLazy",
     opts = {
       options = {
         refresh = {
@@ -46,7 +44,6 @@ return {
   {
     "linrongbin16/lsp-progress.nvim",
     opts = {},
-    lazy = false,
     dependencies = {
       {
         "nvim-lualine/lualine.nvim",

@@ -57,8 +57,6 @@ return {
   {
     "mason-org/mason-lspconfig.nvim",
     dependencies = { "mason-org/mason.nvim" },
-    lazy = true,
-    event = "VeryLazy",
     opts = {
       ensure_installed = {},
     },
@@ -218,13 +216,53 @@ return {
       -- Register LSP formatting
       format.register(lsp.formatter())
 
-      -- Setup LSP keymaps using Snacks
+      -- Setup LSP keymaps using Snacks without plugin-manager internals
+      local function key_opts_from_spec(spec)
+        local opts_local = {
+          desc = spec.desc,
+          expr = spec.expr,
+          nowait = spec.nowait,
+          silent = spec.silent,
+        }
+        if spec.noremap ~= nil then
+          opts_local.noremap = spec.noremap
+        elseif spec.remap ~= nil then
+          opts_local.noremap = not spec.remap
+        end
+        return opts_local
+      end
+
+      local function normalize_key_specs(specs)
+        local normalized = {}
+        for _, spec in ipairs(specs or {}) do
+          if type(spec) == "table" then
+            local lhs = spec.lhs or spec[1]
+            local rhs = spec.rhs or spec[2]
+            if lhs and rhs then
+              normalized[#normalized + 1] = {
+                lhs = lhs,
+                rhs = rhs,
+                mode = spec.mode,
+                has = spec.has,
+                enabled = spec.enabled,
+                desc = spec.desc,
+                expr = spec.expr,
+                nowait = spec.nowait,
+                silent = spec.silent,
+                noremap = spec.noremap,
+                remap = spec.remap,
+              }
+            end
+          end
+        end
+        return normalized
+      end
+
       for server, server_opts in pairs(opts.servers) do
         if type(server_opts) == "table" and server_opts.keys then
-          local Keys = require("lazy.core.handler.keys")
           local filter = { name = server ~= "*" and server or nil }
 
-          for _, keys in pairs(Keys.resolve(server_opts.keys)) do
+          for _, keys in ipairs(normalize_key_specs(server_opts.keys)) do
             local filters = {} ---@type vim.lsp.get_clients.Filter[]
             if keys.has then
               local methods = type(keys.has) == "string" and { keys.has } or keys.has
@@ -237,7 +275,7 @@ return {
             end
 
             for _, f in ipairs(filters) do
-              local opts_local = Keys.opts(keys)
+              local opts_local = key_opts_from_spec(keys)
               opts_local.lsp = f
               opts_local.enabled = keys.enabled
               require("snacks").keymap.set(keys.mode or "n", keys.lhs, keys.rhs, opts_local)
@@ -246,8 +284,9 @@ return {
         end
       end
 
-      -- Delete native Neovim 0.11 LSP mappings that conflict with our custom ones
-      -- Native mappings: grr (references), gri (implementation), grt (type_definition), gra (code_action), grn (rename)
+      -- Delete native Neovim LSP mappings that conflict with our custom ones.
+      -- Native mappings include: grr (references), gri (implementation),
+      -- grt (type_definition), gra (code_action), grn (rename).
       vim.api.nvim_create_autocmd("LspAttach", {
         callback = function(args)
           -- Force disable inlay hints

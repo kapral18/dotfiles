@@ -25,7 +25,6 @@ end, {
 return {
   {
     "romainl/vim-qf",
-    lazy = false,
     init = function()
       -- enable ack style mappings
       vim.g.qf_mapping_ack_style = 1
