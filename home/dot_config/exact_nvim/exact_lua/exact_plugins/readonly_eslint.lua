@@ -23,7 +23,7 @@ local function eslint_fix_all_async(bufnr)
 
   local version = (vim.lsp.util.buf_versions or {})[bufnr]
 
-  client.request("workspace/executeCommand", {
+  client:request("workspace/executeCommand", {
     command = "eslint.applyAllFixes",
     arguments = {
       {

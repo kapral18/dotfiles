@@ -169,8 +169,10 @@ end
 
 local function run_build(build, path)
   if type(build) == "function" then
-    -- Manager-style function builds often assume manager-specific lifecycle.
-    -- Skip them under vim.pack to avoid startup/install failures.
+    local ok, err = pcall(build)
+    if not ok then
+      notify_err("Build function failed: " .. tostring(err))
+    end
     return
   end
 
@@ -179,7 +181,10 @@ local function run_build(build, path)
   end
 
   if build:sub(1, 1) == ":" then
-    -- Ex-command builds are also manager-specific; skip for now.
+    local ok, err = pcall(vim.cmd --[[@as fun(cmd: string)]], build:sub(2))
+    if not ok then
+      notify_err("Build ex-command failed (" .. build .. "): " .. tostring(err))
+    end
     return
   end
 
@@ -199,6 +204,7 @@ local function flatten_specs(module_names)
       return entry
     end
     order = order + 1
+    ---@type core.plugins.Entry
     entry = {
       name = name,
       index = order,
@@ -343,7 +349,7 @@ local function normalize_pack_version(version)
   end
 
   local v = vim.trim(version)
-  if v == "" or v == "*" then
+  if v == "" then
     return nil
   end
 
@@ -357,12 +363,103 @@ local function normalize_pack_version(version)
   return v
 end
 
+local function policy_tag_to_range(tag_str)
+  local pack_dashboard = require("core.pack_dashboard")
+  local parsed = pack_dashboard.parse_release_tag(tag_str)
+  if not parsed then
+    return tag_str
+  end
+  local major = parsed.major or 0
+  local minor = parsed.minor or 0
+  if major >= 1 then
+    local ok, range = pcall(vim.version.range, "^" .. major .. ".0")
+    if ok then
+      return range
+    end
+  else
+    local ok, range = pcall(vim.version.range, "~0." .. minor)
+    if ok then
+      return range
+    end
+  end
+  return tag_str
+end
+
+local function load_version_policy()
+  local pack_dashboard = require("core.pack_dashboard")
+  local policy = pack_dashboard.load_version_policy()
+  if policy then
+    return policy
+  end
+  return { plugins = {} }
+end
+
+local function resolve_entry_version(entry, version_policy)
+  local version = nil
+  local is_explicit = false
+  local is_force_branch = false
+
+  for _, spec in ipairs(entry.specs) do
+    if type(spec.commit) == "string" and spec.commit ~= "" then
+      version = spec.commit
+      is_explicit = true
+    elseif type(spec.tag) == "string" and spec.tag ~= "" then
+      version = spec.tag
+      is_explicit = true
+    elseif type(spec.branch) == "string" and spec.branch ~= "" then
+      version = spec.branch
+      is_explicit = true
+    elseif spec.version == false then
+      is_force_branch = true
+    elseif spec.version ~= nil then
+      version = spec.version
+      is_explicit = true
+    end
+  end
+
+  if is_force_branch then
+    return nil
+  end
+
+  if is_explicit then
+    return normalize_pack_version(version)
+  end
+
+  local policy_plugins = type(version_policy) == "table" and version_policy.plugins or nil
+  local policy_item = type(policy_plugins) == "table" and policy_plugins[entry.name]
+  if
+    type(policy_item) == "table"
+    and policy_item.strategy == "tags"
+    and type(policy_item.latest_tag) == "string"
+    and policy_item.latest_tag ~= ""
+  then
+    return policy_tag_to_range(policy_item.latest_tag)
+  end
+
+  return nil
+end
+
 function M.setup(module_names)
   local entries = flatten_specs(module_names)
+
+  for _, entry in pairs(entries) do
+    local has_required = false
+    for _, spec in ipairs(entry.specs) do
+      if not spec.optional then
+        has_required = true
+        break
+      end
+    end
+    if not has_required then
+      entry.enabled = false
+    end
+  end
+
   local sorted = ordered_entries(entries)
 
   local build_hooks = {}
   local pack_specs = {}
+  local version_policy = load_version_policy()
 
   for _, entry in ipairs(sorted) do
     if entry.enabled then
@@ -381,21 +478,8 @@ function M.setup(module_names)
       end
 
       if entry.src then
-        local version = nil
-        for _, spec in ipairs(entry.specs) do
-          if type(spec.commit) == "string" and spec.commit ~= "" then
-            version = spec.commit
-          elseif type(spec.tag) == "string" and spec.tag ~= "" then
-            version = spec.tag
-          elseif type(spec.branch) == "string" and spec.branch ~= "" then
-            version = spec.branch
-          elseif spec.version ~= nil then
-            version = spec.version
-          end
-        end
-
         local pack_spec = { src = entry.src, name = entry.name }
-        version = normalize_pack_version(version)
+        local version = resolve_entry_version(entry, version_policy)
         if version ~= nil then
           pack_spec.version = version
         end
@@ -430,6 +514,7 @@ function M.setup(module_names)
         keys = {},
         has_keys = false,
         defer = false,
+        priority = 50,
       }
       local seen_cmd, seen_event, seen_ft = {}, {}, {}
       local force_start = false
@@ -437,6 +522,10 @@ function M.setup(module_names)
       for _, spec in ipairs(entry.specs) do
         if spec.lazy == false then
           force_start = true
+        end
+
+        if type(spec.priority) == "number" then
+          meta.priority = math.max(meta.priority, spec.priority)
         end
 
         for _, cmd in ipairs(as_list(spec.cmd)) do
@@ -502,8 +591,59 @@ function M.setup(module_names)
     end,
   })
 
+  local policy_was_empty = type(version_policy.plugins) ~= "table" or next(version_policy.plugins) == nil
+
   if #pack_specs > 0 then
     vim.pack.add(pack_specs, { confirm = false, load = false })
+  end
+
+  if policy_was_empty and #pack_specs > 0 then
+    local ok_bootstrap = pcall(require("core.pack_dashboard").refresh_version_policy_if_needed)
+    if ok_bootstrap then
+      vim.schedule(function()
+        vim.notify("Generated initial version policy — restart to apply tag pins", vim.log.levels.INFO)
+      end)
+    end
+  end
+
+  local spec_names = {}
+  local spec_src = {}
+  for _, entry in ipairs(sorted) do
+    if entry.enabled and entry.src then
+      spec_names[entry.name] = true
+      spec_src[entry.name] = entry.src
+    end
+  end
+
+  local ok_get, all_plugins = pcall(vim.pack.get, nil, { info = false })
+  if ok_get and type(all_plugins) == "table" then
+    local to_delete = {}
+    local to_reinstall = {}
+    for _, p in ipairs(all_plugins) do
+      local name = p.spec and p.spec.name
+      if type(name) == "string" and name ~= "" then
+        if not spec_names[name] then
+          to_delete[#to_delete + 1] = name
+        elseif spec_src[name] and p.spec.src and spec_src[name] ~= p.spec.src then
+          to_reinstall[#to_reinstall + 1] = name
+        end
+      end
+    end
+
+    if #to_reinstall > 0 then
+      pcall(vim.pack.del, to_reinstall, { force = true })
+      vim.pack.add(pack_specs, { confirm = false, load = false })
+      vim.schedule(function()
+        vim.notify("Reinstalled (src changed): " .. table.concat(to_reinstall, ", "), vim.log.levels.INFO)
+      end)
+    end
+
+    if #to_delete > 0 then
+      pcall(vim.pack.del, to_delete)
+      vim.schedule(function()
+        vim.notify("Cleaned orphan plugins: " .. table.concat(to_delete, ", "), vim.log.levels.INFO)
+      end)
+    end
   end
 
   local function apply_entry(entry, reason)
@@ -523,6 +663,11 @@ function M.setup(module_names)
 
     if entry.src then
       pcall(vim.cmd.packadd, entry.name)
+    elseif entry.dir then
+      local dir = vim.fn.expand(entry.dir)
+      if vim.fn.isdirectory(dir) == 1 and not vim.tbl_contains(vim.opt.rtp:get(), dir) then
+        vim.opt.rtp:prepend(dir)
+      end
     end
 
     local opts = resolve_opts(entry)
@@ -625,8 +770,15 @@ function M.setup(module_names)
     vim.api.nvim_create_autocmd(event_item.event, {
       pattern = event_item.pattern,
       once = true,
-      callback = function()
+      callback = function(ev)
         load_entry(entry_name, "event:" .. event_item.event)
+        if ev.buf and vim.api.nvim_buf_is_valid(ev.buf) then
+          pcall(vim.api.nvim_exec_autocmds, event_item.event, {
+            buffer = ev.buf,
+            modeline = false,
+            data = ev.data,
+          })
+        end
       end,
     })
   end
@@ -763,9 +915,12 @@ function M.setup(module_names)
     desc = "Show deferred/loaded plugin trace table",
   })
 
+  local startup_entries = {}
+
   for _, entry in ipairs(sorted) do
     if entry.enabled then
-      local meta = entry_meta[entry.name] or { cmds = {}, events = {}, fts = {}, keys = {}, defer = false }
+      local meta = entry_meta[entry.name]
+        or { cmds = {}, events = {}, fts = {}, keys = {}, defer = false, priority = 50 }
 
       for _, key in ipairs(meta.keys) do
         map_key_trigger(entry.name, key)
@@ -782,9 +937,22 @@ function M.setup(module_names)
           register_ft_trigger(entry.name, meta.fts)
         end
       else
-        load_entry(entry.name, "startup")
+        startup_entries[#startup_entries + 1] = entry
       end
     end
+  end
+
+  table.sort(startup_entries, function(a, b)
+    local pa = (entry_meta[a.name] or {}).priority or 50
+    local pb = (entry_meta[b.name] or {}).priority or 50
+    if pa ~= pb then
+      return pa > pb
+    end
+    return a.index < b.index
+  end)
+
+  for _, entry in ipairs(startup_entries) do
+    load_entry(entry.name, "startup")
   end
 end
 

@@ -24,7 +24,6 @@ return {
   },
   {
     "ray-x/go.nvim",
-    branch = "treesitter-main",
     dependencies = {
       "ray-x/guihua.lua",
       "neovim/nvim-lspconfig",
@@ -33,13 +32,11 @@ return {
     },
     config = function()
       require("go").setup({
-        -- Disable auto-setup of LSP so it doesn't conflict with your existing nvim-lspconfig setup
         lsp_cfg = false,
-        -- Enable DAP integration
         dap_debug = true,
-        -- Test runner config
-        test_runner = "go", -- or 'richgo', 'ginkgo', 'gotestsum'
+        test_runner = "go",
         run_in_floaterm = true,
+        textobjects = false,
       })
       -- Configure nvim-dap-go as well for standard DAP setup
       require("dap-go").setup()

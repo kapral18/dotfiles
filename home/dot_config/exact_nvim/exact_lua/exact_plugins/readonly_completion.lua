@@ -38,7 +38,6 @@ return {
       "hrsh7th/cmp-cmdline",
       "hrsh7th/cmp-nvim-lsp-signature-help",
       "lukas-reineke/cmp-rg",
-      "lukas-reineke/cmp-under-comparator",
       "SergioRibera/cmp-dotenv",
       "hrsh7th/cmp-emoji",
       { "github/copilot.vim", optional = true },
@@ -167,7 +166,17 @@ return {
         sorting = {
           priority_weight = 2,
           comparators = {
-            require("cmp-under-comparator").under,
+            function(entry1, entry2)
+              local _, u1 = entry1.completion_item.label:find("^_+")
+              local _, u2 = entry2.completion_item.label:find("^_+")
+              u1 = u1 or 0
+              u2 = u2 or 0
+              if u1 > u2 then
+                return false
+              elseif u1 < u2 then
+                return true
+              end
+            end,
             cmp.config.compare.offset,
             cmp.config.compare.exact,
             cmp.config.compare.score,

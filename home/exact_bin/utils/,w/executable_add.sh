@@ -286,12 +286,12 @@ else
   fi
 
   if [ -z "$base_ref" ]; then
-    if git show-ref --verify --quiet "refs/heads/$base_branch"; then
-      base_ref="$base_branch"
-    elif git show-ref --verify --quiet "refs/remotes/origin/$base_branch"; then
+    if git show-ref --verify --quiet "refs/remotes/origin/$base_branch"; then
       base_ref="origin/$base_branch"
     elif git show-ref --verify --quiet "refs/remotes/upstream/$base_branch"; then
       base_ref="upstream/$base_branch"
+    elif git show-ref --verify --quiet "refs/heads/$base_branch"; then
+      base_ref="$base_branch"
     elif git rev-parse --verify --quiet "${base_branch}^{commit}" > /dev/null; then
       base_ref="$base_branch"
     else

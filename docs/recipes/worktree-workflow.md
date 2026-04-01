@@ -26,6 +26,10 @@ The goal is to make branch isolation + review + context switching cheap.
 
 - `<branch_name>` can be a local branch, `origin/<branch>`, or `user/<branch>`.
 - `[base_branch]` is optional; defaults to the current branch.
+- When `[base_branch]` is a plain branch name (like `main`), base ref resolution
+  prefers `origin/<base>` then `upstream/<base>` before falling back to a local
+  `<base>` branch. This avoids creating worktrees from stale local base
+  branches.
 - `-q`/`--quiet` suppresses informational output.
 - Adds a zoxide entry for the new path when zoxide is installed.
 
@@ -65,6 +69,10 @@ The goal is to make branch isolation + review + context switching cheap.
   `<name>-<issue_number>`.
 - `-b`/`--branch` provides the branch name non-interactively.
 - `--focus` switches/attaches to the worktree's tmux session.
+- If the target branch already exists locally but has **no unique commits**
+  relative to the repo default branch, it is fast-forwarded to the latest
+  default branch before worktree creation (prevents “stale branch pointer”
+  worktrees from starting at months-old commits).
 - If you already created a matching branch manually (via `,w add`), entering
   that exact branch name links the issue metadata without renaming.
 

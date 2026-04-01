@@ -256,6 +256,25 @@ info "Issue #$issue_number -> branch: $branch"
 default_branch="$(_comma_w_detect_default_branch)"
 
 if _comma_w_branch_exists_locally_or_remote "$branch"; then
+  # When a local branch exists but has no unique commits relative to the
+  # default branch, it is a stale pointer left over from a previous worktree
+  # session.  Fast-forward it so the recreated worktree starts from the
+  # current default branch instead of a potentially months-old commit.
+  if git show-ref --verify --quiet "refs/heads/$branch" 2> /dev/null; then
+    _ff_target=""
+    for _r in origin upstream; do
+      if git show-ref --verify --quiet "refs/remotes/${_r}/${default_branch}" 2> /dev/null; then
+        _ff_target="${_r}/${default_branch}"
+        break
+      fi
+    done
+    [ -n "$_ff_target" ] || _ff_target="$default_branch"
+    _unique="$(git rev-list --count "${_ff_target}..${branch}" 2> /dev/null || echo 1)"
+    if [ "$_unique" = "0" ]; then
+      info "Branch has no unique commits; fast-forwarding to latest $default_branch"
+      git branch -f "$branch" "$_ff_target" 2> /dev/null || true
+    fi
+  fi
   info "Branch already exists; creating/reusing worktree without base branch."
   if [ "$quiet_mode" -eq 1 ]; then
     "$(dirname "$0")/add.sh" --quiet "$branch"

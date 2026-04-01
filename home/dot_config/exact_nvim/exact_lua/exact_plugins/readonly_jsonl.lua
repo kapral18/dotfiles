@@ -1,8 +1,5 @@
 return {
   {
-    "kyoh86/vim-jsonl",
-  },
-  {
     "stevearc/conform.nvim",
     opts = function(_, opts)
       opts.formatters = vim.tbl_deep_extend("force", opts.formatters or {}, {

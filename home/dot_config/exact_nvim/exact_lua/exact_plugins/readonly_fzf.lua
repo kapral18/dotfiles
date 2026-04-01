@@ -37,6 +37,7 @@ end
 return {
   {
     "ibhagwan/fzf-lua",
+    version = false,
     dependencies = {
       { "nvim-tree/nvim-web-devicons" },
       { "nvim-telescope/telescope.nvim" },

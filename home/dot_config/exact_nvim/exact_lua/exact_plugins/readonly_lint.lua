@@ -31,7 +31,7 @@ return {
       lint.linters_by_ft = vim.tbl_deep_extend("force", lint.linters_by_ft or {}, opts.linters_by_ft or {})
 
       local function debounce(ms, fn)
-        local timer = vim.uv.new_timer()
+        local timer = assert(vim.uv.new_timer())
         return function(...)
           local argv = { ... }
           timer:start(ms, 0, function()
@@ -61,8 +61,8 @@ return {
             vim.notify("Linter not found: " .. name, vim.log.levels.WARN, { title = "nvim-lint" })
             return false
           end
-          if type(linter) == "table" and linter.condition then
-            local ok, ret = pcall(linter.condition, ctx)
+          if type(linter) == "table" and linter.condition ~= nil then
+            local ok, ret = pcall(linter.condition --[[@as fun(ctx: table): boolean]], ctx)
             if not ok or not ret then
               return false
             end

@@ -407,7 +407,8 @@ Beads is integrated as a CLI (`bd`) with a repo-aware wrapper command:
   [`home/dot_config/fish/readonly_config.fish.tmpl`](../../home/dot_config/fish/readonly_config.fish.tmpl)
 
 The wrapper chooses a per-repo `$BEADS_DIR` under `~/beads-data/` and pins the
-database to `$BEADS_DIR/.beads/beads.db`.
+Beads discovery anchor to `$BEADS_DIR/.beads/beads.db`, then runs `bd` in
+`--sandbox` mode (per-project Dolt SQL server backend).
 
 Verification:
 

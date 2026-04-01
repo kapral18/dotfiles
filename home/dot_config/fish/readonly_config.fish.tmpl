@@ -112,7 +112,7 @@ function bdlocal --description 'Beads CLI wrapper that pins the shared database'
     end
 
     set beads_db "$beads_dir/.beads/beads.db"
-    bd --db "$beads_db" --no-auto-flush --no-auto-import --no-daemon $argv
+    BEADS_DB="$beads_db" bd --sandbox $argv
 end
 
 ## GPG TTY Configuration (for amd64 architecture)
@@ -342,14 +342,14 @@ if status --is-interactive
         set -l tmpfile (mktemp)
         command git $argv 2>$tmpfile
         set -l git_status $status
-        set -l errs (cat $tmpfile)
-        rm -f $tmpfile
-        if test $git_status -ne 0; and string match -q '*could not read IPC response*' "$errs"
+        if test $git_status -ne 0; and string match -q '*could not read IPC response*' <$tmpfile
+            rm -f $tmpfile
             command git fsmonitor--daemon stop 2>/dev/null
             command git fsmonitor--daemon start 2>/dev/null
             command git $argv
         else
-            test -n "$errs"; and echo $errs >&2
+            test -s $tmpfile; and command cat $tmpfile >&2
+            rm -f $tmpfile
             return $git_status
         end
     end

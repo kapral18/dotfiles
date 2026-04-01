@@ -8,6 +8,7 @@ daemon and without mixing data across unrelated repos.
 ## Preconditions
 
 - `bd` CLI is installed and on `PATH`.
+- Dolt is installed (Beads uses a per-project Dolt SQL server backend).
 - You are inside a git repository (recommended for stable repo naming).
 
 ## The Wrapper
@@ -19,11 +20,11 @@ daemon and without mixing data across unrelated repos.
 It resolves a per-repo `$BEADS_DIR` under `~/beads-data/<repo>` and pins the DB
 to:
 
-- `$BEADS_DIR/.beads/beads.db`
+- `$BEADS_DIR/.beads/beads.db` (discovery anchor)
 
 Then it runs:
 
-- `bd --db ... --no-auto-flush --no-auto-import --no-daemon`
+- `BEADS_DB=... bd --sandbox ...`
 
 ## Steps
 
@@ -43,6 +44,12 @@ bdlocal status
 ```
 
 Confirm that `BEADS_DIR` changes as you move between repositories.
+
+If you want to sanity-check the resolved backend wiring:
+
+```bash
+bdlocal info --json
+```
 
 ## Rollback / Undo
 

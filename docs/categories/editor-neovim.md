@@ -66,18 +66,45 @@ Plugin specs are still declared in lazy-style tables, but loading is now
 trigger-aware in `core/plugins.lua`: `cmd`, `event`, `ft`, and key-triggered
 plugins are deferred until first use while always-on specs load at startup.
 
+Version policy (fast startup): startup does **not** probe remotes. Instead,
+`PackSync` / `PackStatus` refresh a cached heuristic map under
+`stdpath("state")` that decides per-plugin whether to follow release tags or
+branch tip.
+
+- **default** (no `version` field): follow the latest semver tag where the
+  heuristic says tags are healthy; fall back to branch tip if tags appear stale.
+- `version = false`: explicitly force branch tip for a specific plugin.
+- explicit pins (`commit`/`tag`/`branch`/`version = "<range>"`) always take
+  priority.
+
+The cached policy uses a commit-count heuristic with three gates:
+
+1. **Minimum release history**: repos with fewer than 3 semver tags can't form a
+   reliable average — if more than 30 commits have landed since the last tag,
+   fall back to branch tip.
+2. **Commit ratio**: if the number of commits since the latest tag exceeds the
+   average commits per release (x1.5), fall back to branch tip.
+3. **Absolute cap**: more than 150 unreleased commits always means branch tip.
+
+To force branch tip for a specific plugin, set `version = false` in its spec.
+
 Practical commands:
 
 - `:PackDashboard` -> compact floating plugin dashboard with:
   - per-plugin update status
-  - breaking-risk hint (best-effort)
+  - breaking-risk hint (best-effort) from semver delta (`major`/`minor`/`patch`)
+    plus commit-message signals in the cumulative `rev_before..rev_after` range
+    (for example `BREAKING`, `feat`, `fix`, `refactor`, `perf`)
   - icon-based links column (`diff` / `repo`) with direct compare URL for
     pending updates
   - single update (`<CR>`), multi-select update (`u`), update all pending (`U`)
   - inline selection/filter/sort/search and details popup (`?` for full key
     help)
+  - opens from cache/known state by default (no implicit online check)
 - `:PackSync` -> raw online `vim.pack` report (fetch remotes first)
 - `:PackStatus` -> raw offline `vim.pack` report (local refs only)
+- `:PackDashboardStats` -> print last raw check counters (`update/same/error`)
+  and check timestamps
 - `:PackTrace [plugin-name]` -> show current load state, trigger metadata, and
   load reason
 - `:PackLoad <plugin-name>` -> force-load one plugin by name (useful for
@@ -86,7 +113,14 @@ Practical commands:
 
 Dashboard/trace popup buffers are treated as transient and excluded from session
 persistence to avoid polluting `auto-session` restores. Session search
-integrations are loaded on demand to keep startup leaner.
+integrations are loaded on demand to keep startup leaner. Use `r` (or
+`:PackDashboard!`) for explicit online refresh checks. Dashboard check/apply
+timestamps and last plugin status/version snapshot are persisted under
+`stdpath("state")` so they survive Neovim restart. The dashboard header also
+shows last raw check counters from the most recent explicit check, plus
+`checked` and `applied` stamps. Filter/sort, search text, and selected plugin
+rows are also restored on the next dashboard open. Use `o` to open a plugin diff
+link (with repository fallback), and `O` for repository-only open.
 
 ### Dashboard Tuning (Optional)
 
@@ -101,6 +135,8 @@ globals:
 - `vim.g.pack_dashboard_fast_scroll` (default `true`)
 - `vim.g.pack_dashboard_ascii` (default `false`; when `true`, use ASCII
   labels/icons)
+- `vim.g.pack_dashboard_autocheck_on_open` (default `false`; when `true`, first
+  dashboard open may bootstrap cache with a check)
 
 Current links column behavior is compact availability:
 
@@ -400,6 +436,28 @@ file-based fix across multiple worktrees/sandboxes).
 - Command: `:CopyBufferToQfDirs` (optional `force`)
 - Loader:
   [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_copy-to-qf.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_copy-to-qf.lua)
+
+## Code Screenshots (Local Plugin): `freeze`
+
+Generate an image of code directly from Neovim using the `freeze` CLI.
+
+- Homebrew formula (already managed by this repo's Brewfile):
+  `brew "charmbracelet/tap/freeze"` in
+  [`home/readonly_dot_Brewfile.tmpl`](../../home/readonly_dot_Brewfile.tmpl)
+- Loader:
+  [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_freeze.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_freeze.lua)
+- Source:
+  [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_freeze.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_freeze.lua)
+
+Commands:
+
+- `:Freeze` - capture the whole buffer (or a range, e.g. `:10,40Freeze`)
+- `:FreezeLine` - capture the current line
+
+Behavior:
+
+- Writes `~/Downloads/screenshots/freeze.png`
+- Copies the PNG to clipboard (macOS) and opens the image after generation
 
 ## Toggle Window Width (Local Plugin)
 

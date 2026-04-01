@@ -123,7 +123,7 @@ fi
 
 clone_repo="${clone_owner}/${repo_name}"
 clone_url="$(remote_url_for_repo "$clone_repo")"
-git clone "${clone_flags[@]}" "$clone_url" "$repo_name"
+git clone ${clone_flags[@]+"${clone_flags[@]}"} "$clone_url" "$repo_name"
 
 if [ "$clone_owner" != "$repo_owner" ]; then
   upstream_url="$(remote_url_for_repo "$repo_spec")"

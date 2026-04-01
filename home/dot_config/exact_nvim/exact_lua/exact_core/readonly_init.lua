@@ -5,7 +5,6 @@ local plugin_modules = {
   "plugins.colorscheme",
   "plugins.ai",
   "plugins.bash",
-  "plugins.clangd",
   "plugins.bufferline",
   "plugins.chezmoi",
   "plugins.completion",
@@ -28,7 +27,6 @@ local plugin_modules = {
   "plugins.lazydev",
   "plugins.leap",
   "plugins.live-command",
-  "plugins.log",
   "plugins.formatting",
   "plugins.lsp",
   "plugins.lint",
@@ -51,7 +49,6 @@ local plugin_modules = {
   "plugins.session",
   "plugins.snacks",
   "plugins.telescope",
-  "plugins.tmux",
   "plugins.tpope",
   "plugins.treesitter",
   "plugins.typescript-tools",
@@ -62,6 +59,7 @@ local plugin_modules = {
 }
 
 local local_modules = {
+  "plugins_local.freeze",
   "plugins_local.copy-to-qf",
   "plugins_local.owner-code-search",
   "plugins_local.qf",

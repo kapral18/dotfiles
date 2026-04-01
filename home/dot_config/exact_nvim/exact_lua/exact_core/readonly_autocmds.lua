@@ -105,7 +105,7 @@ autocmd({ "BufLeave", "BufWinLeave" }, {
   group = augroup("k18_folds", { clear = true }),
   pattern = "*",
   callback = function()
-    pcall(vim.cmd, "silent! mkview")
+    pcall(vim.cmd --[[@as fun(cmd: string)]], "silent! mkview")
   end,
   desc = "Remember folds on buffer exit",
 })
@@ -178,7 +178,7 @@ autocmd("BufReadPost", {
       return
     end
 
-    pcall(vim.cmd, "silent! rundo " .. vim.fn.fnameescape(undofile))
+    pcall(vim.cmd --[[@as fun(cmd: string)]], "silent! rundo " .. vim.fn.fnameescape(undofile))
   end,
 })
 
@@ -195,7 +195,7 @@ autocmd("BufWritePost", {
     end
 
     vim.fn.mkdir(vim.fn.fnamemodify(undofile, ":h"), "p")
-    pcall(vim.cmd, "silent! wundo " .. vim.fn.fnameescape(undofile))
+    pcall(vim.cmd --[[@as fun(cmd: string)]], "silent! wundo " .. vim.fn.fnameescape(undofile))
   end,
 })
 

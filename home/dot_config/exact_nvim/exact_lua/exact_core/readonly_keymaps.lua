@@ -218,7 +218,7 @@ vim.api.nvim_create_user_command("CpFromDownloads", function()
     return
   end
 
-  local node = state.tree:get_node()
+  local node = state.tree:get_node() ---@diagnostic disable-line: undefined-field
   if not node then
     print("No node selected")
     return

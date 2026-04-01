@@ -1,5 +1,51 @@
 # Dotfiles Project - Agent Instructions
 
+## Chezmoi Source-of-Truth (Mandatory)
+
+This is a **chezmoi-managed dotfiles repo**. Chezmoi deploys files from `home/`
+in this repo to `$HOME`. The deployed copies are outputs — editing them directly
+creates drift that `chezmoi apply` will silently overwrite.
+
+**Any time you encounter, read, or are about to edit a dotfile — whether by
+absolute path (`/Users/.../bin/utils/...`), tilde path (`~/bin/...`), or because
+the user pointed you at it — you MUST check whether chezmoi manages it before
+making changes:**
+
+1. **Resolve symlinks first.** `chezmoi source-path` does not follow symlinks.
+   Run `realpath <path>` (or `readlink -f`) to get the canonical path. Use that
+   resolved path for all subsequent steps.
+2. Run `chezmoi source-path <resolved-path>` to check.
+3. If it returns a source path: edit **only** that source file (under `home/` in
+   this repo). Then deploy with `chezmoi apply --no-tty <target>` and verify.
+4. If the command fails (not managed) **and** the file is user-writable: edit
+   the file directly.
+5. If the command fails **but** the file is read-only (`r--r--r--`): **stop**.
+   Read-only files under `$HOME` are likely deployed by chezmoi with a
+   `readonly_` prefix. Investigate before editing — search the chezmoi source
+   tree (`home/`) for the filename. Never `chmod` a read-only deployed file.
+
+**This applies to every file under `$HOME`**, including but not limited to:
+shell configs, scripts in `~/bin/`, app configs in `~/.config/`, SOP files,
+skill files, tmux scripts, and anything else chezmoi might manage.
+
+**Common mappings (not exhaustive):**
+
+| Deployed path       | Chezmoi source                                |
+| ------------------- | --------------------------------------------- |
+| `~/bin/`            | `home/exact_bin/`                             |
+| `~/bin/utils/`      | `home/exact_bin/utils/`                       |
+| `~/.config/<app>/`  | `home/dot_config/<app>/`                      |
+| `~/AGENTS.md`       | `home/readonly_AGENTS.md`                     |
+| `~/CLAUDE.md`       | `home/readonly_CLAUDE.md`                     |
+| `~/.agents/skills/` | `home/exact_dot_agents/exact_skills/`         |
+| `~/.claude/skills`  | symlink → `~/.agents/skills` (resolve first!) |
+
+**Chezmoi naming conventions:** `exact_` = exact directory, `readonly_` =
+read-only, `executable_` = executable, `dot_` = dotfile (leading `.`), `.tmpl` =
+template.
+
+---
+
 ## Package/App/Formula/Cask Installation Priority
 
 When user requests to "add X" (app, package, cask, formula, or CLI tool), follow
