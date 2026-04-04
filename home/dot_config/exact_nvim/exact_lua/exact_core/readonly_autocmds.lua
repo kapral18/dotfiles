@@ -80,12 +80,28 @@ autocmd("FileType", {
   end,
 })
 
--- Markdown: disable wrap (override default behavior)
+-- Markdown / MDX: soft wrap at window edge (word boundaries, indented wraps).
+-- Use `markdown*` / `mdx*` (file-style patterns): exact `markdown` / `mdx` do not
+-- match compound filetypes like `markdown.github`, so those never fired before.
+-- Apply per-window via win_findbuf — FileType can run when the buffer is not in
+-- the current window; `vim.opt_local` would then set wrap on the wrong split.
+local md_view = require("util.markdown_view")
+local k18_markdown = augroup("k18_markdown", { clear = true })
+
 autocmd("FileType", {
-  group = augroup("k18_markdown", { clear = true }),
-  pattern = "markdown",
-  callback = function()
-    vim.opt_local.wrap = false
+  group = k18_markdown,
+  pattern = { "markdown*", "mdx*", "rmarkdown" },
+  callback = function(ev)
+    md_view.soft_wrap_buffer_wins(ev.buf)
+  end,
+})
+
+autocmd("BufWinEnter", {
+  group = k18_markdown,
+  callback = function(ev)
+    if md_view.is_markdown_family_ft(vim.bo[ev.buf].filetype) then
+      md_view.soft_wrap_buffer_wins(ev.buf)
+    end
   end,
 })
 

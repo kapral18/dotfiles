@@ -1,8 +1,6 @@
 ---
 name: knip
-description: |-
-  Find unused files, dependencies, and exports in JS/TS projects. Use when
-  cleaning up dead code, detecting unused deps, or auditing a package.json.
+description: Find unused files, dependencies, and exports in JS/TS projects. Use when cleaning up dead code, detecting unused deps, or auditing a package.json.
 tool_version: knip 5.88.0
 ---
 
@@ -22,10 +20,8 @@ Do not use:
 First actions:
 
 1. `command -v knip` or verify `npx knip --version` works.
-2. Run `npx knip` and read **configuration hints first** (top of output) — fix
-   config before acting on reported issues.
-3. If a `knip.json` / `knip.jsonc` exists, review it; otherwise knip works
-   zero-config.
+2. Run `npx knip` and read **configuration hints first** (top of output) — fix config before acting on reported issues.
+3. If a `knip.json` / `knip.jsonc` exists, review it; otherwise knip works zero-config.
 
 ## Commands
 
@@ -40,8 +36,7 @@ npx knip --reporter json          # machine-readable output
 ## Workflow
 
 1. Run `npx knip`.
-2. Address configuration hints (adjust `knip.json`) until false positives
-   stabilize.
+2. Address configuration hints (adjust `knip.json`) until false positives stabilize.
 3. Fix reported issues in priority order:
    - unused files (removes the most noise)
    - unused dependencies / devDependencies
@@ -50,15 +45,11 @@ npx knip --reporter json          # machine-readable output
 
 ## Confidence rules
 
-Auto-delete: orphaned files, unused deps, internal unused exports, unused type
-exports.
+Auto-delete: orphaned files, unused deps, internal unused exports, unused type exports.
 
-Ask first: anything in `src/index` / `lib/` / public API paths, deps that may be
-CLI-only or peer deps, dynamically imported files.
+Ask first: anything in `src/index` / `lib/` / public API paths, deps that may be CLI-only or peer deps, dynamically imported files.
 
 ## Notes
 
-- Knip finds unused files/deps/exports across the project. It does NOT find
-  unused imports/variables inside a file — that is a linter's job.
-- Supports monorepos, all major package managers, and 100+ framework plugins
-  (auto-detected).
+- Knip finds unused files/deps/exports across the project. It does NOT find unused imports/variables inside a file — that is a linter's job.
+- Supports monorepos, all major package managers, and 100+ framework plugins (auto-detected).

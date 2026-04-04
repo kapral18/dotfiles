@@ -58,8 +58,7 @@ bk artifacts download ARTIFACT_UUID
 bk job log JOB_UUID -p SLUG -b BUILD_NUMBER | grep -E '(FAIL|ERROR|AssertionError|Expected.*got)'
 ```
 
-**Action:** Read the specific test failures, check if they reproduce locally,
-fix the code.
+**Action:** Read the specific test failures, check if they reproduce locally, fix the code.
 
 ### Dependency Resolution Errors
 
@@ -85,8 +84,7 @@ bk job log JOB_UUID -p SLUG -b BUILD_NUMBER | grep -iE '(ERR!|could not resolve|
 - Build terminated without test output completing
 - Builds that ran much longer than usual
 
-**Action:** Check for infinite loops, long-running tests, or resource
-contention. Consider increasing timeout or splitting the job.
+**Action:** Check for infinite loops, long-running tests, or resource contention. Consider increasing timeout or splitting the job.
 
 ### Out of Memory (OOM)
 
@@ -96,8 +94,7 @@ contention. Consider increasing timeout or splitting the job.
 - Process terminated without error output
 - Memory usage spikes in agent metrics
 
-**Action:** Profile memory usage, reduce parallelism, increase agent memory, or
-split into smaller jobs.
+**Action:** Profile memory usage, reduce parallelism, increase agent memory, or split into smaller jobs.
 
 ### Flaky Tests
 
@@ -116,8 +113,7 @@ bk build rebuild BUILD_NUMBER -p SLUG
 # Compare logs between failing and passing runs
 ```
 
-**Action:** Fix timing dependencies, add retries for external service calls,
-quarantine flaky tests.
+**Action:** Fix timing dependencies, add retries for external service calls, quarantine flaky tests.
 
 ### Infrastructure Issues
 
@@ -128,8 +124,7 @@ quarantine flaky tests.
 - Network connectivity errors
 - `No agents available`
 
-**Action:** Check agent status (`bk agent list`), verify Docker registry access,
-check network connectivity.
+**Action:** Check agent status (`bk agent list`), verify Docker registry access, check network connectivity.
 
 ### Permission / Auth Failures
 
@@ -145,19 +140,14 @@ check network connectivity.
 bk job log JOB_UUID -p SLUG -b BUILD_NUMBER | grep -iE '(403|401|forbidden|unauthorized|permission denied|access denied)'
 ```
 
-**Action:** Rotate credentials, verify environment variables are set in pipeline
-settings, check IAM/role permissions.
+**Action:** Rotate credentials, verify environment variables are set in pipeline settings, check IAM/role permissions.
 
 ---
 
 ## Tips
 
-- **Start with the last 50 lines** of a failed job log — the error summary is
-  usually at the end.
+- **Start with the last 50 lines** of a failed job log — the error summary is usually at the end.
 - **Compare with last passing build** — diff the logs to find what changed.
-- **Check the commit diff** — the failure is usually in the code that changed
-  between the last green build and this one.
-- **Use `bk api`** for detailed job metadata if standard commands are
-  insufficient.
-- **Filter by duration** to find slow builds:
-  `bk build list -p SLUG --duration ">30m"`
+- **Check the commit diff** — the failure is usually in the code that changed between the last green build and this one.
+- **Use `bk api`** for detailed job metadata if standard commands are insufficient.
+- **Filter by duration** to find slow builds: `bk build list -p SLUG --duration ">30m"`

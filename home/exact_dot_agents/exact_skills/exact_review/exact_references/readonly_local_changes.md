@@ -3,13 +3,11 @@
 Precondition:
 
 - You already loaded `~/.agents/skills/review/SKILL.md`.
-- Follow `~/.agents/skills/review/references/shared_rules.md` (loaded once by
-  the router; do not re-load).
+- Follow `~/.agents/skills/review/references/shared_rules.md` (loaded once by the router; do not re-load).
 
 Use when:
 
-- the user asks to review local work ("review local changes", "review this
-  diff", "check what changed")
+- the user asks to review local work ("review local changes", "review this diff", "check what changed")
 - or the repo has staged/unstaged changes
 - or there is no PR for the current branch and the user still wants a review
 
@@ -53,5 +51,4 @@ Follow the base-branch context gate in `shared_rules.md`. This is mandatory.
 ## Extra Constraints
 
 - Do not commit/push unless explicitly asked.
-- Keep an internal findings queue ordered by severity; draft highest-risk items
-  first.
+- Keep an internal findings queue ordered by severity; draft highest-risk items first.

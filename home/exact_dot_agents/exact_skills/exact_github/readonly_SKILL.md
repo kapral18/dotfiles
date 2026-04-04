@@ -1,10 +1,6 @@
 ---
 name: github
-description: |-
-  GitHub side effects via gh CLI. Use before any GitHub mutation — PRs,
-  issues, comments, reviews, labels, releases, merges, sub-issues, gists, or
-  any gh/API call that changes state. Not for review analysis or
-  draft-only writing.
+description: GitHub side effects via gh CLI. Use before any GitHub mutation — PRs, issues, comments, reviews, labels, releases, merges, sub-issues, gists, or any gh/API call that changes state. Not for review analysis or draft-only writing.
 ---
 
 # GitHub + gh Skill
@@ -12,73 +8,53 @@ description: |-
 Use when:
 
 - the user explicitly wants a GitHub side effect via `gh` or GitHub APIs
-- the user wants to create/edit/post/apply/merge something on GitHub, not just
-  draft text
-- the user provides a GitHub gist URL (`gist.github.com/...` or
-  `gist.githubusercontent.com/...`) or asks to create/update/list a gist
+- the user wants to create/edit/post/apply/merge something on GitHub, not just draft text
+- the user provides a GitHub gist URL (`gist.github.com/...` or `gist.githubusercontent.com/...`) or asks to create/update/list a gist
 
 Defaults & constraints:
 
 - Use `gh` CLI for GitHub activity.
-- Follow repository merge settings (squash/rebase/merge); do not enforce a merge
-  strategy.
+- Follow repository merge settings (squash/rebase/merge); do not enforce a merge strategy.
 - Never merge into the base branch via CLI; merges happen via the GitHub UI.
 - For non-interactive reliability, set `GH_PAGER=cat` for all `gh` calls.
-- GitHub gists: use `gh gist` (or `gh api`) for all gist interactions; do not
-  fetch gist URLs directly (HTML wrappers, auth/rate limits, non-canonical).
+- GitHub gists: use `gh gist` (or `gh api`) for all gist interactions; do not fetch gist URLs directly (HTML wrappers, auth/rate limits, non-canonical).
 
 PR targeting (avoid searching):
 
-- If the user uses implicit-current phrasing ("this PR", "current PR", "PR for
-  this branch") and does not specify a PR URL/number, resolve the PR for the
-  current branch in the current repo.
+- If the user uses implicit-current phrasing ("this PR", "current PR", "PR for this branch") and does not specify a PR URL/number, resolve the PR for the current branch in the current repo.
 - Resolve the PR number/URL with:
   - `,gh-prw --number`
   - `,gh-prw --url`
-- If `,gh-prw` fails once, stop and ask for the PR URL (or use `-R OWNER/REPO`
-  if the user clearly intends a different repo).
-- Do not assume an unspecified GitHub task targets the current branch PR unless
-  the wording clearly implies the current PR.
+- If `,gh-prw` fails once, stop and ask for the PR URL (or use `-R OWNER/REPO` if the user clearly intends a different repo).
+- Do not assume an unspecified GitHub task targets the current branch PR unless the wording clearly implies the current PR.
 
 Issue targeting:
 
-- If the user refers to the current issue implicitly ("this issue", "current
-  issue"), resolve the issue number first:
+- If the user refers to the current issue implicitly ("this issue", "current issue"), resolve the issue number first:
   - `,gh-issuew --number`
   - `,gh-issuew --url`
 - If `,gh-issuew` fails once, stop and ask for the issue URL.
 
 Do not use:
 
-- The user wants to draft PR/issue text only (draft-only): use the compose
-  skills.
+- The user wants to draft PR/issue text only (draft-only): use the compose skills.
   - PR: `~/.agents/skills/compose-pr/SKILL.md`
   - Issue: `~/.agents/skills/compose-issue/SKILL.md`
-- The user wants PR review feedback, PR-fix verification, thread-by-thread
-  handling, or review-comment drafting:
+- The user wants PR review feedback, PR-fix verification, thread-by-thread handling, or review-comment drafting:
   - Use: `~/.agents/skills/review/SKILL.md`
-  - It routes between local vs PR review, and PR modes
-    (start/iterative/replies).
-- The user wants local git operations (status/diff/commit/rebase):
-  `~/.agents/skills/git/SKILL.md`.
-- The user wants worktree management (create/switch/remove worktrees):
-  `~/.agents/skills/worktrees/SKILL.md`.
+  - It routes between local vs PR review, and PR modes (start/iterative/replies).
+- The user wants local git operations (status/diff/commit/rebase): `~/.agents/skills/git/SKILL.md`.
+- The user wants worktree management (create/switch/remove worktrees): `~/.agents/skills/worktrees/SKILL.md`.
 
 First actions:
 
 1. Set `GH_PAGER=cat`.
-2. Resolve the exact target repo/object (PR, issue, comment thread, release)
-   before mutating anything.
-3. If the user also needs authored text, reviewer reasoning, labels, or Kibana
-   ownership guidance, invoke the required secondary skill(s) via the Skill tool
-   first and use their output before posting/applying.
+2. Resolve the exact target repo/object (PR, issue, comment thread, release) before mutating anything.
+3. If the user also needs authored text, reviewer reasoning, labels, or Kibana ownership guidance, invoke the required secondary skill(s) via the Skill tool first and use their output before posting/applying.
 
 Approvals:
 
-- Any GitHub side effect requires explicit approval unless the user instructed
-  otherwise. Examples (non-exhaustive): create/edit PRs or issues, post
-  comments/reviews, apply metadata (labels/assignees/milestones/projects),
-  merge, or create releases.
+- Any GitHub side effect requires explicit approval unless the user instructed otherwise. Examples (non-exhaustive): create/edit PRs or issues, post comments/reviews, apply metadata (labels/assignees/milestones/projects), merge, or create releases.
 
 PR review side effects (draft / pending reviews):
 
@@ -102,69 +78,42 @@ PR review side effects (draft / pending reviews):
 > 4. Only add `event` in a **separate** submit call after the user explicitly
 >    asks to publish.
 
-- Definition: a "pending review" is a PR review whose API `state` is `PENDING`.
-  It is visible only to the reviewer who created it until submission
-  (COMMENT/APPROVE/REQUEST_CHANGES), and it does not appear to the PR author as
-  posted review comments while pending.
-- Creating a PENDING (draft) PR review requires the reviews API. Omit `event`
-  in: `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews`
-- Batch draft comments: include all inline review comments in the `comments`
-  array in that same request.
-- Practical constraint: GitHub generally allows only one `PENDING` review per
-  user per PR. If you need to change bodies/anchors, delete the pending review
-  and recreate it.
-- Pending inline review comments are not practically editable via API; do not
-  waste time trying to PATCH. Delete the pending review and recreate it with the
-  corrected payload.
-- Do not try to attach comments to an already-created pending review via the PR
-  comments endpoint (it won't accept `pull_request_review_id`). If you need to
-  change anchors/bodies, delete the pending review and recreate it.
-- File-level review comments (`subject_type=file`) are immediately visible; they
-  are not part of a pending review. In practice, while you have a pending
-  review, you may not be able to create additional file-level review comments
-  from the same user.
+- Definition: a "pending review" is a PR review whose API `state` is `PENDING`. It is visible only to the reviewer who created it until submission (COMMENT/APPROVE/REQUEST_CHANGES), and it does not appear to the PR author as posted review comments while pending.
+- Creating a PENDING (draft) PR review requires the reviews API. Omit `event` in: `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews`
+- Batch draft comments: include all inline review comments in the `comments` array in that same request.
+- Practical constraint: GitHub generally allows only one `PENDING` review per user per PR. If you need to change bodies/anchors, delete the pending review and recreate it.
+- Pending inline review comments are not practically editable via API; do not waste time trying to PATCH. Delete the pending review and recreate it with the corrected payload.
+- Do not try to attach comments to an already-created pending review via the PR comments endpoint (it won't accept `pull_request_review_id`). If you need to change anchors/bodies, delete the pending review and recreate it.
+- File-level review comments (`subject_type=file`) are immediately visible; they are not part of a pending review. In practice, while you have a pending review, you may not be able to create additional file-level review comments from the same user.
 - Verification rule of thumb:
   - `GET /repos/{o}/{r}/pulls/{n}/reviews` will show the `PENDING` review
-  - `GET /repos/{o}/{r}/pulls/{n}/comments` should remain unchanged until you
-    submit (draft comments are attached to the review, not publicly posted)
-- Arrays: prefer `gh api ... --input /path/to.json` for payloads containing
-  arrays (avoids accidentally sending arrays as strings via `-f/-F`).
+  - `GET /repos/{o}/{r}/pulls/{n}/comments` should remain unchanged until you submit (draft comments are attached to the review, not publicly posted)
+- Arrays: prefer `gh api ... --input /path/to.json` for payloads containing arrays (avoids accidentally sending arrays as strings via `-f/-F`).
 
 If explicitly asked to POST a batch as a draft (PENDING) review:
 
-- Create a single PR review in `PENDING` state by omitting `event` when calling:
-  `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews`
+- Create a single PR review in `PENDING` state by omitting `event` when calling: `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews`
 - Include all inline comments in the `comments` array in that same request.
 - Every inline comment must resolve to a valid diff anchor.
 - Prefer `line`/`side` anchoring over `position` (less error-prone):
   - Use `line` (the file line number on the right side) + `side: "RIGHT"`.
   - For left-side-only comments, use `side: "LEFT"` + the old-file line number.
   - For multi-line ranges, add `start_line` + `start_side`.
-  - The `line`/`side` approach uses absolute file line numbers (visible in the
-    GitHub diff UI), so there is no off-by-one math to get wrong.
+  - The `line`/`side` approach uses absolute file line numbers (visible in the GitHub diff UI), so there is no off-by-one math to get wrong.
 - If you must use `position` (diff-relative, 0-indexed from the `@@` header):
   - Fetch the file's `patch` from `GET /repos/{o}/{r}/pulls/{n}/files`.
-  - Split by newlines. The `@@` hunk header at index 0 = position 0 (not a valid
-    comment target). The first content line at index 1 = position 1.
+  - Split by newlines. The `@@` hunk header at index 0 = position 0 (not a valid comment target). The first content line at index 1 = position 1.
   - In short: the 0-based array index of the split **is** the position value.
-  - If a file has multiple hunks (or repeated target lines), create separate
-    comments and verify the correct hunk/occurrence.
-  - Common trap: the patch changes when new commits are pushed. Always re-fetch
-    the patch from the current PR head before computing positions.
-- Keep the review summary body empty unless the user explicitly wants a public
-  summary.
+  - If a file has multiple hunks (or repeated target lines), create separate comments and verify the correct hunk/occurrence.
+  - Common trap: the patch changes when new commits are pushed. Always re-fetch the patch from the current PR head before computing positions.
+- Keep the review summary body empty unless the user explicitly wants a public summary.
 
 After submitting, verify what actually posted:
 
-- The submitted review body is whatever you submit with the final event call. If
-  you want a summary, include it explicitly when submitting
-  (COMMENT/APPROVE/REQUEST_CHANGES).
+- The submitted review body is whatever you submit with the final event call. If you want a summary, include it explicitly when submitting (COMMENT/APPROVE/REQUEST_CHANGES).
 - For COMMENT/REQUEST_CHANGES, treat the body as required: always include it.
-- UI gotcha: switching the event type (e.g. Comment -> Approve) can drop the
-  typed summary text in some flows. For API-based submission, prevent this by
-  always sending the intended `body` with the submit request.
-- Count posted inline comments and reconcile anything missing; if needed, post a
-  follow-up (non-batch) comment with leftover deep links.
+- UI gotcha: switching the event type (e.g. Comment -> Approve) can drop the typed summary text in some flows. For API-based submission, prevent this by always sending the intended `body` with the submit request.
+- Count posted inline comments and reconcile anything missing; if needed, post a follow-up (non-batch) comment with leftover deep links.
 
 Example (create a pending review with line/side anchoring — preferred):
 
@@ -196,8 +145,7 @@ gh api repos/OWNER/REPO/pulls/NUM/reviews -X POST --input /tmp/review-payload.js
 
 Posting PR review comments (examples):
 
-- Use bash/zsh `$'...'` so `\n` becomes real line breaks. Do NOT send literal
-  `\n`.
+- Use bash/zsh `$'...'` so `\n` becomes real line breaks. Do NOT send literal `\n`.
 - Add a soft close such as `Wdyt` only when the review style calls for it.
 - Follow the relevant PR review mode for anchoring and comment placement:
   - `~/.agents/skills/review/references/pr_review.md`
@@ -235,19 +183,11 @@ gh api repos/OWNER/REPO/pulls/NUM/comments \
 
 Notes:
 
-- The request field is `in_reply_to` (integer). The response field is
-  `in_reply_to_id`.
-- Do NOT use `in_reply_to_id` in the request; it may create a new top-level
-  comment instead of a reply.
-- If you need to add query params to a GET `gh api` call, use `-X GET`. In
-  practice, adding `-f` or `-F` without `-X GET` can cause `gh` to hit the POST
-  schema by default.
-- zsh gotcha: avoid unquoted `?ref=...` in endpoints (it can trigger
-  `no matches found`). Prefer:
-  `gh api -X GET repos/OWNER/REPO/contents/PATH -F ref=main`
-- If you _are_ posting an anchored comment that requires `commit_id`, and GitHub
-  rejects it as "commit_id is not part of the pull request", use the `commit_id`
-  from the target review comment you're replying to.
+- The request field is `in_reply_to` (integer). The response field is `in_reply_to_id`.
+- Do NOT use `in_reply_to_id` in the request; it may create a new top-level comment instead of a reply.
+- If you need to add query params to a GET `gh api` call, use `-X GET`. In practice, adding `-f` or `-F` without `-X GET` can cause `gh` to hit the POST schema by default.
+- zsh gotcha: avoid unquoted `?ref=...` in endpoints (it can trigger `no matches found`). Prefer: `gh api -X GET repos/OWNER/REPO/contents/PATH -F ref=main`
+- If you _are_ posting an anchored comment that requires `commit_id`, and GitHub rejects it as "commit_id is not part of the pull request", use the `commit_id` from the target review comment you're replying to.
 
 PR-level timeline comment (use sparingly):
 
@@ -264,39 +204,25 @@ gh pr review NUM --comment -b "<text>"
 PR creation:
 
 - Create PRs as draft by default.
-- Always ask which existing issue the PR should reference (do not invent issue
-  numbers).
-- Ask the user whether the PR should `Closes #X` or `Addresses #X` before
-  creating the PR.
-- If there is no existing issue, stop and ask whether to create one; do NOT
-  create issues unless the user explicitly instructs you to.
-- PR title is a human-readable change summary (not necessarily the Conventional
-  Commit header).
-- Multiline bodies/comments: use bash/zsh `$'...'` so `\n` becomes real
-  newlines. Do NOT rely on `\\n` escapes inside normal quotes when using
-  `gh api -f body=...`.
-- Test plan is inferred from the change surface; run the smallest sufficient set
-  of checks and record the commands/results in the PR.
-- Always propose labels/assignees/milestone/projects first and get explicit
-  confirmation before applying any of them.
+- Always ask which existing issue the PR should reference (do not invent issue numbers).
+- Ask the user whether the PR should `Closes #X` or `Addresses #X` before creating the PR.
+- If there is no existing issue, stop and ask whether to create one; do NOT create issues unless the user explicitly instructs you to.
+- PR title is a human-readable change summary (not necessarily the Conventional Commit header).
+- Multiline bodies/comments: use bash/zsh `$'...'` so `\n` becomes real newlines. Do NOT rely on `\\n` escapes inside normal quotes when using `gh api -f body=...`.
+- Test plan is inferred from the change surface; run the smallest sufficient set of checks and record the commands/results in the PR.
+- Always propose labels/assignees/milestone/projects first and get explicit confirmation before applying any of them.
 
 Composition (draft-only) guidance:
 
-- Before creating/editing a PR body, invoke the `compose-pr` skill via the Skill
-  tool.
-- Before creating/editing an issue body, invoke the `compose-issue` skill via
-  the Skill tool.
-- For `elastic/kibana` label targeting, invoke the `kibana-labels-propose` skill
-  via the Skill tool.
-- For Kibana reviewer/ownership guidance, load:
-  `~/.agents/skills/kibana-management-ownership/SKILL.md`
+- Before creating/editing a PR body, invoke the `compose-pr` skill via the Skill tool.
+- Before creating/editing an issue body, invoke the `compose-issue` skill via the Skill tool.
+- For `elastic/kibana` label targeting, invoke the `kibana-labels-propose` skill via the Skill tool.
+- For Kibana reviewer/ownership guidance, load: `~/.agents/skills/kibana-management-ownership/SKILL.md`
 
 Output:
 
-- Before each side effect, restate the exact target and action you are about to
-  perform.
-- After each side effect, verify via read-back (`gh`/API) and report the URL,
-  identifier, or resulting state.
+- Before each side effect, restate the exact target and action you are about to perform.
+- After each side effect, verify via read-back (`gh`/API) and report the URL, identifier, or resulting state.
 
 Do not add/modify repo `.github/*` templates unless the user explicitly asks.
 
@@ -313,12 +239,12 @@ Create hierarchy:
 gh api graphql -f query='{ repository(owner:"org",name:"repo") { issue(number:N) { id } } }'
 ```
 
-3. Link:
+1. Link:
 
 ```bash
 gh api graphql -f query="mutation { addSubIssue(input:{issueId:\"PARENT_ID\",subIssueId:\"CHILD_ID\"}) { issue { number } } }"
 ```
 
-4. Verify: `gh api repos/:owner/:repo/issues/NUM/sub_issues`
+1. Verify: `gh api repos/:owner/:repo/issues/NUM/sub_issues`
 
 Mutations: `addSubIssue`, `removeSubIssue`, `reprioritizeSubIssue`

@@ -11,17 +11,14 @@ This setup assumes secrets live outside the git repo:
 
 The 1Password SSH agent is the expected SSH identity provider.
 
-- SSH config:
-  [`home/private_dot_ssh/private_executable_config`](../../home/private_dot_ssh/private_executable_config)
-- Git wiring:
-  [`home/private_readonly_dot_gitconfig.tmpl`](../../home/private_readonly_dot_gitconfig.tmpl)
+- SSH config: [`home/private_dot_ssh/private_executable_config`](../../home/private_dot_ssh/private_executable_config)
+- Git wiring: [`home/private_readonly_dot_gitconfig.tmpl`](../../home/private_readonly_dot_gitconfig.tmpl)
 
 The 1Password SSH agent itself is configured via:
 
 - [`home/dot_config/exact_private_1Password/exact_ssh/agent.toml.tmpl`](../../home/dot_config/exact_private_1Password/exact_ssh/agent.toml.tmpl)
 
-This controls which 1Password items (ssh keys) are available to the agent based
-on `isWork`.
+This controls which 1Password items (ssh keys) are available to the agent based on `isWork`.
 
 ## GPG Agent (Pinentry + Cache TTL)
 
@@ -33,13 +30,11 @@ This setup configures `gpg-agent` to:
 Relevant files:
 
 - Prompts: [`home/.chezmoi.toml.tmpl`](../../home/.chezmoi.toml.tmpl)
-- Template:
-  [`home/private_dot_gnupg/gpg-agent.conf.tmpl`](../../home/private_dot_gnupg/gpg-agent.conf.tmpl)
+- Template: [`home/private_dot_gnupg/gpg-agent.conf.tmpl`](../../home/private_dot_gnupg/gpg-agent.conf.tmpl)
 
 ## Password Store (`pass`)
 
-Fish loads several API keys from `pass` if they are not already set in the
-environment:
+Fish loads several API keys from `pass` if they are not already set in the environment:
 
 - [`home/dot_config/fish/readonly_config.fish.tmpl`](../../home/dot_config/fish/readonly_config.fish.tmpl)
 - Non-fish login profiles are kept side-effect free and do not invoke `pass`.
@@ -48,8 +43,7 @@ On first setup, `pass` is installed and the password store is cloned via:
 
 - [`home/.chezmoiscripts/run_once_after_05-setup-pass-managers.fish.tmpl`](../../home/.chezmoiscripts/run_once_after_05-setup-pass-managers.fish.tmpl)
 
-That script also imports PGP keys (via `op read`) and adjusts trust for the
-primary identity.
+That script also imports PGP keys (via `op read`) and adjusts trust for the primary identity.
 
 ## Work vs Personal Password Stores
 
@@ -62,8 +56,7 @@ Implementation:
 
 - [`home/dot_config/fish/readonly_config.fish.tmpl`](../../home/dot_config/fish/readonly_config.fish.tmpl)
 
-On first setup, the pass bootstrap script attempts to clone both password-store
-repositories on non-work machines:
+On first setup, the pass bootstrap script attempts to clone both password-store repositories on non-work machines:
 
 - personal store -> `~/.password-store`
 - work store (optional) -> `~/.password-store-work`
@@ -94,16 +87,11 @@ echo "$PASSWORD_STORE_DIR"
 If secrets are missing at runtime:
 
 - confirm `pass` is initialized and unlocked.
-- confirm secret paths referenced in
-  [`home/dot_config/fish/readonly_config.fish.tmpl`](../../home/dot_config/fish/readonly_config.fish.tmpl)
-  exist.
-- confirm work store clone exists at `~/.password-store-work` on non-work
-  machines if using `wpass`.
+- confirm secret paths referenced in [`home/dot_config/fish/readonly_config.fish.tmpl`](../../home/dot_config/fish/readonly_config.fish.tmpl) exist.
+- confirm work store clone exists at `~/.password-store-work` on non-work machines if using `wpass`.
 
 ## Related
 
 - Git + identity: [`docs/categories/git-and-identity.md`](git-and-identity.md)
-- Switching identity:
-  [`docs/recipes/switching-work-personal-identity.md`](../recipes/switching-work-personal-identity.md)
-- AI and assistants:
-  [`docs/categories/ai-and-assistants.md`](ai-and-assistants.md)
+- Switching identity: [`docs/recipes/switching-work-personal-identity.md`](../recipes/switching-work-personal-identity.md)
+- AI and assistants: [`docs/categories/ai-and-assistants.md`](ai-and-assistants.md)

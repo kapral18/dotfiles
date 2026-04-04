@@ -8,22 +8,18 @@ This setup is managed with `chezmoi`. The basic loop is:
 2. Review the changes `chezmoi` wants to apply
 3. Apply them (which can trigger install hooks)
 
-If you are coming from VSCode/JetBrains and do not live in a terminal: think of
-`chezmoi` like "dotfiles as code" with a build step.
+If you are coming from VSCode/JetBrains and do not live in a terminal: think of `chezmoi` like "dotfiles as code" with a build step.
 
 ## Preconditions
 
 **⚠️ Important:** This setup has a hard dependency on 1Password.
 
-- **1Password app** must be installed and signed in. This setup assumes
-  1Password is the source of truth for SSH keys and many secrets. If you don't
-  use 1Password, you will need to heavily modify the templates.
+- **1Password app** must be installed and signed in. This setup assumes 1Password is the source of truth for SSH keys and many secrets. If you don't use 1Password, you will need to heavily modify the templates.
 - Willingness to let the bootstrap scripts install system tooling.
 
 ## Safe Preview Flow
 
-The safest way to approach any dotfiles setup is to preview what would change
-before applying.
+The safest way to approach any dotfiles setup is to preview what would change before applying.
 
 ```bash
 chezmoi init kapral18
@@ -44,21 +40,17 @@ chezmoi apply
 
 ## One-Liner Bootstrap (What The README Uses)
 
-The repo root `README.md` uses the upstream `chezmoi` installer + init in one
-line:
+The repo root `README.md` uses the upstream `chezmoi` installer + init in one line:
 
 ```bash
 sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply kapral18
 ```
 
-Use this once you're comfortable with what the scripts do. The preview flow is
-still recommended for first-time adopters.
+Use this once you're comfortable with what the scripts do. The preview flow is still recommended for first-time adopters.
 
 ## What `chezmoi apply` Can Trigger Here
 
-This setup uses `chezmoi` hooks under
-[`home/.chezmoiscripts/`](../home/.chezmoiscripts/). On first run, you should
-expect:
+This setup uses `chezmoi` hooks under [`home/.chezmoiscripts/`](../home/.chezmoiscripts/). On first run, you should expect:
 
 | Hook                                                    | What it does                                          |
 | ------------------------------------------------------- | ----------------------------------------------------- |
@@ -68,17 +60,14 @@ expect:
 | `run_onchange_after_03-install-brew-packages.fish.tmpl` | Brew bundle install + cleanup                         |
 | `run_onchange_after_04-update-fish-packages.fish.tmpl`  | Fish packages update                                  |
 
-There are also hooks that manage language/tool versions and global packages
-(ASDF, cargo, go, gems, npm, uv) and some macOS preferences.
+There are also hooks that manage language/tool versions and global packages (ASDF, cargo, go, gems, npm, uv) and some macOS preferences.
 
 ## Work vs Personal Machines
 
-During init/apply, `chezmoi` will prompt for values via
-[`home/.chezmoi.toml.tmpl`](../home/.chezmoi.toml.tmpl):
+During init/apply, `chezmoi` will prompt for values via [`home/.chezmoi.toml.tmpl`](../home/.chezmoi.toml.tmpl):
 
 - `isWork` (drives conditional config)
 - emails / SSH public keys
 - PGP cache TTL
 
-Those values are used by templates (for example: git identity switching and
-conditional package lists).
+Those values are used by templates (for example: git identity switching and conditional package lists).

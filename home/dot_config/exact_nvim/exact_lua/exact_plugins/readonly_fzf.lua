@@ -419,7 +419,6 @@ return {
     opts = fzf_util.get_opts(),
     config = function(_, opts)
       require("fzf-lua").setup(opts)
-      -- Register fzf-lua as the vim.ui.select provider for LSP pickers
       require("fzf-lua").register_ui_select()
     end,
   },

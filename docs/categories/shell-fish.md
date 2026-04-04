@@ -4,22 +4,17 @@ Back: [`docs/categories/index.md`](index.md)
 
 Fish is the primary shell in this setup.
 
-Zsh and Bash are also configured so the environment is usable even if you don't
-switch your login shell.
+Zsh and Bash are also configured so the environment is usable even if you don't switch your login shell.
 
 Relevant files:
 
-- Bash: [`home/readonly_dot_bashrc.tmpl`](../../home/readonly_dot_bashrc.tmpl),
-  [`home/readonly_dot_bash_profile`](../../home/readonly_dot_bash_profile)
-- Zsh: [`home/readonly_dot_zshrc.tmpl`](../../home/readonly_dot_zshrc.tmpl),
-  [`home/readonly_dot_zprofile`](../../home/readonly_dot_zprofile)
-- POSIX profile:
-  [`home/readonly_dot_profile.tmpl`](../../home/readonly_dot_profile.tmpl)
+- Bash: [`home/readonly_dot_bashrc.tmpl`](../../home/readonly_dot_bashrc.tmpl), [`home/readonly_dot_bash_profile`](../../home/readonly_dot_bash_profile)
+- Zsh: [`home/readonly_dot_zshrc.tmpl`](../../home/readonly_dot_zshrc.tmpl), [`home/readonly_dot_zprofile`](../../home/readonly_dot_zprofile)
+- POSIX profile: [`home/readonly_dot_profile.tmpl`](../../home/readonly_dot_profile.tmpl)
 
 ## Core Config
 
-- Template:
-  [`home/dot_config/fish/readonly_config.fish.tmpl`](../../home/dot_config/fish/readonly_config.fish.tmpl)
+- Template: [`home/dot_config/fish/readonly_config.fish.tmpl`](../../home/dot_config/fish/readonly_config.fish.tmpl)
 
 Notable responsibilities in this file:
 
@@ -32,8 +27,7 @@ Notable responsibilities in this file:
 
 It also initializes a few tools if present:
 
-- Starship prompt
-  ([`home/dot_config/readonly_starship.toml`](../../home/dot_config/readonly_starship.toml))
+- Starship prompt ([`home/dot_config/readonly_starship.toml`](../../home/dot_config/readonly_starship.toml))
 - zoxide (smarter `cd`)
 - fzf integration via `PatrickF1/fzf.fish`
 
@@ -47,12 +41,9 @@ Fish setup in this repo is split by shell mode:
   - Adds aliases (`g`, `v`, `c`, `t`, and others).
   - Initializes prompt/tools (`starship`, `zoxide`, `navi` when installed).
 
-If a command works in one terminal but not another, check whether the shell is
-login vs non-login.
+If a command works in one terminal but not another, check whether the shell is login vs non-login.
 
-Non-fish startup files are intentionally side-effect free for secret loading:
-`pass`-based API key exports run in fish config, not in
-[`home/readonly_dot_profile.tmpl`](../../home/readonly_dot_profile.tmpl).
+Non-fish startup files are intentionally side-effect free for secret loading: `pass`-based API key exports run in fish config, not in [`home/readonly_dot_profile.tmpl`](../../home/readonly_dot_profile.tmpl).
 
 ## Verification Workflows
 
@@ -88,8 +79,7 @@ This setup keeps a shared ignore-globs file used by `fd`/`fzf` defaults:
 
 In fish, it's wired via:
 
-- `FD_DEFAULT_OPTS` in
-  [`home/dot_config/fish/readonly_config.fish.tmpl`](../../home/dot_config/fish/readonly_config.fish.tmpl)
+- `FD_DEFAULT_OPTS` in [`home/dot_config/fish/readonly_config.fish.tmpl`](../../home/dot_config/fish/readonly_config.fish.tmpl)
 
 ## Password-Store Switching (Non-Work Machines)
 
@@ -111,10 +101,8 @@ echo "$PASSWORD_STORE_DIR"
 
 Fish plugins are managed with Fisher:
 
-- Plugin list:
-  [`home/dot_config/fish/readonly_fish_plugins`](../../home/dot_config/fish/readonly_fish_plugins)
-- Hook:
-  [`home/.chezmoiscripts/run_onchange_after_04-update-fish-packages.fish.tmpl`](../../home/.chezmoiscripts/run_onchange_after_04-update-fish-packages.fish.tmpl)
+- Plugin list: [`home/dot_config/fish/readonly_fish_plugins`](../../home/dot_config/fish/readonly_fish_plugins)
+- Hook: [`home/.chezmoiscripts/run_onchange_after_04-update-fish-packages.fish.tmpl`](../../home/.chezmoiscripts/run_onchange_after_04-update-fish-packages.fish.tmpl)
 
 ## Troubleshooting
 
@@ -137,10 +125,7 @@ The setup script installs fish and will attempt to set it as your main shell:
 
 ## Related
 
-- Switching identity:
-  [`docs/recipes/switching-work-personal-identity.md`](../recipes/switching-work-personal-identity.md)
-- Beads task tracking:
-  [`docs/recipes/beads-task-tracking.md`](../recipes/beads-task-tracking.md)
+- Switching identity: [`docs/recipes/switching-work-personal-identity.md`](../recipes/switching-work-personal-identity.md)
+- Beads task tracking: [`docs/recipes/beads-task-tracking.md`](../recipes/beads-task-tracking.md)
 - Packages: [`docs/categories/packages.md`](packages.md)
-- Security and secrets:
-  [`docs/categories/security-and-secrets.md`](security-and-secrets.md)
+- Security and secrets: [`docs/categories/security-and-secrets.md`](security-and-secrets.md)

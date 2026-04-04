@@ -16,12 +16,9 @@ They are applied via hooks:
 - [`home/.chezmoiscripts/run_onchange_after_05-osx.core.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-osx.core.sh.tmpl)
 - [`home/.chezmoiscripts/run_onchange_after_05-osx.extra.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-osx.extra.sh.tmpl)
 
-These scripts can change system behavior. Expect that some changes require a
-logout/restart to fully take effect.
+These scripts can change system behavior. Expect that some changes require a logout/restart to fully take effect.
 
-If you want to disable this category entirely, the most direct approach is to
-remove or comment out the relevant hook scripts in
-[`home/.chezmoiscripts/`](../../home/.chezmoiscripts/).
+If you want to disable this category entirely, the most direct approach is to remove or comment out the relevant hook scripts in [`home/.chezmoiscripts/`](../../home/.chezmoiscripts/).
 
 ## Core Apply Workflow
 
@@ -31,13 +28,13 @@ remove or comment out the relevant hook scripts in
 chezmoi diff
 ```
 
-2. Apply:
+1. Apply:
 
 ```bash
 chezmoi apply
 ```
 
-3. Reboot/log out if settings did not visually update yet.
+1. Reboot/log out if settings did not visually update yet.
 
 You can also run `.osx` scripts directly while debugging:
 
@@ -48,16 +45,12 @@ bash home/.osx.extra
 
 ## Hammerspoon
 
-- Config:
-  [`home/dot_hammerspoon/readonly_init.lua`](../../home/dot_hammerspoon/readonly_init.lua)
+- Config: [`home/dot_hammerspoon/readonly_init.lua`](../../home/dot_hammerspoon/readonly_init.lua)
 
 Key pieces:
 
-- Window management hotkeys:
-  [`home/dot_hammerspoon/readonly_window.lua`](../../home/dot_hammerspoon/readonly_window.lua)
-- Grid-mouse (keyboard mouse):
-  [`home/dot_hammerspoon/readonly_gridmouse.lua`](../../home/dot_hammerspoon/readonly_gridmouse.lua)
-  (currently not enabled in `init.lua`)
+- Window management hotkeys: [`home/dot_hammerspoon/readonly_window.lua`](../../home/dot_hammerspoon/readonly_window.lua)
+- Grid-mouse (keyboard mouse): [`home/dot_hammerspoon/readonly_gridmouse.lua`](../../home/dot_hammerspoon/readonly_gridmouse.lua) (currently not enabled in `init.lua`)
 
 In `init.lua`, `Hyper` is configured as `ctrl+alt+cmd`.
 
@@ -85,22 +78,15 @@ Workflow:
 
 - [`home/Alfred.alfredpreferences/`](../../home/Alfred.alfredpreferences/)
 
-Note: this directory is currently ignored by `chezmoi` via
-[`home/.chezmoiignore`](../../home/.chezmoiignore). It is kept in the repo as a
-reference/backup rather than being automatically installed.
+Note: this directory is currently ignored by `chezmoi` via [`home/.chezmoiignore`](../../home/.chezmoiignore). It is kept in the repo as a reference/backup rather than being automatically installed.
 
 ## Custom App Icons
 
-- Mapping:
-  [`home/app_icons/readonly_icon_mapping.yaml`](../../home/app_icons/readonly_icon_mapping.yaml)
-- Script:
-  [`home/exact_bin/executable_,apply-app-icons.tmpl`](../../home/exact_bin/executable_,apply-app-icons.tmpl)
-- Hook:
-  [`home/.chezmoiscripts/run_onchange_after_05-apply-app-icons.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-apply-app-icons.sh.tmpl)
+- Mapping: [`home/app_icons/readonly_icon_mapping.yaml`](../../home/app_icons/readonly_icon_mapping.yaml)
+- Script: [`home/exact_bin/executable_,apply-app-icons.tmpl`](../../home/exact_bin/executable_,apply-app-icons.tmpl)
+- Hook: [`home/.chezmoiscripts/run_onchange_after_05-apply-app-icons.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-apply-app-icons.sh.tmpl)
 
-Note: [`home/app_icons/`](../../home/app_icons/) is ignored by `chezmoi` via
-[`home/.chezmoiignore`](../../home/.chezmoiignore). The script reads icon assets
-from the repo source directory.
+Note: [`home/app_icons/`](../../home/app_icons/) is ignored by `chezmoi` via [`home/.chezmoiignore`](../../home/.chezmoiignore). The script reads icon assets from the repo source directory.
 
 ## Verification
 
@@ -124,17 +110,12 @@ command -v ,apply-app-icons
   - restart affected apps (`Finder`, `Dock`, `SystemUIServer`) or reboot.
 - `,apply-app-icons` fails:
   - verify `fileicon` and `yq` are installed.
-  - verify
-    [`home/app_icons/readonly_icon_mapping.yaml`](../../home/app_icons/readonly_icon_mapping.yaml)
-    and asset files exist.
+  - verify [`home/app_icons/readonly_icon_mapping.yaml`](../../home/app_icons/readonly_icon_mapping.yaml) and asset files exist.
 - Hook runs but nothing changed:
   - confirm the script hash-trigger input actually changed.
 
 ## Related
 
-- Apply custom app icons:
-  [`docs/recipes/apply-custom-app-icons.md`](../recipes/apply-custom-app-icons.md)
-- New machine bootstrap:
-  [`docs/recipes/new-machine-bootstrap.md`](../recipes/new-machine-bootstrap.md)
-- Debugging hooks:
-  [`docs/recipes/debugging-chezmoi-hooks.md`](../recipes/debugging-chezmoi-hooks.md)
+- Apply custom app icons: [`docs/recipes/apply-custom-app-icons.md`](../recipes/apply-custom-app-icons.md)
+- New machine bootstrap: [`docs/recipes/new-machine-bootstrap.md`](../recipes/new-machine-bootstrap.md)
+- Debugging hooks: [`docs/recipes/debugging-chezmoi-hooks.md`](../recipes/debugging-chezmoi-hooks.md)

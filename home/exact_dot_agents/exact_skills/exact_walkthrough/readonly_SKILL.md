@@ -1,15 +1,12 @@
 ---
 name: walkthrough
-description: |-
-  Explore a codebase interactively: trace execution flows, map component
-  relationships, and render architectural diagrams.
+description: Explore a codebase interactively: trace execution flows, map component relationships, and render architectural diagrams.
 disable-model-invocation: true
 ---
 
 # Walkthrough Skill
 
-Create interactive exploratory diagrams for understanding codebase architecture
-and system design.
+Create interactive exploratory diagrams for understanding codebase architecture and system design.
 
 ## When to Use
 
@@ -22,8 +19,7 @@ and system design.
 
 ## When NOT to Use
 
-- Semantic code search alone (use `semantic-code-search` directly when the user
-  explicitly asks for SCSI-style investigation, not a walkthrough)
+- Semantic code search alone (use `semantic-code-search` directly when the user explicitly asks for SCSI-style investigation, not a walkthrough)
 - Simple file reading
 - Single file analysis without relationship context
 - Modifying or editing code
@@ -31,8 +27,7 @@ and system design.
 
 ## First Actions
 
-1. Restate the system/question you are explaining and the boundary of the
-   walkthrough.
+1. Restate the system/question you are explaining and the boundary of the walkthrough.
 2. Identify likely entrypoints, main components, and evidence sources.
 3. Decide whether the user's goal needs a diagram or a written walkthrough.
 
@@ -40,38 +35,26 @@ and system design.
 
 ### Step 1: Explore the Codebase
 
-Explore codebase structure and relationships by following references, imports,
-and call sites.
+Explore codebase structure and relationships by following references, imports, and call sites.
 
-If your environment provides dedicated walkthrough tooling (for example a
-`walkthrough(...)` explorer and a `walkthrough_diagram(...)` renderer), prefer
-that over manual exploration. If those tools are not available, do the same
-workflow using local file reads and searches.
+If your environment provides dedicated walkthrough tooling (for example a `walkthrough(...)` explorer and a `walkthrough_diagram(...)` renderer), prefer that over manual exploration. If those tools are not available, do the same workflow using local file reads and searches.
 
 When using a walkthrough tool, provide:
 
-- `topic`: the specific question/area to explore (example: "How does auth flow
-  work?")
+- `topic`: the specific question/area to explore (example: "How does auth flow work?")
 - `context`: optional extra constraints or what the user cares about
 
 When semantic code search helps:
 
-- If you are investigating a PR and need additional context from `main`
-  (existing behavior, patterns, related call sites), use
-  `~/.agents/skills/semantic-code-search/SKILL.md` to query the indexed
-  snapshot, but ONLY if the current repo is indexed (present in `list_indices`).
-  Run `list_indices` first; do not guess an index.
-- Treat semantic results as base-branch context only; validate the actual change
-  by reading the local branch diff.
+- If you are investigating a PR and need additional context from `main` (existing behavior, patterns, related call sites), use `~/.agents/skills/semantic-code-search/SKILL.md` to query the indexed snapshot, but ONLY if the current repo is indexed (present in `list_indices`). Run `list_indices` first; do not guess an index.
+- Treat semantic results as base-branch context only; validate the actual change by reading the local branch diff.
 
 ### Step 2: Present The Walkthrough
 
 Once exploration is complete, present an evidence-backed walkthrough.
 
-- If the system is complex or the user asked for a diagram, render an
-  interactive ASCII diagram.
-- If a diagram would add little value, give a concise written walkthrough with
-  the same evidence trail instead.
+- If the system is complex or the user asked for a diagram, render an interactive ASCII diagram.
+- If a diagram would add little value, give a concise written walkthrough with the same evidence trail instead.
 
 When rendering a diagram, provide:
 
@@ -82,8 +65,7 @@ When rendering a diagram, provide:
 ## Output
 
 - Give an evidence-backed walkthrough with file/path references.
-- If you used semantic code search, say it was supporting base context rather
-  than the sole source of truth.
+- If you used semantic code search, say it was supporting base context rather than the sole source of truth.
 - Render a diagram only when it materially improves understanding.
 
 ## Node Metadata
@@ -94,8 +76,7 @@ Each node in the diagram can include:
 - `description`: Detailed explanation of the component (supports Markdown)
 - `links`: Array of `{label, url}` for related files or documentation
 - `codeSnippet`: Optional code snippet to display
-- `threadID`: Optional thread ID linking to a subthread that explores the node
-  in detail
+- `threadID`: Optional thread ID linking to a subthread that explores the node in detail
 
 ## Example Usage
 
@@ -129,14 +110,12 @@ Then provide node metadata for each component with descriptions and links.
 - Progressive disclosure: start high-level, then explore specific components
 - Follow the code: use actual imports, function calls, and file structure
 - Link to evidence: provide file paths and small snippets for nodes
-- Clarify relationships: show data flow, control flow, and dependency
-  relationships
+- Clarify relationships: show data flow, control flow, and dependency relationships
 - Use concrete examples: reference actual functions, files, and configurations
 
 ## Tools (If Available)
 
-Some agent environments expose walkthrough-specific tools. If present, they are
-typically used like:
+Some agent environments expose walkthrough-specific tools. If present, they are typically used like:
 
 - `walkthrough(topic, context)` to explore relationships and structure
 - `walkthrough_diagram(code, summary, nodes)` to render an interactive diagram

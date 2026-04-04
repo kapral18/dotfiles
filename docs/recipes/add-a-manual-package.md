@@ -2,13 +2,11 @@
 
 Back: [`docs/recipes/index.md`](index.md)
 
-"Manual packages" are tools/apps installed from GitHub releases (including DMG
-apps) using a managed list.
+"Manual packages" are tools/apps installed from GitHub releases (including DMG apps) using a managed list.
 
 ## Preconditions
 
-- The tool/app is not available in higher-priority package managers for this
-  repo.
+- The tool/app is not available in higher-priority package managers for this repo.
 - You identified the official GitHub repository and release asset naming.
 - You know which format applies: `dmg`, `file`, or `tar_gz_bin`.
 
@@ -21,10 +19,8 @@ apps) using a managed list.
 The list is pipe-delimited. The template itself documents the schema:
 
 - DMG apps: `dmg|App Name|owner/repo|release-tag|AppBundle.app|asset-pattern`
-- Single binaries:
-  `file|tool-name|owner/repo|release-tag|asset-pattern|output-binary-name`
-- Tarballs with a binary:
-  `tar_gz_bin|tool-name|owner/repo|release-tag|asset-pattern|bin-in-archive|output-binary-name`
+- Single binaries: `file|tool-name|owner/repo|release-tag|asset-pattern|output-binary-name`
+- Tarballs with a binary: `tar_gz_bin|tool-name|owner/repo|release-tag|asset-pattern|bin-in-archive|output-binary-name`
 
 ## Steps
 
@@ -32,7 +28,7 @@ The list is pipe-delimited. The template itself documents the schema:
 
 - [`home/readonly_dot_default-manual-packages.tmpl`](../../home/readonly_dot_default-manual-packages.tmpl)
 
-2. Apply:
+1. Apply:
 
 ```bash
 chezmoi apply
@@ -61,15 +57,14 @@ ls -d "/Applications/<AppName>.app"
 
 ## Rollback / Undo
 
-1. Remove the row from
-   [`home/readonly_dot_default-manual-packages.tmpl`](../../home/readonly_dot_default-manual-packages.tmpl).
+1. Remove the row from [`home/readonly_dot_default-manual-packages.tmpl`](../../home/readonly_dot_default-manual-packages.tmpl).
 2. Re-apply:
 
 ```bash
 chezmoi apply
 ```
 
-3. Manually remove residual app/binary if needed:
+1. Manually remove residual app/binary if needed:
 
 - `/Applications/<AppName>.app`
 - `$HOME/.local/bin/<binary-name>`

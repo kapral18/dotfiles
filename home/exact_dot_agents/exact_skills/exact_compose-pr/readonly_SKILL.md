@@ -1,8 +1,6 @@
 ---
 name: compose-pr
-description: |-
-  Draft a PR title and body as text. Use before creating or editing a PR
-  to compose the description. Text only — no gh side effects.
+description: Draft a PR title and body as text. Use before creating or editing a PR to compose the description. Text only — no gh side effects.
 ---
 
 # Compose PR Body
@@ -10,14 +8,12 @@ description: |-
 Use when:
 
 - the user wants a PR body draft only (no `gh` side effects)
-- `~/.agents/skills/github/SKILL.md` needs a draft body before creating/editing
-  a PR
+- `~/.agents/skills/github/SKILL.md` needs a draft body before creating/editing a PR
 
 Scope:
 
 - produces a PR body draft only
-- do not run `gh` or change PR metadata; use `~/.agents/skills/github/SKILL.md`
-  for side effects
+- do not run `gh` or change PR metadata; use `~/.agents/skills/github/SKILL.md` for side effects
 
 Do not use:
 
@@ -28,10 +24,8 @@ First actions:
 
 1. Inspect the current diff/branch context and the user-supplied issue refs.
 2. Extract only evidence you can verify (summary, test plan, migration notes).
-3. If issue linkage or test evidence is missing, keep placeholders instead of
-   inventing details.
-4. If the repo belongs to the `elastic` org, use the Elastic org variant section
-   below.
+3. If issue linkage or test evidence is missing, keep placeholders instead of inventing details.
+4. If the repo belongs to the `elastic` org, use the Elastic org variant section below.
 
 Rules:
 
@@ -45,10 +39,8 @@ Rules:
 
 Output:
 
-- Return only the PR body draft, ready to paste or hand to
-  `~/.agents/skills/github/SKILL.md`.
-- If important inputs are missing, say exactly which placeholders still need
-  confirmation.
+- Return only the PR body draft, ready to paste or hand to `~/.agents/skills/github/SKILL.md`.
+- If important inputs are missing, say exactly which placeholders still need confirmation.
 
 ## General template
 
@@ -71,22 +63,17 @@ Use when the repo belongs to the `elastic` GitHub org.
 Additional first actions:
 
 1. Verify the repo belongs to the `elastic` org.
-2. If the repo is `elastic/kibana`, invoke the `kibana-labels-propose` skill via
-   the Skill tool **now** (before drafting). The result determines whether to
-   include a `## Release Note` section — see Kibana-specific rules below.
-3. Gather only verified evidence for summary, root cause/fix, test plan, and
-   (for Kibana) release-note intent.
+2. If the repo is `elastic/kibana`, invoke the `kibana-labels-propose` skill via the Skill tool **now** (before drafting). The result determines whether to include a `## Release Note` section — see Kibana-specific rules below.
+3. Gather only verified evidence for summary, root cause/fix, test plan, and (for Kibana) release-note intent.
 
 Additional rules:
 
 - never invent issue numbers; use `Closes #X` vs `Addresses #X` intentionally
-- append an "Assisted with" footer at the very end of every PR body (see footer
-  table below)
+- append an "Assisted with" footer at the very end of every PR body (see footer table below)
 
 Assisted-with footer (elastic org repos only):
 
-Every PR body must end with a one-line attribution identifying the AI tool and
-model used. Format: `Assisted with <Tool> using <Model>`.
+Every PR body must end with a one-line attribution identifying the AI tool and model used. Format: `Assisted with <Tool> using <Model>`.
 
 Known tool labels:
 
@@ -98,32 +85,23 @@ Known tool labels:
 | OpenCode        | `Assisted with OpenCode using <model>`        |
 | pi-coding-agent | `Assisted with pi-coding-agent using <model>` |
 
-- Replace `<model>` with the actual model name you are running as (e.g.
-  `Claude 4.6 Opus`, `GPT-5.4`, `Gemini 2.5 Pro`).
-- If the current tool is not in the table, use a reasonable label and ask the
-  user to confirm.
+- Replace `<model>` with the actual model name you are running as (e.g. `Claude 4.6 Opus`, `GPT-5.4`, `Gemini 2.5 Pro`).
+- If the current tool is not in the table, use a reasonable label and ask the user to confirm.
 - The footer goes after all other sections, separated by a blank line.
 
 ### Kibana-specific rules
 
 Additional rules when the repo is `elastic/kibana`:
 
-- **Before drafting the PR body**, invoke the `kibana-labels-propose` skill via
-  the Skill tool to determine the correct label set (including the release note
-  label). The `## Release Note` section inclusion depends on the label result:
-  - Include the section only when the proposed label is `release_note:fix` or
-    `release_note:feature`.
-  - Omit the section entirely for all other release note labels
-    (`release_note:enhancement`, `release_note:skip`).
-- Do not skip or defer the label proposal step — the PR body cannot be finalized
-  without it.
-- If the user also asks for reviewer/ownership guidance, load the Kibana
-  ownership skill before finalizing the draft.
+- **Before drafting the PR body**, invoke the `kibana-labels-propose` skill via the Skill tool to determine the correct label set (including the release note label). The `## Release Note` section inclusion depends on the label result:
+  - Include the section only when the proposed label is `release_note:fix` or `release_note:feature`.
+  - Omit the section entirely for all other release note labels (`release_note:enhancement`, `release_note:skip`).
+- Do not skip or defer the label proposal step — the PR body cannot be finalized without it.
+- If the user also asks for reviewer/ownership guidance, load the Kibana ownership skill before finalizing the draft.
 
 Optional guidance:
 
-- Kibana Management ownership signals:
-  `~/.agents/skills/kibana-management-ownership/SKILL.md`
+- Kibana Management ownership signals: `~/.agents/skills/kibana-management-ownership/SKILL.md`
 
 ### Templates (Elastic org)
 

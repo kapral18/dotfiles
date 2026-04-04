@@ -8,8 +8,7 @@ Common failures with the `bk` CLI, with symptom, cause, and fix.
 
 ### 401 Unauthorized
 
-**Symptom:** `bk` commands fail with `401 Unauthorized` or `bk auth status`
-returns an auth error.
+**Symptom:** `bk` commands fail with `401 Unauthorized` or `bk auth status` returns an auth error.
 
 **Causes:**
 
@@ -20,9 +19,9 @@ returns an auth error.
 **Fix:**
 
 1. Generate a new token at <https://buildkite.com/user/api-access-tokens>
-2. Ensure the token has `read_builds`, `write_builds`, `read_pipelines` scopes
-   at minimum
+2. Ensure the token has `read_builds`, `write_builds`, `read_pipelines` scopes at minimum
 3. Re-run login:
+
    ```
    bk auth login
    ```
@@ -31,8 +30,7 @@ returns an auth error.
 
 ### 403 Forbidden
 
-**Symptom:** A specific operation returns `403 Forbidden` (e.g., triggering a
-build, canceling a build).
+**Symptom:** A specific operation returns `403 Forbidden` (e.g., triggering a build, canceling a build).
 
 **Causes:**
 
@@ -42,8 +40,7 @@ build, canceling a build).
 **Fix:**
 
 - Check token scopes at <https://buildkite.com/user/api-access-tokens>
-- Required scopes: `read_builds`, `write_builds` for build operations;
-  `read_pipelines` for pipeline listing
+- Required scopes: `read_builds`, `write_builds` for build operations; `read_pipelines` for pipeline listing
 - Ask an org admin to grant the necessary permissions
 
 ---
@@ -70,8 +67,7 @@ Or download a binary from <https://github.com/buildkite/cli/releases>.
 
 **Symptom:** `bk` commands exit with a configuration error or prompt for setup.
 
-**Cause:** `bk configure` was never run, or the config file is
-missing/corrupted.
+**Cause:** `bk configure` was never run, or the config file is missing/corrupted.
 
 **Fix:**
 

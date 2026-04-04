@@ -3,6 +3,18 @@ local format = require("util.format")
 local lsp = require("util.lsp")
 local lsp_references = require("util.lsp_references")
 
+---@param action_opts? { context?: table, filter?: function, apply?: boolean }
+local function lsp_code_actions_fzf(action_opts)
+  pcall(vim.cmd.packadd, "fzf-lua")
+  local ok, fzf = pcall(require, "fzf-lua")
+  if ok then
+    fzf.register_ui_select()
+    fzf.lsp_code_actions(action_opts or {})
+  else
+    vim.lsp.buf.code_action(action_opts)
+  end
+end
+
 -- enabled if noice.nvim is off
 vim.lsp.handlers["textDocument/hover"] = function(_, result, ctx, config)
   config = config or {}
@@ -160,7 +172,9 @@ return {
               },
               {
                 "<leader>ca",
-                vim.lsp.buf.code_action,
+                function()
+                  lsp_code_actions_fzf()
+                end,
                 desc = "Code Action",
                 mode = { "n", "x" },
                 has = "codeAction",
@@ -168,7 +182,7 @@ return {
               {
                 "<leader>cA",
                 function()
-                  vim.lsp.buf.code_action({
+                  lsp_code_actions_fzf({
                     context = {
                       only = { "source" },
                       diagnostics = {},

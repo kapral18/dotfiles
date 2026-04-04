@@ -35,8 +35,7 @@ which <tool>
 
 ## Rollback / Undo
 
-1. Remove the module path from
-   [`home/readonly_dot_default-golang-pkgs`](../../home/readonly_dot_default-golang-pkgs).
+1. Remove the module path from [`home/readonly_dot_default-golang-pkgs`](../../home/readonly_dot_default-golang-pkgs).
 2. Re-apply:
 
 ```bash

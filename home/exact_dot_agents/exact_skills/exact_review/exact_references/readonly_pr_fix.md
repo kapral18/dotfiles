@@ -3,28 +3,23 @@
 Precondition:
 
 - You already loaded `~/.agents/skills/review/SKILL.md`.
-- Follow `~/.agents/skills/review/references/shared_rules.md` (loaded once by
-  the router; do not re-load).
-- Follow `~/.agents/skills/review/references/pr_common.md` for PR setup, media
-  evidence, comment placement, anchoring, deep links, and local verification.
+- Follow `~/.agents/skills/review/references/shared_rules.md` (loaded once by the router; do not re-load).
+- Follow `~/.agents/skills/review/references/pr_common.md` for PR setup, media evidence, comment placement, anchoring, deep links, and local verification.
 
 Use when:
 
 - the user asks to reply to reviewer comments or address review threads
 - the user wants to apply requested PR changes from review feedback
-- the user wants to go one thread/comment at a time and decide together what to
-  do
+- the user wants to go one thread/comment at a time and decide together what to do
 
 Out of scope:
 
-- If the user wants to review a PR (draft new review comments, not address
-  existing ones), use `~/.agents/skills/review/references/pr_review.md` instead.
+- If the user wants to review a PR (draft new review comments, not address existing ones), use `~/.agents/skills/review/references/pr_review.md` instead.
 
 ## Context Intake (First Turn Only)
 
 - Read:
-  - complete the Reference Resolution gate in pr_common.md (blocking — all
-    links, media, and recursive references must be resolved before proceeding)
+  - complete the Reference Resolution gate in pr_common.md (blocking — all links, media, and recursive references must be resolved before proceeding)
   - all review threads (end-to-end)
   - full diff
 
@@ -37,8 +32,7 @@ Follow the base-branch context gate in `shared_rules.md`. This is mandatory.
 Iteration contract:
 
 - Pick exactly one reviewer thread/comment.
-- Do not move to the next thread/comment until you and the user agree on what to
-  do.
+- Do not move to the next thread/comment until you and the user agree on what to do.
 
 ### Per-Thread Workflow
 
@@ -56,8 +50,7 @@ Iteration contract:
 
 4. Establish base context for this exact concern:
    - use SCSI (when indexed) to learn how base currently does it
-   - extract 1-3 concrete base invariants (types, call sites, ownership
-     boundaries, runtime expectations)
+   - extract 1-3 concrete base invariants (types, call sites, ownership boundaries, runtime expectations)
 
 5. Self-critique your current diff:
    - why your change originally made sense
@@ -73,55 +66,38 @@ Iteration contract:
 
    **Code change** (the reviewer's concern requires a fix):
    - accept and implement the smallest safe change
-   - experiment and verify (prefer `/tmp` reproduction; if integration context
-     needed, apply minimal patch in worktree)
-   - for type changes: validate the full type chain (call sites + inference +
-     exported types), not just the edited file
+   - experiment and verify (prefer `/tmp` reproduction; if integration context needed, apply minimal patch in worktree)
+   - for type changes: validate the full type chain (call sites + inference + exported types), not just the edited file
 
    **Ask** (blocking ambiguity):
    - ask exactly one blocking question (include the default assumption)
 
 6A. Scope guardrail (reduce review noise):
 
-- If the reviewer request is a "clarity" ask (add comment, rename, tiny
-  refactor), prefer the smallest localized change that satisfies the request.
-- If the reviewer request is out-of-scope cleanup, you may treat it as a
-  "graceful gesture" only when:
+- If the reviewer request is a "clarity" ask (add comment, rename, tiny refactor), prefer the smallest localized change that satisfies the request.
+- If the reviewer request is out-of-scope cleanup, you may treat it as a "graceful gesture" only when:
   - it is cheap
   - it does not change runtime behavior
-  - it reduces future confusion Otherwise: reply proposing a follow-up (do not
-    expand the change-set).
+  - it reduces future confusion Otherwise: reply proposing a follow-up (do not expand the change-set).
 
-7. If you chose code change — quality gates (required after each change):
+1. If you chose code change — quality gates (required after each change):
    - Run lint + type_check + tests.
-   - Discover the correct commands from the repo (do not guess):
-     - check `package.json` scripts (or equivalent build tooling) for `lint`,
-       `typecheck`, `test`
-     - if monorepo, prefer scoped/targeted commands for the affected package
-       first
-     - if you cannot determine the commands from repo sources, stop and ask the
-       user
+   - Discover the correct commands from the repo (do not guess): - check `package.json` scripts (or equivalent build tooling) for `lint`, `typecheck`, `test` - if monorepo, prefer scoped/targeted commands for the affected package first - if you cannot determine the commands from repo sources, stop and ask the user
    - If checks fail or types get worse, back out or adjust and repeat.
 
-8. Draft the reply for that thread (and only that thread).
-   - If the thread asked for code comments/documentation: make the change in
-     code, then reply with a short "Fixed in <commit link>" message (avoid long
-     explanations in the thread).
-   - If your fix ended up elsewhere (different file/thread): reply with a link
-     to the canonical thread/commit rather than re-explaining.
+2. Draft the reply for that thread (and only that thread).
+   - If the thread asked for code comments/documentation: make the change in code, then reply with a short "Fixed in <commit link>" message (avoid long explanations in the thread).
+   - If your fix ended up elsewhere (different file/thread): reply with a link to the canonical thread/commit rather than re-explaining.
 
 ### Reply Style
 
 - Do not use `RE:` headers/prefixes.
 - Default: reply directly (no quoting) when responding to the entire comment.
-- If you must reference a specific fragment, quote only the minimum needed using
-  a Markdown blockquote (`> ...`), then reply.
+- If you must reference a specific fragment, quote only the minimum needed using a Markdown blockquote (`> ...`), then reply.
 - Avoid email-style quote/reply interleaving.
 - Keep it short; prefer a concrete change suggestion.
-- If a thread is obsolete because later commits superseded the hunk, prefer a
-  single-line reply:
-  - `Superseded by <commit link>` (optionally add one link to the new canonical
-    thread).
+- If a thread is obsolete because later commits superseded the hunk, prefer a single-line reply:
+  - `Superseded by <commit link>` (optionally add one link to the new canonical thread).
 
 ## Output (One Thread Per Turn)
 
@@ -134,8 +110,7 @@ Iteration contract:
 - Response type: `reply-only` | `code-change` | `ask`
 - If code change:
   - proposed change
-  - verification run: lint / type_check / tests (what you ran, pass/fail, key
-    error signal if failed)
+  - verification run: lint / type_check / tests (what you ran, pass/fail, key error signal if failed)
 - Draft reply body
 - Recommendation: `resolve` | `keep_open`
 

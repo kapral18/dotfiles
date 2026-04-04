@@ -4,19 +4,16 @@ Back: [`docs/categories/index.md`](index.md)
 
 This setup uses `chezmoi` to keep a macOS development environment reproducible.
 
-If you have not used `chezmoi` before, start at
-[`docs/getting-started.md`](../getting-started.md).
+If you have not used `chezmoi` before, start at [`docs/getting-started.md`](../getting-started.md).
 
 ## Source Layout
 
 - [`home/`](../../home/) contains files that will be written into `$HOME`.
 - Templates use `*.tmpl` and access `chezmoi` data (like `.isWork`).
 - Hooks live in [`home/.chezmoiscripts/`](../../home/.chezmoiscripts/).
-- Externals live in
-  [`home/.chezmoiexternal.toml`](../../home/.chezmoiexternal.toml).
+- Externals live in [`home/.chezmoiexternal.toml`](../../home/.chezmoiexternal.toml).
 
-If you are reading the source on GitHub, you can treat [`home/`](../../home/) as
-"what gets installed".
+If you are reading the source on GitHub, you can treat [`home/`](../../home/) as "what gets installed".
 
 ## Render Model
 
@@ -24,15 +21,13 @@ Prompt definitions and computed values are defined in:
 
 - [`home/.chezmoi.toml.tmpl`](../../home/.chezmoi.toml.tmpl)
 
-This is where machine-specific values are decided (for example `isWork`, emails,
-`homebrewPrefix`, and cache TTL values).
+This is where machine-specific values are decided (for example `isWork`, emails, `homebrewPrefix`, and cache TTL values).
 
 If something renders differently than expected, start by inspecting this file.
 
 ## Hook Pipeline (High Signal)
 
-The first-run and converge flow is driven by ordered scripts in
-[`home/.chezmoiscripts/`](../../home/.chezmoiscripts/):
+The first-run and converge flow is driven by ordered scripts in [`home/.chezmoiscripts/`](../../home/.chezmoiscripts/):
 
 | Order | Hook                                                    | Purpose                              |
 | ----- | ------------------------------------------------------- | ------------------------------------ |
@@ -73,13 +68,13 @@ chezmoi apply
 chezmoi apply
 ```
 
-2. If it is a template hook, render it directly:
+1. If it is a template hook, render it directly:
 
 ```bash
 chezmoi execute-template < home/.chezmoiscripts/<script>.tmpl
 ```
 
-3. Run the generated command or script directly to isolate dependency issues.
+1. Run the generated command or script directly to isolate dependency issues.
 
 ## Verification And Troubleshooting
 
@@ -97,15 +92,11 @@ Externals can be refreshed with:
 chezmoi apply -R always
 ```
 
-If a script fails with `command not found`, check whether its prerequisite hook
-(usually Homebrew/ASDF) ran successfully.
+If a script fails with `command not found`, check whether its prerequisite hook (usually Homebrew/ASDF) ran successfully.
 
 ## Related
 
-- New machine bootstrap:
-  [`docs/recipes/new-machine-bootstrap.md`](../recipes/new-machine-bootstrap.md)
-- Debugging hooks:
-  [`docs/recipes/debugging-chezmoi-hooks.md`](../recipes/debugging-chezmoi-hooks.md)
-- Refreshing externals:
-  [`docs/recipes/refreshing-externals.md`](../recipes/refreshing-externals.md)
+- New machine bootstrap: [`docs/recipes/new-machine-bootstrap.md`](../recipes/new-machine-bootstrap.md)
+- Debugging hooks: [`docs/recipes/debugging-chezmoi-hooks.md`](../recipes/debugging-chezmoi-hooks.md)
+- Refreshing externals: [`docs/recipes/refreshing-externals.md`](../recipes/refreshing-externals.md)
 - Updating: [`docs/recipes/updating.md`](../recipes/updating.md)

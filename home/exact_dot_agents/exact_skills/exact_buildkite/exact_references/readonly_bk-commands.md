@@ -29,8 +29,7 @@ bk config set KEY VALUE
 
 ## Builds
 
-All build commands accept `-p SLUG` (`--pipeline`). When inside a git repo with
-a configured pipeline, `-p` is often auto-detected.
+All build commands accept `-p SLUG` (`--pipeline`). When inside a git repo with a configured pipeline, `-p` is often auto-detected.
 
 ```bash
 # List builds (default: 50, text output)
@@ -144,8 +143,7 @@ bk agent stop AGENT_ID
 
 ## API Escape Hatch
 
-For any Buildkite REST API endpoint not covered by direct commands. `bk api`
-auto-prepends the org path, so use org-relative paths.
+For any Buildkite REST API endpoint not covered by direct commands. `bk api` auto-prepends the org path, so use org-relative paths.
 
 ```bash
 # GET (default method)

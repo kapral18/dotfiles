@@ -2,11 +2,7 @@
 
 Back: [`docs/categories/index.md`](index.md)
 
-This setup does not just provide you with AI chat tools; it implements an
-**Agentic Operating System**. This treats "how my assistants should work" as
-strict, version-controlled configuration that is installed alongside everything
-else. The goal is deterministic, verifiable behavior instead of relying on
-unpredictable LLM heuristics.
+This setup does not just provide you with AI chat tools; it implements an **Agentic Operating System**. This treats "how my assistants should work" as strict, version-controlled configuration that is installed alongside everything else. The goal is deterministic, verifiable behavior instead of relying on unpredictable LLM heuristics.
 
 ## The Governance Layer (SOPs)
 
@@ -23,65 +19,38 @@ These files are policy entrypoints; skills are installed separately.
 
 Shared SOP handling rules:
 
-- The entrypoints do not declare their own global instruction hierarchy. They
-  define local SOP selection only: check the closest repo-local `AGENTS.md`
-  first, then the broader home-level entrypoint, and defer to the runtime's
-  higher-priority instruction layers when conflicts exist.
-- "Questions" is scoped to information-seeking asks. Requests phrased as
-  questions still count as action requests when the user is asking for
-  investigation, verification, or edits.
-- A mandatory compatibility gate runs before edits; see the SOP entrypoints for
-  the exact classification, decision table, and summary-line format.
-- If uncertainty remains after local inspection, probes, and any required
-  skills, ask one direct fork-closing question.
+- The entrypoints do not declare their own global instruction hierarchy. They define local SOP selection only: check the closest repo-local `AGENTS.md` first, then the broader home-level entrypoint, and defer to the runtime's higher-priority instruction layers when conflicts exist.
+- "Questions" is scoped to information-seeking asks. Requests phrased as questions still count as action requests when the user is asking for investigation, verification, or edits.
+- A mandatory compatibility gate runs before edits; see the SOP entrypoints for the exact classification, decision table, and summary-line format.
+- If uncertainty remains after local inspection, probes, and any required skills, ask one direct fork-closing question.
 
 Shared git push safety rule:
 
-- If the user asks to push, agents must treat that as
-  `git push --force-with-lease` (not plain `git push`).
-- Agents must never auto-run `git pull`, `git pull --rebase`, `git rebase`, or
-  `git merge` as a pre-push reconciliation step.
-- If push is rejected due to divergence/non-fast-forward/lease checks, agents
-  must stop and wait for explicit user direction.
-- Canonical sources: [`home/readonly_AGENTS.md`](../../home/readonly_AGENTS.md),
-  [`home/readonly_CLAUDE.md`](../../home/readonly_CLAUDE.md),
-  [`home/dot_gemini/readonly_GEMINI.md`](../../home/dot_gemini/readonly_GEMINI.md),
-  and
-  [`home/exact_dot_agents/exact_skills/exact_git/readonly_SKILL.md`](../../home/exact_dot_agents/exact_skills/exact_git/readonly_SKILL.md).
+- If the user asks to push, agents must treat that as `git push --force-with-lease` (not plain `git push`).
+- Agents must never auto-run `git pull`, `git pull --rebase`, `git rebase`, or `git merge` as a pre-push reconciliation step.
+- If push is rejected due to divergence/non-fast-forward/lease checks, agents must stop and wait for explicit user direction.
+- Canonical sources: [`home/readonly_AGENTS.md`](../../home/readonly_AGENTS.md), [`home/readonly_CLAUDE.md`](../../home/readonly_CLAUDE.md), [`home/dot_gemini/readonly_GEMINI.md`](../../home/dot_gemini/readonly_GEMINI.md), and [`home/exact_dot_agents/exact_skills/exact_git/readonly_SKILL.md`](../../home/exact_dot_agents/exact_skills/exact_git/readonly_SKILL.md).
 
 Shared runtime verification rule:
 
-- For "is this correctly set up / working / actually being used" questions, the
-  SOP now owns the canonical end-to-end verification rule, not just config
-  inspection.
-- Required chain: source config, rendered/applied config, runtime consumer, and
-  a minimal safe live probe when one is possible.
-- The shared rule is tracked in:
-  [`home/readonly_AGENTS.md`](../../home/readonly_AGENTS.md),
-  [`home/readonly_CLAUDE.md`](../../home/readonly_CLAUDE.md), and
-  [`home/dot_gemini/readonly_GEMINI.md`](../../home/dot_gemini/readonly_GEMINI.md).
+- For "is this correctly set up / working / actually being used" questions, the SOP now owns the canonical end-to-end verification rule, not just config inspection.
+- Required chain: source config, rendered/applied config, runtime consumer, and a minimal safe live probe when one is possible.
+- The shared rule is tracked in: [`home/readonly_AGENTS.md`](../../home/readonly_AGENTS.md), [`home/readonly_CLAUDE.md`](../../home/readonly_CLAUDE.md), and [`home/dot_gemini/readonly_GEMINI.md`](../../home/dot_gemini/readonly_GEMINI.md).
 
 ## Skills Layout
 
-All routable files live under `~/.agents/skills/`. Each skill folder contains a
-`SKILL.md` entrypoint (and optional `references/` for sub-modes).
+All routable files live under `~/.agents/skills/`. Each skill folder contains a `SKILL.md` entrypoint (and optional `references/` for sub-modes).
 
 Source of truth (this repo, chezmoi-managed):
 
-- [`home/exact_dot_agents/exact_skills/`](../../home/exact_dot_agents/exact_skills/)
-  -> `~/.agents/skills/`
+- [`home/exact_dot_agents/exact_skills/`](../../home/exact_dot_agents/exact_skills/) -> `~/.agents/skills/`
 
 Entry contract standard:
 
-- Each skill should make four things obvious near the top: `Use when`,
-  `Do not use`, `First actions`, and `Output`.
-- The `description` frontmatter field is the primary routing signal — agents use
-  it to decide whether to load the skill. Keep it concise, specific, and include
-  non-obvious trigger words.
-- Skills gated to specific repos (e.g. elastic-only) must state the constraint
-  in the `description` so agents skip them early.
-- The goal is to remove implied routing and implied next steps so the agent has
-  less room to "remember roughly" and skip the file.
+- Each skill should make four things obvious near the top: `Use when`, `Do not use`, `First actions`, and `Output`.
+- The `description` frontmatter field is the primary routing signal — agents use it to decide whether to load the skill. Keep it concise, specific, and include non-obvious trigger words.
+- Skills gated to specific repos (e.g. elastic-only) must state the constraint in the `description` so agents skip them early.
+- The goal is to remove implied routing and implied next steps so the agent has less room to "remember roughly" and skip the file.
 
 Current skills:
 
@@ -112,35 +81,22 @@ Current skills:
 
 Always-on rule source:
 
-- The SOP entrypoints are the only canonical always-on mechanism for assistant
-  behavior.
-- Do not encode mandatory every-prompt rules as skills; OpenCode skills are
-  on-demand, not guaranteed every turn.
-- Keep mandatory completeness and no-guessing rules in:
-  [`home/readonly_AGENTS.md`](../../home/readonly_AGENTS.md),
-  [`home/readonly_CLAUDE.md`](../../home/readonly_CLAUDE.md), and
-  [`home/dot_gemini/readonly_GEMINI.md`](../../home/dot_gemini/readonly_GEMINI.md).
+- The SOP entrypoints are the only canonical always-on mechanism for assistant behavior.
+- Do not encode mandatory every-prompt rules as skills; OpenCode skills are on-demand, not guaranteed every turn.
+- Keep mandatory completeness and no-guessing rules in: [`home/readonly_AGENTS.md`](../../home/readonly_AGENTS.md), [`home/readonly_CLAUDE.md`](../../home/readonly_CLAUDE.md), and [`home/dot_gemini/readonly_GEMINI.md`](../../home/dot_gemini/readonly_GEMINI.md).
 
 ## Reviews: Base-Branch Context And Semantic Search
 
-Review skills require comparing your local diff/PR against how base (usually
-`main`) works today.
+Review skills require comparing your local diff/PR against how base (usually `main`) works today.
 
-If semantic code search (SCSI) is available and the current repo is indexed, it
-is required for base-branch context:
+If semantic code search (SCSI) is available and the current repo is indexed, it is required for base-branch context:
 
-- Preflight is blocking: run `list_indices` first (do not guess an index; try
-  both `scsi-main` and `scsi-local` when both exist).
-- If the user provided an index name, still run `list_indices` and verify the
-  index exists before using it.
-- If the user did not provide an index name, use the single obvious
-  repo-matching index from `list_indices`; ask only when multiple equally
-  plausible matches remain after evidence-based filtering.
-- Use SCSI results as base-branch context only; validate the actual change via
-  local git diffs and file reads.
+- Preflight is blocking: run `list_indices` first (do not guess an index; try both `scsi-main` and `scsi-local` when both exist).
+- If the user provided an index name, still run `list_indices` and verify the index exists before using it.
+- If the user did not provide an index name, use the single obvious repo-matching index from `list_indices`; ask only when multiple equally plausible matches remain after evidence-based filtering.
+- Use SCSI results as base-branch context only; validate the actual change via local git diffs and file reads.
 
-Review outputs also include a single reviewer-metadata line so it's obvious what
-was used for base context:
+Review outputs also include a single reviewer-metadata line so it's obvious what was used for base context:
 
 ```text
 Base context: SCSI=<index>|none (list_indices checked; <reason>), base=<branch>, diff=<base>...HEAD
@@ -150,63 +106,44 @@ Do not paste that line into GitHub comment bodies.
 
 ## Reviews: Truth Validation Loop
 
-For non-trivial review decisions (accepting a suggestion, pushing back, or
-proposing an alternative), use a strict verify-first loop:
+For non-trivial review decisions (accepting a suggestion, pushing back, or proposing an alternative), use a strict verify-first loop:
 
-- Base truth: establish what base branch does today (SCSI when indexed;
-  otherwise `git show <base>:<path>` + local search).
-- Change truth: validate what your branch/PR actually does (local diff + file
-  reads).
-- Assumption tests: reproduce in `/tmp` when possible; otherwise run the
-  smallest safe experiment in the worktree.
-- Quality gates: if you changed code as part of an iteration cycle, re-run the
-  repo's lint/type_check/tests trio (discover the correct commands from the
-  repo; do not guess).
+- Base truth: establish what base branch does today (SCSI when indexed; otherwise `git show <base>:<path>` + local search).
+- Change truth: validate what your branch/PR actually does (local diff + file reads).
+- Assumption tests: reproduce in `/tmp` when possible; otherwise run the smallest safe experiment in the worktree.
+- Quality gates: if you changed code as part of an iteration cycle, re-run the repo's lint/type_check/tests trio (discover the correct commands from the repo; do not guess).
 
 Skill support:
 
 - Review modes live under `~/.agents/skills/review/references/`:
-  - `shared_rules.md` — base-context gate, truth validation, coverage checklist,
-    severity, draft style, posting boundary (loaded once by the router)
-  - `pr_common.md` — PR resolution, media evidence, anchoring, deep links
-    (loaded once for PR modes)
+  - `shared_rules.md` — base-context gate, truth validation, coverage checklist, severity, draft style, posting boundary (loaded once by the router)
+  - `pr_common.md` — PR resolution, media evidence, anchoring, deep links (loaded once for PR modes)
   - `local_changes.md` — local diff / branch delta review
   - `pr_review.md` — initial or continued PR review (batch or one-at-a-time)
-  - `pr_fix.md` — address reviewer feedback (reply and/or code changes per
-    thread)
+  - `pr_fix.md` — address reviewer feedback (reply and/or code changes per thread)
 
 ## Reviews: Reply Style
 
 When drafting PR thread replies:
 
 - Do not use `RE:`.
-- Default: reply directly; do not quote when the whole parent comment is the
-  reference.
-- If you need to point at a specific fragment, use a minimal blockquote
-  (`> ...`) and then reply.
-- A closing prompt like `Wdyt` is optional, not mandatory. Use it only when it
-  fits the tone of the specific comment.
+- Default: reply directly; do not quote when the whole parent comment is the reference.
+- If you need to point at a specific fragment, use a minimal blockquote (`> ...`) and then reply.
+- A closing prompt like `Wdyt` is optional, not mandatory. Use it only when it fits the tone of the specific comment.
 
 ## Reviews: Router Behavior
 
-- The review router selects exactly one of three modes: local changes, PR
-  review, or PR fix (address feedback). Shared rules and PR-common setup are
-  loaded once by the router, not duplicated per mode.
-- When both a dirty working tree and a current-branch PR exist, the router asks
-  which target to review instead of silently forcing local review first.
-- GitHub posting stays outside read-only review mode until the user explicitly
-  asks for a side effect.
+- The review router selects exactly one of three modes: local changes, PR review, or PR fix (address feedback). Shared rules and PR-common setup are loaded once by the router, not duplicated per mode.
+- When both a dirty working tree and a current-branch PR exist, the router asks which target to review instead of silently forcing local review first.
+- GitHub posting stays outside read-only review mode until the user explicitly asks for a side effect.
 
 ## Source-First Research
 
-- Explicit external repo-inspection requests now route to the same source-first
-  skill instead of a separate variant.
-- The research skill now requires: resolve repo/ref first, then inspect the
-  checked out source locally.
+- Explicit external repo-inspection requests now route to the same source-first skill instead of a separate variant.
+- The research skill now requires: resolve repo/ref first, then inspect the checked out source locally.
 - Source-first research now resolves the target ref before inspecting code.
 - Use the default branch only for current/latest behavior questions.
-- For version-, branch-, tag-, or commit-specific questions, inspect that exact
-  ref instead of defaulting to latest upstream.
+- For version-, branch-, tag-, or commit-specific questions, inspect that exact ref instead of defaulting to latest upstream.
 
 ## Core Workflow: Change A Skill
 
@@ -214,7 +151,7 @@ When drafting PR thread replies:
 
 - [`home/exact_dot_agents/exact_skills/`](../../home/exact_dot_agents/exact_skills/)
 
-2. Apply and verify:
+1. Apply and verify:
 
 ```bash
 chezmoi diff
@@ -228,11 +165,8 @@ ls -la ~/.agents/skills
 
 A cross-shell alias `agent` is provided for `cursor-agent`:
 
-- POSIX interactive shells:
-  [`home/readonly_dot_shellrc`](../../home/readonly_dot_shellrc) → `~/.shellrc`
-- fish:
-  [`home/dot_config/fish/readonly_config.fish.tmpl`](../../home/dot_config/fish/readonly_config.fish.tmpl)
-  → `~/.config/fish/config.fish`
+- POSIX interactive shells: [`home/readonly_dot_shellrc`](../../home/readonly_dot_shellrc) → `~/.shellrc`
+- fish: [`home/dot_config/fish/readonly_config.fish.tmpl`](../../home/dot_config/fish/readonly_config.fish.tmpl) → `~/.config/fish/config.fish`
 
 Verification:
 
@@ -253,14 +187,9 @@ Tool configs included here:
 
 ### Profile-based file merging
 
-Some tools rewrite their config files at runtime, so chezmoi ignores the on-disk
-target and a `run_onchange` script writes the correct profile-specific version
-from the repo source.
+Some tools rewrite their config files at runtime, so chezmoi ignores the on-disk target and a `run_onchange` script writes the correct profile-specific version from the repo source.
 
-Instead of keeping complex templates or comment-based filtering logic, we use
-explicit `.work.*` and `.personal.*` files. The shell script checks the
-`.isWork` template variable and copies the correct source to the final
-destination, completely decoupling the formats.
+Instead of keeping complex templates or comment-based filtering logic, we use explicit `.work.*` and `.personal.*` files. The shell script checks the `.isWork` template variable and copies the correct source to the final destination, completely decoupling the formats.
 
 | Tool                 | Source files                                                                                                                                   | Target                               | Merge script                                               |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ---------------------------------------------------------- |
@@ -275,44 +204,28 @@ destination, completely decoupling the formats.
 | Pi MCP               | [`home/.chezmoidata/mcp_servers.yaml`](../../home/.chezmoidata/mcp_servers.yaml) (shared registry)                                             | `~/.pi/agent/mcp.json`               | `run_onchange_after_07-generate-mcp-configs.sh.tmpl`       |
 | Pi settings/models   | [`home/dot_pi/agent/readonly_{settings,models}.{work,personal}.json`](../../home/dot_pi/agent/readonly_{settings,models}.{work,personal}.json) | `~/.pi/agent/{settings,models}.json` | `run_onchange_after_07-merge-pi-config.sh.tmpl`            |
 
-All merge scripts live under
-[`home/.chezmoiscripts/`](../../home/.chezmoiscripts/). Pi targets are installed
-readonly.
+All merge scripts live under [`home/.chezmoiscripts/`](../../home/.chezmoiscripts/). Pi targets are installed readonly.
 
 ### Claude Code settings
 
-Source:
-[`home/dot_claude/settings.{work,personal}.json`](../../home/dot_claude/settings.{work,personal}.json)
-→ `~/.claude/settings.json`.
+Source: [`home/dot_claude/settings.{work,personal}.json`](../../home/dot_claude/settings.{work,personal}.json) → `~/.claude/settings.json`.
 
-Both profiles enable extended thinking and skip the dangerous-mode permission
-prompt. The work profile uses native Claude enterprise auth by default (no
-`apiKeyHelper` or `ANTHROPIC_BASE_URL` override).
+Both profiles enable extended thinking and skip the dangerous-mode permission prompt. The work profile uses native Claude enterprise auth by default (no `apiKeyHelper` or `ANTHROPIC_BASE_URL` override).
 
-MCP servers are stored separately in `~/.claude.json` (top-level `mcpServers`
-field) because that file contains runtime state managed by Claude Code. The
-merge script surgically updates only the `mcpServers` key, leaving other fields
-intact.
+MCP servers are stored separately in `~/.claude.json` (top-level `mcpServers` field) because that file contains runtime state managed by Claude Code. The merge script surgically updates only the `mcpServers` key, leaving other fields intact.
 
-Work MCP servers: sequentialthinking, scsi-main, scsi-local. Personal MCP
-servers: sequentialthinking.
+Work MCP servers: sequentialthinking, scsi-main, scsi-local. Personal MCP servers: sequentialthinking.
 
 ### Gemini CLI settings
 
-Source: [`home/dot_gemini/settings.json`](../../home/dot_gemini/settings.json) →
-`~/.gemini/settings.json`.
+Source: [`home/dot_gemini/settings.json`](../../home/dot_gemini/settings.json) → `~/.gemini/settings.json`.
 
-- MCP servers are injected from the shared
-  [`mcp_servers.yaml`](../../home/.chezmoidata/mcp_servers.yaml) registry at
-  apply time (no longer hardcoded in the settings file).
-- Tool approval is controlled by `general.defaultApprovalMode` (we use
-  `auto_edit` to auto-approve edit tools).
+- MCP servers are injected from the shared [`mcp_servers.yaml`](../../home/.chezmoidata/mcp_servers.yaml) registry at apply time (no longer hardcoded in the settings file).
+- Tool approval is controlled by `general.defaultApprovalMode` (we use `auto_edit` to auto-approve edit tools).
 
 ### Pi coding agent settings
 
-**Installation:** Pi globals are installed via npm from
-[`home/readonly_dot_default-npm-pkgs`](../../home/readonly_dot_default-npm-pkgs)
-→ `~/.default-npm-pkgs`:
+**Installation:** Pi globals are installed via npm from [`home/readonly_dot_default-npm-pkgs`](../../home/readonly_dot_default-npm-pkgs) → `~/.default-npm-pkgs`:
 
 | Package                         | Purpose               |
 | ------------------------------- | --------------------- |
@@ -334,17 +247,14 @@ Source: [`home/dot_gemini/settings.json`](../../home/dot_gemini/settings.json) �
 | Work     | `google`         | `gemini-3.1-pro-preview-customtools` |
 | Personal | `google`         | `gemini-3.1-pro-preview-customtools` |
 
-Work profile also exposes additional configured models alongside the Google
-direct default.
+Work profile also exposes additional configured models alongside the Google direct default.
 
 **Shared settings:**
 
 - Automatic context compaction (saves tokens)
 - Exponential backoff retries
 - `npm:pi-mcp-adapter` extension auto-installed (kept in npm convergence list)
-- Secrets (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`,
-  `OPENROUTER_API_KEY`) are picked up from environment variables exported via
-  `pass` in `config.fish.tmpl`
+- Secrets (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`) are picked up from environment variables exported via `pass` in `config.fish.tmpl`
 
 #### LiteLLM integration (work profile)
 
@@ -355,21 +265,16 @@ Fish exports these values from `pass` when the entries exist:
 | `LITELLM_PROXY_KEY` | `litellm/api/token` | API authentication         |
 | `LITELLM_API_BASE`  | `litellm/api/base`  | Normalized to end in `/v1` |
 
-**OpenCode specifics:** The work config
-([`home/dot_config/opencode/readonly_opencode.work.jsonc`](../../home/dot_config/opencode/readonly_opencode.work.jsonc))
-uses Google direct Gemini as the primary default now.
+**OpenCode specifics:** The work config ([`home/dot_config/opencode/readonly_opencode.work.jsonc`](../../home/dot_config/opencode/readonly_opencode.work.jsonc)) uses Google direct Gemini as the primary default now.
 
 - Main agent default: `google/gemini-3.1-pro-preview-customtools`
 - Additional LiteLLM aliases may still be available for explicit selection.
 
-**Pi specifics:** The work config is rendered by
-`run_onchange_after_07-merge-pi-config.sh.tmpl` into `~/.pi/agent/`.
+**Pi specifics:** The work config is rendered by `run_onchange_after_07-merge-pi-config.sh.tmpl` into `~/.pi/agent/`.
 
 ## Secrets
 
-Some API keys are loaded into the shell from `pass` in
-[`home/dot_config/fish/readonly_config.fish.tmpl`](../../home/dot_config/fish/readonly_config.fish.tmpl).
-That means your password-store is part of the runtime wiring for AI tools.
+Some API keys are loaded into the shell from `pass` in [`home/dot_config/fish/readonly_config.fish.tmpl`](../../home/dot_config/fish/readonly_config.fish.tmpl). That means your password-store is part of the runtime wiring for AI tools.
 
 Verification:
 
@@ -379,8 +284,7 @@ echo "${ANTHROPIC_API_KEY:+set}"
 echo "${GEMINI_API_KEY:+set}"
 ```
 
-Do not commit literal secrets into tool config files; keep them in `pass` and
-load at runtime.
+Do not commit literal secrets into tool config files; keep them in `pass` and load at runtime.
 
 ## Ollama
 
@@ -403,12 +307,9 @@ ollama list
 
 Beads is integrated as a CLI (`bd`) with a repo-aware wrapper command:
 
-- Wrapper function: `bdlocal` in
-  [`home/dot_config/fish/readonly_config.fish.tmpl`](../../home/dot_config/fish/readonly_config.fish.tmpl)
+- Wrapper function: `bdlocal` in [`home/dot_config/fish/readonly_config.fish.tmpl`](../../home/dot_config/fish/readonly_config.fish.tmpl)
 
-The wrapper chooses a per-repo `$BEADS_DIR` under `~/beads-data/` and pins the
-Beads discovery anchor to `$BEADS_DIR/.beads/beads.db`, then runs `bd` in
-`--sandbox` mode (per-project Dolt SQL server backend).
+The wrapper chooses a per-repo `$BEADS_DIR` under `~/beads-data/` and pins the Beads discovery anchor to `$BEADS_DIR/.beads/beads.db`, then runs `bd` in `--sandbox` mode (per-project Dolt SQL server backend).
 
 Verification:
 
@@ -435,16 +336,12 @@ ls -la ~/.agents/skills
 
 If assistant behavior is not picking up expected instructions:
 
-- verify the correct entrypoint file exists in `$HOME` (`~/AGENTS.md`,
-  `~/CLAUDE.md`, `~/.gemini/GEMINI.md`).
+- verify the correct entrypoint file exists in `$HOME` (`~/AGENTS.md`, `~/CLAUDE.md`, `~/.gemini/GEMINI.md`).
 - verify skill files exist under `~/.agents/skills/`.
 - verify secrets expected at runtime are present in `pass`.
 
 ## Related
 
-- Beads task tracking:
-  [`docs/recipes/beads-task-tracking.md`](../recipes/beads-task-tracking.md)
-- Switching work/personal identity:
-  [`docs/recipes/switching-work-personal-identity.md`](../recipes/switching-work-personal-identity.md)
-- Security and secrets:
-  [`docs/categories/security-and-secrets.md`](security-and-secrets.md)
+- Beads task tracking: [`docs/recipes/beads-task-tracking.md`](../recipes/beads-task-tracking.md)
+- Switching work/personal identity: [`docs/recipes/switching-work-personal-identity.md`](../recipes/switching-work-personal-identity.md)
+- Security and secrets: [`docs/categories/security-and-secrets.md`](security-and-secrets.md)

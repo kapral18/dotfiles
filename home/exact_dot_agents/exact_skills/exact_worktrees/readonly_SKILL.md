@@ -1,17 +1,13 @@
 ---
 name: worktrees
-description: |-
-  Use when the user mentions ,w or asks to create/switch/open/list/prune/
-  remove worktrees, including checking out PRs/issues locally. Prefer ,w
-  subcommands over raw git worktree.
+description: Use when the user mentions ,w or asks to create/switch/open/list/prune/ remove worktrees, including checking out PRs/issues locally. Prefer ,w subcommands over raw git worktree.
 ---
 
 # ,w Worktree Skill (Worktrees + tmux)
 
 Primary goal:
 
-- manage local git worktrees using the user's `,w` CLI instead of raw
-  `git worktree` commands.
+- manage local git worktrees using the user's `,w` CLI instead of raw `git worktree` commands.
 
 Use this skill when:
 
@@ -22,19 +18,14 @@ Use this skill when:
 Do not use:
 
 - PR review feedback: `~/.agents/skills/review/SKILL.md`
-- GitHub side effects (posting comments/reviews, creating PRs/issues):
-  `~/.agents/skills/github/SKILL.md`
-- pure git operations unrelated to worktrees (commit/rebase/push):
-  `~/.agents/skills/git/SKILL.md`
+- GitHub side effects (posting comments/reviews, creating PRs/issues): `~/.agents/skills/github/SKILL.md`
+- pure git operations unrelated to worktrees (commit/rebase/push): `~/.agents/skills/git/SKILL.md`
 
 First actions:
 
-1. Resolve whether the user wants create, switch, list, prune, remove, or PR/
-   issue checkout.
-2. If the user says "current PR" or "current issue", resolve that identifier
-   first via `,gh-prw` or `,gh-issuew`.
-3. Prefer the matching `,w` subcommand instead of building the flow from raw
-   `git worktree` commands.
+1. Resolve whether the user wants create, switch, list, prune, remove, or PR/ issue checkout.
+2. If the user says "current PR" or "current issue", resolve that identifier first via `,gh-prw` or `,gh-issuew`.
+3. Prefer the matching `,w` subcommand instead of building the flow from raw `git worktree` commands.
 
 Non-negotiables:
 

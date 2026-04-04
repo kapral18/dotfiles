@@ -2,8 +2,7 @@
 
 Back: [`docs/recipes/index.md`](index.md)
 
-When `chezmoi apply` fails, the most useful piece of information is the exact
-hook script that failed.
+When `chezmoi apply` fails, the most useful piece of information is the exact hook script that failed.
 
 ## Preconditions
 
@@ -18,19 +17,19 @@ hook script that failed.
 chezmoi apply
 ```
 
-2. Review diff/input templates:
+1. Review diff/input templates:
 
 ```bash
 chezmoi diff
 ```
 
-3. If the failing script is a template, render it:
+1. If the failing script is a template, render it:
 
 ```bash
 chezmoi execute-template < home/.chezmoiscripts/<script>.tmpl
 ```
 
-4. Run the failing script directly to isolate environment/dependency issues.
+1. Run the failing script directly to isolate environment/dependency issues.
 
 ## Identify The Script
 
@@ -47,9 +46,7 @@ The failing script path appears in `chezmoi apply` output.
 - The failing command reproduces outside `chezmoi apply`.
 - After fixing root cause, `chezmoi apply` exits successfully.
 
-Note: many hooks depend on binaries that are installed by earlier hooks
-(Homebrew, ASDF, etc.). If a hook fails with "command not found", check whether
-the earlier install hooks completed.
+Note: many hooks depend on binaries that are installed by earlier hooks (Homebrew, ASDF, etc.). If a hook fails with "command not found", check whether the earlier install hooks completed.
 
 ## Rollback / Undo
 

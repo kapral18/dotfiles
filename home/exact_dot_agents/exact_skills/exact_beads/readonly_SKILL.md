@@ -1,22 +1,18 @@
 ---
 name: beads
-description: |-
-  Persist work in the beads DB (inspect/create/claim/update/close/export).
-  Use when beads / bdlocal / BEADS_DIR is explicitly mentioned.
+description: Persist work in the beads DB (inspect/create/claim/update/close/export). Use when beads / bdlocal / BEADS_DIR is explicitly mentioned.
 ---
 
 # Beads Skill
 
 This is mandatory: always check context and offer to persist at ~10% remaining.
 
-Golden rule: always ask user permission before any bead operation (create,
-update, status change, close). No exceptions.
+Golden rule: always ask user permission before any bead operation (create, update, status change, close). No exceptions.
 
 Use when:
 
 - the user explicitly wants beads/bdlocal/`BEADS_DIR` work
-- the user wants to inspect, create, claim, update, close, export, or otherwise
-  manage tasks in the beads DB
+- the user wants to inspect, create, claim, update, close, export, or otherwise manage tasks in the beads DB
 
 Do not use:
 
@@ -28,27 +24,17 @@ Do not use:
 First actions:
 
 1. Confirm `BEADS_DIR` and use `bdlocal` only.
-2. Run the read-only intake sequence: `bdlocal prime`, `bdlocal ready --json`,
-   `bdlocal blocked --json`.
+2. Run the read-only intake sequence: `bdlocal prime`, `bdlocal ready --json`, `bdlocal blocked --json`.
 3. If a mutation is needed, ask permission before naming the exact bead action.
 
 Local policy:
 
-- Run all commands through `bdlocal` (sets
-  `BEADS_DB="$BEADS_DIR/.beads/beads.db"` and passes `--sandbox`). Never use
-  bare `bd` — it will discover the wrong project or create artifacts in the
-  working repo.
-- `$BEADS_DIR` resolves dynamically per git repo to `~/beads-data/<repo-name>`.
-  Confirm: `echo $BEADS_DIR`.
-- Backend is Dolt (server mode). `bd` auto-starts a `dolt sql-server` on first
-  use; the server may restart on a different port between sessions.
-- Data layout: `$BEADS_DIR/dolt/` (Dolt data), `$BEADS_DIR/metadata.json`
-  (backend config), `$BEADS_DIR/dolt-server.port` (current port).
-  `$BEADS_DIR/.beads/beads.db` is the discovery anchor directory (not a file).
-- Git-free beads mode: do not use beads' internal git sync or remotes. All beads
-  data management is local-only. Use `bdlocal export` for backups.
-- Installation managed externally (Brewfile: `bd` + `dolt`). Do not
-  install/upgrade in session.
+- Run all commands through `bdlocal` (sets `BEADS_DB="$BEADS_DIR/.beads/beads.db"` and passes `--sandbox`). Never use bare `bd` — it will discover the wrong project or create artifacts in the working repo.
+- `$BEADS_DIR` resolves dynamically per git repo to `~/beads-data/<repo-name>`. Confirm: `echo $BEADS_DIR`.
+- Backend is Dolt (server mode). `bd` auto-starts a `dolt sql-server` on first use; the server may restart on a different port between sessions.
+- Data layout: `$BEADS_DIR/dolt/` (Dolt data), `$BEADS_DIR/metadata.json` (backend config), `$BEADS_DIR/dolt-server.port` (current port). `$BEADS_DIR/.beads/beads.db` is the discovery anchor directory (not a file).
+- Git-free beads mode: do not use beads' internal git sync or remotes. All beads data management is local-only. Use `bdlocal export` for backups.
+- Installation managed externally (Brewfile: `bd` + `dolt`). Do not install/upgrade in session.
 
 Session workflow:
 
@@ -57,24 +43,19 @@ Start:
 1. AI context: `bdlocal prime` (outputs optimized workflow context).
 2. Run `bdlocal ready --json` to find available work.
 3. Run `bdlocal blocked --json` to see what is waiting on other tasks.
-4. If claiming existing bead: ask permission, then
-   `bdlocal update <id> --claim --json`.
-5. If creating new bead: ask permission, then
-   `bdlocal create "title" -t <type> -p <priority> -d "context" --estimate 30 --json`.
+4. If claiming existing bead: ask permission, then `bdlocal update <id> --claim --json`.
+5. If creating new bead: ask permission, then `bdlocal create "title" -t <type> -p <priority> -d "context" --estimate 30 --json`.
 
 During work:
 
-6. Review bead: `bdlocal show <id> --json`.
-7. On material progress: ask permission, then update notes per Note Curation
-   below.
-8. On discovering new scope: ask permission to create with
-   `--deps discovered-from:<parent-id>`.
+1. Review bead: `bdlocal show <id> --json`.
+2. On material progress: ask permission, then update notes per Note Curation below.
+3. On discovering new scope: ask permission to create with `--deps discovered-from:<parent-id>`.
 
 End:
 
-9. Ask permission to close: `bdlocal close <id> --reason "Completed" --json`.
-10. Local backup:
-    `bdlocal export -o ~/beads-backups/$(basename $(pwd))-issues.jsonl`
+1. Ask permission to close: `bdlocal close <id> --reason "Completed" --json`.
+2. Local backup: `bdlocal export -o ~/beads-backups/$(basename $(pwd))-issues.jsonl`
 
 Commands:
 
@@ -86,8 +67,7 @@ Core views:
 - `bdlocal blocked --parent <epic-id> --json` - blocked descendants of epic
 - `bdlocal show <id> --json` - view details (supports multiple IDs)
 - `bdlocal show <id> --long` - extended metadata (agent identity, gate fields)
-- `bdlocal show --current` - show currently active issue
-  (in-progress/hooked/last touched)
+- `bdlocal show --current` - show currently active issue (in-progress/hooked/last touched)
 - `bdlocal prime` - AI-optimized context (auto-detects MCP vs CLI)
 - `bdlocal prime --full` - force full CLI output
 - `bdlocal info --json` - database path, prefix, server status
@@ -106,37 +86,28 @@ Issue management:
 - `bdlocal create "title" -t bug|feature|task|epic|chore -p 0-4 -d "..." --estimate 60 --json`
 - `bdlocal create "title" --defer "+2d" --due "+1w" --json` (defer/due dates)
 - `bdlocal create "title" --parent <id> --json` (create as child of parent)
-- `bdlocal create "title" --external-ref "https://github.com/..." --json` (link
-  external issue)
-- `bdlocal create "title" --deps discovered-from:<parent-id> --json` (create +
-  link in one command)
+- `bdlocal create "title" --external-ref "https://github.com/..." --json` (link external issue)
+- `bdlocal create "title" --deps discovered-from:<parent-id> --json` (create + link in one command)
 - `bdlocal create "title" -l bug,critical --json` (with labels)
-- `bdlocal create "title" --id worker1-100 --json` (explicit ID for parallel
-  workers)
+- `bdlocal create "title" --id worker1-100 --json` (explicit ID for parallel workers)
 - `bdlocal create "title" --dry-run --json` (preview without side effects)
-- `bdlocal create "title" --body-file=description.md --json` (description from
-  file)
-- `echo 'text with backticks' | bdlocal create "title" --stdin --json` (from
-  stdin, avoids shell escaping)
+- `bdlocal create "title" --body-file=description.md --json` (description from file)
+- `echo 'text with backticks' | bdlocal create "title" --stdin --json` (from stdin, avoids shell escaping)
 - `bdlocal create -f plan.md --json` (multiple issues from markdown file)
 - `bdlocal q "quick title"` - quick capture, outputs only the ID (for scripting)
 - `bdlocal q "title" -t task -p 1 -l label` - quick capture with options
 - `bdlocal update <id> --status open|in_progress|blocked|deferred|closed --json`
-- `bdlocal update <id> --claim --json` (atomic: sets assignee +
-  status=in_progress; fails if already claimed)
+- `bdlocal update <id> --claim --json` (atomic: sets assignee + status=in_progress; fails if already claimed)
 - `bdlocal update <id> --notes|--description|--design|--acceptance|--title "text" --estimate 120 --json`
-- `bdlocal update <id> --append-notes "new info" --json` (appends instead of
-  replacing)
+- `bdlocal update <id> --append-notes "new info" --json` (appends instead of replacing)
 - `bdlocal update <id> --defer "+2d" --json` (hide from `ready` until date)
 - `bdlocal update <id> --due "+1w" --json` (set due date)
 - `bdlocal update <id> --add-label <label> --remove-label <label> --json`
 - `bdlocal update <id> --external-ref "gh-456" --json`
 - `echo 'text' | bdlocal update <id> --description=- --json` (from stdin)
 - `bdlocal close <id> --reason "..." --json`
-- `bdlocal close <id> --reason "..." --suggest-next --json` (show newly
-  unblocked issues)
-- `bdlocal close <id> --reason "..." --claim-next --json` (auto-claim next
-  highest priority)
+- `bdlocal close <id> --reason "..." --suggest-next --json` (show newly unblocked issues)
+- `bdlocal close <id> --reason "..." --claim-next --json` (auto-claim next highest priority)
 - `bdlocal reopen <id> --reason "..." --json`
 - `bdlocal edit <id>` - edit in $EDITOR (humans only, not for agents)
 
@@ -188,17 +159,14 @@ Labels:
 - `bdlocal label list <id> --json`
 - `bdlocal label list-all --json` (all unique labels in DB)
 - `bdlocal label propagate <parent-id> --json` (propagate label to children)
-- Useful: `needs-human-review`, `context-stale`, `blocked-on-external`,
-  `ai-generated`
+- Useful: `needs-human-review`, `context-stale`, `blocked-on-external`, `ai-generated`
 
 State (labels as cache for operational state):
 
 - `bdlocal state <id> <dimension>` - query current state value
 - `bdlocal state list <id> --json` - list all state dimensions on an issue
-- `bdlocal set-state <id> <dimension>=<value> --reason "explanation" --json`
-  (creates event + updates label atomically)
-- Common dimensions: `patrol` (active/muted/suspended), `mode`
-  (normal/degraded/maintenance), `health` (healthy/warning/failing)
+- `bdlocal set-state <id> <dimension>=<value> --reason "explanation" --json` (creates event + updates label atomically)
+- Common dimensions: `patrol` (active/muted/suspended), `mode` (normal/degraded/maintenance), `health` (healthy/warning/failing)
 
 Gates (async wait conditions):
 
@@ -214,17 +182,12 @@ Molecular chemistry (template-based workflows):
 
 - `bdlocal formula list --json` - list available templates (protos)
 - `bdlocal mol show <proto-id> --json` - show template structure and variables
-- `bdlocal mol spawn <proto> --var key=value --json` - create wisp (ephemeral,
-  default)
+- `bdlocal mol spawn <proto> --var key=value --json` - create wisp (ephemeral, default)
 - `bdlocal mol pour <proto> --var key=value --json` - create mol (persistent)
-- `bdlocal mol run <proto> --var key=value` - spawn + assign + pin (durable
-  execution)
-- `bdlocal mol bond <A> <B> --type sequential|parallel|conditional --json` -
-  combine protos or molecules
-- `bdlocal mol distill <epic-id> --as "Template Name" --json` - extract proto
-  from ad-hoc work
-- `bdlocal mol squash <wisp-id> --summary "summary" --json` - compress wisp to
-  permanent digest
+- `bdlocal mol run <proto> --var key=value` - spawn + assign + pin (durable execution)
+- `bdlocal mol bond <A> <B> --type sequential|parallel|conditional --json` - combine protos or molecules
+- `bdlocal mol distill <epic-id> --as "Template Name" --json` - extract proto from ad-hoc work
+- `bdlocal mol squash <wisp-id> --summary "summary" --json` - compress wisp to permanent digest
 - `bdlocal mol burn <wisp-id> --json` - delete wisp without trace
 - `bdlocal mol wisp list --json` - list all wisps
 - `bdlocal mol wisp gc --json` - garbage collect orphaned wisps
@@ -241,8 +204,7 @@ Key-value store (persistent user-defined pairs):
 Database:
 
 - `bdlocal export -o issues.jsonl`
-- `bdlocal init --server --quiet --skip-hooks --skip-agents` - initialize new
-  project (Dolt server mode, git-free)
+- `bdlocal init --server --quiet --skip-hooks --skip-agents` - initialize new project (Dolt server mode, git-free)
 - `bdlocal import backup.jsonl` - import/upsert from JSONL export
 
 Dolt remote sync (not used in local-only flow):
@@ -275,14 +237,12 @@ Maintenance:
 
 Deletion:
 
-- `bdlocal delete <id>` (preview mode by default; add `--force` to actually
-  delete)
+- `bdlocal delete <id>` (preview mode by default; add `--force` to actually delete)
 - `bdlocal delete <id> --cascade --force` (recursively delete dependents)
 
 Setup & hooks:
 
-- `bdlocal setup claude|cursor|codex|factory|mux|gemini|aider` - editor
-  integration
+- `bdlocal setup claude|cursor|codex|factory|mux|gemini|aider` - editor integration
 - `bdlocal setup claude --check` - check if integration is current/stale/missing
 - `bdlocal hooks list` - list registered hooks
 - `bdlocal hooks install|uninstall` - manage hooks
@@ -292,19 +252,15 @@ Setup & hooks:
 Note curation:
 
 1. Read: `bdlocal show <id> --json`
-2. Curate: drop stale items, keep only what future agent needs. Use
-   COMPLETED/IN_PROGRESS/NEXT structure.
-3. Update: `bdlocal update <id> --notes "full refreshed snapshot" --json`
-   (replaces entire field)
+2. Curate: drop stale items, keep only what future agent needs. Use COMPLETED/IN_PROGRESS/NEXT structure.
+3. Update: `bdlocal update <id> --notes "full refreshed snapshot" --json` (replaces entire field)
 4. Verify: re-run `bdlocal show <id> --json`
 
 Planning & content strategy:
 
-- Bead content: plain text only. No Markdown. The notes field is the living
-  plan.
+- Bead content: plain text only. No Markdown. The notes field is the living plan.
 - Scratchpad: use `/tmp/` for ephemeral thinking. Never save to project.
-- Wisdom: maintain a single, accumulated source of truth. Append new knowledge
-  to existing wisdom; do not overwrite valid historical knowledge.
+- Wisdom: maintain a single, accumulated source of truth. Append new knowledge to existing wisdom; do not overwrite valid historical knowledge.
 - History: only current state matters. Do not preserve old plans.
 
 Dependency thinking:
@@ -313,24 +269,17 @@ Dependency thinking:
 - Wrong: "Phase 1 blocks Phase 2" (Phase 1 -> Phase 2)
 - Right: "Phase 2 DEPENDS ON Phase 1" (`bdlocal dep add phase2 phase1`)
 - Always ask: "What does this task NEED before it can start?"
-- Only `blocks` dependencies affect the ready queue. `related`, `parent-child`,
-  and `discovered-from` are informational/structural only.
+- Only `blocks` dependencies affect the ready queue. `related`, `parent-child`, and `discovered-from` are informational/structural only.
 
 Reference:
 
-Types: `bug`, `feature`, `task`, `epic`, `chore` — always pass `-t` (aliases:
-`enhancement`/`feat`→`feature`)
+Types: `bug`, `feature`, `task`, `epic`, `chore` — always pass `-t` (aliases: `enhancement`/`feat`→`feature`)
 
 Priorities: `0`=critical, `1`=high, `2`=medium (default), `3`=low, `4`=backlog
 
-Statuses: `open`, `in_progress`, `blocked`, `deferred`, `closed`, `tombstone`
-(deleted issue, suppresses resurrections), `pinned` (stays open indefinitely,
-for hooks/anchors). Custom statuses can be defined via
-`bd config set status.custom "in_review:active,qa_testing:wip"` with categories:
-`active` (included in ready), `wip`, `done`, `frozen`.
+Statuses: `open`, `in_progress`, `blocked`, `deferred`, `closed`, `tombstone` (deleted issue, suppresses resurrections), `pinned` (stays open indefinitely, for hooks/anchors). Custom statuses can be defined via `bd config set status.custom "in_review:active,qa_testing:wip"` with categories: `active` (included in ready), `wip`, `done`, `frozen`.
 
-Dependencies: `blocks` (hard — affects ready queue), `related` (soft),
-`parent-child` (hierarchy), `discovered-from` (provenance)
+Dependencies: `blocks` (hard — affects ready queue), `related` (soft), `parent-child` (hierarchy), `discovered-from` (provenance)
 
 Advanced patterns:
 
@@ -340,17 +289,12 @@ Wisdom beads (accumulated knowledge):
 2. Link: `bdlocal dep add <working-id> <wisdom-id> --type related --json`
 3. Maintain: update wisdom bead notes with curated takeaways each session.
 4. Load and follow e2e when accessing wisdom/knowledge beads:
-   - Load entire content into memory once:
-     `bdlocal show <wisdom-id> --json 2>&1 | jq -r '.[0].notes'`
-   - Read the entire wisdom bead content fully without skimming or skipping
-     sections.
+   - Load entire content into memory once: `bdlocal show <wisdom-id> --json 2>&1 | jq -r '.[0].notes'`
+   - Read the entire wisdom bead content fully without skimming or skipping sections.
    - Follow instructions to the letter; do not cherry-pick or skip parts.
-   - After updating a wisdom bead, ask user permission to re-upload new contents
-     into context.
-   - Do not repeatedly grep/query wisdom beads if it's already loaded in memory;
-     recall from memory.
-   - Treat wisdom bead instructions as binding within the scope of the current
-     task.
+   - After updating a wisdom bead, ask user permission to re-upload new contents into context.
+   - Do not repeatedly grep/query wisdom beads if it's already loaded in memory; recall from memory.
+   - Treat wisdom bead instructions as binding within the scope of the current task.
 
 Epic with external link:
 
@@ -360,35 +304,23 @@ Molecular chemistry patterns:
 
 - Proto = reusable template (epic with `template` label)
 - Mol = persistent instance (real issues from template)
-- Wisp = ephemeral instance (operational work, no audit trail; stored with
-  Ephemeral=true, not exported)
+- Wisp = ephemeral instance (operational work, no audit trail; stored with Ephemeral=true, not exported)
 - Use wisps for patrol cycles, diagnostics, one-shot orchestration
 - Use mols for repeatable workflows needing audit trail
-- `bd mol run` for durable work that should survive crashes (spawn + assign +
-  pin)
+- `bd mol run` for durable work that should survive crashes (spawn + assign + pin)
 
 Troubleshooting:
 
 - Confirm `BEADS_DIR` is set: `echo $BEADS_DIR`.
 - Version: `bdlocal version` (expect >= 0.63).
 - Health: `bdlocal doctor` / `bdlocal doctor --fix`.
-- "database not found on Dolt server": a stale or wrong dolt server is running.
-  `doctor --fix` often cannot recover this. Reliable fix:
+- "database not found on Dolt server": a stale or wrong dolt server is running. `doctor --fix` often cannot recover this. Reliable fix:
   1. `pkill -f 'dolt sql-server'` (kill ALL dolt servers)
-  2. Retry any `bdlocal` command — it auto-starts a fresh server from the
-     correct data directory (`$BEADS_DIR/dolt/`). Root cause: multiple dolt
-     servers from different projects can run concurrently on different ports; bd
-     may connect to the wrong one.
-- "embedded Dolt requires CGO": `metadata.json` is missing
-  `"dolt_mode": "server"`. Check `$BEADS_DIR/metadata.json` — it must contain
-  `"backend": "dolt"` and `"dolt_mode": "server"`.
-- Data recovery: `$BEADS_DIR/.beads/issues.jsonl` contains the last JSONL
-  backup. If the Dolt server is unrecoverable, re-import:
-  `pkill -f 'dolt sql-server' && bdlocal import $BEADS_DIR/.beads/issues.jsonl`.
+  2. Retry any `bdlocal` command — it auto-starts a fresh server from the correct data directory (`$BEADS_DIR/dolt/`). Root cause: multiple dolt servers from different projects can run concurrently on different ports; bd may connect to the wrong one.
+- "embedded Dolt requires CGO": `metadata.json` is missing `"dolt_mode": "server"`. Check `$BEADS_DIR/metadata.json` — it must contain `"backend": "dolt"` and `"dolt_mode": "server"`.
+- Data recovery: `$BEADS_DIR/.beads/issues.jsonl` contains the last JSONL backup. If the Dolt server is unrecoverable, re-import: `pkill -f 'dolt sql-server' && bdlocal import $BEADS_DIR/.beads/issues.jsonl`.
 
 Output:
 
-- Summarize the bead(s) involved, the exact mutation proposed or performed, and
-  the verification result.
-- Keep generic planning advice outside this skill unless the user explicitly
-  wants it persisted in Beads.
+- Summarize the bead(s) involved, the exact mutation proposed or performed, and the verification result.
+- Keep generic planning advice outside this skill unless the user explicitly wants it persisted in Beads.

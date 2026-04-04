@@ -39,9 +39,35 @@ return {
   {
     "stevearc/conform.nvim",
     opts = function(_, opts)
+      -- Inherit built-in Prettier definitions but force proseWrap=preserve so
+      -- project `proseWrap: "always"` (or printWidth reflow) does not rewrap
+      -- markdown body text. Use `--prose-wrap=preserve` (one argv token) so
+      -- prettierd's CLI parser does not treat a separate `preserve` as the path.
+      opts.formatters = vim.tbl_deep_extend("force", opts.formatters or {}, {
+        markdownlint_fix = {
+          command = "markdownlint",
+          args = { "--fix", "--disable", "MD013", "--", "$FILENAME" },
+          stdin = false,
+        },
+        prettier_markdown = {
+          inherit = "prettier",
+          prepend_args = { "--prose-wrap=preserve" },
+        },
+        prettierd_markdown = {
+          inherit = "prettierd",
+          prepend_args = { "--prose-wrap=preserve" },
+        },
+      })
+
+      local md_formatters = function(bufnr)
+        local conform = require("conform")
+        local prettierd = conform.get_formatter_info("prettierd_markdown", bufnr)
+        local prettier = prettierd.available and "prettierd_markdown" or "prettier_markdown"
+        return { "markdownlint_fix", prettier }
+      end
       opts.formatters_by_ft = vim.tbl_deep_extend("force", opts.formatters_by_ft or {}, {
-        markdown = { "prettierd", "prettier", stop_after_first = true },
-        mdx = { "prettierd", "prettier", stop_after_first = true },
+        markdown = md_formatters,
+        mdx = md_formatters,
       })
       return opts
     end,
@@ -52,6 +78,11 @@ return {
       opts.linters_by_ft = vim.tbl_deep_extend("force", opts.linters_by_ft or {}, {
         markdown = { "markdownlint" },
         mdx = { "markdownlint" },
+      })
+      opts.linters = vim.tbl_deep_extend("force", opts.linters or {}, {
+        markdownlint = {
+          prepend_args = { "--disable", "MD013" },
+        },
       })
       return opts
     end,

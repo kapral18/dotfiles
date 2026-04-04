@@ -7,8 +7,7 @@ Cargo-installed CLI tools are managed via a list.
 ## Preconditions
 
 - `cargo` is installed.
-- You verified the crate name (for example with
-  `cargo search <name> --limit 5`).
+- You verified the crate name (for example with `cargo search <name> --limit 5`).
 
 ## Steps
 
@@ -35,8 +34,7 @@ cargo install --list
 
 ## Rollback / Undo
 
-1. Remove the crate line from
-   [`home/readonly_dot_default-cargo-crates`](../../home/readonly_dot_default-cargo-crates).
+1. Remove the crate line from [`home/readonly_dot_default-cargo-crates`](../../home/readonly_dot_default-cargo-crates).
 2. Re-apply:
 
 ```bash

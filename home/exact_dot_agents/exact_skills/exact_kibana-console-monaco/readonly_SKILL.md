@@ -1,34 +1,25 @@
 ---
 name: kibana-console-monaco
-description: |-
-  Interact with the Kibana Dev Tools Console Monaco editor via Playwright /
-  Playwriter. Use when automating or testing the Console editor in a real
-  browser. Only for elastic/kibana repos.
+description: Interact with the Kibana Dev Tools Console Monaco editor via Playwright / Playwriter. Use when automating or testing the Console editor in a real browser. Only for elastic/kibana repos.
 ---
 
 # Kibana Dev Tools Console — Monaco Editor Interaction
 
-Use when: automating, testing, or verifying behavior of the Kibana Dev Tools
-Console editor in a headed browser via Playwright or Playwriter.
+Use when: automating, testing, or verifying behavior of the Kibana Dev Tools Console editor in a headed browser via Playwright or Playwriter.
 
 ## Navigation
 
 `http://<host>:5601/app/dev_tools#/console`
 
-If the instance requires login, authenticate first or reuse an already-logged-in
-tab via `context.pages()`.
+If the instance requires login, authenticate first or reuse an already-logged-in tab via `context.pages()`.
 
 ## Editor Layers & Clicking
 
-The Console editor is a Monaco instance wrapped in Kibana's `EuiCodeEditor`.
-Three layers can intercept pointer events:
+The Console editor is a Monaco instance wrapped in Kibana's `EuiCodeEditor`. Three layers can intercept pointer events:
 
-1. **`codeEditorHint`** — a "Code Editor, activate edit mode" overlay
-   (`[data-test-subj="codeEditorHint"]`). Appears when the editor loses focus.
-2. **`.view-lines`** — Monaco's rendered text layer. Always sits on top of the
-   underlying `<textarea>`.
-3. **`<textarea role="textbox">`** — the actual input element. Hidden behind
-   `.view-lines`; direct clicks always time out.
+1. **`codeEditorHint`** — a "Code Editor, activate edit mode" overlay (`[data-test-subj="codeEditorHint"]`). Appears when the editor loses focus.
+2. **`.view-lines`** — Monaco's rendered text layer. Always sits on top of the underlying `<textarea>`.
+3. **`<textarea role="textbox">`** — the actual input element. Hidden behind `.view-lines`; direct clicks always time out.
 
 ### How to click into the editor reliably
 
@@ -38,11 +29,9 @@ Three layers can intercept pointer events:
 await state.page.locator(".monaco-editor").first().click({ force: true });
 ```
 
-**Never** try to click the `<textarea>` directly — the `.view-lines` overlay
-will always intercept and Playwright will time out.
+**Never** try to click the `<textarea>` directly — the `.view-lines` overlay will always intercept and Playwright will time out.
 
-If the `codeEditorHint` overlay is visible and you want to click it
-specifically, it too sits behind `.view-lines`, so `{ force: true }` is needed:
+If the `codeEditorHint` overlay is visible and you want to click it specifically, it too sits behind `.view-lines`, so `{ force: true }` is needed:
 
 ```js
 await state.page
@@ -54,8 +43,7 @@ await state.page
 
 ### Import button (preferred for multi-line content)
 
-Interactive typing triggers Monaco auto-close (`{` becomes `{}`, Enter is
-consumed by brace handling, etc.). Use the hidden file input to bypass this:
+Interactive typing triggers Monaco auto-close (`{` becomes `{}`, Enter is consumed by brace handling, etc.). Use the hidden file input to bypass this:
 
 ```js
 const fs = require("node:fs");
@@ -78,8 +66,7 @@ await state.page.waitForTimeout(1000);
 
 **Notes:**
 
-- The import confirmation modal always appears — click "Import and replace" to
-  confirm.
+- The import confirmation modal always appears — click "Import and replace" to confirm.
 - Trailing whitespace on lines may be stripped by the import.
 
 ### Clear editor
@@ -115,9 +102,7 @@ for (let i = 0; i < count; i++) {
 }
 ```
 
-Then click on the target line. **Critical:** each `.view-line` spans the full
-editor width. Clicking near the right edge puts the cursor past all content
-(often jumping to a different logical line). Click near the actual text:
+Then click on the target line. **Critical:** each `.view-line` spans the full editor width. Clicking near the right edge puts the cursor past all content (often jumping to a different logical line). Click near the actual text:
 
 ```js
 const targetLine = lines.nth(4);
@@ -141,12 +126,9 @@ await state.page.keyboard.press("ArrowDown"); // move down one line
 await state.page.keyboard.press("ArrowUp"); // move up one line
 ```
 
-**Note:** `Ctrl+G` (Go to Line) does NOT work — the Console editor intercepts
-it. Use ArrowDown/ArrowUp from a known position instead.
+**Note:** `Ctrl+G` (Go to Line) does NOT work — the Console editor intercepts it. Use ArrowDown/ArrowUp from a known position instead.
 
-**Note:** `Enter` does NOT reliably create new lines — the Console editor's
-brace handling may consume it. This is why importing content is preferred over
-typing.
+**Note:** `Enter` does NOT reliably create new lines — the Console editor's brace handling may consume it. This is why importing content is preferred over typing.
 
 ## Triggering Autocomplete
 
@@ -157,12 +139,10 @@ await state.page.waitForTimeout(2500); // autocomplete needs time to load
 
 **Important behaviors:**
 
-- Autocomplete requires the endpoint to be recognized by the Console's API spec.
-  Unknown endpoints won't produce body suggestions.
+- Autocomplete requires the endpoint to be recognized by the Console's API spec. Unknown endpoints won't produce body suggestions.
 - After triggering, dismiss with `Escape` before trying again.
 - Accept a suggestion with `Enter`.
-- The autocomplete popup renders as a Monaco widget overlay, visible in
-  screenshots.
+- The autocomplete popup renders as a Monaco widget overlay, visible in screenshots.
 
 ## Reading Editor Content
 
@@ -175,13 +155,11 @@ for (let i = 0; i < count; i++) {
 }
 ```
 
-**Note:** `window.monaco` is not exposed in Kibana. Do not try to access the
-Monaco API via `page.evaluate()`. Use DOM-based approaches instead.
+**Note:** `window.monaco` is not exposed in Kibana. Do not try to access the Monaco API via `page.evaluate()`. Use DOM-based approaches instead.
 
 ## Screenshots
 
-Always use `scale: 'css'` to avoid oversized images on Retina displays. Crop to
-the editor area for focused verification shots:
+Always use `scale: 'css'` to avoid oversized images on Retina displays. Crop to the editor area for focused verification shots:
 
 ```js
 const editorArea = state.page.locator(".monaco-editor").first();

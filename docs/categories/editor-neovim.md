@@ -2,11 +2,9 @@
 
 Back: [`docs/categories/index.md`](index.md)
 
-This page explains what the Neovim setup in this repo enables, how it is
-structured, and the workflows that are easy to miss if you only skim the config.
+This page explains what the Neovim setup in this repo enables, how it is structured, and the workflows that are easy to miss if you only skim the config.
 
-This page is written for IDE-first users (VSCode / JetBrains) who want to
-understand the practical benefits and adopt useful parts gradually.
+This page is written for IDE-first users (VSCode / JetBrains) who want to understand the practical benefits and adopt useful parts gradually.
 
 ## What You Get
 
@@ -15,41 +13,33 @@ understand the practical benefits and adopt useful parts gradually.
 - Tight test loops for JS/TS (Jest) in an editor split
 - Git ergonomics (hunks, history search, diffs)
 - A set of local plugins that solve specific daily problems
-- Project-aware formatting for web files (JS/TS/JSON): prefer Oxfmt when the
-  repo declares it, else Biome, else Prettier
-- ESLint and Oxlint diagnostics can coexist; formatting remains single-tool to
-  avoid conflicts
+- Project-aware formatting for web files (JS/TS/JSON): prefer Oxfmt when the repo declares it, else Biome, else Prettier
+- ESLint and Oxlint diagnostics can coexist; formatting remains single-tool to avoid conflicts
+- Markdown and MDX: Prettier (via conform.nvim) is invoked with `--prose-wrap=preserve` so body text is not reflowed to `printWidth` from the editor, even when a project config sets `proseWrap: "always"` (see [`plugins/markdown.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_markdown.lua)). Editor soft-wrap uses `FileType` patterns `markdown*` / `mdx*` so compound types (e.g. `markdown.github`) are included, and options are applied per window via `win_findbuf` (see [`core/autocmds.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_core/readonly_autocmds.lua) and [`util/markdown_view.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_util/readonly_markdown_view.lua)). Sessions omit `localoptions` in `sessionoptions` so window/buffer options stay driven by config and filetypes, not replayed session state (see [`core/options.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_core/readonly_options.lua)). Default Neovim `viewoptions` does **not** include `options`, so `mkview` on `BufLeave` does not persist `wrap` (only folds/cursor).
 
 ## Where The Config Lives
 
-- Source (in this repo):
-  [`home/dot_config/exact_nvim/`](../../home/dot_config/exact_nvim/)
+- Source (in this repo): [`home/dot_config/exact_nvim/`](../../home/dot_config/exact_nvim/)
 - Install target (on disk): `~/.config/nvim/`
 
-This setup uses `chezmoi` naming conventions where some directories are prefixed
-with `exact_` in the source but are installed without that prefix.
+This setup uses `chezmoi` naming conventions where some directories are prefixed with `exact_` in the source but are installed without that prefix.
 
 Examples (source -> installed):
 
-- [`home/dot_config/exact_nvim/exact_lua/`](../../home/dot_config/exact_nvim/exact_lua/)
-  -> `~/.config/nvim/lua/`
-- [`home/dot_config/exact_nvim/exact_after/`](../../home/dot_config/exact_nvim/exact_after/)
-  -> `~/.config/nvim/after/`
+- [`home/dot_config/exact_nvim/exact_lua/`](../../home/dot_config/exact_nvim/exact_lua/) -> `~/.config/nvim/lua/`
+- [`home/dot_config/exact_nvim/exact_after/`](../../home/dot_config/exact_nvim/exact_after/) -> `~/.config/nvim/after/`
 
 Leader keys:
 
 - `mapleader` is space (`vim.g.mapleader = " "`)
 - `maplocalleader` is `\`
 
-See
-[`home/dot_config/exact_nvim/exact_lua/exact_core/readonly_options.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_core/readonly_options.lua).
+See [`home/dot_config/exact_nvim/exact_lua/exact_core/readonly_options.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_core/readonly_options.lua).
 
 Neovim itself is version-managed via ASDF:
 
 - Plugins list: [`home/asdf_plugins.tmpl`](../../home/asdf_plugins.tmpl)
-- Version pin:
-  [`home/readonly_dot_tool-versions.tmpl`](../../home/readonly_dot_tool-versions.tmpl)
-  (`neovim 0.12.0`)
+- Version pin: [`home/readonly_dot_tool-versions.tmpl`](../../home/readonly_dot_tool-versions.tmpl) (`neovim 0.12.0`)
 
 ## Quick Start
 
@@ -62,28 +52,22 @@ Neovim itself is version-managed via ASDF:
 
 This config now uses Neovim's built-in `vim.pack`.
 
-Plugin specs are still declared in lazy-style tables, but loading is now
-trigger-aware in `core/plugins.lua`: `cmd`, `event`, `ft`, and key-triggered
-plugins are deferred until first use while always-on specs load at startup.
+Plugin specs are still declared in lazy-style tables, but loading is now trigger-aware in `core/plugins.lua`: `cmd`, `event`, `ft`, and key-triggered plugins are deferred until first use while always-on specs load at startup.
 
-Version policy (fast startup): startup does **not** probe remotes. Instead,
-`PackSync` / `PackStatus` refresh a cached heuristic map under
-`stdpath("state")` that decides per-plugin whether to follow release tags or
-branch tip.
+**Note:** `inc-rename.nvim` is loaded on `LspAttach` rather than `cmd = IncRename`. The deferred `cmd` stub in `core/plugins.lua` re-executes commands with `vim.cmd()`, which breaks Neovim's command-preview API that `inc-rename` relies on (you may see `E32: No file name` or preview errors otherwise).
 
-- **default** (no `version` field): follow the latest semver tag where the
-  heuristic says tags are healthy; fall back to branch tip if tags appear stale.
+**Pack retention:** Orphan cleanup only removes directories for plugins that are no longer present in the merged Lua specs. Plugins skipped at startup because `cond` is false (for example, when the first buffer is outside a git work tree) still count as managed packs so their install is not deleted and re-fetched on the next session.
+
+Version policy (fast startup): startup does **not** probe remotes. Instead, `PackSync` / `PackStatus` refresh a cached heuristic map under `stdpath("state")` that decides per-plugin whether to follow release tags or branch tip.
+
+- **default** (no `version` field): follow the latest semver tag where the heuristic says tags are healthy; fall back to branch tip if tags appear stale.
 - `version = false`: explicitly force branch tip for a specific plugin.
-- explicit pins (`commit`/`tag`/`branch`/`version = "<range>"`) always take
-  priority.
+- explicit pins (`commit`/`tag`/`branch`/`version = "<range>"`) always take priority.
 
 The cached policy uses a commit-count heuristic with three gates:
 
-1. **Minimum release history**: repos with fewer than 3 semver tags can't form a
-   reliable average — if more than 30 commits have landed since the last tag,
-   fall back to branch tip.
-2. **Commit ratio**: if the number of commits since the latest tag exceeds the
-   average commits per release (x1.5), fall back to branch tip.
+1. **Minimum release history**: repos with fewer than 3 semver tags can't form a reliable average — if more than 30 commits have landed since the last tag, fall back to branch tip.
+2. **Commit ratio**: if the number of commits since the latest tag exceeds the average commits per release (x1.5), fall back to branch tip.
 3. **Absolute cap**: more than 150 unreleased commits always means branch tip.
 
 To force branch tip for a specific plugin, set `version = false` in its spec.
@@ -92,40 +76,23 @@ Practical commands:
 
 - `:PackDashboard` -> compact floating plugin dashboard with:
   - per-plugin update status
-  - breaking-risk hint (best-effort) from semver delta (`major`/`minor`/`patch`)
-    plus commit-message signals in the cumulative `rev_before..rev_after` range
-    (for example `BREAKING`, `feat`, `fix`, `refactor`, `perf`)
-  - icon-based links column (`diff` / `repo`) with direct compare URL for
-    pending updates
+  - breaking-risk hint (best-effort) from semver delta (`major`/`minor`/`patch`) plus commit-message signals in the cumulative `rev_before..rev_after` range (for example `BREAKING`, `feat`, `fix`, `refactor`, `perf`)
+  - icon-based links column (`diff` / `repo`) with direct compare URL for pending updates
   - single update (`<CR>`), multi-select update (`u`), update all pending (`U`)
-  - inline selection/filter/sort/search and details popup (`?` for full key
-    help)
+  - inline selection/filter/sort/search and details popup (`?` for full key help)
   - opens from cache/known state by default (no implicit online check)
 - `:PackSync` -> raw online `vim.pack` report (fetch remotes first)
 - `:PackStatus` -> raw offline `vim.pack` report (local refs only)
-- `:PackDashboardStats` -> print last raw check counters (`update/same/error`)
-  and check timestamps
-- `:PackTrace [plugin-name]` -> show current load state, trigger metadata, and
-  load reason
-- `:PackLoad <plugin-name>` -> force-load one plugin by name (useful for
-  debugging)
+- `:PackDashboardStats` -> print last raw check counters (`update/same/error`) and check timestamps
+- `:PackTrace [plugin-name]` -> show current load state, trigger metadata, and load reason
+- `:PackLoad <plugin-name>` -> force-load one plugin by name (useful for debugging)
 - `<localleader>ss` or `:AutoSession save` -> save the current session
 
-Dashboard/trace popup buffers are treated as transient and excluded from session
-persistence to avoid polluting `auto-session` restores. Session search
-integrations are loaded on demand to keep startup leaner. Use `r` (or
-`:PackDashboard!`) for explicit online refresh checks. Dashboard check/apply
-timestamps and last plugin status/version snapshot are persisted under
-`stdpath("state")` so they survive Neovim restart. The dashboard header also
-shows last raw check counters from the most recent explicit check, plus
-`checked` and `applied` stamps. Filter/sort, search text, and selected plugin
-rows are also restored on the next dashboard open. Use `o` to open a plugin diff
-link (with repository fallback), and `O` for repository-only open.
+Dashboard/trace popup buffers are treated as transient and excluded from session persistence to avoid polluting `auto-session` restores. Session search integrations are loaded on demand to keep startup leaner. Use `r` (or `:PackDashboard!`) for explicit online refresh checks. Dashboard check/apply timestamps and last plugin status/version snapshot are persisted under `stdpath("state")` so they survive Neovim restart. The dashboard header also shows last raw check counters from the most recent explicit check, plus `checked` and `applied` stamps. Filter/sort, search text, and selected plugin rows are also restored on the next dashboard open. Use `o` to open a plugin diff link (with repository fallback), and `O` for repository-only open.
 
 ### Dashboard Tuning (Optional)
 
-The dashboard defaults to an icon-first compact view and can be tuned with
-globals:
+The dashboard defaults to an icon-first compact view and can be tuned with globals:
 
 - `vim.g.pack_dashboard_width_ratio` (default `0.68`)
 - `vim.g.pack_dashboard_height_ratio` (default `0.68`)
@@ -133,10 +100,8 @@ globals:
 - `vim.g.pack_dashboard_min_height` (default `18`)
 - `vim.g.pack_dashboard_margin` (default `6`)
 - `vim.g.pack_dashboard_fast_scroll` (default `true`)
-- `vim.g.pack_dashboard_ascii` (default `false`; when `true`, use ASCII
-  labels/icons)
-- `vim.g.pack_dashboard_autocheck_on_open` (default `false`; when `true`, first
-  dashboard open may bootstrap cache with a check)
+- `vim.g.pack_dashboard_ascii` (default `false`; when `true`, use ASCII labels/icons)
+- `vim.g.pack_dashboard_autocheck_on_open` (default `false`; when `true`, first dashboard open may bootstrap cache with a check)
 
 Current links column behavior is compact availability:
 
@@ -146,18 +111,12 @@ Current links column behavior is compact availability:
 
 ## Tree-sitter: Bundled Parsers And Startup Hangs
 
-Neovim can load tree-sitter parsers from multiple places (runtimepath). In
-practice, a broken parser under the user "site" directory can hang Neovim at
-startup, especially if your last session opens a filetype that immediately
-triggers that parser.
+Neovim can load tree-sitter parsers from multiple places (runtimepath). In practice, a broken parser under the user "site" directory can hang Neovim at startup, especially if your last session opens a filetype that immediately triggers that parser.
 
-This config prefers Neovim's bundled parser for Markdown to reduce the chance of
-a bad user-installed parser taking down the editor:
+This config prefers Neovim's bundled parser for Markdown to reduce the chance of a bad user-installed parser taking down the editor:
 
-- Loader:
-  [`home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_treesitter.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_treesitter.lua)
-- Helper:
-  [`home/dot_config/exact_nvim/exact_lua/exact_util/readonly_treesitter.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_util/readonly_treesitter.lua)
+- Loader: [`home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_treesitter.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_treesitter.lua)
+- Helper: [`home/dot_config/exact_nvim/exact_lua/exact_util/readonly_treesitter.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_util/readonly_treesitter.lua)
 
 Symptoms you might see:
 
@@ -171,9 +130,7 @@ ls -la ~/.local/share/nvim/site/parser
 rm -f ~/.local/share/nvim/site/parser/markdown.so
 ```
 
-Note: the config also treats bundled/runtime parsers as "available" so
-`nvim-treesitter` doesn't repeatedly try to auto-install languages that Neovim
-already ships.
+Note: the config also treats bundled/runtime parsers as "available" so `nvim-treesitter` doesn't repeatedly try to auto-install languages that Neovim already ships.
 
 If you are IDE-first, start by learning:
 
@@ -185,53 +142,50 @@ If you are IDE-first, start by learning:
 
 This config installs `which-key`:
 
-- Plugin:
-  [`home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_which-key.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_which-key.lua)
+- Plugin: [`home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_which-key.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_which-key.lua)
 
 Most mappings are defined with descriptions in:
 
 - [`home/dot_config/exact_nvim/exact_lua/exact_core/readonly_keymaps.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_core/readonly_keymaps.lua)
 
-If you forget a shortcut, use `which-key` and your leader mappings as the
-primary discovery mechanism.
+If you forget a shortcut, use `which-key` and your leader mappings as the primary discovery mechanism.
 
 ## Customization Entry Points
 
 Start here if you want to change behavior without spelunking the entire tree:
 
-- Core options:
-  [`home/dot_config/exact_nvim/exact_lua/exact_core/readonly_options.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_core/readonly_options.lua)
-- Core keymaps:
-  [`home/dot_config/exact_nvim/exact_lua/exact_core/readonly_keymaps.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_core/readonly_keymaps.lua)
-- Plugin configs:
-  [`home/dot_config/exact_nvim/exact_lua/exact_plugins/`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins/)
+- Core options: [`home/dot_config/exact_nvim/exact_lua/exact_core/readonly_options.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_core/readonly_options.lua)
+- Core keymaps: [`home/dot_config/exact_nvim/exact_lua/exact_core/readonly_keymaps.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_core/readonly_keymaps.lua)
+- Core autocmds: [`home/dot_config/exact_nvim/exact_lua/exact_core/readonly_autocmds.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_core/readonly_autocmds.lua) (Markdown and `mdx` use `wrap` + `linebreak` + `breakindent` for readable prose)
+- Plugin configs: [`home/dot_config/exact_nvim/exact_lua/exact_plugins/`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins/)
 
 The corresponding installed paths are:
 
 - `~/.config/nvim/lua/core/options.lua`
 - `~/.config/nvim/lua/core/keymaps.lua`
+- `~/.config/nvim/lua/core/autocmds.lua`
 - `~/.config/nvim/lua/plugins/`
 
 How it's organized:
 
 - `core/` is foundational editor behavior (options, keymaps, autocmds)
 - `plugins/` is plugin configuration grouped by topic/language
-- `plugins_local_src/` contains local plugins written specifically for this
-  setup
+- `plugins_local_src/` contains local plugins written specifically for this setup
 
 Local plugins (written in this repo) live under:
 
-- Source:
-  [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/)
-- Loader:
-  [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/)
+- Source: [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/)
+- Loader: [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/)
 
-These are the most workflow-specific parts of the config and usually the best
-place to look when you want to understand _why_ something exists.
+These are the most workflow-specific parts of the config and usually the best place to look when you want to understand _why_ something exists.
 
 The load list is explicitly declared in:
 
 - [`home/dot_config/exact_nvim/exact_lua/exact_core/readonly_init.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_core/readonly_init.lua)
+
+## LSP Code Actions (`<leader>ca`)
+
+Code actions are shown with **fzf-lua**, not Neovim’s default `vim.ui.select` prompt. The `fzf-lua` plugin is loaded on demand (key triggers); its config registers `vim.ui.select` globally only after that first load. The `<leader>ca` / `<leader>cA` mappings therefore call `fzf-lua`’s `lsp_code_actions` helper (with `packadd` when needed) so the fzf picker is used even if you have not used another fzf mapping yet in that session.
 
 ## Starter Keymaps (High Signal)
 
@@ -280,8 +234,7 @@ GitHub (Octo):
 
 Repo search is centered around `fzf-lua`:
 
-- Config:
-  [`home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_fzf.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_fzf.lua)
+- Config: [`home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_fzf.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_fzf.lua)
 
 Useful mappings (all are defined in that file):
 
@@ -293,8 +246,7 @@ Useful mappings (all are defined in that file):
 
 File explorers:
 
-- Neo-tree:
-  [`home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_neo-tree.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_neo-tree.lua)
+- Neo-tree: [`home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_neo-tree.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_neo-tree.lua)
 - Yazi: same file (`mikavilpas/yazi.nvim`)
 - Oil: same file (`stevearc/oil.nvim`)
 
@@ -308,10 +260,8 @@ Neo-tree has a couple of "workflow" mappings inside the tree:
 
 This is one of the most valuable "hidden" workflows.
 
-- Loader:
-  [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_run-jest-in-split.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_run-jest-in-split.lua)
-- Source:
-  [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_run-jest-in-split.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_run-jest-in-split.lua)
+- Loader: [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_run-jest-in-split.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_run-jest-in-split.lua)
+- Source: [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_run-jest-in-split.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_run-jest-in-split.lua)
 
 Keymaps:
 
@@ -325,13 +275,10 @@ Keymaps:
 
 ## Git: Commit Message Summarizer (Local Plugin)
 
-In a `gitcommit` buffer, generate a Conventional Commit message from the staged
-diff (`git diff --cached`).
+In a `gitcommit` buffer, generate a Conventional Commit message from the staged diff (`git diff --cached`).
 
-- Loader:
-  [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_summarize-commit.lua.tmpl`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_summarize-commit.lua.tmpl)
-- Source:
-  [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_summarize-commit.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_summarize-commit.lua)
+- Loader: [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_summarize-commit.lua.tmpl`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_summarize-commit.lua.tmpl)
+- Source: [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_summarize-commit.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_summarize-commit.lua)
 
 Keymaps:
 
@@ -342,8 +289,7 @@ Keymaps:
 Output format notes:
 
 - Header: `type(scope?): summary`
-- Bullet points: one bullet per changed functionality (or per distinct logical
-  change)
+- Bullet points: one bullet per changed functionality (or per distinct logical change)
 
 Environment variables:
 
@@ -362,8 +308,7 @@ Hunks, blame, and history search are configured here:
 
 Highlights:
 
-- gitsigns hunk navigation (`[h` / `]h`) and stage/reset hunk mappings under
-  `leader-gh*`
+- gitsigns hunk navigation (`[h` / `]h`) and stage/reset hunk mappings under `leader-gh*`
 - Diffview mappings under `leader-df*`
 - History search (`AdvancedGitSearch`) under `leader-ga*`
 
@@ -372,26 +317,22 @@ Highlights:
 Show owner of the current file:
 
 - Keymap: `leader-0`
-- Loader:
-  [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_show-file-owner.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_show-file-owner.lua)
+- Loader: [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_show-file-owner.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_show-file-owner.lua)
 
 Search only paths owned by a team/owner:
 
 - Keymaps: `leader-rg`, `leader-rG`, `leader-fd`, `leader-fD`
 - Commands: `:OwnerCodeGrep`, `:OwnerCodeFd`, `:ListOwners`
-- Loader:
-  [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_owner-code-search.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_owner-code-search.lua)
+- Loader: [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_owner-code-search.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_owner-code-search.lua)
 
 ## Refactors: Move TS Exports (Local Plugin)
 
 - Visual mode mapping: `leader-]`
-- Loader:
-  [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_ts-move-exports.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_ts-move-exports.lua)
+- Loader: [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_ts-move-exports.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_ts-move-exports.lua)
 
 ## tmux Bridge: Send Text To The Right Pane (Local Plugin)
 
-If you run a REPL/test watcher in tmux, you can send data from Neovim to the
-pane to the right.
+If you run a REPL/test watcher in tmux, you can send data from Neovim to the pane to the right.
 
 - `leader-ad` send diagnostics
 - `leader-al` send current line
@@ -399,55 +340,41 @@ pane to the right.
 - `leader-ah` send git hunk
 - `leader-ag` send git diff (file)
 
-Loader:
-[`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_send-to-tmux-right-pane.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_send-to-tmux-right-pane.lua)
+Loader: [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_send-to-tmux-right-pane.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_send-to-tmux-right-pane.lua)
 
 ## Jump Between Source And Test Files (Local Plugin)
 
-If you keep `foo.ts` and `foo.test.ts` (or `.spec`, `_test`, etc) side-by-side,
-this mapping toggles between them.
+If you keep `foo.ts` and `foo.test.ts` (or `.spec`, `_test`, etc) side-by-side, this mapping toggles between them.
 
 - Keymap: `Ctrl-^`
-- Loader:
-  [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_switch-src-test.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_switch-src-test.lua)
-- Source:
-  [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_switch-src-test.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_switch-src-test.lua)
+- Loader: [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_switch-src-test.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_switch-src-test.lua)
+- Source: [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_switch-src-test.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_switch-src-test.lua)
 
-It supports extension fallbacks (ts <-> tsx <-> js <-> jsx) when the exact match
-does not exist.
+It supports extension fallbacks (ts <-> tsx <-> js <-> jsx) when the exact match does not exist.
 
 ## Open ESLint Config References (Local Plugin)
 
-When your cursor is on an ESLint `extends`/plugin reference, this opens the
-actual file on disk (from `node_modules`).
+When your cursor is on an ESLint `extends`/plugin reference, this opens the actual file on disk (from `node_modules`).
 
 - Keymap: `leader-sfe`
-- Loader:
-  [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_open-eslint-path.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_open-eslint-path.lua)
+- Loader: [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_open-eslint-path.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_open-eslint-path.lua)
 
 ## Copy Current Buffer To Quickfix Directories (Local Plugin)
 
-If your quickfix list includes matches across multiple directories, this helper
-can copy the current file into each of those directories (useful for applying a
-file-based fix across multiple worktrees/sandboxes).
+If your quickfix list includes matches across multiple directories, this helper can copy the current file into each of those directories (useful for applying a file-based fix across multiple worktrees/sandboxes).
 
 - Keymap: `leader-cb` (copy)
 - Keymap: `leader-cB` (copy forced)
 - Command: `:CopyBufferToQfDirs` (optional `force`)
-- Loader:
-  [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_copy-to-qf.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_copy-to-qf.lua)
+- Loader: [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_copy-to-qf.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_copy-to-qf.lua)
 
 ## Code Screenshots (Local Plugin): `freeze`
 
 Generate an image of code directly from Neovim using the `freeze` CLI.
 
-- Homebrew formula (already managed by this repo's Brewfile):
-  `brew "charmbracelet/tap/freeze"` in
-  [`home/readonly_dot_Brewfile.tmpl`](../../home/readonly_dot_Brewfile.tmpl)
-- Loader:
-  [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_freeze.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_freeze.lua)
-- Source:
-  [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_freeze.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_freeze.lua)
+- Homebrew formula (already managed by this repo's Brewfile): `brew "charmbracelet/tap/freeze"` in [`home/readonly_dot_Brewfile.tmpl`](../../home/readonly_dot_Brewfile.tmpl)
+- Loader: [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_freeze.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_freeze.lua)
+- Source: [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_freeze.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_freeze.lua)
 
 Commands:
 
@@ -461,20 +388,16 @@ Behavior:
 
 ## Toggle Window Width (Local Plugin)
 
-Toggles the current window width between the previous value and a "fit to
-content" width.
+Toggles the current window width between the previous value and a "fit to content" width.
 
 - Keymap: `leader-=`
-- Loader:
-  [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_toggle-win-width.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_toggle-win-width.lua)
+- Loader: [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_toggle-win-width.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_toggle-win-width.lua)
 
 ## Winbar: Show Remainder Path (Local Plugin)
 
-This config sets a custom winbar that shows the remainder of the current path in
-a compact way.
+This config sets a custom winbar that shows the remainder of the current path in a compact way.
 
-- Loader:
-  [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_winbar.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_winbar.lua)
+- Loader: [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_winbar.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_winbar.lua)
 
 ## Quickfix Ergonomics (Local Plugin)
 
@@ -485,13 +408,11 @@ Quickfix is treated as a first-class workflow. Add-ons:
 - `leader-rqx` filter exclude pattern
 - inside quickfix window: `dd` removes an entry
 
-Loader:
-[`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_qf.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_qf.lua)
+Loader: [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_qf.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_qf.lua)
 
 ## Small Quality-Of-Life Commands
 
-Defined in
-[`home/dot_config/exact_nvim/exact_lua/exact_core/readonly_keymaps.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_core/readonly_keymaps.lua):
+Defined in [`home/dot_config/exact_nvim/exact_lua/exact_core/readonly_keymaps.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_core/readonly_keymaps.lua):
 
 - `:LargeFiles` populate quickfix with very large tracked files
 - `:WW` / `:WWW` write without triggering autocmds
@@ -508,11 +429,9 @@ Defined in
 
 - VSCode/JetBrains tabs map more closely to Neovim buffers.
 - IDE "Problems" panel maps well to Neovim's quickfix list.
-- Multi-cursor exists, but composition (motions + operators + textobjects) is
-  the main scaling strategy.
+- Multi-cursor exists, but composition (motions + operators + textobjects) is the main scaling strategy.
 
-If you are used to clicking around panels in an IDE, your first bridge skill is
-to rely on:
+If you are used to clicking around panels in an IDE, your first bridge skill is to rely on:
 
 - fzf pickers for file/search navigation
 - quickfix for diagnostics and search results
@@ -537,15 +456,13 @@ Inside Neovim, verify key workflows:
 
 If keymaps/plugins seem missing:
 
-- confirm `chezmoi apply` succeeded for
-  [`home/dot_config/exact_nvim/`](../../home/dot_config/exact_nvim/).
+- confirm `chezmoi apply` succeeded for [`home/dot_config/exact_nvim/`](../../home/dot_config/exact_nvim/).
 - confirm plugin sync completed (`:PackSync` / `:PackStatus` output).
 - confirm you are running the expected Neovim binary/version from ASDF.
 
 ## Related
 
 - Repo overview and install: [`README.md`](../../README.md)
-- Neovim local README (short pointer):
-  [`home/dot_config/exact_nvim/README.md`](../../home/dot_config/exact_nvim/README.md)
+- Neovim local README (short pointer): [`home/dot_config/exact_nvim/README.md`](../../home/dot_config/exact_nvim/README.md)
 - Terminals: [`docs/categories/terminals/index.md`](terminals/index.md)
 - Tmux: [`docs/categories/tmux/index.md`](tmux/index.md)

@@ -2,8 +2,7 @@
 
 Back: [`docs/categories/index.md`](../index.md)
 
-This repo is designed around a tmux-first workflow, but you still need a solid
-terminal emulator and a few CLI UX defaults.
+This repo is designed around a tmux-first workflow, but you still need a solid terminal emulator and a few CLI UX defaults.
 
 ## Terminal emulator
 
@@ -13,8 +12,7 @@ Default terminal emulator config:
 
 ## Bat (better `cat`)
 
-- Config:
-  [`home/dot_config/exact_bat/readonly_config`](../../../home/dot_config/exact_bat/readonly_config)
+- Config: [`home/dot_config/exact_bat/readonly_config`](../../../home/dot_config/exact_bat/readonly_config)
 
 Themes are pulled via externals into:
 
@@ -24,5 +22,4 @@ See [`home/.chezmoiexternal.toml`](../../../home/.chezmoiexternal.toml).
 
 ## Next
 
-- Tmux overview + key bindings:
-  [`docs/categories/tmux/index.md`](../tmux/index.md)
+- Tmux overview + key bindings: [`docs/categories/tmux/index.md`](../tmux/index.md)

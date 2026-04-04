@@ -37,7 +37,10 @@ opt.pumheight = 10
 opt.relativenumber = false
 opt.ruler = false
 opt.scrolloff = 4
-opt.sessionoptions = { "tabpages", "winsize", "winpos", "localoptions" }
+-- Omit `localoptions`: do not save/restore window- or buffer-local options in
+-- sessions (wrap, spell, etc.). Those come from `core/autocmds` and filetypes
+-- instead of stale session state.
+opt.sessionoptions = { "tabpages", "winsize", "winpos" }
 opt.shiftround = true
 opt.shiftwidth = 2
 opt.shortmess:append({ W = true, I = true, c = true, C = true })

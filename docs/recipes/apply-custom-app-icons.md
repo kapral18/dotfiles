@@ -6,20 +6,15 @@ This setup supports applying custom macOS app icons based on a YAML mapping.
 
 ## Preconditions
 
-- You have icon files under
-  [`home/app_icons/assets/`](../../home/app_icons/assets/).
-- Mapping exists in
-  [`home/app_icons/readonly_icon_mapping.yaml`](../../home/app_icons/readonly_icon_mapping.yaml).
+- You have icon files under [`home/app_icons/assets/`](../../home/app_icons/assets/).
+- Mapping exists in [`home/app_icons/readonly_icon_mapping.yaml`](../../home/app_icons/readonly_icon_mapping.yaml).
 - Dependencies are installed: `fileicon`, `yq`.
 
 ## Files
 
-- Mapping:
-  [`home/app_icons/readonly_icon_mapping.yaml`](../../home/app_icons/readonly_icon_mapping.yaml)
+- Mapping: [`home/app_icons/readonly_icon_mapping.yaml`](../../home/app_icons/readonly_icon_mapping.yaml)
 - Icon assets: [`home/app_icons/assets/`](../../home/app_icons/assets/)
-- Script:
-  [`home/exact_bin/executable_,apply-app-icons.tmpl`](../../home/exact_bin/executable_,apply-app-icons.tmpl)
-  (installs as `,apply-app-icons`)
+- Script: [`home/exact_bin/executable_,apply-app-icons.tmpl`](../../home/exact_bin/executable_,apply-app-icons.tmpl) (installs as `,apply-app-icons`)
 
 ## Steps
 
@@ -60,6 +55,4 @@ fileicon remove "/Applications/<AppName>.app"
 
 ## Notes
 
-[`home/app_icons/`](../../home/app_icons/) is kept in the repo but ignored by
-`chezmoi` ([`home/.chezmoiignore`](../../home/.chezmoiignore)). The script reads
-the mapping and assets from the repo source directory.
+[`home/app_icons/`](../../home/app_icons/) is kept in the repo but ignored by `chezmoi` ([`home/.chezmoiignore`](../../home/.chezmoiignore)). The script reads the mapping and assets from the repo source directory.

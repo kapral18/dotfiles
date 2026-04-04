@@ -4,8 +4,7 @@ Back: [`docs/index.md`](index.md)
 
 ## Will this overwrite my existing dotfiles?
 
-`chezmoi` will prompt if a target file was modified since chezmoi last wrote it.
-Use a preview first:
+`chezmoi` will prompt if a target file was modified since chezmoi last wrote it. Use a preview first:
 
 ```bash
 chezmoi diff
@@ -14,9 +13,7 @@ chezmoi apply --dry-run --verbose
 
 ## Do I need to use Neovim/tmux to use this setup?
 
-No. The installation is all-or-nothing, but your usage doesn't have to be. You
-can install the full setup and continue using your preferred IDE (like VSCode or
-JetBrains) while you slowly learn the terminal tools.
+No. The installation is all-or-nothing, but your usage doesn't have to be. You can install the full setup and continue using your preferred IDE (like VSCode or JetBrains) while you slowly learn the terminal tools.
 
 See [`docs/learning-paths.md`](learning-paths.md).
 
@@ -29,15 +26,13 @@ This setup assumes 1Password provides:
 - SSH agent keys (no private keys on disk)
 - 1Password CLI access for some bootstrap steps
 
-See
-[`docs/categories/security-and-secrets.md`](categories/security-and-secrets.md).
+See [`docs/categories/security-and-secrets.md`](categories/security-and-secrets.md).
 
 ## Why does applying packages remove things?
 
 Some hooks are intentionally declarative.
 
-For example, the Brewfile hook runs `brew bundle cleanup --global --force`, so
-packages not in the Brewfile can be removed.
+For example, the Brewfile hook runs `brew bundle cleanup --global --force`, so packages not in the Brewfile can be removed.
 
 See:
 

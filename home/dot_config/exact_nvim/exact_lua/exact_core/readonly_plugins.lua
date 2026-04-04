@@ -606,12 +606,18 @@ function M.setup(module_names)
     end
   end
 
-  local spec_names = {}
+  -- Retain on-disk packs for every declared remote plugin, including when
+  -- `cond` / `enabled` is false at startup. Otherwise orphan cleanup treats
+  -- conditionally disabled specs (e.g. git tools when cwd has no `.git`) as
+  -- removed from the config and runs `vim.pack.del`, forcing reinstall later.
+  local retain_pack_names = {}
   local spec_src = {}
   for _, entry in ipairs(sorted) do
-    if entry.enabled and entry.src then
-      spec_names[entry.name] = true
-      spec_src[entry.name] = entry.src
+    if entry.src then
+      retain_pack_names[entry.name] = true
+      if entry.enabled then
+        spec_src[entry.name] = entry.src
+      end
     end
   end
 
@@ -622,7 +628,7 @@ function M.setup(module_names)
     for _, p in ipairs(all_plugins) do
       local name = p.spec and p.spec.name
       if type(name) == "string" and name ~= "" then
-        if not spec_names[name] then
+        if not retain_pack_names[name] then
           to_delete[#to_delete + 1] = name
         elseif spec_src[name] and p.spec.src and spec_src[name] ~= p.spec.src then
           to_reinstall[#to_reinstall + 1] = name

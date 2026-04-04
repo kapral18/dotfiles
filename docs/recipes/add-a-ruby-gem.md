@@ -34,8 +34,7 @@ gem list --local | rg '^<gemname> '
 
 ## Rollback / Undo
 
-1. Remove the gem from
-   [`home/readonly_dot_default-gems`](../../home/readonly_dot_default-gems).
+1. Remove the gem from [`home/readonly_dot_default-gems`](../../home/readonly_dot_default-gems).
 2. Re-apply:
 
 ```bash

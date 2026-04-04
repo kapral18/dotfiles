@@ -1,10 +1,6 @@
 ---
 name: buildkite
-description: |-
-  Buildkite CI/CD integration. Use when checking build status, triggering
-  builds, reading build logs, debugging CI failures, or managing pipelines.
-  Trigger words include "buildkite", "build", "CI", "build failed". Only for
-  elastic org repos.
+description: Buildkite CI/CD integration. Use when checking build status, triggering builds, reading build logs, debugging CI failures, or managing pipelines. Trigger words include "buildkite", "build", "CI", "build failed". Only for elastic org repos.
 tool_version: bk 3.32.2
 allowed-tools: Bash(bk:*)
 ---
@@ -115,12 +111,9 @@ For detailed debugging patterns, load `references/build-debugging.md`.
 
 ## Output Conventions
 
-- `bk` outputs text/table format by default. Use `--json`, `--yaml`, or
-  `-o json` for machine-readable output.
-- When inside a git repo with a configured pipeline, `-p` can often be omitted
-  (auto-detected from the repo).
-- Use `bk api` for REST API endpoints not covered by direct commands. `bk api`
-  auto-prepends the organization prefix, so use org-relative paths:
+- `bk` outputs text/table format by default. Use `--json`, `--yaml`, or `-o json` for machine-readable output.
+- When inside a git repo with a configured pipeline, `-p` can often be omitted (auto-detected from the repo).
+- Use `bk api` for REST API endpoints not covered by direct commands. `bk api` auto-prepends the organization prefix, so use org-relative paths:
 
 ```bash
 bk api /pipelines | jq '.[].slug'

@@ -2,8 +2,7 @@
 
 Back: [`docs/recipes/index.md`](index.md)
 
-If you like background music while coding, this repo includes a small helper
-that runs `lowfi` inside a tmux session.
+If you like background music while coding, this repo includes a small helper that runs `lowfi` inside a tmux session.
 
 ## Preconditions
 

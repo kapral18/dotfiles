@@ -1,8 +1,6 @@
 ---
 name: compose-issue
-description: |-
-  Draft an issue title and body as text. Use before creating or editing an
-  issue to compose the description. Text only — no gh side effects.
+description: Draft an issue title and body as text. Use before creating or editing an issue to compose the description. Text only — no gh side effects.
 ---
 
 # Compose Issue Body
@@ -10,27 +8,22 @@ description: |-
 Use when:
 
 - the user wants an issue body draft only (no `gh` side effects)
-- `~/.agents/skills/github/SKILL.md` needs issue text before creating/editing an
-  issue
+- `~/.agents/skills/github/SKILL.md` needs issue text before creating/editing an issue
 
 Scope:
 
 - produces an issue body draft only
-- do not create issues via `gh` here; use `~/.agents/skills/github/SKILL.md` for
-  GitHub side effects
+- do not create issues via `gh` here; use `~/.agents/skills/github/SKILL.md` for GitHub side effects
 
 Do not use:
 
-- user wants to create/edit the issue in GitHub:
-  `~/.agents/skills/github/SKILL.md`
+- user wants to create/edit the issue in GitHub: `~/.agents/skills/github/SKILL.md`
 
 First actions:
 
-1. Identify the problem statement, expected behavior, actual behavior, and
-   reproduction from verified evidence.
+1. Identify the problem statement, expected behavior, actual behavior, and reproduction from verified evidence.
 2. Keep repro steps concrete and ordered.
-3. If logs/screenshots are referenced, include only what materially helps and
-   redact secrets.
+3. If logs/screenshots are referenced, include only what materially helps and redact secrets.
 4. If the repo is Elastic/Kibana, use the Elastic variant section below.
 
 Rules:
@@ -42,8 +35,7 @@ Rules:
 Output:
 
 - Return only the issue body draft.
-- If crucial repro or environment detail is missing, call it out explicitly
-  rather than guessing.
+- If crucial repro or environment detail is missing, call it out explicitly rather than guessing.
 
 ## General template
 
@@ -66,10 +58,8 @@ Use when the repo is Elastic/Kibana.
 Additional first actions:
 
 1. Verify the repo/context is Elastic/Kibana.
-2. Gather reproducible problem, expected behavior, actual behavior, and
-   environment details from evidence.
-3. Leave unknown stack/deployment/browser fields blank or marked for follow-up;
-   do not invent them.
+2. Gather reproducible problem, expected behavior, actual behavior, and environment details from evidence.
+3. Leave unknown stack/deployment/browser fields blank or marked for follow-up; do not invent them.
 
 Additional rules:
 

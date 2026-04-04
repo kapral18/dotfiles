@@ -7,8 +7,7 @@ This setup is built around the idea that:
 - private keys should not live on disk
 - git identity should switch automatically based on where you're working
 
-The mechanics are implemented through a combination of 1Password's SSH agent,
-`~/.ssh/config`, and git's `includeIf` support.
+The mechanics are implemented through a combination of 1Password's SSH agent, `~/.ssh/config`, and git's `includeIf` support.
 
 ## SSH Agent
 
@@ -26,8 +25,7 @@ Installed as:
 
 ## Public Keys On Disk
 
-Git is configured to use SSH "public key" paths as identity selectors. The
-matching private keys are held by 1Password.
+Git is configured to use SSH "public key" paths as identity selectors. The matching private keys are held by 1Password.
 
 Relevant templates:
 
@@ -48,8 +46,7 @@ Work override (included conditionally):
 
 - [`home/work/private_dot_gitconfig.tmpl`](../../home/work/private_dot_gitconfig.tmpl)
 
-The primary config uses `includeIf "gitdir:~/work/"` on non-work machines so
-repos under `~/work/` automatically use the secondary identity.
+The primary config uses `includeIf "gitdir:~/work/"` on non-work machines so repos under `~/work/` automatically use the secondary identity.
 
 ## GitHub CLI + GitHub Picker
 
@@ -70,8 +67,7 @@ Git TUIs:
 
 ## Signing
 
-Git commit signing is configured for SSH signing, using the 1Password signing
-helper:
+Git commit signing is configured for SSH signing, using the 1Password signing helper:
 
 - [`home/private_readonly_dot_gitconfig.tmpl`](../../home/private_readonly_dot_gitconfig.tmpl)
 - [`home/private_dot_ssh/private_executable_allowed_signers.tmpl`](../../home/private_dot_ssh/private_executable_allowed_signers.tmpl)
@@ -86,14 +82,12 @@ git config --get user.email
 git config --get core.sshCommand
 ```
 
-If you are in a repo under `~/work/` on a non-work machine, you should see the
-secondary identity.
+If you are in a repo under `~/work/` on a non-work machine, you should see the secondary identity.
 
 ## Troubleshooting
 
 - Identity did not switch:
-  - verify repo path (`~/work/...` for `includeIf`-based work identity on
-    non-work machines).
+  - verify repo path (`~/work/...` for `includeIf`-based work identity on non-work machines).
   - check effective config origin:
 
 ```bash
@@ -107,9 +101,6 @@ git config --show-origin --get core.sshCommand
 
 ## Related
 
-- Identity switching:
-  [`docs/recipes/switching-work-personal-identity.md`](../recipes/switching-work-personal-identity.md)
-- Worktrees:
-  [`docs/recipes/worktree-workflow.md`](../recipes/worktree-workflow.md)
-- Security model:
-  [`docs/categories/security-and-secrets.md`](security-and-secrets.md)
+- Identity switching: [`docs/recipes/switching-work-personal-identity.md`](../recipes/switching-work-personal-identity.md)
+- Worktrees: [`docs/recipes/worktree-workflow.md`](../recipes/worktree-workflow.md)
+- Security model: [`docs/categories/security-and-secrets.md`](security-and-secrets.md)

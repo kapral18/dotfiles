@@ -7,8 +7,7 @@ All PR review modes load this file. Do not duplicate these rules in mode files.
 - If the user provided a PR URL/number, use that.
 - Otherwise:
   - Set `GH_PAGER=cat` for all `gh` calls (prevents interactive pager hangs).
-  - Resolve PR number via `,gh-prw`:
-    - `,gh-prw --number`
+  - Resolve PR number via `,gh-prw`: - `,gh-prw --number`
   - If `,gh-prw` fails once, stop and ask the user for the PR URL/number.
 
 ## Reference Resolution (blocking — complete before diff analysis)
@@ -19,29 +18,20 @@ All PR review modes load this file. Do not duplicate these rules in mode files.
 2. Open each one. For each:
    - PRs: read description, state, and diff summary
    - Issues: read full body
-   - Images/GIFs/videos: download to `/tmp` with
-     `curl -sL -o /tmp/<name> <url>`, then read the local file (direct GitHub
-     media URLs are not readable)
+   - Images/GIFs/videos: download to `/tmp` with `curl -sL -o /tmp/<name> <url>`, then read the local file (direct GitHub media URLs are not readable)
    - Other URLs: fetch if they could inform the review
 3. From whatever you just read, extract any new references not yet visited.
 4. Repeat steps 2-3 until no unvisited references remain.
-5. State the full list of references visited and what you learned from each
-   before proceeding to diff analysis.
+5. State the full list of references visited and what you learned from each before proceeding to diff analysis.
 
 If a claim depends on visuals and visuals are missing/unclear, ask for visuals.
 
 ## Deduplication + Truth Filter (Required Before Drafting)
 
 - Using artifacts from Reference Resolution, classify each candidate finding:
-  - `covered`: already addressed by accurate PR description clarifications or
-    existing review threads/replies (regardless of comment author) after
-    verifying against the current implementation/diff; do not draft a new
-    comment.
-  - `new`: not already covered and verified against the current
-    implementation/diff; eligible for draft feedback.
-  - `incorrect`: prior clarification/comment conflicts with the current
-    implementation/diff; add one correction with evidence (do not echo the
-    incorrect claim).
+  - `covered`: already addressed by accurate PR description clarifications or existing review threads/replies (regardless of comment author) after verifying against the current implementation/diff; do not draft a new comment.
+  - `new`: not already covered and verified against the current implementation/diff; eligible for draft feedback.
+  - `incorrect`: prior clarification/comment conflicts with the current implementation/diff; add one correction with evidence (do not echo the incorrect claim).
 
 ## Comment Placement (Draft Guidance)
 
@@ -53,31 +43,21 @@ Where to comment:
 
 ## Anchoring Constraints (Only If Posting Is Requested)
 
-- PR review comments are anchored to the PR's unified diff. The GitHub UI can
-  sometimes let you comment on context lines by expanding the diff, but API
-  calls still need a resolvable diff anchor.
-- For API calls, do not assume a source-file line number is a valid anchor.
-  Prefer:
-  - `position` (diff-relative), computed from the PR's unified diff:
-    - the `@@` hunk header line itself is **not counted** (position 0)
-    - the first line after the `@@` header is position 1
-    - counting continues sequentially across all subsequent hunks in the file
-  - or `line` + `side` / `start_line` + `start_side` (still must resolve against
-    the PR diff; GitHub will 422 if it cannot resolve)
+- PR review comments are anchored to the PR's unified diff. The GitHub UI can sometimes let you comment on context lines by expanding the diff, but API calls still need a resolvable diff anchor.
+- For API calls, do not assume a source-file line number is a valid anchor. Prefer:
+  - `position` (diff-relative), computed from the PR's unified diff: - the `@@` hunk header line itself is **not counted** (position 0) - the first line after the `@@` header is position 1 - counting continues sequentially across all subsequent hunks in the file
+  - or `line` + `side` / `start_line` + `start_side` (still must resolve against the PR diff; GitHub will 422 if it cannot resolve)
 - If the specific source line you care about is not shown in the diff context:
   - do NOT anchor the comment to an unrelated line
-  - anchor on the nearest relevant diff line in the same file and include a deep
-    link to the exact source location on the PR head SHA
+  - anchor on the nearest relevant diff line in the same file and include a deep link to the exact source location on the PR head SHA
 - If you cannot find a relevant diff anchor without confusing the author:
   - use a file-level comment (`subject_type=file`)
   - or a PR-level comment that links to the exact source lines
 
 ## Deep Links to Exact Source Lines (PR Head SHA)
 
-- Prefer links of the form:
-  `https://github.com/OWNER/REPO/blob/<head_sha>/<path>#L<start>-L<end>`
-- If you cannot reliably compute line numbers from GitHub, fetch the PR head
-  commit locally and use `git show <head_sha>:<path>` to compute them.
+- Prefer links of the form: `https://github.com/OWNER/REPO/blob/<head_sha>/<path>#L<start>-L<end>`
+- If you cannot reliably compute line numbers from GitHub, fetch the PR head commit locally and use `git show <head_sha>:<path>` to compute them.
 
 ## Local Verification
 
@@ -86,10 +66,8 @@ Where to comment:
 - UI repro hygiene (when verifying UI/editor behavior):
   - do one claim per repro run; reset state between runs (reload/new tab)
   - clear inputs deterministically before typing
-  - for rich editors, do not assume the accessible textarea reflects the full
-    editor model; verify what is actually rendered
+  - for rich editors, do not assume the accessible textarea reflects the full editor model; verify what is actually rendered
 
 ## If Posting Is Requested
 
-- Invoke the `github` skill via the Skill tool for exact anchoring and API
-  constraints.
+- Invoke the `github` skill via the Skill tool for exact anchoring and API constraints.

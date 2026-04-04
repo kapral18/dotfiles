@@ -8,6 +8,12 @@
   "endOfLine": "lf",
   "overrides": [
     {
+      "files": ["*.md"],
+      "options": {
+        "proseWrap": "preserve"
+      }
+    },
+    {
       "files": ["*.yml", "*.yaml"],
       "options": {
         "printWidth": 200,

@@ -37,8 +37,7 @@ uv tool list
 
 ## Rollback / Undo
 
-1. Remove the tool from
-   [`home/readonly_dot_default-uv-tools.tmpl`](../../home/readonly_dot_default-uv-tools.tmpl).
+1. Remove the tool from [`home/readonly_dot_default-uv-tools.tmpl`](../../home/readonly_dot_default-uv-tools.tmpl).
 2. Re-apply:
 
 ```bash

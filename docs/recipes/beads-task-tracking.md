@@ -2,8 +2,7 @@
 
 Back: [`docs/recipes/index.md`](index.md)
 
-This setup includes an opinionated way to use Beads (`bd`) without a global
-daemon and without mixing data across unrelated repos.
+This setup includes an opinionated way to use Beads (`bd`) without a global daemon and without mixing data across unrelated repos.
 
 ## Preconditions
 
@@ -17,8 +16,7 @@ daemon and without mixing data across unrelated repos.
 
 - [`home/dot_config/fish/readonly_config.fish.tmpl`](../../home/dot_config/fish/readonly_config.fish.tmpl)
 
-It resolves a per-repo `$BEADS_DIR` under `~/beads-data/<repo>` and pins the DB
-to:
+It resolves a per-repo `$BEADS_DIR` under `~/beads-data/<repo>` and pins the DB to:
 
 - `$BEADS_DIR/.beads/beads.db` (discovery anchor)
 
@@ -55,8 +53,7 @@ bdlocal info --json
 
 - Stop using wrapper in current shell:
   - run `bd ...` directly instead of `bdlocal`.
-- Remove local repo data directory (only if you want to delete local Beads
-  data):
+- Remove local repo data directory (only if you want to delete local Beads data):
 
 ```bash
 rm -rf "$BEADS_DIR"
@@ -64,5 +61,4 @@ rm -rf "$BEADS_DIR"
 
 ## Why This Exists
 
-For people used to Jira/Linear/etc., Beads is a lightweight local alternative.
-The key benefit of this wrapper is that it keeps data scoped per-repo.
+For people used to Jira/Linear/etc., Beads is a lightweight local alternative. The key benefit of this wrapper is that it keeps data scoped per-repo.

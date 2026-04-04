@@ -1,8 +1,6 @@
 ---
 name: cli-skills
-description: |-
-  Author or upgrade CLI tool skills. Use when creating a new skill for a
-  CLI tool or upgrading an existing CLI skill to a newer version.
+description: Author or upgrade CLI tool skills. Use when creating a new skill for a CLI tool or upgrading an existing CLI skill to a newer version.
 ---
 
 # CLI Tool Skills
@@ -23,7 +21,7 @@ tool_version: "<binary> <version>" # e.g. "bk 3.32.2", "knip 5.88.0"
 git clone <repo-url> /tmp/<tool-name>
 ```
 
-4. Investigate the CLI surface thoroughly from source — focus on:
+1. Investigate the CLI surface thoroughly from source — focus on:
    - Command/subcommand registration (entrypoints, command files)
    - Flag and argument declarations
    - Help text templates
@@ -31,22 +29,21 @@ git clone <repo-url> /tmp/<tool-name>
 
    Skip: tests, CI configs, docs unrelated to CLI surface.
 
-5. Cross-verify every finding against the installed binary:
+2. Cross-verify every finding against the installed binary:
 
 ```bash
 <tool> --help
 <tool> <subcommand> --help
 ```
 
-Source is for understanding; `--help` is the truth. Do not include anything that
-cannot be verified against the installed binary.
+Source is for understanding; `--help` is the truth. Do not include anything that cannot be verified against the installed binary.
 
-6. Create the skill directory and files:
+1. Create the skill directory and files:
    - `home/exact_dot_agents/exact_skills/exact_<name>/readonly_SKILL.md`
    - Optional: `exact_references/readonly_*.md` for detailed sub-topics
-7. Set `tool_version` in frontmatter to the installed version.
-8. Use the real binary name on PATH — not wrapper aliases.
-9. `chezmoi diff` to verify, then `chezmoi apply`.
+2. Set `tool_version` in frontmatter to the installed version.
+3. Use the real binary name on PATH — not wrapper aliases.
+4. `chezmoi diff` to verify, then `chezmoi apply`.
 
 ### Upgrading an existing skill
 
@@ -61,7 +58,7 @@ git clone <repo-url> /tmp/<tool-name>
 cd /tmp/<tool-name> && git fetch --all --tags && git pull
 ```
 
-5. Find the version tags and diff between them:
+1. Find the version tags and diff between them:
 
 ```bash
 cd /tmp/<tool-name>
@@ -69,22 +66,20 @@ git tag -l                                        # find naming convention
 git diff <anchor-tag>...<installed-tag> -- <relevant-paths>
 ```
 
-Focus on: command definitions, flag declarations, subcommand registration, help
-text, CLI entrypoints. Skip: tests, CI configs, unrelated docs.
+Focus on: command definitions, flag declarations, subcommand registration, help text, CLI entrypoints. Skip: tests, CI configs, unrelated docs.
 
-6. For each change in the diff:
+1. For each change in the diff:
    - Verify against `<tool> --help` / `<tool> <subcommand> --help`.
    - Update only the affected skill sections.
    - Do not propagate changes you cannot verify locally.
-7. Update `tool_version` in frontmatter to the installed version.
-8. `chezmoi diff` — confirm only expected sections changed.
+2. Update `tool_version` in frontmatter to the installed version.
+3. `chezmoi diff` — confirm only expected sections changed.
 
 ### When version tags are unclear
 
 - `git tag -l` in the cloned repo to find the naming convention.
 - Common patterns: `v3.32.2`, `3.32.2`, `cli/v3.32.2`, `bk/v3.32.2`.
-- If the anchor tag does not exist, treat the entire skill as unverified —
-  re-audit all commands against `--help` output for the installed version.
+- If the anchor tag does not exist, treat the entire skill as unverified — re-audit all commands against `--help` output for the installed version.
 
 ## Skill Source Layout
 
