@@ -60,6 +60,26 @@ tar_gz_bin|mdtt|szktkfm/mdtt|{{ $mdttTag }}|{{ $mdttAsset }}|mdtt|mdtt
 file|dug|unfrl/dug|{{ $dugTag }}|{{ $dugAsset }}|dug
 {{ end }}
 
+# kitten (kitty CLI — used for image preview in fzf via unicode-placeholder protocol)
+# https://github.com/kovidgoyal/kitty
+{{ $kittenAsset := "" }}
+{{ if eq $os "darwin" }}
+  {{ if eq $arch "arm64" }}
+    {{ $kittenAsset = "kitten-darwin-arm64" }}
+  {{ else }}
+    {{ $kittenAsset = "kitten-darwin-amd64" }}
+  {{ end }}
+{{ else if eq $os "linux" }}
+  {{ if eq $arch "arm64" }}
+    {{ $kittenAsset = "kitten-linux-arm64" }}
+  {{ else }}
+    {{ $kittenAsset = "kitten-linux-amd64" }}
+  {{ end }}
+{{ end }}
+{{ if ne $kittenAsset "" }}
+file|kitten|kovidgoyal/kitty|latest|{{ $kittenAsset }}|kitten
+{{ end }}
+
 # enola (non-work)
 # https://github.com/TheYahya/enola
 {{ if ne .isWork true }}

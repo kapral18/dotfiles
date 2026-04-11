@@ -8,6 +8,7 @@ local M = {}
 ---@field src string|nil
 ---@field dir string|nil
 ---@field enabled boolean
+---@field dep_only boolean
 
 local function notify_err(msg)
   vim.schedule(function()
@@ -213,12 +214,13 @@ local function flatten_specs(module_names)
       src = nil,
       dir = nil,
       enabled = true,
+      dep_only = true,
     }
     entries[name] = entry
     return entry
   end
 
-  local function add_spec(spec)
+  local function add_spec(spec, is_dependency)
     spec = normalize_spec(spec)
     if not spec then
       return nil
@@ -235,6 +237,9 @@ local function flatten_specs(module_names)
 
     local entry = get_or_create(name)
     entry.specs[#entry.specs + 1] = spec
+    if not is_dependency then
+      entry.dep_only = false
+    end
 
     if not entry.src and type(source) == "string" then
       entry.src = repo_to_src(source)
@@ -254,11 +259,11 @@ local function flatten_specs(module_names)
         if dep_name then
           entry.deps[dep_name] = true
           if dep:find("/") then
-            add_spec({ dep })
+            add_spec({ dep }, true)
           end
         end
       elseif type(dep) == "table" then
-        local dep_entry = add_spec(dep)
+        local dep_entry = add_spec(dep, true)
         local is_optional_dep = dep and (dep.optional == true or dep.opt == true)
         if dep_entry and not is_optional_dep then
           entry.deps[dep_entry.name] = true
@@ -275,7 +280,7 @@ local function flatten_specs(module_names)
       notify_err("Failed loading plugin module: " .. module_name)
     else
       for _, spec in ipairs(as_list(mod)) do
-        add_spec(spec)
+        add_spec(spec, false)
       end
     end
   end
@@ -567,6 +572,9 @@ function M.setup(module_names)
       end
 
       meta.defer = not force_start and (#meta.cmds > 0 or #meta.events > 0 or #meta.fts > 0 or meta.has_keys)
+      if entry.dep_only and not force_start and not meta.defer then
+        meta.defer = true
+      end
       entry_meta[entry.name] = meta
     end
   end
@@ -652,6 +660,62 @@ function M.setup(module_names)
     end
   end
 
+  local load_depth = 0
+  local pending_after_paths = {} ---@type string[]
+  local sourced_after_paths = {} ---@type table<string, boolean>
+  local vimenter_after_registered = false
+
+  local function queue_after_paths(entry)
+    local path = nil
+    if entry and entry.src then
+      path = vim.fn.stdpath("data") .. "/site/pack/core/opt/" .. entry.name
+    elseif entry and entry.dir then
+      path = vim.fn.expand(entry.dir)
+    end
+    if type(path) ~= "string" or path == "" or vim.fn.isdirectory(path) ~= 1 then
+      return
+    end
+
+    local after_paths = vim.fn.glob(path .. "/after/plugin/**/*.{vim,lua}", false, true)
+    for _, p in ipairs(after_paths) do
+      if type(p) == "string" and p ~= "" and not sourced_after_paths[p] then
+        pending_after_paths[#pending_after_paths + 1] = p
+      end
+    end
+  end
+
+  local function flush_after_paths()
+    if vim.v.vim_did_enter ~= 1 then
+      return
+    end
+    if #pending_after_paths == 0 then
+      return
+    end
+
+    local paths = pending_after_paths
+    pending_after_paths = {}
+
+    for _, p in ipairs(paths) do
+      if not sourced_after_paths[p] then
+        sourced_after_paths[p] = true
+        pcall(vim.cmd.source, { p, magic = { file = false } })
+      end
+    end
+  end
+
+  local function ensure_vimenter_after_flush()
+    if vimenter_after_registered then
+      return
+    end
+    vimenter_after_registered = true
+    vim.api.nvim_create_autocmd("VimEnter", {
+      once = true,
+      callback = function()
+        flush_after_paths()
+      end,
+    })
+  end
+
   local function apply_entry(entry, reason)
     local state = entry_state[entry.name]
     if not state or state.configured or state.loading then
@@ -675,6 +739,8 @@ function M.setup(module_names)
         vim.opt.rtp:prepend(dir)
       end
     end
+
+    queue_after_paths(entry)
 
     local opts = resolve_opts(entry)
     local ran_config = false
@@ -704,7 +770,19 @@ function M.setup(module_names)
     if not entry or not entry.enabled then
       return false
     end
-    return apply_entry(entry, reason)
+    load_depth = load_depth + 1
+    local ok = apply_entry(entry, reason)
+    load_depth = load_depth - 1
+
+    if load_depth == 0 then
+      if vim.v.vim_did_enter == 1 then
+        flush_after_paths()
+      else
+        ensure_vimenter_after_flush()
+      end
+    end
+
+    return ok
   end
 
   local function exec_mapped_rhs(key)

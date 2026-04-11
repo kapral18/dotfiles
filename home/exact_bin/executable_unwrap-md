@@ -14,6 +14,7 @@ Continuation lines are joined to the previous line with a single space.
 Options:
   --check   Report files that need unwrapping without modifying them (exit 1).
 """
+
 import re
 import sys
 
@@ -32,6 +33,14 @@ STRUCTURAL = re.compile(
     r")"
 )
 
+HEADING = re.compile(r"^\s{0,3}#{1,6}\s")
+BLOCKQUOTE = re.compile(r"^\s{0,3}>")
+TABLE_ROW = re.compile(r"^\s{0,3}\|")
+HTML_TAG = re.compile(r"^\s{0,3}<[a-zA-Z/]")
+HR = re.compile(r"^\s{0,3}(-{3,}|\*{3,}|_{3,})\s*$")
+
+YAML_FOLDED_SCALAR = re.compile(r"^(\s*)([^:#]+):\s*>(?:\d+)?[+-]?\s*$")
+
 
 def is_structural(line):
     return bool(STRUCTURAL.match(line))
@@ -40,6 +49,41 @@ def is_structural(line):
 def is_blank(line):
     return line.strip() == ""
 
+def can_append_to(prev_line):
+    # Allow joining onto list markers, but avoid corrupting headings/tables/html/quotes/hr.
+    return not (
+        HEADING.match(prev_line)
+        or BLOCKQUOTE.match(prev_line)
+        or TABLE_ROW.match(prev_line)
+        or HTML_TAG.match(prev_line)
+        or HR.match(prev_line)
+    )
+
+
+def unwrap_yaml_folded_scalar_lines(lines):
+    out = []
+    buf = []
+    for line in lines:
+        if line.strip() == "":
+            if buf:
+                out.append(" ".join(s.strip() for s in buf).strip())
+                buf = []
+            out.append("")
+        else:
+            buf.append(line)
+    if buf:
+        out.append(" ".join(s.strip() for s in buf).strip())
+    return out
+
+
+def yaml_double_quote(s):
+    s = s.replace("\\", "\\\\")
+    s = s.replace('"', '\\"')
+    s = s.replace("\t", "\\t")
+    s = s.replace("\r", "\\r")
+    s = s.replace("\n", "\\n")
+    return f'"{s}"'
+
 
 def unwrap(text):
     lines = text.split("\n")
@@ -47,41 +91,81 @@ def unwrap(text):
     in_code_fence = False
     in_frontmatter = False
 
-    for i, line in enumerate(lines):
+    i = 0
+    while i < len(lines):
+        line = lines[i]
         stripped = line.rstrip()
 
         # YAML frontmatter: starts with --- on line 1, ends at next ---
         if i == 0 and stripped == "---":
             in_frontmatter = True
             out.append(stripped)
+            i += 1
             continue
         if in_frontmatter:
+            m = YAML_FOLDED_SCALAR.match(stripped)
+            if m:
+                base_indent = len(m.group(1))
+                key = m.group(2).strip()
+                scalar_lines = []
+                scalar_indent = None
+
+                i += 1
+                while i < len(lines):
+                    raw = lines[i].rstrip()
+                    if raw == "":
+                        scalar_lines.append("")
+                        i += 1
+                        continue
+
+                    indent = len(raw) - len(raw.lstrip(" "))
+                    if indent <= base_indent:
+                        break
+                    if scalar_indent is None:
+                        scalar_indent = indent
+                    if indent < scalar_indent:
+                        break
+
+                    scalar_lines.append(raw[scalar_indent:])
+                    i += 1
+
+                folded_parts = [s for s in unwrap_yaml_folded_scalar_lines(scalar_lines) if s != ""]
+                folded_text = " ".join(folded_parts).strip()
+                out.append(f"{' ' * base_indent}{key}: {yaml_double_quote(folded_text)}")
+                continue
+
             out.append(stripped)
             if stripped == "---":
                 in_frontmatter = False
+            i += 1
             continue
 
         if re.match(r"\s{0,3}(`{3,}|~{3,})", stripped):
             in_code_fence = not in_code_fence
             out.append(stripped)
+            i += 1
             continue
 
         if in_code_fence:
             out.append(stripped)
+            i += 1
             continue
 
         if is_blank(stripped):
             out.append("")
+            i += 1
             continue
 
         if is_structural(stripped):
             out.append(stripped)
+            i += 1
             continue
 
-        if out and not is_blank(out[-1]):
+        if out and not is_blank(out[-1]) and can_append_to(out[-1]):
             out[-1] = out[-1] + " " + stripped.strip()
         else:
             out.append(stripped)
+        i += 1
 
     while len(out) > 1 and out[-1] == "":
         out.pop()
@@ -95,7 +179,7 @@ def main():
     paths = [a for a in sys.argv[1:] if a != "--check"]
 
     if not paths:
-        print(__doc__.strip(), file=sys.stderr)
+        print((__doc__ or "").strip(), file=sys.stderr)
         sys.exit(2)
 
     dirty = []

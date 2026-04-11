@@ -6,6 +6,11 @@ The config targets **Neovim 0.12+** and uses built-in `vim.pack` for plugin inst
 
 For a guided tour (including an IDE-first on-ramp for VSCode/JetBrains users), see [`docs/categories/editor-neovim.md`](../../../docs/categories/editor-neovim.md).
 
+## Implementation notes
+
+- The config sets `vim.opt.loadplugins = false` early (in `init.lua`) so Neovim does not auto-source `plugin/` / `after/plugin/` scripts for everything on `runtimepath`. This avoids double-sourcing and lets `lua/core/plugins.lua` fully control when plugin code is actually loaded.
+- Built-in runtime packages needed for mappings (e.g. `matchit` for `g%`) are explicitly `packadd`'d.
+
 ## Usage
 
 1. Install the pinned version (`asdf install neovim 0.12.0`).

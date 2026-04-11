@@ -1274,6 +1274,11 @@ for row in sess_out.splitlines():
     name, _, path = row.partition("\t")
     name, path = name.strip(), path.strip()
     rp = resolve_path(path)
+    # Skip sessions rooted in "bag" locations (archived leftovers from picker
+    # removals). These are almost always stale and can mask a newly recreated
+    # worktree with the same intended session name.
+    if "/.bag/worktree_remove/" in rp or "/.bag/pickers/session/" in rp:
+        continue
     sessions.append({"name": name, "path": path, "rpath": rp, "is_current": (name == current_session)})
     wt_root = find_worktree_root_for_path(rp, home)
     if wt_root:

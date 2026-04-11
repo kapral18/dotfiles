@@ -154,17 +154,10 @@ _bag_and_rmdir_upwards_ignoring_ds_store() {
     if [ -e "$cur/.git" ]; then
       break
     fi
-    local has_other_worktree=0
-    local child
-    while IFS= read -r child; do
-      [ -n "$child" ] || continue
-      # A worktree root has a `.git` file or directory.
-      if [ -e "$child/.git" ]; then
-        has_other_worktree=1
-        break
-      fi
-    done < <(find "$cur" -mindepth 1 -maxdepth 1 -type d -print 2> /dev/null || true)
-    if [ "$has_other_worktree" -eq 1 ]; then
+    # Worktrees are often nested (e.g. backport/8.19/pr-123, chore/team/foo).
+    # Only checking direct children would miss these and could bag/move entire
+    # worktree subtrees unintentionally.
+    if find "$cur" -mindepth 2 -maxdepth 6 -name '.git' -print -quit 2> /dev/null | grep -q .; then
       break
     fi
 

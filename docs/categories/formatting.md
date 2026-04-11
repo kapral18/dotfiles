@@ -2,7 +2,7 @@
 
 Back: [`docs/categories/index.md`](index.md)
 
-This repo uses per-language formatters to keep source files consistent. No `package.json` or npm — all formatters are installed via Homebrew.
+This repo uses per-language formatters to keep source files consistent. No `package.json` or npm — formatters are installed via Homebrew, except `unwrap-md` which is a repo-provided script deployed to `~/bin/unwrap-md` via chezmoi.
 
 ## Quick start
 
@@ -36,6 +36,7 @@ bin/fmt docs/categories/formatting.md home/dot_config/exact_nvim/init.lua
 | Type                      | Formatter     | Config file                                               |
 | ------------------------- | ------------- | --------------------------------------------------------- |
 | Markdown, JSON, YAML      | `prettier`    | [`.prettierrc`](../../.prettierrc)                        |
+| Markdown (lint)           | `markdownlint`| `~/.markdownlint.jsonc`                                   |
 | Shell (`.sh`, `.sh.tmpl`) | `shfmt`       | [`.editorconfig`](../../.editorconfig) (`[*.sh]` section) |
 | Lua (`.lua`)              | `stylua`      | [`.stylua.toml`](../../.stylua.toml)                      |
 | Fish (`.fish`)            | `fish_indent` | Built-in style                                            |

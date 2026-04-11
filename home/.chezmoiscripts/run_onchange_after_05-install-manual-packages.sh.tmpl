@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+# Bump this script when manual packages list changes so chezmoi re-runs the installer.
+# manual packages list hash: {{ include "readonly_dot_default-manual-packages.tmpl" | sha256sum }}
+
 BIN_DIR="${HOME}/.local/bin"
 MANUAL_PACKAGES_TEMPLATE={{ joinPath .chezmoi.sourceDir "readonly_dot_default-manual-packages.tmpl" | quote }}
 

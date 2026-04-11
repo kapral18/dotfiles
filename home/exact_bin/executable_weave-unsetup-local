@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+"""
+Remove local-only weave merge driver setup (no .gitattributes changes).
+
+This script:
+- removes the managed block from `.git/info/attributes`
+- unsets repo-local `merge.weave.*` config keys
+"""
+
+from __future__ import annotations
+
+import subprocess
+import sys
+from pathlib import Path
+
+
+WEAVE_ATTR_BLOCK_BEGIN = "# BEGIN weave (local-only, managed by weave-setup-local)"
+WEAVE_ATTR_BLOCK_END = "# END weave (local-only, managed by weave-setup-local)"
+
+
+def _run(cmd: list[str]) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(cmd, text=True, capture_output=True)
+
+
+def _run_checked(cmd: list[str]) -> str:
+    p = _run(cmd)
+    if p.returncode != 0:
+        print(p.stderr.rstrip() or p.stdout.rstrip(), file=sys.stderr)
+        sys.exit(p.returncode or 1)
+    return (p.stdout or "").rstrip()
+
+
+def _git(args: list[str]) -> str:
+    return _run_checked(["git", *args])
+
+
+def _ensure_git_repo() -> None:
+    out = _git(["rev-parse", "--is-inside-work-tree"])
+    if out.strip() != "true":
+        print("Error: not inside a git worktree", file=sys.stderr)
+        sys.exit(2)
+
+
+def _attributes_path() -> Path:
+    p = _git(["rev-parse", "--git-path", "info/attributes"]).strip()
+    return Path(p)
+
+
+def _strip_existing_block(content: str) -> str:
+    begin = content.find(WEAVE_ATTR_BLOCK_BEGIN)
+    if begin == -1:
+        return content
+    end = content.find(WEAVE_ATTR_BLOCK_END, begin)
+    if end == -1:
+        return content
+    end = end + len(WEAVE_ATTR_BLOCK_END)
+    before = content[:begin].rstrip("\n")
+    after = content[end:].lstrip("\n")
+    if before and after:
+        return before + "\n\n" + after
+    if before:
+        return before + "\n"
+    if after:
+        return after
+    return ""
+
+
+def _unset_local_config(key: str) -> None:
+    p = _run(["git", "config", "--local", "--unset-all", key])
+    # exit code 5 means "not found"
+    if p.returncode in (0, 5):
+        return
+    print(p.stderr.rstrip() or p.stdout.rstrip(), file=sys.stderr)
+    sys.exit(p.returncode or 1)
+
+
+def main() -> int:
+    _ensure_git_repo()
+
+    _unset_local_config("merge.weave.driver")
+    _unset_local_config("merge.weave.name")
+
+    path = _attributes_path()
+    if not path.exists():
+        return 0
+
+    existing = path.read_text(encoding="utf-8")
+    cleaned = _strip_existing_block(existing).rstrip("\n")
+    if cleaned:
+        path.write_text(cleaned + "\n", encoding="utf-8")
+    else:
+        path.unlink(missing_ok=True)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

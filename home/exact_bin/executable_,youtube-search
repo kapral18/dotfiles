@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# YouTube Research Powertool TUI
+# Controls:
+#   Tab: Toggle Filter Menu
+#   Enter: Open in Browser
+#   Ctrl-O: Play Video (mpv)
+#   Ctrl-R: Refresh / Reset Filters
+
+export YT_FILTER_FILE="/tmp/yt_filter_$$"
+touch "$YT_FILTER_FILE"
+trap 'rm -f "$YT_FILTER_FILE"' EXIT
+
+SEARCH_VID() {
+  local query="$1"
+  local flags="$2"
+  [[ -z "$query" ]] && return
+  python3 "$HOME/.local/share/chezmoi/scripts/yt_search.py" "$query --flags $flags"
+}
+
+RENDER_VID_INFO() {
+  if [[ "$1" != "NA" ]]; then
+    local tmp="/tmp/yt-thumb-$$"
+    curl --silent "$1" -o "$tmp"
+    kitten icat --clear --stdin=no --transfer-mode=memory --unicode-placeholder \
+      --scale-up --place="${FZF_PREVIEW_COLUMNS}x$((FZF_PREVIEW_LINES - 4))@0x0" "$tmp" |
+      sed '$d' | sed $'$s/$/\e[m/'
+    rm -f "$tmp"
+  fi
+  echo "Title   : $2"
+  echo "Channel : $3"
+  echo "Views   : $4"
+}
+
+export -f SEARCH_VID RENDER_VID_INFO
+
+# The TUI Loop
+INITIAL_QUERY="${1:-}"
+
+fzf --preview-window "down,60%,border-top" --layout reverse --disabled --with-shell 'bash -c' \
+  --header "TAB: Filters | ENTER: Browser | CTRL-O: mpv | CTRL-R: Reset" \
+  --prompt "YouTube> " \
+  --query "$INITIAL_QUERY" \
+  --bind 'start:execute-silent(echo "" > "$YT_FILTER_FILE")+reload(SEARCH_VID {q} "")' \
+  --bind 'change:reload:sleep 0.3; filter=$(cat "$YT_FILTER_FILE"); SEARCH_VID {q} "$filter" || true' \
+  --bind 'load:first' \
+  --bind 'ctrl-r:execute-silent(echo "" > "$YT_FILTER_FILE")+unbind(change)+change-prompt(YouTube> )+reload(SEARCH_VID {q} "")+rebind(change)' \
+  --bind 'tab:transform:
+    # Open filter menu in tmux popup
+    filter=""
+    disp_filter=""
+    while true; do
+      main_choice=$(printf "Duration...\nUpload Date...\nSort By...\nFeatures...\nClear Filter" | fzf-tmux -p 30,10 --header "Filter Categories" --reverse --no-preview --no-multi)
+
+      if [[ -z "$main_choice" ]]; then
+        break
+      fi
+
+      if [[ "$main_choice" == "Duration..." ]]; then
+        choice=$(printf "<30s\n30-59s\n1-2m\n2-4m\n4-8m\n8-15m\n16-20m\n20-40m\n40-60m\n60-90m\n90-120m\n120-150m\n150-300m\n300-600m\n600-1200m\n1200-2400m\n2400m+" | fzf-tmux -p 30,20 --header "Duration (ESC to go back)" --reverse --no-preview --no-multi)
+        if [[ -z "$choice" ]]; then continue; fi
+        case "$choice" in
+          "<30s") filter="dur:0-30"; disp_filter="<30s" ;;
+          "30-59s") filter="dur:30-59"; disp_filter="30-59s" ;;
+          "1-2m") filter="dur:60-120"; disp_filter="1-2m" ;;
+          "2-4m") filter="dur:120-240"; disp_filter="2-4m" ;;
+          "4-8m") filter="dur:240-480"; disp_filter="4-8m" ;;
+          "8-15m") filter="dur:480-900"; disp_filter="8-15m" ;;
+          "16-20m") filter="dur:960-1200"; disp_filter="16-20m" ;;
+          "20-40m") filter="dur:1200-2400"; disp_filter="20-40m" ;;
+          "40-60m") filter="dur:2400-3600"; disp_filter="40-60m" ;;
+          "60-90m") filter="dur:3600-5400"; disp_filter="60-90m" ;;
+          "90-120m") filter="dur:5400-7200"; disp_filter="90-120m" ;;
+          "120-150m") filter="dur:7200-9000"; disp_filter="120-150m" ;;
+          "150-300m") filter="dur:9000-18000"; disp_filter="150-300m" ;;
+          "300-600m") filter="dur:18000-36000"; disp_filter="300-600m" ;;
+          "600-1200m") filter="dur:36000-72000"; disp_filter="600-1200m" ;;
+          "1200-2400m") filter="dur:72000-144000"; disp_filter="1200-2400m" ;;
+          "2400m+") filter="dur:144000-inf"; disp_filter="2400m+" ;;
+        esac
+        break
+      elif [[ "$main_choice" == "Upload Date..." ]]; then
+        choice=$(printf "hour\ntoday\nweek\nmonth\nyear" | fzf-tmux -p 30,10 --header "Upload Date (ESC to go back)" --reverse --no-preview --no-multi)
+        if [[ -z "$choice" ]]; then continue; fi
+        filter="$choice"
+        disp_filter="$choice"
+        break
+      elif [[ "$main_choice" == "Sort By..." ]]; then
+        choice=$(printf "recent\nviews\nrating" | fzf-tmux -p 30,10 --header "Sort By (ESC to go back)" --reverse --no-preview --no-multi)
+        if [[ -z "$choice" ]]; then continue; fi
+        filter="$choice"
+        disp_filter="$choice"
+        break
+      elif [[ "$main_choice" == "Features..." ]]; then
+        choice=$(printf "hd\n4k\nlive\n360\nhdr\nplaylist\nchannel\nmovie\ncreative" | fzf-tmux -p 30,15 --header "Features (ESC to go back)" --reverse --no-preview --no-multi)
+        if [[ -z "$choice" ]]; then continue; fi
+        filter="$choice"
+        disp_filter="$choice"
+        break
+      elif [[ "$main_choice" == "Clear Filter" ]]; then
+        filter="clear"
+        break
+      fi
+    done
+
+    if [[ "$filter" == "clear" ]]; then
+      echo "" > "$YT_FILTER_FILE"
+      echo "change-prompt(YouTube> )+reload(SEARCH_VID {q} \"\")+transform-query(echo {q})"
+    elif [[ -n "$filter" ]]; then
+      echo "$filter" > "$YT_FILTER_FILE"
+      echo "change-prompt(YouTube [$disp_filter]> )+reload(SEARCH_VID {q} $filter)+transform-query(echo {q})"
+    else
+      echo "ignore"
+    fi
+  ' \
+  --delimiter '\t' --with-nth 2 \
+  --preview 'RENDER_VID_INFO {1} {2} {3} {4}' \
+  --bind 'enter:execute-silent(open {5})' \
+  --bind 'ctrl-o:execute-silent(mpv --fs=no --autofit=50% {5})'

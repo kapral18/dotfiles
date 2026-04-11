@@ -1,0 +1,1 @@
+*/5 * * * * /usr/bin/pkill -f "/Library/Developer/CommandLineTools/usr/libexec/git-core/git fsmonitor--daemon" >/dev/null 2>&1

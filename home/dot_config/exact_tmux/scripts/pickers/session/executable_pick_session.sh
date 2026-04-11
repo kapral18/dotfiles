@@ -1112,6 +1112,45 @@ while IFS= read -r _line; do
       fi
       session_name="$(tmux_sanitize_session_name "$session_name" 2> /dev/null || printf '%s' "$session_name")"
 
+      # If a session name is already taken by a "bagged" path (e.g. a worktree
+      # that was moved under ~/.bag during removal), rename it away so selecting
+      # this worktree can (re)create the canonical session at the real path.
+      if [ -n "$session_name" ] && tmux_has_session_exact "$session_name"; then
+        # Prefer our cached tmux session snapshot (works without a client).
+        existing_path="$(sess_path_for_name "$session_name" 2> /dev/null || true)"
+        if [ -z "$existing_path" ]; then
+          # Fallback: best-effort, may be empty outside a client context.
+          existing_path="$(tmux display-message -p -t "=${session_name}" '#{session_path}' 2> /dev/null || true)"
+        fi
+        existing_rp="$(resolve_path "$existing_path" 2> /dev/null || printf '%s' "$existing_path")"
+        desired_rp="$(resolve_path "$path" 2> /dev/null || printf '%s' "$path")"
+        if [ -n "$existing_rp" ] && [ -n "$desired_rp" ] && [ "$existing_rp" != "$desired_rp" ]; then
+          case "$existing_rp" in
+            "$HOME"/.bag/worktree_remove/* | "$HOME"/.bag/pickers/session/* | */.bag/worktree_remove/* | */.bag/pickers/session/*)
+              bag_name="${session_name}@bag"
+              bag_name="$(tmux_sanitize_session_name "$bag_name" 2> /dev/null || printf '%s' "$bag_name")"
+              if [ -n "$bag_name" ] && [ "$bag_name" != "$session_name" ]; then
+                if tmux_has_session_exact "$bag_name"; then
+                  n=2
+                  while [ "$n" -le 50 ]; do
+                    cand="${bag_name}${n}"
+                    if ! tmux_has_session_exact "$cand"; then
+                      bag_name="$cand"
+                      break
+                    fi
+                    n="$((n + 1))"
+                  done
+                fi
+                tmux rename-session -t "=${session_name}" "$bag_name" 2> /dev/null || true
+                if [ "${__sess_cache_loaded:-0}" -eq 1 ]; then
+                  sess_rename "$session_name" "$bag_name" || true
+                fi
+              fi
+              ;;
+          esac
+        fi
+      fi
+
       # If there is already a session pointing at this worktree path but it has a
       # different (often incomplete) name, rename it to the final chosen name so
       # panes/windows are preserved and the picker entry is consistent.

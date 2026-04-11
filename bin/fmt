@@ -125,16 +125,20 @@ should_run() {
 
 # --- unwrap-md: md (structural unwrap before lint/format) ---
 if should_run md; then
+  if ! command -v unwrap-md >/dev/null 2>&1; then
+    printf 'missing: unwrap-md (install via chezmoi: chezmoi apply %s)\n' "$HOME/bin/unwrap-md" >&2
+    exit 1
+  fi
   mapfile -t md_files < <(collect_by_func is_md_file | sort -u)
   if [[ ${#md_files[@]} -gt 0 ]]; then
     if $check_mode; then
       printf 'unwrap-md: checking %d files\n' "${#md_files[@]}"
-      if ! "$REPO_ROOT/bin/unwrap-md" --check "${md_files[@]}"; then
+      if ! unwrap-md --check "${md_files[@]}"; then
         ok=false
       fi
     else
       printf 'unwrap-md: unwrapping %d files\n' "${#md_files[@]}"
-      "$REPO_ROOT/bin/unwrap-md" "${md_files[@]}"
+      unwrap-md "${md_files[@]}"
     fi
   fi
 fi
@@ -142,17 +146,21 @@ fi
 # --- markdownlint --fix: md (before prettier, matching nvim markdownlint_fix) ---
 if should_run md; then
   need_cmd markdownlint || exit 1
+  if [[ ! -f "$HOME/.markdownlint.jsonc" ]]; then
+    printf 'missing: %s (apply dotfiles to install it)\n' "$HOME/.markdownlint.jsonc" >&2
+    exit 1
+  fi
   mapfile -t md_files < <(collect_by_func is_md_file | sort -u)
   if [[ ${#md_files[@]} -gt 0 ]]; then
     if $check_mode; then
       printf 'markdownlint: checking %d files\n' "${#md_files[@]}"
-      if ! markdownlint -c "$REPO_ROOT/.markdownlint.jsonc" -- "${md_files[@]}" >/dev/null 2>&1; then
+      if ! markdownlint -c "$HOME/.markdownlint.jsonc" -- "${md_files[@]}" >/dev/null 2>&1; then
         ok=false
-        markdownlint -c "$REPO_ROOT/.markdownlint.jsonc" -- "${md_files[@]}" 2>&1 | sed 's/^/  /' || true
+        markdownlint -c "$HOME/.markdownlint.jsonc" -- "${md_files[@]}" 2>&1 | sed 's/^/  /' || true
       fi
     else
       printf 'markdownlint: fixing %d files\n' "${#md_files[@]}"
-      markdownlint --fix -c "$REPO_ROOT/.markdownlint.jsonc" -- "${md_files[@]}" 2>/dev/null || true
+      markdownlint --fix -c "$HOME/.markdownlint.jsonc" -- "${md_files[@]}" 2>/dev/null || true
     fi
   fi
 fi

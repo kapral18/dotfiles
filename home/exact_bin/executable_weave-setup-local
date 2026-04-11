@@ -1,0 +1,169 @@
+#!/usr/bin/env python3
+"""
+Configure weave merge driver locally (no .gitattributes).
+
+This script:
+- writes merge driver config to the repo-local git config
+- writes merge=weave patterns to .git/info/attributes (untracked)
+
+That keeps weave setup from showing up in PR diffs / repo history.
+"""
+
+from __future__ import annotations
+
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+
+WEAVE_ATTR_BLOCK_BEGIN = "# BEGIN weave (local-only, managed by weave-setup-local)"
+WEAVE_ATTR_BLOCK_END = "# END weave (local-only, managed by weave-setup-local)"
+
+# Mirrors the default patterns added by `weave setup`, but stored in `.git/info/attributes`.
+WEAVE_PATTERNS: list[str] = [
+    "*.ts",
+    "*.tsx",
+    "*.js",
+    "*.mjs",
+    "*.cjs",
+    "*.jsx",
+    "*.py",
+    "*.go",
+    "*.rs",
+    "*.java",
+    "*.c",
+    "*.h",
+    "*.cpp",
+    "*.cc",
+    "*.cxx",
+    "*.hpp",
+    "*.hh",
+    "*.hxx",
+    "*.rb",
+    "*.cs",
+    "*.php",
+    "*.swift",
+    "*.ex",
+    "*.exs",
+    "*.sh",
+    "*.f90",
+    "*.f95",
+    "*.f03",
+    "*.f08",
+    "*.xml",
+    "*.plist",
+    "*.svg",
+    "*.csproj",
+    "*.fsproj",
+    "*.vbproj",
+    "*.json",
+    "*.yaml",
+    "*.yml",
+    "*.toml",
+    "*.md",
+]
+
+
+def _run(cmd: list[str]) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(cmd, text=True, capture_output=True)
+
+
+def _run_checked(cmd: list[str]) -> str:
+    p = _run(cmd)
+    if p.returncode != 0:
+        print(p.stderr.rstrip() or p.stdout.rstrip(), file=sys.stderr)
+        sys.exit(p.returncode or 1)
+    return (p.stdout or "").rstrip()
+
+
+def _git(args: list[str]) -> str:
+    return _run_checked(["git", *args])
+
+
+def _ensure_git_repo() -> None:
+    out = _git(["rev-parse", "--is-inside-work-tree"])
+    if out.strip() != "true":
+        print("Error: not inside a git worktree", file=sys.stderr)
+        sys.exit(2)
+
+
+def _attributes_path() -> Path:
+    p = _git(["rev-parse", "--git-path", "info/attributes"]).strip()
+    return Path(p)
+
+
+def _ensure_merge_driver(weave_driver_path: str) -> None:
+    _git(["config", "--local", "merge.weave.name", "Entity-level semantic merge"])
+    _git(
+        [
+            "config",
+            "--local",
+            "merge.weave.driver",
+            f"{weave_driver_path} %O %A %B %L %P",
+        ]
+    )
+
+
+def _render_block() -> str:
+    lines = [WEAVE_ATTR_BLOCK_BEGIN]
+    lines.extend([f"{pat} merge=weave" for pat in WEAVE_PATTERNS])
+    lines.append(WEAVE_ATTR_BLOCK_END)
+    return "\n".join(lines) + "\n"
+
+
+def _strip_existing_block(content: str) -> str:
+    begin = content.find(WEAVE_ATTR_BLOCK_BEGIN)
+    if begin == -1:
+        return content
+    end = content.find(WEAVE_ATTR_BLOCK_END, begin)
+    if end == -1:
+        # If the file is corrupted, do nothing destructive.
+        return content
+    end = end + len(WEAVE_ATTR_BLOCK_END)
+    before = content[:begin].rstrip("\n")
+    after = content[end:].lstrip("\n")
+    if before and after:
+        return before + "\n\n" + after
+    if before:
+        return before + "\n"
+    if after:
+        return after
+    return ""
+
+
+def _write_info_attributes(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    existing = ""
+    if path.exists():
+        existing = path.read_text(encoding="utf-8")
+
+    cleaned = _strip_existing_block(existing)
+    block = _render_block()
+
+    if cleaned and not cleaned.endswith("\n"):
+        cleaned += "\n"
+    if cleaned and not cleaned.endswith("\n\n"):
+        cleaned += "\n"
+
+    path.write_text(cleaned + block, encoding="utf-8")
+
+
+def main() -> int:
+    _ensure_git_repo()
+
+    weave_driver = shutil.which("weave-driver")
+    if not weave_driver:
+        print("Error: weave-driver not found in PATH (try `brew install weave`)", file=sys.stderr)
+        return 127
+
+    _ensure_merge_driver(weave_driver)
+    _write_info_attributes(_attributes_path())
+
+    # Defensive: ensure we didn't accidentally create a repo-root .gitattributes
+    # (we never write it, but this keeps the intent explicit).
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

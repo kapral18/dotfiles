@@ -4,5 +4,10 @@
     "defaultMode": "bypassPermissions"
   },
   "model": "opus[1m]",
-  "effortLevel": "max"
+  "effortLevel": "max",
+  "env": {
+    "CLAUDE_CODE_EFFORT_LEVEL": "max",
+    "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "1",
+    "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "1"
+  }
 }

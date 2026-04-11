@@ -226,6 +226,7 @@ The picker uses fzf's native in-process filtering (no reload per keystroke) acro
 - For singular checkouts (no linked worktrees), the branch token uses the repo default branch (origin/upstream HEAD, then common defaults, finally `main`) regardless of current checkout.
 - For remote-prefix wrappers, `<remote>/<branch...>` becomes `<remote>__<branch...>` for third-party remotes; first-party owners (origin/upstream owner match or your login) keep plain `<branch...>`.
 - Names are sanitized to tmux-safe identifiers (e.g., `1.8` becomes `1_8`; slashes like `feat/foo` are preserved).
+- Sessions rooted in `.bag` locations (e.g. `~/.bag/worktree_remove/...`) are treated as stale and suppressed from the picker so they don’t mask newly recreated worktrees. If a worktree selection collides with an existing `.bag` session name, the picker renames the `.bag` session to `@bag` and recreates the canonical session at the real path.
 - Session entries do not render `#{session_path}` in the visible label (filtering is focused on the session name).
 - The current session is marked `(current)` so it remains visible even after a rename.
 

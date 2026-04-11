@@ -40,6 +40,8 @@ The installer is:
 
 It installs binaries into `$HOME/.local/bin` and DMG apps into `/Applications`.
 
+The installer script embeds a hash of the manual packages list so `chezmoi apply` re-runs it when you add or change rows in the list (not only when the installer script itself changes).
+
 ## Verification
 
 For CLI tools:

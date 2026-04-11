@@ -43,10 +43,16 @@ return {
       -- project `proseWrap: "always"` (or printWidth reflow) does not rewrap
       -- markdown body text. Use `--prose-wrap=preserve` (one argv token) so
       -- prettierd's CLI parser does not treat a separate `preserve` as the path.
+      local markdownlint_config = vim.fn.expand("~/.markdownlint.jsonc")
       opts.formatters = vim.tbl_deep_extend("force", opts.formatters or {}, {
         markdownlint_fix = {
           command = "markdownlint",
-          args = { "--fix", "--disable", "MD013", "--", "$FILENAME" },
+          args = { "--fix", "--config", markdownlint_config, "--", "$FILENAME" },
+          stdin = false,
+        },
+        unwrap_md = {
+          command = "unwrap-md",
+          args = { "$FILENAME" },
           stdin = false,
         },
         prettier_markdown = {
@@ -65,8 +71,13 @@ return {
         local prettier = prettierd.available and "prettierd_markdown" or "prettier_markdown"
         return { "markdownlint_fix", prettier }
       end
+      local markdown_formatters = function(bufnr)
+        local formatters = md_formatters(bufnr)
+        table.insert(formatters, "unwrap_md")
+        return formatters
+      end
       opts.formatters_by_ft = vim.tbl_deep_extend("force", opts.formatters_by_ft or {}, {
-        markdown = md_formatters,
+        markdown = markdown_formatters,
         mdx = md_formatters,
       })
       return opts
@@ -81,7 +92,7 @@ return {
       })
       opts.linters = vim.tbl_deep_extend("force", opts.linters or {}, {
         markdownlint = {
-          prepend_args = { "--disable", "MD013" },
+          prepend_args = { "--config", vim.fn.expand("~/.markdownlint.jsonc") },
         },
       })
       return opts

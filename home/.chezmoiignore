@@ -13,3 +13,4 @@ app_icons/
 .claude/settings.json
 .codex/config.toml
 .config/gh-dash/gh-dash-shared.yml
+crontab

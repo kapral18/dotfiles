@@ -80,6 +80,8 @@ return {
     "neovim/nvim-lspconfig",
     event = { "BufReadPre", "BufNewFile" },
     dependencies = {
+      "folke/snacks.nvim",
+      "ibhagwan/fzf-lua",
       "hrsh7th/cmp-nvim-lsp",
       "mason-org/mason.nvim",
       "mason-org/mason-lspconfig.nvim",
@@ -221,7 +223,20 @@ return {
         setup = {},
       }
       -- Deep merge base with incoming opts
+      local extra_star_keys = nil
+      if type(opts) == "table" and type(opts.servers) == "table" and type(opts.servers["*"]) == "table" then
+        extra_star_keys = opts.servers["*"].keys
+      end
+
       opts = vim.tbl_deep_extend("force", base, opts)
+
+      if type(extra_star_keys) == "table" then
+        opts.servers = opts.servers or {}
+        opts.servers["*"] = opts.servers["*"] or {}
+        local merged = vim.deepcopy(base.servers["*"].keys)
+        vim.list_extend(merged, extra_star_keys)
+        opts.servers["*"].keys = merged
+      end
       return opts
     end,
     config = function(_, opts)
@@ -313,6 +328,7 @@ return {
           pcall(vim.keymap.del, "n", "grt")
           pcall(vim.keymap.del, "n", "gra")
           pcall(vim.keymap.del, "n", "grn")
+          pcall(vim.keymap.del, "n", "grx")
         end,
       })
 
