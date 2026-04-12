@@ -33,7 +33,15 @@
         "baseURL": "{env:LITELLM_API_BASE}",
         "apiKey": "{env:LITELLM_PROXY_KEY}",
       },
-      "models": {},
+      "models": {
+        "llm-gateway/claude-model-c": {
+          "name": "Claude Model C 🧠 ($3in/$15out)",
+          "limit": {
+            "context": 200000,
+            "output": 16384,
+          },
+        },
+      },
     },
     "azure-foundry": {
       "npm": "@ai-sdk/openai-compatible",

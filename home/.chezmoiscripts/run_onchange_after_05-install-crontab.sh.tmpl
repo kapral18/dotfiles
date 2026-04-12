@@ -4,5 +4,5 @@
 
 set -euo pipefail
 
-chezmoi_source="$(chezmoi source-path)"
-crontab "${chezmoi_source}/crontab"
+source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
+crontab "${source_dir}/crontab"

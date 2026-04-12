@@ -5,7 +5,7 @@ description: Entity-level semantic merge driver for Git via weave CLI. Use when 
 
 # weave
 
-Entity-level merge driver for Git. Replaces git's line-based merge with function/class-level merge via tree-sitter. Two branches adding different functions to the same file? Auto-resolved, zero conflicts. Only truly incompatible changes to the *same entity* produce conflicts.
+Entity-level merge driver for Git. Replaces git's line-based merge with function/class-level merge via tree-sitter. Two branches adding different functions to the same file? Auto-resolved, zero conflicts. Only truly incompatible changes to the _same entity_ produce conflicts.
 
 Use when:
 

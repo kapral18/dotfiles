@@ -16,7 +16,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 WEAVE_ATTR_BLOCK_BEGIN = "# BEGIN weave (local-only, managed by weave-setup-local)"
 WEAVE_ATTR_BLOCK_END = "# END weave (local-only, managed by weave-setup-local)"
 

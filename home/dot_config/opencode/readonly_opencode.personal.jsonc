@@ -1,6 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "small_model": "openrouter/z-ai/glm-5",
+  "small_model": "openrouter/z-ai/glm-5.1",
   "theme": "catppuccin",
   "share": "disabled",
   "autoupdate": false,
@@ -28,7 +28,7 @@
     "main": {
       "description": "Main workflow agent",
       "mode": "primary",
-      "model": "openrouter/qwen/qwen3.5-397b-a17b",
+      "model": "openrouter/qwen/qwen3.6-plus",
       "reasoning_effort": "high",
     },
   },

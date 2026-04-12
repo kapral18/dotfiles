@@ -1,5 +1,8 @@
 {
   "security": {
+    "auth": {
+      "selectedType": "vertex-ai"
+    },
     "folderTrust": {
       "enabled": true
     },
@@ -32,11 +35,6 @@
     "useRipgrep": true,
     "truncateToolOutputThreshold": 0,
     "disableLLMCorrection": true
-  },
-  "experimental": {
-    "codebaseInvestigatorSettings": {
-      "maxNumTurns": 200
-    }
   },
   "model": {
     "name": "gemini-3.1-pro-preview"

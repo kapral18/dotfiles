@@ -1,6 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "small_model": "openrouter/z-ai/glm-5",
+  "small_model": "openrouter/z-ai/glm-5.1",
   "share": "disabled",
   "autoupdate": false,
   "permission": {
@@ -27,28 +27,28 @@
     "main": {
       "description": "Main workflow agent. Can invoke sub-agents as needed to accomplish independent tasks.",
       "mode": "primary",
-      "model": "google-vertex-anthropic/claude-opus-4-6@default",
+      "model": "litellm/google-vertex/gemini-3-flash-preview",
       "reasoning_effort": "high",
     },
     "worker_a": {
       "description": "Implements tasks and reports concise results back to main agent",
       "mode": "subagent",
-      "model": "openrouter/z-ai/glm-5",
+      "model": "openrouter/z-ai/glm-5.1",
     },
     "worker_b": {
       "description": "Second implementer for parallel work, reports concise results back to main agent",
       "mode": "subagent",
-      "model": "openrouter/z-ai/glm-5",
+      "model": "openrouter/z-ai/glm-5.1",
     },
     "worker_c": {
       "description": "Third implementer for parallel work, reports concise results back to main agent",
       "mode": "subagent",
-      "model": "openrouter/z-ai/glm-5",
+      "model": "openrouter/z-ai/glm-5.1",
     },
     "worker_d": {
       "description": "Fourth implementer for parallel work, reports concise results back to main agent",
       "mode": "subagent",
-      "model": "openrouter/z-ai/glm-5",
+      "model": "openrouter/z-ai/glm-5.1",
     },
   },
   "default_agent": "main",
@@ -62,6 +62,15 @@
         "apiKey": "{env:LITELLM_PROXY_KEY}",
       },
       "models": "__LITELLM_MODELS__",
+    },
+    "litellm-anthropic": {
+      "npm": "@ai-sdk/anthropic",
+      "name": "LiteLLM Anthropic",
+      "options": {
+        "baseURL": "{env:LITELLM_API_BASE}",
+        "apiKey": "{env:LITELLM_PROXY_KEY}",
+      },
+      "models": "__ANTHROPIC_MODELS__",
     },
     "azure-foundry": {
       "npm": "@ai-sdk/openai-compatible",

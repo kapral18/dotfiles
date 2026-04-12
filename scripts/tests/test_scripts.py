@@ -232,6 +232,17 @@ class TestMergeOpencodeModels(unittest.TestCase):
         expected = (FIXTURES / "golden_opencode_models.jsonc").read_text()
         assert actual == expected
 
+    def test_claude_models_routed_to_litellm_anthropic(self):
+        actual = _run(
+            [
+                "merge_opencode_models.py",
+                str(FIXTURES / "opencode_work_base.jsonc"),
+                str(FIXTURES / "ai_models_with_claude.yaml"),
+            ]
+        )
+        expected = (FIXTURES / "golden_opencode_models_with_claude.jsonc").read_text()
+        assert actual == expected
+
 
 if __name__ == "__main__":
     unittest.main()

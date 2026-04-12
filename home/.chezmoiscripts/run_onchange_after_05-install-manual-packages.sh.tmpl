@@ -309,17 +309,17 @@ if ! command -v chezmoi >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! mapfile -t manual_lines < <(chezmoi execute-template <"$MANUAL_PACKAGES_TEMPLATE"); then
+if ! manual_rendered="$(chezmoi execute-template <"$MANUAL_PACKAGES_TEMPLATE")"; then
   echo "Error: Failed to render manual packages template" >&2
   exit 1
 fi
 
 status=0
-for line in "${manual_lines[@]}"; do
+while IFS= read -r line || [[ -n "$line" ]]; do
   if ! process_manual_package_line "$line"; then
     status=1
   fi
-done
+done <<<"$manual_rendered"
 
 if [[ $status -ne 0 ]]; then
   echo "Completed with some errors while installing manual packages" >&2

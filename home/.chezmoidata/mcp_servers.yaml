@@ -42,4 +42,19 @@ mcp_servers:
         clientId: "1601185624273.8899143856786"
         callbackPort: 3118
       cursor:
-        clientId: "3660753192626.8903469228982"
+        ideClientId: "3660753192626.8903469228982"
+        clientId: "$(pass slack/mcp/client_id)"
+        clientSecret: "$(pass slack/mcp/client_secret)"
+        callbackPort: 8787
+        authorizationUrl: "https://slack.com/oauth/v2_user/authorize"
+        tokenUrl: "https://slack.com/api/oauth.v2.user.access"
+        issuer: "https://slack.com"
+        scopes: "$(pass slack/mcp/user_scopes)"
+      gemini:
+        clientId: "$(pass slack/mcp/client_id)"
+        clientSecret: "$(pass slack/mcp/client_secret)"
+        callbackPort: 3118
+        authorizationUrl: "https://slack.com/oauth/v2_user/authorize"
+        tokenUrl: "https://slack.com/api/oauth.v2.user.access"
+        issuer: "https://slack.com"
+        scopes: "$(pass slack/mcp/user_scopes)"

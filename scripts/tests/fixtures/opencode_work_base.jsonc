@@ -11,6 +11,15 @@
       },
       "models": "__LITELLM_MODELS__",
     },
+    "litellm-anthropic": {
+      "npm": "@ai-sdk/anthropic",
+      "name": "LiteLLM Anthropic",
+      "options": {
+        "baseURL": "{env:LITELLM_API_BASE}",
+        "apiKey": "{env:LITELLM_PROXY_KEY}",
+      },
+      "models": "__ANTHROPIC_MODELS__",
+    },
     "azure-foundry": {
       "npm": "@ai-sdk/openai-compatible",
       "name": "Azure Foundry",

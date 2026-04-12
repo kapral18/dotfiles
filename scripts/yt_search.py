@@ -1,8 +1,8 @@
-import sys
 import json
-import urllib.request
-import threading
 import re
+import sys
+import threading
+import urllib.request
 
 # Global set to track video IDs and prevent duplicates across threads
 seen_ids = set()

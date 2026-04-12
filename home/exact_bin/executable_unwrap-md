@@ -49,6 +49,7 @@ def is_structural(line):
 def is_blank(line):
     return line.strip() == ""
 
+
 def can_append_to(prev_line):
     # Allow joining onto list markers, but avoid corrupting headings/tables/html/quotes/hr.
     return not (
