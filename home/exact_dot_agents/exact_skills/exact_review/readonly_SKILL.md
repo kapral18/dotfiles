@@ -20,6 +20,12 @@ Contract:
 - Do not invoke the `github` skill for read-only PR inspection/review. Only invoke it (via the Skill tool) when the user explicitly asks to post/submit anything to GitHub.
 - If the user wants review analysis and GitHub posting in the same request, the review router stays primary. Draft/verify through review mode first, then invoke the `github` skill via the Skill tool only for the posting step.
 
+## Draft-PR Policy
+
+- Never review someone else's draft PR unless the user explicitly asks.
+- If a PR is in draft state and the user did not explicitly request a review, stop and note: "This PR is a draft — skipping review unless you explicitly ask."
+- When a draft PR is reviewed (because explicitly asked), apply full thoroughness — a review is a review regardless of draft status.
+
 ## PR Detection (Do First When PR Is Involved)
 
 If the user mentions or strongly implies a PR (PR/pull request, PR review, threads, "check my PR comment", "recheck this fix from the PR", etc.):
@@ -31,6 +37,20 @@ If the user mentions or strongly implies a PR (PR/pull request, PR review, threa
 Continuity rule:
 
 - If the conversation is already clearly in a specific mode, stay in that mode when the user says "continue" / "next" unless they explicitly switch targets.
+
+## Role Detection (Do After PR Detection)
+
+When a PR is involved, determine the user's role before selecting a mode:
+
+- Run: `gh pr view <number> --json author --jq '.author.login'`
+- Compare against: `gh api user --jq '.login'`
+- If the user is the PR author: they are reviewing their own work (self-review) or addressing feedback.
+- If the user is not the PR author: they are reviewing someone else's PR.
+
+This affects mode behavior:
+
+- **Self-review (user is author):** the review should be action-oriented — find issues and fix them in the working tree, not just comment (same as local changes mode). Draft review comments are still useful if the user plans to post them as self-review notes.
+- **Reviewing others:** the review produces draft comments/suggestions for the author. Do not change code.
 
 ## Mode Selection (Intent + Evidence)
 
@@ -44,11 +64,13 @@ Pick exactly one mode. If ambiguous, ask one fork-closing question and state a d
 ### Mode: PR review (initial or continued)
 
 - Use when: the user wants an initial full PR review, wants to continue a review with the next comment, or wants to recheck/verify whether a PR fix resolves a bug ("review this PR", "what's the next comment", "continue the review", "does this PR fix it", "can you recheck", "verify this fix").
+- Role modifies behavior: see Role Detection above and `pr_review.md` for details.
 - Then open: `~/.agents/skills/review/references/pr_review.md`
 
-### Mode: Local changes review (working tree or branch delta)
+### Mode: Local changes review (working tree, branch delta, or commit range)
 
-- Use when: the user asks to review local changes/diff, or when there is no PR for the current branch and the user still wants a review.
+- Use when: the user asks to review local changes/diff, review a specific commit range, or when there is no PR for the current branch and the user still wants a review.
+- This mode verifies and fixes: findings are resolved in the working tree immediately, not drafted as comments.
 - Then open: `~/.agents/skills/review/references/local_changes.md`
 
 ## Disambiguation (If Still Unclear)
@@ -60,7 +82,7 @@ If the user's intent is still unclear, resolve via local context (do not guess):
 - If in a git repo:
   - Run `git status --porcelain=v1 -b` (read-only, do not ask to proceed).
   - Independently check both: - whether staged/unstaged changes exist - whether `,gh-prw --number` resolves a PR for the current branch
-  - If both are true, ask: "Should I review the local working tree diff, or the GitHub PR diff/threads?" Default: local working tree first.
+  - If both are true: default to local changes mode (verify and fix working tree). Note the PR exists in output so the user can switch if needed.
   - If only local changes exist: local changes mode.
   - If only a PR exists: PR review mode.
   - If neither exists: local changes mode (branch delta).

@@ -17,6 +17,13 @@ Out of scope:
 
 - If the user wants to apply requested changes from reviewer feedback (code changes + replies per thread), use `~/.agents/skills/review/references/pr_fix.md` instead.
 
+## Role-Dependent Behavior
+
+Check Role Detection from the router (`SKILL.md`):
+
+- **Reviewing others (user is not the author):** standard review — draft comments/suggestions. Do not change code.
+- **Self-review (user is the author):** find issues and fix them in the working tree immediately (same as local changes mode). Draft review comments only if the user explicitly wants self-review notes to post.
+
 ## Complete Pass Before Drafting (Do Not Skip)
 
 On the first turn (or when starting a fresh review):

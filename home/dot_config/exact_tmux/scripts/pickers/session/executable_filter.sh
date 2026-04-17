@@ -24,14 +24,19 @@ update_cmd="$HOME/.config/tmux/scripts/pickers/session/index_update.sh"
 
 refresh=0
 force_order=0
+force_refresh=0
 for arg in "$@"; do
   case "$arg" in
     --refresh) refresh=1 ;;
     --force-order) force_order=1 ;;
+    --force-refresh) force_refresh=1 ;;
   esac
 done
 
-if [ "$refresh" -eq 1 ] && [ -x "$update_cmd" ]; then
+if [ "$force_refresh" -eq 1 ] && [ -x "$update_cmd" ]; then
+  "$update_cmd" --force --quiet --quick-only > /dev/null 2>&1 || true
+  "$update_cmd" --force --quiet > /dev/null 2>&1 || true
+elif [ "$refresh" -eq 1 ] && [ -x "$update_cmd" ]; then
   (
     "$update_cmd" --force --quiet --quick-only > /dev/null 2>&1 || true
     "$update_cmd" --force --quiet > /dev/null 2>&1 || true

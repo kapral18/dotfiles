@@ -9,7 +9,10 @@ All review modes load this file. Do not duplicate these rules in mode files.
 ## Hard Constraints
 
 - External truth applies: verify behavior under review (tests, repros, `/tmp` simulations) before asserting when practical.
-- Do not change code unless the user asked you to iterate on fixes.
+- Code changes:
+  - **Local changes mode** and **PR fix mode**: find issues and fix them in the working tree immediately. Code changes are expected as part of the workflow — no extra permission needed. Do not commit or push unless explicitly asked.
+  - **PR review mode (self-review)**: same — find and fix in the working tree.
+  - **PR review mode (reviewing others):** do not change code unless the user explicitly asks.
 - Do not post to GitHub, submit reviews, apply labels, or resolve threads unless explicitly asked.
 - Assume the user started the agent inside the intended repo/worktree/session:
   - do not create/switch worktrees proactively
@@ -104,6 +107,7 @@ Use in every non-trivial review.
 - Do not include meta like "draft/pending review" in the comment body unless the user explicitly wants that.
 - Avoid redundant "Ref:" links when the comment is already attached to the exact line.
 - If you need to reference nearby lines, include a deep link to the exact source location (PR head SHA for PRs).
+- **Commit references must be clickable links, never bare hashes or inline code.** Use the full GitHub URL: `https://github.com/OWNER/REPO/commit/FULL_SHA` (or `/pull/NUM/commits/FULL_SHA` when referencing a PR commit). Resolve `OWNER/REPO` from the current repo and expand short hashes to full SHA before linking.
 - Use `suggestion` blocks only when confident the replacement matches the exact anchored line(s).
 
 ## Pending Review Semantics (Definition + Content Boundary)
@@ -122,6 +126,28 @@ Content boundary:
 - Prefer concrete fixes:
   - best: GitHub `suggestion` blocks with exact replacement code
   - otherwise: small code snippets or precise, actionable steps (avoid vague descriptions).
+
+## Review Verdict (PR Review Mode Only)
+
+After all findings are drafted, recommend an overall verdict:
+
+- **Approve**: no CRITICAL/HIGH findings remain; all findings are LOW/MEDIUM nits or suggestions.
+- **Request changes**: at least one CRITICAL or HIGH finding that must be addressed before merge.
+- **Comment only**: findings exist but are informational/advisory; merge is not blocked.
+
+State the recommendation and the reason (e.g. "Verdict: request changes — the unchecked error on line 42 can cause silent data loss"). The user decides whether to actually submit the verdict.
+
+## Review Persistence
+
+The internal findings queue and review progress are ephemeral by default. To survive conversation pruning:
+
+- Use the `/tmp/specs/<pwd>/` convention from the parent SOP.
+- Topic key: `review` (or `review-<pr-number>` for PR modes).
+- After building the findings queue, write a summary to the topic spec file:
+  - findings (severity, file, line, one-line description, status: open/fixed/dismissed)
+  - current position in the queue (for iterative mode)
+  - base context metadata
+- On subsequent turns, check for the spec file first and resume from it if present.
 
 ## Posting Boundary
 

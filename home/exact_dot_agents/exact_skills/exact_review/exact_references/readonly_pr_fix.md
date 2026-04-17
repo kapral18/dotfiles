@@ -72,22 +72,19 @@ Iteration contract:
    **Ask** (blocking ambiguity):
    - ask exactly one blocking question (include the default assumption)
 
-6A. Scope guardrail (reduce review noise):
+7. Scope guardrail (reduce review noise):
+   - If the reviewer request is a "clarity" ask (add comment, rename, tiny refactor), prefer the smallest localized change that satisfies the request.
+   - If the reviewer request is out-of-scope cleanup, you may treat it as a "graceful gesture" only when: - it is cheap - it does not change runtime behavior - it reduces future confusion
+   - Otherwise: reply proposing a follow-up (do not expand the change-set).
 
-- If the reviewer request is a "clarity" ask (add comment, rename, tiny refactor), prefer the smallest localized change that satisfies the request.
-- If the reviewer request is out-of-scope cleanup, you may treat it as a "graceful gesture" only when:
-  - it is cheap
-  - it does not change runtime behavior
-  - it reduces future confusion Otherwise: reply proposing a follow-up (do not expand the change-set).
-
-1. If you chose code change — quality gates (required after each change):
+8. If you chose code change — quality gates (required after each change):
    - Run lint + type_check + tests.
    - Discover the correct commands from the repo (do not guess): - check `package.json` scripts (or equivalent build tooling) for `lint`, `typecheck`, `test` - if monorepo, prefer scoped/targeted commands for the affected package first - if you cannot determine the commands from repo sources, stop and ask the user
    - If checks fail or types get worse, back out or adjust and repeat.
 
-2. Draft the reply for that thread (and only that thread).
-   - If the thread asked for code comments/documentation: make the change in code, then reply with a short "Fixed in <commit link>" message (avoid long explanations in the thread).
-   - If your fix ended up elsewhere (different file/thread): reply with a link to the canonical thread/commit rather than re-explaining.
+9. Draft the reply for that thread (and only that thread).
+   - If the thread asked for code comments/documentation: make the change in code, then reply with a short "Fixed in `<commit URL>`" message (avoid long explanations in the thread). See Draft Style in shared_rules.md — commit references must be full clickable GitHub URLs, never bare hashes.
+   - If your fix ended up elsewhere (different file/thread): reply with a clickable link to the canonical commit/thread rather than re-explaining.
 
 ### Reply Style
 

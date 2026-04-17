@@ -164,6 +164,12 @@ def resolve_path(p):
         return p
 
 
+scan_roots_raw = os.environ.get("PICK_SESSION_SCAN_ROOTS", "").strip()
+scan_roots = [resolve_path(os.path.expanduser(x.strip())) for x in scan_roots_raw.split(",") if x.strip()]
+scan_roots = [r for r in scan_roots if os.path.isdir(r)]
+scan_roots_set = set(scan_roots)
+
+
 def is_bag_path(p: str) -> bool:
     if not p:
         return False
@@ -499,7 +505,9 @@ with open(cache_file, "r", encoding="utf-8", errors="replace") as f:
                                 f"{display_worktree_entry(tildefy(rpath))}{badge}\tworktree\t{rpath}\t{meta}\t{root}\t{mk}"
                             )
                     elif os.path.isdir(rpath):
-                        print(f"{display_dir_entry(tildefy(rpath))}\tdir\t{rpath}\t\t\t{mk}")
+                        t = tildefy(rpath)
+                        label = (t + "/") if rpath in scan_roots_set else t
+                        print(f"{display_dir_entry(label)}\tdir\t{rpath}\t\t\t{mk}")
                 continue
             if target not in live_session_names:
                 if rpath:
@@ -516,7 +524,9 @@ with open(cache_file, "r", encoding="utf-8", errors="replace") as f:
                                 f"{display_worktree_entry(tildefy(rpath))}{badge}\tworktree\t{rpath}\t{meta}\t{root}\t{mk}"
                             )
                     elif os.path.isdir(rpath):
-                        print(f"{display_dir_entry(tildefy(rpath))}\tdir\t{rpath}\t\t\t{mk}")
+                        t = tildefy(rpath)
+                        label = (t + "/") if rpath in scan_roots_set else t
+                        print(f"{display_dir_entry(label)}\tdir\t{rpath}\t\t\t{mk}")
                 continue
             printed_sessions.add(target)
             printed_sessions.add(rpath)
@@ -528,7 +538,7 @@ with open(cache_file, "r", encoding="utf-8", errors="replace") as f:
             )
             continue
 
-        if rpath in sess_by_rpath:
+        if rpath in sess_by_rpath and rpath not in scan_roots_set:
             continue
 
         print(row["raw"])

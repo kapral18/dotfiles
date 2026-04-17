@@ -102,7 +102,10 @@ if [ "$cache_was_present" -eq 1 ]; then
 
   # Full rehydration when cache has worktree/dir rows (session promotion, etc.)
   if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ] && command -v python3 > /dev/null 2>&1; then
-    scan_roots_raw="$(tmux show-option -gqv '@pick_session_worktree_scan_roots' 2> /dev/null || printf '%s' "$HOME/work,$HOME/code,$HOME/.backport/repositories,$HOME/.local/share")"
+    scan_roots_raw="$(tmux show-option -gqv '@pick_session_worktree_scan_roots' 2> /dev/null || true)"
+    if [ -z "${scan_roots_raw:-}" ]; then
+      scan_roots_raw="$HOME/work,$HOME/code,$HOME/.backport/repositories,$HOME/.local/share"
+    fi
     _rehydrate_err="$(mktemp -t pick_session_rehydrate_err.XXXXXX)"
     if MUTATIONS_FILE="$mutation_file" PENDING_FILE="$pending_file" MUTATION_TTL="$mutation_ttl" SESSION_TOMBSTONE_LIVE_GRACE_S="$session_tombstone_live_grace_s" PICK_SESSION_SCAN_ROOTS="$scan_roots_raw" python3 -u "$script_dir/lib/items_full_rehydrate.py" "$cache_file" 2> "$_rehydrate_err"; then
       rm -f "$_rehydrate_err" 2> /dev/null || true

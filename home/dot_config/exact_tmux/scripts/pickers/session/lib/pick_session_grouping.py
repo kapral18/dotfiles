@@ -71,8 +71,9 @@ def scan_root_prefix_for_path(p, scan_roots, resolve_fn, depth=2):
     return ""
 
 
-def dedup_best(rows, resolve_fn):
+def dedup_best(rows, resolve_fn, scan_roots_set):
     best_by_path = {}
+    scan_root_dir_idx = {}
     for i, line in enumerate(rows):
         parts = line.split("\t")
         if len(parts) < 5:
@@ -81,22 +82,32 @@ def dedup_best(rows, resolve_fn):
         if not path:
             continue
         key = resolve_fn(path)
+        if kind == "dir" and key in scan_roots_set and key not in scan_root_dir_idx:
+            scan_root_dir_idx[key] = i
         pr = KIND_PRIO.get(kind, 0)
         prev = best_by_path.get(key)
         if prev is None or pr > prev[0]:
             best_by_path[key] = (pr, i)
     out = []
     seen = set()
+    seen_scan_root_dirs = set()
     for i, line in enumerate(rows):
         parts = line.split("\t")
         if len(parts) < 5:
             out.append(line)
             continue
+        kind = parts[1]
         path = parts[2] or ""
         if not path:
             out.append(line)
             continue
         key = resolve_fn(path)
+        if kind == "dir" and key in scan_roots_set:
+            if key in seen_scan_root_dirs:
+                continue
+            seen_scan_root_dirs.add(key)
+            out.append(line)
+            continue
         best = best_by_path.get(key)
         if best is None:
             out.append(line)
@@ -131,7 +142,7 @@ def grouped_output(rows, scan_roots, resolve_fn, *, dir_sort_override=None):
     Returns:
         list of ordered TSV lines
     """
-    deduped = dedup_best(rows, resolve_fn)
+    deduped = dedup_best(rows, resolve_fn, set(scan_roots))
 
     wt_path_to_root = {}
     for line in deduped:

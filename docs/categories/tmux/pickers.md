@@ -43,7 +43,7 @@ This setup ships a URL picker, a session/worktree picker, and a GitHub picker (P
 | `alt-y`            | Copy underlying path(s) to clipboard                                                                      |
 | `ctrl-s`           | **Send command** — enters a modal: type a command, `enter` sends it to selected session(s), `esc` cancels |
 | `ctrl-r`           | Refresh list (grouped ordering + background cache rebuild)                                                |
-| `alt-r`            | Force full refresh                                                                                        |
+| `alt-r`            | Force full refresh (blocks briefly, then reloads list)                                                    |
 | `alt-p`            | Open PR in browser (if the entry's branch has a linked PR)                                                |
 | `alt-i`            | Open issue in browser (if the entry's branch references an issue number)                                  |
 | `alt-g`            | Switch to GitHub picker (PRs/issues)                                                                      |
@@ -164,13 +164,13 @@ Enters a modal where the fzf query line becomes a command prompt:
 
 **Appearance:**
 
-| Option                               | Default | Description                                  |
-| ------------------------------------ | ------- | -------------------------------------------- |
-| `@pick_session_fzf_prompt`           | —       | Custom fzf prompt string                     |
-| `@pick_session_fzf_ghost`            | —       | Custom fzf ghost text                        |
-| `@pick_session_fzf_color`            | —       | Custom fzf color scheme                      |
-| `@pick_session_fzf_options`          | —       | Extra fzf flags                              |
-| `@pick_session_auto_rename_sessions` | `off`   | Auto-rename sessions to match expected names |
+| Option                               | Default     | Description                                  |
+| ------------------------------------ | ----------- | -------------------------------------------- |
+| `@pick_session_fzf_prompt`           | —           | Custom fzf prompt string                     |
+| `@pick_session_fzf_ghost`            | —           | Custom fzf ghost text                        |
+| `@pick_session_fzf_color`            | —           | Custom fzf color scheme                      |
+| `@pick_session_fzf_options`          | `--no-sort` | Extra fzf flags                              |
+| `@pick_session_auto_rename_sessions` | `off`       | Auto-rename sessions to match expected names |
 
 **Cache and performance:**
 
@@ -202,7 +202,12 @@ Grouped/sorted ordering is produced by `pickers/session/filter.sh`:
 2. **Worktree-only groups** next
 3. **Directory entries** at the end (clustered by scan root and path)
 
-The picker uses fzf's native in-process filtering (no reload per keystroke) across the visible label and a hidden match key column, with `--scheme=path` and tie-breakers `begin,length,index`. Path-root matches (e.g., `~/work`) outrank unrelated long-path hits. Queries like `work/kibana main` work.
+The picker uses fzf's native in-process filtering (no reload per keystroke) across the visible label and a hidden match key column.
+
+- **Default behavior**: runs fzf with `--no-sort` (via `@pick_session_fzf_options`) so matches keep the picker's grouped ordering (sessions above worktrees above dirs).
+- **Path intent**: when the query contains `/`, fzf sorting is ON so the narrowest matching path ranks highest (e.g. `work/` surfaces `~/work/` at the top). When it doesn't, sort is OFF. Scan-root directories display with a trailing slash (e.g. `~/work/`) so `work/` matches them directly.
+- **How it stays lag-free**: the sort state is synced by a tiny Python daemon that talks to fzf over its `--listen` Unix socket. It polls the live `query` + `sort` fields at 20 ms and `POST`s `toggle-sort` only on real transitions. fzf's `change` binding stays on the zero-cost `first` action, so typing and held backspace never fork a shell. Auto-toggle is correct for any edit (typing, paste, backspace, `ctrl-u`, `ctrl-w`, overwrite).
+- **Manual override**: `alt-s` toggles fzf sort at any time. The daemon will re-sync on the next poll if the query disagrees with the override.
 
 ### How caching works
 

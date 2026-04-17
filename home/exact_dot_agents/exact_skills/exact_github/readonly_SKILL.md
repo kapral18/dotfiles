@@ -147,6 +147,7 @@ Posting PR review comments (examples):
 
 - Use bash/zsh `$'...'` so `\n` becomes real line breaks. Do NOT send literal `\n`.
 - Add a soft close such as `Wdyt` only when the review style calls for it.
+- **Commit references in comment bodies must be clickable links, never bare hashes or backtick-wrapped hashes.** Use the full GitHub URL: `https://github.com/OWNER/REPO/commit/FULL_SHA` (or `/pull/NUM/commits/FULL_SHA` for PR commits). Resolve `OWNER/REPO` from the current repo and expand short hashes to full SHA before linking.
 - Follow the relevant PR review mode for anchoring and comment placement:
   - `~/.agents/skills/review/references/pr_review.md`
   - `~/.agents/skills/review/references/pr_fix.md`

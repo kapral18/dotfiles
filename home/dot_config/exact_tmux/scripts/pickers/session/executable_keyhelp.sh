@@ -10,9 +10,10 @@ Navigation
   alt-h / alt-l   first item / last item
 
 Filter / Refresh
-  type            filter
+  type            filter (sort auto-toggles when query contains '/')
+  alt-s           toggle fzf sort manually
   ctrl-r          reload from cache+live overlay (immediate)
-  alt-r           force background refresh (updates open picker)
+  alt-r           force full refresh (blocks briefly, then reloads)
 
 Selection / Actions
   enter           open (switch/create)

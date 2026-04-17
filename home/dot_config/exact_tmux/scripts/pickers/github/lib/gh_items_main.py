@@ -540,8 +540,38 @@ def _read_prior_pr_badges(cache_file: str) -> dict[tuple[str, int], tuple[str, s
     return out
 
 
+def _read_prior_sections(cache_file: str) -> dict[str, list[str]]:
+    """Read previous TSV and group lines by section id (e.g. 'pr:0', 'issue:3')."""
+    try:
+        raw = Path(cache_file).read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return {}
+    out: dict[str, list[str]] = {}
+    cur_id = ""
+    cur_lines: list[str] = []
+    for line in raw.splitlines():
+        if "\t" not in line:
+            continue
+        parts = line.split("\t")
+        if len(parts) < 4:
+            continue
+        kind = parts[1]
+        if kind == "header":
+            if cur_id and cur_lines:
+                out[cur_id] = cur_lines
+            cur_id = parts[3].strip()
+            cur_lines = [line]
+        else:
+            if cur_id:
+                cur_lines.append(line)
+    if cur_id and cur_lines:
+        out[cur_id] = cur_lines
+    return out
+
+
 def fetch_section(kind: str, idx: int, title: str, filters: str, limit: int = 30) -> list[dict[str, Any]]:
     """Fetch a single section from GitHub Search API. Returns item dicts."""
+    header: dict[str, Any] = {"_header": True, "kind": kind, "idx": idx, "title": title, "_fetch_error": False}
     jq_expr = (
         "[.items[] | {"
         "n: .number, "
@@ -584,13 +614,15 @@ def fetch_section(kind: str, idx: int, title: str, filters: str, limit: int = 30
             timeout=30,
         )
         if proc.returncode != 0 or not proc.stdout.strip():
-            return []
+            header["_fetch_error"] = True
+            return [header]
         items = json.loads(proc.stdout)
     except Exception:
-        return []
+        header["_fetch_error"] = True
+        return [header]
 
     if not items:
-        return []
+        return [header]
 
     def _section_sort_key(it: dict[str, Any]) -> tuple[int, str, str, int]:
         assignee = str(it.get("assignee") or "").strip().lstrip("@").lower()
@@ -603,7 +635,6 @@ def fetch_section(kind: str, idx: int, title: str, filters: str, limit: int = 30
         assignee_rank = 0 if assignee else 1
         return (assignee_rank, assignee, author, num)
 
-    header = {"_header": True, "kind": kind, "idx": idx, "title": title}
     result: list[dict[str, Any]] = [header]
     section_items: list[dict[str, Any]] = []
     for item in items:
@@ -685,9 +716,14 @@ def fetch_backport_failures(kind: str, idx: int, title: str, filters: str, limit
     backport PR that is not yet merged.
     """
     candidates = fetch_section(kind, idx, title, filters, limit=limit)
+    header = (
+        candidates[0]
+        if (candidates and candidates[0].get("_header"))
+        else {"_header": True, "kind": kind, "idx": idx, "title": title, "_fetch_error": True}
+    )
     items = [i for i in candidates if not i.get("_header") and i.get("num")]
     if not items:
-        return []
+        return [header]
 
     # Phase 1: fetch comments to find backport status
     by_repo: dict[str, list[dict[str, Any]]] = {}
@@ -744,7 +780,7 @@ def fetch_backport_failures(kind: str, idx: int, title: str, filters: str, limit
                 bp_pr_nums.setdefault(nwo, set()).add(bp_num)
 
     if not item_branches:
-        return []
+        return [header]
 
     # Phase 2: batch-check backport PR state and title
     bp_info: dict[tuple[str, int], tuple[str, str, str]] = {}  # (nwo, num) -> (state, title, url)
@@ -845,7 +881,7 @@ def fetch_backport_failures(kind: str, idx: int, title: str, filters: str, limit
         grouped.append((item, subs))
 
     if not grouped:
-        return []
+        return [header]
 
     grouped.sort(key=lambda t: _parent_sort_key(t[0]))
     result_items: list[dict[str, Any]] = []
@@ -861,7 +897,7 @@ def fetch_backport_failures(kind: str, idx: int, title: str, filters: str, limit
         )
         result_items.extend(subs)
 
-    return [{"_header": True, "kind": kind, "idx": idx, "title": title}] + result_items
+    return [header] + result_items
 
 
 def _terminal_columns() -> int:
@@ -1149,6 +1185,13 @@ def main():
             except Exception:
                 results[task_idx] = []
 
+    errored_sections: set[str] = set()
+    for task_idx in sorted(results.keys()):
+        sec = results.get(task_idx) or []
+        if sec and sec[0].get("_header"):
+            if sec[0].get("_fetch_error"):
+                errored_sections.add(f"{sec[0].get('kind')}:{sec[0].get('idx')}")
+
     all_items: list[dict[str, Any]] = []
     seen_items: set[tuple[str, str, str]] = set()
     wt_repos: set[str] = set()
@@ -1272,6 +1315,33 @@ def main():
             wt_index[nwo] = info
 
     all_lines = format_lines(all_items, wt_index, prior_pr_badges=prior_pr_badges)
+
+    if errored_sections:
+        prior_sections = _read_prior_sections(args.cache_file)
+        if prior_sections:
+            merged: list[str] = []
+            cur_id = ""
+            cur_lines: list[str] = []
+            ordered_sections: list[tuple[str, list[str]]] = []
+            for line in all_lines:
+                parts = line.split("\t")
+                if len(parts) >= 4 and parts[1] == "header":
+                    if cur_id:
+                        ordered_sections.append((cur_id, cur_lines))
+                    cur_id = parts[3].strip()
+                    cur_lines = [line]
+                else:
+                    if cur_id:
+                        cur_lines.append(line)
+            if cur_id:
+                ordered_sections.append((cur_id, cur_lines))
+
+            for sid, lines in ordered_sections:
+                if sid in errored_sections and sid in prior_sections:
+                    merged.extend(prior_sections[sid])
+                else:
+                    merged.extend(lines)
+            all_lines = merged
 
     output = "\n".join(all_lines)
     if output.strip():

@@ -1,11 +1,23 @@
 ---
 name: buildkite
-description: Buildkite CI/CD integration. Use when checking build status, triggering builds, reading build logs, debugging CI failures, or managing pipelines. Trigger words include "buildkite", "build", "CI", "build failed". Only for elastic org repos.
+description: "Buildkite CI/CD integration. Use when: checking build status, triggering builds, reading build logs, debugging CI failures, managing pipelines, OR encountering any buildkite.com URL (e.g. buildkite.com/elastic/...). Never fetch buildkite.com URLs directly — they require auth and will 403. Use bk CLI instead. Only for elastic org repos."
 tool_version: bk 3.32.2
 allowed-tools: Bash(bk:*)
 ---
 
 # Buildkite — CI/CD
+
+## URL Intercept (Mandatory)
+
+Buildkite URLs (`buildkite.com/...`) require authentication and will return 403 if fetched directly via `WebFetch`, `curl`, or any HTTP client. **Never fetch buildkite.com URLs directly.**
+
+When you encounter a Buildkite URL (in PR descriptions, review comments, CI check links, or anywhere else):
+
+1. Parse the URL to extract the pipeline slug and build number: `buildkite.com/elastic/<pipeline>/builds/<number>`
+2. Use `bk` CLI to get the same information: `bk build view <number> -p <pipeline>`
+3. For job logs or artifacts, follow the Failure Debugging Workflow below.
+
+This applies during any workflow — reviews, PR fix, investigation, or standalone queries.
 
 ## Setup
 

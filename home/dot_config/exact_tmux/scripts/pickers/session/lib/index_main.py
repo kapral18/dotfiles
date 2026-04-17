@@ -1477,15 +1477,27 @@ if not sessions_only:
             ordered_dirs.append(p)
             seen_dirs.add(p)
     for p in ordered_dirs:
-        if not p or p in exclude_worktree_roots:
+        if not p:
             continue
-        if any(p == wt or p.startswith(wt + os.sep) for wt in home_worktree_prefixes):
+        # Normally we hide dir entries that duplicate a session/worktree root path.
+        # But scan roots (e.g. ~/work, ~/code) must always be reachable via path-ish
+        # queries like `work/` or `code/`, even when a session is rooted there.
+        if p in exclude_worktree_roots and p not in scan_roots_set:
+            continue
+        # Avoid spamming dirs that are already covered by explicit worktree roots,
+        # but always keep configured scan roots visible (so `code/` can reach
+        # `~/code/` even when a session is rooted at `~/code`).
+        if p not in scan_roots_set and any(p == wt or p.startswith(wt + os.sep) for wt in home_worktree_prefixes):
             continue
         base = Path(p).name
+        tpath = tildefy(p)
         if p in scan_roots_set:
-            # Repeat the basename for scan roots so plain queries like `code` or
-            # `work` rank the root above descendants under that tree.
-            mk = match_key(base, base, base + "/", tildefy(p), p)
+            if tpath == "~":
+                mk = match_key("~/", "~", p + "/", p)
+            else:
+                mk = match_key(base + "/", tpath + "/", tpath, base, p + "/", p)
+            label = tpath + "/"
         else:
-            mk = match_key(base, tildefy(p), p)
-        print(f"{display_dir_entry(tildefy(p))}\tdir\t{p}\t\t\t{mk}")
+            mk = match_key(base, tpath, p)
+            label = tpath
+        print(f"{display_dir_entry(label)}\tdir\t{p}\t\t\t{mk}")

@@ -10,6 +10,29 @@ All PR review modes load this file. Do not duplicate these rules in mode files.
   - Resolve PR number via `,gh-prw`: - `,gh-prw --number`
   - If `,gh-prw` fails once, stop and ask the user for the PR URL/number.
 
+## Merge-Conflict Check (Do After PR Resolution)
+
+- Run: `gh pr view <number> --json mergeable,mergeStateStatus --jq '{mergeable, mergeStateStatus}'`
+- If `mergeable` is `CONFLICTING` or `mergeStateStatus` is `DIRTY`:
+  - Flag at the top of the review output: "This PR has merge conflicts with base. Findings may be invalidated once conflicts are resolved."
+  - Continue the review (conflicts do not block review), but note any findings in conflict-affected files as potentially stale.
+  - If the user asks to resolve conflicts, load and follow `~/.agents/skills/weave/SKILL.md` (entity-level semantic merge driver).
+
+## Large-PR Triage
+
+- After reading `git diff --stat`, assess the PR size:
+  - If the diff touches more than 20 files or exceeds ~1000 changed lines: - Prioritize files containing business logic, security-sensitive code, and API surface changes. - Deprioritize generated files (lockfiles, snapshots, auto-generated code, vendored deps). - State the triage order at the start of the review so the user knows what was prioritized and what was deferred.
+  - For smaller PRs: review everything; no triage needed.
+
+## File-Type Awareness
+
+Adjust review depth by file type:
+
+- **Skip or skim** (unless the user explicitly asks): lockfiles (`package-lock.json`, `yarn.lock`, `Cargo.lock`), generated code, snapshots, `.min.js`, vendored dependencies.
+- **Full depth**: business logic, API routes, auth/authz, data models, migrations, configuration that affects runtime behavior.
+- **Medium depth**: test files (check coverage and correctness, but do not nitpick style), documentation, CI config.
+- If a finding exists only in a skimmed file, still report it — but note the file type context.
+
 ## Reference Resolution (blocking — complete before diff analysis)
 
 1. Extract all URLs, PR/issue refs, and image/media links from:
@@ -19,6 +42,7 @@ All PR review modes load this file. Do not duplicate these rules in mode files.
    - PRs: read description, state, and diff summary
    - Issues: read full body
    - Images/GIFs/videos: download to `/tmp` with `curl -sL -o /tmp/<name> <url>`, then read the local file (direct GitHub media URLs are not readable)
+   - Buildkite URLs (`buildkite.com/...`): **do not fetch directly** (will 403). Load and follow `~/.agents/skills/buildkite/SKILL.md` — use `bk` CLI to retrieve build/job info.
    - Other URLs: fetch if they could inform the review
 3. From whatever you just read, extract any new references not yet visited.
 4. Repeat steps 2-3 until no unvisited references remain.

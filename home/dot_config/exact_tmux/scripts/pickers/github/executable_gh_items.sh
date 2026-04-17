@@ -60,24 +60,30 @@ if [ "$cache_only" -eq 1 ]; then
 fi
 
 lock_dir="${cache_file}.lock"
-if ! mkdir "$lock_dir" 2> /dev/null; then
+while ! mkdir "$lock_dir" 2> /dev/null; do
   pid_file="${lock_dir}/pid"
-  if [ -f "$pid_file" ]; then
-    pid="$(cat "$pid_file" 2> /dev/null || true)"
-    if [ -n "$pid" ] && kill -0 "$pid" 2> /dev/null; then
-      if [ "$refresh" -eq 1 ]; then
-        # Wait for the in-flight fetch so fzf keeps its spinner until fresh data lands.
-        while kill -0 "$pid" 2> /dev/null; do sleep 0.2; done
-        [ -f "$cache_file" ] && cat "$cache_file"
-        exit 0
+  pid=""
+  [ -f "$pid_file" ] && pid="$(cat "$pid_file" 2> /dev/null || true)"
+  if [ -n "$pid" ] && kill -0 "$pid" 2> /dev/null; then
+    if [ "$refresh" -eq 1 ]; then
+      # Don't let a stuck/slow fetch block a manual refresh forever.
+      waited=0
+      while kill -0 "$pid" 2> /dev/null && [ "$waited" -lt 25 ]; do
+        sleep 0.2
+        waited="$((waited + 1))"
+      done
+      if kill -0 "$pid" 2> /dev/null; then
+        kill "$pid" 2> /dev/null || true
+        sleep 0.2
       fi
-      [ -f "$cache_file" ] && cat "$cache_file"
-      exit 0
+      rm -rf "$lock_dir" 2> /dev/null || true
+      continue
     fi
+    [ -f "$cache_file" ] && cat "$cache_file"
+    exit 0
   fi
   rm -rf "$lock_dir" 2> /dev/null || true
-  mkdir "$lock_dir" 2> /dev/null || true
-fi
+done
 
 cleanup_lock() {
   rm -f "${lock_dir}/pid" 2> /dev/null || true
@@ -104,7 +110,7 @@ for cmd in gh yq python3; do
 done
 
 if [ "$refresh" -eq 1 ]; then
-  exec python3 -u "$script_dir/lib/gh_items_main.py" --mode "$mode" --config "$config" --cache-file "$cache_file" --refresh
+  python3 -u "$script_dir/lib/gh_items_main.py" --mode "$mode" --config "$config" --cache-file "$cache_file" --refresh
 else
-  exec python3 -u "$script_dir/lib/gh_items_main.py" --mode "$mode" --config "$config" --cache-file "$cache_file"
+  python3 -u "$script_dir/lib/gh_items_main.py" --mode "$mode" --config "$config" --cache-file "$cache_file"
 fi

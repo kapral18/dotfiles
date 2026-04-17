@@ -142,7 +142,7 @@ bulk_guard_clear() {
   tmux set-option -gq "$bulk_guard_key" "0" > /dev/null 2>&1 || true
 }
 bulk_guard_set
-trap 'bulk_guard_clear; pkill -P $$ 2>/dev/null || true; exit 0' EXIT
+trap 'bulk_guard_clear; pkill -P $$ 2>/dev/null || true; rm -f "${sort_daemon_sock:-}" 2>/dev/null || true; exit 0' EXIT
 
 __sess_cache_loaded=0
 sess_names=()
@@ -299,6 +299,33 @@ rm -f "$help_flag" 2> /dev/null || true
 preview_cmd_0="$preview_cmd {f}"
 preview_with_help="if [ -f $(printf %q "$help_flag") ]; then $(printf %q "$help_cmd"); else $(printf %q "$preview_cmd") {f}; fi"
 
+# Auto-toggle fzf sort on path-like queries (contains `/`):
+# - default: `--no-sort` preserves sessions-first ordering
+# - pathy: sort ON so fzf ranks the narrowest matching path highest
+# Scan-root dir labels include a trailing `/` (e.g. `~/work/`) so `work/`
+# matches them in column 1.
+#
+# Correctness + speed:
+# - Correctness: sort state must follow the query on every keystroke
+#   (typing, paste, backspace, ctrl-u, ctrl-w, select-all+overwrite, ...).
+# - Speed: no per-keystroke shell fork. fzf's `change:transform:<sh>` forks
+#   bash (~10ms) on each keystroke, which made held-backspace visibly laggy.
+#
+# Solution: fzf's `--listen=<sock>` Unix-socket HTTP server exposes the live
+# query + sort state and accepts `toggle-sort` POSTs. A tiny Python daemon
+# polls that endpoint at 20ms and syncs sort to the query's pathy-ness.
+# fzf's `change` binding stays on the zero-cost `first` action, so every
+# keystroke is fzf-native and lag-free. `alt-s` remains as a manual toggle.
+sort_daemon_cmd="$HOME/.config/tmux/scripts/pickers/session/lib/sort_toggle_daemon.py"
+sort_daemon_sock="${cache_dir}/pick_session_fzf.$$.sock"
+rm -f "$sort_daemon_sock" 2> /dev/null || true
+if command -v python3 > /dev/null 2>&1 && [ -r "$sort_daemon_cmd" ]; then
+  python3 "$sort_daemon_cmd" "$sort_daemon_sock" > /dev/null 2>&1 &
+  sort_daemon_pid=$!
+else
+  sort_daemon_pid=""
+fi
+
 # fzf send-mode: ctrl-s enters a modal where the query line becomes a command
 # prompt. enter dispatches the command to selected sessions; esc cancels.
 send_restore="enable-search+change-prompt($fzf_prompt)+change-ghost($fzf_ghost)+change-header(?=help  ctrl-/=preview  alt-p=PR  alt-i=issue  alt-g=GitHub)+clear-query+deselect-all+rebind(ctrl-s,ctrl-x,alt-x,alt-y,alt-p,alt-i,alt-g,change)+unbind(esc)"
@@ -317,21 +344,21 @@ else
         --ansi \
         --scheme=path \
         --height=100% \
-        --listen \
+        --listen="$sort_daemon_sock" \
         --filepath-word \
         --reverse \
         --tiebreak=begin,length,index \
         --delimiter=$'\t' \
-        --nth=1,6 \
+        --nth=1 \
         --with-nth=1 \
         --multi \
         "${fzf_ui_args[@]}" \
         --query "$query" \
         --preview "$preview_with_help" \
         --preview-window 'right,50%,border-left' \
-        --bind "start:execute-silent:$live_refresh_cmd >/dev/null 2>&1 &" \
+        --bind "start:execute-silent($live_refresh_cmd >/dev/null 2>&1 &)" \
         --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+track+clear-query" \
-        --bind "alt-r:execute-silent:$live_refresh_cmd --once --force >/dev/null 2>&1 &" \
+        --bind "alt-r:reload($filter_cmd --force-refresh --force-order)+track+clear-query" \
         --bind "alt-j:half-page-down" \
         --bind "alt-k:half-page-up" \
         --bind "alt-h:first" \
@@ -343,6 +370,7 @@ else
         --bind "ctrl-/:toggle-preview" \
         --bind "?:execute-silent(if [ -f $(printf %q "$help_flag") ]; then rm -f $(printf %q "$help_flag"); else touch $(printf %q "$help_flag"); fi)+refresh-preview" \
         --bind "change:first" \
+        --bind "alt-s:toggle-sort+first" \
         --bind "load:unbind(esc)" \
         --bind "enter:transform:[ -f $mode_flag ] && { printf '%s' {q} > $cmd_tmp; echo 'execute-silent(tmux run-shell -b \"$send_cmd $sel_tmp $cmd_tmp\")+execute-silent(rm -f $mode_flag)+$send_restore'; } || echo 'execute-silent(cp {f} $primary_tmp)+accept'" \
         --bind "ctrl-s:$send_mode" \
@@ -363,21 +391,21 @@ else
         --ansi \
         --scheme=path \
         --height=100% \
-        --listen \
+        --listen="$sort_daemon_sock" \
         --filepath-word \
         --reverse \
         --tiebreak=begin,length,index \
         --delimiter=$'\t' \
-        --nth=1,6 \
+        --nth=1 \
         --with-nth=1 \
         --multi \
         "${fzf_ui_args[@]}" \
         --query "$query" \
         --preview "$preview_with_help" \
         --preview-window 'right,50%,border-left' \
-        --bind "start:execute-silent:$live_refresh_cmd >/dev/null 2>&1 &" \
+        --bind "start:execute-silent($live_refresh_cmd >/dev/null 2>&1 &)" \
         --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+track+clear-query" \
-        --bind "alt-r:execute-silent:$live_refresh_cmd --once --force >/dev/null 2>&1 &" \
+        --bind "alt-r:reload($filter_cmd --force-refresh --force-order)+track+clear-query" \
         --bind "alt-j:half-page-down" \
         --bind "alt-k:half-page-up" \
         --bind "alt-h:first" \
@@ -389,6 +417,7 @@ else
         --bind "ctrl-/:toggle-preview" \
         --bind "?:execute-silent(if [ -f $(printf %q "$help_flag") ]; then rm -f $(printf %q "$help_flag"); else touch $(printf %q "$help_flag"); fi)+refresh-preview" \
         --bind "change:first" \
+        --bind "alt-s:toggle-sort+first" \
         --bind "load:unbind(esc)" \
         --bind "enter:transform:[ -f $mode_flag ] && { printf '%s' {q} > $cmd_tmp; echo 'execute-silent(tmux run-shell -b \"$send_cmd $sel_tmp $cmd_tmp\")+execute-silent(rm -f $mode_flag)+$send_restore'; } || echo 'execute-silent(cp {f} $primary_tmp)+accept'" \
         --bind "ctrl-s:$send_mode" \

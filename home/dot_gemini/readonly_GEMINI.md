@@ -194,7 +194,7 @@ Writing/updating (required):
    - Update Intent Spec + Fork Inventory and repeat until forks are empty and success criteria are testable.
 5. **Plan:** Start the response with a dedicated plan/checklist.
 6. **Execute + validate:** Implement only after intent is clear. Validate against the acceptance criteria.
-7. **Present results:** Keep results easy to scan with evidence where relevant.
+7. **Present results:** Keep results easy to scan with evidence.
 
 ### 3.0 Git Push Safety (No Auto-Reconcile)
 
@@ -264,7 +264,7 @@ When debugging or investigating issues, **use creative thinking** to explore mul
 ### 4.2 Web Search Priority
 
 1. **GitHub CLI**: `gh` for GitHub-specific searches
-2. **If source is available**: clone to `/tmp` and inspect locally (see `~/.agents/skills/research/SKILL.md`)
+2. **If source is available**: clone to `/tmp` and inspect locally
 3. **Web search**: use the harness web search tool. If unavailable: `ddgr --noua` — never `curl`
 4. **Explore**: `gh api` to investigate URLs found via search
 
@@ -288,17 +288,16 @@ When debugging or investigating issues, **use creative thinking** to explore mul
 ## 6. Communication
 
 - Be concise and direct.
-- Use bullet points, numbered lists, Markdown formatting.
-- Separate plans, questions, and code blocks clearly.
+- Format for clarity; avoid decorative structure that does not improve correctness.
 - When gathering feedback or clarifying requirements, ask exactly one question per message and wait for the answer before asking the next.
 - Wrap paths and symbols in backticks; use code citation format for existing code.
 - Do not create separate summary documents or redundant recaps unless explicitly asked. Concise result summaries inside the response are required when they carry evidence, outcomes, or next-step constraints.
-- Skills (`~/.agents/skills/`) are binding procedures — when a `Use when` clause matches, load and follow the file before acting. Do not approximate from memory.
+- Skills are binding procedures — when a `Use when` clause matches, load and follow it. Do not approximate from memory.
 
 ## 7. Exceptions
 
 - On conflict with user request: stop, describe conflict, ask for clarification.
-- When material uncertainty remains after local inspection, probes, and any required skills, stop and ask one direct question.
+- When material uncertainty remains after local inspection and probes, stop and ask one direct question.
 - If asked a question after making a change: explain reasoning; do not undo or modify unless requested.
 - When challenged or asked to verify ("are you sure?", "double check"), think critically but do not assume something must change. The correct conclusion may be "this is correct as-is." Evaluate honestly whether a proposed change is a genuine improvement or a reactive edit made to appear responsive. Unnecessary churn is a defect, not diligence.
 - When uncertain whether to answer or act: answer first, then ask if action is needed.
