@@ -7,7 +7,8 @@ All PR review modes load this file. Do not duplicate these rules in mode files.
 - If the user provided a PR URL/number, use that.
 - Otherwise:
   - Set `GH_PAGER=cat` for all `gh` calls (prevents interactive pager hangs).
-  - Resolve PR number via `,gh-prw`: - `,gh-prw --number`
+  - Resolve PR number via `,gh-prw`:
+    - `,gh-prw --number`
   - If `,gh-prw` fails once, stop and ask the user for the PR URL/number.
 
 ## Merge-Conflict Check (Do After PR Resolution)
@@ -21,7 +22,10 @@ All PR review modes load this file. Do not duplicate these rules in mode files.
 ## Large-PR Triage
 
 - After reading `git diff --stat`, assess the PR size:
-  - If the diff touches more than 20 files or exceeds ~1000 changed lines: - Prioritize files containing business logic, security-sensitive code, and API surface changes. - Deprioritize generated files (lockfiles, snapshots, auto-generated code, vendored deps). - State the triage order at the start of the review so the user knows what was prioritized and what was deferred.
+  - If the diff touches more than 20 files or exceeds ~1000 changed lines:
+    - Prioritize files containing business logic, security-sensitive code, and API surface changes.
+    - Deprioritize generated files (lockfiles, snapshots, auto-generated code, vendored deps).
+    - State the triage order at the start of the review so the user knows what was prioritized and what was deferred.
   - For smaller PRs: review everything; no triage needed.
 
 ## File-Type Awareness
@@ -69,7 +73,10 @@ Where to comment:
 
 - PR review comments are anchored to the PR's unified diff. The GitHub UI can sometimes let you comment on context lines by expanding the diff, but API calls still need a resolvable diff anchor.
 - For API calls, do not assume a source-file line number is a valid anchor. Prefer:
-  - `position` (diff-relative), computed from the PR's unified diff: - the `@@` hunk header line itself is **not counted** (position 0) - the first line after the `@@` header is position 1 - counting continues sequentially across all subsequent hunks in the file
+  - `position` (diff-relative), computed from the PR's unified diff:
+    - the `@@` hunk header line itself is **not counted** (position 0)
+    - the first line after the `@@` header is position 1
+    - counting continues sequentially across all subsequent hunks in the file
   - or `line` + `side` / `start_line` + `start_side` (still must resolve against the PR diff; GitHub will 422 if it cannot resolve)
 - If the specific source line you care about is not shown in the diff context:
   - do NOT anchor the comment to an unrelated line

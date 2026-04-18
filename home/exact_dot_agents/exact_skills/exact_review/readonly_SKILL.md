@@ -81,7 +81,9 @@ If the user's intent is still unclear, resolve via local context (do not guess):
   - Ask: "Is this a GitHub PR review (send URL/number), or a local repo changes review?"
 - If in a git repo:
   - Run `git status --porcelain=v1 -b` (read-only, do not ask to proceed).
-  - Independently check both: - whether staged/unstaged changes exist - whether `,gh-prw --number` resolves a PR for the current branch
+  - Independently check both:
+    - whether staged/unstaged changes exist
+    - whether `,gh-prw --number` resolves a PR for the current branch
   - If both are true: default to local changes mode (verify and fix working tree). Note the PR exists in output so the user can switch if needed.
   - If only local changes exist: local changes mode.
   - If only a PR exists: PR review mode.

@@ -61,7 +61,11 @@ Follow the base-branch context gate in `shared_rules.md`. This is mandatory.
 
 1. **Build findings queue**: walk the entire diff against the coverage checklist (shared_rules.md). Order by severity (CRITICAL first).
 
-2. **For each finding** (highest severity first): a. State what's wrong and why it matters (1-2 lines). b. Verify the issue is real (base-context comparison, `/tmp` reproduction, or test run — do not assert without evidence). c. Fix it. Apply the smallest correct change. d. If the fix is non-trivial or ambiguous (multiple valid approaches, significant scope): state the options and your recommended default, then proceed with the default unless the user intervenes.
+2. **For each finding** (highest severity first):
+   a. State what's wrong and why it matters (1-2 lines).
+   b. Verify the issue is real (base-context comparison, `/tmp` reproduction, or test run — do not assert without evidence).
+   c. Fix it. Apply the smallest correct change.
+   d. If the fix is non-trivial or ambiguous (multiple valid approaches, significant scope): state the options and your recommended default, then proceed with the default unless the user intervenes.
 
 3. **Quality gates** (after all fixes in a batch):
    - Run lint + type_check + tests (discover correct commands from the repo; do not guess).

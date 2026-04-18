@@ -74,12 +74,18 @@ Iteration contract:
 
 7. Scope guardrail (reduce review noise):
    - If the reviewer request is a "clarity" ask (add comment, rename, tiny refactor), prefer the smallest localized change that satisfies the request.
-   - If the reviewer request is out-of-scope cleanup, you may treat it as a "graceful gesture" only when: - it is cheap - it does not change runtime behavior - it reduces future confusion
+   - If the reviewer request is out-of-scope cleanup, you may treat it as a "graceful gesture" only when:
+     - it is cheap
+     - it does not change runtime behavior
+     - it reduces future confusion
    - Otherwise: reply proposing a follow-up (do not expand the change-set).
 
 8. If you chose code change — quality gates (required after each change):
    - Run lint + type_check + tests.
-   - Discover the correct commands from the repo (do not guess): - check `package.json` scripts (or equivalent build tooling) for `lint`, `typecheck`, `test` - if monorepo, prefer scoped/targeted commands for the affected package first - if you cannot determine the commands from repo sources, stop and ask the user
+   - Discover the correct commands from the repo (do not guess):
+     - check `package.json` scripts (or equivalent build tooling) for `lint`, `typecheck`, `test`
+     - if monorepo, prefer scoped/targeted commands for the affected package first
+     - if you cannot determine the commands from repo sources, stop and ask the user
    - If checks fail or types get worse, back out or adjust and repeat.
 
 9. Draft the reply for that thread (and only that thread).

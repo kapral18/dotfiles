@@ -60,7 +60,11 @@ Goal: compare the diff against how base (usually `main`) works today.
 
 - Include exactly one line near the top of the output:
   - `Base context: SCSI=<index>|none (list_indices checked; <reason>), base=<branch>, diff=<base>...HEAD`
-  - `<reason>` MUST be one of: - `SCSI used` - `not indexed` - `tools unavailable` - `user-selected none`
+  - `<reason>` MUST be one of:
+    - `SCSI used`
+    - `not indexed`
+    - `tools unavailable`
+    - `user-selected none`
 - This line is reviewer metadata for the assistant's output. Do not include it in GitHub comment bodies.
 
 ## Truth Validation Framework
