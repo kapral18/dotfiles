@@ -26,6 +26,7 @@ They are designed to answer:
 - Add a Ruby gem: [`add-a-ruby-gem.md`](add-a-ruby-gem.md)
 - Add a global npm package: [`add-a-global-npm-package.md`](add-a-global-npm-package.md)
 - Add a uv global tool: [`add-a-uv-tool.md`](add-a-uv-tool.md)
+- Add an oMLX model (Apple Silicon MLX): [`add-an-omlx-model.md`](add-an-omlx-model.md)
 
 ## Git + Workflow
 

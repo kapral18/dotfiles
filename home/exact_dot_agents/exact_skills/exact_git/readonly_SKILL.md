@@ -1,6 +1,6 @@
 ---
 name: git
-description: Local git workflow: branching, committing, pushing, rebasing, merging, conflict resolution, and repo safety rules. Use before any local git operation. Not for GitHub side effects or worktree management.
+description: "Local git workflow: branching, committing, pushing, rebasing, merging, conflict resolution, and repo safety rules. Use before any local git operation. Not for GitHub side effects or worktree management."
 ---
 
 # Git Workflow Skill

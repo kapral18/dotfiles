@@ -288,6 +288,12 @@ When debugging or investigating issues, **use creative thinking** to explore mul
 ## 6. Communication
 
 - Be concise and direct.
+- **Lead with the answer.** No restating the question, no prefaces ("Good question", "Let me explain", "Short answer:", "In short").
+- **Depth is not a function of length.** Investigate exhaustively; present densely. Response length must never come at the cost of rigor, nuance, correctness, or clarity. "Concise" is the opposite of "padded," not the opposite of "thorough."
+- **Cut waste, not substance.** Strip filler, hedging, narrative padding, semantic repetition, circular explanations, and re-derivations of facts already stated. Every substantive point stays; every superfluous word goes. If a sentence is trivially inferable from a shorter, clearer one already present, remove it.
+- **Anchor with evidence, don't paraphrase the chain in prose.** Point to the exact path/symbol/code reference; re-derive upstream context only where a step is non-obvious or the user asks.
+- **No scaffolding unless it helps the answer.** Skip multi-section structures (pre/post, before/after, conclusion) unless the answer genuinely needs that shape or the user asked for a trace/comparison/audit.
+- **Concision must not cause partitioning.** Do not shrink a response by stopping early and waiting for a "continue" or "go on". The stop condition in the compliance directive (§1) overrides brevity — finish the user's request in one response.
 - Format for clarity; avoid decorative structure that does not improve correctness.
 - When gathering feedback or clarifying requirements, ask exactly one question per message and wait for the answer before asking the next.
 - Wrap paths and symbols in backticks; use code citation format for existing code.

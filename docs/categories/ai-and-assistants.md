@@ -303,6 +303,95 @@ chezmoi apply
 ollama list
 ```
 
+## oMLX (Apple Silicon MLX inference server)
+
+[oMLX](https://github.com/jundot/omlx) is an LLM inference server optimized for Apple Silicon, with continuous batching, a tiered (RAM + SSD) KV cache, and native TurboQuant / oQ quantization. It is the primary local-agentic-coding backend on Apple Silicon hosts.
+
+### Install
+
+`omlx` and the official Hugging Face CLI (`hf`) are installed via Homebrew:
+
+- [`home/readonly_dot_Brewfile.tmpl`](../../home/readonly_dot_Brewfile.tmpl) — AI & LARGE LANGUAGE MODELS section
+
+```ruby
+tap "jundot/omlx", "https://github.com/jundot/omlx"
+brew "jundot/omlx/omlx"
+brew "hf"
+```
+
+### Model manifest
+
+The curated model list is declared as a chezmoi-templated manifest:
+
+- [`home/readonly_dot_default-omlx-models.tmpl`](../../home/readonly_dot_default-omlx-models.tmpl)
+
+The manifest is 4-bit across the board — same list on every Apple Silicon host, no RAM tiering. This favors long-context KV cache headroom (and faster per-token inference) over quantization fidelity, which is the more useful tradeoff for agentic coding.
+
+Format (pipe-delimited):
+
+```text
+<hf-repo-id>|<local-dir-name>
+```
+
+- `hf-repo-id` — Hugging Face repo id (e.g. `mlx-community/Qwen3.6-35B-A3B-4bit`).
+- `local-dir-name` — subdirectory under `~/.omlx/models/` where the weights land.
+
+### Sync hook (opt-in)
+
+Downloads are gated by `downloadOmlxModels` in `~/.config/chezmoi/chezmoi.toml`. Default is `false`, so `chezmoi apply` never auto-downloads multi-GB weights unless explicitly enabled. To change the setting, re-run `chezmoi init`.
+
+The sync hook is a thin shell orchestrator that delegates parse + skip + download logic to a Python helper:
+
+- [`home/.chezmoiscripts/run_onchange_after_07-sync-omlx-models.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-sync-omlx-models.sh.tmpl)
+- [`scripts/sync_omlx_models.py`](../../scripts/sync_omlx_models.py)
+
+The helper treats a model directory as "complete" if it contains `config.json` and at least one `*.safetensors` shard, so re-runs are idempotent.
+
+Override the model root with `OMLX_MODELS_ROOT` (defaults to `~/.omlx/models`).
+
+Workflow:
+
+```bash
+chezmoi init  # (once) prompts for downloadOmlxModels
+chezmoi apply # syncs models when gate is true
+omlx serve
+```
+
+Add a model: [`docs/recipes/add-an-omlx-model.md`](../recipes/add-an-omlx-model.md).
+
+### Fish completions
+
+- [`home/dot_config/fish/completions/readonly_omlx.fish`](../../home/dot_config/fish/completions/readonly_omlx.fish)
+
+Tab-completes `omlx <subcommand>`, `omlx launch <tool>`, and model ids for `--model` / `--pin`. Model names are the union (deduped by id) of the running server (`GET /v1/models`) and a filesystem scan of `${OMLX_MODELS_ROOT:-$HOME/.omlx/models}` (same root used by the sync hook). Unioning matters because oMLX only scans the models directory at server startup — a model downloaded after `omlx serve` launched won't appear in `/v1/models` until the server is restarted, but completion still surfaces it from disk. `OMLX_HOST` / `OMLX_PORT` override the defaults (`127.0.0.1:8000`) for the live query.
+
+### Model-level control plane (`,omlx`)
+
+oMLX's CLI only exposes `serve`, `launch`, `diagnose` — no model-level control. This repo ships a thin umbrella wrapping the public HTTP API:
+
+- [`home/exact_bin/executable_,omlx`](../../home/exact_bin/executable_,omlx) → `~/bin/,omlx`
+- [`home/dot_config/fish/completions/readonly_,omlx.fish`](../../home/dot_config/fish/completions/readonly_,omlx.fish) — context-aware subcommand + model-id completions
+
+Daemon lifecycle is NOT in scope (that's `brew services start|stop|restart jundot/omlx/omlx`). Subcommands:
+
+```bash
+,omlx status                          # loaded/unloaded state, memory, budget
+,omlx load <model-id> [<id> ...]      # lazy-load via /v1/chat/completions
+,omlx unload <model-id> [<id> ...]    # POST /v1/models/<id>/unload
+,omlx unload --all                    # unload everything currently loaded
+```
+
+`unload` hits `POST /v1/models/<id>/unload`, which runs `mx.synchronize()` + `mx.clear_cache()` server-side so Metal buffers actually release (not just the accounting). `load` has no public endpoint (the admin one requires a session cookie), so we trigger a lazy-load with a `max_tokens=1` chat completion against the target id.
+
+`status` and `load` union the server registry with a scan of `${OMLX_MODELS_ROOT:-~/.omlx/models}` (any subdir with a `config.json` counts, same definition as the sync script). oMLX only registers on-disk models at startup via `engine_pool.discover_models()`, so a model downloaded after `omlx serve` launched stays invisible to the server until it restarts. Both surfaces handle that explicitly:
+
+- `,omlx status` prints three states — `✓ loaded`, `· on disk`, `? on disk, not discovered` — and appends a footer telling you to `brew services restart jundot/omlx/omlx` if any `?` rows exist.
+- `,omlx load <id>` pre-checks against the registry; if the id is only on disk, it refuses the warmup and prints the same restart hint instead of firing a warmup that would 404.
+
+Completion follows the same model. `,omlx load <TAB>` offers the union (server-unloaded + disk-only, with distinct descriptions); `,omlx unload <TAB>` stays server-loaded-only because "loaded" is a server-only state.
+
+Respects `OMLX_HOST` / `OMLX_PORT` / `OMLX_API_KEY` / `OMLX_MODELS_ROOT` (defaults: `127.0.0.1:8000`, no auth header unless `OMLX_API_KEY` is set, disk scan under `~/.omlx/models`).
+
 ## Beads (Task Tracking)
 
 Beads is integrated as a CLI (`bd`) with a repo-aware wrapper command:

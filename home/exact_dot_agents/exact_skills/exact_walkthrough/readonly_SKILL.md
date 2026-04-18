@@ -1,6 +1,6 @@
 ---
 name: walkthrough
-description: Explore a codebase interactively: trace execution flows, map component relationships, and render architectural diagrams.
+description: "Explore a codebase interactively: trace execution flows, map component relationships, and render architectural diagrams."
 disable-model-invocation: true
 ---
 

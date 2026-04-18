@@ -432,7 +432,9 @@ brew "weave"
 
 # Entity-level diff, blame, impact analysis, and LLM context for Git
 # https://github.com/Ataraxy-Labs/sem
-brew "ataraxy-labs/tap/sem"
+# link: :overwrite — `sem` collides with GNU `parallel`'s semaphore alias at
+# /opt/homebrew/bin/sem; we want the ataraxy binary to win that name.
+brew "ataraxy-labs/tap/sem", link: :overwrite
 
 # Rich git commit graph TUI
 # https://github.com/lusingander/serie
@@ -1117,6 +1119,16 @@ brew "ggerganov/ggerganov/hnterm"
 # https://github.com/AlexsJones/llmfit
 brew "llmfit"
 
+# LLM inference server optimized for Apple Silicon (MLX) with continuous
+# batching, tiered KV cache, and native TurboQuant / oQ quantization
+# https://github.com/jundot/omlx
+tap "jundot/omlx", "https://github.com/jundot/omlx"
+brew "jundot/omlx/omlx"
+
+# Official Hugging Face CLI (`hf`) — model downloads, auth, repo listing
+# https://huggingface.co/docs/huggingface_hub/guides/cli
+brew "hf"
+
 # ==============================================================================
 # APPLICATIONS (CASKS)
 # GUI applications and desktop software
@@ -1126,18 +1138,6 @@ brew "llmfit"
 # Allows connection to a computer remotely
 # https://anydesk.com/
 cask "anydesk"
-
-# Web browser
-# https://arc.net/
-cask "arc"
-
-# Web browser
-# https://brave.com/
-cask "brave-browser"
-
-# Web browser
-# https://zen-browser.app/
-cask "zen"
 
 # Web browser
 # https://www.google.com/chrome/
@@ -1171,6 +1171,27 @@ cask "slack"
 # https://www.google.com/drive/
 cask "google-drive"
 
+# Task management application
+# https://www.rememberthemilk.com/
+cask "remember-the-milk"
+{{ end -}}
+
+# Web browser
+# https://arc.net/
+cask "arc"
+
+# AI-first web browser from The Browser Company
+# https://www.diabrowser.com/
+cask "thebrowsercompany-dia"
+
+# Web browser
+# https://brave.com/
+cask "brave-browser"
+
+# Web browser
+# https://zen-browser.app/
+cask "zen"
+
 # Graphically shows disk usage within a file system
 # https://grandperspectiv.sourceforge.io/
 cask "grandperspective"
@@ -1186,11 +1207,6 @@ cask "iina"
 # Lossless video editor and trimmer
 # https://github.com/mifi/lossless-cut
 cask "losslesscut"
-
-# Task management application
-# https://www.rememberthemilk.com/
-cask "remember-the-milk"
-{{ end -}}
 
 # AI-powered agent from OpenAI
 # https://github.com/openai/codex

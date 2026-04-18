@@ -18,11 +18,18 @@ Options:
 import re
 import sys
 
+# List markers (bullet, numeric, outline-letter) may appear at any indentation
+# depth — CommonMark nests relative to the parent item's content column, not
+# absolute 0-3 spaces. Letter markers (a., b., A), etc.) are not CommonMark
+# ordered list markers, but are commonly used as outline sub-items that the
+# author intends to keep on their own lines; treat them as structural so the
+# unwrap pass does not concatenate them into the parent.
 STRUCTURAL = re.compile(
     r"^("
     r"\s{0,3}#{1,6}\s"
-    r"|\s{0,3}[-*+]\s"
-    r"|\s{0,3}\d+[.)]\s"
+    r"|\s*[-*+]\s"
+    r"|\s*\d+[.)]\s"
+    r"|\s*[a-zA-Z][.)]\s"
     r"|\s{0,3}>"
     r"|\s{0,3}```"
     r"|\s{0,3}~~~"
