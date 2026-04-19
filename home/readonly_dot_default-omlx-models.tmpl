@@ -16,9 +16,10 @@
 # checkpoint — ~15x cleaner than community abliteration references). Stock
 # mlx-community variants were dropped because the KL delta to the heretic
 # counterparts is negligible on agentic-coding workloads and we use one
-# model at a time in an agent. Two precision tiers for Qwen so the same
-# manifest works on both the 36 GB M3 Pro (4-bit) and the 64 GB M1 Pro
-# (6-bit).
+# model at a time in an agent. Qwen ships in two precision tiers: 4-bit is
+# universal; the 6-bit quality tier is gated to the personal profile
+# (isWork=false) because 27.2 GB weights + long-ctx KV cache blows past the
+# 25 GB default weights budget on 36 GB work hosts.
 
 # Gemma-4 26B-A4B heretic (MoE, ~4B active / 26B total, 256k ctx, ~14.5 GB).
 # Only 4-bit is published by mlx-community. Serves as the fast small-active
@@ -31,10 +32,13 @@ mlx-community/gemma-4-26B-A4B-it-heretic-4bit|gemma-4-26b-a4b-it-heretic-4bit
 # https://huggingface.co/Youssofal/Qwen3.6-35B-A3B-Abliterated-Heretic-MLX-4bit
 Youssofal/Qwen3.6-35B-A3B-Abliterated-Heretic-MLX-4bit|qwen3.6-abliterated-heretic-4bit
 
+{{ if ne .isWork true -}}
 # Qwen3.6 35B-A3B Abliterated+Heretic @ 6-bit (~27.2 GB) — quality tier.
-# Same abliteration checkpoint as the 4-bit above, higher precision. Practical
-# only on the 64 GB M1 Pro (27 GB weights + long-ctx KV cache + server
-# overhead fits comfortably under a ~50 GB model budget; on the 36 GB machine
-# it exceeds the 25 GB default weights budget even before KV).
+# Same abliteration checkpoint as the 4-bit above, higher precision. Gated
+# to personal-profile hosts (isWork=false): the 64 GB M1 Pro fits 27 GB
+# weights + long-ctx KV cache + server overhead under a ~50 GB model budget;
+# the 36 GB M3 Pro would exceed the 25 GB default weights budget even before
+# KV, so this entry renders empty there.
 # https://huggingface.co/Youssofal/Qwen3.6-35B-A3B-Abliterated-Heretic-MLX-6bit
 Youssofal/Qwen3.6-35B-A3B-Abliterated-Heretic-MLX-6bit|qwen3.6-abliterated-heretic-6bit
+{{- end }}

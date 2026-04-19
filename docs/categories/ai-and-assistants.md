@@ -325,7 +325,7 @@ The curated model list is declared as a chezmoi-templated manifest:
 
 - [`home/readonly_dot_default-omlx-models.tmpl`](../../home/readonly_dot_default-omlx-models.tmpl)
 
-The manifest is 4-bit across the board — same list on every Apple Silicon host, no RAM tiering. This favors long-context KV cache headroom (and faster per-token inference) over quantization fidelity, which is the more useful tradeoff for agentic coding.
+The manifest is 4-bit by default on every Apple Silicon host. Personal hosts (`isWork=false`) additionally pull the Qwen 6-bit quality tier; work hosts skip it because its ~27 GB weights exceed the 25 GB default weights budget before any KV cache is allocated. 4-bit favors long-context KV cache headroom (and faster per-token inference) over quantization fidelity, which is the more useful tradeoff for agentic coding.
 
 Format (pipe-delimited):
 

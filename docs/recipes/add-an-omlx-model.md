@@ -25,7 +25,7 @@ Pipe-delimited, one model per line:
 - `hf-repo-id` — Hugging Face repo id (e.g. `Youssofal/Qwen3.6-35B-A3B-Abliterated-Heretic-MLX-4bit`).
 - `local-dir-name` — subdirectory under `~/.omlx/models/` (kebab-case, descriptive).
 
-Lines starting with `#` and blank lines are ignored. Chezmoi template conditionals are supported if host-specific tiering is ever reintroduced.
+Lines starting with `#` and blank lines are ignored. Chezmoi template conditionals work natively (the orchestrator pipes the manifest through `chezmoi execute-template`). Existing precedent: the Qwen 6-bit entry is gated with `{{ if ne .isWork true -}}…{{- end }}` so it only renders on personal hosts.
 
 ## Steps
 
