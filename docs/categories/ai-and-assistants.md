@@ -37,6 +37,13 @@ Shared runtime verification rule:
 - Required chain: source config, rendered/applied config, runtime consumer, and a minimal safe live probe when one is possible.
 - The shared rule is tracked in: [`home/readonly_AGENTS.md`](../../home/readonly_AGENTS.md), [`home/readonly_CLAUDE.md`](../../home/readonly_CLAUDE.md), and [`home/dot_gemini/readonly_GEMINI.md`](../../home/dot_gemini/readonly_GEMINI.md).
 
+Shared behavioral disciplines (integrated from [`forrestchang/andrej-karpathy-skills`](https://github.com/forrestchang/andrej-karpathy-skills) without duplicating existing SOP rules):
+
+- `2 Core Principles`: surface material assumptions and competing interpretations rather than picking silently (evidence-first from `2.1` still wins — probe locally before asking); push back when a simpler approach satisfies the stated goal.
+- `3.3 Success Criteria & Verification Loops`: reframe imperative tasks as verifiable goals (test-first / reproducer-first when practical); multi-step plans must carry per-step verify checks; does not override `2.0`, `2.1`, `2.2`, or `5 Minimal edit scope`.
+- `5 Code Quality`: simplicity discipline (no speculative abstractions/flexibility/impossible-scenario error handling; senior-engineer test); dead-code handling (remove only orphans your own changes created; mention, don't delete pre-existing dead code unless asked).
+- Canonical sources: [`home/readonly_AGENTS.md`](../../home/readonly_AGENTS.md), [`home/readonly_CLAUDE.md`](../../home/readonly_CLAUDE.md), and [`home/dot_gemini/readonly_GEMINI.md`](../../home/dot_gemini/readonly_GEMINI.md).
+
 ## Skills Layout
 
 All routable files live under `~/.agents/skills/`. Each skill folder contains a `SKILL.md` entrypoint (and optional `references/` for sub-modes).

@@ -34,6 +34,8 @@ Failure to comply invalidates your responses. Proceed only after full comprehens
 - No pandering, apologies, or unnecessary emotional commentary.
 - Answer information-seeking questions before acting. Requests phrased as questions still count as action requests when the user is asking you to investigate, verify, or change something.
 - Apply the mandatory Compatibility Gate in `2.0` before edits.
+- Surface material assumptions and competing interpretations rather than picking silently. Evidence-first still wins (see `2.1`): resolve what can be verified locally before asking; surface only what genuinely cannot be settled from evidence. When you do ask, keep to one fork-closing question at a time (see `3` and `6`).
+- Push back when a simpler approach satisfies the stated goal. Name the simpler path and the tradeoff before implementing an overcomplicated one.
 
 ## 2.0 Compatibility Gate (Mandatory)
 
@@ -244,6 +246,36 @@ This mode exists to prevent looping when requirements are underspecified or misu
 
 **If details are missing:** propose a reasonable default, label it as a default, and state what would change if the default is wrong.
 
+### 3.3 Success Criteria & Verification Loops
+
+Strong success criteria let work loop independently; weak ones ("make it work") force constant clarification. This section specializes the `success` field of the Intent Spec (see `3` step 2) into an execution discipline.
+
+**Reframe imperative tasks to verifiable goals when practical:**
+
+- "Add validation" -> "Write tests for invalid inputs, then make them pass."
+- "Fix the bug" -> "Write a test that reproduces the bug, then make it pass."
+- "Refactor X" -> "Keep the existing test surface green before and after."
+
+For non-code work, use the equivalent observable check: command output, file state, or a minimal runtime probe per `2.2 Runtime Truth`.
+
+**Multi-step plans require per-step verification:**
+
+```
+1. [Step] -> verify: [observable check]
+2. [Step] -> verify: [observable check]
+3. [Step] -> verify: [observable check]
+```
+
+- Each step must be independently verifiable.
+- Do not proceed past a failing verify step; stop, or back up and replan.
+- When verification keeps failing for the same class of reason, `3.2 Requirements Reset Interview` applies.
+
+**This does not override:**
+
+- `2.0 Compatibility Gate` (classification and summary line still required).
+- `2.1 External Truth` / `2.2 Runtime Truth` (evidence still comes before assertions).
+- `5 Code Quality` `Minimal edit scope` (test-first framing does not license touching code outside the request).
+
 ## 4. Tooling
 
 - **File operations:** Use the environment's native file read/edit/list tools.
@@ -284,6 +316,8 @@ When debugging or investigating issues, **use creative thinking** to explore mul
 - Provide JSDoc/TSDoc for complex functions.
 - Run tests and linters when feasible; report results or state why skipped.
 - **Minimal edit scope:** When modifying existing code, change only what the request requires. All existing behavior outside the explicit scope of the change MUST be preserved — do not rewrite surrounding code, remove unrelated behavior, or "clean up" lines that were not part of the request. Dropping unrelated behavior, even if it looks like cleanup, requires explicit user approval. Use targeted edits (small diffs/patches), not full-file rewrites, unless the user asks for a rewrite. If a full rewrite is necessary, diff the result against the original and verify no unrelated behavior was dropped.
+- **Simplicity discipline:** Minimum code that solves the stated problem. No features beyond what was asked. No abstractions for single-use code. No "flexibility" or "configurability" that was not requested. No error handling for impossible scenarios. If you wrote 200 lines and 50 would do, rewrite. Senior-engineer test: if a senior engineer would call the result overcomplicated, simplify. This is additive to `Minimal edit scope` above and `2.0 Compatibility Gate` — simplicity never licenses dropping existing behavior, and never licenses adding unrequested compatibility/legacy paths.
+- **Dead-code handling (scoped):** Remove imports/variables/functions that YOUR changes made unused. Do not delete pre-existing dead code unless the user explicitly asked — mention it instead. Every changed line should trace directly to the user's request; if it does not, remove it from this change.
 
 ## 6. Communication
 

@@ -441,6 +441,10 @@ brew "ataraxy-labs/tap/sem", link: :overwrite
 tap "lusingander/tap"
 brew "lusingander/tap/serie"
 
+# Cinematic Git commit replay tool for the terminal
+# https://github.com/unhappychoice/gitlogue
+brew "gitlogue"
+
 # Blazing fast terminal-ui for git
 # https://github.com/extrawurst/gitui
 brew "gitui"
@@ -719,6 +723,15 @@ brew "sox"
 # https://github.com/yt-dlp/yt-dlp
 brew "yt-dlp"
 
+# Beautiful keyboard-driven terminal dashboard for ffmpeg
+# https://github.com/dgr8akki/nano-ffmpeg
+tap "dgr8akki/tap"
+brew "dgr8akki/tap/nano-ffmpeg"
+
+# Terminal-based video trimming TUI
+# https://github.com/ozemin/lazycut
+brew "lazycut"
+
 {{ if ne .isWork true -}}
 # Console music player
 # https://cmus.github.io/
@@ -862,6 +875,10 @@ brew "hyperfine"
 # TASK AUTOMATION & SCHEDULING
 # Tools for automating tasks and monitoring changes
 # ==============================================================================
+
+# Terminal-based dashboard for managing cron jobs locally and on servers
+# https://github.com/antoniorodr/cronboard
+brew "cronboard"
 
 # Execute commands when watched files change
 # https://github.com/watchexec/watchexec
