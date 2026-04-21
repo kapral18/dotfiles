@@ -1,6 +1,7 @@
 return {
   {
     "mbbill/undotree",
+    version = false,
     init = function()
       vim.g.undotree_CustomUndotreeCmd = "vertical 40 new"
       vim.g.undotree_CustomDiffpanelCmd = "botright 15 new"
@@ -12,6 +13,7 @@ return {
   },
   {
     "debugloop/telescope-undo.nvim",
+    version = false,
     dependencies = {
       {
         "nvim-telescope/telescope.nvim",

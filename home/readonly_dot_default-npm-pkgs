@@ -25,3 +25,6 @@ playwriter
 # Description: Find unused dependencies, exports, and files in JS/TS projects
 # URL: https://knip.dev/
 knip
+# Description: Modern extensible financial terminal (requires bun at runtime)
+# URL: https://github.com/vincelwt/gloomberb
+gloomberb

@@ -1,4 +1,4 @@
 return {
-  { "nvim-lua/plenary.nvim" },
-  { "nvim-tree/nvim-web-devicons" },
+  { "nvim-lua/plenary.nvim", version = false },
+  { "nvim-tree/nvim-web-devicons", version = false },
 }

@@ -4,6 +4,7 @@ local fs_util = require("util.fs")
 return {
   {
     "lewis6991/gitsigns.nvim",
+    version = "*",
     event = { "BufReadPost", "BufNewFile" },
     opts = function()
       local icons = ui.config.icons.git
@@ -106,6 +107,7 @@ return {
   -- git messages(commits, history, etc) under cursor
   {
     "rhysd/git-messenger.vim",
+    version = false,
     cmd = { "GitMessenger" },
     dependencies = { "folke/which-key.nvim" },
     config = function()
@@ -128,6 +130,7 @@ return {
   },
   {
     "aaronhallaert/advanced-git-search.nvim",
+    version = "*",
     cmd = { "AdvancedGitSearch" },
     keys = {
       { "<leader>gas", ":AdvancedGitSearch<CR>", desc = "AdvancedGitSearch" },
@@ -171,7 +174,7 @@ return {
       -- to show diff splits and open commits in browser
       "tpope/vim-fugitive",
       -- to open commits in browser with fugitive
-      "tpope/vim-rhubarb",
+      { "tpope/vim-rhubarb", version = false },
       -- optional: to replace the diff from fugitive with diffview.nvim
       -- (fugitive is still needed to open in browser)
       "sindrets/diffview.nvim", --- See dependencies
@@ -180,6 +183,7 @@ return {
   },
   {
     "sindrets/diffview.nvim",
+    version = false,
     opts = {
       view = {
         merge_tool = {
@@ -202,6 +206,7 @@ return {
   },
   {
     "rbong/vim-flog",
+    version = false,
     cmd = { "Flog", "Flogsplit", "Floggit" },
     dependencies = {
       "tpope/vim-fugitive",
@@ -209,6 +214,7 @@ return {
   },
   {
     "FabijanZulj/blame.nvim",
+    version = false,
     cmd = "BlameToggle",
     opts = {
       max_summary_width = 25,

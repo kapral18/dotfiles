@@ -31,6 +31,7 @@ return {
   -- Strudel: Live coding music environment
   {
     "gruvw/strudel.nvim",
+    version = false,
     build = "npm install",
     dependencies = { "nvim-treesitter/nvim-treesitter" },
     cond = function()

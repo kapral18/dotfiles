@@ -1,6 +1,7 @@
 return {
   {
     "chrishrb/gx.nvim",
+    version = "*",
     dependencies = { "nvim-lua/plenary.nvim" },
     opts = {
       handler_options = {

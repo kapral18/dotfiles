@@ -60,22 +60,29 @@ Plugin specs are still declared in lazy-style tables, but loading is now trigger
 
 Version policy (fast startup): startup does **not** probe remotes. Instead, `PackSync` / `PackStatus` refresh a cached heuristic map under `stdpath("state")` that decides per-plugin whether to follow release tags or branch tip.
 
-- **default** (no `version` field): follow the latest semver tag where the heuristic says tags are healthy; fall back to branch tip if tags appear stale.
-- `version = false`: explicitly force branch tip for a specific plugin.
-- explicit pins (`commit`/`tag`/`branch`/`version = "<range>"`) always take priority.
+**Per-spec `version` field (lazy.nvim-compatible):**
 
-The cached policy uses a commit-count heuristic with three gates:
+- `version = "*"` → latest semver tag (translates to `vim.version.range("*")`; resolves to the greatest tag, regardless of major)
+- `version = "^1.0"` / `"~1.2"` / `">=2.3"` → semver range (resolves to the greatest matching tag)
+- `version = "v1.2.3"` → exact tag
+- `version = "<commit-sha>"` → exact commit
+- `version = false` → default branch tip, skip tag resolution entirely
+- `version = nil` (field omitted) → use the cached heuristic below
+- `commit` / `tag` / `branch` top-level fields take priority over `version` (same spec format as lazy.nvim)
+
+**Heuristic default** (when `version` is unset): three gates drive the auto-decision between tags and branch tip:
 
 1. **Minimum release history**: repos with fewer than 3 semver tags can't form a reliable average — if more than 30 commits have landed since the last tag, fall back to branch tip.
 2. **Commit ratio**: if the number of commits since the latest tag exceeds the average commits per release (x1.5), fall back to branch tip.
 3. **Absolute cap**: more than 150 unreleased commits always means branch tip.
 
-To force branch tip for a specific plugin, set `version = false` in its spec.
+The heuristic is a convenience default for plugins whose spec omits `version`. To override per-plugin, set `version` explicitly in the spec — this wins over the heuristic without any global configuration. Run `:PackPolicyRebuild` (optionally with a plugin name) to clear and recompute the cached heuristic after the plugin set changes or after upstream adds/removes tags; tab-completion suggests managed plugin names.
 
 Practical commands:
 
 - `:PackDashboard` -> compact floating plugin dashboard with:
   - per-plugin update status
+  - orphan flag (`O` / trash icon) for installed packs that are no longer declared by any spec; press `C` to clean them (selected orphans first, else all orphans, with confirmation)
   - breaking-risk hint (best-effort) from semver delta (`major`/`minor`/`patch`) plus commit-message signals in the cumulative `rev_before..rev_after` range (for example `BREAKING`, `feat`, `fix`, `refactor`, `perf`)
   - icon-based links column (`diff` / `repo`) with direct compare URL for pending updates
   - single update (`<CR>`), multi-select update (`u`), update all pending (`U`)
@@ -86,6 +93,10 @@ Practical commands:
 - `:PackDashboardStats` -> print last raw check counters (`update/same/error`) and check timestamps
 - `:PackTrace [plugin-name]` -> show current load state, trigger metadata, and load reason
 - `:PackLoad <plugin-name>` -> force-load one plugin by name (useful for debugging)
+- `:PackLockInfo` -> show `nvim-pack-lock.json` path, plugin count, mtime (the lockfile is maintained by `vim.pack` itself)
+- `:PackLockExport <path>` -> copy the lockfile to any path (for syncing across machines via `chezmoi re-add` or similar)
+- `:PackLockImport <path>` -> overwrite the lockfile from a path; restart or `:PackSync` to apply pinned revisions
+- `:PackPolicyRebuild [plugin-name]` -> clear and recompute the cached tag/branch heuristic (omit the name for a full rebuild)
 - `<localleader>ss` or `:AutoSession save` -> save the current session
 
 Dashboard/trace popup buffers are treated as transient and excluded from session persistence to avoid polluting `auto-session` restores. Session search integrations are loaded on demand to keep startup leaner. Use `r` (or `:PackDashboard!`) for explicit online refresh checks. Dashboard check/apply timestamps and last plugin status/version snapshot are persisted under `stdpath("state")` so they survive Neovim restart. The dashboard header also shows last raw check counters from the most recent explicit check, plus `checked` and `applied` stamps. Filter/sort, search text, and selected plugin rows are also restored on the next dashboard open. Use `o` to open a plugin diff link (with repository fallback), and `O` for repository-only open.
@@ -102,6 +113,14 @@ The dashboard defaults to an icon-first compact view and can be tuned with globa
 - `vim.g.pack_dashboard_fast_scroll` (default `true`)
 - `vim.g.pack_dashboard_ascii` (default `false`; when `true`, use ASCII labels/icons)
 - `vim.g.pack_dashboard_autocheck_on_open` (default `false`; when `true`, first dashboard open may bootstrap cache with a check)
+- `vim.g.pack_dashboard_skip_risk_confirm` (default `false`; when `true`, `u`/`U`/`<CR>` skip the risk confirmation for plugins flagged with a major-bump or breaking-signal)
+- `vim.g.pack_dashboard_skip_clean_confirm` (default `false`; when `true`, `C` cleans orphan plugins without asking for confirmation)
+
+Repeated `:PackDashboard` calls reuse the existing floating window instead of stacking multiple instances; add `!` (i.e. `:PackDashboard!`) to force-close and re-scan. Stale cache/UI entries for plugins that were removed from the config are purged automatically on every dashboard open.
+
+Orphan plugins (packs on disk that are no longer declared by any spec) are surfaced as `orphan` rows in the dashboard rather than silently deleted at startup. This mirrors the `lazy.nvim` UX: you review what will be removed, then press `C` to clean. The only auto-mutation that still happens at startup is re-cloning a plugin whose `src` changed (same name, new remote) — that's a legitimate move, not an orphan.
+
+Initial version-policy generation and 3-day TTL refresh are deferred to `VimEnter + 200ms` and processed one plugin per scheduled tick, so neither the first launch after adding plugins nor a cold cache blocks the editor. The sync path used by `:PackSync` / `:PackStatus` runs incrementally: only new or missing plugin entries are recomputed when the existing cache is otherwise valid.
 
 Current links column behavior is compact availability:
 
@@ -131,6 +150,27 @@ rm -f ~/.local/share/nvim/site/parser/markdown.so
 ```
 
 Note: the config also treats bundled/runtime parsers as "available" so `nvim-treesitter` doesn't repeatedly try to auto-install languages that Neovim already ships.
+
+## Filetype: `*.tmpl` Belongs To Chezmoi, Not Go
+
+`alker0/chezmoi.vim` detects files under `$CHEZMOI_SOURCE_DIR` and sets composite filetypes like `gitconfig.chezmoitmpl`, `toml.chezmoitmpl`, `sh.chezmoitmpl`, etc. This is what enables the inner-language syntax plus Go-template awareness and is what tree-sitter queries expect.
+
+`ray-x/go.nvim` ships an `ftdetect/filetype.vim` that blanket-claims every `.tmpl` file as Go text-template:
+
+```vim
+au BufRead,BufNewFile *.tmpl set filetype=gotexttmpl
+```
+
+Our plugin manager sources every plugin's `ftdetect/` eagerly at startup (even for lazy-loaded plugins like go.nvim), so that autocmd is already registered the first time a `.tmpl` buffer is read. Depending on registration order, the `gotexttmpl` autocmd can win on either the initial `BufRead` or subsequent `:e`/`:edit!`. The resulting `gotexttmpl` filetype pulls in `syntax/go.vim`, which defines `goCharacter` as a `'...'` region — so a stray apostrophe in a comment (`git's`) paints everything up to the next `'` (often many lines away) as `Character`.
+
+Two defenses cooperate:
+
+1. The chezmoi plugin installs an eager `FileType` autocmd at startup. Whenever any buffer under the chezmoi source tree is set to a known hijacking filetype (`gotexttmpl`, `gohtmltmpl`), it re-runs chezmoi.vim's per-source-dir detection so the composite filetype (`<ft>.chezmoitmpl`) is restored. This works regardless of plugin load order and catches both the initial open and any later stomp.
+   - [`home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_chezmoi.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_chezmoi.lua)
+2. When go.nvim itself eventually loads, its `config` removes the blanket `*.tmpl` filetype autocmd and re-detects any already-open chezmoi buffer — so after the first `:` keystroke there is no stomp to reclaim from.
+   - [`home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_go.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_go.lua)
+
+`.gotext` and `.gohtml` handlers from go.nvim remain. Real Go text templates can be opted into with `:setfiletype gotexttmpl` or by using the `.gotext` extension.
 
 If you are IDE-first, start by learning:
 

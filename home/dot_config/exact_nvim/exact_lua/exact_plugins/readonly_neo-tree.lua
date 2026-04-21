@@ -35,10 +35,11 @@ end
 return {
   {
     "nvim-neo-tree/neo-tree.nvim",
+    version = "*",
     dependencies = {
       "nvim-lua/plenary.nvim",
       "nvim-tree/nvim-web-devicons",
-      "MunifTanjim/nui.nvim",
+      { "MunifTanjim/nui.nvim", version = "*" },
       "ibhagwan/fzf-lua",
     },
     keys = {
@@ -206,6 +207,7 @@ return {
 
   {
     "mikavilpas/yazi.nvim",
+    version = false,
     keys = {
       -- 👇 in this section, choose your own keymappings!
       {
@@ -232,6 +234,7 @@ return {
   },
   {
     "stevearc/oil.nvim",
+    version = false,
     dependencies = { { "nvim-mini/mini.icons", opts = {} } },
     opts = {
       default_file_explorer = true,

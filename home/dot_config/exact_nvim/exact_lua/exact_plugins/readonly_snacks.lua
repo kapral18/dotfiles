@@ -1,6 +1,7 @@
 return {
   {
     "folke/snacks.nvim",
+    version = "*",
     priority = 1000,
     opts = {
       dashboard = {

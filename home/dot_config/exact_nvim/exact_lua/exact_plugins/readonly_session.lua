@@ -1,6 +1,7 @@
 return {
   {
     "rmagatti/auto-session",
+    version = false,
     -- Must be available before VimEnter so auto-restore hooks can run.
     lazy = false,
     dependencies = {

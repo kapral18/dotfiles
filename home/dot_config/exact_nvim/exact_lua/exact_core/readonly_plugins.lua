@@ -358,6 +358,17 @@ local function normalize_pack_version(version)
     return nil
   end
 
+  -- lazy.nvim-compatible shorthand: `version = "*"` means "latest semver tag".
+  -- `vim.pack` would reject the literal string "*" (it expects a branch/tag/
+  -- commit) so we translate to an open-ended semver range which vim.pack
+  -- resolves to the greatest matching tag.
+  if v == "*" then
+    local ok, range = pcall(vim.version.range, "*")
+    if ok then
+      return range
+    end
+  end
+
   if v:find("[%^~><=]") then
     local ok, range = pcall(vim.version.range, v)
     if ok then
@@ -605,19 +616,32 @@ function M.setup(module_names)
     vim.pack.add(pack_specs, { confirm = false, load = false })
   end
 
-  if policy_was_empty and #pack_specs > 0 then
-    local ok_bootstrap = pcall(require("core.pack_dashboard").refresh_version_policy_if_needed)
-    if ok_bootstrap then
-      vim.schedule(function()
-        vim.notify("Generated initial version policy — restart to apply tag pins", vim.log.levels.INFO)
-      end)
-    end
+  if #pack_specs > 0 then
+    -- Defer policy bootstrap/refresh: running `decide_tag_strategy` for every
+    -- plugin involves several synchronous git shell-outs each. On a cold
+    -- cache with many plugins this can block the UI for multiple seconds at
+    -- startup. The async path yields between plugins so the editor stays
+    -- responsive whether policy is empty (first run) or expired (3-day TTL).
+    vim.api.nvim_create_autocmd("VimEnter", {
+      once = true,
+      callback = function()
+        vim.defer_fn(function()
+          require("core.pack_dashboard").refresh_version_policy_async(function(ok, reason)
+            if ok and policy_was_empty then
+              vim.notify("Generated initial version policy — restart to apply tag pins", vim.log.levels.INFO)
+            elseif ok and reason == "full" then
+              vim.notify("Refreshed version policy", vim.log.levels.INFO)
+            end
+          end)
+        end, 200)
+      end,
+    })
   end
 
   -- Retain on-disk packs for every declared remote plugin, including when
-  -- `cond` / `enabled` is false at startup. Otherwise orphan cleanup treats
-  -- conditionally disabled specs (e.g. git tools when cwd has no `.git`) as
-  -- removed from the config and runs `vim.pack.del`, forcing reinstall later.
+  -- `cond` / `enabled` is false at startup. Conditionally disabled specs
+  -- (e.g. git tools when cwd has no `.git`) must still count as declared so
+  -- we don't treat them as orphans.
   local retain_pack_names = {}
   local spec_src = {}
   for _, entry in ipairs(sorted) do
@@ -629,16 +653,23 @@ function M.setup(module_names)
     end
   end
 
+  -- Publish the declared plugin set so the dashboard can flag any on-disk
+  -- vim.pack entry without a matching spec as an "orphan" row. Cleanup is
+  -- intentionally explicit — the user hits `C` in the dashboard rather than
+  -- having stale plugins silently deleted on every startup (matches the
+  -- lazy.nvim model the user asked for).
+  require("core.pack_dashboard").set_declared_plugin_names(retain_pack_names)
+
+  -- The reinstall-on-src-change path is separate from orphan cleanup: the
+  -- plugin is still declared, only its remote moved, so re-cloning here is
+  -- the correct auto-behavior.
   local ok_get, all_plugins = pcall(vim.pack.get, nil, { info = false })
   if ok_get and type(all_plugins) == "table" then
-    local to_delete = {}
     local to_reinstall = {}
     for _, p in ipairs(all_plugins) do
       local name = p.spec and p.spec.name
       if type(name) == "string" and name ~= "" then
-        if not retain_pack_names[name] then
-          to_delete[#to_delete + 1] = name
-        elseif spec_src[name] and p.spec.src and spec_src[name] ~= p.spec.src then
+        if retain_pack_names[name] and spec_src[name] and p.spec.src and spec_src[name] ~= p.spec.src then
           to_reinstall[#to_reinstall + 1] = name
         end
       end
@@ -649,13 +680,6 @@ function M.setup(module_names)
       vim.pack.add(pack_specs, { confirm = false, load = false })
       vim.schedule(function()
         vim.notify("Reinstalled (src changed): " .. table.concat(to_reinstall, ", "), vim.log.levels.INFO)
-      end)
-    end
-
-    if #to_delete > 0 then
-      pcall(vim.pack.del, to_delete)
-      vim.schedule(function()
-        vim.notify("Cleaned orphan plugins: " .. table.concat(to_delete, ", "), vim.log.levels.INFO)
       end)
     end
   end

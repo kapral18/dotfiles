@@ -53,6 +53,7 @@ return {
   },
   {
     "dmmulroy/tsc.nvim",
+    version = "*",
     opts = {
       auto_start_watch_mode = false,
       use_trouble_qflist = false,

@@ -1,6 +1,7 @@
 return {
   {
     "jbyuki/one-small-step-for-vimkind",
+    version = false,
     dependencies = {
       "mfussenegger/nvim-dap",
     },

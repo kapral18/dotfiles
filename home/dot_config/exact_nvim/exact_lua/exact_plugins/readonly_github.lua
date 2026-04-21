@@ -8,6 +8,7 @@ return {
   },
   {
     "almo7aya/openingh.nvim",
+    version = "*",
     cmd = { "OpenInGHRepo", "OpenInGHFile", "OpenInGHFileLines" },
     keys = {
       { "<leader>gor", "<cmd>OpenInGHRepo<CR>", desc = "Open git repo in web", mode = { "n" } },
@@ -17,6 +18,7 @@ return {
   },
   {
     "pwntester/octo.nvim",
+    version = false,
     cmd = "Octo",
     dependencies = {
       "nvim-lua/plenary.nvim",

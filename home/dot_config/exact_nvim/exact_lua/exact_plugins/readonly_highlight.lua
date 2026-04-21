@@ -1,6 +1,7 @@
 return {
   {
     "tzachar/local-highlight.nvim",
+    version = false,
     event = { "CursorHold", "CursorHoldI" },
     opts = {
       hlgroup = "LocalHighlight",

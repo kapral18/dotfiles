@@ -16,6 +16,7 @@ return {
   -- Schema companion: auto-detect k8s schemas from apiVersion/kind, CRD support
   {
     "cenk1cenk2/schema-companion.nvim",
+    version = false,
     dependencies = { "nvim-lua/plenary.nvim" },
     config = function()
       require("schema-companion").setup({

@@ -1,6 +1,7 @@
 return {
   {
     "mfussenegger/nvim-lint",
+    version = false,
     event = "BufReadPost",
     opts = function(_, opts)
       opts.events = { "BufWritePost", "BufReadPost", "InsertLeave" }

@@ -1,6 +1,7 @@
 return {
   {
     "https://codeberg.org/andyg/leap.nvim",
+    version = false,
     keys = {
       { "s", "<Plug>(leap-anywhere)", desc = "Leap" },
       {
@@ -16,6 +17,7 @@ return {
   },
   {
     "tpope/vim-abolish",
+    version = "*",
     init = function()
       vim.g.abolish_no_mappings = 1
     end,

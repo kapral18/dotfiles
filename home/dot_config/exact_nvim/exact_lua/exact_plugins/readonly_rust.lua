@@ -15,6 +15,7 @@ return {
   },
   {
     "mrcjkb/rustaceanvim",
+    version = "*",
     ft = { "rust" },
     init = function()
       -- Configure rustaceanvim here

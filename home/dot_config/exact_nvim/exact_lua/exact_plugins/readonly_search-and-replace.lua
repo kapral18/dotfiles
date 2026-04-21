@@ -1,6 +1,7 @@
 return {
   {
     "cshuaimin/ssr.nvim",
+    version = false,
     keys = {
       {
         "<leader>sx",

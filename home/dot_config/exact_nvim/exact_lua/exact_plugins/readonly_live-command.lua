@@ -1,6 +1,7 @@
 return {
   {
     "smjonas/live-command.nvim",
+    version = "*",
     config = function()
       require("live-command").setup({
         commands = {

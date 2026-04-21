@@ -1,6 +1,7 @@
 return {
   {
     "smjonas/inc-rename.nvim",
+    version = false,
     -- Load on LspAttach instead of cmd=IncRename: the packloader's deferred cmd
     -- stub re-runs via vim.cmd() and breaks inc-rename's command-preview handler
     -- (E32 / stale errmsg in the preview callback).

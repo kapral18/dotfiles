@@ -33,6 +33,7 @@ end
 return {
   {
     "mason-org/mason.nvim",
+    version = "*",
     cmd = { "Mason", "MasonInstall", "MasonUninstall", "MasonUninstallAll", "MasonLog", "MasonUpdate" },
     build = ":MasonUpdate",
     opts = function(_, opts)
@@ -68,6 +69,7 @@ return {
   },
   {
     "mason-org/mason-lspconfig.nvim",
+    version = false,
     dependencies = { "mason-org/mason.nvim" },
     opts = {
       ensure_installed = {},
@@ -78,6 +80,7 @@ return {
   },
   {
     "neovim/nvim-lspconfig",
+    version = "*",
     event = { "BufReadPre", "BufNewFile" },
     dependencies = {
       "folke/snacks.nvim",
@@ -400,6 +403,7 @@ return {
   },
   {
     "0oAstro/dim.lua",
+    version = false,
     event = "LspAttach",
     opts = {
       disable_lsp_decorations = true,

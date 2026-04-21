@@ -844,11 +844,11 @@ def _closing_issue_from_pr(pr_data: dict[str, Any] | None) -> dict[str, Any] | N
 
 
 _TRIVIAL_STATUS_RE = re.compile(
-    r"^(CLA|prbot:|renovate/|license/|security/|buildkite/docs|CodeRabbit)",
+    r"^(CLA|prbot:|renovate/|license/|security/|buildkite/docs)",
     re.IGNORECASE,
 )
 _TRIVIAL_CHECK_RE = re.compile(
-    r"^(Analyze new dependencies|docs-preview|CodeRabbit)",
+    r"^(Analyze new dependencies|docs-preview)",
     re.IGNORECASE,
 )
 

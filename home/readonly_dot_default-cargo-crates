@@ -31,3 +31,6 @@ omaro
 # Description: Live Action Search and Replace TUI
 # URL: https://github.com/rcorre/lasr
 lasr
+# Description: Interactive side-by-side git diff viewer for PR review
+# URL: https://github.com/flamestro/deff
+deff

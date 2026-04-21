@@ -1,3 +1,5 @@
+local semver = require("core.pack.semver")
+
 local M = {}
 
 local configured = false
@@ -20,6 +22,19 @@ local dashboard_ui_cache = {
 local persisted_state_loaded = false
 local dashboard_ns = vim.api.nvim_create_namespace("core.pack_dashboard")
 
+-- Module-level singleton refs so repeated `:PackDashboard` calls reuse the
+-- same floating window instead of stacking multiple instances. Cleared by the
+-- `WinClosed` autocmd registered in `open_pack_dashboard`.
+local dashboard_winid = nil
+local dashboard_bufnr = nil
+
+-- Plugin names currently declared by `core.plugins.setup`. Populated at
+-- startup via `M.set_declared_plugin_names`; any `vim.pack` entry without a
+-- matching name is shown as an "orphan" row for manual cleanup (`C` key).
+-- Left empty until set so that pre-setup dashboard access doesn't mis-classify
+-- every plugin as orphaned.
+local declared_names_cache = {}
+
 local function persisted_state_path()
   return vim.fn.stdpath("state") .. "/pack_dashboard_state.json"
 end
@@ -32,36 +47,11 @@ local function version_policy_path()
   return M.version_policy_path()
 end
 
-function M.parse_release_tag(tag)
-  if type(tag) ~= "string" then
-    return nil
-  end
-  local t = vim.trim(tag)
-  if t == "" then
-    return nil
-  end
-
-  -- Gate semver parsing to avoid coercing "garbage" tags like "nerd-v2-compat"
-  -- into fake versions. Still accept common tag formats like "v1.2.3",
-  -- "1.2.3", and two-part tags like "0.7" (coerced to "0.7.0").
-  local looks_like_version = t:match("^v?%d+%.%d+%.%d+[%-%+].+$")
-    or t:match("^v?%d+%.%d+%.%d+$")
-    or t:match("^v?%d+%.%d+[%-%+].+$")
-    or t:match("^v?%d+%.%d+$")
-  if not looks_like_version then
-    return nil
-  end
-
-  local ok, parsed = pcall(vim.version.parse, t, { strict = false })
-  if ok then
-    return parsed
-  end
-  return nil
-end
-
-local function parse_release_tag(tag)
-  return M.parse_release_tag(tag)
-end
+-- Re-exports of `core.pack.semver`. Kept on `M` so `plugins.lua`, which
+-- requires `core.pack_dashboard`, can continue using the same public surface
+-- without depending on the split location.
+M.parse_release_tag = semver.parse_release_tag
+local parse_release_tag = semver.parse_release_tag
 
 local function read_tag_dates(path)
   if type(path) ~= "string" or path == "" then
@@ -315,6 +305,32 @@ local function decide_tag_strategy(path, _name)
   return base
 end
 
+-- Record the set of plugin names declared by the active plugin specs so the
+-- dashboard can distinguish "managed" packs from on-disk orphans. Accepts
+-- either an array of names or a set (`name = true`). Calling with `nil` or a
+-- non-table resets the cache to empty (which disables orphan flagging).
+function M.set_declared_plugin_names(names)
+  if type(names) ~= "table" then
+    declared_names_cache = {}
+    return
+  end
+  local normalized = {}
+  if vim.islist(names) then
+    for _, n in ipairs(names) do
+      if type(n) == "string" and n ~= "" then
+        normalized[n] = true
+      end
+    end
+  else
+    for n, v in pairs(names) do
+      if type(n) == "string" and n ~= "" and v then
+        normalized[n] = true
+      end
+    end
+  end
+  declared_names_cache = normalized
+end
+
 function M.load_version_policy()
   local path = version_policy_path()
   if vim.fn.filereadable(path) ~= 1 then
@@ -367,28 +383,45 @@ end
 
 local POLICY_MAX_AGE = 60 * 60 * 24 * 3
 
-local function should_refresh_policy(existing, plugin_names)
+-- Returns one of:
+--   "fresh"        — cache is still valid, no work needed
+--   "full"         — cache expired or schema mismatch, recompute every plugin
+--   "incremental"  — cache valid but missing some plugins; only compute those
+local function policy_refresh_mode(existing, plugin_names)
   if type(plugin_names) ~= "table" then
-    return true
+    return "full"
   end
   if type(existing) ~= "table" or existing.schema ~= 3 or type(existing.plugins) ~= "table" then
-    return true
+    return "full"
   end
 
   local generated_at = tonumber(existing.generated_at) or 0
   if generated_at > 0 and (os.time() - generated_at) > POLICY_MAX_AGE then
-    return true
+    return "full"
   end
 
   for _, name in ipairs(plugin_names) do
     if existing.plugins[name] == nil then
-      return true
+      return "incremental"
     end
   end
 
-  return false
+  return "fresh"
 end
 
+local function should_refresh_policy(existing, plugin_names)
+  local mode = policy_refresh_mode(existing, plugin_names)
+  return mode ~= "fresh"
+end
+
+-- True when policy refresh is already running under `schedule_wrap`. Prevents
+-- concurrent refreshes when the async path and a sync fallback overlap.
+local policy_refresh_in_progress = false
+
+-- Synchronous refresh used by user-initiated paths (`PackSync`, `PackStatus`,
+-- post-apply refresh) where the user is already waiting. Incremental when the
+-- only change is new plugins; full when time-expired. Missing plugin entries
+-- are filled in-place instead of recomputing every entry.
 function M.refresh_version_policy_if_needed()
   local ok, plug_data = pcall(vim.pack.get, nil, { info = false })
   if not ok or type(plug_data) ~= "table" then
@@ -403,16 +436,40 @@ function M.refresh_version_policy_if_needed()
   end
 
   local existing = load_version_policy()
-  if not should_refresh_policy(existing, names) then
+  local mode = policy_refresh_mode(existing, names)
+  if mode == "fresh" then
     return true
   end
 
   local plugins = {}
+  if mode == "incremental" and type(existing) == "table" and type(existing.plugins) == "table" then
+    for name, info in pairs(existing.plugins) do
+      plugins[name] = info
+    end
+  end
+
+  local name_set = {}
+  for _, name in ipairs(names) do
+    name_set[name] = true
+  end
+
+  if mode == "incremental" then
+    -- Drop entries for plugins that were removed so the on-disk cache stays
+    -- in sync with the current plugin set.
+    for name in pairs(plugins) do
+      if not name_set[name] then
+        plugins[name] = nil
+      end
+    end
+  end
+
   for _, p in ipairs(plug_data) do
     local name = p and p.spec and p.spec.name
     local path = p and p.path
     if type(name) == "string" and name ~= "" and type(path) == "string" and path ~= "" then
-      plugins[name] = decide_tag_strategy(path, name)
+      if mode == "full" or plugins[name] == nil then
+        plugins[name] = decide_tag_strategy(path, name)
+      end
     end
   end
 
@@ -420,6 +477,157 @@ function M.refresh_version_policy_if_needed()
 end
 
 local function refresh_version_policy_if_needed()
+  return M.refresh_version_policy_if_needed()
+end
+
+-- Async variant used by the startup bootstrap path. Processes one plugin per
+-- scheduled tick so the UI can redraw between git shell-outs. On macOS with
+-- 86 plugins the synchronous path blocks for several seconds on the first
+-- cold run; this spreads the cost across event-loop iterations and surfaces
+-- progress through `vim.notify`. When `callback` is provided it's invoked on
+-- the main loop after the write (or immediately on noop).
+function M.refresh_version_policy_async(callback)
+  if policy_refresh_in_progress then
+    if callback then
+      vim.schedule(function()
+        callback(false, "busy")
+      end)
+    end
+    return false
+  end
+
+  local ok, plug_data = pcall(vim.pack.get, nil, { info = false })
+  if not ok or type(plug_data) ~= "table" then
+    if callback then
+      vim.schedule(function()
+        callback(false, "no-plugins")
+      end)
+    end
+    return false
+  end
+
+  local names = {}
+  for _, p in ipairs(plug_data) do
+    if p and p.spec and type(p.spec.name) == "string" and p.spec.name ~= "" then
+      names[#names + 1] = p.spec.name
+    end
+  end
+
+  local existing = load_version_policy()
+  local mode = policy_refresh_mode(existing, names)
+  if mode == "fresh" then
+    if callback then
+      vim.schedule(function()
+        callback(true, "fresh")
+      end)
+    end
+    return true
+  end
+
+  local plugins = {}
+  if mode == "incremental" and type(existing) == "table" and type(existing.plugins) == "table" then
+    for name, info in pairs(existing.plugins) do
+      plugins[name] = info
+    end
+  end
+
+  local name_set = {}
+  for _, name in ipairs(names) do
+    name_set[name] = true
+  end
+  if mode == "incremental" then
+    for name in pairs(plugins) do
+      if not name_set[name] then
+        plugins[name] = nil
+      end
+    end
+  end
+
+  local pending = {}
+  for _, p in ipairs(plug_data) do
+    local name = p and p.spec and p.spec.name
+    local path = p and p.path
+    if type(name) == "string" and name ~= "" and type(path) == "string" and path ~= "" then
+      if mode == "full" or plugins[name] == nil then
+        pending[#pending + 1] = { name = name, path = path }
+      end
+    end
+  end
+
+  if #pending == 0 then
+    local wrote = write_version_policy(plugins)
+    if callback then
+      vim.schedule(function()
+        callback(wrote, "no-work")
+      end)
+    end
+    return wrote
+  end
+
+  policy_refresh_in_progress = true
+  local total = #pending
+  local index = 0
+
+  local function step()
+    if not policy_refresh_in_progress then
+      return
+    end
+    index = index + 1
+    if index > total then
+      policy_refresh_in_progress = false
+      local wrote = write_version_policy(plugins)
+      if callback then
+        callback(wrote, mode)
+      end
+      return
+    end
+
+    local entry = pending[index]
+    local ok_entry, policy = pcall(decide_tag_strategy, entry.path, entry.name)
+    if ok_entry and type(policy) == "table" then
+      plugins[entry.name] = policy
+    end
+    vim.schedule(step)
+  end
+
+  vim.schedule(step)
+  return true
+end
+
+local function refresh_version_policy_async(callback)
+  return M.refresh_version_policy_async(callback)
+end
+
+-- Drop a single plugin entry (or everything when `name == nil`) from the
+-- on-disk version policy so the next refresh recomputes it from scratch.
+-- Called by `:PackPolicyRebuild` and anything else that wants to force the
+-- heuristic to re-evaluate (e.g. after the plugin set changes).
+function M.invalidate_version_policy(name)
+  local existing = load_version_policy()
+  if type(existing) ~= "table" or type(existing.plugins) ~= "table" then
+    return true
+  end
+  if type(name) == "string" and name ~= "" then
+    if existing.plugins[name] == nil then
+      return true
+    end
+    existing.plugins[name] = nil
+    return write_version_policy(existing.plugins)
+  end
+  local path = version_policy_path()
+  if vim.fn.filereadable(path) == 1 then
+    pcall(vim.fn.delete, path)
+  end
+  return true
+end
+
+-- Recompute the policy entry for a single plugin (or every plugin) and write
+-- the result to disk. Used by `:PackPolicyRebuild` and other code paths that
+-- want to force a reread after changing mode/pins. Runs synchronously so the
+-- caller can surface the result immediately; the caller decides whether to
+-- block the UI (user-initiated via command = fine, startup = use async).
+function M.rebuild_version_policy(name)
+  M.invalidate_version_policy(name)
   return M.refresh_version_policy_if_needed()
 end
 
@@ -550,6 +758,7 @@ local function ensure_dashboard_highlights()
   set_hl(0, "PackDashboardStatusSame", { default = true, link = "String" })
   set_hl(0, "PackDashboardStatusError", { default = true, link = "DiagnosticError" })
   set_hl(0, "PackDashboardStatusUnknown", { default = true, link = "Comment" })
+  set_hl(0, "PackDashboardStatusOrphan", { default = true, link = "DiagnosticWarn" })
   set_hl(0, "PackDashboardRiskBreak", { default = true, link = "DiagnosticWarn" })
   set_hl(0, "PackDashboardRiskSafe", { default = true, link = "DiffAdd" })
   set_hl(0, "PackDashboardRiskUnknown", { default = true, link = "Comment" })
@@ -563,55 +772,9 @@ local function notify_err(msg)
   end)
 end
 
-local function semver_major(version)
-  if type(version) ~= "string" or version == "" then
-    return nil
-  end
-  local major = version:match("^v?(%d+)%.") or version:match("^v?(%d+)$")
-  return major and tonumber(major) or nil
-end
-
-local function semver_triplet(version)
-  if type(version) ~= "string" or version == "" then
-    return nil
-  end
-  local major, minor, patch = version:match("^v?(%d+)%.(%d+)%.(%d+)")
-  if not major then
-    major, minor = version:match("^v?(%d+)%.(%d+)")
-    patch = "0"
-  end
-  if not major then
-    major = version:match("^v?(%d+)$")
-    minor = "0"
-    patch = "0"
-  end
-  if not major then
-    return nil
-  end
-  return {
-    major = tonumber(major),
-    minor = tonumber(minor) or 0,
-    patch = tonumber(patch) or 0,
-  }
-end
-
-local function semver_delta(before_version, after_version)
-  local before_triplet = semver_triplet(before_version)
-  local after_triplet = semver_triplet(after_version)
-  if not before_triplet or not after_triplet then
-    return nil
-  end
-  if after_triplet.major ~= before_triplet.major then
-    return "major"
-  end
-  if after_triplet.minor ~= before_triplet.minor then
-    return "minor"
-  end
-  if after_triplet.patch ~= before_triplet.patch then
-    return "patch"
-  end
-  return "same"
-end
+local semver_major = semver.semver_major
+local semver_triplet = semver.semver_triplet
+local semver_delta = semver.semver_delta
 
 local revision_tag_cache = {}
 local commit_messages_cache = {}
@@ -1100,7 +1263,61 @@ local function scan_updates_to_cache(online, names, merge, opts)
   return true
 end
 
+-- Drop cache and persisted-UI entries that no longer correspond to a managed
+-- plugin. Prevents `selected_names` from growing monotonically and prevents
+-- dead rows from polluting `pack_report_cache`. Returns true when anything was
+-- purged so the caller can persist updated state.
+local function purge_stale_dashboard_state()
+  local ok, current = pcall(vim.pack.get, nil, { info = false })
+  if not ok or type(current) ~= "table" then
+    return false
+  end
+
+  local valid_names = {}
+  for _, plugin in ipairs(current) do
+    local name = plugin and plugin.spec and plugin.spec.name
+    if type(name) == "string" and name ~= "" then
+      valid_names[name] = true
+    end
+  end
+  if next(valid_names) == nil then
+    return false
+  end
+
+  local dirty = false
+  if type(pack_report_cache.plugins) == "table" then
+    for name in pairs(pack_report_cache.plugins) do
+      if not valid_names[name] then
+        pack_report_cache.plugins[name] = nil
+        dirty = true
+      end
+    end
+  end
+
+  if type(dashboard_ui_cache.selected_names) == "table" then
+    local kept = {}
+    local changed = false
+    for _, name in ipairs(dashboard_ui_cache.selected_names) do
+      if valid_names[name] then
+        kept[#kept + 1] = name
+      else
+        changed = true
+      end
+    end
+    if changed then
+      dashboard_ui_cache.selected_names = kept
+      dirty = true
+    end
+  end
+
+  return dirty
+end
+
 local function ensure_dashboard_cache(online, force_scan)
+  if purge_stale_dashboard_state() then
+    write_persisted_state()
+  end
+
   if force_scan then
     -- Explicit force refresh should count as a real online/offline check.
     return scan_updates_to_cache(online, nil, false, { mark_online = online, mark_offline = not online })
@@ -1130,6 +1347,11 @@ local function collect_dashboard_rows()
     return {}
   end
 
+  -- Only flag orphans once `core.plugins.setup` has advertised its declared
+  -- set. Before that the cache is empty and we must not mark everything as
+  -- orphaned (e.g. when a user runs `:PackDashboard` from a minimal config).
+  local orphan_flagging = next(declared_names_cache) ~= nil
+
   local rows = {}
   for _, plugin in ipairs(plugins) do
     local name = plugin.spec.name
@@ -1138,6 +1360,14 @@ local function collect_dashboard_rows()
     local source = p_data.source or plugin.spec.src
     local diff_url = p_data.diff_url or source_to_compare_url(source, p_data.rev_before, p_data.rev_after)
     local breaking = p_data.breaking
+    local is_orphan = orphan_flagging and not declared_names_cache[name]
+    if is_orphan then
+      -- Orphans supersede any prior update/same/error status coming from the
+      -- `vim.pack.update` report: the user should be nudged to clean them
+      -- before seeing them as an upgradeable row.
+      status = "orphan"
+      breaking = nil
+    end
     if breaking == nil and status == "update" then
       p_data.source = source
       p_data.diff_url = diff_url
@@ -1161,6 +1391,7 @@ local function collect_dashboard_rows()
       risk_reason = p_data.risk_reason,
       diff_url = diff_url,
       repo_url = source_to_repo_url(source),
+      is_orphan = is_orphan or nil,
     }
   end
 
@@ -1176,6 +1407,20 @@ local function collect_dashboard_rows()
 end
 
 local function open_pack_dashboard(online, force_scan)
+  -- Singleton guard: reuse the existing dashboard window when already open.
+  -- With `force_scan` (i.e. `:PackDashboard!`) close the current one so the
+  -- fresh scan rebuilds it from scratch.
+  if dashboard_winid and vim.api.nvim_win_is_valid(dashboard_winid) then
+    if force_scan then
+      pcall(vim.api.nvim_win_close, dashboard_winid, true)
+      dashboard_winid = nil
+      dashboard_bufnr = nil
+    else
+      pcall(vim.api.nvim_set_current_win, dashboard_winid)
+      return
+    end
+  end
+
   if not ensure_dashboard_cache(online, force_scan) then
     return
   end
@@ -1188,6 +1433,7 @@ local function open_pack_dashboard(online, force_scan)
         same = "",
         error = "",
         unknown = "",
+        orphan = "\u{f1f8}",
         risk_break = "!",
         risk_safe = "+",
         risk_unknown = "-",
@@ -1199,6 +1445,7 @@ local function open_pack_dashboard(online, force_scan)
       same = "=",
       error = "!",
       unknown = "?",
+      orphan = "O",
       risk_break = "!",
       risk_safe = "+",
       risk_unknown = "-",
@@ -1210,8 +1457,11 @@ local function open_pack_dashboard(online, force_scan)
     same = icons.same,
     error = icons.error,
     unknown = icons.unknown,
+    orphan = icons.orphan,
   }
-  local status_rank = { update = 1, error = 2, same = 3, unknown = 4 }
+  -- Orphans sit between updates and errors: they demand attention (they're
+  -- disk drift + unmanaged code) but they're not build/fetch failures.
+  local status_rank = { update = 1, orphan = 2, error = 3, same = 4, unknown = 5 }
   local filter_modes = { "all", "updates", "issues", "selected" }
   local rows = collect_dashboard_rows()
   local selected = {}
@@ -1271,6 +1521,19 @@ local function open_pack_dashboard(online, force_scan)
     vim.wo[winid].wrap = false
     vim.wo[winid].cursorline = false
     vim.wo[winid].smoothscroll = false
+
+    dashboard_winid = winid
+    dashboard_bufnr = bufnr
+    vim.api.nvim_create_autocmd("WinClosed", {
+      once = true,
+      pattern = tostring(winid),
+      callback = function()
+        if dashboard_winid == winid then
+          dashboard_winid = nil
+          dashboard_bufnr = nil
+        end
+      end,
+    })
   end
 
   local function close_details_popup()
@@ -1365,7 +1628,7 @@ local function open_pack_dashboard(online, force_scan)
       if filter_mode == "updates" then
         include = row.status == "update"
       elseif filter_mode == "issues" then
-        include = row.status == "update" or row.status == "error"
+        include = row.status == "update" or row.status == "error" or row.status == "orphan"
       elseif filter_mode == "selected" then
         include = selected[row.name] == true
       end
@@ -1398,7 +1661,7 @@ local function open_pack_dashboard(online, force_scan)
   end
 
   local function summary_counts()
-    local counts = { update = 0, same = 0, error = 0, unknown = 0, breaking = 0 }
+    local counts = { update = 0, same = 0, error = 0, unknown = 0, orphan = 0, breaking = 0 }
     for _, row in ipairs(rows) do
       counts[row.status] = (counts[row.status] or 0) + 1
       if row.breaking == true then
@@ -1594,7 +1857,7 @@ local function open_pack_dashboard(online, force_scan)
     local stats_line
     if use_nerd_font then
       stats_line = string.format(
-        "%s %d   %s %d   %s %d   %s %d   %s %d",
+        "%s %d   %s %d   %s %d   %s %d   %s %d   %s %d",
         icons.update,
         counts.update,
         icons.same,
@@ -1603,21 +1866,24 @@ local function open_pack_dashboard(online, force_scan)
         counts.error,
         icons.unknown,
         counts.unknown,
+        icons.orphan,
+        counts.orphan,
         icons.risk_break,
         counts.breaking
       )
     else
       stats_line = string.format(
-        "updates:%d  same:%d  errors:%d  unknown:%d  breaking:%d",
+        "updates:%d  same:%d  errors:%d  unknown:%d  orphan:%d  breaking:%d",
         counts.update,
         counts.same,
         counts.error,
         counts.unknown,
+        counts.orphan,
         counts.breaking
       )
     end
     local controls_line = string.format(
-      "r/R refresh  <CR>/u/U update  f filter:%s  s sort:%s  / search:%s  a select-all  o link  K details  ? help",
+      "r/R refresh  <CR>/u/U update  C clean-orphans  f filter:%s  s sort:%s  / search:%s  a sel-all  o link  K details  ? help",
       filter_mode,
       sort_mode,
       search_text or "-"
@@ -1691,6 +1957,7 @@ local function open_pack_dashboard(online, force_scan)
       same = "PackDashboardStatusSame",
       error = "PackDashboardStatusError",
       unknown = "PackDashboardStatusUnknown",
+      orphan = "PackDashboardStatusOrphan",
     }
 
     local row_count = 0
@@ -1704,11 +1971,22 @@ local function open_pack_dashboard(online, force_scan)
       return
     end
 
-    -- Row layout uses fixed-width columns. These byte offsets are stable:
-    -- 0..2 = [ ]/[x], 4..5 = status, 7..8 = risk.
-    local sel_start, sel_end = 0, 3
-    local st_start, st_end = 4, 6
-    local rk_start, rk_end = 7, 9
+    -- Row layout: `pad_cell(sel, 3) .. " " .. pad_cell(icon, 2) .. " " ..
+    --              pad_cell(risk, 2) .. " " .. ...`.
+    -- Extmarks take BYTE offsets, not display columns. SEL/RK chars are
+    -- always ASCII (1 byte each), but the ST status icon is a 3-byte
+    -- nerd-font glyph in icon mode and a 1-byte ASCII char in ASCII mode,
+    -- so the RK offsets have to shift accordingly. The earlier hardcoded
+    -- `rk_start=7` landed on ST-pad + separator spaces and leaked the
+    -- `DiffAdd`/`DiagnosticWarn` background onto those cells, producing
+    -- spurious colored squares next to the status arrow.
+    local sel_start = 0
+    local sel_end = sel_start + 3 -- "[ ]" or "[x]" → 3 bytes
+    local st_icon_bytes = use_nerd_font and 3 or 1
+    local st_start = sel_end + 1 -- +1 separator space
+    local st_end = st_start + st_icon_bytes + 1 -- +1 for pad space
+    local rk_start = st_end + 1 -- +1 separator space
+    local rk_end = rk_start + 2 -- risk char (1) + pad space (1)
 
     for line_no, row in pairs(row_by_line) do
       if selected[row.name] then
@@ -1771,6 +2049,15 @@ local function open_pack_dashboard(online, force_scan)
     end
   end
 
+  local function apply_updates(filtered)
+    vim.pack.update(filtered, { force = true })
+    pack_report_cache.last_applied_at = os.time()
+    pack_report_cache.last_applied_count = #filtered
+    write_persisted_state()
+    pcall(refresh_version_policy_if_needed)
+    refresh(false, filtered, true, { mark_online = false, mark_offline = false, record_counts = false })
+  end
+
   local function update_by_names(names, empty_msg, noop_msg)
     if #names == 0 then
       vim.notify(empty_msg or "No plugins selected", vim.log.levels.WARN)
@@ -1791,12 +2078,36 @@ local function open_pack_dashboard(online, force_scan)
       return
     end
 
-    vim.pack.update(filtered, { force = true })
-    pack_report_cache.last_applied_at = os.time()
-    pack_report_cache.last_applied_count = #filtered
-    write_persisted_state()
-    pcall(refresh_version_policy_if_needed)
-    refresh(false, filtered, true, { mark_online = false, mark_offline = false, record_counts = false })
+    -- When any plugin carries a `risk_break` signal (major-version bump or
+    -- commit metadata flagged by `infer_breaking_status`), gate the force
+    -- update behind a confirmation. `vim.g.pack_dashboard_skip_risk_confirm`
+    -- opts out for users who prefer the old always-force behavior.
+    if vim.g.pack_dashboard_skip_risk_confirm ~= true then
+      local risky = {}
+      local selected_set = {}
+      for _, name in ipairs(filtered) do
+        selected_set[name] = true
+      end
+      for _, row in ipairs(rows) do
+        if selected_set[row.name] and row.breaking == true then
+          risky[#risky + 1] = row.name
+        end
+      end
+      if #risky > 0 then
+        local msg = string.format(
+          "%d plugin(s) flagged as risky (%s).\nProceed with force update? [y/N] ",
+          #risky,
+          table.concat(risky, ", ")
+        )
+        local answer = vim.fn.confirm(msg, "&Yes\n&No", 2)
+        if answer ~= 1 then
+          vim.notify("Update cancelled", vim.log.levels.INFO)
+          return
+        end
+      end
+    end
+
+    apply_updates(filtered)
   end
 
   local function close_dashboard()
@@ -1909,6 +2220,66 @@ local function open_pack_dashboard(online, force_scan)
     update_by_names(names, "No visible plugins to update", "All visible plugins are already up to date")
   end, { buffer = bufnr, nowait = true, silent = true })
 
+  local function clean_orphan_rows(targets, scope_label)
+    if #targets == 0 then
+      vim.notify("No orphan plugins to clean", vim.log.levels.INFO)
+      return
+    end
+
+    if vim.g.pack_dashboard_skip_clean_confirm ~= true then
+      local preview = table.concat(targets, ", ")
+      if #preview > 240 then
+        preview = preview:sub(1, 237) .. "..."
+      end
+      local msg = string.format("Clean %d %s orphan plugin(s)?\n  %s\nContinue? [y/N] ", #targets, scope_label, preview)
+      local answer = vim.fn.confirm(msg, "&Yes\n&No", 2)
+      if answer ~= 1 then
+        vim.notify("Clean cancelled", vim.log.levels.INFO)
+        return
+      end
+    end
+
+    local ok_del, err = pcall(vim.pack.del, targets)
+    if not ok_del then
+      vim.notify("vim.pack.del failed: " .. tostring(err), vim.log.levels.ERROR)
+      return
+    end
+
+    for _, name in ipairs(targets) do
+      if type(pack_report_cache.plugins) == "table" then
+        pack_report_cache.plugins[name] = nil
+      end
+      selected[name] = nil
+    end
+    write_persisted_state()
+
+    rows = collect_dashboard_rows()
+    render()
+    persist_dashboard_ui_state()
+    vim.notify(string.format("Cleaned %d orphan plugin(s)", #targets), vim.log.levels.INFO)
+  end
+
+  vim.keymap.set("n", "C", function()
+    local orphans = {}
+    local selected_orphans = {}
+    for _, row in ipairs(rows) do
+      if row.is_orphan then
+        orphans[#orphans + 1] = row.name
+        if selected[row.name] then
+          selected_orphans[#selected_orphans + 1] = row.name
+        end
+      end
+    end
+    -- Default target: selected orphans if any exist, otherwise all orphans.
+    -- Mirrors lazy.nvim's `C` UX of "clean what's visible" while respecting
+    -- explicit selection when the user has picked a subset.
+    if #selected_orphans > 0 then
+      clean_orphan_rows(selected_orphans, "selected")
+    else
+      clean_orphan_rows(orphans, "all")
+    end
+  end, { buffer = bufnr, nowait = true, silent = true })
+
   local function open_diff_or_repo_for_row(row)
     if not row then
       return
@@ -2005,6 +2376,7 @@ local function open_pack_dashboard(online, force_scan)
       "a / A      select all visible / clear all selection",
       "<CR>       update plugin at cursor",
       "u / U      update selected (or cursor if none) / update all listed",
+      "C          clean orphan plugins (selected orphans, else all orphans)",
       "o          open diff URL (fallback: repository)",
       "O          open repository URL",
       "K          open details popup",
@@ -2046,6 +2418,85 @@ local function open_pack_dashboard(online, force_scan)
 
   open_popup_window()
   render()
+end
+
+-- Path to the lockfile that `vim.pack` already maintains. Discovered from the
+-- 0.12 runtime: `stdpath('config') .. '/nvim-pack-lock.json'`. Exposed so the
+-- export/import commands agree with the upstream location.
+function M.lockfile_path()
+  return vim.fs.joinpath(vim.fn.stdpath("config"), "nvim-pack-lock.json")
+end
+
+-- Copy the live lockfile to `destination`. Parent directory is created if
+-- missing. Returns `ok, err_or_path`.
+function M.export_lockfile(destination)
+  if type(destination) ~= "string" or destination == "" then
+    return false, "destination path is required"
+  end
+
+  local expanded = vim.fn.expand(destination)
+  if vim.fn.isdirectory(expanded) == 1 then
+    expanded = vim.fs.joinpath(expanded, "nvim-pack-lock.json")
+  end
+
+  local src = M.lockfile_path()
+  if vim.fn.filereadable(src) ~= 1 then
+    return false, "lockfile does not exist yet: " .. src
+  end
+
+  local parent = vim.fs.dirname(expanded)
+  if parent and parent ~= "" and vim.fn.isdirectory(parent) ~= 1 then
+    pcall(vim.fn.mkdir, parent, "p")
+  end
+
+  local ok_read, lines = pcall(vim.fn.readfile, src, "b")
+  if not ok_read or type(lines) ~= "table" then
+    return false, "failed to read lockfile"
+  end
+  local ok_write, err = pcall(vim.fn.writefile, lines, expanded, "b")
+  if not ok_write then
+    return false, tostring(err or "failed to write lockfile")
+  end
+
+  return true, expanded
+end
+
+-- Copy a lockfile from `source` on top of the live lockfile. Validates JSON
+-- schema before overwriting. Returns `ok, err_or_path`.
+function M.import_lockfile(source)
+  if type(source) ~= "string" or source == "" then
+    return false, "source path is required"
+  end
+
+  local expanded = vim.fn.expand(source)
+  if vim.fn.isdirectory(expanded) == 1 then
+    expanded = vim.fs.joinpath(expanded, "nvim-pack-lock.json")
+  end
+  if vim.fn.filereadable(expanded) ~= 1 then
+    return false, "source lockfile not readable: " .. expanded
+  end
+
+  local ok_read, lines = pcall(vim.fn.readfile, expanded, "b")
+  if not ok_read or type(lines) ~= "table" or #lines == 0 then
+    return false, "failed to read source lockfile"
+  end
+
+  local ok_decode, decoded = pcall(vim.json.decode, table.concat(lines, "\n"))
+  if not ok_decode or type(decoded) ~= "table" or type(decoded.plugins) ~= "table" then
+    return false, "source file does not match the vim.pack lockfile schema"
+  end
+
+  local dest = M.lockfile_path()
+  local parent = vim.fs.dirname(dest)
+  if parent and parent ~= "" and vim.fn.isdirectory(parent) ~= 1 then
+    pcall(vim.fn.mkdir, parent, "p")
+  end
+  local ok_write, err = pcall(vim.fn.writefile, lines, dest, "b")
+  if not ok_write then
+    return false, tostring(err or "failed to write lockfile")
+  end
+
+  return true, dest
 end
 
 function M.setup()
@@ -2125,6 +2576,131 @@ function M.setup()
   end, {
     bang = true,
     desc = "Open vim.pack dashboard (legacy alias)",
+  })
+
+  vim.api.nvim_create_user_command("PackLockInfo", function()
+    local path = M.lockfile_path()
+    if vim.fn.filereadable(path) ~= 1 then
+      vim.notify("vim.pack lockfile not found at " .. path, vim.log.levels.WARN)
+      return
+    end
+    local ok_read, lines = pcall(vim.fn.readfile, path)
+    local plugins = 0
+    if ok_read and type(lines) == "table" then
+      local ok_decode, decoded = pcall(vim.json.decode, table.concat(lines, "\n"))
+      if ok_decode and type(decoded) == "table" and type(decoded.plugins) == "table" then
+        for _ in pairs(decoded.plugins) do
+          plugins = plugins + 1
+        end
+      end
+    end
+    local stat = vim.uv.fs_stat(path)
+    local mtime = stat and os.date("%Y-%m-%d %H:%M:%S", stat.mtime.sec) or "unknown"
+    vim.notify(
+      string.format("vim.pack lockfile: %s\n  plugins: %d\n  mtime:   %s", path, plugins, mtime),
+      vim.log.levels.INFO
+    )
+  end, {
+    desc = "Show vim.pack lockfile path, plugin count, mtime",
+  })
+
+  vim.api.nvim_create_user_command("PackLockExport", function(cmd)
+    local dest = cmd.args
+    if type(dest) ~= "string" or dest == "" then
+      vim.notify("Usage: :PackLockExport <path>", vim.log.levels.WARN)
+      return
+    end
+    local ok, result = M.export_lockfile(dest)
+    if ok then
+      vim.notify("Exported lockfile → " .. result, vim.log.levels.INFO)
+    else
+      vim.notify("PackLockExport failed: " .. tostring(result), vim.log.levels.ERROR)
+    end
+  end, {
+    nargs = 1,
+    complete = "file",
+    desc = "Copy nvim-pack-lock.json to an arbitrary path (for dotfile sync)",
+  })
+
+  vim.api.nvim_create_user_command("PackPolicyRebuild", function(cmd)
+    local arg = vim.trim(cmd.args or "")
+    local target = arg ~= "" and arg or nil
+    local ok = M.rebuild_version_policy(target)
+    if ok then
+      local policy = load_version_policy() or { plugins = {} }
+      if target then
+        local info = policy.plugins and policy.plugins[target]
+        if info then
+          vim.notify(
+            string.format(
+              "Rebuilt policy for %s: strategy=%s\n  %s",
+              target,
+              tostring(info.strategy),
+              tostring(info.reason or "")
+            ),
+            vim.log.levels.INFO
+          )
+        else
+          vim.notify("Rebuilt policy, but no entry recorded for " .. target, vim.log.levels.WARN)
+        end
+      else
+        local count = 0
+        local tags, branch = 0, 0
+        for _, info in pairs(policy.plugins or {}) do
+          count = count + 1
+          if info.strategy == "tags" then
+            tags = tags + 1
+          elseif info.strategy == "branch" then
+            branch = branch + 1
+          end
+        end
+        vim.notify(
+          string.format("Rebuilt version policy: %d plugins (%d tags, %d branch)", count, tags, branch),
+          vim.log.levels.INFO
+        )
+      end
+    else
+      vim.notify("PackPolicyRebuild failed", vim.log.levels.ERROR)
+    end
+  end, {
+    nargs = "?",
+    complete = function(arglead)
+      local ok, plug_data = pcall(vim.pack.get, nil, { info = false })
+      if not ok or type(plug_data) ~= "table" then
+        return {}
+      end
+      local out = {}
+      for _, p in ipairs(plug_data) do
+        local n = p and p.spec and p.spec.name
+        if type(n) == "string" and (arglead == "" or n:find(arglead, 1, true)) then
+          out[#out + 1] = n
+        end
+      end
+      table.sort(out)
+      return out
+    end,
+    desc = "Clear and recompute the cached per-plugin tag/branch heuristic. Pass plugin name for a targeted rebuild.",
+  })
+
+  vim.api.nvim_create_user_command("PackLockImport", function(cmd)
+    local source = cmd.args
+    if type(source) ~= "string" or source == "" then
+      vim.notify("Usage: :PackLockImport <path>", vim.log.levels.WARN)
+      return
+    end
+    local ok, result = M.import_lockfile(source)
+    if ok then
+      vim.notify(
+        "Imported lockfile from " .. source .. " → " .. result .. ". Restart or run :PackSync to apply.",
+        vim.log.levels.INFO
+      )
+    else
+      vim.notify("PackLockImport failed: " .. tostring(result), vim.log.levels.ERROR)
+    end
+  end, {
+    nargs = 1,
+    complete = "file",
+    desc = "Overwrite nvim-pack-lock.json from a path (for dotfile sync)",
   })
 end
 

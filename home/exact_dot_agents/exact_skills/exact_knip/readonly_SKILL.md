@@ -15,7 +15,6 @@ Use when:
 Do not use:
 
 - copy/paste detection: `~/.agents/skills/jscpd/SKILL.md`
-- AI code review: `~/.agents/skills/coderabbit/SKILL.md`
 
 First actions:
 

@@ -30,16 +30,17 @@ local win_highlight = "Normal:Normal,FloatBorder:Normal,CursorLine:Visual,Search
 return {
   {
     "hrsh7th/nvim-cmp",
+    version = false,
     event = { "InsertEnter", "CmdlineEnter" },
     dependencies = {
-      "hrsh7th/cmp-nvim-lsp",
-      "hrsh7th/cmp-buffer",
-      "hrsh7th/cmp-path",
-      "hrsh7th/cmp-cmdline",
-      "hrsh7th/cmp-nvim-lsp-signature-help",
-      "lukas-reineke/cmp-rg",
-      "SergioRibera/cmp-dotenv",
-      "hrsh7th/cmp-emoji",
+      { "hrsh7th/cmp-nvim-lsp", version = false },
+      { "hrsh7th/cmp-buffer", version = false },
+      { "hrsh7th/cmp-path", version = false },
+      { "hrsh7th/cmp-cmdline", version = false },
+      { "hrsh7th/cmp-nvim-lsp-signature-help", version = false },
+      { "lukas-reineke/cmp-rg", version = "*" },
+      { "SergioRibera/cmp-dotenv", version = false },
+      { "hrsh7th/cmp-emoji", version = false },
       { "github/copilot.vim", optional = true },
     },
     keys = function()

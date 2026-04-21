@@ -432,7 +432,7 @@ brew "weave"
 
 # Entity-level diff, blame, impact analysis, and LLM context for Git
 # https://github.com/Ataraxy-Labs/sem
-# link: :overwrite — `sem` collides with GNU `parallel`'s semaphore alias at
+# link: :overwrite — `sem` collides with GNU `parallel`’s semaphore alias at
 # /opt/homebrew/bin/sem; we want the ataraxy binary to win that name.
 brew "ataraxy-labs/tap/sem", link: :overwrite
 
@@ -599,12 +599,6 @@ brew "uv"
 # CODE QUALITY & ANALYSIS
 # Linters, duplicate detectors, and code review tools
 # ==============================================================================
-
-{{ if eq .isWork true -}}
-# AI code review CLI
-# https://www.coderabbit.ai/cli
-cask "coderabbit"
-{{ end -}}
 
 # Copy/paste detector for programming source code
 # https://github.com/kucherenko/jscpd
@@ -841,6 +835,10 @@ brew "gnu-sed"
 # https://github.com/theryangeary/choose
 brew "choose-rust"
 
+# Get/set Bluetooth power and discoverable state from the CLI (macOS)
+# https://github.com/toy/blueutil
+brew "blueutil"
+
 # ==============================================================================
 # BINARY ANALYSIS & DEBUGGING
 # Tools for analyzing binary files and debugging
@@ -963,6 +961,10 @@ brew "cast-text"
 # Browse, inspect, and launch movie torrents from your terminal
 # https://github.com/eyeblech/cinecli
 brew "cinecli"
+
+# BitTorrent client in your terminal with a 60 FPS TUI
+# https://github.com/Jagalite/superseedr
+brew "superseedr"
 {{ end -}}
 
 # Terminal EPUB/PDF/DJVU reader with vim-style keybindings
@@ -1128,6 +1130,12 @@ brew "jundot/omlx/omlx"
 # Official Hugging Face CLI (`hf`) — model downloads, auth, repo listing
 # https://huggingface.co/docs/huggingface_hub/guides/cli
 brew "hf"
+
+# Terminal UI for code review — review AI-generated diffs like a GitHub PR,
+# annotate with structured comments, export as LLM-ready markdown
+# https://github.com/agavra/tuicr
+tap "agavra/tap"
+brew "agavra/tap/tuicr"
 
 # ==============================================================================
 # APPLICATIONS (CASKS)

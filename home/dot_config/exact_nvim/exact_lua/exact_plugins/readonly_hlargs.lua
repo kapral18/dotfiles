@@ -1,6 +1,7 @@
 return {
   {
     "m-demare/hlargs.nvim",
+    version = false,
     event = "BufWinEnter",
     opts = {
       hl_priority = 200,

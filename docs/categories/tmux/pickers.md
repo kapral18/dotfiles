@@ -26,6 +26,7 @@ This setup ships a URL picker, a session/worktree picker, and a GitHub picker (P
 
 - De-duplicates path-prefix URLs: if both `https://site/x` and `https://site/x/y` are detected, it keeps the deeper path entry.
 - Runs `fzf` with `FZF_DEFAULT_OPTS` cleared so global defaults don't distort the popup UI.
+- Strips invisible Unicode formatting characters (zero-width space `U+200B`, ZWJ/ZWNJ, BOM, bidi marks, etc.) from captured pane content before URL extraction. These commonly leak in via copy-paste from web pages and would otherwise be appended to URLs (the bash extractor's `[^[:space:]]+` regex doesn't treat them as whitespace), causing 404s.
 
 ---
 

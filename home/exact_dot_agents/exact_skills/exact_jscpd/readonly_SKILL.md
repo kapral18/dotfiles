@@ -15,7 +15,6 @@ Use when:
 Do not use:
 
 - unused dependency/export detection: `~/.agents/skills/knip/SKILL.md`
-- AI code review: `~/.agents/skills/coderabbit/SKILL.md`
 
 First actions:
 

@@ -1,0 +1,25 @@
+# tuicr — terminal UI for code review
+# https://github.com/agavra/tuicr
+#
+# Source-of-truth: home/dot_config/tuicr/readonly_config.toml in the chezmoi
+# repo. Do not edit ~/.config/tuicr/config.toml directly.
+
+appearance = "system"
+theme_dark = "catppuccin-mocha"
+theme_light = "catppuccin-latte"
+
+diff_view = "unified"
+wrap = true
+show_file_list = true
+
+# Comment types are exported as `[LABEL]` prefixes in the markdown the agent
+# consumes. They are actionable categories (what should be done with the
+# comment), not severity. Severity (CRITICAL/HIGH/MEDIUM/LOW) stays internal
+# per ~/AGENTS.md review SOP and is intentionally not encoded here.
+comment_types = [
+  { id = "issue",      definition = "problem to fix — bug, broken invariant, regression, or correctness gap", color = "red" },
+  { id = "suggestion", definition = "possible improvement worth applying" },
+  { id = "question",   label = "question", definition = "ask for clarification or rationale before changing anything", color = "yellow" },
+  { id = "nit",        label = "nitpick", definition = "small optional tweak; safe to defer", color = "#d19a66" },
+  { id = "praise",     definition = "positive reinforcement; keep doing this" },
+]

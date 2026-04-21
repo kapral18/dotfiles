@@ -100,6 +100,7 @@ return {
   },
   {
     "iamcco/markdown-preview.nvim",
+    version = false,
     cmd = { "MarkdownPreviewToggle", "MarkdownPreview", "MarkdownPreviewStop" },
     build = function()
       pcall(vim.cmd.packadd, "markdown-preview.nvim")

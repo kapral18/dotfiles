@@ -43,6 +43,7 @@ return {
       { "nvim-telescope/telescope.nvim" },
       {
         "leath-dub/snipe.nvim",
+        version = false,
         opts = {
           navigate = {
             cancel_snipe = "q",

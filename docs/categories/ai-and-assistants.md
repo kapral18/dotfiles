@@ -68,7 +68,6 @@ Current skills:
 | `compose-pr`            | Drafting a PR title and body as text (before creating/editing a PR)                    |                |
 | `compose-issue`         | Drafting an issue title and body as text (before creating/editing an issue)            |                |
 | `buildkite`             | Checking build status, triggering builds, reading logs, debugging CI failures          | elastic org    |
-| `coderabbit`            | CodeRabbit review-fix loop on local changes (explicit mention only)                    | elastic org    |
 | `kibana-labels-propose` | Proposing labels/backports/version targeting when composing or creating a Kibana PR    | elastic/kibana |
 | `kibana-console-monaco` | Automating/testing the Kibana Dev Tools Console editor via Playwright                  | elastic/kibana |
 | `playwriter`            | Controlling Chrome browser via Playwriter (explicit mention only)                      |                |
@@ -391,6 +390,32 @@ Daemon lifecycle is NOT in scope (that's `brew services start|stop|restart jundo
 Completion follows the same model. `,omlx load <TAB>` offers the union (server-unloaded + disk-only, with distinct descriptions); `,omlx unload <TAB>` stays server-loaded-only because "loaded" is a server-only state.
 
 Respects `OMLX_HOST` / `OMLX_PORT` / `OMLX_API_KEY` / `OMLX_MODELS_ROOT` (defaults: `127.0.0.1:8000`, no auth header unless `OMLX_API_KEY` is set, disk scan under `~/.omlx/models`).
+
+## Reviewing Agent Diffs (`tuicr`)
+
+[`tuicr`](https://github.com/agavra/tuicr) is the user-facing half of the agent loop: after the agent edits the working tree, you review the diff in a GitHub-style TUI, drop line/file/review comments, and export them as structured markdown that pastes back to the agent for a one-pass fix. It's the inverse of the `review` skill (which is the agent reviewing your diff).
+
+Install: [`home/readonly_dot_Brewfile.tmpl`](../../home/readonly_dot_Brewfile.tmpl) — `AI & LARGE LANGUAGE MODELS` section, via the `agavra/tap` Homebrew tap.
+
+Config (theme + comment-type vocabulary): [`home/dot_config/tuicr/readonly_config.toml`](../../home/dot_config/tuicr/readonly_config.toml) → `~/.config/tuicr/config.toml`. Comment types are actionable categories (`issue`, `suggestion`, `question`, `nit`, `praise`); severity (CRITICAL/HIGH/MEDIUM/LOW from the review SOP) stays internal and is intentionally not encoded as a comment type.
+
+Loop (invoke `tuicr` directly — no wrapper):
+
+```bash
+# 1. agent makes edits (claude / codex / opencode / cursor-agent / pi / agent)
+
+# 2. review and export to clipboard, then paste into the next agent prompt:
+tuicr
+tuicr -r main..HEAD              # scope to a revision range (Git/JJ/Hg syntax)
+
+# or one-shot: export straight to stdout for piping:
+tuicr --stdout | claude --print
+tuicr --stdout | codex exec
+tuicr --stdout | cursor-agent
+tuicr --stdout > /tmp/review.md
+```
+
+On export, tuicr copies markdown to the system clipboard (handling tmux/SSH OSC 52 propagation automatically). `.tuicrignore` (gitignore-style, repo-local) excludes generated files from the review surface; not managed by chezmoi.
 
 ## Beads (Task Tracking)
 

@@ -1,6 +1,7 @@
 return {
   {
     "chentoast/marks.nvim",
+    version = false,
     opts = {
       refresh_interval = 500,
     },

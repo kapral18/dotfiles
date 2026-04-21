@@ -1,6 +1,7 @@
 return {
   {
     "folke/tokyonight.nvim",
+    version = "*",
     priority = 1000,
     opts = {
       style = "night",

@@ -174,10 +174,11 @@ return {
     end,
   },
   {
-    "wellle/visual-split.vim",
+    { "wellle/visual-split.vim", version = false },
   },
   {
     "aaronik/treewalker.nvim",
+    version = false,
 
     -- The following options are the defaults.
     -- Treewalker aims for sane defaults, so these are each individually optional,
@@ -210,11 +211,13 @@ return {
   },
   {
     "nmac427/guess-indent.nvim",
+    version = false,
     event = "BufReadPre",
     opts = {},
   },
   {
     "junegunn/vim-easy-align",
+    version = false,
     keys = {
       { "<leader>la", "<Plug>(EasyAlign)", mode = { "n", "x" }, desc = "Easy align" },
       { "<leader>lA", "<Plug>(LiveEasyAlign)", mode = { "n", "x" }, desc = "Live Easy align" },
@@ -222,6 +225,7 @@ return {
   },
   {
     "ckolkey/ts-node-action",
+    version = false,
     dependencies = { "nvim-treesitter" },
     opts = {},
     keys = {
@@ -230,6 +234,7 @@ return {
   },
   {
     "windwp/nvim-ts-autotag",
+    version = false,
     event = { "BufReadPost", "BufNewFile" },
     config = function()
       require("nvim-ts-autotag").setup({

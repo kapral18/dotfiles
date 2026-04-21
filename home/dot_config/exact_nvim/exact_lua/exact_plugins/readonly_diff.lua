@@ -7,6 +7,7 @@ return {
   {
 
     "AndrewRadev/linediff.vim",
+    version = false,
     config = function()
       aucmd({ "WinEnter", "BufEnter" }, {
         group = "k18",

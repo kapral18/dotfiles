@@ -1,6 +1,7 @@
 return {
   {
     "nvim-lualine/lualine.nvim",
+    version = false,
     opts = {
       options = {
         refresh = {
@@ -43,6 +44,7 @@ return {
   },
   {
     "linrongbin16/lsp-progress.nvim",
+    version = "*",
     opts = {},
     dependencies = {
       {

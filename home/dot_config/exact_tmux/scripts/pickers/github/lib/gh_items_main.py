@@ -258,11 +258,11 @@ def _linked_issue_numbers_from_pick_session_cache() -> dict[str, set[int]]:
 
 
 _TRIVIAL_STATUS_RE = re.compile(
-    r"^(CLA|prbot:|renovate/|license/|security/|buildkite/docs|CodeRabbit)",
+    r"^(CLA|prbot:|renovate/|license/|security/|buildkite/docs)",
     re.IGNORECASE,
 )
 _TRIVIAL_CHECK_RE = re.compile(
-    r"^(Analyze new dependencies|docs-preview|CodeRabbit)",
+    r"^(Analyze new dependencies|docs-preview)",
     re.IGNORECASE,
 )
 
