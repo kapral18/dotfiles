@@ -209,6 +209,7 @@ Instead of keeping complex templates or comment-based filtering logic, we use ex
 | Codex MCP            | [`home/.chezmoidata/mcp_servers.yaml`](../../home/.chezmoidata/mcp_servers.yaml) (shared registry)                                             | `~/.codex/config.toml`               | `run_onchange_after_07-merge-codex-config.sh.tmpl`         |
 | Pi MCP               | [`home/.chezmoidata/mcp_servers.yaml`](../../home/.chezmoidata/mcp_servers.yaml) (shared registry)                                             | `~/.pi/agent/mcp.json`               | `run_onchange_after_07-generate-mcp-configs.sh.tmpl`       |
 | Pi settings/models   | [`home/dot_pi/agent/readonly_{settings,models}.{work,personal}.json`](../../home/dot_pi/agent/readonly_{settings,models}.{work,personal}.json) | `~/.pi/agent/{settings,models}.json` | `run_onchange_after_07-merge-pi-config.sh.tmpl`            |
+| oMLX settings        | [`home/dot_omlx/settings.json`](../../home/dot_omlx/settings.json)                                                                             | `~/.omlx/settings.json`              | `run_onchange_after_07-merge-omlx-settings.sh.tmpl`        |
 
 All merge scripts live under [`home/.chezmoiscripts/`](../../home/.chezmoiscripts/). Pi targets are installed readonly.
 
@@ -365,6 +366,26 @@ omlx serve
 
 Add a model: [`docs/recipes/add-an-omlx-model.md`](../recipes/add-an-omlx-model.md).
 
+### Server settings
+
+oMLX's server-side prompt/output caps are declared as a partial override and deep-merged into `~/.omlx/settings.json` on every apply:
+
+- Source: [`home/dot_omlx/settings.json`](../../home/dot_omlx/settings.json) (only the keys we own)
+- Helper: [`scripts/merge_omlx_settings.py`](../../scripts/merge_omlx_settings.py) (stdlib-only deep merge)
+- Hook: [`home/.chezmoiscripts/run_onchange_after_07-merge-omlx-settings.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-omlx-settings.sh.tmpl)
+
+The merge preserves everything oMLX writes itself (`auth.secret_key`, `server.server_aliases`, `model.model_dirs`, etc.) and only updates the keys present in the source. The real target is listed in [`home/.chezmoiignore`](../../home/.chezmoiignore) so chezmoi never deploys the partial source as the full settings file.
+
+The shipped default raises `sampling.max_context_window` and `sampling.max_tokens` to 262144 — the full native trained context of the Qwen3.6 (6-bit) and Gemma-4 checkpoints in the manifest (`rope_scaling.type: "default"`, not YaRN-extrapolated, so retrieval quality holds across the whole range). With aggressive GQA (`num_key_value_heads: 2`, `head_dim: 256`) the FP16 KV cache sits around 80 KB/token, so a fully-populated 262144-token cache is ~20 GB — fits alongside the 6-bit Qwen weights under the personal profile's `max_model_memory` budget. Work-profile hosts (36 GB, 4-bit models only) will spill long-context KV to oMLX's paged SSD cache; lower this value or enable per-model TurboQuant KV if prefill latency becomes a concern there.
+
+If `~/.omlx/settings.json` does not exist yet (fresh install, oMLX never started), the merge is a no-op with a hint. Start the service once (`brew services start jundot/omlx/omlx`) so oMLX writes its defaults + generates `auth.secret_key`, then re-run `chezmoi apply` to layer the overrides. After changing the source, `brew services restart jundot/omlx/omlx` to pick up the new values (oMLX loads settings at startup).
+
+Verify live:
+
+```bash
+curl -s http://localhost:8000/v1/models/status | python3 -m json.tool | rg max_context_window
+```
+
 ### Fish completions
 
 - [`home/dot_config/fish/completions/readonly_omlx.fish`](../../home/dot_config/fish/completions/readonly_omlx.fish)
@@ -397,6 +418,39 @@ Daemon lifecycle is NOT in scope (that's `brew services start|stop|restart jundo
 Completion follows the same model. `,omlx load <TAB>` offers the union (server-unloaded + disk-only, with distinct descriptions); `,omlx unload <TAB>` stays server-loaded-only because "loaded" is a server-only state.
 
 Respects `OMLX_HOST` / `OMLX_PORT` / `OMLX_API_KEY` / `OMLX_MODELS_ROOT` (defaults: `127.0.0.1:8000`, no auth header unless `OMLX_API_KEY` is set, disk scan under `~/.omlx/models`).
+
+### Claude Code launcher (`,claude-omlx`)
+
+Claude Code compacts conversation history at `autoCompactWindow` tokens (schema min 100000, max 1000000). Cloud `opus[1m]` sessions benefit from leaving this at the default (~1M). Local oMLX sessions need it below the server's `sampling.max_context_window` (262144) so Claude Code compacts before oMLX would reject the prompt. Those two needs conflict on a single global value.
+
+Solution: a dedicated omlx-scoped settings file loaded via `claude --settings <file>` (layers additively on top of `~/.claude/settings.json` — see `claude --help`), wired through a thin wrapper.
+
+- [`home/dot_claude/settings.omlx.json`](../../home/dot_claude/settings.omlx.json) → `~/.claude/settings.omlx.json` (contains only `autoCompactWindow: 200000`)
+- [`home/exact_bin/executable_,claude-omlx`](../../home/exact_bin/executable_,claude-omlx) → `~/bin/,claude-omlx`
+
+The wrapper exports `ANTHROPIC_BASE_URL=http://${OMLX_HOST:-127.0.0.1}:${OMLX_PORT:-8000}`, forces `ANTHROPIC_API_KEY=$OMLX_API_KEY` (empty by default — oMLX accepts unauthenticated local requests unless `auth.api_key_set` is true), and invokes `claude --settings ~/.claude/settings.omlx.json --model "$CLAUDE_OMLX_MODEL" "$@"`.
+
+Environment overrides:
+
+| Variable               | Default                            | Purpose                                                             |
+| ---------------------- | ---------------------------------- | ------------------------------------------------------------------- |
+| `OMLX_HOST`            | `127.0.0.1`                        | Same as `,omlx` / `omlx` CLI                                        |
+| `OMLX_PORT`            | `8000`                             | Same as `,omlx` / `omlx` CLI                                        |
+| `OMLX_API_KEY`         | empty                              | Sent as `ANTHROPIC_API_KEY` (Claude Code uses this for bearer auth) |
+| `CLAUDE_OMLX_MODEL`    | `qwen3.6-abliterated-heretic-6bit` | Set empty to skip `--model` injection                               |
+| `CLAUDE_OMLX_SETTINGS` | `$HOME/.claude/settings.omlx.json` | Point at an alternate omlx settings file                            |
+
+`autoCompactWindow=200000` leaves ~62k headroom under the 262144-token server cap for the next turn's prompt, tool outputs, and model reply. Note that auto-compact summarizes multi-turn **history** between turns — it does not shrink a single oversized tool output in the current turn. That scenario (e.g. a directory listing that emits 30k+ tokens) is handled purely by the raised server cap in `home/dot_omlx/settings.json`.
+
+Usage:
+
+```bash
+,claude-omlx                                  # interactive session, default model
+,claude-omlx -p "summarize README.md"         # one-shot prompt
+CLAUDE_OMLX_MODEL=other-local-model ,claude-omlx
+```
+
+Cloud Claude sessions are unaffected — plain `claude ...` still reads only `~/.claude/settings.json`, where `autoCompactWindow` stays unset so the default for `opus[1m]` applies.
 
 ## Reviewing Agent Diffs (`tuicr`)
 

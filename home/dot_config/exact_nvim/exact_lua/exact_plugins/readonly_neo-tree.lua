@@ -161,6 +161,9 @@ return {
           if vim.fn.isdirectory(path) == 0 then
             return
           end
+          -- force the deferred vim.pack entry to run its config/setup,
+          -- otherwise oil.config.adapter_to_scheme is nil inside open_float
+          vim.cmd("PackLoad oil.nvim")
           require("oil").open_float(path)
         end,
         diff_files = function(state)
@@ -248,6 +251,21 @@ return {
       watch_for_changes = true,
       view_options = {
         show_hidden = true,
+      },
+      -- oil.layout subtracts 2 cols for a "border" even when border is nil
+      -- and further shifts col by -1, leaving the underlying buffer
+      -- bleeding through on the right/bottom. override() bypasses those
+      -- adjustments and produces a true full-editor float covering
+      -- everything except the command line.
+      float = {
+        border = "none",
+        override = function(conf)
+          conf.row = 0
+          conf.col = 0
+          conf.width = vim.o.columns
+          conf.height = vim.o.lines - vim.o.cmdheight
+          return conf
+        end,
       },
     },
     keys = {
