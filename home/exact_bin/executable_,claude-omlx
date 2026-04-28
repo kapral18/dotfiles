@@ -15,14 +15,14 @@
 #     unauthenticated local requests unless auth.api_key_set is true).
 #   - Adds --settings ~/.claude/settings.omlx.json so autoCompactWindow=200000
 #     triggers Claude Code's auto-compact before oMLX would reject a prompt.
-#   - Prepends --model $CLAUDE_OMLX_MODEL (default qwen3.6-abliterated-heretic-6bit);
+#   - Prepends --model $CLAUDE_OMLX_MODEL (default qwen3.6-35b-a3b-5bit);
 #     forwarded args can override it since claude accepts a later --model.
 #
 # Environment:
 #   OMLX_HOST            Default: 127.0.0.1
 #   OMLX_PORT            Default: 8000
 #   OMLX_API_KEY         Default: empty; sent as ANTHROPIC_API_KEY to claude.
-#   CLAUDE_OMLX_MODEL    Default: qwen3.6-abliterated-heretic-6bit. Set empty to
+#   CLAUDE_OMLX_MODEL    Default: qwen3.6-35b-a3b-5bit. Set empty to
 #                        skip injecting --model (useful if a claude setting or
 #                        a user-supplied --model should win cleanly).
 #   CLAUDE_OMLX_SETTINGS Default: $HOME/.claude/settings.omlx.json. Point at a
@@ -33,7 +33,7 @@ set -euo pipefail
 OMLX_HOST="${OMLX_HOST:-127.0.0.1}"
 OMLX_PORT="${OMLX_PORT:-8000}"
 OMLX_API_KEY="${OMLX_API_KEY:-}"
-CLAUDE_OMLX_MODEL="${CLAUDE_OMLX_MODEL-qwen3.6-abliterated-heretic-6bit}"
+CLAUDE_OMLX_MODEL="${CLAUDE_OMLX_MODEL-qwen3.6-35b-a3b-5bit}"
 CLAUDE_OMLX_SETTINGS="${CLAUDE_OMLX_SETTINGS:-$HOME/.claude/settings.omlx.json}"
 
 if ! command -v claude >/dev/null 2>&1; then

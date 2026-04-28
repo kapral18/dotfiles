@@ -332,7 +332,7 @@ The curated model list is declared as a chezmoi-templated manifest:
 
 - [`home/readonly_dot_default-omlx-models.tmpl`](../../home/readonly_dot_default-omlx-models.tmpl)
 
-The manifest is 4-bit by default on every Apple Silicon host. Personal hosts (`isWork=false`) additionally pull the Qwen 6-bit quality tier; work hosts skip it because its ~27 GB weights exceed the 25 GB default weights budget before any KV cache is allocated. 4-bit favors long-context KV cache headroom (and faster per-token inference) over quantization fidelity, which is the more useful tradeoff for agentic coding.
+The manifest intentionally keeps a single 5-bit Qwen3.6 MLX checkpoint on every Apple Silicon host. Its published safetensors are ~23.8 GB, which stays under the default work-profile weights budget while avoiding the old split between universal 4-bit and personal-only 6-bit tiers.
 
 Format (pipe-delimited):
 
@@ -340,7 +340,7 @@ Format (pipe-delimited):
 <hf-repo-id>|<local-dir-name>
 ```
 
-- `hf-repo-id` — Hugging Face repo id (e.g. `mlx-community/Qwen3.6-35B-A3B-4bit`).
+- `hf-repo-id` — Hugging Face repo id (e.g. `NexVeridian/Qwen3.6-35B-A3B-5bit`).
 - `local-dir-name` — subdirectory under `~/.omlx/models/` where the weights land.
 
 ### Sync hook (opt-in)
@@ -376,7 +376,7 @@ oMLX's server-side prompt/output caps are declared as a partial override and dee
 
 The merge preserves everything oMLX writes itself (`auth.secret_key`, `server.server_aliases`, `model.model_dirs`, etc.) and only updates the keys present in the source. The real target is listed in [`home/.chezmoiignore`](../../home/.chezmoiignore) so chezmoi never deploys the partial source as the full settings file.
 
-The shipped default raises `sampling.max_context_window` and `sampling.max_tokens` to 262144 — the full native trained context of the Qwen3.6 (6-bit) and Gemma-4 checkpoints in the manifest (`rope_scaling.type: "default"`, not YaRN-extrapolated, so retrieval quality holds across the whole range). With aggressive GQA (`num_key_value_heads: 2`, `head_dim: 256`) the FP16 KV cache sits around 80 KB/token, so a fully-populated 262144-token cache is ~20 GB — fits alongside the 6-bit Qwen weights under the personal profile's `max_model_memory` budget. Work-profile hosts (36 GB, 4-bit models only) will spill long-context KV to oMLX's paged SSD cache; lower this value or enable per-model TurboQuant KV if prefill latency becomes a concern there.
+The shipped default raises `sampling.max_context_window` and `sampling.max_tokens` to 262144 — the full native trained context of the Qwen3.6 checkpoint in the manifest (`rope_scaling.type: "default"`, not YaRN-extrapolated, so retrieval quality holds across the whole range). With aggressive GQA (`num_key_value_heads: 2`, `head_dim: 256`) the FP16 KV cache sits around 80 KB/token, so a fully-populated 262144-token cache is ~20 GB; long-context sessions may spill KV to oMLX's paged SSD cache. Lower this value or enable per-model TurboQuant KV if prefill latency becomes a concern.
 
 If `~/.omlx/settings.json` does not exist yet (fresh install, oMLX never started), the merge is a no-op with a hint. Start the service once (`brew services start jundot/omlx/omlx`) so oMLX writes its defaults + generates `auth.secret_key`, then re-run `chezmoi apply` to layer the overrides. After changing the source, `brew services restart jundot/omlx/omlx` to pick up the new values (oMLX loads settings at startup).
 
@@ -419,6 +419,17 @@ Completion follows the same model. `,omlx load <TAB>` offers the union (server-u
 
 Respects `OMLX_HOST` / `OMLX_PORT` / `OMLX_API_KEY` / `OMLX_MODELS_ROOT` (defaults: `127.0.0.1:8000`, no auth header unless `OMLX_API_KEY` is set, disk scan under `~/.omlx/models`).
 
+### Codex launcher metadata
+
+`omlx launch codex --model qwen3.6-35b-a3b-5bit` execs `codex -m qwen3.6-35b-a3b-5bit`. Codex only has first-class model metadata for slugs present in its model catalog; unknown local slugs use fallback metadata and emit a warning.
+
+This repo ships a transparent `codex` wrapper plus a small local catalog for that oMLX model:
+
+- [`home/exact_bin/executable_codex`](../../home/exact_bin/executable_codex) -> `~/bin/codex`
+- [`home/dot_codex/readonly_omlx-model-catalog.json`](../../home/dot_codex/readonly_omlx-model-catalog.json) -> `~/.codex/omlx-model-catalog.json`
+
+The wrapper injects `-c model_catalog_json="$HOME/.codex/omlx-model-catalog.json"` only when the selected model is `qwen3.6-35b-a3b-5bit`; normal Codex invocations fall through to `/opt/homebrew/bin/codex` unchanged.
+
 ### Claude Code launcher (`,claude-omlx`)
 
 Claude Code compacts conversation history at `autoCompactWindow` tokens (schema min 100000, max 1000000). Cloud `opus[1m]` sessions benefit from leaving this at the default (~1M). Local oMLX sessions need it below the server's `sampling.max_context_window` (262144) so Claude Code compacts before oMLX would reject the prompt. Those two needs conflict on a single global value.
@@ -437,7 +448,7 @@ Environment overrides:
 | `OMLX_HOST`            | `127.0.0.1`                        | Same as `,omlx` / `omlx` CLI                                        |
 | `OMLX_PORT`            | `8000`                             | Same as `,omlx` / `omlx` CLI                                        |
 | `OMLX_API_KEY`         | empty                              | Sent as `ANTHROPIC_API_KEY` (Claude Code uses this for bearer auth) |
-| `CLAUDE_OMLX_MODEL`    | `qwen3.6-abliterated-heretic-6bit` | Set empty to skip `--model` injection                               |
+| `CLAUDE_OMLX_MODEL`    | `qwen3.6-35b-a3b-5bit`             | Set empty to skip `--model` injection                               |
 | `CLAUDE_OMLX_SETTINGS` | `$HOME/.claude/settings.omlx.json` | Point at an alternate omlx settings file                            |
 
 `autoCompactWindow=200000` leaves ~62k headroom under the 262144-token server cap for the next turn's prompt, tool outputs, and model reply. Note that auto-compact summarizes multi-turn **history** between turns — it does not shrink a single oversized tool output in the current turn. That scenario (e.g. a directory listing that emits 30k+ tokens) is handled purely by the raised server cap in `home/dot_omlx/settings.json`.

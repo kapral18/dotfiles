@@ -13,7 +13,9 @@ return {
         lualine_a = { "branch" },
         lualine_b = {},
         lualine_c = {},
-        lualine_x = {},
+        lualine_x = {
+          require("plugins_local_src.lsp-progress").lualine_component(),
+        },
         lualine_y = {
           {
             function()
@@ -40,37 +42,6 @@ return {
         },
       },
       always_show_tabline = false,
-    },
-  },
-  {
-    "linrongbin16/lsp-progress.nvim",
-    version = "*",
-    opts = {},
-    dependencies = {
-      {
-        "nvim-lualine/lualine.nvim",
-        config = function(_, opts)
-          local new_opts = {
-            sections = {
-              lualine_x = {
-                function()
-                  return require("lsp-progress").progress()
-                end,
-              },
-            },
-          }
-          opts = vim.tbl_deep_extend("force", opts, new_opts)
-          require("lualine").setup(opts)
-
-          -- listen lsp-progress event and refresh lualine
-          vim.api.nvim_create_augroup("lualine_augroup", { clear = true })
-          vim.api.nvim_create_autocmd("User", {
-            group = "lualine_augroup",
-            pattern = "LspProgressStatusUpdated",
-            callback = require("lualine").refresh,
-          })
-        end,
-      },
     },
   },
 }

@@ -3,7 +3,7 @@
 # Format (pipe-delimited, one model per line):
 #   <hf-repo-id>|<local-dir-name>
 #
-# - hf-repo-id: Hugging Face repo id (e.g. "mlx-community/Qwen3.6-35B-A3B-4bit")
+# - hf-repo-id: Hugging Face repo id (e.g. "NexVeridian/Qwen3.6-35B-A3B-5bit")
 # - local-dir-name: subdirectory under ~/.omlx/models/ where weights land
 #
 # Lines starting with `#` and blank lines are ignored.
@@ -11,34 +11,10 @@
 # Downloads are opt-in via the `downloadOmlxModels` data variable in
 # ~/.config/chezmoi/chezmoi.toml. Re-prompt by clearing that value.
 #
-# Strategy: Heretic/Abliterated lineage only. Refusal-removed models that
-# preserve base-model intelligence (KL divergence ~0.0107 nats on the Qwen
-# checkpoint — ~15x cleaner than community abliteration references). Stock
-# mlx-community variants were dropped because the KL delta to the heretic
-# counterparts is negligible on agentic-coding workloads and we use one
-# model at a time in an agent. Qwen ships in two precision tiers: 4-bit is
-# universal; the 6-bit quality tier is gated to the personal profile
-# (isWork=false) because 27.2 GB weights + long-ctx KV cache blows past the
-# 25 GB default weights budget on 36 GB work hosts.
+# Strategy: one local oMLX backend model, small enough for the default work
+# profile model-memory budget while retaining more precision than the old
+# universal 4-bit tier.
 
-# Gemma-4 26B-A4B heretic (MoE, ~4B active / 26B total, 256k ctx, ~14.5 GB).
-# Only 4-bit is published by mlx-community. Serves as the fast small-active
-# model for low-latency agent turns.
-# https://huggingface.co/mlx-community/gemma-4-26B-A4B-it-heretic-4bit
-mlx-community/gemma-4-26B-A4B-it-heretic-4bit|gemma-4-26b-a4b-it-heretic-4bit
-
-# Qwen3.6 35B-A3B Abliterated+Heretic @ 4-bit (~22 GB) — speed tier.
-# Default on the 36 GB M3 Pro where the 6-bit would saturate memory at long ctx.
-# https://huggingface.co/Youssofal/Qwen3.6-35B-A3B-Abliterated-Heretic-MLX-4bit
-Youssofal/Qwen3.6-35B-A3B-Abliterated-Heretic-MLX-4bit|qwen3.6-abliterated-heretic-4bit
-
-{{ if ne .isWork true -}}
-# Qwen3.6 35B-A3B Abliterated+Heretic @ 6-bit (~27.2 GB) — quality tier.
-# Same abliteration checkpoint as the 4-bit above, higher precision. Gated
-# to personal-profile hosts (isWork=false): the 64 GB M1 Pro fits 27 GB
-# weights + long-ctx KV cache + server overhead under a ~50 GB model budget;
-# the 36 GB M3 Pro would exceed the 25 GB default weights budget even before
-# KV, so this entry renders empty there.
-# https://huggingface.co/Youssofal/Qwen3.6-35B-A3B-Abliterated-Heretic-MLX-6bit
-Youssofal/Qwen3.6-35B-A3B-Abliterated-Heretic-MLX-6bit|qwen3.6-abliterated-heretic-6bit
-{{- end }}
+# Qwen3.6 35B-A3B @ 5-bit (~23.8 GB MLX safetensors).
+# https://huggingface.co/NexVeridian/Qwen3.6-35B-A3B-5bit
+NexVeridian/Qwen3.6-35B-A3B-5bit|qwen3.6-35b-a3b-5bit

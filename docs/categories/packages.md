@@ -65,6 +65,8 @@ So the Brewfile acts like the source-of-truth.
 
 If you are new to this style: it is closer to "infrastructure as code" than "I installed a thing once".
 
+The Brewfile also carries day-to-day terminal utilities, GUI apps, and personal-only casks such as Roblox and Roblox Studio.
+
 ## ASDF (Tool Versions)
 
 - Plugins list: [`home/asdf_plugins.tmpl`](../../home/asdf_plugins.tmpl)

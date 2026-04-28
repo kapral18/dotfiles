@@ -61,6 +61,7 @@ local plugin_modules = {
 local local_modules = {
   "plugins_local.copy-to-qf",
   "plugins_local.freeze",
+  "plugins_local.lsp-progress",
   "plugins_local.owner-code-search",
   "plugins_local.qf",
   "plugins_local.run-jest-in-split",

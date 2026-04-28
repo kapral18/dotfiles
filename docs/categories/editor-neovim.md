@@ -227,6 +227,10 @@ The load list is explicitly declared in:
 
 Code actions are shown with **fzf-lua**, not Neovim’s default `vim.ui.select` prompt. The `fzf-lua` plugin is loaded on demand (key triggers); its config registers `vim.ui.select` globally only after that first load. The `<leader>ca` / `<leader>cA` mappings therefore call `fzf-lua`’s `lsp_code_actions` helper (with `packadd` when needed) so the fzf picker is used even if you have not used another fzf mapping yet in that session.
 
+## LSP Progress In Lualine
+
+Lualine renders native Neovim `LspProgress` events through a local plugin: loader [`plugins_local/lsp-progress.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_lsp-progress.lua), implementation [`plugins_local_src/lsp-progress.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_lsp-progress.lua), and component wiring in [`plugins/lualine.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_lualine.lua). The statusline shows the client name, an animated spinner, the latest title/message, optional server-provided percentage, and a derived completed-token counter such as `(0/1)` or `(1/1) - done`. This replaces `lsp-progress.nvim` without emitting terminal/tmux OSC progress bars.
+
 ## Starter Keymaps (High Signal)
 
 Window navigation:
