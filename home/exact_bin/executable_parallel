@@ -1,0 +1,2 @@
+#!/bin/sh
+exec "$(brew --prefix parallel)/bin/parallel" "$@"

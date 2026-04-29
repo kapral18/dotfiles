@@ -436,9 +436,9 @@ brew "weave"
 
 # Entity-level diff, blame, impact analysis, and LLM context for Git
 # https://github.com/Ataraxy-Labs/sem
-# link: :overwrite — `sem` collides with GNU `parallel`’s semaphore alias at
-# /opt/homebrew/bin/sem; we want the ataraxy binary to win that name.
-brew "ataraxy-labs/tap/sem", link: :overwrite
+# link: false — exposed through ~/bin/sem so it does not compete with GNU
+# parallel's `sem` helper in /opt/homebrew/bin.
+brew "ataraxy-labs/tap/sem", link: false
 
 # Rich git commit graph TUI
 # https://github.com/lusingander/serie
@@ -902,7 +902,9 @@ brew "hwatch"
 
 # Shell command parallelization utility
 # https://www.gnu.org/software/parallel/
-brew "parallel"
+# link: false — GNU parallel also ships a `sem` binary, but this setup keeps
+# Ataraxy's semantic-git `sem` linked at /opt/homebrew/bin/sem.
+brew "parallel", link: false
 
 # ==============================================================================
 # DATA VISUALIZATION & PLOTTING
@@ -1220,6 +1222,10 @@ cask "thebrowsercompany-dia"
 # Web browser
 # https://brave.com/
 cask "brave-browser"
+
+# Chromium-based web browser
+# https://helium.computer/
+cask "helium-browser"
 
 # Web browser
 # https://zen-browser.app/
