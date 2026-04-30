@@ -73,6 +73,7 @@ return {
     dependencies = { "mason-org/mason.nvim" },
     opts = {
       ensure_installed = {},
+      automatic_enable = { exclude = { "taplo" } },
     },
     config = function(_, opts)
       require("mason-lspconfig").setup(opts)
@@ -392,11 +393,7 @@ return {
       if have_mason then
         require("mason-lspconfig").setup({
           ensure_installed = install,
-          handlers = {
-            function(server)
-              vim.lsp.enable(server)
-            end,
-          },
+          automatic_enable = { exclude = mason_exclude },
         })
       end
     end,

@@ -23,10 +23,10 @@ for arg in "$@"; do
   fi
 
   case "$arg" in
-    --model="$omlx_model")
-      uses_omlx_model=true
-      break
-      ;;
+  --model="$omlx_model")
+    uses_omlx_model=true
+    break
+    ;;
   esac
 
   previous_arg="$arg"

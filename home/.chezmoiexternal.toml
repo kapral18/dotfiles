@@ -25,3 +25,13 @@ stripComponents = 2
 include = ["*/themes/*"]
 exact = true
 refreshPeriod = "168h"
+
+[".config/yazi/flavors"]
+type = "archive"
+url = "https://github.com/yazi-rs/flavors/archive/refs/heads/main.tar.gz"
+stripComponents = 1
+include = [
+  "*/catppuccin-frappe.yazi/**",
+  "*/catppuccin-latte.yazi/**",
+]
+refreshPeriod = "168h"

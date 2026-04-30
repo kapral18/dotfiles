@@ -65,7 +65,7 @@ So the Brewfile acts like the source-of-truth.
 
 If you are new to this style: it is closer to "infrastructure as code" than "I installed a thing once".
 
-The Brewfile also carries day-to-day terminal utilities, GUI apps, browser casks such as Helium, Brave, Zen, Arc, and Dia, and personal-only casks such as Roblox and Roblox Studio.
+The Brewfile also carries day-to-day terminal utilities, network diagnostics such as NetWatch, GUI apps, browser casks such as Helium, Brave, Zen, Arc, and Dia, and personal-only casks such as Roblox and Roblox Studio.
 
 Some Homebrew formulae are deliberately installed with `link: false` when their binaries collide. For example, GNU `parallel` and Ataraxy semantic-git `sem` both provide a `sem` binary, so both formulae stay unlinked. The commands are exposed through managed wrappers at [`home/exact_bin/executable_parallel`](../../home/exact_bin/executable_parallel) and [`home/exact_bin/executable_sem`](../../home/exact_bin/executable_sem).
 

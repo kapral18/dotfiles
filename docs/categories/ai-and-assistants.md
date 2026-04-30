@@ -41,7 +41,7 @@ Shared behavioral disciplines (integrated from [`forrestchang/andrej-karpathy-sk
 
 - `2 Core Principles`: surface material assumptions and competing interpretations rather than picking silently (evidence-first from `2.1` still wins — probe locally before asking); push back when a simpler approach satisfies the stated goal.
 - `3.3 Success Criteria & Verification Loops`: reframe imperative tasks as verifiable goals (test-first / reproducer-first when practical); multi-step plans must carry per-step verify checks; does not override `2.0`, `2.1`, `2.2`, or `5 Minimal edit scope`.
-- `5 Code Quality`: simplicity discipline (no speculative abstractions/flexibility/impossible-scenario error handling; senior-engineer test); dead-code handling (remove only orphans your own changes created; mention, don't delete pre-existing dead code unless asked).
+- `5 Code Quality`: simplicity discipline (no speculative abstractions/flexibility/impossible-scenario error handling; senior-engineer test); artifact necessity (prove behavior is missing without a new artifact before adding it unless explicitly requested); dead-code handling (remove only orphans your own changes created; mention, don't delete pre-existing dead code unless asked).
 - Canonical sources: [`home/readonly_AGENTS.md`](../../home/readonly_AGENTS.md), [`home/readonly_CLAUDE.md`](../../home/readonly_CLAUDE.md), and [`home/dot_gemini/readonly_GEMINI.md`](../../home/dot_gemini/readonly_GEMINI.md).
 
 ## Skills Layout
@@ -56,6 +56,7 @@ Entry contract standard:
 
 - Each skill should make four things obvious near the top: `Use when`, `Do not use`, `First actions`, and `Output`.
 - The `description` frontmatter field is the primary routing signal — agents use it to decide whether to load the skill. Keep it concise, specific, and include non-obvious trigger words.
+- For manual-only skills with `disable-model-invocation: true`, the description is catalog metadata rather than an automatic routing trigger.
 - Skills gated to specific repos (e.g. elastic-only) must state the constraint in the `description` so agents skip them early.
 - The goal is to remove implied routing and implied next steps so the agent has less room to "remember roughly" and skip the file.
 

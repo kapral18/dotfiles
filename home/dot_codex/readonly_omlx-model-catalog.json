@@ -30,9 +30,7 @@
       "auto_compact_token_limit": 200000,
       "effective_context_window_percent": 90,
       "experimental_supported_tools": [],
-      "input_modalities": [
-        "text"
-      ],
+      "input_modalities": ["text"],
       "supports_search_tool": false
     }
   ]

@@ -9,7 +9,7 @@ return {
   {
     "mason-org/mason.nvim",
     opts = function(_, opts)
-      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, { "codelldb", "taplo" })
+      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, { "codelldb", "tombi" })
       return opts
     end,
   },
@@ -102,6 +102,8 @@ return {
     opts = {
       servers = {
         rust_analyzer = {},
+        taplo = { enabled = false },
+        tombi = {},
       },
     },
   },
@@ -110,7 +112,7 @@ return {
     opts = function(_, opts)
       opts.formatters_by_ft = vim.tbl_deep_extend("force", opts.formatters_by_ft or {}, {
         rust = { "rustfmt" },
-        toml = { "taplo" },
+        toml = { "tombi" },
       })
       return opts
     end,
