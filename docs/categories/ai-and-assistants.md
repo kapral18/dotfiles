@@ -70,6 +70,7 @@ Current skills:
 | `research`              | Investigating a third-party project/library/tool by cloning its GitHub repo            |                |
 | `walkthrough`           | Explore codebase flows, map component relationships, render diagrams (manual only)     |                |
 | `cli-skills`            | Creating or upgrading CLI tool skills                                                  |                |
+| `letsfg`                | Searching flight tickets/fares through the local LetsFG CLI with direct booking URLs    |                |
 | `semantic-code-search`  | Semantic search, base-branch context, or when another skill requires SCSI              |                |
 | `google-workspace`      | Gmail / Drive / Calendar / Admin / Docs / Sheets via `gws` CLI                         |                |
 | `worktrees`             | Create/switch/open/list/prune/remove worktrees via `,w`                                |                |
@@ -222,7 +223,9 @@ Both profiles enable extended thinking and skip the dangerous-mode permission pr
 
 MCP servers are stored separately in `~/.claude.json` (top-level `mcpServers` field) because that file contains runtime state managed by Claude Code. The merge script surgically updates only the `mcpServers` key, leaving other fields intact.
 
-Work MCP servers: sequentialthinking, scsi-main, scsi-local. Personal MCP servers: sequentialthinking.
+Work MCP servers: sequentialthinking, scsi-main, scsi-local, slack. Personal MCP servers: sequentialthinking.
+
+LetsFG is intentionally not exposed through the shared MCP registry because its tools are irrelevant to most sessions. Agents load [`~/.agents/skills/letsfg/SKILL.md`](../../home/exact_dot_agents/exact_skills/exact_letsfg/readonly_SKILL.md) on demand and use the local `letsfg` uv tool from [`home/readonly_dot_default-uv-tools.tmpl`](../../home/readonly_dot_default-uv-tools.tmpl) for free local searches that return direct airline/OTA `booking_url` values. Normal agent searches pass `LETSFG_BROWSERS=0` on each `letsfg` invocation so LetsFG skips browser connectors without changing the user shell environment; browser connectors are explicit opt-in coverage because some upstream connectors intentionally avoid headless mode for anti-bot reasons. Playwriter headless browser automation remains a fallback for rendered UI checks or booking-adjacent flows that need explicit user confirmation.
 
 ### Gemini CLI settings
 

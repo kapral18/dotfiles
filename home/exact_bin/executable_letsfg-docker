@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+# letsfg-docker
+# Runs letsfg in a headless container (Docker or Podman) with Xvfb
+# This allows browser-based connectors to run headlessly without opening visible Chrome windows.
+
+set -euo pipefail
+
+# Auto-detect container runtime
+if command -v podman >/dev/null 2>&1 && podman info >/dev/null 2>&1; then
+    RUNTIME="podman"
+elif command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+    RUNTIME="docker"
+else
+    echo "Error: Neither podman nor docker is running or accessible." >&2
+    exit 1
+fi
+
+IMAGE_NAME="letsfg-headless"
+DOCKERFILE_DIR="$HOME/.agents/skills/letsfg/assets"
+
+# Check if image exists; if not, build it
+if ! "$RUNTIME" image inspect "$IMAGE_NAME" >/dev/null 2>&1; then
+    if [ ! -f "$DOCKERFILE_DIR/Dockerfile" ]; then
+        echo "Error: Dockerfile not found at $DOCKERFILE_DIR/Dockerfile" >&2
+        echo "Please make sure the dotfiles are fully applied via chezmoi." >&2
+        exit 1
+    fi
+    echo "Building $IMAGE_NAME image using $RUNTIME (this will only happen once)..." >&2
+    "$RUNTIME" build -t "$IMAGE_NAME" "$DOCKERFILE_DIR"
+fi
+
+exec "$RUNTIME" run --rm "$IMAGE_NAME" "$@"

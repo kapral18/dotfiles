@@ -17,10 +17,16 @@ if [[ ! -f "$uv_tools_template" ]]; then
 fi
 
 # Render template into an array
-if ! mapfile -t lines < <(chezmoi execute-template <"$uv_tools_template"); then
+rendered_tools="$(mktemp)"
+trap 'rm -f "$rendered_tools"' EXIT
+if ! chezmoi execute-template <"$uv_tools_template" >"$rendered_tools"; then
   echo "Error: Failed to render default-uv-tools template"
   exit 1
 fi
+declare -a lines
+while IFS= read -r line; do
+  lines+=("$line")
+done <"$rendered_tools"
 
 install_uv_tool() {
   local tool=$1

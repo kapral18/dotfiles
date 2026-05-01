@@ -14,7 +14,7 @@ keybinding:
     markCommitAsBaseForRebase: "<c-b>"
 customCommands:
   - key: C
-    command: git commit --no-verify
+    command: exec git commit --no-verify
     context: files
     description: Commit (--no-verify)
     output: terminal
@@ -32,42 +32,42 @@ customCommands:
         labelFormat: "{{ .pr | bold | cyan }} {{ .title }} {{ .branch }}"
     description: Check out PR branch
   - key: <c-b>
-    command: tig blame -- "{{ .SelectedFile.Name }}"
+    command: exec tig blame -- "{{ .SelectedFile.Name }}"
     context: files
     description: Blame file at tree
     output: terminal
   - key: <c-b>
-    command: tig blame "{{ .SelectedSubCommit.Sha }}" -- "{{ .SelectedCommitFile.Name }}"
+    command: exec tig blame "{{ .SelectedSubCommit.Sha }}" -- "{{ .SelectedCommitFile.Name }}"
     context: commitFiles
     description: Blame file at revision
     output: terminal
   - key: <c-B>
-    command: tig blame -- "{{ .SelectedCommitFile.Name }}"
+    command: exec tig blame -- "{{ .SelectedCommitFile.Name }}"
     context: commitFiles
     description: Blame file at tree
     output: terminal
   - key: t
-    command: tig show {{ .SelectedSubCommit.Sha }}
+    command: exec tig show {{ .SelectedSubCommit.Sha }}
     context: subCommits
     description: tig commit (`t` again to browse files at revision)
     output: terminal
   - key: t
-    command: tig show "{{ .SelectedLocalBranch.Name }}"
+    command: exec tig show "{{ .SelectedLocalBranch.Name }}"
     context: localBranches
     description: tig branch (`t` again to browse files at revision)
     output: terminal
   - key: t
-    command: tig show "{{ .SelectedRemoteBranch.RemoteName }}/{{ .SelectedRemoteBranch.Name }}"
+    command: exec tig show "{{ .SelectedRemoteBranch.RemoteName }}/{{ .SelectedRemoteBranch.Name }}"
     context: remoteBranches
     description: tig branch (`t` again to browse files at revision)
     output: terminal
   - key: t
-    command: tig {{ .SelectedSubCommit.Sha }} -- "{{ .SelectedCommitFile.Name }}"
+    command: exec tig {{ .SelectedSubCommit.Sha }} -- "{{ .SelectedCommitFile.Name }}"
     context: commitFiles
     description: tig file (history of commits affecting file)
     output: terminal
   - key: t
-    command: tig -- "{{ .SelectedFile.Name }}"
+    command: exec tig -- "{{ .SelectedFile.Name }}"
     context: files
     description: tig file (history of commits affecting file)
     output: terminal
