@@ -41,40 +41,6 @@ return {
       })
       -- Configure nvim-dap-go as well for standard DAP setup
       require("dap-go").setup()
-
-      -- go.nvim's `ftdetect/filetype.vim` ships
-      --   au BufRead,BufNewFile *.tmpl set filetype=gotexttmpl
-      -- which blanket-claims every `.tmpl` file. In this dotfiles repo
-      -- `.tmpl` is chezmoi's template extension, handled per-source-dir by
-      -- `alker0/chezmoi.vim` (ft like `gitconfig.chezmoitmpl`). When both
-      -- autocmds fire on BufRead, the later one wins; go.nvim's registers
-      -- lazily (CmdlineEnter), so after the first `:` keypress it starts
-      -- winning and subsequent reloads show `gotexttmpl` plus the go.vim
-      -- syntax's `goCharacter` matching on stray `'`s in comments/values.
-      -- Drop the blanket rule; `.gotext`/`.gohtml` handlers remain, and
-      -- real Go text templates can be opted into with `:setf gotexttmpl`.
-      pcall(vim.api.nvim_clear_autocmds, {
-        group = "filetypedetect",
-        pattern = "*.tmpl",
-      })
-
-      -- Re-detect any already-open chezmoi template buffer that was stomped
-      -- to `gotexttmpl` before this cleanup ran.
-      local source_dir = vim.g["chezmoi#source_dir_path"]
-      if type(source_dir) == "string" and source_dir ~= "" then
-        for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-          if vim.api.nvim_buf_is_loaded(buf) and vim.bo[buf].filetype == "gotexttmpl" then
-            local name = vim.api.nvim_buf_get_name(buf)
-            if name:find(source_dir, 1, true) == 1 then
-              vim.api.nvim_buf_call(buf, function()
-                pcall(vim.cmd, "unlet! b:chezmoi_handling")
-                pcall(vim.cmd, "unlet! b:chezmoi_detecting_fixed")
-                pcall(vim.cmd, "doautocmd chezmoi_filetypedetect BufRead " .. vim.fn.fnameescape(name))
-              end)
-            end
-          end
-        end
-      end
     end,
     keys = {
       {

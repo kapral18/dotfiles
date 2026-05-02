@@ -163,14 +163,11 @@ au BufRead,BufNewFile *.tmpl set filetype=gotexttmpl
 
 Our plugin manager sources every plugin's `ftdetect/` eagerly at startup (even for lazy-loaded plugins like go.nvim), so that autocmd is already registered the first time a `.tmpl` buffer is read. Depending on registration order, the `gotexttmpl` autocmd can win on either the initial `BufRead` or subsequent `:e`/`:edit!`. The resulting `gotexttmpl` filetype pulls in `syntax/go.vim`, which defines `goCharacter` as a `'...'` region — so a stray apostrophe in a comment (`git's`) paints everything up to the next `'` (often many lines away) as `Character`.
 
-Two defenses cooperate:
+The defense is intentionally scoped: [`home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_chezmoi.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_chezmoi.lua) installs an eager `FileType` autocmd at startup. Whenever a buffer under the chezmoi source tree is set to a known hijacking filetype (`gotexttmpl`, `gohtmltmpl`), it restores the composite filetype that `chezmoi.vim` already detected (`<ft>.chezmoitmpl`, stored as `b:chezmoi_original_filetype`) or falls back to plain `chezmoitmpl` when there is no inner filetype.
 
-1. The chezmoi plugin installs an eager `FileType` autocmd at startup. Whenever any buffer under the chezmoi source tree is set to a known hijacking filetype (`gotexttmpl`, `gohtmltmpl`), it re-runs chezmoi.vim's per-source-dir detection so the composite filetype (`<ft>.chezmoitmpl`) is restored. This works regardless of plugin load order and catches both the initial open and any later stomp.
-   - [`home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_chezmoi.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_chezmoi.lua)
-2. When go.nvim itself eventually loads, its `config` removes the blanket `*.tmpl` filetype autocmd and re-detects any already-open chezmoi buffer — so after the first `:` keystroke there is no stomp to reclaim from.
-   - [`home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_go.lua`](../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_go.lua)
+`readonly_dot_Brewfile.tmpl` is intentionally reclaimed to plain `conf`, not `conf.chezmoitmpl`, because the Brewfile source is managed as configuration text in this setup.
 
-`.gotext` and `.gohtml` handlers from go.nvim remain. Real Go text templates can be opted into with `:setfiletype gotexttmpl` or by using the `.gotext` extension.
+It does **not** delete the global `*.tmpl` detector. Non-chezmoi `.tmpl` files can still become `gotexttmpl`, and `.gotext` / `.gohtml` handlers from go.nvim remain.
 
 If you are IDE-first, start by learning:
 

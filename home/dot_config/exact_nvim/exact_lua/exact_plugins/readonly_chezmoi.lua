@@ -21,11 +21,10 @@ return {
       -- (and thus the wrong syntax, e.g. `goCharacter` matching stray `'`
       -- in gitconfig comments/values).
       --
-      -- Instead of fighting registration order, listen for a `FileType`
-      -- change on any buffer under the chezmoi source tree and, if the
-      -- resulting filetype is one of the known hijackers, re-run
-      -- chezmoi.vim's detection so the correct composite filetype
-      -- (`<ft>.chezmoitmpl`) gets assigned.
+      -- Instead of deleting the global `*.tmpl` rule, only reclaim buffers
+      -- under the chezmoi source tree. chezmoi.vim has already recorded the
+      -- target filetype in `b:chezmoi_original_filetype`; restore that
+      -- composite filetype after the hijacker finishes.
       local hijack_fts = {
         gotexttmpl = true,
         gohtmltmpl = true,
@@ -45,13 +44,24 @@ return {
           if name == "" or name:find(source_dir, 1, true) ~= 1 then
             return
           end
-          if vim.fn.exists("#chezmoi_filetypedetect") ~= 1 then
-            return
-          end
-          vim.api.nvim_buf_call(ev.buf, function()
-            pcall(vim.cmd, "unlet! b:chezmoi_handling")
-            pcall(vim.cmd, "unlet! b:chezmoi_detecting_fixed")
-            pcall(vim.cmd, "doautocmd chezmoi_filetypedetect BufRead " .. vim.fn.fnameescape(name))
+          vim.schedule(function()
+            if not vim.api.nvim_buf_is_valid(ev.buf) then
+              return
+            end
+            local target_ft = "chezmoitmpl"
+            if vim.fn.fnamemodify(name, ":t") == "readonly_dot_Brewfile.tmpl" then
+              target_ft = "conf"
+            end
+            local original_ft = vim.b[ev.buf].chezmoi_original_filetype
+            if
+              target_ft == "chezmoitmpl"
+              and type(original_ft) == "string"
+              and original_ft ~= ""
+              and original_ft ~= "chezmoitmpl"
+            then
+              target_ft = original_ft .. ".chezmoitmpl"
+            end
+            vim.bo[ev.buf].filetype = target_ft
           end)
         end,
       })
