@@ -11,7 +11,6 @@ app_icons/
 **/*.work.toml
 **/*.personal.toml
 .claude/settings.json
-.omlx/settings.json
 .codex/config.toml
 .config/gh-dash/gh-dash-shared.yml
 crontab

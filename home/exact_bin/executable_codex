@@ -1,30 +1,30 @@
 #!/usr/bin/env bash
-# Description: Run Codex, injecting local oMLX model metadata when needed.
+# Description: Run Codex, injecting local llama.cpp model metadata when needed.
 
 set -euo pipefail
 
 real_codex="${CODEX_REAL_BIN:-/opt/homebrew/bin/codex}"
-omlx_catalog="${CODEX_OMLX_MODEL_CATALOG:-$HOME/.codex/omlx-model-catalog.json}"
-omlx_model="qwen3.6-35b-a3b-5bit"
+llama_cpp_catalog="${CODEX_LLAMA_CPP_MODEL_CATALOG:-$HOME/.codex/llama-cpp-model-catalog.json}"
+llama_cpp_model="qwen3.6-35b-a3b-q4-k-m"
 
 if [[ ! -x "$real_codex" ]]; then
   echo "Error: real Codex binary not found at $real_codex." >&2
   exit 127
 fi
 
-uses_omlx_model=false
+uses_llama_cpp_model=false
 previous_arg=""
 for arg in "$@"; do
   if [[ "$previous_arg" == "-m" || "$previous_arg" == "--model" ]]; then
-    if [[ "$arg" == "$omlx_model" ]]; then
-      uses_omlx_model=true
+    if [[ "$arg" == "$llama_cpp_model" ]]; then
+      uses_llama_cpp_model=true
       break
     fi
   fi
 
   case "$arg" in
-  --model="$omlx_model")
-    uses_omlx_model=true
+  --model="$llama_cpp_model")
+    uses_llama_cpp_model=true
     break
     ;;
   esac
@@ -32,8 +32,8 @@ for arg in "$@"; do
   previous_arg="$arg"
 done
 
-if [[ "$uses_omlx_model" == true && -f "$omlx_catalog" ]]; then
-  exec "$real_codex" -c "model_catalog_json=\"$omlx_catalog\"" "$@"
+if [[ "$uses_llama_cpp_model" == true && -f "$llama_cpp_catalog" ]]; then
+  exec "$real_codex" -c "model_catalog_json=\"$llama_cpp_catalog\"" "$@"
 fi
 
 exec "$real_codex" "$@"

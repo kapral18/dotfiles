@@ -27,8 +27,8 @@ homebrewPrefix = "/usr/local"
 homebrewPrefix = "/opt/homebrew"
 {{ end -}}
 
-{{/* Opt-in gate for the oMLX model sync hook (run_onchange_after_07-sync-omlx-models).
+{{/* Opt-in gate for the llama.cpp model sync hook (run_onchange_after_07-sync-llama-cpp-models).
      Default is false so `chezmoi apply` never auto-downloads multi-GB model weights.
      Set once per machine; re-prompt by clearing the value from ~/.config/chezmoi/chezmoi.toml. */ -}}
-downloadOmlxModels = {{ promptBoolOnce . "downloadOmlxModels" "Download oMLX models on apply? y/N" false }}
+downloadLlamaCppModels = {{ promptBoolOnce . "downloadLlamaCppModels" "Download llama.cpp models on apply? y/N" false }}
 

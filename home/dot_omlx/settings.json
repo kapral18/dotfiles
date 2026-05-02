@@ -1,6 +1,0 @@
-{
-  "sampling": {
-    "max_context_window": 262144,
-    "max_tokens": 262144
-  }
-}

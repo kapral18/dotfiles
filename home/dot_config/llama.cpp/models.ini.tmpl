@@ -1,0 +1,15 @@
+version = 1
+
+[*]
+ctx-size = 262144
+n-predict = 262144
+n-gpu-layers = all
+flash-attn = on
+jinja = true
+cache-type-k = q8_0
+cache-type-v = q8_0
+reasoning = auto
+
+[qwen3.6-35b-a3b-q4-k-m]
+model = {{ .chezmoi.homeDir }}/.llama.cpp/models/Qwen_Qwen3.6-35B-A3B-Q4_K_M.gguf
+load-on-startup = false

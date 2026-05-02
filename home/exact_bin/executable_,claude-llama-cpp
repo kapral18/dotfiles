@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Description: Launch Claude Code against the local llama.cpp server.
+#
+# The wrapper keeps local-server settings out of global Claude Code config:
+#   - Points ANTHROPIC_BASE_URL at llama-server (respects LLAMA_CPP_HOST/PORT).
+#   - Sends ANTHROPIC_API_KEY from LLAMA_CPP_API_KEY, defaulting to a harmless
+#     placeholder because llama.cpp accepts unauthenticated requests unless
+#     started with --api-key.
+#   - Adds --settings ~/.claude/settings.llama-cpp.json so autoCompactWindow
+#     stays below the local llama.cpp context size.
+#   - Prepends --model $CLAUDE_LLAMA_CPP_MODEL; forwarded args can override it
+#     since claude accepts a later --model.
+
+set -euo pipefail
+
+LLAMA_CPP_HOST="${LLAMA_CPP_HOST:-127.0.0.1}"
+LLAMA_CPP_PORT="${LLAMA_CPP_PORT:-8080}"
+LLAMA_CPP_API_KEY="${LLAMA_CPP_API_KEY:-sk-no-key-required}"
+CLAUDE_LLAMA_CPP_MODEL="${CLAUDE_LLAMA_CPP_MODEL-qwen3.6-35b-a3b-q4-k-m}"
+CLAUDE_LLAMA_CPP_SETTINGS="${CLAUDE_LLAMA_CPP_SETTINGS:-$HOME/.claude/settings.llama-cpp.json}"
+
+if ! command -v claude >/dev/null 2>&1; then
+  echo "Error: claude CLI not found on PATH. Install via the npm pkg list or brew, whichever your setup uses." >&2
+  exit 127
+fi
+
+if [[ ! -f "$CLAUDE_LLAMA_CPP_SETTINGS" ]]; then
+  echo "Error: llama.cpp-scoped claude settings not found at $CLAUDE_LLAMA_CPP_SETTINGS." >&2
+  echo "       Run 'chezmoi apply' to deploy home/dot_claude/settings.llama-cpp.json." >&2
+  exit 1
+fi
+
+export ANTHROPIC_BASE_URL="http://${LLAMA_CPP_HOST}:${LLAMA_CPP_PORT}"
+export ANTHROPIC_API_KEY="$LLAMA_CPP_API_KEY"
+
+args=(--settings "$CLAUDE_LLAMA_CPP_SETTINGS")
+if [[ -n "$CLAUDE_LLAMA_CPP_MODEL" ]]; then
+  args+=(--model "$CLAUDE_LLAMA_CPP_MODEL")
+fi
+
+exec claude "${args[@]}" "$@"

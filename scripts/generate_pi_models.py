@@ -7,18 +7,23 @@ from model_display import format_display_name
 
 
 def main():
-    if len(sys.argv) != 4:
-        sys.exit("Usage: generate_pi_models.py <models_yaml> <litellm_api_base> <azure_endpoint>")
+    if len(sys.argv) != 5:
+        sys.exit(
+            "Usage: generate_pi_models.py <base_models_json> <models_yaml> "
+            "<litellm_api_base> <azure_endpoint>"
+        )
 
-    models_yaml_path = sys.argv[1]
-    litellm_api_base = sys.argv[2]
-    azure_endpoint = sys.argv[3]
+    base_models_path = sys.argv[1]
+    models_yaml_path = sys.argv[2]
+    litellm_api_base = sys.argv[3]
+    azure_endpoint = sys.argv[4]
 
+    data = _load_base_models(base_models_path)
     litellm_models = ai_models.load_litellm(models_yaml_path)
     azure_models = ai_models.load_azure(models_yaml_path)
 
-    data = {
-        "providers": {
+    data["providers"].update(
+        {
             "litellm": {
                 "baseUrl": litellm_api_base,
                 "apiKey": "LITELLM_PROXY_KEY",
@@ -35,9 +40,14 @@ def main():
                 "models": [_to_pi_model(m, "Azure", azure_endpoint) for m in azure_models],
             },
         }
-    }
+    )
 
     print(json.dumps(data, indent=2, ensure_ascii=False))
+
+
+def _load_base_models(path):
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
 
 
 def _to_pi_model(m, provider_label, base_url):

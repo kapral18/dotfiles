@@ -1,0 +1,37 @@
+{
+  "models": [
+    {
+      "slug": "qwen3.6-35b-a3b-q4-k-m",
+      "display_name": "Qwen3.6 35B A3B Q4_K_M (llama.cpp)",
+      "description": "Local GGUF Qwen3.6 35B A3B Q4_K_M model served by llama.cpp.",
+      "supported_reasoning_levels": [],
+      "shell_type": "default",
+      "visibility": "list",
+      "supported_in_api": true,
+      "priority": 0,
+      "additional_speed_tiers": [],
+      "availability_nux": null,
+      "upgrade": null,
+      "base_instructions": "You are a coding agent running in the Codex CLI, a terminal-based coding assistant. Codex CLI is an open source project led by OpenAI. You are expected to be precise, safe, and helpful.",
+      "supports_reasoning_summaries": false,
+      "default_reasoning_summary": "auto",
+      "support_verbosity": false,
+      "default_verbosity": null,
+      "apply_patch_tool_type": null,
+      "web_search_tool_type": "text",
+      "truncation_policy": {
+        "mode": "tokens",
+        "limit": 10000
+      },
+      "supports_parallel_tool_calls": false,
+      "supports_image_detail_original": false,
+      "context_window": 262144,
+      "max_context_window": 262144,
+      "auto_compact_token_limit": 200000,
+      "effective_context_window_percent": 90,
+      "experimental_supported_tools": [],
+      "input_modalities": ["text"],
+      "supports_search_tool": false
+    }
+  ]
+}

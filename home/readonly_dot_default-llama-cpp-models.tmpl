@@ -1,0 +1,19 @@
+# llama.cpp GGUF model manifest (rendered by chezmoi).
+#
+# Format (pipe-delimited, one model per line):
+#   <hf-repo-id>|<hf-file>
+#
+# - hf-repo-id: Hugging Face repo id containing GGUF weights.
+# - hf-file: GGUF file to place under ~/.llama.cpp/models/.
+#
+# Lines starting with `#` and blank lines are ignored.
+#
+# Downloads are opt-in via the `downloadLlamaCppModels` data variable in
+# ~/.config/chezmoi/chezmoi.toml. Re-prompt by clearing that value.
+#
+# Strategy: one local llama.cpp backend model, using a GGUF quant close to the
+# old oMLX 5-bit disk footprint while staying compatible with stock llama.cpp.
+
+# Qwen3.6 35B-A3B Q4_K_M (~21.4 GB GGUF).
+# https://huggingface.co/bartowski/Qwen_Qwen3.6-35B-A3B-GGUF
+bartowski/Qwen_Qwen3.6-35B-A3B-GGUF|Qwen_Qwen3.6-35B-A3B-Q4_K_M.gguf

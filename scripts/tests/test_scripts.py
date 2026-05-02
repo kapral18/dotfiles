@@ -16,6 +16,7 @@ import unittest
 from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent.parent
+REPO = SCRIPTS.parent
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
 
@@ -180,6 +181,7 @@ class TestGeneratePiModels(unittest.TestCase):
         actual = _run(
             [
                 "generate_pi_models.py",
+                str(REPO / "home/dot_pi/agent/readonly_models.json"),
                 str(FIXTURES / "ai_models.yaml"),
                 "http://localhost:4000/v1",
                 "https://test-resource.services.ai.azure.com/openai/v1",

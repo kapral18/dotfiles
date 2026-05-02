@@ -210,8 +210,7 @@ Instead of keeping complex templates or comment-based filtering logic, we use ex
 | Codex config         | [`home/dot_codex/private_config.{work,personal}.toml`](../../home/dot_codex/private_config.{work,personal}.toml)                               | `~/.codex/config.toml`               | `run_onchange_after_07-merge-codex-config.sh.tmpl`         |
 | Codex MCP            | [`home/.chezmoidata/mcp_servers.yaml`](../../home/.chezmoidata/mcp_servers.yaml) (shared registry)                                             | `~/.codex/config.toml`               | `run_onchange_after_07-merge-codex-config.sh.tmpl`         |
 | Pi MCP               | [`home/.chezmoidata/mcp_servers.yaml`](../../home/.chezmoidata/mcp_servers.yaml) (shared registry)                                             | `~/.pi/agent/mcp.json`               | `run_onchange_after_07-generate-mcp-configs.sh.tmpl`       |
-| Pi settings/models   | [`home/dot_pi/agent/readonly_{settings,models}.{work,personal}.json`](../../home/dot_pi/agent/readonly_{settings,models}.{work,personal}.json) | `~/.pi/agent/{settings,models}.json` | `run_onchange_after_07-merge-pi-config.sh.tmpl`            |
-| oMLX settings        | [`home/dot_omlx/settings.json`](../../home/dot_omlx/settings.json)                                                                             | `~/.omlx/settings.json`              | `run_onchange_after_07-merge-omlx-settings.sh.tmpl`        |
+| Pi settings/models   | [`home/dot_pi/agent/readonly_settings.{work,personal}.json`](../../home/dot_pi/agent/) + [`readonly_models.json`](../../home/dot_pi/agent/readonly_models.json) | `~/.pi/agent/{settings,models}.json` | `run_onchange_after_07-merge-pi-config.sh.tmpl`            |
 
 All merge scripts live under [`home/.chezmoiscripts/`](../../home/.chezmoiscripts/). Pi targets are installed readonly.
 
@@ -248,7 +247,7 @@ Source: [`home/dot_gemini/settings.json`](../../home/dot_gemini/settings.json) �
 
 | Config            | Source                                                                                                                                                          |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Settings + models | [`home/dot_pi/agent/readonly_{settings,models}.{work,personal}.json`](../../home/dot_pi/agent/readonly_{settings,models}.{work,personal}.json) → `~/.pi/agent/` |
+| Settings + models | [`home/dot_pi/agent/readonly_settings.{work,personal}.json`](../../home/dot_pi/agent/) + shared [`readonly_models.json`](../../home/dot_pi/agent/readonly_models.json) → `~/.pi/agent/` |
 | MCP servers       | [`home/.chezmoidata/mcp_servers.yaml`](../../home/.chezmoidata/mcp_servers.yaml) (shared registry) → `~/.pi/agent/mcp.json`                                     |
 
 **Profile defaults:**
@@ -283,6 +282,22 @@ Fish exports these values from `pass` when the entries exist:
 
 **Pi specifics:** The work config is rendered by `run_onchange_after_07-merge-pi-config.sh.tmpl` into `~/.pi/agent/`.
 
+#### llama.cpp local provider (Pi)
+
+Pi settings and models are intentionally installed readonly, so the llama.cpp provider is declared once in shared chezmoi source and rendered into `~/.pi/agent/models.json` for both profiles:
+
+- Shared source: [`home/dot_pi/agent/readonly_models.json`](../../home/dot_pi/agent/readonly_models.json)
+- Work source: [`scripts/generate_pi_models.py`](../../scripts/generate_pi_models.py) starts from that shared source, then adds work-only LiteLLM and Azure providers
+
+Use it after starting the llama.cpp router:
+
+```bash
+,llama-cpp serve
+pi --model llama-cpp/qwen3.6-35b-a3b-q4-k-m
+```
+
+The provider points Pi at `http://127.0.0.1:8080/v1` with `api: "openai-completions"` and Qwen chat-template thinking compatibility. If you start `llama-server` with `--api-key`, export `LLAMA_CPP_API_KEY` before launching Pi.
+
 ## Secrets
 
 Some API keys are loaded into the shell from `pass` in [`home/dot_config/fish/readonly_config.fish.tmpl`](../../home/dot_config/fish/readonly_config.fish.tmpl). That means your password-store is part of the runtime wiring for AI tools.
@@ -314,155 +329,138 @@ chezmoi apply
 ollama list
 ```
 
-## oMLX (Apple Silicon MLX inference server)
+## llama.cpp (local GGUF inference server)
 
-[oMLX](https://github.com/jundot/omlx) is an LLM inference server optimized for Apple Silicon, with continuous batching, a tiered (RAM + SSD) KV cache, and native TurboQuant / oQ quantization. It is the primary local-agentic-coding backend on Apple Silicon hosts.
+[llama.cpp](https://github.com/ggml-org/llama.cpp) provides `llama-server`, a local C/C++ inference server with OpenAI-compatible chat/completions/responses endpoints and Anthropic-compatible `/v1/messages` endpoints. It is the primary local-agentic-coding backend.
 
 ### Install
 
-`omlx` and the official Hugging Face CLI (`hf`) are installed via Homebrew:
+`llama.cpp` and the official Hugging Face CLI (`hf`) are installed via Homebrew:
 
 - [`home/readonly_dot_Brewfile.tmpl`](../../home/readonly_dot_Brewfile.tmpl) — AI & LARGE LANGUAGE MODELS section
 
 ```ruby
-tap "jundot/omlx", "https://github.com/jundot/omlx"
-brew "jundot/omlx/omlx"
+brew "llama.cpp"
 brew "hf"
 ```
 
 ### Model manifest
 
-The curated model list is declared as a chezmoi-templated manifest:
+The curated GGUF model list is declared as a chezmoi-templated manifest:
 
-- [`home/readonly_dot_default-omlx-models.tmpl`](../../home/readonly_dot_default-omlx-models.tmpl)
+- [`home/readonly_dot_default-llama-cpp-models.tmpl`](../../home/readonly_dot_default-llama-cpp-models.tmpl)
 
-The manifest intentionally keeps a single 5-bit Qwen3.6 MLX checkpoint on every Apple Silicon host. Its published safetensors are ~23.8 GB, which stays under the default work-profile weights budget while avoiding the old split between universal 4-bit and personal-only 6-bit tiers.
+The manifest intentionally keeps one Qwen3.6 GGUF checkpoint: `bartowski/Qwen_Qwen3.6-35B-A3B-GGUF` with `Qwen_Qwen3.6-35B-A3B-Q4_K_M.gguf` (~21.4 GB). This is close to the old local-model disk budget while staying compatible with stock `llama.cpp`.
 
 Format (pipe-delimited):
 
 ```text
-<hf-repo-id>|<local-dir-name>
+<hf-repo-id>|<hf-file>
 ```
 
-- `hf-repo-id` — Hugging Face repo id (e.g. `NexVeridian/Qwen3.6-35B-A3B-5bit`).
-- `local-dir-name` — subdirectory under `~/.omlx/models/` where the weights land.
+- `hf-repo-id` — Hugging Face repo id containing GGUF weights.
+- `hf-file` — GGUF filename to place under `~/.llama.cpp/models/`.
 
 ### Sync hook (opt-in)
 
-Downloads are gated by `downloadOmlxModels` in `~/.config/chezmoi/chezmoi.toml`. Default is `false`, so `chezmoi apply` never auto-downloads multi-GB weights unless explicitly enabled. To change the setting, re-run `chezmoi init`.
+Downloads are gated by `downloadLlamaCppModels` in `~/.config/chezmoi/chezmoi.toml`. Default is `false`, so `chezmoi apply` never auto-downloads multi-GB weights unless explicitly enabled. To change the setting, clear that key and re-run `chezmoi init`.
 
 The sync hook is a thin shell orchestrator that delegates parse + skip + download logic to a Python helper:
 
-- [`home/.chezmoiscripts/run_onchange_after_07-sync-omlx-models.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-sync-omlx-models.sh.tmpl)
-- [`scripts/sync_omlx_models.py`](../../scripts/sync_omlx_models.py)
+- [`home/.chezmoiscripts/run_onchange_after_07-sync-llama-cpp-models.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-sync-llama-cpp-models.sh.tmpl)
+- [`scripts/sync_llama_cpp_models.py`](../../scripts/sync_llama_cpp_models.py)
 
-The helper treats a model directory as "complete" if it contains `config.json` and at least one `*.safetensors` shard, so re-runs are idempotent.
+The helper treats a GGUF file as "complete" if it exists and has non-zero size, so re-runs are idempotent.
 
-Override the model root with `OMLX_MODELS_ROOT` (defaults to `~/.omlx/models`).
+Override the model root with `LLAMA_CPP_MODELS_ROOT` (defaults to `~/.llama.cpp/models`).
 
 Workflow:
 
 ```bash
-chezmoi init  # (once) prompts for downloadOmlxModels
+chezmoi init  # (once) prompts for downloadLlamaCppModels
 chezmoi apply # syncs models when gate is true
-omlx serve
+,llama-cpp serve
 ```
 
-Add a model: [`docs/recipes/add-an-omlx-model.md`](../recipes/add-an-omlx-model.md).
+Add a model: [`docs/recipes/add-a-llama-cpp-model.md`](../recipes/add-a-llama-cpp-model.md).
 
-### Server settings
+### Router preset
 
-oMLX's server-side prompt/output caps are declared as a partial override and deep-merged into `~/.omlx/settings.json` on every apply:
+llama.cpp model routing and per-model defaults live in an INI preset:
 
-- Source: [`home/dot_omlx/settings.json`](../../home/dot_omlx/settings.json) (only the keys we own)
-- Helper: [`scripts/merge_omlx_settings.py`](../../scripts/merge_omlx_settings.py) (stdlib-only deep merge)
-- Hook: [`home/.chezmoiscripts/run_onchange_after_07-merge-omlx-settings.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-omlx-settings.sh.tmpl)
+- Source: [`home/dot_config/llama.cpp/models.ini.tmpl`](../../home/dot_config/llama.cpp/models.ini.tmpl)
+- Target: `~/.config/llama.cpp/models.ini`
 
-The merge preserves everything oMLX writes itself (`auth.secret_key`, `server.server_aliases`, `model.model_dirs`, etc.) and only updates the keys present in the source. The real target is listed in [`home/.chezmoiignore`](../../home/.chezmoiignore) so chezmoi never deploys the partial source as the full settings file.
+The shipped preset defines the model id `qwen3.6-35b-a3b-q4-k-m`, points it at `~/.llama.cpp/models/Qwen_Qwen3.6-35B-A3B-Q4_K_M.gguf`, and sets shared defaults for `ctx-size=262144`, Metal offload, flash attention, Jinja chat templates, and q8 KV cache.
 
-The shipped default raises `sampling.max_context_window` and `sampling.max_tokens` to 262144 — the full native trained context of the Qwen3.6 checkpoint in the manifest (`rope_scaling.type: "default"`, not YaRN-extrapolated, so retrieval quality holds across the whole range). With aggressive GQA (`num_key_value_heads: 2`, `head_dim: 256`) the FP16 KV cache sits around 80 KB/token, so a fully-populated 262144-token cache is ~20 GB; long-context sessions may spill KV to oMLX's paged SSD cache. Lower this value or enable per-model TurboQuant KV if prefill latency becomes a concern.
+The default `ctx-size` is `262144`, matching the Qwen3.6 GGUF's native `qwen35moe.context_length`. Claude Code's local settings use `autoCompactWindow=200000` to compact before the server context fills.
 
-If `~/.omlx/settings.json` does not exist yet (fresh install, oMLX never started), the merge is a no-op with a hint. Start the service once (`brew services start jundot/omlx/omlx`) so oMLX writes its defaults + generates `auth.secret_key`, then re-run `chezmoi apply` to layer the overrides. After changing the source, `brew services restart jundot/omlx/omlx` to pick up the new values (oMLX loads settings at startup).
-
-Verify live:
+Start and verify:
 
 ```bash
-curl -s http://localhost:8000/v1/models/status | python3 -m json.tool | rg max_context_window
+,llama-cpp serve
+curl -s http://localhost:8080/models | python3 -m json.tool
 ```
 
-### Fish completions
+### Model-level control plane (`,llama-cpp`)
 
-- [`home/dot_config/fish/completions/readonly_omlx.fish`](../../home/dot_config/fish/completions/readonly_omlx.fish)
+This repo ships a thin wrapper around `llama-server` router mode and its model API:
 
-Tab-completes `omlx <subcommand>`, `omlx launch <tool>`, and model ids for `--model` / `--pin`. Model names are the union (deduped by id) of the running server (`GET /v1/models`) and a filesystem scan of `${OMLX_MODELS_ROOT:-$HOME/.omlx/models}` (same root used by the sync hook). Unioning matters because oMLX only scans the models directory at server startup — a model downloaded after `omlx serve` launched won't appear in `/v1/models` until the server is restarted, but completion still surfaces it from disk. `OMLX_HOST` / `OMLX_PORT` override the defaults (`127.0.0.1:8000`) for the live query.
+- [`home/exact_bin/executable_,llama-cpp`](../../home/exact_bin/executable_,llama-cpp) → `~/bin/,llama-cpp`
+- [`home/dot_config/fish/completions/readonly_,llama-cpp.fish`](../../home/dot_config/fish/completions/readonly_,llama-cpp.fish) — context-aware subcommand + model-id completions
 
-### Model-level control plane (`,omlx`)
-
-oMLX's CLI only exposes `serve`, `launch`, `diagnose` — no model-level control. This repo ships a thin umbrella wrapping the public HTTP API:
-
-- [`home/exact_bin/executable_,omlx`](../../home/exact_bin/executable_,omlx) → `~/bin/,omlx`
-- [`home/dot_config/fish/completions/readonly_,omlx.fish`](../../home/dot_config/fish/completions/readonly_,omlx.fish) — context-aware subcommand + model-id completions
-
-Daemon lifecycle is NOT in scope (that's `brew services start|stop|restart jundot/omlx/omlx`). Subcommands:
+Subcommands:
 
 ```bash
-,omlx status                          # loaded/unloaded state, memory, budget
-,omlx load <model-id> [<id> ...]      # lazy-load via /v1/chat/completions
-,omlx unload <model-id> [<id> ...]    # POST /v1/models/<id>/unload
-,omlx unload --all                    # unload everything currently loaded
+,llama-cpp serve                      # start llama-server router mode
+,llama-cpp status                     # loaded/unloaded state
+,llama-cpp load <model-id> [<id> ...] # POST /models/load
+,llama-cpp unload <model-id> [<id> ...]
+,llama-cpp unload --all
 ```
 
-`unload` hits `POST /v1/models/<id>/unload`, which runs `mx.synchronize()` + `mx.clear_cache()` server-side so Metal buffers actually release (not just the accounting). `load` has no public endpoint (the admin one requires a session cookie), so we trigger a lazy-load with a `max_tokens=1` chat completion against the target id.
-
-`status` and `load` union the server registry with a scan of `${OMLX_MODELS_ROOT:-~/.omlx/models}` (any subdir with a `config.json` counts, same definition as the sync script). oMLX only registers on-disk models at startup via `engine_pool.discover_models()`, so a model downloaded after `omlx serve` launched stays invisible to the server until it restarts. Both surfaces handle that explicitly:
-
-- `,omlx status` prints three states — `✓ loaded`, `· on disk`, `? on disk, not discovered` — and appends a footer telling you to `brew services restart jundot/omlx/omlx` if any `?` rows exist.
-- `,omlx load <id>` pre-checks against the registry; if the id is only on disk, it refuses the warmup and prints the same restart hint instead of firing a warmup that would 404.
-
-Completion follows the same model. `,omlx load <TAB>` offers the union (server-unloaded + disk-only, with distinct descriptions); `,omlx unload <TAB>` stays server-loaded-only because "loaded" is a server-only state.
-
-Respects `OMLX_HOST` / `OMLX_PORT` / `OMLX_API_KEY` / `OMLX_MODELS_ROOT` (defaults: `127.0.0.1:8000`, no auth header unless `OMLX_API_KEY` is set, disk scan under `~/.omlx/models`).
+Respects `LLAMA_CPP_HOST` / `LLAMA_CPP_PORT` / `LLAMA_CPP_API_KEY` / `LLAMA_CPP_MODELS_PRESET` (defaults: `127.0.0.1:8080`, no auth header unless `LLAMA_CPP_API_KEY` is set, preset at `~/.config/llama.cpp/models.ini`).
 
 ### Codex launcher metadata
 
-`omlx launch codex --model qwen3.6-35b-a3b-5bit` execs `codex -m qwen3.6-35b-a3b-5bit`. Codex only has first-class model metadata for slugs present in its model catalog; unknown local slugs use fallback metadata and emit a warning.
+Codex only has first-class model metadata for slugs present in its model catalog; unknown local slugs use fallback metadata and emit a warning.
 
-This repo ships a transparent `codex` wrapper plus a small local catalog for that oMLX model:
+This repo ships a transparent `codex` wrapper plus a small local catalog for the llama.cpp model:
 
 - [`home/exact_bin/executable_codex`](../../home/exact_bin/executable_codex) -> `~/bin/codex`
-- [`home/dot_codex/readonly_omlx-model-catalog.json`](../../home/dot_codex/readonly_omlx-model-catalog.json) -> `~/.codex/omlx-model-catalog.json`
+- [`home/dot_codex/readonly_llama-cpp-model-catalog.json`](../../home/dot_codex/readonly_llama-cpp-model-catalog.json) -> `~/.codex/llama-cpp-model-catalog.json`
 
-The wrapper injects `-c model_catalog_json="$HOME/.codex/omlx-model-catalog.json"` only when the selected model is `qwen3.6-35b-a3b-5bit`; normal Codex invocations fall through to `/opt/homebrew/bin/codex` unchanged.
+The wrapper injects `-c model_catalog_json="$HOME/.codex/llama-cpp-model-catalog.json"` only when the selected model is `qwen3.6-35b-a3b-q4-k-m`; normal Codex invocations fall through to `/opt/homebrew/bin/codex` unchanged.
 
-### Claude Code launcher (`,claude-omlx`)
+### Claude Code launcher (`,claude-llama-cpp`)
 
-Claude Code compacts conversation history at `autoCompactWindow` tokens (schema min 100000, max 1000000). Cloud `opus[1m]` sessions benefit from leaving this at the default (~1M). Local oMLX sessions need it below the server's `sampling.max_context_window` (262144) so Claude Code compacts before oMLX would reject the prompt. Those two needs conflict on a single global value.
+Claude Code compacts conversation history at `autoCompactWindow` tokens (schema min 100000, max 1000000). Cloud `opus[1m]` sessions benefit from leaving this at the default (~1M). Local llama.cpp sessions need it below the server context so Claude Code compacts before llama.cpp rejects the prompt. Those two needs conflict on a single global value.
 
-Solution: a dedicated omlx-scoped settings file loaded via `claude --settings <file>` (layers additively on top of `~/.claude/settings.json` — see `claude --help`), wired through a thin wrapper.
+Solution: a dedicated llama.cpp-scoped settings file loaded via `claude --settings <file>` (layers additively on top of `~/.claude/settings.json` — see `claude --help`), wired through a thin wrapper.
 
-- [`home/dot_claude/settings.omlx.json`](../../home/dot_claude/settings.omlx.json) → `~/.claude/settings.omlx.json` (contains only `autoCompactWindow: 200000`)
-- [`home/exact_bin/executable_,claude-omlx`](../../home/exact_bin/executable_,claude-omlx) → `~/bin/,claude-omlx`
+- [`home/dot_claude/settings.llama-cpp.json`](../../home/dot_claude/settings.llama-cpp.json) → `~/.claude/settings.llama-cpp.json` (contains only `autoCompactWindow: 200000`)
+- [`home/exact_bin/executable_,claude-llama-cpp`](../../home/exact_bin/executable_,claude-llama-cpp) → `~/bin/,claude-llama-cpp`
 
-The wrapper exports `ANTHROPIC_BASE_URL=http://${OMLX_HOST:-127.0.0.1}:${OMLX_PORT:-8000}`, forces `ANTHROPIC_API_KEY=$OMLX_API_KEY` (empty by default — oMLX accepts unauthenticated local requests unless `auth.api_key_set` is true), and invokes `claude --settings ~/.claude/settings.omlx.json --model "$CLAUDE_OMLX_MODEL" "$@"`.
+The wrapper exports `ANTHROPIC_BASE_URL=http://${LLAMA_CPP_HOST:-127.0.0.1}:${LLAMA_CPP_PORT:-8080}`, sets `ANTHROPIC_API_KEY=$LLAMA_CPP_API_KEY` (defaults to `sk-no-key-required` because llama.cpp accepts unauthenticated local requests unless started with `--api-key`), and invokes `claude --settings ~/.claude/settings.llama-cpp.json --model "$CLAUDE_LLAMA_CPP_MODEL" "$@"`.
 
 Environment overrides:
 
-| Variable               | Default                            | Purpose                                                             |
-| ---------------------- | ---------------------------------- | ------------------------------------------------------------------- |
-| `OMLX_HOST`            | `127.0.0.1`                        | Same as `,omlx` / `omlx` CLI                                        |
-| `OMLX_PORT`            | `8000`                             | Same as `,omlx` / `omlx` CLI                                        |
-| `OMLX_API_KEY`         | empty                              | Sent as `ANTHROPIC_API_KEY` (Claude Code uses this for bearer auth) |
-| `CLAUDE_OMLX_MODEL`    | `qwen3.6-35b-a3b-5bit`             | Set empty to skip `--model` injection                               |
-| `CLAUDE_OMLX_SETTINGS` | `$HOME/.claude/settings.omlx.json` | Point at an alternate omlx settings file                            |
+| Variable                    | Default                                  | Purpose                                                             |
+| --------------------------- | ---------------------------------------- | ------------------------------------------------------------------- |
+| `LLAMA_CPP_HOST`            | `127.0.0.1`                              | Same as `,llama-cpp`                                                |
+| `LLAMA_CPP_PORT`            | `8080`                                   | Same as `,llama-cpp`                                                |
+| `LLAMA_CPP_API_KEY`         | `sk-no-key-required`                     | Sent as `ANTHROPIC_API_KEY` (Claude Code uses this for bearer auth) |
+| `CLAUDE_LLAMA_CPP_MODEL`    | `qwen3.6-35b-a3b-q4-k-m`                 | Set empty to skip `--model` injection                               |
+| `CLAUDE_LLAMA_CPP_SETTINGS` | `$HOME/.claude/settings.llama-cpp.json`  | Point at an alternate llama.cpp settings file                       |
 
-`autoCompactWindow=200000` leaves ~62k headroom under the 262144-token server cap for the next turn's prompt, tool outputs, and model reply. Note that auto-compact summarizes multi-turn **history** between turns — it does not shrink a single oversized tool output in the current turn. That scenario (e.g. a directory listing that emits 30k+ tokens) is handled purely by the raised server cap in `home/dot_omlx/settings.json`.
+`autoCompactWindow=200000` leaves ~62k headroom under the 262144-token server context for the next turn's prompt, tool outputs, and model reply.
 
 Usage:
 
 ```bash
-,claude-omlx                                  # interactive session, default model
-,claude-omlx -p "summarize README.md"         # one-shot prompt
-CLAUDE_OMLX_MODEL=other-local-model ,claude-omlx
+,claude-llama-cpp                                  # interactive session, default model
+,claude-llama-cpp -p "summarize README.md"         # one-shot prompt
+CLAUDE_LLAMA_CPP_MODEL=other-local-model ,claude-llama-cpp
 ```
 
 Cloud Claude sessions are unaffected — plain `claude ...` still reads only `~/.claude/settings.json`, where `autoCompactWindow` stays unset so the default for `opus[1m]` applies.

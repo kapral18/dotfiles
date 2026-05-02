@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Bump when manifest or helper change so chezmoi re-runs the sync.
+# manifest hash: {{ include "readonly_dot_default-llama-cpp-models.tmpl" | sha256sum }}
+# helper hash:   {{ output "sh" "-c" (printf "shasum -a 256 %q | cut -d' ' -f1" (joinPath .chezmoi.sourceDir "../scripts/sync_llama_cpp_models.py")) | trim }}
+
+{{/* Default to disabled when .downloadLlamaCppModels is missing, e.g. before
+chezmoi init has been re-run after this variable was introduced. */ -}}
+{{- $download := false -}}
+{{- if hasKey . "downloadLlamaCppModels" -}}{{- $download = .downloadLlamaCppModels -}}{{- end -}}
+{{ if ne $download true -}}
+echo "llama.cpp model sync is disabled (downloadLlamaCppModels=false); skipping."
+exit 0
+{{ end -}}
+
+MANIFEST_TEMPLATE={{ joinPath .chezmoi.sourceDir "readonly_dot_default-llama-cpp-models.tmpl" | quote }}
+HELPER_SCRIPT={{ joinPath .chezmoi.sourceDir "../scripts/sync_llama_cpp_models.py" | quote }}
+MODELS_ROOT="${LLAMA_CPP_MODELS_ROOT:-$HOME/.llama.cpp/models}"
+
+if [[ ! -f "$MANIFEST_TEMPLATE" ]]; then
+  echo "Error: llama.cpp model manifest not found at $MANIFEST_TEMPLATE" >&2
+  exit 1
+fi
+
+if [[ ! -f "$HELPER_SCRIPT" ]]; then
+  echo "Error: llama.cpp sync helper not found at $HELPER_SCRIPT" >&2
+  exit 1
+fi
+
+if ! command -v chezmoi >/dev/null 2>&1; then
+  echo "Error: chezmoi CLI not available" >&2
+  exit 1
+fi
+
+if ! command -v hf >/dev/null 2>&1; then
+  echo "Error: hf CLI not installed (expected via Brewfile: brew \"hf\")" >&2
+  exit 1
+fi
+
+mkdir -p "$MODELS_ROOT"
+
+chezmoi execute-template <"$MANIFEST_TEMPLATE" |
+  python3 "$HELPER_SCRIPT" "$MODELS_ROOT"
