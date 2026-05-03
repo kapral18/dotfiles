@@ -350,7 +350,7 @@ The curated GGUF model list is declared as a chezmoi-templated manifest:
 
 - [`home/readonly_dot_default-llama-cpp-models.tmpl`](../../home/readonly_dot_default-llama-cpp-models.tmpl)
 
-The manifest intentionally keeps one Qwen3.6 GGUF checkpoint: `bartowski/Qwen_Qwen3.6-35B-A3B-GGUF` with `Qwen_Qwen3.6-35B-A3B-Q4_K_M.gguf` (~21.4 GB). This is close to the old local-model disk budget while staying compatible with stock `llama.cpp`.
+The manifest keeps the measured best local Qwen3.6 GGUF checkpoint: `bartowski/Qwen_Qwen3.6-35B-A3B-GGUF` with `Qwen_Qwen3.6-35B-A3B-Q4_K_M.gguf` (~21.4 GB).
 
 Format (pipe-delimited):
 
@@ -391,7 +391,7 @@ llama.cpp model routing and per-model defaults live in an INI preset:
 - Source: [`home/dot_config/llama.cpp/models.ini.tmpl`](../../home/dot_config/llama.cpp/models.ini.tmpl)
 - Target: `~/.config/llama.cpp/models.ini`
 
-The shipped preset defines the model id `qwen3.6-35b-a3b-q4-k-m`, points it at `~/.llama.cpp/models/Qwen_Qwen3.6-35B-A3B-Q4_K_M.gguf`, and sets shared defaults for `ctx-size=262144`, Metal offload, flash attention, Jinja chat templates, and q8 KV cache.
+The shipped preset defines the model id `qwen3.6-35b-a3b-q4-k-m`, points it at `~/.llama.cpp/models/Qwen_Qwen3.6-35B-A3B-Q4_K_M.gguf`, and sets shared defaults for `ctx-size=262144`, Metal offload, flash attention, Jinja chat templates, q8 KV cache, and `reasoning=auto`. Local A/B testing showed no-reasoning mode improves latency and structured-output cleanliness, but it makes Qwen3.6 noticeably less capable for agent work; keep reasoning enabled by default and disable it only for narrow structured-output probes.
 
 The default `ctx-size` is `262144`, matching the Qwen3.6 GGUF's native `qwen35moe.context_length`. Claude Code's local settings use `autoCompactWindow=200000` to compact before the server context fills.
 
