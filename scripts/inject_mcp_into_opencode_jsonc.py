@@ -18,9 +18,9 @@ Output: JSONC on stdout
 
 from __future__ import annotations
 
-import json
 import sys
 
+from jsonc_dump import dump_jsonc
 from mcp_registry import load_servers
 
 PLACEHOLDER = '"__MCP_SERVERS__"'
@@ -38,7 +38,7 @@ def _render_mcp_value(mcp_yaml: str, is_work: bool, tool: str | None = None) -> 
             "enabled": True,
         }
 
-    raw = json.dumps(mcp_obj, indent=2)
+    raw = dump_jsonc(mcp_obj, indent=2)
     lines = raw.splitlines()
     if len(lines) == 1:
         return lines[0]

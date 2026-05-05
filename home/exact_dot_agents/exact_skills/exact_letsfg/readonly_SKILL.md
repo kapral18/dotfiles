@@ -29,7 +29,7 @@ letsfg --help
 letsfg search --help
 ```
 
-2. For a known one-way or round-trip date, use the docker wrapper for browserless search with full coverage:
+1. For a known one-way or round-trip date, use the docker wrapper for browserless search with full coverage:
 
 ```bash
 letsfg-docker search AMS EVN 2026-05-13 --mode fast --limit 10 --json --max-browsers 2
@@ -37,7 +37,7 @@ letsfg-docker search AMS EVN 2026-05-13 --mode fast --limit 10 --json --max-brow
 
 Use `--return YYYY-MM-DD` for round trips, `--currency EUR` when the user specifies currency, `--direct` for direct-only, and `--cabin M|W|C|F` for cabin class.
 
-3. For nearby, soon, cheapest-date, or flexible-date requests, search dates locally without browser connectors and rank the returned offers. Default to the next 14 days from today when the user gives no range:
+1. For nearby, soon, cheapest-date, or flexible-date requests, search dates locally without browser connectors and rank the returned offers. Default to the next 14 days from today when the user gives no range:
 
 ```bash
 python3 - <<'PY'
@@ -119,7 +119,7 @@ print(json.dumps({
 PY
 ```
 
-4. Use Playwriter only when rendered UI is required, such as visual checks or investigating a website regression. Prefer the Homebrew-managed Chrome app already present on this machine:
+1. Use Playwriter only when rendered UI is required, such as visual checks or investigating a website regression. Prefer the Homebrew-managed Chrome app already present on this machine:
 
 ```bash
 playwriter browser list

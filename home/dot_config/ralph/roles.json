@@ -1,0 +1,43 @@
+{
+  "//roles": "Each role -> { harness, model, extra_args }. The orchestrator enforces reviewer.family != re_reviewer.family.",
+  "//family": "Family is derived by substring on model id (claude/gpt/gemini/llama/mistral/deepseek). Override with `family` field if needed.",
+  "//modes": "Cursor planner uses --mode plan (read-only planning), reviewer/re_reviewer use --mode ask (read-only Q&A with read access for verification probes). Executor uses --force to skip per-command approval prompts.",
+  "//opt-in": "Local models (llama-cpp/qwen3.6) are opt-in only — swap them in by editing this file; defaults never depend on `,llama-cpp serve` being up.",
+  "roles": {
+    "planner": {
+      "harness": "cursor",
+      "model": "claude-opus-4-7-thinking-max",
+      "extra_args": ["--mode", "plan"]
+    },
+    "executor": {
+      "harness": "cursor",
+      "model": "composer-2",
+      "extra_args": ["--force"]
+    },
+    "reviewer": {
+      "harness": "cursor",
+      "model": "claude-opus-4-7-thinking-max",
+      "extra_args": ["--mode", "ask"]
+    },
+    "re_reviewer": {
+      "harness": "cursor",
+      "model": "gpt-5.5-extra-high",
+      "extra_args": ["--mode", "ask"]
+    },
+    "reflector": {
+      "//": "Optional post-run distillation; emits structured capsules into the AI KB. Runs only on workflow=feature/bugfix at successful completion.",
+      "harness": "cursor",
+      "model": "claude-opus-4-7-thinking-max",
+      "extra_args": ["--mode", "ask"]
+    }
+  },
+  "defaults": {
+    "max_iterations": 5,
+    "max_minutes": 15,
+    "memory_top_k": 5,
+    "progress_tail_blocks": 3,
+    "iteration_timeout_seconds": 300,
+    "reflector_enabled": true,
+    "reflector_workflows": ["feature", "bugfix"]
+  }
+}

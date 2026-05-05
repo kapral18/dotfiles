@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# The fzf-driven Ralph dashboard (~/.config/tmux/scripts/ralph/*.sh) was
+# replaced by the Bubble Tea TUI binary at ~/bin/ralph-tui. Remove the
+# orphaned scripts so they don't survive on machines that already had
+# them installed.
+#
+# trigger hash: {{ output "sh" "-c" "echo ralph-fzf-retired-v1" | trim }}
+
+old_dir="${HOME}/.config/tmux/scripts/ralph"
+
+[ -d "$old_dir" ] || exit 0
+
+# Only remove if it looks like the old fzf scaffold (signature files).
+[ -f "${old_dir}/dashboard.sh" ] || exit 0
+[ -f "${old_dir}/action.sh" ] || exit 0
+
+# Kill any still-running watchers / dashboards spawned from those scripts.
+if command -v pgrep >/dev/null 2>&1; then
+  pids="$(pgrep -f "${old_dir}/" 2>/dev/null || true)"
+  if [ -n "${pids:-}" ]; then
+    # shellcheck disable=SC2086
+    kill $pids 2>/dev/null || true
+    sleep 0.2
+  fi
+fi
+
+rm -rf "$old_dir" 2>/dev/null || true

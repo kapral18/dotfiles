@@ -69,7 +69,7 @@ chezmoi execute-template < ~/.local/share/chezmoi/home/readonly_dot_default-llam
 chezmoi apply
 ```
 
-4. Optionally delete the on-disk weights:
+1. Optionally delete the on-disk weights:
 
 ```bash
 rm -f ~/.llama.cpp/models/<model>.gguf

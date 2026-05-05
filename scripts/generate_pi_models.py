@@ -8,10 +8,7 @@ from model_display import format_display_name
 
 def main():
     if len(sys.argv) != 5:
-        sys.exit(
-            "Usage: generate_pi_models.py <base_models_json> <models_yaml> "
-            "<litellm_api_base> <azure_endpoint>"
-        )
+        sys.exit("Usage: generate_pi_models.py <base_models_json> <models_yaml> <litellm_api_base> <azure_endpoint>")
 
     base_models_path = sys.argv[1]
     models_yaml_path = sys.argv[2]

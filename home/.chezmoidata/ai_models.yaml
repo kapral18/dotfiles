@@ -1,6 +1,6 @@
 litellm_models:
-  - id: "llm-gateway/claude-opus-4-6"
-    name: "Opus 4.6"
+  - id: "llm-gateway/claude-opus-4-7"
+    name: "Opus 4.7"
     reasoning: true
     thinkingBudgets:
       minimal: 1024
@@ -14,23 +14,8 @@ litellm_models:
       output: 25
       cacheRead: 0
       cacheWrite: 0
-  - id: "llm-gateway/claude-sonnet-4-6"
-    name: "Sonnet 4.6"
-    reasoning: true
-    thinkingBudgets:
-      minimal: 1024
-      low: 4096
-      medium: 16384
-      high: 32768
-    contextWindow: 1000000
-    maxTokens: 64000
-    cost:
-      input: 3
-      output: 15
-      cacheRead: 0
-      cacheWrite: 0
-  - id: "llm-gateway/gpt-5.2"
-    name: "GPT-5.2"
+  - id: "llm-gateway/gpt-5.5"
+    name: "GPT-5.5"
     reasoning: true
     thinkingBudgets:
       minimal: 1024
@@ -38,37 +23,6 @@ litellm_models:
       medium: 16384
       high: 32768
       xhigh: 65536
-    contextWindow: 272000
-    maxTokens: 128000
-    cost:
-      input: 1.75
-      output: 14
-      cacheRead: 0
-      cacheWrite: 0
-  - id: "llm-gateway/gpt-5.3-codex"
-    name: "GPT-5.3 Codex"
-    reasoning: true
-    thinkingBudgets:
-      minimal: 1024
-      low: 4096
-      medium: 16384
-      high: 32768
-      xhigh: 65536
-    contextWindow: 272000
-    maxTokens: 128000
-    cost:
-      input: 1.75
-      output: 14
-      cacheRead: 0
-      cacheWrite: 0
-  - id: "llm-gateway/gpt-5.4"
-    name: "GPT-5.4"
-    reasoning: true
-    thinkingBudgets:
-      minimal: 1024
-      low: 4096
-      medium: 16384
-      high: 32768
     contextWindow: 272000
     maxTokens: 128000
     cost:
@@ -106,17 +60,8 @@ litellm_models:
       output: 12
       cacheRead: 0
       cacheWrite: 0
-  - id: "llm-gateway/Kimi-K2.5"
-    name: "Kimi K2.5"
-    reasoning: false
-    contextWindow: 128000
-    cost:
-      input: 0.6
-      output: 3
-      cacheRead: 0
-      cacheWrite: 0
-  - id: "llm-gateway/Kimi-K2-Thinking"
-    name: "Kimi K2 Thinking"
+  - id: "llm-gateway/Kimi-K2.6"
+    name: "Kimi K2.6"
     reasoning: true
     thinkingBudgets:
       minimal: 1024

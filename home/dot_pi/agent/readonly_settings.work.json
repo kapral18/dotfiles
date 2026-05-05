@@ -1,6 +1,6 @@
 {
   "defaultProvider": "litellm",
-  "defaultModel": "llm-gateway/claude-opus-4-6",
+  "defaultModel": "llm-gateway/claude-opus-4-7",
   "defaultThinkingLevel": "high",
   "theme": "dark",
   "compaction": {

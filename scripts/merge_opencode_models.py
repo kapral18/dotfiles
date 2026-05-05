@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-import json
 import sys
 
 import ai_models
+from jsonc_dump import dump_jsonc
 from model_display import format_display_name
 
 
@@ -28,7 +28,7 @@ def main():
             "name": name,
             "limit": {"context": m["contextWindow"], "output": m.get("maxTokens", 8192)},
         }
-    replacement = json.dumps(litellm_block, indent=2, ensure_ascii=False)
+    replacement = dump_jsonc(litellm_block, indent=2)
     indented = replacement.replace("\n", "\n      ")
     src = src.replace('"__LITELLM_MODELS__"', indented)
 
@@ -39,11 +39,11 @@ def main():
             "name": name,
             "limit": {"context": m["contextWindow"], "output": m.get("maxTokens", 8192)},
         }
-    replacement = json.dumps(azure_block, indent=2, ensure_ascii=False)
+    replacement = dump_jsonc(azure_block, indent=2)
     indented = replacement.replace("\n", "\n      ")
     src = src.replace('"__AZURE_MODELS__"', indented)
 
-    replacement = json.dumps(anthropic_block, indent=2, ensure_ascii=False)
+    replacement = dump_jsonc(anthropic_block, indent=2)
     indented = replacement.replace("\n", "\n      ")
     src = src.replace('"__ANTHROPIC_MODELS__"', indented)
 

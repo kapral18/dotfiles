@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Build the ralph-tui Bubble Tea dashboard whenever any source file under
+# tools/ralph-tui/ changes. The hash below is a sha256 of all .go/go.mod/go.sum
+# files in the module, so chezmoi will re-run this script when (and only when)
+# the source changes.
+#
+# tools/ralph-tui hash: {{ output "sh" "-c" (printf "find %q -type f \\( -name '*.go' -o -name 'go.mod' -o -name 'go.sum' \\) -print0 2>/dev/null | sort -z | xargs -0 shasum -a 256 2>/dev/null | shasum -a 256 | cut -d' ' -f1" (joinPath .chezmoi.sourceDir "../tools/ralph-tui")) | trim }}
+
+source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
+# shellcheck source=../../../scripts/chezmoi_lib.sh
+source "$source_dir/../scripts/chezmoi_lib.sh"
+
+module_dir="$source_dir/../tools/ralph-tui"
+# Install under ~/.local/bin (already in PATH, not chezmoi `exact_`-managed),
+# so a compiled artifact doesn't get pruned by chezmoi's exact-bin policy.
+target_bin="$HOME/.local/bin/ralph-tui"
+
+if ! command -v go >/dev/null 2>&1; then
+  echo "Error: go toolchain not available; install Go before applying this script" >&2
+  exit 1
+fi
+
+if [[ ! -d "$module_dir" ]]; then
+  echo "Error: ralph-tui module not found at $module_dir" >&2
+  exit 1
+fi
+
+mkdir -p "$(dirname "$target_bin")"
+
+tmp_bin="$(mktemp -t ralph-tui.XXXXXX)"
+trap 'rm -f "$tmp_bin"' EXIT
+
+echo "==> Building ralph-tui from $module_dir"
+(cd "$module_dir" && go build -trimpath -ldflags '-s -w' -o "$tmp_bin" ./cmd/ralph-tui)
+
+chezmoi_install_if_changed "$tmp_bin" "$target_bin" 0755
+echo "==> Installed ralph-tui to $target_bin"

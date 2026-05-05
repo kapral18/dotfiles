@@ -1,0 +1,11 @@
+[38;5;244mralph[0m  [38;5;81mRalph dashboard[0m  [38;5;252mlive view of runs, roles, validation[0m	tmux:ralph-dashboard	display-popup -w 95% -h 85% -E "$HOME/.local/bin/ralph-tui"
+[38;5;244mralph[0m  [38;5;81mRalph go (prompt)[0m  [38;5;252mfull planner -> exec -> review loop with goal prompt[0m	ralph:start-go	,ralph go --goal
+[38;5;244mralph[0m  [38;5;81mRalph plan-only (prompt)[0m  [38;5;252mplanner only; emits spec.md, no execution[0m	ralph:plan-only	,ralph go --plan-only --goal
+[38;5;244mralph[0m  [38;5;81mRalph verify latest[0m  [38;5;252mre-run validation chain in popup[0m	ralph:verify-latest	,ralph verify
+[38;5;244mralph[0m  [38;5;81mRalph attach (prompt)[0m  [38;5;252mattach to a run or role pane[0m	ralph:attach-latest	,ralph attach
+[38;5;244mralph[0m  [38;5;81mRalph doctor[0m  [38;5;252mhealth check: state dir, ai-kb, runtimes[0m	ralph:doctor	,ralph doctor
+[38;5;244mralph[0m  [38;5;81mRalph runs[0m  [38;5;252mlist every run with status / phase / age[0m	ralph:runs	,ralph runs
+[38;5;244mralph[0m  [38;5;81mRalph kill all[0m  [38;5;252mCtrl-C every non-terminal run (no prompt)[0m	ralph:kill-all	,ralph kill --all
+[38;5;244mralph[0m  [38;5;81mRalph supervisor[0m  [38;5;252mresume any dead-runner runs in one sweep[0m	ralph:supervisor	,ralph supervisor
+[38;5;244mralph[0m  [38;5;81mRalph KB search[0m  [38;5;252msearch the AI knowledge base by query[0m	ralph:kb-search	,ai-kb search
+[38;5;244mralph[0m  [38;5;81mRalph statusline[0m  [38;5;252mprint the tmux statusline counters[0m	ralph:statusline	,ralph statusline

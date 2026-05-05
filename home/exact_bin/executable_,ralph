@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+resolve_repo_root() {
+  if [[ -n "${CHEZMOI_SOURCE_DIR:-}" ]]; then
+    printf '%s\n' "$CHEZMOI_SOURCE_DIR"
+    return 0
+  fi
+
+  if command -v chezmoi >/dev/null 2>&1; then
+    local target
+    target="$(realpath "$0")"
+    local source
+    source="$(chezmoi source-path "$target" 2>/dev/null || true)"
+    if [[ -n "$source" ]]; then
+      cd "$(dirname "$source")/../.." && pwd
+      return 0
+    fi
+  fi
+
+  echo "Error: could not resolve chezmoi source directory. Set CHEZMOI_SOURCE_DIR." >&2
+  return 1
+}
+
+repo_root="$(resolve_repo_root)"
+exec python3 "$repo_root/scripts/ralph.py" "$@"
