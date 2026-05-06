@@ -21,6 +21,10 @@ from pathlib import Path
 from typing import Any
 
 HALF_CORES = max(1, (os.cpu_count() or 2) // 2)
+# I/O-bound work (gh subprocess + network) does not benefit from a CPU-tied
+# cap. Pick a generous fan-out that lets every section/repo issue its own
+# request in one round-trip; capped to avoid hammering the API on large configs.
+IO_FANOUT_CAP = 32
 
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
@@ -367,29 +371,30 @@ def _extract_ci_state(commit_node: dict[str, Any], repo_name: str) -> str:
     return ""
 
 
-def _graphql_pr_metadata(pr_numbers: dict[str, set[int]]) -> dict[str, dict[int, tuple[str, str, str, str]]]:
-    """Batch-fetch headRefName, reviewDecision, CI status, and mergeable for known PR numbers.
+_PR_METADATA_CHUNK = 5
 
-    Returns:
-        {nwo: {number: (headRefName, reviewDecision, ciState, mergeable), ...}}
+
+def _graphql_pr_metadata_chunk(items: list[tuple[str, int]]) -> dict[str, dict[int, tuple[str, str, str, str]]]:
+    """Fetch metadata for a small batch of (nwo, number) pairs.
+
+    Kept tight (≈5 PRs) because GitHub GraphQL evaluates aliases mostly
+    serially per request: many small parallel calls beat one large batch.
     """
     aliases: list[str] = []
     alias_map: dict[str, tuple[str, int]] = {}
-
-    for nwo, nums in pr_numbers.items():
+    for nwo, n in items:
         owner, name = nwo.split("/", 1) if "/" in nwo else ("", nwo)
-        for n in nums:
-            alias = f"_p{owner}_{name}_{n}".replace("-", "_")
-            aliases.append(
-                f'{alias}: repository(owner: "{owner}", name: "{name}") '
-                f"{{ pullRequest(number: {n}) {{ number headRefName reviewDecision mergeable "
-                f"commits(last:1) {{ nodes {{ commit {{ statusCheckRollup {{ state "
-                f"contexts(first:100) {{ nodes {{ "
-                f"... on CheckRun {{ __typename name conclusion status }} "
-                f"... on StatusContext {{ __typename context state }} "
-                f"}} }} }} }} }} }} }} }}"
-            )
-            alias_map[alias] = (nwo, n)
+        alias = f"_p{owner}_{name}_{n}".replace("-", "_")
+        aliases.append(
+            f'{alias}: repository(owner: "{owner}", name: "{name}") '
+            f"{{ pullRequest(number: {n}) {{ number headRefName reviewDecision mergeable "
+            f"commits(last:1) {{ nodes {{ commit {{ statusCheckRollup {{ state "
+            f"contexts(first:100) {{ nodes {{ "
+            f"... on CheckRun {{ __typename name conclusion status }} "
+            f"... on StatusContext {{ __typename context state }} "
+            f"}} }} }} }} }} }} }} }}"
+        )
+        alias_map[alias] = (nwo, n)
 
     if not aliases:
         return {}
@@ -401,7 +406,7 @@ def _graphql_pr_metadata(pr_numbers: dict[str, set[int]]) -> dict[str, dict[int,
             check=False,
             capture_output=True,
             text=True,
-            timeout=15,
+            timeout=20,
         )
         if not result.stdout.strip():
             return {}
@@ -431,6 +436,34 @@ def _graphql_pr_metadata(pr_numbers: dict[str, set[int]]) -> dict[str, dict[int,
             pass
         out.setdefault(nwo, {})[num] = (head, review, ci_state, mergeable)
 
+    return out
+
+
+def _graphql_pr_metadata(pr_numbers: dict[str, set[int]]) -> dict[str, dict[int, tuple[str, str, str, str]]]:
+    """Batch-fetch headRefName, reviewDecision, CI status, and mergeable for known PR numbers.
+
+    Splits the work into ``_PR_METADATA_CHUNK``-sized parallel requests.
+    GitHub's GraphQL evaluates aliases mostly serially within one request, so
+    many small concurrent requests finish in ~1/Nth of the wall-clock that a
+    single large batch would take.
+
+    Returns:
+        {nwo: {number: (headRefName, reviewDecision, ciState, mergeable), ...}}
+    """
+    pairs: list[tuple[str, int]] = []
+    for nwo, nums in pr_numbers.items():
+        for n in nums:
+            pairs.append((nwo, n))
+    if not pairs:
+        return {}
+
+    chunks = [pairs[i : i + _PR_METADATA_CHUNK] for i in range(0, len(pairs), _PR_METADATA_CHUNK)]
+    workers = max(1, min(IO_FANOUT_CAP, len(chunks)))
+    out: dict[str, dict[int, tuple[str, str, str, str]]] = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        for chunk_out in pool.map(_graphql_pr_metadata_chunk, chunks):
+            for nwo, num_map in chunk_out.items():
+                out.setdefault(nwo, {}).update(num_map)
     return out
 
 
@@ -578,6 +611,7 @@ def fetch_section(kind: str, idx: int, title: str, filters: str, limit: int = 30
         "t: .title, "
         'r: (.repository_url | split("/") | .[-2:] | join("/")), '
         'u: (.updated_at | split("T")[0]), '
+        "cr: .created_at, "
         "url: .html_url, "
         "d: .draft, "
         "a: .user.login, "
@@ -602,7 +636,7 @@ def fetch_section(kind: str, idx: int, title: str, filters: str, limit: int = 30
                 "-f",
                 f"per_page={limit}",
                 "-f",
-                "sort=updated",
+                "sort=created",
                 "-f",
                 "order=desc",
                 "--jq",
@@ -623,17 +657,6 @@ def fetch_section(kind: str, idx: int, title: str, filters: str, limit: int = 30
 
     if not items:
         return [header]
-
-    def _section_sort_key(it: dict[str, Any]) -> tuple[int, str, str, int]:
-        assignee = str(it.get("assignee") or "").strip().lstrip("@").lower()
-        author = str(it.get("author") or "").strip().lstrip("@").lower()
-        try:
-            num = int(it.get("num") or 0)
-        except Exception:
-            num = 0
-        # Assigned first; unassigned later.
-        assignee_rank = 0 if assignee else 1
-        return (assignee_rank, assignee, author, num)
 
     result: list[dict[str, Any]] = [header]
     section_items: list[dict[str, Any]] = []
@@ -659,6 +682,7 @@ def fetch_section(kind: str, idx: int, title: str, filters: str, limit: int = 30
                 "title": item.get("t", ""),
                 "repo": item.get("r", ""),
                 "updated": item.get("u", ""),
+                "created": item.get("cr", ""),
                 "url": item.get("url", ""),
                 "draft": item.get("d", False),
                 "author": item.get("a", ""),
@@ -668,7 +692,7 @@ def fetch_section(kind: str, idx: int, title: str, filters: str, limit: int = 30
                 "state": effective_state,
             }
         )
-    section_items.sort(key=_section_sort_key)
+    section_items.sort(key=lambda it: str(it.get("created") or ""), reverse=True)
     result.extend(section_items)
     return result
 
@@ -679,6 +703,7 @@ _BACKPORT_ROW_RE = re.compile(
 )
 _TABLE_NOISE_RE = re.compile(r"^[-:\s]+$")
 _BACKPORT_PR_URL_RE = re.compile(r"github\.com/([^/]+/[^/]+)/pull/(\d+)")
+_VERSION_LABEL_RE = re.compile(r"^v(\d+)\.(\d+)\.\d+$")
 
 
 def _parse_backport_state(comments: list[dict[str, Any]]) -> dict[str, int | None]:
@@ -707,6 +732,128 @@ def _parse_backport_state(comments: list[dict[str, Any]]) -> dict[str, int | Non
             elif "\u274c" in status_cell:  # ❌
                 branches[branch] = None
     return branches
+
+
+def _needed_branches_from_labels(labels: list[dict[str, Any]], base_ref: str) -> set[str] | None:
+    """Derive expected backport target branches from current ``v<X>.<Y>.<Z>`` labels.
+
+    Returns ``{"8.18", "8.19", ...}`` (major.minor) or ``None`` if the PR has no
+    version labels (caller should skip filtering — likely a non-Kibana repo or
+    a different convention).
+
+    Excludes the branch the parent PR was already merged to: when ``base_ref``
+    equals a derived branch, drop it; when ``base_ref == "main"``, drop the
+    highest derived branch (Kibana convention: highest ``v*.*.*`` label maps
+    to the main development branch).
+    """
+    branches: set[str] = set()
+    for label in labels:
+        name = (label.get("name") or "") if isinstance(label, dict) else ""
+        m = _VERSION_LABEL_RE.match(name)
+        if m:
+            branches.add(f"{m.group(1)}.{m.group(2)}")
+    if not branches:
+        return None
+    if base_ref in branches:
+        branches.discard(base_ref)
+    elif base_ref == "main":
+        try:
+            highest = max(branches, key=lambda b: tuple(int(x) for x in b.split(".")))
+            branches.discard(highest)
+        except (ValueError, TypeError):
+            pass
+    return branches
+
+
+_MANUAL_BACKPORT_CHUNK = 3
+
+
+def _search_manual_backports_chunk(
+    parents: list[tuple[str, str, int]],
+) -> dict[str, dict[str, tuple[int, str, str, str]]]:
+    """Run a small batch of per-parent title-search aliases in one GraphQL call."""
+    if not parents:
+        return {}
+
+    aliases: list[str] = []
+    alias_to_parent: dict[str, tuple[str, str, int]] = {}
+    for parent_alias, nwo, parent_num in parents:
+        sa = f"_sb{parent_alias}"
+        q = f'repo:{nwo} is:pr in:title \\"(#{parent_num})\\"'
+        aliases.append(
+            f'{sa}: search(query: "{q}", type: ISSUE, first: 20) '
+            f"{{ nodes {{ ... on PullRequest {{ number title baseRefName state url }} }} }}"
+        )
+        alias_to_parent[sa] = (parent_alias, nwo, parent_num)
+
+    query = "query { " + " ".join(aliases) + " }"
+    try:
+        result = subprocess.run(
+            ["gh", "api", "graphql", "-f", f"query={query}"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        if not result.stdout.strip():
+            return {}
+        data = json.loads(result.stdout).get("data", {})
+    except Exception:
+        return {}
+
+    out: dict[str, dict[str, tuple[int, str, str, str]]] = {}
+    for sa, (parent_alias, _nwo, parent_num) in alias_to_parent.items():
+        nodes = (data.get(sa) or {}).get("nodes") or []
+        for node in nodes:
+            num = node.get("number")
+            if not num or num == parent_num:
+                continue
+            base = node.get("baseRefName") or ""
+            title = node.get("title") or ""
+            if not base or not title.startswith(f"[{base}]"):
+                continue
+            state = node.get("state") or ""
+            url = node.get("url") or ""
+            existing = out.get(parent_alias, {}).get(base)
+            if existing is None or (existing[1] != "MERGED" and state == "MERGED"):
+                out.setdefault(parent_alias, {})[base] = (num, state, title, url)
+
+    return out
+
+
+def _search_manual_backports(
+    parents: list[tuple[str, str, int]],
+) -> dict[str, dict[str, tuple[int, str, str, str]]]:
+    """Find backport PRs by title pattern for each parent.
+
+    ``parents`` is a list of ``(alias, nwo, parent_num)``. For each parent we
+    search ``repo:<nwo> is:pr in:title "(#<parent_num>)"``. A result is treated
+    as a backport for ``baseRefName`` only when its title starts with
+    ``[<baseRefName>]`` (Kibana convention) — this filters out unrelated PRs
+    that happen to mention the parent in their title (e.g. reverts).
+
+    Splits parents into ``_MANUAL_BACKPORT_CHUNK``-sized parallel requests for
+    the same reason as ``_graphql_pr_metadata``: GitHub serialises aliases
+    inside one query, so several smaller concurrent queries finish faster.
+
+    Returns ``{alias: {branch: (pr_num, state, title, url)}}``. When multiple
+    PRs target the same branch, MERGED wins over OPEN/CLOSED.
+    """
+    if not parents:
+        return {}
+
+    chunks = [parents[i : i + _MANUAL_BACKPORT_CHUNK] for i in range(0, len(parents), _MANUAL_BACKPORT_CHUNK)]
+    workers = max(1, min(IO_FANOUT_CAP, len(chunks)))
+    out: dict[str, dict[str, tuple[int, str, str, str]]] = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        for chunk_out in pool.map(_search_manual_backports_chunk, chunks):
+            for parent_alias, branch_map in chunk_out.items():
+                target = out.setdefault(parent_alias, {})
+                for branch, info in branch_map.items():
+                    existing = target.get(branch)
+                    if existing is None or (existing[1] != "MERGED" and info[1] == "MERGED"):
+                        target[branch] = info
+    return out
 
 
 def fetch_backport_failures(kind: str, idx: int, title: str, filters: str, limit: int = 30) -> list[dict[str, Any]]:
@@ -739,30 +886,48 @@ def fetch_backport_failures(kind: str, idx: int, title: str, filters: str, limit
             alias = f"_bp{owner}_{name}_{n}".replace("-", "_")
             aliases.append(
                 f'{alias}: repository(owner: "{owner}", name: "{name}") '
-                f"{{ pullRequest(number: {n}) {{ number "
-                f"comments(last: 100) {{ nodes {{ body }} }} }} }}"
+                f"{{ pullRequest(number: {n}) {{ number baseRefName "
+                f"comments(last: 100) {{ nodes {{ body }} }} "
+                f"labels(first: 50) {{ nodes {{ name }} }} }} }}"
             )
             alias_map[alias] = item
 
     if not aliases:
         return []
 
+    # Phase 1: comments+labels (per parent) and manual-backport search run in
+    # parallel — both only need the parent PR list, so there is no dependency
+    # between them. Halves the wall-clock spent in this section's GraphQL chain.
     query = "query { " + " ".join(aliases) + " }"
-    try:
-        result = subprocess.run(
-            ["gh", "api", "graphql", "-f", f"query={query}"],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        if not result.stdout.strip():
-            return []
-        data = json.loads(result.stdout).get("data", {})
-    except Exception:
+
+    def _run_comments_labels() -> dict[str, Any]:
+        try:
+            r = subprocess.run(
+                ["gh", "api", "graphql", "-f", f"query={query}"],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if not r.stdout.strip():
+                return {}
+            return json.loads(r.stdout).get("data", {})
+        except Exception:
+            return {}
+
+    manual_parents_pre = [(alias, alias_map[alias]["repo"], alias_map[alias]["num"]) for alias in alias_map]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as _pool:
+        f_data = _pool.submit(_run_comments_labels)
+        f_manual = _pool.submit(_search_manual_backports, manual_parents_pre)
+        data = f_data.result()
+        manual_finds_all = f_manual.result()
+
+    if not data:
         return []
 
-    # Build per-item backport state and collect backport PR numbers to check
+    # Build per-item backport state and collect backport PR numbers to check.
+    # Filter branches by current labels: a branch whose ``v<X>.<Y>.*`` label was
+    # removed is no longer a needed target (e.g. team decided not to backport).
     item_branches: dict[str, dict[str, int | None]] = {}
     bp_pr_nums: dict[str, set[int]] = {}
     for alias, item in alias_map.items():
@@ -773,6 +938,15 @@ def fetch_backport_failures(kind: str, idx: int, title: str, filters: str, limit
         branches = _parse_backport_state(comments)
         if not branches:
             continue
+
+        labels = (pr_node.get("labels") or {}).get("nodes") or []
+        base_ref = pr_node.get("baseRefName") or ""
+        needed = _needed_branches_from_labels(labels, base_ref)
+        if needed is not None:
+            branches = {b: v for b, v in branches.items() if b in needed}
+            if not branches:
+                continue
+
         item_branches[alias] = branches
         for _branch, bp_num in branches.items():
             if bp_num is not None:
@@ -782,13 +956,34 @@ def fetch_backport_failures(kind: str, idx: int, title: str, filters: str, limit
     if not item_branches:
         return [header]
 
-    # Phase 2: batch-check backport PR state and title
+    # Phase 1.5: merge in manually-created backport PRs the bot didn't comment
+    # about. The bot's tables can lag reality when retries are partial or when
+    # contributors cherry-pick by hand. A PR titled ``[<branch>] ... (#<parent>)``
+    # is the canonical Kibana backport; finding one for a branch the parser
+    # thought was missing/unmerged means the work is actually done.
     bp_info: dict[tuple[str, int], tuple[str, str, str]] = {}  # (nwo, num) -> (state, title, url)
+    manual_finds = {a: f for a, f in manual_finds_all.items() if a in item_branches}
+    for alias, found in manual_finds.items():
+        if alias not in item_branches:
+            continue
+        branches = item_branches[alias]
+        nwo = alias_map[alias]["repo"]
+        for branch, (mb_num, mb_state, mb_title, mb_url) in found.items():
+            if branch not in branches:
+                continue
+            if branches[branch] != mb_num:
+                branches[branch] = mb_num
+            bp_info[(nwo, mb_num)] = (mb_state, mb_title, mb_url)
+
+    # Phase 2: batch-check state for any comment-derived PR numbers we don't
+    # already have from the title search.
     bp_aliases: list[str] = []
     bp_alias_map: dict[str, tuple[str, int]] = {}
     for nwo, nums in bp_pr_nums.items():
         owner, name = nwo.split("/", 1) if "/" in nwo else ("", nwo)
         for n in nums:
+            if (nwo, n) in bp_info:
+                continue
             alias = f"_bps{owner}_{name}_{n}".replace("-", "_")
             bp_aliases.append(
                 f'{alias}: repository(owner: "{owner}", name: "{name}") '
@@ -818,16 +1013,6 @@ def fetch_backport_failures(kind: str, idx: int, title: str, filters: str, limit
                         )
         except Exception:
             pass
-
-    def _parent_sort_key(it: dict[str, Any]) -> tuple[int, str, str, int]:
-        assignee = str(it.get("assignee") or "").strip().lstrip("@").lower()
-        author = str(it.get("author") or "").strip().lstrip("@").lower()
-        try:
-            num = int(it.get("num") or 0)
-        except Exception:
-            num = 0
-        assignee_rank = 0 if assignee else 1
-        return (assignee_rank, assignee, author, num)
 
     # Phase 3: filter and build grouped output (keep parent + its sub-rows together)
     grouped: list[tuple[dict[str, Any], list[dict[str, Any]]]] = []
@@ -883,7 +1068,7 @@ def fetch_backport_failures(kind: str, idx: int, title: str, filters: str, limit
     if not grouped:
         return [header]
 
-    grouped.sort(key=lambda t: _parent_sort_key(t[0]))
+    grouped.sort(key=lambda t: str(t[0].get("created") or ""), reverse=True)
     result_items: list[dict[str, Any]] = []
     for parent, subs in grouped:
         result_items.append(parent)
@@ -1171,7 +1356,8 @@ def main():
 
     # Phase 1: fetch all sections concurrently
     results: dict[int, list[dict[str, Any]]] = {}
-    with concurrent.futures.ThreadPoolExecutor(max_workers=HALF_CORES) as pool:
+    section_workers = max(1, min(IO_FANOUT_CAP, len(tasks)))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=section_workers) as pool:
         section_futs: dict[concurrent.futures.Future[list[dict[str, Any]]], int] = {}
         for task_idx, (kind, idx, title, filters, source) in enumerate(tasks):
             fetcher = _SOURCE_FETCHERS.get(source, fetch_section)
@@ -1239,7 +1425,8 @@ def main():
     local_data: dict[str, tuple[set[int], set[str], dict[int, str]]] = {}
     gql_data: dict[str, dict[int, tuple[str, str, str, str]]] = {}
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=HALF_CORES) as pool:
+    phase2_workers = max(1, min(IO_FANOUT_CAP, len(resolved_repos) + 1))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=phase2_workers) as pool:
         wt_futs: dict[concurrent.futures.Future[tuple[set[int], set[str], dict[int, str]]], str] = {}
         for nwo, path in resolved_repos.items():
             fut = pool.submit(_scan_local_worktrees, nwo, path)

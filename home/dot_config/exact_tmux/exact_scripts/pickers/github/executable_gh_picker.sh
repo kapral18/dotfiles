@@ -101,7 +101,12 @@ items_cache="${cache_dir}/gh_picker_${mode}.tsv"
 # Background fetch: launched from fzf's start binding where $FZF_PORT is available.
 # Fetches fresh data from GitHub, then POSTs a reload to the running fzf instance.
 # After reload, kicks off preview pre-warm for uncached items.
-bg_fetch_cmd="($(printf %q "$preview_warm_cmd") $(printf %q "$items_cache") >/dev/null 2>&1 & sleep 0.15; eval $(printf %q "$full_load_cmd") >/dev/null 2>&1 || true; printf '%s' \"\$FZF_PORT\" > $(printf %q "$port_file") 2>/dev/null || true; curl -s --max-time 5 -XPOST \"http://127.0.0.1:\${FZF_PORT}\" -d 'reload($reload_items_cmd)+track' 2>/dev/null || true; $(printf %q "$preview_warm_cmd") $(printf %q "$items_cache") >/dev/null 2>&1 || true) &"
+#
+# Only POSTs the reload when the fetch actually succeeded. Otherwise (e.g. the
+# fetch was killed by a concurrent ctrl-r refresh) the cache is still stale and
+# telling fzf to reload from it would override an in-progress ctrl-r reload
+# with the same stale content.
+bg_fetch_cmd="($(printf %q "$preview_warm_cmd") $(printf %q "$items_cache") >/dev/null 2>&1 & sleep 0.15; if eval $(printf %q "$full_load_cmd") >/dev/null 2>&1; then printf '%s' \"\$FZF_PORT\" > $(printf %q "$port_file") 2>/dev/null || true; curl -s --max-time 5 -XPOST \"http://127.0.0.1:\${FZF_PORT}\" -d 'reload($reload_items_cmd)+track' 2>/dev/null || true; fi; $(printf %q "$preview_warm_cmd") $(printf %q "$items_cache") >/dev/null 2>&1 || true) &"
 
 pick="$(
   eval "$initial_items_cmd" | SHELL="$fzf_shell" fzf \

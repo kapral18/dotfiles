@@ -66,15 +66,20 @@ while ! mkdir "$lock_dir" 2> /dev/null; do
   [ -f "$pid_file" ] && pid="$(cat "$pid_file" 2> /dev/null || true)"
   if [ -n "$pid" ] && kill -0 "$pid" 2> /dev/null; then
     if [ "$refresh" -eq 1 ]; then
-      # Don't let a stuck/slow fetch block a manual refresh forever.
+      # Manual refresh: pre-empt the in-flight fetch immediately. Its TERM
+      # trap takes its python+gh subprocess children with it, so the search
+      # rate-limit budget is preserved for our new fetch. We then poll until
+      # the killed bash has actually exited (and its trap finished releasing
+      # the lock) before retrying the mkdir, to avoid clobbering each other.
+      kill "$pid" 2> /dev/null || true
       waited=0
-      while kill -0 "$pid" 2> /dev/null && [ "$waited" -lt 25 ]; do
-        sleep 0.2
+      while kill -0 "$pid" 2> /dev/null && [ "$waited" -lt 15 ]; do
+        sleep 0.1
         waited="$((waited + 1))"
       done
       if kill -0 "$pid" 2> /dev/null; then
-        kill "$pid" 2> /dev/null || true
-        sleep 0.2
+        kill -KILL "$pid" 2> /dev/null || true
+        sleep 0.1
       fi
       rm -rf "$lock_dir" 2> /dev/null || true
       continue
@@ -85,11 +90,30 @@ while ! mkdir "$lock_dir" 2> /dev/null; do
   rm -rf "$lock_dir" 2> /dev/null || true
 done
 
-cleanup_lock() {
-  rm -f "${lock_dir}/pid" 2> /dev/null || true
-  rmdir "$lock_dir" 2> /dev/null || true
+PYTHON_PID=""
+cleanup() {
+  # Stop the in-flight python fetch (and its `gh` subprocess children) before
+  # releasing the lock. Without this, a `kill <bash_pid>` from a competing
+  # `--refresh` would leave python+gh orphaned, racing on the cache file and
+  # consuming the search/issues secondary rate limit so the new fetch returns
+  # all-errored sections (which fall back to prior cache → "loader for 2s,
+  # nothing changes").
+  if [ -n "$PYTHON_PID" ] && kill -0 "$PYTHON_PID" 2> /dev/null; then
+    pkill -TERM -P "$PYTHON_PID" 2> /dev/null || true
+    kill -TERM "$PYTHON_PID" 2> /dev/null || true
+  fi
+  # Ownership-checked release: only delete the lock if the pid file still
+  # names us. A successor that took over after our kill has already written
+  # its own $$ and we must not unlink its pid file or rmdir its lock_dir.
+  if [ -d "$lock_dir" ]; then
+    cur_pid="$(cat "${lock_dir}/pid" 2> /dev/null || true)"
+    if [ "$cur_pid" = "$$" ]; then
+      rm -f "${lock_dir}/pid" 2> /dev/null || true
+      rmdir "$lock_dir" 2> /dev/null || true
+    fi
+  fi
 }
-trap cleanup_lock EXIT
+trap cleanup EXIT INT TERM HUP
 printf '%s\n' "$$" > "${lock_dir}/pid" 2> /dev/null || true
 
 if [ "$refresh" -eq 0 ] && [ -f "$cache_file" ]; then
@@ -109,8 +133,18 @@ for cmd in gh yq python3; do
   }
 done
 
+# Run python in the background so bash's TERM trap can interrupt the wait and
+# kill python (+ its gh subprocesses) deterministically. With a synchronous
+# child, bash defers signal handlers until the child exits — the orphan window
+# this opens is exactly the bug we are closing here.
 if [ "$refresh" -eq 1 ]; then
-  python3 -u "$script_dir/lib/gh_items_main.py" --mode "$mode" --config "$config" --cache-file "$cache_file" --refresh
+  python3 -u "$script_dir/lib/gh_items_main.py" --mode "$mode" --config "$config" --cache-file "$cache_file" --refresh &
 else
-  python3 -u "$script_dir/lib/gh_items_main.py" --mode "$mode" --config "$config" --cache-file "$cache_file"
+  python3 -u "$script_dir/lib/gh_items_main.py" --mode "$mode" --config "$config" --cache-file "$cache_file" &
 fi
+PYTHON_PID=$!
+set +e
+wait "$PYTHON_PID"
+rc=$?
+set -e
+exit "$rc"

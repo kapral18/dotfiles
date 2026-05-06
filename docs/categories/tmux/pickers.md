@@ -284,6 +284,18 @@ Items come from the gh picker's standalone config files (`~/.config/tmux/scripts
 
 In work mode, the default config separates PRs that request **your** review (excluding those already in your team queue) from PRs that request **team** review, so the sections stay meaningfully distinct while global dedupe remains useful.
 
+Within each section, items are sorted by GitHub creation time, newest first. The Pending Backports section sorts parent PRs the same way; sub-rows under each parent stay grouped by target branch.
+
+#### Pending Backports section
+
+A section can opt into custom logic by adding `source: backport-failures` (see `prSections[].source` in the work config). The fetcher runs the section's `filters` to seed a candidate list of merged PRs, then determines per-PR whether any backport target is still pending. A target branch is **pending** when it is requested by current labels **and** has no merged backport PR.
+
+The pending check combines three signals so the section reflects reality even when the bot's comment trail is incomplete:
+
+1. **`kibanamachine` comment tables** (`## 💔 All backports failed` / `## 💚 All backports created successfully`) — the historical record of bot attempts.
+2. **Current `v<X>.<Y>.<Z>` labels** — branches whose label was removed are dropped (no longer needed). When the parent PR's `baseRefName` is `main`, the highest version label is treated as the main development version and excluded. If the PR has no version labels, this filter is skipped (preserves behavior on repos with different conventions).
+3. **Title search for `[<branch>] … (#<parent>)` PRs** — manually-cherry-picked backports that the bot never commented about are still detected, with their actual `state` (`MERGED` / `OPEN` / `CLOSED`).
+
 ### Inline badges
 
 | Badge        | Meaning                      | Color               |
@@ -297,7 +309,7 @@ In work mode, the default config separates PRs that request **your** review (exc
 | `●` (yellow) | CI — pending                 | yellow (`38;5;220`) |
 | `⚡`         | Merge conflict (CONFLICTING) | orange (`38;5;209`) |
 
-Review and CI badges are fetched via a batched GraphQL call that piggybacks on the section fetch, at zero extra round-trip cost.
+Review and CI badges are fetched via a chunked GraphQL phase that runs after the section searches and in parallel with the local worktree scan. PRs are split into small chunks (~5 per request) issued concurrently — GitHub's GraphQL evaluates aliases mostly serially within one request, so several small parallel queries finish far faster than one large batch.
 
 The conflict badge is also sourced from GraphQL (`mergeable=CONFLICTING`). If GraphQL metadata is temporarily unavailable during a refresh, the picker keeps the last-known conflict badge until fresh metadata is fetched; in that case the badge is shown **dim** to indicate it may be stale (use `ctrl-r` to force revalidation).
 
@@ -330,7 +342,7 @@ For issues, the picker also treats an issue as "local" when it is linked from an
 
 - TTL: 300 seconds (5 minutes).
 - Cache file: `~/.cache/tmux/gh_picker_{work,home}.tsv`.
-- `ctrl-r` forces a refresh bypassing the cache.
+- `ctrl-r` forces a refresh bypassing the cache. Any in-flight background fetch is pre-empted via SIGTERM; the lock-holder's bash trap kills its python + `gh` subprocess descendants before releasing the lock so the new fetch starts with a clean GitHub search-rate-limit budget (otherwise orphaned `gh` calls would burn the budget and every section would error-fallback to prior cache, looking like "nothing changed").
 
 ### Preview pane
 
