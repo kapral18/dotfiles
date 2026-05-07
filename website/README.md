@@ -17,6 +17,10 @@ Each target auto-installs `website/node_modules/` on first run via `pnpm -C webs
 
 If you'd rather drive `pnpm` directly, the equivalent is `pnpm -C website {start,build,serve,clear}` from the repo root, or `cd website && pnpm <script>`.
 
+### pnpm version
+
+The pnpm version is pinned via the `packageManager` field in [`package.json`](package.json) (currently `pnpm@10.32.1`). Run `corepack enable` once per machine to let Corepack auto-fetch the pinned version — after that `pnpm` will always match across this repo, your other machines, and CI. If you see `ERR_PNPM_LOCKFILE_BREAKING_CHANGE`, your local pnpm is older than what wrote the lockfile; either `corepack enable` or upgrade pnpm directly (`npm i -g pnpm@10` / `brew upgrade pnpm`).
+
 ## Deployment
 
 Pushing to `main` runs `.github/workflows/deploy-docs.yml`, which builds and uploads the static site to GitHub Pages. The workflow only runs when files under `docs/`, `website/`, or the workflow itself change.
