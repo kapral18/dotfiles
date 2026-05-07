@@ -1,0 +1,9 @@
+{
+  "label": "Topics",
+  "position": 2,
+  "link": {
+    "type": "generated-index",
+    "title": "Topics",
+    "description": "Concept + how-to for each domain in this setup. Recipes (\"add a Homebrew package\", \"switch identity\", etc.) live next to the topic they belong to."
+  }
+}

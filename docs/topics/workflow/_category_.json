@@ -1,0 +1,9 @@
+{
+  "label": "Workflow",
+  "position": 2,
+  "link": {
+    "type": "generated-index",
+    "title": "Workflow",
+    "description": "Day-to-day developer surface: git + identity, your shell, terminals, tmux, and the custom commands that glue them together."
+  }
+}

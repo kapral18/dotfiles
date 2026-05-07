@@ -4,7 +4,7 @@
 
 Personal macOS development environment managed with Chezmoi. Keyboard-centric workflow with extensive automation and tool integration.
 
-New here? Start with [`docs/index.md`](docs/index.md).
+New here? Read the published docs at <https://kapral18.github.io/dotfiles/>, or browse the source under [`docs/index.md`](docs/index.md).
 
 ## 📋 Table of Contents
 

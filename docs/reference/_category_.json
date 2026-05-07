@@ -1,0 +1,9 @@
+{
+  "label": "Reference",
+  "position": 3,
+  "link": {
+    "type": "generated-index",
+    "title": "Reference",
+    "description": "Lookup-style pages: reference map of where to change what, FAQ, and troubleshooting."
+  }
+}

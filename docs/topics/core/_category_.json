@@ -1,0 +1,9 @@
+{
+  "label": "Core",
+  "position": 1,
+  "link": {
+    "type": "generated-index",
+    "title": "Core",
+    "description": "The foundation: chezmoi (declarative dotfile management) and packages (how every binary, font, and language tool gets installed)."
+  }
+}

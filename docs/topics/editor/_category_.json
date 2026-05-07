@@ -1,0 +1,9 @@
+{
+  "label": "Editor",
+  "position": 4,
+  "link": {
+    "type": "generated-index",
+    "title": "Editor",
+    "description": "Neovim configuration, plugins, LSP wiring, and editor-side conveniences."
+  }
+}
