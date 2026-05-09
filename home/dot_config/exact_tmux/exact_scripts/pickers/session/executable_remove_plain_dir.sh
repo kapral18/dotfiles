@@ -10,14 +10,24 @@ fi
 
 target="$(realpath "$target" 2> /dev/null || printf '%s' "$target")"
 stop_at="$(realpath "$stop_at" 2> /dev/null || printf '%s' "$stop_at")"
+home_rp="$(realpath "${HOME:-}" 2> /dev/null || printf '%s' "${HOME:-}")"
 
 case "$target" in
   "" | "/") exit 0 ;;
 esac
 
-if [ "$target" = "$HOME" ]; then
+# Refuse to remove $HOME itself, anything above it, or anything that isn't
+# strictly inside $HOME. Plain-dir entries are sourced from zoxide, which
+# contains paths like `/`, `/opt/homebrew/...`, `/Library/Video`, etc.
+# Without this check, alt-x on such a row in the picker would trigger
+# `rm -rf` on a system path.
+if [ -z "$home_rp" ] || [ "$target" = "$home_rp" ]; then
   exit 0
 fi
+case "$target" in
+  "$home_rp"/*) ;;
+  *) exit 0 ;;
+esac
 
 if [ -n "${TMUX:-}" ] && command -v tmux > /dev/null 2>&1; then
   tmux display-message -d 6000 "pick_session: removing $target" 2> /dev/null || true

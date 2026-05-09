@@ -17,8 +17,10 @@ fi
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 cache_file="${cache_dir}/pick_session_items.tsv"
 pending_file="${cache_dir}/pick_session_pending.tsv"
+pending_lock_dir="${pending_file}.lock"
 mutation_file="${cache_dir}/pick_session_mutations.tsv"
 rm_log_file="${cache_dir}/pick_session_remove_worktrees.log"
+rm_log_max_lines=2000
 mkdir -p "$cache_dir"
 
 lock_dir="${cache_file}.lock"
@@ -32,6 +34,30 @@ acquire_lock() {
   return 0
 }
 release_lock() { rmdir "$lock_dir" 2> /dev/null || true; }
+
+# Serialize read-modify-write on `pending_file` across the picker, the async
+# `remove_all_worktrees.sh` removers, and any other future writers. The same
+# `mkdir`-based lock pattern is used elsewhere (cache_file).
+acquire_pending_lock() {
+  local waited=0
+  while ! mkdir "$pending_lock_dir" 2> /dev/null; do
+    sleep 0.02
+    waited="$((waited + 20))"
+    [ "$waited" -ge 1000 ] && return 1
+  done
+  return 0
+}
+release_pending_lock() { rmdir "$pending_lock_dir" 2> /dev/null || true; }
+
+# `sel_file` is a per-binding snapshot minted by `dispatch_async.sh`. We're
+# the last consumer of that snapshot, so unlink it on EXIT (covers normal
+# completion, errors, and interrupts) along with releasing locks.
+_action_remove_cleanup() {
+  rm -f "$sel_file" 2> /dev/null || true
+  release_lock
+  release_pending_lock
+}
+trap _action_remove_cleanup EXIT
 
 realpath_or_self() {
   realpath "$1" 2> /dev/null || printf '%s' "$1"
@@ -245,6 +271,25 @@ remove_paths_in_background() {
     printf '\n[%s] %s\n' "$(date +%Y-%m-%dT%H:%M:%S%z)" "$cmd"
   } >> "$rm_log_file" 2> /dev/null || true
 
+  # Trim the log opportunistically so it can't grow without bound across
+  # a long-running tmux server. We only trim when we're well past the cap to
+  # avoid rewriting on every removal.
+  if [ -f "$rm_log_file" ]; then
+    local _lines
+    _lines="$(wc -l < "$rm_log_file" 2> /dev/null | tr -d ' ' || echo 0)"
+    case "${_lines:-0}" in
+      '' | *[!0-9]*) _lines=0 ;;
+    esac
+    if [ "$_lines" -gt "$((rm_log_max_lines * 2))" ]; then
+      local _trim_tmp
+      _trim_tmp="$(mktemp "${rm_log_file}.trim.XXXXXX" 2> /dev/null || true)"
+      if [ -n "$_trim_tmp" ]; then
+        tail -n "$rm_log_max_lines" "$rm_log_file" > "$_trim_tmp" 2> /dev/null \
+          && mv -f "$_trim_tmp" "$rm_log_file" 2> /dev/null || rm -f "$_trim_tmp" 2> /dev/null || true
+      fi
+    fi
+  fi
+
   kill_tmux_sessions_for_paths "$current_session" "$explicit_sessions_list" "${paths[@]}" || true
   nohup env -u TMUX -u TMUX_PANE bash -c "$cmd" < /dev/null >> "$rm_log_file" 2>&1 &
 }
@@ -364,13 +409,19 @@ if [ ${#pending_plain_dirs[@]} -gt 0 ]; then
   mapfile -t pending_plain_dirs < <(printf '%s\n' "${pending_plain_dirs[@]}" | sed '/^$/d' | LC_ALL=C sort -u)
 fi
 
-# Record pending worktree removals so a subsequent index refresh doesn't re-add them.
+# Record pending worktree removals so a subsequent index refresh doesn't re-add
+# them. Serialized via `pending_lock_dir` so concurrent appenders/rewriters
+# (this script + the async `remove_all_worktrees.sh` cleanup_pending_entries)
+# can't interleave.
 if [ ${#pending_wt_paths[@]} -gt 0 ]; then
-  {
-    for p in "${pending_wt_paths[@]}"; do
-      printf 'WT\t%s\n' "$p"
-    done
-  } >> "$pending_file"
+  if acquire_pending_lock; then
+    {
+      for p in "${pending_wt_paths[@]}"; do
+        printf 'WT\t%s\n' "$p"
+      done
+    } >> "$pending_file"
+    release_pending_lock
+  fi
 fi
 
 # Record path tombstones so long-running/stale scans cannot resurrect removed
@@ -417,7 +468,5 @@ fi
 
 # Prune selected worktrees (and their session rows) from the cache immediately.
 if [ -f "$cache_file" ] && acquire_lock; then
-  trap release_lock EXIT
-
   CACHE_FILE="$cache_file" PENDING_WT="$(printf '%s\n' "${pending_wt_paths[@]-}")" PENDING_DIRS="$(printf '%s\n' "${pending_plain_dirs[@]-}")" python3 "$script_dir/lib/cache_prune_paths.py"
 fi

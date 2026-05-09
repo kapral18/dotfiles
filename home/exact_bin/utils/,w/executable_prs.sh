@@ -155,7 +155,6 @@ EOF
 }
 
 quiet_mode=0
-quiet_flag=()
 focus_mode=0
 awaiting_mode=0
 complete_mode=0
@@ -171,7 +170,6 @@ while [ $# -gt 0 ]; do
       ;;
     -q | --quiet)
       quiet_mode=1
-      quiet_flag=(-q)
       shift
       ;;
     --focus)
@@ -509,7 +507,11 @@ for pr_number in "${pr_numbers[@]}"; do
         if [ "$focus_mode" -eq 1 ]; then
           mv_args+=(--focus)
         fi
-        "$(dirname "$0")/mv.sh" "${mv_args[@]}" --path "$worktree_path" "$old_local_branch" "$local_branch" > /dev/null || true
+        # Guard against bash 3.2 treating an empty array expansion as an
+        # unbound variable under `set -u`. `mv_args` is empty when neither
+        # --quiet nor --focus was passed, and `,w` scripts use
+        # `#!/usr/bin/env bash` without re-execing into bash 4+.
+        "$(dirname "$0")/mv.sh" "${mv_args[@]+"${mv_args[@]}"}" --path "$worktree_path" "$old_local_branch" "$local_branch" > /dev/null || true
       fi
     fi
   fi

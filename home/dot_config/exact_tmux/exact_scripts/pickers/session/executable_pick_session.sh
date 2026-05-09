@@ -142,7 +142,19 @@ bulk_guard_clear() {
   tmux set-option -gq "$bulk_guard_key" "0" > /dev/null 2>&1 || true
 }
 bulk_guard_set
-trap 'bulk_guard_clear; pkill -P $$ 2>/dev/null || true; rm -f "${sort_daemon_sock:-}" 2>/dev/null || true; exit 0' EXIT
+# `_pick_session_pid_scoped_files` is filled with the per-picker mktemp paths
+# below. Cleaning them up on EXIT keeps the cache dir tidy when the picker
+# finishes / is killed; their contents are read by execute-silent bindings and
+# any background dispatchers we hand them off to before we exit.
+_pick_session_pid_scoped_files=()
+_pick_session_cleanup_pid_scoped() {
+  local _f
+  for _f in "${_pick_session_pid_scoped_files[@]+"${_pick_session_pid_scoped_files[@]}"}"; do
+    [ -n "$_f" ] || continue
+    rm -f "$_f" 2> /dev/null || true
+  done
+}
+trap 'bulk_guard_clear; pkill -P $$ 2>/dev/null || true; rm -f "${sort_daemon_sock:-}" 2>/dev/null || true; _pick_session_cleanup_pid_scoped; exit 0' EXIT
 
 __sess_cache_loaded=0
 sess_names=()
@@ -253,8 +265,14 @@ fi
 
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 mkdir -p "$cache_dir" 2> /dev/null || true
-sel_tmp="${cache_dir}/pick_session_fzf_selected.tsv"
-primary_tmp="${cache_dir}/pick_session_fzf_primary.tsv"
+# Per-picker state is PID-scoped so concurrent picker instances (popups + stray
+# invocations) don't fight over a single shared file. ctrl-x / alt-x bindings
+# rely on `dispatch_async.sh` to mint per-binding mktemp snapshots from `{+f}`,
+# which sidesteps both the cross-picker race and the rapid-keypress race the
+# old shared `pick_session_fzf_selected.tsv` had.
+sel_tmp="${cache_dir}/pick_session_fzf_selected.$$.tsv"
+primary_tmp="${cache_dir}/pick_session_fzf_primary.$$.tsv"
+_pick_session_pid_scoped_files+=("$sel_tmp" "$primary_tmp")
 pin_file="${cache_dir}/pick_session_pin"
 gh_pin_file="${cache_dir}/gh_picker_pin"
 handoff_to_gh_cmd="$HOME/.config/tmux/scripts/pickers/lib/handoff_to_gh.sh"
@@ -265,13 +283,13 @@ rm_cmd="$HOME/.config/tmux/scripts/pickers/session/action_remove_worktrees.sh"
 live_refresh_cmd="$HOME/.config/tmux/scripts/pickers/session/live_refresh.sh"
 hide_selected_cmd="$HOME/.config/tmux/scripts/pickers/session/items_hide_selected.sh"
 update_cmd="$HOME/.config/tmux/scripts/pickers/session/index_update.sh"
-kill_async_cmd="tmux run-shell -b \"$(printf %q "$kill_cmd") $(printf %q "$sel_tmp")\""
-rm_async_cmd="tmux run-shell -b \"$(printf %q "$rm_cmd") $(printf %q "$sel_tmp")\""
+dispatch_async_cmd="$HOME/.config/tmux/scripts/pickers/lib/dispatch_async.sh"
 
 send_cmd="$HOME/.config/tmux/scripts/pickers/session/action_send_command.sh"
 open_gh_cmd="$HOME/.config/tmux/scripts/pickers/session/action_open_gh.sh"
-cmd_tmp="${cache_dir}/pick_session_cmd.txt"
-mode_flag="${cache_dir}/pick_session_send_mode"
+cmd_tmp="${cache_dir}/pick_session_cmd.$$.txt"
+mode_flag="${cache_dir}/pick_session_send_mode.$$"
+_pick_session_pid_scoped_files+=("$cmd_tmp" "$mode_flag")
 
 fzf_args="$(tmux_opt '@pick_session_fzf_options' '')"
 fzf_prompt="$(tmux_opt '@pick_session_fzf_prompt' '󰍉  ')"
@@ -293,7 +311,8 @@ fi
 help_cmd="$HOME/.config/tmux/scripts/pickers/session/keyhelp.sh"
 preview_cmd="$HOME/.config/tmux/scripts/pickers/session/preview.sh"
 
-help_flag="${cache_dir}/pick_session_help_flag"
+help_flag="${cache_dir}/pick_session_help_flag.$$"
+_pick_session_pid_scoped_files+=("$help_flag")
 rm -f "$help_flag" 2> /dev/null || true
 
 preview_cmd_0="$preview_cmd {f}"
@@ -375,8 +394,8 @@ else
         --bind "enter:transform:[ -f $mode_flag ] && { printf '%s' {q} > $cmd_tmp; echo 'execute-silent(tmux run-shell -b \"$send_cmd $sel_tmp $cmd_tmp\")+execute-silent(rm -f $mode_flag)+$send_restore'; } || echo 'execute-silent(cp {f} $primary_tmp)+accept'" \
         --bind "ctrl-s:$send_mode" \
         --bind "esc:execute-silent(rm -f $mode_flag)+$send_restore" \
-        --bind "ctrl-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") kill {q})+execute-silent($kill_async_cmd)+deselect-all" \
-        --bind "alt-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") remove {q})+execute-silent($rm_async_cmd)+deselect-all" \
+        --bind "ctrl-x:execute-silent($(printf %q "$dispatch_async_cmd") $(printf %q "$kill_cmd") {+f})+reload($hide_selected_cmd {+f} kill {q})+deselect-all" \
+        --bind "alt-x:execute-silent($(printf %q "$dispatch_async_cmd") $(printf %q "$rm_cmd") {+f})+reload($hide_selected_cmd {+f} remove {q})+deselect-all" \
         --bind "alt-y:execute-silent(printf '%s\n' {+} | cut -f3 | sed '/^[[:space:]]*$/d' | pbcopy 2>/dev/null || printf '%s\n' {+} | cut -f3 | sed '/^[[:space:]]*$/d' | xclip -sel clip 2>/dev/null)" \
         --bind "alt-p:execute-silent($open_gh_cmd pr {f})" \
         --bind "alt-i:execute-silent($open_gh_cmd issue {f})" \
@@ -422,8 +441,8 @@ else
         --bind "enter:transform:[ -f $mode_flag ] && { printf '%s' {q} > $cmd_tmp; echo 'execute-silent(tmux run-shell -b \"$send_cmd $sel_tmp $cmd_tmp\")+execute-silent(rm -f $mode_flag)+$send_restore'; } || echo 'execute-silent(cp {f} $primary_tmp)+accept'" \
         --bind "ctrl-s:$send_mode" \
         --bind "esc:execute-silent(rm -f $mode_flag)+$send_restore" \
-        --bind "ctrl-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") kill {q})+execute-silent($kill_async_cmd)+deselect-all" \
-        --bind "alt-x:execute-silent(cp {+f} $(printf %q "$sel_tmp"))+reload($hide_selected_cmd $(printf %q "$sel_tmp") remove {q})+execute-silent($rm_async_cmd)+deselect-all" \
+        --bind "ctrl-x:execute-silent($(printf %q "$dispatch_async_cmd") $(printf %q "$kill_cmd") {+f})+reload($hide_selected_cmd {+f} kill {q})+deselect-all" \
+        --bind "alt-x:execute-silent($(printf %q "$dispatch_async_cmd") $(printf %q "$rm_cmd") {+f})+reload($hide_selected_cmd {+f} remove {q})+deselect-all" \
         --bind "alt-y:execute-silent(printf '%s\n' {+} | cut -f3 | sed '/^[[:space:]]*$/d' | pbcopy 2>/dev/null || printf '%s\n' {+} | cut -f3 | sed '/^[[:space:]]*$/d' | xclip -sel clip 2>/dev/null)" \
         --bind "alt-p:execute-silent($open_gh_cmd pr {f})" \
         --bind "alt-i:execute-silent($open_gh_cmd issue {f})" \

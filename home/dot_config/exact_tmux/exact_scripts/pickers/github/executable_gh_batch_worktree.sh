@@ -50,6 +50,15 @@ done
 
 [ -n "$selection_file" ] && [ -f "$selection_file" ] || die "missing or invalid selection file"
 
+# Background mode is the last consumer of `$selection_file` (a per-binding
+# snapshot minted by gh_picker_ctrl_t.sh / gh_picker_enter.sh). Foreground
+# mode hands the snapshot off to background mode via `tmux run-shell -b`, so
+# only the background pass should unlink it on exit. The branches buffer is
+# foreground-owned and unlinked with its own trap below.
+if [ "$background" -eq 1 ]; then
+  trap 'rm -f "$selection_file" "${branches_file:-}" 2>/dev/null || true' EXIT
+fi
+
 prs=()
 pr_repos=()
 issues=()
@@ -132,10 +141,16 @@ if [ "$background" -eq 0 ]; then
     $EDITOR "$tmpfile"
 
     branches_file="$(mktemp "${cache_dir}/gh_batch_worktree_branches_XXXXXX.conf")"
+    # If we crash between `mktemp` and the background dispatch, we'd leak the
+    # branches file. The trap is replaced once the background process owns it
+    # (the dispatch line below).
+    trap 'rm -f "$tmpfile" "$branches_file" 2>/dev/null || true' EXIT
     cp "$tmpfile" "$branches_file" 2> /dev/null || die "failed to persist branches file"
 
     tmux run-shell -b "$(printf %q "$0") $(printf %q "$selection_file") --background --branches-file $(printf %q "$branches_file")" \
       2> /dev/null || true
+    # Background mode owns `$branches_file` and `$selection_file` from here.
+    trap 'rm -f "$tmpfile" 2>/dev/null || true' EXIT
   else
     tmux run-shell -b "$(printf %q "$0") $(printf %q "$selection_file") --background" \
       2> /dev/null || true
@@ -165,7 +180,13 @@ _notify_fzf_reload() {
   items_cmd="$HOME/.config/tmux/scripts/pickers/github/gh_items.sh"
   cache_load_cmd="GH_PICKER_MODE=$(printf %q "$mode") $(printf %q "$items_cmd") --cache-only"
   # Use IPv4 explicitly; on macOS `localhost` may resolve to ::1 while fzf binds 127.0.0.1.
-  curl -s --max-time 1 -XPOST "http://127.0.0.1:${port}" -d "reload($cache_load_cmd)+track" 2> /dev/null > /dev/null || true
+  # Fire-and-forget: backgrounded so the per-item progress feedback never adds
+  # latency to the batch loop (curl roundtrip + 1s timeout for stale ports
+  # would otherwise serialize against `,w prs/issue` work). Reloads are
+  # idempotent re-reads of the cache file, so out-of-order arrival is safe.
+  # The subshell breaks the parent-child relationship so the script can exit
+  # without `wait`-ing on stragglers.
+  (curl -s --max-time 1 -XPOST "http://127.0.0.1:${port}" -d "reload($cache_load_cmd)+track" > /dev/null 2>&1 &) 2> /dev/null
 }
 
 _patch_cache_entry() {
@@ -193,6 +214,9 @@ _create_pr_worktree() {
     printf 'OK   PR #%s (%s)\n' "$num" "$repo"
     created=$((created + 1))
     _patch_cache_entry "pr" "$repo" "$num"
+    # Progressive feedback: re-render fzf so the ◆ marker for this item appears
+    # immediately, instead of waiting for the whole batch to finish.
+    _notify_fzf_reload
   else
     printf 'FAIL PR #%s (%s)\n' "$num" "$repo"
     failed=$((failed + 1))
@@ -217,6 +241,9 @@ _create_issue_worktree() {
     printf 'OK   issue #%s → %s\n' "$num" "$branch"
     created=$((created + 1))
     _patch_cache_entry "issue" "$repo" "$num"
+    # Progressive feedback: re-render fzf so the ◆ marker for this item appears
+    # immediately, instead of waiting for the whole batch to finish.
+    _notify_fzf_reload
   else
     printf 'FAIL issue #%s → %s\n' "$num" "$branch"
     failed=$((failed + 1))
@@ -237,16 +264,6 @@ for entry in "${issue_branches[@]+"${issue_branches[@]}"}"; do
     fi
   done
 done
-
-# Single reload after all cache patches are applied, so fzf picks up all
-# markers at once instead of racing with per-item reloads.
-if [ "$created" -gt 0 ]; then
-  _notify_fzf_reload
-fi
-
-if [ "$background" -eq 1 ] && [ -n "${branches_file:-}" ]; then
-  rm -f "$branches_file" 2> /dev/null || true
-fi
 
 if [ -n "${TMUX:-}" ]; then
   tmux display-message "batch worktree: ${created} created, ${skipped} skipped, ${failed} failed" 2> /dev/null || true

@@ -31,6 +31,15 @@ acquire_lock() {
 }
 release_lock() { rmdir "$lock_dir" 2> /dev/null || true; }
 
+# `sel_file` is a per-binding snapshot minted by `dispatch_async.sh`. We're
+# the last consumer of that snapshot, so clean it up on EXIT (covers normal
+# completion, errors, and interrupts) along with releasing the cache lock.
+_action_kill_cleanup() {
+  rm -f "$sel_file" 2> /dev/null || true
+  release_lock
+}
+trap _action_kill_cleanup EXIT
+
 declare -a sess=()
 declare -a dirs_to_remove=()
 declare -a wt_paths=()
@@ -109,6 +118,5 @@ fi
 if ! acquire_lock; then
   exit 0
 fi
-trap release_lock EXIT
 
 CACHE_FILE="$cache_file" SESSIONS="$(printf '%s\n' "${sess[@]}")" DIRS="$(printf '%s\n' "${dirs_to_remove[@]}")" python3 "$script_dir/lib/cache_prune_sessions.py"

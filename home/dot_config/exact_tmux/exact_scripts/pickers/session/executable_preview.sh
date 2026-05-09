@@ -4,6 +4,13 @@ set -euo pipefail
 # Kill child processes (git, tmux, awk) when fzf terminates this preview.
 trap 'pkill -P $$ 2>/dev/null || true' INT TERM HUP
 
+# Portable upper-case for a single token; avoids the bash 4+ `${var^^}`
+# parameter expansion so this script runs unmodified under macOS' default
+# bash 3.2 (where fzf may invoke it via `/bin/sh` -> `/bin/bash`).
+_pp_upper() {
+  printf '%s' "${1-}" | tr '[:lower:]' '[:upper:]'
+}
+
 kind=""
 path=""
 meta=""
@@ -58,7 +65,7 @@ gh_info_from_meta() {
         if [ -n "$num" ]; then
           local sc="$C_GREEN"
           local icon="open"
-          case "${state^^}" in
+          case "$(_pp_upper "$state")" in
             MERGED)
               sc="$C_PURPLE"
               icon="merged"
@@ -69,7 +76,7 @@ gh_info_from_meta() {
               ;;
           esac
           local review_label=""
-          case "${review^^}" in
+          case "$(_pp_upper "$review")" in
             APPROVED) review_label="${C_GREEN}approved${C_R}" ;;
             CHANGES_REQUESTED) review_label="${C_RED}changes requested${C_R}" ;;
             REVIEW_REQUIRED) review_label="${C_YELLOW}review pending${C_R}" ;;
@@ -102,7 +109,7 @@ gh_info_from_meta() {
         if [ -n "$num" ]; then
           local ic="$C_GREEN"
           local ilabel="open"
-          case "${state^^}" in
+          case "$(_pp_upper "$state")" in
             CLOSED | COMPLETED | NOT_PLANNED)
               ic="$C_PURPLE"
               ilabel="closed"

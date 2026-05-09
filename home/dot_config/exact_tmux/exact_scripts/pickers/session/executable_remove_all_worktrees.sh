@@ -112,6 +112,23 @@ notify_tmux "pick_session: removing repo at $nuke_dir"
 
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 pending_file="${cache_dir}/pick_session_pending.tsv"
+pending_lock_dir="${pending_file}.lock"
+
+# Serialize read-modify-write on `pending_file`. Two `remove_all_worktrees.sh`
+# instances can run in parallel (one per selected root), and they all touch
+# the same shared file. The picker's `action_remove_worktrees.sh` uses the
+# same lock directory.
+acquire_pending_lock() {
+  local waited=0
+  while ! mkdir "$pending_lock_dir" 2> /dev/null; do
+    sleep 0.02
+    waited="$((waited + 20))"
+    [ "$waited" -ge 1000 ] && return 1
+  done
+  return 0
+}
+release_pending_lock() { rmdir "$pending_lock_dir" 2> /dev/null || true; }
+trap 'release_pending_lock' EXIT
 
 dir_is_effectively_empty_ignoring_ds_store() {
   local dir="$1"
@@ -123,6 +140,7 @@ dir_is_effectively_empty_ignoring_ds_store() {
 
 cleanup_pending_entries() {
   [ -f "$pending_file" ] || return 0
+  acquire_pending_lock || return 0
   local tmp
   tmp="$(mktemp -t pick_session_pending.XXXXXX)"
   cp "$pending_file" "$tmp"
@@ -136,6 +154,7 @@ cleanup_pending_entries() {
     fi
   done
   mv -f "$tmp" "$pending_file"
+  release_pending_lock
 }
 
 kill_sessions_under_prefixes() {

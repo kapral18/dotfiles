@@ -17,8 +17,13 @@ if [ -z "$cmd_file" ] || [ ! -f "$cmd_file" ]; then
   exit 0
 fi
 
+# `sel_file` is the per-picker PID-scoped snapshot from the picker's `ctrl-s`
+# binding. Owning its lifecycle here (instead of leaving it for the picker's
+# EXIT trap to clean up) makes the lifetime obvious and survives the picker
+# being killed while the send dispatch is in flight.
+trap 'rm -f "$sel_file" "$cmd_file" 2>/dev/null || true' EXIT
+
 cmd="$(cat "$cmd_file" 2> /dev/null || true)"
-rm -f "$cmd_file" 2> /dev/null || true
 
 if [ -z "$cmd" ]; then
   exit 0

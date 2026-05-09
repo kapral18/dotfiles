@@ -79,4 +79,4 @@ yarn kbn bootstrap
   done
 ) &
 
-yarn es snapshot -E node.name=main -E http.port=9201 -E transport.port=9301 -E discovery.type=single-node -E path.data="$ES_DATA_PATH"${ES_FLAGS} 2>&1 | tee -a "$LOGFILE"
+yarn es snapshot --kibana-url=http://kibana-main.local:5602 -E node.name=main -E http.port=9201 -E transport.port=9301 -E discovery.type=single-node -E path.data="$ES_DATA_PATH"${ES_FLAGS} 2>&1 | tee -a "$LOGFILE"

@@ -11,7 +11,20 @@
 # Usage: gh_picker.sh [--mode work|home]
 set -euo pipefail
 
+# `_gh_picker_pid_scoped_files` is filled with the per-picker mktemp paths
+# below. We clean them up on EXIT so two concurrent gh-picker instances
+# (popup races, stray invocations) don't trample each other's state and so
+# we don't leave hundreds of stale `.$$.tsv` files in the cache dir.
+_gh_picker_pid_scoped_files=()
+_gh_picker_cleanup_pid_scoped() {
+  local _f
+  for _f in "${_gh_picker_pid_scoped_files[@]+"${_gh_picker_pid_scoped_files[@]}"}"; do
+    [ -n "$_f" ] || continue
+    rm -f "$_f" 2> /dev/null || true
+  done
+}
 trap 'exit 0' INT HUP TERM
+trap '_gh_picker_cleanup_pid_scoped' EXIT
 
 die() {
   if [ -n "${TMUX:-}" ]; then
@@ -48,14 +61,24 @@ comment_cmd="$script_dir/gh_comment.sh"
 batch_wt_cmd="$script_dir/gh_batch_worktree.sh"
 help_cmd="$script_dir/keyhelp.sh"
 preview_warm_cmd="$script_dir/lib/gh_preview_warm.sh"
+enter_helper="$script_dir/lib/gh_picker_enter.sh"
+ctrl_t_helper="$script_dir/lib/gh_picker_ctrl_t.sh"
 
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 mkdir -p "$cache_dir" 2> /dev/null || true
-primary_tmp="${cache_dir}/gh_picker_primary.tsv"
-action_flag="${cache_dir}/gh_picker_action"
-multi_tmp="${cache_dir}/gh_picker_multi.tsv"
-expand_flag="${cache_dir}/gh_preview_expand"
-help_flag="${cache_dir}/gh_picker_help"
+# Per-picker state is PID-scoped so concurrent picker instances don't fight
+# over a shared file. ctrl-t / enter:transform mint their own per-binding
+# mktemp snapshots from `{+f}` (see gh_picker_ctrl_t.sh / gh_picker_enter.sh)
+# so the previous shared `gh_picker_multi.tsv` is no longer needed.
+primary_tmp="${cache_dir}/gh_picker_primary.$$.tsv"
+action_flag="${cache_dir}/gh_picker_action.$$"
+expand_flag="${cache_dir}/gh_preview_expand.$$"
+help_flag="${cache_dir}/gh_picker_help.$$"
+_gh_picker_pid_scoped_files+=("$primary_tmp" "$action_flag" "$expand_flag" "$help_flag")
+# port_file is read by background tools (gh_batch_worktree etc.) keyed off the
+# active picker; keeping it shared is intentional. mode_flag_file is also
+# shared because the batch worktree creator reads "what mode are we in" to
+# decide which cache file to patch.
 port_file="${cache_dir}/gh_picker_port"
 pin_file="${cache_dir}/gh_picker_pin"
 pick_session_pin_file="${cache_dir}/pick_session_pin"
@@ -69,7 +92,7 @@ fzf_color="prompt:111,query:223,input-bg:-1,input-fg:252,ghost:240,header:244,sp
 mode_flag_file="${cache_dir}/gh_picker_mode"
 printf '%s' "$mode" > "$mode_flag_file"
 
-rm -f "$primary_tmp" "$action_flag" "$help_flag" "$multi_tmp" "$ralph_pin_file" 2> /dev/null || true
+rm -f "$primary_tmp" "$action_flag" "$help_flag" "$ralph_pin_file" 2> /dev/null || true
 printf '0' > "$expand_flag"
 
 toggle_cmd="$script_dir/lib/gh_picker_toggle.sh"
@@ -134,7 +157,7 @@ pick="$(
     --bind "alt-o:execute-silent($action_cmd open {2} {3} {4} {5})" \
     --bind "alt-y:execute-silent(printf '%s\n' {+} | cut -f5 | grep -E '^https?://' | pbcopy 2>/dev/null || printf '%s\n' {+} | cut -f5 | grep -E '^https?://' | xclip -sel clip 2>/dev/null)" \
     --bind "alt-space:toggle" \
-    --bind "ctrl-t:execute(awk -F $'\\t' '\$2 != \"header\"' {+f} > $(printf %q "$multi_tmp"); $batch_wt_cmd $(printf %q "$multi_tmp"))+deselect-all+refresh-preview" \
+    --bind "ctrl-t:execute($(printf %q "$ctrl_t_helper") {+f} $(printf %q "$batch_wt_cmd"))+deselect-all+refresh-preview" \
     --bind "alt-e:execute-silent(m=\$(cat $(printf %q "$expand_flag") 2>/dev/null || echo 0); m=\$(( (m + 1) %% 3 )); printf '%s' \"\$m\" > $(printf %q "$expand_flag"))+refresh-preview" \
     --bind "alt-c:execute($comment_cmd new {2} {3} {4})+refresh-preview" \
     --bind "alt-r:execute($comment_cmd reply {2} {3} {4})+refresh-preview" \
@@ -148,7 +171,7 @@ pick="$(
     --bind "ctrl-/:toggle-preview" \
     --bind "?:execute-silent(if [ -f $(printf %q "$help_flag") ]; then rm -f $(printf %q "$help_flag"); else touch $(printf %q "$help_flag"); fi)+refresh-preview" \
     --bind "change:first" \
-    --bind "enter:transform:if [ {2} = header ]; then echo 'down'; else echo 'accept'; fi" \
+    --bind "enter:transform:$(printf %q "$enter_helper") {2} {+f} $(printf %q "$batch_wt_cmd")" \
     --bind "alt-b:execute-silent(printf octo > $(printf %q "$action_flag"))+accept" \
     || true
 )"
@@ -187,5 +210,5 @@ case "$kind" in
     ;;
 esac
 
-rm -f "$primary_tmp" "$action_flag" "$expand_flag" "$help_flag" "$multi_tmp" 2> /dev/null || true
+rm -f "$primary_tmp" "$action_flag" "$expand_flag" "$help_flag" 2> /dev/null || true
 rm -f "$port_file" 2> /dev/null || true

@@ -203,7 +203,11 @@ _remove_worktree_tmux_session() {
 Removing TMUX Session: ${session_names[*]:-}
 "
     fi
-    for session_name in "${session_names[@]}"; do
+    # Guard against bash 3.2 (default `/bin/bash` on macOS) treating an empty
+    # array expansion as an unbound variable under `set -u`. Direct callers
+    # like `,w remove` source this lib without a bash 4+ re-exec, so we hit
+    # this branch when no matching tmux sessions exist for the path.
+    for session_name in "${session_names[@]+"${session_names[@]}"}"; do
       _comma_w_tmux kill-session -t "$session_name" 2> /dev/null || true
     done
   fi
