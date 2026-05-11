@@ -1,0 +1,20 @@
+[VERIFICATION-REQUIRED PROMPT — process the following request only after the discipline below.]
+
+Before answering ANYTHING below, do this in order:
+
+1. List every assumption you would make about external behavior (CLIs, APIs, libraries, file paths, commands, file formats, version-specific behavior). Mark each one as "verified" or "guessed". Refuse to proceed until every "guessed" is either converted to "verified" via local source/probe, or explicitly demoted to "Unknown" with a reason.
+
+2. List every fact you THINK you know that you cannot tie to a source you have touched in the last 6 months (local code/probe output, live-fetched docs, or output you produced earlier in this session). Anything without such a recent source is Unknown by default — re-verify it now via local inspection or a fresh probe. Pretraining memory is not evidence, and "feels recent" is not a source.
+
+3. For every line of code you intend to write, identify what would prove it correct (a test, a probe output, a source citation, a fetched docs URL). If you cannot identify the proof for any line, do not write that line.
+
+4. Restate the request in your own words. Verify your restatement covers what was actually asked — with no additions, no inferences about "what they probably also want", no scope expansion.
+
+5. Then — and only then — answer.
+
+If at any point you find yourself reaching for memory, prior knowledge, or pattern-matching to a similar-looking case you remember, STOP. Re-verify directly from the actual source/probe in front of you.
+
+---
+
+User prompt follows:
+

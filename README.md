@@ -165,6 +165,9 @@ Custom commands are shipped as scripts installed to `~/bin` (source: `home/exact
 - **Name:** `,add-patch-to-prs`
   - **Description:** Apply one patch file onto one or more PR branches (explicit PR numbers or picker-driven selection), then commit and push.
   - **Examples:** `,add-patch-to-prs ./fix.patch 12345 12346`; `,add-patch-to-prs ./fix.patch --search "is:open author:@me"`; `,add-patch-to-prs ./fix.patch --message "Apply follow-up fix"`
+- **Name:** `,agent-memory`
+  - **Description:** Inspect or wipe the selected `/tmp/specs` hook memory topic for the current workspace.
+  - **Examples:** `,agent-memory status`; `,agent-memory wipe-current --dry-run`; `,agent-memory wipe-current --reset-active`
 - **Name:** `,appid`
   - **Description:** Print the bundle identifier for a macOS app name/path (useful for scripting macOS automation).
   - **Examples:** `,appid "Google Chrome"`; `,appid "Safari"`

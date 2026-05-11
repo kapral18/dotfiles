@@ -9,7 +9,9 @@ Or directly:
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
+import io
 import json
 import os
 import sqlite3
@@ -52,6 +54,66 @@ class TestYamlParser(unittest.TestCase):
         assert parse_scalar('"hello"') == "hello"
         assert parse_scalar("'world'") == "world"
         assert parse_scalar("bare") == "bare"
+
+
+class TestAgentMemory(unittest.TestCase):
+    """WHEN wiping hook memory for a workspace."""
+
+    def test_wipe_current_deletes_explicit_active_topic_files(self):
+        sys.path.insert(0, str(SCRIPTS))
+        import agent_memory
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
+            old_spec_root = agent_memory.SPEC_ROOT
+            agent_memory.SPEC_ROOT = Path(spec_root)
+            try:
+                workspace = Path(tmp).resolve()
+                spec_dir = agent_memory.spec_dir_for(workspace)
+                spec_dir.mkdir(parents=True)
+                (spec_dir / "_active_topic.txt").write_text("review-123\n")
+                (spec_dir / "review-123.txt").write_text("spec")
+                (spec_dir / "review-123.worklog.jsonl").write_text("{}\n")
+                (spec_dir / "other.txt").write_text("keep")
+
+                with contextlib.redirect_stdout(io.StringIO()):
+                    assert agent_memory.main(["wipe-current", "--workspace", str(workspace)]) == 0
+
+                assert not (spec_dir / "review-123.txt").exists()
+                assert not (spec_dir / "review-123.worklog.jsonl").exists()
+                assert (spec_dir / "other.txt").exists()
+                assert (spec_dir / "_active_topic.txt").exists()
+            finally:
+                agent_memory.SPEC_ROOT = old_spec_root
+
+    def test_wipe_current_prefers_latest_session_topic_on_default_branch(self):
+        sys.path.insert(0, str(SCRIPTS))
+        import agent_memory
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
+            old_spec_root = agent_memory.SPEC_ROOT
+            agent_memory.SPEC_ROOT = Path(spec_root)
+            try:
+                subprocess.run(["git", "init", "-q", "-b", "main"], cwd=tmp, check=True)
+                workspace = Path(tmp).resolve()
+                spec_dir = agent_memory.spec_dir_for(workspace)
+                spec_dir.mkdir(parents=True)
+                older = spec_dir / "session-old.worklog.jsonl"
+                newer = spec_dir / "session-new.worklog.jsonl"
+                older.write_text("old\n")
+                newer.write_text("new\n")
+                now = time.time()
+                os.utime(older, (now - 10, now - 10))
+                os.utime(newer, (now, now))
+                (spec_dir / "current.worklog.jsonl").write_text("keep\n")
+
+                with contextlib.redirect_stdout(io.StringIO()):
+                    assert agent_memory.main(["wipe-current", "--workspace", str(workspace)]) == 0
+
+                assert older.exists()
+                assert not newer.exists()
+                assert (spec_dir / "current.worklog.jsonl").exists()
+            finally:
+                agent_memory.SPEC_ROOT = old_spec_root
 
 
 class TestMcpRegistry(unittest.TestCase):

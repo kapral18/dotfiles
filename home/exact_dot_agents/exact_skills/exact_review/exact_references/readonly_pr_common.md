@@ -68,6 +68,8 @@ Where to comment:
 - Default: inline on a relevant diff line/range in the PR.
 - File-scoped concerns: prefer a file-level comment (`subject_type=file`).
 - If you are replying in an existing thread, use the reply mode of PR fix.
+- Do not replace inline feedback with a PR-level summary body.
+- Only use file-level or PR-level placement when no reliable inline anchor exists, or when the user explicitly asks for non-inline placement.
 
 ## Anchoring Constraints (Only If Posting Is Requested)
 

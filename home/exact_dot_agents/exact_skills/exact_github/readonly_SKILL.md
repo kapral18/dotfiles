@@ -77,6 +77,8 @@ PR review side effects (draft / pending reviews):
 > 3. If `event` is present, **remove it** before sending.
 > 4. Only add `event` in a **separate** submit call after the user explicitly
 >    asks to publish.
+> 5. For code-review feedback, default to inline anchored `comments[]` (not body-only summary), unless the user explicitly asks for PR-level summary feedback.
+> 6. In `body` and each inline comment body, any code/file/symbol reference must be a clickable source link (exact file + line/range on PR head SHA), not plain text.
 
 - Definition: a "pending review" is a PR review whose API `state` is `PENDING`. It is visible only to the reviewer who created it until submission (COMMENT/APPROVE/REQUEST_CHANGES), and it does not appear to the PR author as posted review comments while pending.
 - Creating a PENDING (draft) PR review requires the reviews API. Omit `event` in: `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews`

@@ -182,9 +182,56 @@ command -v agent
 agent --help
 ```
 
+#### Cursor CLI hooks
+
+Cursor CLI is the primary interactive assistant harness. User-level hooks are installed from [`home/dot_cursor/hooks.json`](../../../../home/dot_cursor/hooks.json) to `~/.cursor/hooks.json` and call shared scripts deployed from [`home/exact_dot_agents/exact_hooks/`](../../../../home/exact_dot_agents/exact_hooks/) to `~/.agents/hooks/`.
+
+The hook layer is Cursor-native first:
+
+| Event                                                                                                         | Script                | Purpose                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------- |
+| `sessionStart`                                                                                                | `session_context.py`  | Inject the active `/tmp/specs` topic spec plus recent worklog tail when present                          |
+| `afterShellExecution`, `postToolUse`, `postToolUseFailure`, `afterFileEdit`                                   | `worklog_recorder.py` | Append compact per-topic JSONL worklog entries                                                           |
+| `afterAgentThought`, `afterAgentResponse`, `afterShellExecution`, `postToolUse`, `postToolUseFailure`, `stop` | `evidence_anchor.py`  | Maintain a turn-level claim/evidence ledger, log hook decisions, and retry when claims remain unresolved |
+
+`evidence_anchor.py` is calibrated to the SOP's `External Truth` rule. A factual, setup, state, or behavior claim is considered resolved only when the visible claim unit includes a hard source anchor (for example a file path, command/probe output, test result, or freshly fetched docs URL) or explicitly demotes the claim to `Unknown` with a reason. Words like "verified" are not enough by themselves. Claims made in model thoughts are tracked, and later tool/probe events are logged as evidence, but they do not globally clear every unresolved claim. A final visible response must carry anchors for its claim units, otherwise the `stop` hook issues a bounded follow-up.
+
+Runtime state is intentionally outside chezmoi and outside worktrees:
+
+```text
+/tmp/specs/<workspace-path-without-leading-slash>/_active_topic.txt
+/tmp/specs/<workspace-path-without-leading-slash>/<topic>.txt
+/tmp/specs/<workspace-path-without-leading-slash>/<topic>.worklog.jsonl
+/tmp/specs/<workspace-path-without-leading-slash>/<topic>.evidence_state.json
+/tmp/specs/<workspace-path-without-leading-slash>/<topic>.evidence_decisions.jsonl
+```
+
+This memory layer is bounded without injecting partial memory. Oversized topic specs are omitted with a pointer to the full file instead of being sliced into the prompt, and only whole recent worklog entries are included. Worklog and evidence-decision JSONL files are trimmed on write. Shared default-branch workspaces (`main`, `master`, `dev`, `develop`, `trunk`) use session-scoped topics when no explicit non-`current` topic is active, so unrelated sessions do not inherit the generic `current` memory. Feature/topic worktrees keep `current` continuity by default. Review topics also run in clean-room mode by default: startup context keeps neutral metadata but omits prior verified-facts, findings, verdicts, inline comments, and worklog tails so re-reviews are less biased by prior conclusions. To force a fully clean session, start the agent with `AGENT_HOOK_CONTEXT=0` or place a `_no_session_context` / `<topic>.no_context` sentinel under the workspace's `/tmp/specs/...` directory and remove it when context injection should resume.
+
+The user-facing dead switch is `,agent-memory`: `,agent-memory status` shows the selected workspace topic, and `,agent-memory wipe-current` deletes that topic's spec, worklog, evidence state, decision log, and no-context sentinel without touching other topics. On default branches without an explicit active topic, `wipe-current` targets the latest `session-*` topic. Fish completions are installed from `home/dot_config/fish/completions/readonly_,agent-memory.fish` for the subcommands, shared options, wipe flags, and existing topic names.
+
+Claude Code mirrors only the proven shared subset through [`home/dot_claude/settings.personal.json`](../../../../home/dot_claude/settings.personal.json) and [`home/dot_claude/settings.work.json`](../../../../home/dot_claude/settings.work.json): session context and tool worklog recording. The local llama.cpp settings file is intentionally excluded. Pi has no verified hook lifecycle, so it remains static-prompt only.
+
+Verification:
+
+```bash
+python3 scripts/tests/test_agent_hooks.py
+chezmoi diff --no-pager
+chezmoi apply --force --no-tty
+tmp=/tmp/cursor-hook-user-check
+mkdir -p "$tmp"
+rm -rf /tmp/specs/private/tmp/cursor-hook-user-check
+(cd "$tmp" && cursor-agent -p --output-format json --force \
+  "Use your shell tool to run exactly: printf deployed_cursor_hook_ok. Then reply done.")
+python3 - <<'PY'
+from pathlib import Path
+print(Path('/tmp/specs/private/tmp/cursor-hook-user-check/current.worklog.jsonl').read_text())
+PY
+```
+
 ### AI knowledge base (`,ai-kb`)
 
-`,ai-kb` is the durable memory layer Ralph reads from and writes to. Capsules are markdown sidecars under `~/.local/share/ai-kb/capsules/<id>.md` (canonical content) plus an indexed SQLite mirror at `kb.db` for retrieval. Schema is breaking by policy: when [`scripts/ai_kb.py::CAPSULE_COLUMNS`](../../../../scripts/ai_kb.py) drifts from the on-disk shape, `init()` drops `capsules`/`capsule_fts`/`kb_meta` and recreates them — markdown sidecars survive so a curator (`,ai-kb ingest`) can re-hydrate.
+`,ai-kb` is the durable memory layer Ralph reads from and writes to. Capsules are markdown sidecars under `~/.local/share/ai-kb/capsules/<id>.md` (canonical content) plus an indexed SQLite mirror at `~/.local/share/ai-kb/kb.sqlite3` for retrieval. Schema is breaking by policy: when [`scripts/ai_kb.py::CAPSULE_COLUMNS`](../../../../scripts/ai_kb.py) drifts from the on-disk shape, `init()` drops `capsules`/`capsule_fts`/`kb_meta` and recreates them — markdown sidecars survive so a curator (`,ai-kb ingest`) can re-hydrate.
 
 Capsule shape:
 

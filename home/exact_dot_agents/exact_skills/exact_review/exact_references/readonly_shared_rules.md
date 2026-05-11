@@ -110,7 +110,7 @@ Use in every non-trivial review.
 - Do not talk about anchoring/tooling limitations ("can't anchor inline", "not in diff hunks").
 - Do not include meta like "draft/pending review" in the comment body unless the user explicitly wants that.
 - Avoid redundant "Ref:" links when the comment is already attached to the exact line.
-- If you need to reference nearby lines, include a deep link to the exact source location (PR head SHA for PRs).
+- In review comment bodies, whenever you reference code (file path, function, symbol, line/range, snippet location), use a clickable source link to the exact location on the PR head SHA; do not leave plain unlinked code/file references.
 - **Commit references must be clickable links, never bare hashes or inline code.** Use the full GitHub URL: `https://github.com/OWNER/REPO/commit/FULL_SHA` (or `/pull/NUM/commits/FULL_SHA` when referencing a PR commit). Resolve `OWNER/REPO` from the current repo and expand short hashes to full SHA before linking.
 - Use `suggestion` blocks only when confident the replacement matches the exact anchored line(s).
 
