@@ -68,6 +68,7 @@ Current file map:
 - Session picker popup: `prefix` + `T`
 - Command palette popup: `prefix` + `r` (`\,tmux-run-all`)
 - GitHub picker popup: `prefix` + `G` (fzf PR/issue picker, standalone config; `alt-g` switches to/from session picker; `ctrl-s` switches work/home; `?` help)
+- Agent prompt wrap: `Alt-Enter` (submits prompt with verification scaffold), `prefix` + `W` (toggle on/off)
 
 For details:
 

@@ -203,6 +203,12 @@ Examples:
 | `,start-feat-kbn` | Boot ES (snapshot) and start Kibana in a tmux pane when bootstrap completes (feature cluster) |
 | `,start-main-kbn` | Same as above for the "main" cluster defaults/ports                                           |
 
+### AI / Agent helpers
+
+| Command             | Description                                                                                                |
+| ------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `,agent-memory`     | Inspect or wipe the selected `/tmp/specs` hook memory topic for the current workspace                      |
+
 ### Utility helpers
 
 | Command             | Description                                                                                                |

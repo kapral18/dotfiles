@@ -137,6 +137,8 @@ When drafting PR thread replies:
 - Default: reply directly; do not quote when the whole parent comment is the reference.
 - If you need to point at a specific fragment, use a minimal blockquote (`> ...`) and then reply.
 - A closing prompt like `Wdyt` is optional, not mandatory. Use it only when it fits the tone of the specific comment.
+- Default to inline anchored comments for code-review feedback (not PR-level summary bodies) unless explicitly requested.
+- Any code/file/symbol reference in a comment body must be a clickable source link to the exact location on the PR head SHA.
 
 ## Reviews: Router Behavior
 
@@ -228,6 +230,17 @@ from pathlib import Path
 print(Path('/tmp/specs/private/tmp/cursor-hook-user-check/current.worklog.jsonl').read_text())
 PY
 ```
+
+#### Tmux agent prompt wrap
+
+When running an AI coding agent (`claude`, `cursor-agent`, or `pi`) inside tmux, `Alt-Enter` is intercepted to prepend a calibrated verification scaffold to your prompt before submitting.
+
+- **Binding:** `Alt-Enter` (submits the wrapped prompt)
+- **Toggle:** `prefix` + `W` (toggles wrapping on/off for the session)
+- **Prefix text:** [`home/dot_config/exact_tmux/agent_prompts/prefix.txt`](../../../../home/dot_config/exact_tmux/agent_prompts/prefix.txt)
+
+Plain `Enter` is never touched. `Alt-Enter` is passed through untouched in non-agent panes or when the toggle is OFF.
+
 
 ### AI knowledge base (`,ai-kb`)
 
