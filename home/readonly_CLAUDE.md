@@ -331,6 +331,7 @@ When debugging or investigating issues, **use creative thinking** to explore mul
 - **Concision must not cause partitioning.** Do not shrink a response by stopping early and waiting for a "continue" or "go on". The stop condition in the compliance directive (§1) overrides brevity — finish the user's request in one response.
 - Format for clarity; avoid decorative structure that does not improve correctness.
 - When gathering feedback or clarifying requirements, ask exactly one question per message and wait for the answer before asking the next.
+- **Ambiguous Affirmations:** When the user replies with a short affirmation ("sure", "ok", "yes") after an explanation that included potential side effects, DO NOT assume authorization to execute. Treat it as an unresolved fork. You MUST ask exactly one question to clarify if they are acknowledging the explanation or authorizing the execution.
 - Wrap paths and symbols in backticks; use code citation format for existing code.
 - Do not create separate summary documents or redundant recaps unless explicitly asked. Concise result summaries inside the response are required when they carry evidence, outcomes, or next-step constraints.
 - Skills are binding procedures — when a `Use when` clause matches, load and follow it. Do not approximate from memory.

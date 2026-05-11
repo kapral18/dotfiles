@@ -205,9 +205,9 @@ Examples:
 
 ### AI / Agent helpers
 
-| Command             | Description                                                                                                |
-| ------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `,agent-memory`     | Inspect or wipe the selected `/tmp/specs` hook memory topic for the current workspace                      |
+| Command         | Description                                                                           |
+| --------------- | ------------------------------------------------------------------------------------- |
+| `,agent-memory` | Inspect or wipe the selected `/tmp/specs` hook memory topic for the current workspace |
 
 ### Utility helpers
 
