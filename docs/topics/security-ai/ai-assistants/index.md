@@ -480,7 +480,7 @@ Source: [`home/dot_gemini/settings.json`](../../../../home/dot_gemini/settings.j
 
 ### Pi coding agent settings
 
-**Installation:** Pi globals are installed via npm from [`home/readonly_dot_default-npm-pkgs`](../../../../home/readonly_dot_default-npm-pkgs) → `~/.default-npm-pkgs`:
+**Installation:** Pi globals are installed via yarn from [`home/readonly_dot_default-yarn-pkgs`](../../../../home/readonly_dot_default-yarn-pkgs) → `~/.default-yarn-pkgs`:
 
 | Package                         | Purpose               |
 | ------------------------------- | --------------------- |
@@ -508,7 +508,7 @@ Work profile also exposes additional configured models alongside the Google dire
 
 - Automatic context compaction (saves tokens)
 - Exponential backoff retries
-- `npm:pi-mcp-adapter` extension auto-installed (kept in npm convergence list)
+- `yarn:pi-mcp-adapter` extension auto-installed (kept in yarn convergence list)
 - Secrets (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`) are picked up from environment variables exported via `pass` in `config.fish.tmpl`
 
 #### LiteLLM integration (work profile)

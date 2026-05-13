@@ -6,7 +6,7 @@ set -euo pipefail
 # {{ include "readonly_dot_tool-versions.tmpl" | sha256sum }}
 # {{ include "asdf_plugins.tmpl" | sha256sum }}
 
-# This script installs npm packages from the default-npm-pkgs file
-# {{ include "readonly_dot_default-npm-pkgs" | sha256sum }}
+# This script installs yarn packages from the default-yarn-pkgs file
+# {{ include "readonly_dot_default-yarn-pkgs" | sha256sum }}
 
-{{ joinPath .chezmoi.homeDir "bin" ",install-npm-pkgs" | quote }}
+{{ joinPath .chezmoi.homeDir "bin" ",install-yarn-pkgs" | quote }}

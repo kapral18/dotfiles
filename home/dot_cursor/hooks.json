@@ -49,17 +49,23 @@
         "timeout": 10
       }
     ],
-    "afterAgentThought": [
-      {
-        "command": "$HOME/.agents/hooks/evidence_anchor.py",
-        "timeout": 10
-      }
-    ],
     "stop": [
       {
         "command": "$HOME/.agents/hooks/evidence_anchor.py",
         "timeout": 10,
         "loop_limit": 2
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "$HOME/.agents/hooks/gemini-pr-anchor-gate.sh",
+        "matcher": "gh\\s+api.*pulls/.*/(reviews|comments)",
+        "failClosed": true
+      },
+      {
+        "command": "$HOME/.agents/hooks/gemini-git-gate.sh",
+        "matcher": "git\\s+(commit|push)",
+        "failClosed": true
       }
     ]
   }

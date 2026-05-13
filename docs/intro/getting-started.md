@@ -62,7 +62,7 @@ This setup uses `chezmoi` hooks under [`home/.chezmoiscripts/`](../../home/.chez
 | `run_onchange_after_03-install-brew-packages.fish.tmpl` | Brew bundle install + cleanup                         |
 | `run_onchange_after_04-update-fish-packages.fish.tmpl`  | Fish packages update                                  |
 
-There are also hooks that manage language/tool versions and global packages (ASDF, cargo, go, gems, npm, uv) and some macOS preferences.
+There are also hooks that manage language/tool versions and global packages (ASDF, cargo, go, gems, yarn, uv) and some macOS preferences.
 
 ## Work vs Personal Machines
 

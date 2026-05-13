@@ -130,10 +130,10 @@ Examples:
 - Source: [`home/exact_bin/executable_,pull-rebase`](../../../home/exact_bin/executable_,pull-rebase)
 - Behavior: resolves branch upstream and runs `git pull --rebase` with a confirmation prompt.
 
-### Re-converge npm globals: `,install-npm-pkgs`
+### Re-converge yarn globals: `,install-yarn-pkgs`
 
-- Source: [`home/exact_bin/executable_,install-npm-pkgs`](../../../home/exact_bin/executable_,install-npm-pkgs)
-- Input list: `~/.default-npm-pkgs` (rendered from [`home/readonly_dot_default-npm-pkgs`](../../../home/readonly_dot_default-npm-pkgs))
+- Source: [`home/exact_bin/executable_,install-yarn-pkgs`](../../../home/exact_bin/executable_,install-yarn-pkgs)
+- Input list: `~/.default-yarn-pkgs` (rendered from [`home/readonly_dot_default-yarn-pkgs`](../../../home/readonly_dot_default-yarn-pkgs))
 
 ### Apply icon mapping: `,apply-app-icons`
 
@@ -148,7 +148,7 @@ Examples:
 
 ```bash
 ,tmux-run-all "work-*" "git status"
-,tmux-run-all --all "work-*" "npm run test -- --watch=false"
+,tmux-run-all --all "work-*" "yarn run test -- --watch=false"
 ```
 
 ### Start/control lowfi in tmux: `,tmux-lowfi`
@@ -253,5 +253,5 @@ If commands are missing after apply, verify:
 
 - Worktree workflow: [`docs/recipes/worktree-workflow.md`](git-identity/worktrees.md)
 - Apply custom app icons: [`docs/recipes/apply-custom-app-icons.md`](../macos/custom-app-icons.md)
-- Add a global npm package: [`docs/recipes/add-a-global-npm-package.md`](../core/packages/npm.md)
+- Add a global yarn package: [`docs/recipes/add-a-global-yarn-package.md`](../core/packages/yarn.md)
 - Reference map: [`docs/reference-map.md`](../../reference/reference-map.md)

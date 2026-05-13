@@ -103,10 +103,14 @@ def is_response_event(event: str) -> bool:
 
 
 def event_text(payload: dict) -> str:
-    for key in ("text", "thought", "message", "content"):
+    for key in ("text", "message", "content"):
         value = payload.get(key)
         if isinstance(value, str) and value.strip():
-            return value
+            import re as _re
+
+            val = _re.sub(r"<thought>.*?</thought>", "", value, flags=_re.DOTALL | _re.IGNORECASE)
+            val = _re.sub(r"<think>.*?</think>", "", val, flags=_re.DOTALL | _re.IGNORECASE)
+            return val
     return ""
 
 
@@ -265,7 +269,7 @@ def stop(payload: dict) -> None:
 def main() -> None:
     payload = read_payload()
     event = str(payload.get("hook_event_name") or "")
-    if event in {"afterAgentResponse", "afterAgentThought", "AgentResponse", "AgentThought"}:
+    if event in {"afterAgentResponse", "AgentResponse"}:
         record_text_event(payload)
         return
     if event in {"afterShellExecution", "postToolUse", "postToolUseFailure"}:

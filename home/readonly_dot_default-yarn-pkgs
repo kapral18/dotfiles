@@ -19,6 +19,9 @@ pi-mcp-adapter
 # Description: Terminal-based AI coding assistant by Anthropic
 # URL: https://www.anthropic.com/claude-code
 @anthropic-ai/claude-code
+# Description: Terminal-based AI coding assistant by Google
+# URL: https://github.com/google-gemini/gemini-cli
+@google/gemini-cli
 # Description: Code generation and editing agent with read, bash, edit, write tools and session management
 # URL: https://github.com/remorses/playwriter
 playwriter

@@ -57,7 +57,7 @@ sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply kapral18
    - PGP cache TTL preference
 3. Applies all dotfiles, scripts, and configs
 4. Installs Homebrew packages
-5. Installs/updates language tools (ASDF, cargo, go, gems, npm, uv)
+5. Installs/updates language tools (ASDF, cargo, go, gems, yarn, uv)
 6. Installs GitHub CLI extensions and manual packages (GitHub releases / DMGs)
 7. Applies macOS system preferences and other automation hooks
 
@@ -237,9 +237,9 @@ Custom commands are shipped as scripts installed to `~/bin` (source: `home/exact
 - **Name:** `,history-sync`
   - **Description:** Merge local Fish history with a 1Password document and push the merged result back, so multiple machines stay in sync.
   - **Examples:** `,history-sync`; run `,history-sync` on each machine periodically
-- **Name:** `,install-npm-pkgs`
-  - **Description:** Install global npm packages listed in `home/readonly_dot_default-npm-pkgs` and re-shim via ASDF.
-  - **Examples:** update `home/readonly_dot_default-npm-pkgs` then run `,install-npm-pkgs`; run `,install-npm-pkgs` on a new machine
+- **Name:** `,install-yarn-pkgs`
+  - **Description:** Install global yarn packages listed in `home/readonly_dot_default-yarn-pkgs`.
+  - **Examples:** update `home/readonly_dot_default-yarn-pkgs` then run `,install-yarn-pkgs`; run `,install-yarn-pkgs` on a new machine
 - **Name:** `,jest-test-title-report`
   - **Description:** Compare Jest test titles between two worktrees and emit a CSV (useful for refactors/migrations and review diffs).
   - **Examples:** `,jest-test-title-report --before ~/work/repo/main --after ~/work/repo/feat --scope src/plugins/data --out /tmp/data-tests.csv`; `,jest-test-title-report --before ~/work/repo/main --after ~/work/repo/feat --scope src/plugins/data --out /tmp/data-tests.csv --gist`
@@ -269,7 +269,7 @@ Custom commands are shipped as scripts installed to `~/bin` (source: `home/exact
   - **Examples:** `,tmux-lowfi play`; `,tmux-lowfi next-tracklist`
 - **Name:** `,tmux-run-all`
   - **Description:** Run a command across multiple tmux sessions matching a pattern (optionally excluding a pattern).
-  - **Examples:** `,tmux-run-all "work-*" "git status"`; `,tmux-run-all --all "dev-*" "*test*" "npm test"`
+  - **Examples:** `,tmux-run-all "work-*" "git status"`; `,tmux-run-all --all "dev-*" "*test*" "yarn test"`
 - **Name:** `,to-gif`
   - **Description:** Convert a video clip to a GIF using an ffmpeg palette workflow (tunable duration/scale/fps).
   - **Examples:** `,to-gif -i in.mp4 -o out.gif`; `,to-gif -i in.mp4 -o out.gif -t 10 -s 900 -f 15`
@@ -542,7 +542,7 @@ Karabiner-Elements rules live in `home/dot_config/exact_private_karabiner/karabi
 | **Cargo**     | `home/readonly_dot_default-cargo-crates`         | Rust packages                |
 | **Go**        | `home/readonly_dot_default-golang-pkgs`          | Go tools                     |
 | **Gems**      | `home/readonly_dot_default-gems`                 | Ruby packages                |
-| **npm**       | `home/readonly_dot_default-npm-pkgs`             | Node.js globals              |
+| **yarn**      | `home/readonly_dot_default-yarn-pkgs`            | Node.js globals              |
 | **uv tools**  | `home/readonly_dot_default-uv-tools.tmpl`        | Python CLI tools             |
 | **uv python** | `home/readonly_dot_python-version`               | Python runtime versions      |
 | **Manual**    | `home/readonly_dot_default-manual-packages.tmpl` | DMGs + GitHub releases       |

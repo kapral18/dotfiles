@@ -38,7 +38,7 @@ This page answers two questions:
 | Cargo crates           | [`home/readonly_dot_default-cargo-crates`](../../home/readonly_dot_default-cargo-crates)                                                                         |
 | Go tools               | [`home/readonly_dot_default-golang-pkgs`](../../home/readonly_dot_default-golang-pkgs)                                                                           |
 | Ruby gems              | [`home/readonly_dot_default-gems`](../../home/readonly_dot_default-gems)                                                                                         |
-| Global npm             | [`home/readonly_dot_default-npm-pkgs`](../../home/readonly_dot_default-npm-pkgs)                                                                                 |
+| Global yarn            | [`home/readonly_dot_default-yarn-pkgs`](../../home/readonly_dot_default-yarn-pkgs)                                                                               |
 | uv tools               | [`home/readonly_dot_default-uv-tools.tmpl`](../../home/readonly_dot_default-uv-tools.tmpl)                                                                       |
 | uv python versions     | [`home/readonly_dot_python-version`](../../home/readonly_dot_python-version)                                                                                     |
 | Manual packages        | [`home/readonly_dot_default-manual-packages.tmpl`](../../home/readonly_dot_default-manual-packages.tmpl)                                                         |
@@ -97,7 +97,7 @@ This page answers two questions:
 | Setup pass managers         | [`home/.chezmoiscripts/run_once_after_05-setup-pass-managers.fish.tmpl`](../../home/.chezmoiscripts/run_once_after_05-setup-pass-managers.fish.tmpl) |
 | OpenCode                    | [`home/dot_config/opencode/`](../../home/dot_config/opencode/)                                                                                       |
 | Pi config                   | [`home/dot_pi/agent/`](../../home/dot_pi/agent/)                                                                                                     |
-| Pi CLI package list entry   | [`home/readonly_dot_default-npm-pkgs`](../../home/readonly_dot_default-npm-pkgs)                                                                     |
+| Pi CLI package list entry   | [`home/readonly_dot_default-yarn-pkgs`](../../home/readonly_dot_default-yarn-pkgs)                                                                   |
 | Claude Code                 | [`home/dot_claude/`](../../home/dot_claude/)                                                                                                         |
 | Codex                       | [`home/dot_codex/`](../../home/dot_codex/)                                                                                                           |
 | Gemini                      | [`home/dot_gemini/`](../../home/dot_gemini/)                                                                                                         |

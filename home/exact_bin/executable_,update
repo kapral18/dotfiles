@@ -40,7 +40,7 @@ Usage: ,update [options]
 Unified update orchestrator for the dotfiles ecosystem.
 Pulls dotfiles, updates all package managers, and reports what changed.
 
-Categories: dotfiles, brew, gh, asdf, cargo, npm, gems, go, uv, manual
+Categories: dotfiles, brew, gh, asdf, cargo, yarn, gems, go, uv, manual
 
 Options:
   -n, --dry-run       Show what would be updated without doing it
@@ -52,7 +52,7 @@ Options:
 Examples:
   ,update                     # Update everything
   ,update --dry-run           # Preview what would happen
-  ,update --only brew,npm     # Update only Homebrew and npm
+  ,update --only brew,yarn    # Update only Homebrew and yarn
   ,update --skip cargo,gems   # Update everything except cargo and gems
 EOF
 }
@@ -374,16 +374,16 @@ update_cargo() {
   fi
 }
 
-update_npm() {
-  should_run "npm" || return 0
-  section "npm global packages"
+update_yarn() {
+  should_run "yarn" || return 0
+  section "yarn global packages"
 
-  if ! has_cmd npm; then
-    step_skip "npm not installed"
+  if ! has_cmd yarn; then
+    step_skip "yarn not installed"
     return 0
   fi
 
-  run_timed "npm -g update" npm -g update || true
+  run_timed "yarn global upgrade" yarn global upgrade || true
 }
 
 update_gems() {
@@ -468,7 +468,7 @@ update_dotfiles
 
 # Phase 2: all package managers in parallel
 run_parallel update_brew update_gh update_asdf update_uv update_manual \
-  update_cargo update_npm update_gems update_go || true
+  update_cargo update_yarn update_gems update_go || true
 
 overall_end=$(date +%s)
 overall_elapsed=$((overall_end - overall_start))

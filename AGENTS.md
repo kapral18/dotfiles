@@ -38,14 +38,14 @@ When user requests to "add X" (app, package, cask, formula, or CLI tool), follow
 2. **Cargo** (`home/readonly_dot_default-cargo-crates`) — Rust packages
 3. **Go** (`home/readonly_dot_default-golang-pkgs`) — Go packages
 4. **Gems** (`home/readonly_dot_default-gems`) — Ruby packages
-5. **npm** (`home/readonly_dot_default-npm-pkgs`) — Node.js/JavaScript packages
+5. **yarn** (`home/readonly_dot_default-yarn-pkgs`) — Node.js/JavaScript packages
 6. **uv** (`home/readonly_dot_default-uv-tools.tmpl`) — Python tools/packages
 7. **Manual packages** (`home/readonly_dot_default-manual-packages.tmpl`) — DMGs + GitHub release CLI tools (installed by `home/.chezmoiscripts/run_onchange_after_05-install-manual-packages.sh.tmpl`)
 
 **Interpretation of the priority:**
 
 - Prefer Homebrew first, even when the available Homebrew formula/cask is a verified name variation or acceptable alternative for the requested tool.
-- Lower-priority package lists (`cargo`, `go`, `gems`, `npm`, `uv`, manual packages) are fallbacks only when Homebrew does not provide a suitable package.
+- Lower-priority package lists (`cargo`, `go`, `gems`, `yarn`, `uv`, manual packages) are fallbacks only when Homebrew does not provide a suitable package.
 - Do not drop to a lower-priority registry just because the exact upstream/repo slug is not the Homebrew formula name.
 
 **Workflow:**
@@ -61,7 +61,7 @@ When user requests to "add X" (app, package, cask, formula, or CLI tool), follow
    - **Cargo**: `cargo search <package> --limit 5` — for Rust packages
    - **Go**: `go get -u <import-path>` — search pkg.go.dev or verify from GitHub
    - **Gems**: `gem search <package>` — Ruby packages
-   - **npm**: `npm search <package>` — Node.js/JavaScript packages
+   - **yarn**: `yarn info <package>` — Node.js/JavaScript packages
    - **uv**: `uv pip search <package>` — Python tools
    - **Manual (.dmg)**: `read_web_page` to GitHub releases — macOS apps
 4. **Stop at the first suitable match in priority order** — add to that location only
@@ -102,7 +102,7 @@ When adding formulas or casks to Brewfile:
 - Prefer verification language; avoid adding "ask to confirm" patterns to this file.
 - **Search GitHub**: Look for official Homebrew taps (e.g., `owner/homebrew-tap`) in the project
 - **Verify locally**: Once you identify the formula/tap, test with `brew info <formula>` or `brew info <owner/tap>/<formula>` (works for both formulas and casks)
-- **Check variations before falling back**: use `brew search <term>` and verify reasonable candidate names before moving to Cargo/Go/Gems/npm/uv/manual packages
+- **Check variations before falling back**: use `brew search <term>` and verify reasonable candidate names before moving to Cargo/Go/Gems/yarn/uv/manual packages
 - **Validate registries**: Use `formulae.brew.sh` search as secondary verification
 - **Never invent** package names, URLs, or tap information — always verify against official sources first
 - **Correct sources**: homebrew-core (default, no tap needed), official project taps, or trusted community taps

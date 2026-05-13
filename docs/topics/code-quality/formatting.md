@@ -1,6 +1,6 @@
 # Formatting
 
-This repo uses per-language formatters to keep source files consistent. No `package.json` or npm — formatters are installed via Homebrew, except `unwrap-md` which is a repo-provided script deployed to `~/bin/unwrap-md` via chezmoi.
+This repo uses per-language formatters to keep source files consistent. No `package.json` or yarn — formatters are installed via Homebrew, except `unwrap-md` which is a repo-provided script deployed to `~/bin/unwrap-md` via chezmoi.
 
 ## Quick start
 

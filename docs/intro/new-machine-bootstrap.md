@@ -42,7 +42,7 @@ chezmoi apply
 There are additional "converge" scripts for:
 
 - ASDF plugins and pinned versions
-- language tooling (cargo/go/gems/npm/uv)
+- language tooling (cargo/go/gems/yarn/uv)
 - GitHub CLI extensions
 - macOS defaults (`.osx.core` / `.osx.extra`)
 

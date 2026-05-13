@@ -38,5 +38,24 @@
   },
   "model": {
     "name": "gemini-3.1-pro-preview"
+  },
+  "hooks": {
+    "BeforeTool": [
+      {
+        "matcher": "run_shell_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.agents/hooks/gemini-git-gate.sh",
+            "timeout": 10000
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.agents/hooks/gemini-pr-anchor-gate.sh",
+            "timeout": 10000
+          }
+        ]
+      }
+    ]
   }
 }

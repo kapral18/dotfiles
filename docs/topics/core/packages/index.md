@@ -4,7 +4,7 @@ This setup treats package installation as declarative.
 
 That means:
 
-- you edit a list (Brewfile / cargo crates / go pkgs / gems / npm / uv tools)
+- you edit a list (Brewfile / cargo crates / go pkgs / gems / yarn / uv tools)
 - you run `chezmoi apply`
 - hooks install missing items and (in some systems) remove items no longer listed
 
@@ -23,7 +23,7 @@ The core workflow is:
 | Cargo           | [`home/readonly_dot_default-cargo-crates`](../../../../home/readonly_dot_default-cargo-crates)                 | `run_onchange_after_05-update-cargo-crates.sh.tmpl`     | No     |
 | Go              | [`home/readonly_dot_default-golang-pkgs`](../../../../home/readonly_dot_default-golang-pkgs)                   | `run_onchange_after_05-update-golang-pkgs.sh.tmpl`      | No     |
 | Ruby gems       | [`home/readonly_dot_default-gems`](../../../../home/readonly_dot_default-gems)                                 | `run_onchange_after_05-update-gems.sh.tmpl`             | No     |
-| npm             | [`home/readonly_dot_default-npm-pkgs`](../../../../home/readonly_dot_default-npm-pkgs)                         | `run_onchange_after_05-update-npm-pkgs.sh.tmpl`         | No     |
+| yarn            | [`home/readonly_dot_default-yarn-pkgs`](../../../../home/readonly_dot_default-yarn-pkgs)                       | `run_onchange_after_05-update-yarn-pkgs.sh.tmpl`        | No     |
 | uv tools        | [`home/readonly_dot_default-uv-tools.tmpl`](../../../../home/readonly_dot_default-uv-tools.tmpl)               | `run_onchange_after_06-update-uv-tools.sh.tmpl`         | Yes    |
 | gh extensions   | —                                                                                                              | `run_onchange_after_05-install-gh-extensions.fish.tmpl` | —      |
 | Manual (GitHub) | [`home/readonly_dot_default-manual-packages.tmpl`](../../../../home/readonly_dot_default-manual-packages.tmpl) | `run_onchange_after_05-install-manual-packages.sh.tmpl` | Yes    |
@@ -32,7 +32,7 @@ The core workflow is:
 
 ## Scope-aware package lists
 
-Some package sources are plain lists and apply everywhere (`cargo`, `npm`, `gems`, `go`). Others are templates and can branch on `chezmoi` data like `.isWork`.
+Some package sources are plain lists and apply everywhere (`cargo`, `yarn`, `gems`, `go`). Others are templates and can branch on `chezmoi` data like `.isWork`.
 
 Use template conditionals when a package should only exist on personal or work machines, for example:
 
@@ -46,7 +46,7 @@ In practice:
 
 - [`home/readonly_dot_Brewfile.tmpl`](../../../../home/readonly_dot_Brewfile.tmpl) supports personal/work scoping.
 - [`home/readonly_dot_default-uv-tools.tmpl`](../../../../home/readonly_dot_default-uv-tools.tmpl) supports personal/work scoping.
-- [`home/readonly_dot_default-cargo-crates`](../../../../home/readonly_dot_default-cargo-crates) and [`home/readonly_dot_default-npm-pkgs`](../../../../home/readonly_dot_default-npm-pkgs) are shared lists.
+- [`home/readonly_dot_default-cargo-crates`](../../../../home/readonly_dot_default-cargo-crates) and [`home/readonly_dot_default-yarn-pkgs`](../../../../home/readonly_dot_default-yarn-pkgs) are shared lists.
 
 ## Homebrew (Brewfile)
 
@@ -105,18 +105,18 @@ This hook installs missing tools and attempts to clean up unused packages.
 - Installed as: `~/.default-gems`
 - Hook: [`home/.chezmoiscripts/run_onchange_after_05-update-gems.sh.tmpl`](../../../../home/.chezmoiscripts/run_onchange_after_05-update-gems.sh.tmpl)
 
-## Global npm packages
+## Global yarn packages
 
-- List: [`home/readonly_dot_default-npm-pkgs`](../../../../home/readonly_dot_default-npm-pkgs)
-- Installed as: `~/.default-npm-pkgs`
-- Hook: [`home/.chezmoiscripts/run_onchange_after_05-update-npm-pkgs.sh.tmpl`](../../../../home/.chezmoiscripts/run_onchange_after_05-update-npm-pkgs.sh.tmpl)
-- Manual command: [`home/exact_bin/executable_,install-npm-pkgs`](../../../../home/exact_bin/executable_,install-npm-pkgs)
+- List: [`home/readonly_dot_default-yarn-pkgs`](../../../../home/readonly_dot_default-yarn-pkgs)
+- Installed as: `~/.default-yarn-pkgs`
+- Hook: [`home/.chezmoiscripts/run_onchange_after_05-update-yarn-pkgs.sh.tmpl`](../../../../home/.chezmoiscripts/run_onchange_after_05-update-yarn-pkgs.sh.tmpl)
+- Manual command: [`home/exact_bin/executable_,install-yarn-pkgs`](../../../../home/exact_bin/executable_,install-yarn-pkgs)
 
-The `,install-npm-pkgs` command installs packages in the list, uninstalls those no longer listed, and reshims `nodejs` in ASDF.
+The `,install-yarn-pkgs` command installs packages in the list and uninstalls those no longer listed.
 
-This list now includes some AI tooling that used to be managed elsewhere. Pi-related globals such as `@mariozechner/pi-coding-agent`, `@mariozechner/pi-tui`, and `pi-mcp-adapter` are kept here so npm convergence does not remove packages still referenced by Pi settings.
+This list now includes some AI tooling that used to be managed elsewhere. Pi-related globals such as `@mariozechner/pi-coding-agent`, `@mariozechner/pi-tui`, and `pi-mcp-adapter` are kept here so yarn convergence does not remove packages still referenced by Pi settings.
 
-If you do not want global npm packages, keep the list empty.
+If you do not want global yarn packages, keep the list empty.
 
 ## uv (Python versions + global tools)
 
@@ -169,7 +169,7 @@ High-signal checks:
 brew bundle check --global
 asdf current
 uv tool list
-npm --global --silent ls
+yarn global list
 ```
 
 If a package disappeared unexpectedly after apply:
@@ -186,7 +186,7 @@ If a package disappeared unexpectedly after apply:
 - Add a Cargo crate: [`docs/recipes/add-a-cargo-crate.md`](cargo.md)
 - Add a Go tool: [`docs/recipes/add-a-go-tool.md`](go.md)
 - Add a Ruby gem: [`docs/recipes/add-a-ruby-gem.md`](ruby.md)
-- Add a global npm package: [`docs/recipes/add-a-global-npm-package.md`](npm.md)
+- Add a global yarn package: [`docs/recipes/add-a-global-yarn-package.md`](yarn.md)
 - Add a uv tool: [`docs/recipes/add-a-uv-tool.md`](uv.md)
 - Add a GitHub CLI extension: [`docs/recipes/add-a-gh-extension.md`](../../workflow/git-identity/gh-extension.md)
 - Updating: [`docs/recipes/updating.md`](../chezmoi/update.md)
