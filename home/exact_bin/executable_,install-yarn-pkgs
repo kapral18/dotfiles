@@ -25,7 +25,10 @@ done <"$yarn_pkgs_file"
 yarn_global_dir=$(yarn global dir 2>/dev/null || true)
 installed_pkgs=()
 if [[ -n "$yarn_global_dir" && -f "$yarn_global_dir/package.json" ]]; then
-  mapfile -t installed_pkgs < <(jq -r '.dependencies // {} | keys[]' "$yarn_global_dir/package.json" 2>/dev/null || true)
+  while IFS= read -r pkg || [[ -n "$pkg" ]]; do
+    [[ -z "$pkg" ]] && continue
+    installed_pkgs+=("$pkg")
+  done < <(jq -r '.dependencies // {} | keys[]' "$yarn_global_dir/package.json" 2>/dev/null || true)
 fi
 
 # install yarn package.
@@ -61,7 +64,7 @@ done
 
 # Uninstall packages that are not in the desired list
 for pkg in "${installed_pkgs[@]:-}"; do
-  # Skip if empty (happens when mapfile reads empty output)
+  # Skip if empty (defensive guard for malformed metadata)
   [[ -z "$pkg" ]] && continue
 
   is_desired=false
