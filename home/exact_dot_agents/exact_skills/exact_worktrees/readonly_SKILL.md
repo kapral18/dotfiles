@@ -1,6 +1,6 @@
 ---
 name: worktrees
-description: Use when the user mentions ,w or asks to create/switch/open/list/prune/ remove worktrees, including checking out PRs/issues locally. Prefer ,w subcommands over raw git worktree.
+description: Use when the user mentions ,w or ,gh-worktree, or asks to create/switch/open/list/prune/remove worktrees, including checking out PRs/issues locally. Use ,gh-worktree for repo routing/bootstrap and ,w for in-repo worktree actions. Prefer ,w subcommands over raw git worktree.
 ---
 
 # ,w Worktree Skill (Worktrees + tmux)
@@ -8,10 +8,12 @@ description: Use when the user mentions ,w or asks to create/switch/open/list/pr
 Primary goal:
 
 - manage local git worktrees using the user's `,w` CLI instead of raw `git worktree` commands.
+- keep command boundaries explicit: `,gh-worktree` handles repo routing/bootstrap; `,w` handles worktree operations inside a resolved repo.
 
 Use this skill when:
 
 - the user mentions `,w`
+- the user mentions `,gh-worktree`
 - the user asks to create/switch/open/list/prune/remove worktrees
 - the user asks to check out a PR locally in a separate worktree
 
@@ -25,7 +27,10 @@ First actions:
 
 1. Resolve whether the user wants create, switch, list, prune, remove, or PR/ issue checkout.
 2. If the user says "current PR" or "current issue", resolve that identifier first via `,gh-prw` or `,gh-issuew`.
-3. Prefer the matching `,w` subcommand instead of building the flow from raw `git worktree` commands.
+3. Choose the entrypoint:
+   - if repo is already resolved/current and the ask is a direct worktree op -> use `,w`
+   - if the ask starts from GitHub repo + number and may require local repo resolution/bootstrap -> use `,gh-worktree`
+4. Prefer the matching `,w` subcommand instead of building the flow from raw `git worktree` commands.
 
 Non-negotiables:
 
@@ -34,6 +39,12 @@ Non-negotiables:
 - do not auto-focus/attach tmux sessions unless the user asked to focus/attach
 
 Common patterns:
+
+- Cross-repo GitHub entrypoint (shared with tmux/gh-dash flows):
+  - `,gh-worktree pr <owner/repo> <pr_number> [--focus] [--quiet]`
+  - `,gh-worktree issue <owner/repo> <issue_number> [--focus] [--quiet] [--branch <name>]`
+  - in non-interactive contexts, pass `--branch` for issue checkout
+  - use `--repo-path` when you already have a repo path hint from tooling output
 
 - Create a worktree for a PR (non-interactive):
   - `,w prs <pr_number>`

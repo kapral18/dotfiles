@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Action handler for the GitHub picker.
-# Resolves the local repo path and delegates to ,w for worktree creation.
+# Delegates repo bootstrap + worktree creation to ,gh-worktree.
 #
 # Usage: gh_action.sh <action> <kind> <repo_nwo> <number> <url>
 #
@@ -15,69 +15,6 @@ PATH="$HOME/bin:$PATH"
 die() {
   printf 'gh_action: %s\n' "$*" >&2
   exit 1
-}
-
-expand_tilde() {
-  local p="$1"
-  case "$p" in
-    "~") printf '%s\n' "$HOME" ;;
-    "~/"*) printf '%s\n' "$HOME/${p#~/}" ;;
-    *) printf '%s\n' "$p" ;;
-  esac
-}
-
-resolve_repo_path() {
-  local nwo="$1"
-  local owner="${nwo%%/*}"
-  local repo="${nwo#*/}"
-
-  local parent=""
-  if [ "$owner" = "elastic" ]; then
-    parent="$HOME/work"
-  else
-    parent="$HOME/code"
-  fi
-
-  local wrapper="$parent/$repo"
-  if [ -d "$wrapper" ]; then
-    for d in main master dev develop trunk; do
-      if [ -e "$wrapper/$d/.git" ]; then
-        printf '%s\n' "$wrapper/$d"
-        return 0
-      fi
-    done
-    if [ -e "$wrapper/.git" ]; then
-      printf '%s\n' "$wrapper"
-      return 0
-    fi
-    # Check any child that has .git
-    local child_git
-    for child_git in "$wrapper"/*/.git; do
-      [ -e "$child_git" ] || continue
-      printf '%s\n' "$(dirname "$child_git")"
-      return 0
-    done
-  fi
-
-  printf '%s\n' "$wrapper"
-}
-
-bootstrap_repo() {
-  local nwo="$1"
-  local owner="${nwo%%/*}"
-  local parent=""
-  if [ "$owner" = "elastic" ]; then
-    parent="$HOME/work"
-  else
-    parent="$HOME/code"
-  fi
-  mkdir -p "$parent"
-
-  if command -v ,gh-tfork > /dev/null 2>&1; then
-    (cd "$parent" && ,gh-tfork "$nwo") || die "failed to bootstrap $nwo via ,gh-tfork"
-  else
-    die "repo $nwo not found locally and ,gh-tfork not available"
-  fi
 }
 
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
@@ -112,28 +49,16 @@ case "$action" in
     exit 0
     ;;
   checkout | octo)
-    repo_path="$(resolve_repo_path "$repo_nwo")"
-    if [ ! -d "$repo_path" ] || [ ! -e "$repo_path/.git" ]; then
-      bootstrap_repo "$repo_nwo"
-      repo_path="$(resolve_repo_path "$repo_nwo")"
-    fi
-
-    if [ ! -d "$repo_path" ]; then
-      die "could not find repo at: $repo_path"
-    fi
-
-    cd "$repo_path"
-
     case "$kind" in
       pr)
-        if ,w prs --focus "$number"; then
+        if ,gh-worktree pr "$repo_nwo" "$number" --focus; then
           _mark_local_in_cache "pr" "$repo_nwo" "$number"
         elif [ -n "$url" ]; then
           open "$url" 2> /dev/null || xdg-open "$url" 2> /dev/null || true
         fi
         ;;
       issue)
-        ,w issue --focus "$number"
+        ,gh-worktree issue "$repo_nwo" "$number" --focus
         _mark_local_in_cache "issue" "$repo_nwo" "$number"
         ;;
       *)
@@ -143,8 +68,8 @@ case "$action" in
 
     if [ "$action" = "octo" ] && [ "$kind" = "pr" ]; then
       if command -v nvim > /dev/null 2>&1; then
-        wt_cwd="$(,w prs -q "$number" 2> /dev/null || true)"
-        [ -n "$wt_cwd" ] || wt_cwd="$(pwd)"
+        wt_cwd="$(,gh-worktree pr "$repo_nwo" "$number" --print-root 2> /dev/null || true)"
+        [ -n "$wt_cwd" ] || wt_cwd="$HOME"
         target_session="$(tmux display-message -p '#{client_session}' 2> /dev/null || true)"
         [ -n "$target_session" ] || target_session="$(tmux display-message -p '#{session_name}' 2> /dev/null || true)"
         fish_shell="${SHELL:-$(command -v fish 2> /dev/null || echo /bin/sh)}"

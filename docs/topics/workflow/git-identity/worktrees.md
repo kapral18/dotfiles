@@ -8,6 +8,7 @@ This setup ships a worktree helper command called `,w`.
 
 - Source: [`home/exact_bin/executable_,w`](../../../../home/exact_bin/executable_,w)
 - Helpers: [`home/exact_bin/utils/,w/`](../../../../home/exact_bin/utils/,w/)
+- GitHub flow wrapper: [`home/exact_bin/executable_,gh-worktree`](../../../../home/exact_bin/executable_,gh-worktree)
 
 The goal is to make branch isolation + review + context switching cheap.
 
@@ -159,11 +160,28 @@ The goal is to make branch isolation + review + context switching cheap.
 
 ## GitHub Picker Integration
 
-The fzf-based GitHub picker (`prefix` + `G`) connects directly to `,w` for worktree creation and session management.
+The fzf-based GitHub picker (`prefix` + `G`) calls `,gh-worktree` for repo/bootstrap routing, and `,gh-worktree` delegates to `,w` for worktree creation/session management.
+
+### Reusable GitHub worktree flow
+
+Use `,gh-worktree` when you want the same repo/bootstrap + worktree behavior outside tmux pickers (for example, from agentic sessions):
+
+```bash
+,gh-worktree pr elastic/kibana 12345 --focus
+,gh-worktree issue elastic/kibana 12345 --focus
+,gh-worktree issue elastic/kibana 12345 --branch chore/fix-widget
+,gh-worktree pr elastic/kibana 12345 --create-bg --quiet
+```
+
+- Resolves the local checkout root from a repo hint (`--repo-path`) or the conventional wrapper path.
+- Bootstraps missing repos with `,gh-tfork` unless `--no-bootstrap` is set.
+- Delegates PR/issue branch naming and worktree creation to `,w prs` / `,w issue`.
+- In non-interactive contexts, issue checkout requires `--branch` (otherwise `,w issue` would prompt for branch input).
+- Supports `--print-root` to return the resolved repo root without creating a worktree.
 
 PR shortcuts (inside the GitHub picker):
 
-- `enter` (no marks): create/switch to the PR worktree and focus its tmux session (`,w prs --focus`). Exits the picker.
+- `enter` (no marks): create/switch to the PR worktree and focus its tmux session via `,gh-worktree pr ... --focus`. Exits the picker.
 - `enter` (items marked): batch worktree creation for all marked items (same as `ctrl-t`). Stays in the picker.
 - `alt-b`: same as single enter plus open the PR in Octo review in a new tmux window.
 - `alt-o`: open the PR/issue in the browser.
@@ -172,7 +190,7 @@ PR shortcuts (inside the GitHub picker):
 
 Issue shortcuts:
 
-- `enter` (no marks): create/switch to the issue worktree and focus its tmux session (`,w issue --focus`). Presents an interactive branch name prompt if the worktree doesn't exist yet.
+- `enter` (no marks): create/switch to the issue worktree and focus its tmux session via `,gh-worktree issue ... --focus`. Presents an interactive branch name prompt if the worktree doesn't exist yet.
 
 Shared behavior:
 

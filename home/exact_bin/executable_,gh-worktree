@@ -1,0 +1,286 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PATH="$HOME/bin:$PATH"
+
+usage() {
+  cat <<'EOF'
+Usage: ,gh-worktree <pr|issue> <repo_nwo> <number> [options]
+
+Create/reuse local worktrees for GitHub PRs/issues via ,w, including repo
+bootstrap when the repository is missing locally.
+
+Options:
+  --repo-path <path>   Optional repo path hint (for gh-dash repoPaths mapping)
+  --focus              Focus the tmux session after checkout
+  --quiet              Pass quiet mode to ,w commands
+  --branch <name>      Issue mode only: branch base name passed to ,w issue -b
+  --create-bg          PR mode only: run checkout in background (no focus)
+  --print-root         Resolve/bootstrap repo and print root worktree path
+  --no-bootstrap       Fail if repo is missing (do not call ,gh-tfork)
+  -h, --help           Show this help
+EOF
+}
+
+die() {
+  printf ',gh-worktree: %s\n' "$*" >&2
+  exit 1
+}
+
+require_cmd() {
+  command -v "$1" > /dev/null 2>&1 || die "missing command: $1"
+}
+
+expand_tilde() {
+  local p="$1"
+  case "$p" in
+    "~") printf '%s\n' "$HOME" ;;
+    "~/"*) printf '%s\n' "$HOME/${p#~/}" ;;
+    *) printf '%s\n' "$p" ;;
+  esac
+}
+
+conventional_parent_for_repo() {
+  local repo_nwo="$1"
+  local owner="${repo_nwo%%/*}"
+  if [ "$owner" = "elastic" ]; then
+    printf '%s\n' "$HOME/work"
+  else
+    printf '%s\n' "$HOME/code"
+  fi
+}
+
+conventional_repo_wrapper_path() {
+  local repo_nwo="$1"
+  local parent repo
+  parent="$(conventional_parent_for_repo "$repo_nwo")"
+  repo="${repo_nwo##*/}"
+  printf '%s\n' "${parent}/${repo}"
+}
+
+resolve_repo_worktree() {
+  local p="$1"
+  local d child_git child common root
+  p="$(expand_tilde "$p")"
+  [ -n "$p" ] || return 1
+  cd "$p" 2> /dev/null || return 1
+
+  if [ -e ".git" ]; then
+    pwd -P
+    return 0
+  fi
+
+  for d in main master dev develop trunk; do
+    if [ -e "$d/.git" ]; then
+      cd "$d"
+      pwd -P
+      return 0
+    fi
+  done
+
+  # Fallback: discover root checkout from any child worktree, including
+  # default branch names outside the standard main/master/dev set.
+  for child_git in "$p"/*/.git "$p"/*/*/.git "$p"/*/*/*/.git; do
+    [ -e "$child_git" ] || continue
+    child="$(dirname "$child_git")"
+    common="$(git -C "$child" rev-parse --git-common-dir 2> /dev/null || true)"
+    [ -n "$common" ] || continue
+    case "$common" in
+      /*) ;;
+      *) common="$child/$common" ;;
+    esac
+    common="$(realpath "$common" 2> /dev/null || printf '%s' "$common")"
+    if [ "$(basename "$common")" = ".git" ]; then
+      root="$(dirname "$common")"
+      if [ -e "$root/.git" ]; then
+        printf '%s\n' "$root"
+        return 0
+      fi
+    fi
+  done
+
+  return 1
+}
+
+bootstrap_repo_with_tfork() {
+  local repo_nwo="$1"
+  local parent
+
+  require_cmd ,gh-tfork
+  parent="$(conventional_parent_for_repo "$repo_nwo")"
+  mkdir -p "$parent"
+  (
+    cd "$parent"
+    ,gh-tfork "$repo_nwo"
+  ) || die "failed to bootstrap missing repo via ,gh-tfork: $repo_nwo"
+}
+
+ensure_repo_worktree() {
+  local repo_nwo="$1"
+  local repo_path_hint="$2"
+  local allow_bootstrap="$3"
+  local wt="" conventional_path=""
+
+  if [ -n "$repo_path_hint" ] && wt="$(resolve_repo_worktree "$repo_path_hint" 2> /dev/null)"; then
+    printf '%s\n' "$wt"
+    return 0
+  fi
+
+  conventional_path="$(conventional_repo_wrapper_path "$repo_nwo")"
+  if wt="$(resolve_repo_worktree "$conventional_path" 2> /dev/null)"; then
+    printf '%s\n' "$wt"
+    return 0
+  fi
+
+  if [ "$allow_bootstrap" -ne 1 ]; then
+    die "repo not found locally: $repo_nwo"
+  fi
+
+  bootstrap_repo_with_tfork "$repo_nwo"
+
+  wt="$(resolve_repo_worktree "$conventional_path" 2> /dev/null || true)"
+  if [ -z "$wt" ] && [ -n "$repo_path_hint" ]; then
+    wt="$(resolve_repo_worktree "$repo_path_hint" 2> /dev/null || true)"
+  fi
+  [ -n "$wt" ] || die "could not find a git worktree under: $conventional_path"
+  printf '%s\n' "$wt"
+}
+
+kind="${1:-}"
+repo_nwo="${2:-}"
+number="${3:-}"
+
+if [ "$kind" = "-h" ] || [ "$kind" = "--help" ]; then
+  usage
+  exit 0
+fi
+
+shift $(( $# >= 3 ? 3 : $# ))
+
+if [ -z "$kind" ] || [ -z "$repo_nwo" ] || [ -z "$number" ]; then
+  usage >&2
+  exit 1
+fi
+
+case "$kind" in
+  pr | issue) ;;
+  *) die "kind must be 'pr' or 'issue' (got: $kind)" ;;
+esac
+
+case "$number" in
+  *[!0-9]* | "") die "invalid number: $number" ;;
+esac
+
+repo_path=""
+focus_mode=0
+quiet_mode=0
+create_bg=0
+print_root=0
+allow_bootstrap=1
+issue_branch=""
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --repo-path)
+      [ $# -ge 2 ] || die "missing value for --repo-path"
+      repo_path="$2"
+      shift 2
+      ;;
+    --focus)
+      focus_mode=1
+      shift
+      ;;
+    --quiet)
+      quiet_mode=1
+      shift
+      ;;
+    --branch)
+      [ $# -ge 2 ] || die "missing value for --branch"
+      issue_branch="$2"
+      shift 2
+      ;;
+    --create-bg)
+      create_bg=1
+      shift
+      ;;
+    --print-root)
+      print_root=1
+      shift
+      ;;
+    --no-bootstrap)
+      allow_bootstrap=0
+      shift
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *)
+      die "unknown option: $1"
+      ;;
+  esac
+done
+
+if [ "$kind" != "pr" ] && [ "$create_bg" -eq 1 ]; then
+  die "--create-bg is only valid for pr"
+fi
+
+if [ "$kind" != "issue" ] && [ -n "$issue_branch" ]; then
+  die "--branch is only valid for issue"
+fi
+
+if [ "$focus_mode" -eq 1 ] && [ "$create_bg" -eq 1 ]; then
+  die "--focus and --create-bg cannot be used together"
+fi
+
+if [ "$kind" = "issue" ] && [ -z "$issue_branch" ] && [ ! -t 0 ]; then
+  die "issue checkout is interactive when --branch is omitted; pass --branch for non-interactive use"
+fi
+
+wt="$(ensure_repo_worktree "$repo_nwo" "$repo_path" "$allow_bootstrap")"
+
+if [ "$print_root" -eq 1 ]; then
+  printf '%s\n' "$wt"
+  exit 0
+fi
+
+require_cmd ,w
+cd "$wt"
+
+case "$kind" in
+  pr)
+    if [ "$create_bg" -eq 1 ]; then
+      log_dir="${XDG_CACHE_HOME:-$HOME/.cache}/gh-dash"
+      mkdir -p "$log_dir"
+      log="${log_dir}/w_prs_${number}.log"
+      if [ "$quiet_mode" -eq 1 ]; then
+        nohup ,w prs -q "$number" > "$log" 2>&1 &
+      else
+        nohup ,w prs "$number" > "$log" 2>&1 &
+      fi
+      exit 0
+    fi
+
+    pr_args=()
+    if [ "$quiet_mode" -eq 1 ]; then
+      pr_args+=(-q)
+    fi
+    if [ "$focus_mode" -eq 1 ]; then
+      pr_args+=(--focus)
+    fi
+    ,w prs "${pr_args[@]+"${pr_args[@]}"}" "$number"
+    ;;
+  issue)
+    issue_args=()
+    if [ "$quiet_mode" -eq 1 ]; then
+      issue_args+=(-q)
+    fi
+    if [ "$focus_mode" -eq 1 ]; then
+      issue_args+=(--focus)
+    fi
+    if [ -n "$issue_branch" ]; then
+      issue_args+=(-b "$issue_branch")
+    fi
+    ,w issue "${issue_args[@]+"${issue_args[@]}"}" "$number"
+    ;;
+esac

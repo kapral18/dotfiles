@@ -86,38 +86,6 @@ while IFS=$'\t' read -r _display kind repo num _rest; do
   esac
 done < "$selection_file"
 
-resolve_repo_path() {
-  local nwo="$1"
-  local owner="${nwo%%/*}"
-  local repo="${nwo#*/}"
-  local parent=""
-  if [ "$owner" = "elastic" ]; then
-    parent="$HOME/work"
-  else
-    parent="$HOME/code"
-  fi
-  local wrapper="$parent/$repo"
-  if [ -d "$wrapper" ]; then
-    for d in main master dev develop trunk; do
-      if [ -e "$wrapper/$d/.git" ]; then
-        printf '%s\n' "$wrapper/$d"
-        return 0
-      fi
-    done
-    if [ -e "$wrapper/.git" ]; then
-      printf '%s\n' "$wrapper"
-      return 0
-    fi
-    local child_git
-    for child_git in "$wrapper"/*/.git; do
-      [ -e "$child_git" ] || continue
-      printf '%s\n' "$(dirname "$child_git")"
-      return 0
-    done
-  fi
-  printf '%s\n' "$wrapper"
-}
-
 issue_branches=()
 
 if [ "$background" -eq 0 ]; then
@@ -203,14 +171,12 @@ _patch_cache_entry() {
 
 _create_pr_worktree() {
   local repo="$1" num="$2"
-  local repo_path
-  repo_path="$(resolve_repo_path "$repo")"
-  if [ ! -d "$repo_path" ] || [ ! -e "$repo_path/.git" ]; then
-    printf 'SKIP PR #%s — repo not found: %s\n' "$num" "$repo_path"
+  if ! ,gh-worktree pr "$repo" "$num" --print-root --no-bootstrap > /dev/null 2>&1; then
+    printf 'SKIP PR #%s — repo not found locally: %s\n' "$num" "$repo"
     skipped=$((skipped + 1))
     return
   fi
-  if (cd "$repo_path" && ,w prs -q "$num") 2> /dev/null; then
+  if ,gh-worktree pr "$repo" "$num" --quiet --no-bootstrap 2> /dev/null; then
     printf 'OK   PR #%s (%s)\n' "$num" "$repo"
     created=$((created + 1))
     _patch_cache_entry "pr" "$repo" "$num"
@@ -230,14 +196,12 @@ _create_issue_worktree() {
     skipped=$((skipped + 1))
     return
   fi
-  local repo_path
-  repo_path="$(resolve_repo_path "$repo")"
-  if [ ! -d "$repo_path" ] || [ ! -e "$repo_path/.git" ]; then
-    printf 'SKIP issue #%s — repo not found: %s\n' "$num" "$repo_path"
+  if ! ,gh-worktree issue "$repo" "$num" --print-root --no-bootstrap > /dev/null 2>&1; then
+    printf 'SKIP issue #%s — repo not found locally: %s\n' "$num" "$repo"
     skipped=$((skipped + 1))
     return
   fi
-  if (cd "$repo_path" && ,w issue -q -b "$branch" "$num") 2> /dev/null; then
+  if ,gh-worktree issue "$repo" "$num" --quiet --branch "$branch" --no-bootstrap 2> /dev/null; then
     printf 'OK   issue #%s → %s\n' "$num" "$branch"
     created=$((created + 1))
     _patch_cache_entry "issue" "$repo" "$num"

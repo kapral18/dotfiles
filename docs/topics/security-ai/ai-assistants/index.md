@@ -71,7 +71,7 @@ Current skills:
 | `letsfg`                | Searching flight tickets/fares through the local LetsFG CLI with direct booking URLs                               |                |
 | `semantic-code-search`  | Semantic search, base-branch context, or when another skill requires SCSI                                          |                |
 | `google-workspace`      | Gmail / Drive / Calendar / Admin / Docs / Sheets via `gws` CLI                                                     |                |
-| `worktrees`             | Create/switch/open/list/prune/remove worktrees via `,w`                                                            |                |
+| `worktrees`             | Worktree routing and operations (`,gh-worktree` for repo bootstrap/routing, `,w` for in-repo worktree actions)     |                |
 | `compose-pr`            | Drafting a PR title and body as text (before creating/editing a PR)                                                |                |
 | `compose-issue`         | Drafting an issue title and body as text (before creating/editing an issue)                                        |                |
 | `buildkite`             | Checking build status, triggering builds, reading logs, debugging CI failures                                      | elastic org    |

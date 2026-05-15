@@ -329,7 +329,7 @@ For issues, the picker also treats an issue as "local" when it is linked from an
 
 ### Actions
 
-- **`enter` (no marks)**: single-item checkout. On a PR, runs `,w prs --focus <number>`; on an issue, runs `,w issue --focus <number>` (interactive branch prompt if the worktree doesn't exist yet). Exits the picker.
+- **`enter` (no marks)**: single-item checkout. On a PR, runs `,gh-worktree pr <owner/repo> <number> --focus`; on an issue, runs `,gh-worktree issue <owner/repo> <number> --focus` (interactive branch prompt if the worktree doesn't exist yet). Exits the picker.
 - **`enter` (items marked)**: batch worktree creation for all marked items (same as `ctrl-t`). PRs are created automatically; issues open `$EDITOR` with a batch naming buffer. Stays in the picker.
 - **`ctrl-t`**: explicit batch worktree creation (same as `enter` with marks).
 - **`alt-b` on a PR**: same as single `enter`, then opens Octo review in a new tmux window.
@@ -338,7 +338,7 @@ For issues, the picker also treats an issue as "local" when it is linked from an
 - **`alt-c`**: new comment — opens `$EDITOR`, posts on save.
 - **`alt-r`**: quote-reply — pick a comment via fzf, quote it, open `$EDITOR`.
 - **`alt-d`**: edit own comment — pick one of your comments via fzf, edit in `$EDITOR`.
-- If the repo does not exist locally, `,gh-tfork` bootstraps it first.
+- If the repo does not exist locally, `,gh-worktree` bootstraps it first via `,gh-tfork`.
 
 ### Cache
 
