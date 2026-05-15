@@ -539,7 +539,7 @@ Install scripts run via chezmoi hooks when files change.
 Note: this setup is intentionally declarative. For example:
 
 - Homebrew sync runs `brew bundle cleanup --global --force` via `home/.chezmoiscripts/run_onchange_after_03-install-brew-packages.fish.tmpl` (so formulas/casks not in the Brewfile can be removed).
-- Runtime sync is handled by mise via `home/dot_config/mise/config.toml.tmpl` and `home/.chezmoiscripts/run_onchange_after_05-install-asdf-plugins.sh.tmpl`.
+- Runtime sync is handled by mise via `home/dot_config/mise/config.toml.tmpl` and `home/.chezmoiscripts/run_onchange_after_05-install-mise-runtimes.sh.tmpl`.
 
 ---
 

@@ -102,7 +102,7 @@ Examples in this repo:
 | [`home/.chezmoiscripts/run_once_after_01-install-brew.sh`](../../home/.chezmoiscripts/run_once_after_01-install-brew.sh)                                         | Homebrew install      |
 | [`home/.chezmoiscripts/run_once_after_02-install-fish.sh`](../../home/.chezmoiscripts/run_once_after_02-install-fish.sh)                                         | Fish install          |
 | [`home/.chezmoiscripts/run_onchange_after_03-install-brew-packages.fish.tmpl`](../../home/.chezmoiscripts/run_onchange_after_03-install-brew-packages.fish.tmpl) | Brew bundle           |
-| [`home/.chezmoiscripts/run_onchange_after_05-install-asdf-plugins.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-install-asdf-plugins.sh.tmpl)       | mise runtimes + shims |
+| [`home/.chezmoiscripts/run_onchange_after_05-install-mise-runtimes.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-install-mise-runtimes.sh.tmpl)     | mise runtimes + shims |
 | [`home/.chezmoiscripts/run_onchange_after_05-install-uv-versions.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-install-uv-versions.sh.tmpl)         | UV Python versions    |
 
 Many hooks embed `sha256sum` comments that reference template content. That is how the "run on change" behavior is tied to specific files.

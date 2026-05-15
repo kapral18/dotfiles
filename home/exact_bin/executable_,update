@@ -337,10 +337,7 @@ update_mise() {
   fi
 
   local clean_path
-  clean_path=":${PATH}:"
-  clean_path="${clean_path//:$HOME/.asdf/shims:/:}"
-  clean_path="${clean_path#:}"
-  clean_path="${clean_path%:}"
+  clean_path="${PATH}"
 
   run_timed "mise install --yes" env PATH="$HOME/.local/share/mise/shims${clean_path:+:${clean_path}}" mise install --yes || true
   run_timed "mise reshim" env PATH="$HOME/.local/share/mise/shims${clean_path:+:${clean_path}}" mise reshim || true

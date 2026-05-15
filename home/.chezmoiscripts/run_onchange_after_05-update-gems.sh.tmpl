@@ -3,10 +3,6 @@
 set -euo pipefail
 
 if command -v mise >/dev/null 2>&1; then
-  PATH=":${PATH}:"
-  PATH="${PATH//:$HOME/.asdf/shims:/:}"
-  PATH="${PATH#:}"
-  PATH="${PATH%:}"
   export PATH="$HOME/.local/share/mise/shims${PATH:+:${PATH}}"
 fi
 

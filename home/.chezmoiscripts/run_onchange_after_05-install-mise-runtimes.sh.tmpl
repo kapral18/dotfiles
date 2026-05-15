@@ -17,11 +17,6 @@ if ! command -v mise >/dev/null 2>&1; then
   exit 0
 fi
 
-# Force mise shims ahead of stale asdf shims during transition.
-PATH=":${PATH}:"
-PATH="${PATH//:$HOME/.asdf/shims:/:}"
-PATH="${PATH#:}"
-PATH="${PATH%:}"
 export PATH="$HOME/.local/share/mise/shims${PATH:+:${PATH}}"
 
 echo "Installing configured runtimes with mise..."

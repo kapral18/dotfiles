@@ -19,7 +19,7 @@ The core workflow is:
 | Source                 | List file                                                                                                      | Hook                                                    | Scoped |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ------ |
 | Homebrew               | [`home/readonly_dot_Brewfile.tmpl`](../../../../home/readonly_dot_Brewfile.tmpl)                               | `run_onchange_after_03-install-brew-packages.fish.tmpl` | Yes    |
-| mise                   | [`home/dot_config/mise/config.toml.tmpl`](../../../../home/dot_config/mise/config.toml.tmpl)                   | `run_onchange_after_05-install-asdf-plugins.sh.tmpl`    | Yes    |
+| mise                   | [`home/dot_config/mise/config.toml.tmpl`](../../../../home/dot_config/mise/config.toml.tmpl)                   | `run_onchange_after_05-install-mise-runtimes.sh.tmpl`   | Yes    |
 | Cargo                  | [`home/readonly_dot_default-cargo-crates`](../../../../home/readonly_dot_default-cargo-crates)                 | `run_onchange_after_05-update-cargo-crates.sh.tmpl`     | No     |
 | Go                     | [`home/readonly_dot_default-golang-pkgs`](../../../../home/readonly_dot_default-golang-pkgs)                   | `run_onchange_after_05-update-golang-pkgs.sh.tmpl`      | No     |
 | Ruby gems              | [`home/readonly_dot_default-gems`](../../../../home/readonly_dot_default-gems)                                 | `run_onchange_after_05-update-gems.sh.tmpl`             | No     |
@@ -71,7 +71,7 @@ Some Homebrew formulae are deliberately installed with `link: false` when their 
 
 - Config source: [`home/dot_config/mise/config.toml.tmpl`](../../../../home/dot_config/mise/config.toml.tmpl)
 - Installed as: `~/.config/mise/config.toml`
-- Hook: [`home/.chezmoiscripts/run_onchange_after_05-install-asdf-plugins.sh.tmpl`](../../../../home/.chezmoiscripts/run_onchange_after_05-install-asdf-plugins.sh.tmpl)
+- Hook: [`home/.chezmoiscripts/run_onchange_after_05-install-mise-runtimes.sh.tmpl`](../../../../home/.chezmoiscripts/run_onchange_after_05-install-mise-runtimes.sh.tmpl)
 
 That hook:
 

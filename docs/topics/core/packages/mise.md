@@ -13,7 +13,7 @@ Tools are pinned in [`home/dot_config/mise/config.toml.tmpl`](../../../../home/d
 ## Files
 
 - Runtime versions: [`home/dot_config/mise/config.toml.tmpl`](../../../../home/dot_config/mise/config.toml.tmpl)
-- Hook: [`home/.chezmoiscripts/run_onchange_after_05-install-asdf-plugins.sh.tmpl`](../../../../home/.chezmoiscripts/run_onchange_after_05-install-asdf-plugins.sh.tmpl)
+- Hook: [`home/.chezmoiscripts/run_onchange_after_05-install-mise-runtimes.sh.tmpl`](../../../../home/.chezmoiscripts/run_onchange_after_05-install-mise-runtimes.sh.tmpl)
 
 ## Steps
 
