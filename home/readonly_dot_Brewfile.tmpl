@@ -595,14 +595,23 @@ brew "pass"
 tap "dhth/tap"
 brew "dhth/tap/prs"
 
+{{ if ne .isWork true -}}
+# TDLib runtime (used by the local telegramtui fork build/runtime).
+brew "tdlib", args: ["HEAD"]
+
+# Java build tool for local telegramtui fork builds.
+# https://maven.apache.org/
+brew "maven"
+{{ end -}}
+
 # ==============================================================================
 # PROGRAMMING LANGUAGE MANAGEMENT
 # Tools for managing multiple programming language versions
 # ==============================================================================
 
-# Extendable version manager with support for Ruby, Node.js, Erlang & more
-# https://asdf-vm.com/
-brew "asdf"
+# Polyglot runtime manager (asdf rust clone)
+# https://mise.jdx.dev/
+brew "mise"
 
 # Extremely fast Python package installer and resolver
 # https://github.com/astral-sh/uv

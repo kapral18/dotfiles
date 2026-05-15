@@ -34,14 +34,13 @@ Leader keys:
 
 See [`home/dot_config/exact_nvim/exact_lua/exact_core/readonly_options.lua`](../../../home/dot_config/exact_nvim/exact_lua/exact_core/readonly_options.lua).
 
-Neovim itself is version-managed via ASDF:
+Neovim itself is version-managed via mise:
 
-- Plugins list: [`home/asdf_plugins.tmpl`](../../../home/asdf_plugins.tmpl)
-- Version pin: [`home/readonly_dot_tool-versions.tmpl`](../../../home/readonly_dot_tool-versions.tmpl) (`neovim 0.12.0`)
+- Runtime config: [`home/dot_config/mise/config.toml.tmpl`](../../../home/dot_config/mise/config.toml.tmpl) (`neovim = "0.12.2"`)
 
 ## Quick Start
 
-1. Install the pinned Neovim version: `asdf install neovim 0.12.0`
+1. Install the pinned Neovim version: `mise install neovim@0.12.2`
 2. Apply dotfiles: `chezmoi apply`
 3. Launch Neovim: `nvim`
 4. Open plugin dashboard: `:PackDashboard` (or use `:PackSync` for raw report)
@@ -221,6 +220,10 @@ The load list is explicitly declared in:
 ## LSP Code Actions (`<leader>ca`)
 
 Code actions are shown with **fzf-lua**, not Neovim’s default `vim.ui.select` prompt. The `fzf-lua` plugin is loaded on demand (key triggers); its config registers `vim.ui.select` globally only after that first load. The `<leader>ca` / `<leader>cA` mappings therefore call `fzf-lua`’s `lsp_code_actions` helper (with `packadd` when needed) so the fzf picker is used even if you have not used another fzf mapping yet in that session.
+
+## Lua LS Workspace Scope
+
+`lua_ls` root detection is intentionally narrowed for chezmoi paths: when no Lua project markers (`.luarc*`, `stylua.toml`, `selene.toml`) are present, files under `$CHEZMOI_SOURCE_DIR` use the file directory as root instead of the repo `.git` root. This avoids full-repo scans and the "More than 100000 files have been scanned" startup warning in large dotfiles trees.
 
 ## LSP Progress In Lualine
 
@@ -482,7 +485,7 @@ High-signal checks:
 
 ```bash
 nvim --version
-asdf current neovim
+mise ls --current | rg neovim
 nvim "+PackSync" +qa
 nvim "+checkhealth" +qa
 ```
@@ -497,7 +500,7 @@ If keymaps/plugins seem missing:
 
 - confirm `chezmoi apply` succeeded for [`home/dot_config/exact_nvim/`](../../../home/dot_config/exact_nvim/).
 - confirm plugin sync completed (`:PackSync` / `:PackStatus` output).
-- confirm you are running the expected Neovim binary/version from ASDF.
+- confirm you are running the expected Neovim binary/version from mise.
 
 ## Related
 

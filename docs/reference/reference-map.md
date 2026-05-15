@@ -33,15 +33,14 @@ This page answers two questions:
 | Component              | Source path                                                                                                                                                      |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Brewfile               | [`home/readonly_dot_Brewfile.tmpl`](../../home/readonly_dot_Brewfile.tmpl)                                                                                       |
-| ASDF plugins           | [`home/asdf_plugins.tmpl`](../../home/asdf_plugins.tmpl)                                                                                                         |
-| ASDF versions          | [`home/readonly_dot_tool-versions.tmpl`](../../home/readonly_dot_tool-versions.tmpl)                                                                             |
+| mise runtime config    | [`home/dot_config/mise/config.toml.tmpl`](../../home/dot_config/mise/config.toml.tmpl)                                                                           |
 | Cargo crates           | [`home/readonly_dot_default-cargo-crates`](../../home/readonly_dot_default-cargo-crates)                                                                         |
 | Go tools               | [`home/readonly_dot_default-golang-pkgs`](../../home/readonly_dot_default-golang-pkgs)                                                                           |
 | Ruby gems              | [`home/readonly_dot_default-gems`](../../home/readonly_dot_default-gems)                                                                                         |
 | Global yarn            | [`home/readonly_dot_default-yarn-pkgs`](../../home/readonly_dot_default-yarn-pkgs)                                                                               |
 | uv tools               | [`home/readonly_dot_default-uv-tools.tmpl`](../../home/readonly_dot_default-uv-tools.tmpl)                                                                       |
 | uv python versions     | [`home/readonly_dot_python-version`](../../home/readonly_dot_python-version)                                                                                     |
-| Manual packages        | [`home/readonly_dot_default-manual-packages.tmpl`](../../home/readonly_dot_default-manual-packages.tmpl)                                                         |
+| Custom packages        | [`home/readonly_dot_default-custom-packages.tmpl`](../../home/readonly_dot_default-custom-packages.tmpl)                                                         |
 | GitHub CLI extensions  | [`home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl) |
 | uv python installation | [`home/.chezmoiscripts/run_onchange_after_05-install-uv-versions.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-install-uv-versions.sh.tmpl)         |
 | uv tools installation  | [`home/.chezmoiscripts/run_onchange_after_06-update-uv-tools.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_06-update-uv-tools.sh.tmpl)                 |

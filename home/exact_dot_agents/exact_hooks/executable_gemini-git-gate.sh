@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Gate git commit and push to prevent rushing.
 
 input=$(cat)

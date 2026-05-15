@@ -2,9 +2,16 @@
 
 set -euo pipefail
 
-# Track general asdf plugins and tool versions changes
-# {{ include "readonly_dot_tool-versions.tmpl" | sha256sum }}
-# {{ include "asdf_plugins.tmpl" | sha256sum }}
+if command -v mise >/dev/null 2>&1; then
+  PATH=":${PATH}:"
+  PATH="${PATH//:$HOME/.asdf/shims:/:}"
+  PATH="${PATH#:}"
+  PATH="${PATH%:}"
+  export PATH="$HOME/.local/share/mise/shims${PATH:+:${PATH}}"
+fi
+
+# Track runtime manager config changes
+# {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
 
 # This script installs go packages from the default-golang-pkgs file
 # {{ include "readonly_dot_default-golang-pkgs" | sha256sum }}
@@ -16,11 +23,11 @@ if [[ ! -f "$golang_pkgs_file" ]]; then
   exit 1
 fi
 
-# Read the file content into an array
-if ! mapfile -t lines <"$golang_pkgs_file"; then
-  echo "Error: Failed to read default-golang-pkgs file"
-  exit 1
-fi
+# Read the file content into an array (bash 3 compatible)
+lines=()
+while IFS= read -r line || [[ -n "$line" ]]; do
+  lines+=("$line")
+done <"$golang_pkgs_file"
 
 # Get list of installed Go packages once
 declare -a installed_go_pkgs
@@ -33,7 +40,20 @@ done < <(go list -m all 2>/dev/null || true)
 # Check if a Go package is already installed (in-memory lookup)
 is_go_pkg_installed() {
   local pkg=$1
-  [[ " ${installed_go_pkgs[@]} " =~ " ${pkg} " ]]
+  local installed
+  for installed in "${installed_go_pkgs[@]:-}"; do
+    [[ "$installed" == "$pkg" ]] && return 0
+  done
+  return 1
+}
+
+is_go_pkg_desired() {
+  local pkg=$1
+  local desired
+  for desired in "${desired_go_pkgs[@]:-}"; do
+    [[ "$desired" == "$pkg" ]] && return 0
+  done
+  return 1
 }
 
 # install Go package.
@@ -78,13 +98,15 @@ while IFS= read -r pkg; do
   [[ -z "$pkg" ]] && continue
   pkg_name=$(echo "$pkg" | sed 's/ .*//')
   [[ -n "$pkg_name" ]] || continue
-  if [[ ! " ${desired_go_pkgs[@]} " =~ " ${pkg_name} " ]]; then
+  if ! is_go_pkg_desired "$pkg_name"; then
     echo "Removing unused Go package: $pkg_name"
     go clean -i "$pkg_name" || true
   fi
 done < <(go list -m all 2>/dev/null || true)
 
-# make it available in the current shell
-asdf reshim golang
+# make new binaries available in the current shell
+if command -v mise >/dev/null 2>&1; then
+  mise reshim
+fi
 
 echo "All Go packages installed successfully"

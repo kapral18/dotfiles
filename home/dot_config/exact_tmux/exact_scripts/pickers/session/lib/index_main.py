@@ -28,7 +28,7 @@ def parse_ignore_file_to_excludes(ignore_file: str) -> list[str]:
     """Read a .gitignore-style ignore file and return fd --exclude patterns.
 
     fd's --ignore-file silently drops multi-component patterns (e.g.
-    `.asdf/installs/`).  Converting every pattern to an --exclude flag
+    `.local/share/mise/installs/`). Converting every pattern to an --exclude flag
     works reliably for both single- and multi-component patterns.
     """
     if not ignore_file or not os.path.isfile(ignore_file):

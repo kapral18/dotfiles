@@ -56,6 +56,37 @@ Examples:
 ,doctor --verbose  # extra detail (e.g. outdated Homebrew count)
 ```
 
+### Run `telegramtui` with optional pass-backed API config: `,tg`
+
+- Source: [`home/exact_bin/executable_,tg`](../../../home/exact_bin/executable_,tg)
+- Fork-first runtime:
+  - prefers locally built jar from `~/code/telegramtui/main/target/telegramtui-*.jar`
+  - falls back to `telegramtui` on `PATH` if no local jar exists
+- Setup/install source:
+  - `chezmoi` custom-packages installer clones `kapral18/telegramtui` to `~/code/telegramtui/main`
+  - tracks `origin/main`, builds with Maven, and installs `~/.local/bin/telegramtui` launcher
+  - this install path is personal-profile only (`isWork != true`)
+- Optionally reads credentials from:
+  - `telegram/apps/tuilegram/app_id`
+  - `telegram/apps/tuilegram/api_hash`
+- When both pass entries exist, writes `~/.telegramtui/config.properties` (`api.id`/`api.hash`) before launching.
+- Runs `telegramtui` by default (or any command passed after `,tg --`).
+- Supports repo lifecycle:
+  - `,tg --sync` fetch/switch/pull `origin/main`, build, then launch
+  - `,tg --build` build only
+- Optional overrides:
+  - `TELEGRAMTUI_REPO_DIR` (default `~/code/telegramtui/main`)
+  - `TELEGRAMTUI_REPO_BRANCH` (default `main`)
+
+Examples:
+
+```bash
+,tg                  # runs telegramtui
+,tg --sync           # pull fork main, build jar, run
+,tg --build          # build local fork jar only
+,tg --help           # passes --help to telegramtui
+```
+
 ### Worktree workflow: `,w`
 
 - Source: [`home/exact_bin/executable_,w`](../../../home/exact_bin/executable_,w)

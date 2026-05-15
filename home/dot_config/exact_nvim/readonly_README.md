@@ -13,7 +13,7 @@ For a guided tour (including an IDE-first on-ramp for VSCode/JetBrains users), s
 
 ## Usage
 
-1. Install the pinned version (`asdf install neovim 0.12.0`).
+1. Install the pinned version (`mise install neovim@0.12.2`).
 2. `chezmoi apply`
 3. Launch Neovim (`nvim`) and run `:PackDashboard` (or `<leader>ll`) for the floating plugin dashboard (status, risk, diff/repo links, single/multi/all updates, filter/sort/search). Repeated opens reuse the same window; use `:PackDashboard!` to force-close and re-scan. Run `:PackTrace` (or `<leader>lt`) to inspect deferred-load reasons, `:AutoSession save` (or `<localleader>ss`) to save sessions, `:PackSync` for the raw `vim.pack` report, `:PackLockInfo` / `:PackLockExport <path>` / `:PackLockImport <path>` to work with `nvim-pack-lock.json` when syncing dotfiles across machines, or `:PackPolicyRebuild [plugin-name]` to clear and recompute the cached tag/branch heuristic. Per-plugin pinning is expressed directly in the spec via `version = "*"` (latest tag), `version = false` (branch tip), `version = "<range|tag|commit>"`, or the `commit`/`tag`/`branch` fields — same format as lazy.nvim. Dashboard/trace popup buffers are transient and excluded from session save. Session search integrations are loaded on demand to improve startup time.
 4. Review `exact_lua/exact_core/options.lua` and `exact_lua/exact_core/keymaps.lua` (installed as `lua/core/options.lua` and `lua/core/keymaps.lua`), and the modules under `exact_lua/exact_plugins/` (installed as `lua/plugins/`) for customization.

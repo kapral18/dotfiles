@@ -100,7 +100,7 @@ toggle_cmd="$script_dir/lib/gh_picker_toggle.sh"
 cache_load_cmd="GH_PICKER_MODE=$(printf %q "$mode") $(printf %q "$items_cmd") --cache-only"
 full_load_cmd="GH_PICKER_MODE=$(printf %q "$mode") $(printf %q "$items_cmd")"
 
-fzf_shell="$(command -v bash 2> /dev/null || printf '%s' /bin/bash)"
+fzf_shell="$(command -v bash 2> /dev/null || printf '%s' '/usr/bin/env bash')"
 
 preview_with_help="if [ -f $(printf %q "$help_flag") ]; then $(printf %q "$help_cmd"); else m=\$(cat $(printf %q "$expand_flag") 2>/dev/null || echo 0); $(printf %q "$preview_cmd") --expand=\$m {f}; fi"
 

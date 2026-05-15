@@ -44,16 +44,18 @@ export XDG_VIDEOS_DIR="$HOME/Videos"
 export XDG_DATA_DIRS="/usr/share:/usr/local/share"
 export XDG_CONFIG_DIRS="/etc/xdg"
 
-# ASDF Configuration
-export ASDF_GOLANG_MOD_VERSION_ENABLED=true
-export ASDF_NODEJS_LEGACY_FILE_DYNAMIC_STRATEGY=latest_available
-
 # Path Management
 prepend_to_path_if_missing() {
   local dir="$1"
   dir="${dir%/}"
-  if [[ -d "$dir" && ":$PATH:" != *":$dir:"* ]]; then
-    PATH="$dir:$PATH"
+  if [[ -d "$dir" ]]; then
+    # Reinsert at the front so ordering is deterministic even when the path
+    # already exists from inherited login environment.
+    PATH=":${PATH}:"
+    PATH="${PATH//:${dir}:/:}"
+    PATH="${PATH#:}"
+    PATH="${PATH%:}"
+    PATH="${dir}${PATH:+:${PATH}}"
   fi
 }
 
@@ -63,7 +65,6 @@ prepend_to_path_if_missing {{ .homebrewPrefix }}/sbin
 prepend_to_path_if_missing "$HOME"/.yarn/bin
 prepend_to_path_if_missing "$HOME"/.local/bin
 prepend_to_path_if_missing "$HOME"/bin
-prepend_to_path_if_missing "$HOME"/.asdf/shims
 
 export PATH
 

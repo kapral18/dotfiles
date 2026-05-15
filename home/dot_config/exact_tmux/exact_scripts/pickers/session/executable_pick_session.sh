@@ -132,7 +132,7 @@ if [[ -z "${TMUX:-}" ]]; then
   die "tmux: not running inside tmux"
 fi
 
-fzf_shell="$(command -v bash 2> /dev/null || printf '%s' /bin/bash)"
+fzf_shell="$(command -v bash 2> /dev/null || printf '%s' '/usr/bin/env bash')"
 
 bulk_guard_key="@pick_session_bulk_create_in_progress"
 bulk_guard_set() {

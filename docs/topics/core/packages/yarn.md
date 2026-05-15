@@ -13,7 +13,7 @@ Global yarn packages are managed via a plain list.
 
 ## Steps
 
-Example packages managed this way include `@mariozechner/pi-coding-agent`.
+Example packages managed this way include `@earendil-works/pi-coding-agent`.
 
 1. Add the package name to:
    - [`home/readonly_dot_default-yarn-pkgs`](../../../../home/readonly_dot_default-yarn-pkgs)

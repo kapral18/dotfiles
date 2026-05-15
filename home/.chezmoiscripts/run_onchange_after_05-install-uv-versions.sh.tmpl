@@ -15,11 +15,11 @@ if [[ ! -f "$python_version_file" ]]; then
   exit 1
 fi
 
-# Read the file content into an array
-if ! mapfile -t lines <"$python_version_file"; then
-  echo "Error: Failed to read .python-version file"
-  exit 1
-fi
+# Read the file content into an array (bash 3 compatible)
+lines=()
+while IFS= read -r line || [[ -n "$line" ]]; do
+  lines+=("$line")
+done <"$python_version_file"
 
 # cleanup versions not in the file
 installed_versions=$(uv python list --only-installed --managed-python | awk '{print $1}') # ex. cpython-3.11.4-macosx-aarch64-none, whereas our lines contain only 3.11 or 3.10

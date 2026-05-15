@@ -40,7 +40,7 @@ Usage: ,update [options]
 Unified update orchestrator for the dotfiles ecosystem.
 Pulls dotfiles, updates all package managers, and reports what changed.
 
-Categories: dotfiles, brew, gh, asdf, cargo, yarn, gems, go, uv, manual
+Categories: dotfiles, brew, gh, mise, cargo, yarn, gems, go, uv, manual
 
 Options:
   -n, --dry-run       Show what would be updated without doing it
@@ -327,35 +327,23 @@ update_gh() {
   run_timed "gh extension upgrade --all" gh extension upgrade --all || true
 }
 
-update_asdf() {
-  should_run "asdf" || return 0
-  section "asdf (language runtimes)"
+update_mise() {
+  should_run "mise" || return 0
+  section "mise (language runtimes)"
 
-  if ! has_cmd asdf; then
-    step_skip "asdf not installed"
+  if ! has_cmd mise; then
+    step_skip "mise not installed"
     return 0
   fi
 
-  run_timed "asdf plugin update --all" asdf plugin update --all || true
+  local clean_path
+  clean_path=":${PATH}:"
+  clean_path="${clean_path//:$HOME/.asdf/shims:/:}"
+  clean_path="${clean_path#:}"
+  clean_path="${clean_path%:}"
 
-  local tool_versions="$HOME/.tool-versions"
-  if [ -f "$tool_versions" ]; then
-    while IFS= read -r line; do
-      [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
-      local plugin version
-      plugin=$(echo "$line" | awk '{print $1}')
-      version=$(echo "$line" | awk '{print $2}')
-      [ -z "$plugin" ] || [ -z "$version" ] && continue
-
-      if asdf list "$plugin" 2>/dev/null | grep -q "^[[:space:]]*${version}[[:space:]]*$"; then
-        [ "$verbose" -eq 1 ] && step_skip "$plugin $version (installed)"
-      else
-        run_timed "install $plugin $version" asdf install "$plugin" "$version" || true
-      fi
-    done <"$tool_versions"
-  else
-    step_skip "no ~/.tool-versions found"
-  fi
+  run_timed "mise install --yes" env PATH="$HOME/.local/share/mise/shims${clean_path:+:${clean_path}}" mise install --yes || true
+  run_timed "mise reshim" env PATH="$HOME/.local/share/mise/shims${clean_path:+:${clean_path}}" mise reshim || true
 }
 
 update_cargo() {
@@ -430,7 +418,7 @@ update_manual() {
   should_run "manual" || return 0
   section "Manual packages (GitHub releases)"
 
-  local script="$HOME/.local/share/chezmoi/home/.chezmoiscripts/run_onchange_after_05-install-manual-packages.sh.tmpl"
+  local script="$HOME/.local/share/chezmoi/home/.chezmoiscripts/run_onchange_after_05-install-custom-packages.sh.tmpl"
   if [ ! -f "$script" ]; then
     step_skip "manual packages script not found"
     return 0
@@ -463,11 +451,11 @@ printf '\n'
 
 overall_start=$(date +%s)
 
-# Phase 1: dotfiles must run first (pulls new package lists / tool-versions)
+# Phase 1: dotfiles must run first (pulls new package/runtime definitions)
 update_dotfiles
 
 # Phase 2: all package managers in parallel
-run_parallel update_brew update_gh update_asdf update_uv update_manual \
+run_parallel update_brew update_gh update_mise update_uv update_manual \
   update_cargo update_yarn update_gems update_go || true
 
 overall_end=$(date +%s)

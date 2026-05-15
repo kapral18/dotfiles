@@ -10,4 +10,4 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL=/usr/l
 RUN /usr/local/bin/uv tool install letsfg
 
 # Execute letsfg with a virtual display
-ENTRYPOINT ["/bin/bash", "-c", "Xvfb :99 -screen 0 1280x1024x24 & sleep 1; export DISPLAY=:99; exec /root/.local/bin/letsfg \"$@\"", "--"]
+ENTRYPOINT ["/usr/bin/env", "bash", "-c", "Xvfb :99 -screen 0 1280x1024x24 & sleep 1; export DISPLAY=:99; exec /root/.local/bin/letsfg \"$@\"", "--"]

@@ -144,10 +144,6 @@ set -x XDG_MUSIC_DIR $HOME/Music
 set -x XDG_PICTURES_DIR $HOME/Pictures
 set -x XDG_VIDEOS_DIR $HOME/Videos
 
-## ASDF Configuration
-set -x ASDF_GOLANG_MOD_VERSION_ENABLED true
-set -x ASDF_NODEJS_LEGACY_FILE_DYNAMIC_STRATEGY latest_available
-
 #-------------------------------------
 # colored man output
 # @see http://linuxtidbits.wordpress.com/2009/03/23/less-colors-for-man-pages/
@@ -166,19 +162,13 @@ set -x LESS_TERMCAP_us \e'[04;38;5;146m' # begin underline
 # ------------------------------------
 
 if status --is-login
-    fish_add_path -g {{ .homebrewPrefix }}/opt/coreutils/libexec/gnubin
-    fish_add_path -g {{ .homebrewPrefix }}/bin
-    fish_add_path -g {{ .homebrewPrefix }}/sbin
-    fish_add_path -g "$HOME"/.yarn/bin
-    fish_add_path -g "$HOME"/.local/bin
-    fish_add_path -g "$HOME"/bin
+    fish_add_path -m -g {{ .homebrewPrefix }}/opt/coreutils/libexec/gnubin
+    fish_add_path -m -g {{ .homebrewPrefix }}/bin
+    fish_add_path -m -g {{ .homebrewPrefix }}/sbin
 
-    if type -q asdf
-        # we need to add the asdf shims to the PATH again
-        # because they are pushed down without fish_add_path
-        fish_add_path -g "$(brew --prefix asdf)"/bin
-        fish_add_path -g "$HOME"/.asdf/shims
-    end
+    fish_add_path -m -g "$HOME"/.yarn/bin
+    fish_add_path -m -g "$HOME"/.local/bin
+    fish_add_path -m -g "$HOME"/bin
 
 end
 
@@ -331,6 +321,10 @@ end
 # ------------------------------------
 
 if status --is-interactive
+    if type -q mise
+        mise activate --shims fish | source
+    end
+
 
     ## Aliases
     alias cat=bat
@@ -455,14 +449,6 @@ if status --is-interactive
 
     if type -q navi
         navi widget fish | source
-    end
-
-    if test -f ~/.asdf/plugins/golang/set-env.fish
-        source ~/.asdf/plugins/golang/set-env.fish
-    end
-
-    if test -f ~/.asdf/plugins/java/set-java-home.fish
-        source ~/.asdf/plugins/java/set-java-home.fish
     end
 
 end

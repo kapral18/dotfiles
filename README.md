@@ -10,7 +10,7 @@ New here? Read the published docs at <https://kapral18.github.io/dotfiles/>, or 
 
 - [Key Features](#-key-features)
 - [Installation](#%EF%B8%8F-installation)
-- [Chezmoi & ASDF](#%EF%B8%8F-chezmoi--asdf)
+- [Chezmoi & Mise](#%EF%B8%8F-chezmoi--mise)
 - [Shell Environment](#-shell-fish)
 - [Git & 1Password](#-git--1password)
 - [Terminal Tools](#-terminals--multiplexers)
@@ -31,7 +31,7 @@ New here? Read the published docs at <https://kapral18.github.io/dotfiles/>, or 
 | 💎 **Neovim**          | Custom LSP, AI commits, refactoring tools        |
 | 🐚 **Fish Shell**      | 30+ custom productivity functions                |
 | 📦 **Brewfile**        | 250+ formulas and casks                          |
-| ⚙️ **ASDF**            | Version manager with automatic switching         |
+| ⚙️ **Mise**            | Version manager with automatic switching         |
 
 ---
 
@@ -57,13 +57,13 @@ sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply kapral18
    - PGP cache TTL preference
 3. Applies all dotfiles, scripts, and configs
 4. Installs Homebrew packages
-5. Installs/updates language tools (ASDF, cargo, go, gems, yarn, uv)
+5. Installs/updates language tools (mise, cargo, go, gems, yarn, uv)
 6. Installs GitHub CLI extensions and manual packages (GitHub releases / DMGs)
 7. Applies macOS system preferences and other automation hooks
 
 ---
 
-## 🏛️ Chezmoi & ASDF
+## 🏛️ Chezmoi & Mise
 
 ### Chezmoi
 
@@ -73,7 +73,7 @@ Configuration management with templates and scripts.
 
 - **Conditional Logic (`.isWork`)**: Templates use `{{ .isWork }}` to handle:
   - Different Git identities and SSH keys
-  - Work-specific ASDF plugins
+  - Work-specific runtime versions
   - Separate Homebrew cask installations
   - Different PGP cache timeouts
 
@@ -90,28 +90,15 @@ Configuration management with templates and scripts.
 
 - **External Assets**: `home/.chezmoiexternal.toml` pulls a few third-party dependencies so they stay up-to-date without being vendored here (e.g. tmux `tpm`, Hammerspoon `EmmyLua.spoon`, `lowfi` data files, `bat` themes).
 
-### ASDF
+### Mise
 
 Version manager for languages and tools.
 
 **How it works:**
 
-1. **Declarative Plugins** (`home/asdf_plugins.tmpl`): Conditionally install plugins
-
-   ```text
-   nodejs
-   ruby
-   {{ if ne .isWork true }}lua{{ end }}
-   ```
-
-2. **Version Pinning** (`home/readonly_dot_tool-versions.tmpl`): Pin tool versions
-
-   ```text
-   nodejs 20.11.0
-   ruby 3.2.2
-   ```
-
-3. **Automatic Switching**: `cd` into a project and the right versions activate via ASDF shims.
+1. **Declarative Runtime Config** (`home/dot_config/mise/config.toml.tmpl`): Pin tool versions.
+2. **Automatic Switching**: `cd` into a project and the right versions activate via mise hooks.
+3. **Legacy support scope**: only `.nvmrc` is enabled (`idiomatic_version_file_enable_tools = ["node"]`).
 
 ---
 
@@ -536,23 +523,23 @@ Karabiner-Elements rules live in `home/dot_config/exact_private_karabiner/karabi
 
 ## 📦 Package Management
 
-| System        | File                                             | Purpose                      |
-| ------------- | ------------------------------------------------ | ---------------------------- |
-| **Homebrew**  | `home/readonly_dot_Brewfile.tmpl`                | macOS apps, CLI tools, fonts |
-| **Cargo**     | `home/readonly_dot_default-cargo-crates`         | Rust packages                |
-| **Go**        | `home/readonly_dot_default-golang-pkgs`          | Go tools                     |
-| **Gems**      | `home/readonly_dot_default-gems`                 | Ruby packages                |
-| **yarn**      | `home/readonly_dot_default-yarn-pkgs`            | Node.js globals              |
-| **uv tools**  | `home/readonly_dot_default-uv-tools.tmpl`        | Python CLI tools             |
-| **uv python** | `home/readonly_dot_python-version`               | Python runtime versions      |
-| **Manual**    | `home/readonly_dot_default-manual-packages.tmpl` | DMGs + GitHub releases       |
+| System        | File                                             | Purpose                                |
+| ------------- | ------------------------------------------------ | -------------------------------------- |
+| **Homebrew**  | `home/readonly_dot_Brewfile.tmpl`                | macOS apps, CLI tools, fonts           |
+| **Cargo**     | `home/readonly_dot_default-cargo-crates`         | Rust packages                          |
+| **Go**        | `home/readonly_dot_default-golang-pkgs`          | Go tools                               |
+| **Gems**      | `home/readonly_dot_default-gems`                 | Ruby packages                          |
+| **yarn**      | `home/readonly_dot_default-yarn-pkgs`            | Node.js globals                        |
+| **uv tools**  | `home/readonly_dot_default-uv-tools.tmpl`        | Python CLI tools                       |
+| **uv python** | `home/readonly_dot_python-version`               | Python runtime versions                |
+| **Custom**    | `home/readonly_dot_default-custom-packages.tmpl` | DMGs + GitHub releases + source builds |
 
 Install scripts run via chezmoi hooks when files change.
 
 Note: this setup is intentionally declarative. For example:
 
 - Homebrew sync runs `brew bundle cleanup --global --force` via `home/.chezmoiscripts/run_onchange_after_03-install-brew-packages.fish.tmpl` (so formulas/casks not in the Brewfile can be removed).
-- ASDF sync removes unwanted plugins/versions based on `home/asdf_plugins.tmpl` and `home/readonly_dot_tool-versions.tmpl` via `home/.chezmoiscripts/run_onchange_after_05-install-asdf-plugins.sh.tmpl`.
+- Runtime sync is handled by mise via `home/dot_config/mise/config.toml.tmpl` and `home/.chezmoiscripts/run_onchange_after_05-install-asdf-plugins.sh.tmpl`.
 
 ---
 

@@ -4,6 +4,6 @@
 
 [ -f ~/.profile ] && source ~/.profile
 
-if command -v asdf >/dev/null; then
-  source <(asdf completion bash)
+if command -v mise >/dev/null; then
+  source <(mise completion bash --include-bash-completion-lib)
 fi

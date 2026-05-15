@@ -16,17 +16,17 @@ The core workflow is:
 
 ### Package sources at a glance
 
-| Source          | List file                                                                                                      | Hook                                                    | Scoped |
-| --------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ------ |
-| Homebrew        | [`home/readonly_dot_Brewfile.tmpl`](../../../../home/readonly_dot_Brewfile.tmpl)                               | `run_onchange_after_03-install-brew-packages.fish.tmpl` | Yes    |
-| ASDF            | [`home/readonly_dot_tool-versions.tmpl`](../../../../home/readonly_dot_tool-versions.tmpl)                     | `run_onchange_after_05-install-asdf-plugins.sh.tmpl`    | Yes    |
-| Cargo           | [`home/readonly_dot_default-cargo-crates`](../../../../home/readonly_dot_default-cargo-crates)                 | `run_onchange_after_05-update-cargo-crates.sh.tmpl`     | No     |
-| Go              | [`home/readonly_dot_default-golang-pkgs`](../../../../home/readonly_dot_default-golang-pkgs)                   | `run_onchange_after_05-update-golang-pkgs.sh.tmpl`      | No     |
-| Ruby gems       | [`home/readonly_dot_default-gems`](../../../../home/readonly_dot_default-gems)                                 | `run_onchange_after_05-update-gems.sh.tmpl`             | No     |
-| yarn            | [`home/readonly_dot_default-yarn-pkgs`](../../../../home/readonly_dot_default-yarn-pkgs)                       | `run_onchange_after_05-update-yarn-pkgs.sh.tmpl`        | No     |
-| uv tools        | [`home/readonly_dot_default-uv-tools.tmpl`](../../../../home/readonly_dot_default-uv-tools.tmpl)               | `run_onchange_after_06-update-uv-tools.sh.tmpl`         | Yes    |
-| gh extensions   | —                                                                                                              | `run_onchange_after_05-install-gh-extensions.fish.tmpl` | —      |
-| Manual (GitHub) | [`home/readonly_dot_default-manual-packages.tmpl`](../../../../home/readonly_dot_default-manual-packages.tmpl) | `run_onchange_after_05-install-manual-packages.sh.tmpl` | Yes    |
+| Source                 | List file                                                                                                      | Hook                                                    | Scoped |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ------ |
+| Homebrew               | [`home/readonly_dot_Brewfile.tmpl`](../../../../home/readonly_dot_Brewfile.tmpl)                               | `run_onchange_after_03-install-brew-packages.fish.tmpl` | Yes    |
+| mise                   | [`home/dot_config/mise/config.toml.tmpl`](../../../../home/dot_config/mise/config.toml.tmpl)                   | `run_onchange_after_05-install-asdf-plugins.sh.tmpl`    | Yes    |
+| Cargo                  | [`home/readonly_dot_default-cargo-crates`](../../../../home/readonly_dot_default-cargo-crates)                 | `run_onchange_after_05-update-cargo-crates.sh.tmpl`     | No     |
+| Go                     | [`home/readonly_dot_default-golang-pkgs`](../../../../home/readonly_dot_default-golang-pkgs)                   | `run_onchange_after_05-update-golang-pkgs.sh.tmpl`      | No     |
+| Ruby gems              | [`home/readonly_dot_default-gems`](../../../../home/readonly_dot_default-gems)                                 | `run_onchange_after_05-update-gems.sh.tmpl`             | No     |
+| yarn                   | [`home/readonly_dot_default-yarn-pkgs`](../../../../home/readonly_dot_default-yarn-pkgs)                       | `run_onchange_after_05-update-yarn-pkgs.sh.tmpl`        | No     |
+| uv tools               | [`home/readonly_dot_default-uv-tools.tmpl`](../../../../home/readonly_dot_default-uv-tools.tmpl)               | `run_onchange_after_06-update-uv-tools.sh.tmpl`         | Yes    |
+| gh extensions          | —                                                                                                              | `run_onchange_after_05-install-gh-extensions.fish.tmpl` | —      |
+| Custom (GitHub/source) | [`home/readonly_dot_default-custom-packages.tmpl`](../../../../home/readonly_dot_default-custom-packages.tmpl) | `run_onchange_after_05-install-custom-packages.sh.tmpl` | Yes    |
 
 "Scoped" means the list is a chezmoi template that can branch on `.isWork`. All hooks live under [`home/.chezmoiscripts/`](../../../../home/.chezmoiscripts/).
 
@@ -67,19 +67,18 @@ The Brewfile also carries day-to-day terminal utilities, network diagnostics suc
 
 Some Homebrew formulae are deliberately installed with `link: false` when their binaries collide. For example, GNU `parallel` and Ataraxy semantic-git `sem` both provide a `sem` binary, so both formulae stay unlinked. The commands are exposed through managed wrappers at [`home/exact_bin/executable_parallel`](../../../../home/exact_bin/executable_parallel) and [`home/exact_bin/executable_sem`](../../../../home/exact_bin/executable_sem).
 
-## ASDF (Tool Versions)
+## mise (Tool Versions)
 
-- Plugins list: [`home/asdf_plugins.tmpl`](../../../../home/asdf_plugins.tmpl)
-- Version pins: [`home/readonly_dot_tool-versions.tmpl`](../../../../home/readonly_dot_tool-versions.tmpl)
-- Installed as: `~/.tool-versions`
+- Config source: [`home/dot_config/mise/config.toml.tmpl`](../../../../home/dot_config/mise/config.toml.tmpl)
+- Installed as: `~/.config/mise/config.toml`
 - Hook: [`home/.chezmoiscripts/run_onchange_after_05-install-asdf-plugins.sh.tmpl`](../../../../home/.chezmoiscripts/run_onchange_after_05-install-asdf-plugins.sh.tmpl)
 
 That hook:
 
-- installs plugins listed in the template
-- removes plugins not listed
-- installs tool versions listed in the rendered `.tool-versions`
-- uninstalls versions that are no longer wanted
+- runs `mise install --yes` to converge configured runtimes
+- runs `mise reshim` to refresh shims after runtime/package updates
+- respects project-level `.tool-versions` files when present
+- enables `.nvmrc` support for Node via `idiomatic_version_file_enable_tools = ["node"]`
 
 If you only adopt one idea from this setup, make it this: pin your tool versions so projects behave consistently across machines.
 
@@ -114,7 +113,7 @@ This hook installs missing tools and attempts to clean up unused packages.
 
 The `,install-yarn-pkgs` command installs packages in the list and uninstalls those no longer listed.
 
-This list now includes some AI tooling that used to be managed elsewhere. Pi-related globals such as `@mariozechner/pi-coding-agent`, `@mariozechner/pi-tui`, and `pi-mcp-adapter` are kept here so yarn convergence does not remove packages still referenced by Pi settings.
+This list now includes some AI tooling that used to be managed elsewhere. Pi-related globals such as `@earendil-works/pi-coding-agent`, `@earendil-works/pi-tui`, and `pi-mcp-adapter` are kept here; Pi settings reference the yarn global `node_modules` path for `pi-mcp-adapter` so Pi itself does not try to manage extension updates via npm.
 
 If you do not want global yarn packages, keep the list empty.
 
@@ -142,9 +141,9 @@ This keeps a managed list of extensions installed and removes extensions that ar
 
 Some tools and apps are installed from GitHub releases.
 
-- List template: [`home/readonly_dot_default-manual-packages.tmpl`](../../../../home/readonly_dot_default-manual-packages.tmpl)
-- Installed as: `~/.default-manual-packages`
-- Installer: [`home/.chezmoiscripts/run_onchange_after_05-install-manual-packages.sh.tmpl`](../../../../home/.chezmoiscripts/run_onchange_after_05-install-manual-packages.sh.tmpl)
+- List template: [`home/readonly_dot_default-custom-packages.tmpl`](../../../../home/readonly_dot_default-custom-packages.tmpl)
+- Installed as: `~/.default-custom-packages`
+- Installer: [`home/.chezmoiscripts/run_onchange_after_05-install-custom-packages.sh.tmpl`](../../../../home/.chezmoiscripts/run_onchange_after_05-install-custom-packages.sh.tmpl)
 
 That installer supports:
 
@@ -167,7 +166,7 @@ High-signal checks:
 
 ```bash
 brew bundle check --global
-asdf current
+mise ls --current
 uv tool list
 yarn global list
 ```
@@ -181,8 +180,8 @@ If a package disappeared unexpectedly after apply:
 ## Related
 
 - Add a Homebrew package: [`docs/recipes/add-a-homebrew-package.md`](homebrew.md)
-- Add a manual package: [`docs/recipes/add-a-manual-package.md`](manual.md)
-- Pin a tool version (ASDF): [`docs/recipes/pin-a-tool-version-asdf.md`](asdf.md)
+- Add a custom package: [`docs/recipes/add-a-custom-package.md`](custom.md)
+- Pin a tool version (mise): edit [`home/dot_config/mise/config.toml.tmpl`](../../../../home/dot_config/mise/config.toml.tmpl) and run `chezmoi apply`.
 - Add a Cargo crate: [`docs/recipes/add-a-cargo-crate.md`](cargo.md)
 - Add a Go tool: [`docs/recipes/add-a-go-tool.md`](go.md)
 - Add a Ruby gem: [`docs/recipes/add-a-ruby-gem.md`](ruby.md)

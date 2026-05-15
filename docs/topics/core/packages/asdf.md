@@ -2,59 +2,37 @@
 sidebar_position: 3
 ---
 
-# Pin A Tool Version (ASDF)
+# Pin A Tool Version (mise)
 
-Tools managed by ASDF are pinned in `~/.tool-versions`, which is rendered from a template in this repo.
+Tools are pinned in [`home/dot_config/mise/config.toml.tmpl`](../../../../home/dot_config/mise/config.toml.tmpl), installed as `~/.config/mise/config.toml`.
 
 ## Preconditions
 
-- ASDF is installed and on `PATH`.
-- The plugin exists in [`home/asdf_plugins.tmpl`](../../../../home/asdf_plugins.tmpl) (add it first if missing).
+- `mise` is installed and on `PATH`.
 
 ## Files
 
-- Plugins: [`home/asdf_plugins.tmpl`](../../../../home/asdf_plugins.tmpl)
-- Versions: [`home/readonly_dot_tool-versions.tmpl`](../../../../home/readonly_dot_tool-versions.tmpl) (installs as `~/.tool-versions`)
+- Runtime versions: [`home/dot_config/mise/config.toml.tmpl`](../../../../home/dot_config/mise/config.toml.tmpl)
 - Hook: [`home/.chezmoiscripts/run_onchange_after_05-install-asdf-plugins.sh.tmpl`](../../../../home/.chezmoiscripts/run_onchange_after_05-install-asdf-plugins.sh.tmpl)
 
 ## Steps
 
-1. Update the pinned version in:
-   - [`home/readonly_dot_tool-versions.tmpl`](../../../../home/readonly_dot_tool-versions.tmpl)
-
+1. Update the pinned version(s) under `[tools]` in `config.toml.tmpl`.
 2. Apply:
-
-   ```bash
-   chezmoi apply
-   ```
-
-The hook will install missing versions and can uninstall versions that are no longer listed.
-
-## Verification
-
-```bash
-asdf current
-asdf list
-```
-
-## Notes
-
-If you add a brand new tool, you usually need to add both:
-
-- a plugin entry in [`home/asdf_plugins.tmpl`](../../../../home/asdf_plugins.tmpl)
-- a version pin in [`home/readonly_dot_tool-versions.tmpl`](../../../../home/readonly_dot_tool-versions.tmpl)
-
-## Rollback / Undo
-
-1. Revert the version line in [`home/readonly_dot_tool-versions.tmpl`](../../../../home/readonly_dot_tool-versions.tmpl).
-2. Re-apply:
 
 ```bash
 chezmoi apply
 ```
 
-1. Confirm active versions:
+The hook runs `mise install --yes` and `mise reshim`.
+
+## Verification
 
 ```bash
-asdf current
+mise ls --current
 ```
+
+## Notes
+
+- `mise` respects project `.tool-versions` files if they exist.
+- `.nvmrc` support is enabled for Node via `idiomatic_version_file_enable_tools = ["node"]`.

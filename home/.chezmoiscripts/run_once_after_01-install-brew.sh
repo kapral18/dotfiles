@@ -6,7 +6,7 @@ echo "--------------------------------"
 echo "install bash: applying..."
 echo "--------------------------------"
 if [[ ! -x "$(command -v brew)" ]]; then
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  /usr/bin/env bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 fi
 echo "-------------------------"
 echo "install bash: done"

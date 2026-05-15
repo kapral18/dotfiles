@@ -2,13 +2,23 @@
 
 set -euo pipefail
 
-# Bump this script when manual packages list changes so chezmoi re-runs the installer.
-# manual packages list hash: {{ include "readonly_dot_default-manual-packages.tmpl" | sha256sum }}
+# Bump this script when custom packages list changes so chezmoi re-runs the installer.
+# custom packages list hash: {{ include "readonly_dot_default-custom-packages.tmpl" | sha256sum }}
 
 BIN_DIR="${HOME}/.local/bin"
-MANUAL_PACKAGES_TEMPLATE={{ joinPath .chezmoi.sourceDir "readonly_dot_default-manual-packages.tmpl" | quote }}
+CUSTOM_PACKAGES_TEMPLATE={{ joinPath .chezmoi.sourceDir "readonly_dot_default-custom-packages.tmpl" | quote }}
+CUSTOM_STATE_DIR="${HOME}/.local/state/custom-packages"
+GIT_MAVEN_JAR_STATE_FILE="${CUSTOM_STATE_DIR}/git_maven_jar.tsv"
+RECONCILE_CUSTOM_PACKAGES={{ joinPath .chezmoi.sourceDir "../scripts/reconcile_custom_packages.py" | quote }}
+GIT_MAVEN_JAR_DESIRED_FILE="$(mktemp)"
+
+cleanup_temp_files() {
+  rm -f "$GIT_MAVEN_JAR_DESIRED_FILE"
+}
+trap cleanup_temp_files EXIT
 
 mkdir -p "$BIN_DIR"
+mkdir -p "$CUSTOM_STATE_DIR"
 
 require_cmd() {
   local cmd="$1"
@@ -254,7 +264,70 @@ install_release_tar_gz_bin() {
   echo "$tool_name installed ($resolved_tag)"
 }
 
-process_manual_package_line() {
+install_git_maven_jar() {
+  local tool_name="$1"
+  local github_repo="$2"
+  local branch="$3"
+  local output_name="$4"
+
+  require_cmd git
+  require_cmd mvn
+  require_cmd java
+
+  if [[ -z "$branch" ]]; then
+    branch="main"
+  fi
+
+  local repo_name
+  repo_name="${github_repo##*/}"
+
+  local clone_dir="$HOME/code/$repo_name/$branch"
+  local parent_dir
+  parent_dir="$(dirname "$clone_dir")"
+  mkdir -p "$parent_dir"
+
+  if [[ ! -d "$clone_dir/.git" ]]; then
+    echo "Cloning $github_repo ($branch) into $clone_dir"
+    git clone "https://github.com/$github_repo.git" "$clone_dir"
+  fi
+
+  git -C "$clone_dir" fetch origin "$branch"
+  if git -C "$clone_dir" show-ref --verify --quiet "refs/heads/$branch"; then
+    git -C "$clone_dir" switch "$branch"
+  else
+    git -C "$clone_dir" switch -c "$branch" --track "origin/$branch"
+  fi
+  git -C "$clone_dir" pull --ff-only origin "$branch"
+
+  (cd "$clone_dir" && mvn -q -DskipTests package)
+
+  local jar_path=""
+  local candidate
+  for candidate in "$clone_dir"/target/telegramtui-*.jar; do
+    [[ -f "$candidate" ]] || continue
+    if [[ "$(basename "$candidate")" == original-* ]]; then
+      continue
+    fi
+    jar_path="$candidate"
+    break
+  done
+
+  if [[ -z "$jar_path" ]]; then
+    echo "Error: Could not find built telegramtui jar in $clone_dir/target" >&2
+    return 1
+  fi
+
+  local dest_path="$BIN_DIR/$output_name"
+  cat >"$dest_path" <<EOF
+#!/usr/bin/env bash
+exec java -Djna.library.path=/opt/homebrew/opt/tdlib/lib -jar "$jar_path" "\$@"
+EOF
+  chmod +x "$dest_path"
+  printf '%s\t%s\t%s\n' "$output_name" "$dest_path" "$clone_dir" >>"$GIT_MAVEN_JAR_DESIRED_FILE"
+  echo "$tool_name installed from $github_repo@$branch"
+}
+
+process_custom_package_line() {
   local raw_line="$1"
 
   local trimmed_line
@@ -292,15 +365,24 @@ process_manual_package_line() {
     fi
     install_release_file "$tool_name" "$repo" "$release_tag" "$pattern" "$output_name"
     ;;
+  git_maven_jar)
+    local tool_name repo branch output_name
+    IFS='|' read -r _ tool_name repo branch output_name <<<"$trimmed_line"
+    if [[ -z "${tool_name:-}" || -z "${repo:-}" || -z "${branch:-}" || -z "${output_name:-}" ]]; then
+      echo "Error: invalid git_maven_jar line: $trimmed_line" >&2
+      return 1
+    fi
+    install_git_maven_jar "$tool_name" "$repo" "$branch" "$output_name"
+    ;;
   *)
-    echo "Error: unknown manual package kind '$kind' in line: $trimmed_line" >&2
+    echo "Error: unknown custom package kind '$kind' in line: $trimmed_line" >&2
     return 1
     ;;
   esac
 }
 
-if [[ ! -f "$MANUAL_PACKAGES_TEMPLATE" ]]; then
-  echo "Error: manual packages template not found at $MANUAL_PACKAGES_TEMPLATE" >&2
+if [[ ! -f "$CUSTOM_PACKAGES_TEMPLATE" ]]; then
+  echo "Error: custom packages template not found at $CUSTOM_PACKAGES_TEMPLATE" >&2
   exit 1
 fi
 
@@ -309,22 +391,29 @@ if ! command -v chezmoi >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! manual_rendered="$(chezmoi execute-template <"$MANUAL_PACKAGES_TEMPLATE")"; then
-  echo "Error: Failed to render manual packages template" >&2
+if ! custom_rendered="$(chezmoi execute-template <"$CUSTOM_PACKAGES_TEMPLATE")"; then
+  echo "Error: Failed to render custom packages template" >&2
   exit 1
 fi
 
 status=0
 while IFS= read -r line || [[ -n "$line" ]]; do
-  if ! process_manual_package_line "$line"; then
+  if ! process_custom_package_line "$line"; then
     status=1
   fi
-done <<<"$manual_rendered"
+done <<<"$custom_rendered"
 
 if [[ $status -ne 0 ]]; then
-  echo "Completed with some errors while installing manual packages" >&2
+  echo "Completed with some errors while installing custom packages" >&2
   exit $status
 fi
+
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "Error: 'python3' is required for custom package reconciliation" >&2
+  exit 1
+fi
+
+python3 "$RECONCILE_CUSTOM_PACKAGES" "$GIT_MAVEN_JAR_STATE_FILE" "$GIT_MAVEN_JAR_DESIRED_FILE"
 
 # -----------------------------------------------
 # Install command-line tools

@@ -2,9 +2,16 @@
 
 set -euo pipefail
 
-# Track general asdf plugins and tool versions changes
-# {{ include "readonly_dot_tool-versions.tmpl" | sha256sum }}
-# {{ include "asdf_plugins.tmpl" | sha256sum }}
+if command -v mise >/dev/null 2>&1; then
+  PATH=":${PATH}:"
+  PATH="${PATH//:$HOME/.asdf/shims:/:}"
+  PATH="${PATH#:}"
+  PATH="${PATH%:}"
+  export PATH="$HOME/.local/share/mise/shims${PATH:+:${PATH}}"
+fi
+
+# Track runtime manager config changes
+# {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
 
 # This script installs Ruby gems from the default-gems file
 # {{ include "readonly_dot_default-gems" | sha256sum }}
@@ -16,11 +23,11 @@ if [[ ! -f "$gems_file" ]]; then
   exit 1
 fi
 
-# Read the file content into an array
-if ! mapfile -t lines <"$gems_file"; then
-  echo "Error: Failed to read default-gems file"
-  exit 1
-fi
+# Read the file content into an array (bash 3 compatible)
+lines=()
+while IFS= read -r line || [[ -n "$line" ]]; do
+  lines+=("$line")
+done <"$gems_file"
 
 # install Ruby gem.
 #
@@ -53,7 +60,9 @@ for line in "${lines[@]}"; do
   install_gem "$line"
 done
 
-# make it available in the current shell
-asdf reshim ruby
+# make new binaries available in the current shell
+if command -v mise >/dev/null 2>&1; then
+  mise reshim
+fi
 
 echo "All Ruby gems installed successfully"

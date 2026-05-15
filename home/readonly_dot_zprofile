@@ -3,11 +3,10 @@
 # ====================================
 
 [ -f ~/.profile ] && source ~/.profile
-if command -v asdf >/dev/null; then
-    mkdir -p "$HOME/.asdf/completions"
-    asdf completion zsh >"$HOME/.asdf/completions/_asdf"
+if command -v mise >/dev/null; then
+    mkdir -p "$HOME/.zsh/completions"
+    mise completion zsh >"$HOME/.zsh/completions/_mise"
     # append completions to fpath
-    fpath=($HOME/.asdf/completions $fpath)
     fpath=($HOME/.zsh/completions $fpath)
     # initialise completions with ZSH's compinit
     autoload -Uz compinit && compinit

@@ -8,7 +8,7 @@ This setup wires a lot of automation into `chezmoi apply`. When something goes w
 
 1. A template rendering problem
 2. A hook script failing
-3. A missing dependency (brew/asdf/op/gh/etc.)
+3. A missing dependency (brew/mise/op/gh/etc.)
 
 ## First Checks
 
@@ -44,7 +44,7 @@ The GitHub extensions hook will run `gh auth login` if you're not authenticated:
 
 The manual packages installer also relies on `gh release download`:
 
-- [`home/.chezmoiscripts/run_onchange_after_05-install-manual-packages.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-install-manual-packages.sh.tmpl)
+- [`home/.chezmoiscripts/run_onchange_after_05-install-custom-packages.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-install-custom-packages.sh.tmpl)
 
 ## Password Store Setup
 

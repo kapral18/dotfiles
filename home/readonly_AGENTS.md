@@ -40,7 +40,7 @@ When user requests to "add X" (app, package, cask, formula, or CLI tool), follow
 4. **Gems** (`home/readonly_dot_default-gems`) — Ruby packages
 5. **yarn** (`home/readonly_dot_default-yarn-pkgs`) — Node.js/JavaScript packages
 6. **uv** (`home/readonly_dot_default-uv-tools.tmpl`) — Python tools/packages
-7. **Manual packages** (`home/readonly_dot_default-manual-packages.tmpl`) — DMGs + GitHub release CLI tools (installed by `home/.chezmoiscripts/run_onchange_after_05-install-manual-packages.sh.tmpl`)
+7. **Custom packages** (`home/readonly_dot_default-custom-packages.tmpl`) — DMGs + GitHub release CLI tools + source builds (installed by `home/.chezmoiscripts/run_onchange_after_05-install-custom-packages.sh.tmpl`)
 
 **Interpretation of the priority:**
 
@@ -113,7 +113,7 @@ When adding formulas or casks to Brewfile:
 When a macOS app is not available via Homebrew but provides a .dmg release:
 
 1. **Verify repository first**: Always search for official GitHub repo before adding
-2. **Add to list**: Use `home/readonly_dot_default-manual-packages.tmpl`
+2. **Add to list**: Use `home/readonly_dot_default-custom-packages.tmpl`
 3. **Use existing pattern**: `dmg|App Name|owner/repo|AppName.app|.dmg`
 4. **Function handles**:
    - Latest release download from GitHub API
@@ -138,7 +138,7 @@ install_dmg_app "Squirrel Disk" "adileo/squirreldisk" "SquirrelDisk.app"
 
 When a CLI tool is not available via Homebrew and distributed via GitHub releases:
 
-1. **Add to list**: Use `home/readonly_dot_default-manual-packages.tmpl`
+1. **Add to list**: Use `home/readonly_dot_default-custom-packages.tmpl`
 2. **Prefer release assets**: Use `file|...` (single binary asset) or `tar_gz_bin|...` (archive with a binary)
 3. **Template variables**: Use `{{- if ne .isWork true }}` blocks when needed
 
@@ -149,7 +149,7 @@ file|dug|unfrl/dug|dug-osx-x64|dug
 tar_gz_bin|mdtt|szktkfm/mdtt|mdtt_Darwin_arm64.tar.gz|mdtt|mdtt
 ```
 
-**Installer**: `home/.chezmoiscripts/run_onchange_after_05-install-manual-packages.sh.tmpl`
+**Installer**: `home/.chezmoiscripts/run_onchange_after_05-install-custom-packages.sh.tmpl`
 
 ---
 

@@ -39,7 +39,7 @@ The failing script path appears in `chezmoi apply` output.
 
 ## Common Causes
 
-- missing dependency (brew/asdf/gh/op/uv)
+- missing dependency (brew/mise/gh/op/uv)
 - auth required (GitHub CLI, 1Password CLI)
 - a script expects sudo access
 

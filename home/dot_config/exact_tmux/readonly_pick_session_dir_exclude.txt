@@ -33,7 +33,7 @@ venv/
 .sdkman/candidates/
 .local/share/yarn/
 .elastic/snapshots/
-.asdf/installs/
+.local/share/mise/installs/
 .kube/cache/
 .rbenv/versions/
 work/kibana/es_data/

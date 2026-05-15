@@ -1,9 +1,10 @@
-# Manual packages list (rendered by chezmoi).
+# Custom package registry (rendered by chezmoi).
 #
 # Format (pipe-delimited):
 # - dmg|App Name|owner/repo|release-tag|AppBundle.app|asset-pattern
 # - tar_gz_bin|tool-name|owner/repo|release-tag|asset-pattern|bin-in-archive|output-binary-name
 # - file|tool-name|owner/repo|release-tag|asset-pattern|output-binary-name
+# - git_maven_jar|tool-name|owner/repo|branch|output-binary-name
 #
 # Lines starting with `#` are ignored.
 
@@ -21,6 +22,13 @@ dmg|Squirrel Disk|adileo/squirreldisk|latest|SquirrelDisk.app|.dmg
 # -----------------------------------------------
 # GitHub release CLI tools
 # -----------------------------------------------
+
+# telegramtui (fork-first source install from your repo)
+# Clones to ~/code/telegramtui/main, pulls origin/main, builds with Maven, and
+# installs ~/.local/bin/telegramtui launcher.
+{{ if ne .isWork true }}
+git_maven_jar|telegramtui|kapral18/telegramtui|main|telegramtui
+{{ end }}
 
 # mdtt
 # https://github.com/szktkfm/mdtt

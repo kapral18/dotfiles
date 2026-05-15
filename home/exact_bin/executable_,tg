@@ -1,0 +1,145 @@
+#!/usr/bin/env bash
+# Description: Run telegramtui with optional pass-backed API config.
+
+set -euo pipefail
+
+readonly PASS_APP_ID_PATH="telegram/apps/tuilegram/app_id"
+readonly PASS_API_HASH_PATH="telegram/apps/tuilegram/api_hash"
+readonly TELEGRAMTUI_CONFIG_DIR="$HOME/.telegramtui"
+readonly TELEGRAMTUI_CONFIG_FILE="$TELEGRAMTUI_CONFIG_DIR/config.properties"
+readonly TELEGRAMTUI_TDLIB_LIB="/opt/homebrew/opt/tdlib/lib"
+readonly TELEGRAMTUI_REPO_DIR_DEFAULT="$HOME/code/telegramtui/main"
+readonly TELEGRAMTUI_REPO_BRANCH_DEFAULT="main"
+
+usage() {
+  cat <<'EOF'
+Usage: ,tg [command [args...]]
+       ,tg --sync [args...]
+       ,tg --build
+       ,tg -- [command [args...]]
+
+Runs telegramtui by default.
+If pass entries exist, writes ~/.telegramtui/config.properties with:
+  api.id=<value>
+  api.hash=<value>
+before launching telegramtui.
+
+Defaults:
+  - no command: runs "telegramtui"
+  - leading flags (e.g. --help): treated as telegramtui flags
+  - prefers a locally built jar from your fork repo
+
+Examples:
+  ,tg
+  ,tg --sync
+  ,tg --build
+  ,tg --help
+EOF
+}
+
+read_pass_value_if_exists() {
+  local key="$1"
+  if ! command -v pass >/dev/null 2>&1; then
+    return 1
+  fi
+  pass show "$key" 2>/dev/null | awk 'NR==1{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0); if (length($0)) print; exit}'
+}
+
+run_telegramtui() {
+  local repo_dir="${TELEGRAMTUI_REPO_DIR:-$TELEGRAMTUI_REPO_DIR_DEFAULT}"
+  local repo_jar
+  repo_jar="$(find_repo_jar "$repo_dir")"
+
+  if [ -n "$repo_jar" ] && command -v java >/dev/null 2>&1; then
+    exec java -Djna.library.path="$TELEGRAMTUI_TDLIB_LIB" -jar "$repo_jar" "$@"
+  fi
+  exec telegramtui "$@"
+}
+
+find_repo_jar() {
+  local repo_dir="$1"
+  local jar_glob=("$repo_dir"/target/telegramtui-*.jar)
+  if [ ${#jar_glob[@]} -gt 0 ] && [ -f "${jar_glob[0]}" ]; then
+    printf '%s\n' "${jar_glob[0]}"
+    return 0
+  fi
+  return 1
+}
+
+build_repo_jar() {
+  local repo_dir="${TELEGRAMTUI_REPO_DIR:-$TELEGRAMTUI_REPO_DIR_DEFAULT}"
+  if [ ! -d "$repo_dir/.git" ]; then
+    echo "Repo not found: $repo_dir" >&2
+    echo "Set TELEGRAMTUI_REPO_DIR or clone your fork to $repo_dir." >&2
+    return 1
+  fi
+  if ! command -v mvn >/dev/null 2>&1; then
+    echo "mvn not found. Install maven first." >&2
+    return 1
+  fi
+  (cd "$repo_dir" && mvn -q -DskipTests package)
+}
+
+sync_repo() {
+  local repo_dir="${TELEGRAMTUI_REPO_DIR:-$TELEGRAMTUI_REPO_DIR_DEFAULT}"
+  local repo_branch="${TELEGRAMTUI_REPO_BRANCH:-$TELEGRAMTUI_REPO_BRANCH_DEFAULT}"
+  if [ ! -d "$repo_dir/.git" ]; then
+    echo "Repo not found: $repo_dir" >&2
+    echo "Set TELEGRAMTUI_REPO_DIR or clone your fork to $repo_dir." >&2
+    return 1
+  fi
+
+  git -C "$repo_dir" fetch origin "$repo_branch"
+  git -C "$repo_dir" switch "$repo_branch"
+  git -C "$repo_dir" pull --ff-only origin "$repo_branch"
+}
+
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+  usage
+  exit 0
+fi
+
+if [ "${1:-}" = "--" ]; then
+  shift
+fi
+
+if [ "${1:-}" = "--sync" ]; then
+  shift
+  sync_repo
+  build_repo_jar
+  if [ "$#" -eq 0 ]; then
+    set -- telegramtui
+  elif [[ "$1" == -* ]]; then
+    set -- telegramtui "$@"
+  fi
+fi
+
+if [ "${1:-}" = "--build" ]; then
+  build_repo_jar
+  exit 0
+fi
+
+if [ "$#" -eq 0 ]; then
+  set -- telegramtui
+elif [[ "$1" == -* ]]; then
+  set -- telegramtui "$@"
+fi
+
+app_id="$(read_pass_value_if_exists "$PASS_APP_ID_PATH" || true)"
+api_hash="$(read_pass_value_if_exists "$PASS_API_HASH_PATH" || true)"
+
+if [ "$(basename "$1")" = "telegramtui" ] && [ -n "$app_id" ] && [ -n "$api_hash" ]; then
+  mkdir -p "$TELEGRAMTUI_CONFIG_DIR"
+  umask 077
+  {
+    echo "api.id=$app_id"
+    echo "api.hash=$api_hash"
+  } >"$TELEGRAMTUI_CONFIG_FILE"
+fi
+
+if [ "$(basename "$1")" = "telegramtui" ]; then
+  shift
+  run_telegramtui "$@"
+fi
+
+exec "$@"

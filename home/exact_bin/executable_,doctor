@@ -113,7 +113,7 @@ check_core() {
       fi
     fi
   else
-    fail "Homebrew not installed" "/bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+    fail "Homebrew not installed" "/usr/bin/env bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
   fi
 
   if has_cmd xcode-select && xcode-select -p >/dev/null 2>&1; then

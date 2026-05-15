@@ -10,7 +10,7 @@ sidebar_position: 1
 ,update
 ```
 
-This pulls dotfiles, updates all package managers (Homebrew, asdf, Cargo, yarn, Gems, Go, uv, manual GitHub releases), and reports what changed.
+This pulls dotfiles, updates all package managers (Homebrew, mise, Cargo, yarn, Gems, Go, uv, manual GitHub releases), and reports what changed.
 
 ### Useful flags
 
@@ -21,7 +21,7 @@ This pulls dotfiles, updates all package managers (Homebrew, asdf, Cargo, yarn, 
 | `--skip cargo,gems` | Update everything except the listed categories      |
 | `--verbose` / `-v`  | Show extra detail and per-step timings              |
 
-Categories: `dotfiles`, `brew`, `gh`, `asdf`, `cargo`, `yarn`, `gems`, `go`, `uv`, `manual`.
+Categories: `dotfiles`, `brew`, `gh`, `mise`, `cargo`, `yarn`, `gems`, `go`, `uv`, `manual`.
 
 When multiple categories run in parallel, `,update` launches [mprocs](https://github.com/pvolok/mprocs) to give each step its own scrollable terminal pane. Press `q` to exit after reviewing the logs. If `mprocs` is not installed, steps run sequentially instead.
 
@@ -70,7 +70,7 @@ If package-related hooks ran, spot-check expected package managers:
 
 ```bash
 brew bundle check --global
-asdf current
+mise ls --current
 ```
 
 ## Rollback / Undo

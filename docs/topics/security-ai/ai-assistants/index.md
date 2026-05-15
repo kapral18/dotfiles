@@ -482,11 +482,11 @@ Source: [`home/dot_gemini/settings.json`](../../../../home/dot_gemini/settings.j
 
 **Installation:** Pi globals are installed via yarn from [`home/readonly_dot_default-yarn-pkgs`](../../../../home/readonly_dot_default-yarn-pkgs) → `~/.default-yarn-pkgs`:
 
-| Package                         | Purpose               |
-| ------------------------------- | --------------------- |
-| `@mariozechner/pi-coding-agent` | Core Pi agent         |
-| `@mariozechner/pi-tui`          | Pi TUI (work profile) |
-| `pi-mcp-adapter`                | MCP adapter extension |
+| Package                           | Purpose               |
+| --------------------------------- | --------------------- |
+| `@earendil-works/pi-coding-agent` | Core Pi agent         |
+| `@earendil-works/pi-tui`          | Pi TUI (work profile) |
+| `pi-mcp-adapter`                  | MCP adapter extension |
 
 **Config sources:**
 
@@ -497,18 +497,19 @@ Source: [`home/dot_gemini/settings.json`](../../../../home/dot_gemini/settings.j
 
 **Profile defaults:**
 
-| Profile  | Default provider | Default model                        |
-| -------- | ---------------- | ------------------------------------ |
-| Work     | `google`         | `gemini-3.1-pro-preview-customtools` |
-| Personal | `google`         | `gemini-3.1-pro-preview-customtools` |
+| Profile  | Default provider | Default model          |
+| -------- | ---------------- | ---------------------- |
+| Work     | `openrouter`     | `moonshotai/kimi-k2.6` |
+| Personal | `openrouter`     | `moonshotai/kimi-k2.6` |
 
-Work profile also exposes additional configured models alongside the Google direct default.
+Work profile also exposes additional configured models alongside the OpenRouter default.
 
 **Shared settings:**
 
 - Automatic context compaction (saves tokens)
 - Exponential backoff retries
-- `yarn:pi-mcp-adapter` extension auto-installed (kept in yarn convergence list)
+- Pi loads `pi-mcp-adapter` from a yarn global `node_modules` path in Pi settings (avoids Pi-managed npm update prompts). `@earendil-works/pi-tui` stays yarn-managed but is not loaded as a Pi extension package.
+- Shell PATH order keeps `~/.yarn/bin` ahead of runtime-manager shims so `pi` resolves to the yarn-managed binary
 - Secrets (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`) are picked up from environment variables exported via `pass` in `config.fish.tmpl`
 
 #### LiteLLM integration (work profile)

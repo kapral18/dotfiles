@@ -1,0 +1,16 @@
+[settings]
+idiomatic_version_file_enable_tools = ["node"]
+
+[tools]
+bun = "1.2.20"
+go = "1.25.0"
+java = "openjdk-21"
+neovim = "0.12.2"
+node = "24.6.0"
+ruby = "3.2.9"
+rust = "1.95.0"
+vault = "1.20.2"
+yarn = "1.22.22"
+{{ if ne .isWork true -}}
+lua = ["5.1.5", "5.4.7"]
+{{ end -}}

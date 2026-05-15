@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Gate PR review comments to prevent line anchor hallucinations.
 
 input=$(cat)

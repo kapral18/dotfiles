@@ -1,6 +1,6 @@
 {
   "defaultProvider": "openrouter",
-  "defaultModel": "qwen/qwen3.5-397b-a17b",
+  "defaultModel": "moonshotai/kimi-k2.6",
   "defaultThinkingLevel": "high",
   "theme": "dark",
   "compaction": {
@@ -12,6 +12,9 @@
     "enabled": true,
     "maxRetries": 5
   },
-  "packages": ["pi-skills", "npm:pi-mcp-adapter", "npm:@mariozechner/pi-tui"],
+  "packages": [
+    "pi-skills",
+    "~/.local/share/yarn/global/node_modules/pi-mcp-adapter"
+  ],
   "lastChangelogVersion": "0.56.3"
 }

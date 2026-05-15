@@ -31,9 +31,8 @@ command -v starship >/dev/null && eval "$(starship init zsh)"
 command -v zoxide >/dev/null && eval "$(zoxide init zsh)"
 command -v navi >/dev/null && eval "$(navi widget zsh)"
 
-if command -v asdf >/dev/null; then
-    [ -f ~/.asdf/plugins/golang/set-env.zsh ] && source ~/.asdf/plugins/golang/set-env.zsh
-    [ -f ~/.asdf/plugins/java/set-java-home.zsh ] && source ~/.asdf/plugins/java/set-java-home.zsh
+if command -v mise >/dev/null; then
+    eval "$(mise activate --shims zsh)"
 fi
 
 # Beads Directory (Local-Only Mode) - Dynamic per directory

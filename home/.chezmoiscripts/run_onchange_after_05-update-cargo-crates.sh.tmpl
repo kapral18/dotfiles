@@ -2,6 +2,14 @@
 
 set -euo pipefail
 
+if command -v mise >/dev/null 2>&1; then
+  PATH=":${PATH}:"
+  PATH="${PATH//:$HOME/.asdf/shims:/:}"
+  PATH="${PATH#:}"
+  PATH="${PATH%:}"
+  export PATH="$HOME/.local/share/mise/shims${PATH:+:${PATH}}"
+fi
+
 if rustup default &>/dev/null; then
   echo "Rust toolchain is already installed"
 else
@@ -9,9 +17,8 @@ else
   rustup default stable
 fi
 
-# Track general asdf plugins and tool versions changes
-# {{ include "readonly_dot_tool-versions.tmpl" | sha256sum }}
-# {{ include "asdf_plugins.tmpl" | sha256sum }}
+# Track runtime manager config changes
+# {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
 
 # This script installs cargo crates from the default-cargo-crates file
 # {{ include "readonly_dot_default-cargo-crates" | sha256sum }}
@@ -23,11 +30,11 @@ if [[ ! -f "$cargo_crates_file" ]]; then
   exit 1
 fi
 
-# Read the file content into an array
-if ! mapfile -t lines <"$cargo_crates_file"; then
-  echo "Error: Failed to read default-cargo-crates file"
-  exit 1
-fi
+# Read the file content into an array (bash 3 compatible)
+lines=()
+while IFS= read -r line || [[ -n "$line" ]]; do
+  lines+=("$line")
+done <"$cargo_crates_file"
 
 # Get list of installed cargo binaries once
 declare -a installed_crates
@@ -40,7 +47,20 @@ done < <(cargo install --list)
 # Check if a crate is already installed (in-memory lookup)
 is_crate_installed() {
   local crate_name=$1
-  [[ " ${installed_crates[@]} " =~ " ${crate_name} " ]]
+  local installed
+  for installed in "${installed_crates[@]:-}"; do
+    [[ "$installed" == "$crate_name" ]] && return 0
+  done
+  return 1
+}
+
+is_crate_desired() {
+  local crate_name=$1
+  local desired
+  for desired in "${desired_crates[@]:-}"; do
+    [[ "$desired" == "$crate_name" ]] && return 0
+  done
+  return 1
 }
 
 # install cargo crate.
@@ -50,7 +70,8 @@ is_crate_installed() {
 # ex: install_crate --git https://github.com/user/repo.git crate_name
 install_crate() {
   local args=("$@")
-  local crate_name="${args[-1]}" # Last arg is always the crate name
+  local last_index=$((${#args[@]} - 1))
+  local crate_name="${args[$last_index]}" # Last arg is always the crate name
 
   if is_crate_installed "$crate_name"; then
     echo "Crate $crate_name is already installed, skipping"
@@ -93,14 +114,16 @@ echo "Cleaning up unused crates..."
 installed_binaries=$(get_installed_binaries)
 while IFS= read -r binary; do
   [[ -z "$binary" ]] && continue
-  if [[ ! " ${desired_crates[@]} " =~ " ${binary} " ]]; then
+  if ! is_crate_desired "$binary"; then
     echo "Uninstalling unused crate: $binary"
     cargo uninstall "$binary" || true
   fi
 done <<<"$installed_binaries"
 
-# make it available in the current shell
-asdf reshim rust
+# make new binaries available in the current shell
+if command -v mise >/dev/null 2>&1; then
+  mise reshim
+fi
 
 # lasr requires its cache directory to exist
 mkdir -p ~/.cache/lasr
