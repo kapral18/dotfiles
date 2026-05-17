@@ -1,37 +1,37 @@
 #!/usr/bin/env bash
-# Description: Diagnose and repair local cursor-cli install issues (quarantine + empty /model picker).
+# Description: Diagnose and repair local cursor-cli install issues
+#              (macOS quarantine + empty / duplicate /model picker).
 #
-# Picker-bug semantics (read this BEFORE editing OLD_C_SIGNATURE / V2_C_SIGNATURE below):
-#   - File:     <dist-package>/<chunkId>.index.js (minified webpack chunk)
-#   - Function: c(e,t) inside the "./src/models/model-service.ts" module.
-#   - Anchor:   "useModelParameters:!0,doNotUseMarkdown:!0" is the unique protobuf
-#               field block on the availableModels() call this script targets.
-#   - Bug:      Upstream returns void 0 when no model has parameterDefinitions
-#               yet, leaving the interactive /model picker empty in cold-start
-#               sessions.
-#   - Patch:    Prefer models WITH parameterDefinitions (so thinking / non-thinking
-#               variants render as separate entries). Fall back to all non-excluded
-#               models so the picker is never empty.
+# Picker semantics: see scripts/picker_patch.py (docstring + regex patterns).
+#   - old-empty-picker      -> picker EMPTY on cold start
+#   - v1-collapses-variants -> picker shows DUPLICATES (thinking/non-thinking collapse)
+#   - v2-good               -> variants render correctly
 #
-# When upstream changes minified shape, this script will report
-# "No known picker signature found" and auto-dump anchor-located code regions.
-# To re-derive: update OLD_C_SIGNATURE (as-shipped buggy form) and V2_C_SIGNATURE
-# (variant-preserving patched form) in the Python heredoc below, using the dump
-# as ground truth.
+# Active bundles only:
+#   <Caskroom>/<ver>/dist-package/*.index.js
+#   ~/.local/share/cursor-agent/versions/<ver>/*.index.js (same ver as Caskroom)
+# Older directories under ~/.local/share/cursor-agent/versions/ are ignored.
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PICKER_PATCH="${SCRIPT_DIR}/picker_patch.py"
+
 usage() {
   cat <<'EOF'
-Usage: fix_cursor_cli.sh [--reason auto|startup-failure|empty-picker|force] [--force]
+Usage: fix_cursor_cli.sh [--reason auto|startup-failure|empty-picker|force|check] [--force]
 
 Targeted repair script for known local Cursor CLI bundle regressions.
 
 Modes:
-  auto             Diagnose first. Apply only when known signatures are detected.
-  startup-failure  Assume fresh cursor-agent startup is failing and apply both fixes.
-  empty-picker     Assume interactive /model is empty and apply picker patch.
+  auto             Diagnose first. Apply only when known picker signatures
+                   (OLD or V1) or quarantine attrs are detected on active bundles.
+  startup-failure  Assume fresh cursor-agent startup is failing; apply both fixes.
+  empty-picker     Assume interactive /model is empty OR shows duplicate variants;
+                   apply picker patch (and quarantine fix if quarantine present).
   force            Apply both fixes without diagnosis gating.
+  check            Read-only. Report picker bundle state per active bundle and
+                   exit non-zero if anything other than v2-good is detected.
 
 Notes:
   --force is equivalent to --reason force.
@@ -72,7 +72,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 case "$reason" in
-  auto|startup-failure|empty-picker|force) ;;
+  auto|startup-failure|empty-picker|force|check) ;;
   *)
     echo "Error: invalid --reason value: $reason" >&2
     usage >&2
@@ -80,18 +80,16 @@ case "$reason" in
     ;;
 esac
 
-if ! command -v brew >/dev/null 2>&1; then
-  echo "Error: Homebrew is required but not found on PATH." >&2
-  exit 1
-fi
+for tool in brew python3 cursor-agent; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    echo "Error: $tool is required but not found on PATH." >&2
+    exit 1
+  fi
+done
 
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "Error: python3 is required but not found on PATH." >&2
-  exit 1
-fi
-
-if ! command -v cursor-agent >/dev/null 2>&1; then
-  echo "Error: cursor-agent is required but not found on PATH." >&2
+if [ ! -f "$PICKER_PATCH" ]; then
+  echo "Error: picker_patch.py helper not found at: $PICKER_PATCH" >&2
+  echo "If this script was just deployed, try: chezmoi apply --no-tty" >&2
   exit 1
 fi
 
@@ -107,6 +105,9 @@ if [ ! -d "$dist_package" ]; then
   exit 1
 fi
 
+versions_dir="$HOME/.local/share/cursor-agent/versions"
+
+# Read-only diagnostic probes.
 set +e
 pre_version_output="$(cursor-agent --version 2>&1)"
 pre_version_status=$?
@@ -120,7 +121,8 @@ if [ "$pre_version_status" -ne 0 ] || [ "$pre_models_status" -ne 0 ]; then
 fi
 
 bundle_dump_signature="false"
-if [[ "$pre_version_output" == *"/dist-package/index.js:"* ]] || [[ "$pre_models_output" == *"/dist-package/index.js:"* ]]; then
+if [[ "$pre_version_output" == *"/dist-package/index.js:"* ]] || \
+   [[ "$pre_models_output" == *"/dist-package/index.js:"* ]]; then
   bundle_dump_signature="true"
 fi
 
@@ -128,6 +130,78 @@ quarantine_listing="$(xattr -lr "$dist_package" 2>/dev/null || true)"
 has_quarantine="false"
 if [[ "$quarantine_listing" == *"com.apple.quarantine"* ]]; then
   has_quarantine="true"
+fi
+
+# Classify picker state across active bundles.
+set +e
+picker_state_output="$(python3 "$PICKER_PATCH" classify "$dist_package" "$versions_dir" "$version")"
+set -e
+worst_picker_state="$(printf '%s\n' "$picker_state_output" | sed -n 's/^WORST:\(.*\)$/\1/p' | head -1)"
+worst_picker_state="${worst_picker_state:-unknown}"
+
+echo "Diagnosis:"
+echo "  reason: $reason"
+echo "  cursor-cli version: $version"
+echo "  pre cursor-agent --version exit: $pre_version_status"
+echo "  pre cursor-agent models exit: $pre_models_status"
+echo "  startup broken: $startup_broken"
+echo "  bundle dump signature: $bundle_dump_signature"
+echo "  quarantine attrs present: $has_quarantine"
+echo "  picker bundle state (worst): $worst_picker_state"
+
+if [ "$pre_version_status" -ne 0 ]; then
+  echo "  version probe first line: $(printf '%s\n' "$pre_version_output" | sed -n '1p')"
+fi
+if [ "$pre_models_status" -ne 0 ]; then
+  echo "  models probe first line: $(printf '%s\n' "$pre_models_output" | sed -n '1p')"
+fi
+
+echo
+echo "Picker bundle state per active file:"
+state_lines="$(printf '%s\n' "$picker_state_output" | sed -n 's/^FILE:\(.*\)$/\1/p')"
+if [ -z "$state_lines" ]; then
+  echo "  (no active bundles with picker anchors detected)"
+else
+  printf '%s\n' "$state_lines" | while IFS=: read -r state path; do
+    case "$state" in
+      v2-good)               note="variants render correctly" ;;
+      v1-collapses-variants) note="thinking/non-thinking show as DUPLICATES in /model" ;;
+      old-empty-picker)      note="/model picker will be EMPTY in cold-start sessions" ;;
+      unknown-shape)         note="picker anchors found but neither known signature matches" ;;
+      *)                     note="$state" ;;
+    esac
+    echo "  $state: $path"
+    echo "    -> $note"
+  done
+fi
+
+if [ "$reason" = "check" ]; then
+  echo
+  case "$worst_picker_state" in
+    v2-good|no-anchor)
+      echo "Check OK: all active picker bundles are in v2-good state."
+      exit 0
+      ;;
+    v1-collapses-variants)
+      echo "Check FAIL: at least one active bundle is in V1 state (variants collapse to duplicates)."
+      echo "Run: $0 --reason empty-picker"
+      exit 1
+      ;;
+    old-empty-picker)
+      echo "Check FAIL: at least one active bundle is in OLD state (empty picker)."
+      echo "Run: $0 --reason empty-picker"
+      exit 1
+      ;;
+    unknown-shape)
+      echo "Check FAIL: at least one active bundle matched picker anchors but neither known signature."
+      echo "Run: $0 --reason empty-picker for the anchor-context dump for re-derivation."
+      exit 1
+      ;;
+    *)
+      echo "Check FAIL: picker state could not be classified."
+      exit 1
+      ;;
+  esac
 fi
 
 need_quarantine_fix="false"
@@ -138,11 +212,16 @@ case "$reason" in
     if [ "$has_quarantine" = "true" ]; then
       need_quarantine_fix="true"
     fi
+    case "$worst_picker_state" in
+      v1-collapses-variants|old-empty-picker)
+        need_picker_patch="true"
+        ;;
+    esac
     if [ "$startup_broken" = "true" ]; then
+      need_quarantine_fix="true"
       if [ "$bundle_dump_signature" = "true" ] || [ "$has_quarantine" = "true" ]; then
         need_picker_patch="true"
       fi
-      need_quarantine_fix="true"
     fi
     ;;
   startup-failure)
@@ -161,22 +240,12 @@ case "$reason" in
     ;;
 esac
 
-echo "Diagnosis:"
-echo "  reason: $reason"
-echo "  pre cursor-agent --version exit: $pre_version_status"
-echo "  pre cursor-agent models exit: $pre_models_status"
-echo "  startup broken: $startup_broken"
-echo "  bundle dump signature: $bundle_dump_signature"
-echo "  quarantine attrs present: $has_quarantine"
-
-if [ "$pre_version_status" -ne 0 ]; then
-  echo "  version probe first line: $(printf '%s\n' "$pre_version_output" | sed -n '1p')"
-fi
-if [ "$pre_models_status" -ne 0 ]; then
-  echo "  models probe first line: $(printf '%s\n' "$pre_models_output" | sed -n '1p')"
-fi
-
-if [ "$reason" = "auto" ] && [ "$startup_broken" = "true" ] && [ "$bundle_dump_signature" = "false" ] && [ "$has_quarantine" = "false" ]; then
+if [ "$reason" = "auto" ] && \
+   [ "$startup_broken" = "true" ] && \
+   [ "$bundle_dump_signature" = "false" ] && \
+   [ "$has_quarantine" = "false" ] && \
+   [ "$worst_picker_state" != "v1-collapses-variants" ] && \
+   [ "$worst_picker_state" != "old-empty-picker" ]; then
   echo
   echo "Refusing automatic repair: startup failed but no known bundle/quarantine signature was detected."
   echo "Capture full failure text and inspect manually before applying this targeted patch."
@@ -186,7 +255,7 @@ fi
 if [ "$need_quarantine_fix" = "false" ] && [ "$need_picker_patch" = "false" ]; then
   echo
   echo "No repair action taken (machine appears healthy for this targeted issue)."
-  echo "If /model is empty in a fresh session while 'cursor-agent models' works, rerun with:"
+  echo "If /model is empty or shows duplicate variants in a fresh session, rerun with:"
   echo "  $0 --reason empty-picker"
   exit 0
 fi
@@ -208,131 +277,14 @@ fi
 
 picker_result="skipped"
 if [ "$need_picker_patch" = "true" ]; then
-  picker_output="$(
-    python3 - "$dist_package" "$HOME/.local/share/cursor-agent/versions" "$reason" <<'PY'
-from pathlib import Path
-import sys
-
-OLD_C_SIGNATURE = "const n=t.models.filter((e=>!l.has(e.name)));return n.some((e=>{var t,n;return(null!==(n=null===(t=e.parameterDefinitions)||void 0===t?void 0:t.length)&&void 0!==n?n:0)>0}))?n:void 0"
-V2_C_SIGNATURE = "const n=t.models.filter((e=>!l.has(e.name)));const r=n.filter((e=>{var t,n;return(null!==(n=null===(t=e.parameterDefinitions)||void 0===t?void 0:t.length)&&void 0!==n?n:0)>0}));return r.length>0?r:n.length>0?n:void 0"
-
-# Anchors used to locate the picker code when exact signatures stop matching.
-# These strings are upstream-stable across minifier runs (protobuf field names
-# and debug-log identifiers are not renamed by the minifier).
-PICKER_ANCHORS = [
-    "useModelParameters:!0,doNotUseMarkdown:!0",
-    "models.fetchAvailableModelsParameterized",
-]
-
-
-def dump_anchor_context(path, source, before=120, after=520):
-    """Print code regions around each picker anchor for signature re-derivation."""
-    printed_any = False
-    for anchor in PICKER_ANCHORS:
-        start = 0
-        while True:
-            idx = source.find(anchor, start)
-            if idx == -1:
-                break
-            ctx_start = max(0, idx - before)
-            ctx_end = min(len(source), idx + len(anchor) + after)
-            print(f"--- anchor in {path} (offset {idx}) ---")
-            print(f"  anchor: {anchor!r}")
-            print(f"  context: {source[ctx_start:ctx_end]}")
-            printed_any = True
-            start = idx + len(anchor)
-    return printed_any
-
-
-def collect_candidate_files(root):
-    if not root.exists():
-        return []
-    if root.is_file():
-        return [root] if root.name.endswith(".index.js") else []
-    if root.name == "versions":
-        files = []
-        for version_dir in sorted(root.iterdir()):
-            if version_dir.is_dir():
-                files.extend(sorted(version_dir.glob("*.index.js")))
-        return files
-    return sorted(root.glob("*.index.js"))
-
-
-reason = sys.argv[3]
-require_match = reason == "empty-picker"
-patched = 0
-already_patched = 0
-replacement_count = 0
-candidate_files = []
-seen_paths = set()
-
-for arg in sys.argv[1:3]:
-    for path in collect_candidate_files(Path(arg)):
-        resolved = path.resolve()
-        if resolved in seen_paths:
-            continue
-        seen_paths.add(resolved)
-        candidate_files.append(path)
-
-print("Model picker patch results:")
-for path in candidate_files:
-    source = path.read_text(errors="ignore")
-    c_old_count = source.count(OLD_C_SIGNATURE)
-    total_replacements = c_old_count
-    if total_replacements > 0:
-        patched_source = source.replace(OLD_C_SIGNATURE, V2_C_SIGNATURE)
-        path.write_text(patched_source)
-        patched += 1
-        replacement_count += total_replacements
-        suffix = "s" if c_old_count != 1 else ""
-        print(f"  patched: {path} ({c_old_count} replacement{suffix})")
-    elif V2_C_SIGNATURE in source:
-        already_patched += 1
-        print(f"  already patched: {path}")
-
-print(f"  scanned: {len(candidate_files)} bundle files")
-print(f"  total replacements: {replacement_count}")
-
-if patched == 0 and already_patched == 0:
-    print()
-    print("  No known picker signature matched. Likely cause: upstream bundle")
-    print("  shape changed since this skill was last updated.")
-    print("  Dumping anchor-located code regions so OLD_C_SIGNATURE and")
-    print("  V2_C_SIGNATURE can be re-derived. See script header for bug semantics.")
-    print()
-    dumped = False
-    for path in candidate_files:
-        source = path.read_text(errors="ignore")
-        if any(anchor in source for anchor in PICKER_ANCHORS):
-            if dump_anchor_context(path, source):
-                dumped = True
-    if not dumped:
-        print("  warning: none of the picker anchors were found either.")
-        print("  Anchors searched:")
-        for anchor in PICKER_ANCHORS:
-            print(f"    - {anchor!r}")
-        print("  Inspect the bundle manually before editing this script.")
-    if require_match:
-        raise SystemExit("Error: no known signature; see anchor dump above.")
-
-if patched > 0:
-    print("PATCH_STATE:patched")
-elif already_patched > 0:
-    print("PATCH_STATE:already-patched")
-else:
-    print("PATCH_STATE:no-signature")
-PY
-  )"
+  patch_output="$(python3 "$PICKER_PATCH" patch "$dist_package" "$versions_dir" "$version")"
   while IFS= read -r line; do
     if [[ "$line" == PATCH_STATE:* ]]; then
       picker_result="${line#PATCH_STATE:}"
       continue
     fi
     echo "$line"
-  done <<< "$picker_output"
-else
-  echo "Model picker patch results:"
-  echo "  skipped by diagnosis"
+  done <<< "$patch_output"
 fi
 
 set +e
@@ -340,7 +292,11 @@ post_version_output="$(cursor-agent --version 2>&1)"
 post_version_status=$?
 post_models_output="$(cursor-agent models 2>&1)"
 post_models_status=$?
+post_picker_state_output="$(python3 "$PICKER_PATCH" classify "$dist_package" "$versions_dir" "$version")"
 set -e
+
+post_worst_picker_state="$(printf '%s\n' "$post_picker_state_output" | sed -n 's/^WORST:\(.*\)$/\1/p' | head -1)"
+post_worst_picker_state="${post_worst_picker_state:-unknown}"
 
 echo
 echo "Repair summary:"
@@ -352,8 +308,9 @@ echo "  cursor-agent --version exit: $post_version_status"
 echo "  cursor-agent --version first line: $(printf '%s\n' "$post_version_output" | sed -n '1p')"
 echo "  cursor-agent models exit: $post_models_status"
 echo "  cursor-agent models first line: $(printf '%s\n' "$post_models_output" | sed -n '1p')"
+echo "  picker bundle state (worst): $post_worst_picker_state"
 
 echo
-echo "If your issue was interactive-only (/model empty), verify in a fresh session:"
+echo "If your issue was interactive-only (/model empty or duplicates), verify in a fresh session:"
 echo "  cursor-agent --force"
 echo "  /model"
