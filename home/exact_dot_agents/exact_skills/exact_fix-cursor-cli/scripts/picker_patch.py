@@ -31,6 +31,10 @@ Picker-bug semantics:
                                  upstream model metadata has separate thinking
                                  slugs but duplicate display names, so `/model`
                                  and the prompt footer omit the Thinking suffix
+        - display-collapses-context:
+                                 picker/footer labels omit context-window tags
+                                 (1M, 272k, etc.) that `cursor-agent models`
+                                 shows via displayName
     The regex patterns are var-name-agnostic so they match across multiple
     minified webpack chunks (e.g. 730.index.js uses t/o/r, 8262.index.js uses
     n/t/l).
@@ -39,7 +43,6 @@ Picker-bug semantics:
 import re
 import sys
 from pathlib import Path
-
 
 PICKER_ANCHORS = [
     "useModelParameters:!0,doNotUseMarkdown:!0",
@@ -87,21 +90,39 @@ PATTERN_DISPLAY_OLD = re.compile(
 )
 
 PATTERN_DISPLAY_V2 = re.compile(
+    r"buildParameterizedModelMap\((?P<A>\w+)\)\{"
+    r"this\.parameterizedModelMap\.clear\(\);"
+    r"for\(const (?P<B>\w+) of (?P=A)\)if\((?P=B)\.name\)\{"
+    r"const (?P<id>\w+)=\((?P=B)\.name\|\|(?P=B)\.serverModelName\|\|\"\"\)\.toLowerCase\(\),"
+    r"(?P<fmt>\w+)=(?P<label>\w+)=>{"
+    r"if\(!(?P=label)\|\|(?P=label)\.toLowerCase\(\)\.includes\(\"thinking\"\)\|\|!(?P=id)\.includes\(\"thinking\"\)\)"
+    r"return (?P=label);"
+    r"return (?P=label)\.endsWith\(\" Fast\"\)\?(?P=label)\.slice\(0,-5\)\+\" Thinking Fast\":(?P=label)\+\" Thinking\""
+    r"\};"
+    r"(?P=B)\.clientDisplayName=(?P=fmt)\((?P=B)\.clientDisplayName\),"
+    r"(?P=B)\.inputboxShortModelName=(?P=fmt)\((?P=B)\.inputboxShortModelName\),"
+    r"this\.parameterizedModelMap\.set\((?P=B)\.name,(?P=B)\)\}\}"
+)
+
+# V3 adds context-window tags parsed from tooltip markdown (see _build_display_v3).
+PATTERN_DISPLAY_V3 = re.compile(
     r"buildParameterizedModelMap\(\w+\)\{"
     r"this\.parameterizedModelMap\.clear\(\);"
     r"for\(const \w+ of \w+\)if\(\w+\.name\)\{"
     r"const \w+=\(\w+\.name\|\|\w+\.serverModelName\|\|\"\"\)\.toLowerCase\(\),"
-    r"\w+=\w+=>\{if\(!\w+\|\|\w+\.toLowerCase\(\)\.includes\(\"thinking\"\)\|\|!\w+\.includes\(\"thinking\"\)\)"
-    r"return \w+;return \w+\.endsWith\(\" Fast\"\)\?\w+\.slice\(0,-5\)\+\" Thinking Fast\":\w+\+\" Thinking\"\};"
-    r"\w+\.clientDisplayName=\w+\(\w+\.clientDisplayName\),"
-    r"\w+\.inputboxShortModelName=\w+\(\w+\.inputboxShortModelName\),"
-    r"this\.parameterizedModelMap\.set\(\w+\.name,\w+\)\}\}"
+    r"\w+=\w+=>{"
+    r"if\(!\w+\)return \w+;"
+    r"if\(!\w+\.toLowerCase\(\)\.includes\(\"thinking\"\)&&\w+\.includes\(\"thinking\"\)\)"
+    r".*?tooltipDataForMaxMode\.markdownContent.*?context\\s\+window"
+    r".*?parameterizedModelMap\.set\(\w+\.name,\w+\)\}\}",
+    re.DOTALL,
 )
 
 
 SEVERITY = {
     "v2-good": 0,
     "no-anchor": 0,
+    "display-collapses-context": 1,
     "display-collapses-thinking": 1,
     "v1-collapses-variants": 1,
     "old-empty-picker": 1,
@@ -112,11 +133,16 @@ SEVERITY = {
 def classify(source):
     if PATTERN_DISPLAY_OLD.search(source):
         return "display-collapses-thinking"
+    if PATTERN_DISPLAY_V3.search(source):
+        return "v2-good"
+    if PATTERN_DISPLAY_V2.search(source):
+        return "display-collapses-context"
     if PATTERN_V1.search(source):
         return "v1-collapses-variants"
     if PATTERN_OLD.search(source):
         return "old-empty-picker"
-    if PATTERN_V2.search(source) or PATTERN_DISPLAY_V2.search(source):
+    # Picker-only chunks (e.g. 730.index.js) carry the fetch filter but not display migration.
+    if PATTERN_V2.search(source):
         return "v2-good"
     if any(a in source for a in PICKER_ANCHORS + DISPLAY_ANCHORS):
         return "unknown-shape"
@@ -142,8 +168,11 @@ def _build_v2(A, B, C, D, E):
 
 def _migrate_old(match):
     return _build_v2(
-        match.group("A"), match.group("B"), match.group("C"),
-        match.group("D"), match.group("E"),
+        match.group("A"),
+        match.group("B"),
+        match.group("C"),
+        match.group("D"),
+        match.group("E"),
     )
 
 
@@ -154,19 +183,47 @@ def _migrate_v1(match):
     return _build_v2(A, B, C, D, E)
 
 
-def _migrate_display(match):
-    A, B = match.group("A"), match.group("B")
+def _build_display_v3(A, B):
     id_var = _pick_var({A, B}, ["n", "r", "o", "i", "s", "a", "l", "d"])
     format_var = _pick_var({A, B, id_var}, ["r", "o", "i", "s", "a", "l", "d", "c"])
     label_var = _pick_var({A, B, id_var, format_var}, ["o", "i", "s", "a", "l", "d", "c", "u"])
+    ctx_var = _pick_var({A, B, id_var, format_var, label_var}, ["c", "p", "h", "f", "g", "w", "x"])
+    md_var = _pick_var({A, B, id_var, format_var, label_var, ctx_var}, ["d", "m", "e", "j", "k"])
+    match_var = _pick_var(
+        {A, B, id_var, format_var, label_var, ctx_var, md_var},
+        ["m", "q", "v", "y", "z"],
+    )
+    norm_var = _pick_var(
+        {A, B, id_var, format_var, label_var, ctx_var, md_var, match_var},
+        ["u", "b", "w", "x", "y"],
+    )
+    ver_var = _pick_var(
+        {A, B, id_var, format_var, label_var, ctx_var, md_var, match_var, norm_var},
+        ["v", "p", "q", "z"],
+    )
     return (
         f"buildParameterizedModelMap({A}){{"
         "this.parameterizedModelMap.clear();"
         f"for(const {B} of {A})if({B}.name){{"
-        f"const {id_var}=({B}.name||{B}.serverModelName||\"\").toLowerCase(),"
+        f'const {id_var}=({B}.name||{B}.serverModelName||"").toLowerCase(),'
         f"{format_var}={label_var}=>{{"
-        f"if(!{label_var}||{label_var}.toLowerCase().includes(\"thinking\")||!{id_var}.includes(\"thinking\"))return {label_var};"
-        f"return {label_var}.endsWith(\" Fast\")?{label_var}.slice(0,-5)+\" Thinking Fast\":{label_var}+\" Thinking\""
+        f"if(!{label_var})return {label_var};"
+        f'if(!{label_var}.toLowerCase().includes("thinking")&&{id_var}.includes("thinking"))'
+        f'{label_var}={label_var}.endsWith(" Fast")?{label_var}.slice(0,-5)+" Thinking Fast":{label_var}+" Thinking";'
+        f"if(!/\\b\\d+[kKmM]+\\b/.test({label_var})){{"
+        f"let {ctx_var}=null,{md_var}={B}.supportsMaxMode&&{B}.tooltipDataForMaxMode?"
+        f"{B}.tooltipDataForMaxMode.markdownContent:null;"
+        f"if({md_var}){{let {match_var}={md_var}.match(/(\\d+(?:\\.\\d+)?[kKmM]+)\\s+context\\s+window/i);"
+        f"if({match_var}){ctx_var}={match_var}[1]}}"
+        f"if(!{ctx_var}&&{B}.tooltipData){{let {match_var}={B}.tooltipData.markdownContent.match"
+        f"(/(\\d+(?:\\.\\d+)?[kKmM]+)\\s+context\\s+window/i);if({match_var}){ctx_var}={match_var}[1]}}"
+        f'if({ctx_var}){{let {norm_var}={ctx_var}.replace(/^1m$/i,"1M"),'
+        f"{ver_var}={label_var}.match(/^(.*\\d+\\.\\d+)(.*)$/);"
+        f'if({ver_var}){label_var}={ver_var}[1]+" "+{norm_var}+{ver_var}[2];'
+        f'else if({label_var}.endsWith(" Fast")){label_var}={label_var}.slice(0,-5)+" "+{norm_var}+" Fast";'
+        f'else {label_var}={label_var}+" "+{norm_var}}}'
+        "}"
+        f"return {label_var}"
         "};"
         f"{B}.clientDisplayName={format_var}({B}.clientDisplayName),"
         f"{B}.inputboxShortModelName={format_var}({B}.inputboxShortModelName),"
@@ -175,11 +232,20 @@ def _migrate_display(match):
     )
 
 
+def _migrate_display(match):
+    return _build_display_v3(match.group("A"), match.group("B"))
+
+
+def _migrate_display_v2(match):
+    return _build_display_v3(match.group("A"), match.group("B"))
+
+
 def patch_source(source):
     new_source, old_count = PATTERN_OLD.subn(_migrate_old, source)
     new_source, v1_count = PATTERN_V1.subn(_migrate_v1, new_source)
-    new_source, display_count = PATTERN_DISPLAY_OLD.subn(_migrate_display, new_source)
-    return new_source, old_count, v1_count, display_count
+    new_source, display_old_count = PATTERN_DISPLAY_OLD.subn(_migrate_display, new_source)
+    new_source, display_v2_count = PATTERN_DISPLAY_V2.subn(_migrate_display_v2, new_source)
+    return new_source, old_count, v1_count, display_old_count, display_v2_count
 
 
 def dump_anchor_context(path, source, before=120, after=520):
@@ -250,8 +316,13 @@ def cmd_patch(dist_package, versions_dir, active_version):
             already_patched_files += 1
             print(f"  already patched (v2): {p}")
             continue
-        if state_before in ("display-collapses-thinking", "v1-collapses-variants", "old-empty-picker"):
-            new_source, old_count, v1_count, display_count = patch_source(source)
+        if state_before in (
+            "display-collapses-thinking",
+            "display-collapses-context",
+            "v1-collapses-variants",
+            "old-empty-picker",
+        ):
+            new_source, old_count, v1_count, display_old_count, display_v2_count = patch_source(source)
             details = []
             if old_count > 0:
                 s = "s" if old_count != 1 else ""
@@ -259,12 +330,15 @@ def cmd_patch(dist_package, versions_dir, active_version):
             if v1_count > 0:
                 s = "s" if v1_count != 1 else ""
                 details.append(f"{v1_count} V1->V2 migration{s}")
-            if display_count > 0:
-                s = "s" if display_count != 1 else ""
-                details.append(f"{display_count} thinking-display migration{s}")
+            if display_old_count > 0:
+                s = "s" if display_old_count != 1 else ""
+                details.append(f"{display_old_count} display OLD->V3 migration{s}")
+            if display_v2_count > 0:
+                s = "s" if display_v2_count != 1 else ""
+                details.append(f"{display_v2_count} display V2->V3 migration{s}")
             p.write_text(new_source)
             patched_files += 1
-            total_replacements += old_count + v1_count + display_count
+            total_replacements += old_count + v1_count + display_old_count + display_v2_count
             print(f"  patched: {p} ({', '.join(details)})")
             continue
         if state_before == "unknown-shape":

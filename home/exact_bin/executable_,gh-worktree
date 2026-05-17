@@ -28,15 +28,15 @@ die() {
 }
 
 require_cmd() {
-  command -v "$1" > /dev/null 2>&1 || die "missing command: $1"
+  command -v "$1" >/dev/null 2>&1 || die "missing command: $1"
 }
 
 expand_tilde() {
   local p="$1"
   case "$p" in
-    "~") printf '%s\n' "$HOME" ;;
-    "~/"*) printf '%s\n' "$HOME/${p#~/}" ;;
-    *) printf '%s\n' "$p" ;;
+  "~") printf '%s\n' "$HOME" ;;
+  "~/"*) printf '%s\n' "$HOME/${p#~/}" ;;
+  *) printf '%s\n' "$p" ;;
   esac
 }
 
@@ -63,7 +63,7 @@ resolve_repo_worktree() {
   local d child_git child common root
   p="$(expand_tilde "$p")"
   [ -n "$p" ] || return 1
-  cd "$p" 2> /dev/null || return 1
+  cd "$p" 2>/dev/null || return 1
 
   if [ -e ".git" ]; then
     pwd -P
@@ -83,13 +83,13 @@ resolve_repo_worktree() {
   for child_git in "$p"/*/.git "$p"/*/*/.git "$p"/*/*/*/.git; do
     [ -e "$child_git" ] || continue
     child="$(dirname "$child_git")"
-    common="$(git -C "$child" rev-parse --git-common-dir 2> /dev/null || true)"
+    common="$(git -C "$child" rev-parse --git-common-dir 2>/dev/null || true)"
     [ -n "$common" ] || continue
     case "$common" in
-      /*) ;;
-      *) common="$child/$common" ;;
+    /*) ;;
+    *) common="$child/$common" ;;
     esac
-    common="$(realpath "$common" 2> /dev/null || printf '%s' "$common")"
+    common="$(realpath "$common" 2>/dev/null || printf '%s' "$common")"
     if [ "$(basename "$common")" = ".git" ]; then
       root="$(dirname "$common")"
       if [ -e "$root/.git" ]; then
@@ -121,13 +121,13 @@ ensure_repo_worktree() {
   local allow_bootstrap="$3"
   local wt="" conventional_path=""
 
-  if [ -n "$repo_path_hint" ] && wt="$(resolve_repo_worktree "$repo_path_hint" 2> /dev/null)"; then
+  if [ -n "$repo_path_hint" ] && wt="$(resolve_repo_worktree "$repo_path_hint" 2>/dev/null)"; then
     printf '%s\n' "$wt"
     return 0
   fi
 
   conventional_path="$(conventional_repo_wrapper_path "$repo_nwo")"
-  if wt="$(resolve_repo_worktree "$conventional_path" 2> /dev/null)"; then
+  if wt="$(resolve_repo_worktree "$conventional_path" 2>/dev/null)"; then
     printf '%s\n' "$wt"
     return 0
   fi
@@ -138,9 +138,9 @@ ensure_repo_worktree() {
 
   bootstrap_repo_with_tfork "$repo_nwo"
 
-  wt="$(resolve_repo_worktree "$conventional_path" 2> /dev/null || true)"
+  wt="$(resolve_repo_worktree "$conventional_path" 2>/dev/null || true)"
   if [ -z "$wt" ] && [ -n "$repo_path_hint" ]; then
-    wt="$(resolve_repo_worktree "$repo_path_hint" 2> /dev/null || true)"
+    wt="$(resolve_repo_worktree "$repo_path_hint" 2>/dev/null || true)"
   fi
   [ -n "$wt" ] || die "could not find a git worktree under: $conventional_path"
   printf '%s\n' "$wt"
@@ -155,7 +155,7 @@ if [ "$kind" = "-h" ] || [ "$kind" = "--help" ]; then
   exit 0
 fi
 
-shift $(( $# >= 3 ? 3 : $# ))
+shift $(($# >= 3 ? 3 : $#))
 
 if [ -z "$kind" ] || [ -z "$repo_nwo" ] || [ -z "$number" ]; then
   usage >&2
@@ -163,12 +163,12 @@ if [ -z "$kind" ] || [ -z "$repo_nwo" ] || [ -z "$number" ]; then
 fi
 
 case "$kind" in
-  pr | issue) ;;
-  *) die "kind must be 'pr' or 'issue' (got: $kind)" ;;
+pr | issue) ;;
+*) die "kind must be 'pr' or 'issue' (got: $kind)" ;;
 esac
 
 case "$number" in
-  *[!0-9]* | "") die "invalid number: $number" ;;
+*[!0-9]* | "") die "invalid number: $number" ;;
 esac
 
 repo_path=""
@@ -181,43 +181,43 @@ issue_branch=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --repo-path)
-      [ $# -ge 2 ] || die "missing value for --repo-path"
-      repo_path="$2"
-      shift 2
-      ;;
-    --focus)
-      focus_mode=1
-      shift
-      ;;
-    --quiet)
-      quiet_mode=1
-      shift
-      ;;
-    --branch)
-      [ $# -ge 2 ] || die "missing value for --branch"
-      issue_branch="$2"
-      shift 2
-      ;;
-    --create-bg)
-      create_bg=1
-      shift
-      ;;
-    --print-root)
-      print_root=1
-      shift
-      ;;
-    --no-bootstrap)
-      allow_bootstrap=0
-      shift
-      ;;
-    -h | --help)
-      usage
-      exit 0
-      ;;
-    *)
-      die "unknown option: $1"
-      ;;
+  --repo-path)
+    [ $# -ge 2 ] || die "missing value for --repo-path"
+    repo_path="$2"
+    shift 2
+    ;;
+  --focus)
+    focus_mode=1
+    shift
+    ;;
+  --quiet)
+    quiet_mode=1
+    shift
+    ;;
+  --branch)
+    [ $# -ge 2 ] || die "missing value for --branch"
+    issue_branch="$2"
+    shift 2
+    ;;
+  --create-bg)
+    create_bg=1
+    shift
+    ;;
+  --print-root)
+    print_root=1
+    shift
+    ;;
+  --no-bootstrap)
+    allow_bootstrap=0
+    shift
+    ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  *)
+    die "unknown option: $1"
+    ;;
   esac
 done
 
@@ -248,39 +248,39 @@ require_cmd ,w
 cd "$wt"
 
 case "$kind" in
-  pr)
-    if [ "$create_bg" -eq 1 ]; then
-      log_dir="${XDG_CACHE_HOME:-$HOME/.cache}/gh-dash"
-      mkdir -p "$log_dir"
-      log="${log_dir}/w_prs_${number}.log"
-      if [ "$quiet_mode" -eq 1 ]; then
-        nohup ,w prs -q "$number" > "$log" 2>&1 &
-      else
-        nohup ,w prs "$number" > "$log" 2>&1 &
-      fi
-      exit 0
+pr)
+  if [ "$create_bg" -eq 1 ]; then
+    log_dir="${XDG_CACHE_HOME:-$HOME/.cache}/gh-dash"
+    mkdir -p "$log_dir"
+    log="${log_dir}/w_prs_${number}.log"
+    if [ "$quiet_mode" -eq 1 ]; then
+      nohup ,w prs -q "$number" >"$log" 2>&1 &
+    else
+      nohup ,w prs "$number" >"$log" 2>&1 &
     fi
+    exit 0
+  fi
 
-    pr_args=()
-    if [ "$quiet_mode" -eq 1 ]; then
-      pr_args+=(-q)
-    fi
-    if [ "$focus_mode" -eq 1 ]; then
-      pr_args+=(--focus)
-    fi
-    ,w prs "${pr_args[@]+"${pr_args[@]}"}" "$number"
-    ;;
-  issue)
-    issue_args=()
-    if [ "$quiet_mode" -eq 1 ]; then
-      issue_args+=(-q)
-    fi
-    if [ "$focus_mode" -eq 1 ]; then
-      issue_args+=(--focus)
-    fi
-    if [ -n "$issue_branch" ]; then
-      issue_args+=(-b "$issue_branch")
-    fi
-    ,w issue "${issue_args[@]+"${issue_args[@]}"}" "$number"
-    ;;
+  pr_args=()
+  if [ "$quiet_mode" -eq 1 ]; then
+    pr_args+=(-q)
+  fi
+  if [ "$focus_mode" -eq 1 ]; then
+    pr_args+=(--focus)
+  fi
+  ,w prs "${pr_args[@]+"${pr_args[@]}"}" "$number"
+  ;;
+issue)
+  issue_args=()
+  if [ "$quiet_mode" -eq 1 ]; then
+    issue_args+=(-q)
+  fi
+  if [ "$focus_mode" -eq 1 ]; then
+    issue_args+=(--focus)
+  fi
+  if [ -n "$issue_branch" ]; then
+    issue_args+=(-b "$issue_branch")
+  fi
+  ,w issue "${issue_args[@]+"${issue_args[@]}"}" "$number"
+  ;;
 esac

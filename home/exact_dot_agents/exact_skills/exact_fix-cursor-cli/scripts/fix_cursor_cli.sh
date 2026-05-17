@@ -21,7 +21,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PICKER_PATCH="${SCRIPT_DIR}/picker_patch.py"
 
 usage() {
-  cat <<'EOF'
+  cat << 'EOF'
 Usage: fix_cursor_cli.sh [--reason auto|startup-failure|empty-picker|force|check] [--force]
 
 Targeted repair script for known local Cursor CLI bundle regressions.
@@ -63,7 +63,7 @@ while [ "$#" -gt 0 ]; do
       reason="force"
       shift
       ;;
-    -h|--help)
+    -h | --help)
       usage
       exit 0
       ;;
@@ -76,7 +76,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 case "$reason" in
-  auto|startup-failure|empty-picker|force|check) ;;
+  auto | startup-failure | empty-picker | force | check) ;;
   *)
     echo "Error: invalid --reason value: $reason" >&2
     usage >&2
@@ -85,7 +85,7 @@ case "$reason" in
 esac
 
 for tool in brew python3 cursor-agent; do
-  if ! command -v "$tool" >/dev/null 2>&1; then
+  if ! command -v "$tool" > /dev/null 2>&1; then
     echo "Error: $tool is required but not found on PATH." >&2
     exit 1
   fi
@@ -97,7 +97,7 @@ if [ ! -f "$PICKER_PATCH" ]; then
   exit 1
 fi
 
-version="$(brew list --cask --versions cursor-cli 2>/dev/null | awk '{ print $2 }')"
+version="$(brew list --cask --versions cursor-cli 2> /dev/null | awk '{ print $2 }')"
 if [ -z "$version" ]; then
   echo "cursor-cli is not installed; nothing to fix."
   exit 0
@@ -125,12 +125,12 @@ if [ "$pre_version_status" -ne 0 ] || [ "$pre_models_status" -ne 0 ]; then
 fi
 
 bundle_dump_signature="false"
-if [[ "$pre_version_output" == *"/dist-package/index.js:"* ]] || \
-   [[ "$pre_models_output" == *"/dist-package/index.js:"* ]]; then
+if [[ "$pre_version_output" == *"/dist-package/index.js:"* ]] \
+  || [[ "$pre_models_output" == *"/dist-package/index.js:"* ]]; then
   bundle_dump_signature="true"
 fi
 
-quarantine_listing="$(xattr -lr "$dist_package" 2>/dev/null || true)"
+quarantine_listing="$(xattr -lr "$dist_package" 2> /dev/null || true)"
 has_quarantine="false"
 if [[ "$quarantine_listing" == *"com.apple.quarantine"* ]]; then
   has_quarantine="true"
@@ -168,12 +168,13 @@ if [ -z "$state_lines" ]; then
 else
   printf '%s\n' "$state_lines" | while IFS=: read -r state path; do
     case "$state" in
-      v2-good)               note="variants render correctly" ;;
+      v2-good) note="variants render correctly" ;;
       display-collapses-thinking) note="thinking model slugs omit Thinking suffix in /model/footer" ;;
+      display-collapses-context) note="picker/footer labels omit context-window tags (1M, 272k, etc.)" ;;
       v1-collapses-variants) note="thinking/non-thinking show as DUPLICATES in /model" ;;
-      old-empty-picker)      note="/model picker will be EMPTY in cold-start sessions" ;;
-      unknown-shape)         note="picker anchors found but neither known signature matches" ;;
-      *)                     note="$state" ;;
+      old-empty-picker) note="/model picker will be EMPTY in cold-start sessions" ;;
+      unknown-shape) note="picker anchors found but neither known signature matches" ;;
+      *) note="$state" ;;
     esac
     echo "  $state: $path"
     echo "    -> $note"
@@ -183,12 +184,17 @@ fi
 if [ "$reason" = "check" ]; then
   echo
   case "$worst_picker_state" in
-    v2-good|no-anchor)
+    v2-good | no-anchor)
       echo "Check OK: all active picker bundles are in v2-good state."
       exit 0
       ;;
     display-collapses-thinking)
       echo "Check FAIL: at least one active bundle collapses Thinking suffixes in /model/footer display names."
+      echo "Run: $0 --reason empty-picker"
+      exit 1
+      ;;
+    display-collapses-context)
+      echo "Check FAIL: at least one active bundle omits context-window tags in /model/footer display names."
       echo "Run: $0 --reason empty-picker"
       exit 1
       ;;
@@ -223,7 +229,7 @@ case "$reason" in
       need_quarantine_fix="true"
     fi
     case "$worst_picker_state" in
-      display-collapses-thinking|v1-collapses-variants|old-empty-picker)
+      display-collapses-thinking | display-collapses-context | v1-collapses-variants | old-empty-picker)
         need_picker_patch="true"
         ;;
     esac
@@ -250,13 +256,14 @@ case "$reason" in
     ;;
 esac
 
-if [ "$reason" = "auto" ] && \
-   [ "$startup_broken" = "true" ] && \
-   [ "$bundle_dump_signature" = "false" ] && \
-   [ "$has_quarantine" = "false" ] && \
-   [ "$worst_picker_state" != "display-collapses-thinking" ] && \
-   [ "$worst_picker_state" != "v1-collapses-variants" ] && \
-   [ "$worst_picker_state" != "old-empty-picker" ]; then
+if [ "$reason" = "auto" ] \
+  && [ "$startup_broken" = "true" ] \
+  && [ "$bundle_dump_signature" = "false" ] \
+  && [ "$has_quarantine" = "false" ] \
+  && [ "$worst_picker_state" != "display-collapses-thinking" ] \
+  && [ "$worst_picker_state" != "display-collapses-context" ] \
+  && [ "$worst_picker_state" != "v1-collapses-variants" ] \
+  && [ "$worst_picker_state" != "old-empty-picker" ]; then
   echo
   echo "Refusing automatic repair: startup failed but no known bundle/quarantine signature was detected."
   echo "Capture full failure text and inspect manually before applying this targeted patch."
@@ -274,9 +281,9 @@ fi
 quarantine_result="skipped"
 if [ "$need_quarantine_fix" = "true" ]; then
   # Homebrew updates can reapply quarantine attributes and break native module loading.
-  xattr -dr com.apple.quarantine "$dist_package" 2>/dev/null || true
+  xattr -dr com.apple.quarantine "$dist_package" 2> /dev/null || true
 
-  post_quarantine_listing="$(xattr -lr "$dist_package" 2>/dev/null || true)"
+  post_quarantine_listing="$(xattr -lr "$dist_package" 2> /dev/null || true)"
   if [[ "$post_quarantine_listing" == *"com.apple.quarantine"* ]]; then
     quarantine_result="attempted-but-still-present"
   elif [ "$has_quarantine" = "true" ]; then

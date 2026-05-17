@@ -48,13 +48,12 @@ Diagnose first, then apply targeted repair.
 5. If the script reports `unknown shape` and dumps anchor context:
    - Cause: upstream cursor-cli bundle shape changed since this skill was last updated.
    - Recovery (do not retry the script blindly):
-     1. Read the printed anchor-context block. It shows the current minified code
-        around the picker call (`useModelParameters:!0,doNotUseMarkdown:!0`).
+     1. Read the printed anchor-context block. It shows the current minified code around the picker call (`useModelParameters:!0,doNotUseMarkdown:!0`).
      2. Identify the as-shipped buggy form (an `A.some((...parameterDefinitions...))?A:void 0` expression, where `A` is whichever single-letter var the minifier chose for the filtered-models list).
      3. For display-only regressions, inspect the `buildParameterizedModelMap(...)` method. The known bad form stores model metadata directly in `parameterizedModelMap`, leaving thinking slugs with duplicate `clientDisplayName` / `inputboxShortModelName` values.
      4. Update the regex patterns in `scripts/picker_patch.py`:
         - The existing `PATTERN_OLD` / `PATTERN_V1` / `PATTERN_V2` are already var-name-agnostic and use named groups (`A`/`B`/`C`/`D`/`E`/`F`). Only update them if the structural shape of the code (not the variable letters) has changed.
-        - The display-name patch is also var-name-agnostic and should only change when the `buildParameterizedModelMap` method shape changes.
+        - The display-name patch (V3) is var-name-agnostic: it adds Thinking suffixes and context-window tags (1M, 272k, etc.) from tooltip markdown. Update only when `buildParameterizedModelMap` changes shape.
         - Add a new pattern alongside the existing ones if upstream introduced a new arrangement.
         - The `_build_v2()` helper handles synthesizing the patched form from the captured group names; reuse it when adding new patterns.
      5. Re-run with `--reason check` first to confirm classification, then `--reason empty-picker`.

@@ -670,9 +670,7 @@ with open(cache_file, "r", encoding="utf-8", errors="replace") as f:
             else:
                 display = display_session_entry_with_suffix(target, "", suffix)
                 mk = match_key(target)
-            print(
-                f"{display}{badge}{gh_b}{ralph_b}\tsession\t{path}\t{meta}\t{target}\t{mk}"
-            )
+            print(f"{display}{badge}{gh_b}{ralph_b}\tsession\t{path}\t{meta}\t{target}\t{mk}")
             continue
 
         if rpath in sess_by_rpath and rpath not in scan_roots_set:
