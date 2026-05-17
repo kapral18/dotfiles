@@ -103,9 +103,13 @@ def dedup_best(rows, resolve_fn, scan_roots_set):
             continue
         key = resolve_fn(path)
         if kind == "dir" and key in scan_roots_set:
+            best = best_by_path.get(key)
+            if best is not None and best[1] != i:
+                continue
             if key in seen_scan_root_dirs:
                 continue
             seen_scan_root_dirs.add(key)
+            seen.add(key)
             out.append(line)
             continue
         best = best_by_path.get(key)

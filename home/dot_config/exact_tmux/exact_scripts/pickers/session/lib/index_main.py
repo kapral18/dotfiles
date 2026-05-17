@@ -64,6 +64,10 @@ def display_session_entry(name):
     return f"{color('38;5;42', ICON_SESSION)}  {color('1;38;5;81', name)}"
 
 
+def display_dir_session_entry(path_display):
+    return f"{color('38;5;42', ICON_SESSION)}  {color('1;38;5;81', path_display)}"
+
+
 def display_worktree_entry(path_display):
     return f"{color('38;5;214', ICON_WORKTREE)}  {color('38;5;221', path_display)}"
 
@@ -140,6 +144,16 @@ def tmux_sanitize_session_name(s: str) -> str:
     # their identity as `_backport` instead of collapsing to `backport`.
     s = s.rstrip("_")
     return s
+
+
+def canonical_dir_session_name(path: str) -> str:
+    if not path:
+        return ""
+    home_path = resolve_path(os.path.expanduser("~"))
+    rp = resolve_path(path)
+    if rp == home_path:
+        return "home"
+    return tmux_sanitize_session_name(Path(rp).name or rp)
 
 
 def git_config_path_for_root(root: str):
@@ -1378,6 +1392,8 @@ exclude_worktree_roots = set()
 
 
 def emit_sessions_and_worktrees():
+    emitted_session_names = set()
+
     for rid in sorted(groups.keys(), key=lambda r: repo_display_for_root(r).lower()):
         repo = repo_display_for_root(rid)
         root_checkout = groups[rid].get("root_checkout", "")
@@ -1404,6 +1420,8 @@ def emit_sessions_and_worktrees():
                 disp = display_session_entry(sess_name) + status_badge(flags) + gh_badges(ghi)
                 mk = match_key(sess_name, expected, repo, br)
                 print(f"{disp}\tsession\t{wt_path}\t{meta}\t{sess_name}\t{mk}")
+                emitted_session_names.add(sess_name)
+                exclude_exact.add(wt_path)
                 exclude_worktree_roots.add(wt_path)
 
         # Worktrees second (skip entirely in sessions-only mode).
@@ -1428,6 +1446,42 @@ def emit_sessions_and_worktrees():
                     f"{display_worktree_entry(tildefy(wt_path))}{status_badge(flags)}{gh_badges(ghi)}\tworktree\t{wt_path}\t{meta}\t{root_checkout}\t{mk}"
                 )
                 exclude_worktree_roots.add(wt_path)
+
+    # Plain directory sessions do not belong to a git worktree group, but they
+    # should still take ownership of their path in the picker. Collapse multiple
+    # tmux sessions rooted at the same directory and prefer the canonical name
+    # (`~/code/` -> target `code`) so leaked/legacy names do not duplicate rows.
+    plain_by_path: dict[str, list[dict[str, object]]] = {}
+    for sess in sessions:
+        sess_name = str(sess.get("name", "")).strip()
+        if not sess_name or sess_name in emitted_session_names:
+            continue
+        rp = resolve_path(str(sess.get("rpath") or sess.get("path") or ""))
+        if not rp or is_git_repo_dir(rp):
+            continue
+        plain_by_path.setdefault(rp, []).append(sess)
+
+    def plain_session_sort_key(sess: dict[str, object]):
+        rp = resolve_path(str(sess.get("rpath") or sess.get("path") or ""))
+        name = str(sess.get("name", "")).strip()
+        canonical = canonical_dir_session_name(rp)
+        return (
+            0 if canonical and name == canonical else 1,
+            0 if bool(sess.get("is_current")) else 1,
+            len(name),
+            name.lower(),
+        )
+
+    for rp in sorted(plain_by_path.keys(), key=lambda p: p.lower()):
+        sess = sorted(plain_by_path[rp], key=plain_session_sort_key)[0]
+        sess_name = str(sess.get("name", "")).strip()
+        tpath = tildefy(rp)
+        label = (tpath + "/") if rp in scan_roots_set else tpath
+        disp = display_dir_session_entry(label)
+        mk = match_key(label, sess_name) if label == rp else match_key(label, sess_name, rp)
+        print(f"{disp}\tsession\t{rp}\t\t{sess_name}\t{mk}")
+        emitted_session_names.add(sess_name)
+        exclude_exact.add(rp)
 
 
 emit_sessions_and_worktrees()
@@ -1479,9 +1533,13 @@ if not sessions_only:
     for p in ordered_dirs:
         if not p:
             continue
-        # Normally we hide dir entries that duplicate a session/worktree root path.
-        # But scan roots (e.g. ~/work, ~/code) must always be reachable via path-ish
-        # queries like `work/` or `code/`, even when a session is rooted there.
+        # Hide directory rows that duplicate live session paths so a directory
+        # selected as a tmux session consistently renders as a session later.
+        if p in exclude_exact:
+            continue
+        # Normally we hide dir entries that duplicate a worktree root path. Scan
+        # roots (e.g. ~/work, ~/code) stay reachable via path-ish queries unless
+        # a live session owns the exact same path.
         if p in exclude_worktree_roots and p not in scan_roots_set:
             continue
         # Avoid spamming dirs that are already covered by explicit worktree roots,

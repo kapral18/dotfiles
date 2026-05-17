@@ -178,8 +178,15 @@ def append_mutation_tombstones():
     lines = []
     if mode == "kill":
         for kind, _path, _meta, target in selected_rows:
+            meta_base = (_meta or "").split("|", 1)[0]
             if kind == "session" and target:
                 lines.append(f"{now}\tSESSION_TARGET\t{target}\n")
+                # Folder-based sessions (no sess_root:/sess_wt: meta) also
+                # need a path tombstone — otherwise items_full_rehydrate.py
+                # re-emits the row as a `dir` fallback and the entry does
+                # not visibly disappear (mirrors alt-x behavior).
+                if _path and not meta_base.startswith(("sess_root:", "sess_wt:")):
+                    lines.append(f"{now}\tPATH_PREFIX\t{resolve_path(_path)}\n")
             elif kind == "dir" and _path:
                 lines.append(f"{now}\tPATH_PREFIX\t{resolve_path(_path)}\n")
     elif mode == "remove":

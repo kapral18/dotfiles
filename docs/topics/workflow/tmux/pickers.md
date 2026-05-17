@@ -69,7 +69,7 @@ The picker shows three kinds of entries, each with a Nerd Font icon and ANSI col
 | `` (orange) | worktree | Git worktree discovered on disk      |
 | `` (blue)   | dir      | Directory from scan roots or `$HOME` |
 
-Rows are de-duplicated by path: for the same path, only one entry is shown (priority: session > worktree > dir).
+Rows are de-duplicated by path: for the same path, only one entry is shown (priority: session > worktree > dir). If you select a directory and the picker creates or focuses a tmux session for it, that path reopens as a session row with the session icon while keeping the path-shaped label (for example `~/code/`) so path queries still match.
 
 ### Status badges
 
@@ -208,7 +208,7 @@ Grouped/sorted ordering is produced by `pickers/session/filter.sh`:
 The picker uses fzf's native in-process filtering (no reload per keystroke) across the visible label and a hidden match key column.
 
 - **Default behavior**: runs fzf with `--no-sort` (via `@pick_session_fzf_options`) so matches keep the picker's grouped ordering (sessions above worktrees above dirs).
-- **Path intent**: when the query contains `/`, fzf sorting is ON so the narrowest matching path ranks highest (e.g. `work/` surfaces `~/work/` at the top). When it doesn't, sort is OFF. Scan-root directories display with a trailing slash (e.g. `~/work/`) so `work/` matches them directly.
+- **Path intent**: when the query contains `/`, fzf sorting is ON so the narrowest matching path ranks highest (e.g. `work/` surfaces `~/work/` at the top). When it doesn't, sort is OFF. Scan-root directories and directory-backed session rows display with a trailing slash (e.g. `~/work/`) so `work/` matches them directly.
 - **How it stays lag-free**: the sort state is synced by a tiny Python daemon that talks to fzf over its `--listen` Unix socket. It polls the live `query` + `sort` fields at 20 ms and `POST`s `toggle-sort` only on real transitions. fzf's `change` binding stays on the zero-cost `first` action, so typing and held backspace never fork a shell. Auto-toggle is correct for any edit (typing, paste, backspace, `ctrl-u`, `ctrl-w`, overwrite).
 - **Manual override**: `alt-s` toggles fzf sort at any time. The daemon will re-sync on the next poll if the query disagrees with the override.
 
@@ -235,7 +235,8 @@ The picker uses fzf's native in-process filtering (no reload per keystroke) acro
 - For remote-prefix wrappers, `<remote>/<branch...>` becomes `<remote>__<branch...>` for third-party remotes; first-party owners (origin/upstream owner match or your login) keep plain `<branch...>`.
 - Names are sanitized to tmux-safe identifiers (e.g., `1.8` becomes `1_8`; slashes like `feat/foo` are preserved).
 - Sessions rooted in `.bag` locations (e.g. `~/.bag/worktree_remove/...`) are treated as stale and suppressed from the picker so they don’t mask newly recreated worktrees. If a worktree selection collides with an existing `.bag` session name, the picker renames the `.bag` session to `@bag` and recreates the canonical session at the real path.
-- Session entries do not render `#{session_path}` in the visible label (filtering is focused on the session name).
+- Worktree-backed session entries do not render `#{session_path}` in the visible label (filtering is focused on the session name). Directory-backed session entries keep the directory label so selecting a scan root such as `~/code/` does not remove that path-shaped entry from the picker.
+- If multiple plain directory sessions point at the same path, the picker shows one row and prefers the canonical session target (for example `~/code/` targets `code`).
 - The current session is marked `(current)` so it remains visible even after a rename.
 
 ### Popup performance

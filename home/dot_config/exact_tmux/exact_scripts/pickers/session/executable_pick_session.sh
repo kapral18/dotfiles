@@ -45,6 +45,16 @@ normalize() {
     | sed -E 's/-+/-/g; s/^-+//; s/-+$//'
 }
 
+tildefy_to_reply() {
+  local p="$1"
+  # shellcheck disable=SC2034,SC2088
+  case "$p" in
+    "$HOME") REPLY="~" ;;
+    "$HOME"/*) REPLY="~/${p#"$HOME"/}" ;;
+    *) REPLY="$p" ;;
+  esac
+}
+
 tmux_sanitize_session_name() {
   # tmux normalizes some characters in session names (notably '.'). Do minimal
   # sanitization so the name we target is the name tmux will actually create,
@@ -506,6 +516,39 @@ mark_async_prompt() {
   tmux set-option -t "$target" -q "@pick_session_async_prompt" "1" > /dev/null 2>&1 || true
 }
 
+cache_session_lines=()
+cache_session_line_add() {
+  local name="$1"
+  local dir="$2"
+  local source_kind="${3:-}"
+  [ -n "$name" ] || return 0
+  [ -n "$dir" ] || return 0
+  local line
+  line="${name}"$'\t'"${dir}"$'\t'"${source_kind}"
+  local existing
+  for existing in "${cache_session_lines[@]+"${cache_session_lines[@]}"}"; do
+    [ "$existing" = "$line" ] && return 0
+  done
+  cache_session_lines+=("$line")
+}
+
+record_session_cache_line() {
+  local name="$1"
+  local selected_dir="$2"
+  local source_kind="${3:-}"
+  [ -n "$name" ] || return 0
+  [ -n "$selected_dir" ] || return 0
+  local actual_dir selected_rp actual_rp
+  actual_dir="$(tmux_session_path "$name" 2> /dev/null || true)"
+  [ -n "$actual_dir" ] || actual_dir="$selected_dir"
+  selected_rp="$(resolve_path "$selected_dir" 2> /dev/null || printf '%s' "$selected_dir")"
+  actual_rp="$(resolve_path "$actual_dir" 2> /dev/null || printf '%s' "$actual_dir")"
+  # If the requested name already belongs to a different path, do not make the
+  # picker claim the selected folder is that session.
+  [ "$selected_rp" = "$actual_rp" ] || return 0
+  cache_session_line_add "$name" "$selected_dir" "$source_kind"
+}
+
 split_first_window_in_session() {
   local name="$1"
   local dir="$2"
@@ -548,6 +591,7 @@ ensure_session_layout() {
     fi
     created_any_session=1
     created_session_lines+=("${name}"$'\t'"${dir}")
+    cache_session_line_add "$name" "$dir"
     if [ "${__sess_cache_loaded:-0}" -eq 1 ]; then
       sess_add "$name" "$dir" || true
     fi
@@ -564,6 +608,7 @@ ensure_session_layout() {
   fi
   created_any_session=1
   created_session_lines+=("${name}"$'\t'"${dir}")
+  cache_session_line_add "$name" "$dir"
   if [ "${__sess_cache_loaded:-0}" -eq 1 ]; then
     sess_add "$name" "$dir" || true
   fi
@@ -1213,6 +1258,7 @@ while IFS= read -r _line; do
         fi
       fi
       ensure_session_layout "$session_name" "$path" "$create_layout"
+      record_session_cache_line "$session_name" "$path" "worktree"
       if [ "$is_primary" -eq 1 ] || [ "$primary_set" -eq 0 ]; then
         target_session="$session_name"
         [ "$is_primary" -eq 1 ] && primary_set=1
@@ -1233,6 +1279,7 @@ while IFS= read -r _line; do
       fi
       session="$(tmux_sanitize_session_name "$session" 2> /dev/null || printf '%s' "$session")"
       ensure_session_layout "$session" "$path" "$create_layout"
+      record_session_cache_line "$session" "$path" "dir"
       if [ "$is_primary" -eq 1 ] || [ "$primary_set" -eq 0 ]; then
         target_session="$session"
         [ "$is_primary" -eq 1 ] && primary_set=1
@@ -1248,25 +1295,43 @@ if [ -z "$target_session" ]; then
   exit 0
 fi
 
-# Inject newly created sessions into the cache before switching, so it happens
-# within the bulk guard and the cache is ready before the user could reopen.
-if [ "${created_any_session:-0}" -eq 1 ] && [ "${#created_session_lines[@]}" -gt 0 ]; then
+# Inject selected directory/worktree sessions into the cache before switching, so
+# it happens within the bulk guard and the cache is ready before the user could reopen.
+if [ "${#cache_session_lines[@]}" -gt 0 ]; then
   _cache_file="${cache_dir}/pick_session_items.tsv"
   _ordered_file="${cache_dir}/pick_session_items_ordered.tsv"
-  _sess_icon=$'\033[38;5;42m\033[0m'
+  _sess_icon=$'\033[38;5;42m\033[0m'
   _sess_color=$'\033[1;38;5;81m'
   _reset=$'\033[0m'
-  for _csl in "${created_session_lines[@]}"; do
-    IFS=$'\t' read -r _cname _cpath <<< "$_csl"
+  for _csl in "${cache_session_lines[@]}"; do
+    IFS=$'\t' read -r _cname _cpath _source_kind <<< "$_csl"
     [ -n "$_cname" ] || continue
     [ -n "$_cpath" ] || continue
+    _label="$_cname"
     _mk="${_cname} ${_cpath}"
-    _row="${_sess_icon}  ${_sess_color}${_cname}${_reset}"$'\t'"session"$'\t'"${_cpath}"$'\t'$'\t'"${_cname}"$'\t'"${_mk}"
+    if [ "$_source_kind" = "dir" ]; then
+      tildefy_to_reply "$_cpath"
+      _label="$REPLY"
+      if is_exact_scan_root "$_cpath"; then
+        _label="${_label}/"
+      fi
+      if [ "$_label" = "$_cpath" ]; then
+        _mk="${_label} ${_cname}"
+      else
+        _mk="${_label} ${_cname} ${_cpath}"
+      fi
+    fi
+    _row="${_sess_icon}  ${_sess_color}${_label}${_reset}"$'\t'"session"$'\t'"${_cpath}"$'\t'$'\t'"${_cname}"$'\t'"${_mk}"
     if [ -f "$_cache_file" ]; then
-      # Prepend session row so it appears at the top of its kind.
+      # Prepend the session row and drop stale same-path rows so a selected
+      # directory immediately reopens as a session, not as its old folder row.
       _tmp_cache="$(mktemp "${cache_dir}/pick_session_inject.XXXXXX")"
       printf '%s\n' "$_row" > "$_tmp_cache"
-      cat "$_cache_file" >> "$_tmp_cache"
+      awk -F $'\t' -v p="$_cpath" -v n="$_cname" '
+        NF >= 5 && $2 == "session" && $5 == n { next }
+        NF >= 5 && ($2 == "session" || $2 == "worktree" || $2 == "dir") && $3 == p { next }
+        { print }
+      ' "$_cache_file" >> "$_tmp_cache"
       mv -f "$_tmp_cache" "$_cache_file"
     else
       printf '%s\n' "$_row" > "$_cache_file"

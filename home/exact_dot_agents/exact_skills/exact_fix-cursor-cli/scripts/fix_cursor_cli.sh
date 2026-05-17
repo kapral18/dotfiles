@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 # Description: Diagnose and repair local cursor-cli install issues
-#              (macOS quarantine + empty / duplicate /model picker).
+#              (macOS quarantine + empty / duplicate /model picker + missing
+#              Thinking suffix in picker/footer display names).
 #
 # Picker semantics: see scripts/picker_patch.py (docstring + regex patterns).
 #   - old-empty-picker      -> picker EMPTY on cold start
 #   - v1-collapses-variants -> picker shows DUPLICATES (thinking/non-thinking collapse)
+#   - display-collapses-thinking
+#                            -> picker/footer omit Thinking suffix on thinking slugs
 #   - v2-good               -> variants render correctly
 #
 # Active bundles only:
@@ -27,7 +30,8 @@ Modes:
   auto             Diagnose first. Apply only when known picker signatures
                    (OLD or V1) or quarantine attrs are detected on active bundles.
   startup-failure  Assume fresh cursor-agent startup is failing; apply both fixes.
-  empty-picker     Assume interactive /model is empty OR shows duplicate variants;
+  empty-picker     Assume interactive /model is empty, shows duplicate variants,
+                   or omits Thinking suffixes in /model/footer display names;
                    apply picker patch (and quarantine fix if quarantine present).
   force            Apply both fixes without diagnosis gating.
   check            Read-only. Report picker bundle state per active bundle and
@@ -165,6 +169,7 @@ else
   printf '%s\n' "$state_lines" | while IFS=: read -r state path; do
     case "$state" in
       v2-good)               note="variants render correctly" ;;
+      display-collapses-thinking) note="thinking model slugs omit Thinking suffix in /model/footer" ;;
       v1-collapses-variants) note="thinking/non-thinking show as DUPLICATES in /model" ;;
       old-empty-picker)      note="/model picker will be EMPTY in cold-start sessions" ;;
       unknown-shape)         note="picker anchors found but neither known signature matches" ;;
@@ -181,6 +186,11 @@ if [ "$reason" = "check" ]; then
     v2-good|no-anchor)
       echo "Check OK: all active picker bundles are in v2-good state."
       exit 0
+      ;;
+    display-collapses-thinking)
+      echo "Check FAIL: at least one active bundle collapses Thinking suffixes in /model/footer display names."
+      echo "Run: $0 --reason empty-picker"
+      exit 1
       ;;
     v1-collapses-variants)
       echo "Check FAIL: at least one active bundle is in V1 state (variants collapse to duplicates)."
@@ -213,7 +223,7 @@ case "$reason" in
       need_quarantine_fix="true"
     fi
     case "$worst_picker_state" in
-      v1-collapses-variants|old-empty-picker)
+      display-collapses-thinking|v1-collapses-variants|old-empty-picker)
         need_picker_patch="true"
         ;;
     esac
@@ -244,6 +254,7 @@ if [ "$reason" = "auto" ] && \
    [ "$startup_broken" = "true" ] && \
    [ "$bundle_dump_signature" = "false" ] && \
    [ "$has_quarantine" = "false" ] && \
+   [ "$worst_picker_state" != "display-collapses-thinking" ] && \
    [ "$worst_picker_state" != "v1-collapses-variants" ] && \
    [ "$worst_picker_state" != "old-empty-picker" ]; then
   echo
@@ -255,7 +266,7 @@ fi
 if [ "$need_quarantine_fix" = "false" ] && [ "$need_picker_patch" = "false" ]; then
   echo
   echo "No repair action taken (machine appears healthy for this targeted issue)."
-  echo "If /model is empty or shows duplicate variants in a fresh session, rerun with:"
+  echo "If /model is empty, shows duplicate variants, or omits Thinking suffixes in a fresh session, rerun with:"
   echo "  $0 --reason empty-picker"
   exit 0
 fi

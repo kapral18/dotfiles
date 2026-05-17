@@ -206,6 +206,11 @@ def display_session_entry_with_suffix(name, path_display, suffix=""):
     return f"{color('38;5;42', ICON_SESSION)}  {color('1;38;5;81', name)}{suffix}"
 
 
+def display_dir_session_entry_with_suffix(path_display, suffix=""):
+    suffix = suffix or ""
+    return f"{color('38;5;42', ICON_SESSION)}  {color('1;38;5;81', path_display)}{suffix}"
+
+
 def display_worktree_entry(path_display):
     return f"{color('38;5;214', ICON_WORKTREE)}  {color('38;5;221', path_display)}"
 
@@ -232,11 +237,31 @@ def match_key(*parts: str) -> str:
     return " ".join(out)
 
 
+def plain_session_label(path: str) -> str:
+    tpath = tildefy(path)
+    return (tpath + "/") if path in scan_roots_set else tpath
+
+
 def resolve_path(p):
     try:
         return str(Path(p).resolve())
     except Exception:
         return p
+
+
+def canonical_dir_session_name(path: str) -> str:
+    if not path:
+        return ""
+    home_path = resolve_path(os.path.expanduser("~"))
+    rp = resolve_path(path)
+    if rp == home_path:
+        return "home"
+    name = (Path(rp).name or rp).strip().lower()
+    import re
+
+    name = re.sub(r"[^a-z0-9_@|/~-]+", "_", name)
+    name = re.sub(r"[.:]+", "_", name).rstrip("_")
+    return name
 
 
 scan_roots_raw = os.environ.get("PICK_SESSION_SCAN_ROOTS", "").strip()
@@ -495,6 +520,24 @@ sess_out = tmux_out(["tmux", "list-sessions", "-F", "#{session_name}\t#{session_
 sess_by_rpath = {}
 sess_raw_path = {}
 live_session_names = set()
+
+
+def prefer_session_for_path(current: str, candidate: str, rpath: str) -> str:
+    if not current:
+        return candidate
+    canonical = canonical_dir_session_name(rpath)
+    if canonical:
+        if candidate == canonical and current != canonical:
+            return candidate
+        if current == canonical and candidate != canonical:
+            return current
+    if candidate == current_name and current != current_name:
+        return candidate
+    if current == current_name and candidate != current_name:
+        return current
+    return candidate if (len(candidate), candidate.lower()) < (len(current), current.lower()) else current
+
+
 for row in sess_out.splitlines():
     if not row:
         continue
@@ -508,7 +551,7 @@ for row in sess_out.splitlines():
     if path_tombstoned("session", rpath) or name in fresh_session_targets:
         continue
     live_session_names.add(name)
-    sess_by_rpath[rpath] = name
+    sess_by_rpath[rpath] = prefer_session_for_path(sess_by_rpath.get(rpath, ""), name, rpath)
     sess_raw_path[rpath] = path
 
 printed_sessions = set()
@@ -525,8 +568,14 @@ def emit_missing_sessions():
             continue
         suffix = color("2;38;5;244", " (current)") if name == current_name else ""
         meta = _augment_meta_with_ralph("", name)
-        disp = display_session_entry_with_suffix(name, "", suffix) + _ralph_badge(name, meta)
-        print(f"{disp}\tsession\t{rp}\t{meta}\t{name}\t{match_key(name)}")
+        if rp and not is_git_dir(rp):
+            label = plain_session_label(rp)
+            disp = display_dir_session_entry_with_suffix(label, suffix) + _ralph_badge(name, meta)
+            mk = match_key(label, name) if label == rp else match_key(label, name, rp)
+        else:
+            disp = display_session_entry_with_suffix(name, "", suffix) + _ralph_badge(name, meta)
+            mk = match_key(name)
+        print(f"{disp}\tsession\t{rp}\t{meta}\t{name}\t{mk}")
         printed_sessions.add(name)
 
 
@@ -564,6 +613,8 @@ with open(cache_file, "r", encoding="utf-8", errors="replace") as f:
         cached_flags = _parse_status_flags(meta)
         badge = _status_badge(cached_flags)
         if kind == "session":
+            if rpath and not is_git_dir(rpath) and sess_by_rpath.get(rpath) and target != sess_by_rpath[rpath]:
+                continue
             if target in printed_sessions:
                 continue
             if target in fresh_session_targets:
@@ -610,9 +661,17 @@ with open(cache_file, "r", encoding="utf-8", errors="replace") as f:
             gh_b = _gh_badges_from_meta(meta)
             meta = _augment_meta_with_ralph(meta, target)
             ralph_b = _ralph_badge(target, meta)
-            mk = match_key(target)
+            meta_base = (meta or "").split("|", 1)[0]
+            is_plain_dir_session = not meta_base.startswith(("sess_root:", "sess_wt:"))
+            if is_plain_dir_session and rpath:
+                label = plain_session_label(rpath)
+                display = display_dir_session_entry_with_suffix(label, suffix)
+                mk = match_key(label, target) if label == rpath else match_key(label, target, rpath)
+            else:
+                display = display_session_entry_with_suffix(target, "", suffix)
+                mk = match_key(target)
             print(
-                f"{display_session_entry_with_suffix(target, '', suffix)}{badge}{gh_b}{ralph_b}\tsession\t{path}\t{meta}\t{target}\t{mk}"
+                f"{display}{badge}{gh_b}{ralph_b}\tsession\t{path}\t{meta}\t{target}\t{mk}"
             )
             continue
 

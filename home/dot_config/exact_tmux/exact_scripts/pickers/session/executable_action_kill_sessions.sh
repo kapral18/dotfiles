@@ -49,10 +49,24 @@ while IFS= read -r _line; do
   mapfile -t _fields < <(awk -F $'\t' '{print $1; print $2; print $3; print $4; print $5}' <<< "$_line")
   kind="${_fields[1]-}"
   path="${_fields[2]-}"
+  meta="${_fields[3]-}"
   target="${_fields[4]-}"
+  meta_base="${meta%%|*}"
 
   if [ "$kind" = "session" ] && [ -n "$target" ]; then
     sess+=("$target")
+    # Folder-based sessions (no sess_root:/sess_wt: meta) are dir entries
+    # that were promoted. ctrl-x should make them disappear like ctrl-x on
+    # a plain `dir` row — otherwise the row morphs back to a `dir` fallback
+    # in items_full_rehydrate.py and the user sees the entry "still there".
+    case "$meta_base" in
+      sess_root:* | sess_wt:*) ;;
+      *)
+        if [ -n "$path" ]; then
+          dirs_to_remove+=("$path")
+        fi
+        ;;
+    esac
   elif [ "$kind" = "dir" ]; then
     if [ -n "$path" ]; then
       dirs_to_remove+=("$path")
