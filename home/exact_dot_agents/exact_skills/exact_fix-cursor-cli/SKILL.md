@@ -40,7 +40,20 @@ Diagnose first, then apply targeted repair.
 4. Re-verify end-to-end:
    - `cursor-agent models` succeeds
    - `/model` shows entries in a fresh interactive session
-5. Share learning:
+5. If the script reports `No known picker signature matched` and dumps anchor context:
+   - Cause: upstream cursor-cli bundle shape changed since this skill was last updated.
+   - Recovery (do not retry the script blindly):
+     1. Read the printed anchor-context block. It shows the current minified code
+        around the picker call (`useModelParameters:!0,doNotUseMarkdown:!0`).
+     2. Identify the as-shipped buggy form (an `n.some((...parameterDefinitions...))?n:void 0` expression).
+        That string becomes the new `OLD_C_SIGNATURE`.
+     3. Write the variant-preserving patched form: first filter to models with
+        `parameterDefinitions`, then fall back to all non-excluded models so the
+        picker is never empty. That string becomes the new `V2_C_SIGNATURE`.
+     4. Edit both constants in the Python heredoc inside `scripts/fix_cursor_cli.sh`
+        and re-run with `--reason empty-picker`.
+   - The script header documents the bug semantics in one paragraph; read it before editing.
+6. Share learning:
    - state what symptom was detected, what fix was chosen, and why this machine differed (if known)
 
 ## Assets

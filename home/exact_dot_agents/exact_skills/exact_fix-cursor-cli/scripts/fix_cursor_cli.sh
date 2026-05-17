@@ -1,5 +1,23 @@
 #!/usr/bin/env bash
 # Description: Diagnose and repair local cursor-cli install issues (quarantine + empty /model picker).
+#
+# Picker-bug semantics (read this BEFORE editing OLD_C_SIGNATURE / V2_C_SIGNATURE below):
+#   - File:     <dist-package>/<chunkId>.index.js (minified webpack chunk)
+#   - Function: c(e,t) inside the "./src/models/model-service.ts" module.
+#   - Anchor:   "useModelParameters:!0,doNotUseMarkdown:!0" is the unique protobuf
+#               field block on the availableModels() call this script targets.
+#   - Bug:      Upstream returns void 0 when no model has parameterDefinitions
+#               yet, leaving the interactive /model picker empty in cold-start
+#               sessions.
+#   - Patch:    Prefer models WITH parameterDefinitions (so thinking / non-thinking
+#               variants render as separate entries). Fall back to all non-excluded
+#               models so the picker is never empty.
+#
+# When upstream changes minified shape, this script will report
+# "No known picker signature found" and auto-dump anchor-located code regions.
+# To re-derive: update OLD_C_SIGNATURE (as-shipped buggy form) and V2_C_SIGNATURE
+# (variant-preserving patched form) in the Python heredoc below, using the dump
+# as ground truth.
 
 set -euo pipefail
 
@@ -195,8 +213,35 @@ if [ "$need_picker_patch" = "true" ]; then
 from pathlib import Path
 import sys
 
-OLD_GUARD = "return n.some((e=>{var t,n;return(null!==(n=null===(t=e.parameterDefinitions)||void 0===t?void 0:t.length)&&void 0!==n?n:0)>0}))?n:void 0"
-NEW_GUARD = "return n.length>0?n:void 0"
+OLD_C_SIGNATURE = "const n=t.models.filter((e=>!l.has(e.name)));return n.some((e=>{var t,n;return(null!==(n=null===(t=e.parameterDefinitions)||void 0===t?void 0:t.length)&&void 0!==n?n:0)>0}))?n:void 0"
+V2_C_SIGNATURE = "const n=t.models.filter((e=>!l.has(e.name)));const r=n.filter((e=>{var t,n;return(null!==(n=null===(t=e.parameterDefinitions)||void 0===t?void 0:t.length)&&void 0!==n?n:0)>0}));return r.length>0?r:n.length>0?n:void 0"
+
+# Anchors used to locate the picker code when exact signatures stop matching.
+# These strings are upstream-stable across minifier runs (protobuf field names
+# and debug-log identifiers are not renamed by the minifier).
+PICKER_ANCHORS = [
+    "useModelParameters:!0,doNotUseMarkdown:!0",
+    "models.fetchAvailableModelsParameterized",
+]
+
+
+def dump_anchor_context(path, source, before=120, after=520):
+    """Print code regions around each picker anchor for signature re-derivation."""
+    printed_any = False
+    for anchor in PICKER_ANCHORS:
+        start = 0
+        while True:
+            idx = source.find(anchor, start)
+            if idx == -1:
+                break
+            ctx_start = max(0, idx - before)
+            ctx_end = min(len(source), idx + len(anchor) + after)
+            print(f"--- anchor in {path} (offset {idx}) ---")
+            print(f"  anchor: {anchor!r}")
+            print(f"  context: {source[ctx_start:ctx_end]}")
+            printed_any = True
+            start = idx + len(anchor)
+    return printed_any
 
 
 def collect_candidate_files(root):
@@ -232,14 +277,16 @@ for arg in sys.argv[1:3]:
 print("Model picker patch results:")
 for path in candidate_files:
     source = path.read_text(errors="ignore")
-    old_count = source.count(OLD_GUARD)
-    if old_count > 0:
-        path.write_text(source.replace(OLD_GUARD, NEW_GUARD))
+    c_old_count = source.count(OLD_C_SIGNATURE)
+    total_replacements = c_old_count
+    if total_replacements > 0:
+        patched_source = source.replace(OLD_C_SIGNATURE, V2_C_SIGNATURE)
+        path.write_text(patched_source)
         patched += 1
-        replacement_count += old_count
-        suffix = "s" if old_count != 1 else ""
-        print(f"  patched: {path} ({old_count} replacement{suffix})")
-    elif NEW_GUARD in source:
+        replacement_count += total_replacements
+        suffix = "s" if c_old_count != 1 else ""
+        print(f"  patched: {path} ({c_old_count} replacement{suffix})")
+    elif V2_C_SIGNATURE in source:
         already_patched += 1
         print(f"  already patched: {path}")
 
@@ -247,10 +294,26 @@ print(f"  scanned: {len(candidate_files)} bundle files")
 print(f"  total replacements: {replacement_count}")
 
 if patched == 0 and already_patched == 0:
-    message = "No known picker guard signature found in scanned bundles."
+    print()
+    print("  No known picker signature matched. Likely cause: upstream bundle")
+    print("  shape changed since this skill was last updated.")
+    print("  Dumping anchor-located code regions so OLD_C_SIGNATURE and")
+    print("  V2_C_SIGNATURE can be re-derived. See script header for bug semantics.")
+    print()
+    dumped = False
+    for path in candidate_files:
+        source = path.read_text(errors="ignore")
+        if any(anchor in source for anchor in PICKER_ANCHORS):
+            if dump_anchor_context(path, source):
+                dumped = True
+    if not dumped:
+        print("  warning: none of the picker anchors were found either.")
+        print("  Anchors searched:")
+        for anchor in PICKER_ANCHORS:
+            print(f"    - {anchor!r}")
+        print("  Inspect the bundle manually before editing this script.")
     if require_match:
-        raise SystemExit(f"Error: {message}")
-    print(f"  note: {message}")
+        raise SystemExit("Error: no known signature; see anchor dump above.")
 
 if patched > 0:
     print("PATCH_STATE:patched")
