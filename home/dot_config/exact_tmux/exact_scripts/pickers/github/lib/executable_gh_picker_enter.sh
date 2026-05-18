@@ -9,9 +9,10 @@
 # (batch if marked)" contract advertised in the picker header, keyhelp, and
 # docs/topics/workflow/tmux/pickers.md.
 #
-# Each invocation mints its own snapshot file (no shared `multi_tmp`) so
-# concurrent enter-presses cannot clobber each other. The batch worktree
-# creator's background phase unlinks the snapshot when it's done.
+# Snapshotting goes through the shared `snapshot_fzf_selection.sh` helper so
+# the per-binding mktemp lifecycle is consistent with gh ctrl-t and the
+# session picker's dispatch primitive. The batch worktree creator's
+# background phase unlinks the snapshot when it's done.
 #
 # Usage: gh_picker_enter.sh <kind> <selection_file> <batch_wt_cmd>
 #
@@ -28,13 +29,13 @@ if [ -n "$selection_file" ] && [ -f "$selection_file" ]; then
 fi
 
 if [ "${count:-0}" -gt 1 ] && [ -n "$batch_wt_cmd" ]; then
-  cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
-  mkdir -p "$cache_dir" 2> /dev/null || true
-  snap="$(mktemp "${cache_dir}/gh_batch_worktree_sel.XXXXXX")"
-  awk -F $'\t' '$2 != "header"' "$selection_file" > "$snap" 2> /dev/null || true
-  printf 'execute(%s %s)+deselect-all+refresh-preview' \
-    "$(printf %q "$batch_wt_cmd")" "$(printf %q "$snap")"
-  exit 0
+  snap_cmd="$HOME/.config/tmux/scripts/pickers/lib/snapshot_fzf_selection.sh"
+  snap="$("$snap_cmd" --filter-awk '$2 != "header"' "$selection_file" 2> /dev/null || true)"
+  if [ -n "$snap" ]; then
+    printf 'execute(%s %s)+deselect-all+refresh-preview' \
+      "$(printf %q "$batch_wt_cmd")" "$(printf %q "$snap")"
+    exit 0
+  fi
 fi
 
 if [ "$kind" = "header" ]; then

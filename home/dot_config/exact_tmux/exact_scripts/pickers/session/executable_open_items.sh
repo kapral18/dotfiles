@@ -7,6 +7,7 @@ cache_file="${cache_dir}/pick_session_items.tsv"
 mutation_file="${cache_dir}/pick_session_mutations.tsv"
 pending_file="${cache_dir}/pick_session_pending.tsv"
 items_cmd="$HOME/.config/tmux/scripts/pickers/session/items.sh"
+filter_cmd="$HOME/.config/tmux/scripts/pickers/session/filter.sh"
 ordered_update_cmd="$HOME/.config/tmux/scripts/pickers/session/ordered_cache_update.sh"
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 
@@ -79,8 +80,23 @@ if [ -s "$ordered_file" ]; then
   fi
 fi
 
-# Ordered file missing or stale — items_cmd handles mutation tombstones
-# internally, so prefer it over serving the raw cache.
+# Ordered file missing or stale. Prefer filter.sh so the fallback open uses the
+# same grouped ordering as the snapshot path; otherwise a stale-snapshot open
+# would serve raw cache order (sessions injected at the top by pick_session.sh,
+# build_cache_refreshing_sessions_preserving_others merges, etc.) and the
+# subsequent snapshot-backed open would reshuffle the list.
+#
+# Note: --force-order BYPASSES filter.sh's @pick_session_filter_passthrough_rows
+# escape (gated on force_order != 1 in both filter.sh:72 and filter_main.py:60),
+# so this fallback pays the full grouping cost regardless of cache size. The
+# tradeoff is intentional: consistency with the snapshot path wins over latency
+# during the brief stale window before the background snapshot regen lands.
+# Schedule that regen now so the next open is back on the snapshot fast path.
+if [ -x "$filter_cmd" ]; then
+  [ -x "$ordered_update_cmd" ] && "$ordered_update_cmd" --quiet > /dev/null 2>&1 &
+  exec "$filter_cmd" --force-order
+fi
+
 if [ -x "$items_cmd" ]; then
   [ -x "$ordered_update_cmd" ] && "$ordered_update_cmd" --quiet > /dev/null 2>&1 &
   exec "$items_cmd"

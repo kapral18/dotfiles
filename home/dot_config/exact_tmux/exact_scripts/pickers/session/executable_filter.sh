@@ -34,13 +34,19 @@ for arg in "$@"; do
 done
 
 if [ "$force_refresh" -eq 1 ] && [ -x "$update_cmd" ]; then
+  # alt-r: full synchronous refresh; blocks until quick and full scans both
+  # complete so the picker reload sees the freshest possible state.
   "$update_cmd" --force --quiet --quick-only > /dev/null 2>&1 || true
   "$update_cmd" --force --quiet > /dev/null 2>&1 || true
 elif [ "$refresh" -eq 1 ] && [ -x "$update_cmd" ]; then
-  (
-    "$update_cmd" --force --quiet --quick-only > /dev/null 2>&1 || true
-    "$update_cmd" --force --quiet > /dev/null 2>&1 || true
-  ) > /dev/null 2>&1 &
+  # ctrl-r: synchronous quick scan (sessions only) so the picker reload that
+  # follows this filter call sees up-to-date session rows on the first try.
+  # The full scan (which discovers dirs/worktrees) runs in the background so
+  # the reload still feels instant for the common case where only session/
+  # icon state changed. Without the sync quick scan, ctrl-r reads stale cache
+  # and the user has to hit it many times before the async update lands.
+  "$update_cmd" --force --quiet --quick-only > /dev/null 2>&1 || true
+  ("$update_cmd" --force --quiet > /dev/null 2>&1 || true) > /dev/null 2>&1 &
 fi
 
 if [ ! -x "$items_cmd" ]; then

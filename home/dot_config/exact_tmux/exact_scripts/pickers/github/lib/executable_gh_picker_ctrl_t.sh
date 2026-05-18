@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
-# ctrl-t handler for the GH picker. Filters out header rows from the fzf
-# multi-selection, snapshots the result to a unique cache path, and dispatches
-# the batch worktree creator on that snapshot.
+# ctrl-t handler for the GH picker. Snapshots the fzf multi-selection to a
+# unique cache path (dropping header rows), then runs the batch worktree
+# creator on that snapshot.
 #
-# The previous binding wrote directly into a shared `gh_picker_multi.tsv`,
-# which raced with itself across rapid keypresses (and across concurrent
-# pickers). Each invocation now mints its own snapshot, so dispatches are
-# fully isolated. The batch worktree creator's background phase is the last
-# consumer and is responsible for unlinking the snapshot.
+# The snapshot helper is shared with the session picker's dispatch primitive
+# (see pickers/lib/snapshot_fzf_selection.sh and
+# pickers/lib/dispatch_async.sh) so the same per-binding mktemp lifecycle
+# applies: dispatches are fully isolated across rapid keypresses and
+# concurrent pickers. The batch worktree creator's background phase is the
+# last consumer and is responsible for unlinking the snapshot.
+#
+# Dispatch is synchronous (`exec`) because gh_batch_worktree.sh's foreground
+# phase opens `$EDITOR` for issue branch naming and needs the user's TTY.
+# That's why we don't go through `dispatch_async.sh` (which uses
+# `tmux run-shell -b` and detaches from the TTY).
 #
 # Usage: gh_picker_ctrl_t.sh <fzf-selection-file> <batch_worktree_cmd>
 set -euo pipefail
@@ -18,8 +24,7 @@ batch_cmd="${2:-}"
 [ -n "$sel_in" ] && [ -f "$sel_in" ] || exit 0
 [ -n "$batch_cmd" ] && [ -x "$batch_cmd" ] || exit 0
 
-cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
-mkdir -p "$cache_dir" 2> /dev/null || true
-snap="$(mktemp "${cache_dir}/gh_batch_worktree_sel.XXXXXX")"
-awk -F $'\t' '$2 != "header"' "$sel_in" > "$snap" 2> /dev/null || true
-"$batch_cmd" "$snap"
+snap_cmd="$HOME/.config/tmux/scripts/pickers/lib/snapshot_fzf_selection.sh"
+snap="$("$snap_cmd" --filter-awk '$2 != "header"' "$sel_in")" || exit 0
+[ -n "$snap" ] || exit 0
+exec "$batch_cmd" "$snap"

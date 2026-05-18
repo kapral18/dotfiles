@@ -86,34 +86,78 @@ if [ "$force" -ne 1 ] && [ -f "$cache_file" ]; then
 fi
 
 lock_dir="${cache_file}.lock"
-if ! mkdir "$lock_dir" 2> /dev/null; then
-  pid_file="${lock_dir}/pid"
-  stale=0
-  if [ -f "$pid_file" ]; then
-    pid="$(cat "$pid_file" 2> /dev/null || true)"
-    if [ -n "$pid" ] && kill -0 "$pid" 2> /dev/null; then
-      exit 0
+pid_file="${lock_dir}/pid"
+# Manual --force invocations (alt-r, ctrl-r) pre-empt an in-flight updater
+# (typically a live_refresh tick) so they aren't silently no-op'd. Without
+# pre-emption the manual refresh would defer to the live tick and the user
+# would see stale rows after their explicit refresh. Pattern mirrors the
+# refresh pre-emption in pickers/github/gh_items.sh.
+while ! mkdir "$lock_dir" 2> /dev/null; do
+  pid=""
+  [ -f "$pid_file" ] && pid="$(cat "$pid_file" 2> /dev/null || true)"
+  if [ -n "$pid" ] && kill -0 "$pid" 2> /dev/null; then
+    if [ "$force" -eq 1 ]; then
+      kill "$pid" 2> /dev/null || true
+      waited=0
+      while kill -0 "$pid" 2> /dev/null && [ "$waited" -lt 30 ]; do
+        sleep 0.1
+        waited="$((waited + 1))"
+      done
+      if kill -0 "$pid" 2> /dev/null; then
+        kill -KILL "$pid" 2> /dev/null || true
+        sleep 0.1
+      fi
+      rm -rf "$lock_dir" 2> /dev/null || true
+      continue
     fi
-    stale=1
-  else
-    mt="$(mtime_epoch "$lock_dir" 2> /dev/null || echo 0)"
-    age="$(($(now_epoch) - mt))"
-    if [ "$age" -ge "$lock_stale_seconds" ]; then
-      stale=1
-    fi
-  fi
-  if [ "$stale" -ne 1 ]; then
-    # Another update is already running.
+    # Another updater is in flight and this is not a manual refresh; defer.
     exit 0
   fi
+  # No live owner: either lock_dir is a leftover from a crashed updater
+  # (no pid file) past the stale window, or pid file points at a dead pid.
+  if [ ! -f "$pid_file" ]; then
+    mt="$(mtime_epoch "$lock_dir" 2> /dev/null || echo 0)"
+    age="$(($(now_epoch) - mt))"
+    if [ "$age" -lt "$lock_stale_seconds" ]; then
+      # Race: another updater is mid-startup (mkdir'd but hasn't written pid
+      # yet). Defer rather than steal.
+      exit 0
+    fi
+  fi
   rm -rf "$lock_dir" 2> /dev/null || exit 0
-  mkdir "$lock_dir" 2> /dev/null || exit 0
-fi
+done
+gen_pids=()
 cleanup() {
+  # Take any in-flight `gen` children with us so they don't keep running and
+  # racing the successor's writes. pkill -TERM -P also catches their python
+  # grandchildren (gen is a thin bash wrapper around python3 index_main.py).
+  local _p
+  for _p in ${gen_pids[@]+"${gen_pids[@]}"}; do
+    [ -n "$_p" ] || continue
+    if kill -0 "$_p" 2> /dev/null; then
+      pkill -TERM -P "$_p" 2> /dev/null || true
+      kill -TERM "$_p" 2> /dev/null || true
+    fi
+  done
   rm -f "${tmp_quick:-}" "${tmp_full:-}" "${tmp_combined:-}" "${tmp_sessions:-}" "${tmp_err_quick:-}" "${tmp_err_full:-}" 2> /dev/null || true
-  rm -f "${lock_dir}/pid" 2> /dev/null || true
-  rmdir "$lock_dir" 2> /dev/null || true
+  # Ownership-checked release: if we've been pre-empted by a successor that
+  # already wrote its own $$ into pid_file, do not unlink their lock.
+  if [ -d "$lock_dir" ]; then
+    local _cur_pid
+    _cur_pid="$(cat "$pid_file" 2> /dev/null || true)"
+    if [ "$_cur_pid" = "$$" ]; then
+      rm -f "$pid_file" 2> /dev/null || true
+      rmdir "$lock_dir" 2> /dev/null || true
+    fi
+  fi
 }
+# TERM/HUP from a pre-empting successor must exit promptly so cleanup runs
+# (and the successor can take the lock). Without explicit signal traps the
+# `wait` on `gen` children would still return (with rc=143) and the script
+# would continue past the failing branch, holding the lock longer than
+# needed.
+trap 'exit 143' TERM HUP
+trap 'exit 130' INT
 trap cleanup EXIT
 printf '%s\n' "$$" > "${lock_dir}/pid" 2> /dev/null || true
 
@@ -226,7 +270,17 @@ quick_published=0
 if [ "$quick_only" -eq 1 ]; then
   # Quick refresh: sessions only. We merge into the existing cache to preserve
   # the full worktree/dir lists (quick scans do not discover all worktrees).
-  if "$gen" --quick --sessions-only > "$tmp_quick" 2> "$tmp_err_quick"; then
+  # Run gen in the background and `wait` so TERM/HUP from a pre-empting
+  # successor can interrupt us (foreground children defer signal delivery
+  # until they exit — see cleanup() docstring for why this matters).
+  "$gen" --quick --sessions-only > "$tmp_quick" 2> "$tmp_err_quick" &
+  pid_quick=$!
+  gen_pids+=("$pid_quick")
+  set +e
+  wait "$pid_quick"
+  gen_rc=$?
+  set -e
+  if [ "$gen_rc" -eq 0 ]; then
     quick_ok=1
     if [ -s "$tmp_quick" ]; then
       # Always try to merge to preserve worktrees and directories in the cache.
@@ -252,9 +306,11 @@ else
   # Quick scan: sessions only (merged into existing cache).
   "$gen" --quick --sessions-only > "$tmp_quick" 2> "$tmp_err_quick" &
   pid_quick=$!
+  gen_pids+=("$pid_quick")
   # Perform a full scan (including directories) in the background.
   "$gen" > "$tmp_full" 2> "$tmp_err_full" &
   pid_full=$!
+  gen_pids+=("$pid_full")
 
   if wait "$pid_quick"; then
     quick_ok=1

@@ -19,7 +19,11 @@ if [ "$delay_ms" -gt 0 ]; then
   fi
 fi
 
-action="reload($cmd)"
+# `+track` preserves the highlighted row's identity across the reload so a
+# background-triggered reload (live_refresh tick, ordering pass, deferred
+# dir-row reload) doesn't scroll the user back to the top mid-interaction.
+# Matches the explicit ctrl-r/alt-r bindings in pick_session.sh.
+action="reload($cmd)+track"
 if [ -n "${FZF_SOCK:-}" ]; then
   if [ -n "${FZF_API_KEY:-}" ]; then
     curl --silent --show-error --fail --unix-socket "$FZF_SOCK" -H "x-api-key: ${FZF_API_KEY}" -X POST http://localhost --data "$action" > /dev/null 2>&1 || true

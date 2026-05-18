@@ -219,7 +219,10 @@ maybe_reload_on_change() {
       ;;
   esac
 
-  post_action "reload($filter_cmd --force-order)" || return 1
+  # `+track` keeps the user's highlighted row stable when a daemon tick
+  # reloads underneath them. pause_on_query/pause_on_multi already guard
+  # against the most disruptive cases; +track covers the rest.
+  post_action "reload($filter_cmd --force-order)+track" || return 1
   printf '%s\n' "$after"
 }
 

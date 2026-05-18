@@ -12,8 +12,11 @@ Navigation
 Filter / Refresh
   type            filter (sort auto-toggles when query contains '/')
   alt-s           toggle fzf sort manually
-  ctrl-r          reload from cache+live overlay (immediate)
-  alt-r           force full refresh (blocks briefly, then reloads)
+  ctrl-r          refresh sessions/icons sync (~1s), full scan in background
+                    query is preserved; cursor stays at the same row index
+                    (use ctrl-u to clear the query manually)
+  alt-r           force full refresh (blocks until complete, then reloads)
+                    same query/cursor preservation as ctrl-r
 
 Selection / Actions
   enter           open (switch/create)
@@ -21,8 +24,13 @@ Selection / Actions
   ctrl-x          kill selected session(s) (optimistic hide)
   alt-x           remove selected worktree(s) (optimistic hide)
   alt-y           copy underlying path(s) to clipboard
-  ctrl-s          send command to selected session(s)
+  ctrl-s          send command to selected entries (any kind)
                     enters send mode: type command, enter=send, esc=cancel
+                    sessions: command goes to a shell pane in each session
+                    worktree/dir without a session: spawns the canonical
+                    session first (same name as enter would), then sends
+                    list auto-refreshes after spawning (no ctrl-r needed);
+                    cursor stays at the same row index across the reload
 
 GitHub
   alt-p           open PR in browser (if branch has a PR)

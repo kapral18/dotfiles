@@ -150,7 +150,7 @@ pick="$(
     --preview-window 'right,55%,border-left,wrap' \
     --header $'enter=checkout (batch if marked)  alt-A=ralph go  alt-b=octo  alt-o=browser  alt-y=copy url(s)  tab=mark  ctrl-s=work/home  alt-c=comment  ?=help' \
     --bind "start:execute-silent:$bg_fetch_cmd" \
-    --bind "ctrl-r:reload(m=\$(cat $(printf %q "$mode_flag_file") 2>/dev/null || echo work); GH_PICKER_MODE=\$m $(printf %q "$items_cmd") --refresh)+track+clear-query" \
+    --bind "ctrl-r:reload(m=\$(cat $(printf %q "$mode_flag_file") 2>/dev/null || echo work); GH_PICKER_MODE=\$m $(printf %q "$items_cmd") --refresh)+track" \
     --bind "ctrl-s:transform:$(printf %q "$toggle_cmd") $(printf %q "$mode_flag_file") $(printf %q "$items_cmd")" \
     --bind "alt-g:execute-silent($(printf %q "$handoff_to_sessions_cmd") {2} {3} {4} $(printf %q "$pick_session_pin_file") 2>/dev/null || true; touch ${cache_dir}/gh_picker_switch_sessions)+abort" \
     --bind "alt-A:execute-silent($(printf %q "$handoff_to_ralph_cmd") {2} {3} {4} {5} $(printf %q "$ralph_pin_file") 2>/dev/null || true)+abort" \

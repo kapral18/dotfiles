@@ -22,49 +22,14 @@ need_cmd() {
   fi
 }
 
-_cached_login_shell=""
-login_shell() {
-  if [ -n "$_cached_login_shell" ]; then
-    printf '%s\n' "$_cached_login_shell"
-    return 0
-  fi
-  _cached_login_shell="$(dscl . -read /Users/"$USER" UserShell 2> /dev/null | awk '{print $2}')"
-  if [ -z "$_cached_login_shell" ] || [ ! -x "$_cached_login_shell" ]; then
-    _cached_login_shell="$(getent passwd "$USER" 2> /dev/null | cut -d: -f7)"
-  fi
-  if [ -z "$_cached_login_shell" ] || [ ! -x "$_cached_login_shell" ]; then
-    _cached_login_shell="$(command -v fish 2> /dev/null || echo /bin/sh)"
-  fi
-  printf '%s\n' "$_cached_login_shell"
-}
-
-normalize() {
-  cat \
-    | tr ' .:/' '-' \
-    | tr '[:upper:]' '[:lower:]' \
-    | sed -E 's/-+/-/g; s/^-+//; s/-+$//'
-}
-
-tildefy_to_reply() {
-  local p="$1"
-  # shellcheck disable=SC2034,SC2088
-  case "$p" in
-    "$HOME") REPLY="~" ;;
-    "$HOME"/*) REPLY="~/${p#"$HOME"/}" ;;
-    *) REPLY="$p" ;;
-  esac
-}
-
-tmux_sanitize_session_name() {
-  # tmux normalizes some characters in session names (notably '.'). Do minimal
-  # sanitization so the name we target is the name tmux will actually create,
-  # while preserving common branch separators like '/'.
-  local s="${1-}"
-  [ -n "$s" ] || return 1
-  printf '%s\n' "$s" \
-    | tr '[:upper:]' '[:lower:]' \
-    | sed -E 's/[^a-z0-9_@|/~-]+/_/g; s/[.:]+/_/g; s/_+$//'
-}
+# Shared naming/path helpers (login_shell, normalize, tildefy_to_reply,
+# tmux_sanitize_session_name, session_name, resolve_path,
+# worktree_root_dir_for_path, has_linked_worktrees_for_root_checkout,
+# default_branch_for_root_checkout, session_name_for_entry) live in a sourced
+# library so action_send_command.sh produces the same canonical names this
+# script uses on regular `enter`. See lib/session_naming.sh for the contract.
+# shellcheck source=lib/session_naming.sh
+. "$HOME/.config/tmux/scripts/pickers/session/lib/session_naming.sh"
 
 _tmux_gopts_cache=""
 _tmux_gopts_loaded=0
@@ -99,40 +64,6 @@ tmux_opt() {
       ;;
   esac
   printf '%s\n' "${value:-$default_value}"
-}
-
-session_name() {
-  if [ "$1" = "--directory" ]; then
-    shift
-    input="${1-}"
-    base="$(basename "$input")"
-    case "$input" in
-      "~") base="home" ;;
-      *) if [ "$base" = "~" ]; then base="tilde"; fi ;;
-    esac
-    out="$(printf '%s\n' "$base" | normalize)"
-    case "$out" in
-      "" | "~") out="home" ;;
-    esac
-    printf '%s\n' "$out"
-  elif [ "$1" = "--full-path" ]; then
-    shift
-    out="$(echo "$@" | normalize | sed 's/\\/$//')"
-    case "$out" in
-      "" | "~") out="home" ;;
-    esac
-    echo "$out"
-  elif [ "$1" = "--short-path" ]; then
-    shift
-    left="$(echo "${@%/*}" | sed -E 's;/([^/]{1,2})[^/]*;/\\1;g' | normalize)"
-    right="$(basename "$@" | normalize)"
-    case "$right" in
-      "" | "~") right="home" ;;
-    esac
-    echo "${left}/${right}"
-  else
-    return 1
-  fi
 }
 
 need_cmd fzf
@@ -276,13 +207,12 @@ fi
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 mkdir -p "$cache_dir" 2> /dev/null || true
 # Per-picker state is PID-scoped so concurrent picker instances (popups + stray
-# invocations) don't fight over a single shared file. ctrl-x / alt-x bindings
-# rely on `dispatch_async.sh` to mint per-binding mktemp snapshots from `{+f}`,
-# which sidesteps both the cross-picker race and the rapid-keypress race the
-# old shared `pick_session_fzf_selected.tsv` had.
-sel_tmp="${cache_dir}/pick_session_fzf_selected.$$.tsv"
+# invocations) don't fight over a single shared file. ctrl-x / alt-x / ctrl-s
+# bindings all dispatch through `dispatch_async.sh`, which mints per-binding
+# mktemp snapshots from `{+f}` at action-fire time — there is no shared
+# selection file to clobber across rapid keypresses or concurrent pickers.
 primary_tmp="${cache_dir}/pick_session_fzf_primary.$$.tsv"
-_pick_session_pid_scoped_files+=("$sel_tmp" "$primary_tmp")
+_pick_session_pid_scoped_files+=("$primary_tmp")
 pin_file="${cache_dir}/pick_session_pin"
 gh_pin_file="${cache_dir}/gh_picker_pin"
 handoff_to_gh_cmd="$HOME/.config/tmux/scripts/pickers/lib/handoff_to_gh.sh"
@@ -357,8 +287,21 @@ fi
 
 # fzf send-mode: ctrl-s enters a modal where the query line becomes a command
 # prompt. enter dispatches the command to selected sessions; esc cancels.
+#
+# The selection is captured at enter-time via `{+f}`, snapshotted by
+# `dispatch_async.sh` running *inside* the enter:transform shell command. This
+# placement matters: fzf substitutes `{+f}` into the transform body's shell
+# command, runs it, then `removeFiles(tempFiles)` deletes the temp file (see
+# `executeCommand` in fzf's terminal.go around line 5413/5507). If the dispatch
+# were emitted inside the printed action string instead, the `{+f}` token there
+# would already be a literal path that fzf had just deleted. Running
+# `dispatch_async.sh` *during* the transform shell snapshots `{+f}` to a stable
+# mktemp while the file is still alive, sidestepping that race.
+#
+# Net effect: the visual selection state and what gets dispatched are in sync;
+# a row toggled with tab while typing the command is honored.
 send_restore="enable-search+change-prompt($fzf_prompt)+change-ghost($fzf_ghost)+change-header(?=help  ctrl-/=preview  alt-p=PR  alt-i=issue  alt-g=GitHub)+clear-query+deselect-all+rebind(ctrl-s,ctrl-x,alt-x,alt-y,alt-p,alt-i,alt-g,change)+unbind(esc)"
-send_mode="execute-silent(cp {+f} $sel_tmp)+execute-silent(touch $mode_flag)+disable-search+change-prompt(❯ send: )+change-ghost()+change-header(enter=send  esc=cancel)+clear-query+unbind(ctrl-s,ctrl-x,alt-x,alt-y,alt-p,alt-i,alt-g,change)+rebind(esc)"
+send_mode="execute-silent(touch $mode_flag)+disable-search+change-prompt(❯ send: )+change-ghost()+change-header(enter=send  esc=cancel)+clear-query+unbind(ctrl-s,ctrl-x,alt-x,alt-y,alt-p,alt-i,alt-g,change)+rebind(esc)"
 
 selection_file="${PICK_SESSION_SELECTION_FILE:-}"
 if [ -n "$selection_file" ] && [ -f "$selection_file" ]; then
@@ -386,8 +329,8 @@ else
         --preview "$preview_with_help" \
         --preview-window 'right,50%,border-left' \
         --bind "start:execute-silent($live_refresh_cmd >/dev/null 2>&1 &)" \
-        --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+track+clear-query" \
-        --bind "alt-r:reload($filter_cmd --force-refresh --force-order)+track+clear-query" \
+        --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+track" \
+        --bind "alt-r:reload($filter_cmd --force-refresh --force-order)+track" \
         --bind "alt-j:half-page-down" \
         --bind "alt-k:half-page-up" \
         --bind "alt-h:first" \
@@ -401,7 +344,7 @@ else
         --bind "change:first" \
         --bind "alt-s:toggle-sort+first" \
         --bind "load:unbind(esc)" \
-        --bind "enter:transform:[ -f $mode_flag ] && { printf '%s' {q} > $cmd_tmp; echo 'execute-silent(tmux run-shell -b \"$send_cmd $sel_tmp $cmd_tmp\")+execute-silent(rm -f $mode_flag)+$send_restore'; } || echo 'execute-silent(cp {f} $primary_tmp)+accept'" \
+        --bind "enter:transform:[ -f $mode_flag ] && { printf '%s' {q} > $cmd_tmp; $dispatch_async_cmd $send_cmd {+f} $cmd_tmp >/dev/null 2>&1; echo 'execute-silent(rm -f $mode_flag)+$send_restore'; } || echo 'execute-silent(cp {f} $primary_tmp)+accept'" \
         --bind "ctrl-s:$send_mode" \
         --bind "esc:execute-silent(rm -f $mode_flag)+$send_restore" \
         --bind "ctrl-x:execute-silent($(printf %q "$dispatch_async_cmd") $(printf %q "$kill_cmd") {+f})+reload($hide_selected_cmd {+f} kill {q})+deselect-all" \
@@ -433,8 +376,8 @@ else
         --preview "$preview_with_help" \
         --preview-window 'right,50%,border-left' \
         --bind "start:execute-silent($live_refresh_cmd >/dev/null 2>&1 &)" \
-        --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+track+clear-query" \
-        --bind "alt-r:reload($filter_cmd --force-refresh --force-order)+track+clear-query" \
+        --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+track" \
+        --bind "alt-r:reload($filter_cmd --force-refresh --force-order)+track" \
         --bind "alt-j:half-page-down" \
         --bind "alt-k:half-page-up" \
         --bind "alt-h:first" \
@@ -448,7 +391,7 @@ else
         --bind "change:first" \
         --bind "alt-s:toggle-sort+first" \
         --bind "load:unbind(esc)" \
-        --bind "enter:transform:[ -f $mode_flag ] && { printf '%s' {q} > $cmd_tmp; echo 'execute-silent(tmux run-shell -b \"$send_cmd $sel_tmp $cmd_tmp\")+execute-silent(rm -f $mode_flag)+$send_restore'; } || echo 'execute-silent(cp {f} $primary_tmp)+accept'" \
+        --bind "enter:transform:[ -f $mode_flag ] && { printf '%s' {q} > $cmd_tmp; $dispatch_async_cmd $send_cmd {+f} $cmd_tmp >/dev/null 2>&1; echo 'execute-silent(rm -f $mode_flag)+$send_restore'; } || echo 'execute-silent(cp {f} $primary_tmp)+accept'" \
         --bind "ctrl-s:$send_mode" \
         --bind "esc:execute-silent(rm -f $mode_flag)+$send_restore" \
         --bind "ctrl-x:execute-silent($(printf %q "$dispatch_async_cmd") $(printf %q "$kill_cmd") {+f})+reload($hide_selected_cmd {+f} kill {q})+deselect-all" \
@@ -668,10 +611,6 @@ repo_display_for_worktree_root() {
   printf '%s\n' "${repo_name:-}"
 }
 
-resolve_path() {
-  realpath "$1" 2> /dev/null || printf '%s' "$1"
-}
-
 git_config_file_for_worktree_root() {
   local wt_root="$1"
   [ -n "$wt_root" ] || return 1
@@ -793,75 +732,6 @@ self_login_hint() {
     login="${GITHUB_USER:-${USER:-}}"
   fi
   printf '%s\n' "$login"
-}
-
-worktree_root_dir_for_path() {
-  local p="$1"
-  [ -n "$p" ] || return 1
-  p="$(resolve_path "$p")"
-  if [ -f "$p" ]; then
-    p="$(dirname "$p")"
-  fi
-  [ -d "$p" ] || return 1
-
-  local common common_path
-  common="$(git -C "$p" rev-parse --git-common-dir 2> /dev/null || true)"
-  [ -n "$common" ] || return 1
-  case "$common" in
-    /*) common_path="$common" ;;
-    *) common_path="$p/$common" ;;
-  esac
-  common_path="$(resolve_path "$common_path")"
-  if [ "$(basename "$common_path")" = ".git" ]; then
-    dirname "$common_path"
-  else
-    printf '%s\n' "$common_path"
-  fi
-}
-
-has_linked_worktrees_for_root_checkout() {
-  local root_checkout="$1"
-  [ -n "$root_checkout" ] || return 1
-  root_checkout="$(resolve_path "$root_checkout")"
-  local wt_dir="$root_checkout/.git/worktrees"
-  [ -d "$wt_dir" ] || return 1
-  find "$wt_dir" -mindepth 1 -maxdepth 1 -print -quit 2> /dev/null | grep -q .
-}
-
-default_branch_for_root_checkout() {
-  local root_checkout="$1"
-  [ -n "$root_checkout" ] || return 1
-  root_checkout="$(resolve_path "$root_checkout")"
-  [ -d "$root_checkout" ] || return 1
-
-  local out remote branch cand
-  for remote in origin upstream; do
-    out="$(git -C "$root_checkout" symbolic-ref --quiet --short "refs/remotes/$remote/HEAD" 2> /dev/null || true)"
-    [ -n "$out" ] || continue
-    case "$out" in
-      "$remote"/*) branch="${out#"$remote"/}" ;;
-      */*) branch="${out#*/}" ;;
-      *) branch="$out" ;;
-    esac
-    case "${branch,,}" in
-      ".invalid" | "invalid" | "(invalid)" | "") ;;
-      *)
-        printf '%s\n' "$branch"
-        return 0
-        ;;
-    esac
-  done
-
-  for cand in main master trunk develop dev; do
-    if git -C "$root_checkout" show-ref --verify --quiet "refs/heads/$cand" 2> /dev/null \
-      || git -C "$root_checkout" show-ref --verify --quiet "refs/remotes/origin/$cand" 2> /dev/null \
-      || git -C "$root_checkout" show-ref --verify --quiet "refs/remotes/upstream/$cand" 2> /dev/null; then
-      printf '%s\n' "$cand"
-      return 0
-    fi
-  done
-  printf 'main\n'
-  return 0
 }
 
 is_default_branch_dir() {
@@ -1208,39 +1078,25 @@ while IFS= read -r _line; do
       # If a session name is already taken by a "bagged" path (e.g. a worktree
       # that was moved under ~/.bag during removal), rename it away so selecting
       # this worktree can (re)create the canonical session at the real path.
+      # bag_rename_if_needed lives in lib/session_naming.sh so the picker and
+      # action_send_command.sh share one implementation. The outer
+      # tmux_has_session_exact gate keeps the no-collision path fork-free (it
+      # consults the picker's in-memory session cache); only on a collision do
+      # we call into the lib and pass the cached existing-path to avoid the
+      # lib's `tmux list-sessions` lookup. The lib's stdout ("OLD\tNEW" on
+      # rename) is consumed to keep the picker's cache coherent.
       if [ -n "$session_name" ] && tmux_has_session_exact "$session_name"; then
-        # Prefer our cached tmux session snapshot (works without a client).
-        existing_path="$(sess_path_for_name "$session_name" 2> /dev/null || true)"
-        if [ -z "$existing_path" ]; then
-          # Fallback: best-effort, may be empty outside a client context.
-          existing_path="$(tmux display-message -p -t "=${session_name}" '#{session_path}' 2> /dev/null || true)"
+        existing_path=""
+        if [ "${__sess_cache_loaded:-0}" -eq 1 ]; then
+          existing_path="$(sess_path_for_name "$session_name" 2> /dev/null || true)"
         fi
-        existing_rp="$(resolve_path "$existing_path" 2> /dev/null || printf '%s' "$existing_path")"
-        desired_rp="$(resolve_path "$path" 2> /dev/null || printf '%s' "$path")"
-        if [ -n "$existing_rp" ] && [ -n "$desired_rp" ] && [ "$existing_rp" != "$desired_rp" ]; then
-          case "$existing_rp" in
-            "$HOME"/.bag/worktree_remove/* | "$HOME"/.bag/pickers/session/* | */.bag/worktree_remove/* | */.bag/pickers/session/*)
-              bag_name="${session_name}@bag"
-              bag_name="$(tmux_sanitize_session_name "$bag_name" 2> /dev/null || printf '%s' "$bag_name")"
-              if [ -n "$bag_name" ] && [ "$bag_name" != "$session_name" ]; then
-                if tmux_has_session_exact "$bag_name"; then
-                  n=2
-                  while [ "$n" -le 50 ]; do
-                    cand="${bag_name}${n}"
-                    if ! tmux_has_session_exact "$cand"; then
-                      bag_name="$cand"
-                      break
-                    fi
-                    n="$((n + 1))"
-                  done
-                fi
-                tmux rename-session -t "=${session_name}" "$bag_name" 2> /dev/null || true
-                if [ "${__sess_cache_loaded:-0}" -eq 1 ]; then
-                  sess_rename "$session_name" "$bag_name" || true
-                fi
-              fi
-              ;;
-          esac
+        rename_pair="$(bag_rename_if_needed "$session_name" "$path" "$existing_path" 2> /dev/null || true)"
+        if [ -n "$rename_pair" ] && [ "${__sess_cache_loaded:-0}" -eq 1 ]; then
+          old_name="${rename_pair%%$'\t'*}"
+          new_name="${rename_pair#*$'\t'}"
+          if [ -n "$old_name" ] && [ -n "$new_name" ] && [ "$old_name" != "$new_name" ]; then
+            sess_rename "$old_name" "$new_name" || true
+          fi
         fi
       fi
 

@@ -36,24 +36,26 @@ This setup ships a URL picker, a session/worktree picker, and a GitHub picker (P
 
 ### Bindings
 
-| Key                | Action                                                                                                    |
-| ------------------ | --------------------------------------------------------------------------------------------------------- |
-| `prefix` + `T`     | Open session picker popup                                                                                 |
-| `enter`            | Open (switch to or create) the selected session                                                           |
-| `tab`              | Toggle multi-select on current row                                                                        |
-| `ctrl-x`           | Kill selected session(s) — optimistic hide                                                                |
-| `alt-x`            | Remove selected worktree(s) — optimistic hide                                                             |
-| `alt-y`            | Copy underlying path(s) to clipboard                                                                      |
-| `ctrl-s`           | **Send command** — enters a modal: type a command, `enter` sends it to selected session(s), `esc` cancels |
-| `ctrl-r`           | Refresh list (grouped ordering + background cache rebuild)                                                |
-| `alt-r`            | Force full refresh (blocks briefly, then reloads list)                                                    |
-| `alt-p`            | Open PR in browser (if the entry's branch has a linked PR)                                                |
-| `alt-i`            | Open issue in browser (if the entry's branch references an issue number)                                  |
-| `alt-g`            | Switch to GitHub picker (PRs/issues)                                                                      |
-| `ctrl-/`           | Toggle preview panel visibility                                                                           |
-| `?`                | Show keybinding help in the preview panel                                                                 |
-| `shift-up/down`    | Scroll preview (line)                                                                                     |
-| `shift-left/right` | Scroll preview (page)                                                                                     |
+| Key            | Action                                                                                                                                                                                   |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `prefix` + `T` | Open session picker popup                                                                                                                                                                |
+| `enter`        | Open (switch to or create) the selected session                                                                                                                                          |
+| `tab`          | Toggle multi-select on current row                                                                                                                                                       |
+| `ctrl-x`       | Kill selected session(s) — optimistic hide                                                                                                                                               |
+| `alt-x`        | Remove selected worktree(s) — optimistic hide                                                                                                                                            |
+| `alt-y`        | Copy underlying path(s) to clipboard                                                                                                                                                     |
+| `ctrl-s`       | **Send command** — enters a modal: type a command, `enter` sends it to selected entries (session/worktree/dir), `esc` cancels                                                            |
+| `ctrl-r`       | Refresh: synchronous session/icon-state scan (~1s) + background full rescan (worktrees/dirs). Query preserved; cursor stays at the same row index (see "How refresh preserves position") |
+| `alt-r`        | Force full refresh (blocks until both quick + full scans complete, then reloads list). Same query/cursor preservation as `ctrl-r`                                                        |
+
+> The GH picker rebinds `alt-r` to "quote-reply a comment" (it has no force-full-refresh equivalent — its `ctrl-r` is already fully synchronous with in-flight pre-emption). See the GH picker bindings table below.
+> | `alt-p` | Open PR in browser (if the entry's branch has a linked PR) |
+> | `alt-i` | Open issue in browser (if the entry's branch references an issue number) |
+> | `alt-g` | Switch to GitHub picker (PRs/issues) |
+> | `ctrl-/` | Toggle preview panel visibility |
+> | `?` | Show keybinding help in the preview panel |
+> | `shift-up/down` | Scroll preview (line) |
+> | `shift-left/right` | Scroll preview (page) |
 
 ### Switching between pickers
 
@@ -139,11 +141,25 @@ Visible by default on the right side. Content varies by entry type:
 
 Enters a modal where the fzf query line becomes a command prompt:
 
-1. Select one or more sessions with `tab`
+1. Select one or more entries (sessions, worktrees, or directories) with `tab`
 2. Press `ctrl-s` to enter send mode
 3. Type the command to send
-4. `enter` dispatches it to each selected session's first idle shell pane (fish/zsh/bash/sh)
+4. `enter` dispatches it to each selected entry's first idle shell pane (fish/zsh/bash/sh)
 5. `esc` cancels and returns to normal mode
+
+Batch semantics:
+
+- Works with mixed selections of any kind: `session` rows dispatch directly; `worktree` rows resolve to a live session whose path matches (or is a descendant of) the selected path; `dir` rows resolve only by exact path match (the "descendant" rule applies to worktrees only — for dirs it would over-match, e.g. selecting `$HOME` would route to whichever session under your home directory was iterated first). When no match is found, a new session is spawned at the selected path before sending.
+- Spawned sessions use the same canonical name pick_session.sh would assign on a regular `enter` (worktree: `<repo_id>|<branch>` derived from the cache's `meta` field; dir: `session_name --$MODE` honoring `@pick_session_mode`). The naming, sanitization, branch-fallback (`default_branch_for_root_checkout`), login-shell resolution, and `@bag` collision-recovery are all factored into `pickers/session/lib/session_naming.sh`, sourced by both pick_session.sh and action_send_command.sh — `bag_rename_if_needed` is the sole implementation, and pick_session.sh passes its in-memory cached session path to skip the lib's internal `tmux list-sessions` lookup on the hot `enter` path, then consumes the lib's `"OLD\tNEW"` stdout to keep its cache coherent with the rename.
+- Name collisions on spawn first try the lib's `@bag` recovery flow (rename the existing session to `<name>@bag[N]` if it points at `~/.bag/worktree_remove/...` or `~/.bag/pickers/session/...`, then create the canonical session at the real path). Only when the holder is a non-bagged session at a different path does the code fall back to `<name>@<basename>`; pick_session.sh's path-keyed rename-on-enter will reconcile any divergent name on the next regular `enter` of that row.
+- A short `sleep 0.3` is inserted after spawning so the shell finishes its readline/zle init before `send-keys` fires; without this, the first keystrokes can be eaten on fish/zsh with instrumented prompts.
+- Each session is dispatched in an isolated subshell so a single transient failure (e.g. a session that disappeared between selection and dispatch) does not abort the batch — remaining sessions still receive the command.
+- A `tmux display-message` summary is shown when any send fails, or when one or more selected paths could not be spawned.
+- Set `PICK_SESSION_SEND_DEBUG_LOG=/path/to/log` in the picker's environment to get per-invocation parse/dispatch/spawn traces (the picker doesn't set this by default — useful for ad-hoc debugging).
+- Dispatch goes through `pickers/lib/dispatch_async.sh`, which mints a per-binding mktemp snapshot of `{+f}` via `pickers/lib/snapshot_fzf_selection.sh` and then runs the consumer in the tmux background. Same primitive as `ctrl-x` and `alt-x`; there is no shared selection file to clobber across rapid keypresses.
+- `dispatch_async.sh` is invoked from _inside_ the `enter:transform` shell command (not emitted in the printed action string). fzf substitutes `{+f}` into the transform body's shell command and removes that temp file as soon as the shell exits (see `executeCommand` in fzf `terminal.go` around line 5413/5507). If the dispatch were emitted inside the printed action, the `{+f}` token there would already be a literal path that fzf had just deleted, and the consumer would receive a dead path. Snapshotting _during_ the transform shell sidesteps that race.
+- Snapshotting happens at `enter`-time, so toggling marks with `tab` while in send mode is honored.
+- After spawning + sending, `action_send_command.sh` posts `reload($filter_cmd --refresh --force-order)+track` to fzf's `--listen` socket so newly-spawned sessions become visible without a manual `ctrl-r`. Only fires when this run actually created sessions (sends to existing-only selections leave the cache unchanged, so the post would be churn). `dispatch_async.sh` inlines `FZF_SOCK`/`FZF_PORT`/`FZF_API_KEY` into the `tmux run-shell -b` command string because tmux's background runner uses the server's env rather than the caller's. The `+track` is included for symmetry with `ctrl-r`/`alt-r`, but in this picker it's effectively a no-op for cursor recovery (see "How refresh preserves position" below); cursor stability after the reload comes from the fact that no `change` event fires, so `change:first` never resets `t.cy`.
 
 ### Options
 
@@ -199,11 +215,19 @@ Enters a modal where the fzf query line becomes a command prompt:
 
 ### How ordering works
 
-Grouped/sorted ordering is produced by `pickers/session/filter.sh`:
+Grouped/sorted ordering is produced by `pickers/session/filter.sh` (which delegates to `lib/filter_main.py` → `lib/pick_session_grouping.py:grouped_output`):
 
 1. **Session-backed repo/worktree groups** first (sessions first within each group, then related worktrees)
 2. **Worktree-only groups** next
 3. **Directory entries** at the end (clustered by scan root and path)
+
+Within and across groups the ordering keys are: `scan_root_rank` (position in `@pick_session_worktree_scan_roots`) → `scan_root_prefix` (top-level segment under the scan root) → `first_session_name` (alphabetical) → `group_path`. The current session sorts first within its group.
+
+**One ordering, two read paths.** The grouped result is the _only_ user-facing order; cache storage is intentionally not the same shape as the display:
+
+- Picker open prefers the precomputed snapshot (`pick_session_items_ordered.tsv`) for instant first paint.
+- When the snapshot is stale or missing, `open_items.sh` falls back to `filter.sh --force-order`, which produces the same grouping live. This avoids the previous failure mode where stale-snapshot opens served raw cache order (with sessions injected at the top by `pick_session.sh` and worktrees clustered separately by `build_cache_refreshing_sessions_preserving_others`) and the next snapshot-backed open would reshuffle the list under the cursor.
+- `filter.sh` has a `@pick_session_filter_passthrough_rows` (default `2000`) escape that drops back to raw cache when the list is large enough that grouping latency would be visible. **The passthrough is intentionally bypassed when `--force-order` is set** (both `filter.sh:72` and `filter_main.py:60` gate it on `force_order != 1`), so the `open_items.sh` stale-snapshot fallback always pays the grouping cost — that's the tradeoff for consistency. Tune the threshold lower to favor latency over consistency on user-typed filter calls (refresh, send-command reload, etc.), higher to favor consistency.
 
 The picker uses fzf's native in-process filtering (no reload per keystroke) across the visible label and a hidden match key column.
 
@@ -212,13 +236,23 @@ The picker uses fzf's native in-process filtering (no reload per keystroke) acro
 - **How it stays lag-free**: the sort state is synced by a tiny Python daemon that talks to fzf over its `--listen` Unix socket. It polls the live `query` + `sort` fields at 20 ms and `POST`s `toggle-sort` only on real transitions. fzf's `change` binding stays on the zero-cost `first` action, so typing and held backspace never fork a shell. Auto-toggle is correct for any edit (typing, paste, backspace, `ctrl-u`, `ctrl-w`, overwrite).
 - **Manual override**: `alt-s` toggles fzf sort at any time. The daemon will re-sync on the next poll if the query disagrees with the override.
 
+### How refresh preserves position (`ctrl-r` / `alt-r`)
+
+Both refresh bindings issue `reload($filter_cmd ...)+track` against fzf's `--listen` socket. The `+track` chain is included for symmetry with other reload sites, **but in this picker it does not do identity-based cursor recovery** — that path in fzf's `UpdateList` (`terminal.go:1950`) is gated on `len(t.idNth) > 0` (`terminal.go:7799`), and the picker does not set `--id-nth`. fzf's other recovery path (index-based, `terminal.go:1972`) requires `t.revision.compatible(newRevision)`, but `actReload` calls `restart()` which `bumpMajor()`s the revision (`core.go:409`), making it incompatible. So neither recovery path fires for a reload chain in this picker; `+track` only sets `t.track` state.
+
+What actually keeps the cursor in place across refresh is the **absence of any action that mutates `t.cy`**. The bindings intentionally do **not** chain `+clear-query`. `actClearQuery` mutates the input buffer, which fzf's main loop detects as `queryChanged` and fires the `change` event — and `change:first` (bound globally for snappy typing) calls `vset(0)`, jumping the cursor to row 0. The old `+track+clear-query` chain therefore landed the user at row 0 after every refresh, which read as the list "reshuffling". With `clear-query` removed, `queryChanged` stays false, no `change` event fires, and `t.cy` keeps its old value — the cursor stays at the **same row index** in the refreshed list (not necessarily the same item, since the refresh may have changed which item occupies that row). Use `ctrl-u` if you want to clear the query manually.
+
+If true identity-based cursor recovery becomes a requirement, the fix is to set `--id-nth=<column-with-a-stable-key>` (e.g. the canonical session/target column) so `actReload` captures a `trackKey` and `UpdateList` can re-find the item after the major-revision bump.
+
 ### How caching works
 
 - `pickers/session/index_update.sh` builds the cache (`~/.cache/tmux/pick_session_items.tsv`) and a precomputed ordered snapshot (`pick_session_items_ordered.tsv`) in the background.
 - Picker open prefers the ordered snapshot for instant first paint, validated against mutation/pending timestamps (bash `-nt` check, zero subprocess overhead).
-- After `ctrl-x` kill or `alt-x` remove (which write mutation tombstones), the ordered snapshot is stale, so `pickers/session/items.sh` runs with mutation filtering (~250 ms) to ensure killed/removed entries never reappear.
+- When the snapshot is stale, missing, or invalidated (after `ctrl-x` kill, `alt-x` remove, `enter`-time session injection, or a cache write from `index_update`), `open_items.sh` falls back to `filter.sh --force-order` so the live read uses the same grouped output as the snapshot path. A background `ordered_cache_update.sh` also fires so the next open hits the snapshot fast path again. Falling back to raw `items.sh` (cache order) is reserved for the case where `filter.sh` is missing.
+- `items.sh` itself handles mutation tombstones internally on every read (`items_light_rehydrate.py` / `items_full_rehydrate.py`), so killed/removed entries never reappear regardless of which read path is taken.
 - `tmux_opt` reads are cached: a single `tmux show-options -g` call replaces multiple sequential round-trips.
 - Picker open does not auto-reload (prevents visible rerender/churn); use `ctrl-r` for a fresh rebuild.
+- **Manual refresh pre-empts in-flight updates.** A `--force` invocation (which both `ctrl-r` and `alt-r` make via `filter.sh`) sends `SIGTERM` to any in-flight updater (typically a live-refresh tick), waits up to 3 s for it to release the cache lock, escalates to `SIGKILL` if needed, then runs cleanly. The pre-empted updater's cleanup uses an ownership-checked lock release so it can't unlink the successor's lock. Without this, a `ctrl-r` that landed during a live-refresh tick would silently no-op and the user would see stale rows after their explicit refresh.
 
 ### How worktree discovery works
 
@@ -258,28 +292,30 @@ A standalone fzf-based PR/issue picker. It reads PR and issue sections from its 
 
 ### Bindings
 
-| Key                | Action                                            |
-| ------------------ | ------------------------------------------------- |
-| `prefix` + `G`     | Open GitHub picker popup (95%×95%)                |
-| `enter`            | Checkout worktree + focus (batch if items marked) |
-| `alt-b`            | Checkout + open Octo review (PRs only)            |
-| `ctrl-t`           | Batch worktree create (marked items)              |
-| `alt-o`            | Open in browser                                   |
-| `alt-y`            | Copy URL(s) to clipboard                          |
-| `tab`              | Mark/unmark item (multi-select)                   |
-| `alt-space`        | Mark/unmark item (alternate toggle)               |
-| `ctrl-s`           | Switch work/home mode                             |
-| `ctrl-r`           | Refresh from GitHub (current mode)                |
-| `alt-g`            | Switch to session picker                          |
-| `alt-c`            | New comment (opens `$EDITOR`)                     |
-| `alt-r`            | Quote-reply a comment                             |
-| `alt-d`            | Edit your own comment                             |
-| `alt-e`            | Cycle preview: collapsed → body → all expanded    |
-| `ctrl-/`           | Toggle preview                                    |
-| `?`                | Show keybinding help                              |
-| `alt-j` / `alt-k`  | Page down / up                                    |
-| `shift-up/down`    | Scroll preview (line)                             |
-| `shift-left/right` | Scroll preview (page)                             |
+| Key                | Action                                                                                                                                                                                           |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `prefix` + `G`     | Open GitHub picker popup (95%×95%)                                                                                                                                                               |
+| `enter`            | Checkout worktree + focus (batch if items marked)                                                                                                                                                |
+| `alt-b`            | Checkout + open Octo review (PRs only)                                                                                                                                                           |
+| `ctrl-t`           | Batch worktree create (marked items)                                                                                                                                                             |
+| `alt-o`            | Open in browser                                                                                                                                                                                  |
+| `alt-y`            | Copy URL(s) to clipboard                                                                                                                                                                         |
+| `tab`              | Mark/unmark item (multi-select)                                                                                                                                                                  |
+| `alt-space`        | Mark/unmark item (alternate toggle)                                                                                                                                                              |
+| `ctrl-s`           | Switch work/home mode                                                                                                                                                                            |
+| `ctrl-r`           | Refresh from GitHub (current mode); query preserved, cursor stays at the same row index (see session picker's "How refresh preserves position" — same mechanism applies here, no `--id-nth` set) |
+| `alt-g`            | Switch to session picker                                                                                                                                                                         |
+| `alt-c`            | New comment (opens `$EDITOR`)                                                                                                                                                                    |
+| `alt-r`            | Quote-reply a comment (not refresh — see note)                                                                                                                                                   |
+| `alt-d`            | Edit your own comment                                                                                                                                                                            |
+| `alt-e`            | Cycle preview: collapsed → body → all expanded                                                                                                                                                   |
+| `ctrl-/`           | Toggle preview                                                                                                                                                                                   |
+| `?`                | Show keybinding help                                                                                                                                                                             |
+| `alt-j` / `alt-k`  | Page down / up                                                                                                                                                                                   |
+| `shift-up/down`    | Scroll preview (line)                                                                                                                                                                            |
+| `shift-left/right` | Scroll preview (page)                                                                                                                                                                            |
+
+> `alt-r` is quote-reply here, not refresh. The GH picker's `ctrl-r` is fully synchronous and pre-empts any in-flight fetch (`gh_items.sh` kills the running fetch and starts a fresh one), so there is no separate "force full refresh" key. The session picker uses `alt-r` for force-full because its `ctrl-r` only blocks on the quick scan and backgrounds the full rescan.
 
 ### Entry source
 
