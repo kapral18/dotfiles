@@ -4,12 +4,9 @@ approval_policy = "never"
 sandbox_mode = "danger-full-access"
 web_search = "cached"
 check_for_update_on_startup = true
-model = "gpt-5.3-codex"
-model_reasoning_effort = "high"
 personality = "pragmatic"
-
-[notice.model_migrations]
-"gpt-5.2" = "gpt-5.3-codex"
+model = "gpt-5.5"
+model_reasoning_effort = "xhigh"
 
 # __MCP_SERVERS__
 

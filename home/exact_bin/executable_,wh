@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# Description: Send and receive staged git patches with Magic Wormhole
+
+set -euo pipefail
+
+PATCH_FILE="${WH_PATCH_FILE:-/tmp/staged.patch}"
+
+show_usage() {
+  cat <<'EOF'
+Usage: ,wh <command>
+
+Commands:
+  post                 Send the current repo's staged diff with wormhole
+  get <code-word...>   Receive a patch into /tmp/staged.patch and apply it
+
+Environment:
+  WH_PATCH_FILE        Override patch path (default: /tmp/staged.patch)
+
+Examples:
+  ,wh post
+  ,wh get 7-example-code
+EOF
+}
+
+require_command() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "Error: required command not found: $1" >&2
+    exit 1
+  fi
+}
+
+ensure_git_repo() {
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "Error: ,wh post must be run inside a git repository" >&2
+    exit 1
+  fi
+}
+
+post_patch() {
+  require_command git
+  require_command wormhole
+  ensure_git_repo
+
+  if git diff --cached --quiet --exit-code; then
+    echo "Error: no staged changes to send" >&2
+    exit 1
+  fi
+
+  git diff --cached --binary >"$PATCH_FILE"
+  echo "Sending staged patch: $PATCH_FILE"
+  wormhole send "$PATCH_FILE"
+}
+
+get_patch() {
+  if [ $# -eq 0 ]; then
+    echo "Error: code word is required" >&2
+    echo >&2
+    show_usage >&2
+    exit 1
+  fi
+
+  require_command git
+  require_command wormhole
+  ensure_git_repo
+
+  if [ -e "$PATCH_FILE" ]; then
+    backup_file="${PATCH_FILE}.$(date +%Y%m%d%H%M%S).bak"
+    mv "$PATCH_FILE" "$backup_file"
+    echo "Moved existing patch to: $backup_file"
+  fi
+
+  wormhole receive --accept-file -o "$PATCH_FILE" "$@"
+  echo "Received patch: $PATCH_FILE"
+  echo "Applying patch: git apply $PATCH_FILE"
+  git apply "$PATCH_FILE"
+}
+
+if [ $# -eq 0 ]; then
+  show_usage
+  exit 1
+fi
+
+case "$1" in
+-h | --help)
+  show_usage
+  ;;
+post)
+  shift
+  if [ $# -ne 0 ]; then
+    echo "Error: unexpected arguments for post: $*" >&2
+    exit 1
+  fi
+  post_patch
+  ;;
+get)
+  shift
+  get_patch "$@"
+  ;;
+*)
+  echo "Error: unknown command '$1'" >&2
+  echo >&2
+  show_usage >&2
+  exit 1
+  ;;
+esac
