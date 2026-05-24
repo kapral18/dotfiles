@@ -36,10 +36,10 @@ type Modal struct {
 
 // CapturedMsg is emitted by CaptureCmd; the model handles it via Update.
 type CapturedMsg struct {
-	Target  string
-	Output  string
-	Err     error
-	When    time.Time
+	Target string
+	Output string
+	Err    error
+	When   time.Time
 }
 
 // AttachReadOnlyMsg signals the app to launch a tmux popup attached
@@ -52,10 +52,10 @@ type AttachReadOnlyMsg struct {
 
 // keybindings exported for help overlay parity.
 var (
-	KeyClose       = key.NewBinding(key.WithKeys("esc", "q"))
-	KeyForceClose  = key.NewBinding(key.WithKeys("ctrl+c"))
-	KeyRefresh     = key.NewBinding(key.WithKeys("r"))
-	KeyAttachRO    = key.NewBinding(key.WithKeys("A"))
+	KeyClose      = key.NewBinding(key.WithKeys("esc", "q"))
+	KeyForceClose = key.NewBinding(key.WithKeys("ctrl+c"))
+	KeyRefresh    = key.NewBinding(key.WithKeys("r"))
+	KeyAttachRO   = key.NewBinding(key.WithKeys("A"))
 )
 
 // New constructs a closed modal. Open() configures the target and label.
@@ -99,6 +99,7 @@ func (m *Modal) SetSize(w, h int) {
 // Update handles capture results and key input. The returned commands are:
 //   - CaptureCmd refresh on `r`
 //   - AttachReadOnlyMsg on `A`
+//
 // The boolean `cancel` is true when the user pressed esc/q/ctrl-c so the
 // caller can close the modal.
 func (m *Modal) Update(msg tea.Msg) (tea.Cmd, bool) {
@@ -245,12 +246,14 @@ func renderCaptureError(err error) string {
 				"This is normal when the role finished — Ralph reaps role panes "+
 				"on success so they don't accumulate. The role's full output is "+
 				"still on disk; close this modal and view it in the role grid "+
-				"(layout key `2`) or zoom into the tail pane (`enter`).") +
+				"(layout key `2`) or zoom into the tail pane (`enter`).",
+		) +
 			"\n\n" +
 			styles.Faint.Render("tmux: "+msg)
 	}
 	return lipgloss.NewStyle().Foreground(styles.Bad).Render(
-		fmt.Sprintf("capture-pane error: %s", msg))
+		fmt.Sprintf("capture-pane error: %s", msg),
+	)
 }
 
 // clampLines clips text to the first n lines so the rendered modal never

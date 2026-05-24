@@ -16,14 +16,14 @@ import (
 type Action string
 
 const (
-	ActionVerify   Action = "verify"
-	ActionTakeover Action = "takeover"
-	ActionDirty    Action = "dirty"
-	ActionResume   Action = "resume"
-	ActionAuto     Action = "auto"
-	ActionKill     Action = "kill"
-	ActionRemove   Action = "rm"
-	ActionReplan   Action = "replan"
+	ActionVerify       Action = "verify"
+	ActionTakeover     Action = "takeover"
+	ActionDirty        Action = "dirty"
+	ActionResume       Action = "resume"
+	ActionAuto         Action = "auto"
+	ActionKill         Action = "kill"
+	ActionRemove       Action = "rm"
+	ActionReplan       Action = "replan"
 	ActionResumeRunner Action = "resume_runner"
 )
 
@@ -52,7 +52,8 @@ func New(title string, runScoped, hasRole bool) Menu {
 		{"Remove", ActionRemove, "archive run dir; drop ai-kb capsules"},
 	}
 	if hasRole {
-		items = append(items,
+		items = append(
+			items,
 			Item{"Takeover", ActionTakeover, "manual control of this role"},
 			Item{"Dirty", ActionDirty, "mark role dirty (re-validate later)"},
 			Item{"Resume role", ActionResume, "hand control back to the orchestrator"},

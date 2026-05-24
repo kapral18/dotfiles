@@ -83,8 +83,10 @@ func TestLoadRecentMergesDecisionsAndVerdictsAcrossRuns(t *testing.T) {
 		t.Errorf("events must be sorted newest-first")
 	}
 
-	wantSubstrings := []string{"first decision", "second decision",
-		"reviewer-1", "reviewer-2", "older decision"}
+	wantSubstrings := []string{
+		"first decision", "second decision",
+		"reviewer-1", "reviewer-2", "older decision",
+	}
 	merged := strings.Builder{}
 	for _, ev := range got {
 		merged.WriteString(ev.Message)

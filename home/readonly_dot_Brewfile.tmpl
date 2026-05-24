@@ -670,6 +670,15 @@ brew "prettier"
 # https://docs.astral.sh/ruff/
 brew "ruff"
 
+# Stricter Go formatter (superset of gofmt) + import manager (goimports).
+# These must match the exact formatters used by Neovim (conform.nvim + gopls)
+# for the Go sources under tools/ralph-tui/, so that `bin/fmt --type go`
+# and editor-on-save never produce conflicting results.
+# https://github.com/mvdan/gofumpt
+# https://pkg.go.dev/golang.org/x/tools/cmd/goimports
+brew "gofumpt"
+brew "goimports"
+
 # Bash automated testing system
 # https://github.com/bats-core/bats-core
 brew "bats-core"

@@ -4,18 +4,25 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"ralph-tui/internal/state"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func mkRuns() []state.Run {
 	return []state.Run{
-		{ID: "go-foo-1", Name: "foo", Goal: "build the foo", Status: "completed", Validation: "passed",
-			Iterations: []state.Iteration{{N: 1, Phase: "decided"}}},
-		{ID: "go-bar-2", Name: "bar", Goal: "fix the bar", Status: "running", Validation: "needs_verification",
-			Runner: &state.RunnerInfo{Alive: true}},
-		{ID: "go-baz-3", Name: "baz", Goal: "review the baz", Status: "needs_human", Validation: "blocked",
-			ReplanQueued: true},
+		{
+			ID: "go-foo-1", Name: "foo", Goal: "build the foo", Status: "completed", Validation: "passed",
+			Iterations: []state.Iteration{{N: 1, Phase: "decided"}},
+		},
+		{
+			ID: "go-bar-2", Name: "bar", Goal: "fix the bar", Status: "running", Validation: "needs_verification",
+			Runner: &state.RunnerInfo{Alive: true},
+		},
+		{
+			ID: "go-baz-3", Name: "baz", Goal: "review the baz", Status: "needs_human", Validation: "blocked",
+			ReplanQueued: true,
+		},
 	}
 }
 
@@ -110,8 +117,8 @@ func TestRunnerGlyphReflectsHeartbeatAndReplan(t *testing.T) {
 		wantHas string
 	}{
 		{"alive runner -> dot", state.Run{Runner: &state.RunnerInfo{Alive: true}}, "●"},
-		{"dead runner -> dot",  state.Run{Runner: &state.RunnerInfo{Alive: false}}, "●"},
-		{"replan queued -> R",  state.Run{ReplanQueued: true}, "R"},
+		{"dead runner -> dot", state.Run{Runner: &state.RunnerInfo{Alive: false}}, "●"},
+		{"replan queued -> R", state.Run{ReplanQueued: true}, "R"},
 		{"never started -> blank", state.Run{}, " "},
 	}
 	for _, c := range cases {

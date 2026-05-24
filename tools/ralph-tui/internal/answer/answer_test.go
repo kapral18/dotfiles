@@ -4,8 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"ralph-tui/internal/state"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func mkQuestions() []state.Question {
@@ -15,8 +16,8 @@ func mkQuestions() []state.Question {
 	}
 }
 
-func keyRune(r rune) tea.KeyMsg          { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}} }
-func keyType(k tea.KeyType) tea.KeyMsg   { return tea.KeyMsg{Type: k} }
+func keyRune(r rune) tea.KeyMsg        { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}} }
+func keyType(k tea.KeyType) tea.KeyMsg { return tea.KeyMsg{Type: k} }
 
 func typeStr(t *testing.T, m Modal, s string) Modal {
 	t.Helper()

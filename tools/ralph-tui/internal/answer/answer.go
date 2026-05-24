@@ -152,7 +152,8 @@ func (m Modal) View() string {
 		if focused {
 			body = lipgloss.NewStyle().Foreground(styles.Foreground).Render(q.Text)
 		}
-		rows = append(rows,
+		rows = append(
+			rows,
 			header,
 			"  "+body,
 			"  "+m.inputs[i].View(),

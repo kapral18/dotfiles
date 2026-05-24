@@ -36,3 +36,4 @@ mise ls --current
 
 - `mise` respects project `.tool-versions` files if they exist.
 - `.nvmrc` support is enabled for Node via `idiomatic_version_file_enable_tools = ["node"]`.
+- Project `.mise.toml` files are trusted globally via `trusted_config_paths = ["/"]` so generated worktrees and cloned repos do not need individual `mise trust` runs.

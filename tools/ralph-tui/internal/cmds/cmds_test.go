@@ -7,8 +7,9 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"ralph-tui/internal/state"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func writeMockBinary(t *testing.T, body string) string {
@@ -153,7 +154,6 @@ func TestNewRunCmdSkipsEmptyRoleFields(t *testing.T) {
 		t.Errorf("args:\nwant=%q\ngot =%q", want, res.Stdout)
 	}
 }
-
 
 func TestAnswerCmdRejectsEmptyAnswers(t *testing.T) {
 	bin := writeMockBinary(t, `exit 0`)

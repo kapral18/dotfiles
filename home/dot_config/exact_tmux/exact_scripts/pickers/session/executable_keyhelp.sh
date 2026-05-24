@@ -12,7 +12,7 @@ Navigation
 Filter / Refresh
   type            filter (sort auto-toggles when query contains '/')
   alt-s           toggle fzf sort manually
-  ctrl-r          refresh sessions/icons sync (~1s), full scan in background
+  ctrl-r          refresh sessions sync; exact dirty icons update in background
                     query is preserved; cursor stays at the same row index
                     (use ctrl-u to clear the query manually)
   alt-r           force full refresh (blocks until complete, then reloads)

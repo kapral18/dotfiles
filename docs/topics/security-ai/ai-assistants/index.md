@@ -84,6 +84,7 @@ Current skills:
 | `improve-codebase`      | Suggest the single smartest addition to the current codebase                                                       |                |
 | `improve-local`         | Suggest the single smartest addition to the local changes                                                          |                |
 | `improve-branch`        | Suggest the single smartest addition for the current branch/PR/issue                                               |                |
+| `improve-targeted`      | Suggest the single smartest addition to a targeted part of the codebase (specific dir, module, or component)       |                |
 | `ralph`                 | Drive the Ralph orchestrator (planner/executor/reviewer/re-reviewer with self-healing) via `,ralph go` and tmux UX |                |
 
 Always-on rule source:

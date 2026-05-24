@@ -14,12 +14,13 @@ Use when:
 
 - the user asks `/improve-branch`
 - the user asks for the single smartest, most impactful, or highest-leverage addition to the current branch, PR, or issue
-- the target is the branch/PR/issue goal, not only the uncommitted local diff or the whole codebase
+- the target is the branch/PR/issue goal, not only the uncommitted local diff, the whole codebase, or a targeted part
 
 Do not use:
 
 - whole-codebase improvements: `~/.agents/skills/improve-codebase/SKILL.md`
 - current uncommitted/staged diff only: `~/.agents/skills/improve-local/SKILL.md`
+- targeted part of the codebase: `~/.agents/skills/improve-targeted/SKILL.md`
 - broad brainstorming where the user wants many ideas instead of one recommendation
 
 First actions:

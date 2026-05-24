@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
 	"ralph-tui/internal/state"
 	"ralph-tui/internal/styles"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 // Model holds the currently displayed run and the role cursor for

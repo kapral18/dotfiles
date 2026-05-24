@@ -15,8 +15,9 @@ import (
 	"strings"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"ralph-tui/internal/state"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 // --- messages ---------------------------------------------------------------
@@ -251,22 +252,22 @@ func AttachCmdAction(target string) tea.Cmd {
 // state.* so the cmds package owns the wire shape; the kb modal reads
 // these directly.
 type KBHit struct {
-	ID            string  `json:"id"`
-	Title         string  `json:"title"`
-	Body          string  `json:"body"`
-	Snippet       string  `json:"snippet"`
-	Source        string  `json:"source"`
-	Kind          string  `json:"kind"`
-	Scope         string  `json:"scope"`
-	WorkspacePath *string `json:"workspace_path"`
-	DomainTags    string  `json:"domain_tags"`
-	Confidence    float64 `json:"confidence"`
-	BM25Rank      *int    `json:"bm25_rank"`
-	VectorRank    *int    `json:"vector_rank"`
+	ID            string   `json:"id"`
+	Title         string   `json:"title"`
+	Body          string   `json:"body"`
+	Snippet       string   `json:"snippet"`
+	Source        string   `json:"source"`
+	Kind          string   `json:"kind"`
+	Scope         string   `json:"scope"`
+	WorkspacePath *string  `json:"workspace_path"`
+	DomainTags    string   `json:"domain_tags"`
+	Confidence    float64  `json:"confidence"`
+	BM25Rank      *int     `json:"bm25_rank"`
+	VectorRank    *int     `json:"vector_rank"`
 	BM25Score     *float64 `json:"bm25_score"`
 	CosineScore   *float64 `json:"cosine_score"`
-	RRFScore      float64 `json:"rrf_score"`
-	MMRSelected   bool    `json:"mmr_selected"`
+	RRFScore      float64  `json:"rrf_score"`
+	MMRSelected   bool     `json:"mmr_selected"`
 }
 
 // KBSearchMsg carries a knowledge-base search response from the TUI's

@@ -14,12 +14,13 @@ Use when:
 
 - the user asks `/improve-codebase`
 - the user asks for the single smartest, most impactful, or highest-leverage addition to the current repository
-- the target is the whole codebase, not only the current diff, branch, PR, or issue
+- the target is the whole codebase, not only the current diff, branch, PR, issue, or a targeted part
 
 Do not use:
 
 - current local changes only: `~/.agents/skills/improve-local/SKILL.md`
 - current branch, PR, or issue only: `~/.agents/skills/improve-branch/SKILL.md`
+- targeted part of the codebase: `~/.agents/skills/improve-targeted/SKILL.md`
 - broad brainstorming where the user wants many ideas instead of one recommendation
 
 First actions:

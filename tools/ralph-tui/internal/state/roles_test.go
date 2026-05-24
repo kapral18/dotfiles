@@ -76,4 +76,3 @@ func TestLoadRolesDefaultsPartialFileFillsHoles(t *testing.T) {
 		t.Errorf("executor fallback dropped: %+v", d.Executor)
 	}
 }
-

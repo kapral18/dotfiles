@@ -27,12 +27,12 @@ import (
 
 	"ralph-tui/internal/activity"
 	"ralph-tui/internal/answer"
-	kbmod "ralph-tui/internal/kb"
 	"ralph-tui/internal/cmds"
 	"ralph-tui/internal/control"
 	"ralph-tui/internal/detail"
 	"ralph-tui/internal/forms"
 	"ralph-tui/internal/help"
+	kbmod "ralph-tui/internal/kb"
 	"ralph-tui/internal/preview"
 	"ralph-tui/internal/runs"
 	"ralph-tui/internal/state"

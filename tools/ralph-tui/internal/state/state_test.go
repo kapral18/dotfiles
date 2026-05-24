@@ -182,12 +182,12 @@ func TestLoadManifestDecodesRunnerAndIterations(t *testing.T) {
 		},
 		"iterations": []any{
 			map[string]any{
-				"n":              1,
-				"phase":          "review",
-				"executor_id":    "executor-1",
-				"reviewer_id":    "reviewer-1",
-				"verdict":        nil,
-				"task":           "first task",
+				"n":               1,
+				"phase":           "review",
+				"executor_id":     "executor-1",
+				"reviewer_id":     "reviewer-1",
+				"verdict":         nil,
+				"task":            "first task",
 				"primary_verdict": "approve",
 			},
 		},

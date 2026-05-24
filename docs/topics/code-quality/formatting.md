@@ -31,14 +31,15 @@ bin/fmt docs/categories/formatting.md home/dot_config/exact_nvim/init.lua
 
 ## Formatters
 
-| Type                      | Formatter      | Config file                                                  |
-| ------------------------- | -------------- | ------------------------------------------------------------ |
-| Markdown, JSON, YAML      | `prettier`     | [`.prettierrc`](../../../.prettierrc)                        |
-| Markdown (lint)           | `markdownlint` | `~/.markdownlint.jsonc`                                      |
-| Shell (`.sh`, `.sh.tmpl`) | `shfmt`        | [`.editorconfig`](../../../.editorconfig) (`[*.sh]` section) |
-| Lua (`.lua`)              | `stylua`       | [`.stylua.toml`](../../../.stylua.toml)                      |
-| Fish (`.fish`)            | `fish_indent`  | Built-in style                                               |
-| Python (`.py`)            | `ruff format`  | [`ruff.toml`](../../../ruff.toml)                            |
+| Type                      | Formatter               | Config file                                                                                                                  |
+| ------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Markdown, JSON, YAML      | `prettier`              | [`.prettierrc`](../../../.prettierrc)                                                                                        |
+| Markdown (lint)           | `markdownlint`          | `~/.markdownlint.jsonc`                                                                                                      |
+| Shell (`.sh`, `.sh.tmpl`) | `shfmt`                 | [`.editorconfig`](../../../.editorconfig) (`[*.sh]` section)                                                                 |
+| Lua (`.lua`)              | `stylua`                | [`.stylua.toml`](../../../.stylua.toml)                                                                                      |
+| Fish (`.fish`)            | `fish_indent`           | Built-in style                                                                                                               |
+| Python (`.py`)            | `ruff format`           | [`ruff.toml`](../../../ruff.toml)                                                                                            |
+| Go (`.go`)                | `goimports` + `gofumpt` | (matches Neovim conform "goimports","gofumpt" + gopls; `bin/fmt` uses the same pair, falls back to `gofmt` only when absent) |
 
 All formatters are declared in the Brewfile: [`home/readonly_dot_Brewfile.tmpl`](../../../home/readonly_dot_Brewfile.tmpl) (under "BUILD SYSTEMS & DEVELOPMENT TOOLS").
 

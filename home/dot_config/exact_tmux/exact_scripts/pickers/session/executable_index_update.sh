@@ -32,6 +32,7 @@ quiet=0
 ttl_override=""
 lock_stale_seconds=180
 quick_only=0
+skip_dirty=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -40,6 +41,7 @@ while [ $# -gt 0 ]; do
     --ttl=*) ttl_override="${1#--ttl=}" ;;
     --lock-stale-seconds=*) lock_stale_seconds="${1#--lock-stale-seconds=}" ;;
     --quick-only) quick_only=1 ;;
+    --skip-dirty) skip_dirty=1 ;;
   esac
   shift
 done
@@ -152,11 +154,13 @@ cleanup() {
   fi
 }
 # TERM/HUP from a pre-empting successor must exit promptly so cleanup runs
-# (and the successor can take the lock). Without explicit signal traps the
-# `wait` on `gen` children would still return (with rc=143) and the script
-# would continue past the failing branch, holding the lock longer than
-# needed.
-trap 'exit 143' TERM HUP
+# (and the successor can take the lock). We exit 0 (not 143) so that
+# `tmux run-shell -b` invocations of this script do not surface a visible
+# "returned 143" error in the UI for expected pre-emptions (e.g. rapid
+# ctrl-r or alt-r). The `wait` on `gen` children can still see rc=143 from
+# pkill during our own cleanup, but the post-wait notify paths are bypassed
+# by the forced exit before we reach them.
+trap 'exit 0' TERM HUP
 trap 'exit 130' INT
 trap cleanup EXIT
 printf '%s\n' "$$" > "${lock_dir}/pid" 2> /dev/null || true
@@ -273,7 +277,9 @@ if [ "$quick_only" -eq 1 ]; then
   # Run gen in the background and `wait` so TERM/HUP from a pre-empting
   # successor can interrupt us (foreground children defer signal delivery
   # until they exit — see cleanup() docstring for why this matters).
-  "$gen" --quick --sessions-only > "$tmp_quick" 2> "$tmp_err_quick" &
+  gen_quick_args=(--quick --sessions-only)
+  [ "$skip_dirty" -eq 1 ] && gen_quick_args+=(--skip-dirty)
+  "$gen" "${gen_quick_args[@]}" > "$tmp_quick" 2> "$tmp_err_quick" &
   pid_quick=$!
   gen_pids+=("$pid_quick")
   set +e

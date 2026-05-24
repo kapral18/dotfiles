@@ -82,12 +82,12 @@ Practical commands:
   - orphan flag (`O` / trash icon) for installed packs that are no longer declared by any spec; press `C` to clean them (selected orphans first, else all orphans, with confirmation)
   - breaking-risk hint (best-effort) from semver delta (`major`/`minor`/`patch`) plus commit-message signals in the cumulative `rev_before..rev_after` range (for example `BREAKING`, `feat`, `fix`, `refactor`, `perf`)
   - icon-based links column (`diff` / `repo`) with direct compare URL for pending updates
-  - single update (`<CR>`), multi-select update (`u`), update all pending (`U`)
+  - single pending update (`<CR>`), selected pending updates (`u`), update all visible pending rows (`U`)
   - inline selection/filter/sort/search and details popup (`?` for full key help)
   - opens from cache/known state by default (no implicit online check)
 - `:PackSync` -> raw online `vim.pack` report (fetch remotes first)
 - `:PackStatus` -> raw offline `vim.pack` report (local refs only)
-- `:PackDashboardStats` -> print last raw check counters (`update/same/error`) and check timestamps
+- `:PackDashboardStats` -> print last raw check counters (`update/same/error`) plus result, online, offline, and apply timestamps
 - `:PackTrace [plugin-name]` -> show current load state, trigger metadata, and load reason
 - `:PackLoad <plugin-name>` -> force-load one plugin by name (useful for debugging)
 - `:PackLockInfo` -> show `nvim-pack-lock.json` path, plugin count, mtime (the lockfile is maintained by `vim.pack` itself)
@@ -96,7 +96,7 @@ Practical commands:
 - `:PackPolicyRebuild [plugin-name]` -> clear and recompute the cached tag/branch heuristic (omit the name for a full rebuild)
 - `<localleader>ss` or `:AutoSession save` -> save the current session
 
-Dashboard/trace popup buffers are treated as transient and excluded from session persistence to avoid polluting `auto-session` restores. Session search integrations are loaded on demand to keep startup leaner. Use `r` (or `:PackDashboard!`) for explicit online refresh checks. Dashboard check/apply timestamps and last plugin status/version snapshot are persisted under `stdpath("state")` so they survive Neovim restart. The dashboard header also shows last raw check counters from the most recent explicit check, plus `checked` and `applied` stamps. Filter/sort, search text, and selected plugin rows are also restored on the next dashboard open. Use `o` to open a plugin diff link (with repository fallback), and `O` for repository-only open.
+Dashboard/trace popup buffers are treated as transient and excluded from session persistence to avoid polluting `auto-session` restores. Session search integrations are loaded on demand to keep startup leaner. Use `r` (or `:PackDashboard!`) for explicit online refresh checks that fetch remotes; use `R` only for offline/local status, which does not fetch and may report no remote updates. Dashboard refreshes notify with raw `update/same/error` counts so it is clear that the check ran. Dashboard check/apply timestamps and last plugin status/version snapshot are persisted under `stdpath("state")` so they survive Neovim restart. The dashboard header shows last raw check counters from the most recent explicit check, plus separate result, online, offline, and applied stamps so stale offline/cache state is visible. Filter/sort, search text, and selected plugin rows are also restored on the next dashboard open. Use `o` to open a plugin diff link (with repository fallback), and `O` for repository-only open.
 
 ### Dashboard Tuning (Optional)
 

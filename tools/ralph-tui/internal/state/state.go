@@ -39,32 +39,32 @@ func RunsRoot() string {
 
 // Run is the TUI-shaped projection of a parent (kind="go") manifest.
 type Run struct {
-	ID            string         `json:"id"`
-	Kind          string         `json:"kind"`
-	Name          string         `json:"name"`
-	Goal          string         `json:"goal"`
-	Workspace     string         `json:"workspace"`
-	Phase         string         `json:"phase"`
-	Status        string         `json:"status"`
-	Validation    string         `json:"validation_status"`
-	BlockReason   string         `json:"block_reason,omitempty"`
-	Workflow      string         `json:"workflow,omitempty"`
-	Spec          map[string]any `json:"spec,omitempty"`
-	SpecSeq       int            `json:"spec_seq,omitempty"`
-	CreatedAt     string         `json:"created_at"`
-	Tmux          *RunTmux       `json:"tmux,omitempty"`
-	Runner        *RunnerInfo    `json:"runner,omitempty"`
-	Iterations    []Iteration    `json:"iterations"`
-	Roles         map[string]Role
-	Questions     []Question  `json:"questions,omitempty"`
-	AwaitingRole  string      `json:"awaiting_role,omitempty"`
-	SummaryPath   string      `json:"summary_path,omitempty"`
-	Artifact      string      `json:"artifact,omitempty"`
-	ArtifactSHA   string      `json:"artifact_sha256,omitempty"`
-	ArtifactOK    bool        `json:"artifact_ok,omitempty"`
-	ReplanQueued  bool        `json:"replan_requested,omitempty"`
-	rawRoles      map[string]json.RawMessage
-	dir           string
+	ID           string         `json:"id"`
+	Kind         string         `json:"kind"`
+	Name         string         `json:"name"`
+	Goal         string         `json:"goal"`
+	Workspace    string         `json:"workspace"`
+	Phase        string         `json:"phase"`
+	Status       string         `json:"status"`
+	Validation   string         `json:"validation_status"`
+	BlockReason  string         `json:"block_reason,omitempty"`
+	Workflow     string         `json:"workflow,omitempty"`
+	Spec         map[string]any `json:"spec,omitempty"`
+	SpecSeq      int            `json:"spec_seq,omitempty"`
+	CreatedAt    string         `json:"created_at"`
+	Tmux         *RunTmux       `json:"tmux,omitempty"`
+	Runner       *RunnerInfo    `json:"runner,omitempty"`
+	Iterations   []Iteration    `json:"iterations"`
+	Roles        map[string]Role
+	Questions    []Question `json:"questions,omitempty"`
+	AwaitingRole string     `json:"awaiting_role,omitempty"`
+	SummaryPath  string     `json:"summary_path,omitempty"`
+	Artifact     string     `json:"artifact,omitempty"`
+	ArtifactSHA  string     `json:"artifact_sha256,omitempty"`
+	ArtifactOK   bool       `json:"artifact_ok,omitempty"`
+	ReplanQueued bool       `json:"replan_requested,omitempty"`
+	rawRoles     map[string]json.RawMessage
+	dir          string
 }
 
 // Question mirrors an entry in manifest.questions[].
@@ -164,33 +164,33 @@ type RunnerInfo struct {
 
 // Iteration mirrors manifest.iterations[i].
 type Iteration struct {
-	N             int    `json:"n"`
-	Phase         string `json:"phase"`
-	Verdict       string `json:"verdict,omitempty"`
-	ExecutorID    string `json:"executor_id,omitempty"`
-	ReviewerID    string `json:"reviewer_id,omitempty"`
-	ReReviewerID  string `json:"re_reviewer_id,omitempty"`
-	Task          string `json:"task,omitempty"`
-	NextTask      string `json:"next_task,omitempty"`
-	StartedAt     string `json:"started_at,omitempty"`
-	EndedAt       string `json:"ended_at,omitempty"`
-	SpecSeq       int    `json:"spec_seq,omitempty"`
+	N              int    `json:"n"`
+	Phase          string `json:"phase"`
+	Verdict        string `json:"verdict,omitempty"`
+	ExecutorID     string `json:"executor_id,omitempty"`
+	ReviewerID     string `json:"reviewer_id,omitempty"`
+	ReReviewerID   string `json:"re_reviewer_id,omitempty"`
+	Task           string `json:"task,omitempty"`
+	NextTask       string `json:"next_task,omitempty"`
+	StartedAt      string `json:"started_at,omitempty"`
+	EndedAt        string `json:"ended_at,omitempty"`
+	SpecSeq        int    `json:"spec_seq,omitempty"`
 	PrimaryVerdict string `json:"primary_verdict,omitempty"`
 }
 
 // Role projects manifest.roles[name] (which is the child role manifest).
 type Role struct {
-	ID               string  `json:"id"`
-	Name             string  `json:"name"`
-	Status           string  `json:"status"`
-	ValidationStatus string  `json:"validation_status"`
-	ControlState     string  `json:"control_state"`
-	OutputPath       string  `json:"output"`
-	Workspace        string  `json:"workspace"`
-	ExitCode         int     `json:"exit_code"`
+	ID               string    `json:"id"`
+	Name             string    `json:"name"`
+	Status           string    `json:"status"`
+	ValidationStatus string    `json:"validation_status"`
+	ControlState     string    `json:"control_state"`
+	OutputPath       string    `json:"output"`
+	Workspace        string    `json:"workspace"`
+	ExitCode         int       `json:"exit_code"`
 	Tmux             *RoleTmux `json:"tmux,omitempty"`
-	Command          string  `json:"command"`
-	Runtime          string  `json:"runtime"`
+	Command          string    `json:"command"`
+	Runtime          string    `json:"runtime"`
 }
 
 // RoleTmux mirrors child manifest's tmux block.

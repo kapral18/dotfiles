@@ -18,7 +18,7 @@ Format source files in this dotfiles repo.
 
 Options:
   --check       Check formatting without writing (exit 1 if unformatted)
-  --type TYPE   Only run one formatter: md, json, yaml, sh, lua, fish, py
+  --type TYPE   Only run one formatter: md, json, yaml, sh, lua, fish, py, go
   (no args)     Format all tracked files
 
 Formatters:
@@ -28,6 +28,7 @@ Formatters:
   lua              stylua
   fish             fish_indent
   py               ruff format
+  go               goimports + gofumpt (fallback: gofmt)
 EOF
   exit 0
 }
@@ -100,6 +101,7 @@ is_json_file() { [[ "$1" == *.json || "$1" == *.jsonc ]]; }
 is_yaml_file() { [[ "$1" == *.yaml || "$1" == *.yml ]]; }
 is_lua_file() { [[ "$1" == *.lua ]]; }
 is_fish_file() { [[ "$1" == *.fish ]]; }
+is_go_file() { [[ "$1" == *.go ]]; }
 
 collect_by_func() {
   local func="$1"
@@ -269,6 +271,47 @@ if should_run py; then
       printf 'ruff: formatting %d files\n' "${#py_files[@]}"
       ruff check --select I --fix "${py_files[@]}" >/dev/null 2>&1
       ruff format "${py_files[@]}" >/dev/null 2>&1
+    fi
+  fi
+fi
+
+# --- go: Go (tools/ralph-tui and any future .go under repo root)
+# We deliberately use the same tools that Neovim's conform.nvim uses
+# (goimports then gofumpt) so that `bin/fmt --type go` and editor save
+# never fight. Falls back to plain gofmt only if the modern pair is absent.
+if should_run go; then
+  go_files=()
+  mapfile -t go_files < <(collect_by_func is_go_file | sort -u)
+  if [[ ${#go_files[@]} -gt 0 ]]; then
+    if command -v goimports >/dev/null 2>&1 && command -v gofumpt >/dev/null 2>&1; then
+      if $check_mode; then
+        printf 'goimports + gofumpt: checking %d files\n' "${#go_files[@]}"
+        unformatted_goimports="$(goimports -l "${go_files[@]}" 2>/dev/null || true)"
+        unformatted_gofumpt="$(gofumpt -l "${go_files[@]}" 2>/dev/null || true)"
+        unformatted="$(printf '%s\n%s\n' "$unformatted_goimports" "$unformatted_gofumpt" | sort -u | sed '/^$/d')"
+        if [[ -n "$unformatted" ]]; then
+          ok=false
+          printf '%s\n' "$unformatted" | sed 's/^/  unformatted: /'
+        fi
+      else
+        printf 'goimports + gofumpt: formatting %d files\n' "${#go_files[@]}"
+        goimports -w "${go_files[@]}"
+        gofumpt -w "${go_files[@]}"
+      fi
+    else
+      # Fallback for minimal environments (no goimports/gofumpt in PATH)
+      need_cmd gofmt || exit 1
+      if $check_mode; then
+        printf 'gofmt (fallback): checking %d files\n' "${#go_files[@]}"
+        unformatted="$(gofmt -l "${go_files[@]}" 2>/dev/null || true)"
+        if [[ -n "$unformatted" ]]; then
+          ok=false
+          printf '%s\n' "$unformatted" | sed 's/^/  unformatted: /'
+        fi
+      else
+        printf 'gofmt (fallback): formatting %d files\n' "${#go_files[@]}"
+        gofmt -w "${go_files[@]}"
+      fi
     fi
   fi
 fi

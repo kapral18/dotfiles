@@ -287,7 +287,8 @@ func (f NewRunForm) View() string {
 	for _, role := range RoleOrder {
 		rows = append(rows, f.viewRoleRow(role))
 	}
-	rows = append(rows,
+	rows = append(
+		rows,
 		"",
 		buttonRow(f.focus == int(fldSubmit)),
 		"",
@@ -357,7 +358,7 @@ func positionLabel(idx, total int) string {
 
 func fmtIdx(n int) string {
 	if n < 10 {
-		return string(rune('0'+n))
+		return string(rune('0' + n))
 	}
 	const digits = "0123456789"
 	out := make([]byte, 0, 4)

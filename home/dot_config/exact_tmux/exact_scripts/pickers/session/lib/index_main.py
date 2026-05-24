@@ -585,6 +585,7 @@ if home_scan_root and os.path.isdir(home_scan_root) and home_scan_root not in sc
 scan_roots_set = set(scan_roots)
 quick = os.environ.get("PICK_SESSION_QUICK", "").lower() in ("1", "true", "yes", "on")
 sessions_only = os.environ.get("PICK_SESSION_SESSIONS_ONLY", "").lower() in ("1", "true", "yes", "on")
+skip_dirty = os.environ.get("PICK_SESSION_SKIP_DIRTY", "").lower() in ("1", "true", "yes", "on")
 ignore_file = os.environ.get("PICK_SESSION_IGNORE_FILE", "").strip()
 
 dir_include_hidden = os.environ.get("PICK_SESSION_DIR_INCLUDE_HIDDEN", "on").lower()
@@ -609,6 +610,9 @@ BADGE_CI_PENDING = color("38;5;220", "\u25cf")
 
 GH_CACHE_FILE = Path(os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))) / "tmux" / "pick_session_gh.json"
 GH_PICKER_CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))) / "tmux"
+PICK_SESSION_CACHE_FILE = (
+    Path(os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))) / "tmux" / "pick_session_items.tsv"
+)
 GH_TTL_OPEN = 600
 GH_TTL_TERMINAL = 86400
 GH_TTL_MISS = 3600
@@ -1142,7 +1146,19 @@ def gh_meta(gh_info: dict[str, Any] | None) -> str:
 def _check_dirty(wt_path: str) -> bool:
     try:
         r = subprocess.run(
-            ["git", "-c", "core.threads=1", "-C", wt_path, "status", "--porcelain", "--untracked-files=no"],
+            [
+                "git",
+                "--no-optional-locks",
+                "-c",
+                "core.threads=1",
+                "-c",
+                "status.renames=false",
+                "-C",
+                wt_path,
+                "status",
+                "--porcelain",
+                "--untracked-files=no",
+            ],
             check=False,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
@@ -1152,6 +1168,32 @@ def _check_dirty(wt_path: str) -> bool:
         return bool((r.stdout or "").strip())
     except Exception:
         return False
+
+
+def _cached_status_flags_by_path() -> dict[str, set[str]]:
+    statuses: dict[str, set[str]] = {}
+    try:
+        lines = PICK_SESSION_CACHE_FILE.read_text(encoding="utf-8", errors="replace").splitlines()
+    except Exception:
+        return statuses
+
+    for line in lines:
+        parts = line.split("\t")
+        if len(parts) < 4:
+            continue
+        path = resolve_path(parts[2])
+        meta = parts[3]
+        flags: set[str] = set()
+        for segment in meta.split("|"):
+            if not segment.startswith("status="):
+                continue
+            for flag in segment[len("status=") :].split(","):
+                flag = flag.strip()
+                if flag == "dirty":
+                    flags.add(flag)
+        if flags:
+            statuses[path] = flags
+    return statuses
 
 
 def status_badge(flags: set[str]) -> str:
@@ -1203,7 +1245,13 @@ if not quick and not sessions_only and shutil.which("fd"):
 
 # 1b. Parallel dirty scan for worktrees that aren't already stale/gone.
 _dirty_candidates = [p for rid in groups for p in groups[rid]["wt_map"] if p not in wt_status]
-if _dirty_candidates:
+if _dirty_candidates and skip_dirty:
+    _cached_statuses = _cached_status_flags_by_path()
+    for p in _dirty_candidates:
+        cached_flags = _cached_statuses.get(resolve_path(p))
+        if cached_flags:
+            wt_status.setdefault(p, set[str]()).update(cached_flags)
+elif _dirty_candidates:
     with concurrent.futures.ThreadPoolExecutor(max_workers=WORKER_THREADS) as pool:
         _futures = {pool.submit(_check_dirty, p): p for p in _dirty_candidates}
         for fut in concurrent.futures.as_completed(_futures):
@@ -1303,12 +1351,18 @@ for row in sess_out.splitlines():
             groups[rid]["wt_map"].setdefault(info["path"], {"branch": str(info.get("branch", "")), "repo_id": rid})
             groups[rid]["sessions_by_wt"].setdefault(info["path"], []).append(name)
 
-# 2a. In quick/sessions-only mode, step 1b (dirty scan) was skipped because no
-# worktrees were discovered yet. Now that step 2 found session worktree paths,
-# run dirty checks for them so session entries keep their dirty badge.
+# 2a. In quick/sessions-only mode, step 1b had no discovered worktrees yet.
+# Now that step 2 found session worktree paths, either preserve cached dirty
+# badges for fast refreshes or run exact dirty checks for those sessions.
 if quick or sessions_only:
     _new_wt_paths = [p for rid in groups for p in groups[rid]["wt_map"] if p not in wt_status]
-    if _new_wt_paths:
+    if _new_wt_paths and skip_dirty:
+        _cached_statuses = _cached_status_flags_by_path()
+        for p in _new_wt_paths:
+            cached_flags = _cached_statuses.get(resolve_path(p))
+            if cached_flags:
+                wt_status.setdefault(p, set[str]()).update(cached_flags)
+    elif _new_wt_paths:
         with concurrent.futures.ThreadPoolExecutor(max_workers=WORKER_THREADS) as pool:
             _dirty_futs = {pool.submit(_check_dirty, p): p for p in _new_wt_paths}
             for fut in concurrent.futures.as_completed(_dirty_futs):

@@ -11,6 +11,7 @@ fmt: ## Format all files
 lint: ## Check formatting and lint (no writes)
 	bin/fmt --check
 	ruff check --select I scripts/
+	(cd tools/ralph-tui && go vet ./... && go test ./...)
 
 test: ## Run Python unit tests
 	python3 scripts/tests/test_scripts.py -v

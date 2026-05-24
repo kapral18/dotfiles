@@ -4,8 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"ralph-tui/internal/state"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func defaults() state.RolesDefaults {
@@ -19,7 +20,7 @@ func defaults() state.RolesDefaults {
 	}
 }
 
-func keyRune(r rune) tea.KeyMsg     { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}} }
+func keyRune(r rune) tea.KeyMsg        { return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}} }
 func keyType(k tea.KeyType) tea.KeyMsg { return tea.KeyMsg{Type: k} }
 
 func TestNewRunFormSubmitsDefaultsWhenUntouched(t *testing.T) {

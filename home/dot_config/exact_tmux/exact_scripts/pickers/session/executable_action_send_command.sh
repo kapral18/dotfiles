@@ -242,11 +242,11 @@ fi
 # dispatch_async.sh; the picker's transform shell always has them when
 # --listen is active).
 #
-# `--refresh` runs a synchronous quick scan that picks up the sessions we
-# just spawned; `--force-order` keeps the grouped output consistent with
-# what the picker rendered on open. The +track inside fzf_reload.sh pins
-# the highlighted row across the reload so the visible order around the
-# user's cursor stays as stable as the new cache contents allow.
+# `--refresh` runs a synchronous quick scan that picks up the sessions we just
+# spawned while preserving cached dirty badges; `--force-order` keeps the
+# grouped output consistent with what the picker rendered on open. The +track
+# inside fzf_reload.sh pins the highlighted row across the reload so the visible
+# order around the user's cursor stays as stable as the new cache contents allow.
 #
 # Only triggered when this run actually created new sessions: sending to
 # existing sessions doesn't change the cache, so the post would be churn

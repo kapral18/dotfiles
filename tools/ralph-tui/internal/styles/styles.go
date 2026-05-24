@@ -42,19 +42,19 @@ var (
 		Italic(true)
 
 	BorderActive = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder(), true).
-		BorderForeground(Accent).
-		Padding(0, 1)
+			Border(lipgloss.RoundedBorder(), true).
+			BorderForeground(Accent).
+			Padding(0, 1)
 
 	BorderInactive = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder(), true).
-		BorderForeground(Border).
-		Padding(0, 1)
+			Border(lipgloss.RoundedBorder(), true).
+			BorderForeground(Border).
+			Padding(0, 1)
 
 	StatusBar = lipgloss.NewStyle().
-		Foreground(Foreground).
-		Background(lipgloss.Color("236")).
-		Padding(0, 1)
+			Foreground(Foreground).
+			Background(lipgloss.Color("236")).
+			Padding(0, 1)
 
 	Toast = lipgloss.NewStyle().
 		Foreground(Foreground).

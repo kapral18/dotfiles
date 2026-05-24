@@ -1,5 +1,8 @@
 local M = {}
 
+local pack_policy = require("core.pack.policy")
+local semver = require("core.pack.semver")
+
 ---@class core.plugins.Entry
 ---@field name string
 ---@field index number
@@ -380,8 +383,7 @@ local function normalize_pack_version(version)
 end
 
 local function policy_tag_to_range(tag_str)
-  local pack_dashboard = require("core.pack_dashboard")
-  local parsed = pack_dashboard.parse_release_tag(tag_str)
+  local parsed = semver.parse_release_tag(tag_str)
   if not parsed then
     return tag_str
   end
@@ -402,8 +404,7 @@ local function policy_tag_to_range(tag_str)
 end
 
 local function load_version_policy()
-  local pack_dashboard = require("core.pack_dashboard")
-  local policy = pack_dashboard.load_version_policy()
+  local policy = pack_policy.load_version_policy()
   if policy then
     return policy
   end
@@ -626,7 +627,7 @@ function M.setup(module_names)
       once = true,
       callback = function()
         vim.defer_fn(function()
-          require("core.pack_dashboard").refresh_version_policy_async(function(ok, reason)
+          pack_policy.refresh_version_policy_async(function(ok, reason)
             if ok and policy_was_empty then
               vim.notify("Generated initial version policy — restart to apply tag pins", vim.log.levels.INFO)
             elseif ok and reason == "full" then
