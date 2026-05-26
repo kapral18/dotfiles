@@ -73,6 +73,25 @@ When user requests to "add X" (app, package, cask, formula, or CLI tool), follow
 - Any change to dotfiles (anything under `home/`, including templates, scripts, and app/package install logic) that affects behavior, commands, or workflows MUST be reflected in `docs/`.
 - If a dotfiles change does not require a docs change, state why in the PR/commit context (briefly) so the docs/code divergence is explicit.
 
+## State-Machine Verification
+
+Use this for behavior that is stateful, parser-like, or branch-heavy: parsers, tokenizers, formatters, routing/matching logic, retry/workflow loops, permission matrices, compatibility-sensitive branching, or code whose correctness depends on multiple flags or ordered conditions.
+
+Before calling the change final or merge-ready, build a disposable harness under `/tmp/state-machine-verification/<pwd>/<topic>/<slug>/`, where `<pwd>` is the absolute worktree path without the leading slash, `<topic>` is the active `/tmp/specs/<pwd>` topic, and `<slug>` is a short purpose key for the behavior under test. On long-lived/default worktrees (`main`, `master`, `dev`, release branches, etc.), the topic segment is what separates unrelated verification work in the same checkout.
+
+Each harness directory must include a small `manifest.json` recording at least: worktree path, topic, slug, target files/symbols, branch name, base ref/sha when relevant, head sha when relevant, requested behavior, and compatibility intent. If the harness directory already exists, read the manifest before reusing it. Reuse only when the manifest still matches the current target and intent; otherwise create a new slug or timestamp-suffixed directory.
+
+The harness must:
+
+- Name the states, transitions, inputs, and terminal actions explicitly.
+- Cover existing behavior buckets, the requested behavior, boundary inputs, malformed inputs, and regression-sensitive examples.
+- Compare the implementation against an independent model/state table, not just against itself.
+- When preserving existing behavior, compare against the base implementation and classify every behavior difference as intended or unexpected.
+- Exhaust a small representative input alphabet/categories when practical, then add randomized or generated longer cases for interaction effects.
+- Treat any unexpected difference as a bug to fix or a genuine unknown to surface before finalizing.
+
+Keep the state-machine harness in `/tmp/state-machine-verification/<pwd>/<topic>/<slug>/` unless the user explicitly asks to add it to the repo. Promote only compact, high-value cases into permanent tests. This rule verifies complexity; it does not justify adding a production state machine when simple code is sufficient.
+
 ## Script Architecture: Shell vs Dedicated Languages
 
 Shell scripts (`.sh` / `.sh.tmpl`) in this repo must stay **thin orchestrators**. Non-trivial logic belongs in colocated scripts written in an appropriate language (Python, etc.) under `scripts/`.

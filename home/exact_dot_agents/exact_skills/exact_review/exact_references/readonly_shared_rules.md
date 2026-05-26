@@ -81,6 +81,16 @@ Use in every non-trivial review.
   - lint + type_check + tests (discover the correct commands from the repo; do not guess).
 - Keep an evidence log per comment/thread: what base does, what changed, what you tested, and what you observed.
 
+## State-Machine Verification Gate
+
+Use for any reviewed behavior that is stateful, parser-like, branch-heavy, or dependent on ordered conditions: parsers, tokenizers, formatters, routing/matching logic, retry/workflow loops, permission matrices, compatibility-sensitive branching, or multi-flag control flow.
+
+- Before saying the change is final, merge-ready, or a review concern is resolved, build or inspect a disposable harness under `/tmp/state-machine-verification/<pwd>/<topic>/<slug>/`.
+- The harness must include a `manifest.json` with worktree path, topic, slug, target files/symbols, branch name, base/head refs when relevant, requested behavior, and compatibility intent.
+- Model states, transitions, inputs, and terminal actions explicitly. Cover existing behavior buckets, requested behavior, boundary/malformed inputs, and regression-sensitive examples.
+- Compare the implementation against an independent model/state table, not just itself. When behavior should be preserved, compare against base and classify each difference as intended or unexpected.
+- In review-only PR mode for someone else's work, keep code read-only; use the harness to verify claims when safe, and surface missing or inadequate state-machine coverage as a test gap when risk remains.
+
 ## Coverage Checklist (Do Not Skip)
 
 - security issues

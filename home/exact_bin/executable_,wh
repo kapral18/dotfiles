@@ -10,15 +10,15 @@ show_usage() {
 Usage: ,wh <command>
 
 Commands:
-  post                 Send the current repo's staged diff with wormhole
-  get <code-word...>   Receive a patch into /tmp/staged.patch and apply it
+  post                 Send the current repo's staged diff with a one-word wormhole code
+  get [code-word...]   Receive a patch, prompting for the code when omitted
 
 Environment:
   WH_PATCH_FILE        Override patch path (default: /tmp/staged.patch)
 
 Examples:
   ,wh post
-  ,wh get 7-example-code
+  ,wh get
 EOF
 }
 
@@ -48,17 +48,10 @@ post_patch() {
 
   git diff --cached --binary >"$PATCH_FILE"
   echo "Sending staged patch: $PATCH_FILE"
-  wormhole send "$PATCH_FILE"
+  wormhole send --code-length 1 "$PATCH_FILE"
 }
 
 get_patch() {
-  if [ $# -eq 0 ]; then
-    echo "Error: code word is required" >&2
-    echo >&2
-    show_usage >&2
-    exit 1
-  fi
-
   require_command git
   require_command wormhole
   ensure_git_repo

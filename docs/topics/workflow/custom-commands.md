@@ -105,7 +105,7 @@ Examples:
 ### Transfer staged patches: `,wh`
 
 - Source: [`home/exact_bin/executable_,wh`](../../../home/exact_bin/executable_,wh)
-- Behavior: writes the current staged diff to `/tmp/staged.patch`, sends it with Magic Wormhole, then receives and applies the patch with `git apply /tmp/staged.patch` on the other machine.
+- Behavior: writes the current staged diff to `/tmp/staged.patch`, sends it with a one-word Magic Wormhole code, then receives and applies the patch with bare `,wh get` on the other machine. If no code is passed to `,wh get`, Magic Wormhole prompts for the sender's code.
 - Completions: Fish and Zsh complete `post` / `get`.
 - Optional override: `WH_PATCH_FILE=/path/to/file.patch`
 
@@ -113,7 +113,7 @@ Examples:
 
 ```bash
 ,wh post
-,wh get 7-example-code
+,wh get
 ```
 
 ### PR lookup/open: `,gh-prw`

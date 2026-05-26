@@ -26,6 +26,8 @@ local dashboard_ns = vim.api.nvim_create_namespace("core.pack_dashboard")
 -- same floating window instead of stacking multiple instances. Cleared by the
 -- `WinClosed` autocmd registered in `open_pack_dashboard`.
 local dashboard_winid = nil
+local dashboard_online_check_running = false
+local dashboard_online_check_progress = nil
 
 -- Plugin names currently declared by `core.plugins.setup`. Populated at
 -- startup via `M.set_declared_plugin_names`; any `vim.pack` entry without a
@@ -748,9 +750,111 @@ local function refresh_pack_report_cache_from_report_buffer(merge)
   return nil, nil
 end
 
+local function fetch_pack_remotes_async(names, callback, progress_callback)
+  local function report_progress(done_count, total_count)
+    if type(progress_callback) ~= "function" then
+      return
+    end
+    vim.schedule(function()
+      progress_callback({
+        done = done_count,
+        total = total_count,
+      })
+    end)
+  end
+
+  local ok, plugins = pcall(vim.pack.get, names, { info = false })
+  if not ok or type(plugins) ~= "table" then
+    notify_err("Failed to read vim.pack plugins")
+    vim.schedule(function()
+      callback({})
+    end)
+    return
+  end
+
+  local targets = {}
+  for _, plugin in ipairs(plugins) do
+    local name = plugin and plugin.spec and plugin.spec.name
+    local path = plugin and plugin.path
+    if type(name) == "string" and name ~= "" and type(path) == "string" and path ~= "" then
+      targets[#targets + 1] = { name = name, path = path }
+    end
+  end
+
+  if #targets == 0 then
+    vim.schedule(function()
+      callback({})
+    end)
+    return
+  end
+
+  local env = vim.fn.environ()
+  env.GIT_DIR = nil
+  env.GIT_WORK_TREE = nil
+  local max_jobs = tonumber(vim.g.pack_dashboard_fetch_concurrency) or 8
+  max_jobs = math.max(1, math.min(#targets, max_jobs))
+
+  local errors = {}
+  local next_index = 1
+  local running = 0
+  local done = 0
+  local finished = false
+  report_progress(0, #targets)
+
+  local function finish_if_done()
+    if finished or done < #targets then
+      return
+    end
+    finished = true
+    vim.schedule(function()
+      callback(errors)
+    end)
+  end
+
+  local function launch_next()
+    while running < max_jobs and next_index <= #targets do
+      local target = targets[next_index]
+      next_index = next_index + 1
+      running = running + 1
+      vim.system({
+        "git",
+        "-c",
+        "gc.auto=0",
+        "fetch",
+        "--quiet",
+        "--tags",
+        "--force",
+        "--recurse-submodules=yes",
+        "origin",
+      }, {
+        cwd = target.path,
+        text = true,
+        env = env,
+        clear_env = true,
+      }, function(out)
+        running = running - 1
+        done = done + 1
+        report_progress(done, #targets)
+        if out.code ~= 0 then
+          errors[target.name] = vim.trim(out.stderr or out.stdout or "git fetch failed")
+        end
+        vim.schedule(launch_next)
+        finish_if_done()
+      end)
+    end
+    finish_if_done()
+  end
+
+  launch_next()
+end
+
 local function scan_updates_to_cache(online, names, merge, opts)
   opts = opts or {}
-  vim.pack.update(names, online and nil or { offline = true })
+  local update_opts = nil
+  if opts.update_offline or not online then
+    update_opts = { offline = true }
+  end
+  vim.pack.update(names, update_opts)
   local counts, report_bufnr = refresh_pack_report_cache_from_report_buffer(merge)
   if not counts then
     notify_err("Failed to capture vim.pack report buffer")
@@ -758,6 +862,19 @@ local function scan_updates_to_cache(online, names, merge, opts)
   end
   if opts.record_counts ~= false then
     pack_report_cache.last_check_counts = counts
+  end
+  if type(opts.fetch_errors) == "table" then
+    for name, err in pairs(opts.fetch_errors) do
+      if type(name) == "string" and name ~= "" then
+        pack_report_cache.plugins[name] = {
+          status = "error",
+          pending_updates = tostring(err or "git fetch failed"),
+        }
+        if opts.record_counts ~= false then
+          counts.error = (tonumber(counts.error) or 0) + 1
+        end
+      end
+    end
   end
   pack_report_cache.mode = online and "online" or "offline"
   if online and opts.mark_online then
@@ -827,23 +944,11 @@ local function ensure_dashboard_cache(online, force_scan)
     write_persisted_state()
   end
 
-  if force_scan then
-    -- Explicit force refresh should count as a real online/offline check.
-    return scan_updates_to_cache(online, nil, false, { mark_online = online, mark_offline = not online })
+  if force_scan and not online then
+    return scan_updates_to_cache(false, nil, false, { mark_online = false, mark_offline = true })
   end
   if type(pack_report_cache.plugins) == "table" and next(pack_report_cache.plugins) ~= nil then
     return true
-  end
-
-  -- Default behavior: no implicit network check on dashboard open.
-  -- Use `r`/`R`, `:PackSync`, or `:PackDashboard!` for explicit checks.
-  if vim.g.pack_dashboard_autocheck_on_open == true then
-    -- Optional opt-in: bootstrap cache without mutating explicit check stamps.
-    return scan_updates_to_cache(online, nil, false, {
-      mark_online = false,
-      mark_offline = false,
-      record_counts = false,
-    })
   end
 
   return true
@@ -1323,6 +1428,9 @@ local function open_pack_dashboard(online, force_scan)
   end
 
   local function render()
+    if not vim.api.nvim_buf_is_valid(bufnr) then
+      return
+    end
     ensure_dashboard_highlights()
     local mode = pack_report_cache.mode or "unknown"
     local counts = summary_counts()
@@ -1345,6 +1453,16 @@ local function open_pack_dashboard(online, force_scan)
       )
     end
     raw_line = string.format("%s   online:%s   offline:%s", raw_line, online_stamp, offline_stamp)
+    if dashboard_online_check_running then
+      local progress = dashboard_online_check_progress
+      if type(progress) == "table" and progress.phase == "status" then
+        raw_line = raw_line .. "   check:status"
+      elseif type(progress) == "table" and tonumber(progress.total) and progress.total > 0 then
+        raw_line = raw_line .. string.format("   check:fetch:%d/%d", tonumber(progress.done) or 0, progress.total)
+      else
+        raw_line = raw_line .. "   check:fetch:start"
+      end
+    end
     local win_width = (winid and vim.api.nvim_win_is_valid(winid)) and vim.api.nvim_win_get_width(winid)
       or vim.o.columns
     local row_width = math.max(80, win_width - 2)
@@ -1529,41 +1647,92 @@ local function open_pack_dashboard(online, force_scan)
     return row_by_line[line]
   end
 
+  local function count_fetch_errors(fetch_errors)
+    local count = 0
+    for _ in pairs(fetch_errors or {}) do
+      count = count + 1
+    end
+    return count
+  end
+
+  local function update_dashboard_after_scan(next_online, counts, current_name, should_notify)
+    rows = collect_dashboard_rows()
+    local previous_selected = selected
+    selected = {}
+    for _, row in ipairs(rows) do
+      if previous_selected[row.name] then
+        selected[row.name] = true
+      end
+    end
+    render()
+    persist_dashboard_ui_state()
+    if current_name and winid and vim.api.nvim_win_is_valid(winid) then
+      for line, row in pairs(row_by_line) do
+        if row.name == current_name then
+          pcall(vim.api.nvim_win_set_cursor, winid, { line, 0 })
+          break
+        end
+      end
+    end
+    if should_notify then
+      notify_check_result(next_online, counts)
+    end
+  end
+
   local function refresh(next_online, names, merge, opts)
     opts = opts or {}
     local should_notify = opts.notify ~= false
+    local current = row_at_cursor()
+    local current_name = current and current.name or nil
+    if next_online and opts.async then
+      if dashboard_online_check_running then
+        render()
+        if should_notify then
+          vim.notify("Online plugin check already running", vim.log.levels.INFO)
+        end
+        return
+      end
+      dashboard_online_check_running = true
+      dashboard_online_check_progress = nil
+      if should_notify then
+        notify_check_start(next_online)
+      end
+      render()
+      fetch_pack_remotes_async(names, function(fetch_errors)
+        dashboard_online_check_progress = {
+          phase = "status",
+          done = dashboard_online_check_progress and dashboard_online_check_progress.total or 0,
+          total = dashboard_online_check_progress and dashboard_online_check_progress.total or 0,
+        }
+        render()
+        local scan_opts = vim.tbl_extend("force", opts, { update_offline = true, fetch_errors = fetch_errors })
+        scan_opts.async = nil
+        local ok, counts = scan_updates_to_cache(next_online, names, merge, scan_opts)
+        dashboard_online_check_running = false
+        dashboard_online_check_progress = nil
+        if ok then
+          update_dashboard_after_scan(next_online, counts, current_name, should_notify)
+          local failed = count_fetch_errors(fetch_errors)
+          if failed > 0 then
+            vim.notify(string.format("Plugin fetch failed for %d repo(s); see error rows", failed), vim.log.levels.WARN)
+          end
+        else
+          render()
+        end
+      end, function(progress)
+        dashboard_online_check_progress = progress
+        render()
+      end)
+      return
+    end
+
     if should_notify then
       notify_check_start(next_online)
     end
 
     local ok, counts = scan_updates_to_cache(next_online, names, merge, opts)
     if ok then
-      local current = row_at_cursor()
-      local current_name = current and current.name or nil
-      rows = collect_dashboard_rows()
-      local previous_selected = selected
-      selected = {}
-      for _, row in ipairs(rows) do
-        if previous_selected[row.name] then
-          selected[row.name] = true
-        end
-      end
-      if winid and vim.api.nvim_win_is_valid(winid) then
-        vim.api.nvim_set_current_win(winid)
-      end
-      render()
-      persist_dashboard_ui_state()
-      if current_name then
-        for line, row in pairs(row_by_line) do
-          if row.name == current_name then
-            pcall(vim.api.nvim_win_set_cursor, 0, { line, 0 })
-            break
-          end
-        end
-      end
-      if should_notify then
-        notify_check_result(next_online, counts)
-      end
+      update_dashboard_after_scan(next_online, counts, current_name, should_notify)
     end
   end
 
@@ -1651,7 +1820,7 @@ local function open_pack_dashboard(online, force_scan)
     pcall(vim.api.nvim_win_set_cursor, 0, { first_data_line, 0 })
   end, { buffer = bufnr, nowait = true, silent = true })
   vim.keymap.set("n", "r", function()
-    refresh(true, nil, nil, { mark_online = true, mark_offline = false })
+    refresh(true, nil, nil, { mark_online = true, mark_offline = false, async = true })
   end, { buffer = bufnr, nowait = true, silent = true })
   vim.keymap.set("n", "R", function()
     refresh(false, nil, nil, { mark_online = false, mark_offline = true })

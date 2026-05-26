@@ -77,14 +77,14 @@ The heuristic is a convenience default for plugins whose spec omits `version`. T
 
 Practical commands:
 
-- `:PackDashboard` -> compact floating plugin dashboard with:
+- `:PackDashboard` -> compact floating plugin dashboard that opens from cached/known state by default, with:
   - per-plugin update status
   - orphan flag (`O` / trash icon) for installed packs that are no longer declared by any spec; press `C` to clean them (selected orphans first, else all orphans, with confirmation)
   - breaking-risk hint (best-effort) from semver delta (`major`/`minor`/`patch`) plus commit-message signals in the cumulative `rev_before..rev_after` range (for example `BREAKING`, `feat`, `fix`, `refactor`, `perf`)
   - icon-based links column (`diff` / `repo`) with direct compare URL for pending updates
   - single pending update (`<CR>`), selected pending updates (`u`), update all visible pending rows (`U`)
   - inline selection/filter/sort/search and details popup (`?` for full key help)
-  - opens from cache/known state by default (no implicit online check)
+  - manual async online refresh with `r`; offline/local status with `R`
 - `:PackSync` -> raw online `vim.pack` report (fetch remotes first)
 - `:PackStatus` -> raw offline `vim.pack` report (local refs only)
 - `:PackDashboardStats` -> print last raw check counters (`update/same/error`) plus result, online, offline, and apply timestamps
@@ -96,7 +96,7 @@ Practical commands:
 - `:PackPolicyRebuild [plugin-name]` -> clear and recompute the cached tag/branch heuristic (omit the name for a full rebuild)
 - `<localleader>ss` or `:AutoSession save` -> save the current session
 
-Dashboard/trace popup buffers are treated as transient and excluded from session persistence to avoid polluting `auto-session` restores. Session search integrations are loaded on demand to keep startup leaner. Use `r` (or `:PackDashboard!`) for explicit online refresh checks that fetch remotes; use `R` only for offline/local status, which does not fetch and may report no remote updates. Dashboard refreshes notify with raw `update/same/error` counts so it is clear that the check ran. Dashboard check/apply timestamps and last plugin status/version snapshot are persisted under `stdpath("state")` so they survive Neovim restart. The dashboard header shows last raw check counters from the most recent explicit check, plus separate result, online, offline, and applied stamps so stale offline/cache state is visible. Filter/sort, search text, and selected plugin rows are also restored on the next dashboard open. Use `o` to open a plugin diff link (with repository fallback), and `O` for repository-only open.
+Dashboard/trace popup buffers are treated as transient and excluded from session persistence to avoid polluting `auto-session` restores. Session search integrations are loaded on demand to keep startup leaner. Opening `:PackDashboard` does not fetch or refresh automatically; it renders cached/known state immediately. Use `r` to start an async online refresh while the dashboard is open, and use `R` only for offline/local status, which does not fetch and may report no remote updates. In-dashboard refreshes notify with raw `update/same/error` counts so it is clear that the check ran. Dashboard check/apply timestamps and last plugin status/version snapshot are persisted under `stdpath("state")` so they survive Neovim restart. The dashboard header shows last raw check counters from the most recent check, plus separate result, online, offline, and applied stamps so stale offline/cache state is visible. While the manual online check is running, the header shows `check:fetch:done/total`; during the final local status calculation it shows `check:status`. Filter/sort, search text, and selected plugin rows are also restored on the next dashboard open. Use `o` to open a plugin diff link (with repository fallback), and `O` for repository-only open.
 
 ### Dashboard Tuning (Optional)
 
@@ -109,11 +109,11 @@ The dashboard defaults to an icon-first compact view and can be tuned with globa
 - `vim.g.pack_dashboard_margin` (default `6`)
 - `vim.g.pack_dashboard_fast_scroll` (default `true`)
 - `vim.g.pack_dashboard_ascii` (default `false`; when `true`, use ASCII labels/icons)
-- `vim.g.pack_dashboard_autocheck_on_open` (default `false`; when `true`, first dashboard open may bootstrap cache with a check)
+- `vim.g.pack_dashboard_fetch_concurrency` (default `8`; max concurrent background `git fetch` jobs)
 - `vim.g.pack_dashboard_skip_risk_confirm` (default `false`; when `true`, `u`/`U`/`<CR>` skip the risk confirmation for plugins flagged with a major-bump or breaking-signal)
 - `vim.g.pack_dashboard_skip_clean_confirm` (default `false`; when `true`, `C` cleans orphan plugins without asking for confirmation)
 
-Repeated `:PackDashboard` calls reuse the existing floating window instead of stacking multiple instances; add `!` (i.e. `:PackDashboard!`) to force-close and re-scan. Stale cache/UI entries for plugins that were removed from the config are purged automatically on every dashboard open.
+Repeated `:PackDashboard` calls reuse the existing floating window instead of stacking multiple instances; add `!` (i.e. `:PackDashboard!`) to force-close and reopen the dashboard without starting a refresh. Stale cache/UI entries for plugins that were removed from the config are purged automatically on every dashboard open.
 
 Orphan plugins (packs on disk that are no longer declared by any spec) are surfaced as `orphan` rows in the dashboard rather than silently deleted at startup. This mirrors the `lazy.nvim` UX: you review what will be removed, then press `C` to clean. The only auto-mutation that still happens at startup is re-cloning a plugin whose `src` changed (same name, new remote) — that's a legitimate move, not an orphan.
 
@@ -335,12 +335,12 @@ Output format notes:
 
 Environment variables:
 
-| Provider   | Required                                                            | Optional                                                     |
-| ---------- | ------------------------------------------------------------------- | ------------------------------------------------------------ |
-| Cloudflare | `CLOUDFLARE_WORKERS_AI_ACCOUNT_ID`, `CLOUDFLARE_WORKERS_AI_API_KEY` | `CLOUDFLARE_WORKERS_AI_MODEL`, `CLOUDFLARE_REASONING_EFFORT` |
-| OpenRouter | `OPENROUTER_API_KEY`                                                | `OPENROUTER_MODEL`, `OPENROUTER_REASONING_EFFORT`            |
-| Ollama     | —                                                                   | `OLLAMA_MODEL`, `OLLAMA_THINK`, `OLLAMA_TEMPERATURE`         |
-| Gemini     | `GEMINI_API_KEY`                                                    | `GEMINI_MODEL`, `GEMINI_MAX_OUTPUT_TOKENS`                   |
+| Provider   | Required                                                            | Optional                                                                           |
+| ---------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Cloudflare | `CLOUDFLARE_WORKERS_AI_ACCOUNT_ID`, `CLOUDFLARE_WORKERS_AI_API_KEY` | `CLOUDFLARE_WORKERS_AI_MODEL` (default `@cf/moonshotai/kimi-k2.6`), `CLOUDFLARE_THINKING` (default `false`), `CLOUDFLARE_REASONING_EFFORT` |
+| OpenRouter | `OPENROUTER_API_KEY`                                                | `OPENROUTER_MODEL` (default `moonshotai/kimi-k2.6`, routed as `moonshotai/kimi-k2.6:nitro`), `OPENROUTER_NITRO` (default `true`), `OPENROUTER_THINKING` (default `false`), `OPENROUTER_REASONING_EFFORT` |
+| Ollama     | —                                                                   | `OLLAMA_MODEL`, `OLLAMA_THINK`, `OLLAMA_TEMPERATURE`                               |
+| Gemini     | `GEMINI_API_KEY`                                                    | `GEMINI_MODEL`, `GEMINI_MAX_OUTPUT_TOKENS`                                         |
 
 ## Git Workflows
 

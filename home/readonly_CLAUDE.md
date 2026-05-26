@@ -276,6 +276,25 @@ For non-code work, use the equivalent observable check: command output, file sta
 - `2.1 External Truth` / `2.2 Runtime Truth` (evidence still comes before assertions).
 - `5 Code Quality` `Minimal edit scope` (test-first framing does not license touching code outside the request).
 
+### 3.4 State-Machine Verification
+
+Use this for behavior that is stateful, parser-like, or branch-heavy: parsers, tokenizers, formatters, routing/matching logic, retry/workflow loops, permission matrices, compatibility-sensitive branching, or code whose correctness depends on multiple flags or ordered conditions.
+
+Before calling the change final or merge-ready, build a disposable harness under `/tmp/state-machine-verification/<pwd>/<topic>/<slug>/`, where `<pwd>` is the absolute worktree path without the leading slash, `<topic>` is the active `/tmp/specs/<pwd>` topic, and `<slug>` is a short purpose key for the behavior under test. On long-lived/default worktrees (`main`, `master`, `dev`, release branches, etc.), the topic segment is what separates unrelated verification work in the same checkout.
+
+Each harness directory must include a small `manifest.json` recording at least: worktree path, topic, slug, target files/symbols, branch name, base ref/sha when relevant, head sha when relevant, requested behavior, and compatibility intent. If the harness directory already exists, read the manifest before reusing it. Reuse only when the manifest still matches the current target and intent; otherwise create a new slug or timestamp-suffixed directory.
+
+The harness must:
+
+- Names the states, transitions, inputs, and terminal actions explicitly.
+- Covers existing behavior buckets, the requested behavior, boundary inputs, malformed inputs, and regression-sensitive examples.
+- Compares the implementation against an independent model/state table, not just against itself.
+- When preserving existing behavior, compares against the base implementation and classifies every behavior difference as intended or unexpected.
+- Exhausts a small representative input alphabet/categories when practical, then adds randomized or generated longer cases for interaction effects.
+- Treats any unexpected difference as a bug to fix or a genuine unknown to surface before finalizing.
+
+Keep the state-machine harness in `/tmp/state-machine-verification/<pwd>/<topic>/<slug>/` unless the user explicitly asks to add it to the repo. Promote only compact, high-value cases into permanent tests. This rule verifies complexity; it does not justify adding a production state machine when simple code is sufficient.
+
 ## 4. Tooling
 
 - **File operations:** Use the environment's native file read/edit/list tools.

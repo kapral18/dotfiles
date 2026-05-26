@@ -263,6 +263,26 @@ local function env_number(name)
   return n
 end
 
+local function is_kimi_model(model)
+  if type(model) ~= "string" then
+    return false
+  end
+  model = model:lower()
+  return model:find("kimi", 1, true) ~= nil or model:find("moonshot", 1, true) ~= nil
+end
+
+local function openrouter_model_id()
+  local model = env_trim("OPENROUTER_MODEL") or "moonshotai/kimi-k2.6"
+  local nitro = env_bool_or_string("OPENROUTER_NITRO")
+  if nitro == nil then
+    nitro = true
+  end
+  if nitro and is_kimi_model(model) and not model:find(":", 1, true) then
+    model = model .. ":nitro"
+  end
+  return model
+end
+
 local function is_conventional_header(line)
   if type(line) ~= "string" then
     return false
@@ -393,7 +413,7 @@ local providers = {
     timeout = 90,
     url = function()
       local account_id = env_trim("CLOUDFLARE_WORKERS_AI_ACCOUNT_ID") or ""
-      local model = env_trim("CLOUDFLARE_WORKERS_AI_MODEL") or "@cf/zai-org/glm-4.7-flash"
+      local model = env_trim("CLOUDFLARE_WORKERS_AI_MODEL") or "@cf/moonshotai/kimi-k2.6"
       return ("https://api.cloudflare.com/client/v4/accounts/%s/ai/run/%s"):format(account_id, model)
     end,
     headers = function()
@@ -403,6 +423,11 @@ local providers = {
       }
     end,
     payload = function(diff)
+      local thinking = env_bool_or_string("CLOUDFLARE_THINKING")
+      if thinking == nil then
+        thinking = false
+      end
+
       local reasoning_effort = env_trim("CLOUDFLARE_REASONING_EFFORT")
       if reasoning_effort ~= nil then
         local allowed = { low = true, medium = true, high = true }
@@ -415,6 +440,9 @@ local providers = {
         messages = {
           { role = "system", content = SYSTEM_MESSAGE },
           { role = "user", content = diff },
+        },
+        chat_template_kwargs = {
+          thinking = thinking,
         },
         max_tokens = 2048,
         temperature = 0,
@@ -456,20 +484,46 @@ local providers = {
       }
     end,
     payload = function(diff)
-      local effort = env_trim("OPENROUTER_REASONING_EFFORT") or "none"
-      return {
-        model = (os.getenv("OPENROUTER_MODEL") or "z-ai/glm-5"),
+      local thinking = env_bool_or_string("OPENROUTER_THINKING")
+      if thinking == nil then
+        thinking = false
+      end
+
+      local reasoning
+      if thinking then
+        local effort = env_trim("OPENROUTER_REASONING_EFFORT") or "low"
+        local allowed = {
+          xhigh = true,
+          high = true,
+          medium = true,
+          low = true,
+          minimal = true,
+        }
+        if not allowed[effort:lower()] then
+          effort = "low"
+        end
+        reasoning = { effort = effort }
+      else
+        reasoning = { effort = "none" }
+      end
+
+      local model = openrouter_model_id()
+      local payload = {
+        model = model,
         messages = {
           { role = "system", content = SYSTEM_MESSAGE },
           { role = "user", content = diff },
         },
-        -- OpenRouter: disable reasoning when the upstream model supports it.
-        -- (If unsupported, OpenRouter/provider may ignore it.)
-        reasoning = { effort = effort },
+        reasoning = reasoning,
+        chat_template_kwargs = {
+          thinking = thinking,
+        },
         max_tokens = 2048,
         temperature = 0,
         stream = false,
       }
+
+      return payload
     end,
     -- Non-streaming: choices.message.content (Lua index 1)
     extract_path = { "choices", 1, "message", "content" },
@@ -479,7 +533,7 @@ local providers = {
   gemini = {
     url = function()
       local base = "https://generativelanguage.googleapis.com"
-      local model = env_trim("GEMINI_MODEL") or "gemini-3.1-flash-lite-preview"
+      local model = env_trim("GEMINI_MODEL") or "gemini-3-flash"
       return ("%s/v1beta/models/%s:generateContent?key=%s"):format(base, model, os.getenv("GEMINI_API_KEY") or "")
     end,
     required_env = { "GEMINI_API_KEY" },
@@ -645,11 +699,17 @@ local function summarize_with(provider_key)
 
     local text = extract_text_with_fallbacks(parsed, cfg.extract_path, cfg.extract_fallbacks)
     if type(text) ~= "string" or text == "" then
+      local reasoning_text
       if provider_key == "cloudflare" then
-        local reasoning_text = normalize_text(
+        reasoning_text = normalize_text(
           json_at_path(parsed, { "result", "choices", 1, "message", "reasoning_content" })
         ) or normalize_text(json_at_path(parsed, { "result", "choices", 1, "message", "reasoning" }))
-        local extracted = extract_commit_from_reasoning(reasoning_text or "")
+      elseif provider_key == "openrouter" then
+        reasoning_text = normalize_text(json_at_path(parsed, { "choices", 1, "message", "reasoning" }))
+          or normalize_text(json_at_path(parsed, { "choices", 1, "message", "reasoning_content" }))
+      end
+      if reasoning_text then
+        local extracted = extract_commit_from_reasoning(reasoning_text)
         if type(extracted) == "string" and extracted ~= "" then
           insert_at_cursor(vim.split(extracted, "\n"))
           return

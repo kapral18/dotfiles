@@ -39,8 +39,9 @@ Shared behavioral disciplines (integrated from [`forrestchang/andrej-karpathy-sk
 
 - `2 Core Principles`: surface material assumptions and competing interpretations rather than picking silently (evidence-first from `2.1` still wins — probe locally before asking); push back when a simpler approach satisfies the stated goal.
 - `3.3 Success Criteria & Verification Loops`: reframe imperative tasks as verifiable goals (test-first / reproducer-first when practical); multi-step plans must carry per-step verify checks; does not override `2.0`, `2.1`, `2.2`, or `5 Minimal edit scope`.
+- `3.4 State-Machine Verification`: for stateful, parser-like, or branch-heavy behavior, build a disposable `/tmp/state-machine-verification/<pwd>/<topic>/<slug>/` harness before calling the change final; `<pwd>` scopes to the worktree, `<topic>` separates unrelated work in long-lived/default checkouts, and `<slug>` names the behavior under test. Each harness includes a manifest so agents reuse existing state-machine work only when target, branch/base/head refs, requested behavior, and compatibility intent still match.
 - `5 Code Quality`: simplicity discipline (no speculative abstractions/flexibility/impossible-scenario error handling; senior-engineer test); artifact necessity (prove behavior is missing without a new artifact before adding it unless explicitly requested); dead-code handling (remove only orphans your own changes created; mention, don't delete pre-existing dead code unless asked).
-- Canonical sources: [`home/readonly_AGENTS.md`](../../../../home/readonly_AGENTS.md), [`home/readonly_CLAUDE.md`](../../../../home/readonly_CLAUDE.md), and [`home/dot_gemini/readonly_GEMINI.md`](../../../../home/dot_gemini/readonly_GEMINI.md).
+- Canonical sources: [`home/readonly_AGENTS.md`](../../../../home/readonly_AGENTS.md), [`home/readonly_CLAUDE.md`](../../../../home/readonly_CLAUDE.md), [`home/dot_gemini/readonly_GEMINI.md`](../../../../home/dot_gemini/readonly_GEMINI.md), and the dotfiles repo-local [`AGENTS.md`](../../../../AGENTS.md).
 
 ## Skills Layout
 
@@ -119,12 +120,13 @@ For non-trivial review decisions (accepting a suggestion, pushing back, or propo
 - Base truth: establish what base branch does today (SCSI when indexed; otherwise `git show <base>:<path>` + local search).
 - Change truth: validate what your branch/PR actually does (local diff + file reads).
 - Assumption tests: reproduce in `/tmp` when possible; otherwise run the smallest safe experiment in the worktree.
+- State-machine checks: for reviewed behavior that is stateful, parser-like, branch-heavy, or ordered-condition dependent, build or inspect a `/tmp/state-machine-verification/<pwd>/<topic>/<slug>/` harness before calling the change final, merge-ready, or a review concern resolved.
 - Quality gates: if you changed code as part of an iteration cycle, re-run the repo's lint/type_check/tests trio (discover the correct commands from the repo; do not guess).
 
 Skill support:
 
 - Review modes live under `~/.agents/skills/review/references/`:
-  - `shared_rules.md` — base-context gate, truth validation, coverage checklist, severity, draft style, posting boundary (loaded once by the router)
+  - `shared_rules.md` — base-context gate, truth validation, state-machine verification gate, coverage checklist, severity, draft style, posting boundary (loaded once by the router)
   - `pr_common.md` — PR resolution, media evidence, anchoring, deep links (loaded once for PR modes)
   - `local_changes.md` — local diff / branch delta review
   - `pr_review.md` — initial or continued PR review (batch or one-at-a-time)
