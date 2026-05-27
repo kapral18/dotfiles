@@ -12,6 +12,7 @@ import concurrent.futures
 import json
 import os
 import re
+import shlex
 import signal
 import subprocess
 import sys
@@ -602,7 +603,123 @@ def _read_prior_sections(cache_file: str) -> dict[str, list[str]]:
     return out
 
 
-def fetch_section(kind: str, idx: int, title: str, filters: str, limit: int = 30) -> list[dict[str, Any]]:
+def _current_login() -> str:
+    try:
+        proc = subprocess.run(
+            ["gh", "api", "user", "--jq", ".login"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        return proc.stdout.strip() if proc.returncode == 0 else ""
+    except Exception:
+        return ""
+
+
+def _search_filter_tokens(filters: str) -> list[str]:
+    try:
+        return shlex.split(filters)
+    except ValueError:
+        return filters.split()
+
+
+def _resolve_user_filter_value(value: str, viewer_login: str) -> str:
+    value = value.strip()
+    if value.lower() == "@me":
+        return viewer_login.lower()
+    if value.startswith("@"):
+        value = value[1:]
+    return value.lower()
+
+
+def _matches_user_filter(current_values: list[str], filter_value: str, viewer_login: str) -> bool | None:
+    expected = _resolve_user_filter_value(filter_value, viewer_login)
+    if not expected:
+        return None
+    return expected in {v.lower() for v in current_values if v}
+
+
+def _matches_is_filter(kind: str, item: dict[str, Any], value: str) -> bool | None:
+    value = value.lower()
+    state = (item.get("s") or "open").lower()
+    merged = kind == "pr" and bool(item.get("m"))
+    if value == "pr":
+        return kind == "pr"
+    if value == "issue":
+        return kind == "issue"
+    if value == "open":
+        return state == "open" and not merged
+    if value == "closed":
+        return state == "closed"
+    if value == "merged":
+        return merged
+    if value == "draft":
+        return kind == "pr" and bool(item.get("d"))
+    return None
+
+
+def _matches_current_search_filters(
+    item: dict[str, Any],
+    kind: str,
+    filters: str,
+    viewer_login: str,
+) -> bool:
+    """Drop stale GitHub search hits when the returned item no longer matches.
+
+    GitHub's search index can lag issue metadata changes. The search response
+    still carries current-ish item fields, so re-check the qualifiers we can
+    prove locally from that payload before writing a refreshed picker cache.
+    """
+    repo = str(item.get("r") or "")
+    owner = repo.split("/", 1)[0].lower() if "/" in repo else ""
+    author = str(item.get("a") or "")
+    assignees = [str(v) for v in (item.get("assignees") or []) if v]
+    labels = {str(v).lower() for v in (item.get("labels") or []) if v}
+
+    for token in _search_filter_tokens(filters):
+        negated = token.startswith("-")
+        if negated:
+            token = token[1:]
+        if ":" not in token:
+            continue
+
+        key, value = token.split(":", 1)
+        key = key.lower()
+        value = value.strip()
+        matched: bool | None = None
+
+        if key == "is":
+            matched = _matches_is_filter(kind, item, value)
+        elif key == "author":
+            matched = _matches_user_filter([author], value, viewer_login)
+        elif key == "assignee":
+            matched = _matches_user_filter(assignees, value, viewer_login)
+        elif key == "label":
+            matched = value.lower() in labels
+        elif key == "org":
+            matched = owner == value.lower()
+        elif key == "repo":
+            matched = repo.lower() == value.lower()
+
+        if matched is None:
+            continue
+        if negated:
+            matched = not matched
+        if not matched:
+            return False
+
+    return True
+
+
+def fetch_section(
+    kind: str,
+    idx: int,
+    title: str,
+    filters: str,
+    limit: int = 30,
+    viewer_login: str = "",
+) -> list[dict[str, Any]]:
     """Fetch a single section from GitHub Search API. Returns item dicts."""
     header: dict[str, Any] = {"_header": True, "kind": kind, "idx": idx, "title": title, "_fetch_error": False}
     jq_expr = (
@@ -616,6 +733,8 @@ def fetch_section(kind: str, idx: int, title: str, filters: str, limit: int = 30
         "d: .draft, "
         "a: .user.login, "
         'as: (.assignees[0].login // ""), '
+        "assignees: [.assignees[].login], "
+        "labels: [.labels[].name], "
         "c: .comments, "
         "s: .state, "
         "sr: .state_reason, "
@@ -662,6 +781,8 @@ def fetch_section(kind: str, idx: int, title: str, filters: str, limit: int = 30
     section_items: list[dict[str, Any]] = []
     for item in items:
         if not item.get("n"):
+            continue
+        if not _matches_current_search_filters(item, kind, filters, viewer_login):
             continue
         is_pr = kind == "pr"
         state = (item.get("s") or "open").lower()
@@ -1338,6 +1459,7 @@ def main():
     pr_sections, issue_sections, repo_paths = parse_config(args.config)
     prior_pr_badges = _read_prior_pr_badges(args.cache_file)
     linked_issues = _linked_issue_numbers_from_pick_session_cache()
+    viewer_login = _current_login()
 
     all_lines: list[str] = []
 
@@ -1361,7 +1483,10 @@ def main():
         section_futs: dict[concurrent.futures.Future[list[dict[str, Any]]], int] = {}
         for task_idx, (kind, idx, title, filters, source) in enumerate(tasks):
             fetcher = _SOURCE_FETCHERS.get(source, fetch_section)
-            fut = pool.submit(fetcher, kind, idx, title, filters)
+            if fetcher is fetch_section:
+                fut = pool.submit(fetcher, kind, idx, title, filters, 30, viewer_login)
+            else:
+                fut = pool.submit(fetcher, kind, idx, title, filters)
             section_futs[fut] = task_idx
 
         for fut in concurrent.futures.as_completed(section_futs):

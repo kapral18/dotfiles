@@ -30,6 +30,13 @@ This is a **chezmoi-managed dotfiles repo**. Chezmoi deploys files from `home/` 
 
 ---
 
+## Project Validation
+
+- After each change/task in this repo, run `make check` followed by `make fmt`.
+- If either command fails, fix the issue when it is in scope; otherwise report the failure and the relevant output.
+
+---
+
 ## Package/App/Formula/Cask Installation Priority
 
 When user requests to "add X" (app, package, cask, formula, or CLI tool), follow this priority order:

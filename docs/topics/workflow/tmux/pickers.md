@@ -384,6 +384,7 @@ For issues, the picker also treats an issue as "local" when it is linked from an
 - TTL: 300 seconds (5 minutes).
 - Cache file: `~/.cache/tmux/gh_picker_{work,home}.tsv`.
 - `ctrl-r` forces a refresh bypassing the cache. Any in-flight background fetch is pre-empted via SIGTERM; the lock-holder's bash trap kills its python + `gh` subprocess descendants before releasing the lock so the new fetch starts with a clean GitHub search-rate-limit budget (otherwise orphaned `gh` calls would burn the budget and every section would error-fallback to prior cache, looking like "nothing changed").
+- After GitHub Search returns a section, the fetcher re-checks current item fields for supported qualifiers (`is`, `author`, `assignee`, `label`, `org`, `repo`) before updating the cache. This filters out stale search-index hits, such as issues that still match `assignee:@me` briefly after being unassigned.
 
 ### Preview pane
 

@@ -16,7 +16,7 @@ All review modes load this file. Do not duplicate these rules in mode files.
 - Do not post to GitHub, submit reviews, apply labels, or resolve threads unless explicitly asked.
 - Assume the user started the agent inside the intended repo/worktree/session:
   - do not create/switch worktrees proactively
-  - if the user explicitly asks to create/switch a worktree, use `~/.agents/skills/worktrees/SKILL.md` and prefer `,w`
+  - if the user explicitly asks to create/switch a worktree, use `~/.agents/skills/worktrees/SKILL.md`; for GitHub issue worktrees in agent contexts, prefer `,gh-worktree issue ... --branch ...`
 
 ## Base-Branch Context Gate (Mandatory)
 

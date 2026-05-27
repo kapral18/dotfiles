@@ -176,7 +176,7 @@ Use `,gh-worktree` when you want the same repo/bootstrap + worktree behavior out
 - Resolves the local checkout root from a repo hint (`--repo-path`) or the conventional wrapper path.
 - Bootstraps missing repos with `,gh-tfork` unless `--no-bootstrap` is set.
 - Delegates PR/issue branch naming and worktree creation to `,w prs` / `,w issue`.
-- In non-interactive contexts, issue checkout requires `--branch` (otherwise `,w issue` would prompt for branch input).
+- In non-interactive contexts, agents should use `,gh-worktree issue <owner/repo> <issue_number> --branch <branch-base-name>` for GitHub issues (otherwise `,w issue` would prompt for branch input).
 - Supports `--print-root` to return the resolved repo root without creating a worktree.
 
 PR shortcuts (inside the GitHub picker):

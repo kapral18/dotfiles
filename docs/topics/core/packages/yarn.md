@@ -4,7 +4,7 @@ sidebar_position: 7
 
 # Add A Global yarn Package
 
-Global yarn packages are managed via a plain list.
+Global yarn packages are managed via a plain list. The sync command installs missing packages, removes unmanaged packages, then runs `yarn global upgrade --latest` so installed packages are refreshed instead of staying within the old semver range recorded by Yarn.
 
 ## Preconditions
 
@@ -38,7 +38,7 @@ yarn global list | rg '<package-name>'
 
 ## What It Does
 
-The installer reads `~/.default-yarn-pkgs`, installs missing packages, and uninstalls global packages not on the list.
+The installer reads `~/.default-yarn-pkgs`, installs missing packages, uninstalls global packages not on the list, then runs `yarn global upgrade --latest`. This avoids Yarn v1 staying inside an old `0.x` range such as `^0.74.0` when a package has moved to `0.75.x`.
 
 ## Rollback / Undo
 

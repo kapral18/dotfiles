@@ -28,9 +28,10 @@ First actions:
 1. Resolve whether the user wants create, switch, list, prune, remove, or PR/ issue checkout.
 2. If the user says "current PR" or "current issue", resolve that identifier first via `,gh-prw` or `,gh-issuew`.
 3. Choose the entrypoint:
-   - if repo is already resolved/current and the ask is a direct worktree op -> use `,w`
-   - if the ask starts from GitHub repo + number and may require local repo resolution/bootstrap -> use `,gh-worktree`
-4. Prefer the matching `,w` subcommand instead of building the flow from raw `git worktree` commands.
+   - if the ask starts from a GitHub PR/issue, repo slug, URL, or may require local repo resolution/bootstrap -> use `,gh-worktree`
+   - for GitHub issue worktrees in non-interactive agent contexts -> use `,gh-worktree issue <owner/repo> <issue_number> --branch <branch-base-name>`
+   - if repo is already resolved/current and the ask is a direct in-repo worktree op -> use `,w`
+4. Prefer the matching `,gh-worktree` / `,w` subcommand instead of building the flow from raw `git worktree` commands.
 
 Non-negotiables:
 
@@ -43,7 +44,7 @@ Common patterns:
 - Cross-repo GitHub entrypoint (shared with tmux/gh-dash flows):
   - `,gh-worktree pr <owner/repo> <pr_number> [--focus] [--quiet]`
   - `,gh-worktree issue <owner/repo> <issue_number> [--focus] [--quiet] [--branch <name>]`
-  - in non-interactive contexts, pass `--branch` for issue checkout
+  - in non-interactive agent contexts, use `,gh-worktree issue ... --branch <name>` for GitHub issues by default
   - use `--repo-path` when you already have a repo path hint from tooling output
 
 - Create a worktree for a PR (non-interactive):
@@ -52,8 +53,9 @@ Common patterns:
   - "current PR" -> `,gh-prw --number` then `,w prs <number>`
 
 - Create an issue worktree:
-  - `,w issue <issue_number>`
-  - "current issue" -> `,gh-issuew --number` then `,w issue <number>`
+  - GitHub issue from agent context -> `,gh-worktree issue <owner/repo> <issue_number> --branch <branch-base-name>`
+  - already inside the correct repo -> `,w issue -b <branch-base-name> <issue_number>`
+  - "current issue" -> `,gh-issuew --number` plus repo resolution, then `,gh-worktree issue <owner/repo> <number> --branch <branch-base-name>`
 
 - Create a worktree for a branch:
   - `,w add <branch_name> [base_branch]`
@@ -86,8 +88,9 @@ pr="$(,gh-prw --number)"
 ,w prs "$pr"
 
 # "Current issue" -> worktree:
+repo="$(gh repo view --json nameWithOwner --jq '.nameWithOwner')"
 issue="$(,gh-issuew --number)"
-,w issue "$issue"
+,gh-worktree issue "$repo" "$issue" --branch feat/my-change
 
 # Switch to another worktree session:
 ,w switch kibana

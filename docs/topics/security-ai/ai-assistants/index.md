@@ -88,6 +88,8 @@ Current skills:
 | `improve-targeted`      | Suggest the single smartest addition to a targeted part of the codebase (specific dir, module, or component)       |                |
 | `ralph`                 | Drive the Ralph orchestrator (planner/executor/reviewer/re-reviewer with self-healing) via `,ralph go` and tmux UX |                |
 
+Worktree note for agents: when creating a worktree from a GitHub issue, prefer `,gh-worktree issue <owner/repo> <issue_number> --branch <branch-base-name>` so repo resolution/bootstrap happens before the lower-level `,w issue` metadata and branch creation flow.
+
 Always-on rule source:
 
 - The SOP entrypoints are the only canonical always-on mechanism for assistant behavior.

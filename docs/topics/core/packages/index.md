@@ -111,7 +111,7 @@ This hook installs missing tools and attempts to clean up unused packages.
 - Hook: [`home/.chezmoiscripts/run_onchange_after_05-update-yarn-pkgs.sh.tmpl`](../../../../home/.chezmoiscripts/run_onchange_after_05-update-yarn-pkgs.sh.tmpl)
 - Manual command: [`home/exact_bin/executable_,install-yarn-pkgs`](../../../../home/exact_bin/executable_,install-yarn-pkgs)
 
-The `,install-yarn-pkgs` command installs packages in the list and uninstalls those no longer listed.
+The `,install-yarn-pkgs` command installs missing listed packages, uninstalls packages no longer listed, then runs `yarn global upgrade --latest`. This keeps managed globals current even when Yarn's recorded semver range would otherwise stay on an older `0.x` minor.
 
 This list now includes some AI tooling that used to be managed elsewhere. Pi-related globals such as `@earendil-works/pi-coding-agent`, `@earendil-works/pi-tui`, and `pi-mcp-adapter` are kept here; Pi settings reference the yarn global `node_modules` path for `pi-mcp-adapter` so Pi itself does not try to manage extension updates via npm.
 

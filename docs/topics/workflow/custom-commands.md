@@ -179,6 +179,7 @@ Examples:
 
 - Source: [`home/exact_bin/executable_,install-yarn-pkgs`](../../../home/exact_bin/executable_,install-yarn-pkgs)
 - Input list: `~/.default-yarn-pkgs` (rendered from [`home/readonly_dot_default-yarn-pkgs`](../../../home/readonly_dot_default-yarn-pkgs))
+- Behavior: installs missing listed packages, removes globals not on the list, then runs `yarn global upgrade --latest`.
 
 ### Apply icon mapping: `,apply-app-icons`
 

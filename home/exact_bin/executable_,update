@@ -363,12 +363,12 @@ update_yarn() {
   should_run "yarn" || return 0
   section "yarn global packages"
 
-  if ! has_cmd yarn; then
-    step_skip "yarn not installed"
+  if ! has_cmd ,install-yarn-pkgs; then
+    step_skip ",install-yarn-pkgs not installed"
     return 0
   fi
 
-  run_timed "yarn global upgrade" yarn global upgrade || true
+  run_timed ",install-yarn-pkgs" ,install-yarn-pkgs || true
 }
 
 update_gems() {
