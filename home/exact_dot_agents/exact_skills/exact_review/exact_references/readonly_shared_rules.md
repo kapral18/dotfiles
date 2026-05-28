@@ -13,7 +13,7 @@ All review modes load this file. Do not duplicate these rules in mode files.
   - **Local changes mode** and **PR fix mode**: find issues and fix them in the working tree immediately. Code changes are expected as part of the workflow — no extra permission needed. Do not commit or push unless explicitly asked.
   - **PR review mode (self-review)**: same — find and fix in the working tree.
   - **PR review mode (reviewing others):** do not change code unless the user explicitly asks.
-- Do not post to GitHub, submit reviews, apply labels, or resolve threads unless explicitly asked.
+- Do not post to GitHub, submit reviews, apply labels, or resolve threads unless explicitly asked. Exception per the Human-Visible Publication Gate (SOP, `~/AGENTS.md`): a **verified bot-authored** thread may be auto-replied/auto-resolved inside an explicitly-invoked flow; any human-visible target stays supervised (draft -> show payload -> wait). Ambiguous/mixed threads fail safe to human.
 - Assume the user started the agent inside the intended repo/worktree/session:
   - do not create/switch worktrees proactively
   - if the user explicitly asks to create/switch a worktree, use `~/.agents/skills/worktrees/SKILL.md`; for GitHub issue worktrees in agent contexts, prefer `,gh-worktree issue ... --branch ...`
@@ -91,6 +91,26 @@ Use for any reviewed behavior that is stateful, parser-like, branch-heavy, or de
 - Compare the implementation against an independent model/state table, not just itself. When behavior should be preserved, compare against base and classify each difference as intended or unexpected.
 - In review-only PR mode for someone else's work, keep code read-only; use the harness to verify claims when safe, and surface missing or inadequate state-machine coverage as a test gap when risk remains.
 
+## Deletion-Safety Audit (Run On Any Removal)
+
+Trigger: the diff deletes files, exports, symbols, or behavior (`git diff --diff-filter=D --stat`, removed `export`s, deleted functions/branches). Before calling a deletion safe, verify each and report a one-line deletion ledger:
+
+- **No live references:** `rg` the deleted symbol/file/path across the repo and public barrels/index files; confirm zero live importers/callers.
+- **Public surface:** deleted exports are removed from barrels and are not part of a published package entry point still consumed downstream.
+- **Behavior parity:** every behavior the deleted code provided is either intentionally dropped (user-approved per SOP `2.0`) or demonstrably replaced — name where each replaced behavior now lives.
+- **Tests:** deleted tests were migrated, or removed only because the code they covered is gone; coverage for surviving behavior still exists.
+- **Base comparison:** for branch-heavy/stateful deletions, compare against base behavior buckets (see State-Machine Verification Gate) and classify each difference as intended or unexpected.
+- **Disclosure:** meaningful deleted infrastructure is reflected in the PR description (Summary/Fix), not silently dropped.
+
+## Historical-Rationale Gate (Deleting/Replacing Long-Lived Infra)
+
+Trigger: removing or replacing a custom/legacy stack, a helper that predates current infra, or anything called "obsolete"/"legacy"/"why does this exist". Understand the origin before the removal is final.
+
+- **Trace origin:** `git log --follow --oneline -- <path>` and `git blame <base> -- <path>` (or `git log -L` for a function) to find the introducing commit(s).
+- **Link intent:** open the offending PR(s)/issue(s) (`gh pr view`, `gh issue view`) to learn the original reason.
+- **Classify:** was the behavior being removed (a) the original intended purpose, or (b) drift/side effect that later infra made obsolete?
+- **Decide narrative:** if removal corrects historical drift, the PR `## Root Cause` must state the original reason and why it no longer applies. If it removes still-needed behavior, stop — that is not a safe deletion.
+
 ## Coverage Checklist (Do Not Skip)
 
 - security issues
@@ -153,14 +173,17 @@ State the recommendation and the reason (e.g. "Verdict: request changes — the 
 
 ## Review Persistence
 
-The internal findings queue and review progress are ephemeral by default. To survive conversation pruning:
+The internal findings queue and review progress are ephemeral by default. Survive conversation pruning by reusing the existing hook-managed memory system — do not invent a parallel store:
 
-- Use the `/tmp/specs/<pwd>/` convention from the parent SOP.
-- Topic key: `review` (or `review-<pr-number>` for PR modes).
-- After building the findings queue, write a summary to the topic spec file:
-  - findings (severity, file, line, one-line description, status: open/fixed/dismissed)
-  - current position in the queue (for iterative mode)
-  - base context metadata
+- Convention: `/tmp/specs/<pwd>/` from the parent SOP. Topic key: `review-<pr-number>` for PR modes (else `review`).
+- The agent-owned intent file is `<topic>.txt`. The hook system additionally maintains `<topic>.worklog.jsonl`, `<topic>.evidence_state.json`, and `<topic>.evidence_decisions.jsonl`. Inspect state with `,agent-memory status` (resolves the active topic and lists the files).
+- On the first turn of a PR flow, check for the spec file and resume from it. After each thread/finding, append to `<topic>.txt` so the loop is resumable:
+  - findings/threads: `comment_id`, author-type (`human`|`bot`), severity, file:line, one-line description, status (`open`|`fixed`|`dismissed`|`resolved`|`awaiting-approval`)
+  - decision + evidence per thread (what base does, what changed, what was tested)
+  - validation runs: commands + pass/fail + head SHA pushed
+  - PR body obligations still open (sections to update, deletions to disclose)
+  - open audit questions (e.g. unresolved `,kbn-pr-audit` findings)
+  - current position in the queue (for iterative/Drain Mode) and base-context metadata
 - On subsequent turns, check for the spec file first and resume from it if present.
 
 ## Posting Boundary
@@ -170,3 +193,4 @@ The internal findings queue and review progress are ephemeral by default. To sur
   - keep the draft content from the review mode
   - then invoke the `github` skill via the Skill tool
   - get explicit approval for the GitHub side effect
+- Human-Visible Publication Gate (SOP, `~/AGENTS.md`): the explicit-approval requirement above is absolute for any human-visible target. The only automation carve-out is a verified bot-authored thread (see `pr_fix.md` Drain Mode), which may be auto-replied/auto-resolved inside a flow the user already invoked.

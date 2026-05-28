@@ -22,8 +22,12 @@ Do not use:
 
 First actions:
 
-1. `command -v sem` — abort with install instructions (`brew install ataraxy-labs/tap/sem`) if missing.
-2. Verify you're in a git repo: `git rev-parse --is-inside-work-tree`
+1. Resolve the binary explicitly — prefer the chezmoi-managed wrapper, do not trust PATH order:
+   - `SEM_BIN="$HOME/bin/sem"; [ -x "$SEM_BIN" ] || SEM_BIN="$(command -v sem)"`
+   - abort with install instructions (`brew install ataraxy-labs/tap/sem`) if neither resolves.
+   - The `~/bin/sem` wrapper forwards to the Homebrew binary, so both are functionally identical; use `"$SEM_BIN"` consistently to avoid the "which sem?" ambiguity.
+2. Verify identity before relying on behavior: `"$SEM_BIN" --version` (or `--help`).
+3. Verify you're in a git repo: `git rev-parse --is-inside-work-tree`
 
 ## Commands
 

@@ -73,6 +73,18 @@ When user requests to "add X" (app, package, cask, formula, or CLI tool), follow
 - Any change to dotfiles (anything under `home/`, including templates, scripts, and app/package install logic) that affects behavior, commands, or workflows MUST be reflected in `docs/`.
 - If a dotfiles change does not require a docs change, state why in the PR/commit context (briefly) so the docs/code divergence is explicit.
 
+## Human-Visible Publication Gate (Bot vs Human)
+
+This file is the primary SOP entrypoint (Cursor and OpenCode load `AGENTS.md` directly), so the gate is stated here in full. `~/CLAUDE.md` and `~/.gemini/GEMINI.md` are the per-tool SOPs that carry the same rule as §3.5; keep all three in sync.
+
+Publishing content a human will see can have outsized consequences for the setup owner; bot-only exchanges have none. This gate governs every flow that emits human-visible content or mutates human-visible state on an external platform (GitHub PR/issue comments, review replies, review submissions, resolving a thread, gist/release text, Slack/email/chat, etc.).
+
+- **Human target -> supervision required.** If a human will see the result, draft it, show the exact payload and target, and wait for explicit approval before sending. This includes replying to or resolving a human-authored thread. No auto-send — not even inside an explicitly-invoked flow.
+- **Bot carve-out.** If the target thread/comment is bot-authored, you MAY auto-reply and auto-resolve it without per-action approval, but only inside a flow the user explicitly invoked. Never publish spontaneously, even to bots.
+- **Verify author type; do not guess.** Classify from the platform API, not from display-name heuristics: GitHub `user.type == "Bot"`, a login ending in `[bot]`, or a known-bot allowlist (e.g. `elasticmachine`, `kibanamachine`, `github-actions[bot]`).
+- **Fail safe to human.** If the author type is ambiguous/unknown, or a thread mixes human and bot participants, treat it as human and require supervision.
+- **Scope.** This relaxes the prior blanket "never post/resolve unless explicitly asked" only for verified bot threads; for any human-visible target the approval checkpoint is absolute. It does not restrict read-only inspection, local working-tree edits, or `/tmp` work.
+
 ## State-Machine Verification
 
 Use this for behavior that is stateful, parser-like, or branch-heavy: parsers, tokenizers, formatters, routing/matching logic, retry/workflow loops, permission matrices, compatibility-sensitive branching, or code whose correctness depends on multiple flags or ordered conditions.

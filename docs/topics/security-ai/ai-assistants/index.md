@@ -61,34 +61,41 @@ Entry contract standard:
 
 Current skills:
 
-| Skill                   | Use when                                                                                                           | Gated to       |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------ | -------------- |
-| `review`                | Reviewing changes, continuing a review, addressing threads, rechecking PR changes                                  |                |
-| `github`                | Any GitHub mutation (PRs, issues, comments, reviews, labels, releases, merges)                                     |                |
-| `git`                   | Any local git operation (branching, committing, pushing, rebasing, merging, conflicts)                             |                |
-| `research`              | Investigating a third-party project/library/tool by cloning its GitHub repo                                        |                |
-| `walkthrough`           | Explore codebase flows, map component relationships, render diagrams (manual only)                                 |                |
-| `cli-skills`            | Creating or upgrading CLI tool skills                                                                              |                |
-| `letsfg`                | Searching flight tickets/fares through the local LetsFG CLI with direct booking URLs                               |                |
-| `semantic-code-search`  | Semantic search, base-branch context, or when another skill requires SCSI                                          |                |
-| `google-workspace`      | Gmail / Drive / Calendar / Admin / Docs / Sheets via `gws` CLI                                                     |                |
-| `worktrees`             | Worktree routing and operations (`,gh-worktree` for repo bootstrap/routing, `,w` for in-repo worktree actions)     |                |
-| `compose-pr`            | Drafting a PR title and body as text (before creating/editing a PR)                                                |                |
-| `compose-issue`         | Drafting an issue title and body as text (before creating/editing an issue)                                        |                |
-| `buildkite`             | Checking build status, triggering builds, reading logs, debugging CI failures                                      | elastic org    |
-| `kibana-labels-propose` | Proposing labels/backports/version targeting when composing or creating a Kibana PR                                | elastic/kibana |
-| `kibana-console-monaco` | Automating/testing the Kibana Dev Tools Console editor via Playwright                                              | elastic/kibana |
-| `playwriter`            | Controlling Chrome browser via Playwriter (explicit mention only)                                                  |                |
-| `beads`                 | Persisting work in the beads DB (explicit mention of beads/bdlocal/BEADS_DIR only)                                 |                |
-| `knip`                  | Finding unused files, dependencies, and exports in JS/TS projects                                                  |                |
-| `jscpd`                 | Detecting duplicates during refactoring, code cleanup, or DRY improvement                                          |                |
-| `improve-codebase`      | Suggest the single smartest addition to the current codebase                                                       |                |
-| `improve-local`         | Suggest the single smartest addition to the local changes                                                          |                |
-| `improve-branch`        | Suggest the single smartest addition for the current branch/PR/issue                                               |                |
-| `improve-targeted`      | Suggest the single smartest addition to a targeted part of the codebase (specific dir, module, or component)       |                |
-| `ralph`                 | Drive the Ralph orchestrator (planner/executor/reviewer/re-reviewer with self-healing) via `,ralph go` and tmux UX |                |
+| Skill                              | Use when                                                                                                           | Gated to       |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------------- |
+| `review`                           | Reviewing changes, continuing a review, addressing threads, rechecking PR changes                                  |                |
+| `github`                           | Any GitHub mutation (PRs, issues, comments, reviews, labels, releases, merges)                                     |                |
+| `git`                              | Any local git operation (branching, committing, pushing, rebasing, merging, conflicts)                             |                |
+| `research`                         | Investigating a third-party project/library/tool by cloning its GitHub repo                                        |                |
+| `walkthrough`                      | Explore codebase flows, map component relationships, render diagrams (manual only)                                 |                |
+| `cli-skills`                       | Creating or upgrading CLI tool skills                                                                              |                |
+| `letsfg`                           | Searching flight tickets/fares through the local LetsFG CLI with direct booking URLs                               |                |
+| `semantic-code-search`             | Semantic search, base-branch context, or when another skill requires SCSI                                          |                |
+| `google-workspace`                 | Gmail / Drive / Calendar / Admin / Docs / Sheets via `gws` CLI                                                     |                |
+| `worktrees`                        | Worktree routing and operations (`,gh-worktree` for repo bootstrap/routing, `,w` for in-repo worktree actions)     |                |
+| `compose-pr`                       | Drafting a PR title and body as text (before creating/editing a PR)                                                |                |
+| `compose-issue`                    | Drafting an issue title and body as text (before creating/editing an issue)                                        |                |
+| `buildkite`                        | Checking build status, triggering builds, reading logs, debugging CI failures                                      | elastic org    |
+| `kibana-labels-propose`            | Proposing labels/backports/version targeting when composing or creating a Kibana PR                                | elastic/kibana |
+| `kibana-console-monaco`            | Automating/testing the Kibana Dev Tools Console editor via Playwright                                              | elastic/kibana |
+| `kbn-backport-conflict-resolution` | Manually resolving Kibana backport cherry-pick conflicts, validating, staging, and stopping                        | elastic/kibana |
+| `playwriter`                       | Controlling Chrome browser via Playwriter (explicit mention only)                                                  |                |
+| `beads`                            | Persisting work in the beads DB (explicit mention of beads/bdlocal/BEADS_DIR only)                                 |                |
+| `knip`                             | Finding unused files, dependencies, and exports in JS/TS projects                                                  |                |
+| `jscpd`                            | Detecting duplicates during refactoring, code cleanup, or DRY improvement                                          |                |
+| `improve-codebase`                 | Suggest the single smartest addition to the current codebase                                                       |                |
+| `improve-local`                    | Suggest the single smartest addition to the local changes                                                          |                |
+| `improve-branch`                   | Suggest the single smartest addition for the current branch/PR/issue                                               |                |
+| `improve-targeted`                 | Suggest the single smartest addition to a targeted part of the codebase (specific dir, module, or component)       |                |
+| `ralph`                            | Drive the Ralph orchestrator (planner/executor/reviewer/re-reviewer with self-healing) via `,ralph go` and tmux UX |                |
 
 Worktree note for agents: when creating a worktree from a GitHub issue, prefer `,gh-worktree issue <owner/repo> <issue_number> --branch <branch-base-name>` so repo resolution/bootstrap happens before the lower-level `,w issue` metadata and branch creation flow.
+
+PR/issue composition hygiene:
+
+- `compose-pr`, `compose-issue`, and `github` sanitize public GitHub text before drafting or posting.
+- PR/issue bodies must avoid session-specific local references such as private hostnames, non-standard local domains, absolute workspace paths, `/tmp/...` files, browser automation session names, and local usernames.
+- Repro-driven PRs must include portable local reproduction steps in the test plan, not only the agent's local validation notes. Prefer generic setup such as `local Kibana`, `http://localhost:5601`, or explicit role/user creation steps that another reviewer can run.
 
 Always-on rule source:
 
@@ -150,6 +157,14 @@ When drafting PR thread replies:
 - The review router selects exactly one of three modes: local changes, PR review, or PR fix (address feedback). Shared rules and PR-common setup are loaded once by the router, not duplicated per mode.
 - When both a dirty working tree and a current-branch PR exist, the router asks which target to review instead of silently forcing local review first.
 - GitHub posting stays outside read-only review mode until the user explicitly asks for a side effect.
+
+## Reviews: Publication Gate, Deletions, History
+
+- **Human-Visible Publication Gate** (primary in [`home/readonly_AGENTS.md`](../../../../home/readonly_AGENTS.md) — the SOP entrypoint Cursor/OpenCode load directly — and mirrored as SOP `3.5` in [`home/readonly_CLAUDE.md`](../../../../home/readonly_CLAUDE.md) / [`home/dot_gemini/readonly_GEMINI.md`](../../../../home/dot_gemini/readonly_GEMINI.md); referenced by `github`, `review/shared_rules.md`, `review/pr_fix.md`): anything a human will see (PR/issue replies, review submissions, resolving a human thread) is always drafted and supervised before sending. Verified bot-authored threads (`user.type == "Bot"`, `[bot]` login, or known-bot allowlist) may be auto-replied/auto-resolved inside an explicitly-invoked flow. Ambiguous or mixed human+bot threads fail safe to human.
+- **PR-fix Drain Mode**: when the user explicitly asks to batch ("repeat the process", "you know the drill", "address all"), `pr_fix.md` drains threads back-to-back — auto-finishing bot threads and queuing human-thread drafts for approval — instead of re-asking after every single thread.
+- **Deletion-Safety Audit** (`review/shared_rules.md`): any removal (files/exports/symbols/behavior) must verify no live references, public-surface cleanup, behavior parity in the replacement, test migration, base comparison, and PR-body disclosure.
+- **Historical-Rationale Gate** (`review/shared_rules.md` + `compose-pr`): removing/replacing long-lived or "legacy" infra requires tracing the origin (`git log --follow`, blame, linked PR/issue) and, when correcting historical drift, stating the original reason in the PR `## Root Cause`.
+- **Readiness audit CLI**: [`,kbn-pr-audit`](../../../../home/exact_bin/executable_,kbn-pr-audit) is a read-only check (see Custom Commands) that surfaces the above drift before a reply/resolve/push cycle; it never mutates GitHub.
 
 ## Source-First Research
 

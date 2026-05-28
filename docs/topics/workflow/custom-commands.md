@@ -46,7 +46,7 @@ This setup also defines a few cross-shell aliases (Fish + Bash/Zsh).
 ### System health check: `,doctor`
 
 - Source: [`home/exact_bin/executable_,doctor`](../../../home/exact_bin/executable_,doctor)
-- Checks: chezmoi state, Homebrew, shell, tmux+TPM, git+signing, SSH agent, pass/GPG, editors, AI tools, key CLIs, worktrees.
+- Checks: chezmoi state, Homebrew, shell, tmux+TPM, git+signing, SSH agent, pass/GPG, editors, AI tools, key CLIs, `~/bin` wrapper integrity (sem/parallel) + cursor-cli bundled rg, worktrees.
 
 Examples:
 
@@ -54,6 +54,17 @@ Examples:
 ,doctor            # full check
 ,doctor --quiet    # only warnings/failures
 ,doctor --verbose  # extra detail (e.g. outdated Homebrew count)
+```
+
+### PR readiness audit: `,kbn-pr-audit`
+
+- Source: [`home/exact_bin/executable_,kbn-pr-audit`](../../../home/exact_bin/executable_,kbn-pr-audit)
+- Read-only audit of an `elastic/kibana` PR before a reply/resolve/push cycle. It never mutates GitHub (it reports; you act — see the Human-Visible Publication Gate in the AI assistants topic).
+- Checks: local `HEAD` vs published PR head alignment, unresolved review threads split human vs bot, deletions disclosed in the body, expected body sections, label consistency (single `release_note:*`, backport target, body↔label agreement), and validation commands recorded in the Test Plan.
+
+```bash
+,kbn-pr-audit              # audit the current branch's PR
+,kbn-pr-audit 271562       # audit a specific PR number / URL / branch
 ```
 
 ### Run `telegramtui` with optional pass-backed API config: `,tg`

@@ -1,5 +1,6 @@
 prSections:
-  - title: "PRs waiting for My Review"
+  - title: "Action: PRs awaiting your review"
+    scopes: [focus]
     filters: >-
       is:open is:pr
       review-requested:@me
@@ -7,25 +8,25 @@ prSections:
       -is:draft
       -author:@me
       -team-review-requested:elastic/kibana-management
-  - title: "PRs waiting Team Review"
+
+  - title: "Mine: Your open PRs"
+    scopes: [focus]
+    filters: >-
+      is:open is:pr
+      author:@me
+      org:elastic
+
+  - title: "Watching: Team review queue"
+    scopes: [explore]
     filters: >-
       is:open is:pr
       team-review-requested:elastic/kibana-management
       org:elastic
       -is:draft
       -author:@me
-  - title: "PRs Created by Me"
-    filters: >-
-      is:open is:pr
-      author:@me
-      org:elastic
-  - title: "Pending Backports"
-    source: backport-failures
-    filters: >-
-      is:pr is:merged
-      author:@me
-      org:elastic
-  - title: "PRs Involving Me"
+
+  - title: "Watching: PRs involving you"
+    scopes: [explore]
     filters: >-
       is:open is:pr
       involves:@me
@@ -35,38 +36,48 @@ prSections:
       -review-requested:@me
       -reviewed-by:@me
       -team-review-requested:elastic/kibana-management
+
+  - title: "Maintenance: Pending backports"
+    scopes: [focus]
+    source: backport-failures
+    filters: >-
+      is:pr is:merged
+      author:@me
+      org:elastic
+
 issuesSections:
-  - title: "Issues with Team Failed Tests"
+  - title: "Action: Issues assigned to you"
+    scopes: [focus]
+    filters: >-
+      is:open is:issue
+      assignee:@me
+      org:elastic
+
+  - title: "Mine: Your open issues"
+    scopes: [focus]
+    filters: >-
+      is:open is:issue
+      author:@me
+      org:elastic
+      -assignee:@me
+
+  - title: "Watching: Failed test radar"
+    scopes: [explore]
     filters: >-
       is:open is:issue
       label:"failed-test"
       org:elastic
       label:"Team:Kibana Management"
-  - title: "Issues Created by Me"
-    filters: >-
-      is:open is:issue
-      author:@me
-      org:elastic
-  - title: Issues Assigned to Me
-    filters: >-
-      is:open is:issue
-      assignee:@me
-      org:elastic
-  - title: "Issues Mentioning Me"
-    filters: >-
-      is:open is:issue
-      mentions:@me
-      -assignee:@me
-      -author:@me
-      org:elastic
-  - title: "Issues Involving Me"
+
+  - title: "Watching: Issue mentions and involves"
+    scopes: [explore]
     filters: >-
       is:open is:issue
       involves:@me
       org:elastic
       -assignee:@me
-      -mentions:@me
       -author:@me
+
 repoPaths:
   elastic/kibana: ~/work/kibana
   elastic/*: ~/work/*

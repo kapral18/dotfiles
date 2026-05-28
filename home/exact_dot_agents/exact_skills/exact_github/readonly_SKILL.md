@@ -51,10 +51,16 @@ First actions:
 1. Set `GH_PAGER=cat`.
 2. Resolve the exact target repo/object (PR, issue, comment thread, release) before mutating anything.
 3. If the user also needs authored text, reviewer reasoning, labels, or Kibana ownership guidance, invoke the required secondary skill(s) via the Skill tool first and use their output before posting/applying.
+4. Before creating or editing public PR/issue text, sanitize the body/title for portable public context:
+   - remove session-specific hosts, ports, workspace paths, temp paths, browser automation session references, and local usernames
+   - replace local-only validation details with reproducible setup/check steps another maintainer can run
+   - if a local URL is needed, prefer `http://localhost:<port>` or a placeholder over private/non-standard hostnames
 
 Approvals:
 
 - Any GitHub side effect requires explicit approval unless the user instructed otherwise. Examples (non-exhaustive): create/edit PRs or issues, post comments/reviews, apply metadata (labels/assignees/milestones/projects), merge, or create releases.
+- Human-Visible Publication Gate (see the SOP, `~/AGENTS.md`): a reply/resolve/comment that a human will see is always supervised — draft, show the exact payload + target, wait for approval. The only carve-out is a **verified bot-authored** thread (GitHub `user.type == "Bot"`, login ending in `[bot]`, or known-bot allowlist such as `elasticmachine` / `kibanamachine` / `github-actions[bot]`), which may be auto-replied/auto-resolved inside an explicitly-invoked flow. Ambiguous or mixed human+bot threads fail safe to human (supervised). Verify author type via the API before treating any thread as bot:
+  - `gh api repos/OWNER/REPO/pulls/comments/COMMENT_ID --jq '{login:.user.login, type:.user.type}'`
 
 PR review side effects (draft / pending reviews):
 
@@ -213,6 +219,7 @@ PR creation:
 - PR title is a human-readable change summary (not necessarily the Conventional Commit header).
 - Multiline bodies/comments: use bash/zsh `$'...'` so `\n` becomes real newlines. Do NOT rely on `\\n` escapes inside normal quotes when using `gh api -f body=...`.
 - Test plan is inferred from the change surface; run the smallest sufficient set of checks and record the commands/results in the PR.
+- For repro-driven fixes, the PR test plan must include portable local repro steps in addition to commands/results; do not publish only session-specific evidence such as private local hostnames or browser automation state.
 - Always propose labels/assignees/milestone/projects first and get explicit confirmation before applying any of them.
 
 Composition (draft-only) guidance:

@@ -32,6 +32,12 @@ Rules:
 - keep it short and reviewable
 - prefer bullets over prose
 - test plan must be evidence: commands run + observed result
+- when the change removes/replaces long-lived or "legacy"/"obsolete" infrastructure, `## Root Cause` must carry the historical reason it existed and why it no longer applies (see the review skill's Historical-Rationale Gate); do not assert "this was always wrong" without the origin evidence
+- for behavior/UI bugs, include portable local reproduction steps that another reviewer can run from a normal checkout; do not replace the repro with only session-specific validation notes
+- sanitize public PR text before returning it:
+  - do not include machine-specific hosts, ports, paths, temp files, workspace names, browser-session URLs, or local usernames from the author's environment
+  - examples to avoid: private hostnames, non-standard local domains, `/tmp/...`, absolute `$HOME` paths, Playwriter/session IDs, one-off account names that are not part of the repro setup
+  - use portable wording instead, such as `local Kibana`, `http://localhost:5601`, `a user with only <privilege>`, or explicit setup steps to create the role/user
 - link issues explicitly:
   - `Closes #X` only when merging should close the issue
   - `Addresses #X` when it should not auto-close

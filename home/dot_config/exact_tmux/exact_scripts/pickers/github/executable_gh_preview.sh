@@ -34,6 +34,9 @@ fi
 kind="$(printf '%s' "$line" | awk -F $'\t' '{print $2}')"
 repo="$(printf '%s' "$line" | awk -F $'\t' '{print $3}')"
 num="$(printf '%s' "$line" | awk -F $'\t' '{print $4}')"
+meta="$(printf '%s' "$line" | awk -F $'\t' '{print $7}')"
+mergeable="$(printf '%s' "$line" | awk -F $'\t' '{print $8}')"
+section="$(printf '%s' "$line" | awk -F $'\t' '{print $9}')"
 
 case "$kind" in
   header)
@@ -73,9 +76,23 @@ global_fetch_lock_dir="${cache_dir}/fetch_global.lock"
 debounce_lock_dir="${cache_dir}/debounce.lock"
 active_key="${kind}:${safe_repo}:${num}"
 
+_dashboard_summary() {
+  printf '## Dashboard Summary\n\n'
+  [ -n "$section" ] && printf -- '- Section: %s\n' "$section"
+  printf -- '- Item: %s %s#%s\n' "$kind" "$repo" "$num"
+  if [ -n "$meta" ]; then
+    printf -- '- List signals: %s\n' "$meta"
+  fi
+  if [ -n "$mergeable" ]; then
+    printf -- '- Mergeable: %s\n' "$mergeable"
+  fi
+  printf -- '- Agent handoff: mark a coherent cluster, then press alt-A\n'
+  printf '\n---\n\n'
+}
+
 _render_pr() {
   gh pr view "$num" -R "$repo" \
-    --json number,title,body,author,labels,createdAt,updatedAt,reviewDecision,state,mergeable,additions,deletions,headRefName,baseRefName,isDraft,comments,reviews \
+    --json number,title,body,author,labels,createdAt,updatedAt,reviewDecision,state,mergeable,additions,deletions,headRefName,baseRefName,isDraft,closingIssuesReferences,comments,reviews \
     --jq '
       "# PR #\(.number): \(.title)" +
       (if .isDraft then " (DRAFT)" else "" end) + "\n\n" +
@@ -85,6 +102,11 @@ _render_pr() {
       "**Created:** \(.createdAt)  **Updated:** \(.updatedAt)\n" +
       "**Changes:** +\(.additions) / -\(.deletions)\n" +
       (if (.labels | length) > 0 then "**Labels:** " + ([.labels[].name] | join(", ")) + "\n" else "" end) +
+      (if (.closingIssuesReferences | length) > 0 then
+        "**Closes:** " + ([.closingIssuesReferences[] |
+          "[" + ((.repository.owner.login // "") + "/" + (.repository.name // "") + "#" + (.number | tostring)) + "](" + (.url // "") + ")"
+        ] | join(", ")) + "\n"
+      else "" end) +
       "\n---\n\n" +
       (.body // "(no description)") + "\n" +
       (if ((.comments | length) + (.reviews | length)) > 0 then
@@ -103,14 +125,21 @@ _render_pr() {
 
 _render_issue() {
   gh issue view "$num" -R "$repo" \
-    --json number,title,body,author,labels,createdAt,updatedAt,state,assignees,comments \
+    --json number,title,body,author,labels,createdAt,updatedAt,state,stateReason,milestone,assignees,closedByPullRequestsReferences,comments \
     --jq '
       "# Issue #\(.number): \(.title)\n\n" +
-      "**State:** \(.state)\n" +
+      "**State:** \(.state)" + (if (.stateReason != null and .stateReason != "") then "  **Reason:** \(.stateReason)" else "" end) + "\n" +
       "**Author:** \(.author.login)\n" +
       "**Created:** \(.createdAt)  **Updated:** \(.updatedAt)\n" +
+      (if .milestone then "**Milestone:** \(.milestone.title)\n" else "" end) +
       (if (.assignees | length) > 0 then "**Assignees:** " + ([.assignees[].login] | join(", ")) + "\n" else "" end) +
       (if (.labels | length) > 0 then "**Labels:** " + ([.labels[].name] | join(", ")) + "\n" else "" end) +
+      (if (.closedByPullRequestsReferences | length) > 0 then
+        "**Closed by:** " + ([.closedByPullRequestsReferences[] |
+          "[" + ((.repository.owner.login // "") + "/" + (.repository.name // "") + "#" + (.number | tostring)) + "](" + (.url // "") + ")" +
+          (if .title then " " + .title else "" end)
+        ] | join(", ")) + "\n"
+      else "" end) +
       "\n---\n\n" +
       (.body // "(no description)") + "\n" +
       (if (.comments | length) > 0 then
@@ -289,7 +318,10 @@ _spawn_fetch() {
       issue) content="$(_render_with_timeout 10 _render_issue)" ;;
     esac
     if [ -n "$content" ]; then
-      printf '%s\n' "$content" | _atomic_write "$cache_file" 2> /dev/null || true
+      {
+        _dashboard_summary
+        printf '%s\n' "$content"
+      } | _atomic_write "$cache_file" 2> /dev/null || true
       # If the user is still looking at this item, ask fzf to refresh the preview.
       cur="$(cat "$active_key_file" 2> /dev/null || true)"
       if [ "$cur" = "$active_key" ]; then

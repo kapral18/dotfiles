@@ -1,17 +1,22 @@
 prSections:
-  - title: "PRs waiting for My Review"
+  - title: "Action: PRs awaiting your review"
+    scopes: [focus]
     filters: >-
       is:open is:pr
       review-requested:@me
       -org:elastic
       -is:draft
       -author:@me
-  - title: "PRs Created by Me"
+
+  - title: "Mine: Your open PRs"
+    scopes: [focus]
     filters: >-
       is:open is:pr
       author:@me
       -org:elastic
-  - title: "PRs Involving Me"
+
+  - title: "Watching: PRs involving you"
+    scopes: [explore]
     filters: >-
       is:open is:pr
       involves:@me
@@ -20,32 +25,32 @@ prSections:
       -is:draft
       -review-requested:@me
       -reviewed-by:@me
+
 issuesSections:
-  - title: "Issues Created by Me"
-    filters: >-
-      is:open is:issue
-      author:@me
-      -org:elastic
-  - title: Issues Assigned to Me
+  - title: "Action: Issues assigned to you"
+    scopes: [focus]
     filters: >-
       is:open is:issue
       assignee:@me
       -org:elastic
-  - title: "Issues Mentioning Me"
+
+  - title: "Mine: Your open issues"
+    scopes: [focus]
     filters: >-
       is:open is:issue
-      mentions:@me
-      -assignee:@me
-      -author:@me
+      author:@me
       -org:elastic
-  - title: "Issues Involving Me"
+      -assignee:@me
+
+  - title: "Watching: Issue mentions and involves"
+    scopes: [explore]
     filters: >-
       is:open is:issue
       involves:@me
       -org:elastic
       -assignee:@me
-      -mentions:@me
       -author:@me
+
 repoPaths:
   elastic/kibana: ~/work/kibana
   elastic/*: ~/work/*

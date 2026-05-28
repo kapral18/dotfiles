@@ -9,6 +9,7 @@ cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 mkdir -p "$cache_dir" 2> /dev/null || true
 
 mode="${GH_PICKER_MODE:-work}"
+scope="${GH_PICKER_SCOPE:-all}"
 refresh=0
 cache_only=0
 
@@ -20,6 +21,14 @@ while [ $# -gt 0 ]; do
       ;;
     --mode=*)
       mode="${1#--mode=}"
+      shift
+      ;;
+    --scope)
+      scope="$2"
+      shift 2
+      ;;
+    --scope=*)
+      scope="${1#--scope=}"
       shift
       ;;
     --refresh)
@@ -50,10 +59,22 @@ fi
 cache_file="${cache_dir}/gh_picker_${mode}.tsv"
 cache_ttl=300
 
+emit_cache() {
+  [ -f "$cache_file" ] || return 1
+  # Always route through python so sort + collapse + offsets stay consistent
+  # across scopes. The previous `cat` shortcut for scope=all skipped sort and
+  # collapse application which now both run after filter; the Python pass is
+  # cheap (file read + filter + sort + collapse + emit + offsets sidecar).
+  python3 -u "$script_dir/lib/gh_items_main.py" \
+    --mode "$mode" \
+    --config "$config" \
+    --cache-file "$cache_file" \
+    --scope "$scope" \
+    --filter-cache
+}
+
 if [ "$cache_only" -eq 1 ]; then
-  if [ -f "$cache_file" ]; then
-    cat "$cache_file"
-  else
+  if ! emit_cache; then
     printf '\033[2;38;5;244m  Loading…\033[0m\theader\t\t\t\t\t\n'
   fi
   exit 0
@@ -84,7 +105,7 @@ while ! mkdir "$lock_dir" 2> /dev/null; do
       rm -rf "$lock_dir" 2> /dev/null || true
       continue
     fi
-    [ -f "$cache_file" ] && cat "$cache_file"
+    emit_cache || true
     exit 0
   fi
   rm -rf "$lock_dir" 2> /dev/null || true
@@ -121,7 +142,7 @@ if [ "$refresh" -eq 0 ] && [ -f "$cache_file" ]; then
   now="$(date +%s)"
   age="$((now - mt))"
   if [ "$age" -ge 0 ] && [ "$age" -lt "$cache_ttl" ]; then
-    cat "$cache_file"
+    emit_cache || true
     exit 0
   fi
 fi
@@ -138,9 +159,9 @@ done
 # child, bash defers signal handlers until the child exits — the orphan window
 # this opens is exactly the bug we are closing here.
 if [ "$refresh" -eq 1 ]; then
-  python3 -u "$script_dir/lib/gh_items_main.py" --mode "$mode" --config "$config" --cache-file "$cache_file" --refresh &
+  python3 -u "$script_dir/lib/gh_items_main.py" --mode "$mode" --config "$config" --cache-file "$cache_file" --scope "$scope" --refresh &
 else
-  python3 -u "$script_dir/lib/gh_items_main.py" --mode "$mode" --config "$config" --cache-file "$cache_file" &
+  python3 -u "$script_dir/lib/gh_items_main.py" --mode "$mode" --config "$config" --cache-file "$cache_file" --scope "$scope" &
 fi
 PYTHON_PID=$!
 set +e

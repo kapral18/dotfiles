@@ -30,21 +30,23 @@ run_popup() {
     set-option -g default-shell "$orig_shell" 2> /dev/null || true
 }
 
-run_popup "$gh_h" "$gh_w" "$github_dir/gh_picker.sh"
+while true; do
+  run_popup "$gh_h" "$gh_w" "$github_dir/gh_picker.sh"
 
-if [ -f "$ralph_pin_file" ]; then
-  "$ralph_apply_cmd" "$ralph_pin_file" || true
-fi
+  if [ -f "$ralph_pin_file" ]; then
+    "$ralph_apply_cmd" "$ralph_pin_file" || true
+    break
+  fi
 
-while [ -f "${cache_dir}/gh_picker_switch_sessions" ]; do
-  rm -f "${cache_dir}/gh_picker_switch_sessions" 2> /dev/null || true
-  run_popup "$ps_h" "$ps_w" "$session_dir/pick_session.sh"
+  if [ -f "${cache_dir}/gh_picker_switch_sessions" ]; then
+    rm -f "${cache_dir}/gh_picker_switch_sessions" 2> /dev/null || true
+    run_popup "$ps_h" "$ps_w" "$session_dir/pick_session.sh"
 
-  if [ -f "${cache_dir}/pick_session_switch_gh" ]; then
-    rm -f "${cache_dir}/pick_session_switch_gh" 2> /dev/null || true
-    run_popup "$gh_h" "$gh_w" "$github_dir/gh_picker.sh"
-    if [ -f "$ralph_pin_file" ]; then
-      "$ralph_apply_cmd" "$ralph_pin_file" || true
+    if [ -f "${cache_dir}/pick_session_switch_gh" ]; then
+      rm -f "${cache_dir}/pick_session_switch_gh" 2> /dev/null || true
+      continue
     fi
   fi
+
+  break
 done

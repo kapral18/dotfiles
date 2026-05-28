@@ -33,6 +33,7 @@ Iteration contract:
 
 - Pick exactly one reviewer thread/comment.
 - Do not move to the next thread/comment until you and the user agree on what to do.
+- Exception: when the user explicitly asks to batch ("repeat the process", "same procedure", "you know the drill", "address all", "no time constraints", "drain"), switch to Drain Mode below instead of stopping after one thread.
 
 ### Per-Thread Workflow
 
@@ -102,6 +103,27 @@ Iteration contract:
 - If a thread is obsolete because later commits superseded the hunk, prefer a single-line reply:
   - `Superseded by <commit link>` (optionally add one link to the new canonical thread).
 
+## Drain Mode (Batch, Explicitly Invoked)
+
+Use only when the user explicitly asks to batch/repeat (see iteration-contract exception). Drain Mode runs the per-thread workflow back-to-back until no unresolved actionable thread remains — without re-asking "what next?" for each one. It does NOT relax the Human-Visible Publication Gate (SOP, `~/AGENTS.md`).
+
+Author-type classification (do first, per thread, verified — not guessed):
+
+- `gh api repos/OWNER/REPO/pulls/comments/COMMENT_ID --jq '{login:.user.login, type:.user.type, assoc:.author_association}'`
+- Bot = `user.type == "Bot"` OR login ends with `[bot]` OR login in the known-bot allowlist (`elasticmachine`, `kibanamachine`, `github-actions[bot]`).
+- Ambiguous/unknown author, or a thread with both human and bot participants -> treat as human.
+
+Per-thread branch:
+
+- **Bot-authored thread:** run the full Per-Thread Workflow (hypothesis -> base context -> self-critique -> fix/verify -> quality gates -> state-machine when applicable). Reply and resolve are gate-exempt for bots, so auto-reply with the `Fixed in <commit URL>` (or evidence) message and auto-resolve, then continue to the next thread without stopping.
+- **Human-authored thread:** run the same workflow and make any code fix in the working tree, but STOP before publishing. Queue the drafted reply + resolve recommendation and surface it for supervision. Do not post or resolve. Continue investigating/queuing remaining threads; never publish a human-visible reply/resolve without explicit approval.
+
+Loop control:
+
+- Commit/push still require explicit approval (git skill) regardless of mode; Drain Mode never auto-commits or auto-pushes.
+- After each thread, append the decision to the review persistence spec (see shared_rules.md) so the loop is resumable after pruning.
+- End condition: no unresolved actionable threads remain, or only human-thread drafts await approval. Report the batch outcome: bot threads auto-resolved, human drafts pending approval, validation run, and remaining open items.
+
 ## Output (One Thread Per Turn)
 
 - `Base context:` line (see shared_rules.md)
@@ -120,4 +142,4 @@ Iteration contract:
 ## Boundaries
 
 - Do not commit/push unless explicitly asked.
-- Do not post to GitHub or resolve threads unless explicitly asked.
+- Do not post to GitHub or resolve threads unless explicitly asked — except verified bot-authored threads inside an explicitly-invoked Drain Mode flow (SOP, `~/AGENTS.md`). Human-visible replies/resolves are always supervised; ambiguous/mixed threads fail safe to human.

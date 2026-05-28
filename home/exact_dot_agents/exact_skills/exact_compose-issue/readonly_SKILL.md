@@ -23,14 +23,18 @@ First actions:
 
 1. Identify the problem statement, expected behavior, actual behavior, and reproduction from verified evidence.
 2. Keep repro steps concrete and ordered.
-3. If logs/screenshots are referenced, include only what materially helps and redact secrets.
-4. If the repo is Elastic/Kibana, use the Elastic variant section below.
+3. Convert local-only observations into portable repro steps; do not paste session-specific URLs, machine hostnames, temp paths, workspace paths, browser automation session names, or local usernames into public issue text.
+4. If logs/screenshots are referenced, include only what materially helps and redact secrets.
+5. If the repo is Elastic/Kibana, use the Elastic variant section below.
 
 Rules:
 
 - be concrete and reproducible
 - prefer numbered repro steps
 - include logs/screenshots only if they add diagnostic value; redact secrets
+- public issue text must be portable for other maintainers:
+  - avoid private hostnames, non-standard local domains, `/tmp/...`, absolute `$HOME` paths, Playwriter/session IDs, and one-off local account names unless the issue explicitly instructs how to create them
+  - use generic terms like `local Kibana`, `http://localhost:5601`, `a user with only <privilege>`, or explicit setup steps
 
 Output:
 

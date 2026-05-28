@@ -132,7 +132,7 @@ Other navigation / actions:
 
 ## GH picker handoff
 
-Inside `prefix+G` GitHub picker, `alt-A` on a PR/issue row stages a Ralph handoff: closes the picker, resolves the matching worktree (or `$PWD` fallback), and prompts for a `,ralph go` goal seeded with `<kind> <repo>#<num>: <title>`.
+Inside `prefix+G` GitHub picker, `alt-A` on a PR/issue row or marked selection stages a Ralph handoff: closes the picker, writes a Markdown context file for the selected GitHub items, resolves the matching worktree (or `$PWD` fallback), and prompts for a `,ralph go` goal seeded with the selected references plus the context path.
 
 ## Session picker badge
 

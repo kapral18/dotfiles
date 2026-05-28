@@ -349,6 +349,41 @@ check_tools() {
   done
 }
 
+check_bin_wrappers() {
+  section "~/bin Wrappers & Agent Runtime"
+
+  # Forwarding wrappers in ~/bin that exec a brew-installed binary.
+  # If the brew formula is gone, the wrapper breaks silently.
+  local -a wrappers=(
+    "sem:sem"
+    "parallel:parallel"
+  )
+  local entry name formula
+  for entry in "${wrappers[@]}"; do
+    name="${entry%%:*}"
+    formula="${entry#*:}"
+    if [ -x "$HOME/bin/$name" ]; then
+      if brew --prefix "$formula" >/dev/null 2>&1; then
+        pass "~/bin/$name wrapper resolves ($formula)"
+      else
+        fail "~/bin/$name wrapper broken: brew formula '$formula' missing" "brew install $formula"
+      fi
+    fi
+  done
+
+  # Cursor CLI bundles its own ripgrep; a missing binary makes agent file
+  # search (Glob/Grep) fail with spawn ENOENT.
+  if [ -d "/opt/homebrew/Caskroom/cursor-cli" ]; then
+    local cursor_rg
+    cursor_rg="$(ls -1 /opt/homebrew/Caskroom/cursor-cli/*/dist-package/rg 2>/dev/null | tail -1 || true)"
+    if [ -n "$cursor_rg" ] && [ -x "$cursor_rg" ]; then
+      pass "cursor-cli bundled rg present"
+    else
+      warn "cursor-cli bundled rg missing (agent Glob/Grep may ENOENT)" "reinstall cursor-cli"
+    fi
+  fi
+}
+
 check_worktrees() {
   section "Worktrees"
 
@@ -480,6 +515,7 @@ check_git
 check_security
 check_editors_ai
 check_tools
+check_bin_wrappers
 check_worktrees
 check_ai_configs
 check_config_drift

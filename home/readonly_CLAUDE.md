@@ -295,6 +295,16 @@ The harness must:
 
 Keep the state-machine harness in `/tmp/state-machine-verification/<pwd>/<topic>/<slug>/` unless the user explicitly asks to add it to the repo. Promote only compact, high-value cases into permanent tests. This rule verifies complexity; it does not justify adding a production state machine when simple code is sufficient.
 
+### 3.5 Human-Visible Publication Gate (Bot vs Human)
+
+Publishing content a human will see can have outsized consequences for the setup owner; bot-only exchanges have none. This gate governs every flow that emits human-visible content or mutates human-visible state on an external platform (GitHub PR/issue comments, review replies, review submissions, resolving a thread, gist/release text, Slack/email/chat, etc.).
+
+- **Human target -> supervision required.** If a human will see the result, draft it, show the exact payload and target, and wait for explicit approval before sending. This includes replying to or resolving a human-authored thread. No auto-send — not even inside an explicitly-invoked flow.
+- **Bot carve-out.** If the target thread/comment is bot-authored, you MAY auto-reply and auto-resolve it without per-action approval, but only inside a flow the user explicitly invoked. Never publish spontaneously, even to bots.
+- **Verify author type; do not guess.** Classify from the platform API, not from display-name heuristics: GitHub `user.type == "Bot"`, a login ending in `[bot]`, or a known-bot allowlist (e.g. `elasticmachine`, `kibanamachine`, `github-actions[bot]`).
+- **Fail safe to human.** If the author type is ambiguous/unknown, or a thread mixes human and bot participants, treat it as human and require supervision.
+- **Scope.** This relaxes the prior blanket "never post/resolve unless explicitly asked" only for verified bot threads; for any human-visible target the approval checkpoint is absolute. It does not restrict read-only inspection, local working-tree edits, or `/tmp` work.
+
 ## 4. Tooling
 
 - **File operations:** Use the environment's native file read/edit/list tools.
