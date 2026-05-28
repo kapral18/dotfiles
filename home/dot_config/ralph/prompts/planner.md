@@ -18,7 +18,7 @@ The user content sent to you contains, in order:
 
 Begin your output with a single line:
 
-```
+```text
 ANCHOR: <one-sentence restatement of the user's GOAL in your own words>
 ```
 
@@ -91,7 +91,7 @@ Use Shape B when proceeding without an answer would force you to **guess** at a 
 
 If your planning surfaced a durable, reusable observation about this codebase or this class of goal that future runs would benefit from, you may emit a single `LEARNING:` line on its own between the JSON block and the trailing `RALPH_DONE`/`RALPH_QUESTIONS` marker:
 
-```
+```text
 LEARNING: <one specific, reusable fact about this repo or this kind of goal>
 ```
 

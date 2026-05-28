@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD041 -->
+
 ![image](./banner.png)
 
 # 🚀 kapral18/dotfiles

@@ -17,7 +17,7 @@ chezmoi apply --dry-run --verbose
 
 No. The installation is all-or-nothing, but your usage doesn't have to be. You can install the full setup and continue using your preferred IDE (like VSCode or JetBrains) while you slowly learn the terminal tools.
 
-See [`docs/learning-paths.md`](../intro/learning-paths.md).
+See [Learning Paths](../intro/learning-paths.md).
 
 ## Does this work without 1Password?
 
@@ -28,7 +28,7 @@ This setup assumes 1Password provides:
 - SSH agent keys (no private keys on disk)
 - 1Password CLI access for some bootstrap steps
 
-See [`docs/categories/security-and-secrets.md`](../topics/security-ai/security-and-secrets.md).
+See [Security And Secrets](../topics/security/security-and-secrets.md).
 
 ## Why does applying packages remove things?
 
@@ -38,7 +38,7 @@ For example, the Brewfile hook runs `brew bundle cleanup --global --force`, so p
 
 See:
 
-- [`docs/categories/packages.md`](../topics/core/packages/index.md)
+- [Packages](../topics/core/packages/index.md)
 
 ## How do I update?
 
@@ -48,4 +48,4 @@ Use:
 chezmoi update
 ```
 
-See [`docs/recipes/updating.md`](../topics/core/chezmoi/update.md).
+See [Updating](../topics/core/chezmoi/update.md).

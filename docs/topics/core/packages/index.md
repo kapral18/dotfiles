@@ -14,7 +14,7 @@ The core workflow is:
 2. Run `chezmoi apply`
 3. Verify the tool is installed / available
 
-### Package sources at a glance
+## Package sources at a glance
 
 | Source                 | List file                                                                                                      | Hook                                                    | Scoped |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ------ |
@@ -179,13 +179,13 @@ If a package disappeared unexpectedly after apply:
 
 ## Related
 
-- Add a Homebrew package: [`docs/recipes/add-a-homebrew-package.md`](homebrew.md)
-- Add a custom package: [`docs/recipes/add-a-custom-package.md`](custom.md)
+- [Add a Homebrew package](homebrew.md)
+- [Add a custom package](custom.md)
 - Pin a tool version (mise): edit [`home/dot_config/mise/config.toml.tmpl`](../../../../home/dot_config/mise/config.toml.tmpl) and run `chezmoi apply`.
-- Add a Cargo crate: [`docs/recipes/add-a-cargo-crate.md`](cargo.md)
-- Add a Go tool: [`docs/recipes/add-a-go-tool.md`](go.md)
-- Add a Ruby gem: [`docs/recipes/add-a-ruby-gem.md`](ruby.md)
-- Add a global yarn package: [`docs/recipes/add-a-global-yarn-package.md`](yarn.md)
-- Add a uv tool: [`docs/recipes/add-a-uv-tool.md`](uv.md)
-- Add a GitHub CLI extension: [`docs/recipes/add-a-gh-extension.md`](../../workflow/git-identity/gh-extension.md)
-- Updating: [`docs/recipes/updating.md`](../chezmoi/update.md)
+- [Add a Cargo crate](cargo.md)
+- [Add a Go tool](go.md)
+- [Add a Ruby gem](ruby.md)
+- [Add a global yarn package](yarn.md)
+- [Add a uv tool](uv.md)
+- [Add a GitHub CLI extension](../../workflow/git-identity/gh-extension.md)
+- [Updating](../chezmoi/update.md)

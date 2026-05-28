@@ -10,7 +10,7 @@ Use when:
 - the user asks to review local work ("review local changes", "review this diff", "check what changed")
 - or the repo has staged/unstaged changes
 - or there is no PR for the current branch and the user still wants a review
-- or the user asks to review a specific commit range ("review the last 3 commits", "review commits since <ref>")
+- or the user asks to review a specific commit range ("review the last 3 commits", "review commits since `<ref>`")
 
 ## Core Principle: Verify and Fix
 
@@ -36,7 +36,7 @@ If staged/unstaged changes exist:
 
 - Review those first (they are the ground truth).
 
-If the user specified a commit range (e.g. "last 3 commits", "since <ref>"):
+If the user specified a commit range (e.g. "last 3 commits", "since `<ref>`"):
 
 - Use `git diff <ref>...HEAD` and `git log --oneline <ref>..HEAD` to scope the review.
 - If the range reference is ambiguous, ask one direct question.

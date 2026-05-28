@@ -86,6 +86,21 @@ Note: this directory is currently ignored by `chezmoi` via [`home/.chezmoiignore
 
 Note: [`home/app_icons/`](../../../home/app_icons/) is ignored by `chezmoi` via [`home/.chezmoiignore`](../../../home/.chezmoiignore). The script reads icon assets from the repo source directory.
 
+## Scheduled jobs (crontab)
+
+A user crontab is installed (replacing the existing one) from a repo-managed file:
+
+- Crontab contents: [`home/crontab`](../../../home/crontab)
+- Hook: [`home/.chezmoiscripts/run_onchange_after_05-install-crontab.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_05-install-crontab.sh.tmpl)
+
+The hook is a thin wrapper that runs `crontab "$CHEZMOI_SOURCE_DIR/crontab"`; the hash trigger means it only re-installs when the file changes. The shipped entry kills the macOS git `fsmonitor--daemon` every 5 minutes, working around the daemon's tendency to wedge or pin CPU on large repos.
+
+```cron
+*/5 * * * * /usr/bin/pkill -f ".../git-core/git fsmonitor--daemon" >/dev/null 2>&1
+```
+
+Edit [`home/crontab`](../../../home/crontab) and `chezmoi apply` to change the schedule, or run `crontab -l` to inspect the installed table. To opt out, remove the hook script and clear the entry with `crontab -e`.
+
 ## Verification
 
 Check a few high-signal defaults:
@@ -114,6 +129,6 @@ command -v ,apply-app-icons
 
 ## Related
 
-- Apply custom app icons: [`docs/recipes/apply-custom-app-icons.md`](custom-app-icons.md)
-- New machine bootstrap: [`docs/recipes/new-machine-bootstrap.md`](../../intro/new-machine-bootstrap.md)
-- Debugging hooks: [`docs/recipes/debugging-chezmoi-hooks.md`](../core/chezmoi/debug-hooks.md)
+- [Apply custom app icons](custom-app-icons.md)
+- [New machine bootstrap](../../intro/new-machine-bootstrap.md)
+- [Debugging hooks](../core/chezmoi/debug-hooks.md)

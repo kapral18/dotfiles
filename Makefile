@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help fmt lint test check docs docs-build docs-serve docs-clean
+.PHONY: help fmt lint test check verify-templates docs docs-build docs-serve docs-clean
 
 help: ## Show available targets
 	@grep -E '^[a-z][a-z_-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -13,10 +13,13 @@ lint: ## Check formatting and lint (no writes)
 	ruff check --select I scripts/
 	(cd tools/ralph-tui && go vet ./... && go test ./...)
 
+verify-templates: ## Render every chezmoi template to catch breakage before apply
+	python3 scripts/verify_templates.py
+
 test: ## Run Python unit tests
 	python3 scripts/tests/test_scripts.py -v
 
-check: lint test ## Run all checks (lint + test)
+check: lint verify-templates test ## Run all checks (lint + templates + test)
 
 website/node_modules: website/package.json website/pnpm-lock.yaml
 	cd website && pnpm install --frozen-lockfile

@@ -15,7 +15,7 @@ SSH is wired to use the 1Password agent socket:
 
 The 1Password agent key set is configured via:
 
-- [`home/dot_config/exact_private_1Password/exact_ssh/agent.toml.tmpl`](../../../../home/dot_config/exact_private_1Password/exact_ssh/agent.toml.tmpl)
+- [`home/dot_config/exact_private_1Password/exact_ssh/readonly_agent.toml.tmpl`](../../../../home/dot_config/exact_private_1Password/exact_ssh/readonly_agent.toml.tmpl)
 
 Installed as:
 
@@ -27,8 +27,8 @@ Git is configured to use SSH "public key" paths as identity selectors. The match
 
 Relevant templates:
 
-- [`home/private_dot_ssh/primary_public_key.pub.tmpl`](../../../../home/private_dot_ssh/primary_public_key.pub.tmpl)
-- [`home/private_dot_ssh/secondary_public_key.pub.tmpl`](../../../../home/private_dot_ssh/secondary_public_key.pub.tmpl)
+- [`home/private_dot_ssh/readonly_primary_public_key.pub.tmpl`](../../../../home/private_dot_ssh/readonly_primary_public_key.pub.tmpl)
+- [`home/private_dot_ssh/readonly_secondary_public_key.pub.tmpl`](../../../../home/private_dot_ssh/readonly_secondary_public_key.pub.tmpl)
 
 ## Git Config
 
@@ -48,12 +48,12 @@ The primary config uses `includeIf "gitdir:~/work/"` on non-work machines so rep
 
 ## GitHub CLI + GitHub Picker
 
-| Component                   | Source                                                                                                                                                                       |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GitHub CLI config directory | [`home/dot_config/exact_private_gh/`](../../../../home/dot_config/exact_private_gh/) (private)                                                                               |
-| gh picker work config       | [`home/dot_config/exact_tmux/scripts/pickers/github/readonly_gh-picker-work.yml`](../../../../home/dot_config/exact_tmux/scripts/pickers/github/readonly_gh-picker-work.yml) |
-| gh picker home config       | [`home/dot_config/exact_tmux/scripts/pickers/github/readonly_gh-picker-home.yml`](../../../../home/dot_config/exact_tmux/scripts/pickers/github/readonly_gh-picker-home.yml) |
-| Managed extensions hook     | [`home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl`](../../../../home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl)       |
+| Component                   | Source                                                                                                                                                                                   |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GitHub CLI config directory | [`home/dot_config/exact_private_gh/`](../../../../home/dot_config/exact_private_gh/) (private)                                                                                           |
+| gh picker work config       | [`home/dot_config/exact_tmux/exact_scripts/pickers/github/readonly_gh-picker-work.yml`](../../../../home/dot_config/exact_tmux/exact_scripts/pickers/github/readonly_gh-picker-work.yml) |
+| gh picker home config       | [`home/dot_config/exact_tmux/exact_scripts/pickers/github/readonly_gh-picker-home.yml`](../../../../home/dot_config/exact_tmux/exact_scripts/pickers/github/readonly_gh-picker-home.yml) |
+| Managed extensions hook     | [`home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl`](../../../../home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl)                   |
 
 Git TUIs:
 
@@ -99,6 +99,6 @@ git config --show-origin --get core.sshCommand
 
 ## Related
 
-- Identity switching: [`docs/recipes/switching-work-personal-identity.md`](switch-identity.md)
-- Worktrees: [`docs/recipes/worktree-workflow.md`](worktrees.md)
-- Security model: [`docs/categories/security-and-secrets.md`](../../security-ai/security-and-secrets.md)
+- [Identity switching](switch-identity.md)
+- [Worktrees](worktrees.md)
+- [Security model](../../security/security-and-secrets.md)

@@ -70,6 +70,8 @@ Because AI tools (like OpenCode, Cursor, Gemini, and Pi) often rewrite their con
 - Gemini keeps its own settings file, but the `mcpServers` section is injected from the same registry at apply time.
 - This creates a hard boundary between work contexts (which load work-specific MCP servers) and personal contexts.
 
+The same pattern applies to model definitions. For the full picture see [MCP servers](../topics/ai-assistants/mcp.md), [Model registry & routing](../topics/ai-assistants/model-registry.md), and [Tool configs](../topics/ai-assistants/tool-configs.md).
+
 ### Shared Library (`scripts/chezmoi_lib.sh`)
 
 All `run_onchange_after_07-merge-*` scripts source a shared shell library at [`scripts/chezmoi_lib.sh`](../../scripts/chezmoi_lib.sh) for common operations:
@@ -106,6 +108,8 @@ Examples in this repo:
 | [`home/.chezmoiscripts/run_onchange_after_05-install-uv-versions.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-install-uv-versions.sh.tmpl)         | UV Python versions    |
 
 Many hooks embed `sha256sum` comments that reference template content. That is how the "run on change" behavior is tied to specific files.
+
+The [Reference map](../reference/reference-map.md) lists every hook and helper script and the file each one drives.
 
 ## Work vs Personal Split
 

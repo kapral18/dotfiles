@@ -8,7 +8,7 @@ Global yarn packages are managed via a plain list. The sync command installs mis
 
 ## Preconditions
 
-- Node.js/yarn are installed (through ASDF in this setup).
+- Node.js/yarn are installed (through mise in this setup).
 - You verified the package name.
 
 ## Steps

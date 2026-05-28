@@ -41,7 +41,7 @@ chezmoi apply
 
 There are additional "converge" scripts for:
 
-- ASDF plugins and pinned versions
+- mise runtimes and pinned tool versions
 - language tooling (cargo/go/gems/yarn/uv)
 - GitHub CLI extensions
 - macOS defaults (`.osx.core` / `.osx.extra`)
@@ -76,5 +76,5 @@ chezmoi apply
 
 Start here:
 
-- [`docs/troubleshooting.md`](../reference/troubleshooting.md)
-- [`docs/recipes/debugging-chezmoi-hooks.md`](../topics/core/chezmoi/debug-hooks.md)
+- [Troubleshooting](../reference/troubleshooting.md)
+- [Debugging Chezmoi Hooks](../topics/core/chezmoi/debug-hooks.md)

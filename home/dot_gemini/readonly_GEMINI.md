@@ -260,7 +260,7 @@ For non-code work, use the equivalent observable check: command output, file sta
 
 **Multi-step plans require per-step verification:**
 
-```
+```text
 1. [Step] -> verify: [observable check]
 2. [Step] -> verify: [observable check]
 3. [Step] -> verify: [observable check]

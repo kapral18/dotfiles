@@ -2,7 +2,7 @@
 
 This setup uses `chezmoi` to keep a macOS development environment reproducible.
 
-If you have not used `chezmoi` before, start at [`docs/getting-started.md`](../../../intro/getting-started.md).
+If you have not used `chezmoi` before, start at [Getting Started](../../../intro/getting-started.md).
 
 ## Source Layout
 
@@ -90,11 +90,11 @@ Externals can be refreshed with:
 chezmoi apply -R always
 ```
 
-If a script fails with `command not found`, check whether its prerequisite hook (usually Homebrew/ASDF) ran successfully.
+If a script fails with `command not found`, check whether its prerequisite hook (usually Homebrew/mise) ran successfully.
 
 ## Related
 
-- New machine bootstrap: [`docs/recipes/new-machine-bootstrap.md`](../../../intro/new-machine-bootstrap.md)
-- Debugging hooks: [`docs/recipes/debugging-chezmoi-hooks.md`](debug-hooks.md)
-- Refreshing externals: [`docs/recipes/refreshing-externals.md`](refresh-externals.md)
-- Updating: [`docs/recipes/updating.md`](update.md)
+- [New machine bootstrap](../../../intro/new-machine-bootstrap.md)
+- [Debugging hooks](debug-hooks.md)
+- [Refreshing externals](refresh-externals.md)
+- [Updating](update.md)

@@ -11,7 +11,7 @@ Skills that document a CLI tool must include `tool_version` in frontmatter:
 tool_version: "<binary> <version>" # e.g. "bk 3.32.2", "knip 5.88.0"
 ```
 
-### Authoring a new skill
+## Authoring a new skill
 
 1. Run `<tool> --version` to get the installed version.
 2. Find the tool's canonical GitHub repo (use `gh` or web search).
@@ -45,7 +45,7 @@ Source is for understanding; `--help` is the truth. Do not include anything that
 3. Use the real binary name on PATH — not wrapper aliases.
 4. `chezmoi diff` to verify, then `chezmoi apply`.
 
-### Upgrading an existing skill
+## Upgrading an existing skill
 
 1. Read `tool_version` from frontmatter (the **anchor version**).
 2. Run `<tool> --version` to get the **installed version**.
@@ -75,7 +75,7 @@ Focus on: command definitions, flag declarations, subcommand registration, help 
 2. Update `tool_version` in frontmatter to the installed version.
 3. `chezmoi diff` — confirm only expected sections changed.
 
-### When version tags are unclear
+## When version tags are unclear
 
 - `git tag -l` in the cloned repo to find the naming convention.
 - Common patterns: `v3.32.2`, `3.32.2`, `cli/v3.32.2`, `bk/v3.32.2`.

@@ -22,7 +22,7 @@ Common failures with the `bk` CLI, with symptom, cause, and fix.
 2. Ensure the token has `read_builds`, `write_builds`, `read_pipelines` scopes at minimum
 3. Re-run login:
 
-   ```
+   ```bash
    bk auth login
    ```
 

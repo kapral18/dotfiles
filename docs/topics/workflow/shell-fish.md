@@ -11,7 +11,7 @@ Zsh and Bash are also configured so the environment is usable even if you don't 
 Relevant files:
 
 - Bash: [`home/readonly_dot_bashrc.tmpl`](../../../home/readonly_dot_bashrc.tmpl), [`home/readonly_dot_bash_profile`](../../../home/readonly_dot_bash_profile)
-- Zsh: [`home/readonly_dot_zshrc.tmpl`](../../../home/readonly_dot_zshrc.tmpl), [`home/readonly_dot_zprofile`](../../../home/readonly_dot_zprofile)
+- Zsh: [`home/readonly_dot_zshrc.tmpl`](../../../home/readonly_dot_zshrc.tmpl), [`home/readonly_dot_zprofile`](../../../home/readonly_dot_zprofile), completions in [`home/dot_zsh/completions/`](../../../home/dot_zsh/completions/)
 - POSIX profile: [`home/readonly_dot_profile.tmpl`](../../../home/readonly_dot_profile.tmpl)
 
 ## Core Config
@@ -38,7 +38,7 @@ It also initializes a few tools if present:
 Fish setup in this repo is split by shell mode:
 
 - Login shell:
-  - Adds Homebrew, `~/.local/bin`, `~/bin`, and ASDF shims to `PATH`.
+  - Adds Homebrew, `~/.local/bin`, `~/bin`, and mise shims to `PATH`.
 - Interactive shell:
   - Adds aliases (`g`, `v`, `c`, `t`, and others).
   - Initializes prompt/tools (`starship`, `zoxide`, `navi` when installed).
@@ -127,7 +127,7 @@ The setup script installs fish and will attempt to set it as your main shell:
 
 ## Related
 
-- Switching identity: [`docs/recipes/switching-work-personal-identity.md`](git-identity/switch-identity.md)
-- Beads task tracking: [`docs/recipes/beads-task-tracking.md`](../security-ai/ai-assistants/beads.md)
-- Packages: [`docs/categories/packages.md`](../core/packages/index.md)
-- Security and secrets: [`docs/categories/security-and-secrets.md`](../security-ai/security-and-secrets.md)
+- [Switching identity](git-identity/switch-identity.md)
+- [Beads task tracking](../ai-assistants/beads.md)
+- [Packages](../core/packages/index.md)
+- [Security and secrets](../security/security-and-secrets.md)

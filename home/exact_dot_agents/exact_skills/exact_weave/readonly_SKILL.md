@@ -50,7 +50,7 @@ After `weave-setup-local`, use `git merge` as normal — weave acts as the merge
 
 When a real conflict occurs, weave provides entity context that git doesn't:
 
-```
+```text
 <<<<<<< ours — function `process` (both modified)
 export function process(data: any) {
     return JSON.stringify(data);

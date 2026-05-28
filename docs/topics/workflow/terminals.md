@@ -34,6 +34,20 @@ The theme uses Yazi's flavor system instead of copying a full theme file. Chezmo
 
 Tombi reads the inline `$schema` entries in the rendered Yazi TOML files, so TOML LSP hover, completion, and validation work without adding editor-only files to `~/.config/yazi`.
 
+## Git TUIs
+
+Three terminal git clients are configured; pick whichever fits the task (the [git identity](git-identity/index.md) and [git skill](../ai-assistants/index.md) cover the underlying workflow):
+
+- lazygit — [`home/dot_config/exact_lazygit/config.yml`](../../../home/dot_config/exact_lazygit/config.yml)
+- gitui — [`home/dot_config/exact_gitui/readonly_key_bindings.ron`](../../../home/dot_config/exact_gitui/readonly_key_bindings.ron), [`home/dot_config/exact_gitui/readonly_theme.ron`](../../../home/dot_config/exact_gitui/readonly_theme.ron)
+- tig — [`home/dot_config/exact_tig/readonly_config`](../../../home/dot_config/exact_tig/readonly_config)
+
+A PR-focused dashboard, gh-dash, is configured separately under [`home/dot_config/exact_gh-dash/`](../../../home/dot_config/exact_gh-dash/) (work/home/shared profiles).
+
+## System monitor (btop)
+
+- Config: [`home/dot_config/exact_btop/btop.conf`](../../../home/dot_config/exact_btop/btop.conf)
+
 ## Next
 
-- Tmux overview + key bindings: [`docs/categories/tmux/index.md`](tmux/index.md)
+- [Tmux overview + key bindings](tmux/index.md)

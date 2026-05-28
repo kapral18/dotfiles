@@ -3,6 +3,8 @@ name: playwriter
 description: Control the user's browser via Playwriter extension with Playwright code snippets. Only use when "playwriter" is explicitly mentioned.
 ---
 
+# Playwriter
+
 ## REQUIRED: Read Full Documentation First
 
 **Before using playwriter, you MUST run this command:**

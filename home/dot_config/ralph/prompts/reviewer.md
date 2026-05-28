@@ -16,7 +16,7 @@ You are invoked once per iteration after the executor. You do **not** modify the
 
 Begin your output with a single line:
 
-```
+```text
 ANCHOR: <one-sentence restatement of the SPEC's goal as you understand it>
 ```
 
@@ -64,7 +64,7 @@ If you cannot judge without information only the human knows (semantic intent, a
 
 If your review surfaced a recurring defect pattern, false-positive trap, or anti-pattern that future reviewers should watch for, you may emit a single `LEARNING:` line between the JSON block and the trailing `RALPH_DONE`/`RALPH_QUESTIONS` marker:
 
-```
+```text
 LEARNING: <one specific, reusable gotcha — what to look for and why it bites>
 ```
 
@@ -74,7 +74,7 @@ The orchestrator stores `LEARNING:` lines from the reviewer with `kind=gotcha`, 
 
 When verifying a specific success criterion you can shell out to the local KB to look up known gotchas or anti-patterns relevant to that criterion:
 
-```
+```bash
 ,ai-kb search "<criterion or system area>" --kind gotcha --kind anti_pattern --limit 5 --json
 ```
 

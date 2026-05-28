@@ -18,7 +18,7 @@ The 1Password SSH agent is the expected SSH identity provider.
 
 The 1Password SSH agent itself is configured via:
 
-- [`home/dot_config/exact_private_1Password/exact_ssh/agent.toml.tmpl`](../../../home/dot_config/exact_private_1Password/exact_ssh/agent.toml.tmpl)
+- [`home/dot_config/exact_private_1Password/exact_ssh/readonly_agent.toml.tmpl`](../../../home/dot_config/exact_private_1Password/exact_ssh/readonly_agent.toml.tmpl)
 
 This controls which 1Password items (ssh keys) are available to the agent based on `isWork`.
 
@@ -32,7 +32,7 @@ This setup configures `gpg-agent` to:
 Relevant files:
 
 - Prompts: [`home/.chezmoi.toml.tmpl`](../../../home/.chezmoi.toml.tmpl)
-- Template: [`home/private_dot_gnupg/gpg-agent.conf.tmpl`](../../../home/private_dot_gnupg/gpg-agent.conf.tmpl)
+- Template: [`home/private_dot_gnupg/readonly_gpg-agent.conf.tmpl`](../../../home/private_dot_gnupg/readonly_gpg-agent.conf.tmpl)
 
 ## Password Store (`pass`)
 
@@ -94,6 +94,6 @@ If secrets are missing at runtime:
 
 ## Related
 
-- Git + identity: [`docs/categories/git-and-identity.md`](../workflow/git-identity/index.md)
-- Switching identity: [`docs/recipes/switching-work-personal-identity.md`](../workflow/git-identity/switch-identity.md)
-- AI and assistants: [`docs/categories/ai-and-assistants.md`](ai-assistants/index.md)
+- [Git + identity](../workflow/git-identity/index.md)
+- [Switching identity](../workflow/git-identity/switch-identity.md)
+- [AI and assistants](../ai-assistants/index.md)

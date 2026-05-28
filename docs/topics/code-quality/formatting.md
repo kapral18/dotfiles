@@ -26,7 +26,7 @@ bin/fmt --type lua
 Format specific files:
 
 ```bash
-bin/fmt docs/categories/formatting.md home/dot_config/exact_nvim/init.lua
+bin/fmt docs/topics/code-quality/formatting.md home/dot_config/exact_nvim/readonly_init.lua
 ```
 
 ## Formatters
@@ -58,6 +58,7 @@ Template files (`.fish.tmpl`, `.lua.tmpl`) are excluded from `bin/fmt` because s
 Vendored/third-party code is excluded from formatting:
 
 - `home/Alfred.alfredpreferences/` — vendored Alfred workflows
+- chezmoi `symlink_*` sources (e.g. `symlink_AGENTS.md`) hold a symlink target path rather than content, so they are skipped by the markdown linters
 - Prettier has its own ignore list in [`.prettierignore`](../../../.prettierignore)
 
 ## Verification
@@ -70,5 +71,5 @@ Exit 0 means all files are formatted. Exit 1 lists unformatted files.
 
 ## Related
 
-- Packages: [`docs/categories/packages.md`](../core/packages/index.md)
-- Editor (Neovim): [`docs/categories/editor-neovim.md`](../editor/neovim.md)
+- [Packages](../core/packages/index.md)
+- [Editor: Neovim](../editor/neovim.md)

@@ -1,5 +1,5 @@
 ---
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # Beads Task Tracking
@@ -16,7 +16,7 @@ This setup includes an opinionated way to use Beads (`bd`) without a global daem
 
 `bdlocal` is defined in:
 
-- [`home/dot_config/fish/readonly_config.fish.tmpl`](../../../../home/dot_config/fish/readonly_config.fish.tmpl)
+- [`home/dot_config/fish/readonly_config.fish.tmpl`](../../../home/dot_config/fish/readonly_config.fish.tmpl)
 
 It resolves a per-repo `$BEADS_DIR` under `~/beads-data/<repo>` and pins the DB to:
 

@@ -20,7 +20,7 @@ What you get immediately:
 
 Where to read:
 
-- [`docs/categories/git-and-identity.md`](../topics/workflow/git-identity/index.md)
+- [Git and identity](../topics/workflow/git-identity/index.md)
 
 ## Phase 2: Fish Shell (Medium Friction)
 
@@ -33,7 +33,7 @@ What to focus on:
 
 Where to read:
 
-- [`docs/categories/shell-fish.md`](../topics/workflow/shell-fish.md)
+- [Shell: Fish](../topics/workflow/shell-fish.md)
 
 ## Phase 3: Tmux + Custom CLI Tools (High Friction)
 
@@ -47,9 +47,9 @@ What to focus on:
 
 Where to read:
 
-- [`docs/categories/terminals/index.md`](../topics/workflow/terminals.md)
-- [`docs/categories/tmux/index.md`](../topics/workflow/tmux/index.md)
-- [`docs/categories/custom-commands.md`](../topics/workflow/custom-commands.md)
+- [Terminals](../topics/workflow/terminals.md)
+- [Tmux](../topics/workflow/tmux/index.md)
+- [Custom commands](../topics/workflow/custom-commands.md)
 
 ## Phase 4: Neovim Editor Workflow (Optional)
 
@@ -62,7 +62,7 @@ What to focus on:
 
 Where to read:
 
-- [`docs/categories/editor-neovim.md`](../topics/editor/neovim.md)
+- [Editor: Neovim](../topics/editor/neovim.md)
 
 ## Phase 5: The Agentic Operating System (AI)
 
@@ -76,4 +76,7 @@ What to focus on:
 
 Where to read:
 
-- [`docs/categories/ai-and-assistants.md`](../topics/security-ai/ai-assistants/index.md)
+- [AI & Assistants](../topics/ai-assistants/index.md) — the governance hub
+- [Ralph orchestrator](../topics/ai-assistants/ralph.md) — multi-agent planner/executor/reviewer loop
+- [MCP servers](../topics/ai-assistants/mcp.md) and [Model registry & routing](../topics/ai-assistants/model-registry.md) — how tools get context and models
+- [Agent memory](../topics/ai-assistants/knowledge-base.md) — session memory and the durable knowledge base

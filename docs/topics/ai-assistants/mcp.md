@@ -1,0 +1,63 @@
+---
+sidebar_position: 5
+---
+
+# MCP Servers
+
+A single canonical registry defines every MCP (Model Context Protocol) server once; per-tool configs for Cursor, Claude Code, Gemini, Pi, Codex, and OpenCode are generated from it at `chezmoi apply` time. This avoids hand-maintaining the same server list in six different config formats.
+
+Use when adding, removing, or debugging an MCP server, or understanding how a server reaches a given assistant.
+
+## Registry: `mcp_servers.yaml`
+
+Source of truth: [`home/.chezmoidata/mcp_servers.yaml`](../../../home/.chezmoidata/mcp_servers.yaml).
+
+Each entry is one of two shapes:
+
+- **Command server** — `name`, `work_only`, `command`, `args` (list). Example: `sequentialthinking` runs a docker image; `scsi-main`/`scsi-local` run `bash -lc '...'` with secrets resolved from `pass`.
+- **HTTP server** — `name`, `work_only`, `type: http`, `url`, and `oauth_by_tool` (per-tool OAuth client metadata, since tools expect different OAuth field shapes). Example: `slack`.
+
+`work_only: true` servers are emitted only when the `isWork` chezmoi variable is set. The default work set is `sequentialthinking`, `scsi-main`, `scsi-local`, `slack`; the personal set is `sequentialthinking`.
+
+## Generation pipeline
+
+[`scripts/mcp_registry.py`](../../../scripts/mcp_registry.py) reads and normalizes the registry (resolving `$(command)` strings via a login shell). [`scripts/generate_mcp_configs.py`](../../../scripts/generate_mcp_configs.py) turns the normalized servers into a tool-specific `{ "mcpServers": { ... } }` document, applying per-tool transforms (e.g. Cursor's `auth.CLIENT_ID` vs the standard `oauth` shape).
+
+Tools whose config is not plain JSON get dedicated injectors that preserve the surrounding hand-curated file:
+
+- [`scripts/inject_mcp_into_codex_toml.py`](../../../scripts/inject_mcp_into_codex_toml.py) — replaces a `# __MCP_SERVERS__` marker line in the Codex TOML with generated sections.
+- [`scripts/inject_mcp_into_opencode_jsonc.py`](../../../scripts/inject_mcp_into_opencode_jsonc.py) — replaces a `"mcp": "__MCP_SERVERS__"` placeholder in the OpenCode JSONC.
+- [`scripts/merge_claude_mcp.py`](../../../scripts/merge_claude_mcp.py) — surgically updates only the `mcpServers` key in `~/.claude.json`, which Claude Code also writes runtime state into.
+
+## Per-tool targets
+
+| Tool        | Target file (`mcpServers`)          | Rendered by hook                                                                                                                           |
+| ----------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Cursor      | `~/.cursor/mcp.json`                | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)   |
+| Claude Code | `~/.claude.json` (`mcpServers` key) | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)   |
+| Pi          | `~/.pi/agent/mcp.json`              | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)   |
+| Gemini      | `~/.gemini/settings.json`           | [`run_onchange_after_07-merge-gemini-settings.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-merge-gemini-settings.sh.tmpl) |
+| OpenCode    | `~/.config/opencode/opencode.jsonc` | [`run_onchange_after_07-merge-opencode-config.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl) |
+| Codex       | `~/.codex/config.toml`              | [`run_onchange_after_07-merge-codex-config.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-merge-codex-config.sh.tmpl)       |
+
+LetsFG is intentionally not exposed through the shared MCP registry because its tools are irrelevant to most sessions; agents load its skill on demand instead. See [Tool configs](tool-configs.md) for details.
+
+## Add or change a server
+
+1. Edit [`home/.chezmoidata/mcp_servers.yaml`](../../../home/.chezmoidata/mcp_servers.yaml) (set `work_only` appropriately).
+2. `chezmoi diff` to preview the rendered per-tool configs.
+3. `chezmoi apply` to regenerate them.
+
+Verification:
+
+```bash
+chezmoi apply
+python3 -m json.tool < ~/.cursor/mcp.json
+python3 -c "import json; print(list(json.load(open('$HOME/.claude.json')).get('mcpServers', {})))"
+```
+
+## Related
+
+- [Tool configs](tool-configs.md) — per-assistant settings and profile merging
+- [Model registry & routing](model-registry.md) — the parallel registry for model definitions
+- [The Agentic Operating System](index.md) — governance layer

@@ -15,7 +15,7 @@ You are the **RE-REVIEWER** — a mandatory adversarial second-opinion gate. You
 
 Begin your output with a single line:
 
-```
+```text
 ANCHOR: <one-sentence restatement of the SPEC's goal as you understand it>
 ```
 
@@ -63,7 +63,7 @@ Same rules as the primary reviewer: prefer `block` for spec-level dead-ends; res
 
 If overriding the primary reviewer surfaced a heuristic that future re-reviewers should use ("when reviewer says pass on criterion X, also verify Y"), you may emit a single `LEARNING:` line between the JSON block and the trailing `RALPH_DONE`/`RALPH_QUESTIONS` marker:
 
-```
+```text
 LEARNING: <one specific, reusable verification principle>
 ```
 
@@ -73,7 +73,7 @@ The orchestrator stores `LEARNING:` lines from the re-reviewer with `kind=princi
 
 When stress-testing the primary reviewer's verdict, you can shell out to the KB to look up verification principles that apply to the criterion under review:
 
-```
+```bash
 ,ai-kb search "<criterion or area being verified>" --kind principle --kind gotcha --limit 5 --json
 ```
 

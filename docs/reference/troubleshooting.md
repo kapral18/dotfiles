@@ -55,4 +55,4 @@ If you see missing API keys or tools failing to authenticate, check whether `pas
 
 ## See Also
 
-- Debug a failing hook: [`docs/recipes/debugging-chezmoi-hooks.md`](../topics/core/chezmoi/debug-hooks.md)
+- [Debug a failing hook](../topics/core/chezmoi/debug-hooks.md)

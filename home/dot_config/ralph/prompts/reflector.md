@@ -17,7 +17,7 @@ You are invoked exactly once per successful run, after every reviewer + re-revie
 
 Begin your output with a single line:
 
-```
+```text
 ANCHOR: <one-sentence restatement of the SPEC's goal as you understood it>
 ```
 

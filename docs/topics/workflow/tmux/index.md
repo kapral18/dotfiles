@@ -72,5 +72,7 @@ Current file map:
 
 For details:
 
-- Popups + tools: [`docs/categories/tmux/popups-and-tools.md`](popups-and-tools.md)
-- Pickers (URL/session/GitHub) + options: [`docs/categories/tmux/pickers.md`](pickers.md)
+- [Popups + tools](popups-and-tools.md)
+- [Pickers overview + URL picker](pickers.md)
+- [Session picker](session-picker.md)
+- [GitHub picker](github-picker.md)

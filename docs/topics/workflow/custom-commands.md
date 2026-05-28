@@ -308,7 +308,10 @@ If commands are missing after apply, verify:
 
 ## Related
 
-- Worktree workflow: [`docs/recipes/worktree-workflow.md`](git-identity/worktrees.md)
-- Apply custom app icons: [`docs/recipes/apply-custom-app-icons.md`](../macos/custom-app-icons.md)
-- Add a global yarn package: [`docs/recipes/add-a-global-yarn-package.md`](../core/packages/yarn.md)
-- Reference map: [`docs/reference-map.md`](../../reference/reference-map.md)
+- [Worktree workflow](git-identity/worktrees.md)
+- [Apply custom app icons](../macos/custom-app-icons.md)
+- [Add a global yarn package](../core/packages/yarn.md)
+- [Ralph orchestrator](../ai-assistants/ralph.md) — `,ralph`
+- [Agent memory](../ai-assistants/knowledge-base.md) — `,ai-kb`, `,agent-memory`
+- [llama.cpp local inference](../ai-assistants/llama-cpp.md) — `,llama-cpp`, `,claude-llama-cpp`
+- [Reference map](../../reference/reference-map.md)

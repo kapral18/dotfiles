@@ -96,7 +96,13 @@ is_py_file() {
   return 1
 }
 
-is_md_file() { [[ "$1" == *.md ]]; }
+is_md_file() {
+  # chezmoi symlink_ sources hold a target path, not markdown
+  case "${1##*/}" in
+  symlink_*) return 1 ;;
+  esac
+  [[ "$1" == *.md ]]
+}
 is_json_file() { [[ "$1" == *.json || "$1" == *.jsonc ]]; }
 is_yaml_file() { [[ "$1" == *.yaml || "$1" == *.yml ]]; }
 is_lua_file() { [[ "$1" == *.lua ]]; }

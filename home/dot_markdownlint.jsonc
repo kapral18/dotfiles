@@ -1,4 +1,8 @@
 {
   "MD013": false,
   "MD029": { "style": "ordered" },
+  // repeated subsection names (e.g. "Bindings") under different pickers are not duplicates
+  "MD024": { "siblings_only": true },
+  // Docusaurus pages carry a front-matter `title` plus an in-body H1; don't treat the former as a heading
+  "MD025": { "front_matter_title": "" },
 }
