@@ -110,6 +110,15 @@ fi
 branch_name="$1"
 shift
 
+for arg in "$@"; do
+  case "$arg" in
+    -h | --help)
+      show_usage
+      exit 0
+      ;;
+  esac
+done
+
 is_base_branch_specified=0
 base_branch=""
 

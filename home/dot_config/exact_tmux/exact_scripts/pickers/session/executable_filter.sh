@@ -25,11 +25,13 @@ update_cmd="$HOME/.config/tmux/scripts/pickers/session/index_update.sh"
 refresh=0
 force_order=0
 force_refresh=0
+only_filter=""
 for arg in "$@"; do
   case "$arg" in
     --refresh) refresh=1 ;;
     --force-order) force_order=1 ;;
     --force-refresh) force_refresh=1 ;;
+    --only=*) only_filter="${arg#--only=}" ;;
   esac
 done
 
@@ -72,7 +74,9 @@ case "$passthrough_rows" in
 esac
 
 # Keep open latency flat for very large lists by skipping expensive regrouping.
-if [ "$force_order" -ne 1 ] && [ "$passthrough_rows" -gt 0 ] && [ -f "$cache_file" ]; then
+# The --only filter is a view transform that must run through grouping, so it
+# bypasses the passthrough escape (like --force-order).
+if [ -z "$only_filter" ] && [ "$force_order" -ne 1 ] && [ "$passthrough_rows" -gt 0 ] && [ -f "$cache_file" ]; then
   cache_rows="$(wc -l < "$cache_file" 2> /dev/null || echo 0)"
   case "$cache_rows" in
     '' | *[!0-9]*) cache_rows=0 ;;
@@ -90,4 +94,4 @@ fi
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 
-ITEMS_CMD="$items_cmd" PICK_SESSION_SCAN_ROOTS="$scan_roots_raw" PICK_SESSION_FILTER_PASSTHROUGH_ROWS="$passthrough_rows" PICK_SESSION_FILTER_FORCE_ORDER="$force_order" PYTHONPATH="$script_dir/lib:${PYTHONPATH:-}" python3 -u "$script_dir/lib/filter_main.py"
+ITEMS_CMD="$items_cmd" PICK_SESSION_SCAN_ROOTS="$scan_roots_raw" PICK_SESSION_FILTER_PASSTHROUGH_ROWS="$passthrough_rows" PICK_SESSION_FILTER_FORCE_ORDER="$force_order" PICK_SESSION_ONLY="$only_filter" PYTHONPATH="$script_dir/lib:${PYTHONPATH:-}" python3 -u "$script_dir/lib/filter_main.py"

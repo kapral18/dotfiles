@@ -12,6 +12,8 @@ Navigation
 Filter / Refresh
   type            filter (sort auto-toggles when query contains '/')
   alt-s           toggle fzf sort manually
+  alt-1 / alt-2   quick filter to first/second scan root (e.g. work/ , code/)
+  alt-o           cycle view: all -> dirty only -> review-needed only -> all
   ctrl-r          refresh sessions sync; exact dirty icons update in background
                     query is preserved; cursor stays at the same row index
                     (use ctrl-u to clear the query manually)
@@ -24,6 +26,10 @@ Selection / Actions
   ctrl-x          kill selected session(s) (optimistic hide)
   alt-x           remove selected worktree(s) (optimistic hide)
   alt-y           copy underlying path(s) to clipboard
+  alt-Y           copy canonical session name(s) to clipboard
+  alt-c           create worktree off the selected repo (,w add)
+                    enters new-branch mode: type branch, enter=create, esc=cancel
+                    list auto-refreshes after creation (no ctrl-r needed)
   ctrl-s          send command to selected entries (any kind)
                     enters send mode: type command, enter=send, esc=cancel
                     sessions: command goes to a shell pane in each session
@@ -43,7 +49,14 @@ Preview
   shift-up/down   scroll preview (line)
   shift-left/right scroll preview (page)
 
+Ordering
+  - first runs use the structural grouping (sessions > worktrees > dirs)
+  - after you switch sessions, rows you use float up by frecency within each
+    kind tier (sessions stay above worktrees above dirs); unused rows keep
+    their structural order
+
 Notes
   - actions operate on the selected rows (multi-select aware)
   - killing/removing writes short-lived tombstones to avoid reappearing items
+  - alt-o filter is a transient view; a kill/remove repaint clears it
 EOF

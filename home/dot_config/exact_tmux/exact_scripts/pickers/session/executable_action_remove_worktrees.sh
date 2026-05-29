@@ -319,6 +319,20 @@ while IFS= read -r _line; do
   case "$kind" in
     worktree)
       wt_path="$path"
+      # Stale linked worktree: the directory still exists on disk but its git
+      # linkage is broken (the `.git` file points at a `worktrees/<name>` admin
+      # dir that's gone). The indexer can't resolve a root checkout for these,
+      # so it emits them with `wt_root:` meta and target == path, which would
+      # route them to `remove_all_worktrees.sh` — which bails on its
+      # `rev-parse --is-inside-work-tree` guard and leaves the dir untouched.
+      # Such a dir is an orphan (its owning repo already dropped the admin
+      # files), so the complete fix is a safe `rm -rf`. Route it to the
+      # plain-dir remover, matching the prefix the optimistic hide already
+      # tombstones for this row.
+      if [ -d "$wt_path" ] && ! git -C "$wt_path" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+        pending_plain_dirs+=("$wt_path")
+        continue
+      fi
       root_wt_dir="$target"
       case "$meta_base" in
         wt_root:*) is_root_selection=1 ;;
@@ -355,6 +369,23 @@ while IFS= read -r _line; do
       fi
 
       [ -n "$wt_path" ] || continue
+
+      # Same stale-worktree guard as the `worktree` kind above. A session can be
+      # backed by a stale linked worktree (its `.git` file points at a missing
+      # `worktrees/<name>` admin dir). The indexer puts such an orphan in its own
+      # single-member group whose root_checkout *is* the orphan dir, so the row is
+      # tagged `sess_root:`. `worktree_root_dir_for_path` then resolves the root
+      # purely from the `.git` file *text* — yielding the real, live root checkout
+      # (e.g. `kibana/main`) regardless of the broken linkage. Combined with
+      # `sess_root:` that makes `is_root_selection=1`, which would dispatch
+      # `remove_all_worktrees.sh <live-root>` and `rm -rf` the entire repo wrapper.
+      # Detect the broken linkage and route just the orphan dir to the plain-dir
+      # remover (safe `rm -rf` under $HOME), matching the optimistic-hide prefix.
+      if [ -d "$wt_path" ] && ! git -C "$wt_path" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+        pending_plain_dirs+=("$wt_path")
+        continue
+      fi
+
       root_wt_dir="$(worktree_root_dir_for_path "$wt_path" 2> /dev/null || true)"
       case "$meta_base" in
         sess_root:*) is_root_selection=1 ;;

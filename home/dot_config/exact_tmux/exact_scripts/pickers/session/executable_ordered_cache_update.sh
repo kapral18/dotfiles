@@ -29,6 +29,7 @@ cache_file="${cache_dir}/pick_session_items.tsv"
 ordered_file="${cache_dir}/pick_session_items_ordered.tsv"
 mutation_file="${cache_dir}/pick_session_mutations.tsv"
 pending_file="${cache_dir}/pick_session_pending.tsv"
+frecency_file="${cache_dir}/pick_session_frecency.tsv"
 lock_dir="${ordered_file}.lock"
 mkdir -p "$cache_dir" 2> /dev/null || true
 
@@ -38,8 +39,11 @@ cache_mt="$(mtime_epoch "$cache_file" 2> /dev/null || printf '0')"
 ordered_mt="$(mtime_epoch "$ordered_file" 2> /dev/null || printf '0')"
 mutation_mt="$(mtime_epoch "$mutation_file" 2> /dev/null || printf '0')"
 pending_mt="$(mtime_epoch "$pending_file" 2> /dev/null || printf '0')"
+# Frecency writes (from session switches) change the ordering without touching
+# the item cache, so the snapshot must regenerate when the store is newer.
+frecency_mt="$(mtime_epoch "$frecency_file" 2> /dev/null || printf '0')"
 
-if [ "$force" -ne 1 ] && [ "$ordered_mt" -gt 0 ] && [ "$ordered_mt" -ge "$cache_mt" ] && [ "$ordered_mt" -ge "$mutation_mt" ] && [ "$ordered_mt" -ge "$pending_mt" ]; then
+if [ "$force" -ne 1 ] && [ "$ordered_mt" -gt 0 ] && [ "$ordered_mt" -ge "$cache_mt" ] && [ "$ordered_mt" -ge "$mutation_mt" ] && [ "$ordered_mt" -ge "$pending_mt" ] && [ "$ordered_mt" -ge "$frecency_mt" ]; then
   exit 0
 fi
 

@@ -227,9 +227,20 @@ dispatch_async_cmd="$HOME/.config/tmux/scripts/pickers/lib/dispatch_async.sh"
 
 send_cmd="$HOME/.config/tmux/scripts/pickers/session/action_send_command.sh"
 open_gh_cmd="$HOME/.config/tmux/scripts/pickers/session/action_open_gh.sh"
+only_cycle_cmd="$HOME/.config/tmux/scripts/pickers/session/action_only_cycle.sh"
+create_wt_cmd="$HOME/.config/tmux/scripts/pickers/session/action_create_worktree.sh"
 cmd_tmp="${cache_dir}/pick_session_cmd.$$.txt"
 mode_flag="${cache_dir}/pick_session_send_mode.$$"
-_pick_session_pid_scoped_files+=("$cmd_tmp" "$mode_flag")
+wt_mode_flag="${cache_dir}/pick_session_wt_mode.$$"
+wt_branch_tmp="${cache_dir}/pick_session_wt_branch.$$.txt"
+only_mode_flag="${cache_dir}/pick_session_only_mode.$$"
+_pick_session_pid_scoped_files+=("$cmd_tmp" "$mode_flag" "$wt_mode_flag" "$wt_branch_tmp" "$only_mode_flag")
+
+# alt-1/alt-2 quick filters jump to the first two scan-root segments via their
+# trailing-slash labels (e.g. `work/` surfaces `~/work/`). Overridable so the
+# bindings can follow non-default `@pick_session_worktree_scan_roots`.
+filter_quick_1="$(tmux_opt '@pick_session_filter_quick_1' 'work')"
+filter_quick_2="$(tmux_opt '@pick_session_filter_quick_2' 'code')"
 
 fzf_args="$(tmux_opt '@pick_session_fzf_options' '')"
 fzf_prompt="$(tmux_opt '@pick_session_fzf_prompt' '󰍉  ')"
@@ -300,108 +311,93 @@ fi
 #
 # Net effect: the visual selection state and what gets dispatched are in sync;
 # a row toggled with tab while typing the command is honored.
-send_restore="enable-search+change-prompt($fzf_prompt)+change-ghost($fzf_ghost)+change-header(?=help  ctrl-/=preview  alt-p=PR  alt-i=issue  alt-g=GitHub)+clear-query+deselect-all+rebind(ctrl-s,ctrl-x,alt-x,alt-y,alt-p,alt-i,alt-g,change)+unbind(esc)"
-send_mode="execute-silent(touch $mode_flag)+disable-search+change-prompt(❯ send: )+change-ghost()+change-header(enter=send  esc=cancel)+clear-query+unbind(ctrl-s,ctrl-x,alt-x,alt-y,alt-p,alt-i,alt-g,change)+rebind(esc)"
+_modal_header='?=help  ctrl-/=preview  alt-y=copy  alt-o=filter  alt-c=new wt  alt-g=GitHub'
+_modal_rebind='ctrl-s,ctrl-x,alt-x,alt-y,alt-c,alt-o,alt-p,alt-i,alt-g,change'
+send_restore="enable-search+change-prompt($fzf_prompt)+change-ghost($fzf_ghost)+change-header($_modal_header)+clear-query+deselect-all+rebind($_modal_rebind)+unbind(esc)"
+send_mode="execute-silent(touch $mode_flag)+disable-search+change-prompt(❯ send: )+change-ghost()+change-header(enter=send  esc=cancel)+clear-query+unbind($_modal_rebind)+rebind(esc)"
+
+# alt-c worktree-create modal: query line becomes a "new branch" prompt.
+# enter creates a worktree off the selected repo via ,w add; esc cancels.
+# Reuses the same modal scaffolding as send-mode (separate flag so enter can
+# tell the two apart).
+wt_mode="execute-silent(touch $wt_mode_flag)+disable-search+change-prompt(❯ new branch: )+change-ghost(branch off selected repo)+change-header(enter=create worktree  esc=cancel)+clear-query+unbind($_modal_rebind)+rebind(esc)"
+
+# enter:transform routes by active modal flag: send-mode dispatches the typed
+# command; wt-mode creates a worktree off the selected repo; otherwise accept.
+enter_transform="enter:transform:if [ -f $mode_flag ]; then printf '%s' {q} > $cmd_tmp; $dispatch_async_cmd $send_cmd {+f} $cmd_tmp >/dev/null 2>&1; echo 'execute-silent(rm -f $mode_flag)+$send_restore'; elif [ -f $wt_mode_flag ]; then printf '%s' {q} > $wt_branch_tmp; $dispatch_async_cmd $create_wt_cmd {f} $wt_branch_tmp >/dev/null 2>&1; echo 'execute-silent(rm -f $wt_mode_flag)+$send_restore'; else echo 'execute-silent(cp {f} $primary_tmp)+accept'; fi"
+
+# Shared fzf bindings/options for both invocation branches (pinned vs not).
+# Maintaining a single array avoids the two copies drifting as bindings grow.
+fzf_common_binds=(
+  --bind "start:execute-silent($live_refresh_cmd >/dev/null 2>&1 &)"
+  --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+track"
+  --bind "alt-r:reload($filter_cmd --force-refresh --force-order)+track"
+  --bind "alt-j:half-page-down"
+  --bind "alt-k:half-page-up"
+  --bind "alt-h:first"
+  --bind "alt-l:last"
+  --bind "shift-up:preview-up"
+  --bind "shift-down:preview-down"
+  --bind "shift-left:preview-page-up"
+  --bind "shift-right:preview-page-down"
+  --bind "ctrl-/:toggle-preview"
+  --bind "?:execute-silent(if [ -f $(printf %q "$help_flag") ]; then rm -f $(printf %q "$help_flag"); else touch $(printf %q "$help_flag"); fi)+refresh-preview"
+  --bind "change:first"
+  --bind "alt-s:toggle-sort+first"
+  --bind "load:unbind(esc)"
+  --bind "$enter_transform"
+  --bind "ctrl-s:$send_mode"
+  --bind "esc:execute-silent(rm -f $mode_flag $wt_mode_flag)+$send_restore"
+  --bind "ctrl-x:execute-silent($(printf %q "$dispatch_async_cmd") $(printf %q "$kill_cmd") {+f})+reload($hide_selected_cmd {+f} kill {q})+deselect-all"
+  --bind "alt-x:execute-silent($(printf %q "$dispatch_async_cmd") $(printf %q "$rm_cmd") {+f})+reload($hide_selected_cmd {+f} remove {q})+deselect-all"
+  --bind "alt-y:execute-silent(printf '%s\n' {+} | cut -f3 | sed '/^[[:space:]]*$/d' | pbcopy 2>/dev/null || printf '%s\n' {+} | cut -f3 | sed '/^[[:space:]]*$/d' | xclip -sel clip 2>/dev/null)"
+  --bind "alt-Y:execute-silent(printf '%s\n' {+} | cut -f5 | sed '/^[[:space:]]*$/d' | pbcopy 2>/dev/null || printf '%s\n' {+} | cut -f5 | sed '/^[[:space:]]*$/d' | xclip -sel clip 2>/dev/null)"
+  --bind "alt-1:change-query(${filter_quick_1}/)"
+  --bind "alt-2:change-query(${filter_quick_2}/)"
+  --bind "alt-o:transform($(printf %q "$only_cycle_cmd") $(printf %q "$only_mode_flag") $(printf %q "$filter_cmd"))"
+  --bind "alt-c:$wt_mode"
+  --bind "alt-p:execute-silent($open_gh_cmd pr {f})"
+  --bind "alt-i:execute-silent($open_gh_cmd issue {f})"
+  --bind "alt-g:execute-silent($(printf %q "$handoff_to_gh_cmd") {4} $(printf %q "$gh_pin_file") 2>/dev/null || true; touch ${cache_dir}/pick_session_switch_gh)+abort"
+  --header "$_modal_header"
+)
+
+fzf_base_args=(
+  --with-shell "$fzf_shell -c"
+  --ansi
+  --scheme=path
+  --height=100%
+  --listen="$sort_daemon_sock"
+  --filepath-word
+  --reverse
+  --tiebreak=begin,length,index
+  --delimiter=$'\t'
+  --nth=1
+  --with-nth=1
+  --multi
+  "${fzf_ui_args[@]}"
+  --query "$query"
+  --preview "$preview_with_help"
+  --preview-window 'right,50%,border-left'
+)
 
 selection_file="${PICK_SESSION_SELECTION_FILE:-}"
 if [ -n "$selection_file" ] && [ -f "$selection_file" ]; then
   pick="$(cat "$selection_file" 2> /dev/null || true)"
 else
-  rm -f "$primary_tmp" "$cmd_tmp" "$mode_flag" 2> /dev/null || true
+  rm -f "$primary_tmp" "$cmd_tmp" "$mode_flag" "$wt_mode_flag" "$only_mode_flag" 2> /dev/null || true
   # shellcheck disable=SC2086
   pick="$(
     if [ -n "$pin_kind" ] && [ -n "$pin_num" ] && [ -x "$pin_first_cmd" ]; then
       FZF_DEFAULT_OPTS="" "$open_items_cmd" | "$pin_first_cmd" "$pin_kind" "$pin_repo" "$pin_num" | SHELL="$fzf_shell" fzf \
-        --with-shell "$fzf_shell -c" \
-        --ansi \
-        --scheme=path \
-        --height=100% \
-        --listen="$sort_daemon_sock" \
-        --filepath-word \
-        --reverse \
-        --tiebreak=begin,length,index \
-        --delimiter=$'\t' \
-        --nth=1 \
-        --with-nth=1 \
-        --multi \
-        "${fzf_ui_args[@]}" \
-        --query "$query" \
-        --preview "$preview_with_help" \
-        --preview-window 'right,50%,border-left' \
-        --bind "start:execute-silent($live_refresh_cmd >/dev/null 2>&1 &)" \
-        --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+track" \
-        --bind "alt-r:reload($filter_cmd --force-refresh --force-order)+track" \
-        --bind "alt-j:half-page-down" \
-        --bind "alt-k:half-page-up" \
-        --bind "alt-h:first" \
-        --bind "alt-l:last" \
-        --bind "shift-up:preview-up" \
-        --bind "shift-down:preview-down" \
-        --bind "shift-left:preview-page-up" \
-        --bind "shift-right:preview-page-down" \
-        --bind "ctrl-/:toggle-preview" \
-        --bind "?:execute-silent(if [ -f $(printf %q "$help_flag") ]; then rm -f $(printf %q "$help_flag"); else touch $(printf %q "$help_flag"); fi)+refresh-preview" \
-        --bind "change:first" \
-        --bind "alt-s:toggle-sort+first" \
-        --bind "load:unbind(esc)" \
-        --bind "enter:transform:[ -f $mode_flag ] && { printf '%s' {q} > $cmd_tmp; $dispatch_async_cmd $send_cmd {+f} $cmd_tmp >/dev/null 2>&1; echo 'execute-silent(rm -f $mode_flag)+$send_restore'; } || echo 'execute-silent(cp {f} $primary_tmp)+accept'" \
-        --bind "ctrl-s:$send_mode" \
-        --bind "esc:execute-silent(rm -f $mode_flag)+$send_restore" \
-        --bind "ctrl-x:execute-silent($(printf %q "$dispatch_async_cmd") $(printf %q "$kill_cmd") {+f})+reload($hide_selected_cmd {+f} kill {q})+deselect-all" \
-        --bind "alt-x:execute-silent($(printf %q "$dispatch_async_cmd") $(printf %q "$rm_cmd") {+f})+reload($hide_selected_cmd {+f} remove {q})+deselect-all" \
-        --bind "alt-y:execute-silent(printf '%s\n' {+} | cut -f3 | sed '/^[[:space:]]*$/d' | pbcopy 2>/dev/null || printf '%s\n' {+} | cut -f3 | sed '/^[[:space:]]*$/d' | xclip -sel clip 2>/dev/null)" \
-        --bind "alt-p:execute-silent($open_gh_cmd pr {f})" \
-        --bind "alt-i:execute-silent($open_gh_cmd issue {f})" \
-        --bind "alt-g:execute-silent($(printf %q "$handoff_to_gh_cmd") {4} $(printf %q "$gh_pin_file") 2>/dev/null || true; touch ${cache_dir}/pick_session_switch_gh)+abort" \
-        --header $'?=help  ctrl-/=preview  alt-y=copy path(s)  alt-p=PR  alt-i=issue  alt-g=GitHub' \
-        \
+        "${fzf_base_args[@]}" \
+        "${fzf_common_binds[@]}" \
         ${fzf_args} \
         || true
     else
       FZF_DEFAULT_OPTS="" "$open_items_cmd" | SHELL="$fzf_shell" fzf \
-        --with-shell "$fzf_shell -c" \
-        --ansi \
-        --scheme=path \
-        --height=100% \
-        --listen="$sort_daemon_sock" \
-        --filepath-word \
-        --reverse \
-        --tiebreak=begin,length,index \
-        --delimiter=$'\t' \
-        --nth=1 \
-        --with-nth=1 \
-        --multi \
-        "${fzf_ui_args[@]}" \
-        --query "$query" \
-        --preview "$preview_with_help" \
-        --preview-window 'right,50%,border-left' \
-        --bind "start:execute-silent($live_refresh_cmd >/dev/null 2>&1 &)" \
-        --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+track" \
-        --bind "alt-r:reload($filter_cmd --force-refresh --force-order)+track" \
-        --bind "alt-j:half-page-down" \
-        --bind "alt-k:half-page-up" \
-        --bind "alt-h:first" \
-        --bind "alt-l:last" \
-        --bind "shift-up:preview-up" \
-        --bind "shift-down:preview-down" \
-        --bind "shift-left:preview-page-up" \
-        --bind "shift-right:preview-page-down" \
-        --bind "ctrl-/:toggle-preview" \
-        --bind "?:execute-silent(if [ -f $(printf %q "$help_flag") ]; then rm -f $(printf %q "$help_flag"); else touch $(printf %q "$help_flag"); fi)+refresh-preview" \
-        --bind "change:first" \
-        --bind "alt-s:toggle-sort+first" \
-        --bind "load:unbind(esc)" \
-        --bind "enter:transform:[ -f $mode_flag ] && { printf '%s' {q} > $cmd_tmp; $dispatch_async_cmd $send_cmd {+f} $cmd_tmp >/dev/null 2>&1; echo 'execute-silent(rm -f $mode_flag)+$send_restore'; } || echo 'execute-silent(cp {f} $primary_tmp)+accept'" \
-        --bind "ctrl-s:$send_mode" \
-        --bind "esc:execute-silent(rm -f $mode_flag)+$send_restore" \
-        --bind "ctrl-x:execute-silent($(printf %q "$dispatch_async_cmd") $(printf %q "$kill_cmd") {+f})+reload($hide_selected_cmd {+f} kill {q})+deselect-all" \
-        --bind "alt-x:execute-silent($(printf %q "$dispatch_async_cmd") $(printf %q "$rm_cmd") {+f})+reload($hide_selected_cmd {+f} remove {q})+deselect-all" \
-        --bind "alt-y:execute-silent(printf '%s\n' {+} | cut -f3 | sed '/^[[:space:]]*$/d' | pbcopy 2>/dev/null || printf '%s\n' {+} | cut -f3 | sed '/^[[:space:]]*$/d' | xclip -sel clip 2>/dev/null)" \
-        --bind "alt-p:execute-silent($open_gh_cmd pr {f})" \
-        --bind "alt-i:execute-silent($open_gh_cmd issue {f})" \
-        --bind "alt-g:execute-silent($(printf %q "$handoff_to_gh_cmd") {4} $(printf %q "$gh_pin_file") 2>/dev/null || true; touch ${cache_dir}/pick_session_switch_gh)+abort" \
-        --header $'?=help  ctrl-/=preview  alt-y=copy path(s)  alt-p=PR  alt-i=issue  alt-g=GitHub' \
-        \
+        "${fzf_base_args[@]}" \
+        "${fzf_common_binds[@]}" \
         ${fzf_args} \
         || true
     fi

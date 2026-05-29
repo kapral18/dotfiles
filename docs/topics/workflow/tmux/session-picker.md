@@ -18,6 +18,10 @@ Open it with `prefix` + `T`. Press `alt-g` to switch to the [GitHub picker](gith
 | `ctrl-x`           | Kill selected session(s) — optimistic hide                                                                                                                                                                                |
 | `alt-x`            | Remove selected worktree(s) — optimistic hide                                                                                                                                                                             |
 | `alt-y`            | Copy underlying path(s) to clipboard                                                                                                                                                                                      |
+| `alt-Y`            | Copy canonical session name(s) to clipboard (column 5)                                                                                                                                                                    |
+| `alt-1` / `alt-2`  | Quick filter to the first/second scan root via its trailing-slash label (defaults `work/` / `code/`; override with `@pick_session_filter_quick_1` / `@pick_session_filter_quick_2`)                                       |
+| `alt-o`            | Cycle the view filter: all → dirty only → review-needed only → all                                                                                                                                                        |
+| `alt-c`            | **Create worktree** off the selected repo — enters a modal: type a branch name, `enter` runs `,w add <branch>` at the repo root, `esc` cancels                                                                            |
 | `ctrl-s`           | **Send command** — enters a modal: type a command, `enter` sends it to selected entries (session/worktree/dir), `esc` cancels                                                                                             |
 | `ctrl-r`           | Refresh: synchronous session scan with last-known dirty badges + background full rescan (worktrees/dirs + exact dirty badges). Query preserved; cursor stays at the same row index (see "How refresh preserves position") |
 | `alt-r`            | Force full refresh (blocks until both quick + full scans complete, then reloads list). Same query/cursor preservation as `ctrl-r`                                                                                         |
@@ -96,6 +100,7 @@ Visible by default on the right side. Content varies by entry type:
 
 **Sessions:**
 
+- Activity `status` line classifying the active pane command: `agent (<cmd>)` for known coding agents (claude, cursor-agent, aider, codex, opencode, goose, amp, gemini, ralph, crush), `idle (shell)` for a login shell, `editing (<cmd>)` for editors, `busy (<cmd>)` otherwise
 - Running command, session path, window count
 - Last 20 non-blank lines of the active pane (`tmux capture-pane`)
 - Empty panes show `(empty pane)`
@@ -157,13 +162,15 @@ Batch semantics:
 
 **Appearance:**
 
-| Option                               | Default     | Description                                  |
-| ------------------------------------ | ----------- | -------------------------------------------- |
-| `@pick_session_fzf_prompt`           | —           | Custom fzf prompt string                     |
-| `@pick_session_fzf_ghost`            | —           | Custom fzf ghost text                        |
-| `@pick_session_fzf_color`            | —           | Custom fzf color scheme                      |
-| `@pick_session_fzf_options`          | `--no-sort` | Extra fzf flags                              |
-| `@pick_session_auto_rename_sessions` | `off`       | Auto-rename sessions to match expected names |
+| Option                               | Default     | Description                                        |
+| ------------------------------------ | ----------- | -------------------------------------------------- |
+| `@pick_session_fzf_prompt`           | —           | Custom fzf prompt string                           |
+| `@pick_session_fzf_ghost`            | —           | Custom fzf ghost text                              |
+| `@pick_session_fzf_color`            | —           | Custom fzf color scheme                            |
+| `@pick_session_fzf_options`          | `--no-sort` | Extra fzf flags                                    |
+| `@pick_session_auto_rename_sessions` | `off`       | Auto-rename sessions to match expected names       |
+| `@pick_session_filter_quick_1`       | `work`      | `alt-1` quick-filter query (trailing `/` appended) |
+| `@pick_session_filter_quick_2`       | `code`      | `alt-2` quick-filter query (trailing `/` appended) |
 
 **Cache and performance:**
 
@@ -197,11 +204,34 @@ Grouped/sorted ordering is produced by `pickers/session/filter.sh` (which delega
 
 Within and across groups the ordering keys are: `scan_root_rank` (position in `@pick_session_worktree_scan_roots`) → `scan_root_prefix` (top-level segment under the scan root) → `first_session_name` (alphabetical) → `group_path`. The current session sorts first within its group.
 
+### Frecency ordering
+
+The structural grouping above is the **baseline**: it's what you see on a fresh setup before any usage history exists. As soon as you start switching sessions, the picker layers a usage-based (frecency) re-sort on top:
+
+- Every `client-session-changed` event logs the session's path to a small store (`~/.cache/tmux/pick_session_frecency.tsv`) via `pickers/session/lib/frecency.py`. The score is zoxide-style: a `rank` that accumulates on each access, decayed by the age of the last access (bucketed: <1h ×4, <1d ×2, <1w ×0.5, older ×0.25). Entries whose path no longer exists are pruned on each write.
+- When the store is non-empty, `grouped_output` re-sorts the structural result by frecency **within kind tiers**: sessions stay above worktrees above dirs (the picker's core invariant), but within each tier the rows you use most/most-recently float to the top. Unscored rows keep their structural order (stable sort), so the list "evolves toward frecency as you use it" without caps and without ever dropping a session below a hotter worktree or dir.
+- `frecency.py` is imported by both grouping callers (`filter_main.py` and `items_hide_selected_main.py`) so the `alt-x`/`ctrl-x` repaint orders identically to the open/refresh paths.
+- A session switch changes ordering without touching the item cache, so the ordered snapshot would otherwise go stale silently. `open_items.sh` and `ordered_cache_update.sh` both treat the snapshot as stale when `pick_session_frecency.tsv` is newer than it, so the next open reflects updated usage and regenerates the snapshot in the background.
+
+### View filter (`alt-o`)
+
+`alt-o` cycles a transient view filter through **all → dirty only → review-needed only → all** (`pickers/session/action_only_cycle.sh` holds the per-picker cycle state and emits an fzf `reload`+`change-header` action). The reload runs `filter.sh --only=<mode>`, which filters rows by the cache `meta` column before grouping:
+
+- `dirty` keeps rows whose `meta` has `status=…,dirty`.
+- `review` keeps rows whose `meta` has a `pr=` segment with review decision `CHANGES_REQUESTED` or `REVIEW_REQUIRED`.
+
+The `--only` filter is a python-only view transform; it bypasses the `@pick_session_filter_passthrough_rows` escape (like `--force-order`). It is transient: a `ctrl-x`/`alt-x` repaint goes through `items_hide_selected.sh` (which doesn't carry the only-mode) and returns to the unfiltered view.
+
+### Create worktree (`alt-c`)
+
+`alt-c` enters a modal where the query line becomes a `new branch:` prompt (same scaffolding as send-mode, separate flag so `enter` can tell the two apart). On `enter`, `pickers/session/action_create_worktree.sh` resolves the repo root behind the selected row (worktree/session `target`, else the enclosing `.git` via `worktree_root_dir_for_path`), then runs `,w add <branch>` with `cwd` at that root. `,w` creates the worktree **and** its tmux session; the action then reindexes (`--quick-only`) and posts a `reload` so the new entry appears without a manual `ctrl-r`. If the selected row isn't inside a git repo, or `,w` is not on `PATH`, a `tmux display-message` reports it and nothing is created.
+
 **One ordering, two read paths.** The grouped result is the _only_ user-facing order; cache storage is intentionally not the same shape as the display:
 
 - Picker open prefers the precomputed snapshot (`pick_session_items_ordered.tsv`) for instant first paint.
 - When the snapshot is stale or missing, `open_items.sh` falls back to `filter.sh --force-order`, which produces the same grouping live. This avoids the previous failure mode where stale-snapshot opens served raw cache order (with sessions injected at the top by `pick_session.sh` and worktrees clustered separately by `build_cache_refreshing_sessions_preserving_others`) and the next snapshot-backed open would reshuffle the list under the cursor.
 - `filter.sh` has a `@pick_session_filter_passthrough_rows` (default `2000`) escape that drops back to raw cache when the list is large enough that grouping latency would be visible. **The passthrough is intentionally bypassed when `--force-order` is set** (both `filter.sh:72` and `filter_main.py:60` gate it on `force_order != 1`), so the `open_items.sh` stale-snapshot fallback always pays the grouping cost — that's the tradeoff for consistency. Tune the threshold lower to favor latency over consistency on user-typed filter calls (refresh, send-command reload, etc.), higher to favor consistency.
+- The `alt-x` remove and `ctrl-x` kill bindings repaint via `reload($hide_selected_cmd ...)` → `items_hide_selected.sh`, a _third_ caller of the shared grouping. It must order rows identically to the snapshot/`filter.sh` paths or the list visibly reshuffles right after a removal. To guarantee that, the dir-row sort key (scan-root dirs hoisted above their descendants within a rank) lives **only** in `grouped_output`'s default `dir_sort_key` in `pick_session_grouping.py` — the single source of truth shared by `filter_main.py` and `items_hide_selected_main.py`. Previously `filter_main.py` carried that hoist in a private `dir_sort_override` while `items_hide_selected_main.py` did not, so an `alt-x` repaint dropped the scan-root quick-access rows (`~`, `~/.backport/repositories`, `~/.local/share`) out of their pinned positions until the next `ctrl-r`/reopen.
 
 The picker uses fzf's native in-process filtering (no reload per keystroke) across the visible label and a hidden match key column.
 
@@ -258,6 +288,8 @@ If true identity-based cursor recovery becomes a requirement, the fix is to set 
 - For very large caches, first paint can defer `dir` rows (`@pick_session_defer_dir_rows_threshold`).
 - On `alt-x` remove, selecting a root checkout/worktree hides all impacted rows immediately (sibling worktrees and matching sessions).
 - `alt-x` removal will **not** tear down the active tmux session unless you explicitly selected it (prevents “remove sibling worktree” from killing the current session).
+- Stale worktrees (the `⚠ stale` badge — directory present but its `.git` file points at a missing `worktrees/<name>` admin dir) are orphans the indexer can't attribute to a root checkout, so it labels them `wt_root:` with `target == path`. `action_remove_worktrees.sh` detects the broken git linkage and routes them to `remove_plain_dir.sh` (safe `rm -rf` under `$HOME`) instead of `remove_all_worktrees.sh`, whose `rev-parse --is-inside-work-tree` guard would otherwise bail and leave the directory on disk while the row was optimistically hidden.
+- **Stale guard also applies to `session` rows, not just `worktree` rows.** A tmux session backed by a stale worktree is placed by the indexer in its own single-member group whose `root_checkout` _is_ the orphan dir, so the session is tagged `sess_root:`. Without a guard this was dangerous: the router resolves a session's root via `worktree_root_dir_for_path`, which reads the `.git` file's `gitdir:` text and walks `…/main/.git/worktrees/<name>` up to the **live** root checkout (e.g. `kibana/main`) regardless of the broken linkage. Combined with `sess_root:` that set `is_root_selection=1` and dispatched `remove_all_worktrees.sh <live-root>`, which by design `rm -rf`s the entire repo wrapper (`~/work/<repo>`, including `main` and every sibling worktree). `alt-x` on a single stale `8.19` session could therefore wipe the whole `~/work/kibana` tree. The `session` branch now runs the same broken-linkage check as the `worktree` branch and routes the orphan dir to `remove_plain_dir.sh`, so only that one directory is removed.
 - When the cache is empty, the picker falls back to tmux sessions + `zoxide` recent dirs (if installed) + `~`.
 
 ## Related

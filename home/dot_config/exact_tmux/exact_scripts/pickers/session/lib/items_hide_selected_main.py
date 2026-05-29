@@ -6,6 +6,7 @@ import sys
 import time
 from pathlib import Path
 
+import frecency
 from pick_session_grouping import grouped_output, simple_resolve
 
 sel_file = sys.argv[1]
@@ -288,5 +289,10 @@ def scan_roots_from_tmux():
 
 scan_roots = scan_roots_from_tmux()
 
-for line in grouped_output(base_rows, scan_roots, resolve_path):
+try:
+    frecency_scores = frecency.scores()
+except Exception:
+    frecency_scores = {}
+
+for line in grouped_output(base_rows, scan_roots, resolve_path, frecency_scores):
     print(line)

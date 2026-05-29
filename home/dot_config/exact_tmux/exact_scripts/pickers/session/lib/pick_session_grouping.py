@@ -133,15 +133,45 @@ def wrapper_for_root(root):
     return root
 
 
-def grouped_output(rows, scan_roots, resolve_fn, *, dir_sort_override=None):
+_FRECENCY_TIER = {"session": 0, "worktree": 1, "dir": 2}
+
+
+def apply_frecency_order(lines, resolve_fn, frecency_scores):
+    """Re-order structurally-grouped lines by frecency, within kind tiers.
+
+    Frecency becomes the primary ordering signal once the store is non-empty,
+    but the session > worktree > dir kind tiers are preserved (the picker's core
+    invariant). Within each tier, rows are ordered by descending frecency score;
+    unscored rows (score 0) keep their structural order via a stable sort. This
+    yields "initially structural, evolving toward frecency as you use it, no
+    caps" without ever dropping a session below a hotter worktree/dir.
+    """
+    if not frecency_scores:
+        return lines
+
+    def key(item):
+        idx, line = item
+        parts = line.split("\t")
+        if len(parts) < 5:
+            return (3, 0.0, idx)
+        kind = parts[1]
+        path = parts[2] or ""
+        tier = _FRECENCY_TIER.get(kind, 3)
+        score = frecency_scores.get(resolve_fn(path), 0.0) if path else 0.0
+        return (tier, -score, idx)
+
+    return [line for _idx, line in sorted(enumerate(lines), key=key)]
+
+
+def grouped_output(rows, scan_roots, resolve_fn, frecency_scores=None):
     """Group, sort, and return ordered TSV lines.
 
     Args:
         rows: raw TSV lines from items.sh
         scan_roots: resolved scan root paths
         resolve_fn: path resolution function (cached or simple)
-        dir_sort_override: optional callable(line) -> sort key for dir rows;
-            when None, uses the default dir_sort_key
+        frecency_scores: optional {resolved_path: score}; when non-empty, the
+            structural order is re-sorted by frecency within kind tiers.
 
     Returns:
         list of ordered TSV lines
@@ -315,7 +345,13 @@ def grouped_output(rows, scan_roots, resolve_fn, *, dir_sort_override=None):
     def dir_sort_key(line):
         parts = line.split("\t")
         p = parts[2] if len(parts) >= 3 else ""
+        # Scan-root dirs (e.g. `~/work`, `~`) surface before their descendants
+        # within the same rank. This is the single source of truth for dir-row
+        # ordering shared by every caller (filter.sh first paint / ctrl-r and the
+        # alt-x/ctrl-x reload via items_hide_selected.sh) so the directory block
+        # can't reshuffle when the picker repaints after a removal.
         return (
+            0 if p in scan_roots else 1,
             scan_root_rank_for_path(p, scan_roots, resolve_fn),
             scan_root_prefix_for_path(p, scan_roots, resolve_fn),
             (p or "").lower(),
@@ -398,6 +434,6 @@ def grouped_output(rows, scan_roots, resolve_fn, *, dir_sort_override=None):
 
     result.extend(other_rows)
 
-    effective_dir_sort = dir_sort_override if dir_sort_override is not None else dir_sort_key
-    result.extend(sorted(dir_rows, key=effective_dir_sort))
-    return result
+    result.extend(sorted(dir_rows, key=dir_sort_key))
+
+    return apply_frecency_order(result, resolve_fn, frecency_scores)

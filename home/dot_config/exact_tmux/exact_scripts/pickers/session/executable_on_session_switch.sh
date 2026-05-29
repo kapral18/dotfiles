@@ -12,6 +12,18 @@ if [ -z "$session" ]; then
 fi
 [ -n "$session" ] || exit 0
 
+# Record this switch as a frecency access so the picker can order rows by usage
+# (zoxide-style). Runs on every client-session-changed event regardless of the
+# lazy-spawn/split fast-path below, since a switch is the real "I used this"
+# signal. Best-effort and backgrounded so it never delays the switch.
+if command -v python3 > /dev/null 2>&1; then
+  _switch_path="$(tmux display-message -p -t "$session" '#{session_path}' 2> /dev/null || true)"
+  if [ -n "$_switch_path" ]; then
+    _frecency_lib_dir="$HOME/.config/tmux/scripts/pickers/session/lib"
+    PYTHONPATH="$_frecency_lib_dir:${PYTHONPATH:-}" python3 -c 'import sys, frecency; frecency.add(sys.argv[1])' "$_switch_path" > /dev/null 2>&1 &
+  fi
+fi
+
 opt() {
   tmux show-option -t "$session" -qv "$1" 2> /dev/null || true
 }

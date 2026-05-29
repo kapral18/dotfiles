@@ -6,6 +6,7 @@ ordered_file="${cache_dir}/pick_session_items_ordered.tsv"
 cache_file="${cache_dir}/pick_session_items.tsv"
 mutation_file="${cache_dir}/pick_session_mutations.tsv"
 pending_file="${cache_dir}/pick_session_pending.tsv"
+frecency_file="${cache_dir}/pick_session_frecency.tsv"
 items_cmd="$HOME/.config/tmux/scripts/pickers/session/items.sh"
 filter_cmd="$HOME/.config/tmux/scripts/pickers/session/filter.sh"
 ordered_update_cmd="$HOME/.config/tmux/scripts/pickers/session/ordered_cache_update.sh"
@@ -74,6 +75,9 @@ if [ -s "$ordered_file" ]; then
   [ -s "$cache_file" ] && [ "$cache_file" -nt "$ordered_file" ] && stale=1
   [ -s "$mutation_file" ] && [ "$mutation_file" -nt "$ordered_file" ] && stale=1
   [ -s "$pending_file" ] && [ "$pending_file" -nt "$ordered_file" ] && stale=1
+  # A session switch since the snapshot was built changes frecency ordering;
+  # treat the snapshot as stale so the next open reflects updated usage.
+  [ -s "$frecency_file" ] && [ "$frecency_file" -nt "$ordered_file" ] && stale=1
   if [ "$stale" -eq 0 ]; then
     fixup_current_marker "$ordered_file"
     exit 0

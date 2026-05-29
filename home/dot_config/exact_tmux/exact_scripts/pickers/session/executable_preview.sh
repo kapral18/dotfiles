@@ -185,6 +185,30 @@ git_summary() {
   fi
 }
 
+# Classify the active pane command into a coarse activity status so the
+# preview can show "what's happening here" at a glance:
+#   - known coding agents -> "agent (<cmd>)"
+#   - a login shell        -> "idle (shell)"
+#   - anything else        -> "busy (<cmd>)" (build/test/long-running process)
+pane_activity_status() {
+  local cmd="$1"
+  [ -n "$cmd" ] || return 0
+  case "$cmd" in
+    claude | cursor-agent | cursor | aider | codex | opencode | goose | amp | gemini | ralph | crush)
+      printf '%sagent%s (%s)' "$C_GREEN" "$C_R" "$cmd"
+      ;;
+    fish | zsh | bash | sh | nu | dash)
+      printf '%sidle%s (shell)' "$C_DIM" "$C_R"
+      ;;
+    nvim | vim | hx | helix | nano | emacs)
+      printf '%sediting%s (%s)' "$C_BLUE" "$C_R" "$cmd"
+      ;;
+    *)
+      printf '%sbusy%s (%s)' "$C_YELLOW" "$C_R" "$cmd"
+      ;;
+  esac
+}
+
 pane_capture() {
   local sess="$1"
   [ -n "$sess" ] || return 0
@@ -197,6 +221,7 @@ pane_capture() {
     IFS=$'\t' read -r active_cmd sess_path win_count <<< "$sess_info"
 
     if [ -n "$active_cmd" ]; then
+      printf '%s  %s\n' "${C_DIM}status${C_R}" "$(pane_activity_status "$active_cmd")"
       printf '%s  %s%s%s\n' "${C_DIM}running${C_R}" "$C_YELLOW" "$active_cmd" "$C_R"
     fi
 
