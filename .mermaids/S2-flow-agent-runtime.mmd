@@ -1,0 +1,47 @@
+%% ============================================================================
+%% S2-flow-agent-runtime.mmd — FLOW: one agent turn as a governed pipeline.
+%% Traces a prompt from session start → governance load → verify loop → gated
+%% side effects → memory. Realizes C7, C8, C13 (and C11/C12 when work is Ralph).
+%% Files are nodes ON the control flow. (drill: 03, 03b, 04, 04b, 12)
+%% ============================================================================
+flowchart TB
+    classDef in fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
+    classDef gov fill:#3a2f15,stroke:#e0b341,color:#fff8e1;
+    classDef loop fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
+    classDef gate fill:#4a1f1f,stroke:#ef9a9a,color:#ffebee;
+    classDef mem fill:#3a1b2b,stroke:#f48fb1,color:#fce4ec;
+
+    START(["session start"]):::in
+    START --> SS["sessionStart hook → session_context.py<br/>inject bounded /tmp/specs spec+worklog (C13)"]:::mem
+    SS --> SOP["load SOP entrypoints<br/>~/AGENTS.md · CLAUDE.md · GEMINI.md (C7)"]:::gov
+    SOP --> SKILL{"intent matches a skill<br/>'Use when' clause?"}:::gov
+    SKILL -->|yes| LOAD["read skill SKILL.md → follow as binding procedure"]:::gov
+    SKILL -->|no| WORK
+    LOAD --> WORK["do work: investigate-first, external-truth,<br/>verify don't guess (C7)"]:::loop
+
+    WORK --> CLAIM{"emit factual/runtime claim?"}:::loop
+    CLAIM -->|yes| ANCHOR{"claim carries hard anchor<br/>(path/cmd/probe) or 'Unknown because…'? (C8)"}:::gate
+    ANCHOR -->|no| RETRY["evidence_anchor stop-hook:<br/>bounded retry, log decision in /tmp/specs"]:::gate
+    RETRY --> WORK
+    ANCHOR -->|yes| SIDE
+    CLAIM -->|no| SIDE
+
+    SIDE{"human-visible side effect?<br/>(PR/issue/Slack/email)"}:::gate
+    SIDE -->|"human target"| HGATE["Human-Visible Publication Gate:<br/>draft + show payload + WAIT for approval (C7)"]:::gate
+    SIDE -->|"verified bot thread"| AUTO["auto-reply/resolve (carve-out)"]:::loop
+    SIDE -->|none| DONE
+    HGATE -->|approved| EMIT["gh/gws/slack side effect"]:::loop
+    AUTO --> EMIT
+    EMIT --> DONE
+
+    DONE(["turn complete"]):::loop
+    DONE --> PERSIST["postTool/stop hooks → worklog + ai_kb<br/>update /tmp/specs spec; embeddings index (C13)"]:::mem
+
+    subgraph RALPH["if work == Ralph orchestration (C11/C12)"]
+        direction LR
+        RR["roles.json + family_of() gate:<br/>reviewer ≠ re_reviewer family (C11)"]:::gate
+        SM["manifest phase advances; crash→park;<br/>supervisor/resume relaunch (C12)"]:::loop
+        RR --> SM
+    end
+    WORK -. "ralph go" .-> RALPH
+    SM -. "anchored like any agent" .-> ANCHOR

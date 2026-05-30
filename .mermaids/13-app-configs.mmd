@@ -1,0 +1,41 @@
+%% ============================================================================
+%% 13-app-configs.mmd — Remaining standalone app configs in home/dot_config/
+%% (and a couple elsewhere) not covered by tmux(05)/nvim(07b)/ai(12)/fish(07).
+%% Each → ~/.config/<app>/. readonly_ = r--r--r--; .tmpl = isWork-aware.
+%% ============================================================================
+flowchart TB
+    classDef git fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
+    classDef view fill:#2c2c34,stroke:#b39ddb,color:#f3e5f5;
+    classDef term fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
+    classDef misc fill:#3a2b1b,stroke:#ffb74d,color:#fff3e0;
+
+    subgraph GIT["Git TUIs + GitHub"]
+        LAZY["exact_lazygit/config.yml"]:::git
+        GITUI["exact_gitui/readonly_key_bindings.ron + readonly_theme.ron"]:::git
+        TIG["exact_tig/readonly_config"]:::git
+        GHCLI["exact_private_gh/config.yml + hosts.yml (gh CLI)"]:::git
+        GHDASH["exact_gh-dash/ config{,-home,-work}.yml.tmpl + gh-dash-shared.yml<br/>scripts/{pr_action,issue_action}.sh (see 06)"]:::git
+    end
+
+    subgraph VIEWERS["File / output viewers"]
+        BAT["exact_bat/readonly_config (+ catppuccin themes via external)"]:::view
+        BTOP["exact_btop/btop.conf"]:::view
+        YAZI["yazi/readonly_yazi.toml + readonly_theme.toml (+ flavors via external)"]:::view
+    end
+
+    subgraph TERMSH["Terminal / shell prompt"]
+        GHOSTTY["exact_ghostty/readonly_config (default terminal)"]:::term
+        STAR["readonly_starship.toml (prompt)"]:::term
+    end
+
+    subgraph LOCALAI["Local LLM runtime"]
+        LLAMA["llama.cpp/models.ini.tmpl (router catalog)<br/>← readonly_dot_default-llama-cpp-models.tmpl<br/>→ ,llama-cpp / ,claude-llama-cpp (see 02/07c)"]:::misc
+    end
+
+    subgraph INPUT["Input / window mgmt (see 07)"]
+        KARA["exact_private_karabiner/karabiner.json"]:::misc
+    end
+
+    subgraph RALPHCFG["Ralph config (see 04)"]
+        RC["ralph/roles.json + prompts/{planner,executor,reviewer,re_reviewer,reflector}.md"]:::misc
+    end

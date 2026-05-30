@@ -1,0 +1,32 @@
+%% ============================================================================
+%% SR-index.mmd — REVERSE INDEX ("maps into each particle").
+%% Given a file/area you're about to touch, find: which CONCEPT it serves,
+%% what BREAKS if you change it wrong, and the CO-EDIT SET (what must move with
+%% it). This is the bridge from the semantic cloud (S0) down to the exhaustive
+%% catalog (00-13). Concept IDs (C1..C13) refer to S0-concepts.mmd.
+%% Mermaid note: rendered as a left→right map; for the dense table read source.
+%% ============================================================================
+flowchart LR
+    classDef area fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
+    classDef c fill:#3a1b2b,stroke:#f48fb1,color:#fce4ec;
+    classDef brk fill:#4a1f1f,stroke:#ef9a9a,color:#ffebee;
+
+    A1["home/** name-prefix<br/>(exact/dot/readonly/private/executable)"]:::area -->|C1| B1["breaks: wrong perms/path or editable secret<br/>co-edit: nothing — it IS the contract<br/>catalog: 01"]:::brk
+    A2[".chezmoidata/mcp_servers.yaml"]:::area -->|C2/C3/C5| B2["breaks: every tool's MCP config (generated)<br/>co-edit: generate_mcp_configs.py + merge_*_mcp.py;<br/>re-apply hook 06. catalog: 12"]:::brk
+    A3[".chezmoidata/ai_models.yaml"]:::area -->|C2/C3| B3["breaks: litellm + pi + per-tool model routes<br/>co-edit: generate_pi_models.py · litellm_models.py;<br/>render hook. catalog: 12"]:::brk
+    A4["readonly_dot_default-* / Brewfile.tmpl"]:::area -->|C2/C4| B4["breaks: install/cleanup set (list is authoritative)<br/>co-edit: matching reconcile_*.py + install hook<br/>+ docs. catalog: 02"]:::brk
+    A5["scripts/chezmoi_lib.sh"]:::area -->|C4/C5/C6| B5["breaks: ALL merge hooks (idempotency+manifest+pick_src)<br/>co-edit: every run_onchange_after_07-merge-*;<br/>tests. catalog: 11"]:::brk
+    A6["scripts/*.py generators"]:::area -->|C6/C2| B6["breaks: generated outputs drift from registry<br/>co-edit: golden fixtures in tests/; the .tmpl caller<br/>catalog: 11"]:::brk
+    A7["run_onchange_after_* '# hash:' line"]:::area -->|C4| B7["breaks: hook never re-runs (stale) or runs always<br/>co-edit: keep include-hash matching real input<br/>catalog: 01"]:::brk
+    A8["settings.{work,personal}.* · *.work./.personal."]:::area -->|C3| B8["breaks: isWork picks wrong half / asymmetry<br/>co-edit: BOTH halves + chezmoi_pick_src call site<br/>catalog: 12,13"]:::brk
+    A9["~/AGENTS.md · CLAUDE.md · GEMINI.md (source: readonly_*)"]:::area -->|C7| B9["breaks: agent governance across ALL tools<br/>co-edit: keep 3 entrypoints in sync; OpenCode symlink<br/>catalog: 03,12"]:::brk
+    A10["exact_dot_agents/exact_skills/*/SKILL.md"]:::area -->|C7| B10["breaks: 'Use when' routing / binding procedure<br/>co-edit: entrypoint trigger if referenced<br/>catalog: 03b"]:::brk
+    A11["exact_dot_agents/exact_hooks/*.py"]:::area -->|C7/C8/C13| B11["breaks: gates / evidence ledger / memory injection<br/>co-edit: hook_common.py shared + hooks.json wiring<br/>catalog: 03b"]:::brk
+    A12["ralph.py · roles.json · prompts/*.md"]:::area -->|C11/C12| B12["breaks: diversity gate / phase resume / role prompts<br/>co-edit: family_of+load_roles together; scripts/tests<br/>catalog: 04,04b"]:::brk
+    A13["tmux pickers/github/*.sh + lib"]:::area -->|C9/C10/C3| B13["breaks: SWR live-reload / handoff pins / scope<br/>co-edit: gh_items*.py + lib/handoff_* + cache keys<br/>catalog: 05"]:::brk
+    A14["pickers cache keys ($XDG_CACHE_HOME/tmux/*)"]:::area -->|C10| B14["breaks: producer/consumer pin contract between tools<br/>co-edit: BOTH writer and reader of the pin file<br/>catalog: 05,06"]:::brk
+    A15["private_readonly_dot_gitconfig.tmpl · ssh/agent.toml"]:::area -->|C3/C5| B15["breaks: identity/signing/SSH per gitdir<br/>co-edit: includeIf work block + allowed_signers + pub keys<br/>catalog: 08"]:::brk
+    A16["Makefile · bin/fmt · linter rc files"]:::area -->|C6| B16["breaks: make check/fmt for everyone<br/>co-edit: the specific formatter config it drives<br/>catalog: 09"]:::brk
+    A17[".mermaids/*.mmd (this map)"]:::area -->|C1-doc| B17["breaks: agent navigation if stale<br/>co-edit: update the .mmd whose flow your change alters<br/>(Documentation Hygiene). catalog: this dir"]:::brk
+
+    GUIDE["USE: locate your file's row → its concept (S0) is the rule to honor →<br/>'breaks' is your blast radius → 'co-edit' is the minimum set to change together →<br/>'catalog' is the exhaustive per-file diagram for that area."]:::c

@@ -1,0 +1,44 @@
+%% ============================================================================
+%% 07c-bin-commands.mmd — Every script in home/exact_bin/ (77 incl. utils).
+%% executable_,* → ~/bin/,* (comma-prefixed user commands). A few are plain
+%% wrappers (parallel/sem/codex). Most have a fish completion (07) + some zsh.
+%% ============================================================================
+flowchart TB
+    classDef gh fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
+    classDef wt fill:#2c2c34,stroke:#b39ddb,color:#f3e5f5;
+    classDef ai fill:#3a2b1b,stroke:#ffb74d,color:#fff3e0;
+    classDef media fill:#3a1b2b,stroke:#f48fb1,color:#fce4ec;
+    classDef sys fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
+
+    subgraph GHC["GitHub / PR / review"]
+        G[",gh-prw (open PR) · ,gh-issuew · ,gh-worktree (PR/issue→,w)<br/>,gh-tfork (fork+clone+tmux) · ,gh-subissues-create<br/>,add-patch-to-prs · ,enable/disable-auto-merge<br/>,check-backport-progress · ,remove-comment · ,view-my-issues<br/>,trace-string-pr · ,kbn-pr-audit (kibana audit) · ,codeowners<br/>,search-gh-topic · ,hey-branch · ,pull-rebase · ,wh (wormhole patches)"]:::gh
+    end
+
+    subgraph WTC["Worktree / git"]
+        W[",w (dispatcher → utils/,w/*.sh; see 06)<br/>,generate-git-sandbox · ,history-sync (fish hist via 1Password)"]:::wt
+    end
+
+    subgraph AIC["AI / agents / KB"]
+        A[",ralph (→ scripts/ralph.py; see 04) · ,ai-kb (→ scripts/ai_kb.py)<br/>,agent-memory (/tmp/specs dead-switch) · ,cp-files-for-llm<br/>,claude-llama-cpp · ,llama-cpp (local router) · codex (wrapper)<br/>,tg (telegramtui) · ,youtube-search · ,letsfg-docker"]:::ai
+    end
+
+    subgraph FZFC["fzf / search helpers"]
+        F[",grepo · ,fzf-git-changed-lines · ,fzf-rg-multiline<br/>,fzf-preview-follow · ,bat-preview · ,get-age-buckets · ,get-risky-tests"]:::sys
+    end
+
+    subgraph PKGC["Package / brew / update"]
+        P[",update (orchestrator) · ,fuzzy-brew-search · ,search-brew-desc<br/>,install-yarn-pkgs · ,apply-app-icons.tmpl · parallel / sem (wrappers)"]:::sys
+    end
+
+    subgraph KBNC["Kibana dev"]
+        K[",start-feat-kbn · ,start-main-kbn (ES snapshot + Kibana in tmux)<br/>,jest-test-title-report"]:::sys
+    end
+
+    subgraph MEDIA["Media / misc utilities"]
+        M[",to-gif · ,vid-ipad · ,pdf-diff · ,appid · ,dumputi<br/>,set-default-mic · ,doctor (health-check) · unwrap-md (md formatter)<br/>weave-setup-local / weave-unsetup-local · ,tmux-lowfi · ,tmux-run-all"]:::media
+    end
+
+    subgraph LIBS["Shared libs + ,w internals (utils/)"]
+        L["executable_worktree_lib.sh · executable_bash_utils_lib.sh<br/>,w/{add,prs,issue,ls,switch,open,mv,prune,remove,doctor}.sh<br/>,w/readonly_issue_lib.sh · ,w/lib/iso_date_days_ago.py<br/>exact_history/fish-history-merge.py (+ .test.py)"]:::wt
+    end
+    W --> LIBS

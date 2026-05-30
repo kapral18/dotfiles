@@ -1,0 +1,45 @@
+%% ============================================================================
+%% 04b-ralph-control-plane.mmd — Ralph CLI surface, workflows, and tmux/TUI
+%% control plane. Companion to 04-ralph-state-machine.mmd.
+%% ============================================================================
+flowchart TD
+    classDef cli fill:#3a2b1b,stroke:#ffb74d,color:#fff3e0;
+    classDef flow fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
+    classDef tui fill:#2c2c34,stroke:#b39ddb,color:#f3e5f5;
+    classDef data fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
+
+    ENTRY[",ralph → scripts/ralph.py<br/>(repo root resolved via chezmoi source-path)"]:::cli
+
+    ENTRY --> CMDS["subcommands<br/>go · runner · resume · replan · answer<br/>supervisor · status · runs · role · items<br/>preview · dashboard · tail · attach · verify<br/>control · kill · rm · statusline · doctor"]:::cli
+
+    subgraph WF["Workflow registry (WORKFLOWS dict)"]
+        FEAT["feature: exec→review→rereview (default)"]:::flow
+        BUG["bugfix: same ladder, test-first seed"]:::flow
+        REV["review: review only (1 pass, verdict final)"]:::flow
+        RES["research: exec(read-only)→review (no rereview)"]:::flow
+    end
+    CMDS -->|go --workflow| WF
+
+    subgraph STATE["Run state (per run_id)"]
+        MAN[("manifest.json<br/>phase · iterations[].phase · roles[] cache")]:::data
+        OUT[("role output.txt per (iteration,role)")]:::data
+    end
+    WF --> MAN
+    MAN <--> OUT
+
+    subgraph CONTROL["Control plane"]
+        SUP["supervisor: relaunch dead non-terminal runners"]:::cli
+        TUI["ralph-tui (tools/ralph-tui, Go/bubbletea) — 14 internal pkgs:<br/>app · state · runs · detail · preview · control · cmds<br/>activity · answer · forms · kb · tail · styles · help"]:::tui
+        TMUX["tmux conf.d/44-ralph.conf + exact_palette.d/ralph.tsv<br/>+ agent_prompts/prefix.txt + agent_prompt_wrap/<br/>status-right · prefix bindings · agent panes"]:::tui
+    end
+    MAN --> TUI
+    MAN --> SUP
+    TUI --> CONTROLCMD["control --action takeover|dirty|resume|auto"]:::cli
+    CONTROLCMD --> MAN
+
+    subgraph KB["Memory / learning"]
+        REFLECT["reflector role → capsules"]:::flow
+        AIKB["scripts/ai_kb.py + embed.py + vec_runner.py<br/>kind: fact/gotcha/principle, top_k recall"]:::data
+    end
+    OUT --> REFLECT --> AIKB
+    AIKB -.memory_top_k recall.-> WF

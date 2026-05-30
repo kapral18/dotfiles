@@ -1,0 +1,41 @@
+%% ============================================================================
+%% 01-chezmoi-pipeline.mmd — `chezmoi apply` lifecycle. Names EVERY hook in
+%% home/.chezmoiscripts/ (31) and every config/data input. Hooks run in
+%% filename order: run_once_before < run_once_after < run_onchange_after,
+%% then numeric 00..08 within each class. *.tmpl = templated; .fish.tmpl run
+%% under fish; .sh / .sh.tmpl run under bash.
+%% ============================================================================
+flowchart TD
+    classDef phase fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8,stroke-width:2px;
+    classDef data fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
+    classDef script fill:#2c2c34,stroke:#b39ddb,color:#f3e5f5;
+    classDef out fill:#3a2b1b,stroke:#ffb74d,color:#fff3e0;
+
+    BOOT["bootstrap: sh -c get.chezmoi.io -- init --apply kapral18"]:::phase
+    INIT[".chezmoi.toml.tmpl (init prompts)<br/>is1PasswordReady(exit1 if no) · isWork · primaryEmail<br/>primary/secondaryPublicSshKey · pgpCacheTtl<br/>homebrewPrefix(by arch) · downloadLlamaCppModels(once)"]:::data
+
+    subgraph INPUTS["Static inputs (read during render)"]
+        DATA[[".chezmoidata/ai_models.yaml (litellm catalog)<br/>.chezmoidata/mcp_servers.yaml (MCP registry)"]]:::data
+        EXT[[".chezmoiexternal.toml → fetched into $HOME<br/>tpm · EmmyLua.spoon · lowfi data · bat themes · yazi flavors"]]:::data
+        IGN[[".chezmoiignore (skip patterns)<br/>+ per-dir .chezmoiignore (bat/btop/lazygit/nvim/karabiner/<br/>ssh/gnupg/history/hooks/codex skills/fix-cursor scripts)"]]:::data
+    end
+
+    BOOT --> INIT --> APPLY
+    DATA & EXT & IGN -.-> APPLY
+
+    APPLY["chezmoi apply: render home/** → write $HOME target<br/>(apply prefixes: exact/dot/readonly/private/executable/symlink/empty)"]:::phase
+    APPLY --> TARGETS["$HOME outputs (see 07/08/12/13)<br/>~/.config/* · ~/bin/* · ~/.agents/* · ~/AGENTS.md · dotfiles"]:::out
+
+    APPLY --> HOOKS{".chezmoiscripts/ execute in order"}:::phase
+
+    HOOKS --> B0["run_once_before_00-install-xcode.sh"]:::script
+    B0 --> A01["run_once_after_01-install-brew.sh<br/>02-install-fish.sh<br/>05-setup-pass-managers.fish.tmpl"]:::script
+    A01 --> C03["run_onchange_after_03-install-brew-packages.fish.tmpl<br/>(brew bundle --global + cleanup --force; Brewfile hash gate)"]:::script
+    C03 --> C04["04-update-fish-packages.fish.tmpl (fisher; plugins hash)"]:::script
+    C04 --> C05["05-* (hash-gated sync)<br/>add-ollama-models.sh · apply-app-icons.sh.tmpl<br/>install-crontab.sh.tmpl · install-custom-packages.sh.tmpl<br/>install-gh-extensions.fish.tmpl · install-mise-runtimes.sh.tmpl<br/>install-uv-versions.sh.tmpl · osx.core/osx.extra.sh.tmpl<br/>update-cargo-crates/gems/golang-pkgs/yarn-pkgs.sh.tmpl"]:::script
+    C05 --> C06["06-build-ralph-tui.sh.tmpl (go build tools/ralph-tui)<br/>06-update-uv-tools.sh.tmpl"]:::script
+    C06 --> C07["07-* agent config gen/merge<br/>generate-mcp-configs · merge-claude-code-settings<br/>merge-codex-config · merge-gemini-settings<br/>merge-opencode-config · merge-pi-config<br/>sync-llama-cpp-models"]:::script
+    C07 --> C08["08-* cleanup orphans<br/>agent-skill-dirs · ralph-fzf-scaffold · tmux pick_session"]:::script
+
+    C07 -. delegates logic to .-> HELP["scripts/ helpers (see 11-scripts-helpers.mmd)<br/>RULE: .chezmoiscripts shell = thin glue → scripts/*.py"]:::script
+    DATA -.parsed by.-> HELP

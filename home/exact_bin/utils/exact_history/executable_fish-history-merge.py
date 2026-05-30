@@ -12,52 +12,63 @@ import sys
 def parse_fish_history(
     file_path: str,
 ) -> dict[str, dict[str, str | int | list[str]]]:
-    """Parse a fish history file and return a dict of commands with metadata"""
+    """Parse a fish history file and return a dict of commands with metadata.
+
+    Fish escapes newlines (``\\n``) and backslashes in command values, so every
+    entry occupies a single ``- cmd: `` line on disk. Anchoring entry detection
+    to the start of a line is therefore required: a command whose text contains
+    the literal ``- cmd: `` (e.g. ``grep -- "- cmd: " file``) must not be split
+    into phantom entries.
+    """
     entries: dict[str, dict[str, str | int | list[str]]] = {}
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
+    except Exception as e:
+        print(f"Error parsing {file_path}: {e}", file=sys.stderr)
+        return {}
 
-        # Split by entry markers, but keep the marker
-        entry_parts = content.split("- cmd: ")
+    try:
+        lines = content.split("\n")
+        # Entry boundaries are lines that start with the cmd marker.
+        starts = [idx for idx, line in enumerate(lines) if line.startswith("- cmd: ")]
 
-        for part in entry_parts[1:]:  # Skip first empty part
-            lines = part.strip().split("\n")
-            if not lines:
-                continue
+        for s_idx, start in enumerate(starts):
+            end = starts[s_idx + 1] if s_idx + 1 < len(starts) else len(lines)
 
-            # First line is the command (after "- cmd: " was removed)
-            cmd = lines[0]
+            cmd = lines[start][len("- cmd: ") :]
             current_entry: dict[str, str | int | list[str]] = {"cmd": cmd}
 
-            i = 1
-            while i < len(lines):
+            i = start + 1
+            while i < end:
                 line = lines[i]
                 if line.startswith("  when: "):
-                    current_entry["when"] = int(line[8:])
+                    try:
+                        current_entry["when"] = int(line[len("  when: ") :])
+                    except ValueError:
+                        pass
                 elif line.startswith("  paths:"):
                     current_entry["paths"] = []
                     i += 1
                     # Collect all path entries
-                    while i < len(lines) and lines[i].startswith("    - "):
-                        current_entry["paths"].append(lines[i][6:])  # Remove "    - "
+                    while i < end and lines[i].startswith("    - "):
+                        current_entry["paths"].append(lines[i][len("    - ") :])
                         i += 1
                     continue  # Don't increment i again
                 i += 1
 
             # Store entry, keeping most recent for duplicate commands
-            if "cmd" in current_entry:
-                cmd_str = str(current_entry["cmd"])
-                when_value = current_entry.get("when", 0)
-                timestamp = int(when_value) if isinstance(when_value, (int, str)) else 0
+            cmd_str = str(current_entry["cmd"])
+            when_value = current_entry.get("when", 0)
+            timestamp = int(when_value) if isinstance(when_value, (int, str)) else 0
 
-                if cmd_str not in entries:
+            if cmd_str not in entries:
+                entries[cmd_str] = current_entry
+            else:
+                existing_when = entries[cmd_str].get("when", 0)
+                existing_timestamp = int(existing_when) if isinstance(existing_when, (int, str)) else 0
+                if timestamp > existing_timestamp:
                     entries[cmd_str] = current_entry
-                else:
-                    existing_when = entries[cmd_str].get("when", 0)
-                    existing_timestamp = int(existing_when) if isinstance(existing_when, (int, str)) else 0
-                    if timestamp > existing_timestamp:
-                        entries[cmd_str] = current_entry
 
     except Exception as e:
         print(f"Error parsing {file_path}: {e}", file=sys.stderr)

@@ -1,0 +1,51 @@
+%% ============================================================================
+%% 04-ralph-state-machine.mmd — Ralph orchestrator (scripts/ralph.py)
+%% Resumable planner→executor→reviewer→re-reviewer loop driven by a manifest.
+%% The per-iteration phase advances strictly left→right; death/kill parks the
+%% iteration at its current phase and `resume`/supervisor re-launches the runner.
+%% CLI entry: ,ralph (home/exact_bin/executable_,ralph) → scripts/ralph.py
+%% ============================================================================
+stateDiagram-v2
+    direction TB
+
+    [*] --> planning : ralph go --goal
+
+    planning --> blocked : RALPH_QUESTIONS (needs_human)
+    blocked --> planning : ralph answer
+
+    planning --> executing : plan accepted (iteration starts)
+
+    state "per-iteration loop" as ITER {
+        direction LR
+        executing --> reviewing : exec done
+        reviewing --> rereviewing : reviewer verdict (feature/bugfix)
+        rereviewing --> decided : re-reviewer verdict
+        reviewing --> decided : review/research workflow (no re-reviewer)
+    }
+
+    decided --> replanning : verdict=fail & iters<max
+    replanning --> executing : next iteration
+    decided --> done : verdict=pass
+    decided --> failed : max_iterations / max_minutes exceeded
+
+    done --> reflecting : workflow in {feature,bugfix} & reflector_enabled
+    reflecting --> [*] : capsule → AI KB
+    done --> [*]
+    failed --> [*]
+
+    note right of executing
+        Control overlay (ralph control --action):
+        takeover→manual_control · dirty→dirty_control
+        resume→resume_requested · auto→automated
+        BLOCKING states pause the runner until cleared.
+    end note
+
+    note right of planning
+        Config: ~/.config/ralph/roles.json (planner/executor/
+        reviewer/re_reviewer/reflector → harness+model+extra_args).
+        Prompts: dot_config/ralph/prompts/{planner,executor,reviewer,
+        re_reviewer,reflector}.md.
+        planner/reviewer = cursor --mode plan/ask; executor = --force.
+        re_reviewer DIVERSITY GATE: family != reviewer family
+        {claude,gpt,gemini,llama,mistral,deepseek}.
+    end note

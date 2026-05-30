@@ -1,0 +1,43 @@
+%% ============================================================================
+%% 12-ai-tool-configs.mmd — Every per-tool AI config file in home/.
+%% Pattern: source carries .work + .personal variants; a 07-merge-* hook picks
+%% by isWork and merges generated MCP/model blocks into the live config.
+%% ============================================================================
+flowchart TB
+    classDef cursor fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
+    classDef claude fill:#3a2b1b,stroke:#ffb74d,color:#fff3e0;
+    classDef codex fill:#2c2c34,stroke:#b39ddb,color:#f3e5f5;
+    classDef gem fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
+    classDef oc fill:#3a1b2b,stroke:#f48fb1,color:#fce4ec;
+
+    subgraph CURSOR["Cursor (dot_cursor/)"]
+        CU["hooks.json (lifecycle; see 03b)<br/>symlink_AGENTS.md → ~/AGENTS.md<br/>symlink_skills → ~/.agents/skills"]:::cursor
+    end
+
+    subgraph CLAUDE["Claude Code (dot_claude/)"]
+        CLD["settings.work.json · settings.personal.json · settings.llama-cpp.json<br/>symlink_skills → ~/.agents/skills<br/>hook 07-merge-claude-code-settings<br/>(merge_claude_settings.py + merge_claude_mcp.py)"]:::claude
+    end
+
+    subgraph CODEX["Codex (dot_codex/)"]
+        CDX["private_config.work.toml · private_config.personal.toml<br/>readonly_llama-cpp-model-catalog.json<br/>exact_skills/ (.keep) · ~/bin/codex wrapper (inject llama meta)<br/>hook 07-merge-codex (inject_mcp_into_codex_toml.py)"]:::codex
+    end
+
+    subgraph GEMINI["Gemini CLI (dot_gemini/)"]
+        GMN["settings.json (auto_edit) · readonly_GEMINI.md (SOP)<br/>exact_commands/ (.keep)<br/>hook 07-merge-gemini-settings"]:::gem
+    end
+
+    subgraph OPENCODE["OpenCode (dot_config/opencode/)"]
+        OPC["readonly_opencode.work.jsonc · readonly_opencode.personal.jsonc<br/>symlink_AGENTS.md → ~/AGENTS.md · symlink_skills<br/>hook 07-merge-opencode (inject_mcp_into_opencode_jsonc.py<br/>+ merge_opencode_models.py)"]:::oc
+    end
+
+    subgraph PI["Pi agent (dot_pi/agent/)"]
+        PIA["readonly_settings.work.json · readonly_settings.personal.json<br/>readonly_models.json (← generate_pi_models.py)<br/>Gemini 3.1 Pro Preview default; hook 07-merge-pi-config"]:::gem
+    end
+
+    subgraph OTHER["Other terminal assistants"]
+        AMP["Amp: dot_config/exact_amp/private_readonly_settings.json"]:::oc
+        TUI["tuicr: dot_config/tuicr/readonly_config.toml"]:::oc
+    end
+
+    REG[[".chezmoidata/mcp_servers.yaml + ai_models.yaml<br/>scripts/ generators (see 11)"]]:::cursor
+    REG --> CURSOR & CLAUDE & CODEX & GEMINI & OPENCODE & PI & OTHER

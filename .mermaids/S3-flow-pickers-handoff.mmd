@@ -1,0 +1,40 @@
+%% ============================================================================
+%% S3-flow-pickers-handoff.mmd — FLOW: stale-while-revalidate UX + the file-based
+%% handoff bus that lets pickers cooperate. Realizes C9, C10 (and C3 work/home
+%% scope). Files are nodes ON the interaction. (drill: 05, 06)
+%% ============================================================================
+flowchart TB
+    classDef in fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
+    classDef cache fill:#3a2f15,stroke:#e0b341,color:#fff8e1;
+    classDef ui fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
+    classDef bus fill:#3a1b2b,stroke:#f48fb1,color:#fce4ec;
+    classDef run fill:#4a1f1f,stroke:#ef9a9a,color:#ffebee;
+
+    subgraph SWR["C9 · stale-while-revalidate (never block on network)"]
+        direction TB
+        LAUNCH(["launch gh_picker.sh"]):::in
+        LAUNCH --> COLD["start:reload = render CACHED rows instantly<br/>(zero-latency first paint)"]:::cache
+        COLD --> BG["background: gh_items fetch (work/home scope, C3)<br/>writes new cache file"]:::cache
+        BG -->|fetch OK| PUSH["POST reload to fzf TCP listener $FZF_PORT<br/>(gh_picker_port) → live row swap"]:::ui
+        BG -->|fetch FAIL| KEEP["keep stale cache (no flicker); ctrl-r forces refetch"]:::ui
+        PUSH --> VIEW["fzf view: bright icon rows + warm-prefetched preview"]:::ui
+        KEEP --> VIEW
+    end
+
+    subgraph BUS["C10 · file-based handoff bus ($XDG_CACHE_HOME/tmux)"]
+        direction TB
+        VIEW --> ACT{"action key"}:::ui
+        ACT -->|enter / checkout| PIN["write gh_picker_pin → abort picker"]:::bus
+        ACT -->|ralph hand-off| RPIN["handoff_to_ralph_pin.sh →<br/>gh_ralph_handoff_context.py → gh_picker_ralph_pin"]:::bus
+        ACT -->|create| CPIN["write gh_picker_create_pin"]:::bus
+        ACT -->|switch sessions| SENT["write gh_picker_switch_sessions sentinel"]:::bus
+    end
+
+    subgraph CONSUME["next tool consumes + deletes pin on its launch"]
+        PIN --> WT["worktree open / checkout (,w · gh-worktree)"]:::run
+        RPIN --> RALPH[",ralph go run seeded with PR/issue context"]:::run
+        CPIN --> CREATE["new PR/issue/branch flow"]:::run
+        SENT --> PICKSESS["pick_session picker (pick_session_pin)<br/>tmux attach/switch"]:::run
+    end
+
+    NOTE["WHY FILES, NOT ARGS: the popup loop must abort to release the TTY,<br/>so it can't return a value — it parks intent in a known cache path and the<br/>successor reads+clears it. Same bus links gh ↔ ralph ↔ session ↔ worktree."]:::bus

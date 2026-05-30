@@ -1,0 +1,52 @@
+%% ============================================================================
+%% 06-worktree-workflow.mmd — Git worktree + GitHub PR/issue workflow.
+%% ,w (home/exact_bin/executable_,w) dispatches to home/exact_bin/utils/,w/*.sh
+%% and shares helpers in utils/executable_worktree_lib.sh. Tightly coupled to
+%% tmux sessions (one session per worktree) and 1Password identity switching.
+%% ============================================================================
+flowchart TD
+    classDef cli fill:#3a2b1b,stroke:#ffb74d,color:#fff3e0;
+    classDef sub fill:#2c2c34,stroke:#b39ddb,color:#f3e5f5;
+    classDef ext fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
+    classDef id fill:#3a1b2b,stroke:#f48fb1,color:#fce4ec;
+
+    W[",w (executable_,w) dispatcher → utils/,w/<cmd>.sh"]:::cli
+    LIB[["utils/executable_worktree_lib.sh · utils/executable_bash_utils_lib.sh<br/>utils/,w/readonly_issue_lib.sh · utils/,w/lib/iso_date_days_ago.py<br/>completions: fish ,w.fish + zsh _comma_w"]]:::sub
+
+    W --> ADD["add.sh &lt;branch&gt; [base]<br/>local / origin / upstream / user-fork / new · nested dirs"]:::sub
+    W --> PRS["prs.sh &lt;nums|search&gt; → fzf select → gh PR meta<br/>add contributor fork → worktree → tmux"]:::sub
+    W --> ISSUE["issue.sh &lt;num|url&gt; (create/switch issue worktree)"]:::sub
+    W --> LS["ls.sh / switch.sh / open.sh (list + attach/focus tmux)"]:::sub
+    W --> MV["mv.sh &lt;from&gt; &lt;to&gt;"]:::sub
+    W --> PRUNE["prune.sh (stale metadata + tmux)"]:::sub
+    W --> REMOVE["remove.sh (interactive)<br/>dir + branch + fork remote + empty parents + zoxide + tmux kill"]:::sub
+    W --> DOCTOR["doctor.sh (deps + state)"]:::sub
+
+    ADD --> LIB
+    PRS --> LIB
+    ISSUE --> LIB
+
+    ADD --> TMUX["tmux session per worktree<br/>(see 05-tmux-pickers.mmd)"]:::ext
+    PRS --> TMUX
+    REMOVE --> TMUX
+
+    TFORK[",gh-tfork owner/repo<br/>fork+clone → ~/work or ~/code<br/>2-window tmux layout<br/>(elastic/kibana: shallow-since clone)"]:::cli --> TMUX
+
+    subgraph IDENTITY["1Password identity (auto by gitdir)"]
+        GC["global gitconfig sshCommand →<br/>~/.ssh/primary_public_key.pub"]:::id
+        WORKINC["includeIf gitdir:~/work/ →<br/>secondary_public_key.pub"]:::id
+        OP["1Password SSH agent fetches private key from vault"]:::id
+        GC --> OP
+        WORKINC --> OP
+    end
+    TMUX -.cwd selects identity.-> IDENTITY
+
+    subgraph GHHELP["GitHub helper CLIs (home/exact_bin/) — see 07c"]
+        H[",gh-prw · ,gh-issuew · ,gh-worktree · ,gh-subissues-create<br/>,add-patch-to-prs · ,enable/disable-auto-merge · ,wh (wormhole)<br/>,check-backport-progress · ,remove-comment · ,trace-string-pr<br/>,view-my-issues · ,kbn-pr-audit · ,codeowners · ,hey-branch · ,pull-rebase"]:::ext
+    end
+    PRS -.uses.-> GHHELP
+
+    subgraph GHDASHX["gh-dash integration (dot_config/exact_gh-dash/)"]
+        GD["config{,-home,-work}.yml.tmpl + gh-dash-shared.yml<br/>scripts/{pr_action,issue_action}.sh → ,gh-worktree"]:::ext
+    end
+    GHDASHX --> TFORK

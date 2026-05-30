@@ -1,0 +1,49 @@
+%% ============================================================================
+%% 02-package-management.mmd — "add X" decision ladder + every declarative
+%% package list and its sync hook. Stop at first suitable match top-down.
+%% Lists live at home/readonly_dot_default-* (deployed to ~/.default-*).
+%% ============================================================================
+flowchart TD
+    classDef q fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
+    classDef reg fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
+    classDef hook fill:#2c2c34,stroke:#b39ddb,color:#f3e5f5;
+
+    ADD(["request: add X → identify on GitHub first<br/>(README/INSTALL → recommended method)"]):::q
+
+    ADD --> BREW{"Homebrew?<br/>brew search/info incl. name variants"}:::q
+    BREW -- yes --> BREWF["readonly_dot_Brewfile.tmpl (250+, isWork-gated)"]:::reg
+    BREW -- no --> CARGO{Rust crate?}:::q
+    CARGO -- yes --> CARGOF["readonly_dot_default-cargo-crates"]:::reg
+    CARGO -- no --> GO{Go pkg?}:::q
+    GO -- yes --> GOF["readonly_dot_default-golang-pkgs"]:::reg
+    GO -- no --> GEM{Ruby gem?}:::q
+    GEM -- yes --> GEMF["readonly_dot_default-gems (+ readonly_dot_gemrc)"]:::reg
+    GEM -- no --> YARN{Node global?}:::q
+    YARN -- yes --> YARNF["readonly_dot_default-yarn-pkgs"]:::reg
+    YARN -- no --> UV{Python tool?}:::q
+    UV -- yes --> UVF["readonly_dot_default-uv-tools.tmpl"]:::reg
+    UV -- no --> CUSTOM["readonly_dot_default-custom-packages.tmpl<br/>dmg | file | tar_gz_bin | source"]:::reg
+
+    BREWF --> H3["hook 03-install-brew-packages (bundle + cleanup --force)"]:::hook
+    CARGOF --> H5c["hook 05-update-cargo-crates"]:::hook
+    GOF --> H5g["hook 05-update-golang-pkgs"]:::hook
+    GEMF --> H5r["hook 05-update-gems"]:::hook
+    YARNF --> H5y["hook 05-update-yarn-pkgs (also ,install-yarn-pkgs)"]:::hook
+    UVF --> H6["hook 06-update-uv-tools"]:::hook
+    CUSTOM --> H5x["hook 05-install-custom-packages<br/>+ scripts/reconcile_custom_packages.py"]:::hook
+
+    subgraph RUNTIMES["Language runtimes (versions, not CLIs)"]
+        MISE["dot_config/mise/config.toml.tmpl → hook 05-install-mise-runtimes<br/>auto-switch on cd (.nvmrc idiomatic only)"]:::reg
+        PYV["readonly_dot_python-version → hook 05-install-uv-versions"]:::reg
+    end
+
+    subgraph LOCALAI["Local model weights (opt-in)"]
+        LLAMA["readonly_dot_default-llama-cpp-models.tmpl<br/>dot_config/llama.cpp/models.ini.tmpl<br/>→ hook 07-sync-llama-cpp-models (gate: downloadLlamaCppModels)<br/>scripts/sync_llama_cpp_models.py"]:::reg
+        OLLAMA["hook 05-add-ollama-models (gemma3/devstral/qwen3.5:27b)"]:::reg
+    end
+
+    subgraph SYSTEM["System-level apply hooks"]
+        OSX["home/.osx.core + .osx.extra → hooks 05-osx.core / 05-osx.extra"]:::reg
+        CRON["home/crontab → hook 05-install-crontab"]:::reg
+        GHEXT["hook 05-install-gh-extensions (gh extension install)"]:::reg
+    end

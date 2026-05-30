@@ -1,0 +1,37 @@
+%% ============================================================================
+%% 07b-neovim.mmd — Every file under home/dot_config/exact_nvim/ (136).
+%% Deployed to ~/.config/nvim/. Loader init.lua → core → plugins → util.
+%% Plugin manager: native vim.pack (exact_core/exact_pack policy+semver).
+%% ============================================================================
+flowchart TB
+    classDef boot fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
+    classDef core fill:#2c2c34,stroke:#b39ddb,color:#f3e5f5;
+    classDef plug fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
+    classDef local fill:#3a2b1b,stroke:#ffb74d,color:#fff3e0;
+    classDef util fill:#3a1b2b,stroke:#f48fb1,color:#fce4ec;
+
+    BOOT["readonly_init.lua (entry)<br/>+ readonly_dot_neoconf.json · stylua.toml · LICENSE · README<br/>+ readonly_dot_gitignore"]:::boot
+
+    BOOT --> CORE["exact_lua/exact_core/<br/>init · options · keymaps · autocmds · plugins<br/>pack_dashboard · exact_pack/{policy,semver}.lua"]:::core
+
+    CORE --> PLUGINS["exact_lua/exact_plugins/ (57 specs)"]:::plug
+    subgraph PG["Plugin specs (grouped)"]
+        PG1["LSP/lang: lsp · typescript-tools · tsgo · go · rust · python<br/>lua · bash · fish · helm · jinja · docker · html-css · json<br/>jsonl · kdl · xml · yaml · markdown · strudel"]:::plug
+        PG2["Editing: completion · formatting · lint · eslint · treesitter<br/>inc-rename · search-and-replace · multi-cursors · marks<br/>leap · numb · live-command · undo · hlargs · highlight"]:::plug
+        PG3["UI/UX: colorscheme · bufferline · lualine · which-key<br/>snacks · telescope · fzf · neo-tree · outline · session<br/>dashboard(pack_dashboard) · core · tpope · gx · lazydev"]:::plug
+        PG4["Git/AI/Debug: git · github · diff · ai · dap · osv"]:::plug
+    end
+    PLUGINS --- PG
+
+    CORE --> LOCAL["exact_lua/exact_plugins_local/ (loaders)<br/>+ exact_plugins_local_src/ (implementations, 14 each)"]:::local
+    subgraph LP["Local plugins (own code)"]
+        LP1["run-jest-in-split · summarize-commit.lua.tmpl · ts-move-exports<br/>switch-src-test · owner-code-search · show-file-owner<br/>open-eslint-path · send-to-tmux-right-pane · copy-to-qf · qf"]:::local
+        LP2["toggle-win-width · winbar · unwrap-md · freeze · lsp-progress"]:::local
+    end
+    LOCAL --- LP
+
+    CORE --> UTIL["exact_lua/exact_util/ (15 helpers)<br/>root · fs · lsp · lsp_references · cmp · format · fzf<br/>terminal · treesitter · ui · markdown_view · k8s<br/>web_toolchain · chezmoi · chezmoi_lsp (gd→source)"]:::util
+
+    BOOT --> FT["exact_ftdetect/filetypes.lua (helm/compose/.http)<br/>exact_after/exact_ftplugin/{lua,make}.lua"]:::core
+    BOOT --> TS["exact_after/exact_queries/ (tree-sitter overrides, 10 langs)<br/>astro · html · jsx · javascriptreact · tsx · typescript<br/>typescriptreact · markdown · mdx · ruby<br/>(highlights/injections/textobjects)"]:::core
+    BOOT --> SYN["exact_syntax/{jsonl,log}.vim"]:::core

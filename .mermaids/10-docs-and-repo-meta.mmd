@@ -1,0 +1,32 @@
+%% ============================================================================
+%% 10-docs-and-repo-meta.mmd — Docusaurus site (website/ + docs/) and how it
+%% ships. docs/ = MDX content; website/ = build/theme; deployed to GitHub Pages.
+%% Every docs page + every website source file named.
+%% ============================================================================
+flowchart TB
+    classDef site fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
+    classDef content fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
+    classDef build fill:#2c2c34,stroke:#b39ddb,color:#f3e5f5;
+    classDef ci fill:#3a2b1b,stroke:#ffb74d,color:#fff3e0;
+
+    subgraph WEBSITE["website/ (Docusaurus app)"]
+        CFG["docusaurus.config.ts · sidebars.ts · tsconfig.json<br/>package.json + pnpm-lock.yaml · .gitignore · README.md"]:::build
+        SRC["src/css/custom.css<br/>src/theme/SearchBar/{index.tsx,styles.module.css}<br/>src/plugins/local-search/index.ts<br/>src/remark/cross-repo-links.js"]:::build
+        STATIC["static/.nojekyll · static/img/favicon.svg"]:::build
+    end
+
+    subgraph DOCS["docs/ (MDX content, _category_.json per dir)"]
+        INTRO["intro/ index · getting-started · architecture<br/>new-machine-bootstrap · day-in-the-life · learning-paths"]:::content
+        REF["reference/ faq · troubleshooting · reference-map"]:::content
+        TAI["topics/ai-assistants/ index · beads · knowledge-base · llama-cpp<br/>mcp · model-registry · ralph · reviews · reviewing-diffs · tool-configs"]:::content
+        TCORE["topics/core/chezmoi/ (debug-hooks · refresh-externals · update · verify-templates)<br/>topics/core/packages/ (homebrew · cargo · go · ruby · yarn · uv · custom · mise · llama-cpp-model)"]:::content
+        TWORK["topics/workflow/ shell-fish · terminals · custom-commands<br/>git-identity/ (index · gh-extension · switch-identity · worktrees)<br/>tmux/ (index · pickers · session-picker · github-picker · lowfi · popups-and-tools)"]:::content
+        TMISC["topics/editor/ (neovim · neovim-local-plugins)<br/>topics/macos/ (index · custom-app-icons)<br/>topics/security/ (security-and-secrets) · code-quality/ (formatting)"]:::content
+    end
+
+    DOCS --> WEBSITE
+    WEBSITE --> BUILD["make docs / docs-build / docs-serve / docs-clean<br/>(pnpm install --frozen-lockfile → pnpm build)"]:::site
+    BUILD --> CI[".github/workflows/deploy-docs.yml<br/>→ kapral18.github.io/dotfiles"]:::ci
+
+    NOTE["Documentation Hygiene: any behavior change under home//scripts//tools/<br/>must update the matching docs/ page (and .mermaids/)."]:::content
+    DOCS --- NOTE

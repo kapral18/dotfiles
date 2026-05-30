@@ -1850,6 +1850,26 @@ class RalphRunner:
                 manifest["spec"] = new_spec
                 manifest["spec_seq"] = (manifest.get("spec_seq") or 1) + 1
                 self._sync_artifact_from_spec(manifest, workspace)
+                # Drop any open (non-decided) iteration so the new spec drives a
+                # fresh executor pass. The executor-origin replan paths
+                # (RALPH_REPLAN / executor questions) already pre-drop the
+                # iteration, so this is a no-op for them; it closes the gap for
+                # reviewer / re_reviewer questions and explicit `,ralph replan`,
+                # which otherwise leave a mid-flight iteration that resumes at
+                # review/rereview against stale executor output despite
+                # phase="executing".
+                open_iter = current_iteration(manifest)
+                if open_iter is not None:
+                    open_n = open_iter["n"]
+                    manifest["iterations"] = [it for it in (manifest.get("iterations") or []) if it.get("n") != open_n]
+                    roles = manifest.get("roles") or {}
+                    for stale_role in (f"executor-{open_n}", f"reviewer-{open_n}", f"re_reviewer-{open_n}"):
+                        roles.pop(stale_role, None)
+                    manifest["roles"] = roles
+                    self._append_decision(
+                        directory,
+                        f"replan reset open iteration {open_n} (phase={iter_phase(open_iter)}) for fresh exec",
+                    )
                 manifest["phase"] = "executing"
                 self.save_manifest(manifest)
                 spec = new_spec

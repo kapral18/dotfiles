@@ -276,7 +276,19 @@ Examples:
 | `,to-gif`           | Convert a video to an optimized GIF                                                                        |
 | `,vid-ipad`         | Re-encode a video for iPad playback                                                                        |
 | `,pdf-diff`         | Visual diff two PDFs by compositing pages                                                                  |
-| `,history-sync`     | Merge local Fish history with a 1Password document and push the merged result back                         |
+| `,history-sync`     | Merge local Fish history with a 1Password document and push the merged result back (see below)             |
+
+#### `,history-sync` details
+
+- Source: [`home/exact_bin/executable_,history-sync`](../../../home/exact_bin/executable_,history-sync)
+- Merge logic: [`home/exact_bin/utils/exact_history/executable_fish-history-merge.py`](../../../home/exact_bin/utils/exact_history/executable_fish-history-merge.py)
+- Stores the synced history in the 1Password document `fish-history-sync`; that document doubles as an off-machine backup of your fish history.
+- The merge is a union keyed by command text, keeping the most recent timestamp per command, and writes entries in chronological order.
+- Data-safety behavior:
+  - Before replacing local history it writes a snapshot to `~/.local/share/fish/fish_history.bak`.
+  - It refuses to install/push a merged result that has fewer entries than the remote copy (guards against parse/merge corruption shrinking the backup).
+  - If the remote pull fails but the `fish-history-sync` item exists (transient/auth/network error), it aborts instead of overwriting the good remote with local-only history.
+- Caveat: a running fish session keeps its own in-memory history and may rewrite `fish_history` on save. If you restore the file out-of-band, run `history merge` in active fish shells (or restart them) so they adopt it.
 
 ### Internal / plumbing helpers
 

@@ -1,0 +1,40 @@
+%% ============================================================================
+%% 07-shell-editor-macos.mmd — Shell, terminals, multiplexer launch, macOS.
+%% Neovim detail → 07b. ~/bin commands → 07c. Dotfile rc files → 08.
+%% ============================================================================
+flowchart TB
+    classDef shell fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
+    classDef term fill:#2c2c34,stroke:#b39ddb,color:#f3e5f5;
+    classDef mac fill:#3a2b1b,stroke:#ffb74d,color:#fff3e0;
+    classDef data fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
+
+    subgraph SHELLS["Shells (fish primary; zsh/bash present)"]
+        FISH["dot_config/fish/readonly_config.fish.tmpl<br/>+ readonly_fish_plugins (fisher) + completions/ (32 ,*.fish)"]:::shell
+        ZSH["readonly_dot_zshrc.tmpl · readonly_dot_zprofile<br/>dot_zsh/completions/_comma_{w,wh}"]:::shell
+        BASH["readonly_dot_bashrc.tmpl · readonly_dot_bash_profile<br/>readonly_dot_profile.tmpl · readonly_dot_shellrc"]:::shell
+        STAR["dot_config/readonly_starship.toml (prompt)"]:::shell
+        FISH --> BINPATH["~/bin (see 07c) · mise activate · pass/1Password (wpass/ppass)"]:::shell
+    end
+
+    subgraph TERMS["Terminals + multiplexer"]
+        GHOSTTY["Ghostty: dot_config/exact_ghostty/readonly_config"]:::term
+        TMUX["tmux (C-Space) → see 05-tmux-pickers.mmd"]:::term
+        BTOP["dot_config/exact_btop/btop.conf · yazi (theme+yazi.toml)"]:::term
+        GHOSTTY --> TMUX
+    end
+
+    NVIMREF["Neovim → see 07b-neovim.mmd"]:::data
+    FISH -.$EDITOR.-> NVIMREF
+
+    subgraph MACOS["macOS automation"]
+        HAMMER["dot_hammerspoon/ readonly_init.lua<br/>readonly_gridmouse.lua (hjkl mouse grid)<br/>readonly_window.lua (Hyper snaps/maximize)<br/>+ EmmyLua.spoon (via .chezmoiexternal)"]:::mac
+        KARA["dot_config/exact_private_karabiner/karabiner.json"]:::mac
+        ALFRED["Alfred.alfredpreferences/ (115 files)<br/>11 prefs.plist + 86 png icons<br/>workflow: Urban Dictionary (alfred-workflow py lib)"]:::mac
+        ICONS["app_icons/readonly_icon_mapping.yaml + assets/ghostty/*.png<br/>→ ,apply-app-icons → hook 05-apply-app-icons (fileicon)"]:::mac
+        OSX["home/.osx.core + .osx.extra<br/>→ hooks 05-osx.core / 05-osx.extra (defaults write)"]:::mac
+        MIC[",set-default-mic · audio helpers"]:::mac
+    end
+
+    BINPATH -.,doctor health-check.-> SHELLS
+    BINPATH -.,doctor.-> TERMS
+    BINPATH -.,doctor.-> MACOS

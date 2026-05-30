@@ -9,6 +9,11 @@ return {
       vim.g["chezmoi#use_tmp_buffer"] = 1
       vim.g["chezmoi#source_dir_path"] = os.getenv("HOME") .. "/.local/share/chezmoi"
 
+      -- Redirect LSP definition/reference jumps to chezmoi source files when
+      -- navigating from inside the source tree (instead of the deployed target
+      -- that `chezmoi apply` overwrites). Safe to install eagerly; idempotent.
+      require("util.chezmoi_lsp").setup()
+
       -- Defensive filetype reclaim for chezmoi `.tmpl` source files.
       --
       -- Other plugins ship blanket `au *.tmpl set filetype=<X>` rules in

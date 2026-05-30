@@ -18,7 +18,7 @@ customCommands:
     context: files
     description: Commit (--no-verify)
     output: terminal
-  - key: <c-P>
+  - key: <c-p>
     command: get_pr_worktrees "{{ .Form.PrNumber }}"
     context: localBranches
     loadingText: Checkout out PR {{ .Form.PrNumber }}
@@ -41,7 +41,7 @@ customCommands:
     context: commitFiles
     description: Blame file at revision
     output: terminal
-  - key: <c-B>
+  - key: <c-s-b>
     command: exec tig blame -- "{{ .SelectedCommitFile.Name }}"
     context: commitFiles
     description: Blame file at tree

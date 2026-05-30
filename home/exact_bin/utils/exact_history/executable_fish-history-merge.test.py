@@ -88,7 +88,7 @@ class TestFishHistoryMerge(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertIn("ls -la", result)
         entry = result["ls -la"]
-        self.assertEqual(entry["cmd"], "ls -laa")
+        self.assertEqual(entry["cmd"], "ls -la")
         self.assertEqual(entry["when"], 1700000000)
 
     def test_parse_entry_with_paths(self) -> None:
@@ -161,6 +161,24 @@ class TestFishHistoryMerge(unittest.TestCase):
         entry = result["ls -la"]
         self.assertEqual(entry["cmd"], "ls -la")
         self.assertNotIn("when", entry)
+
+    def test_parse_command_containing_cmd_marker(self) -> None:
+        """Commands whose text contains the literal '- cmd: ' must not be split"""
+        content = """- cmd: grep -- "- cmd: " file
+  when: 1700000000
+- cmd: echo "- cmd: not a real entry"
+  when: 1700000001
+- cmd: ls
+  when: 1700000002
+"""
+        self.write_history(self.local_file, content)
+        result = fish_history_merge.parse_fish_history(self.local_file)
+
+        self.assertEqual(len(result), 3)
+        self.assertIn('grep -- "- cmd: " file', result)
+        self.assertIn('echo "- cmd: not a real entry"', result)
+        self.assertIn("ls", result)
+        self.assertEqual(result['grep -- "- cmd: " file']["when"], 1700000000)
 
     def test_parse_invalid_file(self) -> None:
         """Test parsing a non-existent file"""

@@ -201,6 +201,7 @@ Helper scripts called by hooks and commands (stdlib-only by convention).
 | ----------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `chezmoi_lib.sh`                    | Shared shell library for merge/apply hooks (source selection, atomic writes, checksums, LiteLLM base) |
 | `verify_templates.py`               | Render every chezmoi `*.tmpl` via `execute-template` to catch errors early                            |
+| `verify_mermaids.py`                | Check `.mermaids/` file-census counts against `git ls-files` (part of `make check`)                   |
 | `yaml_parser.py`                    | Minimal dependency-free YAML parser for project data files                                            |
 | `jsonc_dump.py`                     | JSONC serializer matching OpenCode's trailing-comma config style                                      |
 | `mcp_registry.py`                   | Read/normalize the canonical MCP registry                                                             |

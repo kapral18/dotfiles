@@ -224,7 +224,7 @@ Custom commands are shipped as scripts installed to `~/bin` (source: `home/exact
   - **Description:** Quick “am I in sync with upstream?” status for the current branch (ahead/behind + missing remote).
   - **Examples:** `,hey-branch`; run `,hey-branch` after `git fetch`
 - **Name:** `,history-sync`
-  - **Description:** Merge local Fish history with a 1Password document and push the merged result back, so multiple machines stay in sync.
+  - **Description:** Merge local Fish history with the `fish-history-sync` 1Password document and push the merged result back, so multiple machines stay in sync. Snapshots local history to `fish_history.bak` before replacing it, and refuses to shrink or overwrite the remote backup on a corrupt merge or transient pull error.
   - **Examples:** `,history-sync`; run `,history-sync` on each machine periodically
 - **Name:** `,install-yarn-pkgs`
   - **Description:** Install global yarn packages listed in `home/readonly_dot_default-yarn-pkgs`.

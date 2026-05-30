@@ -1,0 +1,67 @@
+%% ============================================================================
+%% 05-tmux-pickers.mmd — Every file under home/dot_config/exact_tmux/ (117).
+%% Loader sources conf.d/* in numeric order; scripts/ holds all integrations.
+%% Deployed to ~/.config/tmux/. Prefix = C-Space.
+%% ============================================================================
+flowchart TD
+    classDef conf fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
+    classDef sh fill:#2c2c34,stroke:#b39ddb,color:#f3e5f5;
+    classDef py fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
+    classDef data fill:#3a2b1b,stroke:#ffb74d,color:#fff3e0;
+
+    LOADER["readonly_tmux.conf (loader) + readonly_gh-dash-popup.conf<br/>readonly_pick_session_dir_exclude.txt"]:::conf
+    LOADER --> CONFD["exact_conf.d/ (sourced 00→99, then 44)<br/>00-base · 10-prefix-and-global-keys · 11-pane-and-window-nav<br/>20-copy · 30-lowfi · 40-session-tools · 41-pickers<br/>42-gh-dash · 43-repo-bootstrap · 45-agent-prompt-wrap<br/>90-plugins · 99-tpm · 44-ralph (last)"]:::conf
+
+    CONFD -->|41-pickers prefix+G| GHP
+    CONFD -->|41-pickers| SESS
+    CONFD -->|42-gh-dash| GHDASH
+    CONFD -->|43-repo-bootstrap| TFORK
+    CONFD -->|40-session-tools| SESSIONS
+    CONFD -->|30-lowfi| LOWFI
+    CONFD -->|45-agent-prompt-wrap| APW
+    CONFD -->|90/99 plugins| PLUGINS
+
+    subgraph GH["scripts/pickers/github/ — GitHub picker"]
+        GHP["gh_picker.sh (fzf TUI; --mode work|home --scope all|focus|explore)<br/>stale-while-revalidate: start→cache, bg fetch→POST reload($FZF_PORT)"]:::sh
+        GHITEMS["gh_items.sh → lib/gh_items_main.py (rows from gh + YAML)"]:::py
+        GHCFG[["readonly_gh-picker-{work,home}.yml (gh-dash-style sections)"]]:::data
+        GHPREV["gh_preview.sh + lib/gh_preview_warm.sh"]:::sh
+        GHACT["gh_action.sh · gh_comment.sh · gh_create.sh (lib/gh_create.py)<br/>gh_batch_worktree.sh · gh_popup.sh · keyhelp.sh"]:::sh
+        GHUI["lib/gh_dashboard_ui.py (status header)<br/>gh_palette_verbs.py · gh_patch_picker_cache.py<br/>gh_picker_follow_link.py · gh_ralph_handoff_context.py"]:::py
+        GHBIND["lib/ fzf-binding shims (.sh):<br/>collapse · ctrl_t · enter · jump · mark_subtree · palette<br/>scope · sort · toggle (+ collapse.py, mark_subtree.py)"]:::sh
+        GHP --> GHITEMS --> GHCFG
+        GHP --> GHPREV & GHACT & GHUI & GHBIND
+    end
+
+    subgraph SE["scripts/pickers/session/ — Session picker"]
+        SESS["pick_session.sh + popup.sh + preview.sh + keyhelp.sh"]:::sh
+        SIDX["index.sh / index_update.sh / index_update_hook.sh<br/>ordered_cache_update.sh → lib/index_main.py + frecency.py"]:::py
+        SFILT["filter.sh → lib/filter_main.py + pick_session_grouping.py"]:::py
+        SITEMS["items.sh / items_hide_selected.sh / open_items.sh<br/>→ lib/items_full_rehydrate · items_light_rehydrate · items_hide_selected_main"]:::py
+        SLIVE["live_refresh.sh · fzf_reload.sh · on_start.sh<br/>on_session_switch.sh · lib/sort_toggle_daemon.py"]:::sh
+        SCACHE["lib/cache_prune_paths.py · cache_prune_sessions.py<br/>publish_cache_filter.py · bag_preserve_non_wt.py<br/>fixup_current_marker.py · session_naming.sh"]:::py
+        SACT["action_create_worktree · action_kill_sessions · action_only_cycle<br/>action_open_gh · action_remove_worktrees · action_send_command<br/>remove_all_worktrees · remove_plain_dir"]:::sh
+        SESS --> SIDX --> SFILT --> SITEMS
+        SESS --> SLIVE & SCACHE & SACT
+    end
+
+    subgraph PLIB["scripts/pickers/lib/ — cross-picker handoff"]
+        HO["dispatch_async · snapshot_fzf_selection<br/>handoff_to_gh · handoff_to_sessions<br/>handoff_to_ralph_pin · handoff_to_ralph_apply<br/>pin_gh_first · pin_session_first"]:::sh
+    end
+    GH <--> PLIB
+    SE <--> PLIB
+
+    subgraph OTHER["Other tmux script groups"]
+        SESSIONS["scripts/sessions/ (10): goto · helpers · join_pane<br/>kill_session(+prompt) · list_sessions · new_session(+prompt)<br/>promote_pane · promote_window · switch_or_loop"]:::sh
+        GHDASH["scripts/gh_dash/ (popup.sh, restart.sh)"]:::sh
+        TFORK["scripts/gh_tfork/ (popup.sh, prompt.sh) → ,gh-tfork"]:::sh
+        CMDP["scripts/command_palette/ (palette.sh, popup.sh)"]:::sh
+        PURL["scripts/pick_url/ (pick_url.sh + lib/strip_cr.py)"]:::sh
+        APW["scripts/agent_prompt_wrap/ (handle_enter.sh, toggle.sh)<br/>+ agent_prompts/prefix.txt"]:::sh
+        RESUR["scripts/resurrect/ (resurrect_keep_last_sessions.sh)<br/>tmux-resurrect+continuum autosave"]:::sh
+        LOWFI["lowfi control (,tmux-lowfi)"]:::data
+        PLUGINS["TPM plugins (tpm via .chezmoiexternal): resurrect<br/>continuum · catppuccin"]:::data
+    end
+    SACT --> WLINK[",w worktree (see 06)"]:::data
+    GHACT --> WLINK
+    TFORK --> WLINK

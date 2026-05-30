@@ -25,13 +25,14 @@ Ralph is the local, durable AI orchestrator built into this dotfiles setup. One 
 - `,ralph answer RUN_ID --json -` — post answers to a run parked at `awaiting_human`. Stdin is a JSON object mapping question id (or "all") to the answer text. The orchestrator clears `status=awaiting_human` and resumes the loop. The TUI's `A` modal pipes its answers through this command.
 - `,ralph runner RUN_ID` — internal: drive the resumable state-machine loop for a run. Idempotent: if a runner is already alive on the run, raises and exits non-zero
 - `,ralph resume RUN_ID [--foreground]` — re-launch the runner if it died (PID-file flock detects liveness). No-op when the run is already terminal or a runner currently holds the lock
-- `,ralph replan RUN_ID [--no-resume]` — queue a replan; the running runner consumes it at the next loop tick. Auto-resumes the runner unless `--no-resume`
+- `,ralph replan RUN_ID [--no-resume]` — queue a replan; the running runner consumes it at the next loop tick. Auto-resumes the runner unless `--no-resume`. Consuming a replan re-plans **and** resets any open (non-decided) iteration — dropping its cached `executor-N`/`reviewer-N`/`re_reviewer-N` roles — so the new spec drives a fresh executor pass instead of resuming mid-iteration on stale output. This holds for every replan trigger (executor `RALPH_REPLAN`, a reviewer/re_reviewer/executor clarifying question answered via `,ralph answer`, and explicit `,ralph replan`).
 - `,ralph supervisor [--loop] [--interval N] [--json]` — resume dead non-terminal runners that are safe to automate. Skips runs parked for manual control. **Scheduling**: there is no built-in scheduler. Pick one of:
   - tmux pane: `,ralph supervisor --loop --interval 60` (in a dedicated background pane / detached session — survives until tmux dies). Quickest setup; what the palette's `Ralph supervisor` entry runs (one-shot).
   - `launchd` user agent: drop a `~/Library/LaunchAgents/dev.kapral18.ralph-supervisor.plist` with a `StartInterval` of 60 (or `KeepAlive` + the `--loop` form). Survives reboots.
   - cron (`*/1 * * * * ,ralph supervisor`): one-shot every minute. Cheapest, but loses the `--loop`'s shared kb / process cache between ticks.
   - The supervisor only resumes runs whose runner has died (PID flock released) and that aren't parked for manual control, so re-running it is always safe.
 - `,ralph runs [--json] [--limit N] [--workspace PATH] [--session NAME]` — list runs
+- `,ralph status RUN_ID [--json]` — terse single-run status line (`id status validation runtime goal`), or the full manifest with `--json`. Exits `0` only when `status=completed`, else `1` — the canonical scriptable "is this run done?" probe for poll loops / CI gates (lighter than parsing `,ralph runs --json`, side-effect-free unlike `verify`).
 - `,ralph role RUN_ID ROLE [--json]` — inspect one role pane / output / manifest
 - `,ralph preview RUN_ID [ROLE] [--mode summary|tail]` — formatted summary or tail
 - `,ralph attach RUN_ID [--role ROLE]` — switch tmux client to the run/role pane
@@ -74,6 +75,7 @@ Local models (llama-cpp/qwen) are opt-in only; defaults never depend on `,llama-
 - per-`go`-run: `id`, `kind="go"`, `phase` (`planning|executing|reviewing|rereviewing|replanning|done|failed|blocked`), `status`, `validation_status`, `iterations[]` (each with `n`, `phase` (`pending|exec|review|rereview|decided`), `executor_id`, `reviewer_id`, `re_reviewer_id`, `verdict`, `task`, `next_task`, `spec_seq`), `roles{}`, `spec`, `spec_seq`, `learned_ids`, `runner` (pid+host+started_at+heartbeat_at+alive)
 - per-role-child: `kind="role"`, role name (`planner-N|executor-N|reviewer-N|re_reviewer-N`), `pane`, `output_log`, `control_state`
 - iteration records are appended at iteration START (phase=pending) and updated as phases progress; the runner is fully resumable from the manifest alone
+- consuming a replan drops the open (non-decided) iteration and its cached role children before installing the new spec, so a replanned run always re-enters at a fresh `executor` pass rather than resuming a half-finished iteration against the new plan
 - a runner parks with `status=needs_human` when any role is `manual_control`, `dirty_control`, or `resume_requested`; it resumes only after role validation clears those states
 - `spec.target_artifact` is promoted to top-level `manifest.artifact`; a passing run freezes `artifact_sha256` and validation requires the artifact hash to match
 - `executor_count` must be exactly `1` until Ralph implements real parallel executor orchestration; higher values fail fast instead of being silently ignored

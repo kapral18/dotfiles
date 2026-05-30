@@ -229,6 +229,19 @@ Code actions are shown with **fzf-lua**, not Neovim’s default `vim.ui.select` 
 
 `lua_ls` root detection is intentionally narrowed for chezmoi paths: when no Lua project markers (`.luarc*`, `stylua.toml`, `selene.toml`) are present, files under `$CHEZMOI_SOURCE_DIR` use the file directory as root instead of the repo `.git` root. This avoids full-repo scans and the "More than 100000 files have been scanned" startup warning in large dotfiles trees.
 
+## Jump To Source, Not Target (Chezmoi)
+
+When you edit this config from its chezmoi source tree (`~/.local/share/chezmoi/home/...`), language servers still resolve symbols against the **deployed** copies under `$HOME`. For example, `lua_ls` resolves `require("plugins_local_src.qf")` to `~/.config/nvim/lua/plugins_local_src/qf.lua`, so a plain `gd`/`gr` from inside a source file would jump to the rendered target — the file `chezmoi apply` silently overwrites (the C1 source-vs-output invariant in `AGENTS.md`).
+
+[`util/chezmoi_lsp.lua`](../../../home/dot_config/exact_nvim/exact_lua/exact_util/readonly_chezmoi_lsp.lua) closes that gap. Wired in [`plugins/chezmoi.lua`](../../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_chezmoi.lua), it wraps `vim.lsp.buf_request{,_sync}` (the chokepoint fzf-lua uses for `gd`, `gD`, `gI`, `gy`, and `gr`) and rewrites location results so a destination that is a chezmoi-managed target is swapped for its source path via `chezmoi source-path`.
+
+Scope is deliberately narrow:
+
+- It only rewrites when the **originating buffer is itself a chezmoi source file**; editing a deployed target directly keeps normal target-to-target navigation.
+- Only location methods are touched (`definition`, `declaration`, `typeDefinition`, `implementation`, `references`); hover, formatting, and code actions pass through untouched.
+- Targets under the neovim data/plugin dir, `$VIMRUNTIME`, or outside `$HOME` are skipped before any `chezmoi` probe, and resolutions (including misses) are cached, so reference lists stay fast.
+- Line/column are preserved. For non-template sources the content is byte-identical so the cursor lands exactly; for `.tmpl` sources the rows may drift but you still land in the correct source file.
+
 ## LSP Progress In Lualine
 
 Lualine renders native Neovim `LspProgress` events through a local plugin: loader [`plugins_local/lsp-progress.lua`](../../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_lsp-progress.lua), implementation [`plugins_local_src/lsp-progress.lua`](../../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_lsp-progress.lua), and component wiring in [`plugins/lualine.lua`](../../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_lualine.lua). The statusline shows the client name, an animated spinner, the latest title/message, optional server-provided percentage, and a derived completed-token counter such as `(0/1)` or `(1/1) - done`. This replaces `lsp-progress.nvim` without emitting terminal/tmux OSC progress bars.

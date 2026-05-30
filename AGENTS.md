@@ -1,5 +1,17 @@
 # Dotfiles Project - Agent Instructions
 
+## Architecture Map Preload (Mandatory, First Action)
+
+At the start of **every** session in this repo, before planning or editing, preload the architecture map in `.mermaids/`. It is the navigation cloud for the whole solution — the concepts, invariants, data flows, and state machines of every subsystem. It has two layers: a **semantic cloud** (how it works together) and a **catalog** (where every file lives). Read the semantic layer first.
+
+1. Read [`.mermaids/README.md`](.mermaids/README.md) for the read order and the concept → catalog map.
+2. Read [`.mermaids/S0-concepts.mmd`](.mermaids/S0-concepts.mmd) — the 12 core concepts (C1–C13) and their invariants. This is the model the whole repo is built on.
+3. Read [`.mermaids/00-overview.mmd`](.mermaids/00-overview.mmd) (master map: semantic layer + catalog index).
+4. Before editing any file, consult [`.mermaids/SR-index.mmd`](.mermaids/SR-index.mmd) (reverse index) to find the concept it serves, what breaks if changed, and its co-edit set.
+5. Load the deeper flow/catalog diagram(s) for whatever the task touches — flows: `S1-flow-apply-reconcile.mmd` (apply/hooks), `S2-flow-agent-runtime.mmd` (agents/Ralph), `S3-flow-pickers-handoff.mmd` (pickers); catalog: e.g. `04-ralph-state-machine.mmd`, `05-tmux-pickers.mmd`, `01-chezmoi-pipeline.mmd`.
+
+These diagrams are documentation: when a change under `home/`, `scripts/`, or `tools/` alters a flow, command, or state shown in a `.mmd` file, update that file in the same change (see Documentation Hygiene below).
+
 ## Chezmoi Source-of-Truth (Mandatory)
 
 This is a **chezmoi-managed dotfiles repo**. Chezmoi deploys files from `home/` in this repo to `$HOME`. The deployed copies are outputs — editing them directly creates drift that `chezmoi apply` will silently overwrite.

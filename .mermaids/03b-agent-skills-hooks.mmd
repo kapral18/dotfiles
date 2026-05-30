@@ -1,0 +1,51 @@
+%% ============================================================================
+%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (53).
+%% Skills → ~/.agents/skills/ (intent-routed SKILL.md). Hooks → ~/.agents/hooks/.
+%% ============================================================================
+flowchart TB
+    classDef skill fill:#3a1b2b,stroke:#f48fb1,color:#fce4ec;
+    classDef hook fill:#2c2c34,stroke:#b39ddb,color:#f3e5f5;
+    classDef ref fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
+    classDef data fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
+
+    subgraph HOOKS["exact_hooks/ → ~/.agents/hooks/"]
+        HC["hook_common.py (shared lib) · readonly_README.md (state model)"]:::hook
+        SCx["session_context.py (sessionStart: inject active topic spec)"]:::hook
+        WLx["worklog_recorder.py (afterShell/postToolUse/Failure/afterFileEdit)"]:::hook
+        EVx["evidence_anchor.py (afterAgentResponse/stop: claim ledger)"]:::hook
+        PRG["gemini-pr-anchor-gate.sh (beforeShell: gh api pulls/.../reviews|comments)"]:::hook
+        GG["gemini-git-gate.sh (beforeShell: git commit|push) — failClosed"]:::hook
+    end
+
+    MEM[("/tmp/specs/<pwd>/<topic>.txt + .worklog.jsonl<br/>+ .evidence_state.json + .evidence_decisions.jsonl<br/>review topics → clean-room; default branch → session-<id>")]:::data
+    SCx <--> MEM
+    WLx --> MEM
+    EVx --> MEM
+
+    subgraph CORE["Core workflow skills"]
+        S1["review/ (SKILL + references: local_changes, pr_common,<br/>pr_fix, pr_review, shared_rules)"]:::skill
+        S2["git/ · github/ · worktrees/ · compose-pr/ · compose-issue/"]:::skill
+        S3["walkthrough/ · interview-me/ · research/"]:::skill
+        S1 --> R1["exact_references/*.md"]:::ref
+    end
+
+    subgraph IMPROVE["improve-* family (SKILL + agents/openai.yaml)"]
+        S4["improve-branch · improve-codebase<br/>improve-local · improve-targeted"]:::skill
+    end
+
+    subgraph TOOLS["Tool-backed skills (wrap a CLI; some have references)"]
+        S5["buildkite/ (+refs: bk-commands, build-debugging, troubleshooting)<br/>beads · sem · weave · knip · jscpd · semantic-code-search"]:::skill
+        S6["google-workspace · playwriter · letsfg(assets/Dockerfile)"]:::skill
+        S7["fix-cursor-cli/ (SKILL + scripts/fix_cursor_cli.sh + picker_patch.py)"]:::skill
+    end
+
+    subgraph KBN["Kibana / elastic-specific skills"]
+        S8["kbn-backport-conflict-resolution · kibana-console-monaco<br/>kibana-labels-propose"]:::skill
+    end
+
+    subgraph META["Meta / orchestration skills"]
+        S9["ralph/SKILL.md (drive ,ralph; see 04)<br/>cli-skills/ (author CLI-tool skills)"]:::skill
+    end
+
+    SOPS["~/AGENTS.md + ~/CLAUDE.md route 'Use when' → load SKILL.md"]:::data
+    SOPS --> CORE & IMPROVE & TOOLS & KBN & META

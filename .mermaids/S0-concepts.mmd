@@ -1,0 +1,91 @@
+%% ============================================================================
+%% S0-concepts.mmd — THE SEMANTIC CLOUD. Read this FIRST, before any catalog.
+%% This is NOT a folder tree. It is the set of ~12 ideas this repo is built on,
+%% each with its INVARIANT (the rule that must hold) and the few files that
+%% REALIZE/ENFORCE it. Understand these and the whole system is legible; every
+%% catalog file (00-13) is just an instance of one of these concepts.
+%% Edge label "violates →" points at what breaks if the invariant is ignored.
+%% ============================================================================
+graph TB
+    classDef concept fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8,stroke-width:2px;
+    classDef inv fill:#3a1b2b,stroke:#f48fb1,color:#fce4ec;
+    classDef realize fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
+
+    %% ---- C1 Source-of-truth / generated-output split -----------------------
+    C1{{"C1 · SOURCE vs OUTPUT<br/>the repo is INPUT; $HOME is a derived BUILD"}}:::concept
+    C1 --> I1["INVARIANT: never edit a $HOME target.<br/>Edit home/** source → chezmoi apply regenerates.<br/>Editing output = drift, silently overwritten."]:::inv
+    I1 --> R1["realized by: chezmoi apply · .chezmoiroot=home<br/>name-prefixes (exact/dot/readonly/private/executable/symlink)<br/>guard rule in AGENTS.md/CLAUDE.md (resolve symlink→source-path)"]:::realize
+
+    %% ---- C2 Canonical registries (single source per concern) ---------------
+    C2{{"C2 · ONE REGISTRY PER CONCERN<br/>data is declared once, consumed many ways"}}:::concept
+    C2 --> I2["INVARIANT: MCP servers, AI models, packages each have<br/>exactly ONE declarative source; tool-specific configs are<br/>GENERATED, never hand-authored per tool."]:::inv
+    I2 --> R2[".chezmoidata/mcp_servers.yaml · ai_models.yaml<br/>readonly_dot_default-* lists<br/>→ scripts/ generators fan out to every tool"]:::realize
+
+    %% ---- C3 Work/Personal duality ------------------------------------------
+    C3{{"C3 · isWork DUALITY<br/>one machine identity forks all behavior"}}:::concept
+    C3 --> I3["INVARIANT: a single init-time bool (.isWork) selects<br/>identity, keys, packages, model routes, MCP visibility.<br/>Every divergence is a .work/.personal pair or a .tmpl branch."]:::inv
+    I3 --> R3["realized by: .chezmoi.toml.tmpl prompt · {{ .isWork }} in .tmpl<br/>chezmoi_pick_src() · work_only in mcp_servers.yaml<br/>settings.{work,personal}.* pairs · includeIf gitdir:~/work/"]:::realize
+
+    %% ---- C4 Idempotent reconcile (hash-gate + manifest) --------------------
+    C4{{"C4 · IDEMPOTENT RECONCILE<br/>apply is convergent, not imperative"}}:::concept
+    C4 --> I4["INVARIANT: a hook re-runs ONLY when its input hash changes,<br/>writes ONLY if content differs, and records a checksum.<br/>Re-applying is a no-op; declarative lists are authoritative<br/>(brew cleanup --force removes anything not listed)."]:::inv
+    I4 --> R4["realized by: run_onchange_after_* '# … hash:' lines<br/>scripts/chezmoi_lib.sh (write_if_changed/install_if_changed/<br/>record_checksum → managed_configs.tsv) · reconcile_*.py"]:::realize
+
+    %% ---- C5 Secrets-at-runtime ---------------------------------------------
+    C5{{"C5 · SECRETS NEVER ON DISK<br/>configs hold references, not values"}}:::concept
+    C5 --> I5["INVARIANT: no plaintext credential is committed or written.<br/>Secrets resolve at runtime via 1Password agent + pass:<br/>$(pass …) and public-key-only files."]:::inv
+    I5 --> R5["realized by: 1Password SSH agent (agent.toml) · pass (wpass/ppass)<br/>$(pass …) in mcp_servers.yaml + chezmoi_lib.sh getters<br/>private_dot_ssh/*.pub only · gpg-agent cache ttl"]:::realize
+
+    %% ---- C6 Thin shell / typed core ----------------------------------------
+    C6{{"C6 · SHELL = GLUE, LOGIC = PYTHON<br/>testable core under scripts/"}}:::concept
+    C6 --> I6["INVARIANT: .sh/.sh.tmpl only wire paths+programs;<br/>any data transform/parsing lives in scripts/*.py<br/>(stdlib only, golden-file tested)."]:::inv
+    I6 --> R6["realized by: scripts/*.py + tests/fixtures/golden_*<br/>thin .chezmoiscripts calling them · yaml_parser/jsonc_dump (no deps)"]:::realize
+
+    %% ---- C7 Intent-routed governance ---------------------------------------
+    C7{{"C7 · GOVERNED AGENTS<br/>LLMs are deterministic systems, not chatbots"}}:::concept
+    C7 --> I7["INVARIANT: agents load SOP entrypoints + intent-matched skills,<br/>must verify (no guessing), and pass fail-closed gates before<br/>human-visible side effects."]:::inv
+    I7 --> R7["realized by: ~/AGENTS.md/CLAUDE.md/GEMINI.md · skills 'Use when'<br/>hooks.json gates (gemini-*-gate failClosed)<br/>evidence_anchor claim ledger · session_context memory"]:::realize
+
+    %% ---- C8 Evidence ledger (bounded retry) --------------------------------
+    C8{{"C8 · EVIDENCE LEDGER<br/>claims must be anchored or demoted"}}:::concept
+    C8 --> I8["INVARIANT: each visible factual/runtime claim carries a hard<br/>anchor (path/cmd/probe) OR an explicit 'Unknown because…'.<br/>Unanchored claims trigger bounded stop-hook retry."]:::inv
+    I8 --> R8["realized by: evidence_anchor.py (claim_units/unanchored/<br/>has_hard_anchor/Unknown demotion) · evidence_state.json<br/>+ evidence_decisions.jsonl in /tmp/specs"]:::realize
+
+    %% ---- C9 Stale-while-revalidate UX --------------------------------------
+    C9{{"C9 · INSTANT-THEN-FRESH<br/>pickers never block on the network"}}:::concept
+    C9 --> I9["INVARIANT: a picker shows cached rows instantly, fetches in<br/>background, and live-reloads via fzf's TCP listener only on<br/>fetch success (else cache stays; ctrl-r forces)."]:::inv
+    I9 --> R9["realized by: gh_picker.sh start:reload(cache-only)+bg POST $FZF_PORT<br/>session index/frecency cache · *_warm preview prefetch"]:::realize
+
+    %% ---- C10 Handoff bus ----------------------------------------------------
+    C10{{"C10 · FILE-BASED HANDOFF BUS<br/>tools cooperate via pin/sentinel files"}}:::concept
+    C10 --> I10["INVARIANT: one tool stages a selection to a well-known cache<br/>file and aborts; the next tool consumes+deletes it on launch.<br/>State lives in $XDG_CACHE_HOME/tmux, never in args."]:::inv
+    I10 --> R10["realized by: pickers/lib/handoff_to_* + pin_*_first<br/>gh_picker_{pin,ralph_pin,create_pin}, pick_session_pin<br/>gh_picker_switch_sessions sentinel"]:::realize
+
+    %% ---- C11 Diversity gate (adversarial review) ---------------------------
+    C11{{"C11 · ADVERSARIAL DIVERSITY<br/>a model may not approve its own family"}}:::concept
+    C11 --> I11["INVARIANT: reviewer and re_reviewer MUST be different model<br/>families; enforced at config load AND after CLI overrides."]:::inv
+    I11 --> R11["realized by: ralph.py family_of()+load_roles_config gate<br/>roles.json · prompts/{reviewer,re_reviewer}.md"]:::realize
+
+    %% ---- C12 Resumable state machine ---------------------------------------
+    C12{{"C12 · RESUMABLE STATE MACHINES<br/>death parks, relaunch continues"}}:::concept
+    C12 --> I12["INVARIANT: long work advances a persisted phase left→right;<br/>a crash leaves it parked at last-saved phase; a supervisor/<br/>resume relaunches from there (no lost progress, no re-do)."]:::inv
+    I12 --> R12["realized by: ralph.py manifest.iterations[].phase + runner/<br/>resume/supervisor · state-machine-verification harness rule<br/>(generalized: /tmp harness before 'merge-ready')"]:::realize
+
+    %% ---- C13 Persistent intent memory --------------------------------------
+    C13{{"C13 · INTENT MEMORY<br/>sessions rehydrate, don't restart cold"}}:::concept
+    C13 --> I13["INVARIANT: per-(workspace,topic) spec/worklog persists in<br/>/tmp/specs; sessionStart injects it bounded; review topics<br/>run clean-room; default branches get session-scoped topics."]:::inv
+    I13 --> R13["realized by: hook_common.py (spec_dir_for/active_topic/<br/>session_topic) · session_context.py · ,agent-memory · ai_kb.py"]:::realize
+
+    %% ---- how concepts compose ----------------------------------------------
+    C1 -. "everything applies through" .-> C4
+    C2 -. "fanned out idempotently by" .-> C4
+    C3 -. "branches selected by" .-> C4
+    C2 -. "generators obey" .-> C6
+    C5 -. "resolved during" .-> C4
+    C7 -. "enforced by" .-> C8
+    C7 -. "remembers via" .-> C13
+    C9 -. "cooperates via" .-> C10
+    C11 -. "runs inside" .-> C12
+    C12 -. "persists like" .-> C13
+
+    LEGEND["how to use: pick the concept your task touches → read its INVARIANT<br/>→ the 'realized by' files are your edit surface → confirm you didn't<br/>violate the invariant. Full file lists per concept: see SR-index.mmd."]:::realize

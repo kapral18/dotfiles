@@ -1,0 +1,56 @@
+%% ============================================================================
+%% 11-scripts-helpers.mmd — Every file in scripts/ (41). Repo-side Python
+%% (stdlib only, no PyYAML) called by chezmoi 07-* hooks + ,bin commands.
+%% Grouped by consumer. Shared parsers feed the generators/mergers.
+%% ============================================================================
+flowchart TB
+    classDef shared fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
+    classDef mcp fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
+    classDef model fill:#3a2b1b,stroke:#ffb74d,color:#fff3e0;
+    classDef ai fill:#2c2c34,stroke:#b39ddb,color:#f3e5f5;
+    classDef misc fill:#3a1b2b,stroke:#f48fb1,color:#fce4ec;
+
+    subgraph SHARED["Shared parsers / libs"]
+        YP["yaml_parser.py (minimal YAML, parse_scalar)"]:::shared
+        AM["ai_models.py (parse ai_models.yaml)"]:::shared
+        MD["model_display.py · jsonc_dump.py (JSONC writer)"]:::shared
+        CL["chezmoi_lib.sh (shared shell helpers for hooks)"]:::shared
+    end
+
+    subgraph MCPGEN["MCP config generation (hook 07-generate-mcp-configs)"]
+        MR["mcp_registry.py (load mcp_servers.yaml, resolve $(pass), filter)"]:::mcp
+        GMC["generate_mcp_configs.py (per-tool MCP json)"]:::mcp
+        MCM["merge_claude_mcp.py · merge_claude_settings.py (hook 07-merge-claude)"]:::mcp
+        ICT["inject_mcp_into_codex_toml.py (hook 07-merge-codex)"]:::mcp
+        IOJ["inject_mcp_into_opencode_jsonc.py (hook 07-merge-opencode)"]:::mcp
+    end
+    YP --> MR --> GMC --> MCM & ICT & IOJ
+
+    subgraph MODELGEN["Model catalog generation"]
+        GPM["generate_pi_models.py (hook 07-merge-pi → dot_pi/agent/models.json)"]:::model
+        MOM["merge_opencode_models.py (LiteLLM aliases into opencode jsonc)"]:::model
+        PLP["probe_litellm_prompt_cache.py (runtime probe; prompt-cache signals)"]:::model
+    end
+    AM --> GPM & MOM
+
+    subgraph AIKB["AI knowledgebase + embeddings"]
+        KB["ai_kb.py (markdown + SQLite FTS5 store; ,ai-kb)"]:::ai
+        EMB["embed.py + embed_runner.py (fastembed subprocess)"]:::ai
+        VEC["vec_runner.py (vector retrieval subprocess)"]:::ai
+        AGM["agent_memory.py (/tmp/specs topic mgmt; ,agent-memory)"]:::ai
+    end
+    KB --> EMB & VEC
+
+    subgraph ORCH["Orchestrator + package ops"]
+        RALPH["ralph.py (177KB; see 04/04b)"]:::misc
+        RCP["reconcile_custom_packages.py (hook 05-install-custom-packages)"]:::misc
+        SLC["sync_llama_cpp_models.py (hook 07-sync-llama-cpp-models)"]:::misc
+        VT["verify_templates.py (make verify-templates)<br/>verify_mermaids.py (make verify-mermaids; .mermaids census)"]:::misc
+        YT["yt_search.py (,youtube-search backend)"]:::misc
+    end
+
+    subgraph TESTS["scripts/tests/"]
+        T["test_scripts.py + test_agent_hooks.py (make test)<br/>fixtures/ golden_* (mcp work/personal · codex · opencode · pi<br/>· ai_models[_with_claude]) + *_base + mock_role.sh"]:::shared
+    end
+    MCPGEN -.verified by golden.-> TESTS
+    MODELGEN -.verified by golden.-> TESTS

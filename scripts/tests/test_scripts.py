@@ -1711,6 +1711,112 @@ class TestRalphResumability(unittest.TestCase):
             assert (counters / "reviewer").read_text().strip() == "1"
             assert (counters / "re_reviewer").read_text().strip() == "1"
 
+    def test_replan_mid_iteration_resets_open_iteration_for_fresh_exec(self):
+        """WHEN a replan is consumed while an iteration is open at review
+        (executor cached), the runner SHOULD drop that iteration and re-run the
+        executor against the new spec — not resume at review on stale output.
+
+        Regression for the replan-consume gap: phase was set to "executing" but
+        the open iteration was left intact, so the next tick re-entered review
+        and the executor never re-ran under the new plan.
+        """
+        sys.path.insert(0, str(SCRIPTS))
+        import ralph
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            workspace = tmp_path / "workspace"
+            artifact = workspace / "result.txt"
+            env = _make_go_env(tmp_path, artifact=artifact, content="hello world")
+            planned = self._ralph(
+                [
+                    "go",
+                    "--goal",
+                    "replan-mid-iter",
+                    "--workspace",
+                    str(workspace),
+                    "--plan-only",
+                    "--subprocess",
+                    "--json",
+                ],
+                env,
+                expect_returncode=1,
+            )
+            rid = planned["id"]
+            state_home = Path(env["RALPH_STATE_HOME"])
+            run_dir = state_home / "runs" / rid
+
+            # Forge a cached executor for iter 1 (as if it already ran).
+            executor_dir = state_home / "runs" / f"{rid}-executor-1"
+            executor_dir.mkdir(parents=True, exist_ok=True)
+            executor_output = executor_dir / "output.log"
+            executor_output.write_text("Wrote artifact (stale)\nLEARNING: stale executor output\nRALPH_DONE\n")
+            executor_child = {
+                "id": f"{rid}-executor-1",
+                "kind": "role",
+                "name": "executor-1",
+                "created_at": ralph.utc_now(),
+                "goal": "executor-1",
+                "runtime": "subprocess",
+                "status": "completed",
+                "exit_code": 0,
+                "expect": "RALPH_DONE",
+                "timeout_seconds": 10,
+                "control_state": "automated",
+                "validation_status": "passed",
+                "last_validated_at": ralph.utc_now(),
+                "learned_ids": [],
+                "command": "cached",
+                "workspace": str(workspace),
+                "prompt": str(executor_dir / "prompt.md"),
+                "output": str(executor_output),
+                "tmux": None,
+                "verdict_obj": {},
+            }
+            (executor_dir / "manifest.json").write_text(json.dumps(executor_child))
+
+            # Open iteration at review + a queued replan request.
+            parent_path = run_dir / "manifest.json"
+            parent = json.loads(parent_path.read_text())
+            parent.setdefault("roles", {})["executor-1"] = executor_child
+            parent["iterations"] = [
+                {
+                    "n": 1,
+                    "phase": "review",
+                    "started_at": ralph.utc_now(),
+                    "task": "create the artifact",
+                    "spec_seq": 1,
+                    "executor_id": executor_child["id"],
+                }
+            ]
+            parent["status"] = "running"
+            parent["phase"] = "reviewing"
+            parent["replan_requested"] = True
+            parent_path.write_text(json.dumps(parent))
+
+            final = self._ralph(["runner", rid, "--json"], env, expect_returncode=0)
+            assert final["status"] == "completed", final
+            assert final.get("spec_seq", 1) >= 2, "replan should have bumped spec_seq"
+            counters = tmp_path / "counters"
+            # The stale cached executor must have been dropped and re-run under
+            # the new spec (counter file appears == executor ran exactly once).
+            # If the iteration were NOT reset, the loop would resume at review on
+            # the forged stale output and the executor counter would never exist.
+            assert (counters / "executor").read_text().strip() == "1", (
+                "executor must re-run after a mid-iteration replan, not resume stale"
+            )
+            # Exactly one decided iteration carrying the FRESH executor's output:
+            # the forged stale output ("Wrote artifact (stale)") must be gone,
+            # replaced by the real mock executor run that wrote the artifact.
+            decided = [it for it in final["iterations"] if it.get("phase") == "decided"]
+            assert len(decided) == 1, final["iterations"]
+            assert decided[0]["verdict"] == "pass"
+            fresh_executor = final["roles"]["executor-1"]
+            assert "stale" not in Path(fresh_executor["output"]).read_text(), (
+                "decided iteration must carry the fresh executor output, not the stale cache"
+            )
+            assert artifact.read_text() == "hello world"
+
     def test_replan_run_queues_request_consumed_by_runner(self):
         """,ralph replan RID --no-resume sets the flag; the next runner consumes it."""
         with tempfile.TemporaryDirectory() as tmp:
@@ -4757,6 +4863,43 @@ class TestVerifyTemplates(unittest.TestCase):
             with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
                 rc = verify_templates.main([str(root)])
             assert rc == 0
+
+
+class VerifyMermaidsTest(unittest.TestCase):
+    """WHEN validating the .mermaids/ navigation map's file-census claims."""
+
+    def _module(self):
+        sys.path.insert(0, str(SCRIPTS))
+        import verify_mermaids
+
+        return verify_mermaids
+
+    def test_real_census_matches_repo(self):
+        """SHOULD pass for the committed map (counts and prose anchors current)."""
+        m = self._module()
+        failures = m.check_claims(REPO)
+        assert failures == [], "stale .mermaids census: " + "; ".join(failures)
+
+    def test_count_drift_is_detected(self):
+        """SHOULD report a mismatch when a claimed count diverges from git."""
+        m = self._module()
+        bogus = [m.Claim("bogus", ["home/exact_bin/*"], 999999, [])]
+        failures = m.check_claims(REPO, bogus)
+        assert any("claimed 999999" in f for f in failures)
+
+    def test_missing_anchor_is_detected(self):
+        """SHOULD report when the claimed count is absent from the diagram prose."""
+        m = self._module()
+        bogus = [m.Claim("bogus", None, m._git_ls_files(REPO, None), [("README.md", "NO_SUCH_ANCHOR_xyz")])]
+        failures = m.check_claims(REPO, bogus)
+        assert any("anchor not found" in f for f in failures)
+
+    def test_main_passes_on_repo(self):
+        """SHOULD exit 0 when run against the repo root."""
+        m = self._module()
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            rc = m.main([str(REPO)])
+        assert rc == 0
 
 
 if __name__ == "__main__":

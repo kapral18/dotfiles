@@ -1,0 +1,41 @@
+%% ============================================================================
+%% 09-repo-validation.mmd — Repo dev loop + every repo-side config/meta file.
+%% After every change: `make check` then `make fmt`. bin/fmt operates over
+%% `git ls-files` (so .mmd files, having no matched extension, are untouched).
+%% ============================================================================
+flowchart TD
+    classDef mk fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
+    classDef tool fill:#2c2c34,stroke:#b39ddb,color:#f3e5f5;
+    classDef gate fill:#3a1b2b,stroke:#f48fb1,color:#fce4ec;
+    classDef cfg fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
+
+    EDIT["edit home/** · scripts/** · tools/** · docs/** · website/**"]:::mk --> CHECK["make check (lint + verify-templates + verify-mermaids + test)"]:::mk
+
+    subgraph LINT["lint"]
+        FMT["bin/fmt --check (over git ls-files; ignores Alfred/)<br/>md: unwrap-md + markdownlint(~/.markdownlint.jsonc) + prettier<br/>json/yaml: prettier · sh: shfmt · lua: stylua<br/>fish: fish_indent · py: ruff · go: goimports+gofumpt"]:::tool
+        RUFFI["ruff check --select I scripts/ (ruff.toml)"]:::tool
+        GOV["(cd tools/ralph-tui && go vet ./… && go test ./…)"]:::tool
+    end
+    VT["verify-templates → scripts/verify_templates.py<br/>(chezmoi execute-template every *.tmpl)"]:::tool
+    VM["verify-mermaids → scripts/verify_mermaids.py<br/>(.mermaids/ file-census counts vs git ls-files)"]:::tool
+    TST["test → scripts/tests/test_scripts.py + test_agent_hooks.py<br/>fixtures/ (golden_*: mcp/codex/opencode/pi + ai_models + mock_role.sh)"]:::tool
+    CHECK --> LINT & VT & VM & TST
+
+    CHECK -->|fail| FIX["fix in scope, else report output"]:::gate --> CHECK
+    CHECK -->|pass| FMTW["make fmt (bin/fmt writes)"]:::mk
+    FMTW --> APPLY["chezmoi diff → chezmoi apply --no-tty <target> → verify $HOME"]:::mk
+
+    subgraph CONFIG["Repo-side config / meta files"]
+        C1["Makefile (help/fmt/lint/test/check/verify-templates/verify-mermaids/docs*)<br/>bin/fmt (formatter orchestrator)"]:::cfg
+        C2[".editorconfig · .prettierrc · .prettierignore · .stylua.toml<br/>ruff.toml · pyrightconfig.json · .python-version"]:::cfg
+        C3[".chezmoiroot(home) · .gitignore · .githooks/pre-commit(shfmt)<br/>.cursor/.gitignore · LICENSE · README.md · banner.png · AGENTS.md"]:::cfg
+        C4[".github/workflows/deploy-docs.yml (Pages CI)"]:::cfg
+    end
+
+    subgraph HYG["Mandatory hygiene gates (AGENTS.md / CLAUDE.md)"]
+        G1["edit chezmoi SOURCE under home/, never $HOME (resolve symlinks first)"]:::gate
+        G2["behavior change under home//scripts//tools/ → update docs/ (+ .mermaids/)"]:::gate
+        G3["shell = thin glue; logic → scripts/*.py (stdlib only)"]:::gate
+        G4["Compatibility Gate · External/Runtime Truth · Minimal edit scope"]:::gate
+    end
+    EDIT -.must satisfy.-> HYG

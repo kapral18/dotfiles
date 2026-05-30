@@ -1,0 +1,44 @@
+%% ============================================================================
+%% 08-security-and-dotfiles.mmd — Identity, secrets, signing, and the plain
+%% dotfiles (rc files) deployed to $HOME. private_ = 0600; .pub keys are
+%% templated from init prompts. No private keys ever on disk (1Password agent).
+%% ============================================================================
+flowchart TB
+    classDef id fill:#3a1b2b,stroke:#f48fb1,color:#fce4ec,stroke-width:2px;
+    classDef sec fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
+    classDef rc fill:#2c2c34,stroke:#b39ddb,color:#f3e5f5;
+    classDef pass fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
+
+    subgraph SSH["SSH identity (private_dot_ssh/ → ~/.ssh/, 0600)"]
+        CFG["private_executable_config (Host blocks)<br/>readonly_primary_public_key.pub.tmpl ← primaryPublicSshKey<br/>readonly_secondary_public_key.pub.tmpl ← secondaryPublicSshKey<br/>private_executable_allowed_signers.tmpl (commit verify)"]:::id
+        OPAGENT["dot_config/exact_private_1Password/exact_ssh/<br/>readonly_agent.toml.tmpl (1Password SSH agent vaults)"]:::id
+    end
+
+    subgraph GIT["Git identity + signing"]
+        GC["private_readonly_dot_gitconfig.tmpl<br/>sshCommand → primary_public_key.pub<br/>includeIf gitdir:~/work/ → secondary key<br/>rerere · autoSquash · updateRefs · zdiff3 · histogram"]:::id
+        GA["private_readonly_dot_gitattributes (+ weave merge driver)"]:::id
+        GI["readonly_dot_gitignore (global)"]:::id
+    end
+    SSH --> GIT
+    OPAGENT -->|fetch private key by pubkey| GIT
+
+    subgraph GPG["GPG (private_dot_gnupg/ → ~/.gnupg/)"]
+        GAG["readonly_gpg-agent.conf.tmpl (pgpCacheTtl: work 600s / personal 86400s)"]:::sec
+    end
+
+    subgraph PASS["Password stores"]
+        PM["hook 05-setup-pass-managers.fish.tmpl<br/>pass (default) + work store; wpass/ppass switch PASSWORD_STORE_DIR<br/>$(pass …) feeds MCP oauth + scsi keys (see 03)"]:::pass
+    end
+    GPG --> PASS
+
+    subgraph RCFILES["Plain dotfiles (home/readonly_dot_* → ~/.*)"]
+        SH["shell: dot_bashrc.tmpl · dot_bash_profile · dot_zshrc.tmpl<br/>dot_zprofile · dot_profile.tmpl · dot_shellrc · dot_inputrc<br/>empty_readonly_dot_hushlogin"]:::rc
+        TOOLRC["tool rc: dot_curlrc · dot_ripgreprc · dot_editorconfig<br/>dot_gemrc · dot_markdownlint.jsonc"]:::rc
+    end
+
+    subgraph IGNGLOB["Search ignore globs"]
+        IG["dot_config/readonly_ignore-globs (rg/fd shared ignores)"]:::sec
+    end
+
+    NOTE["Credentials never in plaintext configs — injected at runtime<br/>via 1Password + pass. .tmpl gates work vs personal."]:::pass
+    PASS --- NOTE
