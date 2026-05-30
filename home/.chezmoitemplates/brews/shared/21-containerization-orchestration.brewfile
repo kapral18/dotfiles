@@ -1,0 +1,33 @@
+# Explore container image layers in a TUI
+# https://github.com/knqyf263/sou
+tap "knqyf263/sou"
+brew "knqyf263/sou/sou"
+
+# Analyze layers and wasted space in container images
+# https://github.com/wagoodman/dive
+brew "dive"
+
+# Container runtimes on MacOS (and Linux) with minimal setup
+# https://github.com/abiosoft/colima/blob/main/README.md
+brew "colima"
+
+# Tool for managing OCI containers and pods
+# https://podman.io/
+brew "podman"
+
+# Explore the (overlay) filesystem and layers of OCI container images
+# https://github.com/bschaatsbergen/cek
+brew "cek"
+
+# Simple terminal UI for both docker and docker-compose
+# https://github.com/jesseduffield/lazydocker
+brew "lazydocker"
+
+# Kubernetes CLI To Manage Your Clusters In Style!
+# https://k9scli.io/
+tap "derailed/k9s"
+brew "derailed/k9s/k9s"
+
+# Run a Kubernetes cluster locally
+# https://minikube.sigs.k8s.io/
+brew "minikube"

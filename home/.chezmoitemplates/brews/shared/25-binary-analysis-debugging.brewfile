@@ -1,0 +1,3 @@
+# Command-line hex viewer
+# https://github.com/sharkdp/hexyl
+brew "hexyl"

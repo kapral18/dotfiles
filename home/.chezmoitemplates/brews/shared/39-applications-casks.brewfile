@@ -1,0 +1,160 @@
+# Web browser
+# https://arc.net/
+cask "arc"
+
+# AI-first web browser from The Browser Company
+# https://www.diabrowser.com/
+cask "thebrowsercompany-dia"
+
+# Web browser
+# https://brave.com/
+cask "brave-browser"
+
+# Web browser
+# https://zen-browser.app/
+cask "zen"
+
+# Graphically shows disk usage within a file system
+# https://grandperspectiv.sourceforge.io/
+cask "grandperspective"
+
+# Multimedia player
+# https://www.videolan.org/vlc/
+cask "vlc"
+
+# Modern video player for macOS
+# https://github.com/iina/iina
+cask "iina"
+
+# Lossless video editor and trimmer
+# https://github.com/mifi/lossless-cut
+cask "losslesscut"
+
+# AI-powered agent from OpenAI
+# https://github.com/openai/codex
+cask "codex"
+
+# AI coding agent desktop client
+# https://opencode.ai/
+cask "opencode-desktop"
+
+# AI-powered code editor
+# https://cursor.so/
+cask "cursor"
+
+# Command-line interface for Cursor
+# https://cursor.so/
+cask "cursor-cli"
+
+# Command-line interface for 1Password
+# https://developer.1password.com/docs/cli
+cask "1password-cli"
+
+# Application launcher and productivity software
+# https://www.alfredapp.com/
+cask "alfred"
+
+# Application uninstaller
+# https://freemacsoft.net/appcleaner/
+cask "appcleaner"
+
+# Monitors common persistence locations. Security tool
+# https://objective-see.org/products/blockblock.html
+cask "blockblock"
+
+# RSS/Atom news aggregator
+# https://hyliu.me/fluent-reader/
+cask "fluent-reader"
+
+# Menu bar manager
+# https://github.com/jordanbaird/Ice
+cask "jordanbaird-ice"
+
+# Tool to show what is persistently installed on the computer
+# https://objective-see.org/products/knockknock.html
+cask "knockknock"
+
+# Open-source firewall
+# https://objective-see.org/products/lulu.html
+cask "lulu"
+
+# Open-source software for live streaming and screen recording
+# https://obsproject.com/
+cask "obs"
+
+# AI-powered background removal plugin for OBS
+# https://github.com/royshil/obs-backgroundremoval
+cask "obs-backgroundremoval"
+
+# Monitor mic and webcam
+# https://objective-see.org/products/oversight.html
+cask "oversight"
+
+# Scan and detect keyloggers
+# https://objective-see.org/products/reikey.html
+cask "reikey"
+
+# Convert potentially dangerous PDFs or Office documents into safe PDFs
+# https://dangerzone.rocks/
+cask "dangerzone"
+
+# Simple Gtk# Paint Program
+# https://www.pinta-project.com/
+cask "pinta"
+
+# App to build and share containerised applications and microservices
+# https://www.docker.com/products/docker-desktop
+cask "docker-desktop"
+
+# Set of tools to manage resources and applications hosted on Google Cloud
+# https://cloud.google.com/cli/
+cask "gcloud-cli"
+
+# Microsoft Azure CLI
+# https://learn.microsoft.com/cli/azure/
+brew "azure-cli"
+
+# Get up and running with large language models locally
+# https://ollama.ai/
+cask "ollama-app"
+
+# Interactive HTTPS proxy
+# https://mitmproxy.org/
+
+# Terminal OpenAPI specification viewer
+# https://github.com/plutov/oq
+tap "plutov/tap"
+cask "plutov/tap/oq"
+
+# Benchmark multiple command variations and track performance
+# https://github.com/miklosn/cmdperf
+tap "miklosn/tap"
+cask "miklosn/tap/cmdperf"
+
+# All-in-one bookmark manager
+# https://raindrop.io/
+cask "raindropio"
+
+# Fast, feature-rich, and cross-platform terminal emulator
+# https://mitchellh.com/ghostty
+cask "ghostty"
+
+# Desktop automation application
+# https://www.hammerspoon.org/
+cask "hammerspoon"
+
+# Keyboard customizer
+# https://karabiner-elements.pqrs.org/
+cask "karabiner-elements"
+
+# Screenshot measurement and annotation tool
+# https://shottr.cc/
+cask "shottr"
+
+# Display scaling utility and virtual displays
+# https://github.com/waydabber/BetterDisplay
+cask "betterdisplay"
+
+# GUI Shows all open files, directories, sockets, pipes and devices
+# https://sveinbjorn.org/sloth
+cask "sloth"

@@ -150,7 +150,7 @@ ls -la ~/.local/share/nvim/site/parser
 rm -f ~/.local/share/nvim/site/parser/markdown.so
 ```
 
-Note: the config also treats bundled/runtime parsers as "available" so `nvim-treesitter` doesn't repeatedly try to auto-install languages that Neovim already ships.
+Note: the config also treats bundled/runtime parsers as "available" so `nvim-treesitter` doesn't repeatedly try to auto-install languages that Neovim already ships. Availability is decided by an actual parser library on the runtimepath (`parser/<lang>.*`), not merely by `vim.treesitter.language.add()` succeeding — that call returns truthy for a registered language name even when no parser is installed. Query lookups are also guarded with `pcall`, so a language that ships query files via plugins (for example `ruby` query files from `hlargs.nvim`/`nvim-treesitter-textobjects`) but has no parser yields a cached `false` instead of throwing `No parser for language ...` and erroring the `FileType` autocmd on every matching buffer.
 
 ## Filetype: `*.tmpl` Belongs To Chezmoi, Not Go
 

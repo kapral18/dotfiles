@@ -1,0 +1,278 @@
+# ==============================================================================
+# Homebrew packages -- assembled from home/.chezmoitemplates/brews/
+# Source layout (explore here, NOT this rendered file):
+#   brews/shared/NN-<category>.brewfile   -- installed on every machine
+#   brews/personal/NN-<category>.brewfile -- installed when .isWork is false
+#   brews/work/NN-<category>.brewfile     -- installed when .isWork is true
+# Profile membership is the directory; categories keep their ordinal+slug.
+# To add a package: drop a brew/cask line in the matching category file
+# (create brews/work/NN-<slug>.brewfile + a work block below for work-only).
+# ==============================================================================
+
+# ==============================================================================
+# CORE DEPENDENCIES
+# System libraries and dependencies required by other packages
+# ==============================================================================
+{{ includeTemplate "brews/shared/01-core-dependencies.brewfile" . -}}
+
+# ==============================================================================
+# CHARMBRACELET ECOSYSTEM
+# Beautiful command-line tools from Charm
+# ==============================================================================
+{{ includeTemplate "brews/shared/02-charmbracelet-ecosystem.brewfile" . -}}
+
+# ==============================================================================
+# SHELL ENVIRONMENTS & PROMPTS
+# Command-line shells and prompt customization
+# ==============================================================================
+{{ includeTemplate "brews/shared/03-shell-environments-prompts.brewfile" . -}}
+
+# ==============================================================================
+# TERMINAL MULTIPLEXERS & SESSION MANAGEMENT
+# Tools for managing multiple terminal sessions
+# ==============================================================================
+{{ includeTemplate "brews/shared/04-terminal-multiplexers-session-management.brewfile" . -}}
+
+# ==============================================================================
+# FILE SYSTEM NAVIGATION & VISUALIZATION
+# Tools for exploring and visualizing file systems
+# ==============================================================================
+{{ includeTemplate "brews/shared/05-file-system-navigation-visualization.brewfile" . -}}
+
+# ==============================================================================
+# FILE SEARCH & PATTERN MATCHING
+# Tools for finding files and searching content
+# ==============================================================================
+{{ includeTemplate "brews/shared/06-file-search-pattern-matching.brewfile" . -}}
+
+# ==============================================================================
+# FILE OPERATIONS & MANIPULATION
+# Tools for renaming, deduplicating, and managing files
+# ==============================================================================
+{{ includeTemplate "brews/shared/07-file-operations-manipulation.brewfile" . -}}
+
+# ==============================================================================
+# SYSTEM MONITORING & PERFORMANCE ANALYSIS
+# Tools for monitoring system resources and performance
+# ==============================================================================
+{{ includeTemplate "brews/shared/08-system-monitoring-performance-analysis.brewfile" . -}}
+{{ if ne .isWork true -}}
+{{ includeTemplate "brews/personal/08-system-monitoring-performance-analysis.brewfile" . -}}
+{{ end -}}
+
+# ==============================================================================
+# NETWORK UTILITIES & HTTP TOOLS
+# Networking utilities and HTTP clients
+# ==============================================================================
+{{ includeTemplate "brews/shared/09-network-utilities-http-tools.brewfile" . -}}
+{{ if ne .isWork true -}}
+{{ includeTemplate "brews/personal/09-network-utilities-http-tools.brewfile" . -}}
+{{ end -}}
+
+# ==============================================================================
+# DATA PROCESSING & STRUCTURED DATA
+# Tools for processing JSON, YAML, XML, and other structured data
+# ==============================================================================
+{{ includeTemplate "brews/shared/10-data-processing-structured-data.brewfile" . -}}
+
+# ==============================================================================
+# GIT CORE & HOSTING INTEGRATION
+# Essential Git tools and platform integration
+# ==============================================================================
+{{ includeTemplate "brews/shared/11-git-core-hosting-integration.brewfile" . -}}
+
+# ==============================================================================
+# GIT WORKFLOW & PRODUCTIVITY
+# Tools for improving Git workflow and productivity
+# ==============================================================================
+{{ includeTemplate "brews/shared/12-git-workflow-productivity.brewfile" . -}}
+
+# ==============================================================================
+# GIT ANALYSIS & STATISTICS
+# Tools for analyzing Git repositories and history
+# ==============================================================================
+{{ includeTemplate "brews/shared/13-git-analysis-statistics.brewfile" . -}}
+
+# ==============================================================================
+# GIT UTILITIES & EXTENSIONS
+# Additional Git tools and utilities
+# ==============================================================================
+{{ includeTemplate "brews/shared/14-git-utilities-extensions.brewfile" . -}}
+{{ if ne .isWork true -}}
+{{ includeTemplate "brews/personal/14-git-utilities-extensions.brewfile" . -}}
+{{ end -}}
+
+# ==============================================================================
+# SECURITY & SECRET DETECTION
+# Tools for detecting secrets and security issues in code
+# ==============================================================================
+{{ includeTemplate "brews/shared/15-security-secret-detection.brewfile" . -}}
+
+# ==============================================================================
+# CRYPTOGRAPHY & PASSWORD MANAGEMENT
+# Encryption tools and password managers
+# ==============================================================================
+{{ includeTemplate "brews/shared/16-cryptography-password-management.brewfile" . -}}
+{{ if ne .isWork true -}}
+{{ includeTemplate "brews/personal/16-cryptography-password-management.brewfile" . -}}
+{{ end -}}
+
+# ==============================================================================
+# PROGRAMMING LANGUAGE MANAGEMENT
+# Tools for managing multiple programming language versions
+# ==============================================================================
+{{ includeTemplate "brews/shared/17-programming-language-management.brewfile" . -}}
+
+# ==============================================================================
+# CODE QUALITY & ANALYSIS
+# Linters, duplicate detectors, and code review tools
+# ==============================================================================
+{{ includeTemplate "brews/shared/18-code-quality-analysis.brewfile" . -}}
+
+# ==============================================================================
+# BUILD SYSTEMS & DEVELOPMENT TOOLS
+# Tools for building and compiling software
+# ==============================================================================
+{{ includeTemplate "brews/shared/19-build-systems-development-tools.brewfile" . -}}
+
+# ==============================================================================
+# CI/CD
+# Continuous integration and delivery tools
+# ==============================================================================
+{{ includeTemplate "brews/shared/20-ci-cd.brewfile" . -}}
+
+# ==============================================================================
+# CONTAINERIZATION & ORCHESTRATION
+# Docker and container management tools
+# ==============================================================================
+{{ includeTemplate "brews/shared/21-containerization-orchestration.brewfile" . -}}
+
+# ==============================================================================
+# MEDIA PROCESSING & GRAPHICS
+# Tools for processing images, audio, and video
+# ==============================================================================
+{{ includeTemplate "brews/shared/22-media-processing-graphics.brewfile" . -}}
+{{ if ne .isWork true -}}
+{{ includeTemplate "brews/personal/22-media-processing-graphics.brewfile" . -}}
+{{ end -}}
+
+# ==============================================================================
+# DOCUMENTATION & KNOWLEDGE MANAGEMENT
+# Tools for documentation and learning
+# ==============================================================================
+{{ includeTemplate "brews/shared/23-documentation-knowledge-management.brewfile" . -}}
+{{ if ne .isWork true -}}
+{{ includeTemplate "brews/personal/23-documentation-knowledge-management.brewfile" . -}}
+{{ end -}}
+
+# ==============================================================================
+# SYSTEM UTILITIES & CORE TOOLS
+# Essential system utilities and GNU replacements
+# ==============================================================================
+{{ includeTemplate "brews/shared/24-system-utilities-core-tools.brewfile" . -}}
+
+# ==============================================================================
+# BINARY ANALYSIS & DEBUGGING
+# Tools for analyzing binary files and debugging
+# ==============================================================================
+{{ includeTemplate "brews/shared/25-binary-analysis-debugging.brewfile" . -}}
+
+# ==============================================================================
+# PERFORMANCE MEASUREMENT & BENCHMARKING
+# Tools for measuring and benchmarking performance
+# ==============================================================================
+{{ includeTemplate "brews/shared/26-performance-measurement-benchmarking.brewfile" . -}}
+
+# ==============================================================================
+# TASK AUTOMATION & SCHEDULING
+# Tools for automating tasks and monitoring changes
+# ==============================================================================
+{{ includeTemplate "brews/shared/27-task-automation-scheduling.brewfile" . -}}
+
+# ==============================================================================
+# DATA VISUALIZATION & PLOTTING
+# Tools for creating charts and visualizations
+# ==============================================================================
+{{ includeTemplate "brews/shared/28-data-visualization-plotting.brewfile" . -}}
+
+# ==============================================================================
+# FILE TRANSFER & SHARING
+# Tools for transferring files between systems
+# ==============================================================================
+{{ includeTemplate "brews/shared/29-file-transfer-sharing.brewfile" . -}}
+
+# ==============================================================================
+# SSH & REMOTE ACCESS
+# Tools for managing SSH connections
+# ==============================================================================
+{{ includeTemplate "brews/shared/30-ssh-remote-access.brewfile" . -}}
+
+# ==============================================================================
+# PRESENTATION & CONTENT CREATION
+# Tools for creating presentations and content
+# ==============================================================================
+{{ includeTemplate "brews/shared/31-presentation-content-creation.brewfile" . -}}
+{{ if ne .isWork true -}}
+{{ includeTemplate "brews/personal/31-presentation-content-creation.brewfile" . -}}
+{{ end -}}
+
+# ==============================================================================
+# MEDIA & ENTERTAINMENT
+# Tools for browsing and managing media content
+# ==============================================================================
+{{ includeTemplate "brews/shared/32-media-entertainment.brewfile" . -}}
+{{ if ne .isWork true -}}
+{{ includeTemplate "brews/personal/32-media-entertainment.brewfile" . -}}
+{{ end -}}
+
+# ==============================================================================
+# PERSONAL PRODUCTIVITY & JOURNALING
+# Tools for personal organization and note-taking
+# ==============================================================================
+{{ includeTemplate "brews/shared/33-personal-productivity-journaling.brewfile" . -}}
+
+# ==============================================================================
+# COMMAND LINE ENHANCEMENT
+# Tools for improving command-line experience
+# ==============================================================================
+{{ includeTemplate "brews/shared/34-command-line-enhancement.brewfile" . -}}
+
+# ==============================================================================
+# PACKAGE MANAGEMENT UTILITIES
+# Tools for managing package managers
+# ==============================================================================
+{{ includeTemplate "brews/shared/35-package-management-utilities.brewfile" . -}}
+
+# ==============================================================================
+# TEXT SEARCH & REPLACEMENT
+# Tools for searching and replacing text
+# ==============================================================================
+{{ includeTemplate "brews/shared/36-text-search-replacement.brewfile" . -}}
+
+# ==============================================================================
+# CRYPTOGRAPHY & SSL
+# Cryptographic libraries and SSL tools
+# ==============================================================================
+{{ includeTemplate "brews/shared/37-cryptography-ssl.brewfile" . -}}
+
+# ==============================================================================
+# AI & LARGE LANGUAGE MODELS
+# Command-line AI tools and LLM clients
+# ==============================================================================
+{{ includeTemplate "brews/shared/38-ai-large-language-models.brewfile" . -}}
+
+# ==============================================================================
+# APPLICATIONS (CASKS)
+# GUI applications and desktop software
+# ==============================================================================
+{{ includeTemplate "brews/shared/39-applications-casks.brewfile" . -}}
+{{ if ne .isWork true -}}
+{{ includeTemplate "brews/personal/39-applications-casks.brewfile" . -}}
+{{ end -}}
+
+# ==============================================================================
+# FONTS & TYPOGRAPHY
+# Programming fonts and typography tools
+# ==============================================================================
+{{ includeTemplate "brews/shared/40-fonts-typography.brewfile" . -}}
+

@@ -34,7 +34,7 @@ This is a **chezmoi-managed dotfiles repo**. Chezmoi deploys files from `home/` 
 
 When user requests to "add X" (app, package, cask, formula, or CLI tool), follow this priority order:
 
-1. **Brewfile** (`home/readonly_dot_Brewfile.tmpl`) — macOS apps/formulas/casks via Homebrew
+1. **Brewfile** (per-category partials under `home/.chezmoitemplates/brews/`, assembled into `home/readonly_dot_Brewfile.tmpl`) — macOS apps/formulas/casks via Homebrew
 2. **Cargo** (`home/readonly_dot_default-cargo-crates`) — Rust packages
 3. **Go** (`home/readonly_dot_default-golang-pkgs`) — Go packages
 4. **Gems** (`home/readonly_dot_default-gems`) — Ruby packages
@@ -128,7 +128,7 @@ Shell scripts (`.sh` / `.sh.tmpl`) in this repo must stay **thin orchestrators**
 
 When adding formulas or casks to Brewfile:
 
-- **Brewfile location**: `home/readonly_dot_Brewfile.tmpl` (use `glob "**/dot_Brewfile*"` if needed)
+- **Brewfile location**: per-category partials under `home/.chezmoitemplates/brews/{shared,personal,work}/NN-<category>.brewfile`, assembled by `home/.chezmoitemplates/brews/_assemble.brewfile` into the single deployed `home/readonly_dot_Brewfile.tmpl`. Add the `brew`/`cask` line to the matching category file: `shared/` = every machine, `personal/` = `.isWork` false, `work/` = `.isWork` true (profile membership is the directory, not an inline `{{ if }}`). Create the category file under the right profile dir if it does not exist yet and add a matching `includeTemplate` line in `_assemble.brewfile`.
 - **Verify on GitHub first**: Check the official repository's INSTALL.md, README, or releases page to verify Homebrew is recommended and identify the correct formula/tap name
 - Prefer verification language; avoid adding "ask to confirm" patterns to this file.
 - **Search GitHub**: Look for official Homebrew taps (e.g., `owner/homebrew-tap`) in the project

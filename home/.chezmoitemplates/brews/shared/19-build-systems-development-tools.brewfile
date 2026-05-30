@@ -1,0 +1,59 @@
+# Analyze project dependencies and flag restrictive licenses
+# https://github.com/anistark/feluda
+brew "feluda"
+
+# Cross-platform make
+# https://cmake.org/
+brew "cmake"
+
+# Tool for generating GNU Standards-compliant Makefiles
+# https://www.gnu.org/software/automake/
+brew "automake"
+
+# Code searching, linting, rewriting
+# https://github.com/ast-grep/ast-grep
+brew "ast-grep"
+
+# Finds bugs in shell scripts
+# https://www.shellcheck.net/
+brew "shellcheck"
+
+# Formatter for shell scripts
+# https://github.com/mvdan/sh
+brew "shfmt"
+
+# Opinionated Lua code formatter
+# https://github.com/JohnnyMorganz/StyLua
+brew "stylua"
+
+# Code formatter for JavaScript, CSS, JSON, GraphQL, Markdown, YAML
+# https://github.com/igorshubovych/markdownlint-cli
+brew "markdownlint-cli"
+
+# https://prettier.io/
+brew "prettier"
+
+# Extremely fast Python linter and formatter
+# https://docs.astral.sh/ruff/
+brew "ruff"
+
+# Stricter Go formatter (superset of gofmt) + import manager (goimports).
+# These must match the exact formatters used by Neovim (conform.nvim + gopls)
+# for the Go sources under tools/ralph-tui/, so that `bin/fmt --type go`
+# and editor-on-save never produce conflicting results.
+# https://github.com/mvdan/gofumpt
+# https://pkg.go.dev/golang.org/x/tools/cmd/goimports
+brew "gofumpt"
+brew "goimports"
+
+# Bash automated testing system
+# https://github.com/bats-core/bats-core
+brew "bats-core"
+
+# Program that displays statistics about your code
+# https://github.com/XAMPPRocky/tokei
+brew "tokei"
+
+# Tool Command Language
+# https://www.tcl-lang.org/
+brew "tcl-tk"

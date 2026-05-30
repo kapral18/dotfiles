@@ -1,0 +1,48 @@
+# Allows connection to a computer remotely
+# https://anydesk.com/
+cask "anydesk"
+
+# Web browser
+# https://www.google.com/chrome/
+cask "google-chrome"
+
+# Web browser
+# https://www.google.com/chrome/canary/
+cask "google-chrome@canary"
+
+# Automated testing of webapps for Google Chrome
+# https://chromedriver.chromium.org/
+cask "chromedriver"
+
+# VPN client
+# https://mullvad.net/
+cask "mullvad-vpn"
+
+# Voice and text chat software
+# https://discord.com/
+cask "discord"
+
+# Messaging app with a focus on speed and security
+# https://telegram.org/
+cask "telegram"
+
+# Native desktop client for WhatsApp
+# https://www.whatsapp.com/
+cask "whatsapp"
+
+# Team communication and collaboration software
+# https://slack.com/
+cask "slack"
+
+# Client for the Google Drive storage service
+# https://www.google.com/drive/
+cask "google-drive"
+
+# Task management application
+# https://www.rememberthemilk.com/
+cask "remember-the-milk"
+
+# Online multiplayer game platform
+# https://www.roblox.com/
+cask "roblox"
+cask "mitmproxy"

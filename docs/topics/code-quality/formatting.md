@@ -43,6 +43,12 @@ bin/fmt docs/topics/code-quality/formatting.md home/dot_config/exact_nvim/readon
 
 All formatters are declared in the Brewfile: [`home/readonly_dot_Brewfile.tmpl`](../../../home/readonly_dot_Brewfile.tmpl) (under "BUILD SYSTEMS & DEVELOPMENT TOOLS").
 
+## Concurrency
+
+`bin/fmt` runs the per-language formatter groups concurrently, since each group (except the markdown chain) operates on a disjoint set of files. The markdown chain (`unwrap-md` → `markdownlint --fix` → `prettier`) stays sequential internally because all three steps mutate the same `.md` files in a required order; `prettier` also handles JSON/YAML in that same bulk invocation.
+
+Each group's output is buffered and flushed in a fixed order after all groups finish, so logs stay readable rather than interleaving. The overall exit code is the OR of every group's status, so a failure (or a missing tool) in any group still fails the run.
+
 ## Editor integration
 
 [`.editorconfig`](../../../.editorconfig) provides baseline indent/whitespace rules that most editors (VSCode, Neovim, JetBrains, etc.) pick up automatically.

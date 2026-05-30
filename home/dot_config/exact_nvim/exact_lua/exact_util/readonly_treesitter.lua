@@ -52,7 +52,12 @@ end
 function M.have_query(lang, query)
   local key = lang .. ":" .. query
   if M._queries[key] == nil then
-    M._queries[key] = vim.treesitter.query.get(lang, query) ~= nil
+    -- `query.get` asserts when {lang} has no parser; guard it so a missing
+    -- parser yields a cached `false` instead of throwing (which would both
+    -- error the calling FileType autocmd and prevent the result from caching,
+    -- re-running this lookup on every event).
+    local ok, q = pcall(vim.treesitter.query.get, lang, query)
+    M._queries[key] = ok and q ~= nil
   end
   return M._queries[key]
 end
@@ -72,6 +77,13 @@ function M.have(what, query)
   -- Prefer treating bundled/runtime parsers as available, even if they were not
   -- installed via nvim-treesitter.
   if M.get_installed()[lang] == nil then
+    -- `language.add` reports success for a registered language name even when
+    -- no parser library is present (e.g. ruby query files ship via plugins but
+    -- the parser is not installed). Require a real parser on the runtimepath
+    -- before claiming availability, otherwise downstream `query.get` throws.
+    if #vim.api.nvim_get_runtime_file("parser/" .. lang .. ".*", false) == 0 then
+      return false
+    end
     local ok = pcall(vim.treesitter.language.add, lang)
     if not ok then
       return false

@@ -1,0 +1,30 @@
+tap "charmbracelet/tap"
+
+# A powerful terminal-based AI assistant for developers
+# https://charm.sh/crush
+brew "crush"
+
+# Generate images of code and terminal output
+# https://github.com/charmbracelet/freeze
+brew "charmbracelet/tap/freeze"
+
+# Render markdown on the CLI
+# https://github.com/charmbracelet/glow
+brew "glow"
+
+# Tool for glamorous shell scripts
+# https://github.com/charmbracelet/gum
+brew "gum"
+
+# Personal readme generator
+# https://github.com/charmbracelet/markscribe
+brew "charmbracelet/tap/markscribe"
+
+# Human-readable ANSI sequences
+# https://github.com/charmbracelet/sequin
+brew "sequin"
+
+# Terminal Recording
+# Your CLI home video recorder
+# https://github.com/charmbracelet/vhs
+brew "vhs"

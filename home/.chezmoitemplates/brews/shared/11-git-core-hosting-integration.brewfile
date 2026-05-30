@@ -1,0 +1,11 @@
+# Distributed revision control system
+# https://git-scm.com/
+brew "git"
+
+# Git extension for versioning large files
+# https://git-lfs.github.io/
+brew "git-lfs"
+
+# GitHub command-line tool
+# https://cli.github.com/
+brew "gh"

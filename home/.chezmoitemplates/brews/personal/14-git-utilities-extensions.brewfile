@@ -1,0 +1,3 @@
+# Remove large files or passwords from Git history like git-filter-branch
+# https://rtyley.github.io/bfg-repo-cleaner/
+brew "bfg"

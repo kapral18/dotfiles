@@ -1,0 +1,3 @@
+# Command line tool that draw plots on the terminal
+# https://github.com/red-data-tools/YouPlot
+brew "youplot"

@@ -14,7 +14,7 @@ flowchart LR
     A1["home/** name-prefix<br/>(exact/dot/readonly/private/executable)"]:::area -->|C1| B1["breaks: wrong perms/path or editable secret<br/>co-edit: nothing — it IS the contract<br/>catalog: 01"]:::brk
     A2[".chezmoidata/mcp_servers.yaml"]:::area -->|C2/C3/C5| B2["breaks: every tool's MCP config (generated)<br/>co-edit: generate_mcp_configs.py + merge_*_mcp.py;<br/>re-apply hook 06. catalog: 12"]:::brk
     A3[".chezmoidata/ai_models.yaml"]:::area -->|C2/C3| B3["breaks: litellm + pi + per-tool model routes<br/>co-edit: generate_pi_models.py · litellm_models.py;<br/>render hook. catalog: 12"]:::brk
-    A4["readonly_dot_default-* / Brewfile.tmpl"]:::area -->|C2/C4| B4["breaks: install/cleanup set (list is authoritative)<br/>co-edit: matching reconcile_*.py + install hook<br/>+ docs. catalog: 02"]:::brk
+    A4["readonly_dot_default-* / brews/ partials + _assemble.brewfile"]:::area -->|C2/C4| B4["breaks: install/cleanup set (list is authoritative)<br/>co-edit: matching reconcile_*.py + install hook (hashes assembler)<br/>+ assembler includeTemplate line + docs. catalog: 02"]:::brk
     A5["scripts/chezmoi_lib.sh"]:::area -->|C4/C5/C6| B5["breaks: ALL merge hooks (idempotency+manifest+pick_src)<br/>co-edit: every run_onchange_after_07-merge-*;<br/>tests. catalog: 11"]:::brk
     A6["scripts/*.py generators"]:::area -->|C6/C2| B6["breaks: generated outputs drift from registry<br/>co-edit: golden fixtures in tests/; the .tmpl caller<br/>catalog: 11"]:::brk
     A7["run_onchange_after_* '# hash:' line"]:::area -->|C4| B7["breaks: hook never re-runs (stale) or runs always<br/>co-edit: keep include-hash matching real input<br/>catalog: 01"]:::brk

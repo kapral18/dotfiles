@@ -1,0 +1,5 @@
+tap "buildkite/buildkite"
+
+# Buildkite CLI — interact with builds, pipelines, and jobs
+# https://github.com/buildkite/cli
+brew "buildkite/buildkite/bk@3"

@@ -1,0 +1,3 @@
+# Copy/paste detector for programming source code
+# https://github.com/kucherenko/jscpd
+brew "jscpd"

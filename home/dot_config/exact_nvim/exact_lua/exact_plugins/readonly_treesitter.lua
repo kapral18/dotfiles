@@ -60,6 +60,7 @@ return {
         "printf",
         "query",
         "regex",
+        "ruby",
         "vim",
         "vimdoc",
       })

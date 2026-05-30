@@ -1,0 +1,7 @@
+# Browse, inspect, and launch movie torrents from your terminal
+# https://github.com/eyeblech/cinecli
+brew "cinecli"
+
+# BitTorrent client in your terminal with a 60 FPS TUI
+# https://github.com/Jagalite/superseedr
+brew "superseedr"

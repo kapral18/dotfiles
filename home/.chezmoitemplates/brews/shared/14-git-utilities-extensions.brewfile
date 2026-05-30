@@ -1,0 +1,29 @@
+# GIT utilities
+# https://github.com/tj/git-extras
+brew "git-extras"
+
+# Assorted git-related scripts and tools
+# https://github.com/MestreLion/git-tools
+brew "git-tools"
+
+# Manage hosts file entries with profiles and groups
+# https://github.com/guumaster/hostctl
+tap "guumaster/tap"
+brew "guumaster/tap/hostctl"
+
+# Recursively substitute URLs in git repos
+# https://github.com/akatrevorjay/git-url-sub
+brew "git-url-sub"
+
+# Generate gitignore files
+# https://github.com/reemus-dev/gitnr
+brew "gitnr"
+
+# CLI for making updates across multiple GitHub repositories
+# https://github.com/gruntwork-io/git-xargs
+brew "git-xargs"
+
+# Change dates of git commits
+# https://github.com/PotatoLabs/git-redate
+tap "potatolabs/git-redate"
+brew "potatolabs/git-redate/git-redate"

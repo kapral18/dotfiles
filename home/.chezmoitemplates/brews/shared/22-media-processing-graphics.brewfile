@@ -1,0 +1,46 @@
+# Tools and libraries to manipulate images
+# https://imagemagick.org/
+brew "imagemagick"
+
+# SOund eXchange: universal sound sample translator
+# https://sox.sourceforge.net/
+brew "sox"
+
+# Feature-rich command-line audio/video downloader
+# https://github.com/yt-dlp/yt-dlp
+brew "yt-dlp"
+
+# Beautiful keyboard-driven terminal dashboard for ffmpeg
+# https://github.com/dgr8akki/nano-ffmpeg
+tap "dgr8akki/tap"
+brew "dgr8akki/tap/nano-ffmpeg"
+
+# Terminal-based video trimming TUI
+# https://github.com/ozemin/lazycut
+brew "lazycut"
+
+
+# Switch between macOS audio devices from the terminal
+# https://github.com/deweller/switchaudio-osx
+brew "switchaudio-osx"
+
+# PDF rendering library (based on the xpdf-3.0 code base)
+# https://poppler.freedesktop.org/
+brew "poppler"
+
+# Image processing tools collection
+# http://www.graphicsmagick.org/
+brew "graphicsmagick"
+
+# Terminal graphics for the 21st century
+# https://hpjansson.org/chafa/
+brew "chafa"
+
+# Display images in terminal
+# https://github.com/eddieantonio/imgcat
+tap "eddieantonio/eddieantonio"
+brew "eddieantonio/eddieantonio/imgcat"
+
+# Media player based on MPlayer and mplayer2
+# https://mpv.io/
+brew "mpv"

@@ -1,0 +1,3 @@
+# Small tool to convert Djvu files to PDF files
+# https://0x2a.at/site/projects/djvu2pdf/
+brew "djvu2pdf"

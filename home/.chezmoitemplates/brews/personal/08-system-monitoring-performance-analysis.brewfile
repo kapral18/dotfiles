@@ -1,0 +1,6 @@
+# Cross-platform application to monitor your network traffic
+# https://sniffnet.net/
+brew "sniffnet"
+# List USB buses and devices on macOS
+# https://github.com/tuna-f1sh/cyme
+brew "cyme"

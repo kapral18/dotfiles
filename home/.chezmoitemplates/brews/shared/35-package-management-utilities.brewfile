@@ -1,0 +1,9 @@
+# Brewfile manager
+# https://github.com/rcmdnk/homebrew-file
+tap "rcmdnk/file"
+brew "rcmdnk/file/brew-file"
+
+# Utility scripts for managing multiple Homebrew taps
+# https://github.com/gromgit/brewtils
+tap "gromgit/brewtils"
+brew "gromgit/brewtils/taproom"

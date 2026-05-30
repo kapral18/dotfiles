@@ -1,0 +1,23 @@
+# Breadth-first alternative to find
+# https://github.com/tavianator/bfs
+brew "bfs"
+
+# Simple, fast alternative to find
+# https://github.com/sharkdp/fd
+brew "fd"
+
+# GNU find, xargs, and locate
+# https://www.gnu.org/software/findutils/
+brew "findutils"
+
+# Command-line fuzzy finder
+# https://github.com/junegunn/fzf
+brew "fzf"
+
+# Filename-oriented fuzzy finder with smart prioritization
+# https://github.com/natecraddock/zf
+brew "zf"
+
+# Search files (+ PDFs, E-Books, Office documents, zip, tar.gz, etc.)
+# https://github.com/phiresky/ripgrep-all
+brew "ripgrep-all"

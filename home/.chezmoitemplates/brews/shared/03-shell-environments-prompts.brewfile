@@ -1,0 +1,19 @@
+# Bourne-Again SHell, a UNIX command interpreter
+# https://www.gnu.org/software/bash/
+brew "bash"
+
+# User-friendly command-line shell
+# https://fishshell.com/
+brew "fish"
+
+# Modern shell for the GitHub era
+# https://www.nushell.sh/
+brew "nushell"
+
+# Language server for Fish shell
+# https://github.com/ndonfris/fish-lsp
+brew "fish-lsp"
+
+# Cross-shell prompt
+# https://starship.rs/
+brew "starship"

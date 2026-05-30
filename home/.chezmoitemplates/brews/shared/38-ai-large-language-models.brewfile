@@ -1,0 +1,40 @@
+# Interactive debugger for MCP servers
+# https://github.com/conikeec/mcp-probe
+tap "conikeec/tap"
+brew "conikeec/tap/mcp-probe"
+
+# Graph-based issue tracker for coding agents
+# https://github.com/steveyegge/beads
+tap "steveyegge/beads"
+brew "steveyegge/beads/bd"
+
+# Structured query and transcoding toolkit
+# https://github.com/jfryy/qq
+tap "jfryy/tap"
+brew "jfryy/tap/qq"
+
+# AI code agent
+# https://github.com/sst/opencode
+brew "opencode"
+
+# Minimal terminal emulator using half-baked context-aware autocomplete
+# https://github.com/ggerganov/hnterm
+brew "ggerganov/ggerganov/hnterm"
+
+# Terminal tool to right-size LLM models to your hardware (RAM, CPU, GPU)
+# https://github.com/AlexsJones/llmfit
+brew "llmfit"
+
+# LLM inference in C/C++ with OpenAI/Anthropic-compatible llama-server
+# https://github.com/ggml-org/llama.cpp
+brew "llama.cpp"
+
+# Official Hugging Face CLI (`hf`) — model downloads, auth, repo listing
+# https://huggingface.co/docs/huggingface_hub/guides/cli
+brew "hf"
+
+# Terminal UI for code review — review AI-generated diffs like a GitHub PR,
+# annotate with structured comments, export as LLM-ready markdown
+# https://github.com/agavra/tuicr
+tap "agavra/tap"
+brew "agavra/tap/tuicr"

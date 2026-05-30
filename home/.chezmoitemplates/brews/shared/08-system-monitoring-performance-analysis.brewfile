@@ -1,0 +1,38 @@
+# Process Monitoring
+# Resource monitor
+# https://github.com/aristocratos/btop
+brew "btop"
+
+
+# Improved top
+# https://htop.dev/
+brew "htop"
+
+# Show running processes as a tree
+# http://www.thp.uni-duisburg.de/pstree/
+brew "pstree"
+
+# Modern replacement for ps with TUI
+# https://github.com/dalance/procs
+brew "procs"
+
+# Perf monitoring CLI tool for Apple Silicon
+# https://tlkh.github.io/asitop/
+brew "asitop"
+
+# TUI system monitor for Apple Silicon
+# https://github.com/caioricciuti/dev-cockpit
+brew "devcockpit"
+
+
+# CPU usage limiter for macOS
+# https://github.com/opsengine/cpulimit
+brew "cpulimit"
+
+# Kill process running on given port
+# https://github.com/jkfran/killport
+brew "killport"
+
+# Command-line sampling profiler for macOS and Linux
+# https://github.com/mstange/samply
+brew "samply"

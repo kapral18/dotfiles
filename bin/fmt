@@ -131,196 +131,233 @@ should_run() {
   [[ -z "$type_filter" || "$type_filter" == "$1" ]]
 }
 
-# --- unwrap-md: md (structural unwrap before lint/format) ---
-if should_run md; then
-  if ! command -v unwrap-md >/dev/null 2>&1; then
-    printf 'missing: unwrap-md (install via chezmoi: chezmoi apply %s)\n' "$HOME/bin/unwrap-md" >&2
-    exit 1
-  fi
-  mapfile -t md_files < <(collect_by_func is_md_file | sort -u)
-  if [[ ${#md_files[@]} -gt 0 ]]; then
-    if $check_mode; then
-      printf 'unwrap-md: checking %d files\n' "${#md_files[@]}"
-      if ! unwrap-md --check "${md_files[@]}"; then
-        ok=false
-      fi
-    else
-      printf 'unwrap-md: unwrapping %d files\n' "${#md_files[@]}"
-      unwrap-md "${md_files[@]}"
-    fi
-  fi
-fi
+# --- formatter groups ---
+# Each group is a self-contained function that prints its own progress, mutates
+# files (or checks them), and returns non-zero on failure. Groups operate on
+# disjoint file sets, so they are launched concurrently (see runner below). The
+# only ordering constraint lives *inside* the md group: unwrap-md -> markdownlint
+# -> prettier all touch the same markdown files and must stay sequential.
 
-# --- markdownlint --fix: md (before prettier, matching nvim markdownlint_fix) ---
-if should_run md; then
-  need_cmd markdownlint || exit 1
-  if [[ ! -f "$HOME/.markdownlint.jsonc" ]]; then
-    printf 'missing: %s (apply dotfiles to install it)\n' "$HOME/.markdownlint.jsonc" >&2
-    exit 1
-  fi
-  mapfile -t md_files < <(collect_by_func is_md_file | sort -u)
-  if [[ ${#md_files[@]} -gt 0 ]]; then
-    if $check_mode; then
-      printf 'markdownlint: checking %d files\n' "${#md_files[@]}"
-      if ! markdownlint -c "$HOME/.markdownlint.jsonc" -- "${md_files[@]}" >/dev/null 2>&1; then
-        ok=false
-        markdownlint -c "$HOME/.markdownlint.jsonc" -- "${md_files[@]}" 2>&1 | sed 's/^/  /' || true
-      fi
-    else
-      printf 'markdownlint: fixing %d files\n' "${#md_files[@]}"
-      markdownlint --fix -c "$HOME/.markdownlint.jsonc" -- "${md_files[@]}" 2>/dev/null || true
+# md group: unwrap-md -> markdownlint --fix -> prettier (md + json + yaml).
+# json/yaml have no ordering dependency, but bundling them into prettier keeps it
+# a single bulk invocation (the original behavior) and they ride along harmlessly.
+fmt_md() {
+  local rc=0
+  if should_run md; then
+    if ! command -v unwrap-md >/dev/null 2>&1; then
+      printf 'missing: unwrap-md (install via chezmoi: chezmoi apply %s)\n' "$HOME/bin/unwrap-md" >&2
+      return 1
     fi
-  fi
-fi
-
-# --- prettier: md, json, yaml (bulk invocation) ---
-if should_run md || should_run json || should_run yaml; then
-  need_cmd prettier || exit 1
-  mapfile -t prettier_files < <(
-    {
-      should_run md && collect_by_func is_md_file
-      should_run json && collect_by_func is_json_file
-      should_run yaml && collect_by_func is_yaml_file
-    } | sort -u
-  )
-  if [[ ${#prettier_files[@]} -gt 0 ]]; then
-    if $check_mode; then
-      printf 'prettier: checking %d files\n' "${#prettier_files[@]}"
-      if ! prettier --check "${prettier_files[@]}" 2>/dev/null; then
-        ok=false
+    mapfile -t md_files < <(collect_by_func is_md_file | sort -u)
+    if [[ ${#md_files[@]} -gt 0 ]]; then
+      if $check_mode; then
+        printf 'unwrap-md: checking %d files\n' "${#md_files[@]}"
+        unwrap-md --check "${md_files[@]}" || rc=1
+      else
+        printf 'unwrap-md: unwrapping %d files\n' "${#md_files[@]}"
+        unwrap-md "${md_files[@]}"
       fi
-    else
-      printf 'prettier: formatting %d files\n' "${#prettier_files[@]}"
-      prettier --write "${prettier_files[@]}" >/dev/null 2>&1
     fi
-  fi
-fi
 
-# --- shfmt: shell scripts (bulk invocation) ---
-if should_run sh; then
-  need_cmd shfmt || exit 1
-  mapfile -t sh_files < <(collect_by_func is_sh_file | sort -u)
-  if [[ ${#sh_files[@]} -gt 0 ]]; then
-    if $check_mode; then
-      printf 'shfmt: checking %d files\n' "${#sh_files[@]}"
-      if ! shfmt -d "${sh_files[@]}" >/dev/null 2>&1; then
-        ok=false
-        shfmt -l "${sh_files[@]}" 2>/dev/null | sed 's/^/  unformatted: /'
-      fi
-    else
-      printf 'shfmt: formatting %d files\n' "${#sh_files[@]}"
-      shfmt -w "${sh_files[@]}"
+    need_cmd markdownlint || return 1
+    if [[ ! -f "$HOME/.markdownlint.jsonc" ]]; then
+      printf 'missing: %s (apply dotfiles to install it)\n' "$HOME/.markdownlint.jsonc" >&2
+      return 1
     fi
-  fi
-fi
-
-# --- stylua: lua (bulk invocation) ---
-if should_run lua; then
-  need_cmd stylua || exit 1
-  mapfile -t lua_files < <(collect_by_func is_lua_file | sort -u)
-  if [[ ${#lua_files[@]} -gt 0 ]]; then
-    if $check_mode; then
-      printf 'stylua: checking %d files\n' "${#lua_files[@]}"
-      if ! stylua --check "${lua_files[@]}" >/dev/null 2>&1; then
-        ok=false
-        stylua --check "${lua_files[@]}" 2>&1 | grep 'Diff' | sed 's/^.*in /  unformatted: /' || true
-      fi
-    else
-      printf 'stylua: formatting %d files\n' "${#lua_files[@]}"
-      stylua "${lua_files[@]}"
-    fi
-  fi
-fi
-
-# --- fish_indent: fish (one at a time — fish_indent has no bulk mode) ---
-if should_run fish; then
-  need_cmd fish_indent fish || exit 1
-  mapfile -t fish_files < <(collect_by_func is_fish_file | sort -u)
-  if [[ ${#fish_files[@]} -gt 0 ]]; then
-    fish_bad=0
-    if $check_mode; then
-      printf 'fish_indent: checking %d files\n' "${#fish_files[@]}"
-      for f in "${fish_files[@]}"; do
-        [[ -f "$f" ]] || continue
-        if ! diff -q <(fish_indent <"$f") "$f" >/dev/null 2>&1; then
-          printf '  unformatted: %s\n' "$f"
-          ((fish_bad++)) || true
+    if [[ ${#md_files[@]} -gt 0 ]]; then
+      if $check_mode; then
+        printf 'markdownlint: checking %d files\n' "${#md_files[@]}"
+        if ! markdownlint -c "$HOME/.markdownlint.jsonc" -- "${md_files[@]}" >/dev/null 2>&1; then
+          rc=1
+          markdownlint -c "$HOME/.markdownlint.jsonc" -- "${md_files[@]}" 2>&1 | sed 's/^/  /' || true
         fi
-      done
-      [[ $fish_bad -eq 0 ]] || ok=false
-    else
-      printf 'fish_indent: formatting %d files\n' "${#fish_files[@]}"
-      for f in "${fish_files[@]}"; do
-        [[ -f "$f" ]] || continue
-        fish_indent -w "$f"
-      done
+      else
+        printf 'markdownlint: fixing %d files\n' "${#md_files[@]}"
+        markdownlint --fix -c "$HOME/.markdownlint.jsonc" -- "${md_files[@]}" 2>/dev/null || true
+      fi
     fi
   fi
-fi
 
-# --- ruff: python (fix + format, matching neovim conform's ruff_fix + ruff_format) ---
-if should_run py; then
-  need_cmd ruff || exit 1
+  if should_run md || should_run json || should_run yaml; then
+    need_cmd prettier || return 1
+    mapfile -t prettier_files < <(
+      {
+        should_run md && collect_by_func is_md_file
+        should_run json && collect_by_func is_json_file
+        should_run yaml && collect_by_func is_yaml_file
+      } | sort -u
+    )
+    if [[ ${#prettier_files[@]} -gt 0 ]]; then
+      if $check_mode; then
+        printf 'prettier: checking %d files\n' "${#prettier_files[@]}"
+        prettier --check "${prettier_files[@]}" 2>/dev/null || rc=1
+      else
+        printf 'prettier: formatting %d files\n' "${#prettier_files[@]}"
+        prettier --write "${prettier_files[@]}" >/dev/null 2>&1
+      fi
+    fi
+  fi
+  return $rc
+}
+
+# shfmt: shell scripts (bulk invocation)
+fmt_sh() {
+  should_run sh || return 0
+  local rc=0
+  need_cmd shfmt || return 1
+  mapfile -t sh_files < <(collect_by_func is_sh_file | sort -u)
+  [[ ${#sh_files[@]} -gt 0 ]] || return 0
+  if $check_mode; then
+    printf 'shfmt: checking %d files\n' "${#sh_files[@]}"
+    if ! shfmt -d "${sh_files[@]}" >/dev/null 2>&1; then
+      rc=1
+      shfmt -l "${sh_files[@]}" 2>/dev/null | sed 's/^/  unformatted: /'
+    fi
+  else
+    printf 'shfmt: formatting %d files\n' "${#sh_files[@]}"
+    shfmt -w "${sh_files[@]}"
+  fi
+  return $rc
+}
+
+# stylua: lua (bulk invocation)
+fmt_lua() {
+  should_run lua || return 0
+  local rc=0
+  need_cmd stylua || return 1
+  mapfile -t lua_files < <(collect_by_func is_lua_file | sort -u)
+  [[ ${#lua_files[@]} -gt 0 ]] || return 0
+  if $check_mode; then
+    printf 'stylua: checking %d files\n' "${#lua_files[@]}"
+    if ! stylua --check "${lua_files[@]}" >/dev/null 2>&1; then
+      rc=1
+      stylua --check "${lua_files[@]}" 2>&1 | grep 'Diff' | sed 's/^.*in /  unformatted: /' || true
+    fi
+  else
+    printf 'stylua: formatting %d files\n' "${#lua_files[@]}"
+    stylua "${lua_files[@]}"
+  fi
+  return $rc
+}
+
+# fish_indent: fish (one at a time — fish_indent has no bulk mode)
+fmt_fish() {
+  should_run fish || return 0
+  local rc=0
+  need_cmd fish_indent fish || return 1
+  mapfile -t fish_files < <(collect_by_func is_fish_file | sort -u)
+  [[ ${#fish_files[@]} -gt 0 ]] || return 0
+  local fish_bad=0
+  if $check_mode; then
+    printf 'fish_indent: checking %d files\n' "${#fish_files[@]}"
+    for f in "${fish_files[@]}"; do
+      [[ -f "$f" ]] || continue
+      if ! diff -q <(fish_indent <"$f") "$f" >/dev/null 2>&1; then
+        printf '  unformatted: %s\n' "$f"
+        ((fish_bad++)) || true
+      fi
+    done
+    [[ $fish_bad -eq 0 ]] || rc=1
+  else
+    printf 'fish_indent: formatting %d files\n' "${#fish_files[@]}"
+    for f in "${fish_files[@]}"; do
+      [[ -f "$f" ]] || continue
+      fish_indent -w "$f"
+    done
+  fi
+  return $rc
+}
+
+# ruff: python (fix + format, matching neovim conform's ruff_fix + ruff_format)
+fmt_py() {
+  should_run py || return 0
+  local rc=0
+  need_cmd ruff || return 1
   mapfile -t py_files < <(collect_by_func is_py_file | sort -u)
-  if [[ ${#py_files[@]} -gt 0 ]]; then
-    if $check_mode; then
-      printf 'ruff: checking %d files\n' "${#py_files[@]}"
-      if ! ruff check --select I --diff "${py_files[@]}" >/dev/null 2>&1; then
-        ok=false
-        printf '  import sorting needed\n'
-      fi
-      if ! ruff format --check "${py_files[@]}" >/dev/null 2>&1; then
-        ok=false
-        ruff format --check "${py_files[@]}" 2>&1 | grep 'Would reformat' | sed 's/^/  /' || true
-      fi
-    else
-      printf 'ruff: formatting %d files\n' "${#py_files[@]}"
-      ruff check --select I --fix "${py_files[@]}" >/dev/null 2>&1
-      ruff format "${py_files[@]}" >/dev/null 2>&1
+  [[ ${#py_files[@]} -gt 0 ]] || return 0
+  if $check_mode; then
+    printf 'ruff: checking %d files\n' "${#py_files[@]}"
+    if ! ruff check --select I --diff "${py_files[@]}" >/dev/null 2>&1; then
+      rc=1
+      printf '  import sorting needed\n'
     fi
+    if ! ruff format --check "${py_files[@]}" >/dev/null 2>&1; then
+      rc=1
+      ruff format --check "${py_files[@]}" 2>&1 | grep 'Would reformat' | sed 's/^/  /' || true
+    fi
+  else
+    printf 'ruff: formatting %d files\n' "${#py_files[@]}"
+    ruff check --select I --fix "${py_files[@]}" >/dev/null 2>&1
+    ruff format "${py_files[@]}" >/dev/null 2>&1
   fi
-fi
+  return $rc
+}
 
-# --- go: Go (tools/ralph-tui and any future .go under repo root)
+# go: Go (tools/ralph-tui and any future .go under repo root)
 # We deliberately use the same tools that Neovim's conform.nvim uses
 # (goimports then gofumpt) so that `bin/fmt --type go` and editor save
 # never fight. Falls back to plain gofmt only if the modern pair is absent.
-if should_run go; then
-  go_files=()
+fmt_go() {
+  should_run go || return 0
+  local rc=0
+  local go_files=()
   mapfile -t go_files < <(collect_by_func is_go_file | sort -u)
-  if [[ ${#go_files[@]} -gt 0 ]]; then
-    if command -v goimports >/dev/null 2>&1 && command -v gofumpt >/dev/null 2>&1; then
-      if $check_mode; then
-        printf 'goimports + gofumpt: checking %d files\n' "${#go_files[@]}"
-        unformatted_goimports="$(goimports -l "${go_files[@]}" 2>/dev/null || true)"
-        unformatted_gofumpt="$(gofumpt -l "${go_files[@]}" 2>/dev/null || true)"
-        unformatted="$(printf '%s\n%s\n' "$unformatted_goimports" "$unformatted_gofumpt" | sort -u | sed '/^$/d')"
-        if [[ -n "$unformatted" ]]; then
-          ok=false
-          printf '%s\n' "$unformatted" | sed 's/^/  unformatted: /'
-        fi
-      else
-        printf 'goimports + gofumpt: formatting %d files\n' "${#go_files[@]}"
-        goimports -w "${go_files[@]}"
-        gofumpt -w "${go_files[@]}"
+  [[ ${#go_files[@]} -gt 0 ]] || return 0
+  if command -v goimports >/dev/null 2>&1 && command -v gofumpt >/dev/null 2>&1; then
+    if $check_mode; then
+      printf 'goimports + gofumpt: checking %d files\n' "${#go_files[@]}"
+      local unformatted_goimports unformatted_gofumpt unformatted
+      unformatted_goimports="$(goimports -l "${go_files[@]}" 2>/dev/null || true)"
+      unformatted_gofumpt="$(gofumpt -l "${go_files[@]}" 2>/dev/null || true)"
+      unformatted="$(printf '%s\n%s\n' "$unformatted_goimports" "$unformatted_gofumpt" | sort -u | sed '/^$/d')"
+      if [[ -n "$unformatted" ]]; then
+        rc=1
+        printf '%s\n' "$unformatted" | sed 's/^/  unformatted: /'
       fi
     else
-      # Fallback for minimal environments (no goimports/gofumpt in PATH)
-      need_cmd gofmt || exit 1
-      if $check_mode; then
-        printf 'gofmt (fallback): checking %d files\n' "${#go_files[@]}"
-        unformatted="$(gofmt -l "${go_files[@]}" 2>/dev/null || true)"
-        if [[ -n "$unformatted" ]]; then
-          ok=false
-          printf '%s\n' "$unformatted" | sed 's/^/  unformatted: /'
-        fi
-      else
-        printf 'gofmt (fallback): formatting %d files\n' "${#go_files[@]}"
-        gofmt -w "${go_files[@]}"
+      printf 'goimports + gofumpt: formatting %d files\n' "${#go_files[@]}"
+      goimports -w "${go_files[@]}"
+      gofumpt -w "${go_files[@]}"
+    fi
+  else
+    # Fallback for minimal environments (no goimports/gofumpt in PATH)
+    need_cmd gofmt || return 1
+    if $check_mode; then
+      printf 'gofmt (fallback): checking %d files\n' "${#go_files[@]}"
+      local unformatted
+      unformatted="$(gofmt -l "${go_files[@]}" 2>/dev/null || true)"
+      if [[ -n "$unformatted" ]]; then
+        rc=1
+        printf '%s\n' "$unformatted" | sed 's/^/  unformatted: /'
       fi
+    else
+      printf 'gofmt (fallback): formatting %d files\n' "${#go_files[@]}"
+      gofmt -w "${go_files[@]}"
     fi
   fi
-fi
+  return $rc
+}
+
+# --- concurrent runner ---
+# Launch each independent group in the background, buffering its combined output
+# to a temp file. After all finish, flush the buffers in a deterministic order
+# so output stays readable, and OR the exit statuses into `ok`.
+groups=(md sh lua fish py go)
+tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/binfmt.XXXXXX")"
+trap 'rm -rf "$tmpdir"' EXIT
+
+pids=()
+for g in "${groups[@]}"; do
+  "fmt_$g" >"$tmpdir/$g.out" 2>&1 &
+  pids+=("$!")
+done
+
+for i in "${!groups[@]}"; do
+  if ! wait "${pids[$i]}"; then
+    ok=false
+  fi
+  cat "$tmpdir/${groups[$i]}.out"
+done
 
 # --- summary ---
 if $check_mode; then
@@ -330,4 +367,7 @@ if $check_mode; then
     printf '\nSome files need formatting. Run bin/fmt to fix.\n'
     exit 1
   fi
+elif ! $ok; then
+  # write mode: a missing tool or other group failure should still fail the run
+  exit 1
 fi

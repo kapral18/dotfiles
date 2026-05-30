@@ -1,0 +1,19 @@
+# Command-line batch rename tool
+# https://github.com/ayoisaiah/f2
+brew "f2"
+
+# Identify and delete duplicate files
+# https://github.com/adrianlopezroche/fdupes
+brew "fdupes"
+
+# Efficient duplicate file finder with hashing and parallelism
+# https://github.com/pkolaczk/fclones
+brew "fclones"
+
+# macOS command line utility for managing file icons
+# https://github.com/mklement0/fileicon
+brew "fileicon"
+
+# Select default apps for documents and URL schemes
+# https://github.com/moretension/duti
+brew "duti"

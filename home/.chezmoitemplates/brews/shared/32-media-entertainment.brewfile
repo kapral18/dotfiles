@@ -1,0 +1,3 @@
+# Terminal EPUB/PDF/DJVU reader with vim-style keybindings
+# https://github.com/bugzmanov/bookokrat
+brew "bookokrat"
