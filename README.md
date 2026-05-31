@@ -25,15 +25,17 @@ New here? Read the published docs at <https://kapral18.github.io/dotfiles/>, or 
 
 ## ✨ Key Features
 
-| Feature                | Description                                      |
-| ---------------------- | ------------------------------------------------ |
-| 🤖 **Agent Memory**    | Beads integration for AI task tracking           |
-| 🔐 **Secure Identity** | 1Password SSH agent with work/personal switching |
-| 🌳 **Git Worktrees**   | Worktree management with PR integration          |
-| 💎 **Neovim**          | Custom LSP, AI commits, refactoring tools        |
-| 🐚 **Fish Shell**      | 30+ custom productivity functions                |
-| 📦 **Brewfile**        | 250+ formulas and casks                          |
-| ⚙️ **Mise**            | Version manager with automatic switching         |
+| Feature                | Description                                                    |
+| ---------------------- | -------------------------------------------------------------- |
+| 🤖 **Agent Memory**    | Beads integration + `/tmp/specs` hook memory (`,agent-memory`) |
+| 🔄 **Ralph**           | Multi-agent orchestrator (planner → executor → reviewers)      |
+| 🧠 **Local inference** | llama.cpp router + model sync (`,llama-cpp`)                   |
+| 🔐 **Secure Identity** | 1Password SSH agent with work/personal switching               |
+| 🌳 **Git Worktrees**   | Worktree management with PR integration                        |
+| 💎 **Neovim**          | Custom LSP, AI commits, refactoring tools                      |
+| 🐚 **Fish Shell**      | 40+ custom productivity commands in `~/bin`                    |
+| 📦 **Brewfile**        | 280+ formulas and casks (per-category partials)                |
+| ⚙️ **Mise**            | Version manager with automatic switching                       |
 
 ---
 
@@ -53,9 +55,10 @@ sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply kapral18
 
 1. Chezmoi installs and initializes from this repository
 2. Prompts for:
+   - 1Password readiness (exits if not ready)
+   - Work vs personal machine (`isWork`)
    - Primary email and SSH public key
    - Secondary credentials (if personal machine)
-   - Work machine confirmation
    - PGP cache TTL preference
 3. Applies all dotfiles, scripts, and configs
 4. Installs Homebrew packages
@@ -146,7 +149,7 @@ Interactive cleanup:
 
 ### Custom Functions
 
-Custom commands are shipped as scripts installed to `~/bin` (source: `home/exact_bin/`). Fish completions live in `home/dot_config/fish/completions/`. A few helpers are defined directly in Fish config (`home/dot_config/fish/config.fish.tmpl`).
+Custom commands are shipped as scripts installed to `~/bin` (source: `home/exact_bin/`). Fish completions live in `home/dot_config/fish/completions/`. A few helpers are defined directly in Fish config (`home/dot_config/fish/readonly_config.fish.tmpl`). See [`docs/topics/workflow/custom-commands.md`](docs/topics/workflow/custom-commands.md) for the full catalog.
 
 - **Name:** `,w`
   - **Description:** Manage git worktrees with a consistent, tmux-friendly workflow (add/list/switch/open/remove) so you can keep branches isolated without losing context.
@@ -161,8 +164,8 @@ Custom commands are shipped as scripts installed to `~/bin` (source: `home/exact
   - **Description:** Print the bundle identifier for a macOS app name/path (useful for scripting macOS automation).
   - **Examples:** `,appid "Google Chrome"`; `,appid "Safari"`
 - **Name:** `,apply-app-icons`
-  - **Description:** Apply custom app icons declared in `home/app_icons/icon_mapping.yaml` to `/Applications/*.app` using `fileicon`.
-  - **Examples:** edit `home/app_icons/icon_mapping.yaml` then run `,apply-app-icons`; add a PNG under `home/app_icons/assets/…` then run `,apply-app-icons`
+  - **Description:** Apply custom app icons declared in `home/app_icons/readonly_icon_mapping.yaml` to `/Applications/*.app` using `fileicon`.
+  - **Examples:** edit `home/app_icons/readonly_icon_mapping.yaml` then run `,apply-app-icons`; add a PNG under `home/app_icons/assets/…` then run `,apply-app-icons`
 - **Name:** `,bat-preview`
   - **Description:** Smart preview for `fzf`/terminal workflows: images via `chafa`, binaries via `hexyl`, directories via `ls -la`, and text via `bat`.
   - **Examples:** `,bat-preview README.md --style=numbers`; `,bat-preview path/to/image.png`
@@ -271,6 +274,36 @@ Custom commands are shipped as scripts installed to `~/bin` (source: `home/exact
 - **Name:** `,view-my-issues`
   - **Description:** Show your assigned issues via `fzf` and open the selected one in a browser.
   - **Examples:** `,view-my-issues`; use `,view-my-issues` as a quick “what should I do next?” launcher
+- **Name:** `,ralph`
+  - **Description:** Drive the Ralph orchestrator (planner → executor → reviewer → re-reviewer) with tmux dashboard integration.
+  - **Examples:** `,ralph go --goal "implement feature X"`; `,ralph doctor`
+- **Name:** `,ai-kb`
+  - **Description:** Local markdown + vector knowledge base for agent runs (search, ingest, doctor).
+  - **Examples:** `,ai-kb search "worktree handoff"`; `,ai-kb doctor`
+- **Name:** `,llama-cpp`
+  - **Description:** Control the local llama.cpp router server (serve, load/unload models, health).
+  - **Examples:** `,llama-cpp serve`; `,llama-cpp status`
+- **Name:** `,codeowners`
+  - **Description:** List or resolve CODEOWNERS paths for a team pattern (wrapper around the local `codeowners` CLI).
+  - **Examples:** `,codeowners @elastic/kibana-management`; `,codeowners -p @elastic/kibana-management`
+- **Name:** `,gh-worktree`
+  - **Description:** Create or reuse local worktrees for GitHub PRs/issues via `,w`, with optional repo bootstrap.
+  - **Examples:** `,gh-worktree pr elastic/kibana 12345 --focus`
+- **Name:** `,youtube-search`
+  - **Description:** Interactive YouTube search TUI (filter, open in browser, or play with mpv).
+  - **Examples:** `,youtube-search`
+- **Name:** `,update`
+  - **Description:** Refresh chezmoi-managed tooling (brew, packages, hooks) in one shot.
+  - **Examples:** `,update`
+- **Name:** `,wh`
+  - **Description:** Send and receive staged git patches over Magic Wormhole (`post` / `get`).
+  - **Examples:** `,wh post`; `,wh get`
+- **Name:** `,tg`
+  - **Description:** Run `telegramtui` with optional pass-backed API config (personal profile).
+  - **Examples:** `,tg`
+- **Name:** `,kbn-pr-audit`
+  - **Description:** Read-only audit of an `elastic/kibana` PR (alignment, threads, labels, test plan).
+  - **Examples:** `,kbn-pr-audit`; `,kbn-pr-audit 271562`
 - **Name:** `bdlocal`
   - **Description:** Beads wrapper that pins a per-repo local DB (based on your current directory’s git remote/repo name).
   - **Examples:** `bdlocal status --no-activity --json`; `bdlocal ready --json`
@@ -323,7 +356,7 @@ Result: Automatic identity switching based on directory, no private keys on disk
 - Separate work/home modes (`ctrl-s` to switch)
 - Reads search filters from standalone YAML configs (same syntax as gh-dash sections)
 - **Deep Tmux & Worktree Integration:** Press `prefix + G` to open the picker. `enter` on a PR/issue creates/switches a linked worktree and focuses tmux; `alt-b` on PRs opens Octo review. Shows inline CI, review, and worktree badges.
-- Config: `home/dot_config/exact_tmux/scripts/pickers/github/readonly_gh-picker-{work,home}.yml`
+- Config: `home/dot_config/exact_tmux/exact_scripts/pickers/github/readonly_gh-picker-{work,home}.yml`
 - GitHub CLI (`gh`) config: `home/dot_config/exact_private_gh/`
 
 **TUIs:**
@@ -340,7 +373,7 @@ Result: Automatic identity switching based on directory, no private keys on disk
 
 **Prefix**: `C-Space`
 
-Config: `home/dot_config/exact_tmux/tmux.conf`
+Config: `home/dot_config/exact_tmux/readonly_tmux.conf` (sources `conf.d/*.conf`)
 
 **Plugins:**
 
@@ -359,10 +392,10 @@ Config: `home/dot_config/exact_tmux/tmux.conf`
 
 Default terminal emulator (GPU-accelerated).
 
-Config (`home/dot_config/exact_ghostty/config`):
+Config (`home/dot_config/exact_ghostty/readonly_config`):
 
 - Hidden titlebar, no shadows
-- JetBrainsMono Nerd Font 14pt
+- JetBrainsMono Nerd Font Mono 14pt
 - Copy-on-select
 - Shell integration
 
@@ -394,20 +427,24 @@ Agents are bound by strict Standard Operating Procedures (SOPs) that mandate emp
 
 A unified set of Model Context Protocol (MCP) servers is shared across all tools, granting agents deep, secure reach into the environment.
 
-- **Semantic Code Search (SCSI):** Agents are _required_ by their SOPs to query the base branch via Elasticsearch before reviewing PRs.
+- **Semantic Code Search (SCSI):** Review skills require querying an indexed base branch via SCSI when the repo is indexed (see `~/.agents/skills/review/` and `~/.agents/skills/semantic-code-search/`).
 - **Sequential Thinking:** For complex, multi-step debugging.
 
 ### 3. The Execution Layer (Tools)
 
 Configs are strictly separated into `.work` and `.personal` profiles and dynamically merged by `chezmoi` based on your identity.
 
-| Tool                | Purpose               | Integration Highlights                                                                                                                           |
-| ------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Pi Coding Agent** | Terminal coding agent | Defaults to Gemini 3.1 Pro Preview Custom Tools via Google direct in both work and personal envs. Injects MCPs and auto-reserves context tokens. |
-| **Gemini CLI**      | Terminal AI assistant | Auto-approves edits (`auto_edit`) and shares the unified MCP configuration.                                                                      |
-| **Cursor**          | AI code editor        | MCPs are filtered securely via chezmoi scripts (`work_only` in `mcp_servers.yaml`).                                                              |
-| **OpenCode**        | Terminal agent runner | Leverages LiteLLM aliases with strict output constraints to prevent gateway timeouts.                                                            |
-| **Crush**           | Terminal assistant    | Fully configured for shell integration.                                                                                                          |
+| Tool                | Purpose                    | Integration Highlights                                                                                          |
+| ------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| **Ralph**           | Multi-agent orchestrator   | `,ralph` CLI + tmux dashboard; planner → executor → reviewer → re-reviewer state machine                        |
+| **Pi Coding Agent** | Terminal coding agent      | Defaults to `moonshotai/kimi-k2.6` via OpenRouter (work + personal); MCP adapter + auto-reserved context tokens |
+| **Gemini CLI**      | Terminal AI assistant      | Auto-approves edits (`auto_edit`) and shares the unified MCP configuration                                      |
+| **Claude Code**     | Terminal AI assistant      | Settings merged from work/personal sources; MCP injected from the shared registry                               |
+| **Cursor**          | AI code editor             | MCPs filtered via chezmoi generation (`work_only` in `mcp_servers.yaml`)                                        |
+| **OpenCode**        | Terminal agent runner      | LiteLLM/Azure model aliases with strict output constraints                                                      |
+| **Amp**             | Terminal assistant         | Work/personal settings tracked under `home/dot_config/exact_amp/`                                               |
+| **llama.cpp**       | Local inference            | `,llama-cpp` control plane; GGUF sync hook; launchers for Claude/Codex/OpenCode/Pi                              |
+| **Crush**           | Terminal assistant (Charm) | Installed via Homebrew; recognized in tmux session picker (no chezmoi-managed config yet)                       |
 
 ## 💎 Neovim
 
@@ -508,7 +545,7 @@ Hyper key + movement:
 
 Script: `,apply-app-icons`
 
-1. YAML mapping (`home/app_icons/icon_mapping.yaml`)
+1. YAML mapping (`home/app_icons/readonly_icon_mapping.yaml`)
 2. Uses `fileicon` to apply icons
 3. Assets in `home/app_icons/assets/`
 
@@ -524,16 +561,16 @@ Karabiner-Elements rules live in `home/dot_config/exact_private_karabiner/karabi
 
 ## 📦 Package Management
 
-| System        | File                                             | Purpose                                |
-| ------------- | ------------------------------------------------ | -------------------------------------- |
-| **Homebrew**  | `home/readonly_dot_Brewfile.tmpl`                | macOS apps, CLI tools, fonts           |
-| **Cargo**     | `home/readonly_dot_default-cargo-crates`         | Rust packages                          |
-| **Go**        | `home/readonly_dot_default-golang-pkgs`          | Go tools                               |
-| **Gems**      | `home/readonly_dot_default-gems`                 | Ruby packages                          |
-| **yarn**      | `home/readonly_dot_default-yarn-pkgs`            | Node.js globals                        |
-| **uv tools**  | `home/readonly_dot_default-uv-tools.tmpl`        | Python CLI tools                       |
-| **uv python** | `home/readonly_dot_python-version`               | Python runtime versions                |
-| **Custom**    | `home/readonly_dot_default-custom-packages.tmpl` | DMGs + GitHub releases + source builds |
+| System        | File                                                                | Purpose                                |
+| ------------- | ------------------------------------------------------------------- | -------------------------------------- |
+| **Homebrew**  | `home/.chezmoitemplates/brews/` → `home/readonly_dot_Brewfile.tmpl` | macOS apps, CLI tools, fonts           |
+| **Cargo**     | `home/readonly_dot_default-cargo-crates`                            | Rust packages                          |
+| **Go**        | `home/readonly_dot_default-golang-pkgs.tmpl`                        | Go tools                               |
+| **Gems**      | `home/readonly_dot_default-gems`                                    | Ruby packages                          |
+| **yarn**      | `home/readonly_dot_default-yarn-pkgs`                               | Node.js globals                        |
+| **uv tools**  | `home/readonly_dot_default-uv-tools.tmpl`                           | Python CLI tools                       |
+| **uv python** | `home/readonly_dot_python-version`                                  | Python runtime versions                |
+| **Custom**    | `home/readonly_dot_default-custom-packages.tmpl`                    | DMGs + GitHub releases + source builds |
 
 Install scripts run via chezmoi hooks when files change.
 
@@ -572,7 +609,7 @@ sh -c "$(curl -fsLS get.chezmoi.io/lb)" -- init --apply kapral18
 
 ## Repo Git Hooks (Dev)
 
-This repo includes a local pre-commit hook in `.githooks/pre-commit` that runs `shfmt` on staged shell scripts and re-stages them so formatting is included in the commit.
+This repo includes a local pre-commit hook in `.githooks/pre-commit` that runs `make check` on staged changes. If check fails, it runs `make fmt`, re-stages the formatted files, and re-runs check. It refuses to auto-format files that still have unstaged edits (to avoid breaking partial staging).
 
 Enable it for this repo only:
 
@@ -590,8 +627,10 @@ git config core.hooksPath .githooks
 - Neovim: `home/dot_config/exact_nvim/`
 - Fish: `home/dot_config/fish/`
 - Scripts: `home/exact_bin/`
-- Brewfile: `home/readonly_dot_Brewfile.tmpl`
+- Brewfile partials: `home/.chezmoitemplates/brews/` (assembled into `home/readonly_dot_Brewfile.tmpl`)
 - Assistant skills: `home/exact_dot_agents/exact_skills/`
+- Ralph: `scripts/ralph.py`, `tools/ralph-tui/`, `home/dot_config/ralph/`
+- llama.cpp: `home/dot_config/llama.cpp/`, `home/exact_bin/executable_,llama-cpp`
 - Codex CLI config: `home/dot_codex/`
 - OpenCode config: `home/dot_config/opencode/`
 - Alfred: `home/Alfred.alfredpreferences/`
