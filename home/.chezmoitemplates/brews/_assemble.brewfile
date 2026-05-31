@@ -221,9 +221,6 @@
 # Tools for browsing and managing media content
 # ==============================================================================
 {{ includeTemplate "brews/shared/32-media-entertainment.brewfile" . -}}
-{{ if ne .isWork true -}}
-{{ includeTemplate "brews/personal/32-media-entertainment.brewfile" . -}}
-{{ end -}}
 
 # ==============================================================================
 # PERSONAL PRODUCTIVITY & JOURNALING

@@ -1,7 +1,0 @@
-# Search and download torrents from the terminal via Jackett/Prowlarr indexers
-# https://github.com/stabldev/torrra
-brew "torrra"
-
-# BitTorrent client in your terminal with a 60 FPS TUI
-# https://github.com/Jagalite/superseedr
-brew "superseedr"

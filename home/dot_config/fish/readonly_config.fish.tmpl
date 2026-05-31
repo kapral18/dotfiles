@@ -38,6 +38,8 @@ set -x VISUAL nvim
 ## Homebrew Settings
 # Disable automatic updates during brew install
 set -x HOMEBREW_NO_AUTO_UPDATE 1
+# Allow non-official taps without future explicit-trust warnings
+set -x HOMEBREW_NO_REQUIRE_TAP_TRUST 1
 # Homebrew paths (adjusted based on template variables)
 set -x HOMEBREW_PREFIX {{ .homebrewPrefix }}
 set -x HOMEBREW_CELLAR {{ .homebrewPrefix }}/Cellar
