@@ -1,5 +1,13 @@
 local M = {}
 
+local function has_breaking_marker(line)
+  return line:find("breaking change", 1, true)
+    or line:find("breaking:", 1, true)
+    or line:find("!:", 1, true)
+    or line:match("%f[%w]break:")
+    or line:match("%f[%w]break%([^)]*%):")
+end
+
 local function classify_commit_signals(text)
   local summary = {
     has_breaking = false,
@@ -18,7 +26,7 @@ local function classify_commit_signals(text)
   for _, raw in ipairs(vim.split(text, "\n", { trimempty = true })) do
     local line = vim.trim(raw):lower()
     if line ~= "" then
-      if line:find("breaking change", 1, true) or line:find("breaking:", 1, true) or line:find("!:", 1, true) then
+      if has_breaking_marker(line) then
         summary.has_breaking = true
       end
       if line:find("deprecat", 1, true) then

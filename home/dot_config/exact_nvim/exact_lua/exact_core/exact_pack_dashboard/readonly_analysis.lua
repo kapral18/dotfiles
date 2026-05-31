@@ -82,6 +82,7 @@ M.compute_version_drift = version.compute_version_drift
 M.detect_risky_star_pin = version.detect_risky_star_pin
 M.refresh_version_flags_async = version.refresh_version_flags_async
 M.short_rev = version.short_rev
+M.classify_commit_signals = signals.classify_commit_signals
 M.commit_subjects_between = gitcmd.commit_subjects_between
 M.infer_breaking_status = infer_breaking_status
 M.source_to_compare_url = url.source_to_compare_url

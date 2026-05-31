@@ -23,7 +23,8 @@ local function ensure_highlights()
   set_hl(0, "PackDashboardRiskSafe", { default = true, link = "DiffAdd" })
   set_hl(0, "PackDashboardRiskUnknown", { default = true, link = "Comment" })
   set_hl(0, "PackDashboardLink", { default = true, link = "Underlined" })
-  set_hl(0, "PackDashboardSelected", { default = true, link = "IncSearch" })
+  -- Checkbox only: bold cyan, no bg — avoid Visual (blue) and IncSearch/DiagnosticWarn (breaking orange).
+  set_hl(0, "PackDashboardSelected", { default = true, link = "Special", bold = true })
 end
 
 local function raw_status_line(ctx)
@@ -91,6 +92,25 @@ local function stats_line(ctx, counts)
   )
 end
 
+local function join_cells(cells)
+  local parts = {}
+  local ranges = {}
+  local byte_col = 0
+  for _, cell in ipairs(cells) do
+    if #parts > 0 then
+      parts[#parts + 1] = " "
+      byte_col = byte_col + 1
+    end
+    local start_col = byte_col
+    parts[#parts + 1] = cell.text
+    byte_col = byte_col + #cell.text
+    if cell.key then
+      ranges[cell.key] = { start_col = start_col, end_col = byte_col }
+    end
+  end
+  return table.concat(parts), ranges
+end
+
 local function build_lines(ctx)
   local counts = rows.summary_counts(ctx)
   local visible = rows.visible(ctx)
@@ -135,17 +155,20 @@ local function build_lines(ctx)
   }
 
   ctx.row_by_line = {}
+  ctx.row_ranges_by_line = {}
   ctx.first_data_line = #lines + 1
   for _, row in ipairs(visible) do
-    lines[#lines + 1] = table.concat({
-      fmt.pad_cell(ctx.selected[row.name] and "[x]" or "[ ]", 3),
-      fmt.pad_cell(ctx.status_icon[row.status] or "?", 2),
-      fmt.pad_cell(fmt.risk_label(ctx, row), 2),
-      fmt.pad_cell(row.name, name_col),
-      fmt.pad_cell(fmt.version_cell(row), version_col),
-      fmt.pad_cell(fmt.links_cell(ctx, row), links_col),
-    }, " ")
+    local line, ranges = join_cells({
+      { key = "sel", text = fmt.pad_cell(ctx.selected[row.name] and "[x]" or "[ ]", 3) },
+      { key = "status", text = fmt.pad_cell(ctx.status_icon[row.status] or "?", 2) },
+      { key = "risk", text = fmt.pad_cell(fmt.risk_label(ctx, row), 2) },
+      { text = fmt.pad_cell(row.name, name_col) },
+      { text = fmt.pad_cell(fmt.version_cell(row), version_col) },
+      { text = fmt.pad_cell(fmt.links_cell(ctx, row), links_col) },
+    })
+    lines[#lines + 1] = line
     ctx.row_by_line[#lines] = row
+    ctx.row_ranges_by_line[#lines] = ranges
   end
   if #visible == 0 then
     lines[#lines + 1] = "(No plugins match current filter/search)"
@@ -189,30 +212,30 @@ local function highlight_rows(ctx)
     drift = "PackDashboardStatusDrift",
     risky = "PackDashboardStatusRisky",
   }
-  local sel_start, sel_end = 0, 3
-  local st_start = sel_end + 1
-  local st_end = st_start + (ctx.use_nerd_font and 3 or 1) + 1
-  local rk_start = st_end + 1
-  local rk_end = rk_start + 2
 
   for line_no, row in pairs(ctx.row_by_line) do
-    if ctx.selected[row.name] then
-      pcall(vim.api.nvim_buf_set_extmark, ctx.bufnr, dashboard_ns, line_no - 1, sel_start, {
+    local ranges = ctx.row_ranges_by_line and ctx.row_ranges_by_line[line_no] or {}
+    if ctx.selected[row.name] and ranges.sel then
+      pcall(vim.api.nvim_buf_set_extmark, ctx.bufnr, dashboard_ns, line_no - 1, ranges.sel.start_col, {
         hl_group = "PackDashboardSelected",
-        end_col = sel_end,
+        end_col = ranges.sel.end_col,
       })
     end
-    pcall(vim.api.nvim_buf_set_extmark, ctx.bufnr, dashboard_ns, line_no - 1, st_start, {
-      hl_group = status_hl[row.status] or "PackDashboardStatusUnknown",
-      end_col = st_end,
-    })
+    if ranges.status then
+      pcall(vim.api.nvim_buf_set_extmark, ctx.bufnr, dashboard_ns, line_no - 1, ranges.status.start_col, {
+        hl_group = status_hl[row.status] or "PackDashboardStatusUnknown",
+        end_col = ranges.status.end_col,
+      })
+    end
     if row.status == "update" then
       local risk_group = row.breaking == true and "PackDashboardRiskBreak"
         or (row.breaking == false and "PackDashboardRiskSafe" or "PackDashboardRiskUnknown")
-      pcall(vim.api.nvim_buf_set_extmark, ctx.bufnr, dashboard_ns, line_no - 1, rk_start, {
-        hl_group = risk_group,
-        end_col = rk_end,
-      })
+      if ranges.risk then
+        pcall(vim.api.nvim_buf_set_extmark, ctx.bufnr, dashboard_ns, line_no - 1, ranges.risk.start_col, {
+          hl_group = risk_group,
+          end_col = ranges.risk.end_col,
+        })
+      end
     end
   end
 end

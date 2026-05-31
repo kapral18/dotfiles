@@ -4,6 +4,17 @@ local fmt = require("core.pack_dashboard.ui.format")
 
 local M = {}
 
+local details_ns = vim.api.nvim_create_namespace("core.pack_dashboard.details")
+
+local function ensure_details_highlights()
+  vim.api.nvim_set_hl(0, "PackDashboardRiskBreak", { default = true, link = "DiagnosticWarn" })
+end
+
+local function has_breaking_signal(line)
+  local summary = analysis.classify_commit_signals(line)
+  return type(summary) == "table" and summary.has_breaking == true
+end
+
 function M.close_details(ctx)
   if ctx.details_winid and vim.api.nvim_win_is_valid(ctx.details_winid) then
     pcall(vim.api.nvim_win_close, ctx.details_winid, true)
@@ -25,6 +36,7 @@ function M.open_details(ctx, row)
     pending = "(No pending update details available)"
   end
 
+  local breaking_lines = {}
   local lines = {
     ("Plugin: %s"):format(row.name),
     ("Status: %s"):format(row.status),
@@ -42,7 +54,12 @@ function M.open_details(ctx, row)
     "",
     "Pending updates:",
   }
-  vim.list_extend(lines, vim.split(pending, "\n", { trimempty = false }))
+  for _, line in ipairs(vim.split(pending, "\n", { trimempty = false })) do
+    lines[#lines + 1] = line
+    if has_breaking_signal(line) then
+      breaking_lines[#lines] = true
+    end
+  end
 
   local p_cache = state.pack_report_cache.plugins[row.name]
   local p_path = p_cache and p_cache.path
@@ -54,7 +71,11 @@ function M.open_details(ctx, row)
       local shown = math.min(#subjects, max_shown)
       lines[#lines + 1] = string.format("Changelog (%d commit%s):", #subjects, #subjects == 1 and "" or "s")
       for i = 1, shown do
-        lines[#lines + 1] = "  " .. subjects[i]
+        local line = "  " .. subjects[i]
+        lines[#lines + 1] = line
+        if has_breaking_signal(subjects[i]) then
+          breaking_lines[#lines] = true
+        end
       end
       if #subjects > max_shown then
         lines[#lines + 1] = string.format("  ... and %d more", #subjects - max_shown)
@@ -73,6 +94,15 @@ function M.open_details(ctx, row)
   vim.bo[ctx.details_bufnr].filetype = "markdown"
   vim.api.nvim_buf_set_lines(ctx.details_bufnr, 0, -1, false, lines)
   vim.bo[ctx.details_bufnr].modifiable = false
+  ensure_details_highlights()
+  for line_no in pairs(breaking_lines) do
+    local line = lines[line_no] or ""
+    pcall(vim.api.nvim_buf_set_extmark, ctx.details_bufnr, details_ns, line_no - 1, 0, {
+      hl_group = "PackDashboardRiskBreak",
+      end_col = #line,
+      priority = 200,
+    })
+  end
 
   local editor_w = vim.o.columns
   local editor_h = vim.o.lines - vim.o.cmdheight
