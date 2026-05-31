@@ -98,7 +98,7 @@ The work-profile LiteLLM provider and the local llama.cpp provider for Pi are co
 | OpenCode | [`home/dot_config/opencode/`](../../../home/dot_config/opencode/)                                                               |
 | Amp      | [`home/dot_config/exact_amp/private_readonly_settings.json`](../../../home/dot_config/exact_amp/private_readonly_settings.json) |
 
-Codex and OpenCode use the profile-merging mechanism above (with MCP injection); Amp settings are tracked directly. Codex also has a llama.cpp launcher wrapper — see [llama.cpp local inference](llama-cpp.md#codex-launcher-metadata).
+Codex and OpenCode use the profile-merging mechanism above (with MCP injection); Amp settings are tracked directly. Codex and OpenCode each have a llama.cpp launcher wrapper (`,codex-llama-cpp`, `,opencode-llama-cpp`) — see [llama.cpp local inference](llama-cpp.md#codex-launcher-codex-llama-cpp).
 
 ## Secrets
 
@@ -116,5 +116,5 @@ Do not commit literal secrets into tool config files; keep them in `pass` and lo
 
 - [MCP servers](mcp.md) — single-sourced server registry
 - [Model registry & routing](model-registry.md) — single-sourced model definitions
-- [llama.cpp local inference](llama-cpp.md) — local backend + Claude/Codex launchers
+- [llama.cpp local inference](llama-cpp.md) — local backend + Claude/Codex/OpenCode/Pi launchers
 - [The Agentic Operating System](index.md) — governance layer

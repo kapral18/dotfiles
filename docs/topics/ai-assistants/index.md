@@ -139,9 +139,9 @@ The agentic layer is split into focused pages:
 - [Agent memory](knowledge-base.md) — hook memory (`/tmp/specs`, `,agent-memory`) and the durable AI knowledge base (`,ai-kb`).
 - [Ralph orchestrator](ralph.md) — the `,ralph go` planner/executor/reviewer/re-reviewer loop, roles, and tmux control plane.
 - [MCP servers](mcp.md) — the canonical `mcp_servers.yaml` registry and per-tool generation.
-- [Model registry & routing](model-registry.md) — `ai_models.yaml`, per-tool model generation, LiteLLM, and Ollama.
+- [Model registry & routing](model-registry.md) — `ai_models.yaml`, per-tool model generation, and LiteLLM.
 - [Tool configs](tool-configs.md) — Cursor CLI, profile-based merging, and per-assistant settings (Claude/Gemini/Pi/Codex/OpenCode/Amp).
-- [llama.cpp local inference](llama-cpp.md) — local GGUF server, model router, and the Claude/Codex launchers.
+- [llama.cpp local inference](llama-cpp.md) — local GGUF server, model router, and the Claude/Codex/OpenCode/Pi launchers.
 - [Reviewing agent diffs](reviewing-diffs.md) — the `tuicr` loop for feeding structured feedback back to an agent.
 - [Beads task tracking](beads.md) — per-repo task tracking with `bd`/`bdlocal`.
 

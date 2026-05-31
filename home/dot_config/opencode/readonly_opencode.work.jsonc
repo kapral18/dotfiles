@@ -81,5 +81,20 @@
       },
       "models": "__AZURE_MODELS__",
     },
+    "llama-cpp": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "llama.cpp (local)",
+      "options": {
+        "baseURL": "http://127.0.0.1:8080/v1",
+      },
+      "models": {
+        "local": {
+          "name": "Qwen3.6 35B A3B UD-Q4_K_XL (llama.cpp)",
+        },
+        "local-max": {
+          "name": "Qwen3.6 35B A3B abliterated (llama.cpp)",
+        },
+      },
+    },
   },
 }

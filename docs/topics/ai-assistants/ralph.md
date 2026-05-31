@@ -30,7 +30,7 @@ Roles are configured in [`~/.config/ralph/roles.json`](../../../home/dot_config/
 
 Defaults are cursor-first because cursor's frontier models give the strongest output and judgement on this user's setup; pi stays fully supported and is required for non-cursor providers (anthropic/openai/google direct, openrouter, llama-cpp). The orchestrator enforces `family_of(re_reviewer.model) != family_of(reviewer.model)` (substring match on `claude|gpt|gemini|llama|mistral|deepseek`) so the mandatory second opinion never comes from the same family. `--mode plan` (planner) and `--mode ask` (reviewer/re_reviewer) are read-only — they prevent role hijacking (small models with full tools tend to skip JSON and just execute the goal) while still allowing read access for verification probes. `--force` on the executor auto-approves shell commands so the orchestrator can drive non-interactively. On pi the equivalent role-scoping is `--no-tools` for planner/reviewer/re_reviewer. Per-role prompts live at [`home/dot_config/ralph/prompts/`](../../../home/dot_config/ralph/prompts/).
 
-Local models (llama-cpp / qwen3.6) are opt-in only; defaults never depend on `,llama-cpp serve` being up. Swap them in by editing `roles.json` (e.g. point `executor.harness=pi`, `executor.model=llama-cpp/qwen3.6-35b-a3b-q4-k-m`). See [llama.cpp local inference](llama-cpp.md).
+Local models (llama-cpp / qwen3.6) are opt-in only; defaults never depend on `,llama-cpp serve` being up. Swap them in by editing `roles.json` (e.g. point `executor.harness=pi`, `executor.model=llama-cpp/local`). See [llama.cpp local inference](llama-cpp.md).
 
 ### Elastic-gated `/review` skill invocation
 

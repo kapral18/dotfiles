@@ -11,8 +11,18 @@
 # Downloads are opt-in via the `downloadLlamaCppModels` data variable in
 # ~/.config/chezmoi/chezmoi.toml. Re-prompt by clearing that value.
 #
-# Strategy: keep the measured best local Qwen3.6 GGUF checkpoint.
+# Strategy: keep the measured best local Qwen3.6 GGUF checkpoint, plus its
+# refusal-removed (abliterated) sibling for prompts the stock model declines.
 
-# Qwen3.6 35B-A3B Q4_K_M (~21.4 GB GGUF).
-# https://huggingface.co/bartowski/Qwen_Qwen3.6-35B-A3B-GGUF
-bartowski/Qwen_Qwen3.6-35B-A3B-GGUF|Qwen_Qwen3.6-35B-A3B-Q4_K_M.gguf
+# Qwen3.6 35B-A3B Unsloth UD-Q4_K_XL (~22.4 GB GGUF).
+# Unsloth dynamic (UD) quant: higher fidelity than stock Q4_K_M at the same
+# size class, and the full 262144 context still co-fits in 36 GB unified memory
+# with the q8_0 KV cache.
+# https://huggingface.co/unsloth/Qwen3.6-35B-A3B-GGUF
+unsloth/Qwen3.6-35B-A3B-GGUF|Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
+
+# Qwen3.6 35B-A3B abliterated Q4_K_M (~21.2 GB GGUF).
+# Refusal-removed sibling of the model above (abliteration of the same base,
+# via wangzhang/Qwen3.6-35B-A3B-abliterated). Same size class, loaded on demand.
+# https://huggingface.co/mradermacher/Qwen3.6-35B-A3B-abliterated-GGUF
+mradermacher/Qwen3.6-35B-A3B-abliterated-GGUF|Qwen3.6-35B-A3B-abliterated.Q4_K_M.gguf

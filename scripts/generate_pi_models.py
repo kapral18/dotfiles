@@ -23,13 +23,13 @@ def main():
         {
             "litellm": {
                 "baseUrl": litellm_api_base,
-                "apiKey": "LITELLM_PROXY_KEY",
+                "apiKey": "$LITELLM_PROXY_KEY",
                 "authHeader": True,
                 "models": [_to_pi_model(m, "LiteLLM", litellm_api_base) for m in litellm_models],
             },
             "azure-foundry": {
                 "baseUrl": azure_endpoint,
-                "apiKey": "AZURE_FOUNDRY_API_KEY",
+                "apiKey": "$AZURE_FOUNDRY_API_KEY",
                 "authHeader": True,
                 "compat": {
                     "supportsDeveloperRole": False,

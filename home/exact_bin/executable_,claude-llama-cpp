@@ -8,15 +8,16 @@
 #     started with --api-key.
 #   - Adds --settings ~/.claude/settings.llama-cpp.json so autoCompactWindow
 #     stays below the local llama.cpp context size.
-#   - Prepends --model $CLAUDE_LLAMA_CPP_MODEL; forwarded args can override it
-#     since claude accepts a later --model.
+#   - Injects --model $CLAUDE_LLAMA_CPP_MODEL (default local) only when the
+#     caller did not pass their own --model/-m, so `,claude-llama-cpp --model
+#     local-max ...` selects the model with no duplicate flag.
 
 set -euo pipefail
 
 LLAMA_CPP_HOST="${LLAMA_CPP_HOST:-127.0.0.1}"
 LLAMA_CPP_PORT="${LLAMA_CPP_PORT:-8080}"
 LLAMA_CPP_API_KEY="${LLAMA_CPP_API_KEY:-sk-no-key-required}"
-CLAUDE_LLAMA_CPP_MODEL="${CLAUDE_LLAMA_CPP_MODEL-qwen3.6-35b-a3b-q4-k-m}"
+CLAUDE_LLAMA_CPP_MODEL="${CLAUDE_LLAMA_CPP_MODEL-local}"
 CLAUDE_LLAMA_CPP_SETTINGS="${CLAUDE_LLAMA_CPP_SETTINGS:-$HOME/.claude/settings.llama-cpp.json}"
 
 if ! command -v claude >/dev/null 2>&1; then
@@ -33,8 +34,15 @@ fi
 export ANTHROPIC_BASE_URL="http://${LLAMA_CPP_HOST}:${LLAMA_CPP_PORT}"
 export ANTHROPIC_API_KEY="$LLAMA_CPP_API_KEY"
 
+caller_set_model=false
+for arg in "$@"; do
+  case "$arg" in
+  --model | -m | --model=*) caller_set_model=true ;;
+  esac
+done
+
 args=(--settings "$CLAUDE_LLAMA_CPP_SETTINGS")
-if [[ -n "$CLAUDE_LLAMA_CPP_MODEL" ]]; then
+if [[ "$caller_set_model" == false && -n "$CLAUDE_LLAMA_CPP_MODEL" ]]; then
   args+=(--model "$CLAUDE_LLAMA_CPP_MODEL")
 fi
 

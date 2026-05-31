@@ -29,7 +29,7 @@ flowchart TB
     end
 
     subgraph LOCALAI["Local LLM runtime"]
-        LLAMA["llama.cpp/models.ini.tmpl (router catalog)<br/>← readonly_dot_default-llama-cpp-models.tmpl<br/>→ ,llama-cpp / ,claude-llama-cpp (see 02/07c)"]:::misc
+        LLAMA["llama.cpp/models.ini.tmpl (router catalog)<br/>readonly_qwen3.6-chat-template.jinja (local-max override)<br/>← readonly_dot_default-llama-cpp-models.tmpl<br/>→ ,llama-cpp / ,claude-llama-cpp / ,codex-llama-cpp / ,opencode-llama-cpp (see 02/07c)"]:::misc
     end
 
     subgraph INPUT["Input / window mgmt (see 07)"]

@@ -5,7 +5,15 @@ set -euo pipefail
 
 real_codex="${CODEX_REAL_BIN:-/opt/homebrew/bin/codex}"
 llama_cpp_catalog="${CODEX_LLAMA_CPP_MODEL_CATALOG:-$HOME/.codex/llama-cpp-model-catalog.json}"
-llama_cpp_model="qwen3.6-35b-a3b-q4-k-m"
+llama_cpp_models=("local" "local-max")
+
+is_llama_cpp_model() {
+  local candidate="$1"
+  for model in "${llama_cpp_models[@]}"; do
+    [[ "$candidate" == "$model" ]] && return 0
+  done
+  return 1
+}
 
 if [[ ! -x "$real_codex" ]]; then
   echo "Error: real Codex binary not found at $real_codex." >&2
@@ -16,16 +24,18 @@ uses_llama_cpp_model=false
 previous_arg=""
 for arg in "$@"; do
   if [[ "$previous_arg" == "-m" || "$previous_arg" == "--model" ]]; then
-    if [[ "$arg" == "$llama_cpp_model" ]]; then
+    if is_llama_cpp_model "$arg"; then
       uses_llama_cpp_model=true
       break
     fi
   fi
 
   case "$arg" in
-  --model="$llama_cpp_model")
-    uses_llama_cpp_model=true
-    break
+  --model=*)
+    if is_llama_cpp_model "${arg#--model=}"; then
+      uses_llama_cpp_model=true
+      break
+    fi
     ;;
   esac
 

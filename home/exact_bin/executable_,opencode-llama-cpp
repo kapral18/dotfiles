@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# Description: Launch opencode against the local llama.cpp server.
+#
+# The llama-cpp provider (baseURL http://127.0.0.1:8080/v1) is declared in the
+# deployed ~/.config/opencode/opencode.jsonc, so this wrapper just selects it.
+# Pass a model with --model/-m using a bare id (local|local-max) or the full
+# provider-qualified id; a bare id is rewritten to llama-cpp/<id>:
+#   ,opencode-llama-cpp --model local-max run "hi"
+# With no --model, defaults to llama-cpp/$OPENCODE_LLAMA_CPP_MODEL (local).
+# Any opencode subcommand/args pass through, e.g. `,opencode-llama-cpp run "hi"`.
+
+set -euo pipefail
+
+OPENCODE_LLAMA_CPP_MODEL="${OPENCODE_LLAMA_CPP_MODEL-local}"
+
+if ! command -v opencode >/dev/null 2>&1; then
+  echo "Error: opencode CLI not found on PATH." >&2
+  exit 127
+fi
+
+# Qualify a bare model id (local) to the provider form (llama-cpp/local).
+qualify_model() {
+  local id="$1"
+  case "$id" in
+  */*) printf '%s' "$id" ;;
+  *) printf 'llama-cpp/%s' "$id" ;;
+  esac
+}
+
+caller_set_model=false
+args=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  --model | -m)
+    caller_set_model=true
+    args+=("$1" "$(qualify_model "${2-}")")
+    shift 2
+    ;;
+  --model=*)
+    caller_set_model=true
+    args+=("--model=$(qualify_model "${1#--model=}")")
+    shift
+    ;;
+  *)
+    args+=("$1")
+    shift
+    ;;
+  esac
+done
+
+if [[ "$caller_set_model" == false ]]; then
+  args=(--model "llama-cpp/${OPENCODE_LLAMA_CPP_MODEL}" "${args[@]}")
+fi
+
+exec opencode "${args[@]}"

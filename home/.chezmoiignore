@@ -3,6 +3,7 @@ app_icons/
 .cursor/mcp.json
 .gemini/settings.json
 .config/opencode/opencode.jsonc
+.pi/agent/models.json
 **/*.work.json
 **/*.personal.json
 **/*.work.jsonc

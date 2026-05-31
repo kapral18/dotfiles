@@ -407,7 +407,6 @@ Configs are strictly separated into `.work` and `.personal` profiles and dynamic
 | **Gemini CLI**      | Terminal AI assistant | Auto-approves edits (`auto_edit`) and shares the unified MCP configuration.                                                                      |
 | **Cursor**          | AI code editor        | MCPs are filtered securely via chezmoi scripts (`work_only` in `mcp_servers.yaml`).                                                              |
 | **OpenCode**        | Terminal agent runner | Leverages LiteLLM aliases with strict output constraints to prevent gateway timeouts.                                                            |
-| **Ollama**          | Local LLM runtime     | Automatically pulls `gpt-oss` and `deepseek-r1` upon `chezmoi apply`.                                                                            |
 | **Crush**           | Terminal assistant    | Fully configured for shell integration.                                                                                                          |
 
 ## 💎 Neovim
@@ -423,7 +422,7 @@ Local plugins are implemented in `home/dot_config/exact_nvim/exact_lua/exact_plu
   - **Examples:** `<leader>tt` run test under cursor; `<leader>tD` debug whole file
 - **Name:** `summarize-commit`
   - **Description:** Generate a conventional-commit message from the staged diff and insert it into the `gitcommit` buffer.
-  - **Examples:** `<leader>aisl` (Ollama); `<leader>aiso` (OpenRouter)
+  - **Examples:** `<leader>aisc` (Cloudflare Workers AI); `<leader>aiso` (OpenRouter)
 - **Name:** `ts-move-exports`
   - **Description:** Move selected TypeScript exports to a new file path and update imports.
   - **Examples:** Visual-select exports → `<leader>]`; repeat until file is clean

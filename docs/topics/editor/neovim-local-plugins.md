@@ -34,7 +34,6 @@ In a `gitcommit` buffer, generate a Conventional Commit message from the staged 
 
 Keymaps:
 
-- `leader-aisl` summarize via Ollama (local)
 - `leader-aisc` summarize via Cloudflare Workers AI
 - `leader-aiso` summarize via OpenRouter
 
@@ -49,7 +48,6 @@ Environment variables:
 | ---------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Cloudflare | `CLOUDFLARE_WORKERS_AI_ACCOUNT_ID`, `CLOUDFLARE_WORKERS_AI_API_KEY` | `CLOUDFLARE_WORKERS_AI_MODEL` (default `@cf/moonshotai/kimi-k2.6`), `CLOUDFLARE_THINKING` (default `false`), `CLOUDFLARE_REASONING_EFFORT`                                                               |
 | OpenRouter | `OPENROUTER_API_KEY`                                                | `OPENROUTER_MODEL` (default `moonshotai/kimi-k2.6`, routed as `moonshotai/kimi-k2.6:nitro`), `OPENROUTER_NITRO` (default `true`), `OPENROUTER_THINKING` (default `false`), `OPENROUTER_REASONING_EFFORT` |
-| Ollama     | —                                                                   | `OLLAMA_MODEL`, `OLLAMA_THINK`, `OLLAMA_TEMPERATURE`                                                                                                                                                     |
 | Gemini     | `GEMINI_API_KEY`                                                    | `GEMINI_MODEL`, `GEMINI_MAX_OUTPUT_TOKENS`                                                                                                                                                               |
 
 ## Ownership / CODEOWNERS Workflows (Local Plugins)

@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Description: Launch Codex against the local llama.cpp server.
+#
+# Wraps the verbose provider-override flags Codex needs to talk to llama-server:
+#   -c model_providers.llama-cpp.base_url=http://127.0.0.1:8080/v1
+#   -c model_providers.llama-cpp.name=llama.cpp
+#   -c model_provider=llama-cpp
+# Host/port come from LLAMA_CPP_HOST/PORT. Injects --model $CODEX_LLAMA_CPP_MODEL
+# (default local) only when the caller did not pass their own --model/-m, so
+# `,codex-llama-cpp --model local-max ...` selects the model with no duplicate
+# flag. The ~/bin/codex shim still injects the llama.cpp model catalog json.
+
+set -euo pipefail
+
+LLAMA_CPP_HOST="${LLAMA_CPP_HOST:-127.0.0.1}"
+LLAMA_CPP_PORT="${LLAMA_CPP_PORT:-8080}"
+CODEX_LLAMA_CPP_MODEL="${CODEX_LLAMA_CPP_MODEL-local}"
+
+if ! command -v codex >/dev/null 2>&1; then
+  echo "Error: codex CLI not found on PATH." >&2
+  exit 127
+fi
+
+base_url="http://${LLAMA_CPP_HOST}:${LLAMA_CPP_PORT}/v1"
+
+caller_set_model=false
+for arg in "$@"; do
+  case "$arg" in
+  --model | -m | --model=*) caller_set_model=true ;;
+  esac
+done
+
+args=(
+  -c "model_providers.llama-cpp.base_url=\"${base_url}\""
+  -c "model_providers.llama-cpp.name=\"llama.cpp\""
+  -c "model_provider=\"llama-cpp\""
+)
+if [[ "$caller_set_model" == false && -n "$CODEX_LLAMA_CPP_MODEL" ]]; then
+  args+=(--model "$CODEX_LLAMA_CPP_MODEL")
+fi
+
+exec codex "${args[@]}" "$@"

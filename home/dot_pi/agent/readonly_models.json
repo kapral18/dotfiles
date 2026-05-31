@@ -13,8 +13,22 @@
       },
       "models": [
         {
-          "id": "qwen3.6-35b-a3b-q4-k-m",
-          "name": "Qwen3.6 35B A3B Q4_K_M (llama.cpp)",
+          "id": "local",
+          "name": "Qwen3.6 35B A3B UD-Q4_K_XL (llama.cpp)",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 262144,
+          "maxTokens": 32768,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          }
+        },
+        {
+          "id": "local-max",
+          "name": "Qwen3.6 35B A3B abliterated (llama.cpp)",
           "reasoning": true,
           "input": ["text"],
           "contextWindow": 262144,

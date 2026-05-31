@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 07c-bin-commands.mmd — Every script in home/exact_bin/ (77 incl. utils).
+%% 07c-bin-commands.mmd — Every script in home/exact_bin/ (79 incl. utils).
 %% executable_,* → ~/bin/,* (comma-prefixed user commands). A few are plain
 %% wrappers (parallel/sem/codex). Most have a fish completion (07) + some zsh.
 %% ============================================================================
@@ -19,7 +19,7 @@ flowchart TB
     end
 
     subgraph AIC["AI / agents / KB"]
-        A[",ralph (→ scripts/ralph.py; see 04) · ,ai-kb (→ scripts/ai_kb.py)<br/>,agent-memory (/tmp/specs dead-switch) · ,cp-files-for-llm<br/>,claude-llama-cpp · ,llama-cpp (local router) · codex (wrapper)<br/>,tg (telegramtui) · ,youtube-search · ,letsfg-docker"]:::ai
+        A[",ralph (→ scripts/ralph.py; see 04) · ,ai-kb (→ scripts/ai_kb.py)<br/>,agent-memory (/tmp/specs dead-switch) · ,cp-files-for-llm<br/>,claude-llama-cpp · ,codex-llama-cpp · ,opencode-llama-cpp<br/>,llama-cpp (local router) · codex (wrapper)<br/>,tg (telegramtui) · ,youtube-search · ,letsfg-docker"]:::ai
     end
 
     subgraph FZFC["fzf / search helpers"]

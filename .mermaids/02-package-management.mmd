@@ -39,7 +39,6 @@ flowchart TD
 
     subgraph LOCALAI["Local model weights (opt-in)"]
         LLAMA["readonly_dot_default-llama-cpp-models.tmpl<br/>dot_config/llama.cpp/models.ini.tmpl<br/>→ hook 07-sync-llama-cpp-models (gate: downloadLlamaCppModels)<br/>scripts/sync_llama_cpp_models.py"]:::reg
-        OLLAMA["hook 05-add-ollama-models (gemma3/devstral/qwen3.5:27b)"]:::reg
     end
 
     subgraph SYSTEM["System-level apply hooks"]

@@ -378,35 +378,6 @@ end
 
 -- ───────────────────────────────── PROVIDER CONFIG ─────────────────────────────
 local providers = {
-  -- Ollama local
-  ollama = {
-    url = "http://localhost:11434/api/generate",
-    timeout = 60,
-    headers = { "Content-Type: application/json" },
-    payload = function(diff)
-      local think = env_bool_or_string("OLLAMA_THINK")
-      if think == nil then
-        think = false
-      end
-      local model = env_trim("OLLAMA_MODEL") or "gemma3"
-      local temperature = env_number("OLLAMA_TEMPERATURE")
-
-      local options = nil
-      if temperature ~= nil then
-        options = { temperature = temperature }
-      end
-      return {
-        model = model,
-        system = SYSTEM_MESSAGE,
-        prompt = diff,
-        think = think,
-        options = options,
-        stream = false,
-      }
-    end,
-    extract_path = { "response" }, -- string with the whole message
-  },
-
   -- Cloudflare Workers AI
   cloudflare = {
     required_env = { "CLOUDFLARE_WORKERS_AI_ACCOUNT_ID", "CLOUDFLARE_WORKERS_AI_API_KEY" },
@@ -738,9 +709,6 @@ local function summarize_with(provider_key)
 end
 
 -- ────────────────────────── PUBLIC COMMANDS ───────────────────────────────────
-M.summarize_commit_ollama = function()
-  summarize_with("ollama")
-end
 M.summarize_commit_cf = function()
   summarize_with("cloudflare")
 end

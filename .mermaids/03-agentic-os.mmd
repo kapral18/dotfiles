@@ -34,7 +34,7 @@ flowchart TB
         PI["Pi: dot_pi/agent/* (Gemini 3.1 Pro default)"]:::exec
         AMP["Amp: dot_config/exact_amp/private_readonly_settings.json"]:::exec
         TUICR["tuicr: dot_config/tuicr/readonly_config.toml"]:::exec
-        LOCAL["Ollama / llama.cpp (local, opt-in)"]:::exec
+        LOCAL["llama.cpp (local, opt-in)"]:::exec
     end
 
     GEN -->|07-generate-mcp-configs + 07-merge-* hooks| EXECL

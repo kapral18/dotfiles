@@ -38,7 +38,8 @@ Environment:
 Examples:
   ,llama-cpp serve
   ,llama-cpp status
-  ,llama-cpp load qwen3.6-35b-a3b-q4-k-m
+  ,llama-cpp load local
+  ,llama-cpp load local-max
   ,llama-cpp unload --all
 EOF
 }

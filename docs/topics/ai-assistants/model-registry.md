@@ -6,7 +6,7 @@ sidebar_position: 6
 
 LiteLLM/Azure model definitions are declared once in a canonical YAML; per-tool model lists (Pi, OpenCode) are generated from it. This is the model-side counterpart to the [MCP registry](mcp.md).
 
-Use when adding a model, changing reasoning/cost metadata, or understanding how a model reaches Pi/OpenCode and the local Ollama models.
+Use when adding a model, changing reasoning/cost metadata, or understanding how a model reaches Pi/OpenCode.
 
 ## Registry: `ai_models.yaml`
 
@@ -46,20 +46,9 @@ Fish exports these values from `pass` when the entries exist (see [`home/dot_con
 - **OpenCode**: the work config ([`home/dot_config/opencode/readonly_opencode.work.jsonc`](../../../home/dot_config/opencode/readonly_opencode.work.jsonc)) uses Google direct Gemini as the primary default (`google/gemini-3.1-pro-preview-customtools`); additional LiteLLM aliases remain available for explicit selection.
 - **Pi**: the work config is rendered by `run_onchange_after_07-merge-pi-config.sh.tmpl` into `~/.pi/agent/`, starting from the shared base and adding work-only LiteLLM/Azure providers.
 
-## Ollama
+## Local inference
 
-A hook pulls a small list of Ollama models:
-
-- [`home/.chezmoiscripts/run_onchange_after_05-add-ollama-models.sh`](../../../home/.chezmoiscripts/run_onchange_after_05-add-ollama-models.sh)
-
-Environment tuning for Ollama lives in [`home/dot_config/fish/readonly_config.fish.tmpl`](../../../home/dot_config/fish/readonly_config.fish.tmpl).
-
-```bash
-chezmoi apply
-ollama list
-```
-
-For the larger local-inference backend (llama.cpp, `,llama-cpp`), see [llama.cpp local inference](llama-cpp.md).
+The local-inference backend is llama.cpp via `,llama-cpp`; see [llama.cpp local inference](llama-cpp.md).
 
 ## Related
 

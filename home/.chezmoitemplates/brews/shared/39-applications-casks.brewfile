@@ -114,10 +114,6 @@ cask "gcloud-cli"
 # https://learn.microsoft.com/cli/azure/
 brew "azure-cli"
 
-# Get up and running with large language models locally
-# https://ollama.ai/
-cask "ollama-app"
-
 # Interactive HTTPS proxy
 # https://mitmproxy.org/
 
