@@ -477,6 +477,9 @@ function M.setup(module_names)
   local build_hooks = {}
   local pack_specs = {}
   local version_policy = load_version_policy()
+  -- Per-plugin version intent published to the dashboard so it can flag
+  -- spec-vs-disk drift and risky `version = "*"` pins (see pack_dashboard).
+  local declared_versions = {}
 
   for _, entry in ipairs(sorted) do
     if entry.enabled then
@@ -501,6 +504,16 @@ function M.setup(module_names)
           pack_spec.version = version
         end
         pack_specs[#pack_specs + 1] = pack_spec
+
+        -- Capture the literal `version = "*"` intent (lost after resolution to a
+        -- VersionRange) so the dashboard can warn when "*" mis-selects a tag.
+        local raw_star = false
+        for _, spec in ipairs(entry.specs) do
+          if spec.version == "*" then
+            raw_star = true
+          end
+        end
+        declared_versions[entry.name] = { resolved = version, star = raw_star }
       end
     end
   end
@@ -660,6 +673,7 @@ function M.setup(module_names)
   -- having stale plugins silently deleted on every startup (matches the
   -- lazy.nvim model the user asked for).
   require("core.pack_dashboard").set_declared_plugin_names(retain_pack_names)
+  require("core.pack_dashboard").set_declared_plugin_versions(declared_versions)
 
   -- The reinstall-on-src-change path is separate from orphan cleanup: the
   -- plugin is still declared, only its remote moved, so re-cloning here is

@@ -1,7 +1,10 @@
 return {
   {
     "nvim-telescope/telescope.nvim",
-    version = "*",
+    -- Track master: telescope's semver-ish tags are stale (the `nvim-0.6` tag
+    -- mis-sorts as newest under `version = "*"`, pinning a 2022 build that calls
+    -- the removed `vim.treesitter.language.ft_to_lang` and crashes on nvim 0.12).
+    version = false,
     cmd = "Telescope",
     opts = function()
       local actions = require("telescope.actions")

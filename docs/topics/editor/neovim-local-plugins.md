@@ -67,8 +67,23 @@ Search only paths owned by a team/owner:
 
 ## Refactors: Move TS Exports (Local Plugin)
 
+Select one or more exported declarations in visual mode, enter a target path (relative to the current file), and the plugin moves the selection into that file and re-wires every importer to point at the new location.
+
 - Visual mode mapping: `leader-]`
 - Loader: [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_ts-move-exports.lua`](../../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local/readonly_ts-move-exports.lua)
+- Source: [`home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_ts-move-exports.lua`](../../../home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/readonly_ts-move-exports.lua)
+
+How it works:
+
+1. Treesitter collects the exported binding names in the selection (`const`/`function`/`class`/`type`).
+2. `textDocument/references` records every file that imports them.
+3. Each export is renamed to a temporary placeholder, then the lines are moved into the target file (parent dirs are created; appended after a blank line if the file already exists).
+4. Each referencing file is opened, and `typescript-tools`' add-missing-imports re-imports the placeholder from the new file.
+5. The placeholder is renamed back to the original name from the new file; the LSP rename propagates the original name through every importer.
+
+Requirements:
+
+- Depends on the `typescript-tools` LSP client (`pmizio/typescript-tools.nvim`) being attached — it drives references, rename, and add-missing-imports. See [Editor: Neovim](neovim.md) for the TypeScript LSP setup.
 
 ## tmux Bridge: Send Text To The Right Pane (Local Plugin)
 

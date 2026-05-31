@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 07b-neovim.mmd — Every file under home/dot_config/exact_nvim/ (136).
+%% 07b-neovim.mmd — Every file under home/dot_config/exact_nvim/ (156).
 %% Deployed to ~/.config/nvim/. Loader init.lua → core → plugins → util.
 %% Plugin manager: native vim.pack (exact_core/exact_pack policy+semver).
 %% ============================================================================
@@ -12,11 +12,11 @@ flowchart TB
 
     BOOT["readonly_init.lua (entry)<br/>+ readonly_dot_neoconf.json · stylua.toml · LICENSE · README<br/>+ readonly_dot_gitignore"]:::boot
 
-    BOOT --> CORE["exact_lua/exact_core/<br/>init · options · keymaps · autocmds · plugins<br/>pack_dashboard · exact_pack/{policy,semver}.lua"]:::core
+    BOOT --> CORE["exact_lua/exact_core/<br/>init · options · keymaps · autocmds · plugins<br/>pack_dashboard facade · exact_pack_dashboard/{state,analysis,report,ui,lockfile} facades<br/>· exact_analysis/{version,gitcmd,signals,url}<br/>· exact_report/{notify,parser,fetch,rows}<br/>· exact_ui/{view,render,rows,format,popups,refresh,operations,bindings}<br/>exact_pack/{policy,semver}.lua"]:::core
 
     CORE --> PLUGINS["exact_lua/exact_plugins/ (57 specs)"]:::plug
     subgraph PG["Plugin specs (grouped)"]
-        PG1["LSP/lang: lsp · typescript-tools · tsgo · go · rust · python<br/>lua · bash · fish · helm · jinja · docker · html-css · json<br/>jsonl · kdl · xml · yaml · markdown · strudel"]:::plug
+        PG1["LSP/lang: lsp · typescript-tools · go · rust · python<br/>lua · bash · fish · helm · jinja · docker · html-css · json<br/>jsonl · kdl · xml · yaml · markdown · strudel"]:::plug
         PG2["Editing: completion · formatting · lint · eslint · treesitter<br/>inc-rename · search-and-replace · multi-cursors · marks<br/>leap · numb · live-command · undo · hlargs · highlight"]:::plug
         PG3["UI/UX: colorscheme · bufferline · lualine · which-key<br/>snacks · telescope · fzf · neo-tree · outline · session<br/>dashboard(pack_dashboard) · core · tpope · gx · lazydev"]:::plug
         PG4["Git/AI/Debug: git · github · diff · ai · dap · osv"]:::plug

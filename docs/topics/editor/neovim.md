@@ -63,7 +63,7 @@ Version policy (fast startup): startup does **not** probe remotes. Instead, `Pac
 
 **Per-spec `version` field (lazy.nvim-compatible):**
 
-- `version = "*"` → latest semver tag (translates to `vim.version.range("*")`; resolves to the greatest tag, regardless of major)
+- `version = "*"` → latest semver tag (translates to `vim.version.range("*")`; resolves to the greatest tag, regardless of major). **Footgun:** if a repo carries non-release tags that still parse as semver (for example Telescope's `nvim-0.6`, which parses as `0.6.0` and outranks real `v0.2.x` releases), `*` selects that junk tag and pins a stale build. The dashboard flags this as a `risky` row (see below); prefer `version = false` (branch tip) or an explicit range/tag for such repos.
 - `version = "^1.0"` / `"~1.2"` / `">=2.3"` → semver range (resolves to the greatest matching tag)
 - `version = "v1.2.3"` → exact tag
 - `version = "<commit-sha>"` → exact commit
@@ -84,6 +84,8 @@ Practical commands:
 - `:PackDashboard` -> compact floating plugin dashboard that opens from cached/known state by default, with:
   - per-plugin update status
   - orphan flag (`O` / trash icon) for installed packs that are no longer declared by any spec; press `C` to clean them (selected orphans first, else all orphans, with confirmation)
+  - drift flag (`D` / sync icon) when the on-disk checkout no longer satisfies the spec `version` (e.g. you change a `version`/`commit`/`tag` field and restart). `vim.pack.add` does not re-checkout on a version change, so this is otherwise silent. Press `V` to heal: re-checks out drifted plugins to the spec/lockfile version via `vim.pack.update(..., { offline = true })` (no network), selected drifted rows first, else all. Drift/risky checks run asynchronously after the window opens so dashboard launch stays fast.
+  - risky-pin flag (`W` / warning icon) when `version = "*"` would select a non-release tag that outranks the greatest real release tag (the `version = "*"` footgun above); switch the spec to `version = false` or an explicit range/tag. This flag may appear a moment after open when the async tag scan completes
   - breaking-risk hint (best-effort) from semver delta (`major`/`minor`/`patch`) plus commit-message signals in the cumulative `rev_before..rev_after` range (for example `BREAKING`, `feat`, `fix`, `refactor`, `perf`)
   - icon-based links column (`diff` / `repo`) with direct compare URL for pending updates
   - single pending update (`<CR>`), selected pending updates (`u`), update all visible pending rows (`U`)
@@ -120,6 +122,8 @@ The dashboard defaults to an icon-first compact view and can be tuned with globa
 Repeated `:PackDashboard` calls reuse the existing floating window instead of stacking multiple instances; add `!` (i.e. `:PackDashboard!`) to force-close and reopen the dashboard without starting a refresh. Stale cache/UI entries for plugins that were removed from the config are purged automatically on every dashboard open.
 
 Orphan plugins (packs on disk that are no longer declared by any spec) are surfaced as `orphan` rows in the dashboard rather than silently deleted at startup. This mirrors the `lazy.nvim` UX: you review what will be removed, then press `C` to clean. The only auto-mutation that still happens at startup is re-cloning a plugin whose `src` changed (same name, new remote) — that's a legitimate move, not an orphan.
+
+Version drift is surfaced the same way. Because `vim.pack.add` only updates the lockfile (not the on-disk ref) when a `version` field changes, editing a `version`/`commit`/`tag` and restarting does **not** move the checkout — the change is silent until something re-resolves. The dashboard detects this mismatch (resolved spec version vs the current rev/tags) and shows a `drift` row; press `V` to re-checkout to the spec version offline. This is flag-and-heal (like orphans), not an automatic startup mutation. The related `risky` row warns when `version = "*"` would resolve to a junk tag that outranks real releases, so you can switch to `version = false` or an explicit range before it pins a stale build.
 
 Initial version-policy generation and 3-day TTL refresh are deferred to `VimEnter + 200ms` and processed one plugin per scheduled tick, so neither the first launch after adding plugins nor a cold cache blocks the editor. The sync path used by `:PackSync` / `:PackStatus` runs incrementally: only new or missing plugin entries are recomputed when the existing cache is otherwise valid.
 
@@ -227,7 +231,11 @@ Code actions are shown with **fzf-lua**, not Neovim’s default `vim.ui.select` 
 
 ## Lua LS Workspace Scope
 
-`lua_ls` root detection is intentionally narrowed for chezmoi paths: when no Lua project markers (`.luarc*`, `stylua.toml`, `selene.toml`) are present, files under `$CHEZMOI_SOURCE_DIR` use the file directory as root instead of the repo `.git` root. This avoids full-repo scans and the "More than 100000 files have been scanned" startup warning in large dotfiles trees.
+`lua_ls` root detection is intentionally narrowed for chezmoi paths: a file under the chezmoi source tree uses its own directory as the workspace root instead of the repo `.git` root. This avoids full-repo scans and the "More than 100000 files have been scanned" startup warning (the chezmoi tree holds ~30k files), which otherwise leaves the workspace preload stuck at 0%.
+
+The `root_dir` in [`plugins/lua.lua`](../../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_lua.lua) resolves in priority order: a real lua_ls project marker (`.luarc.json`/`.luarc.jsonc`) always wins; otherwise, when the buffer is under the chezmoi source tree (detected via `vim.g["chezmoi#source_dir_path"]`, set by `plugins/chezmoi.lua`), it roots at the file's own directory; only outside chezmoi does it fall back to formatter/linter markers (`.stylua.toml`/`stylua.toml`/`selene.toml`) and then `.git`. The chezmoi check must precede the formatter markers because a `.stylua.toml` lives at the chezmoi repo root and would otherwise pull the root back up to the full tree.
+
+Two Neovim-0.11+ specifics make this work: the native LSP `root_dir` signature is `fun(bufnr, on_dir)` (the chosen root is passed to `on_dir`, not returned — the old lspconfig `fun(fname)` form is silently ignored), and lazydev's `lspconfig` integration is disabled in [`plugins/lazydev.lua`](../../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_lazydev.lua) because it would otherwise override `root_dir` with `find_workspace`, letting the `.git` root marker win. Disabling that integration does not affect lazydev's library/annotation injection, which runs through its buffer/workspace mechanism.
 
 ## Jump To Source, Not Target (Chezmoi)
 
