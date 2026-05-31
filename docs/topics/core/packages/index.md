@@ -16,54 +16,55 @@ The core workflow is:
 
 ## Package sources at a glance
 
-| Source                 | List file                                                                                                      | Hook                                                    | Scoped |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ------ |
-| Homebrew               | [`home/readonly_dot_Brewfile.tmpl`](../../../../home/readonly_dot_Brewfile.tmpl)                               | `run_onchange_after_03-install-brew-packages.fish.tmpl` | Yes    |
-| mise                   | [`home/dot_config/mise/config.toml.tmpl`](../../../../home/dot_config/mise/config.toml.tmpl)                   | `run_onchange_after_05-install-mise-runtimes.sh.tmpl`   | Yes    |
-| Cargo                  | [`home/readonly_dot_default-cargo-crates`](../../../../home/readonly_dot_default-cargo-crates)                 | `run_onchange_after_05-update-cargo-crates.sh.tmpl`     | No     |
-| Go                     | [`home/readonly_dot_default-golang-pkgs.tmpl`](../../../../home/readonly_dot_default-golang-pkgs.tmpl)         | `run_onchange_after_05-update-golang-pkgs.sh.tmpl`      | Yes    |
-| Ruby gems              | [`home/readonly_dot_default-gems`](../../../../home/readonly_dot_default-gems)                                 | `run_onchange_after_05-update-gems.sh.tmpl`             | No     |
-| yarn                   | [`home/readonly_dot_default-yarn-pkgs`](../../../../home/readonly_dot_default-yarn-pkgs)                       | `run_onchange_after_05-update-yarn-pkgs.sh.tmpl`        | No     |
-| uv tools               | [`home/readonly_dot_default-uv-tools.tmpl`](../../../../home/readonly_dot_default-uv-tools.tmpl)               | `run_onchange_after_06-update-uv-tools.sh.tmpl`         | Yes    |
-| gh extensions          | —                                                                                                              | `run_onchange_after_05-install-gh-extensions.fish.tmpl` | —      |
-| Custom (GitHub/source) | [`home/readonly_dot_default-custom-packages.tmpl`](../../../../home/readonly_dot_default-custom-packages.tmpl) | `run_onchange_after_05-install-custom-packages.sh.tmpl` | Yes    |
+| Source                 | List file                                                                                                                                                       | Hook                                                    | Scoped |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ------ |
+| Homebrew               | [`home/.chezmoitemplates/brews/`](../../../../home/.chezmoitemplates/brews/) → [`home/readonly_dot_Brewfile.tmpl`](../../../../home/readonly_dot_Brewfile.tmpl) | `run_onchange_after_03-install-brew-packages.fish.tmpl` | Yes    |
+| mise                   | [`home/dot_config/mise/config.toml.tmpl`](../../../../home/dot_config/mise/config.toml.tmpl)                                                                    | `run_onchange_after_05-install-mise-runtimes.sh.tmpl`   | Yes    |
+| Cargo                  | [`home/readonly_dot_default-cargo-crates`](../../../../home/readonly_dot_default-cargo-crates)                                                                  | `run_onchange_after_05-update-cargo-crates.sh.tmpl`     | No     |
+| Go                     | [`home/readonly_dot_default-golang-pkgs.tmpl`](../../../../home/readonly_dot_default-golang-pkgs.tmpl)                                                          | `run_onchange_after_05-update-golang-pkgs.sh.tmpl`      | Yes    |
+| Ruby gems              | [`home/readonly_dot_default-gems`](../../../../home/readonly_dot_default-gems)                                                                                  | `run_onchange_after_05-update-gems.sh.tmpl`             | No     |
+| yarn                   | [`home/readonly_dot_default-yarn-pkgs`](../../../../home/readonly_dot_default-yarn-pkgs)                                                                        | `run_onchange_after_05-update-yarn-pkgs.sh.tmpl`        | No     |
+| uv tools               | [`home/readonly_dot_default-uv-tools.tmpl`](../../../../home/readonly_dot_default-uv-tools.tmpl)                                                                | `run_onchange_after_06-update-uv-tools.sh.tmpl`         | Yes    |
+| gh extensions          | —                                                                                                                                                               | `run_onchange_after_05-install-gh-extensions.fish.tmpl` | —      |
+| Custom (GitHub/source) | [`home/readonly_dot_default-custom-packages.tmpl`](../../../../home/readonly_dot_default-custom-packages.tmpl)                                                  | `run_onchange_after_05-install-custom-packages.sh.tmpl` | Yes    |
 
 "Scoped" means the list is a chezmoi template that can branch on `.isWork`. All hooks live under [`home/.chezmoiscripts/`](../../../../home/.chezmoiscripts/).
 
 ## Scope-aware package lists
 
-Some package sources are plain lists and apply everywhere (`cargo`, `yarn`, `gems`). Others are templates and can branch on `chezmoi` data like `.isWork`.
+Some package sources are plain lists and apply everywhere (`cargo`, `yarn`, `gems`). Others are templates or split source files that branch on `chezmoi` data like `.isWork`.
 
-Use template conditionals when a package should only exist on personal or work machines, for example:
+- **Homebrew:** per-category partials under [`home/.chezmoitemplates/brews/`](../../../../home/.chezmoitemplates/brews/) (`shared/`, `personal/`, `work/`). Profile membership is the directory, not an inline `{{ if }}` inside a partial. See [Add a Homebrew package](./homebrew.md).
+- **Go:** template conditionals in [`home/readonly_dot_default-golang-pkgs.tmpl`](../../../../home/readonly_dot_default-golang-pkgs.tmpl). See [Add a Go tool](./go.md).
+- **uv tools:** [`home/readonly_dot_default-uv-tools.tmpl`](../../../../home/readonly_dot_default-uv-tools.tmpl)
+- **Custom packages:** [`home/readonly_dot_default-custom-packages.tmpl`](../../../../home/readonly_dot_default-custom-packages.tmpl)
+- **Shared everywhere:** [`home/readonly_dot_default-cargo-crates`](../../../../home/readonly_dot_default-cargo-crates), [`home/readonly_dot_default-yarn-pkgs`](../../../../home/readonly_dot_default-yarn-pkgs), [`home/readonly_dot_default-gems`](../../../../home/readonly_dot_default-gems)
+
+Example (Go, personal-only):
 
 ```gotemplate
-{{ if ne .isWork true -}}
-brew "torf-cli"
+{{ if ne .isWork true }}
+github.com/owner/personal-only-tool
 {{ end -}}
 ```
 
-In practice:
-
-- [`home/readonly_dot_Brewfile.tmpl`](../../../../home/readonly_dot_Brewfile.tmpl) supports personal/work scoping.
-- [`home/readonly_dot_default-uv-tools.tmpl`](../../../../home/readonly_dot_default-uv-tools.tmpl) supports personal/work scoping.
-- [`home/readonly_dot_default-cargo-crates`](../../../../home/readonly_dot_default-cargo-crates) and [`home/readonly_dot_default-yarn-pkgs`](../../../../home/readonly_dot_default-yarn-pkgs) are shared lists.
-
 ## Homebrew (Brewfile)
 
-- Source: [`home/readonly_dot_Brewfile.tmpl`](../../../../home/readonly_dot_Brewfile.tmpl)
+- Edit: [`home/.chezmoitemplates/brews/`](../../../../home/.chezmoitemplates/brews/) partials (assembled into [`home/readonly_dot_Brewfile.tmpl`](../../../../home/readonly_dot_Brewfile.tmpl))
 - Installed as: `~/.Brewfile`
 - Hook: [`home/.chezmoiscripts/run_onchange_after_03-install-brew-packages.fish.tmpl`](../../../../home/.chezmoiscripts/run_onchange_after_03-install-brew-packages.fish.tmpl)
+- How-to: [Add a Homebrew package](./homebrew.md)
 
 The hook runs:
 
 - `brew bundle cleanup --global --force`
 - `brew bundle --global`
 
-So the Brewfile acts like the source-of-truth.
+So the assembled Brewfile acts like the source-of-truth.
 
 If you are new to this style: it is closer to "infrastructure as code" than "I installed a thing once".
 
-The Brewfile also carries day-to-day terminal utilities, network diagnostics such as NetWatch, GUI apps, browser casks such as Helium, Brave, Zen, Arc, and Dia, and personal-only casks such as Roblox and Roblox Studio.
+The Brewfile also carries day-to-day terminal utilities, network diagnostics such as NetWatch, browser casks such as Arc, Dia, Brave, and Zen, and personal-only casks such as Roblox.
 
 Some Homebrew formulae are deliberately installed with `link: false` when their binaries collide. For example, GNU `parallel` and Ataraxy semantic-git `sem` both provide a `sem` binary, so both formulae stay unlinked. The commands are exposed through managed wrappers at [`home/exact_bin/executable_parallel`](../../../../home/exact_bin/executable_parallel) and [`home/exact_bin/executable_sem`](../../../../home/exact_bin/executable_sem).
 

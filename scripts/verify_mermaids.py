@@ -64,8 +64,8 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/.chezmoitemplates/brews/",
         globs=["home/.chezmoitemplates/brews/*"],
-        claimed=50,
-        anchors=[("02-package-management.mmd", "brews/ (50)")],
+        claimed=49,
+        anchors=[("02-package-management.mmd", "brews/ (49)")],
     ),
     Claim(
         name="home/.chezmoiscripts/",

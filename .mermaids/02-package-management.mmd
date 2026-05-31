@@ -11,7 +11,7 @@ flowchart TD
     ADD(["request: add X → identify on GitHub first<br/>(README/INSTALL → recommended method)"]):::q
 
     ADD --> BREW{"Homebrew?<br/>brew search/info incl. name variants"}:::q
-    BREW -- yes --> BREWF["home/.chezmoitemplates/brews/ (50): _assemble.brewfile index<br/>+ per-category shared/personal/work partials (dir = profile)<br/>→ readonly_dot_Brewfile.tmpl renders single ~/.Brewfile"]:::reg
+    BREW -- yes --> BREWF["home/.chezmoitemplates/brews/ (49): _assemble.brewfile index<br/>+ per-category shared/personal/work partials (dir = profile)<br/>→ readonly_dot_Brewfile.tmpl renders single ~/.Brewfile"]:::reg
     BREW -- no --> CARGO{Rust crate?}:::q
     CARGO -- yes --> CARGOF["readonly_dot_default-cargo-crates"]:::reg
     CARGO -- no --> GO{Go pkg?}:::q

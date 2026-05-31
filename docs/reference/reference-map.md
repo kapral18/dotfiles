@@ -224,6 +224,7 @@ Helper scripts called by hooks and commands (stdlib-only by convention).
 | `agent_memory.py`                   | Inspect/wipe hook memory under `/tmp/specs` for the current workspace                                 |
 | `ralph.py`                          | Ralph orchestrator state machine (planner -> executor -> reviewer -> re_reviewer)                     |
 | `sync_llama_cpp_models.py`          | Download missing GGUF files declared in the llama.cpp manifest                                        |
+| `reconcile_golang_pkgs.py`          | Reconcile Go binaries against the manifest (hook 05-update-golang-pkgs)                               |
 | `reconcile_custom_packages.py`      | Reconcile source-installed custom package artifacts                                                   |
 | `yt_search.py`                      | YouTube search backend (powers `,youtube-search`)                                                     |
 | `tests/`                            | Python test suite (`test_scripts.py`, agent-hook tests)                                               |

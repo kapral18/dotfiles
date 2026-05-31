@@ -77,5 +77,6 @@ Exit 0 means all files are formatted. Exit 1 lists unformatted files.
 
 ## Related
 
+- [Contributing](../../../CONTRIBUTING.md) — repo validation, pre-commit hook, docs hygiene
 - [Packages](../core/packages/index.md)
 - [Editor: Neovim](../editor/neovim.md)
