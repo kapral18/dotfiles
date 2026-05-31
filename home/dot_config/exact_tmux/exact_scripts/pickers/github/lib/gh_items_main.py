@@ -278,6 +278,33 @@ _TRIVIAL_CHECK_RE = re.compile(
 )
 
 
+def _is_trivial_ctx(ctx: dict[str, Any]) -> bool:
+    """True if a rollup context is a non-CI/bot check we ignore for badge state.
+
+    Trivial contexts (CLA, prbot:*, renovate, license, docs previews, etc.) can
+    fail without the PR's real CI being red. They must be excluded both from the
+    aggregate fallback AND from the early "rollup is failing" short-circuit;
+    otherwise a single failing trivial check (e.g. `prbot:outdated`) masks a
+    green canonical CI context and the picker shows a false failure badge.
+    """
+    typename = ctx.get("__typename", "")
+    name = ctx.get("context", "") or ctx.get("name", "")
+    if typename == "StatusContext" and _TRIVIAL_STATUS_RE.search(name):
+        return True
+    if typename == "CheckRun" and _TRIVIAL_CHECK_RE.search(name):
+        return True
+    return False
+
+
+def _ctx_is_failing(ctx: dict[str, Any]) -> bool:
+    """True if a single rollup context is in a failing terminal state."""
+    if ctx.get("__typename") == "StatusContext":
+        return (ctx.get("state") or "").upper() in ("FAILURE", "ERROR")
+    if ctx.get("__typename") == "CheckRun":
+        return (ctx.get("conclusion") or "").upper() in ("FAILURE", "TIMED_OUT", "CANCELLED")
+    return False
+
+
 def _extract_ci_state(commit_node: dict[str, Any], repo_name: str) -> str:
     """Extract meaningful CI state from status check contexts.
 
@@ -295,21 +322,26 @@ def _extract_ci_state(commit_node: dict[str, Any], repo_name: str) -> str:
     if rollup is None:
         return ""
 
-    # Never show green when the rollup is failing. This prevents a single
-    # "canonical" success context (e.g. kibana-ci) from masking other failing
-    # required checks.
-    overall_state = (rollup.get("state") or "").upper()
-    if overall_state in ("FAILURE", "ERROR"):
-        return "FAILURE"
-
     contexts = []
     try:
         contexts = (rollup.get("contexts") or {}).get("nodes") or []
     except (AttributeError, TypeError):
         pass
 
+    overall_state = (rollup.get("state") or "").upper()
     if not contexts:
-        return rollup.get("state", "")
+        # No per-context detail to reason about; trust the aggregate, but don't
+        # invent a failure from a state we can't attribute to a real check.
+        return overall_state if overall_state != "ERROR" else "FAILURE"
+
+    # Never show green when a *real* (non-trivial) check is failing. This still
+    # prevents a single canonical success context (e.g. kibana-ci) from masking
+    # other failing required checks, but a failing trivial context (CLA,
+    # prbot:*, renovate, docs preview) no longer fabricates a red badge.
+    if overall_state in ("FAILURE", "ERROR") and any(
+        _ctx_is_failing(ctx) and not _is_trivial_ctx(ctx) for ctx in contexts
+    ):
+        return "FAILURE"
 
     canonical = f"{repo_name}-ci"
     for ctx in contexts:
@@ -343,10 +375,7 @@ def _extract_ci_state(commit_node: dict[str, Any], repo_name: str) -> str:
     real_count = 0
     for ctx in contexts:
         typename = ctx.get("__typename", "")
-        name = ctx.get("context", "") or ctx.get("name", "")
-        if typename == "StatusContext" and _TRIVIAL_STATUS_RE.search(name):
-            continue
-        if typename == "CheckRun" and _TRIVIAL_CHECK_RE.search(name):
+        if _is_trivial_ctx(ctx):
             continue
         real_count += 1
         if typename == "StatusContext":

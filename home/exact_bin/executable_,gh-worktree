@@ -233,15 +233,15 @@ if [ "$focus_mode" -eq 1 ] && [ "$create_bg" -eq 1 ]; then
   die "--focus and --create-bg cannot be used together"
 fi
 
-if [ "$kind" = "issue" ] && [ -z "$issue_branch" ] && [ ! -t 0 ]; then
-  die "issue checkout is interactive when --branch is omitted; pass --branch for non-interactive use"
-fi
-
 wt="$(ensure_repo_worktree "$repo_nwo" "$repo_path" "$allow_bootstrap")"
 
 if [ "$print_root" -eq 1 ]; then
   printf '%s\n' "$wt"
   exit 0
+fi
+
+if [ "$kind" = "issue" ] && [ -z "$issue_branch" ] && [ ! -t 0 ]; then
+  die "issue checkout is interactive when --branch is omitted; pass --branch for non-interactive use"
 fi
 
 require_cmd ,w

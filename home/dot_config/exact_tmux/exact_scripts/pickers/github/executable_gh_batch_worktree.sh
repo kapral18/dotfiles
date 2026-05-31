@@ -136,9 +136,17 @@ if [ ${#issues[@]} -gt 0 ] && [ -n "$branches_file" ] && [ -f "$branches_file" ]
   done < "$branches_file"
 fi
 
+# Per-item outcome counters. They drive nothing user-visible on their own: all
+# feedback is delivered through the dashboard markers (amber ◌ in-progress,
+# cyan ◆ done, cleared on skip/fail). The batch run prints nothing to its pane.
 created=0
 skipped=0
 failed=0
+
+# `tmux run-shell -b` runs the background pass in a pane and surfaces its
+# stdout/stderr there. Keep that pane silent — redirect both streams to
+# /dev/null so the only feedback is the in-dashboard markers.
+exec > /dev/null 2>&1
 
 _notify_fzf_reload() {
   local mode scope port items_cmd cache_load_cmd
@@ -159,62 +167,76 @@ _notify_fzf_reload() {
 }
 
 _patch_cache_entry() {
-  local kind="$1" repo="$2" num="$3"
+  local kind="$1" repo="$2" num="$3" state="${4:-done}"
   local mode cache_file script_dir patcher
   mode="$(cat "${cache_dir}/gh_picker_mode" 2> /dev/null || echo work)"
   cache_file="${cache_dir}/gh_picker_${mode}.tsv"
   script_dir="$HOME/.config/tmux/scripts/pickers/github"
   patcher="${script_dir}/lib/gh_patch_picker_cache.py"
   if [ -f "$patcher" ] && [ -f "$cache_file" ]; then
-    python3 -u "$patcher" --cache-file "$cache_file" --kind "$kind" --repo "$repo" --num "$num" 2> /dev/null || true
+    python3 -u "$patcher" --cache-file "$cache_file" --kind "$kind" --repo "$repo" --num "$num" --state "$state" 2> /dev/null || true
   fi
+}
+
+# Mark an item as in-progress (amber ◌) and re-render so the user sees a
+# loading marker the instant creation for that item starts.
+_mark_loading() {
+  local kind="$1" repo="$2" num="$3"
+  _patch_cache_entry "$kind" "$repo" "$num" loading
+  _notify_fzf_reload
 }
 
 _create_pr_worktree() {
   local repo="$1" num="$2"
+  _mark_loading "pr" "$repo" "$num"
   if ! ,gh-worktree pr "$repo" "$num" --print-root --no-bootstrap > /dev/null 2>&1; then
-    printf 'SKIP PR #%s — repo not found locally: %s\n' "$num" "$repo"
     skipped=$((skipped + 1))
+    _patch_cache_entry "pr" "$repo" "$num" clear
+    _notify_fzf_reload
     return
   fi
   if ,gh-worktree pr "$repo" "$num" --quiet --no-bootstrap 2> /dev/null; then
-    printf 'OK   PR #%s (%s)\n' "$num" "$repo"
     created=$((created + 1))
-    _patch_cache_entry "pr" "$repo" "$num"
+    _patch_cache_entry "pr" "$repo" "$num" "done"
     # Progressive feedback: re-render fzf so the ◆ marker for this item appears
     # immediately, instead of waiting for the whole batch to finish.
     _notify_fzf_reload
   else
-    printf 'FAIL PR #%s (%s)\n' "$num" "$repo"
     failed=$((failed + 1))
+    _patch_cache_entry "pr" "$repo" "$num" clear
+    _notify_fzf_reload
   fi
 }
 
 _create_issue_worktree() {
   local repo="$1" num="$2" branch="$3"
   if [ -z "$branch" ]; then
-    printf 'SKIP issue #%s — no branch name\n' "$num"
     skipped=$((skipped + 1))
     return
   fi
-  if ! ,gh-worktree issue "$repo" "$num" --print-root --no-bootstrap > /dev/null 2>&1; then
-    printf 'SKIP issue #%s — repo not found locally: %s\n' "$num" "$repo"
+  _mark_loading "issue" "$repo" "$num"
+  if ! ,gh-worktree issue "$repo" "$num" --print-root --no-bootstrap --branch "$branch" > /dev/null 2>&1; then
     skipped=$((skipped + 1))
+    _patch_cache_entry "issue" "$repo" "$num" clear
+    _notify_fzf_reload
     return
   fi
   if ,gh-worktree issue "$repo" "$num" --quiet --branch "$branch" --no-bootstrap 2> /dev/null; then
-    printf 'OK   issue #%s → %s\n' "$num" "$branch"
     created=$((created + 1))
-    _patch_cache_entry "issue" "$repo" "$num"
+    _patch_cache_entry "issue" "$repo" "$num" "done"
     # Progressive feedback: re-render fzf so the ◆ marker for this item appears
     # immediately, instead of waiting for the whole batch to finish.
     _notify_fzf_reload
   else
-    printf 'FAIL issue #%s → %s\n' "$num" "$branch"
     failed=$((failed + 1))
+    _patch_cache_entry "issue" "$repo" "$num" clear
+    _notify_fzf_reload
   fi
 }
 
+# Create each marked worktree. All progress + outcome feedback is delivered
+# through the dashboard markers via `_patch_cache_entry` + `_notify_fzf_reload`
+# inside these helpers — the batch run itself prints nothing.
 for i in "${!prs[@]}"; do
   _create_pr_worktree "${pr_repos[$i]}" "${prs[$i]}"
 done
@@ -229,7 +251,3 @@ for entry in "${issue_branches[@]+"${issue_branches[@]}"}"; do
     fi
   done
 done
-
-if [ -n "${TMUX:-}" ]; then
-  tmux display-message "batch worktree: ${created} created, ${skipped} skipped, ${failed} failed" 2> /dev/null || true
-fi

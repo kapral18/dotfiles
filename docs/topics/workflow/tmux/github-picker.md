@@ -145,18 +145,21 @@ GraphQL cost: the metadata phase that powers review/CI badges is reused. Issues 
 
 ## Inline badges
 
-| Badge        | Meaning                      | Color               |
-| ------------ | ---------------------------- | ------------------- |
-| `◆`          | Local worktree exists        | cyan (`38;5;81`)    |
-| `󰄬`          | PR review — approved         | green (`38;5;42`)   |
-| `󰀨`          | PR review — changes req.     | red (`38;5;196`)    |
-| ``           | PR review — pending          | yellow (`38;5;220`) |
-| `●` (green)  | CI — success                 | green (`38;5;42`)   |
-| `●` (red)    | CI — failure                 | red (`38;5;196`)    |
-| `●` (yellow) | CI — pending                 | yellow (`38;5;220`) |
-| `⚡`         | Merge conflict (CONFLICTING) | orange (`38;5;209`) |
+| Badge        | Meaning                               | Color               |
+| ------------ | ------------------------------------- | ------------------- |
+| `◆`          | Local worktree exists                 | cyan (`38;5;81`)    |
+| `◌`          | Worktree creation in progress (batch) | amber (`38;5;221`)  |
+| `󰄬`          | PR review — approved                  | green (`38;5;42`)   |
+| `󰀨`          | PR review — changes req.              | red (`38;5;196`)    |
+| ``           | PR review — pending                   | yellow (`38;5;220`) |
+| `●` (green)  | CI — success                          | green (`38;5;42`)   |
+| `●` (red)    | CI — failure                          | red (`38;5;196`)    |
+| `●` (yellow) | CI — pending                          | yellow (`38;5;220`) |
+| `⚡`         | Merge conflict (CONFLICTING)          | orange (`38;5;209`) |
 
 Review and CI badges are fetched via a chunked GraphQL phase that runs after the section searches and in parallel with the local worktree scan. PRs are split into small chunks (~5 per request) issued concurrently — GitHub's GraphQL evaluates aliases mostly serially within one request, so several small parallel queries finish far faster than one large batch.
+
+The CI badge reflects **real** CI, not the raw status-check rollup. Trivial/bot contexts (`CLA`, `prbot:*`, `renovate/*`, `license/*`, `security/*`, docs previews) are excluded: a failing trivial context (e.g. `prbot:outdated`) no longer turns the badge red while the canonical pipeline (`<repo>-ci`, e.g. `kibana-ci`) is green. A failing **non-trivial** required check still overrides a green canonical context and shows red. The same rule is shared by the session picker's CI badge.
 
 The conflict badge is also sourced from GraphQL (`mergeable=CONFLICTING`). If GraphQL metadata is temporarily unavailable during a refresh, the picker keeps the last-known conflict badge until fresh metadata is fetched; in that case the badge is shown **dim** to indicate it may be stale (use `ctrl-r` to force revalidation).
 
@@ -177,6 +180,9 @@ For issues, the picker also treats an issue as "local" when it is linked from an
 - **`enter` (no marks)**: single-item checkout. On a PR, runs `,gh-worktree pr <owner/repo> <number> --focus`; on an issue, runs `,gh-worktree issue <owner/repo> <number> --focus` (interactive branch prompt if the worktree doesn't exist yet). Exits the picker.
 - **`enter` (items marked)**: batch worktree creation for all marked items (same as `ctrl-t`). PRs are created automatically; issues open `$EDITOR` with a batch naming buffer. Stays in the picker.
 - **`ctrl-t`**: explicit batch worktree creation (same as `enter` with marks).
+
+  Batch creation runs in the background and gives progressive feedback **entirely through the dashboard markers** — it prints nothing to any tmux pane. Each item flips to the amber `◌` loading marker the instant its creation starts, then to the cyan `◆` marker on success (or reverts to no marker if it is skipped or fails). There is no end-of-batch popup or pane summary; the final marker state is the result. A reverted (no) marker after a run means the item was skipped or failed — e.g. a "repo not found locally" skip, which happens when neither the `--repo-path` hint nor the conventional checkout (`~/work/<repo>` for `elastic/*`, else `~/code/<repo>`) resolved to a git worktree.
+
 - **`alt-i`**: create a new issue — resolve the target repo (defaults to the cursor row's repo), compose title + body in `$EDITOR`, create via the REST API, then optionally create a worktree + focus its session. Stays in the picker (and refreshes) unless you opt into the worktree.
 - **`alt-E`**: create an epic — like `alt-i`, but the buffer's first section is the parent issue and each `---`-separated section below is a child issue; children are created and linked to the parent via the sub-issues API.
 - **`alt-b` on a PR**: same as single `enter`, then opens Octo review in a new tmux window.

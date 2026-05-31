@@ -177,7 +177,7 @@ Use `,gh-worktree` when you want the same repo/bootstrap + worktree behavior out
 - Bootstraps missing repos with `,gh-tfork` unless `--no-bootstrap` is set.
 - Delegates PR/issue branch naming and worktree creation to `,w prs` / `,w issue`.
 - In non-interactive contexts, agents should use `,gh-worktree issue <owner/repo> <issue_number> --branch <branch-base-name>` for GitHub issues (otherwise `,w issue` would prompt for branch input).
-- Supports `--print-root` to return the resolved repo root without creating a worktree.
+- Supports `--print-root` to return the resolved repo root without creating a worktree. `--print-root` resolves and exits before the interactive-branch guard, so an issue precheck (`--print-root` with no `--branch`) works non-interactively — the guard only applies when actually creating an issue worktree.
 
 PR shortcuts (inside the GitHub picker):
 

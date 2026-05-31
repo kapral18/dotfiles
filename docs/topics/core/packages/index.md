@@ -21,7 +21,7 @@ The core workflow is:
 | Homebrew               | [`home/readonly_dot_Brewfile.tmpl`](../../../../home/readonly_dot_Brewfile.tmpl)                               | `run_onchange_after_03-install-brew-packages.fish.tmpl` | Yes    |
 | mise                   | [`home/dot_config/mise/config.toml.tmpl`](../../../../home/dot_config/mise/config.toml.tmpl)                   | `run_onchange_after_05-install-mise-runtimes.sh.tmpl`   | Yes    |
 | Cargo                  | [`home/readonly_dot_default-cargo-crates`](../../../../home/readonly_dot_default-cargo-crates)                 | `run_onchange_after_05-update-cargo-crates.sh.tmpl`     | No     |
-| Go                     | [`home/readonly_dot_default-golang-pkgs`](../../../../home/readonly_dot_default-golang-pkgs)                   | `run_onchange_after_05-update-golang-pkgs.sh.tmpl`      | No     |
+| Go                     | [`home/readonly_dot_default-golang-pkgs.tmpl`](../../../../home/readonly_dot_default-golang-pkgs.tmpl)         | `run_onchange_after_05-update-golang-pkgs.sh.tmpl`      | Yes    |
 | Ruby gems              | [`home/readonly_dot_default-gems`](../../../../home/readonly_dot_default-gems)                                 | `run_onchange_after_05-update-gems.sh.tmpl`             | No     |
 | yarn                   | [`home/readonly_dot_default-yarn-pkgs`](../../../../home/readonly_dot_default-yarn-pkgs)                       | `run_onchange_after_05-update-yarn-pkgs.sh.tmpl`        | No     |
 | uv tools               | [`home/readonly_dot_default-uv-tools.tmpl`](../../../../home/readonly_dot_default-uv-tools.tmpl)               | `run_onchange_after_06-update-uv-tools.sh.tmpl`         | Yes    |
@@ -32,7 +32,7 @@ The core workflow is:
 
 ## Scope-aware package lists
 
-Some package sources are plain lists and apply everywhere (`cargo`, `yarn`, `gems`, `go`). Others are templates and can branch on `chezmoi` data like `.isWork`.
+Some package sources are plain lists and apply everywhere (`cargo`, `yarn`, `gems`). Others are templates and can branch on `chezmoi` data like `.isWork`.
 
 Use template conditionals when a package should only exist on personal or work machines, for example:
 
@@ -92,11 +92,12 @@ This hook installs missing crates and uninstalls crates not in the list.
 
 ## Go tools
 
-- List: [`home/readonly_dot_default-golang-pkgs`](../../../../home/readonly_dot_default-golang-pkgs)
+- List: [`home/readonly_dot_default-golang-pkgs.tmpl`](../../../../home/readonly_dot_default-golang-pkgs.tmpl) (template; supports `.isWork` scoping)
 - Installed as: `~/.default-golang-pkgs`
 - Hook: [`home/.chezmoiscripts/run_onchange_after_05-update-golang-pkgs.sh.tmpl`](../../../../home/.chezmoiscripts/run_onchange_after_05-update-golang-pkgs.sh.tmpl)
+- Reconcile helper: [`scripts/reconcile_golang_pkgs.py`](../../../../scripts/reconcile_golang_pkgs.py)
 
-This hook installs missing tools and attempts to clean up unused packages.
+This hook installs missing tools and reconciles installed binaries against the list: when a module is removed, its binary is deleted from `GOBIN`. A state ledger (`~/.cache/chezmoi/golang-pkgs-state`) ensures only binaries this tooling installed are removed; hand-installed Go binaries are left untouched. See [Add A Go Tool](./go.md) for details.
 
 ## Ruby gems
 

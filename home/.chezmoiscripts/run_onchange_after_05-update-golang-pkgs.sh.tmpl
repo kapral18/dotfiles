@@ -10,12 +10,22 @@ fi
 # {{ include "dot_config/mise/config.toml.tmpl" | sha256sum }}
 
 # This script installs go packages from the default-golang-pkgs file
-# {{ include "readonly_dot_default-golang-pkgs" | sha256sum }}
+# {{ include "readonly_dot_default-golang-pkgs.tmpl" | sha256sum }}
+# Reconcile helper (re-trigger this hook when it changes):
+# {{ include "../scripts/reconcile_golang_pkgs.py" | sha256sum }}
 
-golang_pkgs_file={{ joinPath .chezmoi.sourceDir "readonly_dot_default-golang-pkgs" | quote }}
+golang_pkgs_template={{ joinPath .chezmoi.sourceDir "readonly_dot_default-golang-pkgs.tmpl" | quote }}
 
-if [[ ! -f "$golang_pkgs_file" ]]; then
-  echo "Error: default-golang-pkgs file not found at $golang_pkgs_file"
+if [[ ! -f "$golang_pkgs_template" ]]; then
+  echo "Error: default-golang-pkgs template not found at $golang_pkgs_template"
+  exit 1
+fi
+
+# Render template into a temp file
+golang_pkgs_file="$(mktemp)"
+trap 'rm -f "$golang_pkgs_file"' EXIT
+if ! chezmoi execute-template <"$golang_pkgs_template" >"$golang_pkgs_file"; then
+  echo "Error: Failed to render default-golang-pkgs template"
   exit 1
 fi
 
@@ -25,31 +35,33 @@ while IFS= read -r line || [[ -n "$line" ]]; do
   lines+=("$line")
 done <"$golang_pkgs_file"
 
-# Get list of installed Go packages once
-declare -a installed_go_pkgs
-while IFS= read -r line; do
-  [[ -z "$line" ]] && continue
-  pkg_name=$(echo "$line" | sed 's/ .*//')
-  [[ -n "$pkg_name" ]] && installed_go_pkgs+=("$pkg_name")
-done < <(go list -m all 2>/dev/null || true)
+# Resolve the directory `go install` drops binaries into. `go list -m all` does
+# NOT enumerate installed binaries, so the old skip/cleanup logic was a no-op;
+# we key off the binary file in GOBIN instead.
+gobin_dir="$(go env GOBIN 2>/dev/null || true)"
+if [[ -z "$gobin_dir" ]]; then
+  gobin_dir="$(go env GOPATH 2>/dev/null || echo "$HOME/go")/bin"
+fi
 
-# Check if a Go package is already installed (in-memory lookup)
-is_go_pkg_installed() {
-  local pkg=$1
-  local installed
-  for installed in "${installed_go_pkgs[@]:-}"; do
-    [[ "$installed" == "$pkg" ]] && return 0
-  done
-  return 1
+# Derive the binary name `go install` produces for a module path: last path
+# segment, skipping a trailing major-version segment (/v2, /v10) and @version.
+go_pkg_binary_name() {
+  local path=${1%%@*}
+  path=${path%/}
+  local last=${path##*/}
+  local rest=${path%/*}
+  local prev=${rest##*/}
+  if [[ ${#last} -ge 2 && $last == v* && ${last#v} =~ ^[0-9]+$ && "$rest" != "$path" ]]; then
+    last=$prev
+  fi
+  printf '%s' "$last"
 }
 
-is_go_pkg_desired() {
-  local pkg=$1
-  local desired
-  for desired in "${desired_go_pkgs[@]:-}"; do
-    [[ "$desired" == "$pkg" ]] && return 0
-  done
-  return 1
+# A package is already installed if its binary exists in GOBIN.
+is_go_pkg_installed() {
+  local pkg=$1 name
+  name="$(go_pkg_binary_name "$pkg")"
+  [[ -n "$name" && -e "$gobin_dir/$name" ]]
 }
 
 # install Go package.
@@ -77,28 +89,26 @@ install_go_pkg() {
   return 0
 }
 
-# Track which packages should be installed
-declare -a desired_go_pkgs
+# Install every desired package (skip already-present binaries).
 for line in "${lines[@]}"; do
   # Skip empty lines and comments
   [[ -z "$line" || "$line" =~ ^\s*# ]] && continue
-
-  desired_go_pkgs+=("$line")
   install_go_pkg "$line"
 done
 
-# Uninstall packages that are no longer in the config
+# Reconcile: remove binaries this tooling installed previously that are no
+# longer in the desired list. A state ledger ensures we only ever remove
+# binaries we installed, never hand-installed binaries in GOBIN. Non-trivial
+# set/path logic lives in the colocated Python helper (per AGENTS.md).
 echo ""
 echo "Cleaning up unused Go packages..."
-while IFS= read -r pkg; do
-  [[ -z "$pkg" ]] && continue
-  pkg_name=$(echo "$pkg" | sed 's/ .*//')
-  [[ -n "$pkg_name" ]] || continue
-  if ! is_go_pkg_desired "$pkg_name"; then
-    echo "Removing unused Go package: $pkg_name"
-    go clean -i "$pkg_name" || true
-  fi
-done < <(go list -m all 2>/dev/null || true)
+reconcile_helper={{ joinPath .chezmoi.sourceDir "../scripts/reconcile_golang_pkgs.py" | quote }}
+state_file="$HOME/.cache/chezmoi/golang-pkgs-state"
+if [[ -f "$reconcile_helper" ]]; then
+  python3 "$reconcile_helper" "$golang_pkgs_file" "$gobin_dir" "$state_file" || true
+else
+  echo "Warning: reconcile helper not found at $reconcile_helper; skipping cleanup"
+fi
 
 # make new binaries available in the current shell
 if command -v mise >/dev/null 2>&1; then
