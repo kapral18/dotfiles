@@ -155,7 +155,7 @@ _notify_fzf_reload() {
   port="$(cat "${cache_dir}/gh_picker_port" 2> /dev/null || true)"
   [ -n "$port" ] || return 0
   items_cmd="$HOME/.config/tmux/scripts/pickers/github/gh_items.sh"
-  cache_load_cmd="GH_PICKER_MODE=$(printf %q "$mode") GH_PICKER_SCOPE=$(printf %q "$scope") $(printf %q "$items_cmd") --cache-only"
+  cache_load_cmd="GH_PICKER_MODE=$(printf %q "$mode") GH_PICKER_SCOPE=$(printf %q "$scope") $(printf %q "$items_cmd") --cache-only 2>/dev/null"
   # Use IPv4 explicitly; on macOS `localhost` may resolve to ::1 while fzf binds 127.0.0.1.
   # Fire-and-forget: backgrounded so the per-item progress feedback never adds
   # latency to the batch loop (curl roundtrip + 1s timeout for stale ports

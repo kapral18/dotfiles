@@ -16,7 +16,7 @@ next="${4:-}"
 mode="$(cat "$mode_file" 2> /dev/null || echo work)"
 printf '%s' "$next" > "$scope_file"
 
-printf 'reload(GH_PICKER_MODE=%s GH_PICKER_SCOPE=%s %s --cache-only)+change-prompt(  %s/%s  )' \
+printf 'reload(GH_PICKER_MODE=%s GH_PICKER_SCOPE=%s %s --cache-only 2>/dev/null)+change-prompt(  %s/%s  )' \
   "$mode" \
   "$next" \
   "$items_cmd" \

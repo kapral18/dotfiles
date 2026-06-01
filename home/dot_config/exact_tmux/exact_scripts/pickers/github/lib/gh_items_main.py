@@ -17,6 +17,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -1300,17 +1301,30 @@ def parse_config(config_path: str) -> tuple[list[dict[str, Any]], list[dict[str,
     issue_sections: list[dict[str, Any]] = []
     repo_paths: dict[str, str] = {}
 
-    try:
-        raw = subprocess.run(
-            ["yq", "-o", "json", ".", config_path],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=5,
-        ).stdout
-        data = json.loads(raw)
-    except Exception as e:
-        print(f"Failed to parse config: {e}", file=sys.stderr)
+    # Restore-time contention (many tmux hooks firing at once after a server
+    # restore) can make a single `yq` invocation exceed a tight timeout even
+    # though the config itself is tiny and valid. Use a more forgiving timeout
+    # and one retry so a transient stall does not surface as a parse failure.
+    last_exc: Exception | None = None
+    data: Any = None
+    for attempt in range(2):
+        try:
+            raw = subprocess.run(
+                ["yq", "-o", "json", ".", config_path],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=15,
+            ).stdout
+            data = json.loads(raw)
+            last_exc = None
+            break
+        except Exception as e:
+            last_exc = e
+            if attempt == 0:
+                time.sleep(0.25)
+    if last_exc is not None:
+        print(f"Failed to parse config: {last_exc}", file=sys.stderr)
         return [], [], {}
 
     for s in data.get("prSections") or []:
@@ -2912,8 +2926,6 @@ def main():
     parser.add_argument("--filter-cache", action="store_true")
     args = parser.parse_args()
 
-    pr_sections, issue_sections, repo_paths = parse_config(args.config)
-    scope_map = _section_scope_map(pr_sections, issue_sections)
     scope = str(args.scope or "all")
     cache_dir = str(Path(args.cache_file).parent)
     sort_key = _read_sort_key(cache_dir)
@@ -2921,12 +2933,32 @@ def main():
     collapsed = _read_collapsed_set(cache_dir, args.mode)
 
     if args.filter_cache:
+        # Cache-only render path (the instant `start:reload(cache-only)` open).
+        # The cached rows already encode their section/scope, so we only need
+        # the parsed config for scope filtering, and only when a non-`all`
+        # scope is active. Parsing unconditionally here means every picker
+        # open shells out to `yq`; under restore-time CPU/IO contention that
+        # `yq` call can exceed parse_config's 5s timeout, and its "Failed to
+        # parse config" stderr leaks into the fzf popup even though the config
+        # is not actually needed to render the cache. Defer the parse so the
+        # common `scope=all` open never touches `yq`.
+        scope_map: dict[str, set[str]] = {}
+        effective_scope = scope
+        if scope and scope != "all":
+            pr_sections, issue_sections, _repo_paths = parse_config(args.config)
+            if pr_sections or issue_sections:
+                scope_map = _section_scope_map(pr_sections, issue_sections)
+            else:
+                # Cache-only is a best-effort first paint. If the narrowed-scope
+                # config parse fails, keep showing the cached dashboard instead
+                # of filtering every section out with an empty scope map.
+                effective_scope = "all"
         try:
             raw = Path(args.cache_file).read_text(encoding="utf-8", errors="replace")
         except Exception:
             return
         lines = raw.splitlines()
-        filtered = _filter_lines_for_scope(lines, scope, scope_map)
+        filtered = _filter_lines_for_scope(lines, effective_scope, scope_map)
         sorted_lines = _sort_within_sections(filtered, sort_key)
         collapsed_lines = _apply_collapsed_state(sorted_lines, collapsed)
         _write_offsets(cache_dir, args.mode, scope, collapsed_lines)
@@ -2935,6 +2967,10 @@ def main():
             sys.stdout.write(output + "\n")
             sys.stdout.flush()
         return
+
+    # Full-fetch path genuinely needs the parsed sections.
+    pr_sections, issue_sections, repo_paths = parse_config(args.config)
+    scope_map = _section_scope_map(pr_sections, issue_sections)
 
     prior_pr_badges = _read_prior_pr_badges(args.cache_file)
     linked_issues = _linked_issue_numbers_from_pick_session_cache()

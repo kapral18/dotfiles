@@ -51,6 +51,7 @@ cache_file="${cache_dir}/pick_session_items.tsv"
 pending_file="${cache_dir}/pick_session_pending.tsv"
 mutation_file="${cache_dir}/pick_session_mutations.tsv"
 error_log="${cache_dir}/pick_session_index_error.log"
+full_scan_stamp="${cache_dir}/pick_session_full_scan.stamp"
 mkdir -p "$cache_dir"
 
 notify_error() {
@@ -71,19 +72,49 @@ notify_error() {
 }
 
 ttl="$(tmux_opt '@pick_session_cache_ttl' '60')"
+# Full scans (worktree/dir discovery) are gated on their own freshness stamp,
+# independent of the cache mtime, so that frequent quick-only refreshes (which
+# bump the cache mtime on every session switch/create/picker open) cannot
+# starve the full scan. Without this, the full scan -- the only path that finds
+# session-less worktrees -- was perpetually skipped whenever a quick refresh had
+# touched the cache within `ttl`, so the picker only ever listed worktrees that
+# happened to have a live tmux session.
+full_scan_ttl="$(tmux_opt '@pick_session_full_scan_ttl' '60')"
 mutation_ttl="$(tmux_opt '@pick_session_mutation_tombstone_ttl' '300')"
 if [ -n "$ttl_override" ]; then
   ttl="$ttl_override"
+  # An explicit --ttl override (e.g. the live-refresh loop's --ttl=20) governs
+  # the quick cadence; the full scan keeps its own, longer cadence so the live
+  # loop can repaint sessions often without re-running the expensive full scan
+  # on every tick. Callers wanting a forced full scan use --force.
 fi
 case "$mutation_ttl" in
   '' | *[!0-9]*) mutation_ttl=300 ;;
 esac
+case "$full_scan_ttl" in
+  '' | *[!0-9]*) full_scan_ttl=60 ;;
+esac
 
-if [ "$force" -ne 1 ] && [ -f "$cache_file" ]; then
-  mt="$(mtime_epoch "$cache_file" 2> /dev/null || echo 0)"
-  age="$(($(now_epoch) - mt))"
-  if [ "$age" -ge 0 ] && [ "$age" -lt "$ttl" ]; then
-    exit 0
+if [ "$force" -ne 1 ]; then
+  if [ "$quick_only" -eq 1 ]; then
+    # Quick-only: gate on cache mtime (cheap, session-focused refresh).
+    if [ -f "$cache_file" ]; then
+      mt="$(mtime_epoch "$cache_file" 2> /dev/null || echo 0)"
+      age="$(($(now_epoch) - mt))"
+      if [ "$age" -ge 0 ] && [ "$age" -lt "$ttl" ]; then
+        exit 0
+      fi
+    fi
+  else
+    # Full scan: gate on the dedicated full-scan stamp so quick refreshes that
+    # bumped the cache mtime do not reset this window.
+    if [ -f "$full_scan_stamp" ]; then
+      mt="$(mtime_epoch "$full_scan_stamp" 2> /dev/null || echo 0)"
+      age="$(($(now_epoch) - mt))"
+      if [ "$age" -ge 0 ] && [ "$age" -lt "$full_scan_ttl" ]; then
+        exit 0
+      fi
+    fi
   fi
 fi
 
@@ -257,6 +288,35 @@ sanitize_rows() {
   [ -s "$out" ]
 }
 
+# Union cached worktree rows into an in-flight (partial) full-scan snapshot.
+#
+# The full scan emits per repo group as `sessions...` then `worktrees...`. A
+# partial snapshot read mid-stream can therefore contain a repo's sessions but
+# be truncated *before* that repo's worktree rows. Publishing such a partial
+# verbatim drops those worktrees from the cache; if the scan is then killed
+# (e.g. tmux server kill during session restore) the truncation persists. This
+# is exactly the failure mode where the picker showed only the ~/work/kibana/*
+# worktrees that happened to have a live session.
+#
+# To make partial publishes monotonic for worktrees, re-append any cached
+# worktree row whose path is not already represented (as session or worktree)
+# in the partial. Dedup downstream (pick_session_grouping.dedup_best) collapses
+# duplicates and prefers session > worktree, so this can only add missing
+# worktrees, never reorder or duplicate visibly. The authoritative full publish
+# (after a successful scan) still replaces the cache wholesale.
+union_cached_worktrees_into_partial() {
+  local partial="$1"
+  [ -f "$partial" ] || return 0
+  file_has_worktree_rows "$cache_file" || return 0
+  awk -F $'\t' '
+    FNR == NR {
+      if (NF >= 5 && ($2 == "session" || $2 == "worktree")) seen[$3] = 1
+      next
+    }
+    NF >= 5 && $2 == "worktree" && !($3 in seen) { print }
+  ' "$partial" "$cache_file" >> "$partial" 2> /dev/null || true
+}
+
 tmp_quick="$(mktemp -t pick_session_items.quick.XXXXXX)"
 tmp_full="$(mktemp -t pick_session_items.full.XXXXXX)"
 tmp_sessions="$(mktemp -t pick_session_items.sessions.XXXXXX)"
@@ -350,6 +410,10 @@ else
       esac
       if [ "$cur_size" -gt 0 ] && [ "$cur_size" -ne "$last_stream_size" ]; then
         if sanitize_rows "$tmp_full" "$tmp_sessions"; then
+          # A mid-stream partial may have emitted a repo's sessions but not yet
+          # its worktrees; union cached worktrees so a partial (or a scan later
+          # killed during restore) can only add worktrees, never drop them.
+          union_cached_worktrees_into_partial "$tmp_sessions"
           # Merge partial full-scan rows with current cache so in-flight
           # results do not drop already-known dirs/worktrees/sessions.
           if [ -f "$cache_file" ]; then
@@ -372,6 +436,9 @@ else
 
   if wait "$pid_full"; then
     full_ok=1
+    # Record that a full scan completed so its dedicated TTL gate can throttle
+    # the next one without being reset by interleaved quick-only refreshes.
+    : > "$full_scan_stamp" 2> /dev/null || true
     if sanitize_rows "$tmp_full" "$tmp_sessions"; then
       publish_cache_from "$tmp_sessions" || true
     elif [ "$quick_published" -eq 0 ] && [ "$quick_ok" -eq 1 ] && [ -s "$tmp_quick" ]; then

@@ -117,7 +117,12 @@ printf '0' > "$expand_flag"
 
 toggle_cmd="$script_dir/lib/gh_picker_toggle.sh"
 
-cache_load_cmd="GH_PICKER_MODE=$(printf %q "$mode") GH_PICKER_SCOPE=$(printf %q "$scope") $(printf %q "$items_cmd") --cache-only"
+# The cache-only render is a fast, best-effort paint of whatever is already on
+# disk; any diagnostics it emits (e.g. a transient `yq`/config parse hiccup
+# under restore-time contention) must never leak into the fzf popup as a fake
+# list row. Swallow its stderr at the source so both the initial paint and the
+# background reload that reuse this command stay clean.
+cache_load_cmd="GH_PICKER_MODE=$(printf %q "$mode") GH_PICKER_SCOPE=$(printf %q "$scope") $(printf %q "$items_cmd") --cache-only 2>/dev/null"
 full_load_cmd="GH_PICKER_MODE=$(printf %q "$mode") GH_PICKER_SCOPE=$(printf %q "$scope") $(printf %q "$items_cmd")"
 
 fzf_shell="$(command -v bash 2> /dev/null || printf '%s' '/usr/bin/env bash')"
@@ -150,7 +155,7 @@ status_header="$(python3 "$dashboard_ui" status --cache-file "$items_cache" --mo
 # fetch was killed by a concurrent ctrl-r refresh) the cache is still stale and
 # telling fzf to reload from it would override an in-progress ctrl-r reload
 # with the same stale content.
-bg_fetch_cmd="($(printf %q "$preview_warm_cmd") $(printf %q "$items_cache") >/dev/null 2>&1 & sleep 0.15; if eval $(printf %q "$full_load_cmd") >/dev/null 2>&1; then printf '%s' \"\$FZF_PORT\" > $(printf %q "$port_file") 2>/dev/null || true; m=\$(cat $(printf %q "$mode_flag_file") 2>/dev/null || echo work); s=\$(cat $(printf %q "$scope_flag_file") 2>/dev/null || echo all); reload_cmd=\"GH_PICKER_MODE=\$(printf %q \"\$m\") GH_PICKER_SCOPE=\$(printf %q \"\$s\") $(printf %q "$items_cmd") --cache-only$pin_reload_pipe\"; curl -s --max-time 5 -XPOST \"http://127.0.0.1:\${FZF_PORT}\" -d \"reload(\$reload_cmd)+track\" 2>/dev/null || true; fi; $(printf %q "$preview_warm_cmd") $(printf %q "$items_cache") >/dev/null 2>&1 || true) &"
+bg_fetch_cmd="($(printf %q "$preview_warm_cmd") $(printf %q "$items_cache") >/dev/null 2>&1 & sleep 0.15; if eval $(printf %q "$full_load_cmd") >/dev/null 2>&1; then printf '%s' \"\$FZF_PORT\" > $(printf %q "$port_file") 2>/dev/null || true; m=\$(cat $(printf %q "$mode_flag_file") 2>/dev/null || echo work); s=\$(cat $(printf %q "$scope_flag_file") 2>/dev/null || echo all); reload_cmd=\"GH_PICKER_MODE=\$(printf %q \"\$m\") GH_PICKER_SCOPE=\$(printf %q \"\$s\") $(printf %q "$items_cmd") --cache-only 2>/dev/null$pin_reload_pipe\"; curl -s --max-time 5 -XPOST \"http://127.0.0.1:\${FZF_PORT}\" -d \"reload(\$reload_cmd)+track\" 2>/dev/null || true; fi; $(printf %q "$preview_warm_cmd") $(printf %q "$items_cache") >/dev/null 2>&1 || true) &"
 
 pick="$(
   eval "$initial_items_cmd" | SHELL="$fzf_shell" fzf \

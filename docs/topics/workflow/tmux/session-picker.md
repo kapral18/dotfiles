@@ -176,7 +176,8 @@ Batch semantics:
 
 | Option                                         | Default        | Description                                                |
 | ---------------------------------------------- | -------------- | ---------------------------------------------------------- |
-| `@pick_session_cache_ttl`                      | `60`           | Cache freshness threshold (seconds)                        |
+| `@pick_session_cache_ttl`                      | `60`           | Cache (quick refresh) freshness threshold (seconds)        |
+| `@pick_session_full_scan_ttl`                  | `60`           | Full-scan freshness threshold (seconds), gated separately  |
 | `@pick_session_cache_wait_ms`                  | `0`            | Max wait for cache on cold start (ms)                      |
 | `@pick_session_pre_refresh`                    | `off`          | Run cache update before fzf (off = snappy popup)           |
 | `@pick_session_filter_passthrough_rows`        | `2000`         | Row count threshold to skip expensive regroup/sort         |
@@ -251,6 +252,8 @@ If true identity-based cursor recovery becomes a requirement, the fix is to set 
 ## How caching works
 
 - `pickers/session/index_update.sh` builds the cache (`~/.cache/tmux/pick_session_items.tsv`) and a precomputed ordered snapshot (`pick_session_items_ordered.tsv`) in the background.
+- **Quick and full scans are gated independently.** A _quick_ refresh (`--quick-only`, sessions only) is throttled by `@pick_session_cache_ttl` against the cache file's mtime; a _full_ refresh (worktree + directory discovery) is throttled by `@pick_session_full_scan_ttl` against a dedicated stamp (`pick_session_full_scan.stamp`), touched only after a full scan completes successfully. This split prevents the frequent quick refreshes (fired on every session switch, session create, and picker open) from bumping the cache mtime and starving the full scan. Without it, the full scan — the only path that discovers _session-less_ worktrees — was perpetually skipped whenever a quick refresh had run within the TTL window, so the picker only listed worktrees that happened to have a live tmux session (e.g. only a subset of `~/work/kibana/*`).
+- **Partial full-scan snapshots are monotonic for worktrees.** The streaming publish that surfaces in-flight scan results re-appends any cached worktree row not yet present in the partial, so a snapshot truncated mid-repo (or a scan killed during a tmux server kill / session restore) can only _add_ worktrees, never drop them. The final publish after a successful scan still replaces the cache wholesale. Because a killed scan never stamps `pick_session_full_scan.stamp`, the next full scan runs promptly and repairs any truncation.
 - Dirty badges use a read-only tracked-change probe (`git --no-optional-locks ... status --porcelain --untracked-files=no`) with rename classification disabled. The picker only needs a clean/dirty boolean, so this avoids expensive index writes and rename detection without changing which tracked changes are considered dirty.
 - `ctrl-r` keeps the synchronous path to session membership only and preserves cached dirty badges. The background full refresh recomputes exact dirty badges with one worker so it does not contend heavily with fzf/tmux; `alt-r` remains the blocking exact refresh path when you explicitly want to wait for that.
 - Picker open prefers the ordered snapshot for instant first paint, validated against mutation/pending timestamps (bash `-nt` check, zero subprocess overhead).
