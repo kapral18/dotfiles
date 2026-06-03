@@ -276,6 +276,7 @@ Examples:
 | `,to-gif`           | Convert a video to an optimized GIF                                                                        |
 | `,vid-ipad`         | Re-encode a video for iPad playback                                                                        |
 | `,pdf-diff`         | Visual diff two PDFs by compositing pages                                                                  |
+| `,nano-banana`      | Generate a Nano Banana (Gemini) image from a text prompt via the Generative Language API                   |
 | `,history-sync`     | Merge local Fish history with a 1Password document and push the merged result back (see below)             |
 
 #### `,history-sync` details

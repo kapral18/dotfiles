@@ -112,6 +112,20 @@ Shell scripts (`.sh` / `.sh.tmpl`) in this repo must stay **thin orchestrators**
 
 ---
 
+## Bin Commands & Shell Completions (Mandatory)
+
+User commands live in `home/exact_bin/executable_,<name>` (deployed to `~/bin/,<name>`; the leading comma is the convention). They are self-contained — `~/bin/` scripts cannot call `scripts/` helpers because `scripts/` is not deployed to `$HOME`, so put the logic in the script itself (Python/etc. per Script Architecture; shell only for thin wrappers).
+
+**Whenever you add or update a `~/bin/` command, you MUST add/update its shell completion in the same change:**
+
+- **Fish (primary, required):** `home/dot_config/fish/completions/readonly_,<name>.fish` → `~/.config/fish/completions/,<name>.fish`. Declare every flag (`complete -c ,<name> -s o -l output -d "…" -r`) and positional/argument completion. Mirror the script's actual interface (`--help` output is the source of truth). Follow existing files like `readonly_,pdf-diff.fish` (flags + positional) and `readonly_,appid.fish` (dynamic `-a` argument list).
+- **Zsh (only when warranted):** `home/dot_zsh/completions/readonly__comma_<name>` (`#compdef ,<name>`). Only complex commands (e.g. `,w`, `,wh`) carry a zsh completion; do not add one unless the command needs zsh-specific completion.
+- **Keep completions in sync on updates:** when a command's flags or arguments change, update the completion file in the same change. A `~/bin/` command added or changed without its completion is incomplete.
+
+When adding a new `~/bin/` command, also update its catalog row in `docs/topics/workflow/custom-commands.md` and the `.mermaids/07c-bin-commands.mmd` node (plus the `exact_bin/` census count in `scripts/verify_mermaids.py` and the diagram/README anchors), per Documentation Hygiene.
+
+---
+
 ## Homebrew Package Management
 
 When adding formulas or casks to Brewfile:

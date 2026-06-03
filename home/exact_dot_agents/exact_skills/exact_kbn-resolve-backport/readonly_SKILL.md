@@ -1,5 +1,5 @@
 ---
-name: kbn-backport-conflict-resolution
+name: kbn-resolve-backport
 description: Resolve Kibana backport cherry-pick conflicts, validate the adapted changes, stage the resolved files, and stop. Manual-only skill for requests that explicitly ask to use the kbn backport conflict resolution workflow.
 disable-model-invocation: true
 ---
@@ -10,7 +10,7 @@ Use this skill only when explicitly invoked by name, or when the user asks for t
 
 ## Contract
 
-- Resolve conflicts in the target Kibana backport checkout, usually `/Users/karengrigoryan/.backport/repositories/elastic/kibana`.
+- Resolve conflicts in the target Kibana backport checkout, usually `~/.backport/repositories/elastic/kibana`.
 - Verify the resolution in context, adapting paths and implementation style to the destination branch.
 - Stage only the resolved files and stop. Do not commit, push, continue the cherry-pick, or open a PR unless the user explicitly asks.
 - Preserve destination-branch behavior unless the incoming PR intentionally changes it.

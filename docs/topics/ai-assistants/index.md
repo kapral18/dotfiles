@@ -65,35 +65,41 @@ Entry contract standard:
 - Skills gated to specific repos (e.g. elastic-only) must state the constraint in the `description` so agents skip them early.
 - The goal is to remove implied routing and implied next steps so the agent has less room to "remember roughly" and skip the file.
 
-Current skills:
+Current skills (31; sorted by name; routing from each skill’s `disable-model-invocation` frontmatter):
 
-| Skill                              | Use when                                                                                                           | Gated to       |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------------- |
-| `review`                           | Reviewing changes, continuing a review, addressing threads, rechecking PR changes                                  |                |
-| `github`                           | Any GitHub mutation (PRs, issues, comments, reviews, labels, releases, merges)                                     |                |
-| `git`                              | Any local git operation (branching, committing, pushing, rebasing, merging, conflicts)                             |                |
-| `research`                         | Investigating a third-party project/library/tool by cloning its GitHub repo                                        |                |
-| `walkthrough`                      | Explore codebase flows, map component relationships, render diagrams (manual only)                                 |                |
-| `cli-skills`                       | Creating or upgrading CLI tool skills                                                                              |                |
-| `letsfg`                           | Searching flight tickets/fares through the local LetsFG CLI with direct booking URLs                               |                |
-| `semantic-code-search`             | Semantic search, base-branch context, or when another skill requires SCSI                                          |                |
-| `google-workspace`                 | Gmail / Drive / Calendar / Admin / Docs / Sheets via `gws` CLI                                                     |                |
-| `worktrees`                        | Worktree routing and operations (`,gh-worktree` for repo bootstrap/routing, `,w` for in-repo worktree actions)     |                |
-| `compose-pr`                       | Drafting a PR title and body as text (before creating/editing a PR)                                                |                |
-| `compose-issue`                    | Drafting an issue title and body as text (before creating/editing an issue)                                        |                |
-| `buildkite`                        | Checking build status, triggering builds, reading logs, debugging CI failures                                      | elastic org    |
-| `kibana-labels-propose`            | Proposing labels/backports/version targeting when composing or creating a Kibana PR                                | elastic/kibana |
-| `kibana-console-monaco`            | Automating/testing the Kibana Dev Tools Console editor via Playwright                                              | elastic/kibana |
-| `kbn-backport-conflict-resolution` | Manually resolving Kibana backport cherry-pick conflicts, validating, staging, and stopping                        | elastic/kibana |
-| `playwriter`                       | Controlling Chrome browser via Playwriter (explicit mention only)                                                  |                |
-| `beads`                            | Persisting work in the beads DB (explicit mention of beads/bdlocal/BEADS_DIR only)                                 |                |
-| `knip`                             | Finding unused files, dependencies, and exports in JS/TS projects                                                  |                |
-| `jscpd`                            | Detecting duplicates during refactoring, code cleanup, or DRY improvement                                          |                |
-| `improve-codebase`                 | Suggest the single smartest addition to the current codebase                                                       |                |
-| `improve-local`                    | Suggest the single smartest addition to the local changes                                                          |                |
-| `improve-branch`                   | Suggest the single smartest addition for the current branch/PR/issue                                               |                |
-| `improve-targeted`                 | Suggest the single smartest addition to a targeted part of the codebase (specific dir, module, or component)       |                |
-| `ralph`                            | Drive the Ralph orchestrator (planner/executor/reviewer/re-reviewer with self-healing) via `,ralph go` and tmux UX |                |
+| Skill                   | Use when                                                                                                                    | Routing | Gated to       |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------- | -------------- |
+| `beads`                 | beads / bdlocal / BEADS_DIR is explicitly mentioned                                                                         | auto    |                |
+| `buildkite`             | Buildkite CI status, builds, logs, pipelines, or a `buildkite.com` URL (use `bk` CLI; do not fetch URLs in-browser)         | auto    | elastic org    |
+| `cli-skills`            | Creating or upgrading a CLI tool skill                                                                                      | auto    |                |
+| `compose-issue`         | Drafting an issue title and body as text before create/edit (no `gh` side effects)                                          | auto    |                |
+| `compose-pr`            | Drafting a PR title and body as text before create/edit (no `gh` side effects)                                              | auto    |                |
+| `git`                   | Local git operations (branch, commit, push, rebase, merge, conflicts); not GitHub mutations or worktrees                    | auto    |                |
+| `github`                | Any GitHub mutation via `gh` (PRs, issues, comments, reviews, labels, releases, merges); not draft-only or review analysis  | auto    |                |
+| `google-workspace`      | Gmail / Drive / Calendar / Admin / Docs / Sheets via `gws` CLI                                                              | auto    |                |
+| `improve-branch`        | One evidence-backed improvement proposal for the current branch, PR, or issue goal                                          | manual  |                |
+| `improve-codebase`      | One evidence-backed improvement proposal for the whole codebase                                                             | manual  |                |
+| `improve-local`         | One evidence-backed improvement proposal for local changes                                                                  | manual  |                |
+| `improve-targeted`      | One evidence-backed improvement proposal for a targeted dir, module, or component                                           | manual  |                |
+| `interview-me`          | Reverse-interview until intent is fully clear (not what the user thinks they should want)                                   | manual  |                |
+| `jscpd`                 | Duplicate-code detection during refactor, cleanup, or DRY work                                                              | auto    |                |
+| `kbn-resolve-backport`  | Explicit request to resolve Kibana backport cherry-pick conflicts: fix, validate, stage, stop (no commit/push unless asked) | manual  | elastic/kibana |
+| `kibana-console-monaco` | Automate or test the Kibana Dev Tools Console Monaco editor in a real browser                                               | auto    | elastic/kibana |
+| `kibana-labels-propose` | Propose labels, backports, and version targeting for a Kibana PR/issue (propose only; no posting)                           | auto    | elastic/kibana |
+| `knip`                  | Unused files, dependencies, or exports in JS/TS projects                                                                    | auto    |                |
+| `letsfg`                | Flight search via local LetsFG CLI (fares, routes, dates; direct booking URLs)                                              | auto    |                |
+| `nano-banana`           | Generate an image from a text prompt via `,nano-banana` (Gemini image model)                                                | auto    |                |
+| `playwriter`            | Browser control via Playwriter when "playwriter" is explicitly mentioned                                                    | auto    |                |
+| `present-pr`            | Build and open a self-contained HTML scrollytelling walkthrough of a PR or local diff (not code review)                     | manual  |                |
+| `ralph`                 | Drive `,ralph go` / tmux Ralph (spawn, verify, attach, replan, orchestrator roles)                                          | auto    |                |
+| `research`              | Investigate a third-party repo by cloning and reading source (GitHub URL or "how does X work")                              | auto    |                |
+| `review`                | Review local changes or a PR; continue review, address threads, recheck PR changes                                          | auto    |                |
+| `sem`                   | Entity-level git diff, blame, impact, or token-budgeted context via `sem` CLI                                               | auto    |                |
+| `semantic-code-search`  | SCSI semantic search, base-branch context, index selection, or another skill requires semantic base context                 | auto    |                |
+| `standup`               | `/standup` or prepare/post a #kibana-management standup from Slack + GitHub since last post (post only after approval)      | manual  |                |
+| `walkthrough`           | Interactive codebase exploration: trace flows, map components, render architecture diagrams                                 | manual  |                |
+| `weave`                 | Entity-level merge preview or conflict resolution via `weave` CLI                                                           | auto    |                |
+| `worktrees`             | `,w` / `,gh-worktree` worktree create, switch, list, prune, or checkout PR/issue locally                                    | auto    |                |
 
 Worktree note for agents: when creating a worktree from a GitHub issue, prefer `,gh-worktree issue <owner/repo> <issue_number> --branch <branch-base-name>` so repo resolution/bootstrap happens before the lower-level `,w issue` metadata and branch creation flow.
 

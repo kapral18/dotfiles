@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (53).
+%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (54).
 %% Skills → ~/.agents/skills/ (intent-routed SKILL.md). Hooks → ~/.agents/hooks/.
 %% ============================================================================
 flowchart TB
@@ -25,7 +25,7 @@ flowchart TB
     subgraph CORE["Core workflow skills"]
         S1["review/ (SKILL + references: local_changes, pr_common,<br/>pr_fix, pr_review, shared_rules)"]:::skill
         S2["git/ · github/ · worktrees/ · compose-pr/ · compose-issue/"]:::skill
-        S3["walkthrough/ · interview-me/ · research/"]:::skill
+        S3["walkthrough/ · interview-me/ · research/ · standup/<br/>present-pr/ (+refs: authoring.md, template.html)"]:::skill
         S1 --> R1["exact_references/*.md"]:::ref
     end
 
@@ -35,12 +35,11 @@ flowchart TB
 
     subgraph TOOLS["Tool-backed skills (wrap a CLI; some have references)"]
         S5["buildkite/ (+refs: bk-commands, build-debugging, troubleshooting)<br/>beads · sem · weave · knip · jscpd · semantic-code-search"]:::skill
-        S6["google-workspace · playwriter · letsfg(assets/Dockerfile)"]:::skill
-        S7["fix-cursor-cli/ (SKILL + scripts/fix_cursor_cli.sh + picker_patch.py)"]:::skill
+        S6["google-workspace · playwriter · letsfg(assets/Dockerfile) · nano-banana"]:::skill
     end
 
     subgraph KBN["Kibana / elastic-specific skills"]
-        S8["kbn-backport-conflict-resolution · kibana-console-monaco<br/>kibana-labels-propose"]:::skill
+        S8["kbn-resolve-backport · kibana-console-monaco<br/>kibana-labels-propose"]:::skill
     end
 
     subgraph META["Meta / orchestration skills"]

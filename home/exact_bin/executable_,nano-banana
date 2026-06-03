@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+"""Generate a Nano Banana (Gemini) image from a text instruction.
+
+Calls the Generative Language API ``:generateContent`` endpoint with the
+``gemini-3.1-flash-image-preview`` model and writes the returned image to disk.
+
+Usage:
+    ,nano-banana [-o OUTPUT] [-m MODEL] [-a ASPECT] [-s SIZE] PROMPT
+    ,nano-banana "a cat astronaut, watercolor" -o cat.png
+    ,nano-banana "a wide landscape" -a 16:9 -s 2K
+
+Aspect ratio (-a) and size (-s) map to the API's generationConfig.imageConfig;
+"style" is not an API parameter — express it in the prompt. The API key is read
+from NANOBANANA_API_KEY (falling back to GEMINI_API_KEY), exported via pass in
+config.fish. No external dependencies (stdlib only).
+"""
+
+from __future__ import annotations
+
+import argparse
+import base64
+import json
+import os
+import sys
+import urllib.error
+import urllib.request
+
+DEFAULT_MODEL = "gemini-3.1-flash-image-preview"
+API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
+
+_EXT_BY_MIME = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/webp": ".webp",
+}
+
+
+def _api_key() -> str:
+    for var in ("NANOBANANA_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY"):
+        key = os.environ.get(var)
+        if key:
+            return key
+    sys.exit("ERROR: set NANOBANANA_API_KEY (or GEMINI_API_KEY) in the environment")
+
+
+def _image_config(aspect_ratio: str | None, size: str | None) -> dict | None:
+    image_config = {}
+    if aspect_ratio:
+        image_config["aspectRatio"] = aspect_ratio
+    if size:
+        image_config["imageSize"] = size
+    if not image_config:
+        return None
+    # responseModalities must include IMAGE; TEXT is also required or the API
+    # may return an empty response.
+    return {"responseModalities": ["TEXT", "IMAGE"], "imageConfig": image_config}
+
+
+def _generate(
+    prompt: str,
+    model: str,
+    key: str,
+    aspect_ratio: str | None = None,
+    size: str | None = None,
+) -> tuple[bytes, str]:
+    url = f"{API_BASE}/{model}:generateContent"
+    payload: dict = {"contents": [{"role": "user", "parts": [{"text": prompt}]}]}
+    generation_config = _image_config(aspect_ratio, size)
+    if generation_config:
+        payload["generationConfig"] = generation_config
+    body = json.dumps(payload).encode()
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={"Content-Type": "application/json", "x-goog-api-key": key},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=180) as resp:
+            data = json.load(resp)
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode(errors="replace")[:500]
+        sys.exit(f"ERROR: API call failed ({exc.code}): {detail}")
+    except urllib.error.URLError as exc:
+        sys.exit(f"ERROR: network failure: {exc.reason}")
+
+    candidates = data.get("candidates") or []
+    parts = (candidates[0].get("content", {}).get("parts") if candidates else None) or []
+    for part in parts:
+        inline = part.get("inlineData") or part.get("inline_data")
+        if inline and inline.get("data"):
+            mime = inline.get("mimeType") or inline.get("mime_type") or "image/png"
+            return base64.b64decode(inline["data"]), mime
+
+    text = next((p["text"] for p in parts if p.get("text")), None)
+    sys.exit(f"ERROR: no image in response{f': {text[:300]}' if text else ''}")
+
+
+def _default_output(prompt: str, mime: str) -> str:
+    slug = "".join(c if c.isalnum() else "-" for c in prompt.lower())
+    slug = "-".join(filter(None, slug.split("-")))[:50] or "nano-banana"
+    return slug + _EXT_BY_MIME.get(mime, ".png")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        prog=",nano-banana",
+        description="Generate a Nano Banana (Gemini) image from a text instruction.",
+    )
+    parser.add_argument("prompt", help="text instruction describing the image")
+    parser.add_argument("-o", "--output", help="output file path (default: derived from the prompt)")
+    parser.add_argument("-m", "--model", default=DEFAULT_MODEL, help=f"model id (default: {DEFAULT_MODEL})")
+    parser.add_argument(
+        "-a",
+        "--aspect-ratio",
+        help="aspect ratio, e.g. 1:1, 16:9, 9:16, 4:3, 3:4 (default: model's choice)",
+    )
+    parser.add_argument(
+        "-s",
+        "--size",
+        help="image resolution: 512, 1K, 2K, or 4K (case-sensitive; default: model's choice)",
+    )
+    args = parser.parse_args()
+
+    image, mime = _generate(args.prompt, args.model, _api_key(), args.aspect_ratio, args.size)
+    output = args.output or _default_output(args.prompt, mime)
+    with open(output, "wb") as fh:
+        fh.write(image)
+    print(output)
+
+
+if __name__ == "__main__":
+    main()

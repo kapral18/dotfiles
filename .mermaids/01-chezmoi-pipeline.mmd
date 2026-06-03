@@ -17,7 +17,7 @@ flowchart TD
     subgraph INPUTS["Static inputs (read during render)"]
         DATA[[".chezmoidata/ai_models.yaml (litellm catalog)<br/>.chezmoidata/mcp_servers.yaml (MCP registry)"]]:::data
         EXT[[".chezmoiexternal.toml → fetched into $HOME<br/>tpm · EmmyLua.spoon · lowfi data · bat themes · yazi flavors"]]:::data
-        IGN[[".chezmoiignore (skip patterns)<br/>+ per-dir .chezmoiignore (bat/btop/lazygit/nvim/karabiner/<br/>ssh/gnupg/history/hooks/codex skills/fix-cursor scripts)"]]:::data
+        IGN[[".chezmoiignore (skip patterns)<br/>+ per-dir .chezmoiignore (bat/btop/lazygit/nvim/karabiner/<br/>ssh/gnupg/history/hooks/codex skills)"]]:::data
     end
 
     BOOT --> INIT --> APPLY

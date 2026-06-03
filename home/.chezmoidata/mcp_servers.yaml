@@ -19,12 +19,35 @@ mcp_servers:
       - "--init"
       - mcp/sequentialthinking
 
+  # Official hosted Semantic Code Search (Elastic SSO OAuth2). Replaces the
+  # former self-hosted stdio scsi-main. On first use the client prompts for the
   - name: scsi-main
     work_only: true
-    command: bash
-    args:
-      - "-lc"
-      - 'docker run --pull=always --rm -i -e ELASTICSEARCH_ENDPOINT="$(pass scsi/simian/cloud_endpoint)" -e ELASTICSEARCH_API_KEY="$(pass scsi/simian/api_key)" -e ELASTICSEARCH_INDEX=kibana-repo simianhacker/semantic-code-search-mcp-server node dist/src/mcp_server/bin.js stdio'
+    type: http
+    url: https://semantic-code-search.elastic.dev/mcp
+    oauth_by_tool:
+      claude:
+        callbackPort: 12345
+        clientId: "0oa1aviou3pe7dITS1t8"
+        scope: "user"
+      cursor:
+        ideClientId: "0oa1aviou3pe7dITS1t8"
+        clientId: "0oa1aviou3pe7dITS1t8"
+        scopes: "user"
+      gemini:
+        clientId: "0oa1aviou3pe7dITS1t8"
+        callbackPort: 12345
+        # Okta authz server only configures openid/email/offline_access; the
+        # legacy "user" scope is rejected with error=invalid_scope.
+        scopes: "openid, email, offline_access"
+        # gemini-cli's local callback listener hardcodes the /oauth/callback
+        # path (404 on anything else) and ignores this redirectUri for the
+        # listener, so the request path MUST be /oauth/callback to match it.
+        # Plain http (not https) is required: gemini-cli only serves http on
+        # localhost. This is correct-by-construction but only completes once
+        # the Okta SCSI app registers http://localhost:12345/oauth/callback as
+        # a Login redirect URI (currently it only allows .../callback).
+        redirectUri: "http://localhost:{port}/oauth/callback"
 
   - name: scsi-local
     work_only: true

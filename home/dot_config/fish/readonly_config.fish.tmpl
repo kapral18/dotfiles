@@ -201,6 +201,10 @@ if type -q pass; and test -z "$GOOGLE_GENERATIVE_AI_API_KEY"
     set -gx GOOGLE_GENERATIVE_AI_API_KEY (pass google/gemini/api/token)
 end
 
+if type -q pass; and test -z "$NANOBANANA_API_KEY"
+    set -gx NANOBANANA_API_KEY (pass google/gemini/api/token)
+end
+
 if type -q pass; and test -z "$GOOGLE_CLOUD_PROJECT"
     set -gx GOOGLE_CLOUD_PROJECT (pass google/vertex/project)
     set -gx GOOGLE_GENAI_USE_VERTEXAI true

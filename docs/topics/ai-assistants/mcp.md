@@ -14,8 +14,8 @@ Source of truth: [`home/.chezmoidata/mcp_servers.yaml`](../../../home/.chezmoida
 
 Each entry is one of two shapes:
 
-- **Command server** — `name`, `work_only`, `command`, `args` (list). Example: `sequentialthinking` runs a docker image; `scsi-main`/`scsi-local` run `bash -lc '...'` with secrets resolved from `pass`.
-- **HTTP server** — `name`, `work_only`, `type: http`, `url`, and `oauth_by_tool` (per-tool OAuth client metadata, since tools expect different OAuth field shapes). Example: `slack`.
+- **Command server** — `name`, `work_only`, `command`, `args` (list). Example: `sequentialthinking` runs a docker image; `scsi-local` runs `bash -lc '...'` with secrets resolved from `pass`.
+- **HTTP server** — `name`, `work_only`, `type: http`, `url`, and optionally `oauth_by_tool` (per-tool OAuth client metadata, since tools expect different OAuth field shapes). Example: `slack` uses `oauth_by_tool`; `scsi-main` is a bare `type: http` + `url` whose OAuth2 (Elastic SSO) is handled interactively by each client — on first use the client prompts for OAuth Client ID `0oa1aviou3pe7dITS1t8`, then authenticates in the browser. This hosted `scsi-main` replaces the former self-hosted stdio server of the same name.
 
 `work_only: true` servers are emitted only when the `isWork` chezmoi variable is set. The default work set is `sequentialthinking`, `scsi-main`, `scsi-local`, `slack`; the personal set is `sequentialthinking`.
 

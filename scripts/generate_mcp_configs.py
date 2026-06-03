@@ -67,8 +67,17 @@ def _transform_gemini(spec: dict[str, Any]) -> dict[str, Any]:
         gemini_oauth = dict(oauth)
         if "callbackPort" in gemini_oauth:
             port = gemini_oauth.pop("callbackPort")
-            # Slack UI forces us to use https:// even for localhost
-            gemini_oauth["redirectUri"] = f"https://localhost:{port}/oauth/callback"
+            # The redirect URI must EXACTLY match a Login redirect URI registered
+            # on the OAuth app; a mismatch is rejected with 400 invalid_request.
+            # These differ per provider, so allow an explicit override:
+            #   - Slack's app UI forces https://localhost:<port>/oauth/callback
+            #     (also gemini-cli's default path) -> keep as the fallback.
+            #   - Elastic Okta (SCSI) registers http://localhost:<port>/callback.
+            override = gemini_oauth.pop("redirectUri", None)
+            if override:
+                gemini_oauth["redirectUri"] = override.replace("{port}", str(port))
+            else:
+                gemini_oauth["redirectUri"] = f"https://localhost:{port}/oauth/callback"
 
         if "scopes" in gemini_oauth and isinstance(gemini_oauth["scopes"], str):
             gemini_oauth["scopes"] = [s.strip() for s in gemini_oauth["scopes"].split(",") if s.strip()]

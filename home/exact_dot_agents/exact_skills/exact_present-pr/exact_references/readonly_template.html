@@ -1,0 +1,367 @@
+<!doctype html>
+<!--
+  PR PRESENTATION TEMPLATE  (self-contained: vanilla HTML/CSS/JS, no build, no CDN)
+  ============================================================================
+  This is a PROVEN scaffold. Do NOT rewrite the CSS or JS — only fill content.
+
+  HOW TO USE
+  1. Copy this file to the OUTPUT DIR (alongside the generated nb-*.png images).
+  2. Replace every {{TOKEN}} and fill the beat blocks in each ACT.
+  3. Keep the 5-act spine. Keep "one primary medium per beat" (see authoring.md).
+  4. Images are referenced by RELATIVE filename (e.g. nb-overview.png) and must
+     live in the same dir as this HTML. Do NOT base64-inline them.
+  5. The act-rail labels can be ANY length — they render as solid popovers.
+
+  BEAT TYPES (each has an example below, copy the one you need):
+    - .beat-diagram   : a generated diagram is the hero (+ one caption line)
+    - .codebeat       : a real diff is the hero (+ a narrow note column)
+    - split codebeat  : small diagram + short diff side-by-side (Act II change 3)
+    - .rail-cards     : compact invariant cards (Act III), optional thumbnail
+    - .ledger         : the change-map table (Act IV)
+    - .transition     : one big connective sentence between acts
+============================================================================ -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{PR_TITLE}} — PR walkthrough</title>
+<style>
+  :root{
+    --bg:#0b1020; --panel:#0f1630; --panel2:#121b3a; --ink:#e8ecf8; --muted:#9aa6c8;
+    --line:#1e2a52; --teal:#34d3c0; --blue:#5b8cff; --amber:#f5b454; --red:#ff6b6b;
+    --green:#54d97f; --code:#0a0f24; --add:#11331f; --addln:#2f9e58; --del:#3a1320; --delln:#e0617a;
+    --mono:'SFMono-Regular',ui-monospace,'JetBrains Mono',Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:radial-gradient(1200px 800px at 70% -10%,#13204a 0%,var(--bg) 55%);color:var(--ink);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased}
+  a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+  code,kbd{font-family:var(--mono);font-size:.92em}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 28px}
+  .narrow{max-width:780px}
+
+  #progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--teal),var(--blue));z-index:60;transition:width .1s linear}
+
+  /* sticky act rail — dots in gutter; labels are solid popovers (any length) */
+  #rail{position:fixed;left:20px;top:50%;transform:translateY(-50%);z-index:40;display:flex;flex-direction:column;gap:6px;opacity:0;pointer-events:none;transition:opacity .5s}
+  #rail.show{opacity:1;pointer-events:auto}
+  #rail a{display:flex;align-items:center;gap:0;color:var(--muted);position:relative}
+  #rail a .rdot{width:10px;height:10px;border-radius:50%;border:1px solid var(--line);background:rgba(15,22,48,.9);transition:all .25s;flex:0 0 auto}
+  #rail a .rtxt{position:absolute;left:22px;top:50%;transform:translateY(-50%) translateX(-6px);white-space:nowrap;font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;color:var(--ink);background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);padding:7px 11px;border-radius:9px;box-shadow:0 10px 30px rgba(0,0,0,.5),0 0 0 1px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease}
+  #rail a:hover .rtxt{opacity:1;transform:translateY(-50%) translateX(0)}
+  #rail a:hover .rdot{border-color:var(--teal)}
+  #rail a.active .rdot{background:var(--teal);border-color:var(--teal);box-shadow:0 0 0 4px rgba(52,211,192,.16)}
+  @media(max-width:1024px){#rail{display:none}}
+
+  /* hero */
+  header.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:80px 0 56px;position:relative;overflow:hidden}
+  header.hero::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(91,140,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(91,140,255,.06) 1px,transparent 1px);background-size:42px 42px;mask-image:radial-gradient(closest-side at 70% 30%,#000 0%,transparent 78%);-webkit-mask-image:radial-gradient(closest-side at 70% 30%,#000 0%,transparent 78%);animation:gridpan 24s linear infinite;pointer-events:none}
+  @keyframes gridpan{from{background-position:0 0,0 0}to{background-position:42px 42px,42px 42px}}
+  header.hero .wrap-inner{position:relative;z-index:1}
+  .eyebrow{font-family:var(--mono);font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--teal);margin-bottom:18px;display:inline-flex;align-items:center;gap:10px}
+  .eyebrow .live{width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 0 rgba(52,211,192,.6);animation:pulse 2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(52,211,192,.55)}70%{box-shadow:0 0 0 9px rgba(52,211,192,0)}100%{box-shadow:0 0 0 0 rgba(52,211,192,0)}}
+  h1{font-size:clamp(34px,5.4vw,64px);line-height:1.05;margin:0 0 18px;font-weight:760;letter-spacing:-.02em}
+  h1 .grad{background:linear-gradient(90deg,var(--teal),var(--blue));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lede{font-size:clamp(17px,2vw,21px);color:var(--muted);max-width:680px}
+  .filepill{display:inline-flex;align-items:center;gap:8px;margin-top:24px;padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:rgba(15,22,48,.7);font-family:var(--mono);font-size:13px;color:var(--muted)}
+  .filepill b{color:var(--ink);font-weight:600}
+
+  .flow{margin-top:40px;display:flex;align-items:stretch;gap:0;flex-wrap:wrap;position:relative}
+  .flow .node{flex:1 1 0;min-width:150px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,var(--panel),var(--panel2));padding:16px 16px 14px;position:relative;opacity:0;transform:translateY(16px);animation:nodein .6s forwards}
+  .flow .node:nth-child(1){animation-delay:.15s}.flow .node:nth-child(3){animation-delay:.35s}.flow .node:nth-child(5){animation-delay:.55s}.flow .node:nth-child(7){animation-delay:.75s}
+  @keyframes nodein{to{opacity:1;transform:none}}
+  .flow .node .nlabel{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  .flow .node .nbody{font-size:14.5px;color:var(--ink);font-weight:600;line-height:1.3}
+  .flow .node .nsub{font-family:var(--mono);font-size:11.5px;color:var(--teal);margin-top:7px;word-break:break-word}
+  .flow .node.tap{border-color:#1f5b53;box-shadow:0 0 0 1px rgba(52,211,192,.15),0 14px 40px rgba(0,0,0,.35)}
+  .flow .node.tap .nbody{color:var(--teal)}
+  .flow .arrow{flex:0 0 46px;align-self:center;position:relative;height:2px;background:linear-gradient(90deg,var(--line),var(--blue),var(--line));margin:0 -1px;opacity:0;animation:nodein .5s forwards}
+  .flow .arrow:nth-child(2){animation-delay:.3s}.flow .arrow:nth-child(4){animation-delay:.5s}.flow .arrow:nth-child(6){animation-delay:.7s}
+  .flow .arrow::after{content:"";position:absolute;right:-1px;top:50%;width:7px;height:7px;border-top:2px solid var(--blue);border-right:2px solid var(--blue);transform:translateY(-50%) rotate(45deg)}
+  .flow .arrow .pkt{position:absolute;top:50%;left:0;width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 10px 2px rgba(52,211,192,.7);transform:translateY(-50%);animation:travel 2.6s cubic-bezier(.6,0,.4,1) infinite}
+  .flow .arrow:nth-child(4) .pkt{animation-delay:.32s}.flow .arrow:nth-child(6) .pkt{animation-delay:.64s}
+  @keyframes travel{0%{left:-4px;opacity:0}12%{opacity:1}88%{opacity:1}100%{left:calc(100% + 4px);opacity:0}}
+  @media(max-width:840px){.flow{flex-direction:column}.flow .arrow{width:2px;height:30px;align-self:center;background:linear-gradient(180deg,var(--line),var(--blue),var(--line))}.flow .arrow::after{right:50%;top:auto;bottom:-1px;transform:translateX(50%) rotate(135deg)}.flow .arrow .pkt{animation:travelv 2.6s cubic-bezier(.6,0,.4,1) infinite;left:50%}@keyframes travelv{0%{top:-4px;opacity:0}12%{opacity:1}88%{opacity:1}100%{top:calc(100% + 4px);opacity:0}}}
+
+  .chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:30px}
+  .chip{display:inline-flex;align-items:center;gap:9px;padding:9px 14px;border:1px solid var(--line);border-radius:10px;background:rgba(15,22,48,.6);font-size:13.5px;color:#cdd6f7;opacity:0;transform:translateY(10px);animation:nodein .5s forwards}
+  .chip:nth-child(1){animation-delay:.9s}.chip:nth-child(2){animation-delay:1s}.chip:nth-child(3){animation-delay:1.1s}.chip:nth-child(4){animation-delay:1.2s}
+  .chip b{color:#fff;font-weight:600}
+  .chip .ic{width:18px;height:18px;border-radius:5px;display:grid;place-items:center;font-size:11px;font-weight:700;color:#0b1020}
+  .chip .ic.t{background:var(--teal)}.chip .ic.b{background:var(--blue)}.chip .ic.a{background:var(--amber)}.chip .ic.g{background:var(--green)}
+
+  .scrollcue{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);color:var(--muted);font-size:13px;font-family:var(--mono);display:flex;flex-direction:column;align-items:center;gap:6px;opacity:.8;z-index:1}
+  .scrollcue .chev{width:18px;height:18px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);animation:bob 1.6s infinite}
+  @keyframes bob{0%,100%{transform:rotate(45deg) translateY(0)}50%{transform:rotate(45deg) translateY(6px)}}
+
+  /* act scaffolding */
+  .act{padding:92px 0 12px;border-top:1px solid var(--line)}
+  .act-head{display:flex;align-items:baseline;gap:16px;margin-bottom:8px}
+  .act-no{font-family:var(--mono);font-size:13px;letter-spacing:.2em;color:var(--teal)}
+  .act-title{font-size:clamp(22px,3vw,33px);font-weight:730;letter-spacing:-.01em;margin:0}
+  .act-intro{color:var(--muted);max-width:760px;font-size:16.5px;margin:6px 0 0}
+
+  .transition{padding:64px 0}
+  .transition p{font-size:clamp(20px,2.6vw,30px);line-height:1.3;font-weight:600;color:var(--ink);max-width:880px;margin:0;letter-spacing:-.01em}
+  .transition .dim{color:var(--muted);font-weight:500}
+
+  .beat{padding:40px 0}
+  .beat-diagram figure{margin:0;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--panel);box-shadow:0 24px 60px rgba(0,0,0,.4)}
+  .beat-diagram figure img{display:block;width:100%;height:auto}
+  .beat-cap{display:flex;gap:14px;align-items:flex-start;margin-top:16px;max-width:900px}
+  .beat-cap .badge{flex:0 0 auto;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:5px 9px;border-radius:7px;border:1px solid var(--line);color:var(--teal)}
+  .beat-cap .badge.trap{color:var(--amber);border-color:#5a4520}
+  .beat-cap .badge.sec{color:var(--blue);border-color:#2a3a78}
+  .beat-cap p{margin:0;color:#cdd6f7;font-size:15px}
+  .beat-cap p b{color:#fff}
+
+  .codebeat{display:grid;grid-template-columns:1.25fr .75fr;gap:24px;align-items:start;padding:24px 0 8px}
+  @media(max-width:900px){.codebeat{grid-template-columns:1fr}}
+  .diff{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--code)}
+  .diff .bar{display:flex;align-items:center;gap:10px;padding:9px 14px;background:var(--panel2);border-bottom:1px solid var(--line);font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+  .diff .bar .dot{width:10px;height:10px;border-radius:50%}
+  .diff pre{margin:0;padding:14px 0;overflow-x:auto;font-family:var(--mono);font-size:12.7px;line-height:1.65}
+  .diff code{display:block;white-space:pre}
+  .ln{display:block;padding:0 16px;border-left:3px solid transparent}
+  .ln.add{background:var(--add);border-left-color:var(--addln)}
+  .ln.del{background:var(--del);border-left-color:var(--delln)}
+  .ln.ctx{color:#aeb8db}
+  .ln.add .s{color:#a9f0c4}.ln.del .s{color:#ffb3c1}
+  .gutter{color:#5b678f;user-select:none}
+  .tok-k{color:#7aa2ff}.tok-s{color:#7fe0a0}.tok-c{color:#6b779e;font-style:italic}.tok-f{color:#e0b0ff}.tok-n{color:#f5b454}
+  .codebeat .side{display:flex;flex-direction:column;gap:12px;position:sticky;top:24px}
+  .pt{border-left:2px solid var(--accent,var(--teal));padding:2px 0 2px 14px}
+  .pt .ptt{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent,var(--teal));margin-bottom:3px}
+  .pt p{margin:0;color:var(--muted);font-size:14px}
+  .pt p b{color:var(--ink)}
+  .pt code{color:#cdd6f7;background:rgba(255,255,255,.05);padding:1px 5px;border-radius:5px}
+  .pt.a{--accent:var(--amber)}.pt.b{--accent:var(--blue)}.pt.g{--accent:var(--green)}
+
+  .mini{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel)}
+  .mini img{display:block;width:100%;height:auto}
+
+  .rail-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;padding:18px 0 8px}
+  @media(max-width:760px){.rail-cards{grid-template-columns:1fr}}
+  .inv{border:1px solid var(--line);border-radius:13px;background:linear-gradient(180deg,var(--panel),var(--panel2));padding:16px 18px;display:flex;gap:14px;align-items:flex-start}
+  .inv .check{flex:0 0 auto;width:26px;height:26px;border-radius:8px;background:rgba(84,217,127,.12);border:1px solid #2f6b45;color:var(--green);display:grid;place-items:center;font-weight:800;font-size:14px}
+  .inv h5{margin:1px 0 5px;font-size:15.5px;color:var(--ink);font-weight:680}
+  .inv p{margin:0;color:var(--muted);font-size:14px}
+  .inv p code{color:#cdd6f7;background:rgba(255,255,255,.05);padding:1px 5px;border-radius:5px;font-size:12.5px}
+  .inv .thumb{margin-top:10px;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .inv .thumb img{display:block;width:100%;height:auto}
+
+  .ledger{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-top:18px}
+  .ledger .lrow{display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;padding:13px 18px;border-top:1px solid var(--line)}
+  .ledger .lrow:first-child{border-top:none}
+  .ledger .lrow:hover{background:rgba(91,140,255,.04)}
+  .ledger .role{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;padding:4px 9px;border-radius:6px;border:1px solid var(--line);white-space:nowrap}
+  .role.primary{color:var(--teal);border-color:#1f5b53;background:rgba(52,211,192,.07)}
+  .role.support{color:var(--blue);border-color:#2a3a78;background:rgba(91,140,255,.06)}
+  .role.cleanup{color:var(--delln);border-color:#5a2433;background:rgba(224,97,122,.06)}
+  .ledger .lpath{font-family:var(--mono);font-size:13px;color:var(--ink)}
+  .ledger .lpath small{display:block;font-family:var(--sans);color:var(--muted);font-size:13px;margin-top:2px;font-weight:400}
+  .ledger .lstat{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap}
+  .ledger .lstat .p{color:var(--green)}.ledger .lstat .m{color:var(--delln)}
+
+  .reveal{opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+  .reveal.in{opacity:1;transform:none}
+
+  footer{padding:84px 0 110px;border-top:1px solid var(--line);color:var(--muted);position:relative;overflow:hidden;margin-top:40px}
+  footer::before{content:"";position:absolute;inset:0;background:radial-gradient(700px 380px at 30% 120%,rgba(52,211,192,.08),transparent 70%);pointer-events:none}
+  footer .wrap{position:relative;z-index:1}
+  footer .ftag{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--teal);margin-bottom:10px}
+  footer .big{font-size:clamp(22px,3vw,34px);color:var(--ink);font-weight:740;margin:0 0 8px;letter-spacing:-.01em}
+  footer .big .grad{background:linear-gradient(90deg,var(--teal),var(--blue));-webkit-background-clip:text;background-clip:text;color:transparent}
+  footer .flede{max-width:760px;font-size:16px;margin:0 0 28px}
+  .scorecard{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  @media(max-width:900px){.scorecard{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:520px){.scorecard{grid-template-columns:1fr}}
+  .card{border:1px solid var(--line);border-radius:13px;background:linear-gradient(180deg,var(--panel),var(--panel2));padding:16px;position:relative;overflow:hidden}
+  .card::after{content:"";position:absolute;left:0;top:0;height:100%;width:3px;background:var(--accent,var(--teal))}
+  .card .cnum{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.1em}
+  .card h5{margin:8px 0 6px;font-size:15.5px;color:var(--ink);font-weight:680}
+  .card p{margin:0;font-size:13.5px;color:var(--muted)}
+  .card code{font-family:var(--mono);font-size:12px;color:#cdd6f7;background:rgba(255,255,255,.05);padding:1px 5px;border-radius:5px}
+  .card.c-teal{--accent:var(--teal)}.card.c-amber{--accent:var(--amber)}.card.c-blue{--accent:var(--blue)}.card.c-green{--accent:var(--green)}
+  .ftrow{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-top:26px;padding-top:20px;border-top:1px solid var(--line)}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .legend i{width:22px;height:12px;border-radius:3px;display:inline-block}
+  .sw-add{background:var(--add);border:1px solid var(--addln)}.sw-del{background:var(--del);border:1px solid var(--delln)}
+  .srcnote{font-size:12.5px;color:var(--muted);opacity:.8;max-width:520px;text-align:right}
+  @media(max-width:700px){.srcnote{text-align:left}}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<!-- ACT-RAIL: one <a> per act; labels may be any length (solid popovers). -->
+<nav id="rail" aria-label="Sections">
+  <a href="#act1"><span class="rdot"></span><span class="rtxt">I · {{ACT1_RAIL}}</span></a>
+  <a href="#act2"><span class="rdot"></span><span class="rtxt">II · {{ACT2_RAIL}}</span></a>
+  <a href="#act3"><span class="rdot"></span><span class="rtxt">III · {{ACT3_RAIL}}</span></a>
+  <a href="#act4"><span class="rdot"></span><span class="rtxt">IV · {{ACT4_RAIL}}</span></a>
+</nav>
+
+<!-- =================== HERO =================== -->
+<header class="hero wrap">
+  <div class="wrap-inner">
+    <div class="eyebrow"><span class="live"></span> {{PROJECT_EYEBROW}}</div>
+    <h1>{{HERO_LINE_1}}<br/>to <span class="grad">{{HERO_LINE_2_HIGHLIGHT}}</span></h1>
+    <p class="lede">{{HERO_LEDE}}</p>
+    <span class="filepill">📄 <b>{{HERO_PILL_PRIMARY}}</b> · {{HERO_PILL_PATH}}</span>
+
+    <!-- HERO FLOW: 4 nodes + 3 arrows. Mark the key node with class="node tap". -->
+    <div class="flow" aria-label="Flow">
+      <div class="node"><div class="nlabel">{{N1_LABEL}}</div><div class="nbody">{{N1_BODY}}</div><div class="nsub">{{N1_SUB}}</div></div>
+      <div class="arrow"><span class="pkt"></span></div>
+      <div class="node"><div class="nlabel">{{N2_LABEL}}</div><div class="nbody">{{N2_BODY}}</div><div class="nsub">{{N2_SUB}}</div></div>
+      <div class="arrow"><span class="pkt"></span></div>
+      <div class="node tap"><div class="nlabel">{{N3_LABEL}}</div><div class="nbody">{{N3_BODY}}</div><div class="nsub">{{N3_SUB}}</div></div>
+      <div class="arrow"><span class="pkt"></span></div>
+      <div class="node"><div class="nlabel">{{N4_LABEL}}</div><div class="nbody">{{N4_BODY}}</div><div class="nsub">{{N4_SUB}}</div></div>
+    </div>
+
+    <!-- INVARIANT CHIPS: 3–4 one-liners. ic classes: t=teal b=blue a=amber g=green -->
+    <div class="chips">
+      <span class="chip"><span class="ic t">{{CHIP1_ICON}}</span><b>{{CHIP1_B}}</b> {{CHIP1_REST}}</span>
+      <span class="chip"><span class="ic a">{{CHIP2_ICON}}</span><b>{{CHIP2_B}}</b> {{CHIP2_REST}}</span>
+      <span class="chip"><span class="ic b">{{CHIP3_ICON}}</span><b>{{CHIP3_B}}</b> {{CHIP3_REST}}</span>
+      <span class="chip"><span class="ic g">{{CHIP4_ICON}}</span><b>{{CHIP4_B}}</b> {{CHIP4_REST}}</span>
+    </div>
+  </div>
+  <div class="scrollcue">scroll<div class="chev"></div></div>
+</header>
+
+<!-- =================== ACT I — GOAL & THE BET =================== -->
+<section class="act wrap" id="act1">
+  <div class="reveal">
+    <div class="act-head"><span class="act-no">ACT I</span><h2 class="act-title">{{ACT1_TITLE}}</h2></div>
+    <p class="act-intro">{{ACT1_INTRO}}</p>
+  </div>
+  <!-- BEAT (diagram is the hero). ONE caption only — do NOT restate the diagram in prose above. -->
+  <div class="beat beat-diagram reveal">
+    <figure><img src="{{ACT1_IMG}}" alt="{{ACT1_IMG_ALT}}"/></figure>
+    <div class="beat-cap"><span class="badge">the bet</span><p>{{ACT1_CAPTION}}</p></div>
+  </div>
+</section>
+
+<div class="transition wrap narrow reveal"><p>{{TRANSITION_1_LEAD}} <span class="dim">{{TRANSITION_1_DIM}}</span></p></div>
+
+<!-- =================== ACT II — LOAD-BEARING CHANGES =================== -->
+<section class="act wrap" id="act2">
+  <div class="reveal">
+    <div class="act-head"><span class="act-no">ACT II</span><h2 class="act-title">{{ACT2_TITLE}}</h2></div>
+    <p class="act-intro">{{ACT2_INTRO}}</p>
+  </div>
+
+  <!-- CHANGE 1 — CODE BEAT (diff is the hero; narrow note column). -->
+  <div class="codebeat reveal">
+    <div class="diff">
+      <div class="bar"><span class="dot" style="background:var(--red)"></span><span class="dot" style="background:var(--amber)"></span><span class="dot" style="background:var(--green)"></span>&nbsp; 1 · {{CHANGE1_TITLE}}</div>
+      <pre><code><span class="ln del"><span class="gutter">- </span><span class="s">{{CHANGE1_DEL_LINE}}</span></span><span class="ln add"><span class="gutter">+ </span><span class="s">{{CHANGE1_ADD_LINE_1}}</span></span><span class="ln add"><span class="gutter">+ </span><span class="s">{{CHANGE1_ADD_LINE_2}}</span></span></code></pre>
+    </div>
+    <div class="side">
+      <div class="pt"><div class="ptt">{{C1_PT1_TAG}}</div><p>{{C1_PT1_BODY}}</p></div>
+      <div class="pt b"><div class="ptt">{{C1_PT2_TAG}}</div><p>{{C1_PT2_BODY}}</p></div>
+      <div class="pt g"><div class="ptt">{{C1_PT3_TAG}}</div><p>{{C1_PT3_BODY}}</p></div>
+    </div>
+  </div>
+
+  <!-- CHANGE 2 — DIAGRAM BEAT (diagram is the hero; one caption). -->
+  <div class="beat beat-diagram reveal" style="padding-top:48px">
+    <div class="act-head" style="margin-bottom:14px"><span class="act-no" style="color:var(--amber)">2</span><h2 class="act-title" style="font-size:clamp(19px,2.4vw,26px)">{{CHANGE2_TITLE}}</h2></div>
+    <figure><img src="{{CHANGE2_IMG}}" alt="{{CHANGE2_IMG_ALT}}"/></figure>
+    <div class="beat-cap"><span class="badge trap">{{CHANGE2_BADGE}}</span><p>{{CHANGE2_CAPTION}}</p></div>
+  </div>
+
+  <!-- CHANGE 3 — SPLIT BEAT (small diagram + short diff + 2 points). -->
+  <div class="beat reveal" style="padding-top:48px">
+    <div class="act-head" style="margin-bottom:14px"><span class="act-no" style="color:var(--blue)">3</span><h2 class="act-title" style="font-size:clamp(19px,2.4vw,26px)">{{CHANGE3_TITLE}}</h2></div>
+    <div class="codebeat" style="padding-top:6px">
+      <div class="mini"><img src="{{CHANGE3_IMG}}" alt="{{CHANGE3_IMG_ALT}}"/></div>
+      <div class="side">
+        <div class="diff">
+          <div class="bar"><span class="dot" style="background:var(--blue)"></span>&nbsp; {{CHANGE3_DIFF_LABEL}}</div>
+          <pre><code><span class="ln add"><span class="gutter">+ </span><span class="s">{{CHANGE3_ADD_LINE_1}}</span></span><span class="ln add"><span class="gutter">+ </span><span class="s">{{CHANGE3_ADD_LINE_2}}</span></span></code></pre>
+        </div>
+        <div class="pt b"><div class="ptt">{{C3_PT1_TAG}}</div><p>{{C3_PT1_BODY}}</p></div>
+        <div class="pt"><div class="ptt">{{C3_PT2_TAG}}</div><p>{{C3_PT2_BODY}}</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="transition wrap narrow reveal"><p>{{TRANSITION_2_LEAD}} <span class="dim">{{TRANSITION_2_DIM}}</span></p></div>
+
+<!-- =================== ACT III — INVARIANTS HELD =================== -->
+<section class="act wrap" id="act3">
+  <div class="reveal">
+    <div class="act-head"><span class="act-no">ACT III</span><h2 class="act-title">{{ACT3_TITLE}}</h2></div>
+    <p class="act-intro">{{ACT3_INTRO}}</p>
+  </div>
+  <!-- 2–4 compact cards: claim + one-line PROOF (the exact line/mechanism). -->
+  <!-- At most one card carries a .thumb image; the rest are text-only. -->
+  <div class="rail-cards">
+    <div class="inv reveal"><div class="check">✓</div><div><h5>{{INV1_TITLE}}</h5><p>{{INV1_BODY}}</p></div></div>
+    <div class="inv reveal"><div class="check">✓</div><div><h5>{{INV2_TITLE}}</h5><p>{{INV2_BODY}}</p><div class="thumb"><img src="{{INV2_IMG}}" alt="{{INV2_IMG_ALT}}"/></div></div></div>
+    <div class="inv reveal"><div class="check">✓</div><div><h5>{{INV3_TITLE}}</h5><p>{{INV3_BODY}}</p></div></div>
+    <div class="inv reveal"><div class="check">✓</div><div><h5>{{INV4_TITLE}}</h5><p>{{INV4_BODY}}</p></div></div>
+  </div>
+</section>
+
+<!-- =================== ACT IV — CHANGE MAP =================== -->
+<section class="act wrap" id="act4">
+  <div class="reveal">
+    <div class="act-head"><span class="act-no">ACT IV</span><h2 class="act-title">{{ACT4_TITLE}}</h2></div>
+    <p class="act-intro">{{ACT4_INTRO}}</p>
+  </div>
+  <!-- One .lrow per file/group. role = primary | support | cleanup. -->
+  <!-- For multi-file PRs: every changed path appears here exactly once. -->
+  <div class="ledger reveal">
+    <div class="lrow"><span class="role primary">primary</span><div class="lpath">{{L1_PATH}}<small>{{L1_DESC}}</small></div><div class="lstat">{{L1_STAT}}</div></div>
+    <div class="lrow"><span class="role support">supporting</span><div class="lpath">{{L2_PATH}}<small>{{L2_DESC}}</small></div><div class="lstat">{{L2_STAT}}</div></div>
+    <div class="lrow"><span class="role cleanup">cleanup</span><div class="lpath">{{L3_PATH}}<small>{{L3_DESC}}</small></div><div class="lstat">{{L3_STAT}}</div></div>
+  </div>
+</section>
+
+<!-- =================== FOOTER =================== -->
+<footer>
+ <div class="wrap">
+  <div class="ftag">{{FOOTER_TAG}}</div>
+  <p class="big">{{FOOTER_LEAD}} <span class="grad">{{FOOTER_LEAD_HIGHLIGHT}}</span></p>
+  <p class="flede">{{FOOTER_LEDE}}</p>
+  <div class="scorecard">
+    <div class="card c-teal reveal"><div class="cnum">{{SC1_TAG}}</div><h5>{{SC1_TITLE}}</h5><p>{{SC1_BODY}}</p></div>
+    <div class="card c-amber reveal"><div class="cnum">{{SC2_TAG}}</div><h5>{{SC2_TITLE}}</h5><p>{{SC2_BODY}}</p></div>
+    <div class="card c-blue reveal"><div class="cnum">{{SC3_TAG}}</div><h5>{{SC3_TITLE}}</h5><p>{{SC3_BODY}}</p></div>
+    <div class="card c-green reveal"><div class="cnum">{{SC4_TAG}}</div><h5>{{SC4_TITLE}}</h5><p>{{SC4_BODY}}</p></div>
+  </div>
+  <div class="ftrow">
+    <div class="legend"><span><i class="sw-del"></i> removed</span><span><i class="sw-add"></i> added</span></div>
+    <div class="srcnote">{{FOOTER_SOURCE_NOTE}}</div>
+  </div>
+ </div>
+</footer>
+
+<script>
+(function(){
+  var bar=document.getElementById('progress');
+  function onScroll(){var h=document.documentElement,max=(h.scrollHeight-h.clientHeight)||1;bar.style.width=(100*(h.scrollTop||document.body.scrollTop)/max)+'%';}
+  document.addEventListener('scroll',onScroll,{passive:true});onScroll();
+
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});},{threshold:.16,rootMargin:'0px 0px -8% 0px'});
+  document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
+
+  var rail=document.getElementById('rail');
+  var links={};document.querySelectorAll('#rail a').forEach(function(a){links[a.getAttribute('href').slice(1)]=a;});
+  var hero=document.querySelector('header.hero');
+  new IntersectionObserver(function(es){es.forEach(function(e){rail.classList.toggle('show',!e.isIntersecting);});},{threshold:.2}).observe(hero);
+  var actIO=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){Object.values(links).forEach(function(l){l.classList.remove('active');});var id=e.target.id;if(links[id])links[id].classList.add('active');}});},{rootMargin:'-45% 0px -45% 0px'});
+  ['act1','act2','act3','act4'].forEach(function(id){var el=document.getElementById(id);if(el)actIO.observe(el);});
+})();
+</script>
+</body>
+</html>
