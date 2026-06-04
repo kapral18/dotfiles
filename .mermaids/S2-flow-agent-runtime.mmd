@@ -24,7 +24,7 @@ flowchart TB
 
     WORK --> CLAIM{"emit factual/runtime claim?"}:::loop
     CLAIM -->|yes| ANCHOR{"claim carries hard anchor<br/>(path/cmd/probe) or 'Unknown because…'? (C8)"}:::gate
-    ANCHOR -->|no| RETRY["evidence_anchor stop-hook:<br/>bounded retry, log decision in /tmp/specs"]:::gate
+    ANCHOR -->|no| RETRY["SOP External Truth (C8): verify from<br/>file/cmd/probe or demote to 'Unknown', then continue"]:::gate
     RETRY --> WORK
     ANCHOR -->|yes| SIDE
     CLAIM -->|no| SIDE

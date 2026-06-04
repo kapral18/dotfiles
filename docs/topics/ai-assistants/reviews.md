@@ -40,11 +40,29 @@ For non-trivial review decisions (accepting a suggestion, pushing back, or propo
 Skill support:
 
 - Review modes live under `~/.agents/skills/review/references/`:
-  - `shared_rules.md` — base-context gate, truth validation, state-machine verification gate, coverage checklist, severity, draft style, posting boundary (loaded once by the router)
+  - `judging_core.md` — the surface-agnostic judging engine: truth validation, state-machine gate, deletion-safety, historical-rationale, coverage checklist, severity, and the post-review four-dimension lens + stage (loaded once by the router, before any mode)
+  - `shared_rules.md` — the PR/SCSI/GitHub-delivery rules layered on top of the core: base-context gate, read-only probes, hard constraints, draft style, pending-review semantics, review verdict, review persistence, posting boundary (loaded once by the router)
   - `pr_common.md` — PR resolution, media evidence, anchoring, deep links (loaded once for PR modes)
   - `local_changes.md` — local diff / branch delta review
   - `pr_review.md` — initial or continued PR review (batch or one-at-a-time)
   - `pr_fix.md` — address reviewer feedback (reply and/or code changes per thread)
+
+## Post-review stage (verifying the review's own fixes)
+
+Every change-producing flow (local-changes verify-and-fix, PR-fix self-fixes, self-review, light-review) ends with a **post-review stage** that is distinct from verifying the original diff: it runs over the **fix diff** — the changes the review just made — and answers "are the review changes well done?".
+
+The stage applies the canonical **four dimensions** (defined verbatim in `judging_core.md`, never renamed):
+
+- **Redundancy** — the fix repeats something already present (re-implements a helper, re-states a rule, adds an already-present path).
+- **Verbosity** — the fix is bloated beyond what the change needs (narration comments, ceremony, over-explanation).
+- **Semantic + logical duplication** — two places now express the same meaning/behavior via different text (parallel branches that should be one; divergent-but-equivalent logic) — the subtle axis literal-clone detectors miss.
+- **Gaps** — the fix is incomplete (own stranded dead code, an unupdated co-edit-set member like a doc/diagram/census, a half-applied rename, a referenced-but-missing file).
+
+Where the flow can edit (own work / self-review), the stage resolves hygiene findings in the working tree and re-gates; in read-only contexts (reviewing others, read-only subagents) it surfaces them as findings. The on-demand `post-review` subagent (Claude + Pi) runs only this lens over a named change set.
+
+## Light review (proportional depth)
+
+[`light-review`](../../../home/exact_dot_agents/exact_skills/exact_light-review) is a separate skill for a fast, in-place audit of a low-risk, self-authored changeset. It shares the same `judging_core.md` engine (coverage checklist + four-dimension lens) but drops the mandatory SCSI/base-context preflight and GitHub machinery — base context is opt-in, and the post-review hygiene lens is foregrounded. It escalates to the full `review` skill for PRs, others' code, base-context-dependent correctness, or risky/stateful changes. The `change-auditor` subagent (Claude + Pi) is its read-only delegated form.
 
 ## Reply style
 
@@ -65,10 +83,10 @@ When drafting PR thread replies:
 
 ## Publication gate, deletions, history
 
-- **Human-Visible Publication Gate** (primary in [`home/readonly_AGENTS.md`](../../../home/readonly_AGENTS.md) — the SOP entrypoint Cursor/OpenCode load directly — and mirrored as SOP `3.5` in [`home/readonly_CLAUDE.md`](../../../home/readonly_CLAUDE.md) / [`home/dot_gemini/readonly_GEMINI.md`](../../../home/dot_gemini/readonly_GEMINI.md); referenced by `github`, `review/shared_rules.md`, `review/pr_fix.md`): anything a human will see (PR/issue replies, review submissions, resolving a human thread) is always drafted and supervised before sending. Verified bot-authored threads (`user.type == "Bot"`, `[bot]` login, or known-bot allowlist) may be auto-replied/auto-resolved inside an explicitly-invoked flow. Ambiguous or mixed human+bot threads fail safe to human.
+- **Human-Visible Publication Gate** (SOP `3.5` in the single source [`home/readonly_AGENTS.md`](../../../home/readonly_AGENTS.md); `~/CLAUDE.md` and `~/.gemini/GEMINI.md` are symlinks to it; referenced by `github`, `review/shared_rules.md`, `review/pr_fix.md`): anything a human will see (PR/issue replies, review submissions, resolving a human thread) is always drafted and supervised before sending. Verified bot-authored threads (`user.type == "Bot"`, `[bot]` login, or known-bot allowlist) may be auto-replied/auto-resolved inside an explicitly-invoked flow. Ambiguous or mixed human+bot threads fail safe to human.
 - **PR-fix Drain Mode**: when the user explicitly asks to batch ("repeat the process", "you know the drill", "address all"), `pr_fix.md` drains threads back-to-back — auto-finishing bot threads and queuing human-thread drafts for approval — instead of re-asking after every single thread.
-- **Deletion-Safety Audit** (`review/shared_rules.md`): any removal (files/exports/symbols/behavior) must verify no live references, public-surface cleanup, behavior parity in the replacement, test migration, base comparison, and PR-body disclosure.
-- **Historical-Rationale Gate** (`review/shared_rules.md` + `compose-pr`): removing/replacing long-lived or "legacy" infra requires tracing the origin (`git log --follow`, blame, linked PR/issue) and, when correcting historical drift, stating the original reason in the PR `## Root Cause`.
+- **Deletion-Safety Audit** (`review/judging_core.md`): any removal (files/exports/symbols/behavior) must verify no live references, public-surface cleanup, behavior parity in the replacement, test migration, base comparison, and PR-body disclosure.
+- **Historical-Rationale Gate** (`review/judging_core.md` + `compose-pr`): removing/replacing long-lived or "legacy" infra requires tracing the origin (`git log --follow`, blame, linked PR/issue) and, when correcting historical drift, stating the original reason in the PR `## Root Cause`.
 - **Readiness audit CLI**: [`,kbn-pr-audit`](../../../home/exact_bin/executable_,kbn-pr-audit) is a read-only check (see [Custom commands](../workflow/custom-commands.md)) that surfaces the above drift before a reply/resolve/push cycle; it never mutates GitHub.
 
 ## Related

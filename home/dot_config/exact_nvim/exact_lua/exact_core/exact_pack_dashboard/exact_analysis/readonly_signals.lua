@@ -1,11 +1,18 @@
 local M = {}
 
-local function has_breaking_marker(line)
-  return line:find("breaking change", 1, true)
-    or line:find("breaking:", 1, true)
-    or line:find("!:", 1, true)
-    or line:match("%f[%w]break:")
-    or line:match("%f[%w]break%([^)]*%):")
+-- `text` is the original-case line. Per Conventional Commits, the breaking
+-- footer is the UPPERCASE token `BREAKING CHANGE:` (or `BREAKING-CHANGE:`), so
+-- it is matched case-sensitively — lowercase/mixed-case "breaking change" in
+-- prose (e.g. "yazi made a breaking change to the output") is NOT a marker.
+-- The remaining subject-style indicators are matched case-insensitively.
+local function has_breaking_marker(text)
+  local lower = text:lower()
+  return text:find("BREAKING CHANGE", 1, true)
+    or text:find("BREAKING-CHANGE", 1, true)
+    or lower:find("breaking:", 1, true)
+    or lower:find("!:", 1, true)
+    or lower:match("%f[%w]break:")
+    or lower:match("%f[%w]break%([^)]*%):")
 end
 
 local function classify_commit_signals(text)
@@ -24,9 +31,10 @@ local function classify_commit_signals(text)
   end
 
   for _, raw in ipairs(vim.split(text, "\n", { trimempty = true })) do
-    local line = vim.trim(raw):lower()
+    local trimmed = vim.trim(raw)
+    local line = trimmed:lower()
     if line ~= "" then
-      if has_breaking_marker(line) then
+      if has_breaking_marker(trimmed) then
         summary.has_breaking = true
       end
       if line:find("deprecat", 1, true) then

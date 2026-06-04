@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -14,17 +15,43 @@ REPO = Path(__file__).resolve().parents[2]
 HOOKS = REPO / "home" / "exact_dot_agents" / "exact_hooks"
 
 
-def run_hook(name: str, payload: dict) -> dict:
+def run_hook(name: str, payload: dict, env: dict | None = None) -> dict:
     result = subprocess.run(
         [sys.executable, str(HOOKS / name)],
         input=json.dumps(payload),
         capture_output=True,
         text=True,
         cwd=str(REPO),
+        env=env,
     )
     if result.returncode != 0:
         raise AssertionError(f"{name} failed:\nSTDOUT={result.stdout}\nSTDERR={result.stderr}")
     return json.loads(result.stdout or "{}")
+
+
+def make_aikb_stub(directory: Path, rows: list[dict]) -> dict:
+    """Create a fake `,ai-kb` on PATH that returns `rows` for `search --json`.
+
+    Returns an env dict (PATH-prefixed) to pass to run_hook so the
+    session_context warm-start resolves this stub instead of the real CLI.
+    """
+    bindir = directory / "bin"
+    bindir.mkdir(parents=True, exist_ok=True)
+    stub = bindir / ",ai-kb"
+    payload = json.dumps(rows)
+    stub.write_text(
+        "#!/usr/bin/env python3\n"
+        "import json, sys\n"
+        "args = sys.argv[1:]\n"
+        "if args and args[0] == 'search':\n"
+        f"    sys.stdout.write({payload!r})\n"
+        "    sys.exit(0)\n"
+        "sys.exit(0)\n"
+    )
+    stub.chmod(0o755)
+    env = dict(os.environ)
+    env["PATH"] = f"{bindir}{os.pathsep}{env.get('PATH', '')}"
+    return env
 
 
 class TestAgentHooks(unittest.TestCase):
@@ -34,170 +61,6 @@ class TestAgentHooks(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory()
         subprocess.run(["git", "init", "-q", "-b", branch], cwd=tmp.name, check=True)
         return tmp
-
-    def test_evidence_anchor_bounded_followup_for_unanchored_claims(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            base = {
-                "conversation_id": "c1",
-                "generation_id": "g1",
-                "hook_event_name": "afterAgentResponse",
-                "workspace_roots": [tmp],
-                "text": "The Cursor hook setup is ready and it works correctly now.",
-            }
-
-            assert run_hook("executable_evidence_anchor.py", base) == {}
-
-            stop = dict(base, hook_event_name="stop", status="completed", loop_count=0)
-            first = run_hook("executable_evidence_anchor.py", stop)
-            second = run_hook("executable_evidence_anchor.py", stop)
-
-            assert "followup_message" in first
-            assert "Retry:" in first["followup_message"]
-            assert second == {}
-
-    def test_evidence_anchor_allows_claims_with_visible_evidence(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            payload = {
-                "conversation_id": "c1",
-                "generation_id": "g1",
-                "hook_event_name": "afterAgentResponse",
-                "workspace_roots": [tmp],
-                "text": "Verified with `python3 scripts/tests/test_agent_hooks.py`: all tests passed.",
-            }
-
-            assert run_hook("executable_evidence_anchor.py", payload) == {}
-            stop = dict(payload, hook_event_name="stop", status="completed", loop_count=0)
-            assert run_hook("executable_evidence_anchor.py", stop) == {}
-
-    def test_evidence_anchor_rejects_vague_verification_words(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            payload = {
-                "conversation_id": "c1",
-                "generation_id": "g1",
-                "hook_event_name": "afterAgentResponse",
-                "workspace_roots": [tmp],
-                "text": "Verified. The hook setup is correct and ready now.",
-            }
-
-            assert run_hook("executable_evidence_anchor.py", payload) == {}
-            stop = dict(payload, hook_event_name="stop", status="completed", loop_count=0)
-            result = run_hook("executable_evidence_anchor.py", stop)
-            assert "followup_message" in result
-
-    def test_evidence_anchor_allows_explicit_unknown_with_reason(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            payload = {
-                "conversation_id": "c1",
-                "generation_id": "g1",
-                "hook_event_name": "afterAgentResponse",
-                "workspace_roots": [tmp],
-                "text": "The remote billing state is Unknown because it requires live account access that is not available locally.",
-            }
-
-            assert run_hook("executable_evidence_anchor.py", payload) == {}
-            stop = dict(payload, hook_event_name="stop", status="completed", loop_count=0)
-            assert run_hook("executable_evidence_anchor.py", stop) == {}
-
-    def test_evidence_anchor_tracks_claims_from_thoughts(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            payload = {
-                "conversation_id": "c1",
-                "generation_id": "g1",
-                "hook_event_name": "afterAgentThought",
-                "workspace_roots": [tmp],
-                "text": "The config loader uses the user hook file and this is why the setup works.",
-            }
-
-            assert run_hook("executable_evidence_anchor.py", payload) == {}
-            stop = dict(payload, hook_event_name="stop", status="completed", loop_count=0)
-            result = run_hook("executable_evidence_anchor.py", stop)
-            assert "followup_message" in result
-
-    def test_evidence_anchor_records_later_tool_evidence_without_global_clear(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            thought = {
-                "conversation_id": "c1",
-                "generation_id": "g1",
-                "hook_event_name": "afterAgentThought",
-                "workspace_roots": [tmp],
-                "text": "The hook setup loads from the Cursor user hooks file.",
-            }
-            evidence = {
-                "conversation_id": "c1",
-                "generation_id": "g1",
-                "hook_event_name": "postToolUse",
-                "workspace_roots": [tmp],
-                "tool_name": "Read",
-                "tool_input": {"path": "/Users/test/.cursor/hooks.json"},
-                "tool_output": '{"hooks":{"stop":[]}}',
-            }
-
-            assert run_hook("executable_evidence_anchor.py", thought) == {}
-            assert run_hook("executable_evidence_anchor.py", evidence) == {}
-            stop = dict(thought, hook_event_name="stop", status="completed", loop_count=0)
-            result = run_hook("executable_evidence_anchor.py", stop)
-            assert "followup_message" in result
-            assert "The hook setup loads from the Cursor user hooks file." in result["followup_message"]
-
-    def test_evidence_anchor_final_response_replaces_thought_claims(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            thought = {
-                "conversation_id": "c1",
-                "generation_id": "g1",
-                "hook_event_name": "afterAgentThought",
-                "workspace_roots": [tmp],
-                "text": "The hook setup loads from the Cursor user hooks file.",
-            }
-            response = {
-                **thought,
-                "hook_event_name": "afterAgentResponse",
-                "text": (
-                    "Verified: `/Users/test/.cursor/hooks.json` contains the user hook "
-                    "configuration, so the hook setup loads from that file."
-                ),
-            }
-
-            assert run_hook("executable_evidence_anchor.py", thought) == {}
-            assert run_hook("executable_evidence_anchor.py", response) == {}
-            stop = dict(thought, hook_event_name="stop", status="completed", loop_count=0)
-            assert run_hook("executable_evidence_anchor.py", stop) == {}
-
-    def test_evidence_anchor_keeps_unanchored_final_claim_unit(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            payload = {
-                "conversation_id": "c1",
-                "generation_id": "g1",
-                "hook_event_name": "afterAgentResponse",
-                "workspace_roots": [tmp],
-                "text": (
-                    "Verified: `/tmp/probe.txt` shows the hook script ran.\n\n"
-                    "The review findings are complete and the CI flakes are unrelated."
-                ),
-            }
-
-            assert run_hook("executable_evidence_anchor.py", payload) == {}
-            stop = dict(payload, hook_event_name="stop", status="completed", loop_count=0)
-            result = run_hook("executable_evidence_anchor.py", stop)
-            assert "followup_message" in result
-            assert "CI flakes are unrelated" in result["followup_message"]
-
-    def test_evidence_anchor_writes_decision_log(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            payload = {
-                "conversation_id": "c1",
-                "generation_id": "g1",
-                "hook_event_name": "afterAgentResponse",
-                "workspace_roots": [tmp],
-                "text": "The hook setup is correct and ready now.",
-            }
-
-            assert run_hook("executable_evidence_anchor.py", payload) == {}
-            workspace = str(Path(tmp).resolve())
-            decision_log = Path("/tmp/specs") / workspace.lstrip("/") / "current.evidence_decisions.jsonl"
-            entries = [json.loads(line) for line in decision_log.read_text().splitlines()]
-
-            assert entries[-1]["decision"] == "track"
-            assert entries[-1]["reason"] == "unanchored_claim_units"
 
     def test_worklog_recorder_writes_topic_jsonl(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -257,7 +120,7 @@ class TestAgentHooks(unittest.TestCase):
             assert result["hookSpecificOutput"]["hookEventName"] == "SessionStart"
             assert "target: prove context injection" in result["hookSpecificOutput"]["additionalContext"]
 
-    def test_session_context_uses_session_topic_on_default_branch_without_explicit_topic(self):
+    def test_session_context_nudges_topic_on_default_branch_without_explicit_topic(self):
         with self.make_git_workspace("main") as tmp:
             workspace = str(Path(tmp).resolve())
             spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
@@ -271,8 +134,13 @@ class TestAgentHooks(unittest.TestCase):
                 "workspace_roots": [tmp],
             }
             result = run_hook("executable_session_context.py", payload)
+            context = result["additional_context"]
 
-            assert result == {}
+            assert "stale shared main context" not in context
+            assert "stale" not in context
+            assert "No Named Topic Active" in context
+            assert ",agent-memory use" in context
+            assert ",ai-kb search" in context
 
     def test_worklog_recorder_uses_session_topic_on_default_branch_without_explicit_topic(self):
         with self.make_git_workspace("main") as tmp:
@@ -380,6 +248,116 @@ class TestAgentHooks(unittest.TestCase):
             assert "verdict: Approve" not in context
             assert "Recent Hook Worklog" not in context
             assert "review clean-room mode" in context
+
+    def test_session_context_appends_aikb_reminder_with_named_topic(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir.mkdir(parents=True, exist_ok=True)
+            (spec_dir / "_active_topic.txt").write_text("memory-systems\n")
+            (spec_dir / "memory-systems.txt").write_text("target: wire memory systems\n")
+
+            payload = {
+                "hook_event_name": "sessionStart",
+                "workspace_roots": [tmp],
+            }
+            context = run_hook("executable_session_context.py", payload)["additional_context"]
+
+            assert "target: wire memory systems" in context
+            assert "Durable Memory (,ai-kb)" in context
+            assert ",ai-kb remember" in context
+            assert "No Named Topic Active" not in context
+
+    def test_session_context_warmstart_injects_relevant_learnings_for_named_topic(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir.mkdir(parents=True, exist_ok=True)
+            (spec_dir / "_active_topic.txt").write_text("memory-systems\n")
+            (spec_dir / "memory-systems.txt").write_text("target: wire memory systems\n")
+
+            env = make_aikb_stub(
+                Path(tmp),
+                [
+                    {
+                        "title": "Local capsule that should surface",
+                        "body": "B" * 400,
+                        "kind": "gotcha",
+                        "scope": "project",
+                        "workspace_path": workspace,
+                    }
+                ],
+            )
+            payload = {"hook_event_name": "sessionStart", "workspace_roots": [tmp]}
+            context = run_hook("executable_session_context.py", payload, env=env)["additional_context"]
+
+            assert "### Relevant Learnings (,ai-kb)" in context
+            assert "Local capsule that should surface" in context
+            assert "(gotcha)" in context
+            assert "…" in context  # body truncated to the bound
+
+    def test_session_context_warmstart_gates_out_unrelated_workspace_project_capsule(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir.mkdir(parents=True, exist_ok=True)
+            (spec_dir / "_active_topic.txt").write_text("memory-systems\n")
+            (spec_dir / "memory-systems.txt").write_text("target: wire memory systems\n")
+
+            env = make_aikb_stub(
+                Path(tmp),
+                [
+                    {
+                        "title": "Foreign project capsule",
+                        "body": "from another repo",
+                        "kind": "gotcha",
+                        "scope": "project",
+                        "workspace_path": "/some/other/repo",
+                    },
+                    {
+                        "title": "Universal principle capsule",
+                        "body": "applies everywhere",
+                        "kind": "principle",
+                        "scope": "universal",
+                        "workspace_path": "/some/other/repo",
+                    },
+                ],
+            )
+            payload = {"hook_event_name": "sessionStart", "workspace_roots": [tmp]}
+            context = run_hook("executable_session_context.py", payload, env=env)["additional_context"]
+
+            assert "Foreign project capsule" not in context  # other-workspace project scope: gated out
+            assert "Universal principle capsule" in context  # universal scope: allowed cross-project
+
+    def test_session_context_warmstart_skipped_for_generic_and_session_topics(self):
+        with self.make_git_workspace("main") as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir.mkdir(parents=True, exist_ok=True)
+            # No named pointer on a default branch -> session-* fallback; seed a session spec too.
+            (spec_dir / "current.txt").write_text("target: generic fallback\n")
+
+            env = make_aikb_stub(
+                Path(tmp),
+                [
+                    {
+                        "title": "Should never surface for generic topic",
+                        "body": "noise",
+                        "kind": "gotcha",
+                        "scope": "universal",
+                        "workspace_path": workspace,
+                    }
+                ],
+            )
+            payload = {
+                "conversation_id": "abc-123",
+                "hook_event_name": "sessionStart",
+                "workspace_roots": [tmp],
+            }
+            context = run_hook("executable_session_context.py", payload, env=env)["additional_context"]
+
+            assert "### Relevant Learnings (,ai-kb)" not in context
+            assert "Should never surface" not in context
 
 
 if __name__ == "__main__":

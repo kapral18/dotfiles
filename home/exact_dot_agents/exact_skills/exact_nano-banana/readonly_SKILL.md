@@ -57,6 +57,20 @@ Invalid `-a`/`-s` values return a clean `ERROR: API call failed (400)` and write
 - Text-to-image only: no input image, no editing/inpainting.
 - One image per invocation.
 
+## Troubleshooting `ERROR: no image in response`
+
+This fires only when the API returns HTTP 200 but no candidate part carries image bytes (HTTP/network errors hit different `ERROR:` branches). The message includes the API's own reason when present, e.g. `(blockReason=PROHIBITED_CONTENT)`, `(finishReason=IMAGE_SAFETY)`, or a truncated text reply — that is the signal for whether it was a content/safety block vs. a text-only reply.
+
+**Text-only replies are mitigated automatically.** The CLI prefixes every request to the API with `Generate an image of:` because the image model otherwise treats bare/ambiguous prompts (e.g. `elastic`) as questions and answers in text (`finishReason=STOP`, no image). This prefix only affects the API request — the output filename slug is still derived from your raw prompt. The model is still nondeterministic, so a `finishReason=STOP` text reply remains possible; re-running usually succeeds.
+
+For the full picture, set `NANOBANANA_DEBUG=1` to dump the raw JSON response to **stderr** (stdout still prints only the file path, so composability is preserved):
+
+```bash
+NANOBANANA_DEBUG=1 ,nano-banana "PROMPT" 2>/tmp/nb-debug.json
+```
+
+Then inspect `promptFeedback.blockReason`, `candidates[].finishReason`, and `candidates[].safetyRatings`. Common 200-no-image causes: safety/policy block (`SAFETY`, `IMAGE_SAFETY`, `PROHIBITED_CONTENT`, `RECITATION`), a text-only reply (the model declined in words), or empty `candidates` with a `promptFeedback.blockReason`.
+
 ## Notes
 
 - No external dependencies (stdlib Python over the REST API).

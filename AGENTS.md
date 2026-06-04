@@ -193,30 +193,29 @@ Home SOPs are installed into `$HOME` by chezmoi and are intentionally split into
 - Entrypoints: small files defining global rules + triggers (e.g. `~/AGENTS.md`).
 - Modules: skills (`~/.agents/skills/`) are referenced by the entrypoints.
 
-**Source-of-truth (edit these in this repo, not in `$HOME`):**
+**Source-of-truth (edit this one file; the rest are symlinks to it):**
 
-- Entrypoints:
-  - `home/readonly_AGENTS.md` -> `~/AGENTS.md`
-  - `home/readonly_CLAUDE.md` -> `~/CLAUDE.md`
-  - `home/dot_gemini/readonly_GEMINI.md` -> `~/.gemini/GEMINI.md`
+- Single SOP source:
+  - `home/readonly_AGENTS.md` -> `~/AGENTS.md` (the one real SOP file — edit this)
+- Symlinks to `~/AGENTS.md` (do not edit; they resolve to the SOP):
+  - `home/symlink_CLAUDE.md` -> `~/CLAUDE.md` (target `AGENTS.md`)
+  - `home/dot_gemini/symlink_GEMINI.md` -> `~/.gemini/GEMINI.md` (target `../AGENTS.md`)
+  - `home/dot_cursor/symlink_AGENTS.md` -> `~/.cursor/AGENTS.md` (target `../AGENTS.md`)
+  - `home/dot_config/opencode/symlink_AGENTS.md` -> `~/.config/opencode/AGENTS.md` (target `../../AGENTS.md`)
 - Modules:
   - `home/exact_dot_agents/exact_skills/` -> `~/.agents/skills/`
 
-**OpenCode wiring:**
-
-- `home/dot_config/opencode/symlink_AGENTS.md` -> `~/.config/opencode/AGENTS.md` (symlink target `../../AGENTS.md`)
-
 **Rules:**
 
-1. Do not edit the rendered `$HOME` files directly; edit the corresponding `home/...` source file in this repo.
-2. If an entrypoint references a path under `~/.agents/skills/`, keep the corresponding file under `home/exact_dot_agents/` in sync.
-3. Keep OpenCode/Claude/Gemini entrypoints aligned for shared rules; keep tool-specific differences explicit.
+1. Edit only `home/readonly_AGENTS.md`. Claude, Gemini, Cursor, and OpenCode entrypoints are symlinks to `~/AGENTS.md`, so the SOP is identical across all harnesses by construction — there is no longer a "keep three files in sync" step.
+2. Do not edit the rendered `$HOME` files directly; edit `home/readonly_AGENTS.md` in this repo.
+3. If an entrypoint references a path under `~/.agents/skills/`, keep the corresponding file under `home/exact_dot_agents/` in sync.
 
 **Workflow:**
 
-1. Edit the relevant `home/...` source files.
+1. Edit `home/readonly_AGENTS.md`.
 2. Review rendered changes with `chezmoi diff`.
 3. Apply locally with `chezmoi apply`.
 4. Verify:
    - `~/AGENTS.md` contains the expected changes
-   - `~/.config/opencode/AGENTS.md` still points at `~/AGENTS.md` (symlink)
+   - `~/CLAUDE.md`, `~/.gemini/GEMINI.md`, and `~/.config/opencode/AGENTS.md` are symlinks resolving to `~/AGENTS.md`

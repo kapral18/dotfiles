@@ -76,9 +76,28 @@ local function repo_to_compare_url(repo_url, from_ref, to_ref)
   return nil
 end
 
+local function repo_to_commit_url(repo_url, hash)
+  if type(repo_url) ~= "string" or repo_url == "" then
+    return nil
+  end
+  if type(hash) ~= "string" or not hash:match("^%x%x%x%x%x%x%x+$") then
+    return nil
+  end
+
+  local host, owner, repo = repo_url:match("^https://([^/]+)/([^/]+)/([^/]+)$")
+  if not host or not owner or not repo then
+    return nil
+  end
+  if host == "github.com" or host == "codeberg.org" then
+    return ("%s/commit/%s"):format(repo_url, hash)
+  end
+  return nil
+end
+
 M.parse_source_coordinates = parse_source_coordinates
 M.source_to_compare_url = source_to_compare_url
 M.source_to_repo_url = source_to_repo_url
 M.repo_to_compare_url = repo_to_compare_url
+M.repo_to_commit_url = repo_to_commit_url
 
 return M

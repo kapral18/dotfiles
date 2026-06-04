@@ -15,7 +15,7 @@ You are a review subagent running in an isolated context. Inspect the repository
 Load and follow `~/.agents/skills/review/SKILL.md` (the review router) end to end for methodology:
 
 - Route to the correct mode (local changes, PR review, or PR fix) per the router's intent + evidence rules, and use that mode's finding shape.
-- Load `~/.agents/skills/review/references/shared_rules.md` once, plus the mode file (and `pr_common.md` for PR modes). Apply the coverage checklist, base-context gate, and Deduplication + Truth Filter.
+- Load `~/.agents/skills/review/references/judging_core.md` (judging engine) and `~/.agents/skills/review/references/shared_rules.md` once, plus the mode file (and `pr_common.md` for PR modes). Apply the coverage checklist + post-review lens (judging_core), base-context gate (shared_rules), and Deduplication + Truth Filter.
 - If base-branch context is needed, also follow `~/.agents/skills/semantic-code-search/SKILL.md` (run `list_indices` first).
 
 Hard constraints for delegated review:

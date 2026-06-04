@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (57).
+%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (58).
 %% Skills → ~/.agents/skills/ (intent-routed SKILL.md). Hooks → ~/.agents/hooks/.
 %% ============================================================================
 flowchart TB
@@ -10,22 +10,21 @@ flowchart TB
 
     subgraph HOOKS["exact_hooks/ → ~/.agents/hooks/"]
         HC["hook_common.py (shared lib) · readonly_README.md (state model)"]:::hook
-        SCx["session_context.py (sessionStart: inject active topic spec)"]:::hook
+        SCx["session_context.py (sessionStart: inject verification prefix.txt;<br/>inject active topic spec; nudge named topic on shared branch;<br/>,ai-kb recall/remember reminder;<br/>named-topic warm-start: read-only ,ai-kb search → Relevant Learnings)"]:::hook
         WLx["worklog_recorder.py (afterShell/postToolUse/Failure/afterFileEdit)"]:::hook
-        EVx["evidence_anchor.py (afterAgentResponse/stop: claim ledger)"]:::hook
         PRG["gemini-pr-anchor-gate.sh (beforeShell: gh api pulls/.../reviews|comments)"]:::hook
         GG["gemini-git-gate.sh (beforeShell: git commit|push) — failClosed"]:::hook
     end
 
-    MEM[("/tmp/specs/<pwd>/<topic>.txt + .worklog.jsonl<br/>+ .evidence_state.json + .evidence_decisions.jsonl<br/>review topics → clean-room; default branch → session-<id>")]:::data
+    MEM[("/tmp/specs/<pwd>/<topic>.txt + .worklog.jsonl<br/>review topics → clean-room; default branch → session-<id>")]:::data
     SCx <--> MEM
     WLx --> MEM
-    EVx --> MEM
 
     KBDB[("~/.local/share/ai-kb/ (durable capsules)<br/>SQLite FTS5 + sqlite-vec · markdown sidecars<br/>shared: Ralph + cursor-cli + pi")]:::data
+    SCx -. "named-topic warm-start (read-only)" .-> KBDB
 
     subgraph CORE["Core workflow skills"]
-        S1["review/ (SKILL + references: local_changes, pr_common,<br/>pr_fix, pr_review, shared_rules)"]:::skill
+        S1["review/ (SKILL + references: judging_core [surface-agnostic engine:<br/>coverage, severity, gates, post-review 4-dim lens], local_changes,<br/>pr_common, pr_fix, pr_review, shared_rules)<br/>light-review/ (proportional-depth in-place audit; loads judging_core)"]:::skill
         S2["git/ · github/ · worktrees/ · compose-pr/ · compose-issue/<br/>communication/ (centralized tone/style; referenced by other skills)"]:::skill
         S3["walkthrough/ · interview-me/ · research/ · standup/<br/>present-pr/ (+refs: authoring.md, template.html)"]:::skill
         S1 --> R1["exact_references/*.md"]:::ref
@@ -53,5 +52,5 @@ flowchart TB
     SOPS --> CORE & IMPROVE & TOOLS & KBN & META
     S7 <--> KBDB
 
-    SUBA["Skill-backed subagents (isolated child context; see 12)<br/>~/.claude/agents/ (Claude) · ~/.pi/agent/agents/ (Pi); Cursor excluded<br/>Pi review-controller fans out to reviewer workers (openrouter opus:off + gpt-5.5:xhigh) → acts<br/>wrappers: reviewer→review · researcher→research · code-searcher→semantic-code-search"]:::data
+    SUBA["Skill-backed subagents (isolated child context; see 12)<br/>~/.claude/agents/ (Claude) · ~/.pi/agent/agents/ (Pi); Cursor excluded<br/>Pi review-controller fans out to reviewer workers (openrouter opus:off + gpt-5.5:xhigh) → acts<br/>wrappers: reviewer→review · post-review→review(judging_core 4-dim) · change-auditor→light-review<br/>researcher→research · code-searcher→semantic-code-search"]:::data
     SUBA -.->|"wraps (skill = source of truth)"| S1 & S3 & S5

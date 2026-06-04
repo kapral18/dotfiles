@@ -66,7 +66,7 @@ Hybrid retrieval is BM25 + sqlite-vec (cosine) fused with RRF and diversified wi
 
 ## Elastic-gated `/review` skill
 
-For workspaces whose `git remote -v` includes an `elastic/<repo>` URL, the reviewer and re-reviewer roles invoke the operator's [`review` skill](../exact_review) as the primary instruction (`shared_rules.md` + `local_changes.md` rendered into a `## REVIEW SKILL HEURISTICS (elastic)` preamble before `## SPEC`). The role's existing JSON output contract is preserved as the wire format — the skill drives _how_ to verify, the JSON dictates _what_ to emit. Detection lives in `is_elastic_workspace()` in `scripts/ralph.py`; non-elastic workspaces are unchanged. Override via `RALPH_REVIEW_SKILL_DIR=<path>`; degrades silently to the default review path when the skill files are missing.
+For workspaces whose `git remote -v` includes an `elastic/<repo>` URL, the reviewer and re-reviewer roles invoke the operator's [`review` skill](../exact_review) as the primary instruction (`judging_core.md` + `shared_rules.md` + `local_changes.md` rendered into a `## REVIEW SKILL HEURISTICS (elastic)` preamble before `## SPEC`). The role's existing JSON output contract is preserved as the wire format — the skill drives _how_ to verify, the JSON dictates _what_ to emit. Detection lives in `is_elastic_workspace()` in `scripts/ralph.py`; non-elastic workspaces are unchanged. Override via `RALPH_REVIEW_SKILL_DIR=<path>`; degrades silently to the default review path when the skill files are missing.
 
 Local models (llama-cpp/qwen) are opt-in only; defaults never depend on `,llama-cpp serve` being up. Swap them in by editing `roles.json`.
 

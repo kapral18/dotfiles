@@ -66,6 +66,16 @@ def session_topic(payload: dict[str, Any]) -> str:
     return DEFAULT_TOPIC
 
 
+def is_session_topic(topic: str) -> bool:
+    """A per-session fallback key produced by session_topic()."""
+    return topic.startswith("session-")
+
+
+def is_named_topic(topic: str) -> bool:
+    """A deliberate named topic: not the generic fallback, not a per-session key."""
+    return topic != DEFAULT_TOPIC and not is_session_topic(topic)
+
+
 def current_git_branch(workspace: Path) -> str:
     try:
         result = subprocess.run(

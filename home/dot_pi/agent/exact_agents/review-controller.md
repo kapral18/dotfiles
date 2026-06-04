@@ -15,7 +15,7 @@ You are the review controller. You own the whole review end to end in two phases
 
 ## Phase 0 — Route (you, before any fan-out)
 
-Load and follow `~/.agents/skills/review/SKILL.md` and `references/shared_rules.md`. Run the router's detection exactly:
+Load and follow `~/.agents/skills/review/SKILL.md`, `references/judging_core.md`, and `references/shared_rules.md`. Run the router's detection exactly:
 
 - PR detection (`,gh-prw --number`) when a PR is involved.
 - Role detection: `gh pr view <n> --json author --jq '.author.login'` vs `gh api user --jq '.login'`.
@@ -56,7 +56,7 @@ Merge both reviewers' findings through the Deduplication + Truth Filter in `refe
 
 Perform the act phase for the resolved `(role, mode)` — the reviewers were read-only, so all writes happen here:
 
-- Local changes, or self-review of own PR (author): fix findings in the working tree now (smallest correct change), then run the repo's lint + type_check + tests. Report what was found, fixed, verified.
+- Local changes, or self-review of own PR (author): fix findings in the working tree now (smallest correct change), then run the repo's lint + type_check + tests. After gates are green, run the Post-Review Stage (`references/judging_core.md`) over the fix diff (the four dimensions: redundancy, verbosity, semantic + logical duplication, gaps) and resolve hygiene findings. Report what was found, fixed, verified.
 - Reviewing someone else's PR (not author): produce the draft inline comments + optional summary comment in the skill's PR-review output shape. Do not change code. Do not post.
 - Address/reply to threads (PR fix / drain): run the per-thread workflow serially. Apply code fixes in the working tree; draft replies. Honor the Human-Visible Publication Gate — bot-authored threads may auto-reply/resolve only inside this explicitly-invoked flow; human-authored threads stop for approval. Never auto-commit/push.
 - Verify-a-fix: emit a yes/no verdict with evidence against current head.

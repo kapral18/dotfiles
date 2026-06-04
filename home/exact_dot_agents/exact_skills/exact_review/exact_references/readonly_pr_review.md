@@ -3,7 +3,7 @@
 Precondition:
 
 - You already loaded `~/.agents/skills/review/SKILL.md`.
-- Follow `~/.agents/skills/review/references/shared_rules.md` (loaded once by the router; do not re-load).
+- Follow `~/.agents/skills/review/references/judging_core.md` and `~/.agents/skills/review/references/shared_rules.md` (loaded once by the router; do not re-load).
 - Follow `~/.agents/skills/review/references/pr_common.md` for PR setup, media evidence, comment placement, anchoring, deep links, and local verification.
 
 Use when:
@@ -21,8 +21,8 @@ Out of scope:
 
 Check Role Detection from the router (`SKILL.md`):
 
-- **Reviewing others (user is not the author):** standard review — draft comments/suggestions. Do not change code.
-- **Self-review (user is the author):** find issues and fix them in the working tree immediately (same as local changes mode). Draft review comments only if the user explicitly wants self-review notes to post.
+- **Reviewing others (user is not the author):** standard review — draft comments/suggestions. Do not change code. The Post-Review Lens (`judging_core.md`) still applies to the PR diff: surface redundancy / verbosity / semantic + logical duplication / gaps as findings, read-only.
+- **Self-review (user is the author):** find issues and fix them in the working tree immediately (same as local changes mode). After your fixes pass quality gates, run the Post-Review Stage (`judging_core.md`) over the fix diff. Draft review comments only if the user explicitly wants self-review notes to post.
 
 ## Complete Pass Before Drafting (Do Not Skip)
 

@@ -3,7 +3,7 @@
 Precondition:
 
 - You already loaded `~/.agents/skills/review/SKILL.md`.
-- Follow `~/.agents/skills/review/references/shared_rules.md` (loaded once by the router; do not re-load).
+- Follow `~/.agents/skills/review/references/judging_core.md` and `~/.agents/skills/review/references/shared_rules.md` (loaded once by the router; do not re-load).
 
 Use when:
 
@@ -59,7 +59,7 @@ Follow the base-branch context gate in `shared_rules.md`. This is mandatory.
 
 ## Verify-and-Fix Workflow
 
-1. **Build findings queue**: walk the entire diff against the coverage checklist (shared_rules.md). Order by severity (CRITICAL first).
+1. **Build findings queue**: walk the entire diff against the coverage checklist (judging_core.md). Order by severity (CRITICAL first).
 
 2. **For each finding** (highest severity first):
    a. State what's wrong and why it matters (1-2 lines).
@@ -71,11 +71,14 @@ Follow the base-branch context gate in `shared_rules.md`. This is mandatory.
    - Run lint + type_check + tests (discover correct commands from the repo; do not guess).
    - If checks fail, diagnose and fix. Repeat until green or report what remains broken and why.
 
-4. **Summary**: after all findings are processed, output a concise summary:
+4. **Post-review stage** (after quality gates are green): run the Post-Review Stage in `judging_core.md` over the **fix diff** (`git diff` for the changes this pass made — not the original diff). Apply the four dimensions (redundancy, verbosity, semantic + logical duplication, gaps), resolve each finding in the working tree, and re-run quality gates if the post-review fixes touched code.
+
+5. **Summary**: after all findings are processed, output a concise summary:
    - `Base context:` line (see shared_rules.md)
    - Findings: what was found, what was fixed, what was verified
    - Remaining: anything that could not be fixed (and why)
    - Quality gates: what was run, pass/fail
+   - Post-review: hygiene findings on the fix diff and how they were resolved
 
 ### Iterative mode (when the user asks for one-at-a-time)
 
@@ -83,6 +86,7 @@ If the user says "one at a time" or "step by step":
 
 - Process exactly one finding per turn: state it, verify it, fix it, run quality gates.
 - Stop and wait for the user before the next finding.
+- Run the post-review stage (step 4) once, after the last finding is resolved.
 
 ## Extra Constraints
 

@@ -31,7 +31,7 @@ flowchart TB
     end
 
     subgraph PI["Pi agent (dot_pi/agent/)"]
-        PIA["readonly_settings.work.json · readonly_settings.personal.json<br/>extensions/rtk.ts (tool_call → rtk rewrite)<br/>packages: pi-skills · pi-mcp-adapter · pi-subagents (yarn node_modules)<br/>subagents.disableBuiltins:true · exact_agents/ → ~/.pi/agent/agents/<br/>readonly_models.json (← generate_pi_models.py) · llama-cpp local + local-max<br/>openrouter anthropic/claude-opus-4.8 default; hook 07-merge-pi-config"]:::gem
+        PIA["readonly_settings.work.json · readonly_settings.personal.json<br/>extensions/rtk.ts (tool_call → rtk rewrite)<br/>extensions/ai-kb-recall.ts (before_agent_start → ,agent-memory status --json<br/>+ ,ai-kb search; session-start verification prefix.txt + warm-start parity<br/>+ per-turn prompt-query recall)<br/>packages: pi-skills · pi-mcp-adapter · pi-subagents (yarn node_modules)<br/>subagents.disableBuiltins:true · exact_agents/ → ~/.pi/agent/agents/<br/>readonly_models.json (← generate_pi_models.py) · llama-cpp local + local-max<br/>openrouter anthropic/claude-opus-4.8 default; hook 07-merge-pi-config"]:::gem
     end
 
     subgraph OTHER["Other terminal assistants"]
@@ -45,6 +45,6 @@ flowchart TB
     RTK[["RTK token layer (brew rtk; recoverable index)<br/>Library/Application Support/rtk/config.toml<br/>exclude gh pr view|checks + git diff|show · tee mode=always · telemetry off<br/>recovery contract: ~/CLAUDE.md §2.4"]]:::codex
     RTK -.->|"rtk hook / rtk rewrite"| CURSOR & CLAUDE & GEMINI & OPENCODE & PI
 
-    SUBA[["Skill-backed subagents (isolated child context)<br/>review-controller (Pi): fan-out openrouter opus:off + gpt-5.5:xhigh → reconcile → act<br/>reviewer→review (read-only worker) · researcher→research · code-searcher→semantic-code-search<br/>skills stay the source of truth; Cursor excluded (project-only .cursor/agents/)"]]:::claude
+    SUBA[["Skill-backed subagents (isolated child context)<br/>review-controller (Pi): fan-out openrouter opus:off + gpt-5.5:xhigh → reconcile → act<br/>reviewer→review (read-only worker) · post-review→review (judging_core 4-dim on fix diff)<br/>change-auditor→light-review (proportional in-place audit)<br/>researcher→research · code-searcher→semantic-code-search<br/>skills stay the source of truth; Cursor excluded (project-only .cursor/agents/)"]]:::claude
     SUBA -.->|"~/.claude/agents/ (Claude; single reviewer, main session acts)"| CLAUDE
     SUBA -.->|"~/.pi/agent/agents/ (Pi; hierarchy; builtins disabled)"| PI

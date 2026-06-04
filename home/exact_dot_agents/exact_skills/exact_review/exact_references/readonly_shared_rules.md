@@ -2,6 +2,8 @@
 
 All review modes load this file. Do not duplicate these rules in mode files.
 
+The surface-agnostic judging engine lives in `~/.agents/skills/review/references/judging_core.md` (Truth Validation, State-Machine Gate, Deletion-Safety, Historical-Rationale, Coverage Checklist, Severity, and the Post-Review Lens + Stage). Load it alongside this file. This file carries only the PR/SCSI/GitHub-delivery rules layered on top of that core.
+
 ## Read-Only Probes
 
 - Start read-only investigation immediately. Do not ask for confirmation before read-only `git`/`gh` checks.
@@ -67,68 +69,6 @@ Goal: compare the diff against how base (usually `main`) works today.
     - `user-selected none`
 - This line is reviewer metadata for the assistant's output. Do not include it in GitHub comment bodies.
 
-## Truth Validation Framework
-
-Use in every non-trivial review.
-
-- Treat every claim as a hypothesis until verified.
-- Establish base invariants first (SCSI when indexed; otherwise `git show <base>:<path>` + local `rg`).
-- Validate PR/branch reality second (local diff + file reads).
-- When evaluating a proposed change (review suggestion / reviewer request):
-  - prefer the smallest reproduction in `/tmp` when possible
-  - otherwise run the smallest safe experiment in the worktree
-- If you changed code as part of an iteration cycle, re-run the repo's quality gates:
-  - lint + type_check + tests (discover the correct commands from the repo; do not guess).
-- Keep an evidence log per comment/thread: what base does, what changed, what you tested, and what you observed.
-
-## State-Machine Verification Gate
-
-Use for any reviewed behavior that is stateful, parser-like, branch-heavy, or dependent on ordered conditions: parsers, tokenizers, formatters, routing/matching logic, retry/workflow loops, permission matrices, compatibility-sensitive branching, or multi-flag control flow.
-
-- Before saying the change is final, merge-ready, or a review concern is resolved, build or inspect a disposable harness under `/tmp/state-machine-verification/<pwd>/<topic>/<slug>/`.
-- The harness must include a `manifest.json` with worktree path, topic, slug, target files/symbols, branch name, base/head refs when relevant, requested behavior, and compatibility intent.
-- Model states, transitions, inputs, and terminal actions explicitly. Cover existing behavior buckets, requested behavior, boundary/malformed inputs, and regression-sensitive examples.
-- Compare the implementation against an independent model/state table, not just itself. When behavior should be preserved, compare against base and classify each difference as intended or unexpected.
-- In review-only PR mode for someone else's work, keep code read-only; use the harness to verify claims when safe, and surface missing or inadequate state-machine coverage as a test gap when risk remains.
-
-## Deletion-Safety Audit (Run On Any Removal)
-
-Trigger: the diff deletes files, exports, symbols, or behavior (`git diff --diff-filter=D --stat`, removed `export`s, deleted functions/branches). Before calling a deletion safe, verify each and report a one-line deletion ledger:
-
-- **No live references:** `rg` the deleted symbol/file/path across the repo and public barrels/index files; confirm zero live importers/callers.
-- **Public surface:** deleted exports are removed from barrels and are not part of a published package entry point still consumed downstream.
-- **Behavior parity:** every behavior the deleted code provided is either intentionally dropped (user-approved per SOP `2.0`) or demonstrably replaced — name where each replaced behavior now lives.
-- **Tests:** deleted tests were migrated, or removed only because the code they covered is gone; coverage for surviving behavior still exists.
-- **Base comparison:** for branch-heavy/stateful deletions, compare against base behavior buckets (see State-Machine Verification Gate) and classify each difference as intended or unexpected.
-- **Disclosure:** meaningful deleted infrastructure is reflected in the PR description (Summary/Fix), not silently dropped.
-
-## Historical-Rationale Gate (Deleting/Replacing Long-Lived Infra)
-
-Trigger: removing or replacing a custom/legacy stack, a helper that predates current infra, or anything called "obsolete"/"legacy"/"why does this exist". Understand the origin before the removal is final.
-
-- **Trace origin:** `git log --follow --oneline -- <path>` and `git blame <base> -- <path>` (or `git log -L` for a function) to find the introducing commit(s).
-- **Link intent:** open the offending PR(s)/issue(s) (`gh pr view`, `gh issue view`) to learn the original reason.
-- **Classify:** was the behavior being removed (a) the original intended purpose, or (b) drift/side effect that later infra made obsolete?
-- **Decide narrative:** if removal corrects historical drift, the PR `## Root Cause` must state the original reason and why it no longer applies. If it removes still-needed behavior, stop — that is not a safe deletion.
-
-## Coverage Checklist (Do Not Skip)
-
-- security issues
-- logic/correctness/invariants
-- data-loss risk
-- performance regressions
-- test gaps (especially risky changes without tests)
-- documentation gaps
-- maintainability/complexity
-- true nits
-
-## Severity Definitions (Internal Only; Do Not Prefix Comments With These)
-
-- CRITICAL: security vulnerability, data loss/corruption, authz/authn bypass, crash, or unsafe migration.
-- HIGH: user-visible bug, broken invariant, serious performance regression, or high operational risk.
-- MEDIUM: maintainability risk, unclear behavior, missing tests for a risky change, or non-trivial tech debt.
-- LOW: small improvements, clarity, naming/style consistency (true nits).
-
 ## Draft Style (Public-Ready)
 
 - Tone, concision, and the "replying to someone's response" triage pattern are centralized in `~/.agents/skills/communication/SKILL.md` — follow it for all comment/reply/description wording. The rules below are review-specific additions only.
@@ -172,7 +112,7 @@ State the recommendation and the reason (e.g. "Verdict: request changes — the 
 The internal findings queue and review progress are ephemeral by default. Survive conversation pruning by reusing the existing hook-managed memory system — do not invent a parallel store:
 
 - Convention: `/tmp/specs/<pwd>/` from the parent SOP. Topic key: `review-<pr-number>` for PR modes (else `review`).
-- The agent-owned intent file is `<topic>.txt`. The hook system additionally maintains `<topic>.worklog.jsonl`, `<topic>.evidence_state.json`, and `<topic>.evidence_decisions.jsonl`. Inspect state with `,agent-memory status` (resolves the active topic and lists the files).
+- The agent-owned intent file is `<topic>.txt`. The hook system additionally maintains `<topic>.worklog.jsonl`. Inspect state with `,agent-memory status` (resolves the active topic and lists the files).
 - On the first turn of a PR flow, check for the spec file and resume from it. After each thread/finding, append to `<topic>.txt` so the loop is resumable:
   - findings/threads: `comment_id`, author-type (`human`|`bot`), severity, file:line, one-line description, status (`open`|`fixed`|`dismissed`|`resolved`|`awaiting-approval`)
   - decision + evidence per thread (what base does, what changed, what was tested)

@@ -18,7 +18,7 @@ command -v agent
 agent --help
 ```
 
-Cursor CLI is the primary interactive assistant harness. Its user-level hooks (session context, worklog, evidence ledger) make up the hook-memory layer — documented in [Agent memory](knowledge-base.md).
+Cursor CLI is the primary interactive assistant harness. Its user-level hooks (session context, worklog) make up the hook-memory layer — documented in [Agent memory](knowledge-base.md).
 
 ### Tmux agent prompt wrap
 
@@ -29,6 +29,8 @@ When running an AI coding agent (`claude`, `cursor-agent`, or `pi`) inside tmux,
 - **Prefix text:** [`home/dot_config/exact_tmux/agent_prompts/prefix.txt`](../../../home/dot_config/exact_tmux/agent_prompts/prefix.txt)
 
 Plain `Enter` is never touched. `Alt-Enter` is passed through untouched in non-agent panes or when the toggle is OFF.
+
+The same `prefix.txt` is **also injected automatically at session start** for all three harnesses (so the discipline is present without `Alt-Enter`): `session_context.py` injects it at `sessionStart` for `cursor-agent` and `claude`, and `ai-kb-recall.ts` injects it at the first `before_agent_start` for `pi` (see [Agent memory](knowledge-base.md)). The `Alt-Enter` wrap remains the way to prepend it to a specific prompt as a direct user message (stronger framing than session-level context).
 
 ## Profile-based file merging
 

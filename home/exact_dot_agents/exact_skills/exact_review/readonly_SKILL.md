@@ -14,7 +14,7 @@ Contract:
   - `~/.agents/skills/review/references/local_changes.md`
   - `~/.agents/skills/review/references/pr_review.md`
   - `~/.agents/skills/review/references/pr_fix.md`
-- Always load `~/.agents/skills/review/references/shared_rules.md` once before entering any mode. Mode files reference shared rules but do not re-load them.
+- Always load `~/.agents/skills/review/references/judging_core.md` (the surface-agnostic judging engine) and `~/.agents/skills/review/references/shared_rules.md` (PR/SCSI/GitHub-delivery rules) once before entering any mode. Mode files reference both but do not re-load them.
 - For PR modes, also load `~/.agents/skills/review/references/pr_common.md` once.
 - Load secondary skills only when this router or the selected mode requires them (for example: semantic code search for base context, or GitHub workflow when the user explicitly asks to post).
 - Do not invoke the `github` skill for read-only PR inspection/review. Only invoke it (via the Skill tool) when the user explicitly asks to post/submit anything to GitHub.

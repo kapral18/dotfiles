@@ -17,19 +17,11 @@
       {
         "command": "$HOME/.agents/hooks/worklog_recorder.py",
         "timeout": 10
-      },
-      {
-        "command": "$HOME/.agents/hooks/evidence_anchor.py",
-        "timeout": 10
       }
     ],
     "postToolUse": [
       {
         "command": "$HOME/.agents/hooks/worklog_recorder.py",
-        "timeout": 10
-      },
-      {
-        "command": "$HOME/.agents/hooks/evidence_anchor.py",
         "timeout": 10
       }
     ],
@@ -37,29 +29,12 @@
       {
         "command": "$HOME/.agents/hooks/worklog_recorder.py",
         "timeout": 10
-      },
-      {
-        "command": "$HOME/.agents/hooks/evidence_anchor.py",
-        "timeout": 10
       }
     ],
     "afterFileEdit": [
       {
         "command": "$HOME/.agents/hooks/worklog_recorder.py",
         "timeout": 10
-      }
-    ],
-    "afterAgentResponse": [
-      {
-        "command": "$HOME/.agents/hooks/evidence_anchor.py",
-        "timeout": 10
-      }
-    ],
-    "stop": [
-      {
-        "command": "$HOME/.agents/hooks/evidence_anchor.py",
-        "timeout": 10,
-        "loop_limit": 2
       }
     ],
     "beforeShellExecution": [

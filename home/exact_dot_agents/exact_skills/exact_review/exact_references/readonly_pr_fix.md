@@ -3,7 +3,7 @@
 Precondition:
 
 - You already loaded `~/.agents/skills/review/SKILL.md`.
-- Follow `~/.agents/skills/review/references/shared_rules.md` (loaded once by the router; do not re-load).
+- Follow `~/.agents/skills/review/references/judging_core.md` and `~/.agents/skills/review/references/shared_rules.md` (loaded once by the router; do not re-load).
 - Follow `~/.agents/skills/review/references/pr_common.md` for PR setup, media evidence, comment placement, anchoring, deep links, and local verification.
 
 Use when:
@@ -137,6 +137,15 @@ Loop control:
   - verification run: lint / type_check / tests (what you ran, pass/fail, key error signal if failed)
 - Draft reply body
 - Recommendation: `resolve` | `keep_open`
+
+## Post-Review Stage (After Code Fixes, Before Completing)
+
+Once you have made the code fixes for this session (a single thread's fix, or the full set across a Drain Mode batch) and their quality gates are green, run the Post-Review Stage in `judging_core.md` over the **fix diff** — the changes these fixes produced (`git diff`, or the commit range/staged set for this session), not the original PR diff.
+
+- Apply the four dimensions (redundancy, verbosity, semantic + logical duplication, gaps) to that fix diff.
+- Resolve each hygiene finding in the working tree (this is your own PR's code) and re-run quality gates if the post-review fixes touched code.
+- This is distinct from "verify the outcome against current head" (step 9): that confirms the fix _works_; this confirms the fix is _clean_.
+- If no code was changed this session (reply-only threads), skip this stage.
 
 ## Boundaries
 

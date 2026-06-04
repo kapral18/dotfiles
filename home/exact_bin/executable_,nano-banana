@@ -27,6 +27,10 @@ import urllib.request
 
 DEFAULT_MODEL = "gemini-3.1-flash-image-preview"
 API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
+# The image model treats bare/ambiguous prompts (e.g. "elastic") as questions
+# and replies with text, yielding "no image in response". Phrasing the request
+# as an explicit image instruction reliably forces image output (verified).
+_PROMPT_PREFIX = "Generate an image of: "
 
 _EXT_BY_MIME = {
     "image/png": ".png",
@@ -64,7 +68,7 @@ def _generate(
     size: str | None = None,
 ) -> tuple[bytes, str]:
     url = f"{API_BASE}/{model}:generateContent"
-    payload: dict = {"contents": [{"role": "user", "parts": [{"text": prompt}]}]}
+    payload: dict = {"contents": [{"role": "user", "parts": [{"text": _PROMPT_PREFIX + prompt}]}]}
     generation_config = _image_config(aspect_ratio, size)
     if generation_config:
         payload["generationConfig"] = generation_config
@@ -83,6 +87,9 @@ def _generate(
     except urllib.error.URLError as exc:
         sys.exit(f"ERROR: network failure: {exc.reason}")
 
+    if os.environ.get("NANOBANANA_DEBUG"):
+        print(json.dumps(data, indent=2), file=sys.stderr)
+
     candidates = data.get("candidates") or []
     parts = (candidates[0].get("content", {}).get("parts") if candidates else None) or []
     for part in parts:
@@ -92,7 +99,17 @@ def _generate(
             return base64.b64decode(inline["data"]), mime
 
     text = next((p["text"] for p in parts if p.get("text")), None)
-    sys.exit(f"ERROR: no image in response{f': {text[:300]}' if text else ''}")
+    reasons = []
+    block_reason = (data.get("promptFeedback") or {}).get("blockReason")
+    if block_reason:
+        reasons.append(f"blockReason={block_reason}")
+    finish_reason = candidates[0].get("finishReason") if candidates else None
+    if finish_reason:
+        reasons.append(f"finishReason={finish_reason}")
+    suffix = f" ({', '.join(reasons)})" if reasons else ""
+    if text:
+        suffix += f": {text[:300]}"
+    sys.exit(f"ERROR: no image in response{suffix} [set NANOBANANA_DEBUG=1 for raw response]")
 
 
 def _default_output(prompt: str, mime: str) -> str:

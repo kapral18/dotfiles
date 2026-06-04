@@ -8,8 +8,11 @@
 #   1. If @agent-wrap is not "1": pass Alt-Enter through unchanged.
 #   2. If pane's foreground process is not an agent (claude/cursor-agent/pi):
 #      pass Alt-Enter through unchanged.
-#   3. Otherwise: send Ctrl-A (cursor to start), bracketed-paste the prefix,
-#      send Ctrl-E (cursor to end), send Enter (submit).
+#   3. Otherwise: send Ctrl-A (cursor to start), bracketed-paste the prefix
+#      core, type the "User prompt follows:" pointer (correct here because the
+#      user's typed prompt is glued immediately after), send Ctrl-E (cursor to
+#      end), send Enter (submit). The shared prefix.txt holds only the discipline
+#      core; this path owns the forward-pointing framing.
 #
 # Detection: pane_current_command alone is not sufficient (cursor-agent and pi
 # both show as `node`). We inspect the foreground processes on the pane's TTY
@@ -50,6 +53,10 @@ PREFIX_FILE="$HOME/.config/tmux/agent_prompts/prefix.txt"
 if [ -r "$PREFIX_FILE" ] && [ -s "$PREFIX_FILE" ]; then
   tmux send-keys -t "$PANE_ID" C-a
   tmux load-buffer "$PREFIX_FILE"
+  tmux paste-buffer -t "$PANE_ID" -p
+  # The shared core ends at the discipline body; the user's prompt is typed
+  # immediately after, so the forward-pointing pointer is accurate here.
+  tmux load-buffer - <<< $'\n\n---\n\nUser prompt follows:\n\n'
   tmux paste-buffer -t "$PANE_ID" -p
   tmux send-keys -t "$PANE_ID" C-e
 fi

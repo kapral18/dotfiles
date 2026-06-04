@@ -148,6 +148,106 @@ class TestAgentMemory(unittest.TestCase):
             finally:
                 agent_memory.SPEC_ROOT = old_spec_root
 
+    def test_use_sets_active_named_topic_and_seeds_spec(self):
+        sys.path.insert(0, str(SCRIPTS))
+        import agent_memory
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
+            old_spec_root = agent_memory.SPEC_ROOT
+            agent_memory.SPEC_ROOT = Path(spec_root)
+            try:
+                workspace = Path(tmp).resolve()
+                with contextlib.redirect_stdout(io.StringIO()):
+                    assert agent_memory.main(["use", "memory-systems", "--workspace", str(workspace)]) == 0
+
+                spec_dir = agent_memory.spec_dir_for(workspace)
+                assert (spec_dir / "_active_topic.txt").read_text().strip() == "memory-systems"
+                assert (spec_dir / "memory-systems.txt").read_text().startswith("topic: memory-systems")
+            finally:
+                agent_memory.SPEC_ROOT = old_spec_root
+
+    def test_use_does_not_clobber_existing_spec(self):
+        sys.path.insert(0, str(SCRIPTS))
+        import agent_memory
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
+            old_spec_root = agent_memory.SPEC_ROOT
+            agent_memory.SPEC_ROOT = Path(spec_root)
+            try:
+                workspace = Path(tmp).resolve()
+                spec_dir = agent_memory.spec_dir_for(workspace)
+                spec_dir.mkdir(parents=True)
+                (spec_dir / "memory-systems.txt").write_text("topic: memory-systems\nexisting content\n")
+
+                with contextlib.redirect_stdout(io.StringIO()):
+                    assert agent_memory.main(["use", "memory-systems", "--workspace", str(workspace)]) == 0
+
+                assert "existing content" in (spec_dir / "memory-systems.txt").read_text()
+            finally:
+                agent_memory.SPEC_ROOT = old_spec_root
+
+    def test_use_rejects_generic_current_topic(self):
+        sys.path.insert(0, str(SCRIPTS))
+        import agent_memory
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
+            old_spec_root = agent_memory.SPEC_ROOT
+            agent_memory.SPEC_ROOT = Path(spec_root)
+            try:
+                workspace = Path(tmp).resolve()
+                with contextlib.redirect_stdout(io.StringIO()):
+                    with self.assertRaises(SystemExit):
+                        agent_memory.main(["use", "current", "--workspace", str(workspace)])
+            finally:
+                agent_memory.SPEC_ROOT = old_spec_root
+
+    def test_status_json_reports_named_topic_and_spec(self):
+        sys.path.insert(0, str(SCRIPTS))
+        import agent_memory
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
+            old_spec_root = agent_memory.SPEC_ROOT
+            agent_memory.SPEC_ROOT = Path(spec_root)
+            try:
+                workspace = Path(tmp).resolve()
+                with contextlib.redirect_stdout(io.StringIO()):
+                    agent_memory.main(["use", "memory-systems", "--workspace", str(workspace)])
+
+                buffer = io.StringIO()
+                with contextlib.redirect_stdout(buffer):
+                    assert agent_memory.main(["status", "--json", "--workspace", str(workspace)]) == 0
+
+                payload = json.loads(buffer.getvalue())
+                assert payload["selected_topic"] == "memory-systems"
+                assert payload["is_named_topic"] is True
+                assert payload["spec_exists"] is True
+                assert payload["spec_file"].endswith("memory-systems.txt")
+                assert payload["workspace"] == str(workspace)
+            finally:
+                agent_memory.SPEC_ROOT = old_spec_root
+
+    def test_status_json_flags_generic_topic_as_unnamed(self):
+        sys.path.insert(0, str(SCRIPTS))
+        import agent_memory
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
+            old_spec_root = agent_memory.SPEC_ROOT
+            agent_memory.SPEC_ROOT = Path(spec_root)
+            try:
+                workspace = Path(tmp).resolve()
+                buffer = io.StringIO()
+                with contextlib.redirect_stdout(buffer):
+                    assert (
+                        agent_memory.main(["status", "--json", "--topic", "current", "--workspace", str(workspace)])
+                        == 0
+                    )
+
+                payload = json.loads(buffer.getvalue())
+                assert payload["selected_topic"] == "current"
+                assert payload["is_named_topic"] is False
+            finally:
+                agent_memory.SPEC_ROOT = old_spec_root
+
 
 class TestTmuxPickerShellHelpers(unittest.TestCase):
     """WHEN validating tmux picker shell helper contracts."""
@@ -3062,6 +3162,35 @@ class TestKnowledgeBaseHybridRetrieval(unittest.TestCase):
             assert hits[0]["id"] == in_ws.id, [h["title"] for h in hits]
             assert hits[1]["id"] == out_ws.id
 
+    def test_decayed_capsule_sinks_but_still_surfaces(self):
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            kb = ai_kb.KnowledgeBase(home=Path(tmp))
+            fresh = kb.remember(
+                title="Fresh note",
+                body="Specific note about repo layout.",
+                kind="fact",
+            )
+            stale = kb.remember(
+                title="Stale note",
+                body="Specific note about repo layout.",
+                kind="fact",
+            )
+            # Drive the stale capsule's decay_score to the cap so the soft
+            # penalty is at its strongest.
+            with kb.connect() as db:
+                db.execute("UPDATE capsules SET decay_score = 1.0 WHERE id = ?", (stale.id,))
+
+            hits = kb.search("repo layout", limit=2)
+            ids = [h["id"] for h in hits]
+            # Penalized, not filtered: the decayed capsule still surfaces.
+            assert set(ids) == {fresh.id, stale.id}, ids
+            # But it sinks below the otherwise-identical fresh capsule.
+            assert ids[0] == fresh.id, ids
+            ranked = {h["id"]: h["rrf_score"] for h in hits}
+            assert ranked[fresh.id] > ranked[stale.id], ranked
+
     def test_hybrid_mode_marks_mmr_selected(self):
         import ai_kb
 
@@ -4087,6 +4216,7 @@ class TestRalphElasticReviewSkillGating(unittest.TestCase):
             assert "## REVIEW SKILL HEURISTICS (elastic)" in ctx, (
                 f"elastic workspace must inject skill preamble:\n{ctx[:600]}"
             )
+            assert "judging_core.md" in ctx, "preamble must inline judging_core.md"
             assert "shared_rules.md" in ctx, "preamble must inline shared_rules.md"
             assert "local_changes.md" in ctx, "preamble must inline local_changes.md"
             # The preamble must come BEFORE the SPEC so the model reads

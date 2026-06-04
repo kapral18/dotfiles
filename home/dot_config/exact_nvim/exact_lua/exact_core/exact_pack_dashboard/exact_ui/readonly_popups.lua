@@ -10,9 +10,11 @@ local function ensure_details_highlights()
   vim.api.nvim_set_hl(0, "PackDashboardRiskBreak", { default = true, link = "DiagnosticWarn" })
 end
 
-local function has_breaking_signal(line)
-  local summary = analysis.classify_commit_signals(line)
-  return type(summary) == "table" and summary.has_breaking == true
+-- Extract the leading short hash from a `vim.pack` pending line, e.g.
+-- "> f3af041ea9f8 │ chore: bump" -> "f3af041ea9f8". Returns nil for lines
+-- without a hash (placeholders, blanks).
+local function pending_line_hash(line)
+  return line:match("^>%s*(%x+)") or line:match("^%s*(%x%x%x%x%x%x%x+)%s")
 end
 
 function M.close_details(ctx)
@@ -51,40 +53,40 @@ function M.open_details(ctx, row)
       " " .. (row.current_version or analysis.short_rev(row.rev_before) or analysis.short_rev(row.rev) or "-")
     ),
     ("Target: %s"):format(row.target_version or analysis.short_rev(row.rev_after) or "-"),
-    "",
-    "Pending updates:",
   }
+
+  -- Always announce a breaking verdict up front so the popup never contradicts
+  -- the row flag, even when the evidence is a semver-major bump with no marker
+  -- text in any commit (then there is no changelog line to highlight).
+  if row.breaking == true then
+    lines[#lines + 1] = ("⚠ Breaking: %s"):format(row.risk_reason or "flagged breaking")
+    breaking_lines[#lines] = true
+  end
+
+  -- Highlight exactly the pending commits whose full message (subject or body,
+  -- any case) carries a breaking marker. The pending list shows subjects only,
+  -- but breaking markers often live in the body, so we classify per commit hash
+  -- rather than by the visible subject text. `o`/`O` open the diff/repo for the
+  -- full detail.
+  local p_cache = state.pack_report_cache.plugins[row.name]
+  local p_path = p_cache and p_cache.path
+  local breaking_hashes = {}
+  if row.status == "update" and p_path and row.rev_before and row.rev_after then
+    breaking_hashes = analysis.breaking_commit_hashes(p_path, row.rev_before, row.rev_after)
+  end
+
+  lines[#lines + 1] = ""
+  lines[#lines + 1] = "Pending updates:"
   for _, line in ipairs(vim.split(pending, "\n", { trimempty = false })) do
     lines[#lines + 1] = line
-    if has_breaking_signal(line) then
+    local hash = pending_line_hash(line)
+    if hash and breaking_hashes[hash] then
       breaking_lines[#lines] = true
     end
   end
 
-  local p_cache = state.pack_report_cache.plugins[row.name]
-  local p_path = p_cache and p_cache.path
-  if row.status == "update" and p_path and row.rev_before and row.rev_after then
-    local subjects = analysis.commit_subjects_between(p_path, row.rev_before, row.rev_after)
-    if subjects and #subjects > 0 then
-      lines[#lines + 1] = ""
-      local max_shown = 30
-      local shown = math.min(#subjects, max_shown)
-      lines[#lines + 1] = string.format("Changelog (%d commit%s):", #subjects, #subjects == 1 and "" or "s")
-      for i = 1, shown do
-        local line = "  " .. subjects[i]
-        lines[#lines + 1] = line
-        if has_breaking_signal(subjects[i]) then
-          breaking_lines[#lines] = true
-        end
-      end
-      if #subjects > max_shown then
-        lines[#lines + 1] = string.format("  ... and %d more", #subjects - max_shown)
-      end
-    end
-  end
-
   lines[#lines + 1] = ""
-  lines[#lines + 1] = "q / <Esc> close | o open diff | O open repo"
+  lines[#lines + 1] = "q / <Esc> close | o open commit under cursor | O open all commits (diff) | r open repo"
 
   ctx.details_bufnr = vim.api.nvim_create_buf(false, true)
   vim.bo[ctx.details_bufnr].buftype = "nofile"
@@ -128,13 +130,28 @@ function M.open_details(ctx, row)
     M.close_details(ctx)
   end, { buffer = ctx.details_bufnr, nowait = true, silent = true })
   vim.keymap.set("n", "o", function()
+    local cursor = vim.api.nvim_win_get_cursor(ctx.details_winid)
+    local current = lines[cursor[1]] or ""
+    local hash = pending_line_hash(current)
+    if not hash then
+      vim.notify("Move the cursor onto a pending commit line to open it", vim.log.levels.WARN)
+      return
+    end
+    local commit_url = analysis.repo_to_commit_url(row.repo_url, hash)
+    if commit_url then
+      vim.ui.open(commit_url)
+    else
+      vim.notify("No commit URL for this plugin", vim.log.levels.WARN)
+    end
+  end, { buffer = ctx.details_bufnr, nowait = true, silent = true })
+  vim.keymap.set("n", "O", function()
     if row.diff_url then
       vim.ui.open(row.diff_url)
     else
       vim.notify("No diff URL for this plugin", vim.log.levels.WARN)
     end
   end, { buffer = ctx.details_bufnr, nowait = true, silent = true })
-  vim.keymap.set("n", "O", function()
+  vim.keymap.set("n", "r", function()
     if row.repo_url then
       vim.ui.open(row.repo_url)
     else
@@ -148,8 +165,8 @@ function M.open_help()
     "vim.pack dashboard keys",
     "",
     "q / <Esc>  close dashboard",
-    "r          refresh online (fetches remotes)",
-    "R          offline status (no fetch; may not show remote updates)",
+    "R          refresh online (fetches remotes)",
+    "r          offline status (no fetch; may not show remote updates)",
     "f          cycle filter (all -> updates -> issues -> selected)",
     "s          cycle sort (status <-> name)",
     "/ / c      set search / clear search",

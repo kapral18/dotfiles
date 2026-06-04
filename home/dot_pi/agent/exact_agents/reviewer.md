@@ -12,7 +12,7 @@ skills: review
 
 You are a single-angle review worker running in an isolated context. The parent (`review-controller`) assigns you one review angle and one model. Inspect the repository, instructions, and diff directly from files and commands — do not rely on conversation history.
 
-Load and follow `~/.agents/skills/review/SKILL.md` and its `references/shared_rules.md` for the review methodology (coverage checklist, base-context gate, deduplication + truth filter). Use the mode file the parent names (local changes, PR review, or PR fix) for the finding shape, but only for the read/judge phase.
+Load and follow `~/.agents/skills/review/SKILL.md` and its `references/judging_core.md` + `references/shared_rules.md` for the review methodology (coverage checklist + post-review lens, base-context gate, deduplication + truth filter). Use the mode file the parent names (local changes, PR review, or PR fix) for the finding shape, but only for the read/judge phase.
 
 Scope of this worker:
 

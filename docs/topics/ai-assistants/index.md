@@ -12,14 +12,15 @@ This page is the governance hub: the SOP entrypoints, skills, and shared workflo
 
 Entrypoints installed into your home directory:
 
-| Source                                                                              | Target                | Notes                    |
-| ----------------------------------------------------------------------------------- | --------------------- | ------------------------ |
-| [`home/readonly_AGENTS.md`](../../../home/readonly_AGENTS.md)                       | `~/AGENTS.md`         | Primary SOP              |
-| [`home/readonly_CLAUDE.md`](../../../home/readonly_CLAUDE.md)                       | `~/CLAUDE.md`         | Claude-specific SOP      |
-| [`home/dot_gemini/readonly_GEMINI.md`](../../../home/dot_gemini/readonly_GEMINI.md) | `~/.gemini/GEMINI.md` | Gemini-specific SOP      |
-| [`home/dot_cursor/symlink_AGENTS.md`](../../../home/dot_cursor/symlink_AGENTS.md)   | `~/.cursor/AGENTS.md` | Symlink to `~/AGENTS.md` |
+| Source                                                                                              | Target                         | Notes                                  |
+| --------------------------------------------------------------------------------------------------- | ------------------------------ | -------------------------------------- |
+| [`home/readonly_AGENTS.md`](../../../home/readonly_AGENTS.md)                                       | `~/AGENTS.md`                  | The single SOP source — edit only this |
+| [`home/symlink_CLAUDE.md`](../../../home/symlink_CLAUDE.md)                                         | `~/CLAUDE.md`                  | Symlink to `~/AGENTS.md`               |
+| [`home/dot_gemini/symlink_GEMINI.md`](../../../home/dot_gemini/symlink_GEMINI.md)                   | `~/.gemini/GEMINI.md`          | Symlink to `~/AGENTS.md`               |
+| [`home/dot_cursor/symlink_AGENTS.md`](../../../home/dot_cursor/symlink_AGENTS.md)                   | `~/.cursor/AGENTS.md`          | Symlink to `~/AGENTS.md`               |
+| [`home/dot_config/opencode/symlink_AGENTS.md`](../../../home/dot_config/opencode/symlink_AGENTS.md) | `~/.config/opencode/AGENTS.md` | Symlink to `~/AGENTS.md`               |
 
-These files are policy entrypoints; skills are installed separately.
+These files are policy entrypoints; skills are installed separately. There is one real SOP file (`~/AGENTS.md`); Claude, Gemini, Cursor, and OpenCode all read symlinks that resolve to it, so the SOP is identical across every harness by construction.
 
 Shared SOP handling rules:
 
@@ -33,13 +34,13 @@ Shared git push safety rule:
 - If the user asks to push, agents must treat that as `git push --force-with-lease` (not plain `git push`).
 - Agents must never auto-run `git pull`, `git pull --rebase`, `git rebase`, or `git merge` as a pre-push reconciliation step.
 - If push is rejected due to divergence/non-fast-forward/lease checks, agents must stop and wait for explicit user direction.
-- Canonical sources: [`home/readonly_AGENTS.md`](../../../home/readonly_AGENTS.md), [`home/readonly_CLAUDE.md`](../../../home/readonly_CLAUDE.md), [`home/dot_gemini/readonly_GEMINI.md`](../../../home/dot_gemini/readonly_GEMINI.md), and [`home/exact_dot_agents/exact_skills/exact_git/readonly_SKILL.md`](../../../home/exact_dot_agents/exact_skills/exact_git/readonly_SKILL.md).
+- Canonical source: [`home/readonly_AGENTS.md`](../../../home/readonly_AGENTS.md) (the single SOP; `~/CLAUDE.md` and `~/.gemini/GEMINI.md` are symlinks to it), and [`home/exact_dot_agents/exact_skills/exact_git/readonly_SKILL.md`](../../../home/exact_dot_agents/exact_skills/exact_git/readonly_SKILL.md).
 
 Shared runtime verification rule:
 
 - For "is this correctly set up / working / actually being used" questions, the SOP now owns the canonical end-to-end verification rule, not just config inspection.
 - Required chain: source config, rendered/applied config, runtime consumer, and a minimal safe live probe when one is possible.
-- The shared rule is tracked in: [`home/readonly_AGENTS.md`](../../../home/readonly_AGENTS.md), [`home/readonly_CLAUDE.md`](../../../home/readonly_CLAUDE.md), and [`home/dot_gemini/readonly_GEMINI.md`](../../../home/dot_gemini/readonly_GEMINI.md).
+- The shared rule is tracked in the single SOP: [`home/readonly_AGENTS.md`](../../../home/readonly_AGENTS.md) (`~/CLAUDE.md` and `~/.gemini/GEMINI.md` are symlinks to it).
 
 Shared behavioral disciplines (integrated from [`forrestchang/andrej-karpathy-skills`](https://github.com/forrestchang/andrej-karpathy-skills) without duplicating existing SOP rules):
 
@@ -47,7 +48,7 @@ Shared behavioral disciplines (integrated from [`forrestchang/andrej-karpathy-sk
 - `3.3 Success Criteria & Verification Loops`: reframe imperative tasks as verifiable goals (test-first / reproducer-first when practical); multi-step plans must carry per-step verify checks; does not override `2.0`, `2.1`, `2.2`, or `5 Minimal edit scope`.
 - `3.4 State-Machine Verification`: for stateful, parser-like, or branch-heavy behavior, build a disposable `/tmp/state-machine-verification/<pwd>/<topic>/<slug>/` harness before calling the change final; `<pwd>` scopes to the worktree, `<topic>` separates unrelated work in long-lived/default checkouts, and `<slug>` names the behavior under test. Each harness includes a manifest so agents reuse existing state-machine work only when target, branch/base/head refs, requested behavior, and compatibility intent still match.
 - `5 Code Quality`: simplicity discipline (no speculative abstractions/flexibility/impossible-scenario error handling; senior-engineer test); artifact necessity (prove behavior is missing without a new artifact before adding it unless explicitly requested); dead-code handling (remove only orphans your own changes created; mention, don't delete pre-existing dead code unless asked).
-- Canonical sources: [`home/readonly_AGENTS.md`](../../../home/readonly_AGENTS.md), [`home/readonly_CLAUDE.md`](../../../home/readonly_CLAUDE.md), [`home/dot_gemini/readonly_GEMINI.md`](../../../home/dot_gemini/readonly_GEMINI.md), and the dotfiles repo-local [`AGENTS.md`](../../../AGENTS.md).
+- Canonical source: [`home/readonly_AGENTS.md`](../../../home/readonly_AGENTS.md) (the single SOP; `~/CLAUDE.md` and `~/.gemini/GEMINI.md` are symlinks to it), and the dotfiles repo-local [`AGENTS.md`](../../../AGENTS.md).
 
 ## Skills Layout
 
@@ -115,7 +116,7 @@ Always-on rule source:
 
 - The SOP entrypoints are the only canonical always-on mechanism for assistant behavior.
 - Do not encode mandatory every-prompt rules as skills; OpenCode skills are on-demand, not guaranteed every turn.
-- Keep mandatory completeness and no-guessing rules in: [`home/readonly_AGENTS.md`](../../../home/readonly_AGENTS.md), [`home/readonly_CLAUDE.md`](../../../home/readonly_CLAUDE.md), and [`home/dot_gemini/readonly_GEMINI.md`](../../../home/dot_gemini/readonly_GEMINI.md).
+- Keep mandatory completeness and no-guessing rules in the single SOP: [`home/readonly_AGENTS.md`](../../../home/readonly_AGENTS.md) (`~/CLAUDE.md` and `~/.gemini/GEMINI.md` are symlinks to it).
 
 ## Source-First Research
 

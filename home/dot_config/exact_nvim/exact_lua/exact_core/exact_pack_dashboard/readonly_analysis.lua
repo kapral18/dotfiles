@@ -77,16 +77,36 @@ local function infer_breaking_status(p_data)
   return nil
 end
 
+-- Set of short commit hashes in `rev_before..rev_after` whose full message
+-- (subject or body, any case) carries a breaking marker. Lets the dashboard
+-- highlight exactly the breaking commits in the pending list, including ones
+-- whose marker lives only in the body (which the subject never reveals).
+local function breaking_commit_hashes(path, rev_before, rev_after)
+  local set = {}
+  local records = gitcmd.commit_records_between(path, rev_before, rev_after)
+  if type(records) ~= "table" then
+    return set
+  end
+  for _, record in ipairs(records) do
+    local summary = signals.classify_commit_signals(record.message)
+    if type(summary) == "table" and summary.has_breaking == true then
+      set[record.hash] = true
+    end
+  end
+  return set
+end
+
 M.is_commit_string = version.is_commit_string
 M.compute_version_drift = version.compute_version_drift
 M.detect_risky_star_pin = version.detect_risky_star_pin
 M.refresh_version_flags_async = version.refresh_version_flags_async
 M.short_rev = version.short_rev
 M.classify_commit_signals = signals.classify_commit_signals
-M.commit_subjects_between = gitcmd.commit_subjects_between
+M.breaking_commit_hashes = breaking_commit_hashes
 M.infer_breaking_status = infer_breaking_status
 M.source_to_compare_url = url.source_to_compare_url
 M.source_to_repo_url = url.source_to_repo_url
 M.repo_to_compare_url = url.repo_to_compare_url
+M.repo_to_commit_url = url.repo_to_commit_url
 
 return M

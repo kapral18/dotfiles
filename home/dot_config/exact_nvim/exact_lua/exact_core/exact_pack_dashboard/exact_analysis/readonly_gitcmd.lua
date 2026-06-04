@@ -11,7 +11,7 @@ local revision_tag_cache = {}
 local revision_tags_cache = {}
 local repo_tags_cache = {}
 local commit_messages_cache = {}
-local commit_subjects_cache = {}
+local commit_records_cache = {}
 
 local function git_tags(path, args, cache, key)
   if type(path) ~= "string" or path == "" then
@@ -117,39 +117,45 @@ local function commit_messages_between(path, rev_before, rev_after)
   return commit_messages_cache[key] or nil
 end
 
-local function commit_subjects_between(path, rev_before, rev_after)
+-- Per-commit `{ hash, message }` records for the range, newest first, where
+-- `hash` is the short hash and `message` is the full commit message (subject +
+-- body). Preserves commit boundaries so callers can attribute a breaking marker
+-- to the specific commit that carries it (in subject OR body) and key it by
+-- hash. Uses ASCII record/unit separators (RS \30, US \31) as delimiters: git
+-- never emits them in messages.
+local function commit_records_between(path, rev_before, rev_after)
   local key = range_key(path, rev_before, rev_after)
   if not key then
     return nil
   end
-  if commit_subjects_cache[key] ~= nil then
-    return commit_subjects_cache[key] or nil
+  if commit_records_cache[key] ~= nil then
+    return commit_records_cache[key] or nil
   end
 
   local result = vim
-    .system({ "git", "-C", path, "log", "--format=%s", rev_before .. ".." .. rev_after }, { text = true })
+    .system({ "git", "-C", path, "log", "--format=%h%x1f%s%n%b%x1e", rev_before .. ".." .. rev_after }, { text = true })
     :wait()
   if result.code ~= 0 or type(result.stdout) ~= "string" then
-    commit_subjects_cache[key] = false
+    commit_records_cache[key] = false
     return nil
   end
 
-  local subjects = {}
-  for _, line in ipairs(vim.split(result.stdout, "\n", { trimempty = true })) do
-    local trimmed = vim.trim(line)
-    if trimmed ~= "" then
-      subjects[#subjects + 1] = trimmed
+  local records = {}
+  for _, record in ipairs(vim.split(result.stdout, "\30", { trimempty = true })) do
+    local hash, message = record:match("^%s*(%x+)\31(.*)$")
+    if hash and hash ~= "" then
+      records[#records + 1] = { hash = hash, message = vim.trim(message or "") }
     end
   end
 
-  commit_subjects_cache[key] = #subjects > 0 and subjects or false
-  return commit_subjects_cache[key] or nil
+  commit_records_cache[key] = #records > 0 and records or false
+  return commit_records_cache[key] or nil
 end
 
 M.tags_on_revision = tags_on_revision
 M.all_tags = all_tags
 M.tag_on_revision = tag_on_revision
 M.commit_messages_between = commit_messages_between
-M.commit_subjects_between = commit_subjects_between
+M.commit_records_between = commit_records_between
 
 return M

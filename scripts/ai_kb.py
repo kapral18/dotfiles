@@ -71,6 +71,14 @@ RRF_K = 60
 # diversify more aggressively at the cost of relevance.
 MMR_LAMBDA = 0.7
 
+# Soft penalty applied to the RRF score for dormant capsules. `curate
+# decay` raises a capsule's `decay_score` (0..1) every pass it is not
+# retrieved; here that score is subtracted (scaled) from the RRF score so
+# stale memory sinks without being filtered out. Mirrors the magnitude of
+# the same-workspace boost (+0.1) so a fully-decayed capsule (score 1.0)
+# is penalized by the same amount a workspace match is rewarded.
+DECAY_PENALTY_WEIGHT = 0.1
+
 
 # --- Helpers ---------------------------------------------------------------
 
@@ -915,6 +923,12 @@ class KnowledgeBase:
         `workspace_path` exactly matches the supplied path; it does not
         filter — universal/domain capsules still surface.
 
+        A capsule's `decay_score` (raised by `curate decay` on dormant
+        capsules) applies a soft RRF penalty of
+        `DECAY_PENALTY_WEIGHT * decay_score`, so stale memory sinks in the
+        ranking without being filtered out — a still-relevant decayed
+        capsule can still surface.
+
         Returned dicts are JSON-friendly (no embedding BLOB) and include
         all `Hit` fields plus `body` and `snippet` for prompt injection.
         """
@@ -973,6 +987,9 @@ class KnowledgeBase:
                 rrf += 1.0 / (RRF_K + r_vec)
             if workspace and row["workspace_path"] == workspace:
                 rrf += 0.1  # soft boost; same-workspace capsules win ties
+            decay = row["decay_score"] if "decay_score" in row.keys() else 0.0
+            if decay:
+                rrf -= DECAY_PENALTY_WEIGHT * float(decay)  # soft penalty; dormant capsules sink
             hits.append(
                 Hit(
                     id=row["id"],

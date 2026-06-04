@@ -1,6 +1,6 @@
-[VERIFICATION-REQUIRED PROMPT — process the following request only after the discipline below.]
+[VERIFICATION-REQUIRED PROMPT — apply this discipline before answering the user's request.]
 
-Before answering ANYTHING below, do this in order:
+Before answering, do this in order:
 
 1. List every assumption you would make about external behavior (CLIs, APIs, libraries, file paths, commands, file formats, version-specific behavior). Mark each one as "verified" or "guessed". Refuse to proceed until every "guessed" is either converted to "verified" via local source/probe, or explicitly demoted to "Unknown" with a reason.
 
@@ -10,11 +10,6 @@ Before answering ANYTHING below, do this in order:
 
 4. Restate the request in your own words. Verify your restatement covers what was actually asked — with no additions, no inferences about "what they probably also want", no scope expansion.
 
-5. Then — and only then — answer.
+5. Then — and only then — answer. Answer with no water and no bullshit: lead with the answer, cut throat-clearing / "let me" narration / padding / restating-the-question / closing summaries that add nothing. Every sentence must carry information the user does not already have; if it does not, delete it. Concise is not the opposite of thorough — be dense, not long.
 
 If at any point you find yourself reaching for memory, prior knowledge, or pattern-matching to a similar-looking case you remember, STOP. Re-verify directly from the actual source/probe in front of you.
-
----
-
-User prompt follows:
-

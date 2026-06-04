@@ -107,12 +107,11 @@ Each registry has a declarative list plus the hook that converges it. See [Packa
 
 See [The Agentic Operating System](../topics/ai-assistants/index.md).
 
-| Component                 | Source path                                                                                                                                        |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Assistant SOP entrypoints | [`home/readonly_AGENTS.md`](../../home/readonly_AGENTS.md), [`home/readonly_CLAUDE.md`](../../home/readonly_CLAUDE.md)                             |
-| Gemini SOP                | [`home/dot_gemini/readonly_GEMINI.md`](../../home/dot_gemini/readonly_GEMINI.md)                                                                   |
-| Assistant skills          | [`home/exact_dot_agents/exact_skills/`](../../home/exact_dot_agents/exact_skills/)                                                                 |
-| Cursor CLI hooks          | [`home/dot_cursor/hooks.json`](../../home/dot_cursor/hooks.json), [`home/exact_dot_agents/exact_hooks/`](../../home/exact_dot_agents/exact_hooks/) |
+| Component                     | Source path                                                                                                                                                                            |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Assistant SOP (single source) | [`home/readonly_AGENTS.md`](../../home/readonly_AGENTS.md) (`~/CLAUDE.md`, `~/.gemini/GEMINI.md`, `~/.cursor/AGENTS.md`, `~/.config/opencode/AGENTS.md` are symlinks to `~/AGENTS.md`) |
+| Assistant skills              | [`home/exact_dot_agents/exact_skills/`](../../home/exact_dot_agents/exact_skills/)                                                                                                     |
+| Cursor CLI hooks              | [`home/dot_cursor/hooks.json`](../../home/dot_cursor/hooks.json), [`home/exact_dot_agents/exact_hooks/`](../../home/exact_dot_agents/exact_hooks/)                                     |
 
 ## AI: harness configs
 

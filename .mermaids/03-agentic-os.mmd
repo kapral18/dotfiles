@@ -42,7 +42,7 @@ flowchart TB
     SK -. symlinked into .-> CURSOR & CLAUDE & OPENCODE & CODEX
 
     subgraph HOOKS["Cursor lifecycle hooks (dot_cursor/hooks.json) — detail in 03b"]
-        H["sessionStart→session_context · after*→worklog_recorder<br/>+evidence_anchor · beforeShell→gemini-*-gate (failClosed)"]:::ctx
+        H["sessionStart→session_context · after*→worklog_recorder<br/>beforeShell→gemini-*-gate (failClosed)"]:::ctx
     end
     GOV -.enforced at runtime by.-> HOOKS
     MEM[("/tmp/specs/<pwd>/<topic>.* (ephemeral memory, ,agent-memory)")]:::data

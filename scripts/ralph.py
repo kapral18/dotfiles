@@ -500,7 +500,12 @@ def elastic_review_preamble(role: str) -> str:
 
     The preamble:
       - declares the role is running the `/review` skill (skill-as-primary)
-      - inlines `references/shared_rules.md` verbatim (verification disciplines)
+      - inlines `references/judging_core.md` verbatim (surface-agnostic
+        verification disciplines: coverage checklist, severity, truth
+        validation, state-machine / deletion-safety / historical-rationale
+        gates, and the post-review four-dimension lens + stage)
+      - inlines `references/shared_rules.md` verbatim (PR/SCSI/GitHub-delivery
+        rules layered on top of the core)
       - inlines `references/local_changes.md` verbatim (closest-mode skill body)
       - normalizes the skill's "fix in working tree" guidance into Ralph's
         `next_task` JSON field, since this reviewer never modifies code
@@ -511,9 +516,10 @@ def elastic_review_preamble(role: str) -> str:
     callers (which never call this) and broken-skill installs both
     degrade silently to the default review path.
     """
+    core = _read_skill_file("references/judging_core.md").strip()
     shared = _read_skill_file("references/shared_rules.md").strip()
     mode = _read_skill_file("references/local_changes.md").strip()
-    if not shared and not mode:
+    if not core and not shared and not mode:
         return ""
     role_label = "RE-REVIEWER" if role == "re_reviewer" else "REVIEWER"
     sections = [
@@ -533,7 +539,11 @@ def elastic_review_preamble(role: str) -> str:
         "emit prose review comments. The skill content is for *how* to verify, "
         "not *what* to output.",
         "",
-        "### shared_rules.md (skill verification disciplines)",
+        "### judging_core.md (skill verification disciplines)",
+        "",
+        core or "(skill file unavailable)",
+        "",
+        "### shared_rules.md (PR/SCSI/GitHub-delivery rules)",
         "",
         shared or "(skill file unavailable)",
         "",

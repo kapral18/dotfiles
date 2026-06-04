@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Inspect and wipe hook memory under /tmp/specs for the current workspace."""
+"""Inspect, set, and wipe hook memory under /tmp/specs for the current workspace."""
 
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import subprocess
@@ -16,8 +17,6 @@ SPEC_ROOT = Path(os.environ.get("AGENT_MEMORY_SPEC_ROOT", "/tmp/specs"))
 TOPIC_SUFFIXES = (
     ".txt",
     ".worklog.jsonl",
-    ".evidence_state.json",
-    ".evidence_decisions.jsonl",
     ".no_context",
 )
 
@@ -110,16 +109,60 @@ def wipe_topic(spec_dir: Path, topic: str, dry_run: bool) -> list[Path]:
     return removed
 
 
+def is_named_topic(topic: str) -> bool:
+    """A deliberate named topic: not the generic fallback, not a per-session key."""
+    return topic != DEFAULT_TOPIC and not topic.startswith("session-")
+
+
 def cmd_status(args: argparse.Namespace) -> int:
     workspace = workspace_path(args.workspace)
     spec_dir = spec_dir_for(workspace)
     topic = selected_topic(spec_dir, workspace, args.topic)
+    branch = current_git_branch(workspace)
+    spec_file = spec_dir / f"{topic}.txt"
+
+    if getattr(args, "json", False):
+        payload = {
+            "workspace": str(workspace),
+            "spec_dir": str(spec_dir),
+            "branch": branch,
+            "selected_topic": topic,
+            "is_named_topic": is_named_topic(topic),
+            "spec_file": str(spec_file),
+            "spec_exists": spec_file.exists(),
+            "files": {str(path): path.exists() for path in topic_files(spec_dir, topic)},
+        }
+        print(json.dumps(payload, sort_keys=True))
+        return 0
+
     print(f"workspace: {workspace}")
     print(f"spec_dir: {spec_dir}")
-    print(f"branch: {current_git_branch(workspace) or '<none>'}")
+    print(f"branch: {branch or '<none>'}")
     print(f"selected_topic: {topic}")
     for path in topic_files(spec_dir, topic):
         print(f"{'exists' if path.exists() else 'missing'}: {path}")
+    return 0
+
+
+def cmd_use(args: argparse.Namespace) -> int:
+    workspace = workspace_path(args.workspace)
+    spec_dir = spec_dir_for(workspace)
+    topic = safe_topic(args.topic)
+    if topic == DEFAULT_TOPIC:
+        raise SystemExit(f"Refusing to set the generic topic {DEFAULT_TOPIC!r}; choose a named topic.")
+
+    spec_dir.mkdir(parents=True, exist_ok=True)
+    (spec_dir / "_active_topic.txt").write_text(topic + "\n")
+
+    spec_file = spec_dir / f"{topic}.txt"
+    seeded = False
+    if not spec_file.exists():
+        spec_file.write_text(f"topic: {topic}\n")
+        seeded = True
+
+    print(f"active topic: {topic}")
+    print(f"pointer: {spec_dir / '_active_topic.txt'}")
+    print(f"{'seeded' if seeded else 'exists'}: {spec_file}")
     return 0
 
 
@@ -152,7 +195,20 @@ def parser() -> argparse.ArgumentParser:
     subcommands = root.add_subparsers(dest="command", required=True)
     status = subcommands.add_parser("status", help="Show selected topic and files.")
     add_shared_options(status, subcommand=True)
+    status.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
     status.set_defaults(func=cmd_status)
+
+    use = subcommands.add_parser(
+        "use",
+        help="Set the active named topic (writes _active_topic.txt, seeds <topic>.txt).",
+    )
+    use.add_argument("topic", help="Named topic (kebab-case); the generic 'current' is rejected.")
+    use.add_argument(
+        "--workspace",
+        default=None,
+        help="Workspace path. Defaults to the current directory.",
+    )
+    use.set_defaults(func=cmd_use)
 
     wipe = subcommands.add_parser("wipe-current", help="Delete files for the selected active topic.")
     add_shared_options(wipe, subcommand=True)
