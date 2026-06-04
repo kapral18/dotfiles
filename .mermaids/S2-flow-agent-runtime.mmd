@@ -17,7 +17,10 @@ flowchart TB
     SOP --> SKILL{"intent matches a skill<br/>'Use when' clause?"}:::gov
     SKILL -->|yes| LOAD["read skill SKILL.md → follow as binding procedure"]:::gov
     SKILL -->|no| WORK
-    LOAD --> WORK["do work: investigate-first, external-truth,<br/>verify don't guess (C7)"]:::loop
+    LOAD --> RECALL["ai-kb skill (when relevant): ,ai-kb search<br/>recall durable capsules before work (C13)"]:::mem
+    RECALL --> WORK
+    LOAD --> WORK
+    WORK["do work: investigate-first, external-truth,<br/>verify don't guess (C7)"]:::loop
 
     WORK --> CLAIM{"emit factual/runtime claim?"}:::loop
     CLAIM -->|yes| ANCHOR{"claim carries hard anchor<br/>(path/cmd/probe) or 'Unknown because…'? (C8)"}:::gate
@@ -35,7 +38,7 @@ flowchart TB
     EMIT --> DONE
 
     DONE(["turn complete"]):::loop
-    DONE --> PERSIST["postTool/stop hooks → worklog + ai_kb<br/>update /tmp/specs spec; embeddings index (C13)"]:::mem
+    DONE --> PERSIST["postTool/stop hooks → worklog + /tmp/specs spec (C13)<br/>+ agent-driven ,ai-kb remember for verified durable insights"]:::mem
 
     subgraph RALPH["if work == Ralph orchestration (C11/C12)"]
         direction LR

@@ -7,7 +7,7 @@ sidebar_position: 3
 Two distinct memory layers feed the assistants:
 
 - **Hook memory** (`/tmp/specs`, managed by `,agent-memory`) — short-lived, per-workspace topic spec + worklog + evidence ledger, written by the Cursor CLI hooks during a session.
-- **AI knowledge base** (`,ai-kb`, under `~/.local/share/ai-kb/`) — durable structured capsules that [Ralph](ralph.md) reads from and writes to across runs.
+- **AI knowledge base** (`,ai-kb`, under `~/.local/share/ai-kb/`) — durable structured capsules shared across agents. [Ralph](ralph.md) reads/writes them mechanically across runs; interactive agents (cursor-cli, pi) read/write them on demand via the `ai-kb` skill (see [Cross-agent memory](#cross-agent-memory-ai-kb-skill)).
 
 ## Hook memory (`/tmp/specs`, `,agent-memory`)
 
@@ -56,8 +56,8 @@ Capsule shape:
 
 | Field                                   | Purpose                                                                                             |
 | --------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `kind`                                  | `gotcha` / `principle` / `fact` / `decision` / `pattern` / `anti_pattern` / `doc` / `experiment`    |
-| `scope`                                 | `global` / `project` / `repo` / `workflow` / `session` (controls reuse across runs and projects)    |
+| `kind`                                  | `fact` / `gotcha` / `pattern` / `anti_pattern` / `recipe` / `principle` / `doc`                     |
+| `scope`                                 | `workspace` / `project` / `domain` / `universal` (controls reuse across runs and projects)          |
 | `tags` / `domain_tags`                  | Free-form (TUI badges) and structured taxonomy (e.g. `auth`, `tmux`, `rust`)                        |
 | `confidence` / `verified_by`            | Float 0-1 + role/run that verified it; reflectors and reviewers raise these                         |
 | `supersedes` / `superseded_by`          | Bidirectional links built by `,ai-kb curate dedupe`; superseded capsules drop out of search         |
@@ -95,6 +95,31 @@ CLI surface:
 ```
 
 The Ralph TUI exposes the KB with a `K` keybinding: a modal launches `,ai-kb search ... --json` over stdin/stdout; navigation is `↑/↓`, `enter` to dispatch a search, `esc`/`q` to close. The status bar shows total capsule count (`KB:N`).
+
+## Cross-agent memory (`ai-kb` skill)
+
+Ralph is no longer the only consumer. The same durable KB is wired into every interactive harness through the `ai-kb` skill ([`home/exact_dot_agents/exact_skills/exact_ai-kb/readonly_SKILL.md`](../../../home/exact_dot_agents/exact_skills/exact_ai-kb/readonly_SKILL.md) -> `~/.agents/skills/ai-kb/SKILL.md`), reinforced by a short trigger pointer in each SOP entrypoint:
+
+| Harness    | Skill discovery                                   | Entrypoint pointer                                                               |
+| ---------- | ------------------------------------------------- | -------------------------------------------------------------------------------- |
+| cursor-cli | `~/.agents/skills/`                               | [`~/AGENTS.md`](../../../home/readonly_AGENTS.md) "Durable Agent Memory"         |
+| pi         | `~/.agents/skills/` (via the `pi-skills` package) | covered by the skill (auto-loaded)                                               |
+| Claude     | `~/.claude/skills` -> `~/.agents/skills/`         | [`~/CLAUDE.md`](../../../home/readonly_CLAUDE.md) section 4.3                    |
+| Gemini     | `~/.agents/skills/`                               | [`~/.gemini/GEMINI.md`](../../../home/dot_gemini/readonly_GEMINI.md) section 4.3 |
+| OpenCode   | `~/.agents/skills/`                               | `~/.config/opencode/AGENTS.md` -> `~/AGENTS.md` (same pointer as cursor-cli)     |
+
+Retrieval and persistence are both agent-driven through the existing `,ai-kb` CLI — no hooks, no auto-harvest, no MCP:
+
+- **Read:** agents run `,ai-kb search "<q>" --limit 5 --json` (with `--kind` / `--scope` / `--workspace` / `--domain` / `--mode` filters) before non-trivial work, and `,ai-kb get <id> --json` to pull a full capsule.
+- **Write:** agents call `,ai-kb remember --title ... --body ... --kind ... --scope ...` only for verified, durable, reusable insights — the same quality bar as Ralph's `LEARNING:` lines. Guesses and session-only notes stay out of the KB (those belong in `,agent-memory`).
+
+The division of labor is explicit so agents do not confuse the two memory layers or the code index:
+
+- `,ai-kb` (this skill) — durable cross-session knowledge.
+- `,agent-memory` — ephemeral per-session working context under `/tmp/specs`.
+- `semantic-code-search` skill (SCSI) — semantic code search over a repo, not memory.
+
+All interactive harnesses (cursor-cli, pi, Claude, Gemini, OpenCode) are wired; Ralph remains wired through its role prompts.
 
 ## Related
 

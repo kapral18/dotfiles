@@ -131,15 +131,11 @@ Trigger: removing or replacing a custom/legacy stack, a helper that predates cur
 
 ## Draft Style (Public-Ready)
 
-- Tone: direct, casual, friendly.
+- Tone, concision, and the "replying to someone's response" triage pattern are centralized in `~/.agents/skills/communication/SKILL.md` — follow it for all comment/reply/description wording. The rules below are review-specific additions only.
 - No headline summaries or category prefixes (exception: `nit:` allowed only for true nits).
 - Keep explanations simple; prefer tiny examples, pseudocode, or ASCII sketches.
-- A collaborative close such as `Wdyt` is optional; use it only when it fits the comment naturally.
-- Keep claims honest: observed (evidence) vs inferred (hypothesis) vs recommended (action).
-- Do not mention internal tooling, agents, APIs, payloads, rate limits, or error codes.
-- Do not talk about anchoring/tooling limitations ("can't anchor inline", "not in diff hunks").
-- Do not include meta like "draft/pending review" in the comment body unless the user explicitly wants that.
 - Avoid redundant "Ref:" links when the comment is already attached to the exact line.
+- Do not mention anchoring/tooling limitations in the comment body ("can't anchor inline", "not in diff hunks").
 - In review comment bodies, whenever you reference code (file path, function, symbol, line/range, snippet location), use a clickable source link to the exact location on the PR head SHA; do not leave plain unlinked code/file references.
 - **Commit references must be clickable links, never bare hashes or inline code.** Use the full GitHub URL: `https://github.com/OWNER/REPO/commit/FULL_SHA` (or `/pull/NUM/commits/FULL_SHA` when referencing a PR commit). Resolve `OWNER/REPO` from the current repo and expand short hashes to full SHA before linking.
 - Use `suggestion` blocks only when confident the replacement matches the exact anchored line(s).

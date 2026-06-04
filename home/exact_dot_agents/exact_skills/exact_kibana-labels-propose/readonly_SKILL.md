@@ -26,7 +26,8 @@ First actions:
 
 1. Verify the target repo is `elastic/kibana`.
 2. Read the current repo label set before proposing anything.
-3. Map the change/issue to exact proposed labels, then separate verified labels from heuristics.
+3. Read the label-relevant signals — the changed file paths/ownership plus the PR/issue body and any directly linked issues, enough to judge release-note and backport intent. Labels are a bounded classification; a full recursive crawl of every comment/thread is not required. Skim the discussion only if the body leaves release-note or backport intent genuinely ambiguous.
+4. Map the change/issue to exact proposed labels, then separate verified labels from heuristics.
 
 Output:
 
@@ -35,6 +36,7 @@ Output:
 
 Common patterns (verify in repo):
 
+- review routing (required on every PR): always include both `review:codex` and `review:claude` in the proposed label set. These are mandatory on each composed `elastic/kibana` PR; do not drop them.
 - team ownership: `Team:*`
 - feature tags: `Feature:<area>` (varies)
 - release notes: `release_note:feature` | `release_note:enhancement` | `release_note:fix` | `release_note:skip`

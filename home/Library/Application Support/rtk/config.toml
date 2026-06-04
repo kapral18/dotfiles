@@ -1,0 +1,41 @@
+# RTK config — managed by chezmoi (source: home/Library/Application Support/rtk/config.toml).
+# RTK reads dirs::config_dir()/rtk/config.toml; on macOS that is this path.
+# RTK is treated as a RECOVERABLE INDEX, not a lossless substitute: most filters
+# print "+N more" counts and tee full output on overflow. See the recovery rule
+# in ~/AGENTS.md / ~/CLAUDE.md and docs/topics/ai-assistants/index.md.
+
+[hooks]
+# Auto-rewrite is broad by default. Exclude commands where a compacted view is
+# either silently lossy or never worth the truncation:
+#   - `gh pr view`   field-subsets the PR JSON, dropping review bodies / check
+#                    identity WITHOUT an overflow count (LOSSY-SILENT)
+#   - `gh pr checks` collapses individual check detail (LOSSY-SILENT)
+#   - `git diff`     a truncated diff is never useful for review/judgment; we
+#                    always want the complete hunks, so never compact it
+#   - `git show`     same as diff — it embeds a full diff body
+# `gh ... --json/--jq/--template` and `gh api` already pass through raw (registry.rs),
+# and `git status/log` compact recoverably (overflow counts + tee), so they stay rewritten.
+# Patterns without a leading `^` match the command head with a word boundary
+# (RTK compiles them to `^<escaped>($|\s)`), so "git diff" matches "git diff --staged"
+# but NOT "git diff-tree"/"git difftool" (a non-space char follows).
+exclude_commands = [
+  "gh pr view",
+  "gh pr checks",
+  "git diff",
+  "git show",
+]
+
+[tee]
+# Save full raw output so anything RTK compacts is one fetch away.
+# The [tee] table is all-or-nothing in rtk 0.42.1 (serde requires every field),
+# so the two cap fields below carry rtk's own defaults verbatim.
+enabled = true
+# "always" (not the default "failures") so even SUCCESSFUL long output is
+# recoverable — TOML-based filters only tee on failure otherwise.
+mode = "always"
+max_files = 20
+max_file_size = 1048576
+
+[telemetry]
+# No phone-home. (RTK defaults this to false; set explicitly for clarity.)
+enabled = false

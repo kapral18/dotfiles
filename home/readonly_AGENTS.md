@@ -73,6 +73,15 @@ When user requests to "add X" (app, package, cask, formula, or CLI tool), follow
 - Any change to dotfiles (anything under `home/`, including templates, scripts, and app/package install logic) that affects behavior, commands, or workflows MUST be reflected in `docs/`.
 - If a dotfiles change does not require a docs change, state why in the PR/commit context (briefly) so the docs/code divergence is explicit.
 
+## Compacted Output Is An Index, Not Truth
+
+Shell command output is compacted by RTK (a token-reduction proxy wired into every agent's shell path via `rtk hook <agent>`). A compacted view is a lossy index, not the complete output. `~/CLAUDE.md` §2.4 carries this rule in full; keep all SOP entrypoints in sync.
+
+- When output shows `[full output: <path>]` or `[see remaining: tail -n +N <path>]`, read that file before relying on the result.
+- When output shows `… +N more` (failures, errors, rules, files, …), the list was capped; re-fetch when the dropped items matter.
+- Recovery is mandatory for: reviewing a diff/PR, debugging a test/build failure, or counting/enumerating issues. Bypass rewrite with `RTK_DISABLED=1 <cmd>` (or `RTK_NO_TOML=1`, a tool's `--no-compact`/`--json`) or read the tee'd file.
+- Trusting the compact view is fine for quick status/success checks with no capped marker.
+
 ## Human-Visible Publication Gate (Bot vs Human)
 
 This file is the primary SOP entrypoint (Cursor and OpenCode load `AGENTS.md` directly), so the gate is stated here in full. `~/CLAUDE.md` and `~/.gemini/GEMINI.md` are the per-tool SOPs that carry the same rule as §3.5; keep all three in sync.
@@ -84,6 +93,7 @@ Publishing content a human will see can have outsized consequences for the setup
 - **Verify author type; do not guess.** Classify from the platform API, not from display-name heuristics: GitHub `user.type == "Bot"`, a login ending in `[bot]`, or a known-bot allowlist (e.g. `elasticmachine`, `kibanamachine`, `github-actions[bot]`).
 - **Fail safe to human.** If the author type is ambiguous/unknown, or a thread mixes human and bot participants, treat it as human and require supervision.
 - **Scope.** This relaxes the prior blanket "never post/resolve unless explicitly asked" only for verified bot threads; for any human-visible target the approval checkpoint is absolute. It does not restrict read-only inspection, local working-tree edits, or `/tmp` work.
+- **Wording.** This gate governs _whether/how to publish_. For _how to word_ any human-visible communication — replies, comments, PR/issue descriptions, commit/release messages, announcements, status updates — on any surface (GitHub, Slack, email, chat, releases), follow the centralized `~/.agents/skills/communication/SKILL.md`. Surface skills carry only their own mechanics and defer wording there; do not re-derive tone per surface.
 
 ## State-Machine Verification
 
@@ -183,6 +193,14 @@ tar_gz_bin|mdtt|szktkfm/mdtt|mdtt_Darwin_arm64.tar.gz|mdtt|mdtt
 **Installer**: `home/.chezmoiscripts/run_onchange_after_05-install-custom-packages.sh.tmpl`
 
 ---
+
+## Durable Agent Memory (`,ai-kb`)
+
+Durable, cross-session knowledge (verified gotchas, decisions, patterns, principles, facts) lives in the local `,ai-kb` knowledge base — hybrid BM25 + vector retrieval, fully local, shared across agents (cursor-cli, pi, Ralph). This is distinct from `,agent-memory`, which holds only ephemeral per-session working context under `/tmp/specs`.
+
+- When prior knowledge could help (starting non-trivial work, hitting a problem the setup likely saw before), recall first: load `~/.agents/skills/ai-kb/SKILL.md` and `,ai-kb search`.
+- When you have verified a durable, reusable insight, persist it with `,ai-kb remember` per the skill's write contract. Store only verified, reusable knowledge — never guesses or session-only notes.
+- The skill holds the full read/write procedure and the live flag/enum contract; resolve the interface from `,ai-kb --help`, not memory.
 
 ## Updating Home SOP Files
 

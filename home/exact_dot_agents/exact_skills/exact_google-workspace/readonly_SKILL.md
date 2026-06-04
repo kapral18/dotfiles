@@ -52,6 +52,7 @@ Targeting & safety:
 - Before destructive actions (delete/remove/trash/send), enumerate the exact targets first.
 - If the user asks to remove a set of items, operate on the enumerated IDs you just verified; do not guess or pattern-match blindly.
 - Do not fall back to manual HTTP requests when `gws` supports the task.
+- Human-visible sends (Gmail messages/replies, Chat messages, Doc comments) follow the Human-Visible Publication Gate (`~/AGENTS.md`): draft, show the exact payload + recipient/target, wait for approval. For the _wording_ of any such message/reply/comment, follow the centralized `~/.agents/skills/communication/SKILL.md`.
 
 Output guidance:
 

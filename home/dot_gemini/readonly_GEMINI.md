@@ -151,6 +151,21 @@ A response is complete only when all material locally-verifiable unknowns releva
 - Good:
   - Trace shell export, render/apply step, and runtime consumer in the same response, then answer with evidence.
 
+## 2.4 Compacted Output Is An Index, Not Truth
+
+Command output may be compacted by a token-reduction proxy (RTK is wired into every agent's shell-tool path via `rtk hook <agent>`). A compacted view is a lossy index, not the complete output.
+
+**Rule:** When command output contains any of these markers, treat it as incomplete and recover the full output before relying on it for a decision:
+
+- `[full output: <path>]` or `[see remaining: tail -n +N <path>]` — read that file.
+- `… +N more` (failures, errors, issues, rules, files, packages, routes) — the list was capped; re-fetch when the dropped items matter.
+
+**When recovery is mandatory:** reviewing a diff/PR, debugging a test or build failure, counting or enumerating issues/failures, or any judgment that depends on seeing every item. Re-run the raw command (prefix `RTK_DISABLED=1` to bypass rewrite, or `RTK_NO_TOML=1` / a tool's `--no-compact`/`--json`) or read the tee'd file.
+
+**When it is fine to trust the compact view:** quick status checks, success confirmations, and any case where the summary already answers the question and no capped marker is present.
+
+This is a specialization of `2.1 External Truth`: a summary you did not verify against the full output is a hypothesis, not a fact.
+
 ## 3. Workflow
 
 Always use a reverse-interview loop when intent is not uniquely determined from evidence.
@@ -304,6 +319,7 @@ Publishing content a human will see can have outsized consequences for the setup
 - **Verify author type; do not guess.** Classify from the platform API, not from display-name heuristics: GitHub `user.type == "Bot"`, a login ending in `[bot]`, or a known-bot allowlist (e.g. `elasticmachine`, `kibanamachine`, `github-actions[bot]`).
 - **Fail safe to human.** If the author type is ambiguous/unknown, or a thread mixes human and bot participants, treat it as human and require supervision.
 - **Scope.** This relaxes the prior blanket "never post/resolve unless explicitly asked" only for verified bot threads; for any human-visible target the approval checkpoint is absolute. It does not restrict read-only inspection, local working-tree edits, or `/tmp` work.
+- **Wording.** This gate governs _whether/how to publish_. For _how to word_ any human-visible communication — replies, comments, PR/issue descriptions, commit/release messages, announcements, status updates — on any surface (GitHub, Slack, email, chat, releases), follow the centralized `~/.agents/skills/communication/SKILL.md`. Surface skills carry only their own mechanics and defer wording there; do not re-derive tone per surface.
 
 ## 4. Tooling
 
@@ -328,6 +344,14 @@ When debugging or investigating issues, **use creative thinking** to explore mul
 2. **If source is available**: clone to `/tmp` and inspect locally
 3. **Web search**: use the harness web search tool. If unavailable: `ddgr --noua` — never `curl`
 4. **Explore**: `gh api` to investigate URLs found via search
+
+### 4.3 Durable Memory (`,ai-kb`)
+
+Durable, cross-session knowledge (verified gotchas, decisions, patterns, principles, facts) lives in the local `,ai-kb` knowledge base — hybrid BM25 + vector retrieval, fully local, shared across agents. This is distinct from the ephemeral per-session working context in `/tmp/specs` (see `3`); `,ai-kb` is for knowledge that should outlive the session.
+
+- When prior knowledge could help (starting non-trivial work, or hitting a problem the setup likely saw before), recall first: this matches the `ai-kb` skill's `Use when` — load `~/.agents/skills/ai-kb/SKILL.md` and run `,ai-kb search`.
+- When you have verified a durable, reusable insight, persist it with `,ai-kb remember` per the skill's write contract. Store only verified, reusable knowledge — never guesses or session-only notes (those stay in `/tmp/specs`).
+- The skill holds the full read/write procedure and the live flag/enum contract; resolve the interface from `,ai-kb --help`, not memory.
 
 ## 5. Code Quality
 
@@ -363,6 +387,7 @@ When debugging or investigating issues, **use creative thinking** to explore mul
 - **Ambiguous Affirmations:** When the user replies with a short affirmation ("sure", "ok", "yes") after an explanation that included potential side effects, DO NOT assume authorization to execute. Treat it as an unresolved fork. You MUST ask exactly one question to clarify if they are acknowledging the explanation or authorizing the execution.
 - Wrap paths and symbols in backticks; use code citation format for existing code.
 - Do not create separate summary documents or redundant recaps unless explicitly asked. Concise result summaries inside the response are required when they carry evidence, outcomes, or next-step constraints.
+- This section governs how you talk to the user in-session. For human-visible content you produce for _other_ people on any external surface (replies, comments, PR/issue descriptions, commit/release messages, announcements), follow `~/.agents/skills/communication/SKILL.md`.
 - Skills are binding procedures — when a `Use when` clause matches, load and follow it. Do not approximate from memory.
 
 ## 7. Exceptions

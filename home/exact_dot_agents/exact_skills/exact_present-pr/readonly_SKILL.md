@@ -30,7 +30,12 @@ Read both fully before writing any HTML.
 
 ### 1. Gather the change (evidence first)
 
-- PR given: `gh pr view <n> --json title,body,files,baseRefName,headRefName` and `gh pr diff <n>` (or for the current branch, find the base with `git merge-base origin/<base> HEAD`, then `git diff <base>...HEAD`).
+- PR given: `gh pr view <n> --json title,body,files,baseRefName,headRefName,closingIssuesReferences,comments,reviews` and `gh pr diff <n>` (or for the current branch, find the base with `git merge-base origin/<base> HEAD`, then `git diff <base>...HEAD`).
+- When a PR is given, investigate it exhaustively before fixing the goal/thesis — the real "why" usually lives in the discussion, not the description. Read everything, all the way down:
+  - the full PR body and every conversation comment (`gh pr view <n> --comments`),
+  - every review and inline review-thread comment (`gh api --paginate repos/OWNER/REPO/pulls/<n>/reviews` and `.../pulls/<n>/comments`),
+  - every linked/closing issue and all of its comments (`gh issue view <m> --comments`), and any PR/issue referenced transitively in the body, comments, or reviews — recurse until no new reference adds context.
+  - For `elastic/*` Buildkite links, do not fetch directly; use the `buildkite` skill (`bk` CLI).
 - Read the **actual** diff hunks for the files you will feature — paraphrased code is not allowed in beats.
 - If you need base-branch context (existing behavior, conventions, related call sites) and the repo is indexed, use the `semantic-code-search` skill as _supporting_ context only — validate against the local diff.
 

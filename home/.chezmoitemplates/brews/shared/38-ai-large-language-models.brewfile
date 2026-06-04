@@ -38,3 +38,8 @@ brew "hf"
 # https://github.com/agavra/tuicr
 tap "agavra/tap"
 brew "agavra/tap/tuicr"
+
+# CLI proxy that compacts command output to cut LLM token use 60-90%.
+# Wired into agents via `rtk hook <agent>` (see ~/Library/Application Support/rtk/config.toml)
+# https://github.com/rtk-ai/rtk
+brew "rtk"

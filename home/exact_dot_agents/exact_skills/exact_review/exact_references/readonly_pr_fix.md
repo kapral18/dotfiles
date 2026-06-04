@@ -95,13 +95,12 @@ Iteration contract:
 
 ### Reply Style
 
-- Do not use `RE:` headers/prefixes.
-- Default: reply directly (no quoting) when responding to the entire comment.
-- If you must reference a specific fragment, quote only the minimum needed using a Markdown blockquote (`> ...`), then reply.
-- Avoid email-style quote/reply interleaving.
-- Keep it short; prefer a concrete change suggestion.
-- If a thread is obsolete because later commits superseded the hunk, prefer a single-line reply:
-  - `Superseded by <commit link>` (optionally add one link to the new canonical thread).
+Reply tone, concision, and the addressed-vs-not-addressed triage pattern (thanks + resolve vs reopen + ask-what's-blocking) are centralized in `~/.agents/skills/communication/SKILL.md` — follow it. Review-specific mechanics only:
+
+- Verify the outcome against the current head before replying/resolving (the author's claim is not proof).
+- If the thread asked for a code/doc change you made: reply `Fixed in <full commit URL>` (avoid long explanations in-thread).
+- If a thread is obsolete because later commits superseded the hunk: `Superseded by <commit link>` (optionally one link to the new canonical thread).
+- Resolve/unresolve and any reply to a human author stay gated — draft, show the exact payload + target, wait for approval (Posting Boundary in `shared_rules.md`; Human-Visible Publication Gate in `~/AGENTS.md`).
 
 ## Drain Mode (Batch, Explicitly Invoked)
 

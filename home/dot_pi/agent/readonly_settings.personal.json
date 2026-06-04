@@ -1,12 +1,12 @@
 {
   "defaultProvider": "openrouter",
-  "defaultModel": "moonshotai/kimi-k2.6",
+  "defaultModel": "anthropic/claude-opus-4.8",
   "defaultThinkingLevel": "high",
   "theme": "dark",
   "compaction": {
     "enabled": true,
     "reserveTokens": 16384,
-    "keepRecentTokens": 20000
+    "keepRecentTokens": 80000
   },
   "retry": {
     "enabled": true,
@@ -14,7 +14,10 @@
   },
   "packages": [
     "pi-skills",
-    "~/.local/share/yarn/global/node_modules/pi-mcp-adapter"
+    "~/.local/share/yarn/global/node_modules/pi-mcp-adapter",
+    "~/.local/share/yarn/global/node_modules/pi-subagents"
   ],
-  "lastChangelogVersion": "0.56.3"
+  "subagents": {
+    "disableBuiltins": true
+  }
 }

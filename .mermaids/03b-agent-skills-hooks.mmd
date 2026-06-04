@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (54).
+%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (57).
 %% Skills → ~/.agents/skills/ (intent-routed SKILL.md). Hooks → ~/.agents/hooks/.
 %% ============================================================================
 flowchart TB
@@ -22,9 +22,11 @@ flowchart TB
     WLx --> MEM
     EVx --> MEM
 
+    KBDB[("~/.local/share/ai-kb/ (durable capsules)<br/>SQLite FTS5 + sqlite-vec · markdown sidecars<br/>shared: Ralph + cursor-cli + pi")]:::data
+
     subgraph CORE["Core workflow skills"]
         S1["review/ (SKILL + references: local_changes, pr_common,<br/>pr_fix, pr_review, shared_rules)"]:::skill
-        S2["git/ · github/ · worktrees/ · compose-pr/ · compose-issue/"]:::skill
+        S2["git/ · github/ · worktrees/ · compose-pr/ · compose-issue/<br/>communication/ (centralized tone/style; referenced by other skills)"]:::skill
         S3["walkthrough/ · interview-me/ · research/ · standup/<br/>present-pr/ (+refs: authoring.md, template.html)"]:::skill
         S1 --> R1["exact_references/*.md"]:::ref
     end
@@ -36,10 +38,11 @@ flowchart TB
     subgraph TOOLS["Tool-backed skills (wrap a CLI; some have references)"]
         S5["buildkite/ (+refs: bk-commands, build-debugging, troubleshooting)<br/>beads · sem · weave · knip · jscpd · semantic-code-search"]:::skill
         S6["google-workspace · playwriter · letsfg(assets/Dockerfile) · nano-banana"]:::skill
+        S7["ai-kb/ (wrap ,ai-kb; durable cross-session memory read/write)"]:::skill
     end
 
     subgraph KBN["Kibana / elastic-specific skills"]
-        S8["kbn-resolve-backport · kibana-console-monaco<br/>kibana-labels-propose"]:::skill
+        S8["kbn-backport (e2e; drives backport tool in tmux;<br/>+ref: backport-tool.md) · kibana-console-monaco<br/>kibana-labels-propose"]:::skill
     end
 
     subgraph META["Meta / orchestration skills"]
@@ -48,3 +51,7 @@ flowchart TB
 
     SOPS["~/AGENTS.md + ~/CLAUDE.md route 'Use when' → load SKILL.md"]:::data
     SOPS --> CORE & IMPROVE & TOOLS & KBN & META
+    S7 <--> KBDB
+
+    SUBA["Skill-backed subagents (isolated child context; see 12)<br/>~/.claude/agents/ (Claude) · ~/.pi/agent/agents/ (Pi); Cursor excluded<br/>Pi review-controller fans out to reviewer workers (openrouter opus:off + gpt-5.5:xhigh) → acts<br/>wrappers: reviewer→review · researcher→research · code-searcher→semantic-code-search"]:::data
+    SUBA -.->|"wraps (skill = source of truth)"| S1 & S3 & S5

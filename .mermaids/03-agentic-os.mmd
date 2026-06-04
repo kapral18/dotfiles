@@ -45,5 +45,7 @@ flowchart TB
         H["sessionStart→session_context · after*→worklog_recorder<br/>+evidence_anchor · beforeShell→gemini-*-gate (failClosed)"]:::ctx
     end
     GOV -.enforced at runtime by.-> HOOKS
-    MEM[("/tmp/specs/<pwd>/<topic>.* (memory, ,agent-memory)")]:::data
+    MEM[("/tmp/specs/<pwd>/<topic>.* (ephemeral memory, ,agent-memory)")]:::data
     HOOKS <--> MEM
+    KBDB[("~/.local/share/ai-kb/ (durable memory, ,ai-kb)<br/>shared: Ralph + cursor-cli + pi via ai-kb skill")]:::data
+    SK <--> KBDB

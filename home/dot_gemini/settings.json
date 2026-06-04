@@ -53,6 +53,10 @@
             "type": "command",
             "command": "$HOME/.agents/hooks/gemini-pr-anchor-gate.sh",
             "timeout": 10000
+          },
+          {
+            "type": "command",
+            "command": "rtk hook gemini"
           }
         ]
       }

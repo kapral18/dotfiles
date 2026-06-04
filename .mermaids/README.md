@@ -3,7 +3,7 @@
 A navigation cloud for this chezmoi dotfiles repo, in **two layers**:
 
 - **Semantic cloud** (`S0`, `S1`–`S3`, `SR`) — how the system _thinks_: the ~12 concepts and invariants it is built on, the cross-cutting flows that wire subsystems together, and a reverse index from any file to its concept, blast radius, and co-edit set. **Read this first** — it makes the catalog legible.
-- **Catalog** (`00`–`13`) — how the system is _laid out_: exhaustive coverage of every one of the 946 tracked files (`git ls-files`), named or grouped by exact chezmoi source path. Use it to drill from a concept to the precise file.
+- **Catalog** (`00`–`13`) — how the system is _laid out_: exhaustive coverage of every one of the 959 tracked files (`git ls-files`), named or grouped by exact chezmoi source path. Use it to drill from a concept to the precise file.
 
 Together they let an agent understand the whole solution in one pass and then map straight down to any particle. They complement the prose in `docs/` and the rules in `AGENTS.md` / `CLAUDE.md`.
 

@@ -61,6 +61,7 @@ Approvals:
 - Any GitHub side effect requires explicit approval unless the user instructed otherwise. Examples (non-exhaustive): create/edit PRs or issues, post comments/reviews, apply metadata (labels/assignees/milestones/projects), merge, or create releases.
 - Human-Visible Publication Gate (see the SOP, `~/AGENTS.md`): a reply/resolve/comment that a human will see is always supervised — draft, show the exact payload + target, wait for approval. The only carve-out is a **verified bot-authored** thread (GitHub `user.type == "Bot"`, login ending in `[bot]`, or known-bot allowlist such as `elasticmachine` / `kibanamachine` / `github-actions[bot]`), which may be auto-replied/auto-resolved inside an explicitly-invoked flow. Ambiguous or mixed human+bot threads fail safe to human (supervised). Verify author type via the API before treating any thread as bot:
   - `gh api repos/OWNER/REPO/pulls/comments/COMMENT_ID --jq '{login:.user.login, type:.user.type}'`
+- Wording for any human-visible content (PR/issue bodies, comments, replies, review summaries, release notes — tone, concision, addressed-vs-not-addressed triage): follow the centralized `~/.agents/skills/communication/SKILL.md`. This skill carries GitHub mechanics only (endpoints, `in_reply_to`, anchoring, clickable source/commit links).
 
 PR review side effects (draft / pending reviews):
 
