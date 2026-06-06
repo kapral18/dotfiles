@@ -83,10 +83,17 @@ Memory flow during a Ralph run:
 CLI surface:
 
 ```bash
-,ai-kb remember --title "Project rule" --body "Keep generated state out of git." \
-                --kind principle --scope project --tags lint
+# Metadata is not optional decoration — every field drives retrieval/curation.
+# Full write contract (field selection, --source/--confidence discipline, body
+# structure, supersede limitation): ~/.agents/skills/ai-kb/SKILL.md.
+,ai-kb remember --title "chezmoi: generated state must stay out of git" \
+                --body "Keep generated state out of git; verified in scripts/foo.py:42." \
+                --kind principle --scope project --workspace "$(pwd)" \
+                --source "scripts/foo.py:42" --confidence 0.9 --domain chezmoi --tags lint
 ,ai-kb search "tmux capture-pane reuse"           # hybrid (lexical + vector)
 ,ai-kb search --kind gotcha --scope project --json
+,ai-kb remember --title "..." --body "..." --supersedes <old-id> --confidence 0.9
+                                                   # retire a stale capsule (links both ways; --supersedes is validated)
 ,ai-kb get <capsule-id>                            # full body + metadata
 ,ai-kb ingest ./AGENTS.md ./docs                   # chunk markdown into kind=doc capsules; idempotent on sha256
 ,ai-kb reembed                                     # rebuild missing/stale embeddings
@@ -112,7 +119,11 @@ Ralph is no longer the only consumer. The same durable KB is wired into every in
 
 Persistence stays agent-driven through the `,ai-kb` CLI — there is no auto-harvest and no MCP, so nothing writes to the KB without the agent's explicit `remember`. Retrieval is agent-driven too (the agent searches with its actual task — the highest-relevance query), but one hook now performs a **read-only** retrieval to seed context: `session_context.py` runs a relevance-gated `,ai-kb search` at `sessionStart` and injects up to three matching capsules under a `### Relevant Learnings (,ai-kb)` block. This fires **only** for a deliberate named topic (the active topic is neither the generic `current` fallback nor a per-session `session-*` key) that has a non-empty `<topic>.txt` spec; the spec text is the query, the `bm25` lane keeps it embedder-free and fast inside the hook timeout, and only capsules that are local to the workspace or scoped `domain`/`universal` clear the gate (so a large or cross-project KB cannot stuff the context). Ad-hoc/`session-*` and review topics get no warm-start. Cursor cannot inject context per-turn (`beforeSubmitPrompt` output is only `{continue, user_message}` and any `additional_context` there is dropped), so `sessionStart` is the only injection point; mid-task relevance comes from the agent's own searches. Persistence is the SOP's end-of-turn capture habit (`~/CLAUDE.md` §4.3): the agent self-vets and writes inline as the last step of a substantive turn, with no hook and no auto-submitted prompt.
 
-Pi uses its own TypeScript extension API rather than the `hooks.json` lifecycle, so its recall lives in [`home/dot_pi/agent/extensions/ai-kb-recall.ts`](../../../home/dot_pi/agent/extensions/ai-kb-recall.ts). It is a thin delegating extension: topic + spec resolution comes from `,agent-memory status --json` (single source of truth in [`scripts/agent_memory.py`](../../../scripts/agent_memory.py)), and retrieval comes from `,ai-kb search`. All of pi's injection points use `before_agent_start` (pi's only context-injection hook): on the first prompt it injects the verification-discipline prefix (parity with `session_context.py`) and does the **same gated warm-start** as Cursor (named topic + spec query, `bm25`, the workspace/`domain`/`universal` scope gate, ≤3 capsules), and on every substantive prompt it does **per-turn retrieval using the actual prompt as the query** — the highest-relevance signal — deduped against capsules already injected this session. Per-turn injection is possible in pi precisely because `before_agent_start` can return an injected `message`, which Cursor's `beforeSubmitPrompt` cannot.
+Pi uses its own TypeScript extension API rather than the `hooks.json` lifecycle, so its recall lives in [`home/dot_pi/agent/extensions/ai-kb-recall.ts`](../../../home/dot_pi/agent/extensions/ai-kb-recall.ts). It is a thin delegating extension: topic + spec resolution comes from `,agent-memory status --json` (single source of truth in [`scripts/agent_memory.py`](../../../scripts/agent_memory.py)), and retrieval comes from `,ai-kb search`. All of pi's injection points use `before_agent_start` (pi's only context-injection hook): on the first prompt it injects the verification-discipline prefix (parity with `session_context.py`) and does the **same gated warm-start** as Cursor (named topic + spec query, `bm25`, the workspace/`domain`/`universal` scope gate, ≤3 capsules), and on every substantive prompt it does **per-turn retrieval using the actual prompt as the query** — the highest-relevance signal — deduped against capsules already injected this session. Per-turn uses `hybrid` mode (lexical + vector + MMR), not `bm25`, so capsules that only share surface words with the prompt are down-weighted instead of surfacing as noise. Per-turn injection is possible in pi precisely because `before_agent_start` can return an injected `message`, which Cursor's `beforeSubmitPrompt` cannot.
+
+Per-turn (`hybrid`) retrieval also applies an **absolute top-hit gate**: unless the best hit's `cosine_score` clears ~0.55, the entire per-turn block is suppressed. The relative floor only compares hits to each other, so on a prompt with no KB overlap it would still inject a cluster of equally-irrelevant capsules — RRF rank-position is relevance-blind (rank 1 on a junk query scores like rank 1 on a perfect one). `cosine_score` is the only absolute, cross-query-comparable signal; calibrated against live searches, on-topic top hits scored 0.58-0.81 and off-topic top hits 0.44-0.48, so 0.55 sits in the gap. Only the top hit is gated — secondary on-topic hits (0.48-0.56) overlap off-topic rows, so per-row cosine filtering would drop legitimate matches; the relative floor trims the tail instead. The gate is `hybrid`-only (`cosine_score` is `null` in `bm25` mode), so it never applies to warm-start.
+
+Both retrieval paths apply a **relative relevance floor** on top of the scope gate: after the best-scoring hit, any hit whose score falls below 60% of the best is dropped (the top hit is always kept). The scope gate alone is a _provenance_ filter, so before the floor a low-relevance capsule could still fill a slot whenever fewer than three on-topic capsules existed. An absolute score threshold is fragile (bm25/rrf magnitudes shift with query length and corpus), but the _ratio_ to the best hit is stable, so a far-worse hit is reliably off-topic. The floor signal is mode-aware: `rrf_score` for `hybrid` (the merged signal, populated for every hit) and `bm25_score` for `bm25` (where `rrf_score` is rank-derived and nearly constant). `session_context.py`'s warm-start applies the same `bm25` floor.
 
 Cross-runtime durable-memory retrieval:
 
@@ -124,7 +135,7 @@ Cross-runtime durable-memory retrieval:
 | Gemini / Cursor cloud | No injection point available; agent-pull only                                            |
 
 - **Read:** the `sessionStart` warm-start above seeds named-topic sessions automatically (pi also injects per prompt); beyond that, agents run `,ai-kb search "<q>" --limit 5 --json` (with `--kind` / `--scope` / `--workspace` / `--domain` / `--mode` filters) before non-trivial work, and `,ai-kb get <id> --json` to pull a full capsule.
-- **Write:** agents call `,ai-kb remember --title ... --body ... --kind ... --scope ...` only for verified, durable, reusable insights — the same quality bar as Ralph's `LEARNING:` lines. Guesses and session-only notes stay out of the KB (those belong in `,agent-memory`).
+- **Write:** agents call `,ai-kb remember` (with deliberate `--kind`/`--scope`/`--source`/`--confidence`/`--domain` per the skill's write contract) only for verified, durable, reusable insights — the same quality bar as Ralph's `LEARNING:` lines. Guesses and session-only notes stay out of the KB (those belong in `,agent-memory`).
 
 The division of labor is explicit so agents do not confuse the two memory layers or the code index:
 

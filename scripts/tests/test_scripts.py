@@ -5032,5 +5032,113 @@ class VerifyMermaidsTest(unittest.TestCase):
         assert rc == 0
 
 
+class TestAiKbRememberSupersedes(unittest.TestCase):
+    """WHEN `,ai-kb remember` is called with --supersedes / --refs."""
+
+    AIKB = SCRIPTS / "ai_kb.py"
+
+    def _remember(self, data_home: str, *args: str) -> dict:
+        """Run remember in an isolated KB (no embedder) and return the capsule JSON."""
+        result = subprocess.run(
+            [sys.executable, str(self.AIKB), "remember", "--no-embed", "--json", *args],
+            capture_output=True,
+            text=True,
+            env={**os.environ, "XDG_DATA_HOME": data_home},
+        )
+        if result.returncode != 0:
+            raise AssertionError(f"remember failed:\n{result.stderr}")
+        return json.loads(result.stdout)
+
+    def test_supersedes_links_both_directions_and_retires_old_capsule(self):
+        """SHOULD set superseded_by on the old capsule and supersedes on the new one, and drop the old from search."""
+        with tempfile.TemporaryDirectory() as tmp:
+            old = self._remember(
+                tmp,
+                "--title",
+                "Old fact about X",
+                "--body",
+                "X uses approach foo",
+                "--kind",
+                "fact",
+                "--scope",
+                "project",
+            )
+            new = self._remember(
+                tmp,
+                "--title",
+                "Corrected fact about X",
+                "--body",
+                "X actually uses approach bar, verified at lib.py:10",
+                "--kind",
+                "fact",
+                "--scope",
+                "project",
+                "--supersedes",
+                old["id"],
+                "--confidence",
+                "0.9",
+            )
+
+            get_old = subprocess.run(
+                [sys.executable, str(self.AIKB), "get", old["id"], "--json"],
+                capture_output=True,
+                text=True,
+                env={**os.environ, "XDG_DATA_HOME": tmp},
+            )
+            old_capsule = json.loads(get_old.stdout)
+
+            assert old_capsule["superseded_by"] == new["id"]  # old points forward to replacement
+            assert new["supersedes"] == old["id"]  # new points back to what it retired
+
+            search = subprocess.run(
+                [sys.executable, str(self.AIKB), "search", "fact about X", "--mode", "bm25", "--json"],
+                capture_output=True,
+                text=True,
+                env={**os.environ, "XDG_DATA_HOME": tmp},
+            )
+            hit_ids = [r["id"] for r in json.loads(search.stdout or "[]")]
+            assert new["id"] in hit_ids  # replacement surfaces
+            assert old["id"] not in hit_ids  # superseded capsule excluded from results
+
+    def test_supersedes_unknown_id_errors_without_writing(self):
+        """SHOULD exit non-zero and not create a capsule when the supersede target is missing."""
+        with tempfile.TemporaryDirectory() as tmp:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(self.AIKB),
+                    "remember",
+                    "--no-embed",
+                    "--title",
+                    "Z",
+                    "--body",
+                    "z",
+                    "--supersedes",
+                    "does-not-exist-id",
+                ],
+                capture_output=True,
+                text=True,
+                env={**os.environ, "XDG_DATA_HOME": tmp},
+            )
+            assert result.returncode == 1
+            assert "not found" in result.stderr
+
+            listed = subprocess.run(
+                [sys.executable, str(self.AIKB), "list", "--json"],
+                capture_output=True,
+                text=True,
+                env={**os.environ, "XDG_DATA_HOME": tmp},
+            )
+            assert json.loads(listed.stdout or "[]") == []  # nothing was written
+
+    def test_refs_are_stored_as_csv(self):
+        """SHOULD persist repeated --refs as a CSV refs field on the capsule."""
+        with tempfile.TemporaryDirectory() as tmp:
+            cap = self._remember(
+                tmp, "--title", "With refs", "--body", "b", "--refs", "lib.py:10", "--refs", "https://example/doc"
+            )
+            assert cap["refs"] == "lib.py:10,https://example/doc"
+
+
 if __name__ == "__main__":
     unittest.main()

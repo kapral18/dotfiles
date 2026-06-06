@@ -676,6 +676,16 @@ with open(cache_file, "r", encoding="utf-8", errors="replace") as f:
         if rpath in sess_by_rpath and rpath not in scan_roots_set:
             continue
 
+        # Drop worktree rows whose directory no longer exists on disk (e.g. the
+        # worktree was moved/renamed out-of-band via `git worktree move` or a
+        # rename that did not go through `,w mv` / the picker's own removal
+        # flow). The authoritative builder (index_main.py) only emits worktree
+        # rows for paths `fd` finds on disk, so a gone path is never rebuilt
+        # there; without this guard the stale cache row is replayed verbatim on
+        # every ctrl-r until the background full scan rewrites the cache.
+        if kind == "worktree" and rpath and not is_git_dir(rpath):
+            continue
+
         print(row["raw"])
 
 emit_missing_sessions()

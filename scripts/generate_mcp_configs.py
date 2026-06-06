@@ -89,6 +89,30 @@ def _transform_gemini(spec: dict[str, Any]) -> dict[str, Any]:
 _TOOL_TRANSFORMS["gemini"] = _transform_gemini
 
 
+def _transform_pi(spec: dict[str, Any]) -> dict[str, Any]:
+    """pi-mcp-adapter wants ``oauth`` with a singular space-separated ``scope``
+    and explicit ``auth: "oauth"``.
+    """
+    out: dict[str, Any] = {"url": spec["url"]}
+    oauth = spec.get("oauth")
+    if oauth:
+        pi_oauth = dict(oauth)
+        scope = pi_oauth.pop("scope", None)
+        scopes = pi_oauth.pop("scopes", None)
+        if isinstance(scopes, list):
+            scopes = ", ".join(scopes)
+        merged_scope = scope or scopes
+        if merged_scope:
+            # pi sends scope verbatim; normalise to space-separated tokens.
+            pi_oauth["scope"] = " ".join(s.strip() for s in str(merged_scope).split(",") if s.strip())
+        out["auth"] = "oauth"
+        out["oauth"] = pi_oauth
+    return out
+
+
+_TOOL_TRANSFORMS["pi"] = _transform_pi
+
+
 def _render_servers(servers: dict[str, dict[str, Any]], tool: str | None) -> dict[str, dict[str, Any]]:
     transform = _TOOL_TRANSFORMS.get(tool)
     if not transform:
@@ -112,7 +136,11 @@ def main():
 
     servers = load_servers(yaml_path, is_work, tool=tool)
     servers = _render_servers(servers, tool)
-    doc = {"mcpServers": servers}
+    doc: dict[str, Any] = {"mcpServers": servers}
+    # pi only: auto-run OAuth+reconnect on first tool call to a needs-auth
+    # server (still opens the browser interactively).
+    if tool == "pi":
+        doc["settings"] = {"autoAuth": True}
     print(json.dumps(doc, indent=2))
 
 

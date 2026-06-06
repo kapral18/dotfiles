@@ -32,14 +32,24 @@ WARMSTART_QUERY_CHARS = 600
 WARMSTART_BODY_CHARS = 240
 WARMSTART_SEARCH_TIMEOUT = 6
 CROSS_PROJECT_SCOPES = {"domain", "universal"}
+# Relative relevance floor: drop hits far worse than the best hit (see the same
+# constant + rationale in dot_pi/.../ai-kb-recall.ts). bm25() is SQLite's negative
+# log score (smaller = better), so we negate to "larger = better" before comparing.
+WARMSTART_RELEVANCE_FLOOR_FRACTION = 0.6
 
 AIKB_REMINDER = (
     "### Durable Memory (,ai-kb)\n"
     "Recall before non-trivial work by searching with the ACTUAL task as the query: "
     '`,ai-kb search "<the concrete thing you are about to do>" --limit 5 --json` '
     "(a precise task query returns the most relevant capsules). "
-    "Persist verified, reusable insights before finishing: "
-    "`,ai-kb remember --title ... --body ... --kind ... --scope ...`."
+    "Persist verified, reusable insights before finishing with DELIBERATE metadata "
+    "(each field drives retrieval/curation — do not leave defaults): "
+    "`,ai-kb remember --title <searchable, names the exact symbol/file/error> "
+    "--body <front-loaded with the literal identifiers a future query would use> "
+    "--kind <fact|gotcha|pattern|anti_pattern|recipe|principle|doc> "
+    "--scope <workspace|project|domain|universal> --source <path:line|command|URL you verified> "
+    '--confidence <0..1, honest> --domain <tag>` — add `--workspace "$(pwd)"` only for '
+    "workspace/project scope. See the ai-kb skill for the full write contract."
 )
 
 
@@ -88,6 +98,8 @@ def aikb_warmstart(workspace: Path, query: str) -> str:
     except json.JSONDecodeError:
         return ""
 
+    rows = _apply_relevance_floor(rows if isinstance(rows, list) else [])
+
     workspace_str = str(workspace)
     selected: list[str] = []
     for row in rows if isinstance(rows, list) else []:
@@ -120,6 +132,33 @@ def aikb_warmstart(workspace: Path, query: str) -> str:
             *selected,
         ]
     )
+
+
+def _apply_relevance_floor(rows: list) -> list:
+    """Drop bm25 hits whose relevance is far below the best hit's.
+
+    Warm-start uses --mode bm25, so bm25_score (negative; smaller = better) is the
+    real relevance signal. A relative gap to the best hit is stable across queries
+    where an absolute threshold is not. Keeps the top hit always and keeps any row
+    missing a score so a scoring gap never swallows everything. Assumes best-first.
+    """
+    if len(rows) <= 1:
+        return rows
+    best = None
+    for row in rows:
+        raw = row.get("bm25_score")
+        if isinstance(raw, (int, float)):
+            best = -float(raw)
+            break
+    if best is None or best <= 0:
+        return rows
+    floor = best * WARMSTART_RELEVANCE_FLOOR_FRACTION
+    kept = []
+    for row in rows:
+        raw = row.get("bm25_score")
+        if not isinstance(raw, (int, float)) or -float(raw) >= floor:
+            kept.append(row)
+    return kept
 
 
 def prefix_block() -> str:

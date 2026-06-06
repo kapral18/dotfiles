@@ -48,6 +48,8 @@ Trigger: removing or replacing a custom/legacy stack, a helper that predates cur
 
 ## Coverage Checklist (Do Not Skip)
 
+On PR surfaces, first apply the CI Coverage Gate (`pr_common.md`): a finding-class already enforced by a present, blocking CI check is out of scope — do not re-check or comment on it. A class is back in scope when its expected check is absent on this branch (common on backports). Non-PR surfaces (local-changes, light-review) have no PR CI to dedup against; check every class below.
+
 - security issues
 - logic/correctness/invariants
 - data-loss risk

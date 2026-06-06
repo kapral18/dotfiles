@@ -68,11 +68,28 @@ if [[ -z "${TMUX_TARGET_PANE:-}" ]]; then
   TMUX_TARGET_PANE="$TMUX_CURRENT_PANE"
 fi
 
+ES_URL="http://localhost:9201"
+
+ensure_trial_license() {
+  # SAML (mock IdP dev login) requires a trial license; a basic license makes the
+  # SAML realm non-compliant and Kibana login loops on /security/reset_session.
+  # start_trial is idempotent: it no-ops once the cluster is already on trial.
+  for _ in $(seq 1 60); do
+    if curl -fsS -m5 -u elastic:changeme "$ES_URL/_cluster/health" >/dev/null 2>&1; then
+      curl -fsS -m10 -u elastic:changeme -X POST \
+        "$ES_URL/_license/start_trial?acknowledge=true" >/dev/null 2>&1 || true
+      return 0
+    fi
+    sleep 2
+  done
+}
+
 yarn kbn bootstrap
 
 (
   tail -n 0 -F "$LOGFILE" | while read -r line; do
     if [[ "$line" == *"$TRIGGER_STRING"* ]]; then
+      ensure_trial_license
       tmux send-keys -t "$TMUX_TARGET_PANE" "yarn start --no-base-path --host=kibana-main.local --port=5602 --elasticsearch.hosts=http://localhost:9201" C-m
       break
     fi

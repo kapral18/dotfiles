@@ -15,6 +15,7 @@ Usage:
                       [--scope SCOPE] [--workspace PATH]
                       [--project PROJECT_ID] [--domain TAGS]
                       [--confidence FLOAT] [--verified-by RID]
+                      [--supersedes ID] [--refs REF]
                       [--source SOURCE] [--tags TAGS]
                       [--no-embed]
     ai_kb.py search QUERY [--limit N]
@@ -1520,6 +1521,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     remember.add_argument("--confidence", type=float, default=0.5)
     remember.add_argument("--verified-by", default=None)
+    remember.add_argument(
+        "--supersedes",
+        default=None,
+        help="ID of an existing capsule this one replaces (links both directions)",
+    )
+    remember.add_argument(
+        "--refs",
+        default=None,
+        action="append",
+        help="Related capsule ID or external reference (repeat for multiple)",
+    )
     remember.add_argument("--no-embed", action="store_true")
     remember.add_argument("--json", action="store_true")
 
@@ -1580,6 +1592,9 @@ def main(argv: list[str] | None = None) -> int:
         print(kb.home)
         return 0
     if args.cmd == "remember":
+        if args.supersedes is not None and kb.get(args.supersedes) is None:
+            print(f"error: --supersedes target {args.supersedes!r} not found", file=sys.stderr)
+            return 1
         capsule = kb.remember(
             args.title,
             args.body,
@@ -1592,6 +1607,8 @@ def main(argv: list[str] | None = None) -> int:
             domain_tags=args.domain_tags or [],
             confidence=args.confidence,
             verified_by=args.verified_by,
+            supersedes=args.supersedes,
+            refs=args.refs or [],
             embed_now=not args.no_embed,
         )
         print_capsule(capsule, args.json)

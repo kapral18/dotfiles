@@ -48,6 +48,12 @@ mcp_servers:
         # the Okta SCSI app registers http://localhost:12345/oauth/callback as
         # a Login redirect URI (currently it only allows .../callback).
         redirectUri: "http://localhost:{port}/oauth/callback"
+      pi:
+        # Pre-registered public client (no DCR). pi derives the callback
+        # listener from redirectUri; /callback matches the Okta app.
+        clientId: "0oa1aviou3pe7dITS1t8"
+        scopes: "openid, email, offline_access"
+        redirectUri: "http://localhost:12345/callback"
 
   - name: scsi-local
     work_only: true
@@ -66,9 +72,9 @@ mcp_servers:
         callbackPort: 3118
       cursor:
         ideClientId: "3660753192626.8903469228982"
+        callbackPort: 8787
         clientId: "$(pass slack/mcp/client_id)"
         clientSecret: "$(pass slack/mcp/client_secret)"
-        callbackPort: 8787
         authorizationUrl: "https://slack.com/oauth/v2_user/authorize"
         tokenUrl: "https://slack.com/api/oauth.v2.user.access"
         issuer: "https://slack.com"
@@ -81,3 +87,11 @@ mcp_servers:
         tokenUrl: "https://slack.com/api/oauth.v2.user.access"
         issuer: "https://slack.com"
         scopes: "$(pass slack/mcp/user_scopes)"
+      pi:
+        # Reuse Claude's public client (no secret); the $(pass slack/mcp/*)
+        # confidential client is not authorized for this user. Endpoints are
+        # auto-discovered from the server's protected-resource metadata.
+        clientId: "1601185624273.8899143856786"
+        scopes: "$(pass slack/mcp/user_scopes)"
+        # http:// localhost required; must match a registered redirect URI.
+        redirectUri: "http://localhost:3118/callback"

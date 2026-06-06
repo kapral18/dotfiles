@@ -34,6 +34,25 @@ const QUERY_MAX_CHARS = 600
 const BODY_MAX_CHARS = 240
 const MIN_PROMPT_CHARS = 12
 const PREFIX_MAX_CHARS = 3000
+// Relative relevance floor: after the top hit, drop any hit whose score is worse
+// than RELEVANCE_FLOOR_FRACTION of the best hit's magnitude. Absolute score floors
+// are fragile (bm25/rrf magnitudes shift with query length and corpus), but the
+// *ratio* to the best hit is stable, so a far-worse hit is reliably off-topic.
+// Verified against live `,ai-kb search` output: on an on-topic query the relevant
+// capsule scored ~2-3x the cross-domain noise in both lanes; 0.6 cleanly separates
+// them. The score field is mode-aware — see relevanceField().
+const RELEVANCE_FLOOR_FRACTION = 0.6
+// Absolute relevance gate for per-turn (hybrid) retrieval: unless the BEST hit's
+// cosine similarity clears this bar, suppress the entire per-turn block. The relative
+// floor only compares hits to each other, so on a prompt with no KB overlap it still
+// keeps a cluster of equally-irrelevant capsules (RRF rank-position is relevance-blind:
+// rank 1 on a junk query scores like rank 1 on a perfect one). cosine_score is the only
+// absolute, cross-query-comparable signal. Calibrated against live `,ai-kb search`:
+// on-topic top hits scored 0.58-0.81, off-topic top hits 0.44-0.48 — 0.55 sits in the
+// gap. Gate the TOP hit only; secondary on-topic hits (0.48-0.56) overlap off-topic
+// rows, so per-row cosine filtering would wrongly drop legitimate matches — the relative
+// floor trims the tail instead.
+const PERTURN_MIN_TOP_COSINE = 0.55
 // Re-inject the verification prefix once context-window fill has grown by at least this
 // many percentage points since it was last injected (decay proxy). Compaction forces a
 // re-inject regardless, since it summarizes/drops the prior prefix.
@@ -74,6 +93,52 @@ interface Capsule {
   kind?: string
   scope?: string
   workspace_path?: string
+  bm25_score?: number | null
+  rrf_score?: number | null
+  cosine_score?: number | null
+}
+
+// Mode-aware relevance signal. In hybrid mode rrf_score is the merged signal and is
+// populated for every hit (bm25_score is null for vector-only hits), so it is the only
+// field usable as a floor. In bm25 mode rrf_score is rank-derived and nearly constant,
+// so bm25_score (SQLite's negative log score, smaller = better) is the real signal.
+type SearchMode = "bm25" | "hybrid"
+
+function relevanceScore(row: Capsule, mode: SearchMode): number | null {
+  const raw = mode === "hybrid" ? row.rrf_score : row.bm25_score
+  if (raw == null) return null
+  // Normalize so "larger = better" regardless of lane: bm25 is negative (smaller =
+  // better), rrf is positive (larger = better).
+  return mode === "hybrid" ? raw : -raw
+}
+
+// Drop hits whose relevance is far below the best hit's. Keeps the top hit always;
+// rows missing the score field (shouldn't happen for the active mode) are kept so a
+// scoring gap never silently swallows everything. Assumes rows are best-first.
+function applyRelevanceFloor(rows: Capsule[], mode: SearchMode): Capsule[] {
+  if (!rows.length) return rows
+  // Absolute top-hit gate (hybrid/per-turn only): if the best hit isn't semantically
+  // close to the query, nothing in the KB is relevant — suppress the whole block rather
+  // than inject a cluster of equally-irrelevant capsules the relative floor would keep.
+  if (mode === "hybrid") {
+    const topCosine = rows[0]?.cosine_score
+    if (topCosine == null || topCosine < PERTURN_MIN_TOP_COSINE) return []
+  }
+  if (rows.length <= 1) return rows
+  let best: number | null = null
+  for (const row of rows) {
+    const s = relevanceScore(row, mode)
+    if (s != null) {
+      best = s
+      break
+    }
+  }
+  if (best == null || best <= 0) return rows
+  const floor = best * RELEVANCE_FLOOR_FRACTION
+  return rows.filter((row) => {
+    const s = relevanceScore(row, mode)
+    return s == null || s >= floor
+  })
 }
 
 function collapse(text: string, max: number): string {
@@ -94,18 +159,23 @@ async function memoryStatus(pi: ExtensionAPI, cwd: string): Promise<MemoryStatus
   }
 }
 
-async function searchCapsules(pi: ExtensionAPI, workspace: string, query: string): Promise<Capsule[]> {
+async function searchCapsules(
+  pi: ExtensionAPI,
+  workspace: string,
+  query: string,
+  mode: SearchMode,
+): Promise<Capsule[]> {
   const flat = collapse(query, QUERY_MAX_CHARS)
   if (!flat) return []
   const result = await pi.exec(
     ",ai-kb",
-    ["search", flat, "--limit", String(SEARCH_FETCH), "--mode", "bm25", "--workspace", workspace, "--json"],
+    ["search", flat, "--limit", String(SEARCH_FETCH), "--mode", mode, "--workspace", workspace, "--json"],
     { timeout: EXEC_TIMEOUT_MS },
   )
   if (result.killed || result.code !== 0 || !result.stdout.trim()) return []
   try {
     const rows = JSON.parse(result.stdout)
-    return Array.isArray(rows) ? (rows as Capsule[]) : []
+    return Array.isArray(rows) ? applyRelevanceFloor(rows as Capsule[], mode) : []
   } catch {
     return []
   }
@@ -183,7 +253,10 @@ export default async function (pi: ExtensionAPI) {
           const spec = await pi.exec("cat", [status.spec_file], { timeout: EXEC_TIMEOUT_MS })
           const specText = spec.code === 0 ? spec.stdout : ""
           if (specText.trim()) {
-            const rows = await searchCapsules(pi, workspace, specText)
+            // Warm-start query is the spec text (keyword-dense), and runs at session
+            // start where the embedder may be cold/slow — bm25 keeps it fast and
+            // dependency-light, floored on bm25_score.
+            const rows = await searchCapsules(pi, workspace, specText, "bm25")
             const lines = gateAndFormat(rows, workspace, injectedIds, WARMSTART_LIMIT)
             if (lines.length) {
               blocks.push(
@@ -199,7 +272,10 @@ export default async function (pi: ExtensionAPI) {
       // 2. Per-turn: highest-relevance retrieval using the actual prompt (pi-only capability).
       const prompt = typeof event.prompt === "string" ? event.prompt : ""
       if (prompt.trim().length >= MIN_PROMPT_CHARS) {
-        const rows = await searchCapsules(pi, workspace, prompt)
+        // Per-turn uses the actual prompt and hybrid retrieval: the vector lane + MMR
+        // suppress capsules that only share surface words with the prompt, and rrf_score
+        // is the floor signal. This is where cross-domain lexical noise was leaking in.
+        const rows = await searchCapsules(pi, workspace, prompt, "hybrid")
         const lines = gateAndFormat(rows, workspace, injectedIds, PERTURN_LIMIT)
         if (lines.length) {
           blocks.push(

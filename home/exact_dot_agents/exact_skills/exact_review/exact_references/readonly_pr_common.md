@@ -37,6 +37,22 @@ Adjust review depth by file type:
 - **Medium depth**: test files (check coverage and correctness, but do not nitpick style), documentation, CI config.
 - If a finding exists only in a skimmed file, still report it — but note the file type context.
 
+## CI Coverage Gate (scoping — complete before drafting findings)
+
+Do not spend review effort on a finding-class the PR's own CI already enforces and blocks on — but never assume a check is present; verify it on this branch, since backports and other branches often drop expected checks.
+
+1. Enumerate the PR's checks (read-only). Set `GH_PAGER=cat`, then:
+   - `gh pr checks <number> --json name,state,bucket,workflow,link` for the full check set.
+   - `gh pr checks <number> --required --json name,state,bucket` for the checks that gate merge (branch-protection required).
+   - If no checks are reported, treat every finding-class as in scope and note "no CI checks present on this branch".
+2. Map each present check to the Coverage-Checklist classes it enforces (e.g. lint -> style/format nits, typecheck -> type errors, a test job -> the behavior it exercises, SAST -> the vuln classes it scans). A check only covers what it actually runs; do not over-claim.
+   - Buildkite job whose coverage is unclear: load and follow `~/.agents/skills/buildkite/SKILL.md` (`bk` CLI) to see what it runs before deciding it covers a class.
+3. A finding-class is out of scope only when a check enforcing it is present **and** blocking (`--required` or otherwise gating merge). Drop those classes — do not build findings or draft comments for them; state (green/pending) is irrelevant, presence + blocking is.
+4. Keep a class in scope when its check is absent (e.g. a backport missing the lint or typecheck job) or present but not blocking. Also surface the absence itself as a finding: "expected `<check>` is not present on this branch; `<class>` is not enforced by CI here."
+5. State one line before drafting: `CI coverage: required=[...], present-non-blocking=[...], absent-expected=[...] -> suppressed classes=[...]`.
+
+Never suppress logic/correctness/security findings a passing build would not catch — only classes a present blocking check genuinely enforces.
+
 ## Reference Resolution (blocking — complete before diff analysis)
 
 1. Extract all URLs, PR/issue refs, and image/media links from:
