@@ -56,18 +56,32 @@ function M.update_by_names(ctx, names, empty_msg, noop_msg)
     end
   end
 
-  vim.pack.update(filtered, { force = true })
-  state.pack_report_cache.last_applied_at = os.time()
-  state.pack_report_cache.last_applied_count = #filtered
-  state.write_persisted_state()
-  pcall(refresh_version_policy_if_needed)
-  refresh.refresh(
-    ctx,
-    false,
-    filtered,
-    true,
-    { mark_online = false, mark_offline = false, record_counts = false, notify = false }
-  )
+  -- Unified per-row experience with no UI freeze: the slow network fetch runs
+  -- asynchronously per plugin via the pipeline (online = true), and the moment
+  -- each plugin's remote is fetched it is checked out locally with a fast
+  -- `offline = true, force = true` call (no network, no long block), then its
+  -- row flips to up-to-date. This avoids the monolithic, blocking
+  -- `vim.pack.update(filtered, { force = true })` that froze the UI and spammed
+  -- the command line with fetch progress.
+  local applied = 0
+  refresh.run_row_op(ctx, {
+    names = filtered,
+    online = true,
+    per_row_apply = function(name)
+      local ok, err = pcall(vim.pack.update, { name }, { offline = true, force = true })
+      if ok then
+        applied = applied + 1
+      end
+      return ok, err
+    end,
+    on_finalize = function()
+      if applied > 0 then
+        state.pack_report_cache.last_applied_at = os.time()
+        state.pack_report_cache.last_applied_count = applied
+        pcall(refresh_version_policy_if_needed)
+      end
+    end,
+  })
 end
 
 function M.clean_orphan_rows(ctx, targets, scope_label)
@@ -88,23 +102,15 @@ function M.clean_orphan_rows(ctx, targets, scope_label)
     end
   end
 
-  local ok_del, err = pcall(vim.pack.del, targets)
-  if not ok_del then
-    vim.notify("vim.pack.del failed: " .. tostring(err), vim.log.levels.ERROR)
-    return
-  end
-
-  for _, name in ipairs(targets) do
-    if type(state.pack_report_cache.plugins) == "table" then
-      state.pack_report_cache.plugins[name] = nil
-    end
-    ctx.selected[name] = nil
-  end
-  state.write_persisted_state()
-  ctx.rows = report.collect_dashboard_rows()
-  view.render(ctx)
-  refresh.persist_ui_state(ctx)
-  vim.notify(string.format("Cleaned %d orphan plugin(s)", #targets), vim.log.levels.INFO)
+  -- Unified per-row experience: orphan rows show a spinner during the delete,
+  -- then drop out of the table when the op completes.
+  refresh.run_row_op(ctx, {
+    names = targets,
+    remove_on_done = true,
+    apply = function()
+      vim.pack.del(targets)
+    end,
+  })
 end
 
 function M.heal_drift_rows(ctx, targets)
@@ -113,22 +119,43 @@ function M.heal_drift_rows(ctx, targets)
     return
   end
 
-  local ok_update, err = pcall(vim.pack.update, targets, { offline = true })
-  if not ok_update then
-    vim.notify("vim.pack.update failed: " .. tostring(err), vim.log.levels.ERROR)
-    return
-  end
-
-  state.version_flags_cache = {}
-  state.version_flags_scanned = false
-  ctx.rows = report.collect_dashboard_rows()
-  view.render(ctx)
-  analysis.refresh_version_flags_async(function()
-    ctx.rows = report.collect_dashboard_rows()
-    view.render(ctx)
-  end)
-  refresh.persist_ui_state(ctx)
-  vim.notify(string.format("Re-checked out %d drifted plugin(s)", #targets), vim.log.levels.INFO)
+  -- Unified per-row experience: drifted rows show a spinner while they are
+  -- re-checked out to their declared spec, then flip to their healed status.
+  -- `force = true, offline = true` re-checkouts local refs directly (no
+  -- confirmation tabpage). The drift/risky flags are re-derived afterwards
+  -- since they, not the update/same status, decide the healed row state.
+  refresh.run_row_op(ctx, {
+    names = targets,
+    online = false,
+    apply = function()
+      vim.pack.update(targets, { offline = true, force = true })
+      state.version_flags_cache = {}
+      state.version_flags_scanned = false
+    end,
+    -- No success toast (the rows flip in place); done_notify is kept only to
+    -- re-derive drift/risky flags and refresh the healed rows after the op.
+    done_notify = function()
+      -- Re-derive drift/risky flags, then refresh the affected rows in place.
+      analysis.refresh_version_flags_async(function()
+        for _, name in ipairs(targets) do
+          local line_no = ctx.line_by_name and ctx.line_by_name[name]
+          if line_no then
+            local row = report.collect_dashboard_row(name)
+            if row then
+              ctx.row_by_line[line_no] = row
+              for i, existing in ipairs(ctx.rows or {}) do
+                if existing.name == name then
+                  ctx.rows[i] = row
+                  break
+                end
+              end
+              view.render_row(ctx, name)
+            end
+          end
+        end
+      end)
+    end,
+  })
 end
 
 function M.open_diff_or_repo_for_row(row)

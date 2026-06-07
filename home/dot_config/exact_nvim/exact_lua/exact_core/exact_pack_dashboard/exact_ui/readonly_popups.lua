@@ -6,8 +6,66 @@ local M = {}
 
 local details_ns = vim.api.nvim_create_namespace("core.pack_dashboard.details")
 
+-- Reuse the dashboard table palette so the popup reads as part of the same UI.
+-- Each is a `default = true` link, so a colorscheme can still override it.
 local function ensure_details_highlights()
-  vim.api.nvim_set_hl(0, "PackDashboardRiskBreak", { default = true, link = "DiagnosticWarn" })
+  local set_hl = vim.api.nvim_set_hl
+  set_hl(0, "PackDashboardTitle", { default = true, link = "Title" })
+  set_hl(0, "PackDashboardHeader", { default = true, link = "Identifier" })
+  set_hl(0, "PackDashboardMeta", { default = true, link = "Comment" })
+  set_hl(0, "PackDashboardLink", { default = true, link = "Underlined" })
+  set_hl(0, "PackDashboardStatusUpdate", { default = true, link = "DiagnosticInfo" })
+  set_hl(0, "PackDashboardStatusSame", { default = true, link = "String" })
+  set_hl(0, "PackDashboardStatusError", { default = true, link = "DiagnosticError" })
+  set_hl(0, "PackDashboardStatusUnknown", { default = true, link = "Comment" })
+  set_hl(0, "PackDashboardStatusOrphan", { default = true, link = "DiagnosticWarn" })
+  set_hl(0, "PackDashboardStatusDrift", { default = true, link = "DiagnosticWarn" })
+  set_hl(0, "PackDashboardStatusRisky", { default = true, link = "DiagnosticWarn" })
+  set_hl(0, "PackDashboardRiskBreak", { default = true, link = "DiagnosticWarn" })
+  set_hl(0, "PackDashboardRiskSafe", { default = true, link = "DiffAdd" })
+end
+
+local DETAILS_STATUS_HL = {
+  update = "PackDashboardStatusUpdate",
+  same = "PackDashboardStatusSame",
+  error = "PackDashboardStatusError",
+  unknown = "PackDashboardStatusUnknown",
+  orphan = "PackDashboardStatusOrphan",
+  drift = "PackDashboardStatusDrift",
+  risky = "PackDashboardStatusRisky",
+}
+
+-- Color a `Label: value` line: the label up to and including the colon gets the
+-- header group, and the value (if a group is given) gets `value_hl`.
+local function hl_field(bufnr, line_no, line, value_hl)
+  local colon = line:find(":")
+  if not colon then
+    return
+  end
+  pcall(vim.api.nvim_buf_set_extmark, bufnr, details_ns, line_no - 1, 0, {
+    end_col = colon,
+    hl_group = "PackDashboardHeader",
+    priority = 150,
+  })
+  if value_hl then
+    -- Skip the spaces between the colon and the value so only the value colors.
+    local vstart = line:find("%S", colon + 1)
+    if vstart and vstart <= #line then
+      pcall(vim.api.nvim_buf_set_extmark, bufnr, details_ns, line_no - 1, vstart - 1, {
+        end_col = #line,
+        hl_group = value_hl,
+        priority = 160,
+      })
+    end
+  end
+end
+
+local function hl_line(bufnr, line_no, line, group)
+  pcall(vim.api.nvim_buf_set_extmark, bufnr, details_ns, line_no - 1, 0, {
+    end_col = #line,
+    hl_group = group,
+    priority = 150,
+  })
 end
 
 -- Extract the leading short hash from a `vim.pack` pending line, e.g.
@@ -38,7 +96,20 @@ function M.open_details(ctx, row)
     pending = "(No pending update details available)"
   end
 
-  local breaking_lines = {}
+  -- line role maps keyed by 1-based line number, consumed in the highlight pass.
+  local breaking_lines = {} -- full-line breaking emphasis
+  local field_lines = {} -- value_hl (or true for label-only) for `Label: value`
+  local section_lines = {} -- section headers ("Pending updates:")
+  local meta_lines = {} -- dimmed lines (footer hint)
+  local commit_lines = {} -- pending commit lines (hash gets accent)
+
+  local status_value_hl = DETAILS_STATUS_HL[row.status] or "PackDashboardStatusUnknown"
+  local risk_value_hl = (row.status == "update")
+      and (row.breaking == true and "PackDashboardRiskBreak" or (row.breaking == false and "PackDashboardRiskSafe" or "PackDashboardStatusUnknown"))
+    or nil
+  local repo_value_hl = row.repo_url and "PackDashboardLink" or nil
+  local diff_value_hl = row.diff_url and "PackDashboardLink" or nil
+
   local lines = {
     ("Plugin: %s"):format(row.name),
     ("Status: %s"):format(row.status),
@@ -54,6 +125,18 @@ function M.open_details(ctx, row)
     ),
     ("Target: %s"):format(row.target_version or analysis.short_rev(row.rev_after) or "-"),
   }
+  -- Map each header line to the highlight its value should carry.
+  field_lines[1] = "PackDashboardTitle" -- Plugin name
+  field_lines[2] = status_value_hl -- Status
+  field_lines[3] = risk_value_hl or true -- Risk
+  field_lines[4] = true -- Risk reason (label only)
+  field_lines[5] = true -- Semver delta
+  field_lines[6] = true -- Commit signals
+  field_lines[7] = true -- Source
+  field_lines[8] = repo_value_hl or true -- Repo
+  field_lines[9] = diff_value_hl or true -- Diff
+  field_lines[10] = true -- Current
+  field_lines[11] = true -- Target
 
   -- Always announce a breaking verdict up front so the popup never contradicts
   -- the row flag, even when the evidence is a semver-major bump with no marker
@@ -76,32 +159,79 @@ function M.open_details(ctx, row)
   end
 
   lines[#lines + 1] = ""
-  lines[#lines + 1] = "Pending updates:"
+  -- For error rows the "pending" body holds the error text; label the section
+  -- accordingly and color the body as an error so failures stand out.
+  local is_error = row.status == "error"
+  lines[#lines + 1] = is_error and "Error:" or "Pending updates:"
+  section_lines[#lines] = is_error and "PackDashboardStatusError" or "PackDashboardHeader"
   for _, line in ipairs(vim.split(pending, "\n", { trimempty = false })) do
     lines[#lines + 1] = line
-    local hash = pending_line_hash(line)
-    if hash and breaking_hashes[hash] then
-      breaking_lines[#lines] = true
+    if is_error then
+      breaking_lines[#lines] = nil
+      commit_lines[#lines] = "PackDashboardStatusError"
+    else
+      local hash = pending_line_hash(line)
+      if hash and breaking_hashes[hash] then
+        breaking_lines[#lines] = true
+      elseif hash then
+        commit_lines[#lines] = "hash"
+      end
     end
   end
 
   lines[#lines + 1] = ""
   lines[#lines + 1] = "q / <Esc> close | o open commit under cursor | O open all commits (diff) | r open repo"
+  meta_lines[#lines] = true
 
   ctx.details_bufnr = vim.api.nvim_create_buf(false, true)
   vim.bo[ctx.details_bufnr].buftype = "nofile"
   vim.bo[ctx.details_bufnr].bufhidden = "wipe"
   vim.bo[ctx.details_bufnr].buflisted = false
   vim.bo[ctx.details_bufnr].swapfile = false
-  vim.bo[ctx.details_bufnr].filetype = "markdown"
+  -- Plain buffer (not markdown): the body is `Label: value` log text, so markdown
+  -- syntax would mis-color commit subjects containing `*`/`#`/`_`. Our extmarks
+  -- supply all the structure coloring instead.
+  vim.bo[ctx.details_bufnr].filetype = "packdashboard-details"
   vim.api.nvim_buf_set_lines(ctx.details_bufnr, 0, -1, false, lines)
   vim.bo[ctx.details_bufnr].modifiable = false
   ensure_details_highlights()
+
+  local bufnr = ctx.details_bufnr
+  for line_no, value_hl in pairs(field_lines) do
+    hl_field(bufnr, line_no, lines[line_no] or "", value_hl ~= true and value_hl or nil)
+  end
+  for line_no, group in pairs(section_lines) do
+    hl_line(bufnr, line_no, lines[line_no] or "", group)
+  end
+  for line_no, group in pairs(commit_lines) do
+    local line = lines[line_no] or ""
+    if group == "hash" then
+      -- Accent just the leading short hash; leave the subject default-colored.
+      local hash = pending_line_hash(line)
+      if hash then
+        local hstart = line:find(hash, 1, true)
+        if hstart then
+          pcall(vim.api.nvim_buf_set_extmark, bufnr, details_ns, line_no - 1, hstart - 1, {
+            end_col = hstart - 1 + #hash,
+            hl_group = "PackDashboardStatusUpdate",
+            priority = 160,
+          })
+        end
+      end
+    else
+      hl_line(bufnr, line_no, line, group)
+    end
+  end
+  for line_no in pairs(meta_lines) do
+    hl_line(bufnr, line_no, lines[line_no] or "", "PackDashboardMeta")
+  end
+  -- Breaking lines last, at a higher priority so they win over the per-field and
+  -- per-commit colors stamped above on the same line.
   for line_no in pairs(breaking_lines) do
     local line = lines[line_no] or ""
-    pcall(vim.api.nvim_buf_set_extmark, ctx.details_bufnr, details_ns, line_no - 1, 0, {
-      hl_group = "PackDashboardRiskBreak",
+    pcall(vim.api.nvim_buf_set_extmark, bufnr, details_ns, line_no - 1, 0, {
       end_col = #line,
+      hl_group = "PackDashboardRiskBreak",
       priority = 200,
     })
   end

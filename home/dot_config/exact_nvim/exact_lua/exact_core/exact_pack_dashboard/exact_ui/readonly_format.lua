@@ -5,6 +5,15 @@ local M = {}
 M.status_rank = { drift = 1, orphan = 2, risky = 3, error = 4, update = 5, same = 6, unknown = 7 }
 M.filter_modes = { "all", "updates", "issues", "selected" }
 
+-- Spinner frames for rows whose status is being recomputed. Braille set for
+-- nerd-font terminals, ASCII fallback otherwise.
+function M.spinner_frames(use_nerd_font)
+  if use_nerd_font then
+    return { "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" }
+  end
+  return { "|", "/", "-", "\\" }
+end
+
 function M.icons(use_nerd_font)
   if use_nerd_font then
     return {

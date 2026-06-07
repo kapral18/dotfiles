@@ -8,17 +8,18 @@
 local notify = require("core.pack_dashboard.report.notify")
 local parser = require("core.pack_dashboard.report.parser")
 local fetch = require("core.pack_dashboard.report.fetch")
+local pipeline = require("core.pack_dashboard.report.pipeline")
 local rows = require("core.pack_dashboard.report.rows")
 
 local M = {}
 
 M.notify_err = notify.notify_err
-M.notify_check_start = notify.notify_check_start
-M.notify_check_result = notify.notify_check_result
 M.refresh_pack_report_cache_from_report_buffer = parser.refresh_pack_report_cache_from_report_buffer
 M.fetch_pack_remotes_async = fetch.fetch_pack_remotes_async
+M.run_refresh_pipeline = pipeline.run
 M.scan_updates_to_cache = rows.scan_updates_to_cache
 M.ensure_dashboard_cache = rows.ensure_dashboard_cache
 M.collect_dashboard_rows = rows.collect_dashboard_rows
+M.collect_dashboard_row = rows.collect_dashboard_row
 
 return M

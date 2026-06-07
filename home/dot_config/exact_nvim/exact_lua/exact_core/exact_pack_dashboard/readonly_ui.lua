@@ -3,6 +3,7 @@ local analysis = require("core.pack_dashboard.analysis")
 local report = require("core.pack_dashboard.report")
 local view = require("core.pack_dashboard.ui.view")
 local bindings = require("core.pack_dashboard.ui.bindings")
+local refresh = require("core.pack_dashboard.ui.refresh")
 
 local M = {}
 
@@ -97,9 +98,19 @@ function M.open(online, force_scan)
   bindings.attach(ctx)
   view.render(ctx)
   analysis.refresh_version_flags_async(function()
+    -- Skip the standalone re-render while an online refresh is in flight; its
+    -- finalize re-collects rows (with the now-populated flags) and re-renders.
+    if ctx.online_check_running then
+      return
+    end
     ctx.rows = report.collect_dashboard_rows()
     view.render(ctx)
   end)
+  -- Always start with a fresh online status check on open: each row arrives
+  -- independently via the unified per-row pipeline (same as pressing `R`).
+  if vim.g.pack_dashboard_refresh_on_open ~= false then
+    refresh.refresh(ctx, true, nil, nil, { mark_online = true, mark_offline = false, async = true })
+  end
 end
 
 return M

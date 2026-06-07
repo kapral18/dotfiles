@@ -58,8 +58,8 @@ CENSUS: list[Claim] = [
     Claim(
         name="total tracked files",
         globs=None,
-        claimed=965,
-        anchors=[("README.md", "965 tracked files")],
+        claimed=966,
+        anchors=[("README.md", "966 tracked files")],
     ),
     Claim(
         name="home/.chezmoitemplates/brews/",
@@ -85,10 +85,10 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/dot_config/exact_nvim/",
         globs=["home/dot_config/exact_nvim/*"],
-        claimed=156,
+        claimed=157,
         anchors=[
-            ("07b-neovim.mmd", "exact_nvim/ (156)"),
-            ("README.md", "`exact_nvim/` (156)"),
+            ("07b-neovim.mmd", "exact_nvim/ (157)"),
+            ("README.md", "`exact_nvim/` (157)"),
         ],
     ),
     Claim(
