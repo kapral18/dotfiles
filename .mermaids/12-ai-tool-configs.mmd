@@ -31,7 +31,7 @@ flowchart TB
     end
 
     subgraph PI["Pi agent (dot_pi/agent/)"]
-        PIA["readonly_settings.work.json · readonly_settings.personal.json<br/>extensions/rtk.ts (tool_call → rtk rewrite)<br/>extensions/ai-kb-recall.ts (before_agent_start → ,agent-memory status --json<br/>+ ,ai-kb search; session-start verification prefix.txt + warm-start parity<br/>+ per-turn prompt-query recall)<br/>packages: pi-skills · pi-mcp-adapter · pi-subagents (yarn node_modules)<br/>subagents.disableBuiltins:true · exact_agents/ → ~/.pi/agent/agents/<br/>readonly_models.json (← generate_pi_models.py) · llama-cpp local + local-max<br/>openrouter anthropic/claude-opus-4.8 default; hook 07-merge-pi-config"]:::gem
+        PIA["readonly_settings.work.json · readonly_settings.personal.json<br/>readonly_APPEND_SYSTEM.md → ~/.pi/agent/APPEND_SYSTEM.md (operating layer; Cursor parity)<br/>extensions/rtk.ts (tool_call → rtk rewrite)<br/>extensions/ai-kb-recall.ts (before_agent_start → ,agent-memory status --json<br/>+ ,ai-kb search; session-start verification prefix.txt + warm-start parity<br/>+ per-turn prompt-query recall)<br/>packages: pi-skills · pi-mcp-adapter · pi-subagents (yarn node_modules)<br/>subagents.disableBuiltins:true · exact_agents/ → ~/.pi/agent/agents/<br/>readonly_models.json (← generate_pi_models.py) · llama-cpp local + local-max<br/>openrouter anthropic/claude-opus-4.8 default; hook 07-merge-pi-config"]:::gem
     end
 
     subgraph OTHER["Other terminal assistants"]
