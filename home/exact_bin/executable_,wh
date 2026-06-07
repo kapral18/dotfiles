@@ -1,24 +1,36 @@
 #!/usr/bin/env bash
-# Description: Send and receive staged git patches with Magic Wormhole
+# Description: Send and receive staged git patches or arbitrary files/dirs with Magic Wormhole
 
 set -euo pipefail
 
 PATCH_FILE="${WH_PATCH_FILE:-/tmp/staged.patch}"
+RECV_STAGE=""
 
 show_usage() {
   cat <<'EOF'
 Usage: ,wh <command>
 
 Commands:
-  post                 Send the current repo's staged diff with a one-word wormhole code
-  get [code-word...]   Receive a patch, prompting for the code when omitted
+  post [path]          Send a file or directory with a one-word wormhole code.
+                       With no path, sends the current repo's staged diff.
+  get [code-word...]   Receive a transfer, prompting for the code when omitted.
+                       A received *.patch is applied with `git apply`; any other
+                       file or directory is saved into the destination instead.
+
+Options (get):
+  -o, --output PATH    Destination directory for received files/dirs, or the
+                       target path for a received patch (default: current dir;
+                       patches default to WH_PATCH_FILE).
 
 Environment:
   WH_PATCH_FILE        Override patch path (default: /tmp/staged.patch)
 
 Examples:
-  ,wh post
-  ,wh get
+  ,wh post                 # send staged diff
+  ,wh post ./src           # send a directory
+  ,wh post notes.md        # send a single file
+  ,wh get                  # receive (prompts for code), auto-apply or save
+  ,wh get -o ~/inbox       # save received file/dir into ~/inbox
 EOF
 }
 
@@ -36,7 +48,7 @@ ensure_git_repo() {
   fi
 }
 
-post_patch() {
+post_staged_diff() {
   require_command git
   require_command wormhole
   ensure_git_repo
@@ -51,21 +63,98 @@ post_patch() {
   wormhole send --code-length 1 "$PATCH_FILE"
 }
 
-get_patch() {
-  require_command git
+post_path() {
+  local path="$1"
   require_command wormhole
+
+  if [ ! -e "$path" ]; then
+    echo "Error: no such file or directory: $path" >&2
+    exit 1
+  fi
+
+  echo "Sending: $path"
+  wormhole send --code-length 1 "$path"
+}
+
+apply_received_patch() {
+  local src="$1" dest="$2"
+  local patch_path="${dest:-$PATCH_FILE}"
+
+  require_command git
   ensure_git_repo
 
-  if [ -e "$PATCH_FILE" ]; then
-    backup_file="${PATCH_FILE}.$(date +%Y%m%d%H%M%S).bak"
-    mv "$PATCH_FILE" "$backup_file"
+  if [ -e "$patch_path" ]; then
+    backup_file="${patch_path}.$(date +%Y%m%d%H%M%S).bak"
+    mv "$patch_path" "$backup_file"
     echo "Moved existing patch to: $backup_file"
   fi
 
-  wormhole receive --accept-file -o "$PATCH_FILE" "$@"
-  echo "Received patch: $PATCH_FILE"
-  echo "Applying patch: git apply $PATCH_FILE"
-  git apply "$PATCH_FILE"
+  mv "$src" "$patch_path"
+  echo "Received patch: $patch_path"
+  echo "Applying patch: git apply $patch_path"
+  git apply "$patch_path"
+}
+
+save_received_item() {
+  local src="$1" dest="$2"
+
+  mkdir -p "$dest"
+  local name
+  name="$(basename "$src")"
+  local target="$dest/$name"
+
+  if [ -e "$target" ]; then
+    target="${target}.$(date +%Y%m%d%H%M%S)"
+  fi
+
+  mv "$src" "$target"
+  echo "Received: $target"
+}
+
+get_patch() {
+  require_command wormhole
+
+  local dest=""
+  local code_args=()
+  while [ $# -gt 0 ]; do
+    case "$1" in
+    -o | --output)
+      if [ $# -lt 2 ]; then
+        echo "Error: $1 requires a value" >&2
+        exit 1
+      fi
+      dest="$2"
+      shift 2
+      ;;
+    *)
+      code_args+=("$1")
+      shift
+      ;;
+    esac
+  done
+
+  RECV_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/wh_recv.XXXXXX")"
+  trap 'rm -rf "${RECV_STAGE:-}"' EXIT
+
+  (cd "$RECV_STAGE" && wormhole receive --accept-file "${code_args[@]}")
+
+  local received="" entry
+  shopt -s nullglob dotglob
+  for entry in "$RECV_STAGE"/*; do
+    received="$entry"
+    break
+  done
+  shopt -u nullglob dotglob
+  if [ -z "$received" ]; then
+    echo "Error: nothing received" >&2
+    exit 1
+  fi
+
+  if [ -f "$received" ] && [ "${received##*.}" = "patch" ]; then
+    apply_received_patch "$received" "$dest"
+  else
+    save_received_item "$received" "${dest:-$PWD}"
+  fi
 }
 
 if [ $# -eq 0 ]; then
@@ -79,11 +168,14 @@ case "$1" in
   ;;
 post)
   shift
-  if [ $# -ne 0 ]; then
-    echo "Error: unexpected arguments for post: $*" >&2
+  if [ $# -eq 0 ]; then
+    post_staged_diff
+  elif [ $# -eq 1 ]; then
+    post_path "$1"
+  else
+    echo "Error: post takes at most one path: $*" >&2
     exit 1
   fi
-  post_patch
   ;;
 get)
   shift

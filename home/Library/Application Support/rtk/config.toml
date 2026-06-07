@@ -18,11 +18,36 @@
 # Patterns without a leading `^` match the command head with a word boundary
 # (RTK compiles them to `^<escaped>($|\s)`), so "git diff" matches "git diff --staged"
 # but NOT "git diff-tree"/"git difftool" (a non-space char follows).
+#
+# `find`/`grep`/`rg` are excluded because RTK's compact reimplementations are
+# LOSSY-SILENT or BROKEN, not recoverable (verified by dry-run + live probe,
+# rtk 0.42.1):
+#   - `find`  RTK's `find` subcommand models only -name/-type; it silently DROPS
+#             -mindepth/-maxdepth/-print/-quit/-prune/-path with no overflow marker,
+#             returning a different result set than native find.
+#   - `grep`/`rg`  both rewrite to `rtk grep`, whose `-l` means --max-len (collides
+#             with grep/rg's -l=--files-with-matches), and `rtk grep --files-with-matches .`
+#             FALLS BACK to non-recursive system grep and errors "Is a directory".
+# All three overlap with the agent's native Grep/Glob tools (which bypass RTK), so
+# excluding them costs zero measured savings (`rtk gain` shows 0 tokens from any).
+#
+# `git log` is also LOSSY-SILENT (verified rtk 0.42.1, native-vs-rtk at scale):
+# a bare `git log`/`git log --oneline` is silently capped at 50 commits with NO
+# overflow marker (101 commits -> shows 50, stops, no "+N more"); an explicit
+# `git log -N` overrides the cap. Truncating history with no signal can hide older
+# relevant commits from review/judgment, same principle as the git diff/show
+# exclusion. (`ls`/`read`/`tree`/`git status` were re-tested at 1000 files /
+# 5000 lines / 40 modified and drop NOTHING — format-only compaction — so they
+# stay rewritten.)
 exclude_commands = [
   "gh pr view",
   "gh pr checks",
   "git diff",
   "git show",
+  "git log",
+  "find",
+  "grep",
+  "rg",
 ]
 
 [tee]

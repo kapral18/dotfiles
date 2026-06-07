@@ -113,18 +113,25 @@ Examples:
 ,w doctor
 ```
 
-### Transfer staged patches: `,wh`
+### Transfer patches or files/dirs: `,wh`
 
 - Source: [`home/exact_bin/executable_,wh`](../../../home/exact_bin/executable_,wh)
-- Behavior: writes the current staged diff to `/tmp/staged.patch`, sends it with a one-word Magic Wormhole code, then receives and applies the patch with bare `,wh get` on the other machine. If no code is passed to `,wh get`, Magic Wormhole prompts for the sender's code.
-- Completions: Fish and Zsh complete `post` / `get`.
+- Behavior:
+  - `,wh post` (no path): writes the current staged diff to `/tmp/staged.patch` and sends it with a one-word Magic Wormhole code.
+  - `,wh post <path>`: sends that single file or directory raw (Magic Wormhole bundles directories natively, preserving structure).
+  - `,wh get`: receives the transfer (prompts for the code when omitted) and auto-detects what arrived — a received `*.patch` is applied with `git apply`; any other file or directory is saved into the destination instead.
+- Receive destination (`get -o, --output PATH`): for raw files/dirs it is the target directory (default: current dir); for patches it overrides the patch path (default: `WH_PATCH_FILE`).
+- Completions: Fish and Zsh complete `post` / `get`, a path for `post`, and `-o`/`--output` for `get`.
 - Optional override: `WH_PATCH_FILE=/path/to/file.patch`
 
 Examples:
 
 ```bash
-,wh post
-,wh get
+,wh post              # send staged diff
+,wh post ./src        # send a directory
+,wh post notes.md     # send a single file
+,wh get               # receive: apply patch, or save file/dir to cwd
+,wh get -o ~/inbox    # save received file/dir into ~/inbox
 ```
 
 ### PR lookup/open: `,gh-prw`
