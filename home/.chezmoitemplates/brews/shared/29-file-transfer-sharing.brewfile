@@ -2,15 +2,6 @@
 # https://github.com/magic-wormhole/magic-wormhole
 brew "magic-wormhole"
 
-# Send files between computers with end-to-end encryption
-# https://github.com/abdfnx/tran
-tap "abdfnx/tap"
-brew "abdfnx/tap/tran"
-
 # Command-line tool to download GitHub release assets
 # https://github.com/devmatteini/dra
 brew "dra"
-
-# Transfer files between computers via WireGuard
-# https://github.com/coder/wush
-brew "wush"

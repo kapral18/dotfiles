@@ -34,13 +34,13 @@ const QUERY_MAX_CHARS = 600
 const BODY_MAX_CHARS = 240
 const MIN_PROMPT_CHARS = 12
 const PREFIX_MAX_CHARS = 3000
-// Relative relevance floor: after the top hit, drop any hit whose score is worse
-// than RELEVANCE_FLOOR_FRACTION of the best hit's magnitude. Absolute score floors
-// are fragile (bm25/rrf magnitudes shift with query length and corpus), but the
-// *ratio* to the best hit is stable, so a far-worse hit is reliably off-topic.
-// Verified against live `,ai-kb search` output: on an on-topic query the relevant
-// capsule scored ~2-3x the cross-domain noise in both lanes; 0.6 cleanly separates
-// them. The score field is mode-aware — see relevanceField().
+// bm25/warm-start relative relevance floor: after the top hit, drop any hit whose
+// bm25Relevance() is worse than this fraction of the best hit's magnitude. Absolute
+// score floors are fragile (bm25 magnitude shifts with query length and corpus), but the
+// *ratio* to the best hit is stable, so a far-worse hit is reliably off-topic. Verified
+// against live `,ai-kb search` output: on an on-topic query the relevant capsule scored
+// ~2-3x the cross-domain noise; 0.6 cleanly separates them. Hybrid/per-turn does not use
+// this floor — it trims on cosine (PERTURN_COSINE_FLOOR_FRACTION) because rrf is rank-flat.
 const RELEVANCE_FLOOR_FRACTION = 0.6
 // Absolute relevance gate for per-turn (hybrid) retrieval: unless the BEST hit's
 // cosine similarity clears this bar, suppress the entire per-turn block. The relative
@@ -49,10 +49,22 @@ const RELEVANCE_FLOOR_FRACTION = 0.6
 // rank 1 on a junk query scores like rank 1 on a perfect one). cosine_score is the only
 // absolute, cross-query-comparable signal. Calibrated against live `,ai-kb search`:
 // on-topic top hits scored 0.58-0.81, off-topic top hits 0.44-0.48 — 0.55 sits in the
-// gap. Gate the TOP hit only; secondary on-topic hits (0.48-0.56) overlap off-topic
-// rows, so per-row cosine filtering would wrongly drop legitimate matches — the relative
-// floor trims the tail instead.
+// gap. Gate the TOP hit only with this absolute bar; the per-row tail is trimmed by a
+// cosine floor relative to the top hit (PERTURN_COSINE_FLOOR_FRACTION), not a second
+// absolute threshold — a fixed per-row cosine floor would wrongly drop legitimate
+// secondary hits (which overlap off-topic rows in absolute terms), but a floor scaled
+// to *this query's* best hit adapts: strict when the top hit is strong, lenient when
+// the whole result set is weakly-and-equally related.
 const PERTURN_MIN_TOP_COSINE = 0.55
+// Per-turn (hybrid) tail trim: after the absolute top-hit gate passes, drop any hit
+// whose cosine is below this fraction of the top hit's cosine. Replaces the rrf-based
+// relative floor for hybrid, which is toothless because rrf_score is rank-position-
+// derived and nearly constant (~0.12-0.13 across all hits), so a 0.6-of-best rrf floor
+// trims nothing. cosine is the only cross-query-comparable signal. Verified against live
+// `,ai-kb search` over 5 queries: 0.85 drops cross-domain noise riding on a weak top hit
+// (e.g. chezmoi query top 0.61 -> floor 0.52 drops 0.49 ,ai-kb-internals capsules) while
+// preserving genuine secondary matches when the result set is uniformly weak.
+const PERTURN_COSINE_FLOOR_FRACTION = 0.85
 // Re-inject the verification prefix once context-window fill has grown by at least this
 // many percentage points since it was last injected (decay proxy). Compaction forces a
 // re-inject regardless, since it summarizes/drops the prior prefix.
@@ -98,18 +110,15 @@ interface Capsule {
   cosine_score?: number | null
 }
 
-// Mode-aware relevance signal. In hybrid mode rrf_score is the merged signal and is
-// populated for every hit (bm25_score is null for vector-only hits), so it is the only
-// field usable as a floor. In bm25 mode rrf_score is rank-derived and nearly constant,
-// so bm25_score (SQLite's negative log score, smaller = better) is the real signal.
 type SearchMode = "bm25" | "hybrid"
 
-function relevanceScore(row: Capsule, mode: SearchMode): number | null {
-  const raw = mode === "hybrid" ? row.rrf_score : row.bm25_score
+// bm25 relevance signal. In bm25 mode rrf_score is rank-derived and nearly constant, so
+// bm25_score (SQLite's negative log score, smaller = better) is the real signal; negate
+// so "larger = better". Hybrid never uses this (it trims on cosine and returns early).
+function bm25Relevance(row: Capsule): number | null {
+  const raw = row.bm25_score
   if (raw == null) return null
-  // Normalize so "larger = better" regardless of lane: bm25 is negative (smaller =
-  // better), rrf is positive (larger = better).
-  return mode === "hybrid" ? raw : -raw
+  return -raw
 }
 
 // Drop hits whose relevance is far below the best hit's. Keeps the top hit always;
@@ -123,11 +132,22 @@ function applyRelevanceFloor(rows: Capsule[], mode: SearchMode): Capsule[] {
   if (mode === "hybrid") {
     const topCosine = rows[0]?.cosine_score
     if (topCosine == null || topCosine < PERTURN_MIN_TOP_COSINE) return []
+    if (rows.length <= 1) return rows
+    // Tail trim relative to the top hit's cosine. rrf_score is rank-flat in hybrid, so
+    // the rrf relative floor below cannot separate on-topic from cross-domain hits;
+    // cosine can. Always keeps rows[0] (already passed the absolute gate) and any row
+    // missing cosine (fail-open).
+    const cosineFloor = topCosine * PERTURN_COSINE_FLOOR_FRACTION
+    return rows.filter((row, i) => {
+      if (i === 0) return true
+      const c = row.cosine_score
+      return c == null || c >= cosineFloor
+    })
   }
   if (rows.length <= 1) return rows
   let best: number | null = null
   for (const row of rows) {
-    const s = relevanceScore(row, mode)
+    const s = bm25Relevance(row)
     if (s != null) {
       best = s
       break
@@ -136,7 +156,7 @@ function applyRelevanceFloor(rows: Capsule[], mode: SearchMode): Capsule[] {
   if (best == null || best <= 0) return rows
   const floor = best * RELEVANCE_FLOOR_FRACTION
   return rows.filter((row) => {
-    const s = relevanceScore(row, mode)
+    const s = bm25Relevance(row)
     return s == null || s >= floor
   })
 }

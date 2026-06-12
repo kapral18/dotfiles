@@ -21,6 +21,7 @@ verify-mermaids: ## Check .mermaids/ file-census counts against git ls-files
 
 test: ## Run Python unit tests
 	python3 scripts/tests/test_scripts.py -v
+	python3 scripts/tests/test_blackboard.py -v
 	python3 home/exact_bin/utils/exact_history/executable_fish-history-merge.test.py -v
 
 check: lint verify-templates verify-mermaids test ## Run all checks (lint + templates + mermaids + test)

@@ -40,15 +40,6 @@ if command -v mise >/dev/null; then
   eval "$(mise activate --shims bash)"
 fi
 
-# Beads Directory (Local-Only Mode) - Dynamic per directory
-_update_beads_dir() {
-  export BEADS_DIR="$(_beads_resolve_dir)"
-}
-_update_beads_dir  # Set initially
-if [[ $PROMPT_COMMAND != *"_update_beads_dir"* ]]; then
-  PROMPT_COMMAND="_update_beads_dir${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
-fi
-
 # Deduplicate PATH entries while preserving order
 dedup_path() {
   if [ -n "$PATH" ]; then

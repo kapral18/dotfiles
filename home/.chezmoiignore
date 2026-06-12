@@ -12,5 +12,9 @@ app_icons/
 **/*.personal.toml
 .claude/settings.json
 .codex/config.toml
+.copilot/mcp-config.json
+.copilot/settings.json
+.copilot/hooks.json
+.copilot/hooks/agent-memory.json
 .config/gh-dash/gh-dash-shared.yml
 crontab

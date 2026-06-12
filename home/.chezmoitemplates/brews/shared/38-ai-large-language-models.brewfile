@@ -1,25 +1,6 @@
-# Interactive debugger for MCP servers
-# https://github.com/conikeec/mcp-probe
-tap "conikeec/tap"
-brew "conikeec/tap/mcp-probe"
-
-# Graph-based issue tracker for coding agents
-# https://github.com/steveyegge/beads
-tap "steveyegge/beads"
-brew "steveyegge/beads/bd"
-
-# Structured query and transcoding toolkit
-# https://github.com/jfryy/qq
-tap "jfryy/tap"
-brew "jfryy/tap/qq"
-
 # AI code agent
 # https://github.com/sst/opencode
 brew "opencode"
-
-# Minimal terminal emulator using half-baked context-aware autocomplete
-# https://github.com/ggerganov/hnterm
-brew "ggerganov/ggerganov/hnterm"
 
 # Terminal tool to right-size LLM models to your hardware (RAM, CPU, GPU)
 # https://github.com/AlexsJones/llmfit
@@ -27,7 +8,11 @@ brew "llmfit"
 
 # LLM inference in C/C++ with OpenAI/Anthropic-compatible llama-server
 # https://github.com/ggml-org/llama.cpp
-brew "llama.cpp"
+# HEAD: stable bottle 9590 ships an out-of-sync gated-delta-net op vs its
+# qwen35moe caller, aborting on load of Qwen3.6 (qwen35moe) GGUFs with
+# `ggml.c: GGML_ASSERT(state->ne[0] == S_v) failed`. master has op+caller
+# consistent. Revert to stable once a fixed bottle (>9590) is published.
+brew "llama.cpp", args: ["HEAD"]
 
 # Official Hugging Face CLI (`hf`) — model downloads, auth, repo listing
 # https://huggingface.co/docs/huggingface_hub/guides/cli

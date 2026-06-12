@@ -53,7 +53,7 @@ AIKB_REMINDER = (
 )
 
 
-def aikb_warmstart(workspace: Path, query: str) -> str:
+def aikb_warmstart(workspace: Path, query: str, injected_ids: list[str] | None = None) -> str:
     """Inject a small, relevance-gated block of durable learnings at session start.
 
     Fires only for named-topic sessions (gated by the caller). Uses the active
@@ -120,6 +120,9 @@ def aikb_warmstart(workspace: Path, query: str) -> str:
         if body:
             line += f": {body}"
         selected.append(line)
+        capsule_id = str(row.get("id") or "")
+        if injected_ids is not None and capsule_id:
+            injected_ids.append(capsule_id)
 
     if not selected:
         return ""
@@ -288,9 +291,20 @@ def main() -> None:
         parts.extend(["", "### Recent Hook Worklog", worklog])
 
     if is_named_topic(topic) and not is_review and spec_text_source.strip():
-        warmstart = aikb_warmstart(workspace, spec_text_source)
+        injected_ids: list[str] = []
+        warmstart = aikb_warmstart(workspace, spec_text_source, injected_ids)
         if warmstart:
             parts.extend(["", warmstart])
+        # Record injected capsule ids so the per-turn recall hook
+        # (perturn_recall.py) never re-injects them this session.
+        session_id = str(payload.get("session_id") or "")
+        if injected_ids and session_id:
+            seen_path = spec_path.parent / f".recall-seen-{session_id}.json"
+            try:
+                seen_path.parent.mkdir(parents=True, exist_ok=True)
+                seen_path.write_text(json.dumps(sorted(set(injected_ids))))
+            except OSError:
+                pass
 
     nudge = topic_nudge(topic)
     if nudge:

@@ -5,15 +5,3 @@ brew "serpl"
 # Interactive find and replace TUI
 # https://github.com/thomasschafer/scooter
 brew "scooter"
-
-# CLI search and replace (Space Age seD)
-# https://github.com/ms-jpq/sad
-brew "sad"
-
-# Intuitive find & replace CLI (sed alternative)
-# https://github.com/chmln/sd
-brew "sd"
-
-# Debugging tool for sed scripts
-# https://github.com/SoptikHa2/desed
-brew "desed"

@@ -20,13 +20,17 @@ Use when spawning agents, kicking off a run, verifying a run, replanning, or int
 
 Roles are configured in [`~/.config/ralph/roles.json`](../../../home/dot_config/ralph/roles.json):
 
-| Role          | Default harness | Default model                  | Mode flag     |
-| ------------- | --------------- | ------------------------------ | ------------- |
-| `planner`     | `cursor`        | `claude-opus-4-7-thinking-max` | `--mode plan` |
-| `executor`    | `cursor`        | `composer-2`                   | `--force`     |
-| `reviewer`    | `cursor`        | `claude-opus-4-7-thinking-max` | `--mode ask`  |
-| `re_reviewer` | `cursor`        | `gpt-5.5-extra-high`           | `--mode ask`  |
-| `reflector`   | `cursor`        | `claude-opus-4-7-thinking-max` | `--mode ask`  |
+| Role          | Default harness | Default model                    | Mode flag     |
+| ------------- | --------------- | -------------------------------- | ------------- |
+| `planner`     | `cursor`        | `claude-opus-4-8-thinking-xhigh` | `--mode plan` |
+| `executor`    | `cursor`        | `composer-2.5`                   | `--force`     |
+| `reviewer`    | `cursor`        | `claude-opus-4-8-thinking-xhigh` | `--mode ask`  |
+| `re_reviewer` | `cursor`        | `gpt-5.5-extra-high`             | `--mode ask`  |
+| `reflector`   | `cursor`        | `claude-opus-4-8-thinking-xhigh` | `--mode ask`  |
+
+Anthropic-side roles pin **Opus 4.8 at xhigh effort, exclusively** — Fable 5 is listed by `cursor-agent models` but not usable on this account, and other effort tiers (`max`, `high`, …) are deliberately not used; the TUI picker and `CURSOR_MODELS` exclude Fable and non-xhigh Opus variants accordingly.
+
+Model ids in the `cursor` harness are **Cursor-internal aliases** resolved by Cursor's own routing (list them with `cursor-agent models`), not entries in `ai_models.yaml` — the registry only covers gateway/openrouter ids used by pi. `ralph.py` validates cursor models against `CURSOR_MODELS`, a pinned snapshot of that live list; refresh the snapshot from `cursor-agent models` when Cursor rotates model generations.
 
 Defaults are cursor-first because cursor's frontier models give the strongest output and judgement on this user's setup; pi stays fully supported and is required for non-cursor providers (anthropic/openai/google direct, openrouter, llama-cpp). The orchestrator enforces `family_of(re_reviewer.model) != family_of(reviewer.model)` (substring match on `claude|gpt|gemini|llama|mistral|deepseek`) so the mandatory second opinion never comes from the same family. `--mode plan` (planner) and `--mode ask` (reviewer/re_reviewer) are read-only — they prevent role hijacking (small models with full tools tend to skip JSON and just execute the goal) while still allowing read access for verification probes. `--force` on the executor auto-approves shell commands so the orchestrator can drive non-interactively. On pi the equivalent role-scoping is `--no-tools` for planner/reviewer/re_reviewer. Per-role prompts live at [`home/dot_config/ralph/prompts/`](../../../home/dot_config/ralph/prompts/).
 

@@ -35,12 +35,5 @@ if command -v mise >/dev/null; then
     eval "$(mise activate --shims zsh)"
 fi
 
-# Beads Directory (Local-Only Mode) - Dynamic per directory
-_update_beads_dir() {
-  export BEADS_DIR="$(_beads_resolve_dir)"
-}
-_update_beads_dir  # Set initially
-add-zsh-hook precmd _update_beads_dir  # Update on directory change
-
 # Ensure path array contains unique values
 typeset -U path

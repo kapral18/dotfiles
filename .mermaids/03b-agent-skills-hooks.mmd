@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (58).
+%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (62).
 %% Skills → ~/.agents/skills/ (intent-routed SKILL.md). Hooks → ~/.agents/hooks/.
 %% ============================================================================
 flowchart TB
@@ -14,6 +14,7 @@ flowchart TB
         WLx["worklog_recorder.py (afterShell/postToolUse/Failure/afterFileEdit)"]:::hook
         PRG["gemini-pr-anchor-gate.sh (beforeShell: gh api pulls/.../reviews|comments)"]:::hook
         GG["gemini-git-gate.sh (beforeShell: git commit|push) — failClosed"]:::hook
+        CPG["copilot-pr-anchor-gate.sh · copilot-git-gate.sh<br/>(PreToolUse matcher bash; emit permissionDecision deny)"]:::hook
     end
 
     MEM[("/tmp/specs/<pwd>/<topic>.txt + .worklog.jsonl<br/>review topics → clean-room; default branch → session-<id>")]:::data
@@ -35,7 +36,7 @@ flowchart TB
     end
 
     subgraph TOOLS["Tool-backed skills (wrap a CLI; some have references)"]
-        S5["buildkite/ (+refs: bk-commands, build-debugging, troubleshooting)<br/>beads · sem · weave · knip · jscpd · semantic-code-search"]:::skill
+        S5["buildkite/ (+refs: bk-commands, build-debugging, troubleshooting)<br/>sem · weave · knip · jscpd · semantic-code-search"]:::skill
         S6["google-workspace · playwriter · letsfg(assets/Dockerfile) · nano-banana"]:::skill
         S7["ai-kb/ (wrap ,ai-kb; durable cross-session memory read/write)"]:::skill
     end

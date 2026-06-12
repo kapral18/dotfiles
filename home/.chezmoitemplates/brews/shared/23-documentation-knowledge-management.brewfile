@@ -2,21 +2,17 @@
 # https://github.com/dbrgn/tealdeer
 brew "tealdeer"
 
-# Cookbook of practical command-line examples
-# https://github.com/srsudar/eg
-brew "eg-examples"
-
 # Hacker News in your terminal
 # https://github.com/bensadeh/circumflex
 brew "circumflex"
 
+# Hacker News in the terminal
+# https://github.com/ggerganov/hnterm
+brew "ggerganov/ggerganov/hnterm"
+
 # Reddit, refined for the terminal
 # https://github.com/ck-zhang/reddix
 brew "reddix"
-
-# Interactive cheatsheet tool
-# https://github.com/denisidoro/navi
-brew "navi"
 
 # Man-page inspired Markdown viewer
 # https://github.com/Titor8115/mandown
@@ -25,10 +21,6 @@ brew "mandown"
 # TUI and CLI dual pane markdown viewer
 # https://github.com/epistates/treemd
 brew "treemd"
-
-# Implementation of the standard Unix documentation system
-# https://www.nongnu.org/man-db/
-brew "man-db"
 
 # Swiss-army knife of markup format conversion
 # https://pandoc.org/

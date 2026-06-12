@@ -33,6 +33,7 @@ ttl_override=""
 lock_stale_seconds=180
 quick_only=0
 skip_dirty=0
+skip_gh=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -42,6 +43,7 @@ while [ $# -gt 0 ]; do
     --lock-stale-seconds=*) lock_stale_seconds="${1#--lock-stale-seconds=}" ;;
     --quick-only) quick_only=1 ;;
     --skip-dirty) skip_dirty=1 ;;
+    --skip-gh) skip_gh=1 ;;
   esac
   shift
 done
@@ -370,11 +372,14 @@ if [ "$quick_only" -eq 1 ]; then
   fi
 else
   # Quick scan: sessions only (merged into existing cache).
-  "$gen" --quick --sessions-only > "$tmp_quick" 2> "$tmp_err_quick" &
+  gen_skip_args=()
+  [ "$skip_dirty" -eq 1 ] && gen_skip_args+=(--skip-dirty)
+  [ "$skip_gh" -eq 1 ] && gen_skip_args+=(--skip-gh)
+  "$gen" --quick --sessions-only ${gen_skip_args[@]+"${gen_skip_args[@]}"} > "$tmp_quick" 2> "$tmp_err_quick" &
   pid_quick=$!
   gen_pids+=("$pid_quick")
   # Perform a full scan (including directories) in the background.
-  "$gen" > "$tmp_full" 2> "$tmp_err_full" &
+  "$gen" ${gen_skip_args[@]+"${gen_skip_args[@]}"} > "$tmp_full" 2> "$tmp_err_full" &
   pid_full=$!
   gen_pids+=("$pid_full")
 
@@ -438,7 +443,11 @@ else
     full_ok=1
     # Record that a full scan completed so its dedicated TTL gate can throttle
     # the next one without being reset by interleaved quick-only refreshes.
-    : > "$full_scan_stamp" 2> /dev/null || true
+    # A fast full (--skip-dirty/--skip-gh) reuses cached badges, so it must not
+    # satisfy the gate that schedules real (fully enriched) full scans.
+    if [ "$skip_dirty" -ne 1 ] && [ "$skip_gh" -ne 1 ]; then
+      : > "$full_scan_stamp" 2> /dev/null || true
+    fi
     if sanitize_rows "$tmp_full" "$tmp_sessions"; then
       publish_cache_from "$tmp_sessions" || true
     elif [ "$quick_published" -eq 0 ] && [ "$quick_ok" -eq 1 ] && [ -s "$tmp_quick" ]; then

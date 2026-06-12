@@ -54,6 +54,10 @@ def load_servers(path: str, is_work: bool, tool: str | None = None) -> dict[str,
     matching tool's OAuth block is included (as ``oauth``). Unmatched tools
     cause the server to be omitted entirely. A plain ``oauth`` block (not per-tool)
     is always included regardless of *tool*.
+
+    A server may also carry an ``exclude_tools`` list; when *tool* is in that
+    list the server is omitted (used for non-OAuth servers that cannot express
+    per-tool membership via ``oauth_by_tool``).
     """
     with open(path, "r") as f:
         lines = f.readlines()
@@ -62,6 +66,9 @@ def load_servers(path: str, is_work: bool, tool: str | None = None) -> dict[str,
     current: dict[str, Any] | None = None
     in_args = False
     args_indent = 0
+    in_list = False
+    list_key = ""
+    list_indent = 0
     in_oauth = False
     oauth_indent = 0
     # oauth_by_tool nesting: level 0 = tool keys, level 1 = props of a tool
@@ -82,6 +89,7 @@ def load_servers(path: str, is_work: bool, tool: str | None = None) -> dict[str,
         new_entry = re.match(r"^\s+-\s+(\w[\w_]*):\s*(.*)", stripped)
         if new_entry:
             in_args = False
+            in_list = False
             in_oauth = False
             in_oauth_by_tool = False
             obt_tool_name = None
@@ -98,6 +106,14 @@ def load_servers(path: str, is_work: bool, tool: str | None = None) -> dict[str,
                 continue
             else:
                 in_args = False
+
+        if in_list and current is not None:
+            item = re.match(r"^\s+-\s+(.*)", stripped)
+            if item and indent >= list_indent:
+                current.setdefault(list_key, []).append(parse_scalar(item.group(1)))
+                continue
+            else:
+                in_list = False
 
         if in_oauth_by_tool and current is not None:
             if indent < obt_indent:
@@ -136,6 +152,11 @@ def load_servers(path: str, is_work: bool, tool: str | None = None) -> dict[str,
             if key == "args" and not val:
                 in_args = True
                 args_indent = indent + 2
+            elif key == "exclude_tools" and not val:
+                in_list = True
+                list_key = key
+                list_indent = indent + 2
+                current.setdefault(key, [])
             elif key == "oauth" and not val:
                 in_oauth = True
                 oauth_indent = indent + 2
@@ -152,6 +173,9 @@ def load_servers(path: str, is_work: bool, tool: str | None = None) -> dict[str,
             continue
 
         if tool and "oauth_by_tool" in s and tool not in s["oauth_by_tool"]:
+            continue
+
+        if tool and tool in s.get("exclude_tools", []):
             continue
 
         if s.get("type") == "http":

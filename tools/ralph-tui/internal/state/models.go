@@ -2,7 +2,7 @@ package state
 
 // AvailableModels returns the curated list of model IDs the New-Run
 // form exposes for the given harness. The lists reflect the user's
-// stated preferences (gemini-3, gpt-5.5, gpt-5.3, opus 4.7, composer-2
+// stated preferences (gemini-3, gpt-5.5, gpt-5.3, opus 4.8 xhigh-only, composer-2.5
 // — routed via cursor-agent for `cursor`, via litellm-gateway /
 // openrouter for `pi`).
 //
@@ -44,40 +44,33 @@ func IndexOfModel(list []string, id string) int {
 // cursorModels mirrors the user's curated set from `cursor-agent --list-models`,
 // kept stable so the picker stays predictable across cursor-agent updates.
 var cursorModels = []string{
-	"composer-2-fast",
-	"composer-2",
-	"claude-opus-4-7-thinking-max",
-	"claude-opus-4-7-thinking-xhigh",
-	"claude-opus-4-7-thinking-high",
-	"claude-opus-4-7-thinking-medium",
-	"claude-opus-4-7-thinking-low",
-	"claude-opus-4-7-max",
-	"claude-opus-4-7-xhigh",
-	"claude-opus-4-7-high",
-	"claude-opus-4-7-medium",
-	"claude-opus-4-7-low",
-	"gpt-5.5-extra-high",
-	"gpt-5.5-extra-high-fast",
+	"composer-2.5",
+	"composer-2.5-fast",
+	"claude-opus-4-8-xhigh",
+	"claude-opus-4-8-xhigh-fast",
+	"claude-opus-4-8-thinking-xhigh",
+	"claude-opus-4-8-thinking-xhigh-fast",
 	"gpt-5.5-high",
 	"gpt-5.5-high-fast",
-	"gpt-5.5-medium",
-	"gpt-5.5-medium-fast",
+	"gpt-5.5-none",
+	"gpt-5.5-none-fast",
 	"gpt-5.5-low",
 	"gpt-5.5-low-fast",
-	"gpt-5.3-codex-xhigh",
-	"gpt-5.3-codex-xhigh-fast",
-	"gpt-5.3-codex-high",
-	"gpt-5.3-codex-high-fast",
-	"gpt-5.3-codex",
-	"gpt-5.3-codex-fast",
+	"gpt-5.5-medium",
+	"gpt-5.5-medium-fast",
+	"gpt-5.5-extra-high",
+	"gpt-5.5-extra-high-fast",
 	"gpt-5.3-codex-low",
 	"gpt-5.3-codex-low-fast",
-	"gpt-5.3-codex-spark-preview-xhigh",
-	"gpt-5.3-codex-spark-preview-high",
-	"gpt-5.3-codex-spark-preview",
-	"gpt-5.3-codex-spark-preview-low",
+	"gpt-5.3-codex",
+	"gpt-5.3-codex-fast",
+	"gpt-5.3-codex-high",
+	"gpt-5.3-codex-high-fast",
+	"gpt-5.3-codex-xhigh",
+	"gpt-5.3-codex-xhigh-fast",
 	"gemini-3.1-pro",
 	"gemini-3-flash",
+	"gemini-3.5-flash",
 }
 
 // piModels combines the litellm-gateway IDs from

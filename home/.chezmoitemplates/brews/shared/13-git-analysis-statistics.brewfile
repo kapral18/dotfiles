@@ -1,19 +1,3 @@
-# Compute various size metrics for a Git repository
-# https://github.com/github/git-sizer
-brew "git-sizer"
-
-# Git statistics
-# https://github.com/arzzen/git-quick-stats
-brew "git-quick-stats"
-
 # GitHub-like contributions calendar
 # https://github.com/k4rthik/git-cal
 brew "git-cal"
-
-# Git extension to show who contributed to a repository
-# https://github.com/schacon/git-who
-brew "git-who"
-
-# Find when a commit was merged into one or more branches
-# https://github.com/mhagger/git-when-merged
-brew "git-when-merged"

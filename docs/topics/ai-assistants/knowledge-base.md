@@ -4,9 +4,10 @@ sidebar_position: 3
 
 # Agent Memory
 
-Two distinct memory layers feed the assistants:
+Three distinct memory layers feed the assistants:
 
 - **Hook memory** (`/tmp/specs`, managed by `,agent-memory`) — short-lived, per-workspace topic spec + worklog + evidence ledger, written by the Cursor CLI hooks during a session.
+- **Run blackboard** (`,blackboard`, under `~/.local/share/blackboard/`) — run-scoped shared typed ledger for multi-agent fan-outs (see [Run blackboard](#run-blackboard-blackboard)).
 - **AI knowledge base** (`,ai-kb`, under `~/.local/share/ai-kb/`) — durable structured capsules shared across agents. [Ralph](ralph.md) reads/writes them mechanically across runs; interactive agents (cursor-cli, pi) read/write them on demand via the `ai-kb` skill (see [Cross-agent memory](#cross-agent-memory-ai-kb-skill)).
 
 ## Hook memory (`/tmp/specs`, `,agent-memory`)
@@ -19,6 +20,10 @@ The hook layer is Cursor-native first:
 | --------------------------------------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `sessionStart`                                                              | `session_context.py`  | Inject the verification-discipline prefix (`prefix.txt`); inject the active `/tmp/specs` topic spec plus recent worklog tail when present; nudge to set a named topic on shared-branch sessions; remind to recall/remember durable knowledge via `,ai-kb` |
 | `afterShellExecution`, `postToolUse`, `postToolUseFailure`, `afterFileEdit` | `worklog_recorder.py` | Append compact per-topic JSONL worklog entries                                                                                                                                                                                                            |
+
+OpenCode reuses both scripts unchanged through a thin plugin ([`home/dot_config/opencode/plugins/agent-memory.ts`](../../../home/dot_config/opencode/plugins/agent-memory.ts)): `experimental.chat.system.transform` fetches the `session_context.py` output once per session and appends it to every request's system prompt, and `tool.execute.after` feeds `worklog_recorder.py` a synthesized `PostToolUse` payload (`duration`/`status` are not exposed by the plugin API and are omitted).
+
+Codex has the same wiring declared in [`home/dot_codex/hooks.json`](../../../home/dot_codex/hooks.json) (`SessionStart` -> `session_context.py`, `PostToolUse` -> `worklog_recorder.py`; payload shapes are Claude-compatible per codex source at tag `rust-v0.139.0`), with the hook trust hashes baked into the config templates because the codex merge script regenerates `config.toml` wholesale. **Caveat:** `codex exec` 0.139.0 was verified to dispatch no hooks at all (even with `--dangerously-bypass-hook-trust` and `[features] hooks = true`), so this wiring is currently inert in exec mode; whether interactive TUI sessions dispatch hooks is unverified — run `/hooks` in a codex TUI session to check that both hooks show as trusted and fire.
 
 No hook runs on `stop`. Hooks observe and inject context; they do not re-prompt the agent. Two disciplines that earlier lived in `stop` hooks now live in the SOP, enforced by instruction rather than by an auto-submitted follow-up message:
 
@@ -49,6 +54,16 @@ chezmoi diff --no-pager
 chezmoi apply --force --no-tty
 ,agent-memory status
 ```
+
+## Run blackboard (`,blackboard`)
+
+The middle layer: shared typed state for the duration of one multi-agent run, sitting between the ephemeral free-text `/tmp/specs` spec and durable `,ai-kb` capsules. Without it, fan-out runs (Workflow scripts, deep-research style harnesses, Ralph roles) only share state through each agent's final return value — intermediate findings are not queryable, not auditable, and not resumable. The mechanics follow the validated core of the [irys stateful-swarm pattern](https://github.com/dl1683/irys-stateful-swarms) (typed blackboard entries + signal queue + gap blocking + survival trace).
+
+- CLI: [`home/exact_bin/executable_,blackboard`](../../../home/exact_bin/executable_,blackboard) -> [`scripts/blackboard.py`](../../../scripts/blackboard.py); skill: [`home/exact_dot_agents/exact_skills/exact_blackboard/readonly_SKILL.md`](../../../home/exact_dot_agents/exact_skills/exact_blackboard/readonly_SKILL.md).
+- Storage: one SQLite (WAL) file per board under `~/.local/share/blackboard/<board>.sqlite3`, safe for concurrent agent writers; boards persist across sessions so runs are resumable.
+- Entries are typed (`observation|analysis|calculation|strategy|gap|contradiction`) and carry provenance (`--source-doc/--source-ref/--evidence`), confidence, worker attribution, and links (`--supports/--contradicts/--supersedes`, `--addresses sN`).
+- Signals are an explicit open-question queue. `gate` exits non-zero while critical/high signals are open (synthesis must not proceed past it — address or `waive` with a recorded reason), and `survival --report <artifact>` exits non-zero when must-surface entries, contradictions, or open/waived signals are not detected in the final artifact (token-containment heuristic: necessary, not sufficient).
+- Tests: [`scripts/tests/test_blackboard.py`](../../../scripts/tests/test_blackboard.py) (wired into `make test`).
 
 ## AI knowledge base (`,ai-kb`)
 
@@ -127,12 +142,16 @@ Both retrieval paths apply a **relative relevance floor** on top of the scope ga
 
 Cross-runtime durable-memory retrieval:
 
-| Runtime               | Auto-retrieval mechanism                                                                 |
-| --------------------- | ---------------------------------------------------------------------------------------- |
-| Ralph                 | Mechanical push: top-K per role injected into the `## RECENT LEARNINGS` prompt block     |
-| Cursor CLI / Claude   | `session_context.py` gated `sessionStart` warm-start (named topic only); else agent-pull |
-| Pi                    | `ai-kb-recall.ts` warm-start (parity) **plus** per-turn prompt-query injection           |
-| Gemini / Cursor cloud | No injection point available; agent-pull only                                            |
+| Runtime             | Auto-retrieval mechanism                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------ |
+| Ralph               | Mechanical push: top-K per role injected into the `## RECENT LEARNINGS` prompt block       |
+| Cursor CLI / Claude | `session_context.py` gated `sessionStart` warm-start (named topic only); else agent-pull   |
+| Pi                  | `ai-kb-recall.ts` warm-start (parity) **plus** per-turn prompt-query injection             |
+| OpenCode            | `agent-memory.ts` plugin: warm-start in system prompt **plus** per-turn via `chat.message` |
+| Gemini              | `SessionStart` warm-start **plus** per-turn via `BeforeAgent` (`additionalContext`)        |
+| Cursor cloud        | No injection point available; agent-pull only                                              |
+
+Per-turn recall is one implementation: `~/.agents/hooks/perturn_recall.py` mirrors pi's `ai-kb-recall.ts` gates (hybrid retrieval with the prompt as query, absolute top-cosine 0.55 gate, 0.85 relative tail floor, scope gate, per-session seen-file dedup shared with the warm-start). Claude Code fires it on `UserPromptSubmit`, Gemini on `BeforeAgent`, OpenCode delegates to it from `chat.message`. All three inject `additionalContext` into the **current** turn — context extends the request in flight; nothing re-prompts the agent or starts another request/response cycle (the failure mode of the removed stop-hook nudges). `,ai-kb` remains the **sole durable semantic store** across harnesses: harness-native memory features stay unused (codex's experimental auto-memory is pinned off via `[features] memories = false` in the config templates). Episodic traces under `/tmp/specs` are additionally snapshotted daily to `~/.local/share/agent-specs-archive/` (crontab rsync) so an OS purge of `/tmp` cannot erase un-distilled history; the archive is raw preservation only — nothing auto-writes the KB.
 
 - **Read:** the `sessionStart` warm-start above seeds named-topic sessions automatically (pi also injects per prompt); beyond that, agents run `,ai-kb search "<q>" --limit 5 --json` (with `--kind` / `--scope` / `--workspace` / `--domain` / `--mode` filters) before non-trivial work, and `,ai-kb get <id> --json` to pull a full capsule.
 - **Write:** agents call `,ai-kb remember` (with deliberate `--kind`/`--scope`/`--source`/`--confidence`/`--domain` per the skill's write contract) only for verified, durable, reusable insights — the same quality bar as Ralph's `LEARNING:` lines. Guesses and session-only notes stay out of the KB (those belong in `,agent-memory`).

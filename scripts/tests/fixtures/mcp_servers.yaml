@@ -25,3 +25,7 @@ mcp_servers:
         callbackPort: 3118
       cursor:
         clientId: "$(echo cursor-client-id)"
+      copilot:
+        clientId: "copilot-client-id"
+        callbackPort: 4242
+        scopes: "openid, email"

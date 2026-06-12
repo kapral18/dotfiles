@@ -1,7 +1,3 @@
-# Terminal-based dashboard for managing cron jobs locally and on servers
-# https://github.com/antoniorodr/cronboard
-brew "cronboard"
-
 # Execute commands when watched files change
 # https://github.com/watchexec/watchexec
 brew "watchexec"
@@ -13,10 +9,6 @@ brew "gaze"
 # Execute a program periodically
 # https://gitlab.com/procps-ng/procps
 brew "watch"
-
-# Diff-friendly alternative to watch for command output
-# https://github.com/aloglu/hwatch
-brew "hwatch"
 
 # Shell command parallelization utility
 # https://www.gnu.org/software/parallel/

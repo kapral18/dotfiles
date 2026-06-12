@@ -13,9 +13,9 @@ func defaults() state.RolesDefaults {
 	// Pick model ids that exist in the curated cursor list so the picker
 	// seeds at the matching index instead of falling back to 0.
 	return state.RolesDefaults{
-		Planner:    state.RoleSpec{Harness: "cursor", Model: "claude-opus-4-7-thinking-max"},
-		Executor:   state.RoleSpec{Harness: "cursor", Model: "composer-2"},
-		Reviewer:   state.RoleSpec{Harness: "cursor", Model: "claude-opus-4-7-thinking-high"},
+		Planner:    state.RoleSpec{Harness: "cursor", Model: "claude-opus-4-8-thinking-xhigh"},
+		Executor:   state.RoleSpec{Harness: "cursor", Model: "composer-2.5"},
+		Reviewer:   state.RoleSpec{Harness: "cursor", Model: "claude-opus-4-8-xhigh"},
 		ReReviewer: state.RoleSpec{Harness: "cursor", Model: "gpt-5.5-extra-high"},
 	}
 }
@@ -42,7 +42,7 @@ func TestNewRunFormSubmitsDefaultsWhenUntouched(t *testing.T) {
 	if sub.Workspace != "/tmp/ws" {
 		t.Errorf("workspace: %q", sub.Workspace)
 	}
-	if got := sub.Roles["planner"]; got.Harness != "cursor" || got.Model != "claude-opus-4-7-thinking-max" {
+	if got := sub.Roles["planner"]; got.Harness != "cursor" || got.Model != "claude-opus-4-8-thinking-xhigh" {
 		t.Errorf("planner default: %+v", got)
 	}
 	if got := sub.Roles["re_reviewer"]; got.Harness != "cursor" || got.Model != "gpt-5.5-extra-high" {
@@ -167,7 +167,7 @@ func TestNewRunFormViewMentionsAllFourRoles(t *testing.T) {
 			t.Errorf("view missing role %q:\n%s", role, v)
 		}
 	}
-	if !strings.Contains(v, "claude-opus-4-7-thinking-max") || !strings.Contains(v, "gpt-5.5-extra-high") {
+	if !strings.Contains(v, "claude-opus-4-8-thinking-xhigh") || !strings.Contains(v, "gpt-5.5-extra-high") {
 		t.Errorf("view missing default model values")
 	}
 	if !strings.Contains(v, "Roles") {

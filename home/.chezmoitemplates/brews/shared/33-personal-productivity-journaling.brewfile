@@ -1,11 +1,3 @@
-# Terminal-based personal journal
-# https://github.com/antonmedv/lazyjournal
-brew "lazyjournal"
-
 # Google Workspace CLI
 # https://github.com/googleworkspace/cli
 brew "googleworkspace-cli"
-
-# Google Suite CLI
-# https://gogcli.sh
-brew "gogcli"

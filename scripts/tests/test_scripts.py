@@ -444,6 +444,23 @@ class TestMcpRegistry(unittest.TestCase):
         servers = load_servers(str(FIXTURES / "mcp_servers.yaml"), is_work=False, tool="gemini")
         assert "http-tool" not in servers
 
+    def test_exclude_tools_omits_server_for_listed_tool_only(self):
+        sys.path.insert(0, str(SCRIPTS))
+        from mcp_registry import load_servers
+
+        fixture = str(FIXTURES / "mcp_servers_exclude.yaml")
+
+        copilot = load_servers(fixture, is_work=False, tool="copilot")
+        assert "shared-tool" in copilot
+        assert "excluded-tool" not in copilot
+
+        claude = load_servers(fixture, is_work=False, tool="claude")
+        assert "excluded-tool" in claude
+        assert claude["excluded-tool"]["command"] == "docker"
+
+        no_tool = load_servers(fixture, is_work=False)
+        assert "excluded-tool" in no_tool
+
 
 class TestAiModels(unittest.TestCase):
     """WHEN loading AI models from YAML."""
@@ -505,6 +522,26 @@ class TestGenerateMcpConfigs(unittest.TestCase):
         actual = _run(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "true", "claude"])
         expected = (FIXTURES / "golden_mcp_work.json").read_text()
         assert json.loads(actual) == json.loads(expected)
+
+    def test_copilot_stdio_server_gets_local_type_and_tools(self):
+        actual = json.loads(_run(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "false", "copilot"]))
+        public = actual["mcpServers"]["public-tool"]
+        assert public["type"] == "local"
+        assert public["command"] == "docker"
+        assert public["tools"] == ["*"]
+
+    def test_copilot_http_oauth_uses_oauthclientid_and_redirectport(self):
+        actual = json.loads(_run(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "false", "copilot"]))
+        http = actual["mcpServers"]["http-tool"]
+        assert http["type"] == "http"
+        assert http["url"] == "https://mcp.example.com/mcp"
+        assert http["tools"] == ["*"]
+        assert http["oauthClientId"] == "copilot-client-id"
+        assert http["auth"] == {"redirectPort": 4242}
+        assert http["oauthScopes"] == ["openid", "email"]
+        # Copilot config never carries the raw nested oauth block or a secret.
+        assert "oauth" not in http
+        assert "oauthPublicClient" not in http
 
 
 class TestGeneratePiModels(unittest.TestCase):

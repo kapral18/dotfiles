@@ -38,13 +38,14 @@ Some tools rewrite their config files at runtime, so chezmoi ignores the on-disk
 
 Instead of keeping complex templates or comment-based filtering logic, we use explicit `.work.*` and `.personal.*` files. The shell script checks the `.isWork` template variable and copies the correct source to the final destination, completely decoupling the formats. All merge scripts live under [`home/.chezmoiscripts/`](../../../home/.chezmoiscripts/) and source the shared [`scripts/chezmoi_lib.sh`](../../../scripts/chezmoi_lib.sh) helper library.
 
-| Tool                 | Source files                                                                                                                                                          | Target                               | Merge script                                               |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ---------------------------------------------------------- |
-| Claude Code settings | [`home/dot_claude/settings.{work,personal}.json`](../../../home/dot_claude/)                                                                                          | `~/.claude/settings.json`            | `run_onchange_after_07-merge-claude-code-settings.sh.tmpl` |
-| Gemini settings+MCP  | [`home/dot_gemini/settings.json`](../../../home/dot_gemini/settings.json) + [`mcp_servers.yaml`](../../../home/.chezmoidata/mcp_servers.yaml)                         | `~/.gemini/settings.json`            | `run_onchange_after_07-merge-gemini-settings.sh.tmpl`      |
-| OpenCode config+MCP  | [`home/dot_config/opencode/readonly_opencode.{work,personal}.jsonc`](../../../home/dot_config/opencode/)                                                              | `~/.config/opencode/opencode.jsonc`  | `run_onchange_after_07-merge-opencode-config.sh.tmpl`      |
-| Codex config+MCP     | [`home/dot_codex/private_config.{work,personal}.toml`](../../../home/dot_codex/)                                                                                      | `~/.codex/config.toml`               | `run_onchange_after_07-merge-codex-config.sh.tmpl`         |
-| Pi settings/models   | [`home/dot_pi/agent/readonly_settings.{work,personal}.json`](../../../home/dot_pi/agent/) + [`readonly_models.json`](../../../home/dot_pi/agent/readonly_models.json) | `~/.pi/agent/{settings,models}.json` | `run_onchange_after_07-merge-pi-config.sh.tmpl`            |
+| Tool                       | Source files                                                                                                                                                                                           | Target                                                               | Merge script                                               |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- | ---------------------------------------------------------- |
+| Claude Code settings       | [`home/dot_claude/settings.{work,personal}.json`](../../../home/dot_claude/)                                                                                                                           | `~/.claude/settings.json`                                            | `run_onchange_after_07-merge-claude-code-settings.sh.tmpl` |
+| Gemini settings+MCP        | [`home/dot_gemini/settings.json`](../../../home/dot_gemini/settings.json) + [`mcp_servers.yaml`](../../../home/.chezmoidata/mcp_servers.yaml)                                                          | `~/.gemini/settings.json`                                            | `run_onchange_after_07-merge-gemini-settings.sh.tmpl`      |
+| OpenCode config+MCP        | [`home/dot_config/opencode/readonly_opencode.{work,personal}.jsonc`](../../../home/dot_config/opencode/)                                                                                               | `~/.config/opencode/opencode.jsonc`                                  | `run_onchange_after_07-merge-opencode-config.sh.tmpl`      |
+| Codex config+MCP           | [`home/dot_codex/private_config.{work,personal}.toml`](../../../home/dot_codex/)                                                                                                                       | `~/.codex/config.toml`                                               | `run_onchange_after_07-merge-codex-config.sh.tmpl`         |
+| Pi settings/models         | [`home/dot_pi/agent/readonly_settings.{work,personal}.json`](../../../home/dot_pi/agent/) + [`readonly_models.json`](../../../home/dot_pi/agent/readonly_models.json)                                  | `~/.pi/agent/{settings,models}.json`                                 | `run_onchange_after_07-merge-pi-config.sh.tmpl`            |
+| Copilot settings+MCP+hooks | [`home/dot_copilot/settings.json`](../../../home/dot_copilot/settings.json) + [`hooks.json`](../../../home/dot_copilot/hooks.json) + [`mcp_servers.yaml`](../../../home/.chezmoidata/mcp_servers.yaml) | `~/.copilot/{settings.json,mcp-config.json,hooks/agent-memory.json}` | `run_onchange_after_07-merge-copilot-config.sh.tmpl`       |
 
 Pi targets are installed readonly. MCP-server injection for each tool is covered in [MCP servers](mcp.md).
 
@@ -105,7 +106,7 @@ Subagents run a self-contained task (review, external-repo research, semantic co
 
 **Two portable layers (do not conflate them):**
 
-- **Skills** (`~/.agents/skills/`) are the cross-harness source of truth, loaded by every assistant (Cursor, Claude, Pi, Gemini, OpenCode).
+- **Skills** (`~/.agents/skills/`) are the cross-harness source of truth, loaded by every assistant (Cursor, Claude, Pi, Gemini, OpenCode, Copilot).
 - **Subagents** are per-runtime, and only two harnesses support user-global subagents:
   - **Claude Code** reads `~/.claude/agents/*.md`.
   - **Pi** has its own format and reads `~/.pi/agent/agents/*.md` (and, unavoidably, recursively from `~/.agents/` — see leakage below).
@@ -151,21 +152,44 @@ Subagents run a self-contained task (review, external-repo research, semantic co
 
 Codex and OpenCode use the profile-merging mechanism above (with MCP injection); Amp settings are tracked directly. Codex and OpenCode each have a llama.cpp launcher wrapper (`,codex-llama-cpp`, `,opencode-llama-cpp`) — see [llama.cpp local inference](llama-cpp.md#codex-launcher-codex-llama-cpp).
 
+Amp is **dormant** (no usage since install; state dir untouched since 2026-03-04) and deliberately outside the shared infra: no SOP symlink, no MCP injection, no RTK hook, and `amp.dangerouslyAllowAll: true`. If it comes back into rotation, wire it into `mcp_servers.yaml` injection and the SOP fan-out first — until then, don't extend it.
+
+## GitHub Copilot CLI
+
+Source: [`home/dot_copilot/`](../../../home/dot_copilot/) → `~/.copilot/`. Installed as a Homebrew cask (`copilot-cli`, binary `copilot`, in [`brews/shared/39-applications-casks.brewfile`](../../../home/.chezmoitemplates/brews/shared/39-applications-casks.brewfile)); the cask auto-generates fish/zsh/bash completions, so no completion file is tracked. Copilot CLI is the same agentic harness as GitHub's Copilot coding agent and natively speaks every standard the other harnesses use, so it wires into the shared infra without bespoke shims.
+
+| Surface            | Source                                                                                                         | Target                               |
+| ------------------ | -------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| SOP / instructions | [`symlink_copilot-instructions.md`](../../../home/dot_copilot/symlink_copilot-instructions.md) → `~/AGENTS.md` | `~/.copilot/copilot-instructions.md` |
+| Skills             | [`symlink_skills`](../../../home/dot_copilot/symlink_skills) → `~/.agents/skills`                              | `~/.copilot/skills`                  |
+| Custom agents      | [`exact_agents/`](../../../home/dot_copilot/exact_agents/) (empty placeholder dir)                             | `~/.copilot/agents/`                 |
+| MCP servers        | `mcp_servers.yaml` via `generate_mcp_configs.py copilot`                                                       | `~/.copilot/mcp-config.json`         |
+| Hooks              | [`hooks.json`](../../../home/dot_copilot/hooks.json)                                                           | `~/.copilot/hooks/agent-memory.json` |
+| Settings           | [`settings.json`](../../../home/dot_copilot/settings.json)                                                     | `~/.copilot/settings.json`           |
+
+Key wiring decisions:
+
+- **Instructions/skills are symlinks** (not copies): Copilot reads `$HOME/.copilot/copilot-instructions.md` as its global SOP and `~/.copilot/skills/<name>/SKILL.md` for skills. Copilot no longer reads `~/.claude/` agents/skills, so the explicit `~/.copilot/skills` symlink is required. Custom agents are left as an empty placeholder because our subagents are skill-backed, not `.agent.md` profiles.
+- **MCP: stdio only; no OAuth HTTP server.** The `copilot` transform in `generate_mcp_configs.py` emits stdio servers as `type: "local"` and (when wired) OAuth HTTP servers as `type: "http"` with `oauthClientId` + `auth.redirectPort` + `oauthScopes` for Copilot's browser `authorization_code` flow. In practice no HTTP server is wired for Copilot: it hardcodes its OAuth redirect to `http://127.0.0.1:{port}/` (only the port is configurable), which neither the SCSI Okta app nor the public Slack client registers, so the flow is rejected (HTTP 400 / `redirect_uri did not match`). `scsi-main` and `slack` therefore omit a `copilot` `oauth_by_tool` block, and `scsi-local` carries `exclude_tools: [copilot]` (no point keeping the local SCSI backend once the hosted one is gone). With the always-on `sequentialthinking` server also removed from the registry, Copilot's generated `mcp-config.json` has an empty `mcpServers` and it relies solely on its built-in servers. The built-in `github-mcp-server` is provided by Copilot and is not emitted. See [MCP servers](mcp.md).
+- **Settings are merged, not overwritten.** Copilot owns `~/.copilot/settings.json` and rewrites it at runtime (chosen `model`, `allowedUrls`, `config.json` migration), so the merge script deep-merges the declared baseline (`effortLevel: xhigh`, `keepAlive: busy`, `autoUpdate: false` to defer to the brew cask's auto-update, `banner: never`, `includeCoAuthoredBy: true`) **on top of** the live file with our keys winning, preserving the user's runtime choices. The target is in `.chezmoiignore`.
+- **Hooks use PascalCase event names** (`SessionStart`, `PreToolUse`, `PostToolUse`) so Copilot delivers the VS Code-compatible snake_case payloads (`hook_event_name`, `session_id`, `tool_input`) that the shared hook scripts already read — the same contract Codex uses. `PreToolUse` is fail-closed (a non-zero exit or timeout denies the tool), so the gate scripts always exit 0.
+
 ## Token optimization (RTK)
 
 [RTK](https://github.com/rtk-ai/rtk) (`brew "rtk"`, added in [`brews/shared/38-ai-large-language-models.brewfile`](../../../home/.chezmoitemplates/brews/shared/38-ai-large-language-models.brewfile)) is a CLI proxy that compacts noisy command output (test runners, linters, `git log`/`git status`, build tools, …) to cut 60-90% of the tokens those outputs would otherwise consume. Each agent's pre-execution shell hook calls the native `rtk hook <agent>` binary, which rewrites a command like `git status` to `rtk git status` before it runs; `rtk` then filters the output. No `jq` or shell wrapper is needed — the binary reads the hook JSON and emits the rewrite itself.
 
 **Per-agent wiring (all chezmoi-managed source):**
 
-| Agent    | Source                                                                                        | Mechanism                                                           |
-| -------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Cursor   | [`home/dot_cursor/hooks.json`](../../../home/dot_cursor/hooks.json)                           | `preToolUse` entry `rtk hook cursor` (`matcher: "Shell"`)           |
-| Claude   | [`home/dot_claude/settings.{work,personal}.json`](../../../home/dot_claude/)                  | `PreToolUse` block `rtk hook claude` (`matcher: "Bash"`)            |
-| Gemini   | [`home/dot_gemini/settings.json`](../../../home/dot_gemini/settings.json)                     | `BeforeTool` `run_shell_command`, `rtk hook gemini` after the gates |
-| OpenCode | [`home/dot_config/opencode/plugins/rtk.ts`](../../../home/dot_config/opencode/plugins/rtk.ts) | `tool.execute.before` plugin calling `rtk rewrite`                  |
-| Pi       | [`home/dot_pi/agent/extensions/rtk.ts`](../../../home/dot_pi/agent/extensions/rtk.ts)         | `tool_call` extension calling `rtk rewrite`                         |
+| Agent    | Source                                                                                        | Mechanism                                                                 |
+| -------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Cursor   | [`home/dot_cursor/hooks.json`](../../../home/dot_cursor/hooks.json)                           | `preToolUse` entry `rtk hook cursor` (`matcher: "Shell"`)                 |
+| Claude   | [`home/dot_claude/settings.{work,personal}.json`](../../../home/dot_claude/)                  | `PreToolUse` block `rtk hook claude` (`matcher: "Bash"`)                  |
+| Gemini   | [`home/dot_gemini/settings.json`](../../../home/dot_gemini/settings.json)                     | `BeforeTool` `run_shell_command`, `rtk hook gemini` after the gates       |
+| OpenCode | [`home/dot_config/opencode/plugins/rtk.ts`](../../../home/dot_config/opencode/plugins/rtk.ts) | `tool.execute.before` plugin calling `rtk rewrite`                        |
+| Pi       | [`home/dot_pi/agent/extensions/rtk.ts`](../../../home/dot_pi/agent/extensions/rtk.ts)         | `tool_call` extension calling `rtk rewrite`                               |
+| Copilot  | [`home/dot_copilot/hooks.json`](../../../home/dot_copilot/hooks.json)                         | `PreToolUse` entry `rtk hook copilot` (`matcher: "bash"`) after the gates |
 
-The Cursor and Gemini RTK hooks run **after** the existing git/PR gates ([`gemini-git-gate.sh`](../../../home/exact_dot_agents/exact_hooks/executable_gemini-git-gate.sh), [`gemini-pr-anchor-gate.sh`](../../../home/exact_dot_agents/exact_hooks/executable_gemini-pr-anchor-gate.sh)). RTK does not rewrite mutating git commands away from their gated form: `git commit`/`git push` map to `rtk git commit`/`rtk git push`, and both the Cursor matcher (`git\s+(commit|push)`) and the gate scripts (`git[[:space:]]+.*commit`) match that substring, so the gates still fire.
+The Cursor, Gemini, and Copilot RTK hooks run **after** the existing git/PR gates (Gemini: [`gemini-git-gate.sh`](../../../home/exact_dot_agents/exact_hooks/executable_gemini-git-gate.sh), [`gemini-pr-anchor-gate.sh`](../../../home/exact_dot_agents/exact_hooks/executable_gemini-pr-anchor-gate.sh); Copilot: [`copilot-git-gate.sh`](../../../home/exact_dot_agents/exact_hooks/executable_copilot-git-gate.sh), [`copilot-pr-anchor-gate.sh`](../../../home/exact_dot_agents/exact_hooks/executable_copilot-pr-anchor-gate.sh)). RTK does not rewrite mutating git commands away from their gated form: `git commit`/`git push` map to `rtk git commit`/`rtk git push`, and both the Cursor matcher (`git\s+(commit|push)`) and the gate scripts (`git[[:space:]]+.*commit`) match that substring, so the gates still fire. The Copilot gates emit Copilot's `permissionDecision` contract (not Gemini's `decision`) because Copilot's `PreToolUse` uses a different decision schema.
 
 ### RTK is a recoverable index, not a lossless substitute
 

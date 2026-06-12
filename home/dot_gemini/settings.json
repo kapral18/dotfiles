@@ -60,6 +60,39 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.agents/hooks/session_context.py",
+            "timeout": 10000
+          }
+        ]
+      }
+    ],
+    "BeforeAgent": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.agents/hooks/perturn_recall.py",
+            "timeout": 10000
+          }
+        ]
+      }
+    ],
+    "AfterTool": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.agents/hooks/worklog_recorder.py",
+            "timeout": 10000
+          }
+        ]
+      }
     ]
   }
 }

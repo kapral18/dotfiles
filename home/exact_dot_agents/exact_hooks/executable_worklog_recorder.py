@@ -33,7 +33,9 @@ def main() -> None:
         "command": command_from(payload),
         "duration": payload.get("duration"),
         "status": payload.get("status"),
-        "output": bounded_text(payload.get("output") or payload.get("tool_output"), limit=1200),
+        "output": bounded_text(
+            payload.get("output") or payload.get("tool_output") or payload.get("tool_response"), limit=1200
+        ),
         "error": bounded_text(payload.get("error_message"), limit=600),
     }
     append_jsonl(worklog_path, {k: v for k, v in entry.items() if v not in (None, "")}, max_lines=MAX_WORKLOG_LINES)

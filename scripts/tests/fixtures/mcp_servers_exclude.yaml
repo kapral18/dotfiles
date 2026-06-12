@@ -1,0 +1,18 @@
+mcp_servers:
+  - name: shared-tool
+    work_only: false
+    command: docker
+    args:
+      - run
+      - "--rm"
+      - shared/image
+
+  - name: excluded-tool
+    work_only: false
+    exclude_tools:
+      - copilot
+    command: docker
+    args:
+      - run
+      - "--rm"
+      - excluded/image

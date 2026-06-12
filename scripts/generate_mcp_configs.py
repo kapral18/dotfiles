@@ -10,6 +10,7 @@ Output: JSON with { "mcpServers": { ... } } on stdout.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from typing import Any
 
@@ -113,13 +114,65 @@ def _transform_pi(spec: dict[str, Any]) -> dict[str, Any]:
 _TOOL_TRANSFORMS["pi"] = _transform_pi
 
 
+def _scopes_list(oauth: dict[str, Any]) -> list[str]:
+    """Normalise a ``scope``/``scopes`` value to a list of space/comma tokens."""
+    raw = oauth.get("scopes") or oauth.get("scope")
+    if isinstance(raw, list):
+        return raw
+    if isinstance(raw, str):
+        return [s.strip() for s in re.split(r"[,\s]+", raw) if s.strip()]
+    return []
+
+
+def _transform_copilot(spec: dict[str, Any]) -> dict[str, Any]:
+    """GitHub Copilot CLI (~/.copilot/mcp-config.json).
+
+    stdio  -> { type: "local", command, args, tools: ["*"] }
+    http   -> { type: "http", url, tools: ["*"], oauthClientId, auth.redirectPort, oauthScopes }
+
+    OAuth is expressed with ``oauthClientId`` + ``auth.redirectPort`` (the
+    supported keys; Copilot also auto-migrates the legacy ``oauth.clientId`` /
+    ``oauth.callbackPort`` shape, but we emit the canonical form). Copilot does
+    the browser ``authorization_code`` flow and discovers endpoints from the
+    server's protected-resource metadata, so no client secret is stored.
+    """
+    if spec.get("type") != "http":
+        return {
+            "type": "local",
+            "command": spec["command"],
+            "args": spec.get("args", []),
+            "tools": ["*"],
+        }
+
+    out: dict[str, Any] = {"type": "http", "url": spec["url"], "tools": ["*"]}
+    oauth = spec.get("oauth")
+    if oauth:
+        client_id = oauth.get("clientId")
+        if client_id:
+            out["oauthClientId"] = client_id
+        port = oauth.get("callbackPort") or oauth.get("redirectPort")
+        if port is not None:
+            out["auth"] = {"redirectPort": int(port)}
+        scopes = _scopes_list(oauth)
+        if scopes:
+            out["oauthScopes"] = scopes
+    return out
+
+
+_TOOL_TRANSFORMS["copilot"] = _transform_copilot
+
+# Tools whose transform must also rewrite stdio (not only http) specs.
+_TRANSFORM_ALL_TYPES = {"copilot"}
+
+
 def _render_servers(servers: dict[str, dict[str, Any]], tool: str | None) -> dict[str, dict[str, Any]]:
     transform = _TOOL_TRANSFORMS.get(tool)
     if not transform:
         return servers
+    transform_all = tool in _TRANSFORM_ALL_TYPES
     result: dict[str, dict[str, Any]] = {}
     for name, spec in servers.items():
-        if spec.get("type") == "http":
+        if spec.get("type") == "http" or transform_all:
             result[name] = transform(spec)
         else:
             result[name] = spec

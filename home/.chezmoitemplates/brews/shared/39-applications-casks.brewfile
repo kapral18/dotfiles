@@ -22,10 +22,6 @@ cask "grandperspective"
 # https://www.videolan.org/vlc/
 cask "vlc"
 
-# Modern video player for macOS
-# https://github.com/iina/iina
-cask "iina"
-
 # Lossless video editor and trimmer
 # https://github.com/mifi/lossless-cut
 cask "losslesscut"
@@ -34,13 +30,9 @@ cask "losslesscut"
 # https://github.com/openai/codex
 cask "codex"
 
-# AI coding agent desktop client
-# https://opencode.ai/
-cask "opencode-desktop"
-
-# AI-powered code editor
-# https://cursor.so/
-cask "cursor"
+# GitHub Copilot CLI — Copilot coding agent in the terminal
+# https://github.com/github/copilot-cli
+cask "copilot-cli"
 
 # Command-line interface for Cursor
 # https://cursor.so/
@@ -61,10 +53,6 @@ cask "appcleaner"
 # Monitors common persistence locations. Security tool
 # https://objective-see.org/products/blockblock.html
 cask "blockblock"
-
-# RSS/Atom news aggregator
-# https://hyliu.me/fluent-reader/
-cask "fluent-reader"
 
 # Menu bar manager
 # https://github.com/jordanbaird/Ice
@@ -98,10 +86,6 @@ cask "reikey"
 # https://dangerzone.rocks/
 cask "dangerzone"
 
-# Simple Gtk# Paint Program
-# https://www.pinta-project.com/
-cask "pinta"
-
 # App to build and share containerised applications and microservices
 # https://www.docker.com/products/docker-desktop
 cask "docker-desktop"
@@ -116,16 +100,6 @@ brew "azure-cli"
 
 # Interactive HTTPS proxy
 # https://mitmproxy.org/
-
-# Terminal OpenAPI specification viewer
-# https://github.com/plutov/oq
-tap "plutov/tap"
-cask "plutov/tap/oq"
-
-# Benchmark multiple command variations and track performance
-# https://github.com/miklosn/cmdperf
-tap "miklosn/tap"
-cask "miklosn/tap/cmdperf"
 
 # All-in-one bookmark manager
 # https://raindrop.io/
@@ -146,10 +120,6 @@ cask "karabiner-elements"
 # Screenshot measurement and annotation tool
 # https://shottr.cc/
 cask "shottr"
-
-# Display scaling utility and virtual displays
-# https://github.com/waydabber/BetterDisplay
-cask "betterdisplay"
 
 # GUI Shows all open files, directories, sockets, pipes and devices
 # https://sveinbjorn.org/sloth

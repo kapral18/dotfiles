@@ -1,10 +1,10 @@
 {
-  "alwaysThinkingEnabled": true,
+  "alwaysThinkingEnabled": false,
   "permissions": {
     "defaultMode": "bypassPermissions"
   },
-  "model": "opus[1m]",
-  "effortLevel": "high",
+  "model": "fable",
+  "effortLevel": "xhigh",
   "hooks": {
     "PreToolUse": [
       {
@@ -51,6 +51,22 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.agents/hooks/perturn_recall.py",
+            "timeout": 10
+          }
+        ]
+      }
     ]
+  },
+  "skipDangerousModePermissionPrompt": true,
+  "voice": {
+    "enabled": true,
+    "mode": "hold"
   }
 }

@@ -19,7 +19,7 @@ flowchart TB
     end
 
     subgraph CTX["2 · Context (single sources of truth)"]
-        REG[[".chezmoidata/mcp_servers.yaml<br/>sequentialthinking · scsi-main(http sso) · scsi-local (ES stdio) · slack(http oauth)"]]:::data
+        REG[[".chezmoidata/mcp_servers.yaml<br/>scsi-main(http sso) · scsi-local (ES stdio) · slack(http oauth)"]]:::data
         MODELS[[".chezmoidata/ai_models.yaml (litellm catalog)<br/>reasoning · thinkingBudgets · contextWindow · cost"]]:::data
         GEN["scripts/: mcp_registry.py · generate_mcp_configs.py<br/>resolve $(pass …) · filter by tool + work_only/isWork"]:::ctx
         REG --> GEN
@@ -32,6 +32,7 @@ flowchart TB
         OPENCODE["OpenCode: dot_config/opencode/*.jsonc (LiteLLM aliases)"]:::exec
         CODEX["Codex: dot_codex/private_config.{work,personal}.toml"]:::exec
         PI["Pi: dot_pi/agent/* (Gemini 3.1 Pro default)"]:::exec
+        COPILOT["Copilot CLI: dot_copilot/* (settings + gates; MCP stdio-only, OAuth http unusable)"]:::exec
         AMP["Amp: dot_config/exact_amp/private_readonly_settings.json"]:::exec
         TUICR["tuicr: dot_config/tuicr/readonly_config.toml"]:::exec
         LOCAL["llama.cpp (local, opt-in)"]:::exec
@@ -39,7 +40,7 @@ flowchart TB
 
     GEN -->|07-generate-mcp-configs + 07-merge-* hooks| EXECL
     MODELS -->|generate_pi_models / merge_opencode_models| EXECL
-    SK -. symlinked into .-> CURSOR & CLAUDE & OPENCODE & CODEX
+    SK -. symlinked into .-> CURSOR & CLAUDE & OPENCODE & CODEX & COPILOT
 
     subgraph HOOKS["Cursor lifecycle hooks (dot_cursor/hooks.json) — detail in 03b"]
         H["sessionStart→session_context · after*→worklog_recorder<br/>beforeShell→gemini-*-gate (failClosed)"]:::ctx

@@ -1,11 +1,3 @@
 # Terminal slideshow tool
 # https://github.com/mfontanini/presenterm
 brew "presenterm"
-
-# Command-line based markdown presentation tool
-# https://github.com/visit1985/mdp
-brew "mdp"
-
-# Markdown-driven terminal presentations
-# https://github.com/maaslalani/slides
-brew "slides"

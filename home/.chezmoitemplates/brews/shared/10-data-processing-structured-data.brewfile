@@ -1,11 +1,3 @@
-# Command-line tree viewer for JSON, YAML, and TOML
-# https://github.com/fioncat/otree
-brew "otree"
-
-# Git for Data — versioned database engine (Dolt SQL server for beads)
-# https://github.com/dolthub/dolt
-brew "dolt"
-
 # A database tool for terminal
 # https://github.com/achristmascarl/rainfrog
 brew "rainfrog"
@@ -18,24 +10,13 @@ brew "lazysql"
 # https://jqlang.github.io/jq/
 brew "jq"
 
-# Terminal JSON viewer
-# https://github.com/antonmedv/fx
-brew "fx"
-
 # Interactive jq
 # https://sr.ht/~gpanders/ijq/
 brew "ijq"
 
-# Command-line JSON viewer
-# https://jless.io/
-brew "jless"
-
-# TUI playground for exploring jq
-# https://github.com/noahgorstein/jqp
-brew "jqp"
-
 # Process YAML, JSON, XML, CSV and properties documents
 # https://github.com/mikefarah/yq
+# Dependency of tmux github dashboard
 brew "yq"
 
 # Like jq, but for binary formats
@@ -61,6 +42,7 @@ brew "sheets"
 
 # Interactive grep with live preview
 # https://github.com/konradsz/igrep
+# command: ig
 brew "igrep"
 
 # TUI for parsing and arranging tabular data

@@ -210,7 +210,6 @@ Helper scripts called by hooks and commands (stdlib-only by convention).
 | `inject_mcp_into_codex_toml.py`     | Inject MCP servers into Codex TOML at a marker line                                                   |
 | `inject_mcp_into_opencode_jsonc.py` | Inject MCP servers into an OpenCode JSONC placeholder                                                 |
 | `merge_claude_mcp.py`               | Surgically update only `mcpServers` in `~/.claude.json`                                               |
-| `merge_claude_settings.py`          | Merge desired Claude settings, preserving runtime-written keys                                        |
 | `merge_opencode_models.py`          | Merge LiteLLM/Azure models into OpenCode JSONC                                                        |
 | `ai_models.py`                      | Parse the `litellm_models` / `azure_models` sections of `ai_models.yaml`                              |
 | `generate_pi_models.py`             | Build Pi `models.json` from the shared base plus LiteLLM/Azure providers                              |

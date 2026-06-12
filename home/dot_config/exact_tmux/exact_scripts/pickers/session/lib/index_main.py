@@ -586,6 +586,7 @@ scan_roots_set = set(scan_roots)
 quick = os.environ.get("PICK_SESSION_QUICK", "").lower() in ("1", "true", "yes", "on")
 sessions_only = os.environ.get("PICK_SESSION_SESSIONS_ONLY", "").lower() in ("1", "true", "yes", "on")
 skip_dirty = os.environ.get("PICK_SESSION_SKIP_DIRTY", "").lower() in ("1", "true", "yes", "on")
+skip_gh = os.environ.get("PICK_SESSION_SKIP_GH", "").lower() in ("1", "true", "yes", "on")
 ignore_file = os.environ.get("PICK_SESSION_IGNORE_FILE", "").strip()
 
 dir_include_hidden = os.environ.get("PICK_SESSION_DIR_INCLUDE_HIDDEN", "on").lower()
@@ -1319,13 +1320,15 @@ if _gh_all:
     _gh_need_fetch: list[tuple[str, str, str]] = []
     for p, br, nwo in _gh_all:
         cached = _gh_entries.get(p)
-        if cached and _gh_cache_fresh(cached, br, nwo, _now):
+        # skip-gh mode treats any cached entry as usable (stale-ok) so a fast
+        # scan never blocks on the network; the next normal scan re-fetches.
+        if cached and (skip_gh or _gh_cache_fresh(cached, br, nwo, _now)):
             if cached.get("pr") or cached.get("issue"):
                 wt_gh_info[p] = {"pr": cached.get("pr"), "issue": cached.get("issue")}
         else:
             _gh_need_fetch.append((p, br, nwo))
 
-    if _gh_need_fetch and shutil.which("gh"):
+    if _gh_need_fetch and not skip_gh and shutil.which("gh"):
         _fetch_meta = {p: (br, nwo) for p, br, nwo in _gh_need_fetch}
         with concurrent.futures.ThreadPoolExecutor(max_workers=WORKER_THREADS) as pool:
             _gh_futures = {pool.submit(_lookup_gh_info, p, br, nwo): p for p, br, nwo in _gh_need_fetch}
@@ -1348,7 +1351,9 @@ if _gh_all:
 
     _live_paths = {p for p, _, _ in _gh_all}
     _gh_pruned = {k: v for k, v in _gh_entries.items() if k in _live_paths}
-    _gh_save_pending = True
+    # A skip-gh run did no fetches, so it must not rewrite (and prune) the
+    # disk cache that normal scans maintain.
+    _gh_save_pending = not skip_gh
 
 # 2. Add sessions
 _tmux_session = subprocess.run(["tmux", "display-message", "-p", "#S"], check=False, stdout=subprocess.PIPE, text=True)
@@ -1438,7 +1443,7 @@ if wt_gh_info:
             _prs_needing_ci.setdefault(upstream_nwo, set[int]()).add(pr["number"])
 
 # 2c-ii. Batch GraphQL for PRs still missing CI (not in gh picker cache).
-if _prs_needing_ci and not quick and not sessions_only and shutil.which("gh"):
+if _prs_needing_ci and not quick and not sessions_only and not skip_gh and shutil.which("gh"):
     _gql_ci = _batch_ci_graphql(_prs_needing_ci)
     if _gql_ci:
         for wt_path, gh in wt_gh_info.items():

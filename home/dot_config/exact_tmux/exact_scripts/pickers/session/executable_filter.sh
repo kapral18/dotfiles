@@ -47,10 +47,17 @@ elif [ "$refresh" -eq 1 ] && [ -x "$update_cmd" ]; then
   # the background full scan. Exact dirty checks across many large worktrees can
   # dominate ctrl-r latency, while session membership itself is cheap to verify.
   "$update_cmd" --force --quiet --quick-only --skip-dirty > /dev/null 2>&1 || true
+  # Background chain: first a fast full scan (--skip-dirty --skip-gh: discovery
+  # + emission only, badges hydrated from existing caches, ~15s) so brand-new
+  # worktrees/dirs reach the cache (and the open picker, via live_refresh)
+  # shortly after ctrl-r; then the real full scan for fresh dirty/gh badges.
+  # The slow scan alone takes minutes and is pre-empted by any later --force
+  # update, so without the fast pass new dirs could stay invisible for days.
+  bg_chain="$(printf '%q' "$update_cmd") --force --quiet --skip-dirty --skip-gh; PICK_SESSION_THREADS=1 $(printf '%q' "$update_cmd") --force --quiet"
   if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
-    tmux run-shell -b "PICK_SESSION_THREADS=1 $(printf '%q' "$update_cmd") --force --quiet" 2> /dev/null || true
+    tmux run-shell -b "$bg_chain" 2> /dev/null || true
   else
-    nohup env PICK_SESSION_THREADS=1 "$update_cmd" --force --quiet > /dev/null 2>&1 &
+    nohup sh -c "$bg_chain" > /dev/null 2>&1 &
   fi
 fi
 

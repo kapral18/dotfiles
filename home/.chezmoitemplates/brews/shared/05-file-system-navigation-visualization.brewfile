@@ -6,14 +6,6 @@ brew "bat"
 # https://github.com/lsd-rs/lsd
 brew "lsd"
 
-# Multi-threaded file-tree visualizer
-# https://github.com/solidiquis/erdtree
-brew "erdtree"
-
-# Select files with SQL-like queries
-# https://github.com/jhspetersson/fselect
-brew "fselect"
-
 # Display directories as trees
 # http://mama.indstate.edu/users/ice/tree/
 brew "tree"
@@ -22,34 +14,13 @@ brew "tree"
 # https://github.com/imsnif/diskonaut
 brew "diskonaut"
 
-# Visual disk usage explorer
-# https://github.com/ikebastuz/wiper
-tap "ikebastuz/wiper"
-brew "ikebastuz/wiper/wiper"
-
-# More intuitive version of du
-# https://github.com/bootandy/dust
-brew "dust"
-
-# Tool to analyze file system usage
-# https://github.com/nachoparker/dutree
-brew "dutree"
-
 # Fast TUI for disk usage analysis and cleanup
 # https://github.com/Byron/dua-cli
 brew "dua-cli"
 
-# NCurses Disk Usage
-# https://dev.yorhel.nl/ncdu
-brew "ncdu"
-
 # Blazing fast terminal file manager
 # https://yazi-rs.github.io/
 brew "yazi"
-
-# Hackable, minimal, fast TUI file explorer
-# https://github.com/sayanarijit/xplr
-brew "xplr"
 
 # Smarter cd command
 # https://github.com/ajeetdsouza/zoxide

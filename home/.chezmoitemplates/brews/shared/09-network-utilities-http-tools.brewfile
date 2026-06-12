@@ -2,23 +2,6 @@
 # https://github.com/orf/gping
 brew "gping"
 
-# User-friendly cURL replacement
-# https://httpie.io/
-brew "httpie"
-
-# High-performance HTTP load generator
-# https://github.com/hatoo/oha
-brew "oha"
-
-# Run and test HTTP requests defined in plain text
-# https://github.com/Orange-OpenSource/hurl
-brew "hurl"
-
-
-# Text-based web browser
-# https://lynx.invisible-island.net/
-brew "lynx"
-
 # DuckDuckGo search from the command-line
 # https://github.com/jarun/ddgr
 brew "ddgr"
@@ -47,14 +30,6 @@ brew "domcyrus/rustnet/rustnet"
 tap "matthart1983/tap"
 brew "matthart1983/tap/netwatch"
 
-# Prettier way to inspect network connections
-# https://github.com/karol-broda/snitch
-brew "snitch"
-
-# Utility for changing MAC addresses on macOS
-# https://github.com/shilch/macchanger
-brew "macchanger"
-
 # LAN discovery tool with a modern TUI
 # https://github.com/ramonvermeulen/whosthere
 brew "whosthere"
@@ -63,7 +38,3 @@ brew "whosthere"
 # https://github.com/diegoholiveira/localports
 tap "diegoholiveira/localports"
 brew "diegoholiveira/localports/localports"
-
-# Status and progress bar wrapper for rsync
-# https://github.com/laktak/rsyncy
-brew "rsyncy"

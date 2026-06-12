@@ -1,12 +1,6 @@
 # Description: Nvim msgpack API client and remote plugin provider
 # URL: https://github.com/neovim/node-client
 neovim
-# Description: Project and subproject manager
-# URL: https://github.com/hasardel/pake
-pake
-# Description: Web-based viewer for performance profiles
-# URL: https://github.com/jlfwong/speedscope
-speedscope
 # Description: Coding agent CLI with read, bash, edit, write tools and session management
 # URL: https://pi.dev/
 @earendil-works/pi-coding-agent
@@ -31,6 +25,3 @@ playwriter
 # Description: Find unused dependencies, exports, and files in JS/TS projects
 # URL: https://knip.dev/
 knip
-# Description: Modern extensible financial terminal (requires bun at runtime)
-# URL: https://github.com/vincelwt/gloomberb
-gloomberb

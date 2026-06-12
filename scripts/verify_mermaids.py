@@ -58,8 +58,8 @@ CENSUS: list[Claim] = [
     Claim(
         name="total tracked files",
         globs=None,
-        claimed=967,
-        anchors=[("README.md", "967 tracked files")],
+        claimed=982,
+        anchors=[("README.md", "982 tracked files")],
     ),
     Claim(
         name="home/.chezmoitemplates/brews/",
@@ -70,8 +70,8 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/.chezmoiscripts/",
         globs=["home/.chezmoiscripts/*"],
-        claimed=30,
-        anchors=[("01-chezmoi-pipeline.mmd", ".chezmoiscripts/ (30)")],
+        claimed=31,
+        anchors=[("01-chezmoi-pipeline.mmd", ".chezmoiscripts/ (31)")],
     ),
     Claim(
         name="home/dot_config/exact_tmux/",
@@ -94,25 +94,25 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/exact_bin/",
         globs=["home/exact_bin/*"],
-        claimed=80,
+        claimed=81,
         anchors=[
-            ("07c-bin-commands.mmd", "exact_bin/ (80 incl. utils)"),
-            ("README.md", "`exact_bin/` (80)"),
+            ("07c-bin-commands.mmd", "exact_bin/ (81 incl. utils)"),
+            ("README.md", "`exact_bin/` (81)"),
         ],
     ),
     Claim(
         name="home/exact_dot_agents/",
         globs=["home/exact_dot_agents/*"],
-        claimed=58,
-        anchors=[("03b-agent-skills-hooks.mmd", "exact_dot_agents/ (58)")],
+        claimed=62,
+        anchors=[("03b-agent-skills-hooks.mmd", "exact_dot_agents/ (62)")],
     ),
     Claim(
         name="scripts/",
         globs=["scripts/*"],
-        claimed=42,
+        claimed=44,
         anchors=[
-            ("11-scripts-helpers.mmd", "scripts/ (42)"),
-            ("README.md", "`scripts/` (42)"),
+            ("11-scripts-helpers.mmd", "scripts/ (44)"),
+            ("README.md", "`scripts/` (44)"),
         ],
     ),
 ]

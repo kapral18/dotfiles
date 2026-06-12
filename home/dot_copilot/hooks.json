@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "$HOME/.agents/hooks/session_context.py",
+        "timeoutSec": 10
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "bash",
+        "type": "command",
+        "command": "$HOME/.agents/hooks/copilot-git-gate.sh",
+        "timeoutSec": 10
+      },
+      {
+        "matcher": "bash",
+        "type": "command",
+        "command": "$HOME/.agents/hooks/copilot-pr-anchor-gate.sh",
+        "timeoutSec": 10
+      },
+      {
+        "matcher": "bash",
+        "type": "command",
+        "command": "rtk hook copilot"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "type": "command",
+        "command": "$HOME/.agents/hooks/worklog_recorder.py",
+        "timeoutSec": 10
+      }
+    ]
+  }
+}

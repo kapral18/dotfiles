@@ -4,7 +4,7 @@ sidebar_position: 5
 
 # MCP Servers
 
-A single canonical registry defines every MCP (Model Context Protocol) server once; per-tool configs for Cursor, Claude Code, Gemini, Pi, Codex, and OpenCode are generated from it at `chezmoi apply` time. This avoids hand-maintaining the same server list in six different config formats.
+A single canonical registry defines every MCP (Model Context Protocol) server once; per-tool configs for Cursor, Claude Code, Gemini, Pi, Codex, OpenCode, and GitHub Copilot CLI are generated from it at `chezmoi apply` time. This avoids hand-maintaining the same server list in seven different config formats.
 
 Use when adding, removing, or debugging an MCP server, or understanding how a server reaches a given assistant.
 
@@ -14,10 +14,10 @@ Source of truth: [`home/.chezmoidata/mcp_servers.yaml`](../../../home/.chezmoida
 
 Each entry is one of two shapes:
 
-- **Command server** — `name`, `work_only`, `command`, `args` (list). Example: `sequentialthinking` runs a docker image; `scsi-local` runs `bash -lc '...'` with secrets resolved from `pass`.
-- **HTTP server** — `name`, `work_only`, `type: http`, `url`, and optionally `oauth_by_tool` (per-tool OAuth client metadata, since tools expect different OAuth field shapes). Example: `slack` and `scsi-main` both use `oauth_by_tool`. `scsi-main`'s OAuth2 (Elastic SSO, Okta authz server `elastic.okta.com/oauth2/default`, scopes `openid email offline_access`) is handled per-client with the pre-registered public client `0oa1aviou3pe7dITS1t8`. Cursor, Claude, Gemini, and Pi each have a tool block under `oauth_by_tool` because they expect different OAuth field shapes and redirect URIs (Pi derives both the advertised redirect URI and its local callback listener from `redirectUri: http://localhost:12345/callback`). This hosted `scsi-main` replaces the former self-hosted stdio server of the same name. `slack` (`https://mcp.slack.com/mcp`) likewise has per-tool `oauth_by_tool` blocks; Cursor and Gemini use the confidential client from `pass slack/mcp/*`, but Pi reuses Claude's public Slack client `1601185624273.8899143856786` (no secret) because that confidential client is not authorized for this user; Pi's `redirectUri` is `http://localhost:3118/callback`, with Slack's authorize/token endpoints auto-discovered from the server's protected-resource metadata.
+- **Command server** — `name`, `work_only`, `command`, `args` (list). Example: `scsi-local` runs `bash -lc '...'` with secrets resolved from `pass`. A command server may also carry `exclude_tools` (a list of tool names) to omit it for specific tools that cannot express per-tool membership via `oauth_by_tool` — e.g. `scsi-local` uses `exclude_tools: [copilot]`.
+- **HTTP server** — `name`, `work_only`, `type: http`, `url`, and optionally `oauth_by_tool` (per-tool OAuth client metadata, since tools expect different OAuth field shapes). Example: `slack` and `scsi-main` both use `oauth_by_tool`. `scsi-main`'s OAuth2 (Elastic SSO, Okta authz server `elastic.okta.com/oauth2/default`, scopes `openid email offline_access`) is handled per-client with the pre-registered public client `0oa1aviou3pe7dITS1t8`. Cursor, Claude, Gemini, and Pi each have a tool block under `oauth_by_tool` because they expect different OAuth field shapes and redirect URIs (Pi derives both the advertised redirect URI and its local callback listener from `redirectUri: http://localhost:12345/callback`). Copilot is intentionally absent from these OAuth servers — it hardcodes its OAuth redirect to `http://127.0.0.1:{port}/` (only the port is configurable via `auth.redirectPort`), which is not a registered Login redirect URI on either the SCSI Okta app or the public Slack client, so the `authorization_code` flow is rejected (HTTP 400 / `redirect_uri did not match`); with no `copilot` key under `oauth_by_tool`, `load_servers()` omits those servers for Copilot. This hosted `scsi-main` replaces the former self-hosted stdio server of the same name. `slack` (`https://mcp.slack.com/mcp`) likewise has per-tool `oauth_by_tool` blocks; Cursor and Gemini use the confidential client from `pass slack/mcp/*`, but Pi reuses Claude's public Slack client `1601185624273.8899143856786` (no secret) because that confidential client is not authorized for this user; Pi's `redirectUri` is `http://localhost:3118/callback`, with Slack's authorize/token endpoints auto-discovered from the server's protected-resource metadata.
 
-`work_only: true` servers are emitted only when the `isWork` chezmoi variable is set. The default work set is `sequentialthinking`, `scsi-main`, `scsi-local`, `slack`; the personal set is `sequentialthinking`.
+`work_only: true` servers are emitted only when the `isWork` chezmoi variable is set. The default work set is `scsi-main`, `scsi-local`, `slack`; the personal set is empty (no `work_only: false` servers remain). Per-tool exclusions narrow this further — e.g. Copilot gets none of these (`scsi-main`/`slack` omit a `copilot` `oauth_by_tool` block over a redirect-URI mismatch, and `scsi-local` is excluded via `exclude_tools`).
 
 ## Generation pipeline
 
@@ -39,6 +39,9 @@ Tools whose config is not plain JSON get dedicated injectors that preserve the s
 | Gemini      | `~/.gemini/settings.json`           | [`run_onchange_after_07-merge-gemini-settings.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-merge-gemini-settings.sh.tmpl) |
 | OpenCode    | `~/.config/opencode/opencode.jsonc` | [`run_onchange_after_07-merge-opencode-config.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl) |
 | Codex       | `~/.codex/config.toml`              | [`run_onchange_after_07-merge-codex-config.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-merge-codex-config.sh.tmpl)       |
+| Copilot     | `~/.copilot/mcp-config.json`        | [`run_onchange_after_07-merge-copilot-config.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-merge-copilot-config.sh.tmpl)   |
+
+The Copilot transform emits stdio servers as `type: "local"` (with `tools: ["*"]`); it also supports OAuth HTTP servers as `type: "http"` with `oauthClientId` + `auth.redirectPort` + `oauthScopes` (Copilot's native browser `authorization_code` flow, no secret in the config), but no HTTP server is currently wired for Copilot — the redirect-URI mismatch above excludes `scsi-main` and `slack`, and `scsi-local` is excluded via `exclude_tools: [copilot]` since the hosted `scsi-main` it backs is gone. Copilot's generated `mcpServers` is therefore empty and it relies on its built-in servers. The built-in `github-mcp-server` is provided by Copilot and is not emitted.
 
 LetsFG is intentionally not exposed through the shared MCP registry because its tools are irrelevant to most sessions; agents load its skill on demand instead. See [Tool configs](tool-configs.md) for details.
 
@@ -54,6 +57,7 @@ Verification:
 chezmoi apply
 python3 -m json.tool < ~/.cursor/mcp.json
 python3 -c "import json; print(list(json.load(open('$HOME/.claude.json')).get('mcpServers', {})))"
+copilot mcp list   # lists the loaded Copilot servers and their transport types
 ```
 
 ## Related

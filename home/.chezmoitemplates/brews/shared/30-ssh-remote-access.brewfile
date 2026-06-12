@@ -1,8 +1,3 @@
 # Terminal UI to manage SSH hosts
 # https://github.com/quantumsheep/sshs
 brew "sshs"
-
-# Terminal UI for organizing SSH connections and shortcuts
-# https://github.com/adembc/lazyssh
-tap "adembc/tap"
-brew "adembc/tap/lazyssh"

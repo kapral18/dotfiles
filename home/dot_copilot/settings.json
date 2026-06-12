@@ -1,0 +1,8 @@
+{
+  "effortLevel": "xhigh",
+  "keepAlive": "busy",
+  "includeCoAuthoredBy": true,
+  "autoUpdate": false,
+  "banner": "never",
+  "showTipsOnStartup": false
+}

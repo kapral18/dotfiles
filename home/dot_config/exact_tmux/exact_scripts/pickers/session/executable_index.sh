@@ -80,6 +80,7 @@ emit_sessions_worktrees_and_dirs() {
   export PICK_SESSION_QUICK
   export PICK_SESSION_SESSIONS_ONLY
   export PICK_SESSION_SKIP_DIRTY
+  export PICK_SESSION_SKIP_GH
   export PICK_SESSION_IGNORE_FILE
   export PICK_SESSION_DIR_INCLUDE_HIDDEN
   export PICK_SESSION_GITHUB_LOGIN
@@ -91,6 +92,7 @@ emit_sessions_worktrees_and_dirs() {
   PICK_SESSION_QUICK="$quick_mode"
   PICK_SESSION_SESSIONS_ONLY="$sessions_only"
   PICK_SESSION_SKIP_DIRTY="$skip_dirty"
+  PICK_SESSION_SKIP_GH="$skip_gh"
   PICK_SESSION_DIR_INCLUDE_HIDDEN="$(tmux_opt '@pick_session_dir_include_hidden' 'on')"
   PICK_SESSION_GITHUB_LOGIN="$(tmux_opt '@pick_session_github_login' '')"
 
@@ -100,11 +102,13 @@ emit_sessions_worktrees_and_dirs() {
 quick_mode=0
 sessions_only=0
 skip_dirty=0
+skip_gh=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --quick) quick_mode=1 ;;
     --sessions-only) sessions_only=1 ;;
     --skip-dirty) skip_dirty=1 ;;
+    --skip-gh) skip_gh=1 ;;
   esac
   shift
 done

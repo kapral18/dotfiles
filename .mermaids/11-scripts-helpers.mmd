@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 11-scripts-helpers.mmd — Every file in scripts/ (42). Repo-side Python
+%% 11-scripts-helpers.mmd — Every file in scripts/ (44). Repo-side Python
 %% (stdlib only, no PyYAML) called by chezmoi 07-* hooks + ,bin commands.
 %% Grouped by consumer. Shared parsers feed the generators/mergers.
 %% ============================================================================
@@ -20,7 +20,7 @@ flowchart TB
     subgraph MCPGEN["MCP config generation (hook 07-generate-mcp-configs)"]
         MR["mcp_registry.py (load mcp_servers.yaml, resolve $(pass), filter)"]:::mcp
         GMC["generate_mcp_configs.py (per-tool MCP json)"]:::mcp
-        MCM["merge_claude_mcp.py · merge_claude_settings.py (hook 07-merge-claude)"]:::mcp
+        MCM["merge_claude_mcp.py (surgical mcpServers in ~/.claude.json)"]:::mcp
         ICT["inject_mcp_into_codex_toml.py (hook 07-merge-codex)"]:::mcp
         IOJ["inject_mcp_into_opencode_jsonc.py (hook 07-merge-opencode)"]:::mcp
     end

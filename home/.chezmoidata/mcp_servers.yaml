@@ -8,17 +8,6 @@
 #   args        – argument list passed to the command
 
 mcp_servers:
-  - name: sequentialthinking
-    work_only: false
-    command: docker
-    args:
-      - run
-      - "--pull=always"
-      - "--rm"
-      - "-i"
-      - "--init"
-      - mcp/sequentialthinking
-
   # Official hosted Semantic Code Search (Elastic SSO OAuth2). Replaces the
   # former self-hosted stdio scsi-main. On first use the client prompts for the
   - name: scsi-main
@@ -54,9 +43,21 @@ mcp_servers:
         clientId: "0oa1aviou3pe7dITS1t8"
         scopes: "openid, email, offline_access"
         redirectUri: "http://localhost:12345/callback"
+      # Copilot CLI is intentionally omitted from scsi-main: it hardcodes its
+      # OAuth redirect to http://127.0.0.1:{port}/ (only the port is
+      # configurable via auth.redirectPort), which the SCSI Okta app
+      # 0oa1aviou3pe7dITS1t8 rejects (verified: HTTP 400 "redirect_uri must be
+      # a Login redirect URI" — only .../callback and .../oauth/callback are
+      # registered). With no copilot key here, load_servers() omits scsi-main
+      # for Copilot.
 
   - name: scsi-local
     work_only: true
+    # Omitted for Copilot CLI: with scsi-main (hosted) dropped for Copilot over
+    # the redirect-URI mismatch, the local SCSI stdio server is dropped too so
+    # Copilot carries no SCSI server at all (per user request).
+    exclude_tools:
+      - copilot
     command: bash
     args:
       - "-lc"
@@ -95,3 +96,10 @@ mcp_servers:
         scopes: "$(pass slack/mcp/user_scopes)"
         # http:// localhost required; must match a registered redirect URI.
         redirectUri: "http://localhost:3118/callback"
+      # Copilot CLI is intentionally omitted from slack: it hardcodes its
+      # OAuth redirect to http://127.0.0.1:{port}/ (only the port is
+      # configurable via auth.redirectPort), which is not a registered
+      # redirect URI on Claude's public Slack client, and Slack's MCP token
+      # endpoint does not support the headless client_credentials grant
+      # (grant_types_supported = [authorization_code, refresh_token]). With no
+      # copilot key here, load_servers() omits slack for Copilot.

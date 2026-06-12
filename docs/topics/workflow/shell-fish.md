@@ -24,7 +24,6 @@ Notable responsibilities in this file:
 - exports `SSH_AUTH_SOCK` for 1Password
 - configures Homebrew path via `homebrewPrefix` prompt data
 - loads API keys from `pass` into environment variables
-- defines `bdlocal` wrapper for Beads
 - adds `~/bin` and `~/.local/bin` to PATH on login
 
 It also initializes a few tools if present:
@@ -61,8 +60,6 @@ echo "$PATH"
 
 ```bash
 echo "$SSH_AUTH_SOCK"
-echo "$BEADS_DIR"
-type -a bdlocal
 ```
 
 ### Confirm API key loading behavior
@@ -116,8 +113,6 @@ Fish plugins are managed with Fisher:
   - verify the expected secret paths exist in your password store
 - Wrong password store selected:
   - run `ppass` to clear `PASSWORD_STORE_DIR`
-- Beads DB points to wrong repo:
-  - `cd` into the correct git repo and re-run `echo "$BEADS_DIR"`
 
 ## Making Fish Your Login Shell
 
@@ -128,6 +123,5 @@ The setup script installs fish and will attempt to set it as your main shell:
 ## Related
 
 - [Switching identity](git-identity/switch-identity.md)
-- [Beads task tracking](../ai-assistants/beads.md)
 - [Packages](../core/packages/index.md)
 - [Security and secrets](../security/security-and-secrets.md)

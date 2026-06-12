@@ -1,9 +1,8 @@
-# Brewfile manager
-# https://github.com/rcmdnk/homebrew-file
-tap "rcmdnk/file"
-brew "rcmdnk/file/brew-file"
-
-# Utility scripts for managing multiple Homebrew taps
-# https://github.com/gromgit/brewtils
+# An interactive TUI for Homebrew
+# https://github.com/hzqtc/taproom
 tap "gromgit/brewtils"
 brew "gromgit/brewtils/taproom"
+
+# Make Homebrew output bold with a TUI interface
+# https://github.com/Valkyrie00/bold-brew
+brew "Valkyrie00/homebrew-bbrew/bbrew"

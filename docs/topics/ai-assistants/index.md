@@ -71,7 +71,7 @@ Current skills (33; sorted by name; routing from each skill’s `disable-model-i
 | Skill                   | Use when                                                                                                                                                         | Routing | Gated to       |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------------- |
 | `ai-kb`                 | Recall or persist durable cross-session knowledge (gotchas, decisions, patterns, facts) via `,ai-kb`; not ephemeral `/tmp/specs` context or code search          | auto    |                |
-| `beads`                 | beads / bdlocal / BEADS_DIR is explicitly mentioned                                                                                                              | auto    |                |
+| `blackboard`            | Run-scoped shared typed ledger for multi-agent fan-outs via `,blackboard` (findings + signal queue + synthesis gate + survival check); not durable knowledge     | auto    |                |
 | `buildkite`             | Buildkite CI status, builds, logs, pipelines, or a `buildkite.com` URL (use `bk` CLI; do not fetch URLs in-browser)                                              | auto    | elastic org    |
 | `cli-skills`            | Creating or upgrading a CLI tool skill                                                                                                                           | auto    |                |
 | `compose-issue`         | Drafting an issue title and body as text before create/edit (no `gh` side effects)                                                                               | auto    |                |
@@ -149,10 +149,9 @@ The agentic layer is split into focused pages:
 - [Ralph orchestrator](ralph.md) — the `,ralph go` planner/executor/reviewer/re-reviewer loop, roles, and tmux control plane.
 - [MCP servers](mcp.md) — the canonical `mcp_servers.yaml` registry and per-tool generation.
 - [Model registry & routing](model-registry.md) — `ai_models.yaml`, per-tool model generation, and LiteLLM.
-- [Tool configs](tool-configs.md) — Cursor CLI, profile-based merging, per-assistant settings (Claude/Gemini/Pi/Codex/OpenCode/Amp), and the RTK token-optimization layer.
+- [Tool configs](tool-configs.md) — Cursor CLI, profile-based merging, per-assistant settings (Claude/Gemini/Pi/Codex/OpenCode/Copilot/Amp), and the RTK token-optimization layer.
 - [llama.cpp local inference](llama-cpp.md) — local GGUF server, model router, and the Claude/Codex/OpenCode/Pi launchers.
 - [Reviewing agent diffs](reviewing-diffs.md) — the `tuicr` loop for feeding structured feedback back to an agent.
-- [Beads task tracking](beads.md) — per-repo task tracking with `bd`/`bdlocal`.
 
 ## Safety Boundaries
 

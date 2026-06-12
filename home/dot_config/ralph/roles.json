@@ -2,21 +2,21 @@
   "//roles": "Each role -> { harness, model, extra_args }. The orchestrator enforces reviewer.family != re_reviewer.family.",
   "//family": "Family is derived by substring on model id (claude/gpt/gemini/llama/mistral/deepseek). Override with `family` field if needed.",
   "//modes": "Cursor planner uses --mode plan (read-only planning), reviewer/re_reviewer use --mode ask (read-only Q&A with read access for verification probes). Executor uses --force to skip per-command approval prompts.",
-  "//opt-in": "Local models (llama-cpp/qwen3.6) are opt-in only — swap them in by editing this file; defaults never depend on `,llama-cpp serve` being up.",
+  "//opt-in": "Local models (llama-cpp/qwen3.6) are opt-in only \u2014 swap them in by editing this file; defaults never depend on `,llama-cpp serve` being up.",
   "roles": {
     "planner": {
       "harness": "cursor",
-      "model": "claude-opus-4-7-thinking-max",
+      "model": "claude-opus-4-8-thinking-xhigh",
       "extra_args": ["--mode", "plan"]
     },
     "executor": {
       "harness": "cursor",
-      "model": "composer-2",
+      "model": "composer-2.5",
       "extra_args": ["--force"]
     },
     "reviewer": {
       "harness": "cursor",
-      "model": "claude-opus-4-7-thinking-max",
+      "model": "claude-opus-4-8-thinking-xhigh",
       "extra_args": ["--mode", "ask"]
     },
     "re_reviewer": {
@@ -27,7 +27,7 @@
     "reflector": {
       "//": "Optional post-run distillation; emits structured capsules into the AI KB. Runs only on workflow=feature/bugfix at successful completion.",
       "harness": "cursor",
-      "model": "claude-opus-4-7-thinking-max",
+      "model": "claude-opus-4-8-thinking-xhigh",
       "extra_args": ["--mode", "ask"]
     }
   },
