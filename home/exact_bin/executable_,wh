@@ -94,7 +94,7 @@ post_path() {
 }
 
 build_directory_archive() {
-  local path="$1" clean_path parent name
+  local path="$1" clean_path parent name skipped_count
   require_command tar
 
   clean_path="${path%/}"
@@ -103,8 +103,14 @@ build_directory_archive() {
     exit 1
   fi
 
-  parent="$(cd "$(dirname "$clean_path")" && pwd -P)"
   name="$(basename "$clean_path")"
+  if [ "$name" = "." ] || [ "$name" = ".." ]; then
+    clean_path="$(cd "$path" && pwd -P)"
+    parent="$(dirname "$clean_path")"
+    name="$(basename "$clean_path")"
+  else
+    parent="$(cd "$(dirname "$clean_path")" && pwd -P)"
+  fi
   if [ -z "$name" ] || [ "$name" = "." ]; then
     echo "Error: unable to determine directory name for: $path" >&2
     exit 1
@@ -114,7 +120,11 @@ build_directory_archive() {
   DIR_ARCHIVE="$SEND_STAGE/$name$DIR_ARCHIVE_SUFFIX"
 
   echo "Archiving directory: $path"
-  COPYFILE_DISABLE=1 tar -czhf "$DIR_ARCHIVE" -C "$parent" -- "$name"
+  skipped_count="$(cd "$parent" && find -L "./$name" ! \( -type d -o -type f \) -exec printf . \; | wc -c | tr -d ' ')"
+  if [ "$skipped_count" != "0" ]; then
+    echo "Skipping $skipped_count non-regular archive entries (sockets, devices, FIFOs)." >&2
+  fi
+  (cd "$parent" && find -L "./$name" \( -type d -o -type f \) -print0 | COPYFILE_DISABLE=1 tar -czhf "$DIR_ARCHIVE" --no-recursion --null -T -)
 }
 
 post_directory() {
