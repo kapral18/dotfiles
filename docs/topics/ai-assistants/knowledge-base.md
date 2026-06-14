@@ -118,6 +118,8 @@ CLI surface:
 ,ai-kb doctor                                      # capsule count, FTS sanity, embedding coverage
 ```
 
+When an agent writes prose through `,ai-kb remember`, shell quoting still applies. Markdown backticks inside a double-quoted `--body "..."` are command substitution, not formatting. Use single quotes for prose when possible, or escape backticks / use another argv-safe pattern for text that also contains single quotes.
+
 The Ralph TUI exposes the KB with a `K` keybinding: a modal launches `,ai-kb search ... --json` over stdin/stdout; navigation is `↑/↓`, `enter` to dispatch a search, `esc`/`q` to close. The status bar shows total capsule count (`KB:N`).
 
 ## Cross-agent memory (`ai-kb` skill)

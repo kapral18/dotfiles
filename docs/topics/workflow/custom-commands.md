@@ -118,8 +118,8 @@ Examples:
 - Source: [`home/exact_bin/executable_,wh`](../../../home/exact_bin/executable_,wh)
 - Behavior:
   - `,wh post` (no path): writes the current staged diff to `/tmp/staged.patch` and sends it with a one-word Magic Wormhole code.
-  - `,wh post <path>`: sends that single file or directory raw (Magic Wormhole bundles directories natively, preserving structure).
-  - `,wh get`: receives the transfer (prompts for the code when omitted) and auto-detects what arrived — a received `*.patch` is applied with `git apply`; any other file or directory is saved into the destination instead.
+  - `,wh post <path>`: sends that single file directly, or archives a directory before sending so Wormhole transfers a stable payload.
+  - `,wh get`: receives the transfer (prompts for the code when omitted) and auto-detects what arrived — a received `*.patch` is applied with `git apply`, a `,wh` directory archive is extracted, and any other file or directory is saved into the destination instead.
 - Receive destination (`get -o, --output PATH`): for raw files/dirs it is the target directory (default: current dir); for patches it overrides the patch path (default: `WH_PATCH_FILE`).
 - Completions: Fish and Zsh complete `post` / `get`, a path for `post`, and `-o`/`--output` for `get`.
 - Optional override: `WH_PATCH_FILE=/path/to/file.patch`

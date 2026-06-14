@@ -4,7 +4,17 @@
 set -euo pipefail
 
 PATCH_FILE="${WH_PATCH_FILE:-/tmp/staged.patch}"
+DIR_ARCHIVE_SUFFIX=".wh-dir.tar.gz"
+DIR_ARCHIVE=""
+SEND_STAGE=""
 RECV_STAGE=""
+EXTRACT_STAGE=""
+
+cleanup() {
+  rm -rf "${SEND_STAGE:-}" "${RECV_STAGE:-}" "${EXTRACT_STAGE:-}"
+}
+
+trap cleanup EXIT
 
 show_usage() {
   cat <<'EOF'
@@ -16,6 +26,8 @@ Commands:
   get [code-word...]   Receive a transfer, prompting for the code when omitted.
                        A received *.patch is applied with `git apply`; any other
                        file or directory is saved into the destination instead.
+                       Directories are archived before transfer and extracted
+                       after receipt.
 
 Options (get):
   -o, --output PATH    Destination directory for received files/dirs, or the
@@ -72,8 +84,45 @@ post_path() {
     exit 1
   fi
 
+  if [ -d "$path" ]; then
+    post_directory "$path"
+    return
+  fi
+
   echo "Sending: $path"
   wormhole send --code-length 1 "$path"
+}
+
+build_directory_archive() {
+  local path="$1" clean_path parent name
+  require_command tar
+
+  clean_path="${path%/}"
+  if [ -z "$clean_path" ]; then
+    echo "Error: refusing to send root directory" >&2
+    exit 1
+  fi
+
+  parent="$(cd "$(dirname "$clean_path")" && pwd -P)"
+  name="$(basename "$clean_path")"
+  if [ -z "$name" ] || [ "$name" = "." ]; then
+    echo "Error: unable to determine directory name for: $path" >&2
+    exit 1
+  fi
+
+  SEND_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/wh_send.XXXXXX")"
+  DIR_ARCHIVE="$SEND_STAGE/$name$DIR_ARCHIVE_SUFFIX"
+
+  echo "Archiving directory: $path"
+  COPYFILE_DISABLE=1 tar -czhf "$DIR_ARCHIVE" -C "$parent" -- "$name"
+}
+
+post_directory() {
+  local path="$1"
+
+  build_directory_archive "$path"
+  echo "Sending directory: $path"
+  wormhole send --code-length 1 "$DIR_ARCHIVE"
 }
 
 apply_received_patch() {
@@ -111,6 +160,63 @@ save_received_item() {
   echo "Received: $target"
 }
 
+extract_received_directory_archive() {
+  local archive="$1" dest="$2"
+  local archive_name dirname target
+
+  require_command python3
+
+  mkdir -p "$dest"
+  archive_name="$(basename "$archive")"
+  dirname="${archive_name%"$DIR_ARCHIVE_SUFFIX"}"
+  target="$dest/$dirname"
+
+  if [ -e "$target" ]; then
+    target="${target}.$(date +%Y%m%d%H%M%S)"
+  fi
+
+  EXTRACT_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/wh_extract.XXXXXX")"
+  python3 - "$archive" "$EXTRACT_STAGE" "$dirname" <<'PY'
+import os
+import sys
+import tarfile
+
+archive, dest, expected_root = sys.argv[1:4]
+dest_real = os.path.realpath(dest)
+
+with tarfile.open(archive, "r:gz") as tar:
+    for member in tar.getmembers():
+        name = member.name
+        normalized = os.path.normpath(name)
+        parts = name.split("/")
+        if (
+            not name
+            or os.path.isabs(name)
+            or normalized in (".", "..")
+            or normalized.startswith("../")
+            or ".." in parts
+        ):
+            raise SystemExit(f"Error: unsafe archive member: {name!r}")
+        if normalized != expected_root and not normalized.startswith(expected_root + os.sep):
+            raise SystemExit(f"Error: unexpected archive root: {name!r}")
+        target = os.path.realpath(os.path.join(dest_real, normalized))
+        if target != dest_real and not target.startswith(dest_real + os.sep):
+            raise SystemExit(f"Error: archive member escapes destination: {name!r}")
+        if member.issym() or member.islnk() or not (member.isdir() or member.isfile()):
+            raise SystemExit(f"Error: unsupported archive member: {name!r}")
+
+    tar.extractall(dest)
+PY
+
+  if [ ! -d "$EXTRACT_STAGE/$dirname" ]; then
+    echo "Error: directory archive did not contain expected root: $dirname" >&2
+    exit 1
+  fi
+
+  mv "$EXTRACT_STAGE/$dirname" "$target"
+  echo "Received directory: $target"
+}
+
 get_patch() {
   require_command wormhole
 
@@ -132,9 +238,7 @@ get_patch() {
       ;;
     esac
   done
-
   RECV_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/wh_recv.XXXXXX")"
-  trap 'rm -rf "${RECV_STAGE:-}"' EXIT
 
   (cd "$RECV_STAGE" && wormhole receive --accept-file "${code_args[@]}")
 
@@ -150,7 +254,9 @@ get_patch() {
     exit 1
   fi
 
-  if [ -f "$received" ] && [ "${received##*.}" = "patch" ]; then
+  if [ -f "$received" ] && [[ "$(basename "$received")" == *"$DIR_ARCHIVE_SUFFIX" ]]; then
+    extract_received_directory_archive "$received" "${dest:-$PWD}"
+  elif [ -f "$received" ] && [ "${received##*.}" = "patch" ]; then
     apply_received_patch "$received" "$dest"
   else
     save_received_item "$received" "${dest:-$PWD}"
