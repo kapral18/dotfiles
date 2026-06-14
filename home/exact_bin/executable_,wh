@@ -194,28 +194,85 @@ import tarfile
 archive, dest, expected_root = sys.argv[1:4]
 dest_real = os.path.realpath(dest)
 
-with tarfile.open(archive, "r:gz") as tar:
-    for member in tar.getmembers():
-        name = member.name
-        normalized = os.path.normpath(name)
-        parts = name.split("/")
-        if (
-            not name
-            or os.path.isabs(name)
-            or normalized in (".", "..")
-            or normalized.startswith("../")
-            or ".." in parts
-        ):
-            raise SystemExit(f"Error: unsafe archive member: {name!r}")
-        if normalized != expected_root and not normalized.startswith(expected_root + os.sep):
-            raise SystemExit(f"Error: unexpected archive root: {name!r}")
-        target = os.path.realpath(os.path.join(dest_real, normalized))
-        if target != dest_real and not target.startswith(dest_real + os.sep):
-            raise SystemExit(f"Error: archive member escapes destination: {name!r}")
-        if member.issym() or member.islnk() or not (member.isdir() or member.isfile()):
-            raise SystemExit(f"Error: unsupported archive member: {name!r}")
+def is_within(path, root):
+    return path == root or path.startswith(root + os.sep)
 
-    tar.extractall(dest)
+def normalize_member_name(name):
+    normalized = os.path.normpath(name)
+    raw_parts = name.split("/")
+    if (
+        not name
+        or os.path.isabs(name)
+        or normalized in (".", "..")
+        or normalized.startswith("../")
+        or ".." in raw_parts
+    ):
+        raise SystemExit(f"Error: unsafe archive member: {name!r}")
+    if normalized != expected_root and not normalized.startswith(expected_root + os.sep):
+        raise SystemExit(f"Error: unexpected archive root: {name!r}")
+    return normalized
+
+def safe_dest_path(normalized, original_name):
+    target = os.path.realpath(os.path.join(dest_real, normalized))
+    if target != dest_real and not target.startswith(dest_real + os.sep):
+        raise SystemExit(f"Error: archive member escapes destination: {original_name!r}")
+    return target
+
+def validate_symlink_target(member, normalized):
+    linkname = member.linkname
+    if not linkname or os.path.isabs(linkname):
+        raise SystemExit(f"Error: unsafe archive link target: {member.name!r} -> {linkname!r}")
+    resolved = os.path.normpath(os.path.join(os.path.dirname(normalized), linkname))
+    if not is_within(resolved, expected_root):
+        raise SystemExit(f"Error: unsafe archive link target: {member.name!r} -> {linkname!r}")
+
+def validate_hardlink_target(member):
+    linkname = member.linkname
+    normalized = normalize_member_name(linkname)
+    return normalized
+
+with tarfile.open(archive, "r:gz") as tar:
+    dirs = []
+    files = []
+    hardlinks = []
+    symlinks = []
+
+    for member in tar.getmembers():
+        normalized = normalize_member_name(member.name)
+        safe_dest_path(normalized, member.name)
+
+        if member.isdir():
+            dirs.append(member)
+        elif member.isfile():
+            files.append(member)
+        elif member.islnk():
+            validate_hardlink_target(member)
+            hardlinks.append(member)
+        elif member.issym():
+            validate_symlink_target(member, normalized)
+            symlinks.append(member)
+        else:
+            raise SystemExit(f"Error: unsupported archive member: {member.name!r}")
+
+    for member in dirs + files:
+        tar.extract(member, dest)
+
+    for member in hardlinks:
+        link_path = safe_dest_path(normalize_member_name(member.name), member.name)
+        target_path = safe_dest_path(validate_hardlink_target(member), member.linkname)
+        if not os.path.isfile(target_path):
+            raise SystemExit(f"Error: unsafe archive hardlink target: {member.name!r} -> {member.linkname!r}")
+        os.makedirs(os.path.dirname(link_path), exist_ok=True)
+        if os.path.lexists(link_path):
+            raise SystemExit(f"Error: archive member already exists: {member.name!r}")
+        os.link(target_path, link_path)
+
+    for member in symlinks:
+        link_path = safe_dest_path(normalize_member_name(member.name), member.name)
+        os.makedirs(os.path.dirname(link_path), exist_ok=True)
+        if os.path.lexists(link_path):
+            raise SystemExit(f"Error: archive member already exists: {member.name!r}")
+        os.symlink(member.linkname, link_path)
 PY
 
   if [ ! -d "$EXTRACT_STAGE/$dirname" ]; then
