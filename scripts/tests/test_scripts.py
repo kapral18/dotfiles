@@ -89,6 +89,53 @@ class TestYamlParser(unittest.TestCase):
         assert parse_scalar("bare") == "bare"
 
 
+class TestVerifyBinSurface(unittest.TestCase):
+    """WHEN validating comma-command discoverability."""
+
+    def test_reports_missing_completion_docs_and_catalog(self):
+        sys.path.insert(0, str(SCRIPTS))
+        import verify_bin_surface
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "home/exact_bin").mkdir(parents=True)
+            (root / "home/dot_config/fish/completions").mkdir(parents=True)
+            (root / "docs/topics/workflow").mkdir(parents=True)
+            (root / ".mermaids").mkdir(parents=True)
+
+            (root / "home/exact_bin/executable_,missing").write_text("#!/bin/sh\n")
+            (root / "docs/topics/workflow/custom-commands.md").write_text("| `,other` | Other |\n")
+            (root / ".mermaids/07c-bin-commands.mmd").write_text('G[",other"]\n')
+
+            failures = verify_bin_surface.check_bin_surface(root)
+
+        assert any("missing Fish completion" in failure for failure in failures)
+        assert any("missing docs token" in failure for failure in failures)
+        assert any("missing catalog token" in failure for failure in failures)
+
+    def test_accepts_template_command_with_matching_surface(self):
+        sys.path.insert(0, str(SCRIPTS))
+        import verify_bin_surface
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "home/exact_bin").mkdir(parents=True)
+            (root / "home/dot_config/fish/completions").mkdir(parents=True)
+            (root / "docs/topics/workflow").mkdir(parents=True)
+            (root / ".mermaids").mkdir(parents=True)
+
+            (root / "home/exact_bin/executable_,templated.tmpl").write_text("#!/bin/sh\n")
+            (root / "home/dot_config/fish/completions/readonly_,templated.fish").write_text(
+                "complete -c ,templated --no-files\n"
+            )
+            (root / "docs/topics/workflow/custom-commands.md").write_text("| `,templated` | Templated |\n")
+            (root / ".mermaids/07c-bin-commands.mmd").write_text('G[",templated"]\n')
+
+            failures = verify_bin_surface.check_bin_surface(root)
+
+        assert failures == []
+
+
 class TestAgentMemory(unittest.TestCase):
     """WHEN wiping hook memory for a workspace."""
 

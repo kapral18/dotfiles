@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 11-scripts-helpers.mmd — Every file in scripts/ (44). Repo-side Python
+%% 11-scripts-helpers.mmd — Every file in scripts/ (45). Repo-side Python
 %% (stdlib only, no PyYAML) called by chezmoi 07-* hooks + ,bin commands.
 %% Grouped by consumer. Shared parsers feed the generators/mergers.
 %% ============================================================================
@@ -46,7 +46,7 @@ flowchart TB
         RCP["reconcile_custom_packages.py (hook 05-install-custom-packages)"]:::misc
         RGP["reconcile_golang_pkgs.py (hook 05-update-golang-pkgs; binary reconcile + state ledger)"]:::misc
         SLC["sync_llama_cpp_models.py (hook 07-sync-llama-cpp-models)"]:::misc
-        VT["verify_templates.py (make verify-templates)<br/>verify_mermaids.py (make verify-mermaids; .mermaids census)"]:::misc
+        VT["verify_templates.py (make verify-templates)<br/>verify_mermaids.py (make verify-mermaids; .mermaids census)<br/>verify_bin_surface.py (make verify-bin-surface; ~/bin completions/docs/catalog)"]:::misc
         YT["yt_search.py (,youtube-search backend)"]:::misc
     end
 

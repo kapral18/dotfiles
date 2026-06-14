@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help fmt lint test check verify-templates verify-mermaids docs docs-build docs-serve docs-clean
+.PHONY: help fmt lint test check verify-templates verify-mermaids verify-bin-surface docs docs-build docs-serve docs-clean
 
 help: ## Show available targets
 	@grep -E '^[a-z][a-z_-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -19,12 +19,15 @@ verify-templates: ## Render every chezmoi template to catch breakage before appl
 verify-mermaids: ## Check .mermaids/ file-census counts against git ls-files
 	python3 scripts/verify_mermaids.py
 
+verify-bin-surface: ## Check ~/bin commands have completions, docs, and catalog coverage
+	python3 scripts/verify_bin_surface.py
+
 test: ## Run Python unit tests
 	python3 scripts/tests/test_scripts.py -v
 	python3 scripts/tests/test_blackboard.py -v
 	python3 home/exact_bin/utils/exact_history/executable_fish-history-merge.test.py -v
 
-check: lint verify-templates verify-mermaids test ## Run all checks (lint + templates + mermaids + test)
+check: lint verify-templates verify-mermaids verify-bin-surface test ## Run all checks
 
 website/node_modules: website/package.json website/pnpm-lock.yaml
 	cd website && pnpm install --frozen-lockfile

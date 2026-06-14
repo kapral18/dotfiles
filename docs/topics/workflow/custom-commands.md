@@ -241,6 +241,8 @@ Examples:
 | `,enable-auto-merge`       | Enable auto-merge for all open PRs targeting a base branch                                                             |
 | `,trace-string-pr`         | Locate the PR that introduced a matching string and open it in the browser                                             |
 | `,hey-branch`              | Quick "am I in sync with upstream?" status (ahead/behind + missing remote)                                             |
+| `,gh-worktree`             | Create or reuse local PR/issue worktrees from GitHub repo/number context                                               |
+| `,codeowners`              | List matching owners or owned paths from the current repo's CODEOWNERS file                                            |
 
 ### Search / discovery helpers
 
@@ -250,6 +252,7 @@ Examples:
 | `,search-brew-desc`  | Search installed Homebrew formula descriptions (JSON output)                                   |
 | `,fuzzy-brew-search` | Fuzzy search Homebrew descriptions with preview, then drive an "add this to Brewfile" workflow |
 | `,search-gh-topic`   | Search GitHub repos by topic with preview, then open the selected repo                         |
+| `,youtube-search`    | Search YouTube from an fzf TUI with filters, preview, browser open, and mpv playback           |
 
 ### Testing / analysis helpers
 
@@ -269,9 +272,15 @@ Examples:
 
 ### AI / Agent helpers
 
-| Command         | Description                                                                           |
-| --------------- | ------------------------------------------------------------------------------------- |
-| `,agent-memory` | Inspect or wipe the selected `/tmp/specs` hook memory topic for the current workspace |
+| Command               | Description                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------- |
+| `,agent-memory`       | Inspect or wipe the selected `/tmp/specs` hook memory topic for the current workspace |
+| `,ai-kb`              | Manage the durable local agent knowledge base                                         |
+| `,blackboard`         | Manage a run-scoped typed ledger for multi-agent findings and open questions          |
+| `,ralph`              | Start, resume, inspect, and control Ralph multi-agent orchestration runs              |
+| `,claude-llama-cpp`   | Launch Claude Code against the local llama.cpp-compatible endpoint                    |
+| `,codex-llama-cpp`    | Launch Codex against the local llama.cpp-compatible endpoint                          |
+| `,opencode-llama-cpp` | Launch OpenCode against the local llama.cpp-compatible endpoint                       |
 
 ### Utility helpers
 
@@ -285,6 +294,8 @@ Examples:
 | `,pdf-diff`         | Visual diff two PDFs by compositing pages                                                                  |
 | `,nano-banana`      | Generate a Nano Banana (Gemini) image from a text prompt via the Generative Language API                   |
 | `,history-sync`     | Merge local Fish history with a 1Password document and push the merged result back (see below)             |
+| `,set-default-mic`  | Select the preferred external microphone, falling back to the MacBook microphone                           |
+| `,update`           | Reconcile dotfiles plus package-manager update categories                                                  |
 
 #### `,history-sync` details
 
@@ -314,6 +325,7 @@ These are used by other scripts, fzf integrations, and Neovim — you rarely inv
 Quick checks:
 
 ```bash
+make verify-bin-surface
 command -v ,w
 command -v ,gh-prw
 command -v ,tmux-run-all
@@ -323,6 +335,8 @@ If commands are missing after apply, verify:
 
 - [`home/exact_bin/`](../../../home/exact_bin/) contains the source script.
 - The script has the `executable_` prefix.
+- [`home/dot_config/fish/completions/`](../../../home/dot_config/fish/completions/) contains a matching `readonly_,<name>.fish` completion.
+- `make verify-bin-surface` passes, confirming command, completion, docs, and catalog coverage are in sync.
 - `chezmoi apply` completed successfully.
 - `~/bin` is on `PATH` (`echo "$PATH"`).
 

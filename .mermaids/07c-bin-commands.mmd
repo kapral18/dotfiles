@@ -1,7 +1,7 @@
 %% ============================================================================
 %% 07c-bin-commands.mmd — Every script in home/exact_bin/ (81 incl. utils).
-%% executable_,* → ~/bin/,* (comma-prefixed user commands). A few are plain
-%% wrappers (parallel/sem/codex). Most have a fish completion (07) + some zsh.
+%% executable_,* → ~/bin/,* (comma-prefixed user commands). verify-bin-surface
+%% keeps each command covered by fish completions, docs, and this catalog.
 %% ============================================================================
 flowchart TB
     classDef gh fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
@@ -11,7 +11,7 @@ flowchart TB
     classDef sys fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
 
     subgraph GHC["GitHub / PR / review"]
-        G[",gh-prw (open PR) · ,gh-issuew · ,gh-worktree (PR/issue→,w)<br/>,gh-tfork (fork+clone+tmux) · ,gh-subissues-create<br/>,add-patch-to-prs · ,enable/disable-auto-merge<br/>,check-backport-progress · ,remove-comment · ,view-my-issues<br/>,trace-string-pr · ,kbn-pr-audit (kibana audit) · ,codeowners<br/>,search-gh-topic · ,hey-branch · ,pull-rebase · ,wh (wormhole: patch or file/dir)"]:::gh
+        G[",gh-prw (open PR) · ,gh-issuew · ,gh-worktree (PR/issue→,w)<br/>,gh-tfork (fork+clone+tmux) · ,gh-subissues-create<br/>,add-patch-to-prs · ,enable-auto-merge · ,disable-auto-merge<br/>,check-backport-progress · ,remove-comment · ,view-my-issues<br/>,trace-string-pr · ,kbn-pr-audit (kibana audit) · ,codeowners<br/>,search-gh-topic · ,hey-branch · ,pull-rebase · ,wh (wormhole: patch or file/dir)"]:::gh
     end
 
     subgraph WTC["Worktree / git"]
@@ -19,7 +19,7 @@ flowchart TB
     end
 
     subgraph AIC["AI / agents / KB"]
-        A[",ralph (→ scripts/ralph.py; see 04) · ,ai-kb (→ scripts/ai_kb.py)<br/>,agent-memory (/tmp/specs dead-switch) · ,cp-files-for-llm<br/>,claude-llama-cpp · ,codex-llama-cpp · ,opencode-llama-cpp<br/>,llama-cpp (local router) · codex (wrapper)<br/>,tg (telegramtui) · ,youtube-search · ,letsfg-docker"]:::ai
+        A[",ralph (→ scripts/ralph.py; see 04) · ,ai-kb (→ scripts/ai_kb.py)<br/>,blackboard (run-scoped typed ledger) · ,agent-memory (/tmp/specs dead-switch)<br/>,cp-files-for-llm · ,claude-llama-cpp · ,codex-llama-cpp · ,opencode-llama-cpp<br/>,llama-cpp (local router) · codex (wrapper)<br/>,tg (telegramtui) · ,youtube-search · ,letsfg-docker"]:::ai
     end
 
     subgraph FZFC["fzf / search helpers"]
