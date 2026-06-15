@@ -30,23 +30,8 @@ litellm_models:
       output: 15
       cacheRead: 0
       cacheWrite: 0
-  - id: "llm-gateway/gemini-3.1-pro-preview"
-    name: "Gemini 3.1 Pro (Preview)"
-    reasoning: true
-    thinkingBudgets:
-      minimal: 1024
-      low: 4096
-      medium: 16384
-      high: 32768
-    contextWindow: 1000000
-    maxTokens: 65536
-    cost:
-      input: 2
-      output: 12
-      cacheRead: 0
-      cacheWrite: 0
-  - id: "llm-gateway/gemini-3.1-pro-preview-customtools"
-    name: "Gemini 3.1 Pro (Preview/CustomTools)"
+  - id: "llm-gateway/gemini-pro-latest"
+    name: "Gemini Pro Latest"
     reasoning: true
     thinkingBudgets:
       minimal: 1024

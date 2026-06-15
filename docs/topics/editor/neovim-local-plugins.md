@@ -48,7 +48,9 @@ Environment variables:
 | ---------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Cloudflare | `CLOUDFLARE_WORKERS_AI_ACCOUNT_ID`, `CLOUDFLARE_WORKERS_AI_API_KEY` | `CLOUDFLARE_WORKERS_AI_MODEL` (default `@cf/moonshotai/kimi-k2.6`), `CLOUDFLARE_THINKING` (default `false`), `CLOUDFLARE_REASONING_EFFORT`                                                               |
 | OpenRouter | `OPENROUTER_API_KEY`                                                | `OPENROUTER_MODEL` (default `moonshotai/kimi-k2.6`, routed as `moonshotai/kimi-k2.6:nitro`), `OPENROUTER_NITRO` (default `true`), `OPENROUTER_THINKING` (default `false`), `OPENROUTER_REASONING_EFFORT` |
-| Gemini     | `GEMINI_API_KEY`                                                    | `GEMINI_MODEL`, `GEMINI_MAX_OUTPUT_TOKENS`                                                                                                                                                               |
+| Gemini     | `GEMINI_API_KEY`                                                    | `GEMINI_MODEL` (default `gemini-flash-latest`), `GEMINI_MAX_OUTPUT_TOKENS`                                                                                                                               |
+
+Transport failures are reported directly in the Neovim notification. For example, `curl exit 28` means the provider request reached the configured timeout; inspect `:messages` for the captured curl stderr/body preview.
 
 ## Ownership / CODEOWNERS Workflows (Local Plugins)
 

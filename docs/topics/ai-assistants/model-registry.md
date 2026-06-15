@@ -43,7 +43,7 @@ Fish exports these values from `pass` when the entries exist (see [`home/dot_con
 | `LITELLM_PROXY_KEY` | `litellm/api/token` | API authentication         |
 | `LITELLM_API_BASE`  | `litellm/api/base`  | Normalized to end in `/v1` |
 
-- **OpenCode**: the work config ([`home/dot_config/opencode/readonly_opencode.work.jsonc`](../../../home/dot_config/opencode/readonly_opencode.work.jsonc)) uses Google direct Gemini as the primary default (`google/gemini-3.1-pro-preview-customtools`); additional LiteLLM aliases remain available for explicit selection.
+- **OpenCode**: the work config ([`home/dot_config/opencode/readonly_opencode.work.jsonc`](../../../home/dot_config/opencode/readonly_opencode.work.jsonc)) uses Google Vertex Gemini as the primary default (`litellm/google-vertex/gemini-flash-latest`); additional LiteLLM aliases remain available for explicit selection.
 - **Pi**: the work config is rendered by `run_onchange_after_07-merge-pi-config.sh.tmpl` into `~/.pi/agent/`, starting from the shared base and adding work-only LiteLLM/Azure providers.
 
 ## Local inference

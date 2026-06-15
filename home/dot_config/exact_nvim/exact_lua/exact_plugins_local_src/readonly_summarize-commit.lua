@@ -18,13 +18,44 @@ local SYSTEM_MESSAGE =
   "You are a conventional commit message specialist. Return only valid commit message text in the requested format. Do not include reasoning."
 
 -- ───────────────────────────── HELPERS (provider-agnostic) ─────────────────────
-local function run(argv_or_cmd)
-  local out = vim.fn.systemlist(argv_or_cmd)
-  local code = vim.v.shell_error
-  if code ~= 0 then
-    return nil, out, code
+local function split_lines(text)
+  local lines = {}
+  if type(text) ~= "string" or text == "" then
+    return lines
   end
-  return out, nil, code
+
+  for line in vim.gsplit(text, "\n", { plain = true, trimempty = true }) do
+    table.insert(lines, line)
+  end
+  return lines
+end
+
+local function run(argv)
+  local ok, job_or_err = pcall(vim.system, argv, { text = true })
+  if not ok or not job_or_err then
+    return {
+      ok = false,
+      stdout_lines = {},
+      stderr_lines = { tostring(job_or_err or "Failed to start command") },
+    }
+  end
+
+  local result = job_or_err:wait()
+  if not result then
+    return {
+      ok = false,
+      stdout_lines = {},
+      stderr_lines = { "Command terminated unexpectedly" },
+    }
+  end
+
+  return {
+    ok = result.code == 0,
+    stdout_lines = split_lines(result.stdout),
+    stderr_lines = split_lines(result.stderr),
+    exit_code = result.code,
+    signal = result.signal,
+  }
 end
 
 local function write_tmp_json(tbl)
@@ -55,10 +86,27 @@ local function take_first(lines, n)
   if type(lines) ~= "table" or n <= 0 then
     return out
   end
+
   for i = 1, math.min(#lines, n) do
     out[i] = lines[i]
   end
   return out
+end
+
+local function first_nonempty(lines)
+  for _, line in ipairs(lines or {}) do
+    if type(line) == "string" and line ~= "" then
+      return line
+    end
+  end
+  return nil
+end
+
+local function truncate(text, max_len)
+  if type(text) ~= "string" or #text <= max_len then
+    return text
+  end
+  return text:sub(1, max_len - 3) .. "..."
 end
 
 local function insert_at_cursor(lines)
@@ -125,7 +173,6 @@ local function curl_post_json(url, headers, payload_file, timeout)
   timeout = timeout or 30
 
   local body_file = os.tmpname()
-  local stderr_file = os.tmpname()
   local argv = {
     "curl",
     "-sS",
@@ -147,33 +194,44 @@ local function curl_post_json(url, headers, payload_file, timeout)
   table.insert(argv, "--output")
   table.insert(argv, body_file)
 
-  table.insert(argv, "--stderr")
-  table.insert(argv, stderr_file)
-
   table.insert(argv, "--write-out")
   table.insert(argv, "__CURLMETA__%{http_code}|%{content_type}")
 
-  local meta_lines, cmd_err, exit_code = run(argv)
+  local result = run(argv)
   local body_lines = read_file_lines(body_file) or {}
-  local stderr_lines = read_file_lines(stderr_file) or {}
   pcall(os.remove, body_file)
-  pcall(os.remove, stderr_file)
 
-  local meta = meta_lines and table.concat(meta_lines, "\n") or ""
-  if meta == "" and type(cmd_err) == "table" then
-    meta = table.concat(cmd_err, "\n")
-  end
+  local meta = table.concat(result.stdout_lines or {}, "\n")
   local status, content_type = meta:match("__CURLMETA__(%d%d%d)|([^\r\n]*)")
 
   return {
-    ok = meta_lines ~= nil,
-    cmd_err = cmd_err,
-    exit_code = exit_code,
+    ok = result.ok,
+    exit_code = result.exit_code,
+    signal = result.signal,
     status = tonumber(status),
     content_type = content_type,
     body_lines = body_lines,
-    stderr_lines = stderr_lines,
+    stderr_lines = result.stderr_lines or {},
   }
+end
+
+local function format_curl_transport_error(resp, timeout)
+  local parts = { ("curl exit %s"):format(tostring(resp.exit_code or "?")) }
+  if resp.signal and resp.signal ~= 0 then
+    table.insert(parts, ("signal %s"):format(tostring(resp.signal)))
+  end
+  if resp.exit_code == 28 then
+    table.insert(parts, ("timed out after %ss"):format(tostring(timeout or "?")))
+  end
+
+  local detail = first_nonempty(resp.stderr_lines) or first_nonempty(resp.body_lines)
+  if detail then
+    table.insert(parts, truncate(detail, 180))
+  else
+    table.insert(parts, "curl did not return response details")
+  end
+
+  return table.concat(parts, ", ")
 end
 
 local function decode_json(lines)
@@ -504,7 +562,7 @@ local providers = {
   gemini = {
     url = function()
       local base = "https://generativelanguage.googleapis.com"
-      local model = env_trim("GEMINI_MODEL") or "gemini-3-flash"
+      local model = env_trim("GEMINI_MODEL") or "gemini-flash-latest"
       return ("%s/v1beta/models/%s:generateContent?key=%s"):format(base, model, os.getenv("GEMINI_API_KEY") or "")
     end,
     required_env = { "GEMINI_API_KEY" },
@@ -620,13 +678,14 @@ local function summarize_with(provider_key)
 
     local parsed = decode_json(resp.body_lines)
     if not parsed and not resp.ok then
-      local msg = ("Failed to generate summary (curl exit %s)"):format(tostring(resp.exit_code or "?"))
+      local msg = ("Failed to generate summary with %s (%s)"):format(
+        provider_key,
+        format_curl_transport_error(resp, cfg.timeout)
+      )
       vim.notify(msg, vim.log.levels.ERROR)
       local err_preview = table.concat(take_first(resp.stderr_lines, 10), "\n")
       if err_preview ~= "" then
         print(err_preview)
-      elseif resp.cmd_err then
-        print(vim.inspect(resp.cmd_err))
       end
       return
     end

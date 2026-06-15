@@ -448,10 +448,11 @@ def load_mutation_tombstones():
     except Exception:
         live_grace = 2
     path_prefixes = set()
+    path_exact = set()
     session_targets = set()
     fresh_session_targets = set()
     if not mutation_path or not os.path.exists(mutation_path):
-        return path_prefixes, session_targets, fresh_session_targets
+        return path_prefixes, path_exact, session_targets, fresh_session_targets
     now = int(time.time())
     with open(mutation_path, "r", encoding="utf-8", errors="ignore") as f:
         for raw in f:
@@ -472,11 +473,13 @@ def load_mutation_tombstones():
                 continue
             if kind == "PATH_PREFIX":
                 path_prefixes.add(value)
+            elif kind == "PATH_EXACT":
+                path_exact.add(value)
             elif kind == "SESSION_TARGET":
                 session_targets.add(value)
                 if live_grace >= 0 and (now - ts) <= live_grace:
                     fresh_session_targets.add(value)
-    return path_prefixes, session_targets, fresh_session_targets
+    return path_prefixes, path_exact, session_targets, fresh_session_targets
 
 
 def load_pending_path_prefixes():
@@ -498,13 +501,17 @@ def load_pending_path_prefixes():
     return path_prefixes
 
 
-mutation_path_prefixes, mutation_session_targets, fresh_session_targets = load_mutation_tombstones()
+mutation_path_prefixes, mutation_path_exact, mutation_session_targets, fresh_session_targets = (
+    load_mutation_tombstones()
+)
 pending_path_prefixes = load_pending_path_prefixes()
 
 
 def path_tombstoned(kind: str, p: str) -> bool:
     if kind not in ("dir", "worktree", "session") or not p:
         return False
+    if p in mutation_path_exact:
+        return True
     for base in mutation_path_prefixes:
         if p == base or p.startswith(base + "/"):
             return True

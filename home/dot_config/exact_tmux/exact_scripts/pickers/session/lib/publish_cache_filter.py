@@ -20,6 +20,7 @@ if pending and os.path.exists(pending):
                 pending_rows.append(p)
 
 mutation_path_prefixes = set()
+mutation_path_exact = set()
 mutation_session_targets = set()
 live_session_names = set()
 
@@ -51,6 +52,8 @@ if mutations_file and os.path.exists(mutations_file):
             keep.append(line)
             if kind == "PATH_PREFIX":
                 mutation_path_prefixes.add(value)
+            elif kind == "PATH_EXACT":
+                mutation_path_exact.add(value)
             elif kind == "SESSION_TARGET":
                 mutation_session_targets.add(value)
     if changed:
@@ -120,6 +123,8 @@ def path_is_tombstoned(kind, p):
     for base in pending_paths:
         if p == base or p.startswith(base + "/"):
             return True
+    if p in mutation_path_exact:
+        return True
     for base in mutation_path_prefixes:
         if p == base or p.startswith(base + "/"):
             return True

@@ -124,7 +124,7 @@ When the user asks whether something is "correctly set up", "working", "being us
 **Canonical examples:**
 
 - Bad:
-  - User asks: `is gemini-3.1-pro-preview-customtools correctly set up for high reasoning`
+  - User asks: `is gemini-pro-latest correctly set up for high reasoning`
   - Agent finds a missing `reasoning: true` flag in config and stops there.
 - Good:
   - Agent verifies source config, applied config, runtime consumer, and then runs the smallest safe live probe that still matters for the question.
@@ -414,6 +414,8 @@ Durable, cross-session knowledge (verified gotchas, decisions, patterns, princip
 - **Cut waste, not substance.** Strip filler, hedging, narrative padding, semantic repetition, circular explanations, and re-derivations of facts already stated. Every substantive point stays; every superfluous word goes. If a sentence is trivially inferable from a shorter, clearer one already present, remove it.
 - **Anchor with evidence, don't paraphrase the chain in prose.** Point to the exact path/symbol/code reference; re-derive upstream context only where a step is non-obvious or the user asks.
 - **No scaffolding unless it helps the answer.** Skip multi-section structures (pre/post, before/after, conclusion) unless the answer genuinely needs that shape or the user asked for a trace/comparison/audit.
+- **Silence beats low-signal commentary.** When drafting, preparing, or sending a reply in a human thread, choose no reply if the message would only restate what the thread already established, add attribution trivia, or turn a casual exchange into an investigation report.
+- **Match the register.** Do not dress simple social or Slack replies in lab-report phrasing ("hypothesis", "trace", "investigation") unless the user asked for that framing; use natural wording or say that no message is worth sending.
 - **Concision must not cause partitioning.** Do not shrink a response by stopping early and waiting for a "continue" or "go on". The stop condition in the compliance directive (§1) overrides brevity — finish the user's request in one response.
 - Format for clarity; avoid decorative structure that does not improve correctness.
 - When gathering feedback or clarifying requirements, ask exactly one question per message and wait for the answer before asking the next.

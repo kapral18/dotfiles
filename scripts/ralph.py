@@ -300,7 +300,6 @@ CURSOR_MODELS = {
     "claude-opus-4-8-xhigh-fast",
     "composer-2.5",
     "composer-2.5-fast",
-    "gemini-3-flash",
     "gemini-3.1-pro",
     "gemini-3.5-flash",
     "gpt-5-mini",
@@ -377,15 +376,14 @@ CURSOR_MODELS = {
 PI_MODELS = {
     "llm-gateway/claude-opus-4-7",
     "llm-gateway/gpt-5.5",
-    "llm-gateway/gemini-3.1-pro-preview",
-    "llm-gateway/gemini-3.1-pro-preview-customtools",
+    "llm-gateway/gemini-pro-latest",
     "llm-gateway/Kimi-K2.6",
     "openrouter/anthropic/claude-opus-4.7-thinking",
     "openrouter/anthropic/claude-opus-4.7",
     "openrouter/openai/gpt-5.5",
     "openrouter/openai/gpt-5.3-codex",
-    "openrouter/google/gemini-3-pro",
-    "openrouter/google/gemini-3-flash",
+    "openrouter/google/gemini-3.1-pro-preview-customtools",
+    "openrouter/google/gemini-3.5-flash",
 }
 
 

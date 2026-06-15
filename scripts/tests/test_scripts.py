@@ -985,13 +985,13 @@ class TestRalph(unittest.TestCase):
         out = ralph.apply_role_overrides(
             cfg,
             {
-                "planner_model": "gemini-3-pro",
+                "planner_model": "gemini-pro-latest",
                 "planner_harness": "pi",
                 "executor_model": None,
                 "executor_harness": None,
             },
         )
-        assert out["roles"]["planner"]["model"] == "gemini-3-pro"
+        assert out["roles"]["planner"]["model"] == "gemini-pro-latest"
         assert out["roles"]["planner"]["harness"] == "pi"
         assert "family" not in out["roles"]["planner"], "model override must clear stale family"
         # Untouched roles retain their values.
@@ -1340,7 +1340,7 @@ class TestRalph(unittest.TestCase):
 
         assert ralph.family_of("anthropic/claude-opus-4-5") == "claude"
         assert ralph.family_of("openai/gpt-5.1") == "gpt"
-        assert ralph.family_of("google/gemini-3-pro") == "gemini"
+        assert ralph.family_of("google/gemini-3.5-flash") == "gemini"
         assert ralph.family_of("totally-made-up") == "unknown"
 
     def test_parse_json_block_handles_fenced_and_raw(self):

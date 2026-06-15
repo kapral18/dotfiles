@@ -29,6 +29,7 @@ Scope boundaries:
 
 - Be concise and to the point. Length must never come at the cost of clarity, correctness, or completeness — "concise" means unpadded, not shallow.
 - Cut anything the reader can already infer from context (the thread, the diff, the prior message, the PR title). Do not restate the original concern, the file path, the obvious effect of a change, or what the reader just said.
+- Prefer no message over a low-signal message. If the thread already contains the useful correction or next step, and the only remaining contribution is historical color, attribution cleanup, or a rephrasing of someone else's point, do not draft or post a reply.
 - No headline summaries, status prefixes, or `RE:`-style headers. Get to the substance.
 - Prefer the shortest form that carries the full meaning: a one-line comment, a tight PR description, a single-sentence status update.
 
@@ -50,6 +51,7 @@ For PR/issue descriptions, release notes, or any multi-point message:
 Reply mechanics (in addition to everything above):
 
 - Reply directly; do not quote the whole message. If you must reference a fragment, quote only the minimum needed (one short blockquote), then reply. Avoid email-style interleaved quoting.
+- Match the existing register. For Slack or casual threads, do not write like a report: avoid phrases such as "I checked the history around the hypothesis" when "I had a quick look" or no reply would be more natural.
 
 Triage outcome — when reacting to how the other party handled a request/thread, verify the outcome against the current state first (current code/head, current doc, current message) — act on what is actually there, not on what was claimed. Then reply by outcome:
 

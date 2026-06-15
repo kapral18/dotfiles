@@ -27,7 +27,7 @@
     "main": {
       "description": "Main workflow agent. Can invoke sub-agents as needed to accomplish independent tasks.",
       "mode": "primary",
-      "model": "litellm/google-vertex/gemini-3-flash-preview",
+      "model": "litellm/google-vertex/gemini-flash-latest",
       "reasoning_effort": "high",
     },
     "worker_a": {

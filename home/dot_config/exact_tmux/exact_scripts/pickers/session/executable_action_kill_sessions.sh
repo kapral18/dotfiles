@@ -78,20 +78,31 @@ while IFS= read -r _line; do
   fi
 done < "$sel_file"
 
-declare -a paths_to_check=("${dirs_to_remove[@]}" "${wt_paths[@]}")
-
-if [ ${#paths_to_check[@]} -gt 0 ] && command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
+if { [ ${#dirs_to_remove[@]} -gt 0 ] || [ ${#wt_paths[@]} -gt 0 ]; } && command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
   while IFS=$'\t' read -r name spath; do
     [ -n "$name" ] || continue
     [ -n "$spath" ] || continue
     spath="$(realpath "$spath" 2> /dev/null || printf '%s' "$spath")"
-    for d in "${paths_to_check[@]}"; do
+    matched=0
+    for d in "${dirs_to_remove[@]}"; do
       rd="$(realpath "$d" 2> /dev/null || printf '%s' "$d")"
-      if [ "$spath" = "$rd" ] || [[ "$spath" == "$rd"/* ]]; then
-        sess+=("$name")
+      if [ "$spath" = "$rd" ]; then
+        matched=1
         break
       fi
     done
+    if [ "$matched" -eq 0 ]; then
+      for d in "${wt_paths[@]}"; do
+        rd="$(realpath "$d" 2> /dev/null || printf '%s' "$d")"
+        if [ "$spath" = "$rd" ] || [[ "$spath" == "$rd"/* ]]; then
+          matched=1
+          break
+        fi
+      done
+    fi
+    if [ "$matched" -eq 1 ]; then
+      sess+=("$name")
+    fi
   done < <(tmux list-sessions -F $'#{session_name}\t#{session_path}' 2> /dev/null || true)
 fi
 
@@ -121,7 +132,7 @@ now_epoch="$(date +%s)"
   done
   for d in "${dirs_to_remove[@]}"; do
     [ -n "$d" ] || continue
-    printf '%s\tPATH_PREFIX\t%s\n' "$now_epoch" "$d"
+    printf '%s\tPATH_EXACT\t%s\n' "$now_epoch" "$d"
   done
 } >> "$mutation_file"
 

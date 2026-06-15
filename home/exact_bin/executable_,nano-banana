@@ -2,7 +2,7 @@
 """Generate a Nano Banana (Gemini) image from a text instruction.
 
 Calls the Generative Language API ``:generateContent`` endpoint with the
-``gemini-3.1-flash-image-preview`` model and writes the returned image to disk.
+``gemini-3.1-flash-image`` model and writes the returned image to disk.
 
 Usage:
     ,nano-banana [-o OUTPUT] [-m MODEL] [-a ASPECT] [-s SIZE] PROMPT
@@ -25,7 +25,7 @@ import sys
 import urllib.error
 import urllib.request
 
-DEFAULT_MODEL = "gemini-3.1-flash-image-preview"
+DEFAULT_MODEL = "gemini-3.1-flash-image"
 API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 # The image model treats bare/ambiguous prompts (e.g. "elastic") as questions
 # and replies with text, yielding "no image in response". Phrasing the request

@@ -5,7 +5,7 @@ description: Generate raster images from a text prompt with the local `,nano-ban
 
 # Nano Banana (image generation)
 
-Wraps the `,nano-banana` CLI (`~/bin/,nano-banana`): one text prompt in, one raster image file out. Backed by the Gemini `gemini-3.1-flash-image-preview` model via the Generative Language API.
+Wraps the `,nano-banana` CLI (`~/bin/,nano-banana`): one text prompt in, one raster image file out. Backed by the Gemini `gemini-3.1-flash-image` model via the Generative Language API.
 
 Use when:
 
@@ -25,7 +25,7 @@ Do not use:
 ,nano-banana "PROMPT" -m MODEL         # override the model id
 ```
 
-Flags: `-o/--output` (path), `-a/--aspect-ratio`, `-s/--size`, `-m/--model` (default `gemini-3.1-flash-image-preview`), `-h/--help`. The prompt is a single positional argument — quote it.
+Flags: `-o/--output` (path), `-a/--aspect-ratio`, `-s/--size`, `-m/--model` (default `gemini-3.1-flash-image`), `-h/--help`. The prompt is a single positional argument — quote it.
 
 ## Controlling output
 
@@ -53,7 +53,7 @@ Invalid `-a`/`-s` values return a clean `ERROR: API call failed (400)` and write
 
 ## Limitations
 
-- **Raster only — no SVG/vector.** `gemini-3.1-flash-image-preview` emits bitmap data; there is no API option for SVG. For vectors: generate a PNG then trace it (`vtracer`/`potrace`), or ask a text model to emit SVG markup directly (a different tool, not this one).
+- **Raster only — no SVG/vector.** `gemini-3.1-flash-image` emits bitmap data; there is no API option for SVG. For vectors: generate a PNG then trace it (`vtracer`/`potrace`), or ask a text model to emit SVG markup directly (a different tool, not this one).
 - Text-to-image only: no input image, no editing/inpainting.
 - One image per invocation.
 

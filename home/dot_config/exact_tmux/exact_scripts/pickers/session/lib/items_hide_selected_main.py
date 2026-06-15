@@ -185,11 +185,12 @@ def append_mutation_tombstones():
                 # Folder-based sessions (no sess_root:/sess_wt: meta) also
                 # need a path tombstone — otherwise items_full_rehydrate.py
                 # re-emits the row as a `dir` fallback and the entry does
-                # not visibly disappear (mirrors alt-x behavior).
+                # not visibly disappear. Keep this exact so child worktree
+                # rows under the same folder stay visible.
                 if _path and not meta_base.startswith(("sess_root:", "sess_wt:")):
-                    lines.append(f"{now}\tPATH_PREFIX\t{resolve_path(_path)}\n")
+                    lines.append(f"{now}\tPATH_EXACT\t{resolve_path(_path)}\n")
             elif kind == "dir" and _path:
-                lines.append(f"{now}\tPATH_PREFIX\t{resolve_path(_path)}\n")
+                lines.append(f"{now}\tPATH_EXACT\t{resolve_path(_path)}\n")
     elif mode == "remove":
         for pref in sorted(remove_mode_prefixes):
             lines.append(f"{now}\tPATH_PREFIX\t{pref}\n")

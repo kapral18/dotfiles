@@ -15,6 +15,7 @@ mutation_ttl = int(os.environ.get("MUTATION_TTL", "300") or "300")
 live_grace = int(os.environ.get("SESSION_TOMBSTONE_LIVE_GRACE_S", "2") or "2")
 
 path_prefixes = set()
+path_exact = set()
 session_targets = set()
 fresh_session_targets = set()
 if mutations_file and os.path.exists(mutations_file):
@@ -38,6 +39,8 @@ if mutations_file and os.path.exists(mutations_file):
                 continue
             if kind == "PATH_PREFIX":
                 path_prefixes.add(value)
+            elif kind == "PATH_EXACT":
+                path_exact.add(value)
             elif kind == "SESSION_TARGET":
                 session_targets.add(value)
                 if live_grace >= 0 and (now - ts) <= live_grace:
@@ -185,6 +188,8 @@ if pending_file and os.path.exists(pending_file):
 def path_tombstoned(kind, p):
     if kind not in ("dir", "worktree", "session") or not p:
         return False
+    if p in path_exact:
+        return True
     for base in path_prefixes:
         if p == base or p.startswith(base + "/"):
             return True

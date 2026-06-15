@@ -2,7 +2,7 @@ package state
 
 // AvailableModels returns the curated list of model IDs the New-Run
 // form exposes for the given harness. The lists reflect the user's
-// stated preferences (gemini-3, gpt-5.5, gpt-5.3, opus 4.8 xhigh-only, composer-2.5
+// stated preferences (Gemini, gpt-5.5, gpt-5.3, opus 4.8 xhigh-only, composer-2.5
 // — routed via cursor-agent for `cursor`, via litellm-gateway /
 // openrouter for `pi`).
 //
@@ -69,7 +69,6 @@ var cursorModels = []string{
 	"gpt-5.3-codex-xhigh",
 	"gpt-5.3-codex-xhigh-fast",
 	"gemini-3.1-pro",
-	"gemini-3-flash",
 	"gemini-3.5-flash",
 }
 
@@ -81,14 +80,13 @@ var piModels = []string{
 	// litellm-gateway (authoritative, deployed via chezmoi):
 	"llm-gateway/claude-opus-4-7",
 	"llm-gateway/gpt-5.5",
-	"llm-gateway/gemini-3.1-pro-preview",
-	"llm-gateway/gemini-3.1-pro-preview-customtools",
+	"llm-gateway/gemini-pro-latest",
 	"llm-gateway/Kimi-K2.6",
 	// openrouter (same families, routed via openrouter for fallback / cost):
 	"openrouter/anthropic/claude-opus-4.7-thinking",
 	"openrouter/anthropic/claude-opus-4.7",
 	"openrouter/openai/gpt-5.5",
 	"openrouter/openai/gpt-5.3-codex",
-	"openrouter/google/gemini-3-pro",
-	"openrouter/google/gemini-3-flash",
+	"openrouter/google/gemini-3.1-pro-preview-customtools",
+	"openrouter/google/gemini-3.5-flash",
 }
