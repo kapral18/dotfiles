@@ -23,6 +23,16 @@ die() {
   exit 1
 }
 
+show_loader() {
+  local message="$1"
+  if [ -n "${TMUX:-}" ]; then
+    tmux display-message "gh-create: Loading... ${message}" 2> /dev/null || true
+  fi
+  if [ -t 2 ]; then
+    printf '\033[2;38;5;244m  Loading... %s\033[0m\n' "$message" >&2
+  fi
+}
+
 kind="${1:-}"
 default_repo="${2:-}"
 mode_file="${3:-}"
@@ -102,6 +112,7 @@ if [ -z "$remaining" ]; then
 fi
 
 # --- create via the Python helper (stdout = "<num>\t<url>") ---
+show_loader "creating ${kind} in ${repo}"
 result="$(python3 "$create_py" create --repo "$repo" --kind "$kind" --file "$tmpfile")" \
   || die "failed to create $kind in $repo"
 

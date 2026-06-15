@@ -15,6 +15,16 @@ die() {
   exit 1
 }
 
+cleanup_files=()
+cleanup() {
+  local f
+  for f in "${cleanup_files[@]+"${cleanup_files[@]}"}"; do
+    [ -n "$f" ] || continue
+    rm -f "$f" 2> /dev/null || true
+  done
+}
+trap cleanup EXIT
+
 action="${1:-}"
 kind="${2:-}"
 repo_nwo="${3:-}"
@@ -26,6 +36,27 @@ number="${4:-}"
 [ -n "$number" ] || die "missing number"
 
 EDITOR="${EDITOR:-nvim}"
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+row_loader_lib="$script_dir/lib/gh_row_loader.sh"
+if [ -f "$row_loader_lib" ]; then
+  # shellcheck source=/dev/null
+  . "$row_loader_lib"
+fi
+row_loader_restore_file=""
+if declare -F gh_row_loader_mk_restore_file > /dev/null 2>&1; then
+  row_loader_restore_file="$(gh_row_loader_mk_restore_file comment 2> /dev/null || true)"
+  [ -n "$row_loader_restore_file" ] && cleanup_files+=("$row_loader_restore_file")
+fi
+
+_mark_item_loading() {
+  [ -n "$row_loader_restore_file" ] || return 0
+  gh_row_loader_mark "$kind" "$repo_nwo" "$number" "$row_loader_restore_file" 2> /dev/null || true
+}
+
+_restore_item_loading() {
+  [ -n "$row_loader_restore_file" ] || return 0
+  gh_row_loader_restore "$kind" "$repo_nwo" "$number" "$row_loader_restore_file" 2> /dev/null || true
+}
 
 _strip_html_comments() {
   sed 's/<!--.*-->//g' | tr -d '[:space:]'
@@ -56,8 +87,14 @@ _post_comment() {
 _pick_comment() {
   local filter="${1:-}"
   local current_user=""
+  local user_rc=0
+  local lines_rc=0
+  _mark_item_loading
   if [ "$filter" = "own" ]; then
+    set +e
     current_user="$(gh api user --jq .login 2> /dev/null)"
+    user_rc=$?
+    set -e
   fi
 
   local jq_filter
@@ -68,11 +105,16 @@ _pick_comment() {
   fi
 
   local lines
+  set +e
   lines="$(gh api "repos/${repo_nwo}/issues/${number}/comments" \
     --paginate \
     --jq ".[] | ${jq_filter}"'
       "\(.id)\t@\(.user.login)  \(.created_at[:10])  \(.body | split("\n") | first | .[:120])"
     ' 2> /dev/null)"
+  lines_rc=$?
+  set -e
+  _restore_item_loading
+  [ "$user_rc" -eq 0 ] && [ "$lines_rc" -eq 0 ] || return 1
 
   [ -n "$lines" ] || {
     echo "No comments found." >&2
@@ -100,7 +142,7 @@ _pick_comment() {
 case "$action" in
   new)
     tmpfile="$(mktemp /tmp/gh_comment_XXXXXX.md)"
-    trap 'rm -f "$tmpfile"' EXIT
+    cleanup_files+=("$tmpfile")
 
     printf '<!-- %s #%s (%s) — save+quit to post, empty to cancel -->\n\n' \
       "$kind" "$number" "$repo_nwo" > "$tmpfile"
@@ -113,7 +155,13 @@ case "$action" in
     fi
 
     sed -i'' '/^<!--.*-->$/d' "$tmpfile"
+    _mark_item_loading
+    set +e
     _post_comment "$tmpfile"
+    rc=$?
+    set -e
+    _restore_item_loading
+    [ "$rc" -eq 0 ] || exit "$rc"
     _invalidate_preview_cache
     echo "Comment posted."
     ;;
@@ -121,12 +169,18 @@ case "$action" in
   reply)
     comment_id="$(_pick_comment)" || exit 0
 
+    _mark_item_loading
+    set +e
     comment_raw="$(gh api "repos/${repo_nwo}/issues/comments/${comment_id}" 2> /dev/null)"
+    rc=$?
+    set -e
+    _restore_item_loading
+    [ "$rc" -eq 0 ] && [ -n "$comment_raw" ] || exit 0
     comment_author="$(printf '%s' "$comment_raw" | python3 -c 'import sys,json; print(json.load(sys.stdin)["user"]["login"])')"
     comment_body="$(printf '%s' "$comment_raw" | python3 -c 'import sys,json; print(json.load(sys.stdin)["body"])')"
 
     tmpfile="$(mktemp /tmp/gh_reply_XXXXXX.md)"
-    trap 'rm -f "$tmpfile"' EXIT
+    cleanup_files+=("$tmpfile")
 
     {
       printf '<!-- replying to @%s — save+quit to post, empty to cancel -->\n\n' "$comment_author"
@@ -143,7 +197,13 @@ case "$action" in
     fi
 
     sed -i'' '/^<!--.*-->$/d' "$tmpfile"
+    _mark_item_loading
+    set +e
     _post_comment "$tmpfile"
+    rc=$?
+    set -e
+    _restore_item_loading
+    [ "$rc" -eq 0 ] || exit "$rc"
     _invalidate_preview_cache
     echo "Reply posted."
     ;;
@@ -151,10 +211,16 @@ case "$action" in
   edit)
     comment_id="$(_pick_comment own)" || exit 0
 
+    _mark_item_loading
+    set +e
     comment_body="$(gh api "repos/${repo_nwo}/issues/comments/${comment_id}" --jq '.body' 2> /dev/null)"
+    rc=$?
+    set -e
+    _restore_item_loading
+    [ "$rc" -eq 0 ] || exit 0
 
     tmpfile="$(mktemp /tmp/gh_edit_XXXXXX.md)"
-    trap 'rm -f "$tmpfile"' EXIT
+    cleanup_files+=("$tmpfile")
 
     printf '%s' "$comment_body" > "$tmpfile"
 
@@ -171,9 +237,15 @@ case "$action" in
       exit 0
     fi
 
+    _mark_item_loading
+    set +e
     python3 -c 'import sys,json; print(json.dumps({"body": sys.stdin.read()}))' < "$tmpfile" \
       | gh api -X PATCH "repos/${repo_nwo}/issues/comments/${comment_id}" \
         --input - --silent 2> /dev/null
+    rc=$?
+    set -e
+    _restore_item_loading
+    [ "$rc" -eq 0 ] || exit "$rc"
     _invalidate_preview_cache
     echo "Comment updated."
     ;;

@@ -58,8 +58,8 @@ CENSUS: list[Claim] = [
     Claim(
         name="total tracked files",
         globs=None,
-        claimed=1005,
-        anchors=[("README.md", "1005 tracked files")],
+        claimed=1006,
+        anchors=[("README.md", "1006 tracked files")],
     ),
     Claim(
         name="home/.chezmoitemplates/brews/",
@@ -76,10 +76,10 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/dot_config/exact_tmux/",
         globs=["home/dot_config/exact_tmux/*"],
-        claimed=117,
+        claimed=118,
         anchors=[
-            ("05-tmux-pickers.mmd", "exact_tmux/ (117)"),
-            ("README.md", "`exact_tmux/` (117)"),
+            ("05-tmux-pickers.mmd", "exact_tmux/ (118)"),
+            ("README.md", "`exact_tmux/` (118)"),
         ],
     ),
     Claim(

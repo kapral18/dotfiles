@@ -17,6 +17,16 @@ die() {
   exit 1
 }
 
+show_loader() {
+  local message="$1"
+  if [ -n "${TMUX:-}" ]; then
+    tmux display-message "gh-picker: Loading... ${message}" 2> /dev/null || true
+  fi
+  if [ -t 2 ]; then
+    printf '\033[2;38;5;244m  Loading... %s\033[0m\n' "$message" >&2
+  fi
+}
+
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 
 _mark_local_in_cache() {
@@ -51,6 +61,7 @@ case "$action" in
   checkout | octo)
     case "$kind" in
       pr)
+        show_loader "checking out ${repo_nwo}#${number}"
         if ,gh-worktree pr "$repo_nwo" "$number" --focus; then
           _mark_local_in_cache "pr" "$repo_nwo" "$number"
         elif [ -n "$url" ]; then
@@ -58,6 +69,7 @@ case "$action" in
         fi
         ;;
       issue)
+        show_loader "checking out ${repo_nwo}#${number}"
         ,gh-worktree issue "$repo_nwo" "$number" --focus
         _mark_local_in_cache "issue" "$repo_nwo" "$number"
         ;;

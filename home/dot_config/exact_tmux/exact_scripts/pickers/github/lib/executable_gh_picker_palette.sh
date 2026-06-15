@@ -7,8 +7,8 @@
 # Where <items_file> is fzf's `{+f}` — one tab-delimited line per selected or
 # cursor item. The orchestrator parses (kind, repo, num) per row, opens a
 # fzf-in-fzf verb menu, prompts for any required arguments, then dispatches
-# to `gh_palette_verbs.py` once per applicable item. On success it POSTs a
-# `reload(... --refresh)` back to the outer fzf via `$FZF_PORT`.
+# to `gh_palette_verbs.py` once per applicable item. It marks selected rows
+# while mutations run, then refreshes the outer picker in the background.
 set -euo pipefail
 
 items_file="${1:-}"
@@ -21,11 +21,31 @@ if [ -z "$items_file" ] || [ -z "$mode_file" ] || [ -z "$scope_file" ] || [ -z "
 fi
 [ -f "$items_file" ] || exit 0
 
+cleanup_files=()
+cleanup() {
+  local f
+  for f in "${cleanup_files[@]+"${cleanup_files[@]}"}"; do
+    [ -n "$f" ] || continue
+    rm -f "$f" 2> /dev/null || true
+  done
+}
+trap cleanup EXIT
+
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 verbs_helper="$script_dir/gh_palette_verbs.py"
+row_loader_lib="$script_dir/gh_row_loader.sh"
+if [ -f "$row_loader_lib" ]; then
+  # shellcheck source=/dev/null
+  . "$row_loader_lib"
+fi
 
 mode="$(cat "$mode_file" 2> /dev/null || echo work)"
 scope="$(cat "$scope_file" 2> /dev/null || echo all)"
+row_loader_restore_file=""
+if declare -F gh_row_loader_mk_restore_file > /dev/null 2>&1; then
+  row_loader_restore_file="$(gh_row_loader_mk_restore_file palette 2> /dev/null || true)"
+  [ -n "$row_loader_restore_file" ] && cleanup_files+=("$row_loader_restore_file")
+fi
 
 # Parse selected/cursor items. Each line is the full picker TSV row, so cols
 # 2/3/4 are kind/repo/num. Skip header rows (cols 2 == "header").
@@ -99,6 +119,43 @@ fi
 
 selection_summary="$count item"
 [ "$count" -ne 1 ] && selection_summary="$count items"
+
+_mark_selection_loading() {
+  [ -n "$row_loader_restore_file" ] || return 0
+  local i
+  for i in "${!kinds[@]}"; do
+    gh_row_loader_patch "${kinds[i]}" "${repos[i]}" "${nums[i]}" loading "$row_loader_restore_file" "$mode" 2> /dev/null || true
+  done
+  gh_row_loader_notify "$mode" "$scope" "$items_cmd" 2> /dev/null || true
+}
+
+_restore_selection_loading() {
+  [ -n "$row_loader_restore_file" ] || return 0
+  local i
+  for i in "${!kinds[@]}"; do
+    gh_row_loader_patch "${kinds[i]}" "${repos[i]}" "${nums[i]}" restore "$row_loader_restore_file" "$mode" 2> /dev/null || true
+  done
+  gh_row_loader_notify "$mode" "$scope" "$items_cmd" 2> /dev/null || true
+}
+
+_refresh_after_mutation() {
+  [ -n "${FZF_PORT:-}" ] || {
+    _restore_selection_loading
+    return 0
+  }
+  if [ -n "$row_loader_restore_file" ] && declare -F gh_row_loader_restore_all > /dev/null 2>&1; then
+    (
+      GH_PICKER_MODE="$mode" GH_PICKER_SCOPE="$scope" "$items_cmd" --refresh > /dev/null 2>&1 || true
+      gh_row_loader_restore_all "$mode" "$scope" "$items_cmd" "$row_loader_restore_file" 2> /dev/null || true
+      rm -f "$row_loader_restore_file" 2> /dev/null || true
+    ) > /dev/null 2>&1 &
+    cleanup_files=()
+    row_loader_restore_file=""
+    return 0
+  fi
+  reload_cmd="GH_PICKER_MODE=$(printf %q "$mode") GH_PICKER_SCOPE=$(printf %q "$scope") $(printf %q "$items_cmd") --refresh"
+  curl -s --max-time 5 -XPOST "http://127.0.0.1:${FZF_PORT}" -d "reload(${reload_cmd})+track" > /dev/null 2>&1 || true
+}
 
 chosen="$(
   printf '%s' "$filtered_verbs" \
@@ -211,6 +268,7 @@ esac
 # Dispatch the verb once per applicable item. Single-target verbs only got
 # past the verb filter when count == 1, so this loop is effectively a no-op
 # for them.
+_mark_selection_loading
 ok=0
 fail=0
 declare -a errors=()
@@ -247,10 +305,7 @@ else
   tmux display-message "palette $verb_id: $ok ok" 2> /dev/null || true
 fi
 
-# POST a refresh to the outer fzf so the dashboard reflects state changes
-# (closed/merged items disappear, label badges update, etc.). FZF_PORT is set
-# by fzf in `execute(...)` contexts.
-if [ -n "${FZF_PORT:-}" ]; then
-  reload_cmd="GH_PICKER_MODE=$(printf %q "$mode") GH_PICKER_SCOPE=$(printf %q "$scope") $(printf %q "$items_cmd") --refresh"
-  curl -s --max-time 5 -XPOST "http://127.0.0.1:${FZF_PORT}" -d "reload(${reload_cmd})+track" > /dev/null 2>&1 || true
-fi
+# Refresh the outer fzf so the dashboard reflects state changes (closed/merged
+# items disappear, label badges update, etc.). The selected rows stay marked
+# with `◌` until the background refresh replaces or restores them.
+_refresh_after_mutation

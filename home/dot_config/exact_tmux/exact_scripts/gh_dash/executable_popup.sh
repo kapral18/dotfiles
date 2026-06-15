@@ -10,6 +10,10 @@ tmux_conf="$HOME/.config/tmux/gh-dash-popup.conf"
 config_work="$HOME/.config/gh-dash/config-work.yml"
 config_home="$HOME/.config/gh-dash/config-home.yml"
 
+show_loader() {
+  tmux display-message -d 5000 "gh-dash: Loading... $1" 2> /dev/null || true
+}
+
 show_popup() {
   local attach_args=()
   if [ -n "${1:-}" ]; then
@@ -33,6 +37,7 @@ if tmux -L "${sock}" has-session -t "${session_work}" 2> /dev/null \
 fi
 
 # Cold path: first open — verify dependencies, create both sessions.
+show_loader "starting dashboard"
 outer_socket=""
 outer_client=""
 if [ -n "${TMUX:-}" ]; then

@@ -80,6 +80,7 @@ palette_helper="$script_dir/lib/gh_picker_palette.sh"
 mark_subtree_helper="$script_dir/lib/gh_picker_mark_subtree.sh"
 collapse_helper="$script_dir/lib/gh_picker_collapse.sh"
 dashboard_ui="$script_dir/lib/gh_dashboard_ui.py"
+row_loader_cmd="$script_dir/lib/gh_row_loader.sh"
 
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 mkdir -p "$cache_dir" 2> /dev/null || true
@@ -177,7 +178,7 @@ pick="$(
     --header "$status_header" \
     --header-label ' GitHub cockpit ' \
     --bind "start:execute-silent:$bg_fetch_cmd" \
-    --bind "ctrl-r:reload(m=\$(cat $(printf %q "$mode_flag_file") 2>/dev/null || echo work); s=\$(cat $(printf %q "$scope_flag_file") 2>/dev/null || echo all); GH_PICKER_MODE=\$m GH_PICKER_SCOPE=\$s $(printf %q "$items_cmd") --refresh)+track" \
+    --bind "ctrl-r:execute-silent(m=\$(cat $(printf %q "$mode_flag_file") 2>/dev/null || echo work); s=\$(cat $(printf %q "$scope_flag_file") 2>/dev/null || echo all); $(printf %q "$row_loader_cmd") refresh-all $(printf %q "$items_cmd") \"\$m\" \"\$s\" >/dev/null 2>&1 &)" \
     --bind "ctrl-s:transform:$(printf %q "$toggle_cmd") $(printf %q "$mode_flag_file") $(printf %q "$items_cmd") $(printf %q "$scope_flag_file")" \
     --bind "alt-0:transform:$(printf %q "$scope_helper") $(printf %q "$mode_flag_file") $(printf %q "$scope_flag_file") $(printf %q "$items_cmd") all" \
     --bind "alt-1:transform:$(printf %q "$scope_helper") $(printf %q "$mode_flag_file") $(printf %q "$scope_flag_file") $(printf %q "$items_cmd") focus" \
