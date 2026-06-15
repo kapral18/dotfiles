@@ -5101,6 +5101,21 @@ class VerifyMermaidsTest(unittest.TestCase):
         failures = m.check_claims(REPO, bogus)
         assert any("claimed 999999" in f for f in failures)
 
+    def test_effective_census_counts_unstaged_adds_and_removes(self):
+        """SHOULD validate file-count changes before the rename is staged."""
+        m = self._module()
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+            (repo / "kept.txt").write_text("kept\n", encoding="utf-8")
+            (repo / "removed.txt").write_text("removed\n", encoding="utf-8")
+            subprocess.run(["git", "add", "kept.txt", "removed.txt"], cwd=repo, check=True)
+            (repo / "removed.txt").unlink()
+            (repo / "added.txt").write_text("added\n", encoding="utf-8")
+
+            assert m._git_ls_files(repo, None) == 2
+            assert m._git_ls_files(repo, ["*.txt"]) == 2
+
     def test_missing_anchor_is_detected(self):
         """SHOULD report when the claimed count is absent from the diagram prose."""
         m = self._module()

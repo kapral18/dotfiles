@@ -13,6 +13,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 HOOKS = REPO / "home" / "exact_dot_agents" / "exact_hooks"
+COPILOT_HOOKS = REPO / "home" / "dot_copilot" / "exact_hooks"
 
 
 def run_hook(name: str, payload: dict, env: dict | None = None) -> dict:
@@ -23,6 +24,19 @@ def run_hook(name: str, payload: dict, env: dict | None = None) -> dict:
         text=True,
         cwd=str(REPO),
         env=env,
+    )
+    if result.returncode != 0:
+        raise AssertionError(f"{name} failed:\nSTDOUT={result.stdout}\nSTDERR={result.stderr}")
+    return json.loads(result.stdout or "{}")
+
+
+def run_copilot_hook(name: str, payload: dict) -> dict:
+    result = subprocess.run(
+        [str(COPILOT_HOOKS / name)],
+        input=json.dumps(payload),
+        capture_output=True,
+        text=True,
+        cwd=str(REPO),
     )
     if result.returncode != 0:
         raise AssertionError(f"{name} failed:\nSTDOUT={result.stdout}\nSTDERR={result.stderr}")
@@ -358,6 +372,31 @@ class TestAgentHooks(unittest.TestCase):
 
             assert "### Relevant Learnings (,ai-kb)" not in context
             assert "Should never surface" not in context
+
+    def test_copilot_pr_anchor_gate_uses_copilot_permission_contract(self):
+        result = run_copilot_hook(
+            "executable_copilot-pr-anchor-gate.sh",
+            {"tool_input": {"command": "gh api repos/o/r/pulls/1/comments -f line=10"}},
+        )
+
+        assert result["permissionDecision"] == "deny"
+        assert "recalculate the line numbers" in result["permissionDecisionReason"]
+
+    def test_copilot_pr_anchor_gate_allows_unrelated_posts(self):
+        result = run_copilot_hook(
+            "executable_copilot-pr-anchor-gate.sh",
+            {"tool_input": {"command": "curl -X POST https://example.test"}},
+        )
+
+        assert result["permissionDecision"] == "allow"
+
+    def test_copilot_pr_anchor_gate_allows_read_only_pr_api_calls(self):
+        result = run_copilot_hook(
+            "executable_copilot-pr-anchor-gate.sh",
+            {"tool_input": {"command": "gh api repos/o/r/pulls/1/comments"}},
+        )
+
+        assert result["permissionDecision"] == "allow"
 
 
 if __name__ == "__main__":

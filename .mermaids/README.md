@@ -3,7 +3,7 @@
 A navigation cloud for this chezmoi dotfiles repo, in **two layers**:
 
 - **Semantic cloud** (`S0`, `S1`–`S3`, `SR`) — how the system _thinks_: the ~12 concepts and invariants it is built on, the cross-cutting flows that wire subsystems together, and a reverse index from any file to its concept, blast radius, and co-edit set. **Read this first** — it makes the catalog legible.
-- **Catalog** (`00`–`13`) — how the system is _laid out_: exhaustive coverage of every one of the 1006 tracked files (`git ls-files`), named or grouped by exact chezmoi source path. Use it to drill from a concept to the precise file.
+- **Catalog** (`00`–`13`) — how the system is _laid out_: exhaustive coverage of every one of the 1005 tracked files, named or grouped by exact chezmoi source path. Use it to drill from a concept to the precise file.
 
 Together they let an agent understand the whole solution in one pass and then map straight down to any particle. They complement the prose in `docs/` and the rules in `AGENTS.md` / `CLAUDE.md`.
 
@@ -82,4 +82,4 @@ Each file is a standalone [Mermaid](https://mermaid.js.org/) diagram (`.mmd`), l
 
 These diagrams describe behavior, so they fall under the repo's documentation hygiene rule: when a change under `home/`, `scripts/`, or `tools/` alters a flow, command, state, or adds/removes a file, update the affected `.mmd` file in the same change. Keep them structural — defer exhaustive option lists and prose to `docs/` and source.
 
-The per-subtree file-census counts (`Every file under X (N)` and the total tracked-file count) are enforced by `make verify-mermaids` ([`scripts/verify_mermaids.py`](../scripts/verify_mermaids.py), part of `make check`): it recomputes each count from `git ls-files` and fails on drift, so a count change must update both the diagram prose and the script's census table.
+The per-subtree file-census counts (`Every file under X (N)` and the total tracked-file count) are enforced by `make verify-mermaids` ([`scripts/verify_mermaids.py`](../scripts/verify_mermaids.py), part of `make check`): it recomputes each count from the effective git file set (tracked files that still exist plus untracked, non-ignored files) and fails on drift, so a count change must update both the diagram prose and the script's census table.

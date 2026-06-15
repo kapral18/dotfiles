@@ -2,7 +2,7 @@
 
 Shared lifecycle hooks for terminal AI agents.
 
-Cursor CLI is the primary runtime. Claude Code may reuse the subset with compatible schemas. Pi does not use this `hooks.json`-style lifecycle; it has its own TypeScript extension API, so pi's durable-memory recall lives in a pi extension (`home/dot_pi/agent/extensions/ai-kb-recall.ts`) rather than here. That extension reuses the same `/tmp/specs` topic resolution (via `,agent-memory status --json`) and the same `,ai-kb` retrieval, so behavior stays consistent across runtimes — see the AI knowledge base doc for the cross-runtime retrieval table.
+Cursor CLI is the primary runtime. Claude Code, Codex, Gemini, OpenCode, and Copilot reuse compatible shared scripts for session context, per-turn recall where supported, and worklog recording. Harness-specific hook adapters live with that harness' config source; for example, Copilot's `permissionDecision` PR anchor gate is sourced from `home/dot_copilot/exact_hooks/` and deploys to `~/.copilot/hooks/`, not `~/.agents/hooks/`. Pi does not use this `hooks.json`-style lifecycle; it has its own TypeScript extension API, so pi's durable-memory recall lives in a pi extension (`home/dot_pi/agent/extensions/ai-kb-recall.ts`) rather than here. That extension reuses the same `/tmp/specs` topic resolution (via `,agent-memory status --json`) and the same `,ai-kb` retrieval, so behavior stays consistent across runtimes — see the AI knowledge base doc for the cross-runtime retrieval table.
 
 Runtime state is kept outside chezmoi and outside worktrees:
 

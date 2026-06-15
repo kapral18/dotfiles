@@ -12,19 +12,8 @@
       {
         "matcher": "bash",
         "type": "command",
-        "command": "$HOME/.agents/hooks/copilot-git-gate.sh",
+        "command": "$HOME/.copilot/hooks/copilot-pr-anchor-gate.sh",
         "timeoutSec": 10
-      },
-      {
-        "matcher": "bash",
-        "type": "command",
-        "command": "$HOME/.agents/hooks/copilot-pr-anchor-gate.sh",
-        "timeoutSec": 10
-      },
-      {
-        "matcher": "bash",
-        "type": "command",
-        "command": "rtk hook copilot"
       }
     ],
     "PostToolUse": [

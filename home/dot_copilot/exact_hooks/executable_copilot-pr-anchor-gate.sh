@@ -9,6 +9,11 @@
 input=$(cat)
 command=$(echo "$input" | jq -r '.tool_input.command // .toolArgs.command // empty')
 
+if [[ ! "$command" =~ gh[[:space:]]+api ]] || [[ ! "$command" =~ /pulls/[^[:space:]]*/(reviews|comments) ]]; then
+  echo '{ "permissionDecision": "allow" }'
+  exit 0
+fi
+
 has_anchor=false
 if [[ "$command" =~ "line=" ]] || [[ "$command" =~ "position=" ]] || [[ "$command" =~ "start_line=" ]]; then
   has_anchor=true

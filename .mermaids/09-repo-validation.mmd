@@ -17,7 +17,7 @@ flowchart TD
         GOV["(cd tools/ralph-tui && go vet ./… && go test ./…)"]:::tool
     end
     VT["verify-templates → scripts/verify_templates.py<br/>(chezmoi execute-template every *.tmpl)"]:::tool
-    VM["verify-mermaids → scripts/verify_mermaids.py<br/>(.mermaids/ file-census counts vs git ls-files)"]:::tool
+    VM["verify-mermaids → scripts/verify_mermaids.py<br/>(.mermaids/ file-census counts vs effective git files)"]:::tool
     VB["verify-bin-surface → scripts/verify_bin_surface.py<br/>(~/bin commands have Fish completions + docs/catalog tokens)"]:::tool
     TST["test → scripts/tests/test_scripts.py + test_agent_hooks.py<br/>fixtures/ (golden_*: mcp/codex/opencode/pi + ai_models + mock_role.sh)"]:::tool
     CHECK --> LINT & VT & VM & VB & TST

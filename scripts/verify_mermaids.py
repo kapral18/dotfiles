@@ -11,8 +11,8 @@ violation baked into the one artifact every session reads first).
 This validator is the ``verify_templates.py`` of the navigation map: for each
 declared census claim it (1) confirms the claimed count still appears verbatim
 in the diagram prose -- so the table below cannot silently drift from the text
-it guards -- and (2) recomputes the real count from ``git ls-files`` and fails on
-any divergence, printing ``claimed N, actual M``.
+it guards -- and (2) recomputes the real count from git's effective worktree file
+set and fails on any divergence, printing ``claimed N, actual M``.
 
 Scope is deliberately the *file-census* claims (the "Every file under X (N)"
 contract plus the total tracked-file count): they are unambiguous, rot on every
@@ -24,7 +24,7 @@ Usage:
     verify_mermaids.py [REPO_ROOT]
 
 Exit status is non-zero if any claim's prose anchor is missing or its count has
-drifted from ``git ls-files``.
+drifted from the effective worktree file set.
 """
 
 from __future__ import annotations
@@ -39,10 +39,10 @@ from pathlib import Path
 class Claim:
     """A single file-census assertion about the navigation map.
 
-    ``globs`` are ``git ls-files`` pathspecs whose matched-file count must equal
-    ``claimed``; ``globs=None`` means the total tracked-file count. ``anchors``
-    are ``(diagram_filename, substring)`` pairs: each ``substring`` (which
-    embeds ``claimed``) must appear verbatim in ``.mermaids/<diagram_filename>``,
+    ``globs`` are git pathspecs whose matched-file count must equal ``claimed``;
+    ``globs=None`` means the total file count. ``anchors`` are
+    ``(diagram_filename, substring)`` pairs: each ``substring`` (which embeds
+    ``claimed``) must appear verbatim in ``.mermaids/<diagram_filename>``,
     keeping this table and the diagram prose in lockstep.
     """
 
@@ -58,8 +58,8 @@ CENSUS: list[Claim] = [
     Claim(
         name="total tracked files",
         globs=None,
-        claimed=1006,
-        anchors=[("README.md", "1006 tracked files")],
+        claimed=1005,
+        anchors=[("README.md", "1005 tracked files")],
     ),
     Claim(
         name="home/.chezmoitemplates/brews/",
@@ -103,8 +103,8 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/exact_dot_agents/",
         globs=["home/exact_dot_agents/*"],
-        claimed=62,
-        anchors=[("03b-agent-skills-hooks.mmd", "exact_dot_agents/ (62)")],
+        claimed=60,
+        anchors=[("03b-agent-skills-hooks.mmd", "exact_dot_agents/ (60)")],
     ),
     Claim(
         name="scripts/",
@@ -119,12 +119,25 @@ CENSUS: list[Claim] = [
 
 
 def _git_ls_files(repo_root: Path, globs: list[str] | None) -> int:
-    """Count tracked files via ``git ls-files`` (all, or matching ``globs``)."""
-    cmd = ["git", "-C", str(repo_root), "ls-files"]
+    """Count the effective git worktree file set, all or matching ``globs``.
+
+    Include tracked files that still exist plus untracked, non-ignored files.
+    That makes local add/remove checks work before staging, while ignored scratch
+    files still stay out of the census.
+    """
+    cmd = ["git", "-C", str(repo_root), "ls-files", "--cached", "--others", "--exclude-standard"]
     if globs is not None:
         cmd += ["--", *globs]
     result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-    return sum(1 for line in result.stdout.splitlines() if line.strip())
+    seen: set[str] = set()
+    for line in result.stdout.splitlines():
+        rel = line.strip()
+        if not rel or rel in seen:
+            continue
+        path = repo_root / rel
+        if path.exists() or path.is_symlink():
+            seen.add(rel)
+    return len(seen)
 
 
 def check_claims(repo_root: Path, claims: list[Claim] | None = None) -> list[str]:
@@ -136,7 +149,7 @@ def check_claims(repo_root: Path, claims: list[Claim] | None = None) -> list[str
     for claim in claims:
         actual = _git_ls_files(repo_root, claim.globs)
         if actual != claim.claimed:
-            failures.append(f"{claim.name}: claimed {claim.claimed}, actual {actual} (git ls-files)")
+            failures.append(f"{claim.name}: claimed {claim.claimed}, actual {actual} (effective git files)")
 
         for filename, substring in claim.anchors:
             path = mermaids_dir / filename

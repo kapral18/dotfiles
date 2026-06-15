@@ -111,7 +111,8 @@ See [The Agentic Operating System](../topics/ai-assistants/index.md).
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Assistant SOP (single source) | [`home/readonly_AGENTS.md`](../../home/readonly_AGENTS.md) (`~/CLAUDE.md`, `~/.gemini/GEMINI.md`, `~/.cursor/AGENTS.md`, `~/.config/opencode/AGENTS.md` are symlinks to `~/AGENTS.md`) |
 | Assistant skills              | [`home/exact_dot_agents/exact_skills/`](../../home/exact_dot_agents/exact_skills/)                                                                                                     |
-| Cursor CLI hooks              | [`home/dot_cursor/hooks.json`](../../home/dot_cursor/hooks.json), [`home/exact_dot_agents/exact_hooks/`](../../home/exact_dot_agents/exact_hooks/)                                     |
+| Shared assistant hooks        | [`home/exact_dot_agents/exact_hooks/`](../../home/exact_dot_agents/exact_hooks/)                                                                                                       |
+| Cursor CLI hooks              | [`home/dot_cursor/hooks.json`](../../home/dot_cursor/hooks.json)                                                                                                                       |
 
 ## AI: harness configs
 
@@ -124,6 +125,7 @@ Per-tool config sources and the `run_onchange_after_07-*` hooks that render them
 | Gemini      | [`home/dot_gemini/`](../../home/dot_gemini/)                     | [`run_onchange_after_07-merge-gemini-settings.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-gemini-settings.sh.tmpl)           |
 | OpenCode    | [`home/dot_config/opencode/`](../../home/dot_config/opencode/)   | [`run_onchange_after_07-merge-opencode-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl)           |
 | Pi          | [`home/dot_pi/agent/`](../../home/dot_pi/agent/)                 | [`run_onchange_after_07-merge-pi-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-pi-config.sh.tmpl)                       |
+| Copilot     | [`home/dot_copilot/`](../../home/dot_copilot/)                   | [`run_onchange_after_07-merge-copilot-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-copilot-config.sh.tmpl)             |
 | Cursor      | [`home/dot_cursor/`](../../home/dot_cursor/)                     | (settings tracked directly)                                                                                                                       |
 | Amp         | [`home/dot_config/exact_amp/`](../../home/dot_config/exact_amp/) | (settings tracked directly)                                                                                                                       |
 
@@ -202,7 +204,7 @@ Helper scripts called by hooks and commands (stdlib-only by convention).
 | ----------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `chezmoi_lib.sh`                    | Shared shell library for merge/apply hooks (source selection, atomic writes, checksums, LiteLLM base) |
 | `verify_templates.py`               | Render every chezmoi `*.tmpl` via `execute-template` to catch errors early                            |
-| `verify_mermaids.py`                | Check `.mermaids/` file-census counts against `git ls-files` (part of `make check`)                   |
+| `verify_mermaids.py`                | Check `.mermaids/` file-census counts against the effective git file set (part of `make check`)       |
 | `yaml_parser.py`                    | Minimal dependency-free YAML parser for project data files                                            |
 | `jsonc_dump.py`                     | JSONC serializer matching OpenCode's trailing-comma config style                                      |
 | `mcp_registry.py`                   | Read/normalize the canonical MCP registry                                                             |

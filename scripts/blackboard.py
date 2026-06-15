@@ -40,6 +40,7 @@ import os
 import re
 import sqlite3
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -49,6 +50,9 @@ SIGNAL_PRIORITIES = ("critical", "high", "medium", "low")
 SIGNAL_STATUSES = ("open", "addressed", "waived")
 BLOCKING_PRIORITIES = ("critical", "high")
 SURVIVAL_TOKEN_THRESHOLD = 0.6
+CONNECT_RETRY_SECONDS = 10.0
+CONNECT_RETRY_INITIAL_DELAY = 0.02
+CONNECT_RETRY_MAX_DELAY = 0.25
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS entries (
@@ -94,15 +98,38 @@ def board_path(board: str) -> Path:
     return default_home() / f"{board}.sqlite3"
 
 
+def is_locked_error(error: sqlite3.OperationalError) -> bool:
+    text = str(error).lower()
+    return "database is locked" in text or "database schema is locked" in text or "database table is locked" in text
+
+
+def open_configured_connection(path: Path) -> sqlite3.Connection:
+    conn = sqlite3.connect(str(path), timeout=10.0)
+    try:
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA busy_timeout=10000")
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.executescript(SCHEMA)
+    except sqlite3.OperationalError:
+        conn.close()
+        raise
+    return conn
+
+
 def connect(board: str) -> sqlite3.Connection:
     path = board_path(board)
     path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(path), timeout=10.0)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA busy_timeout=5000")
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.executescript(SCHEMA)
-    return conn
+    deadline = time.monotonic() + CONNECT_RETRY_SECONDS
+    delay = CONNECT_RETRY_INITIAL_DELAY
+
+    while True:
+        try:
+            return open_configured_connection(path)
+        except sqlite3.OperationalError as error:
+            if not is_locked_error(error) or time.monotonic() >= deadline:
+                raise
+            time.sleep(delay)
+            delay = min(delay * 1.5, CONNECT_RETRY_MAX_DELAY)
 
 
 def now_iso() -> str:
