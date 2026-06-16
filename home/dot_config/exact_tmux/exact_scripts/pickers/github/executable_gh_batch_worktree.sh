@@ -21,6 +21,12 @@ die() {
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 mkdir -p "$cache_dir" 2> /dev/null || true
 
+row_loader_lib="$HOME/.config/tmux/scripts/pickers/github/lib/gh_row_loader.sh"
+if [ -f "$row_loader_lib" ]; then
+  # shellcheck source=/dev/null
+  . "$row_loader_lib"
+fi
+
 selection_file=""
 background=0
 branches_file=""
@@ -137,7 +143,7 @@ if [ ${#issues[@]} -gt 0 ] && [ -n "$branches_file" ] && [ -f "$branches_file" ]
 fi
 
 # Per-item outcome counters. They drive nothing user-visible on their own: all
-# feedback is delivered through the dashboard markers (amber ◌ in-progress,
+# feedback is delivered through the dashboard markers (animated amber spinner,
 # cyan ◆ done, cleared on skip/fail). The batch run prints nothing to its pane.
 created=0
 skipped=0
@@ -178,30 +184,42 @@ _patch_cache_entry() {
   fi
 }
 
-# Mark an item as in-progress (amber ◌) and re-render so the user sees a
-# loading marker the instant creation for that item starts.
-_mark_loading() {
+_start_loading() {
   local kind="$1" repo="$2" num="$3"
+  if declare -F gh_row_loader_start_item > /dev/null 2>&1; then
+    gh_row_loader_start_item "$kind" "$repo" "$num" 2> /dev/null || true
+    return
+  fi
   _patch_cache_entry "$kind" "$repo" "$num" loading
   _notify_fzf_reload
 }
 
+_stop_loading() {
+  local pid="${1:-}"
+  if declare -F gh_row_loader_stop_spinner > /dev/null 2>&1; then
+    gh_row_loader_stop_spinner "$pid" 2> /dev/null || true
+  fi
+}
+
 _create_pr_worktree() {
-  local repo="$1" num="$2"
-  _mark_loading "pr" "$repo" "$num"
+  local repo="$1" num="$2" loading_pid
+  loading_pid="$(_start_loading "pr" "$repo" "$num")"
   if ! ,gh-worktree pr "$repo" "$num" --print-root --no-bootstrap > /dev/null 2>&1; then
+    _stop_loading "$loading_pid"
     skipped=$((skipped + 1))
     _patch_cache_entry "pr" "$repo" "$num" clear
     _notify_fzf_reload
     return
   fi
   if ,gh-worktree pr "$repo" "$num" --quiet --no-bootstrap 2> /dev/null; then
+    _stop_loading "$loading_pid"
     created=$((created + 1))
     _patch_cache_entry "pr" "$repo" "$num" "done"
     # Progressive feedback: re-render fzf so the ◆ marker for this item appears
     # immediately, instead of waiting for the whole batch to finish.
     _notify_fzf_reload
   else
+    _stop_loading "$loading_pid"
     failed=$((failed + 1))
     _patch_cache_entry "pr" "$repo" "$num" clear
     _notify_fzf_reload
@@ -209,25 +227,28 @@ _create_pr_worktree() {
 }
 
 _create_issue_worktree() {
-  local repo="$1" num="$2" branch="$3"
+  local repo="$1" num="$2" branch="$3" loading_pid
   if [ -z "$branch" ]; then
     skipped=$((skipped + 1))
     return
   fi
-  _mark_loading "issue" "$repo" "$num"
+  loading_pid="$(_start_loading "issue" "$repo" "$num")"
   if ! ,gh-worktree issue "$repo" "$num" --print-root --no-bootstrap --branch "$branch" > /dev/null 2>&1; then
+    _stop_loading "$loading_pid"
     skipped=$((skipped + 1))
     _patch_cache_entry "issue" "$repo" "$num" clear
     _notify_fzf_reload
     return
   fi
   if ,gh-worktree issue "$repo" "$num" --quiet --branch "$branch" --no-bootstrap 2> /dev/null; then
+    _stop_loading "$loading_pid"
     created=$((created + 1))
     _patch_cache_entry "issue" "$repo" "$num" "done"
     # Progressive feedback: re-render fzf so the ◆ marker for this item appears
     # immediately, instead of waiting for the whole batch to finish.
     _notify_fzf_reload
   else
+    _stop_loading "$loading_pid"
     failed=$((failed + 1))
     _patch_cache_entry "issue" "$repo" "$num" clear
     _notify_fzf_reload

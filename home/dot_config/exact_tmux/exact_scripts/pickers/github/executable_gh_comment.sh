@@ -42,20 +42,20 @@ if [ -f "$row_loader_lib" ]; then
   # shellcheck source=/dev/null
   . "$row_loader_lib"
 fi
-row_loader_restore_file=""
-if declare -F gh_row_loader_mk_restore_file > /dev/null 2>&1; then
-  row_loader_restore_file="$(gh_row_loader_mk_restore_file comment 2> /dev/null || true)"
-  [ -n "$row_loader_restore_file" ] && cleanup_files+=("$row_loader_restore_file")
-fi
+row_loader_pid=""
 
-_mark_item_loading() {
-  [ -n "$row_loader_restore_file" ] || return 0
-  gh_row_loader_mark "$kind" "$repo_nwo" "$number" "$row_loader_restore_file" 2> /dev/null || true
+_start_item_loading() {
+  row_loader_pid=""
+  if declare -F gh_row_loader_start_item > /dev/null 2>&1; then
+    row_loader_pid="$(gh_row_loader_start_item "$kind" "$repo_nwo" "$number" 2> /dev/null || true)"
+  fi
 }
 
-_restore_item_loading() {
-  [ -n "$row_loader_restore_file" ] || return 0
-  gh_row_loader_restore "$kind" "$repo_nwo" "$number" "$row_loader_restore_file" 2> /dev/null || true
+_stop_item_loading() {
+  if declare -F gh_row_loader_stop_spinner > /dev/null 2>&1; then
+    gh_row_loader_stop_spinner "$row_loader_pid" 2> /dev/null || true
+  fi
+  row_loader_pid=""
 }
 
 _strip_html_comments() {
@@ -89,7 +89,7 @@ _pick_comment() {
   local current_user=""
   local user_rc=0
   local lines_rc=0
-  _mark_item_loading
+  _start_item_loading
   if [ "$filter" = "own" ]; then
     set +e
     current_user="$(gh api user --jq .login 2> /dev/null)"
@@ -113,7 +113,7 @@ _pick_comment() {
     ' 2> /dev/null)"
   lines_rc=$?
   set -e
-  _restore_item_loading
+  _stop_item_loading
   [ "$user_rc" -eq 0 ] && [ "$lines_rc" -eq 0 ] || return 1
 
   [ -n "$lines" ] || {
@@ -155,12 +155,12 @@ case "$action" in
     fi
 
     sed -i'' '/^<!--.*-->$/d' "$tmpfile"
-    _mark_item_loading
+    _start_item_loading
     set +e
     _post_comment "$tmpfile"
     rc=$?
     set -e
-    _restore_item_loading
+    _stop_item_loading
     [ "$rc" -eq 0 ] || exit "$rc"
     _invalidate_preview_cache
     echo "Comment posted."
@@ -169,12 +169,12 @@ case "$action" in
   reply)
     comment_id="$(_pick_comment)" || exit 0
 
-    _mark_item_loading
+    _start_item_loading
     set +e
     comment_raw="$(gh api "repos/${repo_nwo}/issues/comments/${comment_id}" 2> /dev/null)"
     rc=$?
     set -e
-    _restore_item_loading
+    _stop_item_loading
     [ "$rc" -eq 0 ] && [ -n "$comment_raw" ] || exit 0
     comment_author="$(printf '%s' "$comment_raw" | python3 -c 'import sys,json; print(json.load(sys.stdin)["user"]["login"])')"
     comment_body="$(printf '%s' "$comment_raw" | python3 -c 'import sys,json; print(json.load(sys.stdin)["body"])')"
@@ -197,12 +197,12 @@ case "$action" in
     fi
 
     sed -i'' '/^<!--.*-->$/d' "$tmpfile"
-    _mark_item_loading
+    _start_item_loading
     set +e
     _post_comment "$tmpfile"
     rc=$?
     set -e
-    _restore_item_loading
+    _stop_item_loading
     [ "$rc" -eq 0 ] || exit "$rc"
     _invalidate_preview_cache
     echo "Reply posted."
@@ -211,12 +211,12 @@ case "$action" in
   edit)
     comment_id="$(_pick_comment own)" || exit 0
 
-    _mark_item_loading
+    _start_item_loading
     set +e
     comment_body="$(gh api "repos/${repo_nwo}/issues/comments/${comment_id}" --jq '.body' 2> /dev/null)"
     rc=$?
     set -e
-    _restore_item_loading
+    _stop_item_loading
     [ "$rc" -eq 0 ] || exit 0
 
     tmpfile="$(mktemp /tmp/gh_edit_XXXXXX.md)"
@@ -237,14 +237,14 @@ case "$action" in
       exit 0
     fi
 
-    _mark_item_loading
+    _start_item_loading
     set +e
     python3 -c 'import sys,json; print(json.dumps({"body": sys.stdin.read()}))' < "$tmpfile" \
       | gh api -X PATCH "repos/${repo_nwo}/issues/comments/${comment_id}" \
         --input - --silent 2> /dev/null
     rc=$?
     set -e
-    _restore_item_loading
+    _stop_item_loading
     [ "$rc" -eq 0 ] || exit "$rc"
     _invalidate_preview_cache
     echo "Comment updated."

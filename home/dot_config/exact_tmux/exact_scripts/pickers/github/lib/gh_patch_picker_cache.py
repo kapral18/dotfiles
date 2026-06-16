@@ -16,10 +16,10 @@ must skip it before anchoring — otherwise the marker would overwrite the state
 icon (the issue open/closed glyph) instead of the worktree column.
 
 This script sets that marker for matching (kind, repo, num) tuples to one of:
-  - done    -> '◆' (blue): worktree created locally
-  - loading -> '◌' (amber): row-scoped operation in progress
-  - clear   -> ' ': no local worktree (revert a worktree loader on skip/fail)
-  - restore -> the marker saved by --save-file before a transient loader
+  - done      -> '◆' (blue): worktree created locally
+  - loading-N -> animated amber spinner frames for row-scoped waits
+  - clear     -> ' ': no local worktree (revert a worktree loader on skip/fail)
+  - restore   -> the marker saved by --save-file before a transient loader
 
 It does not attempt to re-compute anything from GitHub or git; it's a cheap
 local UI patch to enable progressive feedback during background worktree
@@ -38,10 +38,19 @@ from pathlib import Path
 
 RESET_SPACE = "\x1b[0m "
 MARK_DONE = "\x1b[38;5;81m◆\x1b[0m"
-MARK_LOADING = "\x1b[38;5;221m◌\x1b[0m"
+LEGACY_MARK_LOADING = "\x1b[38;5;221m◌\x1b[0m"
+MARK_LOADING_FRAMES = (
+    "\x1b[38;5;221m◐\x1b[0m",
+    "\x1b[38;5;221m◓\x1b[0m",
+    "\x1b[38;5;221m◑\x1b[0m",
+    "\x1b[38;5;221m◒\x1b[0m",
+)
+MARK_LOADING = MARK_LOADING_FRAMES[0]
 MARK_CLEAR = " "
 
 STATE_MARKERS = {"done": MARK_DONE, "loading": MARK_LOADING, "clear": MARK_CLEAR}
+STATE_MARKERS.update({f"loading-{i}": marker for i, marker in enumerate(MARK_LOADING_FRAMES)})
+LOADING_MARKERS = {LEGACY_MARK_LOADING, *MARK_LOADING_FRAMES}
 RESTORE_STATE = "restore"
 
 # The marker cell is exactly one of:
@@ -82,7 +91,7 @@ def patch_display(display: str, marker: str, *, loading_only: bool = False) -> s
     if cell is None:
         return display
     start, end, current = cell
-    if loading_only and current != MARK_LOADING:
+    if loading_only and current not in LOADING_MARKERS:
         return display
     if current == marker:
         return display

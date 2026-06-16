@@ -6,16 +6,18 @@
 
   HOW TO USE
   1. Copy this file to the OUTPUT DIR (alongside the generated nb-*.png images).
-  2. Replace every {{TOKEN}} and fill the beat blocks in each ACT.
+  2. Replace every placeholder token and fill the beat blocks in each ACT.
   3. Keep the 5-act spine. Keep "one primary medium per beat" (see authoring.md).
   4. Images are referenced by RELATIVE filename (e.g. nb-overview.png) and must
      live in the same dir as this HTML. Do NOT base64-inline them.
-  5. The act-rail labels can be ANY length — they render as solid popovers.
+  5. The act-rail labels can be ANY length — they wrap inside the left gutter.
+  6. Resize the scaffold first: duplicate/remove beats, cards, scorecards, and
+     ledger rows to match the authoring preflight. Do not leave unused examples.
 
   BEAT TYPES (each has an example below, copy the one you need):
     - .beat-diagram   : a generated diagram is the hero (+ one caption line)
     - .codebeat       : a real diff is the hero (+ a narrow note column)
-    - split codebeat  : small diagram + short diff side-by-side (Act II change 3)
+    - split codebeat  : optional; diagram gives context, diff remains load-bearing
     - .rail-cards     : compact invariant cards (Act III), optional thumbnail
     - .ledger         : the change-map table (Act IV)
     - .transition     : one big connective sentence between acts
@@ -43,15 +45,16 @@
 
   #progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--teal),var(--blue));z-index:60;transition:width .1s linear}
 
-  /* sticky act rail — dots in gutter; labels are solid popovers (any length) */
+  /* sticky act rail — dots in gutter; labels wrap inside the left gutter */
   #rail{position:fixed;left:20px;top:50%;transform:translateY(-50%);z-index:40;display:flex;flex-direction:column;gap:6px;opacity:0;pointer-events:none;transition:opacity .5s}
   #rail.show{opacity:1;pointer-events:auto}
   #rail a{display:flex;align-items:center;gap:0;color:var(--muted);position:relative}
   #rail a .rdot{width:10px;height:10px;border-radius:50%;border:1px solid var(--line);background:rgba(15,22,48,.9);transition:all .25s;flex:0 0 auto}
-  #rail a .rtxt{position:absolute;left:22px;top:50%;transform:translateY(-50%) translateX(-6px);white-space:nowrap;font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;color:var(--ink);background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);padding:7px 11px;border-radius:9px;box-shadow:0 10px 30px rgba(0,0,0,.5),0 0 0 1px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease}
+  #rail a .rtxt{position:absolute;left:22px;top:50%;transform:translateY(-50%) translateX(-6px);white-space:normal;max-width:calc((100vw - 1120px)/2 - 44px);min-width:90px;overflow-wrap:anywhere;font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;color:var(--ink);background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);padding:7px 11px;border-radius:9px;box-shadow:0 10px 30px rgba(0,0,0,.5),0 0 0 1px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease}
   #rail a:hover .rtxt{opacity:1;transform:translateY(-50%) translateX(0)}
   #rail a:hover .rdot{border-color:var(--teal)}
   #rail a.active .rdot{background:var(--teal);border-color:var(--teal);box-shadow:0 0 0 4px rgba(52,211,192,.16)}
+  @media(max-width:1399px){#rail a .rtxt{display:none}}
   @media(max-width:1024px){#rail{display:none}}
 
   /* hero */
@@ -159,6 +162,7 @@
   .ledger .role{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;padding:4px 9px;border-radius:6px;border:1px solid var(--line);white-space:nowrap}
   .role.primary{color:var(--teal);border-color:#1f5b53;background:rgba(52,211,192,.07)}
   .role.support{color:var(--blue);border-color:#2a3a78;background:rgba(91,140,255,.06)}
+  .role.guardrail{color:var(--green);border-color:#2f6b45;background:rgba(84,217,127,.06)}
   .role.cleanup{color:var(--delln);border-color:#5a2433;background:rgba(224,97,122,.06)}
   .ledger .lpath{font-family:var(--mono);font-size:13px;color:var(--ink)}
   .ledger .lpath small{display:block;font-family:var(--sans);color:var(--muted);font-size:13px;margin-top:2px;font-weight:400}
@@ -197,7 +201,7 @@
 <body>
 <div id="progress"></div>
 
-<!-- ACT-RAIL: one <a> per act; labels may be any length (solid popovers). -->
+<!-- ACT-RAIL: one <a> per act; labels may be any length (gutter-wrapped popovers). -->
 <nav id="rail" aria-label="Sections">
   <a href="#act1"><span class="rdot"></span><span class="rtxt">I · {{ACT1_RAIL}}</span></a>
   <a href="#act2"><span class="rdot"></span><span class="rtxt">II · {{ACT2_RAIL}}</span></a>
@@ -277,7 +281,8 @@
     <div class="beat-cap"><span class="badge trap">{{CHANGE2_BADGE}}</span><p>{{CHANGE2_CAPTION}}</p></div>
   </div>
 
-  <!-- CHANGE 3 — SPLIT BEAT (small diagram + short diff + 2 points). -->
+  <!-- CHANGE 3 — OPTIONAL SPLIT BEAT.
+       Use only when the diagram gives context and the diff remains the primary evidence. -->
   <div class="beat reveal" style="padding-top:48px">
     <div class="act-head" style="margin-bottom:14px"><span class="act-no" style="color:var(--blue)">3</span><h2 class="act-title" style="font-size:clamp(19px,2.4vw,26px)">{{CHANGE3_TITLE}}</h2></div>
     <div class="codebeat" style="padding-top:6px">
@@ -318,12 +323,13 @@
     <div class="act-head"><span class="act-no">ACT IV</span><h2 class="act-title">{{ACT4_TITLE}}</h2></div>
     <p class="act-intro">{{ACT4_INTRO}}</p>
   </div>
-  <!-- One .lrow per file/group. role = primary | support | cleanup. -->
+  <!-- One .lrow per file/group. role = primary | support | guardrail | cleanup. -->
   <!-- For multi-file PRs: every changed path appears here exactly once. -->
   <div class="ledger reveal">
     <div class="lrow"><span class="role primary">primary</span><div class="lpath">{{L1_PATH}}<small>{{L1_DESC}}</small></div><div class="lstat">{{L1_STAT}}</div></div>
     <div class="lrow"><span class="role support">supporting</span><div class="lpath">{{L2_PATH}}<small>{{L2_DESC}}</small></div><div class="lstat">{{L2_STAT}}</div></div>
-    <div class="lrow"><span class="role cleanup">cleanup</span><div class="lpath">{{L3_PATH}}<small>{{L3_DESC}}</small></div><div class="lstat">{{L3_STAT}}</div></div>
+    <div class="lrow"><span class="role guardrail">guardrail</span><div class="lpath">{{L3_PATH}}<small>{{L3_DESC}}</small></div><div class="lstat">{{L3_STAT}}</div></div>
+    <div class="lrow"><span class="role cleanup">cleanup</span><div class="lpath">{{L4_PATH}}<small>{{L4_DESC}}</small></div><div class="lstat">{{L4_STAT}}</div></div>
   </div>
 </section>
 

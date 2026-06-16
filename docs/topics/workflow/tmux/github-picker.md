@@ -145,17 +145,17 @@ GraphQL cost: the metadata phase that powers review/CI badges is reused. Issues 
 
 ## Inline badges
 
-| Badge        | Meaning                          | Color               |
-| ------------ | -------------------------------- | ------------------- |
-| `◆`          | Local worktree exists            | cyan (`38;5;81`)    |
-| `◌`          | Row-scoped operation in progress | amber (`38;5;221`)  |
-| `󰄬`          | PR review — approved             | green (`38;5;42`)   |
-| `󰀨`          | PR review — changes req.         | red (`38;5;196`)    |
-| ``           | PR review — pending              | yellow (`38;5;220`) |
-| `●` (green)  | CI — success                     | green (`38;5;42`)   |
-| `●` (red)    | CI — failure                     | red (`38;5;196`)    |
-| `●` (yellow) | CI — pending                     | yellow (`38;5;220`) |
-| `⚡`         | Merge conflict (CONFLICTING)     | orange (`38;5;209`) |
+| Badge           | Meaning                          | Color               |
+| --------------- | -------------------------------- | ------------------- |
+| `◆`             | Local worktree exists            | cyan (`38;5;81`)    |
+| `◐` `◓` `◑` `◒` | Row-scoped operation in progress | amber (`38;5;221`)  |
+| `󰄬`             | PR review — approved             | green (`38;5;42`)   |
+| `󰀨`             | PR review — changes req.         | red (`38;5;196`)    |
+| ``              | PR review — pending              | yellow (`38;5;220`) |
+| `●` (green)     | CI — success                     | green (`38;5;42`)   |
+| `●` (red)       | CI — failure                     | red (`38;5;196`)    |
+| `●` (yellow)    | CI — pending                     | yellow (`38;5;220`) |
+| `⚡`            | Merge conflict (CONFLICTING)     | orange (`38;5;209`) |
 
 Review and CI badges are fetched via a chunked GraphQL phase that runs after the section searches and in parallel with the local worktree scan. PRs are split into small chunks (~5 per request) issued concurrently — GitHub's GraphQL evaluates aliases mostly serially within one request, so several small parallel queries finish far faster than one large batch.
 
@@ -180,18 +180,18 @@ For issues, the picker also treats an issue as "local" when it is linked from an
 - **`enter` (no marks)**: single-item checkout. On a PR, runs `,gh-worktree pr <owner/repo> <number> --focus`; on an issue, runs `,gh-worktree issue <owner/repo> <number> --focus` (interactive branch prompt if the worktree doesn't exist yet). Exits the picker and shows a `Loading...` message while the checkout/focus path is running.
 - **`enter` (items marked)**: batch worktree creation for all marked items (same as `ctrl-t`). PRs are created automatically; issues open `$EDITOR` with a batch naming buffer. Stays in the picker.
 - **`ctrl-t`**: explicit batch worktree creation (same as `enter` with marks).
-- **`ctrl-r`**: refresh the dashboard from GitHub. Cached rows stay visible while the refresh runs; each cached PR/issue row flips to the amber `◌` marker until fresh rows replace it (or the prior marker is restored if a section cannot refresh).
+- **`ctrl-r`**: refresh the dashboard from GitHub. Cached rows stay visible while the refresh runs; each cached PR/issue row cycles the amber `◐` `◓` `◑` `◒` spinner until fresh rows replace it. The header label also shows `Loading...` during the refresh so there is still a global signal for new or unmatched rows that are not in the current entry list.
 
-  Batch creation runs in the background and gives progressive feedback **entirely through the dashboard markers** — it prints nothing to any tmux pane. Each item flips to the amber `◌` loading marker the instant its creation starts, then to the cyan `◆` marker on success (or reverts to its prior marker if it is skipped or fails). There is no end-of-batch popup or pane summary; the final marker state is the result. A reverted marker after a run means the item was skipped or failed — e.g. a "repo not found locally" skip, which happens when neither the `--repo-path` hint nor the conventional checkout (`~/work/<repo>` for `elastic/*`, else `~/code/<repo>`) resolved to a git worktree.
+  Batch creation runs in the background and gives progressive feedback **entirely through the dashboard markers** — it prints nothing to any tmux pane. Each active item cycles the amber spinner the instant its creation starts, then flips to the cyan `◆` marker on success (or reverts to its prior marker if it is skipped or fails). There is no end-of-batch popup or pane summary; the final marker state is the result. A reverted marker after a run means the item was skipped or failed — e.g. a "repo not found locally" skip, which happens when neither the `--repo-path` hint nor the conventional checkout (`~/work/<repo>` for `elastic/*`, else `~/code/<repo>`) resolved to a git worktree.
 
 - **`alt-i`**: create a new issue — resolve the target repo (defaults to the cursor row's repo), compose title + body in `$EDITOR`, create via the REST API, then optionally create a worktree + focus its session. Stays in the picker (and refreshes) unless you opt into the worktree.
 - **`alt-E`**: create an epic — like `alt-i`, but the buffer's first section is the parent issue and each `---`-separated section below is a child issue; children are created and linked to the parent via the sub-issues API.
 - **`alt-b` on a PR**: same as single `enter`, then opens Octo review in a new tmux window.
 - **`alt-o`**: opens the PR/issue URL in the browser.
 - **`alt-y`**: copies the URL(s) to the clipboard.
-- **`alt-c`**: new comment — opens `$EDITOR`, posts on save, and marks the affected row with `◌` while posting.
-- **`alt-r`**: quote-reply — pick a comment via fzf, quote it, open `$EDITOR`, and mark the affected row with `◌` while fetching/posting.
-- **`alt-d`**: edit own comment — pick one of your comments via fzf, edit in `$EDITOR`, and mark the affected row with `◌` while fetching/updating.
+- **`alt-c`**: new comment — opens `$EDITOR`, posts on save, and animates the affected row while posting.
+- **`alt-r`**: quote-reply — pick a comment via fzf, quote it, open `$EDITOR`, and animate the affected row while fetching/posting.
+- **`alt-d`**: edit own comment — pick one of your comments via fzf, edit in `$EDITOR`, and animate the affected row while fetching/updating.
 - **`alt-A`**: Ralph handoff — writes a Markdown context file for the current row or marked PRs/issues, closes the picker, then prompts for a `,ralph go` goal seeded with the selected GitHub references and context path. The context includes titles, URLs, labels, state, review/CI relationship metadata, PR closing issues, and issue closing PRs when GitHub lookups are available.
 - **`alt-x`**: command palette — see below.
 - If the repo does not exist locally, `,gh-worktree` bootstraps it first via `,gh-tfork`.
@@ -218,7 +218,7 @@ Implementation:
 
 ## Command palette (`alt-x`)
 
-The palette executes GitHub mutations against the cursor item or marked selection without leaving the picker. No browser trip, no `$EDITOR` round-trip for the common verbs. It opens an inner fzf verb menu inside the picker popup; after the verb is chosen, a short prompt (text or autocompleted fzf) collects any required arguments, then the selected `gh` invocation runs once per applicable item while each affected row shows `◌`. On success, the picker auto-reloads from GitHub via the fzf listen socket so freshly-closed/merged items disappear, label badges refresh, and so on. Errors surface as `tmux display-message` toasts.
+The palette executes GitHub mutations against the cursor item or marked selection without leaving the picker. No browser trip, no `$EDITOR` round-trip for the common verbs. It opens an inner fzf verb menu inside the picker popup; after the verb is chosen, a short prompt (text or autocompleted fzf) collects any required arguments, then the selected `gh` invocation runs once per applicable item while each affected row animates. On success, the picker auto-reloads from GitHub via the fzf listen socket so freshly-closed/merged items disappear, label badges refresh, and so on. Errors surface as `tmux display-message` toasts.
 
 | Verb              | Applies to | Args (prompt source)                                                             | Multi-item  |
 | ----------------- | ---------- | -------------------------------------------------------------------------------- | ----------- |

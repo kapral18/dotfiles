@@ -2,6 +2,17 @@
 
 These are the design laws the template encodes. The presentation exists to let a reviewer **get the accurate, detailed picture before opening the diff**, at lower cognitive cost. If a choice doesn't serve that, cut it.
 
+## The preflight: make the context visible before HTML
+
+Do not start filling the template until you have a compact authoring preflight. It is the working map that keeps the page from becoming "the diff, but prettier":
+
+- **Thesis:** one sentence naming the reviewer-visible outcome.
+- **Audience:** the reviewer level and system context you are writing for.
+- **Classification ledger:** every changed file/hunk exactly once, with role (`PRIMARY`, `SUPPORTING`, `GUARDRAIL`, `CLEANUP`), source anchor, and one-line purpose.
+- **Act II chain:** 1-3 beats in causal order. Each beat has a bridge from the previous beat, one primary medium, and the exact diff line or image it needs.
+- **Compression plan:** which files stay in the Act IV ledger only, which invariants become cards, and which scorecard claims close the story.
+- **Verification checklist:** no unfilled placeholder tokens, every referenced `nb-*` image exists, every changed file/group appears in the ledger, code is HTML-escaped, and no idea is repeated in multiple adjacent media.
+
 ## The one law: one idea per beat, one primary medium per beat
 
 The most common failure is **semantic triplication** — a paragraph says X, the image re-says X, the cards re-say X. Forbidden.
@@ -20,7 +31,7 @@ Walking a file top-to-bottom is just "the PR, slower." Order by the _story_:
 
 1. **Hero** — one-sentence thesis + the shape (flow diagram) + 3–4 invariant chips.
 2. **Act I — Goal & the bet.** Why the PR exists + the single core mechanism change, as ONE contrast diagram. **No code yet** — establish the mental model.
-3. **Act II — The load-bearing changes.** Only the **1–3** changes that actually carry risk/insight/security. Order them as a **causal chain**, not an unordered list: each beat should be a _consequence or obligation created by the previous one_ (e.g. "switching to the new transport is what _creates_ the framing problem the next beat solves"). Each gets the medium that explains it fastest (medium chosen by the idea per the one law, not for visual rotation). Importance = how much room a beat gets. Layout may vary (code/diagram/split) only as a tiebreaker — never let "vary it" override medium-by-idea or drop a load-bearing line.
+3. **Act II — The load-bearing changes.** Only the **1–3** changes that actually carry risk/insight/security. Order them as a **causal chain**, not an unordered list: each beat should be a _consequence or obligation created by the previous one_ (e.g. "switching to the new transport is what _creates_ the framing problem the next beat solves"). Each gets the medium that explains it fastest (medium chosen by the idea per the one law, not for visual rotation). Importance = how much room a beat gets. Split layout is rare: use it only when the diagram provides context and the diff is still the load-bearing medium. Never let "vary it" override medium-by-idea or drop a load-bearing line.
 4. **Act III — Invariants held.** The "we didn't break X" reassurances, as a **compact card rail** (claim + one-line proof each), NOT full sections. This is where most dedup happens. At most one card carries a thumbnail.
 5. **Act IV — Change map.** Every changed file/group by role. For one file it's short; for a 40-file PR this is what lets the reader skip what's mechanical.
 6. **Footer — outcome scorecard.** What was gained + what was kept, each with its exact mechanism.
@@ -42,7 +53,7 @@ Anchor the narrative to the **goal**, not the file list. Classify every hunk/fil
 - **GUARDRAIL** — tests, types, schema. Usually a ledger row; mention in Act III if a test _proves_ an invariant.
 - **CLEANUP** — deletions, renames, mechanical moves. Ledger rows only.
 
-Only PRIMARY (and occasionally SUPPORTING) earn beats. Everything else folds into the Act IV ledger as one line each. That is the entire trick to keeping a big PR a focused narrative instead of a wall of diffs.
+Only PRIMARY (and occasionally SUPPORTING) earn beats. Everything else folds into the Act IV ledger as one line each, preserving the role label. That is the entire trick to keeping a big PR a focused narrative instead of a wall of diffs.
 
 ## Diffs: real, exact, trimmed
 
@@ -62,8 +73,14 @@ Only PRIMARY (and occasionally SUPPORTING) earn beats. Everything else folds int
 
 ## Act-rail (navigation)
 
-- Labels can be **any length** — they render as solid floating popovers, so never hand-tune widths or content-aware breakpoints. The template already does this correctly; do not reintroduce gutter-width math.
+- Labels can be **any length** — they wrap inside the left gutter on wide screens and hide below desktop widths, so never hand-tune widths per presentation. The template already does this correctly; do not reintroduce one-off rail math.
 - One `<a>` per act; keep it to the 4 acts.
+
+## Template shape
+
+- The template is a scaffold, not a quota. Duplicate or delete beat/card/ledger/scorecard blocks to match the preflight before filling content.
+- Keep every changed file/group in exactly one Act IV ledger row. Use the role classes `primary`, `support`, `guardrail`, and `cleanup`.
+- Delete unused optional blocks instead of leaving placeholder content hidden in the page.
 
 ## Voice
 

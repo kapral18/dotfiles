@@ -112,6 +112,12 @@ PR/issue composition hygiene:
 - PR/issue bodies must avoid session-specific local references such as private hostnames, non-standard local domains, absolute workspace paths, `/tmp/...` files, browser automation session names, and local usernames.
 - Repro-driven PRs must include portable local reproduction steps in the test plan, not only the agent's local validation notes. Prefer generic setup such as `local Kibana`, `http://localhost:5601`, or explicit role/user creation steps that another reviewer can run.
 
+Manual `present-pr` hygiene:
+
+- Before filling the HTML template, write a compact authoring preflight: thesis, audience, full file/hunk role ledger, Act II causal chain, source anchors, medium choices, image list, and verification checklist.
+- The template scaffold is resized to the preflight, not treated as a quota; every changed file/group appears exactly once in Act IV with `primary`, `supporting`, `guardrail`, or `cleanup` role semantics.
+- Run cheap static checks before Playwriter: no real placeholder tokens, all referenced `nb-*` images exist, code snippets are escaped, and no beat repeats the same idea across prose, image, and card.
+
 Always-on rule source:
 
 - The SOP entrypoints are the only canonical always-on mechanism for assistant behavior.

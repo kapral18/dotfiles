@@ -14,7 +14,7 @@ This is not a code-review skill; it does not modify the repo under review.
 
 Deployed alongside this file:
 
-- `~/.agents/skills/present-pr/references/template.html` — the **proven** scaffold. Copy it; fill `{{TOKENS}}`; never rewrite its CSS/JS.
+- `~/.agents/skills/present-pr/references/template.html` — the **proven** scaffold. Copy it; fill the placeholder tokens; never rewrite its CSS/JS.
 - `~/.agents/skills/present-pr/references/authoring.md` — the design laws (5-act spine, beat-to-beat continuity, one-medium-per-beat dedup + show-the-load-bearing-line, role classification, image prompting, rail rules). Follow it; it is the difference between signal and a wall of text.
 
 Read both fully before writing any HTML.
@@ -50,6 +50,12 @@ Per `authoring.md`:
 ### 3. Plan the beats (one idea, one medium each — as a chain)
 
 - Map the goal + classified changes onto the 5-act spine.
+- Before touching the HTML, write a compact **authoring preflight** in your notes:
+  - goal/thesis + target reviewer,
+  - every changed file/hunk with role, source anchor, and why it matters,
+  - Act II beats in order, each with its bridge from the previous beat,
+  - primary medium per beat (`diagram` or `diff`) and the exact source line/image each beat needs,
+  - ledger rows, invariant cards, scorecard claims, image filenames, and verification checks.
 - **Order the Act II beats as a causal chain**, then write the one-line **bridge** for each seam (and between acts): the clause that says why this beat follows the last. Read the bridges in order with visuals hidden — they must form one argument with no teleports. If they don't, reorder or rewrite before generating anything.
 - For each beat decide: **diagram-primary** or **diff-primary** (never both for the same idea), choosing the medium by the idea's nature — not to rotate layouts. If the insight is a specific line/option, the beat **must show that real diff line**; a diagram may augment but never replace it. Decide which 1–3 diagrams are worth generating.
 
@@ -62,9 +68,11 @@ Per `authoring.md`:
 ### 5. Fill the template
 
 - Copy `template.html` to `<output>/<slug>-presentation.html`.
-- Replace every `{{TOKEN}}`; use the beat blocks already present as patterns (add/remove change beats, invariant cards, ledger rows as needed).
+- First resize the content blocks to match the preflight: remove unused sample beats/cards/rows and duplicate only the blocks the story needs.
+- Replace every placeholder token; use the beat blocks already present as patterns (add/remove change beats, invariant cards, ledger rows as needed).
 - Reference images by **relative filename** only (same dir). Never base64-inline.
 - HTML-escape `<`, `>`, `&` inside all code beats.
+- Run cheap static checks before browser verification: no real placeholder tokens remain, every changed file/group appears exactly once in the ledger, each `nb-*` image referenced by the HTML exists, every load-bearing source line appears in a diff beat, and no beat repeats the same idea in prose + visual + card.
 
 ### 6. Verify in a real browser (mandatory)
 

@@ -41,11 +41,8 @@ fi
 
 mode="$(cat "$mode_file" 2> /dev/null || echo work)"
 scope="$(cat "$scope_file" 2> /dev/null || echo all)"
-row_loader_restore_file=""
-if declare -F gh_row_loader_mk_restore_file > /dev/null 2>&1; then
-  row_loader_restore_file="$(gh_row_loader_mk_restore_file palette 2> /dev/null || true)"
-  [ -n "$row_loader_restore_file" ] && cleanup_files+=("$row_loader_restore_file")
-fi
+row_loader_targets_file=""
+row_loader_pid=""
 
 # Parse selected/cursor items. Each line is the full picker TSV row, so cols
 # 2/3/4 are kind/repo/num. Skip header rows (cols 2 == "header").
@@ -121,21 +118,26 @@ selection_summary="$count item"
 [ "$count" -ne 1 ] && selection_summary="$count items"
 
 _mark_selection_loading() {
-  [ -n "$row_loader_restore_file" ] || return 0
+  if ! declare -F gh_row_loader_start_file > /dev/null 2>&1; then
+    return 0
+  fi
+  local cache_base="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
+  mkdir -p "$cache_base" 2> /dev/null || true
+  row_loader_targets_file="$(mktemp "${cache_base}/gh_row_loader_palette_XXXXXX.tsv" 2> /dev/null || true)"
+  [ -n "$row_loader_targets_file" ] || return 0
+  cleanup_files+=("$row_loader_targets_file")
   local i
   for i in "${!kinds[@]}"; do
-    gh_row_loader_patch "${kinds[i]}" "${repos[i]}" "${nums[i]}" loading "$row_loader_restore_file" "$mode" 2> /dev/null || true
+    printf '%s\t%s\t%s\n' "${kinds[i]}" "${repos[i]}" "${nums[i]}" >> "$row_loader_targets_file"
   done
-  gh_row_loader_notify "$mode" "$scope" "$items_cmd" 2> /dev/null || true
+  row_loader_pid="$(gh_row_loader_start_file "$row_loader_targets_file" "$mode" "$scope" "$items_cmd" 2> /dev/null || true)"
 }
 
 _restore_selection_loading() {
-  [ -n "$row_loader_restore_file" ] || return 0
-  local i
-  for i in "${!kinds[@]}"; do
-    gh_row_loader_patch "${kinds[i]}" "${repos[i]}" "${nums[i]}" restore "$row_loader_restore_file" "$mode" 2> /dev/null || true
-  done
-  gh_row_loader_notify "$mode" "$scope" "$items_cmd" 2> /dev/null || true
+  if declare -F gh_row_loader_stop_spinner > /dev/null 2>&1; then
+    gh_row_loader_stop_spinner "$row_loader_pid" "$mode" "$scope" "$items_cmd" 2> /dev/null || true
+  fi
+  row_loader_pid=""
 }
 
 _refresh_after_mutation() {
@@ -143,14 +145,17 @@ _refresh_after_mutation() {
     _restore_selection_loading
     return 0
   }
-  if [ -n "$row_loader_restore_file" ] && declare -F gh_row_loader_restore_all > /dev/null 2>&1; then
+  if [ -n "$row_loader_pid" ] && declare -F gh_row_loader_stop_spinner > /dev/null 2>&1; then
+    local spinner_pid="$row_loader_pid"
+    local targets_file="$row_loader_targets_file"
     (
       GH_PICKER_MODE="$mode" GH_PICKER_SCOPE="$scope" "$items_cmd" --refresh > /dev/null 2>&1 || true
-      gh_row_loader_restore_all "$mode" "$scope" "$items_cmd" "$row_loader_restore_file" 2> /dev/null || true
-      rm -f "$row_loader_restore_file" 2> /dev/null || true
+      gh_row_loader_stop_spinner "$spinner_pid" "$mode" "$scope" "$items_cmd" 2> /dev/null || true
+      rm -f "$targets_file" 2> /dev/null || true
     ) > /dev/null 2>&1 &
+    row_loader_pid=""
+    row_loader_targets_file=""
     cleanup_files=()
-    row_loader_restore_file=""
     return 0
   fi
   reload_cmd="GH_PICKER_MODE=$(printf %q "$mode") GH_PICKER_SCOPE=$(printf %q "$scope") $(printf %q "$items_cmd") --refresh"
@@ -306,6 +311,6 @@ else
 fi
 
 # Refresh the outer fzf so the dashboard reflects state changes (closed/merged
-# items disappear, label badges update, etc.). The selected rows stay marked
-# with `◌` until the background refresh replaces or restores them.
+# items disappear, label badges update, etc.). The selected rows keep animating
+# until the background refresh replaces them.
 _refresh_after_mutation
