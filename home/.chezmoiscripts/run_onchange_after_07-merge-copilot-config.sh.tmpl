@@ -37,6 +37,6 @@ fi
 chezmoi_write_if_changed "$desired_settings" "$settings_target"
 
 # User-level hooks (~/.copilot/hooks/agent-memory.json): shared session/worklog
-# hooks, Copilot-local PR anchor gate, and the RTK rewrite. PascalCase event
-# names yield the VS Code-compatible snake_case payloads our hook scripts read.
+# hooks. PascalCase event names yield the VS Code-compatible snake_case payloads
+# our hook scripts read.
 chezmoi_write_if_changed "$(cat "$source_dir/dot_copilot/hooks.json")" "$HOME/.copilot/hooks/agent-memory.json"

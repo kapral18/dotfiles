@@ -31,7 +31,7 @@ run_popup() {
 }
 
 while true; do
-  run_popup "$gh_h" "$gh_w" "$github_dir/gh_picker.sh"
+  run_popup "$gh_h" "$gh_w" "$github_dir/gh_dashboard.sh"
 
   if [ -f "$ralph_pin_file" ]; then
     "$ralph_apply_cmd" "$ralph_pin_file" || true

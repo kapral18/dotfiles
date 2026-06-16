@@ -85,6 +85,7 @@ Where to comment:
 ## Anchoring Constraints (Only If Posting Is Requested)
 
 - PR review comments are anchored to the PR's unified diff. The GitHub UI can sometimes let you comment on context lines by expanding the diff, but API calls still need a resolvable diff anchor.
+- Before every API call that creates or submits anchored PR review comments, fetch the current PR diff/patch for the target head SHA and verify each anchor against the diff hunk you intend to comment on. Do not rely on full-file line numbers, stale patches, or memory.
 - For API calls, do not assume a source-file line number is a valid anchor. Prefer:
   - `position` (diff-relative), computed from the PR's unified diff:
     - the `@@` hunk header line itself is **not counted** (position 0)

@@ -12,7 +12,7 @@ flowchart TB
     classDef cop fill:#22343a,stroke:#4dd0e1,color:#e0f7fa;
 
     subgraph CURSOR["Cursor (dot_cursor/)"]
-        CU["hooks.json (lifecycle; see 03b)<br/>preToolUse: rtk hook cursor (after git/PR gates)<br/>symlink_AGENTS.md → ~/AGENTS.md<br/>symlink_skills → ~/.agents/skills"]:::cursor
+        CU["hooks.json (lifecycle; see 03b)<br/>preToolUse: rtk hook cursor; beforeShell: git commit/push gate<br/>symlink_AGENTS.md → ~/AGENTS.md<br/>symlink_skills → ~/.agents/skills"]:::cursor
     end
 
     subgraph CLAUDE["Claude Code (dot_claude/)"]
@@ -24,7 +24,7 @@ flowchart TB
     end
 
     subgraph GEMINI["Gemini CLI (dot_gemini/)"]
-        GMN["settings.json (auto_edit) · readonly_GEMINI.md (SOP)<br/>BeforeTool: rtk hook gemini (after git/PR gates)<br/>exact_commands/ (.keep)<br/>hook 07-merge-gemini-settings"]:::gem
+        GMN["settings.json (auto_edit) · readonly_GEMINI.md (SOP)<br/>BeforeTool: gemini-git-gate.sh then rtk hook gemini<br/>exact_commands/ (.keep)<br/>hook 07-merge-gemini-settings"]:::gem
     end
 
     subgraph OPENCODE["OpenCode (dot_config/opencode/)"]
@@ -36,7 +36,7 @@ flowchart TB
     end
 
     subgraph COPILOT["GitHub Copilot CLI (dot_copilot/)"]
-        COP["settings.json (effortLevel xhigh · keepAlive busy · autoUpdate false · banner never)<br/>SessionStart/PostToolUse use shared ~/.agents/hooks; PreToolUse uses only ~/.copilot/hooks/copilot-pr-anchor-gate.sh (matcher bash)<br/>symlink_copilot-instructions.md → ~/AGENTS.md · symlink_skills → ~/.agents/skills<br/>exact_agents/ → ~/.copilot/agents/ · exact_hooks/ → ~/.copilot/hooks/<br/>hook 07-merge-copilot-config (mcp-config.json + hooks/agent-memory.json write;<br/>settings.json jq deep-merge over Copilot's runtime-owned file)<br/>MCP: stdio→type local · OAuth http unused (redirect 127.0.0.1:{port}/ unregistered)<br/>scsi-main/slack omit copilot block · scsi-local exclude_tools:[copilot] → empty mcpServers (built-ins only)"]:::cop
+        COP["settings.json (effortLevel xhigh · keepAlive busy · autoUpdate false · banner never)<br/>SessionStart/PostToolUse use shared ~/.agents/hooks; no PreToolUse shell gate<br/>symlink_copilot-instructions.md → ~/AGENTS.md · symlink_skills → ~/.agents/skills<br/>exact_agents/ → ~/.copilot/agents/<br/>hook 07-merge-copilot-config (mcp-config.json + hooks/agent-memory.json write;<br/>settings.json jq deep-merge over Copilot's runtime-owned file)<br/>MCP: stdio→type local · OAuth http unused (redirect 127.0.0.1:{port}/ unregistered)<br/>scsi-main/slack omit copilot block · scsi-local exclude_tools:[copilot] → empty mcpServers (built-ins only)"]:::cop
     end
 
     subgraph OTHER["Other terminal assistants"]

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Chezmoi-rendered router for the tmux GitHub dashboard's machine-default profile.
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+
+exec "$script_dir/gh_picker.sh" --mode "{{ if eq .isWork true }}work{{ else }}home{{ end }}" "$@"

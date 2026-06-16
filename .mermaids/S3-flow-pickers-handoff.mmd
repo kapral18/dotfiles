@@ -12,9 +12,9 @@ flowchart TB
 
     subgraph SWR["C9 · stale-while-revalidate (never block on network)"]
         direction TB
-        LAUNCH(["launch gh_picker.sh"]):::in
+        LAUNCH(["launch gh_dashboard.sh router<br/>(.isWork default → gh_picker.sh)"]):::in
         LAUNCH --> COLD["start:reload = render CACHED rows instantly<br/>(zero-latency first paint)"]:::cache
-        COLD --> BG["background: gh_items fetch (work/home scope, C3)<br/>writes new cache file"]:::cache
+        COLD --> BG["background: gh_items fetch (work/home mode from router, C3)<br/>writes new cache file"]:::cache
         BG -->|fetch OK| PUSH["POST reload to fzf TCP listener $FZF_PORT<br/>(gh_picker_port) → live row swap"]:::ui
         BG -->|fetch FAIL| KEEP["keep stale cache (no flicker); ctrl-r forces refetch"]:::ui
         PUSH --> VIEW["fzf view: bright icon rows + warm-prefetched preview"]:::ui

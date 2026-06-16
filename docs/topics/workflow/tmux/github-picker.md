@@ -68,7 +68,7 @@ Within each section, items are sorted by GitHub creation time, newest first. The
 
 The GitHub picker has two navigation dimensions:
 
-- **Mode** (`ctrl-s`): `work` vs `home`, selecting which config/cache to use.
+- **Mode** (`ctrl-s`): `work` vs `home`, selecting which config/cache to use. The tmux popup enters through a small chezmoi-rendered `gh_dashboard.sh` router, so its default is `home` on personal/home machines and `work` on work machines. Direct launches can still override the mode with `GH_PICKER_MODE` or `--mode`.
 - **Scope** (`alt-0`..`alt-2`): a view over the current mode's sections, mapped to intent prefixes.
 
 Scopes are intentionally layered on top of the existing cache. `all` keeps the previous full dashboard behavior; the narrower scopes are intent-aligned slices of the same data:

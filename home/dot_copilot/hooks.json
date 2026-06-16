@@ -8,14 +8,7 @@
         "timeoutSec": 10
       }
     ],
-    "PreToolUse": [
-      {
-        "matcher": "bash",
-        "type": "command",
-        "command": "$HOME/.copilot/hooks/copilot-pr-anchor-gate.sh",
-        "timeoutSec": 10
-      }
-    ],
+    "PreToolUse": [],
     "PostToolUse": [
       {
         "type": "command",

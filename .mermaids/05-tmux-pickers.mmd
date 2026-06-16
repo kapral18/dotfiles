@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 05-tmux-pickers.mmd — Every file under home/dot_config/exact_tmux/ (118).
+%% 05-tmux-pickers.mmd — Every file under home/dot_config/exact_tmux/ (119).
 %% Loader sources conf.d/* in numeric order; scripts/ holds all integrations.
 %% Deployed to ~/.config/tmux/. Prefix = C-Space.
 %% ============================================================================
@@ -22,6 +22,7 @@ flowchart TD
     CONFD -->|90/99 plugins| PLUGINS
 
     subgraph GH["scripts/pickers/github/ — GitHub picker"]
+        GHROUTER["gh_dashboard.sh.tmpl router<br/>(default mode from .isWork)"]:::sh
         GHP["gh_picker.sh (fzf TUI; --mode work|home --scope all|focus|explore)<br/>stale-while-revalidate: start→cache, bg fetch→POST reload($FZF_PORT)"]:::sh
         GHITEMS["gh_items.sh → lib/gh_items_main.py (rows from gh + YAML)"]:::py
         GHCFG[["readonly_gh-picker-{work,home}.yml (gh-dash-style sections)"]]:::data
@@ -29,7 +30,7 @@ flowchart TD
         GHACT["gh_action.sh · gh_comment.sh · gh_create.sh (lib/gh_create.py)<br/>gh_picker_palette.sh · gh_row_loader.sh · animated row loaders<br/>gh_batch_worktree.sh · gh_popup.sh · keyhelp.sh"]:::sh
         GHUI["lib/gh_dashboard_ui.py (status header)<br/>gh_palette_verbs.py · gh_patch_picker_cache.py<br/>gh_picker_follow_link.py · gh_ralph_handoff_context.py"]:::py
         GHBIND["lib/ fzf-binding shims (.sh):<br/>collapse · ctrl_t · enter · jump · mark_subtree · palette<br/>scope · sort · toggle (+ collapse.py, mark_subtree.py)"]:::sh
-        GHP --> GHITEMS --> GHCFG
+        GHROUTER --> GHP --> GHITEMS --> GHCFG
         GHP --> GHPREV & GHACT & GHUI & GHBIND
     end
 

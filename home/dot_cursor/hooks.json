@@ -39,11 +39,6 @@
     ],
     "beforeShellExecution": [
       {
-        "command": "$HOME/.agents/hooks/gemini-pr-anchor-gate.sh",
-        "matcher": "gh\\s+api.*pulls/.*/(reviews|comments)",
-        "failClosed": true
-      },
-      {
         "command": "$HOME/.agents/hooks/gemini-git-gate.sh",
         "matcher": "git\\s+(commit|push)",
         "failClosed": true

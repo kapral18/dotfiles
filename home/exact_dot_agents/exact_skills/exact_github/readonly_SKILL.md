@@ -86,6 +86,7 @@ PR review side effects (draft / pending reviews):
 >    asks to publish.
 > 5. For code-review feedback, default to inline anchored `comments[]` (not body-only summary), unless the user explicitly asks for PR-level summary feedback.
 > 6. In `body` and each inline comment body, any code/file/symbol reference must be a clickable source link (exact file + line/range on PR head SHA), not plain text.
+> 7. Fetch the current PR diff/patch for the target head SHA and verify every `line`/`side`, range, or `position` anchor is inside the intended diff hunk immediately before creating or submitting the review. Do not rely on full-file line numbers, stale patches, or memory.
 
 - Definition: a "pending review" is a PR review whose API `state` is `PENDING`. It is visible only to the reviewer who created it until submission (COMMENT/APPROVE/REQUEST_CHANGES), and it does not appear to the PR author as posted review comments while pending.
 - Creating a PENDING (draft) PR review requires the reviews API. Omit `event` in: `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews`
@@ -104,6 +105,7 @@ If explicitly asked to POST a batch as a draft (PENDING) review:
 - Create a single PR review in `PENDING` state by omitting `event` when calling: `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews`
 - Include all inline comments in the `comments` array in that same request.
 - Every inline comment must resolve to a valid diff anchor.
+- Fetch the current PR diff/patch immediately before posting and verify every anchor against the current hunk.
 - Prefer `line`/`side` anchoring over `position` (less error-prone):
   - Use `line` (the file line number on the right side) + `side: "RIGHT"`.
   - For left-side-only comments, use `side: "LEFT"` + the old-file line number.

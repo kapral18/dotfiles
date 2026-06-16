@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (60).
+%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (59).
 %% Skills → ~/.agents/skills/ (intent-routed SKILL.md). Shared hooks → ~/.agents/hooks/.
 %% ============================================================================
 flowchart TB
@@ -12,7 +12,6 @@ flowchart TB
         HC["hook_common.py (shared lib) · readonly_README.md (state model)"]:::hook
         SCx["session_context.py (sessionStart: inject verification prefix.txt;<br/>inject active topic spec; nudge named topic on shared branch;<br/>,ai-kb recall/remember reminder;<br/>named-topic warm-start: read-only ,ai-kb search → Relevant Learnings)"]:::hook
         WLx["worklog_recorder.py (afterShell/postToolUse/Failure/afterFileEdit)"]:::hook
-        PRG["gemini-pr-anchor-gate.sh (beforeShell: gh api pulls/.../reviews|comments)"]:::hook
         GG["gemini-git-gate.sh (beforeShell: git commit|push) — failClosed"]:::hook
     end
 
@@ -24,7 +23,7 @@ flowchart TB
     SCx -. "named-topic warm-start (read-only)" .-> KBDB
 
     subgraph CORE["Core workflow skills"]
-        S1["review/ (SKILL + references: judging_core [surface-agnostic engine:<br/>coverage, severity, gates, post-review 4-dim lens], local_changes,<br/>pr_common, pr_fix, pr_review, shared_rules)<br/>light-review/ (proportional-depth in-place audit; loads judging_core)"]:::skill
+        S1["review/ (SKILL + references: judging_core [surface-agnostic engine:<br/>coverage, severity, gates, post-review 4-dim lens], local_changes,<br/>pr_common, pr_fix, pr_review, shared_rules;<br/>PR review anchor verification is instruction-owned)<br/>light-review/ (proportional-depth in-place audit; loads judging_core)"]:::skill
         S2["git/ · github/ · worktrees/ · compose-pr/ · compose-issue/<br/>communication/ (centralized tone/style; referenced by other skills)"]:::skill
         S3["walkthrough/ · interview-me/ · research/ · standup/<br/>present-pr/ (+refs: authoring.md, template.html;<br/>review-readiness map + introduced-concepts primer<br/>+ fixed notes sidebars)"]:::skill
         S1 --> R1["exact_references/*.md"]:::ref
