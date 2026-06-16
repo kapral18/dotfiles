@@ -6,15 +6,22 @@
 
   HOW TO USE
   1. Copy this file to the OUTPUT DIR (alongside the generated nb-*.png images).
-  2. Replace every placeholder token and fill the beat blocks in each ACT.
-  3. Keep the 5-act spine. Keep "one primary medium per beat" (see authoring.md).
+  2. Replace every placeholder token and fill the concept primer, readiness map,
+     sidebars, and beat blocks in each ACT.
+  3. Keep the introduced-concepts primer + review-readiness map + 5-act spine.
+     Keep "one primary medium per beat" (see authoring.md).
   4. Images are referenced by RELATIVE filename (e.g. nb-overview.png) and must
      live in the same dir as this HTML. Do NOT base64-inline them.
   5. The act-rail labels can be ANY length — they wrap inside the left gutter.
-  6. Resize the scaffold first: duplicate/remove beats, cards, scorecards, and
-     ledger rows to match the authoring preflight. Do not leave unused examples.
+  6. Resize the scaffold first: duplicate/remove concept cards, readiness rows,
+     sidebar notes, beats, cards, scorecards, and ledger rows to match the preflight.
+     Do not leave unused examples.
 
   BEAT TYPES (each has an example below, copy the one you need):
+    - .concept-primer : separate business/domain concepts introduced by the PR
+    - .readiness-map  : mental model, layers, topology, line index, risks, handoff
+    - .concept-sidebar: fixed left navigation by domain/layer/concept + acts
+    - .notes-sidebar  : fixed right contextual notes tied to concept links
     - .beat-diagram   : a generated diagram is the hero (+ one caption line)
     - .codebeat       : a real diff is the hero (+ a narrow note column)
     - split codebeat  : optional; diagram gives context, diff remains load-bearing
@@ -44,6 +51,36 @@
   .narrow{max-width:780px}
 
   #progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--teal),var(--blue));z-index:60;transition:width .1s linear}
+
+  .concept-sidebar,.notes-sidebar{display:none}
+  @media(min-width:1320px){
+    .wrap{max-width:min(860px,calc(100vw - 640px));margin-left:300px;margin-right:320px}
+    .wrap.narrow{max-width:min(780px,calc(100vw - 640px))}
+    .concept-sidebar,.notes-sidebar{position:fixed;top:72px;bottom:24px;z-index:35;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
+    .concept-sidebar{left:24px;width:252px}
+    .notes-sidebar{right:24px;width:272px}
+    .side-kicker{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--teal)}
+    .concept-link{display:block;border:1px solid var(--line);border-radius:13px;background:rgba(15,22,48,.72);padding:12px 13px;color:var(--ink);box-shadow:0 16px 38px rgba(0,0,0,.25);transition:border-color .2s ease,background .2s ease,transform .2s ease}
+    .concept-link:hover{text-decoration:none;transform:translateX(2px);border-color:#2b6b88;background:rgba(18,27,58,.92)}
+    .concept-link.active{border-color:var(--teal);box-shadow:0 0 0 1px rgba(52,211,192,.18),0 18px 42px rgba(0,0,0,.32)}
+    .concept-domain,.concept-layer{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+    .concept-name{display:block;margin:4px 0;font-size:14.5px;line-height:1.25;font-weight:720}
+    .concept-layer{color:var(--amber)}
+    .story-nav{border-top:1px solid var(--line);margin-top:2px;padding-top:12px;display:flex;flex-direction:column;gap:8px}
+    .story-link{box-shadow:none;padding:9px 11px;background:rgba(15,22,48,.5)}
+    .story-link .concept-domain{color:var(--blue)}
+    .story-link.readiness-link .concept-domain{color:var(--teal)}
+    .story-link .concept-name{font-size:13.5px;margin-bottom:0}
+    .notes-sidebar{border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,rgba(18,27,58,.9),rgba(15,22,48,.86));padding:16px 16px 18px;box-shadow:0 22px 60px rgba(0,0,0,.35)}
+    .notes-title{margin:0;font-size:16px;font-weight:720;color:var(--ink)}
+    .notes-dek{margin:2px 0 6px;color:var(--muted);font-size:13px}
+    .note-card{display:none;border-top:1px solid var(--line);padding-top:14px;margin-top:4px}
+    .note-card.active{display:block}
+    .note-card h4{margin:0 0 7px;font-size:15px;color:var(--ink)}
+    .note-card p{margin:0 0 9px;color:var(--muted);font-size:13.5px}
+    .note-card .note-anchor{font-family:var(--mono);font-size:11.5px;color:#cdd6f7;background:rgba(255,255,255,.05);padding:5px 7px;border-radius:7px;display:inline-block}
+    body #rail{display:none}
+  }
 
   /* sticky act rail — dots in gutter; labels wrap inside the left gutter */
   #rail{position:fixed;left:20px;top:50%;transform:translateY(-50%);z-index:40;display:flex;flex-direction:column;gap:6px;opacity:0;pointer-events:none;transition:opacity .5s}
@@ -109,6 +146,53 @@
   .transition{padding:64px 0}
   .transition p{font-size:clamp(20px,2.6vw,30px);line-height:1.3;font-weight:600;color:var(--ink);max-width:880px;margin:0;letter-spacing:-.01em}
   .transition .dim{color:var(--muted);font-weight:500}
+
+  .concept-primer{padding-top:74px}
+  .concept-grid{display:grid;grid-template-columns:1fr;gap:16px;margin-top:24px}
+  .concept-card{border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,var(--panel),var(--panel2));padding:18px;position:relative;overflow:hidden}
+  .concept-card{scroll-margin-top:72px}
+  .concept-card::before{content:"";position:absolute;left:0;top:0;height:100%;width:3px;background:var(--accent,var(--teal))}
+  .concept-card:nth-child(2){--accent:var(--amber)}.concept-card:nth-child(3){--accent:var(--blue)}.concept-card:nth-child(4){--accent:var(--green)}
+  .concept-meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+  .concept-meta span{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);border-radius:999px;padding:4px 8px;color:var(--muted);background:rgba(255,255,255,.03)}
+  .concept-card h3{margin:0 0 10px;font-size:18px;line-height:1.25;color:var(--ink)}
+  .concept-card dl{margin:0;display:grid;gap:9px}
+  .concept-card dt{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent,var(--teal));margin:0}
+  .concept-card dd{margin:2px 0 0;color:var(--muted);font-size:14px}
+  .concept-card code{color:#cdd6f7;background:rgba(255,255,255,.05);padding:1px 5px;border-radius:5px;font-size:12.5px}
+
+  .readiness-map{padding-top:74px}
+  .map-panel{border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,var(--panel),var(--panel2));padding:18px;margin-top:18px;position:relative;overflow:hidden}
+  .map-panel::before{content:"";position:absolute;left:0;top:0;height:100%;width:3px;background:var(--accent,var(--teal))}
+  .map-panel h3{margin:0 0 12px;font-size:18px;color:var(--ink)}
+  .mental-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  @media(max-width:840px){.mental-grid{grid-template-columns:1fr}}
+  .mental-item{border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03);padding:13px 14px}
+  .mental-item .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);margin-bottom:4px}
+  .mental-item p{margin:0;color:var(--muted);font-size:14px}
+  .layer-stack{display:grid;gap:9px}
+  .layer-row{display:grid;grid-template-columns:130px 1fr 180px;gap:12px;align-items:start;border-top:1px solid var(--line);padding-top:10px}
+  .layer-row:first-child{border-top:none;padding-top:0}
+  @media(max-width:860px){.layer-row{grid-template-columns:1fr}}
+  .layer-name{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--amber)}
+  .layer-focus{color:var(--ink);font-size:14px}
+  .layer-files{font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .topology,.line-index{border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .topo-row,.line-row{display:grid;grid-template-columns:120px 1fr 180px;gap:14px;align-items:start;padding:13px 16px;border-top:1px solid var(--line)}
+  .topo-row:first-child,.line-row:first-child{border-top:none}
+  @media(max-width:860px){.topo-row,.line-row{grid-template-columns:1fr}}
+  .topo-role,.line-order{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--blue)}
+  .topo-main,.line-main{color:var(--ink);font-size:14px}
+  .topo-main small,.line-main small{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+  .topo-files,.line-anchor{font-family:var(--mono);font-size:12px;color:#cdd6f7}
+  .risk-grid,.handoff-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  @media(max-width:760px){.risk-grid,.handoff-grid{grid-template-columns:1fr}}
+  .risk-card,.handoff-card{border:1px solid var(--line);border-radius:13px;background:rgba(255,255,255,.03);padding:14px}
+  .risk-card h4,.handoff-card h4{margin:0 0 6px;font-size:15px;color:var(--ink)}
+  .risk-card p,.handoff-card p{margin:0;color:var(--muted);font-size:13.5px}
+  .risk-card .scope,.handoff-card .scope{display:inline-block;margin-top:8px;font-family:var(--mono);font-size:11.5px;color:#cdd6f7;background:rgba(255,255,255,.05);padding:4px 7px;border-radius:7px}
+  .footer-handoff{margin-top:22px}
+  .footer-handoff h3{margin:0 0 12px;font-size:18px;color:var(--ink)}
 
   .beat{padding:40px 0}
   .beat-diagram figure{margin:0;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--panel);box-shadow:0 24px 60px rgba(0,0,0,.4)}
@@ -201,6 +285,39 @@
 <body>
 <div id="progress"></div>
 
+<!-- LEFT CONCEPT SIDEBAR: concepts first, then story-section navigation. -->
+<aside id="concepts" class="concept-sidebar" aria-label="Presentation navigation">
+  <div class="side-kicker">Introduced concepts</div>
+  <a class="concept-link active" href="#concept-1" data-note="note-1"><span class="concept-domain">{{CONCEPT1_DOMAIN}}</span><span class="concept-name">{{CONCEPT1_NAME}}</span><span class="concept-layer">{{CONCEPT1_LAYER}}</span></a>
+  <a class="concept-link" href="#concept-2" data-note="note-2"><span class="concept-domain">{{CONCEPT2_DOMAIN}}</span><span class="concept-name">{{CONCEPT2_NAME}}</span><span class="concept-layer">{{CONCEPT2_LAYER}}</span></a>
+  <a class="concept-link" href="#concept-3" data-note="note-3"><span class="concept-domain">{{CONCEPT3_DOMAIN}}</span><span class="concept-name">{{CONCEPT3_NAME}}</span><span class="concept-layer">{{CONCEPT3_LAYER}}</span></a>
+  <a class="concept-link" href="#concept-4" data-note="note-4"><span class="concept-domain">{{CONCEPT4_DOMAIN}}</span><span class="concept-name">{{CONCEPT4_NAME}}</span><span class="concept-layer">{{CONCEPT4_LAYER}}</span></a>
+  <div class="story-nav" aria-label="Story sections">
+    <div class="side-kicker">Story sections</div>
+    <a class="concept-link story-link readiness-link" href="#readiness" data-note="note-ready"><span class="concept-domain">READY</span><span class="concept-name">{{READINESS_RAIL}}</span></a>
+    <a class="concept-link story-link" href="#act1" data-note="note-act1"><span class="concept-domain">ACT I</span><span class="concept-name">{{ACT1_RAIL}}</span></a>
+    <a class="concept-link story-link" href="#act2" data-note="note-act2"><span class="concept-domain">ACT II</span><span class="concept-name">{{ACT2_RAIL}}</span></a>
+    <a class="concept-link story-link" href="#act3" data-note="note-act3"><span class="concept-domain">ACT III</span><span class="concept-name">{{ACT3_RAIL}}</span></a>
+    <a class="concept-link story-link" href="#act4" data-note="note-act4"><span class="concept-domain">ACT IV</span><span class="concept-name">{{ACT4_RAIL}}</span></a>
+  </div>
+</aside>
+
+<!-- RIGHT NOTES SIDEBAR: extra explanation tied to the active concept. -->
+<aside id="notes" class="notes-sidebar" aria-label="Contextual notes">
+  <div class="side-kicker">Reviewer notes</div>
+  <h3 class="notes-title">{{NOTE_PANEL_TITLE}}</h3>
+  <p class="notes-dek">{{NOTE_PANEL_DEK}}</p>
+  <article class="note-card active" data-note-id="note-1"><h4>{{NOTE1_TITLE}}</h4><p>{{NOTE1_BODY}}</p><span class="note-anchor">{{NOTE1_ANCHOR}}</span></article>
+  <article class="note-card" data-note-id="note-2"><h4>{{NOTE2_TITLE}}</h4><p>{{NOTE2_BODY}}</p><span class="note-anchor">{{NOTE2_ANCHOR}}</span></article>
+  <article class="note-card" data-note-id="note-3"><h4>{{NOTE3_TITLE}}</h4><p>{{NOTE3_BODY}}</p><span class="note-anchor">{{NOTE3_ANCHOR}}</span></article>
+  <article class="note-card" data-note-id="note-4"><h4>{{NOTE4_TITLE}}</h4><p>{{NOTE4_BODY}}</p><span class="note-anchor">{{NOTE4_ANCHOR}}</span></article>
+  <article class="note-card" data-note-id="note-ready"><h4>{{READY_NOTE_TITLE}}</h4><p>{{READY_NOTE_BODY}}</p><span class="note-anchor">{{READY_NOTE_ANCHOR}}</span></article>
+  <article class="note-card" data-note-id="note-act1"><h4>{{ACT1_NOTE_TITLE}}</h4><p>{{ACT1_NOTE_BODY}}</p><span class="note-anchor">{{ACT1_NOTE_ANCHOR}}</span></article>
+  <article class="note-card" data-note-id="note-act2"><h4>{{ACT2_NOTE_TITLE}}</h4><p>{{ACT2_NOTE_BODY}}</p><span class="note-anchor">{{ACT2_NOTE_ANCHOR}}</span></article>
+  <article class="note-card" data-note-id="note-act3"><h4>{{ACT3_NOTE_TITLE}}</h4><p>{{ACT3_NOTE_BODY}}</p><span class="note-anchor">{{ACT3_NOTE_ANCHOR}}</span></article>
+  <article class="note-card" data-note-id="note-act4"><h4>{{ACT4_NOTE_TITLE}}</h4><p>{{ACT4_NOTE_BODY}}</p><span class="note-anchor">{{ACT4_NOTE_ANCHOR}}</span></article>
+</aside>
+
 <!-- ACT-RAIL: one <a> per act; labels may be any length (gutter-wrapped popovers). -->
 <nav id="rail" aria-label="Sections">
   <a href="#act1"><span class="rdot"></span><span class="rtxt">I · {{ACT1_RAIL}}</span></a>
@@ -238,6 +355,122 @@
   </div>
   <div class="scrollcue">scroll<div class="chev"></div></div>
 </header>
+
+<!-- =================== CONCEPT PRIMER — INTRODUCED BUSINESS/DOMAIN LAYERS =================== -->
+<section class="act wrap concept-primer" id="concepts-main">
+  <div class="reveal">
+    <div class="act-head"><span class="act-no">CONCEPTS</span><h2 class="act-title">{{CONCEPTS_TITLE}}</h2></div>
+    <p class="act-intro">{{CONCEPTS_INTRO}}</p>
+  </div>
+  <div class="concept-grid">
+    <article class="concept-card reveal" id="concept-1" data-concept-id="concept-1">
+      <div class="concept-meta"><span>{{CONCEPT1_DOMAIN}}</span><span>{{CONCEPT1_LAYER}}</span></div>
+      <h3>{{CONCEPT1_NAME}}</h3>
+      <dl>
+        <div><dt>What</dt><dd>{{CONCEPT1_WHAT}}</dd></div>
+        <div><dt>How this PR models it</dt><dd>{{CONCEPT1_HOW}}</dd></div>
+        <div><dt>Why reviewers care</dt><dd>{{CONCEPT1_WHY}}</dd></div>
+      </dl>
+    </article>
+    <article class="concept-card reveal" id="concept-2" data-concept-id="concept-2">
+      <div class="concept-meta"><span>{{CONCEPT2_DOMAIN}}</span><span>{{CONCEPT2_LAYER}}</span></div>
+      <h3>{{CONCEPT2_NAME}}</h3>
+      <dl>
+        <div><dt>What</dt><dd>{{CONCEPT2_WHAT}}</dd></div>
+        <div><dt>How this PR models it</dt><dd>{{CONCEPT2_HOW}}</dd></div>
+        <div><dt>Why reviewers care</dt><dd>{{CONCEPT2_WHY}}</dd></div>
+      </dl>
+    </article>
+    <article class="concept-card reveal" id="concept-3" data-concept-id="concept-3">
+      <div class="concept-meta"><span>{{CONCEPT3_DOMAIN}}</span><span>{{CONCEPT3_LAYER}}</span></div>
+      <h3>{{CONCEPT3_NAME}}</h3>
+      <dl>
+        <div><dt>What</dt><dd>{{CONCEPT3_WHAT}}</dd></div>
+        <div><dt>How this PR models it</dt><dd>{{CONCEPT3_HOW}}</dd></div>
+        <div><dt>Why reviewers care</dt><dd>{{CONCEPT3_WHY}}</dd></div>
+      </dl>
+    </article>
+    <article class="concept-card reveal" id="concept-4" data-concept-id="concept-4">
+      <div class="concept-meta"><span>{{CONCEPT4_DOMAIN}}</span><span>{{CONCEPT4_LAYER}}</span></div>
+      <h3>{{CONCEPT4_NAME}}</h3>
+      <dl>
+        <div><dt>What</dt><dd>{{CONCEPT4_WHAT}}</dd></div>
+        <div><dt>How this PR models it</dt><dd>{{CONCEPT4_HOW}}</dd></div>
+        <div><dt>Why reviewers care</dt><dd>{{CONCEPT4_WHY}}</dd></div>
+      </dl>
+    </article>
+  </div>
+</section>
+
+<!-- =================== REVIEW READINESS MAP — OPEN GITHUB WITH CONFIDENCE =================== -->
+<section class="act wrap readiness-map" id="readiness">
+  <div class="reveal">
+    <div class="act-head"><span class="act-no">READY</span><h2 class="act-title">{{READINESS_TITLE}}</h2></div>
+    <p class="act-intro">{{READINESS_INTRO}}</p>
+  </div>
+
+  <div class="map-panel reveal">
+    <h3>{{MENTAL_MODEL_TITLE}}</h3>
+    <div class="mental-grid">
+      <div class="mental-item"><div class="k">Before</div><p>{{MENTAL_BEFORE}}</p></div>
+      <div class="mental-item"><div class="k">After</div><p>{{MENTAL_AFTER}}</p></div>
+      <div class="mental-item"><div class="k">Why now</div><p>{{MENTAL_WHY_NOW}}</p></div>
+      <div class="mental-item"><div class="k">Review posture</div><p>{{MENTAL_REVIEW_GOAL}}</p></div>
+    </div>
+  </div>
+
+  <div class="map-panel reveal" style="--accent:var(--amber)">
+    <h3>{{LAYERS_TITLE}}</h3>
+    <div class="layer-stack">
+      <div class="layer-row"><div class="layer-name">{{LAYER1_NAME}}</div><div class="layer-focus">{{LAYER1_FOCUS}}</div><div class="layer-files">{{LAYER1_FILES}}</div></div>
+      <div class="layer-row"><div class="layer-name">{{LAYER2_NAME}}</div><div class="layer-focus">{{LAYER2_FOCUS}}</div><div class="layer-files">{{LAYER2_FILES}}</div></div>
+      <div class="layer-row"><div class="layer-name">{{LAYER3_NAME}}</div><div class="layer-focus">{{LAYER3_FOCUS}}</div><div class="layer-files">{{LAYER3_FILES}}</div></div>
+      <div class="layer-row"><div class="layer-name">{{LAYER4_NAME}}</div><div class="layer-focus">{{LAYER4_FOCUS}}</div><div class="layer-files">{{LAYER4_FILES}}</div></div>
+      <div class="layer-row"><div class="layer-name">{{LAYER5_NAME}}</div><div class="layer-focus">{{LAYER5_FOCUS}}</div><div class="layer-files">{{LAYER5_FILES}}</div></div>
+      <div class="layer-row"><div class="layer-name">{{LAYER6_NAME}}</div><div class="layer-focus">{{LAYER6_FOCUS}}</div><div class="layer-files">{{LAYER6_FILES}}</div></div>
+    </div>
+  </div>
+
+  <div class="map-panel reveal" style="--accent:var(--blue)">
+    <h3>{{TOPOLOGY_TITLE}}</h3>
+    <div class="topology">
+      <div class="topo-row"><div class="topo-role">{{TOPO1_ROLE}}</div><div class="topo-main">{{TOPO1_GROUP}}<small>{{TOPO1_WHY}}</small></div><div class="topo-files">{{TOPO1_FILES}}</div></div>
+      <div class="topo-row"><div class="topo-role">{{TOPO2_ROLE}}</div><div class="topo-main">{{TOPO2_GROUP}}<small>{{TOPO2_WHY}}</small></div><div class="topo-files">{{TOPO2_FILES}}</div></div>
+      <div class="topo-row"><div class="topo-role">{{TOPO3_ROLE}}</div><div class="topo-main">{{TOPO3_GROUP}}<small>{{TOPO3_WHY}}</small></div><div class="topo-files">{{TOPO3_FILES}}</div></div>
+      <div class="topo-row"><div class="topo-role">{{TOPO4_ROLE}}</div><div class="topo-main">{{TOPO4_GROUP}}<small>{{TOPO4_WHY}}</small></div><div class="topo-files">{{TOPO4_FILES}}</div></div>
+    </div>
+  </div>
+
+  <div class="map-panel reveal">
+    <h3>{{LINE_INDEX_TITLE}}</h3>
+    <div class="line-index">
+      <div class="line-row"><div class="line-order">{{LINE1_ORDER}}</div><div class="line-main">{{LINE1_MECHANISM}}<small>{{LINE1_WHY}}</small></div><div class="line-anchor">{{LINE1_SOURCE}}</div></div>
+      <div class="line-row"><div class="line-order">{{LINE2_ORDER}}</div><div class="line-main">{{LINE2_MECHANISM}}<small>{{LINE2_WHY}}</small></div><div class="line-anchor">{{LINE2_SOURCE}}</div></div>
+      <div class="line-row"><div class="line-order">{{LINE3_ORDER}}</div><div class="line-main">{{LINE3_MECHANISM}}<small>{{LINE3_WHY}}</small></div><div class="line-anchor">{{LINE3_SOURCE}}</div></div>
+      <div class="line-row"><div class="line-order">{{LINE4_ORDER}}</div><div class="line-main">{{LINE4_MECHANISM}}<small>{{LINE4_WHY}}</small></div><div class="line-anchor">{{LINE4_SOURCE}}</div></div>
+    </div>
+  </div>
+
+  <div class="map-panel reveal" style="--accent:var(--red)">
+    <h3>{{RISK_MAP_TITLE}}</h3>
+    <div class="risk-grid">
+      <div class="risk-card"><h4>{{RISK1_AREA}}</h4><p>{{RISK1_CHECK}}</p><span class="scope">{{RISK1_SCOPE}}</span></div>
+      <div class="risk-card"><h4>{{RISK2_AREA}}</h4><p>{{RISK2_CHECK}}</p><span class="scope">{{RISK2_SCOPE}}</span></div>
+      <div class="risk-card"><h4>{{RISK3_AREA}}</h4><p>{{RISK3_CHECK}}</p><span class="scope">{{RISK3_SCOPE}}</span></div>
+      <div class="risk-card"><h4>{{RISK4_AREA}}</h4><p>{{RISK4_CHECK}}</p><span class="scope">{{RISK4_SCOPE}}</span></div>
+    </div>
+  </div>
+
+  <div class="map-panel reveal" style="--accent:var(--green)">
+    <h3>{{HANDOFF_TITLE}}</h3>
+    <div class="handoff-grid">
+      <div class="handoff-card"><h4>{{HANDOFF1_STEP}}</h4><p>{{HANDOFF1_TARGET}}</p><span class="scope">{{HANDOFF1_WHY}}</span></div>
+      <div class="handoff-card"><h4>{{HANDOFF2_STEP}}</h4><p>{{HANDOFF2_TARGET}}</p><span class="scope">{{HANDOFF2_WHY}}</span></div>
+      <div class="handoff-card"><h4>{{HANDOFF3_STEP}}</h4><p>{{HANDOFF3_TARGET}}</p><span class="scope">{{HANDOFF3_WHY}}</span></div>
+      <div class="handoff-card"><h4>{{HANDOFF4_STEP}}</h4><p>{{HANDOFF4_TARGET}}</p><span class="scope">{{HANDOFF4_WHY}}</span></div>
+    </div>
+  </div>
+</section>
 
 <!-- =================== ACT I — GOAL & THE BET =================== -->
 <section class="act wrap" id="act1">
@@ -345,6 +578,15 @@
     <div class="card c-blue reveal"><div class="cnum">{{SC3_TAG}}</div><h5>{{SC3_TITLE}}</h5><p>{{SC3_BODY}}</p></div>
     <div class="card c-green reveal"><div class="cnum">{{SC4_TAG}}</div><h5>{{SC4_TITLE}}</h5><p>{{SC4_BODY}}</p></div>
   </div>
+  <div class="footer-handoff reveal">
+   <h3>{{HANDOFF_TITLE}}</h3>
+   <div class="handoff-grid">
+     <div class="handoff-card"><h4>{{HANDOFF1_STEP}}</h4><p>{{HANDOFF1_TARGET}}</p><span class="scope">{{HANDOFF1_WHY}}</span></div>
+     <div class="handoff-card"><h4>{{HANDOFF2_STEP}}</h4><p>{{HANDOFF2_TARGET}}</p><span class="scope">{{HANDOFF2_WHY}}</span></div>
+     <div class="handoff-card"><h4>{{HANDOFF3_STEP}}</h4><p>{{HANDOFF3_TARGET}}</p><span class="scope">{{HANDOFF3_WHY}}</span></div>
+     <div class="handoff-card"><h4>{{HANDOFF4_STEP}}</h4><p>{{HANDOFF4_TARGET}}</p><span class="scope">{{HANDOFF4_WHY}}</span></div>
+   </div>
+  </div>
   <div class="ftrow">
     <div class="legend"><span><i class="sw-del"></i> removed</span><span><i class="sw-add"></i> added</span></div>
     <div class="srcnote">{{FOOTER_SOURCE_NOTE}}</div>
@@ -363,10 +605,67 @@
 
   var rail=document.getElementById('rail');
   var links={};document.querySelectorAll('#rail a').forEach(function(a){links[a.getAttribute('href').slice(1)]=a;});
+  var storyLinks={};document.querySelectorAll('#concepts .story-link').forEach(function(a){storyLinks[a.getAttribute('href').slice(1)]=a;});
+  var noteCards=[].slice.call(document.querySelectorAll('#notes [data-note-id]'));
   var hero=document.querySelector('header.hero');
   new IntersectionObserver(function(es){es.forEach(function(e){rail.classList.toggle('show',!e.isIntersecting);});},{threshold:.2}).observe(hero);
-  var actIO=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){Object.values(links).forEach(function(l){l.classList.remove('active');});var id=e.target.id;if(links[id])links[id].classList.add('active');}});},{rootMargin:'-45% 0px -45% 0px'});
-  ['act1','act2','act3','act4'].forEach(function(id){var el=document.getElementById(id);if(el)actIO.observe(el);});
+  function setNote(note){
+    noteCards.forEach(function(card){card.classList.toggle('active',card.getAttribute('data-note-id')===note);});
+  }
+  function setStorySection(id){
+    Object.values(links).forEach(function(l){l.classList.remove('active');});
+    Object.values(storyLinks).forEach(function(l){l.classList.remove('active');});
+    if(links[id])links[id].classList.add('active');
+    if(storyLinks[id]){
+      storyLinks[id].classList.add('active');
+      setNote(storyLinks[id].getAttribute('data-note'));
+    }
+  }
+  var actIO=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting)setStorySection(e.target.id);});},{rootMargin:'-20% 0px -70% 0px'});
+  ['readiness','act1','act2','act3','act4'].forEach(function(id){var el=document.getElementById(id);if(el)actIO.observe(el);});
+  var conceptLinks=[].slice.call(document.querySelectorAll('#concepts [data-note]:not(.story-link)'));
+  var conceptLinks=[].slice.call(document.querySelectorAll('#concepts [data-note]:not(.story-link)'));
+  var conceptLockUntil=0;
+  var visibleConcepts={};
+  function setConcept(id,lockMs){
+    if(lockMs)conceptLockUntil=Date.now()+lockMs;
+    conceptLinks.forEach(function(a){
+      var active=a.getAttribute('href')==='#'+id;
+      a.classList.toggle('active',active);
+      if(active){
+        setNote(a.getAttribute('data-note'));
+      }
+    });
+  }
+  conceptLinks.forEach(function(a){
+    a.addEventListener('mouseenter',function(){setConcept(a.getAttribute('href').slice(1),800);});
+    a.addEventListener('focus',function(){setConcept(a.getAttribute('href').slice(1),800);});
+    a.addEventListener('click',function(){setConcept(a.getAttribute('href').slice(1),1500);});
+  });
+  Object.keys(storyLinks).forEach(function(id){
+    var a=storyLinks[id];
+    a.addEventListener('mouseenter',function(){setNote(a.getAttribute('data-note'));});
+    a.addEventListener('focus',function(){setNote(a.getAttribute('data-note'));});
+    a.addEventListener('click',function(){setStorySection(id);});
+  });
+  var conceptIO=new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      var id=e.target.getAttribute('data-concept-id');
+      if(e.isIntersecting)visibleConcepts[id]=e.boundingClientRect;
+      else delete visibleConcepts[id];
+    });
+    if(Date.now()<conceptLockUntil)return;
+    var center=window.innerHeight*.35;
+    var best=Object.keys(visibleConcepts).sort(function(a,b){
+      var ra=visibleConcepts[a],rb=visibleConcepts[b];
+      var da=Math.abs(ra.top-center),db=Math.abs(rb.top-center);
+      if(da!==db)return da-db;
+      if(ra.top!==rb.top)return ra.top-rb.top;
+      return ra.left-rb.left;
+    })[0];
+    if(best)setConcept(best);
+  },{rootMargin:'-35% 0px -45% 0px'});
+  document.querySelectorAll('[data-concept-id]').forEach(function(el){conceptIO.observe(el);});
 })();
 </script>
 </body>

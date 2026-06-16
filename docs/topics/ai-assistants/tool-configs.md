@@ -22,15 +22,15 @@ Cursor CLI is the primary interactive assistant harness. Its user-level hooks (s
 
 ### Tmux agent prompt wrap
 
-When running an AI coding agent (`claude`, `cursor-agent`, or `pi`) inside tmux, `Alt-Enter` is intercepted to prepend a calibrated verification scaffold to your prompt before submitting.
+When running an AI coding agent (`claude`, `cursor-agent`, `pi`, or `copilot`) inside tmux, `Alt-Enter` is intercepted to prepend a calibrated verification scaffold and leave the prompt editable.
 
-- **Binding:** `Alt-Enter` (submits the wrapped prompt)
+- **Binding:** `Alt-Enter` (inserts the wrapped prompt)
 - **Toggle:** `prefix` + `W` (toggles wrapping on/off for the session)
 - **Prefix text:** [`home/dot_config/exact_tmux/agent_prompts/prefix.txt`](../../../home/dot_config/exact_tmux/agent_prompts/prefix.txt)
 
-Plain `Enter` is never touched. `Alt-Enter` is passed through untouched in non-agent panes or when the toggle is OFF.
+Plain `Enter` is never touched. Press it when the wrapped prompt is ready to send. `Alt-Enter` is passed through untouched in non-agent panes or when the toggle is OFF.
 
-The same `prefix.txt` is **also injected automatically at session start** for all three harnesses (so the discipline is present without `Alt-Enter`): `session_context.py` injects it at `sessionStart` for `cursor-agent` and `claude`, and `ai-kb-recall.ts` injects it at the first `before_agent_start` for `pi` (see [Agent memory](knowledge-base.md)). The `Alt-Enter` wrap remains the way to prepend it to a specific prompt as a direct user message (stronger framing than session-level context).
+The same `prefix.txt` is **also injected automatically at session start** (so the discipline is present without `Alt-Enter`): `session_context.py` injects it at `SessionStart` for hook-based harnesses such as `cursor-agent`, `claude`, and `copilot`, and `ai-kb-recall.ts` injects it at the first `before_agent_start` for `pi` (see [Agent memory](knowledge-base.md)). The `Alt-Enter` wrap remains the way to prepend it to a specific prompt as a direct user message (stronger framing than session-level context).
 
 ## Profile-based file merging
 

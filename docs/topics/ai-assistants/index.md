@@ -115,8 +115,14 @@ PR/issue composition hygiene:
 Manual `present-pr` hygiene:
 
 - Before filling the HTML template, write a compact authoring preflight: thesis, audience, full file/hunk role ledger, Act II causal chain, source anchors, medium choices, image list, and verification checklist.
-- The template scaffold is resized to the preflight, not treated as a quota; every changed file/group appears exactly once in Act IV with `primary`, `supporting`, `guardrail`, or `cleanup` role semantics.
-- Run cheap static checks before Playwriter: no real placeholder tokens, all referenced `nb-*` images exist, code snippets are escaped, and no beat repeats the same idea across prose, image, and card.
+- Include an introduced-concepts inventory and review-readiness map in that preflight: mental model, layered explanation, topology groups, load-bearing line index, invariants/non-changes, risk-attention map, GitHub handoff order, source anchors, sidebar labels, and chosen teaching media.
+- Reuse prior `/tmp/specs` or `/tmp/present-pr` evidence when the PR/head SHA still matches; refresh only PR metadata/comments that can change.
+- Default to one generated image for the Act I contrast. Use deterministic HTML/diff beats for exact labels, symbol lists, and code-line insights; cut label-heavy generated images after one bad regeneration.
+- The template scaffold is resized to the preflight, not treated as a quota; every introduced concept appears in the concept primer and left sidebar, the readiness map plus Act I-IV remain reachable from the fixed sidebar or fallback rail, every sidebar note follows a concept or readiness/story link, and every changed file/group appears exactly once in Act IV with `primary`, `supporting`, `guardrail`, or `cleanup` role semantics.
+- The page must end with an ordered GitHub handoff: primary hunks first, guardrails/tests second, supporting/mechanical files last.
+- Concept cards stay in a vertical anchor stack; every concept sidebar block must visibly navigate to its own card and activate its matching note.
+- Run cheap static checks before Playwriter: no real `{{TOKEN}}` placeholders, all referenced `nb-*` images exist with no unreferenced `nb-*` leftovers, code snippets are escaped, concept/sidebar references are consistent, and no beat repeats the same idea across prose, image, and card.
+- Keep browser verification compact: Playwriter should emit JSON assertions for page/console errors, image loads, concept sidebar/right notes geometry, act-rail geometry on narrower desktop widths, concept-note interactions, and reveal counts; use snapshots only on failure or tight filters.
 
 Always-on rule source:
 

@@ -93,10 +93,10 @@ A user crontab is installed (replacing the existing one) from a repo-managed fil
 - Crontab contents: [`home/crontab`](../../../home/crontab)
 - Hook: [`home/.chezmoiscripts/run_onchange_after_05-install-crontab.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_05-install-crontab.sh.tmpl)
 
-The hook is a thin wrapper that runs `crontab "$CHEZMOI_SOURCE_DIR/crontab"`; the hash trigger means it only re-installs when the file changes. The shipped entry kills the macOS git `fsmonitor--daemon` every 5 minutes, working around the daemon's tendency to wedge or pin CPU on large repos.
+The hook is a thin wrapper that runs `crontab "$CHEZMOI_SOURCE_DIR/crontab"`; the hash trigger means it only re-installs when the file changes. The shipped entry kills Git `fsmonitor--daemon` processes every 5 minutes, working around the daemon's tendency to wedge or pin CPU on large repos. The pattern intentionally matches `git-core/git[ ]fsmonitor--daemon` so both Apple Git and Homebrew Git daemon paths are covered without matching the cleanup command itself.
 
 ```cron
-*/5 * * * * /usr/bin/pkill -f ".../git-core/git fsmonitor--daemon" >/dev/null 2>&1
+*/5 * * * * /usr/bin/pkill -f "git-core/git[ ]fsmonitor--daemon" >/dev/null 2>&1
 ```
 
 Edit [`home/crontab`](../../../home/crontab) and `chezmoi apply` to change the schedule, or run `crontab -l` to inspect the installed table. To opt out, remove the hook script and clear the entry with `crontab -e`.

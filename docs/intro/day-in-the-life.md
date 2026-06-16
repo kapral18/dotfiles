@@ -59,7 +59,7 @@ pi
 claude
 ```
 
-Per-tool configuration (auth, models, MCP, profile merging) lives in [Tool configs](../topics/ai-assistants/tool-configs.md). When you run `claude`, `cursor-agent`, or `pi` inside tmux, `Alt-Enter` prepends a calibrated verification scaffold to your prompt before submitting (toggle with `prefix` + `W`); plain `Enter` is never touched.
+Per-tool configuration (auth, models, MCP, profile merging) lives in [Tool configs](../topics/ai-assistants/tool-configs.md). When you run `claude`, `cursor-agent`, `pi`, or `copilot` inside tmux, `Alt-Enter` prepends a calibrated verification scaffold and leaves the prompt editable (toggle with `prefix` + `W`); plain `Enter` is never touched.
 
 For larger, multi-step work, hand off to **Ralph** — a planner → executor → reviewer → re-reviewer loop with self-healing — with `,ralph go` (or `alt-A` from the GitHub picker). See [Ralph orchestrator](../topics/ai-assistants/ralph.md).
 

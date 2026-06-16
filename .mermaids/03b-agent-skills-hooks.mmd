@@ -26,7 +26,7 @@ flowchart TB
     subgraph CORE["Core workflow skills"]
         S1["review/ (SKILL + references: judging_core [surface-agnostic engine:<br/>coverage, severity, gates, post-review 4-dim lens], local_changes,<br/>pr_common, pr_fix, pr_review, shared_rules)<br/>light-review/ (proportional-depth in-place audit; loads judging_core)"]:::skill
         S2["git/ · github/ · worktrees/ · compose-pr/ · compose-issue/<br/>communication/ (centralized tone/style; referenced by other skills)"]:::skill
-        S3["walkthrough/ · interview-me/ · research/ · standup/<br/>present-pr/ (+refs: authoring.md, template.html)"]:::skill
+        S3["walkthrough/ · interview-me/ · research/ · standup/<br/>present-pr/ (+refs: authoring.md, template.html;<br/>review-readiness map + introduced-concepts primer<br/>+ fixed notes sidebars)"]:::skill
         S1 --> R1["exact_references/*.md"]:::ref
     end
 
