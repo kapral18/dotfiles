@@ -5,7 +5,7 @@
 %%     (S0), cross-cutting flows (S1/S2/S3), and a reverse index (SR) that maps
 %%     any file to its concept, blast radius, and co-edit set.
 %%   CATALOG (drill-down) — how the system is LAID OUT: 00-13 enumerate every
-%%     one of the 1016 tracked files by exact chezmoi source path.
+%%     one of the 1028 tracked files by exact chezmoi source path.
 %% `home/` is chezmoi source deployed to $HOME; scripts/tools/website/docs are
 %% repo-side (NOT deployed). Each node → a deeper .mmd.
 %% ============================================================================
@@ -54,6 +54,6 @@ graph TD
         K1["exact_=managed dir · dot_=leading '.' · readonly_=r--r--r--<br/>executable_=+x · private_=0600 · empty_=keep-if-empty<br/>symlink_=symlink · .tmpl=Go-template · .chezmoiignore=skip"]:::data
     end
 
-    subgraph COUNTS["file census (1016 total)"]
-        C1["nvim 140 · tmux 119 · Alfred 115 (86 png) · bin 77<br/>docs 67 · agents 60 + runtime profiles 10 · ralph-tui 33 · chezmoiscripts 30<br/>scripts 45 · fish 58 · website 14 · home-root 33 · rest"]:::repo
+    subgraph COUNTS["file census (1028 total)"]
+        C1["nvim 140 · tmux 119 · Alfred 115 (86 png) · bin 77<br/>docs 67 · agents 62 + runtime profiles 31 · ralph-tui 33 · chezmoiscripts 30<br/>scripts 45 · fish 58 · website 14 · home-root 33 · rest"]:::repo
     end

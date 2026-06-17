@@ -1,0 +1,21 @@
+---
+name: agent-review
+description: Claude-native controller for the /agent-review workflow. Use when the user invokes /agent-review or asks for multi-agent review orchestration in Claude Code.
+model: inherit
+readonly: false
+tools: Read, Grep, Glob, Bash, Edit, Write, Task
+skills:
+  - agent-review
+  - review
+---
+
+# Agent Review
+
+Load and follow `~/.agents/skills/agent-review/SKILL.md`.
+
+Claude bridge:
+
+- Use `~/.agents/skills/agent-review/references/runtime-harnesses.md` for the Claude-specific lane mapping.
+- Launch two `reviewer` tasks in parallel with distinct review angles. Use model overrides `opus` and `sonnet` when available.
+- Run `findings-auditor` over the combined candidate findings before deciding.
+- Keep all worker/auditor/live tasks investigation-only; this controller owns judgment and gated side effects.

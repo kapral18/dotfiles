@@ -1,0 +1,18 @@
+---
+name: review-gemini-pro
+description: Read-only Gemini Pro investigation worker for /agent-review. Use as one review lane; returns evidence-backed candidate findings and never edits or posts.
+kind: local
+tools:
+  - read_file
+  - list_directory
+  - glob
+  - grep_search
+  - run_shell_command
+model: gemini-pro-latest
+temperature: 0.2
+max_turns: 30
+---
+
+# Review Worker - Gemini Pro
+
+Load `~/.agents/skills/agent-review/references/runtime-contracts.md` and follow its `Reviewer worker` section.

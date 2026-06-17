@@ -10,18 +10,21 @@ Use when continuing a review, addressing review threads, or rechecking PR-relate
 
 ## Multi-agent topology
 
-`/agent-review` is the orchestration entrypoint. Cursor and Copilot also expose matching runtime agent profiles (`~/.cursor/agents/agent-review.md`, `~/.copilot/agents/agent-review.agent.md`) that load the same skill:
+`/agent-review` is the orchestration entrypoint. Cursor, Copilot, Claude, Codex, Gemini, and Amp bridge it through their native isolation mechanisms where available:
 
-1. The controller resolves PR/local mode, role, base context, and scope.
-2. Two read-only reviewer workers run in parallel:
-   - GPT lane: Cursor `gpt-5.5-extra-high`; Copilot `gpt-5.5` with `effortLevel: xhigh`; Pi `openrouter/openai/gpt-5.5:xhigh`.
-   - Opus lane: Cursor `claude-opus-4-8-xhigh` (non-thinking); Copilot `claude-opus-4.8` with `effortLevel: xhigh`; Pi `openrouter/anthropic/claude-opus-4.8:off`.
+1. The controller resolves the route and scope packet: PR/local mode, role, target diff/PR/thread set, base branch, user constraints, and expected output.
+2. Two read-only reviewer workers run in parallel when the harness supports it:
+   - Cursor/Copilot use the GPT and Opus lanes.
+   - Claude uses `reviewer` twice through `Task` with Claude model overrides.
+   - Codex uses `spawn_agent` roles and runs two `review-worker` agents with distinct angles.
+   - Gemini uses `review-gemini-pro` and `review-gemini-flash`.
+   - Amp uses two generic `Task` subagents with the shared worker contract.
 3. `findings-auditor` audits the reviewer outputs before any action. It is an investigation agent: it flags redundancy, verbosity, semantic + logical duplication, and gaps in the candidate finding set.
 4. The controller aggregates all three investigation outputs, then judges what to fix or draft through the review skill's dedup/truth filter. Only the controller acts.
 
-Model names are per-runtime. Cursor's `gpt-5.5-extra-high` / `claude-opus-4-8-xhigh` IDs are not Copilot IDs; Copilot uses `gpt-5.5` / `claude-opus-4.8` plus `effortLevel: xhigh`.
+Model names and subagent mechanisms are per-runtime. Cursor's `gpt-5.5-extra-high` / `claude-opus-4-8-xhigh` IDs are not Copilot IDs; Copilot uses `gpt-5.5` / `claude-opus-4.8` plus `effortLevel: xhigh`. Codex and Amp do not have a Claude Opus lane in the verified local interface, so they preserve the two-worker isolation and distinct review angles rather than exact model parity. Gemini has native subagents but they cannot call other subagents, so the main Gemini session remains the controller.
 
-The shared `review` skill stays methodology-focused; the fan-out procedure lives in the controller agent profiles. Worker profiles are intentionally read-only and recursion-safe. They load the review skill for methodology but do not launch further subagents; only the controller edits files, drafts public payloads, or touches GitHub after the normal gates.
+The controller does not load or run the full review methodology before fan-out. Worker profiles are intentionally read-only and recursion-safe; they load the review skill for methodology in isolated contexts and return candidate findings. The controller only routes, fans out, aggregates, filters, and acts after the normal gates.
 
 `live-ui-review` is separate and manual-only. Use it only when the user explicitly asks for live UI/runtime comparison, such as checking a PR deployment against the main/base deployment. It must ask whether the PR/head and main/base instances are ready and wait for an exact `go` before any Playwriter/browser probing. Its output is another evidence input for the controller, not a decision or side effect.
 

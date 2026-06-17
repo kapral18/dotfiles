@@ -5,49 +5,33 @@ description: Agentic review orchestration that reuses the review skill's methodo
 
 # Agent Review
 
-Orchestrate the review skill through investigation-only subagents, then aggregate before any side effect. This skill is a new orchestration surface; the existing `review` skill and its reference files remain the source-of-truth methodology and must not be edited for this flow.
+This is the controller contract for `/agent-review`. The controller routes, delegates, aggregates, judges, and performs gated side effects; the substantive review work happens in isolated reviewer workers that load the shared `review` skill themselves.
 
-## Source material
+Do not mutate the existing `review` skill or its references for this flow. They remain the source-of-truth methodology for worker investigation and post-aggregation gates.
 
-Read these files as common review base:
+## Controller boundary
 
-- `~/.agents/skills/review/SKILL.md` for routing: PR review, PR fix, local changes.
-- `~/.agents/skills/review/references/judging_core.md` for truth validation, state-machine/deletion/history gates, coverage, severity, and the four-dimension lens.
-- `~/.agents/skills/review/references/shared_rules.md` for read-only probes, base context, SCSI, CI coverage, draft style, verdict, persistence, and posting boundaries.
-- For PR modes, `~/.agents/skills/review/references/pr_common.md`.
-- The selected mode file: `local_changes.md`, `pr_review.md`, or `pr_fix.md`.
+The controller owns:
 
-## Dissect the review skill by side-effect boundary
+- route and scope discovery: local changes, PR review, or PR fix; PR number or diff range; base branch; staged/unstaged state; thread IDs; user constraints; expected output shape
+- launching the two reviewer workers and the findings auditor
+- aggregating worker outputs, optional `live-ui-review` evidence, and audit output
+- judging kept/dropped findings after aggregation
+- applying fixes, drafting payloads, or touching GitHub only after the relevant `review`/`github`/`git` gates
 
-Subagents may use only investigation-safe parts of the review methodology:
+The controller must not load or run the full `review` skill before fan-out. It uses the user request and read-only target metadata to build the scope packet. After workers return, it may consult only the minimum relevant review references for deduplication, severity, and side-effect gates; it must not rerun the coverage checklist, base-context investigation, or worker review analysis.
 
-- read-only routing and scope discovery (`git status`, diffs, PR metadata, threads, references, CI/check metadata)
-- base-context discovery (SCSI when available, `git show <base>:<path>`, local source reads)
-- evidence gathering and falsification (`/tmp` repros, state-machine harnesses under `/tmp`, non-mutating test/probe commands)
-- deletion-safety and historical-rationale investigation (`rg`, `git log`, `git blame`, read-only PR/issue views)
-- candidate finding construction using the coverage checklist and severity definitions
-- candidate comment/fix suggestions as proposals only
-- four-dimension findings audit over candidate findings, or over a named fix diff when the controller explicitly supplies one
-- manual live UI/runtime comparison evidence from `live-ui-review` when the user explicitly requested it
+Reviewer workers own the full investigation methodology. Their shared runtime contract is `~/.agents/skills/agent-review/references/runtime-contracts.md`. They load the `review` skill, `judging_core.md`, `shared_rules.md`, and the selected mode file inside their own contexts; for PR modes they also load `pr_common.md`. Workers and auditors return evidence and candidate findings only; they never edit, post, resolve, commit, push, or decide what should be fixed/commented on.
 
-Subagents must not use action/side-effect parts of the review methodology:
-
-- editing files, applying fixes, resolving hygiene findings, or re-gating after their own edits
-- posting, submitting reviews, replying, resolving threads, labeling, committing, pushing, or changing GitHub state
-- deciding what should be fixed, commented, resolved, approved, or requested
-
-Only the controller running this skill may decide and perform side effects, and only after aggregating the investigation outputs and following the relevant `review`/`github`/`git` gates.
+For runtime-specific worker names and fallbacks, read `~/.agents/skills/agent-review/references/runtime-harnesses.md`. Use the best supported native mechanism for the current harness; never invent a custom-agent layer the harness does not expose.
 
 ## Default orchestration
 
-1. **Route and scope.** Use the `review` router read-only to choose local changes, PR review, or PR fix. Build a scope packet: mode, role, PR number or diff range, base branch, staged/unstaged state, thread IDs, user constraints, and expected output shape.
-2. **Launch two investigation reviewers in parallel.**
-   - GPT lane: `review-gpt-5-5-extra-high`.
-   - Opus lane: `review-opus-4-8-xhigh-non-thinking`.
-   Give each a distinct angle chosen from the actual change: correctness/regressions, tests/validation, simplicity/maintainability, types/API contracts, security, performance, deletion-safety, or state-machine behavior.
+1. **Route and scope.** Build a scope packet: mode (`local_changes.md`, `pr_review.md`, or `pr_fix.md`), role, PR number or diff range, base branch, staged/unstaged state, thread IDs, user constraints, and expected output shape. Do not duplicate worker review analysis in the controller.
+2. **Launch two investigation reviewers in parallel.** Use the runtime's supported worker lanes from `runtime-harnesses.md`. Give each the scope packet and a distinct angle chosen from the actual change: correctness/regressions, tests/validation, simplicity/maintainability, types/API contracts, security, performance, deletion-safety, or state-machine behavior. The workers load and apply the review methodology.
 3. **Run findings audit on candidate findings.** After both reviewers finish, run `findings-auditor` over their candidate findings. It audits the finding set for redundancy, verbosity, semantic + logical duplication, and gaps. It is still investigation, not a decision.
 4. **Aggregate.** Combine GPT reviewer output, Opus reviewer output, any manually supplied `live-ui-review` evidence, and the findings audit.
-5. **Judge in the controller.** Apply the review skill's Deduplication + Truth Filter and severity model. Keep only implementation-verified, net-new findings. Drop duplicates, unsupported claims, CI-covered findings, and findings that only a worker asserted without evidence.
+5. **Judge in the controller.** Apply the review skill's Deduplication + Truth Filter and severity model to the aggregated evidence. Keep only implementation-verified, net-new findings. Drop duplicates, unsupported claims, CI-covered findings, and findings that only a worker asserted without evidence.
 6. **Act only after judgment.**
    - Local/self-review modes: apply the selected fixes in the working tree, then run the repo's discovered quality gates and the normal post-review stage over the fix diff.
    - Reviewing someone else's PR: draft public-ready comments/suggestions only; do not edit code or post.
