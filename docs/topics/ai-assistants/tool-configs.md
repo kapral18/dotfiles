@@ -107,38 +107,49 @@ Subagents run a self-contained task (review, external-repo research, semantic co
 **Two portable layers (do not conflate them):**
 
 - **Skills** (`~/.agents/skills/`) are the cross-harness source of truth, loaded by every assistant (Cursor, Claude, Pi, Gemini, OpenCode, Copilot).
-- **Subagents** are per-runtime, and only two harnesses support user-global subagents:
+- **Subagents** are per-runtime:
+  - **Cursor CLI** reads project `.cursor/agents/` and user `~/.cursor/agents/`. Runtime-verified from the bundled `~/.cursor/skills-cursor/create-subagent/SKILL.md` in `cursor-agent 2026.06.15-18-00-12-6f5a2cf`: project agents have higher priority than user agents.
+  - **GitHub Copilot CLI** reads user `~/.copilot/agents/*.agent.md` and project `.github/agents/*.agent.md`; `copilot --agent <name>` and `/agent` are exposed by `copilot 1.0.63`, and `copilot help config` exposes `subagents.agents.<agent-name>` model/effort/context settings.
   - **Claude Code** reads `~/.claude/agents/*.md`.
   - **Pi** has its own format and reads `~/.pi/agent/agents/*.md` (and, unavoidably, recursively from `~/.agents/` — see leakage below).
-  - **Cursor CLI is excluded.** Runtime-verified (`cursor-agent v2026.06.03`): Cursor only loads **project-scoped** `.cursor/agents/` and ignores every user-global path, including `~/.claude/agents/` and `~/.cursor/agents/`. There is no `$HOME`-level subagent surface to wire declaratively, so dotfiles do not manage Cursor subagents.
+
+Verified model identifiers are not portable between harnesses. Cursor's requested review lanes are `gpt-5.5-extra-high` and `claude-opus-4-8-xhigh` from `cursor-agent --list-models`; Copilot's equivalent lanes are `gpt-5.5` and `claude-opus-4.8` from `copilot help config`, with `effortLevel: xhigh` in `subagents.agents.*`. Minimal live probes on 2026-06-17 confirmed project custom-agent invocation in both CLIs, Cursor controller -> worker delegation, Copilot task subagents with explicit model overrides, and both Opus model IDs.
 
 **The suite** wraps read-heavy skills (distinct agent names so they never collide with the skill names). `review` is the reference implementation of the two-phase pattern; the others are judge-only specializations:
 
-| Agent                    | Wraps skill            | Isolated work                                                                    |
-| ------------------------ | ---------------------- | -------------------------------------------------------------------------------- |
-| `review-controller` (Pi) | `review`               | Orchestrates a multi-model review then acts (fix tree / draft / drain / verdict) |
-| `reviewer`               | `review`               | Read-only review worker (one angle/model); returns findings, never posts         |
-| `researcher`             | `research`             | Clone + inspect an external GitHub repo under `/tmp/agent-src`                   |
-| `code-searcher`          | `semantic-code-search` | SCSI semantic investigation / base-branch context                                |
+| Agent                                | Wraps skill            | Isolated work                                                                      |
+| ------------------------------------ | ---------------------- | ---------------------------------------------------------------------------------- |
+| `agent-review`                       | `agent-review`         | `/agent-review` orchestration: routes, fans out, aggregates, judges, then acts     |
+| `review-controller` (Pi)             | `review`               | Orchestrates a multi-model review then acts (fix tree / draft / drain / verdict)   |
+| `review-gpt-5-5-extra-high`          | `review`               | Read-only GPT reviewer lane for Cursor/Copilot fan-out                             |
+| `review-opus-4-8-xhigh-non-thinking` | `review`               | Read-only Opus reviewer lane for Cursor/Copilot fan-out                            |
+| `reviewer`                           | `review`               | Pi/Claude read-only review worker (one angle/model); returns findings, never posts |
+| `findings-auditor`                   | `review`               | Read-only four-dimension audit of candidate findings or a named fix diff           |
+| `live-ui-review`                     | `review`               | Manual-only live UI/runtime comparison probe; evidence input only                  |
+| `researcher`                         | `research`             | Clone + inspect an external GitHub repo under `/tmp/agent-src`                     |
+| `code-searcher`                      | `semantic-code-search` | SCSI semantic investigation / base-branch context                                  |
 
 **Two-phase review hierarchy** (the topology falls out of the `review` skill's role×mode matrix):
 
-- **Find/judge** is parallel and multi-model: read-only `reviewer` workers inspect the diff/PR from files, each on a distinct angle. The fan-out is the place where a second model earns its keep (adversarial disagreement).
+- **Find/judge** is parallel and multi-model: read-only reviewer workers inspect the diff/PR from files, each on a distinct angle. The fan-out is the place where a second model earns its keep (adversarial disagreement).
 - **Act** is serial, side-effectful, and scenario-aware: fix the working tree (own changes / self-review), draft inline comments (reviewing others), drain threads with the SOP posting gate (PR fix), or emit a verdict (verify-a-fix).
+- **Cursor/Copilot** keep the shared `review` skill as methodology and use the separate `/agent-review` skill for orchestration. The `agent-review` flow routes once through `review`, fans out to `review-gpt-5-5-extra-high` and `review-opus-4-8-xhigh-non-thinking`, runs `findings-auditor` over the candidate findings, aggregates all three investigation outputs, then judges and acts. Cursor pins the lanes at invocation time (`gpt-5.5-extra-high`, `claude-opus-4-8-xhigh`). Copilot uses task subagents with explicit `model` arguments (`gpt-5.5`, `claude-opus-4.8`) because nested probes showed that is the verified child-subagent mechanism.
 - **Pi** runs the full hierarchy: `review-controller` (default model) detects role+mode, fans out to two `reviewer` tasks with per-task model overrides — both via OpenRouter (Pi's `defaultProvider`): `openrouter/anthropic/claude-opus-4.8:off` (no extended thinking) and `openrouter/openai/gpt-5.5:xhigh` (max reasoning budget) — reconciles via the skill's dedup + truth filter, then performs the act phase itself. The `:<thinking>` model suffix sets reasoning effort; `pi-subagents` does not consume a `thinking` frontmatter field, so effort lives in the model slug, not the agent.
-- **Claude** cannot run the hierarchy: its subagents cannot spawn subagents. A single read-only `reviewer` returns findings and the **main session** synthesizes and acts. Multi-model fan-out is therefore a Pi-only capability.
+- **Claude** keeps the single-reviewer pattern because its subagents cannot spawn subagents: one read-only `reviewer` returns findings and the **main session** synthesizes and acts. Cursor, Copilot, and Pi own the multi-model fan-out.
 
 **Sources** (chezmoi-managed, deployed declaratively):
 
-| Target                    | Source                                                                        | Consumed by |
-| ------------------------- | ----------------------------------------------------------------------------- | ----------- |
-| `~/.claude/agents/*.md`   | [`home/dot_claude/exact_agents/`](../../../home/dot_claude/exact_agents/)     | Claude      |
-| `~/.pi/agent/agents/*.md` | [`home/dot_pi/agent/exact_agents/`](../../../home/dot_pi/agent/exact_agents/) | Pi          |
+| Target                         | Source                                                                        | Consumed by |
+| ------------------------------ | ----------------------------------------------------------------------------- | ----------- |
+| `~/.cursor/agents/*.md`        | [`home/dot_cursor/exact_agents/`](../../../home/dot_cursor/exact_agents/)     | Cursor      |
+| `~/.copilot/agents/*.agent.md` | [`home/dot_copilot/exact_agents/`](../../../home/dot_copilot/exact_agents/)   | Copilot     |
+| `~/.claude/agents/*.md`        | [`home/dot_claude/exact_agents/`](../../../home/dot_claude/exact_agents/)     | Claude      |
+| `~/.pi/agent/agents/*.md`      | [`home/dot_pi/agent/exact_agents/`](../../../home/dot_pi/agent/exact_agents/) | Pi          |
 
 **Design notes:**
 
-- Each agent file's body explicitly instructs loading the wrapped `~/.agents/skills/<name>/SKILL.md`. Claude files set Claude fields (`model`, `readonly: true`, `tools`, `skills:` preload); Pi files use Pi frontmatter (`inheritSkills`, `systemPromptMode`, comma-separated `tools`, `maxSubagentDepth` on the controller). No `thinking` field — Pi reasoning effort is set per task via the model slug suffix.
-- Workers are strictly read-only: they report fixes for the parent (the Pi `review-controller`, or the Claude main session) to apply rather than editing or posting themselves. Only the Pi `review-controller` performs the act phase, and it still honors the Human-Visible Publication Gate (bot threads auto-resolve inside the flow; human threads stop for approval).
+- Each agent file's body explicitly instructs loading the wrapped `~/.agents/skills/<name>/SKILL.md`. Cursor files use the minimal documented `name` + `description` frontmatter and keep model pins in the controller's invocation. Copilot files use `.agent.md` profiles with `target`, `model`, `tools`, and invocation controls; xhigh effort is configured in `settings.json` because `copilot help config` exposes per-subagent `effortLevel`. The Cursor/Copilot `agent-review` profiles only load the `/agent-review` skill; that skill holds the fan-out mechanics so the shared `review` skill stays untouched. Claude files set Claude fields (`model`, `readonly: true`, `tools`, `skills:` preload); Pi files use Pi frontmatter (`inheritSkills`, `systemPromptMode`, comma-separated `tools`, `maxSubagentDepth` on the controller). No `thinking` field — Pi reasoning effort is set per task via the model slug suffix.
+- Workers and auditors are strictly investigation-only: they report evidence for the parent controller (`/agent-review`, Pi `review-controller`, or Claude main session) to judge rather than editing, posting, resolving, or deciding themselves. Controllers perform the act phase and still honor the Human-Visible Publication Gate (bot threads auto-resolve inside an invoked flow; human threads stop for approval). `live-ui-review` is manual-only for live PR-vs-main runtime/UI probes, is never part of the default fan-out, and must wait for an exact user `go` before any Playwriter/browser probing.
 - **Built-in subagents:** Pi ships 8 stock role agents (`reviewer`, `scout`, `oracle`, …) that overlap and name-collide with ours, so they are disabled via `subagents.disableBuiltins: true` in Pi settings. Claude (`Explore`/`Plan`/general-purpose) built-ins are generic context-savers that coexist with our distinctly-named agents and are intentionally left enabled.
 - **Pi skill leakage (accepted):** Pi's subagent extension recursively scans `~/.agents/` and registers every `SKILL.md` (which all carry `name`+`description`) as a subagent. There is no Pi setting or frontmatter flag to suppress this (verified in the extension source), and the skills must keep that frontmatter for cross-harness discovery. The effect is cosmetic — the Pi subagent list also shows skill names — and harmless because our agents have distinct names and sharper delegation descriptions; we deliberately do not patch the extension to keep upgrades clean.
 
@@ -162,14 +173,14 @@ Source: [`home/dot_copilot/`](../../../home/dot_copilot/) → `~/.copilot/`. Ins
 | ------------------ | -------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
 | SOP / instructions | [`symlink_copilot-instructions.md`](../../../home/dot_copilot/symlink_copilot-instructions.md) → `~/AGENTS.md` | `~/.copilot/copilot-instructions.md` |
 | Skills             | [`symlink_skills`](../../../home/dot_copilot/symlink_skills) → `~/.agents/skills`                              | `~/.copilot/skills`                  |
-| Custom agents      | [`exact_agents/`](../../../home/dot_copilot/exact_agents/) (empty placeholder dir)                             | `~/.copilot/agents/`                 |
+| Custom agents      | [`exact_agents/`](../../../home/dot_copilot/exact_agents/)                                                     | `~/.copilot/agents/`                 |
 | MCP servers        | `mcp_servers.yaml` via `generate_mcp_configs.py copilot`                                                       | `~/.copilot/mcp-config.json`         |
 | Hooks              | [`hooks.json`](../../../home/dot_copilot/hooks.json)                                                           | `~/.copilot/hooks/agent-memory.json` |
 | Settings           | [`settings.json`](../../../home/dot_copilot/settings.json)                                                     | `~/.copilot/settings.json`           |
 
 Key wiring decisions:
 
-- **Instructions/skills are symlinks** (not copies): Copilot reads `$HOME/.copilot/copilot-instructions.md` as its global SOP and `~/.copilot/skills/<name>/SKILL.md` for skills. Copilot no longer reads `~/.claude/` agents/skills, so the explicit `~/.copilot/skills` symlink is required. Custom agents are left as an empty placeholder because our subagents are skill-backed, not `.agent.md` profiles.
+- **Instructions/skills are symlinks** (not copies): Copilot reads `$HOME/.copilot/copilot-instructions.md` as its global SOP and `~/.copilot/skills/<name>/SKILL.md` for skills. Copilot no longer reads `~/.claude/` agents/skills, so the explicit `~/.copilot/skills` symlink is required. The managed custom agents are thin `.agent.md` profiles that point back to the shared review skill; they exist only to give Copilot a runtime-native subagent surface and per-agent model settings.
 - **MCP: stdio only; no OAuth HTTP server.** The `copilot` transform in `generate_mcp_configs.py` emits stdio servers as `type: "local"` and (when wired) OAuth HTTP servers as `type: "http"` with `oauthClientId` + `auth.redirectPort` + `oauthScopes` for Copilot's browser `authorization_code` flow. In practice no HTTP server is wired for Copilot: it hardcodes its OAuth redirect to `http://127.0.0.1:{port}/` (only the port is configurable), which neither the SCSI Okta app nor the public Slack client registers, so the flow is rejected (HTTP 400 / `redirect_uri did not match`). `scsi-main` and `slack` therefore omit a `copilot` `oauth_by_tool` block, and `scsi-local` carries `exclude_tools: [copilot]` (no point keeping the local SCSI backend once the hosted one is gone). With the always-on `sequentialthinking` server also removed from the registry, Copilot's generated `mcp-config.json` has an empty `mcpServers` and it relies solely on its built-in servers. The built-in `github-mcp-server` is provided by Copilot and is not emitted. See [MCP servers](mcp.md).
 - **Settings are merged, not overwritten.** Copilot owns `~/.copilot/settings.json` and rewrites it at runtime (chosen `model`, `allowedUrls`, `config.json` migration), so the merge script deep-merges the declared baseline (`effortLevel: xhigh`, `keepAlive: busy`, `autoUpdate: false` to defer to the brew cask's auto-update, `banner: never`, `includeCoAuthoredBy: true`) **on top of** the live file with our keys winning, preserving the user's runtime choices. The target is in `.chezmoiignore`.
 - **Hooks use PascalCase event names** (`SessionStart`, `PreToolUse`, `PostToolUse`) so Copilot delivers the VS Code-compatible snake_case payloads (`hook_event_name`, `session_id`, `tool_input`) that the shared session/worklog scripts already read — the same contract Codex uses. Copilot has no shell-gate hooks; PR review anchor verification is instruction-owned by the review/GitHub skills.

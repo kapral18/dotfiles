@@ -13,7 +13,7 @@ flowchart TB
         AG["readonly_AGENTS.md → ~/AGENTS.md (Cursor+OpenCode primary)"]:::gov
         CL["readonly_CLAUDE.md → ~/CLAUDE.md (full SOP §1-§7)"]:::gov
         GM["dot_gemini/readonly_GEMINI.md → ~/.gemini/GEMINI.md"]:::gov
-        SK["home/exact_dot_agents/exact_skills/ → ~/.agents/skills/<br/>31 skills, intent-routed (see 03b)"]:::gov
+        SK["home/exact_dot_agents/exact_skills/ → ~/.agents/skills/<br/>32 skills, intent-routed (see 03b)"]:::gov
         AG -->|Use when… load| SK
         CL --> SK
     end
@@ -26,13 +26,13 @@ flowchart TB
     end
 
     subgraph EXECL["3 · Execution (per-tool, .work/.personal merged at apply)"]
-        CURSOR["Cursor (primary): dot_cursor/hooks.json + filtered MCP"]:::exec
+        CURSOR["Cursor (primary): dot_cursor/hooks.json + filtered MCP<br/>exact_agents/ review controller+workers → ~/.cursor/agents/"]:::exec
         CLAUDE["Claude Code: dot_claude/settings.{work,personal,llama-cpp}.json"]:::exec
         GEMINI["Gemini CLI: dot_gemini/settings.json + exact_commands/"]:::exec
         OPENCODE["OpenCode: dot_config/opencode/*.jsonc (LiteLLM aliases)"]:::exec
         CODEX["Codex: dot_codex/private_config.{work,personal}.toml"]:::exec
         PI["Pi: dot_pi/agent/* (Gemini 3.1 Pro default)"]:::exec
-        COPILOT["Copilot CLI: dot_copilot/* (settings + gates; MCP stdio-only, OAuth http unusable)"]:::exec
+        COPILOT["Copilot CLI: dot_copilot/* (settings + gates + review agents;<br/>MCP stdio-only, OAuth http unusable)"]:::exec
         AMP["Amp: dot_config/exact_amp/private_readonly_settings.json"]:::exec
         TUICR["tuicr: dot_config/tuicr/readonly_config.toml"]:::exec
         LOCAL["llama.cpp (local, opt-in)"]:::exec

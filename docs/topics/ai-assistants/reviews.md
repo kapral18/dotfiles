@@ -6,7 +6,24 @@ sidebar_position: 2
 
 How an assistant reviews your changes or a PR. This is the `review` skill ([`home/exact_dot_agents/exact_skills/exact_review`](../../../home/exact_dot_agents/exact_skills/exact_review)) — the agent reviewing your diff. The inverse (you reviewing the agent's diff in a TUI) is [Reviewing agent diffs](reviewing-diffs.md).
 
-Use when continuing a review, addressing review threads, or rechecking PR-related changes. The router (below) loads shared rules and PR-common setup once, then picks exactly one mode.
+Use when continuing a review, addressing review threads, or rechecking PR-related changes. The router (below) loads shared rules and PR-common setup once, then picks exactly one mode. The separate `/agent-review` skill wraps this methodology when you want the multi-agent topology.
+
+## Multi-agent topology
+
+`/agent-review` is the orchestration entrypoint. Cursor and Copilot also expose matching runtime agent profiles (`~/.cursor/agents/agent-review.md`, `~/.copilot/agents/agent-review.agent.md`) that load the same skill:
+
+1. The controller resolves PR/local mode, role, base context, and scope.
+2. Two read-only reviewer workers run in parallel:
+   - GPT lane: Cursor `gpt-5.5-extra-high`; Copilot `gpt-5.5` with `effortLevel: xhigh`; Pi `openrouter/openai/gpt-5.5:xhigh`.
+   - Opus lane: Cursor `claude-opus-4-8-xhigh` (non-thinking); Copilot `claude-opus-4.8` with `effortLevel: xhigh`; Pi `openrouter/anthropic/claude-opus-4.8:off`.
+3. `findings-auditor` audits the reviewer outputs before any action. It is an investigation agent: it flags redundancy, verbosity, semantic + logical duplication, and gaps in the candidate finding set.
+4. The controller aggregates all three investigation outputs, then judges what to fix or draft through the review skill's dedup/truth filter. Only the controller acts.
+
+Model names are per-runtime. Cursor's `gpt-5.5-extra-high` / `claude-opus-4-8-xhigh` IDs are not Copilot IDs; Copilot uses `gpt-5.5` / `claude-opus-4.8` plus `effortLevel: xhigh`.
+
+The shared `review` skill stays methodology-focused; the fan-out procedure lives in the controller agent profiles. Worker profiles are intentionally read-only and recursion-safe. They load the review skill for methodology but do not launch further subagents; only the controller edits files, drafts public payloads, or touches GitHub after the normal gates.
+
+`live-ui-review` is separate and manual-only. Use it only when the user explicitly asks for live UI/runtime comparison, such as checking a PR deployment against the main/base deployment. It must ask whether the PR/head and main/base instances are ready and wait for an exact `go` before any Playwriter/browser probing. Its output is another evidence input for the controller, not a decision or side effect.
 
 ## Base-branch context and semantic search
 
@@ -58,7 +75,7 @@ The stage applies the canonical **four dimensions** (defined verbatim in `judgin
 - **Semantic + logical duplication** — two places now express the same meaning/behavior via different text (parallel branches that should be one; divergent-but-equivalent logic) — the subtle axis literal-clone detectors miss.
 - **Gaps** — the fix is incomplete (own stranded dead code, an unupdated co-edit-set member like a doc/diagram/census, a half-applied rename, a referenced-but-missing file).
 
-Where the flow can edit (own work / self-review), the stage resolves hygiene findings in the working tree and re-gates; in read-only contexts (reviewing others, read-only subagents) it surfaces them as findings. The on-demand `post-review` subagent (Claude + Pi) runs only this lens over a named change set.
+Where the flow can edit (own work / self-review), the stage resolves hygiene findings in the working tree and re-gates; in read-only contexts (reviewing others, read-only subagents) it surfaces them as findings. The on-demand `post-review` subagent (Claude and Pi) or `findings-auditor` agent (Cursor/Copilot `/agent-review`) runs only this lens over a named change set or candidate finding set.
 
 ## Light review (proportional depth)
 

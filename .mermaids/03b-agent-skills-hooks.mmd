@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (59).
+%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (60).
 %% Skills → ~/.agents/skills/ (intent-routed SKILL.md). Shared hooks → ~/.agents/hooks/.
 %% ============================================================================
 flowchart TB
@@ -23,7 +23,7 @@ flowchart TB
     SCx -. "named-topic warm-start (read-only)" .-> KBDB
 
     subgraph CORE["Core workflow skills"]
-        S1["review/ (SKILL + references: judging_core [surface-agnostic engine:<br/>coverage, severity, gates, post-review 4-dim lens], local_changes,<br/>pr_common, pr_fix, pr_review, shared_rules;<br/>PR review anchor verification is instruction-owned)<br/>light-review/ (proportional-depth in-place audit; loads judging_core)"]:::skill
+        S1["review/ (SKILL + references: judging_core [surface-agnostic engine:<br/>coverage, severity, gates, post-review 4-dim lens], local_changes,<br/>pr_common, pr_fix, pr_review, shared_rules;<br/>PR review anchor verification is instruction-owned)<br/>agent-review/ (/agent-review orchestration; reuses review references)<br/>light-review/ (proportional-depth in-place audit; loads judging_core)"]:::skill
         S2["git/ · github/ · worktrees/ · compose-pr/ · compose-issue/<br/>communication/ (centralized tone/style; referenced by other skills)"]:::skill
         S3["walkthrough/ · interview-me/ · research/ · standup/<br/>present-pr/ (+refs: authoring.md, template.html;<br/>review-readiness map + introduced-concepts primer<br/>+ fixed notes sidebars)"]:::skill
         S1 --> R1["exact_references/*.md"]:::ref
@@ -51,5 +51,5 @@ flowchart TB
     SOPS --> CORE & IMPROVE & TOOLS & KBN & META
     S7 <--> KBDB
 
-    SUBA["Skill-backed subagents (isolated child context; see 12)<br/>~/.claude/agents/ (Claude) · ~/.pi/agent/agents/ (Pi); Cursor excluded<br/>Pi review-controller fans out to reviewer workers (openrouter opus:off + gpt-5.5:xhigh) → acts<br/>wrappers: reviewer→review · post-review→review(judging_core 4-dim) · change-auditor→light-review<br/>researcher→research · code-searcher→semantic-code-search"]:::data
+    SUBA["Skill-backed subagents (isolated child context; see 12)<br/>~/.cursor/agents/ · ~/.copilot/agents/ · ~/.claude/agents/ · ~/.pi/agent/agents/<br/>agent-review profiles load /agent-review skill → GPT-5.5 + Opus 4.8 + findings-auditor investigation → aggregate → acts<br/>wrappers: reviewer/review-gpt/review-opus→review · findings-auditor/post-review→review(judging_core 4-dim)<br/>live-ui-review manual live probe · change-auditor→light-review · researcher→research · code-searcher→semantic-code-search"]:::data
     SUBA -.->|"wraps (skill = source of truth)"| S1 & S3 & S5
