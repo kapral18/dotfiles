@@ -60,16 +60,25 @@ ICON_WORKTREE = ""
 ICON_DIR = ""
 
 
-def display_session_entry(name):
-    return f"{color('38;5;42', ICON_SESSION)}  {color('1;38;5;81', name)}"
+# Worktrees holding a PR we are *reviewing* (someone else's PR) get a standout
+# magenta label so they pop out from our own sessions/worktrees in the picker.
+# Kept in sync with items_full_rehydrate.py via REVIEW_NAME_COLOR below.
+REVIEW_NAME_COLOR = "1;38;5;213"
+REVIEW_PATH_COLOR = "38;5;213"
+
+
+def display_session_entry(name, review=False):
+    name_color = REVIEW_NAME_COLOR if review else "1;38;5;81"
+    return f"{color('38;5;42', ICON_SESSION)}  {color(name_color, name)}"
 
 
 def display_dir_session_entry(path_display):
     return f"{color('38;5;42', ICON_SESSION)}  {color('1;38;5;81', path_display)}"
 
 
-def display_worktree_entry(path_display):
-    return f"{color('38;5;214', ICON_WORKTREE)}  {color('38;5;221', path_display)}"
+def display_worktree_entry(path_display, review=False):
+    path_color = REVIEW_PATH_COLOR if review else "38;5;221"
+    return f"{color('38;5;214', ICON_WORKTREE)}  {color(path_color, path_display)}"
 
 
 def display_dir_entry(path_display):
@@ -717,6 +726,14 @@ def _gh_cache_fresh(entry: dict[str, Any], branch: str, nwo: str, now: float) ->
     age = now - entry.get("ts", 0)
     pr = entry.get("pr")
     issue = entry.get("issue")
+    # Force one refetch of pre-author cache entries so old rows gain the
+    # `author` field used for review-row coloring. Only open PRs can change
+    # author (via transfer/ghost); terminal PRs are frozen, so a missing key
+    # on a MERGED/CLOSED row is treated as settled to avoid a refetch loop
+    # when `gh` omits author for ghost/deleted accounts.
+    if pr and pr.get("number") and "author" not in pr:
+        if (pr.get("state") or "").upper() not in _TERMINAL_PR:
+            return False
     if not pr and not issue:
         return age < GH_TTL_MISS
     all_settled = (not pr or (pr.get("state") or "").upper() in _TERMINAL_PR) and (
@@ -793,7 +810,7 @@ def _gh_pr_for_wt(wt_path: str, nwo: str) -> dict[str, Any] | None:
         return None
     try:
         r = subprocess.run(
-            ["gh", "pr", "view", "--json", "number,state,url,reviewDecision,closingIssuesReferences"],
+            ["gh", "pr", "view", "--json", "number,state,url,reviewDecision,closingIssuesReferences,author"],
             check=False,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
@@ -1080,6 +1097,7 @@ def _lookup_gh_info(wt_path: str, branch: str, nwo: str) -> dict[str, Any]:
             "url": pr_data.get("url", ""),
             "review": pr_data.get("reviewDecision", "") or picker_review,
             "ci": picker_ci,
+            "author": (pr_data.get("author") or {}).get("login", ""),
         }
     issue_num = _wt_issue_number(wt_path) or extract_issue_number(branch)
     issue_repo_override = _wt_issue_repo(wt_path)
@@ -1171,6 +1189,89 @@ def gh_meta(gh_info: dict[str, Any] | None) -> str:
     if issue and issue.get("number"):
         parts.append(f"issue={issue['number']}:{issue.get('state', '')}:{issue.get('url', '')}")
     return "|".join(parts)
+
+
+VIEWER_CACHE_FILE = GH_PICKER_CACHE_DIR / "pick_session_viewer.json"
+VIEWER_TTL = 7 * 24 * 3600
+_VIEWER_LOGIN: str | None = None
+
+
+def _read_cached_viewer() -> str:
+    try:
+        data = json.loads(VIEWER_CACHE_FILE.read_text(encoding="utf-8"))
+        if isinstance(data, dict):
+            return str(data.get("login", "") or "")
+    except Exception:
+        pass
+    return ""
+
+
+def viewer_login() -> str:
+    """GitHub login of the authenticated user, memoized for this process.
+
+    The login is also cached on disk with a long TTL: it rarely changes, so
+    skip-gh / offline scans can still tell our own PR worktrees apart from
+    review worktrees without blocking on the network.
+    """
+    global _VIEWER_LOGIN
+    if _VIEWER_LOGIN is not None:
+        return _VIEWER_LOGIN
+    # Prefer an explicitly configured login (offline, matching the convention
+    # used for fork-worktree naming); fall back to a cached `gh api user`.
+    env_login = (os.environ.get("PICK_SESSION_GITHUB_LOGIN") or os.environ.get("GITHUB_USER") or "").strip()
+    if env_login:
+        _VIEWER_LOGIN = env_login
+        return _VIEWER_LOGIN
+    now = time.time()
+    try:
+        data = json.loads(VIEWER_CACHE_FILE.read_text(encoding="utf-8"))
+        if isinstance(data, dict) and (now - float(data.get("ts", 0))) < VIEWER_TTL:
+            _VIEWER_LOGIN = str(data.get("login", "") or "")
+            return _VIEWER_LOGIN
+    except Exception:
+        pass
+    if skip_gh or not shutil.which("gh"):
+        _VIEWER_LOGIN = _read_cached_viewer()
+        return _VIEWER_LOGIN
+    login = ""
+    try:
+        r = subprocess.run(
+            ["gh", "api", "user", "--jq", ".login"],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=5,
+        )
+        login = (r.stdout or "").strip()
+    except Exception:
+        login = ""
+    _VIEWER_LOGIN = login or _read_cached_viewer()
+    if login:
+        try:
+            VIEWER_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+            VIEWER_CACHE_FILE.write_text(json.dumps({"login": login, "ts": now}), encoding="utf-8")
+        except Exception:
+            pass
+    return _VIEWER_LOGIN
+
+
+def pr_is_review(gh_info: dict[str, Any] | None) -> bool:
+    """True when the worktree holds a PR opened by someone other than us.
+
+    Such a worktree represents a PR *review* (we pulled the contributor's
+    branch down to read it), as opposed to a worktree holding our own PR.
+    """
+    if not gh_info:
+        return False
+    pr = gh_info.get("pr")
+    if not pr or not pr.get("number"):
+        return False
+    author = (pr.get("author") or "").strip().lower()
+    if not author:
+        return False
+    me = viewer_login().lower()
+    return bool(me) and author != me
 
 
 def _check_dirty(wt_path: str) -> bool:
@@ -1505,7 +1606,10 @@ def emit_sessions_and_worktrees():
                 gm = gh_meta(ghi)
                 if gm:
                     meta += f"|{gm}"
-                disp = display_session_entry(sess_name) + status_badge(flags) + gh_badges(ghi)
+                review = pr_is_review(ghi)
+                if review:
+                    meta += "|prrole=review"
+                disp = display_session_entry(sess_name, review) + status_badge(flags) + gh_badges(ghi)
                 mk = match_key(sess_name, expected, repo, br)
                 print(f"{disp}\tsession\t{wt_path}\t{meta}\t{sess_name}\t{mk}")
                 emitted_session_names.add(sess_name)
@@ -1528,10 +1632,13 @@ def emit_sessions_and_worktrees():
                 gm = gh_meta(ghi)
                 if gm:
                     meta += f"|{gm}"
+                review = pr_is_review(ghi)
+                if review:
+                    meta += "|prrole=review"
                 wt_name = f"{repo}|{br}" if br else repo
                 mk = match_key(wt_name, Path(wt_path).name, tildefy(wt_path))
                 print(
-                    f"{display_worktree_entry(tildefy(wt_path))}{status_badge(flags)}{gh_badges(ghi)}\tworktree\t{wt_path}\t{meta}\t{root_checkout}\t{mk}"
+                    f"{display_worktree_entry(tildefy(wt_path), review)}{status_badge(flags)}{gh_badges(ghi)}\tworktree\t{wt_path}\t{meta}\t{root_checkout}\t{mk}"
                 )
                 exclude_worktree_roots.add(wt_path)
 

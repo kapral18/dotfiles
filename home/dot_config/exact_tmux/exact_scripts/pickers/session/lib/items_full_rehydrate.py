@@ -201,9 +201,20 @@ ICON_WORKTREE = ""
 ICON_DIR = ""
 
 
-def display_session_entry_with_suffix(name, path_display, suffix=""):
+def _pr_is_review_meta(meta: str) -> bool:
+    """True when index_main tagged this row as a PR-review worktree."""
+    return "prrole=review" in (meta or "").split("|")
+
+
+# Review-row colors — keep in sync with index_main.py REVIEW_*_COLOR.
+REVIEW_NAME_COLOR = "1;38;5;213"
+REVIEW_PATH_COLOR = "38;5;213"
+
+
+def display_session_entry_with_suffix(name, path_display, suffix="", review=False):
     suffix = suffix or ""
-    return f"{color('38;5;42', ICON_SESSION)}  {color('1;38;5;81', name)}{suffix}"
+    name_color = REVIEW_NAME_COLOR if review else "1;38;5;81"
+    return f"{color('38;5;42', ICON_SESSION)}  {color(name_color, name)}{suffix}"
 
 
 def display_dir_session_entry_with_suffix(path_display, suffix=""):
@@ -211,8 +222,9 @@ def display_dir_session_entry_with_suffix(path_display, suffix=""):
     return f"{color('38;5;42', ICON_SESSION)}  {color('1;38;5;81', path_display)}{suffix}"
 
 
-def display_worktree_entry(path_display):
-    return f"{color('38;5;214', ICON_WORKTREE)}  {color('38;5;221', path_display)}"
+def display_worktree_entry(path_display, review=False):
+    path_color = REVIEW_PATH_COLOR if review else "38;5;221"
+    return f"{color('38;5;214', ICON_WORKTREE)}  {color(path_color, path_display)}"
 
 
 def display_dir_entry(path_display):
@@ -563,6 +575,44 @@ for row in sess_out.splitlines():
 
 printed_sessions = set()
 missing_sessions_emitted = False
+cached_meta_by_rpath = {}
+
+
+def _session_meta_from_cached_path(rpath: str, cached_meta: str) -> str:
+    if not cached_meta:
+        return ""
+    parts = []
+    cached_base = (cached_meta or "").split("|", 1)[0]
+    if cached_base.startswith(("wt:", "wt_root:", "sess_wt:", "sess_root:")):
+        key, _, br = cached_base.partition(":")
+        if br:
+            parts.append(f"sess_root:{br}" if key in ("wt_root", "sess_root") else f"sess_wt:{br}")
+    elif rpath and is_git_dir(rpath):
+        root = worktree_root_for_path(rpath) or rpath
+        br = worktree_branch_for_path(rpath)
+        if br:
+            parts.append(f"sess_root:{br}" if root == rpath else f"sess_wt:{br}")
+    for part in cached_meta.split("|"):
+        if not part or part.startswith(("wt:", "wt_root:", "sess_wt:", "sess_root:")):
+            continue
+        parts.append(part)
+    return "|".join(parts)
+
+
+def _worktree_meta_from_cached_session(rpath: str, cached_meta: str) -> str:
+    parts = []
+    br = worktree_branch_for_path(rpath)
+    root = worktree_root_for_path(rpath) or rpath
+    if br:
+        parts.append(f"wt_root:{br}" if root == rpath else f"wt:{br}")
+    repo_id = repo_id_for_root_checkout(root)
+    if repo_id:
+        parts.append(f"repo={repo_id}")
+    for part in (cached_meta or "").split("|"):
+        if not part or part.startswith(("wt:", "wt_root:", "sess_wt:", "sess_root:", "repo=", "expected=")):
+            continue
+        parts.append(part)
+    return "|".join(parts)
 
 
 def emit_missing_sessions():
@@ -574,16 +624,19 @@ def emit_missing_sessions():
         if name in printed_sessions or rp in printed_sessions:
             continue
         suffix = color("2;38;5;244", " (current)") if name == current_name else ""
-        meta = _augment_meta_with_ralph("", name)
+        meta = _augment_meta_with_ralph(_session_meta_from_cached_path(rp, cached_meta_by_rpath.get(rp, "")), name)
+        gh_b = _gh_badges_from_meta(meta)
+        ralph_b = _ralph_badge(name, meta)
         if rp and not is_git_dir(rp):
             label = plain_session_label(rp)
-            disp = display_dir_session_entry_with_suffix(label, suffix) + _ralph_badge(name, meta)
+            disp = display_dir_session_entry_with_suffix(label, suffix) + gh_b + ralph_b
             mk = match_key(label, name) if label == rp else match_key(label, name, rp)
         else:
-            disp = display_session_entry_with_suffix(name, "", suffix) + _ralph_badge(name, meta)
+            disp = display_session_entry_with_suffix(name, "", suffix, _pr_is_review_meta(meta)) + gh_b + ralph_b
             mk = match_key(name)
         print(f"{disp}\tsession\t{rp}\t{meta}\t{name}\t{mk}")
         printed_sessions.add(name)
+        printed_sessions.add(rp)
 
 
 def parse_cache_row(raw_line: str):
@@ -613,6 +666,8 @@ with open(cache_file, "r", encoding="utf-8", errors="replace") as f:
 
         kind, path, target, meta = row["kind"], row["path"], row["target"], row["meta"]
         rpath = resolve_path(path) if path else ""
+        if rpath and kind in ("session", "worktree") and meta and rpath not in cached_meta_by_rpath:
+            cached_meta_by_rpath[rpath] = meta
         if is_bag_path(rpath):
             continue
         if path_tombstoned(kind, rpath):
@@ -630,13 +685,10 @@ with open(cache_file, "r", encoding="utf-8", errors="replace") as f:
                     if is_git_dir(rpath):
                         root = worktree_root_for_path(rpath) or rpath
                         if root:
-                            br = worktree_branch_for_path(rpath)
-                            repo_id = repo_id_for_root_checkout(root)
-                            meta = f"wt_root:{br}" if br and root == rpath else (f"wt:{br}" if br else "")
-                            if repo_id:
-                                meta += f"|repo={repo_id}"
+                            meta = _worktree_meta_from_cached_session(rpath, meta)
+                            gh_b = _gh_badges_from_meta(meta)
                             print(
-                                f"{display_worktree_entry(tildefy(rpath))}{badge}\tworktree\t{rpath}\t{meta}\t{root}\t{mk}"
+                                f"{display_worktree_entry(tildefy(rpath), _pr_is_review_meta(meta))}{badge}{gh_b}\tworktree\t{rpath}\t{meta}\t{root}\t{mk}"
                             )
                     elif os.path.isdir(rpath):
                         t = tildefy(rpath)
@@ -649,13 +701,10 @@ with open(cache_file, "r", encoding="utf-8", errors="replace") as f:
                     if is_git_dir(rpath):
                         root = worktree_root_for_path(rpath) or rpath
                         if root:
-                            br = worktree_branch_for_path(rpath)
-                            repo_id = repo_id_for_root_checkout(root)
-                            meta = f"wt_root:{br}" if br and root == rpath else (f"wt:{br}" if br else "")
-                            if repo_id:
-                                meta += f"|repo={repo_id}"
+                            meta = _worktree_meta_from_cached_session(rpath, meta)
+                            gh_b = _gh_badges_from_meta(meta)
                             print(
-                                f"{display_worktree_entry(tildefy(rpath))}{badge}\tworktree\t{rpath}\t{meta}\t{root}\t{mk}"
+                                f"{display_worktree_entry(tildefy(rpath), _pr_is_review_meta(meta))}{badge}{gh_b}\tworktree\t{rpath}\t{meta}\t{root}\t{mk}"
                             )
                     elif os.path.isdir(rpath):
                         t = tildefy(rpath)
@@ -675,7 +724,7 @@ with open(cache_file, "r", encoding="utf-8", errors="replace") as f:
                 display = display_dir_session_entry_with_suffix(label, suffix)
                 mk = match_key(label, target) if label == rpath else match_key(label, target, rpath)
             else:
-                display = display_session_entry_with_suffix(target, "", suffix)
+                display = display_session_entry_with_suffix(target, "", suffix, _pr_is_review_meta(meta))
                 mk = match_key(target)
             print(f"{display}{badge}{gh_b}{ralph_b}\tsession\t{path}\t{meta}\t{target}\t{mk}")
             continue
