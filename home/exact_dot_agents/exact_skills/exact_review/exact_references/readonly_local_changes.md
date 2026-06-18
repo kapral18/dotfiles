@@ -12,9 +12,37 @@ Use when:
 - or there is no PR for the current branch and the user still wants a review
 - or the user asks to review a specific commit range ("review the last 3 commits", "review commits since `<ref>`")
 
-## Core Principle: Verify and Fix
+## Authorship Precondition
 
-This mode is not about drafting comments for someone else. Local changes are the user's own work. The goal is to **verify everything, find issues, and fix them in the working tree immediately**. Treat every finding as something to resolve right now, not something to note for later.
+This mode's verify-and-fix behavior assumes `authorship: self`.
+
+Resolve authorship via the router's Role Detection / Authorship section.
+
+Do not assume `self` just because the change is checked out locally:
+
+- a branch tracking another person's fork is `other`
+- commits authored by someone else are `other`
+
+If authorship is `other` or `unknown`:
+
+- follow `shared_rules.md` Hard Constraints
+- surface findings with proposed fixes and stop
+
+## Agent-Review Worker Override
+
+When this mode is loaded inside a `/agent-review` reviewer worker, `~/.agents/skills/agent-review/references/runtime-contracts.md` takes precedence over this file's fix directives.
+
+## Core Principle: Verify and Fix (when `authorship: self`)
+
+In a direct local-changes review, local changes you own are the user's own work.
+
+Goal:
+
+- verify everything
+- find issues
+- fix them in the working tree immediately
+
+Treat every finding as something to resolve right now, not something to note for later.
 
 - If something is wrong: fix it.
 - If something is missing (tests, docs, error handling): add it.
@@ -65,13 +93,26 @@ Follow the base-branch context gate in `shared_rules.md`. This is mandatory.
    a. State what's wrong and why it matters (1-2 lines).
    b. Verify the issue is real (base-context comparison, `/tmp` reproduction, or test run — do not assert without evidence).
    c. Fix it. Apply the smallest correct change.
-   d. If the fix is non-trivial or ambiguous (multiple valid approaches, significant scope): state the options and your recommended default, then proceed with the default unless the user intervenes.
+   d. If the fix is non-trivial or ambiguous:
+   - state the options
+   - state your recommended default
+   - proceed with the default unless the user intervenes
 
 3. **Quality gates** (after all fixes in a batch):
    - Run lint + type_check + tests (discover correct commands from the repo; do not guess).
    - If checks fail, diagnose and fix. Repeat until green or report what remains broken and why.
 
-4. **Post-review stage** (after quality gates are green): run the Post-Review Stage in `judging_core.md` over the **fix diff** (`git diff` for the changes this pass made — not the original diff). Apply the four dimensions (redundancy, verbosity, semantic + logical duplication, gaps), resolve each finding in the working tree, and re-run quality gates if the post-review fixes touched code.
+4. **Post-review stage** (after quality gates are green):
+   - Run the Post-Review Stage in `judging_core.md` over the **fix diff**.
+   - Use `git diff` for the changes this pass made.
+   - Do not use the original diff as the subject.
+   - Apply the four dimensions:
+     - redundancy
+     - verbosity
+     - semantic + logical duplication
+     - gaps
+   - Resolve each finding in the working tree.
+   - Re-run quality gates if the post-review fixes touched code.
 
 5. **Summary**: after all findings are processed, output a concise summary:
    - `Base context:` line (see shared_rules.md)
@@ -91,5 +132,6 @@ If the user says "one at a time" or "step by step":
 ## Extra Constraints
 
 - Do not commit/push unless explicitly asked.
-- Code changes are expected and encouraged — this is the user's own work being improved.
+- Code changes are expected and encouraged when `authorship: self`.
+- Under `other`/`unknown` authorship, this mode is draft-only (see Authorship Precondition).
 - Keep the internal findings queue in the review persistence spec (see shared_rules.md) so progress survives conversation pruning.

@@ -24,7 +24,6 @@ verify-bin-surface: ## Check ~/bin commands have completions, docs, and catalog 
 
 test: ## Run Python unit tests
 	python3 scripts/tests/test_scripts.py -v
-	python3 scripts/tests/test_blackboard.py -v
 	python3 home/exact_bin/utils/exact_history/executable_fish-history-merge.test.py -v
 
 check: lint verify-templates verify-mermaids verify-bin-surface test ## Run all checks

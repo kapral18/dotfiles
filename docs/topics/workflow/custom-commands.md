@@ -276,7 +276,6 @@ Examples:
 | --------------------- | ------------------------------------------------------------------------------------- |
 | `,agent-memory`       | Inspect or wipe the selected `/tmp/specs` hook memory topic for the current workspace |
 | `,ai-kb`              | Manage the durable local agent knowledge base                                         |
-| `,blackboard`         | Manage a run-scoped typed ledger for multi-agent findings and open questions          |
 | `,ralph`              | Start, resume, inspect, and control Ralph multi-agent orchestration runs              |
 | `,claude-llama-cpp`   | Launch Claude Code against the local llama.cpp-compatible endpoint                    |
 | `,codex-llama-cpp`    | Launch Codex against the local llama.cpp-compatible endpoint                          |

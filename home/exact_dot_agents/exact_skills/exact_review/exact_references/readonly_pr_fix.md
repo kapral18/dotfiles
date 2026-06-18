@@ -16,10 +16,38 @@ Out of scope:
 
 - If the user wants to review a PR (draft new review comments, not address existing ones), use `~/.agents/skills/review/references/pr_review.md` instead.
 
+## Authorship Note
+
+PR fix edits code, so resolve `authorship` via the router's Role Detection / Authorship section.
+
+This mode may edit only when:
+
+- the user owns the PR
+- or the user explicitly asked to apply/fix changes on that PR
+
+Explicit fix requests include:
+
+- "fix these"
+- "take over this branch"
+
+If `authorship` is `other`/`unknown` and no explicit fix request exists:
+
+- do not edit
+- fall back to draft-only PR review (`pr_review.md`)
+- confirm intent
+
 ## Context Intake (First Turn Only)
 
 - Read:
-  - complete the GitHub Context Intake + Reference Resolution gate in pr_common.md (blocking — full descriptions/bodies, comments, replies, threads, media, and recursive references must be resolved before proceeding)
+  - complete the GitHub Context Intake + Reference Resolution gate in pr_common.md
+  - treat that gate as blocking
+  - resolve before proceeding:
+    - full descriptions/bodies
+    - comments
+    - replies
+    - threads
+    - media
+    - recursive references
   - run Ambient Topic Exploration in pr_common.md when disagreement, unclear shared understanding, or missing topic history matters
   - all review threads (end-to-end)
   - full diff
@@ -34,7 +62,14 @@ Iteration contract:
 
 - Pick exactly one reviewer thread/comment.
 - Do not move to the next thread/comment until you and the user agree on what to do.
-- Exception: when the user explicitly asks to batch ("repeat the process", "same procedure", "you know the drill", "address all", "no time constraints", "drain"), switch to Drain Mode below instead of stopping after one thread.
+- Exception: switch to Drain Mode when the user explicitly asks to batch.
+- Batch/repeat phrases include:
+  - "repeat the process"
+  - "same procedure"
+  - "you know the drill"
+  - "address all"
+  - "no time constraints"
+  - "drain"
 
 ### Per-Thread Workflow
 
@@ -91,21 +126,46 @@ Iteration contract:
    - If checks fail or types get worse, back out or adjust and repeat.
 
 9. Draft the reply for that thread (and only that thread).
-   - If the thread asked for code comments/documentation: make the change in code, then reply with a short "Fixed in `<commit URL>`" message (avoid long explanations in the thread). See Draft Style in shared_rules.md — commit references must be full clickable GitHub URLs, never bare hashes.
+   - If the thread asked for code comments/documentation:
+     - make the change in code
+     - reply with a short `Fixed in <commit URL>` message
+     - avoid long explanations in the thread
+     - use full clickable GitHub URLs for commits
+     - never use bare hashes
    - If your fix ended up elsewhere (different file/thread): reply with a clickable link to the canonical commit/thread rather than re-explaining.
 
 ### Reply Style
 
-Reply tone, concision, and the addressed-vs-not-addressed triage pattern (thanks + resolve vs reopen + ask-what's-blocking) are centralized in `~/.agents/skills/communication/SKILL.md` — follow it. Review-specific mechanics only:
+Reply tone and triage patterns are centralized in `~/.agents/skills/communication/SKILL.md`.
+
+Follow it for:
+
+- concision
+- thanks + resolve
+- reopen + ask what's blocking
+
+Review-specific mechanics only:
 
 - Verify the outcome against the current head before replying/resolving (the author's claim is not proof).
 - If the thread asked for a code/doc change you made: reply `Fixed in <full commit URL>` (avoid long explanations in-thread).
 - If a thread is obsolete because later commits superseded the hunk: `Superseded by <commit link>` (optionally one link to the new canonical thread).
-- Resolve/unresolve and any reply to a human author stay gated — draft, show the exact payload + target, wait for approval (Posting Boundary in `shared_rules.md`; Human-Visible Publication Gate in `~/AGENTS.md`).
+- Resolve/unresolve and any reply to a human author stay gated:
+  - draft first
+  - show the exact payload + target
+  - wait for approval
+  - follow Posting Boundary in `shared_rules.md`
+  - follow Human-Visible Publication Gate in `~/AGENTS.md`
 
 ## Drain Mode (Batch, Explicitly Invoked)
 
-Use only when the user explicitly asks to batch/repeat (see iteration-contract exception). Drain Mode runs the per-thread workflow back-to-back until no unresolved actionable thread remains — without re-asking "what next?" for each one. It does NOT relax the Human-Visible Publication Gate (SOP, `~/AGENTS.md`).
+Use Drain Mode only when the user explicitly asks to batch/repeat.
+
+In Drain Mode:
+
+- run the per-thread workflow back-to-back
+- continue until no unresolved actionable thread remains
+- do not re-ask "what next?" for each thread
+- do not relax the Human-Visible Publication Gate (SOP, `~/AGENTS.md`)
 
 Author-type classification (do first, per thread, verified — not guessed):
 
@@ -115,14 +175,34 @@ Author-type classification (do first, per thread, verified — not guessed):
 
 Per-thread branch:
 
-- **Bot-authored thread:** run the full Per-Thread Workflow (hypothesis -> base context -> self-critique -> fix/verify -> quality gates -> state-machine when applicable). Reply and resolve are gate-exempt for bots, so auto-reply with the `Fixed in <commit URL>` (or evidence) message and auto-resolve, then continue to the next thread without stopping.
-- **Human-authored thread:** run the same workflow and make any code fix in the working tree, but STOP before publishing. Queue the drafted reply + resolve recommendation and surface it for supervision. Do not post or resolve. Continue investigating/queuing remaining threads; never publish a human-visible reply/resolve without explicit approval.
+- **Bot-authored thread:**
+  - run the full Per-Thread Workflow
+  - include state-machine verification when applicable
+  - auto-reply with `Fixed in <commit URL>` or evidence
+  - auto-resolve
+  - continue to the next thread without stopping
+- **Human-authored thread:**
+  - run the same workflow
+  - make any code fix in the working tree
+  - stop before publishing
+  - queue the drafted reply + resolve recommendation
+  - surface it for supervision
+  - do not post or resolve
+  - continue investigating/queuing remaining threads
+  - never publish a human-visible reply/resolve without explicit approval
 
 Loop control:
 
 - Commit/push still require explicit approval (git skill) regardless of mode; Drain Mode never auto-commits or auto-pushes.
 - After each thread, append the decision to the review persistence spec (see shared_rules.md) so the loop is resumable after pruning.
-- End condition: no unresolved actionable threads remain, or only human-thread drafts await approval. Report the batch outcome: bot threads auto-resolved, human drafts pending approval, validation run, and remaining open items.
+- End condition:
+  - no unresolved actionable threads remain
+  - or only human-thread drafts await approval
+- Report:
+  - bot threads auto-resolved
+  - human drafts pending approval
+  - validation run
+  - remaining open items
 
 ## Output (One Thread Per Turn)
 
@@ -141,7 +221,16 @@ Loop control:
 
 ## Post-Review Stage (After Code Fixes, Before Completing)
 
-Once you have made the code fixes for this session (a single thread's fix, or the full set across a Drain Mode batch) and their quality gates are green, run the Post-Review Stage in `judging_core.md` over the **fix diff** — the changes these fixes produced (`git diff`, or the commit range/staged set for this session), not the original PR diff.
+After this session's code fixes are made and quality gates are green, run the Post-Review Stage in `judging_core.md`.
+
+Use the **fix diff** as the subject:
+
+- a single thread's fix
+- or the full set across a Drain Mode batch
+- `git diff`
+- or the commit range/staged set for this session
+
+Do not use the original PR diff as the subject.
 
 - Apply the four dimensions (redundancy, verbosity, semantic + logical duplication, gaps) to that fix diff.
 - Resolve each hygiene finding in the working tree (this is your own PR's code) and re-run quality gates if the post-review fixes touched code.
@@ -151,4 +240,7 @@ Once you have made the code fixes for this session (a single thread's fix, or th
 ## Boundaries
 
 - Do not commit/push unless explicitly asked.
-- Do not post to GitHub or resolve threads unless explicitly asked — except verified bot-authored threads inside an explicitly-invoked Drain Mode flow (SOP, `~/AGENTS.md`). Human-visible replies/resolves are always supervised; ambiguous/mixed threads fail safe to human.
+- Do not post to GitHub or resolve threads unless explicitly asked.
+- Exception: verified bot-authored threads inside an explicitly-invoked Drain Mode flow (SOP, `~/AGENTS.md`).
+- Human-visible replies/resolves are always supervised.
+- Ambiguous/mixed threads fail safe to human.

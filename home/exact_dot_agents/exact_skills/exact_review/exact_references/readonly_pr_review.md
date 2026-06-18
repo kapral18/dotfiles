@@ -10,7 +10,13 @@ Use when:
 
 - the user wants a PR review (initial or continued)
 - the user provides a PR URL/number and says "review"
-- the user asks to recheck/verify whether a PR fix resolves a bug ("does this PR fix it", "can you recheck", "verify this fix", "check my comment", "is it resolved on the updated branch")
+- the user asks to recheck/verify whether a PR fix resolves a bug
+- example phrases:
+  - "does this PR fix it"
+  - "can you recheck"
+  - "verify this fix"
+  - "check my comment"
+  - "is it resolved on the updated branch"
 - the user says "what's the next comment", "continue the review", or wants "one comment at a time"
 
 Out of scope:
@@ -21,20 +27,41 @@ Out of scope:
 
 Check Role Detection from the router (`SKILL.md`):
 
-- **Reviewing others (user is not the author):** standard review — draft comments/suggestions. Do not change code. The Post-Review Lens (`judging_core.md`) still applies to the PR diff: surface redundancy / verbosity / semantic + logical duplication / gaps as findings, read-only.
-- **Self-review (user is the author):** find issues and fix them in the working tree immediately (same as local changes mode). After your fixes pass quality gates, run the Post-Review Stage (`judging_core.md`) over the fix diff. Draft review comments only if the user explicitly wants self-review notes to post.
+- **Reviewing others (`authorship: other` or `unknown`):**
+  - draft comments/suggestions
+  - do not change code
+  - apply the Post-Review Lens (`judging_core.md`) to the PR diff
+  - surface redundancy / verbosity / semantic + logical duplication / gaps as read-only findings
+- **Self-review (user is the author):**
+  - find issues and fix them in the working tree immediately
+  - follow local changes mode behavior
+  - after quality gates pass, run the Post-Review Stage over the fix diff
+  - draft review comments only if the user explicitly wants self-review notes to post
 
 ## Complete Pass Before Drafting (Do Not Skip)
 
 On the first turn (or when starting a fresh review):
 
-- complete the GitHub Context Intake + Reference Resolution gate in pr_common.md (blocking — full descriptions/bodies, comments, replies, threads, media, and recursive references must be resolved before proceeding)
+- complete the GitHub Context Intake + Reference Resolution gate in pr_common.md
+- treat that gate as blocking
+- resolve before proceeding:
+  - full descriptions/bodies
+  - comments
+  - replies
+  - threads
+  - media
+  - recursive references
 - run Ambient Topic Exploration in pr_common.md when disagreement, unclear shared understanding, or missing topic history matters
 - all review threads/replies (end-to-end)
 - full diff
 - targeted local verification for risky claims (see pr_common.md)
 
-On later turns (iterative/continued): keep working from the internal findings queue; do not re-read everything unless needed. If the PR changed or a new comment/link/reference appears, run the intake gate for the changed/new artifacts before relying on the prior queue.
+On later turns (iterative/continued):
+
+- keep working from the internal findings queue
+- do not re-read everything unless needed
+- if the PR changed, run the intake gate for changed artifacts before relying on the prior queue
+- if a new comment/link/reference appears, run the intake gate for that artifact before relying on the prior queue
 
 ## Base-Branch Context
 
@@ -77,4 +104,7 @@ If the user says "one at a time", "next comment", or "continue the review":
 
 ## Draft Persistence
 
-- If the user says "consult before sending", keep the full batch draft in a single scratch file under `/tmp/` so it can be reviewed/edited before posting. Do not post until explicitly asked.
+- If the user says "consult before sending":
+  - keep the full batch draft in a single scratch file under `/tmp/`
+  - make it reviewable/editable before posting
+  - do not post until explicitly asked

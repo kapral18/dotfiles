@@ -4,10 +4,9 @@ sidebar_position: 3
 
 # Agent Memory
 
-Three distinct memory layers feed the assistants:
+Two memory layers feed the assistants:
 
 - **Hook memory** (`/tmp/specs`, managed by `,agent-memory`) — short-lived, per-workspace topic spec + worklog + evidence ledger, written by the Cursor CLI hooks during a session.
-- **Run blackboard** (`,blackboard`, under `~/.local/share/blackboard/`) — run-scoped shared typed ledger for multi-agent fan-outs (see [Run blackboard](#run-blackboard-blackboard)).
 - **AI knowledge base** (`,ai-kb`, under `~/.local/share/ai-kb/`) — durable structured capsules shared across agents. [Ralph](ralph.md) reads/writes them mechanically across runs; interactive agents (cursor-cli, pi) read/write them on demand via the `ai-kb` skill (see [Cross-agent memory](#cross-agent-memory-ai-kb-skill)).
 
 ## Hook memory (`/tmp/specs`, `,agent-memory`)
@@ -54,16 +53,6 @@ chezmoi diff --no-pager
 chezmoi apply --force --no-tty
 ,agent-memory status
 ```
-
-## Run blackboard (`,blackboard`)
-
-The middle layer: shared typed state for the duration of one multi-agent run, sitting between the ephemeral free-text `/tmp/specs` spec and durable `,ai-kb` capsules. Without it, fan-out runs (Workflow scripts, deep-research style harnesses, Ralph roles) only share state through each agent's final return value — intermediate findings are not queryable, not auditable, and not resumable. The mechanics follow the validated core of the [irys stateful-swarm pattern](https://github.com/dl1683/irys-stateful-swarms) (typed blackboard entries + signal queue + gap blocking + survival trace).
-
-- CLI: [`home/exact_bin/executable_,blackboard`](../../../home/exact_bin/executable_,blackboard) -> [`scripts/blackboard.py`](../../../scripts/blackboard.py); skill: [`home/exact_dot_agents/exact_skills/exact_blackboard/readonly_SKILL.md`](../../../home/exact_dot_agents/exact_skills/exact_blackboard/readonly_SKILL.md).
-- Storage: one SQLite (WAL) file per board under `~/.local/share/blackboard/<board>.sqlite3`, safe for concurrent agent writers; boards persist across sessions so runs are resumable.
-- Entries are typed (`observation|analysis|calculation|strategy|gap|contradiction`) and carry provenance (`--source-doc/--source-ref/--evidence`), confidence, worker attribution, and links (`--supports/--contradicts/--supersedes`, `--addresses sN`).
-- Signals are an explicit open-question queue. `gate` exits non-zero while critical/high signals are open (synthesis must not proceed past it — address or `waive` with a recorded reason), and `survival --report <artifact>` exits non-zero when must-surface entries, contradictions, or open/waived signals are not detected in the final artifact (token-containment heuristic: necessary, not sufficient).
-- Tests: [`scripts/tests/test_blackboard.py`](../../../scripts/tests/test_blackboard.py) (wired into `make test`).
 
 ## AI knowledge base (`,ai-kb`)
 

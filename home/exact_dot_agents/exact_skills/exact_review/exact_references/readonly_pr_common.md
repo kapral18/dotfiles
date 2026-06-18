@@ -39,10 +39,24 @@ Adjust review depth by file type:
 
 ## CI Coverage Gate (scoping — complete before drafting findings)
 
-PR review otherwise re-checks everything, including classes the PR's own CI already catches — redundant. Drop findings CI will inevitably flag, but verify the relevant check actually exists and covers that class first: some branches (backports especially) loosen CI, so a check you would expect may be absent or narrowed.
+PR review otherwise re-checks everything, including classes the PR's own CI already catches.
+
+Avoid redundant findings:
+
+- Drop findings CI will inevitably flag.
+- First verify the relevant check actually exists.
+- First verify the check covers that finding class.
+- Do not assume usual CI exists on every branch.
+- Backports may loosen or narrow CI.
 
 1. Enumerate the PR's checks (read-only). Set `GH_PAGER=cat`, then `gh pr checks <number> --json name,state,bucket,workflow,link`.
-2. Map each present check to the Coverage-Checklist classes it actually catches (e.g. lint -> style/format nits, typecheck -> type errors, a test job -> the behavior it exercises, SAST -> the vuln classes it scans). A check covers only what it actually runs; do not credit it from its name alone.
+2. Map each present check to the Coverage-Checklist classes it actually catches.
+   - lint -> style/format nits
+   - typecheck -> type errors
+   - a test job -> the behavior it exercises
+   - SAST -> the vuln classes it scans
+   - A check covers only what it actually runs.
+   - Do not credit a check from its name alone.
    - Buildkite job whose coverage is unclear: load and follow `~/.agents/skills/buildkite/SKILL.md` (`bk` CLI) to see what it runs before crediting it with a class.
 3. Exempt a finding-class from review only when a present check genuinely covers it — CI will flag those, so do not build findings or draft comments for them.
 4. Keep every other class in scope, including ones whose check is absent or loosened on this branch. Do not assume a class is covered just because CI usually covers it elsewhere.
@@ -50,7 +64,24 @@ PR review otherwise re-checks everything, including classes the PR's own CI alre
 
 ## GitHub Context Intake + Reference Resolution (blocking — complete before diff analysis)
 
-Use this gate for the primary PR and every recursively discovered PR, issue, comment, thread, asset, URL, or reference that could inform the review. Do not rely on summaries, previews, truncated terminal output, or compacted output; recover the full raw content before marking an item read.
+Use this gate for the primary PR and every recursively discovered item that could inform the review:
+
+- PR
+- issue
+- comment
+- thread
+- asset
+- URL
+- reference
+
+Do not rely on:
+
+- summaries
+- previews
+- truncated terminal output
+- compacted output
+
+Recover the full raw content before marking an item read.
 
 1. Maintain a visited set by canonical URL/object ID so recursion is exhaustive without looping.
 2. Seed the queue from the primary PR:
@@ -58,15 +89,34 @@ Use this gate for the primary PR and every recursively discovered PR, issue, com
    - PR conversation/timeline comments, review bodies, review comments, review threads, and every reply in each thread, including resolved/outdated state when available
    - linked/closing issues, linked PRs, commits, check/build links, URLs, and image/media/attachment links found anywhere above
 3. For each queued item, read the complete artifact before extracting references from it:
-   - PRs: read raw description/body line-by-line, state, author/base/head, labels/milestone when relevant, all conversation/timeline comments, all review bodies, all review comments/threads/replies, linked/closing issues and PRs, check/build links, and diff summary. Inspect the full diff or exact files when the referenced PR is cited as precedent, fix, regression, or evidence for a claim.
+   - PRs:
+     - read raw description/body line-by-line
+     - read state, author/base/head, labels/milestone when relevant
+     - read all conversation/timeline comments
+     - read all review bodies
+     - read all review comments/threads/replies
+     - read linked/closing issues and PRs
+     - read check/build links
+     - read diff summary
+     - inspect the full diff or exact files when the referenced PR is cited as precedent, fix, regression, or evidence for a claim
    - Issues: read raw body line-by-line, state, labels/milestone when relevant, all comments/replies/timeline text, linked PRs/issues, and every attachment/media/reference.
    - Comments/threads: read the parent comment plus every reply end-to-end; include author, timestamp/order, resolved/outdated/minimized state, and any referenced code or links.
    - Images/screenshots: download to `/tmp` with `curl -sL -o /tmp/<name> <url>`, then inspect the local file, including visible text, UI state, annotations, and error messages.
-   - GIFs/videos: download to `/tmp`; inspect first/last frames plus every significant frame or scene/state transition (UI changes, overlays, terminal output changes, before/after states). Use available local tooling (`ffmpeg`/`ffprobe`, browser/player, image extraction, OCR/vision when available). Inspect audio, captions, or transcripts when present.
+   - GIFs/videos:
+     - download to `/tmp`
+     - inspect first/last frames
+     - inspect every significant frame or scene/state transition
+     - cover UI changes, overlays, terminal output changes, and before/after states
+     - use available local tooling (`ffmpeg`/`ffprobe`, browser/player, image extraction, OCR/vision when available)
+     - inspect audio, captions, or transcripts when present
    - Buildkite URLs (`buildkite.com/...`): **do not fetch directly** (will 403). Load and follow `~/.agents/skills/buildkite/SKILL.md` — use `bk` CLI to retrieve build/job info.
    - Other URLs: fetch when they could inform the review, then read the full relevant content and extract references.
 4. From every artifact just read, extract new URLs, PR/issue refs, comments, assets, media, commits, builds, and code references; enqueue any unvisited potentially relevant item.
-5. Repeat until the queue is empty. Do not proceed while a reachable, potentially relevant reference remains unread. If an item is inaccessible, unsupported by local tooling, or genuinely irrelevant, record the exact reason before excluding it.
+5. Repeat until the queue is empty.
+   - Do not proceed while a reachable, potentially relevant reference remains unread.
+   - If an item is inaccessible, record the exact reason before excluding it.
+   - If an item is unsupported by local tooling, record the exact reason before excluding it.
+   - If an item is genuinely irrelevant, record the exact reason before excluding it.
 6. State the full list of references visited, skipped-with-reason, and what you learned from each before proceeding to diff analysis.
 
 If a claim depends on visuals and visuals are missing, inaccessible, or unclear, stop and ask for visuals or better access before making that claim.
@@ -80,24 +130,55 @@ Run this second layer only when direct PR/issue context does not settle shared u
 - a candidate finding depends on product intent, team convention, prior incidents, or decisions not proven by the directly referenced artifacts
 - direct references are sparse, contradictory, or appear to omit the rationale behind the current disagreement
 
-Skip it for routine implementation reviews where the diff, base context, and direct references are enough. Keep it bounded: write the topic, queries, sources searched, hits read, and stop reason before using the results.
+Skip it for routine implementation reviews where the diff, base context, and direct references are enough.
+
+Keep it bounded. Before using the results, write:
+
+- topic
+- queries
+- sources searched
+- hits read
+- stop reason
 
 1. Build a topic map from the current artifact and diff: product/feature names, code symbols, error text, labels, team names, user-visible phrases, and disputed terms.
 2. Search GitHub beyond direct references:
-   - Issues: `gh search issues --repo OWNER/REPO "<terms>" --match title,body,comments --json number,title,state,commentsCount,updatedAt,url --limit 20` (omit `--state` to search both open and closed)
-   - PRs: `gh search prs --repo OWNER/REPO "<terms>" --match title,body,comments --json number,title,state,commentsCount,updatedAt,url --limit 20` (omit `--state` to search both open and closed)
-   - Discussions when the repo uses them: GitHub GraphQL `search(query: "repo:OWNER/REPO <terms>", type: DISCUSSION, first: N)` (GraphQL exposes `DISCUSSION`, `Discussion.comments`, and `DiscussionComment.replies`; `gh search` has no discussion subcommand)
-3. If Slack MCP tools are available in the current runtime, search relevant public/team channels for the topic terms and read full matching threads. Existing Slack MCP examples in this setup use `slack_search_public`, `slack_search_channels`, `slack_read_user_profile`, and, with explicit user consent, `slack_search_public_and_private`. Do not search private channels or DMs without explicit consent.
+   - Issues:
+     - `gh search issues --repo OWNER/REPO "<terms>" --match title,body,comments --json number,title,state,commentsCount,updatedAt,url --limit 20`
+     - omit `--state` to search both open and closed
+   - PRs:
+     - `gh search prs --repo OWNER/REPO "<terms>" --match title,body,comments --json number,title,state,commentsCount,updatedAt,url --limit 20`
+     - omit `--state` to search both open and closed
+   - Discussions when the repo uses them:
+     - use GitHub GraphQL `search(query: "repo:OWNER/REPO <terms>", type: DISCUSSION, first: N)`
+     - GraphQL exposes `DISCUSSION`, `Discussion.comments`, and `DiscussionComment.replies`
+     - `gh search` has no discussion subcommand
+3. If Slack MCP tools are available in the current runtime:
+   - search relevant public/team channels for the topic terms
+   - read full matching threads
+   - examples in this setup:
+     - `slack_search_public`
+     - `slack_search_channels`
+     - `slack_read_user_profile`
+     - `slack_search_public_and_private` with explicit user consent
+   - do not search private channels or DMs without explicit consent
 4. For each promising ambient hit, read enough full context to decide whether it informs the disputed topic:
    - GitHub issues/PRs/discussions: body, comments/replies/threads, linked references, and relevant diffs/files using the GitHub Context Intake + Reference Resolution rules above
    - Slack: the complete thread/conversation around the hit, not just the matching message; preserve timestamps/order and distinguish decisions from speculation
-5. Stop when searches produce no new decision-relevant facts, after a small representative set of high-signal hits, or when tools/access are exhausted. Record skipped sources with reasons (`Slack MCP unavailable`, `private channel requires consent`, `GitHub Discussions disabled/unavailable`, etc.).
+5. Stop when:
+   - searches produce no new decision-relevant facts
+   - a small representative set of high-signal hits has been read
+   - tools/access are exhausted
+   - Record skipped sources with reasons (e.g. `Slack MCP unavailable`, `private channel requires consent`, `GitHub Discussions disabled/unavailable`).
 6. Use ambient evidence only as context/precedent. The current PR diff and directly relevant artifacts remain the source of truth for what is actually changing.
 
 ## Deduplication + Truth Filter (Required Before Drafting)
 
 - Using artifacts from GitHub Context Intake + Reference Resolution, classify each candidate finding:
-  - `covered`: already addressed by accurate PR description clarifications or existing review threads/replies (regardless of comment author) after verifying against the current implementation/diff; do not draft a new comment.
+  - `covered`:
+    - already addressed by accurate PR description clarifications or existing review threads/replies
+    - comment author does not matter
+    - verify against the current implementation/diff
+    - do not draft a new comment
   - `new`: not already covered and verified against the current implementation/diff; eligible for draft feedback.
   - `incorrect`: prior clarification/comment conflicts with the current implementation/diff; add one correction with evidence (do not echo the incorrect claim).
 
@@ -113,8 +194,15 @@ Where to comment:
 
 ## Anchoring Constraints (Only If Posting Is Requested)
 
-- PR review comments are anchored to the PR's unified diff. The GitHub UI can sometimes let you comment on context lines by expanding the diff, but API calls still need a resolvable diff anchor.
-- Before every API call that creates or submits anchored PR review comments, fetch the current PR diff/patch for the target head SHA and verify each anchor against the diff hunk you intend to comment on. Do not rely on full-file line numbers, stale patches, or memory.
+- PR review comments are anchored to the PR's unified diff.
+- The GitHub UI can sometimes let you comment on context lines by expanding the diff.
+- API calls still need a resolvable diff anchor.
+- Before every API call that creates or submits anchored PR review comments:
+  - fetch the current PR diff/patch for the target head SHA
+  - verify each anchor against the diff hunk you intend to comment on
+  - do not rely on full-file line numbers
+  - do not rely on stale patches
+  - do not rely on memory
 - For API calls, do not assume a source-file line number is a valid anchor. Prefer:
   - `position` (diff-relative), computed from the PR's unified diff:
     - the `@@` hunk header line itself is **not counted** (position 0)

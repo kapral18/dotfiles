@@ -14,11 +14,19 @@ Contract:
   - `~/.agents/skills/review/references/local_changes.md`
   - `~/.agents/skills/review/references/pr_review.md`
   - `~/.agents/skills/review/references/pr_fix.md`
-- Always load `~/.agents/skills/review/references/judging_core.md` (the surface-agnostic judging engine) and `~/.agents/skills/review/references/shared_rules.md` (PR/SCSI/GitHub-delivery rules) once before entering any mode. Mode files reference both but do not re-load them.
+- Before entering any mode, load once:
+  - `~/.agents/skills/review/references/judging_core.md`
+  - `~/.agents/skills/review/references/shared_rules.md`
+- Mode files reference both files but do not re-load them.
 - For PR modes, also load `~/.agents/skills/review/references/pr_common.md` once.
-- Load secondary skills only when this router or the selected mode requires them (for example: semantic code search for base context, or GitHub workflow when the user explicitly asks to post).
+- Load secondary skills only when this router or the selected mode requires them.
+  - Example: semantic code search for base context.
+  - Example: GitHub workflow when the user explicitly asks to post.
 - Do not invoke the `github` skill for read-only PR inspection/review. Only invoke it (via the Skill tool) when the user explicitly asks to post/submit anything to GitHub.
-- If the user wants review analysis and GitHub posting in the same request, the review router stays primary. Draft/verify through review mode first, then invoke the `github` skill via the Skill tool only for the posting step.
+- If the user wants review analysis and GitHub posting in the same request:
+  - keep the review router primary
+  - draft/verify through review mode first
+  - invoke the `github` skill via the Skill tool only for the posting step
 
 ## Draft-PR Policy
 
@@ -38,19 +46,44 @@ Continuity rule:
 
 - If the conversation is already clearly in a specific mode, stay in that mode when the user says "continue" / "next" unless they explicitly switch targets.
 
-## Role Detection (Do After PR Detection)
+## Role Detection / Authorship (Mandatory In Every Mode)
 
-When a PR is involved, determine the user's role before selecting a mode:
+Resolve `authorship` before selecting a mode.
+
+Allowed values:
+
+- `self`
+- `other`
+- `unknown`
+
+This input gates whether the review may edit code. Resolve it in the local/branch path too. Never default to `self` just because the change is checked out locally.
+
+When a PR is involved:
 
 - Run: `gh pr view <number> --json author --jq '.author.login'`
 - Compare against: `gh api user --jq '.login'`
-- If the user is the PR author: they are reviewing their own work (self-review) or addressing feedback.
-- If the user is not the PR author: they are reviewing someone else's PR.
+- Match -> `self`; mismatch -> `other`; cannot resolve -> `unknown`.
+
+When there is no PR (local changes / branch-delta / commit-range review):
+
+- Identify the current user: `gh api user --jq '.login'` (fall back to `git config user.email` if `gh` is unavailable).
+- Check the branch's tracked remote:
+  - `git rev-parse --abbrev-ref --symbolic-full-name @{u}`
+  - `git remote -v` for that remote's URL/owner
+- A branch tracking another person's fork is `other` (e.g. `someoneelse/<branch>`).
+- Check authorship of the commits under review: `git log --format='%an <%ae>' <base>..HEAD`. Commits authored by someone other than the current user make it `other`.
+- Only uncommitted/staged working-tree changes, or commits/branch owned by the current user, resolve to `self`. If it cannot be verified, it is `unknown`.
 
 This affects mode behavior:
 
-- **Self-review (user is author):** the review should be action-oriented — find issues and fix them in the working tree, not just comment (same as local changes mode). Draft review comments are still useful if the user plans to post them as self-review notes.
-- **Reviewing others:** the review produces draft comments/suggestions for the author. Do not change code.
+- **`self` (user owns the change):**
+  - find issues and fix them in the working tree
+  - do not only comment
+  - draft review comments only if the user plans to post self-review notes
+- **`other` / `unknown`:**
+  - produce draft comments/suggestions only
+  - do not change code
+  - editing requires the user to explicitly say to fix it (e.g. "fix these" or "take over this branch")
 
 ## Mode Selection (Intent + Evidence)
 
@@ -58,12 +91,32 @@ Pick exactly one mode. If ambiguous, ask one fork-closing question and state a d
 
 ### Mode: PR fix (address reviewer feedback)
 
-- Use when: the user asks to reply to reviewer comments, address conversations, resolve existing review threads, OR apply requested changes from reviewer feedback by iterating on code with verification ("apply the requested changes", "let's fix review comments", "one comment at a time until resolved", "address threads", "reply to reviewers").
+- Use when the user asks to:
+  - reply to reviewer comments
+  - address conversations
+  - resolve existing review threads
+  - apply requested changes from reviewer feedback by iterating on code with verification
+- Example phrases:
+  - "apply the requested changes"
+  - "let's fix review comments"
+  - "one comment at a time until resolved"
+  - "address threads"
+  - "reply to reviewers"
 - Then open: `~/.agents/skills/review/references/pr_fix.md`
 
 ### Mode: PR review (initial or continued)
 
-- Use when: the user wants an initial full PR review, wants to continue a review with the next comment, or wants to recheck/verify whether a PR fix resolves a bug ("review this PR", "what's the next comment", "continue the review", "does this PR fix it", "can you recheck", "verify this fix").
+- Use when the user wants:
+  - an initial full PR review
+  - to continue a review with the next comment
+  - to recheck/verify whether a PR fix resolves a bug
+- Example phrases:
+  - "review this PR"
+  - "what's the next comment"
+  - "continue the review"
+  - "does this PR fix it"
+  - "can you recheck"
+  - "verify this fix"
 - Role modifies behavior: see Role Detection above and `pr_review.md` for details.
 - Then open: `~/.agents/skills/review/references/pr_review.md`
 

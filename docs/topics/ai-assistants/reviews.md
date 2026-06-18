@@ -19,15 +19,15 @@ Use when continuing a review, addressing review threads, or rechecking PR-relate
    - Codex uses `spawn_agent` roles and runs two `review-worker` agents with distinct angles.
    - Gemini uses `review-gemini-pro` and `review-gemini-flash`.
    - Amp uses two generic `Task` subagents with the shared worker contract.
-3. `live-ui-review` runs as the conditional UI/runtime verifier. It returns applicability, comparison evidence, or a target/branch blocker.
+3. `live-ui-review` first decides applicability from the changed paths and candidate findings. When UI/runtime behavior is in scope, it checks the configured targets with Playwriter and returns comparison evidence or a target/branch blocker.
 4. `findings-auditor` audits the reviewer outputs before any action. It is an investigation agent: it flags redundancy, verbosity, semantic + logical duplication, and gaps in the candidate finding set.
-5. The controller aggregates the investigation outputs, then judges what to fix or draft through the review skill's dedup/truth filter. Only the controller acts.
+5. The controller aggregates the investigation outputs, then judges what to fix or draft through mode-correct review rules. PR modes use PR dedup, PR artifact truth filtering, and PR CI coverage gates; local changes are judged against the staged/unstaged/range scope without PR-thread or PR-CI exemptions. Only the controller acts.
 
-Model names and subagent mechanisms are per-runtime. Cursor's `gpt-5.5-extra-high` / `claude-opus-4-8-xhigh` IDs are not Copilot IDs; Copilot uses `gpt-5.5` / `claude-opus-4.8` plus `effortLevel: xhigh`. Codex and Amp do not have a Claude Opus lane in the verified local interface, so they preserve the two-worker isolation and distinct review angles rather than exact model parity. Gemini has native subagents but they cannot call other subagents, so the main Gemini session remains the controller.
+Model names and subagent mechanisms are per-runtime. Cursor's `gpt-5.5-extra-high` / `claude-opus-4-8-xhigh` IDs are not Copilot IDs; Cursor review agents pin those models in frontmatter because omitted `model` inherits the parent/default model, which can be `composer-2.5-fast`. Copilot uses `gpt-5.5` / `claude-opus-4.8` plus `effortLevel: xhigh`. Codex and Amp do not have a Claude Opus lane in the verified local interface, so they preserve the two-worker isolation and distinct review angles rather than exact model parity. Gemini has native subagents but they cannot call other subagents, so the main Gemini session remains the controller.
 
 The controller does not load or run the full review methodology before fan-out. Worker profiles are intentionally read-only and recursion-safe; they load the review skill for methodology in isolated contexts and return candidate findings. The controller only routes, fans out, aggregates, filters, and acts after the normal gates.
 
-Its configured targets are `http://kibana-main.local:5602` for base and `http://kibana-feat.local:5601` for PR/head. It uses Playwriter only after read-only readiness and branch checks pass.
+Its configured targets are `http://kibana-main.local:5602` for base and `http://kibana-feat.local:5601` for PR/head. It uses Playwriter target checks only when the applicability gate says UI/runtime behavior is in scope.
 
 ## Base-branch context and semantic search
 
@@ -43,8 +43,10 @@ If semantic code search (SCSI) is available and the current repo is indexed, it 
 Review outputs also include a single reviewer-metadata line so it's obvious what was used for base context:
 
 ```text
-Base context: SCSI=<index>|none (list_indices checked; <reason>), base=<branch>, diff=<base>...HEAD
+Base context: SCSI=<index>|none (list_indices checked; <reason>), base=<branch>, diff=<scope>
 ```
+
+`<scope>` is the actual diff under review, such as `<base>...HEAD`, `--cached`, `working-tree`, or `--cached + working-tree`.
 
 Do not paste that line into GitHub comment bodies.
 

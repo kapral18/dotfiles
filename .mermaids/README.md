@@ -3,7 +3,7 @@
 A navigation cloud for this chezmoi dotfiles repo, in **two layers**:
 
 - **Semantic cloud** (`S0`, `S1`–`S3`, `SR`) — how the system _thinks_: the ~12 concepts and invariants it is built on, the cross-cutting flows that wire subsystems together, and a reverse index from any file to its concept, blast radius, and co-edit set. **Read this first** — it makes the catalog legible.
-- **Catalog** (`00`–`13`) — how the system is _laid out_: exhaustive coverage of every one of the 1028 tracked files, named or grouped by exact chezmoi source path. Use it to drill from a concept to the precise file.
+- **Catalog** (`00`–`13`) — how the system is _laid out_: exhaustive coverage of every one of the 1023 tracked files, named or grouped by exact chezmoi source path. Use it to drill from a concept to the precise file.
 
 Together they let an agent understand the whole solution in one pass and then map straight down to any particle. They complement the prose in `docs/` and the rules in `AGENTS.md` / `CLAUDE.md`.
 
@@ -23,18 +23,18 @@ Each file is a standalone [Mermaid](https://mermaid.js.org/) diagram (`.mmd`), l
 2. [`01-chezmoi-pipeline.mmd`](01-chezmoi-pipeline.mmd) — `chezmoi apply` lifecycle; every `.chezmoiscripts/` hook (30) + data/external/ignore inputs.
 3. [`02-package-management.mmd`](02-package-management.mmd) — the "add X" ladder and every `default-*` package list + sync hook (incl. runtimes, local AI, system hooks).
 4. [`03-agentic-os.mmd`](03-agentic-os.mmd) — governance + context + execution layers (SOP entrypoints, MCP/model registries, per-tool generation).
-5. [`03b-agent-skills-hooks.mmd`](03b-agent-skills-hooks.mmd) — every file under `exact_dot_agents/` (32 skills + 8 hooks + references).
+5. [`03b-agent-skills-hooks.mmd`](03b-agent-skills-hooks.mmd) — every file under `exact_dot_agents/` (31 skills + 8 hooks + references).
 6. [`04-ralph-state-machine.mmd`](04-ralph-state-machine.mmd) — Ralph's resumable planner → executor → reviewer → re-reviewer state machine.
 7. [`04b-ralph-control-plane.mmd`](04b-ralph-control-plane.mmd) — Ralph CLI, workflows, run state, ralph-tui (15 Go pkgs), tmux wiring, AI KB.
 8. [`05-tmux-pickers.mmd`](05-tmux-pickers.mmd) — every file under `exact_tmux/` (119): conf.d loader, GitHub picker, session picker, handoff, sessions, palettes, resurrect.
 9. [`06-worktree-workflow.mmd`](06-worktree-workflow.mmd) — `,w` subcommands, `,gh-tfork`, gh-dash, and 1Password identity switching.
 10. [`07-shell-editor-macos.mmd`](07-shell-editor-macos.mmd) — fish/zsh/bash, terminals, and macOS automation (Hammerspoon, Karabiner, Alfred, icons, osx defaults).
 11. [`07b-neovim.mmd`](07b-neovim.mmd) — every file under `exact_nvim/` (157): core, 57 plugin specs, 14 local plugins, util, queries, syntax.
-12. [`07c-bin-commands.mmd`](07c-bin-commands.mmd) — every script in `exact_bin/` (81) grouped by purpose + the `,w` internals.
+12. [`07c-bin-commands.mmd`](07c-bin-commands.mmd) — every script in `exact_bin/` (80) grouped by purpose + the `,w` internals.
 13. [`08-security-and-dotfiles.mmd`](08-security-and-dotfiles.mmd) — SSH/GPG identity, 1Password agent, git signing, pass stores, and every shell/tool rc dotfile.
 14. [`09-repo-validation.mmd`](09-repo-validation.mmd) — `make check` / `make fmt`, hygiene gates, and every repo-side config/meta file.
 15. [`10-docs-and-repo-meta.mmd`](10-docs-and-repo-meta.mmd) — the Docusaurus site (`website/` + `docs/`) and GitHub Pages CI; every page named.
-16. [`11-scripts-helpers.mmd`](11-scripts-helpers.mmd) — every file in `scripts/` (45): shared parsers, MCP/model generators, AI KB, tests.
+16. [`11-scripts-helpers.mmd`](11-scripts-helpers.mmd) — every file in `scripts/` (43): shared parsers, MCP/model generators, AI KB, tests.
 17. [`12-ai-tool-configs.mmd`](12-ai-tool-configs.mmd) — every per-tool AI config (Cursor, Claude, Codex, Gemini, OpenCode, Pi, Amp, tuicr).
 18. [`13-app-configs.mmd`](13-app-configs.mmd) — remaining app configs (lazygit, gitui, tig, gh, bat, btop, yazi, ghostty, starship, llama.cpp, karabiner, ralph).
 

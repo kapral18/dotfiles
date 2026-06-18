@@ -1,12 +1,22 @@
 # Agent Review Runtime Harness Caveats
 
-This file is not a subagent registry. The active harness owns discovery and invocation for its configured agents, tasks, or native isolation tools. `/agent-review` uses those native mechanisms plus `runtime-contracts.md`.
+This file is not a subagent registry.
+
+- The active harness owns discovery and invocation for its configured agents, tasks, or native isolation tools.
+- `/agent-review` uses those native mechanisms plus `runtime-contracts.md`.
 
 Read this file only for capability caveats that affect orchestration.
 
 ## Claude Code
 
-Claude model overrides are limited by the installed SDK schema to `sonnet`, `opus`, `haiku`, and `fable`; do not invent GPT or exact Opus model IDs in Claude frontmatter. Preserve reviewer diversity with supported model overrides and distinct review angles.
+Claude model overrides are limited by the installed SDK schema:
+
+- `sonnet`
+- `opus`
+- `haiku`
+- `fable`
+
+Do not invent GPT or exact Opus model IDs in Claude frontmatter. Preserve reviewer diversity with supported model overrides and distinct review angles.
 
 ## Codex
 

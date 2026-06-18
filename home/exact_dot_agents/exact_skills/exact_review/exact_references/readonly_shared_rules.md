@@ -2,7 +2,21 @@
 
 All review modes load this file. Do not duplicate these rules in mode files.
 
-The surface-agnostic judging engine lives in `~/.agents/skills/review/references/judging_core.md` (Truth Validation, State-Machine Gate, Deletion-Safety, Historical-Rationale, Coverage Checklist, Severity, and the Post-Review Lens + Stage). Load it alongside this file. This file carries only the PR/SCSI/GitHub-delivery rules layered on top of that core.
+The surface-agnostic judging engine lives in `~/.agents/skills/review/references/judging_core.md`.
+
+It covers:
+
+- Truth Validation
+- State-Machine Gate
+- Deletion-Safety
+- Historical-Rationale
+- Coverage Checklist
+- Severity
+- Post-Review Lens + Stage
+
+Load it alongside this file.
+
+This file carries only the PR/SCSI/GitHub-delivery rules layered on top of that core.
 
 ## Read-Only Probes
 
@@ -12,13 +26,27 @@ The surface-agnostic judging engine lives in `~/.agents/skills/review/references
 
 - External truth applies: verify behavior under review (tests, repros, `/tmp` simulations) before asserting when practical.
 - Code changes:
-  - **Local changes mode** and **PR fix mode**: find issues and fix them in the working tree immediately. Code changes are expected as part of the workflow — no extra permission needed. Do not commit or push unless explicitly asked.
+  - **Read-only delegated workers**:
+    - never edit or run side effects
+    - return proposed fixes to the parent controller
+  - **Local changes mode with `authorship: self`** and **PR fix mode when edits are permitted**:
+    - find issues and fix them in the working tree immediately
+    - code changes are expected as part of the workflow
+    - no extra permission needed
+    - do not commit or push unless explicitly asked
+  - **Local changes mode with `authorship: other` or `unknown`**: draft-only unless the user explicitly asks to fix/take over.
   - **PR review mode (self-review)**: same — find and fix in the working tree.
-  - **PR review mode (reviewing others):** do not change code unless the user explicitly asks.
-- Do not post to GitHub, submit reviews, apply labels, or resolve threads unless explicitly asked. Exception per the Human-Visible Publication Gate (SOP, `~/AGENTS.md`): a **verified bot-authored** thread may be auto-replied/auto-resolved inside an explicitly-invoked flow; any human-visible target stays supervised (draft -> show payload -> wait). Ambiguous/mixed threads fail safe to human.
+  - **PR review mode (reviewing others or unknown authorship):** do not change code unless the user explicitly asks to fix/take over and the flow switches to PR fix mode.
+- Do not post to GitHub, submit reviews, apply labels, or resolve threads unless explicitly asked.
+- Exception per the Human-Visible Publication Gate (SOP, `~/AGENTS.md`):
+  - a **verified bot-authored** thread may be auto-replied/auto-resolved inside an explicitly-invoked flow
+  - any human-visible target stays supervised: draft -> show payload -> wait
+  - ambiguous/mixed threads fail safe to human
 - Assume the user started the agent inside the intended repo/worktree/session:
   - do not create/switch worktrees proactively
-  - if the user explicitly asks to create/switch a worktree, use `~/.agents/skills/worktrees/SKILL.md`; for GitHub issue worktrees in agent contexts, prefer `,gh-worktree issue ... --branch ...`
+  - if the user explicitly asks to create/switch a worktree:
+    - use `~/.agents/skills/worktrees/SKILL.md`
+    - for GitHub issue worktrees in agent contexts, prefer `,gh-worktree issue ... --branch ...`
 
 ## Base-Branch Context Gate (Mandatory)
 
@@ -42,11 +70,26 @@ Goal: compare the diff against how base (usually `main`) works today.
 
 - Semantic code search is required for base-branch context.
   - Load and follow: `~/.agents/skills/semantic-code-search/SKILL.md`
-  - You MUST invoke at least one SCSI tool (for example: `discover_directories`, `semantic_code_search`, `map_symbols_by_query`, `symbol_analysis`, or `read_file_from_chunks`) to establish base invariants.
-- **SCSI reflects the latest main branch, not the current branch or PR.** All code returned by SCSI represents the base (pre-change) state. Use it strictly as comparison/background context to understand the codebase the changes are targeting. The PR/local diff is the ground truth for what is actually changing. When SCSI results conflict with the diff, the diff wins — the conflict is expected and simply means the PR modifies that code.
+  - You MUST invoke at least one SCSI tool to establish base invariants.
+  - Example SCSI tools:
+    - `discover_directories`
+    - `semantic_code_search`
+    - `map_symbols_by_query`
+    - `symbol_analysis`
+    - `read_file_from_chunks`
+- **SCSI reflects the latest main branch, not the current branch or PR.**
+  - All code returned by SCSI represents the base (pre-change) state.
+  - Use SCSI strictly as comparison/background context.
+  - Use it to understand the codebase the changes are targeting.
+  - The PR/local diff is the ground truth for what is actually changing.
+  - When SCSI results conflict with the diff, the diff wins.
+  - That conflict is expected; it simply means the PR modifies that code.
 - Query strategy — generate questions from the diff:
   1. Read the diff to identify what changed.
-  2. Generate semantic questions about the contracts, invariants, and patterns the changed code touches (e.g. "how is X validated elsewhere?", "what calls this function?", "what pattern does the codebase use for Y?").
+  2. Generate semantic questions about the contracts, invariants, and patterns the changed code touches.
+     - "how is X validated elsewhere?"
+     - "what calls this function?"
+     - "what pattern does the codebase use for Y?"
   3. Query each question via SCSI tools against the repo index.
   4. Carry the answers as base-branch context into the review (for comparison and to understand surrounding code — not as current-branch truth).
 - Use SCSI to learn base-branch implementation and invariants, then compare against the PR/local diff (ground truth).
@@ -61,23 +104,47 @@ Goal: compare the diff against how base (usually `main`) works today.
 ### Base context reporting (required in every review output)
 
 - Include exactly one line near the top of the output:
-  - `Base context: SCSI=<index>|none (list_indices checked; <reason>), base=<branch>, diff=<base>...HEAD`
+  - `Base context: SCSI=<index>|none (list_indices checked; <reason>), base=<branch>, diff=<scope>`
   - `<reason>` MUST be one of:
     - `SCSI used`
     - `not indexed`
     - `tools unavailable`
     - `user-selected none`
+  - `<scope>` MUST name the actual diff under review, for example:
+    - `<base>...HEAD`
+    - `<ref>...HEAD`
+    - `--cached`
+    - `working-tree`
+    - `--cached + working-tree`
+    - the explicit diff command from the scope packet
 - This line is reviewer metadata for the assistant's output. Do not include it in GitHub comment bodies.
 
 ## Draft Style (Public-Ready)
 
-- Tone, concision, and the "replying to someone's response" triage pattern are centralized in `~/.agents/skills/communication/SKILL.md` — follow it for all comment/reply/description wording. The rules below are review-specific additions only.
+- Tone, concision, and response triage are centralized in `~/.agents/skills/communication/SKILL.md`.
+- Follow it for all:
+  - comment wording
+  - reply wording
+  - description wording
+- The rules below are review-specific additions only.
 - No headline summaries or category prefixes (exception: `nit:` allowed only for true nits).
 - Keep explanations simple; prefer tiny examples, pseudocode, or ASCII sketches.
 - Avoid redundant "Ref:" links when the comment is already attached to the exact line.
 - Do not mention anchoring/tooling limitations in the comment body ("can't anchor inline", "not in diff hunks").
-- In review comment bodies, whenever you reference code (file path, function, symbol, line/range, snippet location), use a clickable source link to the exact location on the PR head SHA; do not leave plain unlinked code/file references.
-- **Commit references must be clickable links, never bare hashes or inline code.** Use the full GitHub URL: `https://github.com/OWNER/REPO/commit/FULL_SHA` (or `/pull/NUM/commits/FULL_SHA` when referencing a PR commit). Resolve `OWNER/REPO` from the current repo and expand short hashes to full SHA before linking.
+- In review comment bodies, whenever you reference code, use a clickable source link to the exact location on the PR head SHA.
+- Code references include:
+  - file path
+  - function
+  - symbol
+  - line/range
+  - snippet location
+- Do not leave plain unlinked code/file references.
+- **Commit references must be clickable links, never bare hashes or inline code.**
+- Use the full GitHub URL:
+  - `https://github.com/OWNER/REPO/commit/FULL_SHA`
+  - or `/pull/NUM/commits/FULL_SHA` when referencing a PR commit
+- Resolve `OWNER/REPO` from the current repo.
+- Expand short hashes to full SHA before linking.
 - Use `suggestion` blocks only when confident the replacement matches the exact anchored line(s).
 
 ## Pending Review Semantics (Definition + Content Boundary)
@@ -92,7 +159,12 @@ Terminology used in these skills:
 Content boundary:
 
 - A pending review must contain only public-ready review content: objective, presentable, and directly related to the code under review.
-- Never include the agent's internal reasoning, excerpts of internal conversation, tool outputs, or meta-justifications. The PR author should not learn that internal discussion exists.
+- Never include:
+  - agent internal reasoning
+  - excerpts of internal conversation
+  - tool outputs
+  - meta-justifications
+- The PR author should not learn that internal discussion exists.
 - Prefer concrete fixes:
   - best: GitHub `suggestion` blocks with exact replacement code
   - otherwise: small code snippets or precise, actionable steps (avoid vague descriptions).
@@ -105,14 +177,27 @@ After all findings are drafted, recommend an overall verdict:
 - **Request changes**: at least one CRITICAL or HIGH finding that must be addressed before merge.
 - **Comment only**: findings exist but are informational/advisory; merge is not blocked.
 
-State the recommendation and the reason (e.g. "Verdict: request changes — the unchecked error on line 42 can cause silent data loss"). The user decides whether to actually submit the verdict.
+State the recommendation and the reason.
+
+Example:
+
+- `Verdict: request changes — the unchecked error on line 42 can cause silent data loss`
+
+The user decides whether to actually submit the verdict.
 
 ## Review Persistence
 
-The internal findings queue and review progress are ephemeral by default. Survive conversation pruning by reusing the existing hook-managed memory system — do not invent a parallel store:
+The internal findings queue and review progress are ephemeral by default.
+
+Survive conversation pruning by reusing the existing hook-managed memory system.
+
+Do not invent a parallel store:
 
 - Convention: `/tmp/specs/<pwd>/` from the parent SOP. Topic key: `review-<pr-number>` for PR modes (else `review`).
-- The agent-owned intent file is `<topic>.txt`. The hook system additionally maintains `<topic>.worklog.jsonl`. Inspect state with `,agent-memory status` (resolves the active topic and lists the files).
+- The agent-owned intent file is `<topic>.txt`.
+- The hook system additionally maintains `<topic>.worklog.jsonl`.
+- Inspect state with `,agent-memory status`.
+- `,agent-memory status` resolves the active topic and lists the files.
 - On the first turn of a PR flow, check for the spec file and resume from it. After each thread/finding, append to `<topic>.txt` so the loop is resumable:
   - findings/threads: `comment_id`, author-type (`human`|`bot`), severity, file:line, one-line description, status (`open`|`fixed`|`dismissed`|`resolved`|`awaiting-approval`)
   - decision + evidence per thread (what base does, what changed, what was tested)
@@ -129,4 +214,8 @@ The internal findings queue and review progress are ephemeral by default. Surviv
   - keep the draft content from the review mode
   - then invoke the `github` skill via the Skill tool
   - get explicit approval for the GitHub side effect
-- Human-Visible Publication Gate (SOP, `~/AGENTS.md`): the explicit-approval requirement above is absolute for any human-visible target. The only automation carve-out is a verified bot-authored thread (see `pr_fix.md` Drain Mode), which may be auto-replied/auto-resolved inside a flow the user already invoked.
+- Human-Visible Publication Gate (SOP, `~/AGENTS.md`):
+  - explicit approval is absolute for any human-visible target
+  - the only automation carve-out is a verified bot-authored thread
+  - see `pr_fix.md` Drain Mode
+  - bot-authored threads may be auto-replied/auto-resolved only inside a flow the user already invoked

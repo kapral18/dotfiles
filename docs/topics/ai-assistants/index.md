@@ -66,12 +66,11 @@ Entry contract standard:
 - Skills gated to specific repos (e.g. elastic-only) must state the constraint in the `description` so agents skip them early.
 - The goal is to remove implied routing and implied next steps so the agent has less room to "remember roughly" and skip the file.
 
-Current skills (33; sorted by name; routing from each skill’s `disable-model-invocation` frontmatter):
+Current skills (32; sorted by name; routing from each skill’s `disable-model-invocation` frontmatter):
 
 | Skill                   | Use when                                                                                                                                                         | Routing | Gated to       |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------------- |
 | `ai-kb`                 | Recall or persist durable cross-session knowledge (gotchas, decisions, patterns, facts) via `,ai-kb`; not ephemeral `/tmp/specs` context or code search          | auto    |                |
-| `blackboard`            | Run-scoped shared typed ledger for multi-agent fan-outs via `,blackboard` (findings + signal queue + synthesis gate + survival check); not durable knowledge     | auto    |                |
 | `buildkite`             | Buildkite CI status, builds, logs, pipelines, or a `buildkite.com` URL (use `bk` CLI; do not fetch URLs in-browser)                                              | auto    | elastic org    |
 | `cli-skills`            | Creating or upgrading a CLI tool skill                                                                                                                           | auto    |                |
 | `compose-issue`         | Drafting an issue title and body as text before create/edit (no `gh` side effects)                                                                               | auto    |                |

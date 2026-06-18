@@ -1,6 +1,6 @@
 ---
 name: live-ui-review
-description: Read-only live UI verifier for /agent-review. Use after reviewer workers to validate UI/runtime-relevant candidate findings; returns comparison evidence or applicability/blocker status.
+description: Evidence-mode live UI verifier for /agent-review. Use after reviewer workers to validate UI/runtime-relevant candidate findings; returns comparison evidence or applicability/blocker status.
 kind: local
 tools:
   - read_file
