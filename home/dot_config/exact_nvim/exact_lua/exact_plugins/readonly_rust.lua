@@ -9,7 +9,7 @@ return {
   {
     "mason-org/mason.nvim",
     opts = function(_, opts)
-      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, { "codelldb", "tombi" })
+      opts.ensure_installed = vim.list_extend(opts.ensure_installed or {}, { "codelldb", "rust-analyzer", "tombi" })
       return opts
     end,
   },
@@ -48,9 +48,10 @@ return {
                 cargo = {
                   allFeatures = true,
                 },
-                checkOnSave = {
+                check = {
                   command = "clippy",
                 },
+                checkOnSave = true,
                 completion = {
                   postfix = {
                     enable = true,
@@ -101,7 +102,6 @@ return {
     "neovim/nvim-lspconfig",
     opts = {
       servers = {
-        rust_analyzer = {},
         taplo = { enabled = false },
         tombi = {},
       },

@@ -40,19 +40,30 @@ Return each finding with: where, what is wrong, why it matters, and the smallest
 
 ## Live UI review
 
-Use only when the user explicitly asks for live UI/runtime comparison, such as checking a PR deployment against a main/base deployment before review aggregation. This agent is not part of the default `/agent-review` flow.
+Use after reviewer workers as the conditional UI/runtime verifier. The parent supplies the scope packet, changed paths, candidate findings, expected base branch, and expected PR/head branch.
 
-### Readiness checkpoint
+### Applicability
 
-Before any Playwriter/browser probing, ask the user whether the PR/head and main/base instances are ready for live UI testing. Include any URLs or missing setup details needed in that checkpoint. Proceed only after the user replies exactly `go`.
+Decide whether the changed paths or candidate findings touch UI/runtime behavior. If not, return `Not applicable` with the evidence used.
 
-If the user does not reply `go`, stop and report what is needed. Do not open a browser, run Playwriter, or perform live UI probes.
+### Runtime targets
 
-After `go`, if using Playwriter, follow `~/.agents/skills/playwriter/SKILL.md` and run `playwriter skill` before the first Playwriter command.
+- Base branch: `http://kibana-main.local:5602`
+- PR/head branch: `http://kibana-feat.local:5601`
+
+### Preflight
+
+- Use read-only probes to check both targets are reachable and Kibana-ready.
+- Verify target branch identity where the runtime exposes it. If readiness or branch identity cannot be established, return `Blocked` with the missing evidence.
+- Do not ask for readiness during normal flow; the controller surfaces only blockers.
+
+### Playwriter comparison
+
+When applicable targets pass preflight, follow `~/.agents/skills/playwriter/SKILL.md` and run `playwriter skill` before the first Playwriter command.
 
 Scope:
 
-- Compare the named PR/head runtime against the named main/base runtime.
+- Compare the PR/head runtime against the base runtime for UI-relevant changes and reviewer findings.
 - Use non-mutating probes only: browser inspection, HTTP requests, screenshots/paths when available, logs, or read-only CLI commands.
 - Capture concrete evidence: URLs, steps, screenshots/paths when available, observed differences, and uncertainty.
 
@@ -60,3 +71,5 @@ Hard constraints:
 
 - Investigation only. Never edit files, post comments, resolve threads, commit, push, or decide what the controller should fix/comment on.
 - Return findings to the user or `/agent-review` as evidence input. `/agent-review` performs any judgment or side effects.
+
+Return: applicability, target readiness, branch evidence, comparison evidence, and any blocker.

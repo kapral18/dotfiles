@@ -239,6 +239,10 @@ The load list is explicitly declared in:
 
 Code actions are shown with **fzf-lua**, not Neovim’s default `vim.ui.select` prompt. The `fzf-lua` plugin is loaded on demand (key triggers); its config registers `vim.ui.select` globally only after that first load. The `<leader>ca` / `<leader>cA` mappings therefore call `fzf-lua`’s `lsp_code_actions` helper (with `packadd` when needed) so the fzf picker is used even if you have not used another fzf mapping yet in that session.
 
+## Rust Analyzer Settings
+
+[`plugins/rust.lua`](../../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_rust.lua) configures rustaceanvim with `cargo.allFeatures = true`, `check.command = "clippy"`, and `checkOnSave = true`. Newer rust-analyzer versions require `checkOnSave` to be a boolean; command-specific options belong under `check.*`. Rustaceanvim is the only rust-analyzer LSP client; [`plugins/lsp.lua`](../../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_lsp.lua) excludes the generic `nvim-lspconfig` `rust_analyzer` server from Mason-lspconfig auto-enable while Mason still installs the binary, avoiding duplicate definition/reference rows from two clients.
+
 ## Lua LS Workspace Scope
 
 `lua_ls` root detection is intentionally narrowed for chezmoi paths: a file under the chezmoi source tree uses its own directory as the workspace root instead of the repo `.git` root. This avoids full-repo scans and the "More than 100000 files have been scanned" startup warning (the chezmoi tree holds ~30k files), which otherwise leaves the workspace preload stuck at 0%.

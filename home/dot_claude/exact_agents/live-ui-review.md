@@ -1,6 +1,6 @@
 ---
 name: live-ui-review
-description: Manual-only live UI/runtime review probe for /agent-review. Use only when explicitly requested; never auto-trigger.
+description: Read-only live UI verifier for /agent-review. Use after reviewer workers to validate UI/runtime-relevant candidate findings; returns comparison evidence or applicability/blocker status.
 model: inherit
 readonly: true
 tools: Read, Grep, Glob, Bash

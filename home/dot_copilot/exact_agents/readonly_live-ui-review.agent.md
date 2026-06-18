@@ -1,6 +1,6 @@
 ---
 name: live-ui-review
-description: Manual-only live UI/runtime review probe. Use only when the user explicitly asks to compare a live PR UI/runtime instance against main/base before review aggregation; never auto-trigger from /agent-review.
+description: Read-only live UI verifier for /agent-review. Use after reviewer workers to validate UI/runtime-relevant candidate findings; returns comparison evidence or applicability/blocker status.
 target: github-copilot
 model: gpt-5.5
 tools: [read, search, execute, web]

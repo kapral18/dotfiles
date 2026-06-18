@@ -15,7 +15,7 @@ Load and follow `~/.agents/skills/agent-review/SKILL.md`.
 
 Claude bridge:
 
-- Use `~/.agents/skills/agent-review/references/runtime-harnesses.md` for the Claude-specific lane mapping.
+- Use `Task` for isolated reviewer/auditor work; follow `runtime-harnesses.md` only for capability caveats.
 - Launch two `reviewer` tasks in parallel with distinct review angles. Use model overrides `opus` and `sonnet` when available.
 - Run `findings-auditor` over the combined candidate findings before deciding.
 - Keep all worker/auditor/live tasks investigation-only; this controller owns judgment and gated side effects.

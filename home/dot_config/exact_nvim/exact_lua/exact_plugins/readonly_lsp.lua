@@ -3,6 +3,8 @@ local format = require("util.format")
 local lsp = require("util.lsp")
 local lsp_references = require("util.lsp_references")
 
+local mason_lspconfig_auto_enable_exclude = { "rust_analyzer", "taplo" }
+
 ---@param action_opts? { context?: table, filter?: function, apply?: boolean }
 local function lsp_code_actions_fzf(action_opts)
   pcall(vim.cmd.packadd, "fzf-lua")
@@ -73,7 +75,7 @@ return {
     dependencies = { "mason-org/mason.nvim" },
     opts = {
       ensure_installed = {},
-      automatic_enable = { exclude = { "taplo" } },
+      automatic_enable = { exclude = mason_lspconfig_auto_enable_exclude },
     },
     config = function(_, opts)
       require("mason-lspconfig").setup(opts)
@@ -391,9 +393,12 @@ return {
 
       local install = vim.tbl_filter(configure, vim.tbl_keys(opts.servers))
       if have_mason then
+        local automatic_enable_exclude =
+          vim.list_extend(vim.deepcopy(mason_lspconfig_auto_enable_exclude), mason_exclude)
+
         require("mason-lspconfig").setup({
           ensure_installed = install,
-          automatic_enable = { exclude = mason_exclude },
+          automatic_enable = { exclude = automatic_enable_exclude },
         })
       end
     end,

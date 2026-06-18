@@ -19,14 +19,15 @@ Use when continuing a review, addressing review threads, or rechecking PR-relate
    - Codex uses `spawn_agent` roles and runs two `review-worker` agents with distinct angles.
    - Gemini uses `review-gemini-pro` and `review-gemini-flash`.
    - Amp uses two generic `Task` subagents with the shared worker contract.
-3. `findings-auditor` audits the reviewer outputs before any action. It is an investigation agent: it flags redundancy, verbosity, semantic + logical duplication, and gaps in the candidate finding set.
-4. The controller aggregates all three investigation outputs, then judges what to fix or draft through the review skill's dedup/truth filter. Only the controller acts.
+3. `live-ui-review` runs as the conditional UI/runtime verifier. It returns applicability, comparison evidence, or a target/branch blocker.
+4. `findings-auditor` audits the reviewer outputs before any action. It is an investigation agent: it flags redundancy, verbosity, semantic + logical duplication, and gaps in the candidate finding set.
+5. The controller aggregates the investigation outputs, then judges what to fix or draft through the review skill's dedup/truth filter. Only the controller acts.
 
 Model names and subagent mechanisms are per-runtime. Cursor's `gpt-5.5-extra-high` / `claude-opus-4-8-xhigh` IDs are not Copilot IDs; Copilot uses `gpt-5.5` / `claude-opus-4.8` plus `effortLevel: xhigh`. Codex and Amp do not have a Claude Opus lane in the verified local interface, so they preserve the two-worker isolation and distinct review angles rather than exact model parity. Gemini has native subagents but they cannot call other subagents, so the main Gemini session remains the controller.
 
 The controller does not load or run the full review methodology before fan-out. Worker profiles are intentionally read-only and recursion-safe; they load the review skill for methodology in isolated contexts and return candidate findings. The controller only routes, fans out, aggregates, filters, and acts after the normal gates.
 
-`live-ui-review` is separate and manual-only. Use it only when the user explicitly asks for live UI/runtime comparison, such as checking a PR deployment against the main/base deployment. It must ask whether the PR/head and main/base instances are ready and wait for an exact `go` before any Playwriter/browser probing. Its output is another evidence input for the controller, not a decision or side effect.
+Its configured targets are `http://kibana-main.local:5602` for base and `http://kibana-feat.local:5601` for PR/head. It uses Playwriter only after read-only readiness and branch checks pass.
 
 ## Base-branch context and semantic search
 
