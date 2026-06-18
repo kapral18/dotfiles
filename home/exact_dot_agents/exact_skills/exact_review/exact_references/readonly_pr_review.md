@@ -28,12 +28,13 @@ Check Role Detection from the router (`SKILL.md`):
 
 On the first turn (or when starting a fresh review):
 
-- complete the Reference Resolution gate in pr_common.md (blocking — all links, media, and recursive references must be resolved before proceeding)
+- complete the GitHub Context Intake + Reference Resolution gate in pr_common.md (blocking — full descriptions/bodies, comments, replies, threads, media, and recursive references must be resolved before proceeding)
+- run Ambient Topic Exploration in pr_common.md when disagreement, unclear shared understanding, or missing topic history matters
 - all review threads/replies (end-to-end)
 - full diff
 - targeted local verification for risky claims (see pr_common.md)
 
-On later turns (iterative/continued): keep working from the internal findings queue; do not re-read everything unless needed.
+On later turns (iterative/continued): keep working from the internal findings queue; do not re-read everything unless needed. If the PR changed or a new comment/link/reference appears, run the intake gate for the changed/new artifacts before relying on the prior queue.
 
 ## Base-Branch Context
 

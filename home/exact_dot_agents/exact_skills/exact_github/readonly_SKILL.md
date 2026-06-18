@@ -50,8 +50,10 @@ First actions:
 
 1. Set `GH_PAGER=cat`.
 2. Resolve the exact target repo/object (PR, issue, comment thread, release) before mutating anything.
-3. If the user also needs authored text, reviewer reasoning, labels, or Kibana ownership guidance, invoke the required secondary skill(s) via the Skill tool first and use their output before posting/applying.
-4. Before creating or editing public PR/issue text, sanitize the body/title for portable public context:
+3. For context-dependent actions (PR/issue body edits, replies/resolves, labels inferred from content, or follow-ups), run the GitHub Context Intake + Reference Resolution gate in `~/.agents/skills/review/references/pr_common.md` before composing or mutating. Fully specified mechanical actions, such as applying an explicitly named label, are exempt.
+4. If the context is contested, historically unclear, or depends on product/team precedent, also run Ambient Topic Exploration in `~/.agents/skills/review/references/pr_common.md`.
+5. If the user also needs authored text, reviewer reasoning, labels, or Kibana ownership guidance, invoke the required secondary skill(s) via the Skill tool first and use their output before posting/applying.
+6. Before creating or editing public PR/issue text, sanitize the body/title for portable public context:
    - remove session-specific hosts, ports, workspace paths, temp paths, browser automation session references, and local usernames
    - replace local-only validation details with reproducible setup/check steps another maintainer can run
    - if a local URL is needed, prefer `http://localhost:<port>` or a placeholder over private/non-standard hostnames

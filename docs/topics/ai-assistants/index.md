@@ -109,6 +109,8 @@ Worktree note for agents: when creating a worktree from a GitHub issue, prefer `
 PR/issue composition hygiene:
 
 - `compose-pr`, `compose-issue`, and `github` sanitize public GitHub text before drafting or posting.
+- When output depends on existing PR/issue/comment context, `compose-pr`, `compose-issue`, and `github` reuse the review skill's GitHub Context Intake + Reference Resolution gate.
+- When context is contested or historically unclear, those skills also reuse the bounded Ambient Topic Exploration pass across related GitHub issues/PRs, GitHub Discussions, and available Slack MCP public/team-channel evidence.
 - PR/issue bodies must avoid session-specific local references such as private hostnames, non-standard local domains, absolute workspace paths, `/tmp/...` files, browser automation session names, and local usernames.
 - Repro-driven PRs must include portable local reproduction steps in the test plan, not only the agent's local validation notes. Prefer generic setup such as `local Kibana`, `http://localhost:5601`, or explicit role/user creation steps that another reviewer can run.
 

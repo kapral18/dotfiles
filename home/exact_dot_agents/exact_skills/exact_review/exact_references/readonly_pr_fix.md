@@ -19,7 +19,8 @@ Out of scope:
 ## Context Intake (First Turn Only)
 
 - Read:
-  - complete the Reference Resolution gate in pr_common.md (blocking — all links, media, and recursive references must be resolved before proceeding)
+  - complete the GitHub Context Intake + Reference Resolution gate in pr_common.md (blocking — full descriptions/bodies, comments, replies, threads, media, and recursive references must be resolved before proceeding)
+  - run Ambient Topic Exploration in pr_common.md when disagreement, unclear shared understanding, or missing topic history matters
   - all review threads (end-to-end)
   - full diff
 

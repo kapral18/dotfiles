@@ -63,10 +63,14 @@ Skill support:
 - Review modes live under `~/.agents/skills/review/references/`:
   - `judging_core.md` — the surface-agnostic judging engine: truth validation, state-machine gate, deletion-safety, historical-rationale, coverage checklist, severity, and the post-review four-dimension lens + stage (loaded once by the router, before any mode)
   - `shared_rules.md` — the PR/SCSI/GitHub-delivery rules layered on top of the core: base-context gate, read-only probes, hard constraints, draft style, pending-review semantics, review verdict, review persistence, posting boundary (loaded once by the router)
-  - `pr_common.md` — PR resolution, media evidence, anchoring, deep links (loaded once for PR modes)
+  - `pr_common.md` — PR resolution, exhaustive GitHub Context Intake + Reference Resolution, media evidence, anchoring, deep links (loaded once for PR modes)
   - `local_changes.md` — local diff / branch delta review
   - `pr_review.md` — initial or continued PR review (batch or one-at-a-time)
   - `pr_fix.md` — address reviewer feedback (reply and/or code changes per thread)
+
+The PR/issue intake gate is deliberately exhaustive: read complete PR and issue descriptions/bodies line-by-line; every conversation comment, review body, review comment, thread, and reply; every image/GIF/video or attachment (videos by significant frame/scene/state transition); and every recursively discovered PR/issue/comment/media/link until no reachable relevant reference remains unread. GitHub posting and PR/issue composition skills reuse the same gate when their output depends on existing PR/issue/comment context.
+
+For disagreements or missing rationale, the review skill adds bounded **Ambient Topic Exploration**: build a topic map, search related GitHub issues/PRs, GitHub Discussions via GraphQL `SearchType.DISCUSSION`, and Slack MCP public/team channels when available, then read high-signal hits with the same intake rules. Skip it for routine reviews where direct context and base-branch context are enough.
 
 ## Post-review stage (verifying the review's own fixes)
 

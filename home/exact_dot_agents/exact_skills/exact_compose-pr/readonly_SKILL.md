@@ -13,7 +13,8 @@ Use when:
 Scope:
 
 - produces a PR body draft only
-- do not run `gh` or change PR metadata; use `~/.agents/skills/github/SKILL.md` for side effects
+- do not change PR metadata; use `~/.agents/skills/github/SKILL.md` for side effects
+- read-only `gh`/GitHub API use is allowed only to resolve and fully read PR/issue/comment/media references needed for the draft
 
 Do not use:
 
@@ -22,10 +23,12 @@ Do not use:
 
 First actions:
 
-1. Inspect the current diff/branch context and the user-supplied issue refs.
-2. Extract only evidence you can verify (summary, test plan, migration notes).
-3. If issue linkage or test evidence is missing, keep placeholders instead of inventing details.
-4. If the repo belongs to the `elastic` org, use the Elastic org variant section below.
+1. Inspect the current diff/branch context and the user-supplied issue/PR refs.
+2. For any PR, issue, comment, thread, asset, URL, or media reference the draft depends on, run the GitHub Context Intake + Reference Resolution gate in `~/.agents/skills/review/references/pr_common.md`.
+3. If the PR body needs contested, historical, product, or team-precedent context not settled by direct references, run Ambient Topic Exploration in `~/.agents/skills/review/references/pr_common.md`.
+4. Extract only evidence you can verify (summary, test plan, migration notes).
+5. If issue linkage or test evidence is missing after intake, keep placeholders instead of inventing details.
+6. If the repo belongs to the `elastic` org, use the Elastic org variant section below.
 
 Rules:
 
