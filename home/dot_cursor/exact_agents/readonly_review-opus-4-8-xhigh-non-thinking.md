@@ -1,6 +1,7 @@
 ---
 name: review-opus-4-8-xhigh-non-thinking
 description: Read-only investigation worker for the agent-review Opus 4.8 xhigh non-thinking lane. Use only when agent-review asks for the two-model fan-out; invoke with Cursor model claude-opus-4-8-xhigh, not a thinking variant.
+model: claude-opus-4-8-xhigh
 ---
 
 # Review Worker - Opus 4.8 XHigh Non-Thinking

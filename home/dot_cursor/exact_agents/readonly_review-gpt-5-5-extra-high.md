@@ -1,6 +1,7 @@
 ---
 name: review-gpt-5-5-extra-high
 description: Read-only investigation worker for the agent-review GPT-5.5 extra-high lane. Use only when agent-review asks for the two-model fan-out; invoke with Cursor model gpt-5.5-extra-high.
+model: gpt-5.5-extra-high
 ---
 
 # Review Worker - GPT-5.5 Extra High

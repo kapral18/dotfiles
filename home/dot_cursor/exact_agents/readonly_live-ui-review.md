@@ -1,6 +1,7 @@
 ---
 name: live-ui-review
 description: Read-only live UI verifier for /agent-review. Use after reviewer workers to validate UI/runtime-relevant candidate findings; returns comparison evidence or applicability/blocker status.
+model: gpt-5.5-extra-high
 ---
 
 # Live UI Review
