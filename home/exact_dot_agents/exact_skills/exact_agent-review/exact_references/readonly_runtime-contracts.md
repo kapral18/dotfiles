@@ -36,6 +36,7 @@ Hard constraints:
 - Verify every finding from evidence; drop guesses and duplicates.
 - Verify the claimed path is reachable before assigning severity. If reachability is uncertain, say what remains unverified and return it as a hypothesis for the controller instead of an actionable finding.
 - Where a mode would normally fix or post, report the precise fix or draft comment for the parent controller to act on.
+- Do not run Existing Pending Review Reconciliation. That is final-payload reconciliation owned by the parent controller after worker findings, live UI evidence, and findings audit are available.
 
 Return only findings for the assigned angle, ordered by severity.
 
@@ -87,6 +88,8 @@ Audit scope:
 
 1. Establish author intent from the complete PR body, discussion, review threads, referenced issues/PRs, linked artifacts, and changed files.
 2. Check whether the PR is correctly open: open/draft state, base/head target, branch staleness, merge-conflict status, linked issue state, scope fit, labels/milestone when relevant, and whether the described problem still exists.
+   - Separate review greenlight from merge readiness. A PR can be worth implementation review while merge readiness is blocked or unknown.
+   - Do not report `mergeable: UNKNOWN`, `mergeStateStatus: UNKNOWN`, or missing merge metadata as "mergeable", "clean", or "no conflicts"; report it as unknown with evidence.
 3. Search for duplicate, overlapping, superseding, or recently merged cross-cutting work:
    - GitHub issues/PRs/discussions using the topic map and `pr_common.md` intake rules.
    - git history for touched files/symbols and topic terms.
@@ -101,8 +104,9 @@ Return:
 - `intent`: clear / unclear / conflicting, with evidence
 - `correctly_open`: yes / no / unclear, with evidence
 - `needed`: yes / no / unclear, with evidence
+- `merge_readiness`: ready / blocked / unknown / not checked, with mergeable/status-check evidence. This does not replace `greenlight`.
 - `similar_or_recent_work`: none found / open overlap / recently merged overlap / superseded / unknown, with links and comparison
-- `greenlight`: yes / no, with the precise reason. Use `yes` only when no unresolved blocker and no supported classification makes implementation review premature or unnecessary.
+- `greenlight`: yes / no, with the precise reason. This means "continue implementation review", not "ready to merge". Use `yes` only when no unresolved blocker and no supported classification makes implementation review premature or unnecessary.
 - `slack_context`: searched/read/skipped-with-reason
 - `git_history_context`: commands/refs inspected and what they proved
 - `draft_feedback`: only public-ready questions/comments the controller may choose to use after judgment
@@ -119,8 +123,9 @@ The subject is:
 - not the original review target
 - not a working-tree fix
 - the candidate finding set produced by the reviewer workers
-- the live UI evidence/non-applicability/blocker status
+- the live UI evidence/non-applicability/target-branch-data blocker status
 - any PR necessity draft concerns that survived the greenlight gate
+- any existing current-account pending review/comments/replies supplied by the parent because they affect duplication, actionability, or proposed payload merging
 
 Load `~/.agents/skills/review/references/judging_core.md`.
 
@@ -135,7 +140,7 @@ Do not run:
 
 Scope:
 
-- Audit the combined candidate findings from `review-gpt-5-5-extra-high`, `review-opus-4-8-xhigh-non-thinking`, `live-ui-review`, and any surviving `pr-necessity-auditor` draft concerns when the controller determines the set is non-trivial enough to delegate.
+- Audit the combined candidate findings from `review-gpt-5-5-extra-high`, `review-opus-4-8-xhigh-non-thinking`, `live-ui-review`, any surviving `pr-necessity-auditor` draft concerns, and any parent-supplied current-account pending-review context when the controller determines the set is non-trivial enough to delegate.
 - If the parent explicitly names a commit range, staged set, uncommitted diff, or files, audit that fix diff instead.
 
 Hard constraints:
@@ -144,6 +149,7 @@ Hard constraints:
 - Verify every hygiene finding from evidence; do not assert a problem without an exact anchor.
 - Group findings by the canonical dimensions: redundancy, verbosity, semantic + logical duplication, gaps.
 - Check whether each remaining finding is actionable and whether the proposed smallest fix is overengineered for the proved problem.
+- Check whether parent-supplied existing pending/submitted review content makes a candidate redundant, stale, conflicting, or mergeable into a single cleaner payload.
 
 Return each finding with:
 
@@ -161,9 +167,10 @@ Use after the blocking PR necessity gate and reviewer workers as the conditional
 
 Mode boundary:
 
-- Default `live-ui-review`: evidence only.
-- Tool-level non-read-only is allowed only for Playwriter/browser commands.
-- Behavior-level read-only still applies in default mode.
+- Default `live-ui-review`: verification only.
+- Tool-level non-read-only is allowed only for Playwriter/browser commands and for explicit local/dev runtime data setup against the verified targets.
+- Behavior-level read-only still applies to the repository, GitHub, git, and publishing surfaces.
+- Local/dev runtime data setup is allowed when required to verify an applicable UI finding.
 - Fix-capable Playwriter tasks are separate post-judgment tasks.
 - Fix mode requires `authorship: self` or explicit user takeover.
 - Fix mode prompt must state allowed changes and verification commands.
@@ -179,6 +186,8 @@ The parent supplies:
 ### Applicability
 
 Decide whether the changed paths or candidate findings touch UI/runtime behavior. If not, return `Not applicable` with the evidence used.
+
+Do not return `Not applicable` just because the target runtime has no data. If the changed UI/runtime path exists but required data is absent, continue through the data/setup ladder below and return `Blocked` only after those attempts are exhausted.
 
 ### Runtime targets
 
@@ -198,7 +207,7 @@ Decide whether the changed paths or candidate findings touch UI/runtime behavior
 - If readiness or branch identity cannot be established, return `Blocked` with the missing evidence.
 - Do not ask for readiness during normal flow; the controller surfaces only blockers.
 - Do not use WebFetch, shell `curl`, or other HTTP-only probes as local/private Kibana readiness evidence.
-- HTTP-only probes may be supplemental diagnostics only.
+- HTTP-only probes may be supplemental diagnostics only. This readiness rule does not forbid post-readiness local/dev API calls used only for scoped data setup.
 - Playwriter is the required readiness check for:
   - `kibana-main.local`
   - `kibana-feat.local`
@@ -225,18 +234,39 @@ When applicable targets pass preflight, continue using Playwriter for UI compari
 Scope:
 
 - Compare the PR/head runtime against the base runtime for UI-relevant changes and reviewer findings.
-- Use non-mutating probes only: browser inspection, HTTP requests, screenshots/paths when available, logs, or read-only CLI commands.
+- Use the smallest verification path: browser inspection, HTTP requests, screenshots/paths when available, logs, read-only CLI commands, browser/route mocks, or local/dev runtime data setup.
 - Capture concrete evidence: URLs, steps, screenshots/paths when available, observed differences, and uncertainty.
 - Bound comparison to the smallest flow that can verify a candidate finding.
 - Stop after five UI actions for a single candidate unless the parent supplied a tighter budget.
-- Return partial evidence plus `Blocked` if the flow needs more actions or data setup.
+- Return partial evidence plus `Blocked` only when the flow still needs actions or data setup that is unsafe, impossible, or over budget after the data/setup ladder below.
+
+### Data/setup ladder
+
+If an applicable flow reaches an empty state or lacks the data needed to reproduce the candidate:
+
+1. Inspect the complete direct PR/issue artifacts already in scope, including screenshots, GIFs, videos, and linked media. For videos/GIFs, inspect enough frames to infer the relevant UI state and data shape.
+2. Inspect changed tests, fixtures, mocks, story/test helpers, and local route/data mocks to infer the smallest data shape that exercises the UI path.
+3. Try cheap setup first:
+   - existing seeded/demo data already present on either target
+   - browser-side route/network mocks
+   - Playwriter-owned in-memory state or page-level mocks
+   - read-only API responses used only to infer data shape
+4. If cheap setup is insufficient, create the smallest isolated local/dev runtime data needed to exercise the flow. Allowed mutation surface:
+   - the configured local verification targets and their backing local/dev Elasticsearch/Kibana state only
+   - browser actions or local/dev API calls needed to seed test data on the verified targets
+   - temporary test-only identifiers that are easy to find and clean up
+5. Clean up seeded data before returning when cleanup is safe. If cleanup is not possible or not verified, report the exact leftover objects and why.
+6. Do not mutate production, shared cloud, GitHub, git, repo files, committed files, labels, reviews, comments, branches, or user-visible external state. If target identity is ambiguous or appears non-local/non-dev, return `Blocked` instead of mutating.
+7. Only return `Blocked` for data after media/fixture/mock attempts and allowed local/dev runtime setup attempts are exhausted or unsafe. Include the exact setup attempted, the mutation that would still be required, and why it was not safe/possible.
+8. Only return `Not applicable` when the changed path/candidate is not UI/runtime-relevant or the functionality itself is absent from the target surface. Missing data is setup work or `Blocked`, not `Not applicable`.
 
 Hard constraints for this evidence pass:
 
-- Investigation only. Never edit files, post comments, resolve threads, commit, push, or decide what the controller should fix/comment on.
+- Verification only. Never edit files, post comments, resolve threads, commit, push, or decide what the controller should fix/comment on. Local/dev runtime data setup is allowed only as defined in the data/setup ladder above.
 - Never run git write commands.
 - Never use ApplyPatch or file-editing tools.
 - Never write files except Playwriter artifacts under `/tmp`.
+- Runtime data mutations must be local/dev-only, minimal, named in the evidence, and cleaned up or reported.
 - If the harness is read-only/Ask-mode and blocks Playwriter, return `Blocked`.
 - If Playwriter loops, reloads repeatedly, or cannot reach a stable snapshot, return `Blocked`.
 - Return findings to the user or `/agent-review` as evidence input. `/agent-review` performs any judgment or side effects.
@@ -248,6 +278,7 @@ Return exactly:
 - `playwriter_preflight`: whether the Playwriter skill was loaded and `playwriter skill` was run; if not, say why
 - `target_readiness`: readiness result for each exact URL, from Playwriter evidence
 - `branch_evidence`: branch/runtime identity evidence for each target, or what could not be verified
-- `comparison_evidence`: candidate-by-candidate UI/runtime evidence, including `Not applicable` for candidates disproved by reachability
+- `data_setup`: media/artifacts inspected, fixture/mocks considered, runtime data seeded/mutated, cleanup result, or exact data/mutation still needed
+- `comparison_evidence`: candidate-by-candidate UI/runtime evidence, including `Not applicable` only for candidates disproved by reachability or absent functionality
 - `pages`: pages created and closed, or URLs left open
 - `blockers_or_uncertainty`: none, or precise blockers/remaining uncertainty

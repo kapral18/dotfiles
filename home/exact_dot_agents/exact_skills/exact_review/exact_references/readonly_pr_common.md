@@ -87,6 +87,7 @@ Recover the full raw content before marking an item read.
 2. Seed the queue from the primary PR:
    - raw PR description/body, read every line including template text, checkboxes, code blocks, quotes, collapsible sections, and footnotes
    - PR conversation/timeline comments, review bodies, review comments, review threads, and every reply in each thread, including resolved/outdated state when available
+   - any `PENDING` review and draft comments authored by the current authenticated account, using `shared_rules.md` Existing Pending Review Awareness
    - linked/closing issues, linked PRs, commits, check/build links, URLs, and image/media/attachment links found anywhere above
 3. For each queued item, read the complete artifact before extracting references from it:
    - PRs:
@@ -219,11 +220,41 @@ This audit does not approve, reject, close, or post. It produces evidence for dr
 - Using artifacts from GitHub Context Intake + Reference Resolution, classify each candidate finding:
   - `covered`:
     - already addressed by accurate PR description clarifications or existing review threads/replies
+    - already present in a valid existing pending review/draft comment from the current authenticated account
     - comment author does not matter
     - verify against the current implementation/diff
     - do not draft a new comment
   - `new`: not already covered and verified against the current implementation/diff; eligible for draft feedback.
   - `incorrect`: prior clarification/comment conflicts with the current implementation/diff; add one correction with evidence (do not echo the incorrect claim).
+
+## Existing Pending Review Reconciliation (Blocking Before Final Draft/Post)
+
+Run this after the candidate queue is evidence-verified and before preparing any final PR-review draft, pending-review API payload, or review submission.
+
+1. Build a ledger of current-account review content:
+   - current authenticated login
+   - pending review IDs, bodies, commit IDs, and draft comments
+   - already-submitted review bodies, inline comments, thread replies, and PR-level comments authored by the same login
+   - current PR head SHA
+2. Compare every new candidate finding against that ledger and the current diff:
+   - same root cause / same fix / same anchor region -> one merged finding
+   - old pending anchor moved but finding remains valid -> re-anchor in the merged payload
+   - old pending finding is now stale, fixed, duplicated by public context, or wrong -> drop it from the payload and record why
+   - old pending finding is independent and still valid -> keep it once in the merged payload
+   - new finding duplicates an existing valid pending finding -> suppress the new duplicate
+   - new evidence contradicts existing pending content -> resolve from current head or stop as `blocked`
+3. If a pending review already exists:
+   - do not create another pending review
+   - prepare a consolidated replacement payload that contains the kept existing findings plus net-new findings exactly once
+   - if posting is requested, the GitHub side-effect layer must delete/recreate the pending review only after explicit approval
+4. Include this ledger in output:
+   - `Pending review reconciliation: none found`
+   - `Pending review reconciliation: reused existing <review_id> with no changes`
+   - `Pending review reconciliation: merged replacement needed for <review_id> (kept=<n>, added=<n>, dropped=<n>)`
+   - `Pending review reconciliation: stale pending dropped for <review_id> (<reason>)`
+   - `Pending review reconciliation: blocked (<reason>)`
+
+Never post or submit review feedback while this reconciliation is unknown and locally/API-verifiable.
 
 ## Comment Placement (Draft Guidance)
 

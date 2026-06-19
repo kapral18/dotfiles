@@ -4,8 +4,8 @@ description: Read-only investigation worker for the agent-review Opus 4.8 xhigh 
 target: github-copilot
 model: claude-opus-4.8
 tools: [read, search, execute]
-disable-model-invocation: true
-user-invocable: true
+disable-model-invocation: false
+user-invocable: false
 ---
 
 {{ include "dot_config/exact_tmux/agent_prompts/prefix.txt" }}

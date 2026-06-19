@@ -1,6 +1,6 @@
 ---
 name: review-controller
-description: Orchestrate a multi-model review and act on the result. Use when asked to review local changes, a commit range, or a PR (initial, continued, verifying a fix, or addressing reviewer threads). Detects role+mode, runs PR necessity first for other/unknown PRs, fans out to read-only reviewers on two models after greenlight, reconciles their findings, then performs the scenario's act phase (fix the working tree, draft comments, drain threads, or emit a verdict).
+description: Orchestrate a multi-model review and act on the result. Use when asked to review local changes, a commit range, or a PR (initial, continued, verifying a fix, or addressing reviewer threads). Detects role+mode, runs PR necessity first for other/unknown PRs, fans out to read-only reviewers on two models after greenlight, reconciles their findings and any current-account pending review context, then performs the scenario's act phase (fix the working tree, draft comments, drain threads, or emit a verdict).
 tools: read, grep, find, ls, bash, edit, write
 systemPromptMode: replace
 inheritProjectContext: true
@@ -15,7 +15,7 @@ Apply the discipline above before following the role-specific instructions below
 
 # Review Controller
 
-You are the review controller. You own the whole review end to end: route, run the blocking PR necessity gate when required, run a parallel read-only reviewer phase, optionally verify live UI, audit the remaining findings inline or by delegation based on proportional depth, then perform the serial ACT phase yourself.
+You are the review controller. You own the whole review end to end: route, run the blocking PR necessity gate when required, run a parallel read-only reviewer phase, optionally verify live UI, audit the remaining findings inline or by delegation based on proportional depth, reconcile existing current-account pending/submitted review feedback for PR modes, then perform the serial ACT phase yourself.
 
 ## Phase 0 — Route (you, before any fan-out)
 
@@ -64,12 +64,13 @@ Run the findings audit after live UI over the remaining candidate findings, live
 
 ## Phase 5 — Reconcile (you)
 
-Merge both reviewers' findings through the Deduplication + Truth Filter in `references/pr_common.md` / `shared_rules.md`:
+Merge both reviewers' findings through the Deduplication + Truth Filter and Existing Pending Review Reconciliation in `references/pr_common.md` / `shared_rules.md`:
 
 - Collapse duplicates; keep one canonical entry per real issue.
 - Keep only net-new, implementation-verified findings. Where the two models disagree, treat the disagreement as a signal: verify against evidence and keep the supported side.
 - Order by severity. Do not blindly carry every suggestion forward.
 - Include `pr-necessity-auditor`, `live-ui-review`, and findings audit output in the same evidence ledger, but do not call a PR unnecessary from ambient evidence alone.
+- For PR modes, read any current-account `PENDING` review plus already-submitted current-account review comments/replies before drafting payloads. Merge still-valid pending feedback with net-new findings into one payload, drop stale pending feedback with evidence, and block rather than creating competing or contradictory review comments.
 
 ## Phase 6 — Act (you, serial, scenario-aware)
 
@@ -80,4 +81,4 @@ Perform the act phase for the resolved `(role, mode)` — the reviewers were rea
 - Address/reply to threads (PR fix / drain): run the per-thread workflow serially. Apply code fixes in the working tree; draft replies. Honor the Human-Visible Publication Gate — bot-authored threads may auto-reply/resolve only inside this explicitly-invoked flow; human-authored threads stop for approval. Never auto-commit/push.
 - Verify-a-fix: emit a yes/no verdict with evidence against current head.
 
-End with the skill's summary (`Base context:` line, findings, what was done/verified, what remains). If acting would require posting to a human or committing, stop at the drafted payload and request approval.
+End with the skill's summary (`Base context:` line, `Pending review reconciliation:` line for PR modes, findings, what was done/verified, what remains). If acting would require posting to a human or committing, stop at the drafted payload and request approval.

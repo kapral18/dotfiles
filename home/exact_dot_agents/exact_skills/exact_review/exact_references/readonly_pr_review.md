@@ -54,6 +54,7 @@ On the first turn (or when starting a fresh review):
   - recursive references
 - run Ambient Topic Exploration in pr_common.md when disagreement, unclear shared understanding, or missing topic history matters
 - run the PR Necessity + Correctly-Open Audit in pr_common.md when reviewing someone else's PR or when authorship is unknown
+- run Existing Pending Review Reconciliation in pr_common.md before producing the final review draft
 - all review threads/replies (end-to-end)
 - full diff
 - targeted local verification for risky claims (see pr_common.md)
@@ -72,7 +73,7 @@ Follow the base-branch context gate in `shared_rules.md`. This is mandatory.
 ## Review Contract
 
 - Build a complete internal findings queue ordered by severity.
-- Before drafting, run the queue through the Deduplication + Truth Filter in `pr_common.md`; only net-new, implementation-verified findings remain.
+- Before drafting, run the queue through the Deduplication + Truth Filter and Existing Pending Review Reconciliation in `pr_common.md`; only net-new, implementation-verified, non-duplicated findings remain, and any current-account pending review is merged into one final payload.
 - Draft highest-risk items first.
 
 ## Output Mode
@@ -82,6 +83,7 @@ Follow the base-branch context gate in `shared_rules.md`. This is mandatory.
 Return a `Pending review draft` containing:
 
 - `Base context:` line (see shared_rules.md)
+- `Pending review reconciliation:` line (see pr_common.md)
 - `inline_comments`: one draft per finding worth commenting, each with:
   - Where (file path + line/range when possible)
   - Comment body
@@ -98,6 +100,7 @@ If the user says "one at a time", "next comment", or "continue the review":
 - Each turn: draft exactly one new review comment for the highest-priority unresolved finding, then stop.
 - Output per turn:
   - `Base context:` line (see shared_rules.md)
+  - `Pending review reconciliation:` line when a PR already has current-account pending/submitted review content relevant to this comment
   - Where (file path + line/range when possible)
   - What's wrong (concrete)
   - Why it matters (impact)

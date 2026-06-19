@@ -47,9 +47,10 @@ The controller owns:
 - running the conditional blocking `pr-necessity-auditor` for other-authored or unknown PRs before implementation review
 - launching the two reviewer workers after any required PR necessity greenlight
 - running conditional `live-ui-review` verification after reviewer workers finish
-- running the findings audit phase after live UI returns evidence, non-applicability, or a blocker; delegate to `findings-auditor` only when proportional
-- aggregating worker outputs, `pr-necessity-auditor` evidence or skip/blocker status, `live-ui-review` evidence or skip/blocker status, and audit output
+- running the findings audit phase after live UI returns evidence, non-applicability, or a target/branch/unsafe-data-setup blocker; delegate to `findings-auditor` only when proportional
+- aggregating worker outputs, `pr-necessity-auditor` evidence or skip/blocker status, `live-ui-review` evidence or skip/target-branch-data blocker status, and audit output
 - judging kept/dropped findings after aggregation
+- reconciling PR-mode draft payloads with existing current-account pending reviews, submitted review comments, and replies before preparing or posting final review feedback
 - applying fixes, drafting payloads, or touching GitHub only after the relevant `review`/`github`/`git` gates
 
 Before fan-out, the controller must not load or run the full `review` skill.
@@ -69,6 +70,7 @@ After workers return, the controller may consult only the minimum relevant revie
 - severity
 - side-effect gates
 - `~/.agents/skills/review/references/pr_common.md` for PR-mode reconciliation
+- `~/.agents/skills/review/references/shared_rules.md` for existing pending-review awareness
 
 Do not rerun the coverage checklist, base-context investigation, or worker review analysis.
 
@@ -98,9 +100,17 @@ The phase order is strict:
 3. two reviewer workers in parallel
 4. live UI verification when applicable
 5. findings audit, inline or delegated by proportional-depth rules
-6. controller aggregation, judgment, and action
+6. controller aggregation, judgment, PR-mode pending-review reconciliation, and action
 
 Do not start a later phase until the current phase returns. In blocking phases, do not poll background workers with long waits just to check status; wait for completion notifications or use the harness's synchronous/blocking mechanism. The controller may read completed phase outputs, but it must not perform later-phase analysis while the current phase is still running.
+
+For every delegated worker, emit an export-visible worker selection line before launch:
+
+```text
+Worker selection: phase=<pr-necessity|review-gpt|review-opus|live-ui|findings-audit>, profile=<configured profile name>, agent_type=<task/subagent agent type>, model=<model>, invocation=<named|fallback>, fallback_reason=<none or reason>
+```
+
+This line is part of the audit trail. If a runtime export hides task arguments, the worker selection line must still prove whether the controller used named profiles or a fallback such as `general-purpose`.
 
 1. **Route and scope.** Build a scope packet with:
    - mode: `local_changes.md`, `pr_review.md`, or `pr_fix.md`
@@ -128,12 +138,15 @@ Do not start a later phase until the current phase returns. In blocking phases, 
      - greenlight evidence that the PR is sensible enough to review further
      - blocker or stop status for inaccessible GitHub, Slack, history, unclear intent, not-needed/superseded work, or incorrectly-open status
    - Greenlight means there is no unresolved blocker and no supported classification that makes implementation review premature or unnecessary. For other-authored or unknown-author PRs, continue to reviewer fan-out only when the audit supports `needed: yes` and no material correctly-open/intent concern blocks review.
+   - Greenlight is not merge readiness. Failed/missing labels, outdated-branch checks, unknown mergeability, or other status blockers may be surfaced as `merge_readiness`/status uncertainty while still allowing implementation review to continue.
+   - Never treat `mergeable: UNKNOWN`, `mergeStateStatus: UNKNOWN`, or missing merge metadata as proof of no conflicts. Record it as unknown.
    - If the audit returns blocked, unclear, not needed, superseded, or incorrectly open, stop the implementation review flow and surface the supported blocker/PR-level draft feedback. Do not launch reviewer workers, live UI, or findings audit unless the user explicitly asks to continue anyway.
    - Do not rely on the auditor to decide or post. The controller judges and gates any draft feedback.
 
 3. **Launch two code investigation reviewers in parallel.**
    - Emit both reviewer launches in one message (a single tool-call batch).
    - Use the current harness's native configured reviewer workers or task mechanism.
+   - Copilot CLI: launch the named worker profiles (`review-gpt-5-5-extra-high`, `review-opus-4-8-xhigh-non-thinking`, `pr-necessity-auditor`, `live-ui-review`, `findings-auditor`) as task agent types. They are model-invocable but not user-invocable. Do not use `general-purpose` unless a named launch is proven unavailable in the active Copilot runtime, and state that fallback reason.
    - Cursor model selection is explicit, never inherited:
      - GPT/default lane: `gpt-5.5-extra-high`
      - Opus lane: `claude-opus-4-8-xhigh`
@@ -156,8 +169,8 @@ Do not start a later phase until the current phase returns. In blocking phases, 
 4. **Run conditional live UI verification.**
    - After both reviewers finish, run `live-ui-review`.
    - `live-ui-review` is the only worker lane that may need tool-level non-read-only mode.
-   - Use non-read-only mode only to run Playwriter/browser commands.
-   - Mode boundary: default `live-ui-review` is evidence-only.
+   - Use non-read-only mode only to run Playwriter/browser commands and explicit local/dev runtime data setup against verified targets.
+   - Mode boundary: default `live-ui-review` is verification-only.
    - Keep behavior-level read-only constraints in the prompt:
      - no repo edits
      - no file writes except Playwriter artifacts under `/tmp`
@@ -170,12 +183,12 @@ Do not start a later phase until the current phase returns. In blocking phases, 
    - It returns one of:
      - `Not applicable`
      - comparison evidence
-     - target/branch blocker for the controller to surface
+     - target/branch/data blocker for the controller to surface
    - Do not automatically rerun a blocked live-UI result.
    - A read-only/Ask-mode Playwriter block is a valid blocker to surface.
 
 5. **Run findings audit on candidate findings.**
-   - Run this phase only after the PR necessity gate, both reviewer outputs, and live UI evidence/non-applicability/blocker are available.
+   - Run this phase only after the PR necessity gate, both reviewer outputs, and live UI evidence/non-applicability/target-branch-data blocker are available.
    - Always audit the reviewer findings, live UI evidence, and any PR necessity draft concerns that survived the greenlight gate.
    - Inline the audit in the controller when the remaining set is trivial:
      - no candidate findings, or
@@ -202,8 +215,9 @@ Do not start a later phase until the current phase returns. In blocking phases, 
 7. **Judge in the controller.**
    - Apply mode-correct reconciliation:
      - all modes: collapse duplicate worker findings, apply the severity model, and keep only implementation-verified, net-new findings
-     - PR modes: apply `pr_common.md` Deduplication + Truth Filter, CI Coverage Gate, and PR Necessity + Correctly-Open Audit classifications
+     - PR modes: apply `pr_common.md` Deduplication + Truth Filter, Existing Pending Review Reconciliation, CI Coverage Gate, and PR Necessity + Correctly-Open Audit classifications
      - local-changes mode: do not apply PR-thread deduplication or PR CI coverage exemptions; judge against the staged/unstaged/range scope in the packet
+   - For PR modes, read any current-account pending review and already-submitted current-account review comments/replies before drafting payloads. Merge kept pending findings with net-new findings into one final draft; drop stale pending findings with evidence; block rather than producing competing or contradictory payloads.
    - Drop:
      - unsupported claims
      - unreachable-path findings
@@ -243,7 +257,8 @@ Do not start a later phase until the current phase returns. In blocking phases, 
 
 - It verifies UI/runtime-relevant findings against the configured Kibana targets.
 - It returns evidence or a blocker.
-- Default mode: evidence only; no edits, posts, resolves, commits, pushes, or decisions.
+- Default mode: verification only; no repo edits, posts, resolves, commits, pushes, or decisions.
+- It may create minimal isolated data in the configured local/dev runtime when required to verify an applicable UI finding. It must clean up that data when safe or report leftovers exactly.
 - Fix mode: separate Playwriter task after controller judgment.
 - Fix mode requires `authorship: self` or explicit user takeover.
 - Fix mode prompt must state allowed changes and verification commands.
@@ -268,6 +283,8 @@ Required preflight:
 - A blocker is invalid unless it reports results for both exact target URLs.
 - Do not fall back to localhost unless the user explicitly overrides the targets.
 - Do not use WebFetch, shell `curl`, or other HTTP-only probes as target readiness evidence. They may be supplemental diagnostics, but Playwriter is the required readiness check.
+- Do not return `Not applicable` because the target has no data. If the relevant UI exists but data is missing, inspect PR/issue media, tests, fixtures, and mocks; try browser/route mocks or existing seeded data; if still needed, create the smallest isolated local/dev Kibana/Elasticsearch data required to verify the flow.
+- Mutating local/dev runtime data via Playwriter/browser actions or local API calls is allowed for verification after target readiness/identity is established. Do not mutate production/shared cloud/GitHub/git/repo files. Clean up created runtime data when safe, or report exact leftovers and cleanup uncertainty.
 - If Playwriter cannot run because the harness is read-only/Ask-mode, return `Blocked`.
 - If Playwriter fails before navigation with `browserType.connectOverCDP: Timeout`:
   - replace the relay once with `playwriter serve --host 127.0.0.1 --replace`
@@ -297,9 +314,11 @@ Do not reject or rerun a result that reports a valid Playwriter harness blocker:
 Return:
 
 - `Base context:` line from the review methodology.
-- PR necessity audit summary, greenlight, skip, or blocker status when applicable.
+- Worker selection summary for each delegated phase, including any fallback reason.
+- PR necessity audit summary, review greenlight, merge-readiness/status blockers or uncertainty, skip, or blocker status when applicable.
 - Investigation summary: what each reviewer, live UI reviewer, and findings audit found, including whether the findings audit was inline or delegated.
 - Controller judgment: findings kept/dropped and why.
+- Pending review reconciliation: none found, reused existing, merged replacement needed, stale pending dropped, or blocked with reason.
 - Action taken or draft payloads, depending on mode.
 - Remaining uncertainty or gated side effects.
 - `Compatibility impact: none | removed (requested) | kept existing (requested)`.

@@ -169,6 +169,36 @@ Content boundary:
   - best: GitHub `suggestion` blocks with exact replacement code
   - otherwise: small code snippets or precise, actionable steps (avoid vague descriptions).
 
+## Existing Pending Review Awareness (Before Drafting or Posting)
+
+Before preparing a PR review draft, posting a pending review, or submitting an existing pending review, inspect review content already authored by the current authenticated account for the same PR.
+
+This includes:
+
+- any API `state: PENDING` review and its draft inline comments
+- already-submitted review bodies, inline comments, thread replies, and PR-level comments authored by the same user/bot account
+- review/comment/reply content created by previous agent sessions
+
+Use GitHub's PR review APIs as the source of truth:
+
+1. Resolve the current login: `gh api user --jq '.login'`.
+2. List PR reviews: `gh api --paginate repos/OWNER/REPO/pulls/NUM/reviews`.
+3. Select reviews with `state == "PENDING"` and `user.login == <current login>`.
+4. For each selected review, read its draft comments with `gh api --paginate repos/OWNER/REPO/pulls/NUM/reviews/REVIEW_ID/comments`.
+5. Re-read already-submitted comments/replies from the normal PR context intake and mark which were authored by the current login.
+
+Reconcile new candidate findings against this ledger before producing the final draft:
+
+- `covered_by_pending`: the existing pending review already states the same valid finding; do not draft a second copy.
+- `merge_with_pending`: the same finding remains valid but the new run has better evidence, a better anchor, or a smaller fix; produce one merged replacement comment/body.
+- `keep_existing_pending`: the existing pending finding is still valid and independent of the new findings; carry it forward once.
+- `drop_stale_pending`: the existing pending finding is obsolete, incorrect on the current head, already fixed, or covered by public PR context; do not submit it.
+- `conflict`: the existing pending review and new evidence disagree; resolve from current PR head evidence before posting. If unresolved, stop and surface the conflict rather than posting both.
+
+If a pending review already exists and a merged payload is needed, do not create a second competing review. Prepare one consolidated pending-review payload and let the GitHub side-effect layer delete/recreate the old pending review only after explicit approval.
+
+Every PR-review output that may become GitHub review feedback must include a `Pending review reconciliation:` line with one of: `none found`, `reused existing`, `merged replacement needed`, `stale pending dropped`, `blocked: <reason>`.
+
 ## Review Verdict (PR Review Mode Only)
 
 After all findings are drafted, recommend an overall verdict:

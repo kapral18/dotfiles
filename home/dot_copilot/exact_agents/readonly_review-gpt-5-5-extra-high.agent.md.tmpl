@@ -4,8 +4,8 @@ description: Read-only investigation worker for the agent-review GPT-5.5 extra-h
 target: github-copilot
 model: gpt-5.5
 tools: [read, search, execute]
-disable-model-invocation: true
-user-invocable: true
+disable-model-invocation: false
+user-invocable: false
 ---
 
 {{ include "dot_config/exact_tmux/agent_prompts/prefix.txt" }}

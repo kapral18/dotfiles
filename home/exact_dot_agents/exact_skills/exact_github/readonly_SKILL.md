@@ -89,6 +89,7 @@ PR review side effects (draft / pending reviews):
 > 5. For code-review feedback, default to inline anchored `comments[]` (not body-only summary), unless the user explicitly asks for PR-level summary feedback.
 > 6. In `body` and each inline comment body, any code/file/symbol reference must be a clickable source link (exact file + line/range on PR head SHA), not plain text.
 > 7. Fetch the current PR diff/patch for the target head SHA and verify every `line`/`side`, range, or `position` anchor is inside the intended diff hunk immediately before creating or submitting the review. Do not rely on full-file line numbers, stale patches, or memory.
+> 8. Read existing current-account pending reviews and reconcile them with the payload. Do not create or submit fragmented review feedback.
 
 - Definition: a "pending review" is a PR review whose API `state` is `PENDING`. It is visible only to the reviewer who created it until submission (COMMENT/APPROVE/REQUEST_CHANGES), and it does not appear to the PR author as posted review comments while pending.
 - Creating a PENDING (draft) PR review requires the reviews API. Omit `event` in: `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews`
@@ -101,6 +102,24 @@ PR review side effects (draft / pending reviews):
   - `GET /repos/{o}/{r}/pulls/{n}/reviews` will show the `PENDING` review
   - `GET /repos/{o}/{r}/pulls/{n}/comments` should remain unchanged until you submit (draft comments are attached to the review, not publicly posted)
 - Arrays: prefer `gh api ... --input /path/to.json` for payloads containing arrays (avoids accidentally sending arrays as strings via `-f/-F`).
+
+Existing pending-review merge guard:
+
+- Before any create, delete/recreate, or submit action for a PR review:
+  1. Resolve the current login: `gh api user --jq '.login'`.
+  2. List reviews: `gh api --paginate repos/OWNER/REPO/pulls/NUM/reviews`.
+  3. For each review with `state == "PENDING"` and `user.login` matching the current login, read draft comments: `gh api --paginate repos/OWNER/REPO/pulls/NUM/reviews/REVIEW_ID/comments`.
+  4. Compare the pending review body/comments against the approved draft from `review`/`agent-review` and its `Pending review reconciliation:` ledger.
+- If no reconciliation ledger exists, run the review skill's Existing Pending Review Reconciliation before mutating GitHub.
+- If a pending review exists and the new payload is additive/replacement:
+  - do not try to create a second pending review
+  - prepare one consolidated payload that keeps still-valid pending findings and adds net-new findings exactly once
+  - show the exact old pending review ID, comments to keep/drop, new payload, and delete/recreate action; wait for explicit approval
+- If submitting an existing pending review:
+  - fetch the pending review and comments immediately before the submit call
+  - verify they match the approved reconciled payload and current head anchors
+  - if they differ, stop and ask for approval to replace/reconcile first
+- If a pending review contains stale or contradictory feedback, do not submit it. Delete/recreate only after explicit approval with the consolidated replacement payload.
 
 If explicitly asked to POST a batch as a draft (PENDING) review:
 

@@ -49,6 +49,7 @@ If `authorship` is `other`/`unknown` and no explicit fix request exists:
     - media
     - recursive references
   - run Ambient Topic Exploration in pr_common.md when disagreement, unclear shared understanding, or missing topic history matters
+  - run Existing Pending Review Reconciliation in pr_common.md before drafting any new review feedback or publishing/submitting review content
   - all review threads (end-to-end)
   - full diff
 
@@ -126,6 +127,9 @@ Iteration contract:
    - If checks fail or types get worse, back out or adjust and repeat.
 
 9. Draft the reply for that thread (and only that thread).
+   - Before drafting, compare the reply/fix note with any current-account pending review, submitted review comment, or prior reply discovered by Existing Pending Review Reconciliation.
+   - If the same point is already pending, merge the reply intent into the pending-review replacement plan instead of creating a competing comment.
+   - If prior current-account content is stale or contradicted by current head, draft one correction/replacement path; do not publish both versions.
    - If the thread asked for code comments/documentation:
      - make the change in code
      - reply with a short `Fixed in <commit URL>` message
@@ -207,6 +211,7 @@ Loop control:
 ## Output (One Thread Per Turn)
 
 - `Base context:` line (see shared_rules.md)
+- `Pending review reconciliation:` line when current-account pending/submitted review content affects the thread response
 - Thread reference (comment id / file thread)
 - Hypothesis (1-2 lines)
 - Evidence:
