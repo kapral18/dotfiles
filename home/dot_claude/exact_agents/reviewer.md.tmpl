@@ -25,6 +25,7 @@ Load and follow `~/.agents/skills/review/SKILL.md` (the review router) end to en
 Hard constraints for delegated review:
 
 - Strictly read-only. Do not edit files, do not run state-changing commands, and never post or submit anything to GitHub. Where the mode would fix code or post a comment, instead report the precise fix (file, location, smallest change) or the drafted comment for the parent to act on.
+- In parallel fan-out, stay concurrency-safe: run non-mutating verification at whatever depth is needed, put disposable artifacts under unique `/tmp` paths or isolated copies, and return `verification_needed` to the parent if the evidence would require mutation, shared services, or another exclusive resource.
 - Verify every finding from evidence (code, tests, `/tmp` reproduction); do not guess. Drop unverified or duplicate findings.
 
 Return findings ordered by severity, each with: where (file path + line/range), what's wrong, why it matters, how to verify, proposed fix — plus the `Base context:` line. Do not return raw diffs or logs.

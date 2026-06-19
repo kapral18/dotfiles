@@ -20,12 +20,15 @@ The substantive review work happens in isolated reviewer workers that load the s
 The reviewer-worker lanes are read-only:
 
 - no working-tree edits
+- no shared-state mutations or state-changing verification commands
 - no live-UI checks
 - no posting or resolving
 - no commits or pushes
 - no fix application
 
-Workers only investigate and return candidate findings.
+Workers may run non-mutating verification at whatever depth is needed to find and validate review findings. Parallel lanes must not mutate the working tree, repo-local caches, databases, dev services, browser state, GitHub, git state, or other shared runtime state. Use unique `/tmp` paths or isolated copies for disposable reproduction artifacts. Do not skip useful verification only because it is expensive or another lane may also run it. If a finding needs shared-state mutation, a shared service, or another exclusive resource to verify, return the verification need to the controller instead of doing it inside both lanes.
+
+Workers only investigate and return candidate findings or `verification_needed`.
 
 All side effects happen later in the controller, gated by the final act phase.
 
@@ -49,6 +52,7 @@ The controller owns:
 - running conditional `live-ui-review` verification after reviewer workers finish
 - running the findings audit phase after live UI returns evidence, non-applicability, or a target/branch/unsafe-data-setup blocker; delegate to `findings-auditor` only when proportional
 - aggregating worker outputs, `pr-necessity-auditor` evidence or skip/blocker status, `live-ui-review` evidence or skip/target-branch-data blocker status, and audit output
+- deciding which worker-reported `verification_needed` items deserve serial controller verification
 - judging kept/dropped findings after aggregation
 - reconciling PR-mode draft payloads with existing current-account pending reviews, submitted review comments, and replies before preparing or posting final review feedback
 - applying fixes, drafting payloads, or touching GitHub only after the relevant `review`/`github`/`git` gates
@@ -83,7 +87,7 @@ Reviewer workers own the full investigation methodology.
   - `~/.agents/skills/review/references/shared_rules.md`
   - selected mode file under `~/.agents/skills/review/references/`
   - `~/.agents/skills/review/references/pr_common.md` for PR modes
-- Return only evidence and candidate findings.
+- Return only evidence, candidate findings, and any `verification_needed` entries that were unsafe or required shared-state mutation/contention inside a parallel lane.
 - Never edit, post, resolve, commit, push, or decide what should be fixed/commented on.
 
 The active harness owns subagent discovery and invocation.
@@ -97,7 +101,7 @@ The phase order is strict:
 
 1. route and scope
 2. blocking PR necessity gate, only for other-authored or unknown-author PRs
-3. two reviewer workers in parallel
+3. two concurrency-safe reviewer workers in parallel
 4. live UI verification when applicable
 5. findings audit, inline or delegated by proportional-depth rules
 6. controller aggregation, judgment, PR-mode pending-review reconciliation, and action
@@ -164,6 +168,11 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
      - state-machine behavior
    - If `runtime-harnesses.md` says the active harness cannot fan out from the current context, run them as that file directs and state why.
    - This phase is blocking as a phase: after both reviewer workers are launched, do not start live UI verification, findings audit, or controller judgment until both reviewer outputs are available.
+   - Keep the parallel lanes concurrency-safe:
+     - Prefer file reads, local source inspection, SCSI/base-context queries, `git show`/`git diff` reads, isolated `/tmp` reproductions, and verification commands that improve finding validity or coverage.
+     - Allow non-mutating verification at whatever depth is needed, including expensive static analysis or full suites, when outputs/caches are read-only or isolated away from shared repo/runtime state. Performance cost alone is not a reason to skip useful verification.
+     - Do not start dev servers, watchers, database migrations, package installs, code generators, formatters, fixture seeders, or commands that write repo-local caches/artifacts from reviewer lanes.
+     - If stronger verification requires shared-state mutation, a shared service, or an exclusive runtime resource, return `verification_needed` with the exact command/setup and let the controller run it serially after aggregation or during the act phase.
    - Each candidate finding must include a reachability statement for the claimed path. If the claimed UI/API/state path may be unreachable, the worker must verify reachability before assigning severity or mark it as a hypothesis for the controller to verify/drop.
 
 4. **Run conditional live UI verification.**
@@ -189,7 +198,7 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
 
 5. **Run findings audit on candidate findings.**
    - Run this phase only after the PR necessity gate, both reviewer outputs, and live UI evidence/non-applicability/target-branch-data blocker are available.
-   - Always audit the reviewer findings, live UI evidence, and any PR necessity draft concerns that survived the greenlight gate.
+   - Always audit the reviewer findings, any worker-reported `verification_needed`, live UI evidence, and any PR necessity draft concerns that survived the greenlight gate.
    - Inline the audit in the controller when the remaining set is trivial:
      - no candidate findings, or
      - one straightforward evidence-backed finding with no model disagreement, no live UI blocker, no surviving PR-necessity concern, and no fix diff to audit.
@@ -197,6 +206,7 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
      - two or more candidate findings
      - any HIGH/CRITICAL candidate
      - model disagreement or likely duplication
+     - any worker-reported `verification_needed` that materially affects actionability
      - any surviving PR necessity concern
      - live UI comparison/blocker evidence that materially affects judgment
      - any named fix diff, staged set, or applied-fix diff
@@ -211,7 +221,7 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
    - This is still investigation, not a decision, even when inlined in the controller.
    - If inlined, still report the audit result in the final output as `Findings audit: inline ...`.
    - For fix-capable own/self-review flows, this pre-action audit does not replace the normal post-review stage over the actual fix diff after fixes are applied.
-6. **Aggregate.** Combine `pr-necessity-auditor` greenlight/skip status, GPT reviewer output, Opus reviewer output, `live-ui-review` evidence or skip/blocker status, and the findings audit result.
+6. **Aggregate.** Combine `pr-necessity-auditor` greenlight/skip status, GPT reviewer output, Opus reviewer output, any reviewer `verification_needed`, `live-ui-review` evidence or skip/blocker status, and the findings audit result.
 7. **Judge in the controller.**
    - Apply mode-correct reconciliation:
      - all modes: collapse duplicate worker findings, apply the severity model, and keep only implementation-verified, net-new findings
@@ -224,6 +234,9 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
      - PR-mode findings covered by verified PR CI or existing PR artifacts
      - findings that only a worker asserted without evidence
      - PR necessity claims that rely only on ambient precedent without proving the current PR's actual diff and directly referenced artifacts
+   - For any surviving `verification_needed`, either:
+     - run the serial non-mutating/heavy check in the controller before acting when it is required to keep/drop the finding, or
+     - carry it forward as explicit remaining uncertainty/blocker when the check is unsafe, out of scope, or not needed for the final judgment.
 8. **Act only after judgment.** Branch strictly on the mode, explicit fix intent, and `authorship` recorded in step 1; never infer self-review from the fact that the change is checked out locally.
    - Local changes or self-review with `authorship: self`:
      - apply the selected fixes in the working tree
@@ -317,6 +330,7 @@ Return:
 - Worker selection summary for each delegated phase, including any fallback reason.
 - PR necessity audit summary, review greenlight, merge-readiness/status blockers or uncertainty, skip, or blocker status when applicable.
 - Investigation summary: what each reviewer, live UI reviewer, and findings audit found, including whether the findings audit was inline or delegated.
+- Serial verification: any `verification_needed` returned by reviewer lanes and whether the controller ran, skipped, or blocked on it.
 - Controller judgment: findings kept/dropped and why.
 - Pending review reconciliation: none found, reused existing, merged replacement needed, stale pending dropped, or blocked with reason.
 - Action taken or draft payloads, depending on mode.

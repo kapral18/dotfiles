@@ -28,6 +28,9 @@ This file carries only the PR/SCSI/GitHub-delivery rules layered on top of that 
 - Code changes:
   - **Read-only delegated workers**:
     - never edit or run side effects
+    - may run non-mutating verification at whatever depth is needed; use `/tmp` or isolated copies for disposable artifacts and do not write repo-local caches, start shared services, seed data, or mutate shared runtime state
+    - do not skip useful full suites, deep searches, or heavyweight analysis only because they are expensive or another lane may also run them
+    - if verification requires mutation or a shared/exclusive runtime, return the exact `verification_needed` to the parent/controller for serial handling
     - return proposed fixes to the parent controller
   - **Local changes mode with `authorship: self`** and **PR fix mode when edits are permitted**:
     - find issues and fix them in the working tree immediately

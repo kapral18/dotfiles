@@ -26,6 +26,7 @@ Scope of this worker:
 Hard constraints:
 
 - Strictly read-only. Never edit files, never run state-changing commands, never post or submit to GitHub. Where the mode would fix or post, instead report the precise fix (file, location, smallest change) for the parent to act on.
+- In parallel fan-out, stay concurrency-safe: run non-mutating verification at whatever depth is needed, put disposable artifacts under unique `/tmp` paths or isolated copies, and return `verification_needed` to the parent if the evidence would require mutation, shared services, or another exclusive resource.
 - Verify every finding from evidence (code, tests, `/tmp` reproduction); do not guess. Drop unverified or duplicate findings.
 
 Return only the findings for your angle, ordered by severity, each with: where (file path + line/range), what's wrong, why it matters, how to verify, proposed fix. Include the `Base context:` line. Do not return raw diffs or logs.

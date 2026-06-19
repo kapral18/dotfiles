@@ -30,7 +30,13 @@ Do not launch more subagents.
 
 Hard constraints:
 
-- Strictly read-only: never edit files, never run state-changing commands, never post or submit to GitHub.
+- Strictly read-only and concurrency-safe: never edit files, never run state-changing commands, never post or submit to GitHub.
+- Parallel reviewer lanes may run non-mutating verification at whatever depth is needed to find and validate review findings. They must not mutate shared state:
+  - no working-tree writes, generated files, formatters, package installs, migrations, fixture seeders, dev servers, watchers, repo-local caches, databases, browser state, git writes, or GitHub writes
+  - use unique `/tmp` paths or isolated copies for disposable reproductions or command output when any file output is needed
+  - prefer source reads, `git show`/`git diff` reads, SCSI/base-context queries, isolated reproductions, static analysis, and test commands that improve finding validity or coverage
+  - expensive non-mutating verification is allowed; do not skip a useful full suite, deep search, or heavyweight analysis only because it is costly or another lane may also run it
+  - if verification needs shared-state mutation, a shared service, or another exclusive resource, return `verification_needed` with the exact command/setup for the parent controller to run serially
 - This contract takes precedence over mode-file instructions that would normally fix, post, or run side effects directly.
 - Establish base context exactly as the review skill requires.
 - Verify every finding from evidence; drop guesses and duplicates.
@@ -38,11 +44,12 @@ Hard constraints:
 - Where a mode would normally fix or post, report the precise fix or draft comment for the parent controller to act on.
 - Do not run Existing Pending Review Reconciliation. That is final-payload reconciliation owned by the parent controller after worker findings, live UI evidence, and findings audit are available.
 
-Return only findings for the assigned angle, ordered by severity.
+Return only findings for the assigned angle plus any `verification_needed` entries, ordered by severity.
 
 Include:
 
 - `Base context: ...`
+- `verification_needed: ...` when stronger verification was unsafe, mutating, or required a shared/exclusive resource
 - where
 - what is wrong
 - why it matters
@@ -123,6 +130,7 @@ The subject is:
 - not the original review target
 - not a working-tree fix
 - the candidate finding set produced by the reviewer workers
+- any worker-reported `verification_needed` that affects whether a finding is actionable
 - the live UI evidence/non-applicability/target-branch-data blocker status
 - any PR necessity draft concerns that survived the greenlight gate
 - any existing current-account pending review/comments/replies supplied by the parent because they affect duplication, actionability, or proposed payload merging
@@ -140,7 +148,7 @@ Do not run:
 
 Scope:
 
-- Audit the combined candidate findings from `review-gpt-5-5-extra-high`, `review-opus-4-8-xhigh-non-thinking`, `live-ui-review`, any surviving `pr-necessity-auditor` draft concerns, and any parent-supplied current-account pending-review context when the controller determines the set is non-trivial enough to delegate.
+- Audit the combined candidate findings and `verification_needed` entries from `review-gpt-5-5-extra-high`, `review-opus-4-8-xhigh-non-thinking`, `live-ui-review`, any surviving `pr-necessity-auditor` draft concerns, and any parent-supplied current-account pending-review context when the controller determines the set is non-trivial enough to delegate.
 - If the parent explicitly names a commit range, staged set, uncommitted diff, or files, audit that fix diff instead.
 
 Hard constraints:
@@ -246,12 +254,12 @@ If an applicable flow reaches an empty state or lacks the data needed to reprodu
 
 1. Inspect the complete direct PR/issue artifacts already in scope, including screenshots, GIFs, videos, and linked media. For videos/GIFs, inspect enough frames to infer the relevant UI state and data shape.
 2. Inspect changed tests, fixtures, mocks, story/test helpers, and local route/data mocks to infer the smallest data shape that exercises the UI path.
-3. Try cheap setup first:
+3. Try least-invasive setup first:
    - existing seeded/demo data already present on either target
    - browser-side route/network mocks
    - Playwriter-owned in-memory state or page-level mocks
    - read-only API responses used only to infer data shape
-4. If cheap setup is insufficient, create the smallest isolated local/dev runtime data needed to exercise the flow. Allowed mutation surface:
+4. If least-invasive setup is insufficient, create the smallest isolated local/dev runtime data needed to exercise the flow. Allowed mutation surface:
    - the configured local verification targets and their backing local/dev Elasticsearch/Kibana state only
    - browser actions or local/dev API calls needed to seed test data on the verified targets
    - temporary test-only identifiers that are easy to find and clean up
