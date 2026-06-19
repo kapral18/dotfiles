@@ -127,6 +127,7 @@ cache_file="${cache_dir}/pick_session_items.tsv"
 update_cmd="$HOME/.config/tmux/scripts/pickers/session/index_update.sh"
 items_cmd="$HOME/.config/tmux/scripts/pickers/session/items.sh"
 filter_cmd="$HOME/.config/tmux/scripts/pickers/session/filter.sh"
+script_dir="$(cd "$(dirname "$0")" && pwd)"
 if [ ! -x "$filter_cmd" ]; then
   filter_cmd="$items_cmd"
 fi
@@ -175,6 +176,16 @@ run_update_quick_only() {
     args+=("--ttl=${live_ttl}")
   fi
   "$update_cmd" "${args[@]}" > /dev/null 2>&1 || true
+}
+
+run_update_force_full() {
+  "$update_cmd" --force --quiet > /dev/null 2>&1 || true
+}
+
+gh_cache_needs_author_refresh() {
+  [ -x "$script_dir/lib/index_main.py" ] || return 1
+  command -v python3 > /dev/null 2>&1 || return 1
+  python3 "$script_dir/lib/index_main.py" --gh-cache-needs-author-refresh > /dev/null 2>&1
 }
 
 maybe_reload_on_change() {
@@ -227,6 +238,12 @@ maybe_reload_on_change() {
 }
 
 prev_mtime="$(mtime_epoch "$cache_file" 2> /dev/null || printf '0')"
+needs_author_refresh=0
+if gh_cache_needs_author_refresh; then
+  needs_author_refresh=1
+  start_delay_ms=0
+fi
+
 if [ "$once" -ne 1 ] && [ "$start_delay_ms" -gt 0 ]; then
   if [ "$start_delay_ms" -ge 1000 ]; then
     sleep "$((start_delay_ms / 1000)).$((start_delay_ms % 1000))"
@@ -237,7 +254,9 @@ fi
 
 # Startup path should be lightweight so opening the picker is not competing
 # with a full reindex. Manual `--once` refresh (alt-r) remains a full refresh.
-if [ "$once" -eq 1 ]; then
+if [ "$needs_author_refresh" -eq 1 ]; then
+  run_update_force_full
+elif [ "$once" -eq 1 ]; then
   run_update
 else
   run_update_quick_only

@@ -49,7 +49,7 @@ The goal is to make branch isolation + review + context switching cheap.
 - Automatically adds contributor forks as remotes when needed.
 - First-party PRs use a plain branch name (`feat/foo`); third-party forks use `<remote>__<branch>` and write per-worktree push routing so `git push` targets the fork.
 - Upstream tracking prefers canonical refs (`origin/<branch>`, then `upstream/<branch>`) for first-party remotes.
-- The tmux session picker highlights PR-review worktree rows in a standout magenta when the associated PR author is someone other than your configured/authenticated GitHub login. Normal own-PR worktrees keep the standard worktree color.
+- The tmux session picker highlights PR-review worktree rows in a standout magenta when the associated PR author is someone other than your configured/authenticated GitHub login. Normal own-PR worktrees keep the standard worktree color, even when the PR targets an upstream repo from your fork.
   - "Your login" is resolved in order: the `PICK_SESSION_GITHUB_LOGIN` env var (set from the `@pick_session_github_login` tmux option), then `GITHUB_USER`, then a 7-day-cached `gh api user` result. When the login is unset and `gh` is unavailable (offline / skip-gh), the review coloring is skipped rather than mislabeling your own PRs.
 
 ### `issue` — create/reuse an issue worktree

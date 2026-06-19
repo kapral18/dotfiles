@@ -48,6 +48,13 @@ while [ $# -gt 0 ]; do
   shift
 done
 
+gh_cache_needs_author_refresh() {
+  [ "$skip_gh" -eq 0 ] || return 1
+  [ -x "$script_dir/lib/index_main.py" ] || return 1
+  command -v python3 > /dev/null 2>&1 || return 1
+  python3 "$script_dir/lib/index_main.py" --gh-cache-needs-author-refresh > /dev/null 2>&1
+}
+
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 cache_file="${cache_dir}/pick_session_items.tsv"
 pending_file="${cache_dir}/pick_session_pending.tsv"
@@ -97,7 +104,12 @@ case "$full_scan_ttl" in
   '' | *[!0-9]*) full_scan_ttl=60 ;;
 esac
 
-if [ "$force" -ne 1 ]; then
+needs_author_refresh=0
+if [ "$quick_only" -ne 1 ] && gh_cache_needs_author_refresh; then
+  needs_author_refresh=1
+fi
+
+if [ "$force" -ne 1 ] && [ "$needs_author_refresh" -ne 1 ]; then
   if [ "$quick_only" -eq 1 ]; then
     # Quick-only: gate on cache mtime (cheap, session-focused refresh).
     if [ -f "$cache_file" ]; then

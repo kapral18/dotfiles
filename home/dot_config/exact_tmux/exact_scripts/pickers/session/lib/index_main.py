@@ -8,6 +8,7 @@ import re
 import shutil
 import signal
 import subprocess
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -629,6 +630,30 @@ GH_TTL_MISS = 3600
 GH_PICKER_TTL = 300
 
 
+def gh_cache_needs_author_refresh() -> bool:
+    """True when legacy PR cache rows lack the author field used for highlighting."""
+    try:
+        data = json.loads(GH_CACHE_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return False
+    entries = data.get("entries") if isinstance(data, dict) else None
+    if not isinstance(entries, dict):
+        return False
+    for entry in entries.values():
+        if not isinstance(entry, dict):
+            continue
+        pr = entry.get("pr")
+        if not isinstance(pr, dict) or not pr.get("number"):
+            continue
+        if "author" not in pr:
+            return True
+    return False
+
+
+if "--gh-cache-needs-author-refresh" in sys.argv:
+    sys.exit(0 if gh_cache_needs_author_refresh() else 1)
+
+
 def _load_gh_picker_ci_index() -> dict[str, dict[int, tuple[str, str]]]:
     """Read CI + review status from the gh picker TSV caches (work + home).
 
@@ -727,13 +752,9 @@ def _gh_cache_fresh(entry: dict[str, Any], branch: str, nwo: str, now: float) ->
     pr = entry.get("pr")
     issue = entry.get("issue")
     # Force one refetch of pre-author cache entries so old rows gain the
-    # `author` field used for review-row coloring. Only open PRs can change
-    # author (via transfer/ghost); terminal PRs are frozen, so a missing key
-    # on a MERGED/CLOSED row is treated as settled to avoid a refetch loop
-    # when `gh` omits author for ghost/deleted accounts.
+    # `author` field used for review-row coloring.
     if pr and pr.get("number") and "author" not in pr:
-        if (pr.get("state") or "").upper() not in _TERMINAL_PR:
-            return False
+        return False
     if not pr and not issue:
         return age < GH_TTL_MISS
     all_settled = (not pr or (pr.get("state") or "").upper() in _TERMINAL_PR) and (
