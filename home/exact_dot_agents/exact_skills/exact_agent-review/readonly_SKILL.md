@@ -27,7 +27,7 @@ The reviewer-worker lanes are read-only:
 
 Workers only investigate and return candidate findings.
 
-All side effects happen later in the controller, gated by step 8.
+All side effects happen later in the controller, gated by the final act phase.
 
 The `review` skill and its references remain the source-of-truth methodology workers load read-only.
 
@@ -44,9 +44,10 @@ The controller owns:
   - thread IDs
   - user constraints
   - expected output shape
-- launching the two reviewer workers and the findings auditor
-- running the conditional `pr-necessity-auditor` for other-authored or unknown PRs
-- running conditional `live-ui-review` verification for UI/runtime-relevant changes
+- running the conditional blocking `pr-necessity-auditor` for other-authored or unknown PRs before implementation review
+- launching the two reviewer workers after any required PR necessity greenlight
+- running conditional `live-ui-review` verification after reviewer workers finish
+- running the findings audit phase after live UI returns evidence, non-applicability, or a blocker; delegate to `findings-auditor` only when proportional
 - aggregating worker outputs, `pr-necessity-auditor` evidence or skip/blocker status, `live-ui-review` evidence or skip/blocker status, and audit output
 - judging kept/dropped findings after aggregation
 - applying fixes, drafting payloads, or touching GitHub only after the relevant `review`/`github`/`git` gates
@@ -56,7 +57,7 @@ Before fan-out, the controller must not load or run the full `review` skill.
 It may load only one router section first:
 
 - Resolve `authorship` using the review router's Role Detection procedure (`~/.agents/skills/review/SKILL.md`).
-- Do this before fan-out because step 8 depends on that value.
+- Do this before any worker launch because the PR necessity gate and final act phase depend on that value.
 - Do not infer authorship from the change being checked out locally.
 - A branch tracking another person's fork is `other`.
 - Commits authored by someone else are `other`.
@@ -90,6 +91,17 @@ The active harness owns subagent discovery and invocation.
 
 ## Default orchestration
 
+The phase order is strict:
+
+1. route and scope
+2. blocking PR necessity gate, only for other-authored or unknown-author PRs
+3. two reviewer workers in parallel
+4. live UI verification when applicable
+5. findings audit, inline or delegated by proportional-depth rules
+6. controller aggregation, judgment, and action
+
+Do not start a later phase until the current phase returns. In blocking phases, do not poll background workers with long waits just to check status; wait for completion notifications or use the harness's synchronous/blocking mechanism. The controller may read completed phase outputs, but it must not perform later-phase analysis while the current phase is still running.
+
 1. **Route and scope.** Build a scope packet with:
    - mode: `local_changes.md`, `pr_review.md`, or `pr_fix.md`
    - `authorship`: `self`, `other`, or `unknown`
@@ -102,7 +114,24 @@ The active harness owns subagent discovery and invocation.
 
    Resolve `authorship` via the review router's Role Detection. Do not duplicate worker review analysis in the controller.
 
-2. **Launch two code investigation reviewers in parallel.**
+2. **Run conditional blocking PR necessity audit.**
+   - Run `pr-necessity-auditor` before any implementation reviewer when:
+     - mode is `pr_review.md` or `pr_fix.md`, and
+     - `authorship` is `other` or `unknown`.
+   - Invoking `/agent-review` is the request for this PR meta-audit; do not require a second user opt-in.
+   - Skip it for local changes and self-authored PRs.
+   - This worker is read-only and evidence-only.
+   - Give it the scope packet plus the PR URL/number, base/head refs, changed paths, directly referenced issues/PRs, and any already-known user constraints.
+   - It must follow the `PR necessity auditor` section in `runtime-contracts.md`.
+   - It returns one of:
+     - `Not applicable`
+     - greenlight evidence that the PR is sensible enough to review further
+     - blocker or stop status for inaccessible GitHub, Slack, history, unclear intent, not-needed/superseded work, or incorrectly-open status
+   - Greenlight means there is no unresolved blocker and no supported classification that makes implementation review premature or unnecessary. For other-authored or unknown-author PRs, continue to reviewer fan-out only when the audit supports `needed: yes` and no material correctly-open/intent concern blocks review.
+   - If the audit returns blocked, unclear, not needed, superseded, or incorrectly open, stop the implementation review flow and surface the supported blocker/PR-level draft feedback. Do not launch reviewer workers, live UI, or findings audit unless the user explicitly asks to continue anyway.
+   - Do not rely on the auditor to decide or post. The controller judges and gates any draft feedback.
+
+3. **Launch two code investigation reviewers in parallel.**
    - Emit both reviewer launches in one message (a single tool-call batch).
    - Use the current harness's native configured reviewer workers or task mechanism.
    - Cursor model selection is explicit, never inherited:
@@ -121,21 +150,8 @@ The active harness owns subagent discovery and invocation.
      - deletion-safety
      - state-machine behavior
    - If `runtime-harnesses.md` says the active harness cannot fan out from the current context, run them as that file directs and state why.
-
-3. **Run conditional PR necessity audit.**
-   - Run `pr-necessity-auditor` when:
-     - mode is `pr_review.md` or `pr_fix.md`, and
-     - `authorship` is `other` or `unknown`.
-   - Invoking `/agent-review` is the request for this PR meta-audit; do not require a second user opt-in.
-   - Skip it for local changes and self-authored PRs.
-   - This worker is read-only and evidence-only.
-   - Give it the scope packet plus the PR URL/number, base/head refs, changed paths, directly referenced issues/PRs, and any already-known user constraints.
-   - It must follow the `PR necessity auditor` section in `runtime-contracts.md`.
-   - It returns one of:
-     - `Not applicable`
-     - intent/necessity/correctly-open evidence and classification
-     - blocker status for inaccessible GitHub, Slack, or history evidence
-   - Do not rely on it to decide or post. The controller judges and gates any draft feedback.
+   - This phase is blocking as a phase: after both reviewer workers are launched, do not start live UI verification, findings audit, or controller judgment until both reviewer outputs are available.
+   - Each candidate finding must include a reachability statement for the claimed path. If the claimed UI/API/state path may be unreachable, the worker must verify reachability before assigning severity or mark it as a hypothesis for the controller to verify/drop.
 
 4. **Run conditional live UI verification.**
    - After both reviewers finish, run `live-ui-review`.
@@ -159,14 +175,30 @@ The active harness owns subagent discovery and invocation.
    - A read-only/Ask-mode Playwriter block is a valid blocker to surface.
 
 5. **Run findings audit on candidate findings.**
-   - Run `findings-auditor` over the reviewer findings and any PR necessity findings.
+   - Run this phase only after the PR necessity gate, both reviewer outputs, and live UI evidence/non-applicability/blocker are available.
+   - Always audit the reviewer findings, live UI evidence, and any PR necessity draft concerns that survived the greenlight gate.
+   - Inline the audit in the controller when the remaining set is trivial:
+     - no candidate findings, or
+     - one straightforward evidence-backed finding with no model disagreement, no live UI blocker, no surviving PR-necessity concern, and no fix diff to audit.
+   - Delegate to `findings-auditor` when the remaining set is non-trivial:
+     - two or more candidate findings
+     - any HIGH/CRITICAL candidate
+     - model disagreement or likely duplication
+     - any surviving PR necessity concern
+     - live UI comparison/blocker evidence that materially affects judgment
+     - any named fix diff, staged set, or applied-fix diff
+     - any proposed fix that may be overengineered or cross-cutting
    - Audit for:
      - redundancy
      - verbosity
      - semantic + logical duplication
      - gaps
-   - This is still investigation, not a decision.
-6. **Aggregate.** Combine GPT reviewer output, Opus reviewer output, `pr-necessity-auditor` evidence or skip/blocker status, `live-ui-review` evidence or skip/blocker status, and the findings audit.
+     - actionability of the remaining findings and proposed fixes
+     - overengineering risk in proposed fixes
+   - This is still investigation, not a decision, even when inlined in the controller.
+   - If inlined, still report the audit result in the final output as `Findings audit: inline ...`.
+   - For fix-capable own/self-review flows, this pre-action audit does not replace the normal post-review stage over the actual fix diff after fixes are applied.
+6. **Aggregate.** Combine `pr-necessity-auditor` greenlight/skip status, GPT reviewer output, Opus reviewer output, `live-ui-review` evidence or skip/blocker status, and the findings audit result.
 7. **Judge in the controller.**
    - Apply mode-correct reconciliation:
      - all modes: collapse duplicate worker findings, apply the severity model, and keep only implementation-verified, net-new findings
@@ -174,6 +206,7 @@ The active harness owns subagent discovery and invocation.
      - local-changes mode: do not apply PR-thread deduplication or PR CI coverage exemptions; judge against the staged/unstaged/range scope in the packet
    - Drop:
      - unsupported claims
+     - unreachable-path findings
      - PR-mode findings covered by verified PR CI or existing PR artifacts
      - findings that only a worker asserted without evidence
      - PR necessity claims that rely only on ambient precedent without proving the current PR's actual diff and directly referenced artifacts
@@ -182,6 +215,7 @@ The active harness owns subagent discovery and invocation.
      - apply the selected fixes in the working tree
      - run the repo's discovered quality gates
      - run the normal post-review stage over the fix diff
+     - verify the actual fix diff is not redundant, verbose, semantically/logically duplicated, incomplete, or overengineered
    - PR fix/thread modes:
      - apply selected fixes only when `authorship: self` or the user explicitly asked to fix/take over that PR
      - otherwise draft replies/suggestions according to `pr_fix.md`
@@ -196,6 +230,7 @@ The active harness owns subagent discovery and invocation.
 
 `pr-necessity-auditor` is part of the PR-mode flow for other-authored or unknown-author PRs. It answers whether the PR itself is sensible, correctly open, and still needed.
 
+- It is the first blocking review worker after routing; reviewer fan-out does not start until this auditor greenlights the PR for implementation review.
 - It audits author intent from the complete PR description, discussion, review threads, referenced issues/PRs, and linked artifacts.
 - It checks whether the PR is correctly open: open/draft state, base/head target, scope, linked issue status, stale/conflicting context, and whether the described problem still exists.
 - It searches for duplicate, overlapping, superseding, or recently merged cross-cutting work in GitHub, git history, and Slack topic discussions when Slack tools are available.
@@ -204,7 +239,7 @@ The active harness owns subagent discovery and invocation.
 
 ## Live UI review
 
-`live-ui-review` is part of the default flow.
+`live-ui-review` is part of the default flow after the blocking PR necessity gate and reviewer fan-out phases complete.
 
 - It verifies UI/runtime-relevant findings against the configured Kibana targets.
 - It returns evidence or a blocker.
@@ -249,6 +284,7 @@ Controller validation: reject and rerun any `live-ui-review` result that:
 - uses WebFetch or shell/HTTP probes as readiness evidence
 - skips Playwriter target checks
 - claims targets are unavailable without showing the exact target/preflight evidence above
+- omits applicability, exact URLs checked, Playwriter preflight status, readiness result for each target, branch/runtime evidence, comparison evidence for each checked candidate, page cleanup/owned-page URLs, and blockers/uncertainty
 
 Do not reject or rerun a result that reports a valid Playwriter harness blocker:
 
@@ -261,8 +297,8 @@ Do not reject or rerun a result that reports a valid Playwriter harness blocker:
 Return:
 
 - `Base context:` line from the review methodology.
-- Investigation summary: what each reviewer and findings auditor found.
-- PR necessity audit summary or skip/blocker status when applicable.
+- PR necessity audit summary, greenlight, skip, or blocker status when applicable.
+- Investigation summary: what each reviewer, live UI reviewer, and findings audit found, including whether the findings audit was inline or delegated.
 - Controller judgment: findings kept/dropped and why.
 - Action taken or draft payloads, depending on mode.
 - Remaining uncertainty or gated side effects.

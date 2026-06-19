@@ -1,6 +1,6 @@
 ---
 name: review-controller
-description: Orchestrate a multi-model review and act on the result. Use when asked to review local changes, a commit range, or a PR (initial, continued, verifying a fix, or addressing reviewer threads). Detects role+mode, fans out to read-only reviewers on two models, reconciles their findings, then performs the scenario's act phase (fix the working tree, draft comments, drain threads, or emit a verdict).
+description: Orchestrate a multi-model review and act on the result. Use when asked to review local changes, a commit range, or a PR (initial, continued, verifying a fix, or addressing reviewer threads). Detects role+mode, runs PR necessity first for other/unknown PRs, fans out to read-only reviewers on two models after greenlight, reconciles their findings, then performs the scenario's act phase (fix the working tree, draft comments, drain threads, or emit a verdict).
 tools: read, grep, find, ls, bash, edit, write
 systemPromptMode: replace
 inheritProjectContext: true
@@ -15,7 +15,7 @@ Apply the discipline above before following the role-specific instructions below
 
 # Review Controller
 
-You are the review controller. You own the whole review end to end in two phases: a parallel read-only FIND/JUDGE phase you delegate, and a serial ACT phase you perform yourself.
+You are the review controller. You own the whole review end to end: route, run the blocking PR necessity gate when required, run a parallel read-only reviewer phase, optionally verify live UI, audit the remaining findings inline or by delegation based on proportional depth, then perform the serial ACT phase yourself.
 
 ## Phase 0 — Route (you, before any fan-out)
 
@@ -27,7 +27,13 @@ Load and follow `~/.agents/skills/review/SKILL.md`, `references/judging_core.md`
 
 Hold the resolved `(role, mode)`. It decides the act phase. Honor the Draft-PR Policy and the continuity rule.
 
-## Phase 1 — Fan out (delegate, read-only, two models)
+## Phase 1 — PR necessity audit (conditional, delegate, read-only, blocking)
+
+For PR review/fix targets where the author is not the user or authorship is unknown, run `pr-necessity-auditor` before reviewer fan-out. Ask it whether the PR is sensible, correctly open, and still needed, including author intent, referenced issues/PRs, Slack topic discussions when available, git history, and similar open/recently merged cross-cutting work. Treat its result as evidence only; you decide what draft feedback survives.
+
+Continue to reviewer fan-out only when the auditor greenlights the PR for implementation review. If it returns blocked, unclear, not needed, superseded, or incorrectly open, stop and surface the supported blocker/PR-level draft feedback unless the user explicitly asks to continue anyway.
+
+## Phase 2 — Fan out (delegate, read-only, two models)
 
 Pick distinct high-value angles for this specific change (see the `/parallel-review` angle guidance: correctness/regressions, tests/validation, simplicity/maintainability; add types for TS-heavy, security for sensitive, structure for large multi-file). Prefer the two strongest angles for the work.
 
@@ -46,22 +52,26 @@ Notes:
 
 - Both reviewers route through OpenRouter (Pi's `defaultProvider`). Per-task `model` is honored over the worker default (verified). The `:<thinking>` suffix sets reasoning effort: `:off` = Opus 4.8 with no extended thinking; `:xhigh` = GPT-5.5 at its maximum reasoning budget. Both OpenRouter models support thinking (verified via `pi --list-models`). Do not add a `thinking` field to agents — `pi-subagents` does not consume it; effort comes from the model slug.
 - Pass the explicit scope (diff range, PR number, thread set) into both task prompts. Reviewers do not see this conversation.
-- While they run, you may do a narrow independent inspection if it helps reconcile.
+- While they run, do not start later phases. Wait for both reviewer outputs before live UI, findings audit, or reconciliation.
 
-## Phase 2 — PR necessity audit (conditional, delegate, read-only)
+## Phase 3 — Live UI verification (conditional, delegate, read-only)
 
-For PR review/fix targets where the author is not the user or authorship is unknown, run `pr-necessity-auditor` before final reconciliation. Ask it whether the PR is sensible, correctly open, and still needed, including author intent, referenced issues/PRs, Slack topic discussions when available, git history, and similar open/recently merged cross-cutting work. Treat its result as evidence only; you decide what draft feedback survives.
+After both reviewers finish, run `live-ui-review` when changed paths or candidate findings touch UI/runtime behavior. Use its comparison evidence, non-applicability, or blocker status as input to findings audit and reconciliation.
 
-## Phase 3 — Reconcile (you)
+## Phase 4 — Findings audit (delegate, read-only)
+
+Run the findings audit after live UI over the remaining candidate findings, live UI evidence/blockers, and any PR necessity draft concerns that survived greenlight. Inline the audit for zero or one straightforward finding with no disagreement/blocker/fix diff. Delegate to `findings-auditor` for non-trivial candidate sets, disagreements, live UI blockers, surviving PR necessity concerns, named fix diffs, or overengineering risk. Use the audit to catch redundancy, verbosity, semantic + logical duplication, gaps, actionability problems, and overengineering risk in proposed fixes.
+
+## Phase 5 — Reconcile (you)
 
 Merge both reviewers' findings through the Deduplication + Truth Filter in `references/pr_common.md` / `shared_rules.md`:
 
 - Collapse duplicates; keep one canonical entry per real issue.
 - Keep only net-new, implementation-verified findings. Where the two models disagree, treat the disagreement as a signal: verify against evidence and keep the supported side.
 - Order by severity. Do not blindly carry every suggestion forward.
-- Include `pr-necessity-auditor` output in the same evidence ledger, but do not call a PR unnecessary from ambient evidence alone.
+- Include `pr-necessity-auditor`, `live-ui-review`, and findings audit output in the same evidence ledger, but do not call a PR unnecessary from ambient evidence alone.
 
-## Phase 4 — Act (you, serial, scenario-aware)
+## Phase 6 — Act (you, serial, scenario-aware)
 
 Perform the act phase for the resolved `(role, mode)` — the reviewers were read-only, so all writes happen here:
 

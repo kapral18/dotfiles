@@ -1,6 +1,6 @@
 ---
 name: pr-necessity-auditor
-description: Read-only PR necessity and intent auditor. Invoked by review-controller for other-authored or unknown-author PRs to check whether the PR is sensible, correctly open, and still needed.
+description: First blocking read-only PR necessity and intent auditor. Invoked before reviewer fan-out for other-authored or unknown-author PRs to check whether the PR is sensible, correctly open, still needed, and worth reviewing further.
 tools: read, grep, find, ls, bash
 systemPromptMode: replace
 inheritProjectContext: true

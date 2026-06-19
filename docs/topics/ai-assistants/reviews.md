@@ -13,20 +13,20 @@ Use when continuing a review, addressing review threads, or rechecking PR-relate
 `/agent-review` is the orchestration entrypoint. Cursor, Copilot, Claude, Codex, Gemini, and Amp bridge it through their native isolation mechanisms where available:
 
 1. The controller resolves the route and scope packet: PR/local mode, role, target diff/PR/thread set, base branch, user constraints, and expected output.
-2. Two read-only reviewer workers run in parallel when the harness supports it:
+2. For other-authored or unknown-author PRs, `pr-necessity-auditor` is the first blocking worker. It checks whether the PR is sensible, correctly open, still needed, and worth implementation review before any reviewer fan-out starts. It reconstructs author intent from the PR and references, searches related GitHub/Slack context when available, inspects git history, and looks for overlapping open or recently merged cross-cutting work. If it returns blocked, unclear, not needed, superseded, or incorrectly open, the controller stops and surfaces PR-level feedback unless the user explicitly asks to continue anyway.
+3. After any required PR necessity greenlight, two read-only reviewer workers run in parallel when the harness supports it:
    - Cursor/Copilot use the GPT and Opus lanes.
    - Claude uses `reviewer` twice through `Task` with Claude model overrides.
    - Codex uses `spawn_agent` roles and runs two `review-worker` agents with distinct angles.
    - Gemini uses `review-gemini-pro` and `review-gemini-flash`.
    - Amp uses two generic `Task` subagents with the shared worker contract.
-3. For other-authored or unknown-author PRs, `pr-necessity-auditor` checks whether the PR is sensible, correctly open, and still needed. It reconstructs author intent from the PR and references, searches related GitHub/Slack context when available, inspects git history, and looks for overlapping open or recently merged cross-cutting work.
 4. `live-ui-review` first decides applicability from the changed paths and candidate findings. When UI/runtime behavior is in scope, it checks the configured targets with Playwriter and returns comparison evidence or a target/branch blocker.
-5. `findings-auditor` audits the reviewer outputs before any action. It is an investigation agent: it flags redundancy, verbosity, semantic + logical duplication, and gaps in the candidate finding set.
-6. The controller aggregates the investigation outputs, then judges what to fix or draft through mode-correct review rules. PR modes use PR dedup, PR artifact truth filtering, the PR necessity/correctly-open audit, and PR CI coverage gates; local changes are judged against the staged/unstaged/range scope without PR-thread or PR-CI exemptions. Only the controller acts.
+5. The findings audit runs after live UI before any action. The controller audits inline for trivial sets (zero or one straightforward finding with no disagreement/blocker/fix diff) and delegates to `findings-auditor` for non-trivial sets. It flags redundancy, verbosity, semantic + logical duplication, gaps, actionability problems, and overengineered proposed fixes.
+6. The controller aggregates the investigation outputs, then judges what to fix or draft through mode-correct review rules. PR modes use PR dedup, PR artifact truth filtering, the PR necessity/correctly-open greenlight, and PR CI coverage gates; local changes are judged against the staged/unstaged/range scope without PR-thread or PR-CI exemptions. Only the controller acts.
 
 Model names and subagent mechanisms are per-runtime. Cursor's `gpt-5.5-extra-high` / `claude-opus-4-8-xhigh` IDs are not Copilot IDs; Cursor review agents pin those models in frontmatter because omitted `model` inherits the parent/default model, which can be `composer-2.5-fast`. Copilot uses `gpt-5.5` / `claude-opus-4.8` plus `effortLevel: xhigh`. Codex and Amp do not have a Claude Opus lane in the verified local interface, so they preserve the two-worker isolation and distinct review angles rather than exact model parity. Gemini has native subagents but they cannot call other subagents, so the main Gemini session remains the controller.
 
-The controller does not load or run the full review methodology before fan-out. Worker profiles are intentionally read-only and recursion-safe; they load the review skill for methodology in isolated contexts and return candidate findings. The controller only routes, fans out, aggregates, filters, and acts after the normal gates.
+The controller does not load or run the full review methodology before fan-out. Worker profiles are intentionally read-only and recursion-safe; they load the review skill for methodology in isolated contexts and return candidate findings. The controller only routes, runs the PR necessity gate, fans out after greenlight, runs live UI, audits findings inline or by delegation, aggregates, filters, and acts after the normal gates.
 
 Its configured targets are `http://kibana-main.local:5602` for base and `http://kibana-feat.local:5601` for PR/head. It uses Playwriter target checks only when the applicability gate says UI/runtime behavior is in scope.
 
@@ -75,7 +75,7 @@ The PR/issue intake gate is deliberately exhaustive: read complete PR and issue 
 
 For disagreements or missing rationale, the review skill adds bounded **Ambient Topic Exploration**: build a topic map, search related GitHub issues/PRs, GitHub Discussions via GraphQL `SearchType.DISCUSSION`, and Slack MCP public/team channels when available, then read high-signal hits with the same intake rules. Skip it for routine reviews where direct context and base-branch context are enough.
 
-For other-authored or unknown-author PRs, the review skill also runs a **PR Necessity + Correctly-Open Audit** before drafting. It classifies author intent, whether the PR is procedurally correctly open, whether the work is still needed, and whether similar cross-cutting work is already open or recently merged. Slack evidence is used only when Slack tools are available and private channels/DMs require explicit consent.
+For other-authored or unknown-author PRs, the multi-agent flow runs a blocking **PR Necessity + Correctly-Open Audit** before implementation review. It classifies author intent, whether the PR is procedurally correctly open, whether the work is still needed, and whether similar cross-cutting work is already open or recently merged. Slack evidence is used only when Slack tools are available and private channels/DMs require explicit consent.
 
 ## Post-review stage (verifying the review's own fixes)
 
@@ -88,7 +88,7 @@ The stage applies the canonical **four dimensions** (defined verbatim in `judgin
 - **Semantic + logical duplication** — two places now express the same meaning/behavior via different text (parallel branches that should be one; divergent-but-equivalent logic) — the subtle axis literal-clone detectors miss.
 - **Gaps** — the fix is incomplete (own stranded dead code, an unupdated co-edit-set member like a doc/diagram/census, a half-applied rename, a referenced-but-missing file).
 
-Where the flow can edit (own work / self-review), the stage resolves hygiene findings in the working tree and re-gates; in read-only contexts (reviewing others, read-only subagents) it surfaces them as findings. The on-demand `post-review` subagent (Claude and Pi) or `findings-auditor` agent (Cursor/Copilot `/agent-review`) runs only this lens over a named change set or candidate finding set.
+Where the flow can edit (own work / self-review), the stage resolves hygiene findings in the working tree and re-gates; in read-only contexts (reviewing others, read-only subagents) it surfaces them as findings. The on-demand `post-review` subagent (Claude and Pi) or `findings-auditor` agent (Cursor/Copilot `/agent-review`) runs only this lens over a named change set or non-trivial candidate finding set; trivial candidate sets can be audited inline by the controller.
 
 ## Light review (proportional depth)
 

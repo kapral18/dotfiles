@@ -12,7 +12,7 @@ flowchart TB
     classDef cop fill:#22343a,stroke:#4dd0e1,color:#e0f7fa;
 
     subgraph CURSOR["Cursor (dot_cursor/)"]
-        CU["hooks.json (lifecycle; see 03b)<br/>preToolUse: rtk hook cursor; beforeShell: git commit/push gate<br/>symlink_AGENTS.md → ~/AGENTS.md<br/>symlink_skills → ~/.agents/skills<br/>exact_agents/ review controller+workers+PR necessity auditor → ~/.cursor/agents/"]:::cursor
+        CU["hooks.json (lifecycle; see 03b)<br/>preToolUse: rtk hook cursor; beforeShell: git commit/push gate<br/>symlink_AGENTS.md → ~/AGENTS.md<br/>symlink_skills → ~/.agents/skills<br/>exact_agents/ review controller+PR gate+workers → ~/.cursor/agents/"]:::cursor
     end
 
     subgraph CLAUDE["Claude Code (dot_claude/)"]
@@ -50,7 +50,7 @@ flowchart TB
     RTK[["RTK token layer (brew rtk; recoverable index)<br/>Library/Application Support/rtk/config.toml<br/>exclude gh pr view|checks + git diff|show · tee mode=always · telemetry off<br/>recovery contract: ~/CLAUDE.md §2.4"]]:::codex
     RTK -.->|"rtk hook / rtk rewrite"| CURSOR & CLAUDE & GEMINI & OPENCODE & PI
 
-    SUBA[["Skill-backed subagents (isolated child context)<br/>all custom profile templates render prefix.txt preamble before role instructions<br/>agent-review: native harness discovery + runtime-contracts<br/>Cursor/Copilot GPT+Opus workers · Claude Task reviewer opus/sonnet · Codex spawn_agent review-worker x2 · Gemini review-gemini-pro/flash · Amp Task x2<br/>review-controller (Pi): fan-out openrouter opus:off + gpt-5.5:xhigh → PR necessity audit when applicable → reconcile → act<br/>pr-necessity-auditor→agent-review(runtime-contracts)+review(pr_common)<br/>findings-auditor/post-review→review (judging_core 4-dim)<br/>live-ui-review returns applicability/comparison/blocker · change-auditor→light-review (proportional in-place audit)<br/>skills stay the source of truth"]]:::claude
+    SUBA[["Skill-backed subagents (isolated child context)<br/>all custom profile templates render prefix.txt preamble before role instructions<br/>agent-review: native harness discovery + runtime-contracts<br/>PR necessity gate when required → Cursor/Copilot GPT+Opus workers · Claude Task reviewer opus/sonnet · Codex spawn_agent review-worker x2 · Gemini review-gemini-pro/flash · Amp Task x2<br/>review-controller (Pi): PR necessity gate when required → fan-out openrouter opus:off + gpt-5.5:xhigh → live-ui → inline/delegated findings audit → reconcile → act<br/>pr-necessity-auditor→agent-review(runtime-contracts)+review(pr_common)<br/>findings-auditor/post-review→review (judging_core 4-dim)<br/>live-ui-review returns applicability/comparison/blocker · change-auditor→light-review (proportional in-place audit)<br/>skills stay the source of truth"]]:::claude
     SUBA -.->|"~/.cursor/agents/ (Cursor; model lanes selected by controller)"| CURSOR
     SUBA -.->|"~/.copilot/agents/ + subagents.agents settings"| COPILOT
     SUBA -.->|"~/.claude/agents/ (Claude Task + current-session controller)"| CLAUDE

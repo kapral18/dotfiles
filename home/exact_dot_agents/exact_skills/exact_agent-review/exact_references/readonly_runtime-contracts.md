@@ -34,6 +34,7 @@ Hard constraints:
 - This contract takes precedence over mode-file instructions that would normally fix, post, or run side effects directly.
 - Establish base context exactly as the review skill requires.
 - Verify every finding from evidence; drop guesses and duplicates.
+- Verify the claimed path is reachable before assigning severity. If reachability is uncertain, say what remains unverified and return it as a hypothesis for the controller instead of an actionable finding.
 - Where a mode would normally fix or post, report the precise fix or draft comment for the parent controller to act on.
 
 Return only findings for the assigned angle, ordered by severity.
@@ -101,6 +102,7 @@ Return:
 - `correctly_open`: yes / no / unclear, with evidence
 - `needed`: yes / no / unclear, with evidence
 - `similar_or_recent_work`: none found / open overlap / recently merged overlap / superseded / unknown, with links and comparison
+- `greenlight`: yes / no, with the precise reason. Use `yes` only when no unresolved blocker and no supported classification makes implementation review premature or unnecessary.
 - `slack_context`: searched/read/skipped-with-reason
 - `git_history_context`: commands/refs inspected and what they proved
 - `draft_feedback`: only public-ready questions/comments the controller may choose to use after judgment
@@ -110,13 +112,15 @@ Do not return raw diffs, full Slack transcripts, or logs.
 
 ## Findings auditor
 
-Use after the reviewer workers and any PR necessity auditor finish, before controller action.
+Use only when the controller delegates the proportional findings audit after the blocking PR necessity gate, reviewer workers, and live UI phase finish, before controller action.
 
 The subject is:
 
 - not the original review target
 - not a working-tree fix
-- the candidate finding set produced by the reviewer workers and any PR necessity auditor
+- the candidate finding set produced by the reviewer workers
+- the live UI evidence/non-applicability/blocker status
+- any PR necessity draft concerns that survived the greenlight gate
 
 Load `~/.agents/skills/review/references/judging_core.md`.
 
@@ -131,7 +135,7 @@ Do not run:
 
 Scope:
 
-- Audit the combined candidate findings from `review-gpt-5-5-extra-high`, `review-opus-4-8-xhigh-non-thinking`, and `pr-necessity-auditor` when present.
+- Audit the combined candidate findings from `review-gpt-5-5-extra-high`, `review-opus-4-8-xhigh-non-thinking`, `live-ui-review`, and any surviving `pr-necessity-auditor` draft concerns when the controller determines the set is non-trivial enough to delegate.
 - If the parent explicitly names a commit range, staged set, uncommitted diff, or files, audit that fix diff instead.
 
 Hard constraints:
@@ -139,6 +143,7 @@ Hard constraints:
 - Strictly read-only: never edit files, never run state-changing commands, never post to GitHub, and never decide what should be fixed or commented on.
 - Verify every hygiene finding from evidence; do not assert a problem without an exact anchor.
 - Group findings by the canonical dimensions: redundancy, verbosity, semantic + logical duplication, gaps.
+- Check whether each remaining finding is actionable and whether the proposed smallest fix is overengineered for the proved problem.
 
 Return each finding with:
 
@@ -146,12 +151,13 @@ Return each finding with:
 - what is wrong
 - why it matters
 - smallest proposed cleanup
+- actionability / overengineering note when relevant
 
 If a dimension is clean, say so for that dimension. Do not return raw diffs or logs.
 
 ## Live UI review
 
-Use after reviewer workers as the conditional UI/runtime verifier.
+Use after the blocking PR necessity gate and reviewer workers as the conditional UI/runtime verifier.
 
 Mode boundary:
 
@@ -235,4 +241,13 @@ Hard constraints for this evidence pass:
 - If Playwriter loops, reloads repeatedly, or cannot reach a stable snapshot, return `Blocked`.
 - Return findings to the user or `/agent-review` as evidence input. `/agent-review` performs any judgment or side effects.
 
-Return: applicability, target readiness, branch evidence, comparison evidence, and any blocker.
+Return exactly:
+
+- `applicability`: applicable / not applicable, with changed-path or finding evidence
+- `urls_checked`: the exact base and PR/head URLs, or an explicit blocker before navigation
+- `playwriter_preflight`: whether the Playwriter skill was loaded and `playwriter skill` was run; if not, say why
+- `target_readiness`: readiness result for each exact URL, from Playwriter evidence
+- `branch_evidence`: branch/runtime identity evidence for each target, or what could not be verified
+- `comparison_evidence`: candidate-by-candidate UI/runtime evidence, including `Not applicable` for candidates disproved by reachability
+- `pages`: pages created and closed, or URLs left open
+- `blockers_or_uncertainty`: none, or precise blockers/remaining uncertainty

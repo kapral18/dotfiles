@@ -20,7 +20,8 @@ Load and follow `~/.agents/skills/agent-review/SKILL.md`.
 Claude bridge:
 
 - Use `Task` for isolated reviewer/auditor work; follow `runtime-harnesses.md` only for capability caveats.
-- Launch two `reviewer` tasks in parallel with distinct review angles. Use model overrides `opus` and `sonnet` when available.
-- For other-authored or unknown-author PRs, run `pr-necessity-auditor` before judgment to check intent, correctly-open status, need, and overlapping work.
-- Run `findings-auditor` over the combined candidate findings before deciding.
+- For other-authored or unknown-author PRs, run `pr-necessity-auditor` first and block reviewer fan-out until it greenlights that the PR is worth reviewing further.
+- After any required PR necessity greenlight, launch two `reviewer` tasks in parallel with distinct review angles. Use model overrides `opus` and `sonnet` when available.
+- After reviewers finish, run `live-ui-review` when UI/runtime evidence is applicable.
+- Run the findings audit after live UI; delegate to `findings-auditor` only for non-trivial candidate sets or fix diffs, otherwise audit inline.
 - Keep all worker/auditor/live tasks investigation-only; this controller owns judgment and gated side effects.
