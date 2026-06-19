@@ -7,6 +7,14 @@ Return only the commit message, in this exact shape:
 
 <type>(<scope optional>): <short summary>
 
+Choose the header type by the most meaningful behavior change, not by the files touched.
+When more than one type could apply, prefer this order:
+
+1. feat: new or changed functionality, workflows, runtime behavior, prompts, or tooling behavior
+2. fix: corrected broken behavior, regressions, errors, or incorrect output
+3. chore/refactor/test/build/ci: maintenance, reshaping, or support work without user-facing behavior changes
+4. docs: documentation-only changes; never use docs when the diff also changes functionality, bug behavior, configuration, scripts, prompts, or runtime/tooling behavior
+
 - one bullet for each distinct functional change (intent or behavior), not per file
 - use a separate bullet when a single file has multiple functional/intent changes
 - avoid bullets that are only file names
@@ -15,7 +23,7 @@ Do not add explanations, no prose, no markdown wrappers, no JSON, and no extra t
 ]]
 
 local SYSTEM_MESSAGE =
-  "You are a conventional commit message specialist. Return only valid commit message text in the requested format. Do not include reasoning."
+  "You are a conventional commit message specialist. Classify the header by the most meaningful behavior change, not by file paths. Use docs only for documentation-only diffs. Return only valid commit message text in the requested format. Do not include reasoning."
 
 -- ───────────────────────────── HELPERS (provider-agnostic) ─────────────────────
 local function split_lines(text)
@@ -285,6 +293,142 @@ local function normalize_commit_output(text)
   return text
 end
 
+local function is_conventional_header(line)
+  if type(line) ~= "string" then
+    return false
+  end
+  local l = line:gsub("^%s+", ""):gsub("%s+$", "")
+  local typ = l:match("^([%a]+)")
+  if not typ then
+    return false
+  end
+  local allowed = {
+    feat = true,
+    fix = true,
+    docs = true,
+    style = true,
+    refactor = true,
+    perf = true,
+    test = true,
+    build = true,
+    ci = true,
+    chore = true,
+    revert = true,
+  }
+  if not allowed[typ] then
+    return false
+  end
+
+  local rest = l:sub(#typ + 1)
+  if rest:sub(1, 1) == "(" then
+    local scope = rest:match("^(%b())")
+    if not scope then
+      return false
+    end
+    rest = rest:sub(#scope + 1)
+  end
+
+  if rest:sub(1, 1) == "!" then
+    rest = rest:sub(2)
+  end
+
+  if rest:sub(1, 1) ~= ":" then
+    return false
+  end
+  local next_ch = rest:sub(2, 2)
+  if next_ch ~= " " and next_ch ~= "\t" then
+    return false
+  end
+  return true
+end
+
+local function is_docs_path(path)
+  if type(path) ~= "string" or path == "" then
+    return false
+  end
+
+  local normalized = path:gsub("\\", "/"):lower()
+  local filename = normalized:match("[^/]+$") or normalized
+  if normalized:match("^docs?/") or normalized:match("/docs?/") then
+    return true
+  end
+  if normalized:match("^documentation/") or normalized:match("/documentation/") then
+    return true
+  end
+  if normalized:match("^%.mermaids/") then
+    return true
+  end
+
+  return filename:match("^readme%.") ~= nil
+    or filename:match("^changelog%.") ~= nil
+    or filename:match("%.mdx?$") ~= nil
+    or filename:match("%.rst$") ~= nil
+    or filename:match("%.adoc$") ~= nil
+end
+
+local function diff_has_non_docs_path(diff)
+  local saw_path = false
+  for line in vim.gsplit(diff or "", "\n", { plain = true }) do
+    local path = line:match("^diff %-%-git a/.- b/(.+)$")
+    if path and path ~= "/dev/null" then
+      saw_path = true
+      if not is_docs_path(path) then
+        return true
+      end
+    end
+  end
+  return not saw_path
+end
+
+local function added_diff_text(diff)
+  local added = {}
+  for line in vim.gsplit(diff or "", "\n", { plain = true }) do
+    if line:sub(1, 1) == "+" and line:sub(1, 3) ~= "+++" then
+      table.insert(added, line:sub(2):lower())
+    end
+  end
+  return table.concat(added, "\n")
+end
+
+local function fallback_non_docs_type(diff)
+  local added = added_diff_text(diff)
+  if added:match("functionality") or added:match("feature") or added:match("workflow") or added:match("runtime") then
+    return "feat"
+  end
+  if added:match("behavior") or added:match("tooling") or added:match("prompt") or added:match("support") then
+    return "feat"
+  end
+  if added:match("bug") or added:match("fix") or added:match("regression") or added:match("incorrect") then
+    return "fix"
+  end
+  if added:match("broken") or added:match("error") or added:match("wrong") or added:match("correct") then
+    return "fix"
+  end
+  return "chore"
+end
+
+local function force_non_docs_header(text, diff)
+  if type(text) ~= "string" or not diff_has_non_docs_path(diff) then
+    return text
+  end
+
+  local lines = vim.split(text, "\n", { plain = true })
+  local header = lines[1]
+  if type(header) ~= "string" then
+    return text
+  end
+
+  local leading = header:match("^(%s*)") or ""
+  local trimmed = header:gsub("^%s+", "")
+  local rest = trimmed:match("^docs(.*)")
+  if not rest or not is_conventional_header(trimmed) then
+    return text
+  end
+
+  lines[1] = leading .. fallback_non_docs_type(diff) .. rest
+  return table.concat(lines, "\n")
+end
+
 local function env_trim(name)
   local v = os.getenv(name)
   if not v then
@@ -339,55 +483,6 @@ local function openrouter_model_id()
     model = model .. ":nitro"
   end
   return model
-end
-
-local function is_conventional_header(line)
-  if type(line) ~= "string" then
-    return false
-  end
-  local l = line:gsub("^%s+", ""):gsub("%s+$", "")
-  local typ = l:match("^([%a]+)")
-  if not typ then
-    return false
-  end
-  local allowed = {
-    feat = true,
-    fix = true,
-    docs = true,
-    style = true,
-    refactor = true,
-    perf = true,
-    test = true,
-    build = true,
-    ci = true,
-    chore = true,
-    revert = true,
-  }
-  if not allowed[typ] then
-    return false
-  end
-
-  local rest = l:sub(#typ + 1)
-  if rest:sub(1, 1) == "(" then
-    local scope = rest:match("^(%b())")
-    if not scope then
-      return false
-    end
-    rest = rest:sub(#scope + 1)
-  end
-
-  if rest:sub(1, 1) == "!" then
-    rest = rest:sub(2)
-  end
-
-  if rest:sub(1, 1) ~= ":" then
-    return false
-  end
-  local next_ch = rest:sub(2, 2)
-  if next_ch ~= " " and next_ch ~= "\t" then
-    return false
-  end
-  return true
 end
 
 local function extract_commit_from_reasoning(text)
@@ -741,6 +836,7 @@ local function summarize_with(provider_key)
       if reasoning_text then
         local extracted = extract_commit_from_reasoning(reasoning_text)
         if type(extracted) == "string" and extracted ~= "" then
+          extracted = force_non_docs_header(normalize_commit_output(extracted), diff)
           insert_at_cursor(vim.split(extracted, "\n"))
           return
         end
@@ -758,6 +854,7 @@ local function summarize_with(provider_key)
     end
 
     text = normalize_commit_output(text)
+    text = force_non_docs_header(text, diff)
 
     insert_at_cursor(vim.split(text, "\n"))
   end)

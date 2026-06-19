@@ -40,6 +40,8 @@ Keymaps:
 Output format notes:
 
 - Header: `type(scope?): summary`
+- Type selection: prefer behavior/functionality, then bug fixes, then chores/maintenance; use `docs` only for docs-only diffs.
+- Runtime guard: if a provider still returns `docs(...)` for a staged diff that includes non-doc paths, the plugin rewrites the header to a non-doc fallback type.
 - Bullet points: one bullet per changed functionality (or per distinct logical change)
 
 Environment variables:
