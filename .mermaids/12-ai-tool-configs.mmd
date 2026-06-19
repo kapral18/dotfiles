@@ -12,7 +12,7 @@ flowchart TB
     classDef cop fill:#22343a,stroke:#4dd0e1,color:#e0f7fa;
 
     subgraph CURSOR["Cursor (dot_cursor/)"]
-        CU["hooks.json (lifecycle; see 03b)<br/>preToolUse: rtk hook cursor; beforeShell: git commit/push gate<br/>symlink_AGENTS.md → ~/AGENTS.md<br/>symlink_skills → ~/.agents/skills<br/>exact_agents/ review controller+workers → ~/.cursor/agents/"]:::cursor
+        CU["hooks.json (lifecycle; see 03b)<br/>preToolUse: rtk hook cursor; beforeShell: git commit/push gate<br/>symlink_AGENTS.md → ~/AGENTS.md<br/>symlink_skills → ~/.agents/skills<br/>exact_agents/ review controller+workers+PR necessity auditor → ~/.cursor/agents/"]:::cursor
     end
 
     subgraph CLAUDE["Claude Code (dot_claude/)"]
@@ -20,11 +20,11 @@ flowchart TB
     end
 
     subgraph CODEX["Codex (dot_codex/)"]
-        CDX["private_config.work.toml · private_config.personal.toml<br/>readonly_llama-cpp-model-catalog.json<br/>exact_agents/ → ~/.codex/agents/ (multi_agent roles: review-worker/findings/live-ui)<br/>exact_skills/ (.keep) · ~/bin/codex wrapper (inject llama meta)<br/>hook 07-merge-codex (inject_mcp_into_codex_toml.py)"]:::codex
+        CDX["private_config.work.toml · private_config.personal.toml<br/>readonly_llama-cpp-model-catalog.json<br/>exact_agents/ → ~/.codex/agents/ (multi_agent roles: review-worker/PR-necessity/findings/live-ui)<br/>exact_skills/ (.keep) · ~/bin/codex wrapper (inject llama meta)<br/>hook 07-merge-codex (inject_mcp_into_codex_toml.py)"]:::codex
     end
 
     subgraph GEMINI["Gemini CLI (dot_gemini/)"]
-        GMN["settings.json (auto_edit) · readonly_GEMINI.md (SOP)<br/>BeforeTool: gemini-git-gate.sh then rtk hook gemini<br/>exact_agents/ → ~/.gemini/agents/ (review-gemini-pro/flash + findings/live-ui)<br/>exact_commands/ (.keep)<br/>hook 07-merge-gemini-settings"]:::gem
+        GMN["settings.json (auto_edit) · readonly_GEMINI.md (SOP)<br/>BeforeTool: gemini-git-gate.sh then rtk hook gemini<br/>exact_agents/ → ~/.gemini/agents/ (review-gemini-pro/flash + PR necessity + findings/live-ui)<br/>exact_commands/ (.keep)<br/>hook 07-merge-gemini-settings"]:::gem
     end
 
     subgraph OPENCODE["OpenCode (dot_config/opencode/)"]
@@ -32,11 +32,11 @@ flowchart TB
     end
 
     subgraph PI["Pi agent (dot_pi/agent/)"]
-        PIA["readonly_settings.work.json · readonly_settings.personal.json<br/>readonly_APPEND_SYSTEM.md → ~/.pi/agent/APPEND_SYSTEM.md (operating layer; Cursor parity)<br/>extensions/rtk.ts (tool_call → rtk rewrite)<br/>extensions/ai-kb-recall.ts (before_agent_start → ,agent-memory status --json<br/>+ ,ai-kb search; session-start verification prefix.txt + warm-start parity<br/>+ per-turn prompt-query recall)<br/>packages: pi-skills · pi-mcp-adapter · pi-subagents (yarn node_modules)<br/>subagents.disableBuiltins:true · exact_agents/ → ~/.pi/agent/agents/<br/>readonly_models.json (← generate_pi_models.py) · llama-cpp local + local-max<br/>openrouter anthropic/claude-opus-4.8 default; hook 07-merge-pi-config"]:::gem
+        PIA["readonly_settings.work.json · readonly_settings.personal.json<br/>readonly_APPEND_SYSTEM.md → ~/.pi/agent/APPEND_SYSTEM.md (operating layer; Cursor parity)<br/>extensions/rtk.ts (tool_call → rtk rewrite)<br/>extensions/ai-kb-recall.ts (before_agent_start → ,agent-memory status --json<br/>+ ,ai-kb search; session-start verification prefix.txt + warm-start parity<br/>+ per-turn prompt-query recall)<br/>packages: pi-skills · pi-mcp-adapter · pi-subagents (yarn node_modules)<br/>subagents.disableBuiltins:true · exact_agents/ → ~/.pi/agent/agents/ (review-controller/reviewer/PR-necessity/post-review)<br/>readonly_models.json (← generate_pi_models.py) · llama-cpp local + local-max<br/>openrouter anthropic/claude-opus-4.8 default; hook 07-merge-pi-config"]:::gem
     end
 
     subgraph COPILOT["GitHub Copilot CLI (dot_copilot/)"]
-        COP["settings.json (effortLevel xhigh · keepAlive busy · autoUpdate false · banner never<br/>+ subagents.agents review controller/lanes: gpt-5.5 xhigh, claude-opus-4.8 xhigh, findings/live-ui review)<br/>SessionStart/PostToolUse use shared ~/.agents/hooks; no PreToolUse shell gate<br/>symlink_copilot-instructions.md → ~/AGENTS.md · symlink_skills → ~/.agents/skills<br/>exact_agents/ review .agent.md profiles → ~/.copilot/agents/<br/>hook 07-merge-copilot-config (mcp-config.json + hooks/agent-memory.json write;<br/>settings.json jq deep-merge over Copilot's runtime-owned file)<br/>MCP: stdio→type local · OAuth http unused (redirect 127.0.0.1:{port}/ unregistered)<br/>scsi-main/slack omit copilot block · scsi-local exclude_tools:[copilot] → empty mcpServers (built-ins only)"]:::cop
+        COP["settings.json (effortLevel xhigh · keepAlive busy · autoUpdate false · banner never<br/>+ subagents.agents review controller/lanes: gpt-5.5 xhigh, claude-opus-4.8 xhigh, PR necessity, findings/live-ui review)<br/>SessionStart/PostToolUse use shared ~/.agents/hooks; no PreToolUse shell gate<br/>symlink_copilot-instructions.md → ~/AGENTS.md · symlink_skills → ~/.agents/skills<br/>exact_agents/ review .agent.md profiles → ~/.copilot/agents/<br/>hook 07-merge-copilot-config (mcp-config.json + hooks/agent-memory.json write;<br/>settings.json jq deep-merge over Copilot's runtime-owned file)<br/>MCP: stdio→type local · OAuth http unused (redirect 127.0.0.1:{port}/ unregistered)<br/>scsi-main/slack omit copilot block · scsi-local exclude_tools:[copilot] → empty mcpServers (built-ins only)"]:::cop
     end
 
     subgraph OTHER["Other terminal assistants"]
@@ -50,7 +50,7 @@ flowchart TB
     RTK[["RTK token layer (brew rtk; recoverable index)<br/>Library/Application Support/rtk/config.toml<br/>exclude gh pr view|checks + git diff|show · tee mode=always · telemetry off<br/>recovery contract: ~/CLAUDE.md §2.4"]]:::codex
     RTK -.->|"rtk hook / rtk rewrite"| CURSOR & CLAUDE & GEMINI & OPENCODE & PI
 
-    SUBA[["Skill-backed subagents (isolated child context)<br/>all custom profile templates render prefix.txt preamble before role instructions<br/>agent-review: native harness discovery + runtime-contracts<br/>Cursor/Copilot GPT+Opus workers · Claude Task reviewer opus/sonnet · Codex spawn_agent review-worker x2 · Gemini review-gemini-pro/flash · Amp Task x2<br/>review-controller (Pi): fan-out openrouter opus:off + gpt-5.5:xhigh → reconcile → act<br/>findings-auditor/post-review→review (judging_core 4-dim)<br/>live-ui-review returns applicability/comparison/blocker · change-auditor→light-review (proportional in-place audit)<br/>skills stay the source of truth"]]:::claude
+    SUBA[["Skill-backed subagents (isolated child context)<br/>all custom profile templates render prefix.txt preamble before role instructions<br/>agent-review: native harness discovery + runtime-contracts<br/>Cursor/Copilot GPT+Opus workers · Claude Task reviewer opus/sonnet · Codex spawn_agent review-worker x2 · Gemini review-gemini-pro/flash · Amp Task x2<br/>review-controller (Pi): fan-out openrouter opus:off + gpt-5.5:xhigh → PR necessity audit when applicable → reconcile → act<br/>pr-necessity-auditor→agent-review(runtime-contracts)+review(pr_common)<br/>findings-auditor/post-review→review (judging_core 4-dim)<br/>live-ui-review returns applicability/comparison/blocker · change-auditor→light-review (proportional in-place audit)<br/>skills stay the source of truth"]]:::claude
     SUBA -.->|"~/.cursor/agents/ (Cursor; model lanes selected by controller)"| CURSOR
     SUBA -.->|"~/.copilot/agents/ + subagents.agents settings"| COPILOT
     SUBA -.->|"~/.claude/agents/ (Claude Task + current-session controller)"| CLAUDE

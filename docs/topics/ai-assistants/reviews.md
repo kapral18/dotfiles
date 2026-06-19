@@ -19,9 +19,10 @@ Use when continuing a review, addressing review threads, or rechecking PR-relate
    - Codex uses `spawn_agent` roles and runs two `review-worker` agents with distinct angles.
    - Gemini uses `review-gemini-pro` and `review-gemini-flash`.
    - Amp uses two generic `Task` subagents with the shared worker contract.
-3. `live-ui-review` first decides applicability from the changed paths and candidate findings. When UI/runtime behavior is in scope, it checks the configured targets with Playwriter and returns comparison evidence or a target/branch blocker.
-4. `findings-auditor` audits the reviewer outputs before any action. It is an investigation agent: it flags redundancy, verbosity, semantic + logical duplication, and gaps in the candidate finding set.
-5. The controller aggregates the investigation outputs, then judges what to fix or draft through mode-correct review rules. PR modes use PR dedup, PR artifact truth filtering, and PR CI coverage gates; local changes are judged against the staged/unstaged/range scope without PR-thread or PR-CI exemptions. Only the controller acts.
+3. For other-authored or unknown-author PRs, `pr-necessity-auditor` checks whether the PR is sensible, correctly open, and still needed. It reconstructs author intent from the PR and references, searches related GitHub/Slack context when available, inspects git history, and looks for overlapping open or recently merged cross-cutting work.
+4. `live-ui-review` first decides applicability from the changed paths and candidate findings. When UI/runtime behavior is in scope, it checks the configured targets with Playwriter and returns comparison evidence or a target/branch blocker.
+5. `findings-auditor` audits the reviewer outputs before any action. It is an investigation agent: it flags redundancy, verbosity, semantic + logical duplication, and gaps in the candidate finding set.
+6. The controller aggregates the investigation outputs, then judges what to fix or draft through mode-correct review rules. PR modes use PR dedup, PR artifact truth filtering, the PR necessity/correctly-open audit, and PR CI coverage gates; local changes are judged against the staged/unstaged/range scope without PR-thread or PR-CI exemptions. Only the controller acts.
 
 Model names and subagent mechanisms are per-runtime. Cursor's `gpt-5.5-extra-high` / `claude-opus-4-8-xhigh` IDs are not Copilot IDs; Cursor review agents pin those models in frontmatter because omitted `model` inherits the parent/default model, which can be `composer-2.5-fast`. Copilot uses `gpt-5.5` / `claude-opus-4.8` plus `effortLevel: xhigh`. Codex and Amp do not have a Claude Opus lane in the verified local interface, so they preserve the two-worker isolation and distinct review angles rather than exact model parity. Gemini has native subagents but they cannot call other subagents, so the main Gemini session remains the controller.
 
@@ -65,7 +66,7 @@ Skill support:
 - Review modes live under `~/.agents/skills/review/references/`:
   - `judging_core.md` — the surface-agnostic judging engine: truth validation, state-machine gate, deletion-safety, historical-rationale, coverage checklist, severity, and the post-review four-dimension lens + stage (loaded once by the router, before any mode)
   - `shared_rules.md` — the PR/SCSI/GitHub-delivery rules layered on top of the core: base-context gate, read-only probes, hard constraints, draft style, pending-review semantics, review verdict, review persistence, posting boundary (loaded once by the router)
-  - `pr_common.md` — PR resolution, exhaustive GitHub Context Intake + Reference Resolution, media evidence, anchoring, deep links (loaded once for PR modes)
+  - `pr_common.md` — PR resolution, exhaustive GitHub Context Intake + Reference Resolution, Ambient Topic Exploration, PR Necessity + Correctly-Open Audit, media evidence, anchoring, deep links (loaded once for PR modes)
   - `local_changes.md` — local diff / branch delta review
   - `pr_review.md` — initial or continued PR review (batch or one-at-a-time)
   - `pr_fix.md` — address reviewer feedback (reply and/or code changes per thread)
@@ -73,6 +74,8 @@ Skill support:
 The PR/issue intake gate is deliberately exhaustive: read complete PR and issue descriptions/bodies line-by-line; every conversation comment, review body, review comment, thread, and reply; every image/GIF/video or attachment (videos by significant frame/scene/state transition); and every recursively discovered PR/issue/comment/media/link until no reachable relevant reference remains unread. GitHub posting and PR/issue composition skills reuse the same gate when their output depends on existing PR/issue/comment context.
 
 For disagreements or missing rationale, the review skill adds bounded **Ambient Topic Exploration**: build a topic map, search related GitHub issues/PRs, GitHub Discussions via GraphQL `SearchType.DISCUSSION`, and Slack MCP public/team channels when available, then read high-signal hits with the same intake rules. Skip it for routine reviews where direct context and base-branch context are enough.
+
+For other-authored or unknown-author PRs, the review skill also runs a **PR Necessity + Correctly-Open Audit** before drafting. It classifies author intent, whether the PR is procedurally correctly open, whether the work is still needed, and whether similar cross-cutting work is already open or recently merged. Slack evidence is used only when Slack tools are available and private channels/DMs require explicit consent.
 
 ## Post-review stage (verifying the review's own fixes)
 

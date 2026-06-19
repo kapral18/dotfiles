@@ -21,5 +21,6 @@ Claude bridge:
 
 - Use `Task` for isolated reviewer/auditor work; follow `runtime-harnesses.md` only for capability caveats.
 - Launch two `reviewer` tasks in parallel with distinct review angles. Use model overrides `opus` and `sonnet` when available.
+- For other-authored or unknown-author PRs, run `pr-necessity-auditor` before judgment to check intent, correctly-open status, need, and overlapping work.
 - Run `findings-auditor` over the combined candidate findings before deciding.
 - Keep all worker/auditor/live tasks investigation-only; this controller owns judgment and gated side effects.

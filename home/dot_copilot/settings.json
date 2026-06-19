@@ -27,6 +27,11 @@
         "effortLevel": "xhigh",
         "contextTier": "long_context"
       },
+      "pr-necessity-auditor": {
+        "model": "gpt-5.5",
+        "effortLevel": "xhigh",
+        "contextTier": "long_context"
+      },
       "live-ui-review": {
         "model": "gpt-5.5",
         "effortLevel": "xhigh",

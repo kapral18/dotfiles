@@ -26,7 +26,7 @@ flowchart TB
     end
 
     subgraph EXECL["3 · Execution (per-tool, .work/.personal merged at apply)"]
-        CURSOR["Cursor (primary): dot_cursor/hooks.json + filtered MCP<br/>exact_agents/ review controller+workers → ~/.cursor/agents/"]:::exec
+        CURSOR["Cursor (primary): dot_cursor/hooks.json + filtered MCP<br/>exact_agents/ review controller+workers+PR necessity auditor → ~/.cursor/agents/"]:::exec
         CLAUDE["Claude Code: dot_claude/settings.{work,personal,llama-cpp}.json"]:::exec
         GEMINI["Gemini CLI: dot_gemini/settings.json + exact_commands/"]:::exec
         OPENCODE["OpenCode: dot_config/opencode/*.jsonc (LiteLLM aliases)"]:::exec

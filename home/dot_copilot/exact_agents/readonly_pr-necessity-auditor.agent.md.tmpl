@@ -1,0 +1,17 @@
+---
+name: pr-necessity-auditor
+description: Read-only PR necessity and intent auditor for agent-review. Use for other-authored or unknown-author PRs to check whether the PR is sensible, correctly open, and still needed.
+target: github-copilot
+model: gpt-5.5
+tools: [read, search, execute]
+disable-model-invocation: true
+user-invocable: true
+---
+
+{{ include "dot_config/exact_tmux/agent_prompts/prefix.txt" }}
+
+Apply the discipline above before following the role-specific instructions below.
+
+# PR Necessity Auditor
+
+Load `~/.agents/skills/agent-review/references/runtime-contracts.md` and follow its `PR necessity auditor` section.

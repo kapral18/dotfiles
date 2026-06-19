@@ -30,6 +30,7 @@ Check Role Detection from the router (`SKILL.md`):
 - **Reviewing others (`authorship: other` or `unknown`):**
   - draft comments/suggestions
   - do not change code
+  - run the PR Necessity + Correctly-Open Audit in `pr_common.md`
   - apply the Post-Review Lens (`judging_core.md`) to the PR diff
   - surface redundancy / verbosity / semantic + logical duplication / gaps as read-only findings
 - **Self-review (user is the author):**
@@ -52,6 +53,7 @@ On the first turn (or when starting a fresh review):
   - media
   - recursive references
 - run Ambient Topic Exploration in pr_common.md when disagreement, unclear shared understanding, or missing topic history matters
+- run the PR Necessity + Correctly-Open Audit in pr_common.md when reviewing someone else's PR or when authorship is unknown
 - all review threads/replies (end-to-end)
 - full diff
 - targeted local verification for risky claims (see pr_common.md)
@@ -86,6 +88,7 @@ Return a `Pending review draft` containing:
   - Why it matters (1-2 lines)
   - How to verify (minimal)
   - Proposed fix (smallest change)
+- `pr_necessity_audit` (for other-authored/unknown PRs): classifications and any draft feedback/questions about intent, correctly-open status, need, or overlapping work
 - `summary_comment` (optional): short PR-level comment
 
 ### Iterative (when the user asks for one-at-a-time)

@@ -27,7 +27,7 @@ The reviewer-worker lanes are read-only:
 
 Workers only investigate and return candidate findings.
 
-All side effects happen later in the controller, gated by step 7.
+All side effects happen later in the controller, gated by step 8.
 
 The `review` skill and its references remain the source-of-truth methodology workers load read-only.
 
@@ -45,8 +45,9 @@ The controller owns:
   - user constraints
   - expected output shape
 - launching the two reviewer workers and the findings auditor
+- running the conditional `pr-necessity-auditor` for other-authored or unknown PRs
 - running conditional `live-ui-review` verification for UI/runtime-relevant changes
-- aggregating worker outputs, `live-ui-review` evidence or skip/blocker status, and audit output
+- aggregating worker outputs, `pr-necessity-auditor` evidence or skip/blocker status, `live-ui-review` evidence or skip/blocker status, and audit output
 - judging kept/dropped findings after aggregation
 - applying fixes, drafting payloads, or touching GitHub only after the relevant `review`/`github`/`git` gates
 
@@ -55,7 +56,7 @@ Before fan-out, the controller must not load or run the full `review` skill.
 It may load only one router section first:
 
 - Resolve `authorship` using the review router's Role Detection procedure (`~/.agents/skills/review/SKILL.md`).
-- Do this before fan-out because step 7 depends on that value.
+- Do this before fan-out because step 8 depends on that value.
 - Do not infer authorship from the change being checked out locally.
 - A branch tracking another person's fork is `other`.
 - Commits authored by someone else are `other`.
@@ -101,13 +102,13 @@ The active harness owns subagent discovery and invocation.
 
    Resolve `authorship` via the review router's Role Detection. Do not duplicate worker review analysis in the controller.
 
-2. **Launch two investigation reviewers in parallel.**
+2. **Launch two code investigation reviewers in parallel.**
    - Emit both reviewer launches in one message (a single tool-call batch).
    - Use the current harness's native configured reviewer workers or task mechanism.
    - Cursor model selection is explicit, never inherited:
      - GPT/default lane: `gpt-5.5-extra-high`
      - Opus lane: `claude-opus-4-8-xhigh`
-     - findings auditor and live UI workers: `gpt-5.5-extra-high`
+     - PR necessity auditor, findings auditor, and live UI workers: `gpt-5.5-extra-high`
      - if the harness exposes a generic Subagent/Task API instead of named profiles, pass the matching `model` argument on every launch
    - Give each worker the scope packet.
    - Give each worker a distinct angle chosen from the actual change:
@@ -121,7 +122,22 @@ The active harness owns subagent discovery and invocation.
      - state-machine behavior
    - If `runtime-harnesses.md` says the active harness cannot fan out from the current context, run them as that file directs and state why.
 
-3. **Run conditional live UI verification.**
+3. **Run conditional PR necessity audit.**
+   - Run `pr-necessity-auditor` when:
+     - mode is `pr_review.md` or `pr_fix.md`, and
+     - `authorship` is `other` or `unknown`.
+   - Invoking `/agent-review` is the request for this PR meta-audit; do not require a second user opt-in.
+   - Skip it for local changes and self-authored PRs.
+   - This worker is read-only and evidence-only.
+   - Give it the scope packet plus the PR URL/number, base/head refs, changed paths, directly referenced issues/PRs, and any already-known user constraints.
+   - It must follow the `PR necessity auditor` section in `runtime-contracts.md`.
+   - It returns one of:
+     - `Not applicable`
+     - intent/necessity/correctly-open evidence and classification
+     - blocker status for inaccessible GitHub, Slack, or history evidence
+   - Do not rely on it to decide or post. The controller judges and gates any draft feedback.
+
+4. **Run conditional live UI verification.**
    - After both reviewers finish, run `live-ui-review`.
    - `live-ui-review` is the only worker lane that may need tool-level non-read-only mode.
    - Use non-read-only mode only to run Playwriter/browser commands.
@@ -142,25 +158,26 @@ The active harness owns subagent discovery and invocation.
    - Do not automatically rerun a blocked live-UI result.
    - A read-only/Ask-mode Playwriter block is a valid blocker to surface.
 
-4. **Run findings audit on candidate findings.**
-   - Run `findings-auditor` over the reviewer findings.
+5. **Run findings audit on candidate findings.**
+   - Run `findings-auditor` over the reviewer findings and any PR necessity findings.
    - Audit for:
      - redundancy
      - verbosity
      - semantic + logical duplication
      - gaps
    - This is still investigation, not a decision.
-5. **Aggregate.** Combine GPT reviewer output, Opus reviewer output, `live-ui-review` evidence or skip/blocker status, and the findings audit.
-6. **Judge in the controller.**
+6. **Aggregate.** Combine GPT reviewer output, Opus reviewer output, `pr-necessity-auditor` evidence or skip/blocker status, `live-ui-review` evidence or skip/blocker status, and the findings audit.
+7. **Judge in the controller.**
    - Apply mode-correct reconciliation:
      - all modes: collapse duplicate worker findings, apply the severity model, and keep only implementation-verified, net-new findings
-     - PR modes: apply `pr_common.md` Deduplication + Truth Filter and CI Coverage Gate
+     - PR modes: apply `pr_common.md` Deduplication + Truth Filter, CI Coverage Gate, and PR Necessity + Correctly-Open Audit classifications
      - local-changes mode: do not apply PR-thread deduplication or PR CI coverage exemptions; judge against the staged/unstaged/range scope in the packet
    - Drop:
      - unsupported claims
      - PR-mode findings covered by verified PR CI or existing PR artifacts
      - findings that only a worker asserted without evidence
-7. **Act only after judgment.** Branch strictly on the mode, explicit fix intent, and `authorship` recorded in step 1; never infer self-review from the fact that the change is checked out locally.
+     - PR necessity claims that rely only on ambient precedent without proving the current PR's actual diff and directly referenced artifacts
+8. **Act only after judgment.** Branch strictly on the mode, explicit fix intent, and `authorship` recorded in step 1; never infer self-review from the fact that the change is checked out locally.
    - Local changes or self-review with `authorship: self`:
      - apply the selected fixes in the working tree
      - run the repo's discovered quality gates
@@ -174,6 +191,16 @@ The active harness owns subagent discovery and invocation.
      - do not edit code
      - do not run fixes
      - do not post
+
+## PR necessity audit
+
+`pr-necessity-auditor` is part of the PR-mode flow for other-authored or unknown-author PRs. It answers whether the PR itself is sensible, correctly open, and still needed.
+
+- It audits author intent from the complete PR description, discussion, review threads, referenced issues/PRs, and linked artifacts.
+- It checks whether the PR is correctly open: open/draft state, base/head target, scope, linked issue status, stale/conflicting context, and whether the described problem still exists.
+- It searches for duplicate, overlapping, superseding, or recently merged cross-cutting work in GitHub, git history, and Slack topic discussions when Slack tools are available.
+- It returns evidence and classifications only; it never decides, posts, resolves, edits, commits, or pushes.
+- The controller turns supported concerns into draft feedback/questions only after normal judgment and human-visible publication gates.
 
 ## Live UI review
 
@@ -235,6 +262,7 @@ Return:
 
 - `Base context:` line from the review methodology.
 - Investigation summary: what each reviewer and findings auditor found.
+- PR necessity audit summary or skip/blocker status when applicable.
 - Controller judgment: findings kept/dropped and why.
 - Action taken or draft payloads, depending on mode.
 - Remaining uncertainty or gated side effects.

@@ -171,6 +171,49 @@ Keep it bounded. Before using the results, write:
    - Record skipped sources with reasons (e.g. `Slack MCP unavailable`, `private channel requires consent`, `GitHub Discussions disabled/unavailable`).
 6. Use ambient evidence only as context/precedent. The current PR diff and directly relevant artifacts remain the source of truth for what is actually changing.
 
+## PR Necessity + Correctly-Open Audit (conditional)
+
+Run this audit when reviewing a PR whose author is not the user (`authorship: other` or `unknown`). It is part of other-authored PR review, not a separate user opt-in.
+
+Skip it for local changes and routine self-review.
+
+This audit does not approve, reject, close, or post. It produces evidence for draft feedback or controller judgment.
+
+1. Reconstruct author intent:
+   - Use the full GitHub Context Intake + Reference Resolution results.
+   - Read the PR description, discussion, review threads, referenced issues/PRs, linked artifacts, and relevant changed files as one intent record.
+   - Distinguish the author's stated goal from inferred goals, reviewer suggestions, and ambient precedent.
+2. Check whether the PR is correctly open:
+   - Verify state, draft/readiness signal, base/head refs, branch staleness, merge-conflict status, linked issue state, labels/milestone when relevant, and whether the described problem still exists on base.
+   - Treat "open" as procedural correctness, not a merge verdict. A PR can be correctly open while still needing changes.
+   - If the PR appears mis-targeted, stale, premature, missing a linked issue, or scoped differently from its stated intent, record the exact evidence.
+3. Check whether the work is still needed:
+   - Search for duplicate, overlapping, superseding, or recently merged work using the topic map from Ambient Topic Exploration.
+   - Search GitHub issues/PRs/discussions beyond direct references with the existing Ambient Topic Exploration commands and rules.
+   - For recent merged work, include query terms such as `is:pr is:merged merged:>=YYYY-MM-DD` in GitHub search queries instead of assuming closed PRs are relevant.
+   - Compare any high-signal hit against the current PR's actual diff before calling it overlapping or superseding.
+4. Inspect git history for touched files/symbols and topic terms:
+   - Prefer bounded history such as `git log --all --since=<range> -- <paths>` for touched files.
+   - Use `git log --all --grep=<terms>` for topic-level history.
+   - Use blame or line history only when it can prove why the existing behavior exists or whether a prior fix already addressed the same issue.
+   - Record the range and refs inspected.
+5. Inspect Slack topic discussions when Slack tools are available:
+   - Search relevant public/team channels for topic terms.
+   - Read complete matching threads in timestamp order.
+   - Distinguish decisions from speculation, proposals, and unresolved questions.
+   - Do not search private channels or DMs without explicit user consent.
+   - If Slack is unavailable, or private-channel consent would be required, record that as skipped-with-reason.
+6. Classify the audit:
+   - `intent`: clear / unclear / conflicting
+   - `correctly_open`: yes / no / unclear
+   - `needed`: yes / no / unclear
+   - `similar_or_recent_work`: none found / open overlap / recently merged overlap / superseded / unknown
+   - `recommended_review_action`: continue normal review / ask author a clarifying question / suggest narrowing / suggest closing as duplicate or superseded / block on missing evidence
+7. Use the result conservatively:
+   - Do not claim a PR is unnecessary from ambient evidence alone.
+   - Do not claim overlap from matching terminology alone.
+   - Draft feedback only when the classification is anchored in the current PR plus direct or high-signal ambient evidence.
+
 ## Deduplication + Truth Filter (Required Before Drafting)
 
 - Using artifacts from GitHub Context Intake + Reference Resolution, classify each candidate finding:

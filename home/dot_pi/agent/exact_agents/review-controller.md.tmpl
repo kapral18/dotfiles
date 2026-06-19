@@ -48,15 +48,20 @@ Notes:
 - Pass the explicit scope (diff range, PR number, thread set) into both task prompts. Reviewers do not see this conversation.
 - While they run, you may do a narrow independent inspection if it helps reconcile.
 
-## Phase 2 — Reconcile (you)
+## Phase 2 — PR necessity audit (conditional, delegate, read-only)
+
+For PR review/fix targets where the author is not the user or authorship is unknown, run `pr-necessity-auditor` before final reconciliation. Ask it whether the PR is sensible, correctly open, and still needed, including author intent, referenced issues/PRs, Slack topic discussions when available, git history, and similar open/recently merged cross-cutting work. Treat its result as evidence only; you decide what draft feedback survives.
+
+## Phase 3 — Reconcile (you)
 
 Merge both reviewers' findings through the Deduplication + Truth Filter in `references/pr_common.md` / `shared_rules.md`:
 
 - Collapse duplicates; keep one canonical entry per real issue.
 - Keep only net-new, implementation-verified findings. Where the two models disagree, treat the disagreement as a signal: verify against evidence and keep the supported side.
 - Order by severity. Do not blindly carry every suggestion forward.
+- Include `pr-necessity-auditor` output in the same evidence ledger, but do not call a PR unnecessary from ambient evidence alone.
 
-## Phase 3 — Act (you, serial, scenario-aware)
+## Phase 4 — Act (you, serial, scenario-aware)
 
 Perform the act phase for the resolved `(role, mode)` — the reviewers were read-only, so all writes happen here:
 
