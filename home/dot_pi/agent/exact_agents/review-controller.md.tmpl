@@ -57,11 +57,11 @@ Notes:
 
 ## Phase 3 — Live UI verification (conditional, delegate, verification-only)
 
-After both reviewers finish, run `live-ui-review` when changed paths or candidate findings touch UI/runtime behavior. Use its comparison evidence, non-applicability, or blocker status as input to findings audit and reconciliation.
+After both reviewers finish, run `live-ui-review` when changed paths or candidate findings touch UI/runtime behavior. Use its evidence, artifact handoff, non-applicability, or blocker status as input to findings audit and reconciliation.
 
 ## Phase 4 — Findings audit (delegate, read-only)
 
-Run the findings audit after live UI over the remaining candidate findings, any reviewer `verification_needed`, live UI evidence/blockers, and any PR necessity draft concerns that survived greenlight. Inline the audit for zero or one straightforward finding with no disagreement/blocker/fix diff. Delegate to `findings-auditor` for non-trivial candidate sets, disagreements, material `verification_needed`, live UI blockers, surviving PR necessity concerns, named fix diffs, or overengineering risk. Use the audit to catch redundancy, verbosity, semantic + logical duplication, gaps, actionability problems, and overengineering risk in proposed fixes.
+Run the findings audit after live UI over remaining candidates, reviewer `verification_needed`, live UI evidence/artifacts/blockers, and PR necessity draft concerns that survived greenlight. Inline zero or one straightforward finding with no disagreement/blocker/fix diff. Delegate for non-trivial sets, disagreements, material `verification_needed`, live UI blockers, surviving PR necessity concerns, named fix diffs, or overengineering risk.
 
 ## Phase 5 — Reconcile (you)
 
@@ -71,7 +71,7 @@ Merge both reviewers' findings through the Deduplication + Truth Filter and Exis
 - Keep only net-new, implementation-verified findings. Where the two models disagree, treat the disagreement as a signal: verify against evidence and keep the supported side.
 - For surviving `verification_needed`, either run the serial check now when it is required for judgment, or surface the exact blocker/uncertainty instead of pretending the finding is fully verified.
 - Order by severity. Do not blindly carry every suggestion forward.
-- Include `pr-necessity-auditor`, `live-ui-review`, and findings audit output in the same evidence ledger, but do not call a PR unnecessary from ambient evidence alone.
+- Include `pr-necessity-auditor`, `live-ui-review`, any screenshot handoff, and findings audit output in the same evidence ledger, but do not call a PR unnecessary from ambient evidence alone.
 - For PR modes, read any current-account `PENDING` review plus already-submitted current-account review comments/replies before drafting payloads. Merge still-valid pending feedback with net-new findings into one payload, drop stale pending feedback with evidence, and block rather than creating competing or contradictory review comments.
 
 ## Phase 6 — Act (you, serial, scenario-aware)
@@ -79,7 +79,7 @@ Merge both reviewers' findings through the Deduplication + Truth Filter and Exis
 Perform the act phase for the resolved `(role, mode)` — the reviewers were read-only, so all writes happen here:
 
 - Local changes, or self-review of own PR (author): fix findings in the working tree now (smallest correct change), then run the repo's lint + type_check + tests. After gates are green, run the Post-Review Stage (`references/judging_core.md`) over the fix diff (the four dimensions: redundancy, verbosity, semantic + logical duplication, gaps) and resolve hygiene findings. Report what was found, fixed, verified.
-- Reviewing someone else's PR (not author): produce the draft inline comments + optional summary comment in the skill's PR-review output shape. Do not change code. Do not post.
+- Reviewing someone else's PR (not author): produce the draft inline comments + optional summary comment in the skill's PR-review output shape, plus separate screenshot handoff when UI evidence exists. Do not change code. Do not post.
 - Address/reply to threads (PR fix / drain): run the per-thread workflow serially. Apply code fixes in the working tree; draft replies. Honor the Human-Visible Publication Gate — bot-authored threads may auto-reply/resolve only inside this explicitly-invoked flow; human-authored threads stop for approval. Never auto-commit/push.
 - Verify-a-fix: emit a yes/no verdict with evidence against current head.
 

@@ -80,7 +80,7 @@ Set up before editing:
    - `git show CHERRY_PICK_HEAD -- <changed-paths>`
    - read the conflicted files and nearby destination-branch code
 4. Check ownership before staging in `elastic/kibana`:
-   - `,codeowners -p @elastic/kibana-management`
+   - `,codeowners --owner-of <affected-path>` for every affected path
    - If any affected path is outside team ownership, stop and ask before the side effect.
 
 ### Understand The Original Change

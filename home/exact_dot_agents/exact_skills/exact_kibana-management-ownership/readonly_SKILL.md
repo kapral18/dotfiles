@@ -23,6 +23,7 @@ Do not use:
 ```bash
 ,codeowners management        # paths owned by teams matching "management" (case-insensitive substring)
 ,codeowners -p management     # paths only, for scripting/diffing
+,codeowners --owner-of path   # last matching CODEOWNERS entry for one path
 ,codeowners                   # all owners with path counts
 ```
 
@@ -31,7 +32,8 @@ The team identity is `@elastic/kibana-management`.
 ## Procedure
 
 1. Collect the changed paths (`git diff --name-only <base>...` or the PR's file list via `gh`).
-2. Map each path to its owner. For exact per-path resolution prefer matching against `,codeowners -p kibana-management` output; a path not in that list is owned by another team or unowned.
+2. Map each path to its owner with `,codeowners --owner-of <path>`.
+   - Do not exact-match changed files against `,codeowners -p kibana-management`; that output is CODEOWNERS path patterns/roots, not an exhaustive file list. A descendant path can be in-team because its nearest matching CODEOWNERS root is in-team.
 3. Classify:
    - All paths in-team -> proceed normally; no extra reviewers needed beyond team norms.
    - Any path out-of-team -> list those paths with their owning teams; propose the owning teams as reviewers and flag that the side effect needs explicit approval (SOP §3.1).

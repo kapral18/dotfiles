@@ -50,8 +50,8 @@ The controller owns:
 - running the conditional blocking `pr-necessity-auditor` for other-authored or unknown PRs before implementation review
 - launching the two reviewer workers after any required PR necessity greenlight
 - running conditional `live-ui-review` verification after reviewer workers finish
-- running the findings audit phase after live UI returns evidence, non-applicability, or a target/branch/unsafe-data-setup blocker; delegate to `findings-auditor` only when proportional
-- aggregating worker outputs, `pr-necessity-auditor` evidence or skip/blocker status, `live-ui-review` evidence or skip/target-branch-data blocker status, and audit output
+- running the findings audit phase after live UI returns evidence, screenshot handoff, non-applicability, or a target/branch/runtime/data blocker; delegate to `findings-auditor` only when proportional
+- aggregating worker outputs, `pr-necessity-auditor` status, reviewer findings, live UI status/evidence/artifacts, and audit output
 - deciding which worker-reported `verification_needed` items deserve serial controller verification
 - judging kept/dropped findings after aggregation
 - reconciling PR-mode draft payloads with existing current-account pending reviews, submitted review comments, and replies before preparing or posting final review feedback
@@ -106,7 +106,7 @@ The phase order is strict:
 5. findings audit, inline or delegated by proportional-depth rules
 6. controller aggregation, judgment, PR-mode pending-review reconciliation, and action
 
-Do not start a later phase until the current phase returns. In blocking phases, do not poll background workers with long waits just to check status; wait for completion notifications or use the harness's synchronous/blocking mechanism. The controller may read completed phase outputs, but it must not perform later-phase analysis while the current phase is still running.
+Do not start a later phase until the current phase returns. In blocking phases, do not poll background workers with long waits just to check status; wait for completion notifications or use the harness's synchronous/blocking mechanism. The same rule applies after `write_agent` follow-ups for addenda or reconciliation checks: send the follow-up, state that the phase is waiting, and end the turn unless the worker has already completed. The controller may read completed phase outputs, but it must not perform later-phase analysis while the current phase is still running.
 
 For every delegated worker, emit an export-visible worker selection line before launch:
 
@@ -191,14 +191,14 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
    - Do not rely on the worker to rediscover it.
    - It returns one of:
      - `Not applicable`
-     - comparison evidence
-     - target/branch/data blocker for the controller to surface
+     - comparison evidence with `ui_evidence_artifacts` when screenshots were captured
+     - target/branch/runtime/data blocker for the controller to surface
    - Do not automatically rerun a blocked live-UI result.
    - A read-only/Ask-mode Playwriter block is a valid blocker to surface.
 
 5. **Run findings audit on candidate findings.**
-   - Run this phase only after the PR necessity gate, both reviewer outputs, and live UI evidence/non-applicability/target-branch-data blocker are available.
-   - Always audit the reviewer findings, any worker-reported `verification_needed`, live UI evidence, and any PR necessity draft concerns that survived the greenlight gate.
+   - Run this phase only after the PR necessity gate, both reviewer outputs, and the live UI result are available.
+   - Always audit reviewer findings, worker-reported `verification_needed`, live UI evidence/artifacts/blockers, and any PR necessity draft concerns that survived the greenlight gate.
    - Inline the audit in the controller when the remaining set is trivial:
      - no candidate findings, or
      - one straightforward evidence-backed finding with no model disagreement, no live UI blocker, no surviving PR-necessity concern, and no fix diff to audit.
@@ -208,7 +208,7 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
      - model disagreement or likely duplication
      - any worker-reported `verification_needed` that materially affects actionability
      - any surviving PR necessity concern
-     - live UI comparison/blocker evidence that materially affects judgment
+     - live UI comparison/blocker evidence or screenshot handoff that materially affects judgment
      - any named fix diff, staged set, or applied-fix diff
      - any proposed fix that may be overengineered or cross-cutting
    - Audit for:
@@ -221,13 +221,14 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
    - This is still investigation, not a decision, even when inlined in the controller.
    - If inlined, still report the audit result in the final output as `Findings audit: inline ...`.
    - For fix-capable own/self-review flows, this pre-action audit does not replace the normal post-review stage over the actual fix diff after fixes are applied.
-6. **Aggregate.** Combine `pr-necessity-auditor` greenlight/skip status, GPT reviewer output, Opus reviewer output, any reviewer `verification_needed`, `live-ui-review` evidence or skip/blocker status, and the findings audit result.
+6. **Aggregate.** Combine `pr-necessity-auditor` greenlight/skip status, GPT reviewer output, Opus reviewer output, reviewer `verification_needed`, live UI evidence/status/artifacts, and the findings audit result.
 7. **Judge in the controller.**
    - Apply mode-correct reconciliation:
      - all modes: collapse duplicate worker findings, apply the severity model, and keep only implementation-verified, net-new findings
      - PR modes: apply `pr_common.md` Deduplication + Truth Filter, Existing Pending Review Reconciliation, CI Coverage Gate, and PR Necessity + Correctly-Open Audit classifications
      - local-changes mode: do not apply PR-thread deduplication or PR CI coverage exemptions; judge against the staged/unstaged/range scope in the packet
    - For PR modes, read any current-account pending review and already-submitted current-account review comments/replies before drafting payloads. Merge kept pending findings with net-new findings into one final draft; drop stale pending findings with evidence; block rather than producing competing or contradictory payloads.
+   - For kept PR-mode UI findings, verify screenshot paths when possible and surface them only in final `UI evidence attachments:`. Never upload images, put local paths in GitHub review bodies, or create extra comments just to carry image paths.
    - Drop:
      - unsupported claims
      - unreachable-path findings
@@ -269,9 +270,10 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
 `live-ui-review` is part of the default flow after the blocking PR necessity gate and reviewer fan-out phases complete.
 
 - It verifies UI/runtime-relevant findings against the configured Kibana targets.
-- It returns evidence or a blocker.
+- It returns evidence, optional screenshot handoff, or a blocker.
 - Default mode: verification only; no repo edits, posts, resolves, commits, pushes, or decisions.
-- It may create minimal isolated data in the configured local/dev runtime when required to verify an applicable UI finding. It must clean up that data when safe or report leftovers exactly.
+- It may create focused isolated data in the configured local/dev runtime when required to verify an applicable UI finding. It must clean up that data when safe or report leftovers exactly.
+- Capture focused screenshots as Playwriter artifacts under `/tmp` only when visual proof materially improves a finding or blocker. Return paths, descriptions, target URL/branch, and suggested comment placement for manual user attachment.
 - Fix mode: separate Playwriter task after controller judgment.
 - Fix mode requires `authorship: self` or explicit user takeover.
 - Fix mode prompt must state allowed changes and verification commands.
@@ -282,6 +284,8 @@ Before launching `live-ui-review`, include this exact target/preflight block in 
 Runtime targets:
 - Base branch: http://kibana-main.local:5602
 - PR/head branch: http://kibana-feat.local:5601
+- Base Elasticsearch: http://localhost:9201 (backs kibana-main.local:5602)
+- PR/head Elasticsearch: http://localhost:9200 (backs kibana-feat.local:5601)
 
 Required preflight:
 - Read ~/.agents/skills/playwriter/SKILL.md and run `playwriter skill` before checking targets.
@@ -295,9 +299,16 @@ Required preflight:
 - Stop after at most one repeated same-URL/same-snapshot observation.
 - A blocker is invalid unless it reports results for both exact target URLs.
 - Do not fall back to localhost unless the user explicitly overrides the targets.
-- Do not use WebFetch, shell `curl`, or other HTTP-only probes as target readiness evidence. They may be supplemental diagnostics, but Playwriter is the required readiness check.
-- Do not return `Not applicable` because the target has no data. If the relevant UI exists but data is missing, inspect PR/issue media, tests, fixtures, and mocks; try browser/route mocks or existing seeded data; if still needed, create the smallest isolated local/dev Kibana/Elasticsearch data required to verify the flow.
-- Mutating local/dev runtime data via Playwriter/browser actions or local API calls is allowed for verification after target readiness/identity is established. Do not mutate production/shared cloud/GitHub/git/repo files. Clean up created runtime data when safe, or report exact leftovers and cleanup uncertainty.
+- Do not use WebFetch, shell `curl`, or other HTTP-only probes as target readiness evidence. They may be supplemental diagnostics, and post-readiness local API calls are allowed for scoped data setup, but Playwriter is the required readiness check.
+- `Not applicable` can be per-target. If the feature/surface is absent on base because the PR introduces it, mark base comparison `Not applicable` with evidence and continue head-only verification on the PR/head target when the feature exists there. Return full `Not applicable` only when the candidate is not UI/runtime-relevant or the feature/surface is absent from every relevant target.
+- Do not return `Not applicable` because the target has no data. If the relevant UI exists but data is missing, inspect PR/issue media, tests, fixtures, and mocks to infer the needed data shape, then prefer faithful local/dev runtime setup over browser mocks:
+  1. Use existing seeded/demo data when it already exercises the path.
+  2. Create focused isolated local/dev data through the app's real local APIs or the mapped Elasticsearch endpoints above (`localhost:9201` for base, `localhost:9200` for PR/head).
+  3. If direct local API/Elasticsearch requests cannot seed the data, use Kibana Dev Tools Console on the matching Kibana target to generate it interactively.
+  4. If faithful data setup requires changing the ES/Kibana runtime environment in a way this worker cannot safely apply live, such as changing instance startup/configuration or restarting services, do not replace that requirement with browser mocks. Return `Blocked` with exact user instructions for the required runtime change, the affected target(s), the reload/restart needed, and the resume criteria for the next run.
+  5. Use browser/route/network mocks only as a last resort when real local/dev setup is unsafe, unavailable, or cannot represent the state after runtime environment prerequisites have been ruled out or surfaced as blockers. Label mock-based evidence as lower fidelity and explain why earlier setup levels were not used.
+- Mutating local/dev runtime data via Playwriter/browser actions, local Kibana APIs, Dev Tools Console, or local Elasticsearch API calls is allowed for verification after target readiness/identity is established. Do not mutate production/shared cloud/GitHub/git/repo files. Clean up created runtime data when safe, or report exact leftovers and cleanup uncertainty.
+- Capture screenshots only when they materially improve a candidate finding or blocker. Store them as Playwriter artifacts under `/tmp`, use descriptive names, preserve handoff files, and record path, description, target URL/branch, linked candidate/finding, and suggested review comment placement. Do not put local paths into GitHub review comments.
 - If Playwriter cannot run because the harness is read-only/Ask-mode, return `Blocked`.
 - If Playwriter fails before navigation with `browserType.connectOverCDP: Timeout`:
   - replace the relay once with `playwriter serve --host 127.0.0.1 --replace`
@@ -314,7 +325,10 @@ Controller validation: reject and rerun any `live-ui-review` result that:
 - uses WebFetch or shell/HTTP probes as readiness evidence
 - skips Playwriter target checks
 - claims targets are unavailable without showing the exact target/preflight evidence above
-- omits applicability, exact URLs checked, Playwriter preflight status, readiness result for each target, branch/runtime evidence, comparison evidence for each checked candidate, page cleanup/owned-page URLs, and blockers/uncertainty
+- uses browser/route/network mocks for a data-dependent UI finding without first attempting or explicitly ruling out faithful local/dev data setup through existing data, local Kibana/Elasticsearch APIs, or Kibana Dev Tools Console
+- uses browser/route/network mocks when faithful verification is blocked by a required ES/Kibana runtime environment change; that must be returned as `Blocked` with setup instructions instead
+- lists screenshot artifacts without local paths, descriptions, target URL/branch, or linked candidate/finding placement
+- omits applicability, exact URLs checked, Playwriter preflight status, readiness result for each target, branch/runtime evidence, comparison evidence for each checked candidate, UI evidence artifact manifest or `none`, page cleanup/owned-page URLs, and blockers/uncertainty
 
 Do not reject or rerun a result that reports a valid Playwriter harness blocker:
 
@@ -334,5 +348,6 @@ Return:
 - Controller judgment: findings kept/dropped and why.
 - Pending review reconciliation: none found, reused existing, merged replacement needed, stale pending dropped, or blocked with reason.
 - Action taken or draft payloads, depending on mode.
+- UI evidence attachments: for kept UI findings, local screenshot artifact paths with descriptions, target URL/branch, and suggested manual attachment placement; or `none`. Keep this separate from GitHub review bodies because local paths are only for the user.
 - Remaining uncertainty or gated side effects.
 - `Compatibility impact: none | removed (requested) | kept existing (requested)`.

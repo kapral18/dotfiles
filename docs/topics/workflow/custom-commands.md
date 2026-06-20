@@ -242,7 +242,7 @@ Examples:
 | `,trace-string-pr`         | Locate the PR that introduced a matching string and open it in the browser                                             |
 | `,hey-branch`              | Quick "am I in sync with upstream?" status (ahead/behind + missing remote)                                             |
 | `,gh-worktree`             | Create or reuse local PR/issue worktrees from GitHub repo/number context                                               |
-| `,codeowners`              | List matching owners or owned paths from the current repo's CODEOWNERS file                                            |
+| `,codeowners`              | List matching owners, owned paths, or the last CODEOWNERS owner for a path                                             |
 
 ### Search / discovery helpers
 

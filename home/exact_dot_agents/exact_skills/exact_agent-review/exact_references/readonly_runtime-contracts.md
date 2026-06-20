@@ -131,7 +131,7 @@ The subject is:
 - not a working-tree fix
 - the candidate finding set produced by the reviewer workers
 - any worker-reported `verification_needed` that affects whether a finding is actionable
-- the live UI evidence/non-applicability/target-branch-data blocker status
+- the live UI result, including evidence, non-applicability/blocker status, and screenshot handoff
 - any PR necessity draft concerns that survived the greenlight gate
 - any existing current-account pending review/comments/replies supplied by the parent because they affect duplication, actionability, or proposed payload merging
 
@@ -158,6 +158,7 @@ Hard constraints:
 - Group findings by the canonical dimensions: redundancy, verbosity, semantic + logical duplication, gaps.
 - Check whether each remaining finding is actionable and whether the proposed smallest fix is overengineered for the proved problem.
 - Check whether parent-supplied existing pending/submitted review content makes a candidate redundant, stale, conflicting, or mergeable into a single cleaner payload.
+- Check whether each screenshot is tied to a surviving finding, has a useful description, and is worth handing to the user for manual attachment. Drop handoff entries for findings the controller should drop, redundant screenshots, and screenshots that do not add context beyond text evidence.
 
 Return each finding with:
 
@@ -166,6 +167,8 @@ Return each finding with:
 - why it matters
 - smallest proposed cleanup
 - actionability / overengineering note when relevant
+
+Also return a screenshot handoff audit: kept/dropped entries and why.
 
 If a dimension is clean, say so for that dimension. Do not return raw diffs or logs.
 
@@ -179,6 +182,7 @@ Mode boundary:
 - Tool-level non-read-only is allowed only for Playwriter/browser commands and for explicit local/dev runtime data setup against the verified targets.
 - Behavior-level read-only still applies to the repository, GitHub, git, and publishing surfaces.
 - Local/dev runtime data setup is allowed when required to verify an applicable UI finding.
+- ES/Kibana runtime environment prerequisites that require changing how an instance is configured, started, or restarted are not data setup. If faithful verification requires them, return `Blocked` with setup instructions instead of falling back to mocks.
 - Fix-capable Playwriter tasks are separate post-judgment tasks.
 - Fix mode requires `authorship: self` or explicit user takeover.
 - Fix mode prompt must state allowed changes and verification commands.
@@ -195,12 +199,16 @@ The parent supplies:
 
 Decide whether the changed paths or candidate findings touch UI/runtime behavior. If not, return `Not applicable` with the evidence used.
 
+`Not applicable` may be per-target. If a feature/surface is absent on base because the PR introduces it, mark the base comparison `Not applicable` with evidence and continue head-only verification against the PR/head target when the feature exists there. Return full `Not applicable` only when the candidate is not UI/runtime-relevant or the feature/surface is absent from every relevant target.
+
 Do not return `Not applicable` just because the target runtime has no data. If the changed UI/runtime path exists but required data is absent, continue through the data/setup ladder below and return `Blocked` only after those attempts are exhausted.
 
 ### Runtime targets
 
 - Base branch: `http://kibana-main.local:5602`
 - PR/head branch: `http://kibana-feat.local:5601`
+- Base Elasticsearch: `http://localhost:9201` (backs `kibana-main.local:5602`)
+- PR/head Elasticsearch: `http://localhost:9200` (backs `kibana-feat.local:5601`)
 
 ### Preflight
 
@@ -242,9 +250,12 @@ When applicable targets pass preflight, continue using Playwriter for UI compari
 Scope:
 
 - Compare the PR/head runtime against the base runtime for UI-relevant changes and reviewer findings.
-- Use the smallest verification path: browser inspection, HTTP requests, screenshots/paths when available, logs, read-only CLI commands, browser/route mocks, or local/dev runtime data setup.
+- Use the most faithful verification path that stays within the local/dev safety boundary: browser inspection, screenshots/paths when available, logs, read-only CLI commands, existing data, local Kibana/Elasticsearch data setup, Kibana Dev Tools Console setup, or browser/route mocks only as last resort.
 - Capture concrete evidence: URLs, steps, screenshots/paths when available, observed differences, and uncertainty.
-- Bound comparison to the smallest flow that can verify a candidate finding.
+- When visual proof materially helps an author understand a UI bug, visual regression, or behavior difference, capture the smallest useful screenshot set as Playwriter artifacts under `/tmp`; do not screenshot every navigation or duplicate state.
+- For each screenshot, record a handoff entry with path, description, base/head/both target, exact URL, linked candidate/finding, suggested review comment placement, and any fidelity note for mocks or partial setup. Preserve handoff files; cleanup applies to seeded runtime data and owned pages.
+- The screenshot handoff is for the controller/user only: no image uploads, local paths in GitHub review bodies, or extra comments solely for image paths.
+- Bound comparison to the focused flow that can verify a candidate finding.
 - Stop after five UI actions for a single candidate unless the parent supplied a tighter budget.
 - Return partial evidence plus `Blocked` only when the flow still needs actions or data setup that is unsafe, impossible, or over budget after the data/setup ladder below.
 
@@ -253,28 +264,36 @@ Scope:
 If an applicable flow reaches an empty state or lacks the data needed to reproduce the candidate:
 
 1. Inspect the complete direct PR/issue artifacts already in scope, including screenshots, GIFs, videos, and linked media. For videos/GIFs, inspect enough frames to infer the relevant UI state and data shape.
-2. Inspect changed tests, fixtures, mocks, story/test helpers, and local route/data mocks to infer the smallest data shape that exercises the UI path.
+2. Inspect changed tests, fixtures, mocks, story/test helpers, and local route/data mocks to infer the focused data shape that exercises the UI path. Use mocks here to learn the data shape, not as the first verification substrate.
 3. Try least-invasive setup first:
    - existing seeded/demo data already present on either target
-   - browser-side route/network mocks
-   - Playwriter-owned in-memory state or page-level mocks
    - read-only API responses used only to infer data shape
-4. If least-invasive setup is insufficient, create the smallest isolated local/dev runtime data needed to exercise the flow. Allowed mutation surface:
-   - the configured local verification targets and their backing local/dev Elasticsearch/Kibana state only
-   - browser actions or local/dev API calls needed to seed test data on the verified targets
+4. If existing data is insufficient, create focused isolated local/dev runtime data needed to exercise the flow. Prefer real runtime state over request mocks:
+   - for the base Kibana target, seed through local Kibana APIs or Elasticsearch at `http://localhost:9201`
+   - for the PR/head Kibana target, seed through local Kibana APIs or Elasticsearch at `http://localhost:9200`
+   - use the app's normal local APIs when they are the faithful data path; use direct Elasticsearch indexing only when that is how the UI can faithfully see the state
    - temporary test-only identifiers that are easy to find and clean up
-5. Clean up seeded data before returning when cleanup is safe. If cleanup is not possible or not verified, report the exact leftover objects and why.
-6. Do not mutate production, shared cloud, GitHub, git, repo files, committed files, labels, reviews, comments, branches, or user-visible external state. If target identity is ambiguous or appears non-local/non-dev, return `Blocked` instead of mutating.
-7. Only return `Blocked` for data after media/fixture/mock attempts and allowed local/dev runtime setup attempts are exhausted or unsafe. Include the exact setup attempted, the mutation that would still be required, and why it was not safe/possible.
-8. Only return `Not applicable` when the changed path/candidate is not UI/runtime-relevant or the functionality itself is absent from the target surface. Missing data is setup work or `Blocked`, not `Not applicable`.
+5. If direct local Kibana/Elasticsearch API setup fails because of auth, headers, API shape, or transport issues, use the Kibana Dev Tools Console on the matching verified target to generate the data interactively. Load `~/.agents/skills/kibana-console-monaco/SKILL.md` when automating Console editor interactions.
+6. If faithful setup requires changing the ES/Kibana runtime environment in a way this worker cannot safely apply live, such as changing how an instance is configured, started, or restarted, do not work around it with browser mocks. Return `Blocked` with:
+   - affected target(s): base, PR/head, or both
+   - exact runtime prerequisite and the evidence that it is required
+   - user-action instructions: the setting, environment variable, config snippet, command, or dev-server flag when known
+   - reload/restart requirement for Kibana/Elasticsearch
+   - resume criteria: what the next `live-ui-review` run should verify before data ingestion continues
+7. Use browser-side route/network mocks, Playwriter-owned in-memory state, or page-level mocks only as a last resort when faithful local/dev runtime setup is unsafe, unavailable, or cannot represent the needed state, and no runtime environment prerequisite would unlock faithful setup. Mark this evidence as lower fidelity and explain why steps 3-6 were not used or were insufficient.
+8. Clean up seeded data before returning when cleanup is safe. If cleanup is not possible or not verified, report the exact leftover objects and why.
+9. Do not mutate production, shared cloud, GitHub, git, repo files, committed files, labels, reviews, comments, branches, or user-visible external state. If target identity is ambiguous or appears non-local/non-dev, return `Blocked` instead of mutating.
+10. Only return `Blocked` for data after media/fixture inspection, existing-data checks, allowed local/dev runtime setup, Dev Tools Console fallback, and last-resort mock consideration are exhausted or unsafe. If the blocker is a runtime environment prerequisite, return it as soon as identified; do not continue to mocks. Include the exact setup attempted, the runtime change that would still be required, and why it was not safe/possible in the worker.
+11. Only return `Not applicable` when the changed path/candidate is not UI/runtime-relevant or the functionality itself is absent from the target surface. Missing data is setup work or `Blocked`, not `Not applicable`.
 
 Hard constraints for this evidence pass:
 
 - Verification only. Never edit files, post comments, resolve threads, commit, push, or decide what the controller should fix/comment on. Local/dev runtime data setup is allowed only as defined in the data/setup ladder above.
 - Never run git write commands.
 - Never use ApplyPatch or file-editing tools.
-- Never write files except Playwriter artifacts under `/tmp`.
-- Runtime data mutations must be local/dev-only, minimal, named in the evidence, and cleaned up or reported.
+- Never write files except Playwriter artifacts under `/tmp`, including focused screenshots captured for UI evidence handoff.
+- Runtime data mutations must be local/dev-only, focused, named in the evidence, tied to the exact target/Elasticsearch endpoint used, and cleaned up or reported.
+- Do not apply ES/Kibana runtime environment changes or restart services from this worker. Surface those as `Blocked` instructions for the user to apply, then continue in a later run after reload.
 - If the harness is read-only/Ask-mode and blocks Playwriter, return `Blocked`.
 - If Playwriter loops, reloads repeatedly, or cannot reach a stable snapshot, return `Blocked`.
 - Return findings to the user or `/agent-review` as evidence input. `/agent-review` performs any judgment or side effects.
@@ -286,7 +305,8 @@ Return exactly:
 - `playwriter_preflight`: whether the Playwriter skill was loaded and `playwriter skill` was run; if not, say why
 - `target_readiness`: readiness result for each exact URL, from Playwriter evidence
 - `branch_evidence`: branch/runtime identity evidence for each target, or what could not be verified
-- `data_setup`: media/artifacts inspected, fixture/mocks considered, runtime data seeded/mutated, cleanup result, or exact data/mutation still needed
+- `data_setup`: media/artifacts inspected, fixture/mocks considered, existing data checked, local Kibana/Elasticsearch data seeded/mutated, Dev Tools Console usage, browser/route mocks if used as last resort, cleanup result, runtime environment blocker instructions, or exact data/mutation still needed
 - `comparison_evidence`: candidate-by-candidate UI/runtime evidence, including `Not applicable` only for candidates disproved by reachability or absent functionality
+- `ui_evidence_artifacts`: `none`, or a list of screenshot handoff entries with local path, description, target URL/branch, linked candidate/finding, suggested manual attachment placement, and fidelity/cleanup notes
 - `pages`: pages created and closed, or URLs left open
 - `blockers_or_uncertainty`: none, or precise blockers/remaining uncertainty
