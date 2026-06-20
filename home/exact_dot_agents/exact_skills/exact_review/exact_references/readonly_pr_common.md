@@ -57,7 +57,7 @@ Avoid redundant findings:
    - SAST -> the vuln classes it scans
    - A check covers only what it actually runs.
    - Do not credit a check from its name alone.
-   - Buildkite job whose coverage is unclear: load and follow `~/.agents/skills/buildkite/SKILL.md` (`bk` CLI) to see what it runs before crediting it with a class.
+   - Buildkite job whose coverage is unclear: load and follow `~/.agents/skills/buildkite/SKILL.md` (`bk` CLI) to see what it runs before crediting it with a class. For Elastic repos, route through `elastic-domain` first when available, but do not skip the Buildkite check solely because the overlay cannot be loaded. If Buildkite access is unavailable, keep the coverage class in scope instead of crediting the check.
 3. Exempt a finding-class from review only when a present check genuinely covers it — CI will flag those, so do not build findings or draft comments for them.
 4. Keep every other class in scope, including ones whose check is absent or loosened on this branch. Do not assume a class is covered just because CI usually covers it elsewhere.
 5. State one line before drafting: `CI coverage: covered=[...] -> exempt; in-scope=[...]`.
@@ -110,7 +110,7 @@ Recover the full raw content before marking an item read.
      - cover UI changes, overlays, terminal output changes, and before/after states
      - use available local tooling (`ffmpeg`/`ffprobe`, browser/player, image extraction, OCR/vision when available)
      - inspect audio, captions, or transcripts when present
-   - Buildkite URLs (`buildkite.com/...`): **do not fetch directly** (will 403). Load and follow `~/.agents/skills/buildkite/SKILL.md` — use `bk` CLI to retrieve build/job info.
+   - Buildkite URLs (`buildkite.com/...`): **do not fetch directly** (authenticated pages commonly 403). Load and follow `~/.agents/skills/buildkite/SKILL.md` — use `bk` CLI to retrieve build/job info. For Elastic repos, route through `elastic-domain` first when available, but do not skip Buildkite solely because the overlay cannot be loaded.
    - Other URLs: fetch when they could inform the review, then read the full relevant content and extract references.
 4. From every artifact just read, extract new URLs, PR/issue refs, comments, assets, media, commits, builds, and code references; enqueue any unvisited potentially relevant item.
 5. Repeat until the queue is empty.

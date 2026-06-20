@@ -93,7 +93,7 @@ issue="$(,gh-issuew --number)"
 ,gh-worktree issue "$repo" "$issue" --branch feat/my-change
 
 # Switch to another worktree session:
-,w switch kibana
+,w switch my-feature
 ```
 
 Output:

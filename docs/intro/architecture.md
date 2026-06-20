@@ -55,6 +55,8 @@ This is why you may see paths like:
 
 This setup is intentionally declarative:
 
+![Chezmoi data flow: repo source, data/templates, apply, hash-gated hooks, derived home files, and runtime consumers](./assets/chezmoi-data-flow.svg)
+
 1. You answer prompts in [`home/.chezmoi.toml.tmpl`](../../home/.chezmoi.toml.tmpl).
 2. Templates in [`home/`](../../home/) render differently depending on those values.
 3. Hooks in [`home/.chezmoiscripts/`](../../home/.chezmoiscripts/) install / update tools based on the rendered config.

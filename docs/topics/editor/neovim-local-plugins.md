@@ -46,11 +46,13 @@ Output format notes:
 
 Environment variables:
 
-| Provider   | Required                                                            | Optional                                                                                                                                                                                                 |
-| ---------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Cloudflare | `CLOUDFLARE_WORKERS_AI_ACCOUNT_ID`, `CLOUDFLARE_WORKERS_AI_API_KEY` | `CLOUDFLARE_WORKERS_AI_MODEL` (default `@cf/moonshotai/kimi-k2.6`), `CLOUDFLARE_THINKING` (default `false`), `CLOUDFLARE_REASONING_EFFORT`                                                               |
-| OpenRouter | `OPENROUTER_API_KEY`                                                | `OPENROUTER_MODEL` (default `moonshotai/kimi-k2.6`, routed as `moonshotai/kimi-k2.6:nitro`), `OPENROUTER_NITRO` (default `true`), `OPENROUTER_THINKING` (default `false`), `OPENROUTER_REASONING_EFFORT` |
-| Gemini     | `GEMINI_API_KEY`                                                    | `GEMINI_MODEL` (default `gemini-flash-latest`), `GEMINI_MAX_OUTPUT_TOKENS`                                                                                                                               |
+| Provider   | Required                                                            | Optional                                                                                                                                                                                                                                                                      |
+| ---------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cloudflare | `CLOUDFLARE_WORKERS_AI_ACCOUNT_ID`, `CLOUDFLARE_WORKERS_AI_API_KEY` | `CLOUDFLARE_WORKERS_AI_MODEL` (default `@cf/zai-org/glm-5.2`, 262,144-token hosted context; use `minimax/m3` for 1,000,000-token context when the account has Cloudflare AI third-party balance/BYOK), `CLOUDFLARE_THINKING` (default `false`), `CLOUDFLARE_REASONING_EFFORT` |
+| OpenRouter | `OPENROUTER_API_KEY`                                                | `OPENROUTER_MODEL` (default `z-ai/glm-5.2`, 1,048,576-token context), `OPENROUTER_NITRO` (default `true`, applies only to Kimi/Moonshot models), `OPENROUTER_THINKING` (default `false`), `OPENROUTER_REASONING_EFFORT`                                                       |
+| Gemini     | `GEMINI_API_KEY`                                                    | `GEMINI_MODEL` (default `gemini-flash-latest`, 1,048,576-token input limit), `GEMINI_MAX_OUTPUT_TOKENS` (default `2048`)                                                                                                                                                      |
+
+OpenRouter requests always enable the `context-compression` plugin, so oversized staged diffs are compressed by OpenRouter instead of failing at the model context boundary.
 
 Transport failures are reported directly in the Neovim notification. For example, `curl exit 28` means the provider request reached the configured timeout; inspect `:messages` for the captured curl stderr/body preview.
 

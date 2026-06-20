@@ -1,0 +1,12 @@
+{
+  "name": "dotfiles",
+  "private": true,
+  "description": "Repository-level scripts for kapral18/dotfiles.",
+  "packageManager": "yarn@1.22.22",
+  "scripts": {
+    "docs": "yarn --cwd website install --frozen-lockfile && yarn --cwd website start",
+    "docs:build": "yarn --cwd website install --frozen-lockfile && yarn --cwd website build",
+    "docs:serve": "yarn --cwd website install --frozen-lockfile && yarn --cwd website serve",
+    "docs:clean": "yarn --cwd website clear"
+  }
+}

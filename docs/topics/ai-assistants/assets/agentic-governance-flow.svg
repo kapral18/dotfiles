@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="420" viewBox="0 0 1320 420" role="img" aria-labelledby="title desc">
+  <title id="title">Agentic operating system governance route</title>
+  <desc id="desc">A user request flows through the SOP, an intent-matched skill, evidence and safety gates, optional runtime subagent work, and returns evidence before gated action.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#82aaff"/></marker>
+    <style>
+      .bg{fill:#111827}.box{fill:#1f2937;stroke:#82aaff;stroke-width:2;rx:14}.gate{fill:#312e81;stroke:#c4b5fd;stroke-width:2}.muted{fill:#94a3b8}.text{fill:#f8fafc;font:600 24px system-ui,sans-serif}.small{fill:#cbd5e1;font:500 18px system-ui,sans-serif}.line{stroke:#82aaff;stroke-width:3;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect class="bg" width="1320" height="420" rx="24"/>
+  <text class="text" x="48" y="58">Governed route, not prompt soup</text>
+  <text class="small" x="48" y="90">The same request path applies across Cursor, Copilot, Claude, Codex, Gemini, Pi, and other harnesses.</text>
+  <rect class="box" x="48" y="145" width="155" height="110"/>
+  <text class="text" x="78" y="188">User</text><text class="small" x="78" y="218">request</text>
+  <path class="line" d="M203 200 H278"/>
+  <rect class="box" x="278" y="145" width="160" height="110"/>
+  <text class="text" x="309" y="188">SOP</text><text class="small" x="309" y="218">AGENTS.md</text>
+  <path class="line" d="M438 200 H513"/>
+  <rect class="box" x="513" y="145" width="170" height="110"/>
+  <text class="text" x="545" y="188">Skill</text><text class="small" x="545" y="218">intent route</text>
+  <path class="line" d="M683 200 H758"/>
+  <rect class="gate" x="758" y="145" width="190" height="110" rx="14"/>
+  <text class="text" x="791" y="188">Gates</text><text class="small" x="791" y="218">evidence + safety</text>
+  <path class="line" d="M948 200 H1018"/>
+  <rect class="box" x="1018" y="128" width="230" height="144"/>
+  <text class="text" x="1050" y="174">Act or delegate</text>
+  <text class="small" x="1050" y="206">subagent returns</text>
+  <text class="small" x="1050" y="232">evidence, not authority</text>
+  <path class="line" d="M1133 272 V340 H854 V257"/>
+  <text class="small" x="492" y="330">Side effects happen only after the same gates approve them.</text>
+</svg>

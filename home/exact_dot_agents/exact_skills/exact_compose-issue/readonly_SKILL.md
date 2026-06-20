@@ -20,6 +20,12 @@ Do not use:
 
 - user wants to create/edit the issue in GitHub: `~/.agents/skills/github/SKILL.md`
 
+Repo/org-specific overlays:
+
+- A domain overlay is a repo/org-specific skill selected from the verified target repo/org, not guessed from wording. It layers repo-specific issue body policy onto this generic composer.
+- Current concrete overlay: for the `elastic` org / `elastic/kibana`, load `~/.agents/skills/elastic-domain/SKILL.md`.
+- The overlay decides environment fields and repo-specific issue details. This skill stays the generic issue body composer.
+
 First actions:
 
 1. If the problem statement, repro, logs, screenshots, or notes reference any PR, issue, comment, thread, asset, URL, or media, run the GitHub Context Intake + Reference Resolution gate in `~/.agents/skills/review/references/pr_common.md`.
@@ -28,7 +34,7 @@ First actions:
 4. Keep repro steps concrete and ordered.
 5. Convert local-only observations into portable repro steps; do not paste session-specific URLs, machine hostnames, temp paths, workspace paths, browser automation session names, or local usernames into public issue text.
 6. If logs/screenshots are referenced, include only what materially helps and redact secrets.
-7. If the repo is Elastic/Kibana, use the Elastic variant section below.
+7. If the repo belongs to the `elastic` org or is `elastic/kibana`, load `~/.agents/skills/elastic-domain/SKILL.md` and apply its issue composition section.
 
 Rules:
 
@@ -37,7 +43,7 @@ Rules:
 - include logs/screenshots only if they add diagnostic value; redact secrets
 - public issue text must be portable for other maintainers:
   - avoid private hostnames, non-standard local domains, `/tmp/...`, absolute `$HOME` paths, Playwriter/session IDs, and one-off local account names unless the issue explicitly instructs how to create them
-  - use generic terms like `local Kibana`, `http://localhost:5601`, `a user with only <privilege>`, or explicit setup steps
+  - use generic terms like `local app`, `http://localhost:<port>`, `a user with only <privilege>`, or explicit setup steps
 
 Output:
 
@@ -56,41 +62,4 @@ Output:
 ## Reproduction
 
 ## Notes
-```
-
-## Elastic / Kibana variant
-
-Use when the repo is Elastic/Kibana.
-
-Additional first actions:
-
-1. Verify the repo/context is Elastic/Kibana.
-2. Gather reproducible problem, expected behavior, actual behavior, and environment details from evidence.
-3. Leave unknown stack/deployment/browser fields blank or marked for follow-up; do not invent them.
-
-Additional rules:
-
-- include environment details when UI or deployment matters
-
-Template (copy then delete unused sections):
-
-```markdown
-## Problem
-
-## Expected
-
-## Actual
-
-## Reproduction
-
-## Environment
-
-- Stack version:
-- Deployment (cloud/on-prem):
-- Browser/OS (if UI):
-
-## Notes
-
-- Logs / screenshots / sample docs (redact secrets)
-- Related issues/PRs
 ```

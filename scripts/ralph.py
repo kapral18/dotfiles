@@ -531,34 +531,42 @@ def load_role_prompt(role: str, prompts_dir: Path | None = None) -> Path:
     return p
 
 
-# --- elastic workspace gating -----------------------------------------------
+# --- domain review policy gating --------------------------------------------
 #
-# In elastic-belonging codebases (the operator's day job) we want the
-# reviewer / re-reviewer roles to actually invoke the operator's
-# `/review` skill rather than the lightweight default review. The
-# skill content (shared rules + local-changes mode) is inlined into
-# the role prompt as a primary instruction; the role's existing JSON
-# output contract is preserved so the orchestrator's verdict parser
-# is unchanged.
-#
-# Detection is git-remote-driven: any remote URL whose path starts
-# with `elastic/` qualifies. This catches forks (origin points at
-# `elastic/<repo>`) and personal mirrors via the upstream remote.
+# Domain-specific codebases can opt into stronger review heuristics without
+# making Ralph itself domain-specific. Detection is git-remote-driven and the
+# selected policy renders an overlay preamble before the normal role context.
+# The role's JSON output contract is preserved so the orchestrator's verdict
+# parser is unchanged.
 
 REVIEW_SKILL_DIR = Path(os.environ.get("RALPH_REVIEW_SKILL_DIR", "~/.agents/skills/review")).expanduser()
 ELASTIC_REMOTE_RE = re.compile(r"(github\.com[:/])elastic/", re.IGNORECASE)
 
 
-def is_elastic_workspace(workspace: Path) -> bool:
-    """True iff the workspace's git remotes include an `elastic/<repo>`
-    URL (HTTPS or SSH form).
+@dataclass(frozen=True)
+class ReviewDomainPolicy:
+    name: str
+    remote_re: re.Pattern[str]
+    heading: str
 
-    Returns False for non-git directories, paths that don't exist, or
-    repos with no elastic remote. Best-effort: a `git remote -v`
-    failure (e.g. corrupted .git/) yields False rather than raising.
+
+REVIEW_DOMAIN_POLICIES = (
+    ReviewDomainPolicy(
+        name="elastic",
+        remote_re=ELASTIC_REMOTE_RE,
+        heading="## REVIEW SKILL HEURISTICS (elastic)",
+    ),
+)
+
+
+def review_domain_for_workspace(workspace: Path) -> str | None:
+    """Return the review domain selected by workspace git remotes.
+
+    Best-effort: non-git directories, missing paths, git failures, and repos
+    without a known domain remote return ``None`` rather than raising.
     """
     if not workspace or not Path(workspace).exists():
-        return False
+        return None
     try:
         proc = subprocess.run(
             ["git", "-C", str(workspace), "remote", "-v"],
@@ -567,10 +575,21 @@ def is_elastic_workspace(workspace: Path) -> bool:
             timeout=5,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
-        return False
+        return None
     if proc.returncode != 0:
-        return False
-    return bool(ELASTIC_REMOTE_RE.search(proc.stdout or ""))
+        return None
+    remotes = proc.stdout or ""
+    for policy in REVIEW_DOMAIN_POLICIES:
+        if policy.remote_re.search(remotes):
+            return policy.name
+    return None
+
+
+def _review_domain_policy(domain: str) -> ReviewDomainPolicy | None:
+    for policy in REVIEW_DOMAIN_POLICIES:
+        if policy.name == domain:
+            return policy
+    return None
 
 
 def _read_skill_file(name: str) -> str:
@@ -585,10 +604,8 @@ def _read_skill_file(name: str) -> str:
         return ""
 
 
-def elastic_review_preamble(role: str) -> str:
-    """Render the `## REVIEW SKILL HEURISTICS (elastic)` block that is
-    prepended to the dynamic context for elastic reviewer / re-reviewer
-    invocations.
+def domain_review_preamble(domain: str, role: str) -> str:
+    """Render the selected domain review overlay preamble.
 
     The preamble:
       - declares the role is running the `/review` skill (skill-as-primary)
@@ -604,10 +621,12 @@ def elastic_review_preamble(role: str) -> str:
       - reminds the model to honor the existing JSON output contract from
         the system prompt above
 
-    Returns "" when the skill files are unavailable so non-elastic
-    callers (which never call this) and broken-skill installs both
-    degrade silently to the default review path.
+    Returns "" when the domain is unknown or skill files are unavailable so
+    callers degrade silently to the default review path.
     """
+    policy = _review_domain_policy(domain)
+    if not policy:
+        return ""
     core = _read_skill_file("references/judging_core.md").strip()
     shared = _read_skill_file("references/shared_rules.md").strip()
     mode = _read_skill_file("references/local_changes.md").strip()
@@ -615,7 +634,7 @@ def elastic_review_preamble(role: str) -> str:
         return ""
     role_label = "RE-REVIEWER" if role == "re_reviewer" else "REVIEWER"
     sections = [
-        "## REVIEW SKILL HEURISTICS (elastic)",
+        policy.heading,
         "",
         f"You are running the operator's `/review` skill in **local_changes** mode "
         f"as the Ralph {role_label}. The skill's verification disciplines are the "
@@ -649,6 +668,21 @@ def elastic_review_preamble(role: str) -> str:
         "",
     ]
     return "\n".join(sections)
+
+
+def review_domain_preamble_for_workspace(workspace: Path, role: str) -> str:
+    domain = review_domain_for_workspace(workspace)
+    return domain_review_preamble(domain, role) if domain else ""
+
+
+def is_elastic_workspace(workspace: Path) -> bool:
+    """Compatibility helper for callers that still ask for the Elastic gate."""
+    return review_domain_for_workspace(workspace) == "elastic"
+
+
+def elastic_review_preamble(role: str) -> str:
+    """Compatibility helper for the Elastic review preamble."""
+    return domain_review_preamble("elastic", role)
 
 
 _JSON_BLOCK_RE = re.compile(r"```(?:json)?\s*\n(\{.*?\})\s*```", re.DOTALL)
@@ -2896,10 +2930,9 @@ class RalphRunner:
             workspace=str(workspace),
         )
         sections: list[str] = []
-        if is_elastic_workspace(workspace):
-            preamble = elastic_review_preamble("reviewer")
-            if preamble:
-                sections.append(preamble)
+        preamble = review_domain_preamble_for_workspace(workspace, "reviewer")
+        if preamble:
+            sections.append(preamble)
         sections.extend(
             [
                 "## SPEC",
@@ -2938,10 +2971,9 @@ class RalphRunner:
             workspace=str(workspace),
         )
         sections: list[str] = []
-        if is_elastic_workspace(workspace):
-            preamble = elastic_review_preamble("re_reviewer")
-            if preamble:
-                sections.append(preamble)
+        preamble = review_domain_preamble_for_workspace(workspace, "re_reviewer")
+        if preamble:
+            sections.append(preamble)
         sections.extend(
             [
                 "## SPEC",

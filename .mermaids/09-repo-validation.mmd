@@ -27,7 +27,7 @@ flowchart TD
     FMTW --> APPLY["chezmoi diff → chezmoi apply --no-tty <target> → verify $HOME"]:::mk
 
     subgraph CONFIG["Repo-side config / meta files"]
-        C1["Makefile (help/fmt/lint/test/check/verify-templates/verify-mermaids/verify-bin-surface/docs*)<br/>bin/fmt (formatter orchestrator)"]:::cfg
+        C1["Makefile (help/fmt/lint/test/check/verify-templates/verify-mermaids/verify-bin-surface/docs*)<br/>package.json (npm docs* shims to website via Yarn Classic)<br/>bin/fmt (formatter orchestrator)"]:::cfg
         C2[".editorconfig · .prettierrc · .prettierignore · .stylua.toml<br/>ruff.toml · pyrightconfig.json · .python-version"]:::cfg
         C3[".chezmoiroot(home) · .gitignore · .githooks/pre-commit(shfmt)<br/>.cursor/.gitignore · LICENSE · README.md · banner.png · AGENTS.md"]:::cfg
         C4[".github/workflows/deploy-docs.yml (Pages CI)"]:::cfg

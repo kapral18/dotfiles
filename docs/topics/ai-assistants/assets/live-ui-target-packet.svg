@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1350" height="560" viewBox="0 0 1350 560" role="img" aria-labelledby="title desc">
+  <title id="title">Live UI target-packet handoff</title>
+  <desc id="desc">The controller selects a concrete target packet, passes it to live-ui-review, and the worker returns not applicable, comparison evidence, screenshots, or blockers.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#93c5fd"/></marker>
+    <style>
+      .bg{fill:#111827}.box{fill:#1f2937;stroke:#93c5fd;stroke-width:2;rx:15}.packet{fill:#0f3b3e;stroke:#5eead4;stroke-width:2;rx:15}.block{fill:#431407;stroke:#fdba74;stroke-width:2;rx:15}.text{fill:#f8fafc;font:650 22px system-ui,sans-serif}.small{fill:#cbd5e1;font:500 17px system-ui,sans-serif}.line{stroke:#93c5fd;stroke-width:3;fill:none;marker-end:url(#arrow)}.warn{stroke:#fdba74;stroke-width:3;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect class="bg" width="1350" height="560" rx="24"/>
+  <text class="text" x="48" y="58">Live UI receives a packet, not a vague domain</text>
+  <text class="small" x="48" y="88">Concrete targets and setup rules are selected by the controller before the worker launches.</text>
+  <rect class="box" x="70" y="150" width="210" height="120"/>
+  <text class="text" x="105" y="195">Controller</text><text class="small" x="105" y="225">after reviewer fan-out</text>
+  <path class="line" d="M280 210 H360"/>
+  <rect class="packet" x="360" y="130" width="270" height="160"/>
+  <text class="text" x="395" y="178">Target packet</text><text class="small" x="395" y="208">explicit repo/user packet,</text><text class="small" x="395" y="234">or Kibana default from</text><text class="small" x="395" y="260">elastic-domain</text>
+  <path class="line" d="M630 210 H710"/>
+  <rect class="box" x="710" y="130" width="270" height="160"/>
+  <text class="text" x="745" y="178">live-ui-review</text><text class="small" x="745" y="208">Playwriter readiness,</text><text class="small" x="745" y="234">comparison, data setup,</text><text class="small" x="745" y="260">screenshots under /tmp</text>
+  <path class="line" d="M980 210 H1060"/>
+  <rect class="box" x="1060" y="90" width="230" height="92"/>
+  <text class="text" x="1092" y="130">Evidence</text><text class="small" x="1092" y="156">or UI artifact handoff</text>
+  <rect class="box" x="1060" y="220" width="230" height="92"/>
+  <text class="text" x="1092" y="260">Not applicable</text><text class="small" x="1092" y="286">with reachability evidence</text>
+  <rect class="block" x="1060" y="350" width="230" height="100"/>
+  <text class="text" x="1092" y="390">Blocked</text><text class="small" x="1092" y="416">target, branch, runtime,</text><text class="small" x="1092" y="442">or data setup</text>
+  <path class="line" d="M845 290 V380 H1060"/>
+  <path class="warn" d="M495 290 V410 H1060"/>
+  <text class="small" x="360" y="360">If no explicit packet and the default cannot load, block.</text>
+  <text class="small" x="360" y="388">Do not invent localhost targets.</text>
+</svg>

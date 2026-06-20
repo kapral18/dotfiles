@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (61).
+%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (63).
 %% Skills → ~/.agents/skills/ (intent-routed SKILL.md). Shared hooks → ~/.agents/hooks/.
 %% ============================================================================
 flowchart TB
@@ -25,7 +25,7 @@ flowchart TB
     subgraph CORE["Core workflow skills"]
         S1["review/ (SKILL + references: judging_core [surface-agnostic engine:<br/>coverage, severity, gates, post-review 4-dim lens], local_changes,<br/>pr_common [exhaustive GitHub context intake + ambient topic exploration + PR necessity audit + pending-review reconciliation], pr_fix, pr_review, shared_rules;<br/>PR review anchor verification is instruction-owned)<br/>agent-review/ (/agent-review controller + runtime-contracts + runtime-harness caveats; reuses review references)<br/>light-review/ (proportional-depth in-place audit; loads judging_core)"]:::skill
         S2["git/ · github/ · worktrees/ · compose-pr/ · compose-issue/<br/>communication/ (centralized tone/style; referenced by other skills)"]:::skill
-        S3["walkthrough/ · interview-me/ · research/ · standup/<br/>present-pr/ (+refs: authoring.md, template.html;<br/>review-readiness map + introduced-concepts primer<br/>+ fixed notes sidebars)"]:::skill
+        S3["walkthrough/ · interview-me/ · research/<br/>present-pr/ (+refs: authoring.md, template.html;<br/>review-readiness map + introduced-concepts primer<br/>+ fixed notes sidebars)"]:::skill
         S1 --> R1["exact_references/*.md"]:::ref
     end
 
@@ -39,8 +39,8 @@ flowchart TB
         S7["ai-kb/ (wrap ,ai-kb; durable cross-session memory read/write)"]:::skill
     end
 
-    subgraph KBN["Kibana / elastic-specific skills"]
-        S8["kbn-backport (e2e; drives backport tool in tmux;<br/>+ref: backport-tool.md) · kibana-console-monaco<br/>kibana-labels-propose"]:::skill
+    subgraph KBN["Elastic/Kibana domain overlay + skills"]
+        S8["elastic-domain/ (domain overlay + ref: kibana-live-ui)<br/>kbn-backport (e2e; drives backport tool in tmux; +ref: backport-tool.md)<br/>kibana-console-monaco · kibana-labels-propose<br/>kibana-management-ownership · standup"]:::skill
     end
 
     subgraph META["Meta / orchestration skills"]
@@ -51,5 +51,5 @@ flowchart TB
     SOPS --> CORE & IMPROVE & TOOLS & KBN & META
     S7 <--> KBDB
 
-    SUBA["Skill-backed subagents (isolated child context; see 12)<br/>~/.cursor/agents/ · ~/.copilot/agents/ · ~/.claude/agents/ · ~/.codex/agents/ · ~/.gemini/agents/ · ~/.pi/agent/agents/<br/>all custom profiles render prefix.txt preamble before role instructions<br/>agent-review controller loads /agent-review → PR necessity gate when required → concurrency-safe reviewer fan-out → live-ui-review → inline/delegated findings audit → aggregate → pending-review reconciliation → acts<br/>wrappers: reviewer/review-gpt/review-opus/review-worker/review-gemini-*→review · pr-necessity-auditor→agent-review(runtime-contracts)+review(pr_common) · findings-auditor/post-review→review(judging_core 4-dim)<br/>reviewer lanes return candidate findings + verification_needed; controller owns mutation/contention serial checks<br/>live-ui-review returns applicability/comparison/screenshot handoff/target/branch/runtime/data blocker; real local ES/Kibana setup before route mocks<br/>change-auditor→light-review · researcher→research · code-searcher→semantic-code-search"]:::data
-    SUBA -.->|"wraps (skill = source of truth)"| S1 & S3 & S5
+    SUBA["Skill-backed subagents (isolated child context; see 12)<br/>~/.cursor/agents/ · ~/.copilot/agents/ · ~/.claude/agents/ · ~/.codex/agents/ · ~/.gemini/agents/ · ~/.pi/agent/agents/<br/>all custom profiles render prefix.txt preamble before role instructions<br/>agent-review controller loads /agent-review → PR necessity gate when required → concurrency-safe reviewer fan-out → live-ui-review → inline/delegated findings audit → aggregate → pending-review reconciliation → acts<br/>wrappers: reviewer/review-gpt/review-opus/review-worker/review-gemini-*→review · pr-necessity-auditor→agent-review(runtime-contracts)+review(pr_common) · findings-auditor/post-review→review(judging_core 4-dim)<br/>reviewer lanes return candidate findings + verification_needed; controller owns mutation/contention serial checks<br/>live-ui-review returns applicability/comparison/screenshot handoff/target-packet/branch/runtime/data blocker; Elastic/Kibana target/data ladder lives in elastic-domain<br/>change-auditor→light-review · researcher→research · code-searcher→semantic-code-search"]:::data
+    SUBA -.->|"wraps (skill = source of truth)"| S1 & S3 & S5 & KBN

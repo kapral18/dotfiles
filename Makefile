@@ -28,18 +28,18 @@ test: ## Run Python unit tests
 
 check: lint verify-templates verify-mermaids verify-bin-surface test ## Run all checks
 
-website/node_modules: website/package.json website/pnpm-lock.yaml
-	cd website && pnpm install --frozen-lockfile
+website/node_modules: website/package.json website/yarn.lock
+	cd website && yarn install --frozen-lockfile
 	@touch $@
 
 docs: website/node_modules ## Start the docs dev server (hot-reload at http://localhost:3000/dotfiles/)
-	cd website && pnpm start
+	cd website && yarn start
 
 docs-build: website/node_modules ## Build the production docs site into website/build/
-	cd website && pnpm build
+	cd website && yarn build
 
 docs-serve: website/node_modules ## Serve the built docs/ statically (matches GitHub Pages output)
-	cd website && pnpm serve
+	cd website && yarn serve
 
 docs-clean: ## Clear the Docusaurus cache (.docusaurus/)
-	cd website && pnpm clear
+	cd website && yarn clear

@@ -25,6 +25,12 @@ Do not add explanations, no prose, no markdown wrappers, no JSON, and no extra t
 local SYSTEM_MESSAGE =
   "You are a conventional commit message specialist. Classify the header by the most meaningful behavior change, not by file paths. Use docs only for documentation-only diffs. Return only valid commit message text in the requested format. Do not include reasoning."
 
+local DEFAULT_MAX_OUTPUT_TOKENS = 2048
+local CLOUDFLARE_DEFAULT_MODEL = "@cf/zai-org/glm-5.2"
+local GEMINI_DEFAULT_MODEL = "gemini-flash-latest"
+local OPENROUTER_DEFAULT_MODEL = "z-ai/glm-5.2"
+local OPENROUTER_CONTEXT_COMPRESSION_PLUGIN = { id = "context-compression" }
+
 -- ───────────────────────────── HELPERS (provider-agnostic) ─────────────────────
 local function split_lines(text)
   local lines = {}
@@ -474,7 +480,7 @@ local function is_kimi_model(model)
 end
 
 local function openrouter_model_id()
-  local model = env_trim("OPENROUTER_MODEL") or "moonshotai/kimi-k2.6"
+  local model = env_trim("OPENROUTER_MODEL") or OPENROUTER_DEFAULT_MODEL
   local nitro = env_bool_or_string("OPENROUTER_NITRO")
   if nitro == nil then
     nitro = true
@@ -537,8 +543,7 @@ local providers = {
     timeout = 90,
     url = function()
       local account_id = env_trim("CLOUDFLARE_WORKERS_AI_ACCOUNT_ID") or ""
-      local model = env_trim("CLOUDFLARE_WORKERS_AI_MODEL") or "@cf/moonshotai/kimi-k2.6"
-      return ("https://api.cloudflare.com/client/v4/accounts/%s/ai/run/%s"):format(account_id, model)
+      return ("https://api.cloudflare.com/client/v4/accounts/%s/ai/v1/chat/completions"):format(account_id)
     end,
     headers = function()
       return {
@@ -560,7 +565,9 @@ local providers = {
         end
       end
 
+      local model = env_trim("CLOUDFLARE_WORKERS_AI_MODEL") or CLOUDFLARE_DEFAULT_MODEL
       local payload = {
+        model = model,
         messages = {
           { role = "system", content = SYSTEM_MESSAGE },
           { role = "user", content = diff },
@@ -568,7 +575,7 @@ local providers = {
         chat_template_kwargs = {
           thinking = thinking,
         },
-        max_tokens = 2048,
+        max_tokens = DEFAULT_MAX_OUTPUT_TOKENS,
         temperature = 0,
         stream = false,
       }
@@ -579,9 +586,9 @@ local providers = {
 
       return payload
     end,
-    -- Workers AI commonly returns an OpenAI-like Chat Completions object under `result`.
-    extract_path = { "result", "choices", 1, "message", "content" },
+    extract_path = { "choices", 1, "message", "content" },
     extract_fallbacks = {
+      { "choices", 1, "message", "content" },
       { "result" }, -- some models return plain strings
       { "result", "response" }, -- older/non-chat schema
       { "result", "answer" },
@@ -639,10 +646,11 @@ local providers = {
           { role = "user", content = diff },
         },
         reasoning = reasoning,
+        plugins = { OPENROUTER_CONTEXT_COMPRESSION_PLUGIN },
         chat_template_kwargs = {
           thinking = thinking,
         },
-        max_tokens = 2048,
+        max_tokens = DEFAULT_MAX_OUTPUT_TOKENS,
         temperature = 0,
         stream = false,
       }
@@ -657,14 +665,14 @@ local providers = {
   gemini = {
     url = function()
       local base = "https://generativelanguage.googleapis.com"
-      local model = env_trim("GEMINI_MODEL") or "gemini-flash-latest"
+      local model = env_trim("GEMINI_MODEL") or GEMINI_DEFAULT_MODEL
       return ("%s/v1beta/models/%s:generateContent?key=%s"):format(base, model, os.getenv("GEMINI_API_KEY") or "")
     end,
     required_env = { "GEMINI_API_KEY" },
     timeout = 90,
     headers = { "Content-Type: application/json" },
     payload = function(diff)
-      local max_output_tokens = env_number("GEMINI_MAX_OUTPUT_TOKENS") or 768
+      local max_output_tokens = env_number("GEMINI_MAX_OUTPUT_TOKENS") or DEFAULT_MAX_OUTPUT_TOKENS
 
       return {
         systemInstruction = {
@@ -826,9 +834,10 @@ local function summarize_with(provider_key)
     if type(text) ~= "string" or text == "" then
       local reasoning_text
       if provider_key == "cloudflare" then
-        reasoning_text = normalize_text(
-          json_at_path(parsed, { "result", "choices", 1, "message", "reasoning_content" })
-        ) or normalize_text(json_at_path(parsed, { "result", "choices", 1, "message", "reasoning" }))
+        reasoning_text = normalize_text(json_at_path(parsed, { "choices", 1, "message", "reasoning_content" }))
+          or normalize_text(json_at_path(parsed, { "choices", 1, "message", "reasoning" }))
+          or normalize_text(json_at_path(parsed, { "result", "choices", 1, "message", "reasoning_content" }))
+          or normalize_text(json_at_path(parsed, { "result", "choices", 1, "message", "reasoning" }))
       elseif provider_key == "openrouter" then
         reasoning_text = normalize_text(json_at_path(parsed, { "choices", 1, "message", "reasoning" }))
           or normalize_text(json_at_path(parsed, { "choices", 1, "message", "reasoning_content" }))

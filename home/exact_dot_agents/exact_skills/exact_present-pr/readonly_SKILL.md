@@ -23,9 +23,14 @@ Read both fully before writing any HTML.
 
 - Input: a PR (via `gh`) or the current branch's local changes. The user may name a goal/thesis; if not, derive it from the PR description + diff and state it.
 - Output: `<slug>-presentation.html` plus `nb-*.png` images, all in ONE output dir. Default output dir: `/tmp/present-pr/<repo>-<pr-or-branch>/`.
-- Page shape: fixed left sidebar = introduced concepts by domain/layer plus readiness/story navigation; main area = review-readiness map, visual story, diffs, diagrams, and animation; fixed right sidebar = overflow notes that follow the active concept or readiness/story section without crowding the main narrative.
+- Page shape: fixed left sidebar = introduced concepts by concept area/layer plus readiness/story navigation; main area = review-readiness map, visual story, diffs, diagrams, and animation; fixed right sidebar = overflow notes that follow the active concept or readiness/story section without crowding the main narrative.
 - End state: the page is opened in the user's default browser, and you report the file path + the goal/thesis you presented.
 - You do **not** post anything, comment on the PR, or edit the reviewed repo.
+
+Repo/org-specific overlays:
+
+- A domain overlay is a repo/org-specific skill selected from the verified target repo/org, not guessed from wording. It may add safe handling for repo-specific CI/build metadata.
+- Current concrete overlay: for Elastic Buildkite/CI links, load `~/.agents/skills/elastic-domain/SKILL.md`, then use the `buildkite` skill (`bk` CLI).
 
 ## Workflow
 
@@ -33,7 +38,7 @@ Read both fully before writing any HTML.
 
 - If `/tmp/specs/<pwd>/` or `/tmp/present-pr/<repo>-<pr-or-branch>/` already contains evidence for the same PR/head SHA, reuse it after verifying the head SHA still matches. Refresh only PR metadata/comments that may have changed.
 - Default diagram budget: **one generated image** for the Act I goal-level contrast. Add a second only when the preflight proves it carries a distinct flow/state idea. Do not generate images for exact labels, symbol lists, or code-line insights; use HTML flow nodes, cards, or diff beats instead.
-- For `elastic/*` Buildkite links, fetch only the compact facts needed for the story: build number, state, commit, and whether failures are current or historical. Do not dump full build metadata unless CI is itself the presentation thesis.
+- For repo-specific CI/build links, load the verified overlay and fetch only the compact facts needed for the story. Do not dump full build metadata unless CI is itself the presentation thesis.
 - Prefer deterministic HTML/CSS/code beats over generated images for label-heavy visuals. Generated diagrams often stutter labels; exact labels and exact source lines belong in the HTML.
 - Keep command output compact. Save large raw evidence to files, then extract only the lines needed for the preflight and beats.
 
@@ -44,7 +49,7 @@ Read both fully before writing any HTML.
   - the full PR body and every conversation comment (`gh pr view <n> --comments`),
   - every review and inline review-thread comment (`gh api --paginate repos/OWNER/REPO/pulls/<n>/reviews` and `.../pulls/<n>/comments`),
   - every linked/closing issue and all of its comments (`gh issue view <m> --comments`), and any PR/issue referenced transitively in the body, comments, or reviews — recurse until no new reference adds context.
-  - For `elastic/*` Buildkite links, do not fetch directly; use the `buildkite` skill (`bk` CLI).
+  - For repo-specific CI/build links, do not fetch directly unless the verified overlay says it is safe. For Elastic Buildkite, load `elastic-domain`, then use the `buildkite` skill (`bk` CLI).
 - Read the **actual** diff hunks for the files you will feature — paraphrased code is not allowed in beats.
 - If you need base-branch context (existing behavior, conventions, related call sites) and the repo is indexed, use the `semantic-code-search` skill as _supporting_ context only — validate against the local diff.
 
@@ -73,7 +78,7 @@ Per `authoring.md`:
   - goal/thesis + target reviewer,
   - evidence cache status (new vs reused, PR/head SHA, refreshed sources),
   - review-readiness map: mental model, layered explanation, topology groups, load-bearing line index, invariants/non-changes, risk-attention map, and GitHub handoff order,
-  - introduced concepts inventory: domain/layer/name, what/how/why, source anchors, left-sidebar label, right-sidebar note, and whether a deterministic HTML card, diff, image, or animation teaches it best,
+  - introduced concepts inventory: concept area/layer/name, what/how/why, source anchors, left-sidebar label, right-sidebar note, and whether a deterministic HTML card, diff, image, or animation teaches it best,
   - every changed file/hunk with role, source anchor, and why it matters,
   - Act II beats in order, each with its bridge from the previous beat,
   - primary medium per beat (`diagram` or `diff`) and the exact source line/image each beat needs,
@@ -92,7 +97,7 @@ Per `authoring.md`:
 
 - Copy `template.html` to `<output>/<slug>-presentation.html`.
 - First resize the content blocks to match the preflight: remove unused concept cards, sidebar notes, sample beats/cards/rows and duplicate only the blocks the story needs.
-- Fill the concept primer, review-readiness map, and both sidebars before Act I/II beats. The left sidebar must name each introduced concept by domain/layer and include the readiness map plus Act I-IV story links; the main concept cards must explain what/how/why; the right sidebar must hold clarifying notes, caveats, examples, or reviewer shortcuts for the active concept or story section that would otherwise clutter the main story.
+- Fill the concept primer, review-readiness map, and both sidebars before Act I/II beats. The left sidebar must name each introduced concept by concept area/layer and include the readiness map plus Act I-IV story links; the main concept cards must explain what/how/why; the right sidebar must hold clarifying notes, caveats, examples, or reviewer shortcuts for the active concept or story section that would otherwise clutter the main story.
 - Keep concept cards in a vertical anchor stack, not a multi-column grid. Every concept sidebar block must visibly navigate to its own main-card position; two concepts sharing the same row makes the second link feel like a no-op.
 - Fill the readiness sections as structured artifacts, not prose dumps: layered map rows, topology rows, load-bearing-line rows, risk-attention cards, and an ordered GitHub handoff.
 - Replace every placeholder token; use the beat blocks already present as patterns (add/remove change beats, invariant cards, ledger rows as needed).

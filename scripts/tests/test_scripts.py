@@ -4179,15 +4179,15 @@ class TestKnowledgeBaseSearchReturnsBody(unittest.TestCase):
             assert hits[0]["title"].startswith("Ralph learning"), hits[0]
 
 
-class TestRalphElasticReviewSkillGating(unittest.TestCase):
-    """Stream 1: in elastic-belonging codebases the reviewer and
+class TestRalphDomainReviewSkillGating(unittest.TestCase):
+    """Stream 1: domain-belonging codebases can make reviewer and
     re-reviewer roles invoke the operator's `/review` skill (skill
     content rendered as a primary-instruction preamble; the role's
     JSON output contract is preserved as the wire format).
 
-    Detection is git-remote-driven: any remote URL whose path starts
-    with `elastic/` qualifies. Non-elastic workspaces see the default
-    review prompt unchanged.
+    Elastic detection is git-remote-driven: any remote URL whose path
+    starts with `elastic/` selects the elastic domain. Non-domain
+    workspaces see the default review prompt unchanged.
     """
 
     def setUp(self):
@@ -4209,53 +4209,55 @@ class TestRalphElasticReviewSkillGating(unittest.TestCase):
         if remote_url:
             subprocess.run(["git", "remote", "add", "origin", remote_url], cwd=path, check=True)
 
-    def test_is_elastic_workspace_detects_https_remote(self):
+    def test_review_domain_detects_elastic_https_remote(self):
         import ralph
 
         with tempfile.TemporaryDirectory() as tmp:
             ws = Path(tmp) / "kibana"
             self._git_init_with_remote(ws, "https://github.com/elastic/kibana.git")
+            assert ralph.review_domain_for_workspace(ws) == "elastic"
             assert ralph.is_elastic_workspace(ws) is True
 
-    def test_is_elastic_workspace_detects_ssh_remote(self):
+    def test_review_domain_detects_elastic_ssh_remote(self):
         import ralph
 
         with tempfile.TemporaryDirectory() as tmp:
             ws = Path(tmp) / "kibana"
             self._git_init_with_remote(ws, "git@github.com:elastic/kibana.git")
-            assert ralph.is_elastic_workspace(ws) is True
+            assert ralph.review_domain_for_workspace(ws) == "elastic"
 
-    def test_is_elastic_workspace_rejects_non_elastic_remote(self):
+    def test_review_domain_rejects_non_domain_remote(self):
         import ralph
 
         with tempfile.TemporaryDirectory() as tmp:
             ws = Path(tmp) / "personal"
             self._git_init_with_remote(ws, "https://github.com/kapral18/dotfiles.git")
+            assert ralph.review_domain_for_workspace(ws) is None
             assert ralph.is_elastic_workspace(ws) is False
 
-    def test_is_elastic_workspace_handles_no_remote(self):
+    def test_review_domain_handles_no_remote(self):
         import ralph
 
         with tempfile.TemporaryDirectory() as tmp:
             ws = Path(tmp) / "fresh"
             self._git_init_with_remote(ws, None)
-            assert ralph.is_elastic_workspace(ws) is False
+            assert ralph.review_domain_for_workspace(ws) is None
 
-    def test_is_elastic_workspace_handles_non_git_directory(self):
+    def test_review_domain_handles_non_git_directory(self):
         import ralph
 
         with tempfile.TemporaryDirectory() as tmp:
             ws = Path(tmp) / "plain"
             ws.mkdir()
-            assert ralph.is_elastic_workspace(ws) is False
+            assert ralph.review_domain_for_workspace(ws) is None
 
-    def test_is_elastic_workspace_handles_missing_directory(self):
+    def test_review_domain_handles_missing_directory(self):
         import ralph
 
         ws = Path(tempfile.gettempdir()) / "definitely-does-not-exist-elastic-probe"
-        assert ralph.is_elastic_workspace(ws) is False
+        assert ralph.review_domain_for_workspace(ws) is None
 
-    def test_is_elastic_workspace_detects_elastic_in_upstream_remote(self):
+    def test_review_domain_detects_elastic_in_upstream_remote(self):
         """Forks: developer's `origin` points at their fork, but
         `upstream` points at `elastic/<repo>`. We should detect either."""
         import ralph
@@ -4274,7 +4276,7 @@ class TestRalphElasticReviewSkillGating(unittest.TestCase):
                 cwd=ws,
                 check=True,
             )
-            assert ralph.is_elastic_workspace(ws) is True
+            assert ralph.review_domain_for_workspace(ws) == "elastic"
 
     def test_reviewer_context_inlines_skill_preamble_in_elastic_workspace(self):
         import ralph
@@ -4366,15 +4368,17 @@ class TestRalphElasticReviewSkillGating(unittest.TestCase):
             assert "RE-REVIEWER" in ctx, "preamble must address the re-reviewer role label"
             assert ctx.index("## REVIEW SKILL HEURISTICS") < ctx.index("## SPEC")
 
-    def test_elastic_review_preamble_returns_empty_when_skill_files_missing(self):
+    def test_domain_review_preamble_returns_empty_when_skill_files_missing(self):
         """Operators who don't have the review skill installed should
         get no preamble (silent-degrade) rather than a crash. This
-        keeps the elastic gate optional rather than mandatory."""
+        keeps domain gates optional rather than mandatory."""
         import ralph
 
         original = ralph.REVIEW_SKILL_DIR
         try:
             ralph.REVIEW_SKILL_DIR = Path(tempfile.gettempdir()) / "no-such-skill-dir-12345"
+            assert ralph.domain_review_preamble("elastic", "reviewer") == ""
+            assert ralph.domain_review_preamble("elastic", "re_reviewer") == ""
             assert ralph.elastic_review_preamble("reviewer") == ""
             assert ralph.elastic_review_preamble("re_reviewer") == ""
         finally:

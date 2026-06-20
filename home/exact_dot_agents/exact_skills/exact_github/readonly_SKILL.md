@@ -46,13 +46,18 @@ Do not use:
 - The user wants local git operations (status/diff/commit/rebase): `~/.agents/skills/git/SKILL.md`.
 - The user wants worktree management (create/switch/remove worktrees): `~/.agents/skills/worktrees/SKILL.md`.
 
+Terminology:
+
+- A domain overlay is a repo/org-specific skill selected from the verified target repo/org, not guessed from wording. It layers repo-specific policy onto this generic GitHub mechanics skill.
+- Current concrete overlay: for the `elastic` org / `elastic/kibana`, load `~/.agents/skills/elastic-domain/SKILL.md`.
+
 First actions:
 
 1. Set `GH_PAGER=cat`.
 2. Resolve the exact target repo/object (PR, issue, comment thread, release) before mutating anything.
 3. For context-dependent actions (PR/issue body edits, replies/resolves, labels inferred from content, or follow-ups), run the GitHub Context Intake + Reference Resolution gate in `~/.agents/skills/review/references/pr_common.md` before composing or mutating. Fully specified mechanical actions, such as applying an explicitly named label, are exempt.
 4. If the context is contested, historically unclear, or depends on product/team precedent, also run Ambient Topic Exploration in `~/.agents/skills/review/references/pr_common.md`.
-5. If the user also needs authored text, reviewer reasoning, labels, or Kibana ownership guidance, invoke the required secondary skill(s) via the Skill tool first and use their output before posting/applying.
+5. If the user also needs authored text, reviewer reasoning, labels, ownership guidance, or repo-specific GitHub metadata, invoke the required secondary skill(s) or domain overlay first and use their output before posting/applying.
 6. Before creating or editing public PR/issue text, sanitize the body/title for portable public context:
    - remove session-specific hosts, ports, workspace paths, temp paths, browser automation session references, and local usernames
    - replace local-only validation details with reproducible setup/check steps another maintainer can run
@@ -61,7 +66,8 @@ First actions:
 Approvals:
 
 - Any GitHub side effect requires explicit approval unless the user instructed otherwise. Examples (non-exhaustive): create/edit PRs or issues, post comments/reviews, apply metadata (labels/assignees/milestones/projects), merge, or create releases.
-- Human-Visible Publication Gate (see the SOP, `~/AGENTS.md`): a reply/resolve/comment that a human will see is always supervised — draft, show the exact payload + target, wait for approval. The only carve-out is a **verified bot-authored** thread (GitHub `user.type == "Bot"`, login ending in `[bot]`, or known-bot allowlist such as `elasticmachine` / `kibanamachine` / `github-actions[bot]`), which may be auto-replied/auto-resolved inside an explicitly-invoked flow. Ambiguous or mixed human+bot threads fail safe to human (supervised). Verify author type via the API before treating any thread as bot:
+- Before relying on a known-bot allowlist, verify and load any applicable domain overlay for the target repo. Preserve the pre-overlay global fallback allowlist (`elasticmachine`, `kibanamachine`, `github-actions[bot]`) even when no overlay applies.
+- Human-Visible Publication Gate (see the SOP, `~/AGENTS.md`): a reply/resolve/comment that a human will see is always supervised — draft, show the exact payload + target, wait for approval. The only carve-out is a **verified bot-authored** thread (GitHub `user.type == "Bot"`, login ending in `[bot]`, known-bot allowlist from the verified overlay, or the preserved global fallback allowlist), which may be auto-replied/auto-resolved inside an explicitly-invoked flow. Ambiguous or mixed human+bot threads fail safe to human (supervised). Verify author type via the API before treating any thread as bot:
   - `gh api repos/OWNER/REPO/pulls/comments/COMMENT_ID --jq '{login:.user.login, type:.user.type}'`
 - Wording for any human-visible content (PR/issue bodies, comments, replies, review summaries, release notes — tone, concision, addressed-vs-not-addressed triage): follow the centralized `~/.agents/skills/communication/SKILL.md`. This skill carries GitHub mechanics only (endpoints, `in_reply_to`, anchoring, clickable source/commit links).
 
@@ -250,8 +256,7 @@ Composition (draft-only) guidance:
 
 - Before creating/editing a PR body, invoke the `compose-pr` skill via the Skill tool.
 - Before creating/editing an issue body, invoke the `compose-issue` skill via the Skill tool.
-- For `elastic/kibana` label targeting, invoke the `kibana-labels-propose` skill via the Skill tool.
-- For Kibana reviewer/ownership guidance, load: `~/.agents/skills/kibana-management-ownership/SKILL.md`
+- For repo-specific labels, ownership, reviewer targeting, or PR body rules, load the verified domain overlay first. For Elastic/Kibana, load `~/.agents/skills/elastic-domain/SKILL.md`.
 
 Output:
 

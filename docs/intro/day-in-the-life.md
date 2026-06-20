@@ -32,6 +32,8 @@ Because it indexes worktrees on disk, the sessions you create with `,w` (or via 
 
 Open the GitHub picker (`prefix` + `G`) for a PR/issue dashboard with review/CI badges, hierarchy (epics, backport families), and inline actions. Switch scope with `alt-1` (Focus: work you own or must act on) and `alt-2` (Explore: team queues, mentions, radar), and toggle work/home with `ctrl-s`.
 
+![Daily tmux workflow: restore context, open GitHub dashboard, create worktree, hand off to agents or Ralph, review, and clean up](./assets/day-in-life-flow.svg)
+
 From the dashboard, without leaving tmux:
 
 - **Create tickets** — `alt-i` opens `$EDITOR` to file a new issue; `alt-E` files an epic (parent + sub-issues).

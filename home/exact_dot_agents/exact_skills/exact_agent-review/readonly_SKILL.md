@@ -187,7 +187,11 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
      - no git writes
      - no commits or pushes
    - For post-fix UI verification, launch a separate fix-capable Playwriter task after judgment.
-   - Include the live UI target/preflight block from this skill in the worker prompt.
+   - A domain overlay is a repo/org-specific skill selected from the verified target repo/org, not guessed from wording. For live UI, an overlay may provide a concrete target packet; the worker receives the packet, not an unresolved overlay concept.
+   - Select a live UI target packet before launch:
+     - If no explicit user-provided or repo-documented local/dev target packet exists, load `~/.agents/skills/elastic-domain/SKILL.md` and include the Kibana live-UI target packet from `~/.agents/skills/elastic-domain/references/kibana-live-ui.md` as the default. This preserves the old embedded Kibana target/preflight block.
+     - Otherwise use the explicit user-provided or repo-documented local/dev target packet.
+   - Include the selected target/preflight packet in the worker prompt.
    - Do not rely on the worker to rediscover it.
    - It returns one of:
      - `Not applicable`
@@ -269,7 +273,7 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
 
 `live-ui-review` is part of the default flow after the blocking PR necessity gate and reviewer fan-out phases complete.
 
-- It verifies UI/runtime-relevant findings against the configured Kibana targets.
+- It verifies UI/runtime-relevant findings against a selected target packet.
 - It returns evidence, optional screenshot handoff, or a blocker.
 - Default mode: verification only; no repo edits, posts, resolves, commits, pushes, or decisions.
 - It may create focused isolated data in the configured local/dev runtime when required to verify an applicable UI finding. It must clean up that data when safe or report leftovers exactly.
@@ -278,62 +282,30 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
 - Fix mode requires `authorship: self` or explicit user takeover.
 - Fix mode prompt must state allowed changes and verification commands.
 
-Before launching `live-ui-review`, include this exact target/preflight block in the worker prompt:
+Before launching `live-ui-review`, include a target/preflight packet in the worker prompt.
 
-```text
-Runtime targets:
-- Base branch: http://kibana-main.local:5602
-- PR/head branch: http://kibana-feat.local:5601
-- Base Elasticsearch: http://localhost:9201 (backs kibana-main.local:5602)
-- PR/head Elasticsearch: http://localhost:9200 (backs kibana-feat.local:5601)
-
-Required preflight:
-- Read ~/.agents/skills/playwriter/SKILL.md and run `playwriter skill` before checking targets.
-- Run in a fresh Playwriter session owned by this worker.
-- Store owned pages in `state.basePage` and `state.headPage`; do not reuse generic `page`.
-- Close only pages this worker created, or leave their URLs in the blocker/evidence.
-- Use Playwriter to check both exact targets for reachability/readiness.
-- Verify branch identity with Playwriter evidence where possible.
-- First perform readiness only; do not compare UI until both targets pass readiness.
-- Stop after at most two navigations per target during readiness.
-- Stop after at most one repeated same-URL/same-snapshot observation.
-- A blocker is invalid unless it reports results for both exact target URLs.
-- Do not fall back to localhost unless the user explicitly overrides the targets.
-- Do not use WebFetch, shell `curl`, or other HTTP-only probes as target readiness evidence. They may be supplemental diagnostics, and post-readiness local API calls are allowed for scoped data setup, but Playwriter is the required readiness check.
-- `Not applicable` can be per-target. If the feature/surface is absent on base because the PR introduces it, mark base comparison `Not applicable` with evidence and continue head-only verification on the PR/head target when the feature exists there. Return full `Not applicable` only when the candidate is not UI/runtime-relevant or the feature/surface is absent from every relevant target.
-- Do not return `Not applicable` because the target has no data. If the relevant UI exists but data is missing, inspect PR/issue media, tests, fixtures, and mocks to infer the needed data shape, then prefer faithful local/dev runtime setup over browser mocks:
-  1. Use existing seeded/demo data when it already exercises the path.
-  2. Create focused isolated local/dev data through the app's real local APIs or the mapped Elasticsearch endpoints above (`localhost:9201` for base, `localhost:9200` for PR/head).
-  3. If direct local API/Elasticsearch requests cannot seed the data, use Kibana Dev Tools Console on the matching Kibana target to generate it interactively.
-  4. If faithful data setup requires changing the ES/Kibana runtime environment in a way this worker cannot safely apply live, such as changing instance startup/configuration or restarting services, do not replace that requirement with browser mocks. Return `Blocked` with exact user instructions for the required runtime change, the affected target(s), the reload/restart needed, and the resume criteria for the next run.
-  5. Use browser/route/network mocks only as a last resort when real local/dev setup is unsafe, unavailable, or cannot represent the state after runtime environment prerequisites have been ruled out or surfaced as blockers. Label mock-based evidence as lower fidelity and explain why earlier setup levels were not used.
-- Mutating local/dev runtime data via Playwriter/browser actions, local Kibana APIs, Dev Tools Console, or local Elasticsearch API calls is allowed for verification after target readiness/identity is established. Do not mutate production/shared cloud/GitHub/git/repo files. Clean up created runtime data when safe, or report exact leftovers and cleanup uncertainty.
-- Capture screenshots only when they materially improve a candidate finding or blocker. Store them as Playwriter artifacts under `/tmp`, use descriptive names, preserve handoff files, and record path, description, target URL/branch, linked candidate/finding, and suggested review comment placement. Do not put local paths into GitHub review comments.
-- If Playwriter cannot run because the harness is read-only/Ask-mode, return `Blocked`.
-- If Playwriter fails before navigation with `browserType.connectOverCDP: Timeout`:
-  - replace the relay once with `playwriter serve --host 127.0.0.1 --replace`
-  - create a fresh session
-  - smoke-test `context.pages()`
-- If the smoke test fails, return `Blocked`; do not navigate or refresh target pages.
-- If Playwriter loops, reloads repeatedly, or cannot reach a stable snapshot, return `Blocked`.
-```
+- Default: load `~/.agents/skills/elastic-domain/SKILL.md` and paste the Kibana target/preflight packet from `~/.agents/skills/elastic-domain/references/kibana-live-ui.md`. This preserves the old embedded Kibana target/preflight block for direct/default live-UI flows.
+- Non-default targets: use only explicit user-provided or repo-documented local/dev targets. If neither the default nor an explicit packet can be loaded, return a target blocker instead of inventing hosts or ports.
+- The packet must identify base/head targets, readiness checks, allowed local/dev data setup, screenshot handoff rules, and blocker criteria.
 
 Controller validation: reject and rerun any `live-ui-review` result that:
 
-- reports only generic localhost probing
-- omits either exact target URL
+- does not match the selected target packet
+- reports only generic localhost probing when the packet requires named targets
+- omits a required base/head target from the selected packet
 - uses WebFetch or shell/HTTP probes as readiness evidence
 - skips Playwriter target checks
-- claims targets are unavailable without showing the exact target/preflight evidence above
-- uses browser/route/network mocks for a data-dependent UI finding without first attempting or explicitly ruling out faithful local/dev data setup through existing data, local Kibana/Elasticsearch APIs, or Kibana Dev Tools Console
-- uses browser/route/network mocks when faithful verification is blocked by a required ES/Kibana runtime environment change; that must be returned as `Blocked` with setup instructions instead
+- claims targets are unavailable without showing the selected target/preflight evidence
+- uses browser/route/network mocks for a data-dependent UI finding without first attempting or explicitly ruling out faithful local/dev data setup from the selected target packet
+- uses browser/route/network mocks when faithful verification is blocked by a required runtime environment change; that must be returned as `Blocked` with setup instructions instead
 - lists screenshot artifacts without local paths, descriptions, target URL/branch, or linked candidate/finding placement
 - omits applicability, exact URLs checked, Playwriter preflight status, readiness result for each target, branch/runtime evidence, comparison evidence for each checked candidate, UI evidence artifact manifest or `none`, page cleanup/owned-page URLs, and blockers/uncertainty
+- omits the selected `target_packet` source, including overlay source when an overlay supplied the packet, only when the result cannot otherwise be safely interpreted as the default Kibana target packet from exact URLs/readiness/evidence
 
 Do not reject or rerun a result that reports a valid Playwriter harness blocker:
 
 - read-only/Ask-mode blocked `playwriter skill` or Playwriter commands
-- both exact target URLs were attempted or explicitly blocked before navigation
+- both exact browser/runtime target URLs were attempted or explicitly blocked before navigation
 - repeated reload/same-URL/same-snapshot loop was detected within the budget
 
 ## Output

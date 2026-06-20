@@ -237,7 +237,9 @@ Before any action or side effect that touches file paths in a repo with a CODEOW
 ,codeowners --owner-of <path>       # last matching owners for one path
 ```
 
-In `elastic/kibana` repos the user's team is `@elastic/kibana-management`. For other repos, ask once and remember for the session.
+A domain overlay is a repo/org-specific skill selected from the verified target repo/org, not guessed from wording. It may supply repo-specific ownership or reviewer-routing policy.
+
+For repos with a verified domain overlay, use that overlay to determine the user's team. For `elastic/kibana`, load `~/.agents/skills/elastic-domain/SKILL.md`; its ownership path routes to `kibana-management-ownership`. For other repos, ask once and remember for the session.
 
 - All changed paths within team ownership: proceed normally.
 - Any changed path outside team ownership: stop, list the out-of-scope paths and their owners, and get explicit approval before the side effect.
@@ -332,7 +334,9 @@ Publishing content a human will see can have outsized consequences for the setup
 
 - **Human target -> supervision required.** If a human will see the result, draft it, show the exact payload and target, and wait for explicit approval before sending. This includes replying to or resolving a human-authored thread. No auto-send — not even inside an explicitly-invoked flow.
 - **Bot carve-out.** If the target thread/comment is bot-authored, you MAY auto-reply and auto-resolve it without per-action approval, but only inside a flow the user explicitly invoked. Never publish spontaneously, even to bots.
-- **Verify author type; do not guess.** Classify from the platform API, not from display-name heuristics: GitHub `user.type == "Bot"`, a login ending in `[bot]`, or a known-bot allowlist (e.g. `elasticmachine`, `kibanamachine`, `github-actions[bot]`).
+- **Domain overlay definition.** A domain overlay is a repo/org-specific skill selected from the verified target repo/org, not guessed from wording. It may supply repo-specific known-bot allowlists.
+- **Domain allowlists require verification.** Before relying on a known-bot allowlist, verify and load any applicable domain overlay for the target repo. Preserve the pre-overlay global fallback allowlist (`elasticmachine`, `kibanamachine`, `github-actions[bot]`) even when no overlay applies.
+- **Verify author type; do not guess.** Classify from the platform API, not from display-name heuristics: GitHub `user.type == "Bot"`, a login ending in `[bot]`, a known-bot allowlist from the verified overlay, or the preserved global fallback allowlist.
 - **Fail safe to human.** If the author type is ambiguous/unknown, or a thread mixes human and bot participants, treat it as human and require supervision.
 - **Scope.** This relaxes the prior blanket "never post/resolve unless explicitly asked" only for verified bot threads; for any human-visible target the approval checkpoint is absolute. It does not restrict read-only inspection, local working-tree edits, or `/tmp` work.
 - **Wording.** This gate governs _whether/how to publish_. For _how to word_ any human-visible communication — replies, comments, PR/issue descriptions, commit/release messages, announcements, status updates — on any surface (GitHub, Slack, email, chat, releases), follow the centralized `~/.agents/skills/communication/SKILL.md`. Surface skills carry only their own mechanics and defer wording there; do not re-derive tone per surface.

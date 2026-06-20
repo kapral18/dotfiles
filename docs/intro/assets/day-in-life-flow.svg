@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="390" viewBox="0 0 1320 390" role="img" aria-labelledby="title desc">
+  <title id="title">Daily tmux and agent workflow</title>
+  <desc id="desc">A daily workflow restores context, opens the GitHub dashboard, creates worktrees or hands off to Ralph, runs agents, reviews, and cleans up sessions and worktrees.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#fbbf24"/></marker>
+    <style>
+      .bg{fill:#111827}.box{fill:#1f2937;stroke:#fbbf24;stroke-width:2;rx:14}.alt{fill:#0f3b3e;stroke:#5eead4;stroke-width:2;rx:14}.text{fill:#f8fafc;font:650 21px system-ui,sans-serif}.small{fill:#cbd5e1;font:500 16px system-ui,sans-serif}.line{stroke:#fbbf24;stroke-width:3;fill:none;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect class="bg" width="1320" height="390" rx="24"/>
+  <text class="text" x="48" y="55">Daily loop: pick, focus, delegate, review, clean up</text>
+  <rect class="box" x="50" y="135" width="175" height="105"/><text class="text" x="82" y="176">Restore</text><text class="small" x="82" y="206">prefix+T</text>
+  <path class="line" d="M225 188 H285"/>
+  <rect class="box" x="285" y="135" width="185" height="105"/><text class="text" x="317" y="176">Dashboard</text><text class="small" x="317" y="206">prefix+G</text>
+  <path class="line" d="M470 188 H530"/>
+  <rect class="box" x="530" y="135" width="185" height="105"/><text class="text" x="562" y="176">Worktree</text><text class="small" x="562" y="206">enter on PR/issue</text>
+  <path class="line" d="M715 188 H775"/>
+  <rect class="box" x="775" y="135" width="185" height="105"/><text class="text" x="807" y="176">Agent task</text><text class="small" x="807" y="206">agent, codex, pi</text>
+  <path class="line" d="M960 188 H1020"/>
+  <rect class="box" x="1020" y="135" width="185" height="105"/><text class="text" x="1052" y="176">Review</text><text class="small" x="1052" y="206">agent-review or tuicr</text>
+  <path class="line" d="M1112 240 V300 H138 V240"/>
+  <rect class="alt" x="530" y="275" width="250" height="74"/><text class="small" x="562" y="320">alt-A can hand the selected PR/issue to Ralph instead.</text>
+</svg>

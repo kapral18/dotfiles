@@ -179,13 +179,18 @@ Use after the blocking PR necessity gate and reviewer workers as the conditional
 Mode boundary:
 
 - Default `live-ui-review`: verification only.
-- Tool-level non-read-only is allowed only for Playwriter/browser commands and for explicit local/dev runtime data setup against the verified targets.
+- Tool-level non-read-only is allowed only for Playwriter/browser commands and for explicit local/dev runtime data setup allowed by the selected target packet.
 - Behavior-level read-only still applies to the repository, GitHub, git, and publishing surfaces.
 - Local/dev runtime data setup is allowed when required to verify an applicable UI finding.
-- ES/Kibana runtime environment prerequisites that require changing how an instance is configured, started, or restarted are not data setup. If faithful verification requires them, return `Blocked` with setup instructions instead of falling back to mocks.
+- Runtime environment prerequisites that require changing how an instance is configured, started, or restarted are not data setup. If faithful verification requires them, return `Blocked` with setup instructions instead of falling back to mocks.
 - Fix-capable Playwriter tasks are separate post-judgment tasks.
 - Fix mode requires `authorship: self` or explicit user takeover.
 - Fix mode prompt must state allowed changes and verification commands.
+
+Terminology:
+
+- A target packet is the concrete runtime/preflight/data setup contract supplied to `live-ui-review`.
+- A domain overlay is a repo/org-specific skill selected from the verified target repo/org, not guessed from wording. An overlay may supply a target packet; the worker still follows the concrete packet.
 
 The parent supplies:
 
@@ -194,6 +199,7 @@ The parent supplies:
 - candidate findings
 - expected base branch
 - expected PR/head branch
+- selected target packet, including overlay source when an overlay supplied the packet
 
 ### Applicability
 
@@ -203,12 +209,14 @@ Decide whether the changed paths or candidate findings touch UI/runtime behavior
 
 Do not return `Not applicable` just because the target runtime has no data. If the changed UI/runtime path exists but required data is absent, continue through the data/setup ladder below and return `Blocked` only after those attempts are exhausted.
 
-### Runtime targets
+### Target packet
 
-- Base branch: `http://kibana-main.local:5602`
-- PR/head branch: `http://kibana-feat.local:5601`
-- Base Elasticsearch: `http://localhost:9201` (backs `kibana-main.local:5602`)
-- PR/head Elasticsearch: `http://localhost:9200` (backs `kibana-feat.local:5601`)
+Use the parent-supplied runtime targets when present; do not invent them.
+
+- If no parent packet was supplied, load `~/.agents/skills/elastic-domain/references/kibana-live-ui.md` as the fallback target packet. This preserves the old embedded Kibana default for direct `live-ui-review` invocations.
+- For non-default targets, use only explicit user-provided or repo-documented local/dev targets.
+- If no fallback packet and no trustworthy target packet exists, return `Blocked` with the missing target evidence instead of probing arbitrary localhost ports.
+- The target packet owns browser/runtime targets, backing/data endpoints, repo-specific local/dev data setup permissions, and blocker criteria.
 
 ### Preflight
 
@@ -218,17 +226,13 @@ Do not return `Not applicable` just because the target runtime has no data. If t
 - Remember that Playwriter sessions isolate `state`, but browser pages are shared.
 - Do not reuse pages from other sessions or unrelated worktrees.
 - Close only pages this worker created, or report their URLs in the final evidence.
-- Use Playwriter to check both targets are reachable and Kibana-ready.
+- Use Playwriter to check every browser/runtime target in the selected target packet for reachability/readiness.
 - Verify target branch identity with Playwriter evidence where possible.
 - If readiness or branch identity cannot be established, return `Blocked` with the missing evidence.
 - Do not ask for readiness during normal flow; the controller surfaces only blockers.
-- Do not use WebFetch, shell `curl`, or other HTTP-only probes as local/private Kibana readiness evidence.
+- Do not use WebFetch, shell `curl`, or other HTTP-only probes as local/private runtime readiness evidence.
 - HTTP-only probes may be supplemental diagnostics only. This readiness rule does not forbid post-readiness local/dev API calls used only for scoped data setup.
-- Playwriter is the required readiness check for:
-  - `kibana-main.local`
-  - `kibana-feat.local`
-  - localhost aliases
-- A `Blocked` result is invalid unless it reports results for both exact target URLs above, or an explicit user-provided target override.
+- A `Blocked` result is invalid unless it reports results for every browser/runtime target required by the selected packet, or an explicit blocker before navigation.
 
 ### Readiness budget
 
@@ -250,7 +254,7 @@ When applicable targets pass preflight, continue using Playwriter for UI compari
 Scope:
 
 - Compare the PR/head runtime against the base runtime for UI-relevant changes and reviewer findings.
-- Use the most faithful verification path that stays within the local/dev safety boundary: browser inspection, screenshots/paths when available, logs, read-only CLI commands, existing data, local Kibana/Elasticsearch data setup, Kibana Dev Tools Console setup, or browser/route mocks only as last resort.
+- Use the most faithful verification path that stays within the selected local/dev safety boundary: browser inspection, screenshots/paths when available, logs, read-only CLI commands, existing data, allowed local/dev runtime data setup, repo-specific interactive setup tools, or browser/route mocks only as last resort.
 - Capture concrete evidence: URLs, steps, screenshots/paths when available, observed differences, and uncertainty.
 - When visual proof materially helps an author understand a UI bug, visual regression, or behavior difference, capture the smallest useful screenshot set as Playwriter artifacts under `/tmp`; do not screenshot every navigation or duplicate state.
 - For each screenshot, record a handoff entry with path, description, base/head/both target, exact URL, linked candidate/finding, suggested review comment placement, and any fidelity note for mocks or partial setup. Preserve handoff files; cleanup applies to seeded runtime data and owned pages.
@@ -268,22 +272,21 @@ If an applicable flow reaches an empty state or lacks the data needed to reprodu
 3. Try least-invasive setup first:
    - existing seeded/demo data already present on either target
    - read-only API responses used only to infer data shape
-4. If existing data is insufficient, create focused isolated local/dev runtime data needed to exercise the flow. Prefer real runtime state over request mocks:
-   - for the base Kibana target, seed through local Kibana APIs or Elasticsearch at `http://localhost:9201`
-   - for the PR/head Kibana target, seed through local Kibana APIs or Elasticsearch at `http://localhost:9200`
-   - use the app's normal local APIs when they are the faithful data path; use direct Elasticsearch indexing only when that is how the UI can faithfully see the state
-   - temporary test-only identifiers that are easy to find and clean up
-5. If direct local Kibana/Elasticsearch API setup fails because of auth, headers, API shape, or transport issues, use the Kibana Dev Tools Console on the matching verified target to generate the data interactively. Load `~/.agents/skills/kibana-console-monaco/SKILL.md` when automating Console editor interactions.
-6. If faithful setup requires changing the ES/Kibana runtime environment in a way this worker cannot safely apply live, such as changing how an instance is configured, started, or restarted, do not work around it with browser mocks. Return `Blocked` with:
+4. If existing data is insufficient, create focused isolated local/dev runtime data only through paths allowed by the selected target packet:
+   - use the app's normal local APIs when they are the faithful data path
+   - use direct backing-store writes only when the selected target packet says the UI can faithfully see that state
+   - use temporary test-only identifiers that are easy to find and clean up
+5. If direct local runtime data setup fails because of auth, headers, API shape, or transport issues, use any repo-specific interactive setup fallback named by the selected target packet.
+6. If faithful setup requires changing the runtime environment in a way this worker cannot safely apply live, such as changing how an instance is configured, started, or restarted, do not work around it with browser mocks. Return `Blocked` with:
    - affected target(s): base, PR/head, or both
    - exact runtime prerequisite and the evidence that it is required
    - user-action instructions: the setting, environment variable, config snippet, command, or dev-server flag when known
-   - reload/restart requirement for Kibana/Elasticsearch
+   - reload/restart requirement
    - resume criteria: what the next `live-ui-review` run should verify before data ingestion continues
 7. Use browser-side route/network mocks, Playwriter-owned in-memory state, or page-level mocks only as a last resort when faithful local/dev runtime setup is unsafe, unavailable, or cannot represent the needed state, and no runtime environment prerequisite would unlock faithful setup. Mark this evidence as lower fidelity and explain why steps 3-6 were not used or were insufficient.
 8. Clean up seeded data before returning when cleanup is safe. If cleanup is not possible or not verified, report the exact leftover objects and why.
 9. Do not mutate production, shared cloud, GitHub, git, repo files, committed files, labels, reviews, comments, branches, or user-visible external state. If target identity is ambiguous or appears non-local/non-dev, return `Blocked` instead of mutating.
-10. Only return `Blocked` for data after media/fixture inspection, existing-data checks, allowed local/dev runtime setup, Dev Tools Console fallback, and last-resort mock consideration are exhausted or unsafe. If the blocker is a runtime environment prerequisite, return it as soon as identified; do not continue to mocks. Include the exact setup attempted, the runtime change that would still be required, and why it was not safe/possible in the worker.
+10. Only return `Blocked` for data after media/fixture inspection, existing-data checks, allowed local/dev runtime setup, selected-target-packet interactive fallback, and last-resort mock consideration are exhausted or unsafe. If the blocker is a runtime environment prerequisite, return it as soon as identified; do not continue to mocks. Include the exact setup attempted, the runtime change that would still be required, and why it was not safe/possible in the worker.
 11. Only return `Not applicable` when the changed path/candidate is not UI/runtime-relevant or the functionality itself is absent from the target surface. Missing data is setup work or `Blocked`, not `Not applicable`.
 
 Hard constraints for this evidence pass:
@@ -292,8 +295,8 @@ Hard constraints for this evidence pass:
 - Never run git write commands.
 - Never use ApplyPatch or file-editing tools.
 - Never write files except Playwriter artifacts under `/tmp`, including focused screenshots captured for UI evidence handoff.
-- Runtime data mutations must be local/dev-only, focused, named in the evidence, tied to the exact target/Elasticsearch endpoint used, and cleaned up or reported.
-- Do not apply ES/Kibana runtime environment changes or restart services from this worker. Surface those as `Blocked` instructions for the user to apply, then continue in a later run after reload.
+- Runtime data mutations must be local/dev-only, focused, named in the evidence, tied to the exact target/backing endpoint used, and cleaned up or reported.
+- Do not apply runtime environment changes or restart services from this worker. Surface those as `Blocked` instructions for the user to apply, then continue in a later run after reload.
 - If the harness is read-only/Ask-mode and blocks Playwriter, return `Blocked`.
 - If Playwriter loops, reloads repeatedly, or cannot reach a stable snapshot, return `Blocked`.
 - Return findings to the user or `/agent-review` as evidence input. `/agent-review` performs any judgment or side effects.
@@ -301,11 +304,12 @@ Hard constraints for this evidence pass:
 Return exactly:
 
 - `applicability`: applicable / not applicable, with changed-path or finding evidence
-- `urls_checked`: the exact base and PR/head URLs, or an explicit blocker before navigation
+- `target_packet`: selected packet name/source, including overlay source when an overlay supplied the packet; if omitted by an older worker, the controller treats it as the default Kibana target packet for compatibility
+- `urls_checked`: the exact base and PR/head URLs from the selected packet, or an explicit blocker before navigation
 - `playwriter_preflight`: whether the Playwriter skill was loaded and `playwriter skill` was run; if not, say why
 - `target_readiness`: readiness result for each exact URL, from Playwriter evidence
 - `branch_evidence`: branch/runtime identity evidence for each target, or what could not be verified
-- `data_setup`: media/artifacts inspected, fixture/mocks considered, existing data checked, local Kibana/Elasticsearch data seeded/mutated, Dev Tools Console usage, browser/route mocks if used as last resort, cleanup result, runtime environment blocker instructions, or exact data/mutation still needed
+- `data_setup`: media/artifacts inspected, fixture/mocks considered, existing data checked, selected-target-packet local/dev data seeded/mutated, domain interactive fallback usage, browser/route mocks if used as last resort, cleanup result, runtime environment blocker instructions, or exact data/mutation still needed
 - `comparison_evidence`: candidate-by-candidate UI/runtime evidence, including `Not applicable` only for candidates disproved by reachability or absent functionality
 - `ui_evidence_artifacts`: `none`, or a list of screenshot handoff entries with local path, description, target URL/branch, linked candidate/finding, suggested manual attachment placement, and fidelity/cleanup notes
 - `pages`: pages created and closed, or URLs left open

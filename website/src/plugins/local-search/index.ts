@@ -10,8 +10,8 @@
  * `github-slugger`, the same algorithm Docusaurus uses for heading IDs, so the
  * generated URLs scroll the user to the right spot on click.
  *
- * Runs once on plugin load (i.e. once per `pnpm start` and once per
- * `pnpm build`). In dev mode the index does NOT auto-refresh on doc edits;
+ * Runs once on plugin load (i.e. once per `yarn start` and once per
+ * `yarn build`). In dev mode the index does NOT auto-refresh on doc edits;
  * restart the dev server to reindex.
  */
 

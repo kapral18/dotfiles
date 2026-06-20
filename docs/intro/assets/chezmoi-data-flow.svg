@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360" role="img" aria-labelledby="title desc">
+  <title id="title">Chezmoi data flow</title>
+  <desc id="desc">Repo source and data render through chezmoi apply and hash-gated hooks into derived home files consumed by shells, editors, and assistants.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#60a5fa"/></marker>
+    <style>
+      .bg{fill:#111827}.box{fill:#1f2937;stroke:#60a5fa;stroke-width:2;rx:14}.text{fill:#f8fafc;font:650 21px system-ui,sans-serif}.small{fill:#cbd5e1;font:500 16px system-ui,sans-serif}.line{stroke:#60a5fa;stroke-width:3;fill:none;marker-end:url(#arrow)}.loop{stroke:#fbbf24;stroke-width:3;fill:none;marker-end:url(#arrow);stroke-dasharray:8 8}
+    </style>
+  </defs>
+  <rect class="bg" width="1280" height="360" rx="24"/>
+  <text class="text" x="48" y="54">Declarative source converges the runtime</text>
+  <rect class="box" x="50" y="130" width="170" height="100"/><text class="text" x="82" y="172">Repo</text><text class="small" x="82" y="202">home/**</text>
+  <path class="line" d="M220 180 H280"/>
+  <rect class="box" x="280" y="130" width="185" height="100"/><text class="text" x="312" y="172">Data</text><text class="small" x="312" y="202">isWork, registries</text>
+  <path class="line" d="M465 180 H525"/>
+  <rect class="box" x="525" y="130" width="190" height="100"/><text class="text" x="557" y="172">Apply</text><text class="small" x="557" y="202">render + install</text>
+  <path class="line" d="M715 180 H775"/>
+  <rect class="box" x="775" y="130" width="190" height="100"/><text class="text" x="807" y="172">Hooks</text><text class="small" x="807" y="202">hash-gated</text>
+  <path class="line" d="M965 180 H1025"/>
+  <rect class="box" x="1025" y="130" width="205" height="100"/><text class="text" x="1057" y="172">$HOME</text><text class="small" x="1057" y="202">runtime configs</text>
+  <path class="loop" d="M1128 230 V290 H620 V230"/>
+  <text class="small" x="676" y="318">Re-apply converges drift back to the declared state.</text>
+</svg>
