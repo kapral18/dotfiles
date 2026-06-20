@@ -272,14 +272,23 @@ Examples:
 
 ### AI / Agent helpers
 
-| Command               | Description                                                                           |
-| --------------------- | ------------------------------------------------------------------------------------- |
-| `,agent-memory`       | Inspect or wipe the selected `/tmp/specs` hook memory topic for the current workspace |
-| `,ai-kb`              | Manage the durable local agent knowledge base                                         |
-| `,ralph`              | Start, resume, inspect, and control Ralph multi-agent orchestration runs              |
-| `,claude-llama-cpp`   | Launch Claude Code against the local llama.cpp-compatible endpoint                    |
-| `,codex-llama-cpp`    | Launch Codex against the local llama.cpp-compatible endpoint                          |
-| `,opencode-llama-cpp` | Launch OpenCode against the local llama.cpp-compatible endpoint                       |
+| Command                | Description                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------------- |
+| `,agent-memory`        | Inspect or wipe the selected `/tmp/specs` hook memory topic for the current workspace |
+| `,ai-kb`               | Manage the durable local agent knowledge base                                         |
+| `,ralph`               | Start, resume, inspect, and control Ralph multi-agent orchestration runs              |
+| `,claude-llama-cpp`    | Launch Claude Code against the local llama.cpp-compatible endpoint                    |
+| `,codex-cloudflare`    | Launch Codex against Cloudflare AI Gateway's OpenAI Responses endpoint                |
+| `,copilot-cloudflare`  | Launch GitHub Copilot CLI against Cloudflare's OpenAI-compatible endpoint             |
+| `,copilot-openrouter`  | Launch GitHub Copilot CLI against OpenRouter's OpenAI-compatible endpoint             |
+| `,codex-llama-cpp`     | Launch Codex against the local llama.cpp-compatible endpoint                          |
+| `,opencode-cloudflare` | Launch OpenCode against the personal Cloudflare Workers AI provider                   |
+| `,opencode-llama-cpp`  | Launch OpenCode against the local llama.cpp-compatible endpoint                       |
+| `,pi-cloudflare`       | Launch Pi against the personal Cloudflare Workers AI provider                         |
+
+Provider wrappers with multiple model choices (`*-cloudflare`, `,copilot-openrouter`) accept either `--model <id>` / `-m <id>` where the underlying CLI supports `-m`, or a model ID as the first argument. Fish completions list supported model IDs at the bare command prompt and after the model flag. The completion list is refreshed from OpenRouter's public model API or Cloudflare's authenticated model-search API, cached under `XDG_CACHE_HOME`, and falls back to the configured defaults when the remote lookup is unavailable.
+
+The same wrappers expose `--effort <level>`, `--thinking <level>`, and `--no-thinking` when the underlying harness has an equivalent control: Pi maps to `--thinking`, OpenCode maps effort to `run --variant` (OpenCode only accepts variants on the `run` subcommand), Codex maps to `model_reasoning_effort`, and Copilot maps `--thinking` to `--effort`.
 
 ### Utility helpers
 

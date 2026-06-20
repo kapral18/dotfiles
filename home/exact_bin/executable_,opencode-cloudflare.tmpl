@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+# Description: Launch OpenCode against the personal Cloudflare Workers AI provider.
+
+set -euo pipefail
+
+{{- if eq .isWork true }}
+echo "Error: ,opencode-cloudflare is personal-profile only." >&2
+exit 1
+{{- else }}
+OPENCODE_CLOUDFLARE_MODEL="${OPENCODE_CLOUDFLARE_MODEL:-@cf/zai-org/glm-5.2}"
+
+if ! command -v opencode >/dev/null 2>&1; then
+  echo "Error: opencode CLI not found on PATH." >&2
+  exit 127
+fi
+
+qualify_model() {
+  local id="$1"
+  case "$id" in
+  cloudflare-workers-ai/*) printf '%s' "$id" ;;
+  *) printf 'cloudflare-workers-ai/%s' "$id" ;;
+  esac
+}
+
+is_cloudflare_model() {
+  case "$1" in
+  @cf/* | cloudflare-workers-ai/* | minimax/*) return 0 ;;
+  *) return 1 ;;
+  esac
+}
+
+is_effort_value() {
+  case "$1" in
+  none | minimal | low | medium | high | xhigh | max) return 0 ;;
+  *) return 1 ;;
+  esac
+}
+
+caller_set_model=false
+opencode_variant=""
+args=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  --model | -m)
+    if [[ $# -lt 2 ]]; then
+      echo "Error: $1 requires a model value." >&2
+      exit 2
+    fi
+    caller_set_model=true
+    args+=("$1" "$(qualify_model "$2")")
+    shift 2
+    ;;
+  --model=*)
+    caller_set_model=true
+    args+=("--model=$(qualify_model "${1#--model=}")")
+    shift
+    ;;
+  --effort | --reasoning-effort | --variant)
+    if [[ $# -lt 2 ]]; then
+      echo "Error: $1 requires an effort value." >&2
+      exit 2
+    fi
+    opencode_variant="$2"
+    shift 2
+    ;;
+  --effort=* | --reasoning-effort=* | --variant=*)
+    opencode_variant="${1#*=}"
+    shift
+    ;;
+  --thinking)
+    if [[ $# -ge 2 ]] && is_effort_value "$2"; then
+      opencode_variant="$2"
+      shift 2
+    else
+      args+=("$1")
+      shift
+    fi
+    ;;
+  --thinking=*)
+    opencode_variant="${1#*=}"
+    shift
+    ;;
+  --no-thinking)
+    opencode_variant=none
+    shift
+    ;;
+  *)
+    if [[ "$caller_set_model" == false && ${#args[@]} -eq 0 ]] && is_cloudflare_model "$1"; then
+      caller_set_model=true
+      args+=(--model "$(qualify_model "$1")")
+    else
+      args+=("$1")
+    fi
+    shift
+    ;;
+  esac
+done
+
+if [[ "$caller_set_model" == false ]]; then
+  args=(--model "$(qualify_model "$OPENCODE_CLOUDFLARE_MODEL")" "${args[@]}")
+fi
+
+if [[ -n "$opencode_variant" ]]; then
+  inserted_variant=false
+  final_args=()
+  for arg in "${args[@]}"; do
+    final_args+=("$arg")
+    if [[ "$inserted_variant" == false && "$arg" == "run" ]]; then
+      final_args+=(--variant "$opencode_variant")
+      inserted_variant=true
+    fi
+  done
+  if [[ "$inserted_variant" == false ]]; then
+    echo "Error: OpenCode only accepts --effort/--variant on the 'run' subcommand." >&2
+    echo "       Use: ,opencode-cloudflare run --effort ${opencode_variant} ..." >&2
+    exit 2
+  fi
+  args=("${final_args[@]}")
+fi
+
+exec opencode "${args[@]}"
+{{- end }}

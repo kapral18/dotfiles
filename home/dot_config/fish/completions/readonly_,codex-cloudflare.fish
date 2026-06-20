@@ -1,0 +1,10 @@
+complete -c ',codex-cloudflare' -f
+complete -c ',codex-cloudflare' -n 'not __fish_seen_argument -s m -l model' -x -a '(__comma_provider_models cloudflare-openai)' -d 'Use Cloudflare AI Gateway OpenAI model'
+complete -c ',codex-cloudflare' -l model -s m -x -a '(__comma_provider_models cloudflare-openai)' -d 'Override Cloudflare AI Gateway OpenAI model id'
+complete -c ',codex-cloudflare' -l effort -x -a 'none minimal low medium high xhigh max' -d 'Set model reasoning effort'
+complete -c ',codex-cloudflare' -l reasoning-effort -x -a 'none minimal low medium high xhigh max' -d 'Set model reasoning effort'
+complete -c ',codex-cloudflare' -l thinking -x -a 'none minimal low medium high xhigh max' -d 'Set model reasoning effort'
+complete -c ',codex-cloudflare' -l no-thinking -d 'Disable model reasoning'
+complete -c ',codex-cloudflare' -s c -r -d 'Pass Codex config override'
+complete -c ',codex-cloudflare' -l profile -s p -x -d 'Load Codex profile'
+complete -c ',codex-cloudflare' -l help -s h -d 'Show Codex help'

@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# Description: Launch Codex against Cloudflare AI Gateway's OpenAI Responses endpoint.
+
+set -euo pipefail
+
+{{- if eq .isWork true }}
+echo "Error: ,codex-cloudflare is personal-profile only." >&2
+exit 1
+{{- else }}
+CODEX_CLOUDFLARE_MODEL="${CODEX_CLOUDFLARE_MODEL:-gpt-5.5}"
+
+if ! command -v codex >/dev/null 2>&1; then
+  echo "Error: codex CLI not found on PATH." >&2
+  exit 127
+fi
+
+account_id="${CLOUDFLARE_WORKERS_AI_ACCOUNT_ID:-${CLOUDFLARE_ACCOUNT_ID:-}}"
+gateway_id="${CLOUDFLARE_GATEWAY_ID:-default}"
+api_key="${CLOUDFLARE_API_TOKEN:-${CLOUDFLARE_WORKERS_AI_API_KEY:-${CLOUDFLARE_API_KEY:-}}}"
+
+if [[ -z "$account_id" ]]; then
+  echo "Error: set CLOUDFLARE_WORKERS_AI_ACCOUNT_ID or CLOUDFLARE_ACCOUNT_ID." >&2
+  exit 1
+fi
+if [[ -z "$api_key" ]]; then
+  echo "Error: set CLOUDFLARE_API_TOKEN, CLOUDFLARE_WORKERS_AI_API_KEY, or CLOUDFLARE_API_KEY." >&2
+  exit 1
+fi
+
+case "$api_key" in
+Bearer\ *) export CODEX_CLOUDFLARE_GATEWAY_AUTH="$api_key" ;;
+*) export CODEX_CLOUDFLARE_GATEWAY_AUTH="Bearer $api_key" ;;
+esac
+
+is_cloudflare_model() {
+  case "$1" in
+  gpt-* | o[0-9]* | o[0-9]-* | chatgpt-* | openai/*) return 0 ;;
+  *) return 1 ;;
+  esac
+}
+
+effort_args=()
+
+caller_set_model=false
+cli_args=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  --model | -m)
+    caller_set_model=true
+    cli_args+=("$1" "${2-}")
+    shift 2
+    ;;
+  --model=*)
+    caller_set_model=true
+    cli_args+=("$1")
+    shift
+    ;;
+  --effort | --reasoning-effort | --thinking)
+    if [[ $# -lt 2 ]]; then
+      echo "Error: $1 requires an effort value." >&2
+      exit 2
+    fi
+    effort_args+=(-c "model_reasoning_effort=\"$2\"")
+    shift 2
+    ;;
+  --effort=* | --reasoning-effort=* | --thinking=*)
+    effort_args+=(-c "model_reasoning_effort=\"${1#*=}\"")
+    shift
+    ;;
+  --no-thinking)
+    effort_args+=(-c 'model_reasoning_effort="none"')
+    shift
+    ;;
+  *)
+    if [[ "$caller_set_model" == false && ${#cli_args[@]} -eq 0 ]] && is_cloudflare_model "$1"; then
+      caller_set_model=true
+      cli_args+=(--model "$1")
+    else
+      cli_args+=("$1")
+    fi
+    shift
+    ;;
+  esac
+done
+
+base_url="https://gateway.ai.cloudflare.com/v1/${account_id}/${gateway_id}/openai"
+args=(
+  -c "model_providers.cloudflare-openai.base_url=\"${base_url}\""
+  -c "model_providers.cloudflare-openai.name=\"Cloudflare AI Gateway OpenAI\""
+  -c "model_providers.cloudflare-openai.wire_api=\"responses\""
+  -c "model_providers.cloudflare-openai.env_http_headers={\"cf-aig-authorization\"=\"CODEX_CLOUDFLARE_GATEWAY_AUTH\"}"
+  -c "model_provider=\"cloudflare-openai\""
+)
+if [[ "$caller_set_model" == false && -n "$CODEX_CLOUDFLARE_MODEL" ]]; then
+  args+=(--model "$CODEX_CLOUDFLARE_MODEL")
+fi
+
+exec codex "${args[@]}" "${effort_args[@]}" "${cli_args[@]}"
+{{- end }}

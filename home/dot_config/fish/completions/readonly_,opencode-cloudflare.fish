@@ -1,0 +1,11 @@
+complete -c ',opencode-cloudflare' -f
+complete -c ',opencode-cloudflare' -n 'not __fish_seen_argument -s m -l model' -x -a '(__comma_provider_models cloudflare)' -d 'Use Cloudflare model'
+complete -c ',opencode-cloudflare' -l model -s m -x -a '(__comma_provider_models cloudflare)' -d 'Override Cloudflare model id'
+complete -c ',opencode-cloudflare' -l effort -x -a 'none minimal low medium high xhigh max' -d 'Set model variant/reasoning effort'
+complete -c ',opencode-cloudflare' -l reasoning-effort -x -a 'none minimal low medium high xhigh max' -d 'Set model variant/reasoning effort'
+complete -c ',opencode-cloudflare' -l variant -x -a 'none minimal low medium high xhigh max' -d 'Set model variant'
+complete -c ',opencode-cloudflare' -l thinking -x -a 'none minimal low medium high xhigh max' -d 'Show thinking, or set variant when followed by a level'
+complete -c ',opencode-cloudflare' -l no-thinking -d 'Use non-thinking variant'
+complete -c ',opencode-cloudflare' -l agent -x -d 'Use an OpenCode agent'
+complete -c ',opencode-cloudflare' -l prompt -r -d 'Prompt to run'
+complete -c ',opencode-cloudflare' -l help -s h -d 'Show OpenCode help'

@@ -30,6 +30,8 @@ If you'd rather drive Yarn directly, the equivalent is `yarn --cwd website {star
 
 The website uses the global Yarn Classic binary (`yarn --version` should report `1.22.x`) and records that expectation in the `packageManager` field in [`package.json`](package.json). If `yarn.lock` changes unexpectedly, rerun the install with Yarn 1 instead of a Yarn 3/4 binary.
 
+The repo root has a scripts-only `package.json` so `npm run docs` works from the checkout root. Its `.yarnrc` prevents root `yarn` from creating repo-local install artifacts; this directory has its own `.yarnrc` that re-enables normal `yarn.lock` and `node_modules` behavior for the real website package.
+
 ## Deployment
 
 Pushing to `main` runs `.github/workflows/deploy-docs.yml`, which builds and uploads the static site to GitHub Pages. The workflow only runs when files under `docs/`, `website/`, or the workflow itself change.

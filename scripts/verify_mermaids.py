@@ -58,8 +58,8 @@ CENSUS: list[Claim] = [
     Claim(
         name="total tracked files",
         globs=None,
-        claimed=1039,
-        anchors=[("README.md", "1039 tracked files")],
+        claimed=1053,
+        anchors=[("README.md", "1053 tracked files")],
     ),
     Claim(
         name="home/.chezmoitemplates/brews/",
@@ -94,10 +94,10 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/exact_bin/",
         globs=["home/exact_bin/*"],
-        claimed=80,
+        claimed=85,
         anchors=[
-            ("07c-bin-commands.mmd", "exact_bin/ (80 incl. utils)"),
-            ("README.md", "`exact_bin/` (80)"),
+            ("07c-bin-commands.mmd", "exact_bin/ (85 incl. utils)"),
+            ("README.md", "`exact_bin/` (85)"),
         ],
     ),
     Claim(

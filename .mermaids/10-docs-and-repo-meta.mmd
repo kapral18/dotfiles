@@ -10,7 +10,7 @@ flowchart TB
     classDef ci fill:#3a2b1b,stroke:#ffb74d,color:#fff3e0;
 
     subgraph WEBSITE["website/ (Docusaurus app)"]
-        CFG["docusaurus.config.ts · sidebars.ts · tsconfig.json<br/>package.json + yarn.lock · .gitignore · README.md"]:::build
+        CFG["docusaurus.config.ts · sidebars.ts · tsconfig.json<br/>package.json + .yarnrc + yarn.lock · .gitignore · README.md"]:::build
         SRC["src/css/custom.css<br/>src/theme/SearchBar/{index.tsx,styles.module.css}<br/>src/plugins/local-search/index.ts<br/>src/remark/cross-repo-links.js"]:::build
         STATIC["static/.nojekyll · static/img/favicon.svg"]:::build
     end

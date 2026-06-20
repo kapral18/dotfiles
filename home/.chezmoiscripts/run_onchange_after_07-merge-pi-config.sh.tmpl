@@ -9,7 +9,7 @@ set -euo pipefail
 # generate_pi_models.py hash: {{ include "../scripts/generate_pi_models.py" | sha256sum }}
 {{- else }}
 # pi settings desired hash (non-work): {{ include "dot_pi/agent/readonly_settings.personal.json" | sha256sum }}
-# pi models desired hash: {{ include "dot_pi/agent/readonly_models.json" | sha256sum }}
+# pi models desired hash (non-work): {{ include "dot_pi/agent/readonly_models.personal.json" | sha256sum }}
 {{- end }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
@@ -40,6 +40,6 @@ if [ "$is_work" = "true" ]; then
 
   chezmoi_install_if_changed "$tmp_models" "$target_dir/models.json" 0444
 else
-  src_models="$source_dir/dot_pi/agent/readonly_models.json"
+  src_models="$source_dir/dot_pi/agent/readonly_models.personal.json"
   chezmoi_install_if_changed "$src_models" "$target_dir/models.json" 0444
 fi

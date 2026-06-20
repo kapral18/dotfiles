@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# Description: Launch GitHub Copilot CLI through OpenRouter's OpenAI-compatible endpoint.
+
+set -euo pipefail
+
+if ! command -v copilot >/dev/null 2>&1; then
+  echo "Error: copilot CLI not found on PATH." >&2
+  exit 127
+fi
+
+api_key="${OPENROUTER_API_KEY:-}"
+if [[ -z "$api_key" ]]; then
+  echo "Error: set OPENROUTER_API_KEY." >&2
+  exit 1
+fi
+
+model="${COPILOT_OPENROUTER_MODEL:-z-ai/glm-5.2}"
+wire_model="${COPILOT_OPENROUTER_WIRE_MODEL:-$model}"
+
+is_openrouter_model() {
+  case "$1" in
+  */* | ~*) return 0 ;;
+  *) return 1 ;;
+  esac
+}
+
+args=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  --model | -m)
+    if [[ $# -lt 2 ]]; then
+      echo "Error: $1 requires a model value." >&2
+      exit 2
+    fi
+    model="$2"
+    wire_model="${COPILOT_OPENROUTER_WIRE_MODEL:-$model}"
+    args+=("$1" "$2")
+    shift 2
+    ;;
+  --model=*)
+    model="${1#--model=}"
+    wire_model="${COPILOT_OPENROUTER_WIRE_MODEL:-$model}"
+    args+=("$1")
+    shift
+    ;;
+  --thinking)
+    if [[ $# -lt 2 ]]; then
+      echo "Error: --thinking requires an effort value." >&2
+      exit 2
+    fi
+    args+=(--effort "$2")
+    shift 2
+    ;;
+  --thinking=*)
+    args+=("--effort=${1#*=}")
+    shift
+    ;;
+  --no-thinking)
+    args+=(--effort none)
+    shift
+    ;;
+  *)
+    if [[ ${#args[@]} -eq 0 ]] && is_openrouter_model "$1"; then
+      model="$1"
+      wire_model="${COPILOT_OPENROUTER_WIRE_MODEL:-$model}"
+      args+=(--model "$1")
+    else
+      args+=("$1")
+    fi
+    shift
+    ;;
+  esac
+done
+
+export COPILOT_PROVIDER_BASE_URL="https://openrouter.ai/api/v1"
+export COPILOT_PROVIDER_TYPE="${COPILOT_PROVIDER_TYPE:-openai}"
+export COPILOT_PROVIDER_API_KEY="$api_key"
+export COPILOT_PROVIDER_WIRE_API="${COPILOT_PROVIDER_WIRE_API:-completions}"
+export COPILOT_MODEL="$model"
+export COPILOT_PROVIDER_WIRE_MODEL="$wire_model"
+export COPILOT_PROVIDER_MAX_PROMPT_TOKENS="${COPILOT_OPENROUTER_MAX_PROMPT_TOKENS:-1048576}"
+export COPILOT_PROVIDER_MAX_OUTPUT_TOKENS="${COPILOT_OPENROUTER_MAX_OUTPUT_TOKENS:-131072}"
+
+if [[ -n "${COPILOT_OPENROUTER_MODEL_ID:-}" ]]; then
+  export COPILOT_PROVIDER_MODEL_ID="$COPILOT_OPENROUTER_MODEL_ID"
+fi
+
+exec copilot "${args[@]}"

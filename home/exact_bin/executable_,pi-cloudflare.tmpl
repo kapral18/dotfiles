@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+# Description: Launch Pi against Cloudflare Workers AI.
+
+set -euo pipefail
+
+{{- if eq .isWork true }}
+echo "Error: ,pi-cloudflare is personal-profile only." >&2
+exit 1
+{{- else }}
+PI_CLOUDFLARE_MODEL="${PI_CLOUDFLARE_MODEL:-@cf/zai-org/glm-5.2}"
+
+if ! command -v pi >/dev/null 2>&1; then
+  echo "Error: pi CLI not found on PATH." >&2
+  exit 127
+fi
+
+account_id="${CLOUDFLARE_WORKERS_AI_ACCOUNT_ID:-${CLOUDFLARE_ACCOUNT_ID:-}}"
+api_key="${CLOUDFLARE_WORKERS_AI_API_KEY:-${CLOUDFLARE_API_KEY:-}}"
+
+if [[ -z "$account_id" ]]; then
+  echo "Error: set CLOUDFLARE_WORKERS_AI_ACCOUNT_ID or CLOUDFLARE_ACCOUNT_ID." >&2
+  exit 1
+fi
+if [[ -z "$api_key" ]]; then
+  echo "Error: set CLOUDFLARE_WORKERS_AI_API_KEY or CLOUDFLARE_API_KEY." >&2
+  exit 1
+fi
+
+export CLOUDFLARE_ACCOUNT_ID="$account_id"
+export CLOUDFLARE_API_KEY="$api_key"
+export CLOUDFLARE_WORKERS_AI_ACCOUNT_ID="$account_id"
+export CLOUDFLARE_WORKERS_AI_API_KEY="$api_key"
+
+normalize_model() {
+  local id="$1"
+  case "$id" in
+  cloudflare-workers-ai/*) printf '%s' "${id#cloudflare-workers-ai/}" ;;
+  *) printf '%s' "$id" ;;
+  esac
+}
+
+is_cloudflare_model() {
+  case "$1" in
+  @cf/* | cloudflare-workers-ai/@cf/*) return 0 ;;
+  *) return 1 ;;
+  esac
+}
+
+normalize_effort() {
+  case "$1" in
+  none) printf 'off' ;;
+  max) printf 'xhigh' ;;
+  *) printf '%s' "$1" ;;
+  esac
+}
+
+caller_set_model=false
+args=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  --model)
+    if [[ $# -lt 2 ]]; then
+      echo "Error: --model requires a model value." >&2
+      exit 2
+    fi
+    caller_set_model=true
+    args+=("--model" "$(normalize_model "$2")")
+    shift 2
+    ;;
+  --model=*)
+    caller_set_model=true
+    args+=("--model=$(normalize_model "${1#--model=}")")
+    shift
+    ;;
+  --effort | --reasoning-effort | --thinking)
+    if [[ $# -lt 2 ]]; then
+      echo "Error: $1 requires an effort value." >&2
+      exit 2
+    fi
+    args+=(--thinking "$(normalize_effort "$2")")
+    shift 2
+    ;;
+  --effort=* | --reasoning-effort=* | --thinking=*)
+    args+=("--thinking=$(normalize_effort "${1#*=}")")
+    shift
+    ;;
+  --no-thinking)
+    args+=(--thinking off)
+    shift
+    ;;
+  *)
+    if [[ "$caller_set_model" == false && ${#args[@]} -eq 0 ]] && is_cloudflare_model "$1"; then
+      caller_set_model=true
+      args+=("--model" "$(normalize_model "$1")")
+    else
+      args+=("$1")
+    fi
+    shift
+    ;;
+  esac
+done
+
+if [[ "$caller_set_model" == false ]]; then
+  args=(--model "$(normalize_model "$PI_CLOUDFLARE_MODEL")" "${args[@]}")
+fi
+
+exec pi --provider cloudflare-workers-ai "${args[@]}"
+{{- end }}

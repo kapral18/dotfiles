@@ -1,0 +1,11 @@
+complete -c ',pi-cloudflare' -f
+complete -c ',pi-cloudflare' -n 'not __fish_seen_argument -l model' -x -a '(__comma_provider_models cloudflare)' -d 'Use Cloudflare model'
+complete -c ',pi-cloudflare' -l model -x -a '(__comma_provider_models cloudflare)' -d 'Override Cloudflare model id'
+complete -c ',pi-cloudflare' -l print -s p -d 'Non-interactive mode'
+complete -c ',pi-cloudflare' -l no-session -d 'Do not save session'
+complete -c ',pi-cloudflare' -l thinking -x -a 'off minimal low medium high xhigh' -d 'Set thinking level'
+complete -c ',pi-cloudflare' -l effort -x -a 'none minimal low medium high xhigh max' -d 'Set thinking effort'
+complete -c ',pi-cloudflare' -l reasoning-effort -x -a 'none minimal low medium high xhigh max' -d 'Set thinking effort'
+complete -c ',pi-cloudflare' -l no-thinking -d 'Disable thinking'
+complete -c ',pi-cloudflare' -l tools -s t -r -d 'Enable specific tools'
+complete -c ',pi-cloudflare' -l help -s h -d 'Show Pi help'

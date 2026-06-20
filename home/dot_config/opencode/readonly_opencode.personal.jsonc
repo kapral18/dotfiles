@@ -50,5 +50,36 @@
         },
       },
     },
+    "cloudflare-workers-ai": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Cloudflare Workers AI",
+      "options": {
+        "baseURL": "https://api.cloudflare.com/client/v4/accounts/{env:CLOUDFLARE_WORKERS_AI_ACCOUNT_ID}/ai/v1",
+        "apiKey": "{env:CLOUDFLARE_WORKERS_AI_API_KEY}",
+      },
+      "models": {
+        "@cf/zai-org/glm-5.2": {
+          "name": "Cloudflare Workers AI GLM 5.2",
+          "limit": {
+            "context": 262144,
+            "output": 262144,
+          },
+        },
+        "@cf/moonshotai/kimi-k2.7-code": {
+          "name": "Cloudflare Workers AI Kimi K2.7 Code",
+          "limit": {
+            "context": 262144,
+            "output": 262144,
+          },
+        },
+        "minimax/m3": {
+          "name": "Cloudflare AI MiniMax M3",
+          "limit": {
+            "context": 1000000,
+            "output": 65536,
+          },
+        },
+      },
+    },
   },
 }
