@@ -4,7 +4,11 @@ sidebar_position: 4
 
 # A Day In The Life
 
-This page is for people coming from a traditional IDE workflow who want to see what "terminal-driven" can look like. The whole day happens inside **tmux**, and two fzf popups do most of the driving:
+This page is for people coming from a traditional IDE workflow who want to see what "terminal-driven" can look like. The workbench is one **tmux** window: Neovim in a normal pane, an assistant or shell next to it, and focused popups only when a workflow needs a picker.
+
+![Full terminal layout with Neovim in the left pane and an assistant workflow pane on the right](../topics/editor/assets/natural-neovim-layout.png)
+
+Two fzf popups do most of the navigation:
 
 - the **[session picker](../topics/workflow/tmux/session-picker.md)** (`prefix` + `T`) for navigating, creating, switching, and killing sessions
 - the **[GitHub picker](../topics/workflow/tmux/github-picker.md)** (`prefix` + `G`) for issues and PRs
@@ -14,6 +18,8 @@ Both wrap the lower-level comma commands (`,w`, `,gh-worktree`) so you rarely ty
 ## Morning: Restore Context
 
 Open the session picker (`prefix` + `T`). It lists your tmux sessions, git worktrees, and recent directories in one place, with inline badges for dirty state, linked PRs/issues, and CI status. The preview pane shows the last screen of each session, so you can see where you left off and jump straight back in with `enter`.
+
+![Session picker popup over the live tmux workbench, with demo rows showing dirty, approved, changes-requested, and CI states](../topics/workflow/tmux/assets/session-picker-full.png)
 
 ## Navigate, Create, Switch, And Kill Sessions
 
@@ -33,6 +39,8 @@ Because it indexes worktrees on disk, the sessions you create with `,w` (or via 
 Open the GitHub picker (`prefix` + `G`) for a PR/issue dashboard with review/CI badges, hierarchy (epics, backport families), and inline actions. Switch scope with `alt-1` (Focus: work you own or must act on) and `alt-2` (Explore: team queues, mentions, radar), and toggle work/home with `ctrl-s`.
 
 ![Daily tmux workflow: restore context, open GitHub dashboard, create worktree, hand off to agents or Ralph, review, and clean up](./assets/day-in-life-flow.svg)
+
+![GitHub picker popup over the tmux workbench, with safe demo rows for own PRs, external reviews, issues, epics, and pending backports](../topics/workflow/tmux/assets/github-picker-full.png)
 
 From the dashboard, without leaving tmux:
 
@@ -61,11 +69,13 @@ pi
 claude
 ```
 
-Per-tool configuration (auth, models, MCP, profile merging) lives in [Tool configs](../topics/ai-assistants/tool-configs.md). When you run `claude`, `cursor-agent`, `pi`, or `copilot` inside tmux, `Alt-Enter` prepends a calibrated verification scaffold and leaves the prompt editable (toggle with `prefix` + `W`); plain `Enter` is never touched.
+Per-tool configuration (auth, models, MCP, profile merging) lives in [Tool configs](../topics/ai-assistants/tool-configs/index.md). When you run `claude`, `cursor-agent`, `pi`, or `copilot` inside tmux, `Alt-Enter` prepends a calibrated verification scaffold and leaves the prompt editable (toggle with `prefix` + `W`); plain `Enter` is never touched.
 
-For larger, multi-step work, hand off to **Ralph** — a planner → executor → reviewer → re-reviewer loop with self-healing — with `,ralph go` (or `alt-A` from the GitHub picker). See [Ralph orchestrator](../topics/ai-assistants/ralph.md).
+For larger, multi-step work, hand off to **Ralph** — a planner → executor → reviewer → re-reviewer loop with self-healing — with `,ralph go` (or `alt-A` from the GitHub picker). See [Ralph orchestrator](../topics/ai-assistants/ralph/index.md).
 
-Across sessions, agents carry context through two memory layers: short-lived per-workspace hook memory (`/tmp/specs`) and a durable knowledge base (`,ai-kb`). See [Agent memory](../topics/ai-assistants/knowledge-base.md).
+![Ralph dashboard popup showing multiple runs, an awaiting-human question, role status, iterations, and role tail output](../topics/ai-assistants/assets/ralph-dashboard-full.png)
+
+Across sessions, agents carry context through two memory layers: short-lived per-workspace hook memory (`/tmp/specs`) and a durable knowledge base (`,ai-kb`). See [Agent memory](../topics/ai-assistants/knowledge-base/index.md).
 
 ## Review
 
@@ -75,6 +85,10 @@ Across sessions, agents carry context through two memory layers: short-lived per
 ## Code: Keep Your Editor
 
 You can run this whole workflow from VSCode/JetBrains using the integrated terminal — the pickers and assistants are just tmux popups and CLIs. Neovim is available if you want it, but it is optional.
+
+When Neovim is the editor, it stays inline. Tool-specific UI, such as the `vim.pack` dashboard, opens inside Neovim rather than as a separate tmux popup.
+
+![Neovim PackDashboard floating over the editor pane while the assistant pane remains visible](../topics/editor/assets/neovim-pack-dashboard-inline.png)
 
 ## Cleanup
 

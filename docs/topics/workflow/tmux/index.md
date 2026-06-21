@@ -1,8 +1,19 @@
 # Tmux
 
-This setup is designed around a tmux-driven workflow.
+This setup is designed around a tmux-driven workflow: one terminal window, persistent sessions, and focused popups for navigation.
 
 If you are coming from VSCode/JetBrains, you can still use tmux incrementally. The lowest-disruption path is to use tmux for long-running sessions (servers, test watchers) while keeping your main editor unchanged.
+
+![Full tmux workbench with Neovim inline and an assistant workflow pane on the right](../../editor/assets/natural-neovim-layout.png)
+
+## Mental model
+
+| Layer                | What it does                                                                                 |
+| -------------------- | -------------------------------------------------------------------------------------------- |
+| Session layout       | Keeps editor, shell, agents, servers, and logs alive across context switches                 |
+| Popups               | Opens short-lived UI for picking sessions, GitHub items, URLs, commands, and Ralph runs      |
+| Handoff files        | Let one picker stage a selection for another picker or Ralph without fragile shell arguments |
+| Cache-first indexing | Shows stale data immediately, refreshes in the background, and only reloads on success       |
 
 ## Config location
 
@@ -16,7 +27,7 @@ This is a thin entrypoint that sources `conf.d` files in a fixed order.
 - vi copy-mode
 - passthrough bindings for Neovim navigation
 - no-prefix `C-S-h/j/k/l` are passed through as CSI-u sequences for terminal apps (Neovim)
-- split config via [`home/dot_config/exact_tmux/conf.d/*.conf`](../../../../home/dot_config/exact_tmux/conf.d/*.conf)
+- split config via [`home/dot_config/exact_tmux/exact_conf.d/`](../../../../home/dot_config/exact_tmux/exact_conf.d/)
 - mouse on, `base-index 1`, renumber windows, focus events, aggressive resize
 
 ## Tmux config layout (`conf.d`)
@@ -27,7 +38,7 @@ Conventions:
 - numeric prefixes define load order and are the contract
 - one concern per file (base, keys, copy-mode, integrations, tools, plugins)
 - feature bindings and feature options should live in the same file when possible
-- `90-plugins.conf` declares plugin options/plugins; `99-tpm.conf` remains TPM bootstrap only
+- `90-plugins.conf` declares plugin options/plugins; `99-tpm.conf` bootstraps TPM; `44-ralph.conf` is sourced after TPM so its status-right append survives the theme
 - add new files by range, not by appending random names:
   - `00-39`: core tmux behavior and global keymaps
   - `40-89`: custom tools / popups / integrations
@@ -43,8 +54,11 @@ Current file map:
 - `40-session-tools.conf`: session helper bindings (`goto/new/promote/join/kill`)
 - `41-pickers.conf`: URL/session picker bindings + picker-related tmux options
 - `42-gh-dash.conf`: GitHub picker popup (fzf-based, standalone config)
+- `43-repo-bootstrap.conf`: repo bootstrap popup (`owner/repo` → `,gh-tfork`)
+- `45-agent-prompt-wrap.conf`: agent prompt-wrap bindings (`Alt-Enter`, `prefix` + `W`)
 - `90-plugins.conf`: TPM plugin declarations + plugin options
-- `99-tpm.conf`: TPM init (must stay last)
+- `99-tpm.conf`: TPM init (plugin bootstrap; Ralph status wiring follows)
+- `44-ralph.conf`: Ralph dashboard/status wiring (sourced after TPM so status-right survives the theme)
 
 ## Cheat sheet (this config)
 
@@ -69,6 +83,8 @@ Current file map:
 - Command palette popup: `prefix` + `r` (`\,tmux-run-all`)
 - GitHub picker popup: `prefix` + `G` (fzf PR/issue picker, standalone config; `alt-g` switches to/from session picker; `ctrl-s` switches work/home; `?` help)
 - Agent prompt wrap: `Alt-Enter` (inserts verification scaffold and leaves prompt editable), `prefix` + `W` (toggle on/off)
+
+![Command palette popup over the tmux workbench, indexing tmux bindings, git aliases, and custom comma commands](assets/command-palette-full.png)
 
 For details:
 

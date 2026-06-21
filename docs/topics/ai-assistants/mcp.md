@@ -1,10 +1,22 @@
 ---
-sidebar_position: 5
+sidebar_position: 8
 ---
 
 # MCP Servers
 
-A single canonical registry defines every MCP (Model Context Protocol) server once; per-tool configs for Cursor, Claude Code, Gemini, Pi, Codex, OpenCode, and GitHub Copilot CLI are generated from it at `chezmoi apply` time. This avoids hand-maintaining the same server list in seven different config formats.
+A single canonical registry defines every MCP server once.
+
+At `chezmoi apply` time, generators render per-tool configs for:
+
+- Cursor
+- Claude Code
+- Gemini
+- Pi
+- Codex
+- OpenCode
+- GitHub Copilot CLI
+
+That avoids hand-maintaining the same server list in seven config formats.
 
 Use when adding, removing, or debugging an MCP server, or understanding how a server reaches a given assistant.
 
@@ -28,7 +40,22 @@ The registry mechanics are generic; the current work-profile server set is Elast
 
 ## Generation pipeline
 
-[`scripts/mcp_registry.py`](../../../scripts/mcp_registry.py) reads and normalizes the registry (resolving `$(command)` strings via a login shell). [`scripts/generate_mcp_configs.py`](../../../scripts/generate_mcp_configs.py) turns the normalized servers into a tool-specific `{ "mcpServers": { ... } }` document, applying per-tool transforms (e.g. Cursor's `auth.CLIENT_ID` vs the standard `oauth` shape). For Pi only it also emits a top-level `"settings": { "autoAuth": true }` so pi-mcp-adapter runs the OAuth + reconnect flow automatically on the first tool call to a `needs-auth` server (still opens the browser in an interactive session; it is not headless auth). Other tools have their own config schemas and do not get this block.
+The generation pipeline has two common stages:
+
+| Stage                   | Script                                                                        | Purpose                                                   |
+| ----------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Normalize registry      | [`scripts/mcp_registry.py`](../../../scripts/mcp_registry.py)                 | Resolve `$(command)` strings through a login shell        |
+| Generate per-tool shape | [`scripts/generate_mcp_configs.py`](../../../scripts/generate_mcp_configs.py) | Emit a tool-specific `{ "mcpServers": { ... } }` document |
+
+Per-tool transforms handle schema differences, such as Cursor's `auth.CLIENT_ID` vs the standard `oauth` shape.
+
+Pi gets one extra block:
+
+```json
+{ "settings": { "autoAuth": true } }
+```
+
+That lets `pi-mcp-adapter` run OAuth + reconnect automatically on the first tool call to a `needs-auth` server. It still opens the browser in an interactive session; it is not headless auth. Other tools have their own config schemas and do not get this block.
 
 Tools whose config is not plain JSON get dedicated injectors that preserve the surrounding hand-curated file:
 
@@ -48,9 +75,22 @@ Tools whose config is not plain JSON get dedicated injectors that preserve the s
 | Codex       | `~/.codex/config.toml`              | [`run_onchange_after_07-merge-codex-config.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-merge-codex-config.sh.tmpl)       |
 | Copilot     | `~/.copilot/mcp-config.json`        | [`run_onchange_after_07-merge-copilot-config.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-merge-copilot-config.sh.tmpl)   |
 
-The Copilot transform emits stdio servers as `type: "local"` (with `tools: ["*"]`); it also supports OAuth HTTP servers as `type: "http"` with `oauthClientId` + `auth.redirectPort` + `oauthScopes` (Copilot's native browser `authorization_code` flow, no secret in the config), but no HTTP server is currently wired for Copilot — the redirect-URI mismatch above excludes `scsi-main` and `slack`, and `scsi-local` is excluded via `exclude_tools: [copilot]` since the hosted `scsi-main` it backs is gone. Copilot's generated `mcpServers` is therefore empty and it relies on its built-in servers. The built-in `github-mcp-server` is provided by Copilot and is not emitted.
+Copilot transform behavior:
 
-LetsFG is intentionally not exposed through the shared MCP registry because its tools are irrelevant to most sessions; agents load its skill on demand instead. See [Tool configs](tool-configs.md) for details.
+| Server class | Emitted shape                                                               |
+| ------------ | --------------------------------------------------------------------------- |
+| stdio        | `type: "local"` with `tools: ["*"]`                                         |
+| OAuth HTTP   | `type: "http"` with `oauthClientId`, `auth.redirectPort`, and `oauthScopes` |
+
+No HTTP server is currently wired for Copilot:
+
+- `scsi-main` and `slack` are excluded by the redirect-URI mismatch above.
+- `scsi-local` is excluded with `exclude_tools: [copilot]` because the hosted `scsi-main` it backs is gone.
+- Copilot's generated `mcpServers` is empty and it relies on built-in servers.
+
+The built-in `github-mcp-server` is provided by Copilot and is not emitted.
+
+LetsFG is intentionally not exposed through the shared MCP registry because its tools are irrelevant to most sessions; agents load its skill on demand instead. See [Tool configs](tool-configs/index.md) for details.
 
 ## Add or change a server
 
@@ -69,6 +109,6 @@ copilot mcp list   # lists the loaded Copilot servers and their transport types
 
 ## Related
 
-- [Tool configs](tool-configs.md) — per-assistant settings and profile merging
+- [Tool configs](tool-configs/index.md) — per-assistant settings and profile merging
 - [Model registry & routing](model-registry.md) — the parallel registry for model definitions
 - [The Agentic Operating System](index.md) — governance layer

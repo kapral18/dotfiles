@@ -1,5 +1,5 @@
 ---
-sidebar_position: 6
+sidebar_position: 14
 ---
 
 # Add A Ruby Gem
@@ -37,8 +37,16 @@ gem list --local | rg '^<gemname> '
 ## Rollback / Undo
 
 1. Remove the gem from [`home/readonly_dot_default-gems`](../../../../home/readonly_dot_default-gems).
-2. Re-apply:
+2. Re-apply so the gem is no longer part of the desired list:
 
 ```bash
 chezmoi apply
 ```
+
+1. Uninstall the already-installed gem manually:
+
+```bash
+gem uninstall <gemname>
+```
+
+The hook installs listed gems only; it does not uninstall gems removed from the list.

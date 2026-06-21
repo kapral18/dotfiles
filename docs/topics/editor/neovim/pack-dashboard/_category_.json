@@ -1,0 +1,8 @@
+{
+  "label": "PackDashboard",
+  "position": 2,
+  "link": {
+    "type": "doc",
+    "id": "topics/editor/neovim/pack-dashboard/index"
+  }
+}

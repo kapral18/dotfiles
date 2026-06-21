@@ -1,0 +1,5 @@
+{
+  "label": "Package catalog",
+  "position": 4,
+  "link": { "type": "doc", "id": "topics/core/packages/catalog/index" }
+}

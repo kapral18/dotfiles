@@ -72,7 +72,7 @@ Because AI tools (like OpenCode, Cursor, Gemini, and Pi) often rewrite their con
 - Gemini keeps its own settings file, but the `mcpServers` section is injected from the same registry at apply time.
 - This creates a hard boundary between work contexts (which load work-specific MCP servers) and personal contexts.
 
-The same pattern applies to model definitions. For the full picture see [MCP servers](../topics/ai-assistants/mcp.md), [Model registry & routing](../topics/ai-assistants/model-registry.md), and [Tool configs](../topics/ai-assistants/tool-configs.md).
+The same pattern applies to model definitions. For the full picture see [MCP servers](../topics/ai-assistants/mcp.md), [Model registry & routing](../topics/ai-assistants/model-registry.md), and [Tool configs](../topics/ai-assistants/tool-configs/index.md).
 
 ### Shared Library (`scripts/chezmoi_lib.sh`)
 

@@ -1,134 +1,17 @@
 # macOS Automation
 
-This setup includes macOS-specific automation and preferences.
+This setup includes macOS-specific automation and preferences. The pieces are separate because some are system defaults, some are app configs, and some are operational hooks.
 
-## Defaults / Settings
+## Read path
 
-The raw scripts live here:
+| Slice                                                   | Owns                                                      |
+| ------------------------------------------------------- | --------------------------------------------------------- |
+| [Defaults and apply flow](defaults-and-apply-flow.md)   | `.osx` scripts, apply workflow, restart expectations      |
+| [Hotkeys and launchers](hotkeys-and-launchers.md)       | Hammerspoon, Karabiner, and Alfred backup/reference state |
+| [Icons and scheduled jobs](icons-and-scheduled-jobs.md) | custom icon hook, source assets, crontab install          |
+| [Verification and troubleshooting](verification.md)     | defaults checks, icon command checks, failure modes       |
+| [Apply custom app icons](custom-app-icons.md)           | direct icon command recipe                                |
 
-- [`home/.osx.core`](../../../home/.osx.core)
-- [`home/.osx.extra`](../../../home/.osx.extra)
+## Safety note
 
-They are applied via hooks:
-
-- [`home/.chezmoiscripts/run_onchange_after_05-osx.core.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_05-osx.core.sh.tmpl)
-- [`home/.chezmoiscripts/run_onchange_after_05-osx.extra.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_05-osx.extra.sh.tmpl)
-
-These scripts can change system behavior. Expect that some changes require a logout/restart to fully take effect.
-
-If you want to disable this category entirely, the most direct approach is to remove or comment out the relevant hook scripts in [`home/.chezmoiscripts/`](../../../home/.chezmoiscripts/).
-
-## Core Apply Workflow
-
-1. Review local dotfiles changes:
-
-```bash
-chezmoi diff
-```
-
-1. Apply:
-
-```bash
-chezmoi apply
-```
-
-1. Reboot/log out if settings did not visually update yet.
-
-You can also run `.osx` scripts directly while debugging:
-
-```bash
-bash home/.osx.core
-bash home/.osx.extra
-```
-
-## Hammerspoon
-
-- Config: [`home/dot_hammerspoon/readonly_init.lua`](../../../home/dot_hammerspoon/readonly_init.lua)
-
-Key pieces:
-
-- Window management hotkeys: [`home/dot_hammerspoon/readonly_window.lua`](../../../home/dot_hammerspoon/readonly_window.lua)
-- Grid-mouse (keyboard mouse): [`home/dot_hammerspoon/readonly_gridmouse.lua`](../../../home/dot_hammerspoon/readonly_gridmouse.lua) (currently not enabled in `init.lua`)
-
-In `init.lua`, `Hyper` is configured as `ctrl+alt+cmd`.
-
-This setup pulls the `EmmyLua.spoon` via externals:
-
-- [`home/.chezmoiexternal.toml`](../../../home/.chezmoiexternal.toml)
-
-Workflow:
-
-- Edit modules under [`home/dot_hammerspoon/`](../../../home/dot_hammerspoon/).
-- Reload Hammerspoon config from the app menu.
-- Verify configured keybindings in `init.lua` and module files.
-
-## Karabiner
-
-- [`home/dot_config/exact_private_karabiner/karabiner.json`](../../../home/dot_config/exact_private_karabiner/karabiner.json)
-
-Workflow:
-
-- Edit `karabiner.json`.
-- Import/reload through Karabiner-Elements.
-- Validate by testing the modified key mapping directly.
-
-## Alfred
-
-- [`home/Alfred.alfredpreferences/`](../../../home/Alfred.alfredpreferences/)
-
-Note: this directory is currently ignored by `chezmoi` via [`home/.chezmoiignore`](../../../home/.chezmoiignore). It is kept in the repo as a reference/backup rather than being automatically installed.
-
-## Custom App Icons
-
-- Mapping: [`home/app_icons/readonly_icon_mapping.yaml`](../../../home/app_icons/readonly_icon_mapping.yaml)
-- Script: [`home/exact_bin/executable_,apply-app-icons.tmpl`](../../../home/exact_bin/executable_,apply-app-icons.tmpl)
-- Hook: [`home/.chezmoiscripts/run_onchange_after_05-apply-app-icons.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_05-apply-app-icons.sh.tmpl)
-
-Note: [`home/app_icons/`](../../../home/app_icons/) is ignored by `chezmoi` via [`home/.chezmoiignore`](../../../home/.chezmoiignore). The script reads icon assets from the repo source directory.
-
-## Scheduled jobs (crontab)
-
-A user crontab is installed (replacing the existing one) from a repo-managed file:
-
-- Crontab contents: [`home/crontab`](../../../home/crontab)
-- Hook: [`home/.chezmoiscripts/run_onchange_after_05-install-crontab.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_05-install-crontab.sh.tmpl)
-
-The hook is a thin wrapper that runs `crontab "$CHEZMOI_SOURCE_DIR/crontab"`; the hash trigger means it only re-installs when the file changes. The shipped entry kills Git `fsmonitor--daemon` processes every 5 minutes, working around the daemon's tendency to wedge or pin CPU on large repos. The pattern intentionally matches `git-core/git[ ]fsmonitor--daemon` so both Apple Git and Homebrew Git daemon paths are covered without matching the cleanup command itself.
-
-```cron
-*/5 * * * * /usr/bin/pkill -f "git-core/git[ ]fsmonitor--daemon" >/dev/null 2>&1
-```
-
-Edit [`home/crontab`](../../../home/crontab) and `chezmoi apply` to change the schedule, or run `crontab -l` to inspect the installed table. To opt out, remove the hook script and clear the entry with `crontab -e`.
-
-## Verification
-
-Check a few high-signal defaults:
-
-```bash
-defaults read -g KeyRepeat
-defaults read com.apple.screencapture location
-defaults read net.freemacsoft.AppCleaner SUAutomaticallyUpdate
-```
-
-Check icon command wiring:
-
-```bash
-command -v ,apply-app-icons
-```
-
-## Troubleshooting
-
-- `defaults` changes did not apply:
-  - restart affected apps (`Finder`, `Dock`, `SystemUIServer`) or reboot.
-- `,apply-app-icons` fails:
-  - verify `fileicon` and `yq` are installed.
-  - verify [`home/app_icons/readonly_icon_mapping.yaml`](../../../home/app_icons/readonly_icon_mapping.yaml) and asset files exist.
-- Hook runs but nothing changed:
-  - confirm the script hash-trigger input actually changed.
-
-## Related
-
-- [Apply custom app icons](custom-app-icons.md)
-- [New machine bootstrap](../../intro/new-machine-bootstrap.md)
-- [Debugging hooks](../core/chezmoi/debug-hooks.md)
+macOS defaults and key-mapping changes can affect the live desktop. Review with `chezmoi diff`, apply intentionally, and expect some visual changes to require app restart, logout, or reboot.

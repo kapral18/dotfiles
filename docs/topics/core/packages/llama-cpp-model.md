@@ -1,5 +1,5 @@
 ---
-sidebar_position: 9
+sidebar_position: 18
 ---
 
 # Add A llama.cpp Model

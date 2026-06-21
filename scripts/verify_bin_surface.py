@@ -12,7 +12,7 @@ Usage:
 Exit status is non-zero if any command is missing:
 
 - ``home/dot_config/fish/completions/readonly_,<name>.fish``
-- a backticked command token in ``docs/topics/workflow/custom-commands.md``
+- a backticked command token under ``docs/topics/workflow/custom-commands/``
 - a command token in ``.mermaids/07c-bin-commands.mmd``
 """
 
@@ -66,6 +66,15 @@ def _read_required(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def _read_docs_dir(path: Path) -> str:
+    if not path.is_dir():
+        raise FileNotFoundError(path)
+    docs_files = sorted(path.glob("*.md"))
+    if not docs_files:
+        raise FileNotFoundError(path / "*.md")
+    return "\n".join(p.read_text(encoding="utf-8") for p in docs_files)
+
+
 def _docs_mentions_command(docs_text: str, name: str) -> bool:
     return re.search(rf"`,{re.escape(name)}(?:`|\s)", docs_text) is not None
 
@@ -77,15 +86,17 @@ def _mermaid_mentions_command(mermaid_text: str, name: str) -> bool:
 def check_bin_surface(repo_root: Path) -> list[str]:
     """Return human-readable failures for command-surface drift."""
 
-    docs_path = repo_root / "docs" / "topics" / "workflow" / "custom-commands.md"
+    docs_path = repo_root / "docs" / "topics" / "workflow" / "custom-commands"
     mermaid_path = repo_root / ".mermaids" / "07c-bin-commands.mmd"
     failures: list[str] = []
 
     try:
-        docs_text = _read_required(docs_path)
+        docs_text = _read_docs_dir(docs_path)
+        docs_available = True
     except FileNotFoundError:
         failures.append(f"docs file missing: {docs_path.relative_to(repo_root)}")
         docs_text = ""
+        docs_available = False
 
     try:
         mermaid_text = _read_required(mermaid_path)
@@ -97,8 +108,8 @@ def check_bin_surface(repo_root: Path) -> list[str]:
         display = f",{command.name}"
         if not command.fish_completion.is_file():
             failures.append(f"{display}: missing Fish completion {command.fish_completion.relative_to(repo_root)}")
-        if docs_text and not _docs_mentions_command(docs_text, command.name):
-            failures.append(f"{display}: missing docs token in {docs_path.relative_to(repo_root)}")
+        if docs_available and not _docs_mentions_command(docs_text, command.name):
+            failures.append(f"{display}: missing docs token in {docs_path.relative_to(repo_root)}/")
         if mermaid_text and not _mermaid_mentions_command(mermaid_text, command.name):
             failures.append(f"{display}: missing catalog token in {mermaid_path.relative_to(repo_root)}")
 

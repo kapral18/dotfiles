@@ -1,6 +1,6 @@
 %% ============================================================================
 %% 05-tmux-pickers.mmd — Every file under home/dot_config/exact_tmux/ (119).
-%% Loader sources conf.d/* in numeric order; scripts/ holds all integrations.
+%% Loader sources files explicitly: 00..43, 45, 90, 99, then 44-ralph after TPM.
 %% Deployed to ~/.config/tmux/. Prefix = C-Space.
 %% ============================================================================
 flowchart TD
@@ -10,7 +10,7 @@ flowchart TD
     classDef data fill:#3a2b1b,stroke:#ffb74d,color:#fff3e0;
 
     LOADER["readonly_tmux.conf (loader) + readonly_gh-dash-popup.conf<br/>readonly_pick_session_dir_exclude.txt"]:::conf
-    LOADER --> CONFD["exact_conf.d/ (sourced 00→99, then 44)<br/>00-base · 10-prefix-and-global-keys · 11-pane-and-window-nav<br/>20-copy · 30-lowfi · 40-session-tools · 41-pickers<br/>42-gh-dash · 43-repo-bootstrap · 45-agent-prompt-wrap<br/>90-plugins · 99-tpm · 44-ralph (last)"]:::conf
+    LOADER --> CONFD["exact_conf.d/ (explicit order: 00→43, 45, 90, 99, then 44)<br/>00-base · 10-prefix-and-global-keys · 11-pane-and-window-nav<br/>20-copy · 30-lowfi · 40-session-tools · 41-pickers<br/>42-gh-dash · 43-repo-bootstrap · 45-agent-prompt-wrap<br/>90-plugins · 99-tpm · 44-ralph (last)"]:::conf
 
     CONFD -->|41-pickers prefix+G| GHP
     CONFD -->|41-pickers| SESS

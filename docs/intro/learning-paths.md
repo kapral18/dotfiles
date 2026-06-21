@@ -49,7 +49,7 @@ Where to read:
 
 - [Terminals](../topics/workflow/terminals.md)
 - [Tmux](../topics/workflow/tmux/index.md)
-- [Custom commands](../topics/workflow/custom-commands.md)
+- [Custom commands](../topics/workflow/custom-commands/index.md)
 
 ## Phase 4: Neovim Editor Workflow (Optional)
 
@@ -62,7 +62,7 @@ What to focus on:
 
 Where to read:
 
-- [Editor: Neovim](../topics/editor/neovim.md)
+- [Editor: Neovim](../topics/editor/neovim/index.md)
 
 ## Phase 5: The Agentic Operating System (AI)
 
@@ -77,6 +77,6 @@ What to focus on:
 Where to read:
 
 - [AI & Assistants](../topics/ai-assistants/index.md) — the governance hub
-- [Ralph orchestrator](../topics/ai-assistants/ralph.md) — multi-agent planner/executor/reviewer loop
+- [Ralph orchestrator](../topics/ai-assistants/ralph/index.md) — multi-agent planner/executor/reviewer loop
 - [MCP servers](../topics/ai-assistants/mcp.md) and [Model registry & routing](../topics/ai-assistants/model-registry.md) — how tools get context and models
-- [Agent memory](../topics/ai-assistants/knowledge-base.md) — session memory and the durable knowledge base
+- [Agent memory](../topics/ai-assistants/knowledge-base/index.md) — session memory and the durable knowledge base

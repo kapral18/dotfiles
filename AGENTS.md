@@ -122,7 +122,7 @@ User commands live in `home/exact_bin/executable_,<name>` (deployed to `~/bin/,<
 - **Zsh (only when warranted):** `home/dot_zsh/completions/readonly__comma_<name>` (`#compdef ,<name>`). Only complex commands (e.g. `,w`, `,wh`) carry a zsh completion; do not add one unless the command needs zsh-specific completion.
 - **Keep completions in sync on updates:** when a command's flags or arguments change, update the completion file in the same change. A `~/bin/` command added or changed without its completion is incomplete.
 
-When adding a new `~/bin/` command, also update its catalog row in `docs/topics/workflow/custom-commands.md` and the `.mermaids/07c-bin-commands.mmd` node (plus the `exact_bin/` census count in `scripts/verify_mermaids.py` and the diagram/README anchors), per Documentation Hygiene.
+When adding a new `~/bin/` command, also update its catalog row under `docs/topics/workflow/custom-commands/` and the `.mermaids/07c-bin-commands.mmd` node (plus the `exact_bin/` census count in `scripts/verify_mermaids.py` and the diagram/README anchors), per Documentation Hygiene.
 
 ---
 

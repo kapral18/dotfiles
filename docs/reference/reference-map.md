@@ -59,17 +59,24 @@ Each registry has a declarative list plus the hook that converges it. See [Packa
 | Starship prompt         | [`home/dot_config/readonly_starship.toml`](../../home/dot_config/readonly_starship.toml)                 |
 | Shared ignores (fd/fzf) | [`home/dot_config/readonly_ignore-globs`](../../home/dot_config/readonly_ignore-globs)                   |
 
-## Git + Identity
+## Git
 
-| Component                           | Source path                                                                                                                                                                        |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Git main config template            | [`home/private_readonly_dot_gitconfig.tmpl`](../../home/private_readonly_dot_gitconfig.tmpl)                                                                                       |
-| Work override gitconfig             | [`home/work/private_dot_gitconfig.tmpl`](../../home/work/private_dot_gitconfig.tmpl)                                                                                               |
-| SSH config (1Password agent socket) | [`home/private_dot_ssh/private_executable_config`](../../home/private_dot_ssh/private_executable_config)                                                                           |
-| Allowed signers (SSH signing)       | [`home/private_dot_ssh/private_executable_allowed_signers.tmpl`](../../home/private_dot_ssh/private_executable_allowed_signers.tmpl)                                               |
-| 1Password SSH agent config          | [`home/dot_config/exact_private_1Password/exact_ssh/readonly_agent.toml.tmpl`](../../home/dot_config/exact_private_1Password/exact_ssh/readonly_agent.toml.tmpl)                   |
-| gh picker work config               | [`home/dot_config/exact_tmux/exact_scripts/pickers/github/readonly_gh-picker-work.yml`](../../home/dot_config/exact_tmux/exact_scripts/pickers/github/readonly_gh-picker-work.yml) |
-| gh picker home config               | [`home/dot_config/exact_tmux/exact_scripts/pickers/github/readonly_gh-picker-home.yml`](../../home/dot_config/exact_tmux/exact_scripts/pickers/github/readonly_gh-picker-home.yml) |
+| Component                     | Source path                                                                                                                                                                        |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Git main config template      | [`home/private_readonly_dot_gitconfig.tmpl`](../../home/private_readonly_dot_gitconfig.tmpl)                                                                                       |
+| Work override gitconfig       | [`home/work/private_dot_gitconfig.tmpl`](../../home/work/private_dot_gitconfig.tmpl)                                                                                               |
+| Allowed signers (SSH signing) | [`home/private_dot_ssh/private_executable_allowed_signers.tmpl`](../../home/private_dot_ssh/private_executable_allowed_signers.tmpl)                                               |
+| gh picker work config         | [`home/dot_config/exact_tmux/exact_scripts/pickers/github/readonly_gh-picker-work.yml`](../../home/dot_config/exact_tmux/exact_scripts/pickers/github/readonly_gh-picker-work.yml) |
+| gh picker home config         | [`home/dot_config/exact_tmux/exact_scripts/pickers/github/readonly_gh-picker-home.yml`](../../home/dot_config/exact_tmux/exact_scripts/pickers/github/readonly_gh-picker-home.yml) |
+
+## Identity and keys
+
+| Component                           | Source path                                                                                                                                                      |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SSH config (1Password agent socket) | [`home/private_dot_ssh/private_executable_config`](../../home/private_dot_ssh/private_executable_config)                                                         |
+| 1Password SSH agent config          | [`home/dot_config/exact_private_1Password/exact_ssh/readonly_agent.toml.tmpl`](../../home/dot_config/exact_private_1Password/exact_ssh/readonly_agent.toml.tmpl) |
+| Primary public key selector         | [`home/private_dot_ssh/readonly_primary_public_key.pub.tmpl`](../../home/private_dot_ssh/readonly_primary_public_key.pub.tmpl)                                   |
+| Secondary public key selector       | [`home/private_dot_ssh/readonly_secondary_public_key.pub.tmpl`](../../home/private_dot_ssh/readonly_secondary_public_key.pub.tmpl)                               |
 
 ## Editor
 
@@ -103,98 +110,11 @@ Each registry has a declarative list plus the hook that converges it. See [Packa
 | App icons hook    | [`run_onchange_after_05-apply-app-icons.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-apply-app-icons.sh.tmpl)                                                                               |
 | Crontab           | [`run_onchange_after_05-install-crontab.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-install-crontab.sh.tmpl)                                                                               |
 
-## AI: governance + skills
+## AI
 
-See [The Agentic Operating System](../topics/ai-assistants/index.md).
+AI governance, harness configs, model/MCP generation, memory, Ralph, and local inference have a focused lookup page:
 
-| Component                     | Source path                                                                                                                                                                            |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Assistant SOP (single source) | [`home/readonly_AGENTS.md`](../../home/readonly_AGENTS.md) (`~/CLAUDE.md`, `~/.gemini/GEMINI.md`, `~/.cursor/AGENTS.md`, `~/.config/opencode/AGENTS.md` are symlinks to `~/AGENTS.md`) |
-| Assistant skills              | [`home/exact_dot_agents/exact_skills/`](../../home/exact_dot_agents/exact_skills/)                                                                                                     |
-| Shared assistant hooks        | [`home/exact_dot_agents/exact_hooks/`](../../home/exact_dot_agents/exact_hooks/)                                                                                                       |
-| Cursor CLI hooks              | [`home/dot_cursor/hooks.json`](../../home/dot_cursor/hooks.json)                                                                                                                       |
-
-## AI: harness configs
-
-Per-tool config sources and the `run_onchange_after_07-*` hooks that render them. See [Tool configs](../topics/ai-assistants/tool-configs.md).
-
-| Tool        | Source                                                           | Merge hook                                                                                                                                        |
-| ----------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Claude Code | [`home/dot_claude/`](../../home/dot_claude/)                     | [`run_onchange_after_07-merge-claude-code-settings.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-claude-code-settings.sh.tmpl) |
-| Codex       | [`home/dot_codex/`](../../home/dot_codex/)                       | [`run_onchange_after_07-merge-codex-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-codex-config.sh.tmpl)                 |
-| Gemini      | [`home/dot_gemini/`](../../home/dot_gemini/)                     | [`run_onchange_after_07-merge-gemini-settings.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-gemini-settings.sh.tmpl)           |
-| OpenCode    | [`home/dot_config/opencode/`](../../home/dot_config/opencode/)   | [`run_onchange_after_07-merge-opencode-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl)           |
-| Pi          | [`home/dot_pi/agent/`](../../home/dot_pi/agent/)                 | [`run_onchange_after_07-merge-pi-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-pi-config.sh.tmpl)                       |
-| Copilot     | [`home/dot_copilot/`](../../home/dot_copilot/)                   | [`run_onchange_after_07-merge-copilot-config.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-merge-copilot-config.sh.tmpl)             |
-| Cursor      | [`home/dot_cursor/`](../../home/dot_cursor/)                     | (settings tracked directly)                                                                                                                       |
-| Amp         | [`home/dot_config/exact_amp/`](../../home/dot_config/exact_amp/) | (settings tracked directly)                                                                                                                       |
-
-## AI: model registry
-
-Single source of truth for LiteLLM/Azure model definitions; per-tool model configs are generated from it. See [Model registry & routing](../topics/ai-assistants/model-registry.md).
-
-| Component               | Source path                                                                            |
-| ----------------------- | -------------------------------------------------------------------------------------- |
-| Model definitions       | [`home/.chezmoidata/ai_models.yaml`](../../home/.chezmoidata/ai_models.yaml)           |
-| YAML reader             | [`scripts/ai_models.py`](../../scripts/ai_models.py)                                   |
-| Pi models generator     | [`scripts/generate_pi_models.py`](../../scripts/generate_pi_models.py)                 |
-| OpenCode models merge   | [`scripts/merge_opencode_models.py`](../../scripts/merge_opencode_models.py)           |
-| Display-name formatting | [`scripts/model_display.py`](../../scripts/model_display.py)                           |
-| Prompt-cache probe      | [`scripts/probe_litellm_prompt_cache.py`](../../scripts/probe_litellm_prompt_cache.py) |
-
-## AI: MCP
-
-Canonical MCP registry plus the generator/injectors that fan it out per tool. See [MCP servers](../topics/ai-assistants/mcp.md).
-
-| Component         | Source path                                                                                                                           |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| MCP registry      | [`home/.chezmoidata/mcp_servers.yaml`](../../home/.chezmoidata/mcp_servers.yaml)                                                      |
-| Registry reader   | [`scripts/mcp_registry.py`](../../scripts/mcp_registry.py)                                                                            |
-| Config generator  | [`scripts/generate_mcp_configs.py`](../../scripts/generate_mcp_configs.py)                                                            |
-| Codex injector    | [`scripts/inject_mcp_into_codex_toml.py`](../../scripts/inject_mcp_into_codex_toml.py)                                                |
-| OpenCode injector | [`scripts/inject_mcp_into_opencode_jsonc.py`](../../scripts/inject_mcp_into_opencode_jsonc.py)                                        |
-| Claude MCP merge  | [`scripts/merge_claude_mcp.py`](../../scripts/merge_claude_mcp.py)                                                                    |
-| Generate hook     | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl) |
-
-## AI: memory
-
-Two distinct memory layers. See [Agent memory](../topics/ai-assistants/knowledge-base.md).
-
-| Component                     | Source path                                                                                                                                            |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| AI knowledge base (`,ai-kb`)  | [`home/exact_bin/executable_,ai-kb`](../../home/exact_bin/executable_,ai-kb), [`scripts/ai_kb.py`](../../scripts/ai_kb.py)                             |
-| Embedding service             | [`scripts/embed.py`](../../scripts/embed.py), [`scripts/embed_runner.py`](../../scripts/embed_runner.py)                                               |
-| Vector retrieval              | [`scripts/vec_runner.py`](../../scripts/vec_runner.py)                                                                                                 |
-| Hook memory (`,agent-memory`) | [`home/exact_bin/executable_,agent-memory`](../../home/exact_bin/executable_,agent-memory), [`scripts/agent_memory.py`](../../scripts/agent_memory.py) |
-
-## AI: Ralph orchestrator
-
-See [Ralph orchestrator](../topics/ai-assistants/ralph.md).
-
-| Component         | Source path                                                                                                                 |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| CLI entry         | [`home/exact_bin/executable_,ralph`](../../home/exact_bin/executable_,ralph)                                                |
-| Orchestrator      | [`scripts/ralph.py`](../../scripts/ralph.py)                                                                                |
-| Roles + diversity | [`home/dot_config/ralph/roles.json`](../../home/dot_config/ralph/roles.json)                                                |
-| Role prompts      | [`home/dot_config/ralph/prompts/`](../../home/dot_config/ralph/prompts/)                                                    |
-| Dashboard (TUI)   | [`tools/ralph-tui/`](../../tools/ralph-tui/)                                                                                |
-| TUI build hook    | [`run_onchange_after_06-build-ralph-tui.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_06-build-ralph-tui.sh.tmpl) |
-
-## AI: local inference
-
-See [llama.cpp local inference](../topics/ai-assistants/llama-cpp.md).
-
-| Component           | Source path                                                                                                                                                                                                                                                                                              |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GGUF model manifest | [`home/readonly_dot_default-llama-cpp-models.tmpl`](../../home/readonly_dot_default-llama-cpp-models.tmpl)                                                                                                                                                                                               |
-| Router preset (INI) | [`home/dot_config/llama.cpp/models.ini.tmpl`](../../home/dot_config/llama.cpp/models.ini.tmpl)                                                                                                                                                                                                           |
-| Chat template       | [`home/dot_config/llama.cpp/readonly_qwen3.6-chat-template.jinja`](../../home/dot_config/llama.cpp/readonly_qwen3.6-chat-template.jinja) (robust Unsloth template; `local-max` override for system-message ordering)                                                                                     |
-| Sync hook + helper  | [`run_onchange_after_07-sync-llama-cpp-models.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_07-sync-llama-cpp-models.sh.tmpl), [`scripts/sync_llama_cpp_models.py`](../../scripts/sync_llama_cpp_models.py)                                                                                    |
-| Control plane       | [`home/exact_bin/executable_,llama-cpp`](../../home/exact_bin/executable_,llama-cpp)                                                                                                                                                                                                                     |
-| Claude launcher     | [`home/exact_bin/executable_,claude-llama-cpp`](../../home/exact_bin/executable_,claude-llama-cpp)                                                                                                                                                                                                       |
-| Codex launcher      | [`home/exact_bin/executable_,codex-llama-cpp`](../../home/exact_bin/executable_,codex-llama-cpp), catalog shim [`home/exact_bin/executable_codex`](../../home/exact_bin/executable_codex)                                                                                                                |
-| OpenCode launcher   | [`home/exact_bin/executable_,opencode-llama-cpp`](../../home/exact_bin/executable_,opencode-llama-cpp) (provider in [`opencode.personal.jsonc`](../../home/dot_config/opencode/readonly_opencode.personal.jsonc) / [`opencode.work.jsonc`](../../home/dot_config/opencode/readonly_opencode.work.jsonc)) |
-| Pi provider         | [`home/dot_pi/agent/readonly_models.json`](../../home/dot_pi/agent/readonly_models.json) (`local` + `local-max`)                                                                                                                                                                                         |
+- [AI reference](ai-reference.md)
 
 ## Scripts (`scripts/`)
 

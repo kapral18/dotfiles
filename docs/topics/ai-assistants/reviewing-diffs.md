@@ -1,10 +1,20 @@
 ---
-sidebar_position: 9
+sidebar_position: 13
 ---
 
 # Reviewing Agent Diffs (`tuicr`)
 
-[`tuicr`](https://github.com/agavra/tuicr) is the user-facing half of the agent loop: after the agent edits the working tree, you review the diff in a GitHub-style TUI, drop line/file/review comments, and export them as structured markdown that pastes back to the agent for a one-pass fix. It is the inverse of the [review workflow](reviews.md) (which is the agent reviewing your diff).
+[`tuicr`](https://github.com/agavra/tuicr) is the user-facing half of the agent loop.
+
+Flow:
+
+1. The agent edits the working tree.
+2. You review the diff in a GitHub-style TUI.
+3. You drop line, file, or review comments.
+4. `tuicr` exports structured markdown.
+5. You paste that markdown back to the agent for a one-pass fix.
+
+This is the inverse of the [review workflow](reviews/index.md), where the agent reviews your diff.
 
 Use after an agent has made edits, when you want to give structured feedback back to it.
 
@@ -40,5 +50,5 @@ On export, tuicr copies markdown to the system clipboard (handling tmux/SSH OSC 
 
 ## Related
 
-- [Review workflow](reviews.md) — the inverse loop (the agent reviewing your diff)
+- [Review workflow](reviews/index.md) — the inverse loop (the agent reviewing your diff)
 - [The Agentic Operating System](index.md) — governance layer

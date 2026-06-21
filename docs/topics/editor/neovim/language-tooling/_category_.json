@@ -1,0 +1,8 @@
+{
+  "label": "Language tooling",
+  "position": 3,
+  "link": {
+    "type": "doc",
+    "id": "topics/editor/neovim/language-tooling/index"
+  }
+}

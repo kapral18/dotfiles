@@ -15,7 +15,7 @@ Use when:
 
 Do not use:
 
-- ephemeral per-session working context (current task spec, worklog, evidence ledger under `/tmp/specs`): that is `,agent-memory` (see `~/.local/share/chezmoi/docs/topics/ai-assistants/knowledge-base.md`); this skill is for durable knowledge only
+- ephemeral per-session working context (current task spec, worklog, evidence ledger under `/tmp/specs`): that is `,agent-memory` (see `~/.local/share/chezmoi/docs/topics/ai-assistants/knowledge-base/hook-memory.md`); this skill is for durable knowledge only
 - semantic CODE search over a repo (how a codebase works, base-branch context): `~/.agents/skills/semantic-code-search/SKILL.md`
 - simple string/filename lookup: local `rg` / file reads
 

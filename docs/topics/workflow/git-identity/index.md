@@ -1,104 +1,27 @@
-# Git And Identity
+# Git, identity, and worktrees
 
-This setup is built around the idea that:
+This section is three related systems, not one blob:
 
-- private keys should not live on disk
-- git identity should switch automatically based on where you're working
+| System            | What it owns                                                       | Page                                      |
+| ----------------- | ------------------------------------------------------------------ | ----------------------------------------- |
+| Git defaults      | Global git behavior, conditional includes, aliases, signing config | [Git config](git-config.md)               |
+| Identity and keys | 1Password SSH agent, public-key selectors, work/personal switching | [Identity and keys](identity-and-keys.md) |
+| Worktrees         | `,w`, `,gh-worktree`, branch/issue metadata, tmux session naming   | [Worktrees](worktrees.md)                 |
 
-The mechanics are implemented through a combination of 1Password's SSH agent, `~/.ssh/config`, and git's `includeIf` support.
+The systems connect at runtime: Git chooses identity by repo path, 1Password holds the private keys, worktree metadata helps pickers and helper commands resolve PRs/issues, and tmux gives each worktree a stable session.
 
-## SSH Agent
-
-SSH is wired to use the 1Password agent socket:
-
-- [`home/private_dot_ssh/private_executable_config`](../../../../home/private_dot_ssh/private_executable_config)
-
-The 1Password agent key set is configured via:
-
-- [`home/dot_config/exact_private_1Password/exact_ssh/readonly_agent.toml.tmpl`](../../../../home/dot_config/exact_private_1Password/exact_ssh/readonly_agent.toml.tmpl)
-
-Installed as:
-
-- `~/.ssh/config`
-
-## Public Keys On Disk
-
-Git is configured to use SSH "public key" paths as identity selectors. The matching private keys are held by 1Password.
-
-Relevant templates:
-
-- [`home/private_dot_ssh/readonly_primary_public_key.pub.tmpl`](../../../../home/private_dot_ssh/readonly_primary_public_key.pub.tmpl)
-- [`home/private_dot_ssh/readonly_secondary_public_key.pub.tmpl`](../../../../home/private_dot_ssh/readonly_secondary_public_key.pub.tmpl)
-
-## Git Config
-
-Primary git config:
-
-- [`home/private_readonly_dot_gitconfig.tmpl`](../../../../home/private_readonly_dot_gitconfig.tmpl)
-
-Installed as:
-
-- `~/.gitconfig`
-
-Work override (included conditionally):
-
-- [`home/work/private_dot_gitconfig.tmpl`](../../../../home/work/private_dot_gitconfig.tmpl)
-
-The primary config uses `includeIf "gitdir:~/work/"` on non-work machines so repos under `~/work/` automatically use the secondary identity.
-
-## GitHub CLI + GitHub Picker
-
-| Component                   | Source                                                                                                                                                                                   |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GitHub CLI config directory | [`home/dot_config/exact_private_gh/`](../../../../home/dot_config/exact_private_gh/) (private)                                                                                           |
-| gh picker work config       | [`home/dot_config/exact_tmux/exact_scripts/pickers/github/readonly_gh-picker-work.yml`](../../../../home/dot_config/exact_tmux/exact_scripts/pickers/github/readonly_gh-picker-work.yml) |
-| gh picker home config       | [`home/dot_config/exact_tmux/exact_scripts/pickers/github/readonly_gh-picker-home.yml`](../../../../home/dot_config/exact_tmux/exact_scripts/pickers/github/readonly_gh-picker-home.yml) |
-| Managed extensions hook     | [`home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl`](../../../../home/.chezmoiscripts/run_onchange_after_05-install-gh-extensions.fish.tmpl)                   |
-
-Git TUIs:
-
-| Tool      | Config                                                                                             |
-| --------- | -------------------------------------------------------------------------------------------------- |
-| `gitui`   | [`home/dot_config/exact_gitui/`](../../../../home/dot_config/exact_gitui/)                         |
-| `lazygit` | [`home/dot_config/exact_lazygit/config.yml`](../../../../home/dot_config/exact_lazygit/config.yml) |
-| `tig`     | [`home/dot_config/exact_tig/`](../../../../home/dot_config/exact_tig/)                             |
-
-## Signing
-
-Git commit signing is configured for SSH signing, using the 1Password signing helper:
-
-- [`home/private_readonly_dot_gitconfig.tmpl`](../../../../home/private_readonly_dot_gitconfig.tmpl)
-- [`home/private_dot_ssh/private_executable_allowed_signers.tmpl`](../../../../home/private_dot_ssh/private_executable_allowed_signers.tmpl)
-
-## Verify
-
-See which identity is currently active:
-
-```bash
-git config --get user.name
-git config --get user.email
-git config --get core.sshCommand
-```
-
-If you are in a repo under `~/work/` on a non-work machine, you should see the secondary identity.
-
-## Troubleshooting
-
-- Identity did not switch:
-  - verify repo path (`~/work/...` for `includeIf`-based work identity on non-work machines).
-  - check effective config origin:
+## Quick checks
 
 ```bash
 git config --show-origin --get user.email
 git config --show-origin --get core.sshCommand
+echo "$SSH_AUTH_SOCK"
+,w doctor
 ```
-
-- SSH auth problems:
-  - verify `SSH_AUTH_SOCK` points to 1Password agent socket.
-  - verify required key is enabled in 1Password agent config.
 
 ## Related
 
-- [Identity switching](switch-identity.md)
-- [Worktrees](worktrees.md)
-- [Security model](../../security/security-and-secrets.md)
+- [Switching work vs personal identity](switch-identity.md)
+- [GitHub CLI extension management](gh-extension.md)
+- [Security and secrets](../../security/security-and-secrets.md)
+- [Session picker](../tmux/session-picker.md)

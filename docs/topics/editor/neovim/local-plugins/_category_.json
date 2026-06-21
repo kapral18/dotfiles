@@ -1,0 +1,8 @@
+{
+  "label": "Local plugins",
+  "position": 5,
+  "link": {
+    "type": "doc",
+    "id": "topics/editor/neovim/local-plugins/index"
+  }
+}

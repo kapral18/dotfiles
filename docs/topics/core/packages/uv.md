@@ -1,5 +1,5 @@
 ---
-sidebar_position: 8
+sidebar_position: 16
 ---
 
 # Add A uv Global Tool

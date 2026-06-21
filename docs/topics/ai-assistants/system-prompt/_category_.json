@@ -1,0 +1,5 @@
+{
+  "label": "System Prompt (SOP)",
+  "position": 2,
+  "link": { "type": "doc", "id": "topics/ai-assistants/system-prompt/index" }
+}

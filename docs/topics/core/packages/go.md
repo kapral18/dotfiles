@@ -1,5 +1,5 @@
 ---
-sidebar_position: 5
+sidebar_position: 13
 ---
 
 # Add A Go Tool
@@ -51,4 +51,12 @@ which <tool>
 chezmoi apply
 ```
 
-The hook reconciles installed binaries against the list: when a module is removed, its binary is deleted from `GOBIN` on the next apply. Reconciliation is tracked via a state ledger at `~/.cache/chezmoi/golang-pkgs-state`, so only binaries this tooling installed are ever removed — binaries you installed by hand with `go install` are left untouched. "Installed" is detected by the presence of the binary in `GOBIN` (`go env GOBIN`, else `$(go env GOPATH)/bin`), not by `go list -m all` (which does not enumerate installed binaries).
+Reconciliation rules:
+
+| Rule              | Detail                                                                       |
+| ----------------- | ---------------------------------------------------------------------------- |
+| Removed module    | its binary is deleted from `GOBIN` on the next apply                         |
+| Safety ledger     | `~/.cache/chezmoi/golang-pkgs-state` records binaries this tooling installed |
+| Hand installs     | binaries installed manually with `go install` are left untouched             |
+| Install detection | checks the binary in `GOBIN` (`go env GOBIN`, else `$(go env GOPATH)/bin`)   |
+| Not used          | `go list -m all`, because it does not enumerate installed binaries           |

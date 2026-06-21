@@ -11,7 +11,7 @@ function __comma_provider_models --argument-names provider
                 '@cf/zai-org/glm-5.2' \
                 '@cf/moonshotai/kimi-k2.7-code' \
                 '@cf/moonshotai/kimi-k2.6' \
-                'minimax/m3'
+                minimax/m3
         case openrouter
             set fallback \
                 'z-ai/glm-5.2' \
@@ -25,8 +25,8 @@ function __comma_provider_models --argument-names provider
                 'gpt-5.4' \
                 'gpt-5.3-codex' \
                 'gpt-5.2' \
-                'gpt-4o' \
-                'o4-mini'
+                gpt-4o \
+                o4-mini
         case '*'
             return 1
     end

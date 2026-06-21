@@ -1,5 +1,5 @@
 ---
-sidebar_position: 1
+sidebar_position: 10
 ---
 
 # Add A Homebrew Package
@@ -10,7 +10,13 @@ Homebrew packages are managed declaratively. The deployed `~/.Brewfile` is a sin
 - `brews/personal/NN-<category>.brewfile` — installed when `.isWork` is `false`.
 - `brews/work/NN-<category>.brewfile` — installed when `.isWork` is `true` (none exist yet; create as needed).
 
-Profile membership is the directory the file lives in, not an inline `{{ if }}` branch. [`brews/_assemble.brewfile`](../../../../home/.chezmoitemplates/brews/_assemble.brewfile) is the index: it lists the category banners in order and `includeTemplate`s each partial. [`home/readonly_dot_Brewfile.tmpl`](../../../../home/readonly_dot_Brewfile.tmpl) just renders that assembler into `~/.Brewfile`.
+File roles:
+
+| File / convention                                                                         | Role                                                             |
+| ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| profile directory                                                                         | decides machine scope; not an inline `{{ if }}` inside a partial |
+| [`brews/_assemble.brewfile`](../../../../home/.chezmoitemplates/brews/_assemble.brewfile) | index of category banners and `includeTemplate` calls            |
+| [`home/readonly_dot_Brewfile.tmpl`](../../../../home/readonly_dot_Brewfile.tmpl)          | renders the assembler into `~/.Brewfile`                         |
 
 ## Preconditions
 
@@ -30,7 +36,13 @@ brew info <formula-or-cask>
 
 2. Add the entry (`brew "<formula>"` or `cask "<cask>"`, with its comment/URL) to that file.
 
-   If the category file does not exist yet for the chosen profile, create it (reuse the `NN-<category>` ordinal+slug of its `shared/` sibling) and add a matching `{{ includeTemplate "brews/<profile>/NN-<category>.brewfile" . }}` line in [`brews/_assemble.brewfile`](../../../../home/.chezmoitemplates/brews/_assemble.brewfile) (work entries go inside a `{{ if eq .isWork true }}` block).
+   If the category file does not exist yet:
+
+   | Step           | Detail                                                                                                                                                              |
+   | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | Create partial | reuse the `NN-<category>` ordinal+slug of the matching `shared/` sibling                                                                                            |
+   | Wire assembler | add `{{ includeTemplate "brews/<profile>/NN-<category>.brewfile" . }}` to [`brews/_assemble.brewfile`](../../../../home/.chezmoitemplates/brews/_assemble.brewfile) |
+   | Work profile   | place work entries inside a `{{ if eq .isWork true }}` block                                                                                                        |
 
 3. Apply:
 

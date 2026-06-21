@@ -4,7 +4,7 @@ This directory contains my personal Neovim setup, managed with `chezmoi`.
 
 The config targets **Neovim 0.12+** and uses built-in `vim.pack` for plugin installation and updates, with trigger-aware deferred loading (`cmd`, `event`, `ft`, and key-triggered specs) handled by `lua/core/plugins.lua`.
 
-For a guided tour (including an IDE-first on-ramp for VSCode/JetBrains users), see [`docs/categories/editor-neovim.md`](../../../docs/categories/editor-neovim.md).
+For a guided tour (including an IDE-first on-ramp for VSCode/JetBrains users), see [`docs/topics/editor/neovim/index.md`](../../../docs/topics/editor/neovim/index.md).
 
 ## Implementation notes
 

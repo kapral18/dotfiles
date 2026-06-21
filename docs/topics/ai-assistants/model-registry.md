@@ -1,5 +1,5 @@
 ---
-sidebar_position: 6
+sidebar_position: 9
 ---
 
 # Model Registry & Routing
@@ -32,7 +32,7 @@ Source of truth: [`home/.chezmoidata/ai_models.yaml`](../../../home/.chezmoidata
 | [`scripts/merge_opencode_models.py`](../../../scripts/merge_opencode_models.py)           | Merges LiteLLM/Azure models into the OpenCode JSONC config                        |
 | [`scripts/probe_litellm_prompt_cache.py`](../../../scripts/probe_litellm_prompt_cache.py) | Diagnostic: probes prompt-cache signals across LiteLLM models                     |
 
-These run inside the per-tool merge hooks (`run_onchange_after_07-merge-pi-config.sh.tmpl`, `run_onchange_after_07-merge-opencode-config.sh.tmpl`). See [Tool configs](tool-configs.md).
+These run inside the per-tool merge hooks (`run_onchange_after_07-merge-pi-config.sh.tmpl`, `run_onchange_after_07-merge-opencode-config.sh.tmpl`). See [Tool configs](tool-configs/index.md).
 
 ## LiteLLM integration (work profile)
 
@@ -48,10 +48,10 @@ Fish exports these values from `pass` when the entries exist (see [`home/dot_con
 
 ## Local inference
 
-The local-inference backend is llama.cpp via `,llama-cpp`; see [llama.cpp local inference](llama-cpp.md).
+The local-inference backend is llama.cpp via `,llama-cpp`; see [llama.cpp local inference](llama-cpp/index.md).
 
 ## Related
 
 - [MCP servers](mcp.md) — the parallel registry for tool servers
-- [Tool configs](tool-configs.md) — per-assistant settings and profile merging
-- [llama.cpp local inference](llama-cpp.md) — local GGUF backend
+- [Tool configs](tool-configs/index.md) — per-assistant settings and profile merging
+- [llama.cpp local inference](llama-cpp/index.md) — local GGUF backend

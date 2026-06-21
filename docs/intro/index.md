@@ -6,22 +6,40 @@ hide_table_of_contents: true
 
 # kapral18/dotfiles
 
-Personal macOS development environment built around an **Agentic Operating System**: classical dotfiles (Fish, Neovim, Tmux) on the bottom, deterministic AI agent governance (MCP servers, SOPs, skills) on top. Everything is declarative and applied with [chezmoi](https://www.chezmoi.io/).
+Personal macOS development environment built around an **Agentic Operating System**: Fish, Neovim, and Tmux for the human loop; deterministic AI agent governance, MCP servers, skills, and Ralph on top. Everything is declarative and applied with [chezmoi](https://www.chezmoi.io/).
 
 These docs are for people who want to read, learn from, or adopt pieces of this setup — IDE-first folks moving toward terminals, anyone after a repeatable macOS dev environment, or anyone using this repo as inspiration for their own.
 
+The real workflow is a tmux workbench: Neovim stays inline, assistants run in neighboring panes, and popups appear only when a workflow asks for them.
+
+![Full terminal layout with Neovim in the left pane and an assistant workflow pane on the right](../topics/editor/assets/natural-neovim-layout.png)
+
 ## Where to start
 
-- **[Getting Started](./getting-started.md)** — preview and apply changes safely without breaking your machine.
-- **[Architecture](./architecture.md)** — how the repo is structured and how data flows through `chezmoi`, hooks, externals, and the AI layer.
-- **[New machine bootstrap](./new-machine-bootstrap.md)** — what to expect the first time you run this end-to-end.
-- **[A Day in the Life](./day-in-the-life.md)** — what a typical workflow with these tools looks like.
-- **[Learning Paths](./learning-paths.md)** — incremental on-ramps for each subsystem after install.
+| If you want to...                         | Start here                                          |
+| ----------------------------------------- | --------------------------------------------------- |
+| Install or preview safely                 | [Getting Started](./getting-started.md)             |
+| Understand source → rendered `$HOME` flow | [Architecture](./architecture.md)                   |
+| See the day-to-day terminal workflow      | [A Day in the Life](./day-in-the-life.md)           |
+| Learn the system gradually                | [Learning Paths](./learning-paths.md)               |
+| Bootstrap a fresh Mac                     | [New machine bootstrap](./new-machine-bootstrap.md) |
+
+## Visual map
+
+| Surface                                                     | What it shows                                                 |
+| ----------------------------------------------------------- | ------------------------------------------------------------- |
+| [Tmux](../topics/workflow/tmux/index.md)                    | Session layout, command palette, URL/session/GitHub popups    |
+| [Session picker](../topics/workflow/tmux/session-picker.md) | Sessions, worktrees, directories, dirty/PR/review/CI badges   |
+| [GitHub picker](../topics/workflow/tmux/github-picker.md)   | PRs, issues, epics, backports, review/CI state, Ralph handoff |
+| [Neovim](../topics/editor/neovim/index.md)                  | Inline editor workflow and `vim.pack` dashboard               |
+| [Ralph](../topics/ai-assistants/ralph/index.md)             | Multi-run planner/executor/reviewer control plane             |
 
 ## How these docs are organised
 
-- **Introduction** — what this is and how to install it safely.
-- **Topics** — concept + how-to for each domain (chezmoi, packages, git, fish, terminals, tmux, formatting, neovim, macOS automation, security & AI). Recipes (e.g. _add a Homebrew package_) live next to the topic they belong to, not in a separate tree.
-- **Reference** — cheat sheets, FAQ, troubleshooting.
+These docs put the story first and the reference one click away:
+
+- **Introduction** — what this is, how to install it safely, and what the workflow feels like.
+- **Domain sections** — the sidebar exposes the real systems directly: Chezmoi, Packages, Git & identity, Fish shell, Terminals, Tmux, Custom commands, Neovim, macOS, Security, Code quality, and AI Assistants.
+- **Reference** — lookup tables, FAQ, and troubleshooting.
 
 When you change something under `home/`, reflect it in the matching topic page so the next reader (human or AI agent) finds it. The agent SOPs in `~/AGENTS.md` and `~/CLAUDE.md` enforce that rule at edit time.

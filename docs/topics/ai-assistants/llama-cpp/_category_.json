@@ -1,0 +1,5 @@
+{
+  "label": "llama.cpp Local Inference",
+  "position": 12,
+  "link": { "type": "doc", "id": "topics/ai-assistants/llama-cpp/index" }
+}

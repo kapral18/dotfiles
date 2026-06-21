@@ -3,7 +3,7 @@
 A navigation cloud for this chezmoi dotfiles repo, in **two layers**:
 
 - **Semantic cloud** (`S0`, `S1`–`S3`, `SR`) — how the system _thinks_: the ~12 concepts and invariants it is built on, the cross-cutting flows that wire subsystems together, and a reverse index from any file to its concept, blast radius, and co-edit set. **Read this first** — it makes the catalog legible.
-- **Catalog** (`00`–`13`) — how the system is _laid out_: exhaustive coverage of every one of the 1053 tracked files, named or grouped by exact chezmoi source path. Use it to drill from a concept to the precise file.
+- **Catalog** (`00`–`13`) — how the system is _laid out_: exhaustive coverage of every one of the 1148 tracked files, named or grouped by exact chezmoi source path. Use it to drill from a concept to the precise file.
 
 Together they let an agent understand the whole solution in one pass and then map straight down to any particle. They complement the prose in `docs/` and the rules in `AGENTS.md` / `CLAUDE.md`.
 
@@ -20,7 +20,7 @@ Each file is a standalone [Mermaid](https://mermaid.js.org/) diagram (`.mmd`), l
 ## Catalog layer (exhaustive per-file drill-down)
 
 1. [`00-overview.mmd`](00-overview.mmd) — master map (semantic + catalog) + file census; start here.
-2. [`01-chezmoi-pipeline.mmd`](01-chezmoi-pipeline.mmd) — `chezmoi apply` lifecycle; every `.chezmoiscripts/` hook (30) + data/external/ignore inputs.
+2. [`01-chezmoi-pipeline.mmd`](01-chezmoi-pipeline.mmd) — `chezmoi apply` lifecycle; every `.chezmoiscripts/` hook (31) + data/external/ignore inputs.
 3. [`02-package-management.mmd`](02-package-management.mmd) — the "add X" ladder and every `default-*` package list + sync hook (incl. runtimes, local AI, system hooks).
 4. [`03-agentic-os.mmd`](03-agentic-os.mmd) — governance + context + execution layers (SOP entrypoints, MCP/model registries, per-tool generation).
 5. [`03b-agent-skills-hooks.mmd`](03b-agent-skills-hooks.mmd) — every file under `exact_dot_agents/` (36 skills + 8 hooks + references).
