@@ -73,7 +73,7 @@ Follow the base-branch context gate in `shared_rules.md`. This is mandatory.
 ## Review Contract
 
 - Build a complete internal findings queue ordered by severity.
-- Before drafting, run the queue through the Deduplication + Truth Filter and Existing Pending Review Reconciliation in `pr_common.md`; only net-new, implementation-verified, non-duplicated findings remain, and any current-account pending review is merged into one final payload.
+- Before drafting, run the queue through the Deduplication + Truth Filter and Existing Pending Review Reconciliation in `pr_common.md`; only implementation-verified findings that are not covered, not duplicated, and not dropped by the Replacement/Migration Parity Gate remain, and any current-account pending review is merged into one final payload.
 - Draft highest-risk items first.
 
 ## Output Mode

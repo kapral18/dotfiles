@@ -1,6 +1,7 @@
 package forms
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -138,6 +139,23 @@ func TestHarnessChangeReclampsModelIndex(t *testing.T) {
 	pi := state.AvailableModels("pi")
 	if f.modelIdx["planner"] >= len(pi) {
 		t.Errorf("model index %d not clamped to pi list len %d", f.modelIdx["planner"], len(pi))
+	}
+}
+
+func TestPiModelsIncludeLitellmGatewayCatalogIds(t *testing.T) {
+	pi := state.AvailableModels("pi")
+	for _, id := range []string{
+		"llm-gateway/claude-opus-4-7",
+		"llm-gateway/claude-opus-4-8",
+		"llm-gateway/gpt-5.5",
+		"llm-gateway/gemini-3.5-flash",
+		"llm-gateway/gemini-3.1-pro-preview",
+		"llm-gateway/gemini-3.1-pro-preview-customtools",
+		"llm-gateway/Kimi-K2.6",
+	} {
+		if !slices.Contains(pi, id) {
+			t.Fatalf("pi models missing LiteLLM gateway catalog id %q", id)
+		}
 	}
 }
 

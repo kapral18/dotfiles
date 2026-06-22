@@ -37,7 +37,7 @@
     "disableLLMCorrection": true
   },
   "model": {
-    "name": "gemini-pro-latest"
+    "name": "gemini-3.1-pro-preview"
   },
   "hooks": {
     "BeforeTool": [

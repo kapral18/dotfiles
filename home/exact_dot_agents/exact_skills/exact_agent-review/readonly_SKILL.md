@@ -49,9 +49,9 @@ The controller owns:
   - expected output shape
 - running the conditional blocking `pr-necessity-auditor` for other-authored or unknown PRs before implementation review
 - launching the two reviewer workers after any required PR necessity greenlight
-- running conditional `live-ui-review` verification after reviewer workers finish
-- running the findings audit phase after live UI returns evidence, screenshot handoff, non-applicability, or a target/branch/runtime/data blocker; delegate to `findings-auditor` only when proportional
-- aggregating worker outputs, `pr-necessity-auditor` status, reviewer findings, live UI status/evidence/artifacts, and audit output
+- running conditional `live-ui-review` verification after reviewer workers finish when changed paths or kept candidate findings touch UI/runtime behavior and runtime evidence is applicable
+- running the findings audit phase after live UI returns evidence/non-applicability/blocker or is explicitly skipped; delegate to `findings-auditor` only when a step 5 delegation condition is true
+- aggregating worker outputs, `pr-necessity-auditor` status, reviewer findings, live UI status/evidence/artifacts/skip reason, and audit output
 - deciding which worker-reported `verification_needed` items deserve serial controller verification
 - judging kept/dropped findings after aggregation
 - reconciling PR-mode draft payloads with existing current-account pending reviews, submitted review comments, and replies before preparing or posting final review feedback
@@ -72,6 +72,7 @@ After workers return, the controller may consult only the minimum relevant revie
 
 - deduplication
 - severity
+- Replacement/Migration Parity Gate classification from `judging_core.md`
 - side-effect gates
 - `~/.agents/skills/review/references/pr_common.md` for PR-mode reconciliation
 - `~/.agents/skills/review/references/shared_rules.md` for existing pending-review awareness
@@ -80,7 +81,7 @@ Do not rerun the coverage checklist, base-context investigation, or worker revie
 
 Reviewer workers own the full investigation methodology.
 
-- Shared runtime contract: `~/.agents/skills/agent-review/references/runtime-contracts.md`.
+- Role-specific runtime contracts live under `~/.agents/skills/agent-review/references/`.
 - Load inside each worker context:
   - `~/.agents/skills/review/SKILL.md`
   - `~/.agents/skills/review/references/judging_core.md`
@@ -102,8 +103,8 @@ The phase order is strict:
 1. route and scope
 2. blocking PR necessity gate, only for other-authored or unknown-author PRs
 3. two concurrency-safe reviewer workers in parallel
-4. live UI verification when applicable
-5. findings audit, inline or delegated by proportional-depth rules
+4. live UI verification when changed paths or a kept candidate touch UI/runtime behavior
+5. findings audit, inline or delegated by the step 5 delegation conditions
 6. controller aggregation, judgment, PR-mode pending-review reconciliation, and action
 
 Do not start a later phase until the current phase returns. In blocking phases, do not poll background workers with long waits just to check status; wait for completion notifications or use the harness's synchronous/blocking mechanism. The same rule applies after `write_agent` follow-ups for addenda or reconciliation checks: send the follow-up, state that the phase is waiting, and end the turn unless the worker has already completed. The controller may read completed phase outputs, but it must not perform later-phase analysis while the current phase is still running.
@@ -136,7 +137,7 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
    - Skip it for local changes and self-authored PRs.
    - This worker is read-only and evidence-only.
    - Give it the scope packet plus the PR URL/number, base/head refs, changed paths, directly referenced issues/PRs, and any already-known user constraints.
-   - It must follow the `PR necessity auditor` section in `runtime-contracts.md`.
+   - It must follow `~/.agents/skills/agent-review/references/pr-necessity-auditor.md`.
    - It returns one of:
      - `Not applicable`
      - greenlight evidence that the PR is sensible enough to review further
@@ -176,7 +177,11 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
    - Each candidate finding must include a reachability statement for the claimed path. If the claimed UI/API/state path may be unreachable, the worker must verify reachability before assigning severity or mark it as a hypothesis for the controller to verify/drop.
 
 4. **Run conditional live UI verification.**
-   - After both reviewers finish, run `live-ui-review`.
+   - After both reviewers finish, first apply a read-only controller parity filter to replacement/test-migration candidates:
+     - apply the Replacement/Migration Parity Gate from `judging_core.md` to replacement/test-migration candidates
+     - drop candidates classified as `preserved_limitation` or `prose_drift`
+     - do not treat test-only UI code as live-UI applicability by itself
+   - Run `live-ui-review` when changed paths or any kept candidate touch UI/runtime behavior and runtime evidence is applicable. For replacement/test-migration candidates, only `parity_gap`, `new_regression`, and `scope_expansion` can be kept candidates for this trigger.
    - `live-ui-review` is the only worker lane that may need tool-level non-read-only mode.
    - Use non-read-only mode only to run Playwriter/browser commands and explicit local/dev runtime data setup against verified targets.
    - Mode boundary: default `live-ui-review` is verification-only.
@@ -201,18 +206,18 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
    - A read-only/Ask-mode Playwriter block is a valid blocker to surface.
 
 5. **Run findings audit on candidate findings.**
-   - Run this phase only after the PR necessity gate, both reviewer outputs, and the live UI result are available.
-   - Always audit reviewer findings, worker-reported `verification_needed`, live UI evidence/artifacts/blockers, and any PR necessity draft concerns that survived the greenlight gate.
+   - Run this phase only after the PR necessity gate, both reviewer outputs, and the live UI result or explicit live-UI skip reason are available.
+   - Always audit kept reviewer findings, worker-reported `verification_needed`, live UI evidence/artifacts/blockers or skip reason, and any PR necessity draft concerns kept after the greenlight gate.
    - Inline the audit in the controller when the remaining set is trivial:
      - no candidate findings, or
-     - one straightforward evidence-backed finding with no model disagreement, no live UI blocker, no surviving PR-necessity concern, and no fix diff to audit.
+     - one straightforward evidence-backed finding with no model disagreement, no live UI blocker, no PR-necessity concern kept after greenlight, and no fix diff to audit.
    - Delegate to `findings-auditor` when the remaining set is non-trivial:
      - two or more candidate findings
      - any HIGH/CRITICAL candidate
      - model disagreement or likely duplication
-     - any worker-reported `verification_needed` that materially affects actionability
-     - any surviving PR necessity concern
-     - live UI comparison/blocker evidence or screenshot handoff that materially affects judgment
+     - any worker-reported `verification_needed` required to decide whether to keep or drop a candidate
+     - any PR necessity concern kept after greenlight
+     - live UI comparison/blocker evidence or screenshot handoff needed to decide whether to keep or drop a candidate
      - any named fix diff, staged set, or applied-fix diff
      - any proposed fix that may be overengineered or cross-cutting
    - Audit for:
@@ -228,18 +233,19 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
 6. **Aggregate.** Combine `pr-necessity-auditor` greenlight/skip status, GPT reviewer output, Opus reviewer output, reviewer `verification_needed`, live UI evidence/status/artifacts, and the findings audit result.
 7. **Judge in the controller.**
    - Apply mode-correct reconciliation:
-     - all modes: collapse duplicate worker findings, apply the severity model, and keep only implementation-verified, net-new findings
+     - all modes: collapse duplicate worker findings, apply the severity model, and keep only findings that are implementation-verified, not covered by existing evidence, and not dropped by the parity/deduplication filters
      - PR modes: apply `pr_common.md` Deduplication + Truth Filter, Existing Pending Review Reconciliation, CI Coverage Gate, and PR Necessity + Correctly-Open Audit classifications
      - local-changes mode: do not apply PR-thread deduplication or PR CI coverage exemptions; judge against the staged/unstaged/range scope in the packet
-   - For PR modes, read any current-account pending review and already-submitted current-account review comments/replies before drafting payloads. Merge kept pending findings with net-new findings into one final draft; drop stale pending findings with evidence; block rather than producing competing or contradictory payloads.
+   - For PR modes, read any current-account pending review and already-submitted current-account review comments/replies before drafting payloads. Merge kept pending findings with kept new findings into one final draft; drop stale pending findings with evidence; block rather than producing competing or contradictory payloads.
    - For kept PR-mode UI findings, verify screenshot paths when possible and surface them only in final `UI evidence attachments:`. Never upload images, put local paths in GitHub review bodies, or create extra comments just to carry image paths.
    - Drop:
      - unsupported claims
      - unreachable-path findings
      - PR-mode findings covered by verified PR CI or existing PR artifacts
+     - candidates classified as `preserved_limitation` or `prose_drift` by the Replacement/Migration Parity Gate
      - findings that only a worker asserted without evidence
      - PR necessity claims that rely only on ambient precedent without proving the current PR's actual diff and directly referenced artifacts
-   - For any surviving `verification_needed`, either:
+   - For any kept `verification_needed`, either:
      - run the serial non-mutating/heavy check in the controller before acting when it is required to keep/drop the finding, or
      - carry it forward as explicit remaining uncertainty/blocker when the check is unsafe, out of scope, or not needed for the final judgment.
 8. **Act only after judgment.** Branch strictly on the mode, explicit fix intent, and `authorship` recorded in step 1; never infer self-review from the fact that the change is checked out locally.
@@ -271,13 +277,13 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
 
 ## Live UI review
 
-`live-ui-review` is part of the default flow after the blocking PR necessity gate and reviewer fan-out phases complete.
+`live-ui-review` is part of the default flow after the blocking PR necessity gate and reviewer fan-out phases complete when changed paths or kept candidate findings touch UI/runtime behavior and runtime evidence is applicable. Replacement/test-migration candidates first pass through the Replacement/Migration Parity Gate; `preserved_limitation` and `prose_drift` candidates are dropped before live-UI applicability is decided.
 
 - It verifies UI/runtime-relevant findings against a selected target packet.
 - It returns evidence, optional screenshot handoff, or a blocker.
 - Default mode: verification only; no repo edits, posts, resolves, commits, pushes, or decisions.
 - It may create focused isolated data in the configured local/dev runtime when required to verify an applicable UI finding. It must clean up that data when safe or report leftovers exactly.
-- Capture focused screenshots as Playwriter artifacts under `/tmp` only when visual proof materially improves a finding or blocker. Return paths, descriptions, target URL/branch, and suggested comment placement for manual user attachment.
+- Capture focused screenshots as Playwriter artifacts under `/tmp` only when visual proof is needed to understand a kept finding or blocker. Return paths, descriptions, target URL/branch, and suggested comment placement for manual user attachment.
 - Fix mode: separate Playwriter task after controller judgment.
 - Fix mode requires `authorship: self` or explicit user takeover.
 - Fix mode prompt must state allowed changes and verification commands.
@@ -314,7 +320,7 @@ Return:
 
 - `Base context:` line from the review methodology.
 - Worker selection summary for each delegated phase, including any fallback reason.
-- PR necessity audit summary, review greenlight, merge-readiness/status blockers or uncertainty, skip, or blocker status when applicable.
+- PR necessity audit summary: report greenlight, merge-readiness/status blockers or uncertainty, skipped-with-reason, or blocker status.
 - Investigation summary: what each reviewer, live UI reviewer, and findings audit found, including whether the findings audit was inline or delegated.
 - Serial verification: any `verification_needed` returned by reviewer lanes and whether the controller ran, skipped, or blocked on it.
 - Controller judgment: findings kept/dropped and why.

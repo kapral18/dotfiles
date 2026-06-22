@@ -124,7 +124,7 @@ When the user asks whether something is "correctly set up", "working", "being us
 **Canonical examples:**
 
 - Bad:
-  - User asks: `is gemini-pro-latest correctly set up for high reasoning`
+  - User asks: `is gemini-3.1-pro-preview correctly set up for high reasoning`
   - Agent finds a missing `reasoning: true` flag in config and stops there.
 - Good:
   - Agent verifies source config, applied config, runtime consumer, and then runs the smallest safe live probe that still matters for the question.

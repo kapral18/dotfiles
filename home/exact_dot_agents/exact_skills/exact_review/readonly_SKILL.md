@@ -67,11 +67,11 @@ When a PR is involved:
 When there is no PR (local changes / branch-delta / commit-range review):
 
 - Identify the current user: `gh api user --jq '.login'` (fall back to `git config user.email` if `gh` is unavailable).
-- Check the branch's tracked remote:
-  - `git rev-parse --abbrev-ref --symbolic-full-name @{u}`
-  - `git remote -v` for that remote's URL/owner
+- Check the branch's tracked remote with bounded read-only git probes in large repositories:
+  - `GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false rev-parse --abbrev-ref --symbolic-full-name @{u}`
+  - `GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false remote -v` for that remote's URL/owner
 - A branch tracking another person's fork is `other` (e.g. `someoneelse/<branch>`).
-- Check authorship of the commits under review: `git log --format='%an <%ae>' <base>..HEAD`. Commits authored by someone other than the current user make it `other`.
+- Check authorship of the commits under review: `GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false log --format='%an <%ae>' <base>..HEAD`. Commits authored by someone other than the current user make it `other`.
 - Only uncommitted/staged working-tree changes, or commits/branch owned by the current user, resolve to `self`. If it cannot be verified, it is `unknown`.
 
 This affects mode behavior:

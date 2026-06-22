@@ -79,8 +79,11 @@ var cursorModels = []string{
 var piModels = []string{
 	// litellm-gateway (authoritative, deployed via chezmoi):
 	"llm-gateway/claude-opus-4-7",
+	"llm-gateway/claude-opus-4-8",
 	"llm-gateway/gpt-5.5",
-	"llm-gateway/gemini-pro-latest",
+	"llm-gateway/gemini-3.5-flash",
+	"llm-gateway/gemini-3.1-pro-preview",
+	"llm-gateway/gemini-3.1-pro-preview-customtools",
 	"llm-gateway/Kimi-K2.6",
 	// openrouter (same families, routed via openrouter for fallback / cost):
 	"openrouter/anthropic/claude-opus-4.7-thinking",

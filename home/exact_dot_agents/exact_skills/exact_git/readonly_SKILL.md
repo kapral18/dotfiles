@@ -29,6 +29,14 @@ First actions:
 2. Use the actual repo's history/configuration as the source of truth for workflow conventions.
 3. Before any commit/push, restate the exact command and get approval.
 
+Large-repo probe safety:
+
+- For initial status/diff/routing probes in large repositories, prefer bounded read-only commands:
+  - `GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false status --short --branch`
+  - `GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false diff --name-only`
+- If a plain `git status`, `git diff`, or branch/upstream probe produces no output after one short wait, stop that command and rerun the bounded form above. Do not keep waiting on the same git process.
+- Keep the first probe narrow: status, branch, upstream, changed paths, and the smallest commit range needed for the task.
+
 Safety protocol:
 
 - never change git config unless explicitly requested

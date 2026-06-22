@@ -1006,18 +1006,26 @@ class TestRalph(unittest.TestCase):
         out = ralph.apply_role_overrides(
             cfg,
             {
-                "planner_model": "gemini-pro-latest",
+                "planner_model": "llm-gateway/gemini-3.1-pro-preview",
                 "planner_harness": "pi",
                 "executor_model": None,
                 "executor_harness": None,
             },
         )
-        assert out["roles"]["planner"]["model"] == "gemini-pro-latest"
+        assert out["roles"]["planner"]["model"] == "llm-gateway/gemini-3.1-pro-preview"
         assert out["roles"]["planner"]["harness"] == "pi"
         assert "family" not in out["roles"]["planner"], "model override must clear stale family"
         # Untouched roles retain their values.
         assert out["roles"]["executor"]["model"] == "composer-2"
         assert out["roles"]["reviewer"]["family"] == "claude"
+
+    def test_pi_models_include_litellm_gateway_catalog_ids(self):
+        sys.path.insert(0, str(SCRIPTS))
+        import ai_models
+        import ralph
+
+        for model in ai_models.load_litellm(REPO / "home/.chezmoidata/ai_models.yaml"):
+            assert model["id"] in ralph.PI_MODELS
 
     def test_apply_role_overrides_args_shlex_splits_and_clears(self):
         """`--<role>-args` must shlex-split the raw string into the

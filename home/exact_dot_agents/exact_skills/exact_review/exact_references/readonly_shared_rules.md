@@ -9,6 +9,7 @@ It covers:
 - Truth Validation
 - State-Machine Gate
 - Deletion-Safety
+- Replacement/Migration Parity
 - Historical-Rationale
 - Coverage Checklist
 - Severity
@@ -21,6 +22,9 @@ This file carries only the PR/SCSI/GitHub-delivery rules layered on top of that 
 ## Read-Only Probes
 
 - Start read-only investigation immediately. Do not ask for confirmation before read-only `git`/`gh` checks.
+- In large repositories, make first-pass git probes bounded: use `GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false` for status, diff names, upstream, and log probes. If a plain git probe produces no output after one short wait, stop it and rerun the bounded form.
+- Keep searches narrow by default: include path scopes, file globs, or exact symbols. Do not run broad repo-wide searches or dump full command output when a file list, count, or targeted lines answer the question.
+- When command output is saved/truncated, recover only the exact lines needed for the current decision unless the decision depends on every item.
 
 ## Hard Constraints
 

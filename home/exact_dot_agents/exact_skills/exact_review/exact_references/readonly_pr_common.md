@@ -225,6 +225,7 @@ This audit does not approve, reject, close, or post. It produces evidence for dr
     - verify against the current implementation/diff
     - do not draft a new comment
   - `new`: not already covered and verified against the current implementation/diff; eligible for draft feedback.
+    - For replacements and test migrations, apply the Replacement/Migration Parity Gate in `judging_core.md` first. Only `parity_gap`, `new_regression`, and `scope_expansion` can be `new`; `preserved_limitation` and `prose_drift` cannot be `new`.
   - `incorrect`: prior clarification/comment conflicts with the current implementation/diff; add one correction with evidence (do not echo the incorrect claim).
 
 ## Existing Pending Review Reconciliation (Blocking Before Final Draft/Post)
@@ -245,7 +246,7 @@ Run this after the candidate queue is evidence-verified and before preparing any
    - new evidence contradicts existing pending content -> resolve from current head or stop as `blocked`
 3. If a pending review already exists:
    - do not create another pending review
-   - prepare a consolidated replacement payload that contains the kept existing findings plus net-new findings exactly once
+   - prepare a consolidated replacement payload that contains kept existing findings plus kept new findings exactly once
    - if posting is requested, the GitHub side-effect layer must delete/recreate the pending review only after explicit approval
 4. Include this ledger in output:
    - `Pending review reconciliation: none found`

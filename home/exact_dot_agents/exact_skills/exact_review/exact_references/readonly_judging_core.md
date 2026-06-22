@@ -96,12 +96,37 @@ Before calling a deletion safe, verify each item and report a one-line deletion 
 - **Behavior parity:**
   - every deleted behavior is intentionally dropped (user-approved per SOP `2.0`) or demonstrably replaced
   - name where each replaced behavior now lives
-- **Tests:** deleted tests were migrated, or removed only because the code they covered is gone; coverage for surviving behavior still exists.
+- **Tests:** deleted tests were migrated, or removed only because the code they covered is gone; coverage still exists for behavior that remains after the diff.
 - **Base comparison:**
   - for branch-heavy/stateful deletions, compare against base behavior buckets
   - see State-Machine Verification Gate
   - classify each difference as intended or unexpected
 - **Disclosure:** meaningful deleted infrastructure is reflected in the PR description (Summary/Fix), not silently dropped.
+
+## Replacement/Migration Parity Gate (Run On Replacements And Test Migrations)
+
+Trigger: the diff deletes or stops using an implementation/test/helper and adds a replacement implementation/test/helper for the same behavior.
+
+Definitions:
+
+- **Old implementation:** the base-branch code/test/helper that the diff deletes, unregisters, or stops calling.
+- **Replacement:** the head-branch code/test/helper that now covers the same behavior.
+- **Candidate:** a possible review finding before this gate classifies it.
+
+Before a candidate can become review feedback:
+
+1. **Map old to replacement:** identify the old and replacement entry points, helper side effects, assertions/checkpoints, setup/cleanup, permissions, wiring, and runtime assumptions.
+2. **Assign exactly one classification:**
+   - `parity_gap`: old behavior or coverage existed in the old implementation and is absent or weaker in the replacement.
+   - `new_regression`: the replacement introduces a failure mode that the old implementation did not have.
+   - `preserved_limitation`: the old implementation had the same limitation and the replacement does not make it worse.
+   - `scope_expansion`: the PR body, linked issue, user request, or reviewer request explicitly requires stronger behavior or coverage than the old implementation provided.
+   - `prose_drift`: only prose, counts, or docs disagree with the migrated behavior; implementation behavior and coverage remain equivalent.
+3. **Keep/drop rule:**
+   - Keep `parity_gap`, `new_regression`, and `scope_expansion` as review findings when evidence supports them.
+   - Drop `preserved_limitation` from review feedback. Do not ask the author to fix it in this PR.
+   - Drop `prose_drift` from code-review feedback. If it matters to reviewers, handle it as PR-level prose feedback, not as an implementation finding.
+4. **Verification rule:** do not run live UI, heavy runtime probes, or delegated findings audit for `preserved_limitation` or `prose_drift`. Run those checks only for a kept candidate when source-level evidence cannot decide whether to keep or drop it.
 
 ## Historical-Rationale Gate (Deleting/Replacing Long-Lived Infra)
 

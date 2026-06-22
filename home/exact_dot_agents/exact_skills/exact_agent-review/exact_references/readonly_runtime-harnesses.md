@@ -3,7 +3,7 @@
 This file is not a subagent registry.
 
 - The active harness owns discovery and invocation for its configured agents, tasks, or native isolation tools.
-- `/agent-review` uses those native mechanisms plus `runtime-contracts.md`.
+- `/agent-review` uses those native mechanisms plus the role-specific contracts in `references/`.
 
 Read this file only for capability caveats that affect orchestration.
 
@@ -28,4 +28,4 @@ Gemini subagents cannot call other subagents, so run `/agent-review` in the main
 
 ## Amp
 
-Amp has no verified custom profile directory in the local interface. Use generic `Task` prompts with `runtime-contracts.md` instead of inventing profile files.
+Amp has no verified custom profile directory in the local interface. Use generic `Task` prompts with the role-specific contract under `references/` instead of inventing profile files.
