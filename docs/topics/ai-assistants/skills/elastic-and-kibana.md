@@ -7,6 +7,8 @@ title: Elastic and Kibana
 
 These skills are gated to Elastic/Kibana contexts and layer domain policy over generic workflows.
 
+The boundary is intentional: generic skills (`review`, `agent-review`, `github`, `compose-*`) keep portable mechanics and gates; this page's skills own Elastic/Kibana labels, ownership, Buildkite routing, bot allowlists, PR templates, release-note rules, commit attribution, and Kibana live-UI target/data setup.
+
 ## `elastic-domain`
 
 | Field    | Value                                                                                          |

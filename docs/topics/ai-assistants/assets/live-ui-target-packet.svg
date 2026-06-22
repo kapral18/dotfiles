@@ -14,7 +14,7 @@
   <text class="text" x="105" y="195">Controller</text><text class="small" x="105" y="225">after reviewer fan-out</text>
   <path class="line" d="M280 210 H360"/>
   <rect class="packet" x="360" y="130" width="270" height="160"/>
-  <text class="text" x="395" y="178">Target packet</text><text class="small" x="395" y="208">explicit repo/user packet,</text><text class="small" x="395" y="234">or Kibana default from</text><text class="small" x="395" y="260">elastic-domain</text>
+  <text class="text" x="395" y="178">Target packet</text><text class="small" x="395" y="208">explicit repo/user packet,</text><text class="small" x="395" y="234">or verified overlay</text><text class="small" x="395" y="260">packet</text>
   <path class="line" d="M630 210 H710"/>
   <rect class="box" x="710" y="130" width="270" height="160"/>
   <text class="text" x="745" y="178">live-ui-review</text><text class="small" x="745" y="208">Playwriter readiness,</text><text class="small" x="745" y="234">comparison, data setup,</text><text class="small" x="745" y="260">screenshots under /tmp</text>
@@ -27,6 +27,6 @@
   <text class="text" x="1092" y="390">Blocked</text><text class="small" x="1092" y="416">target, branch, runtime,</text><text class="small" x="1092" y="442">or data setup</text>
   <path class="line" d="M845 290 V380 H1060"/>
   <path class="warn" d="M495 290 V410 H1060"/>
-  <text class="small" x="360" y="360">If no explicit packet and the default cannot load, block.</text>
+  <text class="small" x="360" y="360">If no explicit or verified overlay packet can load, block.</text>
   <text class="small" x="360" y="388">Do not invent localhost targets.</text>
 </svg>

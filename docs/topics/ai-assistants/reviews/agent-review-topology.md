@@ -69,7 +69,7 @@ Live UI can return:
 | `Not applicable`    | target does not apply to the introduced surface                                   |
 | blocker             | target, branch, runtime, or data setup is missing                                 |
 
-For `elastic/kibana`, `elastic-domain` supplies Kibana targets, mapped Elasticsearch endpoints, Dev Tools Console fallback, and runtime-blocker rules.
+For verified `elastic/kibana` targets, `elastic-domain` supplies Kibana targets, mapped Elasticsearch endpoints, Dev Tools Console fallback, and runtime-blocker rules. Generic review contracts do not inline those targets.
 
 For UI-facing PR findings with screenshot evidence, the controller keeps image paths out of GitHub review bodies and reports a separate `UI evidence attachments:` handoff with local paths, descriptions, target branch/URL, and suggested comment placement.
 
@@ -103,10 +103,10 @@ When a phase needs a follow-up turn in an existing worker, the controller sends 
 
 Live UI target selection:
 
-| Case                                    | Behavior                                          |
-| --------------------------------------- | ------------------------------------------------- |
-| explicit user/repo target packet exists | use it                                            |
-| no explicit target and Kibana applies   | use `elastic-domain/references/kibana-live-ui.md` |
-| no target packet can be loaded          | block instead of inventing targets                |
+| Case                                           | Behavior                                          |
+| ---------------------------------------------- | ------------------------------------------------- |
+| explicit user/repo target packet exists        | use it                                            |
+| no explicit target and verified Kibana applies | use `elastic-domain/references/kibana-live-ui.md` |
+| no target packet can be loaded                 | block instead of inventing targets                |
 
-![Live UI target-packet handoff: controller selects explicit or Kibana default packet, worker verifies, and returns evidence, not applicable, or blocker](../assets/live-ui-target-packet.svg)
+![Live UI target-packet handoff: controller selects an explicit or verified overlay packet, worker verifies, and returns evidence, not applicable, or blocker](../assets/live-ui-target-packet.svg)

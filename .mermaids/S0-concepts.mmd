@@ -43,8 +43,8 @@ graph TB
 
     %% ---- C7 Intent-routed governance ---------------------------------------
     C7{{"C7 · GOVERNED AGENTS<br/>LLMs are deterministic systems, not chatbots"}}:::concept
-    C7 --> I7["INVARIANT: agents load SOP entrypoints + intent-matched skills,<br/>must verify (no guessing), and pass fail-closed gates before<br/>human-visible side effects."]:::inv
-    I7 --> R7["realized by: ~/AGENTS.md/CLAUDE.md/GEMINI.md · skills 'Use when'<br/>hooks.json gates (gemini-*-gate failClosed)<br/>SOP External Truth (C8) · session_context memory"]:::realize
+    C7 --> I7["INVARIANT: agents load SOP entrypoints + intent-matched skills,<br/>keep generic workflows domain-neutral, verify before overlays,<br/>and pass fail-closed gates before human-visible side effects."]:::inv
+    I7 --> R7["realized by: ~/AGENTS.md/CLAUDE.md/GEMINI.md · skills 'Use when'<br/>domain overlays such as elastic-domain · hooks.json gates<br/>SOP External Truth (C8) · session_context memory"]:::realize
 
     %% ---- C8 Evidence anchoring (SOP discipline) ----------------------------
     C8{{"C8 · EVIDENCE ANCHORING<br/>claims must be anchored or demoted"}}:::concept

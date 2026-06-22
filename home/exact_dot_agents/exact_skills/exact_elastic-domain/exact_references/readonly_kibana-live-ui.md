@@ -1,6 +1,6 @@
 # Kibana Live UI Overlay
 
-Default Kibana live UI target packet for `/agent-review` and `live-ui-review`. Use it as the fallback packet whenever no explicit parent/user/repo target packet was supplied, preserving the pre-split embedded Kibana default.
+Kibana live UI target packet for verified `elastic/kibana` `/agent-review` and `live-ui-review` flows when no explicit parent/user/repo target packet was supplied.
 
 ## Runtime targets
 
@@ -99,7 +99,7 @@ Reject and rerun any `live-ui-review` result for this overlay that:
 - uses WebFetch or shell/HTTP probes as readiness evidence
 - skips Playwriter target checks
 - claims targets are unavailable without showing the exact target/preflight evidence above
-- omits the selected `target_packet` / overlay source only when the result cannot otherwise be safely interpreted as this default Kibana target packet from exact URLs/readiness/evidence
+- omits the selected `target_packet` / overlay source
 - uses browser/route/network mocks for a data-dependent UI finding without first attempting or explicitly ruling out faithful local/dev data setup through existing data, local Kibana/Elasticsearch APIs, or Kibana Dev Tools Console
 - uses browser/route/network mocks when faithful verification is blocked by a required ES/Kibana runtime environment change; that must be returned as `Blocked` with setup instructions instead
 - lists screenshot artifacts without local paths, descriptions, target URL/branch, or linked candidate/finding placement

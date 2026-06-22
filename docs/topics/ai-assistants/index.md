@@ -68,6 +68,7 @@ Skills live under `~/.agents/skills/`; the chezmoi source is [`home/exact_dot_ag
 ## Safety boundaries
 
 - Keep assistant instructions declarative and repo-local.
+- Keep generic AI workflows, setup, skills, hooks, and subagent profiles domain-neutral. Repo/org/product specifics live in verified domain overlays or dedicated domain skills.
 - Keep secrets in `pass` or local private config, not tracked markdown.
 - Validate generated automation commands before state-changing actions.
 - Treat RTK-compacted command output as a recoverable index, not the full output. When output shows `[full output: …]` or `… +N more`, fetch the full output before relying on it. See [RTK token optimization](rtk.md).

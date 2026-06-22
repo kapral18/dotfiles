@@ -40,5 +40,6 @@ The `description` frontmatter is the primary routing signal. Keep it specific, i
 
 - Composition skills sanitize public GitHub text before drafting or posting.
 - `compose-pr`, `compose-issue`, and `github` reuse review's GitHub context intake when output depends on existing PR/issue/comment context.
-- Domain-specific PR/issue rules live in overlay skills instead of generic compose/GitHub skills.
+- Generic skills own portable mechanics only. If a rule names an org, repo, product, team, label, bot login, CI instance, PR template, live-UI target, ownership policy, or release-note/backport rule, put it in a verified domain overlay or dedicated domain skill.
+- Generic skills may dispatch to a domain overlay after verifying the target; they must not inline Elastic/Kibana or other domain defaults.
 - GitHub issue worktrees prefer `,gh-worktree issue <owner/repo> <issue_number> --branch <branch-base-name>`.

@@ -174,9 +174,9 @@ In Drain Mode:
 Author-type classification (do first, per thread, verified — not guessed):
 
 - A domain overlay is a repo/org-specific skill selected from the verified target repo/org, not guessed from wording. It may supply repo-specific known-bot allowlists.
-- Before classification, verify and load any applicable domain overlay for the target repo. The overlay may supply a known-bot allowlist. Preserve the pre-overlay global fallback allowlist (`elasticmachine`, `kibanamachine`, `github-actions[bot]`) even when no overlay applies.
+- Before classification, verify and load any applicable domain overlay for the target repo. The overlay may supply a known-bot allowlist. Without a verified overlay, classify bots only from platform evidence such as GitHub `user.type == "Bot"` or a login ending in `[bot]`.
 - `gh api repos/OWNER/REPO/pulls/comments/COMMENT_ID --jq '{login:.user.login, type:.user.type, assoc:.author_association}'`
-- Bot = `user.type == "Bot"` OR login ends with `[bot]` OR login appears in the verified overlay's known-bot allowlist or the preserved global fallback allowlist.
+- Bot = `user.type == "Bot"` OR login ends with `[bot]` OR login appears in the verified overlay's known-bot allowlist.
 - Ambiguous/unknown author, or a thread with both human and bot participants -> treat as human.
 
 Per-thread branch:

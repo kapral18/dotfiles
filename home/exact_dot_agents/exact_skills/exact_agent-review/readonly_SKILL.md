@@ -194,7 +194,7 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
    - For post-fix UI verification, launch a separate fix-capable Playwriter task after judgment.
    - A domain overlay is a repo/org-specific skill selected from the verified target repo/org, not guessed from wording. For live UI, an overlay may provide a concrete target packet; the worker receives the packet, not an unresolved overlay concept.
    - Select a live UI target packet before launch:
-     - If no explicit user-provided or repo-documented local/dev target packet exists, load `~/.agents/skills/elastic-domain/SKILL.md` and include the Kibana live-UI target packet from `~/.agents/skills/elastic-domain/references/kibana-live-ui.md` as the default. This preserves the old embedded Kibana target/preflight block.
+     - If the target repo/object is verified as `elastic/kibana` and no explicit user-provided or repo-documented local/dev target packet exists, load `~/.agents/skills/elastic-domain/SKILL.md` and include the Kibana live-UI target packet from `~/.agents/skills/elastic-domain/references/kibana-live-ui.md`.
      - Otherwise use the explicit user-provided or repo-documented local/dev target packet.
    - Include the selected target/preflight packet in the worker prompt.
    - Do not rely on the worker to rediscover it.
@@ -290,8 +290,8 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
 
 Before launching `live-ui-review`, include a target/preflight packet in the worker prompt.
 
-- Default: load `~/.agents/skills/elastic-domain/SKILL.md` and paste the Kibana target/preflight packet from `~/.agents/skills/elastic-domain/references/kibana-live-ui.md`. This preserves the old embedded Kibana target/preflight block for direct/default live-UI flows.
-- Non-default targets: use only explicit user-provided or repo-documented local/dev targets. If neither the default nor an explicit packet can be loaded, return a target blocker instead of inventing hosts or ports.
+- Verified Kibana target: if the target repo/object is `elastic/kibana` and no explicit user-provided or repo-documented local/dev target packet exists, load `~/.agents/skills/elastic-domain/SKILL.md` and paste the Kibana target/preflight packet from `~/.agents/skills/elastic-domain/references/kibana-live-ui.md`.
+- Other targets: use only explicit user-provided or repo-documented local/dev targets. If neither a verified Kibana packet nor an explicit packet can be loaded, return a target blocker instead of inventing hosts or ports.
 - The packet must identify base/head targets, readiness checks, allowed local/dev data setup, screenshot handoff rules, and blocker criteria.
 
 Controller validation: reject and rerun any `live-ui-review` result that:
@@ -306,7 +306,7 @@ Controller validation: reject and rerun any `live-ui-review` result that:
 - uses browser/route/network mocks when faithful verification is blocked by a required runtime environment change; that must be returned as `Blocked` with setup instructions instead
 - lists screenshot artifacts without local paths, descriptions, target URL/branch, or linked candidate/finding placement
 - omits applicability, exact URLs checked, Playwriter preflight status, readiness result for each target, branch/runtime evidence, comparison evidence for each checked candidate, UI evidence artifact manifest or `none`, page cleanup/owned-page URLs, and blockers/uncertainty
-- omits the selected `target_packet` source, including overlay source when an overlay supplied the packet, only when the result cannot otherwise be safely interpreted as the default Kibana target packet from exact URLs/readiness/evidence
+- omits the selected `target_packet` source, including overlay source when an overlay supplied the packet
 
 Do not reject or rerun a result that reports a valid Playwriter harness blocker:
 

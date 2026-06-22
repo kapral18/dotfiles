@@ -17,9 +17,12 @@ flowchart TB
     SOP --> SKILL{"intent matches a skill<br/>'Use when' clause?"}:::gov
     SKILL -->|yes| LOAD["read skill SKILL.md → follow as binding procedure"]:::gov
     SKILL -->|no| WORK
-    LOAD --> RECALL["ai-kb skill (when relevant): ,ai-kb search<br/>recall durable capsules before work (C13)"]:::mem
+    LOAD --> DOMAIN{"verified repo/org/product<br/>domain overlay applies?"}:::gov
+    DOMAIN -->|yes| DLOAD["load overlay for domain additions only<br/>generic mechanics stay in primary skill"]:::gov
+    DOMAIN -->|no| RECALL
+    DLOAD --> RECALL
+    RECALL["ai-kb skill (when relevant): ,ai-kb search<br/>recall durable capsules before work (C13)"]:::mem
     RECALL --> WORK
-    LOAD --> WORK
     WORK["do work: investigate-first, external-truth,<br/>verify don't guess (C7)"]:::loop
 
     WORK --> CLAIM{"emit factual/runtime claim?"}:::loop

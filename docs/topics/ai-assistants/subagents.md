@@ -87,6 +87,7 @@ Workers never edit files, post comments, resolve threads, or decide final action
 
 - Profile bodies start with `prefix.txt`, then instruct the child to load the wrapped skill or runtime contract.
 - Cursor/Copilot `agent-review` profiles load only the `/agent-review` skill; reviewer/auditor/live profiles load the runtime contracts, and reviewer workers load shared `review` methodology inside child contexts.
+- Profiles stay generic. Domain-specific targets or rules are selected by the controller from a verified domain overlay and passed to workers as concrete packets.
 - Copilot internal worker profiles are hidden from `/agent` but remain model-invocable so the controller can launch named task agents.
 - Pi disables its built-in subagents because stock names overlap with custom roles. Pi also recursively exposes skills as subagents; that leakage is cosmetic and accepted because our agent names are distinct.
 

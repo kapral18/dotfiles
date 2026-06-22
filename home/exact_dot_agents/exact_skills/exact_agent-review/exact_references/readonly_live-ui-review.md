@@ -45,9 +45,9 @@ Do not return `Not applicable` just because the target runtime has no data. If t
 
 Use the parent-supplied runtime targets when present; do not invent them.
 
-- If no parent packet was supplied, load `~/.agents/skills/elastic-domain/references/kibana-live-ui.md` as the fallback target packet. This preserves the old embedded Kibana default for direct `live-ui-review` invocations.
-- For non-default targets, use only explicit user-provided or repo-documented local/dev targets.
-- If no fallback packet and no trustworthy target packet exists, return `Blocked` with the missing target evidence instead of probing arbitrary localhost ports.
+- If no parent packet was supplied and the target repo/object is verified as `elastic/kibana`, load `~/.agents/skills/elastic-domain/references/kibana-live-ui.md` as the fallback target packet.
+- For all other targets, use only explicit user-provided or repo-documented local/dev targets.
+- If no verified Kibana fallback packet and no trustworthy target packet exists, return `Blocked` with the missing target evidence instead of probing arbitrary localhost ports.
 - The target packet owns browser/runtime targets, backing/data endpoints, repo-specific local/dev data setup permissions, and blocker criteria.
 
 ### Preflight
@@ -139,7 +139,7 @@ Hard constraints for this evidence pass:
 Return exactly:
 
 - `applicability`: applicable / not applicable, with changed-path or finding evidence
-- `target_packet`: selected packet name/source, including overlay source when an overlay supplied the packet; if omitted by an older worker, the controller treats it as the default Kibana target packet for compatibility
+- `target_packet`: selected packet name/source, including overlay source when an overlay supplied the packet
 - `urls_checked`: the exact base and PR/head URLs from the selected packet, or an explicit blocker before navigation
 - `playwriter_preflight`: whether the Playwriter skill was loaded and `playwriter skill` was run; if not, say why
 - `target_readiness`: readiness result for each exact URL, from Playwriter evidence
