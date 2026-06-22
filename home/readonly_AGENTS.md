@@ -390,11 +390,19 @@ Durable, cross-session knowledge (verified gotchas, decisions, patterns, princip
 - Use async/await, not `.then()` chains.
 - Provide JSDoc/TSDoc for complex functions.
 - Run tests and linters when feasible; report results or state why skipped.
+- **Local style matching:** Make changes read like they belong in the file you are editing.
+  - Match surrounding structure, terminology, formatting, and level of detail.
+  - Prefer the smallest in-style edit over pasting a standalone rule, helper, or abstraction from another surface.
+  - Preserve the local contract strength: do not turn a required gate into a best practice, or a best practice into a hard gate, unless requested.
 - **Minimal edit scope:** When modifying existing code, change only what the request requires.
   - All existing behavior outside the explicit scope of the change MUST be preserved — do not rewrite surrounding code, remove unrelated behavior, or "clean up" lines that were not part of the request.
   - Dropping unrelated behavior, even if it looks like cleanup, requires explicit user approval.
   - Use targeted edits (small diffs/patches), not full-file rewrites, unless the user asks for a rewrite.
   - If a full rewrite is necessary, diff the result against the original and verify no unrelated behavior was dropped.
+- **Semantic dedupe:** Remove duplication only after proving it is not a point-of-use guard.
+  - Check whether each repeated check, instruction, config, or workflow step protects an independently reachable entry point.
+  - Keep the local guard unless every entry path necessarily passes through the shared rule or helper.
+  - If extracting, route every entry point through the shared helper/reference and verify each one.
 - **Simplicity discipline:** Minimum code that solves the stated problem.
   - No features beyond what was asked.
   - No abstractions for single-use code.

@@ -12,7 +12,7 @@ The SOP is the highest-leverage AI artifact in this setup. It decides how every 
 | [Truth and verification](truth-and-verification.md)                     | compatibility, external truth, runtime truth, completion, RTK recovery           |
 | [Execution workflow](execution-workflow.md)                             | reverse interview, persistent specs, verification loops, state-machine harnesses |
 | [Side-effect gates](side-effect-gates.md)                               | git push safety, ownership, publication, bot/human split                         |
-| [Code-quality and dotfiles policy](code-quality-and-dotfiles-policy.md) | minimal scope, chezmoi source-of-truth, docs hygiene, shell/helper rules         |
+| [Code-quality and dotfiles policy](code-quality-and-dotfiles-policy.md) | style matching, semantic dedupe, docs hygiene, shell/helper rules                |
 
 ## Source map
 
@@ -22,6 +22,7 @@ The SOP is the highest-leverage AI artifact in this setup. It decides how every 
 | Claude            | [`home/symlink_CLAUDE.md`](../../../../home/symlink_CLAUDE.md)                                                     | `~/CLAUDE.md`                        |
 | Gemini            | [`home/dot_gemini/symlink_GEMINI.md`](../../../../home/dot_gemini/symlink_GEMINI.md)                               | `~/.gemini/GEMINI.md`                |
 | Cursor            | [`home/dot_cursor/symlink_AGENTS.md`](../../../../home/dot_cursor/symlink_AGENTS.md)                               | `~/.cursor/AGENTS.md`                |
+| Codex             | [`home/dot_codex/symlink_AGENTS.md`](../../../../home/dot_codex/symlink_AGENTS.md)                                 | `~/.codex/AGENTS.md`                 |
 | OpenCode          | [`home/dot_config/opencode/symlink_AGENTS.md`](../../../../home/dot_config/opencode/symlink_AGENTS.md)             | `~/.config/opencode/AGENTS.md`       |
 | Copilot           | [`home/dot_copilot/symlink_copilot-instructions.md`](../../../../home/dot_copilot/symlink_copilot-instructions.md) | `~/.copilot/copilot-instructions.md` |
 

@@ -2,7 +2,7 @@
 
 A navigation cloud for this chezmoi dotfiles repo, in **two layers**:
 
-- **Semantic cloud** (`S0`, `S1`–`S3`, `SR`) — how the system _thinks_: the ~12 concepts and invariants it is built on, the cross-cutting flows that wire subsystems together, and a reverse index from any file to its concept, blast radius, and co-edit set. **Read this first** — it makes the catalog legible.
+- **Semantic cloud** (`S0`, `S1`–`S3`, `SR`) — how the system _thinks_: the 13 concepts and invariants it is built on, the cross-cutting flows that wire subsystems together, and a reverse index from any file to its concept, blast radius, and co-edit set. **Read this first** — it makes the catalog legible.
 - **Catalog** (`00`–`13`) — how the system is _laid out_: exhaustive coverage of every one of the 1152 tracked files, named or grouped by exact chezmoi source path. Use it to drill from a concept to the precise file.
 
 Together they let an agent understand the whole solution in one pass and then map straight down to any particle. They complement the prose in `docs/` and the rules in `AGENTS.md` / `CLAUDE.md`.
@@ -11,7 +11,7 @@ Each file is a standalone [Mermaid](https://mermaid.js.org/) diagram (`.mmd`), l
 
 ## Semantic layer (read first)
 
-- [`S0-concepts.mmd`](S0-concepts.mmd) — the 12 core concepts (C1–C13), each with its **invariant** (the rule that must hold) and the files that realize it. This is the heart of the cloud; everything else is an instance.
+- [`S0-concepts.mmd`](S0-concepts.mmd) — the 13 core concepts (C1–C13), each with its **invariant** (the rule that must hold) and the files that realize it. This is the heart of the cloud; everything else is an instance.
 - [`S1-flow-apply-reconcile.mmd`](S1-flow-apply-reconcile.mmd) — flow: source + data + `isWork` → template + hash-gated hooks → `$HOME` build → runtime consumers. The idempotent reconcile (C1–C6).
 - [`S2-flow-agent-runtime.mmd`](S2-flow-agent-runtime.mmd) — flow: one governed agent turn (session memory → SOP/skill load → verify loop → evidence ledger → human-visible gate), plus the Ralph diversity/resume sub-loop (C7, C8, C11–13).
 - [`S3-flow-pickers-handoff.mmd`](S3-flow-pickers-handoff.mmd) — flow: stale-while-revalidate UX and the file-based handoff bus that lets the gh / ralph / session / worktree pickers cooperate (C9, C10).

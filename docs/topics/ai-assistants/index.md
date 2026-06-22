@@ -16,15 +16,17 @@ At a high level, the AI layer is a set of governed routes, not a pile of prompts
 
 Entrypoints installed into `$HOME`:
 
-| Source                                                                                              | Target                         | Notes                    |
-| --------------------------------------------------------------------------------------------------- | ------------------------------ | ------------------------ |
-| [`home/readonly_AGENTS.md`](../../../home/readonly_AGENTS.md)                                       | `~/AGENTS.md`                  | Single SOP source        |
-| [`home/symlink_CLAUDE.md`](../../../home/symlink_CLAUDE.md)                                         | `~/CLAUDE.md`                  | Symlink to `~/AGENTS.md` |
-| [`home/dot_gemini/symlink_GEMINI.md`](../../../home/dot_gemini/symlink_GEMINI.md)                   | `~/.gemini/GEMINI.md`          | Symlink to `~/AGENTS.md` |
-| [`home/dot_cursor/symlink_AGENTS.md`](../../../home/dot_cursor/symlink_AGENTS.md)                   | `~/.cursor/AGENTS.md`          | Symlink to `~/AGENTS.md` |
-| [`home/dot_config/opencode/symlink_AGENTS.md`](../../../home/dot_config/opencode/symlink_AGENTS.md) | `~/.config/opencode/AGENTS.md` | Symlink to `~/AGENTS.md` |
+| Source                                                                                                          | Target                               | Notes                    |
+| --------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ------------------------ |
+| [`home/readonly_AGENTS.md`](../../../home/readonly_AGENTS.md)                                                   | `~/AGENTS.md`                        | Single SOP source        |
+| [`home/symlink_CLAUDE.md`](../../../home/symlink_CLAUDE.md)                                                     | `~/CLAUDE.md`                        | Symlink to `~/AGENTS.md` |
+| [`home/dot_gemini/symlink_GEMINI.md`](../../../home/dot_gemini/symlink_GEMINI.md)                               | `~/.gemini/GEMINI.md`                | Symlink to `~/AGENTS.md` |
+| [`home/dot_cursor/symlink_AGENTS.md`](../../../home/dot_cursor/symlink_AGENTS.md)                               | `~/.cursor/AGENTS.md`                | Symlink to `~/AGENTS.md` |
+| [`home/dot_codex/symlink_AGENTS.md`](../../../home/dot_codex/symlink_AGENTS.md)                                 | `~/.codex/AGENTS.md`                 | Symlink to `~/AGENTS.md` |
+| [`home/dot_config/opencode/symlink_AGENTS.md`](../../../home/dot_config/opencode/symlink_AGENTS.md)             | `~/.config/opencode/AGENTS.md`       | Symlink to `~/AGENTS.md` |
+| [`home/dot_copilot/symlink_copilot-instructions.md`](../../../home/dot_copilot/symlink_copilot-instructions.md) | `~/.copilot/copilot-instructions.md` | Symlink to `~/AGENTS.md` |
 
-There is one real SOP file. Claude, Gemini, Cursor, and OpenCode read symlinks that resolve to it, so the always-on instruction layer stays identical across harnesses.
+There is one real SOP file. The harness entrypoints above are symlinked to it, so the always-on instruction layer stays identical across harnesses.
 
 The SOP is important enough to have its own section: [System Prompt (SOP)](system-prompt/index.md).
 

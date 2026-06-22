@@ -12,13 +12,15 @@ Ralph is no longer the only consumer. Interactive harnesses reach the same durab
 | Source  | [`home/exact_dot_agents/exact_skills/exact_ai-kb/readonly_SKILL.md`](../../../../home/exact_dot_agents/exact_skills/exact_ai-kb/readonly_SKILL.md) |
 | Target  | `~/.agents/skills/ai-kb/SKILL.md`                                                                                                                  |
 
-| Harness    | Skill discovery                                   | Entrypoint pointer                                                                                  |
-| ---------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| cursor-cli | `~/.agents/skills/`                               | [`~/AGENTS.md`](../../../../home/readonly_AGENTS.md) "Durable Agent Memory"                         |
-| pi         | `~/.agents/skills/` (via the `pi-skills` package) | covered by the skill (auto-loaded)                                                                  |
-| Claude     | `~/.claude/skills` -> `~/.agents/skills/`         | [`~/CLAUDE.md`](../../../../home/readonly_AGENTS.md) section 4.3 (symlink to `~/AGENTS.md`)         |
-| Gemini     | `~/.agents/skills/`                               | [`~/.gemini/GEMINI.md`](../../../../home/readonly_AGENTS.md) section 4.3 (symlink to `~/AGENTS.md`) |
-| OpenCode   | `~/.agents/skills/`                               | `~/.config/opencode/AGENTS.md` -> `~/AGENTS.md` (same pointer as cursor-cli)                        |
+| Harness    | Skill discovery                                    | Entrypoint pointer                                                                                  |
+| ---------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| cursor-cli | `~/.agents/skills/`                                | [`~/AGENTS.md`](../../../../home/readonly_AGENTS.md) "Durable Agent Memory"                         |
+| pi         | `~/.agents/skills/` (via the `pi-skills` package)  | covered by the skill (auto-loaded)                                                                  |
+| Claude     | `~/.claude/skills` -> `~/.agents/skills/`          | [`~/CLAUDE.md`](../../../../home/readonly_AGENTS.md) section 4.3 (symlink to `~/AGENTS.md`)         |
+| Gemini     | `~/.agents/skills/`                                | [`~/.gemini/GEMINI.md`](../../../../home/readonly_AGENTS.md) section 4.3 (symlink to `~/AGENTS.md`) |
+| OpenCode   | `~/.agents/skills/`                                | `~/.config/opencode/AGENTS.md` -> `~/AGENTS.md` (same pointer as cursor-cli)                        |
+| Codex      | agent-pull by explicit `~/.agents/skills/...` path | `~/.codex/AGENTS.md` -> `~/AGENTS.md`                                                               |
+| Copilot    | `~/.copilot/skills` -> `~/.agents/skills`          | `~/.copilot/copilot-instructions.md` -> `~/AGENTS.md`                                               |
 
 Persistence stays agent-driven through `,ai-kb remember`. There is no auto-harvest and no MCP, so nothing writes to the KB without an explicit agent action.
 
@@ -86,6 +88,7 @@ Cross-runtime durable-memory retrieval:
 | ------------------- | ------------------------------------------------------------------------------------------ |
 | Ralph               | Mechanical push: top-K per role injected into the `## RECENT LEARNINGS` prompt block       |
 | Cursor CLI / Claude | `session_context.py` gated `sessionStart` warm-start (named topic only); else agent-pull   |
+| Codex / Copilot     | `session_context.py` gated `SessionStart` warm-start; else agent-pull                      |
 | Pi                  | `ai-kb-recall.ts` warm-start (parity) **plus** per-turn prompt-query injection             |
 | OpenCode            | `agent-memory.ts` plugin: warm-start in system prompt **plus** per-turn via `chat.message` |
 | Gemini              | `SessionStart` warm-start **plus** per-turn via `BeforeAgent` (`additionalContext`)        |
@@ -127,11 +130,12 @@ The division of labor is explicit so agents do not confuse the two memory layers
 - `,agent-memory` — ephemeral per-session working context under `/tmp/specs`.
 - `semantic-code-search` skill (SCSI) — semantic code search over a repo, not memory.
 
-All interactive harnesses are wired for skill-based access (`agent-pull`): cursor-cli, Pi, Claude, Gemini, and OpenCode. Ralph remains wired through role prompts.
+Interactive harnesses are wired for skill-based or explicit-path access (`agent-pull`): cursor-cli, Pi, Claude, Gemini, OpenCode, Codex, and Copilot. Ralph remains wired through role prompts.
 
 Automatic retrieval injection is narrower than skill access:
 
 - Ralph injects mechanically per role.
-- cursor-cli/Claude use session warm-start.
+- cursor-cli/Claude/Codex/Copilot use session warm-start.
 - Pi uses warm-start plus per-turn prompt retrieval.
-- Gemini and OpenCode rely on explicit agent-pull.
+- Gemini and OpenCode use warm-start plus per-turn hook injection.
+- Cursor cloud uses explicit agent-pull only.

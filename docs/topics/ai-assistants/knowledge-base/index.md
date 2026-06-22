@@ -16,7 +16,7 @@ Two memory systems serve different jobs: short-lived topic context keeps the cur
 
 1. Start with [Hook memory](hook-memory.md) to see how `/tmp/specs` rehydrates active work.
 2. Continue to [AI knowledge base](ai-kb.md) for capsule schema, search, embeddings, and Ralph learning.
-3. Finish with [Cross-agent memory](cross-agent-memory.md) for Cursor, Pi, Claude, Gemini, OpenCode, and Ralph injection rules.
+3. Finish with [Cross-agent memory](cross-agent-memory.md) for Cursor, Pi, Claude, Gemini, OpenCode, Codex, Copilot, and Ralph injection rules.
 
 ## Operating boundary
 

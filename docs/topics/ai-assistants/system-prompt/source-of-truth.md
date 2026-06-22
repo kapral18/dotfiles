@@ -18,12 +18,12 @@ title: Source of truth
 
 ## Update path
 
-| Step            | Command / check                                                                                                                                                                       |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Edit source     | `home/readonly_AGENTS.md`                                                                                                                                                             |
-| Review render   | `chezmoi diff`                                                                                                                                                                        |
-| Apply           | `chezmoi apply`                                                                                                                                                                       |
-| Verify symlinks | `~/CLAUDE.md`, `~/.gemini/GEMINI.md`, `~/.cursor/AGENTS.md`, and `~/.config/opencode/AGENTS.md` resolve to `~/AGENTS.md`; `~/.copilot/copilot-instructions.md` points at the same SOP |
+| Step          | Command / check                                                 |
+| ------------- | --------------------------------------------------------------- |
+| Edit source   | `home/readonly_AGENTS.md`                                       |
+| Review render | `chezmoi diff`                                                  |
+| Apply         | `chezmoi apply`                                                 |
+| Verify effect | check only the rendered content or runtime behavior you changed |
 
 ## Do not edit these directly
 
@@ -33,6 +33,7 @@ title: Source of truth
 | `~/CLAUDE.md`                        | symlink to `~/AGENTS.md`                            |
 | `~/.gemini/GEMINI.md`                | symlink to `~/AGENTS.md`                            |
 | `~/.cursor/AGENTS.md`                | symlink to `~/AGENTS.md`                            |
+| `~/.codex/AGENTS.md`                 | symlink to `~/AGENTS.md`                            |
 | `~/.config/opencode/AGENTS.md`       | symlink to `~/AGENTS.md`                            |
 | `~/.copilot/copilot-instructions.md` | symlink to `~/AGENTS.md`                            |
 | `~/.agents/skills/*/SKILL.md`        | rendered from `home/exact_dot_agents/exact_skills/` |

@@ -5,7 +5,7 @@
 At the start of **every** session in this repo, before planning or editing, preload the architecture map in `.mermaids/`. It is the navigation cloud for the whole solution — the concepts, invariants, data flows, and state machines of every subsystem. It has two layers: a **semantic cloud** (how it works together) and a **catalog** (where every file lives). Read the semantic layer first.
 
 1. Read [`.mermaids/README.md`](.mermaids/README.md) for the read order and the concept → catalog map.
-2. Read [`.mermaids/S0-concepts.mmd`](.mermaids/S0-concepts.mmd) — the 12 core concepts (C1–C13) and their invariants. This is the model the whole repo is built on.
+2. Read [`.mermaids/S0-concepts.mmd`](.mermaids/S0-concepts.mmd) — the 13 core concepts (C1–C13) and their invariants. This is the model the whole repo is built on.
 3. Read [`.mermaids/00-overview.mmd`](.mermaids/00-overview.mmd) (master map: semantic layer + catalog index).
 4. Before editing any file, consult [`.mermaids/SR-index.mmd`](.mermaids/SR-index.mmd) (reverse index) to find the concept it serves, what breaks if changed, and its co-edit set.
 5. Load the deeper flow/catalog diagram(s) for whatever the task touches — flows: `S1-flow-apply-reconcile.mmd` (apply/hooks), `S2-flow-agent-runtime.mmd` (agents/Ralph), `S3-flow-pickers-handoff.mmd` (pickers); catalog: e.g. `04-ralph-state-machine.mmd`, `05-tmux-pickers.mmd`, `01-chezmoi-pipeline.mmd`.
@@ -33,8 +33,6 @@ This is a **chezmoi-managed dotfiles repo**. Chezmoi deploys files from `home/` 
 | `~/bin/`            | `home/exact_bin/`                             |
 | `~/bin/utils/`      | `home/exact_bin/utils/`                       |
 | `~/.config/<app>/`  | `home/dot_config/<app>/`                      |
-| `~/AGENTS.md`       | `home/readonly_AGENTS.md`                     |
-| `~/CLAUDE.md`       | `home/readonly_CLAUDE.md`                     |
 | `~/.agents/skills/` | `home/exact_dot_agents/exact_skills/`         |
 | `~/.claude/skills`  | symlink → `~/.agents/skills` (resolve first!) |
 
@@ -46,6 +44,25 @@ This is a **chezmoi-managed dotfiles repo**. Chezmoi deploys files from `home/` 
 
 - After each change/task in this repo, run `make check` followed by `make fmt`.
 - If either command fails, fix the issue when it is in scope; otherwise report the failure and the relevant output.
+
+---
+
+## AI Setup Contribution Boundary
+
+When changing AI functionality in this chezmoi repo — SOP files, skills, subagents, runtime profiles, hooks, MCP/model registries, review workflows, Ralph, or docs — keep generic mechanics and domain policy separate.
+
+- **Generic surfaces:** portable behavior such as global SOP mechanics, shared skills, generic subagent/runtime profiles, hooks, model/MCP/package generators, registries, and cross-repo AI workflow docs.
+- **Domain surfaces:** repo/org/product policy such as `elastic-domain`, `kibana-*`, Elastic/Kibana labels, ownership, Buildkite routing, bot allowlists, PR templates, live-UI targets, endpoints, and data setup.
+- **Future domains:** any future repo/org/product overlay with comparable policy.
+
+Rules:
+
+1. Generic surfaces may verify the target, load the matching overlay, and pass through overlay results or concrete packets; they must not inline Elastic/Kibana defaults, examples, allowlists, labels, hosts, target packets, templates, or fallback behavior.
+2. Domain overlays add policy to a primary generic workflow; they must not duplicate or replace generic routing, review methodology, publication gates, side-effect gates, memory, or verification discipline.
+3. When an interaction changes, update both sides: the generic side documents the dispatch/packet boundary, and the domain side owns the concrete policy/data.
+4. Treat existing domain-specific content in generic surfaces as non-precedent. If a task touches it, move it behind a verified overlay or domain skill instead of expanding it.
+5. If no verified domain overlay applies, generic workflows should block or report `Unknown` rather than borrow Elastic/Kibana behavior.
+6. Keep documentation aligned: cross-repo mechanics belong in generic AI docs; Elastic/Kibana specifics belong in `docs/topics/ai-assistants/skills/elastic-and-kibana.md` or the relevant domain page.
 
 ---
 
@@ -63,29 +80,25 @@ When user requests to "add X" (app, package, cask, formula, or CLI tool), follow
 
 **Interpretation of the priority:**
 
-- Prefer Homebrew first, even when the available Homebrew formula/cask is a verified name variation or acceptable alternative for the requested tool.
+- Prefer Homebrew first when a formula/cask is verified to install the requested upstream project, even if the Homebrew package name differs from the repo slug.
 - Lower-priority package lists (`cargo`, `go`, `gems`, `yarn`, `uv`, manual packages) are fallbacks only when Homebrew does not provide a suitable package.
 - Do not drop to a lower-priority registry just because the exact upstream/repo slug is not the Homebrew formula name.
 
 **Workflow:**
 
-1. **Identify what X is** — app, CLI tool, library, or language-specific package
-2. **Check GitHub first** — always search for official repository:
-   - Search: `web_search` or `read_web_page` for the GitHub repo
-   - Goal: Find where the project lives and what installation methods it recommends
-   - Read INSTALL.md, README, or release notes to understand available installation options
-   - Verify package name, repo owner, and latest version/status
-3. **VERIFY IN PRIORITY ORDER** — based on GitHub findings, check registries:
-   - **Homebrew first**: do not only test the exact upstream slug. Also check likely Homebrew name variations with `brew search <term>` and verify candidates with `brew info <formula-or-cask>`. - Common variations to test: repo name, normalized name, `<name>-cli`, collapsed owner/repo names, and official tap names.
+1. **Identify X** — app, CLI tool, library, or language-specific package.
+2. **Check GitHub first** — find the official repo when one exists; read README, INSTALL, and releases to learn supported installs; verify package name, owner, version, and status.
+3. **Check registries in priority order**:
+   - **Homebrew first**: search likely names with `brew search <term>` and verify candidates with `brew info <formula-or-cask>`. Test repo name, normalized name, `<name>-cli`, collapsed owner/repo names, and official tap names.
    - **Cargo**: `cargo search <package> --limit 5` — for Rust packages
    - **Go**: `go get -u <import-path>` — search pkg.go.dev or verify from GitHub
    - **Gems**: `gem search <package>` — Ruby packages
    - **yarn**: `yarn info <package>` — Node.js/JavaScript packages
    - **uv**: `uv pip search <package>` — Python tools
-   - **Manual (.dmg)**: `read_web_page` to GitHub releases — macOS apps
-4. **Stop at the first suitable match in priority order** — add to that location only
-5. **Never invent** package names, URLs, or sources — ask user if verification fails
-6. **Use existing patterns** — follow code style and format for each file type
+   - **Manual (.dmg / release asset)**: verified GitHub releases
+4. **Stop at the first suitable match** and add it to that location only.
+5. **Never invent** package names, URLs, or sources. Ask the user if verification fails.
+6. **Use existing patterns** for the target file.
 
 ## Documentation Hygiene
 
@@ -128,27 +141,24 @@ When adding a new `~/bin/` command, also update its catalog row under `docs/topi
 
 ## Homebrew Package Management
 
-When adding formulas or casks to Brewfile:
+When adding formulas or casks:
 
 - **Brewfile location**: per-category partials under `home/.chezmoitemplates/brews/{shared,personal,work}/NN-<category>.brewfile`, assembled by `home/.chezmoitemplates/brews/_assemble.brewfile` into the single deployed `home/readonly_dot_Brewfile.tmpl`. Add the `brew`/`cask` line to the matching category file: `shared/` = every machine, `personal/` = `.isWork` false, `work/` = `.isWork` true (profile membership is the directory, not an inline `{{ if }}`). Create the category file under the right profile dir if it does not exist yet and add a matching `includeTemplate` line in `_assemble.brewfile`.
-- **Verify on GitHub first**: Check the official repository's INSTALL.md, README, or releases page to verify Homebrew is recommended and identify the correct formula/tap name
-- Prefer verification language; avoid adding "ask to confirm" patterns to this file.
-- **Search GitHub**: Look for official Homebrew taps (e.g., `owner/homebrew-tap`) in the project
-- **Verify locally**: Once you identify the formula/tap, test with `brew info <formula>` or `brew info <owner/tap>/<formula>` (works for both formulas and casks)
-- **Check variations before falling back**: use `brew search <term>` and verify reasonable candidate names before moving to Cargo/Go/Gems/yarn/uv/manual packages
-- **Validate registries**: Use `formulae.brew.sh` search as secondary verification
-- **Never invent** package names, URLs, or tap information — always verify against official sources first
-- **Correct sources**: homebrew-core (default, no tap needed), official project taps, or trusted community taps
-- **Report failures**: If verification fails, report findings to user instead of guessing
+- **Verify on GitHub first**: read the official repo's README, INSTALL, or releases to confirm Homebrew support and identify the correct formula/tap.
+- **Search GitHub**: look for official Homebrew taps such as `owner/homebrew-tap` when a tap is needed.
+- Verify locally with `brew info <formula>` or `brew info <owner/tap>/<formula>` before editing the Brewfile.
+- Check name variations with `brew search <term>` before falling back to lower-priority registries.
+- Use homebrew-core, official project taps, or a community tap only after verifying its repository and formula source.
+- If verification fails, report findings instead of guessing.
 
 ## Manual App Installation (Non-Homebrew)
 
 When a macOS app is not available via Homebrew but provides a .dmg release:
 
-1. **Verify repository first**: Always search for official GitHub repo before adding
-2. **Add to list**: Use `home/readonly_dot_default-custom-packages.tmpl`
-3. **Use existing pattern**: `dmg|App Name|owner/repo|AppName.app|.dmg`
-4. **Function handles**:
+1. **Verify DMG source**: Confirm the official GitHub repo and `.dmg` release asset.
+2. **Add registry entry**: Use `home/readonly_dot_default-custom-packages.tmpl`.
+3. **Use DMG format**: `dmg|App Name|owner/repo|release-tag|AppName.app|asset-pattern`.
+4. **Installer handles**:
    - Latest release download from GitHub API
    - DMG mounting and app copy to /Applications
    - Already-installed checks
@@ -156,30 +166,29 @@ When a macOS app is not available via Homebrew but provides a .dmg release:
 
 **Example**:
 
-```bash
-# Squirrel Disk
-install_dmg_app "Squirrel Disk" "adileo/squirreldisk" "SquirrelDisk.app"
+```text
+dmg|Squirrel Disk|adileo/squirreldisk|latest|SquirrelDisk.app|.dmg
 ```
 
 **Best practices**:
 
-- Verify repo owner/name via GitHub search
 - Use exact .app bundle name from mounted volume
-- Test in safe environment before production deployment
+- Run the relevant installer/apply check before relying on the entry.
 
 ## CLI Tool Installation (Non-Homebrew, Non-DMG)
 
-When a CLI tool is not available via Homebrew and distributed via GitHub releases:
+When a CLI tool is not available through higher-priority package managers and is distributed via GitHub releases:
 
-1. **Add to list**: Use `home/readonly_dot_default-custom-packages.tmpl`
-2. **Prefer release assets**: Use `file|...` (single binary asset) or `tar_gz_bin|...` (archive with a binary)
-3. **Template variables**: Use `{{- if ne .isWork true }}` blocks when needed
+1. **Verify CLI source**: Confirm the official GitHub repo and the binary/archive asset for the target OS and architecture.
+2. **Add registry entry**: Use `home/readonly_dot_default-custom-packages.tmpl`
+3. **Prefer release assets**: Use `file|...` (single binary asset) or `tar_gz_bin|...` (archive with a binary)
+4. **Template variables**: Use `{{- if ne .isWork true }}` blocks when needed
 
 **Example entry**:
 
 ```text
-file|dug|unfrl/dug|dug-osx-x64|dug
-tar_gz_bin|mdtt|szktkfm/mdtt|mdtt_Darwin_arm64.tar.gz|mdtt|mdtt
+file|dug|unfrl/dug|0.0.94|dug-osx-x64|dug
+tar_gz_bin|mdtt|szktkfm/mdtt|v0.3.1|mdtt_Darwin_arm64.tar.gz|mdtt|mdtt
 ```
 
 **Installer**: `home/.chezmoiscripts/run_onchange_after_05-install-custom-packages.sh.tmpl`
@@ -188,34 +197,21 @@ tar_gz_bin|mdtt|szktkfm/mdtt|mdtt_Darwin_arm64.tar.gz|mdtt|mdtt
 
 ## Updating Home SOP Files
 
-Home SOPs are installed into `$HOME` by chezmoi and are intentionally split into:
+Home SOPs are installed into `$HOME` by chezmoi. `home/readonly_AGENTS.md` is the single SOP source; the other entrypoints are symlinks to it.
 
-- Entrypoints: small files defining global rules + triggers (e.g. `~/AGENTS.md`).
-- Modules: skills (`~/.agents/skills/`) are referenced by the entrypoints.
+| Source                                             | Target                               |
+| -------------------------------------------------- | ------------------------------------ |
+| `home/readonly_AGENTS.md`                          | `~/AGENTS.md`                        |
+| `home/symlink_CLAUDE.md`                           | `~/CLAUDE.md`                        |
+| `home/dot_gemini/symlink_GEMINI.md`                | `~/.gemini/GEMINI.md`                |
+| `home/dot_cursor/symlink_AGENTS.md`                | `~/.cursor/AGENTS.md`                |
+| `home/dot_codex/symlink_AGENTS.md`                 | `~/.codex/AGENTS.md`                 |
+| `home/dot_config/opencode/symlink_AGENTS.md`       | `~/.config/opencode/AGENTS.md`       |
+| `home/dot_copilot/symlink_copilot-instructions.md` | `~/.copilot/copilot-instructions.md` |
+| `home/exact_dot_agents/exact_skills/`              | `~/.agents/skills/`                  |
 
-**Source-of-truth (edit this one file; the rest are symlinks to it):**
+Rules:
 
-- Single SOP source:
-  - `home/readonly_AGENTS.md` -> `~/AGENTS.md` (the one real SOP file — edit this)
-- Symlinks to `~/AGENTS.md` (do not edit; they resolve to the SOP):
-  - `home/symlink_CLAUDE.md` -> `~/CLAUDE.md` (target `AGENTS.md`)
-  - `home/dot_gemini/symlink_GEMINI.md` -> `~/.gemini/GEMINI.md` (target `../AGENTS.md`)
-  - `home/dot_cursor/symlink_AGENTS.md` -> `~/.cursor/AGENTS.md` (target `../AGENTS.md`)
-  - `home/dot_config/opencode/symlink_AGENTS.md` -> `~/.config/opencode/AGENTS.md` (target `../../AGENTS.md`)
-- Modules:
-  - `home/exact_dot_agents/exact_skills/` -> `~/.agents/skills/`
-
-**Rules:**
-
-1. Edit only `home/readonly_AGENTS.md`. Claude, Gemini, Cursor, and OpenCode entrypoints are symlinks to `~/AGENTS.md`, so the SOP is identical across all harnesses by construction — there is no longer a "keep three files in sync" step.
-2. Do not edit the rendered `$HOME` files directly; edit `home/readonly_AGENTS.md` in this repo.
-3. If an entrypoint references a path under `~/.agents/skills/`, keep the corresponding file under `home/exact_dot_agents/` in sync.
-
-**Workflow:**
-
-1. Edit `home/readonly_AGENTS.md`.
-2. Review rendered changes with `chezmoi diff`.
-3. Apply locally with `chezmoi apply`.
-4. Verify:
-   - `~/AGENTS.md` contains the expected changes
-   - `~/CLAUDE.md`, `~/.gemini/GEMINI.md`, and `~/.config/opencode/AGENTS.md` are symlinks resolving to `~/AGENTS.md`
+1. Edit `home/readonly_AGENTS.md`, not rendered `$HOME` targets.
+2. Keep referenced skill files under `home/exact_dot_agents/` in sync.
+3. Review with `chezmoi diff`, apply with `chezmoi apply`, and verify only the rendered content or runtime behavior relevant to the change.
