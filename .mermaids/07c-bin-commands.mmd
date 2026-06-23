@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 07c-bin-commands.mmd — Every script in home/exact_bin/ (85 incl. utils).
+%% 07c-bin-commands.mmd — Every script in home/exact_bin/ (84 incl. utils).
 %% executable_,* → ~/bin/,* (comma-prefixed user commands). verify-bin-surface
 %% keeps each command covered by fish completions, docs, and this catalog.
 %% ============================================================================
@@ -31,7 +31,7 @@ flowchart TB
     end
 
     subgraph KBNC["Kibana dev"]
-        K[",start-feat-kbn · ,start-main-kbn (ES snapshot + Kibana in tmux)<br/>,jest-test-title-report"]:::sys
+        K[",kbn-stack (per-worktree ES+Kibana, snapshot|serverless, auto slot)<br/>,jest-test-title-report"]:::sys
     end
 
     subgraph MEDIA["Media / misc utilities"]

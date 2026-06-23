@@ -4,15 +4,29 @@ Kibana live UI target packet for verified `elastic/kibana` `/agent-review` and `
 
 ## Runtime targets
 
+Stacks are started per worktree by `,kbn-stack`, which records each running stack in `~/.cache/kbn-stack/registry.json` keyed by absolute worktree path. Each entry has `slot`, `branch`, `backend`, `kbn_url`, `es_url`, `cookie_name`, and `ready` (true only once Kibana has answered `/api/status`). Stacks run on plain `http://localhost:<port>` with a per-slot cookie name, so there are no fixed hostnames or fixed ports to assume.
+
+A stack may be started interactively by the user (tmux) or by an agent in background mode via `,kbn-stack --detach`, which starts ES + Kibana headless, waits until Kibana is ready, sets `ready: true`, and returns. Both paths flip the registry entry's `ready` to true once Kibana answers `/api/status`, so a stack the user started by hand in tmux from the current worktree is discoverable here. Treat a registry entry as a usable target only when `ready` is true; an entry with `ready: false` is still booting (or failed) and must not be used as a live target.
+
+Backend parallelism: `snapshot` stacks are fully parallel (one per worktree, isolated by slot). `serverless` stacks are single-instance per host (kbn-es runs fixed `es01`/`es02` Docker containers), so a registry entry with `"exclusive": true` is serverless and only one can be live at a time; starting a serverless stack for one worktree tears down any other serverless stack. Do not assume two serverless targets (base and head) can run simultaneously — if base/head both need serverless, they cannot both be live, so verify them sequentially or return `Blocked` noting the serverless single-instance constraint.
+
+The registry is keyed by absolute worktree path. Compute the current PR/head worktree key the same way `,kbn-stack` does: the resolved absolute path of `git rev-parse --show-toplevel` run from the agent's working directory. Look that key up in the registry to find the stack for the worktree the agent is reviewing from, including one the user started interactively in a tmux pane in that same worktree.
+
+Resolve targets from the registry; do not hardcode ports or `*.local` hostnames:
+
 Browser targets:
 
-- Base branch: `http://kibana-main.local:5602`
-- PR/head branch: `http://kibana-feat.local:5601`
+- Base branch: the `kbn_url` of the registry entry for the base worktree (the `main` worktree under `~/work/kibana/main`).
+- PR/head branch: the `kbn_url` of the registry entry for the current PR/head worktree key resolved above.
 
 Backing/data endpoints:
 
-- Base Elasticsearch: `http://localhost:9201` (backs `kibana-main.local:5602`)
-- PR/head Elasticsearch: `http://localhost:9200` (backs `kibana-feat.local:5601`)
+- Base Elasticsearch: the `es_url` of the base worktree's registry entry.
+- PR/head Elasticsearch: the `es_url` of the PR/head worktree's registry entry.
+
+If the registry has no entry for a required worktree, the entry's `ready` is not true, or `,kbn-stack` is not running for it, return `Blocked` with the missing target evidence instead of probing arbitrary localhost ports. When the harness allows shell side effects, an agent may start a missing stack itself with `,kbn-stack --detach` run from that worktree and continue once the registry entry reports `ready: true`; in read-only/Ask-mode harnesses, return `Blocked` with the exact `,kbn-stack --detach` command for the user to run.
+
+Teardown ownership: if this worker started a stack with `,kbn-stack --detach`, tear it down with `,kbn-stack --stop` from that worktree once verification is done, and report that it was stopped. Do not stop a stack the user started interactively (one that was already `ready` in the registry before this worker ran) — leave it running and report that it was reused, not started. Never use `--stop-all` from a review worker; that is a user-only cleanup.
 
 ## Required preflight
 
@@ -28,7 +42,7 @@ Backing/data endpoints:
 - A blocker is invalid unless it reports results for both exact browser target URLs.
 - Do not fall back to localhost unless the user explicitly overrides the targets.
 - Do not use WebFetch, shell `curl`, or other HTTP-only probes as target readiness evidence. They may be supplemental diagnostics, and post-readiness local API calls are allowed for scoped data setup, but Playwriter is the required readiness check.
-- Playwriter is the required readiness check for `kibana-main.local`, `kibana-feat.local`, and their localhost aliases.
+- Playwriter is the required readiness check for the registry-resolved base and PR/head `kbn_url` targets.
 - If Playwriter cannot run because the harness is read-only/Ask-mode, return `Blocked`.
 - If Playwriter fails before navigation with `browserType.connectOverCDP: Timeout`:
   - replace the relay once with `playwriter serve --host 127.0.0.1 --replace`
@@ -50,9 +64,9 @@ If the relevant UI exists but required data is absent:
 1. Inspect complete direct PR/issue artifacts already in scope, including screenshots, GIFs, videos, and linked media. For videos/GIFs, inspect enough frames to infer the relevant UI state and data shape.
 2. Inspect changed tests, fixtures, mocks, story/test helpers, and local route/data mocks to infer the focused data shape. Use mocks here to learn the data shape, not as the first verification substrate.
 3. Use existing seeded/demo data when it already exercises the path.
-4. Create focused isolated local/dev runtime data through Playwriter/browser actions, the app's real local APIs, or the mapped Elasticsearch endpoints:
-   - base: local Kibana APIs or `http://localhost:9201`
-   - PR/head: local Kibana APIs or `http://localhost:9200`
+4. Create focused isolated local/dev runtime data through Playwriter/browser actions, the app's real local APIs, or the registry-resolved Elasticsearch endpoints:
+   - base: local Kibana APIs or the base worktree's `es_url` from the registry
+   - PR/head: local Kibana APIs or the PR/head worktree's `es_url` from the registry
    - use direct Elasticsearch indexing only when that is how the UI can faithfully see the state
    - use temporary test-only identifiers that are easy to find and clean up
 5. If direct local Kibana/Elasticsearch setup fails because of auth, headers, API shape, or transport issues, use Kibana Dev Tools Console on the matching verified target. Load `~/.agents/skills/kibana-console-monaco/SKILL.md` when automating Console editor interactions.

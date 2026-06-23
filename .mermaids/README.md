@@ -3,7 +3,7 @@
 A navigation cloud for this chezmoi dotfiles repo, in **two layers**:
 
 - **Semantic cloud** (`S0`, `S1`–`S3`, `SR`) — how the system _thinks_: the 13 concepts and invariants it is built on, the cross-cutting flows that wire subsystems together, and a reverse index from any file to its concept, blast radius, and co-edit set. **Read this first** — it makes the catalog legible.
-- **Catalog** (`00`–`13`) — how the system is _laid out_: exhaustive coverage of every one of the 1152 tracked files, named or grouped by exact chezmoi source path. Use it to drill from a concept to the precise file.
+- **Catalog** (`00`–`13`) — how the system is _laid out_: exhaustive coverage of every one of the 1150 tracked files, named or grouped by exact chezmoi source path. Use it to drill from a concept to the precise file.
 
 Together they let an agent understand the whole solution in one pass and then map straight down to any particle. They complement the prose in `docs/` and the rules in `AGENTS.md` / `CLAUDE.md`.
 
@@ -30,7 +30,7 @@ Each file is a standalone [Mermaid](https://mermaid.js.org/) diagram (`.mmd`), l
 9. [`06-worktree-workflow.mmd`](06-worktree-workflow.mmd) — `,w` subcommands, `,gh-tfork`, gh-dash, and 1Password identity switching.
 10. [`07-shell-editor-macos.mmd`](07-shell-editor-macos.mmd) — fish/zsh/bash, terminals, and macOS automation (Hammerspoon, Karabiner, Alfred, icons, osx defaults).
 11. [`07b-neovim.mmd`](07b-neovim.mmd) — every file under `exact_nvim/` (157): core, 57 plugin specs, 14 local plugins, util, queries, syntax.
-12. [`07c-bin-commands.mmd`](07c-bin-commands.mmd) — every script in `exact_bin/` (85) grouped by purpose + the `,w` internals.
+12. [`07c-bin-commands.mmd`](07c-bin-commands.mmd) — every script in `exact_bin/` (84) grouped by purpose + the `,w` internals.
 13. [`08-security-and-dotfiles.mmd`](08-security-and-dotfiles.mmd) — SSH/GPG identity, 1Password agent, git signing, pass stores, and every shell/tool rc dotfile.
 14. [`09-repo-validation.mmd`](09-repo-validation.mmd) — `make check` / `make fmt`, hygiene gates, and every repo-side config/meta file.
 15. [`10-docs-and-repo-meta.mmd`](10-docs-and-repo-meta.mmd) — the Docusaurus site (`website/` + `docs/`) and GitHub Pages CI; every page named.
