@@ -19,6 +19,18 @@ alias wt="git worktree"
 alias dash="gh dash"
 alias reload_gpg='pkill -9 gpg-agent'
 
+claude() {
+    if [ "${HEADROOM_DISABLE:-}" = "1" ] || ! command -v headroom >/dev/null 2>&1; then
+        command claude "$@"
+        return
+    fi
+    HEADROOM_DISABLE=1 command headroom wrap claude --no-context-tool --no-mcp --no-serena -- "$@"
+}
+
+copilot() {
+    command ,copilot "$@"
+}
+
 # LS Aliases with lsd support
 if hash lsd 2>/dev/null; then
     alias ls='lsd -A'

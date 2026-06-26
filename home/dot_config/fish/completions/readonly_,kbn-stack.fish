@@ -15,7 +15,7 @@ complete -c ,kbn-stack -l project-type -d "Serverless project type" -x -a "es se
 complete -c ,kbn-stack -l data -d "ES data folder name under ~/work/kibana/es_data" -x -a "(__complete_es_data_folders)"
 complete -c ,kbn-stack -l slot -d "Force a specific slot number" -x
 complete -c ,kbn-stack -l detach -d "Agent mode: background ES+Kibana, wait until ready, then return"
-complete -c ,kbn-stack -l stop -d "Tear down this worktree's stack and drop its registry entry"
-complete -c ,kbn-stack -l stop-all -d "Tear down every registered stack and clear the registry"
+complete -c ,kbn-stack -l stop -d "Tear down this worktree's detached/serverless stack and drop its registry entry"
+complete -c ,kbn-stack -l stop-all -d "Tear down registered detached/serverless stacks; preserve interactive tmux entries"
 complete -c ,kbn-stack -s E -d "Extra Elasticsearch setting (key=value)" -x
 complete -c ,kbn-stack -s h -l help -d "Show help"

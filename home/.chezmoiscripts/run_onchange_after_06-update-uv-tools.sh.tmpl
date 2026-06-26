@@ -30,25 +30,69 @@ done <"$rendered_tools"
 
 install_uv_tool() {
   local tool=$1
+  local force="${2:-false}"
 
   echo "Installing uv tool: $tool"
-  if ! uv tool install "$tool" &>/dev/null; then
+  local -a install_args=()
+  if [[ "$force" == "true" ]]; then
+    install_args+=(--force)
+  fi
+  if ! uv tool install "${install_args[@]}" "$tool" &>/dev/null; then
     echo "Error: Failed to install uv tool $tool"
     return 1
   fi
   return 0
 }
 
+uv_tool_key() {
+  local spec=$1
+  local key="$spec"
+  key="${key%%\[*}"
+  key="${key%%==*}"
+  key="${key%%>=*}"
+  key="${key%%<=*}"
+  key="${key%%~=*}"
+  key="${key%%>*}"
+  key="${key%%<*}"
+  key="${key%%!*}"
+  if [[ "$key" == git+* ]]; then
+    key="${key##*/}"
+    key="${key%.git}"
+  fi
+  echo "$key" | xargs
+}
+
+contains_item() {
+  local needle=$1
+  shift || true
+  local item
+  for item in "$@"; do
+    [[ "$item" == "$needle" ]] && return 0
+  done
+  return 1
+}
+
+uv_spec_requires_reapply() {
+  local spec=$1
+  local key
+  key="$(uv_tool_key "$spec")"
+  [[ "$spec" != "$key" ]]
+}
+
 # Parse tools from rendered template FIRST
 declare -a tools_to_install
+declare -a tool_keys_to_keep
 
 for line in "${lines[@]}"; do
   # Skip empty lines and comments
   [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
 
-  # Extract tool name (everything before # or end of line)
-  tool_name=$(echo "$line" | sed 's/[[:space:]]*#.*$//' | xargs)
-  [[ -n "$tool_name" ]] && tools_to_install+=("$tool_name")
+  # Extract package spec (everything before # or end of line)
+  tool_spec=$(echo "$line" | sed 's/[[:space:]]*#.*$//' | xargs)
+  if [[ -n "$tool_spec" ]]; then
+    tools_to_install+=("$tool_spec")
+    tool_keys_to_keep+=("$(uv_tool_key "$tool_spec")")
+  fi
 done
 
 # Check if we have any tools to install
@@ -63,7 +107,7 @@ if uv tool list >/dev/null 2>&1; then
   if [[ -n "$installed_tools" ]]; then
     echo "$installed_tools" | while read -r tool; do
       # Check if this tool is NOT in our desired list
-      if ! printf '%s\n' "${tools_to_install[@]}" | grep -q "^${tool}$"; then
+      if ! contains_item "$tool" "${tool_keys_to_keep[@]}"; then
         echo "Uninstalling unwanted uv tool: $tool"
         uv tool uninstall "$tool" &>/dev/null || echo "Warning: Failed to uninstall $tool"
       fi
@@ -76,9 +120,16 @@ installed_tools=$(uv tool list | grep -v '^-' | awk '{print $1}' || true)
 
 # Install missing tools
 for tool in "${tools_to_install[@]}"; do
+  tool_key=$(uv_tool_key "$tool")
+
   # Check if the tool is already installed
-  if [[ -n "$installed_tools" ]] && echo "$installed_tools" | grep -q "^${tool}$"; then
-    echo "uv tool $tool is already installed"
+  if [[ -n "$installed_tools" ]] && contains_item "$tool_key" $installed_tools; then
+    if uv_spec_requires_reapply "$tool"; then
+      echo "uv tool $tool_key is installed; reapplying declared spec: $tool"
+      install_uv_tool "$tool" true
+      continue
+    fi
+    echo "uv tool $tool_key is already installed"
     continue
   fi
 

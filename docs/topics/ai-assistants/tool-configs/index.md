@@ -12,7 +12,7 @@ Per-assistant config is generated from a small set of source registries and prof
 | [Profile-based merging](profile-merging.md)         | `.work` / `.personal` sources and `run_onchange` merge scripts       |
 | [Claude and Gemini](claude-gemini.md)               | Claude settings, LetsFG decision, Gemini settings/MCP injection      |
 | [Pi coding agent](pi.md)                            | Pi packages, settings/models, APPEND_SYSTEM parity layer             |
-| [Other harnesses](other-harnesses.md)               | Codex, OpenCode, Amp, Copilot, RTK, secrets                          |
+| [Other harnesses](other-harnesses.md)               | Codex, OpenCode, Amp, Copilot, secrets                               |
 
 ## Source model
 
@@ -28,5 +28,4 @@ Per-assistant config is generated from a small set of source registries and prof
 - [MCP servers](../mcp.md) — single-sourced server registry
 - [Model registry & routing](../model-registry.md) — single-sourced model definitions
 - [llama.cpp local inference](../llama-cpp/index.md) — local backend + launchers
-- [RTK token optimization](../rtk.md) — output compaction and recovery contract
 - [The Agentic Operating System](../index.md) — governance layer

@@ -11,11 +11,13 @@ from __future__ import annotations
 
 import re
 import subprocess
+import sys
 from typing import Any
 
 from yaml_parser import parse_scalar
 
 _SHELL_SUBST = re.compile(r"^\$\((.+)\)$")
+_HEADER_AUTH_REFRESH_REQUIRED = "Bearer __MCP_TOKEN_REFRESH_REQUIRED__"
 
 
 def _resolve_shell(value: Any) -> Any:
@@ -39,6 +41,25 @@ def _resolve_shell(value: Any) -> Any:
     if result.returncode != 0:
         raise RuntimeError(f"shell eval failed: {m.group(1)!r}\n{result.stderr}")
     return result.stdout.strip()
+
+
+def _resolve_oauth_value(key: str, value: Any) -> Any:
+    """Resolve an OAuth config value, keeping header-token refresh at launch time.
+
+    ``headerAuth`` values often read short-lived local OAuth tokens. A stale token
+    must not make ``chezmoi apply`` fail; launchers such as `,copilot` refresh and
+    re-bake these headers immediately before starting the client.
+    """
+    try:
+        return _resolve_shell(value)
+    except RuntimeError as exc:
+        if key == "headerAuth":
+            print(
+                f"Warning: headerAuth token unavailable during apply; emitting refresh placeholder ({exc})",
+                file=sys.stderr,
+            )
+            return _HEADER_AUTH_REFRESH_REQUIRED
+        raise
 
 
 def load_servers(path: str, is_work: bool, tool: str | None = None) -> dict[str, dict[str, Any]]:
@@ -181,11 +202,11 @@ def load_servers(path: str, is_work: bool, tool: str | None = None) -> dict[str,
         if s.get("type") == "http":
             spec: dict[str, Any] = {"type": "http", "url": _resolve_shell(s["url"])}
             if "oauth" in s:
-                spec["oauth"] = {k: _resolve_shell(v) for k, v in s["oauth"].items()}
+                spec["oauth"] = {k: _resolve_oauth_value(k, v) for k, v in s["oauth"].items()}
             elif "oauth_by_tool" in s and tool:
                 tool_oauth = s["oauth_by_tool"].get(tool)
                 if tool_oauth:
-                    spec["oauth"] = {k: _resolve_shell(v) for k, v in tool_oauth.items()}
+                    spec["oauth"] = {k: _resolve_oauth_value(k, v) for k, v in tool_oauth.items()}
             result[s["name"]] = spec
         else:
             result[s["name"]] = {"command": s["command"], "args": s["args"]}

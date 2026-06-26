@@ -19,8 +19,10 @@ gen="$source_dir/../scripts/generate_mcp_configs.py"
 # User-level MCP servers (~/.copilot/mcp-config.json): OAuth HTTP servers use
 # oauthClientId + auth.redirectPort; stdio servers use type "local". The
 # built-in github-mcp-server is provided by Copilot and is not emitted here.
+mkdir -p "$HOME/.copilot"
+chmod 0700 "$HOME/.copilot"
 mcp_json="$(python3 "$gen" "$yaml_src" "$is_work" copilot)"
-chezmoi_write_if_changed "$mcp_json" "$HOME/.copilot/mcp-config.json"
+chezmoi_write_if_changed "$mcp_json" "$HOME/.copilot/mcp-config.json" 0600
 
 # User settings (~/.copilot/settings.json) — Copilot owns this file and
 # rewrites it at runtime (via /settings, /model, and config.json migration),

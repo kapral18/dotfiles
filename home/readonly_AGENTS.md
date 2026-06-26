@@ -158,14 +158,14 @@ A response is complete only when all material locally-verifiable unknowns releva
 
 ## 2.4 Compacted Output Is An Index, Not Truth
 
-Command output may be compacted by a token-reduction proxy (RTK is wired into every agent's shell-tool path via `rtk hook <agent>`). A compacted view is a lossy index, not the complete output.
+Some tool outputs may be summarized, truncated, or capped by the runtime or by the tool itself. A compacted view is a lossy index, not the complete output.
 
 **Rule:** When command output contains any of these markers, treat it as incomplete and recover the full output before relying on it for a decision:
 
 - `[full output: <path>]` or `[see remaining: tail -n +N <path>]` — read that file.
 - `… +N more` (failures, errors, issues, rules, files, packages, routes) — the list was capped; re-fetch when the dropped items matter.
 
-**When recovery is mandatory:** reviewing a diff/PR, debugging a test or build failure, counting or enumerating issues/failures, or any judgment that depends on seeing every item. Re-run the raw command (prefix `RTK_DISABLED=1` to bypass rewrite, or `RTK_NO_TOML=1` / a tool's `--no-compact`/`--json`) or read the tee'd file.
+**When recovery is mandatory:** reviewing a diff/PR, debugging a test or build failure, counting or enumerating issues/failures, or any judgment that depends on seeing every item. Re-run the command with the tool's raw/no-compact/JSON mode when available, or read the tee'd file.
 
 **When it is fine to trust the compact view:** quick status checks, success confirmations, and any case where the summary already answers the question and no capped marker is present.
 

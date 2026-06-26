@@ -27,8 +27,8 @@ The AI package set spans casks, Homebrew formulae, yarn globals, uv tools, custo
 | --------------------------------------------------------------------------- | ----------------------- | ---------------------------------------------------------- |
 | [`pi-mcp-adapter`](https://github.com/nicobailon/pi-mcp-adapter)            | `yarn`                  | MCP adapter extension loaded by Pi settings                |
 | [`pi-subagents`](https://github.com/nicobailon/pi-subagents)                | `yarn`                  | subagent delegation extension for Pi child contexts        |
-| [`rtk`](https://www.rtk-ai.app/)                                            | `brew`                  | compact noisy command output for agent shell calls         |
 | [`tuicr`](https://github.com/agavra/tuicr)                                  | `brew` tap `agavra/tap` | terminal review UI used around agent diff review flows     |
+| [`headroom-ai`](https://github.com/headroomlabs-ai/headroom)                | `uv`                    | local context-compression proxy and MCP tools for agents   |
 | [`llmfit`](https://github.com/AlexsJones/llmfit)                            | `brew`                  | AI/model utility in the local toolbox                      |
 | [`letsfg`](https://github.com/LetsFG/LetsFG)                                | `uv`                    | local flight search CLI exposed through the `letsfg` skill |
 | [`lexy`](https://github.com/antoniorodr/lexy)                               | `uv git+`               | data/RAG pipeline tool used as a local AI utility          |

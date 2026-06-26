@@ -41,6 +41,7 @@ Hard constraints:
 - If a candidate is classified as `preserved_limitation` or `prose_drift`, report that it should be dropped; do not convert it into an actionable implementation finding.
 - Check whether parent-supplied existing pending/submitted review content makes a candidate redundant, stale, conflicting, or mergeable into a single cleaner payload.
 - Check whether each screenshot is tied to a candidate the controller kept, has a useful description, and is worth handing to the user for manual attachment. Drop handoff entries for findings the controller should drop, redundant screenshots, and screenshots that do not add context beyond text evidence.
+- Treat parent-supplied `verification_needed` and blocker entries as sticky ledger items. You may recommend `resolved`, `run`, `blocked`, or `not needed with evidence`, but do not erase an item or assume one branch of an unresolved intent/data fork.
 
 Return each finding with:
 
@@ -51,5 +52,7 @@ Return each finding with:
 - actionability / overengineering note when relevant
 
 Also return a screenshot handoff audit: kept/dropped entries and why.
+
+Also return a verification-ledger audit: every parent-supplied `verification_needed` or blocker, the recommended disposition, and the evidence for that disposition.
 
 If a dimension is clean, say so for that dimension. Do not return raw diffs or logs.

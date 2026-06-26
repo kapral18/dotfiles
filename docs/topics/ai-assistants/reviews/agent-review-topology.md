@@ -11,18 +11,19 @@ title: Agent-review topology
 
 The key invariant is phase ownership: workers investigate; the controller judges and performs any gated side effect.
 
-| Phase               | Starts only after                                 | Owns                                                             | Stops the flow when                                                 |
-| ------------------- | ------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Route + scope       | user invokes review flow                          | mode, authorship, target packet, constraints                     | authorship/scope cannot be resolved safely                          |
-| PR necessity        | route says PR + other/unknown author              | whether the PR is worth implementation review                    | PR is blocked, superseded, unclear, not needed, or incorrectly open |
-| Reviewer fan-out    | PR necessity greenlight or skipped for self/local | read-only candidate findings and `verification_needed`           | both reviewers finish; individual blockers become controller input  |
-| Live UI             | reviewers finish and UI/runtime is relevant       | UI reality, screenshot handoff, target/runtime/data blockers     | target packet cannot be loaded or runtime is blocked                |
-| Findings audit      | reviewer + live UI outputs exist                  | actionability, duplication, gaps, overengineering                | audit finds no actionable surviving finding or reports blocker      |
-| Controller judgment | all investigation phases are complete             | keep/drop, serial verification, PR pending-review reconciliation | unsupported or conflicting payload would be produced                |
-| Act                 | judgment is complete                              | fixes, drafts, gated posting                                     | human-visible gate or quality gate blocks                           |
+| Phase                 | Starts only after                                                     | Owns                                                                                   | Stops the flow when                                                                    |
+| --------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Route + scope         | user invokes review flow                                              | mode, authorship, target packet, constraints, intent dependencies                      | authorship/scope/intent dependency cannot be resolved safely                           |
+| PR necessity / intent | route says PR + other/unknown author, or local changes need PR intent | whether the PR is worth implementation review and whether intent artifacts are current | PR is blocked, superseded, unclear, not needed, incorrectly open, or intent is unclear |
+| Reviewer fan-out      | PR necessity/intent greenlight or non-applicable skip                 | read-only candidate findings and `verification_needed`                                 | both reviewers finish; individual blockers become controller input                     |
+| Live UI               | reviewers finish and UI/runtime is relevant                           | UI reality, screenshot handoff, target/runtime/data blockers                           | target packet cannot be loaded or runtime is blocked                                   |
+| Findings audit        | reviewer + live UI outputs exist                                      | actionability, duplication, gaps, overengineering, verification-ledger audit           | audit finds no actionable surviving finding or reports blocker                         |
+| Controller judgment   | all investigation phases are complete                                 | keep/drop, serial verification ledger, PR pending-review reconciliation                | unsupported or conflicting payload would be produced                                   |
+| Act                   | judgment is complete and blocking ledger items are resolved           | fixes, drafts, gated posting                                                           | human-visible gate or quality gate blocks                                              |
+| Post-act verification | the working tree was edited this flow                                 | quality gates, fix-diff four-dimension stage, carried `verification_needed`            | setup itself fails or the toolchain is genuinely unavailable                           |
 
-1. The controller resolves the route and scope packet: PR/local mode, role, target diff/PR/thread set, base branch, user constraints, and expected output.
-2. For other-authored or unknown-author PRs, `pr-necessity-auditor` runs first and blocks fan-out until it greenlights implementation review.
+1. The controller resolves the route and scope packet: PR/local mode, role, target diff/PR/thread set, base branch, user constraints, expected output, and any intent dependencies needed for judgment.
+2. For other-authored or unknown-author PRs, `pr-necessity-auditor` runs first and blocks fan-out until it greenlights implementation review. It also runs as an intent audit for local changes attached to an assigned/adopted PR when PR body, discussion, Slack, issues, or history are needed to judge the local diff.
 3. After any required PR necessity greenlight, two read-only reviewer workers run in parallel when the harness supports it.
 
 PR necessity checks:
@@ -43,7 +44,7 @@ Reviewer lanes are investigation-only:
 - they do not run generators/formatters/installers.
 - they return `verification_needed` when stronger evidence requires mutation or a shared runtime.
 
-The controller runs those serial checks later.
+The controller tracks those entries in a verification ledger. A ledger item that can flip a keep/drop/action decision stays blocking until it is resolved with evidence, run serially, or reported as an explicit blocker. Findings audit can recommend a disposition, but it cannot erase the dependency.
 
 Reviewer lane mapping:
 
@@ -56,8 +57,8 @@ Reviewer lane mapping:
 | Amp            | two generic `Task` subagents with the shared worker contract         |
 
 1. `live-ui-review` checks applicable UI/runtime candidates with Playwriter against a controller-supplied target packet.
-2. The findings audit runs after live UI before any action. The controller audits inline for trivial sets (zero or one straightforward finding with no disagreement/blocker/fix diff) and delegates to `findings-auditor` for non-trivial sets, including material `verification_needed`. It flags redundancy, verbosity, semantic + logical duplication, gaps, actionability problems, and overengineered proposed fixes.
-3. The controller aggregates the investigation outputs, then judges what to fix or draft through mode-correct review rules. For surviving `verification_needed`, it either runs the check serially when needed for judgment or reports the exact blocker/uncertainty. PR modes use PR dedup, PR artifact truth filtering, the PR necessity/correctly-open greenlight, and PR CI coverage gates; local changes are judged against the staged/unstaged/range scope without PR-thread or PR-CI exemptions.
+2. The findings audit runs after live UI before any action. The controller audits inline for trivial sets (zero or one straightforward finding with no disagreement/blocker/fix diff) and delegates to `findings-auditor` for non-trivial sets, including material `verification_needed`. It flags redundancy, verbosity, semantic + logical duplication, gaps, actionability problems, overengineered proposed fixes, and verification-ledger disposition problems.
+3. The controller aggregates the investigation outputs, then judges what to fix or draft through mode-correct review rules. For each ledger item, it either resolves it with evidence, runs the check serially when needed for judgment, marks it not needed with evidence, or reports the exact blocker/uncertainty. PR modes use PR dedup, PR artifact truth filtering, the PR necessity/correctly-open greenlight, and PR CI coverage gates; local changes are judged against the staged/unstaged/range scope without PR-thread or PR-CI exemptions unless a PR-intent dependency is required for the local diff.
 4. Before final PR-mode drafting or posting, the controller reconciles against existing review feedback already authored by the current account: API `PENDING` reviews and draft comments, plus submitted review comments/replies from previous sessions. It merges still-valid pending feedback with net-new findings into one payload, drops stale pending findings, and blocks rather than producing conflicting or fragmented review comments. Only the controller acts.
 
 Live UI can return:
@@ -93,7 +94,10 @@ Controller responsibilities:
 - run live UI.
 - audit findings inline or by delegation.
 - aggregate, filter, and reconcile pending-review context.
-- act after normal gates.
+- act after normal gates: apply fixes when `fix_authorized: yes` (own, assigned, adopted PR, or local-changes self flow), otherwise draft only.
+- run post-act verification whenever the working tree was edited: quality gates plus the fix-diff four-dimension stage.
+- restart from the earliest invalidated phase when the user supplies new context that changes target, intent, or accepted behavior; if leaving `/agent-review`, state that downgrade before editing.
+- block completion while decisive verification-ledger items, intent dependencies, pending-review reconciliation blockers, required live-UI triggers without valid blockers, or post-act verification items remain unresolved.
 
 Worker profiles are read-only, concurrency-safe, and recursion-safe. They load review methodology in isolated contexts and return candidate findings plus `verification_needed`.
 

@@ -25,8 +25,8 @@ live-ui-review contract reads to resolve the base/head browser URLs.
 Usage:
     ,kbn-stack [--es snapshot|serverless] [--project-type es|security|oblt]
                [--data NAME] [--slot N] [--detach] [-E key=value ...]
-    ,kbn-stack --stop        # tear down this worktree's stack, drop its registry entry
-    ,kbn-stack --stop-all    # tear down every registered stack, clear the registry
+    ,kbn-stack --stop        # tear down this worktree's detached/serverless stack
+    ,kbn-stack --stop-all    # tear down registered detached/serverless stacks
 
 Run it from within a Kibana git worktree.
 
@@ -118,16 +118,17 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--stop",
         action="store_true",
         help=(
-            "Tear down the stack for the current worktree: kill its recorded ES and "
-            "Kibana processes and drop its registry entry. Does not start anything."
+            "Tear down the stack for the current worktree when recorded processes "
+            "are available, then drop its registry entry. Interactive tmux stacks "
+            "must be stopped from tmux."
         ),
     )
     parser.add_argument(
         "--stop-all",
         action="store_true",
         help=(
-            "Tear down every registered stack (kill all recorded processes) and clear "
-            "the registry. Use to clean up leaked instances."
+            "Tear down every registered detached/serverless stack. Interactive tmux "
+            "stacks without recorded processes are left in the registry."
         ),
     )
     parser.add_argument(
@@ -512,29 +513,44 @@ def docker_kill_serverless() -> None:
         )
 
 
-def stop_entry(worktree: str, entry: dict) -> None:
+def stop_entry(worktree: str, entry: dict) -> bool:
     """Tear down one registered stack: kill recorded Kibana then ES processes.
 
     Snapshot stacks run as our own children (pids recorded), so killing their
     process groups stops the yarn/node and JVM trees. Serverless stacks run their
     Elasticsearch in Docker containers (es01/es02); ,kbn-stack treats serverless
-    as single-instance, so those fixed names are removed directly.
+    as single-instance, so those fixed names are removed directly. Interactive
+    tmux stacks do not have recorded process groups; leave those registry entries
+    intact rather than claiming they were stopped.
     """
     slot = entry.get("slot")
     print(f",kbn-stack: stopping slot {slot} ({worktree})", flush=True)
+    stopped = False
     for key in ("kbn_pid", "es_pid"):
         pid = entry.get(key)
         if isinstance(pid, int):
             kill_pid_group(pid)
+            stopped = True
     if entry.get("backend") == "serverless":
         docker_kill_serverless()
+        stopped = True
+    if not stopped:
+        print(
+            ",kbn-stack: no recorded detached/serverless processes; leaving registry entry intact.",
+            flush=True,
+        )
+    return stopped
 
 
 def run_stop(worktree: str, registry: dict) -> int:
     entry = registry.get(worktree)
     if entry is None:
         fail(f"no registered stack for this worktree ({worktree})")
-    stop_entry(worktree, entry)
+    if not stop_entry(worktree, entry):
+        fail(
+            "registered stack has no recorded processes. It was likely started "
+            "interactively in tmux; stop it from the tmux panes instead."
+        )
     del registry[worktree]
     save_registry(registry)
     print(",kbn-stack: stopped and removed registry entry.", flush=True)
@@ -545,10 +561,22 @@ def run_stop_all(registry: dict) -> int:
     if not registry:
         print(",kbn-stack: no registered stacks.", flush=True)
         return 0
+    remaining = {}
+    stopped_count = 0
     for worktree, entry in list(registry.items()):
-        stop_entry(worktree, entry)
-    save_registry({})
-    print(f",kbn-stack: stopped {len(registry)} stack(s) and cleared the registry.", flush=True)
+        if stop_entry(worktree, entry):
+            stopped_count += 1
+        else:
+            remaining[worktree] = entry
+    save_registry(remaining)
+    if remaining:
+        print(
+            f",kbn-stack: stopped {stopped_count} stack(s); left {len(remaining)} "
+            "interactive stack(s) in the registry because they have no recorded processes.",
+            flush=True,
+        )
+    else:
+        print(f",kbn-stack: stopped {stopped_count} stack(s) and cleared the registry.", flush=True)
     return 0
 
 

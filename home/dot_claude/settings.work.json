@@ -6,17 +6,6 @@
   "model": "fable",
   "effortLevel": "xhigh",
   "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "rtk hook claude"
-          }
-        ]
-      }
-    ],
     "SessionStart": [
       {
         "hooks": [

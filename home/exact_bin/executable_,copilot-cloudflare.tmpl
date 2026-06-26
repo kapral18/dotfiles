@@ -95,5 +95,5 @@ if [[ -n "${COPILOT_CLOUDFLARE_MODEL_ID:-}" ]]; then
   export COPILOT_PROVIDER_MODEL_ID="$COPILOT_CLOUDFLARE_MODEL_ID"
 fi
 
-exec copilot "${args[@]}"
+exec ",copilot" "${args[@]}"
 {{- end }}

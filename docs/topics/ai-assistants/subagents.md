@@ -64,13 +64,13 @@ Runtime probes confirmed project custom-agent invocation in Cursor and Copilot, 
 
 The review topology follows the `review` skill's role × mode matrix:
 
-1. **PR necessity gate** runs first and blocks implementation review for other-authored or unknown-author PRs until the PR is worth reviewing.
+1. **PR necessity / intent gate** runs first and blocks implementation review for other-authored or unknown-author PRs until the PR is worth reviewing. It also runs for local changes attached to an adopted/assigned PR when PR intent artifacts are needed to judge the diff.
 2. **Find/judge fan-out** runs read-only reviewer lanes in parallel after any required greenlight.
 3. **Live UI** runs only when UI/runtime verification is relevant and a target packet exists.
-4. **Findings audit** is inline for trivial sets and delegated for non-trivial findings, disagreements, material `verification_needed`, blockers, or overengineering risk.
-5. **Act** is serial and controller-owned: fix, draft, drain threads, or emit verdict.
+4. **Findings audit** is inline for trivial sets and delegated for non-trivial findings, disagreements, material `verification_needed`, blockers, or overengineering risk. It audits verification-ledger disposition; it does not erase unresolved dependencies.
+5. **Act** is serial and controller-owned: fix, draft, drain threads, or emit verdict only after blocking verification-ledger items and intent dependencies are resolved or surfaced as blockers.
 
-Workers never edit files, post comments, resolve threads, or decide final action. They return candidate findings plus evidence and `verification_needed` items for the controller.
+Workers never edit files, post comments, resolve threads, or decide final action. They return candidate findings plus evidence and `verification_needed` items for the controller ledger.
 
 ## Source paths
 

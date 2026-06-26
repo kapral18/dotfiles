@@ -13,6 +13,7 @@ The parent supplies:
 - base/head refs
 - changed paths
 - directly referenced issues/PRs already known to the controller
+- linked Slack/design artifacts already known to the controller
 - user constraints and route context
 
 Load:

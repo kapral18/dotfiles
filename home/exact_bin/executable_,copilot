@@ -1,0 +1,179 @@
+#!/usr/bin/env bash
+# Description: Launch GitHub Copilot CLI with fresh header-auth MCP tokens.
+#
+# Copilot reads each MCP server's Authorization header once, at process startup,
+# and never re-reads it (verified: all MCP clients connect in one burst at launch
+# and there is no reload flag). The slack/scsi-main bearer tokens it uses are
+# baked into ~/.copilot/mcp-config.json and rotate (SCSI ~1h, Slack ~12h), so a
+# session started against a stale config gets 401s with nothing to refresh it
+# mid-session. If a token cannot be refreshed, fail before launch rather than
+# starting Copilot with a placeholder Authorization header.
+#
+# This wrapper closes that gap by refreshing BEFORE launch: for every header-auth
+# HTTP server in the config it runs `,mcp-token <server> --login` (a no-op when
+# the token is still valid; opens cursor's browser flow only when actually
+# stale), then re-bakes the fresh tokens into mcp-config.json by re-running the
+# same generator the chezmoi hook uses (resolved from `chezmoi data`, since
+# mcp-config.json is hook-generated rather than chezmoi-managed), and finally
+# execs the real copilot so the just-written tokens are read at connect time.
+#
+# All ,copilot-* provider wrappers exec through here so the same freshness
+# guarantee applies regardless of which model endpoint is used.
+
+set -euo pipefail
+
+real_copilot="${COPILOT_REAL_BIN:-/opt/homebrew/bin/copilot}"
+
+if [[ ! -x "$real_copilot" ]]; then
+  echo "Error: real copilot CLI not found at $real_copilot." >&2
+  exit 127
+fi
+
+config="$HOME/.copilot/mcp-config.json"
+refresh_placeholder="Bearer __MCP_TOKEN_REFRESH_REQUIRED__"
+mkdir -p "$HOME/.copilot"
+chmod 0700 "$HOME/.copilot"
+
+join_by_comma() {
+  local result=""
+  local item
+  for item in "$@"; do
+    if [[ -n "$result" ]]; then
+      result+=", "
+    fi
+    result+="$item"
+  done
+  echo "$result"
+}
+
+print_token_refresh_help() {
+  echo ",copilot: run ',mcp-token <server> --login' without --quiet to inspect the OAuth flow." >&2
+}
+
+# Header-auth HTTP servers needing a fresh bearer token = the type:"http" servers
+# in the deployed config that carry an Authorization header. Deriving the list
+# from the config (rather than hardcoding) keeps this in sync with the registry.
+if command -v python3 >/dev/null 2>&1 && [[ -f "$config" ]]; then
+  mapfile -t header_auth_servers < <(
+    python3 - "$config" <<'PY'
+import json
+import sys
+
+try:
+    with open(sys.argv[1]) as f:
+        servers = json.load(f).get("mcpServers", {})
+except (OSError, ValueError):
+    sys.exit(0)
+
+for name, spec in servers.items():
+    if spec.get("type") == "http" and spec.get("headers", {}).get("Authorization"):
+        print(name)
+PY
+  )
+
+  refresh_failures=()
+  for server in "${header_auth_servers[@]}"; do
+    [[ -z "$server" ]] && continue
+    # Refresh cursor's cache if the token is stale (no-op when still valid).
+    # Keep auth helper output quiet so bearer tokens never stream into the
+    # Copilot launch transcript.
+    if ! ",mcp-token" "$server" --login --quiet >/dev/null 2>&1; then
+      refresh_failures+=("$server")
+    fi
+  done
+
+  if ((${#refresh_failures[@]})); then
+    echo ",copilot: could not refresh MCP token(s): $(join_by_comma "${refresh_failures[@]}")." >&2
+    print_token_refresh_help
+    exit 1
+  fi
+
+  # Re-bake the freshest tokens into the config so copilot reads them at connect.
+  # mcp-config.json is written by run_onchange_after_07-merge-copilot-config, not
+  # tracked by chezmoi, so re-run that hook's generator instead of `chezmoi apply`
+  # (which would report the file as "not managed"). The source checkout location
+  # and isWork flag come from `chezmoi data`; if anything is missing, fail before
+  # launch rather than trusting old non-placeholder bearer headers.
+  if ((${#header_auth_servers[@]})) && command -v chezmoi >/dev/null 2>&1; then
+    rebake="$(
+      python3 - "$config" <<'PY' || true
+import json
+import os
+import subprocess
+import sys
+
+config_path = sys.argv[1]
+
+try:
+    data = json.loads(
+        subprocess.run(
+            ["chezmoi", "data", "--format", "json"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+    )
+except (OSError, subprocess.CalledProcessError, ValueError):
+    sys.exit(0)
+
+source_dir = data.get("chezmoi", {}).get("sourceDir")
+if not source_dir:
+    sys.exit(0)
+
+is_work = "true" if data.get("isWork") else "false"
+gen = os.path.join(source_dir, "..", "scripts", "generate_mcp_configs.py")
+yaml_src = os.path.join(source_dir, ".chezmoidata", "mcp_servers.yaml")
+if not (os.path.isfile(gen) and os.path.isfile(yaml_src)):
+    sys.exit(0)
+
+try:
+    out = subprocess.run(
+        ["python3", gen, yaml_src, is_work, "copilot"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+except (OSError, subprocess.CalledProcessError):
+    sys.exit(0)
+
+fd = os.open(config_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+with os.fdopen(fd, "w") as f:
+    f.write(out)
+os.chmod(config_path, 0o600)
+print("ok")
+PY
+    )"
+    if [[ "$rebake" != "ok" ]]; then
+      echo ",copilot: could not re-bake fresh MCP tokens into $config." >&2
+      print_token_refresh_help
+      exit 1
+    fi
+  fi
+
+  placeholder_servers="$(
+    python3 - "$config" "$refresh_placeholder" <<'PY' || true
+import json
+import sys
+
+try:
+    with open(sys.argv[1]) as f:
+        servers = json.load(f).get("mcpServers", {})
+except (OSError, ValueError):
+    sys.exit(0)
+
+placeholder = sys.argv[2]
+for name, spec in servers.items():
+    if spec.get("headers", {}).get("Authorization") == placeholder:
+        print(name)
+PY
+  )"
+  if [[ -n "$placeholder_servers" ]]; then
+    mapfile -t placeholder_server_names <<<"$placeholder_servers"
+    placeholder_summary="$(join_by_comma "${placeholder_server_names[@]}")"
+    echo ",copilot: MCP token refresh placeholder remains for: $placeholder_summary." >&2
+    print_token_refresh_help
+    exit 1
+  fi
+fi
+
+exec "$real_copilot" "$@"

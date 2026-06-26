@@ -13,6 +13,32 @@ Use when: automating, testing, or verifying behavior of the Kibana Dev Tools Con
 
 If the instance requires login, authenticate first or reuse an already-logged-in tab via `context.pages()`.
 
+## Authentication (local stack mock IDP)
+
+A security-enabled local stack (e.g. a `,kbn-stack` snapshot stack) redirects an unauthenticated Console navigation to `/internal/security/capture-url?auth_provider_hint=cloud-saml-kibana` and then to a `/mock_idp/login` page. Log in by selecting the test role and submitting:
+
+```js
+await state.page.goto("http://<host>:5601/app/dev_tools#/console");
+await state.page.waitForLoadState("networkidle");
+if (state.page.url().includes("/mock_idp/login")) {
+  await state.page.locator('role=button[name="Test User"]').click();
+  await state.page.locator('role=button[name="Log in"]').click();
+  await state.page.waitForLoadState("networkidle");
+}
+```
+
+**The first `Log in` click frequently lands mid-redirect**: the page stays on `/mock_idp/login`, the network shows a `401 Unauthorized`, and the console logs `Unauthorized`. Re-check the URL and retry once — the second attempt completes to `/app/dev_tools#/console`:
+
+```js
+if (state.page.url().includes("/mock_idp/login")) {
+  await state.page.locator('role=button[name="Test User"]').click();
+  await state.page.locator('role=button[name="Log in"]').click();
+  await state.page.waitForLoadState("networkidle");
+}
+```
+
+The role combobox defaults to a viewer role, which is sufficient for read-only autocomplete verification. For a multi-slot comparison (base vs head), repeat this per page/host — each slot has its own session.
+
 ## Editor Layers & Clicking
 
 The Console editor is a Monaco instance wrapped in Kibana's `EuiCodeEditor`. Three layers can intercept pointer events:

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="820" viewBox="0 0 1500 820" role="img" aria-labelledby="title desc">
   <title id="title">Agent-review end-to-end phase order</title>
-  <desc id="desc">The controller routes and scopes, optionally runs PR necessity first, launches parallel reviewers, runs live UI when applicable, audits findings, judges, and only then acts.</desc>
+  <desc id="desc">The controller routes and scopes, optionally runs PR necessity or intent audit first, launches parallel reviewers, runs live UI when applicable, audits findings, judges, acts, and then runs post-act verification whenever the working tree was edited.</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#7dd3fc"/></marker>
     <style>
@@ -14,7 +14,7 @@
   <text class="text" x="100" y="190">1. Route + scope</text><text class="small" x="100" y="220">mode, authorship,</text><text class="small" x="100" y="246">PR/diff, constraints</text>
   <path class="line" d="M300 208 H380"/>
   <rect class="gate" x="380" y="136" width="250" height="144"/>
-  <text class="text" x="415" y="184">2. PR necessity</text><text class="small" x="415" y="214">first blocking worker</text><text class="small" x="415" y="240">for other/unknown PRs</text>
+  <text class="text" x="415" y="184">2. PR necessity</text><text class="small" x="415" y="214">or intent audit</text><text class="small" x="415" y="240">when route requires</text>
   <path class="line" d="M630 208 H710"/>
   <rect class="phase" x="710" y="136" width="250" height="144"/>
   <text class="text" x="745" y="184">3. Reviewers</text><text class="small" x="745" y="214">GPT + Opus lanes</text><text class="small" x="745" y="240">read-only, parallel</text>
@@ -29,7 +29,10 @@
   <text class="text" x="735" y="405">6. Judge</text><text class="small" x="735" y="435">dedupe, truth filter,</text><text class="small" x="735" y="461">severity, reconciliation</text>
   <path class="line" d="M700 424 H610"/>
   <rect class="act" x="360" y="360" width="250" height="128"/>
-  <text class="text" x="395" y="405">7. Act phase</text><text class="small" x="395" y="435">fix self/local, or</text><text class="small" x="395" y="461">draft for other PRs</text>
+  <text class="text" x="395" y="405">7. Act phase</text><text class="small" x="395" y="435">fix if fix_authorized,</text><text class="small" x="395" y="461">else draft only</text>
+  <path class="line" d="M360 424 H320"/>
+  <rect class="act" x="70" y="360" width="250" height="128"/>
+  <text class="text" x="100" y="405">8. Post-act verify</text><text class="small" x="100" y="435">only if worktree edited:</text><text class="small" x="100" y="461">gates + fix-diff lens</text>
   <path class="dash" d="M505 280 V330"/>
   <rect class="stop" x="344" y="560" width="320" height="130"/>
   <text class="text" x="385" y="606">Stop path</text><text class="small" x="385" y="636">blocked, superseded,</text><text class="small" x="385" y="662">unclear, not needed</text>

@@ -29,3 +29,19 @@ mcp_servers:
         clientId: "copilot-client-id"
         callbackPort: 4242
         scopes: "openid, email"
+
+  - name: header-tool
+    work_only: false
+    type: http
+    url: https://mcp.header.com/mcp
+    oauth_by_tool:
+      copilot:
+        headerAuth: "$(echo Bearer resolved-token)"
+
+  - name: stale-header-tool
+    work_only: false
+    type: http
+    url: https://mcp.stale-header.com/mcp
+    oauth_by_tool:
+      copilot:
+        headerAuth: "$(bash -lc 'echo stale token >&2; exit 7')"

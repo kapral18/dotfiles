@@ -15,6 +15,7 @@ The shared judging engine for every review surface.
 Use in every non-trivial review.
 
 - Treat every claim as a hypothesis until verified.
+- A static read (reading source, searching the tree) proves what the source says, not what the system does. When keeping or dropping a candidate depends on observed/runtime behavior, static evidence is a hypothesis, not proof — verify the behavior at runtime whenever a runtime check is available, because a static read can contradict what the system actually does. (E.g. a source search indicated no tab tooltips; the live UI rendered four.)
 - Establish base invariants first (SCSI when indexed; otherwise `git show <base>:<path>` + local `rg`).
 - Validate PR/branch reality second (local diff + file reads).
 - When evaluating a proposed change (review suggestion / reviewer request):
@@ -116,6 +117,8 @@ Definitions:
 Before a candidate can become review feedback:
 
 1. **Map old to replacement:** identify the old and replacement entry points, helper side effects, assertions/checkpoints, setup/cleanup, permissions, wiring, and runtime assumptions.
+   - For every behavior/styling/spacing/layout property the old implementation set explicitly, name where the replacement re-establishes it (which component, prop, or default) or prove it is intentionally dropped. "I did not observe a regression" is not evidence the property is preserved; absence-of-observation never substitutes for naming the replacement's contract.
+   - A migration that hands a property to the target component (e.g. local CSS replaced by a shared component's layout default) is only `preserved_limitation`/`scope_expansion`/intended-replacement once you have pointed at the target's contract that now owns it (static source proof) or verified it live. Until then the candidate stays unclassified, not dropped.
 2. **Assign exactly one classification:**
    - `parity_gap`: old behavior or coverage existed in the old implementation and is absent or weaker in the replacement.
    - `new_regression`: the replacement introduces a failure mode that the old implementation did not have.
@@ -127,6 +130,7 @@ Before a candidate can become review feedback:
    - Drop `preserved_limitation` from review feedback. Do not ask the author to fix it in this PR.
    - Drop `prose_drift` from code-review feedback. If it matters to reviewers, handle it as PR-level prose feedback, not as an implementation finding.
 4. **Verification rule:** do not run live UI, heavy runtime probes, or delegated findings audit for `preserved_limitation` or `prose_drift`. Run those checks only for a kept candidate when source-level evidence cannot decide whether to keep or drop it.
+   - The live-UI skip only applies once step 1's evidence bar is met. Never drop a UI-visual candidate (spacing, alignment, layout, visual styling) on an unproven classification and then cite that drop as the reason live UI was unnecessary — that inverts cause and effect. If the classification rests on a UI-visual property you have neither traced to the replacement's contract nor verified live, the candidate is unproven: settle it with static proof or live UI before classifying, do not skip the check because the candidate was dropped.
 
 ## Historical-Rationale Gate (Deleting/Replacing Long-Lived Infra)
 

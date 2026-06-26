@@ -135,6 +135,11 @@ def _transform_copilot(spec: dict[str, Any]) -> dict[str, Any]:
     ``oauth.callbackPort`` shape, but we emit the canonical form). Copilot does
     the browser ``authorization_code`` flow and discovers endpoints from the
     server's protected-resource metadata, so no client secret is stored.
+
+    A server may instead supply ``headerAuth`` (a pre-resolved Authorization
+    header value such as ``Bearer <token>``) when Copilot cannot run the
+    server's OAuth flow itself. In that case the browser flow is bypassed and
+    the value is emitted as ``headers.Authorization``.
     """
     if spec.get("type") != "http":
         return {
@@ -147,6 +152,10 @@ def _transform_copilot(spec: dict[str, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {"type": "http", "url": spec["url"], "tools": ["*"]}
     oauth = spec.get("oauth")
     if oauth:
+        header_auth = oauth.get("headerAuth")
+        if header_auth:
+            out["headers"] = {"Authorization": header_auth}
+            return out
         client_id = oauth.get("clientId")
         if client_id:
             out["oauthClientId"] = client_id

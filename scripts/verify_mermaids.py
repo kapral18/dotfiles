@@ -94,10 +94,10 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/exact_bin/",
         globs=["home/exact_bin/*"],
-        claimed=84,
+        claimed=86,
         anchors=[
-            ("07c-bin-commands.mmd", "exact_bin/ (84 incl. utils)"),
-            ("README.md", "`exact_bin/` (84)"),
+            ("07c-bin-commands.mmd", "exact_bin/ (86 incl. utils)"),
+            ("README.md", "`exact_bin/` (86)"),
         ],
     ),
     Claim(

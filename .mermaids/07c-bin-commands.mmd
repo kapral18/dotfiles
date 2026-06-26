@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 07c-bin-commands.mmd — Every script in home/exact_bin/ (84 incl. utils).
+%% 07c-bin-commands.mmd — Every script in home/exact_bin/ (86 incl. utils).
 %% executable_,* → ~/bin/,* (comma-prefixed user commands). verify-bin-surface
 %% keeps each command covered by fish completions, docs, and this catalog.
 %% ============================================================================
@@ -19,7 +19,7 @@ flowchart TB
     end
 
     subgraph AIC["AI / agents / KB"]
-        A[",ralph (→ scripts/ralph.py; see 04) · ,ai-kb (→ scripts/ai_kb.py)<br/>,agent-memory (/tmp/specs dead-switch) · ,cp-files-for-llm<br/>,claude-llama-cpp · ,codex-llama-cpp · ,opencode-llama-cpp<br/>,pi-cloudflare · ,opencode-cloudflare · ,codex-cloudflare<br/>,copilot-cloudflare · ,copilot-openrouter · ,llama-cpp (local router) · codex (wrapper)<br/>,tg (telegramtui) · ,youtube-search · ,letsfg-docker"]:::ai
+        A[",ralph (→ scripts/ralph.py; see 04) · ,ai-kb (→ scripts/ai_kb.py)<br/>,agent-memory (/tmp/specs dead-switch) · ,cp-files-for-llm<br/>,claude-llama-cpp · ,codex-llama-cpp · ,opencode-llama-cpp<br/>,pi-cloudflare · ,opencode-cloudflare · ,codex-cloudflare<br/>,copilot (refresh header-auth MCP tokens + re-bake config → native Copilot; fail closed)<br/>,copilot-cloudflare · ,copilot-openrouter · ,llama-cpp (local router) · codex (Headroom-default wrapper; llama-cpp passthrough)<br/>,mcp-token &lt;server&gt; (freshest slack/scsi-main token from cursor cache → Copilot bearer header; --login → cursor-agent mcp login to refresh)<br/>,tg (telegramtui) · ,youtube-search · ,letsfg-docker"]:::ai
     end
 
     subgraph FZFC["fzf / search helpers"]
@@ -31,7 +31,7 @@ flowchart TB
     end
 
     subgraph KBNC["Kibana dev"]
-        K[",kbn-stack (per-worktree ES+Kibana, snapshot|serverless, auto slot)<br/>,jest-test-title-report"]:::sys
+        K[",kbn-stack (per-worktree ES+Kibana, snapshot|serverless, auto slot, registry-safe stop)<br/>,jest-test-title-report"]:::sys
     end
 
     subgraph MEDIA["Media / misc utilities"]

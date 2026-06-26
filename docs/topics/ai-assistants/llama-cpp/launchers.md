@@ -12,7 +12,7 @@ Codex only has first-class model metadata for slugs present in its model catalog
 - [`home/exact_bin/executable_codex`](../../../../home/exact_bin/executable_codex) → `~/bin/codex`
 - [`home/dot_codex/readonly_llama-cpp-model-catalog.json`](../../../../home/dot_codex/readonly_llama-cpp-model-catalog.json) → `~/.codex/llama-cpp-model-catalog.json` (defines both `local` and `local-max`)
 
-The wrapper injects `-c model_catalog_json="$HOME/.codex/llama-cpp-model-catalog.json"` when the selected model is one of the local llama.cpp ids (`local` or `local-max`), in either `--model <id>` or `--model=<id>` form; normal Codex invocations fall through to `/opt/homebrew/bin/codex` unchanged.
+The wrapper injects `-c model_catalog_json="$HOME/.codex/llama-cpp-model-catalog.json"` when the selected model is one of the local llama.cpp ids (`local` or `local-max`), in either `--model <id>` or `--model=<id>` form. Normal Codex invocations route through `headroom wrap codex` by default; set `HEADROOM_DISABLE=1` to execute `/opt/homebrew/bin/codex` directly.
 
 ## Codex launcher (`,codex-llama-cpp`)
 

@@ -12,9 +12,10 @@ Mode boundary:
 - Tool-level non-read-only is allowed only for Playwriter/browser commands and for explicit local/dev runtime data setup allowed by the selected target packet.
 - Behavior-level read-only still applies to the repository, GitHub, git, and publishing surfaces.
 - Local/dev runtime data setup is allowed when required to verify an applicable UI finding.
-- Runtime environment prerequisites that require changing how an instance is configured, started, or restarted are not data setup. If faithful verification requires them, return `Blocked` with setup instructions instead of falling back to mocks.
+- Starting a runtime the selected target packet documents how to start (in a shell-capable harness) is a setup step to perform, not a blocker — see the Data/setup ladder runtime-start rung.
+- Runtime environment prerequisites that require reconfiguring or restarting an already-running instance in a way this worker cannot safely apply are not data setup and are not the runtime-start rung. If faithful verification requires them, return `Blocked` with setup instructions instead of falling back to mocks.
 - Fix-capable Playwriter tasks are separate post-judgment tasks.
-- Fix mode requires `authorship: self` or explicit user takeover.
+- Fix mode requires `fix_authorized: yes` (own / assigned / adopted PR per the controller's step 1).
 - Fix mode prompt must state allowed changes and verification commands.
 
 Terminology:
@@ -52,6 +53,7 @@ Use the parent-supplied runtime targets when present; do not invent them.
 
 ### Preflight
 
+- Runtime-start precondition (do this before resolving target readiness): if a required target has no reachable/`ready` runtime and the selected target packet documents a start command, this is a missing runtime, not a readiness failure. Go to the Data/setup ladder runtime-start rung, start the runtime, then resolve its target URL and continue preflight. The reachability/readiness and "blocker invalid unless every target is reported" rules below apply only after the runtime-start rung; never use them to skip starting a startable runtime.
 - Follow `~/.agents/skills/playwriter/SKILL.md` and run `playwriter skill` before checking targets.
 - Use a fresh Playwriter session owned by this worker.
 - Store owned pages in `state.basePage` and `state.headPage`; do not use generic `page`.
@@ -60,7 +62,7 @@ Use the parent-supplied runtime targets when present; do not invent them.
 - Close only pages this worker created, or report their URLs in the final evidence.
 - Use Playwriter to check every browser/runtime target in the selected target packet for reachability/readiness.
 - Verify target branch identity with Playwriter evidence where possible.
-- If readiness or branch identity cannot be established, return `Blocked` with the missing evidence.
+- If readiness or branch identity cannot be established, return `Blocked` with the missing evidence — except when the cause is a missing/un-started runtime the packet documents how to start: that routes to the runtime-start rung first (start it, then re-check), not to `Blocked`.
 - Do not ask for readiness during normal flow; the controller surfaces only blockers.
 - Do not use WebFetch, shell `curl`, or other HTTP-only probes as local/private runtime readiness evidence.
 - HTTP-only probes may be supplemental diagnostics only. This readiness rule does not forbid post-readiness local/dev API calls used only for scoped data setup.
@@ -96,9 +98,18 @@ Scope:
 - Stop after five UI actions for a single candidate unless the parent supplied a tighter budget.
 - Return partial evidence plus `Blocked` only when the flow still needs actions or data setup that is unsafe, impossible, or over budget after the data/setup ladder below.
 
+### Runtime-start rung (the instance itself is absent)
+
+This precedes the data/setup ladder. The data/setup ladder assumes the runtime is already up and only data is missing; a missing/un-started runtime is a different gap.
+
+- Distinguish a missing runtime from missing data: no reachable instance / no resolvable target / the target packet's registry or discovery shows no `ready` entry for a required target is a missing-runtime gap, not a data gap.
+- If the runtime/instance for a required target is absent and the harness is shell-capable, start it via the start command the selected target packet documents, wait until the packet's readiness signal reports ready, then continue to preflight and comparison. A startable runtime is a setup step to perform, not a reason to stop.
+- Only return `Blocked` for a missing runtime when the harness is read-only/Ask-mode, the target packet documents no start command, or the documented start fails. In that case the blocker MUST name the affected target(s) and the exact start command from the target packet for the user to run.
+- If this worker started a runtime, follow the target packet's teardown ownership rules before returning.
+
 ### Data/setup ladder
 
-If an applicable flow reaches an empty state or lacks the data needed to reproduce the candidate:
+This ladder applies only once the runtime is up (see the runtime-start rung above). If an applicable flow reaches an empty state or lacks the data needed to reproduce the candidate:
 
 1. Inspect the complete direct PR/issue artifacts already in scope, including screenshots, GIFs, videos, and linked media. For videos/GIFs, inspect enough frames to infer the relevant UI state and data shape.
 2. Inspect changed tests, fixtures, mocks, story/test helpers, and local route/data mocks to infer the focused data shape that exercises the UI path. Use mocks here to learn the data shape, not as the first verification substrate.

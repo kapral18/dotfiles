@@ -8,7 +8,7 @@ Stacks are started per worktree by `,kbn-stack`, which records each running stac
 
 A stack may be started interactively by the user (tmux) or by an agent in background mode via `,kbn-stack --detach`, which starts ES + Kibana headless, waits until Kibana is ready, sets `ready: true`, and returns. Both paths flip the registry entry's `ready` to true once Kibana answers `/api/status`, so a stack the user started by hand in tmux from the current worktree is discoverable here. Treat a registry entry as a usable target only when `ready` is true; an entry with `ready: false` is still booting (or failed) and must not be used as a live target.
 
-Backend parallelism: `snapshot` stacks are fully parallel (one per worktree, isolated by slot). `serverless` stacks are single-instance per host (kbn-es runs fixed `es01`/`es02` Docker containers), so a registry entry with `"exclusive": true` is serverless and only one can be live at a time; starting a serverless stack for one worktree tears down any other serverless stack. Do not assume two serverless targets (base and head) can run simultaneously — if base/head both need serverless, they cannot both be live, so verify them sequentially or return `Blocked` noting the serverless single-instance constraint.
+Backend parallelism: `snapshot` stacks are fully parallel (one per worktree, isolated by slot). `serverless` stacks are single-instance per host (kbn-es runs fixed `es01`/`es02` Docker containers), so a registry entry with `"exclusive": true` is serverless and only one can be live at a time; starting a serverless stack for one worktree tears down any other serverless stack. Do not assume two serverless targets (base and head) can run simultaneously — if base/head both need serverless, verify them sequentially (start, verify, tear down, then the other). Return `Blocked` for the serverless single-instance constraint only when sequential verification is itself impossible (e.g. the user's serverless stack must stay up); do not treat it as a peer option to skip verification.
 
 The registry is keyed by absolute worktree path. Compute the current PR/head worktree key the same way `,kbn-stack` does: the resolved absolute path of `git rev-parse --show-toplevel` run from the agent's working directory. Look that key up in the registry to find the stack for the worktree the agent is reviewing from, including one the user started interactively in a tmux pane in that same worktree.
 
@@ -24,12 +24,13 @@ Backing/data endpoints:
 - Base Elasticsearch: the `es_url` of the base worktree's registry entry.
 - PR/head Elasticsearch: the `es_url` of the PR/head worktree's registry entry.
 
-If the registry has no entry for a required worktree, the entry's `ready` is not true, or `,kbn-stack` is not running for it, return `Blocked` with the missing target evidence instead of probing arbitrary localhost ports. When the harness allows shell side effects, an agent may start a missing stack itself with `,kbn-stack --detach` run from that worktree and continue once the registry entry reports `ready: true`; in read-only/Ask-mode harnesses, return `Blocked` with the exact `,kbn-stack --detach` command for the user to run.
+If the registry has no `ready:true` entry for a required worktree (or `,kbn-stack` is not running for it), the stack is missing — this is a runtime-start step, not a target blocker. In a shell-capable harness you MUST start it yourself with `,kbn-stack --detach` from that worktree and continue once the registry entry reports `ready: true` (see Data/setup ladder Rung 0). Return `Blocked` for a missing stack only in a read-only/Ask-mode harness or when `,kbn-stack --detach` fails, with the exact `,kbn-stack --detach` command for each missing worktree for the user to run. Never probe arbitrary localhost ports.
 
 Teardown ownership: if this worker started a stack with `,kbn-stack --detach`, tear it down with `,kbn-stack --stop` from that worktree once verification is done, and report that it was stopped. Do not stop a stack the user started interactively (one that was already `ready` in the registry before this worker ran) — leave it running and report that it was reused, not started. Never use `--stop-all` from a review worker; that is a user-only cleanup.
 
 ## Required preflight
 
+- Runtime-start precondition (do this before resolving target URLs): if a required base/head stack has no `ready:true` registry entry, do not treat the missing URL as a readiness failure. Go to Data/setup ladder Rung 0 and start it with `,kbn-stack --detach` (shell-capable harness), then resolve its `kbn_url` and continue preflight. The reachability/readiness checks below assume the stacks are up; the "cannot establish readiness -> `Blocked`" and "blocker invalid unless both target URLs reported" rules apply only after Rung 0, never as a reason to skip starting a startable stack.
 - Read `~/.agents/skills/playwriter/SKILL.md` and run `playwriter skill` before checking targets.
 - Run in a fresh Playwriter session owned by this worker.
 - Store owned pages in `state.basePage` and `state.headPage`; do not reuse generic `page`.
@@ -59,7 +60,9 @@ Teardown ownership: if this worker started a stack with `,kbn-stack --detach`, t
 
 ## Data/setup ladder
 
-If the relevant UI exists but required data is absent:
+Rung 0 — ensure the stack is running (runtime-start, before any data rung): if the registry has no `ready:true` entry for a required base/head worktree key, the stack is missing, not the data. When the harness allows shell side effects, start it yourself with `,kbn-stack --detach` from that worktree, wait until the registry entry reports `ready: true`, then continue to preflight. Only in a read-only/Ask-mode harness (or if `,kbn-stack --detach` fails) return `Blocked` with the exact `,kbn-stack --detach` command for each missing worktree for the user to run. Honor the serverless single-instance constraint (`"exclusive": true`) and the teardown ownership rule under Runtime targets.
+
+The rungs below apply only once both required stacks report `ready:true`. If the relevant UI exists but required data is absent:
 
 1. Inspect complete direct PR/issue artifacts already in scope, including screenshots, GIFs, videos, and linked media. For videos/GIFs, inspect enough frames to infer the relevant UI state and data shape.
 2. Inspect changed tests, fixtures, mocks, story/test helpers, and local route/data mocks to infer the focused data shape. Use mocks here to learn the data shape, not as the first verification substrate.
@@ -70,7 +73,7 @@ If the relevant UI exists but required data is absent:
    - use direct Elasticsearch indexing only when that is how the UI can faithfully see the state
    - use temporary test-only identifiers that are easy to find and clean up
 5. If direct local Kibana/Elasticsearch setup fails because of auth, headers, API shape, or transport issues, use Kibana Dev Tools Console on the matching verified target. Load `~/.agents/skills/kibana-console-monaco/SKILL.md` when automating Console editor interactions.
-6. If faithful setup requires changing how an ES/Kibana instance is configured, started, or restarted, do not work around it with browser mocks. Return `Blocked` with:
+6. If faithful setup requires reconfiguring or restarting an already-running ES/Kibana instance in a way this worker cannot safely apply (this is not Rung 0, which starts a missing stack via `,kbn-stack --detach`), do not work around it with browser mocks. Return `Blocked` with:
    - affected target(s): base, PR/head, or both
    - exact runtime prerequisite and the evidence that it is required
    - user-action instructions: setting, environment variable, config snippet, command, or dev-server flag when known
@@ -116,6 +119,7 @@ Reject and rerun any `live-ui-review` result for this overlay that:
 - omits the selected `target_packet` / overlay source
 - uses browser/route/network mocks for a data-dependent UI finding without first attempting or explicitly ruling out faithful local/dev data setup through existing data, local Kibana/Elasticsearch APIs, or Kibana Dev Tools Console
 - uses browser/route/network mocks when faithful verification is blocked by a required ES/Kibana runtime environment change; that must be returned as `Blocked` with setup instructions instead
+- returns `Blocked` citing a missing/un-started `,kbn-stack` (no `ready:true` registry entry) in a shell-capable harness, instead of starting it with `,kbn-stack --detach` and continuing (Rung 0); rerun after the stack is started
 - lists screenshot artifacts without local paths, descriptions, target URL/branch, or linked candidate/finding placement
 - omits applicability, exact URLs checked, Playwriter preflight status, readiness result for each target, branch/runtime evidence, comparison evidence for each checked candidate, UI evidence artifact manifest or `none`, page cleanup/owned-page URLs, and blockers/uncertainty
 

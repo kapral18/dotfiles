@@ -19,6 +19,8 @@ Claude profile behavior:
 | MCP storage           | `~/.claude.json` top-level `mcpServers`                                          |
 | Merge strategy        | update only `mcpServers`, preserve runtime-managed fields                        |
 
+Interactive fish/bash/zsh sessions define `claude` as a Headroom-default launcher: it runs `headroom wrap claude --no-context-tool --no-mcp --no-serena -- "$@"` unless `HEADROOM_DISABLE=1` is set or `headroom` is unavailable. The managed MCP registry still supplies the Headroom MCP tools; the default launcher is only for full-traffic proxy routing.
+
 **LetsFG** is intentionally not exposed through the shared MCP registry.
 
 | Decision               | Reason                                                                                                                                  |

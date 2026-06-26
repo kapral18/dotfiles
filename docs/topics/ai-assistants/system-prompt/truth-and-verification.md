@@ -15,7 +15,7 @@ The SOP turns "don't guess" into a workflow. A claim is either verified, labeled
 | `2.1 External Truth`     | inspect local source, binaries, versions, and docs before relying on behavior           |
 | `2.2 Runtime Truth`      | setup questions require source config -> rendered config -> consumer -> safe live probe |
 | `2.3 Completion`         | stop only after locally-verifiable unknowns are resolved                                |
-| `2.4 Compacted output`   | RTK summaries are indexes; recover full output when decisions depend on complete lists  |
+| `2.4 Compacted output`   | compacted/capped output is an index; recover full output when complete lists matter     |
 
 ## Evidence ladder
 

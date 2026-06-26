@@ -9,6 +9,7 @@ Or directly:
 
 from __future__ import annotations
 
+import base64
 import contextlib
 import hashlib
 import io
@@ -22,6 +23,7 @@ import sys
 import tempfile
 import time
 import unittest
+from dataclasses import dataclass
 from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parent.parent
@@ -317,6 +319,18 @@ class TestAgentMemory(unittest.TestCase):
                 agent_memory.SPEC_ROOT = old_spec_root
 
 
+class TestUvToolsHook(unittest.TestCase):
+    """WHEN reconciling uv tool package specs."""
+
+    def test_reapplies_complex_specs_instead_of_key_only_skip(self):
+        hook = (REPO / "home/.chezmoiscripts/run_onchange_after_06-update-uv-tools.sh.tmpl").read_text()
+
+        assert "uv_spec_requires_reapply()" in hook
+        assert '[[ "$spec" != "$key" ]]' in hook
+        assert "install_args+=(--force)" in hook
+        assert "reapplying declared spec" in hook
+
+
 class TestTmuxPickerShellHelpers(unittest.TestCase):
     """WHEN validating tmux picker shell helper contracts."""
 
@@ -610,6 +624,260 @@ class TestGenerateMcpConfigs(unittest.TestCase):
         # Copilot config never carries the raw nested oauth block or a secret.
         assert "oauth" not in http
         assert "oauthPublicClient" not in http
+
+    def test_copilot_http_header_auth_emits_authorization_header(self):
+        actual = json.loads(_run(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "false", "copilot"]))
+        header = actual["mcpServers"]["header-tool"]
+        assert header["type"] == "http"
+        assert header["url"] == "https://mcp.header.com/mcp"
+        assert header["tools"] == ["*"]
+        # headerAuth bypasses the OAuth flow: emit the resolved Authorization
+        # header and none of the oauth keys.
+        assert header["headers"] == {"Authorization": "Bearer resolved-token"}
+        assert "oauthClientId" not in header
+        assert "oauthScopes" not in header
+        assert "auth" not in header
+
+    def test_copilot_http_header_auth_failure_emits_refresh_placeholder(self):
+        actual = json.loads(_run(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "false", "copilot"]))
+        header = actual["mcpServers"]["stale-header-tool"]
+        assert header["type"] == "http"
+        assert header["url"] == "https://mcp.stale-header.com/mcp"
+        assert header["headers"] == {"Authorization": "Bearer __MCP_TOKEN_REFRESH_REQUIRED__"}
+        assert "oauthClientId" not in header
+        assert "oauthScopes" not in header
+        assert "auth" not in header
+
+
+class TestCopilotWrapper(unittest.TestCase):
+    """WHEN launching Copilot through the managed wrapper."""
+
+    PLACEHOLDER = "Bearer __MCP_TOKEN_REFRESH_REQUIRED__"
+
+    @dataclass(frozen=True)
+    class WrapperResult:
+        process: subprocess.CompletedProcess[str]
+        config_mode: int
+        config_dir_mode: int
+
+    def _run_wrapper(
+        self,
+        *,
+        token_helper_exit: int,
+        generated_authorization: str,
+        generator_exit: int = 0,
+    ) -> WrapperResult:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            source = root / "source/home"
+            scripts = root / "source/scripts"
+            bindir = root / "bin"
+            (home / ".copilot").mkdir(parents=True)
+            (source / ".chezmoidata").mkdir(parents=True)
+            scripts.mkdir(parents=True)
+            bindir.mkdir()
+            (home / ".copilot/mcp-config.json").write_text(
+                json.dumps(
+                    {
+                        "mcpServers": {
+                            "slack": {
+                                "type": "http",
+                                "url": "https://mcp.slack.com/mcp",
+                                "headers": {"Authorization": self.PLACEHOLDER},
+                            }
+                        }
+                    }
+                )
+            )
+            (source / ".chezmoidata/mcp_servers.yaml").write_text("mcp_servers: []\n")
+            generated_doc = {
+                "mcpServers": {
+                    "slack": {
+                        "type": "http",
+                        "url": "https://mcp.slack.com/mcp",
+                        "tools": ["*"],
+                        "headers": {"Authorization": generated_authorization},
+                    }
+                }
+            }
+            if generator_exit == 0:
+                generator_body = f"print({json.dumps(json.dumps(generated_doc, indent=2))})\n"
+            else:
+                generator_body = f"import sys\nsys.exit({generator_exit})\n"
+            (scripts / "generate_mcp_configs.py").write_text("#!/usr/bin/env python3\n" + generator_body)
+            (bindir / ",mcp-token").write_text(f"#!/usr/bin/env bash\nexit {token_helper_exit}\n")
+            (bindir / ",mcp-token").chmod(0o755)
+            (bindir / "chezmoi").write_text(
+                "#!/usr/bin/env bash\n"
+                'if [[ "$1" == data ]]; then\n'
+                f"  printf '%s\\n' {shlex.quote(json.dumps({'chezmoi': {'sourceDir': str(source)}, 'isWork': True}))}\n"
+                "else\n"
+                "  exit 1\n"
+                "fi\n"
+            )
+            (bindir / "chezmoi").chmod(0o755)
+            real_copilot = bindir / "copilot-real"
+            real_copilot.write_text("#!/usr/bin/env bash\necho REAL_COPILOT_STARTED\n")
+            real_copilot.chmod(0o755)
+
+            result = subprocess.run(
+                [_modern_bash(), str(REPO / "home/exact_bin/executable_,copilot")],
+                capture_output=True,
+                text=True,
+                cwd=str(REPO),
+                env={
+                    **os.environ,
+                    "HOME": str(home),
+                    "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
+                    "COPILOT_REAL_BIN": str(real_copilot),
+                },
+            )
+
+            config_mode = (home / ".copilot/mcp-config.json").stat().st_mode & 0o777
+            config_dir_mode = (home / ".copilot").stat().st_mode & 0o777
+
+        return self.WrapperResult(result, config_mode, config_dir_mode)
+
+    def test_stale_header_token_refresh_failure_blocks_launch(self):
+        result = self._run_wrapper(token_helper_exit=1, generated_authorization=self.PLACEHOLDER)
+        assert result.process.returncode == 1
+        assert "REAL_COPILOT_STARTED" not in result.process.stdout
+        assert "could not refresh MCP token(s): slack" in result.process.stderr
+
+    def test_placeholder_after_rebake_blocks_launch(self):
+        result = self._run_wrapper(token_helper_exit=0, generated_authorization=self.PLACEHOLDER)
+        assert result.process.returncode == 1
+        assert "REAL_COPILOT_STARTED" not in result.process.stdout
+        assert "MCP token refresh placeholder remains for: slack" in result.process.stderr
+
+    def test_rebake_failure_blocks_launch(self):
+        result = self._run_wrapper(
+            token_helper_exit=0,
+            generated_authorization="Bearer fresh-token",
+            generator_exit=7,
+        )
+        assert result.process.returncode == 1
+        assert "REAL_COPILOT_STARTED" not in result.process.stdout
+        assert "could not re-bake fresh MCP tokens" in result.process.stderr
+
+    def test_rebake_writes_token_config_with_private_permissions(self):
+        result = self._run_wrapper(token_helper_exit=0, generated_authorization="Bearer fresh-token")
+        assert result.process.returncode == 0
+        assert "REAL_COPILOT_STARTED" in result.process.stdout
+        assert result.config_dir_mode == 0o700
+        assert result.config_mode == 0o600
+
+
+class TestMcpTokenCommand(unittest.TestCase):
+    """WHEN selecting cached MCP OAuth tokens."""
+
+    def _jwt(self, exp: int) -> str:
+        def encode(value: dict[str, object]) -> str:
+            raw = json.dumps(value, separators=(",", ":")).encode()
+            return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+
+        return f"{encode({'alg': 'none'})}.{encode({'exp': exp})}.sig"
+
+    def _write_cache(self, home: Path, access_token: str, *, server: str = "scsi-main") -> Path:
+        cache = home / ".cursor/projects/p/mcp-auth.json"
+        cache.parent.mkdir(parents=True)
+        cache.write_text(
+            json.dumps(
+                {
+                    server: {
+                        "tokens": {
+                            "access_token": access_token,
+                            "expires_in": 3600,
+                            "token_type": "Bearer",
+                        }
+                    }
+                }
+            )
+        )
+        os.utime(cache, None)
+        return cache
+
+    def test_jwt_expiry_overrides_fresh_cache_mtime(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            self._write_cache(home, self._jwt(int(time.time()) + 60))
+            result = subprocess.run(
+                [sys.executable, str(REPO / "home/exact_bin/executable_,mcp-token"), "scsi-main"],
+                capture_output=True,
+                text=True,
+                env={**os.environ, "HOME": str(home)},
+            )
+
+        assert result.returncode == 1
+        assert "no valid scsi-main token" in result.stderr
+
+    def test_jwt_token_with_sufficient_expiry_is_selected(self):
+        token = self._jwt(int(time.time()) + 900)
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            self._write_cache(home, token)
+            result = subprocess.run(
+                [sys.executable, str(REPO / "home/exact_bin/executable_,mcp-token"), "scsi-main", "--json"],
+                capture_output=True,
+                text=True,
+                env={**os.environ, "HOME": str(home)},
+            )
+
+        assert result.returncode == 0
+        payload = json.loads(result.stdout)
+        assert payload["token"] == token
+        assert payload["seconds_left"] > 300
+
+    def test_login_force_refreshes_opaque_tokens_without_trusting_cache_mtime(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            bindir = root / "bin"
+            bindir.mkdir()
+            cache = self._write_cache(home, "opaque-slack-token", server="slack")
+            (bindir / "cursor-agent").write_text(f"#!/usr/bin/env bash\ntouch {shlex.quote(str(cache))}\nexit 0\n")
+            (bindir / "cursor-agent").chmod(0o755)
+            result = subprocess.run(
+                [sys.executable, str(REPO / "home/exact_bin/executable_,mcp-token"), "slack", "--login"],
+                capture_output=True,
+                text=True,
+                env={**os.environ, "HOME": str(home), "PATH": str(bindir)},
+            )
+
+        assert result.returncode == 0
+        assert "running cursor-agent mcp login slack" in result.stderr
+        assert result.stdout.strip() == "opaque-slack-token"
+
+    def test_plain_read_does_not_trust_opaque_cache_mtime_without_login_ledger(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            self._write_cache(home, "opaque-slack-token", server="slack")
+            result = subprocess.run(
+                [sys.executable, str(REPO / "home/exact_bin/executable_,mcp-token"), "slack"],
+                capture_output=True,
+                text=True,
+                env={**os.environ, "HOME": str(home)},
+            )
+
+        assert result.returncode == 1
+        assert "no valid slack token" in result.stderr
+
+    def test_login_without_cursor_agent_reports_clear_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            bindir = Path(tmp) / "bin"
+            bindir.mkdir()
+            result = subprocess.run(
+                [sys.executable, str(REPO / "home/exact_bin/executable_,mcp-token"), "scsi-main", "--login"],
+                capture_output=True,
+                text=True,
+                env={**os.environ, "HOME": str(home), "PATH": str(bindir)},
+            )
+
+        assert result.returncode == 1
+        assert "Traceback" not in result.stderr
+        assert "cursor-agent not found" in result.stderr
 
 
 class TestGeneratePiModels(unittest.TestCase):

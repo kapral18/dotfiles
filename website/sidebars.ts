@@ -239,7 +239,6 @@ const sidebars: SidebarsConfig = {
             'topics/ai-assistants/tool-configs/other-harnesses',
           ],
         },
-        'topics/ai-assistants/rtk',
         {
           type: 'category',
           label: '🦙 llama.cpp local inference',

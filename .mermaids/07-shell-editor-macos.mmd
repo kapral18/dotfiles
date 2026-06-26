@@ -9,9 +9,9 @@ flowchart TB
     classDef data fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
 
     subgraph SHELLS["Shells (fish primary; zsh/bash present)"]
-        FISH["dot_config/fish/readonly_config.fish.tmpl<br/>+ readonly_fish_plugins (fisher) + completions/<br/>functions/__comma_provider_models.fish (cached remote model lookup)"]:::shell
+        FISH["dot_config/fish/readonly_config.fish.tmpl<br/>+ readonly_fish_plugins (fisher) + completions/<br/>functions/__comma_provider_models.fish (cached remote model lookup)<br/>interactive claude routes through Headroom; copilot routes native via ,copilot"]:::shell
         ZSH["readonly_dot_zshrc.tmpl · readonly_dot_zprofile<br/>dot_zsh/completions/_comma_{w,wh}"]:::shell
-        BASH["readonly_dot_bashrc.tmpl · readonly_dot_bash_profile<br/>readonly_dot_profile.tmpl · readonly_dot_shellrc"]:::shell
+        BASH["readonly_dot_bashrc.tmpl · readonly_dot_bash_profile<br/>readonly_dot_profile.tmpl · readonly_dot_shellrc<br/>claude routes through Headroom; copilot routes native via ,copilot"]:::shell
         STAR["dot_config/readonly_starship.toml (prompt)"]:::shell
         FISH --> BINPATH["~/bin (see 07c) · mise activate · pass/1Password (wpass/ppass)"]:::shell
     end

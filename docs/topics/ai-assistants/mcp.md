@@ -29,14 +29,18 @@ Each entry is one of two shapes:
 - **Command server** — `name`, `work_only`, `command`, `args` (list). A command server may also carry `exclude_tools` (a list of tool names) to omit it for specific tools that cannot express per-tool membership via `oauth_by_tool`.
 - **HTTP server** — `name`, `work_only`, `type: http`, `url`, and optionally `oauth_by_tool` (per-tool OAuth client metadata, since tools expect different OAuth field shapes).
 
-The registry mechanics are generic; the current work-profile server set is Elastic-domain-specific:
+The registry mechanics are generic. The always-on generic server is:
+
+- `headroom` is a local stdio server from the uv-managed `headroom-ai[proxy,mcp,code]` package. It exposes Headroom's compression, retrieval, and stats MCP tools and can retrieve from the default local proxy at `http://127.0.0.1:8787` when that proxy is running. It is excluded from Copilot because Headroom's Copilot route is not transparent to GitHub's hosted model routing.
+
+The remaining work-profile server set is Elastic-domain-specific:
 
 - `scsi-main` is the hosted Semantic Code Search server using Elastic SSO/OAuth. Cursor, Claude, Gemini, and Pi each have tool-specific OAuth metadata because they expect different field shapes and redirect URIs.
 - `scsi-local` is the local SCSI stdio backend and is excluded from Copilot once the hosted server is omitted there.
 - `slack` is the Slack MCP server with per-tool OAuth metadata.
-- Copilot is intentionally absent from the OAuth HTTP servers because it hardcodes its OAuth redirect to `http://127.0.0.1:{port}/`, which is not registered for either the SCSI Okta app or the public Slack client. With no `copilot` key under `oauth_by_tool`, `load_servers()` omits those servers for Copilot.
+- Copilot cannot run the hosted servers' OAuth flows itself: it hardcodes its OAuth redirect to `http://127.0.0.1:{port}/`, which is not registered for the SCSI Okta app or the public Slack client, and Slack's MCP authorization server offers no dynamic client registration and requires a client secret at the token endpoint (`grant_types = [authorization_code, refresh_token]`, `token_endpoint_auth_methods = [client_secret_post]`). Both `scsi-main` and `slack` therefore give their `copilot` block a `headerAuth` value — a pre-resolved `Authorization: Bearer <token>` — so Copilot rides the rotating token cursor-cli already minted rather than running OAuth (see the Copilot transform below).
 
-`work_only: true` servers are emitted only when the `isWork` chezmoi variable is set. The default work set is `scsi-main`, `scsi-local`, `slack`; the personal set is empty (no `work_only: false` servers remain). Per-tool exclusions narrow this further — e.g. Copilot gets none of these.
+`work_only: true` servers are emitted only when the `isWork` chezmoi variable is set. The personal set includes `headroom`; the work set includes `headroom`, `scsi-main`, `scsi-local`, and `slack`. Copilot excludes `headroom`; on work machines it gets `scsi-local` as a stdio server and `scsi-main` plus `slack` via bearer headers.
 
 ## Generation pipeline
 
@@ -77,16 +81,16 @@ Tools whose config is not plain JSON get dedicated injectors that preserve the s
 
 Copilot transform behavior:
 
-| Server class | Emitted shape                                                               |
-| ------------ | --------------------------------------------------------------------------- |
-| stdio        | `type: "local"` with `tools: ["*"]`                                         |
-| OAuth HTTP   | `type: "http"` with `oauthClientId`, `auth.redirectPort`, and `oauthScopes` |
+| Server class     | Emitted shape                                                                                             |
+| ---------------- | --------------------------------------------------------------------------------------------------------- |
+| stdio            | `type: "local"` with `tools: ["*"]`                                                                       |
+| OAuth HTTP       | `type: "http"` with `oauthClientId`, `auth.redirectPort`, and `oauthScopes`                               |
+| Header-auth HTTP | `type: "http"` with `headers.Authorization` (when the block carries `headerAuth`; OAuth keys are skipped) |
 
-No HTTP server is currently wired for Copilot:
+Copilot's wired servers:
 
-- `scsi-main` and `slack` are excluded by the redirect-URI mismatch above.
-- `scsi-local` is excluded with `exclude_tools: [copilot]` because the hosted `scsi-main` it backs is gone.
-- Copilot's generated `mcpServers` is empty and it relies on built-in servers.
+- `slack` and `scsi-main` are emitted as header-auth HTTP servers. Each `copilot` block sets `headerAuth: "$(,mcp-token <server> --bearer)"`, which the generator resolves into `headers.Authorization` when a fresh token exists. If the local cursor-cli cache is stale during `chezmoi apply`, the generator emits a refresh placeholder instead of failing the apply; [`,copilot`](../../workflow/custom-commands/catalog.md) still detects that header-auth server, runs `,mcp-token <server> --login --quiet`, and re-bakes the fresh token immediately before launch. If refresh still fails, config re-bake fails, or a placeholder remains, `,copilot` stops before launching so Copilot never starts with a known-bad bearer header. [`,mcp-token`](../../workflow/custom-commands/catalog.md) reads the freshest still-valid token for that server from cursor-cli's per-project OAuth caches (`~/.cursor/projects/*/mcp-auth.json`); cursor runs the `authorization_code` flow with its own approved clients (Slack workspace app / SCSI Elastic Okta) and refreshes the rotating token in place. SCSI tokens are JWTs, so `,mcp-token` uses their `exp`; opaque tokens such as Slack are validated through a per-server local refresh ledger under `~/.cache/mcp-token/`, not the shared cursor cache file mtime. To refresh manually, run `,mcp-token <server> --login`; add `--quiet` when you do not want cursor-agent auth output in the terminal. You normally do not run this by hand: launch Copilot via [`,copilot`](../../workflow/custom-commands/catalog.md), which refreshes every header-auth server quietly (a no-op when still valid) and re-bakes the fresh tokens into `mcp-config.json` just before exec'ing `copilot`, since Copilot reads the header only once at launch. The token-bearing `~/.copilot/mcp-config.json` is written `0600` and `~/.copilot/` is forced to `0700`. All `,copilot-*` provider wrappers route through `,copilot`. This keeps token refresh out of `chezmoi apply`, which only deploys the static config (a manual `chezmoi apply` also regenerates the config but must not depend on live OAuth cache freshness).
+- `scsi-local` is emitted as a stdio server (`type: "local"`); it has no OAuth (it runs locally with `pass` Elasticsearch credentials), so no token is needed.
 
 The built-in `github-mcp-server` is provided by Copilot and is not emitted.
 
