@@ -19,7 +19,7 @@ flowchart TB
     end
 
     subgraph AIC["AI / agents / KB"]
-        A[",ralph (→ scripts/ralph.py; see 04) · ,ai-kb (→ scripts/ai_kb.py)<br/>,agent-memory (/tmp/specs dead-switch) · ,cp-files-for-llm<br/>,claude-llama-cpp · ,codex-llama-cpp · ,opencode-llama-cpp<br/>,pi-cloudflare · ,opencode-cloudflare · ,codex-cloudflare<br/>,copilot (refresh header-auth MCP tokens + re-bake config → native Copilot; fail closed)<br/>,copilot-cloudflare · ,copilot-openrouter · ,llama-cpp (local router) · codex (Headroom-default wrapper; llama-cpp passthrough)<br/>,mcp-token &lt;server&gt; (freshest slack/scsi-main token from cursor cache → Copilot bearer header; --login → cursor-agent mcp login to refresh)<br/>,tg (telegramtui) · ,youtube-search · ,letsfg-docker"]:::ai
+        A[",ralph (→ scripts/ralph.py; see 04) · ,ai-kb (→ scripts/ai_kb.py)<br/>,agent-memory (/tmp/specs dead-switch) · ,cp-files-for-llm<br/>,claude-llama-cpp · ,codex-llama-cpp · ,opencode-llama-cpp<br/>,pi-cloudflare · ,opencode-cloudflare · ,codex-cloudflare<br/>,copilot (refresh header-auth MCP tokens + re-bake config → native Copilot; fail closed)<br/>,copilot-cloudflare · ,copilot-openrouter · ,llama-cpp (local router) · codex (llama-cpp metadata passthrough)<br/>,mcp-token &lt;server&gt; (freshest slack/scsi-main token from cursor cache → Copilot bearer header; --login → cursor-agent mcp login to refresh)<br/>,tg (telegramtui) · ,youtube-search · ,letsfg-docker"]:::ai
     end
 
     subgraph FZFC["fzf / search helpers"]

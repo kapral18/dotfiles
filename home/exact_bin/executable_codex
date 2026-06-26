@@ -46,8 +46,4 @@ if [[ "$uses_llama_cpp_model" == true && -f "$llama_cpp_catalog" ]]; then
   exec "$real_codex" -c "model_catalog_json=\"$llama_cpp_catalog\"" "$@"
 fi
 
-if [[ "${HEADROOM_DISABLE:-}" != "1" ]] && command -v headroom >/dev/null 2>&1; then
-  exec env HEADROOM_DISABLE=1 headroom wrap codex --no-context-tool --no-mcp --no-serena -- "$@"
-fi
-
 exec "$real_codex" "$@"

@@ -21,7 +21,7 @@ This setup uses `uv` for:
 
    It installs as `~/.default-uv-tools`.
 
-   Lines may be normal package names, package specs with extras such as `headroom-ai[proxy,mcp,code]`, or git URLs such as `git+https://github.com/antoniorodr/lexy`. The reconcile hook uses the normalized uv tool package key for cleanup/pruning, then reapplies any declared spec with extras, a git URL, or a version/source constraint via `uv tool install --force` so an existing bare tool is not mistaken for the requested spec.
+   Lines may be normal package names, package specs with extras, or git URLs such as `git+https://github.com/antoniorodr/lexy`. The reconcile hook uses the normalized uv tool package key for cleanup/pruning, then reapplies any declared spec with extras, a git URL, or a version/source constraint via `uv tool install --force` so an existing bare tool is not mistaken for the requested spec.
 
 2. Apply:
 

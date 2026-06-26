@@ -19,7 +19,7 @@ flowchart TB
     end
 
     subgraph CTX["2 · Context (single sources of truth)"]
-        REG[[".chezmoidata/mcp_servers.yaml<br/>generic registry; headroom(stdio compression tools)<br/>+ current work/domain servers:<br/>scsi-main(http sso) · scsi-local (ES stdio) · slack(http oauth)"]]:::data
+        REG[[".chezmoidata/mcp_servers.yaml<br/>generic registry; current work/domain servers:<br/>scsi-main(http sso) · scsi-local (ES stdio) · slack(http oauth)"]]:::data
         MODELS[[".chezmoidata/ai_models.yaml (litellm catalog)<br/>reasoning · thinkingBudgets · contextWindow · cost"]]:::data
         GEN["scripts/: mcp_registry.py · generate_mcp_configs.py<br/>resolve $(pass …) · filter by tool + work_only/isWork"]:::ctx
         REG --> GEN

@@ -12,7 +12,7 @@ Codex only has first-class model metadata for slugs present in its model catalog
 - [`home/exact_bin/executable_codex`](../../../../home/exact_bin/executable_codex) → `~/bin/codex`
 - [`home/dot_codex/readonly_llama-cpp-model-catalog.json`](../../../../home/dot_codex/readonly_llama-cpp-model-catalog.json) → `~/.codex/llama-cpp-model-catalog.json` (defines both `local` and `local-max`)
 
-The wrapper injects `-c model_catalog_json="$HOME/.codex/llama-cpp-model-catalog.json"` when the selected model is one of the local llama.cpp ids (`local` or `local-max`), in either `--model <id>` or `--model=<id>` form. Normal Codex invocations route through `headroom wrap codex` by default; set `HEADROOM_DISABLE=1` to execute `/opt/homebrew/bin/codex` directly.
+The wrapper injects `-c model_catalog_json="$HOME/.codex/llama-cpp-model-catalog.json"` when the selected model is one of the local llama.cpp ids (`local` or `local-max`), in either `--model <id>` or `--model=<id>` form. Other Codex invocations execute `/opt/homebrew/bin/codex` directly.
 
 ## Codex launcher (`,codex-llama-cpp`)
 
@@ -94,7 +94,7 @@ Pass `--model` / `-m local-max` to pick the model. The wrapper injects its defau
 | `CLAUDE_LLAMA_CPP_MODEL`    | `local`                                 | Default model; overridden by a caller `--model`/`-m`, empty to skip |
 | `CLAUDE_LLAMA_CPP_SETTINGS` | `$HOME/.claude/settings.llama-cpp.json` | Point at an alternate llama.cpp settings file                       |
 
-`autoCompactWindow=200000` leaves ~62k headroom under the 262144-token server context for the next turn's prompt, tool outputs, and model reply.
+`autoCompactWindow=200000` leaves a ~62k token buffer under the 262144-token server context for the next turn's prompt, tool outputs, and model reply.
 
 ```bash
 ,claude-llama-cpp                           # interactive session, default model local

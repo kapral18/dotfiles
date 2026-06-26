@@ -56,7 +56,7 @@ This is the grouped lookup for commands that are useful but not always front-and
 | `,claude-llama-cpp`    | Launch Claude Code against the local llama.cpp-compatible endpoint                                                                                                                        |
 | `,codex-llama-cpp`     | Launch Codex against the local llama.cpp-compatible endpoint                                                                                                                              |
 | `,opencode-llama-cpp`  | Launch OpenCode against the local llama.cpp-compatible endpoint                                                                                                                           |
-| `,codex-cloudflare`    | Launch Codex directly against Cloudflare AI Gateway's OpenAI Responses endpoint, opting out of the default Headroom Codex shim                                                            |
+| `,codex-cloudflare`    | Launch Codex directly against Cloudflare AI Gateway's OpenAI Responses endpoint                                                                                                           |
 | `,copilot`             | Launch GitHub Copilot CLI natively, refreshing each header-auth MCP token and re-baking `~/.copilot/mcp-config.json` first; stops if token refresh or config re-bake fails                |
 | `,copilot-cloudflare`  | Launch GitHub Copilot CLI against Cloudflare's OpenAI-compatible endpoint                                                                                                                 |
 | `,copilot-openrouter`  | Launch GitHub Copilot CLI against OpenRouter's OpenAI-compatible endpoint                                                                                                                 |
@@ -68,7 +68,7 @@ Provider wrappers with model choices accept either `--model <id>` / `-m <id>` wh
 
 The same wrappers expose `--effort <level>`, `--thinking <level>`, and `--no-thinking` when the harness has an equivalent control. Pi maps to `--thinking`; OpenCode maps effort to `run --variant`; Codex maps to `model_reasoning_effort`; Copilot maps `--thinking` to `--effort`.
 
-Plain interactive `claude` and normal `codex` are Headroom-default where this repo owns the launch path: fish/bash/zsh functions route `claude` through `headroom wrap claude`, and `~/bin/codex` routes normal Codex through `headroom wrap codex`. Plain `copilot` stays native because Headroom uses Copilot's BYOK provider path, which differs from GitHub's hosted model-routing path. Local/provider-specific wrappers (`*,llama-cpp`, `,codex-cloudflare`, `,copilot-cloudflare`, `,copilot-openrouter`) also stay off the Headroom path because they already select a non-default upstream.
+Plain interactive `claude` stays native. Normal `codex` goes through `~/bin/codex` only to inject local llama.cpp model metadata when the selected model is local; otherwise it execs the real Codex binary directly. Plain `copilot` stays native via the managed `,copilot` wrapper so header-auth MCP tokens are refreshed before launch. Local/provider-specific wrappers (`*,llama-cpp`, `,codex-cloudflare`, `,copilot-cloudflare`, `,copilot-openrouter`) select their own upstreams.
 
 ## Utility helpers
 

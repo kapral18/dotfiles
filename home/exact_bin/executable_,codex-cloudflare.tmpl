@@ -95,5 +95,5 @@ if [[ "$caller_set_model" == false && -n "$CODEX_CLOUDFLARE_MODEL" ]]; then
   args+=(--model "$CODEX_CLOUDFLARE_MODEL")
 fi
 
-exec env HEADROOM_DISABLE=1 codex "${args[@]}" "${effort_args[@]}" "${cli_args[@]}"
+exec codex "${args[@]}" "${effort_args[@]}" "${cli_args[@]}"
 {{- end }}

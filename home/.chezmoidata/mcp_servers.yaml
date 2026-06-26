@@ -8,22 +8,8 @@
 #   args        – argument list passed to the command
 
 mcp_servers:
-  # Generic local Headroom MCP server. It gives MCP-capable agents
-  # headroom_compress/headroom_retrieve/headroom_stats and falls back to the
-  # local proxy store when `headroom proxy` is running on the default port.
-  - name: headroom
-    work_only: false
-    exclude_tools:
-      - copilot
-    command: headroom
-    args:
-      - mcp
-      - serve
-      - "--proxy-url"
-      - "http://127.0.0.1:8787"
-
-  # Official hosted Semantic Code Search (Elastic SSO OAuth2). Replaces the
-  # former self-hosted stdio scsi-main. On first use the client prompts for the
+  # Official hosted Semantic Code Search (Elastic SSO OAuth2). On first use,
+  # supported clients prompt for OAuth and cache the resulting token locally.
   - name: scsi-main
     work_only: true
     type: http

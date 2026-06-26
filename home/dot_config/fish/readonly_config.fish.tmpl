@@ -264,13 +264,6 @@ if status --is-interactive
     alias cat=bat
     alias agent=cursor-agent
     alias c=chezmoi
-    function claude --wraps claude --description "Launch Claude Code through Headroom by default"
-        if test "$HEADROOM_DISABLE" = 1; or not type -q headroom
-            command claude $argv
-            return
-        end
-        env HEADROOM_DISABLE=1 headroom wrap claude --no-context-tool --no-mcp --no-serena -- $argv
-    end
     function copilot --wraps copilot --description "Launch GitHub Copilot CLI through the managed ,copilot wrapper"
         command ,copilot $argv
     end

@@ -29,18 +29,14 @@ Each entry is one of two shapes:
 - **Command server** — `name`, `work_only`, `command`, `args` (list). A command server may also carry `exclude_tools` (a list of tool names) to omit it for specific tools that cannot express per-tool membership via `oauth_by_tool`.
 - **HTTP server** — `name`, `work_only`, `type: http`, `url`, and optionally `oauth_by_tool` (per-tool OAuth client metadata, since tools expect different OAuth field shapes).
 
-The registry mechanics are generic. The always-on generic server is:
-
-- `headroom` is a local stdio server from the uv-managed `headroom-ai[proxy,mcp,code]` package. It exposes Headroom's compression, retrieval, and stats MCP tools and can retrieve from the default local proxy at `http://127.0.0.1:8787` when that proxy is running. It is excluded from Copilot because Headroom's Copilot route is not transparent to GitHub's hosted model routing.
-
-The remaining work-profile server set is Elastic-domain-specific:
+The registry mechanics are generic. The currently declared server set is work-profile-only and Elastic-domain-specific:
 
 - `scsi-main` is the hosted Semantic Code Search server using Elastic SSO/OAuth. Cursor, Claude, Gemini, and Pi each have tool-specific OAuth metadata because they expect different field shapes and redirect URIs.
 - `scsi-local` is the local SCSI stdio backend and is excluded from Copilot once the hosted server is omitted there.
 - `slack` is the Slack MCP server with per-tool OAuth metadata.
 - Copilot cannot run the hosted servers' OAuth flows itself: it hardcodes its OAuth redirect to `http://127.0.0.1:{port}/`, which is not registered for the SCSI Okta app or the public Slack client, and Slack's MCP authorization server offers no dynamic client registration and requires a client secret at the token endpoint (`grant_types = [authorization_code, refresh_token]`, `token_endpoint_auth_methods = [client_secret_post]`). Both `scsi-main` and `slack` therefore give their `copilot` block a `headerAuth` value — a pre-resolved `Authorization: Bearer <token>` — so Copilot rides the rotating token cursor-cli already minted rather than running OAuth (see the Copilot transform below).
 
-`work_only: true` servers are emitted only when the `isWork` chezmoi variable is set. The personal set includes `headroom`; the work set includes `headroom`, `scsi-main`, `scsi-local`, and `slack`. Copilot excludes `headroom`; on work machines it gets `scsi-local` as a stdio server and `scsi-main` plus `slack` via bearer headers.
+`work_only: true` servers are emitted only when the `isWork` chezmoi variable is set. The personal profile currently emits no declared MCP servers. The work set includes `scsi-main`, `scsi-local`, and `slack`; Copilot gets `scsi-local` as a stdio server and `scsi-main` plus `slack` via bearer headers.
 
 ## Generation pipeline
 

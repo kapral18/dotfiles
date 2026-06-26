@@ -40,7 +40,7 @@ Fish setup in this repo is split by shell mode:
   - Adds Homebrew, `~/.local/bin`, `~/bin`, and mise shims to `PATH`.
 - Interactive shell:
   - Adds aliases (`g`, `v`, `c`, `t`, and others).
-  - Defines `claude` and `copilot` functions: Claude routes through Headroom by default, while Copilot routes through the native `,copilot` wrapper.
+  - Defines the `copilot` function, which routes through the native `,copilot` wrapper.
   - Initializes prompt/tools (`starship`, `zoxide`, `navi` when installed).
 
 If a command works in one terminal but not another, check whether the shell is login vs non-login.
