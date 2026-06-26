@@ -74,14 +74,14 @@ Workers never edit files, post comments, resolve threads, or decide final action
 
 ## Source paths
 
-| Target                         | Source                                                                        | Consumed by |
-| ------------------------------ | ----------------------------------------------------------------------------- | ----------- |
-| `~/.cursor/agents/*.md`        | [`home/dot_cursor/exact_agents/`](../../../home/dot_cursor/exact_agents/)     | Cursor      |
-| `~/.copilot/agents/*.agent.md` | [`home/dot_copilot/exact_agents/`](../../../home/dot_copilot/exact_agents/)   | Copilot     |
-| `~/.claude/agents/*.md`        | [`home/dot_claude/exact_agents/`](../../../home/dot_claude/exact_agents/)     | Claude      |
-| `~/.codex/agents/*.toml`       | [`home/dot_codex/exact_agents/`](../../../home/dot_codex/exact_agents/)       | Codex       |
-| `~/.gemini/agents/*.md`        | [`home/dot_gemini/exact_agents/`](../../../home/dot_gemini/exact_agents/)     | Gemini      |
-| `~/.pi/agent/agents/*.md`      | [`home/dot_pi/agent/exact_agents/`](../../../home/dot_pi/agent/exact_agents/) | Pi          |
+| Target                         | Source                                                                                      | Consumed by |
+| ------------------------------ | ------------------------------------------------------------------------------------------- | ----------- |
+| `~/.cursor/agents/*.md`        | [`home/dot_cursor/exact_agents/`](../../../home/dot_cursor/exact_agents/)                   | Cursor      |
+| `~/.copilot/agents/*.agent.md` | [`home/private_dot_copilot/exact_agents/`](../../../home/private_dot_copilot/exact_agents/) | Copilot     |
+| `~/.claude/agents/*.md`        | [`home/dot_claude/exact_agents/`](../../../home/dot_claude/exact_agents/)                   | Claude      |
+| `~/.codex/agents/*.toml`       | [`home/dot_codex/exact_agents/`](../../../home/dot_codex/exact_agents/)                     | Codex       |
+| `~/.gemini/agents/*.md`        | [`home/dot_gemini/exact_agents/`](../../../home/dot_gemini/exact_agents/)                   | Gemini      |
+| `~/.pi/agent/agents/*.md`      | [`home/dot_pi/agent/exact_agents/`](../../../home/dot_pi/agent/exact_agents/)               | Pi          |
 
 ## Design notes
 

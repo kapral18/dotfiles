@@ -31,7 +31,7 @@ flowchart TB
     end
 
     subgraph KBNC["Kibana dev"]
-        K[",kbn-stack (per-worktree ES+Kibana, snapshot|serverless, auto slot, registry-safe stop)<br/>,jest-test-title-report"]:::sys
+        K[",kbn-stack (per-worktree ES+Kibana, snapshot|serverless, auto slot, -E/-K passthrough, registry-safe stop)<br/>,jest-test-title-report"]:::sys
     end
 
     subgraph MEDIA["Media / misc utilities"]

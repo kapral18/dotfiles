@@ -361,7 +361,7 @@ class TestAgentHooks(unittest.TestCase):
 
     def test_pr_anchor_verification_is_instruction_only(self):
         files_to_check = [
-            REPO / "home" / "dot_copilot" / "hooks.json",
+            REPO / "home" / "private_dot_copilot" / "hooks.json",
             REPO / "home" / "dot_gemini" / "settings.json",
             REPO / "home" / "dot_cursor" / "hooks.json",
         ]
@@ -371,7 +371,9 @@ class TestAgentHooks(unittest.TestCase):
             assert "pr-anchor-gate" not in content
             assert "pulls/.*/(reviews|comments)" not in content
 
-        assert not (REPO / "home" / "dot_copilot" / "exact_hooks" / "executable_copilot-pr-anchor-gate.sh").exists()
+        assert not (
+            REPO / "home" / "private_dot_copilot" / "exact_hooks" / "executable_copilot-pr-anchor-gate.sh"
+        ).exists()
         assert not (HOOKS / "executable_gemini-pr-anchor-gate.sh").exists()
 
 

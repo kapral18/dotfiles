@@ -24,9 +24,17 @@ live-ui-review contract reads to resolve the base/head browser URLs.
 
 Usage:
     ,kbn-stack [--es snapshot|serverless] [--project-type es|security|oblt]
-               [--data NAME] [--slot N] [--detach] [-E key=value ...]
+               [--data NAME] [--slot N] [--detach]
+               [-E key=value ...] [-K key=value ...]
     ,kbn-stack --stop        # tear down this worktree's detached/serverless stack
     ,kbn-stack --stop-all    # tear down registered detached/serverless stacks
+
+``-E key=value`` passes an extra Elasticsearch setting through to the snapshot
+backend; ``-K key=value`` passes an extra Kibana CLI setting through to
+``yarn start`` as ``--key=value`` (repeatable). Use ``-K`` to start a stack with
+the runtime config a change under review needs in one shot, e.g.
+``-K xpack.index_management.dev.enableSemanticField=true``, instead of starting a
+default stack and restarting Kibana afterwards.
 
 Run it from within a Kibana git worktree.
 
@@ -138,6 +146,19 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         default=[],
         metavar="key=value",
         help="Extra Elasticsearch setting passed through to the snapshot backend (repeatable).",
+    )
+    parser.add_argument(
+        "-K",
+        "--kbn",
+        dest="kbn_flags",
+        action="append",
+        default=[],
+        metavar="key=value",
+        help=(
+            "Extra Kibana setting passed to `yarn start` as --key=value (repeatable). "
+            "Use it to start a stack with the runtime config a change under review "
+            "needs, e.g. -K xpack.index_management.dev.enableSemanticField=true."
+        ),
     )
     return parser.parse_args(argv)
 
@@ -297,6 +318,8 @@ def kibana_command(args: argparse.Namespace, cfg: dict) -> str:
     ]
     if args.es == "serverless":
         parts.append(f"--serverless={args.project_type}")
+    for flag in args.kbn_flags:
+        parts.append(f"--{flag}")
     return " ".join(shlex.quote(p) for p in parts)
 
 
@@ -668,6 +691,7 @@ def main(argv: list[str]) -> int:
         "es_url": cfg["es_url"],
         "cookie_name": cfg["cookie_name"],
         "data": data_name,
+        "kbn_flags": list(args.kbn_flags),
         "log": str(logfile),
         "ready": False,
         "started_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),

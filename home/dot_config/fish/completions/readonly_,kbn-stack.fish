@@ -18,4 +18,5 @@ complete -c ,kbn-stack -l detach -d "Agent mode: background ES+Kibana, wait unti
 complete -c ,kbn-stack -l stop -d "Tear down this worktree's detached/serverless stack and drop its registry entry"
 complete -c ,kbn-stack -l stop-all -d "Tear down registered detached/serverless stacks; preserve interactive tmux entries"
 complete -c ,kbn-stack -s E -d "Extra Elasticsearch setting (key=value)" -x
+complete -c ,kbn-stack -s K -l kbn -d "Extra Kibana setting passed to yarn start as --key=value" -x
 complete -c ,kbn-stack -s h -l help -d "Show help"

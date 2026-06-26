@@ -31,6 +31,7 @@ The parent supplies:
 - expected base branch
 - expected PR/head branch
 - selected target packet, including overlay source when an overlay supplied the packet
+- required runtime config: any runtime/feature-flag settings the change under review needs to be reachable, resolved once by the controller before this launch, or empty when none. The concrete settings and how to apply them at start time belong to the selected target packet; this contract only carries that the controller resolves them up front so the runtime is started correctly the first time.
 
 ### Applicability
 
@@ -103,7 +104,7 @@ Scope:
 This precedes the data/setup ladder. The data/setup ladder assumes the runtime is already up and only data is missing; a missing/un-started runtime is a different gap.
 
 - Distinguish a missing runtime from missing data: no reachable instance / no resolvable target / the target packet's registry or discovery shows no `ready` entry for a required target is a missing-runtime gap, not a data gap.
-- If the runtime/instance for a required target is absent and the harness is shell-capable, start it via the start command the selected target packet documents, wait until the packet's readiness signal reports ready, then continue to preflight and comparison. A startable runtime is a setup step to perform, not a reason to stop.
+- If the runtime/instance for a required target is absent and the harness is shell-capable, start it via the start command the selected target packet documents — applying the parent-supplied required runtime config through the mechanism the packet defines — wait until the packet's readiness signal reports ready, then continue to preflight and comparison. Starting with the required config in one shot is what avoids a reconfigure/restart round-trip mid-verification. A startable runtime is a setup step to perform, not a reason to stop.
 - Only return `Blocked` for a missing runtime when the harness is read-only/Ask-mode, the target packet documents no start command, or the documented start fails. In that case the blocker MUST name the affected target(s) and the exact start command from the target packet for the user to run.
 - If this worker started a runtime, follow the target packet's teardown ownership rules before returning.
 

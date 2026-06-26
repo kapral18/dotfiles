@@ -18,3 +18,5 @@ app_icons/
 .copilot/hooks/agent-memory.json
 .config/gh-dash/gh-dash-shared.yml
 crontab
+**/__pycache__/**
+**/*.pyc

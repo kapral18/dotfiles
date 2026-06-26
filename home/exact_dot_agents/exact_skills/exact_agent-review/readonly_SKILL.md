@@ -56,7 +56,7 @@ The controller owns:
 - deciding which worker-reported `verification_needed` items deserve serial controller verification
 - judging kept/dropped findings after aggregation
 - reconciling PR-mode draft payloads with existing current-account pending reviews, submitted review comments, and replies before preparing or posting final review feedback
-- applying fixes, drafting payloads, or touching GitHub only after the relevant `review`/`github`/`git` gates
+- applying fixes, drafting payloads, or touching GitHub only after the relevant `review`/`communication`/`github`/`git` gates (load `communication` before wording any human-visible draft)
 
 Before fan-out, the controller must not load or run the full `review` skill.
 
@@ -217,7 +217,8 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
    - Select a live UI target packet before launch:
      - If the target repo/object is verified as `elastic/kibana` and no explicit user-provided or repo-documented local/dev target packet exists, load `~/.agents/skills/elastic-domain/SKILL.md` and include the Kibana live-UI target packet from `~/.agents/skills/elastic-domain/references/kibana-live-ui.md`.
      - Otherwise use the explicit user-provided or repo-documented local/dev target packet.
-   - Include the selected target/preflight packet in the worker prompt.
+   - Resolve required runtime config once, before the first `live-ui-review` launch: from the changed paths and kept candidates, determine any runtime/feature-flag settings the path under review needs to be reachable, and pass them to the worker so the runtime is started correctly the first time instead of started default and reconfigured after a blocker. The concrete settings and the start-time mechanism are owned by the selected target packet (e.g. the Kibana overlay's `required_kbn_flags` -> `,kbn-stack -K`); keep specific flag names and values in the packet/overlay, not here. When none are needed, pass an empty set.
+   - Include the selected target/preflight packet and the resolved required runtime config in the worker prompt.
    - Do not rely on the worker to rediscover it.
    - It returns one of:
      - `Not applicable`
@@ -230,6 +231,7 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
    - Run this phase only after the PR necessity gate, both reviewer outputs, and the live UI result or explicit live-UI skip reason are available.
    - Always audit kept reviewer findings, worker-reported `verification_needed`, live UI evidence/artifacts/blockers or skip reason, and any PR necessity draft concerns kept after the greenlight gate.
    - Maintain a verification ledger for every worker-reported `verification_needed` and every live UI / PR necessity blocker that can affect keep/drop/action. The findings audit may recommend dispositions, but it must not erase a ledger item by assuming one branch of an unresolved fork.
+   - If both reviewer lanes report the same or overlapping root cause, treat that as a merge/deduplication task, not as evidence that the issue is unnecessary. Collapse duplicates into one candidate and keep verifying/judging it unless a hard drop rule below is proven.
    - Inline the audit in the controller when the remaining set is trivial:
      - no candidate findings, or
      - one straightforward evidence-backed finding with no model disagreement, no live UI blocker, no PR-necessity concern kept after greenlight, and no fix diff to audit.
@@ -255,18 +257,19 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
 6. **Aggregate.** Combine `pr-necessity-auditor` greenlight/skip status, GPT reviewer output, Opus reviewer output, the verification ledger, live UI evidence/status/artifacts, and the findings audit result.
 7. **Judge in the controller.**
    - Apply mode-correct reconciliation:
-     - all modes: collapse duplicate worker findings, apply the severity model, and keep only findings that are implementation-verified, not covered by existing evidence, and not dropped by the parity/deduplication filters
+     - all modes: collapse duplicate worker findings, apply the severity model, and keep findings that are implementation-verified, not covered by existing evidence, and not dropped by the parity/deduplication filters. If a candidate is not yet implementation-verified because verification was unsafe, mutating, or required a shared/exclusive resource, carry its `verification_needed` in the ledger instead of dropping it.
      - PR modes: apply `pr_common.md` Deduplication + Truth Filter, Existing Pending Review Reconciliation, CI Coverage Gate, and PR Necessity + Correctly-Open Audit classifications
      - local-changes mode: do not apply PR-thread deduplication or PR CI coverage exemptions; judge against the staged/unstaged/range scope in the packet
    - For PR modes, read any current-account pending review and already-submitted current-account review comments/replies before drafting payloads. Merge kept pending findings with kept new findings into one final draft; drop stale pending findings with evidence; block rather than producing competing or contradictory payloads.
    - For kept PR-mode UI findings, verify screenshot paths when possible and surface them only in final `UI evidence attachments:`. Never upload images, put local paths in GitHub review bodies, or create extra comments just to carry image paths.
-   - Drop:
+   - Drop only with source/API/runtime evidence for one of these hard reasons:
      - unsupported claims
      - unreachable-path findings
      - PR-mode findings covered by verified PR CI or existing PR artifacts
      - candidates classified as `preserved_limitation` or `prose_drift` by the Replacement/Migration Parity Gate
-     - findings that only a worker asserted without evidence
+     - findings that only a worker asserted without evidence and without a decisive `verification_needed` path
      - PR necessity claims that rely only on ambient precedent without proving the current PR's actual diff and directly referenced artifacts
+   - A findings-auditor drop recommendation is advisory. The controller must name the hard drop reason and evidence; otherwise keep the finding, merge it with a duplicate, run the needed verification, or block with explicit uncertainty.
    - For every verification-ledger item, record one disposition:
      - `resolved`: evidence makes it irrelevant or answers the fork,
      - `run`: the controller ran the serial non-mutating/heavy check,
@@ -275,6 +278,7 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
    - A `verification_needed` that can flip a kept/dropped finding, fix decision, or draft payload is blocking until it is `resolved` or `run`. Do not let findings audit or stale PR-intent assumptions convert it to `not needed`.
 8. **Act only after judgment.** Branch strictly on `fix_authorized` and the mode recorded in step 1; never infer fix authorization from the fact that the change is merely checked out locally (a locally-checked-out other-authored branch with no assignee/takeover signal is still `fix_authorized: no`).
    - Do not act while a blocking verification-ledger item or intent dependency remains unresolved. Either resolve it first, or stop/draft with explicit remaining uncertainty according to the mode.
+   - Before composing any human-visible text in this step — review summaries, draft comments/suggestions, thread replies, or PR-level feedback — load `~/.agents/skills/communication/SKILL.md` via the Skill tool and word the text to its contract. This is a blocking `Use when` match (you are drafting content another human will read), not an optional pointer; do the load even when no fix is applied and even when the only output is a single review comment. If a verified domain overlay applies to the target repo/org (e.g. `~/.agents/skills/elastic-domain/SKILL.md` for `elastic/kibana`), load it too for repo-specific wording/footer rules before drafting.
    - `fix_authorized: yes` (own / assigned / adopted PR, or local-changes self flow):
      - apply the selected fixes in the working tree; no separate "fix" keyword is required
      - then run the step-9 post-act verification phase (an adopted/assigned PR is a change-producing flow; do not skip the fix-diff Post-Review Stage just because the PR was originally other-authored)
@@ -328,6 +332,7 @@ Before launching `live-ui-review`, include a target/preflight packet in the work
 - Verified Kibana target: if the target repo/object is `elastic/kibana` and no explicit user-provided or repo-documented local/dev target packet exists, load `~/.agents/skills/elastic-domain/SKILL.md` and paste the Kibana target/preflight packet from `~/.agents/skills/elastic-domain/references/kibana-live-ui.md`.
 - Other targets: use only explicit user-provided or repo-documented local/dev targets. If neither a verified Kibana packet nor an explicit packet can be loaded, return a target blocker instead of inventing hosts or ports.
 - The packet must identify base/head targets, readiness checks, allowed local/dev data setup, screenshot handoff rules, and blocker criteria.
+- Resolve required runtime config once before this launch and pass it with the packet, so the runtime is started with the config the path under review needs in one shot rather than reconfigured after a blocker. Keep concrete flag names/values in the packet/overlay, not in this controller contract.
 
 Controller validation: reject and rerun any `live-ui-review` result that:
 

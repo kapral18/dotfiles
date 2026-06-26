@@ -74,21 +74,21 @@ Copilot source and install:
 
 | Surface  | Path                                                                                                                            |
 | -------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Source   | [`home/dot_copilot/`](../../../../home/dot_copilot/)                                                                            |
+| Source   | [`home/private_dot_copilot/`](../../../../home/private_dot_copilot/)                                                            |
 | Target   | `~/.copilot/`                                                                                                                   |
 | Install  | Homebrew cask `copilot-cli`, binary `copilot`                                                                                   |
 | Brewfile | [`brews/shared/39-applications-casks.brewfile`](../../../../home/.chezmoitemplates/brews/shared/39-applications-casks.brewfile) |
 
-The cask auto-generates fish/zsh/bash completions, so no completion file is tracked. Copilot uses shared SOP, skills, session context, and worklog hooks; Copilot-specific hook adapters live under `home/dot_copilot/`.
+The cask auto-generates fish/zsh/bash completions, so no completion file is tracked. Copilot uses shared SOP, skills, session context, and worklog hooks; Copilot-specific hook adapters live under `home/private_dot_copilot/`.
 
-| Surface            | Source                                                                                                            | Target                               |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| SOP / instructions | [`symlink_copilot-instructions.md`](../../../../home/dot_copilot/symlink_copilot-instructions.md) → `~/AGENTS.md` | `~/.copilot/copilot-instructions.md` |
-| Skills             | [`symlink_skills`](../../../../home/dot_copilot/symlink_skills) → `~/.agents/skills`                              | `~/.copilot/skills`                  |
-| Custom agents      | [`exact_agents/`](../../../../home/dot_copilot/exact_agents/)                                                     | `~/.copilot/agents/`                 |
-| MCP servers        | `mcp_servers.yaml` via `generate_mcp_configs.py copilot`                                                          | `~/.copilot/mcp-config.json`         |
-| Hooks              | [`hooks.json`](../../../../home/dot_copilot/hooks.json)                                                           | `~/.copilot/hooks/agent-memory.json` |
-| Settings           | [`settings.json`](../../../../home/dot_copilot/settings.json)                                                     | `~/.copilot/settings.json`           |
+| Surface            | Source                                                                                                                    | Target                               |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| SOP / instructions | [`symlink_copilot-instructions.md`](../../../../home/private_dot_copilot/symlink_copilot-instructions.md) → `~/AGENTS.md` | `~/.copilot/copilot-instructions.md` |
+| Skills             | [`symlink_skills`](../../../../home/private_dot_copilot/symlink_skills) → `~/.agents/skills`                              | `~/.copilot/skills`                  |
+| Custom agents      | [`exact_agents/`](../../../../home/private_dot_copilot/exact_agents/)                                                     | `~/.copilot/agents/`                 |
+| MCP servers        | `mcp_servers.yaml` via `generate_mcp_configs.py copilot`                                                                  | `~/.copilot/mcp-config.json`         |
+| Hooks              | [`hooks.json`](../../../../home/private_dot_copilot/hooks.json)                                                           | `~/.copilot/hooks/agent-memory.json` |
+| Settings           | [`settings.json`](../../../../home/private_dot_copilot/settings.json)                                                     | `~/.copilot/settings.json`           |
 
 Key wiring decisions:
 

@@ -339,7 +339,7 @@ Publishing content a human will see can have outsized consequences for the setup
 - **Verify author type; do not guess.** Classify from the platform API, not from display-name heuristics: GitHub `user.type == "Bot"`, a login ending in `[bot]`, or a known-bot allowlist from the verified overlay.
 - **Fail safe to human.** If the author type is ambiguous/unknown, or a thread mixes human and bot participants, treat it as human and require supervision.
 - **Scope.** This relaxes the prior blanket "never post/resolve unless explicitly asked" only for verified bot threads; for any human-visible target the approval checkpoint is absolute. It does not restrict read-only inspection, local working-tree edits, or `/tmp` work.
-- **Wording.** This gate governs _whether/how to publish_. For _how to word_ any human-visible communication — replies, comments, PR/issue descriptions, commit/release messages, announcements, status updates — on any surface (GitHub, Slack, email, chat, releases), follow the centralized `~/.agents/skills/communication/SKILL.md`. Surface skills carry only their own mechanics and defer wording there; do not re-derive tone per surface.
+- **Wording.** This gate governs _whether/how to publish_. For _how to word_ any human-visible communication — replies, comments, PR/issue descriptions, commit/release messages, announcements, status updates — on any surface (GitHub, Slack, email, chat, releases), load `~/.agents/skills/communication/SKILL.md` via the Skill tool **before composing the text**, and word it to that contract. Treat this as a standing `Use when` match that fires whenever you are about to draft anything a human other than the in-session user will read — independently of which surface/mechanics skill (`github`, `google-workspace`, `review`, …) is already loaded; having a mechanics skill loaded never substitutes for loading `communication`. Surface skills carry only their own mechanics and defer wording there; do not re-derive tone per surface.
 
 ## 4. Tooling
 
@@ -436,7 +436,7 @@ Durable, cross-session knowledge (verified gotchas, decisions, patterns, princip
 - **Ambiguous Affirmations:** When the user replies with a short affirmation ("sure", "ok", "yes") after an explanation that included potential side effects, DO NOT assume authorization to execute. Treat it as an unresolved fork. You MUST ask exactly one question to clarify if they are acknowledging the explanation or authorizing the execution.
 - Wrap paths and symbols in backticks; use code citation format for existing code.
 - Do not create separate summary documents or redundant recaps unless explicitly asked. Concise result summaries inside the response are required when they carry evidence, outcomes, or next-step constraints.
-- This section governs how you talk to the user in-session. For human-visible content you produce for _other_ people on any external surface (replies, comments, PR/issue descriptions, commit/release messages, announcements), follow `~/.agents/skills/communication/SKILL.md`.
+- This section governs how you talk to the user in-session. For human-visible content you produce for _other_ people on any external surface (replies, comments, PR/issue descriptions, commit/release messages, announcements), load and follow `~/.agents/skills/communication/SKILL.md` before composing it.
 - Skills are binding procedures — when a `Use when` clause matches, load and follow it. Do not approximate from memory.
 
 **Canonical examples:**

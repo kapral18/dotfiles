@@ -42,6 +42,8 @@ Hard constraints:
 - Check whether parent-supplied existing pending/submitted review content makes a candidate redundant, stale, conflicting, or mergeable into a single cleaner payload.
 - Check whether each screenshot is tied to a candidate the controller kept, has a useful description, and is worth handing to the user for manual attachment. Drop handoff entries for findings the controller should drop, redundant screenshots, and screenshots that do not add context beyond text evidence.
 - Treat parent-supplied `verification_needed` and blocker entries as sticky ledger items. You may recommend `resolved`, `run`, `blocked`, or `not needed with evidence`, but do not erase an item or assume one branch of an unresolved intent/data fork.
+- Treat same-root-cause findings from both reviewer lanes as a merge/deduplication problem, not a reason to discard the issue as unnecessary. Recommend one merged candidate unless source/API/runtime evidence proves a hard drop reason.
+- Redundancy, verbosity, and semantic + logical duplication are payload-quality findings. They may justify merging, rewording, suppressing a duplicate copy, or asking the controller to verify an unresolved fork; they do not make an evidence-backed substantive issue non-actionable by themselves.
 
 Return each finding with:
 

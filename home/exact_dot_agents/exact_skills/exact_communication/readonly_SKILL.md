@@ -1,6 +1,6 @@
 ---
 name: communication
-description: Canonical tone and style for any human-directed communication the agent produces on the user's behalf — on any surface and in either direction (proactive or in response). Use whenever drafting anything a human will read (e.g. GitHub PR/issue threads and bodies, Slack, email, chat, gist/release notes, commit messages, announcements, status updates — among others, not limited to these). Other skills reference this instead of restating tone/style.
+description: Canonical tone and style for any human-directed communication the agent produces on the user's behalf — on any surface and in either direction (proactive or in response). Load this skill before composing anything a human other than the in-session user will read (e.g. GitHub PR/issue threads and bodies, Slack, email, chat, gist/release notes, commit messages, announcements, status updates — among others, not limited to these); a surface/mechanics skill being loaded (github, google-workspace, review, …) never substitutes for loading this. Other skills reference this instead of restating tone/style.
 ---
 
 # Communication (Centralized Tone & Style)

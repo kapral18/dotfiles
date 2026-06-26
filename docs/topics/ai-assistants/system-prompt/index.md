@@ -16,15 +16,15 @@ The SOP is the highest-leverage AI artifact in this setup. It decides how every 
 
 ## Source map
 
-| Surface           | Source                                                                                                             | Target                               |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------ |
-| Single SOP source | [`home/readonly_AGENTS.md`](../../../../home/readonly_AGENTS.md)                                                   | `~/AGENTS.md`                        |
-| Claude            | [`home/symlink_CLAUDE.md`](../../../../home/symlink_CLAUDE.md)                                                     | `~/CLAUDE.md`                        |
-| Gemini            | [`home/dot_gemini/symlink_GEMINI.md`](../../../../home/dot_gemini/symlink_GEMINI.md)                               | `~/.gemini/GEMINI.md`                |
-| Cursor            | [`home/dot_cursor/symlink_AGENTS.md`](../../../../home/dot_cursor/symlink_AGENTS.md)                               | `~/.cursor/AGENTS.md`                |
-| Codex             | [`home/dot_codex/symlink_AGENTS.md`](../../../../home/dot_codex/symlink_AGENTS.md)                                 | `~/.codex/AGENTS.md`                 |
-| OpenCode          | [`home/dot_config/opencode/symlink_AGENTS.md`](../../../../home/dot_config/opencode/symlink_AGENTS.md)             | `~/.config/opencode/AGENTS.md`       |
-| Copilot           | [`home/dot_copilot/symlink_copilot-instructions.md`](../../../../home/dot_copilot/symlink_copilot-instructions.md) | `~/.copilot/copilot-instructions.md` |
+| Surface           | Source                                                                                                                             | Target                               |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| Single SOP source | [`home/readonly_AGENTS.md`](../../../../home/readonly_AGENTS.md)                                                                   | `~/AGENTS.md`                        |
+| Claude            | [`home/symlink_CLAUDE.md`](../../../../home/symlink_CLAUDE.md)                                                                     | `~/CLAUDE.md`                        |
+| Gemini            | [`home/dot_gemini/symlink_GEMINI.md`](../../../../home/dot_gemini/symlink_GEMINI.md)                                               | `~/.gemini/GEMINI.md`                |
+| Cursor            | [`home/dot_cursor/symlink_AGENTS.md`](../../../../home/dot_cursor/symlink_AGENTS.md)                                               | `~/.cursor/AGENTS.md`                |
+| Codex             | [`home/dot_codex/symlink_AGENTS.md`](../../../../home/dot_codex/symlink_AGENTS.md)                                                 | `~/.codex/AGENTS.md`                 |
+| OpenCode          | [`home/dot_config/opencode/symlink_AGENTS.md`](../../../../home/dot_config/opencode/symlink_AGENTS.md)                             | `~/.config/opencode/AGENTS.md`       |
+| Copilot           | [`home/private_dot_copilot/symlink_copilot-instructions.md`](../../../../home/private_dot_copilot/symlink_copilot-instructions.md) | `~/.copilot/copilot-instructions.md` |
 
 ## Mental model
 

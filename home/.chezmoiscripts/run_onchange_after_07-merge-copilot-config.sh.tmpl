@@ -2,8 +2,8 @@
 
 set -euo pipefail
 
-# copilot settings hash: {{ include "dot_copilot/settings.json" | sha256sum }}
-# copilot hooks hash: {{ include "dot_copilot/hooks.json" | sha256sum }}
+# copilot settings hash: {{ include "private_dot_copilot/settings.json" | sha256sum }}
+# copilot hooks hash: {{ include "private_dot_copilot/hooks.json" | sha256sum }}
 # mcp_servers hash: {{ include ".chezmoidata/mcp_servers.yaml" | sha256sum }}
 # generate_mcp_configs.py hash: {{ include "../scripts/generate_mcp_configs.py" | sha256sum }}
 # mcp_registry.py hash: {{ include "../scripts/mcp_registry.py" | sha256sum }}
@@ -30,7 +30,7 @@ chezmoi_write_if_changed "$mcp_json" "$HOME/.copilot/mcp-config.json" 0600
 # our declared keys ON TOP of whatever is live so they win without clobbering
 # the user's runtime choices; chezmoi ignores the live target.
 settings_target="$HOME/.copilot/settings.json"
-settings_src="$source_dir/dot_copilot/settings.json"
+settings_src="$source_dir/private_dot_copilot/settings.json"
 if [ -f "$settings_target" ]; then
   desired_settings="$(jq -s '.[0] * .[1]' "$settings_target" "$settings_src")"
 else
@@ -41,4 +41,4 @@ chezmoi_write_if_changed "$desired_settings" "$settings_target"
 # User-level hooks (~/.copilot/hooks/agent-memory.json): shared session/worklog
 # hooks. PascalCase event names yield the VS Code-compatible snake_case payloads
 # our hook scripts read.
-chezmoi_write_if_changed "$(cat "$source_dir/dot_copilot/hooks.json")" "$HOME/.copilot/hooks/agent-memory.json"
+chezmoi_write_if_changed "$(cat "$source_dir/private_dot_copilot/hooks.json")" "$HOME/.copilot/hooks/agent-memory.json"

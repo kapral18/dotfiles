@@ -199,16 +199,16 @@ tar_gz_bin|mdtt|szktkfm/mdtt|v0.3.1|mdtt_Darwin_arm64.tar.gz|mdtt|mdtt
 
 Home SOPs are installed into `$HOME` by chezmoi. `home/readonly_AGENTS.md` is the single SOP source; the other entrypoints are symlinks to it.
 
-| Source                                             | Target                               |
-| -------------------------------------------------- | ------------------------------------ |
-| `home/readonly_AGENTS.md`                          | `~/AGENTS.md`                        |
-| `home/symlink_CLAUDE.md`                           | `~/CLAUDE.md`                        |
-| `home/dot_gemini/symlink_GEMINI.md`                | `~/.gemini/GEMINI.md`                |
-| `home/dot_cursor/symlink_AGENTS.md`                | `~/.cursor/AGENTS.md`                |
-| `home/dot_codex/symlink_AGENTS.md`                 | `~/.codex/AGENTS.md`                 |
-| `home/dot_config/opencode/symlink_AGENTS.md`       | `~/.config/opencode/AGENTS.md`       |
-| `home/dot_copilot/symlink_copilot-instructions.md` | `~/.copilot/copilot-instructions.md` |
-| `home/exact_dot_agents/exact_skills/`              | `~/.agents/skills/`                  |
+| Source                                                     | Target                               |
+| ---------------------------------------------------------- | ------------------------------------ |
+| `home/readonly_AGENTS.md`                                  | `~/AGENTS.md`                        |
+| `home/symlink_CLAUDE.md`                                   | `~/CLAUDE.md`                        |
+| `home/dot_gemini/symlink_GEMINI.md`                        | `~/.gemini/GEMINI.md`                |
+| `home/dot_cursor/symlink_AGENTS.md`                        | `~/.cursor/AGENTS.md`                |
+| `home/dot_codex/symlink_AGENTS.md`                         | `~/.codex/AGENTS.md`                 |
+| `home/dot_config/opencode/symlink_AGENTS.md`               | `~/.config/opencode/AGENTS.md`       |
+| `home/private_dot_copilot/symlink_copilot-instructions.md` | `~/.copilot/copilot-instructions.md` |
+| `home/exact_dot_agents/exact_skills/`                      | `~/.agents/skills/`                  |
 
 Rules:
 
