@@ -25,7 +25,3 @@ Codex's current OpenAI model surface does not provide a Claude Opus lane here, s
 ## Gemini CLI
 
 Gemini subagents cannot call other subagents, so run `/agent-review` in the main Gemini session. Do not run the controller itself as a Gemini subagent.
-
-## Amp
-
-Amp has no verified custom profile directory in the local interface. Use generic `Task` prompts with the role-specific contract under `references/` instead of inventing profile files.

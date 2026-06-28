@@ -12,6 +12,7 @@ from __future__ import annotations
 import base64
 import contextlib
 import hashlib
+import importlib.util
 import io
 import json
 import os
@@ -24,7 +25,9 @@ import tempfile
 import time
 import unittest
 from dataclasses import dataclass
+from importlib.machinery import SourceFileLoader
 from pathlib import Path
+from urllib.request import Request, urlopen
 
 SCRIPTS = Path(__file__).resolve().parent.parent
 REPO = SCRIPTS.parent
@@ -157,6 +160,221 @@ class TestVerifyBinSurface(unittest.TestCase):
             failures = verify_bin_surface.check_bin_surface(root)
 
         assert any("docs file missing" in failure for failure in failures)
+
+
+def _load_artifact_command():
+    source = REPO / "home/exact_bin/executable_,artifact"
+    loader = SourceFileLoader("artifact_command", str(source))
+    spec = importlib.util.spec_from_loader("artifact_command", loader)
+    if spec is None or spec.loader is None:
+        raise AssertionError("could not load ,artifact command module")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class TestArtifactCommand(unittest.TestCase):
+    """WHEN creating cache-only browser artifacts."""
+
+    def test_detects_dotfiles_ambient_theme(self):
+        artifact = _load_artifact_command()
+
+        theme = artifact.detect_ambient_theme(REPO)
+
+        assert theme["name"] == "dotfiles"
+        assert ".mermaids/" in theme["markers"]
+        assert "home/" in theme["markers"]
+
+    def test_injects_ambient_theme_once(self):
+        artifact = _load_artifact_command()
+        html_doc = "<!doctype html><html><head><title>x</title></head><body><main>hello</main></body></html>"
+
+        themed = artifact.inject_ambient_theme(html_doc)
+        twice = artifact.inject_ambient_theme(themed)
+
+        assert artifact.AMBIENT_THEME_STYLE_ID in themed
+        assert themed == twice
+        assert themed.index(artifact.AMBIENT_THEME_STYLE_ID) < themed.index("</head>")
+
+    def test_write_injects_theme_under_cache_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp) / "cache"
+            source = Path(tmp) / "source.html"
+            source.write_text("<!doctype html><html><head></head><body><main>demo</main></body></html>")
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(REPO / "home/exact_bin/executable_,artifact"),
+                    "write",
+                    "demo",
+                    "--file",
+                    str(source),
+                ],
+                cwd=REPO,
+                env={**os.environ, "XDG_CACHE_HOME": str(cache)},
+                capture_output=True,
+                text=True,
+            )
+
+            assert result.returncode == 0, result.stderr
+            output = Path(result.stdout.strip())
+            assert output.is_file()
+            assert cache.resolve() in output.resolve().parents
+            assert "agent-artifact-ambient-theme" in output.read_text()
+
+    def test_normalizes_feedback_batch_and_flattens_prompts(self):
+        artifact = _load_artifact_command()
+
+        batch = artifact.normalize_feedback_batch(
+            {
+                "items": [
+                    {"prompt": "tighten this", "selector": "main > h1", "text": "Heading"},
+                    {"prompt": "  ", "selector": "ignored"},
+                    {"prompt": "add checklist", "selection": "selected text"},
+                ]
+            }
+        )
+
+        assert batch is not None
+        assert batch["batch_id"]
+        assert len(batch["items"]) == 2
+        prompts = artifact.flatten_feedback_batches([batch])
+        assert [item["prompt"] for item in prompts] == ["tighten this", "add checklist"]
+        assert prompts[0]["item_index"] == 1
+        assert prompts[1]["item_index"] == 2
+        assert prompts[0]["batch_id"] == batch["batch_id"]
+
+    def test_live_feedback_context_survives_normalization(self):
+        artifact = _load_artifact_command()
+
+        batch = artifact.normalize_feedback_batch(
+            {
+                "items": [
+                    {
+                        "prompt": "move this control",
+                        "selector": 'button[data-test-subj="save"]',
+                        "text": "Save",
+                        "url": "http://localhost:5601/app/demo",
+                        "title": "Demo - Kibana",
+                        "role": "button",
+                        "label": "Save changes",
+                        "source": "live-overlay",
+                        "rect": {"x": 10, "y": 20, "width": 30, "height": 40},
+                        "ancestors": [{"selector": "form", "role": "form", "label": "Settings"}],
+                    }
+                ]
+            }
+        )
+
+        assert batch is not None
+        prompt = artifact.flatten_feedback_batches([batch])[0]
+        assert prompt["source"] == "live-overlay"
+        assert prompt["url"] == "http://localhost:5601/app/demo"
+        assert prompt["role"] == "button"
+        assert prompt["rect"]["width"] == 30
+        assert prompt["ancestors"][0]["selector"] == "form"
+
+    def test_feedback_poll_archives_delivered_batches(self):
+        artifact = _load_artifact_command()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            fdir = Path(tmp) / "feedback"
+            fdir.mkdir()
+            old_feedback_dir = artifact.feedback_dir
+            artifact.feedback_dir = lambda: fdir
+            try:
+                pending = artifact.feedback_path("demo")
+                pending.write_text('{"prompt":"tighten"}\n', encoding="utf-8")
+
+                records, archive = artifact.read_and_archive_feedback("demo")
+
+                assert [record["prompt"] for record in records] == ["tighten"]
+                assert archive is not None
+                assert archive.is_file()
+                assert not pending.exists()
+                assert archive.parent == fdir / "delivered"
+            finally:
+                artifact.feedback_dir = old_feedback_dir
+
+    def test_clear_ended_allows_reusing_artifact_name(self):
+        artifact = _load_artifact_command()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            fdir = Path(tmp) / "feedback"
+            fdir.mkdir()
+            old_feedback_dir = artifact.feedback_dir
+            artifact.feedback_dir = lambda: fdir
+            try:
+                ended = artifact.ended_path("demo")
+                ended.write_text("", encoding="utf-8")
+
+                artifact.clear_ended("demo")
+
+                assert not ended.exists()
+            finally:
+                artifact.feedback_dir = old_feedback_dir
+
+    def test_chrome_exposes_hover_highlight_and_expanded_anchor_card(self):
+        artifact = _load_artifact_command()
+
+        injected = artifact.inject_client_script("<html><body><main><p>hello</p></main></body></html>")
+        chrome = artifact.chrome_page("demo.html")
+
+        assert "__agent_artifact_hover" in injected
+        assert "__agent_artifact_selected" in injected
+        assert "function areaTargetFor" in injected
+        assert "function expandedTargetFor" in injected
+        assert "document.documentElement" in injected
+        assert "event.altKey" in injected
+        assert "agent-artifact-ready" in injected
+        assert "[data-card], .card, .panel, .callout" in injected
+        assert 'class="anchor-card"' in chrome
+        assert "Alt-click expands" in chrome
+        assert "dock expanded upward" in chrome
+        assert "expanded" in chrome
+
+    def test_live_overlay_script_exposes_pause_teardown_and_minimal_context(self):
+        artifact = _load_artifact_command()
+
+        script = artifact.live_overlay_script("live.html", "http://127.0.0.1:12345")
+
+        assert "__agent_artifact_live_overlay" in script
+        assert "attachShadow" in script
+        assert 'source: "live-overlay"' in script
+        assert "rect: rectOf(el)" in script
+        assert "ancestors: ancestorsOf(el)" in script
+        assert "pause" in script
+        assert "destroy" in script
+        assert "drain" in script
+        assert "Local post blocked" in script
+        assert "/api/feedback/" in script
+
+    def test_live_start_serves_script_with_cors(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp) / "cache"
+            env = {**os.environ, "XDG_CACHE_HOME": str(cache)}
+            command = [sys.executable, str(REPO / "home/exact_bin/executable_,artifact")]
+            result = subprocess.run(
+                [*command, "live", "start", "demo", "--json"],
+                cwd=REPO,
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            try:
+                assert result.returncode == 0, result.stderr
+                info = json.loads(result.stdout)
+                script_response = urlopen(info["script_url"], timeout=5)
+                assert script_response.headers["access-control-allow-origin"] == "*"
+                assert "__agent_artifact_live_overlay" in script_response.read().decode()
+                options = urlopen(
+                    Request(info["feedback_url"], method="OPTIONS", headers={"origin": "http://localhost:5601"}),
+                    timeout=5,
+                )
+                assert options.status == 204
+                assert options.headers["access-control-allow-origin"] == "*"
+            finally:
+                subprocess.run([*command, "stop"], cwd=REPO, env=env, capture_output=True, text=True)
 
 
 class TestAgentMemory(unittest.TestCase):

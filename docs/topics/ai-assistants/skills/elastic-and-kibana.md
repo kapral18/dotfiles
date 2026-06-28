@@ -49,6 +49,15 @@ The boundary is intentional: generic skills (`review`, `agent-review`, `github`,
 | Source   | [`exact_kibana-console-monaco`](../../../../home/exact_dot_agents/exact_skills/exact_kibana-console-monaco/) |
 | Gate     | `elastic/kibana` repos                                                                                       |
 
+## `kbn-stack`
+
+| Field    | Value                                                                                |
+| -------- | ------------------------------------------------------------------------------------ |
+| Use when | starting, reusing, inspecting, or tearing down local Kibana ES+Kibana dev stacks     |
+| Source   | [`exact_kbn-stack`](../../../../home/exact_dot_agents/exact_skills/exact_kbn-stack/) |
+| Tool     | `,kbn-stack`                                                                         |
+| Gate     | `elastic/kibana` repos                                                               |
+
 ## `kbn-backport`
 
 | Field    | Value                                                                                      |

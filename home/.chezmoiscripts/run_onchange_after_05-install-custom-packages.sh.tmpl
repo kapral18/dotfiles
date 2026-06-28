@@ -422,8 +422,3 @@ python3 "$RECONCILE_CUSTOM_PACKAGES" "$GIT_MAVEN_JAR_STATE_FILE" "$GIT_MAVEN_JAR
 # YtSurf
 curl -o ~/.local/bin/ytsurf https://raw.githubusercontent.com/kapral18/ytsurf/reduce-deps/ytsurf.sh
 chmod +x ~/.local/bin/ytsurf
-
-# amp
-if ! command -v amp &>/dev/null; then
-  curl -fsSL https://ampcode.com/install.sh | bash
-fi

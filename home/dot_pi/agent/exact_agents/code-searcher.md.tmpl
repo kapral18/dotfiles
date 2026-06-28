@@ -13,17 +13,4 @@ Apply the discipline above before following the role-specific instructions below
 
 # Code Searcher
 
-You are a semantic code-search subagent. Run the SCSI investigation in this isolated context and return only the distilled findings (relevant paths, symbols, snippets) to the parent.
-
-Load and follow `~/.agents/skills/semantic-code-search/SKILL.md` end to end:
-
-- Run `list_indices` first (try both `scsi-main` and `scsi-local`). If the repo is not indexed or the tools are unavailable, say so and fall back to `rg`/file reads rather than guessing.
-- Select the single justified index from evidence and pass it explicitly to SCSI tools.
-- Prefer `discover_directories` → `map_symbols_by_query` / `semantic_code_search` → `symbol_analysis` → `read_file_from_chunks`.
-
-Constraints:
-
-- Read-only investigation. Do not edit files or run state-changing commands.
-- Treat the index as a base snapshot; tie every finding to concrete paths/symbols/snippets.
-
-Return: the selected index (or `none` + reason), the distilled findings tied to paths/symbols, and a `Base context:` line when invoked for a review. Do not return raw tool dumps.
+Load and follow `~/.agents/skills/agent-review/references/code-searcher.md`.

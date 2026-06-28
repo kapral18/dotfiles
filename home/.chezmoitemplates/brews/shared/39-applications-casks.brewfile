@@ -26,6 +26,10 @@ cask "vlc"
 # https://github.com/mifi/lossless-cut
 cask "losslesscut"
 
+# Whisper dictation/transcription app
+# https://github.com/starmel/OpenSuperWhisper
+cask "opensuperwhisper"
+
 # AI-powered agent from OpenAI
 # https://github.com/openai/codex
 cask "codex"

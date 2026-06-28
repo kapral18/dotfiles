@@ -9,15 +9,14 @@ title: Other harnesses
 
 Subagents are covered in [Cross-harness subagents](../subagents.md). Keep this page focused on tool configuration and config rendering; the subagent page owns runtime discovery, review fan-out hierarchy, source paths, and design notes.
 
-## Codex, OpenCode, Amp
+## Codex and OpenCode
 
-| Tool     | Config source                                                                                                                      |
-| -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Codex    | [`home/dot_codex/`](../../../../home/dot_codex/)                                                                                   |
-| OpenCode | [`home/dot_config/opencode/`](../../../../home/dot_config/opencode/)                                                               |
-| Amp      | [`home/dot_config/exact_amp/private_readonly_settings.json`](../../../../home/dot_config/exact_amp/private_readonly_settings.json) |
+| Tool     | Config source                                                        |
+| -------- | -------------------------------------------------------------------- |
+| Codex    | [`home/dot_codex/`](../../../../home/dot_codex/)                     |
+| OpenCode | [`home/dot_config/opencode/`](../../../../home/dot_config/opencode/) |
 
-Codex and OpenCode use profile merging with MCP injection. Amp settings are tracked directly. Normal `codex` sessions go through the `~/bin/codex` shim only so local llama.cpp model selections can inject the local model catalog before falling through to the real Codex binary.
+Codex and OpenCode use profile merging with MCP injection. Normal `codex` sessions go through the `~/bin/codex` shim only so local llama.cpp model selections can inject the local model catalog before falling through to the real Codex binary.
 
 Personal OpenCode exposes Cloudflare:
 
@@ -59,15 +58,6 @@ Reason:
 
 So there is intentionally no `,claude-cloudflare` wrapper.
 
-Amp remains lightly integrated:
-
-- no SOP symlink.
-- no MCP injection.
-- no shell-gate hook.
-- `amp.dangerouslyAllowAll: true`.
-
-The `/agent-review` bridge uses only Amp's built-in `Task` tool and shared skills, so it adds no Amp-specific profile files or settings. If Amp comes back into regular rotation, wire it into `mcp_servers.yaml` injection and SOP fan-out before deeper configuration.
-
 ## GitHub Copilot CLI
 
 Copilot source and install:
@@ -96,6 +86,16 @@ Key wiring decisions:
 - **MCP: stdio (`type: "local"`), OAuth HTTP, or header-auth HTTP.** The `copilot` transform in `generate_mcp_configs.py` emits stdio servers as `type: "local"`, OAuth HTTP servers as `type: "http"` with `oauthClientId` + `auth.redirectPort` + `oauthScopes`, and — when the `copilot` block carries `headerAuth` — a header-auth HTTP server as `type: "http"` with `headers.Authorization` (OAuth keys skipped). Copilot cannot run the SCSI/Slack browser OAuth flows itself: it hardcodes its OAuth redirect to `http://127.0.0.1:{port}/` (only the port is configurable), which neither the SCSI Okta app nor the public Slack client registers, and Slack's MCP authorization server offers no dynamic client registration and requires a client secret at the token endpoint. So both `scsi-main` and `slack` give their `copilot` block a `headerAuth: "$(,mcp-token <server> --bearer)"`, and Copilot reaches each with a bearer token minted by cursor-cli (both servers accept header bearer auth). If the cursor cache is stale during `chezmoi apply`, the generator emits a refresh placeholder for that header instead of failing the apply; the `,copilot` wrapper still detects the header-auth server, refreshes it quietly (`--login --quiet` with output discarded), and re-bakes before launch. If refresh fails, re-bake fails, or a placeholder remains, the wrapper exits before starting Copilot. For opaque tokens such as Slack, `,mcp-token` uses a per-server refresh ledger in `~/.cache/mcp-token/` instead of the shared cursor cache file mtime; SCSI JWTs use their `exp`. Because Copilot reads each Authorization header once at launch and never reloads it, the `,copilot` wrapper does this proactively: before launch, it derives the header-auth HTTP servers from `~/.copilot/mcp-config.json`, refreshes each stale token without streaming cursor-agent auth logs or the final raw token, and re-bakes the fresh tokens by re-running the hook's generator (`generate_mcp_configs.py … copilot`, located via `chezmoi data`). The token-bearing `~/.copilot/mcp-config.json` is written `0600` under a `0700` `~/.copilot/` directory. Plain `,copilot` then launches the real Copilot CLI natively. `scsi-local` has no OAuth (local stdio with `pass` Elasticsearch credentials), so it is emitted as a `type: "local"` server. Copilot's generated `mcp-config.json` therefore carries `scsi-main`, `scsi-local`, and `slack` plus its built-in servers. The built-in `github-mcp-server` is provided by Copilot and is not emitted. See [MCP servers](../mcp.md).
 - **Settings are merged, not overwritten.** Copilot owns `~/.copilot/settings.json` and rewrites it at runtime (chosen `model`, `allowedUrls`, `config.json` migration), so the merge script deep-merges the declared baseline (`effortLevel: xhigh`, `keepAlive: busy`, `autoUpdate: false` to defer to the brew cask's auto-update, `banner: never`, `includeCoAuthoredBy: true`) **on top of** the live file with our keys winning, preserving the user's runtime choices. The target is in `.chezmoiignore`.
 - **Hooks use PascalCase event names** (`SessionStart`, `PreToolUse`, `PostToolUse`) so Copilot delivers the VS Code-compatible snake_case payloads (`hook_event_name`, `session_id`, `tool_input`) that the shared session/worklog scripts already read — the same contract Codex uses. Copilot has no shell-gate hooks; PR review anchor verification is instruction-owned by the review/GitHub skills.
+
+## tuicr (review TUI)
+
+[tuicr](https://github.com/agavra/tuicr) is a terminal UI for code review, not an LLM harness. Its config is single-sourced and read-only.
+
+| Surface | Path                                                                                                   | Target                        |
+| ------- | ------------------------------------------------------------------------------------------------------ | ----------------------------- |
+| Config  | [`home/dot_config/tuicr/readonly_config.toml`](../../../../home/dot_config/tuicr/readonly_config.toml) | `~/.config/tuicr/config.toml` |
+
+The config defines the review **comment types** (`issue`, `suggestion`, `question`, `nit`, `praise`) that tuicr exports as `[LABEL]` prefixes in the markdown an agent consumes. These are actionable categories, not severity — severity (`CRITICAL`/`HIGH`/`MEDIUM`/`LOW`) stays internal per the `~/AGENTS.md` review SOP and is intentionally not encoded here, so tuicr labels and the review skill's severity model do not collide.
 
 ## Secrets
 

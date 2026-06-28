@@ -1,9 +1,11 @@
 ---
 name: playwriter
-description: Control the user's browser via Playwriter extension with Playwright code snippets. Only use when "playwriter" is explicitly mentioned.
+description: "Control a real browser with Playwriter and Playwright code snippets for web browsing, browser automation, live UI/runtime checks, localhost web apps, SPAs, authenticated pages, form flows, clicking/typing/scrolling, screenshots, visual QA, console/network inspection, and verifying rendered browser behavior. Use when a task requires opening or inspecting a website, web app, webpage, browser tab, Chrome page, rendered UI, frontend UI, localhost page, screenshot, visual check, or interactive browser flow, or when the user mentions Playwriter, Playwright, browser, browsing, website, webpage, Chrome, screenshot, visual QA, live UI, frontend UI, SPA, or localhost UI."
 ---
 
 # Playwriter
+
+Use Playwriter for real browser work. Do not wait for the user to name `playwriter` explicitly when the task involves browsing, browser automation, rendered UI verification, visual inspection, screenshots, authenticated pages, SPAs, localhost web apps, form flows, console/network inspection, or interactive browser behavior.
 
 ## REQUIRED: Read Full Documentation First
 

@@ -5,7 +5,6 @@
 
 .cache/
 .bazel-cache/
-.amp/
 .bag/
 .cargo/
 .copilot/

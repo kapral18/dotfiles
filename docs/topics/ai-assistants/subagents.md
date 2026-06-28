@@ -17,6 +17,8 @@ Subagents run a self-contained task in an isolated child context window and retu
 
 Every custom subagent profile is a chezmoi template that renders the shared tmux `prefix.txt` preamble before role instructions, so child contexts start with the same verification discipline as parent sessions.
 
+The role body itself is single-sourced. Each per-tool profile is a thin shim: per-tool frontmatter (model, tools, sandbox) + the `prefix.txt` preamble + `Load and follow ~/.agents/skills/agent-review/references/<role>.md`. The delegated-subagent contract for every role (`reviewer-worker`, `pr-necessity-auditor`, `findings-auditor`, `live-ui-review`, `post-review`, `change-auditor`, `researcher`, `code-searcher`) lives once under `agent-review/references/`, which in turn loads the owning skill (`review`, `light-review`, `research`, `semantic-code-search`). Only genuinely harness-specific notes (e.g. "Claude subagents cannot spawn subagents") stay inline. Cursor and Copilot are the canonical shim shape; the other harnesses follow it.
+
 ## Runtime discovery
 
 | Harness            | Subagent/profile source                                                                                      |
@@ -26,7 +28,6 @@ Every custom subagent profile is a chezmoi template that renders the shared tmux
 | Claude Code        | `~/.claude/agents/*.md`; launched via `Task` with `subagent_type`                                            |
 | Codex CLI          | `$CODEX_HOME/agents/*.toml`; launched through `multi_agent` `spawn_agent`/`wait`                             |
 | Gemini CLI         | project `.gemini/agents/*.md` and user `~/.gemini/agents/*.md`; exposed as tools and forced with `@name`     |
-| Amp                | Generic `Task` tool plus shared skills; no verified custom profile directory                                 |
 | Pi                 | `~/.pi/agent/agents/*.md`; built-in subagents disabled to avoid name collisions                              |
 
 Verified discovery anchors:
@@ -38,7 +39,6 @@ Verified discovery anchors:
 | Claude Code | `claude --agent`, `--agents`, `claude agents`, and `Task.subagent_type`; version `claude 2.1.179`                         |
 | Codex CLI   | `$CODEX_HOME/agents/*.toml` plus `multi_agent.spawn_agent` / `wait`; source `openai/codex@45f603302c45`                   |
 | Gemini CLI  | `.gemini/agents/*.md`, `@name` forcing, and no subagent-to-subagent calls; source `google-gemini/gemini-cli@f741d0328209` |
-| Amp         | `amp skill list` and generic `Task`; no custom profile directory found                                                    |
 
 Model identifiers are not portable. Cursor review lanes use `gpt-5.5-extra-high` and `claude-opus-4-8-xhigh`; Copilot uses `gpt-5.5` and `claude-opus-4.8` with `effortLevel: xhigh`; Pi encodes reasoning effort in model slug suffixes such as `:xhigh`.
 
@@ -46,19 +46,24 @@ Runtime probes confirmed project custom-agent invocation in Cursor and Copilot, 
 
 ## Agent suite
 
-| Agent                                       | Wraps skill            | Work it owns                                                       |
+The "Loads contract" column is the `agent-review/references/<role>.md` file the profile delegates to; that contract loads the owning skill in turn.
+
+| Agent                                       | Loads contract         | Work it owns                                                       |
 | ------------------------------------------- | ---------------------- | ------------------------------------------------------------------ |
-| `agent-review`                              | `agent-review`         | Controller: route, PR-necessity gate, fan-out, live UI, audit, act |
-| `review-controller` (Pi)                    | `review`               | Pi controller for PR gates, reviews, audits, fixes/drafts/verdict  |
-| `review-gpt-5-5-extra-high`                 | `review`               | Read-only GPT reviewer lane                                        |
-| `review-opus-4-8-xhigh-non-thinking`        | `review`               | Read-only Opus reviewer lane                                       |
-| `reviewer`                                  | `review`               | Pi/Claude read-only review worker                                  |
-| `review-worker`                             | `review`               | Codex read-only review worker role                                 |
-| `review-gemini-pro` / `review-gemini-flash` | `review`               | Gemini reviewer lanes                                              |
-| `findings-auditor`                          | `review`               | Non-trivial findings or named fix-diff audit                       |
-| `live-ui-review`                            | `review`               | Verification-only live UI reviewer with screenshot handoff         |
-| `researcher`                                | `research`             | Clone and inspect external GitHub source                           |
-| `code-searcher`                             | `semantic-code-search` | SCSI semantic investigation / base-branch context                  |
+| `agent-review`                              | `agent-review/SKILL`   | Controller: route, PR-necessity gate, fan-out, live UI, audit, act |
+| `review-controller` (Pi)                    | `review/SKILL`         | Pi controller for PR gates, reviews, audits, fixes/drafts/verdict  |
+| `review-gpt-5-5-extra-high`                 | `reviewer-worker`      | Read-only GPT reviewer lane                                        |
+| `review-opus-4-8-xhigh-non-thinking`        | `reviewer-worker`      | Read-only Opus reviewer lane                                       |
+| `reviewer`                                  | `reviewer-worker`      | Pi/Claude read-only review worker                                  |
+| `review-worker`                             | `reviewer-worker`      | Codex read-only review worker role                                 |
+| `review-gemini-pro` / `review-gemini-flash` | `reviewer-worker`      | Gemini reviewer lanes                                              |
+| `pr-necessity-auditor`                      | `pr-necessity-auditor` | Blocking PR necessity / intent gate                                |
+| `findings-auditor`                          | `findings-auditor`     | Non-trivial findings or named fix-diff audit                       |
+| `live-ui-review`                            | `live-ui-review`       | Verification-only live UI reviewer with screenshot handoff         |
+| `post-review`                               | `post-review`          | Four-dimension hygiene audit of a review's fix diff                |
+| `change-auditor`                            | `change-auditor`       | Light proportional-depth audit of a self-authored changeset        |
+| `researcher`                                | `researcher`           | Clone and inspect external GitHub source                           |
+| `code-searcher`                             | `code-searcher`        | SCSI semantic investigation / base-branch context                  |
 
 ## Review hierarchy
 

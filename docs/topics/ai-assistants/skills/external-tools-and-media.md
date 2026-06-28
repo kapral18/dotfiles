@@ -7,6 +7,15 @@ title: External tools and media
 
 These skills route non-code tools, browser automation, and generated visual assets.
 
+## `artifact`
+
+| Field    | Value                                                                                                                 |
+| -------- | --------------------------------------------------------------------------------------------------------------------- |
+| Use when | creating cache-only local HTML artifacts or injecting a local feedback overlay into an already-open live browser page |
+| Source   | [`exact_artifact`](../../../../home/exact_dot_agents/exact_skills/exact_artifact/)                                    |
+| Tool     | `,artifact`                                                                                                           |
+| Boundary | writes only under `~/.cache/agent-artifacts`; worktrees are identity metadata, not storage                            |
+
 ## `google-workspace`
 
 | Field    | Value                                                                                              |
@@ -33,8 +42,8 @@ These skills route non-code tools, browser automation, and generated visual asse
 
 ## `playwriter`
 
-| Field    | Value                                                                                  |
-| -------- | -------------------------------------------------------------------------------------- |
-| Use when | browser control when "playwriter" is explicitly mentioned                              |
-| Source   | [`exact_playwriter`](../../../../home/exact_dot_agents/exact_skills/exact_playwriter/) |
-| Boundary | explicit mention only                                                                  |
+| Field    | Value                                                                                     |
+| -------- | ----------------------------------------------------------------------------------------- |
+| Use when | real browser control, rendered UI checks, browsing flows, screenshots, or visual QA       |
+| Source   | [`exact_playwriter`](../../../../home/exact_dot_agents/exact_skills/exact_playwriter/)    |
+| Boundary | rendered browser behavior only; prefer non-browser tools for static file or source checks |

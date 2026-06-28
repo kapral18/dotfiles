@@ -28,7 +28,7 @@ The fastest visual entry point is the tmux command palette: `prefix` + `r`. It i
 | tmux helpers         | `,tmux-run-all`, `,tmux-lowfi`                                                             | [High-leverage commands](./high-leverage.md), [Tmux](../tmux/index.md)                  |
 | Search and discovery | `,grepo`, `,fuzzy-brew-search`, `,search-gh-topic`, `,youtube-search`                      | [Command catalog](./catalog.md)                                                         |
 | Testing and analysis | `,jest-test-title-report`, `,get-risky-tests`, `,get-age-buckets`, `,generate-git-sandbox` | [Command catalog](./catalog.md)                                                         |
-| AI and agents        | `,agent-memory`, `,ai-kb`, `,ralph`, provider wrappers                                     | [Command catalog](./catalog.md), [AI assistants](../../ai-assistants/index.md)          |
+| AI and agents        | `,agent-memory`, `,artifact`, `,ai-kb`, `,ralph`, provider wrappers                        | [Command catalog](./catalog.md), [AI assistants](../../ai-assistants/index.md)          |
 | Utility / plumbing   | `,bat-preview`, `,fzf-*`, `,history-sync`, media helpers                                   | [Command catalog](./catalog.md)                                                         |
 
 ## Source and coverage contract

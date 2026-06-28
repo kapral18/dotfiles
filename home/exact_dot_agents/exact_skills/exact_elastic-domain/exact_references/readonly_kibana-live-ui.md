@@ -4,7 +4,7 @@ Kibana live UI target packet for verified `elastic/kibana` `/agent-review` and `
 
 ## Runtime targets
 
-Stacks are started per worktree by `,kbn-stack`, which records each running stack in `~/.cache/kbn-stack/registry.json` keyed by absolute worktree path. Each entry has `slot`, `branch`, `backend`, `kbn_url`, `es_url`, `cookie_name`, `kbn_flags` (the list of extra `key=value` Kibana settings the stack was started with via `,kbn-stack -K`, empty when none), and `ready` (true only once Kibana has answered `/api/status`). Stacks run on plain `http://localhost:<port>` with a per-slot cookie name, so there are no fixed hostnames or fixed ports to assume.
+Stacks are started per worktree by `,kbn-stack`, which records each running stack in `~/.cache/kbn-stack/registry.json` keyed by absolute worktree path. Load and follow `~/.agents/skills/kbn-stack/SKILL.md` for command mechanics, registry inspection, required `-K` flag parity, and teardown ownership. Each entry has `slot`, `branch`, `backend`, `kbn_url`, `es_url`, `cookie_name`, `kbn_flags` (the list of extra `key=value` Kibana settings the stack was started with via `,kbn-stack -K`, empty when none), and `ready` (true only once Kibana has answered `/api/status`). Stacks run on plain `http://localhost:<port>` with a per-slot cookie name, so there are no fixed hostnames or fixed ports to assume.
 
 A stack may be started interactively by the user (tmux) or by an agent in background mode via `,kbn-stack --detach`, which starts ES + Kibana headless, waits until Kibana is ready, sets `ready: true`, and returns. Both paths flip the registry entry's `ready` to true once Kibana answers `/api/status`, so a stack the user started by hand in tmux from the current worktree is discoverable here. Treat a registry entry as a usable target only when `ready` is true; an entry with `ready: false` is still booting (or failed) and must not be used as a live target.
 
@@ -40,6 +40,7 @@ This value flows straight into `,kbn-stack -K`: each `key=value` becomes one `-K
 
 - Runtime-start precondition (do this before resolving target URLs): if a required base/head stack has no `ready:true` registry entry, do not treat the missing URL as a readiness failure. Go to Data/setup ladder Rung 0 and start it with `,kbn-stack --detach` plus one `-K key=value` per entry in `required_kbn_flags` (shell-capable harness), then resolve its `kbn_url` and continue preflight. The reachability/readiness checks below assume the stacks are up; the "cannot establish readiness -> `Blocked`" and "blocker invalid unless both target URLs reported" rules apply only after Rung 0, never as a reason to skip starting a startable stack.
 - Required-config precondition (do this when `required_kbn_flags` is non-empty, after resolving each ready target): compare the target's registry `kbn_flags` against `required_kbn_flags`. If a `ready:true` stack you did not start is missing a required flag, it cannot show the path under review and you cannot safely restart a user-owned stack — return `Blocked` per Data/setup ladder Rung 6 with the exact `,kbn-stack --stop && ,kbn-stack --detach -K <flag> ...` the user must run, naming the affected target(s). A stack this worker just started via Rung 0 already carries the flags, so no parity check is needed for it.
+- Load `~/.agents/skills/kbn-stack/SKILL.md` before starting, stopping, or reusing stack targets.
 - Read `~/.agents/skills/playwriter/SKILL.md` and run `playwriter skill` before checking targets.
 - Run in a fresh Playwriter session owned by this worker.
 - Store owned pages in `state.basePage` and `state.headPage`; do not reuse generic `page`.
@@ -115,6 +116,16 @@ The rungs below apply only once both required stacks report `ready:true`. If the
   - suggested manual review comment placement
   - fidelity note for mocks or partial setup
 - The screenshot handoff is for the controller/user only: no image uploads, local paths in GitHub review comments or bodies, or extra comments solely for image paths.
+
+## Live feedback overlay
+
+When the user wants to point at specific real Kibana UI elements, use `,artifact live` after Playwriter has verified the registry-resolved local/dev `kbn_url`.
+
+- Load and follow `~/.agents/skills/artifact/SKILL.md`.
+- Use `,artifact live script <name>` and inject the returned JavaScript into the verified Playwriter page with `page.evaluate`.
+- Tell the user capture is armed. The overlay intercepts page clicks until paused, uses Shadow DOM, and can be removed without changing the app.
+- Keep `,artifact poll <name>` running and treat returned `source: live-overlay` items as user-guided live UI feedback.
+- Preserve the screenshot handoff path for async review, visual comparison, or cases where live injection is blocked.
 
 ## Controller validation for Kibana overlay
 

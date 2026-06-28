@@ -5,7 +5,7 @@ title: Agent-review topology
 
 # Multi-agent topology
 
-`/agent-review` is the orchestration entrypoint. Cursor, Copilot, Claude, Codex, Gemini, and Amp bridge it through their native isolation mechanisms where available:
+`/agent-review` is the orchestration entrypoint. Cursor, Copilot, Claude, Codex, and Gemini bridge it through their native isolation mechanisms where available:
 
 ![Agent-review phase order: route, blocking PR necessity, parallel reviewers, live UI, findings audit, controller judgment, and gated action](../assets/agent-review-flow.svg)
 
@@ -54,7 +54,6 @@ Reviewer lane mapping:
 | Claude         | `reviewer` twice through `Task` with Claude model overrides          |
 | Codex          | `spawn_agent` roles; two `review-worker` agents with distinct angles |
 | Gemini         | `review-gemini-pro` and `review-gemini-flash`                        |
-| Amp            | two generic `Task` subagents with the shared worker contract         |
 
 1. `live-ui-review` checks applicable UI/runtime candidates with Playwriter against a controller-supplied target packet.
 2. The findings audit runs after live UI before any action. The controller audits inline for trivial sets (zero or one straightforward finding with no disagreement/blocker/fix diff) and delegates to `findings-auditor` for non-trivial sets, including material `verification_needed`. It flags redundancy, verbosity, semantic + logical duplication, gaps, actionability problems, overengineered proposed fixes, and verification-ledger disposition problems. When both reviewer lanes report the same root cause, the audit should merge/dedupe it into one candidate unless hard evidence proves a drop reason.
@@ -76,13 +75,13 @@ For UI-facing PR findings with screenshot evidence, the controller keeps image p
 
 Runtime model names are not portable:
 
-| Runtime     | Review lanes                                                    |
-| ----------- | --------------------------------------------------------------- |
-| Cursor      | `gpt-5.5-extra-high` / `claude-opus-4-8-xhigh`                  |
-| Copilot     | `gpt-5.5` / `claude-opus-4.8` plus `effortLevel: xhigh`         |
-| Claude      | `Task` reviewer lanes with Claude model overrides               |
-| Codex / Amp | two-worker isolation and distinct angles, not exact Opus parity |
-| Gemini      | native subagents; main Gemini session remains controller        |
+| Runtime | Review lanes                                                    |
+| ------- | --------------------------------------------------------------- |
+| Cursor  | `gpt-5.5-extra-high` / `claude-opus-4-8-xhigh`                  |
+| Copilot | `gpt-5.5` / `claude-opus-4.8` plus `effortLevel: xhigh`         |
+| Claude  | `Task` reviewer lanes with Claude model overrides               |
+| Codex   | two-worker isolation and distinct angles, not exact Opus parity |
+| Gemini  | native subagents; main Gemini session remains controller        |
 
 Cursor agents pin model frontmatter because omitted `model` inherits the parent/default model, which can be `composer-2.5-fast`.
 

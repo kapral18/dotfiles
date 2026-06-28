@@ -28,7 +28,7 @@ Each package source has a different convergence model. The important question is
 | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | Homebrew `link: false` for colliding `sem` binaries | GNU `parallel` and Ataraxy semantic-git both expose `sem`; wrappers expose the intended commands                                             |
 | Pi globals live in yarn                             | `@earendil-works/pi-coding-agent`, `@earendil-works/pi-tui`, `pi-mcp-adapter`, and `pi-subagents` are kept together in the managed yarn list |
-| Custom installer includes `ytsurf` and `amp`        | both are installed outside standard package managers in this setup                                                                           |
+| Custom installer includes `ytsurf`                  | installed outside standard package managers in this setup                                                                                    |
 | `git_maven_jar` rows are declarative                | add/update rows clone/build/install; removed clean repos are deleted; dirty stale repos are preserved                                        |
 
 ## Where to make changes

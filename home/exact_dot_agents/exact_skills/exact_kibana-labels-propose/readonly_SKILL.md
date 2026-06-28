@@ -36,7 +36,7 @@ Output:
 
 Common patterns (verify in repo):
 
-- review routing (required on every PR): always include both `review:codex` and `review:claude` in the proposed label set. These are mandatory on each composed `elastic/kibana` PR; do not drop them.
+- review routing (required on every PR): always include both `reviewer:codex` and `reviewer:claude` in the proposed label set. These are mandatory on each composed `elastic/kibana` PR; do not drop them.
 - team ownership: `Team:*`
 - feature tags: `Feature:<area>` (varies)
 - release notes: `release_note:feature` | `release_note:enhancement` | `release_note:fix` | `release_note:skip`
