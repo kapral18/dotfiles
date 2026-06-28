@@ -15,7 +15,10 @@ The shared judging engine for every review surface.
 Use in every non-trivial review.
 
 - Treat every claim as a hypothesis until verified.
-- A static read (reading source, searching the tree) proves what the source says, not what the system does. When keeping or dropping a candidate depends on observed/runtime behavior, static evidence is a hypothesis, not proof — verify the behavior at runtime whenever a runtime check is available, because a static read can contradict what the system actually does. (E.g. a source search indicated no tab tooltips; the live UI rendered four.)
+- A static read (reading source, searching the tree) proves what the source says, not what the system does.
+  When keeping or dropping a candidate depends on observed/runtime behavior, static evidence is a hypothesis, not proof —
+  verify the behavior at runtime whenever a runtime check is available, because a static read can contradict what the system actually does.
+  (E.g. a source search indicated no tab tooltips; the live UI rendered four.)
 - Establish base invariants first (SCSI when indexed; otherwise `git show <base>:<path>` + local `rg`).
 - Validate PR/branch reality second (local diff + file reads).
 - When evaluating a proposed change (review suggestion / reviewer request):
@@ -92,12 +95,14 @@ Signals include:
 
 Before calling a deletion safe, verify each item and report a one-line deletion ledger:
 
-- **No live references:** `rg` the deleted symbol/file/path across the repo and public barrels/index files; confirm zero live importers/callers.
+- **No live references:** `rg` the deleted symbol/file/path across the repo and public barrels/index files;
+  confirm zero live importers/callers.
 - **Public surface:** deleted exports are removed from barrels and are not part of a published package entry point still consumed downstream.
 - **Behavior parity:**
   - every deleted behavior is intentionally dropped (user-approved per SOP `2.0`) or demonstrably replaced
   - name where each replaced behavior now lives
-- **Tests:** deleted tests were migrated, or removed only because the code they covered is gone; coverage still exists for behavior that remains after the diff.
+- **Tests:** deleted tests were migrated, or removed only because the code they covered is gone;
+  coverage still exists for behavior that remains after the diff.
 - **Base comparison:**
   - for branch-heavy/stateful deletions, compare against base behavior buckets
   - see State-Machine Verification Gate
@@ -106,7 +111,8 @@ Before calling a deletion safe, verify each item and report a one-line deletion 
 
 ## Replacement/Migration Parity Gate (Run On Replacements And Test Migrations)
 
-Trigger: the diff deletes or stops using an implementation/test/helper and adds a replacement implementation/test/helper for the same behavior.
+Trigger: the diff deletes or stops using an implementation/test/helper
+and adds a replacement implementation/test/helper for the same behavior.
 
 Definitions:
 
@@ -116,21 +122,34 @@ Definitions:
 
 Before a candidate can become review feedback:
 
-1. **Map old to replacement:** identify the old and replacement entry points, helper side effects, assertions/checkpoints, setup/cleanup, permissions, wiring, and runtime assumptions.
-   - For every behavior/styling/spacing/layout property the old implementation set explicitly, name where the replacement re-establishes it (which component, prop, or default) or prove it is intentionally dropped. "I did not observe a regression" is not evidence the property is preserved; absence-of-observation never substitutes for naming the replacement's contract.
-   - A migration that hands a property to the target component (e.g. local CSS replaced by a shared component's layout default) is only `preserved_limitation`/`scope_expansion`/intended-replacement once you have pointed at the target's contract that now owns it (static source proof) or verified it live. Until then the candidate stays unclassified, not dropped.
+1. **Map old to replacement:** identify the old and replacement entry points, helper side effects, assertions/checkpoints,
+   setup/cleanup, permissions, wiring, and runtime assumptions.
+   - For every behavior/styling/spacing/layout property the old implementation set explicitly,
+     name where the replacement re-establishes it (which component, prop, or
+     default) or prove it is intentionally dropped. "I did not observe a regression" is not evidence the property is preserved;
+     absence-of-observation never substitutes for naming the replacement's contract.
+   - A migration that hands a property to the target component (e.g. local CSS replaced by a shared component's layout default) is only `preserved_limitation`/`scope_expansion`/intended-replacement once you have pointed at the target's contract that now owns it (static source proof) or verified it live.
+     Until then the candidate stays unclassified, not dropped.
 2. **Assign exactly one classification:**
    - `parity_gap`: old behavior or coverage existed in the old implementation and is absent or weaker in the replacement.
    - `new_regression`: the replacement introduces a failure mode that the old implementation did not have.
    - `preserved_limitation`: the old implementation had the same limitation and the replacement does not make it worse.
-   - `scope_expansion`: the PR body, linked issue, user request, or reviewer request explicitly requires stronger behavior or coverage than the old implementation provided.
+   - `scope_expansion`: the PR body, linked issue, user request, or
+     reviewer request explicitly requires stronger behavior or coverage than the old implementation provided.
    - `prose_drift`: only prose, counts, or docs disagree with the migrated behavior; implementation behavior and coverage remain equivalent.
 3. **Keep/drop rule:**
    - Keep `parity_gap`, `new_regression`, and `scope_expansion` as review findings when evidence supports them.
    - Drop `preserved_limitation` from review feedback. Do not ask the author to fix it in this PR.
-   - Drop `prose_drift` from code-review feedback. If it matters to reviewers, handle it as PR-level prose feedback, not as an implementation finding.
-4. **Verification rule:** do not run live UI, heavy runtime probes, or delegated findings audit for `preserved_limitation` or `prose_drift`. Run those checks only for a kept candidate when source-level evidence cannot decide whether to keep or drop it.
-   - The live-UI skip only applies once step 1's evidence bar is met. Never drop a UI-visual candidate (spacing, alignment, layout, visual styling) on an unproven classification and then cite that drop as the reason live UI was unnecessary — that inverts cause and effect. If the classification rests on a UI-visual property you have neither traced to the replacement's contract nor verified live, the candidate is unproven: settle it with static proof or live UI before classifying, do not skip the check because the candidate was dropped.
+   - Drop `prose_drift` from code-review feedback.
+     If it matters to reviewers, handle it as PR-level prose feedback, not as an implementation finding.
+4. **Verification rule:** do not run live UI, heavy runtime probes, or delegated findings audit for `preserved_limitation` or `prose_drift`.
+   Run those checks only for a kept candidate when source-level evidence cannot decide whether to keep or drop it.
+   - The live-UI skip only applies once step 1's evidence bar is met.
+     Never drop a UI-visual candidate (spacing, alignment, layout,
+     visual styling) on an unproven classification and then cite that drop as the reason live UI was unnecessary — that inverts cause and effect.
+     If the classification rests on a UI-visual property you have neither traced to the replacement's contract nor verified live,
+     the candidate is unproven: settle it with static proof or live UI before classifying,
+     do not skip the check because the candidate was dropped.
 
 ## Historical-Rationale Gate (Deleting/Replacing Long-Lived Infra)
 
@@ -144,7 +163,8 @@ Trigger: removing or replacing:
 
 Understand the origin before the removal is final.
 
-- **Trace origin:** `git log --follow --oneline -- <path>` and `git blame <base> -- <path>` (or `git log -L` for a function) to find the introducing commit(s).
+- **Trace origin:** `git log --follow --oneline -- <path>`
+  and `git blame <base> -- <path>` (or `git log -L` for a function) to find the introducing commit(s).
 - **Link intent:** open the offending PR(s)/issue(s) (`gh pr view`, `gh issue view`) to learn the original reason.
 - **Classify:** was the behavior being removed (a) the original intended purpose, or (b) drift/side effect that later infra made obsolete?
 - **Decide narrative:**
@@ -207,7 +227,8 @@ These four dimensions are **canonical**:
    - re-implements an existing helper
    - re-states a rule already stated elsewhere
    - adds a path/branch/config that is already present
-2. **Verbosity** — the change is bloated beyond what the task needs: more code or prose than required, narration comments that restate the code, ceremony, or over-explanation.
+2. **Verbosity** — the change is bloated beyond what the task needs: more code or prose than required,
+   narration comments that restate the code, ceremony, or over-explanation.
 3. **Semantic + logical duplication** — two places now express the **same meaning or behavior** via different text (not literal copy-paste):
    - parallel branches that should be one
    - a rule stated two different ways
@@ -270,4 +291,5 @@ Question: are the review changes well done?
      - a read-only subagent
 4. **Re-gate if you edited.** If the post-review fixes touched code, re-run lint + type_check + tests before declaring the change done.
 
-This stage closes the loop the mechanical gates leave open: lint/types/tests prove the fixes _work_; the four dimensions prove the fixes are _clean_.
+This stage closes the loop the mechanical gates leave open: lint/types/tests prove the fixes _work_;
+the four dimensions prove the fixes are _clean_.

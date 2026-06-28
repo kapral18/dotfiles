@@ -1,11 +1,12 @@
 ---
 name: kibana-console-monaco
-description: Interact with the Kibana Dev Tools Console Monaco editor via Playwright / Playwriter. Use when automating or testing the Console editor in a real browser. Only for elastic/kibana repos.
+description: Automate the Kibana Dev Tools Console Monaco editor in a real browser; elastic/kibana only.
 ---
 
 # Kibana Dev Tools Console — Monaco Editor Interaction
 
-Use when: automating, testing, or verifying behavior of the Kibana Dev Tools Console editor in a headed browser via Playwright or Playwriter.
+Use when: automating, testing, or verifying behavior of the Kibana Dev Tools Console editor in a headed browser via Playwright
+or Playwriter.
 
 ## Navigation
 
@@ -15,7 +16,8 @@ If the instance requires login, authenticate first or reuse an already-logged-in
 
 ## Authentication (local stack mock IDP)
 
-A security-enabled local stack (e.g. a `,kbn-stack` snapshot stack) redirects an unauthenticated Console navigation to `/internal/security/capture-url?auth_provider_hint=cloud-saml-kibana` and then to a `/mock_idp/login` page. Log in by selecting the test role and submitting:
+A security-enabled local stack (e.g. a `,kbn-stack` snapshot stack) redirects an unauthenticated Console navigation to `/internal/security/capture-url?auth_provider_hint=cloud-saml-kibana` and then to a `/mock_idp/login` page.
+Log in by selecting the test role and submitting:
 
 ```js
 await state.page.goto("http://<host>:5601/app/dev_tools#/console");
@@ -27,7 +29,9 @@ if (state.page.url().includes("/mock_idp/login")) {
 }
 ```
 
-**The first `Log in` click frequently lands mid-redirect**: the page stays on `/mock_idp/login`, the network shows a `401 Unauthorized`, and the console logs `Unauthorized`. Re-check the URL and retry once — the second attempt completes to `/app/dev_tools#/console`:
+**The first `Log in` click frequently lands mid-redirect**: the page stays on `/mock_idp/login`,
+the network shows a `401 Unauthorized`, and the console logs `Unauthorized`.
+Re-check the URL and retry once — the second attempt completes to `/app/dev_tools#/console`:
 
 ```js
 if (state.page.url().includes("/mock_idp/login")) {
@@ -37,13 +41,15 @@ if (state.page.url().includes("/mock_idp/login")) {
 }
 ```
 
-The role combobox defaults to a viewer role, which is sufficient for read-only autocomplete verification. For a multi-slot comparison (base vs head), repeat this per page/host — each slot has its own session.
+The role combobox defaults to a viewer role, which is sufficient for read-only autocomplete verification.
+For a multi-slot comparison (base vs head), repeat this per page/host — each slot has its own session.
 
 ## Editor Layers & Clicking
 
 The Console editor is a Monaco instance wrapped in Kibana's `EuiCodeEditor`. Three layers can intercept pointer events:
 
-1. **`codeEditorHint`** — a "Code Editor, activate edit mode" overlay (`[data-test-subj="codeEditorHint"]`). Appears when the editor loses focus.
+1. **`codeEditorHint`** — a "Code Editor, activate edit mode" overlay (`[data-test-subj="codeEditorHint"]`).
+   Appears when the editor loses focus.
 2. **`.view-lines`** — Monaco's rendered text layer. Always sits on top of the underlying `<textarea>`.
 3. **`<textarea role="textbox">`** — the actual input element. Hidden behind `.view-lines`; direct clicks always time out.
 
@@ -57,7 +63,8 @@ await state.page.locator(".monaco-editor").first().click({ force: true });
 
 **Never** try to click the `<textarea>` directly — the `.view-lines` overlay will always intercept and Playwright will time out.
 
-If the `codeEditorHint` overlay is visible and you want to click it specifically, it too sits behind `.view-lines`, so `{ force: true }` is needed:
+If the `codeEditorHint` overlay is visible and you want to click it specifically, it too sits behind `.view-lines`, so `{ force:
+true }` is needed:
 
 ```js
 await state.page
@@ -69,7 +76,8 @@ await state.page
 
 ### Import button (preferred for multi-line content)
 
-Interactive typing triggers Monaco auto-close (`{` becomes `{}`, Enter is consumed by brace handling, etc.). Use the hidden file input to bypass this:
+Interactive typing triggers Monaco auto-close (`{` becomes `{}`, Enter is consumed by brace handling, etc.).
+Use the hidden file input to bypass this:
 
 ```js
 const fs = require("node:fs");
@@ -128,7 +136,10 @@ for (let i = 0; i < count; i++) {
 }
 ```
 
-Then click on the target line. **Critical:** each `.view-line` spans the full editor width. Clicking near the right edge puts the cursor past all content (often jumping to a different logical line). Click near the actual text:
+Then click on the target line.
+**Critical:** each `.view-line` spans the full editor width.
+Clicking near the right edge puts the cursor past all content (often jumping to a different logical line).
+Click near the actual text:
 
 ```js
 const targetLine = lines.nth(4);
@@ -154,7 +165,8 @@ await state.page.keyboard.press("ArrowUp"); // move up one line
 
 **Note:** `Ctrl+G` (Go to Line) does NOT work — the Console editor intercepts it. Use ArrowDown/ArrowUp from a known position instead.
 
-**Note:** `Enter` does NOT reliably create new lines — the Console editor's brace handling may consume it. This is why importing content is preferred over typing.
+**Note:** `Enter` does NOT reliably create new lines — the Console editor's brace handling may consume it.
+This is why importing content is preferred over typing.
 
 ## Triggering Autocomplete
 
@@ -181,7 +193,9 @@ for (let i = 0; i < count; i++) {
 }
 ```
 
-**Note:** `window.monaco` is not exposed in Kibana. Do not try to access the Monaco API via `page.evaluate()`. Use DOM-based approaches instead.
+**Note:** `window.monaco` is not exposed in Kibana.
+Do not try to access the Monaco API via `page.evaluate()`.
+Use DOM-based approaches instead.
 
 ## Screenshots
 

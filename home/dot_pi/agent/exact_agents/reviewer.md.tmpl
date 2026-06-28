@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Read-only review worker for a single angle. Invoked by review-controller in a parallel fan-out (one task per model/angle). Inspects the diff/PR from files and commands in an isolated context and returns evidence-backed findings only. Not an entrypoint — for an end-to-end review use review-controller.
+description: Read-only review worker for one review-controller fan-out angle; returns findings only.
 tools: read, grep, find, ls, bash
 systemPromptMode: replace
 inheritProjectContext: true

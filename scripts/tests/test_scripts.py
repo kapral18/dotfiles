@@ -162,6 +162,64 @@ class TestVerifyBinSurface(unittest.TestCase):
         assert any("docs file missing" in failure for failure in failures)
 
 
+def _load_unwrap_md_command():
+    source = REPO / "home/exact_bin/executable_unwrap-md"
+    loader = SourceFileLoader("unwrap_md_command", str(source))
+    spec = importlib.util.spec_from_loader("unwrap_md_command", loader)
+    if spec is None or spec.loader is None:
+        raise AssertionError("could not load unwrap-md command module")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class TestUnwrapMdCommand(unittest.TestCase):
+    """WHEN unwrapping markdown prose."""
+
+    def test_unwraps_regular_markdown_paragraphs(self):
+        unwrap_md = _load_unwrap_md_command()
+        text = "This is one paragraph\nthat was hard wrapped.\n\n- Keep list items\n  structural.\n"
+
+        result = unwrap_md.unwrap(text, "docs/topics/example.md")
+
+        assert result == "This is one paragraph that was hard wrapped.\n\n- Keep list items structural.\n"
+
+    def test_preserves_sop_instruction_hard_wraps(self):
+        unwrap_md = _load_unwrap_md_command()
+        text = "Keep this gate visible.\nDo not hide it later in the same line.\n"
+
+        result = unwrap_md.unwrap(text, "home/readonly_AGENTS.md")
+
+        assert result == text
+
+    def test_preserves_skill_instruction_hard_wraps(self):
+        unwrap_md = _load_unwrap_md_command()
+        text = "Use when the exact trigger matches.\nLoad the skill before acting.\n"
+
+        result = unwrap_md.unwrap(text, "home/exact_dot_agents/exact_skills/exact_review/readonly_SKILL.md")
+
+        assert result == text
+
+    def test_preserves_skill_reference_hard_wraps(self):
+        unwrap_md = _load_unwrap_md_command()
+        text = "Keep the review gate visible.\nDo not bury it after another clause.\n"
+
+        result = unwrap_md.unwrap(
+            text,
+            "home/exact_dot_agents/exact_skills/exact_review/exact_references/readonly_pr_common.md",
+        )
+
+        assert result == text
+
+    def test_preserves_agent_hook_hard_wraps(self):
+        unwrap_md = _load_unwrap_md_command()
+        text = "Keep hook behavior visible.\nDo not collapse support instructions.\n"
+
+        result = unwrap_md.unwrap(text, "home/exact_dot_agents/exact_hooks/readonly_README.md")
+
+        assert result == text
+
+
 def _load_artifact_command():
     source = REPO / "home/exact_bin/executable_,artifact"
     loader = SourceFileLoader("artifact_command", str(source))
@@ -313,6 +371,130 @@ class TestArtifactCommand(unittest.TestCase):
                 assert not ended.exists()
             finally:
                 artifact.feedback_dir = old_feedback_dir
+
+    def test_register_poller_tracks_current_session_and_unregisters(self):
+        artifact = _load_artifact_command()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            pdir = Path(tmp) / "pollers"
+            old_pollers_dir = artifact.pollers_dir
+            artifact.pollers_dir = lambda: pdir
+            try:
+                artifact.register_poller("demo", 30)
+
+                path = artifact.poller_path("demo")
+                record = json.loads(path.read_text(encoding="utf-8"))
+                assert record["artifact"] == "demo.html"
+                assert record["pid"] == os.getpid()
+                assert record["timeout"] == 30
+                assert record["session_dir"]
+
+                artifact.unregister_poller("demo")
+
+                assert not path.exists()
+            finally:
+                artifact.pollers_dir = old_pollers_dir
+
+    def test_stale_poller_records_are_pruned(self):
+        artifact = _load_artifact_command()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            pdir = Path(tmp) / "pollers"
+            pdir.mkdir()
+            old_pollers_dir = artifact.pollers_dir
+            artifact.pollers_dir = lambda: pdir
+            try:
+                stale = pdir / "demo.html.json"
+                stale.write_text(json.dumps({"artifact": "demo.html", "pid": 999999999}) + "\n", encoding="utf-8")
+
+                assert artifact.active_poller_records() == []
+                assert not stale.exists()
+            finally:
+                artifact.pollers_dir = old_pollers_dir
+
+    def test_current_pid_record_must_still_match_poller_command(self):
+        artifact = _load_artifact_command()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            pdir = Path(tmp) / "pollers"
+            pdir.mkdir()
+            old_pollers_dir = artifact.pollers_dir
+            artifact.pollers_dir = lambda: pdir
+            try:
+                stale = pdir / "demo.html.json"
+                stale.write_text(json.dumps({"artifact": "demo.html", "pid": os.getpid()}) + "\n", encoding="utf-8")
+
+                assert artifact.active_poller_records() == []
+                assert not stale.exists()
+            finally:
+                artifact.pollers_dir = old_pollers_dir
+
+    def test_poller_command_parser_extracts_artifact_name(self):
+        artifact = _load_artifact_command()
+
+        assert (
+            artifact.poll_artifact_from_command("python3 /Users/me/bin/,artifact poll demo --timeout 60") == "demo.html"
+        )
+        assert (
+            artifact.poll_artifact_from_command("python3 home/exact_bin/executable_,artifact poll") == "artifact.html"
+        )
+        assert artifact.poll_artifact_from_command("python3 /tmp/other poll demo") is None
+
+    def test_stop_poller_record_does_not_kill_unmatched_pid(self):
+        artifact = _load_artifact_command()
+
+        child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "demo.html.json"
+            record = {"artifact": "demo.html", "pid": child.pid, "path": str(path)}
+            path.write_text(json.dumps(record) + "\n", encoding="utf-8")
+            try:
+                artifact.stop_poller_record(record)
+
+                assert child.poll() is None
+                assert not path.exists()
+            finally:
+                if child.poll() is None:
+                    child.kill()
+                    child.wait(timeout=5)
+
+    def test_poll_stop_terminates_tracked_poller_process(self):
+        command = [sys.executable, str(REPO / "home/exact_bin/executable_,artifact")]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp) / "cache"
+            env = {**os.environ, "XDG_CACHE_HOME": str(cache)}
+            child = subprocess.Popen(
+                [*command, "poll", "demo", "--timeout", "60"],
+                cwd=REPO,
+                env=env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            try:
+                poller_file = next(cache.glob("agent-artifacts/sessions/*/*/pollers/demo.html.json"), None)
+                deadline = time.time() + 5
+                while poller_file is None and time.time() < deadline:
+                    time.sleep(0.05)
+                    poller_file = next(cache.glob("agent-artifacts/sessions/*/*/pollers/demo.html.json"), None)
+                assert poller_file is not None
+
+                result = subprocess.run(
+                    [*command, "poll-stop", "demo"],
+                    cwd=REPO,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                )
+
+                assert result.returncode == 0, result.stderr
+                child.wait(timeout=5)
+                assert child.returncode is not None
+                assert not poller_file.exists()
+            finally:
+                if child.poll() is None:
+                    child.kill()
+                    child.wait(timeout=5)
 
     def test_chrome_exposes_hover_highlight_and_expanded_anchor_card(self):
         artifact = _load_artifact_command()

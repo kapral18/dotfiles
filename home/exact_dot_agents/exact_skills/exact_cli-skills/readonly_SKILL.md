@@ -66,7 +66,8 @@ git tag -l                                        # find naming convention
 git diff <anchor-tag>...<installed-tag> -- <relevant-paths>
 ```
 
-Focus on: command definitions, flag declarations, subcommand registration, help text, CLI entrypoints. Skip: tests, CI configs, unrelated docs.
+Focus on: command definitions, flag declarations, subcommand registration, help text, CLI entrypoints.
+Skip: tests, CI configs, unrelated docs.
 
 1. For each change in the diff:
    - Verify against `<tool> --help` / `<tool> <subcommand> --help`.
@@ -79,7 +80,8 @@ Focus on: command definitions, flag declarations, subcommand registration, help 
 
 - `git tag -l` in the cloned repo to find the naming convention.
 - Common patterns: `v3.32.2`, `3.32.2`, `cli/v3.32.2`, `bk/v3.32.2`.
-- If the anchor tag does not exist, treat the entire skill as unverified — re-audit all commands against `--help` output for the installed version.
+- If the anchor tag does not exist, treat the entire skill as unverified —
+  re-audit all commands against `--help` output for the installed version.
 
 ## Skill Source Layout
 

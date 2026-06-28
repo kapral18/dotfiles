@@ -6,9 +6,11 @@ disable-model-invocation: true
 
 # Improve Local
 
-What's the single smartest and most radically innovative and accretive and useful and compelling addition you could make at this point to the local changes?
+What's the single smartest and most radically innovative and accretive and useful
+and compelling addition you could make at this point to the local changes?
 
-Only suggest if you think the change is smart, innovative, accretive, useful, and compelling. It's ok to refrain from doing so if you don't have a good suggestion, because no change is sometimes better than a marginally better change.
+Only suggest if you think the change is smart, innovative, accretive, useful, and compelling.
+It's ok to refrain from doing so if you don't have a good suggestion, because no change is sometimes better than a marginally better change.
 
 Use when:
 
@@ -32,7 +34,8 @@ First actions:
 
 Selection rules:
 
-- Prefer changes that strengthen the current diff's purpose: sharper validation, clearer behavior, safer edge handling, better docs, or more complete tests.
+- Prefer changes that strengthen the current diff's purpose: sharper validation, clearer behavior, safer edge handling, better docs,
+  or more complete tests.
 - Scope the recommendation to the real opportunity: small when small is enough, broad when breadth is where the leverage lives.
 - Do not recommend unrelated cleanup, package churn, or speculative abstractions unless the local diff makes the payoff unusually clear.
 - Treat "suggest" literally: present the recommendation first. Do not edit files unless the user explicitly approves implementation.
@@ -40,5 +43,6 @@ Selection rules:
 Output:
 
 - If recommending a change: name the single change, explain why it matters, cite the local evidence, and state the expected validation.
-- If implementing after approval: keep the edit scoped to the local-change goal, update docs when behavior/workflow changes, validate, and report `Compatibility impact: none | removed (requested) | kept existing (requested)`.
+- If implementing after approval: keep the edit scoped to the local-change goal, update docs when behavior/workflow changes, validate,
+  and report `Compatibility impact: none | removed (requested) | kept existing (requested)`.
 - If declining: state that no compelling local-change addition was found and mention the strongest rejected candidate briefly.

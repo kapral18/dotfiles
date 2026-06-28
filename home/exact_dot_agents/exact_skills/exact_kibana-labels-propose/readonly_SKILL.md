@@ -1,6 +1,6 @@
 ---
 name: kibana-labels-propose
-description: Propose labels/backports/version targeting for `elastic/kibana` PRs and issues (propose-only; no posting). Use when composing a Kibana PR, right after creating one, or when asked about labels/backports. Only for elastic/kibana repos.
+description: Propose elastic/kibana labels, backports, and version targets for PRs or issues; no posting.
 ---
 
 # Elastic / Kibana Label Guidance (Propose-Only)
@@ -8,8 +8,10 @@ description: Propose labels/backports/version targeting for `elastic/kibana` PRs
 Use when:
 
 - the direct ask is "what labels/backports/version targeting should this `elastic/kibana` PR/issue get?"
-- drafting/composing an `elastic/kibana` PR description (even if the user didn’t explicitly say “labels”) and you want to include a verified proposed label set
-- immediately after creating an `elastic/kibana` PR (given a PR URL/number), to propose the labels/backport/version targeting that should be applied
+- drafting/composing an `elastic/kibana` PR description (even if the user didn’t explicitly say “labels”)
+  and you want to include a verified proposed label set
+- immediately after creating an `elastic/kibana` PR (given a PR URL/number),
+  to propose the labels/backport/version targeting that should be applied
 
 Non-negotiables:
 
@@ -26,7 +28,10 @@ First actions:
 
 1. Verify the target repo is `elastic/kibana`.
 2. Read the current repo label set before proposing anything.
-3. Read the label-relevant signals — the changed file paths/ownership plus the PR/issue body and any directly linked issues, enough to judge release-note and backport intent. Labels are a bounded classification; a full recursive crawl of every comment/thread is not required. Skim the discussion only if the body leaves release-note or backport intent genuinely ambiguous.
+3. Read the label-relevant signals — the changed file paths/ownership plus the PR/issue body and any directly linked issues,
+   enough to judge release-note and backport intent.
+   Labels are a bounded classification; a full recursive crawl of every comment/thread is not required.
+   Skim the discussion only if the body leaves release-note or backport intent genuinely ambiguous.
 4. Map the change/issue to exact proposed labels, then separate verified labels from heuristics.
 
 Output:
@@ -36,12 +41,14 @@ Output:
 
 Common patterns (verify in repo):
 
-- review routing (required on every PR): always include both `reviewer:codex` and `reviewer:claude` in the proposed label set. These are mandatory on each composed `elastic/kibana` PR; do not drop them.
+- review routing (required on every PR): always include both `reviewer:codex` and `reviewer:claude` in the proposed label set.
+  These are mandatory on each composed `elastic/kibana` PR; do not drop them.
 - team ownership: `Team:*`
 - feature tags: `Feature:<area>` (varies)
 - release notes: `release_note:feature` | `release_note:enhancement` | `release_note:fix` | `release_note:skip`
   - default to `release_note:skip` unless user confirms public-facing change
-  - include a `## Release Note` section in the PR body only when the label is `release_note:fix` or `release_note:feature`; omit the section entirely for all other release note labels
+  - include a `## Release Note` section in the PR body only when the label is `release_note:fix` or `release_note:feature`;
+    omit the section entirely for all other release note labels
 - backports:
   - `backport:skip` (default if no backport is needed) (no version tag if skipping)
   - `backport:all-open` (backport to all open minor versions) (no version tag)

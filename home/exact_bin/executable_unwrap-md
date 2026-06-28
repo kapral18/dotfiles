@@ -10,6 +10,8 @@ A continuation line is one that:
 - follows a non-blank line
 
 Continuation lines are joined to the previous line with a single space.
+AI-facing instruction files keep deliberate hard wraps because those line breaks
+carry review and prompt-ingestion affordances.
 
 Options:
   --check   Report files that need unwrapping without modifying them (exit 1).
@@ -17,6 +19,23 @@ Options:
 
 import re
 import sys
+
+AI_ENTRYPOINT_NAMES = {
+    "AGENTS.md",
+    "CLAUDE.md",
+    "GEMINI.md",
+    "readonly_AGENTS.md",
+    "readonly_CLAUDE.md",
+    "readonly_GEMINI.md",
+}
+AI_SKILL_PATH_MARKERS = (
+    "/exact_skills/",
+    "/exact_hooks/",
+    "/.agents/skills/",
+    "/.agents/hooks/",
+    "/.claude/skills/",
+    "/.cursor/skills-cursor/",
+)
 
 # List markers (bullet, numeric, outline-letter) may appear at any indentation
 # depth — CommonMark nests relative to the parent item's content column, not
@@ -68,6 +87,15 @@ def can_append_to(prev_line):
     )
 
 
+def preserves_hard_wraps(path):
+    normalized = path.replace("\\", "/")
+    filename = normalized.rsplit("/", 1)[-1]
+    if filename in AI_ENTRYPOINT_NAMES:
+        return True
+    normalized = f"/{normalized.lstrip('/')}"
+    return filename.endswith(".md") and any(marker in normalized for marker in AI_SKILL_PATH_MARKERS)
+
+
 def unwrap_yaml_folded_scalar_lines(lines):
     out = []
     buf = []
@@ -93,7 +121,10 @@ def yaml_double_quote(s):
     return f'"{s}"'
 
 
-def unwrap(text):
+def unwrap(text, path=None):
+    if path and preserves_hard_wraps(path):
+        return text
+
     lines = text.split("\n")
     out = []
     in_code_fence = False
@@ -194,7 +225,7 @@ def main():
     for path in paths:
         with open(path) as f:
             original = f.read()
-        result = unwrap(original)
+        result = unwrap(original, path)
         if result == original:
             continue
         if check_mode:

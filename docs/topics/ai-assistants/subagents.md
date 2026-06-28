@@ -61,7 +61,7 @@ The "Loads contract" column is the `agent-review/references/<role>.md` file the 
 | `findings-auditor`                          | `findings-auditor`     | Non-trivial findings or named fix-diff audit                       |
 | `live-ui-review`                            | `live-ui-review`       | Verification-only live UI reviewer with screenshot handoff         |
 | `post-review`                               | `post-review`          | Four-dimension hygiene audit of a review's fix diff                |
-| `change-auditor`                            | `change-auditor`       | Light proportional-depth audit of a self-authored changeset        |
+| `change-auditor`                            | `change-auditor`       | Proportional-depth audit of a self-authored changeset              |
 | `researcher`                                | `researcher`           | Clone and inspect external GitHub source                           |
 | `code-searcher`                             | `code-searcher`        | SCSI semantic investigation / base-branch context                  |
 

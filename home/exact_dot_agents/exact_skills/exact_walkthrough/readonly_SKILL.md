@@ -19,7 +19,8 @@ Create interactive exploratory diagrams for understanding codebase architecture 
 
 ## When NOT to Use
 
-- Semantic code search alone (use `semantic-code-search` directly when the user explicitly asks for SCSI-style investigation, not a walkthrough)
+- Semantic code search alone (use `semantic-code-search` directly when the user explicitly asks for SCSI-style investigation,
+  not a walkthrough)
 - Simple file reading
 - Single file analysis without relationship context
 - Modifying or editing code
@@ -37,7 +38,9 @@ Create interactive exploratory diagrams for understanding codebase architecture 
 
 Explore codebase structure and relationships by following references, imports, and call sites.
 
-If your environment provides dedicated walkthrough tooling (for example a `walkthrough(...)` explorer and a `walkthrough_diagram(...)` renderer), prefer that over manual exploration. If those tools are not available, do the same workflow using local file reads and searches.
+If your environment provides dedicated walkthrough tooling (for example a `walkthrough(...)` explorer
+and a `walkthrough_diagram(...)` renderer), prefer that over manual exploration.
+If those tools are not available, do the same workflow using local file reads and searches.
 
 When using a walkthrough tool, provide:
 
@@ -46,7 +49,10 @@ When using a walkthrough tool, provide:
 
 When semantic code search helps:
 
-- If you are investigating a PR and need additional context from `main` (existing behavior, patterns, related call sites), use `~/.agents/skills/semantic-code-search/SKILL.md` to query the indexed snapshot, but ONLY if the current repo is indexed (present in `list_indices`). Run `list_indices` first; do not guess an index.
+- If you are investigating a PR and need additional context from `main` (existing behavior, patterns, related call sites),
+  use `~/.agents/skills/semantic-code-search/SKILL.md` to query the indexed snapshot, but
+  ONLY if the current repo is indexed (present in `list_indices`).
+  Run `list_indices` first; do not guess an index.
 - Treat semantic results as base-branch context only; validate the actual change by reading the local branch diff.
 
 ### Step 2: Present The Walkthrough

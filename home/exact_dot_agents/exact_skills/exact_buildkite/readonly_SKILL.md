@@ -1,6 +1,6 @@
 ---
 name: buildkite
-description: "Buildkite CI/CD integration. Use when: checking build status, triggering builds, reading build logs, debugging CI failures, managing pipelines, OR encountering any buildkite.com URL (e.g. buildkite.com/elastic/...). Never fetch buildkite.com URLs directly — they require auth and will 403. Use bk CLI instead. Only for elastic org repos."
+description: "Use bk CLI for Elastic Buildkite status, triggers, logs, CI debugging, and buildkite.com URLs."
 tool_version: bk 3.32.2
 allowed-tools: Bash(bk:*)
 ---
@@ -9,7 +9,9 @@ allowed-tools: Bash(bk:*)
 
 ## URL Intercept (Mandatory)
 
-Buildkite URLs (`buildkite.com/...`) require authentication and will return 403 if fetched directly via `WebFetch`, `curl`, or any HTTP client. **Never fetch buildkite.com URLs directly.**
+Buildkite URLs (`buildkite.com/...`) require authentication and will return 403 if fetched directly via `WebFetch`, `curl`, or
+any HTTP client.
+**Never fetch buildkite.com URLs directly.**
 
 When you encounter a Buildkite URL (in PR descriptions, review comments, CI check links, or anywhere else):
 
@@ -125,7 +127,8 @@ For detailed debugging patterns, load `references/build-debugging.md`.
 
 - `bk` outputs text/table format by default. Use `--json`, `--yaml`, or `-o json` for machine-readable output.
 - When inside a git repo with a configured pipeline, `-p` can often be omitted (auto-detected from the repo).
-- Use `bk api` for REST API endpoints not covered by direct commands. `bk api` auto-prepends the organization prefix, so use org-relative paths:
+- Use `bk api` for REST API endpoints not covered by direct commands.
+  `bk api` auto-prepends the organization prefix, so use org-relative paths:
 
 ```bash
 bk api /pipelines | jq '.[].slug'

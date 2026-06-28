@@ -6,9 +6,11 @@ disable-model-invocation: true
 
 # Improve Codebase
 
-What's the single smartest and most radically innovative and accretive and useful and compelling addition you could make at this point in this codebase?
+What's the single smartest and most radically innovative and accretive and useful
+and compelling addition you could make at this point in this codebase?
 
-Only suggest if you think the change is smart, innovative, accretive, useful, and compelling. It's ok to refrain from doing so if you don't have a good suggestion, because no change is sometimes better than a marginally better change.
+Only suggest if you think the change is smart, innovative, accretive, useful, and compelling.
+It's ok to refrain from doing so if you don't have a good suggestion, because no change is sometimes better than a marginally better change.
 
 Use when:
 
@@ -40,5 +42,6 @@ Selection rules:
 Output:
 
 - If recommending a change: name the single change, explain why it matters, cite the evidence, and state the expected validation.
-- If implementing after approval: keep the edit scoped, update docs when behavior/workflow changes, validate, and report `Compatibility impact: none | removed (requested) | kept existing (requested)`.
+- If implementing after approval: keep the edit scoped, update docs when behavior/workflow changes, validate, and
+  report `Compatibility impact: none | removed (requested) | kept existing (requested)`.
 - If declining: state that no compelling codebase-wide addition was found and mention the strongest rejected candidate briefly.

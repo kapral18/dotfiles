@@ -1,6 +1,6 @@
 ---
 name: github
-description: GitHub side effects via gh CLI. Use before any GitHub mutation — PRs, issues, comments, reviews, labels, releases, merges, sub-issues, gists, or any gh/API call that changes state. Not for review analysis or draft-only writing.
+description: Use gh for GitHub mutations such as PRs, issues, comments, reviews, labels, releases, merges, and gists.
 ---
 
 # GitHub + gh Skill
@@ -17,11 +17,13 @@ Defaults & constraints:
 - Follow repository merge settings (squash/rebase/merge); do not enforce a merge strategy.
 - Never merge into the base branch via CLI; merges happen via the GitHub UI.
 - For non-interactive reliability, set `GH_PAGER=cat` for all `gh` calls.
-- GitHub gists: use `gh gist` (or `gh api`) for all gist interactions; do not fetch gist URLs directly (HTML wrappers, auth/rate limits, non-canonical).
+- GitHub gists: use `gh gist` (or `gh api`) for all gist interactions; do not fetch gist URLs directly (HTML wrappers,
+  auth/rate limits, non-canonical).
 
 PR targeting (avoid searching):
 
-- If the user uses implicit-current phrasing ("this PR", "current PR", "PR for this branch") and does not specify a PR URL/number, resolve the PR for the current branch in the current repo.
+- If the user uses implicit-current phrasing ("this PR", "current PR", "PR for this branch") and does not specify a PR URL/number,
+  resolve the PR for the current branch in the current repo.
 - Resolve the PR number/URL with:
   - `,gh-prw --number`
   - `,gh-prw --url`
@@ -48,16 +50,21 @@ Do not use:
 
 Terminology:
 
-- A domain overlay is a repo/org-specific skill selected from the verified target repo/org, not guessed from wording. It layers repo-specific policy onto this generic GitHub mechanics skill.
+- A domain overlay is a repo/org-specific skill selected from the verified target repo/org, not guessed from wording.
+  It layers repo-specific policy onto this generic GitHub mechanics skill.
 - Current concrete overlay: for the `elastic` org / `elastic/kibana`, load `~/.agents/skills/elastic-domain/SKILL.md`.
 
 First actions:
 
 1. Set `GH_PAGER=cat`.
 2. Resolve the exact target repo/object (PR, issue, comment thread, release) before mutating anything.
-3. For context-dependent actions (PR/issue body edits, replies/resolves, labels inferred from content, or follow-ups), run the GitHub Context Intake + Reference Resolution gate in `~/.agents/skills/review/references/pr_common.md` before composing or mutating. Fully specified mechanical actions, such as applying an explicitly named label, are exempt.
-4. If the context is contested, historically unclear, or depends on product/team precedent, also run Ambient Topic Exploration in `~/.agents/skills/review/references/pr_common.md`.
-5. If the user also needs authored text, reviewer reasoning, labels, ownership guidance, or repo-specific GitHub metadata, invoke the required secondary skill(s) or domain overlay first and use their output before posting/applying.
+3. For context-dependent actions (PR/issue body edits, replies/resolves, labels inferred from content, or follow-ups),
+   run the GitHub Context Intake + Reference Resolution gate in `~/.agents/skills/review/references/pr_common.md` before composing or mutating.
+   Fully specified mechanical actions, such as applying an explicitly named label, are exempt.
+4. If the context is contested, historically unclear, or depends on product/team precedent,
+   also run Ambient Topic Exploration in `~/.agents/skills/review/references/pr_common.md`.
+5. If the user also needs authored text, reviewer reasoning, labels, ownership guidance, or repo-specific GitHub metadata,
+   invoke the required secondary skill(s) or domain overlay first and use their output before posting/applying.
 6. Before creating or editing public PR/issue text, sanitize the body/title for portable public context:
    - remove session-specific hosts, ports, workspace paths, temp paths, browser automation session references, and local usernames
    - replace local-only validation details with reproducible setup/check steps another maintainer can run
@@ -65,11 +72,21 @@ First actions:
 
 Approvals:
 
-- Any GitHub side effect requires explicit approval unless the user instructed otherwise. Examples (non-exhaustive): create/edit PRs or issues, post comments/reviews, apply metadata (labels/assignees/milestones/projects), merge, or create releases.
-- Before relying on a known-bot allowlist, verify and load any applicable domain overlay for the target repo. Without a verified overlay, classify bots only from platform evidence such as GitHub `user.type == "Bot"` or a login ending in `[bot]`.
-- Human-Visible Publication Gate (see the SOP, `~/AGENTS.md`): a reply/resolve/comment that a human will see is always supervised — draft, show the exact payload + target, wait for approval. The only carve-out is a **verified bot-authored** thread (GitHub `user.type == "Bot"`, login ending in `[bot]`, or known-bot allowlist from the verified overlay), which may be auto-replied/auto-resolved inside an explicitly-invoked flow. Ambiguous or mixed human+bot threads fail safe to human (supervised). Verify author type via the API before treating any thread as bot:
+- Any GitHub side effect requires explicit approval unless the user instructed otherwise.
+  Examples (non-exhaustive): create/edit PRs or issues, post comments/reviews, apply metadata (labels/assignees/milestones/projects),
+  merge, or create releases.
+- Before relying on a known-bot allowlist, verify and load any applicable domain overlay for the target repo.
+  Without a verified overlay, classify bots only from platform evidence such as GitHub `user.type == "Bot"` or a login ending in `[bot]`.
+- Human-Visible Publication Gate (see the SOP, `~/AGENTS.md`): a reply/resolve/comment that a human will see is always supervised —
+  draft, show the exact payload + target, wait for approval.
+  The only carve-out is a **verified bot-authored** thread (GitHub `user.type == "Bot"`, login ending in `[bot]`, or
+  known-bot allowlist from the verified overlay), which may be auto-replied/auto-resolved inside an explicitly-invoked flow.
+  Ambiguous or mixed human+bot threads fail safe to human (supervised).
+  Verify author type via the API before treating any thread as bot:
   - `gh api repos/OWNER/REPO/pulls/comments/COMMENT_ID --jq '{login:.user.login, type:.user.type}'`
-- Wording for any human-visible content (PR/issue bodies, comments, replies, review summaries, release notes — tone, concision, addressed-vs-not-addressed triage): follow the centralized `~/.agents/skills/communication/SKILL.md`. This skill carries GitHub mechanics only (endpoints, `in_reply_to`, anchoring, clickable source/commit links).
+- Wording for any human-visible content (PR/issue bodies, comments, replies, review summaries, release notes — tone, concision,
+  addressed-vs-not-addressed triage): follow the centralized `~/.agents/skills/communication/SKILL.md`.
+  This skill carries GitHub mechanics only (endpoints, `in_reply_to`, anchoring, clickable source/commit links).
 
 PR review side effects (draft / pending reviews):
 
@@ -92,21 +109,32 @@ PR review side effects (draft / pending reviews):
 > 3. If `event` is present, **remove it** before sending.
 > 4. Only add `event` in a **separate** submit call after the user explicitly
 >    asks to publish.
-> 5. For code-review feedback, default to inline anchored `comments[]` (not body-only summary), unless the user explicitly asks for PR-level summary feedback.
-> 6. In `body` and each inline comment body, any code/file/symbol reference must be a clickable source link (exact file + line/range on PR head SHA), not plain text.
-> 7. Fetch the current PR diff/patch for the target head SHA and verify every `line`/`side`, range, or `position` anchor is inside the intended diff hunk immediately before creating or submitting the review. Do not rely on full-file line numbers, stale patches, or memory.
+> 5. For code-review feedback, default to inline anchored `comments[]` (not body-only summary),
+>    unless the user explicitly asks for PR-level summary feedback.
+> 6. In `body` and each inline comment body,
+>    any code/file/symbol reference must be a clickable source link (exact file + line/range on PR head SHA), not plain text.
+> 7. Fetch the current PR diff/patch for the target head SHA and verify every `line`/`side`, range, or
+>    `position` anchor is inside the intended diff hunk immediately before creating or submitting the review.
+>    Do not rely on full-file line numbers, stale patches, or memory.
 > 8. Read existing current-account pending reviews and reconcile them with the payload. Do not create or submit fragmented review feedback.
 
-- Definition: a "pending review" is a PR review whose API `state` is `PENDING`. It is visible only to the reviewer who created it until submission (COMMENT/APPROVE/REQUEST_CHANGES), and it does not appear to the PR author as posted review comments while pending.
+- Definition: a "pending review" is a PR review whose API `state` is `PENDING`.
+  It is visible only to the reviewer who created it until submission (COMMENT/APPROVE/REQUEST_CHANGES), and
+  it does not appear to the PR author as posted review comments while pending.
 - Creating a PENDING (draft) PR review requires the reviews API. Omit `event` in: `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews`
 - Batch draft comments: include all inline review comments in the `comments` array in that same request.
-- Practical constraint: GitHub generally allows only one `PENDING` review per user per PR. If you need to change bodies/anchors, delete the pending review and recreate it.
-- Pending inline review comments are not practically editable via API; do not waste time trying to PATCH. Delete the pending review and recreate it with the corrected payload.
-- Do not try to attach comments to an already-created pending review via the PR comments endpoint (it won't accept `pull_request_review_id`). If you need to change anchors/bodies, delete the pending review and recreate it.
-- File-level review comments (`subject_type=file`) are immediately visible; they are not part of a pending review. In practice, while you have a pending review, you may not be able to create additional file-level review comments from the same user.
+- Practical constraint: GitHub generally allows only one `PENDING` review per user per PR.
+  If you need to change bodies/anchors, delete the pending review and recreate it.
+- Pending inline review comments are not practically editable via API; do not waste time trying to PATCH.
+  Delete the pending review and recreate it with the corrected payload.
+- Do not try to attach comments to an already-created pending review via the PR comments endpoint (it won't accept `pull_request_review_id`).
+  If you need to change anchors/bodies, delete the pending review and recreate it.
+- File-level review comments (`subject_type=file`) are immediately visible; they are not part of a pending review.
+  In practice, while you have a pending review, you may not be able to create additional file-level review comments from the same user.
 - Verification rule of thumb:
   - `GET /repos/{o}/{r}/pulls/{n}/reviews` will show the `PENDING` review
-  - `GET /repos/{o}/{r}/pulls/{n}/comments` should remain unchanged until you submit (draft comments are attached to the review, not publicly posted)
+  - `GET /repos/{o}/{r}/pulls/{n}/comments` should remain unchanged until you submit (draft comments are attached to the review,
+    not publicly posted)
 - Arrays: prefer `gh api ... --input /path/to.json` for payloads containing arrays (avoids accidentally sending arrays as strings via `-f/-F`).
 
 Existing pending-review merge guard:
@@ -114,8 +142,10 @@ Existing pending-review merge guard:
 - Before any create, delete/recreate, or submit action for a PR review:
   1. Resolve the current login: `gh api user --jq '.login'`.
   2. List reviews: `gh api --paginate repos/OWNER/REPO/pulls/NUM/reviews`.
-  3. For each review with `state == "PENDING"` and `user.login` matching the current login, read draft comments: `gh api --paginate repos/OWNER/REPO/pulls/NUM/reviews/REVIEW_ID/comments`.
-  4. Compare the pending review body/comments against the approved draft from `review`/`agent-review` and its `Pending review reconciliation:` ledger.
+  3. For each review with `state == "PENDING"` and `user.login` matching the current login, read draft comments:
+     `gh api --paginate repos/OWNER/REPO/pulls/NUM/reviews/REVIEW_ID/comments`.
+  4. Compare the pending review body/comments against the approved draft from `review`/`agent-review`
+     and its `Pending review reconciliation:` ledger.
 - If no reconciliation ledger exists, run the review skill's Existing Pending Review Reconciliation before mutating GitHub.
 - If a pending review exists and the new payload is additive/replacement:
   - do not try to create a second pending review
@@ -125,7 +155,8 @@ Existing pending-review merge guard:
   - fetch the pending review and comments immediately before the submit call
   - verify they match the approved reconciled payload and current head anchors
   - if they differ, stop and ask for approval to replace/reconcile first
-- If a pending review contains stale or contradictory feedback, do not submit it. Delete/recreate only after explicit approval with the consolidated replacement payload.
+- If a pending review contains stale or contradictory feedback, do not submit it.
+  Delete/recreate only after explicit approval with the consolidated replacement payload.
 
 If explicitly asked to POST a batch as a draft (PENDING) review:
 
@@ -140,17 +171,23 @@ If explicitly asked to POST a batch as a draft (PENDING) review:
   - The `line`/`side` approach uses absolute file line numbers (visible in the GitHub diff UI), so there is no off-by-one math to get wrong.
 - If you must use `position` (diff-relative, 0-indexed from the `@@` header):
   - Fetch the file's `patch` from `GET /repos/{o}/{r}/pulls/{n}/files`.
-  - Split by newlines. The `@@` hunk header at index 0 = position 0 (not a valid comment target). The first content line at index 1 = position 1.
+  - Split by newlines.
+    The `@@` hunk header at index 0 = position 0 (not a valid comment target).
+    The first content line at index 1 = position 1.
   - In short: the 0-based array index of the split **is** the position value.
   - If a file has multiple hunks (or repeated target lines), create separate comments and verify the correct hunk/occurrence.
-  - Common trap: the patch changes when new commits are pushed. Always re-fetch the patch from the current PR head before computing positions.
+  - Common trap: the patch changes when new commits are pushed.
+    Always re-fetch the patch from the current PR head before computing positions.
 - Keep the review summary body empty unless the user explicitly wants a public summary.
 
 After submitting, verify what actually posted:
 
-- The submitted review body is whatever you submit with the final event call. If you want a summary, include it explicitly when submitting (COMMENT/APPROVE/REQUEST_CHANGES).
+- The submitted review body is whatever you submit with the final event call.
+  If you want a summary, include it explicitly when submitting (COMMENT/APPROVE/REQUEST_CHANGES).
 - For COMMENT/REQUEST_CHANGES, treat the body as required: always include it.
-- UI gotcha: switching the event type (e.g. Comment -> Approve) can drop the typed summary text in some flows. For API-based submission, prevent this by always sending the intended `body` with the submit request.
+- UI gotcha: switching the event type (e.g.
+  Comment -> Approve) can drop the typed summary text in some flows.
+  For API-based submission, prevent this by always sending the intended `body` with the submit request.
 - Count posted inline comments and reconcile anything missing; if needed, post a follow-up (non-batch) comment with leftover deep links.
 
 Example (create a pending review with line/side anchoring — preferred):
@@ -185,7 +222,10 @@ Posting PR review comments (examples):
 
 - Use bash/zsh `$'...'` so `\n` becomes real line breaks. Do NOT send literal `\n`.
 - Add a soft close such as `Wdyt` only when the review style calls for it.
-- **Commit references in comment bodies must be clickable links, never bare hashes or backtick-wrapped hashes.** Use the full GitHub URL: `https://github.com/OWNER/REPO/commit/FULL_SHA` (or `/pull/NUM/commits/FULL_SHA` for PR commits). Resolve `OWNER/REPO` from the current repo and expand short hashes to full SHA before linking.
+- **Commit references in comment bodies must be clickable links,
+  never bare hashes or backtick-wrapped hashes.** Use the full GitHub URL:
+  `https://github.com/OWNER/REPO/commit/FULL_SHA` (or `/pull/NUM/commits/FULL_SHA` for PR commits).
+  Resolve `OWNER/REPO` from the current repo and expand short hashes to full SHA before linking.
 - Follow the relevant PR review mode for anchoring and comment placement:
   - `~/.agents/skills/review/references/pr_review.md`
   - `~/.agents/skills/review/references/pr_fix.md`
@@ -224,9 +264,12 @@ Notes:
 
 - The request field is `in_reply_to` (integer). The response field is `in_reply_to_id`.
 - Do NOT use `in_reply_to_id` in the request; it may create a new top-level comment instead of a reply.
-- If you need to add query params to a GET `gh api` call, use `-X GET`. In practice, adding `-f` or `-F` without `-X GET` can cause `gh` to hit the POST schema by default.
-- zsh gotcha: avoid unquoted `?ref=...` in endpoints (it can trigger `no matches found`). Prefer: `gh api -X GET repos/OWNER/REPO/contents/PATH -F ref=main`
-- If you _are_ posting an anchored comment that requires `commit_id`, and GitHub rejects it as "commit_id is not part of the pull request", use the `commit_id` from the target review comment you're replying to.
+- If you need to add query params to a GET `gh api` call, use `-X GET`.
+  In practice, adding `-f` or `-F` without `-X GET` can cause `gh` to hit the POST schema by default.
+- zsh gotcha: avoid unquoted `?ref=...` in endpoints (it can trigger `no matches found`).
+  Prefer: `gh api -X GET repos/OWNER/REPO/contents/PATH -F ref=main`
+- If you _are_ posting an anchored comment that requires `commit_id`, and
+  GitHub rejects it as "commit_id is not part of the pull request", use the `commit_id` from the target review comment you're replying to.
 
 PR-level timeline comment (use sparingly):
 
@@ -247,16 +290,19 @@ PR creation:
 - Ask the user whether the PR should `Closes #X` or `Addresses #X` before creating the PR.
 - If there is no existing issue, stop and ask whether to create one; do NOT create issues unless the user explicitly instructs you to.
 - PR title is a human-readable change summary (not necessarily the Conventional Commit header).
-- Multiline bodies/comments: use bash/zsh `$'...'` so `\n` becomes real newlines. Do NOT rely on `\\n` escapes inside normal quotes when using `gh api -f body=...`.
+- Multiline bodies/comments: use bash/zsh `$'...'` so `\n` becomes real newlines.
+  Do NOT rely on `\\n` escapes inside normal quotes when using `gh api -f body=...`.
 - Test plan is inferred from the change surface; run the smallest sufficient set of checks and record the commands/results in the PR.
-- For repro-driven fixes, the PR test plan must include portable local repro steps in addition to commands/results; do not publish only session-specific evidence such as private local hostnames or browser automation state.
+- For repro-driven fixes, the PR test plan must include portable local repro steps in addition to commands/results;
+  do not publish only session-specific evidence such as private local hostnames or browser automation state.
 - Always propose labels/assignees/milestone/projects first and get explicit confirmation before applying any of them.
 
 Composition (draft-only) guidance:
 
 - Before creating/editing a PR body, invoke the `compose-pr` skill via the Skill tool.
 - Before creating/editing an issue body, invoke the `compose-issue` skill via the Skill tool.
-- For repo-specific labels, ownership, reviewer targeting, or PR body rules, load the verified domain overlay first. For Elastic/Kibana, load `~/.agents/skills/elastic-domain/SKILL.md`.
+- For repo-specific labels, ownership, reviewer targeting, or PR body rules, load the verified domain overlay first.
+  For Elastic/Kibana, load `~/.agents/skills/elastic-domain/SKILL.md`.
 
 Output:
 

@@ -1,6 +1,6 @@
 ---
 name: knip
-description: Find unused files, dependencies, and exports in JS/TS projects. Use when cleaning up dead code, detecting unused deps, or auditing a package.json.
+description: Use knip to find unused JS/TS files, dependencies, exports, and package.json entries.
 tool_version: knip 5.88.0
 ---
 

@@ -13,6 +13,7 @@ import html
 import json
 import os
 import re
+import shlex
 import shutil
 import signal
 import subprocess
@@ -92,6 +93,10 @@ def artifacts_dir() -> Path:
 
 def feedback_dir() -> Path:
     return session_dir() / "feedback"
+
+
+def pollers_dir() -> Path:
+    return session_dir() / "pollers"
 
 
 def sanitize_name(name: str | None) -> str:
@@ -482,6 +487,166 @@ def ended_path(name: str) -> Path:
     return feedback_dir() / f"{sanitize_name(name)}.ended"
 
 
+def poller_path(name: str) -> Path:
+    return pollers_dir() / f"{sanitize_name(name)}.json"
+
+
+def process_is_running(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
+
+
+def command_line_for_pid(pid: int) -> str | None:
+    try:
+        result = subprocess.run(
+            ["ps", "-p", str(pid), "-o", "command="],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        )
+    except (FileNotFoundError, OSError):
+        return None
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() or None
+
+
+def poll_artifact_from_command(command: str) -> str | None:
+    try:
+        tokens = shlex.split(command)
+    except ValueError:
+        return None
+    script_index = None
+    for index, token in enumerate(tokens):
+        if Path(token).name in {",artifact", "executable_,artifact"}:
+            script_index = index
+            break
+    if script_index is None:
+        return None
+    try:
+        poll_index = tokens.index("poll", script_index + 1)
+    except ValueError:
+        return None
+    name = "artifact"
+    index = poll_index + 1
+    while index < len(tokens):
+        token = tokens[index]
+        if token == "--timeout":
+            index += 2
+            continue
+        if token.startswith("-"):
+            index += 1
+            continue
+        name = token
+        break
+    return sanitize_name(name)
+
+
+def record_matches_live_poller(record: dict[str, Any]) -> bool:
+    pid = record.get("pid")
+    artifact = record.get("artifact")
+    if not isinstance(pid, int) or not isinstance(artifact, str):
+        return False
+    if not process_is_running(pid):
+        return False
+    command = command_line_for_pid(pid)
+    return poll_artifact_from_command(command or "") == sanitize_name(artifact)
+
+
+def poller_record_from(path: Path) -> dict[str, Any] | None:
+    value = _read_json(path)
+    if not value:
+        return None
+    if not record_matches_live_poller(value):
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
+        return None
+    value["path"] = str(path)
+    return value
+
+
+def active_poller_records() -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    try:
+        paths = sorted(pollers_dir().glob("*.json"))
+    except FileNotFoundError:
+        return records
+    for path in paths:
+        record = poller_record_from(path)
+        if record:
+            records.append(record)
+    return records
+
+
+def active_poller_record(name: str) -> dict[str, Any] | None:
+    return poller_record_from(poller_path(name))
+
+
+def register_poller(name: str, timeout: float | None) -> None:
+    existing = active_poller_record(name)
+    if existing and existing.get("pid") != os.getpid():
+        raise SystemExit(f"ERROR: poller already running for {sanitize_name(name)} (pid {existing['pid']})")
+    pollers_dir().mkdir(parents=True, exist_ok=True)
+    ctx = context()
+    poller_path(name).write_text(
+        json.dumps(
+            {
+                "artifact": sanitize_name(name),
+                "pid": os.getpid(),
+                "started_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "timeout": timeout,
+                "session_dir": ctx["session_dir"],
+                "root": ctx["root"],
+                "tmux_key": ctx["tmux_key"],
+                "tmux_name": ctx["tmux_name"],
+            },
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def unregister_poller(name: str) -> None:
+    path = poller_path(name)
+    record = _read_json(path)
+    if record and record.get("pid") not in {None, os.getpid()}:
+        return
+    try:
+        path.unlink()
+    except FileNotFoundError:
+        pass
+
+
+def stop_poller_record(record: dict[str, Any]) -> None:
+    if not record_matches_live_poller(record):
+        path = record.get("path")
+        if isinstance(path, str):
+            try:
+                Path(path).unlink()
+            except FileNotFoundError:
+                pass
+        return
+    pid = record.get("pid")
+    if isinstance(pid, int):
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError:
+            pass
+    path = record.get("path")
+    if isinstance(path, str):
+        try:
+            Path(path).unlink()
+        except FileNotFoundError:
+            pass
+
+
 def clear_ended(name: str) -> None:
     try:
         ended_path(name).unlink()
@@ -601,30 +766,34 @@ def poll_feedback(args: argparse.Namespace) -> None:
     ensure_session()
     name = sanitize_name(args.name)
     deadline = None if args.timeout is None else time.time() + args.timeout
+    register_poller(name, args.timeout)
     print(f"[,artifact] waiting for feedback on {name}; leave this running.", file=sys.stderr)
-    while True:
-        prompts, archive = read_and_archive_feedback(name)
-        if prompts:
-            print(
-                json.dumps(
-                    {
-                        "status": "feedback",
-                        "artifact": name,
-                        "archive": str(archive) if archive else "",
-                        "batches": prompts,
-                        "prompts": flatten_feedback_batches(prompts),
-                    },
-                    indent=2,
+    try:
+        while True:
+            prompts, archive = read_and_archive_feedback(name)
+            if prompts:
+                print(
+                    json.dumps(
+                        {
+                            "status": "feedback",
+                            "artifact": name,
+                            "archive": str(archive) if archive else "",
+                            "batches": prompts,
+                            "prompts": flatten_feedback_batches(prompts),
+                        },
+                        indent=2,
+                    )
                 )
-            )
-            return
-        if ended_path(name).exists():
-            print(json.dumps({"status": "ended", "artifact": name}, indent=2))
-            return
-        if deadline is not None and time.time() >= deadline:
-            print(json.dumps({"status": "waiting", "artifact": name}, indent=2))
-            return
-        time.sleep(1)
+                return
+            if ended_path(name).exists():
+                print(json.dumps({"status": "ended", "artifact": name}, indent=2))
+                return
+            if deadline is not None and time.time() >= deadline:
+                print(json.dumps({"status": "waiting", "artifact": name}, indent=2))
+                return
+            time.sleep(1)
+    finally:
+        unregister_poller(name)
 
 
 def list_artifacts(_: argparse.Namespace) -> None:
@@ -633,6 +802,23 @@ def list_artifacts(_: argparse.Namespace) -> None:
     for path in sorted(artifacts_dir().glob("*.htm*")):
         rows.append({"name": path.name, "path": str(path), "bytes": path.stat().st_size})
     print(json.dumps({"session": context(), "artifacts": rows}, indent=2))
+
+
+def list_pollers(_: argparse.Namespace) -> None:
+    ensure_session()
+    print(json.dumps({"session": context(), "pollers": active_poller_records()}, indent=2))
+
+
+def poll_stop(args: argparse.Namespace) -> None:
+    ensure_session()
+    if args.all:
+        records = active_poller_records()
+    else:
+        record = active_poller_record(args.name)
+        records = [record] if record else []
+    for record in records:
+        stop_poller_record(record)
+    print(json.dumps({"stopped": len(records), "session": context()}, indent=2))
 
 
 def clean(args: argparse.Namespace) -> None:
@@ -644,6 +830,8 @@ def clean(args: argparse.Namespace) -> None:
 
 def stop(_: argparse.Namespace) -> None:
     sdir = session_dir()
+    for record in active_poller_records():
+        stop_poller_record(record)
     if not server_base_url(sdir):
         return
     state = read_server_state(sdir)
@@ -1873,6 +2061,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("name", nargs="?", default="artifact")
     p.add_argument("--timeout", type=float, help="seconds to wait before returning waiting status")
     p.set_defaults(func=poll_feedback)
+
+    p = sub.add_parser("pollers", help="list active feedback pollers for this session")
+    p.set_defaults(func=list_pollers)
+
+    p = sub.add_parser("poll-stop", help="stop feedback pollers for this session")
+    p.add_argument("name", nargs="?", default="artifact")
+    p.add_argument("--all", action="store_true", help="stop all pollers in this artifact session")
+    p.set_defaults(func=poll_stop)
 
     p = sub.add_parser("list", help="list cached artifacts for this context")
     p.set_defaults(func=list_artifacts)

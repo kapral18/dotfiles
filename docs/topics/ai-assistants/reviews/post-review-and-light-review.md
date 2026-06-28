@@ -35,7 +35,7 @@ Post-review behavior:
 
 ## Light review (proportional depth)
 
-[`light-review`](../../../../home/exact_dot_agents/exact_skills/exact_light-review) is a separate skill for fast, in-place audits of low-risk self-authored changes.
+[`light-review`](../../../../home/exact_dot_agents/exact_skills/exact_light-review) is a separate skill for proportional-depth, in-place audits of low-risk self-authored changes.
 
 | Keeps                                | Drops                                 |
 | ------------------------------------ | ------------------------------------- |

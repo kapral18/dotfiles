@@ -1,6 +1,6 @@
 ---
 name: kbn-stack
-description: Start, reuse, inspect, and tear down local Kibana ES+Kibana development stacks with `,kbn-stack`. Use when working in `elastic/kibana`, when Kibana live UI verification needs a local stack, when a flow mentions `,kbn-stack`, `~/.cache/kbn-stack/registry.json`, `--detach`, `-K`, or Kibana stack readiness.
+description: Manage local elastic/kibana ES+Kibana stacks with ,kbn-stack for live UI verification.
 tool_version: ",kbn-stack local help surface verified 2026-06-28"
 ---
 
@@ -36,9 +36,11 @@ Use `,kbn-stack` from an `elastic/kibana` git worktree to start an isolated loca
 ,kbn-stack -K key=value
 ```
 
-`--detach` is the agent mode: it starts ES and Kibana in the background, waits until Kibana answers `/api/status`, records `ready: true`, and returns.
+`--detach` is the agent mode: it starts ES and Kibana in the background, waits until Kibana answers `/api/status`, records `ready:
+true`, and returns.
 
-`-K key=value` is repeatable and becomes `--key=value` for `yarn start`. Use it for runtime settings that the UI path requires, for example `-K xpack.index_management.dev.enableSemanticField=true`.
+`-K key=value` is repeatable and becomes `--key=value` for `yarn start`.
+Use it for runtime settings that the UI path requires, for example `-K xpack.index_management.dev.enableSemanticField=true`.
 
 ## Registry
 
@@ -65,7 +67,8 @@ Use only entries with `ready: true` as live browser targets. Do not guess localh
 3. Inspect `~/.cache/kbn-stack/registry.json`.
 4. If the matching entry is `ready: true` and has the needed `kbn_flags`, reuse it.
 5. If no ready entry exists and shell side effects are allowed, run `,kbn-stack --detach` plus any required `-K key=value` flags.
-6. If a user-owned ready stack is missing required `kbn_flags`, do not restart it. Report the exact `,kbn-stack --stop && ,kbn-stack --detach -K ...` command the user should run.
+6. If a user-owned ready stack is missing required `kbn_flags`, do not restart it.
+   Report the exact `,kbn-stack --stop && ,kbn-stack --detach -K ...` command the user should run.
 7. Load and follow the Playwriter skill before using `kbn_url` for readiness or UI verification.
 8. If using `,artifact live`, inject the overlay only after Playwriter verifies the local/dev Kibana target.
 

@@ -1,6 +1,6 @@
 ---
 name: sem
-description: Entity-level diff, blame, impact analysis, and LLM context for Git via sem CLI. Use when diffing changes at function/class granularity, investigating blast radius, tracing entity history, or generating token-budgeted code context.
+description: Use sem for entity-level Git diff, blame, impact analysis, and token-budgeted LLM context.
 ---
 
 # sem
@@ -25,7 +25,8 @@ First actions:
 1. Resolve the binary explicitly — prefer the chezmoi-managed wrapper, do not trust PATH order:
    - `SEM_BIN="$HOME/bin/sem"; [ -x "$SEM_BIN" ] || SEM_BIN="$(command -v sem)"`
    - abort with install instructions (`brew install ataraxy-labs/tap/sem`) if neither resolves.
-   - The `~/bin/sem` wrapper forwards to the Homebrew binary, so both are functionally identical; use `"$SEM_BIN"` consistently to avoid the "which sem?" ambiguity.
+   - The `~/bin/sem` wrapper forwards to the Homebrew binary, so both are functionally identical;
+     use `"$SEM_BIN"` consistently to avoid the "which sem?" ambiguity.
 2. Verify identity before relying on behavior: `"$SEM_BIN" --version` (or `--help`).
 3. Verify you're in a git repo: `git rev-parse --is-inside-work-tree`
 
@@ -66,7 +67,8 @@ sem context <entity> --json
 
 ## Supported languages
 
-TypeScript, TSX, JavaScript, Python, Go, Rust, Java, C, C++, Ruby, C#, PHP, Swift, Kotlin, Elixir, Bash, HCL/Terraform, Fortran, Vue, XML, ERB, Svelte.
+TypeScript, TSX, JavaScript, Python, Go, Rust, Java, C, C++, Ruby, C#, PHP, Swift, Kotlin, Elixir, Bash, HCL/Terraform, Fortran,
+Vue, XML, ERB, Svelte.
 
 Structured data: JSON, YAML, TOML, CSV, Markdown.
 

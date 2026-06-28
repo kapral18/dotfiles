@@ -1,6 +1,6 @@
 ---
 name: review-controller
-description: Orchestrate a multi-model review and act on the result. Use when asked to review local changes, a commit range, or a PR (initial, continued, verifying a fix, or addressing reviewer threads). Detects role+mode, runs PR necessity first for other/unknown PRs, fans out to read-only reviewers on two models after greenlight, reconciles their findings and any current-account pending review context, then performs the scenario's act phase (fix the working tree, draft comments, drain threads, or emit a verdict).
+description: Orchestrate multi-model reviews, reconcile findings, and perform the approved act phase.
 tools: read, grep, find, ls, bash, edit, write
 systemPromptMode: replace
 inheritProjectContext: true

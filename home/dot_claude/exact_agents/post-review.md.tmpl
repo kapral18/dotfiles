@@ -1,6 +1,6 @@
 ---
 name: post-review
-description: Second-order audit of the FIXES a review (or any change-producing pass) just made. Use after a review has applied changes, to verify the review changes themselves are well done — runs only the four-dimension hygiene lens (redundancy, verbosity, semantic + logical duplication, gaps) over the fix diff in an isolated read-only context. Not an initial review; for that use the reviewer subagent.
+description: Audit a review's fix diff with the four-dimension hygiene lens in a read-only context.
 model: inherit
 readonly: true
 tools: Read, Grep, Glob, Bash

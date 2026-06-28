@@ -1,6 +1,6 @@
 ---
 name: standup
-description: "Prepare Karen's team standup update for #kibana-management by diffing Slack + GitHub activity since the last posted standup, then post it as a threaded reply only after explicit approval. Use when the user invokes /standup or asks to write/prepare/post a standup or daily update."
+description: "Prepare Karen's #kibana-management standup from Slack and GitHub activity, then await approval."
 disable-model-invocation: true
 ---
 
@@ -12,11 +12,15 @@ Team is `#kibana-management` on `elastic/kibana`. Resolve the rest at runtime:
 
 - `USER` = current Slack user id from `slack_read_user_profile` (no arg).
 - `GH` = `gh api user --jq .login`.
-- `CHAN` = `#kibana-management` id from `slack_search_channels kibana-management` (only needed to post in step 4; the `in:#kibana-management` search modifier takes the name directly).
+- `CHAN` = `#kibana-management` id from `slack_search_channels kibana-management` (only needed to post in step 4;
+  the `in:#kibana-management` search modifier takes the name directly).
 
 ## 1. Baseline
 
-`BASELINE` = the `Message_ts` of the user's own **last multi-bullet standup post** (not a Slackbot reminder, not chatter). Find via `slack_search_public` `from:<@USER> in:#kibana-management`. Read it fully — you must not repeat its items and should report status deltas (e.g. `waiting on review` → `merged`).
+`BASELINE` = the `Message_ts` of the user's own **last multi-bullet standup post** (not a Slackbot reminder, not chatter).
+Find via `slack_search_public` `from:<@USER> in:#kibana-management`.
+Read it fully — you must not repeat its items and should report status deltas (e.g.
+`waiting on review` → `merged`).
 
 ## 2. Gather (only events strictly after BASELINE)
 
@@ -24,14 +28,21 @@ Search `--created`/`after:` filters are day-granular; always compare the exact t
 
 GitHub (author `GH`):
 
-- Authored PRs: `gh search prs --repo elastic/kibana --author <GH> --json number,title,state,createdAt,updatedAt,closedAt,url --sort updated --limit 30`. For PRs that were `waiting on review` last time, confirm `mergedAt`. For still-open PRs, confirm real work by last `committedDate` (not `updatedAt`, which others' comments bump).
-- Issues filed: `gh search issues --repo elastic/kibana --author <GH> --created ">=<date>"`. Before claiming meta/sub-issue linkage, verify it: `gh api repos/elastic/kibana/issues/<meta>/sub_issues`.
-- Reviews on others' PRs: `gh search prs --repo elastic/kibana --reviewed-by <GH> --updated ">=<date>"`; confirm the review timestamp via `gh api repos/elastic/kibana/pulls/<n>/reviews`.
+- Authored PRs: `gh search prs --repo elastic/kibana --author <GH> --json number,title,state,createdAt,updatedAt,closedAt,url --sort updated --limit 30`.
+  For PRs that were `waiting on review` last time, confirm `mergedAt`.
+  For still-open PRs, confirm real work by last `committedDate` (not `updatedAt`, which others' comments bump).
+- Issues filed: `gh search issues --repo elastic/kibana --author <GH> --created ">=<date>"`.
+  Before claiming meta/sub-issue linkage, verify it: `gh api repos/elastic/kibana/issues/<meta>/sub_issues`.
+- Reviews on others' PRs: `gh search prs --repo elastic/kibana --reviewed-by <GH> --updated ">=<date>"`;
+  confirm the review timestamp via `gh api repos/elastic/kibana/pulls/<n>/reviews`.
 
 Slack (catches work that never hits GitHub — incidents, impact assessments):
 
-- Enumerate everything, don't keyword-guess: `slack_search_public` `from:<@USER> after:<date>`, `sort=timestamp`, `include_context=false`, **no free-text term**; page the `pagination_info` cursor until you pass BASELINE. For private channels/DMs use `slack_search_public_and_private` (ask consent once).
-- Triage for team relevance: keep effortful work (incident/severity assessments, investigations, decisions); drop social/off-topic chatter and acknowledgements.
+- Enumerate everything, don't keyword-guess: `slack_search_public` `from:<@USER> after:<date>`, `sort=timestamp`,
+  `include_context=false`, **no free-text term**; page the `pagination_info` cursor until you pass BASELINE.
+  For private channels/DMs use `slack_search_public_and_private` (ask consent once).
+- Triage for team relevance: keep effortful work (incident/severity assessments, investigations, decisions);
+  drop social/off-topic chatter and acknowledgements.
 
 ## 3. Draft (team format)
 
@@ -41,6 +52,10 @@ Slack (catches work that never hits GitHub — incidents, impact assessments):
 
 ## 4. Approve, then post
 
-- Post target = newest Slackbot reminder thread: `slack_search_public` `from:<@USLACKBOT> "share your daily update" in:#kibana-management`, `sort=timestamp`, `include_bots=true` → its `thread_ts`.
-- Show the draft + target and **wait for explicit approval** (human-visible post; "show/prepare it" is not approval). On approval: `slack_send_message` `channel_id=<CHAN>`, `thread_ts=<reminder ts>`; return the link. Draft-only / tweak first → `slack_send_message_draft`.
+- Post target = newest Slackbot reminder thread:
+  `slack_search_public` `from:<@USLACKBOT> "share your daily update" in:#kibana-management`, `sort=timestamp`,
+  `include_bots=true` → its `thread_ts`.
+- Show the draft + target and **wait for explicit approval** (human-visible post; "show/prepare it" is not approval).
+  On approval: `slack_send_message` `channel_id=<CHAN>`, `thread_ts=<reminder ts>`; return the link.
+  Draft-only / tweak first → `slack_send_message_draft`.
 - The `Sent using Cursor` suffix is auto-appended; don't add it. If no reminder thread exists yet, ask whether to post standalone.

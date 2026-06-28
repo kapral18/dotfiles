@@ -1,6 +1,6 @@
 ---
 name: semantic-code-search
-description: Semantic code investigation via SCSI tools (scsi, symbol_analysis, list_indices). Use when semantic search or base-branch context is needed, the user asks to use/select/verify a specific semantic index, or a loaded skill requires semantic base-context.
+description: Use SCSI tools for semantic search, symbol analysis, index selection, and base context.
 ---
 
 # Semantic Code Search Skill
@@ -20,7 +20,8 @@ Common trigger in reviews:
 Do not use:
 
 - simple string/filename lookup: use local `rg` or file listing
-- as a replacement for local review of branch changes: use local repo tools for exact state (`git diff`, file reads, tests). SCSI is for base context.
+- as a replacement for local review of branch changes: use local repo tools for exact state (`git diff`, file reads, tests).
+  SCSI is for base context.
 - purely mechanical pattern matching to drive a replace/edit: use local `rg`
 - current repo is not indexed (not present in `list_indices`): do not use semantic code search
 
@@ -78,9 +79,12 @@ Index usage:
   - verify it exists in `list_indices`
   - if it does not exist, stop and ask which index to use
 - otherwise:
-  - always run `list_indices` first (do not guess) - if you have both `scsi-main` and `scsi-local`, run `list_indices` on both before concluding "not indexed"
+  - always run `list_indices` first (do not guess) - if you have both `scsi-main` and `scsi-local`,
+    run `list_indices` on both before concluding "not indexed"
   - if `list_indices` returns no usable results, do not use semantic search (fall back to local sources)
-  - if `list_indices` returns an obvious match for the current repo, use it - "obvious" means you can justify the selection from evidence (for example: index name clearly includes the repo name, or it is the only index that matches the repo you're in)
+  - if `list_indices` returns an obvious match for the current repo,
+    use it - "obvious" means you can justify the selection from evidence (for example: index name clearly includes the repo name, or
+    it is the only index that matches the repo you're in)
   - if multiple equally plausible indices remain after evidence-based filtering, ask the user which index to use
 
 Output:

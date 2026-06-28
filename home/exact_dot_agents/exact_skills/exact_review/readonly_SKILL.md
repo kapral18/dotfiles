@@ -22,7 +22,8 @@ Contract:
 - Load secondary skills only when this router or the selected mode requires them.
   - Example: semantic code search for base context.
   - Example: GitHub workflow when the user explicitly asks to post.
-- Do not invoke the `github` skill for read-only PR inspection/review. Only invoke it (via the Skill tool) when the user explicitly asks to post/submit anything to GitHub.
+- Do not invoke the `github` skill for read-only PR inspection/review.
+  Only invoke it (via the Skill tool) when the user explicitly asks to post/submit anything to GitHub.
 - If the user wants review analysis and GitHub posting in the same request:
   - keep the review router primary
   - draft/verify through review mode first
@@ -31,12 +32,14 @@ Contract:
 ## Draft-PR Policy
 
 - Never review someone else's draft PR unless the user explicitly asks.
-- If a PR is in draft state and the user did not explicitly request a review, stop and note: "This PR is a draft — skipping review unless you explicitly ask."
+- If a PR is in draft state and the user did not explicitly request a review, stop and note: "This PR is a draft —
+  skipping review unless you explicitly ask."
 - When a draft PR is reviewed (because explicitly asked), apply full thoroughness — a review is a review regardless of draft status.
 
 ## PR Detection (Do First When PR Is Involved)
 
-If the user mentions or strongly implies a PR (PR/pull request, PR review, threads, "check my PR comment", "recheck this fix from the PR", etc.):
+If the user mentions or strongly implies a PR (PR/pull request, PR review, threads, "check my PR comment",
+"recheck this fix from the PR", etc.):
 
 - First step is PR discovery via `,gh-prw` (read-only):
   - `,gh-prw --number`
@@ -44,7 +47,8 @@ If the user mentions or strongly implies a PR (PR/pull request, PR review, threa
 
 Continuity rule:
 
-- If the conversation is already clearly in a specific mode, stay in that mode when the user says "continue" / "next" unless they explicitly switch targets.
+- If the conversation is already clearly in a specific mode,
+  stay in that mode when the user says "continue" / "next" unless they explicitly switch targets.
 
 ## Role Detection / Authorship (Mandatory In Every Mode)
 
@@ -56,7 +60,9 @@ Allowed values:
 - `other`
 - `unknown`
 
-This input gates whether the review may edit code. Resolve it in the local/branch path too. Never default to `self` just because the change is checked out locally.
+This input gates whether the review may edit code.
+Resolve it in the local/branch path too.
+Never default to `self` just because the change is checked out locally.
 
 When a PR is involved:
 
@@ -71,8 +77,10 @@ When there is no PR (local changes / branch-delta / commit-range review):
   - `GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false rev-parse --abbrev-ref --symbolic-full-name @{u}`
   - `GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false remote -v` for that remote's URL/owner
 - A branch tracking another person's fork is `other` (e.g. `someoneelse/<branch>`).
-- Check authorship of the commits under review: `GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false log --format='%an <%ae>' <base>..HEAD`. Commits authored by someone other than the current user make it `other`.
-- Only uncommitted/staged working-tree changes, or commits/branch owned by the current user, resolve to `self`. If it cannot be verified, it is `unknown`.
+- Check authorship of the commits under review: `GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false log --format='%an <%ae>' <base>..HEAD`.
+  Commits authored by someone other than the current user make it `other`.
+- Only uncommitted/staged working-tree changes, or commits/branch owned by the current user, resolve to `self`.
+  If it cannot be verified, it is `unknown`.
 
 This affects mode behavior:
 
@@ -122,7 +130,8 @@ Pick exactly one mode. If ambiguous, ask one fork-closing question and state a d
 
 ### Mode: Local changes review (working tree, branch delta, or commit range)
 
-- Use when: the user asks to review local changes/diff, review a specific commit range, or when there is no PR for the current branch and the user still wants a review.
+- Use when: the user asks to review local changes/diff, review a specific commit range, or
+  when there is no PR for the current branch and the user still wants a review.
 - This mode verifies and fixes: findings are resolved in the working tree immediately, not drafted as comments.
 - Then open: `~/.agents/skills/review/references/local_changes.md`
 
@@ -137,7 +146,8 @@ If the user's intent is still unclear, resolve via local context (do not guess):
   - Independently check both:
     - whether staged/unstaged changes exist
     - whether `,gh-prw --number` resolves a PR for the current branch
-  - If both are true: default to local changes mode (verify and fix working tree). Note the PR exists in output so the user can switch if needed.
+  - If both are true: default to local changes mode (verify and fix working tree).
+    Note the PR exists in output so the user can switch if needed.
   - If only local changes exist: local changes mode.
   - If only a PR exists: PR review mode.
   - If neither exists: local changes mode (branch delta).

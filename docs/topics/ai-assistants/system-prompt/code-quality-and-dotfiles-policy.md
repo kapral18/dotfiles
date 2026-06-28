@@ -5,12 +5,13 @@ title: Code-quality and dotfiles policy
 
 # Code-quality and dotfiles policy
 
-The SOP's coding rules are intentionally conservative: minimal edit scope, no unrequested compatibility, and verification before completion.
+The SOP's coding rules are intentionally conservative: minimal edit scope, no unrequested compatibility, verification before completion, and internal time/effort estimates treated as non-constraints.
 
 ## Code-change rules
 
 | Rule                  | Effect                                                            |
 | --------------------- | ----------------------------------------------------------------- |
+| Cost/time discipline  | never shortcut because the correct path feels slow or costly      |
 | Local style matching  | match surrounding structure, terms, and contract strength         |
 | Minimal edit scope    | no unrelated cleanup or behavior removal                          |
 | Semantic dedupe       | preserve intentional point-of-entry guardrails during refactors   |
@@ -22,6 +23,10 @@ The SOP's coding rules are intentionally conservative: minimal edit scope, no un
 ## Style matching
 
 Changes should read like they belong in the file they modify: same structure, terminology, formatting, level of detail, and contract strength. Prefer the smallest in-style edit over a pasted standalone rule or helper from another surface.
+
+## Cost/time discipline
+
+Agents must not use their internal sense of elapsed time, effort, or verification expense to decide how much rigor to apply. Quality, simplicity, robustness, scalability, and long-term maintainability outrank speed of completion. Planning, implementation, review, and handoff stay evidence-driven: inspect load-bearing details from multiple angles, seek counterexamples, and stop only when success criteria are satisfied or remaining gaps are explicitly marked `Unknown`.
 
 ## Refactor guardrails
 

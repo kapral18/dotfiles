@@ -1,6 +1,6 @@
 ---
 name: kibana-management-ownership
-description: Determine ownership and reviewer targeting for `elastic/kibana` changes via CODEOWNERS using the `,codeowners` CLI — classify changed paths as in/out of `@elastic/kibana-management` and propose owning-team reviewers (propose-only; no posting). Only for elastic/kibana repos.
+description: Classify elastic/kibana ownership and reviewer targets with CODEOWNERS; propose-only.
 ---
 
 # Kibana Management Ownership (Propose-Only)
@@ -14,7 +14,8 @@ Use when:
 Do not use:
 
 - outside `elastic/kibana` repos (other repos: ask once which team applies, remember for the session)
-- to apply reviewers/labels or post anything — this skill is propose-only; side effects go through the `github` skill, wording through the `communication` skill
+- to apply reviewers/labels or post anything — this skill is propose-only; side effects go through the `github` skill,
+  wording through the `communication` skill
 
 ## Mechanics
 
@@ -33,15 +34,19 @@ The team identity is `@elastic/kibana-management`.
 
 1. Collect the changed paths (`git diff --name-only <base>...` or the PR's file list via `gh`).
 2. Map each path to its owner with `,codeowners --owner-of <path>`.
-   - Do not exact-match changed files against `,codeowners -p kibana-management`; that output is CODEOWNERS path patterns/roots, not an exhaustive file list. A descendant path can be in-team because its nearest matching CODEOWNERS root is in-team.
+   - Do not exact-match changed files against `,codeowners -p kibana-management`; that output is CODEOWNERS path patterns/roots,
+     not an exhaustive file list.
+     A descendant path can be in-team because its nearest matching CODEOWNERS root is in-team.
 3. Classify:
    - All paths in-team -> proceed normally; no extra reviewers needed beyond team norms.
-   - Any path out-of-team -> list those paths with their owning teams; propose the owning teams as reviewers and flag that the side effect needs explicit approval (SOP §3.1).
+   - Any path out-of-team -> list those paths with their owning teams;
+     propose the owning teams as reviewers and flag that the side effect needs explicit approval (SOP §3.1).
    - Unowned paths -> say so explicitly; do not guess an owner.
 4. Present the proposal (paths -> owners -> suggested reviewers). Stop there; apply nothing.
 
 ## CODEOWNERS gotchas (verified)
 
 - Matching is last-match-wins: a later, more specific entry overrides an earlier one.
-- Owner-less entries are valid and CLEAR ownership for matching paths — a path matched last by an owner-less entry is unowned, not owned by the previous match.
+- Owner-less entries are valid and CLEAR ownership for matching paths — a path matched last by an owner-less entry is unowned,
+  not owned by the previous match.
 - CODEOWNERS missing or `,codeowners` unavailable -> skip ownership classification and say so; do not infer ownership from directory names.

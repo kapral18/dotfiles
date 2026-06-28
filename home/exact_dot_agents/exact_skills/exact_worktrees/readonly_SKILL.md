@@ -1,6 +1,6 @@
 ---
 name: worktrees
-description: Use when the user mentions ,w or ,gh-worktree, or asks to create/switch/open/list/prune/remove worktrees, including checking out PRs/issues locally. Use ,gh-worktree for repo routing/bootstrap and ,w for in-repo worktree actions. Prefer ,w subcommands over raw git worktree.
+description: Manage worktrees with ,w or ,gh-worktree for switching, pruning, repo routing, and PR checkout.
 ---
 
 # ,w Worktree Skill (Worktrees + tmux)

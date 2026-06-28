@@ -27,7 +27,7 @@ These skills govern review methodology, GitHub side effects, and human-readable 
 
 | Field    | Value                                                                                        |
 | -------- | -------------------------------------------------------------------------------------------- |
-| Use when | fast in-place audit of low-risk self-authored changes                                        |
+| Use when | proportional-depth in-place audit of low-risk self-authored changes                          |
 | Source   | [`exact_light-review`](../../../../home/exact_dot_agents/exact_skills/exact_light-review/)   |
 | Boundary | escalate to `review` for PRs, others' code, risky/stateful changes, or required base context |
 

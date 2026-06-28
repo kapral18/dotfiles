@@ -6,9 +6,12 @@ disable-model-invocation: true
 
 # Improve Branch
 
-What's the single smartest and most radically innovative and accretive and useful and compelling addition you could make at this point that would be most beneficial for the goal pursued by current branch and this PR (if it exists) and this issue (that this branch is implementing)?
+What's the single smartest and most radically innovative and accretive and useful
+and compelling addition you could make at this point that would be most beneficial for the goal pursued by current branch
+and this PR (if it exists) and this issue (that this branch is implementing)?
 
-Only suggest if you think the change is smart, innovative, accretive, useful, and compelling. It's ok to refrain from doing so if you don't have a good suggestion, because no change is sometimes better than a marginally better change.
+Only suggest if you think the change is smart, innovative, accretive, useful, and compelling.
+It's ok to refrain from doing so if you don't have a good suggestion, because no change is sometimes better than a marginally better change.
 
 Use when:
 
@@ -32,13 +35,16 @@ First actions:
 
 Selection rules:
 
-- Prefer changes that advance the branch goal: stronger acceptance coverage, cleaner integration, sharper UX/API behavior, clearer migration path, or reduced review risk.
+- Prefer changes that advance the branch goal: stronger acceptance coverage, cleaner integration, sharper UX/API behavior,
+  clearer migration path, or reduced review risk.
 - Scope the recommendation to the real opportunity: small when small is enough, broad when breadth is where the leverage lives.
 - Do not recommend unrelated cleanup, package churn, or speculative abstractions unless the branch context makes the payoff unusually clear.
 - Treat "suggest" literally: present the recommendation first. Do not edit files unless the user explicitly approves implementation.
 
 Output:
 
-- If recommending a change: name the single change, explain why it matters, cite the branch/PR/issue evidence, and state the expected validation.
-- If implementing after approval: keep the edit scoped to the branch goal, update docs when behavior/workflow changes, validate, and report `Compatibility impact: none | removed (requested) | kept existing (requested)`.
+- If recommending a change: name the single change, explain why it matters, cite the branch/PR/issue evidence, and
+  state the expected validation.
+- If implementing after approval: keep the edit scoped to the branch goal, update docs when behavior/workflow changes, validate, and
+  report `Compatibility impact: none | removed (requested) | kept existing (requested)`.
 - If declining: state that no compelling branch addition was found and mention the strongest rejected candidate briefly.

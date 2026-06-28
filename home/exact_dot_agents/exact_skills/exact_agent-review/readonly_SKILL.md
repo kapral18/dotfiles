@@ -1,6 +1,6 @@
 ---
 name: agent-review
-description: Agentic review orchestration that reuses the review skill's methodology without mutating it. Use when the user invokes /agent-review, asks for multi-agent review orchestration, or wants reviewer subagents plus finding aggregation before any fixes/comments.
+description: Orchestrate /agent-review reviewer subagents, aggregate findings, and gate fixes or comments.
 ---
 
 # Agent Review
@@ -26,7 +26,13 @@ The reviewer-worker lanes are read-only:
 - no commits or pushes
 - no fix application
 
-Workers may run non-mutating verification at whatever depth is needed to find and validate review findings. Parallel lanes must not mutate the working tree, repo-local caches, databases, dev services, browser state, GitHub, git state, or other shared runtime state. Use unique `/tmp` paths or isolated copies for disposable reproduction artifacts. Do not skip useful verification only because it is expensive or another lane may also run it. If a finding needs shared-state mutation, a shared service, or another exclusive resource to verify, return the verification need to the controller instead of doing it inside both lanes.
+Workers may run non-mutating verification at whatever depth is needed to find and validate review findings.
+Parallel lanes must not mutate the working tree, repo-local caches, databases, dev services, browser state, GitHub, git state, or
+other shared runtime state.
+Use unique `/tmp` paths or isolated copies for disposable reproduction artifacts.
+Apply the SOP rules about internal time/effort estimates inside this read-only boundary.
+If a finding needs shared-state mutation, a shared service, or another exclusive resource to verify,
+return the verification need to the controller instead of doing it inside both lanes.
 
 Workers only investigate and return candidate findings or `verification_needed`.
 
@@ -47,16 +53,23 @@ The controller owns:
   - thread IDs
   - user constraints
   - expected output shape
-  - intent dependencies needed for judgment, if any: PR body, PR discussion/review threads, linked issues/PRs, Slack threads, design artifacts, commit messages, or branch history
-- running the conditional blocking `pr-necessity-auditor` for other-authored/unknown PRs, or local flows with a PR-intent dependency, before implementation review
+  - intent dependencies needed for judgment, if any: PR body, PR discussion/review threads, linked issues/PRs, Slack threads,
+    design artifacts, commit messages, or branch history
+- running the conditional blocking `pr-necessity-auditor` for other-authored/unknown PRs, or local flows with a PR-intent dependency,
+  before implementation review
 - launching the two reviewer workers after any required PR necessity greenlight
-- running conditional `live-ui-review` verification after reviewer workers finish when changed paths or kept candidate findings touch UI/runtime behavior and runtime evidence is applicable
-- running the findings audit phase after live UI returns evidence/non-applicability/blocker or is explicitly skipped; delegate to `findings-auditor` only when a step 5 delegation condition is true
-- aggregating worker outputs, `pr-necessity-auditor` status, reviewer findings, live UI status/evidence/artifacts/skip reason, and audit output
+- running conditional `live-ui-review` verification after reviewer workers finish when changed paths
+  or kept candidate findings touch UI/runtime behavior and runtime evidence is applicable
+- running the findings audit phase after live UI returns evidence/non-applicability/blocker or is explicitly skipped;
+  delegate to `findings-auditor` only when a step 5 delegation condition is true
+- aggregating worker outputs, `pr-necessity-auditor` status, reviewer findings, live UI status/evidence/artifacts/skip reason, and
+  audit output
 - deciding which worker-reported `verification_needed` items deserve serial controller verification
 - judging kept/dropped findings after aggregation
-- reconciling PR-mode draft payloads with existing current-account pending reviews, submitted review comments, and replies before preparing or posting final review feedback
-- applying fixes, drafting payloads, or touching GitHub only after the relevant `review`/`communication`/`github`/`git` gates (load `communication` before wording any human-visible draft)
+- reconciling PR-mode draft payloads with existing current-account pending reviews, submitted review comments, and
+  replies before preparing or posting final review feedback
+- applying fixes, drafting payloads, or touching GitHub only
+  after the relevant `review`/`communication`/`github`/`git` gates (load `communication` before wording any human-visible draft)
 
 Before fan-out, the controller must not load or run the full `review` skill.
 
@@ -69,9 +82,16 @@ It may load only one router section first:
 - Commits authored by someone else are `other`.
 - If authorship cannot be verified, it is `unknown`.
 
-Before fan-out, the controller may only gather route/scope, authorship, fix authorization, PR metadata needed for routing, and the base-context preflight. Do not run implementation review analysis, semantic code search (`semantic_code_search`, `symbol_analysis`, `map_symbols_by_query`, `read_file_from_chunks`), coverage checklists, or candidate-finding investigation in the controller before reviewer launch. `list_indices` is allowed only to earn the `Base context:` line.
+Before fan-out, the controller may only gather route/scope, authorship, fix authorization, PR metadata needed for routing, and
+the base-context preflight.
+Do not run implementation review analysis, semantic code search (`semantic_code_search`, `symbol_analysis`, `map_symbols_by_query`,
+`read_file_from_chunks`), coverage checklists, or candidate-finding investigation in the controller before reviewer launch.
+`list_indices` is allowed only to earn the `Base context:` line.
 
-If a local-changes flow is attached to, assigned from, or adopted from a PR and the controller would use PR intent/scope to keep, drop, or fix a finding, treat that as a blocking intent dependency. Resolve it through the PR necessity/intent audit with the complete artifacts, or carry it as explicit uncertainty. Do not act from stale PR body or commit-title evidence alone.
+If a local-changes flow is attached to, assigned from, or adopted from a PR and the controller would use PR intent/scope to keep,
+drop, or fix a finding, treat that as a blocking intent dependency.
+Resolve it through the PR necessity/intent audit with the complete artifacts, or carry it as explicit uncertainty.
+Do not act from stale PR body or commit-title evidence alone.
 
 After workers return, the controller may consult only the minimum relevant review references for:
 
@@ -93,7 +113,8 @@ Reviewer workers own the full investigation methodology.
   - `~/.agents/skills/review/references/shared_rules.md`
   - selected mode file under `~/.agents/skills/review/references/`
   - `~/.agents/skills/review/references/pr_common.md` for PR modes
-- Return only evidence, candidate findings, and any `verification_needed` entries that were unsafe or required shared-state mutation/contention inside a parallel lane.
+- Return only evidence, candidate findings, and any `verification_needed` entries that were unsafe
+  or required shared-state mutation/contention inside a parallel lane.
 - Never edit, post, resolve, commit, push, or decide what should be fixed/commented on.
 
 The active harness owns subagent discovery and invocation.
@@ -113,7 +134,12 @@ The phase order is strict:
 6. controller aggregation, judgment, PR-mode pending-review reconciliation, and action
 7. post-act verification, only for any flow that edited the working tree (gates + fix-diff Post-Review Stage)
 
-Do not start a later phase until the current phase returns. In blocking phases, do not poll background workers with long waits just to check status; wait for completion notifications or use the harness's synchronous/blocking mechanism. The same rule applies after `write_agent` follow-ups for addenda or reconciliation checks: send the follow-up, state that the phase is waiting, and end the turn unless the worker has already completed. The controller may read completed phase outputs, but it must not perform later-phase analysis while the current phase is still running.
+Do not start a later phase until the current phase returns.
+In blocking phases, do not poll background workers with long waits just to check status;
+wait for completion notifications or use the harness's synchronous/blocking mechanism.
+The same rule applies after `write_agent` follow-ups for addenda or reconciliation checks: send the follow-up,
+state that the phase is waiting, and end the turn unless the worker has already completed.
+The controller may read completed phase outputs, but it must not perform later-phase analysis while the current phase is still running.
 
 For every delegated worker, emit an export-visible worker selection line before launch:
 
@@ -121,7 +147,9 @@ For every delegated worker, emit an export-visible worker selection line before 
 Worker selection: phase=<pr-necessity|review-gpt|review-opus|live-ui|findings-audit>, profile=<configured profile name>, agent_type=<task/subagent agent type>, model=<model>, invocation=<named|fallback>, fallback_reason=<none or reason>
 ```
 
-This line is part of the audit trail. If a runtime export hides task arguments, the worker selection line must still prove whether the controller used named profiles or a fallback such as `general-purpose`.
+This line is part of the audit trail.
+If a runtime export hides task arguments, the worker selection line must still prove whether the controller used named profiles
+or a fallback such as `general-purpose`.
 
 1. **Route and scope.** Build a scope packet with:
    - mode: `local_changes.md`, `pr_review.md`, or `pr_fix.md`
@@ -136,16 +164,34 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
 
    Resolve `authorship` via the review router's Role Detection. Do not duplicate worker review analysis in the controller.
 
-   Resolve `fix_authorized` (the working-tree-edit permission for this run) once here, alongside `authorship`. It is `yes` when any of these hold:
-   - `authorship: self` (your own PR, or a local-changes flow);
-   - you are the PR assignee (verify via `gh pr view --json assignees`);
-   - the user explicitly states takeover/adoption intent for the PR ("I'm taking this over", "my PR now", "fix what's missing", "take over this branch", or equivalent).
+Resolve `fix_authorized` (the working-tree-edit permission for this run) once here, alongside `authorship`.
+It is `yes` when any of these hold:
 
-   When `fix_authorized: yes`, the fix step does NOT require a separate "fix" keyword — an adopted/assigned/own PR is fix-authorized by virtue of ownership, not phrasing. When none of the above hold (`authorship: other`/`unknown` and no assignee/takeover signal), `fix_authorized: no`: draft-only, never edit code. Record `fix_authorized` in the scope packet; step 8 branches on it. `fix_authorized` governs only working-tree edits and verification mutations; it never authorizes commit/push/post/resolve, which keep their own explicit-approval gates (git/github skills + Human-Visible Publication Gate).
+- `authorship: self` (your own PR, or a local-changes flow);
+- you are the PR assignee (verify via `gh pr view --json assignees`);
+- the user explicitly states takeover/adoption intent for the PR ("I'm taking this over", "my PR now", "fix what's missing",
+  "take over this branch", or equivalent).
 
-   Run the base-context preflight before fan-out. The Base-Branch Context Gate in `~/.agents/skills/review/references/shared_rules.md` is blocking and controller-owned, because read-only reviewer workers run with MCP/SCSI disabled and structurally cannot run it. You MUST invoke `list_indices` yourself (try both `scsi-main` and `scsi-local`), select the repo-matching index or prove none exists, and only then emit the `Base context:` line with the real `<reason>` (`SCSI used` / `not indexed` / `tools unavailable` / `user-selected none`). Never assert a `Base context: SCSI=none` line that you did not earn by running `list_indices`. If your own runtime also blocks `list_indices`, say so explicitly as `tools unavailable` rather than implying the gate ran. Do not use the base-context preflight as a loophole for implementation analysis: no `semantic_code_search`, symbol analysis, code-chunk reads, broad code investigation, or finding construction before reviewer workers launch.
+When `fix_authorized: yes`, the fix step does NOT require a separate "fix" keyword —
+an adopted/assigned/own PR is fix-authorized by virtue of ownership, not phrasing.
+When none of the above hold (`authorship: other`/`unknown` and no assignee/takeover signal), `fix_authorized: no`: draft-only,
+never edit code.
+Record `fix_authorized` in the scope packet; step 8 branches on it.
+`fix_authorized` governs only working-tree edits and verification mutations; it never authorizes commit/push/post/resolve,
+which keep their own explicit-approval gates (git/github skills + Human-Visible Publication Gate).
 
-2. **Run conditional blocking PR necessity/intent audit.**
+Run the base-context preflight before fan-out.
+The Base-Branch Context Gate in `~/.agents/skills/review/references/shared_rules.md` is blocking and controller-owned, because
+read-only reviewer workers run with MCP/SCSI disabled and structurally cannot run it.
+You MUST invoke `list_indices` yourself (try both `scsi-main` and `scsi-local`),
+select the repo-matching index or prove none exists, and
+only then emit the `Base context:` line with the real `<reason>` (`SCSI used` / `not indexed` / `tools unavailable` / `user-selected none`).
+Never assert a `Base context: SCSI=none` line that you did not earn by running `list_indices`.
+If your own runtime also blocks `list_indices`, say so explicitly as `tools unavailable` rather than implying the gate ran.
+Do not use the base-context preflight as a loophole for implementation analysis: no `semantic_code_search`, symbol analysis,
+code-chunk reads, broad code investigation, or finding construction before reviewer workers launch.
+
+1. **Run conditional blocking PR necessity/intent audit.**
    - Run `pr-necessity-auditor` before any implementation reviewer when:
      - mode is `pr_review.md` or `pr_fix.md`, and
      - `authorship` is `other` or `unknown`.
@@ -156,22 +202,33 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
    - Invoking `/agent-review` is the request for this PR meta-audit; do not require a second user opt-in.
    - Skip it for local changes and self-authored PRs only when PR intent/scope is not needed for controller judgment.
    - This worker is read-only and evidence-only.
-   - Give it the scope packet plus the PR URL/number, base/head refs, changed paths, directly referenced issues/PRs, linked Slack/design artifacts already known to the controller, and any already-known user constraints.
+   - Give it the scope packet plus the PR URL/number, base/head refs, changed paths, directly referenced issues/PRs,
+     linked Slack/design artifacts already known to the controller, and any already-known user constraints.
    - It must follow `~/.agents/skills/agent-review/references/pr-necessity-auditor.md`.
    - It returns one of:
      - `Not applicable`
      - greenlight evidence that the PR is sensible enough to review further
      - blocker or stop status for inaccessible GitHub, Slack, history, unclear intent, not-needed/superseded work, or incorrectly-open status
-   - Greenlight means there is no unresolved blocker and no supported classification that makes implementation review premature or unnecessary. For other-authored or unknown-author PRs, continue to reviewer fan-out only when the audit supports `needed: yes` and no material correctly-open/intent concern blocks review.
-   - Greenlight is not merge readiness. Failed/missing labels, outdated-branch checks, unknown mergeability, or other status blockers may be surfaced as `merge_readiness`/status uncertainty while still allowing implementation review to continue.
-   - Never treat `mergeable: UNKNOWN`, `mergeStateStatus: UNKNOWN`, or missing merge metadata as proof of no conflicts. Record it as unknown.
-   - If the audit returns blocked, unclear, not needed, superseded, incorrectly open, or leaves an intent dependency unresolved, stop the implementation review flow and surface the supported blocker/PR-level draft feedback. Do not launch reviewer workers, live UI, or findings audit unless the user explicitly asks to continue anyway.
+   - Greenlight means there is no unresolved blocker and no supported classification that makes implementation review premature or unnecessary.
+     For other-authored or unknown-author PRs, continue to reviewer fan-out only when the audit supports `needed:
+yes` and no material correctly-open/intent concern blocks review.
+   - Greenlight is not merge readiness.
+     Failed/missing labels, outdated-branch checks, unknown mergeability, or
+     other status blockers may be surfaced as `merge_readiness`/status uncertainty while still allowing implementation review to continue.
+   - Never treat `mergeable: UNKNOWN`, `mergeStateStatus: UNKNOWN`, or missing merge metadata as proof of no conflicts.
+     Record it as unknown.
+   - If the audit returns blocked, unclear, not needed, superseded, incorrectly open, or leaves an intent dependency unresolved,
+     stop the implementation review flow and surface the supported blocker/PR-level draft feedback.
+     Do not launch reviewer workers, live UI, or findings audit unless the user explicitly asks to continue anyway.
    - Do not rely on the auditor to decide or post. The controller judges and gates any draft feedback.
 
-3. **Launch two code investigation reviewers in parallel.**
+2. **Launch two code investigation reviewers in parallel.**
    - Emit both reviewer launches in one message (a single tool-call batch).
    - Use the current harness's native configured reviewer workers or task mechanism.
-   - Copilot CLI: launch the named worker profiles (`review-gpt-5-5-extra-high`, `review-opus-4-8-xhigh-non-thinking`, `pr-necessity-auditor`, `live-ui-review`, `findings-auditor`) as task agent types. They are model-invocable but not user-invocable. Do not use `general-purpose` unless a named launch is proven unavailable in the active Copilot runtime, and state that fallback reason.
+   - Copilot CLI: launch the named worker profiles (`review-gpt-5-5-extra-high`, `review-opus-4-8-xhigh-non-thinking`,
+     `pr-necessity-auditor`, `live-ui-review`, `findings-auditor`) as task agent types.
+     They are model-invocable but not user-invocable.
+     Do not use `general-purpose` unless a named launch is proven unavailable in the active Copilot runtime, and state that fallback reason.
    - Cursor model selection is explicit, never inherited:
      - GPT/default lane: `gpt-5.5-extra-high`
      - Opus lane: `claude-opus-4-8-xhigh`
@@ -188,21 +245,36 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
      - deletion-safety
      - state-machine behavior
    - If `runtime-harnesses.md` says the active harness cannot fan out from the current context, run them as that file directs and state why.
-   - This phase is blocking as a phase: after both reviewer workers are launched, do not start live UI verification, findings audit, or controller judgment until both reviewer outputs are available.
+   - This phase is blocking as a phase: after both reviewer workers are launched, do not start live UI verification, findings audit, or
+     controller judgment until both reviewer outputs are available.
    - Keep the parallel lanes concurrency-safe:
-     - Prefer file reads, local source inspection, SCSI/base-context queries, `git show`/`git diff` reads, isolated `/tmp` reproductions, and verification commands that improve finding validity or coverage.
-     - Allow non-mutating verification at whatever depth is needed, including expensive static analysis or full suites, when outputs/caches are read-only or isolated away from shared repo/runtime state. Performance cost alone is not a reason to skip useful verification.
-     - Do not start dev servers, watchers, database migrations, package installs, code generators, formatters, fixture seeders, or commands that write repo-local caches/artifacts from reviewer lanes.
-     - If stronger verification requires shared-state mutation, a shared service, or an exclusive runtime resource, return `verification_needed` with the exact command/setup and let the controller run it serially after aggregation or during the act phase.
-   - Each candidate finding must include a reachability statement for the claimed path. If the claimed UI/API/state path may be unreachable, the worker must verify reachability before assigning severity or mark it as a hypothesis for the controller to verify/drop.
+     - Prefer file reads, local source inspection, SCSI/base-context queries, `git show`/`git diff` reads, isolated `/tmp` reproductions,
+       and verification commands that improve finding validity or coverage.
+     - Allow non-mutating verification at whatever depth is needed, including expensive static analysis or full suites, when
+       outputs/caches are read-only or isolated away from shared repo/runtime state.
+     - Do not start dev servers, watchers, database migrations, package installs, code generators, formatters, fixture seeders, or
+       commands that write repo-local caches/artifacts from reviewer lanes.
+     - If stronger verification requires shared-state mutation, a shared service, or an exclusive runtime resource,
+       return `verification_needed` with the exact command/setup and let the controller run it serially after aggregation or during the act phase.
+   - Each candidate finding must include a reachability statement for the claimed path.
+     If the claimed UI/API/state path may be unreachable,
+     the worker must verify reachability before assigning severity or mark it as a hypothesis for the controller to verify/drop.
 
-4. **Run conditional live UI verification.**
+3. **Run conditional live UI verification.**
    - After both reviewers finish, first apply a read-only controller parity filter to replacement/test-migration candidates:
      - apply the Replacement/Migration Parity Gate from `judging_core.md` to replacement/test-migration candidates
      - drop candidates classified as `preserved_limitation` or `prose_drift`
      - do not treat test-only UI code as live-UI applicability by itself
-   - Run `live-ui-review` when changed paths or any kept candidate touch UI/runtime behavior and runtime evidence is applicable. For replacement/test-migration candidates, only `parity_gap`, `new_regression`, and `scope_expansion` can be kept candidates for this trigger.
-   - A deterministic, unit, integration, or other-layer proof (e.g. a resolution/compile harness, a passing test, or a static trace) does NOT discharge a live-UI trigger when the runtime is startable: it is corroborating evidence, not a substitute for live verification. Once the trigger fires, skipping live UI is valid only via a packet-defined blocker (read-only/Ask-mode harness, an unstartable runtime, or another blocker the selected target packet recognizes) — never because a non-runtime proof already exists or because runtime evidence is judged "unlikely to change the verdict". If the runtime is startable (runtime-start rung), start it and verify.
+   - Run `live-ui-review` when changed paths or any kept candidate touch UI/runtime behavior and runtime evidence is applicable.
+     For replacement/test-migration candidates, only `parity_gap`, `new_regression`, and
+     `scope_expansion` can be kept candidates for this trigger.
+   - A deterministic, unit, integration, or other-layer proof (e.g. a resolution/compile harness, a passing test, or
+     a static trace) does NOT discharge a live-UI trigger when the runtime is startable: it is corroborating evidence,
+     not a substitute for live verification.
+     Once the trigger fires, skipping live UI is valid only via a packet-defined blocker (read-only/Ask-mode harness,
+     an unstartable runtime, or another blocker the selected target packet recognizes) —
+     never because a non-runtime proof already exists or because runtime evidence is judged "unlikely to change the verdict".
+     If the runtime is startable (runtime-start rung), start it and verify.
    - `live-ui-review` is the only worker lane that may need tool-level non-read-only mode.
    - Use non-read-only mode only to run Playwriter/browser commands and explicit local/dev runtime data setup against verified targets.
    - Mode boundary: default `live-ui-review` is verification-only.
@@ -213,28 +285,45 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
      - no git writes
      - no commits or pushes
    - For post-fix UI verification, launch a separate fix-capable Playwriter task after judgment.
-   - A domain overlay is a repo/org-specific skill selected from the verified target repo/org, not guessed from wording. For live UI, an overlay may provide a concrete target packet; the worker receives the packet, not an unresolved overlay concept.
+   - A domain overlay is a repo/org-specific skill selected from the verified target repo/org, not guessed from wording.
+     For live UI, an overlay may provide a concrete target packet; the worker receives the packet, not an unresolved overlay concept.
    - Select a live UI target packet before launch:
-     - If the target repo/object is verified as `elastic/kibana` and no explicit user-provided or repo-documented local/dev target packet exists, load `~/.agents/skills/elastic-domain/SKILL.md` and include the Kibana live-UI target packet from `~/.agents/skills/elastic-domain/references/kibana-live-ui.md`.
+     - If the target repo/object is verified as `elastic/kibana` and no explicit user-provided
+       or repo-documented local/dev target packet exists, load `~/.agents/skills/elastic-domain/SKILL.md`
+       and include the Kibana live-UI target packet from `~/.agents/skills/elastic-domain/references/kibana-live-ui.md`.
      - Otherwise use the explicit user-provided or repo-documented local/dev target packet.
-   - Resolve required runtime config once, before the first `live-ui-review` launch: from the changed paths and kept candidates, determine any runtime/feature-flag settings the path under review needs to be reachable, and pass them to the worker so the runtime is started correctly the first time instead of started default and reconfigured after a blocker. The concrete settings and the start-time mechanism are owned by the selected target packet (e.g. the Kibana overlay's `required_kbn_flags` -> `,kbn-stack -K`); keep specific flag names and values in the packet/overlay, not here. When none are needed, pass an empty set.
+   - Resolve required runtime config once, before the first `live-ui-review` launch: from the changed paths and kept candidates,
+     determine any runtime/feature-flag settings the path under review needs to be reachable, and
+     pass them to the worker so the runtime is started correctly the first time instead of started default and reconfigured after a blocker.
+     The concrete settings and the start-time mechanism are owned by the selected target packet (e.g. the Kibana overlay's `required_kbn_flags` -> `,kbn-stack -K`); keep specific flag names and values in the packet/overlay, not here.
+     When none are needed, pass an empty set.
    - Include the selected target/preflight packet and the resolved required runtime config in the worker prompt.
    - Do not rely on the worker to rediscover it.
    - It returns one of:
      - `Not applicable`
      - comparison evidence with `ui_evidence_artifacts` when screenshots were captured
      - target/branch/runtime/data blocker for the controller to surface
-   - Do not automatically rerun a blocked live-UI result, except a missing/un-started local runtime in a shell-capable harness when the selected target packet documents a start command: that is the runtime-start rung, not a terminal blocker, so have the runtime started and rerun rather than surfacing it as remaining uncertainty.
+   - Do not automatically rerun a blocked live-UI result,
+     except a missing/un-started local runtime in a shell-capable harness when the selected target packet documents a start command:
+     that is the runtime-start rung, not a terminal blocker,
+     so have the runtime started and rerun rather than surfacing it as remaining uncertainty.
    - A read-only/Ask-mode Playwriter block is a valid blocker to surface.
 
-5. **Run findings audit on candidate findings.**
-   - Run this phase only after the PR necessity gate, both reviewer outputs, and the live UI result or explicit live-UI skip reason are available.
-   - Always audit kept reviewer findings, worker-reported `verification_needed`, live UI evidence/artifacts/blockers or skip reason, and any PR necessity draft concerns kept after the greenlight gate.
-   - Maintain a verification ledger for every worker-reported `verification_needed` and every live UI / PR necessity blocker that can affect keep/drop/action. The findings audit may recommend dispositions, but it must not erase a ledger item by assuming one branch of an unresolved fork.
-   - If both reviewer lanes report the same or overlapping root cause, treat that as a merge/deduplication task, not as evidence that the issue is unnecessary. Collapse duplicates into one candidate and keep verifying/judging it unless a hard drop rule below is proven.
+4. **Run findings audit on candidate findings.**
+   - Run this phase only after the PR necessity gate, both reviewer outputs, and
+     the live UI result or explicit live-UI skip reason are available.
+   - Always audit kept reviewer findings, worker-reported `verification_needed`, live UI evidence/artifacts/blockers or skip reason, and
+     any PR necessity draft concerns kept after the greenlight gate.
+   - Maintain a verification ledger for every worker-reported `verification_needed` and every live UI / PR necessity blocker
+     that can affect keep/drop/action.
+     The findings audit may recommend dispositions, but it must not erase a ledger item by assuming one branch of an unresolved fork.
+   - If both reviewer lanes report the same or overlapping root cause, treat that as a merge/deduplication task,
+     not as evidence that the issue is unnecessary.
+     Collapse duplicates into one candidate and keep verifying/judging it unless a hard drop rule below is proven.
    - Inline the audit in the controller when the remaining set is trivial:
      - no candidate findings, or
-     - one straightforward evidence-backed finding with no model disagreement, no live UI blocker, no PR-necessity concern kept after greenlight, and no fix diff to audit.
+     - one straightforward evidence-backed finding with no model disagreement, no live UI blocker,
+       no PR-necessity concern kept after greenlight, and no fix diff to audit.
    - Delegate to `findings-auditor` when the remaining set is non-trivial:
      - two or more candidate findings
      - any HIGH/CRITICAL candidate
@@ -253,15 +342,26 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
      - overengineering risk in proposed fixes
    - This is still investigation, not a decision, even when inlined in the controller.
    - If inlined, still report the audit result in the final output as `Findings audit: inline ...`.
-   - For fix-capable own/self-review flows, this pre-action audit does not replace the normal post-review stage over the actual fix diff after fixes are applied.
-6. **Aggregate.** Combine `pr-necessity-auditor` greenlight/skip status, GPT reviewer output, Opus reviewer output, the verification ledger, live UI evidence/status/artifacts, and the findings audit result.
-7. **Judge in the controller.**
+   - For fix-capable own/self-review flows,
+     this pre-action audit does not replace the normal post-review stage over the actual fix diff after fixes are applied.
+5. **Aggregate.** Combine `pr-necessity-auditor` greenlight/skip status, GPT reviewer output, Opus reviewer output,
+   the verification ledger, live UI evidence/status/artifacts, and the findings audit result.
+6. **Judge in the controller.**
    - Apply mode-correct reconciliation:
-     - all modes: collapse duplicate worker findings, apply the severity model, and keep findings that are implementation-verified, not covered by existing evidence, and not dropped by the parity/deduplication filters. If a candidate is not yet implementation-verified because verification was unsafe, mutating, or required a shared/exclusive resource, carry its `verification_needed` in the ledger instead of dropping it.
-     - PR modes: apply `pr_common.md` Deduplication + Truth Filter, Existing Pending Review Reconciliation, CI Coverage Gate, and PR Necessity + Correctly-Open Audit classifications
-     - local-changes mode: do not apply PR-thread deduplication or PR CI coverage exemptions; judge against the staged/unstaged/range scope in the packet
-   - For PR modes, read any current-account pending review and already-submitted current-account review comments/replies before drafting payloads. Merge kept pending findings with kept new findings into one final draft; drop stale pending findings with evidence; block rather than producing competing or contradictory payloads.
-   - For kept PR-mode UI findings, verify screenshot paths when possible and surface them only in final `UI evidence attachments:`. Never upload images, put local paths in GitHub review bodies, or create extra comments just to carry image paths.
+     - all modes: collapse duplicate worker findings, apply the severity model, and keep findings that are implementation-verified,
+       not covered by existing evidence, and not dropped by the parity/deduplication filters.
+       If a candidate is not yet implementation-verified because verification was unsafe, mutating, or
+       required a shared/exclusive resource, carry its `verification_needed` in the ledger instead of dropping it.
+     - PR modes: apply `pr_common.md` Deduplication + Truth Filter, Existing Pending Review Reconciliation, CI Coverage Gate, and
+       PR Necessity + Correctly-Open Audit classifications
+     - local-changes mode: do not apply PR-thread deduplication or PR CI coverage exemptions;
+       judge against the staged/unstaged/range scope in the packet
+   - For PR modes, read any current-account pending review and already-submitted current-account review comments/replies
+     before drafting payloads.
+     Merge kept pending findings with kept new findings into one final draft; drop stale pending findings with evidence;
+     block rather than producing competing or contradictory payloads.
+   - For kept PR-mode UI findings, verify screenshot paths when possible and surface them only in final `UI evidence attachments:`.
+     Never upload images, put local paths in GitHub review bodies, or create extra comments just to carry image paths.
    - Drop only with source/API/runtime evidence for one of these hard reasons:
      - unsupported claims
      - unreachable-path findings
@@ -269,70 +369,124 @@ This line is part of the audit trail. If a runtime export hides task arguments, 
      - candidates classified as `preserved_limitation` or `prose_drift` by the Replacement/Migration Parity Gate
      - findings that only a worker asserted without evidence and without a decisive `verification_needed` path
      - PR necessity claims that rely only on ambient precedent without proving the current PR's actual diff and directly referenced artifacts
-   - A findings-auditor drop recommendation is advisory. The controller must name the hard drop reason and evidence; otherwise keep the finding, merge it with a duplicate, run the needed verification, or block with explicit uncertainty.
+   - A findings-auditor drop recommendation is advisory.
+     The controller must name the hard drop reason and evidence; otherwise keep the finding, merge it with a duplicate,
+     run the needed verification, or block with explicit uncertainty.
    - For every verification-ledger item, record one disposition:
      - `resolved`: evidence makes it irrelevant or answers the fork,
      - `run`: the controller ran the serial non-mutating/heavy check,
      - `blocked`: the check is unsafe, out of scope, or impossible, with exact blocker,
      - `not needed`: the item cannot affect keep/drop/action, with evidence.
-   - A `verification_needed` that can flip a kept/dropped finding, fix decision, or draft payload is blocking until it is `resolved` or `run`. Do not let findings audit or stale PR-intent assumptions convert it to `not needed`.
-8. **Act only after judgment.** Branch strictly on `fix_authorized` and the mode recorded in step 1; never infer fix authorization from the fact that the change is merely checked out locally (a locally-checked-out other-authored branch with no assignee/takeover signal is still `fix_authorized: no`).
-   - Do not act while a blocking verification-ledger item or intent dependency remains unresolved. Either resolve it first, or stop/draft with explicit remaining uncertainty according to the mode.
-   - Before composing any human-visible text in this step — review summaries, draft comments/suggestions, thread replies, or PR-level feedback — load `~/.agents/skills/communication/SKILL.md` via the Skill tool and word the text to its contract. This is a blocking `Use when` match (you are drafting content another human will read), not an optional pointer; do the load even when no fix is applied and even when the only output is a single review comment. If a verified domain overlay applies to the target repo/org (e.g. `~/.agents/skills/elastic-domain/SKILL.md` for `elastic/kibana`), load it too for repo-specific wording/footer rules before drafting.
+   - A `verification_needed` that can flip a kept/dropped finding, fix decision, or draft payload is blocking until it is `resolved` or `run`.
+     Do not let findings audit or stale PR-intent assumptions convert it to `not needed`.
+7. **Act only after judgment.** Branch strictly on `fix_authorized` and the mode recorded in step 1;
+   never infer fix authorization from the fact
+   that the change is merely checked out locally (a locally-checked-out other-authored branch
+   with no assignee/takeover signal is still `fix_authorized: no`).
+   - Do not act while a blocking verification-ledger item or intent dependency remains unresolved.
+     Either resolve it first, or stop/draft with explicit remaining uncertainty according to the mode.
+   - Before composing any human-visible text in this step — review summaries, draft comments/suggestions, thread replies, or
+     PR-level feedback — load `~/.agents/skills/communication/SKILL.md` via the Skill tool and word the text to its contract.
+     This is a blocking `Use when` match (you are drafting content another human will read), not an optional pointer;
+     do the load even when no fix is applied and even when the only output is a single review comment.
+     If a verified domain overlay applies to the target repo/org (e.g.
+     `~/.agents/skills/elastic-domain/SKILL.md` for `elastic/kibana`), load it too for repo-specific wording/footer rules before drafting.
    - `fix_authorized: yes` (own / assigned / adopted PR, or local-changes self flow):
      - apply the selected fixes in the working tree; no separate "fix" keyword is required
-     - then run the step-9 post-act verification phase (an adopted/assigned PR is a change-producing flow; do not skip the fix-diff Post-Review Stage just because the PR was originally other-authored)
-     - for PR-fix/thread modes, still draft thread replies/suggestions per `pr_fix.md` for anything not fixed in code; human-visible publishing (commit/push/post/resolve) stays on its own explicit-approval gate
+     - then run the step-9 post-act verification phase (an adopted/assigned PR is a change-producing flow;
+       do not skip the fix-diff Post-Review Stage just because the PR was originally other-authored)
+     - for PR-fix/thread modes, still draft thread replies/suggestions per `pr_fix.md` for anything not fixed in code;
+       human-visible publishing (commit/push/post/resolve) stays on its own explicit-approval gate
    - `fix_authorized: no` (`authorship: other`/`unknown`, no assignee/takeover signal):
      - draft public-ready comments/suggestions only
      - do not edit code
      - do not run fixes
      - do not post
-9. **Post-act verification (only when the working tree was edited this flow).** This phase is mandatory after any applied fix in step 8, including self-review and adopted/assigned PR takeovers. Do not declare the change done, and do not treat the final summary as a substitute for this phase. Because the working tree was edited, `fix_authorized` is `yes`, which carries full verification-mutation permission: bootstrap/install (`yarn kbn bootstrap` and equivalents), code generation, SCSI, `/tmp` repros, and re-running gates are all in-bounds here. Run a fix -> verify -> fix -> verify loop until the gates are green or a genuine blocker remains.
-   - **Quality gates — make them runnable, then run; loop, don't defer.** Discover the repo's lint / type_check / test commands from repo sources (do not guess), prefer scoped/targeted commands for the affected package, and run them over the fix.
-     - If the gates cannot run yet because the environment is not prepared (e.g. repo not bootstrapped, deps not installed): prepare it (run `yarn kbn bootstrap` / the repo's install/setup) and then run the gates. Not-yet-bootstrapped is a setup step to perform, not a reason to stop, because the flow is fix-authorized.
+8. **Post-act verification (only when the working tree was edited this flow).** This phase is mandatory
+   after any applied fix in step 8, including self-review and adopted/assigned PR takeovers.
+   Do not declare the change done, and do not treat the final summary as a substitute for this phase.
+   Because the working tree was edited, `fix_authorized` is `yes`, which carries full verification-mutation permission:
+   bootstrap/install (`yarn kbn bootstrap` and equivalents), code generation, SCSI, `/tmp` repros, and re-running gates are all in-bounds here.
+   Run a fix -> verify -> fix -> verify loop until the gates are green or a genuine blocker remains.
+   - **Quality gates — make them runnable, then run; loop,
+     don't defer.** Discover the repo's lint / type_check / test commands from repo sources (do not guess),
+     prefer scoped/targeted commands for the affected package, and run them over the fix.
+     - If the gates cannot run yet because the environment is not prepared (e.g. repo not bootstrapped, deps not installed):
+       prepare it (run `yarn kbn bootstrap` / the repo's install/setup) and then run the gates.
+       Not-yet-bootstrapped is a setup step to perform, not a reason to stop, because the flow is fix-authorized.
      - If a gate fails or types get worse: fix it in the working tree and re-run (the fix -> verify loop), do not stop at the first red gate.
-     - Only treat it as a blocking stop-and-ask when setup itself fails or is impossible (bootstrap errors out, toolchain genuinely unavailable in this environment, or commands are undiscoverable after inspecting repo sources): then state exactly what failed, the evidence, and the exact command(s) for the user. Never fold an un-run gate into a closing summary as if verification were complete.
-   - **Fix-diff Post-Review Stage (the four dimensions).** Run the Post-Review Stage in `~/.agents/skills/review/references/judging_core.md` with the **fix diff** as the subject (this flow's `git diff` / staged set / commit range), never the original PR diff. This is the controller's own work; the pre-action findings audit in step 5 audits candidate findings and does NOT replace it. Apply the four canonical dimensions by name — redundancy, verbosity, semantic + logical duplication, gaps — anchor each finding in an exact location, resolve each in the working tree, and re-run the quality gates if the cleanup touched code.
-   - **Resolve carried `verification_needed`.** For every `verification_needed` kept through judgment, make and report a per-item decision: either run the serial non-mutating/heavy check now, or explicitly carry it as a stated blocker with the reason it was not run. Do not leave a kept `verification_needed` in an undecided state.
-   - Report this phase in the Output `Post-act verification:` line: gates run/blocked (with command evidence or the exact blocker), fix-diff Post-Review Stage result per dimension (clean or what was cleaned), and each `verification_needed` decision.
+     - Only treat it as a blocking stop-and-ask when setup itself fails or is impossible (bootstrap errors out,
+       toolchain genuinely unavailable in this environment, or commands are undiscoverable after inspecting repo sources):
+       then state exactly what failed, the evidence, and the exact command(s) for the user.
+       Never fold an un-run gate into a closing summary as if verification were complete.
+   - **Fix-diff Post-Review Stage (the four dimensions).** Run the Post-Review Stage in `~/.agents/skills/review/references/judging_core.md` with the **fix diff** as the subject (this flow's `git diff` / staged set / commit range), never the original PR diff.
+     This is the controller's own work; the pre-action findings audit in step 5 audits candidate findings and does NOT replace it.
+     Apply the four canonical dimensions by name — redundancy, verbosity, semantic + logical duplication, gaps —
+     anchor each finding in an exact location, resolve each in the working tree, and re-run the quality gates if the cleanup touched code.
+   - **Resolve carried `verification_needed`.** For every `verification_needed` kept through judgment,
+     make and report a per-item decision: either run the serial non-mutating/heavy check now, or
+     explicitly carry it as a stated blocker with the reason it was not run.
+     Do not leave a kept `verification_needed` in an undecided state.
+   - Report this phase in the Output `Post-act verification:` line: gates run/blocked (with command evidence or the exact blocker),
+     fix-diff Post-Review Stage result per dimension (clean or what was cleaned), and each `verification_needed` decision.
 
 ## Premise corrections and completion gate
 
-If the user supplies new context that changes the target, intent, accepted behavior, or relevant artifacts after `/agent-review` has started or after it has produced a conclusion, rebuild the scope packet and restart from the earliest invalidated phase. If the controller intentionally leaves `/agent-review` mode for direct verification/editing, state that downgrade explicitly before making edits and do not reuse the stale agent-review judgment as if the flow remained complete.
+If the user supplies new context that changes the target, intent, accepted behavior, or
+relevant artifacts after `/agent-review` has started or after it has produced a conclusion,
+rebuild the scope packet and restart from the earliest invalidated phase.
+If the controller intentionally leaves `/agent-review` mode for direct verification/editing,
+state that downgrade explicitly before making edits and do not reuse the stale agent-review judgment as if the flow remained complete.
 
-Do not declare `/agent-review` complete while any decisive verification-ledger item, intent dependency, pending-review reconciliation blocker, required live-UI trigger without a valid blocker, or post-act verification item is unresolved. The final output may report blockers or remaining uncertainty, but it must not present the flow as completed when an unresolved item can change the action or verdict.
+Do not declare `/agent-review` complete while any decisive verification-ledger item, intent dependency,
+pending-review reconciliation blocker, required live-UI trigger without a valid blocker, or post-act verification item is unresolved.
+The final output may report blockers or remaining uncertainty, but
+it must not present the flow as completed when an unresolved item can change the action or verdict.
 
 ## PR necessity audit
 
-`pr-necessity-auditor` is part of the PR-mode flow for other-authored or unknown-author PRs. It answers whether the PR itself is sensible, correctly open, and still needed.
+`pr-necessity-auditor` is part of the PR-mode flow for other-authored or unknown-author PRs.
+It answers whether the PR itself is sensible, correctly open, and still needed.
 
-- It is the first blocking review worker after routing; reviewer fan-out does not start until this auditor greenlights the PR for implementation review.
+- It is the first blocking review worker after routing;
+  reviewer fan-out does not start until this auditor greenlights the PR for implementation review.
 - It audits author intent from the complete PR description, discussion, review threads, referenced issues/PRs, and linked artifacts.
-- It checks whether the PR is correctly open: open/draft state, base/head target, scope, linked issue status, stale/conflicting context, and whether the described problem still exists.
-- It searches for duplicate, overlapping, superseding, or recently merged cross-cutting work in GitHub, git history, and Slack topic discussions when Slack tools are available.
+- It checks whether the PR is correctly open: open/draft state, base/head target, scope, linked issue status,
+  stale/conflicting context, and whether the described problem still exists.
+- It searches for duplicate, overlapping, superseding, or recently merged cross-cutting work in GitHub, git history, and
+  Slack topic discussions when Slack tools are available.
 - It returns evidence and classifications only; it never decides, posts, resolves, edits, commits, or pushes.
 - The controller turns supported concerns into draft feedback/questions only after normal judgment and human-visible publication gates.
 
 ## Live UI review
 
-`live-ui-review` is part of the default flow after the blocking PR necessity gate and reviewer fan-out phases complete when changed paths or kept candidate findings touch UI/runtime behavior and runtime evidence is applicable. Replacement/test-migration candidates first pass through the Replacement/Migration Parity Gate; `preserved_limitation` and `prose_drift` candidates are dropped before live-UI applicability is decided.
+`live-ui-review` is part of the default flow after the blocking PR necessity gate and reviewer fan-out phases complete
+when changed paths or kept candidate findings touch UI/runtime behavior and runtime evidence is applicable.
+Replacement/test-migration candidates first pass through the Replacement/Migration Parity Gate;
+`preserved_limitation` and `prose_drift` candidates are dropped before live-UI applicability is decided.
 
 - It verifies UI/runtime-relevant findings against a selected target packet.
 - It returns evidence, optional screenshot handoff, or a blocker.
 - Default mode: verification only; no repo edits, posts, resolves, commits, pushes, or decisions.
-- It may create focused isolated data in the configured local/dev runtime when required to verify an applicable UI finding. It must clean up that data when safe or report leftovers exactly.
-- Capture focused screenshots as Playwriter artifacts under `/tmp` only when visual proof is needed to understand a kept finding or blocker. Return paths, descriptions, target URL/branch, and suggested comment placement for manual user attachment.
+- It may create focused isolated data in the configured local/dev runtime when required to verify an applicable UI finding.
+  It must clean up that data when safe or report leftovers exactly.
+- Capture focused screenshots as Playwriter artifacts under `/tmp` only when visual proof is needed to understand a kept finding or blocker.
+  Return paths, descriptions, target URL/branch, and suggested comment placement for manual user attachment.
 - Fix mode: separate Playwriter task after controller judgment.
 - Fix mode requires `fix_authorized: yes` (own / assigned / adopted PR per step 1).
 - Fix mode prompt must state allowed changes and verification commands.
 
 Before launching `live-ui-review`, include a target/preflight packet in the worker prompt.
 
-- Verified Kibana target: if the target repo/object is `elastic/kibana` and no explicit user-provided or repo-documented local/dev target packet exists, load `~/.agents/skills/elastic-domain/SKILL.md` and paste the Kibana target/preflight packet from `~/.agents/skills/elastic-domain/references/kibana-live-ui.md`.
-- Other targets: use only explicit user-provided or repo-documented local/dev targets. If neither a verified Kibana packet nor an explicit packet can be loaded, return a target blocker instead of inventing hosts or ports.
+- Verified Kibana target: if the target repo/object is `elastic/kibana` and no explicit user-provided
+  or repo-documented local/dev target packet exists, load `~/.agents/skills/elastic-domain/SKILL.md`
+  and paste the Kibana target/preflight packet from `~/.agents/skills/elastic-domain/references/kibana-live-ui.md`.
+- Other targets: use only explicit user-provided or repo-documented local/dev targets.
+  If neither a verified Kibana packet nor an explicit packet can be loaded, return a target blocker instead of inventing hosts or ports.
 - The packet must identify base/head targets, readiness checks, allowed local/dev data setup, screenshot handoff rules, and blocker criteria.
-- Resolve required runtime config once before this launch and pass it with the packet, so the runtime is started with the config the path under review needs in one shot rather than reconfigured after a blocker. Keep concrete flag names/values in the packet/overlay, not in this controller contract.
+- Resolve required runtime config once before this launch and pass it with the packet,
+  so the runtime is started with the config the path under review needs in one shot rather than reconfigured after a blocker.
+  Keep concrete flag names/values in the packet/overlay, not in this controller contract.
 
 Controller validation: reject and rerun any `live-ui-review` result that:
 
@@ -342,18 +496,24 @@ Controller validation: reject and rerun any `live-ui-review` result that:
 - uses WebFetch or shell/HTTP probes as readiness evidence
 - skips Playwriter target checks
 - claims targets are unavailable without showing the selected target/preflight evidence
-- uses browser/route/network mocks for a data-dependent UI finding without first attempting or explicitly ruling out faithful local/dev data setup from the selected target packet
-- uses browser/route/network mocks when faithful verification is blocked by a required runtime environment change; that must be returned as `Blocked` with setup instructions instead
-- returns `Blocked` for a missing/un-started local runtime in a shell-capable harness when the selected target packet documents a start command (the runtime-start rung); the worker should start it and continue, so rerun after the runtime is started
+- uses browser/route/network mocks for a data-dependent UI finding without first attempting
+  or explicitly ruling out faithful local/dev data setup from the selected target packet
+- uses browser/route/network mocks when faithful verification is blocked by a required runtime environment change;
+  that must be returned as `Blocked` with setup instructions instead
+- returns `Blocked` for a missing/un-started local runtime in a shell-capable harness
+  when the selected target packet documents a start command (the runtime-start rung); the worker should start it and continue,
+  so rerun after the runtime is started
 - lists screenshot artifacts without local paths, descriptions, target URL/branch, or linked candidate/finding placement
-- omits applicability, exact URLs checked, Playwriter preflight status, readiness result for each target, branch/runtime evidence, comparison evidence for each checked candidate, UI evidence artifact manifest or `none`, page cleanup/owned-page URLs, and blockers/uncertainty
+- omits applicability, exact URLs checked, Playwriter preflight status, readiness result for each target, branch/runtime evidence,
+  comparison evidence for each checked candidate, UI evidence artifact manifest or `none`, page cleanup/owned-page URLs, and
+  blockers/uncertainty
 - omits the selected `target_packet` source, including overlay source when an overlay supplied the packet
 
 Do not reject or rerun a result that reports a valid Playwriter harness blocker:
 
 - read-only/Ask-mode blocked `playwriter skill` or Playwriter commands
 - both exact browser/runtime target URLs were attempted or explicitly blocked before navigation
-- repeated reload/same-URL/same-snapshot loop was detected within the budget
+- repeated reload/same-URL/same-snapshot loop was detected within the readiness stability guard
 
 ## Output
 
@@ -362,15 +522,21 @@ Return:
 - `Base context:` line from the review methodology.
 - Worker selection summary for each delegated phase, including any fallback reason.
 - PR necessity audit summary: report greenlight, merge-readiness/status blockers or uncertainty, skipped-with-reason, or blocker status.
-- Investigation summary: what each reviewer, live UI reviewer, and findings audit found, including whether the findings audit was inline or delegated.
+- Investigation summary: what each reviewer, live UI reviewer, and findings audit found, including
+  whether the findings audit was inline or delegated.
 - Serial verification: any `verification_needed` returned by reviewer lanes and whether the controller ran, skipped, or blocked on it.
 - Intent dependency audit: resolved / not applicable / blocked, with evidence.
 - Verification ledger: every `verification_needed` or blocker that affected keep/drop/action and its disposition.
 - Controller judgment: findings kept/dropped and why.
 - Pending review reconciliation: none found, reused existing, merged replacement needed, stale pending dropped, or blocked with reason.
 - Action taken or draft payloads, depending on mode.
-- Post-act verification: for any flow that edited the working tree, report quality gates (run with command evidence, or blocked with the exact blocker and the command the user must run), the fix-diff Post-Review Stage result per dimension (redundancy, verbosity, semantic + logical duplication, gaps), and each carried `verification_needed` run/blocked decision. Omit only when no working-tree edit occurred.
-- UI evidence attachments: for kept UI findings, local screenshot artifact paths with descriptions, target URL/branch, and suggested manual attachment placement; or `none`. Keep this separate from GitHub review bodies because local paths are only for the user.
+- Post-act verification: for any flow that edited the working tree, report quality gates (run with command evidence, or
+  blocked with the exact blocker and the command the user must run), the fix-diff Post-Review Stage result per dimension (redundancy,
+  verbosity, semantic + logical duplication, gaps), and each carried `verification_needed` run/blocked decision.
+  Omit only when no working-tree edit occurred.
+- UI evidence attachments: for kept UI findings, local screenshot artifact paths with descriptions, target URL/branch, and
+  suggested manual attachment placement; or `none`.
+  Keep this separate from GitHub review bodies because local paths are only for the user.
 - Remaining uncertainty or gated side effects.
 - Completion gate: clear, or blocked with the unresolved item.
 - `Compatibility impact: none | removed (requested) | kept existing (requested)`.

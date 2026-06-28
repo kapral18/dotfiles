@@ -1,6 +1,6 @@
 # Completions for ,artifact.
 
-set -l __artifact_subcommands path write open poll list theme live clean stop
+set -l __artifact_subcommands path write open poll pollers poll-stop list theme live clean stop
 set -l __artifact_live_subcommands start script
 
 function __artifact_names
@@ -18,6 +18,10 @@ complete -c ',artifact' -n "not __fish_seen_subcommand_from $__artifact_subcomma
 complete -c ',artifact' -n "not __fish_seen_subcommand_from $__artifact_subcommands" \
     -a poll -d 'Wait for browser feedback'
 complete -c ',artifact' -n "not __fish_seen_subcommand_from $__artifact_subcommands" \
+    -a pollers -d 'List active feedback pollers for this session'
+complete -c ',artifact' -n "not __fish_seen_subcommand_from $__artifact_subcommands" \
+    -a poll-stop -d 'Stop feedback pollers for this session'
+complete -c ',artifact' -n "not __fish_seen_subcommand_from $__artifact_subcommands" \
     -a list -d 'List cached artifacts'
 complete -c ',artifact' -n "not __fish_seen_subcommand_from $__artifact_subcommands" \
     -a theme -d 'Show detected ambient artifact theme'
@@ -28,7 +32,7 @@ complete -c ',artifact' -n "not __fish_seen_subcommand_from $__artifact_subcomma
 complete -c ',artifact' -n "not __fish_seen_subcommand_from $__artifact_subcommands" \
     -a stop -d 'Stop background artifact server'
 
-complete -c ',artifact' -n '__fish_seen_subcommand_from path open poll' \
+complete -c ',artifact' -n '__fish_seen_subcommand_from path open poll poll-stop' \
     -x -a '(__artifact_names)' -d 'Artifact name'
 complete -c ',artifact' -n '__fish_seen_subcommand_from write' \
     -x -d 'Artifact name'
@@ -45,6 +49,7 @@ complete -c ',artifact' -n '__fish_seen_subcommand_from write' -l open -d 'Open 
 complete -c ',artifact' -n '__fish_seen_subcommand_from write' -l no-theme -d 'Skip ambient theme injection'
 complete -c ',artifact' -n '__fish_seen_subcommand_from open' -l no-open -d 'Print URL without opening browser'
 complete -c ',artifact' -n '__fish_seen_subcommand_from poll' -l timeout -x -d 'Seconds to wait'
+complete -c ',artifact' -n '__fish_seen_subcommand_from poll-stop' -l all -d 'Stop all pollers in this artifact session'
 complete -c ',artifact' -n '__fish_seen_subcommand_from theme' -l json -d 'Print theme metadata as JSON'
 complete -c ',artifact' -n '__fish_seen_subcommand_from theme' -l css -d 'Print injectable CSS style block'
 complete -c ',artifact' -n '__fish_seen_subcommand_from live start' -l json -d 'Print live overlay metadata as JSON'

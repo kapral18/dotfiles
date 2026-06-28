@@ -1,11 +1,15 @@
 ---
 name: weave
-description: Entity-level semantic merge driver for Git via weave CLI. Use when preparing merges, previewing merge conflicts, or resolving merge conflicts at function/class granularity.
+description: Use weave for entity-level semantic Git merge previews and conflict resolution.
 ---
 
 # weave
 
-Entity-level merge driver for Git. Replaces git's line-based merge with function/class-level merge via tree-sitter. Two branches adding different functions to the same file? Auto-resolved, zero conflicts. Only truly incompatible changes to the _same entity_ produce conflicts.
+Entity-level merge driver for Git.
+Replaces git's line-based merge with function/class-level merge via tree-sitter.
+Two branches adding different functions to the same file?
+Auto-resolved, zero conflicts.
+Only truly incompatible changes to the _same entity_ produce conflicts.
 
 Use when:
 
@@ -64,7 +68,8 @@ export function process(data: any) {
 
 ## Supported languages
 
-TypeScript, TSX, JavaScript, Python, Go, Rust, Java, C, C++, Ruby, C#, PHP, Swift, Kotlin, Elixir, Bash, HCL/Terraform, Fortran, Vue, XML, ERB, JSON, YAML, TOML, CSV, Markdown.
+TypeScript, TSX, JavaScript, Python, Go, Rust, Java, C, C++, Ruby, C#, PHP, Swift, Kotlin, Elixir, Bash, HCL/Terraform, Fortran,
+Vue, XML, ERB, JSON, YAML, TOML, CSV, Markdown.
 
 ## Notes
 
