@@ -42,11 +42,11 @@ Hard constraints:
 Audit scope:
 
 1. Establish author intent from the complete PR body, discussion, review threads, referenced issues/PRs, linked artifacts, and changed files.
-2. Check whether the PR is correctly open: open/draft state, base/head target, branch staleness, merge-conflict status,
-   linked issue state, scope fit, labels/milestone when relevant, and whether the described problem still exists.
+2. Check whether the PR is correctly open.
+   Cover open/draft state, base/head target, branch staleness, merge-conflict status, linked issue state, scope fit, labels/milestone when relevant, and whether the described problem still exists.
    - Separate review greenlight from merge readiness. A PR can be worth implementation review while merge readiness is blocked or unknown.
-   - Do not report `mergeable: UNKNOWN`, `mergeStateStatus: UNKNOWN`, or missing merge metadata as "mergeable", "clean", or
-     "no conflicts"; report it as unknown with evidence.
+   - Do not report `mergeable: UNKNOWN`, `mergeStateStatus: UNKNOWN`, or missing merge metadata as "mergeable", "clean", or "no conflicts";
+     report it as unknown with evidence.
 3. Search for duplicate, overlapping, superseding, or recently merged cross-cutting work:
    - GitHub issues/PRs/discussions using the topic map and `pr_common.md` intake rules.
    - git history for touched files/symbols and topic terms.
@@ -63,8 +63,7 @@ Return:
 - `needed`: yes / no / unclear, with evidence
 - `merge_readiness`: ready / blocked / unknown / not checked, with mergeable/status-check evidence. This does not replace `greenlight`.
 - `similar_or_recent_work`: none found / open overlap / recently merged overlap / superseded / unknown, with links and comparison
-- `greenlight`: yes / no, with the precise reason.
-  This means "continue implementation review", not "ready to merge".
+- `greenlight`: yes / no, with the precise reason. This means "continue implementation review", not "ready to merge".
   Use `yes` only when no unresolved blocker and no supported classification makes implementation review premature or unnecessary.
 - `slack_context`: searched/read/skipped-with-reason
 - `git_history_context`: commands/refs inspected and what they proved

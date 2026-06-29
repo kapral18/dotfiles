@@ -1,14 +1,12 @@
 ---
 name: playwriter
-description: "Control a real browser with Playwriter for browsing, UI checks, screenshots, automation, and live app verification."
+description: "Use when controlling a real browser for browsing, rendered UI checks, screenshots, automation, live app verification, or visual QA."
 ---
 
 # Playwriter
 
 Use Playwriter for real browser work.
-Do not wait for the user to name `playwriter` explicitly when the task involves browsing, browser automation,
-rendered UI verification, visual inspection, screenshots, authenticated pages, SPAs, localhost web apps, form flows,
-console/network inspection, or interactive browser behavior.
+Do not wait for the user to name `playwriter` explicitly when the task involves browsing, browser automation, rendered UI verification, visual inspection, screenshots, authenticated pages, SPAs, localhost web apps, form flows, console/network inspection, or interactive browser behavior.
 
 ## REQUIRED: Read Full Documentation First
 
@@ -26,12 +24,11 @@ This outputs the complete documentation including:
 - Best practices for slow pages and SPAs
 - Context variables, utility functions, and more
 
-**Do NOT skip this step.** The quick examples below will fail without understanding timeouts, selector rules, and
-common pitfalls from the full docs.
+**Do NOT skip this step.**
+The quick examples below will fail without understanding timeouts, selector rules, and common pitfalls from the full docs.
 
 **Read the ENTIRE output.** Do NOT pipe through `head`, `tail`, or any truncation command.
-The skill output must be read in its entirety — critical rules about timeouts, selectors, and
-common pitfalls are spread throughout the document, not just at the top.
+The skill output must be read in its entirety — critical rules about timeouts, selectors, and common pitfalls are spread throughout the document, not just at the top.
 
 ## Minimal Example (after reading full docs)
 

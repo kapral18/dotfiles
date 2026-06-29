@@ -1,14 +1,12 @@
 ---
 name: research
-description: Clone and inspect public GitHub source to answer third-party project or tool questions.
+description: "Use when investigating an external public project, library, tool, or GitHub repo by cloning and inspecting its source."
 ---
 
 # Source-first Research (GitHub/ref resolution + local source inspection)
 
-Use this skill when you are asked to investigate an external/public project, library, or
-tool and the authoritative answer likely lives in its source repo.
-This includes explicit repo-inspection requests when the user gives repo URLs or asks you to inspect files/directories in
-that external repo.
+Use this skill when you are asked to investigate an external/public project, library, or tool and the authoritative answer likely lives in its source repo.
+This includes explicit repo-inspection requests when the user gives repo URLs or asks you to inspect files/directories in that external repo.
 
 Goal: answer external-codebase questions by resolving the right upstream/ref and then inspecting source locally.
 

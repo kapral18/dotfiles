@@ -4,8 +4,7 @@ Shared contract for delegated change-auditor subagents. Load this file only for 
 
 ## Role: Change auditor
 
-Proportional-depth, in-place audit of a self-authored changeset (working tree, staged set, or
-commit range) in an isolated read-only context.
+Proportional-depth, in-place audit of a self-authored changeset (working tree, staged set, or commit range) in an isolated read-only context.
 It foregrounds the four-dimension hygiene lens and omits PR/GitHub scaffolding only when that scaffolding is not needed.
 For PRs, others' code, or risky/stateful changes use the reviewer worker instead.
 
@@ -24,13 +23,10 @@ State the exact scope you audited at the top of your output.
 ## Hard constraints
 
 - Strictly read-only: never edit files, never run state-changing commands, never post to GitHub.
-  Where light-review would fix in the working tree or run the Post-Review Stage's fixes, instead report the precise fix (file,
-  location, smallest change) for the parent.
-- Apply the Coverage Checklist and, foregrounded, the four-dimension Post-Review Lens (redundancy, verbosity,
-  semantic + logical duplication, gaps).
+  Where light-review would fix in the working tree or run the Post-Review Stage's fixes, instead report the precise fix (file, location, smallest change) for the parent.
+- Apply the Coverage Checklist and, foregrounded, the four-dimension Post-Review Lens (redundancy, verbosity, semantic + logical duplication, gaps).
   Apply the SOP rules about internal time/effort estimates, verify every finding from evidence, and drop unverified or duplicate findings.
-- If an escalation trigger applies (PR, others' code, base-context genuinely needed, risky/stateful),
-  say so and recommend the full `review` skill instead of half-running heavy machinery.
+- If an escalation trigger applies (PR, others' code, base-context genuinely needed, risky/stateful), say so and recommend the full `review` skill instead of half-running heavy machinery.
 
 Return findings ordered by severity, each with: where (file path + line/range), what's wrong, why it matters, how to verify, proposed fix.
 Do not return raw diffs or logs.

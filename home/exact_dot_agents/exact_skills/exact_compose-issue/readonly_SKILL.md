@@ -1,6 +1,6 @@
 ---
 name: compose-issue
-description: Draft an issue title and body as text. Use before creating or editing an issue to compose the description. Text only — no gh side effects.
+description: "Use when drafting an issue title/body before creating or editing an issue. Text only; no gh side effects."
 ---
 
 # Compose Issue Body
@@ -29,17 +29,17 @@ Repo/org-specific overlays:
 
 First actions:
 
-1. If the problem statement, repro, logs, screenshots, or notes reference any PR, issue, comment, thread, asset, URL, or media,
-   run the GitHub Context Intake + Reference Resolution gate in `~/.agents/skills/review/references/pr_common.md`.
-2. If the issue body needs contested, historical, product, or team-precedent context not settled by direct references,
-   run Ambient Topic Exploration in `~/.agents/skills/review/references/pr_common.md`.
+1. If the problem statement, repro, logs, screenshots, or notes reference any PR, issue, comment, thread, asset, URL, or media, run the GitHub Context Intake + Reference Resolution gate.
+   The gate lives in `~/.agents/skills/review/references/pr_common.md`.
+2. If the issue body needs contested, historical, product, or team-precedent context not settled by direct references, run Ambient Topic Exploration.
+   That workflow lives in `~/.agents/skills/review/references/pr_common.md`.
 3. Identify the problem statement, expected behavior, actual behavior, and reproduction from verified evidence.
 4. Keep repro steps concrete and ordered.
-5. Convert local-only observations into portable repro steps; do not paste session-specific URLs, machine hostnames, temp paths,
-   workspace paths, browser automation session names, or local usernames into public issue text.
+5. Convert local-only observations into portable repro steps.
+   Do not paste session-specific URLs, machine hostnames, temp paths, workspace paths, browser automation session names, or local usernames into public issue text.
 6. If logs/screenshots are referenced, include only what materially helps and redact secrets.
-7. If the repo belongs to the `elastic` org or is `elastic/kibana`,
-   load `~/.agents/skills/elastic-domain/SKILL.md` and apply its issue composition section.
+7. If the repo belongs to the `elastic` org or is `elastic/kibana`, load `~/.agents/skills/elastic-domain/SKILL.md`.
+   Apply its issue composition section.
 
 Rules:
 
@@ -47,8 +47,7 @@ Rules:
 - prefer numbered repro steps
 - include logs/screenshots only if they add diagnostic value; redact secrets
 - public issue text must be portable for other maintainers:
-  - avoid private hostnames, non-standard local domains, `/tmp/...`, absolute `$HOME` paths, Playwriter/session IDs, and
-    one-off local account names unless the issue explicitly instructs how to create them
+  - avoid private hostnames, non-standard local domains, `/tmp/...`, absolute `$HOME` paths, Playwriter/session IDs, and one-off local account names unless the issue explicitly instructs how to create them
   - use generic terms like `local app`, `http://localhost:<port>`, `a user with only <privilege>`, or explicit setup steps
 
 Output:

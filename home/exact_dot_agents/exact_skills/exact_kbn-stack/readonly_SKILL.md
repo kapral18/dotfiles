@@ -1,6 +1,6 @@
 ---
 name: kbn-stack
-description: Manage local elastic/kibana ES+Kibana stacks with ,kbn-stack for live UI verification.
+description: "Use when an elastic/kibana live UI or browser test needs local ES+Kibana URLs, -K runtime flags, kbn-stack registry checks, or stack start/stop/reuse."
 tool_version: ",kbn-stack local help surface verified 2026-06-28"
 ---
 
@@ -36,8 +36,7 @@ Use `,kbn-stack` from an `elastic/kibana` git worktree to start an isolated loca
 ,kbn-stack -K key=value
 ```
 
-`--detach` is the agent mode: it starts ES and Kibana in the background, waits until Kibana answers `/api/status`, records `ready:
-true`, and returns.
+`--detach` is the agent mode: it starts ES and Kibana in the background, waits until Kibana answers `/api/status`, records `ready: true`, and returns.
 
 `-K key=value` is repeatable and becomes `--key=value` for `yarn start`.
 Use it for runtime settings that the UI path requires, for example `-K xpack.index_management.dev.enableSemanticField=true`.

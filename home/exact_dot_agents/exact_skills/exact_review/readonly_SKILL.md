@@ -1,6 +1,6 @@
 ---
 name: review
-description: Review local changes or PRs. Use when reviewing changes, continuing a review, addressing review threads, or rechecking PR-related changes.
+description: "Use when reviewing local changes or PRs, continuing a review, addressing review threads, or rechecking PR-related changes."
 ---
 
 # Review Router
@@ -38,8 +38,7 @@ Contract:
 
 ## PR Detection (Do First When PR Is Involved)
 
-If the user mentions or strongly implies a PR (PR/pull request, PR review, threads, "check my PR comment",
-"recheck this fix from the PR", etc.):
+If the user mentions or strongly implies a PR (PR/pull request, PR review, threads, "check my PR comment", "recheck this fix from the PR", etc.):
 
 - First step is PR discovery via `,gh-prw` (read-only):
   - `,gh-prw --number`
@@ -47,8 +46,7 @@ If the user mentions or strongly implies a PR (PR/pull request, PR review, threa
 
 Continuity rule:
 
-- If the conversation is already clearly in a specific mode,
-  stay in that mode when the user says "continue" / "next" unless they explicitly switch targets.
+- If the conversation is already clearly in a specific mode, stay in that mode when the user says "continue" / "next" unless they explicitly switch targets.
 
 ## Role Detection / Authorship (Mandatory In Every Mode)
 
@@ -60,8 +58,7 @@ Allowed values:
 - `other`
 - `unknown`
 
-This input gates whether the review may edit code.
-Resolve it in the local/branch path too.
+This input gates whether the review may edit code. Resolve it in the local/branch path too.
 Never default to `self` just because the change is checked out locally.
 
 When a PR is involved:
@@ -130,8 +127,7 @@ Pick exactly one mode. If ambiguous, ask one fork-closing question and state a d
 
 ### Mode: Local changes review (working tree, branch delta, or commit range)
 
-- Use when: the user asks to review local changes/diff, review a specific commit range, or
-  when there is no PR for the current branch and the user still wants a review.
+- Use when: the user asks to review local changes/diff, review a specific commit range, or when there is no PR for the current branch and the user still wants a review.
 - This mode verifies and fixes: findings are resolved in the working tree immediately, not drafted as comments.
 - Then open: `~/.agents/skills/review/references/local_changes.md`
 

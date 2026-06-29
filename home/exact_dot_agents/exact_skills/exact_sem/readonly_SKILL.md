@@ -1,6 +1,6 @@
 ---
 name: sem
-description: Use ,sem for entity-level Git diff, blame, impact analysis, and dependency graphs.
+description: "Use when entity-level Git diff, blame, impact analysis, dependency graphs, history tracing, or review granularity needs ,sem."
 ---
 
 # ,sem
@@ -65,8 +65,7 @@ First actions:
 
 ## Supported languages
 
-TypeScript, TSX, JavaScript, Python, Go, Rust, Java, C, C++, Ruby, C#, PHP, Swift, Kotlin, Elixir, Bash, HCL/Terraform, Fortran,
-Vue, XML, ERB, Svelte.
+TypeScript, TSX, JavaScript, Python, Go, Rust, Java, C, C++, Ruby, C#, PHP, Swift, Kotlin, Elixir, Bash, HCL/Terraform, Fortran, Vue, XML, ERB, Svelte.
 
 Structured data: JSON, YAML, TOML, CSV, Markdown.
 

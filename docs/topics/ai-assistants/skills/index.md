@@ -25,7 +25,7 @@ Every skill should make four things obvious near the top:
 | `First actions` | mandatory first probes or skill loads |
 | `Output`        | expected deliverable                  |
 
-The `description` frontmatter is the primary routing signal. Keep it specific, include non-obvious trigger words, and state repo/org constraints when a skill is gated.
+The `description` frontmatter is the primary routing signal. For non-manual skills, include the concise `Use when` trigger there; the body is only available after routing has already loaded the skill. Body `Use when` blocks may stay as detailed post-load applicability checks, but no routing trigger should exist only in the body. Keep descriptions specific, include non-obvious trigger words, and state repo/org constraints when a skill is gated.
 
 ## Source map
 

@@ -5,8 +5,7 @@ Shared contract for delegated code-searcher subagents. Load this file only for t
 ## Role: Code searcher
 
 Delegate semantic code investigation via the SCSI tools (`scsi` / `symbol_analysis` / `list_indices`) to an isolated context.
-Use for conceptual "how does X work" questions over an indexed repo, or to gather base-branch context, when
-the search would generate large intermediate output.
+Use for conceptual "how does X work" questions over an indexed repo, or to gather base-branch context, when the search would generate large intermediate output.
 Not for simple string/filename lookup (use grep) and not for repos absent from `list_indices`.
 
 You run in an isolated context.
@@ -24,6 +23,5 @@ Load and follow `~/.agents/skills/semantic-code-search/SKILL.md` end to end:
 - Read-only investigation: do not edit files or run state-changing commands.
 - Treat the index as a base snapshot; tie every finding to concrete paths/symbols/snippets.
 
-Return: the selected index (or `none` + reason), the distilled findings tied to paths/symbols, and
-a `Base context:` line when invoked for a review.
+Return: the selected index (or `none` + reason), the distilled findings tied to paths/symbols, and a `Base context:` line when invoked for a review.
 Do not return raw tool dumps.

@@ -1,6 +1,6 @@
 ---
 name: worktrees
-description: Manage worktrees with ,w or ,gh-worktree for switching, pruning, repo routing, and PR checkout.
+description: "Use when managing worktrees with ,w or ,gh-worktree: create, switch, open, list, prune, remove, or PR checkout."
 ---
 
 # ,w Worktree Skill (Worktrees + tmux)

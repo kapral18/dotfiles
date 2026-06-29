@@ -1,6 +1,6 @@
 ---
 name: kibana-labels-propose
-description: Propose elastic/kibana labels, backports, and version targets for PRs or issues; no posting.
+description: "Use when proposing elastic/kibana PR/issue labels, backports, or version targets, including while drafting or after creating a Kibana PR; propose-only."
 ---
 
 # Elastic / Kibana Label Guidance (Propose-Only)
@@ -8,10 +8,8 @@ description: Propose elastic/kibana labels, backports, and version targets for P
 Use when:
 
 - the direct ask is "what labels/backports/version targeting should this `elastic/kibana` PR/issue get?"
-- drafting/composing an `elastic/kibana` PR description (even if the user didn’t explicitly say “labels”)
-  and you want to include a verified proposed label set
-- immediately after creating an `elastic/kibana` PR (given a PR URL/number),
-  to propose the labels/backport/version targeting that should be applied
+- drafting/composing an `elastic/kibana` PR description (even if the user didn’t explicitly say “labels”) and you want to include a verified proposed label set
+- immediately after creating an `elastic/kibana` PR (given a PR URL/number), to propose the labels/backport/version targeting that should be applied
 
 Non-negotiables:
 
@@ -28,8 +26,7 @@ First actions:
 
 1. Verify the target repo is `elastic/kibana`.
 2. Read the current repo label set before proposing anything.
-3. Read the label-relevant signals — the changed file paths/ownership plus the PR/issue body and any directly linked issues,
-   enough to judge release-note and backport intent.
+3. Read the label-relevant signals — the changed file paths/ownership plus the PR/issue body and any directly linked issues, enough to judge release-note and backport intent.
    Labels are a bounded classification; a full recursive crawl of every comment/thread is not required.
    Skim the discussion only if the body leaves release-note or backport intent genuinely ambiguous.
 4. Map the change/issue to exact proposed labels, then separate verified labels from heuristics.

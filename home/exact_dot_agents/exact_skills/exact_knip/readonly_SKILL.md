@@ -1,6 +1,6 @@
 ---
 name: knip
-description: Use knip to find unused JS/TS files, dependencies, exports, and package.json entries.
+description: "Use when finding unused JS/TS files, dependencies, exports, package.json entries, or missing/unlisted dependencies with knip."
 tool_version: knip 5.88.0
 ---
 

@@ -1,12 +1,11 @@
 ---
 name: kibana-console-monaco
-description: Automate the Kibana Dev Tools Console Monaco editor in a real browser; elastic/kibana only.
+description: "Use when automating, testing, or verifying the Kibana Dev Tools Console Monaco editor in a headed browser; elastic/kibana only."
 ---
 
 # Kibana Dev Tools Console — Monaco Editor Interaction
 
-Use when: automating, testing, or verifying behavior of the Kibana Dev Tools Console editor in a headed browser via Playwright
-or Playwriter.
+Use when: automating, testing, or verifying behavior of the Kibana Dev Tools Console editor in a headed browser via Playwright or Playwriter.
 
 ## Navigation
 
@@ -29,8 +28,7 @@ if (state.page.url().includes("/mock_idp/login")) {
 }
 ```
 
-**The first `Log in` click frequently lands mid-redirect**: the page stays on `/mock_idp/login`,
-the network shows a `401 Unauthorized`, and the console logs `Unauthorized`.
+**The first `Log in` click frequently lands mid-redirect**: the page stays on `/mock_idp/login`, the network shows a `401 Unauthorized`, and the console logs `Unauthorized`.
 Re-check the URL and retry once — the second attempt completes to `/app/dev_tools#/console`:
 
 ```js
@@ -63,8 +61,7 @@ await state.page.locator(".monaco-editor").first().click({ force: true });
 
 **Never** try to click the `<textarea>` directly — the `.view-lines` overlay will always intercept and Playwright will time out.
 
-If the `codeEditorHint` overlay is visible and you want to click it specifically, it too sits behind `.view-lines`, so `{ force:
-true }` is needed:
+If the `codeEditorHint` overlay is visible and you want to click it specifically, it too sits behind `.view-lines`, so `{ force: true }` is needed:
 
 ```js
 await state.page
@@ -136,10 +133,8 @@ for (let i = 0; i < count; i++) {
 }
 ```
 
-Then click on the target line.
-**Critical:** each `.view-line` spans the full editor width.
-Clicking near the right edge puts the cursor past all content (often jumping to a different logical line).
-Click near the actual text:
+Then click on the target line. **Critical:** each `.view-line` spans the full editor width.
+Clicking near the right edge puts the cursor past all content (often jumping to a different logical line). Click near the actual text:
 
 ```js
 const targetLine = lines.nth(4);
@@ -193,8 +188,7 @@ for (let i = 0; i < count; i++) {
 }
 ```
 
-**Note:** `window.monaco` is not exposed in Kibana.
-Do not try to access the Monaco API via `page.evaluate()`.
+**Note:** `window.monaco` is not exposed in Kibana. Do not try to access the Monaco API via `page.evaluate()`.
 Use DOM-based approaches instead.
 
 ## Screenshots

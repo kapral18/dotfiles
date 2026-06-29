@@ -21,6 +21,7 @@ These skills govern review methodology, GitHub side effects, and human-readable 
 | -------- | ------------------------------------------------------------------------------------------ |
 | Use when | multi-agent review orchestration, reviewer fan-out, findings aggregation                   |
 | Source   | [`exact_agent-review`](../../../../home/exact_dot_agents/exact_skills/exact_agent-review/) |
+| Routing  | manual                                                                                     |
 | Related  | [Agent-review topology](../reviews/agent-review-topology.md)                               |
 
 ## `light-review`

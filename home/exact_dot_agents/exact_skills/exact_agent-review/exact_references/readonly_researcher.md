@@ -22,5 +22,4 @@ Load and follow `~/.agents/skills/research/SKILL.md` end to end:
 - Operate on the external checkout under `/tmp/agent-src/...` only. Do not modify the parent's working repo.
 - Anchor every claim in a file path + ref (External Truth); do not answer from memory.
 
-Return: the answer, the repo and exact ref you inspected, how any provided URLs mapped to that repo/ref, and
-an explicit note if web sources were needed after source inspection and why.
+Return: the answer, the repo and exact ref you inspected, how any provided URLs mapped to that repo/ref, and an explicit note if web sources were needed after source inspection and why.

@@ -1,6 +1,6 @@
 ---
 name: letsfg
-description: Search flight tickets with local LetsFG connectors and return free results plus booking URLs.
+description: "Use when searching flight tickets, fares, routes, airline options, dates, or travel prices with local LetsFG connectors."
 tool_version: "letsfg 2026.4.66 (uv tool; --version unavailable); playwriter 0.1.0 fallback"
 ---
 
@@ -38,8 +38,7 @@ letsfg search --help
 ,letsfg-docker search AMS EVN 2026-05-13 --mode fast --limit 10 --json --max-browsers 2
 ```
 
-Use `--return YYYY-MM-DD` for round trips, `--currency EUR` when the user specifies currency, `--direct` for direct-only, and
-`--cabin M|W|C|F` for cabin class.
+Use `--return YYYY-MM-DD` for round trips, `--currency EUR` when the user specifies currency, `--direct` for direct-only, and `--cabin M|W|C|F` for cabin class.
 
 1. For nearby, soon, cheapest-date, or flexible-date requests, search dates locally without browser connectors and rank the returned offers.
    Default to the next 14 days from today when the user gives no range:
@@ -164,11 +163,9 @@ Use single quotes around `-e` snippets unless using a quoted heredoc, so the she
 ## Safety
 
 - Search is read-only and free.
-- Opening airline/OTA result pages is still read-only, but checkout, account registration, passenger entry, payment setup, or
-  final booking can create account, payment, booking, or external state.
+- Opening airline/OTA result pages is still read-only, but checkout, account registration, passenger entry, payment setup, or final booking can create account, payment, booking, or external state.
   Ask for explicit confirmation before running any of them.
-- `letsfg unlock`, `letsfg book`, `letsfg register`, `letsfg star`, and
-  `letsfg setup-payment` call the LetsFG backend or payment/account flows.
+- `letsfg unlock`, `letsfg book`, `letsfg register`, `letsfg star`, and `letsfg setup-payment` call the LetsFG backend or payment/account flows.
   Do not run them unless the user explicitly requests that side effect.
 - For booking, passenger names must match passport/government ID exactly. Never invent passenger details.
 
@@ -181,8 +178,7 @@ Use single quotes around `-e` snippets unless using a quoted heredoc, so the she
 - Local `letsfg search ... --json` returns offers with `booking_url`, `source_tier`, and `is_locked`.
   Local free search should return `source_tier: "free"` and `is_locked: false` for directly usable result links.
 - Some LetsFG connectors hard-code headed Chrome or CDP Chrome because their target sites block headless browsers.
-  Do not patch installed package files in-place; prefer browserless search by default
-  and treat browser connectors as explicit opt-in coverage.
+  Do not patch installed package files in-place; prefer browserless search by default and treat browser connectors as explicit opt-in coverage.
 - The system Python may not import `letsfg` because uv tools live in isolated environments.
   Prefer the `letsfg` executable instead of Python imports.
 - Playwriter has a hidden browser launcher: `playwriter browser start --headless`.

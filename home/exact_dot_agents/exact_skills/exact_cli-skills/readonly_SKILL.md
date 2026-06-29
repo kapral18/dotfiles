@@ -1,6 +1,6 @@
 ---
 name: cli-skills
-description: Author or upgrade CLI tool skills. Use when creating a new skill for a CLI tool or upgrading an existing CLI skill to a newer version.
+description: "Use when creating a new CLI tool skill or upgrading an existing CLI skill to a newer installed version."
 ---
 
 # CLI Tool Skills
@@ -80,8 +80,7 @@ Skip: tests, CI configs, unrelated docs.
 
 - `git tag -l` in the cloned repo to find the naming convention.
 - Common patterns: `v3.32.2`, `3.32.2`, `cli/v3.32.2`, `bk/v3.32.2`.
-- If the anchor tag does not exist, treat the entire skill as unverified —
-  re-audit all commands against `--help` output for the installed version.
+- If the anchor tag does not exist, treat the entire skill as unverified — re-audit all commands against `--help` output for the installed version.
 
 ## Skill Source Layout
 

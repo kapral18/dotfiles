@@ -88,7 +88,7 @@ Plain interactive `claude` stays native. Plain interactive `codex` and `copilot`
 | `,update`              | Reconcile dotfiles plus package-manager update categories                        |
 | `,parallel`            | Forward to GNU Parallel when both GNU Parallel and semantic-git are installed    |
 | `,sem`                 | Forward to Ataraxy semantic-git's entity-level CLI                               |
-| `,unwrap-md`           | Unwrap hard-wrapped Markdown prose while preserving AI-facing instruction wraps  |
+| `,unwrap-md`           | Unwrap Markdown prose; wrap AI-facing instruction files at sentence boundaries   |
 | `,weave-setup-local`   | Configure weave merge driver in repo-local git config and `.git/info/attributes` |
 | `,weave-unsetup-local` | Remove the local-only weave merge driver setup                                   |
 

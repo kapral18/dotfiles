@@ -1,6 +1,6 @@
 ---
 name: jscpd
-description: Use jscpd to detect copied code blocks during refactors, cleanup, or DRY work.
+description: "Use when detecting duplicated code during refactors, cleanup, DRY work, clone investigation, or duplication reporting with jscpd."
 tool_version: jscpd 4.0.8
 ---
 

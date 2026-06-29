@@ -1,6 +1,6 @@
 ---
 name: artifact
-description: Create cache-only HTML review artifacts and live-page feedback overlays without writing to the worktree.
+description: "Use when creating cache-only HTML artifacts, visual review/report/diagram surfaces, or already-open live-page feedback overlays without worktree writes."
 ---
 
 # Agent Artifact
@@ -8,8 +8,7 @@ description: Create cache-only HTML review artifacts and live-page feedback over
 Use `,artifact` to create a local browser review surface without polluting the current worktree.
 
 Artifacts and runtime state live under `~/.cache/agent-artifacts` (or `$XDG_CACHE_HOME/agent-artifacts`).
-The current cwd/git root and tmux session are identity metadata only;
-do not create `.agent-artifacts/` in the repo and do not edit `.gitignore`.
+The current cwd/git root and tmux session are identity metadata only; do not create `.agent-artifacts/` in the repo and do not edit `.gitignore`.
 
 The generated-artifact chrome is a floating feedback dock over a full-page artifact.
 Users get a cursor-following hover highlight, then click or select content to pin a stronger highlight;
@@ -17,10 +16,8 @@ text selections promote the highlight to the surrounding card, section, list ite
 Repeated Alt-clicks expand the pinned highlight upward through ancestor elements, up to the top `html` element.
 The dock expands upward into an anchor card and attaches that context when users add feedback to the tray.
 
-The live overlay mode injects the same feedback idea into an already-open real page through Playwriter.
-It does not iframe the target app.
-It adds a namespaced Shadow DOM dock, intercepts page clicks while capture is active, has a pause/resume button for normal app use,
-and can be removed without changing app source.
+The live overlay mode injects the same feedback idea into an already-open real page through Playwriter. It does not iframe the target app.
+It adds a namespaced Shadow DOM dock, intercepts page clicks while capture is active, has a pause/resume button for normal app use, and can be removed without changing app source.
 Live feedback captures minimal DOM context: URL, title, selector, role/label, compact text or selection, bounding rect, and ancestor hints.
 
 Feedback is sent as batches, so treat `poll` output as a grouped set of requested changes.
@@ -34,8 +31,7 @@ Use `,artifact theme` or `,artifact theme --json` before authoring when you need
 
 Use when:
 
-- the user asks for a visual artifact, interactive review surface, HTML explainer, diagram, comparison, report, plan,
-  code/diff review surface, or structured feedback flow.
+- the user asks for a visual artifact, interactive review surface, HTML explainer, diagram, comparison, report, plan, code/diff review surface, or structured feedback flow.
 - the user wants to point at specific parts of an already-open live UI and give batched change requests.
 - prose would be harder to inspect than a browser page with sections, tables, controls, or diagrams.
 
@@ -67,8 +63,8 @@ Do not use:
 1. Run `,artifact theme` to see the detected ambient style.
 2. Generate original standalone HTML in `/tmp` or stream it directly to `,artifact write <name> --open`.
 3. Tell the user the browser artifact is open and keep the agent running `,artifact poll <name>` when waiting for feedback.
-4. When `poll` returns feedback, read the returned `batches`/`prompts`, apply the whole batch,
-   update the cached artifact with `,artifact write <name> --open`, then poll again if more feedback is expected.
+4. When `poll` returns feedback, read the returned `batches`/`prompts` and apply the whole batch.
+   Update the cached artifact with `,artifact write <name> --open`, then poll again if more feedback is expected.
 5. Run `,artifact poll-stop <name>` when you are no longer waiting for that artifact's feedback.
    Run `,artifact stop` when the local review session is no longer needed.
 
@@ -80,8 +76,8 @@ Do not use:
 4. Tell the user the overlay is armed.
    Capture mode intercepts page clicks; use the overlay's Pause button when normal page interaction is needed.
 5. Keep `,artifact poll <name>` running. Apply returned feedback batches as usual, using the live context fields when they are present.
-6. If a strict page CSP blocks posting to the local artifact server,
-   retrieve retained batches with `window.__agentArtifactLiveOverlay.drain()` through Playwriter and report the blocker/fallback.
+6. If a strict page CSP blocks posting to the local artifact server, retrieve retained batches with `window.__agentArtifactLiveOverlay.drain()` through Playwriter.
+   Report the blocker/fallback.
 7. Remove the overlay with its Remove button, or call `window.__agentArtifactLiveOverlay.destroy()` from Playwriter.
 
 ## Poller Lifecycle
@@ -99,13 +95,11 @@ A session is scoped by tmux session identity plus resolved worktree root, so par
 
 - Cache-only: never write generated artifact files into the worktree.
 - Use standalone HTML. If local assets are needed, put them under the cached artifact directory printed by `,artifact path <name>`.
-- Make the artifact interactive when it helps: filters, toggles, revealable detail, checklists, comparison controls, or
-  highlighted regions are preferred over static walls of text.
+- Make the artifact interactive when it helps: filters, toggles, revealable detail, checklists, comparison controls, or highlighted regions are preferred over static walls of text.
 - Use live overlay for already-running apps instead of trying to iframe protected pages.
 - In live overlay mode, verify the page is local/dev before collecting feedback.
   Do not inject into production, shared cloud, or non-user-approved sites.
-- Prefer the built-in ambient primitives for dense artifacts: `.density-compact`, `.card`, `.panel`, `.callout`, `.checklist`,
-  `.pill`, `.metric`, and normal tables.
+- Prefer the built-in ambient primitives for dense artifacts: `.density-compact`, `.card`, `.panel`, `.callout`, `.checklist`, `.pill`, `.metric`, and normal tables.
 - Make feedback prompts specific enough to act on without another clarification round.
 - Keep the artifact focused: one decision, plan, report, or review surface per artifact.
 - Do not leave background pollers running after the task is finalized.

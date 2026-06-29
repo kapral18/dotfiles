@@ -1,6 +1,6 @@
 ---
 name: semantic-code-search
-description: Use SCSI tools for semantic search, symbol analysis, index selection, and base context.
+description: "Use when conceptual code search, SCSI index selection, symbol analysis, or base-branch context requires semantic-code-search."
 ---
 
 # Semantic Code Search Skill
@@ -11,7 +11,8 @@ When triggered:
 
 - prioritize semantic-code-search MCP tools over mechanical grepping
 - provide context (paths, snippets, precise queries) to maximize accuracy
-- treat explicit index-selection language as a trigger, even when the user does not name SCSI tools directly (example: "use `<index>` index")
+- treat explicit index-selection language as a trigger, even when the user does not name SCSI tools directly (example:
+  "use `<index>` index")
 
 Common trigger in reviews:
 
@@ -79,12 +80,9 @@ Index usage:
   - verify it exists in `list_indices`
   - if it does not exist, stop and ask which index to use
 - otherwise:
-  - always run `list_indices` first (do not guess) - if you have both `scsi-main` and `scsi-local`,
-    run `list_indices` on both before concluding "not indexed"
+  - always run `list_indices` first (do not guess) - if you have both `scsi-main` and `scsi-local`, run `list_indices` on both before concluding "not indexed"
   - if `list_indices` returns no usable results, do not use semantic search (fall back to local sources)
-  - if `list_indices` returns an obvious match for the current repo,
-    use it - "obvious" means you can justify the selection from evidence (for example: index name clearly includes the repo name, or
-    it is the only index that matches the repo you're in)
+  - if `list_indices` returns an obvious match for the current repo, use it - "obvious" means you can justify the selection from evidence (for example: index name clearly includes the repo name, or it is the only index that matches the repo you're in)
   - if multiple equally plausible indices remain after evidence-based filtering, ask the user which index to use
 
 Output:

@@ -22,13 +22,11 @@ This file carries only the PR/SCSI/GitHub-delivery rules layered on top of that 
 ## Read-Only Probes
 
 - Start read-only investigation immediately. Do not ask for confirmation before read-only `git`/`gh` checks.
-- In large repositories, make first-pass git probes bounded: use `GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false` for status,
-  diff names, upstream, and log probes.
+- In large repositories, make first-pass git probes bounded: use `GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false` for status, diff names, upstream, and log probes.
   If a plain git probe produces no output after one short wait, stop it and rerun the bounded form.
 - Keep searches narrow by default: include path scopes, file globs, or exact symbols.
   Do not run broad repo-wide searches or dump full command output when a file list, count, or targeted lines answer the question.
-- When command output is saved/truncated, recover only the exact lines needed for the current decision
-  unless the decision depends on every item.
+- When command output is saved/truncated, recover only the exact lines needed for the current decision unless the decision depends on every item.
 
 ## Hard Constraints
 
@@ -36,12 +34,9 @@ This file carries only the PR/SCSI/GitHub-delivery rules layered on top of that 
 - Code changes:
   - **Read-only delegated workers**:
     - never edit or run side effects
-    - may run non-mutating verification at whatever depth is needed;
-      use `/tmp` or isolated copies for disposable artifacts and do not write repo-local caches, start shared services, seed data, or
-      mutate shared runtime state
+    - may run non-mutating verification at whatever depth is needed; use `/tmp` or isolated copies for disposable artifacts and do not write repo-local caches, start shared services, seed data, or mutate shared runtime state
     - do not skip useful full suites, deep searches, or heavyweight analysis only because they are expensive or another lane may also run them
-    - if verification requires mutation or a shared/exclusive runtime,
-      return the exact `verification_needed` to the parent/controller for serial handling
+    - if verification requires mutation or a shared/exclusive runtime, return the exact `verification_needed` to the parent/controller for serial handling
     - return proposed fixes to the parent controller
   - **Local changes mode with `authorship: self`** and **PR fix mode when edits are permitted**:
     - find issues and fix them in the working tree immediately
@@ -50,8 +45,7 @@ This file carries only the PR/SCSI/GitHub-delivery rules layered on top of that 
     - do not commit or push unless explicitly asked
   - **Local changes mode with `authorship: other` or `unknown`**: draft-only unless the user explicitly asks to fix/take over.
   - **PR review mode (self-review)**: same — find and fix in the working tree.
-  - **PR review mode (reviewing others or unknown authorship):** do not change code unless the user explicitly asks to fix/take over
-    and the flow switches to PR fix mode.
+  - **PR review mode (reviewing others or unknown authorship):** do not change code unless the user explicitly asks to fix/take over and the flow switches to PR fix mode.
 - Do not post to GitHub, submit reviews, apply labels, or resolve threads unless explicitly asked.
 - Exception per the Human-Visible Publication Gate (SOP, `~/AGENTS.md`):
   - a **verified bot-authored** thread may be auto-replied/auto-resolved inside an explicitly-invoked flow
@@ -106,7 +100,8 @@ Goal: compare the diff against how base (usually `main`) works today.
      - "what calls this function?"
      - "what pattern does the codebase use for Y?"
   3. Query each question via SCSI tools against the repo index.
-  4. Carry the answers as base-branch context into the review (for comparison and to understand surrounding code — not as current-branch truth).
+  4. Carry the answers as base-branch context into the review (for comparison and to understand surrounding code —
+     not as current-branch truth).
 - Use SCSI to learn base-branch implementation and invariants, then compare against the PR/local diff (ground truth).
 
 ### If the repo is not indexed / tools unavailable
@@ -186,8 +181,7 @@ Content boundary:
 
 ## Existing Pending Review Awareness (Before Drafting or Posting)
 
-Before preparing a PR review draft, posting a pending review, or submitting an existing pending review,
-inspect review content already authored by the current authenticated account for the same PR.
+Before preparing a PR review draft, posting a pending review, or submitting an existing pending review, inspect review content already authored by the current authenticated account for the same PR.
 
 This includes:
 
@@ -209,14 +203,12 @@ Reconcile new candidate findings against this ledger before producing the final 
 - `merge_with_pending`: the same finding remains valid but the new run has better evidence, a better anchor, or a smaller fix;
   produce one merged replacement comment/body.
 - `keep_existing_pending`: the existing pending finding is still valid and independent of the new findings; carry it forward once.
-- `drop_stale_pending`: the existing pending finding is obsolete, incorrect on the current head, already fixed, or
-  covered by public PR context; do not submit it.
+- `drop_stale_pending`: the existing pending finding is obsolete, incorrect on the current head, already fixed, or covered by public PR context; do not submit it.
 - `conflict`: the existing pending review and new evidence disagree; resolve from current PR head evidence before posting.
   If unresolved, stop and surface the conflict rather than posting both.
 
 If a pending review already exists and a merged payload is needed, do not create a second competing review.
-Prepare one consolidated pending-review payload and let the GitHub side-effect layer delete/recreate the old pending review only
-after explicit approval.
+Prepare one consolidated pending-review payload and let the GitHub side-effect layer delete/recreate the old pending review only after explicit approval.
 
 Every PR-review output that may become GitHub review feedback must include a `Pending review reconciliation:` line with one of:
 `none found`, `reused existing`, `merged replacement needed`, `stale pending dropped`, `blocked: <reason>`.
@@ -252,8 +244,7 @@ Do not invent a parallel store:
 - `,agent-memory status` resolves the active topic and lists the files.
 - On the first turn of a PR flow, check for the spec file and resume from it.
   After each thread/finding, append to `<topic>.txt` so the loop is resumable:
-  - findings/threads: `comment_id`, author-type (`human`|`bot`), severity, file:line, one-line description,
-    status (`open`|`fixed`|`dismissed`|`resolved`|`awaiting-approval`)
+  - findings/threads: `comment_id`, author-type (`human`|`bot`), severity, file:line, one-line description, status (`open`|`fixed`|`dismissed`|`resolved`|`awaiting-approval`)
   - decision + evidence per thread (what base does, what changed, what was tested)
   - validation runs: commands + pass/fail + head SHA pushed
   - PR body obligations still open (sections to update, deletions to disclose)

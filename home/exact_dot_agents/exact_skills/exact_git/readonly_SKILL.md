@@ -1,6 +1,6 @@
 ---
 name: git
-description: "Handle local git workflow: status, branches, commits, pushes, rebases, merges, and conflicts."
+description: "Use when doing local git operations: status, diff, log, staging, branches, commits, pushes, rebases, or conflicts."
 ---
 
 # Git Workflow Skill
@@ -34,8 +34,7 @@ Large-repo probe safety:
 - For initial status/diff/routing probes in large repositories, prefer bounded read-only commands:
   - `GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false status --short --branch`
   - `GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false diff --name-only`
-- If a plain `git status`, `git diff`, or branch/upstream probe produces no output after one short wait,
-  stop that command and rerun the bounded form above.
+- If a plain `git status`, `git diff`, or branch/upstream probe produces no output after one short wait, stop that command and rerun the bounded form above.
   Do not keep waiting on the same git process.
 - Keep the first probe narrow: status, branch, upstream, changed paths, and the smallest commit range needed for the task.
 
@@ -61,8 +60,7 @@ Push policy (mandatory):
 Amend policy (mandatory):
 
 - when the user explicitly says "amend", use `git commit --amend`
-- do not second-guess amend requests by inspecting the commit author; the git author field reflects git config,
-  not whether the agent created the commit
+- do not second-guess amend requests by inspecting the commit author; the git author field reflects git config, not whether the agent created the commit
 - if the amended commit was already pushed, the subsequent push will need `--force-with-lease` (covered by push policy above)
 
 Commit quality:
@@ -80,8 +78,7 @@ Repo/org-specific commit attribution:
 - A domain overlay is a repo/org-specific skill selected from the verified repo/org, not guessed from wording.
   It layers repo-specific policy onto this generic git workflow skill.
 - If the verified repo/org has an overlay, load that overlay before committing and apply its commit-attribution rules.
-- For Elastic org repos, load `~/.agents/skills/elastic-domain/SKILL.md`
-  and append the overlay's required `Co-authored-by` trailer with `git commit --trailer=...`.
+- For Elastic org repos, load `~/.agents/skills/elastic-domain/SKILL.md` and append the overlay's required `Co-authored-by` trailer with `git commit --trailer=...`.
 
 Branching:
 

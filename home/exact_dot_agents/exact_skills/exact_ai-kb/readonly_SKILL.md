@@ -1,14 +1,13 @@
 ---
 name: ai-kb
-description: "Use local ,ai-kb durable memory to recall or store verified reusable agent learnings."
+description: "Use when starting non-trivial repo/domain work, hitting known setup gotchas, or storing verified reusable learnings with ,ai-kb."
 ---
 
 # AI Knowledge Base Skill
 
 Durable, structured, cross-session memory shared across agents (cursor-cli, pi, Ralph).
-Backed by the local `,ai-kb` CLI: SQLite + FTS5 (BM25) + dense embeddings (`sqlite-vec`),
-fused with Reciprocal Rank Fusion and diversified with Maximal Marginal Relevance.
-Fully local, no cloud, no MCP.
+Backed by the local `,ai-kb` CLI: SQLite + FTS5 (BM25) + dense embeddings (`sqlite-vec`).
+Results are fused with Reciprocal Rank Fusion and diversified with Maximal Marginal Relevance. Fully local, no cloud, no MCP.
 Capsules persist under `~/.local/share/ai-kb/` (markdown sidecars + indexed SQLite mirror).
 
 Use when:
@@ -49,15 +48,13 @@ Pull a full capsule when a hit looks decisive:
 
 Write contract (agent-driven, explicit):
 
-Only `,ai-kb remember` an insight that is durable and reusable, and that you have verified in this session (External Truth applies —
-do not store guesses).
-Make it specific and reusable; do not restate the task goal.
+Only `,ai-kb remember` an insight that is durable and reusable, and that you have verified in this session.
+External Truth applies — do not store guesses. Make it specific and reusable; do not restate the task goal.
 Mirror the quality bar of a good `LEARNING:` line.
 
 The metadata fields drive retrieval and curation — they are not optional decoration.
 A capsule with a flat default `--scope universal --confidence 0.5` and no `--source`/`--domain` is a degraded capsule:
-it surfaces in the wrong workspaces, carries no trust signal, and cannot be curated.
-Set every field below deliberately on every write.
+it surfaces in the wrong workspaces, carries no trust signal, and cannot be curated. Set every field below deliberately on every write.
 
 ```bash
 ,ai-kb remember \
@@ -70,21 +67,20 @@ Set every field below deliberately on every write.
 
 Field selection (each affects retrieval — choose, do not default):
 
-- `--kind` honestly: `gotcha` (trap/surprise), `anti_pattern` (what not to do), `pattern`/`recipe` (reusable approach),
-  `principle` (rule), `fact` (verified state), `doc` (reference chunk).
+- `--kind` honestly: `gotcha` (trap/surprise), `anti_pattern` (what not to do), `pattern`/`recipe` (reusable approach), `principle` (rule), `fact` (verified state), `doc` (reference chunk).
   `kind` is a retrieval filter, so a wrong kind hides the capsule from kind-scoped searches.
-- `--scope` by reuse breadth: `workspace` (this checkout), `project` (this project across worktrees),
-  `domain` (a tech/topic across projects), `universal` (everywhere).
-  Scope is the strongest retrieval gate — workspace/project capsules get a same-workspace boost
-  and warm-start/per-turn injection only keeps workspace-local or `domain`/`universal` capsules.
+- `--scope` by reuse breadth: `workspace` (this checkout), `project` (this project across worktrees), `domain` (a tech/topic across projects), `universal` (everywhere).
+  Scope is the strongest retrieval gate.
+  Workspace/project capsules get a same-workspace boost, and warm-start/per-turn injection only keeps workspace-local or `domain`/`universal` capsules.
   Over-scoping to `universal` leaks a repo-specific gotcha into unrelated sessions; under-scoping buries a broadly-useful fact.
 - `--workspace "$(pwd)"` ONLY for `workspace`/`project` scope (it biases retrieval toward this checkout).
   OMIT it for `domain`/`universal` scope — a workspace path on a cross-project capsule is noise that wrongly biases ranking.
 - `--source` ALWAYS: the evidence anchor that proves the insight (a `path:line`, the command whose output you read, or a live doc URL).
   This is the External-Truth receipt; a future agent uses it to re-verify.
   Leaving the `manual` default discards the one thing that makes the capsule trustworthy.
-- `--confidence <0..1>` ALWAYS, honestly: ~0.9 for something you directly verified by running/reading it this session,
-  ~0.6 for a strong inference, ~0.4 for plausible-but-unconfirmed (and prefer not to store the last category at all).
+- `--confidence <0..1>` ALWAYS, honestly.
+  Use ~0.9 for something you directly verified by running/reading it this session, ~0.6 for a strong inference, and ~0.4 for plausible-but-unconfirmed.
+  Prefer not to store the last category at all.
   The flat 0.5 default tells retrieval nothing; a real value lets low-trust hits be discounted.
 - `--domain` repeatable: pass each cross-cutting tech/topic tag separately (`--domain frontend --domain retrieval`).
   Domain tags are how `domain`-scoped recall finds the capsule across projects — omitting them strands it.
@@ -96,24 +92,21 @@ Field selection (each affects retrieval — choose, do not default):
   This is the correct way to retire a wrong capsule; do not just write a duplicate and hope curation reconciles it.
 - `--refs <id-or-ref>` (repeatable) to link related capsules or external references (a capsule id, `path:line`, or URL).
 
-Body structure for retrieval: the body is embedded (title+body) and BM25-indexed, and
-the per-turn recall now gates on cosine similarity to the user's prompt,
-so the body must contain the literal terms a future query would use — exact symbol names, file paths, error strings, flag names,
-version numbers — not a paraphrase.
+Body structure for retrieval: the body is embedded (title+body) and BM25-indexed, and the per-turn recall gates on cosine similarity to the user's prompt.
+The body must contain the literal terms a future query would use — exact symbol names, file paths, error strings, flag names, version numbers — not a paraphrase.
 Front-load them; a body that describes the insight in generic prose will not match a specific future query.
 
 Before writing a refinement: search first (you likely already did for recall).
-If you find a stale or wrong capsule on the same point,
-pass `--supersedes <its-id>` so the corrected capsule retires the old one (the old one drops out of future results)
-instead of leaving two conflicting capsules for curation to guess between.
+If you find a stale or wrong capsule on the same point, pass `--supersedes <its-id>`.
+That lets the corrected capsule retire the old one (the old one drops out of future results) instead of leaving two conflicting capsules for curation to guess between.
 
 Do not pollute the KB: skip transient, session-only, or unverified notes (those belong in `,agent-memory`).
 
 Output:
 
 - `--json` returns an array of hits.
-  Each hit carries: `id`, `title`, `body`, `snippet`, `source`, `tags`, `kind`, `scope`, `workspace_path`, `domain_tags`,
-  `confidence`, ranking fields (`bm25_rank`, `vector_rank`, `bm25_score`, `cosine_score`, `rrf_score`, `mmr_selected`).
+  Each hit carries: `id`, `title`, `body`, `snippet`, `source`, `tags`, `kind`, `scope`, `workspace_path`, `domain_tags`, and `confidence`.
+  It also carries ranking fields: `bm25_rank`, `vector_rank`, `bm25_score`, `cosine_score`, `rrf_score`, `mmr_selected`.
 - Fold the most relevant hits into your reasoning and cite them by `title` (and `id` when acting on one).
   Treat low-`confidence` or superseded-looking hits with caution; verify against the live repo before relying on them.
 - Superseded capsules are excluded from results by default; results are already RRF-ranked and MMR-diversified — do not re-sort.

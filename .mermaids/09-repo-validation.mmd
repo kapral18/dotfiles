@@ -12,7 +12,7 @@ flowchart TD
     EDIT["edit home/** · scripts/** · tools/** · docs/** · website/**"]:::mk --> CHECK["make check (lint + verify-templates + verify-mermaids + verify-bin-surface + test)"]:::mk
 
     subgraph LINT["lint"]
-        FMT["bin/fmt --check (over cached + untracked non-ignored files; ignores Alfred/)<br/>md: ,unwrap-md (preserves AI instruction hard wraps) + markdownlint(~/.markdownlint.jsonc) + prettier<br/>json/yaml: prettier · sh: shfmt · lua: stylua<br/>fish: fish_indent · py: ruff · go: goimports+gofumpt"]:::tool
+        FMT["bin/fmt --check (over cached + untracked non-ignored files; ignores Alfred/)<br/>md: ,unwrap-md (AI instruction sentence / strong-clause wrap) + markdownlint(~/.markdownlint.jsonc) + prettier<br/>json/yaml: prettier · sh: shfmt · lua: stylua<br/>fish: fish_indent · py: ruff · go: goimports+gofumpt"]:::tool
         RUFFI["ruff check --select I scripts/ home/exact_lib/ (ruff.toml)"]:::tool
         GOV["(cd tools/ralph-tui && go vet ./… && go test ./…)"]:::tool
     end

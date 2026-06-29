@@ -1,18 +1,15 @@
 ---
 name: light-review
-description: Run a proportional local audit of low-risk self-authored changes, with fix and hygiene follow-through.
+description: "Use when running a local/ad-hoc proportional audit of low-risk self-authored changes; escalate PRs/risky changes to review."
 ---
 
 # Light Review
 
 A proportional-depth review for a self-authored changeset you want checked and fixed in place.
 It shares the same judging engine as the full `review` skill but drops PR/GitHub scaffolding when that scaffolding is not needed.
-Reduced scaffolding is not reduced rigor: the SOP rules about internal time/effort estimates still apply, and
-any finding that needs base context, state-machine verification, or heavier evidence must trigger escalation instead of being skipped.
+Reduced scaffolding is not reduced rigor: the SOP rules about internal time/effort estimates still apply, and any finding that needs base context, state-machine verification, or heavier evidence must trigger escalation instead of being skipped.
 
-Load `~/.agents/skills/review/references/judging_core.md` and apply its Coverage Checklist, Severity,
-the relevant gates (Deletion-Safety / Historical-Rationale / State-Machine when triggered), and — foregrounded for this skill —
-the **Post-Review Lens (The Four Dimensions)** and **Post-Review Stage**.
+Load `~/.agents/skills/review/references/judging_core.md` and apply its Coverage Checklist, Severity, the relevant gates (Deletion-Safety / Historical-Rationale / State-Machine when triggered), and — foregrounded for this skill — the **Post-Review Lens (The Four Dimensions)** and **Post-Review Stage**.
 
 Use when:
 
@@ -31,8 +28,8 @@ If any escalation trigger applies mid-pass, stop and switch to the `review` skil
 
 ## Workflow (verify and fix in place)
 
-1. **Scope.** Inspect `git status --porcelain=v1 -b` and the diff (`git diff`, `git diff --staged`, or
-   `git diff <range>` / `git log --oneline <range>`).
+1. **Scope.**
+   Inspect `git status --porcelain=v1 -b` and the diff (`git diff`, `git diff --staged`, or `git diff <range>` / `git log --oneline <range>`).
    If there are no diffs, say so and stop.
 2. **Base context (opt-in).** Default off.
    Establish base context when a finding's correctness genuinely depends on how base behaves today;
@@ -43,8 +40,9 @@ If any escalation trigger applies mid-pass, stop and switch to the `review` skil
 4. **Fix in the working tree.** Apply the smallest correct change for each finding now. Do not commit or push unless explicitly asked.
 5. **Mechanical gates.** Run the repo's lint + type_check + tests (discover commands from the repo; do not guess).
    Fix until green or report what remains.
-6. **Post-review stage (foregrounded).** Run the Post-Review Stage (`judging_core.md`) over the **fix diff** —
-   the changes this pass made — applying the four dimensions: redundancy, verbosity, semantic + logical duplication, gaps.
+6. **Post-review stage (foregrounded).**
+   Run the Post-Review Stage (`judging_core.md`) over the **fix diff** — the changes this pass made — applying the four dimensions:
+   redundancy, verbosity, semantic + logical duplication, gaps.
    Resolve each hygiene finding in the working tree; re-run gates if those fixes touched code.
 
 ## Output

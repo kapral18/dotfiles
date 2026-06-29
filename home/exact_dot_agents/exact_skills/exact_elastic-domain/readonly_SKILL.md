@@ -1,6 +1,6 @@
 ---
 name: elastic-domain
-description: Elastic/Kibana overlay for repo policy, review routing, labels, live UI, and ownership.
+description: "Use when the target is Elastic org, elastic/kibana, or Elastic/Kibana Buildkite, SCSI, labels, ownership, live UI, or domain policy."
 ---
 
 # Elastic Domain Overlay
@@ -34,8 +34,7 @@ If detection is unavailable, keep the primary generic skill behavior and state t
 
 1. Run the primary skill's generic workflow first.
 2. Load this overlay only for the domain-specific additions below.
-3. Do not duplicate generic mechanics here: routing, PR intake, pending-review reconciliation, publication gates, and
-   review judging remain owned by their primary skills.
+3. Do not duplicate generic mechanics here: routing, PR intake, pending-review reconciliation, publication gates, and review judging remain owned by their primary skills.
 4. If this overlay conflicts with the primary skill, the safer/gated behavior wins.
 
 ## GitHub and PR composition
@@ -44,10 +43,8 @@ Apply when the primary skill is `compose-pr`, `compose-issue`, `github`, or a re
 
 Elastic/Kibana public text sanitization:
 
-- for behavior/UI bugs, use portable local reproduction wording such as `local Kibana`, `http://localhost:5601`,
-  `a user with only <privilege>`, or explicit setup steps to create the role/user
-- do not publish private hostnames, non-standard local domains, `/tmp/...`, absolute workspace paths,
-  browser automation session names, or one-off local account names unless the public text explicitly tells the reader how to create them
+- for behavior/UI bugs, use portable local reproduction wording such as `local Kibana`, `http://localhost:5601`, `a user with only <privilege>`, or explicit setup steps to create the role/user
+- do not publish private hostnames, non-standard local domains, `/tmp/...`, absolute workspace paths, browser automation session names, or one-off local account names unless the public text explicitly tells the reader how to create them
 
 Elastic org PR bodies:
 
@@ -203,19 +200,17 @@ Copy this template and delete unused sections:
 ## Review and CI additions
 
 - Buildkite URLs for Elastic repos must be handled through the `buildkite` skill and `bk` CLI. Do not fetch `buildkite.com` URLs directly.
-- For PR presentations (`present-pr`), fetch only compact Buildkite facts needed for the story: build number, state, commit, and
-  whether failures are current or historical.
+- For PR presentations (`present-pr`), fetch only compact Buildkite facts needed for the story:
+  build number, state, commit, and whether failures are current or historical.
   Do not dump full build metadata unless CI is itself the presentation thesis.
-- Kibana labels/backports/version targeting are propose-only through `kibana-labels-propose`
-  unless the user explicitly approves a GitHub mutation.
+- Kibana labels/backports/version targeting are propose-only through `kibana-labels-propose` unless the user explicitly approves a GitHub mutation.
 - Kibana ownership/reviewer targeting is propose-only through `kibana-management-ownership`;
   side effects go through the `github` skill after approval.
 - Known Elastic bot logins for bot-thread classification: `elasticmachine`, `kibanamachine`, `github-actions[bot]`.
 
 ## Git commit attribution
 
-When the repo belongs to the `elastic` GitHub org,
-every commit must include a `Co-authored-by` trailer identifying the AI tool that authored the change.
+When the repo belongs to the `elastic` GitHub org, every commit must include a `Co-authored-by` trailer identifying the AI tool that authored the change.
 Every commit must include a `Co-authored-by` trailer for the active AI tool.
 
 Known trailer values:
@@ -230,8 +225,8 @@ Known trailer values:
 
 - Use the identity row matching the tool you are running inside.
 - pi-coding-agent normally overrides `GIT_AUTHOR_NAME/EMAIL` directly.
-  If pi handles attribution on its own, skip the trailer to avoid duplication; otherwise use the table row above,
-  replacing the email with the active provider's email if known.
+  If pi handles attribution on its own, skip the trailer to avoid duplication;
+  otherwise use the table row above, replacing the email with the active provider's email if known.
 - If the current tool is not in the table, ask for the correct name/email before committing.
 - Append the trailer with `git commit --trailer=...`.
 - Example: `git commit -m "fix: ..." --trailer="Co-authored-by: Cursor <cursoragent@cursor.com>"`
@@ -244,8 +239,7 @@ For `elastic/kibana` live UI verification, load:
 ~/.agents/skills/elastic-domain/references/kibana-live-ui.md
 ```
 
-That reference owns the Kibana runtime targets, Elasticsearch endpoint mapping, data/setup ladder, Dev Tools Console fallback,
-runtime-environment blocker rule, and screenshot handoff details.
+That reference owns the Kibana runtime targets, Elasticsearch endpoint mapping, data/setup ladder, Dev Tools Console fallback, runtime-environment blocker rule, and screenshot handoff details.
 Generic `/agent-review` runtime contracts should select and pass that overlay, not inline Kibana targets themselves.
 
 ## Output

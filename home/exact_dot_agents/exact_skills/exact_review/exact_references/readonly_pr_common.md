@@ -32,8 +32,7 @@ All PR review modes load this file. Do not duplicate these rules in mode files.
 
 Adjust review depth by file type:
 
-- **Skip or skim** (unless the user explicitly asks): lockfiles (`package-lock.json`, `yarn.lock`, `Cargo.lock`), generated code,
-  snapshots, `.min.js`, vendored dependencies.
+- **Skip or skim** (unless the user explicitly asks): lockfiles (`package-lock.json`, `yarn.lock`, `Cargo.lock`), generated code, snapshots, `.min.js`, vendored dependencies.
 - **Full depth**: business logic, API routes, auth/authz, data models, migrations, configuration that affects runtime behavior.
 - **Medium depth**: test files (check coverage and correctness, but do not nitpick style), documentation, CI config.
 - If a finding exists only in a skimmed file, still report it — but note the file type context.
@@ -58,13 +57,11 @@ Avoid redundant findings:
    - SAST -> the vuln classes it scans
    - A check covers only what it actually runs.
    - Do not credit a check from its name alone.
-   - Buildkite job whose coverage is unclear: load and follow `~/.agents/skills/buildkite/SKILL.md` (`bk` CLI) to see what it runs
-     before crediting it with a class.
-     For Elastic repos, route through `elastic-domain` first when available, but
-     do not skip the Buildkite check solely because the overlay cannot be loaded.
+   - Buildkite job whose coverage is unclear: load and follow `~/.agents/skills/buildkite/SKILL.md` (`bk` CLI) to see what it runs before crediting it with a class.
+     For Elastic repos, route through `elastic-domain` first when available, but do not skip the Buildkite check solely because the overlay cannot be loaded.
      If Buildkite access is unavailable, keep the coverage class in scope instead of crediting the check.
-3. Exempt a finding-class from review only when a present check genuinely covers it — CI will flag those,
-   so do not build findings or draft comments for them.
+3. Exempt a finding-class from review only when a present check genuinely covers it —
+   CI will flag those, so do not build findings or draft comments for them.
 4. Keep every other class in scope, including ones whose check is absent or loosened on this branch.
    Do not assume a class is covered just because CI usually covers it elsewhere.
 5. State one line before drafting: `CI coverage: covered=[...] -> exempt; in-scope=[...]`.
@@ -93,10 +90,8 @@ Recover the full raw content before marking an item read.
 1. Maintain a visited set by canonical URL/object ID so recursion is exhaustive without looping.
 2. Seed the queue from the primary PR:
    - raw PR description/body, read every line including template text, checkboxes, code blocks, quotes, collapsible sections, and footnotes
-   - PR conversation/timeline comments, review bodies, review comments, review threads, and every reply in each thread, including
-     resolved/outdated state when available
-   - any `PENDING` review and draft comments authored by the current authenticated account,
-     using `shared_rules.md` Existing Pending Review Awareness
+   - PR conversation/timeline comments, review bodies, review comments, review threads, and every reply in each thread, including resolved/outdated state when available
+   - any `PENDING` review and draft comments authored by the current authenticated account, using `shared_rules.md` Existing Pending Review Awareness
    - linked/closing issues, linked PRs, commits, check/build links, URLs, and image/media/attachment links found anywhere above
 3. For each queued item, read the complete artifact before extracting references from it:
    - PRs:
@@ -109,12 +104,9 @@ Recover the full raw content before marking an item read.
      - read check/build links
      - read diff summary
      - inspect the full diff or exact files when the referenced PR is cited as precedent, fix, regression, or evidence for a claim
-   - Issues: read raw body line-by-line, state, labels/milestone when relevant, all comments/replies/timeline text, linked PRs/issues,
-     and every attachment/media/reference.
-   - Comments/threads: read the parent comment plus every reply end-to-end; include author, timestamp/order,
-     resolved/outdated/minimized state, and any referenced code or links.
-   - Images/screenshots: download to `/tmp` with `curl -sL -o /tmp/<name> <url>`, then inspect the local file, including visible text,
-     UI state, annotations, and error messages.
+   - Issues: read raw body line-by-line, state, labels/milestone when relevant, all comments/replies/timeline text, linked PRs/issues, and every attachment/media/reference.
+   - Comments/threads: read the parent comment plus every reply end-to-end; include author, timestamp/order, resolved/outdated/minimized state, and any referenced code or links.
+   - Images/screenshots: download to `/tmp` with `curl -sL -o /tmp/<name> <url>`, then inspect the local file, including visible text, UI state, annotations, and error messages.
    - GIFs/videos:
      - download to `/tmp`
      - inspect first/last frames
@@ -124,8 +116,7 @@ Recover the full raw content before marking an item read.
      - inspect audio, captions, or transcripts when present
    - Buildkite URLs (`buildkite.com/...`): **do not fetch directly** (authenticated pages commonly 403).
      Load and follow `~/.agents/skills/buildkite/SKILL.md` — use `bk` CLI to retrieve build/job info.
-     For Elastic repos, route through `elastic-domain` first when available, but
-     do not skip Buildkite solely because the overlay cannot be loaded.
+     For Elastic repos, route through `elastic-domain` first when available, but do not skip Buildkite solely because the overlay cannot be loaded.
    - Other URLs: fetch when they could inform the review, then read the full relevant content and extract references.
 4. From every artifact just read, extract new URLs, PR/issue refs, comments, assets, media, commits, builds, and code references;
    enqueue any unvisited potentially relevant item.
@@ -136,8 +127,7 @@ Recover the full raw content before marking an item read.
    - If an item is genuinely irrelevant, record the exact reason before excluding it.
 6. State the full list of references visited, skipped-with-reason, and what you learned from each before proceeding to diff analysis.
 
-If a claim depends on visuals and visuals are missing, inaccessible, or unclear,
-stop and ask for visuals or better access before making that claim.
+If a claim depends on visuals and visuals are missing, inaccessible, or unclear, stop and ask for visuals or better access before making that claim.
 
 ## Ambient Topic Exploration (conditional — complete before judging contested context)
 
@@ -145,8 +135,7 @@ Run this second layer only when direct PR/issue context does not settle shared u
 
 - the PR/issue discussion shows disagreement, conflicting claims, or unclear ownership/requirements
 - the user asks for deep context, history, "why", precedent, or whether a claim matches team/product understanding
-- a candidate finding depends on product intent, team convention, prior incidents, or
-  decisions not proven by the directly referenced artifacts
+- a candidate finding depends on product intent, team convention, prior incidents, or decisions not proven by the directly referenced artifacts
 - direct references are sparse, contradictory, or appear to omit the rationale behind the current disagreement
 
 Skip it for routine implementation reviews where the diff, base context, and direct references are enough.
@@ -159,8 +148,7 @@ Keep it bounded. Before using the results, write:
 - hits read
 - stop reason
 
-1. Build a topic map from the current artifact and diff: product/feature names, code symbols, error text, labels, team names,
-   user-visible phrases, and disputed terms.
+1. Build a topic map from the current artifact and diff: product/feature names, code symbols, error text, labels, team names, user-visible phrases, and disputed terms.
 2. Search GitHub beyond direct references:
    - Issues:
      - `gh search issues --repo OWNER/REPO "<terms>" --match title,body,comments --json number,title,state,commentsCount,updatedAt,url --limit 20`
@@ -182,16 +170,14 @@ Keep it bounded. Before using the results, write:
      - `slack_search_public_and_private` with explicit user consent
    - do not search private channels or DMs without explicit consent
 4. For each promising ambient hit, read enough full context to decide whether it informs the disputed topic:
-   - GitHub issues/PRs/discussions: body, comments/replies/threads, linked references, and
-     relevant diffs/files using the GitHub Context Intake + Reference Resolution rules above
+   - GitHub issues/PRs/discussions: body, comments/replies/threads, linked references, and relevant diffs/files using the GitHub Context Intake + Reference Resolution rules above
    - Slack: the complete thread/conversation around the hit, not just the matching message;
      preserve timestamps/order and distinguish decisions from speculation
 5. Stop when:
    - searches produce no new decision-relevant facts
    - a small representative set of high-signal hits has been read
    - tools/access are exhausted
-   - Record skipped sources with reasons (e.g.
-     `Slack MCP unavailable`, `private channel requires consent`, `GitHub Discussions disabled/unavailable`).
+   - Record skipped sources with reasons (e.g. `Slack MCP unavailable`, `private channel requires consent`, `GitHub Discussions disabled/unavailable`).
 6. Use ambient evidence only as context/precedent.
    The current PR diff and directly relevant artifacts remain the source of truth for what is actually changing.
 
@@ -206,20 +192,16 @@ This audit does not approve, reject, close, or post. It produces evidence for dr
 
 1. Reconstruct author intent:
    - Use the full GitHub Context Intake + Reference Resolution results.
-   - Read the PR description, discussion, review threads, referenced issues/PRs, linked artifacts, and
-     relevant changed files as one intent record.
+   - Read the PR description, discussion, review threads, referenced issues/PRs, linked artifacts, and relevant changed files as one intent record.
    - Distinguish the author's stated goal from inferred goals, reviewer suggestions, and ambient precedent.
 2. Check whether the PR is correctly open:
-   - Verify state, draft/readiness signal, base/head refs, branch staleness, merge-conflict status, linked issue state,
-     labels/milestone when relevant, and whether the described problem still exists on base.
+   - Verify state, draft/readiness signal, base/head refs, branch staleness, merge-conflict status, linked issue state, labels/milestone when relevant, and whether the described problem still exists on base.
    - Treat "open" as procedural correctness, not a merge verdict. A PR can be correctly open while still needing changes.
-   - If the PR appears mis-targeted, stale, premature, missing a linked issue, or scoped differently from its stated intent,
-     record the exact evidence.
+   - If the PR appears mis-targeted, stale, premature, missing a linked issue, or scoped differently from its stated intent, record the exact evidence.
 3. Check whether the work is still needed:
    - Search for duplicate, overlapping, superseding, or recently merged work using the topic map from Ambient Topic Exploration.
    - Search GitHub issues/PRs/discussions beyond direct references with the existing Ambient Topic Exploration commands and rules.
-   - For recent merged work, include query terms such as `is:pr is:merged merged:>=YYYY-MM-DD` in GitHub search queries
-     instead of assuming closed PRs are relevant.
+   - For recent merged work, include query terms such as `is:pr is:merged merged:>=YYYY-MM-DD` in GitHub search queries instead of assuming closed PRs are relevant.
    - Compare any high-signal hit against the current PR's actual diff before calling it overlapping or superseding.
 4. Inspect git history for touched files/symbols and topic terms:
    - Prefer bounded history such as `git log --all --since=<range> -- <paths>` for touched files.
@@ -237,9 +219,7 @@ This audit does not approve, reject, close, or post. It produces evidence for dr
    - `correctly_open`: yes / no / unclear
    - `needed`: yes / no / unclear
    - `similar_or_recent_work`: none found / open overlap / recently merged overlap / superseded / unknown
-   - `recommended_review_action`:
-     continue normal review / ask author a clarifying question / suggest narrowing / suggest closing as duplicate
-     or superseded / block on missing evidence
+   - `recommended_review_action`: continue normal review / ask author a clarifying question / suggest narrowing / suggest closing as duplicate or superseded / block on missing evidence
 7. Use the result conservatively:
    - Do not claim a PR is unnecessary from ambient evidence alone.
    - Do not claim overlap from matching terminology alone.
@@ -262,8 +242,7 @@ This audit does not approve, reject, close, or post. It produces evidence for dr
 
 ## Existing Pending Review Reconciliation (Blocking Before Final Draft/Post)
 
-Run this after the candidate queue is evidence-verified and before preparing any final PR-review draft, pending-review API payload,
-or review submission.
+Run this after the candidate queue is evidence-verified and before preparing any final PR-review draft, pending-review API payload, or review submission.
 
 1. Build a ledger of current-account review content:
    - current authenticated login
@@ -327,8 +306,7 @@ Where to comment:
 ## Deep Links to Exact Source Lines (PR Head SHA)
 
 - Prefer links of the form: `https://github.com/OWNER/REPO/blob/<head_sha>/<path>#L<start>-L<end>`
-- If you cannot reliably compute line numbers from GitHub,
-  fetch the PR head commit locally and use `git show <head_sha>:<path>` to compute them.
+- If you cannot reliably compute line numbers from GitHub, fetch the PR head commit locally and use `git show <head_sha>:<path>` to compute them.
 
 ## Local Verification
 

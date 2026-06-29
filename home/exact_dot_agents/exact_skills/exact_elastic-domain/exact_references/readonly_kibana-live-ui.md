@@ -1,41 +1,35 @@
 # Kibana Live UI Overlay
 
-Kibana live UI target packet for verified `elastic/kibana` `/agent-review` and `live-ui-review` flows
-when no explicit parent/user/repo target packet was supplied.
+Kibana live UI target packet for verified `elastic/kibana` `/agent-review` and `live-ui-review` flows.
+Use it when no explicit parent/user/repo target packet was supplied.
 
 ## Runtime targets
 
-Stacks are started per worktree by `,kbn-stack`,
-which records each running stack in `~/.cache/kbn-stack/registry.json` keyed by absolute worktree path.
-Load and follow `~/.agents/skills/kbn-stack/SKILL.md` for command mechanics, registry inspection, required `-K` flag parity, and
-teardown ownership.
-Each entry has `slot`, `branch`, `backend`, `kbn_url`, `es_url`, `cookie_name`,
-`kbn_flags` (the list of extra `key=value` Kibana settings the stack was started with via `,kbn-stack -K`, empty when none), and
-`ready` (true only once Kibana has answered `/api/status`).
+Stacks are started per worktree by `,kbn-stack`, which records each running stack in `~/.cache/kbn-stack/registry.json` keyed by absolute worktree path.
+Load and follow `~/.agents/skills/kbn-stack/SKILL.md` for command mechanics, registry inspection, required `-K` flag parity, and teardown ownership.
+Each entry has `slot`, `branch`, `backend`, `kbn_url`, `es_url`, `cookie_name`, `kbn_flags`, and `ready`.
+`kbn_flags` is the list of extra `key=value` Kibana settings the stack was started with via `,kbn-stack -K`;
+it is empty when none were supplied. `ready` is true only once Kibana has answered `/api/status`.
 Stacks run on plain `http://localhost:<port>` with a per-slot cookie name, so there are no fixed hostnames or fixed ports to assume.
 
-A stack may be started interactively by the user (tmux) or by an agent in background mode via `,kbn-stack --detach`,
-which starts ES + Kibana headless, waits until Kibana is ready, sets `ready: true`, and returns.
-Both paths flip the registry entry's `ready` to true once Kibana answers `/api/status`,
-so a stack the user started by hand in tmux from the current worktree is discoverable here.
-Treat a registry entry as a usable target only when `ready` is true; an entry with `ready:
-false` is still booting (or failed) and must not be used as a live target.
+A stack may be started interactively by the user (tmux) or by an agent in background mode via `,kbn-stack --detach`.
+The detach path starts ES + Kibana headless, waits until Kibana is ready, sets `ready: true`, and returns.
+Both paths flip the registry entry's `ready` to true once Kibana answers `/api/status`, so a stack the user started by hand in tmux from the current worktree is discoverable here.
+Treat a registry entry as a usable target only when `ready` is true; an entry with `ready: false` is still booting (or failed) and must not be used as a live target.
 
 Backend parallelism: `snapshot` stacks are fully parallel (one per worktree, isolated by slot).
-`serverless` stacks are single-instance per host (kbn-es runs fixed `es01`/`es02` Docker containers),
-so a registry entry with `"exclusive": true` is serverless and only one can be live at a time;
+`serverless` stacks are single-instance per host because kbn-es runs fixed `es01`/`es02` Docker containers.
+A registry entry with `"exclusive": true` is serverless and only one can be live at a time;
 starting a serverless stack for one worktree tears down any other serverless stack.
-Do not assume two serverless targets (base and head) can run simultaneously — if base/head both need serverless,
-verify them sequentially (start, verify, tear down, then the other).
-Return `Blocked` for the serverless single-instance constraint only
-when sequential verification is itself impossible (e.g. the user's serverless stack must stay up);
-do not treat it as a peer option to skip verification.
+Do not assume two serverless targets (base and head) can run simultaneously —
+if base/head both need serverless, verify them sequentially (start, verify, tear down, then the other).
+Return `Blocked` for the serverless single-instance constraint only when sequential verification is itself impossible.
+For example, block if the user's serverless stack must stay up; do not treat the constraint as a peer option to skip verification.
 
-The registry is keyed by absolute worktree path.
-Compute the current PR/head worktree key the same way `,kbn-stack` does:
-the resolved absolute path of `git rev-parse --show-toplevel` run from the agent's working directory.
-Look that key up in the registry to find the stack for the worktree the agent is reviewing from, including
-one the user started interactively in a tmux pane in that same worktree.
+The registry is keyed by absolute worktree path. Compute the current PR/head worktree key the same way `,kbn-stack` does.
+Use the resolved absolute path of `git rev-parse --show-toplevel` run from the agent's working directory.
+Look that key up in the registry to find the stack for the worktree the agent is reviewing from.
+This includes a stack the user started interactively in a tmux pane in that same worktree.
 
 Resolve targets from the registry; do not hardcode ports or `*.local` hostnames:
 
@@ -51,49 +45,37 @@ Backing/data endpoints:
 
 If the registry has no `ready:true` entry for a required worktree (or `,kbn-stack` is not running for it), the stack is missing —
 this is a runtime-start step, not a target blocker.
-In a shell-capable harness you MUST start it yourself with `,kbn-stack --detach` from that worktree
-and continue once the registry entry reports `ready: true` (see Data/setup ladder Rung 0).
-Return `Blocked` for a missing stack only in a read-only/Ask-mode harness or when `,kbn-stack --detach` fails,
-with the exact `,kbn-stack --detach` command for each missing worktree for the user to run.
-Never probe arbitrary localhost ports.
+In a shell-capable harness you MUST start it yourself with `,kbn-stack --detach` from that worktree and continue once the registry entry reports `ready: true` (see Data/setup ladder Rung 0).
+Return `Blocked` for a missing stack only in a read-only/Ask-mode harness or when `,kbn-stack --detach` fails.
+Include the exact `,kbn-stack --detach` command for each missing worktree for the user to run. Never probe arbitrary localhost ports.
 
-Teardown ownership: if this worker started a stack with `,kbn-stack --detach`,
-tear it down with `,kbn-stack --stop` from that worktree once verification is done, and report that it was stopped.
+Teardown ownership: if this worker started a stack with `,kbn-stack --detach`, tear it down with `,kbn-stack --stop` from that worktree once verification is done.
+Report that it was stopped.
 Do not stop a stack the user started interactively (one that was already `ready` in the registry before this worker ran) —
-leave it running and report that it was reused, not started.
-Never use `--stop-all` from a review worker; that is a user-only cleanup.
+leave it running and report that it was reused, not started. Never use `--stop-all` from a review worker; that is a user-only cleanup.
 
 ## Required runtime config
 
-Some Kibana UI/runtime paths are only reachable when the stack runs with extra Kibana settings (most often a dev/feature flag, e.g.
-`xpack.index_management.dev.enableSemanticField=true`).
-A default `,kbn-stack` start does not enable these,
-so a stack started or reused without them will not show the path under review
-and would otherwise cost a reconfigure/restart round-trip mid-verification.
+Some Kibana UI/runtime paths are only reachable when the stack runs with extra Kibana settings.
+Most often this is a dev/feature flag, e.g. `xpack.index_management.dev.enableSemanticField=true`.
+A default `,kbn-stack` start does not enable these, so a stack started or reused without them will not show the path under review.
+That would otherwise cost a reconfigure/restart round-trip mid-verification.
 
 `required_kbn_flags` is a list of `key=value` Kibana settings the change under review needs.
 The controller resolves it once before the first `live-ui-review` launch and includes it in this packet; this worker does not rediscover it.
 When the parent supplies none, treat it as the empty list and start/reuse stacks with default config.
 
-This value flows straight into `,kbn-stack -K`: each `key=value` becomes one `-K key=value` at start time (Rung 0), and
-the registry entry's `kbn_flags` records what a running stack was started with so a reused stack can be checked for parity.
+This value flows straight into `,kbn-stack -K`: each `key=value` becomes one `-K key=value` at start time (Rung 0).
+The registry entry's `kbn_flags` records what a running stack was started with so a reused stack can be checked for parity.
 
 ## Required preflight
 
-- Runtime-start precondition (do this before resolving target URLs): if a required base/head stack has no `ready:true` registry entry,
-  do not treat the missing URL as a readiness failure.
-  Go to Data/setup ladder Rung 0 and start it
-  with `,kbn-stack --detach` plus one `-K key=value` per entry in `required_kbn_flags` (shell-capable harness),
-  then resolve its `kbn_url` and continue preflight.
-  The reachability/readiness checks below assume the stacks are up;
-  the "cannot establish readiness -> `Blocked`" and "blocker invalid unless both target URLs reported" rules apply only after Rung 0,
-  never as a reason to skip starting a startable stack.
+- Runtime-start precondition (do this before resolving target URLs): if a required base/head stack has no `ready:true` registry entry, do not treat the missing URL as a readiness failure.
+  Go to Data/setup ladder Rung 0 and start it with `,kbn-stack --detach` plus one `-K key=value` per entry in `required_kbn_flags` (shell-capable harness), then resolve its `kbn_url` and continue preflight.
+  The reachability/readiness checks below assume the stacks are up; the "cannot establish readiness -> `Blocked`" and "blocker invalid unless both target URLs reported" rules apply only after Rung 0, never as a reason to skip starting a startable stack.
 - Required-config precondition (do this when `required_kbn_flags` is non-empty, after resolving each ready target):
   compare the target's registry `kbn_flags` against `required_kbn_flags`.
-  If a `ready:true` stack you did not start is missing a required flag,
-  it cannot show the path under review and you cannot safely restart a user-owned stack —
-  return `Blocked` per Data/setup ladder Rung 6
-  with the exact `,kbn-stack --stop && ,kbn-stack --detach -K <flag> ...` the user must run, naming the affected target(s).
+  If a `ready:true` stack you did not start is missing a required flag, it cannot show the path under review and you cannot safely restart a user-owned stack — return `Blocked` per Data/setup ladder Rung 6 with the exact `,kbn-stack --stop && ,kbn-stack --detach -K <flag> ...` the user must run, naming the affected target(s).
   A stack this worker just started via Rung 0 already carries the flags, so no parity check is needed for it.
 - Load `~/.agents/skills/kbn-stack/SKILL.md` before starting, stopping, or reusing stack targets.
 - Read `~/.agents/skills/playwriter/SKILL.md` and run `playwriter skill` before checking targets.
@@ -108,8 +90,7 @@ the registry entry's `kbn_flags` records what a running stack was started with s
 - A blocker is invalid unless it reports results for both exact browser target URLs.
 - Do not fall back to localhost unless the user explicitly overrides the targets.
 - Do not use WebFetch, shell `curl`, or other HTTP-only probes as target readiness evidence.
-  They may be supplemental diagnostics, and post-readiness local API calls are allowed for scoped data setup, but
-  Playwriter is the required readiness check.
+  They may be supplemental diagnostics, and post-readiness local API calls are allowed for scoped data setup, but Playwriter is the required readiness check.
 - Playwriter is the required readiness check for the registry-resolved base and PR/head `kbn_url` targets.
 - If Playwriter cannot run because the harness is read-only/Ask-mode, return `Blocked`.
 - If Playwriter fails before navigation with `browserType.connectOverCDP: Timeout`:
@@ -122,8 +103,7 @@ the registry entry's `kbn_flags` records what a running stack was started with s
 ## Applicability
 
 - `Not applicable` can be per-target.
-  If the feature/surface is absent on base because the PR introduces it,
-  mark base comparison `Not applicable` with evidence and continue head-only verification on the PR/head target when the feature exists there.
+  If the feature/surface is absent on base because the PR introduces it, mark base comparison `Not applicable` with evidence and continue head-only verification on the PR/head target when the feature exists there.
 - Return full `Not applicable` only when the candidate is not UI/runtime-relevant or the feature/surface is absent from every relevant target.
 - Do not return `Not applicable` because the target has no data. Missing data is setup work or `Blocked`.
 
@@ -131,12 +111,9 @@ the registry entry's `kbn_flags` records what a running stack was started with s
 
 Rung 0 — ensure the stack is running with the required config (runtime-start, before any data rung):
 if the registry has no `ready:true` entry for a required base/head worktree key, the stack is missing, not the data.
-When the harness allows shell side effects, start it yourself
-with `,kbn-stack --detach` plus one `-K key=value` for each entry in `required_kbn_flags` from that worktree,
-wait until the registry entry reports `ready: true`, then continue to preflight.
+When the harness allows shell side effects, start it yourself with `,kbn-stack --detach` plus one `-K key=value` for each entry in `required_kbn_flags` from that worktree, wait until the registry entry reports `ready: true`, then continue to preflight.
 Starting with the required flags here is what avoids a reconfigure/restart round-trip later.
-Only in a read-only/Ask-mode harness (or if `,kbn-stack --detach` fails) return `Blocked`
-with the exact `,kbn-stack --detach -K <flag> ...` command (including every required flag) for each missing worktree for the user to run.
+Only in a read-only/Ask-mode harness (or if `,kbn-stack --detach` fails) return `Blocked` with the exact `,kbn-stack --detach -K <flag> ...` command (including every required flag) for each missing worktree for the user to run.
 Honor the serverless single-instance constraint (`"exclusive": true`) and the teardown ownership rule under Runtime targets.
 
 The rungs below apply only once both required stacks report `ready:true`. If the relevant UI exists but required data is absent:
@@ -146,27 +123,24 @@ The rungs below apply only once both required stacks report `ready:true`. If the
 2. Inspect changed tests, fixtures, mocks, story/test helpers, and local route/data mocks to infer the focused data shape.
    Use mocks here to learn the data shape, not as the first verification substrate.
 3. Use existing seeded/demo data when it already exercises the path.
-4. Create focused isolated local/dev runtime data through Playwriter/browser actions, the app's real local APIs, or
-   the registry-resolved Elasticsearch endpoints:
+4. Create focused isolated local/dev runtime data through one of the allowed paths:
+   Playwriter/browser actions, the app's real local APIs, or the registry-resolved Elasticsearch endpoints:
    - base: local Kibana APIs or the base worktree's `es_url` from the registry
    - PR/head: local Kibana APIs or the PR/head worktree's `es_url` from the registry
    - use direct Elasticsearch indexing only when that is how the UI can faithfully see the state
    - use temporary test-only identifiers that are easy to find and clean up
-5. If direct local Kibana/Elasticsearch setup fails because of auth, headers, API shape, or transport issues,
-   use Kibana Dev Tools Console on the matching verified target.
+5. If direct local Kibana/Elasticsearch setup fails because of auth, headers, API shape, or transport issues, use Kibana Dev Tools Console.
+   Use it on the matching verified target.
    Load `~/.agents/skills/kibana-console-monaco/SKILL.md` when automating Console editor interactions.
-6. If faithful setup requires reconfiguring
-   or restarting an already-running ES/Kibana instance in a way this worker cannot safely apply (this is not Rung 0,
-   which starts a missing stack via `,kbn-stack --detach`), do not work around it with browser mocks.
-   Return `Blocked` with:
+6. If faithful setup requires reconfiguring or restarting an already-running ES/Kibana instance in a way this worker cannot safely apply, do not work around it with browser mocks.
+   This is not Rung 0, which starts a missing stack via `,kbn-stack --detach`. Return `Blocked` with:
    - affected target(s): base, PR/head, or both
    - exact runtime prerequisite and the evidence that it is required
    - user-action instructions: setting, environment variable, config snippet, command, or dev-server flag when known
    - reload/restart requirement for Kibana/Elasticsearch
    - resume criteria: what the next live-UI run should verify before data ingestion continues
-7. Use browser-side route/network mocks, Playwriter-owned in-memory state, or
-   page-level mocks only as a last resort when faithful local/dev runtime setup is unsafe, unavailable, or
-   cannot represent the needed state, and no runtime environment prerequisite would unlock faithful setup.
+7. Use browser-side route/network mocks, Playwriter-owned in-memory state, or page-level mocks only as a last resort.
+   This applies when faithful local/dev runtime setup is unsafe, unavailable, or cannot represent the needed state, and no runtime environment prerequisite would unlock faithful setup.
    Mark this evidence as lower fidelity and explain why earlier setup levels were not used or were insufficient.
 8. Clean up seeded data before returning when cleanup is safe.
    If cleanup is not possible or not verified, report the exact leftover objects and why.
@@ -176,12 +150,9 @@ The rungs below apply only once both required stacks report `ready:true`. If the
 - Verification only: no repo edits, GitHub mutations, git writes, commits, pushes, or decisions.
 - Never use ApplyPatch or file-editing tools.
 - Never write files except Playwriter artifacts under `/tmp`, including focused screenshots.
-- Mutating local/dev runtime data via Playwriter/browser actions, local Kibana APIs, Dev Tools Console, or
-  local Elasticsearch API calls is allowed for verification after target readiness/identity is established.
-- Do not mutate production, shared cloud, GitHub, git, repo files, committed files, labels, reviews, comments, branches, or
-  user-visible external state.
-- Runtime data mutations must be local/dev-only, focused, named in the evidence, tied to the exact target/Elasticsearch endpoint used,
-  and cleaned up or reported.
+- Mutating local/dev runtime data via Playwriter/browser actions, local Kibana APIs, Dev Tools Console, or local Elasticsearch API calls is allowed for verification after target readiness/identity is established.
+- Do not mutate production, shared cloud, GitHub, git, repo files, committed files, labels, reviews, comments, branches, or user-visible external state.
+- Runtime data mutations must be local/dev-only, focused, named in the evidence, tied to the exact target/Elasticsearch endpoint used, and cleaned up or reported.
 - Do not apply ES/Kibana runtime environment changes or restart services from this worker.
   Surface them as `Blocked` instructions for the user to apply, then continue in a later run after reload.
 - If target identity is ambiguous or appears non-local/non-dev, return `Blocked` instead of mutating.
@@ -198,13 +169,11 @@ The rungs below apply only once both required stacks report `ready:true`. If the
   - linked candidate/finding
   - suggested manual review comment placement
   - fidelity note for mocks or partial setup
-- The screenshot handoff is for the controller/user only: no image uploads, local paths in GitHub review comments or bodies, or
-  extra comments solely for image paths.
+- The screenshot handoff is for the controller/user only: no image uploads, local paths in GitHub review comments or bodies, or extra comments solely for image paths.
 
 ## Live feedback overlay
 
-When the user wants to point at specific real Kibana UI elements,
-use `,artifact live` after Playwriter has verified the registry-resolved local/dev `kbn_url`.
+When the user wants to point at specific real Kibana UI elements, use `,artifact live` after Playwriter has verified the registry-resolved local/dev `kbn_url`.
 
 - Load and follow `~/.agents/skills/artifact/SKILL.md`.
 - Use `,artifact live script <name>` and inject the returned JavaScript into the verified Playwriter page with `page.evaluate`.
@@ -223,16 +192,12 @@ Reject and rerun any `live-ui-review` result for this overlay that:
 - skips Playwriter target checks
 - claims targets are unavailable without showing the exact target/preflight evidence above
 - omits the selected `target_packet` / overlay source
-- uses browser/route/network mocks for a data-dependent UI finding without first attempting
-  or explicitly ruling out faithful local/dev data setup through existing data, local Kibana/Elasticsearch APIs, or Kibana Dev Tools Console
+- uses browser/route/network mocks for a data-dependent UI finding without first attempting or explicitly ruling out faithful local/dev data setup through existing data, local Kibana/Elasticsearch APIs, or Kibana Dev Tools Console
 - uses browser/route/network mocks when faithful verification is blocked by a required ES/Kibana runtime environment change;
   that must be returned as `Blocked` with setup instructions instead
-- returns `Blocked` citing a missing/un-started `,kbn-stack` (no `ready:true` registry entry) in a shell-capable harness,
-  instead of starting it with `,kbn-stack --detach` and continuing (Rung 0); rerun after the stack is started
+- returns `Blocked` citing a missing/un-started `,kbn-stack` (no `ready:true` registry entry) in a shell-capable harness, instead of starting it with `,kbn-stack --detach` and continuing (Rung 0); rerun after the stack is started
 - lists screenshot artifacts without local paths, descriptions, target URL/branch, or linked candidate/finding placement
-- omits applicability, exact URLs checked, Playwriter preflight status, readiness result for each target, branch/runtime evidence,
-  comparison evidence for each checked candidate, UI evidence artifact manifest or `none`, page cleanup/owned-page URLs, and
-  blockers/uncertainty
+- omits applicability, exact URLs checked, Playwriter preflight status, readiness result for each target, branch/runtime evidence, comparison evidence for each checked candidate, UI evidence artifact manifest or `none`, page cleanup/owned-page URLs, and blockers/uncertainty
 
 Do not reject or rerun a result that reports a valid Playwriter harness blocker:
 

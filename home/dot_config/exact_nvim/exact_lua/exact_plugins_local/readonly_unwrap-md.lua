@@ -8,6 +8,6 @@ return {
 
     vim.api.nvim_create_user_command("UnwrapMd", function()
       unwrap.unwrap()
-    end, { desc = "Unwrap hard-wrapped markdown lines" })
+    end, { desc = "Normalize markdown prose wrapping" })
   end,
 }

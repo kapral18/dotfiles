@@ -6,12 +6,10 @@ disable-model-invocation: true
 
 # PR presentation (scrollytelling HTML)
 
-Turn a PR or a local diff into one **self-contained HTML page** the reviewer can scroll to understand the change _before_ opening the diff — at lower cognitive cost.
-The page is a **review-readiness map**, not a review: concepts introduced by the PR are explained explicitly,
-the system layers and change topology are mapped, load-bearing lines are indexed, risk areas are named without judging them, and
-the final handoff tells the reviewer how to open GitHub with confidence.
-Vanilla HTML/CSS/JS, no build, no CDN.
-Then open it in the browser.
+Turn a PR or a local diff into one **self-contained HTML page** the reviewer can scroll to understand the change _before_ opening the diff —
+at lower cognitive cost. The page is a **review-readiness map**, not a review.
+It explicitly explains PR-introduced concepts, maps system layers and change topology, indexes load-bearing lines, and names risk areas without judging them.
+The final handoff tells the reviewer how to open GitHub with confidence. Vanilla HTML/CSS/JS, no build, no CDN. Then open it in the browser.
 
 This is not a code-review skill; it does not modify the repo under review.
 
@@ -21,9 +19,8 @@ Deployed alongside this file:
 
 - `~/.agents/skills/present-pr/references/template.html` — the **proven** scaffold.
   Copy it; fill the placeholder tokens; never rewrite its CSS/JS.
-- `~/.agents/skills/present-pr/references/authoring.md` — the design laws (review-readiness map, introduced-concepts primer,
-  5-act spine, fixed concept/notes sidebars, beat-to-beat continuity, one-medium-per-beat dedup + show-the-load-bearing-line,
-  role classification, image prompting, rail rules).
+- `~/.agents/skills/present-pr/references/authoring.md` — the design laws.
+  It covers the review-readiness map, introduced-concepts primer, 5-act spine, fixed concept/notes sidebars, beat-to-beat continuity, one-medium-per-beat dedup, show-the-load-bearing-line, role classification, image prompting, and rail rules.
   Follow it; it is the difference between signal and a wall of text.
 
 Read both fully before writing any HTML.
@@ -44,15 +41,13 @@ Repo/org-specific overlays:
 
 - A domain overlay is a repo/org-specific skill selected from the verified target repo/org, not guessed from wording.
   It may add safe handling for repo-specific CI/build metadata.
-- Current concrete overlay: for Elastic Buildkite/CI links, load `~/.agents/skills/elastic-domain/SKILL.md`, then
-  use the `buildkite` skill (`bk` CLI).
+- Current concrete overlay: for Elastic Buildkite/CI links, load `~/.agents/skills/elastic-domain/SKILL.md`, then use the `buildkite` skill (`bk` CLI).
 
 ## Workflow
 
 ### 0. Fast path and token budget
 
-- If `/tmp/specs/<pwd>/` or `/tmp/present-pr/<repo>-<pr-or-branch>/` already contains evidence for the same PR/head SHA,
-  reuse it after verifying the head SHA still matches.
+- If `/tmp/specs/<pwd>/` or `/tmp/present-pr/<repo>-<pr-or-branch>/` already contains evidence for the same PR/head SHA, reuse it after verifying the head SHA still matches.
   Refresh only PR metadata/comments that may have changed.
 - Default diagram budget: **one generated image** for the Act I goal-level contrast.
   Add a second only when the preflight proves it carries a distinct flow/state idea.
@@ -65,20 +60,16 @@ Repo/org-specific overlays:
 
 ### 1. Gather the change (evidence first)
 
-- PR given: `gh pr view <n> --json title,body,files,baseRefName,headRefName,closingIssuesReferences,comments,reviews`
-  and `gh pr diff <n>` (or for the current branch, find the base with `git merge-base origin/<base> HEAD`, then `git diff <base>...HEAD`).
-- When a PR is given, investigate it exhaustively before fixing the goal/thesis — the real "why" usually lives in the discussion,
-  not the description.
-  Read everything, all the way down:
+- PR given: `gh pr view <n> --json title,body,files,baseRefName,headRefName,closingIssuesReferences,comments,reviews` and `gh pr diff <n>` (or for the current branch, find the base with `git merge-base origin/<base> HEAD`, then `git diff <base>...HEAD`).
+- When a PR is given, investigate it exhaustively before fixing the goal/thesis —
+  the real "why" usually lives in the discussion, not the description. Read everything, all the way down:
   - the full PR body and every conversation comment (`gh pr view <n> --comments`),
   - every review and inline review-thread comment (`gh api --paginate repos/OWNER/REPO/pulls/<n>/reviews` and `.../pulls/<n>/comments`),
-  - every linked/closing issue and all of its comments (`gh issue view <m> --comments`), and
-    any PR/issue referenced transitively in the body, comments, or reviews — recurse until no new reference adds context.
+  - every linked/closing issue and all of its comments (`gh issue view <m> --comments`), and any PR/issue referenced transitively in the body, comments, or reviews — recurse until no new reference adds context.
   - For repo-specific CI/build links, do not fetch directly unless the verified overlay says it is safe.
     For Elastic Buildkite, load `elastic-domain`, then use the `buildkite` skill (`bk` CLI).
 - Read the **actual** diff hunks for the files you will feature — paraphrased code is not allowed in beats.
-- If you need base-branch context (existing behavior, conventions, related call sites) and the repo is indexed,
-  use the `semantic-code-search` skill as _supporting_ context only — validate against the local diff.
+- If you need base-branch context (existing behavior, conventions, related call sites) and the repo is indexed, use the `semantic-code-search` skill as _supporting_ context only — validate against the local diff.
 
 ### 2. Find the goal, readiness map, introduced concepts, and classify every file
 
@@ -93,11 +84,11 @@ Per `authoring.md`:
   - invariants/non-changes: what the PR intentionally preserves,
   - risk-attention map: areas to inspect later in GitHub, phrased as "check this" not "this is wrong",
   - GitHub handoff order: primary hunks first, guardrails second, mechanical files last.
-- Build an **introduced concepts inventory** before writing beats: each business/domain concept, the layer it belongs to,
-  the source anchors that introduced it, what a reviewer must understand first, and which right-sidebar note supports it.
+- Build an **introduced concepts inventory** before writing beats.
+  Include each business/domain concept, the layer it belongs to, the source anchors that introduced it, what a reviewer must understand first, and which right-sidebar note supports it.
   If a PR introduces no new domain concept, write a single "no new concepts" entry explaining that the change is mechanical/plumbing.
-- Explain business code through the **what/how/why triad**: what the domain concept means, how the PR models or changes it, and
-  why that matters to product/user/system behavior.
+- Explain business code through the **what/how/why triad**.
+  Cover what the domain concept means, how the PR models or changes it, and why that matters to product/user/system behavior.
   Keep it accurate, source-anchored, and cognitively accessible without dumbing down symbol/API names.
 - Classify each changed file/hunk: PRIMARY (≤3) | SUPPORTING | GUARDRAIL | CLEANUP.
 - Only PRIMARY (and key SUPPORTING) earn Act II beats; the rest become Act IV ledger rows.
@@ -109,10 +100,8 @@ Per `authoring.md`:
 - Before touching the HTML, write a compact **authoring preflight** in your notes:
   - goal/thesis + target reviewer,
   - evidence cache status (new vs reused, PR/head SHA, refreshed sources),
-  - review-readiness map: mental model, layered explanation, topology groups, load-bearing line index, invariants/non-changes,
-    risk-attention map, and GitHub handoff order,
-  - introduced concepts inventory: concept area/layer/name, what/how/why, source anchors, left-sidebar label, right-sidebar note, and
-    whether a deterministic HTML card, diff, image, or animation teaches it best,
+  - review-readiness map: mental model, layered explanation, topology groups, load-bearing line index, invariants/non-changes, risk-attention map, and GitHub handoff order,
+  - introduced concepts inventory: concept area/layer/name, what/how/why, source anchors, left-sidebar label, right-sidebar note, and best teaching medium,
   - every changed file/hunk with role, source anchor, and why it matters,
   - Act II beats in order, each with its bridge from the previous beat,
   - primary medium per beat (`diagram` or `diff`) and the exact source line/image each beat needs,
@@ -121,8 +110,8 @@ Per `authoring.md`:
   the clause that says why this beat follows the last.
   Read the bridges in order with visuals hidden — they must form one argument with no teleports.
   If they don't, reorder or rewrite before generating anything.
-- For each beat decide: **diagram-primary** or **diff-primary** (never both for the same idea),
-  choosing the medium by the idea's nature — not to rotate layouts.
+- For each beat decide: **diagram-primary** or **diff-primary** (never both for the same idea).
+  Choose the medium by the idea's nature, not to rotate layouts.
   If the insight is a specific line/option, the beat **must show that real diff line**; a diagram may augment but never replace it.
   Decide which 0–2 diagrams are worth generating; default to 1.
 
@@ -130,8 +119,7 @@ Per `authoring.md`:
 
 - Create the output dir, `cd` into it.
 - Use the `nano-banana` skill.
-  House style every prompt: dark `#0b1020` background, thin teal/blue/amber line art, labeled, no people, no title banner,
-  each label spelled exactly once.
+  House style every prompt: dark `#0b1020` background, thin teal/blue/amber line art, labeled, no people, no title banner, each label spelled exactly once.
   Write to `nb-<name>.png` in the output dir.
 - **View each generated image** and regenerate any with text stutter/artifacts, especially the Act I hero diagram.
 - If an image has repeated/misspelled labels after one regeneration, delete it and replace that idea with deterministic HTML/diff content.
@@ -140,26 +128,22 @@ Per `authoring.md`:
 ### 5. Fill the template
 
 - Copy `template.html` to `<output>/<slug>-presentation.html`.
-- First resize the content blocks to match the preflight: remove unused concept cards, sidebar notes,
-  sample beats/cards/rows and duplicate only the blocks the story needs.
+- First resize the content blocks to match the preflight: remove unused concept cards, sidebar notes, sample beats/cards/rows and duplicate only the blocks the story needs.
 - Fill the concept primer, review-readiness map, and both sidebars before Act I/II beats.
   The left sidebar must name each introduced concept by concept area/layer and include the readiness map plus Act I-IV story links;
-  the main concept cards must explain what/how/why; the right sidebar must hold clarifying notes, caveats, examples, or
-  reviewer shortcuts for the active concept or story section that would otherwise clutter the main story.
+  the main concept cards must explain what/how/why; the right sidebar must hold clarifying notes, caveats, examples, or reviewer shortcuts for the active concept or story section that would otherwise clutter the main story.
 - Keep concept cards in a vertical anchor stack, not a multi-column grid.
   Every concept sidebar block must visibly navigate to its own main-card position;
   two concepts sharing the same row makes the second link feel like a no-op.
-- Fill the readiness sections as structured artifacts, not prose dumps: layered map rows, topology rows, load-bearing-line rows,
-  risk-attention cards, and an ordered GitHub handoff.
-- Replace every placeholder token; use the beat blocks already present as patterns (add/remove change beats, invariant cards,
-  ledger rows as needed).
+- Fill the readiness sections as structured artifacts, not prose dumps: layered map rows, topology rows, load-bearing-line rows, risk-attention cards, and an ordered GitHub handoff.
+- Replace every placeholder token; use the beat blocks already present as patterns (add/remove change beats, invariant cards, ledger rows as needed).
 - Reference images by **relative filename** only (same dir). Never base64-inline.
 - HTML-escape `<`, `>`, `&` inside all code beats.
 - Prefer template-token replacement or targeted block edits over regenerating a whole HTML body from scratch.
   Whole-body generation tends to introduce quote escaping and dropped-block cleanup loops.
 - Run cheap static checks before browser verification:
-  - placeholder check must target real template tokens only, e.g.
-    `\{\{[A-Z0-9_]+\}\}`; do **not** grep for generic braces because the template contains normal CSS/JS braces.
+  - placeholder check must target real template tokens only, e.g. `\{\{[A-Z0-9_]+\}\}`;
+    do **not** grep for generic braces because the template contains normal CSS/JS braces.
   - every changed file/group appears exactly once in the ledger,
   - every introduced concept appears once in the concept primer and once in the left sidebar,
   - every readiness section appears once and its links/anchors are reachable,
@@ -179,18 +163,13 @@ A broken render is the default failure mode (unescaped code, a bad token, a miss
 Before opening for the user, verify with the `playwriter` skill:
 
 - Serve the dir over HTTP and load it — `file://` is blocked in playwriter.
-  Start the server with deterministic cleanup, for example:
-  `python3 -m http.server "$PORT" --bind 127.0.0.1 & echo $! > "$output/.server.pid"`.
+  Start the server with deterministic cleanup, for example: `python3 -m http.server "$PORT" --bind 127.0.0.1 & echo $! > "$output/.server.pid"`.
 - Use compact Playwriter assertions first.
-  Print terse JSON for: page errors, console errors, failed local responses, image load status, placeholder presence, reveal counts,
-  concept/sidebar geometry, rail fallback visibility, and concept-note state.
+  Print terse JSON for: page errors, console errors, failed local responses, image load status, placeholder presence, reveal counts, concept/sidebar geometry, rail fallback visibility, and concept-note state.
   Use snapshots only on failure or with a tight `search` filter.
-- Assert **zero** `pageerror`/`console.error`, all `nb-*.png` resolve (no 404s),
-  the left concept sidebar and right notes sidebar do not overlap the main column on wide desktop widths,
-  the act-rail fallback remains usable when sidebars collapse, concept-note interactions work, and reveal animations fire.
+- Assert **zero** `pageerror`/`console.error`, all `nb-*.png` resolve (no 404s), the left concept sidebar and right notes sidebar do not overlap the main column on wide desktop widths, the act-rail fallback remains usable when sidebars collapse, concept-note interactions work, and reveal animations fire.
   Fix and re-verify until clean.
-- Stop the exact server PID or exact listening port after verification;
-  do not use broad process-kill commands or large session listings to find it.
+- Stop the exact server PID or exact listening port after verification; do not use broad process-kill commands or large session listings to find it.
 
 ### 7. Open for the user
 
@@ -199,16 +178,13 @@ Before opening for the user, verify with the `playwriter` skill:
 ## Anti-patterns
 
 - Walking the file top-to-bottom instead of telling the goal's story.
-- Letting introduced domain/business concepts appear only inside diff annotations
-  instead of giving them a separate concept primer + sidebar entry.
+- Letting introduced domain/business concepts appear only inside diff annotations instead of giving them a separate concept primer + sidebar entry.
 - Explaining business code only as symbol mechanics without what/how/why and reviewer-visible behavior.
 - Making the page feel like a review verdict. Risk items are "inspect this later", not findings.
 - Ending without a GitHub handoff order; the reviewer should know exactly what to open first.
 - Listing files without topology: reviewers need responsibility groups and dependencies, not just paths.
-- A **teleporting beat** — introducing an idea with no bridge from the previous beat or the goal,
-  so the reader can't tell how the narrator got there.
-- **Replacing a load-bearing code line with only a diagram**, so the line that is the point (a header, a flag,
-  an option) is named but never shown.
+- A **teleporting beat** — introducing an idea with no bridge from the previous beat or the goal, so the reader can't tell how the narrator got there.
+- **Replacing a load-bearing code line with only a diagram**, so the line that is the point (a header, a flag, an option) is named but never shown.
 - Rotating mediums (diff → image → split) for variety instead of choosing each by the idea — it reads as inconsistency, not rhythm.
 - Saying the same thing in prose **and** the image **and** a card (triplication).
 - A diagram per file, or diagrams with stuttered/garbled labels.

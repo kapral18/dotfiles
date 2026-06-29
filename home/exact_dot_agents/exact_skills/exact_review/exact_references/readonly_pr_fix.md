@@ -3,10 +3,8 @@
 Precondition:
 
 - You already loaded `~/.agents/skills/review/SKILL.md`.
-- Follow `~/.agents/skills/review/references/judging_core.md`
-  and `~/.agents/skills/review/references/shared_rules.md` (loaded once by the router; do not re-load).
-- Follow `~/.agents/skills/review/references/pr_common.md` for PR setup, media evidence, comment placement, anchoring, deep links, and
-  local verification.
+- Follow `~/.agents/skills/review/references/judging_core.md` and `~/.agents/skills/review/references/shared_rules.md` (loaded once by the router; do not re-load).
+- Follow `~/.agents/skills/review/references/pr_common.md` for PR setup, media evidence, comment placement, anchoring, deep links, and local verification.
 
 Use when:
 
@@ -16,8 +14,7 @@ Use when:
 
 Out of scope:
 
-- If the user wants to review a PR (draft new review comments, not address existing ones),
-  use `~/.agents/skills/review/references/pr_review.md` instead.
+- If the user wants to review a PR (draft new review comments, not address existing ones), use `~/.agents/skills/review/references/pr_review.md` instead.
 
 ## Authorship Note
 
@@ -114,8 +111,7 @@ Iteration contract:
    - ask exactly one blocking question (include the default assumption)
 
 7. Scope guardrail (reduce review noise):
-   - If the reviewer request is a "clarity" ask (add comment, rename, tiny refactor),
-     prefer the smallest localized change that satisfies the request.
+   - If the reviewer request is a "clarity" ask (add comment, rename, tiny refactor), prefer the smallest localized change that satisfies the request.
    - If the reviewer request is out-of-scope cleanup, you may treat it as a "graceful gesture" only when:
      - it is cheap
      - it does not change runtime behavior
@@ -131,10 +127,8 @@ Iteration contract:
    - If checks fail or types get worse, back out or adjust and repeat.
 
 9. Draft the reply for that thread (and only that thread).
-   - Before drafting, compare the reply/fix note with any current-account pending review, submitted review comment, or
-     prior reply discovered by Existing Pending Review Reconciliation.
-   - If the same point is already pending, merge the reply intent into the pending-review replacement plan
-     instead of creating a competing comment.
+   - Before drafting, compare the reply/fix note with any current-account pending review, submitted review comment, or prior reply discovered by Existing Pending Review Reconciliation.
+   - If the same point is already pending, merge the reply intent into the pending-review replacement plan instead of creating a competing comment.
    - If prior current-account content is stale or contradicted by current head, draft one correction/replacement path;
      do not publish both versions.
    - If the thread asked for code comments/documentation:
@@ -143,8 +137,7 @@ Iteration contract:
      - avoid long explanations in the thread
      - use full clickable GitHub URLs for commits
      - never use bare hashes
-   - If your fix ended up elsewhere (different file/thread):
-     reply with a clickable link to the canonical commit/thread rather than re-explaining.
+   - If your fix ended up elsewhere (different file/thread): reply with a clickable link to the canonical commit/thread rather than re-explaining.
 
 ### Reply Style
 
@@ -160,8 +153,7 @@ Review-specific mechanics only:
 
 - Verify the outcome against the current head before replying/resolving (the author's claim is not proof).
 - If the thread asked for a code/doc change you made: reply `Fixed in <full commit URL>` (avoid long explanations in-thread).
-- If a thread is obsolete because later commits superseded the hunk:
-  `Superseded by <commit link>` (optionally one link to the new canonical thread).
+- If a thread is obsolete because later commits superseded the hunk: `Superseded by <commit link>` (optionally one link to the new canonical thread).
 - Resolve/unresolve and any reply to a human author stay gated:
   - draft first
   - show the exact payload + target
@@ -184,8 +176,7 @@ Author-type classification (do first, per thread, verified — not guessed):
 
 - A domain overlay is a repo/org-specific skill selected from the verified target repo/org, not guessed from wording.
   It may supply repo-specific known-bot allowlists.
-- Before classification, verify and load any applicable domain overlay for the target repo.
-  The overlay may supply a known-bot allowlist.
+- Before classification, verify and load any applicable domain overlay for the target repo. The overlay may supply a known-bot allowlist.
   Without a verified overlay, classify bots only from platform evidence such as GitHub `user.type == "Bot"` or a login ending in `[bot]`.
 - `gh api repos/OWNER/REPO/pulls/comments/COMMENT_ID --jq '{login:.user.login, type:.user.type, assoc:.author_association}'`
 - Bot = `user.type == "Bot"` OR login ends with `[bot]` OR login appears in the verified overlay's known-bot allowlist.
@@ -252,8 +243,7 @@ Use the **fix diff** as the subject:
 Do not use the original PR diff as the subject.
 
 - Apply the four dimensions (redundancy, verbosity, semantic + logical duplication, gaps) to that fix diff.
-- Resolve each hygiene finding in the working tree (this is your own PR's code)
-  and re-run quality gates if the post-review fixes touched code.
+- Resolve each hygiene finding in the working tree (this is your own PR's code) and re-run quality gates if the post-review fixes touched code.
 - This is distinct from "verify the outcome against current head" (step 9): that confirms the fix _works_; this confirms the fix is _clean_.
 - If no code was changed this session (reply-only threads), skip this stage.
 

@@ -3,10 +3,8 @@
 Precondition:
 
 - You already loaded `~/.agents/skills/review/SKILL.md`.
-- Follow `~/.agents/skills/review/references/judging_core.md`
-  and `~/.agents/skills/review/references/shared_rules.md` (loaded once by the router; do not re-load).
-- Follow `~/.agents/skills/review/references/pr_common.md` for PR setup, media evidence, comment placement, anchoring, deep links, and
-  local verification.
+- Follow `~/.agents/skills/review/references/judging_core.md` and `~/.agents/skills/review/references/shared_rules.md` (loaded once by the router; do not re-load).
+- Follow `~/.agents/skills/review/references/pr_common.md` for PR setup, media evidence, comment placement, anchoring, deep links, and local verification.
 
 Use when:
 
@@ -23,8 +21,7 @@ Use when:
 
 Out of scope:
 
-- If the user wants to apply requested changes from reviewer feedback (code changes + replies per thread),
-  use `~/.agents/skills/review/references/pr_fix.md` instead.
+- If the user wants to apply requested changes from reviewer feedback (code changes + replies per thread), use `~/.agents/skills/review/references/pr_fix.md` instead.
 
 ## Role-Dependent Behavior
 
@@ -76,10 +73,8 @@ Follow the base-branch context gate in `shared_rules.md`. This is mandatory.
 ## Review Contract
 
 - Build a complete internal findings queue ordered by severity.
-- Before drafting, run the queue through the Deduplication + Truth Filter
-  and Existing Pending Review Reconciliation in `pr_common.md`; only implementation-verified findings that are not covered,
-  not duplicated, and not dropped by the Replacement/Migration Parity Gate remain,
-  and any current-account pending review is merged into one final payload.
+- Before drafting, run the queue through the Deduplication + Truth Filter and Existing Pending Review Reconciliation in `pr_common.md`;
+  only implementation-verified findings that are not covered, not duplicated, and not dropped by the Replacement/Migration Parity Gate remain, and any current-account pending review is merged into one final payload.
 - Draft highest-risk items first.
 
 ## Output Mode
@@ -96,8 +91,7 @@ Return a `Pending review draft` containing:
   - Why it matters (1-2 lines)
   - How to verify (minimal)
   - Proposed fix (smallest change)
-- `pr_necessity_audit` (for other-authored/unknown PRs): classifications and any draft feedback/questions about intent,
-  correctly-open status, need, or overlapping work
+- `pr_necessity_audit` (for other-authored/unknown PRs): classifications and any draft feedback/questions about intent, correctly-open status, need, or overlapping work
 - `summary_comment` (optional): short PR-level comment
 
 ### Iterative (when the user asks for one-at-a-time)
