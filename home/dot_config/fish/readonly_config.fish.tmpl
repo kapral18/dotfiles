@@ -267,6 +267,9 @@ if status --is-interactive
     function copilot --wraps copilot --description "Launch GitHub Copilot CLI through the managed ,copilot wrapper"
         command ,copilot $argv
     end
+    function codex --wraps codex --description "Launch Codex CLI through the managed ,codex wrapper"
+        command ,codex $argv
+    end
     alias vlaude='env CLAUDE_CODE_USE_VERTEX=1 CLOUD_ML_REGION=global ANTHROPIC_VERTEX_PROJECT_ID=(pass google/vertex/project) ANTHROPIC_DEFAULT_OPUS_MODEL=claude-opus-4-7[1m] claude --effort high'
     alias fzfi='git ls-files --cached --others --exclude-standard 2>/dev/null || fd --type f --type l'
     function g --wraps git --description 'git with fsmonitor auto-recovery'

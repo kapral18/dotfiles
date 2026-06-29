@@ -35,8 +35,9 @@ The registry mechanics are generic. The currently declared server set is work-pr
 - `scsi-local` is the local SCSI stdio backend and is excluded from Copilot once the hosted server is omitted there.
 - `slack` is the Slack MCP server with per-tool OAuth metadata.
 - Copilot cannot run the hosted servers' OAuth flows itself: it hardcodes its OAuth redirect to `http://127.0.0.1:{port}/`, which is not registered for the SCSI Okta app or the public Slack client, and Slack's MCP authorization server offers no dynamic client registration and requires a client secret at the token endpoint (`grant_types = [authorization_code, refresh_token]`, `token_endpoint_auth_methods = [client_secret_post]`). Both `scsi-main` and `slack` therefore give their `copilot` block a `headerAuth` value — a pre-resolved `Authorization: Bearer <token>` — so Copilot rides the rotating token cursor-cli already minted rather than running OAuth (see the Copilot transform below).
+- Codex supports streamable HTTP MCP natively, but its OAuth callback settings are global (`mcp_oauth_callback_port` / `mcp_oauth_callback_url`) while the hosted SCSI and Slack apps need different approved callback registrations. Both `scsi-main` and `slack` therefore give their `codex` block a `bearerTokenEnvVar`; Codex's config names only the env var, and `,codex` fills it with the raw token from `,mcp-token` before launch.
 
-`work_only: true` servers are emitted only when the `isWork` chezmoi variable is set. The personal profile currently emits no declared MCP servers. The work set includes `scsi-main`, `scsi-local`, and `slack`; Copilot gets `scsi-local` as a stdio server and `scsi-main` plus `slack` via bearer headers.
+`work_only: true` servers are emitted only when the `isWork` chezmoi variable is set. The personal profile currently emits no declared MCP servers. The work set includes `scsi-main`, `scsi-local`, and `slack`; Copilot gets `scsi-local` as a stdio server and `scsi-main` plus `slack` via bearer headers, while Codex gets all three with hosted servers backed by bearer-token env vars.
 
 ## Generation pipeline
 
@@ -90,6 +91,12 @@ Copilot's wired servers:
 
 The built-in `github-mcp-server` is provided by Copilot and is not emitted.
 
+Codex's wired servers:
+
+- `slack` and `scsi-main` are emitted by [`scripts/inject_mcp_into_codex_toml.py`](../../../scripts/inject_mcp_into_codex_toml.py) as streamable HTTP TOML blocks with `url` and `bearer_token_env_var`. No bearer value is written to `~/.codex/config.toml`.
+- `,codex` reads those env-var declarations from `~/.codex/config.toml`, runs `,mcp-token <server> --login --quiet` for each configured hosted server, exports the raw token into the configured env var, and then execs the real Codex binary. If refresh fails or no token is returned, it exits before launch so Codex does not start with known-missing MCP auth.
+- `scsi-local` is emitted as a normal stdio server in `~/.codex/config.toml`.
+
 LetsFG is intentionally not exposed through the shared MCP registry because its tools are irrelevant to most sessions; agents load its skill on demand instead. See [Tool configs](tool-configs/index.md) for details.
 
 ## Add or change a server
@@ -104,6 +111,7 @@ Verification:
 chezmoi apply
 python3 -m json.tool < ~/.cursor/mcp.json
 python3 -c "import json; print(list(json.load(open('$HOME/.claude.json')).get('mcpServers', {})))"
+codex mcp list     # via shell function -> ,codex, so bearer env vars are populated
 copilot mcp list   # lists the loaded Copilot servers and their transport types
 ```
 

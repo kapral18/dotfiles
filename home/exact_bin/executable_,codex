@@ -1,49 +1,12 @@
 #!/usr/bin/env bash
-# Description: Run Codex, injecting local llama.cpp model metadata when needed.
+# Description: Run Codex with managed MCP bearer-token env and local model metadata.
 
 set -euo pipefail
 
-real_codex="${CODEX_REAL_BIN:-/opt/homebrew/bin/codex}"
-llama_cpp_catalog="${CODEX_LLAMA_CPP_MODEL_CATALOG:-$HOME/.codex/llama-cpp-model-catalog.json}"
-llama_cpp_models=("local" "local-max")
-
-is_llama_cpp_model() {
-  local candidate="$1"
-  for model in "${llama_cpp_models[@]}"; do
-    [[ "$candidate" == "$model" ]] && return 0
-  done
-  return 1
-}
-
-if [[ ! -x "$real_codex" ]]; then
-  echo "Error: real Codex binary not found at $real_codex." >&2
+lib="${CODEX_WRAPPER_LIB:-$HOME/lib/,codex/main.py}"
+if [[ ! -f "$lib" ]]; then
+  echo "Error: ,codex library not found at $lib. Run chezmoi apply --no-tty ~/lib/,codex/main.py." >&2
   exit 127
 fi
 
-uses_llama_cpp_model=false
-previous_arg=""
-for arg in "$@"; do
-  if [[ "$previous_arg" == "-m" || "$previous_arg" == "--model" ]]; then
-    if is_llama_cpp_model "$arg"; then
-      uses_llama_cpp_model=true
-      break
-    fi
-  fi
-
-  case "$arg" in
-  --model=*)
-    if is_llama_cpp_model "${arg#--model=}"; then
-      uses_llama_cpp_model=true
-      break
-    fi
-    ;;
-  esac
-
-  previous_arg="$arg"
-done
-
-if [[ "$uses_llama_cpp_model" == true && -f "$llama_cpp_catalog" ]]; then
-  exec "$real_codex" -c "model_catalog_json=\"$llama_cpp_catalog\"" "$@"
-fi
-
-exec "$real_codex" "$@"
+exec python3 "$lib" "$@"

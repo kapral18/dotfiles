@@ -1,12 +1,14 @@
 #:schema https://developers.openai.com/codex/config-schema.json
 
-approval_policy = "never"
-sandbox_mode = "danger-full-access"
+approval_policy = "on-request"
+approvals_reviewer = "auto_review"
+sandbox_mode = "workspace-write"
 web_search = "cached"
 check_for_update_on_startup = true
 personality = "pragmatic"
 model = "gpt-5.5"
 model_reasoning_effort = "xhigh"
+service_tier = "default"
 
 # __MCP_SERVERS__
 
@@ -17,14 +19,3 @@ prevent_idle_sleep = true
 # ai-kb is the sole durable semantic store (see docs/topics/ai-assistants/knowledge-base.md);
 # pin codex's experimental auto-memory off so a default flip can't create a second one.
 memories = false
-
-# Trust state for the chezmoi-managed ~/.codex/hooks.json (session_context +
-# worklog_recorder). Hashes mirror codex's command_hook_hash (canonical-JSON
-# sha256 of the normalized hook identity); baked in here because the merge
-# script regenerates config.toml wholesale, which would otherwise wipe trust
-# granted interactively via /hooks. Recompute if hooks.json changes.
-[hooks.state."/Users/karengrigoryan/.codex/hooks.json:session_start:0:0"]
-trusted_hash = "sha256:3ded873e3403b363f7a8b70bf2bc08fb02f6ccdf04cf5b8212c9d6e784992527"
-
-[hooks.state."/Users/karengrigoryan/.codex/hooks.json:post_tool_use:0:0"]
-trusted_hash = "sha256:e3c3ccb7f425e9a90bb8c8b682a27fe67029fa18d698f59384f8a0dfaaff4db8"

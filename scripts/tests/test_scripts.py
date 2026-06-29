@@ -35,6 +35,7 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures"
 TMUX_PICKERS = REPO / "home/dot_config/exact_tmux/exact_scripts/pickers"
 ARTIFACT_COMMAND = REPO / "home/exact_lib/exact_,artifact/main.py"
 MCP_TOKEN_COMMAND = REPO / "home/exact_lib/exact_,mcp-token/main.py"
+CODEX_COMMAND = REPO / "home/exact_lib/exact_,codex/main.py"
 
 
 def _run(args: list[str], *, stdin: str | None = None) -> str:
@@ -1352,10 +1353,211 @@ class TestInjectMcpIntoCodexToml(unittest.TestCase):
                 str(FIXTURES / "codex_base.toml"),
                 str(FIXTURES / "mcp_servers.yaml"),
                 "false",
+                "codex",
             ]
         )
         expected = (FIXTURES / "golden_codex_personal.toml").read_text()
         assert actual == expected
+
+    def test_preserves_existing_mcp_approval_overrides(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            existing = Path(tmp) / "config.toml"
+            existing.write_text(
+                "\n".join(
+                    [
+                        "[mcp_servers.public-tool]",
+                        'default_tools_approval_mode = "prompt"',
+                        "",
+                        "[mcp_servers.http-tool]",
+                        'default_tools_approval_mode = "prompt"',
+                        "",
+                        "[mcp_servers.public-tool.tools.search]",
+                        'approval_mode = "approve"',
+                        "",
+                        "[mcp_servers.http-tool.tools.list_indices]",
+                        'approval_mode = "approve"',
+                        "",
+                        "[mcp_servers.work-tool.tools.hidden]",
+                        'approval_mode = "approve"',
+                        "",
+                        "[mcp_servers.header-tool.tools.invalid]",
+                        'approval_mode = "bogus"',
+                        "",
+                    ]
+                )
+            )
+
+            actual = _run(
+                [
+                    "inject_mcp_into_codex_toml.py",
+                    str(FIXTURES / "codex_base.toml"),
+                    str(FIXTURES / "mcp_servers.yaml"),
+                    "false",
+                    "codex",
+                    str(existing),
+                ]
+            )
+
+        assert 'default_tools_approval_mode = "approve"' in actual
+        assert "[mcp_servers.http-tool]\nurl = " in actual
+        assert 'default_tools_approval_mode = "prompt"' in actual
+        assert "[mcp_servers.public-tool.tools.search]" in actual
+        assert "[mcp_servers.http-tool.tools.list_indices]" in actual
+        assert 'approval_mode = "approve"' in actual
+        assert "work-tool.tools.hidden" not in actual
+        assert "header-tool.tools.invalid" not in actual
+
+    def test_preserves_existing_hook_trust_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            existing = Path(tmp) / "config.toml"
+            existing.write_text(
+                "\n".join(
+                    [
+                        '[hooks.state."/tmp/hooks.json:session_start:0:0"]',
+                        'trusted_hash = "sha256:abc123"',
+                        "",
+                        '[hooks.state."/tmp/hooks.json:post_tool_use:0:0"]',
+                        'trusted_hash = "sha256:def456"',
+                        "",
+                    ]
+                )
+            )
+
+            actual = _run(
+                [
+                    "inject_mcp_into_codex_toml.py",
+                    str(FIXTURES / "codex_base.toml"),
+                    str(FIXTURES / "mcp_servers.yaml"),
+                    "false",
+                    "codex",
+                    str(existing),
+                ]
+            )
+
+        assert '[hooks.state."/tmp/hooks.json:session_start:0:0"]' in actual
+        assert 'trusted_hash = "sha256:abc123"' in actual
+        assert '[hooks.state."/tmp/hooks.json:post_tool_use:0:0"]' in actual
+        assert 'trusted_hash = "sha256:def456"' in actual
+
+
+class TestCodexWrapper(unittest.TestCase):
+    """WHEN launching Codex through the managed wrapper."""
+
+    def _run_wrapper(
+        self,
+        *,
+        token_helper_exit: int = 0,
+        token: str = "fresh-token",
+        args: list[str] | None = None,
+        config_lines: list[str] | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            bindir = root / "bin"
+            codex_home = home / ".codex"
+            codex_home.mkdir(parents=True)
+            bindir.mkdir()
+            (codex_home / "config.toml").write_text(
+                "\n".join(
+                    config_lines
+                    or [
+                        "[mcp_servers.slack]",
+                        'url = "https://mcp.slack.com/mcp"',
+                        'bearer_token_env_var = "CODEX_MCP_TOKEN_SLACK"',
+                        "",
+                    ]
+                )
+            )
+            (bindir / ",mcp-token").write_text(
+                "#!/usr/bin/env bash\n"
+                'printf \'%s\\n\' "$*" >> "$MCP_TOKEN_LOG"\n'
+                f"if [[ {token_helper_exit} -ne 0 ]]; then exit {token_helper_exit}; fi\n"
+                f"printf '%s\\n' {shlex.quote(token)}\n"
+            )
+            (bindir / ",mcp-token").chmod(0o755)
+            real_codex = bindir / "codex-real"
+            real_codex.write_text(
+                "#!/usr/bin/env bash\n"
+                "echo REAL_CODEX_STARTED\n"
+                "echo TOKEN=${CODEX_MCP_TOKEN_SLACK-}\n"
+                "printf 'ARGS=%s\\n' \"$*\"\n"
+            )
+            real_codex.chmod(0o755)
+
+            return subprocess.run(
+                [sys.executable, str(CODEX_COMMAND), *(args or [])],
+                capture_output=True,
+                text=True,
+                cwd=str(REPO),
+                env={
+                    **os.environ,
+                    "HOME": str(home),
+                    "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
+                    "CODEX_REAL_BIN": str(real_codex),
+                    "MCP_TOKEN_LOG": str(root / "mcp-token.log"),
+                },
+            )
+
+    def test_refreshes_mcp_token_env_before_launch(self):
+        result = self._run_wrapper()
+
+        assert result.returncode == 0
+        assert "REAL_CODEX_STARTED" in result.stdout
+        assert "TOKEN=fresh-token" in result.stdout
+
+    def test_token_refresh_failure_blocks_launch(self):
+        result = self._run_wrapper(token_helper_exit=1)
+
+        assert result.returncode == 1
+        assert "REAL_CODEX_STARTED" not in result.stdout
+        assert "could not refresh MCP token(s): slack" in result.stderr
+
+    def test_disabled_mcp_server_does_not_block_launch(self):
+        result = self._run_wrapper(
+            token_helper_exit=1,
+            config_lines=[
+                "[mcp_servers.slack]",
+                "enabled = false",
+                'url = "https://mcp.slack.com/mcp"',
+                'bearer_token_env_var = "CODEX_MCP_TOKEN_SLACK"',
+                "",
+            ],
+        )
+
+        assert result.returncode == 0
+        assert "REAL_CODEX_STARTED" in result.stdout
+        assert "TOKEN=" in result.stdout
+        assert "could not refresh MCP token(s): slack" not in result.stderr
+
+    def test_local_model_injects_catalog_metadata(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            bindir = root / "bin"
+            codex_home = home / ".codex"
+            catalog = codex_home / "llama-cpp-model-catalog.json"
+            codex_home.mkdir(parents=True)
+            bindir.mkdir()
+            catalog.write_text("{}\n")
+            real_codex = bindir / "codex-real"
+            real_codex.write_text("#!/usr/bin/env bash\nprintf 'ARGS=%s\\n' \"$*\"\n")
+            real_codex.chmod(0o755)
+            result = subprocess.run(
+                [sys.executable, str(CODEX_COMMAND), "--model", "local", "exec", "hi"],
+                capture_output=True,
+                text=True,
+                cwd=str(REPO),
+                env={
+                    **os.environ,
+                    "HOME": str(home),
+                    "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
+                    "CODEX_REAL_BIN": str(real_codex),
+                },
+            )
+
+        assert result.returncode == 0
+        assert f'model_catalog_json="{catalog}"' in result.stdout
 
 
 class TestInjectMcpIntoOpencode(unittest.TestCase):

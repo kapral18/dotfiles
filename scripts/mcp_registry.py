@@ -92,6 +92,9 @@ def load_servers(path: str, is_work: bool, tool: str | None = None) -> dict[str,
     list_indent = 0
     in_oauth = False
     oauth_indent = 0
+    in_kv_map = False
+    kv_map_key = ""
+    kv_map_indent = 0
     # oauth_by_tool nesting: level 0 = tool keys, level 1 = props of a tool
     in_oauth_by_tool = False
     obt_indent = 0
@@ -112,6 +115,7 @@ def load_servers(path: str, is_work: bool, tool: str | None = None) -> dict[str,
             in_args = False
             in_list = False
             in_oauth = False
+            in_kv_map = False
             in_oauth_by_tool = False
             obt_tool_name = None
             current = {"name": None, "work_only": False, "command": None, "args": []}
@@ -167,6 +171,14 @@ def load_servers(path: str, is_work: bool, tool: str | None = None) -> dict[str,
             else:
                 in_oauth = False
 
+        if in_kv_map and current is not None:
+            kv = re.match(r"^\s+(\w[\w_]*):\s*(.*)", stripped)
+            if kv and indent >= kv_map_indent:
+                current.setdefault(kv_map_key, {})[kv.group(1)] = parse_scalar(kv.group(2).strip())
+                continue
+            else:
+                in_kv_map = False
+
         kv = re.match(r"^\s+(\w[\w_]*):\s*(.*)", stripped)
         if kv and current is not None:
             key, val = kv.group(1), kv.group(2).strip()
@@ -181,6 +193,11 @@ def load_servers(path: str, is_work: bool, tool: str | None = None) -> dict[str,
             elif key == "oauth" and not val:
                 in_oauth = True
                 oauth_indent = indent + 2
+            elif key == "codex_tool_approval_modes" and not val:
+                in_kv_map = True
+                kv_map_key = key
+                kv_map_indent = indent + 2
+                current.setdefault(key, {})
             elif key == "oauth_by_tool" and not val:
                 in_oauth_by_tool = True
                 obt_indent = indent + 2
@@ -207,7 +224,16 @@ def load_servers(path: str, is_work: bool, tool: str | None = None) -> dict[str,
                 tool_oauth = s["oauth_by_tool"].get(tool)
                 if tool_oauth:
                     spec["oauth"] = {k: _resolve_oauth_value(k, v) for k, v in tool_oauth.items()}
+            if tool == "codex" and "codex_default_tools_approval_mode" in s:
+                spec["codex_default_tools_approval_mode"] = s["codex_default_tools_approval_mode"]
+            if tool == "codex" and "codex_tool_approval_modes" in s:
+                spec["codex_tool_approval_modes"] = s["codex_tool_approval_modes"]
             result[s["name"]] = spec
         else:
-            result[s["name"]] = {"command": s["command"], "args": s["args"]}
+            spec = {"command": s["command"], "args": s["args"]}
+            if tool == "codex" and "codex_default_tools_approval_mode" in s:
+                spec["codex_default_tools_approval_mode"] = s["codex_default_tools_approval_mode"]
+            if tool == "codex" and "codex_tool_approval_modes" in s:
+                spec["codex_tool_approval_modes"] = s["codex_tool_approval_modes"]
+            result[s["name"]] = spec
     return result

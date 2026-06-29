@@ -54,7 +54,7 @@ This is the grouped lookup for commands that are useful but not always front-and
 | `,ai-kb`               | Manage the durable local agent knowledge base                                                                                                                                             |
 | `,ralph`               | Start, resume, inspect, and control Ralph multi-agent orchestration runs                                                                                                                  |
 | `,llama-cpp`           | Serve/manage the local llama.cpp-compatible inference endpoint                                                                                                                            |
-| `,codex`               | Launch Codex with local llama.cpp model catalog metadata injected when a local model is selected                                                                                          |
+| `,codex`               | Launch Codex with hosted-MCP bearer-token env vars refreshed and local llama.cpp model catalog metadata injected when a local model is selected                                           |
 | `,claude-llama-cpp`    | Launch Claude Code against the local llama.cpp-compatible endpoint                                                                                                                        |
 | `,codex-llama-cpp`     | Launch Codex against the local llama.cpp-compatible endpoint                                                                                                                              |
 | `,opencode-llama-cpp`  | Launch OpenCode against the local llama.cpp-compatible endpoint                                                                                                                           |
@@ -71,7 +71,7 @@ Provider wrappers with model choices accept either `--model <id>` / `-m <id>` wh
 
 The same wrappers expose `--effort <level>`, `--thinking <level>`, and `--no-thinking` when the harness has an equivalent control. Pi maps to `--thinking`; OpenCode maps effort to `run --variant`; Codex maps to `model_reasoning_effort`; Copilot maps `--thinking` to `--effort`.
 
-Plain interactive `claude` stays native. `,codex` goes through `~/bin/,codex` only to inject local llama.cpp model metadata when the selected model is local; otherwise it execs the real Codex binary directly. Plain `copilot` stays native via the managed `,copilot` wrapper so header-auth MCP tokens are refreshed before launch. Local/provider-specific wrappers (`*,llama-cpp`, `,codex-cloudflare`, `,copilot-cloudflare`, `,copilot-openrouter`) select their own upstreams.
+Plain interactive `claude` stays native. Plain interactive `codex` and `copilot` route through the managed `,codex` / `,copilot` wrappers so hosted MCP tokens are refreshed before launch. Local/provider-specific wrappers (`*,llama-cpp`, `,codex-cloudflare`, `,copilot-cloudflare`, `,copilot-openrouter`) select their own upstreams.
 
 ## Utility helpers
 
@@ -111,7 +111,7 @@ If you restore history out-of-band while fish is running, run `history merge` in
 
 These are used by scripts, fzf integrations, and Neovim; you rarely invoke them directly.
 
-Large command internals live under `~/lib/,<command>/` while the public command stays in `~/bin`. Current library-backed commands are `,add-patch-to-prs`, `,artifact`, `,codeowners`, `,disable-auto-merge`, `,doctor`, `,enable-auto-merge`, `,get-age-buckets`, `,gh-prw`, `,gh-subissues-create`, `,gh-tfork`, `,gh-worktree`, `,hey-branch`, `,history-sync`, `,jest-test-title-report`, `,kbn-pr-audit`, `,kbn-stack`, `,llama-cpp`, `,mcp-token`, `,pull-rebase`, `,tmux-run-all`, `,update`, `,w`, and `,wh`. Cross-command shell helpers live under `~/lib/shared/`.
+Large command internals live under `~/lib/,<command>/` while the public command stays in `~/bin`. Current library-backed commands are `,add-patch-to-prs`, `,artifact`, `,codex`, `,codeowners`, `,disable-auto-merge`, `,doctor`, `,enable-auto-merge`, `,get-age-buckets`, `,gh-prw`, `,gh-subissues-create`, `,gh-tfork`, `,gh-worktree`, `,hey-branch`, `,history-sync`, `,jest-test-title-report`, `,kbn-pr-audit`, `,kbn-stack`, `,llama-cpp`, `,mcp-token`, `,pull-rebase`, `,tmux-run-all`, `,update`, `,w`, and `,wh`. Cross-command shell helpers live under `~/lib/shared/`.
 
 | Command                  | Description                                                                                   |
 | ------------------------ | --------------------------------------------------------------------------------------------- |

@@ -60,6 +60,14 @@ mcp_servers:
         # much sooner than Slack's ~12h, so re-using SCSI in cursor keeps it
         # fresh; when every cursor cache is stale, use SCSI in cursor once.
         headerAuth: "$(,mcp-token scsi-main --bearer)"
+      codex:
+        # Codex can run streamable HTTP MCP natively, but its native OAuth
+        # client has the same redirect/client-registration mismatch as
+        # Copilot for this Okta app. Use Codex's bearer_token_env_var support
+        # instead: ,codex refreshes cursor's cached token with ,mcp-token and
+        # exports the raw token before launching the real Codex binary.
+        bearerTokenEnvVar: "CODEX_MCP_TOKEN_SCSI_MAIN"
+    codex_default_tools_approval_mode: approve
 
   - name: scsi-local
     work_only: true
@@ -67,6 +75,7 @@ mcp_servers:
     args:
       - "-lc"
       - 'cd "$HOME/work/semantic-code-search-mcp-server/main" && ELASTICSEARCH_CLOUD_ID="$(pass scsi/k18/cloud_id)" ELASTICSEARCH_API_KEY="$(pass scsi/k18/api_key)" ELASTICSEARCH_INDEX=scsi-repo node dist/src/mcp_server/bin.js stdio'
+    codex_default_tools_approval_mode: approve
 
   - name: slack
     work_only: true
@@ -117,3 +126,17 @@ mcp_servers:
         # Authorization header (Slack MCP bearer_methods_supported = [header]).
         # When every cursor cache is stale, re-auth Slack MCP in cursor once.
         headerAuth: "$(,mcp-token slack --bearer)"
+      codex:
+        # Codex's native streamable HTTP transport supports bearer_token_env_var
+        # and rejects inline bearer_token secrets. ,codex fills this env var
+        # from cursor's Slack MCP cache via ,mcp-token --login --quiet.
+        bearerTokenEnvVar: "CODEX_MCP_TOKEN_SLACK"
+    codex_tool_approval_modes:
+      slack_read_canvas: approve
+      slack_read_channel: approve
+      slack_read_thread: approve
+      slack_read_user_profile: approve
+      slack_search_channels: approve
+      slack_search_public: approve
+      slack_search_public_and_private: approve
+      slack_search_users: approve

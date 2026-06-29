@@ -20,7 +20,7 @@ flowchart TB
     end
 
     subgraph CODEX["Codex (dot_codex/)"]
-        CDX["private_config.work.toml · private_config.personal.toml<br/>readonly_llama-cpp-model-catalog.json<br/>exact_agents/ → ~/.codex/agents/ (multi_agent roles: review-worker/PR-necessity/findings/live-ui)<br/>exact_skills/ (.keep) · ~/bin/,codex wrapper (inject llama meta)<br/>,codex-cloudflare wrapper uses Cloudflare AI Gateway OpenAI Responses endpoint<br/>hook 07-merge-codex (inject_mcp_into_codex_toml.py)"]:::codex
+        CDX["private_config.work.toml (org-safe on-request/auto_review)<br/>private_config.personal.toml (personal yolo: never + danger-full-access)<br/>both pin service_tier=default (no priority/fast default)<br/>readonly_llama-cpp-model-catalog.json<br/>exact_agents/ → ~/.codex/agents/ (multi_agent roles: review-worker/PR-necessity/findings/live-ui)<br/>exact_skills/ (.keep) · ~/bin/,codex → ~/lib/,codex/main.py<br/>(refresh hosted-MCP bearer token env vars + inject llama meta)<br/>,codex-cloudflare wrapper uses Cloudflare AI Gateway OpenAI Responses endpoint<br/>hook 07-merge-codex (inject_mcp_into_codex_toml.py; slack/scsi-main url + bearer_token_env_var; SCSI default tool approve; Slack read/search tool approve; preserves runtime MCP tool approval overrides + hooks.state)"]:::codex
     end
 
     subgraph GEMINI["Gemini CLI (dot_gemini/)"]

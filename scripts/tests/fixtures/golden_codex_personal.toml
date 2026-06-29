@@ -9,4 +9,18 @@ args = [
   "-i",
   "public/image",
 ]
+default_tools_approval_mode = "approve"
 
+[mcp_servers.public-tool.tools.read]
+approval_mode = "approve"
+
+[mcp_servers.public-tool.tools.write]
+approval_mode = "prompt"
+
+[mcp_servers.http-tool]
+url = "https://mcp.example.com/mcp"
+bearer_token_env_var = "CODEX_MCP_TOKEN_HTTP_TOOL"
+
+[mcp_servers.header-tool]
+url = "https://mcp.header.com/mcp"
+bearer_token_env_var = "CODEX_MCP_TOKEN_HEADER_TOOL"

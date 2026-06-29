@@ -2,7 +2,7 @@ name = "live-ui-review"
 description = "Verification-mode live UI verifier for /agent-review. Use after reviewer workers to validate UI/runtime-relevant candidate findings; returns comparison evidence, screenshot handoff, non-applicability, or target/branch/runtime/data blocker status."
 model = "gpt-5.5"
 model_reasoning_effort = "xhigh"
-approval_policy = "never"
+approval_policy = "untrusted"
 sandbox_mode = "read-only"
 developer_instructions = """
 {{ include "dot_config/exact_tmux/agent_prompts/prefix.txt" }}

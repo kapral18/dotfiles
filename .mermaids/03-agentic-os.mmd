@@ -30,7 +30,7 @@ flowchart TB
         CLAUDE["Claude Code: dot_claude/settings.{work,personal,llama-cpp}.json"]:::exec
         GEMINI["Gemini CLI: dot_gemini/settings.json + exact_commands/"]:::exec
         OPENCODE["OpenCode: dot_config/opencode/*.jsonc (LiteLLM aliases)"]:::exec
-        CODEX["Codex: dot_codex/private_config.{work,personal}.toml"]:::exec
+        CODEX["Codex: dot_codex/private_config.{work,personal}.toml<br/>+ ,codex bearer-token env wrapper for hosted MCP"]:::exec
         PI["Pi: dot_pi/agent/* (Gemini 3.1 Pro default)"]:::exec
         COPILOT["Copilot CLI: private_dot_copilot/* (settings + gates + review agents;<br/>MCP stdio-only, OAuth http unusable)"]:::exec
         TUICR["tuicr: dot_config/tuicr/readonly_config.toml"]:::exec
