@@ -58,13 +58,13 @@ Assistants are governed by a version-controlled SOP + skills layer, so behavior 
 The CLI assistants, in the order this setup leans on them:
 
 1. **Cursor CLI** (`cursor-agent`, aliased `agent`) — the primary interactive harness.
-2. **Codex** (`codex`)
+2. **Codex** (`,codex`)
 3. **Pi** (`pi`)
 4. **Claude Code** (`claude`)
 
 ```bash
 agent      # Cursor CLI (primary)
-codex
+,codex
 pi
 claude
 ```

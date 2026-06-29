@@ -9,8 +9,9 @@ exit 1
 {{- else }}
 CODEX_CLOUDFLARE_MODEL="${CODEX_CLOUDFLARE_MODEL:-gpt-5.5}"
 
-if ! command -v codex >/dev/null 2>&1; then
-  echo "Error: codex CLI not found on PATH." >&2
+codex_bin="${CODEX_WRAPPER_BIN:-$HOME/bin/,codex}"
+if [[ ! -x "$codex_bin" ]]; then
+  echo "Error: ,codex wrapper not found at $codex_bin. Run chezmoi apply --no-tty ~/bin/,codex." >&2
   exit 127
 fi
 
@@ -95,5 +96,5 @@ if [[ "$caller_set_model" == false && -n "$CODEX_CLOUDFLARE_MODEL" ]]; then
   args+=(--model "$CODEX_CLOUDFLARE_MODEL")
 fi
 
-exec codex "${args[@]}" "${effort_args[@]}" "${cli_args[@]}"
+exec "$codex_bin" "${args[@]}" "${effort_args[@]}" "${cli_args[@]}"
 {{- end }}

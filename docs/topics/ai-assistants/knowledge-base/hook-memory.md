@@ -37,7 +37,7 @@ Codex has the same wiring in [`home/dot_codex/hooks.json`](../../../../home/dot_
 
 Payload shapes are Claude-compatible as of codex source tag `rust-v0.139.0`. Hook trust hashes are baked into config templates because the codex merge script regenerates `config.toml` wholesale.
 
-**Caveat:** `codex exec` 0.139.0 was verified to dispatch no hooks, even with `--dangerously-bypass-hook-trust` and `[features] hooks = true`. This wiring is currently inert in exec mode. For interactive TUI sessions, run `/hooks` and verify both hooks are trusted and fire.
+**Caveat:** `,codex exec` 0.139.0 was verified to dispatch no hooks, even with `--dangerously-bypass-hook-trust` and `[features] hooks = true`. This wiring is currently inert in exec mode. For interactive TUI sessions, run `/hooks` and verify both hooks are trusted and fire.
 
 No hook runs on `stop`. Hooks observe and inject context; they do not re-prompt the agent. Two disciplines that earlier lived in `stop` hooks now live in the SOP, enforced by instruction rather than by an auto-submitted follow-up message:
 

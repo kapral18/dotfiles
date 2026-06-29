@@ -22,7 +22,7 @@ require_cmd() {
   fi
 }
 
-for cmd in git fzf gh parallel; do
+for cmd in git fzf gh ,parallel; do
   require_cmd "$cmd"
 done
 
@@ -77,7 +77,7 @@ trap 'rm -f "$temp_fifo"' EXIT INT TERM
   export TRACE_REGEX="$regex"
 
   git ls-files -z -- "$search_path" |
-    parallel -0 -j"$max_jobs" --line-buffer \
+    ,parallel -0 -j"$max_jobs" --line-buffer \
       'git -c log.showSignature=false log --oneline --follow -G "$TRACE_REGEX" -- {}' |
     awk '!seen[$0]++ { print; fflush() }' >"$temp_fifo"
 ) &

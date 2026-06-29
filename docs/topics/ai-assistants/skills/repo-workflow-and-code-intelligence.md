@@ -31,13 +31,13 @@ These skills operate on local repositories, code search, cleanup, and external s
 | Source   | [`exact_semantic-code-search`](../../../../home/exact_dot_agents/exact_skills/exact_semantic-code-search/) |
 | Boundary | not durable memory; use [Agent memory](../knowledge-base/index.md) for that                                |
 
-## `sem`
+## `sem` skill (`,sem` CLI)
 
-| Field    | Value                                                                      |
-| -------- | -------------------------------------------------------------------------- |
-| Use when | entity-level git diff, blame, impact analysis, token-budgeted code context |
-| Source   | [`exact_sem`](../../../../home/exact_dot_agents/exact_skills/exact_sem/)   |
-| Tool     | `sem` CLI                                                                  |
+| Field    | Value                                                                    |
+| -------- | ------------------------------------------------------------------------ |
+| Use when | entity-level git diff, blame, impact analysis, dependency graphs         |
+| Source   | [`exact_sem`](../../../../home/exact_dot_agents/exact_skills/exact_sem/) |
+| Tool     | `,sem` CLI                                                               |
 
 ## `weave`
 

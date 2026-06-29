@@ -334,7 +334,7 @@ check_tools() {
     "htop:htop"
     "hyperfine:hyperfine"
     "watchexec:watchexec"
-    "parallel:parallel"
+    ",parallel:parallel"
   )
 
   for entry in "${tool_checks[@]}"; do
@@ -354,8 +354,8 @@ check_bin_wrappers() {
   # Forwarding wrappers in ~/bin that exec a brew-installed binary.
   # If the brew formula is gone, the wrapper breaks silently.
   local -a wrappers=(
-    "sem:sem"
-    "parallel:parallel"
+    ",sem:sem"
+    ",parallel:parallel"
   )
   local entry name formula
   for entry in "${wrappers[@]}"; do

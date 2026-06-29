@@ -12,6 +12,6 @@ brew "watch"
 
 # Shell command parallelization utility
 # https://www.gnu.org/software/parallel/
-# link: false — GNU parallel also ships a `sem` binary, but this setup keeps
-# Ataraxy's semantic-git `sem` linked at /opt/homebrew/bin/sem.
+# link: false — GNU parallel also ships a `sem` helper; this setup exposes GNU
+# Parallel as ~/bin/,parallel and Ataraxy semantic-git as ~/bin/,sem.
 brew "parallel", link: false

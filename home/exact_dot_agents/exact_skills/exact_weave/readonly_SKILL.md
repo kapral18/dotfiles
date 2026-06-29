@@ -20,7 +20,7 @@ Use when:
 
 Do not use:
 
-- for diffing or analyzing changes (use the `sem` skill)
+- for diffing or analyzing changes (use the `sem` skill, which runs the `,sem` CLI)
 - for non-code files that tree-sitter doesn't parse
 
 First actions:
