@@ -1,0 +1,363 @@
+#!/usr/bin/env bash
+# Description: Send and receive staged git patches or arbitrary files/dirs with Magic Wormhole
+
+set -euo pipefail
+
+PATCH_FILE="${WH_PATCH_FILE:-/tmp/staged.patch}"
+DIR_ARCHIVE_SUFFIX=".wh-dir.tar.gz"
+DIR_ARCHIVE=""
+SEND_STAGE=""
+RECV_STAGE=""
+EXTRACT_STAGE=""
+
+cleanup() {
+  rm -rf "${SEND_STAGE:-}" "${RECV_STAGE:-}" "${EXTRACT_STAGE:-}"
+}
+
+trap cleanup EXIT
+
+show_usage() {
+  cat << 'EOF'
+Usage: ,wh <command>
+
+Commands:
+  post [path]          Send a file or directory with a one-word wormhole code.
+                       With no path, sends the current repo's staged diff.
+  get [code-word...]   Receive a transfer, prompting for the code when omitted.
+                       A received *.patch is applied with `git apply`; any other
+                       file or directory is saved into the destination instead.
+                       Directories are archived before transfer and extracted
+                       after receipt.
+
+Options (get):
+  -o, --output PATH    Destination directory for received files/dirs, or the
+                       target path for a received patch (default: current dir;
+                       patches default to WH_PATCH_FILE).
+
+Environment:
+  WH_PATCH_FILE        Override patch path (default: /tmp/staged.patch)
+
+Examples:
+  ,wh post                 # send staged diff
+  ,wh post ./src           # send a directory
+  ,wh post notes.md        # send a single file
+  ,wh get                  # receive (prompts for code), auto-apply or save
+  ,wh get -o ~/inbox       # save received file/dir into ~/inbox
+EOF
+}
+
+require_command() {
+  if ! command -v "$1" > /dev/null 2>&1; then
+    echo "Error: required command not found: $1" >&2
+    exit 1
+  fi
+}
+
+ensure_git_repo() {
+  if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+    echo "Error: ,wh post must be run inside a git repository" >&2
+    exit 1
+  fi
+}
+
+post_staged_diff() {
+  require_command git
+  require_command wormhole
+  ensure_git_repo
+
+  if git diff --cached --quiet --exit-code; then
+    echo "Error: no staged changes to send" >&2
+    exit 1
+  fi
+
+  git diff --cached --binary > "$PATCH_FILE"
+  echo "Sending staged patch: $PATCH_FILE"
+  wormhole send --code-length 1 "$PATCH_FILE"
+}
+
+post_path() {
+  local path="$1"
+  require_command wormhole
+
+  if [ ! -e "$path" ]; then
+    echo "Error: no such file or directory: $path" >&2
+    exit 1
+  fi
+
+  if [ -d "$path" ]; then
+    post_directory "$path"
+    return
+  fi
+
+  echo "Sending: $path"
+  wormhole send --code-length 1 "$path"
+}
+
+build_directory_archive() {
+  local path="$1" clean_path parent name skipped_count
+  require_command tar
+
+  clean_path="${path%/}"
+  if [ -z "$clean_path" ]; then
+    echo "Error: refusing to send root directory" >&2
+    exit 1
+  fi
+
+  name="$(basename "$clean_path")"
+  if [ "$name" = "." ] || [ "$name" = ".." ]; then
+    clean_path="$(cd "$path" && pwd -P)"
+    parent="$(dirname "$clean_path")"
+    name="$(basename "$clean_path")"
+  else
+    parent="$(cd "$(dirname "$clean_path")" && pwd -P)"
+  fi
+  if [ -z "$name" ] || [ "$name" = "." ]; then
+    echo "Error: unable to determine directory name for: $path" >&2
+    exit 1
+  fi
+
+  SEND_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/wh_send.XXXXXX")"
+  DIR_ARCHIVE="$SEND_STAGE/$name$DIR_ARCHIVE_SUFFIX"
+
+  echo "Archiving directory: $path"
+  skipped_count="$(cd "$parent" && find -L "./$name" ! \( -type d -o -type f \) -exec printf . \; | wc -c | tr -d ' ')"
+  if [ "$skipped_count" != "0" ]; then
+    echo "Skipping $skipped_count non-regular archive entries (sockets, devices, FIFOs)." >&2
+  fi
+  (cd "$parent" && find -L "./$name" \( -type d -o -type f \) -print0 | COPYFILE_DISABLE=1 tar -czhf "$DIR_ARCHIVE" --no-recursion --null -T -)
+}
+
+post_directory() {
+  local path="$1"
+
+  build_directory_archive "$path"
+  echo "Sending directory: $path"
+  wormhole send --code-length 1 "$DIR_ARCHIVE"
+}
+
+apply_received_patch() {
+  local src="$1" dest="$2"
+  local patch_path="${dest:-$PATCH_FILE}"
+
+  require_command git
+  ensure_git_repo
+
+  if [ -e "$patch_path" ]; then
+    backup_file="${patch_path}.$(date +%Y%m%d%H%M%S).bak"
+    mv "$patch_path" "$backup_file"
+    echo "Moved existing patch to: $backup_file"
+  fi
+
+  mv "$src" "$patch_path"
+  echo "Received patch: $patch_path"
+  echo "Applying patch: git apply $patch_path"
+  git apply "$patch_path"
+}
+
+save_received_item() {
+  local src="$1" dest="$2"
+
+  mkdir -p "$dest"
+  local name
+  name="$(basename "$src")"
+  local target="$dest/$name"
+
+  if [ -e "$target" ]; then
+    target="${target}.$(date +%Y%m%d%H%M%S)"
+  fi
+
+  mv "$src" "$target"
+  echo "Received: $target"
+}
+
+extract_received_directory_archive() {
+  local archive="$1" dest="$2"
+  local archive_name dirname target
+
+  require_command python3
+
+  mkdir -p "$dest"
+  archive_name="$(basename "$archive")"
+  dirname="${archive_name%"$DIR_ARCHIVE_SUFFIX"}"
+  target="$dest/$dirname"
+
+  if [ -e "$target" ]; then
+    target="${target}.$(date +%Y%m%d%H%M%S)"
+  fi
+
+  EXTRACT_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/wh_extract.XXXXXX")"
+  python3 - "$archive" "$EXTRACT_STAGE" "$dirname" << 'PY'
+import os
+import sys
+import tarfile
+
+archive, dest, expected_root = sys.argv[1:4]
+dest_real = os.path.realpath(dest)
+
+def is_within(path, root):
+    return path == root or path.startswith(root + os.sep)
+
+def normalize_member_name(name):
+    normalized = os.path.normpath(name)
+    raw_parts = name.split("/")
+    if (
+        not name
+        or os.path.isabs(name)
+        or normalized in (".", "..")
+        or normalized.startswith("../")
+        or ".." in raw_parts
+    ):
+        raise SystemExit(f"Error: unsafe archive member: {name!r}")
+    if normalized != expected_root and not normalized.startswith(expected_root + os.sep):
+        raise SystemExit(f"Error: unexpected archive root: {name!r}")
+    return normalized
+
+def safe_dest_path(normalized, original_name):
+    target = os.path.realpath(os.path.join(dest_real, normalized))
+    if target != dest_real and not target.startswith(dest_real + os.sep):
+        raise SystemExit(f"Error: archive member escapes destination: {original_name!r}")
+    return target
+
+def validate_symlink_target(member, normalized):
+    linkname = member.linkname
+    if not linkname or os.path.isabs(linkname):
+        raise SystemExit(f"Error: unsafe archive link target: {member.name!r} -> {linkname!r}")
+    resolved = os.path.normpath(os.path.join(os.path.dirname(normalized), linkname))
+    if not is_within(resolved, expected_root):
+        raise SystemExit(f"Error: unsafe archive link target: {member.name!r} -> {linkname!r}")
+
+def validate_hardlink_target(member):
+    linkname = member.linkname
+    normalized = normalize_member_name(linkname)
+    return normalized
+
+with tarfile.open(archive, "r:gz") as tar:
+    dirs = []
+    files = []
+    hardlinks = []
+    symlinks = []
+
+    for member in tar.getmembers():
+        normalized = normalize_member_name(member.name)
+        safe_dest_path(normalized, member.name)
+
+        if member.isdir():
+            dirs.append(member)
+        elif member.isfile():
+            files.append(member)
+        elif member.islnk():
+            validate_hardlink_target(member)
+            hardlinks.append(member)
+        elif member.issym():
+            validate_symlink_target(member, normalized)
+            symlinks.append(member)
+        else:
+            raise SystemExit(f"Error: unsupported archive member: {member.name!r}")
+
+    for member in dirs + files:
+        tar.extract(member, dest)
+
+    for member in hardlinks:
+        link_path = safe_dest_path(normalize_member_name(member.name), member.name)
+        target_path = safe_dest_path(validate_hardlink_target(member), member.linkname)
+        if not os.path.isfile(target_path):
+            raise SystemExit(f"Error: unsafe archive hardlink target: {member.name!r} -> {member.linkname!r}")
+        os.makedirs(os.path.dirname(link_path), exist_ok=True)
+        if os.path.lexists(link_path):
+            raise SystemExit(f"Error: archive member already exists: {member.name!r}")
+        os.link(target_path, link_path)
+
+    for member in symlinks:
+        link_path = safe_dest_path(normalize_member_name(member.name), member.name)
+        os.makedirs(os.path.dirname(link_path), exist_ok=True)
+        if os.path.lexists(link_path):
+            raise SystemExit(f"Error: archive member already exists: {member.name!r}")
+        os.symlink(member.linkname, link_path)
+PY
+
+  if [ ! -d "$EXTRACT_STAGE/$dirname" ]; then
+    echo "Error: directory archive did not contain expected root: $dirname" >&2
+    exit 1
+  fi
+
+  mv "$EXTRACT_STAGE/$dirname" "$target"
+  echo "Received directory: $target"
+}
+
+get_patch() {
+  require_command wormhole
+
+  local dest=""
+  local code_args=()
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -o | --output)
+        if [ $# -lt 2 ]; then
+          echo "Error: $1 requires a value" >&2
+          exit 1
+        fi
+        dest="$2"
+        shift 2
+        ;;
+      *)
+        code_args+=("$1")
+        shift
+        ;;
+    esac
+  done
+  RECV_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/wh_recv.XXXXXX")"
+
+  (cd "$RECV_STAGE" && wormhole receive --accept-file "${code_args[@]}")
+
+  local received="" entry
+  shopt -s nullglob dotglob
+  for entry in "$RECV_STAGE"/*; do
+    received="$entry"
+    break
+  done
+  shopt -u nullglob dotglob
+  if [ -z "$received" ]; then
+    echo "Error: nothing received" >&2
+    exit 1
+  fi
+
+  if [ -f "$received" ] && [[ "$(basename "$received")" == *"$DIR_ARCHIVE_SUFFIX" ]]; then
+    extract_received_directory_archive "$received" "${dest:-$PWD}"
+  elif [ -f "$received" ] && [ "${received##*.}" = "patch" ]; then
+    apply_received_patch "$received" "$dest"
+  else
+    save_received_item "$received" "${dest:-$PWD}"
+  fi
+}
+
+if [ $# -eq 0 ]; then
+  show_usage
+  exit 1
+fi
+
+case "$1" in
+  -h | --help)
+    show_usage
+    ;;
+  post)
+    shift
+    if [ $# -eq 0 ]; then
+      post_staged_diff
+    elif [ $# -eq 1 ]; then
+      post_path "$1"
+    else
+      echo "Error: post takes at most one path: $*" >&2
+      exit 1
+    fi
+    ;;
+  get)
+    shift
+    get_patch "$@"
+    ;;
+  *)
+    echo "Error: unknown command '$1'" >&2
+    echo >&2
+    show_usage >&2
+    exit 1
+    ;;
+esac

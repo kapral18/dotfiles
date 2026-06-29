@@ -31,7 +31,7 @@ This is a **chezmoi-managed dotfiles repo**. Chezmoi deploys files from `home/` 
 | Deployed path       | Chezmoi source                                |
 | ------------------- | --------------------------------------------- |
 | `~/bin/`            | `home/exact_bin/`                             |
-| `~/bin/utils/`      | `home/exact_bin/utils/`                       |
+| `~/lib/`            | `home/exact_lib/`                             |
 | `~/.config/<app>/`  | `home/dot_config/<app>/`                      |
 | `~/.agents/skills/` | `home/exact_dot_agents/exact_skills/`         |
 | `~/.claude/skills`  | symlink → `~/.agents/skills` (resolve first!) |
@@ -127,7 +127,7 @@ Shell scripts (`.sh` / `.sh.tmpl`) in this repo must stay **thin orchestrators**
 
 ## Bin Commands & Shell Completions (Mandatory)
 
-User commands live in `home/exact_bin/executable_,<name>` (deployed to `~/bin/,<name>`; the leading comma is the convention). They are self-contained — `~/bin/` scripts cannot call `scripts/` helpers because `scripts/` is not deployed to `$HOME`, so put the logic in the script itself (Python/etc. per Script Architecture; shell only for thin wrappers).
+User commands live in `home/exact_bin/executable_,<name>` (deployed to `~/bin/,<name>`; the leading comma is the convention). Commands are self-contained across deployed `$HOME` surfaces: `~/bin/` scripts cannot call repo-only `scripts/` helpers because `scripts/` is not deployed to `$HOME`. For commands over ~200 lines or with multiple logical subsystems, keep `~/bin/,<name>` as a thin launcher and move internals into `home/exact_lib/exact_,<name>/` (deployed to `~/lib/,<name>/`). `home/exact_lib/` intentionally owns the sibling `~/lib` command-internals tree. Small single-purpose commands may stay directly in `home/exact_bin/`.
 
 **Whenever you add or update a `~/bin/` command, you MUST add/update its shell completion in the same change:**
 
@@ -135,7 +135,7 @@ User commands live in `home/exact_bin/executable_,<name>` (deployed to `~/bin/,<
 - **Zsh (only when warranted):** `home/dot_zsh/completions/readonly__comma_<name>` (`#compdef ,<name>`). Only complex commands (e.g. `,w`, `,wh`) carry a zsh completion; do not add one unless the command needs zsh-specific completion.
 - **Keep completions in sync on updates:** when a command's flags or arguments change, update the completion file in the same change. A `~/bin/` command added or changed without its completion is incomplete.
 
-When adding a new `~/bin/` command, also update its catalog row under `docs/topics/workflow/custom-commands/` and the `.mermaids/07c-bin-commands.mmd` node (plus the `exact_bin/` census count in `scripts/verify_mermaids.py` and the diagram/README anchors), per Documentation Hygiene.
+When adding a new `~/bin/` command or `home/exact_lib/exact_,<name>/` command library, also update its catalog row under `docs/topics/workflow/custom-commands/` and the `.mermaids/07c-bin-commands.mmd` node (plus the relevant census count in `scripts/verify_mermaids.py` and the diagram/README anchors), per Documentation Hygiene.
 
 ---
 

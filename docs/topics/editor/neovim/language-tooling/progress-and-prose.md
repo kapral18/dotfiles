@@ -17,7 +17,7 @@ The statusline shows client name, spinner, latest title/message, optional server
 
 ## Markdown / MDX prose behavior
 
-Markdown and MDX use Prettier with `--prose-wrap=preserve` so editor formatting does not reflow prose to `printWidth`. For plain Markdown, `unwrap-md` runs after Prettier to unwrap hard-wrapped prose. `unwrap-md` intentionally preserves hard wraps in SOP and managed agent/skill Markdown so AI-facing gates, examples, and exceptions stay visible as separate prompt units.
+Markdown and MDX use Prettier with `--prose-wrap=preserve` so editor formatting does not reflow prose to `printWidth`. For plain Markdown, `,unwrap-md` runs after Prettier to unwrap hard-wrapped prose. `,unwrap-md` intentionally preserves hard wraps in SOP and managed agent/skill Markdown so AI-facing gates, examples, and exceptions stay visible as separate prompt units.
 
 Relevant files:
 

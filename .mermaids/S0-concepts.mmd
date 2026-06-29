@@ -37,9 +37,9 @@ graph TB
     I5 --> R5["realized by: 1Password SSH agent (agent.toml) · pass (wpass/ppass)<br/>$(pass …) in mcp_servers.yaml + chezmoi_lib.sh getters<br/>private_dot_ssh/*.pub only · gpg-agent cache ttl"]:::realize
 
     %% ---- C6 Thin shell / typed core ----------------------------------------
-    C6{{"C6 · SHELL = GLUE, LOGIC = PYTHON<br/>testable core under scripts/"}}:::concept
-    C6 --> I6["INVARIANT: .sh/.sh.tmpl only wire paths+programs;<br/>any data transform/parsing lives in scripts/*.py<br/>(stdlib only, golden-file tested)."]:::inv
-    I6 --> R6["realized by: scripts/*.py + tests/fixtures/golden_*<br/>thin .chezmoiscripts calling them · yaml_parser/jsonc_dump (no deps)"]:::realize
+    C6{{"C6 · SHELL = GLUE, LOGIC = PYTHON<br/>testable core under scripts/ or deployed command libs"}}:::concept
+    C6 --> I6["INVARIANT: .sh/.sh.tmpl only wire paths+programs;<br/>repo-side data transform/parsing lives in scripts/*.py;<br/>large deployed commands keep a thin ~/bin launcher and<br/>put internals in ~/lib/,name/ (stdlib only, tested)."]:::inv
+    I6 --> R6["realized by: scripts/*.py + tests/fixtures/golden_*<br/>home/exact_lib/exact_,*/main.{py,sh,mjs}<br/>thin .chezmoiscripts and ~/bin launchers · yaml_parser/jsonc_dump"]:::realize
 
     %% ---- C7 Intent-routed governance ---------------------------------------
     C7{{"C7 · GOVERNED AGENTS<br/>LLMs are deterministic systems, not chatbots"}}:::concept

@@ -25,22 +25,22 @@ Do not use:
 
 First actions:
 
-1. `command -v weave-setup-local` — abort if missing (this repo installs it to `~/bin/`).
+1. `command -v ,weave-setup-local` — abort if missing (this repo installs it to `~/bin/`).
 2. `command -v weave-driver` — abort with install instructions (`brew install weave`) if missing.
 3. Verify you're in a git repo: `git rev-parse --is-inside-work-tree`
 
 ## Commands
 
 ```bash
-weave-setup-local                           # configure current repo without creating `.gitattributes`
-weave-unsetup-local                         # revert local-only weave config for current repo
+,weave-setup-local                          # configure current repo without creating `.gitattributes`
+,weave-unsetup-local                        # revert local-only weave config for current repo
 weave preview <branch>                      # dry-run: what would a merge look like?
 weave preview <branch> --file <path>        # preview a specific file only
 weave summary <path>                        # parse weave conflict markers, structured summary
 weave summary <path> --json
 ```
 
-After `weave-setup-local`, use `git merge` as normal — weave acts as the merge driver transparently.
+After `,weave-setup-local`, use `git merge` as normal — weave acts as the merge driver transparently.
 
 ## How it works
 
@@ -73,7 +73,7 @@ Vue, XML, ERB, JSON, YAML, TOML, CSV, Markdown.
 
 ## Notes
 
-- `weave-setup-local` configures weave via `.git/info/attributes` + repo-local git config, so nothing is added to repo history.
+- `,weave-setup-local` configures weave via `.git/info/attributes` + repo-local git config, so nothing is added to repo history.
 - Avoid `weave setup` for day-to-day use: it writes a repo-root `.gitattributes` (tracked by default) and tends to show up in PR diffs.
 - Zero regressions across real-world benchmarks (git/git, CPython, Go, TypeScript, Flask).
 - Conflict markers include the entity name and conflict reason for faster manual resolution.

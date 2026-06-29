@@ -35,7 +35,7 @@ letsfg search --help
 1. For a known one-way or round-trip date, use the docker wrapper for browserless search with full coverage:
 
 ```bash
-letsfg-docker search AMS EVN 2026-05-13 --mode fast --limit 10 --json --max-browsers 2
+,letsfg-docker search AMS EVN 2026-05-13 --mode fast --limit 10 --json --max-browsers 2
 ```
 
 Use `--return YYYY-MM-DD` for round trips, `--currency EUR` when the user specifies currency, `--direct` for direct-only, and
@@ -58,7 +58,7 @@ dates = [(date.today() + timedelta(days=i)).isoformat() for i in range(14)]
 
 def search(day):
     cmd = [
-        "letsfg-docker",
+        ",letsfg-docker",
         "search",
         origin,
         destination,
@@ -154,7 +154,7 @@ Use single quotes around `-e` snippets unless using a quoted heredoc, so the she
 - Use `--currency` when the user specifies a currency.
 - Use `--cabin` only when the user requests economy, premium economy, business, or first.
 - Use `--direct` or `--max-stops 0` only when the user asks for direct flights.
-- Use `letsfg-docker` instead of `letsfg` directly.
+- Use `,letsfg-docker` instead of `letsfg` directly.
   This runs the CLI in a Docker container with Xvfb, avoiding visible local Chrome windows while keeping all browser-based connectors active.
 - Prefer `--mode fast` for interactive searches.
   Use the default full search only when the user wants maximum coverage and accepts a slower run.

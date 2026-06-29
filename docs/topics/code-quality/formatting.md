@@ -1,6 +1,6 @@
 # Formatting
 
-This repo uses per-language formatters to keep source files consistent. No `package.json` or yarn — formatters are installed via Homebrew, except `unwrap-md` which is a repo-provided script deployed to `~/bin/unwrap-md` via chezmoi.
+This repo uses per-language formatters to keep source files consistent. No `package.json` or yarn — formatters are installed via Homebrew, except `,unwrap-md` which is a repo-provided script deployed to `~/bin/,unwrap-md` via chezmoi.
 
 ## Quick start
 
@@ -9,6 +9,8 @@ Format everything:
 ```bash
 bin/fmt
 ```
+
+With no file arguments, `bin/fmt` covers tracked files plus untracked, non-ignored files so new command libraries and docs are checked before staging.
 
 Check without writing (CI-friendly):
 
@@ -45,9 +47,9 @@ All formatters are declared in the Brewfile: [`home/readonly_dot_Brewfile.tmpl`]
 
 ## Concurrency
 
-`bin/fmt` runs the per-language formatter groups concurrently, since each group (except the markdown chain) operates on a disjoint set of files. The markdown chain (`unwrap-md` → `markdownlint --fix` → `prettier`) stays sequential internally because all three steps mutate the same `.md` files in a required order; `prettier` also handles JSON/YAML in that same bulk invocation.
+`bin/fmt` runs the per-language formatter groups concurrently, since each group (except the markdown chain) operates on a disjoint set of files. The markdown chain (`,unwrap-md` → `markdownlint --fix` → `prettier`) stays sequential internally because all three steps mutate the same `.md` files in a required order; `prettier` also handles JSON/YAML in that same bulk invocation.
 
-`unwrap-md` preserves deliberate hard wraps in AI-facing instruction files: SOP entrypoints (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md` and their chezmoi `readonly_*` sources) and Markdown under managed agent/skill directories, including hook and reference files. These files use line breaks as prompt-ingestion affordances; ordinary docs still unwrap to one physical line per logical paragraph.
+`,unwrap-md` preserves deliberate hard wraps in AI-facing instruction files: SOP entrypoints (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md` and their chezmoi `readonly_*` sources) and Markdown under managed agent/skill directories, including hook and reference files. These files use line breaks as prompt-ingestion affordances; ordinary docs still unwrap to one physical line per logical paragraph.
 
 Each group's output is buffered and flushed in a fixed order after all groups finish, so logs stay readable rather than interleaving. The overall exit code is the OR of every group's status, so a failure (or a missing tool) in any group still fails the run.
 

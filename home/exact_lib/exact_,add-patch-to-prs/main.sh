@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+# Description: Apply a patch file to multiple PRs
+
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$script_dir/../shared/bash_utils_lib.sh"
+
+show_usage() {
+  cat << 'EOF'
+Usage: ,add-patch-to-prs <patch-file> [--message <msg>] [pr_numbers...] [--search <query>]
+
+Apply a patch file to one or more PRs. If no PR numbers are given,
+opens an fzf picker (with optional --search filter).
+
+Arguments:
+  patch-file          Path to the patch file to apply
+  pr_numbers          One or more PR numbers (optional)
+
+Options:
+  -m, --message <msg> Commit message (default: "Apply patch <filename>")
+  -s, --search <q>    Search query for fzf PR picker
+  -h, --help          Show this help message
+EOF
+}
+
+patch_file=""
+commit_msg=""
+search_query=""
+pr_numbers=()
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -h | --help)
+      show_usage
+      exit 0
+      ;;
+    -m | --message)
+      commit_msg="$2"
+      shift 2
+      ;;
+    -s | --search)
+      search_query="$2"
+      shift 2
+      ;;
+    [0-9]*)
+      pr_numbers+=("$1")
+      shift
+      ;;
+    *)
+      if [ -z "$patch_file" ]; then
+        patch_file="$1"
+      else
+        echo "Error: unexpected argument '$1'" >&2
+        show_usage
+        exit 1
+      fi
+      shift
+      ;;
+  esac
+done
+
+if [ -z "$patch_file" ]; then
+  echo "Error: patch file is required" >&2
+  show_usage
+  exit 1
+fi
+
+if [ ! -f "$patch_file" ]; then
+  echo "Error: patch file not found: $patch_file" >&2
+  exit 1
+fi
+
+patch_file="$(realpath "$patch_file")"
+patch_basename="$(basename "$patch_file")"
+: "${commit_msg:="Apply patch ${patch_basename}"}"
+
+if [ ${#pr_numbers[@]} -eq 0 ]; then
+  mapfile -t pr_numbers < <(gh pr list --search "${search_query:-}" --json number,title \
+    --jq '.[] | "\(.number) \(.title)"' | fzf --multi --preview '
+            gh pr view {1} --json number,title,body,author,labels,comments --template "
+            # PR #{{.number}}: {{.title}}
+
+            ---
+
+            ## Author: {{.author.login}}
+
+            {{range .labels}}- {{.name}} {{end}}
+
+            ---
+
+            {{.body}}
+        ' | awk '{print $1}')
+fi
+
+if [ ${#pr_numbers[@]} -eq 0 ]; then
+  echo "No PRs selected." >&2
+  exit 0
+fi
+
+for pr in "${pr_numbers[@]}"; do
+  echo "Processing PR #$pr"
+
+  if ! branch=$(_safe_exec_cmd gh pr view "$pr" --json headRefName -q .headRefName); then
+    continue
+  fi
+
+  if ! _safe_exec_cmd git fetch origin "$branch"; then
+    continue
+  fi
+
+  if ! _safe_exec_cmd git checkout "$branch"; then
+    continue
+  fi
+
+  if ! _safe_exec_cmd git apply "$patch_file"; then
+    echo "Patch failed on PR #$pr, skipping" >&2
+    _safe_exec_cmd git checkout - || true
+    continue
+  fi
+
+  if ! _safe_exec_cmd git add -u; then
+    continue
+  fi
+
+  if ! _safe_exec_cmd git commit -m "$commit_msg"; then
+    continue
+  fi
+
+  if ! _safe_exec_cmd git push; then
+    continue
+  fi
+
+  _safe_exec_cmd git checkout -
+  echo "Finished processing PR #$pr"
+
+  read -p "Press enter to continue..."
+done

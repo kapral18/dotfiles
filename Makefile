@@ -10,7 +10,7 @@ fmt: ## Format all files
 
 lint: ## Check formatting and lint (no writes)
 	bin/fmt --check
-	ruff check --select I scripts/
+	ruff check --select I scripts/ home/exact_lib/
 	(cd tools/ralph-tui && go vet ./... && go test ./...)
 
 verify-templates: ## Render every chezmoi template to catch breakage before apply
@@ -24,7 +24,7 @@ verify-bin-surface: ## Check ~/bin commands have completions, docs, and catalog 
 
 test: ## Run Python unit tests
 	python3 scripts/tests/test_scripts.py -v
-	python3 home/exact_bin/utils/exact_history/executable_fish-history-merge.test.py -v
+	python3 home/exact_lib/exact_,history-sync/fish-history-merge.test.py -v
 
 check: lint verify-templates verify-mermaids verify-bin-surface test ## Run all checks
 

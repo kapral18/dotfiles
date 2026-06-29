@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+show_usage() {
+  cat << EOF
+Usage: ,w <command> [options]
+
+Commands:
+  add <branch_name> [base_branch]    Add a worktree for a branch
+  prs [pr_numbers... | search]       Fetch PRs and create worktrees
+  issue <issue_number|url>           Create/switch issue worktree
+  ls|list                            List worktrees
+  switch                             Switch/attach to a worktree tmux session
+  open <branch|path>                 Focus a worktree tmux session
+  mv <from> <to>                     Move/rename a worktree
+  prune                              Prune stale worktree metadata (and tmux)
+  doctor                             Check dependencies and state
+  remove                             Remove worktrees interactively
+
+Options:
+  -h, --help                         Show this help message
+
+Run ',w <command> --help' for more information on a command.
+EOF
+}
+
+if [ $# -eq 0 ]; then
+  show_usage
+  exit 1
+fi
+
+case "$1" in
+  -h | --help)
+    show_usage
+    exit 0
+    ;;
+  add)
+    shift
+    exec bash "$SCRIPT_DIR/add.sh" "$@"
+    ;;
+  prs)
+    shift
+    exec bash "$SCRIPT_DIR/prs.sh" "$@"
+    ;;
+  issue)
+    shift
+    exec bash "$SCRIPT_DIR/issue.sh" "$@"
+    ;;
+  ls | list)
+    shift
+    exec bash "$SCRIPT_DIR/ls.sh" "$@"
+    ;;
+  switch)
+    shift
+    exec bash "$SCRIPT_DIR/switch.sh" "$@"
+    ;;
+  open)
+    shift
+    exec bash "$SCRIPT_DIR/open.sh" "$@"
+    ;;
+  mv)
+    shift
+    exec bash "$SCRIPT_DIR/mv.sh" "$@"
+    ;;
+  prune)
+    shift
+    exec bash "$SCRIPT_DIR/prune.sh" "$@"
+    ;;
+  doctor)
+    shift
+    exec bash "$SCRIPT_DIR/doctor.sh" "$@"
+    ;;
+  remove)
+    shift
+    exec bash "$SCRIPT_DIR/remove.sh" "$@"
+    ;;
+  *)
+    echo "Error: Unknown command '$1'" >&2
+    echo >&2
+    show_usage
+    exit 1
+    ;;
+esac

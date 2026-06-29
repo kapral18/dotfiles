@@ -1,0 +1,539 @@
+#!/usr/bin/env bash
+# Description: System-wide health check for the dotfiles ecosystem
+
+set -euo pipefail
+
+# ── ANSI helpers ─────────────────────────────────────────────────────────────
+
+C_PASS=$'\033[38;5;42m'
+C_WARN=$'\033[38;5;214m'
+C_FAIL=$'\033[38;5;196m'
+C_DIM=$'\033[38;5;244m'
+C_HEAD=$'\033[1;38;5;81m'
+C_R=$'\033[0m'
+
+ICON_PASS="${C_PASS}✓${C_R}"
+ICON_WARN="${C_WARN}⚠${C_R}"
+ICON_FAIL="${C_FAIL}✗${C_R}"
+
+quiet=0
+verbose=0
+total_pass=0
+total_warn=0
+total_fail=0
+
+# ── CLI ──────────────────────────────────────────────────────────────────────
+
+show_usage() {
+  cat << 'EOF'
+Usage: ,doctor [options]
+
+Comprehensive health check for the dotfiles ecosystem.
+
+Options:
+  -q, --quiet     Only show warnings and failures
+  -v, --verbose   Show extra detail on each check
+  -h, --help      Show this help message
+EOF
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -q | --quiet) quiet=1 ;;
+    -v | --verbose) verbose=1 ;;
+    -h | --help)
+      show_usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      show_usage
+      exit 1
+      ;;
+  esac
+  shift
+done
+
+# ── result helpers ───────────────────────────────────────────────────────────
+
+pass() {
+  total_pass=$((total_pass + 1))
+  [ "$quiet" -eq 1 ] && return 0
+  printf '  %s  %s\n' "$ICON_PASS" "$1"
+}
+
+warn() {
+  total_warn=$((total_warn + 1))
+  printf '  %s  %s' "$ICON_WARN" "$1"
+  [ -n "${2:-}" ] && printf '  %s%s%s' "$C_DIM" "$2" "$C_R"
+  printf '\n'
+}
+
+fail() {
+  total_fail=$((total_fail + 1))
+  printf '  %s  %s' "$ICON_FAIL" "$1"
+  [ -n "${2:-}" ] && printf '  %s%s%s' "$C_DIM" "$2" "$C_R"
+  printf '\n'
+}
+
+section() {
+  [ "$quiet" -eq 1 ] && return 0
+  printf '\n%s── %s%s\n' "$C_HEAD" "$1" "$C_R"
+}
+
+has_cmd() { command -v "$1" > /dev/null 2>&1; }
+
+# ── checks ───────────────────────────────────────────────────────────────────
+
+check_core() {
+  section "Core"
+
+  if has_cmd chezmoi; then
+    pass "chezmoi installed"
+    local diff_lines
+    diff_lines="$(chezmoi diff --no-pager 2> /dev/null | wc -l | tr -d ' ')"
+    if [ "$diff_lines" -gt 0 ]; then
+      warn "chezmoi has pending changes" "chezmoi diff"
+    else
+      pass "chezmoi state clean"
+    fi
+  else
+    fail "chezmoi not installed" "curl -sfL https://get.chezmoi.io | sh"
+  fi
+
+  if has_cmd brew; then
+    pass "Homebrew installed"
+    if [ "$verbose" -eq 1 ]; then
+      local outdated
+      outdated="$(brew outdated --quiet 2> /dev/null | wc -l | tr -d ' ')"
+      if [ "$outdated" -gt 0 ]; then
+        warn "$outdated Homebrew packages outdated" "brew upgrade"
+      else
+        pass "Homebrew packages up to date"
+      fi
+    fi
+  else
+    fail "Homebrew not installed" "/usr/bin/env bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+  fi
+
+  if has_cmd xcode-select && xcode-select -p > /dev/null 2>&1; then
+    pass "Xcode CLI tools installed"
+  else
+    fail "Xcode CLI tools missing" "xcode-select --install"
+  fi
+}
+
+check_shell() {
+  section "Shell"
+
+  if has_cmd fish; then
+    pass "fish installed"
+  else
+    fail "fish not installed" "brew install fish"
+  fi
+
+  local login_shell
+  login_shell="$(dscl . -read "$HOME" UserShell 2> /dev/null | awk '{print $2}' || true)"
+  if [[ "$login_shell" == *fish* ]]; then
+    pass "fish is default shell"
+  else
+    warn "default shell is ${login_shell:-unknown}, not fish" "chsh -s \$(which fish)"
+  fi
+
+  if has_cmd starship; then
+    pass "starship prompt installed"
+  else
+    warn "starship not installed" "brew install starship"
+  fi
+
+  if has_cmd zoxide; then
+    pass "zoxide installed"
+  else
+    warn "zoxide not installed" "brew install zoxide"
+  fi
+}
+
+check_tmux() {
+  section "tmux"
+
+  if has_cmd tmux; then
+    pass "tmux installed"
+  else
+    fail "tmux not installed" "brew install tmux"
+    return
+  fi
+
+  local tpm_dir="$HOME/.config/tmux/plugins/tpm"
+  if [ -d "$tpm_dir" ]; then
+    pass "TPM installed"
+  else
+    fail "TPM not installed" "chezmoi apply --include=externals"
+  fi
+
+  if tmux info > /dev/null 2>&1; then
+    pass "tmux server running"
+    local sess_count
+    sess_count="$(tmux list-sessions 2> /dev/null | wc -l | tr -d ' ')"
+    pass "$sess_count active session(s)"
+  else
+    warn "tmux server not running"
+  fi
+
+  if has_cmd fzf; then
+    pass "fzf installed (picker dependency)"
+  else
+    fail "fzf not installed (session picker broken)" "brew install fzf"
+  fi
+
+  if has_cmd fd; then
+    pass "fd installed (picker dependency)"
+  else
+    warn "fd not installed (picker will be slow)" "brew install fd"
+  fi
+}
+
+check_git() {
+  section "Git"
+
+  if has_cmd git; then
+    pass "git installed"
+  else
+    fail "git not installed" "brew install git"
+    return
+  fi
+
+  local git_name git_email
+  git_name="$(git config --global user.name 2> /dev/null || true)"
+  git_email="$(git config --global user.email 2> /dev/null || true)"
+  if [ -n "$git_name" ] && [ -n "$git_email" ]; then
+    pass "git identity configured ($git_name <$git_email>)"
+  else
+    fail "git identity not configured" "git config --global user.name / user.email"
+  fi
+
+  local sign_format
+  sign_format="$(git config --global gpg.format 2> /dev/null || true)"
+  if [ -n "$sign_format" ]; then
+    pass "commit signing configured (format: $sign_format)"
+  else
+    warn "commit signing not configured"
+  fi
+
+  if has_cmd delta; then
+    pass "delta pager installed"
+  else
+    warn "delta not installed" "brew install git-delta"
+  fi
+
+  if has_cmd gh; then
+    pass "GitHub CLI installed"
+    if gh auth status > /dev/null 2>&1; then
+      pass "gh authenticated"
+    else
+      warn "gh not authenticated" "gh auth login"
+    fi
+  else
+    fail "GitHub CLI not installed" "brew install gh"
+  fi
+
+  if has_cmd lazygit; then
+    pass "lazygit installed"
+  else
+    warn "lazygit not installed" "brew install lazygit"
+  fi
+}
+
+check_security() {
+  section "Security & Secrets"
+
+  if has_cmd pass; then
+    pass "pass installed"
+    local store_dir="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
+    if [ -d "$store_dir" ]; then
+      pass "password store exists"
+    else
+      fail "password store missing" "pass init <gpg-id>"
+    fi
+  else
+    warn "pass not installed" "brew install pass"
+  fi
+
+  if has_cmd gpg; then
+    pass "gpg installed"
+    local key_count
+    key_count="$(gpg --list-secret-keys --keyid-format long 2> /dev/null | grep -c '^sec' || true)"
+    if [ "$key_count" -gt 0 ]; then
+      pass "$key_count GPG secret key(s) available"
+    else
+      warn "no GPG secret keys found"
+    fi
+  else
+    warn "gpg not installed" "brew install gnupg"
+  fi
+
+  local ssh_agent_sock="${SSH_AUTH_SOCK:-}"
+  if [ -n "$ssh_agent_sock" ]; then
+    if [[ "$ssh_agent_sock" == *1Password* || "$ssh_agent_sock" == *1password* ]]; then
+      pass "SSH agent: 1Password"
+    else
+      pass "SSH agent active ($ssh_agent_sock)"
+    fi
+  else
+    warn "no SSH agent detected" "check 1Password SSH agent settings"
+  fi
+
+  if has_cmd op; then
+    pass "1Password CLI installed"
+  else
+    warn "1Password CLI not installed" "brew install 1password-cli"
+  fi
+}
+
+check_editors_ai() {
+  section "Editors & AI Tools"
+
+  local -a editor_checks=(
+    "cursor:Cursor"
+    "nvim:Neovim"
+  )
+  for entry in "${editor_checks[@]}"; do
+    local cmd="${entry%%:*}"
+    local label="${entry#*:}"
+    if has_cmd "$cmd"; then
+      pass "$label installed"
+    else
+      warn "$label not installed"
+    fi
+  done
+
+  local -a ai_checks=(
+    "claude:Claude Code"
+    "codex:OpenAI Codex"
+    "opencode:OpenCode"
+    "gemini:Gemini CLI"
+  )
+  for entry in "${ai_checks[@]}"; do
+    local cmd="${entry%%:*}"
+    local label="${entry#*:}"
+    if has_cmd "$cmd"; then
+      pass "$label installed"
+    else
+      warn "$label not installed"
+    fi
+  done
+}
+
+check_tools() {
+  section "Key CLI Tools"
+
+  local -a tool_checks=(
+    "bat:bat"
+    "rg:ripgrep"
+    "jq:jq"
+    "yq:yq"
+    "htop:htop"
+    "hyperfine:hyperfine"
+    "watchexec:watchexec"
+    "parallel:parallel"
+  )
+
+  for entry in "${tool_checks[@]}"; do
+    local cmd="${entry%%:*}"
+    local label="${entry#*:}"
+    if has_cmd "$cmd"; then
+      pass "$label"
+    else
+      warn "$label not installed" "brew install $label"
+    fi
+  done
+}
+
+check_bin_wrappers() {
+  section "~/bin Wrappers & Agent Runtime"
+
+  # Forwarding wrappers in ~/bin that exec a brew-installed binary.
+  # If the brew formula is gone, the wrapper breaks silently.
+  local -a wrappers=(
+    "sem:sem"
+    "parallel:parallel"
+  )
+  local entry name formula
+  for entry in "${wrappers[@]}"; do
+    name="${entry%%:*}"
+    formula="${entry#*:}"
+    if [ -x "$HOME/bin/$name" ]; then
+      if brew --prefix "$formula" > /dev/null 2>&1; then
+        pass "~/bin/$name wrapper resolves ($formula)"
+      else
+        fail "~/bin/$name wrapper broken: brew formula '$formula' missing" "brew install $formula"
+      fi
+    fi
+  done
+
+  # Cursor CLI bundles its own ripgrep; a missing binary makes agent file
+  # search (Glob/Grep) fail with spawn ENOENT.
+  if [ -d "/opt/homebrew/Caskroom/cursor-cli" ]; then
+    local cursor_rg
+    cursor_rg="$(ls -1 /opt/homebrew/Caskroom/cursor-cli/*/dist-package/rg 2> /dev/null | tail -1 || true)"
+    if [ -n "$cursor_rg" ] && [ -x "$cursor_rg" ]; then
+      pass "cursor-cli bundled rg present"
+    else
+      warn "cursor-cli bundled rg missing (agent Glob/Grep may ENOENT)" "reinstall cursor-cli"
+    fi
+  fi
+}
+
+check_worktrees() {
+  section "Worktrees"
+
+  if ! has_cmd git || ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+    pass "not inside a git repo (skipping worktree checks)"
+    return
+  fi
+
+  local stale_count=0
+  local wt_path=""
+  while IFS= read -r line; do
+    case "$line" in
+      worktree\ *)
+        wt_path="${line#worktree }"
+        if [ -n "$wt_path" ] && [ ! -e "$wt_path" ]; then
+          stale_count=$((stale_count + 1))
+        fi
+        ;;
+    esac
+  done < <(git worktree list --porcelain 2> /dev/null || true)
+
+  if [ "$stale_count" -gt 0 ]; then
+    warn "$stale_count stale worktree(s)" ",w prune"
+  else
+    pass "no stale worktrees"
+  fi
+}
+
+check_ai_configs() {
+  section "AI Tool Configs"
+
+  local -a config_checks=(
+    "$HOME/.cursor/mcp.json:Cursor MCP"
+    "$HOME/.claude/settings.json:Claude Code settings"
+    "$HOME/.claude.json:Claude Code MCP"
+    "$HOME/.gemini/settings.json:Gemini settings"
+    "$HOME/.config/opencode/opencode.jsonc:OpenCode config"
+    "$HOME/.codex/config.toml:Codex config"
+    "$HOME/.pi/agent/settings.json:Pi settings"
+    "$HOME/.pi/agent/mcp.json:Pi MCP"
+    "$HOME/.pi/agent/models.json:Pi models"
+  )
+
+  for entry in "${config_checks[@]}"; do
+    local path="${entry%%:*}"
+    local label="${entry#*:}"
+    if [ -f "$path" ]; then
+      local size
+      size="$(wc -c < "$path" | tr -d ' ')"
+      if [ "$size" -gt 2 ]; then
+        pass "$label"
+        if [ "$verbose" -eq 1 ]; then
+          local age_days
+          if age_days="$((($(date +%s) - $(stat -f %m "$path" 2> /dev/null || stat -c %Y "$path" 2> /dev/null || echo 0)) / 86400))"; then
+            if [ "$age_days" -gt 30 ]; then
+              warn "$label last modified ${age_days}d ago" "chezmoi apply"
+            fi
+          fi
+        fi
+      else
+        warn "$label exists but appears empty" "chezmoi apply"
+      fi
+    else
+      if has_cmd "$(echo "$label" | awk '{print tolower($1)}')" 2> /dev/null; then
+        warn "$label missing" "chezmoi apply"
+      else
+        [ "$verbose" -eq 1 ] && pass "$label (skipped — tool not installed)"
+      fi
+    fi
+  done
+
+  if has_cmd chezmoi && [ "$verbose" -eq 1 ]; then
+    local diff_lines
+    diff_lines="$(chezmoi diff --no-pager 2> /dev/null | wc -l | tr -d ' ')"
+    if [ "$diff_lines" -gt 0 ]; then
+      warn "chezmoi has $diff_lines lines of pending changes" "chezmoi apply"
+    fi
+  fi
+}
+
+check_config_drift() {
+  section "Config Drift"
+
+  local manifest="${XDG_STATE_HOME:-$HOME/.local/state}/chezmoi/managed_configs.tsv"
+  if [ ! -f "$manifest" ]; then
+    warn "no managed-configs manifest found" "chezmoi apply"
+    return
+  fi
+
+  local drifted=0 checked=0
+  while IFS=$'\t' read -r target expected_hash _timestamp; do
+    [ -z "$target" ] && continue
+    [[ "$target" == \#* ]] && continue
+
+    if [ ! -f "$target" ]; then
+      warn "$(basename "$target") missing (was managed)" "chezmoi apply"
+      drifted=$((drifted + 1))
+      checked=$((checked + 1))
+      continue
+    fi
+
+    local actual_hash
+    actual_hash="$(shasum -a 256 "$target" | cut -d' ' -f1)"
+    checked=$((checked + 1))
+
+    if [ "$actual_hash" != "$expected_hash" ]; then
+      warn "$(basename "$target") has drifted from managed state" "chezmoi apply"
+      drifted=$((drifted + 1))
+    else
+      [ "$verbose" -eq 1 ] && pass "$(basename "$target") matches managed state"
+    fi
+  done < "$manifest"
+
+  if [ "$drifted" -eq 0 ] && [ "$checked" -gt 0 ]; then
+    pass "$checked managed config(s) in sync"
+  fi
+}
+
+# ── main ─────────────────────────────────────────────────────────────────────
+
+if [ "$quiet" -eq 0 ]; then
+  printf '%s,doctor%s — dotfiles ecosystem health check\n' "$C_HEAD" "$C_R"
+fi
+
+check_core
+check_shell
+check_tmux
+check_git
+check_security
+check_editors_ai
+check_tools
+check_bin_wrappers
+check_worktrees
+check_ai_configs
+check_config_drift
+
+# ── summary ──────────────────────────────────────────────────────────────────
+
+printf '\n%s── Summary%s\n' "$C_HEAD" "$C_R"
+printf '  %s %s passed' "$ICON_PASS" "$total_pass"
+if [ "$total_warn" -gt 0 ]; then
+  printf '   %s %s warning(s)' "$ICON_WARN" "$total_warn"
+fi
+if [ "$total_fail" -gt 0 ]; then
+  printf '   %s %s failure(s)' "$ICON_FAIL" "$total_fail"
+fi
+printf '\n'
+
+if [ "$total_fail" -gt 0 ]; then
+  exit 1
+elif [ "$total_warn" -gt 0 ]; then
+  exit 0
+fi
+exit 0

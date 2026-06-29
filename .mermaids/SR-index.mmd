@@ -29,5 +29,6 @@ flowchart LR
     A15["private_readonly_dot_gitconfig.tmpl · ssh/agent.toml"]:::area -->|C3/C5| B15["breaks: identity/signing/SSH per gitdir<br/>co-edit: includeIf work block + allowed_signers + pub keys<br/>catalog: 08"]:::brk
     A16["Makefile · bin/fmt · linter rc files"]:::area -->|C6| B16["breaks: make check/fmt for everyone<br/>co-edit: the specific formatter config it drives<br/>catalog: 09"]:::brk
     A17[".mermaids/*.mmd (this map)"]:::area -->|C1-doc| B17["breaks: agent navigation if stale<br/>co-edit: update the .mmd whose flow your change alters<br/>(Documentation Hygiene). catalog: this dir"]:::brk
+    A18["home/exact_bin/executable_,* · home/exact_lib/exact_,*/"]:::area -->|C1/C6| B18["breaks: command discovery, PATH UX, deployed internals<br/>co-edit: Fish completion + custom-command docs + 07c catalog<br/>+ verify_bin_surface / census when files move. catalog: 07c"]:::brk
 
     GUIDE["USE: locate your file's row → its concept (S0) is the rule to honor →<br/>'breaks' is your blast radius → 'co-edit' is the minimum set to change together →<br/>'catalog' is the exhaustive per-file diagram for that area."]:::c

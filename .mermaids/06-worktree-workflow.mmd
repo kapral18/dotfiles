@@ -1,7 +1,7 @@
 %% ============================================================================
 %% 06-worktree-workflow.mmd — Git worktree + GitHub PR/issue workflow.
-%% ,w (home/exact_bin/executable_,w) dispatches to home/exact_bin/utils/,w/*.sh
-%% and shares helpers in utils/executable_worktree_lib.sh. Tightly coupled to
+%% ,w (home/exact_bin/executable_,w) dispatches to home/exact_lib/exact_,w/*.sh
+%% and shares helpers in home/exact_lib/exact_shared/worktree_lib.sh. Tightly coupled to
 %% tmux sessions (one session per worktree) and 1Password identity switching.
 %% ============================================================================
 flowchart TD
@@ -10,8 +10,8 @@ flowchart TD
     classDef ext fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
     classDef id fill:#3a1b2b,stroke:#f48fb1,color:#fce4ec;
 
-    W[",w (executable_,w) dispatcher → utils/,w/<cmd>.sh"]:::cli
-    LIB[["utils/executable_worktree_lib.sh · utils/executable_bash_utils_lib.sh<br/>utils/,w/readonly_issue_lib.sh · utils/,w/lib/iso_date_days_ago.py<br/>completions: fish ,w.fish + zsh _comma_w"]]:::sub
+    W[",w (executable_,w thin launcher → home/exact_lib/exact_,w/main.sh)<br/>dispatcher → home/exact_lib/exact_,w/<cmd>.sh"]:::cli
+    LIB[["home/exact_lib/exact_shared/{worktree_lib,bash_utils_lib}.sh<br/>home/exact_lib/exact_,w/issue_lib.sh · home/exact_lib/exact_,w/exact_lib/iso_date_days_ago.py<br/>completions: fish ,w.fish + zsh _comma_w"]]:::sub
 
     W --> ADD["add.sh &lt;branch&gt; [base]<br/>local / origin / upstream / user-fork / new · nested dirs"]:::sub
     W --> PRS["prs.sh &lt;nums|search&gt; → fzf select → gh PR meta<br/>add contributor fork → worktree → tmux"]:::sub

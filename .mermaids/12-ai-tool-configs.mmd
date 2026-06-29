@@ -20,7 +20,7 @@ flowchart TB
     end
 
     subgraph CODEX["Codex (dot_codex/)"]
-        CDX["private_config.work.toml · private_config.personal.toml<br/>readonly_llama-cpp-model-catalog.json<br/>exact_agents/ → ~/.codex/agents/ (multi_agent roles: review-worker/PR-necessity/findings/live-ui)<br/>exact_skills/ (.keep) · ~/bin/codex wrapper (inject llama meta)<br/>,codex-cloudflare wrapper uses Cloudflare AI Gateway OpenAI Responses endpoint<br/>hook 07-merge-codex (inject_mcp_into_codex_toml.py)"]:::codex
+        CDX["private_config.work.toml · private_config.personal.toml<br/>readonly_llama-cpp-model-catalog.json<br/>exact_agents/ → ~/.codex/agents/ (multi_agent roles: review-worker/PR-necessity/findings/live-ui)<br/>exact_skills/ (.keep) · ~/bin/,codex wrapper (inject llama meta)<br/>,codex-cloudflare wrapper uses Cloudflare AI Gateway OpenAI Responses endpoint<br/>hook 07-merge-codex (inject_mcp_into_codex_toml.py)"]:::codex
     end
 
     subgraph GEMINI["Gemini CLI (dot_gemini/)"]

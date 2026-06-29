@@ -7,16 +7,16 @@ title: Launchers
 
 ## Codex launcher metadata
 
-Codex only has first-class model metadata for slugs present in its model catalog; unknown local slugs use fallback metadata and emit a warning. This repo ships a transparent `codex` wrapper plus a small local catalog for the llama.cpp models:
+Codex only has first-class model metadata for slugs present in its model catalog; unknown local slugs use fallback metadata and emit a warning. This repo ships a transparent `,codex` wrapper plus a small local catalog for the llama.cpp models:
 
-- [`home/exact_bin/executable_codex`](../../../../home/exact_bin/executable_codex) → `~/bin/codex`
+- [`home/exact_bin/executable_,codex`](../../../../home/exact_bin/executable_,codex) → `~/bin/,codex`
 - [`home/dot_codex/readonly_llama-cpp-model-catalog.json`](../../../../home/dot_codex/readonly_llama-cpp-model-catalog.json) → `~/.codex/llama-cpp-model-catalog.json` (defines both `local` and `local-max`)
 
 The wrapper injects `-c model_catalog_json="$HOME/.codex/llama-cpp-model-catalog.json"` when the selected model is one of the local llama.cpp ids (`local` or `local-max`), in either `--model <id>` or `--model=<id>` form. Other Codex invocations execute `/opt/homebrew/bin/codex` directly.
 
 ## Codex launcher (`,codex-llama-cpp`)
 
-The `codex` shim above only supplies catalog metadata; Codex still needs the provider routing flags to reach llama-server. `,codex-llama-cpp` bakes those in so you don't type them every time:
+The `,codex` shim above only supplies catalog metadata; Codex still needs the provider routing flags to reach llama-server. `,codex-llama-cpp` bakes those in so you don't type them every time:
 
 - [`home/exact_bin/executable_,codex-llama-cpp`](../../../../home/exact_bin/executable_,codex-llama-cpp) → `~/bin/,codex-llama-cpp`
 
@@ -28,7 +28,7 @@ The wrapper injects:
 | `model_providers.llama-cpp.name`     | `llama.cpp`                                     |
 | `model_provider`                     | `llama-cpp`                                     |
 
-The `~/bin/codex` shim still injects catalog metadata. Pass `--model` / `-m local-max` to pick the model. The wrapper adds its default `--model $CODEX_LLAMA_CPP_MODEL` only when you did not pass one, so there is no duplicate flag.
+The `~/bin/,codex` shim still injects catalog metadata. Pass `--model` / `-m local-max` to pick the model. The wrapper adds its default `--model $CODEX_LLAMA_CPP_MODEL` only when you did not pass one, so there is no duplicate flag.
 
 ```bash
 ,codex-llama-cpp                          # default model local

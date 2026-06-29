@@ -14,6 +14,7 @@ Exit status is non-zero if any command is missing:
 - ``home/dot_config/fish/completions/readonly_,<name>.fish``
 - a backticked command token under ``docs/topics/workflow/custom-commands/``
 - a command token in ``.mermaids/07c-bin-commands.mmd``
+- no orphaned command-library directory under ``home/exact_lib/exact_,<name>/``
 """
 
 from __future__ import annotations
@@ -31,6 +32,14 @@ class CommandSurface:
     name: str
     source: Path
     fish_completion: Path
+
+
+@dataclass(frozen=True)
+class CommandLibrary:
+    """A deployed internal library directory for one comma command."""
+
+    name: str
+    source: Path
 
 
 def _command_name(path: Path) -> str:
@@ -58,6 +67,23 @@ def discover_commands(repo_root: Path) -> list[CommandSurface]:
             )
         )
     return commands
+
+
+def discover_command_libraries(repo_root: Path) -> list[CommandLibrary]:
+    """Return deployed command internals declared under ``home/exact_lib/exact_,<name>``."""
+
+    lib_dir = repo_root / "home" / "exact_lib"
+    libraries: list[CommandLibrary] = []
+    for source in sorted(lib_dir.iterdir() if lib_dir.is_dir() else []):
+        if not source.is_dir():
+            continue
+        source_name = source.name
+        if source_name.startswith("exact_"):
+            source_name = source_name.removeprefix("exact_")
+        if not source_name.startswith(","):
+            continue
+        libraries.append(CommandLibrary(name=source_name.removeprefix(","), source=source))
+    return libraries
 
 
 def _read_required(path: Path) -> str:
@@ -104,7 +130,10 @@ def check_bin_surface(repo_root: Path) -> list[str]:
         failures.append(f"mermaid catalog missing: {mermaid_path.relative_to(repo_root)}")
         mermaid_text = ""
 
-    for command in discover_commands(repo_root):
+    commands = discover_commands(repo_root)
+    command_names = {command.name for command in commands}
+
+    for command in commands:
         display = f",{command.name}"
         if not command.fish_completion.is_file():
             failures.append(f"{display}: missing Fish completion {command.fish_completion.relative_to(repo_root)}")
@@ -112,6 +141,13 @@ def check_bin_surface(repo_root: Path) -> list[str]:
             failures.append(f"{display}: missing docs token in {docs_path.relative_to(repo_root)}/")
         if mermaid_text and not _mermaid_mentions_command(mermaid_text, command.name):
             failures.append(f"{display}: missing catalog token in {mermaid_path.relative_to(repo_root)}")
+
+    for library in discover_command_libraries(repo_root):
+        if library.name not in command_names:
+            failures.append(
+                f",{library.name}: command library {library.source.relative_to(repo_root)} "
+                f"has no matching home/exact_bin/executable_,{library.name}"
+            )
 
     return failures
 
@@ -134,7 +170,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  \u2717 {failure}", file=sys.stderr)
         return 1
 
-    print(f"bin surface verification passed ({len(discover_commands(repo_root))} commands)")
+    print(
+        f"bin surface verification passed "
+        f"({len(discover_commands(repo_root))} commands, {len(discover_command_libraries(repo_root))} libraries)"
+    )
     return 0
 
 

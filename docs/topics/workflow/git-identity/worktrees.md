@@ -6,12 +6,12 @@ sidebar_position: 3
 
 This setup uses `,w` to make branch isolation, PR checkout, issue work, and tmux session switching cheap.
 
-| Surface        | Source                                                                                         |
-| -------------- | ---------------------------------------------------------------------------------------------- |
-| CLI entry      | [`home/exact_bin/executable_,w`](../../../../home/exact_bin/executable_,w)                     |
-| Helpers        | [`home/exact_bin/utils/,w/`](../../../../home/exact_bin/utils/,w/)                             |
-| GitHub wrapper | [`home/exact_bin/executable_,gh-worktree`](../../../../home/exact_bin/executable_,gh-worktree) |
-| Visual picker  | [Session picker](../tmux/session-picker.md) and [GitHub picker](../tmux/github-picker.md)      |
+| Surface        | Source                                                                                                                                            |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CLI entry      | [`home/exact_bin/executable_,w`](../../../../home/exact_bin/executable_,w)                                                                        |
+| Helpers        | [`home/exact_lib/exact_,w/`](../../../../home/exact_lib/exact_,w/) and [`home/exact_lib/exact_shared/`](../../../../home/exact_lib/exact_shared/) |
+| GitHub wrapper | [`home/exact_bin/executable_,gh-worktree`](../../../../home/exact_bin/executable_,gh-worktree)                                                    |
+| Visual picker  | [Session picker](../tmux/session-picker.md) and [GitHub picker](../tmux/github-picker.md)                                                         |
 
 ## Mental model
 

@@ -23,9 +23,9 @@ Do not use:
 First actions:
 
 1. Resolve the binary explicitly — prefer the chezmoi-managed wrapper, do not trust PATH order:
-   - `SEM_BIN="$HOME/bin/sem"; [ -x "$SEM_BIN" ] || SEM_BIN="$(command -v sem)"`
+   - `SEM_BIN="$HOME/bin/,sem"; [ -x "$SEM_BIN" ] || SEM_BIN="$(command -v sem)"`
    - abort with install instructions (`brew install ataraxy-labs/tap/sem`) if neither resolves.
-   - The `~/bin/sem` wrapper forwards to the Homebrew binary, so both are functionally identical;
+   - The `~/bin/,sem` wrapper forwards to the Homebrew binary, so both are functionally identical;
      use `"$SEM_BIN"` consistently to avoid the "which sem?" ambiguity.
 2. Verify identity before relying on behavior: `"$SEM_BIN" --version` (or `--help`).
 3. Verify you're in a git repo: `git rev-parse --is-inside-work-tree`
@@ -33,36 +33,36 @@ First actions:
 ## Commands
 
 ```bash
-sem diff                                    # entity-level diff of working changes
-sem diff --staged                           # staged changes only
-sem diff --commit abc1234                   # specific commit
-sem diff --from HEAD~5 --to HEAD            # commit range
-sem diff -v                                 # verbose: word-level inline diffs per entity
-sem diff --format json                      # JSON output (for piping/parsing)
-sem diff --format markdown                  # markdown output
-sem diff --format plain                     # git-status style
-sem diff --file-exts .py .rs                # limit to specific file types
-sem diff file1.ts file2.ts                  # compare two files (no git needed)
+"$SEM_BIN" diff                             # entity-level diff of working changes
+"$SEM_BIN" diff --staged                    # staged changes only
+"$SEM_BIN" diff --commit abc1234            # specific commit
+"$SEM_BIN" diff --from HEAD~5 --to HEAD     # commit range
+"$SEM_BIN" diff -v                          # verbose: word-level inline diffs per entity
+"$SEM_BIN" diff --format json               # JSON output (for piping/parsing)
+"$SEM_BIN" diff --format markdown           # markdown output
+"$SEM_BIN" diff --format plain              # git-status style
+"$SEM_BIN" diff --file-exts .py .rs         # limit to specific file types
+"$SEM_BIN" diff file1.ts file2.ts           # compare two files (no git needed)
 
-sem impact <entity> --file <path>           # full impact analysis (deps + dependents + tests)
-sem impact <entity> --deps                  # direct dependencies only
-sem impact <entity> --dependents            # direct dependents only
-sem impact <entity> --tests                 # affected tests only
-sem impact <entity> --json                  # JSON output
+"$SEM_BIN" impact <entity> --file <path>    # full impact analysis (deps + dependents + tests)
+"$SEM_BIN" impact <entity> --deps           # direct dependencies only
+"$SEM_BIN" impact <entity> --dependents     # direct dependents only
+"$SEM_BIN" impact <entity> --tests          # affected tests only
+"$SEM_BIN" impact <entity> --json           # JSON output
 
-sem blame <path>                            # entity-level blame
-sem blame <path> --json
+"$SEM_BIN" blame <path>                     # entity-level blame
+"$SEM_BIN" blame <path> --json
 
-sem log <entity>                            # history of one entity through git log
-sem log <entity> -v                         # with content diffs between versions
-sem log <entity> --limit 20
+"$SEM_BIN" log <entity>                     # history of one entity through git log
+"$SEM_BIN" log <entity> -v                  # with content diffs between versions
+"$SEM_BIN" log <entity> --limit 20
 
-sem entities <path>                         # list all entities in a file
-sem entities <path> --json
+"$SEM_BIN" entities <path>                  # list all entities in a file
+"$SEM_BIN" entities <path> --json
 
-sem context <entity> --file <path>          # token-budgeted context: entity + deps + dependents
-sem context <entity> --budget 4000          # custom token budget (default 8000)
-sem context <entity> --json
+"$SEM_BIN" context <entity> --file <path>   # token-budgeted context: entity + deps + dependents
+"$SEM_BIN" context <entity> --budget 4000   # custom token budget (default 8000)
+"$SEM_BIN" context <entity> --json
 ```
 
 ## Supported languages
@@ -77,6 +77,6 @@ Falls back to chunk-based diffing for unsupported file types.
 ## Notes
 
 - Detects renames and moves via structural hashing (same AST structure, different name).
-- `sem context` fits the entity, its dependencies, and its dependents into a token budget — useful for feeding targeted context to an LLM.
+- `"$SEM_BIN" context` fits the entity, its dependencies, and its dependents into a token budget — useful for feeding targeted context to an LLM.
 - `--format json` on any command produces machine-readable output.
-- `sem setup` replaces `git diff` globally so everything that calls `git diff` gets entity-level output. `sem unsetup` reverts.
+- `"$SEM_BIN" setup` replaces `git diff` globally so everything that calls `git diff` gets entity-level output. `"$SEM_BIN" unsetup` reverts.

@@ -1,7 +1,9 @@
 %% ============================================================================
-%% 07c-bin-commands.mmd — Every script in home/exact_bin/ (87 incl. utils).
-%% executable_,* → ~/bin/,* (comma-prefixed user commands). verify-bin-surface
-%% keeps each command covered by fish completions, docs, and this catalog.
+%% 07c-bin-commands.mmd — Every thin command in home/exact_bin/ (70 thin commands)
+%% plus deployed internals in home/exact_lib/ (39 command/shared library files).
+%% executable_,* → ~/bin/,* (comma-prefixed user commands); home/exact_lib/exact_,name/
+%% → ~/lib/,name/. verify-bin-surface keeps each command covered by fish
+%% completions, docs, catalog, and non-orphaned command libraries.
 %% ============================================================================
 flowchart TB
     classDef gh fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
@@ -15,19 +17,19 @@ flowchart TB
     end
 
     subgraph WTC["Worktree / git"]
-        W[",w (dispatcher → utils/,w/*.sh; see 06)<br/>,generate-git-sandbox · ,history-sync (fish hist via 1Password)"]:::wt
+        W[",w (thin launcher → home/exact_lib/exact_,w; see 06)<br/>,generate-git-sandbox · ,history-sync (fish hist via 1Password → home/exact_lib)"]:::wt
     end
 
     subgraph AIC["AI / agents / KB"]
-        A[",ralph (→ scripts/ralph.py; see 04) · ,ai-kb (→ scripts/ai_kb.py)<br/>,agent-memory (/tmp/specs dead-switch) · ,artifact (cache HTML/live overlay + pollers) · ,cp-files-for-llm<br/>,claude-llama-cpp · ,codex-llama-cpp · ,opencode-llama-cpp<br/>,pi-cloudflare · ,opencode-cloudflare · ,codex-cloudflare<br/>,copilot (refresh header-auth MCP tokens + re-bake config → native Copilot; fail closed)<br/>,copilot-cloudflare · ,copilot-openrouter · ,llama-cpp (local router) · codex (llama-cpp metadata passthrough)<br/>,mcp-token &lt;server&gt; (freshest slack/scsi-main token from cursor cache → Copilot bearer header; --login → cursor-agent mcp login to refresh)<br/>,tg (telegramtui) · ,youtube-search · ,letsfg-docker"]:::ai
+        A[",ralph (→ scripts/ralph.py; see 04) · ,ai-kb (→ scripts/ai_kb.py)<br/>,agent-memory (/tmp/specs dead-switch) · ,artifact (cache HTML/live overlay + pollers) · ,cp-files-for-llm<br/>,claude-llama-cpp · ,codex-llama-cpp · ,opencode-llama-cpp<br/>,pi-cloudflare · ,opencode-cloudflare · ,codex-cloudflare<br/>,copilot (refresh header-auth MCP tokens + re-bake config → native Copilot; fail closed)<br/>,copilot-cloudflare · ,copilot-openrouter · ,llama-cpp (local router) · ,codex (llama-cpp metadata passthrough)<br/>,mcp-token &lt;server&gt; (freshest slack/scsi-main token from cursor cache → Copilot bearer header; --login → cursor-agent mcp login to refresh)<br/>,tg (telegramtui) · ,youtube-search · ,letsfg-docker"]:::ai
     end
 
     subgraph FZFC["fzf / search helpers"]
-        F[",grepo · ,fzf-git-changed-lines · ,fzf-rg-multiline<br/>,fzf-preview-follow · ,bat-preview · ,get-age-buckets · ,get-risky-tests"]:::sys
+        F[",grepo · ,fzf-git-changed-lines · ,fzf-rg-multiline<br/>,fzf-preview-follow · ,bat-preview · ,get-age-buckets (→ ~/lib) · ,get-risky-tests"]:::sys
     end
 
     subgraph PKGC["Package / brew / update"]
-        P[",update (orchestrator) · ,fuzzy-brew-search · ,search-brew-desc<br/>,install-yarn-pkgs · ,apply-app-icons.tmpl · parallel / sem (wrappers)"]:::sys
+        P[",update (orchestrator) · ,fuzzy-brew-search · ,search-brew-desc<br/>,install-yarn-pkgs · ,apply-app-icons.tmpl · ,parallel / ,sem (wrappers)"]:::sys
     end
 
     subgraph KBNC["Kibana dev"]
@@ -35,10 +37,20 @@ flowchart TB
     end
 
     subgraph MEDIA["Media / misc utilities"]
-        M[",to-gif · ,vid-ipad · ,pdf-diff · ,nano-banana (Gemini image gen) · ,appid · ,dumputi<br/>,set-default-mic · ,doctor (health-check) · unwrap-md (md formatter)<br/>weave-setup-local / weave-unsetup-local · ,tmux-lowfi · ,tmux-run-all"]:::media
+        M[",to-gif · ,vid-ipad · ,pdf-diff · ,nano-banana (Gemini image gen) · ,appid · ,dumputi<br/>,set-default-mic · ,doctor (health-check) · ,unwrap-md (md formatter)<br/>,weave-setup-local / ,weave-unsetup-local · ,tmux-lowfi · ,tmux-run-all"]:::media
     end
 
-    subgraph LIBS["Shared libs + ,w internals (utils/)"]
-        L["executable_worktree_lib.sh · executable_bash_utils_lib.sh<br/>,w/{add,prs,issue,ls,switch,open,mv,prune,remove,doctor}.sh<br/>,w/readonly_issue_lib.sh · ,w/lib/iso_date_days_ago.py<br/>exact_history/fish-history-merge.py (+ .test.py)"]:::wt
+    subgraph LIBS["Shared libs + ,w/history internals (home/exact_lib/)"]
+        L["shared/{worktree_lib,bash_utils_lib}.sh<br/>,w/{main,add,prs,issue,ls,switch,open,mv,prune,remove,doctor}.sh<br/>,w/issue_lib.sh · ,w/lib/iso_date_days_ago.py<br/>,history-sync/{main,fish-history-merge,fish-history-merge.test}.py"]:::wt
     end
     W --> LIBS
+
+    subgraph CMDLIBS["Deployed command internals (home/exact_lib/ → ~/lib/)"]
+        CL["Python: ,artifact/main.py · ,get-age-buckets/main.py · ,kbn-pr-audit/main.py<br/>,kbn-stack/main.py · ,mcp-token/main.py<br/>Shell: ,add-patch-to-prs/main.sh · ,codeowners/main.sh · ,doctor/main.sh<br/>,disable-auto-merge/main.sh · ,enable-auto-merge/main.sh · ,gh-prw/main.sh<br/>,gh-subissues-create/main.sh · ,gh-tfork/main.sh · ,gh-worktree/main.sh<br/>,hey-branch/main.sh · ,llama-cpp/main.sh · ,pull-rebase/main.sh<br/>,tmux-run-all/main.sh · ,update/main.sh · ,wh/main.sh<br/>Node: ,jest-test-title-report/main.mjs<br/>thin launchers stay in home/exact_bin/executable_,name"]:::sys
+    end
+    G --> CMDLIBS
+    A --> CMDLIBS
+    F --> CMDLIBS
+    P --> CMDLIBS
+    K --> CMDLIBS
+    M --> CMDLIBS

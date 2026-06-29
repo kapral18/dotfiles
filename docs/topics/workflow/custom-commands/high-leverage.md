@@ -31,7 +31,7 @@ These are the commands most likely to change how you work day to day.
 ## Worktrees: `,w`
 
 - Source: [`home/exact_bin/executable_,w`](../../../../home/exact_bin/executable_,w)
-- Helpers: [`home/exact_bin/utils/,w/`](../../../../home/exact_bin/utils/,w/)
+- Helpers: [`home/exact_lib/exact_,w/`](../../../../home/exact_lib/exact_,w/) and [`home/exact_lib/exact_shared/`](../../../../home/exact_lib/exact_shared/)
 
 ```bash
 ,w add feat/my-change main

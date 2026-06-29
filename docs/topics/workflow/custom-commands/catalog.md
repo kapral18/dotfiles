@@ -54,6 +54,7 @@ This is the grouped lookup for commands that are useful but not always front-and
 | `,ai-kb`               | Manage the durable local agent knowledge base                                                                                                                                             |
 | `,ralph`               | Start, resume, inspect, and control Ralph multi-agent orchestration runs                                                                                                                  |
 | `,llama-cpp`           | Serve/manage the local llama.cpp-compatible inference endpoint                                                                                                                            |
+| `,codex`               | Launch Codex with local llama.cpp model catalog metadata injected when a local model is selected                                                                                          |
 | `,claude-llama-cpp`    | Launch Claude Code against the local llama.cpp-compatible endpoint                                                                                                                        |
 | `,codex-llama-cpp`     | Launch Codex against the local llama.cpp-compatible endpoint                                                                                                                              |
 | `,opencode-llama-cpp`  | Launch OpenCode against the local llama.cpp-compatible endpoint                                                                                                                           |
@@ -64,31 +65,37 @@ This is the grouped lookup for commands that are useful but not always front-and
 | `,opencode-cloudflare` | Launch OpenCode against the personal Cloudflare Workers AI provider                                                                                                                       |
 | `,pi-cloudflare`       | Launch Pi against the personal Cloudflare Workers AI provider                                                                                                                             |
 | `,mcp-token`           | Print a valid MCP token for `slack`/`scsi-main` from cursor's OAuth cache; `--login` refreshes through cursor, records opaque-token freshness locally, and `--quiet` suppresses auth logs |
+| `,letsfg-docker`       | Run LetsFG in a headless Docker/Podman container with Xvfb for browser-based flight connectors                                                                                            |
 
 Provider wrappers with model choices accept either `--model <id>` / `-m <id>` when the underlying CLI supports it, or a model ID as the first argument. Fish completions list supported model IDs at the bare command prompt and after the model flag. The completion cache is refreshed from OpenRouter's public model API or Cloudflare's authenticated model-search API and falls back to configured defaults when remote lookup is unavailable.
 
 The same wrappers expose `--effort <level>`, `--thinking <level>`, and `--no-thinking` when the harness has an equivalent control. Pi maps to `--thinking`; OpenCode maps effort to `run --variant`; Codex maps to `model_reasoning_effort`; Copilot maps `--thinking` to `--effort`.
 
-Plain interactive `claude` stays native. Normal `codex` goes through `~/bin/codex` only to inject local llama.cpp model metadata when the selected model is local; otherwise it execs the real Codex binary directly. Plain `copilot` stays native via the managed `,copilot` wrapper so header-auth MCP tokens are refreshed before launch. Local/provider-specific wrappers (`*,llama-cpp`, `,codex-cloudflare`, `,copilot-cloudflare`, `,copilot-openrouter`) select their own upstreams.
+Plain interactive `claude` stays native. `,codex` goes through `~/bin/,codex` only to inject local llama.cpp model metadata when the selected model is local; otherwise it execs the real Codex binary directly. Plain `copilot` stays native via the managed `,copilot` wrapper so header-auth MCP tokens are refreshed before launch. Local/provider-specific wrappers (`*,llama-cpp`, `,codex-cloudflare`, `,copilot-cloudflare`, `,copilot-openrouter`) select their own upstreams.
 
 ## Utility helpers
 
-| Command             | Description                                                                      |
-| ------------------- | -------------------------------------------------------------------------------- |
-| `,cp-files-for-llm` | Copy a directory tree's text contents to the clipboard with file headers         |
-| `,appid`            | Print the macOS bundle identifier for an app name/path                           |
-| `,dumputi`          | Dump the system's registered Uniform Type Identifiers                            |
-| `,to-gif`           | Convert a video to an optimized GIF                                              |
-| `,vid-ipad`         | Re-encode a video for iPad playback                                              |
-| `,pdf-diff`         | Visual diff two PDFs by compositing pages                                        |
-| `,nano-banana`      | Generate a Nano Banana/Gemini raster image from text                             |
-| `,set-default-mic`  | Select the preferred external microphone, falling back to the MacBook microphone |
-| `,update`           | Reconcile dotfiles plus package-manager update categories                        |
+| Command                | Description                                                                      |
+| ---------------------- | -------------------------------------------------------------------------------- |
+| `,cp-files-for-llm`    | Copy a directory tree's text contents to the clipboard with file headers         |
+| `,appid`               | Print the macOS bundle identifier for an app name/path                           |
+| `,dumputi`             | Dump the system's registered Uniform Type Identifiers                            |
+| `,to-gif`              | Convert a video to an optimized GIF                                              |
+| `,vid-ipad`            | Re-encode a video for iPad playback                                              |
+| `,pdf-diff`            | Visual diff two PDFs by compositing pages                                        |
+| `,nano-banana`         | Generate a Nano Banana/Gemini raster image from text                             |
+| `,set-default-mic`     | Select the preferred external microphone, falling back to the MacBook microphone |
+| `,update`              | Reconcile dotfiles plus package-manager update categories                        |
+| `,parallel`            | Forward to GNU Parallel when both GNU Parallel and semantic-git are installed    |
+| `,sem`                 | Forward to Ataraxy semantic-git's entity-level CLI                               |
+| `,unwrap-md`           | Unwrap hard-wrapped Markdown prose while preserving AI-facing instruction wraps  |
+| `,weave-setup-local`   | Configure weave merge driver in repo-local git config and `.git/info/attributes` |
+| `,weave-unsetup-local` | Remove the local-only weave merge driver setup                                   |
 
 ## Fish history sync: `,history-sync`
 
 - Source: [`home/exact_bin/executable_,history-sync`](../../../../home/exact_bin/executable_,history-sync)
-- Merge logic: [`home/exact_bin/utils/exact_history/executable_fish-history-merge.py`](../../../../home/exact_bin/utils/exact_history/executable_fish-history-merge.py)
+- Merge logic: [`home/exact_lib/exact_,history-sync/fish-history-merge.py`](../../../../home/exact_lib/exact_,history-sync/fish-history-merge.py)
 - Stores the synced history in the 1Password document `fish-history-sync`, which doubles as an off-machine backup.
 - Merges by command text, keeping the most recent timestamp and writing entries chronologically.
 
@@ -103,6 +110,8 @@ If you restore history out-of-band while fish is running, run `history merge` in
 ## Internal plumbing
 
 These are used by scripts, fzf integrations, and Neovim; you rarely invoke them directly.
+
+Large command internals live under `~/lib/,<command>/` while the public command stays in `~/bin`. Current library-backed commands are `,add-patch-to-prs`, `,artifact`, `,codeowners`, `,disable-auto-merge`, `,doctor`, `,enable-auto-merge`, `,get-age-buckets`, `,gh-prw`, `,gh-subissues-create`, `,gh-tfork`, `,gh-worktree`, `,hey-branch`, `,history-sync`, `,jest-test-title-report`, `,kbn-pr-audit`, `,kbn-stack`, `,llama-cpp`, `,mcp-token`, `,pull-rebase`, `,tmux-run-all`, `,update`, `,w`, and `,wh`. Cross-command shell helpers live under `~/lib/shared/`.
 
 | Command                  | Description                                                                                   |
 | ------------------------ | --------------------------------------------------------------------------------------------- |

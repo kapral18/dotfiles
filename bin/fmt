@@ -19,10 +19,10 @@ Format source files in this dotfiles repo.
 Options:
   --check       Check formatting without writing (exit 1 if unformatted)
   --type TYPE   Only run one formatter: md, json, yaml, sh, lua, fish, py, go
-  (no args)     Format all tracked files
+  (no args)     Format all tracked files plus untracked, non-ignored files
 
 Formatters:
-  md               unwrap-md + markdownlint --fix + prettier
+  md               ,unwrap-md + markdownlint --fix + prettier
   json, yaml       prettier
   sh               shfmt (2-space, bash)
   lua              stylua
@@ -123,7 +123,7 @@ collect_by_func() {
       if "$func" "$f"; then
         is_ignored "$f" || echo "$f"
       fi
-    done < <(git ls-files 2>/dev/null || true)
+    done < <(git ls-files --cached --others --exclude-standard 2>/dev/null || true)
   fi
 }
 
@@ -135,27 +135,27 @@ should_run() {
 # Each group is a self-contained function that prints its own progress, mutates
 # files (or checks them), and returns non-zero on failure. Groups operate on
 # disjoint file sets, so they are launched concurrently (see runner below). The
-# only ordering constraint lives *inside* the md group: unwrap-md -> markdownlint
+# only ordering constraint lives *inside* the md group: ,unwrap-md -> markdownlint
 # -> prettier all touch the same markdown files and must stay sequential.
 
-# md group: unwrap-md -> markdownlint --fix -> prettier (md + json + yaml).
+# md group: ,unwrap-md -> markdownlint --fix -> prettier (md + json + yaml).
 # json/yaml have no ordering dependency, but bundling them into prettier keeps it
 # a single bulk invocation (the original behavior) and they ride along harmlessly.
 fmt_md() {
   local rc=0
   if should_run md; then
-    if ! command -v unwrap-md >/dev/null 2>&1; then
-      printf 'missing: unwrap-md (install via chezmoi: chezmoi apply %s)\n' "$HOME/bin/unwrap-md" >&2
+    if ! command -v ,unwrap-md >/dev/null 2>&1; then
+      printf 'missing: ,unwrap-md (install via chezmoi: chezmoi apply %s)\n' "$HOME/bin/,unwrap-md" >&2
       return 1
     fi
     mapfile -t md_files < <(collect_by_func is_md_file | sort -u)
     if [[ ${#md_files[@]} -gt 0 ]]; then
       if $check_mode; then
-        printf 'unwrap-md: checking %d files\n' "${#md_files[@]}"
-        unwrap-md --check "${md_files[@]}" || rc=1
+        printf ',unwrap-md: checking %d files\n' "${#md_files[@]}"
+        ,unwrap-md --check "${md_files[@]}" || rc=1
       else
-        printf 'unwrap-md: unwrapping %d files\n' "${#md_files[@]}"
-        unwrap-md "${md_files[@]}"
+        printf ',unwrap-md: unwrapping %d files\n' "${#md_files[@]}"
+        ,unwrap-md "${md_files[@]}"
       fi
     fi
 

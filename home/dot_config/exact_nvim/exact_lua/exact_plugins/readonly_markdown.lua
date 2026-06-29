@@ -51,7 +51,7 @@ return {
           stdin = false,
         },
         unwrap_md = {
-          command = "unwrap-md",
+          command = ",unwrap-md",
           args = { "$FILENAME" },
           stdin = false,
         },

@@ -5,7 +5,7 @@
 %%     (S0), cross-cutting flows (S1/S2/S3), and a reverse index (SR) that maps
 %%     any file to its concept, blast radius, and co-edit set.
 %%   CATALOG (drill-down) — how the system is LAID OUT: 00-13 enumerate every
-%%     one of the 1157 tracked files by exact chezmoi source path.
+%%     one of the 1186 tracked files by exact chezmoi source path.
 %% `home/` is chezmoi source deployed to $HOME; scripts/tools/website/docs are
 %% repo-side (NOT deployed). Each node → a deeper .mmd.
 %% ============================================================================
@@ -42,7 +42,7 @@ graph TD
     CATHEAD --> WT["06 · Worktree / GitHub workflow<br/>06-worktree-workflow.mmd"]:::sys
     CATHEAD --> SEM["07 · Shell + terminals + macOS<br/>07-shell-editor-macos.mmd"]:::sys
     CATHEAD --> NVIM["07b · Neovim (every lua file)<br/>07b-neovim.mmd"]:::sys
-    CATHEAD --> BIN["07c · ~/bin commands (every script)<br/>07c-bin-commands.mmd"]:::sys
+    CATHEAD --> BIN["07c · ~/bin commands + ~/lib internals<br/>07c-bin-commands.mmd"]:::sys
     CATHEAD --> SEC["08 · Security / identity / dotfiles<br/>08-security-and-dotfiles.mmd"]:::data
     CATHEAD --> VAL["09 · Repo dev/validation loop<br/>09-repo-validation.mmd"]:::repo
     CATHEAD --> DOCS["10 · Docs site + repo meta<br/>10-docs-and-repo-meta.mmd"]:::repo
@@ -54,6 +54,6 @@ graph TD
         K1["exact_=managed dir · dot_=leading '.' · readonly_=r--r--r--<br/>executable_=+x · private_=0600 · empty_=keep-if-empty<br/>symlink_=symlink · .tmpl=Go-template · .chezmoiignore=skip"]:::data
     end
 
-    subgraph COUNTS["file census (1157 total)"]
-        C1["nvim 157 · tmux 119 · Alfred 115 (86 png) · bin 85<br/>docs 167 · agents 73 + runtime profiles 37 · ralph-tui 33 · chezmoiscripts 31<br/>scripts 43 · fish 66 · website 15 · home-root 33 · rest"]:::repo
+    subgraph COUNTS["file census (1186 total)"]
+        C1["nvim 157 · tmux 119 · Alfred 115 (86 png) · bin 70<br/>docs 167 · agents 73 + runtime profiles 37 · ralph-tui 33 · chezmoiscripts 31<br/>scripts 43 · fish 73 · command-lib 39 · website 15 · home-root 33 · rest"]:::repo
     end

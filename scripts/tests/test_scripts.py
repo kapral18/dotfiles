@@ -33,6 +33,8 @@ SCRIPTS = Path(__file__).resolve().parent.parent
 REPO = SCRIPTS.parent
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 TMUX_PICKERS = REPO / "home/dot_config/exact_tmux/exact_scripts/pickers"
+ARTIFACT_COMMAND = REPO / "home/exact_lib/exact_,artifact/main.py"
+MCP_TOKEN_COMMAND = REPO / "home/exact_lib/exact_,mcp-token/main.py"
 
 
 def _run(args: list[str], *, stdin: str | None = None) -> str:
@@ -140,6 +142,49 @@ class TestVerifyBinSurface(unittest.TestCase):
 
         assert failures == []
 
+    def test_accepts_command_library_with_matching_command(self):
+        sys.path.insert(0, str(SCRIPTS))
+        import verify_bin_surface
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "home/exact_bin").mkdir(parents=True)
+            (root / "home/exact_lib/exact_,library").mkdir(parents=True)
+            (root / "home/dot_config/fish/completions").mkdir(parents=True)
+            (root / "docs/topics/workflow/custom-commands").mkdir(parents=True)
+            (root / ".mermaids").mkdir(parents=True)
+
+            (root / "home/exact_bin/executable_,library").write_text("#!/bin/sh\n")
+            (root / "home/exact_lib/exact_,library/main.py").write_text("print('library')\n")
+            (root / "home/dot_config/fish/completions/readonly_,library.fish").write_text(
+                "complete -c ,library --no-files\n"
+            )
+            (root / "docs/topics/workflow/custom-commands/catalog.md").write_text("| `,library` | Library-backed |\n")
+            (root / ".mermaids/07c-bin-commands.mmd").write_text('G[",library"]\n')
+
+            failures = verify_bin_surface.check_bin_surface(root)
+
+        assert failures == []
+
+    def test_reports_orphaned_command_library(self):
+        sys.path.insert(0, str(SCRIPTS))
+        import verify_bin_surface
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "home/exact_bin").mkdir(parents=True)
+            (root / "home/exact_lib/exact_,orphan").mkdir(parents=True)
+            (root / "docs/topics/workflow/custom-commands").mkdir(parents=True)
+            (root / ".mermaids").mkdir(parents=True)
+
+            (root / "home/exact_lib/exact_,orphan/main.py").write_text("print('orphan')\n")
+            (root / "docs/topics/workflow/custom-commands/index.md").write_text("No commands yet.\n")
+            (root / ".mermaids/07c-bin-commands.mmd").write_text("No commands yet.\n")
+
+            failures = verify_bin_surface.check_bin_surface(root)
+
+        assert any("command library" in failure and "has no matching" in failure for failure in failures)
+
     def test_reports_empty_docs_directory(self):
         sys.path.insert(0, str(SCRIPTS))
         import verify_bin_surface
@@ -163,7 +208,7 @@ class TestVerifyBinSurface(unittest.TestCase):
 
 
 def _load_unwrap_md_command():
-    source = REPO / "home/exact_bin/executable_unwrap-md"
+    source = REPO / "home/exact_bin/executable_,unwrap-md"
     loader = SourceFileLoader("unwrap_md_command", str(source))
     spec = importlib.util.spec_from_loader("unwrap_md_command", loader)
     if spec is None or spec.loader is None:
@@ -221,8 +266,7 @@ class TestUnwrapMdCommand(unittest.TestCase):
 
 
 def _load_artifact_command():
-    source = REPO / "home/exact_bin/executable_,artifact"
-    loader = SourceFileLoader("artifact_command", str(source))
+    loader = SourceFileLoader("artifact_command", str(ARTIFACT_COMMAND))
     spec = importlib.util.spec_from_loader("artifact_command", loader)
     if spec is None or spec.loader is None:
         raise AssertionError("could not load ,artifact command module")
@@ -262,7 +306,7 @@ class TestArtifactCommand(unittest.TestCase):
             result = subprocess.run(
                 [
                     sys.executable,
-                    str(REPO / "home/exact_bin/executable_,artifact"),
+                    str(ARTIFACT_COMMAND),
                     "write",
                     "demo",
                     "--file",
@@ -436,7 +480,8 @@ class TestArtifactCommand(unittest.TestCase):
             artifact.poll_artifact_from_command("python3 /Users/me/bin/,artifact poll demo --timeout 60") == "demo.html"
         )
         assert (
-            artifact.poll_artifact_from_command("python3 home/exact_bin/executable_,artifact poll") == "artifact.html"
+            artifact.poll_artifact_from_command("python3 home/exact_lib/exact_,artifact/main.py poll")
+            == "artifact.html"
         )
         assert artifact.poll_artifact_from_command("python3 /tmp/other poll demo") is None
 
@@ -459,7 +504,7 @@ class TestArtifactCommand(unittest.TestCase):
                     child.wait(timeout=5)
 
     def test_poll_stop_terminates_tracked_poller_process(self):
-        command = [sys.executable, str(REPO / "home/exact_bin/executable_,artifact")]
+        command = [sys.executable, str(ARTIFACT_COMMAND)]
 
         with tempfile.TemporaryDirectory() as tmp:
             cache = Path(tmp) / "cache"
@@ -535,7 +580,7 @@ class TestArtifactCommand(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             cache = Path(tmp) / "cache"
             env = {**os.environ, "XDG_CACHE_HOME": str(cache)}
-            command = [sys.executable, str(REPO / "home/exact_bin/executable_,artifact")]
+            command = [sys.executable, str(ARTIFACT_COMMAND)]
             result = subprocess.run(
                 [*command, "live", "start", "demo", "--json"],
                 cwd=REPO,
@@ -1203,7 +1248,7 @@ class TestMcpTokenCommand(unittest.TestCase):
             home = Path(tmp) / "home"
             self._write_cache(home, self._jwt(int(time.time()) + 60))
             result = subprocess.run(
-                [sys.executable, str(REPO / "home/exact_bin/executable_,mcp-token"), "scsi-main"],
+                [sys.executable, str(MCP_TOKEN_COMMAND), "scsi-main"],
                 capture_output=True,
                 text=True,
                 env={**os.environ, "HOME": str(home)},
@@ -1218,7 +1263,7 @@ class TestMcpTokenCommand(unittest.TestCase):
             home = Path(tmp) / "home"
             self._write_cache(home, token)
             result = subprocess.run(
-                [sys.executable, str(REPO / "home/exact_bin/executable_,mcp-token"), "scsi-main", "--json"],
+                [sys.executable, str(MCP_TOKEN_COMMAND), "scsi-main", "--json"],
                 capture_output=True,
                 text=True,
                 env={**os.environ, "HOME": str(home)},
@@ -1239,7 +1284,7 @@ class TestMcpTokenCommand(unittest.TestCase):
             (bindir / "cursor-agent").write_text(f"#!/usr/bin/env bash\ntouch {shlex.quote(str(cache))}\nexit 0\n")
             (bindir / "cursor-agent").chmod(0o755)
             result = subprocess.run(
-                [sys.executable, str(REPO / "home/exact_bin/executable_,mcp-token"), "slack", "--login"],
+                [sys.executable, str(MCP_TOKEN_COMMAND), "slack", "--login"],
                 capture_output=True,
                 text=True,
                 env={**os.environ, "HOME": str(home), "PATH": str(bindir)},
@@ -1254,7 +1299,7 @@ class TestMcpTokenCommand(unittest.TestCase):
             home = Path(tmp) / "home"
             self._write_cache(home, "opaque-slack-token", server="slack")
             result = subprocess.run(
-                [sys.executable, str(REPO / "home/exact_bin/executable_,mcp-token"), "slack"],
+                [sys.executable, str(MCP_TOKEN_COMMAND), "slack"],
                 capture_output=True,
                 text=True,
                 env={**os.environ, "HOME": str(home)},
@@ -1269,7 +1314,7 @@ class TestMcpTokenCommand(unittest.TestCase):
             bindir = Path(tmp) / "bin"
             bindir.mkdir()
             result = subprocess.run(
-                [sys.executable, str(REPO / "home/exact_bin/executable_,mcp-token"), "scsi-main", "--login"],
+                [sys.executable, str(MCP_TOKEN_COMMAND), "scsi-main", "--login"],
                 capture_output=True,
                 text=True,
                 env={**os.environ, "HOME": str(home), "PATH": str(bindir)},

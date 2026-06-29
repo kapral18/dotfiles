@@ -36,11 +36,12 @@ Keep a local guard unless every entry path necessarily passes through the shared
 
 ## Dotfiles overlay
 
-| Concern                   | Rule                                                                                |
-| ------------------------- | ----------------------------------------------------------------------------------- |
-| Chezmoi source of truth   | resolve target -> `chezmoi source-path` -> edit `home/**` source                    |
-| Read-only `$HOME` targets | investigate `readonly_` source; never `chmod` deployed output                       |
-| Validation                | run `make check` then `make fmt` after repo changes                                 |
-| Docs hygiene              | behavior changes under `home/`, `scripts/`, or `tools/` update docs and `.mermaids` |
-| Shell scripts             | shell stays glue; non-trivial logic goes under `scripts/` helpers                   |
-| `~/bin` commands          | command updates require fish completion and docs/catalog updates                    |
+| Concern                   | Rule                                                                                           |
+| ------------------------- | ---------------------------------------------------------------------------------------------- |
+| Chezmoi source of truth   | resolve target -> `chezmoi source-path` -> edit `home/**` source                               |
+| Read-only `$HOME` targets | investigate `readonly_` source; never `chmod` deployed output                                  |
+| Validation                | run `make check` then `make fmt` after repo changes                                            |
+| Docs hygiene              | behavior changes under `home/`, `scripts/`, or `tools/` update docs and `.mermaids`            |
+| Shell scripts             | shell stays glue; non-trivial logic goes under `scripts/` helpers                              |
+| `~/bin` commands          | command updates require fish completion and docs/catalog updates                               |
+| `~/lib` command internals | large command internals belong under `home/exact_lib/exact_,<name>/`, not repo-only `scripts/` |

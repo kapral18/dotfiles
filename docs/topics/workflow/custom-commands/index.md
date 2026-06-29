@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Custom Commands
 
-This setup ships small, purpose-built commands into `~/bin`. Anything named `home/exact_bin/executable_,name` becomes a command called `,name`.
+This setup ships small, purpose-built commands into `~/bin`. Anything named `home/exact_bin/executable_,name` becomes a command called `,name`; larger commands keep that public launcher and put private implementation files under `~/lib/,name/`.
 
 ![Command palette popup over the tmux workbench, indexing tmux bindings, git aliases, and custom comma commands](../tmux/assets/command-palette-full.png)
 
@@ -33,15 +33,16 @@ The fastest visual entry point is the tmux command palette: `prefix` + `r`. It i
 
 ## Source and coverage contract
 
-| Surface                | Source                                                                               |
-| ---------------------- | ------------------------------------------------------------------------------------ |
-| Commands               | [`home/exact_bin/`](../../../../home/exact_bin/)                                     |
-| Fish completions       | [`home/dot_config/fish/completions/`](../../../../home/dot_config/fish/completions/) |
-| Complex `,w` internals | [`home/exact_bin/utils/,w/`](../../../../home/exact_bin/utils/,w/)                   |
-| Catalog diagram        | [`.mermaids/07c-bin-commands.mmd`](../../../../.mermaids/07c-bin-commands.mmd)       |
-| Surface verifier       | [`scripts/verify_bin_surface.py`](../../../../scripts/verify_bin_surface.py)         |
+| Surface             | Source                                                                               |
+| ------------------- | ------------------------------------------------------------------------------------ |
+| Commands            | [`home/exact_bin/`](../../../../home/exact_bin/)                                     |
+| Fish completions    | [`home/dot_config/fish/completions/`](../../../../home/dot_config/fish/completions/) |
+| Command internals   | [`home/exact_lib/exact_,<name>/`](../../../../home/exact_lib/)                       |
+| Shared command libs | [`home/exact_lib/exact_shared/`](../../../../home/exact_lib/exact_shared/)           |
+| Catalog diagram     | [`.mermaids/07c-bin-commands.mmd`](../../../../.mermaids/07c-bin-commands.mmd)       |
+| Surface verifier    | [`scripts/verify_bin_surface.py`](../../../../scripts/verify_bin_surface.py)         |
 
-New `~/bin` commands must have a Fish completion, docs coverage, and `.mermaids/07c-bin-commands.mmd` coverage. `make verify-bin-surface` checks that contract.
+New `~/bin` commands must have a Fish completion, docs coverage, and `.mermaids/07c-bin-commands.mmd` coverage. Large or multi-module commands should move internals to `home/exact_lib/exact_,<name>/`; shared helpers belong under `home/exact_lib/exact_shared/`. `make verify-bin-surface` checks that command-library directories are not orphaned.
 
 ## Related
 

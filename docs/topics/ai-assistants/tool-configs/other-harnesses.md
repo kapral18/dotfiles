@@ -16,7 +16,7 @@ Subagents are covered in [Cross-harness subagents](../subagents.md). Keep this p
 | Codex    | [`home/dot_codex/`](../../../../home/dot_codex/)                     |
 | OpenCode | [`home/dot_config/opencode/`](../../../../home/dot_config/opencode/) |
 
-Codex and OpenCode use profile merging with MCP injection. Normal `codex` sessions go through the `~/bin/codex` shim only so local llama.cpp model selections can inject the local model catalog before falling through to the real Codex binary.
+Codex and OpenCode use profile merging with MCP injection. `,codex` sessions go through the `~/bin/,codex` shim only so local llama.cpp model selections can inject the local model catalog before falling through to the real Codex binary.
 
 Personal OpenCode exposes Cloudflare:
 

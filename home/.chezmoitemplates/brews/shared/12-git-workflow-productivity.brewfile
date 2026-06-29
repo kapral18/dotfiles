@@ -5,7 +5,7 @@ brew "weave"
 tap "ataraxy-labs/tap"
 # Entity-level diff, blame, impact analysis, and LLM context for Git
 # https://github.com/Ataraxy-Labs/sem
-# link: false — exposed through ~/bin/sem so it does not compete with GNU
+# link: false — exposed through ~/bin/,sem so it does not compete with GNU
 # parallel's `sem` helper in /opt/homebrew/bin.
 brew "ataraxy-labs/tap/sem", link: false
 

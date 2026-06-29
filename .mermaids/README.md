@@ -3,7 +3,7 @@
 A navigation cloud for this chezmoi dotfiles repo, in **two layers**:
 
 - **Semantic cloud** (`S0`, `S1`–`S3`, `SR`) — how the system _thinks_: the 13 concepts and invariants it is built on, the cross-cutting flows that wire subsystems together, and a reverse index from any file to its concept, blast radius, and co-edit set. **Read this first** — it makes the catalog legible.
-- **Catalog** (`00`–`13`) — how the system is _laid out_: exhaustive coverage of every one of the 1157 tracked files, named or grouped by exact chezmoi source path. Use it to drill from a concept to the precise file.
+- **Catalog** (`00`–`13`) — how the system is _laid out_: exhaustive coverage of every one of the 1186 tracked files, named or grouped by exact chezmoi source path. Use it to drill from a concept to the precise file.
 
 Together they let an agent understand the whole solution in one pass and then map straight down to any particle. They complement the prose in `docs/` and the rules in `AGENTS.md` / `CLAUDE.md`.
 
@@ -30,7 +30,7 @@ Each file is a standalone [Mermaid](https://mermaid.js.org/) diagram (`.mmd`), l
 9. [`06-worktree-workflow.mmd`](06-worktree-workflow.mmd) — `,w` subcommands, `,gh-tfork`, gh-dash, and 1Password identity switching.
 10. [`07-shell-editor-macos.mmd`](07-shell-editor-macos.mmd) — fish/zsh/bash, terminals, and macOS automation (Hammerspoon, Karabiner, Alfred, icons, osx defaults).
 11. [`07b-neovim.mmd`](07b-neovim.mmd) — every file under `exact_nvim/` (157): core, 57 plugin specs, 14 local plugins, util, queries, syntax.
-12. [`07c-bin-commands.mmd`](07c-bin-commands.mmd) — every script in `exact_bin/` (87) grouped by purpose + the `,w` internals.
+12. [`07c-bin-commands.mmd`](07c-bin-commands.mmd) — every thin command in `exact_bin/` (70) grouped by purpose + deployed command/shared internals in `home/exact_lib/` (39 command/shared library files).
 13. [`08-security-and-dotfiles.mmd`](08-security-and-dotfiles.mmd) — SSH/GPG identity, 1Password agent, git signing, pass stores, and every shell/tool rc dotfile.
 14. [`09-repo-validation.mmd`](09-repo-validation.mmd) — `make check` / `make fmt`, hygiene gates, and every repo-side config/meta file.
 15. [`10-docs-and-repo-meta.mmd`](10-docs-and-repo-meta.mmd) — the Docusaurus site (`website/` + `docs/`) and GitHub Pages CI; every page named.
@@ -40,43 +40,44 @@ Each file is a standalone [Mermaid](https://mermaid.js.org/) diagram (`.mmd`), l
 
 ## Concept → catalog map (semantic to particle)
 
-| Concept (S0)                 | Invariant in one line                    | Catalog  |
-| ---------------------------- | ---------------------------------------- | -------- |
-| C1 source vs output          | edit `home/**`, never `$HOME` targets    | 01       |
-| C2 one registry per concern  | declare once, generate per tool          | 02,12    |
-| C3 `isWork` duality          | one bool forks identity/keys/models      | 01,12,13 |
-| C4 idempotent reconcile      | hash-gate + write-if-changed + manifest  | 01,02    |
-| C5 secrets at runtime        | configs reference, never store, secrets  | 08,12    |
-| C6 thin shell / typed core   | logic in `scripts/*.py`, shell is glue   | 11       |
-| C7 governed agents           | SOP + skills + fail-closed gates         | 03,03b   |
-| C8 evidence ledger           | claims anchored or demoted to Unknown    | 03b      |
-| C9 stale-while-revalidate    | cached first paint, bg refetch, no block | 05       |
-| C10 handoff bus              | cooperate via pin/sentinel cache files   | 05,06    |
-| C11 adversarial diversity    | reviewer ≠ re-reviewer family            | 04,04b   |
-| C12 resumable state machines | crash parks phase, resume continues      | 04,12    |
-| C13 intent memory            | sessions rehydrate from `/tmp/specs`     | 03b      |
+| Concept (S0)                 | Invariant in one line                                                           | Catalog  |
+| ---------------------------- | ------------------------------------------------------------------------------- | -------- |
+| C1 source vs output          | edit `home/**`, never `$HOME` targets                                           | 01       |
+| C2 one registry per concern  | declare once, generate per tool                                                 | 02,12    |
+| C3 `isWork` duality          | one bool forks identity/keys/models                                             | 01,12,13 |
+| C4 idempotent reconcile      | hash-gate + write-if-changed + manifest                                         | 01,02    |
+| C5 secrets at runtime        | configs reference, never store, secrets                                         | 08,12    |
+| C6 thin shell / typed core   | shell is glue; logic lives in `scripts/` or `home/exact_lib/` command internals | 11, 07c  |
+| C7 governed agents           | SOP + skills + fail-closed gates                                                | 03,03b   |
+| C8 evidence ledger           | claims anchored or demoted to Unknown                                           | 03b      |
+| C9 stale-while-revalidate    | cached first paint, bg refetch, no block                                        | 05       |
+| C10 handoff bus              | cooperate via pin/sentinel cache files                                          | 05,06    |
+| C11 adversarial diversity    | reviewer ≠ re-reviewer family                                                   | 04,04b   |
+| C12 resumable state machines | crash parks phase, resume continues                                             | 04,12    |
+| C13 intent memory            | sessions rehydrate from `/tmp/specs`                                            | 03b      |
 
 ## Coverage map (where each top-level area lives)
 
-| Area (`git ls-files`)            | Diagram(s) |
-| -------------------------------- | ---------- |
-| `home/.chezmoiscripts/`, data    | 01, 02     |
-| `home/readonly_dot_default-*`    | 02         |
-| `home/exact_dot_agents/`         | 03, 03b    |
-| `scripts/ralph.py`, ralph config | 04, 04b    |
-| `tools/ralph-tui/`               | 04b        |
-| `home/dot_config/exact_tmux/`    | 05         |
-| `home/exact_bin/` (incl. `,w`)   | 06, 07c    |
-| shell/terminal/macOS configs     | 07         |
-| `home/Alfred.alfredpreferences/` | 07         |
-| `home/dot_config/exact_nvim/`    | 07b        |
-| `home/private_dot_ssh/gnupg/`    | 08         |
-| `home/readonly_dot_*` rc files   | 08         |
-| repo meta, Makefile, CI          | 09         |
-| `website/`, `docs/`              | 10         |
-| `scripts/` (helpers + tests)     | 11         |
-| AI tool configs (`dot_*`)        | 12         |
-| other `dot_config/*` apps        | 13         |
+| Area (`git ls-files`)               | Diagram(s) |
+| ----------------------------------- | ---------- |
+| `home/.chezmoiscripts/`, data       | 01, 02     |
+| `home/readonly_dot_default-*`       | 02         |
+| `home/exact_dot_agents/`            | 03, 03b    |
+| `scripts/ralph.py`, ralph config    | 04, 04b    |
+| `tools/ralph-tui/`                  | 04b        |
+| `home/dot_config/exact_tmux/`       | 05         |
+| `home/exact_bin/` (incl. `,w`)      | 06, 07c    |
+| `home/exact_lib/` command internals | 07c        |
+| shell/terminal/macOS configs        | 07         |
+| `home/Alfred.alfredpreferences/`    | 07         |
+| `home/dot_config/exact_nvim/`       | 07b        |
+| `home/private_dot_ssh/gnupg/`       | 08         |
+| `home/readonly_dot_*` rc files      | 08         |
+| repo meta, Makefile, CI             | 09         |
+| `website/`, `docs/`                 | 10         |
+| `scripts/` (helpers + tests)        | 11         |
+| AI tool configs (`dot_*`)           | 12         |
+| other `dot_config/*` apps           | 13         |
 
 ## Maintenance
 

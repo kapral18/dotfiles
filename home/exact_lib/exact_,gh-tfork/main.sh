@@ -1,0 +1,198 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$script_dir/../shared/worktree_lib.sh"
+
+usage() {
+  cat << 'EOF'
+Usage:
+  ,gh-tfork <owner/repo>
+
+Behavior:
+  - Forks <owner/repo> using GitHub CLI.
+  - Clones into:
+    - ~/work/<repo>/<default-branch> (when owner is "elastic")
+    - ~/code/<repo>/<default-branch> (otherwise)
+    - For elastic/kibana: uses fast bootstrap flags:
+      --shallow-since=2022-01-01 --no-tags
+  - Creates (or focuses) a tmux session named <wrapper/repo>|<default-branch>.
+  - Session layout: 2 windows, each with 2 panes split vertically.
+EOF
+}
+
+if [[ "${1:-}" = "-h" || "${1:-}" = "--help" ]]; then
+  usage
+  exit 0
+fi
+
+if [[ $# -ne 1 ]]; then
+  usage >&2
+  exit 2
+fi
+
+repo_spec="$1"
+
+if [[ ! "$repo_spec" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]]; then
+  echo "Error: expected <owner/repo>, got: $repo_spec" >&2
+  exit 2
+fi
+
+command -v gh > /dev/null 2>&1 || {
+  echo "Error: 'gh' is required." >&2
+  exit 1
+}
+command -v git > /dev/null 2>&1 || {
+  echo "Error: 'git' is required." >&2
+  exit 1
+}
+
+repo_owner="${repo_spec%%/*}"
+repo_name="${repo_spec##*/}"
+
+parent_dir=""
+if [ "$repo_owner" = "elastic" ]; then
+  parent_dir="$HOME/work"
+else
+  parent_dir="$HOME/code"
+fi
+
+mkdir -p "$parent_dir"
+cd "$parent_dir"
+
+repo_wrapper_path="$(pwd -P)/${repo_name}"
+
+if [[ -e "$repo_wrapper_path" ]]; then
+  echo "Error: repo directory already exists: $repo_wrapper_path" >&2
+  exit 1
+fi
+
+declare -a clone_flags=()
+if [ "$repo_spec" = "elastic/kibana" ]; then
+  clone_flags=(--shallow-since=2022-01-01 --no-tags)
+fi
+
+gh_login="$(gh api user --jq '.login' 2> /dev/null || true)"
+if [ -z "$gh_login" ]; then
+  echo "Error: failed to determine GitHub login via 'gh api user'." >&2
+  exit 1
+fi
+
+git_protocol="$(gh config get git_protocol 2> /dev/null || true)"
+if [ -z "$git_protocol" ]; then
+  git_protocol="https"
+fi
+
+remote_url_for_repo() {
+  local owner_repo="$1"
+  if [ "$git_protocol" = "ssh" ]; then
+    printf 'git@github.com:%s.git\n' "$owner_repo"
+  else
+    printf 'https://github.com/%s.git\n' "$owner_repo"
+  fi
+}
+
+ensure_fork_exists() {
+  local upstream_repo="$1"
+  local fork_repo="$2"
+
+  if gh api "repos/${fork_repo}" > /dev/null 2>&1; then
+    return 0
+  fi
+
+  # Fork creation is async; 202 is expected for new forks.
+  gh api -X POST "repos/${upstream_repo}/forks" > /dev/null 2>&1 || true
+
+  local i
+  for i in $(seq 1 45); do
+    if gh api "repos/${fork_repo}" > /dev/null 2>&1; then
+      return 0
+    fi
+    sleep 2
+  done
+
+  echo "Error: fork did not become available in time: ${fork_repo}" >&2
+  exit 1
+}
+
+clone_owner="$gh_login"
+if [ "$repo_owner" = "$gh_login" ]; then
+  clone_owner="$repo_owner"
+else
+  ensure_fork_exists "$repo_spec" "${gh_login}/${repo_name}"
+fi
+
+clone_repo="${clone_owner}/${repo_name}"
+clone_url="$(remote_url_for_repo "$clone_repo")"
+git clone ${clone_flags[@]+"${clone_flags[@]}"} "$clone_url" "$repo_name"
+
+if [ "$clone_owner" != "$repo_owner" ]; then
+  upstream_url="$(remote_url_for_repo "$repo_spec")"
+  if ! git -C "$repo_name" remote get-url upstream > /dev/null 2>&1; then
+    git -C "$repo_name" remote add upstream "$upstream_url"
+  fi
+fi
+
+detect_branch_name() {
+  local repo_dir="$1"
+  local branch=""
+
+  branch="$(git -C "$repo_dir" symbolic-ref --quiet --short HEAD 2> /dev/null || true)"
+  if [ -n "$branch" ]; then
+    printf '%s\n' "$branch"
+    return 0
+  fi
+
+  branch="$(git -C "$repo_dir" symbolic-ref -q --short refs/remotes/origin/HEAD 2> /dev/null || true)"
+  if [ -n "$branch" ]; then
+    printf '%s\n' "${branch#origin/}"
+    return 0
+  fi
+
+  branch="$(git -C "$repo_dir" symbolic-ref -q --short refs/remotes/upstream/HEAD 2> /dev/null || true)"
+  if [ -n "$branch" ]; then
+    printf '%s\n' "${branch#upstream/}"
+    return 0
+  fi
+
+  printf '%s\n' "main"
+}
+
+branch_name="$(detect_branch_name "$repo_name")"
+clone_dir="${repo_name}/${branch_name}"
+clone_path="$(pwd -P)/${clone_dir}"
+parent_name="$(_comma_w_tmux_parent_name_from_dir "$repo_wrapper_path")"
+session_name="$(_comma_w_tmux_session_name "$parent_name" "$branch_name")"
+
+if [[ -e "$clone_dir/.git" ]]; then
+  :
+elif [[ -e "$repo_name/.git" ]]; then
+  tmp_dir="${repo_name}.tmp.$$"
+  mv "$repo_name" "$tmp_dir"
+  mkdir -p "$(dirname "$clone_dir")"
+  mv "$tmp_dir" "$clone_dir"
+else
+  echo "Error: unable to locate cloned repository for $repo_spec" >&2
+  exit 1
+fi
+
+command -v tmux > /dev/null 2>&1 || {
+  echo "Warning: 'tmux' is not available; skipping session creation." >&2
+  exit 0
+}
+
+if ! _comma_w_tmux has-session -t "$session_name" 2> /dev/null; then
+  _comma_w_tmux new-session -d -s "$session_name" -c "$clone_path" -n "$branch_name"
+  _comma_w_tmux split-window -h -t "${session_name}:1" -c "$clone_path"
+
+  _comma_w_tmux new-window -t "$session_name" -n shell -c "$clone_path"
+  _comma_w_tmux split-window -h -t "${session_name}:2" -c "$clone_path"
+fi
+
+if [ -n "${OUTER_TMUX_SOCKET:-}" ] && [ -n "${OUTER_TMUX_CLIENT:-}" ]; then
+  _comma_w_tmux switch-client -c "${OUTER_TMUX_CLIENT}" -t "$session_name" 2> /dev/null || true
+elif [[ -n "${TMUX:-}" ]]; then
+  _comma_w_tmux switch-client -t "$session_name"
+else
+  _comma_w_tmux attach-session -t "$session_name"
+fi

@@ -172,6 +172,7 @@ Idempotent housekeeping that removes orphaned generated state on apply.
 
 ## Custom Commands
 
-| Component       | Source path                                |
-| --------------- | ------------------------------------------ |
-| Commands source | [`home/exact_bin/`](../../home/exact_bin/) |
+| Component         | Source path                                |
+| ----------------- | ------------------------------------------ |
+| Commands source   | [`home/exact_bin/`](../../home/exact_bin/) |
+| Command internals | [`home/exact_lib/`](../../home/exact_lib/) |

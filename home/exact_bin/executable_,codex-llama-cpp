@@ -8,7 +8,7 @@
 # Host/port come from LLAMA_CPP_HOST/PORT. Injects --model $CODEX_LLAMA_CPP_MODEL
 # (default local) only when the caller did not pass their own --model/-m, so
 # `,codex-llama-cpp --model local-max ...` selects the model with no duplicate
-# flag. The ~/bin/codex shim still injects the llama.cpp model catalog json.
+# flag. The ~/bin/,codex shim still injects the llama.cpp model catalog json.
 
 set -euo pipefail
 
@@ -16,8 +16,8 @@ LLAMA_CPP_HOST="${LLAMA_CPP_HOST:-127.0.0.1}"
 LLAMA_CPP_PORT="${LLAMA_CPP_PORT:-8080}"
 CODEX_LLAMA_CPP_MODEL="${CODEX_LLAMA_CPP_MODEL-local}"
 
-if ! command -v codex >/dev/null 2>&1; then
-  echo "Error: codex CLI not found on PATH." >&2
+if ! command -v ,codex >/dev/null 2>&1; then
+  echo "Error: ,codex wrapper not found on PATH." >&2
   exit 127
 fi
 
@@ -39,4 +39,4 @@ if [[ "$caller_set_model" == false && -n "$CODEX_LLAMA_CPP_MODEL" ]]; then
   args+=(--model "$CODEX_LLAMA_CPP_MODEL")
 fi
 
-exec codex "${args[@]}" "$@"
+exec ,codex "${args[@]}" "$@"

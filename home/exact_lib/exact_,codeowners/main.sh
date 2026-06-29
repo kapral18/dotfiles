@@ -1,0 +1,214 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat << 'EOF'
+Usage: ,codeowners [options] [<owner-pattern>]
+
+List paths from .github/CODEOWNERS matching an owner pattern (case-insensitive
+substring). Without a pattern, lists all owners with path counts.
+
+Options:
+  -p, --paths-only   Print only paths (no owner prefix)
+  -o, --owner-of PATH
+                     Print the last matching CODEOWNERS entry for PATH
+  -h, --help         Show this help
+
+Examples:
+  ,codeowners management          # paths owned by teams matching "management"
+  ,codeowners -p management       # paths only, one per line
+  ,codeowners --owner-of path/to/file.ts
+  ,codeowners                     # list all owners with path counts
+EOF
+}
+
+paths_only=false
+owner_of=""
+pattern=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -p | --paths-only)
+      paths_only=true
+      shift
+      ;;
+    -o | --owner-of)
+      if [[ $# -lt 2 ]]; then
+        echo "Error: --owner-of requires a path" >&2
+        usage >&2
+        exit 1
+      fi
+      owner_of="$2"
+      shift 2
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -*)
+      echo "Unknown option: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+    *)
+      pattern="$1"
+      shift
+      ;;
+  esac
+done
+
+git_root=$(git rev-parse --show-toplevel 2> /dev/null) || {
+  echo "Error: not in a git repository" >&2
+  exit 1
+}
+
+codeowners=""
+for candidate in .github/CODEOWNERS CODEOWNERS docs/CODEOWNERS; do
+  if [[ -f "${git_root}/${candidate}" ]]; then
+    codeowners="${git_root}/${candidate}"
+    break
+  fi
+done
+
+if [[ -z "$codeowners" ]]; then
+  echo "Error: no CODEOWNERS file found" >&2
+  exit 1
+fi
+
+if [[ -n "$owner_of" ]]; then
+  target_path="$owner_of"
+  if [[ "$target_path" == "$git_root"/* ]]; then
+    target_path="${target_path#"$git_root"/}"
+  fi
+  target_path="${target_path#./}"
+  target_path="${target_path#/}"
+
+  awk -v target="$target_path" '
+    function escape_regex(s,    out, i, c) {
+      out = ""
+      for (i = 1; i <= length(s); i++) {
+        c = substr(s, i, 1)
+        if (c ~ /[][(){}.^$+|\\]/) out = out "\\" c
+        else out = out c
+      }
+      return out
+    }
+    function basename(path,    parts, n) {
+      n = split(path, parts, "/")
+      return parts[n]
+    }
+    function has_glob(pattern) {
+      return pattern ~ /[*?]/
+    }
+    function glob_regex(pattern, subtree,    out, i, c, nextc) {
+      out = "^"
+      for (i = 1; i <= length(pattern); i++) {
+        c = substr(pattern, i, 1)
+        nextc = substr(pattern, i + 1, 1)
+        if (c == "*" && nextc == "*") {
+          if (substr(pattern, i + 2, 1) == "/") {
+            out = out "([^/]+/)*"
+            i += 2
+          } else {
+            out = out ".*"
+            i++
+          }
+        } else if (c == "*") {
+          out = out "[^/]*"
+        } else if (c == "?") {
+          out = out "[^/]"
+        } else {
+          out = out escape_regex(c)
+        }
+      }
+      return out (subtree ? "($|/.*)" : "$")
+    }
+    function component_matches(pattern, target, dir,    parts, n, i, re) {
+      n = split(target, parts, "/")
+      if (has_glob(pattern)) {
+        re = glob_regex(pattern, 0)
+        return basename(target) ~ re
+      }
+      for (i = 1; i <= n; i++) {
+        if (parts[i] == pattern) return !dir || i < n || target == pattern
+      }
+      return 0
+    }
+    function matches(pattern, target,    p, anchored, dir) {
+      p = pattern
+      sub(/^[[:space:]]+/, "", p)
+      sub(/[[:space:]]+$/, "", p)
+      anchored = p ~ /^\//
+      sub(/^\//, "", p)
+      dir = p ~ /\/$/
+      if (p == "") return 0
+      sub(/\/+$/, "", p)
+      if (!anchored && index(p, "/") == 0) return component_matches(p, target, dir)
+      if (has_glob(p)) return target ~ glob_regex(p, dir)
+      return target == p || index(target, p "/") == 1
+    }
+    /^[[:space:]]*#/ || /^[[:space:]]*$/ { next }
+    {
+      sub(/^[[:space:]]+/, "")
+      path = $1
+      owners_str = ""
+      for (i = 2; i <= NF; i++) {
+        if ($i ~ /^#/) break
+        owners_str = (owners_str == "" ? $i : owners_str " " $i)
+      }
+      if (matches(path, target)) {
+        matched_path = path
+        matched_owners = owners_str
+      }
+    }
+    END {
+      if (matched_path == "") {
+        printf "%s\t<no match>\t<unowned>\n", target
+        exit 2
+      }
+      if (matched_owners == "") matched_owners = "<unowned>"
+      printf "%s\t%s\t%s\n", target, matched_path, matched_owners
+    }
+  ' "$codeowners" | column -t -s$'\t'
+  exit "${PIPESTATUS[0]}"
+fi
+
+if [[ -z "$pattern" ]]; then
+  awk '
+    /^[[:space:]]*#/ || /^[[:space:]]*$/ { next }
+    {
+      sub(/^[[:space:]]+/, "")
+      path = $1
+      for (i = 2; i <= NF; i++) {
+        if ($i ~ /^#/) break
+        owners[$i]++
+      }
+    }
+    END {
+      for (o in owners) printf "%s\t%d paths\n", o, owners[o]
+    }
+  ' "$codeowners" | sort -t$'\t' -k2 -rn | column -t -s$'\t'
+  exit 0
+fi
+
+lc_pattern=$(printf '%s' "$pattern" | tr '[:upper:]' '[:lower:]')
+
+awk -v pat="$lc_pattern" -v po="$paths_only" '
+  /^[[:space:]]*#/ || /^[[:space:]]*$/ { next }
+  {
+    sub(/^[[:space:]]+/, "")
+    path = $1
+    matched = 0
+    owners_str = ""
+    for (i = 2; i <= NF; i++) {
+      if ($i ~ /^#/) break
+      lc = tolower($i)
+      if (index(lc, pat) > 0) matched = 1
+      owners_str = (owners_str == "" ? $i : owners_str " " $i)
+    }
+    if (matched) {
+      if (po == "true") print path
+      else printf "%s\t%s\n", path, owners_str
+    }
+  }
+' "$codeowners" | if [[ "$paths_only" == "true" ]]; then cat; else column -t -s$'\t'; fi
