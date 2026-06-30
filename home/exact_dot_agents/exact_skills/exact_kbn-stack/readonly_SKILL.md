@@ -1,7 +1,7 @@
 ---
 name: kbn-stack
 description: "Use when an elastic/kibana live UI or browser test needs local ES+Kibana URLs, -K runtime flags, kbn-stack registry checks, or stack start/stop/reuse."
-tool_version: ",kbn-stack local help surface verified 2026-06-28"
+tool_version: ",kbn-stack ownership registry surface verified 2026-06-30"
 ---
 
 # Kbn Stack
@@ -36,7 +36,7 @@ Use `,kbn-stack` from an `elastic/kibana` git worktree to start an isolated loca
 ,kbn-stack -K key=value
 ```
 
-`--detach` is the agent mode: it starts ES and Kibana in the background, waits until Kibana answers `/api/status`, records `ready: true`, and returns.
+`--detach` is the agent mode: it starts ES and Kibana in the background, waits until Kibana answers `/api/status`, records `ready: true`, marks `started_by: "agent"`, and returns.
 
 `-K key=value` is repeatable and becomes `--key=value` for `yarn start`.
 Use it for runtime settings that the UI path requires, for example `-K xpack.index_management.dev.enableSemanticField=true`.
@@ -55,9 +55,12 @@ Each ready entry may include:
 - `cookie_name`
 - `kbn_flags`
 - `ready`
+- `started_by` (`"user"` for interactive/manual starts, `"agent"` for `--detach`)
+- `start_mode` (`"interactive-tmux"`, `"manual-command"`, or `"agent-detach"`)
 - `es_pid` / `kbn_pid` for detached stacks
 
 Use only entries with `ready: true` as live browser targets. Do not guess localhost ports.
+For older entries without `started_by`, infer `agent` only when recorded process ids are present; otherwise treat the entry as user-owned.
 
 ## Workflow
 
@@ -66,15 +69,19 @@ Use only entries with `ready: true` as live browser targets. Do not guess localh
 3. Inspect `~/.cache/kbn-stack/registry.json`.
 4. If the matching entry is `ready: true` and has the needed `kbn_flags`, reuse it.
 5. If no ready entry exists and shell side effects are allowed, run `,kbn-stack --detach` plus any required `-K key=value` flags.
-6. If a user-owned ready stack is missing required `kbn_flags`, do not restart it.
+6. If a ready stack with `started_by: "user"` is missing required `kbn_flags`, do not restart it.
    Report the exact `,kbn-stack --stop && ,kbn-stack --detach -K ...` command the user should run.
-7. Load and follow the Playwriter skill before using `kbn_url` for readiness or UI verification.
-8. If using `,artifact live`, inject the overlay only after Playwriter verifies the local/dev Kibana target.
+7. If a ready stack with `started_by: "agent"` is missing required `kbn_flags`, an agent may stop/recreate it only when that does not conflict with another active task; record the replacement in the evidence.
+8. Load and follow the Playwriter skill before using `kbn_url` for readiness or UI verification.
+9. If using `,artifact live`, inject the overlay only after Playwriter verifies the local/dev Kibana target.
 
 ## Teardown
 
+- Track which registry entries existed before the worker ran and which entries the worker created with `started_by: "agent"`.
 - If this agent started a detached stack, stop it with `,kbn-stack --stop` from the same worktree when verification is done.
-- If the user already had an interactive tmux stack, leave it running and report that it was reused.
+- If the user already had a `started_by: "user"` stack, leave it running and report that it was reused.
+- If a pre-existing `started_by: "agent"` stack is reused, leave it running unless this worker explicitly replaced it;
+  report that it was reused as an agent-owned stack.
 - Never stop stacks owned by other worktrees.
 - Never run `,kbn-stack --stop-all` from an automated review or live-UI worker.
 

@@ -14,19 +14,21 @@ snapshot build (default, native JVM) or serverless (Docker).
 
 Snapshot stacks are fully parallel (one per worktree, isolated by slot).
 Serverless is single-instance per host: kbn-es runs fixed es01/es02 containers
-with no per-instance name, so a serverless start pins to slot 0, auto-stops any
-existing serverless stack, and refuses to start over a snapshot stack holding the
-conflicting low ES port band (slots 0-1).
+with no per-instance name, so a serverless start pins to slot 0, auto-stops
+agent-owned serverless stacks, refuses to stop user-owned serverless stacks from
+agent mode, and refuses to start over a snapshot stack holding the conflicting
+low ES port band (slots 0-1).
 
 The resolved stack is recorded in a registry at
 ``~/.cache/kbn-stack/registry.json`` keyed by worktree path, which the
-live-ui-review contract reads to resolve the base/head browser URLs.
+live-ui-review contract reads to resolve the base/head browser URLs and
+teardown ownership.
 
 Usage:
     ,kbn-stack [--es snapshot|serverless] [--project-type es|security|oblt]
                [--data NAME] [--slot N] [--detach]
                [-E key=value ...] [-K key=value ...]
-    ,kbn-stack --stop        # tear down this worktree's detached/serverless stack
+    ,kbn-stack --stop        # tear down this worktree's registered stack
     ,kbn-stack --stop-all    # tear down registered detached/serverless stacks
 
 ``-E key=value`` passes an extra Elasticsearch setting through to the snapshot
@@ -45,7 +47,8 @@ exists). Outside tmux it prints the Kibana command to run.
 Agent (``--detach``): starts ES and Kibana in the background (no tmux), waits
 until Kibana answers ``/api/status``, records ``ready: true`` plus the process
 pids in the registry, then returns. Intended for agentic sessions that then read
-the registry to resolve live URLs.
+the registry to resolve live URLs. Registry entries record ``started_by`` as
+``agent`` for detached starts and ``user`` for interactive starts.
 """
 
 from __future__ import annotations
@@ -77,6 +80,8 @@ ES_TRANSPORT_BASE = 9300
 
 PROJECT_TYPES = ("es", "security", "oblt")
 BACKENDS = ("snapshot", "serverless")
+STARTED_BY_AGENT = "agent"
+STARTED_BY_USER = "user"
 
 
 def fail(message: str) -> "None":
@@ -118,8 +123,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help=(
             "Agent mode: start ES and Kibana in the background (no tmux), wait until "
-            "Kibana answers /api/status, mark the stack ready in the registry, then "
-            "return. Use this from agentic sessions; omit it for interactive tmux dev."
+            "Kibana answers /api/status, mark the stack ready and started_by=agent "
+            "in the registry, then return. Use this from agentic sessions; omit it "
+            "for interactive tmux dev."
         ),
     )
     parser.add_argument(
@@ -127,8 +133,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help=(
             "Tear down the stack for the current worktree when recorded processes "
-            "are available, then drop its registry entry. Interactive tmux stacks "
-            "must be stopped from tmux."
+            "are available, then drop its registry entry. User-owned interactive "
+            "tmux stacks must be stopped from tmux."
         ),
     )
     parser.add_argument(
@@ -199,6 +205,152 @@ def load_registry() -> dict:
 def save_registry(registry: dict) -> None:
     REGISTRY_PATH.parent.mkdir(parents=True, exist_ok=True)
     REGISTRY_PATH.write_text(json.dumps(registry, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def stack_started_by(entry: dict) -> str:
+    """Return the stack ownership marker, inferring safe legacy defaults."""
+    started_by = entry.get("started_by")
+    if started_by in (STARTED_BY_AGENT, STARTED_BY_USER):
+        return started_by
+    if entry.get("start_mode") == "agent-detach":
+        return STARTED_BY_AGENT
+    if any(isinstance(entry.get(key), int) for key in ("kbn_pid", "es_pid")):
+        return STARTED_BY_AGENT
+    return STARTED_BY_USER
+
+
+def start_mode(args: argparse.Namespace, target_pane: str | None) -> str:
+    if args.detach:
+        return "agent-detach"
+    if target_pane:
+        return "interactive-tmux"
+    return "manual-command"
+
+
+def port_listener_pids(port: int) -> list[int]:
+    """Return the pids listening on TCP ``port`` (loopback dev stacks).
+
+    Uses ``lsof`` (present on macOS at /usr/sbin/lsof and on Linux) because it
+    reports the owning pid, which the registry does not store for interactive
+    tmux stacks. ``-t`` prints one pid per line; empty output means nothing is
+    listening, so the port is free. Any lsof failure is treated as "no listener"
+    so a missing/edge-case probe never blocks slot reuse.
+    """
+    if not isinstance(port, int):
+        return []
+    result = subprocess.run(
+        ["lsof", "-nP", f"-iTCP:{port}", "-sTCP:LISTEN", "-t"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    pids: list[int] = []
+    for line in result.stdout.split():
+        try:
+            pids.append(int(line))
+        except ValueError:
+            continue
+    return pids
+
+
+def entry_ports(entry: dict) -> tuple[int | None, int | None]:
+    """Resolve (kbn_port, es_http) for a registry entry, deriving from slot.
+
+    Newer entries carry kbn_url/es_url; deriving from the slot covers older
+    entries and keeps the two consistent with ``derive``.
+    """
+    slot = entry.get("slot")
+    if isinstance(slot, int):
+        cfg = derive(slot)
+        return cfg["kbn_port"], cfg["es_http"]
+    return None, None
+
+
+def slot_liveness(entry: dict) -> tuple[bool, bool]:
+    """Return (kbn_alive, es_alive) for a snapshot stack's tandem ports."""
+    kbn_port, es_http = entry_ports(entry)
+    kbn_alive = bool(port_listener_pids(kbn_port)) if kbn_port is not None else False
+    es_alive = bool(port_listener_pids(es_http)) if es_http is not None else False
+    return kbn_alive, es_alive
+
+
+def kill_port_listeners(port: int | None) -> bool:
+    """SIGTERM then SIGKILL whatever is listening on ``port``. Returns True if it acted.
+
+    Interactive stacks are not our children, so their process groups are not
+    ours to signal by recorded pid; the port owner is killed directly instead.
+    """
+    if port is None:
+        return False
+    pids = port_listener_pids(port)
+    if not pids:
+        return False
+    for pid in pids:
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except (ProcessLookupError, PermissionError):
+            continue
+    for _ in range(20):
+        if not port_listener_pids(port):
+            return True
+        time.sleep(0.25)
+    for pid in port_listener_pids(port):
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            continue
+    return True
+
+
+def reclaim_dead_slots(registry: dict, current_worktree: str) -> bool:
+    """Free slots held by snapshot stacks whose ES+Kibana pair is not both alive.
+
+    A worktree's slot is only genuinely occupied while *both* its Kibana and
+    Elasticsearch ports are live (they run in tandem). If either half died, the
+    registry entry is stale and was reserving the slot against new worktrees, so:
+
+    - kill any surviving half (so the reused slot's ports are clean), and
+    - drop the stale entry, returning its slot to the lowest-slot search.
+
+    Serverless entries are left untouched: they are exclusive/single-instance and
+    governed by ``stop_existing_serverless``, not by per-slot port reclamation.
+    The current worktree is never reclaimed here (its own slot is sticky).
+    Returns True when the registry changed.
+    """
+    changed = False
+    for worktree, entry in list(registry.items()):
+        if worktree == current_worktree:
+            continue
+        if entry.get("backend") == "serverless":
+            continue
+        if not isinstance(entry.get("slot"), int):
+            continue
+        kbn_alive, es_alive = slot_liveness(entry)
+        if kbn_alive and es_alive:
+            continue
+        kbn_port, es_http = entry_ports(entry)
+        if kbn_alive or es_alive:
+            print(
+                f",kbn-stack: reclaiming slot {entry['slot']} ({worktree}): "
+                f"Kibana {'up' if kbn_alive else 'down'}, ES {'up' if es_alive else 'down'}; "
+                "killing the surviving half so the slot is free.",
+                flush=True,
+            )
+            if kbn_alive:
+                kill_port_listeners(kbn_port)
+            if es_alive:
+                kill_port_listeners(es_http)
+        else:
+            print(
+                f",kbn-stack: reclaiming slot {entry['slot']} ({worktree}): "
+                "no live Kibana/ES; dropping stale registry entry.",
+                flush=True,
+            )
+        del registry[worktree]
+        changed = True
+    if changed:
+        save_registry(registry)
+    return changed
 
 
 def allocate_slot(registry: dict, worktree: str, forced: int | None) -> int:
@@ -536,18 +688,27 @@ def docker_kill_serverless() -> None:
         )
 
 
-def stop_entry(worktree: str, entry: dict) -> bool:
+def stop_entry(worktree: str, entry: dict, *, allow_user_owned: bool = True, reclaim_ports: bool = False) -> bool:
     """Tear down one registered stack: kill recorded Kibana then ES processes.
 
     Snapshot stacks run as our own children (pids recorded), so killing their
     process groups stops the yarn/node and JVM trees. Serverless stacks run their
     Elasticsearch in Docker containers (es01/es02); ,kbn-stack treats serverless
-    as single-instance, so those fixed names are removed directly. Interactive
-    tmux stacks do not have recorded process groups; leave those registry entries
-    intact rather than claiming they were stopped.
+    as single-instance, so those fixed names are removed directly.
+
+    Interactive tmux stacks have no recorded process groups. With
+    ``reclaim_ports`` set (an explicit single-worktree ``--stop``), fall back to
+    killing whatever still listens on this slot's Kibana/ES ports so the stack is
+    actually torn down and its registry entry can be removed. Without it (bulk
+    ``--stop-all`` and serverless preflight), such entries are left intact rather
+    than claiming they were stopped.
     """
     slot = entry.get("slot")
-    print(f",kbn-stack: stopping slot {slot} ({worktree})", flush=True)
+    started_by = stack_started_by(entry)
+    if started_by == STARTED_BY_USER and not allow_user_owned:
+        print(f",kbn-stack: leaving user-owned slot {slot} ({worktree}) running.", flush=True)
+        return False
+    print(f",kbn-stack: stopping slot {slot} ({worktree}, started_by={started_by})", flush=True)
     stopped = False
     for key in ("kbn_pid", "es_pid"):
         pid = entry.get(key)
@@ -557,6 +718,17 @@ def stop_entry(worktree: str, entry: dict) -> bool:
     if entry.get("backend") == "serverless":
         docker_kill_serverless()
         stopped = True
+    if not stopped and reclaim_ports and entry.get("backend") != "serverless":
+        kbn_port, es_http = entry_ports(entry)
+        if kill_port_listeners(kbn_port):
+            stopped = True
+        if kill_port_listeners(es_http):
+            stopped = True
+        if stopped:
+            print(
+                f",kbn-stack: stopped interactive slot {slot} by killing its Kibana/ES port owners.",
+                flush=True,
+            )
     if not stopped:
         print(
             ",kbn-stack: no recorded detached/serverless processes; leaving registry entry intact.",
@@ -569,11 +741,13 @@ def run_stop(worktree: str, registry: dict) -> int:
     entry = registry.get(worktree)
     if entry is None:
         fail(f"no registered stack for this worktree ({worktree})")
-    if not stop_entry(worktree, entry):
-        fail(
-            "registered stack has no recorded processes. It was likely started "
-            "interactively in tmux; stop it from the tmux panes instead."
-        )
+    if not stop_entry(worktree, entry, reclaim_ports=True):
+        # Nothing recorded and nothing listening on this slot's ports: the stack
+        # is already gone. Drop the stale entry so the slot is freed.
+        del registry[worktree]
+        save_registry(registry)
+        print(",kbn-stack: no live stack found; removed stale registry entry.", flush=True)
+        return 0
     del registry[worktree]
     save_registry(registry)
     print(",kbn-stack: stopped and removed registry entry.", flush=True)
@@ -610,40 +784,48 @@ def run_stop_all(registry: dict) -> int:
 SERVERLESS_SNAPSHOT_CONFLICT_SLOTS = (0, 1)
 
 
-def stop_existing_serverless(registry: dict, current_worktree: str) -> None:
+def stop_existing_serverless(registry: dict, current_worktree: str, new_started_by: str) -> None:
     """Prepare the registry for a single-instance serverless start.
 
     Serverless ES is single-instance per host (kbn-es runs fixed es01/es02 on a
     shared network with no per-instance name), and its containers bind the low
     port band that snapshot slots 0 and 1 also use. So:
 
-    - Auto-stop any other registered serverless stack (they are mutually exclusive
-      and cannot coexist anyway).
+    - Auto-stop any other registered agent-owned serverless stack (they are
+      mutually exclusive and cannot coexist anyway).
+    - Refuse to auto-stop a user-owned serverless stack from an agent start.
     - Refuse to start if a snapshot stack occupies a conflicting slot, naming it,
       rather than silently killing unrelated parallel snapshot work.
     """
     blockers = []
+    serverless_to_stop = []
     for worktree, entry in list(registry.items()):
         if worktree == current_worktree:
             continue
         backend = entry.get("backend")
         if backend == "serverless":
-            print(
-                f",kbn-stack: serverless is single-instance; stopping existing serverless stack at {worktree} first.",
-                flush=True,
-            )
-            stop_entry(worktree, entry)
-            del registry[worktree]
+            existing_started_by = stack_started_by(entry)
+            if new_started_by == STARTED_BY_AGENT and existing_started_by == STARTED_BY_USER:
+                blockers.append((worktree, entry.get("slot"), "user-owned serverless"))
+                continue
+            serverless_to_stop.append((worktree, entry))
         elif backend == "snapshot" and entry.get("slot") in SERVERLESS_SNAPSHOT_CONFLICT_SLOTS:
-            blockers.append((worktree, entry.get("slot")))
-    save_registry(registry)
+            blockers.append((worktree, entry.get("slot"), "snapshot port conflict"))
     if blockers:
-        listed = "; ".join(f"{wt} (slot {s})" for wt, s in blockers)
+        listed = "; ".join(f"{wt} (slot {s}, {reason})" for wt, s, reason in blockers)
         fail(
             "serverless needs the low ES port band (9200-9302), but these snapshot "
-            f"stacks occupy it: {listed}. Stop them first with `,kbn-stack --stop` "
-            "from each worktree, then retry serverless."
+            f"or user-owned stacks occupy it: {listed}. Stop them first with "
+            "`,kbn-stack --stop` from each worktree, then retry serverless."
         )
+    for worktree, entry in serverless_to_stop:
+        print(
+            f",kbn-stack: serverless is single-instance; stopping existing serverless stack at {worktree} first.",
+            flush=True,
+        )
+        stop_entry(worktree, entry, allow_user_owned=new_started_by == STARTED_BY_USER)
+        del registry[worktree]
+    save_registry(registry)
 
 
 def main(argv: list[str]) -> int:
@@ -661,17 +843,23 @@ def main(argv: list[str]) -> int:
     worktree = resolve_worktree()
     branch = current_branch()
     data_name = sanitize(args.data) if args.data else sanitize(branch)
+    started_by = STARTED_BY_AGENT if args.detach else STARTED_BY_USER
 
     registry = load_registry()
 
     if args.es == "serverless":
-        stop_existing_serverless(registry, worktree)
+        stop_existing_serverless(registry, worktree, started_by)
         # Serverless is single-instance and its Docker containers (es01/es02) bind
         # fixed ports, so pin it to slot 0 for deterministic, matching ports.
         if args.slot is not None and args.slot != 0:
             fail("serverless is single-instance and always uses slot 0; --slot is not allowed with --es serverless")
         slot = 0
     else:
+        # Free slots whose snapshot stack is no longer fully alive (a killed
+        # session leaves a stale registry entry that would otherwise push this
+        # worktree onto a higher slot/port), then allocate.
+        if args.slot is None:
+            reclaim_dead_slots(registry, worktree)
         slot = allocate_slot(registry, worktree, args.slot)
     cfg = derive(slot)
     cfg["slot"] = slot
@@ -680,6 +868,7 @@ def main(argv: list[str]) -> int:
     logfile = Path(f"/tmp/es-slot{slot}.log")
     kbn_cmd = kibana_command(args, cfg)
     target_pane = None if args.detach else tmux_target_pane(worktree)
+    mode = start_mode(args, target_pane)
 
     registry[worktree] = {
         "slot": slot,
@@ -694,6 +883,10 @@ def main(argv: list[str]) -> int:
         "kbn_flags": list(args.kbn_flags),
         "log": str(logfile),
         "ready": False,
+        "started_by": started_by,
+        "start_mode": mode,
+        "started_by_pid": os.getpid(),
+        "started_by_ppid": os.getppid(),
         "started_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
     }
     save_registry(registry)

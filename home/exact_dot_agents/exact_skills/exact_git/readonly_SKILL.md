@@ -66,6 +66,8 @@ Amend policy (mandatory):
 Commit quality:
 
 - use Conventional Commits when the repo already uses them; otherwise match the repo's existing commit style
+- commit-message style does not transfer to PR titles.
+  PR titles are owned by `github` plus any verified domain overlay, not by this commit-quality rule.
 - infer `scope` from change surface (best effort)
 - each commit must be minimal and atomic, independently reviewable
 - commit body bullets are optional; include only when they add signal

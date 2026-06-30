@@ -3,7 +3,7 @@
 A navigation cloud for this chezmoi dotfiles repo, in **two layers**:
 
 - **Semantic cloud** (`S0`, `S1`–`S3`, `SR`) — how the system _thinks_: the 13 concepts and invariants it is built on, the cross-cutting flows that wire subsystems together, and a reverse index from any file to its concept, blast radius, and co-edit set. **Read this first** — it makes the catalog legible.
-- **Catalog** (`00`–`13`) — how the system is _laid out_: exhaustive coverage of every one of the 1187 tracked files, named or grouped by exact chezmoi source path. Use it to drill from a concept to the precise file.
+- **Catalog** (`00`–`13`) — how the system is _laid out_: exhaustive coverage of every one of the 1197 tracked files, named or grouped by exact chezmoi source path. Use it to drill from a concept to the precise file.
 
 Together they let an agent understand the whole solution in one pass and then map straight down to any particle. They complement the prose in `docs/` and the rules in `AGENTS.md` / `CLAUDE.md`.
 
@@ -23,7 +23,7 @@ Each file is a standalone [Mermaid](https://mermaid.js.org/) diagram (`.mmd`), l
 2. [`01-chezmoi-pipeline.mmd`](01-chezmoi-pipeline.mmd) — `chezmoi apply` lifecycle; every `.chezmoiscripts/` hook (31) + data/external/ignore inputs.
 3. [`02-package-management.mmd`](02-package-management.mmd) — the "add X" ladder and every `default-*` package list + sync hook (incl. runtimes, local AI, system hooks).
 4. [`03-agentic-os.mmd`](03-agentic-os.mmd) — governance + context + execution layers (SOP entrypoints, MCP/model registries, per-tool generation).
-5. [`03b-agent-skills-hooks.mmd`](03b-agent-skills-hooks.mmd) — every file under `exact_dot_agents/` (38 skills + 8 hooks + references).
+5. [`03b-agent-skills-hooks.mmd`](03b-agent-skills-hooks.mmd) — every file under `exact_dot_agents/` (42 skills + 8 hooks + references).
 6. [`04-ralph-state-machine.mmd`](04-ralph-state-machine.mmd) — Ralph's resumable planner → executor → reviewer → re-reviewer state machine.
 7. [`04b-ralph-control-plane.mmd`](04b-ralph-control-plane.mmd) — Ralph CLI, workflows, run state, ralph-tui (15 Go pkgs), tmux wiring, AI KB.
 8. [`05-tmux-pickers.mmd`](05-tmux-pickers.mmd) — every file under `exact_tmux/` (119): conf.d loader, GitHub picker, session picker, handoff, sessions, palettes, resurrect.

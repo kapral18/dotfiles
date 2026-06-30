@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (73).
+%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (83).
 %% Skills → ~/.agents/skills/ (intent-routed SKILL.md). Shared hooks → ~/.agents/hooks/.
 %% ============================================================================
 flowchart TB
@@ -24,7 +24,7 @@ flowchart TB
 
     subgraph CORE["Core workflow skills"]
         S1["review/ (SKILL + references: judging_core [surface-agnostic engine:<br/>coverage, severity, gates, post-review 4-dim lens], local_changes,<br/>pr_common [exhaustive GitHub context intake + ambient topic exploration + PR necessity audit + pending-review reconciliation], pr_fix, pr_review, shared_rules;<br/>PR review anchor verification is instruction-owned)<br/>agent-review/ (/agent-review controller + role-specific runtime contracts: reviewer-worker, pr-necessity-auditor, findings-auditor, live-ui-review, post-review, change-auditor, researcher, code-searcher [single source for every delegated subagent body; per-tool profiles are thin shims] + runtime-harness caveats; reuses review references)<br/>light-review/ (proportional-depth in-place audit; loads judging_core)"]:::skill
-        S2["git/ · github/ · worktrees/ · compose-pr/ · compose-issue/<br/>communication/ (centralized tone/style; referenced by other skills)"]:::skill
+        S2["git/ · github/ (+refs: pr-reviews, pr-comments, sub-issues) · worktrees/ · compose-pr/ · compose-issue/<br/>communication/ (centralized tone/style; referenced by other skills)<br/>code-quality family: code-quality · code-quality-react · code-quality-tests · code-quality-web"]:::skill
         S3["walkthrough/ · interview-me/ · research/<br/>present-pr/ (+refs: authoring.md, template.html;<br/>review-readiness map + introduced-concepts primer<br/>+ fixed notes sidebars)"]:::skill
         S1 --> R1["exact_references/*.md"]:::ref
     end
@@ -35,16 +35,16 @@ flowchart TB
 
     subgraph TOOLS["Tool-backed skills (wrap a CLI; some have references)"]
         S5["buildkite/ (+refs: bk-commands, build-debugging, troubleshooting)<br/>sem skill (uses ,sem CLI) · weave · knip · jscpd · semantic-code-search"]:::skill
-        S6["google-workspace · playwriter · letsfg(assets/Dockerfile) · nano-banana · artifact"]:::skill
+        S6["google-workspace · playwriter · letsfg(assets/Dockerfile; +ref: flexible-date-search) · nano-banana · artifact"]:::skill
         S7["ai-kb/ (wrap ,ai-kb; durable cross-session memory read/write)"]:::skill
     end
 
     subgraph KBN["Elastic/Kibana domain overlay + skills"]
-        S8["elastic-domain/ (verified overlay; owns Elastic/Kibana policy<br/>+ ref: kibana-live-ui)<br/>kbn-stack (local ES+Kibana stack lifecycle)<br/>kbn-backport (e2e; drives backport tool in tmux; +ref: backport-tool.md)<br/>kibana-console-monaco · kibana-labels-propose<br/>kibana-management-ownership · standup"]:::skill
+        S8["elastic-domain/ (verified overlay; owns Elastic/Kibana policy<br/>+ refs: kibana-live-ui, pr-issue-templates)<br/>kbn-stack (local ES+Kibana stack lifecycle)<br/>kbn-backport (e2e; drives backport tool in tmux; +refs: backport-tool.md, conflict-resolution.md)<br/>kibana-console-monaco · kibana-labels-propose<br/>kibana-management-ownership · standup"]:::skill
     end
 
     subgraph META["Meta / orchestration skills"]
-        S9["ralph/SKILL.md (drive ,ralph; see 04)<br/>cli-skills/ (author CLI-tool skills)"]:::skill
+        S9["ralph/SKILL.md (drive ,ralph; see 04; +ref: dashboard-tui)<br/>cli-skills/ (author CLI-tool skills)"]:::skill
     end
 
     SOPS["~/AGENTS.md + ~/CLAUDE.md route 'Use when' → load SKILL.md"]:::data

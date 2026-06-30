@@ -40,6 +40,8 @@ These skills govern review methodology, GitHub side effects, and human-readable 
 | Source   | [`exact_github`](../../../../home/exact_dot_agents/exact_skills/exact_github/)      |
 | Boundary | not for read-only review analysis or draft-only writing                             |
 
+PR creation and edits are human-visible publication flows. The skill requires full context intake before composition, an explicit publication preflight ledger for title/body/Test Plan/metadata, user approval for invented human-visible text, and read-back comparison after `gh pr create` or `gh pr edit`.
+
 ## `compose-pr`
 
 | Field    | Value                                                                                  |
@@ -47,6 +49,8 @@ These skills govern review methodology, GitHub side effects, and human-readable 
 | Use when | drafting PR title/body before creating or editing a PR                                 |
 | Source   | [`exact_compose-pr`](../../../../home/exact_dot_agents/exact_skills/exact_compose-pr/) |
 | Boundary | text only; no GitHub side effects                                                      |
+
+When a draft feeds a GitHub side effect, it carries a compact composition ledger outside the PR body so `github` can verify linked issue intake, Test Plan completeness, title source, metadata source, and unresolved placeholders before publishing.
 
 ## `compose-issue`
 

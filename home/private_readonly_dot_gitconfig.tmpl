@@ -105,8 +105,6 @@
   sshCommand = ssh -o IdentitiesOnly=yes -o IdentityFile="~/.ssh/primary_public_key.pub"
   # Prevent line ending issues
   autocrlf = input
-  # Uses the built-in file system monitor daemon so status/add/etc. ask "what changed?" instead of walking the whole tree; complements untracked-cache that manyFiles enables; safe on local filesystems.
-  fsmonitor = true
 
 [color]
   ui = auto
@@ -287,18 +285,6 @@
 
 [worktree]
   guessRemote = true
-
-[feature]
-  # https://git-scm.com/docs/git-config#Documentation/git-config.txt-featuremanyFiles
-  # enables index.skipHash, index.version 4 and core.untrackedCache
-  # for better performance with many files (e.g. large monorepos)
-  manyFiles = true
-  # enables fetch.negotiationAlgorithm=skipping (better fetch performance)
-  # enables pack.useSparseBitmap (better bitmap traversal performance)
-  # enables pack.allowPackReuse=multi (better pack creation performance)
-  # enables pack.usePathWalk (smaller pack files)
-  # enables init.defaultRefFormat=reftable (better ref storage performance)
-  experimental = true
 
 [init]
   defaultBranch = main

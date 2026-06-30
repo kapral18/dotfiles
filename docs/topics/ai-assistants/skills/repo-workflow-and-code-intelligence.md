@@ -7,6 +7,37 @@ title: Repo workflow and code intelligence
 
 These skills operate on local repositories, code search, cleanup, and external source inspection.
 
+## `code-quality`
+
+| Field    | Value                                                                                         |
+| -------- | --------------------------------------------------------------------------------------------- |
+| Use when | editing, reviewing, or refactoring implementation code in any language                        |
+| Source   | [`exact_code-quality`](../../../../home/exact_dot_agents/exact_skills/exact_code-quality/)    |
+| Boundary | style and maintainability details only; SOP owns compatibility, scope, and verification gates |
+
+`code-quality` routes to narrower skills when the surface is present: `code-quality-react` for React/JSX/TSX/hooks, `code-quality-tests` for tests/fixtures/assertions, and `code-quality-web` for HTML/CSS/accessibility/browser UI.
+
+## `code-quality-react`
+
+| Field    | Value                                                                                                  |
+| -------- | ------------------------------------------------------------------------------------------------------ |
+| Use when | editing React, JSX, TSX, hooks, components, props, state, effects, or client-side UI behavior          |
+| Source   | [`exact_code-quality-react`](../../../../home/exact_dot_agents/exact_skills/exact_code-quality-react/) |
+
+## `code-quality-tests`
+
+| Field    | Value                                                                                                  |
+| -------- | ------------------------------------------------------------------------------------------------------ |
+| Use when | adding, editing, reviewing, or debugging tests, fixtures, mocks, snapshots, assertions, or coverage    |
+| Source   | [`exact_code-quality-tests`](../../../../home/exact_dot_agents/exact_skills/exact_code-quality-tests/) |
+
+## `code-quality-web`
+
+| Field    | Value                                                                                              |
+| -------- | -------------------------------------------------------------------------------------------------- |
+| Use when | editing HTML, CSS, DOM markup, layout, responsive styles, accessibility, or browser UI             |
+| Source   | [`exact_code-quality-web`](../../../../home/exact_dot_agents/exact_skills/exact_code-quality-web/) |
+
 ## `git`
 
 | Field    | Value                                                                                      |

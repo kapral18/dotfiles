@@ -65,6 +65,9 @@ it surfaces in the wrong workspaces, carries no trust signal, and cannot be cura
   --confidence 0.9 --domain "<tag>" --domain "<tag2>" --tags "<csv>"
 ```
 
+Shell quoting for `--title`/`--body` prose: Markdown backticks trigger shell command substitution unless single-quoted or escaped.
+Never place unescaped backticks inside a double-quoted shell argument; prefer single-quoted prose or an argv-safe heredoc/stdin pattern for complex text.
+
 Field selection (each affects retrieval — choose, do not default):
 
 - `--kind` honestly: `gotcha` (trap/surprise), `anti_pattern` (what not to do), `pattern`/`recipe` (reusable approach), `principle` (rule), `fact` (verified state), `doc` (reference chunk).

@@ -22,16 +22,15 @@ A user crontab is installed (replacing the existing one) from a repo-managed fil
 
 Crontab behavior:
 
-| Piece           | Detail                                                                                                              |
-| --------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Install command | `crontab "$CHEZMOI_SOURCE_DIR/crontab"`                                                                             |
-| Trigger         | hash-gated; re-installs only when `home/crontab` changes                                                            |
-| Shipped job     | kills Git `fsmonitor--daemon` every 5 minutes                                                                       |
-| Reason          | works around the daemon wedging or pinning CPU on large repos                                                       |
-| Match pattern   | `git-core/git[ ]fsmonitor--daemon`, covering Apple Git and Homebrew Git without matching the cleanup command itself |
+| Piece           | Detail                                                   |
+| --------------- | -------------------------------------------------------- |
+| Install command | `crontab "$CHEZMOI_SOURCE_DIR/crontab"`                  |
+| Trigger         | hash-gated; re-installs only when `home/crontab` changes |
+| Shipped jobs    | weekly `,ai-kb curate`; daily `/tmp/specs` archive sync  |
 
 ```cron
-*/5 * * * * /usr/bin/pkill -f "git-core/git[ ]fsmonitor--daemon" >/dev/null 2>&1
+17 9 * * 1 PATH="$HOME/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin" "$HOME/bin/,ai-kb" curate >> "$HOME/.local/share/ai-kb/curate.log" 2>&1
+7 9 * * * /usr/bin/rsync -a /tmp/specs/ "$HOME/.local/share/agent-specs-archive/" >/dev/null 2>&1
 ```
 
-Edit [`home/crontab`](../../../home/crontab) and `chezmoi apply` to change the schedule, or run `crontab -l` to inspect the installed table. To opt out, remove the hook script and clear the entry with `crontab -e`.
+Edit [`home/crontab`](../../../home/crontab) and `chezmoi apply` to change the schedule, or run `crontab -l` to inspect the installed table. To opt out, remove the hook script and clear the table with `crontab -e`.

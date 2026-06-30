@@ -41,6 +41,15 @@ If detection is unavailable, keep the primary generic skill behavior and state t
 
 Apply when the primary skill is `compose-pr`, `compose-issue`, `github`, or a review flow preparing GitHub-visible text.
 
+Precedence for `elastic/kibana` PR composition:
+
+- this overlay specializes the generic `github`, `kbn-github`, and `compose-pr` title/body guidance for Kibana
+- this overlay owns Kibana-specific title style, PR body sections, release-note inclusion, and assistance footer policy
+- `kibana-labels-propose` owns Kibana label/backport/version classification; invoke it and use its output instead of duplicating label inference here
+- the `github` / `kbn-github` skills own GitHub mechanics and approval gates for applying metadata
+- once this overlay applies, generic skills must not invent fallback Kibana title style, labels, release-note state, or footer policy.
+  If this overlay or `kibana-labels-propose` has not produced the needed domain packet, stop and obtain that packet instead of guessing.
+
 Elastic/Kibana public text sanitization:
 
 - for behavior/UI bugs, use portable local reproduction wording such as `local Kibana`, `http://localhost:5601`, `a user with only <privilege>`, or explicit setup steps to create the role/user
@@ -68,6 +77,10 @@ Known tool labels:
 `elastic/kibana` PR bodies:
 
 - before drafting the PR body, invoke `kibana-labels-propose` via the Skill tool to propose labels/backports/version targeting
+- PR titles should use Kibana's bracketed area style when there is a clear owning area, e.g. `[Console] Fix ...`.
+  Derive the bracket from the linked issue title, owning changed paths, or recent same-area PR precedent.
+  Do not use a Conventional Commit header as the PR title unless local Kibana precedent for that exact area uses it.
+  If multiple bracket prefixes are plausible and evidence does not choose one, ask before creating or editing the PR.
 - gather only verified evidence for release-note intent
 - include `## Release Note` only when the proposed label is `release_note:fix` or `release_note:feature`
 - omit `## Release Note` for `release_note:enhancement`, `release_note:skip`, or any unverified release-note state
@@ -75,127 +88,12 @@ Known tool labels:
 - if reviewer/ownership guidance is requested, load `kibana-management-ownership`
 - never invent issue numbers; use `Closes #X` vs `Addresses #X` intentionally
 
-Elastic PR template variants:
-
-Default template (copy then delete unused sections):
-
-```markdown
-Closes #X | Addresses #X
-
-## Summary
-
--
-
-## Test Plan
-
-Assisted with <Tool> using <Model>
-```
-
-Bugfix:
-
-```markdown
-Closes #X | Addresses #X
-
-## Summary
-
--
-
-## Root Cause
-
--
-
-## Fix
-
--
-
-## Before/After Screenshots (or Video)
-
-### Before
-
-### After
-
-## Test Plan
-
--
-
-## Release Note
-
-- Single sentence describing the user-facing behavior change.
-
-Assisted with <Tool> using <Model>
-```
-
-Chore/Migration:
-
-```markdown
-Closes #X | Addresses #X
-
-## Summary
-
--
-
-## Rationale
-
--
-
-## Test Plan
-
-Assisted with <Tool> using <Model>
-```
-
-Feature:
-
-```markdown
-Closes #X | Addresses #X
-
-## Summary
-
--
-
-## User-Facing Behavior
-
--
-
-## Test Plan
-
--
-
-## Release Note
-
-- Single sentence describing the user-facing behavior change.
-
-Assisted with <Tool> using <Model>
-```
-
 `elastic/kibana` issue bodies:
 
 - include environment details when UI or deployment matters
 - leave unknown stack/deployment/browser fields blank or marked for follow-up; do not invent them
 
-Kibana issue template:
-
-Copy this template and delete unused sections:
-
-```markdown
-## Problem
-
-## Expected
-
-## Actual
-
-## Reproduction
-
-## Environment
-
-- Stack version:
-- Deployment (cloud/on-prem):
-- Browser/OS (if UI):
-
-## Notes
-
-- Logs / screenshots / sample docs (redact secrets)
-- Related issues/PRs
-```
+Copy-paste PR body templates (Default/Bugfix/Chore/Feature) and the Kibana issue template live in `~/.agents/skills/elastic-domain/references/pr-issue-templates.md`.
 
 ## Review and CI additions
 

@@ -25,6 +25,12 @@ git config --show-origin --get user.email
 git config --show-origin --get core.sshCommand
 ```
 
+## Large repositories
+
+The global gitconfig avoids repository-size-specific defaults such as `core.fsmonitor`, `feature.manyFiles`, and `feature.experimental`. Large repositories opt into performance settings through their local `.git/config`, so small repos do not spawn fsmonitor daemons or inherit experimental Git defaults.
+
+For very large worktrees such as Kibana and Elasticsearch, keep maintenance, index, and untracked-cache settings repo-local. Avoid `scalar register` as durable setup in this chezmoi-managed environment because it writes `scalar.repo` and `maintenance.repo` paths into the managed global gitconfig, and the next `chezmoi apply` removes them. Keep `core.fsmonitor=false` unless a repo-specific benchmark proves the daemon is safe and worthwhile for that worktree.
+
 ## Signing
 
 Commit signing uses SSH signing through the 1Password signing helper. The public key selector lives on disk; the private key stays in 1Password.

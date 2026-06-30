@@ -285,6 +285,13 @@ no `semantic_code_search`, symbol analysis, code-chunk reads, broad code investi
      - If the target repo/object is verified as `elastic/kibana` and no explicit user-provided or repo-documented local/dev target packet exists, load `~/.agents/skills/elastic-domain/SKILL.md`.
        Include the Kibana live-UI target packet from `~/.agents/skills/elastic-domain/references/kibana-live-ui.md`.
      - Otherwise use the explicit user-provided or repo-documented local/dev target packet.
+   - Resolve target worktree identity before launch:
+     - `controller_cwd` is where the review controller happens to run; it is not automatically the PR/head runtime.
+     - `reviewed_head_worktree` is the checkout that contains the code under review for the PR/head branch/sha.
+     - For local-changes mode, the current worktree may be `reviewed_head_worktree` only when it contains the changed code being reviewed.
+     - For an explicit PR/branch review invoked from another checkout (especially a base/main checkout), do not use `controller_cwd` as the PR/head target unless it is checked out to the reviewed PR/head branch/sha.
+       Reuse or create a worktree for the reviewed PR/head branch before live UI, or return a target-worktree blocker with the exact command/setup required.
+     - Base/main is comparison-only: resolve/start a base target only when a distinct `reviewed_head_worktree` exists and the target packet requires base-vs-head comparison.
    - Resolve required runtime config once, before the first `live-ui-review` launch:
      from the changed paths and kept candidates, determine any runtime/feature-flag settings the path under review needs to be reachable.
      Pass them to the worker so the runtime is started correctly the first time instead of started default and reconfigured after a blocker.
@@ -415,47 +422,23 @@ The final output may report blockers or remaining uncertainty, but it must not p
 
 ## PR necessity audit
 
-`pr-necessity-auditor` is part of the PR-mode flow for other-authored or unknown-author PRs.
-It answers whether the PR itself is sensible, correctly open, and still needed.
-
-- It is the first blocking review worker after routing; reviewer fan-out does not start until this auditor greenlights the PR for implementation review.
-- It audits author intent from the complete PR description, discussion, review threads, referenced issues/PRs, and linked artifacts.
-- It checks whether the PR is correctly open: open/draft state, base/head target, scope, linked issue status, stale/conflicting context, and whether the described problem still exists.
-- It searches for duplicate, overlapping, superseding, or recently merged cross-cutting work in GitHub, git history, and Slack topic discussions when Slack tools are available.
-- It returns evidence and classifications only; it never decides, posts, resolves, edits, commits, or pushes.
-- The controller turns supported concerns into draft feedback/questions only after normal judgment and human-visible publication gates.
+`pr-necessity-auditor` is the blocking PR-mode/intent worker from orchestration step 2:
+evidence-only, never decides, posts, resolves, edits, commits, or pushes.
+Orchestration step 2 owns when it runs and how its result gates reviewer fan-out.
+Full audit scope (author intent, correctly-open checks, duplicate/superseding-work search) and hard constraints live in `~/.agents/skills/agent-review/references/pr-necessity-auditor.md`.
 
 ## Live UI review
 
-`live-ui-review` is part of the default flow after the blocking PR necessity gate and reviewer fan-out phases complete when changed paths or kept candidate findings touch UI/runtime behavior and runtime evidence is applicable.
-Replacement/test-migration candidates first pass through the Replacement/Migration Parity Gate;
-`preserved_limitation` and `prose_drift` candidates are dropped before live-UI applicability is decided.
-
-- It verifies UI/runtime-relevant findings against a selected target packet.
-- It returns evidence, optional screenshot handoff, or a blocker.
-- Default mode: verification only; no repo edits, posts, resolves, commits, pushes, or decisions.
-- It may create focused isolated data in the configured local/dev runtime when required to verify an applicable UI finding.
-  It must clean up that data when safe or report leftovers exactly.
-- Capture focused screenshots as Playwriter artifacts under `/tmp` only when visual proof is needed to understand a kept finding or blocker.
-  Return paths, descriptions, target URL/branch, and suggested comment placement for manual user attachment.
-- Fix mode: separate Playwriter task after controller judgment.
-- Fix mode requires `fix_authorized: yes` (own / assigned / adopted PR per step 1).
-- Fix mode prompt must state allowed changes and verification commands.
-
-Before launching `live-ui-review`, include a target/preflight packet in the worker prompt.
-
-- Verified Kibana target: if the target repo/object is `elastic/kibana` and no explicit user-provided or repo-documented local/dev target packet exists, load `~/.agents/skills/elastic-domain/SKILL.md` and paste the Kibana target/preflight packet from `~/.agents/skills/elastic-domain/references/kibana-live-ui.md`.
-- Other targets: use only explicit user-provided or repo-documented local/dev targets.
-  If neither a verified Kibana packet nor an explicit packet can be loaded, return a target blocker instead of inventing hosts or ports.
-- The packet must identify base/head targets, readiness checks, allowed local/dev data setup, screenshot handoff rules, and blocker criteria.
-- Resolve required runtime config once before this launch and pass it with the packet, so the runtime is started with the config the path under review needs in one shot rather than reconfigured after a blocker.
-  Keep concrete flag names/values in the packet/overlay, not in this controller contract.
+`live-ui-review` is the conditional UI/runtime verifier from orchestration step 3:
+applicability trigger, mode boundary, target-packet selection, worktree identity, and required runtime config are owned there.
+Full worker-facing procedure (preflight, readiness stability guard, Playwriter comparison, runtime-start rung, data/setup ladder, hard constraints, exact return shape) lives in `~/.agents/skills/agent-review/references/live-ui-review.md`.
 
 Controller validation: reject and rerun any `live-ui-review` result that:
 
 - does not match the selected target packet
+- uses the controller cwd or base/main runtime as the PR/head target for an explicit PR/branch review without proving that checkout is on the reviewed PR/head branch/sha
 - reports only generic localhost probing when the packet requires named targets
-- omits a required base/head target from the selected packet
+- omits a required target from the selected packet
 - uses WebFetch or shell/HTTP probes as readiness evidence
 - skips Playwriter target checks
 - claims targets are unavailable without showing the selected target/preflight evidence
@@ -470,7 +453,7 @@ Controller validation: reject and rerun any `live-ui-review` result that:
 Do not reject or rerun a result that reports a valid Playwriter harness blocker:
 
 - read-only/Ask-mode blocked `playwriter skill` or Playwriter commands
-- both exact browser/runtime target URLs were attempted or explicitly blocked before navigation
+- every selected exact browser/runtime target URL was attempted or explicitly blocked before navigation
 - repeated reload/same-URL/same-snapshot loop was detected within the readiness stability guard
 
 ## Output

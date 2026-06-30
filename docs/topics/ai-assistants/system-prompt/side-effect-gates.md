@@ -26,4 +26,4 @@ The SOP separates local reasoning from actions that affect people, git history, 
 | Mixed/unknown participants    | treat as human                                            |
 | Verified bot-authored thread  | auto-reply/resolve only inside an explicitly invoked flow |
 
-For wording on any human-visible surface, the SOP routes to the centralized [communication skill](../skills/review-and-delivery.md#communication).
+Wording of human-visible text is owned centrally by the [communication skill](../skills/review-and-delivery.md#communication) and is not re-derived per surface; a loaded mechanics skill (`github`, `google-workspace`, `review`, ...) does not own tone. The SOP states this as a boundary, not a routing trigger: skill discovery is driven by the skill's own `description`, not by a "load this skill" line in the SOP.

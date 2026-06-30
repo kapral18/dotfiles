@@ -7,52 +7,63 @@ Use it when no explicit parent/user/repo target packet was supplied.
 
 Stacks are started per worktree by `,kbn-stack`, which records each running stack in `~/.cache/kbn-stack/registry.json` keyed by absolute worktree path.
 Load and follow `~/.agents/skills/kbn-stack/SKILL.md` for command mechanics, registry inspection, required `-K` flag parity, and teardown ownership.
-Each entry has `slot`, `branch`, `backend`, `kbn_url`, `es_url`, `cookie_name`, `kbn_flags`, and `ready`.
+Each entry has `slot`, `branch`, `backend`, `kbn_url`, `es_url`, `cookie_name`, `kbn_flags`, `ready`, `started_by`, and `start_mode`.
 `kbn_flags` is the list of extra `key=value` Kibana settings the stack was started with via `,kbn-stack -K`;
 it is empty when none were supplied. `ready` is true only once Kibana has answered `/api/status`.
+`started_by` is `user` for interactive/manual starts and `agent` for `--detach`;
+for legacy entries with no `started_by`, infer `agent` only when recorded process ids are present, otherwise treat the entry as user-owned.
 Stacks run on plain `http://localhost:<port>` with a per-slot cookie name, so there are no fixed hostnames or fixed ports to assume.
 
 A stack may be started interactively by the user (tmux) or by an agent in background mode via `,kbn-stack --detach`.
 The detach path starts ES + Kibana headless, waits until Kibana is ready, sets `ready: true`, and returns.
-Both paths flip the registry entry's `ready` to true once Kibana answers `/api/status`, so a stack the user started by hand in tmux from the current worktree is discoverable here.
+Both paths flip the registry entry's `ready` to true once Kibana answers `/api/status`, so a stack the user started by hand in tmux from the current worktree is discoverable here and marked user-owned.
 Treat a registry entry as a usable target only when `ready` is true; an entry with `ready: false` is still booting (or failed) and must not be used as a live target.
 
 Backend parallelism: `snapshot` stacks are fully parallel (one per worktree, isolated by slot).
 `serverless` stacks are single-instance per host because kbn-es runs fixed `es01`/`es02` Docker containers.
 A registry entry with `"exclusive": true` is serverless and only one can be live at a time;
-starting a serverless stack for one worktree tears down any other serverless stack.
+starting a serverless stack for one worktree may tear down another agent-owned serverless stack, but must not auto-stop a user-owned serverless stack.
 Do not assume two serverless targets (base and head) can run simultaneously —
 if base/head both need serverless, verify them sequentially (start, verify, tear down, then the other).
 Return `Blocked` for the serverless single-instance constraint only when sequential verification is itself impossible.
 For example, block if the user's serverless stack must stay up; do not treat the constraint as a peer option to skip verification.
 
-The registry is keyed by absolute worktree path. Compute the current PR/head worktree key the same way `,kbn-stack` does.
-Use the resolved absolute path of `git rev-parse --show-toplevel` run from the agent's working directory.
-Look that key up in the registry to find the stack for the worktree the agent is reviewing from.
-This includes a stack the user started interactively in a tmux pane in that same worktree.
+The registry is keyed by absolute worktree path. Target identity is based on the reviewed code, not on where the controller happens to run:
+
+- `controller_cwd`: the checkout where the review controller is executing.
+- `reviewed_head_worktree`: the checkout for the PR/head branch or commit being reviewed.
+- `base_worktree`: optional comparison checkout for the base branch.
+
+For local-changes mode, `controller_cwd` may be `reviewed_head_worktree` when it contains the changed code.
+For an explicit PR/branch review launched from another checkout, especially a base/main checkout, `controller_cwd` is not a valid PR/head target unless it is checked out to the reviewed PR/head branch/sha.
+Find or create a worktree for the reviewed PR/head branch before live UI, then compute the PR/head registry key from that worktree with `git rev-parse --show-toplevel`.
+If no reviewed-head worktree is available and the harness cannot create one, return `Blocked` with target-worktree setup instructions;
+never verify PR/head behavior against the base/main runtime.
 
 Resolve targets from the registry; do not hardcode ports or `*.local` hostnames:
 
 Browser targets:
 
-- Base branch: the `kbn_url` of the registry entry for the base worktree (the `main` worktree under `~/work/kibana/main`).
-- PR/head branch: the `kbn_url` of the registry entry for the current PR/head worktree key resolved above.
+- PR/head branch: the `kbn_url` of the registry entry for `reviewed_head_worktree`.
+- Base branch: optional comparison target.
+  Use the `kbn_url` of the registry entry for the selected `base_worktree` only when base-vs-head comparison is required and `reviewed_head_worktree` is distinct.
+  If no parent/user packet selected a base worktree, use the local default base worktree (`~/work/kibana/main`) only as a fallback comparison target.
 
 Backing/data endpoints:
 
-- Base Elasticsearch: the `es_url` of the base worktree's registry entry.
 - PR/head Elasticsearch: the `es_url` of the PR/head worktree's registry entry.
+- Base Elasticsearch: optional comparison endpoint from the base worktree's registry entry when a base target is used.
 
-If the registry has no `ready:true` entry for a required worktree (or `,kbn-stack` is not running for it), the stack is missing —
-this is a runtime-start step, not a target blocker.
+If the registry has no `ready:true` entry for a required worktree (always PR/head, plus base only when comparison is required), the stack is missing — this is a runtime-start step, not a target blocker.
 In a shell-capable harness you MUST start it yourself with `,kbn-stack --detach` from that worktree and continue once the registry entry reports `ready: true` (see Data/setup ladder Rung 0).
 Return `Blocked` for a missing stack only in a read-only/Ask-mode harness or when `,kbn-stack --detach` fails.
 Include the exact `,kbn-stack --detach` command for each missing worktree for the user to run. Never probe arbitrary localhost ports.
 
-Teardown ownership: if this worker started a stack with `,kbn-stack --detach`, tear it down with `,kbn-stack --stop` from that worktree once verification is done.
-Report that it was stopped.
-Do not stop a stack the user started interactively (one that was already `ready` in the registry before this worker ran) —
-leave it running and report that it was reused, not started. Never use `--stop-all` from a review worker; that is a user-only cleanup.
+Teardown ownership: record the registry state before starting anything.
+If this worker created a stack with `,kbn-stack --detach`, it is marked `started_by: "agent"` and must be torn down with `,kbn-stack --stop` from that worktree once verification is done.
+Report that it was stopped. Do not stop a `started_by: "user"` stack; leave it running and report that it was reused, not started.
+If a pre-existing `started_by: "agent"` stack is reused, leave it running unless this worker explicitly replaced it;
+report that it was reused as an agent-owned stack. Never use `--stop-all` from a review worker; that is a user-only cleanup.
 
 ## Required runtime config
 
@@ -70,28 +81,29 @@ The registry entry's `kbn_flags` records what a running stack was started with s
 
 ## Required preflight
 
-- Runtime-start precondition (do this before resolving target URLs): if a required base/head stack has no `ready:true` registry entry, do not treat the missing URL as a readiness failure.
+- Runtime-start precondition (do this before resolving target URLs): if a required target stack has no `ready:true` registry entry, do not treat the missing URL as a readiness failure.
   Go to Data/setup ladder Rung 0 and start it with `,kbn-stack --detach` plus one `-K key=value` per entry in `required_kbn_flags` (shell-capable harness), then resolve its `kbn_url` and continue preflight.
-  The reachability/readiness checks below assume the stacks are up; the "cannot establish readiness -> `Blocked`" and "blocker invalid unless both target URLs reported" rules apply only after Rung 0, never as a reason to skip starting a startable stack.
+  The reachability/readiness checks below assume the stacks are up; the "cannot establish readiness -> `Blocked`" and "blocker invalid unless every selected target URL is reported" rules apply only after Rung 0, never as a reason to skip starting a startable stack.
 - Required-config precondition (do this when `required_kbn_flags` is non-empty, after resolving each ready target):
   compare the target's registry `kbn_flags` against `required_kbn_flags`.
-  If a `ready:true` stack you did not start is missing a required flag, it cannot show the path under review and you cannot safely restart a user-owned stack — return `Blocked` per Data/setup ladder Rung 6 with the exact `,kbn-stack --stop && ,kbn-stack --detach -K <flag> ...` the user must run, naming the affected target(s).
+  If a `ready:true` stack with `started_by: "user"` is missing a required flag, it cannot show the path under review and you cannot safely restart it — return `Blocked` per Data/setup ladder Rung 6 with the exact `,kbn-stack --stop && ,kbn-stack --detach -K <flag> ...` the user must run, naming the affected target(s).
+  If a `ready:true` stack with `started_by: "agent"` is missing a required flag, the worker may stop and recreate it only when doing so will not conflict with another active task; record the replacement in the evidence.
   A stack this worker just started via Rung 0 already carries the flags, so no parity check is needed for it.
 - Load `~/.agents/skills/kbn-stack/SKILL.md` before starting, stopping, or reusing stack targets.
 - Read `~/.agents/skills/playwriter/SKILL.md` and run `playwriter skill` before checking targets.
 - Run in a fresh Playwriter session owned by this worker.
 - Store owned pages in `state.basePage` and `state.headPage`; do not reuse generic `page`.
 - Close only pages this worker created, or leave their URLs in the blocker/evidence.
-- Use Playwriter to check both exact browser targets are reachable and Kibana-ready.
+- Use Playwriter to check every selected exact browser target is reachable and Kibana-ready.
 - Verify branch identity with Playwriter evidence where possible.
-- First perform readiness only; do not compare UI until both targets pass readiness.
+- First perform readiness only; do not compare UI until every selected target passes readiness.
 - Stop after at most two navigations per target during readiness.
 - Stop after at most one repeated same-URL/same-snapshot observation.
-- A blocker is invalid unless it reports results for both exact browser target URLs.
+- A blocker is invalid unless it reports results for every selected exact browser target URL.
 - Do not fall back to localhost unless the user explicitly overrides the targets.
 - Do not use WebFetch, shell `curl`, or other HTTP-only probes as target readiness evidence.
   They may be supplemental diagnostics, and post-readiness local API calls are allowed for scoped data setup, but Playwriter is the required readiness check.
-- Playwriter is the required readiness check for the registry-resolved base and PR/head `kbn_url` targets.
+- Playwriter is the required readiness check for the registry-resolved PR/head and any selected base `kbn_url` targets.
 - If Playwriter cannot run because the harness is read-only/Ask-mode, return `Blocked`.
 - If Playwriter fails before navigation with `browserType.connectOverCDP: Timeout`:
   - replace the relay once with `playwriter serve --host 127.0.0.1 --replace`
@@ -110,13 +122,13 @@ The registry entry's `kbn_flags` records what a running stack was started with s
 ## Data/setup ladder
 
 Rung 0 — ensure the stack is running with the required config (runtime-start, before any data rung):
-if the registry has no `ready:true` entry for a required base/head worktree key, the stack is missing, not the data.
+if the registry has no `ready:true` entry for a required worktree key (PR/head, plus base when selected), the stack is missing, not the data.
 When the harness allows shell side effects, start it yourself with `,kbn-stack --detach` plus one `-K key=value` for each entry in `required_kbn_flags` from that worktree, wait until the registry entry reports `ready: true`, then continue to preflight.
 Starting with the required flags here is what avoids a reconfigure/restart round-trip later.
 Only in a read-only/Ask-mode harness (or if `,kbn-stack --detach` fails) return `Blocked` with the exact `,kbn-stack --detach -K <flag> ...` command (including every required flag) for each missing worktree for the user to run.
 Honor the serverless single-instance constraint (`"exclusive": true`) and the teardown ownership rule under Runtime targets.
 
-The rungs below apply only once both required stacks report `ready:true`. If the relevant UI exists but required data is absent:
+The rungs below apply only once every selected required stack reports `ready:true`. If the relevant UI exists but required data is absent:
 
 1. Inspect complete direct PR/issue artifacts already in scope, including screenshots, GIFs, videos, and linked media.
    For videos/GIFs, inspect enough frames to infer the relevant UI state and data shape.
@@ -164,7 +176,7 @@ The rungs below apply only once both required stacks report `ready:true`. If the
 - For each screenshot, record:
   - local path
   - description
-  - base/head/both target
+  - target classification: PR/head, base, or both selected targets
   - exact URL
   - linked candidate/finding
   - suggested manual review comment placement
@@ -187,7 +199,7 @@ When the user wants to point at specific real Kibana UI elements, use `,artifact
 Reject and rerun any `live-ui-review` result for this overlay that:
 
 - reports only generic localhost probing
-- omits either exact target URL
+- omits any selected exact target URL
 - uses WebFetch or shell/HTTP probes as readiness evidence
 - skips Playwriter target checks
 - claims targets are unavailable without showing the exact target/preflight evidence above
@@ -202,5 +214,5 @@ Reject and rerun any `live-ui-review` result for this overlay that:
 Do not reject or rerun a result that reports a valid Playwriter harness blocker:
 
 - read-only/Ask-mode blocked `playwriter skill` or Playwriter commands
-- both exact browser target URLs were attempted or explicitly blocked before navigation
+- every selected exact browser target URL was attempted or explicitly blocked before navigation
 - repeated reload/same-URL/same-snapshot loop was detected within the readiness stability guard

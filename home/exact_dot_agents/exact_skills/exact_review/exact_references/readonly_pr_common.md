@@ -84,8 +84,12 @@ Do not rely on:
 - previews
 - truncated terminal output
 - compacted output
+- sliced fields such as `body[0:N]`, `head`, preview scripts, or partial comment/reply lists
 
-Recover the full raw content before marking an item read.
+Recover the full raw content before marking an item read. Limited output is allowed only for discovery/status.
+Once an item can inform composition, review, labels, routing, or a mutation, re-fetch the full raw artifact with pagination before using it.
+For GitHub, prefer complete `--json` fields or API pagination over `jq` slices or preview commands.
+Keep a short intake ledger for composition/review work: object read, full-body/comments status, linked objects followed, and reproduction/expected/actual sections found or absent.
 
 1. Maintain a visited set by canonical URL/object ID so recursion is exhaustive without looping.
 2. Seed the queue from the primary PR:

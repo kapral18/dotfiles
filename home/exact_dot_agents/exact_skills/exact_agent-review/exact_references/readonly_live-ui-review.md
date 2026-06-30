@@ -35,10 +35,14 @@ The parent supplies:
 - candidate findings
 - expected base branch
 - expected PR/head branch
+- controller cwd
+- reviewed PR/head worktree path and branch/sha
+- optional base comparison worktree path
 - selected target packet, including overlay source when an overlay supplied the packet
 - required runtime config: runtime/feature-flag settings the change under review needs to be reachable
   - resolved once by the controller before this launch
-  - empty when none The concrete settings and how to apply them at start time belong to the selected target packet;
+  - empty when none
+  - concrete settings and how to apply them at start time belong to the selected target packet;
     this contract only carries that the controller resolves them up front so the runtime is started correctly the first time.
 
 ### Applicability
@@ -61,6 +65,12 @@ If the changed UI/runtime path exists but required data is absent, continue thro
 
 Use the parent-supplied runtime targets when present; do not invent them.
 
+- Treat `reviewed PR/head worktree` as the runtime that contains the code under review.
+  The controller cwd is only execution context; it is not a PR/head target unless it is the same checkout and branch/sha as the reviewed head.
+- If the parent requests a PR/branch review but supplies only a base/main checkout as the head target, return `Blocked` with a target-worktree blocker.
+  Do not navigate, start, or validate a base/main runtime as if it were the PR/head runtime.
+- Base targets are comparison-only.
+  Use or start a base runtime only when the selected packet requires comparison and a distinct PR/head target exists.
 - If no parent packet was supplied and the target repo/object is verified as `elastic/kibana`, load the fallback target packet.
   The fallback packet is `~/.agents/skills/elastic-domain/references/kibana-live-ui.md`.
 - For all other targets, use only explicit user-provided or repo-documented local/dev targets.
@@ -82,6 +92,9 @@ Use the parent-supplied runtime targets when present; do not invent them.
 - Close only pages this worker created, or report their URLs in the final evidence.
 - Use Playwriter to check every browser/runtime target in the selected target packet for reachability/readiness.
 - Verify target branch identity with Playwriter evidence where possible.
+- Before any UI comparison, verify the PR/head target identity from the selected packet.
+  If the PR/head URL resolves to the base/main worktree or to the controller cwd while the reviewed head is elsewhere, return `Blocked`;
+  do not continue with base-only evidence.
 - If readiness or branch identity cannot be established, return `Blocked` with the missing evidence —
   except when the cause is a missing/un-started runtime the packet documents how to start:
   that routes to the runtime-start rung first (start it, then re-check), not to `Blocked`.
@@ -112,7 +125,8 @@ When applicable targets pass preflight, continue using Playwriter for UI compari
 
 Scope:
 
-- Compare the PR/head runtime against the base runtime for UI-relevant changes and reviewer findings.
+- Compare the PR/head runtime against the base runtime for UI-relevant changes and reviewer findings only when the selected packet includes a distinct base target.
+  Otherwise perform head-only verification against the PR/head runtime. Never treat a base runtime as evidence for PR/head behavior.
 - Use the most faithful verification path that stays within the selected local/dev safety boundary:
   browser inspection, screenshots/paths when available, logs, read-only CLI commands, existing data, allowed local/dev runtime data setup, and repo-specific interactive setup tools.
   Use browser/route mocks only as last resort.
@@ -121,7 +135,7 @@ Scope:
 - Capture concrete evidence: URLs, steps, screenshots/paths when available, observed differences, and uncertainty.
 - When visual proof is needed to understand a UI bug, visual regression, or behavior difference, capture the smallest useful screenshot set as Playwriter artifacts under `/tmp`.
   Do not screenshot every navigation or duplicate state.
-- For each screenshot, record a handoff entry with path, description, base/head/both target, exact URL, linked candidate/finding, and suggested review comment placement.
+- For each screenshot, record a handoff entry with path, description, target classification (PR/head, base, or both selected targets), exact URL, linked candidate/finding, and suggested review comment placement.
   Include any fidelity note for mocks or partial setup. Preserve handoff files; cleanup applies to seeded runtime data and owned pages.
 - The screenshot handoff is for the controller/user only.
   Do not upload images, include local paths in GitHub review bodies, or add extra comments solely for image paths.
@@ -208,7 +222,7 @@ Return exactly:
 
 - `applicability`: applicable / not applicable, with changed-path or finding evidence
 - `target_packet`: selected packet name/source, including overlay source when an overlay supplied the packet
-- `urls_checked`: the exact base and PR/head URLs from the selected packet, or an explicit blocker before navigation
+- `urls_checked`: the exact PR/head and any selected base URLs from the selected packet, or an explicit blocker before navigation
 - `playwriter_preflight`: whether the Playwriter skill was loaded and `playwriter skill` was run; if not, say why
 - `target_readiness`: readiness result for each exact URL, from Playwriter evidence
 - `branch_evidence`: branch/runtime identity evidence for each target, or what could not be verified
