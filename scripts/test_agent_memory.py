@@ -1,0 +1,173 @@
+#!/usr/bin/env python3
+"""Tests for agent_memory.py."""
+
+from __future__ import annotations
+
+import contextlib
+import io
+import json
+import os
+import subprocess
+import tempfile
+import time
+import unittest
+from pathlib import Path
+
+import _test_support  # noqa: F401  (puts scripts/ on sys.path)
+
+
+class TestAgentMemory(unittest.TestCase):
+    """WHEN wiping hook memory for a workspace."""
+
+    def test_wipe_current_deletes_explicit_active_topic_files(self):
+        import agent_memory
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
+            old_spec_root = agent_memory.SPEC_ROOT
+            agent_memory.SPEC_ROOT = Path(spec_root)
+            try:
+                workspace = Path(tmp).resolve()
+                spec_dir = agent_memory.spec_dir_for(workspace)
+                spec_dir.mkdir(parents=True)
+                (spec_dir / "_active_topic.txt").write_text("review-123\n")
+                (spec_dir / "review-123.txt").write_text("spec")
+                (spec_dir / "review-123.worklog.jsonl").write_text("{}\n")
+                (spec_dir / "other.txt").write_text("keep")
+
+                with contextlib.redirect_stdout(io.StringIO()):
+                    assert agent_memory.main(["wipe-current", "--workspace", str(workspace)]) == 0
+
+                assert not (spec_dir / "review-123.txt").exists()
+                assert not (spec_dir / "review-123.worklog.jsonl").exists()
+                assert (spec_dir / "other.txt").exists()
+                assert (spec_dir / "_active_topic.txt").exists()
+            finally:
+                agent_memory.SPEC_ROOT = old_spec_root
+
+    def test_wipe_current_prefers_latest_session_topic_on_default_branch(self):
+        import agent_memory
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
+            old_spec_root = agent_memory.SPEC_ROOT
+            agent_memory.SPEC_ROOT = Path(spec_root)
+            try:
+                subprocess.run(["git", "init", "-q", "-b", "main"], cwd=tmp, check=True)
+                workspace = Path(tmp).resolve()
+                spec_dir = agent_memory.spec_dir_for(workspace)
+                spec_dir.mkdir(parents=True)
+                older = spec_dir / "session-old.worklog.jsonl"
+                newer = spec_dir / "session-new.worklog.jsonl"
+                older.write_text("old\n")
+                newer.write_text("new\n")
+                now = time.time()
+                os.utime(older, (now - 10, now - 10))
+                os.utime(newer, (now, now))
+                (spec_dir / "current.worklog.jsonl").write_text("keep\n")
+
+                with contextlib.redirect_stdout(io.StringIO()):
+                    assert agent_memory.main(["wipe-current", "--workspace", str(workspace)]) == 0
+
+                assert older.exists()
+                assert not newer.exists()
+                assert (spec_dir / "current.worklog.jsonl").exists()
+            finally:
+                agent_memory.SPEC_ROOT = old_spec_root
+
+    def test_use_sets_active_named_topic_and_seeds_spec(self):
+        import agent_memory
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
+            old_spec_root = agent_memory.SPEC_ROOT
+            agent_memory.SPEC_ROOT = Path(spec_root)
+            try:
+                workspace = Path(tmp).resolve()
+                with contextlib.redirect_stdout(io.StringIO()):
+                    assert agent_memory.main(["use", "memory-systems", "--workspace", str(workspace)]) == 0
+
+                spec_dir = agent_memory.spec_dir_for(workspace)
+                assert (spec_dir / "_active_topic.txt").read_text().strip() == "memory-systems"
+                assert (spec_dir / "memory-systems.txt").read_text().startswith("topic: memory-systems")
+            finally:
+                agent_memory.SPEC_ROOT = old_spec_root
+
+    def test_use_does_not_clobber_existing_spec(self):
+        import agent_memory
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
+            old_spec_root = agent_memory.SPEC_ROOT
+            agent_memory.SPEC_ROOT = Path(spec_root)
+            try:
+                workspace = Path(tmp).resolve()
+                spec_dir = agent_memory.spec_dir_for(workspace)
+                spec_dir.mkdir(parents=True)
+                (spec_dir / "memory-systems.txt").write_text("topic: memory-systems\nexisting content\n")
+
+                with contextlib.redirect_stdout(io.StringIO()):
+                    assert agent_memory.main(["use", "memory-systems", "--workspace", str(workspace)]) == 0
+
+                assert "existing content" in (spec_dir / "memory-systems.txt").read_text()
+            finally:
+                agent_memory.SPEC_ROOT = old_spec_root
+
+    def test_use_rejects_generic_current_topic(self):
+        import agent_memory
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
+            old_spec_root = agent_memory.SPEC_ROOT
+            agent_memory.SPEC_ROOT = Path(spec_root)
+            try:
+                workspace = Path(tmp).resolve()
+                with contextlib.redirect_stdout(io.StringIO()):
+                    with self.assertRaises(SystemExit):
+                        agent_memory.main(["use", "current", "--workspace", str(workspace)])
+            finally:
+                agent_memory.SPEC_ROOT = old_spec_root
+
+    def test_status_json_reports_named_topic_and_spec(self):
+        import agent_memory
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
+            old_spec_root = agent_memory.SPEC_ROOT
+            agent_memory.SPEC_ROOT = Path(spec_root)
+            try:
+                workspace = Path(tmp).resolve()
+                with contextlib.redirect_stdout(io.StringIO()):
+                    agent_memory.main(["use", "memory-systems", "--workspace", str(workspace)])
+
+                buffer = io.StringIO()
+                with contextlib.redirect_stdout(buffer):
+                    assert agent_memory.main(["status", "--json", "--workspace", str(workspace)]) == 0
+
+                payload = json.loads(buffer.getvalue())
+                assert payload["selected_topic"] == "memory-systems"
+                assert payload["is_named_topic"] is True
+                assert payload["spec_exists"] is True
+                assert payload["spec_file"].endswith("memory-systems.txt")
+                assert payload["workspace"] == str(workspace)
+            finally:
+                agent_memory.SPEC_ROOT = old_spec_root
+
+    def test_status_json_flags_generic_topic_as_unnamed(self):
+        import agent_memory
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
+            old_spec_root = agent_memory.SPEC_ROOT
+            agent_memory.SPEC_ROOT = Path(spec_root)
+            try:
+                workspace = Path(tmp).resolve()
+                buffer = io.StringIO()
+                with contextlib.redirect_stdout(buffer):
+                    assert (
+                        agent_memory.main(["status", "--json", "--topic", "current", "--workspace", str(workspace)])
+                        == 0
+                    )
+
+                payload = json.loads(buffer.getvalue())
+                assert payload["selected_topic"] == "current"
+                assert payload["is_named_topic"] is False
+            finally:
+                agent_memory.SPEC_ROOT = old_spec_root
+
+
+if __name__ == "__main__":
+    unittest.main()
