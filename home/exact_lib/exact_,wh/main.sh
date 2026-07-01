@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
-# Description: Send and receive staged git patches or arbitrary files/dirs with Magic Wormhole
+# Description: Send and receive staged git patches, files/dirs, or the clipboard with Magic Wormhole
 
 set -euo pipefail
 
 PATCH_FILE="${WH_PATCH_FILE:-/tmp/staged.patch}"
 DIR_ARCHIVE_SUFFIX=".wh-dir.tar.gz"
+CLIP_ENVELOPE_NAME="wh-clip"
 DIR_ARCHIVE=""
 SEND_STAGE=""
 RECV_STAGE=""
 EXTRACT_STAGE=""
+CLIP_STAGE=""
 
 cleanup() {
-  rm -rf "${SEND_STAGE:-}" "${RECV_STAGE:-}" "${EXTRACT_STAGE:-}"
+  rm -rf "${SEND_STAGE:-}" "${RECV_STAGE:-}" "${EXTRACT_STAGE:-}" "${CLIP_STAGE:-}"
 }
 
 trap cleanup EXIT
@@ -21,28 +23,39 @@ show_usage() {
 Usage: ,wh <command>
 
 Commands:
-  post [path]          Send a file or directory with a one-word wormhole code.
+  send [path]          Send a file or directory with a one-word wormhole code.
                        With no path, sends the current repo's staged diff.
-  get [code-word...]   Receive a transfer, prompting for the code when omitted.
-                       A received *.patch is applied with `git apply`; any other
-                       file or directory is saved into the destination instead.
+                       Use --clip to send the clipboard, or - to send stdin.
+  recv [code-word...]  Receive a transfer, prompting for the code when omitted.
+                       A received *.patch is applied with `git apply`; a clipboard
+                       envelope is loaded into the clipboard (and echoed for text);
+                       any other file or directory is saved into the destination.
                        Directories are archived before transfer and extracted
                        after receipt.
 
-Options (get):
+Options (send):
+  --clip               Send the current clipboard instead of a path.
+                       Text is sent as text; images are sent as PNG.
+
+Options (recv):
   -o, --output PATH    Destination directory for received files/dirs, or the
                        target path for a received patch (default: current dir;
-                       patches default to WH_PATCH_FILE).
+                       patches default to WH_PATCH_FILE). Ignored for clipboard
+                       envelopes unless combined with --save.
+      --save           For a clipboard envelope, save the payload to -o/CWD
+                       instead of loading it into the clipboard.
 
 Environment:
   WH_PATCH_FILE        Override patch path (default: /tmp/staged.patch)
 
 Examples:
-  ,wh post                 # send staged diff
-  ,wh post ./src           # send a directory
-  ,wh post notes.md        # send a single file
-  ,wh get                  # receive (prompts for code), auto-apply or save
-  ,wh get -o ~/inbox       # save received file/dir into ~/inbox
+  ,wh send                 # send staged diff
+  ,wh send ./src           # send a directory
+  ,wh send notes.md        # send a single file
+  ,wh send --clip          # send the clipboard (text or image)
+  cmd | ,wh send -         # send piped stdin
+  ,wh recv                 # receive (prompts for code), auto-handle
+  ,wh recv -o ~/inbox      # save received file/dir into ~/inbox
 EOF
 }
 
@@ -55,12 +68,12 @@ require_command() {
 
 ensure_git_repo() {
   if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
-    echo "Error: ,wh post must be run inside a git repository" >&2
+    echo "Error: ,wh send must be run inside a git repository" >&2
     exit 1
   fi
 }
 
-post_staged_diff() {
+send_staged_diff() {
   require_command git
   require_command wormhole
   ensure_git_repo
@@ -75,7 +88,7 @@ post_staged_diff() {
   wormhole send --code-length 1 "$PATCH_FILE"
 }
 
-post_path() {
+send_path() {
   local path="$1"
   require_command wormhole
 
@@ -85,12 +98,80 @@ post_path() {
   fi
 
   if [ -d "$path" ]; then
-    post_directory "$path"
+    send_directory "$path"
     return
   fi
 
   echo "Sending: $path"
   wormhole send --code-length 1 "$path"
+}
+
+send_stdin() {
+  require_command wormhole
+
+  SEND_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/wh_send.XXXXXX")"
+  local blob="$SEND_STAGE/stdin.blob"
+  cat > "$blob"
+
+  if [ ! -s "$blob" ]; then
+    echo "Error: no data on stdin to send" >&2
+    exit 1
+  fi
+
+  echo "Sending stdin"
+  wormhole send --code-length 1 "$blob"
+}
+
+clipboard_flavor() {
+  # Prints "png" if the clipboard holds an image (PNG flavor present), else "text".
+  require_command osascript
+  if osascript -e 'clipboard info' 2> /dev/null | grep -q 'PNGf'; then
+    echo "png"
+  else
+    echo "text"
+  fi
+}
+
+send_clipboard() {
+  require_command wormhole
+  require_command osascript
+
+  local flavor payload meta
+  flavor="$(clipboard_flavor)"
+
+  CLIP_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/wh_clip.XXXXXX")"
+  local content_dir="$CLIP_STAGE/$CLIP_ENVELOPE_NAME"
+  mkdir -p "$content_dir"
+  payload="$content_dir/payload"
+  meta="$content_dir/meta.json"
+
+  if [ "$flavor" = "png" ]; then
+    osascript \
+      -e 'set d to (the clipboard as «class PNGf»)' \
+      -e "set f to open for access (POSIX file \"$payload\") with write permission" \
+      -e 'set eof f to 0' \
+      -e 'write d to f' \
+      -e 'close access f' > /dev/null
+    if [ ! -s "$payload" ]; then
+      echo "Error: clipboard image was empty" >&2
+      exit 1
+    fi
+  else
+    pbpaste > "$payload"
+    if [ ! -s "$payload" ]; then
+      echo "Error: clipboard is empty" >&2
+      exit 1
+    fi
+  fi
+
+  printf '{"kind":"clip","flavor":"%s"}\n' "$flavor" > "$meta"
+
+  SEND_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/wh_send.XXXXXX")"
+  DIR_ARCHIVE="$SEND_STAGE/$CLIP_ENVELOPE_NAME$DIR_ARCHIVE_SUFFIX"
+  (cd "$CLIP_STAGE" && COPYFILE_DISABLE=1 tar -czhf "$DIR_ARCHIVE" "$CLIP_ENVELOPE_NAME")
+
+  echo "Sending clipboard ($flavor)"
+  wormhole send --code-length 1 "$DIR_ARCHIVE"
 }
 
 build_directory_archive() {
@@ -127,7 +208,7 @@ build_directory_archive() {
   (cd "$parent" && find -L "./$name" \( -type d -o -type f \) -print0 | COPYFILE_DISABLE=1 tar -czhf "$DIR_ARCHIVE" --no-recursion --null -T -)
 }
 
-post_directory() {
+send_directory() {
   local path="$1"
 
   build_directory_archive "$path"
@@ -170,20 +251,54 @@ save_received_item() {
   echo "Received: $target"
 }
 
+restore_received_clipboard() {
+  local content_dir="$1" dest="$2" save="$3"
+  local meta="$content_dir/meta.json" payload="$content_dir/payload"
+  local flavor
+
+  if [ ! -f "$payload" ]; then
+    echo "Error: clipboard envelope missing payload" >&2
+    exit 1
+  fi
+
+  flavor="text"
+  if [ -f "$meta" ] && grep -q '"flavor"[[:space:]]*:[[:space:]]*"png"' "$meta"; then
+    flavor="png"
+  fi
+
+  if [ "$save" = "1" ]; then
+    mkdir -p "$dest"
+    local ext="txt"
+    [ "$flavor" = "png" ] && ext="png"
+    local target="$dest/clipboard.$ext"
+    [ -e "$target" ] && target="$dest/clipboard.$(date +%Y%m%d%H%M%S).$ext"
+    mv "$payload" "$target"
+    echo "Received clipboard ($flavor), saved: $target"
+    return
+  fi
+
+  if [ "$flavor" = "png" ]; then
+    require_command osascript
+    osascript -e "set the clipboard to (read (POSIX file \"$payload\") as «class PNGf»)" > /dev/null
+    local bytes
+    bytes="$(wc -c < "$payload" | tr -d ' ')"
+    echo "Received clipboard (png): loaded into clipboard [${bytes} bytes]"
+  else
+    require_command pbcopy
+    pbcopy < "$payload"
+    echo "Received clipboard (text): loaded into clipboard"
+    cat "$payload"
+  fi
+}
+
 extract_received_directory_archive() {
   local archive="$1" dest="$2"
   local archive_name dirname target
 
   require_command python3
 
-  mkdir -p "$dest"
   archive_name="$(basename "$archive")"
   dirname="${archive_name%"$DIR_ARCHIVE_SUFFIX"}"
-  target="$dest/$dirname"
-
-  if [ -e "$target" ]; then
-    target="${target}.$(date +%Y%m%d%H%M%S)"
-  fi
 
   EXTRACT_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/wh_extract.XXXXXX")"
   python3 - "$archive" "$EXTRACT_STAGE" "$dirname" << 'PY'
@@ -280,13 +395,89 @@ PY
     exit 1
   fi
 
+  # A clipboard envelope is a directory archive rooted at CLIP_ENVELOPE_NAME
+  # holding meta.json + payload; handle it as clipboard rather than a saved dir.
+  if [ "$dirname" = "$CLIP_ENVELOPE_NAME" ] && [ -f "$EXTRACT_STAGE/$dirname/payload" ]; then
+    restore_received_clipboard "$EXTRACT_STAGE/$dirname" "${CLIP_DEST:-$PWD}" "${CLIP_SAVE:-0}"
+    return
+  fi
+
+  mkdir -p "$dest"
+  target="$dest/$dirname"
+  if [ -e "$target" ]; then
+    target="${target}.$(date +%Y%m%d%H%M%S)"
+  fi
   mv "$EXTRACT_STAGE/$dirname" "$target"
   echo "Received directory: $target"
 }
 
-get_patch() {
+do_send() {
+  local clip=0
+  local path=""
+  local have_path=0
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --clip)
+        clip=1
+        shift
+        ;;
+      -)
+        path="-"
+        have_path=1
+        shift
+        ;;
+      --)
+        shift
+        if [ $# -gt 0 ]; then
+          path="$1"
+          have_path=1
+          shift
+        fi
+        ;;
+      -*)
+        echo "Error: unknown send option: $1" >&2
+        exit 1
+        ;;
+      *)
+        if [ "$have_path" = "1" ]; then
+          echo "Error: send takes at most one path: $*" >&2
+          exit 1
+        fi
+        path="$1"
+        have_path=1
+        shift
+        ;;
+    esac
+  done
+
+  if [ "$clip" = "1" ]; then
+    if [ "$have_path" = "1" ]; then
+      echo "Error: --clip cannot be combined with a path" >&2
+      exit 1
+    fi
+    send_clipboard
+    return
+  fi
+
+  if [ "$have_path" = "0" ]; then
+    send_staged_diff
+    return
+  fi
+
+  if [ "$path" = "-" ]; then
+    send_stdin
+    return
+  fi
+
+  send_path "$path"
+}
+
+do_recv() {
   require_command wormhole
 
+  CLIP_DEST=""
+  CLIP_SAVE=0
   local dest=""
   local code_args=()
   while [ $# -gt 0 ]; do
@@ -299,12 +490,18 @@ get_patch() {
         dest="$2"
         shift 2
         ;;
+      --save)
+        CLIP_SAVE=1
+        shift
+        ;;
       *)
         code_args+=("$1")
         shift
         ;;
     esac
   done
+  CLIP_DEST="${dest:-$PWD}"
+
   RECV_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/wh_recv.XXXXXX")"
 
   (cd "$RECV_STAGE" && wormhole receive --accept-file "${code_args[@]}")
@@ -339,20 +536,13 @@ case "$1" in
   -h | --help)
     show_usage
     ;;
-  post)
+  send)
     shift
-    if [ $# -eq 0 ]; then
-      post_staged_diff
-    elif [ $# -eq 1 ]; then
-      post_path "$1"
-    else
-      echo "Error: post takes at most one path: $*" >&2
-      exit 1
-    fi
+    do_send "$@"
     ;;
-  get)
+  recv)
     shift
-    get_patch "$@"
+    do_recv "$@"
     ;;
   *)
     echo "Error: unknown command '$1'" >&2

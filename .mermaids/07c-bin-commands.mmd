@@ -13,7 +13,7 @@ flowchart TB
     classDef sys fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
 
     subgraph GHC["GitHub / PR / review"]
-        G[",gh-prw (open PR) · ,gh-issuew · ,gh-worktree (PR/issue→,w)<br/>,gh-tfork (fork+clone+tmux) · ,gh-subissues-create<br/>,add-patch-to-prs · ,enable-auto-merge · ,disable-auto-merge<br/>,check-backport-progress · ,remove-comment · ,view-my-issues<br/>,trace-string-pr · ,kbn-pr-audit (kibana audit) · ,codeowners (owner-of)<br/>,search-gh-topic · ,hey-branch · ,pull-rebase · ,wh (wormhole: patch or file/dir)"]:::gh
+        G[",gh-prw (open PR) · ,gh-issuew · ,gh-worktree (PR/issue→,w)<br/>,gh-tfork (fork+clone+tmux) · ,gh-subissues-create<br/>,add-patch-to-prs · ,enable-auto-merge · ,disable-auto-merge<br/>,check-backport-progress · ,remove-comment · ,view-my-issues<br/>,trace-string-pr · ,kbn-pr-audit (kibana audit) · ,codeowners (owner-of)<br/>,search-gh-topic · ,hey-branch · ,pull-rebase · ,wh (wormhole: patch, file/dir, or clipboard)"]:::gh
     end
 
     subgraph WTC["Worktree / git"]

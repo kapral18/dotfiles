@@ -62,20 +62,24 @@ Sources live under [`home/exact_bin/`](../../../../home/exact_bin/).
 
 `,gh-tfork` clones to `~/work/<repo>/<default-branch>` for `elastic/*` and `~/code/<repo>/<default-branch>` otherwise. For `elastic/kibana`, it uses date-anchored shallow history (`--shallow-since=2022-01-01 --no-tags`).
 
-## Patch and file transfer: `,wh`
+## Patch, file, and clipboard transfer: `,wh`
 
-- Source: [`home/exact_bin/executable_,wh`](../../../../home/exact_bin/executable_,wh)
-- `,wh post` writes the current staged diff to `/tmp/staged.patch` and sends it with Magic Wormhole.
-- `,wh post <path>` sends a single file or archives a directory first.
-- `,wh get` receives and auto-detects: apply patch, extract archive, or save file/dir.
-- Fish and Zsh completions cover `post`, `get`, path arguments, and `-o/--output`.
+- Source: [`home/exact_bin/executable_,wh`](../../../../home/exact_bin/executable_,wh) (thin launcher) → [`home/exact_lib/exact_,wh/main.sh`](../../../../home/exact_lib/exact_,wh/main.sh)
+- `,wh send` writes the current staged diff to `/tmp/staged.patch` and sends it with Magic Wormhole.
+- `,wh send <path>` sends a single file or archives a directory first.
+- `,wh send --clip` sends the clipboard: text is sent as text, images are sent as PNG.
+- `cmd | ,wh send -` sends piped stdin.
+- `,wh recv` receives and auto-detects: apply patch, load a clipboard envelope, extract archive, or save file/dir. A received clipboard envelope is loaded into the clipboard (text is also echoed to stdout, PNG restores the image); add `--save` to write the payload to `-o`/CWD instead.
+- Fish and Zsh completions cover `send`, `recv`, `--clip`, path arguments, `--save`, and `-o/--output`.
 
 ```bash
-,wh post
-,wh post ./src
-,wh post notes.md
-,wh get
-,wh get -o ~/inbox
+,wh send                 # send staged diff
+,wh send ./src           # send a directory
+,wh send notes.md        # send a single file
+,wh send --clip          # send the clipboard (text or image)
+cmd | ,wh send -         # send piped stdin
+,wh recv                 # receive (prompts for code), auto-handle
+,wh recv -o ~/inbox      # save received file/dir into ~/inbox
 ```
 
 ## Multi-PR patching: `,add-patch-to-prs`

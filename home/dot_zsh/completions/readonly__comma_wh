@@ -6,19 +6,21 @@ _comma_wh() {
 
   _arguments -C \
     '(-h --help)'{-h,--help}'[Show help]' \
-    '1:command:((post\\:"Send staged diff or a file/dir path" get\\:"Receive: apply patch or save file/dir"))' \
+    '1:command:((send\\:"Send staged diff, a file/dir, the clipboard, or stdin" recv\\:"Receive: apply patch, load clipboard, or save file/dir"))' \
     '*::args:->args'
 
   case "$state" in
     args)
       case "$words[2]" in
-        post)
+        send)
           _arguments \
+            '--clip[Send the clipboard (text or image)]' \
             '1:path:_files'
           ;;
-        get)
+        recv)
           _arguments \
             '(-o --output)'{-o,--output}'[Destination dir, or patch target]:output:_files' \
+            '--save[Save a received clipboard payload instead of loading it]' \
             '*:wormhole code word:_message "wormhole code word"'
           ;;
       esac
