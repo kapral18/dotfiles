@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+# Description: Launch cursor-agent with its MCP OAuth tokens refreshed first.
+#
+# cursor-agent reads each OAuth MCP server's token from its own per-project cache
+# (~/.cursor/projects/*/mcp-auth.json) and can refresh it via the browser flow, but
+# only when the user runs `cursor-agent mcp login <server>` by hand. A session
+# started against a stale cache silently loses those MCP servers until you notice
+# and re-authenticate from inside cursor.
+#
+# This wrapper closes that gap by refreshing BEFORE launch: for every OAuth HTTP
+# server declared in ~/.cursor/mcp.json it runs `,mcp-token <server> --login`
+# (a no-op when the cached token is still valid; opens cursor's browser flow only
+# when actually stale), then execs the real cursor-agent so the just-refreshed
+# tokens are read at connect time. Unlike ,copilot, no config re-bake is needed:
+# cursor-agent reads its own cache directly, so refreshing that cache is enough.
+#
+# Refresh is skipped for admin/introspection subcommands (login, logout, mcp,
+# update, help, about, status/whoami, models) and for --help/--version, which do
+# not start an agent session and must not trigger a browser login.
+#
+# If a token cannot be refreshed, fail before launch rather than starting a
+# session with dead MCP servers.
+
+set -euo pipefail
+
+# This wrapper is named ,cursor, so it never shadows cursor-agent on PATH.
+real_cursor="${CURSOR_AGENT_REAL_BIN:-$(command -v cursor-agent 2>/dev/null || true)}"
+
+if [[ -z "$real_cursor" || ! -x "$real_cursor" ]]; then
+  echo "Error: real cursor-agent CLI not found on PATH." >&2
+  exit 127
+fi
+
+config="$HOME/.cursor/mcp.json"
+
+join_by_comma() {
+  local result=""
+  local item
+  for item in "$@"; do
+    if [[ -n "$result" ]]; then
+      result+=", "
+    fi
+    result+="$item"
+  done
+  echo "$result"
+}
+
+print_token_refresh_help() {
+  echo ",cursor: run ',mcp-token <server> --login' without --quiet to inspect the OAuth flow." >&2
+}
+
+# Admin/introspection subcommands that must not trigger an MCP login browser flow.
+should_refresh() {
+  local arg
+  for arg in "$@"; do
+    case "$arg" in
+    -h | --help | -v | --version | --list-models) return 1 ;;
+    esac
+  done
+  # First non-flag token is the subcommand; refresh only for agent/prompt runs.
+  local skip_next=""
+  for arg in "$@"; do
+    if [[ -n "$skip_next" ]]; then
+      skip_next=""
+      continue
+    fi
+    case "$arg" in
+    --api-key | -H | --header | --output-format | --mode | --model)
+      # Flags that consume the following token as their value.
+      skip_next="1"
+      continue
+      ;;
+    -*) continue ;;
+    esac
+    case "$arg" in
+    install-shell-integration | uninstall-shell-integration | login | logout | mcp | \
+      update | help | about | status | whoami | models | worker)
+      return 1
+      ;;
+    esac
+    break
+  done
+  return 0
+}
+
+if should_refresh "$@" && command -v python3 >/dev/null 2>&1 && [[ -f "$config" ]]; then
+  # OAuth HTTP servers needing a fresh token = servers in ~/.cursor/mcp.json that
+  # carry an "oauth" block (cursor-agent mcp login knows how to refresh these).
+  # Deriving the list from the config keeps this in sync with the registry.
+  mapfile -t oauth_servers < <(
+    python3 - "$config" <<'PY'
+import json
+import sys
+
+try:
+    with open(sys.argv[1]) as f:
+        servers = json.load(f).get("mcpServers", {})
+except (OSError, ValueError):
+    sys.exit(0)
+
+for name, spec in servers.items():
+    if isinstance(spec, dict) and spec.get("oauth"):
+        print(name)
+PY
+  )
+
+  refresh_failures=()
+  for server in "${oauth_servers[@]}"; do
+    [[ -z "$server" ]] && continue
+    # Refresh cursor's cache if the token is stale (no-op when still valid).
+    # Keep auth helper output quiet so bearer tokens never stream into the
+    # cursor launch transcript.
+    if ! ",mcp-token" "$server" --login --quiet >/dev/null 2>&1; then
+      refresh_failures+=("$server")
+    fi
+  done
+
+  if ((${#refresh_failures[@]})); then
+    echo ",cursor: could not refresh MCP token(s): $(join_by_comma "${refresh_failures[@]}")." >&2
+    print_token_refresh_help
+    exit 1
+  fi
+fi
+
+exec "$real_cursor" "$@"

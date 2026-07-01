@@ -1,6 +1,6 @@
 ---
 name: code-quality-web
-description: "Use when editing, reviewing, or refactoring HTML, CSS, DOM markup, layout, responsive styles, visual states, accessibility attributes, keyboard/focus behavior, browser-rendered UI, or design-system component presentation."
+description: "Use when editing, reviewing, or refactoring browser-rendered markup, styling, or presentation (HTML, CSS, layout, visual states, accessibility, keyboard/focus)."
 ---
 
 # Web Markup And Styling Quality

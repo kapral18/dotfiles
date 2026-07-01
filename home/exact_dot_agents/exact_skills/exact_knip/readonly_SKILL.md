@@ -6,12 +6,6 @@ tool_version: knip 5.88.0
 
 # Knip (Dead Code & Dependency Cleanup)
 
-Use when:
-
-- finding unused dependencies, exports, or files
-- cleaning up dead code or auditing `package.json`
-- detecting missing or unlisted dependencies
-
 Do not use:
 
 - copy/paste detection: `~/.agents/skills/jscpd/SKILL.md`
@@ -35,7 +29,7 @@ npx knip --reporter json          # machine-readable output
 ## Workflow
 
 1. Run `npx knip`.
-2. Address configuration hints (adjust `knip.json`) until false positives stabilize.
+2. Address configuration hints (adjust `knip.json`) until a re-run of `npx knip` reports no new configuration hints and no previously-seen false positive reappears.
 3. Fix reported issues in priority order:
    - unused files (removes the most noise)
    - unused dependencies / devDependencies

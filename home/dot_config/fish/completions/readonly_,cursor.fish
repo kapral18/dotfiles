@@ -1,0 +1,57 @@
+# Completions for the managed `,cursor` wrapper around cursor-agent.
+# cursor-agent has no `completion` subcommand, so this is hand-authored from
+# `cursor-agent --help`. Keep in sync when cursor-agent's interface changes.
+
+# Subcommands
+complete -c ',cursor' -n __fish_use_subcommand -f -a login -d 'Authenticate with Cursor'
+complete -c ',cursor' -n __fish_use_subcommand -f -a logout -d 'Sign out and clear stored authentication'
+complete -c ',cursor' -n __fish_use_subcommand -f -a mcp -d 'Manage MCP servers'
+complete -c ',cursor' -n __fish_use_subcommand -f -a status -d 'View authentication status'
+complete -c ',cursor' -n __fish_use_subcommand -f -a whoami -d 'View authentication status'
+complete -c ',cursor' -n __fish_use_subcommand -f -a models -d 'List available models for this account'
+complete -c ',cursor' -n __fish_use_subcommand -f -a about -d 'Display version, system, and account information'
+complete -c ',cursor' -n __fish_use_subcommand -f -a update -d 'Update Cursor Agent to the latest version'
+complete -c ',cursor' -n __fish_use_subcommand -f -a create-chat -d 'Create a new empty chat and return its ID'
+complete -c ',cursor' -n __fish_use_subcommand -f -a generate-rule -d 'Generate a new Cursor rule'
+complete -c ',cursor' -n __fish_use_subcommand -f -a rule -d 'Generate a new Cursor rule'
+complete -c ',cursor' -n __fish_use_subcommand -f -a agent -d 'Start the Cursor Agent'
+complete -c ',cursor' -n __fish_use_subcommand -f -a ls -d 'Resume a chat session'
+complete -c ',cursor' -n __fish_use_subcommand -f -a resume -d 'Resume the latest chat session'
+complete -c ',cursor' -n __fish_use_subcommand -f -a worker -d 'Start a private cloud worker'
+complete -c ',cursor' -n __fish_use_subcommand -f -a install-shell-integration -d 'Install shell integration'
+complete -c ',cursor' -n __fish_use_subcommand -f -a uninstall-shell-integration -d 'Remove shell integration'
+complete -c ',cursor' -n __fish_use_subcommand -f -a help -d 'Display help for command'
+
+# `mcp` subcommands
+complete -c ',cursor' -n '__fish_seen_subcommand_from mcp' -f -a login -d 'Authenticate with an MCP server'
+complete -c ',cursor' -n '__fish_seen_subcommand_from mcp' -f -a list -d 'List configured MCP servers and their status'
+complete -c ',cursor' -n '__fish_seen_subcommand_from mcp' -f -a list-tools -d 'List available tools for a specific MCP'
+complete -c ',cursor' -n '__fish_seen_subcommand_from mcp' -f -a enable -d 'Add an MCP server to the local approved list'
+complete -c ',cursor' -n '__fish_seen_subcommand_from mcp' -f -a disable -d 'Disable an MCP server'
+
+# Global flags
+complete -c ',cursor' -l version -s v -f -d 'Output the version number'
+complete -c ',cursor' -l help -s h -f -d 'Display help for command'
+complete -c ',cursor' -l api-key -r -d 'API key for authentication'
+complete -c ',cursor' -l header -s H -r -d "Add custom header (format: 'Name: Value')"
+complete -c ',cursor' -l print -s p -f -d 'Print responses to console (non-interactive)'
+complete -c ',cursor' -l output-format -r -d 'Output format (with --print)' -a 'text json stream-json'
+complete -c ',cursor' -l stream-partial-output -f -d 'Stream partial output as text deltas'
+complete -c ',cursor' -l mode -r -d 'Start in the given execution mode' -a 'plan ask'
+complete -c ',cursor' -l plan -f -d 'Start in plan mode'
+complete -c ',cursor' -l resume -f -d 'Select a session to resume'
+complete -c ',cursor' -l continue -f -d 'Continue previous session'
+complete -c ',cursor' -l model -r -d 'Model to use (e.g. gpt-5, sonnet-4-thinking)'
+complete -c ',cursor' -l list-models -f -d 'List available models and exit'
+complete -c ',cursor' -l force -s f -f -d 'Force allow commands unless explicitly denied'
+complete -c ',cursor' -l yolo -f -d 'Alias for --force (Run Everything)'
+complete -c ',cursor' -l auto-review -f -d 'Use Auto-review (Smart Auto)'
+complete -c ',cursor' -l sandbox -r -d 'Enable or disable sandbox mode' -a 'enabled disabled'
+complete -c ',cursor' -l approve-mcps -f -d 'Automatically approve all MCP servers'
+complete -c ',cursor' -l trust -f -d 'Trust the current workspace without prompting'
+complete -c ',cursor' -l workspace -r -d 'Workspace directory or saved workspace name'
+complete -c ',cursor' -l add-dir -r -d 'Add an additional workspace root directory'
+complete -c ',cursor' -l plugin-dir -r -d 'Load a local plugin directory'
+complete -c ',cursor' -l worktree -s w -f -d 'Start in an isolated git worktree'
+complete -c ',cursor' -l worktree-base -r -d 'Branch or ref to base the new worktree on'
+complete -c ',cursor' -l skip-worktree-setup -f -d 'Skip running worktree setup scripts'

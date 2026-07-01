@@ -43,3 +43,14 @@ The `description` frontmatter is the primary routing signal. For non-manual skil
 - Generic skills own portable mechanics only. If a rule names an org, repo, product, team, label, bot login, CI instance, PR template, live-UI target, ownership policy, or release-note/backport rule, put it in a verified domain overlay or dedicated domain skill.
 - Generic skills may dispatch to a domain overlay after verifying the target; they must not inline Elastic/Kibana or other domain defaults.
 - GitHub issue worktrees prefer `,gh-worktree issue <owner/repo> <issue_number> --branch <branch-base-name>`.
+
+## Credits
+
+Four skills are adapted from Matt Pocock's [`mattpocock/skills`](https://github.com/mattpocock/skills) (MIT-licensed). Attribution lives here rather than inline in each `SKILL.md` so it does not consume model context when the skill loads.
+
+| Skill                  | Adapted from                                                                                                      |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `writing-great-skills` | [`writing-great-skills`](https://github.com/mattpocock/skills/tree/main/skills/productivity/writing-great-skills) |
+| `codebase-design`      | [`codebase-design`](https://github.com/mattpocock/skills/tree/main/skills/engineering/codebase-design)            |
+| `diagnosing-bugs`      | [`diagnosing-bugs`](https://github.com/mattpocock/skills/tree/main/skills/engineering/diagnosing-bugs)            |
+| `prototype`            | [`prototype`](https://github.com/mattpocock/skills/tree/main/skills/engineering/prototype)                        |

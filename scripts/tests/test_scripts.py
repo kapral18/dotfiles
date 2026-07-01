@@ -698,19 +698,19 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_code-quality-react/readonly_SKILL.md",
-            "Use when editing, reviewing, or refactoring React, JSX, TSX, hooks",
+            "Use when editing, reviewing, or refactoring React/JSX/TSX components, hooks",
             "Use one functional React component per file when writing React",
             "Prefer hooks and composition over class components or inheritance",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_code-quality-tests/readonly_SKILL.md",
-            "Use when adding, editing, reviewing, or debugging tests, fixtures, mocks",
+            "Use when adding, editing, reviewing, or debugging tests or test plans",
             "Write BDD-style tests when adding tests: `describe('WHEN ...')`, `it('SHOULD ...')`",
             "Bug fix reframe: write a test that reproduces the bug, then make it pass",
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_code-quality-web/readonly_SKILL.md",
-            "Use when editing, reviewing, or refactoring HTML, CSS, DOM markup",
+            "Use when editing, reviewing, or refactoring browser-rendered markup, styling, or presentation",
             "Prefer semantic HTML and existing design-system primitives",
             "Preserve accessible names, roles, focus order, and keyboard reachability",
         )

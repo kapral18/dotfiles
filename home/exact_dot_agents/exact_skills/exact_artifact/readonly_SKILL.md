@@ -29,12 +29,6 @@ Design artifact contents with an original look that fits the task.
 The theme is inferred from broad local worktree signals such as dotfiles, docs, web app, or codebase markers.
 Use `,artifact theme` or `,artifact theme --json` before authoring when you need to understand the current style vocabulary.
 
-Use when:
-
-- the user asks for a visual artifact, interactive review surface, HTML explainer, diagram, comparison, report, plan, code/diff review surface, or structured feedback flow.
-- the user wants to point at specific parts of an already-open live UI and give batched change requests.
-- prose would be harder to inspect than a browser page with sections, tables, controls, or diagrams.
-
 Do not use:
 
 - routine short answers.

@@ -8,14 +8,8 @@ description: "Use when managing worktrees with ,w or ,gh-worktree: create, switc
 Primary goal:
 
 - manage local git worktrees using the user's `,w` CLI instead of raw `git worktree` commands.
-- keep command boundaries explicit: `,gh-worktree` handles repo routing/bootstrap; `,w` handles worktree operations inside a resolved repo.
-
-Use this skill when:
-
-- the user mentions `,w`
-- the user mentions `,gh-worktree`
-- the user asks to create/switch/open/list/prune/remove worktrees
-- the user asks to check out a PR locally in a separate worktree
+  - keep command boundaries explicit: `,gh-worktree` handles repo routing/bootstrap;
+    `,w` handles worktree operations inside a resolved repo.
 
 Do not use:
 

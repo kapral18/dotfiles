@@ -259,6 +259,9 @@ GitHub PRs/issues/comments/reviews/releases/gists, Slack, email, chat, review th
 ## 4. Tooling And Memory
 
 - Use the environment's native read/edit/list tools for file operations.
+- Harness-native search/listing tools are the interop layer for broad code search.
+  Prefer native Grep/Glob/search tools for first-pass broad searches; use shell `rg` only after narrowing by path, glob, or exact symbol.
+  Never run bare repo-root `rg <pattern>` in a large repository.
 - Use structured reasoning tools when available for complex investigations.
 - Use `/tmp` for experiments and troubleshooting.
 - Debug by exploring multiple hypotheses, edge cases, logs, code paths, reproductions, and probes.

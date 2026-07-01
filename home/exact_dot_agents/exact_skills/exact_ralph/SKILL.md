@@ -11,13 +11,6 @@ The loop has self-healing, persistent state, and full tmux observability. Backen
 The multi-Ralph dashboard is a Bubble Tea TUI at `tools/ralph-tui/` (deployed to `~/.local/bin/ralph-tui`).
 State is per-user under `${XDG_STATE_HOME}/ralph/`. Knowledge capsules persist via `,ai-kb`.
 
-## When to use
-
-- the user wants to run an autonomous task with verification (just use `,ralph go`)
-- the user wants to spawn or inspect background AI agents inside their current tmux flow
-- the user mentions "ralph", "orchestrator", "planner / executor / reviewer / re-reviewer", "manifest", "validation", "control plane", "replan", "resume"
-- the user reaches the tmux dashboard (`prefix+A`) or palette entries prefixed `Ralph ...`
-
 ## Entry points
 
 - `,ralph go --goal "..."

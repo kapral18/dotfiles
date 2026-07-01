@@ -7,14 +7,6 @@ description: "Use when entity-level Git diff, blame, impact analysis, dependency
 
 Entity-level Git CLI. Shows what _entities_ changed (functions, classes, methods, structs) instead of what lines changed.
 
-Use when:
-
-- reviewing changes and you want entity-level granularity (what functions were added/modified/deleted)
-- investigating blast radius or dependency impact before or after a change
-- inspecting entity dependency graphs
-- tracing the history of a specific function or class through git log
-- getting entity-level blame
-
 Do not use:
 
 - for merging branches (use the `weave` skill)

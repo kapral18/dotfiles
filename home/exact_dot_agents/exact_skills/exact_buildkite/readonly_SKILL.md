@@ -29,82 +29,10 @@ brew tap buildkite/buildkite && brew install buildkite/buildkite/bk
 bk configure
 ```
 
-## Build Operations
+## Command reference
 
-```bash
-# List recent builds (default: 50)
-bk build list -p SLUG
-
-# List failed builds
-bk build list -p SLUG --state failed
-
-# List builds on a branch
-bk build list -p SLUG --branch main
-
-# View build details (omit number for most recent on current branch)
-bk build view BUILD_NUMBER -p SLUG
-
-# Create (trigger) a new build
-bk build create -p SLUG -b BRANCH -m "MESSAGE"
-
-# Rebuild a build
-bk build rebuild BUILD_NUMBER -p SLUG
-
-# Cancel a running build
-bk build cancel BUILD_NUMBER -p SLUG
-
-# Watch a build in real-time
-bk build watch BUILD_NUMBER -p SLUG
-```
-
-## Job & Log Operations
-
-```bash
-# List jobs (filter by pipeline, state, queue, duration)
-bk job list -p SLUG --state failed
-
-# View job log (requires pipeline + build number)
-bk job log JOB_UUID -p SLUG -b BUILD_NUMBER
-
-# Retry a failed job
-bk job retry JOB_UUID
-```
-
-## Artifact Operations
-
-```bash
-# List artifacts for a build
-bk artifacts list BUILD_NUMBER -p SLUG
-
-# Download an artifact by UUID
-bk artifacts download ARTIFACT_UUID
-```
-
-## Pipeline Operations
-
-```bash
-# List all pipelines
-bk pipeline list
-
-# Filter pipelines by name
-bk pipeline list --name PATTERN
-
-# View pipeline details
-bk pipeline view SLUG
-```
-
-## Auth & Config
-
-```bash
-# Check current auth status
-bk auth status
-
-# Switch organization
-bk auth switch ORG_SLUG
-
-# Show CLI version
-bk version
-```
+Build, job, artifact, pipeline, agent, auth/config, and the `bk api` escape hatch commands live in `references/bk-commands.md`.
+Load it whenever you need a command not shown in the Failure Debugging Workflow below.
 
 ## Failure Debugging Workflow
 
@@ -116,9 +44,10 @@ When a build fails, follow this sequence:
 
 3. List jobs to find the failed one: `bk job list -p SLUG --state failed`
 
-4. Get the failed job's log: `bk job log JOB_UUID -p SLUG -b BUILD_NUMBER`
+4. Get the failed job's log: `bk job log JOB_UUID -p SLUG -b BUILD_NUMBER`.
+   Done when the failing step's error signature is located in the log.
 
-5. List artifacts if available: `bk artifacts list BUILD_NUMBER -p SLUG`
+5. List artifacts if available: `bk artifacts list BUILD_NUMBER -p SLUG`. Done when relevant artifacts are listed or confirmed absent.
 
 For detailed debugging patterns, load `references/build-debugging.md`.
 

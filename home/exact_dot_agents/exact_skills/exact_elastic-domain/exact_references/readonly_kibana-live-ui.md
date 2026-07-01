@@ -8,6 +8,7 @@ Use it when no explicit parent/user/repo target packet was supplied.
 Stacks are started per worktree by `,kbn-stack`, which records each running stack in `~/.cache/kbn-stack/registry.json` keyed by absolute worktree path.
 Load and follow `~/.agents/skills/kbn-stack/SKILL.md` for command mechanics, registry inspection, required `-K` flag parity, and teardown ownership.
 Each entry has `slot`, `branch`, `backend`, `kbn_url`, `es_url`, `cookie_name`, `kbn_flags`, `ready`, `started_by`, and `start_mode`.
+Detached agent starts also record `kbn_log`.
 `kbn_flags` is the list of extra `key=value` Kibana settings the stack was started with via `,kbn-stack -K`;
 it is empty when none were supplied. `ready` is true only once Kibana has answered `/api/status`.
 `started_by` is `user` for interactive/manual starts and `agent` for `--detach`;
@@ -55,6 +56,13 @@ Backing/data endpoints:
 - Base Elasticsearch: optional comparison endpoint from the base worktree's registry entry when a base target is used.
 
 If the registry has no `ready:true` entry for a required worktree (always PR/head, plus base only when comparison is required), the stack is missing — this is a runtime-start step, not a target blocker.
+Before reusing a `ready:true` entry, correlate it with liveness evidence for that registry entry:
+recorded `kbn_pid`/`es_pid` when present, derived Kibana/ES port listeners for the entry's `slot`, and the referenced `log`/`kbn_log` paths.
+Use this only to validate or reject the entry keyed by the reviewed worktree;
+never use a port probe to discover or substitute an arbitrary localhost target.
+If a ready entry's process/port/log evidence contradicts the registry, treat it as stale or corrupt:
+for an agent-owned entry, stop/recreate it when safe; for a user-owned entry, return `Blocked` with the exact `,kbn-stack --stop && ,kbn-stack --detach ...` recovery command.
+If the registry has no usable entry after that integrity check, the stack is missing.
 In a shell-capable harness you MUST start it yourself with `,kbn-stack --detach` from that worktree and continue once the registry entry reports `ready: true` (see Data/setup ladder Rung 0).
 Return `Blocked` for a missing stack only in a read-only/Ask-mode harness or when `,kbn-stack --detach` fails.
 Include the exact `,kbn-stack --detach` command for each missing worktree for the user to run. Never probe arbitrary localhost ports.
@@ -84,6 +92,15 @@ The registry entry's `kbn_flags` records what a running stack was started with s
 - Runtime-start precondition (do this before resolving target URLs): if a required target stack has no `ready:true` registry entry, do not treat the missing URL as a readiness failure.
   Go to Data/setup ladder Rung 0 and start it with `,kbn-stack --detach` plus one `-K key=value` per entry in `required_kbn_flags` (shell-capable harness), then resolve its `kbn_url` and continue preflight.
   The reachability/readiness checks below assume the stacks are up; the "cannot establish readiness -> `Blocked`" and "blocker invalid unless every selected target URL is reported" rules apply only after Rung 0, never as a reason to skip starting a startable stack.
+- Dev-optimizer bundle precondition (freshly started snapshot stacks): `,kbn-stack --detach` and the registry `ready:true` flag mean Kibana answered `/api/status` — they do NOT mean the browser plugin bundles are built.
+  A dev stack compiles bundles lazily via the `@kbn/optimizer`, so the first browser navigation to a just-started stack can 404 / MIME-error plugin bundles (e.g. `discover.plugin.js`, `lens.plugin.js`) or throw render errors like `Cannot read properties of null (reading 'dataset')` while the optimizer is still building.
+  Do not treat this first-load bundle failure as a terminal readiness/bounded-reload blocker:
+  first confirm optimizer completion from the registry entry's `kbn_log` when present (detached stacks write `/tmp/kbn-slot<N>.log`), then allow one bounded wait for it and re-navigate.
+  Source-verified completion signals include `bundles compiled successfully` from webpack optimizer and `RSPack build completed` from rspack optimizer.
+  If `kbn_log` is absent (for example, an interactive tmux stack), use the Kibana pane/log the user or registry evidence identifies;
+  do not read the ES-only `log` field as optimizer evidence.
+  Only return `Blocked` if bundles still fail to load after the optimizer reports built.
+  This wait is compatible with the readiness stability guard (it is a single bounded wait on a log signal, not reload-spamming).
 - Required-config precondition (do this when `required_kbn_flags` is non-empty, after resolving each ready target):
   compare the target's registry `kbn_flags` against `required_kbn_flags`.
   If a `ready:true` stack with `started_by: "user"` is missing a required flag, it cannot show the path under review and you cannot safely restart it — return `Blocked` per Data/setup ladder Rung 6 with the exact `,kbn-stack --stop && ,kbn-stack --detach -K <flag> ...` the user must run, naming the affected target(s).

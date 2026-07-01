@@ -8,13 +8,6 @@ tool_version: ",kbn-stack ownership registry surface verified 2026-06-30"
 
 Use `,kbn-stack` from an `elastic/kibana` git worktree to start an isolated local Elasticsearch + Kibana stack for that worktree.
 
-## Use When
-
-- A Kibana live UI flow needs a local `kbn_url` or `es_url`.
-- A review or browser test needs Kibana running with specific `-K key=value` settings.
-- You need to inspect or reuse `~/.cache/kbn-stack/registry.json`.
-- The user asks to start, stop, or check a `,kbn-stack` stack.
-
 ## Do Not Use
 
 - Non-Kibana repos.
@@ -54,6 +47,7 @@ Each ready entry may include:
 - `backend`
 - `cookie_name`
 - `kbn_flags`
+- `kbn_log` for detached agent starts
 - `ready`
 - `started_by` (`"user"` for interactive/manual starts, `"agent"` for `--detach`)
 - `start_mode` (`"interactive-tmux"`, `"manual-command"`, or `"agent-detach"`)
@@ -67,13 +61,16 @@ For older entries without `started_by`, infer `agent` only when recorded process
 1. Verify the current directory is inside the intended Kibana git worktree with `git rev-parse --show-toplevel`.
 2. Resolve the worktree path with `Path(...).resolve()` semantics; this is the registry key.
 3. Inspect `~/.cache/kbn-stack/registry.json`.
-4. If the matching entry is `ready: true` and has the needed `kbn_flags`, reuse it.
-5. If no ready entry exists and shell side effects are allowed, run `,kbn-stack --detach` plus any required `-K key=value` flags.
-6. If a ready stack with `started_by: "user"` is missing required `kbn_flags`, do not restart it.
+4. Before reusing a `ready: true` entry, correlate it with liveness/process evidence:
+   recorded `kbn_pid`/`es_pid` when present, the derived Kibana/ES port listeners for the entry's `slot`, and relevant `log`/`kbn_log` paths.
+   Do not use this to discover arbitrary localhost targets; use it only to validate or reject an existing registry entry keyed by worktree.
+5. If the matching entry is `ready: true`, its Kibana/ES liveness matches the entry, and it has the needed `kbn_flags`, reuse it.
+6. If no ready entry exists and shell side effects are allowed, run `,kbn-stack --detach` plus any required `-K key=value` flags.
+7. If a ready stack with `started_by: "user"` is missing required `kbn_flags`, do not restart it.
    Report the exact `,kbn-stack --stop && ,kbn-stack --detach -K ...` command the user should run.
-7. If a ready stack with `started_by: "agent"` is missing required `kbn_flags`, an agent may stop/recreate it only when that does not conflict with another active task; record the replacement in the evidence.
-8. Load and follow the Playwriter skill before using `kbn_url` for readiness or UI verification.
-9. If using `,artifact live`, inject the overlay only after Playwriter verifies the local/dev Kibana target.
+8. If a ready stack with `started_by: "agent"` is missing required `kbn_flags`, or its liveness/process evidence contradicts the registry, an agent may stop/recreate it only when that does not conflict with another active task; record the replacement in the evidence.
+9. Load and follow the Playwriter skill before using `kbn_url` for readiness or UI verification.
+10. If using `,artifact live`, inject the overlay only after Playwriter verifies the local/dev Kibana target.
 
 ## Teardown
 

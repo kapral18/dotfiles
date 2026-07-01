@@ -38,6 +38,30 @@ These skills operate on local repositories, code search, cleanup, and external s
 | Use when | editing HTML, CSS, DOM markup, layout, responsive styles, accessibility, or browser UI             |
 | Source   | [`exact_code-quality-web`](../../../../home/exact_dot_agents/exact_skills/exact_code-quality-web/) |
 
+## `codebase-design`
+
+| Field    | Value                                                                                            |
+| -------- | ------------------------------------------------------------------------------------------------ |
+| Use when | designing a module interface, deciding a seam, deepening a module, or making code testable       |
+| Source   | [`exact_codebase-design`](../../../../home/exact_dot_agents/exact_skills/exact_codebase-design/) |
+| Boundary | design vocabulary only; SOP owns compatibility/scope; `code-quality` owns implementation style   |
+
+## `diagnosing-bugs`
+
+| Field    | Value                                                                                            |
+| -------- | ------------------------------------------------------------------------------------------------ |
+| Use when | diagnosing a hard bug, failure, flake, or performance regression — build a tight red loop first  |
+| Source   | [`exact_diagnosing-bugs`](../../../../home/exact_dot_agents/exact_skills/exact_diagnosing-bugs/) |
+| Boundary | routes into SOP §3.4/§3.5 gates; not the runtime-truth chain for "is X set up right"             |
+
+## `prototype`
+
+| Field    | Value                                                                                           |
+| -------- | ----------------------------------------------------------------------------------------------- |
+| Use when | building throwaway code to answer a design question (logic/state model, or what a UI should be) |
+| Source   | [`exact_prototype`](../../../../home/exact_dot_agents/exact_skills/exact_prototype/)            |
+| Boundary | explicit throwaway exception to artifact necessity; delete or absorb when done                  |
+
 ## `git`
 
 | Field    | Value                                                                                      |
@@ -108,7 +132,16 @@ These skills operate on local repositories, code search, cleanup, and external s
 | -------- | -------------------------------------------------------------------------------------- |
 | Use when | creating or upgrading CLI tool skills                                                  |
 | Source   | [`exact_cli-skills`](../../../../home/exact_dot_agents/exact_skills/exact_cli-skills/) |
-| Boundary | skill authoring, not normal tool usage                                                 |
+| Boundary | CLI-tool skill mechanics; general skill craft lives in `writing-great-skills`          |
+
+## `writing-great-skills`
+
+| Field    | Value                                                                                                      |
+| -------- | ---------------------------------------------------------------------------------------------------------- |
+| Use when | authoring or refactoring any skill: invocation choice, information hierarchy, leading words, pruning       |
+| Source   | [`exact_writing-great-skills`](../../../../home/exact_dot_agents/exact_skills/exact_writing-great-skills/) |
+| Routing  | model-invoked; auto-loads when authoring/refactoring a skill                                               |
+| Boundary | general skill craft; `cli-skills` owns CLI-tool-specific mechanics                                         |
 
 ## `walkthrough`
 

@@ -6,7 +6,7 @@ description: "Use when controlling a real browser for browsing, rendered UI chec
 # Playwriter
 
 Use Playwriter for real browser work.
-Do not wait for the user to name `playwriter` explicitly when the task involves browsing, browser automation, rendered UI verification, visual inspection, screenshots, authenticated pages, SPAs, localhost web apps, form flows, console/network inspection, or interactive browser behavior.
+Fire without waiting for the user to name `playwriter` explicitly whenever the task needs a real browser.
 
 ## REQUIRED: Read Full Documentation First
 

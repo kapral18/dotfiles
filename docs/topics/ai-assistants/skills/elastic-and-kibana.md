@@ -58,6 +58,8 @@ The boundary is intentional: generic skills (`review`, `agent-review`, `github`,
 | Tool     | `,kbn-stack`                                                                         |
 | Gate     | `elastic/kibana` repos                                                               |
 
+Detached `,kbn-stack --detach` starts record the Kibana process log as `kbn_log` in the registry. Kibana live-UI checks use that log for optimizer-bundle readiness; the ES `log` field is not optimizer evidence. Before reusing a ready registry entry, correlate it with recorded pids, slot-derived port listeners, and log paths. That check validates a registry entry; it does not license guessing arbitrary localhost targets.
+
 ## `kbn-backport`
 
 | Field    | Value                                                                                      |

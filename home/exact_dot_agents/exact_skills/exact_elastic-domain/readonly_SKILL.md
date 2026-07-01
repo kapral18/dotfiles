@@ -109,7 +109,6 @@ Copy-paste PR body templates (Default/Bugfix/Chore/Feature) and the Kibana issue
 ## Git commit attribution
 
 When the repo belongs to the `elastic` GitHub org, every commit must include a `Co-authored-by` trailer identifying the AI tool that authored the change.
-Every commit must include a `Co-authored-by` trailer for the active AI tool.
 
 Known trailer values:
 

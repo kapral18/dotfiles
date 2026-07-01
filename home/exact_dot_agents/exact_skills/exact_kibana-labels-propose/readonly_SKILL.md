@@ -5,12 +5,6 @@ description: "Use when proposing elastic/kibana PR/issue labels, backports, or v
 
 # Elastic / Kibana Label Guidance (Propose-Only)
 
-Use when:
-
-- the direct ask is "what labels/backports/version targeting should this `elastic/kibana` PR/issue get?"
-- drafting/composing an `elastic/kibana` PR description (even if the user didn’t explicitly say “labels”) and you want to include a verified proposed label set
-- immediately after creating an `elastic/kibana` PR (given a PR URL/number), to propose the labels/backport/version targeting that should be applied
-
 Non-negotiables:
 
 - propose only; never apply labels unless explicitly approved

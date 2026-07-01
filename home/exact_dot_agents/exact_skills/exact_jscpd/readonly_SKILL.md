@@ -6,12 +6,6 @@ tool_version: jscpd 4.0.8
 
 # jscpd (Copy/Paste Detector)
 
-Use when:
-
-- refactoring or cleaning up code (scan for clones before and after)
-- investigating code clones or DRY violations
-- generating a duplication report
-
 Do not use:
 
 - unused dependency/export detection: `~/.agents/skills/knip/SKILL.md`
@@ -40,7 +34,7 @@ jscpd ./src --threshold 5                       # fail if >5% duplication
 1. Run `jscpd` on the target directory.
 2. Review reported clones — each shows both locations and the duplicated block.
 3. Refactor: extract shared logic into a common module or utility.
-4. Re-run to verify duplication dropped.
+4. Re-run and confirm the duplication % or clone count is strictly lower than the pre-refactor baseline (or that `--threshold` now passes if one is set).
 
 ## Notes
 

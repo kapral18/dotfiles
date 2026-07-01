@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (83).
+%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (90).
 %% Skills → ~/.agents/skills/ (intent-routed SKILL.md). Shared hooks → ~/.agents/hooks/.
 %% ============================================================================
 flowchart TB
@@ -24,8 +24,8 @@ flowchart TB
 
     subgraph CORE["Core workflow skills"]
         S1["review/ (SKILL + references: judging_core [surface-agnostic engine:<br/>coverage, severity, gates, post-review 4-dim lens], local_changes,<br/>pr_common [exhaustive GitHub context intake + ambient topic exploration + PR necessity audit + pending-review reconciliation], pr_fix, pr_review, shared_rules;<br/>PR review anchor verification is instruction-owned)<br/>agent-review/ (/agent-review controller + role-specific runtime contracts: reviewer-worker, pr-necessity-auditor, findings-auditor, live-ui-review, post-review, change-auditor, researcher, code-searcher [single source for every delegated subagent body; per-tool profiles are thin shims] + runtime-harness caveats; reuses review references)<br/>light-review/ (proportional-depth in-place audit; loads judging_core)"]:::skill
-        S2["git/ · github/ (+refs: pr-reviews, pr-comments, sub-issues) · worktrees/ · compose-pr/ · compose-issue/<br/>communication/ (centralized tone/style; referenced by other skills)<br/>code-quality family: code-quality · code-quality-react · code-quality-tests · code-quality-web"]:::skill
-        S3["walkthrough/ · interview-me/ · research/<br/>present-pr/ (+refs: authoring.md, template.html;<br/>review-readiness map + introduced-concepts primer<br/>+ fixed notes sidebars)"]:::skill
+        S2["git/ · github/ (+refs: pr-reviews, pr-comments, sub-issues) · worktrees/ · compose-pr/ · compose-issue/<br/>communication/ (centralized tone/style; referenced by other skills)<br/>code-quality family: code-quality · code-quality-react · code-quality-tests · code-quality-web · codebase-design (+ref: going-deeper; deep-module vocab, loaded by code-quality)"]:::skill
+        S3["walkthrough/ · interview-me/ (decision-tree + recommended-answer intent loop) · research/<br/>diagnosing-bugs/ (tight red loop first → SOP §3.4/§3.5) · prototype/ (+refs: logic, ui; throwaway design probes)<br/>present-pr/ (+refs: authoring.md, template.html;<br/>review-readiness map + introduced-concepts primer<br/>+ fixed notes sidebars)"]:::skill
         S1 --> R1["exact_references/*.md"]:::ref
     end
 
@@ -44,7 +44,7 @@ flowchart TB
     end
 
     subgraph META["Meta / orchestration skills"]
-        S9["ralph/SKILL.md (drive ,ralph; see 04; +ref: dashboard-tui)<br/>cli-skills/ (author CLI-tool skills)"]:::skill
+        S9["ralph/SKILL.md (drive ,ralph; see 04; +ref: dashboard-tui)<br/>cli-skills/ (author CLI-tool skills) · writing-great-skills/ (general skill craft; auto-loads when authoring a skill)"]:::skill
     end
 
     SOPS["~/AGENTS.md + ~/CLAUDE.md route 'Use when' → load SKILL.md"]:::data

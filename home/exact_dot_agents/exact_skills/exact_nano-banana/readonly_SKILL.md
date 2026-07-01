@@ -8,10 +8,6 @@ description: "Use when generating raster images, pictures, icons, stickers, or i
 Wraps the `,nano-banana` CLI (`~/bin/,nano-banana`): one text prompt in, one raster image file out.
 Backed by the Gemini `gemini-3.1-flash-image` model via the Generative Language API.
 
-Use when:
-
-- the user asks to generate / create / make an image, picture, icon, sticker, or illustration from a text description.
-
 Do not use:
 
 - editing an existing image, or image-to-image: the CLI is text-to-image only (no input-image flag).

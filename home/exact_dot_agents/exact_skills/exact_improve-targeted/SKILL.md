@@ -6,10 +6,9 @@ disable-model-invocation: true
 
 # Improve Targeted
 
-What's the single smartest and most radically innovative and accretive and useful and compelling addition you could make at this point to a specific targeted part of the codebase (a directory, module, package, feature area, or component)?
+What is the single most compelling, high-leverage addition you could make to a specific targeted part of the codebase (a directory, module, package, feature area, or component)?
 
-Only suggest if you think the change is smart, innovative, accretive, useful, and compelling.
-It's ok to refrain from doing so if you don't have a good suggestion, because no change is sometimes better than a marginally better change.
+Only propose it if it is genuinely compelling. It is fine to refrain when you have no strong suggestion — no change beats a marginal one.
 
 Use when:
 

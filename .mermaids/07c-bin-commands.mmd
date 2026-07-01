@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 07c-bin-commands.mmd — Every thin command in home/exact_bin/ (70 thin commands)
+%% 07c-bin-commands.mmd — Every thin command in home/exact_bin/ (71 thin commands)
 %% plus deployed internals in home/exact_lib/ (40 command/shared library files).
 %% executable_,* → ~/bin/,* (comma-prefixed user commands); home/exact_lib/exact_,name/
 %% → ~/lib/,name/. verify-bin-surface keeps each command covered by fish
@@ -21,7 +21,7 @@ flowchart TB
     end
 
     subgraph AIC["AI / agents / KB"]
-        A[",ralph (→ scripts/ralph.py; see 04) · ,ai-kb (→ scripts/ai_kb.py)<br/>,agent-memory (/tmp/specs dead-switch) · ,artifact (cache HTML/live overlay + pollers) · ,cp-files-for-llm<br/>,claude-llama-cpp · ,codex-llama-cpp · ,opencode-llama-cpp<br/>,pi-cloudflare · ,opencode-cloudflare · ,codex-cloudflare<br/>,copilot (refresh header-auth MCP tokens + re-bake config → native Copilot; fail closed)<br/>,copilot-cloudflare · ,copilot-openrouter · ,llama-cpp (local router)<br/>,codex (refresh hosted-MCP token env + llama-cpp metadata passthrough)<br/>,mcp-token &lt;server&gt; (freshest slack/scsi-main token from cursor cache → Codex env / Copilot bearer header; --login → cursor-agent mcp login to refresh)<br/>,tg (telegramtui) · ,youtube-search · ,letsfg-docker"]:::ai
+        A[",ralph (→ scripts/ralph.py; see 04) · ,ai-kb (→ scripts/ai_kb.py)<br/>,agent-memory (/tmp/specs dead-switch) · ,artifact (cache HTML/live overlay + pollers) · ,cp-files-for-llm<br/>,claude-llama-cpp · ,codex-llama-cpp · ,opencode-llama-cpp<br/>,pi-cloudflare · ,opencode-cloudflare · ,codex-cloudflare<br/>,copilot (refresh header-auth MCP tokens + re-bake config → native Copilot; fail closed)<br/>,copilot-cloudflare · ,copilot-openrouter · ,llama-cpp (local router)<br/>,codex (refresh hosted-MCP token env + llama-cpp metadata passthrough)<br/>,cursor (refresh OAuth MCP tokens from ~/.cursor/mcp.json via ,mcp-token --login → native cursor-agent; fail closed; skips admin subcommands)<br/>,mcp-token &lt;server&gt; (freshest slack/scsi-main token from cursor cache → Codex env / Copilot bearer header; --login → cursor-agent mcp login to refresh)<br/>,tg (telegramtui) · ,youtube-search · ,letsfg-docker"]:::ai
     end
 
     subgraph FZFC["fzf / search helpers"]

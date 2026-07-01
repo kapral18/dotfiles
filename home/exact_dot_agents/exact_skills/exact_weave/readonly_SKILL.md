@@ -9,13 +9,6 @@ Entity-level merge driver for Git. Replaces git's line-based merge with function
 Two branches adding different functions to the same file? Auto-resolved, zero conflicts.
 Only truly incompatible changes to the _same entity_ produce conflicts.
 
-Use when:
-
-- preparing or previewing a merge and want to see what weave would resolve vs conflict
-- setting up a repo to use entity-level merging
-- resolving merge conflicts (weave handles most false conflicts automatically)
-- parsing weave conflict markers after a merge
-
 Do not use:
 
 - for diffing or analyzing changes (use the `sem` skill, which runs the `,sem` CLI)

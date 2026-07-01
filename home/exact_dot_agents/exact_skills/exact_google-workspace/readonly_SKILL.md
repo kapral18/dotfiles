@@ -1,20 +1,10 @@
 ---
 name: google-workspace
-description: "Use when inspecting or changing Gmail, Drive, Calendar, Admin, Docs, Sheets, or other Google Workspace data via gws."
+description: "Use when inspecting or changing Gmail, Drive, Calendar, Admin Reports, Docs, Sheets, Slides, Forms, People/Contacts, Chat, Tasks, Keep, Meet, Classroom, or other Google Workspace data via gws."
 tool_version: gws 0.18.1
 ---
 
 # Google Workspace (`gws`) Skill
-
-Use this skill when the user asks to inspect or change Google Workspace resources, including:
-
-- Gmail
-- Drive
-- Calendar
-- Docs / Sheets / Slides / Forms
-- Admin Reports
-- People / Chat / Tasks / Keep / Meet / Classroom
-- other Google Workspace surfaces exposed by `gws`
 
 Default interface:
 

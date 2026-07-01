@@ -210,7 +210,7 @@ run_parallel() {
     local cat="${active_labels[$i]}"
     local wrapper="$_tmpdir/${cat}.sh"
     local rcfile="$_tmpdir/${cat}.rc"
-    local cmd="$self"
+    local cmd="bash $self"
     [ ${#fwd_args[@]} -gt 0 ] && cmd="$cmd ${fwd_args[*]}"
     cmd="$cmd --only $cat"
     cat > "$wrapper" << WRAPPER

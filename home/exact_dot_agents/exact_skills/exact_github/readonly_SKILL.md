@@ -5,12 +5,6 @@ description: "Use when the user wants a GitHub side effect via gh/API or provide
 
 # GitHub + gh Skill
 
-Use when:
-
-- the user explicitly wants a GitHub side effect via `gh` or GitHub APIs
-- the user wants to create/edit/post/apply/merge something on GitHub, not just draft text
-- the user provides a GitHub gist URL (`gist.github.com/...` or `gist.githubusercontent.com/...`) or asks to create/update/list a gist
-
 Defaults & constraints:
 
 - Use `gh` CLI for GitHub activity.

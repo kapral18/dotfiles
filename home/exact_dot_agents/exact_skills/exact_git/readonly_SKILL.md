@@ -5,14 +5,6 @@ description: "Use when doing local git operations: status, diff, log, staging, b
 
 # Git Workflow Skill
 
-Use this skill for local git repo operations:
-
-- status/diff/log
-- staging/unstaging
-- branch management
-- conflict resolution
-- preparing commits
-
 External truth applies:
 
 - verify behavior from the actual repo/version (`git --version`, `git help <cmd>`); do not rely on memory.

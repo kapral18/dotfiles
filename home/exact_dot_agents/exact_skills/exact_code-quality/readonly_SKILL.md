@@ -1,6 +1,6 @@
 ---
 name: code-quality
-description: "Use when editing, reviewing, or refactoring implementation code in any language. Applies general code style, maintainability, simplicity, type-safety, naming, async, documentation, and validation guidance."
+description: "Use when editing, reviewing, or refactoring implementation code in any language."
 ---
 
 # Code Quality
@@ -15,6 +15,7 @@ The SOP still owns compatibility, minimal edit scope, artifact necessity, semant
 - If the change touches React, JSX, TSX, hooks, or component state, also load the `~/.agents/skills/code-quality-react/SKILL.md` skill.
 - If the change adds or changes tests, fixtures, mocks, assertions, or test plans, also load the `~/.agents/skills/code-quality-tests/SKILL.md` skill.
 - If the change touches HTML, CSS, styles, layout, visual states, accessibility, or browser markup, also load the `~/.agents/skills/code-quality-web/SKILL.md` skill.
+- If the change designs a module's interface, decides where a seam goes, or aims to make code more testable, also load the `~/.agents/skills/codebase-design/SKILL.md` skill for the deep-module vocabulary.
 
 ## General Code Rules
 

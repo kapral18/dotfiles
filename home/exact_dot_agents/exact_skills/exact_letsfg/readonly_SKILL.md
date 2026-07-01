@@ -6,11 +6,6 @@ tool_version: "letsfg 2026.4.66 (uv tool; --version unavailable); playwriter 0.1
 
 # LetsFG
 
-## Use When
-
-- The user asks to search flight tickets, fares, routes, or airline options.
-- The user mentions LetsFG or wants flight-search results from the agent.
-
 ## Do Not Use
 
 - Do not book, unlock, attach payment, or register unless the user explicitly asks and confirms the real-money or account side effect.

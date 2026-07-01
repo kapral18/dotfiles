@@ -42,7 +42,7 @@ Verified discovery anchors:
 
 Model identifiers are not portable. Cursor review lanes use `gpt-5.5-extra-high` and `claude-opus-4-8-xhigh`; Copilot uses `gpt-5.5` and `claude-opus-4.8` with `effortLevel: xhigh`; Pi encodes reasoning effort in model slug suffixes such as `:xhigh`.
 
-Runtime probes confirmed project custom-agent invocation in Cursor and Copilot, Cursor controller-to-worker delegation, Copilot task subagents with explicit model overrides, both Opus IDs, and Codex `spawn_agent` / `wait`.
+Runtime probes confirmed project custom-agent invocation in Cursor and Copilot, Copilot task subagents with explicit model overrides, both Opus IDs, and Codex `spawn_agent` / `wait`. Cursor source supports custom subagent types, but the model-facing Task schema can expose only generic types in some runs; `/agent-review` must prefer named Cursor profiles when exposed and use generic exact-model fallback only when the active schema hides them.
 
 ## Agent suite
 
@@ -92,7 +92,9 @@ Workers never edit files, post comments, resolve threads, or decide final action
 
 - Profile bodies start with `prefix.txt`, then instruct the child to load the wrapped skill or runtime contract.
 - Cursor/Copilot `agent-review` profiles load only the `/agent-review` skill; reviewer/auditor/live profiles load the runtime contracts, and reviewer workers load shared `review` methodology inside child contexts.
+- Cursor profiles are real runtime shims, not dead files: Cursor loads `.cursor/agents`, and its internal Task protocol has a custom subagent-name field. Whether the controller can address those profiles depends on the active model-facing Task schema.
 - Profiles stay generic. Domain-specific targets or rules are selected by the controller from a verified domain overlay and passed to workers as concrete packets.
+- Hard runtime read-only flags are not the review safety boundary. Review/audit profile shims keep shell-capable permissions so workers can run safe verification commands; the shared role contracts enforce behavior-level read-only/no-mutation.
 - Copilot internal worker profiles are hidden from `/agent` but remain model-invocable so the controller can launch named task agents.
 - Pi disables its built-in subagents because stock names overlap with custom roles. Pi also recursively exposes skills as subagents; that leakage is cosmetic and accepted because our agent names are distinct.
 

@@ -1,6 +1,6 @@
 ---
 name: code-quality-tests
-description: "Use when adding, editing, reviewing, or debugging tests, fixtures, mocks, snapshots, assertions, test plans, repro checks, or validation coverage. Applies test design, BDD naming, bug reproduction, determinism, and focused verification guidance."
+description: "Use when adding, editing, reviewing, or debugging tests or test plans."
 ---
 
 # Test Code Quality

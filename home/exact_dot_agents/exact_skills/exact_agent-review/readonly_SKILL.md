@@ -135,6 +135,9 @@ The phase order is strict:
 Do not start a later phase until the current phase returns.
 In blocking phases, do not poll background workers with long waits just to check status;
 wait for completion notifications or use the harness's synchronous/blocking mechanism.
+If the harness cannot await background workers by id (for example Cursor), apply `runtime-harnesses.md`;
+launch the worker as the harness's real background subagent, then wait only through a harness-native subagent completion signal.
+Never loop blind fixed-interval sleeps waiting on a subagent.
 The same rule applies after `write_agent` follow-ups for addenda or reconciliation checks:
 send the follow-up, state that the phase is waiting, and end the turn unless the worker has already completed.
 The controller may read completed phase outputs, but it must not perform later-phase analysis while the current phase is still running.
@@ -142,12 +145,13 @@ The controller may read completed phase outputs, but it must not perform later-p
 For every delegated worker, emit an export-visible worker selection line before launch:
 
 ```text
-Worker selection: phase=<pr-necessity|review-gpt|review-opus|live-ui|findings-audit>, profile=<configured profile name>, agent_type=<task/subagent agent type>, model=<model>, invocation=<named|fallback>, fallback_reason=<none or reason>
+Worker selection: phase=<pr-necessity|review-gpt|review-opus|live-ui|findings-audit>, profile=<configured profile name>, agent_type=<task/subagent agent type>, model_required=<model-or-n/a>, model_used=<model-or-n/a>, model_status=<exact|unavailable|n/a>, tool_readonly=<false|n/a>, launch_wait=<blocking|background|n/a>, invocation=<named|fallback>, fallback_reason=<none or reason>
 ```
 
 This line is part of the audit trail.
 If a runtime export hides task arguments, the worker selection line must still prove whether the controller used named profiles.
 It must also show any fallback such as `general-purpose`.
+A worker launch is invalid when `model_required` differs from `model_used` or `model_status` is not `exact`, unless the phase is explicitly `n/a` for model selection.
 
 1. **Route and scope.** Build a scope packet with:
    - mode: `local_changes.md`, `pr_review.md`, or `pr_fix.md`
@@ -230,7 +234,18 @@ no `semantic_code_search`, symbol analysis, code-chunk reads, broad code investi
      - GPT/default lane: `gpt-5.5-extra-high`
      - Opus lane: `claude-opus-4-8-xhigh`
      - PR necessity auditor, findings auditor, and live UI workers: `gpt-5.5-extra-high`
-     - if the harness exposes a generic Subagent/Task API instead of named profiles, pass the matching `model` argument on every launch
+     - first prefer the named Cursor profiles (`review-gpt-5-5-extra-high`, `review-opus-4-8-xhigh-non-thinking`, `pr-necessity-auditor`, `live-ui-review`, `findings-auditor`) when the active Task schema exposes those names or a custom subagent-type field
+     - if the active Task schema exposes only generic subagent types, use the listed generic worker type and pass the matching `model` argument on every launch
+     - before launching, check the active Cursor model list when the harness exposes one; otherwise rely on the launch call to fail closed
+     - if a listed model id is unavailable in the active Cursor runtime, do not launch a substituted variant;
+       fail closed for the affected lane, surface the unavailable id and available choices, and wait for user direction
+   - Hard-read-only caveat: for Cursor, follow `runtime-harnesses.md`.
+     Cursor Task launches and Cursor profile shims for `/agent-review` must use `readonly: false`.
+     If a worker reports Ask/read-only mode blocked shell/git/`gh`/SCSI/Playwriter, discard that launch result and rerun with `readonly: false`.
+   - Cursor Task background caveat: reviewer, PR-necessity, live-UI, and findings-audit workers should remain real Cursor background subagents.
+     Use Cursor Task `run_in_background=true` for those launches when the active Cursor Task schema exposes it.
+     Do not use shell `Await`/`AwaitShell` with Cursor subagent ids; wait through a Cursor-native subagent completion signal.
+     If no native completion signal is available, end the controller turn and wait for the completion notification, or do one transcript completion check; never repeated sleep polling.
    - Give each worker the scope packet.
    - Give each worker a distinct angle chosen from the actual change:
      - correctness/regressions
@@ -269,8 +284,10 @@ no `semantic_code_search`, symbol analysis, code-chunk reads, broad code investi
      Valid blockers include a read-only/Ask-mode harness, an unstartable runtime, or another blocker the selected target packet recognizes.
      Do not skip because a non-runtime proof already exists or because runtime evidence is judged "unlikely to change the verdict".
      If the runtime is startable (runtime-start rung), start it and verify.
-   - `live-ui-review` is the only worker lane that may need tool-level non-read-only mode.
-   - Use non-read-only mode only to run Playwriter/browser commands and explicit local/dev runtime data setup against verified targets.
+   - Hard runtime read-only/sandbox modes are not the review safety boundary.
+     Use harness permissions that allow the lane's permitted verification tools, and enforce no-mutation behavior through the role contract.
+   - Use those permissions only for the lane's permitted verification tools: read-only shell/git/`gh`/SCSI for investigation workers, or Playwriter/browser commands for `live-ui-review`.
+     `live-ui-review` may also run explicit local/dev runtime data setup against verified targets.
    - Mode boundary: default `live-ui-review` is verification-only.
    - Keep behavior-level read-only constraints in the prompt:
      - no repo edits
@@ -292,6 +309,8 @@ no `semantic_code_search`, symbol analysis, code-chunk reads, broad code investi
      - For an explicit PR/branch review invoked from another checkout (especially a base/main checkout), do not use `controller_cwd` as the PR/head target unless it is checked out to the reviewed PR/head branch/sha.
        Reuse or create a worktree for the reviewed PR/head branch before live UI, or return a target-worktree blocker with the exact command/setup required.
      - Base/main is comparison-only: resolve/start a base target only when a distinct `reviewed_head_worktree` exists and the target packet requires base-vs-head comparison.
+     - Identify which running runtime is head vs base only from the target packet's registry/discovery keyed by worktree path;
+       never decide head-vs-base by probing a port (e.g. `curl localhost:5601`), which silently mistakes an already-running base/main stack for the head runtime.
    - Resolve required runtime config once, before the first `live-ui-review` launch:
      from the changed paths and kept candidates, determine any runtime/feature-flag settings the path under review needs to be reachable.
      Pass them to the worker so the runtime is started correctly the first time instead of started default and reconfigured after a blocker.
@@ -366,6 +385,8 @@ no `semantic_code_search`, symbol analysis, code-chunk reads, broad code investi
      - `run`: the controller ran the serial non-mutating/heavy check,
      - `blocked`: the check is unsafe, out of scope, or impossible, with exact blocker,
      - `not needed`: the item cannot affect keep/drop/action, with evidence.
+   - When running serial verification, apply the `shared_rules.md` Read-Only Probes search discipline:
+     prefer native search/listing tools for first-pass broad searches, and use shell `rg` only with a path, glob, or exact-symbol scope.
    - A `verification_needed` that can flip a kept/dropped finding, fix decision, or draft payload is blocking until it is `resolved` or `run`.
      Do not let findings audit or stale PR-intent assumptions convert it to `not needed`.
 7. **Act only after judgment.**

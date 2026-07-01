@@ -39,3 +39,7 @@ Do not load specs broadly. Topic keys are broad, stable, kebab-case, and exactly
 | repeated misses       | stop speculative edits and reset requirements                                                                   |
 
 Test-first framing never expands scope beyond the request.
+
+## Harness search interop
+
+Harness-native search/listing tools are the interop layer for broad code search. Prefer native Grep/Glob/search tools for first-pass broad searches; use shell `rg` only after narrowing by path, glob, or exact symbol. Never run bare repo-root `rg <pattern>` in a large repository.

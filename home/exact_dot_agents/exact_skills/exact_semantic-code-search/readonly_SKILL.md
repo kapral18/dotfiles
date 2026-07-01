@@ -69,11 +69,6 @@ Allowed `<reason>` values (reviews):
 - `tools unavailable`
 - `user-selected none`
 
-Hard gate (required): repo must be indexed
-
-- semantic search is only valid for repos present in `list_indices`
-- if current repo is not represented, fall back to local search (`rg`/file reads) and normal git comparisons
-
 Index usage:
 
 - if the user provides an index name:

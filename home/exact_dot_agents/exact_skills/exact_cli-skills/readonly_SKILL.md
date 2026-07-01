@@ -5,6 +5,9 @@ description: "Use when creating a new CLI tool skill or upgrading an existing CL
 
 # CLI Tool Skills
 
+This skill owns the mechanics specific to CLI-tool skills.
+For the general craft of writing any skill well — invocation choice, information hierarchy, leading words, completion criteria, and pruning — load `~/.agents/skills/writing-great-skills/SKILL.md`.
+
 Skills that document a CLI tool must include `tool_version` in frontmatter:
 
 ```yaml
@@ -43,7 +46,7 @@ Source is for understanding; `--help` is the truth. Do not include anything that
    - Optional: `exact_references/readonly_*.md` for detailed sub-topics
 2. Set `tool_version` in frontmatter to the installed version.
 3. Use the real binary name on PATH — not wrapper aliases.
-4. `chezmoi diff` to verify, then `chezmoi apply`.
+4. Authoring is done when every command, subcommand, and flag documented in the skill appears in `<tool> --help` / `<tool> <subcommand> --help` output and `tool_version` matches `<tool> --version`; then `chezmoi diff` to verify and `chezmoi apply`.
 
 ## Upgrading an existing skill
 
@@ -74,7 +77,7 @@ Skip: tests, CI configs, unrelated docs.
    - Update only the affected skill sections.
    - Do not propagate changes you cannot verify locally.
 2. Update `tool_version` in frontmatter to the installed version.
-3. `chezmoi diff` — confirm only expected sections changed.
+3. Upgrade is done when the diffed CLI changes are reflected in the skill, `tool_version` matches `<tool> --version`, and `chezmoi diff` shows only expected sections changed.
 
 ## When version tags are unclear
 

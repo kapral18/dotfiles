@@ -53,7 +53,7 @@ When semantic code search helps:
 
 ### Step 2: Present The Walkthrough
 
-Once exploration is complete, present an evidence-backed walkthrough.
+Present the walkthrough once every node/step in the stated boundary is backed by a concrete evidence anchor (file path + symbol or call site), or the user has narrowed the boundary.
 
 - If the system is complex or the user asked for a diagram, render an interactive ASCII diagram.
 - If a diagram would add little value, give a concise written walkthrough with the same evidence trail instead.
@@ -110,10 +110,7 @@ Then provide node metadata for each component with descriptions and links.
 ## Tips for Effective Walkthroughs
 
 - Progressive disclosure: start high-level, then explore specific components
-- Follow the code: use actual imports, function calls, and file structure
-- Link to evidence: provide file paths and small snippets for nodes
 - Clarify relationships: show data flow, control flow, and dependency relationships
-- Use concrete examples: reference actual functions, files, and configurations
 
 ## Tools (If Available)
 

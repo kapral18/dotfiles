@@ -1,6 +1,6 @@
 ---
 name: code-quality-react
-description: "Use when editing, reviewing, or refactoring React, JSX, TSX, hooks, components, props, state, effects, or client-side UI behavior. Applies React component structure, hook discipline, render-state, accessibility handoff, and TypeScript React quality guidance."
+description: "Use when editing, reviewing, or refactoring React/JSX/TSX components, hooks, or client-side UI behavior."
 ---
 
 # React Code Quality
