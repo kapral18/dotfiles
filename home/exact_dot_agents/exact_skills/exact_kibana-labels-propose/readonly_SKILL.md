@@ -34,8 +34,6 @@ Output:
 
 Common patterns (verify in repo):
 
-- review routing (required on every PR): always include both `reviewer:codex` and `reviewer:claude` in the proposed label set.
-  These are mandatory on each composed `elastic/kibana` PR; do not drop them.
 - team ownership: `Team:*`
 - resolved/linked issue labels:
   - use the issue that the PR closes/addresses as a primary classification signal, especially for `Team:*`, `Feature:*`, `bug`, and similar area/type labels
