@@ -2,7 +2,7 @@
 name: findings-auditor
 description: Read-only /agent-review findings auditor for non-trivial post-live-UI audits.
 target: github-copilot
-model: gpt-5.5
+model: "{{ .agent_review_models.copilot.lanes }}"
 tools: [read, search, execute]
 disable-model-invocation: false
 user-invocable: false

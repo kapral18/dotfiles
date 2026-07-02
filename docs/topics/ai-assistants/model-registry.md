@@ -10,7 +10,7 @@ Use when adding a model, changing reasoning/cost metadata, or understanding how 
 
 ## Registry: `ai_models.yaml`
 
-Source of truth: [`home/.chezmoidata/ai_models.yaml`](../../../home/.chezmoidata/ai_models.yaml). It holds two sections — `litellm_models` and `azure_models` — each a list of model dicts:
+Source of truth: [`home/.chezmoidata/ai_models.yaml`](../../../home/.chezmoidata/ai_models.yaml). It holds three sections — `litellm_models` and `azure_models` (each a list of model dicts), plus `agent_review_models`, the review-lane model registry: per-harness `lanes`/`verifier` values rendered into the `/agent-review` subagent profile frontmatter (the verifier is a different model family than `lanes`, paired by review here rather than inferred at runtime). The model-dict fields:
 
 | Field             | Purpose                                                          |
 | ----------------- | ---------------------------------------------------------------- |

@@ -1,7 +1,7 @@
 ---
 name: pr-necessity-auditor
 description: Blocking read-only PR necessity and intent auditor before agent-review fan-out.
-model: gpt-5.5-extra-high
+model: "{{ .agent_review_models.cursor.lanes }}"
 readonly: false
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: live-ui-review
 description: Read-only live UI verifier for /agent-review UI/runtime candidate findings.
-model: gpt-5.5-extra-high
+model: "{{ .agent_review_models.cursor.lanes }}"
 readonly: false
 ---
 

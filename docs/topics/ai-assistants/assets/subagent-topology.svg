@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1360" height="610" viewBox="0 0 1360 610" role="img" aria-labelledby="title desc">
   <title id="title">Cross-harness subagent topology</title>
-  <desc id="desc">Shared skills feed per-runtime profiles. The controller delegates to reviewer, live UI, and findings auditor workers, receives their evidence, and alone performs the act phase.</desc>
+  <desc id="desc">Shared skills feed per-runtime profiles. The controller delegates to registry-model angle lanes, the blind fresh-eyes lane, a cross-family adversarial verifier, live UI, and findings auditor workers, receives their evidence, and alone performs the act phase.</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#a7f3d0"/></marker>
     <style>
@@ -19,7 +19,7 @@
   <text class="text" x="805" y="178">Controller</text><text class="small" x="805" y="208">agent-review or</text><text class="small" x="805" y="234">review-controller</text>
   <path class="line" d="M890 260 V330"/>
   <rect class="worker" x="520" y="360" width="230" height="120"/>
-  <text class="text" x="555" y="405">Reviewers</text><text class="small" x="555" y="435">GPT + Opus lanes</text>
+  <text class="text" x="555" y="405">Reviewers</text><text class="small" x="555" y="435">angle lanes + verify</text>
   <rect class="worker" x="800" y="360" width="230" height="120"/>
   <text class="text" x="835" y="405">Live UI</text><text class="small" x="835" y="435">target packet verifier</text>
   <rect class="worker" x="1080" y="360" width="230" height="120"/>

@@ -37,10 +37,10 @@ Post-review behavior:
 
 [`light-review`](../../../../home/exact_dot_agents/exact_skills/exact_light-review) is a separate skill for proportional-depth, in-place audits of low-risk self-authored changes.
 
-| Keeps                                | Drops                                 |
-| ------------------------------------ | ------------------------------------- |
-| `judging_core.md` coverage checklist | mandatory SCSI/base-context preflight |
-| four-dimension post-review lens      | GitHub machinery                      |
-| opt-in base context                  | PR-thread/CI-specific rules           |
+| Keeps                                                      | Drops                                 |
+| ---------------------------------------------------------- | ------------------------------------- |
+| `judging_core.md` coverage checklist + trigger-based gates | mandatory SCSI/base-context preflight |
+| four-dimension post-review lens                            | GitHub machinery                      |
+| opt-in base context                                        | PR-thread/CI-specific rules           |
 
 Escalate to full `review` for PRs, others' code, base-context-dependent correctness, or risky/stateful changes. `change-auditor` (Claude + Pi) is the read-only delegated form.

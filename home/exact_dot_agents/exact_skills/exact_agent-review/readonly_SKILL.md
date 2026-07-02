@@ -17,6 +17,7 @@ The controller:
 - performs gated side effects
 
 The substantive review work happens in isolated reviewer workers that load the shared `review` skill themselves.
+Two exceptions: the blind fresh-eyes clarity lane loads none of it (`references/fresh-eyes.md`), and the adversarial verifier loads only `judging_core.md` (`references/adversarial-verifier.md`).
 
 The reviewer-worker lanes are read-only:
 
@@ -33,7 +34,7 @@ That includes the working tree, repo-local caches, databases, dev services, brow
 Use unique `/tmp` paths or isolated copies for disposable reproduction artifacts.
 Apply the SOP rules about internal time/effort estimates inside this read-only boundary.
 If a finding needs shared-state mutation, a shared service, or another exclusive resource to verify, return the verification need to the controller.
-Do not do that verification inside both lanes.
+Do not do that verification inside any parallel lane.
 
 Workers only investigate and return candidate findings or `verification_needed`.
 
@@ -58,13 +59,14 @@ The controller owns:
 - running the conditional blocking `pr-necessity-auditor` before implementation review
   - applies to other-authored/unknown PRs
   - applies to local flows with a PR-intent dependency
-- launching the two reviewer workers after any required PR necessity greenlight
-- running conditional `live-ui-review` verification after reviewer workers finish
+- launching the reviewer workers after any required PR necessity greenlight: the angle lanes plus the conditional blind fresh-eyes clarity lane
+- running the cross-family adversarial verification pass over the merged candidate set after every reviewer lane returns
+- running conditional `live-ui-review` verification after adversarial verification returns
   - applies when changed paths or kept candidate findings touch UI/runtime behavior
   - requires applicable runtime evidence
 - running the findings audit phase after live UI returns evidence/non-applicability/blocker or is explicitly skipped;
-  delegate to `findings-auditor` only when a step 5 delegation condition is true
-- aggregating worker outputs, `pr-necessity-auditor` status, reviewer findings, live UI status/evidence/artifacts/skip reason, and audit output
+  delegate to `findings-auditor` only when a step 6 delegation condition is true
+- aggregating worker outputs, `pr-necessity-auditor` status, reviewer findings, adversarial verification verdicts, live UI status/evidence/artifacts/skip reason, and audit output
 - deciding which worker-reported `verification_needed` items deserve serial controller verification
 - judging kept/dropped findings after aggregation
 - reconciling PR-mode draft payloads before preparing or posting final review feedback
@@ -114,6 +116,7 @@ Reviewer workers own the full investigation methodology.
   - `~/.agents/skills/review/references/pr_common.md` for PR modes
 - Return only evidence, candidate findings, and any `verification_needed` entries that were unsafe or required shared-state mutation/contention inside a parallel lane.
 - Never edit, post, resolve, commit, push, or decide what should be fixed/commented on.
+- The blind fresh-eyes lane is the exception to the load list above: it loads only `~/.agents/skills/agent-review/references/fresh-eyes.md` and must not load the `review` skill or any PR context.
 
 The active harness owns subagent discovery and invocation.
 
@@ -126,11 +129,12 @@ The phase order is strict:
 
 1. route and scope
 2. blocking PR necessity/intent gate, only when step 2 triggers
-3. two concurrency-safe reviewer workers in parallel
-4. live UI verification when changed paths or a kept candidate touch UI/runtime behavior
-5. findings audit, inline or delegated by the step 5 delegation conditions
-6. controller aggregation, judgment, PR-mode pending-review reconciliation, and action
-7. post-act verification, only for any flow that edited the working tree (gates + fix-diff Post-Review Stage)
+3. the reviewer angle fan-out in parallel (registry-model angle lanes plus the blind fresh-eyes clarity lane when it applies)
+4. cross-family adversarial verification over the merged candidate set
+5. live UI verification when changed paths or a non-refuted candidate touch UI/runtime behavior
+6. findings audit, inline or delegated by the step 6 delegation conditions
+7. controller aggregation, judgment, PR-mode pending-review reconciliation, and action
+8. post-act verification, only for any flow that edited the working tree (gates + fix-diff Post-Review Stage)
 
 Do not start a later phase until the current phase returns.
 In blocking phases, do not poll background workers with long waits just to check status;
@@ -145,7 +149,7 @@ The controller may read completed phase outputs, but it must not perform later-p
 For every delegated worker, emit an export-visible worker selection line before launch:
 
 ```text
-Worker selection: phase=<pr-necessity|review-gpt|review-opus|live-ui|findings-audit>, profile=<configured profile name>, agent_type=<task/subagent agent type>, model_required=<model-or-n/a>, model_used=<model-or-n/a>, model_status=<exact|unavailable|n/a>, tool_readonly=<false|n/a>, launch_wait=<blocking|background|n/a>, invocation=<named|fallback>, fallback_reason=<none or reason>
+Worker selection: phase=<pr-necessity|review:<angle>|fresh-eyes|adversarial-verify|live-ui|findings-audit>, profile=<configured profile name>, agent_type=<task/subagent agent type>, model_required=<model-or-n/a>, model_used=<model-or-n/a>, model_status=<exact|unavailable|n/a>, tool_readonly=<false|n/a>, launch_wait=<blocking|background|n/a>, invocation=<named|fallback>, fallback_reason=<none or reason>
 ```
 
 This line is part of the audit trail.
@@ -163,6 +167,8 @@ A worker launch is invalid when `model_required` differs from `model_used` or `m
    - user constraints
    - expected output shape
    - intent dependencies needed for judgment, or `none`
+   - lane/verifier models: the `agent_review_models` registry values rendered into the deployed profiles;
+     worker selection lines emit `model_required=<registry value|inherit|default>` and the launch-confirmed `model_used`
 
    Resolve `authorship` via the review router's Role Detection. Do not duplicate worker review analysis in the controller.
 
@@ -177,7 +183,7 @@ It is `yes` when any of these hold:
 When `fix_authorized: yes`, the fix step does NOT require a separate "fix" keyword —
 an adopted/assigned/own PR is fix-authorized by virtue of ownership, not phrasing.
 When none of the above hold (`authorship: other`/`unknown` and no assignee/takeover signal), `fix_authorized: no`:
-draft-only, never edit code. Record `fix_authorized` in the scope packet; step 8 branches on it.
+draft-only, never edit code. Record `fix_authorized` in the scope packet; step 9 branches on it.
 `fix_authorized` governs only working-tree edits and verification mutations.
 It never authorizes commit/push/post/resolve, which keep their own explicit-approval gates (git/github skills + Human-Visible Publication Gate).
 
@@ -223,22 +229,29 @@ no `semantic_code_search`, symbol analysis, code-chunk reads, broad code investi
      Do not launch reviewer workers, live UI, or findings audit unless the user explicitly asks to continue anyway.
    - Do not rely on the auditor to decide or post. The controller judges and gates any draft feedback.
 
-2. **Launch two code investigation reviewers in parallel.**
-   - Emit both reviewer launches in one message (a single tool-call batch).
-   - Use the current harness's native configured reviewer workers or task mechanism.
-   - Copilot CLI: launch named worker profiles as task agent types.
-     Profiles are `review-gpt-5-5-extra-high`, `review-opus-4-8-xhigh-non-thinking`, `pr-necessity-auditor`, `live-ui-review`, and `findings-auditor`.
-     They are model-invocable but not user-invocable.
-     Do not use `general-purpose` unless a named launch is proven unavailable in the active Copilot runtime, and state that fallback reason.
-   - Cursor model selection is explicit, never inherited:
-     - GPT/default lane: `gpt-5.5-extra-high`
-     - Opus lane: `claude-opus-4-8-xhigh`
-     - PR necessity auditor, findings auditor, and live UI workers: `gpt-5.5-extra-high`
-     - first prefer the named Cursor profiles (`review-gpt-5-5-extra-high`, `review-opus-4-8-xhigh-non-thinking`, `pr-necessity-auditor`, `live-ui-review`, `findings-auditor`) when the active Task schema exposes those names or a custom subagent-type field
-     - if the active Task schema exposes only generic subagent types, use the listed generic worker type and pass the matching `model` argument on every launch
-     - before launching, check the active Cursor model list when the harness exposes one; otherwise rely on the launch call to fail closed
-     - if a listed model id is unavailable in the active Cursor runtime, do not launch a substituted variant;
-       fail closed for the affected lane, surface the unavailable id and available choices, and wait for user direction
+2. **Launch the reviewer angle fan-out in parallel.**
+   - Build the angle roster from scope-level evidence only (mode, changed paths, `git diff --stat`, `--diff-filter=D` status);
+     roster selection is not implementation analysis — do not read code bodies for it.
+     - Always include `correctness/regressions`.
+     - Add each angle the change surface implicates:
+       - tests/validation: test files touched, or risky logic changed with no test changes
+       - simplicity/maintainability: large refactors, renames, or structural churn
+       - types/API contracts: public API/type-surface paths
+       - security: auth/permission/input-handling/crypto/secret paths
+       - performance: hot paths, queries, data-volume loops
+       - deletion-safety: deleted files/exports (`git diff --diff-filter=D --stat` non-empty)
+       - state-machine behavior: parser/workflow/retry/permission-matrix/multi-flag paths
+       - product flow/user-visible behavior: UI components, routes, user-state, API handlers serving UI
+       - observability/signal quality: alerting/monitoring/threshold/telemetry/query-generation paths
+     - Launch two to five angle lanes — always at least two, even for a single-concern diff (pick the two most load-bearing angles), so no finding class depends on one lane.
+     - If more angles are implicated than five, fold the extras into the closest launched lane as stated secondary emphases.
+     - State the roster and the scope-level evidence for each selection in the output.
+   - Lane model selection is declarative, never steered at runtime: every deployed profile's `model` frontmatter is rendered from the single `agent_review_models` registry in the chezmoi model data (a concrete id, `inherit`, or omitted for the harness config default).
+     The controller launches profiles as-is and never passes lane model overrides;
+     a wrong or stale model is fixed in the registry, not the launch.
+     The angles are this phase's diversity axis; cross-family checking is owned by the adversarial verification phase.
+   - Emit all reviewer-lane launches, fresh-eyes included when it applies, in one message (a single tool-call batch).
+   - Use the harness's native reviewer worker profiles or task mechanism (`review-worker`/`reviewer` profiles, or a generic task type carrying `reviewer-worker.md`); read `runtime-harnesses.md` for per-harness launch and model-inheritance caveats.
    - Hard-read-only caveat: for Cursor, follow `runtime-harnesses.md`.
      Cursor Task launches and Cursor profile shims for `/agent-review` must use `readonly: false`.
      If a worker reports Ask/read-only mode blocked shell/git/`gh`/SCSI/Playwriter, discard that launch result and rerun with `readonly: false`.
@@ -246,19 +259,10 @@ no `semantic_code_search`, symbol analysis, code-chunk reads, broad code investi
      Use Cursor Task `run_in_background=true` for those launches when the active Cursor Task schema exposes it.
      Do not use shell `Await`/`AwaitShell` with Cursor subagent ids; wait through a Cursor-native subagent completion signal.
      If no native completion signal is available, end the controller turn and wait for the completion notification, or do one transcript completion check; never repeated sleep polling.
-   - Give each worker the scope packet.
-   - Give each worker a distinct angle chosen from the actual change:
-     - correctness/regressions
-     - tests/validation
-     - simplicity/maintainability
-     - types/API contracts
-     - security
-     - performance
-     - deletion-safety
-     - state-machine behavior
+   - Give each worker the scope packet and one angle from the roster above.
    - If `runtime-harnesses.md` says the active harness cannot fan out from the current context, run them as that file directs and state why.
    - This phase is blocking as a phase.
-     After both reviewer workers are launched, do not start live UI verification, findings audit, or controller judgment until both reviewer outputs are available.
+     After the reviewer workers are launched, do not start adversarial verification, live UI verification, findings audit, or controller judgment until every launched lane's output is available, fresh-eyes included when it was launched.
    - Keep the parallel lanes concurrency-safe:
      - Prefer file reads, local source inspection, SCSI/base-context queries, `git show`/`git diff` reads, isolated `/tmp` reproductions, and verification commands.
        The verification commands should improve finding validity or coverage.
@@ -269,13 +273,34 @@ no `semantic_code_search`, symbol analysis, code-chunk reads, broad code investi
        Let the controller run it serially after aggregation or during the act phase.
    - Each candidate finding must include a reachability statement for the claimed path.
      If the claimed UI/API/state path may be unreachable, the worker must verify reachability before assigning severity or mark it as a hypothesis for the controller to verify/drop.
+   - **Blind fresh-eyes clarity lane (conditional, same launch batch).**
+     - Launch an additional read-only worker on `~/.agents/skills/agent-review/references/fresh-eyes.md` when the mode is `pr_review.md` or `local_changes.md` and the diff adds or changes human-maintained code or docs.
+     - Skip it for `pr_fix.md` (thread-driven), and when the diff touches only generated/vendored/lockfile content; record the skip reason.
+     - Blindness is this lane's diversity axis.
+       Its packet is only the diff scope (base ref, changed paths, or an explicit diff command) —
+       never the PR number/title/body, commit messages, issue text, thread content, prior findings, or controller narrative.
+     - Launch mechanics, allowed reads, and the worker selection line fields are owned by `fresh-eyes.md`;
+       do not launch it through the named reviewer profiles, which preload the `review` skill and PR context.
+     - This lane is part of the phase-3 barrier: adversarial verification, live UI, findings audit, and judgment wait for it like any reviewer output.
 
-3. **Run conditional live UI verification.**
-   - After both reviewers finish, first apply a read-only controller parity filter to replacement/test-migration candidates:
+3. **Run adversarial verification on the merged candidate set.**
+   - After every launched reviewer lane returns, collapse same-root-cause/same-anchor duplicates into one merged candidate each (merge/dedup only; no new controller investigation).
+   - If the merged set is empty, skip this phase and report `Adversarial verification: skipped (no candidates)`.
+   - Launch one adversarial-verifier worker following `~/.agents/skills/agent-review/references/adversarial-verifier.md`.
+     Give it the merged candidates with lane attribution stripped, plus the diff scope, base ref, and mode.
+   - Model rule — the one lane where model identity matters: the `agent_review_models` registry assigns each harness a verifier model from a different family than its lane model (the pairing is reviewed by a human in the registry, not inferred at runtime), and the deployed `adversarial-verifier` profile carries it (Pi: the controller passes the rendered registry value per task).
+     Harnesses whose registry entry is empty/`inherit` (single-family surface) run the verifier on the lane model with the contract's refutation framing and report `families=same (degraded)`.
+     Degradation must be reported, never silent; do not skip the phase because cross-family is unavailable.
+   - Verdicts are evidence, not decisions: when recording each `confirmed` / `refuted` / `undecidable (needs <check>)` in the verification ledger, check that a `refuted` verdict's evidence addresses the candidate's actual claim; record it as `undecidable` otherwise.
+     "Non-refuted" downstream means not validly refuted after that check.
+   - This phase is blocking before live UI so refuted candidates do not trigger runtime verification.
+
+4. **Run conditional live UI verification.**
+   - After adversarial verification returns (or is skipped with no candidates), first apply a read-only controller parity filter to replacement/test-migration candidates:
      - apply the Replacement/Migration Parity Gate from `judging_core.md` to replacement/test-migration candidates
      - drop candidates classified as `preserved_limitation` or `prose_drift`
      - do not treat test-only UI code as live-UI applicability by itself
-   - Run `live-ui-review` when changed paths or any kept candidate touch UI/runtime behavior and runtime evidence is applicable.
+   - Run `live-ui-review` when changed paths or any non-refuted candidate touch UI/runtime behavior and runtime evidence is applicable.
      For replacement/test-migration candidates, only `parity_gap`, `new_regression`, and `scope_expansion` can be kept candidates for this trigger.
    - A deterministic, unit, integration, or other-layer proof does NOT discharge a live-UI trigger when the runtime is startable.
      Examples include a resolution/compile harness, a passing test, or a static trace;
@@ -327,21 +352,21 @@ no `semantic_code_search`, symbol analysis, code-chunk reads, broad code investi
      That case is the runtime-start rung, not a terminal blocker; have the runtime started and rerun rather than surfacing it as remaining uncertainty.
    - A read-only/Ask-mode Playwriter block is a valid blocker to surface.
 
-4. **Run findings audit on candidate findings.**
-   - Run this phase only after the PR necessity gate, both reviewer outputs, and the live UI result or explicit live-UI skip reason are available.
-   - Always audit kept reviewer findings, worker-reported `verification_needed`, live UI evidence/artifacts/blockers or skip reason, and kept PR necessity draft concerns.
+5. **Run findings audit on candidate findings.**
+   - Run this phase only after the PR necessity gate, every launched reviewer-lane output (fresh-eyes included when launched), the adversarial verification verdicts or skip status, and the live UI result or explicit live-UI skip reason are available.
+   - Always audit kept reviewer findings (fresh-eyes clarity candidates included), adversarial verification verdicts, worker-reported `verification_needed`, live UI evidence/artifacts/blockers or skip reason, and kept PR necessity draft concerns.
      Include only PR necessity concerns kept after the greenlight gate.
    - Maintain a verification ledger for every worker-reported `verification_needed` and every live UI / PR necessity blocker that can affect keep/drop/action.
      The findings audit may recommend dispositions, but it must not erase a ledger item by assuming one branch of an unresolved fork.
-   - If both reviewer lanes report the same or overlapping root cause, treat that as a merge/deduplication task, not as evidence that the issue is unnecessary.
+   - If two or more reviewer lanes report the same or overlapping root cause, treat that as a merge/deduplication task, not as evidence that the issue is unnecessary.
      Collapse duplicates into one candidate and keep verifying/judging it unless a hard drop rule below is proven.
    - Inline the audit in the controller when the remaining set is trivial:
      - no candidate findings, or
-     - one straightforward evidence-backed finding with no model disagreement, no live UI blocker, no PR-necessity concern kept after greenlight, and no fix diff to audit.
+     - one straightforward evidence-backed finding with no lane disagreement, no live UI blocker, no PR-necessity concern kept after greenlight, and no fix diff to audit.
    - Delegate to `findings-auditor` when the remaining set is non-trivial:
      - two or more candidate findings
      - any HIGH/CRITICAL candidate
-     - model disagreement or likely duplication
+     - lane disagreement (including finder-vs-verifier disagreement) or likely duplication
      - any worker-reported `verification_needed` required to decide whether to keep or drop a candidate
      - any PR necessity concern kept after greenlight
      - live UI comparison/blocker evidence or screenshot handoff needed to decide whether to keep or drop a candidate
@@ -357,15 +382,17 @@ no `semantic_code_search`, symbol analysis, code-chunk reads, broad code investi
    - This is still investigation, not a decision, even when inlined in the controller.
    - If inlined, still report the audit result in the final output as `Findings audit: inline ...`.
    - For fix-capable own/self-review flows, this pre-action audit does not replace the normal post-review stage over the actual fix diff after fixes are applied.
-5. **Aggregate.**
-   Combine `pr-necessity-auditor` greenlight/skip status, GPT reviewer output, Opus reviewer output, the verification ledger, live UI evidence/status/artifacts, and the findings audit result.
-6. **Judge in the controller.**
+6. **Aggregate.**
+   Combine `pr-necessity-auditor` greenlight/skip status, each angle lane's output, fresh-eyes output or its skip reason, the adversarial verification verdicts and family status, the verification ledger, live UI evidence/status/artifacts, and the findings audit result.
+7. **Judge in the controller.**
    - Apply mode-correct reconciliation:
      - all modes: collapse duplicate worker findings, apply the severity model, and keep findings that are implementation-verified, not covered by existing evidence, and not dropped by the parity/deduplication filters.
        If a candidate is not yet implementation-verified because verification was unsafe, mutating, or required a shared/exclusive resource, carry its `verification_needed` in the ledger instead of dropping it.
      - PR modes: apply `pr_common.md` Deduplication + Truth Filter, Existing Pending Review Reconciliation, CI Coverage Gate, and PR Necessity + Correctly-Open Audit classifications
      - local-changes mode: do not apply PR-thread deduplication or PR CI coverage exemptions;
        judge against the staged/unstaged/range scope in the packet
+   - Judge fresh-eyes clarity candidates with full context, with one guard: a PR body, commit message, or thread that explains the confusing code does not refute the finding — the lane's premise is that the code alone failed to carry that context.
+     Use the context to choose the fix (why-comment, rename, extraction), not to drop the finding. Clarity findings cap at MEDIUM.
    - For PR modes, read any current-account pending review and already-submitted current-account review comments/replies before drafting payloads.
      Merge kept pending findings with kept new findings into one final draft; drop stale pending findings with evidence;
      block rather than producing competing or contradictory payloads.
@@ -376,9 +403,10 @@ no `semantic_code_search`, symbol analysis, code-chunk reads, broad code investi
      - unreachable-path findings
      - PR-mode findings covered by verified PR CI or existing PR artifacts
      - candidates classified as `preserved_limitation` or `prose_drift` by the Replacement/Migration Parity Gate
+     - candidates refuted by the adversarial verifier, after the controller checks the refutation's source/API/runtime evidence addresses the candidate's actual claim
      - findings that only a worker asserted without evidence and without a decisive `verification_needed` path
      - PR necessity claims that rely only on ambient precedent without proving the current PR's actual diff and directly referenced artifacts
-   - A findings-auditor drop recommendation is advisory.
+   - A findings-auditor drop recommendation or an adversarial-verifier verdict is advisory.
      The controller must name the hard drop reason and evidence; otherwise keep the finding, merge it with a duplicate, run the needed verification, or block with explicit uncertainty.
    - For every verification-ledger item, record one disposition:
      - `resolved`: evidence makes it irrelevant or answers the fork,
@@ -389,7 +417,7 @@ no `semantic_code_search`, symbol analysis, code-chunk reads, broad code investi
      prefer native search/listing tools for first-pass broad searches, and use shell `rg` only with a path, glob, or exact-symbol scope.
    - A `verification_needed` that can flip a kept/dropped finding, fix decision, or draft payload is blocking until it is `resolved` or `run`.
      Do not let findings audit or stale PR-intent assumptions convert it to `not needed`.
-7. **Act only after judgment.**
+8. **Act only after judgment.**
    Branch strictly on `fix_authorized` and the mode recorded in step 1; never infer fix authorization from the fact that the change is merely checked out locally (a locally-checked-out other-authored branch with no assignee/takeover signal is still `fix_authorized: no`).
    - Do not act while a blocking verification-ledger item or intent dependency remains unresolved.
      Either resolve it first, or stop/draft with explicit remaining uncertainty according to the mode.
@@ -399,7 +427,7 @@ no `semantic_code_search`, symbol analysis, code-chunk reads, broad code investi
      If a verified domain overlay applies to the target repo/org (e.g. `~/.agents/skills/elastic-domain/SKILL.md` for `elastic/kibana`), load it too for repo-specific wording/footer rules before drafting.
    - `fix_authorized: yes` (own / assigned / adopted PR, or local-changes self flow):
      - apply the selected fixes in the working tree; no separate "fix" keyword is required
-     - then run the step-9 post-act verification phase (an adopted/assigned PR is a change-producing flow;
+     - then run the step-10 post-act verification phase (an adopted/assigned PR is a change-producing flow;
        do not skip the fix-diff Post-Review Stage just because the PR was originally other-authored)
      - for PR-fix/thread modes, still draft thread replies/suggestions per `pr_fix.md` for anything not fixed in code;
        human-visible publishing (commit/push/post/resolve) stays on its own explicit-approval gate
@@ -408,8 +436,8 @@ no `semantic_code_search`, symbol analysis, code-chunk reads, broad code investi
      - do not edit code
      - do not run fixes
      - do not post
-8. **Post-act verification (only when the working tree was edited this flow).**
-   This phase is mandatory after any applied fix in step 8, including self-review and adopted/assigned PR takeovers.
+9. **Post-act verification (only when the working tree was edited this flow).**
+   This phase is mandatory after any applied fix in step 9, including self-review and adopted/assigned PR takeovers.
    Do not declare the change done, and do not treat the final summary as a substitute for this phase.
    Because the working tree was edited, `fix_authorized` is `yes`, which carries full verification-mutation permission:
    bootstrap/install (`yarn kbn bootstrap` and equivalents), code generation, SCSI, `/tmp` repros, and re-running gates are all in-bounds here.
@@ -424,7 +452,7 @@ no `semantic_code_search`, symbol analysis, code-chunk reads, broad code investi
        Never fold an un-run gate into a closing summary as if verification were complete.
    - **Fix-diff Post-Review Stage (the four dimensions).**
      Run the Post-Review Stage in `~/.agents/skills/review/references/judging_core.md` with the **fix diff** as the subject (this flow's `git diff` / staged set / commit range), never the original PR diff.
-     This is the controller's own work; the pre-action findings audit in step 5 audits candidate findings and does NOT replace it.
+     This is the controller's own work; the pre-action findings audit in step 6 audits candidate findings and does NOT replace it.
      Apply the four canonical dimensions by name — redundancy, verbosity, semantic + logical duplication, gaps —
      anchor each finding in an exact location, resolve each in the working tree, and re-run the quality gates if the cleanup touched code.
    - **Resolve carried `verification_needed`.**
@@ -450,7 +478,7 @@ Full audit scope (author intent, correctly-open checks, duplicate/superseding-wo
 
 ## Live UI review
 
-`live-ui-review` is the conditional UI/runtime verifier from orchestration step 3:
+`live-ui-review` is the conditional UI/runtime verifier from orchestration step 5:
 applicability trigger, mode boundary, target-packet selection, worktree identity, and required runtime config are owned there.
 Full worker-facing procedure (preflight, readiness stability guard, Playwriter comparison, runtime-start rung, data/setup ladder, hard constraints, exact return shape) lives in `~/.agents/skills/agent-review/references/live-ui-review.md`.
 
@@ -483,8 +511,10 @@ Return:
 
 - `Base context:` line from the review methodology.
 - Worker selection summary for each delegated phase, including any fallback reason.
+- Reviewer roster: the angle lanes launched and the scope-level evidence for each selection.
+- Adversarial verification: families used (`<session-family> vs <verifier-family>` or `same (degraded)`), verdict counts (confirmed/refuted/undecidable), or `skipped (no candidates)`.
 - PR necessity audit summary: report greenlight, merge-readiness/status blockers or uncertainty, skipped-with-reason, or blocker status.
-- Investigation summary: what each reviewer, live UI reviewer, and findings audit found, including whether the findings audit was inline or delegated.
+- Investigation summary: what each reviewer found (fresh-eyes lane included, or its skip reason), what the live UI reviewer found, and what the findings audit found, including whether the audit was inline or delegated.
 - Serial verification: any `verification_needed` returned by reviewer lanes and whether the controller ran, skipped, or blocked on it.
 - Intent dependency audit: resolved / not applicable / blocked, with evidence.
 - Verification ledger: every `verification_needed` or blocker that affected keep/drop/action and its disposition.

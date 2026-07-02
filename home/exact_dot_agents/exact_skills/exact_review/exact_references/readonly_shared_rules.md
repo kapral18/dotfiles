@@ -11,6 +11,9 @@ It covers:
 - Deletion-Safety
 - Replacement/Migration Parity
 - Historical-Rationale
+- Product-Flow Lens
+- Signal-Quality Gate
+- Systemic-Risk Checks
 - Coverage Checklist
 - Severity
 - Post-Review Lens + Stage

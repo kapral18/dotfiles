@@ -166,6 +166,56 @@ Understand the origin before the removal is final.
   - if it removes still-needed behavior, stop
   - that is not a safe deletion
 
+## Product-Flow Lens (Run When The Diff Touches User-Facing Flows)
+
+Trigger: the diff changes UI components, routes, user-state management, or API handlers that serve a UI.
+
+Walk each affected user path as finding generation: trigger -> loading -> result (success or error).
+
+- **Flow completeness:** the user can finish the workflow end-to-end; no path dead-ends without a next action or feedback.
+- **Action acknowledgment:** every user-initiated action has loading, success, empty, and error states handled.
+- **State consistency:** no stale data after an action, no optimistic update that never reconciles; refresh preserves the expected state.
+- **Error experience:** failures produce a meaningful message; the user can recover without losing work;
+  transient errors (network, timeout) are distinguishable from permanent ones.
+- **Behavior expectations:** no surprises for a user who knows the existing product;
+  labels, button text, and placeholders accurately describe what happens; new behavior is discoverable.
+- **Data visibility:** the user sees the expected data after an action; pagination, sorting, and filtering stay consistent after the change.
+
+These heuristics generate candidates; they do not verify them.
+Verify per the Truth Validation Framework: when a runtime check is available, a static walkthrough of a user path is a hypothesis, not proof.
+A broken or dead-end user path is a user-visible bug (HIGH under the severity definitions below).
+
+## Signal-Quality Gate (Run On Alerting/Monitoring/Analytics Logic)
+
+Trigger: the diff changes alerting rules, monitoring queries, thresholds, statistical aggregations, telemetry pipelines, or prompts that generate such queries.
+
+Judge the signal, not just the code:
+
+- **False positives:** under what conditions does this fire when nothing is wrong (noise, baseline shifts, seasonality)?
+- **False negatives:** under what conditions does it stay silent when something is wrong (slow-burn failures, partial failures such as one host out of N)?
+- **Statistical soundness:** comparisons are valid (no means without variance, no tiny samples), rate denominators are right, percentiles handle sparse data, aggregation windows match the data's cadence, time buckets align.
+- **Actionability:** a fired signal gives the responder enough context to start triage;
+  correlated signals do not storm from a single root cause.
+
+Prefer executing the query/rule against representative data when a safe runtime exists;
+otherwise label the analysis a hypothesis per the Truth Validation Framework.
+Query-language and product specifics (syntax validity, field mappings, scale limits) are domain policy:
+load the verified domain overlay for the target repo/org when one applies; do not guess them generically.
+
+## Systemic-Risk Checks (Run When The Diff Crosses Module Or Deploy Boundaries)
+
+Trigger: the diff changes public API contracts, persisted data, cross-module/package imports, or behavior that ships through a staged/rolling rollout.
+
+- **Rolling-deploy coexistence:** old and new code run against the same data/API mid-deploy;
+  verify both directions survive the version boundary.
+- **Rollout gating:** when the repo's convention or the stated intent expects incremental rollout, verify the change is gated the way that convention requires.
+  This check verifies expected gating; it never licenses adding unrequested flags (SOP `2.0`).
+- **Circular dependencies:** the change does not introduce a dependency cycle between packages/modules.
+- **Blast radius:** state what breaks if this change is wrong, and pair each identified risk with a concrete mitigation.
+
+Deletions and replacements stay owned by the Deletion-Safety Audit and the Replacement/Migration Parity Gate;
+this section covers the deploy/coupling risk they do not.
+
 ## Coverage Checklist (Do Not Skip)
 
 On PR surfaces, first apply the CI Coverage Gate (`pr_common.md`).

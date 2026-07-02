@@ -1,6 +1,6 @@
 ---
 name: review
-description: "Use when reviewing local changes or PRs, continuing a review, addressing review threads, or rechecking PR-related changes."
+description: "Use when reviewing local changes or PRs, continuing a review, addressing review threads, rechecking PR-related changes, or reviewing a plan/design document before implementation."
 ---
 
 # Review Router
@@ -14,6 +14,7 @@ Contract:
   - `~/.agents/skills/review/references/local_changes.md`
   - `~/.agents/skills/review/references/pr_review.md`
   - `~/.agents/skills/review/references/pr_fix.md`
+  - `~/.agents/skills/review/references/plan_review.md`
 - Before entering any mode, load once:
   - `~/.agents/skills/review/references/judging_core.md`
   - `~/.agents/skills/review/references/shared_rules.md`
@@ -57,6 +58,8 @@ Allowed values:
 - `self`
 - `other`
 - `unknown`
+
+Exception: plan review mode has no code target. Record `authorship: n/a`, skip the git/`gh` probes below, and produce feedback only.
 
 This input gates whether the review may edit code. Resolve it in the local/branch path too.
 Never default to `self` just because the change is checked out locally.
@@ -131,12 +134,24 @@ Pick exactly one mode. If ambiguous, ask one fork-closing question and state a d
 - This mode verifies and fixes: findings are resolved in the working tree immediately, not drafted as comments.
 - Then open: `~/.agents/skills/review/references/local_changes.md`
 
+### Mode: Plan review (before implementation)
+
+- Use when the user asks to review a plan, design doc, implementation proposal, or RFC —
+  a document, issue body, or pasted text rather than a diff.
+- Example phrases:
+  - "review this plan"
+  - "check my implementation plan"
+  - "poke holes in this design"
+- Authorship and fix gating do not apply (no code target); the output is plan feedback.
+- Then open: `~/.agents/skills/review/references/plan_review.md`
+
 ## Disambiguation (If Still Unclear)
 
 If the user's intent is still unclear, resolve via local context (do not guess):
 
+- If the subject is a document, issue body, or pasted text rather than a code target: plan review mode.
 - If not in a git repo:
-  - Ask: "Is this a GitHub PR review (send URL/number), or a local repo changes review?"
+  - Ask: "Is this a GitHub PR review (send URL/number), a local repo changes review, or a plan/design document review?"
 - If in a git repo:
   - Run `git status --porcelain=v1 -b` (read-only, do not ask to proceed).
   - Independently check both:

@@ -1,0 +1,18 @@
+---
+name: fresh-eyes
+description: Blind zero-context clarity lane for one review-controller fan-out; returns clarity findings only.
+tools: read, grep, find, ls, bash
+systemPromptMode: replace
+inheritProjectContext: true
+inheritSkills: false
+---
+
+{{ include "dot_config/exact_tmux/agent_prompts/prefix.txt" }}
+
+Apply the discipline above before following the role-specific instructions below.
+
+# Fresh-Eyes Worker
+
+Load and follow `~/.agents/skills/agent-review/references/fresh-eyes.md`.
+
+Pi note: this profile deliberately carries no skills — the blind lane must not load the `review` skill or any PR context. Pi launches subagents only through named profiles, so this thin shim exists where other harnesses use a generic task.

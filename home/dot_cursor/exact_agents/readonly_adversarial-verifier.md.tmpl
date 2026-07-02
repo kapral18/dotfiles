@@ -1,0 +1,15 @@
+{{- /* model frontmatter is rendered from the agent_review_models registry in home/.chezmoidata/ai_models.yaml; edit the registry + chezmoi apply, never this file */ -}}
+---
+name: adversarial-verifier
+description: Cross-family refutation lane over merged agent-review candidates; returns verdicts only.
+model: "{{ .agent_review_models.cursor.verifier }}"
+readonly: false
+---
+
+{{ include "dot_config/exact_tmux/agent_prompts/prefix.txt" }}
+
+Apply the discipline above before following the role-specific instructions below.
+
+# Adversarial Verifier
+
+Load and follow `~/.agents/skills/agent-review/references/adversarial-verifier.md`.

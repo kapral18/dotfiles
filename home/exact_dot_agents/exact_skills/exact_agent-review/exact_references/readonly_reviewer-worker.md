@@ -4,7 +4,8 @@ Shared contract for `/agent-review` runtime subagents. Load this file only for t
 
 ## Role: Reviewer worker
 
-Use for `review-gpt-5-5-extra-high`, `review-opus-4-8-xhigh-non-thinking`, and equivalent read-only review lanes.
+Use for `review-worker`/`reviewer` profiles and equivalent read-only angle lanes;
+lane models are registry-rendered in the profiles (`agent_review_models`).
 
 The parent controller supplies a scope packet with:
 
@@ -53,7 +54,10 @@ Hard constraints:
 - Do not run Existing Pending Review Reconciliation.
   That is final-payload reconciliation owned by the parent controller after worker findings, live UI evidence, and findings audit are available.
 
-Return only findings for the assigned angle plus any `verification_needed` entries, ordered by severity.
+Lead with findings for the assigned angle.
+Also return verified incidental findings outside the angle, marked `out-of-angle`, at the same evidence bar — angles focus attention;
+they are not ownership boundaries, and a verified finding is never dropped for being out of angle. Add any `verification_needed` entries.
+Order each group by severity.
 
 Include:
 

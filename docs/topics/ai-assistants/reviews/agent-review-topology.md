@@ -7,7 +7,7 @@ title: Agent-review topology
 
 `/agent-review` is the orchestration entrypoint. Cursor, Copilot, Claude, Codex, and Gemini bridge it through their native isolation mechanisms where available:
 
-![Agent-review phase order: route, blocking PR necessity, parallel reviewers, live UI, findings audit, controller judgment, and gated action](../assets/agent-review-flow.svg)
+![Agent-review phase order: route, blocking PR necessity, parallel registry-model angle lanes, cross-family adversarial verification, live UI, findings audit, controller judgment, and gated action](../assets/agent-review-flow.svg)
 
 The key invariant is phase ownership: workers investigate; the controller judges and performs any gated side effect.
 
@@ -15,16 +15,17 @@ The key invariant is phase ownership: workers investigate; the controller judges
 | --------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | Route + scope         | user invokes review flow                                              | mode, authorship, target packet, constraints, intent dependencies                      | authorship/scope/intent dependency cannot be resolved safely                           |
 | PR necessity / intent | route says PR + other/unknown author, or local changes need PR intent | whether the PR is worth implementation review and whether intent artifacts are current | PR is blocked, superseded, unclear, not needed, incorrectly open, or intent is unclear |
-| Reviewer fan-out      | PR necessity/intent greenlight or non-applicable skip                 | read-only candidate findings and `verification_needed`                                 | both reviewers finish; individual blockers become controller input                     |
-| Live UI               | reviewers finish and UI/runtime is relevant                           | UI reality, screenshot handoff, target/runtime/data blockers                           | target packet cannot be loaded or runtime is blocked                                   |
-| Findings audit        | reviewer + live UI outputs exist                                      | actionability, duplication, gaps, overengineering, verification-ledger audit           | audit finds no actionable surviving finding or reports blocker                         |
+| Reviewer fan-out      | PR necessity/intent greenlight or non-applicable skip                 | read-only candidate findings and `verification_needed`                                 | every launched lane finishes; individual blockers become controller input              |
+| Adversarial verify    | every reviewer lane returned and merged candidates exist              | per-candidate confirmed/refuted/undecidable verdicts on a cross-family model           | merged candidate set is empty (phase reports skipped)                                  |
+| Live UI               | adversarial verification returns and UI/runtime is relevant           | UI reality, screenshot handoff, target/runtime/data blockers                           | target packet cannot be loaded or runtime is blocked                                   |
+| Findings audit        | reviewer + verifier + live UI outputs exist                           | actionability, duplication, gaps, overengineering, verification-ledger audit           | audit finds no actionable surviving finding or reports blocker                         |
 | Controller judgment   | all investigation phases are complete                                 | keep/drop, serial verification ledger, PR pending-review reconciliation                | unsupported or conflicting payload would be produced                                   |
 | Act                   | judgment is complete and blocking ledger items are resolved           | fixes, drafts, gated posting                                                           | human-visible gate or quality gate blocks                                              |
 | Post-act verification | the working tree was edited this flow                                 | quality gates, fix-diff four-dimension stage, carried `verification_needed`            | setup itself fails or the toolchain is genuinely unavailable                           |
 
 1. The controller resolves the route and scope packet: PR/local mode, role, target diff/PR/thread set, base branch, user constraints, expected output, and any intent dependencies needed for judgment.
 2. For other-authored or unknown-author PRs, `pr-necessity-auditor` runs first and blocks fan-out until it greenlights implementation review. It also runs as an intent audit for local changes attached to an assigned/adopted PR when PR body, discussion, Slack, issues, or history are needed to judge the local diff.
-3. After any required PR necessity greenlight, two read-only reviewer workers run in parallel when the harness supports it.
+3. After any required PR necessity greenlight, the controller builds an **angle roster** from scope-level evidence (changed paths, diff stats — never code reading) and launches two to five read-only reviewer lanes in parallel, all on the **registry lane model** for the harness: correctness/regressions always, plus each implicated angle (tests, types/API, security, performance, deletion-safety, state-machine, product flow, observability, simplicity). Angles focus attention but are not ownership boundaries — verified out-of-angle findings return marked, never dropped. A **blind fresh-eyes clarity lane** joins the same batch for PR-review and local-changes modes when the diff touches human-maintained code: it receives only the diff scope (no PR body, commit messages, issue text, or prior findings — including on re-runs), loads none of the review methodology, and returns clarity-only findings capped at MEDIUM. Context that explains confusing code does not refute a fresh-eyes finding; it confirms the context lives in the wrong place, and the controller uses it to pick the fix.
 
 PR necessity checks:
 
@@ -48,15 +49,19 @@ The controller tracks those entries in a verification ledger. A ledger item that
 
 Reviewer lane mapping:
 
-| Runtime        | Worker lanes                                                         |
-| -------------- | -------------------------------------------------------------------- |
-| Cursor/Copilot | GPT and Opus                                                         |
-| Claude         | `reviewer` twice through `Task` with Claude model overrides          |
-| Codex          | `spawn_agent` roles; two `review-worker` agents with distinct angles |
-| Gemini         | `review-gemini-pro` and `review-gemini-flash`                        |
+| Runtime        | Worker lanes                                                                        |
+| -------------- | ----------------------------------------------------------------------------------- |
+| Cursor/Copilot | `review-worker` once per angle (registry lane model)                                |
+| Claude         | `reviewer` once per angle through `Task` with `model: inherit`                      |
+| Codex          | `spawn_agent` `review-worker` agents, one per angle (registry: config default)      |
+| Gemini         | `review-worker` once per angle (registry: config default)                           |
+| any (blind)    | fresh-eyes via a generic read-only task (Pi: thin `fresh-eyes` profile)             |
+| verify (cross) | `adversarial-verifier` on the registry verifier model (different family than lanes) |
+
+After every lane returns, the controller merges duplicate candidates and runs **adversarial verification**: one cross-family worker that receives only the merged candidates (lane attribution stripped) and tries to refute each one — claim truth, reachability, severity, proposed fix, already-covered. Verdicts (`confirmed`/`refuted`/`undecidable`) feed the verification ledger; a refutation becomes a hard drop reason only after the controller checks its evidence addresses the candidate's actual claim. On single-family harnesses (Claude, Codex, Gemini) the phase runs on the lane model with refutation framing and reports `families=same (degraded)` — reported, never silent.
 
 1. `live-ui-review` checks applicable UI/runtime candidates with Playwriter against a controller-supplied target packet.
-2. The findings audit runs after live UI before any action. The controller audits inline for trivial sets (zero or one straightforward finding with no disagreement/blocker/fix diff) and delegates to `findings-auditor` for non-trivial sets, including material `verification_needed`. It flags redundancy, verbosity, semantic + logical duplication, gaps, actionability problems, overengineered proposed fixes, and verification-ledger disposition problems. When both reviewer lanes report the same root cause, the audit should merge/dedupe it into one candidate unless hard evidence proves a drop reason.
+2. The findings audit runs after live UI before any action. The controller audits inline for trivial sets (zero or one straightforward finding with no disagreement/blocker/fix diff) and delegates to `findings-auditor` for non-trivial sets, including material `verification_needed`. It flags redundancy, verbosity, semantic + logical duplication, gaps, actionability problems, overengineered proposed fixes, and verification-ledger disposition problems. When two or more reviewer lanes report the same root cause, the audit should merge/dedupe it into one candidate unless hard evidence proves a drop reason.
 3. The controller aggregates the investigation outputs, then judges what to fix or draft through mode-correct review rules. For each ledger item, it either resolves it with evidence, runs the check serially when needed for judgment, marks it not needed with evidence, or reports the exact blocker/uncertainty. Drop decisions need a source/API/runtime-backed hard reason; otherwise the controller keeps the finding, merges it with a duplicate, runs needed verification, or blocks with explicit uncertainty. PR modes use PR dedup, PR artifact truth filtering, the PR necessity/correctly-open greenlight, and PR CI coverage gates; local changes are judged against the staged/unstaged/range scope without PR-thread or PR-CI exemptions unless a PR-intent dependency is required for the local diff.
 4. Before final PR-mode drafting or posting, the controller reconciles against existing review feedback already authored by the current account: API `PENDING` reviews and draft comments, plus submitted review comments/replies from previous sessions. It merges still-valid pending feedback with net-new findings into one payload, drops stale pending findings, and blocks rather than producing conflicting or fragmented review comments. Only the controller acts.
 
@@ -73,17 +78,15 @@ For verified `elastic/kibana` targets, `elastic-domain` supplies Kibana targets,
 
 For UI-facing PR findings with screenshot evidence, the controller keeps image paths out of GitHub review bodies and reports a separate `UI evidence attachments:` handoff with local paths, descriptions, target branch/URL, and suggested comment placement.
 
-Runtime model names are not portable:
+Model policy (registry-driven, deterministic):
 
-| Runtime | Review lanes                                                    |
-| ------- | --------------------------------------------------------------- |
-| Cursor  | `gpt-5.5-extra-high` / `claude-opus-4-8-xhigh`                  |
-| Copilot | `gpt-5.5` / `claude-opus-4.8` plus `effortLevel: xhigh`         |
-| Claude  | `Task` reviewer lanes with Claude model overrides               |
-| Codex   | two-worker isolation and distinct angles, not exact Opus parity |
-| Gemini  | native subagents; main Gemini session remains controller        |
+| Lane                                       | Model                                                                                  |
+| ------------------------------------------ | -------------------------------------------------------------------------------------- |
+| angle lanes, fresh-eyes, auditors, live UI | `agent_review_models.<harness>.lanes` rendered into profile frontmatter                |
+| adversarial verifier                       | `agent_review_models.<harness>.verifier` — a different family than lanes, by review    |
+| verifier on single-family harnesses        | registry leaves it empty/inherit; runs on the lane model as `families=same (degraded)` |
 
-Cursor agents pin model frontmatter because omitted `model` inherits the parent/default model, which can be `composer-2.5-fast`.
+Every profile's `model` frontmatter is a chezmoi template over the single `agent_review_models` block in `ai_models.yaml` — updating a model is a one-line registry edit, and neither skills nor controllers steer models at runtime. The review's diversity comes from angles plus the cross-family verify pass; the registry keeps the family pairing a human decision instead of a launch-time inference.
 
 Controller responsibilities:
 

@@ -18,7 +18,7 @@ When drafting PR thread replies:
 
 ## Router behavior
 
-- The review router selects exactly one of three modes: local changes, PR review, or PR fix (address feedback). Shared rules and PR-common setup are loaded once by the router, not duplicated per mode.
+- The review router selects exactly one of four modes: local changes, PR review, PR fix (address feedback), or plan review (a design/plan document judged against codebase reality). Shared rules and PR-common setup are loaded once by the router, not duplicated per mode.
 - When both a dirty working tree and a current-branch PR exist, the router asks which target to review instead of silently forcing local review first.
 - GitHub posting stays outside read-only review mode until the user explicitly asks for a side effect.
 

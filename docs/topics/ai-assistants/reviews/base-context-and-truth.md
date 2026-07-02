@@ -40,14 +40,15 @@ Skill support:
 
 Review modes live under `~/.agents/skills/review/references/`:
 
-| File               | Owns                                                                                                                        |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------- |
-| `judging_core.md`  | truth validation, state-machine gate, deletion safety, historical rationale, coverage checklist, severity, post-review lens |
-| `shared_rules.md`  | PR/SCSI/GitHub delivery rules, base-context gate, pending-review semantics, posting boundary                                |
-| `pr_common.md`     | PR resolution, GitHub intake, ambient topic exploration, PR necessity/correctly-open audit, media evidence, anchoring       |
-| `local_changes.md` | local diff / branch-delta review                                                                                            |
-| `pr_review.md`     | initial or continued PR review                                                                                              |
-| `pr_fix.md`        | address reviewer feedback                                                                                                   |
+| File               | Owns                                                                                                                                                                                      |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `judging_core.md`  | truth validation, state-machine gate, deletion safety, historical rationale, product-flow lens, signal-quality gate, systemic-risk checks, coverage checklist, severity, post-review lens |
+| `shared_rules.md`  | PR/SCSI/GitHub delivery rules, base-context gate, pending-review semantics, posting boundary                                                                                              |
+| `pr_common.md`     | PR resolution, GitHub intake, ambient topic exploration, PR necessity/correctly-open audit, media evidence, anchoring                                                                     |
+| `local_changes.md` | local diff / branch-delta review                                                                                                                                                          |
+| `pr_review.md`     | initial or continued PR review                                                                                                                                                            |
+| `pr_fix.md`        | address reviewer feedback                                                                                                                                                                 |
+| `plan_review.md`   | plan/design-doc review against codebase reality before implementation                                                                                                                     |
 
 The PR/issue intake gate is deliberately exhaustive:
 

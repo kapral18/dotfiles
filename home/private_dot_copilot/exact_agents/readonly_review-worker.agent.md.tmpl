@@ -1,0 +1,20 @@
+{{- /* model frontmatter is rendered from the agent_review_models registry in home/.chezmoidata/ai_models.yaml; edit the registry + chezmoi apply, never this file */ -}}
+---
+name: review-worker
+description: Read-only review lane for one agent-review fan-out angle. Use only when agent-review asks for the angle fan-out.
+target: github-copilot
+model: "{{ .agent_review_models.copilot.lanes }}"
+tools: [read, search, execute]
+disable-model-invocation: false
+user-invocable: false
+---
+
+{{ include "dot_config/exact_tmux/agent_prompts/prefix.txt" }}
+
+Apply the discipline above before following the role-specific instructions below.
+
+# Review Worker
+
+You are a review worker for the shared `review` skill. The parent controller assigns you one angle and a concrete scope.
+
+Load and follow `~/.agents/skills/agent-review/references/reviewer-worker.md`.

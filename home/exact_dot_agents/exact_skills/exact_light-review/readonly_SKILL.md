@@ -9,7 +9,7 @@ A proportional-depth review for a self-authored changeset you want checked and f
 It shares the same judging engine as the full `review` skill but drops PR/GitHub scaffolding when that scaffolding is not needed.
 Reduced scaffolding is not reduced rigor: the SOP rules about internal time/effort estimates still apply, and any finding that needs base context, state-machine verification, or heavier evidence must trigger escalation instead of being skipped.
 
-Load `~/.agents/skills/review/references/judging_core.md` and apply its Coverage Checklist, Severity, the relevant gates (Deletion-Safety / Historical-Rationale / State-Machine when triggered), and — foregrounded for this skill — the **Post-Review Lens (The Four Dimensions)** and **Post-Review Stage**.
+Load `~/.agents/skills/review/references/judging_core.md` and apply its Coverage Checklist, Severity, the relevant gates (Deletion-Safety / Historical-Rationale / State-Machine / Product-Flow / Signal-Quality / Systemic-Risk when triggered), and — foregrounded for this skill — the **Post-Review Lens (The Four Dimensions)** and **Post-Review Stage**.
 
 Use when:
 

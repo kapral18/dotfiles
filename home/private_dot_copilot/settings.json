@@ -8,32 +8,26 @@
   "subagents": {
     "agents": {
       "agent-review": {
-        "model": "gpt-5.5",
         "effortLevel": "xhigh",
         "contextTier": "long_context"
       },
-      "review-gpt-5-5-extra-high": {
-        "model": "gpt-5.5",
+      "review-worker": {
         "effortLevel": "xhigh",
         "contextTier": "long_context"
       },
-      "review-opus-4-8-xhigh-non-thinking": {
-        "model": "claude-opus-4.8",
+      "adversarial-verifier": {
         "effortLevel": "xhigh",
         "contextTier": "long_context"
       },
       "findings-auditor": {
-        "model": "gpt-5.5",
         "effortLevel": "xhigh",
         "contextTier": "long_context"
       },
       "pr-necessity-auditor": {
-        "model": "gpt-5.5",
         "effortLevel": "xhigh",
         "contextTier": "long_context"
       },
       "live-ui-review": {
-        "model": "gpt-5.5",
         "effortLevel": "xhigh",
         "contextTier": "long_context"
       }

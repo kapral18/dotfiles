@@ -4,8 +4,8 @@ Shared contract for `/agent-review` runtime subagents. Load this file only for t
 
 ## Role: Findings auditor
 
-Use only when the controller delegates the findings audit under `agent-review/SKILL.md` step 5 before controller action.
-That means the blocking PR necessity gate, reviewer workers, and live UI phase or explicit live-UI skip have already finished.
+Use only when the controller delegates the findings audit under `agent-review/SKILL.md` step 6 before controller action.
+That means the blocking PR necessity gate, reviewer workers, adversarial verification (verdicts or skip status), and live UI phase or explicit live-UI skip have already finished.
 
 The subject is:
 
@@ -32,7 +32,7 @@ Do not run:
 Scope:
 
 - Audit the combined candidate findings and `verification_needed` entries from reviewer/live-UI phases.
-  Sources include `review-gpt-5-5-extra-high`, `review-opus-4-8-xhigh-non-thinking`, `live-ui-review`, any PR necessity draft concerns the parent kept after greenlight, and any parent-supplied current-account pending-review context.
+  Sources include the angle lanes, the fresh-eyes clarity lane, the adversarial-verifier verdicts, `live-ui-review`, any PR necessity draft concerns the parent kept after greenlight, and any parent-supplied current-account pending-review context.
 - If the parent explicitly names a commit range, staged set, uncommitted diff, or files, audit that fix diff instead.
 
 Hard constraints:
@@ -52,7 +52,7 @@ Hard constraints:
 - Treat parent-supplied `verification_needed` and blocker entries as sticky ledger items.
   You may recommend `resolved`, `run`, `blocked`, or `not needed with evidence`.
   Do not erase an item or assume one branch of an unresolved intent/data fork.
-- Treat same-root-cause findings from both reviewer lanes as a merge/deduplication problem, not a reason to discard the issue as unnecessary.
+- Treat same-root-cause findings from two or more reviewer lanes as a merge/deduplication problem, not a reason to discard the issue as unnecessary.
   Recommend one merged candidate unless source/API/runtime evidence proves a hard drop reason.
 - Redundancy, verbosity, and semantic + logical duplication are payload-quality findings.
   They may justify merging, rewording, suppressing a duplicate copy, or asking the controller to verify an unresolved fork;

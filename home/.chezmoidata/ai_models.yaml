@@ -106,3 +106,28 @@ litellm_models:
       cacheWrite: 0
 
 azure_models:
+
+# Review-lane model registry: the single source for /agent-review model selection (C2: declare once, generate per tool).
+# Profile frontmatter is TEMPLATED from this block; edit here and `chezmoi apply` — never hand-edit model ids in profiles.
+# lanes = generation angle lanes + auditors + controller. verifier = cross-family adversarial verifier
+# (must be a different model family than lanes; pairing is reviewed by a human here, not inferred at runtime).
+# Empty value = the profile omits the field (harness config default). inherit = harness-native parent inheritance.
+agent_review_models:
+  cursor:
+    lanes: "gpt-5.5-extra-high" # deliberate pin: Cursor omitted-model inherits, and the CLI default is composer-2.5-fast
+    verifier: "claude-opus-4-8-xhigh"
+  copilot:
+    lanes: "gpt-5.5"
+    verifier: "claude-opus-4.8"
+  claude:
+    lanes: "inherit" # Claude sessions are launched on a deliberate model; single-family => verifier degraded
+    verifier: "inherit"
+  codex:
+    lanes: "" # config default; single-family => verifier degraded
+    verifier: ""
+  gemini:
+    lanes: "" # config default; single-family => verifier degraded
+    verifier: ""
+  pi:
+    lanes: "" # pi worker default (config-owned)
+    verifier: "openrouter/openai/gpt-5.5:xhigh" # cross-family vs the anthropic default lanes

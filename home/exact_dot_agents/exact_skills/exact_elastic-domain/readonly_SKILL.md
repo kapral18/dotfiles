@@ -104,6 +104,11 @@ Copy-paste PR body templates (Default/Bugfix/Chore/Feature) and the Kibana issue
 - Kibana labels/backports/version targeting are propose-only through `kibana-labels-propose` unless the user explicitly approves a GitHub mutation.
 - Kibana ownership/reviewer targeting is propose-only through `kibana-management-ownership`;
   side effects go through the `github` skill after approval.
+- When the review Signal-Quality Gate (`~/.agents/skills/review/references/judging_core.md`) triggers on Elastic observability surfaces, this overlay owns the query/product specifics:
+  - ES|QL / Query DSL queries must be syntactically and semantically valid for the target stack version
+  - field references must match the expected mapping types
+  - aggregation bucket sizes must fit the expected data volume
+  - flag queries that can time out or OOM on large datasets
 - Known Elastic bot logins for bot-thread classification: `elasticmachine`, `kibanamachine`, `github-actions[bot]`.
 
 ## Git commit attribution

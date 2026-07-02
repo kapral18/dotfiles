@@ -2,7 +2,7 @@
 name: live-ui-review
 description: Read-only live UI verifier for /agent-review UI/runtime candidate findings.
 target: github-copilot
-model: gpt-5.5
+model: "{{ .agent_review_models.copilot.lanes }}"
 tools: [read, search, execute, web]
 disable-model-invocation: false
 user-invocable: false

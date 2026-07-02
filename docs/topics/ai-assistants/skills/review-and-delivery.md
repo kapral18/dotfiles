@@ -9,11 +9,11 @@ These skills govern review methodology, GitHub side effects, and human-readable 
 
 ## `review`
 
-| Field    | Value                                                                          |
-| -------- | ------------------------------------------------------------------------------ |
-| Use when | reviewing local changes or PRs, continuing reviews, addressing review threads  |
-| Source   | [`exact_review`](../../../../home/exact_dot_agents/exact_skills/exact_review/) |
-| Related  | [Review workflow](../reviews/index.md)                                         |
+| Field    | Value                                                                                            |
+| -------- | ------------------------------------------------------------------------------------------------ |
+| Use when | reviewing local changes, PRs, or plan/design docs; continuing reviews; addressing review threads |
+| Source   | [`exact_review`](../../../../home/exact_dot_agents/exact_skills/exact_review/)                   |
+| Related  | [Review workflow](../reviews/index.md)                                                           |
 
 ## `agent-review`
 
