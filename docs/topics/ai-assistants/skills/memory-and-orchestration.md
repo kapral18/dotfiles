@@ -39,6 +39,8 @@ These skills coordinate long-running agent work, durable learning, and user-inte
 | Source   | [`exact_spec`](../../../../home/exact_dot_agents/exact_skills/exact_spec/)                                                                       |
 | Output   | packet at `/tmp/specs/<pwd>/<topic>.spec.md`; consumers: `/build`, `,ralph go --spec` (via its JSON handoff block), `compose-issue`, plan review |
 
+Fork-closing consults a domain overlay's planning fork checklist when the verified target repo has one (currently `elastic-domain` for `elastic/kibana`). Forks that cannot close locally (external sign-off, another team's decision) go in the packet's `External dependencies` section — owner, blocked criteria, recommended default — instead of blocking assembly; consumers must not start blocked criteria.
+
 ## `build`
 
 | Field    | Value                                                                                                            |

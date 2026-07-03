@@ -28,6 +28,27 @@ Use in every non-trivial review.
   - lint + type_check + tests (discover the correct commands from the repo; do not guess).
 - Keep an evidence log per comment/thread: what base does, what changed, what you tested, and what you observed.
 
+## Candidate Refutation Ladder (Run Before Keeping Any Finding)
+
+Owned by the agent that decides keep/drop and acts (light-review, the direct review modes, or a controller).
+In fan-out orchestration the dedicated cross-family adversarial lane owns this pass;
+read-only finder lanes only return candidates plus a reachability statement and do not self-refute.
+
+A candidate survives only when a genuine refutation attempt fails with evidence.
+Default to `undecidable`, not `keep`, when the deciding evidence is genuinely out of reach.
+Attempt refutation in this order and stop at the first decisive result:
+
+1. **Claim truth:** read the cited code and its callers/callees on the actual diff; does the claimed behavior occur?
+2. **Reachability:** is the claimed path reachable (inputs, flags, permissions)?
+   An unreachable path refutes the severity even when the observation is textually correct. State reachability for every kept finding.
+3. **Severity:** does the evidence support the assigned severity under the definitions below, or a different one?
+   Correct in both directions.
+4. **Proposed fix:** would the fix behave as claimed without introducing a new problem?
+5. **Already covered:** is the concern already handled elsewhere in the diff or base? Cite where.
+
+A single agent runs this as self-refutation on one model: it catches unreachable paths, inflated severity, and fixes that do not hold, but it does not provide the cross-family independence of the fan-out adversarial lane.
+Do not treat self-refutation as a substitute for that lane where fan-out is available.
+
 ## State-Machine Verification Gate
 
 Use for reviewed behavior that is:
@@ -289,6 +310,22 @@ For each dimension, anchor any finding in evidence:
 
 Do not assert a hygiene problem you have not pointed at.
 
+## Findings-Set Audit (Run Before Acting On The Finding Set)
+
+Subject: the candidate finding set and any proposed fixes — not the fix diff (that is the Post-Review Stage) and not the original diff.
+Owned by the deciding agent (light-review, the direct review modes, or a controller);
+in fan-out orchestration this is the findings-auditor's job.
+
+Before fixing, drafting, or presenting findings, run the four dimensions (Post-Review Lens) over the finding set:
+
+- **Redundancy / semantic + logical duplication:** collapse two findings with the same root cause or anchor region into one;
+  do not present the same issue twice under different wording.
+- **Verbosity:** trim finding text and proposed fixes to the smallest form that still carries the evidence.
+- **Gaps:** name any finding asserted without an exact anchor or without a decisive verification path, and either anchor it or drop it.
+
+Also check each surviving finding for **actionability** (is the smallest fix concrete?) and **overengineering** (does the proposed fix exceed the proved problem?).
+Merging duplicate findings is a deduplication task, never evidence that the underlying issue is unnecessary; keep the merged candidate.
+
 ## Post-Review Stage (Run On Any Change-Producing Flow)
 
 Trigger: a flow has **applied fixes** and mechanical quality gates are green.
@@ -334,3 +371,21 @@ Question: are the review changes well done?
 
 This stage closes the loop the mechanical gates leave open: lint/types/tests prove the fixes _work_;
 the four dimensions prove the fixes are _clean_.
+
+## Verify-and-Fix Loop (Self-Authored Change-Producing Review)
+
+The shared verify-and-fix spine for self-authored, fix-authorized review surfaces (light-review, the local-changes mode, or a fix-authorized controller).
+Each surface establishes its own scope and base-context stance first, then runs this loop.
+Read-only lanes do not run this loop's fixes: where a step says fix, they report the precise fix (file, location, smallest change) for the parent to apply, per their contract.
+
+1. **Build the findings queue.** Walk the whole diff against the Coverage Checklist, ordered by severity (CRITICAL first).
+2. **Refute.**
+   Run the Candidate Refutation Ladder on each candidate; keep only survivors, record reachability, and drop refuted or unverified findings.
+3. **Audit the set.** Run the Findings-Set Audit over the survivors and their proposed fixes before acting.
+4. **Fix each finding** (highest severity first): state what is wrong and why in 1-2 lines, verify it from evidence (base-context comparison, `/tmp` reproduction, or a test run — do not assert without evidence), and apply the smallest correct change.
+   For a non-trivial or ambiguous fix, state the options and your recommended default, then proceed with the default unless the user intervenes.
+   Do not commit or push unless explicitly asked.
+5. **Quality gates.** Run the repo's lint + type_check + tests (discover the commands from the repo; do not guess).
+   Fix until green or report what remains and why.
+6. **Post-Review Stage.**
+   Run the Post-Review Stage over the fix diff (the changes this pass made), then re-run the quality gates if the cleanup touched code.

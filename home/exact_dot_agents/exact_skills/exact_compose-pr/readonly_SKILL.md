@@ -39,7 +39,10 @@ First actions:
 4. Extract only evidence you can verify (summary, test plan, migration notes).
 5. If issue linkage or test evidence is missing after intake, keep placeholders instead of inventing details.
 6. If the repo belongs to the `elastic` org, load `~/.agents/skills/elastic-domain/SKILL.md` and apply its GitHub/PR composition section.
-7. Keep a compact composition ledger for any handoff to `github`: title source, body source, linked issue intake, Test Plan completeness, metadata source, and unresolved placeholders.
+7. If the diff is UI-facing and the PR should show the built visuals, gather screenshot proof:
+   reuse a `/build` `ui-proof` manifest (its proof sets live in distinct `/tmp/<folder-name>/` folders, one per screenshot/pair/set) when one already exists, or load `~/.agents/skills/ui-proof/SKILL.md` and run it head-only against the built runtime to capture the proof set.
+   Screenshots are optional evidence — skip this for non-UI diffs or when no runtime is available, and never invent them.
+8. Keep a compact composition ledger for any handoff to `github`: title source, body source, linked issue intake, Test Plan completeness, metadata source, screenshot proof status (each set's `/tmp/<folder-name>/` + filename→path mapping, or none), and unresolved placeholders.
 
 Rules:
 
@@ -58,6 +61,16 @@ Rules:
   - do not include machine-specific hosts, ports, paths, temp files, workspace names, browser-session URLs, or local usernames from the author's environment
   - examples to avoid: private hostnames, non-standard local domains, `/tmp/...`, absolute `$HOME` paths, Playwriter/session IDs, one-off account names that are not part of the repro setup
   - use portable wording instead, such as `local app`, `http://localhost:<port>`, `a user with only <privilege>`, or explicit setup steps to create the role/user
+- screenshots (UI-facing changes only):
+  - when a `ui-proof` manifest exists, add a `## Screenshots` section listing each shot as a caption plus an `attach: <filename>` placeholder the user drags into the GitHub PR
+  - never put the local `/tmp/<folder-name>/` path in the PR body (the sanitize rule above);
+    keep the folder + filename→path mapping in the composition ledger so the user knows which file to attach
+  - the agent does not upload images; GitHub image embedding is a manual drag-drop the user performs, so leave the attach placeholder rather than a fabricated image URL
+  - omit the section entirely for non-UI diffs or when no proof was captured
+- decision log: when the change embodies a decision with observable consequences for someone else —
+  a different API shape, privilege model, error response, storage format, or default —
+  add a `## Decisions` section with one bullet per decision: `**<decision>** — risk: <what goes wrong if this was the wrong call>`.
+  Internal implementation choices do not qualify; omit the section when no qualifying decision exists.
 - link issues explicitly:
   - `Closes #X` only when merging should close the issue
   - `Addresses #X` when it should not auto-close
@@ -67,6 +80,7 @@ Output:
 
 - Return only the PR body draft, ready to paste or hand to `~/.agents/skills/github/SKILL.md`.
 - If important inputs are missing, say exactly which placeholders still need confirmation.
+- When screenshots were captured, include the `## Screenshots` section in the body with attach placeholders, and list each proof set's `/tmp/<folder-name>/` + filename→path mapping in the composition ledger (outside the body) so the user can attach the files to the PR.
 - When handing the draft to `github` for PR creation/editing, include the composition ledger outside the PR body so the GitHub skill can build its publication preflight.
 
 ## General template
@@ -81,4 +95,10 @@ Closes #X | Addresses #X
 ## Test Plan
 
 -
+
+## Screenshots
+
+<!-- UI-facing changes only; omit otherwise. One bullet per captured shot; attach the file from its /tmp/<folder-name>/ folder (see the composition ledger). -->
+
+- <caption — what this proves> — attach: `<filename>.png`
 ```

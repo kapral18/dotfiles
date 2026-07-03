@@ -47,3 +47,12 @@ These skills route non-code tools, browser automation, and generated visual asse
 | Use when | real browser control, rendered UI checks, browsing flows, screenshots, or visual QA       |
 | Source   | [`exact_playwriter`](../../../../home/exact_dot_agents/exact_skills/exact_playwriter/)    |
 | Boundary | rendered browser behavior only; prefer non-browser tools for static file or source checks |
+
+## `ui-proof`
+
+| Field    | Value                                                                                                                                                                                                                              |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Use when | verifying a built/changed UI matches its intended visual and capturing screenshot proof for a PR                                                                                                                                   |
+| Source   | [`exact_ui-proof`](../../../../home/exact_dot_agents/exact_skills/exact_ui-proof/)                                                                                                                                                 |
+| Related  | creation-side sibling of `live-ui-review`; shares [`live-ui-runtime.md`](../../../../home/exact_dot_agents/exact_skills/exact_agent-review/exact_references/readonly_live-ui-runtime.md); runs inline in `/build` and `compose-pr` |
+| Boundary | head-only proof capture; not for reviewing others' changes (`review`/`/agent-review` own `live-ui-review`)                                                                                                                         |

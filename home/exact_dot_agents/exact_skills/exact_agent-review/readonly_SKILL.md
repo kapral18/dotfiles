@@ -480,7 +480,7 @@ Full audit scope (author intent, correctly-open checks, duplicate/superseding-wo
 
 `live-ui-review` is the conditional UI/runtime verifier from orchestration step 5:
 applicability trigger, mode boundary, target-packet selection, worktree identity, and required runtime config are owned there.
-Full worker-facing procedure (preflight, readiness stability guard, Playwriter comparison, runtime-start rung, data/setup ladder, hard constraints, exact return shape) lives in `~/.agents/skills/agent-review/references/live-ui-review.md`.
+Full worker-facing procedure lives in `~/.agents/skills/agent-review/references/live-ui-review.md`, which loads the shared runtime contract `~/.agents/skills/agent-review/references/live-ui-runtime.md` (preflight, readiness stability guard, runtime-start rung, data/setup ladder, hard runtime constraints); `live-ui-review.md` adds the base-vs-head Playwriter comparison and the exact return shape.
 
 Controller validation: reject and rerun any `live-ui-review` result that:
 

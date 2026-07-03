@@ -62,7 +62,7 @@ Completion gate: clear
 Compatibility impact: none
 ```
 
-`confirmed` means the adversarial verifier failed to break it. A `refuted` row never reaches you silently — it goes back to implementation first. Nothing is committed yet: say `commit it` / `draft the PR` when satisfied.
+`confirmed` means the adversarial verifier failed to break it. A `refuted` row never reaches you silently — it goes back to implementation first. If a criterion was visual, the build ran `ui-proof` against the running app and its row is backed by a screenshot saved in its own distinct `/tmp/<folder-name>/` folder — proof the intended visual was actually built. Nothing is committed yet: say `commit it` / `draft the PR` (which embeds those screenshots as attach placeholders you drag into GitHub) when satisfied.
 
 ## When things go sideways
 

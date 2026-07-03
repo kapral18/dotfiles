@@ -67,21 +67,30 @@ Do not start a later phase until the current one completes.
    An unprepared environment is a setup step to perform, not a blocker; loop fix → verify until green.
    Only undiscoverable or failing setup itself is a blocker — report the exact command and error.
 
-5. **Adversarial verification.** First re-run every packet check once from the current tree — machine truth before judgment.
+5. **Live-UI proof.**
+   Run this when any acceptance criterion's evidence is visual — a `judgment:` criterion naming a screenshot/visual comparison, or an in-scope UI-facing change with a stated visual goal.
+   Load `~/.agents/skills/ui-proof/SKILL.md` and run it inline (this flow already holds Playwriter and local/dev mutation permissions), head-only against the built runtime.
+   Supply the built worktree/branch, the changed UI paths, the visual criterion as the intended-visual oracle, the selected target packet (for verified `elastic/kibana`, the overlay's `~/.agents/skills/elastic-domain/references/kibana-live-ui.md`; otherwise the explicit user/repo-documented local/dev packet), the required runtime config, and the `/tmp` output location (each visual criterion's proof set in its own distinct `/tmp/<folder-name>/` folder).
+   Set each visual criterion's ledger row from the returned verdict with the captured screenshot as its evidence:
+   `met` -> `judgment-met`, `unmet` -> back to phase 3 like a red step, `blocked` -> `blocked` with the exact blocker.
+   Skip only when no criterion is visual; record the skip reason.
+   A read-only/Ask-mode Playwriter block or an unstartable runtime is a valid `blocked`, not a silent skip.
+
+6. **Adversarial verification.** First re-run every packet check once from the current tree — machine truth before judgment.
    Then delegate one isolated **read-only** refutation lane with the packet, the full implementation diff, and the ledger.
    Launch it via the harness's named `criteria-verifier` profile (rendered per harness with the `agent_review_models` **verifier** model —
    the same cross-family pick `/agent-review` uses); on a harness without that profile (Claude), run the lane as a generic read-only subagent on the session model that loads `~/.agents/skills/build/references/criteria-verifier.md`, with refutation framing, and report `families=same (degraded)` — never skip the phase silently.
    Judge the returned verdicts; a `refuted` row goes back to phase 3 (or `blocked` with the reason).
 
-6. **Post-review stage.**
+7. **Post-review stage.**
    Run the Post-Review Stage from `~/.agents/skills/review/references/judging_core.md` over the full implementation diff, applying the four canonical dimensions by name — redundancy, verbosity, semantic + logical duplication, gaps.
    Resolve each finding in the working tree; re-run the mechanical gates if the cleanup touched code.
 
-7. **Report (human gate 2).** Emit the Output block. Nothing is committed, pushed, or published here.
+8. **Report (human gate 2).** Emit the Output block. Nothing is committed, pushed, or published here.
 
 ## Completion gate
 
-Do not declare `/build` complete while any ledger row is `red`, `judgment-unmet`, or `undecidable` without an explicit blocker, while a mechanical gate is un-run, or while the verification lane was skipped.
+Do not declare `/build` complete while any ledger row is `red`, `judgment-unmet`, or `undecidable` without an explicit blocker, while a mechanical gate is un-run, while a triggered live-UI proof was skipped without a valid blocker, or while the verification lane was skipped.
 A blocked flow ends as `blocked` with the ledger as-is — never as a success summary with hedged wording.
 
 ## Output
@@ -90,8 +99,10 @@ A blocked flow ends as `blocked` with the ledger as-is — never as a success su
 - Criteria ledger: every row with status, evidence (command + exit), and verification verdict.
 - Adversarial verification: families used (`<session-family> vs <verifier-family>` or `same (degraded)`), verdict counts, scope-audit result.
 - Mechanical gates: commands run with results, or the exact blocker.
+- Live-UI proof: per-criterion `met` / `unmet` / `blocked` verdicts and the screenshot manifest (each set in its own `/tmp/<folder-name>/`), or `skipped (no visual criterion)`.
 - Post-review stage: result per dimension (clean, or what was cleaned).
 - Scope: files changed, each traced to a criterion; out-of-scope confirmation.
-- Remaining unknowns / blockers, and the suggested next move (commit via `git` skill, PR via `compose-pr`, or fixes).
+- Remaining unknowns / blockers, and the suggested next move (commit via `git` skill, PR via `compose-pr` —
+  which can embed the captured screenshots — or fixes).
 - Completion gate: clear, or blocked with the unresolved rows.
 - `Compatibility impact: none | removed (requested) | kept existing (requested)`.

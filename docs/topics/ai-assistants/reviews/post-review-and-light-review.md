@@ -33,14 +33,24 @@ Post-review behavior:
 | trivial candidate set     | controller audits inline                             |
 | non-trivial candidate set | `post-review` / `findings-auditor` runs the lens     |
 
+## Refuting and auditing findings (before acting)
+
+Two engine passes run _before_ fixing or drafting, distinct from the post-review stage that runs _after_:
+
+- **Candidate refutation ladder** — before keeping any finding, the deciding agent tries to kill it in order: claim truth, reachability, severity, proposed fix, already-covered. A candidate survives only when refutation fails with evidence; every kept finding states reachability, and an unreachable path loses its severity. Direct `review`/`light-review` run this as single-model self-refutation; in `/agent-review` the cross-family adversarial lane owns it and read-only finder lanes only return candidates plus reachability.
+- **Findings-set audit** — before acting on the survivors, the same four dimensions apply to the _finding list and its proposed fixes_ (not the fix diff): collapse same-root-cause duplicates, trim verbose findings, and drop unanchored, unactionable, or overengineered items. In `/agent-review` this is the `findings-auditor`'s job.
+
 ## Light review (proportional depth)
 
 [`light-review`](../../../../home/exact_dot_agents/exact_skills/exact_light-review) is a separate skill for proportional-depth, in-place audits of low-risk self-authored changes.
 
-| Keeps                                                      | Drops                                 |
-| ---------------------------------------------------------- | ------------------------------------- |
-| `judging_core.md` coverage checklist + trigger-based gates | mandatory SCSI/base-context preflight |
-| four-dimension post-review lens                            | GitHub machinery                      |
-| opt-in base context                                        | PR-thread/CI-specific rules           |
+| Keeps                                                      | Drops                                           |
+| ---------------------------------------------------------- | ----------------------------------------------- |
+| `judging_core.md` coverage checklist + trigger-based gates | mandatory SCSI/base-context preflight           |
+| four-dimension post-review lens                            | GitHub machinery                                |
+| candidate refutation ladder + findings-set audit           | multi-agent fan-out + cross-family verification |
+| opt-in base context                                        | PR-thread/CI-specific rules                     |
 
-Escalate to full `review` for PRs, others' code, base-context-dependent correctness, or risky/stateful changes. `change-auditor` (Claude + Pi) is the read-only delegated form.
+A **light-eligibility predicate** — evaluated first, and the single source both the `review` router and `change-auditor` reference — replaces any subjective "is this low-risk?" call. The change is light-eligible only when none of these escalate: a PR exists for the branch, authorship is not `self` (verified, not assumed from a local checkout), the diff touches security/auth/crypto/secret/migration/persisted-data/public-API paths, it deletes or replaces/migrates code, it is state-machine-like, or correctness needs base context beyond direct local reads. Any trigger escalates to full `review`, and the router applies the same predicate in reverse — offering `light-review` for a self-authored, no-PR, trigger-free diff. `change-auditor` (Claude + Pi) is the read-only delegated form.
+
+Both `light-review` and `review`'s local-changes mode run the shared **Verify-and-Fix Loop** in `judging_core.md` (build queue → refutation ladder → findings-set audit → fix → quality gates → post-review stage); each mode only adds its own base-context stance and scaffolding on top.

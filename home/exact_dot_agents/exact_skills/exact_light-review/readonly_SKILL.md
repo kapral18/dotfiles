@@ -14,17 +14,27 @@ Load `~/.agents/skills/review/references/judging_core.md` and apply its Coverage
 Use when:
 
 - the user asks `/light-review`, or for a local/ad-hoc review of the current changes
-- the target is a self-authored changeset (uncommitted, staged, or a named commit range) that is low-risk
-- the change can be judged locally without PR/GitHub scaffolding or mandatory SCSI base-context
+- the change is **light-eligible** by the predicate below (self-authored, no PR, none of the escalation triggers)
 
-Do not use (escalate to `~/.agents/skills/review/SKILL.md` instead) when:
+## Light-Eligibility Predicate (Evaluate First)
 
-- the target is a PR, or someone else's code (PR review / PR fix modes, GitHub delivery)
-- base-branch context is genuinely needed to judge correctness (SCSI / `git show <base>`)
-- the change is risky, security-sensitive, or stateful/parser-like enough that the State-Machine Verification Gate must run with full rigor
-- the user explicitly wants the thorough review or a GitHub-delivered result
+Evaluate this before reviewing; it replaces any subjective "is this low-risk?" judgment.
+This section is the single source for the light-vs-`review` routing decision;
+the `review` router and the delegated `change-auditor` reference it rather than re-listing triggers.
 
-If any escalation trigger applies mid-pass, stop and switch to the `review` skill rather than half-doing the heavy machinery here.
+The change is **light-eligible** only when **none** of these escalation triggers holds:
+
+- **A PR is involved:** a PR exists for the branch (`,gh-prw --number` resolves) or the user wants a thorough or GitHub-delivered result.
+- **Not self-authored:** do not assume `self` just because the change is checked out locally.
+  Uncommitted or staged working-tree edits are `self`; for a named commit range, verify authors with `GIT_OPTIONAL_LOCKS=0 git -c core.fsmonitor=false log --format='%an <%ae>' <base>..HEAD` compared against `git config user.email`, and confirm the tracked remote is not another person's fork.
+  Any non-self commit, another person's fork, or unverifiable authorship escalates.
+- **Risk-class paths:** the diff touches security, auth/authz, crypto, secret-handling, migration, persisted-data, or public-API surfaces.
+- **Deletion or replacement:** the diff deletes files/exports or replaces/migrates an implementation, test, or helper (`git diff --diff-filter=D --stat` non-empty, or removed `export`s).
+- **State-machine behavior:** parser/tokenizer/formatter, routing/matching, retry/workflow, permission-matrix, or multi-flag control flow (the State-Machine Verification Gate would run with full rigor).
+- **Base context beyond direct local reads:** a finding's correctness depends on base behavior that `git show <base>:<path>` + `rg` or local file reads cannot settle (mandatory SCSI base-context).
+
+If any trigger holds, stop and escalate to `~/.agents/skills/review/SKILL.md` (its Role Detection owns the authorship procedure);
+do not edit code here. If a trigger surfaces mid-pass, stop and switch to `review` rather than half-doing the heavy machinery.
 
 ## Workflow (verify and fix in place)
 
@@ -35,15 +45,9 @@ If any escalation trigger applies mid-pass, stop and switch to the `review` skil
    Establish base context when a finding's correctness genuinely depends on how base behaves today;
    use the most direct sufficient source (`git show <base>:<path>` + `rg`, or local file reads).
    Do not omit needed base context because SCSI would be heavier; escalate to the full `review` skill when direct local reads are not enough.
-3. **Judge.** Walk the diff against the Coverage Checklist (`judging_core.md`), ordered by severity.
-   Verify each finding from evidence (`/tmp` repro or the smallest safe worktree experiment); drop unverified findings.
-4. **Fix in the working tree.** Apply the smallest correct change for each finding now. Do not commit or push unless explicitly asked.
-5. **Mechanical gates.** Run the repo's lint + type_check + tests (discover commands from the repo; do not guess).
-   Fix until green or report what remains.
-6. **Post-review stage (foregrounded).**
-   Run the Post-Review Stage (`judging_core.md`) over the **fix diff** — the changes this pass made — applying the four dimensions:
-   redundancy, verbosity, semantic + logical duplication, gaps.
-   Resolve each hygiene finding in the working tree; re-run gates if those fixes touched code.
+3. **Run the Verify-and-Fix Loop** (`judging_core.md`): build the findings queue → Candidate Refutation Ladder → Findings-Set Audit → fix in the working tree → quality gates → Post-Review Stage over the fix diff.
+   The **Post-Review Lens (The Four Dimensions)** and **Post-Review Stage** are foregrounded for this skill.
+   Do not commit or push unless explicitly asked.
 
 ## Output
 

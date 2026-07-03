@@ -52,6 +52,8 @@ PR creation and edits are human-visible publication flows. The skill requires fu
 
 When a draft feeds a GitHub side effect, it carries a compact composition ledger outside the PR body so `github` can verify linked issue intake, Test Plan completeness, title source, metadata source, and unresolved placeholders before publishing.
 
+When the change embodies decisions with observable consequences for others (API shape, privilege model, error responses, defaults), the body carries a `## Decisions` section — one bullet per decision with the risk if it was the wrong call; internal implementation choices are excluded (decision-log discipline adapted from [`elastic/plan`](https://github.com/elastic/plan)).
+
 ## `compose-issue`
 
 | Field    | Value                                                                                        |

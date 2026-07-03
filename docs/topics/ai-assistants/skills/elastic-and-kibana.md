@@ -17,6 +17,8 @@ The boundary is intentional: generic skills (`review`, `agent-review`, `github`,
 | Source   | [`exact_elastic-domain`](../../../../home/exact_dot_agents/exact_skills/exact_elastic-domain/) |
 | Boundary | propose-only unless the active primary skill permits side effects                              |
 
+The overlay also carries a Kibana planning fork checklist (`references/kibana-planning-forks.md`) that the generic `spec` skill consults when the target repo is `elastic/kibana`: API versioning, Saved Objects/migrations, privileges, dependencies, feature flags, backports, test placement, alerting, and instrumentation forks. Adapted from the specialist `elicitation_questions` in [`elastic/plan`](https://github.com/elastic/plan) (`prompts/teams/elastic-kibana/`); refresh it by re-reading that directory upstream and folding in changes — curated, not mirrored.
+
 ## `buildkite`
 
 | Field    | Value                                                                                |

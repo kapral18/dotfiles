@@ -27,14 +27,14 @@ Two invocation kinds matter throughout: **model-invoked** skills fire on their o
 
 ## Check something
 
-| You want to…                                      | Flow                                                                    | Start it                             | Deeper                                                                                  |
-| ------------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------- |
-| Quick audit of your own uncommitted work          | `light-review` — proportional depth, fixes in place                     | `/light-review` (also model-invoked) | [Playbook](flows/review-your-changes.md)                                                |
-| Full review of a PR or risky change               | `review` — modes: pr_review, pr_fix, local_changes, plan_review         | "review PR #N" (model-invoked)       | [Playbook](flows/review-your-changes.md) · [architecture](reviews/index.md)             |
-| Maximum-rigor multi-agent review                  | `/agent-review` — angle lanes, cross-family adversarial verify, live UI | `/agent-review` (manual)             | [Playbook](flows/review-your-changes.md) · [topology](reviews/agent-review-topology.md) |
-| Adversarial review of a plan/spec before building | `review` plan mode — judges the contract, not code                      | "review this plan/packet"            | [Review workflow](reviews/index.md)                                                     |
-| Verify a change actually works end-to-end         | `verify`-style live drive; UI via `playwriter`                          | "verify this works"                  | rows in [skills](skills/external-tools-and-media.md)                                    |
-| Review what an agent produced (you as reviewer)   | staged-diff reading discipline                                          | —                                    | [Reviewing agent diffs](reviewing-diffs.md)                                             |
+| You want to…                                      | Flow                                                                                                     | Start it                                             | Deeper                                                                                  |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Quick audit of your own uncommitted work          | `light-review` — proportional depth, fixes in place                                                      | `/light-review` (also model-invoked)                 | [Playbook](flows/review-your-changes.md)                                                |
+| Full review of a PR or risky change               | `review` — modes: pr_review, pr_fix, local_changes, plan_review                                          | "review PR #N" (model-invoked)                       | [Playbook](flows/review-your-changes.md) · [architecture](reviews/index.md)             |
+| Maximum-rigor multi-agent review                  | `/agent-review` — angle lanes, cross-family adversarial verify, live UI                                  | `/agent-review` (manual)                             | [Playbook](flows/review-your-changes.md) · [topology](reviews/agent-review-topology.md) |
+| Adversarial review of a plan/spec before building | `review` plan mode — judges the contract, not code                                                       | "review this plan/packet"                            | [Review workflow](reviews/index.md)                                                     |
+| Verify a change actually works end-to-end         | `verify`-style live drive; UI via `playwriter`, or `ui-proof` for screenshot proof of an intended visual | "verify this works" / "screenshot the UI for the PR" | rows in [skills](skills/external-tools-and-media.md)                                    |
+| Review what an agent produced (you as reviewer)   | staged-diff reading discipline                                                                           | —                                                    | [Reviewing agent diffs](reviewing-diffs.md)                                             |
 
 ## Understand something
 
@@ -47,12 +47,13 @@ Two invocation kinds matter throughout: **model-invoked** skills fire on their o
 
 ## Communicate something
 
-| You want to…                             | Flow                                                    | Start it                             | Deeper                                                  |
-| ---------------------------------------- | ------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------- |
-| Draft an issue                           | `compose-issue` — text only, no side effects            | "draft an issue for …"               | [Playbook](flows/ship-text.md)                          |
-| Draft a PR body                          | `compose-pr` — evidence-backed Test Plan gate           | "draft the PR text"                  | [Playbook](flows/ship-text.md)                          |
-| Help reviewers before they open the diff | `present-pr` — self-contained HTML review-readiness map | `/present-pr` (manual)               | [Playbook](flows/ship-text.md)                          |
-| Anything a human will read               | `communication` owns tone; publication always gated     | loaded automatically before drafting | [Side-effect gates](system-prompt/side-effect-gates.md) |
+| You want to…                             | Flow                                                                                           | Start it                                        | Deeper                                                  |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------- |
+| Draft an issue                           | `compose-issue` — text only, no side effects                                                   | "draft an issue for …"                          | [Playbook](flows/ship-text.md)                          |
+| Draft a PR body                          | `compose-pr` — evidence-backed Test Plan gate                                                  | "draft the PR text"                             | [Playbook](flows/ship-text.md)                          |
+| Prove a built UI looks right, for a PR   | `ui-proof` — head-only live check + screenshots of the intended visual, handed to `compose-pr` | fires in `/build` / `compose-pr` for UI changes | [architecture](creation-workflow.md)                    |
+| Help reviewers before they open the diff | `present-pr` — self-contained HTML review-readiness map                                        | `/present-pr` (manual)                          | [Playbook](flows/ship-text.md)                          |
+| Anything a human will read               | `communication` owns tone; publication always gated                                            | loaded automatically before drafting            | [Side-effect gates](system-prompt/side-effect-gates.md) |
 
 Cross-cutting: durable memory (`,ai-kb`) recalls before non-trivial work and persists verified lessons — [Agent memory](knowledge-base/index.md); the code-quality family loads itself on implementation edits; Kibana/Elastic work gets the domain overlay — [Elastic and Kibana](skills/elastic-and-kibana.md).
 

@@ -32,6 +32,8 @@ Consumers: `/build` (in-session hands-free implementation), `,ralph go --spec` (
    Route **empirical** forks — "which state model feels right", "what should this look like" —
    to the `prototype` skill instead of asking the user to imagine the answer; the prototype verdict closes the fork.
    In a delegated/hands-free flow the agent records the verdict itself, with the deciding observation, in the packet's Context line.
+   When the verified target repo has a domain overlay exposing a planning fork checklist, consult it to seed the fork inventory (current concrete overlay: `~/.agents/skills/elastic-domain/SKILL.md` for `elastic/kibana`); evidence-first still applies.
+   A fork that cannot close locally — another team's sign-off, a compliance confirmation, an external owner's choice between observably different behaviors — does not block packet assembly: record it under `External dependencies` with an owner, the criteria it blocks, and a recommended default, and keep drafting.
    Done when every remaining interpretation produces the same packet.
 
 3. **Draft acceptance criteria — make them red.** Each criterion is one observable statement plus exactly one of:
@@ -96,6 +98,10 @@ Acceptance criteria:
 Risks / unknowns:
 
 - <risk + probe> | Unknown because <reason>
+
+External dependencies (omit section when none; consumers must not start blocked criteria):
+
+- <decision/sign-off needed> — owner: <who>; blocks: criterion <N>; recommended default: <what to assume if forced>
 
 Compatibility intent: none | removes existing behavior (requested) | preserves existing behavior (requested)
 ```

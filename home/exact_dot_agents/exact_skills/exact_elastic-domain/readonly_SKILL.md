@@ -95,6 +95,14 @@ Known tool labels:
 
 Copy-paste PR body templates (Default/Bugfix/Chore/Feature) and the Kibana issue template live in `~/.agents/skills/elastic-domain/references/pr-issue-templates.md`.
 
+## Kibana planning fork checklist
+
+Apply when the primary skill is `spec` (or any SOP §3.0 intent loop) and the verified target repo is `elastic/kibana`.
+
+Consult `~/.agents/skills/elastic-domain/references/kibana-planning-forks.md` to seed the fork inventory:
+API versioning, Saved Objects/migrations, privileges, dependencies, feature flags, backports, test placement, alerting, and instrumentation.
+Evidence-first: answer items from the issue/diff/codebase before asking; only genuine gaps become fork-closing questions.
+
 ## Review and CI additions
 
 - Buildkite URLs for Elastic repos must be handled through the `buildkite` skill and `bk` CLI. Do not fetch `buildkite.com` URLs directly.

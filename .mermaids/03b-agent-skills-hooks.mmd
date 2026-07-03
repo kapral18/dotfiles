@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (96).
+%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (99).
 %% Skills → ~/.agents/skills/ (intent-routed SKILL.md). Shared hooks → ~/.agents/hooks/.
 %% ============================================================================
 flowchart TB
@@ -11,6 +11,7 @@ flowchart TB
     subgraph HOOKS["exact_hooks/ → ~/.agents/hooks/"]
         HC["hook_common.py (shared lib) · readonly_README.md (state model)"]:::hook
         SCx["session_context.py (sessionStart: inject verification prefix.txt;<br/>inject active topic spec; nudge named topic on shared branch;<br/>,ai-kb recall/remember reminder;<br/>named-topic warm-start: read-only ,ai-kb search → Relevant Learnings)"]:::hook
+        PRx["perturn_recall.py (UserPromptSubmit: per-turn ,ai-kb recall injected as additionalContext;<br/>cosine-gated hybrid retrieval, per-session dedup shared with session_context warm-start)"]:::hook
         WLx["worklog_recorder.py (afterShell/postToolUse/Failure/afterFileEdit)"]:::hook
         GG["gemini-git-gate.sh (beforeShell: git commit|push) — failClosed"]:::hook
     end
@@ -21,11 +22,12 @@ flowchart TB
 
     KBDB[("~/.local/share/ai-kb/ (durable capsules)<br/>SQLite FTS5 + sqlite-vec · markdown sidecars<br/>shared: Ralph + cursor-cli + pi")]:::data
     SCx -. "named-topic warm-start (read-only)" .-> KBDB
+    PRx -. "per-turn recall (read-only)" .-> KBDB
 
     subgraph CORE["Core workflow skills"]
-        S1["review/ (SKILL + references: judging_core [surface-agnostic engine:<br/>coverage, severity, gates incl. product-flow/signal-quality/systemic-risk, post-review 4-dim lens], local_changes,<br/>pr_common [exhaustive GitHub context intake + ambient topic exploration + PR necessity audit + pending-review reconciliation], pr_fix, pr_review, plan_review, shared_rules;<br/>PR review anchor verification is instruction-owned)<br/>agent-review/ (/agent-review controller + role-specific runtime contracts: reviewer-worker [registry-model angle lanes], fresh-eyes [blind clarity lane; generic-task launch, Pi-only shim], adversarial-verifier [cross-family refutation over merged candidates], pr-necessity-auditor, findings-auditor, live-ui-review, post-review, change-auditor, researcher, code-searcher [single source for every delegated subagent body; per-tool profiles are thin shims] + runtime-harness caveats; reuses review references)<br/>light-review/ (proportional-depth in-place audit; loads judging_core)"]:::skill
+        S1["review/ (SKILL + references: judging_core [surface-agnostic engine:<br/>coverage, severity, gates incl. product-flow/signal-quality/systemic-risk, candidate refutation ladder, findings-set audit, post-review 4-dim lens, verify-and-fix loop], local_changes,<br/>pr_common [exhaustive GitHub context intake + ambient topic exploration + PR necessity audit + pending-review reconciliation], pr_fix, pr_review, plan_review, shared_rules;<br/>PR review anchor verification is instruction-owned)<br/>agent-review/ (/agent-review controller + role-specific runtime contracts: reviewer-worker [registry-model angle lanes], fresh-eyes [blind clarity lane; generic-task launch, Pi-only shim], adversarial-verifier [cross-family refutation over merged candidates], pr-necessity-auditor, findings-auditor, live-ui-review, live-ui-runtime [shared runtime contract for live-ui-review + ui-proof], post-review, change-auditor, researcher, code-searcher [single source for every delegated subagent body; per-tool profiles are thin shims] + runtime-harness caveats; reuses review references)<br/>light-review/ (proportional-depth in-place audit; computed light-eligibility predicate = single source for light-vs-review routing; runs shared verify-and-fix loop; loads judging_core)"]:::skill
         S2["git/ · github/ (+refs: pr-reviews, pr-comments, sub-issues) · worktrees/ · compose-pr/ · compose-issue/<br/>communication/ (centralized tone/style; referenced by other skills)<br/>code-quality family: code-quality · code-quality-react · code-quality-tests · code-quality-web · codebase-design (+ref: going-deeper; deep-module vocab, loaded by code-quality)"]:::skill
-        S3["walkthrough/ · interview-me/ (decision-tree + recommended-answer intent loop) · research/<br/>diagnosing-bugs/ (tight red loop first → SOP §3.4/§3.5) · prototype/ (+refs: logic, ui; throwaway design probes)<br/>spec/ (idea → spec packet with run-once red acceptance checks; feeds /build, ,ralph go --spec, compose-issue)<br/>build/ (/build controller: criteria ledger + adversarial criteria-verifier lane + post-review; +ref: criteria-verifier)<br/>present-pr/ (+refs: authoring.md, template.html;<br/>review-readiness map + introduced-concepts primer<br/>+ fixed notes sidebars)"]:::skill
+        S3["walkthrough/ · interview-me/ (decision-tree + recommended-answer intent loop) · research/<br/>diagnosing-bugs/ (tight red loop first → SOP §3.4/§3.5) · prototype/ (+refs: logic, ui; throwaway design probes)<br/>spec/ (idea → spec packet with run-once red acceptance checks; feeds /build, ,ralph go --spec, compose-issue)<br/>build/ (/build controller: criteria ledger + adversarial criteria-verifier lane + live-UI-proof phase + post-review; +ref: criteria-verifier)<br/>ui-proof/ (head-only live-UI proof + screenshots for a PR; creation-side sibling of live-ui-review; runs inline in /build + compose-pr; shares agent-review/references/live-ui-runtime)<br/>present-pr/ (+refs: authoring.md, template.html;<br/>review-readiness map + introduced-concepts primer<br/>+ fixed notes sidebars)"]:::skill
         S1 --> R1["exact_references/*.md"]:::ref
     end
 
@@ -40,7 +42,7 @@ flowchart TB
     end
 
     subgraph KBN["Elastic/Kibana domain overlay + skills"]
-        S8["elastic-domain/ (verified overlay; owns Elastic/Kibana policy<br/>+ refs: kibana-live-ui, pr-issue-templates)<br/>kbn-stack (local ES+Kibana stack lifecycle)<br/>kbn-backport (e2e; drives backport tool in tmux; +refs: backport-tool.md, conflict-resolution.md)<br/>kibana-console-monaco · kibana-labels-propose<br/>kibana-management-ownership · standup"]:::skill
+        S8["elastic-domain/ (verified overlay; owns Elastic/Kibana policy<br/>+ refs: kibana-live-ui, pr-issue-templates, kibana-planning-forks)<br/>kbn-stack (local ES+Kibana stack lifecycle)<br/>kbn-backport (e2e; drives backport tool in tmux; +refs: backport-tool.md, conflict-resolution.md)<br/>kibana-console-monaco · kibana-labels-propose<br/>kibana-management-ownership · standup"]:::skill
     end
 
     subgraph META["Meta / orchestration skills"]

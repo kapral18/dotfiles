@@ -162,3 +162,5 @@ If the user's intent is still unclear, resolve via local context (do not guess):
   - If only local changes exist: local changes mode.
   - If only a PR exists: PR review mode.
   - If neither exists: local changes mode (branch delta).
+  - Downward routing: when local changes mode applies and no PR exists, check the Light-Eligibility Predicate in `~/.agents/skills/light-review/SKILL.md`.
+    If the change is self-authored and none of its escalation triggers hold, note that `light-review` is the cheaper equivalent (opt-in base context, no PR/GitHub scaffolding) and offer it before running the full local-changes machinery.

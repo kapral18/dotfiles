@@ -1,7 +1,9 @@
 # Kibana Live UI Overlay
 
-Kibana live UI target packet for verified `elastic/kibana` `/agent-review` and `live-ui-review` flows.
+Kibana live UI target packet for verified `elastic/kibana` `/agent-review`, `live-ui-review`, and `ui-proof` flows.
 Use it when no explicit parent/user/repo target packet was supplied.
+The runtime targets, preflight, and data/setup ladder below are mode-neutral:
+review flows compare PR/head against base, and `ui-proof` verifies the built runtime head-only against its intended visual.
 
 ## Runtime targets
 
@@ -178,7 +180,8 @@ The rungs below apply only once every selected required stack reports `ready:tru
 
 - Verification only: no repo edits, GitHub mutations, git writes, commits, pushes, or decisions.
 - Never use ApplyPatch or file-editing tools.
-- Never write files except Playwriter artifacts under `/tmp`, including focused screenshots.
+- Never write files except Playwriter artifacts under `/tmp`, including focused screenshots;
+  store each screenshot/pair/set in its own distinct `/tmp/<folder-name>/` directory, never loose directly in `/tmp`.
 - Mutating local/dev runtime data via Playwriter/browser actions, local Kibana APIs, Dev Tools Console, or local Elasticsearch API calls is allowed for verification after target readiness/identity is established.
 - Do not mutate production, shared cloud, GitHub, git, repo files, committed files, labels, reviews, comments, branches, or user-visible external state.
 - Runtime data mutations must be local/dev-only, focused, named in the evidence, tied to the exact target/Elasticsearch endpoint used, and cleaned up or reported.
@@ -189,9 +192,11 @@ The rungs below apply only once every selected required stack reports `ready:tru
 ## Screenshot handoff
 
 - Capture screenshots only when they materially improve a candidate finding or blocker.
-- Store screenshots as Playwriter artifacts under `/tmp`, use descriptive names, and preserve handoff files.
+- Store screenshots as Playwriter artifacts in a distinct `/tmp/<folder-name>/` directory —
+  one dedicated folder per single screenshot, per comparison pair (base + PR/head), or per grouped set;
+  never loose in `/tmp` and never mixed with an unrelated set. Use descriptive names and preserve handoff files.
 - For each screenshot, record:
-  - local path
+  - folder + local file path
   - description
   - target classification: PR/head, base, or both selected targets
   - exact URL
@@ -199,6 +204,8 @@ The rungs below apply only once every selected required stack reports `ready:tru
   - suggested manual review comment placement
   - fidelity note for mocks or partial setup
 - The screenshot handoff is for the controller/user only: no image uploads, local paths in GitHub review comments or bodies, or extra comments solely for image paths.
+- Proof-mode (`ui-proof`) stores each visual criterion's proof set in its own distinct `/tmp/<folder-name>/` folder (e.g. `/tmp/<topic>-<criterion-slug>/`) and hands the manifest to `compose-pr`; the user attaches the files to the PR body.
+  The agent still never uploads images or writes local paths into GitHub.
 
 ## Live feedback overlay
 

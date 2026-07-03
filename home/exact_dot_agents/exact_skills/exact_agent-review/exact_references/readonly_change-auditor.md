@@ -26,7 +26,7 @@ State the exact scope you audited at the top of your output.
   Where light-review would fix in the working tree or run the Post-Review Stage's fixes, instead report the precise fix (file, location, smallest change) for the parent.
 - Apply the Coverage Checklist and, foregrounded, the four-dimension Post-Review Lens (redundancy, verbosity, semantic + logical duplication, gaps).
   Apply the SOP rules about internal time/effort estimates, verify every finding from evidence, and drop unverified or duplicate findings.
-- If an escalation trigger applies (PR, others' code, base-context genuinely needed, risky/stateful), say so and recommend the full `review` skill instead of half-running heavy machinery.
+- If the Light-Eligibility Predicate in `~/.agents/skills/light-review/SKILL.md` reports any escalation trigger (PR, non-self authorship, risk-class paths, deletion/replacement, state-machine, or base-context beyond direct local reads), say so and recommend the full `review` skill instead of half-running heavy machinery.
 
 Return findings ordered by severity, each with: where (file path + line/range), what's wrong, why it matters, how to verify, proposed fix.
 Do not return raw diffs or logs.
