@@ -22,17 +22,18 @@ Runtime data stays outside chezmoi (per-session isolation, never under the proje
 ,ralph dry-run --goal "Memory rehearsal"                          # render the prompt only
 ,ralph go --goal "Build a tiny CLI tool" --workspace "$(mktemp -d)"
 ,ralph go --goal "Refactor module" --plan-only                    # stop after planner
+,ralph go --spec /tmp/specs/.../refactor.spec.json                # operator-authored spec; planner skipped
 ,ralph go --goal "Refactor module" --workflow research            # workflow hint
 ,ralph go --goal "Refactor module" \
   --reviewer-model claude-sonnet-4-7 --re-reviewer-model gpt-5.5  # per-role overrides
-,ralph answer <run-id> --json - <<< '{"q-1":"yes, the cache is ok"}' # post answers when parked at awaiting_human
+,ralph answer <run-id> --json - <<< '{"q1":"yes, the cache is ok"}' # post answers when parked at awaiting_human
 ,ralph runner <run-id>                                            # internal: drive the state machine
 ,ralph resume <run-id>                                            # re-launch runner if it died (no-op if alive/terminal)
 ,ralph replan <run-id>                                            # queue replan; runner consumes it next loop
 ,ralph supervisor --json                                          # resume dead non-terminal runners when safe
 ```
 
-Tmux-native mode (default when `$TMUX` is set the runner detaches and your shell returns immediately; `--foreground` blocks inline; `--subprocess` skips tmux entirely):
+Tmux-native mode (default when `$TMUX` is set: the runner detaches and your shell returns immediately; `--foreground` blocks inline; `--subprocess` skips tmux entirely):
 
 ```bash
 ,ralph go --goal "Build a tiny artifact"               # detached runner; observe via dashboard
@@ -64,3 +65,5 @@ Per-iteration phases:
 ```text
 pending -> exec -> review -> rereview -> decided
 ```
+
+At review entry the orchestrator machine-runs every spec criterion `check` (a shell command, exit 0 = pass), injects the results into the prompts of whichever review roles the workflow runs, and stores them on the iteration record. At decide time a `pass` verdict over any failing check is demoted to `needs_iteration` — LLM verdicts cannot outvote a red check. Passing results freeze into `manifest.criteria_check_results` and render in `summary.md` under `## Criteria checks (machine-run)`.

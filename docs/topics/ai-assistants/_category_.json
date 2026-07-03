@@ -1,4 +1,9 @@
 {
-  "label": "AI assistants",
-  "position": 7
+  "label": "Agentic OS",
+  "position": 2,
+  "link": {
+    "type": "generated-index",
+    "title": "Agentic OS",
+    "description": "The agentic operating system: SOP governance, intent-routed skills, spec/build/Ralph creation flows, multi-agent reviews, subagents, MCP, models, and durable memory."
+  }
 }

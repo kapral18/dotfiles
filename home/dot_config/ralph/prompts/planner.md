@@ -35,7 +35,10 @@ Emit `ANCHOR:` line, then **exactly one** fenced JSON block, then `RALPH_DONE` o
   "goal": "<one-line restatement>",
   "workflow": "feature" | "bugfix" | "review" | "research",
   "target_artifact": "<ABSOLUTE path under the workspace, or 'none' if non-file>",
-  "success_criteria": ["<criterion 1>", "<criterion 2>", "..."],
+  "success_criteria": [
+    {"text": "<criterion 1>", "check": "<shell command run from the workspace; passes iff exit 0>"},
+    "<criterion 2 (judgment-only, no runnable check)>"
+  ],
   "complexity": "simple" | "medium" | "complex",
   "executor_count": 1,
   "max_iterations": 5,
@@ -79,7 +82,7 @@ Use Shape B when proceeding without an answer would force you to **guess** at a 
 
 1. `executor_count` must be `1` (parallel executors are not yet wired; honoring this is non-negotiable).
 2. Every iteration runs both reviewer and re_reviewer in sequence; you do not control whether re_reviewer runs.
-3. `success_criteria` must be **observable and testable** (file exists, command exits 0, output contains substring, function passes test). Do not write vague criteria.
+3. `success_criteria` must be **observable and testable** (file exists, command exits 0, output contains substring, function passes test). Do not write vague criteria. Each entry is either a plain string (judgment criterion) or an object `{"text": "...", "check": "<shell command>"}`. The orchestrator **runs** every `check` from the workspace before each review pass and refuses to finalize a `pass` verdict while any check fails — a check is a hard gate, not advice to the reviewer. `feature` and `bugfix` specs MUST include at least one checked criterion (the orchestrator rejects the spec otherwise); prefer a check for every criterion that can have one (`test -f`, `grep -q`, a targeted test command). Checks must be non-interactive and idempotent — safe to re-run every iteration.
 4. `max_iterations` <= 10. `max_minutes` <= 60. Pick tighter values for simpler goals.
 5. `target_artifact` MUST be an **absolute** path (start with `/`) under the WORKSPACE the operator gave you. The reviewer reads this exact path to verify the artifact; relative paths are rejected. If the goal has no file artifact (e.g. "explain X"), use the literal string `"none"`.
 6. `iteration_task_seed` is the very first executor instruction; it should be one concrete action, not a plan.

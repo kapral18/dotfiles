@@ -1,0 +1,9 @@
+{
+  "label": "Flow playbooks",
+  "position": 3,
+  "link": {
+    "type": "generated-index",
+    "title": "Flow playbooks",
+    "description": "Hands-on walkthroughs: what to type, what you'll see, what to answer at each gate. One page per flow; the scenario router picks which one you need."
+  }
+}

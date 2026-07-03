@@ -29,6 +29,9 @@ State is per-user under `${XDG_STATE_HOME}/ralph/`. Knowledge capsules persist v
   - `--subprocess`: skip tmux entirely (tests/CI); implies foreground
   - `--plan-only`: stop after the planner emits the spec (operator review).
     Drive the run later with `,ralph runner RUN_ID` or `,ralph resume RUN_ID`.
+  - `--spec PATH`: operator-authored JSON spec (same schema as the planner's Shape A output); skips the planner entirely.
+    `--goal` becomes optional (defaults to the spec's `goal`); incompatible with `--plan-only` and `--workflow` (the spec declares its own workflow).
+    The canonical producer is the `spec` skill's Ralph handoff block; a later `,ralph replan` re-enters the planner and replaces the operator spec.
   - `--workflow`: hint the planner toward a specific workflow shape.
     `auto` (default) lets the planner pick; `feature`/`bugfix` use the full planner→executor→reviewer→re-reviewer loop;
     `review` runs reviewer-only; `research` plans + iterates research notes without an executor edit pass.
@@ -82,6 +85,9 @@ Roles are defined in `~/.config/ralph/roles.json`.
 Defaults are cursor-first because cursor's frontier models give the best output/judgement quality. pi remains fully supported and is required for non-cursor providers (anthropic direct, openai direct, openrouter, llama-cpp).
 
 - `planner` — emits a JSON spec (goal, target_artifact ABS, success_criteria, complexity, executor_count, max_iterations, max_minutes, iteration_task_seed).
+  `success_criteria` entries are strings (judgment criteria) or `{"text", "check"}` objects;
+  each `check` is a shell command the **orchestrator itself runs** from the workspace before every review pass (exit 0 = pass).
+  `feature`/`bugfix` specs must declare at least one checked criterion — the orchestrator rejects the spec otherwise.
   Defaults to `cursor + claude-opus-4-8-thinking-xhigh --mode plan` (read-only planning; cannot edit). On pi, equivalent is `--no-tools`.
 - `executor` — does one concrete step toward the spec, ends output with a `LEARNING:` line and `RALPH_DONE`.
   May emit `RALPH_REPLAN` to force a replan.
@@ -178,9 +184,14 @@ A `go` run is `passed` only when:
 
 - the orchestrator loop exits with `status=completed`,
 - the final iteration verdict is `pass` (or `pass` upheld by the re-reviewer),
+- every declared criterion check passed on the final iteration (machine-run; a `pass` verdict over a failing check is demoted to `needs_iteration` — LLM verdicts cannot outvote a red check),
 - every role child has `control_state=automated`,
 - every role child passed validation,
 - the artifact gate passes when `target_artifact` is declared.
+
+Criterion checks run once per iteration at review entry; results are injected into the reviewer/re_reviewer prompts as `## CRITERIA CHECKS (machine-run)`, frozen into `manifest.criteria_check_results` on pass, and rendered in `summary.md`.
+An unparseable re_reviewer verdict (or a cache miss) demotes the iteration to `needs_iteration` instead of adopting the primary verdict —
+a garbled adversarial gate never rubber-stamps.
 
 Any `manual_control`, `dirty_control`, or `resume_requested` flips overall validation to `needs_verification`. `resume` auto-verifies.
 The orchestrator drives validation for `kind=go`; per-role `--expect` no longer applies.

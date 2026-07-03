@@ -237,6 +237,127 @@ def next_iter_phase(current: str, workflow: str | None) -> str:
     return phases[idx + 1]
 
 
+# Machine-run criterion checks: each check is a shell command run from the
+# workspace; exit 0 = the criterion is observably met. Checks are the hard
+# floor under LLM review verdicts — a reviewer/re_reviewer `pass` cannot
+# finalize while any check fails.
+CRITERIA_CHECK_TIMEOUT_SECONDS = 120
+# Workflows whose specs must declare at least one checked criterion.
+# feature/bugfix mutate the workspace, so an exit-0 probe is always
+# constructible; review/research verdicts can be judgment-only.
+CHECKED_CRITERIA_WORKFLOWS = ("feature", "bugfix")
+
+
+def normalize_success_criteria(spec: dict[str, Any]) -> None:
+    """Normalize spec criteria into text-only `success_criteria` + `criteria_checks`.
+
+    Accepts `success_criteria` entries as plain strings (judgment criteria) or
+    `{"text": ..., "check": "<shell command>"}` objects. Downstream consumers
+    (prompt joins, spec.md, summary markers, TUI preview) all expect strings,
+    so the texts stay in `success_criteria` and the checks travel separately as
+    `criteria_checks: [{"criterion": <text>, "cmd": <check>}]`.
+    """
+    texts: list[str] = []
+    checks: list[dict[str, str]] = []
+    for entry in spec.get("success_criteria") or []:
+        if isinstance(entry, dict):
+            text = str(entry.get("text") or "").strip()
+            if not text:
+                raise SystemExit("spec success_criteria object entry is missing a non-empty 'text'")
+            texts.append(text)
+            cmd = str(entry.get("check") or "").strip()
+            if cmd:
+                checks.append({"criterion": text, "cmd": cmd})
+        else:
+            texts.append(str(entry))
+    spec["success_criteria"] = texts
+    spec["criteria_checks"] = checks
+
+
+def validate_spec(spec: dict[str, Any], defaults: dict[str, Any]) -> dict[str, Any]:
+    """Fill spec defaults and enforce structural invariants.
+
+    Shared by the planner path and the operator `--spec` path so both are held
+    to the same contract. Violations raise SystemExit with the exact problem —
+    fail-visible beats limping (same stance as the executor_count pin).
+    """
+    spec.setdefault("max_iterations", defaults["max_iterations"])
+    spec.setdefault("max_minutes", defaults["max_minutes"])
+    spec.setdefault("executor_count", 1)
+    spec.setdefault("iteration_task_seed", "Make the first concrete change toward success_criteria.")
+    spec.setdefault("workflow", DEFAULT_WORKFLOW)
+    if spec["workflow"] not in WORKFLOWS:
+        raise SystemExit(
+            f"spec declares unknown workflow: {spec['workflow']!r}; valid choices are {sorted(WORKFLOWS.keys())}"
+        )
+    executor_count = int(spec.get("executor_count") or 1)
+    if executor_count != 1:
+        raise SystemExit(
+            "spec requested executor_count="
+            f"{executor_count}, but Ralph currently supports exactly one executor per iteration. "
+            "Set executor_count to 1 until true multi-executor orchestration is implemented."
+        )
+    normalize_success_criteria(spec)
+    if spec["workflow"] in CHECKED_CRITERIA_WORKFLOWS and not spec["criteria_checks"]:
+        raise SystemExit(
+            f"spec for workflow={spec['workflow']!r} declares no machine-runnable criterion check: "
+            "at least one success_criteria entry must be an object with a `check` shell command "
+            "(runs from the workspace, passes iff exit 0). Judgment-only criteria cannot gate "
+            "a workspace-mutating run on their own."
+        )
+    return spec
+
+
+def run_criteria_checks(spec: dict[str, Any], workspace: Path) -> list[dict[str, Any]]:
+    """Execute each spec criterion check from the workspace; exit 0 = pass.
+
+    Checks must be idempotent (they run once per iteration and may be re-run
+    by a resumed runner). A timeout counts as a failure, not an error.
+    """
+    results: list[dict[str, Any]] = []
+    for chk in spec.get("criteria_checks") or []:
+        cmd = chk["cmd"]
+        try:
+            proc = subprocess.run(
+                cmd,
+                shell=True,
+                cwd=str(workspace),
+                capture_output=True,
+                text=True,
+                timeout=CRITERIA_CHECK_TIMEOUT_SECONDS,
+            )
+            exit_code = proc.returncode
+            tail = "\n".join(((proc.stdout or "") + (proc.stderr or "")).splitlines()[-5:])
+        except subprocess.TimeoutExpired:
+            exit_code = -1
+            tail = f"timeout after {CRITERIA_CHECK_TIMEOUT_SECONDS}s"
+        results.append(
+            {
+                "criterion": chk["criterion"],
+                "cmd": cmd,
+                "exit": exit_code,
+                "ok": exit_code == 0,
+                "output_tail": tail,
+                "at": utc_now(),
+            }
+        )
+    return results
+
+
+def render_criteria_checks(results: list[dict[str, Any]] | None) -> str:
+    """Render machine-run check results for the reviewer/re_reviewer prompts."""
+    if not results:
+        return "(no machine-runnable checks declared in the spec)"
+    lines: list[str] = []
+    for r in results:
+        status = "PASS" if r.get("ok") else f"FAIL (exit={r.get('exit')})"
+        lines.append(f"- [{status}] {r.get('criterion')}")
+        lines.append(f"  cmd: `{r.get('cmd')}`")
+        if not r.get("ok") and r.get("output_tail"):
+            lines.append(f"  output tail: {r['output_tail']}")
+    return "\n".join(lines)
+
+
 DEFAULT_ROLES_CONFIG = Path.home() / ".config" / "ralph" / "roles.json"
 DEFAULT_PROMPTS_DIR = Path.home() / ".config" / "ralph" / "prompts"
 
@@ -1509,13 +1630,16 @@ class RalphRunner:
         plan_only: bool = False,
         detached: bool = False,
         workflow_hint: str | None = None,
+        spec_file: Path | None = None,
     ) -> dict[str, Any]:
         """Initialize a fresh go run, invoke the planner, then drive iterations.
 
         Steps:
             1. Create a new run dir + manifest.
             2. Allocate a dedicated tmux session `ralph-<short-rid>` if tmux_mode.
-            3. Invoke the planner; persist spec.
+            3. Invoke the planner; persist spec. With `spec_file`, load and
+               validate the operator-authored spec instead and skip the planner
+               (a replan still re-enters the planner).
             4. If plan_only: return early.
             5. If detached: spawn `,ralph runner <rid>` (a fresh process) and
                return immediately.
@@ -1524,6 +1648,19 @@ class RalphRunner:
         Resume / replan flows live in `resume_run()` and `replan_run()`.
         """
         self.init()
+        operator_spec: dict[str, Any] | None = None
+        if spec_file is not None:
+            # Validate before creating any run state so a bad spec fails clean.
+            try:
+                operator_spec = json.loads(Path(spec_file).read_text())
+            except (OSError, json.JSONDecodeError) as err:
+                raise SystemExit(f"--spec {spec_file}: unreadable or invalid JSON: {err}")
+            if not isinstance(operator_spec, dict):
+                raise SystemExit(f"--spec {spec_file}: expected a JSON object spec")
+            operator_spec = validate_spec(operator_spec, roles_cfg["defaults"])
+            goal = goal or str(operator_spec.get("goal") or "").strip()
+            if not goal:
+                raise SystemExit(f"--spec {spec_file}: spec has no 'goal' and no --goal was given")
         slug = tmux_name(goal[:32] or "go")
         rid = f"go-{slug}-{run_id()}"
         directory = self.run_dir(rid)
@@ -1562,28 +1699,38 @@ class RalphRunner:
         manifest = self.load_manifest(rid)
 
         defaults = roles_cfg["defaults"]
-        spec = self._invoke_planner(
-            manifest=manifest,
-            goal=goal,
-            workspace=workspace,
-            roles_cfg=roles_cfg,
-            session_name=session_name,
-        )
-        manifest = self.load_manifest(rid)
-        if isinstance(spec, dict) and "_questions" in spec:
-            self._park_for_questions(
-                manifest,
-                spec["_questions"],
-                asked_by=spec.get("_role_name", "planner-1"),
+        if operator_spec is not None:
+            spec = operator_spec
+            (directory / "spec.md").write_text(self._render_spec_md(spec))
+            manifest["operator_spec"] = True
+        else:
+            spec = self._invoke_planner(
+                manifest=manifest,
+                goal=goal,
+                workspace=workspace,
+                roles_cfg=roles_cfg,
+                session_name=session_name,
             )
-            return self.load_manifest(rid)
+            manifest = self.load_manifest(rid)
+            if isinstance(spec, dict) and "_questions" in spec:
+                self._park_for_questions(
+                    manifest,
+                    spec["_questions"],
+                    asked_by=spec.get("_role_name", "planner-1"),
+                )
+                return self.load_manifest(rid)
         manifest["spec"] = spec
         manifest["workflow"] = spec.get("workflow", DEFAULT_WORKFLOW)
         self._sync_artifact_from_spec(manifest, workspace)
         manifest["phase"] = "executing"
+        spec_origin = (
+            f"operator-supplied spec ({spec_file}); planner skipped"
+            if operator_spec is not None
+            else "planner emitted spec"
+        )
         self._append_decision(
             directory,
-            f"planner emitted spec; workflow={manifest['workflow']} "
+            f"{spec_origin}; workflow={manifest['workflow']} "
             f"max_iters={spec['max_iterations']} max_min={spec['max_minutes']}",
         )
         self.save_manifest(manifest)
@@ -2100,6 +2247,21 @@ class RalphRunner:
 
             if phase == ITER_PHASE_REVIEW:
                 executor = (manifest.get("roles") or {}).get(f"executor-{n}") or {}
+                # Machine-run criterion checks: run once per iteration, before
+                # the reviewer, so both review roles judge with the results in
+                # front of them and finalize can hard-gate on them. Reviewer
+                # lanes are read-only, so the results stay valid through
+                # rereview/finalize within the same iteration.
+                if cur.get("criteria_checks") is None and (spec.get("criteria_checks") or []):
+                    check_results = run_criteria_checks(spec, workspace)
+                    manifest["iterations"][iter_idx]["criteria_checks"] = check_results
+                    failing = [r for r in check_results if not r["ok"]]
+                    self._append_decision(
+                        directory,
+                        f"iter {n}: criteria checks {len(check_results) - len(failing)}/{len(check_results)} passed"
+                        + (f" (failing: {', '.join(r['cmd'] for r in failing)})" if failing else ""),
+                    )
+                    self.save_manifest(manifest)
                 reviewer = self._invoke_role_idempotent(
                     "reviewer",
                     manifest,
@@ -2202,9 +2364,10 @@ class RalphRunner:
                             manifest, questions, asked_by=re_reviewer.get("name", f"re_reviewer-{n}")
                         )
                 final_verdict = re_reviewer.get("verdict_obj") or {
-                    "agree_with_primary": True,
-                    "final_verdict": primary_verdict.get("verdict", "fail"),
-                    "notes": "re_reviewer cache had no verdict_obj",
+                    "agree_with_primary": False,
+                    "final_verdict": "needs_iteration",
+                    "next_task": "Re-run the iteration: the re_reviewer cache had no verdict, so the adversarial gate was not exercised.",
+                    "notes": "re_reviewer cache had no verdict_obj; demoting to needs_iteration instead of adopting the primary verdict",
                 }
                 self._append_progress(directory, n, "re_reviewer", re_reviewer)
                 self._append_verdict(directory, n, "re_reviewer", final_verdict)
@@ -2359,22 +2522,7 @@ class RalphRunner:
             except ValueError as inner:
                 raise SystemExit(f"planner JSON had `questions` but no usable structure: {inner}")
             return {"_questions": clean, "_role_name": role_data["name"]}
-        spec.setdefault("max_iterations", defaults["max_iterations"])
-        spec.setdefault("max_minutes", defaults["max_minutes"])
-        spec.setdefault("executor_count", 1)
-        spec.setdefault("iteration_task_seed", "Make the first concrete change toward success_criteria.")
-        spec.setdefault("workflow", DEFAULT_WORKFLOW)
-        if spec["workflow"] not in WORKFLOWS:
-            raise SystemExit(
-                f"planner emitted unknown workflow: {spec['workflow']!r}; valid choices are {sorted(WORKFLOWS.keys())}"
-            )
-        executor_count = int(spec.get("executor_count") or 1)
-        if executor_count != 1:
-            raise SystemExit(
-                "planner requested executor_count="
-                f"{executor_count}, but Ralph currently supports exactly one executor per iteration. "
-                "Set executor_count to 1 until true multi-executor orchestration is implemented."
-            )
+        spec = validate_spec(spec, defaults)
         # Persist spec as both top-level field and rendered spec.md for humans/replan.
         directory = self.run_dir(manifest["id"])
         (directory / "spec.md").write_text(self._render_spec_md(spec))
@@ -2467,10 +2615,14 @@ class RalphRunner:
         try:
             verdict_obj = parse_json_block(output_text)
         except ValueError as err:
+            # Never let a garbled re_reviewer silently rubber-stamp the primary
+            # verdict: the adversarial gate was not exercised, so the iteration
+            # is not decided. needs_iteration re-runs the full ladder.
             verdict_obj = {
-                "agree_with_primary": True,
-                "final_verdict": primary_verdict.get("verdict", "fail"),
-                "notes": f"re_reviewer output unparseable: {err}; defaulting to primary verdict",
+                "agree_with_primary": False,
+                "final_verdict": "needs_iteration",
+                "next_task": "Re-run the iteration: the adversarial re_reviewer emitted unparseable output, so its gate was not exercised. Re-verify the artifact against the success criteria and re-emit with required scaffolding.",
+                "notes": f"re_reviewer output unparseable: {err}; demoting to needs_iteration instead of adopting the primary verdict",
             }
         role_data["verdict_obj"] = verdict_obj
         self.save_manifest(manifest)
@@ -2936,6 +3088,7 @@ class RalphRunner:
         preamble = review_domain_preamble_for_workspace(workspace, "reviewer")
         if preamble:
             sections.append(preamble)
+        checks_block = render_criteria_checks((current_iteration(manifest) or {}).get("criteria_checks"))
         sections.extend(
             [
                 "## SPEC",
@@ -2943,6 +3096,9 @@ class RalphRunner:
                 "",
                 "## EXECUTOR OUTPUT (this iteration)",
                 executor_section,
+                "",
+                "## CRITERIA CHECKS (machine-run)",
+                checks_block,
                 "",
                 "## ARTIFACT STATE",
                 artifact_summary,
@@ -2977,6 +3133,7 @@ class RalphRunner:
         preamble = review_domain_preamble_for_workspace(workspace, "re_reviewer")
         if preamble:
             sections.append(preamble)
+        checks_block = render_criteria_checks((current_iteration(manifest) or {}).get("criteria_checks"))
         sections.extend(
             [
                 "## SPEC",
@@ -2984,6 +3141,9 @@ class RalphRunner:
                 "",
                 "## EXECUTOR OUTPUT",
                 executor_tail,
+                "",
+                "## CRITERIA CHECKS (machine-run)",
+                checks_block,
                 "",
                 "## PRIMARY REVIEWER VERDICT",
                 f"```json\n{json.dumps(primary_verdict, indent=2)}\n```",
@@ -3248,6 +3408,19 @@ class RalphRunner:
                 lines.append(f"- {status_marker(c)} {c}")
         else:
             lines.append("- (planner emitted none)")
+        check_results = manifest.get("criteria_check_results") or []
+        if not check_results:
+            # Non-pass terminals never freeze results; fall back to the last
+            # iteration that ran checks so the summary still shows the signal.
+            for it in reversed(manifest.get("iterations") or []):
+                if it.get("criteria_checks"):
+                    check_results = it["criteria_checks"]
+                    break
+        if check_results:
+            lines += ["", "## Criteria checks (machine-run)", ""]
+            for r in check_results:
+                marker = "[x]" if r.get("ok") else "[ ]"
+                lines.append(f"- {marker} `{r.get('cmd')}` (exit={r.get('exit')}) — {r.get('criterion')}")
         lines += [
             "",
             "## Artifact",
@@ -3317,6 +3490,20 @@ class RalphRunner:
             or primary_verdict.get("next_task")
             or "Address reviewer feedback above and re-attempt."
         )
+        # Machine-check floor: an LLM `pass` cannot finalize over a failing
+        # criterion check. The checks ran at review entry of this iteration and
+        # the review roles are read-only, so the results are still current.
+        failing_checks = [c for c in (iter_rec.get("criteria_checks") or []) if not c.get("ok")]
+        if resolved == "pass" and failing_checks:
+            resolved = "needs_iteration"
+            iter_rec["verdict"] = resolved
+            iter_rec["next_task"] = "Make the failing criterion checks pass: " + "; ".join(
+                f"`{c['cmd']}` (exit={c.get('exit')})" for c in failing_checks
+            )
+            self._append_decision(
+                directory,
+                f"iter {n}: PASS verdict rejected by criteria checks ({len(failing_checks)} failing)",
+            )
         # Workflows without an executor (e.g. "review") cannot iterate; collapse
         # needs_iteration to fail so the run terminates instead of looping.
         has_executor = ITER_PHASE_EXEC in phases
@@ -3325,6 +3512,8 @@ class RalphRunner:
             iter_rec["verdict"] = "fail"
 
         if resolved == "pass":
+            if iter_rec.get("criteria_checks"):
+                manifest["criteria_check_results"] = iter_rec["criteria_checks"]
             self._freeze_artifact_hash(manifest, workspace)
             manifest["phase"] = "done"
             manifest["status"] = "completed"
@@ -3387,8 +3576,17 @@ class RalphRunner:
             f"Target artifact: `{spec.get('target_artifact')}`\n\n"
             f"Complexity: {spec.get('complexity')}\n\n"
             f"Caps: max_iterations={spec.get('max_iterations')}, max_minutes={spec.get('max_minutes')}\n\n"
-            "Success criteria:\n" + "\n".join(f"- {c}" for c in spec.get("success_criteria", [])) + "\n\n"
-            f"Iteration task seed: {spec.get('iteration_task_seed')}\n\n"
+            "Success criteria:\n"
+            + "\n".join(f"- {c}" for c in spec.get("success_criteria", []))
+            + "\n\n"
+            + (
+                "Criteria checks (exit 0 = pass):\n"
+                + "\n".join(f"- `{c['cmd']}` — {c['criterion']}" for c in spec.get("criteria_checks", []))
+                + "\n\n"
+                if spec.get("criteria_checks")
+                else ""
+            )
+            + f"Iteration task seed: {spec.get('iteration_task_seed')}\n\n"
             f"Rationale: {spec.get('rationale')}\n\n"
             "```json\n" + json.dumps(spec, indent=2) + "\n```\n"
         )
@@ -3973,9 +4171,17 @@ def build_parser() -> argparse.ArgumentParser:
     dry.add_argument("--acceptance")
 
     go = sub.add_parser("go", help="Create a new go run; plan + drive iteration loop")
-    go.add_argument("--goal", required=True, help="Free-text goal")
+    go.add_argument("--goal", default=None, help="Free-text goal (required unless --spec is given)")
     go.add_argument("--workspace", type=Path, default=Path.cwd())
     go.add_argument("--plan-only", action="store_true", help="Run planner and stop (emit spec.md, no execution)")
+    go.add_argument(
+        "--spec",
+        type=Path,
+        default=None,
+        help="Operator-authored JSON spec file; skips the planner. Same schema as "
+        "the planner's Shape A output (success_criteria entries may be strings or "
+        '{"text", "check"} objects; feature/bugfix specs need at least one check).',
+    )
     go.add_argument(
         "--workflow",
         choices=tuple(WORKFLOWS.keys()),
@@ -4168,6 +4374,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\nApprox tokens: {max(1, len(prompt) // 4)}", file=sys.stderr)
         return 0
     if args.cmd == "go":
+        if not args.goal and not args.spec:
+            raise SystemExit("go: --goal is required unless --spec is provided")
+        if args.spec and args.plan_only:
+            raise SystemExit("go: --plan-only is meaningless with --spec (the spec is already written)")
+        if args.spec and args.workflow:
+            raise SystemExit("go: --workflow is ignored with --spec (the spec declares its own workflow)")
         roles_cfg = load_roles_config(args.roles_config)
         roles_cfg = apply_role_overrides(roles_cfg, vars(args))
         preflight_roles_config(roles_cfg)
@@ -4186,13 +4398,14 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 detached = in_tmux
         manifest = runner.go(
-            goal=args.goal,
+            goal=args.goal or "",
             workspace=args.workspace,
             roles_cfg=roles_cfg,
             tmux_mode=tmux_mode,
             plan_only=args.plan_only,
             detached=detached,
             workflow_hint=args.workflow,
+            spec_file=args.spec,
         )
         return _print_run_summary(manifest, args.json)
     if args.cmd == "runner":

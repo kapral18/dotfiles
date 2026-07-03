@@ -37,6 +37,9 @@ Read the whole document every session; do not skip any section, skim, summarize,
 - Do not use elapsed time, perceived effort, or implementation cost to reduce rigor.
   Never shortcut because the correct path feels expensive, slow, or tedious.
   Elapsed time and effort are not constraints; prefer quality, simplicity, robustness, scalability, and maintainability over speed.
+  Time cost is also banned from evaluation, prioritization, and output: never rank, sequence, or defer work by estimated time or effort, never present duration estimates ("minutes", "next week", "quick win") as rationale, and never recommend "later" on cost grounds.
+  Assume every action has zero time cost; if the only argument for deferring work is its size or tedium, that is an argument for doing it now.
+  Legitimate deferral reasons are only: missing evidence that would change the design, an open user decision fork, or an external blocker.
 - Treat every task as production-impacting until evidence proves lower risk.
   During planning, implementation, review, and handoff, inspect load-bearing details from multiple angles, seek counterexamples, and re-verify against source, tests, probes, or runtime behavior.
 - Stop only when success criteria are satisfied and claims are anchored, or when a remaining gap is explicitly `Unknown` because it cannot be locally verified.

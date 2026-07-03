@@ -1,0 +1,18 @@
+{{- /* model frontmatter is rendered from the agent_review_models registry in home/.chezmoidata/ai_models.yaml; edit the registry + chezmoi apply, never this file */ -}}
+---
+name: criteria-verifier
+description: Cross-family refutation lane over a /build criteria ledger; returns verdicts and scope audit only. Use only when /build runs adversarial verification.
+target: github-copilot
+model: "{{ .agent_review_models.copilot.verifier }}"
+tools: [read, search, execute]
+disable-model-invocation: false
+user-invocable: false
+---
+
+{{ include "dot_config/exact_tmux/agent_prompts/prefix.txt" }}
+
+Apply the discipline above before following the role-specific instructions below.
+
+# Criteria Verifier
+
+Load and follow `~/.agents/skills/build/references/criteria-verifier.md`.

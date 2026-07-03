@@ -19,6 +19,7 @@ complete -c ',ralph' -n '__fish_seen_subcommand_from dry-run' -l memory-limit -r
 complete -c ',ralph' -n '__fish_seen_subcommand_from dry-run' -l acceptance -r -d 'Acceptance criteria'
 complete -c ',ralph' -n '__fish_seen_subcommand_from go runs' -l workspace -r -a '(__fish_complete_directories)' -d 'Workspace path'
 complete -c ',ralph' -n '__fish_seen_subcommand_from go' -l plan-only -d 'Plan and stop'
+complete -c ',ralph' -n '__fish_seen_subcommand_from go' -l spec -r -a '(__fish_complete_suffix .json)' -d 'Operator-authored JSON spec; skips planner'
 complete -c ',ralph' -n '__fish_seen_subcommand_from go' -l workflow -r -d 'Workflow hint'
 complete -c ',ralph' -n '__fish_seen_subcommand_from go' -l roles-config -r -a '(__fish_complete_suffix .json)' -d 'Roles config path'
 complete -c ',ralph' -n '__fish_seen_subcommand_from go' -l foreground -d 'Run inline'

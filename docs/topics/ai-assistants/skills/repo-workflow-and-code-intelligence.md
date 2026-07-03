@@ -45,14 +45,16 @@ These skills operate on local repositories, code search, cleanup, and external s
 | Use when | designing a module interface, deciding a seam, deepening a module, or making code testable       |
 | Source   | [`exact_codebase-design`](../../../../home/exact_dot_agents/exact_skills/exact_codebase-design/) |
 | Boundary | design vocabulary only; SOP owns compatibility/scope; `code-quality` owns implementation style   |
+| Pivots   | receives `diagnosing-bugs` architectural handoffs; hands to `code-quality-tests` once settled    |
 
 ## `diagnosing-bugs`
 
-| Field    | Value                                                                                            |
-| -------- | ------------------------------------------------------------------------------------------------ |
-| Use when | diagnosing a hard bug, failure, flake, or performance regression — build a tight red loop first  |
-| Source   | [`exact_diagnosing-bugs`](../../../../home/exact_dot_agents/exact_skills/exact_diagnosing-bugs/) |
-| Boundary | routes into SOP §3.4/§3.5 gates; not the runtime-truth chain for "is X set up right"             |
+| Field    | Value                                                                                                   |
+| -------- | ------------------------------------------------------------------------------------------------------- |
+| Use when | diagnosing a hard bug, failure, flake, or performance regression — build a tight red loop first         |
+| Source   | [`exact_diagnosing-bugs`](../../../../home/exact_dot_agents/exact_skills/exact_diagnosing-bugs/)        |
+| Boundary | routes into SOP §3.4/§3.5 gates; not the runtime-truth chain for "is X set up right"                    |
+| Pivots   | no-correct-seam / architectural post-mortem → `codebase-design`; regression test → `code-quality-tests` |
 
 ## `prototype`
 
@@ -61,6 +63,7 @@ These skills operate on local repositories, code search, cleanup, and external s
 | Use when | building throwaway code to answer a design question (logic/state model, or what a UI should be) |
 | Source   | [`exact_prototype`](../../../../home/exact_dot_agents/exact_skills/exact_prototype/)            |
 | Boundary | explicit throwaway exception to artifact necessity; delete or absorb when done                  |
+| Pivots   | closes `spec` empirical forks — the verdict returns to the packet's Context line                |
 
 ## `git`
 

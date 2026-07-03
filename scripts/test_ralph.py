@@ -120,6 +120,7 @@ def _make_go_env(
         "RALPH_TEST_OMIT_ANCHOR",
         "RALPH_TEST_REVIEWER_VERDICT",
         "RALPH_TEST_RE_REVIEWER_VERDICT",
+        "RALPH_TEST_RE_REVIEWER_GARBLED",
     ):
         env.pop(var, None)
     return env
@@ -3425,6 +3426,368 @@ class TestRalphDiversityGateUnderDisagreement(unittest.TestCase):
             )
             assert all(it.get("primary_verdict") == "pass" for it in iters)
             assert all(it.get("verdict") == "needs_iteration" for it in iters)
+
+
+class TestRalphCriteriaChecks(unittest.TestCase):
+    """Machine-run criterion checks are the hard floor under LLM verdicts:
+    the orchestrator executes every spec `check` before review and refuses to
+    finalize a `pass` while any check fails. Without this, `success_criteria`
+    were prompt-only instructions — nothing in ralph.py ever ran them, so a
+    reviewer/re_reviewer pair could rubber-stamp an unmet criterion."""
+
+    @staticmethod
+    def _go(env: dict, args: list[str], *, expect_returncode: int) -> dict:
+        result = subprocess.run(
+            [sys.executable, str(SCRIPTS / "ralph.py"), "go", *args, "--subprocess", "--json"],
+            capture_output=True,
+            text=True,
+            cwd=str(SCRIPTS),
+            env=env,
+        )
+        assert result.returncode == expect_returncode, (
+            f"expected rc={expect_returncode} got {result.returncode}\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+        )
+        try:
+            return json.loads(result.stdout)
+        except json.JSONDecodeError:
+            return {"_raw": result.stdout, "_stderr": result.stderr}
+
+    def test_validate_spec_normalizes_object_criteria(self):
+        import ralph
+
+        spec = {
+            "goal": "g",
+            "workflow": "feature",
+            "target_artifact": "/tmp/x",
+            "success_criteria": [
+                {"text": "artifact exists", "check": "test -f /tmp/x"},
+                "output looks reasonable",
+            ],
+        }
+        defaults = {"max_iterations": 3, "max_minutes": 1}
+        out = ralph.validate_spec(spec, defaults)
+        assert out["success_criteria"] == ["artifact exists", "output looks reasonable"]
+        assert out["criteria_checks"] == [{"criterion": "artifact exists", "cmd": "test -f /tmp/x"}]
+
+    def test_validate_spec_rejects_uncheckable_feature_spec(self):
+        import ralph
+
+        defaults = {"max_iterations": 3, "max_minutes": 1}
+        spec = {
+            "goal": "g",
+            "workflow": "feature",
+            "target_artifact": "/tmp/x",
+            "success_criteria": ["artifact exists", "content is right"],
+        }
+        with self.assertRaises(SystemExit) as ctx:
+            ralph.validate_spec(spec, defaults)
+        assert "no machine-runnable criterion check" in str(ctx.exception)
+        # bugfix is held to the same bar; review/research verdicts may be
+        # judgment-only.
+        spec_bugfix = dict(spec, workflow="bugfix", success_criteria=["x"])
+        with self.assertRaises(SystemExit):
+            ralph.validate_spec(spec_bugfix, defaults)
+        for exempt in ("review", "research"):
+            spec_ok = dict(spec, workflow=exempt, success_criteria=["judged by reviewer"])
+            assert ralph.validate_spec(spec_ok, defaults)["criteria_checks"] == []
+
+    def test_validate_spec_rejects_object_criterion_without_text(self):
+        import ralph
+
+        spec = {
+            "goal": "g",
+            "workflow": "research",
+            "target_artifact": "none",
+            "success_criteria": [{"check": "true"}],
+        }
+        with self.assertRaises(SystemExit) as ctx:
+            ralph.validate_spec(spec, {"max_iterations": 3, "max_minutes": 1})
+        assert "missing a non-empty 'text'" in str(ctx.exception)
+
+    def test_run_criteria_checks_pass_fail_and_workspace_cwd(self):
+        import ralph
+
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            (workspace / "present.txt").write_text("x")
+            spec = {
+                "criteria_checks": [
+                    {"criterion": "file is there", "cmd": "test -f ./present.txt"},
+                    {"criterion": "file is not there", "cmd": "test -f ./absent.txt"},
+                ]
+            }
+            results = ralph.run_criteria_checks(spec, workspace)
+            assert [r["ok"] for r in results] == [True, False]
+            assert results[0]["exit"] == 0
+            assert results[1]["exit"] != 0
+            # Relative paths resolved against the workspace prove cwd wiring.
+            assert results[0]["criterion"] == "file is there"
+
+    def test_finalize_rejects_pass_over_failing_check(self):
+        import ralph
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            runner = ralph.RalphRunner(state_home=tmp_path / "state", kb_home=tmp_path / "kb")
+            runner.init()
+            rid = "go-check-gate-1"
+            run_dir = runner.run_dir(rid)
+            run_dir.mkdir(parents=True, exist_ok=True)
+            manifest = {
+                "id": rid,
+                "kind": "go",
+                "goal": "g",
+                "status": "running",
+                "phase": "rereviewing",
+                "workflow": "feature",
+                "roles": {},
+                "spec": {"target_artifact": "none", "success_criteria": ["c"]},
+                "iterations": [
+                    {
+                        "n": 1,
+                        "phase": ralph.ITER_PHASE_RERVIEW,
+                        "criteria_checks": [{"criterion": "c", "cmd": "test -f ./missing", "exit": 1, "ok": False}],
+                    }
+                ],
+            }
+            runner.save_manifest(manifest)
+            decision, manifest = runner._finalize_iteration(
+                manifest,
+                iter_idx=0,
+                n=1,
+                workspace=tmp_path,
+                primary_verdict={"verdict": "pass"},
+                final_verdict={"agree_with_primary": True, "final_verdict": "pass"},
+                re_reviewer_id="re_reviewer-1",
+            )
+            assert decision == "continue", "pass over a failing check must loop, not complete"
+            iter_rec = manifest["iterations"][0]
+            assert iter_rec["verdict"] == "needs_iteration"
+            assert "test -f ./missing" in iter_rec["next_task"]
+            decisions = (run_dir / "decisions.log").read_text()
+            assert "PASS verdict rejected by criteria checks" in decisions
+
+    def test_go_runs_checks_and_freezes_results_on_pass(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            artifact = tmp_path / "workspace" / "result.txt"
+            env = _make_go_env(tmp_path, artifact=artifact)
+            manifest = self._go(
+                env,
+                ["--goal", "create the artifact", "--workspace", str(tmp_path / "workspace")],
+                expect_returncode=0,
+            )
+            assert manifest["status"] == "completed"
+            frozen = manifest.get("criteria_check_results") or []
+            assert frozen and all(r["ok"] for r in frozen), f"expected frozen passing checks, got {frozen!r}"
+            run_dir = Path(env["RALPH_STATE_HOME"]) / "runs" / manifest["id"]
+            decisions = (run_dir / "decisions.log").read_text()
+            assert "criteria checks 1/1 passed" in decisions
+            summary = (run_dir / "summary.md").read_text()
+            assert "## Criteria checks (machine-run)" in summary
+
+    def test_operator_spec_skips_planner(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            artifact = tmp_path / "workspace" / "result.txt"
+            env = _make_go_env(tmp_path, artifact=artifact)
+            spec_path = tmp_path / "operator-spec.json"
+            spec_path.write_text(
+                json.dumps(
+                    {
+                        "goal": "operator goal",
+                        "workflow": "feature",
+                        "target_artifact": str(artifact),
+                        "success_criteria": [{"text": "artifact exists", "check": f"test -f '{artifact}'"}],
+                        "complexity": "simple",
+                        "executor_count": 1,
+                        "max_iterations": 3,
+                        "max_minutes": 1,
+                        "iteration_task_seed": "create the artifact",
+                        "rationale": "operator authored",
+                    }
+                )
+            )
+            manifest = self._go(
+                env,
+                ["--spec", str(spec_path), "--workspace", str(tmp_path / "workspace")],
+                expect_returncode=0,
+            )
+            assert manifest["status"] == "completed"
+            assert manifest.get("operator_spec") is True
+            assert manifest.get("goal") == "operator goal", "goal must default from the spec"
+            planner_roles = [name for name in (manifest.get("roles") or {}) if name.startswith("planner")]
+            assert planner_roles == [], f"--spec must skip the planner, found {planner_roles!r}"
+            run_dir = Path(env["RALPH_STATE_HOME"]) / "runs" / manifest["id"]
+            decisions = (run_dir / "decisions.log").read_text()
+            assert "operator-supplied spec" in decisions
+
+    def test_operator_spec_without_checks_fails_before_run_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            env = _make_go_env(tmp_path)
+            spec_path = tmp_path / "bad-spec.json"
+            spec_path.write_text(
+                json.dumps(
+                    {
+                        "goal": "g",
+                        "workflow": "feature",
+                        "target_artifact": str(tmp_path / "workspace" / "x.txt"),
+                        "success_criteria": ["looks right"],
+                    }
+                )
+            )
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPTS / "ralph.py"),
+                    "go",
+                    "--spec",
+                    str(spec_path),
+                    "--workspace",
+                    str(tmp_path / "workspace"),
+                    "--subprocess",
+                ],
+                capture_output=True,
+                text=True,
+                cwd=str(SCRIPTS),
+                env=env,
+            )
+            assert result.returncode != 0
+            assert "no machine-runnable criterion check" in result.stderr
+            runs_dir = Path(env["RALPH_STATE_HOME"]) / "runs"
+            assert not runs_dir.exists() or not any(runs_dir.iterdir()), (
+                "a rejected spec must not leave run state behind"
+            )
+
+    def test_operator_spec_run_replans_via_planner_after_questions(self):
+        """A replan on an operator-spec run re-enters the planner (its first
+        invocation ever on that run) and replaces the operator spec — the
+        documented steering handoff back to Ralph."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            artifact = tmp_path / "workspace" / "result.txt"
+            env = _make_go_env(tmp_path, artifact=artifact, content="hello world")
+            env["RALPH_TEST_EXECUTOR_ASK_ITER"] = "1"
+            spec_path = tmp_path / "operator-spec.json"
+            spec_path.write_text(
+                json.dumps(
+                    {
+                        "goal": "operator goal",
+                        "workflow": "feature",
+                        "target_artifact": str(artifact),
+                        "success_criteria": [{"text": "artifact exists", "check": f"test -f '{artifact}'"}],
+                        "max_iterations": 3,
+                        "max_minutes": 1,
+                        "iteration_task_seed": "create the artifact",
+                        "rationale": "operator authored",
+                    }
+                )
+            )
+            run = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPTS / "ralph.py"),
+                    "go",
+                    "--spec",
+                    str(spec_path),
+                    "--workspace",
+                    str(tmp_path / "workspace"),
+                    "--subprocess",
+                    "--json",
+                ],
+                capture_output=True,
+                text=True,
+                cwd=str(SCRIPTS),
+                env=env,
+            )
+            assert run.returncode == 2, f"executor question must park the run\n{run.stderr}"
+            rid = json.loads(run.stdout)["id"]
+            parked = json.loads((tmp_path / "state" / "runs" / rid / "manifest.json").read_text())
+            assert parked["status"] == "awaiting_human"
+            assert parked.get("operator_spec") is True
+
+            answer = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPTS / "ralph.py"),
+                    "answer",
+                    rid,
+                    "--question",
+                    "ex1",
+                    "--text",
+                    "overwrite",
+                    "--no-resume",
+                ],
+                capture_output=True,
+                text=True,
+                cwd=str(SCRIPTS),
+                env=env,
+            )
+            assert answer.returncode == 0, answer.stderr
+
+            final_run = subprocess.run(
+                [sys.executable, str(SCRIPTS / "ralph.py"), "runner", rid, "--json"],
+                capture_output=True,
+                text=True,
+                cwd=str(SCRIPTS),
+                env=env,
+            )
+            assert final_run.returncode == 0, final_run.stderr
+            final = json.loads(final_run.stdout)
+            assert final["status"] == "completed"
+            assert final["spec_seq"] == 2, "replan must install a new spec revision"
+            assert "planner-1" in final["roles"], "replan must invoke the planner for the first time"
+            counters = tmp_path / "counters"
+            assert (counters / "planner").read_text().strip() == "1"
+            assert artifact.read_text() == "hello world"
+
+    def test_go_cli_guards_reject_conflicting_spec_flags(self):
+        """--spec is fail-visible about flags it supersedes: no silent ignores."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            env = _make_go_env(tmp_path)
+            spec_path = tmp_path / "spec.json"
+            spec_path.write_text("{}")
+            cases = [
+                ([], "--goal is required unless --spec"),
+                (["--spec", str(spec_path), "--plan-only"], "--plan-only is meaningless with --spec"),
+                (["--spec", str(spec_path), "--workflow", "feature"], "--workflow is ignored with --spec"),
+            ]
+            for extra, message in cases:
+                result = subprocess.run(
+                    [sys.executable, str(SCRIPTS / "ralph.py"), "go", "--subprocess", *extra],
+                    capture_output=True,
+                    text=True,
+                    cwd=str(SCRIPTS),
+                    env=env,
+                )
+                assert result.returncode != 0, f"{extra!r} must be rejected"
+                assert message in result.stderr, f"{extra!r}: expected {message!r} in stderr:\n{result.stderr}"
+
+    def test_garbled_re_reviewer_never_rubber_stamps_primary_pass(self):
+        """The old fallback adopted the primary verdict when the re_reviewer
+        output was unparseable — a garbled adversarial gate silently became a
+        rubber stamp. It must demote to needs_iteration instead, so the run
+        loops (and fails at the cap) rather than shipping unverified."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            artifact = tmp_path / "workspace" / "result.txt"
+            env = _make_go_env(tmp_path, artifact=artifact, max_iters=2)
+            env["RALPH_TEST_RE_REVIEWER_GARBLED"] = "true"
+            manifest = self._go(
+                env,
+                ["--goal", "garbled gate", "--workspace", str(tmp_path / "workspace")],
+                expect_returncode=1,
+            )
+            assert manifest["status"] == "failed"
+            iters = manifest.get("iterations") or []
+            assert len(iters) == 2, "each garbled adjudication must loop, not finalize"
+            assert all(it.get("verdict") == "needs_iteration" for it in iters)
+            assert all(it.get("primary_verdict") == "pass" for it in iters), (
+                "the primary reviewer passed every iteration; only the garbled "
+                "re_reviewer demotion may explain the loop"
+            )
 
 
 if __name__ == "__main__":

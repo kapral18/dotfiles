@@ -9,6 +9,7 @@ stateDiagram-v2
     direction TB
 
     [*] --> planning : ralph go --goal
+    [*] --> executing : ralph go --spec (operator spec, planner skipped)
 
     planning --> blocked : RALPH_QUESTIONS (needs_human)
     blocked --> planning : ralph answer
@@ -17,15 +18,16 @@ stateDiagram-v2
 
     state "per-iteration loop" as ITER {
         direction LR
-        executing --> reviewing : exec done
+        executing --> reviewing : exec done + criteria checks machine-run
         reviewing --> rereviewing : reviewer verdict (feature/bugfix)
-        rereviewing --> decided : re-reviewer verdict
+        rereviewing --> decided : re-reviewer verdict (unparseable → needs_iteration)
         reviewing --> decided : review/research workflow (no re-reviewer)
     }
 
     decided --> replanning : verdict=fail & iters<max
     replanning --> executing : next iteration
-    decided --> done : verdict=pass
+    decided --> done : verdict=pass & all criteria checks green
+    decided --> executing : verdict=pass over failing check → needs_iteration
     decided --> failed : max_iterations / max_minutes exceeded
 
     done --> reflecting : workflow in {feature,bugfix} & reflector_enabled

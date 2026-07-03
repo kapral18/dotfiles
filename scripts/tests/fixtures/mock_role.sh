@@ -22,6 +22,10 @@
 #                                    the diversity gate's adjudication under
 #                                    disagreement (final_verdict wins per the
 #                                    orchestrator's resolution at scripts/ralph.py)
+#   RALPH_TEST_RE_REVIEWER_GARBLED - if "true", the re_reviewer emits prose with
+#                                    no JSON block; proves unparseable output
+#                                    demotes to needs_iteration instead of
+#                                    rubber-stamping the primary verdict
 #   RALPH_TEST_OMIT_ANCHOR      - if "true", role omits the mandatory ANCHOR header
 #                                  (used to prove role validation gates on ANCHOR)
 #   RALPH_TEST_PLANNER_ASK_FIRST - if "true", planner's first invocation emits
@@ -75,7 +79,7 @@ JSON
   "workflow": "${RALPH_TEST_WORKFLOW:-feature}",
   "target_artifact": "${RALPH_TEST_ARTIFACT:?RALPH_TEST_ARTIFACT not set}",
   "success_criteria": [
-    "artifact file exists at ${RALPH_TEST_ARTIFACT}",
+    {"text": "artifact file exists at ${RALPH_TEST_ARTIFACT}", "check": "test -f '${RALPH_TEST_ARTIFACT}'"},
     "artifact contains expected content"
   ],
   "complexity": "simple",
@@ -196,6 +200,13 @@ JSON
 
   re_reviewer)
     emit_anchor
+    if [ "${RALPH_TEST_RE_REVIEWER_GARBLED:-false}" = "true" ]; then
+      # No JSON block at all: proves the orchestrator refuses to adopt the
+      # primary verdict when the adversarial gate output is unparseable.
+      echo "I agree with everything, looks good to me!"
+      echo "RALPH_DONE"
+      exit 0
+    fi
     forced_verdict="${RALPH_TEST_RE_REVIEWER_VERDICT:-}"
     primary_verdict="${RALPH_TEST_REVIEWER_VERDICT:-}"
     artifact_exists=false

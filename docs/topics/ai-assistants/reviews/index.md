@@ -15,10 +15,11 @@ This section covers the agent reviewing your diff. The inverse loop is [Reviewin
 
 ## Direction map
 
-| Direction                   | Tooling                                                                                                                          |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Agent reviews your diff     | `review` skill: [`home/exact_dot_agents/exact_skills/exact_review`](../../../../home/exact_dot_agents/exact_skills/exact_review) |
-| You review the agent's diff | [Reviewing agent diffs](../reviewing-diffs.md)                                                                                   |
+| Direction                   | Tooling                                                                                                                                                            |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Agent reviews your diff     | `review` skill: [`home/exact_dot_agents/exact_skills/exact_review`](../../../../home/exact_dot_agents/exact_skills/exact_review)                                   |
+| Agent reviews a plan/spec   | `review` plan mode (`references/plan_review.md`) — judges a design doc or [spec packet](../creation-workflow.md) before any implementation; no diff, no authorship |
+| You review the agent's diff | [Reviewing agent diffs](../reviewing-diffs.md)                                                                                                                     |
 
 Use this section when continuing a review, addressing review threads, rechecking PR-related changes, or deciding whether the lighter in-place review is enough.
 

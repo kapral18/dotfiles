@@ -18,7 +18,7 @@ The dashboard is a Bubble Tea TUI:
 
 Layout:
 
-- Left pane: scrollable list of every run (newest first). `*` = runner alive, `R` = replan queued. Status colors track validation/phase.
+- Left pane: scrollable list of every run (newest first); each row carries the heartbeat marker described below. Status colors track validation/phase.
 - Right top: selected run's header (id, goal, phase, status, runner) and a roles table with per-iteration history.
 - Right bottom: live tail of the selected role's `output.log`.
 - Modals: new-run form (`n`), control menu (`c`), help overlay (`?`).
@@ -39,7 +39,7 @@ Multi-Ralph isolation contract:
 
 - Each `,ralph go` run owns a dedicated tmux session named `ralph-<short-rid>`. Multiple runs coexist without polluting the user's main session.
 - The dashboard never holds tmux state; quitting (`q`) does not affect any running runners or sessions.
-- `kill <rid>` and `rm <rid>` only touch their own dedicated session; concurrent runs are unaffected (covered by [`scripts/tests/test_scripts.py::TestRalphMultiRunIsolation`](../../../../scripts/tests/test_scripts.py)).
+- `kill <rid>` and `rm <rid>` only touch their own dedicated session; concurrent runs are unaffected (covered by [`scripts/test_ralph.py::TestRalphMultiRunIsolation`](../../../../scripts/tests/test_scripts.py)).
 
 Other tmux integrations:
 
@@ -56,7 +56,7 @@ Dashboard / control-plane invariants:
 - Each `go` run records `phase` (`planning|executing|reviewing|rereviewing|replanning|done|failed|blocked`), `iterations[]` (each with its own `phase` (`pending|exec|review|rereview|decided`), `verdict`, `executor_id`, `reviewer_id`, `re_reviewer_id`, `task`, `next_task`, `spec_seq`), `roles{}` (pane handles for planner-N / executor-N / reviewer-N / re_reviewer-N), `spec`, `spec_seq`, `learned_ids`, and `runner` (pid + host + heartbeat + alive bit).
 - `spec.target_artifact` is promoted to top-level `manifest.artifact`; on a passing verdict Ralph freezes `artifact_sha256`, and `verify` requires the artifact hash to match.
 - `executor_count` must be `1` until real multi-executor orchestration exists. Planner output with a higher value fails fast instead of being silently ignored.
-- Iteration records are appended at iteration START (phase=pending) and updated as phases progress; the runner is fully resumable from the manifest alone — see Resumability above.
+- Iteration records are appended at iteration START (phase=pending) and updated as phases progress; the runner is fully resumable from the manifest alone — see [Resumability](state-and-runtime.md#core-workflow).
 - Human control: every role records pane handle, status, last output path, and `control_state` (`automated|manual_control|dirty_control|resume_requested`).
 - Low-token observability: dashboards read manifests, logs, and tmux pane tails directly. No LLM is invoked for summarization unless the user explicitly requests a review/triage agent.
 - Validation gates: a `go` run is `passed` only when the orchestrator loop exits with `status=completed`, the final verdict is `pass`, every role child is `automated`, every role child passed validation, and the artifact hash gate passes when `target_artifact` is declared.

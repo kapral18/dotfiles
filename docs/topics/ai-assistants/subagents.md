@@ -17,7 +17,7 @@ Subagents run a self-contained task in an isolated child context window and retu
 
 Every custom subagent profile is a chezmoi template that renders the shared tmux `prefix.txt` preamble before role instructions, so child contexts start with the same verification discipline as parent sessions.
 
-The role body itself is single-sourced. Each per-tool profile is a thin shim: per-tool frontmatter (model, tools, sandbox) + the `prefix.txt` preamble + `Load and follow ~/.agents/skills/agent-review/references/<role>.md`. The delegated-subagent contract for every role (`reviewer-worker`, `fresh-eyes`, `adversarial-verifier`, `pr-necessity-auditor`, `findings-auditor`, `live-ui-review`, `post-review`, `change-auditor`, `researcher`, `code-searcher`) lives once under `agent-review/references/`, which in turn loads the owning skill (`review`, `light-review`, `research`, `semantic-code-search`) — except `fresh-eyes`, the blind clarity lane, which deliberately loads no skill and launches through a generic task (only Pi carries a thin `fresh-eyes` profile, because Pi launches subagents solely through named profiles). Only genuinely harness-specific notes (e.g. "Claude subagents cannot spawn subagents") stay inline. Cursor and Copilot are the canonical shim shape; the other harnesses follow it.
+The role body itself is single-sourced. Each per-tool profile is a thin shim: per-tool frontmatter (model, tools, sandbox) + the `prefix.txt` preamble + `Load and follow ~/.agents/skills/agent-review/references/<role>.md`. The delegated-subagent contract for every role (`reviewer-worker`, `fresh-eyes`, `adversarial-verifier`, `pr-necessity-auditor`, `findings-auditor`, `live-ui-review`, `post-review`, `change-auditor`, `researcher`, `code-searcher`) lives once under `agent-review/references/`, which in turn loads the owning skill (`review`, `light-review`, `research`, `semantic-code-search`) — except `fresh-eyes`, the blind clarity lane, which deliberately loads no skill and launches through a generic task (only Pi carries a thin `fresh-eyes` profile, because Pi launches subagents solely through named profiles). Only genuinely harness-specific notes (e.g. "Claude subagents cannot spawn subagents") stay inline. Cursor and Copilot are the canonical shim shape; the other harnesses follow it. Not every harness ships every profile: Cursor, Copilot, and Claude carry an `agent-review` controller and Pi carries `review-controller`, while Codex and Gemini ship only worker/verifier/auditor lanes — on those, the controller role stays in the interactive session. The `/build` flow's `criteria-verifier` profile follows the same shim pattern with its contract under `build/references/criteria-verifier.md`, using the same `agent_review_models` verifier model; Claude carries no profile for it (same convention as `adversarial-verifier` — the lane runs degraded on the session model there).
 
 ## Runtime discovery
 
@@ -40,7 +40,7 @@ Verified discovery anchors:
 | Codex CLI   | `$CODEX_HOME/agents/*.toml` plus `multi_agent.spawn_agent` / `wait`; source `openai/codex@45f603302c45`                   |
 | Gemini CLI  | `.gemini/agents/*.md`, `@name` forcing, and no subagent-to-subagent calls; source `google-gemini/gemini-cli@f741d0328209` |
 
-Review-lane models are registry-driven: profile `model` frontmatter is rendered from the `agent_review_models` block in `ai_models.yaml` (per-harness `lanes` + `verifier`; the verifier is a different family than lanes by registry review, and single-family harnesses run it degraded with an explicit `families=same (degraded)` report). Skills and controllers never steer models at runtime. Pi encodes reasoning effort in model slug suffixes such as `:xhigh` on its per-task registry value.
+Profile `model` frontmatter is rendered from the `agent_review_models` registry — policy in [Model registry](model-registry.md), review-flow usage in [Agent-review topology](reviews/agent-review-topology.md). Pi encodes reasoning effort in model slug suffixes such as `:xhigh` on its per-task registry value.
 
 Runtime probes confirmed project custom-agent invocation in Cursor and Copilot, Copilot task subagents with explicit model overrides, and Codex `spawn_agent` / `wait`. Cursor source supports custom subagent types, but the model-facing Task schema can expose only generic types in some runs; generation lanes fall back to a generic type with no model override, and only the adversarial verifier passes an explicitly resolved cross-family id.
 
@@ -48,34 +48,26 @@ Runtime probes confirmed project custom-agent invocation in Cursor and Copilot, 
 
 The "Loads contract" column is the `agent-review/references/<role>.md` file the profile delegates to; that contract loads the owning skill in turn.
 
-| Agent                                     | Loads contract         | Work it owns                                                       |
-| ----------------------------------------- | ---------------------- | ------------------------------------------------------------------ |
-| `agent-review`                            | `agent-review/SKILL`   | Controller: route, PR-necessity gate, fan-out, live UI, audit, act |
-| `review-controller` (Pi)                  | `review/SKILL`         | Pi controller for PR gates, reviews, audits, fixes/drafts/verdict  |
-| `review-worker`                           | `reviewer-worker`      | Registry-model angle lane (Cursor/Copilot/Codex/Gemini)            |
-| `reviewer`                                | `reviewer-worker`      | Pi/Claude read-only angle lane (registry: default/inherit)         |
-| `fresh-eyes` (Pi only; generic elsewhere) | `fresh-eyes`           | Blind zero-context clarity lane                                    |
-| `adversarial-verifier`                    | `adversarial-verifier` | Cross-family refutation over merged candidates                     |
-| `pr-necessity-auditor`                    | `pr-necessity-auditor` | Blocking PR necessity / intent gate                                |
-| `findings-auditor`                        | `findings-auditor`     | Non-trivial findings or named fix-diff audit                       |
-| `live-ui-review`                          | `live-ui-review`       | Verification-only live UI reviewer with screenshot handoff         |
-| `post-review`                             | `post-review`          | Four-dimension hygiene audit of a review's fix diff                |
-| `change-auditor`                          | `change-auditor`       | Proportional-depth audit of a self-authored changeset              |
-| `researcher`                              | `researcher`           | Clone and inspect external GitHub source                           |
-| `code-searcher`                           | `code-searcher`        | SCSI semantic investigation / base-branch context                  |
+| Agent                                     | Loads contract                       | Work it owns                                                       |
+| ----------------------------------------- | ------------------------------------ | ------------------------------------------------------------------ |
+| `agent-review`                            | `agent-review/SKILL`                 | Controller: route, PR-necessity gate, fan-out, live UI, audit, act |
+| `review-controller` (Pi)                  | `review/SKILL`                       | Pi controller for PR gates, reviews, audits, fixes/drafts/verdict  |
+| `review-worker`                           | `reviewer-worker`                    | Registry-model angle lane (Cursor/Copilot/Codex/Gemini)            |
+| `reviewer`                                | `reviewer-worker`                    | Pi/Claude read-only angle lane (registry: default/inherit)         |
+| `fresh-eyes` (Pi only; generic elsewhere) | `fresh-eyes`                         | Blind zero-context clarity lane                                    |
+| `adversarial-verifier`                    | `adversarial-verifier`               | Cross-family refutation over merged candidates                     |
+| `pr-necessity-auditor`                    | `pr-necessity-auditor`               | Blocking PR necessity / intent gate                                |
+| `findings-auditor`                        | `findings-auditor`                   | Non-trivial findings or named fix-diff audit                       |
+| `live-ui-review`                          | `live-ui-review`                     | Verification-only live UI reviewer with screenshot handoff         |
+| `post-review`                             | `post-review`                        | Four-dimension hygiene audit of a review's fix diff                |
+| `criteria-verifier`                       | `build/references/criteria-verifier` | `/build` refutation lane over the criteria ledger + scope audit    |
+| `change-auditor`                          | `change-auditor`                     | Proportional-depth audit of a self-authored changeset              |
+| `researcher`                              | `researcher`                         | Clone and inspect external GitHub source                           |
+| `code-searcher`                           | `code-searcher`                      | SCSI semantic investigation / base-branch context                  |
 
 ## Review hierarchy
 
-The review topology follows the `review` skill's role × mode matrix:
-
-1. **PR necessity / intent gate** runs first and blocks implementation review for other-authored or unknown-author PRs until the PR is worth reviewing. It also runs for local changes attached to an adopted/assigned PR when PR intent artifacts are needed to judge the diff.
-2. **Find fan-out** runs two to five read-only angle lanes on the registry lane model in parallel after any required greenlight, plus the blind fresh-eyes clarity lane when it applies.
-3. **Adversarial verification** refutes/confirms the merged candidates on a cross-family model (or reports `families=same (degraded)` on single-family harnesses).
-4. **Live UI** runs only when UI/runtime verification is relevant and a target packet exists.
-5. **Findings audit** is inline for trivial sets and delegated for non-trivial findings, disagreements, material `verification_needed`, blockers, or overengineering risk. It audits verification-ledger disposition; it does not erase unresolved dependencies.
-6. **Act** is serial and controller-owned: fix, draft, drain threads, or emit verdict only after blocking verification-ledger items and intent dependencies are resolved or surfaced as blockers.
-
-Workers never edit files, post comments, resolve threads, or decide final action. They return candidate findings plus evidence and `verification_needed` items for the controller ledger.
+The phase order these profiles serve (necessity gate → angle fan-out → adversarial verification → live UI → findings audit → controller act) is owned by [Agent-review topology](reviews/agent-review-topology.md); this page only maps profiles to harnesses. Workers never edit files, post comments, resolve threads, or decide final action — they return candidate findings plus evidence and `verification_needed` items for the controller ledger.
 
 ## Source paths
 

@@ -39,7 +39,7 @@ The real workflow is a tmux workbench: Neovim stays inline, assistants run in ne
 These docs put the story first and the reference one click away:
 
 - **Introduction** — what this is, how to install it safely, and what the workflow feels like.
-- **Domain sections** — the sidebar exposes the real systems directly: Chezmoi, Packages, Git & identity, Fish shell, Terminals, Tmux, Custom commands, Neovim, macOS, Security, Code quality, and AI Assistants.
+- **Domain sections** — the sidebar exposes the real systems directly: Chezmoi and packages first, then the **Agentic OS** (SOP governance, skills, spec/build/Ralph flows, reviews, subagents, memory — start at [Choose your flow](../topics/ai-assistants/scenarios.md)), then the human loop it drives: Git & identity, Fish shell, Terminals, Tmux, Custom commands, Neovim, macOS, Security, and Code quality.
 - **Reference** — lookup tables, FAQ, and troubleshooting.
 
 When you change something under `home/`, reflect it in the matching topic page so the next reader (human or AI agent) finds it. The agent SOPs in `~/AGENTS.md` and `~/CLAUDE.md` enforce that rule at edit time.

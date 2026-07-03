@@ -31,6 +31,23 @@ These skills coordinate long-running agent work, durable learning, and user-inte
 | Source   | [`exact_interview-me`](../../../../home/exact_dot_agents/exact_skills/exact_interview-me/) |
 | Routing  | manual                                                                                     |
 
+## `spec`
+
+| Field    | Value                                                                                                                                            |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Use when | developing an idea, feature request, or bug into a spec packet with red-capable acceptance checks                                                |
+| Source   | [`exact_spec`](../../../../home/exact_dot_agents/exact_skills/exact_spec/)                                                                       |
+| Output   | packet at `/tmp/specs/<pwd>/<topic>.spec.md`; consumers: `/build`, `,ralph go --spec` (via its JSON handoff block), `compose-issue`, plan review |
+
+## `build`
+
+| Field    | Value                                                                                                            |
+| -------- | ---------------------------------------------------------------------------------------------------------------- |
+| Use when | hands-free in-session implementation of an approved spec packet (two human gates: packet approval, final report) |
+| Source   | [`exact_build`](../../../../home/exact_dot_agents/exact_skills/exact_build/)                                     |
+| Routing  | manual                                                                                                           |
+| Related  | criteria ledger + adversarial criteria-verifier lane; detached sibling is `,ralph go --spec`                     |
+
 ## `improve-local`
 
 | Field    | Value                                                                                        |

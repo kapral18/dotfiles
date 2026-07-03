@@ -8,6 +8,8 @@ This setup treats assistant behavior as strict, version-controlled configuration
 
 ![Abstract layered AI operating system: dotfiles base, terminal tools, and coordinated agent workers](./assets/agentic-os-orchestration.jpg)
 
+**Looking for "how do I do X?" — start at [Choose your flow](scenarios.md):** every supported scenario (build, check, understand, communicate) routed to its flow, with the pivot map for moving between flows mid-work.
+
 At a high level, the AI layer is a set of governed routes, not a pile of prompts:
 
 ![Agentic operating system governance route: request, SOP, skill, gates, optional subagent, evidence, and gated action](./assets/agentic-governance-flow.svg)
@@ -54,10 +56,12 @@ Skills live under `~/.agents/skills/`; the chezmoi source is [`home/exact_dot_ag
 
 | Subsystem                              | Page                                            |
 | -------------------------------------- | ----------------------------------------------- |
+| Scenario router (start here)           | [Choose your flow](scenarios.md)                |
 | System prompt / SOP                    | [System Prompt (SOP)](system-prompt/index.md)   |
 | Skills list and routing contract       | [Skills](skills/index.md)                       |
 | Subagent runtime profiles              | [Cross-harness subagents](subagents.md)         |
 | Review skill and agent-review topology | [Review workflow](reviews/index.md)             |
+| Spec packets and hands-free builds     | [Creation workflow](creation-workflow.md)       |
 | Hook memory + durable AI KB            | [Agent memory](knowledge-base/index.md)         |
 | Ralph planner/executor/reviewer loop   | [Ralph orchestrator](ralph/index.md)            |
 | Canonical MCP registry                 | [MCP servers](mcp.md)                           |
