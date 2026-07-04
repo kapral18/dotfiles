@@ -29,7 +29,7 @@ Give the exact symptom text and how you triggered it. The `diagnosing-bugs` skil
    If it genuinely can't build one, it stops and asks you for exactly one of: env access, a captured artifact (HAR/log/dump), or permission to add temporary instrumentation. That question is the flow working, not failing.
 
 2. **Minimize.** The repro is shrunk until every element is load-bearing.
-3. **Hypotheses — you can help here.** It lists 3–5 ranked, falsifiable causes. If you know the codebase, re-rank with one line ("it's #3, we changed the loader last week"); if you're away, it proceeds with its own ranking.
+3. **Hypotheses — you can help here.** It lists 3–5 ranked, falsifiable causes, each with a negative control (an input the explanation calls irrelevant that must not change the verdict). A confident rationale is still only a hypothesis: the red-to-green loop and the control are the proof. If you know the codebase, re-rank with one line ("it's #3, we changed the loader last week"); if you're away, it proceeds with its own ranking.
 4. **Probe, fix, regression-test.** Test written _before_ the fix where a proper seam exists; then the original (un-minimized) scenario is re-run to prove your actual symptom is gone.
 5. **Cleanup.** All `[DEBUG-…]`-tagged instrumentation removed, correct hypothesis stated in the commit message.
 

@@ -86,6 +86,9 @@ Done when every remaining element is load-bearing — removing any one makes it 
 Generate **3–5 ranked hypotheses** before testing any; single-hypothesis generation anchors on the first plausible idea.
 Each must be **falsifiable** — state the prediction: "If X is the cause, changing Y makes the bug disappear / changing Z makes it worse."
 If you cannot state the prediction, it is a vibe — discard or sharpen it.
+Include a **negative control**: name an input your explanation calls irrelevant and predict the verdict is unchanged when you perturb it;
+if perturbing that "irrelevant" input flips the verdict, the explanation is not the real cause.
+A fluent, confident rationale for the cause is still only a hypothesis — the red-to-green loop and the negative control are the proof, not the narrative.
 Show the ranked list to the user before testing; they often re-rank instantly with domain knowledge.
 Do not block on it if they are AFK — proceed with your ranking.
 

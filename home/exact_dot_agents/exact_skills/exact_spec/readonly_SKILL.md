@@ -48,6 +48,7 @@ Consumers: `/build` (in-session hands-free implementation), `,ralph go --spec` (
    Check strength (every observed contract failure has been a check under-testing its criterion):
    - a check must fail under a plausible wrong implementation, not just before any implementation —
      a no-op that prints the right words is the counterexample to beat
+   - a check verifies the outcome, not the rationale: it must assert what observably changes, never restate why the change is correct (the model's own explanation is not evidence the change works)
    - coverage checks target invocation sites (`grep 'run_x(\["cmd"'`), never bare keywords a data field can satisfy
    - ordering/content criteria assert exact output ("store truth": `test "$(cmd)" = "expected"`), not first-line or substring greps
    - exit codes must be the checked command's: `OUT=$(cmd) && test "$OUT" = ...`, never `cmd | grep` (the pipe reports grep);

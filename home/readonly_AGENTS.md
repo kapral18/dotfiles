@@ -128,6 +128,19 @@ Compacted, previewed, sliced, truncated, or capped output is an index, not truth
 - Quick status checks and success confirmations may use compact output when no capped marker is present and the summary already answers the question.
 - A summary not verified against full output is a hypothesis, not a fact.
 
+### 2.5 Self-Report Skepticism
+
+A model's self-report is a hypothesis about its own process, not evidence of it.
+This covers your own rationale, chain-of-thought, "done", status line, and plan, and every sub-agent, reviewer, or verifier report you receive.
+
+- Do not treat a stated rationale as proof of the reasoning that actually produced the output;
+  an explanation can be fluent and confident and still not reflect the real cause.
+- Verify the claimed outcome against an independent signal — tests, probes, diffs, or runtime behavior — before relying on it.
+- A "done", "passed", or "verified" claim from a sub-agent, reviewer, or verifier is supervised evidence, not proof;
+  re-check it against the underlying artifact per `2.4`.
+- When a rationale asserts that some input, file, or condition is irrelevant, treat that as a testable claim, not a given, and check it per the `3.4` self-consistency loop.
+- Do not forward-chain on a self-report; anchor the claim or label it hypothesis/`Unknown`.
+
 ## 3. Workflow And Side Effects
 
 ### 3.0 Intent Loop
@@ -146,6 +159,8 @@ Always use a reverse-interview loop when intent is not uniquely determined from 
 - If topic choice is ambiguous, ask one question choosing between the active topic and a new topic.
 - Update the topic spec after reverse interview and whenever material clarity changes so future prompts can rehydrate intent after pruning.
   Never store secrets there; `/tmp` is best-effort.
+- When acting as an advisor or reviewer of a plan, prefer probing questions that surface assumptions and forks over prescribing a solution;
+  withhold readiness/approval until the plan's own success criteria are testable.
 
 Execution order:
 
@@ -155,7 +170,7 @@ Execution order:
 4. When forks remain, reverse-interview until you have 100% confidence about what the user actually wants, not what they think they should want.
    Ask exactly one most branch-eliminating fork-closing question, wait for the answer, update the intent spec and fork inventory, and repeat until forks are empty and success criteria are testable.
 5. Start the response with a dedicated plan/checklist and per-step verification.
-6. Implement only after intent is clear; validate against the acceptance criteria.
+6. Implement only after intent is clear; before moving from investigation/planning to execution on non-trivial work, pass an explicit readiness gate — forks are empty and success criteria are testable — then validate against the acceptance criteria.
 7. Present concise results with evidence and remaining blockers.
 
 ### 3.1 Git Push Safety
@@ -214,6 +229,7 @@ Make success observable.
 - Each plan step must be independently verifiable.
 - Do not proceed past a failing verification step; stop, back up, or replan.
 - Repeated verification failure on the same class of issue triggers `3.3 Requirements Reset`.
+- Self-consistency check: when a decision rests on a rationale that claims some inputs, files, or conditions are irrelevant, perturb exactly those and confirm the decision stays stable; if it flips, the stated rationale is not the real driver, so re-investigate before relying on it.
 - These loops do not override Compatibility, External Truth, Runtime Truth, or Minimal Edit Scope.
   Test-first framing does not license touching code outside the request.
 

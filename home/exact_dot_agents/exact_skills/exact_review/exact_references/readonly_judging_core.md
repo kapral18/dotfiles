@@ -15,6 +15,9 @@ The shared judging engine for every review surface.
 Use in every non-trivial review.
 
 - Treat every claim as a hypothesis until verified.
+- The author's stated rationale is one such claim: a PR description, a code comment, a commit message, or a reviewer's own summary explains what someone believes drove the change, not what the change does.
+  Verify the behavior, not the explanation.
+- Self-consistency check: when a rationale claims some input, file, or condition is irrelevant to the outcome, perturb exactly that and confirm the outcome stays stable; if it changes, the stated rationale is not the real driver and the finding needs re-investigation.
 - A static read (reading source, searching the tree) proves what the source says, not what the system does.
   When keeping or dropping a candidate depends on observed/runtime behavior, static evidence is a hypothesis, not proof —
   verify the behavior at runtime whenever a runtime check is available, because a static read can contradict what the system actually does.

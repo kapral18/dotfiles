@@ -51,6 +51,8 @@ Walk the plan end-to-end, ordered by risk:
 
 Feedback only. Do not edit the plan document or write code unless the user explicitly asks.
 
+- Advisor discipline: prefer probing questions that make the author re-examine an assumption or fork over prescribing a specific implementation; reserve concrete fixes for when the user asks.
+  A finding that dictates the solution forecloses alternatives the author may have reason to prefer.
 - `Base context:` line (see shared_rules.md).
 - Findings ordered by severity, each anchored to the plan section/step plus the code/probe evidence that supports it.
 - Assumption ledger: which plan claims were confirmed, which were refuted, and which remain `Unknown` because they are not locally verifiable.

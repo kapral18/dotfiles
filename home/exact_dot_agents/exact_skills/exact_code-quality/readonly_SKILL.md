@@ -29,4 +29,5 @@ The SOP still owns compatibility, minimal edit scope, artifact necessity, semant
 - Keep functions under 50 lines.
 - Prefer `async`/`await` over `.then()` chains.
 - Add JSDoc/TSDoc for complex functions.
+- Treat a behavioral claim in a comment, docstring, or commit message ("safe because", "always", "never", "cannot happen") as a claim to verify against the code and tests, not as evidence; do not preserve or add one you have not confirmed.
 - Run relevant tests/linters when feasible; report results or state why skipped.

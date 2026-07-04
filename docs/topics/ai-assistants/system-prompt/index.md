@@ -6,13 +6,13 @@ title: System Prompt (SOP)
 
 The SOP is the highest-leverage AI artifact in this setup. It decides how every harness interprets a request before a skill, subagent, model, or workflow gets involved.
 
-| Slice                                                                   | Owns                                                                              |
-| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| [Source of truth](source-of-truth.md)                                   | single file, symlink fan-out, and update workflow                                 |
-| [Truth and verification](truth-and-verification.md)                     | compatibility, external truth, runtime truth, completion, compact-output recovery |
-| [Execution workflow](execution-workflow.md)                             | reverse interview, persistent specs, verification loops, state-machine harnesses  |
-| [Side-effect gates](side-effect-gates.md)                               | git push safety, ownership, publication, bot/human split                          |
-| [Code-quality and dotfiles policy](code-quality-and-dotfiles-policy.md) | style matching, semantic dedupe, docs hygiene, shell/helper rules                 |
+| Slice                                                                   | Owns                                                                                                      |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| [Source of truth](source-of-truth.md)                                   | single file, symlink fan-out, and update workflow                                                         |
+| [Truth and verification](truth-and-verification.md)                     | compatibility, external truth, runtime truth, completion, compact-output recovery, self-report skepticism |
+| [Execution workflow](execution-workflow.md)                             | reverse interview, persistent specs, verification loops, state-machine harnesses                          |
+| [Side-effect gates](side-effect-gates.md)                               | git push safety, ownership, publication, bot/human split                                                  |
+| [Code-quality and dotfiles policy](code-quality-and-dotfiles-policy.md) | style matching, semantic dedupe, docs hygiene, shell/helper rules                                         |
 
 ## Source map
 
