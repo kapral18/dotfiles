@@ -1,4 +1,4 @@
-set -l __ai_kb_subcommands init remember search get list reembed curate ingest doctor
+set -l __ai_kb_subcommands init remember search get list reembed curate ingest harvest doctor
 set -l __ai_kb_kinds fact gotcha pattern anti_pattern recipe principle doc
 set -l __ai_kb_scopes workspace project domain universal
 set -l __ai_kb_modes hybrid bm25 vector
@@ -16,6 +16,7 @@ complete -c ',ai-kb' -n "not __fish_seen_subcommand_from $__ai_kb_subcommands" -
 complete -c ',ai-kb' -n "not __fish_seen_subcommand_from $__ai_kb_subcommands" -a reembed -d 'Rebuild missing embeddings'
 complete -c ',ai-kb' -n "not __fish_seen_subcommand_from $__ai_kb_subcommands" -a curate -d 'Run curation'
 complete -c ',ai-kb' -n "not __fish_seen_subcommand_from $__ai_kb_subcommands" -a ingest -d 'Ingest markdown'
+complete -c ',ai-kb' -n "not __fish_seen_subcommand_from $__ai_kb_subcommands" -a harvest -d 'Surface durable-memory candidates from a worklog'
 complete -c ',ai-kb' -n "not __fish_seen_subcommand_from $__ai_kb_subcommands" -a doctor -d 'Check KB health'
 
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from remember' -l title -r -d 'Capsule title'
@@ -42,7 +43,7 @@ complete -c ',ai-kb' -n '__fish_seen_subcommand_from search' -l domain -r -d 'Fi
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from search' -l mode -x -a "$__ai_kb_modes" -d 'Search mode'
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from search' -l json -d 'Emit JSON'
 
-complete -c ',ai-kb' -n '__fish_seen_subcommand_from get list curate ingest' -l json -d 'Emit JSON'
+complete -c ',ai-kb' -n '__fish_seen_subcommand_from get list curate ingest harvest' -l json -d 'Emit JSON'
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from list reembed' -l limit -r -d 'Limit rows'
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from curate' -l no-dedupe -d 'Skip dedupe pass'
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from curate' -l no-decay -d 'Skip decay pass'
@@ -55,3 +56,9 @@ complete -c ',ai-kb' -n '__fish_seen_subcommand_from ingest' -l workspace -r -a 
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from ingest' -l domain -r -d 'Domain tag'
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from ingest' -l max-bytes -r -d 'Maximum input bytes'
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from ingest' -a '(__fish_complete_path)' -d 'Markdown file or directory'
+
+complete -c ',ai-kb' -n '__fish_seen_subcommand_from harvest' -l workspace -r -a '(__fish_complete_directories)' -d 'Workspace path (default: cwd)'
+complete -c ',ai-kb' -n '__fish_seen_subcommand_from harvest' -l topic -r -d 'Topic name (default: active topic)'
+complete -c ',ai-kb' -n '__fish_seen_subcommand_from harvest' -l worklog -r -a '(__fish_complete_path)' -d 'Explicit worklog path'
+complete -c ',ai-kb' -n '__fish_seen_subcommand_from harvest' -l min-repeats -r -d 'Occurrences before a repeat is a candidate'
+complete -c ',ai-kb' -n '__fish_seen_subcommand_from harvest' -l limit -r -d 'Maximum candidates shown'

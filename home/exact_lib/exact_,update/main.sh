@@ -40,7 +40,7 @@ Usage: ,update [options]
 Unified update orchestrator for the dotfiles ecosystem.
 Pulls dotfiles, updates all package managers, and reports what changed.
 
-Categories: dotfiles, brew, gh, mise, cargo, yarn, gems, go, uv, manual
+Categories: dotfiles, brew, gh, mise, cargo, yarn, gems, go, uv, manual, selfupdaters
 
 Options:
   -n, --dry-run       Show what would be updated without doing it
@@ -304,8 +304,24 @@ update_brew() {
   [ "$verbose" -eq 1 ] && step_info "$outdated_before packages outdated before update"
 
   run_timed "brew update (fetch)" brew update || true
+
+  # Re-assert cask pins BEFORE upgrade so self-updating apps are frozen from Homebrew on
+  # every ,update (drift self-heals even if the Brewfile hasn't changed). The pin set is
+  # DERIVED from installed auto_updates casks — the Brewfile drives what's installed, so
+  # there is no parallel hardcoded inventory. Their own updaters (Sparkle / component
+  # update) keep them current; Homebrew's pinned build can lag and would otherwise
+  # reassert stale bits (e.g. Arc's 82775 > 82773 build inversion).
+  pin_self_updating_casks() {
+    has_cmd jq || return 0
+    local cask
+    for cask in $(brew info --json=v2 --installed 2> /dev/null | jq -r '.casks[] | select(.auto_updates == true) | .token'); do
+      brew pin --cask "$cask" 2> /dev/null || true
+    done
+  }
+  run_timed "brew pin (self-updating casks)" pin_self_updating_casks || true
+
   run_timed "brew upgrade" brew upgrade || true
-  run_timed "brew bundle (Brewfile)" brew bundle --global || true
+  run_timed "brew bundle (Brewfile)" brew bundle --global --no-upgrade || true
   run_timed "brew cleanup" brew cleanup --prune=30 -s || true
 
   local outdated_after
@@ -313,6 +329,26 @@ update_brew() {
   if [ "$outdated_after" -gt 0 ]; then
     step_info "$outdated_after packages still outdated"
   fi
+}
+
+update_selfupdaters() {
+  should_run "selfupdaters" || return 0
+  section "Self-updating casks"
+
+  if ! has_cmd python3; then
+    step_skip "python3 not installed"
+    return 0
+  fi
+
+  local helper_dir helper
+  helper_dir=$(dirname "$(realpath "$0")")
+  helper="$helper_dir/heal_self_updating_casks.py"
+  if [ ! -f "$helper" ]; then
+    step_skip "self-updating cask healer not found"
+    return 0
+  fi
+
+  run_timed "heal stale self-updating casks" python3 "$helper" || true
 }
 
 update_gh() {
@@ -454,6 +490,9 @@ update_dotfiles
 # Phase 2: all package managers in parallel
 run_parallel update_brew update_gh update_mise update_uv update_manual \
   update_cargo update_yarn update_gems update_go || true
+
+# Phase 3: self-updating cask drift is checked after Homebrew has converged.
+update_selfupdaters
 
 overall_end=$(date +%s)
 overall_elapsed=$((overall_end - overall_start))

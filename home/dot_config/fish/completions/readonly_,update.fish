@@ -1,4 +1,4 @@
-set -l __update_categories dotfiles brew gh mise cargo yarn gems go uv manual
+set -l __update_categories dotfiles brew gh mise cargo yarn gems go uv manual selfupdaters
 
 complete -c ',update' -f
 complete -c ',update' -s n -l dry-run -d 'Show what would run'

@@ -993,5 +993,202 @@ class TestAiKbRememberSupersedes(unittest.TestCase):
             assert cap["refs"] == "lib.py:10,https://example/doc"
 
 
+class TestWorklogHarvest(unittest.TestCase):
+    """WHEN mining a hook worklog for durable-memory candidates (read-only)."""
+
+    @staticmethod
+    def _entry(**kwargs):
+        base = {"ts": "2026-07-05T00:00:00Z", "event": "postToolUse", "tool_name": "Shell"}
+        base.update(kwargs)
+        return base
+
+    def test_detect_failure_to_fix(self):
+        import ai_kb
+
+        entries = [
+            self._entry(command="pytest test_foo.py", status="error", error="FAILED test_foo AssertionError line 42"),
+            self._entry(command="pytest test_foo.py", status="success"),
+        ]
+        cands = ai_kb.detect_candidates(entries)
+        f2f = [c for c in cands if c["detector"] == "failure_to_fix"]
+        assert len(f2f) == 1, cands
+        assert f2f[0]["kind"] == "gotcha"
+        assert f2f[0]["program"] == "pytest"
+        # digit-normalized signature so line numbers collapse
+        assert "line <n>" in f2f[0]["signature"]
+
+    def test_failure_without_later_fix_yields_no_f2f(self):
+        import ai_kb
+
+        entries = [self._entry(command="npm run build", error="error TS2307: missing module")]
+        cands = ai_kb.detect_candidates(entries)
+        assert [c for c in cands if c["detector"] == "failure_to_fix"] == []
+
+    def test_nonzero_exit_without_error_message_is_not_a_failure(self):
+        import ai_kb
+
+        # A compound investigation command that merely exits nonzero (status
+        # error, banner text in output, no error_message) then a clean rerun
+        # must NOT produce a failure_to_fix candidate.
+        entries = [
+            self._entry(command="rg needle | head", status="error", output="===== banner ====="),
+            self._entry(command="rg needle | head", status="success"),
+        ]
+        cands = ai_kb.detect_candidates(entries)
+        assert [c for c in cands if c["detector"] == "failure_to_fix"] == [], cands
+
+    def test_repeated_long_and_multiline_commands_excluded(self):
+        import ai_kb
+
+        long_cmd = 'p=~/x; echo "===="; ' + "ls -1 dir; " * 30  # >200 chars
+        multiline = "cd /repo\necho hi\nsed -n '1,5p' file"
+        entries = [
+            self._entry(command=long_cmd, status="success"),
+            self._entry(command=long_cmd, status="success"),
+            self._entry(command=multiline, status="success"),
+            self._entry(command=multiline, status="success"),
+        ]
+        cands = ai_kb.detect_candidates(entries, min_repeats=2)
+        assert [c for c in cands if c["detector"] == "repeated_command"] == [], cands
+
+    def test_detect_recurring_error(self):
+        import ai_kb
+
+        entries = [
+            self._entry(command="curl x", error="Timeout after 30s"),
+            self._entry(command="curl y", error="Timeout after 45s"),
+        ]
+        cands = ai_kb.detect_candidates(entries, min_repeats=2)
+        rec = [c for c in cands if c["detector"] == "recurring_error"]
+        assert len(rec) == 1, cands
+        assert rec[0]["count"] == 2
+        assert rec[0]["kind"] == "gotcha"
+        assert rec[0]["signature"] == "Timeout after <n>s"
+
+    def test_fixed_signature_not_double_reported_as_recurring(self):
+        import ai_kb
+
+        # Same error signature appears twice AND is later fixed: it must be a
+        # single failure_to_fix, not also a recurring_error (fixed_sigs guard).
+        entries = [
+            self._entry(command="pytest a.py", error="FAILED AssertionError line 42"),
+            self._entry(command="pytest b.py", error="FAILED AssertionError line 88"),
+            self._entry(command="pytest a.py", status="success"),
+        ]
+        cands = ai_kb.detect_candidates(entries, min_repeats=2)
+        detectors = [c["detector"] for c in cands]
+        assert detectors.count("failure_to_fix") == 1, cands
+        assert "recurring_error" not in detectors, cands
+
+    def test_detect_repeated_command_and_noise_excluded(self):
+        import ai_kb
+
+        entries = [
+            self._entry(command="make check", status="success"),
+            self._entry(command="make check", status="success"),
+            self._entry(command="ls", status="success"),
+            self._entry(command="ls", status="success"),
+        ]
+        cands = ai_kb.detect_candidates(entries, min_repeats=2)
+        rep = [c for c in cands if c["detector"] == "repeated_command"]
+        assert len(rep) == 1, cands
+        assert rep[0]["signature"] == "make check"
+        assert rep[0]["count"] == 2
+        assert rep[0]["kind"] == "recipe"
+
+    def test_min_repeats_threshold(self):
+        import ai_kb
+
+        entries = [
+            self._entry(command="make check", status="success"),
+            self._entry(command="make check", status="success"),
+        ]
+        assert ai_kb.detect_candidates(entries, min_repeats=3) == []
+
+    def test_read_worklog_skips_malformed(self):
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            wl = Path(tmp) / "current.worklog.jsonl"
+            wl.write_text(
+                '{"ts":"t","command":"make check","status":"success"}\n'
+                "not json\n"
+                "\n"
+                '{"ts":"t2","command":"make check","status":"success"}\n',
+                encoding="utf-8",
+            )
+            entries = ai_kb.read_worklog(wl)
+            assert len(entries) == 2
+            cands = ai_kb.detect_candidates(entries, min_repeats=2)
+            assert any(c["detector"] == "repeated_command" for c in cands)
+
+    def test_suppress_known_flags_existing_capsule(self):
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            kb = ai_kb.KnowledgeBase(home=Path(tmp))
+            known = kb.remember(
+                title="pytest test_foo AssertionError",
+                body="FAILED test_foo AssertionError line fixed by updating the fixture",
+                kind="gotcha",
+                scope="workspace",
+                workspace_path="/ws",
+                source="test",
+                embed_now=False,
+            )
+            entries = [
+                self._entry(command="pytest test_foo.py", error="FAILED test_foo AssertionError line 42"),
+                self._entry(command="pytest test_foo.py", status="success"),
+                self._entry(command="make check", status="success"),
+                self._entry(command="make check", status="success"),
+            ]
+            cands = ai_kb.detect_candidates(entries, min_repeats=2)
+            ai_kb.suppress_known(kb, cands, Path("/ws"))
+            by_detector = {c["detector"]: c for c in cands}
+            assert by_detector["failure_to_fix"]["known"] is True
+            assert by_detector["failure_to_fix"]["known_id"] == known.id
+            # unrelated recipe stays unknown
+            assert by_detector["repeated_command"]["known"] is False
+
+    def test_harvest_cli_json_is_read_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            kb_home = Path(tmp) / "kb"
+            wl = Path(tmp) / "current.worklog.jsonl"
+            wl.write_text(
+                '{"ts":"t1","command":"make check","status":"success"}\n'
+                '{"ts":"t2","command":"make check","status":"success"}\n',
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPTS / "ai_kb.py"),
+                    "--home",
+                    str(kb_home),
+                    "harvest",
+                    "--worklog",
+                    str(wl),
+                    "--workspace",
+                    "/ws",
+                    "--json",
+                ],
+                capture_output=True,
+                text=True,
+                cwd=str(SCRIPTS),
+            )
+            assert result.returncode == 0, result.stderr
+            payload = json.loads(result.stdout)
+            assert payload["entries"] == 2
+            assert any(c["detector"] == "repeated_command" for c in payload["candidates"])
+            # harvest never writes capsules
+            listed = subprocess.run(
+                [sys.executable, str(SCRIPTS / "ai_kb.py"), "--home", str(kb_home), "list", "--json"],
+                capture_output=True,
+                text=True,
+                cwd=str(SCRIPTS),
+            )
+            assert json.loads(listed.stdout or "[]") == []
+
+
 if __name__ == "__main__":
     unittest.main()

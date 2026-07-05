@@ -1,6 +1,6 @@
 %% ============================================================================
 %% 07c-bin-commands.mmd — Every thin command in home/exact_bin/ (71 thin commands)
-%% plus deployed internals in home/exact_lib/ (40 command/shared library files).
+%% plus deployed internals in home/exact_lib/ (41 command/shared library files).
 %% executable_,* → ~/bin/,* (comma-prefixed user commands); home/exact_lib/exact_,name/
 %% → ~/lib/,name/. verify-bin-surface keeps each command covered by fish
 %% completions, docs, catalog, and non-orphaned command libraries.
@@ -46,7 +46,7 @@ flowchart TB
     W --> LIBS
 
     subgraph CMDLIBS["Deployed command internals (home/exact_lib/ → ~/lib/)"]
-        CL["Python: ,artifact/main.py · ,codex/main.py · ,get-age-buckets/main.py<br/>,kbn-pr-audit/main.py · ,kbn-stack/main.py · ,mcp-token/main.py<br/>Shell: ,add-patch-to-prs/main.sh · ,codeowners/main.sh · ,doctor/main.sh<br/>,disable-auto-merge/main.sh · ,enable-auto-merge/main.sh · ,gh-prw/main.sh<br/>,gh-subissues-create/main.sh · ,gh-tfork/main.sh · ,gh-worktree/main.sh<br/>,hey-branch/main.sh · ,llama-cpp/main.sh · ,pull-rebase/main.sh<br/>,tmux-run-all/main.sh · ,update/main.sh · ,wh/main.sh<br/>Node: ,jest-test-title-report/main.mjs<br/>thin launchers stay in home/exact_bin/executable_,name"]:::sys
+        CL["Python: ,artifact/main.py · ,codex/main.py · ,get-age-buckets/main.py<br/>,kbn-pr-audit/main.py · ,kbn-stack/main.py · ,mcp-token/main.py<br/>,update/heal_self_updating_casks.py<br/>Shell: ,add-patch-to-prs/main.sh · ,codeowners/main.sh · ,doctor/main.sh<br/>,disable-auto-merge/main.sh · ,enable-auto-merge/main.sh · ,gh-prw/main.sh<br/>,gh-subissues-create/main.sh · ,gh-tfork/main.sh · ,gh-worktree/main.sh<br/>,hey-branch/main.sh · ,llama-cpp/main.sh · ,pull-rebase/main.sh<br/>,tmux-run-all/main.sh · ,update/main.sh · ,wh/main.sh<br/>Node: ,jest-test-title-report/main.mjs<br/>thin launchers stay in home/exact_bin/executable_,name"]:::sys
     end
     G --> CMDLIBS
     A --> CMDLIBS

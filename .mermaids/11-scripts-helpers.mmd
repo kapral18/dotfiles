@@ -34,7 +34,7 @@ flowchart TB
     AM --> GPM & MOM
 
     subgraph AIKB["AI knowledgebase + embeddings"]
-        KB["ai_kb.py (markdown + SQLite FTS5 store; ,ai-kb)"]:::ai
+        KB["ai_kb.py (markdown + SQLite FTS5 store; ,ai-kb; harvest = worklog->remember candidates, read-only)"]:::ai
         EMB["embed.py + embed_runner.py (fastembed subprocess)"]:::ai
         VEC["vec_runner.py (vector retrieval subprocess)"]:::ai
         AGM["agent_memory.py (/tmp/specs topic mgmt; ,agent-memory)"]:::ai

@@ -36,6 +36,7 @@ import hashlib
 import json
 import os
 import re
+import shlex
 import shutil
 import sqlite3
 import subprocess
@@ -79,6 +80,18 @@ MMR_LAMBDA = 0.7
 # the same-workspace boost (+0.1) so a fully-decayed capsule (score 1.0)
 # is penalized by the same amount a workspace match is rewarded.
 DECAY_PENALTY_WEIGHT = 0.1
+
+# --- Worklog harvest -------------------------------------------------------
+# `,ai-kb harvest` mines a hook worklog for durable-memory CANDIDATES; it
+# never writes capsules (persistence stays agent-driven, see the ai-kb
+# skill and hook README). The worklog path convention mirrors the agent
+# hooks: /tmp/specs/<workspace-without-leading-slash>/<topic>.worklog.jsonl.
+# scripts/ cannot import the deployed home/.../hook_common.py, so the tiny
+# path/topic resolution is duplicated here against that stable convention.
+SPEC_ROOT = Path("/tmp/specs")
+DEFAULT_TOPIC = "current"
+# First tokens too generic to be a durable "recipe" on their own.
+HARVEST_NOISE_PROGRAMS = frozenset({"cd", "ls", "pwd", "echo", "cat", "clear", "which", "true", "false"})
 
 
 # --- Helpers ---------------------------------------------------------------
@@ -1489,6 +1502,311 @@ def _first_nonempty(lines: list[str]) -> str:
 # --- CLI -------------------------------------------------------------------
 
 
+def _spec_dir_for(workspace: Path) -> Path:
+    return SPEC_ROOT / str(workspace).lstrip(os.sep)
+
+
+def resolve_topic(workspace: Path, explicit: str | None) -> str:
+    """Return the active topic: explicit override, else `_active_topic.txt`, else `current`."""
+    if explicit:
+        return explicit
+    pointer = _spec_dir_for(workspace) / "_active_topic.txt"
+    try:
+        raw = pointer.read_text(encoding="utf-8").strip()
+    except OSError:
+        raw = ""
+    return raw or DEFAULT_TOPIC
+
+
+def worklog_path(workspace: Path, topic: str) -> Path:
+    return _spec_dir_for(workspace) / f"{topic}.worklog.jsonl"
+
+
+def read_worklog(path: Path) -> list[dict]:
+    """Parse a worklog JSONL file into dict entries, skipping malformed lines."""
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    entries: list[dict] = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict):
+            entries.append(obj)
+    return entries
+
+
+def _entry_command(entry: dict) -> str:
+    return str(entry.get("command") or "").strip()
+
+
+def _entry_failed(entry: dict) -> bool:
+    if entry.get("error"):
+        return True
+    if str(entry.get("status") or "").lower() in {"error", "failed", "failure"}:
+        return True
+    return str(entry.get("event") or "") == "postToolUseFailure"
+
+
+def _program(command: str) -> str:
+    if not command:
+        return ""
+    try:
+        tokens = shlex.split(command)
+    except ValueError:
+        tokens = command.split()
+    if not tokens:
+        return ""
+    return os.path.basename(tokens[0])
+
+
+def _error_signature(entry: dict) -> str:
+    """First line of the entry's real error message, digit-normalized so
+    `line 42` and `line 88` collapse to one signature. Only the `error`
+    field is used (worklog_recorder sets it solely from `error_message`); a
+    bare nonzero exit with no error text is not a durable signal. Empty when
+    there is no error message."""
+    text = str(entry.get("error") or "")
+    first = ""
+    for line in text.splitlines():
+        if line.strip():
+            first = line.strip()
+            break
+    if not first:
+        return ""
+    norm = re.sub(r"\d+", "<n>", first)
+    norm = re.sub(r"\s+", " ", norm).strip()
+    return norm[:120]
+
+
+def _normalize_command(command: str) -> str:
+    return re.sub(r"\s+", " ", command.strip())
+
+
+def _evidence(entry: dict) -> dict:
+    ev: dict = {}
+    if entry.get("ts"):
+        ev["ts"] = entry["ts"]
+    for key in ("event", "tool_name", "command", "status"):
+        value = entry.get(key)
+        if value:
+            ev[key] = value
+    if entry.get("error"):
+        ev["error"] = str(entry["error"])[:200]
+    return ev
+
+
+def detect_candidates(entries: list[dict], *, min_repeats: int = 2) -> list[dict]:
+    """Deterministic worklog detectors returning durable-memory candidates.
+
+    Three lenses over the worklog: (1) a failing command later followed by a
+    clean run of the same program (`failure_to_fix`), (2) an error signature
+    seen `min_repeats`+ times (`recurring_error`), and (3) a clean command run
+    `min_repeats`+ times (`repeated_command`). No capsule is written; each
+    candidate is a suggestion the caller must verify before remembering.
+    """
+    candidates: list[dict] = []
+
+    # 1. failure -> later clean run of the same program. Anchor on a real
+    # error message (not a bare nonzero exit) and skip noise programs, so a
+    # compound investigation command that merely exits nonzero is not a lead.
+    seen_fix: set[tuple[str, str]] = set()
+    for i, entry in enumerate(entries):
+        if not entry.get("error"):
+            continue
+        command = _entry_command(entry)
+        prog = _program(command)
+        if not prog or prog in HARVEST_NOISE_PROGRAMS:
+            continue
+        sig = _error_signature(entry)
+        if not sig:
+            continue
+        fix = None
+        for later in entries[i + 1 :]:
+            if _program(_entry_command(later)) == prog and not _entry_failed(later):
+                fix = later
+                break
+        if fix is None:
+            continue
+        key = (prog, sig)
+        if key in seen_fix:
+            continue
+        seen_fix.add(key)
+        candidates.append(
+            {
+                "detector": "failure_to_fix",
+                "kind": "gotcha",
+                "title": f"{prog} failure: {sig}"[:120],
+                "body": (
+                    f"`{command}` failed with: {sig}. A later `{_entry_command(fix)}` ran clean. "
+                    "Verify the root cause and the fix before trusting this."
+                ),
+                "count": 1,
+                "evidence": [_evidence(entry), _evidence(fix)],
+                "signature": sig,
+                "program": prog,
+            }
+        )
+
+    fixed_sigs = {c["signature"] for c in candidates}
+
+    # 2. recurring error signature (real error messages only).
+    err_groups: dict[str, list[dict]] = {}
+    for entry in entries:
+        if not entry.get("error"):
+            continue
+        sig = _error_signature(entry)
+        if not sig or sig in fixed_sigs:
+            continue
+        err_groups.setdefault(sig, []).append(entry)
+    for sig, group in err_groups.items():
+        if len(group) < min_repeats:
+            continue
+        candidates.append(
+            {
+                "detector": "recurring_error",
+                "kind": "gotcha",
+                "title": f"Recurring error: {sig}"[:120],
+                "body": (
+                    f"Seen {len(group)}x in this topic's worklog: {sig}. "
+                    "Capture the root cause and the durable fix as a gotcha."
+                ),
+                "count": len(group),
+                "evidence": [_evidence(e) for e in group[:3]],
+                "signature": sig,
+                "program": "",
+            }
+        )
+
+    # 3. repeated clean command.
+    cmd_groups: dict[str, list[dict]] = {}
+    for entry in entries:
+        if _entry_failed(entry):
+            continue
+        command = _entry_command(entry)
+        if not command:
+            continue
+        if _program(command) in HARVEST_NOISE_PROGRAMS:
+            continue
+        # Multiline / very long compound one-liners are ad-hoc investigation
+        # scaffolding, not durable recipes.
+        if "\n" in command:
+            continue
+        norm = _normalize_command(command)
+        if len(norm) < 4 or len(norm) > 200:
+            continue
+        cmd_groups.setdefault(norm, []).append(entry)
+    for norm, group in cmd_groups.items():
+        if len(group) < min_repeats:
+            continue
+        candidates.append(
+            {
+                "detector": "repeated_command",
+                "kind": "recipe",
+                "title": f"Frequent command: {norm}"[:120],
+                "body": (
+                    f"`{norm}` ran {len(group)}x cleanly in this topic. "
+                    "If it is a reusable procedure, capture it as a recipe."
+                ),
+                "count": len(group),
+                "evidence": [_evidence(e) for e in group[:3]],
+                "signature": norm,
+                "program": _program(norm),
+            }
+        )
+
+    priority = {"failure_to_fix": 0, "recurring_error": 1, "repeated_command": 2}
+    candidates.sort(key=lambda c: (priority.get(c["detector"], 9), -c["count"]))
+    return candidates
+
+
+_HARVEST_STOPWORDS = frozenset(
+    {"the", "and", "for", "with", "from", "this", "that", "was", "are", "not", "ran", "cannot"}
+)
+# Fraction of a candidate's distinctive tokens that a capsule must share to
+# count as "already remembered". Above a fragile BM25 score threshold, token
+# overlap is stable across queries.
+HARVEST_SUPPRESS_OVERLAP = 0.6
+
+
+def _tokens(text: str) -> set[str]:
+    out: set[str] = set()
+    for tok in re.findall(r"[a-zA-Z0-9_./-]+", text.lower()):
+        tok = tok.strip("-./")
+        if len(tok) >= 3 and tok not in _HARVEST_STOPWORDS:
+            out.add(tok)
+    return out
+
+
+def _distinctive_tokens(signature: str) -> list[str]:
+    """Longest, most specific tokens of a signature — the ones a real capsule
+    about the same thing would also contain (error codes, symbols, filenames)."""
+    toks = [t for t in _tokens(signature) if any(ch.isalpha() for ch in t)]
+    toks.sort(key=len, reverse=True)
+    return toks[:6]
+
+
+def suppress_known(kb: "KnowledgeBase", candidates: list[dict], workspace: Path | None) -> list[dict]:
+    """Annotate candidates already covered by a capsule (`known`/`known_id`).
+
+    Uses the BM25 lane (no embedder dependency), then a token-overlap test
+    rather than a fragile score threshold: a capsule is a match when it shares
+    at least `HARVEST_SUPPRESS_OVERLAP` of the candidate's distinctive tokens.
+    Never drops entries — the CLI/JSON caller decides how to present known ones.
+    """
+    ws = str(workspace) if workspace else None
+    for candidate in candidates:
+        candidate["known"] = False
+        candidate["known_id"] = None
+        sig = " ".join((candidate.get("signature") or "").split())
+        query = (sig or candidate.get("title") or "")[:200]
+        distinctive = _distinctive_tokens(sig or candidate.get("title") or "")
+        if not query or not distinctive:
+            continue
+        try:
+            hits = kb.search(query, limit=3, workspace=ws, mode="bm25")
+        except Exception:
+            hits = []
+        for hit in hits:
+            hit_toks = _tokens(str(hit.get("title") or "") + " " + str(hit.get("body") or ""))
+            overlap = sum(1 for t in distinctive if t in hit_toks) / len(distinctive)
+            if overlap >= HARVEST_SUPPRESS_OVERLAP:
+                candidate["known"] = True
+                candidate["known_id"] = str(hit.get("id") or "")
+                break
+    return candidates
+
+
+def _remember_line(candidate: dict, workspace: Path | None) -> str:
+    args = [
+        ",ai-kb",
+        "remember",
+        "--title",
+        shlex.quote(candidate["title"]),
+        "--kind",
+        candidate["kind"],
+        "--scope",
+        "workspace",
+    ]
+    if workspace:
+        args += ["--workspace", shlex.quote(str(workspace))]
+    args += [
+        "--source",
+        shlex.quote(f"worklog:{candidate['detector']}"),
+        "--confidence",
+        "0.5",
+        "--body",
+        shlex.quote(candidate["body"]),
+    ]
+    return " ".join(args)
+
+
 def print_capsule(capsule: Capsule, as_json: bool) -> None:
     if as_json:
         print(json.dumps(asdict(capsule), indent=2))
@@ -1578,6 +1896,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ingest.add_argument("--max-bytes", type=int, default=1_000_000)
     ingest.add_argument("--json", action="store_true")
+
+    harvest = sub.add_parser(
+        "harvest",
+        help="Surface durable-memory candidates from a topic worklog (read-only; never writes capsules)",
+    )
+    harvest.add_argument("--workspace", default=None, help="Workspace path (default: cwd)")
+    harvest.add_argument("--topic", default=None, help="Topic name (default: active topic, else 'current')")
+    harvest.add_argument("--worklog", default=None, help="Explicit worklog path (overrides --workspace/--topic)")
+    harvest.add_argument("--min-repeats", type=int, default=2, dest="min_repeats")
+    harvest.add_argument("--limit", type=int, default=20)
+    harvest.add_argument("--json", action="store_true")
 
     sub.add_parser("doctor")
     return parser
@@ -1689,6 +2018,54 @@ def main(argv: list[str] | None = None) -> int:
                 f"files_skipped_unchanged={summary['files_skipped_unchanged']} "
                 f"capsules_stored={summary['capsules_stored']}"
             )
+        return 0
+    if args.cmd == "harvest":
+        workspace = Path(args.workspace or Path.cwd()).expanduser().resolve()
+        topic = resolve_topic(workspace, args.topic)
+        worklog = Path(args.worklog).expanduser() if args.worklog else worklog_path(workspace, topic)
+        entries = read_worklog(worklog)
+        candidates = detect_candidates(entries, min_repeats=args.min_repeats)
+        suppress_known(kb, candidates, workspace)
+        shown = [c for c in candidates if not c["known"]][: args.limit]
+        suppressed = sum(1 for c in candidates if c["known"])
+        if args.json:
+            print(
+                json.dumps(
+                    {
+                        "workspace": str(workspace),
+                        "topic": topic,
+                        "worklog": str(worklog),
+                        "worklog_exists": worklog.exists(),
+                        "entries": len(entries),
+                        "suppressed_known": suppressed,
+                        "candidates": candidates,
+                    },
+                    indent=2,
+                )
+            )
+            return 0
+        if not worklog.exists():
+            print(f"no worklog at {worklog}", file=sys.stderr)
+            return 0
+        suffix = f", {suppressed} already in KB" if suppressed else ""
+        if not shown:
+            print(f"harvest: {len(entries)} worklog entries, no new durable candidates{suffix}")
+            return 0
+        print(f"harvest: {len(shown)} candidate(s) from {len(entries)} worklog entries (topic {topic}){suffix}")
+        for candidate in shown:
+            print()
+            print(f"[{candidate['detector']}] {candidate['title']}  (x{candidate['count']}, kind={candidate['kind']})")
+            for ev in candidate["evidence"]:
+                bits = [ev.get("ts") or ""]
+                if ev.get("command"):
+                    bits.append(f"$ {ev['command']}")
+                if ev.get("error"):
+                    bits.append(f"! {ev['error']}")
+                line = "  ".join(b for b in bits if b)
+                if line:
+                    print(f"  {line}")
+            print("  verify, then:")
+            print(f"    {_remember_line(candidate, workspace)}")
         return 0
     if args.cmd == "doctor":
         for check in kb.doctor():

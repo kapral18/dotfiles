@@ -30,7 +30,7 @@ flowchart TD
 
     HOOKS --> B0["run_once_before_00-install-xcode.sh"]:::script
     B0 --> A01["run_once_after_01-install-brew.sh<br/>02-install-fish.sh<br/>05-setup-pass-managers.fish.tmpl"]:::script
-    A01 --> C03["run_onchange_after_03-install-brew-packages.fish.tmpl<br/>(brew bundle --global + cleanup --force; Brewfile hash gate)"]:::script
+    A01 --> C03["run_onchange_after_03-install-brew-packages.fish.tmpl<br/>(brew bundle --global --no-upgrade + cleanup --force; pin self-updating casks; Brewfile hash gate)"]:::script
     C03 --> C04["04-update-fish-packages.fish.tmpl (fisher; plugins hash)"]:::script
     C04 --> C05["05-* (hash-gated sync)<br/>apply-app-icons.sh.tmpl · install-crontab.sh.tmpl<br/>install-custom-packages.sh.tmpl · install-gh-extensions.fish.tmpl<br/>install-mise-runtimes.sh.tmpl · install-uv-versions.sh.tmpl<br/>osx.core/osx.extra.sh.tmpl<br/>update-cargo-crates/gems/golang-pkgs/yarn-pkgs.sh.tmpl"]:::script
     C05 --> C06["06-build-ralph-tui.sh.tmpl (go build tools/ralph-tui)<br/>06-update-uv-tools.sh.tmpl"]:::script

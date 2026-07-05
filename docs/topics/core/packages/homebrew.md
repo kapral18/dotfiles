@@ -54,7 +54,9 @@ The brew hook is:
 
 - [`home/.chezmoiscripts/run_onchange_after_03-install-brew-packages.fish.tmpl`](../../../../home/.chezmoiscripts/run_onchange_after_03-install-brew-packages.fish.tmpl)
 
-It runs `brew bundle cleanup --global --force` and `brew bundle --global`, so the assembled Brewfile is the source-of-truth (anything not listed is uninstalled). Its `run_onchange` hash is computed from the rendered assembler, so editing any partial re-triggers the hook.
+It runs `brew bundle cleanup --global --force` and `brew bundle --global --no-upgrade`, so the assembled Brewfile is the source-of-truth (anything not listed is uninstalled). It then pins every installed self-updating cask (`auto_updates true`) so each app's own updater owns its version instead of Homebrew. Its `run_onchange` hash is computed from the rendered assembler, so editing any partial re-triggers the hook.
+
+`,update --only selfupdaters` adds a runtime guard for the same class of casks. It enumerates installed Homebrew `auto_updates` casks, reports unsupported casks, and heals only casks with verified app-specific adapters when the app's on-disk artifact is older than the state/profile guard written by the app's own updater. This protects against manual `brew reinstall --cask ...` or forced bundle paths reasserting a stale Homebrew artifact after the app has self-updated.
 
 ## Verification
 

@@ -63,6 +63,8 @@ Runtime state is intentionally outside chezmoi and outside worktrees:
 /tmp/specs/<workspace-path-without-leading-slash>/<topic>.worklog.jsonl
 ```
 
+The worklog is not only startup context — it is harvestable. `,ai-kb harvest` reads the active topic's `<topic>.worklog.jsonl` and surfaces durable-memory candidates (failing-then-fixed commands, recurring errors, repeated commands) as prefilled `,ai-kb remember` lines. It is a manual, read-only aid that never writes capsules and never re-prompts the agent, so it stays inside the same no-`stop`-hook discipline described above. See [AI knowledge base](ai-kb.md#worklog-harvest).
+
 Bounded-context rules:
 
 | Rule                                                         | Why                                                           |
