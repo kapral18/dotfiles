@@ -11,7 +11,7 @@ same discipline, plus acceptance criteria a machine can check.
 
 The SOP owns the surrounding gates: the Intent Loop mechanics (§3.0), compatibility intent (§2.0), and external/runtime truth (§2.1/§2.2).
 This skill owns the packet contract and the acceptance-criteria discipline.
-Consumers: `/build` (in-session hands-free implementation), `,ralph go --spec` (detached run), `~/.agents/skills/compose-issue/SKILL.md` (GitHub issue text), and the `review` skill's plan mode (adversarial review of the packet itself).
+Consumers: `/build` (in-session hands-free implementation), `,ralph go --spec` (detached run), `~/.agents/skills/compose-issue/SKILL.md` (GitHub issue text + publication packet), and the `review` skill's plan mode (adversarial review of the packet itself).
 
 ## Do not use
 
@@ -59,7 +59,8 @@ Consumers: `/build` (in-session hands-free implementation), `,ralph go --spec` (
    Done when every criterion carries a run-once red check or an explicit `judgment:` tag, and at least one criterion is checked for any workspace-mutating goal.
 
 4. **Assemble and persist the packet.**
-   If the active topic is a session fallback (`session-<id>` — the hook default on main/master/dev with no named topic), set a named topic first: write a stable kebab-case key to `/tmp/specs/<pwd>/_active_topic.txt`, or the packet will not survive into the next session's topic resolution.
+   If the active topic is a session fallback (`session-<id>` — the hook default on main/master/dev with no named topic), bind this session to a named topic first: `,agent-memory select <stable-kebab-topic> --create --session-id <session-id>`.
+   Use the session id from the current Topic Buckets prompt when it is shown; do not write `_active_topic.txt`.
    Fill the template below, write it to `/tmp/specs/<pwd>/<topic>.spec.md` (same `<topic>` key as the active SOP intent spec), and show the full packet in the response — the packet is the deliverable.
    Then add or update a single `packet: /tmp/specs/<pwd>/<topic>.spec.md — <one-line status>` line in the intent spec `<topic>.txt`, so session-start injection carries the pointer and a fresh session knows the contract exists.
    One packet in flight per topic: consumers (build lanes, plan review, Ralph) read this file mid-flow, so do not author the next packet until the current one's outcome is recorded in the `.txt` chain; parallel work belongs on separate topics.
@@ -69,7 +70,7 @@ Consumers: `/build` (in-session hands-free implementation), `,ralph go --spec` (
    Name the consumer moves and stop for the user's pick:
    - `/build` — hands-free implementation in this session, gated on this packet
    - `,ralph go --spec <json-file>` — detached run; requires the Ralph JSON block below, saved to a file
-   - `compose-issue` / `compose-pr` — publishable text from the packet (that skill owns sanitization)
+   - `compose-issue` / `compose-pr` — publishable text from the packet (that skill owns sanitization and handoff packet)
    - `review` skill plan mode — adversarial review of the packet before any implementation, for high-stakes changes
 
 ## Packet template

@@ -90,6 +90,8 @@ The GitHub picker uses `alt-r` for quote-reply; the session picker keeps `alt-r`
 
 `ctrl-r` performs a synchronous quick session scan with last-known dirty badges, then backgrounds the full worktree/dir scan. `alt-r` forces a full refresh and blocks until quick + full scans complete.
 
+After tmux-resurrect/continuum restores saved sessions, a post-restore hook waits for restore-time quick-only session hooks to settle, then runs a fast full worktree scan (`--skip-dirty --skip-gh`) followed by the normal enriched full scan in the background. That keeps session-only restore caches from hiding worktrees that do not currently have live tmux sessions.
+
 Refresh preserves query and cursor position by reloading through the same ordered cache pipeline and using fzf tracking actions.
 
 Main cache files live under `~/.cache/tmux/`:

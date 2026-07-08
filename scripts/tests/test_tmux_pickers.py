@@ -152,6 +152,18 @@ exit 1
         assert 'read -r kind path meta target <<< "$_entry"' in text
         assert 'session_name_for_entry "$kind" "$path" "$meta" "$target"' in text
 
+    def test_when_tmux_restore_finishes_should_schedule_full_session_picker_reindex(self):
+        plugins_conf = _test_support.REPO / "home/dot_config/exact_tmux/exact_conf.d/readonly_90-plugins.conf"
+        text = plugins_conf.read_text()
+        hook_line = next(line for line in text.splitlines() if "@resurrect-hook-post-restore-all" in line)
+        fast_scan = "index_update.sh --force --quiet --skip-dirty --skip-gh"
+
+        assert hook_line.startswith("set -g @resurrect-hook-post-restore-all ")
+        assert "tmux run-shell -b" in hook_line
+        assert hook_line.index("sleep 1;") < hook_line.index(fast_scan)
+        assert hook_line.index(fast_scan) < hook_line.index("PICK_SESSION_THREADS=1")
+        assert "--quick-only" not in hook_line
+
 
 if __name__ == "__main__":
     unittest.main()

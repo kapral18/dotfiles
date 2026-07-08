@@ -20,11 +20,13 @@ Two memory systems serve different jobs: short-lived topic context keeps the cur
 
 ## Operating boundary
 
-| System                      | Use for                                   | Do not use for          |
-| --------------------------- | ----------------------------------------- | ----------------------- |
-| `,agent-memory`             | session topic, worklog, evidence ledger   | durable lessons         |
-| `,ai-kb`                    | verified reusable facts, gotchas, recipes | transient scratch notes |
-| SCSI / semantic-code-search | repository code search                    | agent memory            |
+| System                      | Use for                                    | Do not use for          |
+| --------------------------- | ------------------------------------------ | ----------------------- |
+| `,agent-memory`             | session topic, hook worklog/evidence trace | durable lessons         |
+| `,ai-kb`                    | verified reusable facts, gotchas, recipes  | transient scratch notes |
+| SCSI / semantic-code-search | repository code search                     | agent memory            |
+
+Completion-proof ledgers are separate from memory: `,proof` stores criteria, evidence artifacts, reviews, and blockers under repo-external agent-proof state when a hard trigger requires a receipt.
 
 ## Related
 

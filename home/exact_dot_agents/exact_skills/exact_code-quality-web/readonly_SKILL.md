@@ -6,7 +6,12 @@ description: "Use when editing, reviewing, or refactoring browser-rendered marku
 # Web Markup And Styling Quality
 
 Use this for browser-rendered markup and styling.
-If the web surface is React, also load the `~/.agents/skills/code-quality-react/SKILL.md` skill.
+
+## Secondary Skill Escalation
+
+Do not load secondary skills until read/diff evidence proves the surface is in scope.
+
+- If the concrete web surface is React/JSX/TSX, also load the `~/.agents/skills/code-quality-react/SKILL.md` skill.
 
 ## Markup And Semantics
 

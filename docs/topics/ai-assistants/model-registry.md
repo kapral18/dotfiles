@@ -34,6 +34,8 @@ Source of truth: [`home/.chezmoidata/ai_models.yaml`](../../../home/.chezmoidata
 
 These run inside the per-tool merge hooks (`run_onchange_after_07-merge-pi-config.sh.tmpl`, `run_onchange_after_07-merge-opencode-config.sh.tmpl`). See [Tool configs](tool-configs/index.md).
 
+Ralph also exposes Pi model choices from curated allowlists in [`scripts/ralph.py`](../../../scripts/ralph.py) and [`tools/ralph-tui/internal/state/models.go`](../../../tools/ralph-tui/internal/state/models.go). Keep their `llm-gateway/*` entries in sync with `litellm_models[*].id` when adding or retiring LiteLLM gateway models.
+
 ## LiteLLM integration (work profile)
 
 Fish exports these values from `pass` when the entries exist (see [`home/dot_config/fish/readonly_config.fish.tmpl`](../../../home/dot_config/fish/readonly_config.fish.tmpl)):

@@ -40,17 +40,17 @@ These skills govern review methodology, GitHub side effects, and human-readable 
 | Source   | [`exact_github`](../../../../home/exact_dot_agents/exact_skills/exact_github/)      |
 | Boundary | not for read-only review analysis or draft-only writing                             |
 
-PR creation and edits are human-visible publication flows. The skill requires full context intake before composition, an explicit publication preflight ledger for title/body/Test Plan/metadata, user approval for invented human-visible text, and read-back comparison after `gh pr create` or `gh pr edit`.
+PR creation and edits are human-visible publication flows. The skill requires full context intake before composition, an explicit publication preflight ledger for title/body/Test Plan/metadata, user approval for invented human-visible text, and read-back comparison after `gh pr create` or `gh pr edit`. Review-comment posting preserves review-side UI evidence attachments in the approval/preflight handoff, including folder-open/provided status, while keeping local screenshot paths out of GitHub bodies.
 
 ## `compose-pr`
 
 | Field    | Value                                                                                  |
 | -------- | -------------------------------------------------------------------------------------- |
-| Use when | drafting PR title/body before creating or editing a PR                                 |
+| Use when | drafting PR title/body or publication packet before creating or editing a PR           |
 | Source   | [`exact_compose-pr`](../../../../home/exact_dot_agents/exact_skills/exact_compose-pr/) |
-| Boundary | text only; no GitHub side effects                                                      |
+| Boundary | draft + publication packet only; no GitHub side effects                                |
 
-When a draft feeds a GitHub side effect, it carries a compact composition ledger outside the PR body so `github` can verify linked issue intake, Test Plan completeness, title source, metadata source, and unresolved placeholders before publishing.
+When a draft feeds a GitHub side effect, it carries a PR publication packet outside the PR body so `github` can verify template compliance, screenshot proof status, linked issue intake, Test Plan completeness, metadata status, and unresolved placeholders before publishing.
 
 When the change embodies decisions with observable consequences for others (API shape, privilege model, error responses, defaults), the body carries a `## Decisions` section — one bullet per decision with the risk if it was the wrong call; internal implementation choices are excluded (decision-log discipline adapted from [`elastic/plan`](https://github.com/elastic/plan)).
 
@@ -58,9 +58,11 @@ When the change embodies decisions with observable consequences for others (API 
 
 | Field    | Value                                                                                        |
 | -------- | -------------------------------------------------------------------------------------------- |
-| Use when | drafting issue title/body before creating or editing an issue                                |
+| Use when | drafting issue title/body or publication packet before creating or editing an issue          |
 | Source   | [`exact_compose-issue`](../../../../home/exact_dot_agents/exact_skills/exact_compose-issue/) |
-| Boundary | text only; no GitHub side effects                                                            |
+| Boundary | draft + publication packet only; no GitHub side effects                                      |
+
+When a draft feeds a GitHub issue side effect, it carries an issue publication packet outside the issue body so `github` can verify GitHub issue type, metadata, duplicate checks, parent/sub-issue links, intake, approval, and read-back before publishing.
 
 ## `communication`
 

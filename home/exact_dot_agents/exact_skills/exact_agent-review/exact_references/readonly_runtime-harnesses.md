@@ -12,6 +12,8 @@ Read this file only for capability caveats that affect orchestration.
 - Model selection is **registry-driven and deterministic**: every profile's `model` frontmatter is rendered from the single `agent_review_models` block in the chezmoi model registry (`home/.chezmoidata/ai_models.yaml`).
   Updating a model is a one-line registry edit plus `chezmoi apply`; skills and controllers never steer models at runtime, and model ids never live hand-written in profile files.
 - Registry values per harness: `lanes` (angle lanes, auditors, controller, and generic fresh-eyes launches) and `verifier` (the adversarial verifier — a **different model family than `lanes`**, paired by human review in the registry, not inferred at launch).
+  Generic fresh-eyes launches must pass the registry lane model as the profile-equivalent model;
+  never let the runtime pick an implicit default when the registry has a concrete lane value.
 - Empty registry value = the profile omits the field and the harness config default applies; `inherit` = harness-native parent inheritance.
   Single-family harnesses leave `verifier` empty/`inherit` and run the verifier degraded on the lane model —
   reported as `families=same (degraded)`, never silent.
@@ -60,7 +62,7 @@ Registry: both values empty — profiles omit `model` and the configured Gemini 
 ## Copilot CLI
 
 - Copilot profiles carry registry-rendered `model` frontmatter (`lanes` on workers/auditors/controller, `verifier` on `adversarial-verifier`); the `~/.copilot/settings.json` subagent entries own only `effortLevel`/`contextTier`.
-  Per-task model overrides are runtime-verified but reserved for fail-visible recovery, not steering.
+  Per-task model overrides are runtime-verified but reserved for fail-visible recovery, not steering, except generic fresh-eyes where the explicit model is the profile-equivalent registry lane value.
 - Launch angle lanes as the `review-worker` agent type (model-invocable, not user-invocable).
   Do not use `general-purpose` unless a named launch is proven unavailable in the active Copilot runtime, and state that fallback reason.
 

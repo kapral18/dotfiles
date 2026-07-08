@@ -191,12 +191,17 @@ The rungs below apply only once every selected required stack reports `ready:tru
 
 ## Screenshot handoff
 
-- Capture screenshots only when they materially improve a candidate finding or blocker.
+- Capture screenshots whenever the generic `live-ui-review` contract requires them for UI findings that may become review feedback.
+  Otherwise capture screenshots only when they materially improve a candidate finding or blocker.
+  For pre-navigation blockers, record why no screenshot exists.
 - Store screenshots as Playwriter artifacts in a distinct `/tmp/<folder-name>/` directory —
   one dedicated folder per single screenshot, per comparison pair (base + PR/head), or per grouped set;
   never loose in `/tmp` and never mixed with an unrelated set. Use descriptive names and preserve handoff files.
+  After storing a set, open the enclosing folder for the user when the local environment supports it;
+  otherwise report that the folder could not be opened and provide the folder path.
 - For each screenshot, record:
   - folder + local file path
+  - folder-open/provided status
   - description
   - target classification: PR/head, base, or both selected targets
   - exact URL

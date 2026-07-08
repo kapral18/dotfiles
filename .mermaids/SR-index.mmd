@@ -22,7 +22,7 @@ flowchart LR
     A9["~/AGENTS.md · CLAUDE.md · GEMINI.md (source: readonly_*)"]:::area -->|C7| B9["breaks: agent governance across ALL tools<br/>co-edit: keep 3 entrypoints in sync; OpenCode symlink<br/>catalog: 03,12"]:::brk
     A10["exact_dot_agents/exact_skills/*/SKILL.md"]:::area -->|C7| B10["breaks: 'Use when' routing / binding procedure<br/>co-edit: entrypoint trigger if referenced<br/>catalog: 03b"]:::brk
     A11["exact_dot_agents/exact_hooks/*"]:::area -->|C7/C8/C13| B11["breaks: shared gates / evidence ledger / memory injection<br/>co-edit: hook_common.py shared + each harness hooks wiring<br/>catalog: 03b"]:::brk
-    A11b["private_dot_copilot/hooks.json"]:::area -->|C7/C8| B11b["breaks: Copilot session/worklog hook wiring<br/>co-edit: 07-merge-copilot-config + docs<br/>catalog: 12"]:::brk
+    A11b["private_dot_copilot/exact_extensions/exact_agent-memory/readonly_extension.mjs"]:::area -->|C7/C8/C13| B11b["breaks: Copilot session/worklog context injection<br/>co-edit: 07-merge-copilot-config + docs<br/>catalog: 12"]:::brk
     A12["ralph.py · roles.json · prompts/*.md"]:::area -->|C11/C12| B12["breaks: diversity gate / phase resume / role prompts<br/>co-edit: family_of+load_roles together; scripts/tests<br/>catalog: 04,04b"]:::brk
     A13["tmux pickers/github/*.sh + lib"]:::area -->|C9/C10/C3| B13["breaks: SWR live-reload / handoff pins / scope<br/>co-edit: gh_items*.py + lib/handoff_* + cache keys<br/>catalog: 05"]:::brk
     A14["pickers cache keys ($XDG_CACHE_HOME/tmux/*)"]:::area -->|C10| B14["breaks: producer/consumer pin contract between tools<br/>co-edit: BOTH writer and reader of the pin file<br/>catalog: 05,06"]:::brk

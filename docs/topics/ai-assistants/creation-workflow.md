@@ -7,6 +7,8 @@ title: Creation workflow
 
 The creation-side counterpart to the [review workflow](reviews/index.md): the same rigor primitives — evidence-gated phases, fixed return shapes, adversarial verification, a completion gate — applied to building things instead of judging them. The steering model is **two human gates**: approve the contract before execution, read the report after it. Everything between runs hands-free.
 
+Ordinary freeform implementation does not have to enter this formal flow. For that main path, the `proof` skill and `,proof` CLI provide a smaller repo-external criteria/evidence ledger only when a hard trigger fires.
+
 ## The two artifacts (memory vs contract)
 
 | Artifact                           | Role                                                                                                     | Mutation rule                                                       |
@@ -30,23 +32,23 @@ idea/issue
         └─ [HUMAN GATE 1: approve packet]
             ├─ /build ............ in-session hands-free implementation
             ├─ ,ralph go --spec .. detached run, same contract
-            ├─ compose-issue ..... publishable issue text from the packet
+            ├─ compose-issue ..... publishable issue text + publication packet
             └─ review (plan mode)  adversarial review of the packet itself
                 └─ [HUMAN GATE 2: read the report]
 ```
 
 ## `/build` phase topology
 
-| Phase                 | Owner                    | Gate                                                                                                                            |
-| --------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| 1. Spec gate          | controller + human       | packet exists, checks red-proven; explicit approval                                                                             |
-| 2. Plan               | controller               | per-step verification defined; Ownership Gate over touched paths                                                                |
-| 3. Execute            | controller               | criteria ledger updated per step; never past a red step; §3.3 reset on 2×                                                       |
-| 4. Mechanical gates   | controller               | repo lint/type/tests discovered, run, looped to green                                                                           |
-| 5. Live-UI proof      | `ui-proof` (inline)      | visual criteria verified head-only against the built runtime; each proof set captured to its own distinct `/tmp/<folder-name>/` |
-| 6. Adversarial verify | `criteria-verifier` lane | checks re-run from clean tree; refutation verdicts + scope audit                                                                |
-| 7. Post-review stage  | controller               | four dimensions over the implementation diff                                                                                    |
-| 8. Report             | controller + human       | mandated output block; completion gate                                                                                          |
+| Phase                 | Owner                    | Gate                                                                                                                                                |
+| --------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Spec gate          | controller + human       | packet exists, checks red-proven; explicit approval                                                                                                 |
+| 2. Plan               | controller               | per-step verification defined; Ownership Gate over touched paths                                                                                    |
+| 3. Execute            | controller               | criteria ledger updated per step; never past a red step; §3.3 reset on 2×                                                                           |
+| 4. Mechanical gates   | controller               | repo lint/type/tests discovered, run, looped to green                                                                                               |
+| 5. Live-UI proof      | `ui-proof` (inline)      | visual criteria verified head-only against the built runtime; each proof set captured to its own distinct `/tmp/<folder-name>/` and opened/provided |
+| 6. Adversarial verify | `criteria-verifier` lane | checks re-run from clean tree; refutation verdicts + scope audit                                                                                    |
+| 7. Post-review stage  | controller               | four dimensions over the implementation diff                                                                                                        |
+| 8. Report             | controller + human       | mandated output block; completion gate                                                                                                              |
 
 The **criteria ledger** is the run's spine: one row per acceptance criterion (`red` / `green` / `judgment-met` / `judgment-unmet` / `blocked`), each with command-level evidence, plus a verification verdict (`confirmed` / `refuted` / `undecidable`). Verdicts are evidence, not decisions — the controller flips a row only after checking the refutation addresses the row's actual claim.
 
@@ -60,7 +62,7 @@ Per-harness profiles are rendered from the same `agent_review_models` registry t
 
 When any acceptance criterion's evidence is visual — a `judgment:` criterion naming a screenshot/visual comparison, or an in-scope UI-facing change with a stated visual goal — `/build` runs the [`ui-proof`](../../../home/exact_dot_agents/exact_skills/exact_ui-proof/readonly_SKILL.md) skill. It is the creation-side sibling of the review flow's `live-ui-review`: same runtime machinery, opposite direction. `live-ui-review` compares PR/head against base to find regressions; `ui-proof` verifies the **built** runtime head-only against its **intended visual** and captures the screenshot set that proves it.
 
-Both share one mode-neutral contract — [`agent-review/references/live-ui-runtime.md`](../../../home/exact_dot_agents/exact_skills/exact_agent-review/exact_references/readonly_live-ui-runtime.md) — for target-packet resolution, Playwriter preflight, readiness, runtime start, the data/setup ladder, screenshot artifacts, and the runtime safety boundary; each mode file adds only its oracle, comparison model, and return shape. `ui-proof` runs **inline** in `/build` (which already holds Playwriter and local/dev mutation permissions), so it needs no isolated subagent profile. It returns a per-criterion `met` / `unmet` / `blocked` verdict; the controller sets the ledger's `judgment-met`/`judgment-unmet` row from it (an `unmet` returns to phase 3 like a red step), and reports the screenshot manifest (each screenshot/pair/set in its own distinct `/tmp/<folder-name>/` folder) so `compose-pr` can embed the shots.
+Both share one mode-neutral contract — [`agent-review/references/live-ui-runtime.md`](../../../home/exact_dot_agents/exact_skills/exact_agent-review/exact_references/readonly_live-ui-runtime.md) — for target-packet resolution, Playwriter preflight, readiness, runtime start, the data/setup ladder, screenshot artifacts, and the runtime safety boundary; each mode file adds only its oracle, comparison model, and return shape. `ui-proof` runs **inline** in `/build` (which already holds Playwriter and local/dev mutation permissions), so it needs no isolated subagent profile. It returns a per-criterion `met` / `unmet` / `blocked` verdict; the controller sets the ledger's `judgment-met`/`judgment-unmet` row from it (an `unmet` returns to phase 3 like a red step), opens/provides the screenshot folder, and reports the screenshot manifest (each screenshot/pair/set in its own distinct `/tmp/<folder-name>/` folder with folder-open/provided status) so `compose-pr` can embed the shots.
 
 ## Ralph as the detached form
 

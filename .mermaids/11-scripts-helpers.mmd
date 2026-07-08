@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 11-scripts-helpers.mmd — Every file in scripts/ (63). Repo-side Python
+%% 11-scripts-helpers.mmd — Every file in scripts/ (66). Repo-side Python
 %% (stdlib only, no PyYAML) called by chezmoi 07-* hooks + ,bin commands.
 %% Grouped by consumer. Shared parsers feed the generators/mergers.
 %% ============================================================================
@@ -46,12 +46,12 @@ flowchart TB
         RCP["reconcile_custom_packages.py (hook 05-install-custom-packages)"]:::misc
         RGP["reconcile_golang_pkgs.py (hook 05-update-golang-pkgs; binary reconcile + state ledger)"]:::misc
         SLC["sync_llama_cpp_models.py (hook 07-sync-llama-cpp-models)"]:::misc
-        VT["verify_templates.py (make verify-templates)<br/>verify_mermaids.py (make verify-mermaids; .mermaids census)<br/>verify_bin_surface.py (make verify-bin-surface; ~/bin completions/docs/catalog + home/exact_lib orphans)"]:::misc
+        VT["verify_templates.py (make verify-templates)<br/>verify_mermaids.py (make verify-mermaids; .mermaids census)<br/>verify_bin_surface.py (make verify-bin-surface; ~/bin completions/docs/catalog + home/exact_lib orphans)<br/>verify_docs_navigation.py (make verify-docs-navigation; docs/reference links + catalog rows)"]:::misc
         YT["yt_search.py (,youtube-search backend)"]:::misc
     end
 
     subgraph TESTS["scripts/tests/"]
-        T["test_scripts.py + test_agent_hooks.py (make test)<br/>fixtures/ golden_* (mcp work/personal · codex · opencode · pi<br/>· ai_models[_with_claude]) + *_base + mock_role.sh"]:::shared
+        T["test_scripts.py + test_agent_hooks.py + test_proof_cli.py (make test)<br/>fixtures/ golden_* (mcp work/personal · codex · opencode · pi<br/>· ai_models[_with_claude]) + *_base + mock_role.sh"]:::shared
     end
     MCPGEN -.verified by golden.-> TESTS
     MODELGEN -.verified by golden.-> TESTS

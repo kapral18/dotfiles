@@ -1,18 +1,18 @@
 ---
 name: compose-pr
-description: "Use when drafting a PR title/body before creating or editing a PR. Text only; no gh side effects."
+description: "Use when drafting a PR title/body or PR publication packet before creating or editing a PR; includes template/screenshots/test-plan/metadata handoff, no gh side effects."
 ---
 
 # Compose PR Body
 
 Use when:
 
-- the user wants a PR body draft only (no `gh` side effects)
+- the user wants a PR title/body draft or PR publication packet only (no `gh` side effects)
 - `~/.agents/skills/github/SKILL.md` needs a draft body before creating/editing a PR
 
 Scope:
 
-- produces a PR body draft only
+- produces a PR title/body draft and PR publication packet only
 - do not change PR metadata; use `~/.agents/skills/github/SKILL.md` for side effects
 - read-only `gh`/GitHub API use is allowed only to resolve and fully read PR/issue/comment/media references needed for the draft
 
@@ -39,16 +39,30 @@ First actions:
 4. Extract only evidence you can verify (summary, test plan, migration notes).
 5. If issue linkage or test evidence is missing after intake, keep placeholders instead of inventing details.
 6. If the repo belongs to the `elastic` org, load `~/.agents/skills/elastic-domain/SKILL.md` and apply its GitHub/PR composition section.
-7. If the diff is UI-facing and the PR should show the built visuals, gather screenshot proof:
-   reuse a `/build` `ui-proof` manifest (its proof sets live in distinct `/tmp/<folder-name>/` folders, one per screenshot/pair/set) when one already exists, or load `~/.agents/skills/ui-proof/SKILL.md` and run it head-only against the built runtime to capture the proof set.
-   Screenshots are optional evidence — skip this for non-UI diffs or when no runtime is available, and never invent them.
-8. Keep a compact composition ledger for any handoff to `github`: title source, body source, linked issue intake, Test Plan completeness, metadata source, screenshot proof status (each set's `/tmp/<folder-name>/` + filename→path mapping, or none), and unresolved placeholders.
+7. Build the PR publication packet.
+   This is the single handoff gate to `github`; do not hand off while any required field is missing or `blocked`. Required fields:
+   - `template`: selected template, selection reason, required-section checklist, and `status: satisfied | blocked`.
+     If the repo/domain overlay provides templates, load the referenced template file before drafting and draft against one selected template, not a freeform section list.
+   - `screenshots`: `captured | not_applicable | blocked | explicitly_skipped`.
+     Screenshot proof is required when the diff touches UI/runtime behavior, linked context includes screenshots/media, or the Test Plan includes manual UI steps.
+     Required proof means reuse a `/build` `ui-proof` manifest, or load `~/.agents/skills/ui-proof/SKILL.md` and run it head-only.
+     For UI behavior bugs whose key assertion is non-visual (clipboard, keyboard, focus, network), still capture human-visible trigger/result states and record the non-visual assertion in the Test Plan.
+     Captured proof includes folder/filename mapping and folder-open/provided status; explicit skips include user approval evidence.
+   - `test_plan`: issue reproduction/expected/actual coverage, commands run, and observed results.
+   - `metadata`: proposed labels/assignees/milestone/projects, source skill/rationale, and `status: none | not_applicable | approved_to_apply | applied | deferred | pending_approval`.
+     If metadata is proposed but not approved for application, the packet status is `pending_approval` unless the user explicitly defers it.
+     Completion criterion: the packet is complete, or the composition is blocked with exact missing fields.
+8. Keep the packet with the draft for any handoff to `github`: title source, body source, linked issue intake, template, screenshots, Test Plan, metadata, and unresolved placeholders.
 
 Rules:
 
 - keep it short and reviewable
 - prefer bullets over prose
 - test plan must be evidence: commands run + observed result
+- template compliance:
+  - do not collapse required template sections into `## Summary`
+  - required explanatory sections such as `## Root Cause`, `## Fix`, `## Rationale`, or `## User-Facing Behavior` must appear as their own headings when the selected template includes them
+  - before handoff, compare the final draft headings against the selected template's required-section checklist
 - PR Test Plan completeness gate:
   - if any linked/closing issue has `## Reproduction`, `Expected`, or `Actual`, adapt the observable steps into `## Test Plan`
   - include the expected observable result after the fix
@@ -62,11 +76,12 @@ Rules:
   - examples to avoid: private hostnames, non-standard local domains, `/tmp/...`, absolute `$HOME` paths, Playwriter/session IDs, one-off account names that are not part of the repro setup
   - use portable wording instead, such as `local app`, `http://localhost:<port>`, `a user with only <privilege>`, or explicit setup steps to create the role/user
 - screenshots (UI-facing changes only):
-  - when a `ui-proof` manifest exists, add a `## Screenshots` section listing each shot as a caption plus an `attach: <filename>` placeholder the user drags into the GitHub PR
+  - when screenshot proof is captured, add a `## Screenshots` section listing each shot as a caption plus an `attach: <filename>` placeholder the user drags into the GitHub PR
   - never put the local `/tmp/<folder-name>/` path in the PR body (the sanitize rule above);
-    keep the folder + filename→path mapping in the composition ledger so the user knows which file to attach
+    keep the folder + filename→path mapping in the PR publication packet so the user knows which file to attach
   - the agent does not upload images; GitHub image embedding is a manual drag-drop the user performs, so leave the attach placeholder rather than a fabricated image URL
-  - omit the section entirely for non-UI diffs or when no proof was captured
+  - before any PR create/edit handoff, open the screenshot folder or otherwise give the user the folder path plus filename mapping so the files can be dragged into GitHub
+  - omit the section only for `not_applicable` or `explicitly_skipped`; do not omit it for `required` or `blocked`
 - decision log: when the change embodies a decision with observable consequences for someone else —
   a different API shape, privilege model, error response, storage format, or default —
   add a `## Decisions` section with one bullet per decision: `**<decision>** — risk: <what goes wrong if this was the wrong call>`.
@@ -78,10 +93,16 @@ Rules:
 
 Output:
 
-- Return only the PR body draft, ready to paste or hand to `~/.agents/skills/github/SKILL.md`.
+- Return the PR title/body draft and PR publication packet, ready to hand to `~/.agents/skills/github/SKILL.md`.
 - If important inputs are missing, say exactly which placeholders still need confirmation.
-- When screenshots were captured, include the `## Screenshots` section in the body with attach placeholders, and list each proof set's `/tmp/<folder-name>/` + filename→path mapping in the composition ledger (outside the body) so the user can attach the files to the PR.
-- When handing the draft to `github` for PR creation/editing, include the composition ledger outside the PR body so the GitHub skill can build its publication preflight.
+- Always include the PR publication packet. A packet with a `blocked` required field cannot be handed to `github` for publication.
+  Include template status: selected template, why it applies, required sections present, sections omitted with template-allowed reasons, and blockers.
+  Include screenshot status.
+  When screenshots were captured, include the `## Screenshots` section in the body with attach placeholders, list each proof set's `/tmp/<folder-name>/` + filename→path mapping outside the body, and open/provide the folder so the user can attach the files to the PR.
+  When screenshots were not captured, the ledger must say `not_applicable`, `blocked`, or `explicitly_skipped` with evidence;
+  `blocked` cannot be handed to `github` for publication.
+  Include metadata status: proposed metadata, source skill/rationale, and whether it is approved to apply, applied, deferred, or still pending approval.
+- When handing the draft to `github` for PR creation/editing, include the packet outside the PR body so the GitHub skill can build its publication preflight.
 
 ## General template
 
@@ -98,7 +119,7 @@ Closes #X | Addresses #X
 
 ## Screenshots
 
-<!-- UI-facing changes only; omit otherwise. One bullet per captured shot; attach the file from its /tmp/<folder-name>/ folder (see the composition ledger). -->
+<!-- UI-facing changes only; omit otherwise. One bullet per captured shot; attach the file from its /tmp/<folder-name>/ folder (see the PR publication packet). -->
 
 - <caption — what this proves> — attach: `<filename>.png`
 ```

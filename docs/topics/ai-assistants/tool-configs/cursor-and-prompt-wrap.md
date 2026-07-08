@@ -19,7 +19,7 @@ Cursor CLI is the primary interactive assistant harness. Its user-level hooks (s
 
 ## Tmux agent prompt wrap
 
-When running an AI coding agent (`claude`, `cursor-agent`, `pi`, or `copilot`) inside tmux, `Alt-Enter` is intercepted to prepend a calibrated verification scaffold and leave the prompt editable.
+When running an AI coding agent (`claude`, `cursor-agent`, `pi`, or `copilot`) inside tmux, `Alt-Enter` is intercepted to prepend a compact verification discipline and leave the prompt editable.
 
 - **Binding:** `Alt-Enter` (inserts the wrapped prompt)
 - **Toggle:** `prefix` + `W` (toggles wrapping on/off for the session)

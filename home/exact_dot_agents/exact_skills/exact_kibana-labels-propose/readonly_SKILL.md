@@ -31,6 +31,9 @@ Output:
 
 - Return the exact proposed label set and a short rationale for each non-obvious label.
 - If a label cannot be verified in the repo, say so and do not propose it as a fact.
+- When the proposal feeds PR creation or editing, include a packet-ready metadata entry:
+  proposed labels/backport/version targets, source evidence, and `status: pending_approval`.
+  Do not let "propose-only" become silent non-application; the GitHub skill must ask whether to apply or explicitly defer the proposed metadata.
 
 Common patterns (verify in repo):
 

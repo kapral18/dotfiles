@@ -64,6 +64,7 @@ The controller owns:
 - running conditional `live-ui-review` verification after adversarial verification returns
   - applies when changed paths or kept candidate findings touch UI/runtime behavior
   - requires applicable runtime evidence
+  - requires screenshot handoff evidence for any UI-related finding that may become draft review feedback, unless live UI returns a valid blocker or non-applicability result
 - running the findings audit phase after live UI returns evidence/non-applicability/blocker or is explicitly skipped;
   delegate to `findings-auditor` only when a step 6 delegation condition is true
 - aggregating worker outputs, `pr-necessity-auditor` status, reviewer findings, adversarial verification verdicts, live UI status/evidence/artifacts/skip reason, and audit output
@@ -156,6 +157,7 @@ This line is part of the audit trail.
 If a runtime export hides task arguments, the worker selection line must still prove whether the controller used named profiles.
 It must also show any fallback such as `general-purpose`.
 A worker launch is invalid when `model_required` differs from `model_used` or `model_status` is not `exact`, unless the phase is explicitly `n/a` for model selection.
+The fresh-eyes phase is not `n/a`: generic fresh-eyes is the only lane launch that passes the registry lane model at runtime because no named profile carries its model frontmatter.
 
 1. **Route and scope.** Build a scope packet with:
    - mode: `local_changes.md`, `pr_review.md`, or `pr_fix.md`
@@ -247,8 +249,9 @@ no `semantic_code_search`, symbol analysis, code-chunk reads, broad code investi
      - If more angles are implicated than five, fold the extras into the closest launched lane as stated secondary emphases.
      - State the roster and the scope-level evidence for each selection in the output.
    - Lane model selection is declarative, never steered at runtime: every deployed profile's `model` frontmatter is rendered from the single `agent_review_models` registry in the chezmoi model data (a concrete id, `inherit`, or omitted for the harness config default).
-     The controller launches profiles as-is and never passes lane model overrides;
-     a wrong or stale model is fixed in the registry, not the launch.
+     The controller launches named profiles as-is and never passes lane model overrides;
+     the exception is the blind generic fresh-eyes task, which must pass the same registry lane value as the profile-equivalent model because it cannot use the named reviewer profiles.
+     A wrong or stale model is fixed in the registry, not the launch.
      The angles are this phase's diversity axis; cross-family checking is owned by the adversarial verification phase.
    - Emit all reviewer-lane launches, fresh-eyes included when it applies, in one message (a single tool-call batch).
    - Use the harness's native reviewer worker profiles or task mechanism (`review-worker`/`reviewer` profiles, or a generic task type carrying `reviewer-worker.md`); read `runtime-harnesses.md` for per-harness launch and model-inheritance caveats.
@@ -346,8 +349,10 @@ no `semantic_code_search`, symbol analysis, code-chunk reads, broad code investi
    - Do not rely on the worker to rediscover it.
    - It returns one of:
      - `Not applicable`
-     - comparison evidence with `ui_evidence_artifacts` when screenshots were captured
+     - comparison evidence with `ui_evidence_artifacts`
      - target/branch/runtime/data blocker for the controller to surface
+   - For an applicable UI-related candidate that may become draft review feedback, screenshots are required supporting evidence.
+     If `live-ui-review` confirms or materially supports the candidate without screenshot handoff entries, rerun the worker or carry a blocker; do not draft the comment from text-only UI evidence.
    - Do not automatically rerun a blocked live-UI result except for a missing/un-started local runtime in a shell-capable harness when the selected target packet documents a start command.
      That case is the runtime-start rung, not a terminal blocker; have the runtime started and rerun rather than surfacing it as remaining uncertainty.
    - A read-only/Ask-mode Playwriter block is a valid blocker to surface.
@@ -396,7 +401,10 @@ no `semantic_code_search`, symbol analysis, code-chunk reads, broad code investi
    - For PR modes, read any current-account pending review and already-submitted current-account review comments/replies before drafting payloads.
      Merge kept pending findings with kept new findings into one final draft; drop stale pending findings with evidence;
      block rather than producing competing or contradictory payloads.
-   - For kept PR-mode UI findings, verify screenshot paths when possible and surface them only in final `UI evidence attachments:`.
+   - For kept UI findings that may become human-visible review feedback, require valid screenshot handoff entries before drafting.
+     Verify screenshot paths when possible and surface them only in final `UI evidence attachments:`.
+     If screenshot handoff is missing, rerun `live-ui-review` or block with the exact reason;
+     do not draft a UI-related comment from text-only UI evidence.
      Never upload images, put local paths in GitHub review bodies, or create extra comments just to carry image paths.
    - Drop only with source/API/runtime evidence for one of these hard reasons:
      - unsupported claims
@@ -495,7 +503,8 @@ Controller validation: reject and rerun any `live-ui-review` result that:
 - uses browser/route/network mocks when faithful verification is blocked by a required runtime environment change;
   that must be returned as `Blocked` with setup instructions instead
 - returns `Blocked` for a missing/un-started local runtime in a shell-capable harness when the selected target packet documents a start command (the runtime-start rung); the worker should start it and continue, so rerun after the runtime is started
-- lists screenshot artifacts without local paths, descriptions, target URL/branch, or linked candidate/finding placement
+- lists screenshot artifacts without local paths, descriptions, target URL/branch, linked candidate/finding placement, suggested manual attachment placement, folder-open/provided status, or fidelity/cleanup notes
+- returns applicable UI comparison evidence for a finding that may become draft review feedback with `ui_evidence_artifacts: none` and no valid blocker/non-applicability result
 - omits applicability, exact URLs checked, Playwriter preflight status, readiness result for each target, branch/runtime evidence, comparison evidence for each checked candidate, UI evidence artifact manifest or `none`, page cleanup/owned-page URLs, and blockers/uncertainty
 - omits the selected `target_packet` source, including overlay source when an overlay supplied the packet
 
@@ -523,7 +532,8 @@ Return:
 - Action taken or draft payloads, depending on mode.
 - Post-act verification: for any flow that edited the working tree, report quality gates (run with command evidence, or blocked with the exact blocker and the command the user must run), the fix-diff Post-Review Stage result per dimension (redundancy, verbosity, semantic + logical duplication, gaps), and each carried `verification_needed` run/blocked decision.
   Omit only when no working-tree edit occurred.
-- UI evidence attachments: for kept UI findings, local screenshot artifact paths with descriptions, target URL/branch, and suggested manual attachment placement; or `none`.
+- UI evidence attachments: for kept UI findings, local screenshot artifact paths with descriptions, target URL/branch, suggested manual attachment placement, and folder-open/provided status.
+  Use `none` only when no kept UI finding needs draft feedback, or when a valid blocker/non-applicability result explains why no screenshot exists.
   Keep this separate from GitHub review bodies because local paths are only for the user.
 - Remaining uncertainty or gated side effects.
 - Completion gate: clear, or blocked with the unresolved item.

@@ -146,6 +146,9 @@ Goal: compare the diff against how base (usually `main`) works today.
 - Keep explanations simple; prefer tiny examples, pseudocode, or ASCII sketches.
 - Avoid redundant "Ref:" links when the comment is already attached to the exact line.
 - Do not mention anchoring/tooling limitations in the comment body ("can't anchor inline", "not in diff hunks").
+- For UI-related comments, replies, or PR-level feedback drafted after `/agent-review` or `live-ui-review`, keep the screenshot handoff outside the body as UI evidence attachments, including folder-open/provided status.
+  If screenshot evidence is missing without a valid blocker or non-applicability result, block/rerun instead of drafting text-only UI feedback.
+  Never put local screenshot paths in GitHub comment, reply, review, or PR-level bodies.
 - In review comment bodies, whenever you reference code, use a clickable source link to the exact location on the PR head SHA.
 - Code references include:
   - file path

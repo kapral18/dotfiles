@@ -14,24 +14,27 @@ Runtime state is kept outside chezmoi and outside worktrees:
 
 ```text
 /tmp/specs/<workspace-path-without-leading-slash>/_active_topic.txt
+/tmp/specs/<workspace-path-without-leading-slash>/.session-topic-<session-id>.txt
 /tmp/specs/<workspace-path-without-leading-slash>/<topic>.txt
 /tmp/specs/<workspace-path-without-leading-slash>/<topic>.worklog.jsonl
 ```
 
-The active topic is read from `_active_topic.txt` when present; otherwise hooks use `current`.
-Set a named topic with `,agent-memory use <topic>`.
+Session-scoped topic bindings live in `.session-topic-<session-id>.txt`.
+They select which shared topic bucket this one agent session loads, without changing any other live session.
+`_active_topic.txt` is a workspace-level default/suggested bucket hint, not permission to inject that topic into every new session.
 
 Default-branch workspaces are treated as shared scratch space.
-If the current git branch is `main`, `master`, `dev`, `develop`, or `trunk` and no explicit non-`current` topic is active, hook state uses a session-scoped topic (`session-<id>`).
-It does this instead of using the shared `current` topic. Feature/topic worktrees keep `current` continuity by default.
-On a shared-branch session that falls back to a `session-*` topic, `session_context.py` injects a one-line nudge to set a named topic with `,agent-memory use <topic>`.
-That is how continuity is recovered on `main` without cross-contaminating other work on the same branch.
+If the current git branch is `main`, `master`, `dev`, `develop`, or `trunk` and no session binding exists, hook state uses a session-scoped fallback topic (`session-<id>`).
+Instead of loading another session's active topic, `session_context.py` injects a bounded `### Topic Buckets` index.
+The agent should bind automatically when exactly one bucket clearly matches the user's request, create a new bucket when none matches, and ask one question only when multiple buckets plausibly match.
+It then runs `,agent-memory select <topic> --session-id <id>` or `,agent-memory select <new-topic> --create --session-id <id>` itself.
+Feature/topic worktrees keep `current` continuity by default when no `_active_topic.txt` hint is present.
 
-For a deliberate named topic with a non-empty `<topic>.txt` spec, `session_context.py` also injects a relevance-gated `### Relevant Learnings (,ai-kb)` block.
-A deliberate named topic means the active topic is neither `current` nor a `session-*` fallback.
+For a session-bound named topic with a non-empty `<topic>.txt` spec, `session_context.py` injects the full spec/worklog context and a relevance-gated `### Relevant Learnings (,ai-kb)` block.
+A session-bound named topic is neither `current` nor a `session-*` fallback.
 The hook runs `,ai-kb search` with the spec text as the query (`bm25` lane, no embedder, bounded by the hook timeout).
 It surfaces up to three capsules that are local to this workspace or scoped `domain`/`universal`, so durable memory seeds the session automatically.
-Ad-hoc/`session-*` and review topics get no warm-start. This is the only automatic KB retrieval.
+Unbound, ad-hoc/`session-*`, and review topics get no warm-start. This is the only automatic KB retrieval.
 Cursor cannot inject context per-turn (`beforeSubmitPrompt` carries no context-injection output), so mid-task relevance comes from the agent's own `,ai-kb search` calls against its actual task.
 The hook reads the KB but never writes it; persistence stays agent-driven.
 
@@ -58,14 +61,18 @@ Use `,agent-memory` to set the active topic or as a dead switch for persisted ho
 
 ```bash
 ,agent-memory status
+,agent-memory select <topic> --session-id <id>
+,agent-memory select <new-topic> --create --session-id <id>
 ,agent-memory use <topic>
 ,agent-memory wipe-current
 ,agent-memory wipe-current --dry-run
 ,agent-memory wipe-current --reset-active
 ```
 
-`use` pins a named active topic: it writes `_active_topic.txt` and seeds `<topic>.txt` (rejecting the generic `current`).
-This gives shared-branch sessions distinct, contamination-free continuity.
+`select` binds one agent session to a topic bucket by writing `.session-topic-<session-id>.txt`.
+It seeds `<topic>.txt` only with `--create`.
+`use` manages the workspace-level default/suggested bucket: it writes `_active_topic.txt` and seeds `<topic>.txt` (rejecting the generic `current`).
+Use it only when you intentionally want to mark a default/suggested bucket for the workspace.
 `wipe-current` deletes only the selected topic files (`.txt`, `.worklog.jsonl`, `.no_context`). It keeps other topics in the same workspace.
 On default branches without an explicit active topic, it targets the latest `session-*` topic.
 

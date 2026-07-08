@@ -1,17 +1,77 @@
 litellm_models:
-  - id: "llm-gateway/claude-opus-4-7"
-    name: "Opus 4.7"
+  - id: "llm-gateway/gemini-3.1-pro-preview"
+    name: "Gemini 3.1 Pro Preview"
     reasoning: true
     thinkingBudgets:
       minimal: 1024
       low: 4096
       medium: 16384
       high: 32768
-    contextWindow: 1000000
+    contextWindow: 1048576
+    maxTokens: 65536
+    cost:
+      input: 2
+      output: 12
+      cacheRead: 0.2
+      cacheWrite: 0
+  - id: "llm-gateway/gemini-3.1-pro-preview-customtools"
+    name: "Gemini 3.1 Pro Preview Custom Tools"
+    reasoning: true
+    thinkingBudgets:
+      minimal: 1024
+      low: 4096
+      medium: 16384
+      high: 32768
+    contextWindow: 1048576
+    maxTokens: 65536
+    cost:
+      input: 2
+      output: 12
+      cacheRead: 0.2
+      cacheWrite: 0
+  - id: "llm-gateway/claude-haiku-4-5"
+    name: "Haiku 4.5"
+    reasoning: true
+    thinkingBudgets:
+      minimal: 1024
+      low: 4096
+      medium: 16384
+      high: 32768
+    contextWindow: 200000
+    maxTokens: 64000
+    cost:
+      input: 1
+      output: 5
+      cacheRead: 0.1
+      cacheWrite: 1.25
+  - id: "llm-gateway/Kimi-K2.6"
+    name: "Kimi K2.6"
+    reasoning: true
+    thinkingBudgets:
+      minimal: 1024
+      low: 4096
+      medium: 16384
+      high: 32768
+    contextWindow: 128000
+    cost:
+      input: 0.75
+      output: 3.5
+      cacheRead: 0
+      cacheWrite: 0
+  - id: "llm-gateway/gpt-5.5"
+    name: "GPT-5.5"
+    reasoning: true
+    thinkingBudgets:
+      minimal: 1024
+      low: 4096
+      medium: 16384
+      high: 32768
+      xhigh: 65536
+    contextWindow: 272000
     maxTokens: 128000
     cost:
       input: 5
-      output: 25
+      output: 30
       cacheRead: 0
       cacheWrite: 0
   - id: "llm-gateway/claude-opus-4-8"
@@ -29,20 +89,49 @@ litellm_models:
       output: 25
       cacheRead: 0
       cacheWrite: 0
-  - id: "llm-gateway/gpt-5.5"
-    name: "GPT-5.5"
+  - id: "llm-gateway/claude-sonnet-5"
+    name: "Sonnet 5"
     reasoning: true
     thinkingBudgets:
       minimal: 1024
       low: 4096
       medium: 16384
       high: 32768
-      xhigh: 65536
-    contextWindow: 272000
+    contextWindow: 1000000
     maxTokens: 128000
     cost:
-      input: 2.5
+      input: 3
       output: 15
+      cacheRead: 0
+      cacheWrite: 0
+  - id: "llm-gateway/claude-fable-5"
+    name: "Fable 5"
+    reasoning: true
+    thinkingBudgets:
+      minimal: 1024
+      low: 4096
+      medium: 16384
+      high: 32768
+    contextWindow: 1000000
+    maxTokens: 128000
+    cost:
+      input: 10
+      output: 50
+      cacheRead: 0
+      cacheWrite: 0
+  - id: "llm-gateway/claude-opus-4-7"
+    name: "Opus 4.7"
+    reasoning: true
+    thinkingBudgets:
+      minimal: 1024
+      low: 4096
+      medium: 16384
+      high: 32768
+    contextWindow: 1000000
+    maxTokens: 128000
+    cost:
+      input: 5
+      output: 25
       cacheRead: 0
       cacheWrite: 0
   - id: "llm-gateway/gemini-3.5-flash"
@@ -53,56 +142,12 @@ litellm_models:
       low: 4096
       medium: 16384
       high: 32768
-    contextWindow: 1000000
-    maxTokens: 65536
+    contextWindow: 1048576
+    maxTokens: 65535
     cost:
-      input: 2
-      output: 12
-      cacheRead: 0
-      cacheWrite: 0
-  - id: "llm-gateway/gemini-3.1-pro-preview"
-    name: "Gemini 3.1 Pro Preview"
-    reasoning: true
-    thinkingBudgets:
-      minimal: 1024
-      low: 4096
-      medium: 16384
-      high: 32768
-    contextWindow: 1000000
-    maxTokens: 65536
-    cost:
-      input: 2
-      output: 12
-      cacheRead: 0
-      cacheWrite: 0
-  - id: "llm-gateway/gemini-3.1-pro-preview-customtools"
-    name: "Gemini 3.1 Pro Preview Custom Tools"
-    reasoning: true
-    thinkingBudgets:
-      minimal: 1024
-      low: 4096
-      medium: 16384
-      high: 32768
-    contextWindow: 1000000
-    maxTokens: 65536
-    cost:
-      input: 2
-      output: 12
-      cacheRead: 0
-      cacheWrite: 0
-  - id: "llm-gateway/Kimi-K2.6"
-    name: "Kimi K2.6"
-    reasoning: true
-    thinkingBudgets:
-      minimal: 1024
-      low: 4096
-      medium: 16384
-      high: 32768
-    contextWindow: 128000
-    cost:
-      input: 0.6
-      output: 2.5
-      cacheRead: 0
+      input: 1.5
+      output: 9
+      cacheRead: 0.15
       cacheWrite: 0
 
 azure_models:

@@ -49,9 +49,10 @@ This is the grouped lookup for commands that are useful but not always front-and
 
 | Command                | Description                                                                                                                                                                                                              |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `,agent-memory`        | Inspect or wipe selected `/tmp/specs` hook memory for the current workspace                                                                                                                                              |
+| `,agent-memory`        | Inspect `/tmp/specs` hook memory, bind one agent session to a shared topic bucket, or wipe selected topic files                                                                                                          |
 | `,artifact`            | Create cache-only local HTML artifacts, inject live-page feedback overlays, and manage per-session feedback pollers without writing into the worktree                                                                    |
 | `,ai-kb`               | Manage the durable local agent knowledge base                                                                                                                                                                            |
+| `,proof`               | Maintain a repo-external criteria/evidence/review ledger for ordinary freeform agent completion claims                                                                                                                   |
 | `,ralph`               | Start, resume, inspect, and control Ralph multi-agent orchestration runs                                                                                                                                                 |
 | `,llama-cpp`           | Serve/manage the local llama.cpp-compatible inference endpoint                                                                                                                                                           |
 | `,codex`               | Launch Codex with hosted-MCP bearer-token env vars refreshed and local llama.cpp model catalog metadata injected when a local model is selected                                                                          |
@@ -61,6 +62,7 @@ This is the grouped lookup for commands that are useful but not always front-and
 | `,codex-cloudflare`    | Launch Codex directly against Cloudflare AI Gateway's OpenAI Responses endpoint                                                                                                                                          |
 | `,copilot`             | Launch GitHub Copilot CLI natively, refreshing each header-auth MCP token and re-baking `~/.copilot/mcp-config.json` first; stops if token refresh or config re-bake fails                                               |
 | `,copilot-cloudflare`  | Launch GitHub Copilot CLI against Cloudflare's OpenAI-compatible endpoint                                                                                                                                                |
+| `,copilot-litellm`     | Launch GitHub Copilot CLI against the LiteLLM gateway's OpenAI-compatible endpoint                                                                                                                                       |
 | `,copilot-openrouter`  | Launch GitHub Copilot CLI against OpenRouter's OpenAI-compatible endpoint                                                                                                                                                |
 | `,cursor`              | Launch cursor-agent natively, refreshing each OAuth MCP token declared in `~/.cursor/mcp.json` via `,mcp-token <server> --login` first (no-op when valid; skipped for admin subcommands); stops if a token refresh fails |
 | `,opencode-cloudflare` | Launch OpenCode against the personal Cloudflare Workers AI provider                                                                                                                                                      |
@@ -72,26 +74,26 @@ Provider wrappers with model choices accept either `--model <id>` / `-m <id>` wh
 
 The same wrappers expose `--effort <level>`, `--thinking <level>`, and `--no-thinking` when the harness has an equivalent control. Pi maps to `--thinking`; OpenCode maps effort to `run --variant`; Codex maps to `model_reasoning_effort`; Copilot maps `--thinking` to `--effort`.
 
-Plain interactive `claude` stays native. Plain interactive `codex`, `copilot`, and `cursor-agent` route through the managed `,codex` / `,copilot` / `,cursor` wrappers so hosted MCP tokens are refreshed before launch (the `agent` alias also routes through `,cursor`). Local/provider-specific wrappers (`*,llama-cpp`, `,codex-cloudflare`, `,copilot-cloudflare`, `,copilot-openrouter`) select their own upstreams.
+Plain interactive `claude` stays native. Plain interactive `codex`, `copilot`, and `cursor-agent` route through the managed `,codex` / `,copilot` / `,cursor` wrappers so hosted MCP tokens are refreshed before launch (the `agent` alias also routes through `,cursor`). Local/provider-specific wrappers (`*,llama-cpp`, `,codex-cloudflare`, `,copilot-cloudflare`, `,copilot-litellm`, `,copilot-openrouter`) select their own upstreams.
 
 ## Utility helpers
 
-| Command                | Description                                                                         |
-| ---------------------- | ----------------------------------------------------------------------------------- |
-| `,cp-files-for-llm`    | Copy a directory tree's text contents to the clipboard with file headers            |
-| `,appid`               | Print the macOS bundle identifier for an app name/path                              |
-| `,dumputi`             | Dump the system's registered Uniform Type Identifiers                               |
-| `,to-gif`              | Convert a video to an optimized GIF                                                 |
-| `,vid-ipad`            | Re-encode a video for iPad playback                                                 |
-| `,pdf-diff`            | Visual diff two PDFs by compositing pages                                           |
-| `,nano-banana`         | Generate a Nano Banana/Gemini raster image from text                                |
-| `,set-default-mic`     | Select the preferred external microphone, falling back to the MacBook microphone    |
-| `,update`              | Reconcile dotfiles, package-manager update categories, and self-updating cask drift |
-| `,parallel`            | Forward to GNU Parallel when both GNU Parallel and semantic-git are installed       |
-| `,sem`                 | Forward to Ataraxy semantic-git's entity-level CLI                                  |
-| `,unwrap-md`           | Unwrap Markdown prose; wrap AI-facing instruction files at sentence boundaries      |
-| `,weave-setup-local`   | Configure weave merge driver in repo-local git config and `.git/info/attributes`    |
-| `,weave-unsetup-local` | Remove the local-only weave merge driver setup                                      |
+| Command                | Description                                                                      |
+| ---------------------- | -------------------------------------------------------------------------------- |
+| `,cp-files-for-llm`    | Copy a directory tree's text contents to the clipboard with file headers         |
+| `,appid`               | Print the macOS bundle identifier for an app name/path                           |
+| `,dumputi`             | Dump the system's registered Uniform Type Identifiers                            |
+| `,to-gif`              | Convert a video to an optimized GIF                                              |
+| `,vid-ipad`            | Re-encode a video for iPad playback                                              |
+| `,pdf-diff`            | Visual diff two PDFs by compositing pages                                        |
+| `,nano-banana`         | Generate a Nano Banana/Gemini raster image from text                             |
+| `,set-default-mic`     | Select the preferred external microphone, falling back to the MacBook microphone |
+| `,update`              | Reconcile dotfiles and package-manager update categories                         |
+| `,parallel`            | Forward to GNU Parallel when both GNU Parallel and semantic-git are installed    |
+| `,sem`                 | Forward to Ataraxy semantic-git's entity-level CLI                               |
+| `,unwrap-md`           | Unwrap Markdown prose; wrap AI-facing instruction files at sentence boundaries   |
+| `,weave-setup-local`   | Configure weave merge driver in repo-local git config and `.git/info/attributes` |
+| `,weave-unsetup-local` | Remove the local-only weave merge driver setup                                   |
 
 ## Fish history sync: `,history-sync`
 
@@ -112,7 +114,7 @@ If you restore history out-of-band while fish is running, run `history merge` in
 
 These are used by scripts, fzf integrations, and Neovim; you rarely invoke them directly.
 
-Large command internals live under `~/lib/,<command>/` while the public command stays in `~/bin`. Current library-backed commands are `,add-patch-to-prs`, `,artifact`, `,codex`, `,codeowners`, `,disable-auto-merge`, `,doctor`, `,enable-auto-merge`, `,get-age-buckets`, `,gh-prw`, `,gh-subissues-create`, `,gh-tfork`, `,gh-worktree`, `,hey-branch`, `,history-sync`, `,jest-test-title-report`, `,kbn-pr-audit`, `,kbn-stack`, `,llama-cpp`, `,mcp-token`, `,pull-rebase`, `,tmux-run-all`, `,update`, `,w`, and `,wh`. Cross-command shell helpers live under `~/lib/shared/`.
+Large command internals live under `~/lib/,<command>/` while the public command stays in `~/bin`. Current library-backed commands are `,add-patch-to-prs`, `,artifact`, `,codex`, `,codeowners`, `,disable-auto-merge`, `,doctor`, `,enable-auto-merge`, `,get-age-buckets`, `,gh-prw`, `,gh-subissues-create`, `,gh-tfork`, `,gh-worktree`, `,hey-branch`, `,history-sync`, `,jest-test-title-report`, `,kbn-pr-audit`, `,kbn-stack`, `,llama-cpp`, `,mcp-token`, `,proof`, `,pull-rebase`, `,tmux-run-all`, `,update`, `,w`, and `,wh`. Cross-command shell helpers live under `~/lib/shared/`.
 
 | Command                  | Description                                                                                   |
 | ------------------------ | --------------------------------------------------------------------------------------------- |

@@ -20,15 +20,19 @@ Contract:
   - `~/.agents/skills/review/references/shared_rules.md`
 - Mode files reference both files but do not re-load them.
 - For PR modes, also load `~/.agents/skills/review/references/pr_common.md` once.
-- Load secondary skills only when this router or the selected mode requires them.
-  - Example: semantic code search for base context.
-  - Example: GitHub workflow when the user explicitly asks to post.
 - Do not invoke the `github` skill for read-only PR inspection/review.
   Only invoke it (via the Skill tool) when the user explicitly asks to post/submit anything to GitHub.
 - If the user wants review analysis and GitHub posting in the same request:
   - keep the review router primary
   - draft/verify through review mode first
   - invoke the `github` skill via the Skill tool only for the posting step
+
+## Secondary Skill Escalation
+
+Do not load secondary skills until read/diff evidence proves the surface is in scope.
+
+- Load semantic code search only for base context after the selected mode requires base-branch context.
+- Load GitHub workflow only when the user explicitly asks to post/submit anything to GitHub.
 
 ## Draft-PR Policy
 

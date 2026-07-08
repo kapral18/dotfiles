@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+# Description: Launch GitHub Copilot CLI through the LiteLLM gateway.
+
+set -euo pipefail
+
+if ! command -v copilot >/dev/null 2>&1; then
+  echo "Error: copilot CLI not found on PATH." >&2
+  exit 127
+fi
+
+read_pass_secret() {
+  local path="$1"
+  if command -v pass >/dev/null 2>&1; then
+    pass show "$path" 2>/dev/null | tr -d '\n'
+  fi
+}
+
+normalize_base_url() {
+  local base="$1"
+  base="${base%/}"
+  case "$base" in
+  */v1) printf '%s' "$base" ;;
+  *) printf '%s/v1' "$base" ;;
+  esac
+}
+
+well_known_model_id() {
+  local id="$1"
+  case "$id" in
+  llm-gateway/claude-haiku-4-5) printf 'claude-haiku-4.5' ;;
+  llm-gateway/claude-opus-4-7) printf 'claude-opus-4.7' ;;
+  llm-gateway/claude-opus-4-8) printf 'claude-opus-4.8' ;;
+  llm-gateway/gemini-3.1-pro-preview-customtools) printf 'gemini-3.1-pro-preview' ;;
+  llm-gateway/*) printf '%s' "${id#llm-gateway/}" ;;
+  *) printf '%s' "$id" ;;
+  esac
+}
+
+is_litellm_model() {
+  case "$1" in
+  llm-gateway/*) return 0 ;;
+  *) return 1 ;;
+  esac
+}
+
+litellm_api_base="${LITELLM_API_BASE:-}"
+if [[ -z "$litellm_api_base" ]]; then
+  litellm_api_base="$(read_pass_secret litellm/api/base)"
+fi
+if [[ -z "$litellm_api_base" ]]; then
+  echo "Error: set LITELLM_API_BASE or pass entry litellm/api/base." >&2
+  exit 1
+fi
+litellm_api_base="$(normalize_base_url "$litellm_api_base")"
+
+litellm_api_key="${LITELLM_PROXY_KEY:-}"
+if [[ -z "$litellm_api_key" ]]; then
+  litellm_api_key="$(read_pass_secret litellm/api/token)"
+fi
+if [[ -z "$litellm_api_key" ]]; then
+  echo "Error: set LITELLM_PROXY_KEY or pass entry litellm/api/token." >&2
+  exit 1
+fi
+
+model="${COPILOT_LITELLM_MODEL:-llm-gateway/gpt-5.5}"
+wire_model="${COPILOT_LITELLM_WIRE_MODEL:-$model}"
+model_id="${COPILOT_LITELLM_MODEL_ID:-$(well_known_model_id "$model")}"
+
+args=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  --model | -m)
+    if [[ $# -lt 2 ]]; then
+      echo "Error: $1 requires a model value." >&2
+      exit 2
+    fi
+    model="$2"
+    wire_model="${COPILOT_LITELLM_WIRE_MODEL:-$model}"
+    model_id="${COPILOT_LITELLM_MODEL_ID:-$(well_known_model_id "$model")}"
+    args+=("$1" "$model_id")
+    shift 2
+    ;;
+  --model=*)
+    model="${1#--model=}"
+    wire_model="${COPILOT_LITELLM_WIRE_MODEL:-$model}"
+    model_id="${COPILOT_LITELLM_MODEL_ID:-$(well_known_model_id "$model")}"
+    args+=("--model=$model_id")
+    shift
+    ;;
+  --thinking)
+    if [[ $# -lt 2 ]]; then
+      echo "Error: --thinking requires an effort value." >&2
+      exit 2
+    fi
+    args+=(--effort "$2")
+    shift 2
+    ;;
+  --thinking=*)
+    args+=("--effort=${1#*=}")
+    shift
+    ;;
+  --no-thinking)
+    args+=(--effort none)
+    shift
+    ;;
+  *)
+    if [[ ${#args[@]} -eq 0 ]] && is_litellm_model "$1"; then
+      model="$1"
+      wire_model="${COPILOT_LITELLM_WIRE_MODEL:-$model}"
+      model_id="${COPILOT_LITELLM_MODEL_ID:-$(well_known_model_id "$model")}"
+      args+=(--model "$model_id")
+    else
+      args+=("$1")
+    fi
+    shift
+    ;;
+  esac
+done
+
+export COPILOT_PROVIDER_BASE_URL="$litellm_api_base"
+export COPILOT_PROVIDER_TYPE="${COPILOT_PROVIDER_TYPE:-openai}"
+export COPILOT_PROVIDER_API_KEY="$litellm_api_key"
+export COPILOT_PROVIDER_WIRE_API="${COPILOT_LITELLM_WIRE_API:-${COPILOT_PROVIDER_WIRE_API:-completions}}"
+export COPILOT_MODEL="$model_id"
+export COPILOT_PROVIDER_MODEL_ID="${COPILOT_PROVIDER_MODEL_ID:-$model_id}"
+export COPILOT_PROVIDER_WIRE_MODEL="$wire_model"
+export COPILOT_PROVIDER_MAX_PROMPT_TOKENS="${COPILOT_LITELLM_MAX_PROMPT_TOKENS:-272000}"
+export COPILOT_PROVIDER_MAX_OUTPUT_TOKENS="${COPILOT_LITELLM_MAX_OUTPUT_TOKENS:-128000}"
+
+exec ",copilot" "${args[@]}"

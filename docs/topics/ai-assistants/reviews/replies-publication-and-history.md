@@ -15,6 +15,7 @@ When drafting PR thread replies:
 - A closing prompt like `Wdyt` is optional, not mandatory. Use it only when it fits the tone of the specific comment.
 - Default to inline anchored comments for code-review feedback (not PR-level summary bodies) unless explicitly requested.
 - Any code/file/symbol reference in a comment body must be a clickable source link to the exact location on the PR head SHA.
+- UI-related comments, replies, or PR-level feedback drafted after `/agent-review` or `live-ui-review` need screenshot handoff evidence kept outside the body, including folder-open/provided status, or a valid blocker/non-applicability reason; local screenshot paths never go into GitHub bodies.
 
 ## Router behavior
 

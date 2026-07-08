@@ -11,9 +11,11 @@ from pathlib import Path
 
 from hook_common import (
     emit,
+    is_default_branch_workspace,
     is_named_topic,
     is_session_topic,
     read_payload,
+    session_key,
     topic_paths,
     transcript_tail,
 )
@@ -32,6 +34,8 @@ WARMSTART_QUERY_CHARS = 600
 WARMSTART_BODY_CHARS = 240
 WARMSTART_SEARCH_TIMEOUT = 6
 CROSS_PROJECT_SCOPES = {"domain", "universal"}
+TOPIC_BUCKET_LIMIT = 8
+TOPIC_BUCKET_SUMMARY_CHARS = 180
 # Relative relevance floor: drop hits far worse than the best hit (see the same
 # constant + rationale in dot_pi/.../ai-kb-recall.ts). bm25() is SQLite's negative
 # log score (smaller = better), so we negate to "larger = better" before comparing.
@@ -188,17 +192,78 @@ def prefix_block() -> str:
     return f"{core}\n\nApply the discipline above to this session's prompts."
 
 
-def topic_nudge(topic: str) -> str:
-    if is_session_topic(topic):
-        return (
-            "### No Named Topic Active\n"
-            "This is a shared-branch session with no named topic, so it falls back to a "
-            "per-session key and prior-session continuity will not load. A named topic keeps "
-            "continuity without cross-contaminating other work on the same branch. "
-            "Set one when the task is clear: `,agent-memory use <kebab-topic>`, then keep "
-            f"`/tmp/specs/.../<topic>.txt` updated. (Current fallback topic: `{topic}`.)"
+def collapse(text: str, max_chars: int) -> str:
+    flat = " ".join(text.split()).strip()
+    if len(flat) <= max_chars:
+        return flat
+    return flat[:max_chars].rstrip() + "…"
+
+
+def topic_bucket_files(spec_dir: Path) -> list[Path]:
+    files = []
+    for path in spec_dir.glob("*.txt"):
+        topic = path.stem
+        if path.name == "_active_topic.txt" or topic.startswith("."):
+            continue
+        if not is_named_topic(topic):
+            continue
+        files.append(path)
+    return sorted(files, key=lambda p: p.stat().st_mtime if p.exists() else 0, reverse=True)
+
+
+def topic_summary(path: Path) -> str:
+    try:
+        lines = path.read_text(errors="replace").splitlines()
+    except OSError:
+        lines = []
+    fields: list[str] = []
+    for label, prefix in (("target", "target:"), ("action", "action:")):
+        for line in lines:
+            if line.lower().startswith(prefix):
+                fields.append(f"{label}={collapse(line[len(prefix) :], TOPIC_BUCKET_SUMMARY_CHARS).strip()}")
+                break
+    return "; ".join(fields) if fields else "no target/action summary"
+
+
+def topic_buckets_context(spec_dir: Path, payload: dict) -> str:
+    key = session_key(payload)
+    session_arg = key or "<session-id>"
+    buckets = topic_bucket_files(spec_dir)[:TOPIC_BUCKET_LIMIT]
+    lines = [
+        "### Topic Buckets",
+        "Agent should bind automatically when exactly one bucket clearly matches the user's request.",
+        "Ask the user only when multiple buckets plausibly match, or when joining vs creating changes the work thread.",
+    ]
+    if not buckets:
+        lines.extend(
+            [
+                "No existing topic buckets.",
+                "Agent should create a new bucket automatically for this request:",
+                f"`,agent-memory select <new-topic> --create --session-id {session_arg}`",
+            ]
         )
-    return ""
+        return "\n".join(lines)
+
+    lines.append("Existing buckets:")
+    for path in buckets:
+        lines.append(f"- `{path.stem}` — {topic_summary(path)}")
+    lines.extend(
+        [
+            f"Bind this session with: `,agent-memory select <topic> --session-id {session_arg}`.",
+            f"If none match, create one with: `,agent-memory select <new-topic> --create --session-id {session_arg}`.",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def should_offer_topic_buckets(spec_path: Path, topic: str, no_session_key_default_branch: bool = False) -> bool:
+    spec_dir = spec_path.parent
+    return (
+        no_session_key_default_branch
+        or is_session_topic(topic)
+        or (spec_dir / "_active_topic.txt").exists()
+        or not spec_path.exists()
+    )
 
 
 REVIEW_CONCLUSION_HEADINGS = (
@@ -277,6 +342,25 @@ def main() -> None:
     if prefix:
         parts.extend(["", prefix])
 
+    spec_dir = spec_path.parent
+    key = session_key(payload)
+    has_session_binding = bool(key and (spec_dir / f".session-topic-{key}.txt").exists())
+    no_session_key_default_branch = not key and is_default_branch_workspace(workspace)
+    if not has_session_binding and should_offer_topic_buckets(spec_path, topic, no_session_key_default_branch):
+        parts.extend(["", topic_buckets_context(spec_dir, payload)])
+        parts.extend(["", AIKB_REMINDER])
+        context = "\n".join(parts)
+        emit(
+            {
+                "additional_context": context,
+                "hookSpecificOutput": {
+                    "hookEventName": "SessionStart",
+                    "additionalContext": context,
+                },
+            }
+        )
+        return
+
     is_review = False
     spec_text_source = ""
     if spec_path.exists():
@@ -305,10 +389,6 @@ def main() -> None:
                 seen_path.write_text(json.dumps(sorted(set(injected_ids))))
             except OSError:
                 pass
-
-    nudge = topic_nudge(topic)
-    if nudge:
-        parts.extend(["", nudge])
 
     parts.extend(["", AIKB_REMINDER])
 

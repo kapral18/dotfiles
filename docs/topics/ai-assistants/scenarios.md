@@ -27,14 +27,15 @@ Two invocation kinds matter throughout: **model-invoked** skills fire on their o
 
 ## Check something
 
-| You want to…                                      | Flow                                                                                                     | Start it                                             | Deeper                                                                                  |
-| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| Quick audit of your own uncommitted work          | `light-review` — proportional depth, fixes in place                                                      | `/light-review` (also model-invoked)                 | [Playbook](flows/review-your-changes.md)                                                |
-| Full review of a PR or risky change               | `review` — modes: pr_review, pr_fix, local_changes, plan_review                                          | "review PR #N" (model-invoked)                       | [Playbook](flows/review-your-changes.md) · [architecture](reviews/index.md)             |
-| Maximum-rigor multi-agent review                  | `/agent-review` — angle lanes, cross-family adversarial verify, live UI                                  | `/agent-review` (manual)                             | [Playbook](flows/review-your-changes.md) · [topology](reviews/agent-review-topology.md) |
-| Adversarial review of a plan/spec before building | `review` plan mode — judges the contract, not code                                                       | "review this plan/packet"                            | [Review workflow](reviews/index.md)                                                     |
-| Verify a change actually works end-to-end         | `verify`-style live drive; UI via `playwriter`, or `ui-proof` for screenshot proof of an intended visual | "verify this works" / "screenshot the UI for the PR" | rows in [skills](skills/external-tools-and-media.md)                                    |
-| Review what an agent produced (you as reviewer)   | staged-diff reading discipline                                                                           | —                                                    | [Reviewing agent diffs](reviewing-diffs.md)                                             |
+| You want to…                                      | Flow                                                                                                     | Start it                                                                                            | Deeper                                                                                  |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Quick audit of your own uncommitted work          | `light-review` — proportional depth, fixes in place                                                      | `/light-review` (also model-invoked)                                                                | [Playbook](flows/review-your-changes.md)                                                |
+| Full review of a PR or risky change               | `review` — modes: pr_review, pr_fix, local_changes, plan_review                                          | "review PR #N" (model-invoked)                                                                      | [Playbook](flows/review-your-changes.md) · [architecture](reviews/index.md)             |
+| Maximum-rigor multi-agent review                  | `/agent-review` — angle lanes, cross-family adversarial verify, live UI                                  | `/agent-review` (manual)                                                                            | [Playbook](flows/review-your-changes.md) · [topology](reviews/agent-review-topology.md) |
+| Adversarial review of a plan/spec before building | `review` plan mode — judges the contract, not code                                                       | "review this plan/packet"                                                                           | [Review workflow](reviews/index.md)                                                     |
+| Prove freeform work is ready to claim done        | `proof` — repo-external criteria/evidence/review ledger over ordinary agent work                         | fires for explicit proof, handoff, risky/runtime, failed-attempt, blocker, or multi-evidence claims | row in [skills](skills/memory-and-orchestration.md)                                     |
+| Verify a change actually works end-to-end         | `verify`-style live drive; UI via `playwriter`, or `ui-proof` for screenshot proof of an intended visual | "verify this works" / "screenshot the UI for the PR"                                                | rows in [skills](skills/external-tools-and-media.md)                                    |
+| Review what an agent produced (you as reviewer)   | staged-diff reading discipline                                                                           | —                                                                                                   | [Reviewing agent diffs](reviewing-diffs.md)                                             |
 
 ## Understand something
 
@@ -43,19 +44,20 @@ Two invocation kinds matter throughout: **model-invoked** skills fire on their o
 | Learn how this codebase works        | `walkthrough` — evidence-anchored tour or ASCII architecture map | `/walkthrough` (manual)                  | [Playbook](flows/understand-code.md)                            |
 | Investigate an external repo/library | `research` — clone to `/tmp`, read source, answer from code      | "figure out how X works" (model-invoked) | [Playbook](flows/understand-code.md)                            |
 | Find code by concept, not keyword    | `semantic-code-search` (SCSI)                                    | fires on conceptual search               | [MCP servers](mcp.md)                                           |
+| Drive an interactive terminal safely | `tmux` — isolated sockets, pane capture, explicit targets        | fires on tmux/pane/session work          | row in [skills](skills/repo-workflow-and-code-intelligence.md)  |
 | Find duplication / dead exports      | `jscpd` / `knip`                                                 | fires during cleanup work                | rows in [skills](skills/repo-workflow-and-code-intelligence.md) |
 
 ## Communicate something
 
 | You want to…                             | Flow                                                                                           | Start it                                        | Deeper                                                  |
 | ---------------------------------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------- |
-| Draft an issue                           | `compose-issue` — text only, no side effects                                                   | "draft an issue for …"                          | [Playbook](flows/ship-text.md)                          |
+| Draft or prepare an issue                | `compose-issue` — issue text + publication packet, no side effects                             | "draft an issue for …"                          | [Playbook](flows/ship-text.md)                          |
 | Draft a PR body                          | `compose-pr` — evidence-backed Test Plan gate                                                  | "draft the PR text"                             | [Playbook](flows/ship-text.md)                          |
 | Prove a built UI looks right, for a PR   | `ui-proof` — head-only live check + screenshots of the intended visual, handed to `compose-pr` | fires in `/build` / `compose-pr` for UI changes | [architecture](creation-workflow.md)                    |
 | Help reviewers before they open the diff | `present-pr` — self-contained HTML review-readiness map                                        | `/present-pr` (manual)                          | [Playbook](flows/ship-text.md)                          |
 | Anything a human will read               | `communication` owns tone; publication always gated                                            | loaded automatically before drafting            | [Side-effect gates](system-prompt/side-effect-gates.md) |
 
-Cross-cutting: durable memory (`,ai-kb`) recalls before non-trivial work and persists verified lessons — [Agent memory](knowledge-base/index.md); the code-quality family loads itself on implementation edits; Kibana/Elastic work gets the domain overlay — [Elastic and Kibana](skills/elastic-and-kibana.md).
+Cross-cutting: durable memory (`,ai-kb`) recalls before non-trivial work and persists verified lessons — [Agent memory](knowledge-base/index.md); `proof` records completion evidence for hard-triggered freeform work; the code-quality family loads itself on implementation edits; Kibana/Elastic work gets the domain overlay — [Elastic and Kibana](skills/elastic-and-kibana.md).
 
 ## Pivot map
 
@@ -72,7 +74,7 @@ Flows hand off to each other at defined points; pivoting is expected, not an exc
                 ┌────────┼─────────┐
                 ▼        ▼         ▼
              /build   ,ralph go   compose-issue / compose-pr
-             in-session  --spec      publishable text
+             in-session  --spec      publishable text + packet
                 │        │ replan → planner re-enters, spec superseded
                 ▼        ▼
              light-review over the result … escalates to → review → /agent-review

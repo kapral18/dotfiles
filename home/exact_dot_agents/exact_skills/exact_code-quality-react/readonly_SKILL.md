@@ -24,8 +24,13 @@ The `~/.agents/skills/code-quality/SKILL.md` skill still applies unless local pr
 - Keep effect dependencies honest; do not silence dependency rules without a verified local reason.
 - Treat loading, empty, error, and disabled states as user-visible behavior that needs verification when touched.
 
+## Secondary Skill Escalation
+
+Do not load secondary skills until read/diff evidence proves the surface is in scope.
+
+- If markup, styling, or accessibility semantics change, also load the `~/.agents/skills/code-quality-web/SKILL.md` skill.
+
 ## UI Behavior
 
 - Preserve keyboard and focus behavior when changing interactive components.
-- If markup, styling, or accessibility semantics change, also load the `~/.agents/skills/code-quality-web/SKILL.md` skill.
 - Verify user-visible behavior with the smallest practical rendered check when the change affects interaction or layout.

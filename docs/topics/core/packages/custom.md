@@ -4,12 +4,12 @@ sidebar_position: 17
 
 # Custom Packages Registry
 
-"Custom packages" are tools/apps installed outside standard package managers using a managed chezmoi list. This registry supports both GitHub-release assets and source-based builds.
+"Custom packages" are tools/apps installed outside standard package managers using a managed chezmoi list. This registry supports GitHub-release assets and source-based builds.
 
 ## Preconditions
 
-- The tool/app is not available in higher-priority package managers for this repo.
-- You identified the official GitHub repository and release asset naming.
+- The tool/app is not available in higher-priority package managers for this repo, or the higher-priority package is known to be unsafe for this app's update model.
+- For GitHub-release formats, you identified the official GitHub repository and release asset naming.
 - You know which format applies: `dmg`, `file`, `tar_gz_bin`, or `git_maven_jar`.
 
 ## Where The List Lives

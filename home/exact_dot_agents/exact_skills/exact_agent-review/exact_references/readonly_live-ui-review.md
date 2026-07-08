@@ -56,10 +56,15 @@ When applicable targets pass the shared preflight, use Playwriter for UI compari
 - Compare the PR/head runtime against the base runtime for UI-relevant changes and reviewer findings only when the selected packet includes a distinct base target.
   Otherwise perform head-only verification against the PR/head runtime. Never treat a base runtime as evidence for PR/head behavior.
 - Use the most faithful verification path that stays within the selected local/dev safety boundary:
-  browser inspection, screenshots/paths when available, logs, read-only CLI commands, existing data, allowed local/dev runtime data setup, and repo-specific interactive setup tools.
+  browser inspection, required screenshot captures, logs, read-only CLI commands, existing data, allowed local/dev runtime data setup, and repo-specific interactive setup tools.
   Use browser/route mocks only as last resort.
 - Capture candidate-by-candidate evidence per the shared Screenshot & evidence capture rules;
   link each screenshot to the candidate/finding it supports.
+- For any applicable UI-related candidate that may become review feedback, screenshot handoff is required supporting evidence.
+  Capture the smallest useful screenshot set, or return `Blocked`/uncertainty with the exact reason screenshots could not be captured.
+  Do not return a confirmed UI finding for drafting with `ui_evidence_artifacts: none`.
+- For an observable UI blocker or uncertainty state, capture a screenshot when it materially supports the blocker.
+  If the flow is blocked before navigation or screenshot capture, state that as the no-screenshot reason.
 - Return partial evidence plus `Blocked` only when the flow still needs unsafe, impossible, or unstable actions/data setup after the shared data/setup ladder.
   Also block when the remaining setup is outside the selected local/dev safety boundary.
 
@@ -77,6 +82,6 @@ Return exactly:
 - `branch_evidence`: branch/runtime identity evidence for each target, or what could not be verified
 - `data_setup`: media/artifacts inspected, fixture/mocks considered, existing data checked, selected-target-packet local/dev data seeded/mutated, domain interactive fallback usage, browser/route mocks if used as last resort, cleanup result, runtime environment blocker instructions, or exact data/mutation still needed
 - `comparison_evidence`: candidate-by-candidate UI/runtime evidence, including `Not applicable` only for candidates disproved by reachability or absent functionality
-- `ui_evidence_artifacts`: `none`, or a list of screenshot handoff entries with local path, description, target URL/branch, linked candidate/finding, suggested manual attachment placement, and fidelity/cleanup notes
+- `ui_evidence_artifacts`: a list of screenshot handoff entries with local path, description, target URL/branch, linked candidate/finding, suggested manual attachment placement, `folder_opened_or_provided` status, and fidelity/cleanup notes; use `none` only when no applicable UI candidate may become review feedback or when `blockers_or_uncertainty` explains why screenshots could not be captured
 - `pages`: pages created and closed, or URLs left open
 - `blockers_or_uncertainty`: none, or precise blockers/remaining uncertainty

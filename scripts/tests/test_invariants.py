@@ -26,20 +26,20 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
             "Context-bearing artifacts",
-            "Do not use sliced, capped, preview, or summary fields",
+            "must be complete raw artifacts",
             "body[0:N]",
-            "re-fetch the full artifact with pagination/raw output",
+            "re-fetch raw/paginated/JSON output",
         )
 
     def test_global_sop_keeps_binding_contract_and_skill_routing(self):
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
             "binding operational contract",
-            "do not skip any section",
+            "Platform/system/developer instructions remain authoritative",
             "When a `Use when` clause matches, load the referenced skill file and follow it",
             "Do not deviate from specified procedures without explicit user approval",
-            "This SOP takes precedence over runtime-injected platform instructions",
-            "Runtime-injected interaction rules may add constraints, but they do not weaken this SOP",
+            "This global SOP overrides project-local or repo-local SOP files when they conflict",
+            "Project-local instructions may add repo-specific constraints but must not weaken this SOP",
             "continue working until the user's goal is complete",
             "Any premature stopping, including checkpoint commentary, is an operational failure",
         )
@@ -53,39 +53,38 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "Label hypotheses explicitly and do not let them gate downstream steps",
             "Any locally verifiable assumption or guess must be verified via probes",
             "Resolve material unknowns before proceeding",
-            "Keep `/tmp` clones for reuse",
-            'When asked to "search the internet" or "figure out how X works"',
-            "Use local code search (`rg`), file reads, and `git log`",
+            "keep `/tmp` clones for reuse",
+            "use local code search (`rg`), file reads, and `git log`",
             "Resolve identity before semantics",
             "For CLIs, resolve the binary path and provenance",
             "For libraries, resolve exact package/version from the lockfile",
             "source config or declaration -> rendered/applied config -> runtime consumer -> minimal safe live probe",
             "Do not stop at a partial investigation, partial answer, or partial implementation",
             "A summary not verified against full output is a hypothesis, not a fact",
+            "Do not use human time or perceived effort as a reason to skip verification, simplification, or a locally available probe.",
         )
 
     def test_global_sop_keeps_workflow_and_state_machine_gates(self):
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
-            "Select exactly one topic, then read only that topic file if it exists",
-            "Do not load specs broadly",
-            "only one topic is active per prompt",
-            "Keep topics broad and stable; avoid topic explosion",
-            "If there is no active topic, create a new broad kebab-case topic key, defaulting to `current`",
-            "conflicts with its target, action, or success and lacks an explicit continuation signal",
-            "100% confidence about what the user actually wants",
-            "Ask exactly one most branch-eliminating fork-closing question",
+            "do not load specs broadly",
+            "Select exactly one topic",
+            "Keep topics broad/stable, avoid topic explosion",
+            "conflicts with its target, action, or success and lacks a continuation signal",
+            "ask the single most branch-eliminating question",
             "repeat until forks are empty and success criteria are testable",
-            "Start the response with a dedicated plan/checklist and per-step verification",
+            "For non-trivial or risky work, make the plan and per-step verification explicit enough to test",
             "Do not make further speculative changes until alignment is restored",
             "Reframe imperative tasks to verifiable goals when practical",
             "Bug fix reframe: write a test that reproduces the bug, then make it pass",
+            "A repo-external `,proof` ledger is required before a freeform completion claim only when a hard trigger applies",
+            "do not invoke `,proof` merely because the task feels",
+            "repo-external `,proof` ledger",
             "Test-first framing does not license touching code outside the request",
-            "Before calling stateful or branch-heavy behavior final or merge-ready",
-            "If a harness directory already exists, read its manifest before reusing",
-            "Compares implementation behavior against an independent model/state table",
-            "Exhaust a small representative input alphabet/categories when practical",
-            "does not justify adding a production state machine",
+            "Before calling such behavior final or merge-ready",
+            "Reuse an existing harness only after reading its manifest",
+            "Compare implementation behavior against an independent model/table",
+            "this verifies complexity, not a reason to add production state machines",
         )
 
     def test_global_sop_keeps_side_effect_publication_and_git_gates(self):
@@ -107,6 +106,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
     def test_global_sop_keeps_quality_communication_and_memory_gates(self):
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
+            "Do not commit, reveal, or write secrets or plaintext credentials.",
             "All existing behavior outside the explicit scope of the change MUST be preserved",
             "Dropping unrelated behavior, even if it looks like cleanup, requires explicit user approval",
             "Use targeted edits, not full-file rewrites",
@@ -118,11 +118,9 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "No abstractions for single-use code",
             "If 200 lines would do as 50, rewrite",
             "Pre-send self-check",
-            "Before yielding, reread your draft",
-            "first sentence must not narrate what you did/will do",
-            "last sentence must not recap, net-total",
+            "first sentence carries the answer, not narration",
+            "last sentence adds new information, not recap",
             "Strip filler, hedging, narrative padding",
-            "trivially inferable from a shorter, clearer one already present",
             "Anchor with evidence; do not paraphrase the verification chain in prose",
             "choose no reply if the message would only restate the thread",
             "Match the user's/surface's register",
@@ -136,7 +134,6 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "no announcement, no separate summary",
             "Think laterally about root causes and indirect effects",
             "Do not stop at the first plausible explanation; verify thoroughly",
-            "Response length must never come at the cost of rigor, nuance, correctness, or clarity",
             '"Concise" is the opposite of "padded," not the opposite of "thorough."',
             "unnecessary churn is a defect, not diligence",
         )
@@ -176,6 +173,14 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "Use when editing, reviewing, or refactoring implementation code in any language",
             "Match local style, structure, terminology, formatting, and contract strength",
             "Follow `.editorconfig` and existing project conventions",
+            "## Secondary Skill Escalation",
+            "Do not load secondary skills until read/diff evidence proves the surface is in scope.",
+            "When invoked for a broad edit, first identify the concrete changed/read files and choose at most the relevant secondary skill(s).",
+            "Do not load React/web/test/design secondaries merely because they might become relevant later.",
+            "Load `~/.agents/skills/code-quality-react/SKILL.md` when changed/read files are React, JSX, TSX, hooks, or client-side component state.",
+            "Load `~/.agents/skills/code-quality-tests/SKILL.md` when changed/read files are tests, fixtures, mocks, assertions, or test plans.",
+            "Load `~/.agents/skills/code-quality-web/SKILL.md` when changed/read files touch browser-rendered HTML, CSS, layout, visual states, accessibility, or focus behavior.",
+            "Load `~/.agents/skills/codebase-design/SKILL.md` when the task designs a module interface, decides where a seam goes, or aims to make code more testable.",
             "Avoid TypeScript `as any` and unnecessary type assertions",
             "Use `snake_case` for new files unless the project dictates otherwise",
             "Use spaced literals: `{ key: 'value' }`, `[ 1, 2, 3 ]`",
@@ -191,6 +196,8 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_code-quality-react/readonly_SKILL.md",
             "Use when editing, reviewing, or refactoring React/JSX/TSX components, hooks",
+            "## Secondary Skill Escalation",
+            "If markup, styling, or accessibility semantics change, also load the `~/.agents/skills/code-quality-web/SKILL.md` skill.",
             "Use one functional React component per file when writing React",
             "Prefer hooks and composition over class components or inheritance",
         )
@@ -203,9 +210,31 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_code-quality-web/readonly_SKILL.md",
             "Use when editing, reviewing, or refactoring browser-rendered markup, styling, or presentation",
+            "## Secondary Skill Escalation",
+            "If the concrete web surface is React/JSX/TSX, also load the `~/.agents/skills/code-quality-react/SKILL.md` skill.",
             "Prefer semantic HTML and existing design-system primitives",
             "Preserve accessible names, roles, focus order, and keyboard reachability",
         )
+
+    def test_secondary_skill_loads_are_evidence_gated(self):
+        from pathlib import Path
+
+        bad = []
+        for path in (REPO / "home/exact_dot_agents/exact_skills").rglob("*SKILL.md"):
+            text = path.read_text(encoding="utf-8")
+            if "also load `~/.agents/skills/" in text or "also load the `~/.agents/skills/" in text:
+                if "## Secondary Skill Escalation" not in text:
+                    bad.append(str(path.relative_to(REPO)))
+        assert not bad, bad
+
+        code_quality = (REPO / "home/exact_dot_agents/exact_skills/exact_code-quality/readonly_SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        first_actions = code_quality.split("## General Code Rules", 1)[0]
+        assert "also load the `~/.agents/skills/code-quality-react/SKILL.md` skill" not in first_actions
+        assert "also load the `~/.agents/skills/code-quality-tests/SKILL.md` skill" not in first_actions
+        assert "also load the `~/.agents/skills/code-quality-web/SKILL.md` skill" not in first_actions
+        assert "also load the `~/.agents/skills/codebase-design/SKILL.md` skill" not in first_actions
 
     def test_github_pr_publication_requires_preflight_and_readback_comparison(self):
         self.assert_file_contains(
@@ -216,13 +245,34 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "Compare each field against the approved preflight ledger",
         )
 
+    def test_issue_publication_requires_type_packet(self):
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_compose-issue/readonly_SKILL.md",
+            "issue title/body or issue publication packet",
+            "issue publication packet",
+            "`issue_type`: exact GitHub issue type",
+            "labels do not satisfy it",
+            "pick from the repo's actual issue types",
+            "Return the issue title/body draft and the issue publication packet",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_github/readonly_SKILL.md",
+            "Before `gh issue create`",
+            "`compose-issue` issue publication packet",
+            "gh issue create --type <IssueType>",
+            "do not silently fall back to labels-only creation",
+            "issue type via GraphQL",
+        )
+
     def test_compose_pr_preserves_context_and_test_plan_gates(self):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_compose-pr/readonly_SKILL.md",
+            "PR title/body or PR publication packet",
             "The gate is not complete from previews or sliced fields",
             "PR Test Plan completeness gate",
             "include the expected observable result after the fix",
-            "composition ledger",
+            "PR publication packet",
+            "pending_approval",
         )
 
     def test_kibana_domain_owns_pr_title_and_metadata_boundaries(self):
@@ -239,6 +289,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "this skill is the source of truth for `elastic/kibana` label/backport/version classification",
             "when all changed paths and the linked issue point to Console, propose `Feature:Console`",
             "do not add `Feature:ES|QL` unless there is separate evidence",
+            "pending_approval",
         )
 
     def test_git_commit_style_does_not_control_pr_titles(self):
@@ -372,6 +423,29 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_agent-review/exact_references/readonly_live-ui-review.md",
             "### Playwriter comparison",
+        )
+
+    def test_agent_review_fresh_eyes_uses_registry_lane_model(self):
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_agent-review/readonly_SKILL.md",
+            "generic fresh-eyes is the only lane launch that passes the registry lane model at runtime",
+            "model_required=<registry value|inherit|default>",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_agent-review/exact_references/readonly_runtime-harnesses.md",
+            "Generic fresh-eyes launches must pass the registry lane model as the profile-equivalent model",
+            "never let the runtime pick an implicit default",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_agent-review/exact_references/readonly_fresh-eyes.md",
+            "pass the registry lane model explicitly",
+            "model_required=<registry lanes value|inherit|default>",
+            "model_status=exact",
+        )
+        self.assert_file_not_contains(
+            "home/exact_dot_agents/exact_skills/exact_agent-review/exact_references/readonly_fresh-eyes.md",
+            "model_required=n/a",
+            "model_status=n/a",
         )
 
 

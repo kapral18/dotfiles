@@ -78,13 +78,16 @@ var cursorModels = []string{
 // litellm proxy actually serves locally.
 var piModels = []string{
 	// litellm-gateway (authoritative, deployed via chezmoi):
-	"llm-gateway/claude-opus-4-7",
-	"llm-gateway/claude-opus-4-8",
-	"llm-gateway/gpt-5.5",
-	"llm-gateway/gemini-3.5-flash",
 	"llm-gateway/gemini-3.1-pro-preview",
 	"llm-gateway/gemini-3.1-pro-preview-customtools",
+	"llm-gateway/claude-haiku-4-5",
 	"llm-gateway/Kimi-K2.6",
+	"llm-gateway/gpt-5.5",
+	"llm-gateway/claude-opus-4-8",
+	"llm-gateway/claude-sonnet-5",
+	"llm-gateway/claude-fable-5",
+	"llm-gateway/claude-opus-4-7",
+	"llm-gateway/gemini-3.5-flash",
 	// openrouter (same families, routed via openrouter for fallback / cost):
 	"openrouter/anthropic/claude-opus-4.7-thinking",
 	"openrouter/anthropic/claude-opus-4.7",

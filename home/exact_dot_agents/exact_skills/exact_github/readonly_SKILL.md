@@ -85,12 +85,18 @@ PR review side effects (draft / pending reviews):
 
 - Before any create/delete-recreate/submit action, read existing current-account pending reviews and reconcile them with the new payload;
   do not create or submit fragmented review feedback.
+- For UI-related review feedback drafted after `/agent-review` or `live-ui-review`, require the approved draft's `ui_evidence_attachments` handoff or a valid blocker/non-applicability reason before creating/submitting the review.
+  Keep local screenshot paths out of review bodies and inline comment bodies;
+  show the handoff and folder-open/provided status separately in the approval payload.
 - Full mechanics — pre-flight checklist, pending-review definition/constraints, the existing-pending-review merge guard, the batch draft-posting procedure (including `position` math), and post-submit verification — live in `~/.agents/skills/github/references/pr-reviews.md`.
 
 Posting PR review comments:
 
 - Use bash/zsh `$'...'` so `\n` becomes real line breaks. Do NOT send literal `\n`.
 - Commit references in comment bodies must be clickable links (full GitHub URL), never bare or backtick-wrapped hashes.
+- For UI-related comments/replies/PR-level feedback drafted after `/agent-review` or `live-ui-review`, require screenshot handoff evidence outside the body or a valid blocker/non-applicability reason.
+  Never put local screenshot paths in GitHub comment, reply, review, or PR-level bodies.
+  Show folder-open/provided status in the approval/preflight handoff.
 - Follow the relevant PR review mode for anchoring and comment placement: `~/.agents/skills/review/references/pr_review.md` or `~/.agents/skills/review/references/pr_fix.md`.
 - Inline/range, file-level, reply, and PR-timeline comment examples live in `~/.agents/skills/github/references/pr-comments.md`.
 
@@ -109,16 +115,53 @@ PR creation:
 - Before creating/editing a PR body, ensure the Test Plan covers any `## Reproduction`, `Expected`, or `Actual` evidence from linked/closing issues.
   If manual repro was not run, include portable reviewer-run verification steps and say which automated checks were run.
 - Always propose labels/assignees/milestone/projects first and get explicit confirmation before applying any of them.
+- Before `gh pr create` or any PR body/title edit, require the `compose-pr` PR publication packet.
+  Stop before the GitHub side effect if the packet is missing, any required field is missing, or any required field is `blocked`.
+  For UI-facing changes and linked screenshots/media, the packet must include screenshot status and any captured proof folder/filename mapping plus folder-open/provided status.
+  For repos with PR templates, the packet must include selected template and required-section checklist.
+  If metadata is proposed, the packet must mark it `approved_to_apply`, `applied`, `deferred`, or `pending_approval`.
+  Do not treat `pending_approval` as "no"; surface it in the approval request or immediately after PR creation/readback.
+  If screenshots are `explicitly_skipped`, the approval request must name that screenshots are being skipped and include the user's explicit approval.
 - Before `gh pr create` or any PR body/title edit, show a PR publication preflight ledger:
   - `target`: repo, base, head, draft/readiness
   - `title`: exact title plus source/rationale
   - `body`: body file/path or full text source, linked issue keyword, and footer state
+  - `composition_packet`: template, screenshots, test plan, metadata, statuses, and blockers
   - `intake`: full linked issue/PR/comment bodies read; comments/replies status; skipped items with reasons
   - `test_plan`: observable/manual steps, expected result, commands run, and observed results
   - `metadata`: proposed labels/assignees/milestone/projects plus source skill/rationale
   - `approval`: exact side effect command/payload approved by the user
 - After `gh pr create` or `gh pr edit`, read back title, body, labels, draft state, base/head, and closing keyword.
   Compare each field against the approved preflight ledger; if any field differs, do not mark the task complete until the mismatch is fixed or explicitly accepted.
+  If the packet has proposed metadata with `pending_approval`, do not finish with only a PR URL:
+  ask whether to apply the proposed metadata now or explicitly defer it.
+  If metadata was approved for application, apply it, read it back, and compare labels/assignees/milestone/projects against the approved metadata packet before marking complete.
+
+Issue creation:
+
+- Before creating/editing an issue body, invoke the `compose-issue` skill via the Skill tool.
+- Before `gh issue create` or any issue body/title edit, require the `compose-issue` issue publication packet.
+  Stop before the GitHub side effect if the packet is missing, any required field is missing, or any required field is `blocked`.
+  If the target repo supports GitHub issue types, the packet must include `issue_type` with an exact GitHub issue type;
+  labels do not satisfy this gate.
+- Before `gh issue create`, verify the local CLI supports issue types with `GH_PAGER=cat gh issue create --help`.
+  If `--type name` is absent, stop unless the approved packet explicitly allows creating without a GitHub issue type.
+  For repos that expose issue types, read the allowed type names before creation:
+  `GH_PAGER=cat gh api graphql -H "GraphQL-Features:issue_types" -f query='query { repository(owner:"OWNER", name:"REPO") { issueTypes(first: 50) { nodes { id name description } } } }'`
+- Use `gh issue create --type <IssueType> --body-file <file>` when the packet approves an issue type.
+  If setting the approved issue type fails, stop and ask; do not silently fall back to labels-only creation.
+- Before `gh issue create` or any issue body/title edit, show an issue publication preflight ledger:
+  - `target`: repo, visibility if relevant, and creation/edit intent
+  - `title`: exact title plus source/rationale
+  - `body`: body file/path or full text source, with sanitization status
+  - `issue_type`: exact GitHub issue type, source evidence, and approval status
+  - `metadata`: labels, assignees, milestone, projects plus source/rationale and approval status
+  - `relationships`: parent issue/sub-issue links, linked issues/PRs, and approval status
+  - `duplicate_check`: queries run, hits read, and duplicate verdict
+  - `intake`: full references read; skipped references with reasons
+  - `approval`: exact side effect command/payload approved by the user, including `--type <IssueType>` and any relationship mutations
+- After `gh issue create` or `gh issue edit`, read back title, body, labels, assignees, milestone, projects when applicable, and issue type via GraphQL: `GH_PAGER=cat gh api graphql -H "GraphQL-Features:issue_types" -f query='query { repository(owner:"OWNER", name:"REPO") { issue(number: NUMBER) { issueType { name } } } }'` Compare each field against the approved preflight ledger; if any field differs, do not mark the task complete until the mismatch is fixed or explicitly accepted.
+  If parent/sub-issue links were approved, apply them through `~/.agents/skills/github/references/sub-issues.md`, then read back the relationship.
 
 Composition (draft-only) guidance:
 

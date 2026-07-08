@@ -12,10 +12,17 @@ The SOP still owns compatibility, minimal edit scope, artifact necessity, semant
 
 - Match local style, structure, terminology, formatting, and contract strength.
 - Follow `.editorconfig` and existing project conventions.
-- If the change touches React, JSX, TSX, hooks, or component state, also load the `~/.agents/skills/code-quality-react/SKILL.md` skill.
-- If the change adds or changes tests, fixtures, mocks, assertions, or test plans, also load the `~/.agents/skills/code-quality-tests/SKILL.md` skill.
-- If the change touches HTML, CSS, styles, layout, visual states, accessibility, or browser markup, also load the `~/.agents/skills/code-quality-web/SKILL.md` skill.
-- If the change designs a module's interface, decides where a seam goes, or aims to make code more testable, also load the `~/.agents/skills/codebase-design/SKILL.md` skill for the deep-module vocabulary.
+
+## Secondary Skill Escalation
+
+Do not load secondary skills until read/diff evidence proves the surface is in scope.
+When invoked for a broad edit, first identify the concrete changed/read files and choose at most the relevant secondary skill(s).
+Do not load React/web/test/design secondaries merely because they might become relevant later.
+
+- Load `~/.agents/skills/code-quality-react/SKILL.md` when changed/read files are React, JSX, TSX, hooks, or client-side component state.
+- Load `~/.agents/skills/code-quality-tests/SKILL.md` when changed/read files are tests, fixtures, mocks, assertions, or test plans.
+- Load `~/.agents/skills/code-quality-web/SKILL.md` when changed/read files touch browser-rendered HTML, CSS, layout, visual states, accessibility, or focus behavior.
+- Load `~/.agents/skills/codebase-design/SKILL.md` when the task designs a module interface, decides where a seam goes, or aims to make code more testable.
 
 ## General Code Rules
 

@@ -52,10 +52,13 @@ Do not return raw diffs or logs. If the changed content is only generated/vendor
 
 - Launch with the harness's generic read-only task mechanism.
   Do not use the named reviewer profiles or any profile that preloads the `review` skill; those ingest PR context and unblind the lane.
-- Claude Code: a general-purpose `Task` carrying this contract; model override optional.
+- Use the `agent_review_models.<harness>.lanes` registry value as the model source.
+  If the registry value is concrete, pass the registry lane model explicitly so the runtime cannot fall back to an implicit default or older built-in model.
+  If the registry value is `inherit` or empty/default by design, record that expected inheritance/default in `model_required`.
+- Claude Code: a general-purpose `Task` carrying this contract; `model_required=inherit`.
 - Cursor: a generic subagent type with `readonly: false`, passing the registry lane model (the same value the deployed `review-worker` profile carries).
-- Copilot CLI: a generic task agent type is correct here by design; record `fallback_reason=blind-by-design`.
+- Copilot CLI: a generic task agent type is correct here by design; pass the registry lane model explicitly and record `fallback_reason=blind-by-design`.
 - Pi: launch the `fresh-eyes` agent profile (a thin shim of this file that carries no skills);
   Pi launches subagents only through named profiles.
-- Worker selection line: `phase=fresh-eyes`, `profile=n/a` (Pi: `fresh-eyes`), `model_required=n/a`, `model_status=n/a`.
+- Worker selection line: `phase=fresh-eyes`, `profile=n/a` (Pi: `fresh-eyes`), `model_required=<registry lanes value|inherit|default>`, `model_used=<launch-confirmed model>`, `model_status=exact`.
 - Never include prior findings, PR intent, or controller narrative in the prompt — including on re-runs after new context or applied fixes.

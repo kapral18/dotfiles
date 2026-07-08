@@ -64,12 +64,13 @@ Canonical MCP registry plus generator/injectors. See [MCP servers](../topics/ai-
 
 Two distinct memory layers. See [Agent memory](../topics/ai-assistants/knowledge-base/index.md).
 
-| Component                     | Source path                                                                                                                                            |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| AI knowledge base (`,ai-kb`)  | [`home/exact_bin/executable_,ai-kb`](../../home/exact_bin/executable_,ai-kb), [`scripts/ai_kb.py`](../../scripts/ai_kb.py)                             |
-| Embedding service             | [`scripts/embed.py`](../../scripts/embed.py), [`scripts/embed_runner.py`](../../scripts/embed_runner.py)                                               |
-| Vector retrieval              | [`scripts/vec_runner.py`](../../scripts/vec_runner.py)                                                                                                 |
-| Hook memory (`,agent-memory`) | [`home/exact_bin/executable_,agent-memory`](../../home/exact_bin/executable_,agent-memory), [`scripts/agent_memory.py`](../../scripts/agent_memory.py) |
+| Component                     | Source path                                                                                                                                                      |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AI knowledge base (`,ai-kb`)  | [`home/exact_bin/executable_,ai-kb`](../../home/exact_bin/executable_,ai-kb), [`scripts/ai_kb.py`](../../scripts/ai_kb.py)                                       |
+| Proof ledger (`,proof`)       | [`home/exact_bin/executable_,proof`](../../home/exact_bin/executable_,proof), [`home/exact_lib/exact_,proof/main.py`](../../home/exact_lib/exact_,proof/main.py) |
+| Embedding service             | [`scripts/embed.py`](../../scripts/embed.py), [`scripts/embed_runner.py`](../../scripts/embed_runner.py)                                                         |
+| Vector retrieval              | [`scripts/vec_runner.py`](../../scripts/vec_runner.py)                                                                                                           |
+| Hook memory (`,agent-memory`) | [`home/exact_bin/executable_,agent-memory`](../../home/exact_bin/executable_,agent-memory), [`scripts/agent_memory.py`](../../scripts/agent_memory.py)           |
 
 ## Ralph orchestrator
 

@@ -24,21 +24,21 @@ Ralph is no longer the only consumer. Interactive harnesses reach the same durab
 
 Persistence stays agent-driven through `,ai-kb remember`. There is no auto-harvest and no MCP, so nothing writes to the KB without an explicit agent action.
 
-Retrieval is mostly agent-driven too: the agent searches with the actual task as query. One hook performs read-only warm-start retrieval:
+Retrieval is mostly agent-driven too: the agent searches with the actual task as query. The shared `session_context.py` hook performs read-only warm-start retrieval:
 
-| Gate                       | Behavior                                                     |
-| -------------------------- | ------------------------------------------------------------ |
-| active topic is deliberate | neither generic `current` nor per-session `session-*`        |
-| topic spec exists          | `<topic>.txt` is non-empty and becomes the query             |
-| retrieval lane             | BM25 only, fast and embedder-free inside hook timeout        |
-| allowed scopes             | workspace-local, `domain`, or `universal` capsules           |
-| result count               | up to three capsules under `### Relevant Learnings (,ai-kb)` |
+| Gate                       | Behavior                                                                               |
+| -------------------------- | -------------------------------------------------------------------------------------- |
+| active topic is deliberate | selected by `.session-topic-<id>.txt`, not a generic `current` or fallback `session-*` |
+| topic spec exists          | `<topic>.txt` is non-empty and becomes the query                                       |
+| retrieval lane             | BM25 only, fast and embedder-free inside hook timeout                                  |
+| allowed scopes             | workspace-local, `domain`, or `universal` capsules                                     |
+| result count               | up to three capsules under `### Relevant Learnings (,ai-kb)`                           |
 
-Ad-hoc, `session-*`, and review topics get no warm-start. Cursor cannot inject context per turn (`beforeSubmitPrompt` drops `additional_context`), so `sessionStart` is the only injection point. Mid-task relevance comes from explicit agent searches.
+Unbound, ad-hoc `session-*`, and review topics get no warm-start. Cursor cannot inject context per turn (`beforeSubmitPrompt` drops `additional_context`), so `sessionStart` is the only injection point. Mid-task relevance comes from explicit agent searches.
 
 Persistence is the SOP's end-of-turn habit: the agent self-vets and writes inline as the last step of a substantive turn, with no hook and no auto-submitted prompt.
 
-Pi uses its own TypeScript extension API rather than `hooks.json`.
+Pi uses its own TypeScript extension API rather than `hooks.json`. It still reads topic state through `,agent-memory status --json`; session-bound bucket selection is implemented in the shared hook path in this change.
 
 | Piece               | Source                                                                                                     |
 | ------------------- | ---------------------------------------------------------------------------------------------------------- |
@@ -49,10 +49,10 @@ Pi uses its own TypeScript extension API rather than `hooks.json`.
 
 Pi uses `before_agent_start` for two paths:
 
-| Moment                   | Injection                                                    |
-| ------------------------ | ------------------------------------------------------------ |
-| First prompt             | verification prefix plus the same gated warm-start as Cursor |
-| Every substantive prompt | per-turn retrieval using the actual prompt as query          |
+| Moment                   | Injection                                                                    |
+| ------------------------ | ---------------------------------------------------------------------------- |
+| First prompt             | verification prefix plus gated warm-start from `,agent-memory status --json` |
+| Every substantive prompt | per-turn retrieval using the actual prompt as query                          |
 
 Per-turn retrieval uses `hybrid` mode — lexical + vector + MMR — and dedupes capsules already injected this session. This works in Pi because `before_agent_start` can return an injected `message`; Cursor's `beforeSubmitPrompt` cannot.
 
@@ -84,15 +84,16 @@ The scope gate is provenance-only. The relative floor prevents low-relevance cap
 
 Cross-runtime durable-memory retrieval:
 
-| Runtime             | Auto-retrieval mechanism                                                                   |
-| ------------------- | ------------------------------------------------------------------------------------------ |
-| Ralph               | Mechanical push: top-K per role injected into the `## RECENT LEARNINGS` prompt block       |
-| Cursor CLI / Claude | `session_context.py` gated `sessionStart` warm-start (named topic only); else agent-pull   |
-| Codex / Copilot     | `session_context.py` gated `SessionStart` warm-start; else agent-pull                      |
-| Pi                  | `ai-kb-recall.ts` warm-start (parity) **plus** per-turn prompt-query injection             |
-| OpenCode            | `agent-memory.ts` plugin: warm-start in system prompt **plus** per-turn via `chat.message` |
-| Gemini              | `SessionStart` warm-start **plus** per-turn via `BeforeAgent` (`additionalContext`)        |
-| Cursor cloud        | No injection point available; agent-pull only                                              |
+| Runtime             | Auto-retrieval mechanism                                                                                                     |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Ralph               | Mechanical push: top-K per role injected into the `## RECENT LEARNINGS` prompt block                                         |
+| Cursor CLI / Claude | `session_context.py` gated `sessionStart` warm-start (session-bound named topic only); else Topic Buckets / agent-pull       |
+| Codex               | `session_context.py` gated `SessionStart` warm-start; else agent-pull                                                        |
+| Copilot             | `agent-memory` SDK extension calls `session_context.py` in `onSessionStart` and returns `additionalContext`; else agent-pull |
+| Pi                  | `ai-kb-recall.ts` warm-start (parity) **plus** per-turn prompt-query injection                                               |
+| OpenCode            | `agent-memory.ts` plugin: warm-start in system prompt **plus** per-turn via `chat.message`                                   |
+| Gemini              | `SessionStart` warm-start **plus** per-turn via `BeforeAgent` (`additionalContext`)                                          |
+| Cursor cloud        | No injection point available; agent-pull only                                                                                |
 
 `~/.agents/hooks/perturn_recall.py` is the shared per-turn implementation.
 

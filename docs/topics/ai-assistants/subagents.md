@@ -42,28 +42,28 @@ Verified discovery anchors:
 
 Profile `model` frontmatter is rendered from the `agent_review_models` registry — policy in [Model registry](model-registry.md), review-flow usage in [Agent-review topology](reviews/agent-review-topology.md). Pi encodes reasoning effort in model slug suffixes such as `:xhigh` on its per-task registry value.
 
-Runtime probes confirmed project custom-agent invocation in Cursor and Copilot, Copilot task subagents with explicit model overrides, and Codex `spawn_agent` / `wait`. Cursor source supports custom subagent types, but the model-facing Task schema can expose only generic types in some runs; generation lanes fall back to a generic type with no model override, and only the adversarial verifier passes an explicitly resolved cross-family id.
+Runtime probes confirmed project custom-agent invocation in Cursor and Copilot, Copilot task subagents with explicit model overrides, and Codex `spawn_agent` / `wait`. Cursor source supports custom subagent types, but the model-facing Task schema can expose only generic types in some runs; generic or fallback launches pass the registry value as a profile-equivalent model when the role has no usable profile frontmatter, and the adversarial verifier passes the explicitly resolved cross-family id.
 
 ## Agent suite
 
 The "Loads contract" column is the `agent-review/references/<role>.md` file the profile delegates to; that contract loads the owning skill in turn.
 
-| Agent                                     | Loads contract                       | Work it owns                                                       |
-| ----------------------------------------- | ------------------------------------ | ------------------------------------------------------------------ |
-| `agent-review`                            | `agent-review/SKILL`                 | Controller: route, PR-necessity gate, fan-out, live UI, audit, act |
-| `review-controller` (Pi)                  | `review/SKILL`                       | Pi controller for PR gates, reviews, audits, fixes/drafts/verdict  |
-| `review-worker`                           | `reviewer-worker`                    | Registry-model angle lane (Cursor/Copilot/Codex/Gemini)            |
-| `reviewer`                                | `reviewer-worker`                    | Pi/Claude read-only angle lane (registry: default/inherit)         |
-| `fresh-eyes` (Pi only; generic elsewhere) | `fresh-eyes`                         | Blind zero-context clarity lane                                    |
-| `adversarial-verifier`                    | `adversarial-verifier`               | Cross-family refutation over merged candidates                     |
-| `pr-necessity-auditor`                    | `pr-necessity-auditor`               | Blocking PR necessity / intent gate                                |
-| `findings-auditor`                        | `findings-auditor`                   | Non-trivial findings or named fix-diff audit                       |
-| `live-ui-review`                          | `live-ui-review`                     | Verification-only live UI reviewer with screenshot handoff         |
-| `post-review`                             | `post-review`                        | Four-dimension hygiene audit of a review's fix diff                |
-| `criteria-verifier`                       | `build/references/criteria-verifier` | `/build` refutation lane over the criteria ledger + scope audit    |
-| `change-auditor`                          | `change-auditor`                     | Proportional-depth audit of a self-authored changeset              |
-| `researcher`                              | `researcher`                         | Clone and inspect external GitHub source                           |
-| `code-searcher`                           | `code-searcher`                      | SCSI semantic investigation / base-branch context                  |
+| Agent                                     | Loads contract                       | Work it owns                                                                            |
+| ----------------------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------- |
+| `agent-review`                            | `agent-review/SKILL`                 | Controller: route, PR-necessity gate, fan-out, live UI, audit, act                      |
+| `review-controller` (Pi)                  | `review/SKILL`                       | Pi controller for PR gates, reviews, audits, fixes/drafts/verdict                       |
+| `review-worker`                           | `reviewer-worker`                    | Registry-model angle lane (Cursor/Copilot/Codex/Gemini)                                 |
+| `reviewer`                                | `reviewer-worker`                    | Pi/Claude read-only angle lane (registry: default/inherit)                              |
+| `fresh-eyes` (Pi only; generic elsewhere) | `fresh-eyes`                         | Blind zero-context clarity lane                                                         |
+| `adversarial-verifier`                    | `adversarial-verifier`               | Cross-family refutation over merged candidates                                          |
+| `pr-necessity-auditor`                    | `pr-necessity-auditor`               | Blocking PR necessity / intent gate                                                     |
+| `findings-auditor`                        | `findings-auditor`                   | Non-trivial findings or named fix-diff audit                                            |
+| `live-ui-review`                          | `live-ui-review`                     | Verification-only live UI reviewer; screenshot handoff required for feedback candidates |
+| `post-review`                             | `post-review`                        | Four-dimension hygiene audit of a review's fix diff                                     |
+| `criteria-verifier`                       | `build/references/criteria-verifier` | `/build` refutation lane over the criteria ledger + scope audit                         |
+| `change-auditor`                          | `change-auditor`                     | Proportional-depth audit of a self-authored changeset                                   |
+| `researcher`                              | `researcher`                         | Clone and inspect external GitHub source                                                |
+| `code-searcher`                           | `code-searcher`                      | SCSI semantic investigation / base-branch context                                       |
 
 ## Review hierarchy
 

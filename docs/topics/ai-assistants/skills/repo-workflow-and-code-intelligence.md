@@ -81,6 +81,14 @@ These skills operate on local repositories, code search, cleanup, and external s
 | Source     | [`exact_worktrees`](../../../../home/exact_dot_agents/exact_skills/exact_worktrees/) |
 | Preference | prefer `,w` / `,gh-worktree` over raw `git worktree`                                 |
 
+## `tmux`
+
+| Field    | Value                                                                                        |
+| -------- | -------------------------------------------------------------------------------------------- |
+| Use when | running, probing, or automating tmux commands, panes, sessions, sockets, or interactive CLIs |
+| Source   | [`exact_tmux`](../../../../home/exact_dot_agents/exact_skills/exact_tmux/)                   |
+| Boundary | never mutate the default tmux server unless the current target is verified or user-requested |
+
 ## `semantic-code-search`
 
 | Field    | Value                                                                                                      |

@@ -71,6 +71,7 @@ Do not start a later phase until the current one completes.
    Run this when any acceptance criterion's evidence is visual — a `judgment:` criterion naming a screenshot/visual comparison, or an in-scope UI-facing change with a stated visual goal.
    Load `~/.agents/skills/ui-proof/SKILL.md` and run it inline (this flow already holds Playwriter and local/dev mutation permissions), head-only against the built runtime.
    Supply the built worktree/branch, the changed UI paths, the visual criterion as the intended-visual oracle, the selected target packet (for verified `elastic/kibana`, the overlay's `~/.agents/skills/elastic-domain/references/kibana-live-ui.md`; otherwise the explicit user/repo-documented local/dev packet), the required runtime config, and the `/tmp` output location (each visual criterion's proof set in its own distinct `/tmp/<folder-name>/` folder).
+   Require `ui-proof` to open/reveal each proof folder for the user when possible, or provide the folder path and the reason opening was not possible.
    Set each visual criterion's ledger row from the returned verdict with the captured screenshot as its evidence:
    `met` -> `judgment-met`, `unmet` -> back to phase 3 like a red step, `blocked` -> `blocked` with the exact blocker.
    Skip only when no criterion is visual; record the skip reason.
@@ -99,7 +100,7 @@ A blocked flow ends as `blocked` with the ledger as-is — never as a success su
 - Criteria ledger: every row with status, evidence (command + exit), and verification verdict.
 - Adversarial verification: families used (`<session-family> vs <verifier-family>` or `same (degraded)`), verdict counts, scope-audit result.
 - Mechanical gates: commands run with results, or the exact blocker.
-- Live-UI proof: per-criterion `met` / `unmet` / `blocked` verdicts and the screenshot manifest (each set in its own `/tmp/<folder-name>/`), or `skipped (no visual criterion)`.
+- Live-UI proof: per-criterion `met` / `unmet` / `blocked` verdicts and the screenshot manifest (each set in its own `/tmp/<folder-name>/`, with folder-open/provided status), or `skipped (no visual criterion)`.
 - Post-review stage: result per dimension (clean, or what was cleaned).
 - Scope: files changed, each traced to a criterion; out-of-scope confirmation.
 - Remaining unknowns / blockers, and the suggested next move (commit via `git` skill, PR via `compose-pr` —

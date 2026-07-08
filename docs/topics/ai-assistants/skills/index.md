@@ -6,13 +6,13 @@ title: Skills
 
 Skills are the intent router below the SOP. The SOP says "load the matching skill"; each skill says what to do for that intent.
 
-| Slice                                                                         | Covers                                                             |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| [Review and delivery](review-and-delivery.md)                                 | reviews, GitHub, PR/issue text, communication                      |
-| [Repo workflow and code intelligence](repo-workflow-and-code-intelligence.md) | git/worktrees, semantic tools, clone research, cleanup scanners    |
-| [Memory and orchestration](memory-and-orchestration.md)                       | durable memory, Ralph, spec/build, improvement/interview workflows |
-| [Elastic and Kibana](elastic-and-kibana.md)                                   | domain overlay, Buildkite, labels, ownership, backports, standup   |
-| [External tools and media](external-tools-and-media.md)                       | Google Workspace, flights, browser control, image generation       |
+| Slice                                                                         | Covers                                                                    |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| [Review and delivery](review-and-delivery.md)                                 | reviews, GitHub, PR/issue text, communication                             |
+| [Repo workflow and code intelligence](repo-workflow-and-code-intelligence.md) | git/worktrees, semantic tools, clone research, cleanup scanners           |
+| [Memory and orchestration](memory-and-orchestration.md)                       | durable memory, proof, Ralph, spec/build, improvement/interview workflows |
+| [Elastic and Kibana](elastic-and-kibana.md)                                   | domain overlay, Buildkite, labels, ownership, backports, standup          |
+| [External tools and media](external-tools-and-media.md)                       | Google Workspace, flights, browser control, image generation              |
 
 ## Entry contract
 

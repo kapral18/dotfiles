@@ -15,6 +15,7 @@ from typing import Any
 DEFAULT_TOPIC = "current"
 DEFAULT_BRANCH_NAMES = {"main", "master", "dev", "develop", "trunk"}
 SPEC_ROOT = Path("/tmp/specs")
+SESSION_TOPIC_PREFIX = ".session-topic-"
 
 
 def read_payload() -> dict[str, Any]:
@@ -66,6 +67,32 @@ def session_topic(payload: dict[str, Any]) -> str:
     return DEFAULT_TOPIC
 
 
+def session_key(payload: dict[str, Any]) -> str:
+    for key in ("conversation_id", "session_id", "generation_id"):
+        value = payload.get(key)
+        if value:
+            topic = safe_topic(value)
+            if topic != DEFAULT_TOPIC:
+                return topic
+    return ""
+
+
+def session_topic_path(spec_dir: Path, key: str) -> Path:
+    return spec_dir / f"{SESSION_TOPIC_PREFIX}{key}.txt"
+
+
+def session_selected_topic(spec_dir: Path, payload: dict[str, Any]) -> str:
+    key = session_key(payload)
+    if not key:
+        return ""
+    try:
+        raw_topic = session_topic_path(spec_dir, key).read_text().strip()
+    except OSError:
+        return ""
+    topic = safe_topic(raw_topic)
+    return "" if topic == DEFAULT_TOPIC else topic
+
+
 def is_session_topic(topic: str) -> bool:
     """A per-session fallback key produced by session_topic()."""
     return topic.startswith("session-")
@@ -96,14 +123,8 @@ def is_default_branch_workspace(workspace: Path) -> bool:
 
 
 def active_topic(spec_dir: Path, workspace: Path, payload: dict[str, Any]) -> str:
-    pointer = spec_dir / "_active_topic.txt"
-    try:
-        raw_topic = pointer.read_text().strip()
-    except OSError:
-        raw_topic = ""
-
-    topic = safe_topic(raw_topic)
-    if topic != DEFAULT_TOPIC:
+    topic = session_selected_topic(spec_dir, payload)
+    if topic:
         return topic
 
     if is_default_branch_workspace(workspace):

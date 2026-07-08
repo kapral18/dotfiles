@@ -12,7 +12,7 @@ Capsules persist under `~/.local/share/ai-kb/` (markdown sidecars + indexed SQLi
 
 Do not use:
 
-- ephemeral per-session working context (current task spec, worklog, evidence ledger under `/tmp/specs`):
+- ephemeral per-session working context (current task spec, hook worklog/evidence trace under `/tmp/specs`):
   that is `,agent-memory` (see `~/.local/share/chezmoi/docs/topics/ai-assistants/knowledge-base/hook-memory.md`);
   this skill is for durable knowledge only
 - semantic CODE search over a repo (how a codebase works, base-branch context): `~/.agents/skills/semantic-code-search/SKILL.md`

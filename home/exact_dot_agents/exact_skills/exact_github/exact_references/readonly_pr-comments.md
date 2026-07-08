@@ -10,6 +10,9 @@ Reference for the `github` skill. Load when posting inline, file-level, reply, o
 - Follow the relevant PR review mode for anchoring and comment placement:
   - `~/.agents/skills/review/references/pr_review.md`
   - `~/.agents/skills/review/references/pr_fix.md`
+- For UI-related comments, replies, or PR-level feedback drafted after `/agent-review` or `live-ui-review`, require screenshot handoff evidence outside the body or a valid blocker/non-applicability reason.
+  Never put local screenshot paths in GitHub comment, reply, review, or PR-level bodies.
+  Show folder-open/provided status in the approval/preflight handoff.
 
 ## Inline review comment (line or range; supports GitHub suggestion blocks)
 

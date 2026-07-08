@@ -1,7 +1,3 @@
-# Web browser
-# https://arc.net/
-cask "arc"
-
 # AI-first web browser from The Browser Company
 # https://www.diabrowser.com/
 cask "thebrowsercompany-dia"

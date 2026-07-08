@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 07c-bin-commands.mmd — Every thin command in home/exact_bin/ (71 thin commands)
+%% 07c-bin-commands.mmd — Every thin command in home/exact_bin/ (73 thin commands)
 %% plus deployed internals in home/exact_lib/ (41 command/shared library files).
 %% executable_,* → ~/bin/,* (comma-prefixed user commands); home/exact_lib/exact_,name/
 %% → ~/lib/,name/. verify-bin-surface keeps each command covered by fish
@@ -21,7 +21,7 @@ flowchart TB
     end
 
     subgraph AIC["AI / agents / KB"]
-        A[",ralph (→ scripts/ralph.py; see 04) · ,ai-kb (→ scripts/ai_kb.py)<br/>,agent-memory (/tmp/specs dead-switch) · ,artifact (cache HTML/live overlay + pollers) · ,cp-files-for-llm<br/>,claude-llama-cpp · ,codex-llama-cpp · ,opencode-llama-cpp<br/>,pi-cloudflare · ,opencode-cloudflare · ,codex-cloudflare<br/>,copilot (refresh header-auth MCP tokens + re-bake config → native Copilot; fail closed)<br/>,copilot-cloudflare · ,copilot-openrouter · ,llama-cpp (local router)<br/>,codex (refresh hosted-MCP token env + llama-cpp metadata passthrough)<br/>,cursor (refresh OAuth MCP tokens from ~/.cursor/mcp.json via ,mcp-token --login → native cursor-agent; fail closed; skips admin subcommands)<br/>,mcp-token &lt;server&gt; (freshest slack/scsi-main token from cursor cache → Codex env / Copilot bearer header; --login → cursor-agent mcp login to refresh)<br/>,tg (telegramtui) · ,youtube-search · ,letsfg-docker"]:::ai
+        A[",ralph (→ scripts/ralph.py; see 04) · ,ai-kb (→ scripts/ai_kb.py)<br/>,agent-memory (/tmp/specs status/select/wipe topic buckets) · ,proof (freeform criteria/evidence/review ledger; state outside worktree)<br/>,artifact (cache HTML/live overlay + pollers) · ,cp-files-for-llm<br/>,claude-llama-cpp · ,codex-llama-cpp · ,opencode-llama-cpp<br/>,pi-cloudflare · ,opencode-cloudflare · ,codex-cloudflare<br/>,copilot (refresh header-auth MCP tokens + re-bake config → native Copilot; fail closed)<br/>,copilot-cloudflare · ,copilot-litellm · ,copilot-openrouter · ,llama-cpp (local router)<br/>,codex (refresh hosted-MCP token env + llama-cpp metadata passthrough)<br/>,cursor (refresh OAuth MCP tokens from ~/.cursor/mcp.json via ,mcp-token --login → native cursor-agent; fail closed; skips admin subcommands)<br/>,mcp-token &lt;server&gt; (freshest slack/scsi-main token from cursor cache → Codex env / Copilot bearer header; --login → cursor-agent mcp login to refresh)<br/>,tg (telegramtui) · ,youtube-search · ,letsfg-docker"]:::ai
     end
 
     subgraph FZFC["fzf / search helpers"]
@@ -46,7 +46,7 @@ flowchart TB
     W --> LIBS
 
     subgraph CMDLIBS["Deployed command internals (home/exact_lib/ → ~/lib/)"]
-        CL["Python: ,artifact/main.py · ,codex/main.py · ,get-age-buckets/main.py<br/>,kbn-pr-audit/main.py · ,kbn-stack/main.py · ,mcp-token/main.py<br/>,update/heal_self_updating_casks.py<br/>Shell: ,add-patch-to-prs/main.sh · ,codeowners/main.sh · ,doctor/main.sh<br/>,disable-auto-merge/main.sh · ,enable-auto-merge/main.sh · ,gh-prw/main.sh<br/>,gh-subissues-create/main.sh · ,gh-tfork/main.sh · ,gh-worktree/main.sh<br/>,hey-branch/main.sh · ,llama-cpp/main.sh · ,pull-rebase/main.sh<br/>,tmux-run-all/main.sh · ,update/main.sh · ,wh/main.sh<br/>Node: ,jest-test-title-report/main.mjs<br/>thin launchers stay in home/exact_bin/executable_,name"]:::sys
+        CL["Python: ,artifact/main.py · ,codex/main.py · ,get-age-buckets/main.py<br/>,kbn-pr-audit/main.py · ,kbn-stack/main.py · ,mcp-token/main.py · ,proof/main.py<br/>Shell: ,add-patch-to-prs/main.sh · ,codeowners/main.sh · ,doctor/main.sh<br/>,disable-auto-merge/main.sh · ,enable-auto-merge/main.sh · ,gh-prw/main.sh<br/>,gh-subissues-create/main.sh · ,gh-tfork/main.sh · ,gh-worktree/main.sh<br/>,hey-branch/main.sh · ,llama-cpp/main.sh · ,pull-rebase/main.sh<br/>,tmux-run-all/main.sh · ,update/main.sh · ,wh/main.sh<br/>Node: ,jest-test-title-report/main.mjs<br/>thin launchers stay in home/exact_bin/executable_,name"]:::sys
     end
     G --> CMDLIBS
     A --> CMDLIBS

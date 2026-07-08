@@ -89,13 +89,18 @@ Run readiness before any UI observation.
 
 - Prefer selector state, URL, title, and focused DOM/accessibility observations before snapshots or screenshots.
   Do not capture full page snapshots/screenshots unless they are needed to decide or explain the finding or proof under capture.
-- Capture concrete evidence: URLs, steps, screenshots/paths when available, observed state, and uncertainty.
+- Capture concrete evidence: URLs, steps, observed state, uncertainty, and screenshots/paths when required by the caller or useful.
+- UI-related review findings that may become drafted feedback after `/agent-review` or `live-ui-review` need screenshot proof as supporting evidence.
+  Capture the smallest useful screenshot set unless a valid blocker or non-applicability result prevents it.
+- Observable UI blockers and uncertainty states should include screenshot proof when it materially explains the blocker;
+  pre-navigation blockers must record why no screenshot exists.
 - When visual proof is needed, capture the smallest useful screenshot set as Playwriter artifacts.
   Store them in a distinct `/tmp/<folder-name>/` directory — one dedicated folder per single screenshot, per comparison pair (e.g. base + the runtime under verification), or per logically grouped set that proves one thing.
   Never write screenshots loose in `/tmp`, and never mix an unrelated screenshot/pair/set into the same folder.
   Name the folder for what it captures (the finding, candidate, or acceptance criterion) so sibling sets stay separate and openable on their own.
-  Do not screenshot every navigation or duplicate state.
-- For each screenshot, record a handoff entry with its folder and file path, description, target classification (the runtime under verification, base, or both selected targets), exact URL, the linked candidate/finding or acceptance criterion, and suggested placement.
+  After storing a screenshot set, open each distinct enclosing folder for the user when the local environment supports it;
+  otherwise report that the folder could not be opened and provide the folder path. Do not screenshot every navigation or duplicate state.
+- For each screenshot, record a handoff entry with its folder and file path, description, target classification (the runtime under verification, base, or both selected targets), exact URL, the linked candidate/finding or acceptance criterion, suggested placement, and `folder_opened_or_provided` status.
   Include any fidelity note for mocks or partial setup. Preserve handoff files; cleanup applies to seeded runtime data and owned pages.
 - The screenshot handoff is for the controller/user only.
   Never upload images or put local paths in GitHub review bodies/comments, and never add extra comments solely for image paths;

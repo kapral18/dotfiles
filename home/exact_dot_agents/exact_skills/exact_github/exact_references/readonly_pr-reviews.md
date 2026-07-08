@@ -29,6 +29,8 @@ Reference for the `github` skill. Load when creating, reconciling, or submitting
 >    `position` anchor is inside the intended diff hunk immediately before creating or submitting the review.
 >    Do not rely on full-file line numbers, stale patches, or memory.
 > 8. Read existing current-account pending reviews and reconcile them with the payload. Do not create or submit fragmented review feedback.
+> 9. For UI-related review feedback drafted after `/agent-review` or `live-ui-review`, verify the approved draft includes `ui_evidence_attachments` or a valid blocker/non-applicability reason.
+>    Keep local screenshot paths out of `body` and inline comment bodies; show the handoff and folder-open/provided status separately in the approval payload.
 
 - Definition: a "pending review" is a PR review whose API `state` is `PENDING`.
   It is visible only to the reviewer who created it until submission (COMMENT/APPROVE/REQUEST_CHANGES), and it does not appear to the PR author as posted review comments while pending.
@@ -55,6 +57,7 @@ Reference for the `github` skill. Load when creating, reconciling, or submitting
   3. For each review with `state == "PENDING"` and `user.login` matching the current login, read draft comments:
      `gh api --paginate repos/OWNER/REPO/pulls/NUM/reviews/REVIEW_ID/comments`.
   4. Compare the pending review body/comments against the approved draft from `review`/`agent-review` and its `Pending review reconciliation:` ledger.
+  5. If any approved review feedback is UI-related and drafted after `/agent-review` or `live-ui-review`, compare it against the draft's `ui_evidence_attachments` ledger and block if screenshot evidence or folder-open/provided status is missing without a valid blocker/non-applicability reason.
 - If no reconciliation ledger exists, run the review skill's Existing Pending Review Reconciliation before mutating GitHub.
 - If a pending review exists and the new payload is additive/replacement:
   - do not try to create a second pending review

@@ -19,6 +19,18 @@ function __comma_provider_models --argument-names provider
                 'moonshotai/kimi-k2.7-code' \
                 'openai/gpt-5.5' \
                 'anthropic/claude-opus-4.8'
+        case litellm
+            set fallback \
+                'llm-gateway/gemini-3.1-pro-preview' \
+                'llm-gateway/gemini-3.1-pro-preview-customtools' \
+                llm-gateway/claude-haiku-4-5 \
+                'llm-gateway/Kimi-K2.6' \
+                'llm-gateway/gpt-5.5' \
+                llm-gateway/claude-opus-4-8 \
+                llm-gateway/claude-sonnet-5 \
+                llm-gateway/claude-fable-5 \
+                llm-gateway/claude-opus-4-7 \
+                'llm-gateway/gemini-3.5-flash'
         case cloudflare-openai
             set fallback \
                 'gpt-5.5' \
@@ -131,6 +143,20 @@ def fetch_cloudflare_openai():
     return [model.get("id") for model in payload.get("data") or [] if model.get("id")]
 
 
+def fetch_litellm():
+    base_url = os.environ.get("LITELLM_API_BASE") or ""
+    token = os.environ.get("LITELLM_PROXY_KEY") or ""
+    if not base_url or not token:
+        return []
+    base_url = base_url.rstrip("/")
+    if not base_url.endswith("/v1"):
+        base_url += "/v1"
+    request = urllib.request.Request(f"{base_url}/models", headers={"Authorization": f"Bearer {token}"})
+    with urllib.request.urlopen(request, timeout=5) as response:
+        payload = json.load(response)
+    return [model.get("id") for model in payload.get("data") or [] if model.get("id")]
+
+
 def unique(items):
     seen = set()
     out = []
@@ -149,6 +175,8 @@ else:
     try:
         if provider == "openrouter":
             fetched = fetch_openrouter()
+        elif provider == "litellm":
+            fetched = fetch_litellm()
         elif provider == "cloudflare-openai":
             fetched = fetch_cloudflare_openai()
         else:

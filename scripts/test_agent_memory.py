@@ -147,6 +147,44 @@ class TestAgentMemory(unittest.TestCase):
             finally:
                 agent_memory.SPEC_ROOT = old_spec_root
 
+    def test_status_json_with_session_id_does_not_select_active_pointer(self):
+        import agent_memory
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
+            old_spec_root = agent_memory.SPEC_ROOT
+            agent_memory.SPEC_ROOT = Path(spec_root)
+            try:
+                subprocess.run(["git", "init", "-q", "-b", "main"], cwd=tmp, check=True)
+                workspace = Path(tmp).resolve()
+                spec_dir = agent_memory.spec_dir_for(workspace)
+                spec_dir.mkdir(parents=True)
+                (spec_dir / "_active_topic.txt").write_text("memory-systems\n")
+                (spec_dir / "memory-systems.txt").write_text("target: stale active pointer\n")
+
+                buffer = io.StringIO()
+                with contextlib.redirect_stdout(buffer):
+                    assert (
+                        agent_memory.main(
+                            [
+                                "status",
+                                "--json",
+                                "--workspace",
+                                str(workspace),
+                                "--session-id",
+                                "abc-123",
+                            ]
+                        )
+                        == 0
+                    )
+
+                payload = json.loads(buffer.getvalue())
+                assert payload["selected_topic"] == "session-abc-123"
+                assert payload["session_selected_topic"] is None
+                assert payload["is_named_topic"] is False
+                assert payload["spec_file"].endswith("session-abc-123.txt")
+            finally:
+                agent_memory.SPEC_ROOT = old_spec_root
+
     def test_status_json_flags_generic_topic_as_unnamed(self):
         import agent_memory
 
@@ -165,6 +203,44 @@ class TestAgentMemory(unittest.TestCase):
                 payload = json.loads(buffer.getvalue())
                 assert payload["selected_topic"] == "current"
                 assert payload["is_named_topic"] is False
+            finally:
+                agent_memory.SPEC_ROOT = old_spec_root
+
+    def test_select_prints_selected_context_for_current_session(self):
+        import agent_memory
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
+            old_spec_root = agent_memory.SPEC_ROOT
+            agent_memory.SPEC_ROOT = Path(spec_root)
+            try:
+                workspace = Path(tmp).resolve()
+                spec_dir = agent_memory.spec_dir_for(workspace)
+                spec_dir.mkdir(parents=True)
+                (spec_dir / "memory-systems.txt").write_text("target: make memory explicit\n")
+                (spec_dir / "memory-systems.worklog.jsonl").write_text('{"event":"note","text":"recent work"}\n')
+
+                buffer = io.StringIO()
+                with contextlib.redirect_stdout(buffer):
+                    assert (
+                        agent_memory.main(
+                            [
+                                "select",
+                                "memory-systems",
+                                "--workspace",
+                                str(workspace),
+                                "--session-id",
+                                "abc-123",
+                            ]
+                        )
+                        == 0
+                    )
+
+                output = buffer.getvalue()
+                assert "### Selected Topic Context" in output
+                assert "target: make memory explicit" in output
+                assert "#### Recent Hook Worklog" in output
+                assert "recent work" in output
+                assert (spec_dir / ".session-topic-abc-123.txt").read_text().strip() == "memory-systems"
             finally:
                 agent_memory.SPEC_ROOT = old_spec_root
 

@@ -15,6 +15,14 @@ These skills coordinate long-running agent work, durable learning, and user-inte
 | Source   | [`exact_ai-kb`](../../../../home/exact_dot_agents/exact_skills/exact_ai-kb/) |
 | Related  | [Agent memory](../knowledge-base/index.md)                                   |
 
+## `proof`
+
+| Field    | Value                                                                                                                                        |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Use when | explicit proof/receipt requests, handoffs, risky/runtime claims, failed attempts, blockers, or multi-evidence freeform changes need a ledger |
+| Source   | [`exact_proof`](../../../../home/exact_dot_agents/exact_skills/exact_proof/)                                                                 |
+| CLI      | `,proof` stores proof state outside worktrees under `$AGENT_PROOF_HOME`, `$XDG_STATE_HOME`, or `~/.local/state`                              |
+
 ## `ralph`
 
 | Field    | Value                                                                        |
@@ -33,11 +41,11 @@ These skills coordinate long-running agent work, durable learning, and user-inte
 
 ## `spec`
 
-| Field    | Value                                                                                                                                            |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Use when | developing an idea, feature request, or bug into a spec packet with red-capable acceptance checks                                                |
-| Source   | [`exact_spec`](../../../../home/exact_dot_agents/exact_skills/exact_spec/)                                                                       |
-| Output   | packet at `/tmp/specs/<pwd>/<topic>.spec.md`; consumers: `/build`, `,ralph go --spec` (via its JSON handoff block), `compose-issue`, plan review |
+| Field    | Value                                                                                                                                                              |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Use when | developing an idea, feature request, or bug into a spec packet with red-capable acceptance checks                                                                  |
+| Source   | [`exact_spec`](../../../../home/exact_dot_agents/exact_skills/exact_spec/)                                                                                         |
+| Output   | packet at `/tmp/specs/<pwd>/<topic>.spec.md`; consumers: `/build`, `,ralph go --spec` (via its JSON handoff block), `compose-issue` issue text/packet, plan review |
 
 Fork-closing consults a domain overlay's planning fork checklist when the verified target repo has one (currently `elastic-domain` for `elastic/kibana`). Forks that cannot close locally (external sign-off, another team's decision) go in the packet's `External dependencies` section — owner, blocked criteria, recommended default — instead of blocking assembly; consumers must not start blocked criteria.
 

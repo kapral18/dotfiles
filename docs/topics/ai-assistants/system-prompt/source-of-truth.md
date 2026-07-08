@@ -9,12 +9,12 @@ title: Source of truth
 
 ## Why it is first
 
-| Rule                            | Why it matters                                                   |
-| ------------------------------- | ---------------------------------------------------------------- |
-| Read the entire SOP             | prevents selective compliance and stale memory                   |
-| Load matching skills            | moves intent-specific rules out of the global prompt             |
-| Do not pause mid-task           | keeps execution aligned with the user's requested stopping point |
-| Runtime rules do not weaken SOP | platform prompts can add constraints, not erase repo policy      |
+| Rule                                               | Why it matters                                                   |
+| -------------------------------------------------- | ---------------------------------------------------------------- |
+| Platform/system/developer rules stay authoritative | keeps harness contracts above user-level policy                  |
+| Global SOP beats weaker project-local SOPs         | prevents repo-local instructions from erasing safety gates       |
+| Load matching skills                               | moves intent-specific rules out of the global prompt             |
+| Do not pause mid-task                              | keeps execution aligned with the user's requested stopping point |
 
 ## Update path
 

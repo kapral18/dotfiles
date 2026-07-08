@@ -11,7 +11,7 @@ This slice covers GUI apps, desktop security tools, macOS automation, networking
 
 | Tool                                                                                                                                                 | Source | Scope           | Why it is here                        |
 | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | --------------- | ------------------------------------- |
-| [Arc](https://arc.net/), [Dia](https://www.diabrowser.com/), [Brave](https://brave.com/), [Zen](https://zen-browser.app/)                            | `cask` | shared          | daily browser matrix                  |
+| [Dia](https://www.diabrowser.com/), [Brave](https://brave.com/), [Zen](https://zen-browser.app/)                                                     | `cask` | shared          | daily browser matrix                  |
 | [Chrome](https://www.google.com/chrome/), [Chrome Canary](https://www.google.com/chrome/canary/), [Chromedriver](https://chromedriver.chromium.org/) | `cask` | personal        | browser testing and personal browsing |
 | [Discord](https://discord.com/), [Telegram](https://macos.telegram.org/), [WhatsApp](https://www.whatsapp.com/), [Slack](https://slack.com/)         | `cask` | personal        | chat/communication apps               |
 | [Google Drive](https://www.google.com/drive/), [Remember The Milk](https://www.rememberthemilk.com/), [Raindrop.io](https://raindrop.io/)            | `cask` | personal/shared | sync, task, and bookmark workflows    |

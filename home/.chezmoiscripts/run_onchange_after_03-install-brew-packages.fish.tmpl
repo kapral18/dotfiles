@@ -6,23 +6,7 @@ echo "---------------------------------------"
 
 # Brewfile hash: {{ includeTemplate "brews/_assemble.brewfile" . | sha256sum }}
 brew bundle cleanup --global --force
-# --no-upgrade: bundle converges/installs-missing only. Upgrades are owned by `,update`'s
-# `brew upgrade` (which skips pinned casks), so bundle never downgrades a self-updating
-# cask that has already moved past Homebrew's pinned build.
 brew bundle --global --no-upgrade
-
-# Pin every installed auto_updates cask so its OWN updater (Sparkle/component-update)
-# owns the version. Homebrew's pinned build can lag the app's self-update (build-number
-# inversion, e.g. Arc 82775 > 82773), so an unpinned upgrade would reassert stale bits
-# over a newer profile and, for Chromium apps, trip the downgrade guard.
-#
-# This list is DERIVED from installed state (which the Brewfile drives) — not a hardcoded
-# parallel inventory. Add a cask to a brews/ partial; once installed, it is auto-pinned
-# here if it self-updates. Pin != cleanup protection: casks stay installed only by Brewfile
-# membership, so every pinned cask must also remain declared in the Brewfile.
-for cask in (brew info --json=v2 --installed 2>/dev/null | jq -r '.casks[] | select(.auto_updates == true) | .token')
-    brew pin --cask $cask 2>/dev/null
-end
 
 echo "---------------------------------"
 echo "brew install from Brewfile: done "
