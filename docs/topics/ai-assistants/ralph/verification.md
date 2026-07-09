@@ -13,4 +13,4 @@ AI_KB_HOME="$(mktemp -d)" RALPH_STATE_HOME="$(mktemp -d)" \
             --workspace "$(mktemp -d)" --subprocess
 ```
 
-`--runtime local` is deterministic and still exists for `,ralph dry-run` smoke tests; `,ralph go` itself reads runtimes from `roles.json` (cursor-first defaults — see [Roles and diversity](roles-and-diversity.md); pi remains fully supported for non-cursor providers).
+`,ralph dry-run` is deterministic by construction: it only assembles and prints the planner prompt (`--goal`/`--memory-query`/`--memory-limit`/`--acceptance`) without invoking any harness, so there is no `--runtime` flag to set. `,ralph go` itself reads runtimes from `roles.json` (cursor-first defaults — see [Roles and diversity](roles-and-diversity.md); pi remains fully supported for non-cursor providers).

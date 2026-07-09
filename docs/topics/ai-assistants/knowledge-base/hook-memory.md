@@ -19,7 +19,7 @@ The hook layer is Cursor-native first:
 | `sessionStart`                                                              | `session_context.py`  | Inject the verification-discipline prefix (`prefix.txt`); show a bounded topic-bucket index until the session is bound; inject the selected `/tmp/specs` topic spec plus recent worklog tail when present; remind to recall/remember durable knowledge via `,ai-kb` |
 | `afterShellExecution`, `postToolUse`, `postToolUseFailure`, `afterFileEdit` | `worklog_recorder.py` | Append compact per-topic JSONL worklog entries                                                                                                                                                                                                                      |
 
-OpenCode reuses both scripts through [`agent-memory.ts`](../../../../home/dot_config/opencode/plugins/agent-memory.ts):
+OpenCode reuses both scripts through [`agent-memory.ts`](../../../../home/dot_config/opencode/plugins/agent-memory.ts) (the plugin also wires a third hook for per-turn AI-KB recall — see [Cross-agent memory](cross-agent-memory.md)):
 
 | OpenCode hook                        | What it does                                                                                  |
 | ------------------------------------ | --------------------------------------------------------------------------------------------- |
@@ -105,7 +105,7 @@ Sources:
 
 `select` is the normal agent-facing path for session continuity; it writes `.session-topic-<session-id>.txt` and never changes another live session's bucket. `use <topic>` rejects the generic `current` and manages only the workspace-level default/suggestion path. On default branches without an explicit active topic or session binding, `wipe-current` targets the latest `session-*` topic.
 
-Claude Code mirrors only the proven shared subset through `settings.personal.json` and `settings.work.json`: session context and tool worklog recording. The local llama.cpp settings file is intentionally excluded. Copilot 1.0.68 uses `~/.copilot/extensions/agent-memory/extension.mjs` for the same shared scripts because JSON command hooks run but do not ingest `SessionStart` context output. Pi uses its verified TypeScript extension lifecycle (`before_agent_start`) for prefix injection and `,ai-kb` recall.
+Claude Code mirrors the shared subset through `settings.personal.json` and `settings.work.json`: session context, tool worklog recording, and per-turn AI-KB recall (`UserPromptSubmit` → `perturn_recall.py`; see [Cross-agent memory](cross-agent-memory.md)). The local llama.cpp settings file is intentionally excluded. Copilot 1.0.68 uses `~/.copilot/extensions/agent-memory/extension.mjs` for the same shared scripts (session context and tool worklog recording only, no per-turn recall) because JSON command hooks run but do not ingest `SessionStart` context output. Pi uses its verified TypeScript extension lifecycle (`before_agent_start`) for prefix injection and `,ai-kb` recall.
 
 Verification:
 

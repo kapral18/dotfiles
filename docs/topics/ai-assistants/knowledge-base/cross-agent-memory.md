@@ -84,16 +84,17 @@ The scope gate is provenance-only. The relative floor prevents low-relevance cap
 
 Cross-runtime durable-memory retrieval:
 
-| Runtime             | Auto-retrieval mechanism                                                                                                     |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Ralph               | Mechanical push: top-K per role injected into the `## RECENT LEARNINGS` prompt block                                         |
-| Cursor CLI / Claude | `session_context.py` gated `sessionStart` warm-start (session-bound named topic only); else Topic Buckets / agent-pull       |
-| Codex               | `session_context.py` gated `SessionStart` warm-start; else agent-pull                                                        |
-| Copilot             | `agent-memory` SDK extension calls `session_context.py` in `onSessionStart` and returns `additionalContext`; else agent-pull |
-| Pi                  | `ai-kb-recall.ts` warm-start (parity) **plus** per-turn prompt-query injection                                               |
-| OpenCode            | `agent-memory.ts` plugin: warm-start in system prompt **plus** per-turn via `chat.message`                                   |
-| Gemini              | `SessionStart` warm-start **plus** per-turn via `BeforeAgent` (`additionalContext`)                                          |
-| Cursor cloud        | No injection point available; agent-pull only                                                                                |
+| Runtime      | Auto-retrieval mechanism                                                                                                     |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| Ralph        | Mechanical push: top-K per role injected into the `## RECENT LEARNINGS` prompt block                                         |
+| Cursor CLI   | `session_context.py` gated `sessionStart` warm-start (session-bound named topic only); else Topic Buckets / agent-pull       |
+| Codex        | `session_context.py` gated `SessionStart` warm-start; else agent-pull                                                        |
+| Copilot      | `agent-memory` SDK extension calls `session_context.py` in `onSessionStart` and returns `additionalContext`; else agent-pull |
+| Claude       | `session_context.py` gated `sessionStart` warm-start **plus** per-turn via `UserPromptSubmit`                                |
+| Pi           | `ai-kb-recall.ts` warm-start (parity) **plus** per-turn prompt-query injection                                               |
+| OpenCode     | `agent-memory.ts` plugin: warm-start in system prompt **plus** per-turn via `chat.message`                                   |
+| Gemini       | `SessionStart` warm-start **plus** per-turn via `BeforeAgent` (`additionalContext`)                                          |
+| Cursor cloud | No injection point available; agent-pull only                                                                                |
 
 `~/.agents/hooks/perturn_recall.py` is the shared per-turn implementation.
 
@@ -136,7 +137,7 @@ Interactive harnesses are wired for skill-based or explicit-path access (`agent-
 Automatic retrieval injection is narrower than skill access:
 
 - Ralph injects mechanically per role.
-- cursor-cli/Claude/Codex/Copilot use session warm-start.
+- cursor-cli/Codex/Copilot use session warm-start only.
 - Pi uses warm-start plus per-turn prompt retrieval.
-- Gemini and OpenCode use warm-start plus per-turn hook injection.
+- Claude, Gemini, and OpenCode use warm-start plus per-turn hook injection.
 - Cursor cloud uses explicit agent-pull only.
