@@ -347,6 +347,8 @@ no `semantic_code_search`, symbol analysis, code-chunk reads, broad code investi
      keep specific flag names and values in the packet/overlay, not here. When none are needed, pass an empty set.
    - Include the selected target/preflight packet and the resolved required runtime config in the worker prompt.
    - Do not rely on the worker to rediscover it.
+   - Windows/VirtualBox coverage is out of scope for this flow: `live-ui-review` verifies the local browser only.
+     When the user explicitly wants Windows/VirtualBox coverage too, add the manual `~/.agents/skills/live-ui-windows/SKILL.md` skill to this turn's work by hand; never infer it from PR/issue context.
    - It returns one of:
      - `Not applicable`
      - comparison evidence with `ui_evidence_artifacts`

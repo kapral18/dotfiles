@@ -68,61 +68,6 @@ if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
   current_session="$(tmux display-message -p '#S' 2> /dev/null || true)"
 fi
 
-repo_name_from_remote() {
-  local dir="$1"
-  local url=""
-  url="$(git -C "$dir" remote get-url origin 2> /dev/null || true)"
-  if [ -z "$url" ]; then
-    url="$(git -C "$dir" remote get-url upstream 2> /dev/null || true)"
-  fi
-  [ -n "$url" ] || return 1
-
-  url="${url%/}"
-  url="${url%.git}"
-
-  local name="$url"
-  case "$url" in
-    *://*) name="${url##*/}" ;;
-    *:*)
-      name="${url#*:}"
-      name="${name##*/}"
-      ;;
-    *) name="${url##*/}" ;;
-  esac
-  [ -n "$name" ] || return 1
-  printf '%s\n' "$name"
-}
-
-nuke_dir_for_root_worktree() {
-  local root="$1"
-  [ -n "$root" ] || return 1
-  root="$(realpath_or_self "$root")"
-  [ -d "$root" ] || {
-    printf '%s\n' "$root"
-    return 0
-  }
-
-  local repo_name wrapper
-  repo_name="$(repo_name_from_remote "$root" 2> /dev/null || true)"
-  wrapper="$(realpath_or_self "$(dirname "$root")")"
-
-  if [ -n "$repo_name" ] && [ "$(basename "$wrapper")" = "$repo_name" ]; then
-    case "$wrapper" in
-      "" | "/") ;;
-      *)
-        if [ -n "${HOME:-}" ] && [ "$wrapper" = "$(realpath_or_self "$HOME")" ]; then
-          printf '%s\n' "$root"
-          return 0
-        fi
-        printf '%s\n' "$wrapper"
-        return 0
-        ;;
-    esac
-  fi
-
-  printf '%s\n' "$root"
-}
-
 list_worktree_paths() {
   local root="$1"
   [ -n "$root" ] || return 1
@@ -409,10 +354,6 @@ while IFS= read -r _line; do
 
   if [ "$is_root_selection" -eq 1 ]; then
     roots_selected["$root_wt_dir"]=1
-
-    base="$(nuke_dir_for_root_worktree "$root_wt_dir" 2> /dev/null || printf '%s' "$root_wt_dir")"
-    base="$(realpath_or_self "$base")"
-    pending_wt_paths+=("$base")
 
     while IFS= read -r p; do
       [ -n "$p" ] || continue

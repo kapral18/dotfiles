@@ -9,17 +9,17 @@ The AI package set spans casks, Homebrew formulae, yarn globals, uv tools, custo
 
 ## Coding agents and harnesses
 
-| Tool                                                                                   | Source | Why it is here                                                          |
-| -------------------------------------------------------------------------------------- | ------ | ----------------------------------------------------------------------- |
-| [`cursor-cli`](https://cursor.com/)                                                    | `cask` | Cursor command-line harness used by the interactive agent stack         |
-| [`copilot-cli`](https://docs.github.com/en/copilot/concepts/agents/about-copilot-cli)  | `cask` | GitHub Copilot CLI harness, custom agents, hooks, and MCP config target |
-| [`codex`](https://github.com/openai/codex)                                             | `cask` | Codex CLI, exposed through `,codex` with local/cloud provider wrappers  |
-| [`opencode`](https://opencode.ai)                                                      | `brew` | OpenCode CLI/TUI with profile merge and MCP wiring                      |
-| [`@anthropic-ai/claude-code`](https://www.npmjs.com/package/@anthropic-ai/claude-code) | `yarn` | Claude Code CLI outside Homebrew cask management                        |
-| [`@google/gemini-cli`](https://github.com/google-gemini/gemini-cli)                    | `yarn` | Gemini CLI harness and subagent surface                                 |
-| [`@earendil-works/pi-coding-agent`](https://pi.dev/)                                   | `yarn` | Pi coding agent CLI                                                     |
-| [`@earendil-works/pi-tui`](https://pi.dev/)                                            | `yarn` | Pi terminal UI package                                                  |
-| [`playwriter`](https://github.com/remorses/playwriter)                                 | `yarn` | browser-control/code-generation agent package                           |
+| Tool                                                                                   | Source             | Why it is here                                                                                   |
+| -------------------------------------------------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------ |
+| [`cursor-cli`](https://cursor.com/)                                                    | official installer | Cursor command-line harness, installed via `cursor.com/install` (unsupported as a Homebrew cask) |
+| [`copilot-cli`](https://docs.github.com/en/copilot/concepts/agents/about-copilot-cli)  | `cask`             | GitHub Copilot CLI harness, custom agents, hooks, and MCP config target                          |
+| [`codex`](https://github.com/openai/codex)                                             | `cask`             | Codex CLI, exposed through `,codex` with local/cloud provider wrappers                           |
+| [`opencode`](https://opencode.ai)                                                      | `brew`             | OpenCode CLI/TUI with profile merge and MCP wiring                                               |
+| [`@anthropic-ai/claude-code`](https://www.npmjs.com/package/@anthropic-ai/claude-code) | `yarn`             | Claude Code CLI outside Homebrew cask management                                                 |
+| [`@google/gemini-cli`](https://github.com/google-gemini/gemini-cli)                    | `yarn`             | Gemini CLI harness and subagent surface                                                          |
+| [`@earendil-works/pi-coding-agent`](https://pi.dev/)                                   | `yarn`             | Pi coding agent CLI                                                                              |
+| [`@earendil-works/pi-tui`](https://pi.dev/)                                            | `yarn`             | Pi terminal UI package                                                                           |
+| [`playwriter`](https://github.com/remorses/playwriter)                                 | `yarn`             | browser-control/code-generation agent package                                                    |
 
 ## Agent extensions and support packages
 

@@ -71,6 +71,7 @@ Do not start a later phase until the current one completes.
    Run this when any acceptance criterion's evidence is visual — a `judgment:` criterion naming a screenshot/visual comparison, or an in-scope UI-facing change with a stated visual goal.
    Load `~/.agents/skills/ui-proof/SKILL.md` and run it inline (this flow already holds Playwriter and local/dev mutation permissions), head-only against the built runtime.
    Supply the built worktree/branch, the changed UI paths, the visual criterion as the intended-visual oracle, the selected target packet (for verified `elastic/kibana`, the overlay's `~/.agents/skills/elastic-domain/references/kibana-live-ui.md`; otherwise the explicit user/repo-documented local/dev packet), the required runtime config, and the `/tmp` output location (each visual criterion's proof set in its own distinct `/tmp/<folder-name>/` folder).
+   `ui-proof` verifies the local browser only; when the user explicitly wants Windows/VirtualBox coverage too, add the manual `~/.agents/skills/live-ui-windows/SKILL.md` skill to this turn's work by hand instead of inferring it from the spec/issue context.
    Require `ui-proof` to open/reveal each proof folder for the user when possible, or provide the folder path and the reason opening was not possible.
    Set each visual criterion's ledger row from the returned verdict with the captured screenshot as its evidence:
    `met` -> `judgment-met`, `unmet` -> back to phase 3 like a red step, `blocked` -> `blocked` with the exact blocker.

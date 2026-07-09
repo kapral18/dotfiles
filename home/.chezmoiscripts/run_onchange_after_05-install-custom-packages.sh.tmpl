@@ -422,3 +422,9 @@ python3 "$RECONCILE_CUSTOM_PACKAGES" "$GIT_MAVEN_JAR_STATE_FILE" "$GIT_MAVEN_JAR
 # YtSurf
 curl -o ~/.local/bin/ytsurf https://raw.githubusercontent.com/kapral18/ytsurf/reduce-deps/ytsurf.sh
 chmod +x ~/.local/bin/ytsurf
+
+# Cursor Agent CLI (official installer, not the unsupported Homebrew cask)
+# https://cursor.com/docs/cli/installation
+# -A overrides our global ~/.curlrc browser User-Agent spoofing: cursor.com/install
+# 307-redirects browser UAs to a marketing page instead of serving the script.
+curl -fsS -A "curl/8.7.1" https://cursor.com/install | bash

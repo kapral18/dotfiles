@@ -81,49 +81,6 @@ def list_worktree_paths(root):
     return paths
 
 
-def repo_name_from_remote(root):
-    if not root:
-        return ""
-    url = ""
-    for remote in ("origin", "upstream"):
-        try:
-            out = subprocess.run(
-                ["git", "-C", root, "remote", "get-url", remote],
-                check=False,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL,
-                text=True,
-            ).stdout.strip()
-        except Exception:
-            out = ""
-        if out:
-            url = out
-            break
-    if not url:
-        return ""
-    url = url.rstrip("/")
-    if url.endswith(".git"):
-        url = url[: -len(".git")]
-    if "://" in url:
-        return url.rsplit("/", 1)[-1].strip()
-    if ":" in url:
-        tail = url.split(":", 1)[1]
-        return tail.rsplit("/", 1)[-1].strip()
-    return url.rsplit("/", 1)[-1].strip()
-
-
-def nuke_dir_for_root_worktree(root):
-    root = resolve_path(root)
-    if not root:
-        return ""
-    wrapper = resolve_path(str(Path(root).parent))
-    repo_name = repo_name_from_remote(root)
-    home = resolve_path(str(Path.home()))
-    if repo_name and os.path.basename(wrapper) == repo_name and wrapper not in ("", "/", home):
-        return wrapper
-    return root
-
-
 def remove_path_prefixes_for_selection(rows):
     prefixes = set()
     for kind, path, meta, target in rows:
@@ -135,10 +92,8 @@ def remove_path_prefixes_for_selection(rows):
         if kind == "worktree":
             if meta_base.startswith("wt_root:"):
                 root = resolve_path(target) if target else path_r
-                if root:
-                    prefixes.add(nuke_dir_for_root_worktree(root))
-                    for wt in list_worktree_paths(root):
-                        prefixes.add(resolve_path(wt))
+                for wt in list_worktree_paths(root):
+                    prefixes.add(resolve_path(wt))
             else:
                 prefixes.add(path_r)
             continue
@@ -146,7 +101,6 @@ def remove_path_prefixes_for_selection(rows):
         if kind == "session":
             if meta_base.startswith("sess_root:"):
                 root = path_r
-                prefixes.add(nuke_dir_for_root_worktree(root))
                 for wt in list_worktree_paths(root):
                     prefixes.add(resolve_path(wt))
             elif meta_base.startswith("sess_wt:"):

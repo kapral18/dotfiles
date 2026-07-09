@@ -23,6 +23,8 @@ These skills coordinate long-running agent work, durable learning, and user-inte
 | Source   | [`exact_proof`](../../../../home/exact_dot_agents/exact_skills/exact_proof/)                                                                 |
 | CLI      | `,proof` stores proof state outside worktrees under `$AGENT_PROOF_HOME`, `$XDG_STATE_HOME`, or `~/.local/state`                              |
 
+`proof` is available in two ways. Explicit requests route through the skill frontmatter and `SKILL.md`. Ordinary non-review/non-build iteration gets the same hard-trigger rule from the always-on SOP plus the shared verification prefix injected by session hooks, Pi, tmux prompt wrapping, and subagent profile templates. Both paths use the same boundary: start a `,proof` ledger only for hard-triggered freeform claims; use inline anchors for simple or single-evidence work.
+
 ## `ralph`
 
 | Field    | Value                                                                        |

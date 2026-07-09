@@ -372,13 +372,13 @@ check_bin_wrappers() {
 
   # Cursor CLI bundles its own ripgrep; a missing binary makes agent file
   # search (Glob/Grep) fail with spawn ENOENT.
-  if [ -d "/opt/homebrew/Caskroom/cursor-cli" ]; then
+  if [ -d "$HOME/.local/share/cursor-agent/versions" ]; then
     local cursor_rg
-    cursor_rg="$(ls -1 /opt/homebrew/Caskroom/cursor-cli/*/dist-package/rg 2> /dev/null | tail -1 || true)"
+    cursor_rg="$(ls -1 "$HOME"/.local/share/cursor-agent/versions/*/rg 2> /dev/null | tail -1 || true)"
     if [ -n "$cursor_rg" ] && [ -x "$cursor_rg" ]; then
       pass "cursor-cli bundled rg present"
     else
-      warn "cursor-cli bundled rg missing (agent Glob/Grep may ENOENT)" "reinstall cursor-cli"
+      warn "cursor-cli bundled rg missing (agent Glob/Grep may ENOENT)" "reinstall cursor-cli: curl https://cursor.com/install | bash"
     fi
   fi
 }

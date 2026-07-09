@@ -11,7 +11,7 @@ This is the human map of the tools this dotfiles repo controls across package ma
 | Slice                                                                      | Covers                                                                                |
 | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | [AI and agent tooling](ai-and-agent-tooling.md)                            | coding agents, local inference, MCP/subagents, review helpers, AI model assets        |
-| [Developer workflow](developer-workflow.md)                                | git, GitHub, worktrees, code quality, build/test, containers, CI                      |
+| [Developer workflow](developer-workflow.md)                                | git, GitHub, worktrees, code quality, build/test, containers, VMs, CI                 |
 | [Terminal, files, and data](terminal-files-and-data.md)                    | shells, tmux, file navigation/search, structured data, TUIs, documentation tools      |
 | [macOS apps and system utilities](macos-apps-and-system.md)                | browsers, desktop/security apps, macOS automation, fonts, monitoring, network tools   |
 | [Media, personal tools, and custom releases](media-personal-and-custom.md) | audio/video/image tools, personal casks, flight/travel tools, GitHub release installs |

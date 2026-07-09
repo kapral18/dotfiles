@@ -58,8 +58,8 @@ CENSUS: list[Claim] = [
     Claim(
         name="total tracked files",
         globs=None,
-        claimed=1264,
-        anchors=[("README.md", "1264 tracked files")],
+        claimed=1265,
+        anchors=[("README.md", "1265 tracked files")],
     ),
     Claim(
         name="home/.chezmoitemplates/brews/",
@@ -112,10 +112,10 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/exact_dot_agents/",
         globs=["home/exact_dot_agents/*"],
-        claimed=102,
+        claimed=103,
         anchors=[
-            ("03b-agent-skills-hooks.mmd", "exact_dot_agents/ (102)"),
-            ("00-overview.mmd", "agents 102"),
+            ("03b-agent-skills-hooks.mmd", "exact_dot_agents/ (103)"),
+            ("00-overview.mmd", "agents 103"),
         ],
     ),
     Claim(

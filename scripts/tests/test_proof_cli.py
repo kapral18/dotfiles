@@ -389,6 +389,62 @@ class TestProofCli(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("verdict is unclear", result.stdout)
 
+    def test_when_add_criterion_has_no_evidence_types_it_rejects(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as proof_tmp:
+            cwd = Path(tmp)
+            proof_home = Path(proof_tmp)
+            self.run_proof(cwd, proof_home, "start", "Empty-requires guard", check=True)
+
+            for empty in ("", " ", ",,", ", ,"):
+                result = self.run_proof(
+                    cwd,
+                    proof_home,
+                    "add-criterion",
+                    "--requires",
+                    empty,
+                    "Would trivially pass without required evidence",
+                )
+                self.assertEqual(
+                    result.returncode, 2, msg=f"--requires {empty!r} should reject; stderr={result.stderr!r}"
+                )
+                self.assertIn("At least one --requires evidence type is required", result.stderr)
+
+            check = self.run_proof(cwd, proof_home, "check")
+            self.assertNotEqual(check.returncode, 0)
+            self.assertIn("No criteria are defined", check.stdout)
+
+    def test_when_two_reports_run_back_to_back_neither_overwrites_the_other(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as proof_tmp:
+            cwd = Path(tmp)
+            proof_home = Path(proof_tmp)
+            self.add_test_criterion(cwd, proof_home)
+            proof_dir = Path(self.run_proof(cwd, proof_home, "path", check=True).stdout.strip())
+
+            first = self.run_proof(cwd, proof_home, "report", check=True).stdout.splitlines()[0]
+            second = self.run_proof(cwd, proof_home, "report", check=True).stdout.splitlines()[0]
+
+            self.assertNotEqual(first, second, "Report filenames must be unique within the same second")
+            reports = sorted((proof_dir / "reports").iterdir())
+            self.assertEqual(len(reports), 2, f"Expected two report files, got {[p.name for p in reports]}")
+
+    def test_when_status_or_check_runs_it_does_not_bump_updated_at(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as proof_tmp:
+            cwd = Path(tmp)
+            proof_home = Path(proof_tmp)
+            self.add_test_criterion(cwd, proof_home)
+            proof_dir = Path(self.run_proof(cwd, proof_home, "path", check=True).stdout.strip())
+            state_file = proof_dir / "proof.json"
+            baseline = json.loads(state_file.read_text())["updated_at"]
+
+            self.run_proof(cwd, proof_home, "status", check=False)
+            self.assertEqual(json.loads(state_file.read_text())["updated_at"], baseline)
+
+            self.run_proof(cwd, proof_home, "check", check=False)
+            self.assertEqual(json.loads(state_file.read_text())["updated_at"], baseline)
+
+            self.run_proof(cwd, proof_home, "report", check=True)
+            self.assertEqual(json.loads(state_file.read_text())["updated_at"], baseline)
+
 
 if __name__ == "__main__":
     unittest.main()

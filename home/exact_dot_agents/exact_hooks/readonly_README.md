@@ -26,6 +26,8 @@ They select which shared topic bucket this one agent session loads, without chan
 Default-branch workspaces are treated as shared scratch space.
 If the current git branch is `main`, `master`, `dev`, `develop`, or `trunk` and no session binding exists, hook state uses a session-scoped fallback topic (`session-<id>`).
 Instead of loading another session's active topic, `session_context.py` injects a bounded `### Topic Buckets` index.
+The list is sorted newest-first by the most recent spec/worklog update and shows a short summary derived from `summary:` (preferred) or `target:`/`action:` lines in the topic spec.
+Add `summary: <one-line label>` to persist a concise description alongside the topic name.
 The agent should bind automatically when exactly one bucket clearly matches the user's request, create a new bucket when none matches, and ask one question only when multiple buckets plausibly match.
 It then runs `,agent-memory select <topic> --session-id <id>` or `,agent-memory select <new-topic> --create --session-id <id>` itself.
 Feature/topic worktrees keep `current` continuity by default when no `_active_topic.txt` hint is present.

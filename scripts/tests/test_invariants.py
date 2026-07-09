@@ -87,6 +87,21 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "this verifies complexity, not a reason to add production state machines",
         )
 
+    def test_proof_access_is_explicit_and_implicit(self):
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_proof/readonly_SKILL.md",
+            "Use when the user explicitly asks how do you know/prove it/receipt",
+            "when a freeform completion claim depends on multiple evidence sources",
+            "Start a ledger only after a hard trigger fires",
+        )
+        self.assert_file_contains(
+            "home/dot_config/exact_tmux/agent_prompts/prefix.txt",
+            "hard-triggered non-review/non-build freeform completion claims",
+            "load the proof skill and use a repo-external `,proof` ledger",
+            "explicit proof/receipt requests",
+            "Otherwise inline anchors are the proof trail",
+        )
+
     def test_global_sop_keeps_side_effect_publication_and_git_gates(self):
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
@@ -446,6 +461,65 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "home/exact_dot_agents/exact_skills/exact_agent-review/exact_references/readonly_fresh-eyes.md",
             "model_required=n/a",
             "model_status=n/a",
+        )
+
+    def test_live_ui_windows_is_manual_only_and_purged_from_automatic_flows(self):
+        # The Windows/VirtualBox environment is a standalone manual-only skill now;
+        # `/agent-review`, `/build`, `live-ui-review`, and `ui-proof` must carry none of its
+        # auto-inference or environment-selection machinery.
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_live-ui-windows/readonly_SKILL.md",
+            "disable-model-invocation: true",
+            "## Manual only — never automatic",
+            "Load this skill only when the user explicitly asks, this turn, for Windows/VirtualBox verification",
+            "~/.cache/live-ui-windows/registry.json",
+            "start it with `VBoxManage startvm <vm> --type headless`",
+            'match the line whose `guest port` equals that debug port, not just the first "Rule" match',
+            "Never install Guest Additions or otherwise modify guest OS configuration",
+        )
+        self.assert_file_not_contains(
+            "home/exact_dot_agents/exact_skills/exact_agent-review/exact_references/readonly_live-ui-runtime.md",
+            "Environment selection",
+            "windows_additional",
+            "windows_only",
+            "VBoxManage",
+            "Windows",
+            "VirtualBox",
+        )
+        self.assert_file_not_contains(
+            "home/exact_dot_agents/exact_skills/exact_agent-review/exact_references/readonly_live-ui-review.md",
+            "windows verification requirement",
+            "environments_checked",
+        )
+        self.assert_file_not_contains(
+            "home/exact_dot_agents/exact_skills/exact_ui-proof/readonly_SKILL.md",
+            "windows verification requirement",
+            "environments_checked",
+        )
+        self.assert_file_not_contains(
+            "home/exact_dot_agents/exact_skills/exact_agent-review/readonly_SKILL.md",
+            "Resolve the Windows/VirtualBox verification requirement once",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_agent-review/readonly_SKILL.md",
+            "Windows/VirtualBox coverage is out of scope for this flow: `live-ui-review` verifies the local browser only.",
+            "add the manual `~/.agents/skills/live-ui-windows/SKILL.md` skill to this turn's work by hand",
+        )
+        self.assert_file_not_contains(
+            "home/exact_dot_agents/exact_skills/exact_build/readonly_SKILL.md",
+            "the resolved windows verification requirement",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_build/readonly_SKILL.md",
+            "`ui-proof` verifies the local browser only; when the user explicitly wants Windows/VirtualBox coverage too, add the manual `~/.agents/skills/live-ui-windows/SKILL.md` skill",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_elastic-domain/exact_references/readonly_kibana-live-ui.md",
+            "## Windows/VirtualBox environment translation",
+            "Only applies when the manually-invoked `~/.agents/skills/live-ui-windows/SKILL.md` skill is used against a Kibana target.",
+            "rewrite `kbn_url`'s hostname to VirtualBox's NAT gateway alias `10.0.2.2`",
+            "Leave `es_url` untouched",
+            "Add `server.host=0.0.0.0` to `required_kbn_flags`",
         )
 
 

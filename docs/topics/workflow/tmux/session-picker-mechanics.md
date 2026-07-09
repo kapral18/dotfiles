@@ -86,6 +86,10 @@ The GitHub picker uses `alt-r` for quote-reply; the session picker keeps `alt-r`
 
 `alt-c` enters a modal branch-name prompt. `enter` runs `,w add <branch>` at the selected repo root; `esc` cancels.
 
+## Remove worktrees (`alt-x`)
+
+`alt-x` removes selected worktree rows in the background and hides their rows optimistically while the cache refreshes. When a root worktree selection maps to a wrapper directory such as `~/work/kibana`, the remover deletes only the worktrees reported by that repo's `git worktree list`. Ordinary non-worktree leftovers under an otherwise removable wrapper are preserved under `.bag/pickers/session/` before the empty wrapper is removed. If the wrapper also contains an independent git repo or worktree root, the wrapper is kept in place and those sibling git roots are neither deleted nor moved into `.bag`.
+
 ## Refresh and caching
 
 `ctrl-r` performs a synchronous quick session scan with last-known dirty badges, then backgrounds the full worktree/dir scan. `alt-r` forces a full refresh and blocks until quick + full scans complete.

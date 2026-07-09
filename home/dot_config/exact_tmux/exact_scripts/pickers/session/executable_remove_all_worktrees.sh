@@ -138,6 +138,18 @@ dir_is_effectively_empty_ignoring_ds_store() {
   [ -z "$(find "$dir" -mindepth 1 -maxdepth 1 ! -name '.DS_Store' -print -quit 2> /dev/null || true)" ]
 }
 
+remove_selected_worktrees() {
+  local wt
+  for wt in "${worktrees[@]}"; do
+    wt="$(realpath_or_self "$wt")"
+    [ -n "$wt" ] || continue
+    case "$wt" in
+      */.git/* | */.git) continue ;;
+    esac
+    safe_rm_rf "$wt" || true
+  done
+}
+
 cleanup_pending_entries() {
   [ -f "$pending_file" ] || return 0
   acquire_pending_lock || return 0
@@ -245,6 +257,7 @@ if [ "$should_nuke_wrapper" -eq 1 ]; then
   # then nuke the wrapper in one shot. `.DS_Store` is ignored.
   ts="$(date +%Y%m%d-%H%M%S)"
   bag_root="$(dirname "$wrapper")/.bag/pickers/session/$(basename "$wrapper")/$ts"
+  bag_status="$(mktemp -t pick_session_bag_status.XXXXXX)"
 
   mapfile -t wt_rels < <(
     printf '%s\n' "${worktrees[@]}" \
@@ -260,13 +273,21 @@ if [ "$should_nuke_wrapper" -eq 1 ]; then
   )
 
   moved_count="$(
-    WRAPPER="$wrapper" BAG_ROOT="$bag_root" WT_RELS="$(printf '%s\n' "${wt_rels[@]}")" python3 "$script_dir/lib/bag_preserve_non_wt.py"
+    BAG_PRESERVE_STATUS_FILE="$bag_status" WRAPPER="$wrapper" BAG_ROOT="$bag_root" WT_RELS="$(printf '%s\n' "${wt_rels[@]}")" python3 "$script_dir/lib/bag_preserve_non_wt.py"
   )"
 
   case "${moved_count:-0}" in
     '' | *[!0-9]*) moved_count=0 ;;
   esac
-  if [ "$moved_count" -gt 0 ]; then
+  blocked_by_unselected_git_root=0
+  if grep -q '^blocked_by_unselected_git_root=1$' "$bag_status" 2> /dev/null; then
+    blocked_by_unselected_git_root=1
+  fi
+  rm -f "$bag_status" 2> /dev/null || true
+
+  if [ "$blocked_by_unselected_git_root" -eq 1 ]; then
+    notify_tmux "pick_session: kept non-worktree content in $wrapper because it contains another git repo"
+  elif [ "$moved_count" -gt 0 ]; then
     notify_tmux "pick_session: preserved $moved_count non-worktree item(s) to $bag_root"
   else
     # If the preservation step created an empty bag dir (e.g. due to a failed
@@ -285,6 +306,8 @@ if [ "$should_nuke_wrapper" -eq 1 ]; then
     fi
   fi
 
+  remove_selected_worktrees
+
   # If nothing needed preserving, don't leave empty bag dirs. `.DS_Store` does
   # not count as content.
   if [ -d "$bag_root" ] && dir_is_effectively_empty_ignoring_ds_store "$bag_root"; then
@@ -300,8 +323,12 @@ if [ "$should_nuke_wrapper" -eq 1 ]; then
     done
   fi
 
-  safe_rm_rf "$wrapper" || exit 0
-  notify_tmux "pick_session: removed $wrapper"
+  if dir_is_effectively_empty_ignoring_ds_store "$wrapper"; then
+    safe_rm_rf "$wrapper" || exit 0
+    notify_tmux "pick_session: removed $wrapper"
+  else
+    notify_tmux "pick_session: kept $wrapper because it still contains unselected content"
+  fi
   cleanup_pending_entries "${pending_cleanup_paths[@]}"
   if command -v tmux > /dev/null 2>&1; then
     # Run directly; avoid `tmux run-shell` which can steal focus from popups.

@@ -74,7 +74,7 @@ Live UI can return:
 | `Not applicable`    | target does not apply to the introduced surface                                                                                                                                                       |
 | blocker             | target, branch, runtime, data setup, or screenshot capture is blocked                                                                                                                                 |
 
-For verified `elastic/kibana` targets, `elastic-domain` supplies Kibana targets, mapped Elasticsearch endpoints, Dev Tools Console fallback, and runtime-blocker rules. Generic review contracts do not inline those targets.
+For verified `elastic/kibana` targets, `elastic-domain` supplies Kibana targets, mapped Elasticsearch endpoints, Dev Tools Console fallback, and runtime-blocker rules. Generic review contracts do not inline those targets. `live-ui-review`/`ui-proof` verify the local browser only; Windows/VirtualBox coverage lives in the separate manual `live-ui-windows` skill (never auto-triggered), and when it is used against a Kibana target, `elastic-domain` rewrites `kbn_url`/`es_url` to the guest-reachable NAT gateway address and folds `server.host=0.0.0.0` into the required Kibana flags — the manual skill owns only the CDP connection mechanics, never Kibana-specific hostnames or flags.
 
 For UI-facing PR findings, the controller keeps image paths out of GitHub review bodies and reports a separate `UI evidence attachments:` handoff with local paths, descriptions, target branch/URL, suggested comment placement, and folder-open/provided status. If a kept UI finding lacks screenshots without a valid blocker or non-applicability result, the controller reruns live UI or blocks instead of drafting text-only feedback.
 
@@ -114,5 +114,7 @@ Live UI target selection:
 | explicit user/repo target packet exists        | use it                                            |
 | no explicit target and verified Kibana applies | use `elastic-domain/references/kibana-live-ui.md` |
 | no target packet can be loaded                 | block instead of inventing targets                |
+
+`live-ui-review` verifies the local browser only — there is no automatic or context-inferred Windows/VirtualBox path in this flow. Windows/VirtualBox coverage is a separate manual skill, [`live-ui-windows`](../../../home/exact_dot_agents/exact_skills/exact_live-ui-windows/): load it by hand only when the user explicitly asks for Windows/VirtualBox verification this turn, never from PR/issue/spec inference.
 
 ![Live UI target-packet handoff: controller selects an explicit or verified overlay packet, worker verifies, and returns evidence, not applicable, or blocker](../assets/live-ui-target-packet.svg)

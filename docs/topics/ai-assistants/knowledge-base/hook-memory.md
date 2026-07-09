@@ -79,7 +79,7 @@ Bounded-context rules:
 | Feature/topic worktrees keep `current` continuity        | Preserve useful project continuity in isolated worktrees      |
 | Review topics run clean-room by default                  | Reduce bias in re-reviews                                     |
 
-On shared branches (`main`, `master`, `dev`, `develop`, `trunk`) without a session binding, `session_context.py` injects `### Topic Buckets`. The agent should bind automatically when one bucket clearly matches, create a new bucket when none matches, and ask only when multiple buckets plausibly match. `,agent-memory select` prints the selected spec/worklog context immediately and binds later session-start hooks to the same topic.
+On shared branches (`main`, `master`, `dev`, `develop`, `trunk`) without a session binding, `session_context.py` injects `### Topic Buckets`. The agent should bind automatically when one bucket clearly matches, create a new bucket when none matches, and ask only when multiple buckets plausibly match. `,agent-memory select` prints the selected spec/worklog context immediately and binds later session-start hooks to the same topic. Topic buckets are listed newest-first by the most recent spec/worklog update. Each entry includes a short summary pulled from `summary:` (preferred) or `target:`/`action:` lines in the topic spec so the list is scannable at a glance. Add a `summary: <one-line label>` to the topic spec to persist a concise description alongside the topic name.
 
 Force a clean session with either:
 

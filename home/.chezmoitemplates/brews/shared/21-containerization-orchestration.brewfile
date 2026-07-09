@@ -11,10 +11,6 @@ brew "dive"
 # https://github.com/abiosoft/colima/blob/main/README.md
 brew "colima"
 
-# Tool for managing OCI containers and pods
-# https://podman.io/
-brew "podman"
-
 # Explore the (overlay) filesystem and layers of OCI container images
 # https://github.com/bschaatsbergen/cek
 brew "cek"

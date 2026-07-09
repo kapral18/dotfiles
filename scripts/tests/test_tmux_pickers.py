@@ -145,6 +145,123 @@ exit 1
             assert out == "repo\trepo@bag2\n"
             assert rename_log.read_text() == "repo\trepo@bag2\n"
 
+    def test_remove_all_worktrees_keeps_independent_sibling_git_repo(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            root = home / "work/kibana/main"
+            sibling = home / "work/kibana/sibling-repo"
+            notes = home / "work/kibana/notes"
+            root.mkdir(parents=True)
+            sibling.mkdir(parents=True)
+            notes.mkdir()
+            (notes / "keep.txt").write_text("keep\n")
+
+            subprocess.run(["git", "init", str(root)], check=True, capture_output=True, text=True)
+            subprocess.run(
+                ["git", "-C", str(root), "remote", "add", "origin", "git@github.com:elastic/kibana.git"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            subprocess.run(["git", "init", str(sibling)], check=True, capture_output=True, text=True)
+
+            script = TMUX_PICKERS / "session/executable_remove_all_worktrees.sh"
+            result = subprocess.run(
+                [modern_bash(), str(script), str(root)],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "HOME": str(home),
+                    "XDG_CACHE_HOME": str(home / ".cache"),
+                },
+            )
+
+            assert result.returncode == 0, result.stderr
+            assert not root.exists()
+            assert (sibling / ".git").exists()
+            assert (notes / "keep.txt").exists()
+            assert not (home / "work/.bag/pickers/session/kibana").exists()
+
+    def test_remove_all_worktrees_bags_leftovers_when_wrapper_is_removed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            root = home / "work/kibana/main"
+            notes = home / "work/kibana/notes"
+            root.mkdir(parents=True)
+            notes.mkdir()
+            (notes / "keep.txt").write_text("keep\n")
+
+            subprocess.run(["git", "init", str(root)], check=True, capture_output=True, text=True)
+            subprocess.run(
+                ["git", "-C", str(root), "remote", "add", "origin", "git@github.com:elastic/kibana.git"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            script = TMUX_PICKERS / "session/executable_remove_all_worktrees.sh"
+            result = subprocess.run(
+                [modern_bash(), str(script), str(root)],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "HOME": str(home),
+                    "XDG_CACHE_HOME": str(home / ".cache"),
+                },
+            )
+
+            assert result.returncode == 0, result.stderr
+            assert not (home / "work/kibana").exists()
+            bag_root = home / "work/.bag/pickers/session/kibana"
+            bagged_notes = list(bag_root.glob("*/notes/keep.txt"))
+            assert len(bagged_notes) == 1
+            assert bagged_notes[0].read_text() == "keep\n"
+
+    def test_action_remove_root_selection_tombstones_worktrees_not_wrapper(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            root = home / "work/kibana/main"
+            wrapper = home / "work/kibana"
+            cache_dir = home / ".cache/tmux"
+            cache_dir.mkdir(parents=True)
+            root.mkdir(parents=True)
+            root_rp = root.resolve()
+            wrapper_rp = wrapper.resolve()
+
+            subprocess.run(["git", "init", str(root)], check=True, capture_output=True, text=True)
+            subprocess.run(
+                ["git", "-C", str(root), "remote", "add", "origin", "git@github.com:elastic/kibana.git"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            selection = Path(tmp) / "selection.tsv"
+            selection.write_text(f"main\tworktree\t{root}\twt_root:main\t{root}\n")
+
+            script = TMUX_PICKERS / "session/executable_action_remove_worktrees.sh"
+            result = subprocess.run(
+                [modern_bash(), str(script), str(selection)],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "HOME": str(home),
+                    "XDG_CACHE_HOME": str(home / ".cache"),
+                    "TMUX": "",
+                },
+            )
+
+            assert result.returncode == 0, result.stderr
+            pending = (cache_dir / "pick_session_pending.tsv").read_text()
+            mutations = (cache_dir / "pick_session_mutations.tsv").read_text()
+            assert f"WT\t{root_rp}\n" in pending
+            assert f"WT\t{wrapper_rp}\n" not in pending
+            assert f"\tPATH_PREFIX\t{root_rp}\n" in mutations
+            assert f"\tPATH_PREFIX\t{wrapper_rp}\n" not in mutations
+
     def test_send_command_passes_cache_target_to_shared_naming(self):
         action = TMUX_PICKERS / "session/executable_action_send_command.sh"
         text = action.read_text()

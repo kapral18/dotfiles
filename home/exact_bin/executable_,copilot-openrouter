@@ -24,6 +24,16 @@ is_openrouter_model() {
   esac
 }
 
+# Anthropic models on OpenRouter get prompt caching only through Copilot's
+# COPILOT_PROVIDER_TYPE=anthropic client (enableCacheControl defaults true there);
+# the default "openai" BYOK client always sends enableCacheControl=false.
+is_anthropic_model() {
+  case "$1" in
+  anthropic/* | ~anthropic/*) return 0 ;;
+  *) return 1 ;;
+  esac
+}
+
 args=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -72,10 +82,21 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-export COPILOT_PROVIDER_BASE_URL="https://openrouter.ai/api/v1"
-export COPILOT_PROVIDER_TYPE="${COPILOT_PROVIDER_TYPE:-openai}"
+if [[ -z "${COPILOT_PROVIDER_TYPE:-}" ]] && is_anthropic_model "$model"; then
+  provider_type="anthropic"
+else
+  provider_type="${COPILOT_PROVIDER_TYPE:-openai}"
+fi
+export COPILOT_PROVIDER_TYPE="$provider_type"
+
+if [[ "$provider_type" == "anthropic" ]]; then
+  # Anthropic-Messages-compatible endpoint (no /v1 suffix); enables prompt caching.
+  export COPILOT_PROVIDER_BASE_URL="${COPILOT_PROVIDER_BASE_URL:-https://openrouter.ai/api}"
+else
+  export COPILOT_PROVIDER_BASE_URL="${COPILOT_PROVIDER_BASE_URL:-https://openrouter.ai/api/v1}"
+  export COPILOT_PROVIDER_WIRE_API="${COPILOT_PROVIDER_WIRE_API:-completions}"
+fi
 export COPILOT_PROVIDER_API_KEY="$api_key"
-export COPILOT_PROVIDER_WIRE_API="${COPILOT_PROVIDER_WIRE_API:-completions}"
 export COPILOT_MODEL="$model"
 export COPILOT_PROVIDER_WIRE_MODEL="$wire_model"
 export COPILOT_PROVIDER_MAX_PROMPT_TOKENS="${COPILOT_OPENROUTER_MAX_PROMPT_TOKENS:-1048576}"

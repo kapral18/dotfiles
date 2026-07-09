@@ -79,7 +79,7 @@ def workspace_root(workspace_arg: str | None) -> Path:
     return Path(git_root).resolve() if git_root else start
 
 
-def active_topic(workspace: Path) -> str:
+def active_topic() -> str:
     explicit = os.environ.get("AGENT_PROOF_TOPIC") or os.environ.get("PROOF_TOPIC")
     if explicit:
         return safe_name(explicit)
@@ -88,7 +88,7 @@ def active_topic(workspace: Path) -> str:
 
 def context(args: argparse.Namespace) -> dict[str, str]:
     workspace = workspace_root(getattr(args, "workspace", None))
-    topic = safe_name(getattr(args, "topic", None) or active_topic(workspace))
+    topic = safe_name(getattr(args, "topic", None) or active_topic())
     workspace_hash = hashlib.sha256(str(workspace).encode()).hexdigest()[:16]
     proof_dir = state_root() / workspace_hash / topic
     if proof_dir.resolve().is_relative_to(workspace.resolve()) and workspace.resolve() != Path.home().resolve():
@@ -485,6 +485,13 @@ def command_add_criterion(args: argparse.Namespace) -> int:
         print("Criterion description is required.", file=sys.stderr)
         return 2
     required = [item.strip() for value in args.requires for item in value.split(",") if item.strip()]
+    if not required:
+        print(
+            "At least one --requires evidence type is required (options: "
+            f"{', '.join(sorted(SUPPORTED_EVIDENCE_TYPES))}).",
+            file=sys.stderr,
+        )
+        return 2
     invalid = sorted(set(required) - SUPPORTED_EVIDENCE_TYPES)
     if invalid:
         print(f"Unsupported evidence type(s): {', '.join(invalid)}", file=sys.stderr)
@@ -669,7 +676,6 @@ def command_status(args: argparse.Namespace) -> int:
     ctx = context(args)
     state = load_state(ctx, create=False)
     evaluation = evaluate(ctx, state)
-    save_state(ctx, state)
     if args.json:
         json.dump(status_payload(ctx, state, evaluation), sys.stdout, indent=2, sort_keys=True)
         sys.stdout.write("\n")
@@ -689,7 +695,6 @@ def command_check(args: argparse.Namespace) -> int:
     ctx = context(args)
     state = load_state(ctx, create=False)
     evaluation = evaluate(ctx, state)
-    save_state(ctx, state)
     if args.json:
         json.dump(status_payload(ctx, state, evaluation), sys.stdout, indent=2, sort_keys=True)
         sys.stdout.write("\n")
@@ -734,11 +739,10 @@ def command_report(args: argparse.Namespace) -> int:
     state = load_state(ctx, create=False)
     evaluation = evaluate(ctx, state)
     report_path = (
-        Path(ctx["proof_dir"]) / REPORTS_DIR / f"report-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.md"
+        Path(ctx["proof_dir"]) / REPORTS_DIR / f"report-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')}.md"
     )
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(report_content(ctx, state, evaluation), encoding="utf-8")
-    save_state(ctx, state)
     print(report_path)
     print(f"Final verdict: {evaluation['verdict']}")
     return 0
@@ -873,9 +877,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--version", action="version", version=f",proof {VERSION}")
     parser.add_argument("--workspace", help="Workspace path. Defaults to the current git root or cwd.")
-    parser.add_argument(
-        "--topic", help="Proof topic. Defaults to AGENT_PROOF_TOPIC, PROOF_TOPIC, active /tmp/specs topic, or current."
-    )
+    parser.add_argument("--topic", help="Proof topic. Defaults to AGENT_PROOF_TOPIC, PROOF_TOPIC, or current.")
     subcommands = parser.add_subparsers(dest="command", required=True)
     parent = argparse.ArgumentParser(add_help=False)
     parent.add_argument(
@@ -884,7 +886,7 @@ def build_parser() -> argparse.ArgumentParser:
     parent.add_argument(
         "--topic",
         default=argparse.SUPPRESS,
-        help="Proof topic. Defaults to AGENT_PROOF_TOPIC, PROOF_TOPIC, active /tmp/specs topic, or current.",
+        help="Proof topic. Defaults to AGENT_PROOF_TOPIC, PROOF_TOPIC, or current.",
     )
 
     start = subcommands.add_parser("start", parents=[parent], help="Create or reuse the current proof ledger.")

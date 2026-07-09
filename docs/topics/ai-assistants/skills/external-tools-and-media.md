@@ -56,3 +56,13 @@ These skills route non-code tools, browser automation, and generated visual asse
 | Source   | [`exact_ui-proof`](../../../../home/exact_dot_agents/exact_skills/exact_ui-proof/)                                                                                                                                                 |
 | Related  | creation-side sibling of `live-ui-review`; shares [`live-ui-runtime.md`](../../../../home/exact_dot_agents/exact_skills/exact_agent-review/exact_references/readonly_live-ui-runtime.md); runs inline in `/build` and `compose-pr` |
 | Boundary | head-only proof capture; not for reviewing others' changes (`review`/`/agent-review` own `live-ui-review`)                                                                                                                         |
+
+## `live-ui-windows`
+
+| Field    | Value                                                                                                                                                                 |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Use when | verifying a UI inside a Windows guest running in VirtualBox, over CDP through a host NAT port-forward                                                                 |
+| Source   | [`exact_live-ui-windows`](../../../../home/exact_dot_agents/exact_skills/exact_live-ui-windows/)                                                                      |
+| Routing  | manual                                                                                                                                                                |
+| Related  | adds the Windows/VirtualBox environment to whichever check you're running (`ui-proof` or `live-ui-review`); shares `live-ui-runtime.md`                               |
+| Boundary | never auto-triggered by `/agent-review`, `/build`, `ui-proof`, or `live-ui-review` — load it by hand only on an explicit user request for Windows/VirtualBox coverage |

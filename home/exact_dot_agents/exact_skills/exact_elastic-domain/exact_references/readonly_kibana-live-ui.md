@@ -1,6 +1,6 @@
 # Kibana Live UI Overlay
 
-Kibana live UI target packet for verified `elastic/kibana` `/agent-review`, `live-ui-review`, and `ui-proof` flows.
+Kibana live UI target packet for verified `elastic/kibana` `/agent-review`, `live-ui-review`, `ui-proof`, and (when manually invoked) `live-ui-windows` flows.
 Use it when no explicit parent/user/repo target packet was supplied.
 The runtime targets, preflight, and data/setup ladder below are mode-neutral:
 review flows compare PR/head against base, and `ui-proof` verifies the built runtime head-only against its intended visual.
@@ -88,6 +88,20 @@ When the parent supplies none, treat it as the empty list and start/reuse stacks
 
 This value flows straight into `,kbn-stack -K`: each `key=value` becomes one `-K key=value` at start time (Rung 0).
 The registry entry's `kbn_flags` records what a running stack was started with so a reused stack can be checked for parity.
+
+## Windows/VirtualBox environment translation
+
+Only applies when the manually-invoked `~/.agents/skills/live-ui-windows/SKILL.md` skill is used against a Kibana target.
+
+- `kbn_url` is Mac-host-facing (`http://localhost:<port>` or `http://127.0.0.1:<port>`);
+  a Windows guest's own `localhost` means the guest itself, not the Mac.
+  Once `live-ui-windows`'s VirtualBox/CDP connection rung confirms the target VM's NIC1 is NAT-attached, rewrite `kbn_url`'s hostname to VirtualBox's NAT gateway alias `10.0.2.2`, keeping the same port and path — e.g. `http://localhost:5601` -> `http://10.0.2.2:5601`.
+  This is the only URL the Windows guest browser ever navigates to.
+- Leave `es_url` untouched (still `localhost`/`127.0.0.1`).
+  The Data/setup ladder's direct-Elasticsearch-indexing step runs from the worker itself (the host/agent), never from inside the guest browser, so `es_url` needs no guest-facing translation — rewriting it would break that existing host-side data-setup path instead of fixing anything.
+- A default `,kbn-stack` start binds Kibana to `localhost` only (Kibana's `server.host` default), which the NAT gateway cannot reach.
+  Add `server.host=0.0.0.0` to `required_kbn_flags` for this run whenever `live-ui-windows` is used against this target, in addition to any flags already required by the change under review.
+- Apply the existing required-config parity rule (see Required preflight below) to this added flag exactly like any other entry in `required_kbn_flags`: a `ready:true` stack missing it is a parity gap, handled with the same `started_by`-aware Blocked/recreate rules — never a target blocker.
 
 ## Required preflight
 

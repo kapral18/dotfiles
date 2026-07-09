@@ -191,6 +191,41 @@ class TestAgentHooks(unittest.TestCase):
             assert "target: stale cask task" not in context
             assert "### Active Topic Spec" not in context
 
+    def test_session_context_lists_buckets_newest_first_with_summary_and_age(self):
+        with self.make_git_workspace("main") as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir.mkdir(parents=True, exist_ok=True)
+
+            old = spec_dir / "old-topic.txt"
+            old.write_text("summary: explicit one-line label\ntarget: ignored when summary present\n")
+            fresh = spec_dir / "fresh-topic.txt"
+            fresh.write_text("plain notes without labelled lines\n")
+            fresh_worklog = spec_dir / "fresh-topic.worklog.jsonl"
+            fresh_worklog.write_text('{"line": "recent work"}\n')
+
+            now = os.stat(spec_dir).st_mtime
+            os.utime(old, (now - 7200, now - 7200))
+            os.utime(fresh, (now - 7200, now - 7200))
+            os.utime(fresh_worklog, (now - 300, now - 300))
+
+            payload = {
+                "hook_event_name": "sessionStart",
+                "workspace_roots": [tmp],
+                "session_id": "bucket-order-probe",
+            }
+            context = run_hook("executable_session_context.py", payload)["additional_context"]
+
+            assert "Existing buckets (newest first by last update):" in context
+            fresh_line = next(line for line in context.splitlines() if "`fresh-topic`" in line)
+            old_line = next(line for line in context.splitlines() if "`old-topic`" in line)
+            assert context.index(fresh_line) < context.index(old_line), "worklog mtime must outrank spec mtime"
+            assert "explicit one-line label" in old_line
+            assert "target=" not in old_line
+            assert "no summary" in fresh_line
+            assert "5m ago" in fresh_line
+            assert "(2h ago)" in old_line
+
     def test_worklog_recorder_uses_session_topic_on_default_branch_without_explicit_topic(self):
         with self.make_git_workspace("main") as tmp:
             workspace = str(Path(tmp).resolve())
