@@ -10,13 +10,13 @@ flowchart TB
 
     subgraph HOOKS["exact_hooks/ → ~/.agents/hooks/"]
         HC["hook_common.py (shared lib) · readonly_README.md (state model)"]:::hook
-        SCx["session_context.py (sessionStart: inject verification/proof prefix.txt;<br/>if no session-bound topic, show bounded Topic Buckets index (newest-first + summary);<br/>after ,agent-memory select, inject selected topic spec/worklog;<br/>,ai-kb recall/remember reminder;<br/>session-bound warm-start: read-only ,ai-kb search → Relevant Learnings)"]:::hook
-        PRx["perturn_recall.py (UserPromptSubmit: per-turn ,ai-kb recall injected as additionalContext;<br/>cosine-gated hybrid retrieval, per-session dedup shared with session_context warm-start)"]:::hook
-        WLx["worklog_recorder.py (afterShell/postToolUse/Failure/afterFileEdit)"]:::hook
+        SCx["session_context.py (sessionStart: inject verification/proof prefix.txt;<br/>if no session-bound topic, show bounded Topic Buckets index (newest-first + summary);<br/>after ,agent-memory select, inject selected topic spec/worklog;<br/>,ai-kb recall/remember reminder;<br/>session-bound warm-start: read-only ,ai-kb search → Relevant Learnings;<br/>persist injected IDs by canonical session key)"]:::hook
+        PRx["perturn_recall.py (UserPromptSubmit: per-turn ,ai-kb recall injected as additionalContext;<br/>cosine-gated hybrid retrieval, canonical-session dedup shared with session_context warm-start)"]:::hook
+        WLx["worklog_recorder.py (afterShell/postToolUse/Failure/afterFileEdit;<br/>native harness session ID selects the bound worklog)"]:::hook
         GG["gemini-git-gate.sh (beforeShell: git commit|push) — failClosed"]:::hook
     end
 
-    MEM[("/tmp/specs/<pwd>/<topic>.txt + .worklog.jsonl<br/>.session-topic-<id>.txt binds one session to a bucket<br/>review topics → clean-room; default branch → session-<id> fallback")]:::data
+    MEM[("/tmp/specs/<pwd>/<topic>.txt + .worklog.jsonl<br/>.session-topic-<id>.txt binds one session to a bucket<br/>.recall-seen-<session-key>.json dedupes warm/per-turn recall<br/>review topics → clean-room; default branch → session-<id> fallback")]:::data
     SCx <--> MEM
     WLx --> MEM
 

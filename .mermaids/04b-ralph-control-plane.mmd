@@ -39,7 +39,7 @@ flowchart TD
 
     subgraph KB["Memory / learning"]
         REFLECT["reflector role → capsules"]:::flow
-        AIKB["scripts/ai_kb.py + embed.py + vec_runner.py<br/>kind: fact/gotcha/principle, top_k recall<br/>,ai-kb harvest: worklog->candidate remember lines (read-only)"]:::data
+        AIKB["scripts/ai_kb.py + agent_memory.py + embed.py + vec_runner.py<br/>kind: fact/gotcha/principle, top_k recall<br/>,ai-kb harvest: session-bound worklog→candidate remember lines (read-only)"]:::data
     end
     OUT --> REFLECT --> AIKB
     AIKB -.memory_top_k recall.-> WF

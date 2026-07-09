@@ -302,6 +302,38 @@ def kill_port_listeners(port: int | None) -> bool:
     return True
 
 
+def pid_alive(pid: object) -> bool:
+    """True when ``pid`` refers to a live process (signal 0 probe).
+
+    PermissionError means the pid exists but belongs to another user, so it
+    counts as alive. Pid reuse can make a stale entry look alive; that only
+    leaves a slot occupied (the next worktree takes a higher slot), which is a
+    safe failure mode compared to reclaiming a live stack.
+    """
+    if type(pid) is not int or pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except (ProcessLookupError, OverflowError):
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def entry_has_live_processes(entry: dict) -> bool:
+    """True when any process recorded for this stack is still running.
+
+    ``started_by_pid`` is the ,kbn-stack launcher: for interactive stacks it
+    streams ES logs for the stack's whole lifetime, and for detached stacks it
+    lives through the entire bootstrap (yarn kbn bootstrap + ES setup + Kibana
+    readiness poll). ``kbn_pid``/``es_pid`` cover detached stacks after the
+    launcher has returned. Any of them alive means the stack is active or still
+    bootstrapping, so its ports being closed is not evidence of death.
+    """
+    return any(pid_alive(entry.get(key)) for key in ("started_by_pid", "kbn_pid", "es_pid"))
+
+
 def reclaim_dead_slots(registry: dict, current_worktree: str) -> bool:
     """Free slots held by snapshot stacks whose ES+Kibana pair is not both alive.
 
@@ -311,6 +343,12 @@ def reclaim_dead_slots(registry: dict, current_worktree: str) -> bool:
 
     - kill any surviving half (so the reused slot's ports are clean), and
     - drop the stale entry, returning its slot to the lowest-slot search.
+
+    Port liveness alone cannot distinguish a dead stack from one still
+    bootstrapping (yarn kbn bootstrap + ES snapshot setup take minutes before
+    any port binds), so entries whose launcher or recorded stack processes are
+    still running are skipped: reclaiming them would hand their slot (ports,
+    log file, cookie) to another worktree and couple the two stacks.
 
     Serverless entries are left untouched: they are exclusive/single-instance and
     governed by ``stop_existing_serverless``, not by per-slot port reclamation.
@@ -324,6 +362,8 @@ def reclaim_dead_slots(registry: dict, current_worktree: str) -> bool:
         if entry.get("backend") == "serverless":
             continue
         if not isinstance(entry.get("slot"), int):
+            continue
+        if entry_has_live_processes(entry):
             continue
         kbn_alive, es_alive = slot_liveness(entry)
         if kbn_alive and es_alive:

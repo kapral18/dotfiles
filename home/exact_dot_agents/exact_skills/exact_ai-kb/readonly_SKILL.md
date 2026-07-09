@@ -109,11 +109,13 @@ Output:
 
 Harvest (opt-in candidate aid, not a substitute for the inline `remember` habit):
 
-`,ai-kb harvest` mines the active topic's hook worklog and prints durable-memory CANDIDATES —
+`,ai-kb harvest` mines a session-bound topic's hook worklog and prints durable-memory CANDIDATES —
 a failing command later fixed, a recurring error signature, or a repeated command —
 each with evidence and a prefilled `,ai-kb remember` line.
 It is read-only and never writes a capsule: you must still verify each candidate against live source before running its `remember` line, and the inline end-of-turn capture habit stays the primary path.
-Run it on demand (for example when reviewing a long session), not every turn: `,ai-kb harvest [--topic <t>] [--worklog <path>] [--json]`.
+Run it on demand (for example when reviewing a long session), not every turn:
+`,ai-kb harvest --session-id <id> [--topic <t>] [--worklog <path>] [--json]`.
+Pass the invoking session ID when harvesting implicit topic state; an explicit `--topic` or `--worklog` overrides session resolution.
 Candidates already covered by a capsule are suppressed automatically.
 
 External truth:

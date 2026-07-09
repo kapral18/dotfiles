@@ -58,7 +58,8 @@ complete -c ',ai-kb' -n '__fish_seen_subcommand_from ingest' -l max-bytes -r -d 
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from ingest' -a '(__fish_complete_path)' -d 'Markdown file or directory'
 
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from harvest' -l workspace -r -a '(__fish_complete_directories)' -d 'Workspace path (default: cwd)'
-complete -c ',ai-kb' -n '__fish_seen_subcommand_from harvest' -l topic -r -d 'Topic name (default: active topic)'
+complete -c ',ai-kb' -n '__fish_seen_subcommand_from harvest' -l topic -r -d 'Explicit topic name'
+complete -c ',ai-kb' -n '__fish_seen_subcommand_from harvest' -l session-id -r -d 'Session binding used to resolve topic'
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from harvest' -l worklog -r -a '(__fish_complete_path)' -d 'Explicit worklog path'
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from harvest' -l min-repeats -r -d 'Occurrences before a repeat is a candidate'
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from harvest' -l limit -r -d 'Maximum candidates shown'

@@ -1170,6 +1170,8 @@ class TestWorklogHarvest(unittest.TestCase):
                     str(wl),
                     "--workspace",
                     "/ws",
+                    "--session-id",
+                    "../",
                     "--json",
                 ],
                 capture_output=True,
@@ -1178,6 +1180,7 @@ class TestWorklogHarvest(unittest.TestCase):
             )
             assert result.returncode == 0, result.stderr
             payload = json.loads(result.stdout)
+            assert payload["topic"] == "current"
             assert payload["entries"] == 2
             assert any(c["detector"] == "repeated_command" for c in payload["candidates"])
             # harvest never writes capsules
@@ -1188,6 +1191,54 @@ class TestWorklogHarvest(unittest.TestCase):
                 cwd=str(SCRIPTS),
             )
             assert json.loads(listed.stdout or "[]") == []
+
+    def test_harvest_cli_resolves_session_bound_topic(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            workspace = root / "workspace"
+            workspace.mkdir()
+            subprocess.run(["git", "init", "-q", "-b", "main"], cwd=workspace, check=True)
+
+            spec_root = root / "specs"
+            spec_dir = spec_root / str(workspace.resolve()).lstrip(os.sep)
+            spec_dir.mkdir(parents=True)
+            (spec_dir / ".session-topic-session-a.txt").write_text("alpha\n")
+            (spec_dir / "alpha.worklog.jsonl").write_text(
+                '{"ts":"t1","command":"make check","status":"success"}\n'
+                '{"ts":"t2","command":"make check","status":"success"}\n',
+                encoding="utf-8",
+            )
+            (spec_dir / "current.worklog.jsonl").write_text(
+                '{"ts":"stale","command":"false","status":"failure"}\n',
+                encoding="utf-8",
+            )
+
+            env = dict(os.environ)
+            env["AGENT_MEMORY_SPEC_ROOT"] = str(spec_root)
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPTS / "ai_kb.py"),
+                    "--home",
+                    str(root / "kb"),
+                    "harvest",
+                    "--workspace",
+                    str(workspace),
+                    "--session-id",
+                    "session-a",
+                    "--json",
+                ],
+                capture_output=True,
+                text=True,
+                cwd=str(SCRIPTS),
+                env=env,
+            )
+
+            assert result.returncode == 0, result.stderr
+            payload = json.loads(result.stdout)
+            assert payload["topic"] == "alpha"
+            assert payload["worklog"].endswith("/alpha.worklog.jsonl")
+            assert payload["entries"] == 2
 
 
 if __name__ == "__main__":

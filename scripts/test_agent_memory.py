@@ -171,7 +171,7 @@ class TestAgentMemory(unittest.TestCase):
                                 "--workspace",
                                 str(workspace),
                                 "--session-id",
-                                "abc-123",
+                                "abc/123",
                             ]
                         )
                         == 0
@@ -179,6 +179,7 @@ class TestAgentMemory(unittest.TestCase):
 
                 payload = json.loads(buffer.getvalue())
                 assert payload["selected_topic"] == "session-abc-123"
+                assert payload["session_key"] == "abc-123"
                 assert payload["session_selected_topic"] is None
                 assert payload["is_named_topic"] is False
                 assert payload["spec_file"].endswith("session-abc-123.txt")

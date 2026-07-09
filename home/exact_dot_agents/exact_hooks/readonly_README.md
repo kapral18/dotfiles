@@ -4,10 +4,11 @@ Shared lifecycle hooks for terminal AI agents.
 
 Cursor CLI is the primary runtime. Claude Code, Codex, Gemini, OpenCode, and Copilot reuse compatible shared scripts.
 Those scripts cover session context, per-turn recall where supported, and worklog recording.
+Each adapter passes its native session ID so topic selection, worklogs, and recall dedupe use the same binding.
 PR review anchor verification is instruction-owned by the review/GitHub skills, not enforced by a shell hook.
 Pi does not use this `hooks.json`-style lifecycle; it has its own TypeScript extension API.
 Pi's durable-memory recall therefore lives in a pi extension (`home/dot_pi/agent/extensions/ai-kb-recall.ts`) rather than here.
-That extension reuses the same `/tmp/specs` topic resolution (via `,agent-memory status --json`) and the same `,ai-kb` retrieval.
+That extension reuses the same `/tmp/specs` topic resolution (via `,agent-memory status --json --session-id <id>`) and the same `,ai-kb` retrieval.
 This keeps behavior consistent across runtimes — see the AI knowledge base doc for the cross-runtime retrieval table.
 
 Runtime state is kept outside chezmoi and outside worktrees:
@@ -17,6 +18,7 @@ Runtime state is kept outside chezmoi and outside worktrees:
 /tmp/specs/<workspace-path-without-leading-slash>/.session-topic-<session-id>.txt
 /tmp/specs/<workspace-path-without-leading-slash>/<topic>.txt
 /tmp/specs/<workspace-path-without-leading-slash>/<topic>.worklog.jsonl
+/tmp/specs/<workspace-path-without-leading-slash>/.recall-seen-<session-key>.json
 ```
 
 Session-scoped topic bindings live in `.session-topic-<session-id>.txt`.
@@ -39,6 +41,9 @@ It surfaces up to three capsules that are local to this workspace or scoped `dom
 Unbound, ad-hoc/`session-*`, and review topics get no warm-start. This is the only automatic KB retrieval.
 Cursor cannot inject context per-turn (`beforeSubmitPrompt` carries no context-injection output), so mid-task relevance comes from the agent's own `,ai-kb search` calls against its actual task.
 The hook reads the KB but never writes it; persistence stays agent-driven.
+Warm-start and per-turn recall persist injected capsule IDs in `.recall-seen-<session-key>.json`.
+The canonical session key follows `conversation_id`, then `session_id`, then `generation_id`;
+Pi persists the same state across extension reloads and session resumes.
 
 Session-start context is bounded without injecting partial memory.
 An oversized active topic spec is omitted with a pointer to the full file instead of being sliced into the prompt.
@@ -62,7 +67,7 @@ The sentinel files are intentionally outside the worktree. Remove them to restor
 Use `,agent-memory` to set the active topic or as a dead switch for persisted hook memory:
 
 ```bash
-,agent-memory status
+,agent-memory status --session-id <id>
 ,agent-memory select <topic> --session-id <id>
 ,agent-memory select <new-topic> --create --session-id <id>
 ,agent-memory use <topic>

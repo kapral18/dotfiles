@@ -208,6 +208,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     workspace = workspace_path(args.workspace)
     spec_dir = spec_dir_for(workspace)
     topic = resolve_selected_topic(spec_dir, workspace, args.topic, args.session_id)
+    key = session_key(args.session_id)
     branch = current_git_branch(workspace)
     spec_file = spec_dir / f"{topic}.txt"
 
@@ -217,6 +218,7 @@ def cmd_status(args: argparse.Namespace) -> int:
             "spec_dir": str(spec_dir),
             "branch": branch,
             "session_id": args.session_id,
+            "session_key": key,
             "selected_topic": topic,
             "session_selected_topic": session_selected_topic(spec_dir, args.session_id),
             "is_named_topic": is_named_topic(topic),

@@ -2,10 +2,11 @@
 // Durable-memory recall for pi, matching the Cursor/Claude sessionStart warm-start
 // and adding pi's per-turn retrieval (Cursor's beforeSubmitPrompt cannot inject context).
 //
-// Thin delegating extension — no logic is duplicated here:
-//   - topic + spec resolution comes from `,agent-memory status --json`
+// Integration extension:
+//   - topic + spec resolution comes from `,agent-memory status --json --session-id <id>`
 //     (single source of truth: scripts/agent_memory.py / hook_common.py)
 //   - retrieval + ranking comes from `,ai-kb search` (scripts/ai_kb.py)
+//   - Pi lifecycle state and persisted per-session recall dedupe stay here
 //
 // Injection points, all via before_agent_start (pi's only context-injection hook):
 //   0. Verification prefix: injected at session start, then re-injected when it has
@@ -25,6 +26,8 @@
 // this workspace or scoped domain/universal, so a large/cross-project KB cannot stuff context.
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { dirname, join } from "node:path"
 
 const EXEC_TIMEOUT_MS = 6_000
 const WARMSTART_LIMIT = 3
@@ -93,6 +96,7 @@ async function readPrefix(pi: ExtensionAPI): Promise<string> {
 interface MemoryStatus {
   workspace: string
   selected_topic: string
+  session_key: string
   is_named_topic: boolean
   spec_file: string
   spec_exists: boolean
@@ -108,6 +112,14 @@ interface Capsule {
   bm25_score?: number | null
   rrf_score?: number | null
   cosine_score?: number | null
+}
+
+interface RecallSessionState {
+  seenPath: string
+  injectedIds: Set<string>
+  warmStartDone: boolean
+  lastPrefixPercent: number | null
+  forceReinject: boolean
 }
 
 type SearchMode = "bm25" | "hybrid"
@@ -167,15 +179,41 @@ function collapse(text: string, max: number): string {
   return flat.slice(0, max).trimEnd() + "…"
 }
 
-async function memoryStatus(pi: ExtensionAPI, cwd: string): Promise<MemoryStatus | null> {
-  const result = await pi.exec(",agent-memory", ["status", "--json", "--workspace", cwd], {
-    timeout: EXEC_TIMEOUT_MS,
-  })
+async function memoryStatus(pi: ExtensionAPI, cwd: string, sessionId: string): Promise<MemoryStatus | null> {
+  const result = await pi.exec(
+    ",agent-memory",
+    ["status", "--json", "--workspace", cwd, "--session-id", sessionId],
+    { timeout: EXEC_TIMEOUT_MS },
+  )
   if (result.killed || result.code !== 0 || !result.stdout.trim()) return null
   try {
-    return JSON.parse(result.stdout) as MemoryStatus
+    const status = JSON.parse(result.stdout) as MemoryStatus
+    return status.session_key ? status : null
   } catch {
     return null
+  }
+}
+
+function seenFileFor(specFile: string, sessionId: string): string {
+  return join(dirname(specFile), `.recall-seen-${sessionId}.json`)
+}
+
+async function loadSeen(path: string): Promise<Set<string>> {
+  try {
+    const value = JSON.parse(await readFile(path, "utf8"))
+    if (!Array.isArray(value)) return new Set()
+    return new Set(value.filter((id): id is string => typeof id === "string"))
+  } catch {
+    return new Set()
+  }
+}
+
+async function saveSeen(path: string, seen: Set<string>): Promise<void> {
+  try {
+    await mkdir(dirname(path), { recursive: true })
+    await writeFile(path, JSON.stringify([...seen].sort()))
+  } catch {
+    // Recall-state persistence is best effort; never block a turn.
   }
 }
 
@@ -230,25 +268,36 @@ export default async function (pi: ExtensionAPI) {
     return
   }
 
-  const injectedIds = new Set<string>()
-  let warmStartDone = false
-  // Context-fill percent at the last prefix injection (null until first injection, or when
-  // usage is unknown). A compaction sets forceReinject because it can summarize/drop the prefix.
-  let lastPrefixPercent: number | null = null
-  let forceReinject = false
+  const stateBySession = new Map<string, RecallSessionState>()
 
   // session_compact cannot inject context (only before_agent_start can), so it flags a
   // forced re-inject that the next before_agent_start consumes.
-  pi.on("session_compact", () => {
-    forceReinject = true
-    lastPrefixPercent = null
+  pi.on("session_compact", (_event, ctx) => {
+    const state = stateBySession.get(ctx.sessionManager.getSessionId())
+    if (!state) return
+    state.forceReinject = true
+    state.lastPrefixPercent = null
   })
 
   pi.on("before_agent_start", async (event, ctx) => {
     try {
-      const status = await memoryStatus(pi, ctx.cwd)
+      const sessionId = ctx.sessionManager.getSessionId()
+      const status = await memoryStatus(pi, ctx.cwd, sessionId)
       if (!status) return
       const workspace = status.workspace || ctx.cwd
+      const seenPath = seenFileFor(status.spec_file, status.session_key)
+      let state = stateBySession.get(sessionId)
+      if (!state || state.seenPath !== seenPath) {
+        state = {
+          seenPath,
+          injectedIds: await loadSeen(seenPath),
+          warmStartDone: false,
+          lastPrefixPercent: null,
+          forceReinject: false,
+        }
+        stateBySession.set(sessionId, state)
+      }
+      const seenCount = state.injectedIds.size
       const blocks: string[] = []
 
       // 0. Verification prefix: warm-start, after a compaction, or once context fill has
@@ -256,19 +305,21 @@ export default async function (pi: ExtensionAPI) {
       const usage = ctx.getContextUsage()
       const percent = usage && usage.percent != null ? usage.percent : null
       const grewEnough =
-        lastPrefixPercent != null && percent != null && percent - lastPrefixPercent >= PREFIX_REINJECT_DELTA_PCT
-      if (!warmStartDone || forceReinject || grewEnough) {
+        state.lastPrefixPercent != null &&
+        percent != null &&
+        percent - state.lastPrefixPercent >= PREFIX_REINJECT_DELTA_PCT
+      if (!state.warmStartDone || state.forceReinject || grewEnough) {
         const prefix = await readPrefix(pi)
         if (prefix) {
           blocks.push(prefix)
-          forceReinject = false
-          if (percent != null) lastPrefixPercent = percent
+          state.forceReinject = false
+          if (percent != null) state.lastPrefixPercent = percent
         }
       }
 
       // 1. Warm-start: once per session, named-topic + spec only (parity with Cursor/Claude).
-      if (!warmStartDone) {
-        warmStartDone = true
+      if (!state.warmStartDone) {
+        state.warmStartDone = true
         if (status.is_named_topic && status.spec_exists) {
           const spec = await pi.exec("cat", [status.spec_file], { timeout: EXEC_TIMEOUT_MS })
           const specText = spec.code === 0 ? spec.stdout : ""
@@ -277,7 +328,7 @@ export default async function (pi: ExtensionAPI) {
             // start where the embedder may be cold/slow — bm25 keeps it fast and
             // dependency-light, floored on bm25_score.
             const rows = await searchCapsules(pi, workspace, specText, "bm25")
-            const lines = gateAndFormat(rows, workspace, injectedIds, WARMSTART_LIMIT)
+            const lines = gateAndFormat(rows, workspace, state.injectedIds, WARMSTART_LIMIT)
             if (lines.length) {
               blocks.push(
                 ["### Relevant Learnings (,ai-kb)", "Surfaced from durable memory for this topic; verify before relying on them.", ...lines].join(
@@ -296,7 +347,7 @@ export default async function (pi: ExtensionAPI) {
         // suppress capsules that only share surface words with the prompt, and rrf_score
         // is the floor signal. This is where cross-domain lexical noise was leaking in.
         const rows = await searchCapsules(pi, workspace, prompt, "hybrid")
-        const lines = gateAndFormat(rows, workspace, injectedIds, PERTURN_LIMIT)
+        const lines = gateAndFormat(rows, workspace, state.injectedIds, PERTURN_LIMIT)
         if (lines.length) {
           blocks.push(
             ["### Relevant Learnings for this request (,ai-kb)", "Matched to your prompt; verify before relying on them.", ...lines].join("\n"),
@@ -304,6 +355,7 @@ export default async function (pi: ExtensionAPI) {
         }
       }
 
+      if (state.injectedIds.size !== seenCount) await saveSeen(state.seenPath, state.injectedIds)
       if (!blocks.length) return
       return {
         message: {

@@ -26,6 +26,7 @@ Usage:
     ai_kb.py get ID [--json]
     ai_kb.py list [--limit N] [--json]
     ai_kb.py reembed [--limit N]
+    ai_kb.py harvest [--session-id ID] [--topic TOPIC] [--worklog PATH] [--json]
     ai_kb.py doctor
 """
 
@@ -44,6 +45,8 @@ import sys
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+
+import agent_memory
 
 # Embedder lives in a sibling module; import is local so this script
 # works even when embed.py is missing or its runner is not installed
@@ -86,10 +89,8 @@ DECAY_PENALTY_WEIGHT = 0.1
 # never writes capsules (persistence stays agent-driven, see the ai-kb
 # skill and hook README). The worklog path convention mirrors the agent
 # hooks: /tmp/specs/<workspace-without-leading-slash>/<topic>.worklog.jsonl.
-# scripts/ cannot import the deployed home/.../hook_common.py, so the tiny
-# path/topic resolution is duplicated here against that stable convention.
-SPEC_ROOT = Path("/tmp/specs")
-DEFAULT_TOPIC = "current"
+# Session/topic resolution is shared with `,agent-memory` so harvest cannot
+# drift to a different bucket than the invoking agent session.
 # First tokens too generic to be a durable "recipe" on their own.
 HARVEST_NOISE_PROGRAMS = frozenset({"cd", "ls", "pwd", "echo", "cat", "clear", "which", "true", "false"})
 
@@ -1502,24 +1503,14 @@ def _first_nonempty(lines: list[str]) -> str:
 # --- CLI -------------------------------------------------------------------
 
 
-def _spec_dir_for(workspace: Path) -> Path:
-    return SPEC_ROOT / str(workspace).lstrip(os.sep)
-
-
-def resolve_topic(workspace: Path, explicit: str | None) -> str:
-    """Return the active topic: explicit override, else `_active_topic.txt`, else `current`."""
-    if explicit:
-        return explicit
-    pointer = _spec_dir_for(workspace) / "_active_topic.txt"
-    try:
-        raw = pointer.read_text(encoding="utf-8").strip()
-    except OSError:
-        raw = ""
-    return raw or DEFAULT_TOPIC
+def resolve_topic(workspace: Path, explicit: str | None, session_id: str | None = None) -> str:
+    """Resolve the same explicit/session/branch topic that `,agent-memory` uses."""
+    spec_dir = agent_memory.spec_dir_for(workspace)
+    return agent_memory.resolve_selected_topic(spec_dir, workspace, explicit, session_id)
 
 
 def worklog_path(workspace: Path, topic: str) -> Path:
-    return _spec_dir_for(workspace) / f"{topic}.worklog.jsonl"
+    return agent_memory.spec_dir_for(workspace) / f"{topic}.worklog.jsonl"
 
 
 def read_worklog(path: Path) -> list[dict]:
@@ -1902,8 +1893,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Surface durable-memory candidates from a topic worklog (read-only; never writes capsules)",
     )
     harvest.add_argument("--workspace", default=None, help="Workspace path (default: cwd)")
-    harvest.add_argument("--topic", default=None, help="Topic name (default: active topic, else 'current')")
-    harvest.add_argument("--worklog", default=None, help="Explicit worklog path (overrides --workspace/--topic)")
+    harvest.add_argument("--topic", default=None, help="Explicit topic name (overrides --session-id)")
+    harvest.add_argument("--session-id", default=None, help="Resolve the invoking session's bound topic")
+    harvest.add_argument(
+        "--worklog",
+        default=None,
+        help="Explicit worklog path (overrides --workspace/--topic/--session-id)",
+    )
     harvest.add_argument("--min-repeats", type=int, default=2, dest="min_repeats")
     harvest.add_argument("--limit", type=int, default=20)
     harvest.add_argument("--json", action="store_true")
@@ -2021,8 +2017,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "harvest":
         workspace = Path(args.workspace or Path.cwd()).expanduser().resolve()
-        topic = resolve_topic(workspace, args.topic)
-        worklog = Path(args.worklog).expanduser() if args.worklog else worklog_path(workspace, topic)
+        if args.worklog:
+            worklog = Path(args.worklog).expanduser()
+            suffix = ".worklog.jsonl"
+            topic = worklog.name[: -len(suffix)] if worklog.name.endswith(suffix) else worklog.name
+        else:
+            topic = resolve_topic(workspace, args.topic, args.session_id)
+            worklog = worklog_path(workspace, topic)
         entries = read_worklog(worklog)
         candidates = detect_candidates(entries, min_repeats=args.min_repeats)
         suppress_known(kb, candidates, workspace)
@@ -2033,6 +2034,7 @@ def main(argv: list[str] | None = None) -> int:
                 json.dumps(
                     {
                         "workspace": str(workspace),
+                        "session_id": None if args.worklog else args.session_id,
                         "topic": topic,
                         "worklog": str(worklog),
                         "worklog_exists": worklog.exists(),

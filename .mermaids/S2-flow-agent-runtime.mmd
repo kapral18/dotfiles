@@ -12,7 +12,7 @@ flowchart TB
     classDef mem fill:#3a1b2b,stroke:#f48fb1,color:#fce4ec;
 
     START(["session start"]):::in
-    START --> SS["sessionStart hook → session_context.py<br/>inject verification/proof prefix.txt +<br/>session-bound topic bucket index (newest-first + summary) OR<br/>bounded /tmp/specs spec+worklog (C13)"]:::mem
+    START --> SS["sessionStart hook → session_context.py<br/>native session ID resolves one topic binding;<br/>inject verification/proof prefix.txt +<br/>topic bucket index OR bounded /tmp/specs spec+worklog;<br/>warm-start IDs persist by canonical session key (C13)"]:::mem
     SS --> SOP["load SOP entrypoints<br/>~/AGENTS.md · CLAUDE.md · GEMINI.md (C7)"]:::gov
     SOP --> SKILL{"intent matches a skill<br/>'Use when' clause?"}:::gov
     SKILL -->|yes| LOAD["read skill SKILL.md → follow as binding procedure"]:::gov
@@ -45,7 +45,7 @@ flowchart TB
     EMIT --> DONE
 
     DONE(["turn complete"]):::loop
-    DONE --> PERSIST["postTool/stop hooks → worklog + /tmp/specs spec (C13)<br/>+ agent-driven ,ai-kb remember for verified durable insights"]:::mem
+    DONE --> PERSIST["session-keyed postTool hooks → bound worklog;<br/>/tmp/specs spec + recall-seen state (C13)<br/>+ agent-driven ,ai-kb remember for verified durable insights"]:::mem
 
     subgraph RALPH["if work == Ralph orchestration (C11/C12)"]
         direction LR

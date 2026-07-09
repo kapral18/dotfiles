@@ -10,6 +10,8 @@ Externals are defined in:
 
 - [`home/.chezmoiexternal.toml`](../../../../home/.chezmoiexternal.toml)
 
+Archive entries use `codeload.github.com` directly. GitHub's `/archive/` URLs redirect to those same codeload URLs, so using the backend directly avoids intermittent failures before the redirect.
+
 ## Preconditions
 
 - You changed external definitions or want to force a re-sync.
@@ -19,13 +21,13 @@ Externals are defined in:
 To force-refresh externals when applying:
 
 ```bash
-chezmoi apply -R always
+chezmoi apply --refresh-externals=always
 ```
 
 If you want to see what would happen without changing anything:
 
 ```bash
-chezmoi apply -R always --dry-run --verbose
+chezmoi apply --refresh-externals=always --dry-run --verbose
 ```
 
 ## Verification
@@ -34,7 +36,7 @@ chezmoi apply -R always --dry-run --verbose
 - Re-run:
 
 ```bash
-chezmoi apply -R always --dry-run --verbose
+chezmoi apply --refresh-externals=always --dry-run --verbose
 ```
 
 and confirm no unexpected churn remains.

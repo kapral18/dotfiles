@@ -431,9 +431,8 @@ def main() -> None:
             parts.extend(["", warmstart])
         # Record injected capsule ids so the per-turn recall hook
         # (perturn_recall.py) never re-injects them this session.
-        session_id = str(payload.get("session_id") or "")
-        if injected_ids and session_id:
-            seen_path = spec_path.parent / f".recall-seen-{session_id}.json"
+        if injected_ids and key:
+            seen_path = spec_path.parent / f".recall-seen-{key}.json"
             try:
                 seen_path.parent.mkdir(parents=True, exist_ok=True)
                 seen_path.write_text(json.dumps(sorted(set(injected_ids))))

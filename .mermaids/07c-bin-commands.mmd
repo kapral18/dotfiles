@@ -21,7 +21,7 @@ flowchart TB
     end
 
     subgraph AIC["AI / agents / KB"]
-        A[",ralph (→ scripts/ralph.py; see 04) · ,ai-kb (→ scripts/ai_kb.py)<br/>,agent-memory (/tmp/specs status/select/wipe topic buckets) · ,proof (freeform criteria/evidence/review ledger; state outside worktree)<br/>,artifact (cache HTML/live overlay + pollers) · ,cp-files-for-llm<br/>,claude-llama-cpp · ,codex-llama-cpp · ,opencode-llama-cpp<br/>,pi-cloudflare · ,opencode-cloudflare · ,codex-cloudflare<br/>,copilot (refresh header-auth MCP tokens + re-bake config → native Copilot; fail closed)<br/>,copilot-cloudflare · ,copilot-litellm · ,copilot-openrouter · ,llama-cpp (local router)<br/>,codex (refresh hosted-MCP token env + llama-cpp metadata passthrough)<br/>,cursor (refresh OAuth MCP tokens from ~/.cursor/mcp.json via ,mcp-token --login → native cursor-agent; fail closed; skips admin subcommands)<br/>,mcp-token &lt;server&gt; (freshest slack/scsi-main token from cursor cache → Codex env / Copilot bearer header; --login → cursor-agent mcp login to refresh)<br/>,tg (telegramtui) · ,youtube-search · ,letsfg-docker"]:::ai
+        A[",ralph (→ scripts/ralph.py; see 04) · ,ai-kb (→ scripts/ai_kb.py; session-aware worklog harvest)<br/>,agent-memory (/tmp/specs status/select/wipe topic buckets) · ,proof (freeform criteria/evidence/review ledger; state outside worktree)<br/>,artifact (cache HTML/live overlay + pollers) · ,cp-files-for-llm<br/>,claude-llama-cpp · ,codex-llama-cpp · ,opencode-llama-cpp<br/>,pi-cloudflare · ,opencode-cloudflare · ,codex-cloudflare<br/>,copilot (refresh header-auth MCP tokens + re-bake config → native Copilot; fail closed)<br/>,copilot-cloudflare · ,copilot-litellm · ,copilot-openrouter · ,llama-cpp (local router)<br/>,codex (refresh hosted-MCP token env + llama-cpp metadata passthrough)<br/>,cursor (refresh OAuth MCP tokens from ~/.cursor/mcp.json via ,mcp-token --login → native cursor-agent; fail closed; skips admin subcommands)<br/>,mcp-token &lt;server&gt; (freshest slack/scsi-main token from cursor cache → Codex env / Copilot bearer header; --login → cursor-agent mcp login to refresh)<br/>,tg (telegramtui) · ,youtube-search · ,letsfg-docker"]:::ai
     end
 
     subgraph FZFC["fzf / search helpers"]
@@ -33,7 +33,7 @@ flowchart TB
     end
 
     subgraph KBNC["Kibana dev"]
-        K[",kbn-stack (per-worktree ES+Kibana, snapshot|serverless, auto slot + dead-slot reclaim via ES/Kibana port liveness, -E/-K passthrough, started_by ownership + registry-safe/port-reclaiming stop)<br/>,jest-test-title-report"]:::sys
+        K[",kbn-stack (per-worktree ES+Kibana, snapshot|serverless, auto slot + dead-slot reclaim via ES/Kibana port liveness guarded by launcher/stack pid-alive checks so bootstrapping stacks are never reclaimed, -E/-K passthrough, started_by ownership + registry-safe/port-reclaiming stop)<br/>,jest-test-title-report"]:::sys
     end
 
     subgraph MEDIA["Media / misc utilities"]

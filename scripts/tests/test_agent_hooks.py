@@ -603,6 +603,203 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
         assert payload["failedTool"]["hook_event_name"] == "postToolUseFailure"
         assert payload["failedTool"]["error_message"] == "exit 1"
 
+    def test_warmstart_and_perturn_share_conversation_seen_state(self):
+        with self.make_git_workspace("feature/conversation-seen") as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir.mkdir(parents=True, exist_ok=True)
+            bind_session_topic(spec_dir, "conversation-a", "conversation-memory")
+            (spec_dir / "conversation-memory.txt").write_text("target: preserve recall dedupe across hooks\n")
+            env = make_aikb_stub(
+                Path(tmp),
+                [
+                    {
+                        "id": "capsule-a",
+                        "title": "Conversation-scoped capsule",
+                        "body": "inject once",
+                        "kind": "gotcha",
+                        "scope": "project",
+                        "workspace_path": workspace,
+                        "bm25_score": -10.0,
+                        "cosine_score": 0.8,
+                    }
+                ],
+            )
+
+            warmstart = run_hook(
+                "executable_session_context.py",
+                {
+                    "conversation_id": "conversation-a",
+                    "hook_event_name": "sessionStart",
+                    "workspace_roots": [tmp],
+                },
+                env=env,
+            )["additional_context"]
+            seen_path = spec_dir / ".recall-seen-conversation-a.json"
+            deployed_hooks = Path(tmp) / "deployed-hooks"
+            deployed_hooks.mkdir()
+            for source, target in (
+                ("hook_common.py", "hook_common.py"),
+                ("executable_session_context.py", "session_context.py"),
+                ("executable_perturn_recall.py", "perturn_recall.py"),
+            ):
+                (deployed_hooks / target).write_text((HOOKS / source).read_text())
+            result = subprocess.run(
+                [sys.executable, str(deployed_hooks / "perturn_recall.py")],
+                input=json.dumps(
+                    {
+                        "conversation_id": "conversation-a",
+                        "hook_event_name": "UserPromptSubmit",
+                        "workspace_roots": [tmp],
+                        "prompt": "preserve recall dedupe across hooks",
+                    }
+                ),
+                capture_output=True,
+                text=True,
+                cwd=str(REPO),
+                env=env,
+            )
+            assert result.returncode == 0, result.stderr
+            perturn = json.loads(result.stdout or "{}")
+
+            assert "Conversation-scoped capsule" in warmstart
+            assert json.loads(seen_path.read_text()) == ["capsule-a"]
+            assert perturn == {}
+
+    def test_opencode_worklog_adapter_passes_session_id(self):
+        extension = REPO / "home/dot_config/opencode/plugins/agent-memory.ts"
+        with tempfile.TemporaryDirectory() as tmp:
+            hooks_dir = Path(tmp) / ".agents" / "hooks"
+            hooks_dir.mkdir(parents=True)
+            for name in ("session_context.py", "worklog_recorder.py", "perturn_recall.py"):
+                (hooks_dir / name).write_text("")
+
+            script = """
+const mod = await import(process.argv[1]);
+const calls = [];
+function shell(strings, ...values) {
+  calls.push(values.map(String));
+  return {
+    quiet() { return this; },
+    nothrow() { return Promise.resolve({ stdout: "{}", code: 0 }); }
+  };
+}
+const hooks = await mod.AgentMemoryPlugin({ $: shell, directory: "/tmp/workspace" });
+await hooks["tool.execute.after"](
+  { tool: "bash", sessionID: "opencode-session", callID: "call-a", args: {} },
+  { title: "printf ok", output: "ok", metadata: {} }
+);
+console.log(calls[0][0]);
+"""
+            env = dict(os.environ)
+            env["HOME"] = tmp
+            env["NODE_NO_WARNINGS"] = "1"
+            result = subprocess.run(
+                ["node", "--input-type=module", "-e", script, str(extension)],
+                cwd=str(REPO),
+                capture_output=True,
+                text=True,
+                env=env,
+                check=True,
+            )
+            payload = json.loads(result.stdout)
+
+            assert payload["session_id"] == "opencode-session"
+
+    def test_pi_recall_uses_session_binding_and_persists_seen_capsules(self):
+        extension = REPO / "home/dot_pi/agent/extensions/ai-kb-recall.ts"
+        with tempfile.TemporaryDirectory() as tmp:
+            spec_file = Path(tmp) / "pi-memory.txt"
+            spec_file.write_text("target: persist pi recall dedupe\n")
+            script = """
+import { readFile } from "node:fs/promises";
+const mod = await import(process.argv[1]);
+const specFile = process.argv[2];
+const workspace = "/tmp/workspace";
+const sessionId = "pi/session";
+const statusCalls = [];
+const row = {
+  id: "capsule-a",
+  title: "Pi resume capsule",
+  body: "inject once",
+  kind: "gotcha",
+  scope: "project",
+  workspace_path: workspace,
+  bm25_score: -10.0
+};
+function makePi() {
+  const handlers = {};
+  return {
+    handlers,
+    async exec(command, args) {
+      if (command === ",ai-kb" && args[0] === "--help") return { code: 0, killed: false, stdout: "" };
+      if (command === ",agent-memory") {
+        statusCalls.push(args);
+        return {
+          code: 0,
+          killed: false,
+          stdout: JSON.stringify({
+            workspace,
+            selected_topic: "pi-memory",
+            session_key: "pi-session",
+            is_named_topic: true,
+            spec_file: specFile,
+            spec_exists: true
+          })
+        };
+      }
+      if (command === "cat" && args[0] === specFile) {
+        return { code: 0, killed: false, stdout: "target: persist pi recall dedupe" };
+      }
+      if (command === "cat") return { code: 1, killed: false, stdout: "" };
+      if (command === ",ai-kb" && args[0] === "search") {
+        return { code: 0, killed: false, stdout: JSON.stringify([row]) };
+      }
+      throw new Error(`unexpected exec: ${command} ${args.join(" ")}`);
+    },
+    on(event, handler) { handlers[event] = handler; }
+  };
+}
+async function invokeFreshExtension() {
+  const pi = makePi();
+  await mod.default(pi);
+  return pi.handlers.before_agent_start(
+    { prompt: "short" },
+    {
+      cwd: workspace,
+      getContextUsage() { return null; },
+      sessionManager: { getSessionId() { return sessionId; } }
+    }
+  );
+}
+const first = await invokeFreshExtension();
+const second = await invokeFreshExtension();
+let seen = [];
+try {
+  seen = JSON.parse(await readFile(`${specFile.slice(0, specFile.lastIndexOf("/"))}/.recall-seen-pi-session.json`, "utf8"));
+} catch {}
+console.log(JSON.stringify({ first, second, seen, statusCalls }));
+"""
+            env = dict(os.environ)
+            env["NODE_NO_WARNINGS"] = "1"
+            result = subprocess.run(
+                ["node", "--input-type=module", "-e", script, str(extension), str(spec_file)],
+                cwd=str(REPO),
+                capture_output=True,
+                text=True,
+                env=env,
+                check=True,
+            )
+            payload = json.loads(result.stdout)
+
+            assert "Pi resume capsule" in payload["first"]["message"]["content"]
+            assert payload.get("second") is None
+            assert payload["seen"] == ["capsule-a"]
+            assert payload["statusCalls"] == [
+                ["status", "--json", "--workspace", "/tmp/workspace", "--session-id", "pi/session"],
+                ["status", "--json", "--workspace", "/tmp/workspace", "--session-id", "pi/session"],
+            ]
+
 
 if __name__ == "__main__":
     unittest.main()

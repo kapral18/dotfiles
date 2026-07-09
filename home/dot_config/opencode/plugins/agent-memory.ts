@@ -97,6 +97,7 @@ export const AgentMemoryPlugin: Plugin = async ({ $, directory }) => {
         const payload = JSON.stringify({
           hook_event_name: "PostToolUse",
           cwd: directory,
+          session_id: input.sessionID,
           tool_name: input.tool,
           command: typeof output?.title === "string" ? output.title : "",
           output: typeof output?.output === "string" ? output.output.slice(0, 2000) : "",

@@ -92,7 +92,7 @@ CLI surface:
 ,ai-kb curate dedupe                               # mark near-duplicates as superseded
 ,ai-kb curate decay                                # bump decay_score on dormant capsules
 ,ai-kb curate contradiction                       # flag suspicious gotcha vs fact pairs
-,ai-kb harvest                                     # surface durable-memory candidates from the active topic's worklog (read-only)
+,ai-kb harvest --session-id <id>                   # surface candidates from this session's bound topic (read-only)
 ,ai-kb harvest --worklog PATH --json               # explicit worklog + machine-readable candidates
 ,ai-kb doctor                                      # capsule count, FTS sanity, embedding coverage
 ```
@@ -115,7 +115,7 @@ Use one of:
 | `recurring_error`  | The same digit-normalized error signature seen `--min-repeats`+ times       | `gotcha`       |
 | `repeated_command` | The same clean command run `--min-repeats`+ times (noise programs excluded) | `recipe`       |
 
-For each candidate it prints the evidence lines and a ready-to-edit `,ai-kb remember` line. Candidates already covered by a capsule are suppressed via a BM25 lookup plus a token-overlap match, so harvest does not re-suggest what is already remembered. It defaults to the active topic (`/tmp/specs/<ws>/_active_topic.txt`, else `current`); `--worklog PATH` overrides the path and `--json` emits the full candidate set (including suppressed ones flagged `known`).
+For each candidate it prints the evidence lines and a ready-to-edit `,ai-kb remember` line. Candidates already covered by a capsule are suppressed via a BM25 lookup plus a token-overlap match, so harvest does not re-suggest what is already remembered. Pass `--session-id <id>` to resolve the same `.session-topic-<id>.txt` binding used by hooks; without it, `agent_memory.py` applies its normal explicit-pointer/branch/default fallback. An explicit `--topic` overrides the session binding, `--worklog PATH` overrides topic resolution entirely, and `--json` emits the full candidate set (including suppressed ones flagged `known`).
 
 `harvest` **never writes capsules** — you verify each candidate and run the emitted `remember` line yourself. It is a manual, on-demand aid with no hook, no `additionalContext` injection, and no auto-submit, so it adds no always-on token cost and cannot re-trigger a conversation. Persistence stays agent-driven per the [ai-kb skill](../skills/index.md) write contract.
 

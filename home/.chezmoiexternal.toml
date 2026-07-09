@@ -1,3 +1,8 @@
+# All archive externals use codeload.github.com directly: the
+# github.com/<owner>/<repo>/archive/... front-end intermittently 504s
+# (verified 2026-07-09) while codeload — the backend it redirects to —
+# serves the identical <repo>-<branch>/ tarball.
+
 [".config/tmux/plugins/tpm"]
 type = "git-repo"
 url = "https://github.com/tmux-plugins/tpm"
@@ -5,7 +10,7 @@ refreshPeriod = "168h"
 
 [".hammerspoon/Spoons"]
 type = "archive"
-url = "https://github.com/Hammerspoon/Spoons/archive/refs/heads/master.tar.gz"
+url = "https://codeload.github.com/Hammerspoon/Spoons/tar.gz/refs/heads/master"
 stripComponents = 2
 include = ["*/Source/EmmyLua.spoon/**"]
 refreshPeriod = "168h"
@@ -13,14 +18,14 @@ exact = true
 
 ["Library/Application Support/lowfi"]
 type = "archive"
-url = "https://github.com/talwat/lowfi/archive/refs/heads/main.tar.gz"
+url = "https://codeload.github.com/talwat/lowfi/tar.gz/refs/heads/main"
 stripComponents = 2
 include = ["*/data/*.txt"]
 refreshPeriod = "24h"
 
 [".config/bat/themes"]
 type = "archive"
-url = "https://github.com/catppuccin/bat/archive/refs/heads/main.tar.gz"
+url = "https://codeload.github.com/catppuccin/bat/tar.gz/refs/heads/main"
 stripComponents = 2
 include = ["*/themes/*"]
 exact = true
@@ -28,7 +33,7 @@ refreshPeriod = "168h"
 
 [".config/yazi/flavors"]
 type = "archive"
-url = "https://github.com/yazi-rs/flavors/archive/refs/heads/main.tar.gz"
+url = "https://codeload.github.com/yazi-rs/flavors/tar.gz/refs/heads/main"
 stripComponents = 1
 include = [
   "*/catppuccin-frappe.yazi/**",

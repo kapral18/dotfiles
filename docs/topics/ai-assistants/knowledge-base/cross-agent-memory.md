@@ -38,23 +38,23 @@ Unbound, ad-hoc `session-*`, and review topics get no warm-start. Cursor cannot 
 
 Persistence is the SOP's end-of-turn habit: the agent self-vets and writes inline as the last step of a substantive turn, with no hook and no auto-submitted prompt.
 
-Pi uses its own TypeScript extension API rather than `hooks.json`. It still reads topic state through `,agent-memory status --json`; session-bound bucket selection is implemented in the shared hook path in this change.
+Pi uses its own TypeScript extension API rather than `hooks.json`. It passes `ctx.sessionManager.getSessionId()` to `,agent-memory status --json --session-id <id>`, so warm-start resolves the same session-bound bucket as the shared hooks.
 
-| Piece               | Source                                                                                                     |
-| ------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Pi recall extension | [`home/dot_pi/agent/extensions/ai-kb-recall.ts`](../../../../home/dot_pi/agent/extensions/ai-kb-recall.ts) |
-| Topic/spec source   | `,agent-memory status --json` via [`scripts/agent_memory.py`](../../../../scripts/agent_memory.py)         |
-| Retrieval source    | `,ai-kb search`                                                                                            |
-| Injection point     | `before_agent_start`                                                                                       |
+| Piece               | Source                                                                                                               |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Pi recall extension | [`home/dot_pi/agent/extensions/ai-kb-recall.ts`](../../../../home/dot_pi/agent/extensions/ai-kb-recall.ts)           |
+| Topic/spec source   | `,agent-memory status --json --session-id <id>` via [`scripts/agent_memory.py`](../../../../scripts/agent_memory.py) |
+| Retrieval source    | `,ai-kb search`                                                                                                      |
+| Injection point     | `before_agent_start`                                                                                                 |
 
 Pi uses `before_agent_start` for two paths:
 
-| Moment                   | Injection                                                                    |
-| ------------------------ | ---------------------------------------------------------------------------- |
-| First prompt             | verification prefix plus gated warm-start from `,agent-memory status --json` |
-| Every substantive prompt | per-turn retrieval using the actual prompt as query                          |
+| Moment                   | Injection                                                                           |
+| ------------------------ | ----------------------------------------------------------------------------------- |
+| First prompt             | verification prefix plus gated warm-start from session-aware `,agent-memory status` |
+| Every substantive prompt | per-turn retrieval using the actual prompt as query                                 |
 
-Per-turn retrieval uses `hybrid` mode — lexical + vector + MMR — and dedupes capsules already injected this session. This works in Pi because `before_agent_start` can return an injected `message`; Cursor's `beforeSubmitPrompt` cannot.
+Per-turn retrieval uses `hybrid` mode — lexical + vector + MMR — and dedupes capsules already injected this session. Pi persists the injected capsule IDs under `/tmp/specs/<workspace>/.recall-seen-<session-key>.json`, using the canonical key returned by `,agent-memory status`, so extension reloads and session resumes do not re-inject the same capsules. This works in Pi because `before_agent_start` can return an injected `message`; Cursor's `beforeSubmitPrompt` cannot.
 
 Per-turn (`hybrid`) retrieval has an **absolute top-hit gate**:
 

@@ -34,12 +34,12 @@ flowchart TB
     AM --> GPM & MOM
 
     subgraph AIKB["AI knowledgebase + embeddings"]
-        KB["ai_kb.py (markdown + SQLite FTS5 store; ,ai-kb; harvest = worklog->remember candidates, read-only)"]:::ai
+        KB["ai_kb.py (markdown + SQLite FTS5 store; ,ai-kb;<br/>harvest = session-resolved worklog→remember candidates, read-only)"]:::ai
         EMB["embed.py + embed_runner.py (fastembed subprocess)"]:::ai
         VEC["vec_runner.py (vector retrieval subprocess)"]:::ai
         AGM["agent_memory.py (/tmp/specs topic mgmt; ,agent-memory)"]:::ai
     end
-    KB --> EMB & VEC
+    KB --> AGM & EMB & VEC
 
     subgraph ORCH["Orchestrator + package ops"]
         RALPH["ralph.py (177KB; see 04/04b)"]:::misc

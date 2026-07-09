@@ -17,6 +17,7 @@ import time
 import unittest
 from importlib.machinery import SourceFileLoader
 from pathlib import Path
+from unittest import mock
 from urllib.request import Request, urlopen
 
 import _test_support  # noqa: F401  (puts scripts/ on sys.path)
@@ -853,6 +854,23 @@ class TestKbnStackCommand(unittest.TestCase):
         assert kbn_stack.start_mode(kbn_stack.parse_args([]), "%1") == "interactive-tmux"
         assert kbn_stack.start_mode(kbn_stack.parse_args([]), None) == "manual-command"
 
+    def test_pid_alive_rejects_non_pid_values(self):
+        kbn_stack = _load_kbn_stack_command()
+
+        for value in (None, "123", 1.5, True, False, 0, -1, 1 << 100):
+            with self.subTest(value=value):
+                assert kbn_stack.pid_alive(value) is False
+
+    def test_pid_alive_classifies_process_probe_results(self):
+        kbn_stack = _load_kbn_stack_command()
+
+        with mock.patch.object(kbn_stack.os, "kill", return_value=None):
+            assert kbn_stack.pid_alive(1234) is True
+        with mock.patch.object(kbn_stack.os, "kill", side_effect=ProcessLookupError):
+            assert kbn_stack.pid_alive(1234) is False
+        with mock.patch.object(kbn_stack.os, "kill", side_effect=PermissionError):
+            assert kbn_stack.pid_alive(1234) is True
+
     def test_agent_start_does_not_stop_user_owned_serverless(self):
         kbn_stack = _load_kbn_stack_command()
         registry = {
@@ -952,6 +970,43 @@ class TestKbnStackCommand(unittest.TestCase):
             with contextlib.redirect_stdout(io.StringIO()):
                 changed = kbn_stack.reclaim_dead_slots(registry, "/wt/C")
                 slot = kbn_stack.allocate_slot(registry, "/wt/C", None)
+
+        assert changed is True
+        assert "/wt/B" not in registry
+        assert state["killed"] == []
+        assert slot == 1
+
+    def test_reclaim_keeps_slot_while_any_recorded_process_is_alive(self):
+        kbn_stack = _load_kbn_stack_command()
+        with mock.patch.object(kbn_stack, "pid_alive", side_effect=lambda pid: pid == 1234):
+            for key in ("started_by_pid", "kbn_pid", "es_pid"):
+                for liveness in ((False, False), (False, True)):
+                    with self.subTest(key=key, liveness=liveness):
+                        registry = {
+                            "/wt/A": {"slot": 0, "backend": "snapshot"},
+                            "/wt/B": {"slot": 1, "backend": "snapshot", key: 1234},
+                        }
+                        with _patched_ports(kbn_stack, alive_slots={0: (True, True), 1: liveness}) as state:
+                            with contextlib.redirect_stdout(io.StringIO()):
+                                changed = kbn_stack.reclaim_dead_slots(registry, "/wt/C")
+                                slot = kbn_stack.allocate_slot(registry, "/wt/C", None)
+
+                        assert changed is False
+                        assert "/wt/B" in registry
+                        assert state["killed"] == []
+                        assert slot == 2
+
+    def test_reclaim_dead_recorded_process_still_frees_slot(self):
+        kbn_stack = _load_kbn_stack_command()
+        registry = {
+            "/wt/A": {"slot": 0, "backend": "snapshot"},
+            "/wt/B": {"slot": 1, "backend": "snapshot", "started_by_pid": 1234},
+        }
+        with mock.patch.object(kbn_stack, "pid_alive", return_value=False):
+            with _patched_ports(kbn_stack, alive_slots={0: (True, True), 1: (False, False)}) as state:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    changed = kbn_stack.reclaim_dead_slots(registry, "/wt/C")
+                    slot = kbn_stack.allocate_slot(registry, "/wt/C", None)
 
         assert changed is True
         assert "/wt/B" not in registry

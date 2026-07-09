@@ -57,6 +57,11 @@ opt.splitright = true
 opt.statuscolumn = [[]]
 opt.tabstop = 2
 opt.termguicolors = true
+-- tmux 3.7b leaks cursor moves while relaying synchronized updates. Disable
+-- Neovim's sync path so its cursor-hide fallback prevents float artifacts.
+if vim.env.TMUX then
+  opt.termsync = false
+end
 opt.timeoutlen = 300
 opt.undofile = false
 do

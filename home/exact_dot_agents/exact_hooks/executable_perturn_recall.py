@@ -20,7 +20,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from hook_common import emit, read_payload, topic_paths
+from hook_common import emit, read_payload, session_key, topic_paths
 from session_context import context_disabled
 
 # Constants mirror home/dot_pi/agent/extensions/ai-kb-recall.ts — change both together.
@@ -65,8 +65,8 @@ def apply_hybrid_floor(rows: list) -> list:
     return kept
 
 
-def seen_file_for(spec_path: Path, session_id: str) -> Path:
-    return spec_path.parent / f".recall-seen-{session_id}.json"
+def seen_file_for(spec_path: Path, session_key_value: str) -> Path:
+    return spec_path.parent / f".recall-seen-{session_key_value}.json"
 
 
 def load_seen(path: Path | None) -> set[str]:
@@ -159,8 +159,8 @@ def main() -> None:
         emit({})
         return
 
-    session_id = str(payload.get("session_id") or "")
-    seen_path = seen_file_for(spec_path, session_id) if session_id else None
+    key = session_key(payload)
+    seen_path = seen_file_for(spec_path, key) if key else None
     seen = load_seen(seen_path)
 
     rows = search_capsules(workspace, prompt)

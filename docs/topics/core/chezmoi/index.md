@@ -87,7 +87,7 @@ chezmoi diff
 Externals can be refreshed with:
 
 ```bash
-chezmoi apply -R always
+chezmoi apply --refresh-externals=always
 ```
 
 If a script fails with `command not found`, check whether its prerequisite hook (usually Homebrew/mise) ran successfully.

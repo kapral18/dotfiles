@@ -248,8 +248,9 @@ Do not invent a parallel store:
 - Convention: `/tmp/specs/<pwd>/` from the parent SOP. Topic key: `review-<pr-number>` for PR modes (else `review`).
 - The agent-owned intent file is `<topic>.txt`.
 - The hook system additionally maintains `<topic>.worklog.jsonl`.
-- Inspect state with `,agent-memory status`.
-- `,agent-memory status` resolves the active topic and lists the files.
+- Never inspect review state with sessionless `,agent-memory status`; parallel sessions can resolve a different topic.
+- If Agent Hook Context names the active topic, inspect that exact bucket with `,agent-memory status --topic <active-topic>`.
+- If Topic Buckets supplies a session ID, bind the review bucket with `,agent-memory select <topic> --session-id <id> [--create]`, then inspect it with `,agent-memory status --session-id <id>`.
 - On the first turn of a PR flow, check for the spec file and resume from it.
   After each thread/finding, append to `<topic>.txt` so the loop is resumable:
   - findings/threads: `comment_id`, author-type (`human`|`bot`), severity, file:line, one-line description, status (`open`|`fixed`|`dismissed`|`resolved`|`awaiting-approval`)
