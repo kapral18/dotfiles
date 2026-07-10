@@ -245,6 +245,152 @@ class TestAgentMemory(unittest.TestCase):
             finally:
                 agent_memory.SPEC_ROOT = old_spec_root
 
+    def test_select_sanitizes_review_topic_clean_room(self):
+        import agent_memory
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
+            old_spec_root = agent_memory.SPEC_ROOT
+            agent_memory.SPEC_ROOT = Path(spec_root)
+            try:
+                workspace = Path(tmp).resolve()
+                spec_dir = agent_memory.spec_dir_for(workspace)
+                spec_dir.mkdir(parents=True)
+                (spec_dir / "review-123.txt").write_text(
+                    "\n".join(
+                        [
+                            "topic: review-123",
+                            "target: PR owner/repo#123",
+                            "diff: 2 files",
+                            "",
+                            "verified facts:",
+                            "  - prior conclusion should not be injected",
+                            "findings:",
+                            "  1. stale finding",
+                            "verdict: Approve",
+                        ]
+                    )
+                )
+                (spec_dir / "review-123.worklog.jsonl").write_text('{"line": "prior finding"}\n')
+
+                buffer = io.StringIO()
+                with contextlib.redirect_stdout(buffer):
+                    assert (
+                        agent_memory.main(
+                            [
+                                "select",
+                                "review-123",
+                                "--workspace",
+                                str(workspace),
+                                "--session-id",
+                                "review-session",
+                            ]
+                        )
+                        == 0
+                    )
+
+                output = buffer.getvalue()
+                assert "target: PR owner/repo#123" in output
+                assert "prior conclusion should not be injected" not in output
+                assert "stale finding" not in output
+                assert "verdict: Approve" not in output
+                assert "Recent Hook Worklog" not in output
+                assert "review clean-room mode" in output
+            finally:
+                agent_memory.SPEC_ROOT = old_spec_root
+
+    def test_select_omits_oversized_spec_with_pointer(self):
+        import agent_memory
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
+            old_spec_root = agent_memory.SPEC_ROOT
+            agent_memory.SPEC_ROOT = Path(spec_root)
+            try:
+                workspace = Path(tmp).resolve()
+                spec_dir = agent_memory.spec_dir_for(workspace)
+                spec_dir.mkdir(parents=True)
+                (spec_dir / "oversized-topic.txt").write_text("target: " + ("x" * 4000) + "\nnever inject partial")
+
+                buffer = io.StringIO()
+                with contextlib.redirect_stdout(buffer):
+                    assert (
+                        agent_memory.main(
+                            [
+                                "select",
+                                "oversized-topic",
+                                "--workspace",
+                                str(workspace),
+                                "--session-id",
+                                "abc-999",
+                            ]
+                        )
+                        == 0
+                    )
+
+                output = buffer.getvalue()
+                assert "Active topic spec omitted" in output
+                assert "never inject partial" not in output
+            finally:
+                agent_memory.SPEC_ROOT = old_spec_root
+
+    def test_select_bounds_oversized_review_spec_after_sanitizing(self):
+        # Regression guard for memory-review-bypass follow-up (fix-review-context-bound):
+        # bounded_spec_text() must not return neutral_review_spec()'s output unconditionally
+        # — a review spec whose pre-conclusion body alone exceeds SELECT_CONTEXT_MAX_SPEC_CHARS
+        # must still fall through to the wholesale omission-with-pointer contract, never a
+        # verbatim (or partially truncated) dump of the sanitized body.
+        import agent_memory
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
+            old_spec_root = agent_memory.SPEC_ROOT
+            agent_memory.SPEC_ROOT = Path(spec_root)
+            try:
+                workspace = Path(tmp).resolve()
+                spec_dir = agent_memory.spec_dir_for(workspace)
+                spec_dir.mkdir(parents=True)
+                (spec_dir / "review-big.txt").write_text(
+                    "\n".join(
+                        [
+                            "topic: review-big",
+                            "target: PR owner/repo#999",
+                            "x" * 4000,
+                            "",
+                            "verified facts:",
+                            "  - prior conclusion should never appear",
+                            "findings:",
+                            "  1. stale finding should never appear",
+                            "verdict: Approve",
+                        ]
+                    )
+                )
+                (spec_dir / "review-big.worklog.jsonl").write_text('{"line": "prior finding"}\n')
+
+                buffer = io.StringIO()
+                with contextlib.redirect_stdout(buffer):
+                    assert (
+                        agent_memory.main(
+                            [
+                                "select",
+                                "review-big",
+                                "--workspace",
+                                str(workspace),
+                                "--session-id",
+                                "review-big-session",
+                            ]
+                        )
+                        == 0
+                    )
+
+                output = buffer.getvalue()
+                assert "Active topic spec omitted" in output
+                assert "x" * 4000 not in output
+                assert "prior conclusion should never appear" not in output
+                assert "stale finding should never appear" not in output
+                assert "verdict: Approve" not in output
+                assert "Recent Hook Worklog" not in output
+                assert len(output) < 3000
+            finally:
+                agent_memory.SPEC_ROOT = old_spec_root
+
 
 if __name__ == "__main__":
     unittest.main()

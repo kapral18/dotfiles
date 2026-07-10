@@ -67,8 +67,136 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
     """Phase 1 of the BIG redesign: structured capsule schema with kind,
     scope, domain tags, confidence, verified_by, supersedes, embedding
     BLOB and the rest. Schema changes are breaking by policy — old
-    DBs are dropped on first init, not migrated.
+    DBs are rebuilt from canonical sidecars, not migrated in place.
     """
+
+    @staticmethod
+    def _fake_embedder():
+        class FakeEmbedder:
+            model = "test/fake-embedder"
+
+            @staticmethod
+            def embed_one(text: str) -> list[float]:
+                seed = sum((idx + 1) * ord(ch) for idx, ch in enumerate(text))
+                return [
+                    ((seed % 97) + 1) / 100.0,
+                    (((seed // 97) % 97) + 1) / 100.0,
+                    (((seed // (97 * 97)) % 97) + 1) / 100.0,
+                ]
+
+            def embed(self, texts: list[str]) -> list[list[float]]:
+                return [self.embed_one(text) for text in texts]
+
+        return FakeEmbedder()
+
+    def _seed_curated_state(self, kb):
+        old = kb.remember(
+            title="Canonical old fact",
+            body="shared-needle canonical-old",
+            source="tests:old",
+            project_id="proj-curation",
+        )
+        keeper = kb.remember(
+            title="Canonical keeper fact",
+            body="shared-needle canonical-keeper",
+            source="tests:keeper",
+            project_id="proj-curation",
+            supersedes=old.id,
+        )
+        loser = kb.remember(
+            title="Curated loser fact",
+            body="shared-needle curated-loser",
+            source="tests:loser",
+            project_id="proj-curation",
+        )
+        kb._mark_superseded(loser.id, keeper.id)
+        with kb.connect() as db:
+            db.execute(
+                "UPDATE capsules SET decay_score = ?, updated_at = ? WHERE id = ?",
+                (0.6, "2026-07-10T12:34:56+00:00", keeper.id),
+            )
+        return old, keeper, loser
+
+    def _capsule_state(self, kb, *ids: str) -> dict[str, dict]:
+        placeholders = ",".join("?" * len(ids))
+        with kb.connect() as db:
+            rows = db.execute(
+                f"""
+                SELECT id, supersedes, superseded_by, decay_score,
+                       created_at, updated_at,
+                       hex(embedding) AS embedding_hex,
+                       embedding_model, embedding_dim
+                FROM capsules
+                WHERE id IN ({placeholders})
+                ORDER BY id
+                """,
+                ids,
+            ).fetchall()
+        return {
+            row["id"]: {
+                "supersedes": row["supersedes"],
+                "superseded_by": row["superseded_by"],
+                "decay_score": row["decay_score"],
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"],
+                "embedding_hex": row["embedding_hex"],
+                "embedding_model": row["embedding_model"],
+                "embedding_dim": row["embedding_dim"],
+            }
+            for row in rows
+        }
+
+    def _force_capsules_schema_mismatch(self, kb):
+        with kb.connect() as db:
+            db.execute("DROP TABLE IF EXISTS capsule_fts")
+            db.execute("DROP TABLE IF EXISTS kb_meta")
+            db.execute("ALTER TABLE capsules RENAME TO capsules_backup")
+            db.execute(
+                """
+                CREATE TABLE capsules (
+                    id TEXT PRIMARY KEY,
+                    kind TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    body TEXT NOT NULL,
+                    source TEXT NOT NULL,
+                    tags TEXT NOT NULL,
+                    path TEXT NOT NULL,
+                    scope TEXT NOT NULL,
+                    workspace_path TEXT,
+                    domain_tags TEXT NOT NULL,
+                    confidence REAL NOT NULL,
+                    verified_by TEXT,
+                    supersedes TEXT,
+                    superseded_by TEXT,
+                    refs TEXT NOT NULL,
+                    embedding BLOB,
+                    embedding_model TEXT,
+                    embedding_dim INTEGER NOT NULL,
+                    decay_score REAL NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+            db.execute(
+                """
+                INSERT INTO capsules(
+                    id, kind, title, body, source, tags, path, scope,
+                    workspace_path, domain_tags, confidence, verified_by,
+                    supersedes, superseded_by, refs, embedding,
+                    embedding_model, embedding_dim, decay_score,
+                    created_at, updated_at
+                )
+                SELECT
+                    id, kind, title, body, source, tags, path, scope,
+                    workspace_path, domain_tags, confidence, verified_by,
+                    supersedes, superseded_by, refs, embedding,
+                    embedding_model, embedding_dim, decay_score,
+                    created_at, updated_at
+                FROM capsules_backup
+                """
+            )
+            db.execute("DROP TABLE capsules_backup")
 
     def test_init_creates_full_schema(self):
         import ai_kb
@@ -99,13 +227,330 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                     """
                 )
                 db.execute("INSERT INTO capsules(id,title,body) VALUES('x','t','b')")
-            # Now init should detect the stale shape and wipe.
+            # Now init should detect the stale shape and rebuild. With no
+            # sidecars present, the rebuilt mirror is empty.
             kb.init()
             with kb.connect() as db:
                 cols = [r[1] for r in db.execute("PRAGMA table_info(capsules)").fetchall()]
                 count = db.execute("SELECT COUNT(*) FROM capsules").fetchone()[0]
             assert tuple(cols) == ai_kb.CAPSULE_COLUMNS
             assert count == 0, "stale rows must be dropped — no compat path"
+
+    def test_read_paths_rebuild_stale_schema_from_sidecars_without_losing_metadata(self):
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            saved_disable = os.environ.get("RALPH_KB_DISABLE_EMBED")
+            os.environ["RALPH_KB_DISABLE_EMBED"] = "1"
+            try:
+                kb = ai_kb.KnowledgeBase(home=Path(tmp))
+                old = kb.remember(
+                    title="Old rebuild fact",
+                    body="Old body survives the mirror rebuild.",
+                    kind="gotcha",
+                    scope="project",
+                    source="tests:old",
+                    tags="ops,rebuild",
+                    workspace_path="/ws/rebuild",
+                    project_id="proj-rebuild",
+                    domain_tags=["ai-kb", "rebuild"],
+                    confidence=0.9,
+                    verified_by="rid-123",
+                    refs=["docs/rebuild.md:10", "https://example.test/rebuild"],
+                    embed_now=False,
+                )
+                new = kb.remember(
+                    title="New rebuild fact",
+                    body="schema-heal-needle proves search still works after stale schema repair.",
+                    kind="pattern",
+                    scope="project",
+                    source="tests:new",
+                    tags="ops,rebuild",
+                    workspace_path="/ws/rebuild",
+                    project_id="proj-rebuild",
+                    domain_tags=["ai-kb", "rebuild"],
+                    confidence=0.8,
+                    verified_by="rid-456",
+                    supersedes=old.id,
+                    refs=["docs/rebuild.md:42"],
+                    embed_now=False,
+                )
+                with kb.connect() as db:
+                    db.execute("DROP TABLE IF EXISTS capsule_fts")
+                    db.execute("DROP TABLE IF EXISTS kb_meta")
+                    db.execute("DROP TABLE IF EXISTS capsules")
+                    db.execute(
+                        """
+                        CREATE TABLE capsules (
+                            id TEXT PRIMARY KEY,
+                            title TEXT,
+                            body TEXT
+                        )
+                        """
+                    )
+                    db.execute("INSERT INTO capsules(id,title,body) VALUES('bogus','bogus','bogus')")
+
+                listed = kb.list(limit=10)
+                assert sorted(c.id for c in listed) == sorted([old.id, new.id]), listed
+                rebuilt_old = kb.get(old.id)
+                rebuilt_new = kb.get(new.id)
+                assert rebuilt_old is not None
+                assert rebuilt_new is not None
+                assert rebuilt_old.source == "tests:old"
+                assert rebuilt_old.tags == "ops,rebuild"
+                assert rebuilt_old.scope == "project"
+                assert rebuilt_old.workspace_path == "/ws/rebuild"
+                assert rebuilt_old.project_id == "proj-rebuild"
+                assert rebuilt_old.domain_tags == "ai-kb,rebuild"
+                assert rebuilt_old.confidence == 0.9
+                assert rebuilt_old.verified_by == "rid-123"
+                assert rebuilt_old.refs == "docs/rebuild.md:10,https://example.test/rebuild"
+                assert rebuilt_old.superseded_by == new.id
+                assert rebuilt_new.supersedes == old.id
+
+                hits = kb.search("schema-heal-needle", limit=5, mode="bm25")
+                assert [hit["id"] for hit in hits] == [new.id], hits
+                assert hits[0]["body"] == new.body
+
+                doctor = kb.doctor()
+                assert "capsules=2" in doctor, doctor
+                with kb.connect() as db:
+                    cols = [r[1] for r in db.execute("PRAGMA table_info(capsules)").fetchall()]
+                assert tuple(cols) == ai_kb.CAPSULE_COLUMNS
+            finally:
+                if saved_disable is None:
+                    os.environ.pop("RALPH_KB_DISABLE_EMBED", None)
+                else:
+                    os.environ["RALPH_KB_DISABLE_EMBED"] = saved_disable
+
+    def test_stale_schema_rebuild_preserves_curated_sqlite_only_state(self):
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            saved_disable = os.environ.get("RALPH_KB_DISABLE_EMBED")
+            os.environ["RALPH_KB_DISABLE_EMBED"] = "1"
+            try:
+                kb = ai_kb.KnowledgeBase(home=Path(tmp), embedder=self._fake_embedder())
+                old, keeper, loser = self._seed_curated_state(kb)
+                state_before = self._capsule_state(kb, old.id, keeper.id, loser.id)
+                assert state_before[keeper.id]["supersedes"] == old.id
+                assert state_before[loser.id]["superseded_by"] == keeper.id
+                assert abs(state_before[keeper.id]["decay_score"] - 0.6) < 1e-6
+                assert state_before[keeper.id]["updated_at"] == "2026-07-10T12:34:56+00:00"
+                assert state_before[keeper.id]["embedding_model"] == "test/fake-embedder"
+                assert state_before[keeper.id]["embedding_dim"] == 3
+                hits_before = kb.search("shared-needle", limit=10, mode="bm25")
+                assert loser.id not in [hit["id"] for hit in hits_before], hits_before
+
+                self._force_capsules_schema_mismatch(kb)
+
+                rebuilt = kb.list(limit=10)
+                assert sorted(c.id for c in rebuilt) == sorted([old.id, keeper.id, loser.id]), rebuilt
+                state_after = self._capsule_state(kb, old.id, keeper.id, loser.id)
+                assert state_after == state_before, (state_before, state_after)
+
+                hits_after = kb.search("shared-needle", limit=10, mode="bm25")
+                hit_ids = [hit["id"] for hit in hits_after]
+                assert keeper.id in hit_ids, hit_ids
+                assert loser.id not in hit_ids, hit_ids
+            finally:
+                if saved_disable is None:
+                    os.environ.pop("RALPH_KB_DISABLE_EMBED", None)
+                else:
+                    os.environ["RALPH_KB_DISABLE_EMBED"] = saved_disable
+
+    def test_stale_schema_rebuild_fails_closed_on_malformed_sidecar(self):
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            saved_disable = os.environ.get("RALPH_KB_DISABLE_EMBED")
+            os.environ["RALPH_KB_DISABLE_EMBED"] = "1"
+            try:
+                kb = ai_kb.KnowledgeBase(home=Path(tmp))
+                good = kb.remember(
+                    title="Good sidecar",
+                    body="This sidecar remains intact when another sidecar is malformed.",
+                    source="tests:good",
+                    embed_now=False,
+                )
+                (kb.capsules_dir / "broken.md").write_text(
+                    "---\n"
+                    "id: broken\n"
+                    "kind: fact\n"
+                    "scope: project\n"
+                    "source: tests:broken\n"
+                    "confidence: 0.5\n"
+                    "created_at: 2026-07-10T00:00:00+00:00\n"
+                    "---\n\n"
+                    "# broken\n\n"
+                    "missing title frontmatter should fail closed\n"
+                )
+                with kb.connect() as db:
+                    db.execute("DROP TABLE IF EXISTS capsule_fts")
+                    db.execute("DROP TABLE IF EXISTS kb_meta")
+                    db.execute("DROP TABLE IF EXISTS capsules")
+                    db.execute(
+                        """
+                        CREATE TABLE capsules (
+                            id TEXT PRIMARY KEY,
+                            title TEXT,
+                            body TEXT
+                        )
+                        """
+                    )
+                    db.execute("INSERT INTO capsules(id,title,body) VALUES('bogus','bogus','bogus')")
+
+                with self.assertRaisesRegex(ValueError, "broken.md"):
+                    kb.list(limit=10)
+
+                with kb.connect() as db:
+                    cols = [r[1] for r in db.execute("PRAGMA table_info(capsules)").fetchall()]
+                    count = db.execute("SELECT COUNT(*) FROM capsules").fetchone()[0]
+                assert cols == ["id", "title", "body"], cols
+                assert count == 1, count
+                assert (kb.capsules_dir / f"{good.id}.md").exists()
+            finally:
+                if saved_disable is None:
+                    os.environ.pop("RALPH_KB_DISABLE_EMBED", None)
+                else:
+                    os.environ["RALPH_KB_DISABLE_EMBED"] = saved_disable
+
+    def test_aux_table_repair_preserves_current_capsules_table_and_state(self):
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            saved_disable = os.environ.get("RALPH_KB_DISABLE_EMBED")
+            os.environ["RALPH_KB_DISABLE_EMBED"] = "1"
+            try:
+                kb = ai_kb.KnowledgeBase(home=Path(tmp), embedder=self._fake_embedder())
+                old, keeper, loser = self._seed_curated_state(kb)
+                state_before = self._capsule_state(kb, old.id, keeper.id, loser.id)
+                with kb.connect() as db:
+                    rootpage_before = db.execute(
+                        "SELECT rootpage FROM sqlite_master WHERE type = 'table' AND name = 'capsules'"
+                    ).fetchone()[0]
+                    db.execute("DROP TABLE IF EXISTS capsule_fts")
+                    db.execute("DROP TABLE IF EXISTS kb_meta")
+
+                hits = kb.search("shared-needle", limit=10, mode="bm25")
+                hit_ids = [hit["id"] for hit in hits]
+                assert keeper.id in hit_ids, hit_ids
+                assert loser.id not in hit_ids, hit_ids
+
+                with kb.connect() as db:
+                    rootpage_after = db.execute(
+                        "SELECT rootpage FROM sqlite_master WHERE type = 'table' AND name = 'capsules'"
+                    ).fetchone()[0]
+                    fts_count = db.execute("SELECT COUNT(*) FROM capsule_fts").fetchone()[0]
+                state_after = self._capsule_state(kb, old.id, keeper.id, loser.id)
+                assert rootpage_after == rootpage_before, (rootpage_before, rootpage_after)
+                assert fts_count == 3, fts_count
+                assert state_after == state_before, (state_before, state_after)
+            finally:
+                if saved_disable is None:
+                    os.environ.pop("RALPH_KB_DISABLE_EMBED", None)
+                else:
+                    os.environ["RALPH_KB_DISABLE_EMBED"] = saved_disable
+
+    def test_schema_state_detects_same_count_fts_content_drift(self):
+        """A corrupted capsule_fts row (same id, same row count, wrong text)
+        must be classified derived_stale, not 'ok'. A count-only comparison
+        trusts this mirror because both tables still have one row each; the
+        fix compares mirrored column content, not just row counts."""
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            kb = ai_kb.KnowledgeBase(home=Path(tmp))
+            cap = kb.remember(
+                title="Canonical title",
+                body="Canonical body text",
+                source="tests:drift",
+                tags="a,b",
+                domain_tags=["d1"],
+                embed_now=False,
+            )
+            with kb.connect() as db:
+                db.execute(
+                    "UPDATE capsule_fts SET title=?, body=? WHERE id=?",
+                    ("WRONG TITLE", "WRONG BODY", cap.id),
+                )
+            with kb.connect() as db:
+                assert kb._schema_state(db) == "derived_stale"
+
+            good_hits = kb.search("Canonical", limit=5, mode="bm25")
+            assert [h["id"] for h in good_hits] == [cap.id], good_hits
+            assert good_hits[0]["body"] == "Canonical body text", good_hits
+
+            bad_hits = kb.search("WRONG", limit=5, mode="bm25")
+            assert bad_hits == [], bad_hits
+
+            with kb.connect() as db:
+                assert kb._schema_state(db) == "ok"
+
+    def test_schema_state_detects_fts_id_mismatch_same_count(self):
+        """A capsule_fts row whose id no longer matches any capsules row
+        (but the row counts are still equal) must also be derived_stale."""
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            kb = ai_kb.KnowledgeBase(home=Path(tmp))
+            cap = kb.remember(
+                title="Only capsule",
+                body="Only capsule body",
+                source="tests:idmismatch",
+                embed_now=False,
+            )
+            with kb.connect() as db:
+                db.execute(
+                    "UPDATE capsule_fts SET id=? WHERE id=?",
+                    ("bogus-id-not-a-real-capsule", cap.id),
+                )
+            with kb.connect() as db:
+                assert kb._schema_state(db) == "derived_stale"
+
+            hits = kb.search("Only capsule", limit=5, mode="bm25")
+            assert [h["id"] for h in hits] == [cap.id], hits
+
+            with kb.connect() as db:
+                assert kb._schema_state(db) == "ok"
+
+    def test_schema_state_detects_duplicate_fts_row(self):
+        """An extra capsule_fts row that duplicates an existing capsule's
+        content (fts_count > capsule_count, but every distinct row still
+        matches) must be classified derived_stale. A symmetric set
+        difference alone misses this because EXCEPT dedupes the duplicate;
+        the count comparison catches it so the double-counted BM25 hit is
+        repaired."""
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            kb = ai_kb.KnowledgeBase(home=Path(tmp))
+            cap = kb.remember(
+                title="Dup capsule",
+                body="Dup capsule body",
+                source="tests:dup",
+                tags="a",
+                embed_now=False,
+            )
+            with kb.connect() as db:
+                db.execute(
+                    """
+                    INSERT INTO capsule_fts(id, title, body, tags, source, domain_tags)
+                    SELECT id, title, body, tags, source, domain_tags FROM capsule_fts
+                    """
+                )
+                fts_count = db.execute("SELECT COUNT(*) FROM capsule_fts").fetchone()[0]
+                cap_count = db.execute("SELECT COUNT(*) FROM capsules").fetchone()[0]
+                assert fts_count == 2 and cap_count == 1, (fts_count, cap_count)
+            with kb.connect() as db:
+                assert kb._schema_state(db) == "derived_stale"
+
+            hits = kb.search("Dup capsule", limit=5, mode="bm25")
+            assert [h["id"] for h in hits] == [cap.id], hits
+
+            with kb.connect() as db:
+                assert kb._schema_state(db) == "ok"
+                assert db.execute("SELECT COUNT(*) FROM capsule_fts").fetchone()[0] == 1
 
     def test_remember_persists_full_metadata(self):
         import ai_kb

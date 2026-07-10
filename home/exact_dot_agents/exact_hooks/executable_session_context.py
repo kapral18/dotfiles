@@ -359,11 +359,16 @@ def neutral_review_spec(text: str, spec_path: Path) -> str:
     )
 
 
-def spec_context(spec_path: Path, topic: str) -> str:
-    text = spec_path.read_text(errors="replace").strip()
-    if is_review_topic(topic, text):
-        return neutral_review_spec(text, spec_path)
+def bounded_or_omitted(text: str, spec_path: Path) -> str:
+    """Mirrors agent_memory.py's bounded_or_omitted — change both together.
 
+    Applies the shared oversized-spec contract to already-final text (review
+    text must already be sanitized by neutral_review_spec() before reaching
+    here). Content is never truncated mid-context: once it exceeds the bound
+    it is replaced wholesale with a pointer, so a sanitized-but-still-huge
+    review body cannot leak past the size limit just because it is "already
+    clean".
+    """
     if len(text) <= MAX_SPEC_CHARS:
         return text
 
@@ -372,6 +377,14 @@ def spec_context(spec_path: Path, topic: str) -> str:
         f"exceeding the {MAX_SPEC_CHARS}-character injection limit. "
         f"Read `{spec_path}` before relying on prior session context."
     )
+
+
+def spec_context(spec_path: Path, topic: str) -> str:
+    text = spec_path.read_text(errors="replace").strip()
+    if is_review_topic(topic, text):
+        return bounded_or_omitted(neutral_review_spec(text, spec_path), spec_path)
+
+    return bounded_or_omitted(text, spec_path)
 
 
 def main() -> None:

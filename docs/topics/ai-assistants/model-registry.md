@@ -12,15 +12,16 @@ Use when adding a model, changing reasoning/cost metadata, or understanding how 
 
 Source of truth: [`home/.chezmoidata/ai_models.yaml`](../../../home/.chezmoidata/ai_models.yaml). It holds three sections — `litellm_models` and `azure_models` (each a list of model dicts), plus `agent_review_models`, the review-lane model registry: per-harness `lanes`/`verifier` values rendered into the `/agent-review` subagent profile frontmatter (the verifier is a different model family than `lanes`, paired by review here rather than inferred at runtime). The model-dict fields:
 
-| Field             | Purpose                                                          |
-| ----------------- | ---------------------------------------------------------------- |
-| `id`              | Provider-qualified model id (e.g. `llm-gateway/claude-opus-4-7`) |
-| `name`            | Human-readable display label                                     |
-| `reasoning`       | Whether the model supports a thinking/reasoning budget           |
-| `thinkingBudgets` | Named token budgets (`minimal`/`low`/`medium`/`high`/`xhigh`)    |
-| `contextWindow`   | Max context tokens                                               |
-| `maxTokens`       | Max output tokens                                                |
-| `cost`            | Per-model `input`/`output`/`cacheRead`/`cacheWrite` pricing      |
+| Field                     | Purpose                                                          |
+| ------------------------- | ---------------------------------------------------------------- |
+| `id`                      | Provider-qualified model id (e.g. `llm-gateway/claude-opus-4-7`) |
+| `name`                    | Human-readable display label                                     |
+| `reasoning`               | Whether the model supports a thinking/reasoning budget           |
+| `supportsReasoningEffort` | Whether clients may send an explicit reasoning-effort control    |
+| `thinkingBudgets`         | Named token budgets (`minimal`/`low`/`medium`/`high`/`xhigh`)    |
+| `contextWindow`           | Max context tokens                                               |
+| `maxTokens`               | Max output tokens                                                |
+| `cost`                    | Per-model `input`/`output`/`cacheRead`/`cacheWrite` pricing      |
 
 [`scripts/ai_models.py`](../../../scripts/ai_models.py) parses these sections (dependency-free), and [`scripts/model_display.py`](../../../scripts/model_display.py) builds the shared display-name format (`<name> [reasoning-emoji] [(cost)] (LiteLLM)`).
 
@@ -34,7 +35,9 @@ Source of truth: [`home/.chezmoidata/ai_models.yaml`](../../../home/.chezmoidata
 
 These run inside the per-tool merge hooks (`run_onchange_after_07-merge-pi-config.sh.tmpl`, `run_onchange_after_07-merge-opencode-config.sh.tmpl`). See [Tool configs](tool-configs/index.md).
 
-Ralph also exposes Pi model choices from curated allowlists in [`scripts/ralph.py`](../../../scripts/ralph.py) and [`tools/ralph-tui/internal/state/models.go`](../../../tools/ralph-tui/internal/state/models.go). Keep their `llm-gateway/*` entries in sync with `litellm_models[*].id` when adding or retiring LiteLLM gateway models.
+The Azure AI-backed GPT-5.5 and GPT-5.6 LiteLLM groups return reasoning output but reject Chat Completions requests that combine function tools with an explicit `reasoning_effort`. Their registry entries therefore set `supportsReasoningEffort: false`: Pi renders `compat.supportsReasoningEffort: false`, while the templated OpenCode plugin [`litellm-compat.ts.tmpl`](../../../home/dot_config/opencode/plugins/litellm-compat.ts.tmpl) renders the same model set, removes the unsupported effort option, and asks LiteLLM to drop unsupported compatibility parameters such as `tool_choice`. This matches `,copilot-litellm`, whose working tool-call payload omits `reasoning_effort`.
+
+Ralph exposes Pi model choices from curated allowlists in [`scripts/ralph.py`](../../../scripts/ralph.py) and [`tools/ralph-tui/internal/state/models.go`](../../../tools/ralph-tui/internal/state/models.go). The LiteLLM fallback in [`__comma_provider_models.fish`](../../../home/dot_config/fish/functions/readonly___comma_provider_models.fish) mirrors the same IDs for shell completion when the live gateway cannot be queried. Keep every hard-coded `llm-gateway/*` mirror in sync with `litellm_models[*].id` when adding or retiring gateway models.
 
 ## LiteLLM integration (work profile)
 

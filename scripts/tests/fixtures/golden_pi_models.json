@@ -54,6 +54,9 @@
           "contextWindow": 100000,
           "maxTokens": 8192,
           "reasoning": true,
+          "compat": {
+            "supportsReasoningEffort": false
+          },
           "thinkingBudgets": {
             "minimal": 1024,
             "high": 32768

@@ -43,24 +43,32 @@ def collapse(text: str, max_chars: int) -> str:
 
 
 def apply_hybrid_floor(rows: list) -> list:
-    """Absolute top-cosine gate, then tail trim relative to the top hit.
+    """Absolute top-cosine gate, then tail trim relative to the best hit.
 
-    If the best hit is not semantically close to the prompt, nothing in the KB
-    is relevant — suppress the whole block. rows[0] always survives the tail
-    trim; rows missing cosine fail open.
+    Hybrid rows are fused-rank order (RRF + MMR), NOT best-cosine-first, so the
+    gate/floor must scan every row's cosine_score for the best one rather than
+    assume rows[0] holds it. If the best available cosine is not semantically
+    close to the prompt, nothing in the KB is relevant — suppress the whole
+    block. Otherwise trim on a floor relative to that best score, preserving
+    the original fused/MMR presentation order (no reordering by cosine). Rows
+    missing cosine fail open on the tail trim; an all-missing row set fails the
+    absolute gate (no evidence of relevance to gate on).
     """
     if not rows:
         return []
-    top = rows[0].get("cosine_score")
-    if top is None or top < PERTURN_MIN_TOP_COSINE:
+    cosines = [row.get("cosine_score") for row in rows if isinstance(row.get("cosine_score"), (int, float))]
+    if not cosines:
+        return []
+    top = max(cosines)
+    if top < PERTURN_MIN_TOP_COSINE:
         return []
     if len(rows) <= 1:
         return rows
     floor = top * PERTURN_COSINE_FLOOR_FRACTION
-    kept = [rows[0]]
-    for row in rows[1:]:
+    kept = []
+    for row in rows:
         cosine = row.get("cosine_score")
-        if cosine is None or cosine >= floor:
+        if not isinstance(cosine, (int, float)) or cosine >= floor:
             kept.append(row)
     return kept
 

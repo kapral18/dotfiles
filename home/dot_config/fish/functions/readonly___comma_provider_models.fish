@@ -25,6 +25,9 @@ function __comma_provider_models --argument-names provider
                 'llm-gateway/gemini-3.1-pro-preview-customtools' \
                 llm-gateway/claude-haiku-4-5 \
                 'llm-gateway/Kimi-K2.6' \
+                'llm-gateway/gpt-5.6-luna' \
+                'llm-gateway/gpt-5.6-terra' \
+                'llm-gateway/gpt-5.6-sol' \
                 'llm-gateway/gpt-5.5' \
                 llm-gateway/claude-opus-4-8 \
                 llm-gateway/claude-sonnet-5 \

@@ -33,8 +33,8 @@
     ],
     "beforeShellExecution": [
       {
-        "command": "$HOME/.agents/hooks/gemini-git-gate.sh",
-        "matcher": "git\\s+(commit|push)",
+        "command": "$HOME/.agents/hooks/gemini-git-gate.py",
+        "matcher": "\\bgit\\b",
         "failClosed": true
       }
     ]

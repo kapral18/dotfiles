@@ -135,23 +135,30 @@ function bm25Relevance(row: Capsule): number | null {
 
 // Drop hits whose relevance is far below the best hit's. Keeps the top hit always;
 // rows missing the score field (shouldn't happen for the active mode) are kept so a
-// scoring gap never silently swallows everything. Assumes rows are best-first.
+// scoring gap never silently swallows everything. bm25 mode assumes rows are
+// best-first (single-signal ranking); hybrid mode does NOT (see below).
 function applyRelevanceFloor(rows: Capsule[], mode: SearchMode): Capsule[] {
   if (!rows.length) return rows
   // Absolute top-hit gate (hybrid/per-turn only): if the best hit isn't semantically
   // close to the query, nothing in the KB is relevant — suppress the whole block rather
   // than inject a cluster of equally-irrelevant capsules the relative floor would keep.
+  //
+  // Hybrid rows are fused-rank order (RRF + MMR), NOT best-cosine-first, so rows[0] is
+  // not necessarily the best cosine — scan every row for the best available cosine
+  // instead. Rows missing cosine_score are excluded from the max (no evidence), but
+  // still fail-open in the tail trim below.
   if (mode === "hybrid") {
-    const topCosine = rows[0]?.cosine_score
-    if (topCosine == null || topCosine < PERTURN_MIN_TOP_COSINE) return []
+    const cosines = rows.map((row) => row.cosine_score).filter((c): c is number => typeof c === "number")
+    if (!cosines.length) return []
+    const topCosine = Math.max(...cosines)
+    if (topCosine < PERTURN_MIN_TOP_COSINE) return []
     if (rows.length <= 1) return rows
-    // Tail trim relative to the top hit's cosine. rrf_score is rank-flat in hybrid, so
-    // the rrf relative floor below cannot separate on-topic from cross-domain hits;
-    // cosine can. Always keeps rows[0] (already passed the absolute gate) and any row
-    // missing cosine (fail-open).
+    // Tail trim relative to the best cosine. rrf_score is rank-flat in hybrid, so the
+    // rrf relative floor below cannot separate on-topic from cross-domain hits; cosine
+    // can. Preserves the original fused/MMR presentation order — filtering never
+    // reorders rows. Any row missing cosine is kept (fail-open).
     const cosineFloor = topCosine * PERTURN_COSINE_FLOOR_FRACTION
-    return rows.filter((row, i) => {
-      if (i === 0) return true
+    return rows.filter((row) => {
       const c = row.cosine_score
       return c == null || c >= cosineFloor
     })

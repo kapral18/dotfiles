@@ -82,7 +82,9 @@ Bounded-context rules:
 | Feature/topic worktrees keep `current` continuity        | Preserve useful project continuity in isolated worktrees      |
 | Review topics run clean-room by default                  | Reduce bias in re-reviews                                     |
 
-On shared branches (`main`, `master`, `dev`, `develop`, `trunk`) without a session binding, `session_context.py` injects `### Topic Buckets`. The agent should bind automatically when one bucket clearly matches, create a new bucket when none matches, and ask only when multiple buckets plausibly match. `,agent-memory select` prints the selected spec/worklog context immediately and binds later session-start hooks to the same topic. Topic buckets are listed newest-first by the most recent spec/worklog update. Each entry includes a short summary pulled from `summary:` (preferred) or `target:`/`action:` lines in the topic spec so the list is scannable at a glance. Add a `summary: <one-line label>` to the topic spec to persist a concise description alongside the topic name.
+`session_context.py`'s `sessionStart` injection and `,agent-memory select`'s printed context are two independent clean-room entrypoints that apply the same rules: text exceeding the character bound is never truncated — it is omitted wholesale and replaced with a pointer to the spec file — and review topics (topic starts with `review`, or the spec's first `target:` line names a `PR`) have prior `verified facts`/`findings`/`verdict`/etc. sections and the worklog tail stripped **before** that bound is checked, so a sanitized-but-still-oversized review body is also omitted with a pointer rather than injected verbatim. `scripts/agent_memory.py` cannot import `session_context.py` directly — it always runs from the chezmoi source tree via the `,agent-memory` launcher, while `session_context.py` is deployed standalone to `~/.agents/hooks/` and only imports its sibling `hook_common.py` — so the clean-room predicate/renderer (`is_review_topic`, `neutral_review_spec`, `bounded_or_omitted`, the size bound) is mirrored in both files with an explicit "change both together" comment rather than shared through a single import.
+
+On shared branches (`main`, `master`, `dev`, `develop`, `trunk`) without a session binding, `session_context.py` injects `### Topic Buckets`. The agent should bind automatically when one bucket clearly matches, create a new bucket when none matches, and ask only when multiple buckets plausibly match. `,agent-memory select` prints the selected spec/worklog context immediately (clean-room-sanitized, same as above) and binds later session-start hooks to the same topic. Topic buckets are listed newest-first by the most recent spec/worklog update. Each entry includes a short summary pulled from `summary:` (preferred) or `target:`/`action:` lines in the topic spec so the list is scannable at a glance. Add a `summary: <one-line label>` to the topic spec to persist a concise description alongside the topic name.
 
 Force a clean session with either:
 
@@ -116,6 +118,7 @@ Verification:
 
 ```bash
 python3 scripts/tests/test_agent_hooks.py
+python3 -m unittest discover -s scripts -t scripts -k test_agent_memory
 chezmoi diff --no-pager
 chezmoi apply --force --no-tty
 ,agent-memory status --session-id <id>

@@ -58,9 +58,61 @@ litellm_models:
       output: 3.5
       cacheRead: 0
       cacheWrite: 0
+  - id: "llm-gateway/gpt-5.6-luna"
+    name: "GPT-5.6 Luna"
+    reasoning: true
+    supportsReasoningEffort: false
+    thinkingBudgets:
+      minimal: 1024
+      low: 4096
+      medium: 16384
+      high: 32768
+      xhigh: 65536
+    contextWindow: 328000
+    maxTokens: 128000
+    cost:
+      input: 1
+      output: 6
+      cacheRead: 0.1
+      cacheWrite: 1.25
+  - id: "llm-gateway/gpt-5.6-terra"
+    name: "GPT-5.6 Terra"
+    reasoning: true
+    supportsReasoningEffort: false
+    thinkingBudgets:
+      minimal: 1024
+      low: 4096
+      medium: 16384
+      high: 32768
+      xhigh: 65536
+    contextWindow: 400000
+    maxTokens: 128000
+    cost:
+      input: 2.5
+      output: 15
+      cacheRead: 0.25
+      cacheWrite: 3.12
+  - id: "llm-gateway/gpt-5.6-sol"
+    name: "GPT-5.6 Sol"
+    reasoning: true
+    supportsReasoningEffort: false
+    thinkingBudgets:
+      minimal: 1024
+      low: 4096
+      medium: 16384
+      high: 32768
+      xhigh: 65536
+    contextWindow: 400000
+    maxTokens: 128000
+    cost:
+      input: 5
+      output: 30
+      cacheRead: 0.5
+      cacheWrite: 6.25
   - id: "llm-gateway/gpt-5.5"
     name: "GPT-5.5"
     reasoning: true
+    supportsReasoningEffort: false
     thinkingBudgets:
       minimal: 1024
       low: 4096

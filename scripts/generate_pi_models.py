@@ -69,6 +69,9 @@ def _to_pi_model(m, provider_label, base_url):
         if k in m:
             model[k] = m[k]
 
+    if m.get("supportsReasoningEffort") is False:
+        model["compat"] = {"supportsReasoningEffort": False}
+
     return model
 
 

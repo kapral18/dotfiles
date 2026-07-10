@@ -59,6 +59,37 @@ def bind_session_topic(spec_dir: Path, session_id: str, topic: str) -> None:
     (spec_dir / f".session-topic-{session_id}.txt").write_text(topic + "\n")
 
 
+def run_perturn_recall(tmp: str, payload: dict, env: dict) -> dict:
+    """Run executable_perturn_recall.py under its deployed (unprefixed) name.
+
+    perturn_recall.py does `from session_context import context_disabled`, an
+    unprefixed sibling import that only resolves once both hook files sit
+    alongside each other using their deployed names (chezmoi drops the
+    `executable_` prefix on install) — mirrors the rename dance in
+    test_warmstart_and_perturn_share_conversation_seen_state.
+    """
+    deployed_hooks = Path(tmp) / "deployed-hooks"
+    if not deployed_hooks.exists():
+        deployed_hooks.mkdir()
+        for source, target in (
+            ("hook_common.py", "hook_common.py"),
+            ("executable_session_context.py", "session_context.py"),
+            ("executable_perturn_recall.py", "perturn_recall.py"),
+        ):
+            (deployed_hooks / target).write_text((HOOKS / source).read_text())
+    result = subprocess.run(
+        [sys.executable, str(deployed_hooks / "perturn_recall.py")],
+        input=json.dumps(payload),
+        capture_output=True,
+        text=True,
+        cwd=str(REPO),
+        env=env,
+    )
+    if result.returncode != 0:
+        raise AssertionError(f"perturn_recall.py failed:\nSTDOUT={result.stdout}\nSTDERR={result.stderr}")
+    return json.loads(result.stdout or "{}")
+
+
 class TestAgentHooks(unittest.TestCase):
     """WHEN Cursor CLI lifecycle hooks run."""
 
@@ -371,6 +402,51 @@ class TestAgentHooks(unittest.TestCase):
             assert "Recent Hook Worklog" not in context
             assert "review clean-room mode" in context
 
+    def test_session_context_bounds_oversized_review_spec_after_sanitizing(self):
+        # Regression guard for memory-review-bypass follow-up (fix-review-context-bound):
+        # is_review_topic()'s sanitized body must still be checked against
+        # MAX_SPEC_CHARS. A review spec whose pre-conclusion body alone exceeds the
+        # bound must NOT be injected verbatim just because it is "already sanitized" —
+        # it must fall through to the same wholesale omission-with-pointer contract as
+        # an oversized normal-topic spec, never a partial/truncated dump.
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir.mkdir(parents=True, exist_ok=True)
+            bind_session_topic(spec_dir, "review-big-session", "review-big")
+            (spec_dir / "review-big.txt").write_text(
+                "\n".join(
+                    [
+                        "topic: review-big",
+                        "target: PR owner/repo#999",
+                        "x" * 4000,
+                        "",
+                        "verified facts:",
+                        "  - prior conclusion should never appear",
+                        "findings:",
+                        "  1. stale finding should never appear",
+                        "verdict: Approve",
+                    ]
+                )
+            )
+            (spec_dir / "review-big.worklog.jsonl").write_text('{"line": "prior finding"}\n')
+
+            payload = {
+                "hook_event_name": "sessionStart",
+                "workspace_roots": [tmp],
+                "session_id": "review-big-session",
+            }
+            result = run_hook("executable_session_context.py", payload)
+            context = result["additional_context"]
+
+            assert "Active topic spec omitted" in context
+            assert "x" * 4000 not in context
+            assert "prior conclusion should never appear" not in context
+            assert "stale finding should never appear" not in context
+            assert "verdict: Approve" not in context
+            assert "Recent Hook Worklog" not in context
+            assert len(context) < 3000
+
     def test_session_context_appends_aikb_reminder_with_named_topic(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = str(Path(tmp).resolve())
@@ -666,6 +742,139 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
             assert json.loads(seen_path.read_text()) == ["capsule-a"]
             assert perturn == {}
 
+    def test_perturn_recall_hybrid_gate_uses_best_cosine_and_preserves_fused_order(self):
+        # Hybrid rows are RRF+MMR fused-rank order, not best-cosine-first: row0 has no
+        # cosine at all and a later row is the strongest hit. The gate must scan every
+        # row for the best available cosine (not assume rows[0] holds it) to recall, and
+        # the surviving rows must keep their original fused presentation order.
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = str(Path(tmp).resolve())
+            env = make_aikb_stub(
+                Path(tmp),
+                [
+                    {
+                        "id": "capsule-first",
+                        "title": "First fused row missing cosine",
+                        "kind": "note",
+                        "scope": "project",
+                        "workspace_path": workspace,
+                    },
+                    {
+                        "id": "capsule-second",
+                        "title": "Second fused row strongest cosine",
+                        "kind": "gotcha",
+                        "scope": "project",
+                        "workspace_path": workspace,
+                        "cosine_score": 0.9,
+                    },
+                    {
+                        "id": "capsule-third",
+                        "title": "Third fused row within floor",
+                        "kind": "gotcha",
+                        "scope": "project",
+                        "workspace_path": workspace,
+                        "cosine_score": 0.8,
+                    },
+                    {
+                        "id": "capsule-fourth",
+                        "title": "Fourth fused row below floor",
+                        "kind": "gotcha",
+                        "scope": "project",
+                        "workspace_path": workspace,
+                        "cosine_score": 0.5,
+                    },
+                ],
+            )
+
+            result = run_perturn_recall(
+                tmp,
+                {
+                    "hook_event_name": "UserPromptSubmit",
+                    "workspace_roots": [tmp],
+                    "prompt": "recall guidance for this hybrid gate test",
+                },
+                env,
+            )
+
+            context = result["hookSpecificOutput"]["additionalContext"]
+            first_pos = context.index("First fused row missing cosine")
+            second_pos = context.index("Second fused row strongest cosine")
+            third_pos = context.index("Third fused row within floor")
+            assert first_pos < second_pos < third_pos
+            assert "Fourth fused row below floor" not in context
+
+    def test_perturn_recall_hybrid_gate_suppresses_below_absolute_threshold(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = str(Path(tmp).resolve())
+            env = make_aikb_stub(
+                Path(tmp),
+                [
+                    {
+                        "id": "capsule-a",
+                        "title": "Weak hit one",
+                        "kind": "note",
+                        "scope": "project",
+                        "workspace_path": workspace,
+                        "cosine_score": 0.4,
+                    },
+                    {
+                        "id": "capsule-b",
+                        "title": "Weak hit two",
+                        "kind": "note",
+                        "scope": "project",
+                        "workspace_path": workspace,
+                        "cosine_score": 0.45,
+                    },
+                ],
+            )
+
+            result = run_perturn_recall(
+                tmp,
+                {
+                    "hook_event_name": "UserPromptSubmit",
+                    "workspace_roots": [tmp],
+                    "prompt": "recall guidance for this hybrid gate test",
+                },
+                env,
+            )
+
+            assert result == {}
+
+    def test_perturn_recall_hybrid_gate_suppresses_when_all_cosine_scores_missing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = str(Path(tmp).resolve())
+            env = make_aikb_stub(
+                Path(tmp),
+                [
+                    {
+                        "id": "capsule-a",
+                        "title": "No cosine one",
+                        "kind": "note",
+                        "scope": "project",
+                        "workspace_path": workspace,
+                    },
+                    {
+                        "id": "capsule-b",
+                        "title": "No cosine two",
+                        "kind": "note",
+                        "scope": "project",
+                        "workspace_path": workspace,
+                    },
+                ],
+            )
+
+            result = run_perturn_recall(
+                tmp,
+                {
+                    "hook_event_name": "UserPromptSubmit",
+                    "workspace_roots": [tmp],
+                    "prompt": "recall guidance for this hybrid gate test",
+                },
+                env,
+            )
+
+            assert result == {}
+
     def test_session_context_warmstart_unions_prior_seen_ids(self):
         # A resume/compact fires a second warm start in the same conversation.
         # The seen-file must load-union-save so capsules already recorded (by an
@@ -838,6 +1047,88 @@ console.log(JSON.stringify({ first, second, seen, statusCalls }));
                 ["status", "--json", "--workspace", "/tmp/workspace", "--session-id", "pi/session"],
                 ["status", "--json", "--workspace", "/tmp/workspace", "--session-id", "pi/session"],
             ]
+
+    def test_pi_recall_hybrid_gate_uses_best_cosine_and_preserves_fused_order(self):
+        # Mirrors test_perturn_recall_hybrid_gate_uses_best_cosine_and_preserves_fused_order
+        # (executable_perturn_recall.py): pi's applyRelevanceFloor must observe the same
+        # per-turn hybrid contract — gate on the BEST cosine across all fused rows (not
+        # rows[0]), and never reorder the surviving rows by cosine.
+        extension = REPO / "home/dot_pi/agent/extensions/ai-kb-recall.ts"
+        with tempfile.TemporaryDirectory() as tmp:
+            # seenFileFor derives the recall-seen path from dirname(specFile), so route it
+            # into this test's own tmpdir rather than a fixed path shared across test runs
+            # (a fixed path would persist real .recall-seen-*.json state across invocations).
+            spec_file = str(Path(tmp) / "hybrid-memory.txt")
+            script = """
+const mod = await import(process.argv[1]);
+const specFile = process.argv[2];
+const workspace = "/tmp/workspace";
+const sessionId = "pi/hybrid-session";
+const rows = [
+  { id: "capsule-first", title: "First fused row missing cosine", kind: "note", scope: "project", workspace_path: workspace },
+  { id: "capsule-second", title: "Second fused row strongest cosine", kind: "gotcha", scope: "project", workspace_path: workspace, cosine_score: 0.9 },
+  { id: "capsule-third", title: "Third fused row within floor", kind: "gotcha", scope: "project", workspace_path: workspace, cosine_score: 0.8 },
+  { id: "capsule-fourth", title: "Fourth fused row below floor", kind: "gotcha", scope: "project", workspace_path: workspace, cosine_score: 0.5 }
+];
+function makePi() {
+  const handlers = {};
+  return {
+    handlers,
+    async exec(command, args) {
+      if (command === ",ai-kb" && args[0] === "--help") return { code: 0, killed: false, stdout: "" };
+      if (command === ",agent-memory") {
+        return {
+          code: 0,
+          killed: false,
+          stdout: JSON.stringify({
+            workspace,
+            selected_topic: "current",
+            session_key: "hybrid-session",
+            is_named_topic: false,
+            spec_file: specFile,
+            spec_exists: false
+          })
+        };
+      }
+      if (command === ",ai-kb" && args[0] === "search" && args.includes("hybrid")) {
+        return { code: 0, killed: false, stdout: JSON.stringify(rows) };
+      }
+      if (command === "cat") return { code: 1, killed: false, stdout: "" };
+      throw new Error(`unexpected exec: ${command} ${args.join(" ")}`);
+    },
+    on(event, handler) { handlers[event] = handler; }
+  };
+}
+const pi = makePi();
+await mod.default(pi);
+const result = await pi.handlers.before_agent_start(
+  { prompt: "recall guidance for this hybrid gate test" },
+  {
+    cwd: workspace,
+    getContextUsage() { return null; },
+    sessionManager: { getSessionId() { return sessionId; } }
+  }
+);
+console.log(JSON.stringify({ result }));
+"""
+            env = dict(os.environ)
+            env["NODE_NO_WARNINGS"] = "1"
+            result = subprocess.run(
+                ["node", "--input-type=module", "-e", script, str(extension), spec_file],
+                cwd=str(REPO),
+                capture_output=True,
+                text=True,
+                env=env,
+                check=True,
+            )
+            payload = json.loads(result.stdout)
+            content = payload["result"]["message"]["content"]
+
+            first_pos = content.index("First fused row missing cosine")
+            second_pos = content.index("Second fused row strongest cosine")
+            third_pos = content.index("Third fused row within floor")
+            assert first_pos < second_pos < third_pos
+            assert "Fourth fused row below floor" not in content
 
 
 if __name__ == "__main__":

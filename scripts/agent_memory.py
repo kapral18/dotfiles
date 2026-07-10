@@ -22,6 +22,22 @@ TOPIC_SUFFIXES = (
 )
 SELECT_CONTEXT_WORKLOG_LINES = 12
 SELECT_CONTEXT_WORKLOG_CHARS = 3000
+# Mirrors MAX_SPEC_CHARS + REVIEW_CONCLUSION_HEADINGS in
+# home/exact_dot_agents/exact_hooks/executable_session_context.py — change both
+# together. `,agent-memory select` is a second clean-room entrypoint (agent_memory.py
+# cannot import session_context.py: it always runs from the repo source via the
+# `,agent-memory` launcher, while session_context.py is deployed standalone to
+# ~/.agents/hooks/ and imports only its sibling hook_common.py).
+SELECT_CONTEXT_MAX_SPEC_CHARS = 2500
+REVIEW_CONCLUSION_HEADINGS = (
+    "verified facts",
+    "findings",
+    "verdict",
+    "inline comments",
+    "pending review draft",
+    "things checked",
+    "net",
+)
 
 
 def safe_topic(value: str) -> str:
@@ -116,13 +132,79 @@ def transcript_tail(
     return "\n".join(reversed(tail))
 
 
+def is_review_topic(topic: str, text: str) -> bool:
+    """Mirrors session_context.py's is_review_topic — change both together."""
+    return topic.startswith("review") or "\ntarget: PR " in f"\n{text}"
+
+
+def neutral_review_spec(text: str, spec_path: Path) -> str:
+    """Mirrors session_context.py's neutral_review_spec — change both together.
+
+    Strips prior conclusions/findings/verdicts (everything from the first
+    conclusion heading onward) so a review-topic session starts clean-room,
+    whether that session begins via sessionStart or `,agent-memory select`.
+    """
+    lines: list[str] = []
+    for line in text.splitlines():
+        normalized = line.strip().rstrip(":").lower()
+        if normalized in REVIEW_CONCLUSION_HEADINGS:
+            break
+        lines.append(line)
+
+    body = "\n".join(lines).strip()
+    if not body:
+        body = f"Review topic spec exists at `{spec_path}`."
+
+    return (
+        body + "\n\n[review clean-room mode: prior findings, verdicts, verified-facts blocks, "
+        f"and worklog tails are omitted from startup context. Read `{spec_path}` manually "
+        "only if you intentionally want prior-session conclusions.]"
+    )
+
+
+def bounded_or_omitted(text: str, spec_path: Path) -> str:
+    """Mirrors session_context.py's bounded_or_omitted — change both together.
+
+    Applies the shared oversized-spec contract to already-final text (review
+    text must already be sanitized by neutral_review_spec() before reaching
+    here). Content is never truncated mid-context: once it exceeds the bound
+    it is replaced wholesale with a pointer, so a sanitized-but-still-huge
+    review body cannot leak past the size limit just because it is "already
+    clean".
+    """
+    if len(text) <= SELECT_CONTEXT_MAX_SPEC_CHARS:
+        return text
+
+    return (
+        f"Active topic spec omitted because it is {len(text)} characters, "
+        f"exceeding the {SELECT_CONTEXT_MAX_SPEC_CHARS}-character injection limit. "
+        f"Read `{spec_path}` before relying on prior session context."
+    )
+
+
+def bounded_spec_text(text: str, spec_path: Path, topic: str) -> tuple[str, bool]:
+    """Apply the same clean-room + size-bound rules as session_context.py's spec_context.
+
+    Returns (rendered text, is_review) so callers can also gate the worklog on
+    is_review without re-deriving it from raw text.
+    """
+    text = text.strip()
+    is_review = is_review_topic(topic, text)
+    if is_review:
+        return bounded_or_omitted(neutral_review_spec(text, spec_path), spec_path), True
+
+    return bounded_or_omitted(text, spec_path), False
+
+
 def selected_context(spec_dir: Path, topic: str) -> str:
     spec_file = spec_dir / f"{topic}.txt"
     worklog_file = spec_dir / f"{topic}.worklog.jsonl"
     try:
-        spec_text = spec_file.read_text(errors="replace").strip()
+        spec_text_source = spec_file.read_text(errors="replace")
     except OSError:
-        spec_text = ""
+        spec_text_source = ""
+
+    spec_text, is_review = bounded_spec_text(spec_text_source, spec_file, topic)
 
     lines = [
         "### Selected Topic Context",
@@ -133,7 +215,7 @@ def selected_context(spec_dir: Path, topic: str) -> str:
         spec_text or f"Topic spec exists at `{spec_file}`.",
     ]
 
-    worklog = transcript_tail(worklog_file)
+    worklog = "" if is_review else transcript_tail(worklog_file)
     if worklog:
         lines.extend(["", "#### Recent Hook Worklog", worklog])
 

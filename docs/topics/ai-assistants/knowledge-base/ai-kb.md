@@ -14,7 +14,7 @@ title: AI knowledge base
 | Capsules       | `~/.local/share/ai-kb/capsules/<id>.md`                                            |
 | SQLite mirror  | `~/.local/share/ai-kb/kb.sqlite3`                                                  |
 
-Capsule markdown is canonical. The SQLite mirror is rebuilt when schema changes: if `CAPSULE_COLUMNS` drifts, `init()` drops `capsules` / `capsule_fts` / `kb_meta` and recreates them. Markdown sidecars survive, so `,ai-kb ingest` can rehydrate.
+Capsule markdown is canonical for authored capsule content/identity metadata. Mutable curation/runtime state (`superseded_by`, `decay_score`, embeddings, `updated_at`) lives in SQLite. When `CAPSULE_COLUMNS` drifts, `init()` transactionally rebuilds `capsules` from sidecars and overlays recoverable SQL-only state from the pre-drop table; when only `capsule_fts` / `kb_meta` drift, it rebuilds those derived tables from the current `capsules` rows. If a sidecar is malformed, rebuild fails closed before mutation instead of silently returning an empty KB.
 
 Capsule shape:
 

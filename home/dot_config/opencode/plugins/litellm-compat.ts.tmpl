@@ -1,0 +1,21 @@
+import type { Plugin } from "@opencode-ai/plugin"
+
+const modelsWithoutExplicitReasoningEffort = new Set([
+{{- range .litellm_models }}
+{{- if eq (index . "supportsReasoningEffort") false }}
+  {{ printf "%q" .id }},
+{{- end }}
+{{- end }}
+])
+
+export const LitellmCompatPlugin: Plugin = async () => ({
+  "chat.params": async (input, output) => {
+    if (input.model.providerID !== "litellm") return
+    if (!modelsWithoutExplicitReasoningEffort.has(input.model.api.id)) return
+
+    // Azure AI chat completions reject explicit effort, and some aliases reject tool_choice.
+    delete output.options.reasoningEffort
+    delete output.options.reasoning_effort
+    output.options.drop_params = true
+  },
+})

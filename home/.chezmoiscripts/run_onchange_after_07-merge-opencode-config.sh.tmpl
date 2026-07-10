@@ -10,6 +10,8 @@ set -euo pipefail
 # opencode config desired hash (non-work): {{ include "dot_config/opencode/readonly_opencode.personal.jsonc" | sha256sum }}
 {{- end }}
 # mcp_servers hash: {{ include ".chezmoidata/mcp_servers.yaml" | sha256sum }}
+# inject_mcp_into_opencode_jsonc.py hash: {{ include "../scripts/inject_mcp_into_opencode_jsonc.py" | sha256sum }}
+# mcp_registry.py hash: {{ include "../scripts/mcp_registry.py" | sha256sum }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
 # shellcheck source=../../../scripts/chezmoi_lib.sh

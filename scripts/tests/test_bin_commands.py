@@ -5,15 +5,19 @@ from __future__ import annotations
 
 import base64
 import contextlib
+import hashlib
+import http.server
 import importlib.util
 import io
 import json
 import os
 import re
 import shlex
+import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from importlib.machinery import SourceFileLoader
@@ -50,6 +54,16 @@ def _load_unwrap_md_command():
     spec = importlib.util.spec_from_loader("unwrap_md_command", loader)
     if spec is None or spec.loader is None:
         raise AssertionError("could not load unwrap-md command module")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _load_mcp_token_module():
+    loader = SourceFileLoader("mcp_token_main", str(MCP_TOKEN_COMMAND))
+    spec = importlib.util.spec_from_loader("mcp_token_main", loader)
+    if spec is None or spec.loader is None:
+        raise AssertionError("could not load ,mcp-token command module")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -716,6 +730,516 @@ class TestMcpTokenCommand(unittest.TestCase):
         assert result.returncode == 1
         assert "Traceback" not in result.stderr
         assert "cursor-agent not found" in result.stderr
+
+
+class _LivenessHandler(http.server.BaseHTTPRequestHandler):
+    """Classifies an MCP ``initialize`` POST by its bearer token.
+
+    ``status_by_token`` maps an access token to the HTTP status the fake Slack
+    MCP endpoint should return (200 live, 401/403 revoked, 500 server error).
+    Unknown tokens are treated as revoked (401). Every hit is counted so tests
+    can assert the plain-read / JWT paths never touch the network.
+    """
+
+    status_by_token: dict[str, int] = {}
+    hits: list[str] = []
+
+    def do_POST(self):  # noqa: N802
+        length = int(self.headers.get("Content-Length", "0") or "0")
+        self.rfile.read(length)
+        auth = self.headers.get("Authorization", "")
+        token = auth[len("Bearer ") :] if auth.startswith("Bearer ") else ""
+        type(self).hits.append(token)
+        code = type(self).status_by_token.get(token, 401)
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        # A response body the command must never echo to stdout/stderr.
+        self.wfile.write(b'{"jsonrpc":"2.0","id":1,"result":{"serverInfo":{"name":"slack"}}}')
+
+    def log_message(self, *args):  # silence access logging
+        return
+
+
+@contextlib.contextmanager
+def _liveness_server(status_by_token: dict[str, int]):
+    """Run the classifying MCP endpoint on localhost; yield (url, handler)."""
+
+    class Handler(_LivenessHandler):
+        pass
+
+    Handler.status_by_token = dict(status_by_token)
+    Handler.hits = []
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{port}/mcp", Handler
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
+
+
+class _SinkHandler(http.server.BaseHTTPRequestHandler):
+    """Records every request that reaches a redirect target (a second origin).
+
+    The liveness probe must never follow a 3xx and resend the bearer here; each
+    hit captures the method and Authorization header so a test can prove none of
+    the token ever crossed to this origin.
+    """
+
+    hits: list[dict[str, str]] = []
+
+    def _record(self, method: str) -> None:
+        type(self).hits.append({"method": method, "authorization": self.headers.get("Authorization", "")})
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(b'{"jsonrpc":"2.0","id":1,"result":{"serverInfo":{"name":"sink"}}}')
+
+    def do_POST(self):  # noqa: N802
+        length = int(self.headers.get("Content-Length", "0") or "0")
+        self.rfile.read(length)
+        self._record("POST")
+
+    def do_GET(self):  # noqa: N802
+        self._record("GET")
+
+    def log_message(self, *args):  # silence access logging
+        return
+
+
+@contextlib.contextmanager
+def _redirecting_endpoint(status: int = 302):
+    """Yield (probe_url, sink_handler); probe_url answers with a 3xx to the sink.
+
+    ``probe_url`` is the URL the command reads from ``~/.cursor/mcp.json``. It
+    responds to the probe with an HTTP *status* redirect whose ``Location`` is a
+    different origin (the sink). A safe probe treats the 3xx as UNKNOWN and never
+    contacts the sink; the sink's recorded hits expose a bearer-forwarding leak.
+    """
+
+    class Sink(_SinkHandler):
+        pass
+
+    Sink.hits = []
+    sink = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Sink)
+    sink_url = f"http://127.0.0.1:{sink.server_address[1]}/sink"
+
+    class Redirect(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):  # noqa: N802
+            length = int(self.headers.get("Content-Length", "0") or "0")
+            self.rfile.read(length)
+            self.send_response(status)
+            self.send_header("Location", sink_url)
+            self.end_headers()
+
+        def log_message(self, *args):
+            return
+
+    redirect = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Redirect)
+    probe_url = f"http://127.0.0.1:{redirect.server_address[1]}/mcp"
+    threads = [threading.Thread(target=s.serve_forever, daemon=True) for s in (sink, redirect)]
+    for t in threads:
+        t.start()
+    try:
+        yield probe_url, Sink
+    finally:
+        for s in (sink, redirect):
+            s.shutdown()
+            s.server_close()
+        for t in threads:
+            t.join()
+
+
+class TestMcpTokenLoginLiveness(unittest.TestCase):
+    """WHEN ``,mcp-token <server> --login`` validates opaque-token liveness.
+
+    Opaque tokens (e.g. Slack) can be revoked while the local ledger still pins
+    them as nominally fresh. ``--login`` must probe the ledger-selected token
+    against the server URL from the generated ``~/.cursor/mcp.json`` and recover
+    a live cached alternative or run cursor login, instead of returning a dead
+    token. These are real-seam tests: a local HTTP endpoint classifies tokens,
+    an isolated ``HOME`` holds the caches/ledger/config, and a stub cursor-agent
+    stands in for the browser flow. No network mocks assert the command's own
+    helpers.
+    """
+
+    def _sha(self, token: str) -> str:
+        return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+    def _write_cache(self, home: Path, name: str, server: str, token: str, *, age: float = 0.0) -> None:
+        cache = home / ".cursor/projects" / name / "mcp-auth.json"
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_text(json.dumps({server: {"tokens": {"access_token": token, "expires_in": 3600}}}))
+        if age:
+            when = time.time() - age
+            os.utime(cache, (when, when))
+
+    def _write_mcp_json(self, home: Path, server: str, url: str | None) -> None:
+        cfg = home / ".cursor/mcp.json"
+        cfg.parent.mkdir(parents=True, exist_ok=True)
+        entry: dict[str, object] = {}
+        if url is not None:
+            entry["url"] = url
+        cfg.write_text(json.dumps({"mcpServers": {server: entry}}))
+
+    def _write_ledger(self, home: Path, server: str, token: str, source: str) -> None:
+        state_dir = home / ".cache/mcp-token"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        (state_dir / "opaque-refresh.json").write_text(
+            json.dumps({server: {"source": source, "token_sha256": self._sha(token), "refreshed_at": time.time()}})
+        )
+
+    def _read_ledger(self, home: Path, server: str) -> dict[str, object]:
+        try:
+            with open(home / ".cache/mcp-token/opaque-refresh.json") as f:
+                return json.load(f).get(server, {})
+        except (OSError, ValueError):
+            return {}
+
+    def _stub_cursor_agent(self, bindir: Path, home: Path, server: str, *, writes_token: str | None) -> Path:
+        marker = home / "cursor-agent-ran"
+        lines = ["#!/usr/bin/env bash", f"touch {shlex.quote(str(marker))}"]
+        if writes_token is not None:
+            cache = home / ".cursor/projects/login/mcp-auth.json"
+            payload = json.dumps({server: {"tokens": {"access_token": writes_token, "expires_in": 3600}}})
+            lines += [
+                f"mkdir -p {shlex.quote(str(cache.parent))}",
+                f"cat > {shlex.quote(str(cache))} <<'EOF'\n{payload}\nEOF",
+            ]
+        lines.append("exit 0")
+        agent = bindir / "cursor-agent"
+        agent.write_text("\n".join(lines) + "\n")
+        agent.chmod(0o755)
+        return marker
+
+    def _run(self, home: Path, bindir: Path, args: list[str]) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(MCP_TOKEN_COMMAND), *args],
+            capture_output=True,
+            text=True,
+            env={
+                **os.environ,
+                "HOME": str(home),
+                "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
+            },
+        )
+
+    def _jwt(self, exp: int) -> str:
+        def encode(value: dict[str, object]) -> str:
+            raw = json.dumps(value, separators=(",", ":")).encode()
+            return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+
+        return f"{encode({'alg': 'none'})}.{encode({'exp': exp})}.sig"
+
+    def test_revoked_ledger_token_selects_live_cached_alternative_and_repoints_ledger(self):
+        revoked = "opaque-revoked-ledger"
+        live = "opaque-live-alternative"
+        with _liveness_server({revoked: 401, live: 200}) as (url, handler), tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir = root / "home", root / "bin"
+            home.mkdir()
+            bindir.mkdir()
+            self._write_mcp_json(home, "slack", url)
+            self._write_cache(home, "old", "slack", revoked, age=100)
+            self._write_cache(home, "new", "slack", live, age=10)
+            self._write_ledger(home, "slack", revoked, str(home / ".cursor/projects/old/mcp-auth.json"))
+            marker = self._stub_cursor_agent(bindir, home, "slack", writes_token=None)
+            result = self._run(home, bindir, ["slack", "--login", "--quiet"])
+            cursor_ran = marker.exists()
+            ledger_sha = self._read_ledger(home, "slack").get("token_sha256")
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == live
+        assert not cursor_ran, "cursor-agent must not run when a live cached token exists"
+        assert ledger_sha == self._sha(live)
+        assert revoked not in result.stderr and live not in result.stderr
+
+    def test_live_ledger_token_skips_login(self):
+        live = "opaque-live-ledger"
+        with _liveness_server({live: 200}) as (url, handler), tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir = root / "home", root / "bin"
+            home.mkdir()
+            bindir.mkdir()
+            self._write_mcp_json(home, "slack", url)
+            self._write_cache(home, "p", "slack", live)
+            self._write_ledger(home, "slack", live, str(home / ".cursor/projects/p/mcp-auth.json"))
+            marker = self._stub_cursor_agent(bindir, home, "slack", writes_token=None)
+            result = self._run(home, bindir, ["slack", "--login", "--quiet"])
+            cursor_ran = marker.exists()
+            hits = list(handler.hits)
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == live
+        assert not cursor_ran
+        assert hits == [live], "exactly the ledger token should be probed"
+
+    def test_server_error_retains_nominal_ledger_candidate_without_promoting_alternative(self):
+        nominal = "opaque-nominal-5xx"
+        other = "opaque-other-live"
+        with _liveness_server({nominal: 500, other: 200}) as (url, handler), tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir = root / "home", root / "bin"
+            home.mkdir()
+            bindir.mkdir()
+            self._write_mcp_json(home, "slack", url)
+            self._write_cache(home, "old", "slack", nominal, age=100)
+            self._write_cache(home, "new", "slack", other, age=10)
+            self._write_ledger(home, "slack", nominal, str(home / ".cursor/projects/old/mcp-auth.json"))
+            marker = self._stub_cursor_agent(bindir, home, "slack", writes_token=None)
+            result = self._run(home, bindir, ["slack", "--login", "--quiet"])
+            cursor_ran = marker.exists()
+            ledger_sha = self._read_ledger(home, "slack").get("token_sha256")
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == nominal, "unknown liveness must preserve the nominal ledger token"
+        assert not cursor_ran
+        assert ledger_sha == self._sha(nominal)
+
+    def test_network_error_retains_nominal_ledger_candidate(self):
+        nominal = "opaque-nominal-neterr"
+        # Reserve then release a port so the config URL points at a closed socket.
+        probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        probe.bind(("127.0.0.1", 0))
+        dead_port = probe.getsockname()[1]
+        probe.close()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir = root / "home", root / "bin"
+            home.mkdir()
+            bindir.mkdir()
+            self._write_mcp_json(home, "slack", f"http://127.0.0.1:{dead_port}/mcp")
+            self._write_cache(home, "p", "slack", nominal)
+            self._write_ledger(home, "slack", nominal, str(home / ".cursor/projects/p/mcp-auth.json"))
+            marker = self._stub_cursor_agent(bindir, home, "slack", writes_token=None)
+            result = self._run(home, bindir, ["slack", "--login", "--quiet"])
+            cursor_ran = marker.exists()
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == nominal
+        assert not cursor_ran
+
+    def test_all_revoked_triggers_cursor_login_and_accepts_new_live_token(self):
+        revoked = "opaque-all-revoked"
+        fresh = "opaque-fresh-from-login"
+        with _liveness_server({revoked: 401, fresh: 200}) as (url, handler), tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir = root / "home", root / "bin"
+            home.mkdir()
+            bindir.mkdir()
+            self._write_mcp_json(home, "slack", url)
+            self._write_cache(home, "p", "slack", revoked, age=100)
+            self._write_ledger(home, "slack", revoked, str(home / ".cursor/projects/p/mcp-auth.json"))
+            marker = self._stub_cursor_agent(bindir, home, "slack", writes_token=fresh)
+            result = self._run(home, bindir, ["slack", "--login", "--quiet"])
+            cursor_ran = marker.exists()
+            ledger_sha = self._read_ledger(home, "slack").get("token_sha256")
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == fresh
+        assert cursor_ran, "cursor-agent login must run when every cached token is revoked"
+        assert ledger_sha == self._sha(fresh)
+
+    def test_cursor_login_writing_still_revoked_token_is_not_success(self):
+        revoked = "opaque-revoked-a"
+        still_revoked = "opaque-revoked-b"
+        with (
+            _liveness_server({revoked: 401, still_revoked: 401}) as (url, handler),
+            tempfile.TemporaryDirectory() as tmp,
+        ):
+            root = Path(tmp)
+            home, bindir = root / "home", root / "bin"
+            home.mkdir()
+            bindir.mkdir()
+            self._write_mcp_json(home, "slack", url)
+            self._write_cache(home, "p", "slack", revoked, age=100)
+            self._write_ledger(home, "slack", revoked, str(home / ".cursor/projects/p/mcp-auth.json"))
+            self._stub_cursor_agent(bindir, home, "slack", writes_token=still_revoked)
+            result = self._run(home, bindir, ["slack", "--login"])
+
+        assert result.returncode == 1, "cursor exit 0 with a still-revoked token must not count as success"
+        assert result.stdout.strip() == ""
+        assert "did not yield a live token" in result.stderr
+        assert revoked not in result.stderr and still_revoked not in result.stderr
+
+    def test_force_invokes_login_even_when_ledger_token_is_live(self):
+        live = "opaque-live-but-forced"
+        fresh = "opaque-forced-fresh"
+        with _liveness_server({live: 200, fresh: 200}) as (url, handler), tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir = root / "home", root / "bin"
+            home.mkdir()
+            bindir.mkdir()
+            self._write_mcp_json(home, "slack", url)
+            self._write_cache(home, "p", "slack", live)
+            self._write_ledger(home, "slack", live, str(home / ".cursor/projects/p/mcp-auth.json"))
+            marker = self._stub_cursor_agent(bindir, home, "slack", writes_token=fresh)
+            result = self._run(home, bindir, ["slack", "--login", "--force", "--quiet"])
+            cursor_ran = marker.exists()
+
+        assert result.returncode == 0, result.stderr
+        assert cursor_ran, "--force must always run the browser login"
+        assert result.stdout.strip() == fresh
+
+    def test_jwt_login_short_circuit_makes_no_liveness_probe(self):
+        token = self._jwt(int(time.time()) + 1200)
+        with _liveness_server({}) as (url, handler), tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir = root / "home", root / "bin"
+            home.mkdir()
+            bindir.mkdir()
+            self._write_mcp_json(home, "scsi-main", url)
+            self._write_cache(home, "p", "scsi-main", token)
+            marker = self._stub_cursor_agent(bindir, home, "scsi-main", writes_token=None)
+            result = self._run(home, bindir, ["scsi-main", "--login", "--quiet"])
+            cursor_ran = marker.exists()
+            hits = list(handler.hits)
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == token
+        assert not cursor_ran
+        assert hits == [], "a fresh JWT must short-circuit without a liveness probe"
+
+    def test_plain_read_makes_no_liveness_probe(self):
+        live = "opaque-live-plain"
+        with _liveness_server({live: 200}) as (url, handler), tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir = root / "home", root / "bin"
+            home.mkdir()
+            bindir.mkdir()
+            self._write_mcp_json(home, "slack", url)
+            self._write_cache(home, "p", "slack", live)
+            self._write_ledger(home, "slack", live, str(home / ".cursor/projects/p/mcp-auth.json"))
+            result = self._run(home, bindir, ["slack"])
+            hits = list(handler.hits)
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == live
+        assert hits == [], "plain reads must stay local with no network probe"
+
+    def test_login_never_leaks_token_or_response_body_on_stderr(self):
+        revoked = "opaque-leak-check-revoked"
+        live = "opaque-leak-check-live"
+        with _liveness_server({revoked: 401, live: 200}) as (url, handler), tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir = root / "home", root / "bin"
+            home.mkdir()
+            bindir.mkdir()
+            self._write_mcp_json(home, "slack", url)
+            self._write_cache(home, "old", "slack", revoked, age=100)
+            self._write_cache(home, "new", "slack", live, age=10)
+            self._write_ledger(home, "slack", revoked, str(home / ".cursor/projects/old/mcp-auth.json"))
+            self._stub_cursor_agent(bindir, home, "slack", writes_token=None)
+            # Not --quiet: any status text streams to stderr, mimicking wrappers.
+            result = self._run(home, bindir, ["slack", "--login"])
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == live
+        assert revoked not in result.stderr
+        assert live not in result.stderr
+        assert "serverInfo" not in result.stderr
+
+    def test_login_probe_does_not_follow_redirect_or_leak_bearer_to_other_origin(self):
+        # A 3xx from the probe URL must be UNKNOWN: the bearer must never be
+        # resent to the redirect target, whose 200 would otherwise read LIVE.
+        nominal = "opaque-redirect-nominal"
+        with _redirecting_endpoint(302) as (url, sink), tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir = root / "home", root / "bin"
+            home.mkdir()
+            bindir.mkdir()
+            self._write_mcp_json(home, "slack", url)
+            self._write_cache(home, "p", "slack", nominal)
+            self._write_ledger(home, "slack", nominal, str(home / ".cursor/projects/p/mcp-auth.json"))
+            marker = self._stub_cursor_agent(bindir, home, "slack", writes_token=None)
+            result = self._run(home, bindir, ["slack", "--login", "--quiet"])
+            cursor_ran = marker.exists()
+            sink_hits = list(sink.hits)
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == nominal, "an unfollowed 3xx is UNKNOWN and must preserve the nominal token"
+        assert sink_hits == [], f"probe must not follow the redirect to another origin; sink saw {sink_hits}"
+        assert not cursor_ran, "unknown liveness must not force a browser login"
+        assert nominal not in result.stderr
+
+    def test_force_login_writing_revoked_token_does_not_adopt_preexisting_live_cache(self):
+        # --force browser login that yields a revoked token is a failure; a live
+        # token that predates this login must not rescue it.
+        old_live = "opaque-old-live-preexisting"
+        new_revoked = "opaque-new-revoked-from-login"
+        with (
+            _liveness_server({old_live: 200, new_revoked: 401}) as (url, handler),
+            tempfile.TemporaryDirectory() as tmp,
+        ):
+            root = Path(tmp)
+            home, bindir = root / "home", root / "bin"
+            home.mkdir()
+            bindir.mkdir()
+            self._write_mcp_json(home, "slack", url)
+            self._write_cache(home, "old", "slack", old_live, age=100)
+            self._write_ledger(home, "slack", old_live, str(home / ".cursor/projects/old/mcp-auth.json"))
+            marker = self._stub_cursor_agent(bindir, home, "slack", writes_token=new_revoked)
+            result = self._run(home, bindir, ["slack", "--login", "--force", "--quiet"])
+            cursor_ran = marker.exists()
+            ledger_sha = self._read_ledger(home, "slack").get("token_sha256")
+
+        assert result.returncode == 1, "a failed browser login must not be rescued by a pre-login live cache"
+        assert result.stdout.strip() == "", "no token may be printed when browser login failed"
+        assert old_live not in result.stdout
+        assert cursor_ran
+        assert ledger_sha == self._sha(old_live), "failed login must not repoint the ledger"
+
+    def test_force_login_writing_no_token_fails_even_with_live_cache(self):
+        # cursor login that writes/touches no cache produced nothing this attempt;
+        # a pre-existing live cache must not make that count as success.
+        old_live = "opaque-old-live-nowrite"
+        with _liveness_server({old_live: 200}) as (url, handler), tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir = root / "home", root / "bin"
+            home.mkdir()
+            bindir.mkdir()
+            self._write_mcp_json(home, "slack", url)
+            self._write_cache(home, "old", "slack", old_live, age=100)
+            self._write_ledger(home, "slack", old_live, str(home / ".cursor/projects/old/mcp-auth.json"))
+            marker = self._stub_cursor_agent(bindir, home, "slack", writes_token=None)
+            result = self._run(home, bindir, ["slack", "--login", "--force", "--quiet"])
+            cursor_ran = marker.exists()
+
+        assert result.returncode == 1, "login that writes/touches no cache is a failure even with a live cache"
+        assert result.stdout.strip() == ""
+        assert cursor_ran
+
+    def test_adopted_cached_alternative_reports_conservative_verification_lease(self):
+        # A provider-verified cached alternative gets a short verification lease,
+        # not the provider's full nominal lifetime.
+        revoked = "opaque-nominal-revoked-lease"
+        old_live = "opaque-old-live-alt-lease"
+        with _liveness_server({revoked: 401, old_live: 200}) as (url, handler), tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir = root / "home", root / "bin"
+            home.mkdir()
+            bindir.mkdir()
+            self._write_mcp_json(home, "slack", url)
+            self._write_cache(home, "n", "slack", revoked, age=0)
+            # An alternative already ~3500s into its nominal 3600s life.
+            self._write_cache(home, "old", "slack", old_live, age=3500)
+            self._write_ledger(home, "slack", revoked, str(home / ".cursor/projects/n/mcp-auth.json"))
+            self._stub_cursor_agent(bindir, home, "slack", writes_token=None)
+            result = self._run(home, bindir, ["slack", "--login", "--quiet", "--json"])
+
+        assert result.returncode == 0, result.stderr
+        payload = json.loads(result.stdout)
+        assert payload["token"] == old_live, "the live cached alternative must be adopted"
+        seconds_left = payload["seconds_left"]
+        mod = _load_mcp_token_module()
+        assert mod.EXPIRY_SKEW_SECONDS < seconds_left <= mod.VERIFIED_ADOPTION_TTL_SECONDS, (
+            "adopted alternative must report a conservative verification lease "
+            f"(> {mod.EXPIRY_SKEW_SECONDS}, <= {mod.VERIFIED_ADOPTION_TTL_SECONDS}), got {seconds_left}"
+        )
 
 
 class TestCodexWrapper(unittest.TestCase):

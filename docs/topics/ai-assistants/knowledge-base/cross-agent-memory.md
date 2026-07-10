@@ -58,27 +58,28 @@ Per-turn retrieval uses `hybrid` mode — lexical + vector + MMR — and dedupes
 
 Per-turn (`hybrid`) retrieval has an **absolute top-hit gate**:
 
-| Gate                         | Value / reason                            |
-| ---------------------------- | ----------------------------------------- |
-| top `cosine_score` threshold | about `0.55`                              |
-| on-topic calibration         | live top hits scored `0.58-0.81`          |
-| off-topic calibration        | live top hits scored `0.44-0.48`          |
-| scope                        | top hit only                              |
-| mode                         | `hybrid` only; `bm25` has no cosine score |
+| Gate                         | Value / reason                                                                   |
+| ---------------------------- | -------------------------------------------------------------------------------- |
+| top `cosine_score` threshold | about `0.55`                                                                     |
+| on-topic calibration         | live top hits scored `0.58-0.81`                                                 |
+| off-topic calibration        | live top hits scored `0.44-0.48`                                                 |
+| scope                        | the best `cosine_score` across ALL returned rows, not positionally the first row |
+| mode                         | `hybrid` only; `bm25` has no cosine score                                        |
 
-Without this gate, a prompt with no KB overlap could still inject equally irrelevant capsules because RRF rank position is relevance-blind.
+Hybrid rows are RRF+MMR fused-rank order, not best-cosine-first, so the gate scans every row for the best available `cosine_score` instead of assuming row 0 holds it. Without this gate, a prompt with no KB overlap could still inject equally irrelevant capsules because RRF rank position is relevance-blind.
 
 Secondary hits are not individually cosine-filtered: legitimate secondary matches overlap the off-topic score range, so the relative floor trims the tail instead.
 
 Both retrieval paths also apply a **relative relevance floor**:
 
-| Rule            | Detail                                             |
-| --------------- | -------------------------------------------------- |
-| top hit         | always kept                                        |
-| tail cutoff     | drop hits below 60% of the best hit's score        |
-| `hybrid` signal | `rrf_score`                                        |
-| `bm25` signal   | `bm25_score`                                       |
-| warm-start      | `session_context.py` applies the same `bm25` floor |
+| Rule               | Detail                                                                                                                                                                |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| best hit           | always kept — for `bm25` this is the positional top hit (rows are best-first); for `hybrid` it is whichever row holds the best `cosine_score`, regardless of position |
+| tail cutoff        | drop hits below 60% (`bm25`/warm-start) or 85% (`hybrid`/per-turn) of the best hit's score                                                                            |
+| presentation order | never reordered by score — the tail trim only drops rows, it does not resort the fused/MMR or bm25 order                                                              |
+| `hybrid` signal    | `cosine_score` (`rrf_score` is rank-flat and cannot separate on-topic from cross-domain hits)                                                                         |
+| `bm25` signal      | `bm25_score`                                                                                                                                                          |
+| warm-start         | `session_context.py` applies the same `bm25` floor                                                                                                                    |
 
 The scope gate is provenance-only. The relative floor prevents low-relevance capsules from filling open slots when fewer than three on-topic capsules exist.
 

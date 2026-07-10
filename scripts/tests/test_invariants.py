@@ -535,5 +535,18 @@ class TestUvToolsHook(unittest.TestCase):
         assert "reapplying declared spec" in hook
 
 
+class TestOnchangeHookHashClosure(unittest.TestCase):
+    """WHEN hash-gated hooks call registry-backed helper scripts."""
+
+    def test_opencode_hook_hashes_direct_mcp_generator_dependencies(self):
+        hook = (REPO / "home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl").read_text()
+
+        assert (
+            '# inject_mcp_into_opencode_jsonc.py hash: {{ include "../scripts/inject_mcp_into_opencode_jsonc.py" | sha256sum }}'
+            in hook
+        )
+        assert '# mcp_registry.py hash: {{ include "../scripts/mcp_registry.py" | sha256sum }}' in hook
+
+
 if __name__ == "__main__":
     unittest.main()

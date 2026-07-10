@@ -2,9 +2,9 @@
 """Local markdown + SQLite FTS5 knowledgebase for agent runs.
 
 Storage model is a structured capsule schema with provenance, scope,
-domain tags, dense embedding, and curation metadata. The schema is
-the single source of truth — there are no legacy paths or compat
-shims; an existing DB with a stale schema is wiped on first init.
+domain tags, dense embedding, and curation metadata. The markdown
+sidecars are canonical; a stale SQLite mirror is rebuilt from them
+transactionally on init/read rather than silently emptied.
 
 Each capsule lives both in `kb.sqlite3` (indexed) and as a markdown
 sidecar file under `capsules/<id>.md` (human-grep-friendly).
@@ -280,77 +280,33 @@ class KnowledgeBase:
     # --- schema ------------------------------------------------------------
 
     def init(self) -> None:
-        """Create the schema, dropping any stale shape first.
+        """Ensure the schema exists and repair stale indexed state.
 
-        We don't try to migrate columns in-place. Schema changes are
-        breaking by policy: when the table shape doesn't match the
-        current `CAPSULE_COLUMNS`, we drop everything and recreate.
-        Capsule data lives in markdown sidecars under `capsules/`,
-        so a curator can re-ingest if needed.
+        We don't migrate capsule columns in place. When the `capsules`
+        table shape drifts, we rebuild it from canonical sidecars and
+        overlay recoverable mutable/derived SQLite state. When only the
+        derived tables (`capsule_fts` / `kb_meta`) drift, we rebuild
+        them from the current `capsules` rows without replacing the
+        authoritative table.
         """
         self.capsules_dir.mkdir(parents=True, exist_ok=True)
         with self.connect() as db:
-            stale = self._table_is_stale(db)
-            if stale:
-                db.execute("DROP TABLE IF EXISTS capsule_fts")
-                db.execute("DROP TABLE IF EXISTS capsules")
-                db.execute("DROP TABLE IF EXISTS kb_meta")
-            db.execute(
-                """
-                CREATE TABLE IF NOT EXISTS capsules (
-                    id TEXT PRIMARY KEY,
-                    kind TEXT NOT NULL,
-                    title TEXT NOT NULL,
-                    body TEXT NOT NULL,
-                    source TEXT NOT NULL,
-                    tags TEXT NOT NULL,
-                    path TEXT NOT NULL,
-                    scope TEXT NOT NULL,
-                    workspace_path TEXT,
-                    project_id TEXT,
-                    domain_tags TEXT NOT NULL,
-                    confidence REAL NOT NULL,
-                    verified_by TEXT,
-                    supersedes TEXT,
-                    superseded_by TEXT,
-                    refs TEXT NOT NULL,
-                    embedding BLOB,
-                    embedding_model TEXT,
-                    embedding_dim INTEGER NOT NULL,
-                    decay_score REAL NOT NULL,
-                    created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL
-                )
-                """
-            )
-            db.execute(
-                """
-                CREATE VIRTUAL TABLE IF NOT EXISTS capsule_fts USING fts5(
-                    id UNINDEXED,
-                    title,
-                    body,
-                    tags,
-                    source,
-                    domain_tags
-                )
-                """
-            )
-            db.execute(
-                """
-                CREATE TABLE IF NOT EXISTS kb_meta (
-                    key TEXT PRIMARY KEY,
-                    value TEXT NOT NULL
-                )
-                """
-            )
-            db.execute(
-                "INSERT OR REPLACE INTO kb_meta(key, value) VALUES('schema_version', ?)",
-                (str(SCHEMA_VERSION),),
-            )
-            db.execute("CREATE INDEX IF NOT EXISTS idx_capsules_kind ON capsules(kind)")
-            db.execute("CREATE INDEX IF NOT EXISTS idx_capsules_scope ON capsules(scope)")
-            db.execute("CREATE INDEX IF NOT EXISTS idx_capsules_workspace ON capsules(workspace_path)")
-            db.execute("CREATE INDEX IF NOT EXISTS idx_capsules_decay ON capsules(decay_score)")
+            state = self._schema_state(db)
+            if state == "capsules_stale":
+                capsules = self._load_sidecar_capsules()
+                recovered = self._load_recoverable_capsule_state(db)
+                rebuilt_rows = self._merge_rebuilt_rows(capsules, recovered)
+                db.execute("BEGIN IMMEDIATE")
+                self._drop_schema(db)
+                self._create_schema(db)
+                for row in rebuilt_rows:
+                    self._insert_rebuilt_capsule(db, row)
+                return
+            if state == "derived_stale":
+                db.execute("BEGIN IMMEDIATE")
+                self._repair_derived_tables(db)
+                return
+            self._create_schema(db)
 
     def init_doc_ingest_table(self) -> None:
         """Idempotent table for tracking ingested documents.
@@ -373,16 +329,418 @@ class KnowledgeBase:
                 """
             )
 
-    def _table_is_stale(self, db: sqlite3.Connection) -> bool:
-        """Return True iff the existing `capsules` table doesn't match
-        the current column set. Returns False (no drop needed) when the
-        table is missing entirely — `CREATE TABLE` handles that path.
-        """
+    def _create_schema(self, db: sqlite3.Connection) -> None:
+        self._create_capsules_table(db)
+        self._create_derived_tables(db)
+        self._create_capsule_indexes(db)
+
+    @staticmethod
+    def _create_capsules_table(db: sqlite3.Connection) -> None:
+        db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS capsules (
+                id TEXT PRIMARY KEY,
+                kind TEXT NOT NULL,
+                title TEXT NOT NULL,
+                body TEXT NOT NULL,
+                source TEXT NOT NULL,
+                tags TEXT NOT NULL,
+                path TEXT NOT NULL,
+                scope TEXT NOT NULL,
+                workspace_path TEXT,
+                project_id TEXT,
+                domain_tags TEXT NOT NULL,
+                confidence REAL NOT NULL,
+                verified_by TEXT,
+                supersedes TEXT,
+                superseded_by TEXT,
+                refs TEXT NOT NULL,
+                embedding BLOB,
+                embedding_model TEXT,
+                embedding_dim INTEGER NOT NULL,
+                decay_score REAL NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+
+    @staticmethod
+    def _create_derived_tables(db: sqlite3.Connection) -> None:
+        db.execute(
+            """
+            CREATE VIRTUAL TABLE IF NOT EXISTS capsule_fts USING fts5(
+                id UNINDEXED,
+                title,
+                body,
+                tags,
+                source,
+                domain_tags
+            )
+            """
+        )
+        db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS kb_meta (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+            """
+        )
+        db.execute(
+            "INSERT OR REPLACE INTO kb_meta(key, value) VALUES('schema_version', ?)",
+            (str(SCHEMA_VERSION),),
+        )
+
+    @staticmethod
+    def _create_capsule_indexes(db: sqlite3.Connection) -> None:
+        db.execute("CREATE INDEX IF NOT EXISTS idx_capsules_kind ON capsules(kind)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_capsules_scope ON capsules(scope)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_capsules_workspace ON capsules(workspace_path)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_capsules_decay ON capsules(decay_score)")
+
+    @staticmethod
+    def _drop_schema(db: sqlite3.Connection) -> None:
+        db.execute("DROP TABLE IF EXISTS capsule_fts")
+        db.execute("DROP TABLE IF EXISTS capsules")
+        db.execute("DROP TABLE IF EXISTS kb_meta")
+
+    @staticmethod
+    def _drop_derived_tables(db: sqlite3.Connection) -> None:
+        db.execute("DROP TABLE IF EXISTS capsule_fts")
+        db.execute("DROP TABLE IF EXISTS kb_meta")
+
+    def _load_sidecar_capsules(self) -> list[Capsule]:
+        capsules: list[Capsule] = []
+        by_id: dict[str, Capsule] = {}
+        for path in sorted(self.capsules_dir.glob("*.md")):
+            capsule = self._parse_sidecar(path)
+            if capsule.id in by_id:
+                raise ValueError(f"duplicate capsule sidecar id {capsule.id!r} at {path}")
+            by_id[capsule.id] = capsule
+            capsules.append(capsule)
+        capsules.sort(key=lambda c: (c.created_at, c.id))
+        for capsule in capsules:
+            if capsule.supersedes and capsule.supersedes in by_id:
+                by_id[capsule.supersedes].superseded_by = capsule.id
+        return capsules
+
+    def _load_recoverable_capsule_state(self, db: sqlite3.Connection) -> dict[str, dict[str, object]]:
+        cols = {r[1] for r in db.execute("PRAGMA table_info(capsules)").fetchall()}
+        if "id" not in cols:
+            return {}
+        allowed = [
+            "id",
+            "supersedes",
+            "superseded_by",
+            "embedding",
+            "embedding_model",
+            "embedding_dim",
+            "decay_score",
+            "updated_at",
+        ]
+        select_cols = [col for col in allowed if col in cols]
+        rows = db.execute(f"SELECT {','.join(select_cols)} FROM capsules").fetchall()
+        recovered: dict[str, dict[str, object]] = {}
+        for row in rows:
+            state = {
+                "supersedes": row["supersedes"] if "supersedes" in row.keys() and row["supersedes"] else None,
+                "superseded_by": (
+                    row["superseded_by"] if "superseded_by" in row.keys() and row["superseded_by"] else None
+                ),
+                "embedding": row["embedding"] if "embedding" in row.keys() else None,
+                "embedding_model": (
+                    row["embedding_model"] if "embedding_model" in row.keys() and row["embedding_model"] else None
+                ),
+                "embedding_dim": 0,
+                "decay_score": 0.0,
+                "updated_at": row["updated_at"] if "updated_at" in row.keys() and row["updated_at"] else None,
+            }
+            if "embedding_dim" in row.keys():
+                try:
+                    state["embedding_dim"] = max(0, int(row["embedding_dim"] or 0))
+                except (TypeError, ValueError):
+                    state["embedding_dim"] = 0
+            if "decay_score" in row.keys():
+                try:
+                    state["decay_score"] = float(row["decay_score"] or 0.0)
+                except (TypeError, ValueError):
+                    state["decay_score"] = 0.0
+            if state["embedding"] is None:
+                state["embedding_model"] = None
+                state["embedding_dim"] = 0
+            elif state["embedding_dim"] <= 0:
+                try:
+                    from embed import unpack_vector  # local import
+
+                    state["embedding_dim"] = len(unpack_vector(state["embedding"]))
+                except Exception:
+                    state["embedding"] = None
+                    state["embedding_model"] = None
+                    state["embedding_dim"] = 0
+            recovered[row["id"]] = state
+        return recovered
+
+    def _merge_rebuilt_rows(
+        self, capsules: list[Capsule], recovered: dict[str, dict[str, object]]
+    ) -> list[dict[str, object]]:
+        sidecar_ids = {capsule.id for capsule in capsules}
+        rows: list[dict[str, object]] = []
+        by_id: dict[str, dict[str, object]] = {}
+        for capsule in capsules:
+            state = recovered.get(capsule.id, {})
+            supersedes = capsule.supersedes
+            if not supersedes:
+                candidate = state.get("supersedes")
+                if candidate in sidecar_ids:
+                    supersedes = str(candidate)
+            superseded_by = state.get("superseded_by")
+            if superseded_by not in sidecar_ids:
+                superseded_by = None
+            row = {
+                "id": capsule.id,
+                "kind": capsule.kind,
+                "title": capsule.title,
+                "body": capsule.body,
+                "source": capsule.source,
+                "tags": capsule.tags,
+                "path": capsule.path,
+                "scope": capsule.scope,
+                "workspace_path": capsule.workspace_path,
+                "project_id": capsule.project_id,
+                "domain_tags": capsule.domain_tags,
+                "confidence": capsule.confidence,
+                "verified_by": capsule.verified_by,
+                "supersedes": supersedes,
+                "superseded_by": superseded_by,
+                "refs": capsule.refs,
+                "embedding": state.get("embedding"),
+                "embedding_model": state.get("embedding_model"),
+                "embedding_dim": int(state.get("embedding_dim", 0) or 0),
+                "decay_score": float(state.get("decay_score", capsule.decay_score) or 0.0),
+                "created_at": capsule.created_at,
+                "updated_at": str(state.get("updated_at") or capsule.updated_at),
+            }
+            rows.append(row)
+            by_id[capsule.id] = row
+        for row in rows:
+            loser_id = row["supersedes"]
+            if loser_id and loser_id in by_id:
+                by_id[str(loser_id)]["superseded_by"] = row["id"]
+        return rows
+
+    def _parse_sidecar(self, path: Path) -> Capsule:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError as err:
+            raise ValueError(f"unable to read capsule sidecar {path}: {err}") from err
+        lines = text.splitlines()
+        if not lines or lines[0].strip() != "---":
+            raise ValueError(f"malformed capsule sidecar {path}: missing opening frontmatter fence")
+        frontmatter: dict[str, str] = {}
+        body_start: int | None = None
+        for idx, line in enumerate(lines[1:], start=1):
+            if line.strip() == "---":
+                body_start = idx + 1
+                break
+            if not line.strip():
+                continue
+            if ":" not in line:
+                raise ValueError(f"malformed capsule sidecar {path}: bad frontmatter line {line!r}")
+            key, value = line.split(":", 1)
+            key = key.strip()
+            if not key:
+                raise ValueError(f"malformed capsule sidecar {path}: empty frontmatter key")
+            frontmatter[key] = value.strip()
+        if body_start is None:
+            raise ValueError(f"malformed capsule sidecar {path}: missing closing frontmatter fence")
+        required = ("id", "title", "kind", "scope", "source", "confidence", "created_at")
+        missing = [key for key in required if not frontmatter.get(key)]
+        if missing:
+            raise ValueError(f"malformed capsule sidecar {path}: missing {', '.join(missing)}")
+        note_id = frontmatter["id"]
+        if path.stem != note_id:
+            raise ValueError(f"malformed capsule sidecar {path}: filename does not match id {note_id!r}")
+        kind = frontmatter["kind"]
+        scope = frontmatter["scope"]
+        if kind not in CAPSULE_KINDS:
+            raise ValueError(f"malformed capsule sidecar {path}: unknown kind {kind!r}")
+        if scope not in CAPSULE_SCOPES:
+            raise ValueError(f"malformed capsule sidecar {path}: unknown scope {scope!r}")
+        try:
+            confidence = float(frontmatter["confidence"])
+        except ValueError as err:
+            raise ValueError(
+                f"malformed capsule sidecar {path}: invalid confidence {frontmatter['confidence']!r}"
+            ) from err
+        if not 0.0 <= confidence <= 1.0:
+            raise ValueError(f"malformed capsule sidecar {path}: confidence must be between 0 and 1")
+        embedding_dim = 0
+        if frontmatter.get("embedding_dim"):
+            try:
+                embedding_dim = int(frontmatter["embedding_dim"])
+            except ValueError as err:
+                raise ValueError(
+                    f"malformed capsule sidecar {path}: invalid embedding_dim {frontmatter['embedding_dim']!r}"
+                ) from err
+            if embedding_dim < 0:
+                raise ValueError(f"malformed capsule sidecar {path}: embedding_dim must be >= 0")
+        decay_score = 0.0
+        if frontmatter.get("decay_score"):
+            try:
+                decay_score = float(frontmatter["decay_score"])
+            except ValueError as err:
+                raise ValueError(
+                    f"malformed capsule sidecar {path}: invalid decay_score {frontmatter['decay_score']!r}"
+                ) from err
+        body = self._strip_sidecar_heading(frontmatter["title"], "\n".join(lines[body_start:]))
+        return Capsule(
+            id=note_id,
+            kind=kind,
+            title=frontmatter["title"],
+            body=body,
+            source=frontmatter["source"],
+            tags=frontmatter.get("tags", ""),
+            path=str(path),
+            scope=scope,
+            workspace_path=frontmatter.get("workspace_path") or None,
+            project_id=frontmatter.get("project_id") or None,
+            domain_tags=frontmatter.get("domain_tags", ""),
+            confidence=confidence,
+            verified_by=frontmatter.get("verified_by") or None,
+            supersedes=frontmatter.get("supersedes") or None,
+            superseded_by=frontmatter.get("superseded_by") or None,
+            refs=frontmatter.get("refs", ""),
+            embedding_model=frontmatter.get("embedding_model") or None,
+            embedding_dim=embedding_dim,
+            decay_score=decay_score,
+            created_at=frontmatter["created_at"],
+            updated_at=frontmatter.get("updated_at") or frontmatter["created_at"],
+        )
+
+    @staticmethod
+    def _strip_sidecar_heading(title: str, text: str) -> str:
+        lines = text.lstrip("\n").splitlines()
+        if lines:
+            first = lines[0].lstrip()
+            if first.startswith("# ") and first[2:].strip() == title:
+                lines = lines[1:]
+                while lines and not lines[0].strip():
+                    lines = lines[1:]
+        return "\n".join(lines).strip()
+
+    def _insert_rebuilt_capsule(self, db: sqlite3.Connection, capsule: dict[str, object]) -> None:
+        db.execute(
+            """
+            INSERT INTO capsules(
+                id, kind, title, body, source, tags, path, scope,
+                workspace_path, project_id, domain_tags, confidence,
+                verified_by, supersedes, superseded_by, refs,
+                embedding, embedding_model, embedding_dim,
+                decay_score, created_at, updated_at
+            )
+            VALUES(
+                :id, :kind, :title, :body, :source, :tags, :path, :scope,
+                :workspace_path, :project_id, :domain_tags, :confidence,
+                :verified_by, :supersedes, :superseded_by, :refs,
+                :embedding, :embedding_model, :embedding_dim,
+                :decay_score, :created_at, :updated_at
+            )
+            """,
+            capsule,
+        )
+        db.execute(
+            """
+            INSERT INTO capsule_fts(id, title, body, tags, source, domain_tags)
+            VALUES(:id, :title, :body, :tags, :source, :domain_tags)
+            """,
+            capsule,
+        )
+
+    def _repair_derived_tables(self, db: sqlite3.Connection) -> None:
+        self._drop_derived_tables(db)
+        self._create_derived_tables(db)
+        self._create_capsule_indexes(db)
+        rows = db.execute("SELECT id, title, body, tags, source, domain_tags FROM capsules").fetchall()
+        for row in rows:
+            db.execute(
+                """
+                INSERT INTO capsule_fts(id, title, body, tags, source, domain_tags)
+                VALUES(?, ?, ?, ?, ?, ?)
+                """,
+                (row["id"], row["title"], row["body"], row["tags"], row["source"], row["domain_tags"]),
+            )
+
+    def _schema_state(self, db: sqlite3.Connection) -> str:
+        """Classify the current mirror state: missing, ok, capsules_stale, or derived_stale."""
         rows = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='capsules'").fetchall()
         if not rows:
-            return False
+            return "missing"
         cols = [r[1] for r in db.execute("PRAGMA table_info(capsules)").fetchall()]
-        return tuple(cols) != CAPSULE_COLUMNS
+        if tuple(cols) != CAPSULE_COLUMNS:
+            return "capsules_stale"
+        aux = {
+            r[0]
+            for r in db.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('capsule_fts', 'kb_meta')"
+            ).fetchall()
+        }
+        if "capsule_fts" not in aux or "kb_meta" not in aux:
+            return "derived_stale"
+        return "derived_stale" if self._fts_mirror_diverges(db) else "ok"
+
+    @staticmethod
+    def _fts_mirror_diverges(db: sqlite3.Connection) -> bool:
+        """True when `capsule_fts` no longer mirrors `capsules` on id, title,
+        body, tags, source, or domain_tags.
+
+        Two independent corruptions must both be caught, so we combine two
+        checks:
+
+        * a row-count mismatch — including an FTS row that duplicates an
+          existing capsule (which double-counts in BM25). A set difference
+          alone misses this because EXCEPT dedupes multiset duplicates.
+        * a same-count in-place overwrite of a row's id or text (e.g.
+          `capsule_fts` corrupted directly). A count comparison alone
+          misses this because both tables still hold the same number of
+          rows.
+
+        We test the cheap count first (which also short-circuits the scan
+        when it already diverges), then take a symmetric set difference
+        (EXCEPT both ways) over the mirrored columns: any capsules row
+        without an identical match in capsule_fts, or vice versa, means the
+        mirror is stale. FTS5 stores column text verbatim (this is a plain,
+        non-external-content table), so SELECT returns the exact original
+        strings and EXCEPT can compare them like ordinary TEXT columns. The
+        outer LIMIT 1 keeps this cheap by not materializing a full diff once
+        any mismatch exists.
+        """
+        fts_count = db.execute("SELECT COUNT(*) FROM capsule_fts").fetchone()[0]
+        cap_count = db.execute("SELECT COUNT(*) FROM capsules").fetchone()[0]
+        if fts_count != cap_count:
+            return True
+        cols = "id, title, body, tags, source, domain_tags"
+        # EXCEPT/UNION ALL are left-associative at the same precedence, so
+        # each side must be its own parenthesized subquery: unparenthesized
+        # `A EXCEPT B UNION ALL C EXCEPT D` parses as `((A EXCEPT B) UNION
+        # ALL C) EXCEPT D`, not the symmetric-difference union intended here.
+        row = db.execute(
+            f"""
+            SELECT 1 FROM (
+                SELECT {cols} FROM capsules
+                EXCEPT
+                SELECT {cols} FROM capsule_fts
+            )
+            UNION ALL
+            SELECT 1 FROM (
+                SELECT {cols} FROM capsule_fts
+                EXCEPT
+                SELECT {cols} FROM capsules
+            )
+            LIMIT 1
+            """
+        ).fetchone()
+        return row is not None
 
     def connect(self) -> sqlite3.Connection:
         self.home.mkdir(parents=True, exist_ok=True)

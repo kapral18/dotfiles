@@ -3,7 +3,7 @@
 A navigation cloud for this chezmoi dotfiles repo, in **two layers**:
 
 - **Semantic cloud** (`S0`, `S1`–`S3`, `SR`) — how the system _thinks_: the 13 concepts and invariants it is built on, the cross-cutting flows that wire subsystems together, and a reverse index from any file to its concept, blast radius, and co-edit set. **Read this first** — it makes the catalog legible.
-- **Catalog** (`00`–`13`) — how the system is _laid out_: exhaustive coverage of every one of the 1276 files in the effective git file set, named or grouped by exact chezmoi source path. Use it to drill from a concept to the precise file.
+- **Catalog** (`00`–`13`) — how the system is _laid out_: exhaustive coverage of every one of the 1278 files in the effective git file set, named or grouped by exact chezmoi source path. Use it to drill from a concept to the precise file.
 
 Together they let an agent understand the whole solution in one pass and then map straight down to any particle. They complement the prose in `docs/` and the rules in `AGENTS.md` / `CLAUDE.md`.
 
@@ -34,7 +34,7 @@ Each file is a standalone [Mermaid](https://mermaid.js.org/) diagram (`.mmd`), l
 13. [`08-security-and-dotfiles.mmd`](08-security-and-dotfiles.mmd) — SSH/GPG identity, 1Password agent, git signing, pass stores, and every shell/tool rc dotfile.
 14. [`09-repo-validation.mmd`](09-repo-validation.mmd) — `make check` / `make fmt`, hygiene gates, and every repo-side config/meta file.
 15. [`10-docs-and-repo-meta.mmd`](10-docs-and-repo-meta.mmd) — the Docusaurus site (`website/` + `docs/`) and GitHub Pages CI; every page named.
-16. [`11-scripts-helpers.mmd`](11-scripts-helpers.mmd) — every file in `scripts/` (76): shared parsers, MCP/model generators, AI KB, tests.
+16. [`11-scripts-helpers.mmd`](11-scripts-helpers.mmd) — every file in `scripts/` (77): shared parsers, MCP/model generators, AI KB, tests.
 17. [`12-ai-tool-configs.mmd`](12-ai-tool-configs.mmd) — every per-tool AI config (Cursor, Claude, Codex, Gemini, OpenCode, Pi, tuicr).
 18. [`13-app-configs.mmd`](13-app-configs.mmd) — remaining app configs (lazygit, gitui, tig, gh, bat, btop, yazi, ghostty, starship, llama.cpp, karabiner, ralph).
 

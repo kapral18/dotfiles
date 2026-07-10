@@ -2,6 +2,7 @@ litellm_models:
   - id: "llm-gateway/model-a"
     name: "Model A"
     reasoning: true
+    supportsReasoningEffort: false
     thinkingBudgets:
       minimal: 1024
       high: 32768

@@ -2,7 +2,7 @@ package state
 
 // AvailableModels returns the curated list of model IDs the New-Run
 // form exposes for the given harness. The lists reflect the user's
-// stated preferences (Gemini, gpt-5.5, gpt-5.3, opus 4.8 xhigh-only, composer-2.5
+// stated preferences (Gemini, GPT-5.6/5.5/5.3, Opus 4.8 xhigh-only, Composer 2.5
 // — routed via cursor-agent for `cursor`, via litellm-gateway /
 // openrouter for `pi`).
 //
@@ -82,6 +82,9 @@ var piModels = []string{
 	"llm-gateway/gemini-3.1-pro-preview-customtools",
 	"llm-gateway/claude-haiku-4-5",
 	"llm-gateway/Kimi-K2.6",
+	"llm-gateway/gpt-5.6-luna",
+	"llm-gateway/gpt-5.6-terra",
+	"llm-gateway/gpt-5.6-sol",
 	"llm-gateway/gpt-5.5",
 	"llm-gateway/claude-opus-4-8",
 	"llm-gateway/claude-sonnet-5",

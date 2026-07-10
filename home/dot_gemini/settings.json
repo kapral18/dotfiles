@@ -46,7 +46,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.agents/hooks/gemini-git-gate.sh",
+            "command": "$HOME/.agents/hooks/gemini-git-gate.py",
             "timeout": 10000
           }
         ]
