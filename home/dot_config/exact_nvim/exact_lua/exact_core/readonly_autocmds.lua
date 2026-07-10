@@ -73,7 +73,7 @@ autocmd("FileType", {
 
 autocmd("FileType", {
   group = augroup("k18_wrap_spell", { clear = true }),
-  pattern = { "text", "plaintex", "typst", "gitcommit" },
+  pattern = { "text", "plaintext", "typst", "gitcommit" },
   callback = function()
     vim.opt_local.wrap = true
     vim.opt_local.spell = true

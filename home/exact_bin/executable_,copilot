@@ -50,53 +50,148 @@ print_token_refresh_help() {
   echo ",copilot: run ',mcp-token <server> --login' without --quiet to inspect the OAuth flow." >&2
 }
 
-# Header-auth HTTP servers needing a fresh bearer token = the type:"http" servers
-# in the deployed config that carry an Authorization header. Deriving the list
-# from the config (rather than hardcoding) keeps this in sync with the registry.
-if command -v python3 >/dev/null 2>&1 && [[ -f "$config" ]]; then
-  mapfile -t header_auth_servers < <(
-    python3 - "$config" <<'PY'
-import json
-import sys
+# Copilot CLI 1.0.69 argument classification (verified against
+# `/opt/homebrew/bin/copilot --help`). The refresh is only worth skipping for an
+# invocation that provably never opens an MCP session. We fail closed: anything
+# we cannot classify as an unambiguous help/version flag or a known admin
+# subcommand refreshes.
 
-try:
-    with open(sys.argv[1]) as f:
-        servers = json.load(f).get("mcpServers", {})
-except (OSError, ValueError):
-    sys.exit(0)
+# Options that take a required value as the *next* token (`<value>` grammar). We
+# consume that token so its value is never mistaken for a subcommand.
+copilot_value_option() {
+  case "$1" in
+  --add-dir | --add-github-mcp-tool | --add-github-mcp-toolset | --additional-mcp-config | \
+    --agent | --attachment | -C | --context | --disable-mcp-server | --effort | \
+    --reasoning-effort | --extension-sdk-path | -i | --interactive | --log-dir | --log-level | \
+    --max-ai-credits | --max-autopilot-continues | --mode | --model | -n | --name | \
+    --output-format | -p | --prompt | --plugin-dir | --session-id | --stream)
+    return 0
+    ;;
+  esac
+  return 1
+}
 
-for name, spec in servers.items():
-    if spec.get("type") == "http" and spec.get("headers", {}).get("Authorization"):
-        print(name)
-PY
-  )
+# Options whose value is optional or variadic (`[=v...]` grammar). A following
+# bare token may be the value or a positional, so we cannot tell whether a later
+# word is a subcommand. Fail closed: refresh.
+copilot_ambiguous_option() {
+  case "$1" in
+  --allow-tool | --allow-url | --available-tools | --bash-env | --connect | --deny-tool | \
+    --deny-url | --excluded-tools | --mouse | -r | --resume | --secret-env-vars | --share)
+    return 0
+    ;;
+  esac
+  return 1
+}
 
-  refresh_failures=()
-  for server in "${header_auth_servers[@]}"; do
-    [[ -z "$server" ]] && continue
-    # Refresh cursor's cache if the token is stale (no-op when still valid).
-    # Keep auth helper output quiet so bearer tokens never stream into the
-    # Copilot launch transcript.
-    if ! ",mcp-token" "$server" --login --quiet >/dev/null 2>&1; then
-      refresh_failures+=("$server")
+# Subcommands that manage Copilot itself and never establish an MCP session.
+copilot_admin_subcommand() {
+  case "$1" in
+  completion | help | init | login | mcp | plugin | plugins | skill | update | version)
+    return 0
+    ;;
+  esac
+  return 1
+}
+
+# Verified no-value boolean flags (Copilot CLI 1.0.69). Only these may be
+# stepped over as options that consume nothing; every other flag is treated as
+# unknown and fails closed. -h/--help/-v/--version are handled separately.
+copilot_boolean_option() {
+  case "$1" in
+  --acp | --allow-all | --allow-all-mcp-server-instructions | --allow-all-paths | \
+    --allow-all-tools | --allow-all-urls | --autopilot | --banner | --continue | \
+    --disable-builtin-mcps | --disallow-temp-dir | --enable-all-github-mcp-tools | \
+    --enable-memory | --enable-reasoning-summaries | --experimental | --no-ask-user | \
+    --no-auto-update | --no-bash-env | --no-color | --no-custom-instructions | \
+    --no-experimental | --no-mouse | --no-remote | --no-remote-export | --plain-diff | \
+    --plan | --remote | --remote-export | --screen-reader | --share-gist | -s | --silent | \
+    --yolo)
+    return 0
+    ;;
+  esac
+  return 1
+}
+
+# Return 0 (refresh) unless the invocation provably needs no MCP session: an
+# unambiguous help/version flag, or a known admin subcommand reached before any
+# option that could consume a following token. Unknown options and ambiguous
+# (optional/variadic) options fail closed to a refresh in every form.
+should_refresh() {
+  while (($#)); do
+    local arg="$1"
+
+    # Help/version print and exit before any session is opened.
+    case "$arg" in
+    -h | --help | -v | --version)
+      return 1
+      ;;
+    esac
+
+    case "$arg" in
+    -*)
+      # Reduce the token to its option base so inline (--opt=v) and short
+      # attached (-Xv) forms classify as their underlying option; has_value
+      # records whether the value is already attached to this token.
+      local base has_value=""
+      case "$arg" in
+      --*=*)
+        base="${arg%%=*}"
+        has_value="1"
+        ;;
+      --*)
+        base="$arg"
+        ;;
+      -??*)
+        base="${arg:0:2}"
+        has_value="1"
+        ;;
+      *)
+        base="$arg"
+        ;;
+      esac
+
+      # Optional/variadic options can swallow a following token, so a value can
+      # never be told apart from a subcommand: fail closed in every form.
+      if copilot_ambiguous_option "$base"; then
+        return 0
+      fi
+
+      if copilot_value_option "$base"; then
+        if [[ -n "$has_value" ]]; then
+          shift || true
+        else
+          shift || true
+          shift || true
+        fi
+        continue
+      fi
+
+      # Only a bare, verified boolean flag may be stepped over. A boolean
+      # carrying an unexpected value or combined short flags is unknown.
+      if [[ -z "$has_value" ]] && copilot_boolean_option "$base"; then
+        shift || true
+        continue
+      fi
+
+      # Unknown option: it may consume the next token, so fail closed.
+      return 0
+      ;;
+    esac
+
+    # First positional token occupies the subcommand slot.
+    if copilot_admin_subcommand "$arg"; then
+      return 1
     fi
+    return 0
   done
+  return 0
+}
 
-  if ((${#refresh_failures[@]})); then
-    echo ",copilot: could not refresh MCP token(s): $(join_by_comma "${refresh_failures[@]}")." >&2
-    print_token_refresh_help
-    exit 1
-  fi
-
-  # Re-bake the freshest tokens into the config so copilot reads them at connect.
-  # mcp-config.json is written by run_onchange_after_07-merge-copilot-config, not
-  # tracked by chezmoi, so re-run that hook's generator instead of `chezmoi apply`
-  # (which would report the file as "not managed"). The source checkout location
-  # and isWork flag come from `chezmoi data`; if anything is missing, fail before
-  # launch rather than trusting old non-placeholder bearer headers.
-  if ((${#header_auth_servers[@]})) && command -v chezmoi >/dev/null 2>&1; then
-    rebake="$(
-      python3 - "$config" <<'PY' || true
+rebake_config() {
+  local rebake
+  rebake="$(
+    python3 - "$config" <<'PY' || true
 import json
 import os
 import subprocess
@@ -142,8 +237,64 @@ with os.fdopen(fd, "w") as f:
 os.chmod(config_path, 0o600)
 print("ok")
 PY
-    )"
-    if [[ "$rebake" != "ok" ]]; then
+  )"
+  [[ "$rebake" == "ok" ]]
+}
+
+if should_refresh "$@" && [[ ! -f "$config" ]]; then
+  if ! command -v python3 >/dev/null 2>&1 || ! command -v chezmoi >/dev/null 2>&1 || ! rebake_config; then
+    echo ",copilot: could not re-bake fresh MCP tokens into $config." >&2
+    print_token_refresh_help
+    exit 1
+  fi
+fi
+
+# Header-auth HTTP servers needing a fresh bearer token = the type:"http" servers
+# in the deployed config that carry an Authorization header. Deriving the list
+# from the config (rather than hardcoding) keeps this in sync with the registry.
+if should_refresh "$@" && command -v python3 >/dev/null 2>&1 && [[ -f "$config" ]]; then
+  mapfile -t header_auth_servers < <(
+    python3 - "$config" <<'PY'
+import json
+import sys
+
+try:
+    with open(sys.argv[1]) as f:
+        servers = json.load(f).get("mcpServers", {})
+except (OSError, ValueError):
+    sys.exit(0)
+
+for name, spec in servers.items():
+    if spec.get("type") == "http" and spec.get("headers", {}).get("Authorization"):
+        print(name)
+PY
+  )
+
+  refresh_failures=()
+  for server in "${header_auth_servers[@]}"; do
+    [[ -z "$server" ]] && continue
+    # Refresh cursor's cache if the token is stale (no-op when still valid).
+    # Keep auth helper output quiet so bearer tokens never stream into the
+    # Copilot launch transcript.
+    if ! ",mcp-token" "$server" --login --quiet >/dev/null 2>&1; then
+      refresh_failures+=("$server")
+    fi
+  done
+
+  if ((${#refresh_failures[@]})); then
+    echo ",copilot: could not refresh MCP token(s): $(join_by_comma "${refresh_failures[@]}")." >&2
+    print_token_refresh_help
+    exit 1
+  fi
+
+  # Re-bake the freshest tokens into the config so copilot reads them at connect.
+  # mcp-config.json is written by run_onchange_after_07-merge-copilot-config, not
+  # tracked by chezmoi, so re-run that hook's generator instead of `chezmoi apply`
+  # (which would report the file as "not managed"). The source checkout location
+  # and isWork flag come from `chezmoi data`; if anything is missing, fail before
+  # launch rather than trusting old non-placeholder bearer headers.
+  if ((${#header_auth_servers[@]})) && command -v chezmoi >/dev/null 2>&1; then
+    if ! rebake_config; then
       echo ",copilot: could not re-bake fresh MCP tokens into $config." >&2
       print_token_refresh_help
       exit 1

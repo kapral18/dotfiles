@@ -49,10 +49,10 @@ EDITOR="${EDITOR:-nvim}"
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 create_py="$script_dir/lib/gh_create.py"
 [ -f "$create_py" ] || die "missing helper: $create_py"
+handoff_namespace="$HOME/.config/tmux/scripts/pickers/lib/handoff_namespace.py"
 
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux"
 mkdir -p "$cache_dir" 2> /dev/null || true
-create_pin_file="${cache_dir}/gh_picker_create_pin"
 
 mode="$(cat "$mode_file" 2> /dev/null || echo work)"
 scope="$(cat "$scope_file" 2> /dev/null || echo all)"
@@ -133,7 +133,11 @@ case "$answer" in
   y | Y | yes | YES | Yes)
     # Hand off to gh_picker.sh's post-exit checkout (interactive branch prompt +
     # ,gh-worktree issue ... --focus). The binding's transform aborts the picker
-    # once this file exists.
+    # once this file exists. The create pin resolves through the inherited
+    # handoff token into the invocation namespace; fail closed rather than write
+    # any global path.
+    create_pin_file="$("$handoff_namespace" path gh_picker_create_pin)" \
+      || die "handoff namespace unavailable for create hand-off"
     printf 'issue\t%s\t%s\t%s\n' "$repo" "$num" "$url" > "$create_pin_file"
     ;;
   *)

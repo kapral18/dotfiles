@@ -45,6 +45,7 @@ return {
     config = function(_, opts)
       require("mason").setup(opts)
       local registry = require("mason-registry")
+      local has_ui = #vim.api.nvim_list_uis() > 0
 
       registry:on("package:install:success", function()
         vim.defer_fn(function()
@@ -62,10 +63,12 @@ return {
         end
       end
 
-      if registry.refresh then
-        registry.refresh(ensure_installed)
-      else
-        ensure_installed()
+      if has_ui then
+        if registry.refresh then
+          registry.refresh(ensure_installed)
+        else
+          ensure_installed()
+        end
       end
     end,
   },

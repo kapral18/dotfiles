@@ -57,9 +57,9 @@ graph TB
     I9 --> R9["realized by: gh_picker.sh start:reload(cache-only)+bg POST $FZF_PORT<br/>session index/frecency cache · *_warm preview prefetch"]:::realize
 
     %% ---- C10 Handoff bus ----------------------------------------------------
-    C10{{"C10 · FILE-BASED HANDOFF BUS<br/>tools cooperate via pin/sentinel files"}}:::concept
-    C10 --> I10["INVARIANT: one tool stages a selection to a well-known cache<br/>file and aborts; the next tool consumes+deletes it on launch.<br/>State lives in $XDG_CACHE_HOME/tmux, never in args."]:::inv
-    I10 --> R10["realized by: pickers/lib/handoff_to_* + pin_*_first<br/>gh_picker_{pin,ralph_pin,create_pin}, pick_session_pin<br/>gh_picker_switch_sessions sentinel"]:::realize
+    C10{{"C10 · OWNER-SCOPED HANDOFF BUS<br/>tools cooperate via pin/sentinel files in a private namespace"}}:::concept
+    C10 --> I10["INVARIANT: a picker begins an owner-scoped namespace (random 32-hex<br/>token dir 0700 + immutable owner.json 0600 fingerprinting pid/start/command);<br/>the explicit TMUX_PICKER_HANDOFF_TOKEN env value routes every child to its slots,<br/>never a global mailbox or argv token. The owner ends its namespace on normal EXIT;<br/>Ralph context is copied to a secure retained-context file (0600, 7-day TTL) first."]:::inv
+    I10 --> R10["realized by: pickers/lib/handoff_namespace.py<br/>(begin/path/retain-context/end/sweep) + handoff_to_* + pin_*_first;<br/>token injected into child popups via display-popup -e<br/>gh_picker_{pin,ralph_pin,create_pin}, pick_session_pin + switch sentinels"]:::realize
 
     %% ---- C11 Diversity gate (adversarial review) ---------------------------
     C11{{"C11 · ADVERSARIAL DIVERSITY<br/>a model may not approve its own family"}}:::concept

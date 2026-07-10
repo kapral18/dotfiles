@@ -666,6 +666,45 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
             assert json.loads(seen_path.read_text()) == ["capsule-a"]
             assert perturn == {}
 
+    def test_session_context_warmstart_unions_prior_seen_ids(self):
+        # A resume/compact fires a second warm start in the same conversation.
+        # The seen-file must load-union-save so capsules already recorded (by an
+        # earlier warm start or the per-turn recall hook) are never dropped and
+        # re-injected. Overwrite semantics would clobber the prior id.
+        with self.make_git_workspace("feature/warm-union") as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir.mkdir(parents=True, exist_ok=True)
+            bind_session_topic(spec_dir, "warm-union", "union-memory")
+            (spec_dir / "union-memory.txt").write_text("target: preserve recall dedupe across warm starts\n")
+            seen_path = spec_dir / ".recall-seen-warm-union.json"
+            seen_path.write_text(json.dumps(["capsule-prior"]))
+            env = make_aikb_stub(
+                Path(tmp),
+                [
+                    {
+                        "id": "capsule-a",
+                        "title": "Warm capsule that should surface",
+                        "body": "inject once",
+                        "kind": "gotcha",
+                        "scope": "project",
+                        "workspace_path": workspace,
+                        "bm25_score": -10.0,
+                    }
+                ],
+            )
+            run_hook(
+                "executable_session_context.py",
+                {
+                    "conversation_id": "warm-union",
+                    "hook_event_name": "sessionStart",
+                    "workspace_roots": [tmp],
+                },
+                env=env,
+            )
+
+            assert json.loads(seen_path.read_text()) == ["capsule-a", "capsule-prior"]
+
     def test_opencode_worklog_adapter_passes_session_id(self):
         extension = REPO / "home/dot_config/opencode/plugins/agent-memory.ts"
         with tempfile.TemporaryDirectory() as tmp:

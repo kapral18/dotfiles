@@ -6,6 +6,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shlex
 import sqlite3
 import subprocess
 import sys
@@ -3787,6 +3788,409 @@ class TestRalphCriteriaChecks(unittest.TestCase):
             assert all(it.get("primary_verdict") == "pass" for it in iters), (
                 "the primary reviewer passed every iteration; only the garbled "
                 "re_reviewer demotion may explain the loop"
+            )
+
+
+class TestRalphBlockPark(unittest.TestCase):
+    """Park matrix for a reviewer / re_reviewer BLOCK verdict.
+
+    A BLOCK escalates the whole run to the human operator: it sets
+    status=needs_human, phase=blocked, and a block_reason, but puts NO role
+    under a blocking control state. Contract: only an explicit ``,ralph
+    resume`` clears this run-level park and starts the next same-plan
+    iteration; ``,ralph verify``, the direct ``,ralph runner``, and the
+    supervisor must keep it parked, and ``,ralph replan`` must reject it.
+    Manual-control parks (blocking role controls) and question parks
+    (status=awaiting_human) are unaffected.
+    """
+
+    @staticmethod
+    def _ralph(args: list[str], env: dict, *, expect_returncode: int | None = 0) -> dict:
+        result = subprocess.run(
+            [sys.executable, str(SCRIPTS / "ralph.py"), *args],
+            capture_output=True,
+            text=True,
+            cwd=str(SCRIPTS),
+            env=env,
+        )
+        if expect_returncode is not None:
+            assert result.returncode == expect_returncode, (
+                f"args={args!r} rc={result.returncode}\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+            )
+        if not result.stdout.strip():
+            return {}
+        try:
+            return json.loads(result.stdout)
+        except json.JSONDecodeError:
+            return {"_raw": result.stdout, "_stderr": result.stderr}
+
+    def _runner_with_block_park(self, tmp: Path, *, rid: str = "go-block-1"):
+        import ralph
+
+        runner = ralph.RalphRunner(state_home=tmp / "state", kb_home=tmp / "kb")
+        runner.init()
+        runner.run_dir(rid).mkdir(parents=True, exist_ok=True)
+        now = "2026-07-10T00:00:00+00:00"
+        manifest = {
+            "id": rid,
+            "kind": "go",
+            "goal": "g",
+            "workflow": "feature",
+            "spec_seq": 1,
+            "status": "needs_human",
+            "phase": "blocked",
+            "validation_status": "needs_verification",
+            "control_state": "manual_control",
+            "block_reason": "reviewer escalated to human",
+            "roles": {
+                "executor-1": {"status": "completed", "control_state": "automated", "validation_status": "passed"},
+                "reviewer-1": {"status": "completed", "control_state": "automated", "validation_status": "passed"},
+            },
+            "iterations": [
+                {
+                    "n": 1,
+                    "phase": "decided",
+                    "verdict": "block",
+                    "next_task": "resume to continue",
+                    "spec_seq": 1,
+                    "started_at": now,
+                    "ended_at": now,
+                }
+            ],
+            "spec": {},
+            "roles_cfg": {},
+            "defaults": {},
+        }
+        runner.save_manifest(manifest)
+        return runner, rid
+
+    @staticmethod
+    def _stub_direct_runner_seam(runner):
+        called: list[str] = []
+
+        def _fail_run_with_lock(*args, **kwargs):
+            called.append("run_with_lock")
+            raise AssertionError("_run_with_lock guard probe tripped (would have entered role loop)")
+
+        runner._run_with_lock = _fail_run_with_lock  # type: ignore[method-assign]
+        return called
+
+    def test_helper_identifies_block_park_and_excludes_manual_control(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            runner, rid = self._runner_with_block_park(Path(tmp))
+            man = runner.load_manifest(rid)
+            assert runner._is_reviewer_block_park(man) is True
+            # A role under manual control makes it a manual-control park instead.
+            man["roles"]["reviewer-1"]["control_state"] = "manual_control"
+            assert runner._is_reviewer_block_park(man) is False
+
+    def test_verify_keeps_block_park_parked(self):
+        """RED: ,ralph verify used to flip a blocked run to status=running."""
+        with tempfile.TemporaryDirectory() as tmp:
+            runner, rid = self._runner_with_block_park(Path(tmp))
+            runner.validate_run(rid)
+            man = runner.load_manifest(rid)
+            assert man["status"] == "needs_human", man
+            assert man["phase"] == "blocked", man
+            assert man.get("block_reason")
+
+    def test_direct_runner_keeps_block_park_parked(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            runner, rid = self._runner_with_block_park(Path(tmp))
+            called = self._stub_direct_runner_seam(runner)
+            result = runner.run_runner(rid)
+            assert called == [], "run_runner must not enter _run_with_lock for a block park"
+            assert result["status"] == "needs_human", result
+            man = runner.load_manifest(rid)
+            assert man["phase"] == "blocked"
+            assert len(man["iterations"]) == 1, "no next iteration may start while parked"
+            assert "executor-2" not in (man.get("roles") or {})
+
+    def test_direct_runner_short_circuits_without_entering_loop(self):
+        """RED: run_runner used to fall through to _run_with_lock for a block
+        park; it must now return immediately, never acquiring the lock/loop."""
+        with tempfile.TemporaryDirectory() as tmp:
+            runner, rid = self._runner_with_block_park(Path(tmp))
+            called = self._stub_direct_runner_seam(runner)
+            result = runner.run_runner(rid)
+            assert called == [], "run_runner must short-circuit before _run_with_lock"
+            assert result["status"] == "needs_human", result
+            assert result["phase"] == "blocked"
+
+    def test_direct_runner_negative_control_probe_fails_fast_when_guard_removed(self):
+        """Negative control: if the block-park guard regresses, the seam stub
+        must fail immediately (no role spawn / no real agent invocation)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            runner, rid = self._runner_with_block_park(Path(tmp))
+            called = self._stub_direct_runner_seam(runner)
+            runner._is_reviewer_block_park = lambda *_args, **_kwargs: False  # type: ignore[method-assign]
+            with self.assertRaisesRegex(AssertionError, "_run_with_lock guard probe tripped"):
+                runner.run_runner(rid)
+            assert called == ["run_with_lock"], called
+
+    def test_control_auto_keeps_block_park_parked(self):
+        """RED: `,ralph control --action auto` — the only control action that
+        reaches the non-blocking clear branch — flipped a block park to running
+        because a block park has no blocking role controls. Only `,ralph resume`
+        may clear it. (takeover/dirty/resume all park via the other branch.)"""
+        with tempfile.TemporaryDirectory() as tmp:
+            runner, rid = self._runner_with_block_park(Path(tmp))
+            runner.set_role_control(rid, "reviewer-1", "auto")
+            man = runner.load_manifest(rid)
+            assert man["status"] == "needs_human", man
+            assert man["phase"] == "blocked", man
+            assert man.get("block_reason"), man
+            assert runner._is_reviewer_block_park(man) is True
+
+    def test_supervisor_does_not_resume_block_park(self):
+        """RED: verify armed the run, then the supervisor auto-resumed it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            runner, rid = self._runner_with_block_park(Path(tmp))
+            spawned: list[str] = []
+            runner._spawn_detached_runner = lambda r: spawned.append(r)  # type: ignore[method-assign]
+            runner.validate_run(rid)  # the exact bug sequence: verify then supervise
+            actions = runner.supervisor_once()
+            assert spawned == [], f"supervisor must not resume a blocked run: {spawned}"
+            assert not any(a.get("id") == rid and a.get("action") == "resume" for a in actions), actions
+            assert runner.load_manifest(rid)["status"] == "needs_human"
+
+    def test_replan_rejects_block_park(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            runner, rid = self._runner_with_block_park(Path(tmp))
+            with self.assertRaises(SystemExit):
+                runner.replan_run(rid, auto_resume=False)
+            assert runner.load_manifest(rid)["status"] == "needs_human"
+
+    def test_explicit_resume_clears_block_park_and_queues_same_plan_iteration(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            runner, rid = self._runner_with_block_park(Path(tmp))
+            spawned: list[str] = []
+            runner._spawn_detached_runner = lambda r: spawned.append(r)  # type: ignore[method-assign]
+            runner.resume_run(rid, detached=True)
+            assert spawned == [rid], f"resume must launch the runner: {spawned}"
+            man = runner.load_manifest(rid)
+            assert man["status"] == "running", man
+            assert man["phase"] == "executing", man
+            assert "block_reason" not in man, man
+            assert man["control_state"] == "automated"
+            # The blocked iteration stays decided; the loop starts a fresh
+            # iteration under the SAME spec (no replan).
+            assert man["iterations"][0]["phase"] == "decided"
+            assert man["iterations"][0]["verdict"] == "block"
+            assert man["spec_seq"] == 1
+
+    def test_resume_from_block_runs_next_same_plan_iteration_e2e(self):
+        """End-to-end: a real state-machine resume from a BLOCK park runs the
+        next iteration under the same spec and converges to completed."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            artifact = tmp_path / "workspace" / "result.txt"
+            env = _make_go_env(tmp_path, artifact=artifact, content="hello world")
+            planned = self._ralph(
+                [
+                    "go",
+                    "--goal",
+                    "block-e2e",
+                    "--workspace",
+                    str(tmp_path / "workspace"),
+                    "--plan-only",
+                    "--subprocess",
+                    "--json",
+                ],
+                env,
+                expect_returncode=1,
+            )
+            rid = planned["id"]
+            mp = Path(env["RALPH_STATE_HOME"]) / "runs" / rid / "manifest.json"
+            man = json.loads(mp.read_text())
+            now = "2026-07-10T00:00:00+00:00"
+            man["iterations"] = [
+                {
+                    "n": 1,
+                    "phase": "decided",
+                    "verdict": "block",
+                    "task": man.get("spec", {}).get("iteration_task_seed", "seed"),
+                    "next_task": "continue after unblock",
+                    "spec_seq": man.get("spec_seq", 1),
+                    "started_at": now,
+                    "ended_at": now,
+                }
+            ]
+            man["status"] = "needs_human"
+            man["phase"] = "blocked"
+            man["validation_status"] = "needs_verification"
+            man["control_state"] = "manual_control"
+            man["block_reason"] = "reviewer escalated to human"
+            mp.write_text(json.dumps(man, indent=2))
+
+            final = self._ralph(["resume", rid, "--foreground", "--json"], env, expect_returncode=0)
+            assert final["status"] == "completed", final
+            iters = final.get("iterations") or []
+            assert len(iters) == 2, iters
+            assert iters[0]["verdict"] == "block"
+            assert iters[1]["verdict"] == "pass"
+            assert final.get("spec_seq", 1) == 1, "resume must not replan the run"
+            assert artifact.read_text() == "hello world"
+
+    def test_manual_control_park_still_clears_via_role_control_and_validate(self):
+        """Manual-control parks are unchanged: they clear once the blocking
+        role returns to automated and validation runs (never via resume-only)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            import ralph
+
+            runner = ralph.RalphRunner(state_home=Path(tmp) / "state", kb_home=Path(tmp) / "kb")
+            runner.init()
+            rid = "go-manual-1"
+            runner.run_dir(rid).mkdir(parents=True, exist_ok=True)
+            manifest = {
+                "id": rid,
+                "kind": "go",
+                "goal": "g",
+                "workflow": "feature",
+                "spec_seq": 1,
+                "status": "needs_human",
+                "phase": "executing",
+                "validation_status": "needs_verification",
+                "control_state": "manual_control",
+                "blocked_roles": ["executor-1"],
+                "roles": {
+                    "executor-1": {
+                        "status": "completed",
+                        "control_state": "manual_control",
+                        "validation_status": "needs_verification",
+                    }
+                },
+                "iterations": [{"n": 1, "phase": "review", "spec_seq": 1}],
+                "spec": {},
+                "roles_cfg": {},
+                "defaults": {},
+            }
+            runner.save_manifest(manifest)
+            assert runner._is_reviewer_block_park(runner.load_manifest(rid)) is False
+            # Verify keeps it parked while the role holds manual control.
+            runner.validate_run(rid)
+            assert runner.load_manifest(rid)["status"] == "needs_human"
+            # Return the role to automated + validate → unparks to running.
+            man = runner.load_manifest(rid)
+            man["roles"]["executor-1"]["control_state"] = "automated"
+            man["roles"]["executor-1"]["validation_status"] = "passed"
+            runner.save_manifest(man)
+            cleared = runner._unpark_if_control_clear(runner.load_manifest(rid))
+            assert cleared["status"] == "running", cleared
+
+    def test_question_park_clears_only_via_answer(self):
+        """Question parks (awaiting_human) are unchanged: verify does not clear
+        them and ,ralph answer is the only exit."""
+        with tempfile.TemporaryDirectory() as tmp:
+            import ralph
+
+            runner = ralph.RalphRunner(state_home=Path(tmp) / "state", kb_home=Path(tmp) / "kb")
+            runner.init()
+            rid = "go-question-1"
+            runner.run_dir(rid).mkdir(parents=True, exist_ok=True)
+            manifest = {
+                "id": rid,
+                "kind": "go",
+                "goal": "g",
+                "workflow": "feature",
+                "spec_seq": 1,
+                "status": "awaiting_human",
+                "phase": "awaiting_human",
+                "validation_status": "needs_verification",
+                "awaiting_role": "reviewer-1",
+                "questions": [
+                    {
+                        "id": "q1",
+                        "role": "reviewer-1",
+                        "asked_at": "2026-07-10T00:00:00+00:00",
+                        "text": "which file?",
+                        "answer": None,
+                        "answered_at": None,
+                    }
+                ],
+                "roles": {},
+                "iterations": [{"n": 1, "phase": "review", "spec_seq": 1}],
+                "spec": {},
+                "roles_cfg": {},
+                "defaults": {},
+            }
+            runner.save_manifest(manifest)
+            assert runner._is_reviewer_block_park(runner.load_manifest(rid)) is False
+            runner.validate_run(rid)
+            assert runner.load_manifest(rid)["status"] == "awaiting_human"
+            runner._spawn_detached_runner = lambda r: None  # type: ignore[method-assign]
+            runner.answer_run(rid, {"q1": "use src/x"}, auto_resume=False)
+            answered = runner.load_manifest(rid)
+            assert answered["status"] != "awaiting_human", answered
+            assert answered.get("replan_requested") is True
+
+
+class TestRalphCursorSubprocessTransport(unittest.TestCase):
+    """Transport boundary for a Cursor subprocess role, proven with a REAL
+    fake ``agent`` binary that records its argv and stdin.
+
+    Contract: the prompt travels ONLY as the trailing positional argument
+    (read from prompt.md via ``$(cat …)``) and the subprocess receives EMPTY
+    stdin. RED regression: the runner also piped the prompt on stdin, so the
+    fake agent saw the prompt twice (argv AND stdin) — cursor-agent stalls
+    when both a positional prompt and non-empty stdin are present.
+    """
+
+    def _run_cursor_subprocess(self, tmp: Path):
+        import ralph
+
+        prompts = tmp / "prompts"
+        prompts.mkdir()
+        for p in (REPO / "home/dot_config/ralph/prompts").glob("*.md"):
+            (prompts / p.name).write_text(p.read_text())
+
+        bindir = tmp / "bin"
+        bindir.mkdir()
+        argv_file = tmp / "last_argv.txt"
+        stdin_file = tmp / "stdin.txt"
+        fake = bindir / "agent"
+        fake.write_text(
+            "#!/usr/bin/env bash\n"
+            f"printf '%s' \"${{@: -1}}\" > {shlex.quote(str(argv_file))}\n"
+            f"cat > {shlex.quote(str(stdin_file))}\n"
+            "printf 'ANCHOR: fake\\nRALPH_DONE\\n'\n"
+        )
+        os.chmod(fake, 0o755)
+
+        runner = ralph.RalphRunner(state_home=tmp / "state", kb_home=tmp / "kb")
+        runner.init()
+        old_path = os.environ.get("PATH", "")
+        os.environ["PATH"] = f"{bindir}{os.pathsep}{old_path}"
+        os.environ["RALPH_PROMPTS_DIR"] = str(prompts)
+        try:
+            runner._spawn_role(
+                rid="go-cursor-xport-1",
+                role_name="planner-1",
+                harness="cursor",
+                model="claude-test",
+                extra_args=["--mode", "plan"],
+                prompt_text="UNIQUE_PROMPT_MARKER body text",
+                workspace=tmp / "workspace",
+                session_name=None,
+                defaults={"iteration_timeout_seconds": 30},
+            )
+        finally:
+            os.environ["PATH"] = old_path
+            os.environ.pop("RALPH_PROMPTS_DIR", None)
+        return argv_file.read_text(), stdin_file.read_text()
+
+    def test_cursor_prompt_in_argv_and_empty_stdin(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            (tmp_path / "workspace").mkdir()
+            argv_last, stdin_seen = self._run_cursor_subprocess(tmp_path)
+            assert "UNIQUE_PROMPT_MARKER body text" in argv_last, (
+                f"cursor must receive the prompt as the trailing positional arg: {argv_last!r}"
+            )
+            assert "# ROLE PROMPT" in argv_last, argv_last
+            assert stdin_seen == "", (
+                "cursor subprocess must get EMPTY stdin (regression: the prompt "
+                f"was also piped on stdin): {stdin_seen!r}"
             )
 
 

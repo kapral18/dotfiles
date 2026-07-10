@@ -56,13 +56,62 @@ repo_name_from_remote() {
   printf '%s\n' "$path"
 }
 
-safe_rm_rf() {
+# Deletion allowlist: only remove a resolved target that is a STRICT descendant
+# of an approved root (HOME plus each PICK_SESSION_SCAN_ROOTS entry). Refuse the
+# roots themselves, "", "/", paths outside every root, and symlinks that resolve
+# outside.
+approved_roots=()
+add_approved_root() {
+  local r="$1"
+  [ -n "$r" ] || return 0
+  # shellcheck disable=SC2088  # literal "~/" is matched, then expanded by hand
+  case "$r" in
+    "~") r="${HOME:-}" ;;
+    "~/"*) r="${HOME:-}/${r#\~/}" ;;
+  esac
+  [ -n "$r" ] || return 0
+  r="$(realpath_or_self "$r")"
+  case "$r" in
+    "" | "/") return 0 ;;
+  esac
+  approved_roots+=("$r")
+}
+
+if [ -n "${HOME:-}" ]; then
+  add_approved_root "$HOME"
+fi
+if [ -n "${PICK_SESSION_SCAN_ROOTS:-}" ]; then
+  _old_ifs="$IFS"
+  IFS=','
+  for _scan_root in $PICK_SESSION_SCAN_ROOTS; do
+    _scan_root="${_scan_root#"${_scan_root%%[![:space:]]*}"}"
+    _scan_root="${_scan_root%"${_scan_root##*[![:space:]]}"}"
+    add_approved_root "$_scan_root"
+  done
+  IFS="$_old_ifs"
+  unset _old_ifs _scan_root
+fi
+
+target_is_approved_deletion() {
   local target="$1"
-  target="$(realpath_or_self "$target")"
   case "$target" in
     "" | "/") return 1 ;;
   esac
-  if [ -n "${HOME:-}" ] && [ "$target" = "$(realpath_or_self "$HOME")" ]; then
+  [ "${#approved_roots[@]}" -gt 0 ] || return 1
+  local r
+  for r in "${approved_roots[@]}"; do
+    [ -n "$r" ] || continue
+    case "$target" in
+      "$r"/*) return 0 ;;
+    esac
+  done
+  return 1
+}
+
+safe_rm_rf() {
+  local target
+  target="$(realpath_or_self "$1")"
+  if ! target_is_approved_deletion "$target"; then
     return 1
   fi
   rm -rf "$target"

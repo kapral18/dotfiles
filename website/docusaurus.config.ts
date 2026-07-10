@@ -26,14 +26,14 @@ const config: Config = {
   markdown: {
     format: 'md',
     hooks: {
-      // `onBrokenMarkdownLinks` moved here in 3.10; warn rather than throw so
-      // the build is forgiving while we iterate on the docs.
-      onBrokenMarkdownLinks: 'warn',
+      // `onBrokenMarkdownLinks` moved here in 3.10; keep the docs build
+      // fail-closed once the repo-side verifier has validated the source tree.
+      onBrokenMarkdownLinks: 'throw',
     },
   },
 
-  onBrokenLinks: 'warn',
-  onBrokenAnchors: 'warn',
+  onBrokenLinks: 'throw',
+  onBrokenAnchors: 'throw',
   onDuplicateRoutes: 'warn',
 
   i18n: {

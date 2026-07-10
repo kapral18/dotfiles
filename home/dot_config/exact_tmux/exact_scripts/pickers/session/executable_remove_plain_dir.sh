@@ -3,6 +3,7 @@ set -euo pipefail
 
 target="${1:-}"
 stop_at="${2:-$HOME}"
+explicit_session="${3:-}"
 
 if [ -z "$target" ]; then
   exit 0
@@ -33,16 +34,26 @@ if [ -n "${TMUX:-}" ] && command -v tmux > /dev/null 2>&1; then
   tmux display-message -d 6000 "pick_session: removing $target" 2> /dev/null || true
 fi
 
-if [ -n "${TMUX:-}" ] && command -v tmux > /dev/null 2>&1; then
-  tmux list-sessions -F $'#{session_name}\t#{session_path}' 2> /dev/null \
-    | while IFS=$'\t' read -r name path; do
-      [ -z "$name" ] && continue
-      [ -z "$path" ] && continue
-      path="$(realpath "$path" 2> /dev/null || printf '%s' "$path")"
-      if [ "$path" = "$target" ]; then
-        tmux kill-session -t "$name" 2> /dev/null || true
-      fi
-    done
+# Kill the caller-identified session by its exact name. Independent of
+# `$TMUX`: the caller resolves this name while still attached, then unsets
+# TMUX before backgrounding this script, so gating on `[ -n "${TMUX:-}" ]`
+# here would silently skip it.
+if [ -n "$explicit_session" ] && command -v tmux > /dev/null 2>&1; then
+  tmux kill-session -t "$explicit_session" 2> /dev/null || true
+else
+  # Fallback for callers with no known session name: scan by path. Only
+  # usable while still attached (needs `$TMUX`).
+  if [ -n "${TMUX:-}" ] && command -v tmux > /dev/null 2>&1; then
+    tmux list-sessions -F $'#{session_name}\t#{session_path}' 2> /dev/null \
+      | while IFS=$'\t' read -r name path; do
+        [ -z "$name" ] && continue
+        [ -z "$path" ] && continue
+        path="$(realpath "$path" 2> /dev/null || printf '%s' "$path")"
+        if [ "$path" = "$target" ]; then
+          tmux kill-session -t "$name" 2> /dev/null || true
+        fi
+      done
+  fi
 fi
 
 if [ -d "$target" ]; then

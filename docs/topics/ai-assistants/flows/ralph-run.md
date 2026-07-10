@@ -64,11 +64,12 @@ The run resumes itself after the last answer.
 
 `summary.md` in the run dir (shown by `,ralph preview`) has a checklist of every criterion and the machine-run check table. Terminal states:
 
-| Status                            | Meaning                                                           | Do                                                   |
-| --------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------- |
-| `completed` / validation `passed` | every check green, cross-family reviewers agreed, artifact sealed | inspect the workspace diff, commit                   |
-| `needs_human`                     | a role hit a wall; reason in `block_reason`                       | read it, fix or `,ralph replan <run-id>`             |
-| `failed`                          | iteration/time cap without a pass                                 | `,ralph preview` to see which check never went green |
+| Status                            | Meaning                                                                                         | Do                                                                                                                                                                               |
+| --------------------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `completed` / validation `passed` | every check green, cross-family reviewers agreed, artifact sealed                               | inspect the workspace diff, commit                                                                                                                                               |
+| `needs_human` (reviewer BLOCK)    | a reviewer/re_reviewer BLOCK escalated the whole run; `block_reason` set, no role under control | read `block_reason`, address it, then `,ralph resume <run-id>` (starts the next same-plan iteration; verify / runner / supervisor keep it parked and `,ralph replan` rejects it) |
+| `needs_human` (role control)      | a role is held under manual/dirty control (`,ralph control … --action takeover\|dirty`)         | return the role with `,ralph control <run-id> --role R --action resume\|auto`, then `,ralph verify <run-id>` to revalidate and unpark                                            |
+| `failed`                          | iteration/time cap without a pass                                                               | `,ralph preview` to see which check never went green                                                                                                                             |
 
 ## Steering mid-run
 

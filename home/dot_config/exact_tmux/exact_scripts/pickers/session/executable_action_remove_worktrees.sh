@@ -63,6 +63,18 @@ realpath_or_self() {
   realpath "$1" 2> /dev/null || printf '%s' "$1"
 }
 
+tmux_opt() {
+  local key="$1"
+  local default_value="$2"
+  local value=""
+  value="$(tmux show-option -gqv "${key}" 2> /dev/null || true)"
+  if [ -n "$value" ]; then
+    printf '%s\n' "$value"
+  else
+    printf '%s\n' "$default_value"
+  fi
+}
+
 current_session=""
 if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
   current_session="$(tmux display-message -p '#S' 2> /dev/null || true)"
@@ -243,6 +255,11 @@ declare -A roots_selected=()
 declare -A worktree_paths_by_root=()
 declare -a pending_wt_paths=()
 declare -a pending_plain_dirs=()
+# Row-aligned with pending_plain_dirs: pending_plain_dir_sessions[i] is the
+# exact tmux session name (or "" if none) selected for pending_plain_dirs[i].
+# Captured before TMUX is unset for the background dispatch below, since
+# remove_plain_dir.sh can no longer discover it itself once TMUX is gone.
+declare -a pending_plain_dir_sessions=()
 explicit_sessions_list=""
 
 while IFS= read -r _line; do
@@ -276,6 +293,7 @@ while IFS= read -r _line; do
       # tombstones for this row.
       if [ -d "$wt_path" ] && ! git -C "$wt_path" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
         pending_plain_dirs+=("$wt_path")
+        pending_plain_dir_sessions+=("")
         continue
       fi
       root_wt_dir="$target"
@@ -310,6 +328,7 @@ while IFS= read -r _line; do
 
       if [ -z "$wt_path" ]; then
         pending_plain_dirs+=("$path")
+        pending_plain_dir_sessions+=("${target:-}")
         continue
       fi
 
@@ -328,6 +347,7 @@ while IFS= read -r _line; do
       # remover (safe `rm -rf` under $HOME), matching the optimistic-hide prefix.
       if [ -d "$wt_path" ] && ! git -C "$wt_path" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
         pending_plain_dirs+=("$wt_path")
+        pending_plain_dir_sessions+=("${target:-}")
         continue
       fi
 
@@ -338,6 +358,7 @@ while IFS= read -r _line; do
       ;;
     dir)
       pending_plain_dirs+=("$path")
+      pending_plain_dir_sessions+=("")
       continue
       ;;
   esac
@@ -377,9 +398,11 @@ fi
 if [ ${#pending_wt_paths[@]} -gt 0 ]; then
   mapfile -t pending_wt_paths < <(printf '%s\n' "${pending_wt_paths[@]}" | sed '/^$/d' | LC_ALL=C sort -u)
 fi
-if [ ${#pending_plain_dirs[@]} -gt 0 ]; then
-  mapfile -t pending_plain_dirs < <(printf '%s\n' "${pending_plain_dirs[@]}" | sed '/^$/d' | LC_ALL=C sort -u)
-fi
+# pending_plain_dirs is intentionally left unsorted/un-deduped: it stays
+# row-aligned with pending_plain_dir_sessions (dispatch below iterates both by
+# index). A path selected via two distinct sessions may thus appear twice;
+# invoking the remover twice for the same path is harmless (idempotent rm/
+# rmdir) and is required to carry every selected session identity through.
 
 # Record pending worktree removals so a subsequent index refresh doesn't re-add
 # them. Serialized via `pending_lock_dir` so concurrent appenders/rewriters
@@ -411,8 +434,10 @@ now_epoch="$(date +%s)"
 } >> "$mutation_file"
 
 if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
+  pick_session_scan_roots_raw="$(tmux_opt '@pick_session_worktree_scan_roots' "$HOME/work,$HOME/code,$HOME/.backport/repositories,$HOME/.local/share")"
+
   for root in "${!roots_selected[@]}"; do
-    nohup env -u TMUX -u TMUX_PANE PICK_SESSION_CURRENT_SESSION="$current_session" "$HOME/.config/tmux/scripts/pickers/session/remove_all_worktrees.sh" "$root" < /dev/null > /dev/null 2>&1 &
+    nohup env -u TMUX -u TMUX_PANE PICK_SESSION_CURRENT_SESSION="$current_session" PICK_SESSION_SCAN_ROOTS="$pick_session_scan_roots_raw" "$HOME/.config/tmux/scripts/pickers/session/remove_all_worktrees.sh" "$root" < /dev/null > /dev/null 2>&1 &
   done
 
   for root in "${!worktree_paths_by_root[@]}"; do
@@ -426,8 +451,10 @@ if command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then
   done
 
   if [ ${#pending_plain_dirs[@]} -gt 0 ]; then
-    for pd in "${pending_plain_dirs[@]}"; do
-      nohup env -u TMUX -u TMUX_PANE "$HOME/.config/tmux/scripts/pickers/session/remove_plain_dir.sh" "$pd" < /dev/null > /dev/null 2>&1 &
+    for i in "${!pending_plain_dirs[@]}"; do
+      pd="${pending_plain_dirs[$i]}"
+      pd_session="${pending_plain_dir_sessions[$i]:-}"
+      nohup env -u TMUX -u TMUX_PANE "$HOME/.config/tmux/scripts/pickers/session/remove_plain_dir.sh" "$pd" "$HOME" "$pd_session" < /dev/null > /dev/null 2>&1 &
     done
   fi
 fi

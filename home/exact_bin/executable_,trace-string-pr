@@ -58,6 +58,20 @@ determine_default_jobs() {
   echo $((cores * 2))
 }
 
+determine_fifo_root() {
+  local fallback_root
+
+  if [ -n "${XDG_RUNTIME_DIR:-}" ] && [ -d "$XDG_RUNTIME_DIR" ] && [ -w "$XDG_RUNTIME_DIR" ] && [ -x "$XDG_RUNTIME_DIR" ]; then
+    echo "$XDG_RUNTIME_DIR"
+    return
+  fi
+
+  fallback_root="${XDG_STATE_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}}/trace-string-pr"
+  mkdir -p "$fallback_root"
+  chmod 700 "$fallback_root"
+  echo "$fallback_root"
+}
+
 if [ -z "${F_TRACE_STRING_PR_JOBS:-}" ]; then
   max_jobs="$(determine_default_jobs)"
 else
@@ -69,9 +83,32 @@ if ! [[ "$max_jobs" =~ ^[0-9]+$ ]] || [ "$max_jobs" -le 0 ]; then
   exit 1
 fi
 
-temp_fifo="$(mktemp -u)"
+fifo_root="$(determine_fifo_root)"
+fifo_parent="$(mktemp -d "${fifo_root%/}/trace-string-pr.XXXXXXXX")"
+chmod 700 "$fifo_parent"
+temp_fifo="$fifo_parent/results.fifo"
+search_pid=""
+
+cleanup() {
+  local exit_code="${1:-$?}"
+  trap - EXIT INT TERM
+
+  if [ -n "${search_pid:-}" ]; then
+    kill "$search_pid" 2>/dev/null || true
+    wait "$search_pid" 2>/dev/null || true
+  fi
+
+  if [ -n "${fifo_parent:-}" ] && [ -d "$fifo_parent" ]; then
+    rm -rf "$fifo_parent" 2>/dev/null || true
+  fi
+
+  exit "$exit_code"
+}
+
+trap 'cleanup $?' EXIT
+trap 'cleanup 130' INT
+trap 'cleanup 143' TERM
 mkfifo "$temp_fifo"
-trap 'rm -f "$temp_fifo"' EXIT INT TERM
 
 (
   export TRACE_REGEX="$regex"
@@ -91,6 +128,7 @@ set -e
 
 kill "$search_pid" 2>/dev/null || true
 wait "$search_pid" 2>/dev/null || true
+search_pid=""
 
 if [ "$fzf_status" -ne 0 ] || [ -z "$selection" ]; then
   exit 0

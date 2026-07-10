@@ -16,8 +16,8 @@ Ralph is no longer the only consumer. Interactive harnesses reach the same durab
 | ---------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | cursor-cli | `~/.agents/skills/`                                | [`~/AGENTS.md`](../../../../home/readonly_AGENTS.md) "Durable Agent Memory"                         |
 | pi         | `~/.agents/skills/` (via the `pi-skills` package)  | covered by the skill (auto-loaded)                                                                  |
-| Claude     | `~/.claude/skills` -> `~/.agents/skills/`          | [`~/CLAUDE.md`](../../../../home/readonly_AGENTS.md) section 4.3 (symlink to `~/AGENTS.md`)         |
-| Gemini     | `~/.agents/skills/`                                | [`~/.gemini/GEMINI.md`](../../../../home/readonly_AGENTS.md) section 4.3 (symlink to `~/AGENTS.md`) |
+| Claude     | `~/.claude/skills` -> `~/.agents/skills/`          | [`~/CLAUDE.md`](../../../../home/readonly_AGENTS.md) section 4.1 (symlink to `~/AGENTS.md`)         |
+| Gemini     | `~/.agents/skills/`                                | [`~/.gemini/GEMINI.md`](../../../../home/readonly_AGENTS.md) section 4.1 (symlink to `~/AGENTS.md`) |
 | OpenCode   | `~/.agents/skills/`                                | `~/.config/opencode/AGENTS.md` -> `~/AGENTS.md` (same pointer as cursor-cli)                        |
 | Codex      | agent-pull by explicit `~/.agents/skills/...` path | `~/.codex/AGENTS.md` -> `~/AGENTS.md`                                                               |
 | Copilot    | `~/.copilot/skills` -> `~/.agents/skills`          | `~/.copilot/copilot-instructions.md` -> `~/AGENTS.md`                                               |
@@ -84,17 +84,17 @@ The scope gate is provenance-only. The relative floor prevents low-relevance cap
 
 Cross-runtime durable-memory retrieval:
 
-| Runtime      | Auto-retrieval mechanism                                                                                                     |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| Ralph        | Mechanical push: top-K per role injected into the `## RECENT LEARNINGS` prompt block                                         |
-| Cursor CLI   | `session_context.py` gated `sessionStart` warm-start (session-bound named topic only); else Topic Buckets / agent-pull       |
-| Codex        | `session_context.py` gated `SessionStart` warm-start; else agent-pull                                                        |
-| Copilot      | `agent-memory` SDK extension calls `session_context.py` in `onSessionStart` and returns `additionalContext`; else agent-pull |
-| Claude       | `session_context.py` gated `sessionStart` warm-start **plus** per-turn via `UserPromptSubmit`                                |
-| Pi           | `ai-kb-recall.ts` warm-start (parity) **plus** per-turn prompt-query injection                                               |
-| OpenCode     | `agent-memory.ts` plugin: warm-start in system prompt **plus** per-turn via `chat.message`                                   |
-| Gemini       | `SessionStart` warm-start **plus** per-turn via `BeforeAgent` (`additionalContext`)                                          |
-| Cursor cloud | No injection point available; agent-pull only                                                                                |
+| Runtime      | Auto-retrieval mechanism                                                                                                                                                                         |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Ralph        | Mechanical push: top-K per role injected into the `## RECENT LEARNINGS` prompt block                                                                                                             |
+| Cursor CLI   | `session_context.py` gated `sessionStart` warm-start (session-bound named topic only); else Topic Buckets / agent-pull                                                                           |
+| Codex        | `session_context.py` gated `SessionStart` warm-start; else agent-pull                                                                                                                            |
+| Copilot      | `agent-memory` SDK extension calls `session_context.py` in `onSessionStart` and returns `additionalContext` **plus** per-turn via `onUserPromptSubmitted` (`perturn_recall.py`); else agent-pull |
+| Claude       | `session_context.py` gated `sessionStart` warm-start **plus** per-turn via `UserPromptSubmit`                                                                                                    |
+| Pi           | `ai-kb-recall.ts` warm-start (parity) **plus** per-turn prompt-query injection                                                                                                                   |
+| OpenCode     | `agent-memory.ts` plugin: warm-start in system prompt **plus** per-turn via `chat.message`                                                                                                       |
+| Gemini       | `SessionStart` warm-start **plus** per-turn via `BeforeAgent` (`additionalContext`)                                                                                                              |
+| Cursor cloud | No injection point available; agent-pull only                                                                                                                                                    |
 
 `~/.agents/hooks/perturn_recall.py` is the shared per-turn implementation.
 
@@ -111,13 +111,14 @@ It mirrors Pi's `ai-kb-recall.ts` gates:
 
 Runtime hooks:
 
-| Runtime     | Hook                                 |
-| ----------- | ------------------------------------ |
-| Claude Code | `UserPromptSubmit`                   |
-| Gemini      | `BeforeAgent`                        |
-| OpenCode    | `chat.message` delegates to the hook |
+| Runtime     | Hook                                                   |
+| ----------- | ------------------------------------------------------ |
+| Claude Code | `UserPromptSubmit`                                     |
+| Gemini      | `BeforeAgent`                                          |
+| OpenCode    | `chat.message` delegates to the hook                   |
+| Copilot     | `onUserPromptSubmitted` SDK hook delegates to the hook |
 
-All three inject `additionalContext` into the current turn. They do not re-prompt the agent or start another request/response cycle.
+All of these inject `additionalContext` into the current turn. They do not re-prompt the agent or start another request/response cycle.
 
 `,ai-kb` remains the sole durable semantic store. Harness-native memory features stay unused; Codex's experimental auto-memory is pinned off via `[features] memories = false`.
 
@@ -137,7 +138,7 @@ Interactive harnesses are wired for skill-based or explicit-path access (`agent-
 Automatic retrieval injection is narrower than skill access:
 
 - Ralph injects mechanically per role.
-- cursor-cli/Codex/Copilot use session warm-start only.
+- cursor-cli/Codex use session warm-start only.
 - Pi uses warm-start plus per-turn prompt retrieval.
-- Claude, Gemini, and OpenCode use warm-start plus per-turn hook injection.
+- Claude, Gemini, OpenCode, and Copilot use warm-start plus per-turn hook injection.
 - Cursor cloud uses explicit agent-pull only.

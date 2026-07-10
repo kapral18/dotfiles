@@ -12,7 +12,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 # If the consumer (fzf) exits early, don't spam tracebacks.
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
@@ -629,6 +629,70 @@ GH_TTL_TERMINAL = 86400
 GH_TTL_MISS = 3600
 GH_PICKER_TTL = 300
 
+GH_LOOKUP_SUCCESS = "success"
+GH_LOOKUP_ABSENT = "absent"
+GH_LOOKUP_FAILURE = "failure"
+_GH_LOOKUP_STATUS = Literal["success", "absent", "failure"]
+_GH_PR_ABSENCE_MARKERS = (
+    "no pull requests found for branch",
+    "could not find any pull requests",
+)
+_GH_ISSUE_ABSENCE_MARKERS = ("could not resolve to an issue",)
+
+
+def _gh_lookup_result(
+    status: _GH_LOOKUP_STATUS,
+    pr: dict[str, Any] | None = None,
+    issue: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    return {"status": status, "pr": pr, "issue": issue}
+
+
+def _gh_normalize_error(stderr: str) -> str:
+    return " ".join((stderr or "").strip().lower().split())
+
+
+def _gh_error_matches(stderr: str, markers: tuple[str, ...]) -> bool:
+    msg = _gh_normalize_error(stderr)
+    return bool(msg) and any(marker in msg for marker in markers)
+
+
+def _gh_json_query(
+    args: list[str],
+    *,
+    cwd: str,
+    timeout: int,
+    absence_markers: tuple[str, ...],
+) -> tuple[_GH_LOOKUP_STATUS, dict[str, Any] | None]:
+    if not shutil.which("gh"):
+        return GH_LOOKUP_FAILURE, None
+    try:
+        result = subprocess.run(
+            args,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=timeout,
+            cwd=cwd,
+        )
+    except (subprocess.TimeoutExpired, OSError, ValueError):
+        return GH_LOOKUP_FAILURE, None
+    if result.returncode != 0:
+        if _gh_error_matches(result.stderr or "", absence_markers):
+            return GH_LOOKUP_ABSENT, None
+        return GH_LOOKUP_FAILURE, None
+    raw = (result.stdout or "").strip()
+    if not raw:
+        return GH_LOOKUP_FAILURE, None
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return GH_LOOKUP_FAILURE, None
+    if not isinstance(payload, dict):
+        return GH_LOOKUP_FAILURE, None
+    return GH_LOOKUP_SUCCESS, payload
+
 
 def gh_cache_needs_author_refresh() -> bool:
     """True when legacy PR cache rows lack the author field used for highlighting."""
@@ -815,7 +879,7 @@ def extract_issue_number(branch: str) -> str:
     return m.group(1) if m else ""
 
 
-def _gh_pr_for_wt(wt_path: str, nwo: str) -> dict[str, Any] | None:
+def _gh_pr_for_wt(wt_path: str, nwo: str) -> tuple[_GH_LOOKUP_STATUS, dict[str, Any] | None]:
     """Query gh for the PR associated with the current branch at wt_path.
 
     Uses `gh pr view` (no args) which infers the branch from git context.
@@ -827,54 +891,44 @@ def _gh_pr_for_wt(wt_path: str, nwo: str) -> dict[str, Any] | None:
     Also fetches closingIssuesReferences so callers can resolve linked
     issues without an extra network call.
     """
-    if not shutil.which("gh"):
-        return None
-    try:
-        r = subprocess.run(
-            ["gh", "pr", "view", "--json", "number,state,url,reviewDecision,closingIssuesReferences,author"],
-            check=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-            timeout=15,
-            cwd=wt_path,
-        )
-        if r.returncode != 0 or not (r.stdout or "").strip():
-            return None
-        return json.loads(r.stdout)
-    except Exception:
-        pass
-    return None
+    status, payload = _gh_json_query(
+        ["gh", "pr", "view", "--json", "number,state,url,reviewDecision,closingIssuesReferences,author"],
+        cwd=wt_path,
+        timeout=15,
+        absence_markers=_GH_PR_ABSENCE_MARKERS,
+    )
+    if status != GH_LOOKUP_SUCCESS:
+        return status, None
+    if not payload.get("number"):
+        return GH_LOOKUP_FAILURE, None
+    return GH_LOOKUP_SUCCESS, payload
 
 
-def _gh_issue_state(wt_path: str, issue_num: str, repo_override: str = "") -> dict[str, Any] | None:
-    """Query gh for an issue by number. Returns {number, state, url} or None.
+def _gh_issue_state(
+    wt_path: str,
+    issue_num: str,
+    repo_override: str = "",
+) -> tuple[_GH_LOOKUP_STATUS, dict[str, Any] | None]:
+    """Query gh for an issue by number. Returns an explicit lookup contract.
 
     Uses cwd to let gh resolve the repo from git context (handles forks
     correctly).  Only passes -R when an explicit repo override is provided
     (e.g. from comma.w.issue.repo worktree config).
     """
-    if not shutil.which("gh"):
-        return None
-    try:
-        args = ["gh", "issue", "view", issue_num, "--json", "number,state,url"]
-        if repo_override:
-            args.extend(["-R", repo_override])
-        r = subprocess.run(
-            args,
-            check=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-            timeout=15,
-            cwd=wt_path,
-        )
-        if r.returncode != 0 or not (r.stdout or "").strip():
-            return None
-        return json.loads(r.stdout)
-    except Exception:
-        pass
-    return None
+    args = ["gh", "issue", "view", issue_num, "--json", "number,state,url"]
+    if repo_override:
+        args.extend(["-R", repo_override])
+    status, payload = _gh_json_query(
+        args,
+        cwd=wt_path,
+        timeout=15,
+        absence_markers=_GH_ISSUE_ABSENCE_MARKERS,
+    )
+    if status != GH_LOOKUP_SUCCESS:
+        return status, None
+    if not payload.get("number"):
+        return GH_LOOKUP_FAILURE, None
+    return GH_LOOKUP_SUCCESS, payload
 
 
 def _closing_issue_from_pr(pr_data: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -1096,7 +1150,7 @@ def _batch_ci_graphql(pr_numbers: dict[str, set[int]]) -> dict[str, dict[int, tu
 
 
 def _lookup_gh_info(wt_path: str, branch: str, nwo: str) -> dict[str, Any]:
-    """Return {"pr": {...} | None, "issue": {...} | None} for a worktree.
+    """Return an explicit lookup contract for a worktree.
 
     Issue number resolution order:
       1. comma.w.issue.number worktree metadata (set by ,w / gh-dash)
@@ -1107,9 +1161,11 @@ def _lookup_gh_info(wt_path: str, branch: str, nwo: str) -> dict[str, Any]:
     """
     result: dict[str, Any] = {"pr": None, "issue": None}
     if not branch:
-        return result
-    pr_data = _gh_pr_for_wt(wt_path, nwo)
-    if pr_data:
+        return _gh_lookup_result(GH_LOOKUP_ABSENT)
+    pr_status, pr_data = _gh_pr_for_wt(wt_path, nwo)
+    if pr_status == GH_LOOKUP_FAILURE:
+        return _gh_lookup_result(GH_LOOKUP_FAILURE)
+    if pr_status == GH_LOOKUP_SUCCESS and pr_data:
         pr_num = pr_data["number"]
         picker_review, picker_ci = _get_gh_picker_meta(nwo, pr_num) if nwo else ("", "")
         result["pr"] = {
@@ -1129,8 +1185,47 @@ def _lookup_gh_info(wt_path: str, branch: str, nwo: str) -> dict[str, Any]:
             if not issue_repo_override and closing.get("nwo"):
                 issue_repo_override = closing["nwo"]
     if issue_num:
-        result["issue"] = _gh_issue_state(wt_path, issue_num, issue_repo_override)
-    return result
+        issue_status, issue_data = _gh_issue_state(wt_path, issue_num, issue_repo_override)
+        if issue_status == GH_LOOKUP_FAILURE:
+            return _gh_lookup_result(GH_LOOKUP_FAILURE)
+        if issue_status == GH_LOOKUP_SUCCESS:
+            result["issue"] = issue_data
+    if result.get("pr") or result.get("issue"):
+        return _gh_lookup_result(GH_LOOKUP_SUCCESS, result.get("pr"), result.get("issue"))
+    return _gh_lookup_result(GH_LOOKUP_ABSENT)
+
+
+def _apply_gh_lookup_result(
+    gh_entries: dict[str, dict[str, Any]],
+    wt_gh_info: dict[str, dict[str, Any]],
+    wt_path: str,
+    branch: str,
+    nwo: str,
+    now: float,
+    lookup: dict[str, Any],
+) -> None:
+    status = lookup.get("status")
+    if status == GH_LOOKUP_FAILURE:
+        cached = gh_entries.get(wt_path)
+        if isinstance(cached, dict) and (cached.get("pr") or cached.get("issue")):
+            wt_gh_info[wt_path] = {"pr": cached.get("pr"), "issue": cached.get("issue")}
+        return
+
+    if status == GH_LOOKUP_SUCCESS:
+        pr = lookup.get("pr")
+        issue = lookup.get("issue")
+    elif status == GH_LOOKUP_ABSENT:
+        pr = None
+        issue = None
+    else:
+        cached = gh_entries.get(wt_path)
+        if isinstance(cached, dict) and (cached.get("pr") or cached.get("issue")):
+            wt_gh_info[wt_path] = {"pr": cached.get("pr"), "issue": cached.get("issue")}
+        return
+
+    gh_entries[wt_path] = {"pr": pr, "issue": issue, "branch": branch, "nwo": nwo, "ts": now}
+    if status == GH_LOOKUP_SUCCESS and (pr or issue):
+        wt_gh_info[wt_path] = {"pr": pr, "issue": issue}
 
 
 def pr_badge(state: str) -> str:
@@ -1457,19 +1552,8 @@ if _gh_all:
             for fut in concurrent.futures.as_completed(_gh_futures):
                 p = _gh_futures[fut]
                 br, nwo = _fetch_meta[p]
-                try:
-                    info = fut.result()
-                    _gh_entries[p] = {
-                        "pr": info.get("pr"),
-                        "issue": info.get("issue"),
-                        "branch": br,
-                        "nwo": nwo,
-                        "ts": _now,
-                    }
-                    if info.get("pr") or info.get("issue"):
-                        wt_gh_info[p] = info
-                except Exception:
-                    _gh_entries[p] = {"pr": None, "issue": None, "branch": br, "nwo": nwo, "ts": _now}
+                lookup = fut.result()
+                _apply_gh_lookup_result(_gh_entries, wt_gh_info, p, br, nwo, _now, lookup)
 
     _live_paths = {p for p, _, _ in _gh_all}
     _gh_pruned = {k: v for k, v in _gh_entries.items() if k in _live_paths}

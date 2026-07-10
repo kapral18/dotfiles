@@ -14,7 +14,7 @@ from _test_support import REPO
 
 
 class VerifyDocsNavigationTest(unittest.TestCase):
-    """WHEN validating docs/reference navigation."""
+    """WHEN validating docs navigation."""
 
     def _module(self):
         import verify_docs_navigation
@@ -28,9 +28,13 @@ class VerifyDocsNavigationTest(unittest.TestCase):
         (root / "home").mkdir()
         (root / "scripts").mkdir()
 
+        (root / "README.md").write_text("# Root\n", encoding="utf-8")
         (root / "home/example").write_text("source\n", encoding="utf-8")
         (root / "scripts/example.py").write_text("print('ok')\n", encoding="utf-8")
-        (root / "docs/topics/example/index.md").write_text("# Example\n", encoding="utf-8")
+        (root / "docs/topics/example/index.md").write_text(
+            "# Example\n\n## Example section\n",
+            encoding="utf-8",
+        )
 
         (root / "docs/reference/reference-map.md").write_text(
             "\n".join(
@@ -39,8 +43,11 @@ class VerifyDocsNavigationTest(unittest.TestCase):
                     "[source](../../home/example)",
                     "[script](../../scripts/example.py)",
                     "[docs](../topics/example/index.md)",
+                    "[doc anchor](../topics/example/index.md#example-section)",
                     "[anchor](#local)",
                     "[external](https://example.com)",
+                    "",
+                    "## Local",
                     "",
                 ]
             ),
@@ -77,6 +84,48 @@ class VerifyDocsNavigationTest(unittest.TestCase):
             failures = m.check_docs_navigation(root)
 
         assert any("broken link target ../../home/missing" in failure for failure in failures)
+
+    def test_discovers_all_docs_pages_for_link_checks(self):
+        """SHOULD scan every docs Markdown page, not just docs/reference."""
+        m = self._module()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_reference_docs(root)
+            (root / "docs/topics/example/extra.md").write_text("[missing](../../../missing.md)\n", encoding="utf-8")
+
+            failures = m.check_docs_navigation(root)
+
+        assert any(
+            "docs/topics/example/extra.md: broken link target ../../../missing.md" in failure for failure in failures
+        )
+
+    def test_allows_existing_links_that_escape_docs_root(self):
+        """SHOULD allow repo-relative links that leave docs/ but stay inside the repo."""
+        m = self._module()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_reference_docs(root)
+            doc = Path("docs/topics/example/extra.md")
+            (root / doc).write_text("[root](../../../README.md)\n[source](../../../home/example)\n", encoding="utf-8")
+
+            failures = m.check_links(root, doc_paths=(doc,))
+
+        assert failures == []
+
+    def test_reports_missing_anchor_targets(self):
+        """SHOULD report relative doc links whose target heading is missing."""
+        m = self._module()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_reference_docs(root)
+            (root / "docs/reference/reference-map.md").write_text(
+                "[missing anchor](../topics/example/index.md#missing-anchor)\n",
+                encoding="utf-8",
+            )
+
+            failures = m.check_links(root, doc_paths=(Path("docs/reference/reference-map.md"),))
+
+        assert any("broken anchor target ../topics/example/index.md#missing-anchor" in failure for failure in failures)
 
     def test_reports_missing_catalog_rows(self):
         """SHOULD report when implementation coverage omits a catalog row."""

@@ -10,7 +10,7 @@ flowchart TB
     classDef ci fill:#3a2b1b,stroke:#ffb74d,color:#fff3e0;
 
     subgraph WEBSITE["website/ (Docusaurus app)"]
-        CFG["docusaurus.config.ts · sidebars.ts (explicit domain nav)<br/>tsconfig.json · package.json + .yarnrc + yarn.lock<br/>.gitignore · README.md"]:::build
+        CFG["docusaurus.config.ts · sidebars.ts (explicit domain nav;<br/>broken links/anchors fail build)<br/>tsconfig.json · package.json + .yarnrc + yarn.lock<br/>.gitignore · README.md"]:::build
         SRC["src/css/custom.css<br/>src/theme/SearchBar/{index.tsx,styles.module.css}<br/>src/plugins/local-search/index.ts<br/>src/remark/cross-repo-links.js"]:::build
         STATIC["static/.nojekyll · static/img/favicon.svg"]:::build
     end
@@ -26,7 +26,8 @@ flowchart TB
 
     DOCS --> WEBSITE
     WEBSITE --> BUILD["make docs / docs-build / docs-serve / docs-clean<br/>(Yarn Classic --frozen-lockfile → yarn build)"]:::site
-    BUILD --> CI[".github/workflows/deploy-docs.yml<br/>→ kapral18.github.io/dotfiles"]:::ci
+    BUILD --> PRCI[".github/workflows/check-docs.yml<br/>pull_request → verifier tests + docs-build (no deploy)"]:::ci
+    BUILD --> CI[".github/workflows/deploy-docs.yml<br/>push main → build + deploy to kapral18.github.io/dotfiles"]:::ci
 
     NOTE["Documentation Hygiene: any behavior change under home//scripts//tools/<br/>must update the matching docs/ page (and .mermaids/)."]:::content
     DOCS --- NOTE

@@ -88,7 +88,15 @@ The GitHub picker uses `alt-r` for quote-reply; the session picker keeps `alt-r`
 
 ## Remove worktrees (`alt-x`)
 
-`alt-x` removes selected worktree rows in the background and hides their rows optimistically while the cache refreshes. When a root worktree selection maps to a wrapper directory such as `~/work/kibana`, the remover deletes only the worktrees reported by that repo's `git worktree list`. Ordinary non-worktree leftovers under an otherwise removable wrapper are preserved under `.bag/pickers/session/` before the empty wrapper is removed. If the wrapper also contains an independent git repo or worktree root, the wrapper is kept in place and those sibling git roots are neither deleted nor moved into `.bag`.
+`alt-x` removes selected worktree rows in the background and hides their rows optimistically while the cache refresh runs. When a root worktree selection maps to a wrapper directory such as `~/work/kibana`, the remover deletes only the worktrees reported by that repo's `git worktree list`. Ordinary non-worktree leftovers under an otherwise removable wrapper are preserved under `.bag/pickers/session/` before the empty wrapper is removed. If the wrapper also contains an independent git repo or worktree root, the wrapper is kept in place and those sibling git roots are neither deleted nor moved into `.bag`.
+
+Deletion is boundary-guarded: the background remover only `rm`s targets that resolve to a strict descendant of `$HOME` or a configured `@pick_session_worktree_scan_roots` entry (the scan roots are passed through from the picker, which still holds tmux context). The roots themselves, `/`, empty paths, and anything resolving outside every approved root are refused.
+
+Removing a plain (non-worktree) directory row also kills its tmux session. The picker resolves the exact session name while still attached and passes it to the background remover, so the session is torn down by name even though `$TMUX` is unset for the detached job.
+
+## Hand off to GitHub (`alt-g`)
+
+`alt-g` hands the selected row's PR/issue to the GitHub picker instead of switching sessions locally. It writes a `gh_picker_pin` seed and touches a `pick_session_switch_gh` sentinel inside the picker's owner-scoped handoff namespace, then aborts. The popup loop sees the sentinel, relaunches the GitHub picker, and that picker consumes `gh_picker_pin` at startup to seed the matching PR/issue on top (`pin_gh_first`). Slots are resolved through `handoff_namespace.py` in the explicit `TMUX_PICKER_HANDOFF_TOKEN` environment namespace inherited via `display-popup -e`, never through argv or top-level global mailbox files. The wrapper owner ends the namespace on normal exit; a picker launched without an inherited token begins, owns, and ends its own standalone namespace. See the GitHub picker's [Handoff bus](github-picker-mechanics.md#handoff-bus) for owner cleanup and the seven-day secure retained-context lifecycle used by Ralph.
 
 ## Refresh and caching
 
@@ -107,6 +115,8 @@ Main cache files live under `~/.cache/tmux/`:
 | mutation/pending tombstones | optimistic hide for killed sessions or removed worktrees |
 
 PR/issue cache TTLs are state-aware: open items refresh more often than merged/closed items, and cache misses have their own shorter TTL.
+
+GitHub lookups are tri-state. A successful lookup writes fresh PR/issue metadata; a confirmed absence (the branch has no PR, or the issue does not resolve) clears any stale badge; a transient failure (rate limit, network error, timeout, `gh` unavailable) preserves the last-known cached badge instead of erasing it. Badges therefore survive a flaky `gh` call rather than flickering to empty.
 
 ## Worktree discovery
 

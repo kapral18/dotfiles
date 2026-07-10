@@ -39,7 +39,7 @@ Multi-Ralph isolation contract:
 
 - Each `,ralph go` run owns a dedicated tmux session named `ralph-<short-rid>`. Multiple runs coexist without polluting the user's main session.
 - The dashboard never holds tmux state; quitting (`q`) does not affect any running runners or sessions.
-- `kill <rid>` and `rm <rid>` only touch their own dedicated session; concurrent runs are unaffected (covered by [`scripts/test_ralph.py::TestRalphMultiRunIsolation`](../../../../scripts/tests/test_scripts.py)).
+- `kill <rid>` and `rm <rid>` only touch their own dedicated session; concurrent runs are unaffected (covered by [`scripts/test_ralph.py::TestRalphMultiRunIsolation`](../../../../scripts/test_ralph.py)).
 
 Other tmux integrations:
 

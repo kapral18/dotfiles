@@ -115,6 +115,6 @@ Live UI target selection:
 | no explicit target and verified Kibana applies | use `elastic-domain/references/kibana-live-ui.md` |
 | no target packet can be loaded                 | block instead of inventing targets                |
 
-`live-ui-review` verifies the local browser only — there is no automatic or context-inferred Windows/VirtualBox path in this flow. Windows/VirtualBox coverage is a separate manual skill, [`live-ui-windows`](../../../home/exact_dot_agents/exact_skills/exact_live-ui-windows/): load it by hand only when the user explicitly asks for Windows/VirtualBox verification this turn, never from PR/issue/spec inference.
+`live-ui-review` verifies the local browser only — there is no automatic or context-inferred Windows/VirtualBox path in this flow. Windows/VirtualBox coverage is a separate manual skill, [`live-ui-windows`](../../../../home/exact_dot_agents/exact_skills/exact_live-ui-windows/): load it by hand only when the user explicitly asks for Windows/VirtualBox verification this turn, never from PR/issue/spec inference.
 
 ![Live UI target-packet handoff: controller selects an explicit or verified overlay packet, worker verifies, and returns evidence, not applicable, or blocker](../assets/live-ui-target-packet.svg)

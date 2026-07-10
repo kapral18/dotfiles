@@ -22,6 +22,8 @@ Keymaps:
 - `leader-tU` update snapshots (file)
 - `leader-tq` close the test terminal
 
+Close semantics: `q` in normal mode closes a terminal buffer only inside the Jest split created by this plugin (`util.terminal.run_in_split` sets that mapping locally on its own terminal buffer). Opening any other terminal (`:terminal`, a different plugin's terminal, etc.) never gets `q` rebound — there is no global `TermOpen` mapping, so unrelated terminal jobs are never closed as a side effect.
+
 ## Git: Commit Message Summarizer (Local Plugin)
 
 In a `gitcommit` buffer, generate a Conventional Commit message from the staged diff (`git diff --cached`).

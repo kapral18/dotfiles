@@ -16,15 +16,23 @@ set -euo pipefail
 # (popup races, stray invocations) don't trample each other's state and so
 # we don't leave hundreds of stale `.$$.tsv` files in the cache dir.
 _gh_picker_pid_scoped_files=()
-_gh_picker_cleanup_pid_scoped() {
+handoff_namespace="$HOME/.config/tmux/scripts/pickers/lib/handoff_namespace.py"
+# Set only when this picker was launched with no inherited handoff token and so
+# had to begin (and therefore owns) its own standalone namespace. A popup-loop
+# launch keeps this empty so a child picker never ends the loop's namespace.
+_gh_picker_standalone_token=""
+_gh_picker_cleanup() {
   local _f
   for _f in "${_gh_picker_pid_scoped_files[@]+"${_gh_picker_pid_scoped_files[@]}"}"; do
     [ -n "$_f" ] || continue
     rm -f "$_f" 2> /dev/null || true
   done
+  if [ -n "$_gh_picker_standalone_token" ]; then
+    "$handoff_namespace" end --owner-pid "$$" --token "$_gh_picker_standalone_token" 2> /dev/null || true
+  fi
 }
 trap 'exit 0' INT HUP TERM
-trap '_gh_picker_cleanup_pid_scoped' EXIT
+trap '_gh_picker_cleanup' EXIT
 
 die() {
   if [ -n "${TMUX:-}" ]; then
@@ -37,6 +45,16 @@ die() {
 for cmd in fzf gh yq python3; do
   command -v "$cmd" > /dev/null 2>&1 || die "gh-picker: missing $cmd"
 done
+
+# A direct (non-popup) invocation arrives without a handoff token. Begin an
+# explicit standalone namespace this picker owns and export it to fzf children;
+# never let `path` mint one implicitly. A popup-loop launch inherits the loop's
+# token and skips this so it shares the loop's namespace.
+if [ -z "${TMUX_PICKER_HANDOFF_TOKEN:-}" ]; then
+  _gh_picker_standalone_token="$("$handoff_namespace" begin --owner-pid "$$" --owner-role standalone-picker --entry gh-picker)" \
+    || die "gh-picker: handoff namespace unavailable"
+  export TMUX_PICKER_HANDOFF_TOKEN="$_gh_picker_standalone_token"
+fi
 
 mode="${GH_PICKER_MODE:-work}"
 scope="${GH_PICKER_SCOPE:-all}"
@@ -93,19 +111,22 @@ action_flag="${cache_dir}/gh_picker_action.$$"
 expand_flag="${cache_dir}/gh_preview_expand.$$"
 help_flag="${cache_dir}/gh_picker_help.$$"
 _gh_picker_pid_scoped_files+=("$primary_tmp" "$action_flag" "$expand_flag" "$help_flag")
-# port_file is read by background tools (gh_batch_worktree etc.) keyed off the
-# active picker; keeping it shared is intentional. mode_flag_file is also
-# shared because the batch worktree creator reads "what mode are we in" to
-# decide which cache file to patch.
+# port_file is shared for best-effort reload notifications when the active
+# picker is still alive. mode/scope files are shared runtime state for picker
+# bindings and in-popup reload commands.
 port_file="${cache_dir}/gh_picker_port"
 scope_flag_file="${cache_dir}/gh_picker_scope"
-pin_file="${cache_dir}/gh_picker_pin"
-create_pin_file="${cache_dir}/gh_picker_create_pin"
-pick_session_pin_file="${cache_dir}/pick_session_pin"
+# Handoff pins/sentinels resolve to this invocation's private namespace
+# (inherited popup-loop token or this picker's standalone token). Shared runtime
+# state (port/mode/scope/preview/item caches) stays global and is untouched.
+pin_file="$("$handoff_namespace" path gh_picker_pin)"
+create_pin_file="$("$handoff_namespace" path gh_picker_create_pin)"
+pick_session_pin_file="$("$handoff_namespace" path pick_session_pin)"
+switch_sessions_file="$("$handoff_namespace" path gh_picker_switch_sessions)"
 handoff_to_sessions_cmd="$HOME/.config/tmux/scripts/pickers/lib/handoff_to_sessions.sh"
 handoff_to_ralph_cmd="$HOME/.config/tmux/scripts/pickers/lib/handoff_to_ralph_pin.sh"
 pin_first_cmd="$HOME/.config/tmux/scripts/pickers/lib/pin_gh_first.sh"
-ralph_pin_file="${cache_dir}/gh_picker_ralph_pin"
+ralph_pin_file="$("$handoff_namespace" path gh_picker_ralph_pin)"
 
 fzf_color="prompt:111,query:223,input-bg:-1,input-fg:252,ghost:240,header:244,spinner:110,info:244,pointer:81,marker:214"
 
@@ -113,7 +134,7 @@ mode_flag_file="${cache_dir}/gh_picker_mode"
 printf '%s' "$mode" > "$mode_flag_file"
 printf '%s' "$scope" > "$scope_flag_file"
 
-rm -f "$primary_tmp" "$action_flag" "$help_flag" "$ralph_pin_file" "$create_pin_file" 2> /dev/null || true
+rm -f "$primary_tmp" "$action_flag" "$help_flag" 2> /dev/null || true
 printf '0' > "$expand_flag"
 
 toggle_cmd="$script_dir/lib/gh_picker_toggle.sh"
@@ -147,6 +168,12 @@ fi
 
 items_cache="${cache_dir}/gh_picker_${mode}.tsv"
 status_header="$(python3 "$dashboard_ui" status --cache-file "$items_cache" --mode "$mode" --scope "$scope" 2> /dev/null || printf '%s' 'GitHub dashboard')"
+# Batch dispatches inherit this immutable packet so completion markers/reloads
+# always target the picker that initiated the action, even if another picker
+# rewrites shared globals before the background batch finishes.
+export GH_PICKER_DISPATCH_MODE="$mode"
+export GH_PICKER_DISPATCH_SCOPE="$scope"
+export GH_PICKER_DISPATCH_CACHE_FILE="$items_cache"
 
 # Background fetch: launched from fzf's start binding where $FZF_PORT is available.
 # Fetches fresh data from GitHub, then POSTs a reload to the running fzf instance.
@@ -193,7 +220,7 @@ pick="$(
     --bind "alt-x:execute($(printf %q "$palette_helper") {+f} $(printf %q "$mode_flag_file") $(printf %q "$scope_flag_file") $(printf %q "$items_cmd"))+refresh-preview" \
     --bind "alt-i:execute($(printf %q "$create_cmd") issue {3} $(printf %q "$mode_flag_file") $(printf %q "$scope_flag_file") $(printf %q "$items_cmd"))+transform([ -f $(printf %q "$create_pin_file") ] && echo abort || true)" \
     --bind "alt-E:execute($(printf %q "$create_cmd") epic {3} $(printf %q "$mode_flag_file") $(printf %q "$scope_flag_file") $(printf %q "$items_cmd"))+transform([ -f $(printf %q "$create_pin_file") ] && echo abort || true)" \
-    --bind "alt-g:execute-silent($(printf %q "$handoff_to_sessions_cmd") {2} {3} {4} $(printf %q "$pick_session_pin_file") 2>/dev/null || true; touch ${cache_dir}/gh_picker_switch_sessions)+abort" \
+    --bind "alt-g:execute-silent($(printf %q "$handoff_to_sessions_cmd") {2} {3} {4} $(printf %q "$pick_session_pin_file") 2>/dev/null || true; touch $(printf %q "$switch_sessions_file"))+abort" \
     --bind "alt-A:execute-silent($(printf %q "$handoff_to_ralph_cmd") {+f} $(printf %q "$ralph_pin_file") 2>/dev/null || true)+abort" \
     --bind "alt-o:execute-silent($action_cmd open {2} {3} {4} {5})" \
     --bind "alt-y:execute-silent(printf '%s\n' {+} | cut -f5 | grep -E '^https?://' | pbcopy 2>/dev/null || printf '%s\n' {+} | cut -f5 | grep -E '^https?://' | xclip -sel clip 2>/dev/null)" \
@@ -217,7 +244,7 @@ pick="$(
     || true
 )"
 
-if [ -f "${cache_dir}/gh_picker_switch_sessions" ]; then
+if [ -f "$switch_sessions_file" ]; then
   exit 0
 fi
 

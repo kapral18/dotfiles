@@ -430,12 +430,20 @@ def main() -> None:
         if warmstart:
             parts.extend(["", warmstart])
         # Record injected capsule ids so the per-turn recall hook
-        # (perturn_recall.py) never re-injects them this session.
+        # (perturn_recall.py) never re-injects them this session. Load-union-save
+        # rather than overwrite so a resume/compact firing a second warm start
+        # cannot drop ids the per-turn hook (or an earlier warm start) already
+        # recorded, which would re-inject already-seen capsules.
         if injected_ids and key:
             seen_path = spec_path.parent / f".recall-seen-{key}.json"
             try:
                 seen_path.parent.mkdir(parents=True, exist_ok=True)
-                seen_path.write_text(json.dumps(sorted(set(injected_ids))))
+                try:
+                    existing = set(json.loads(seen_path.read_text()))
+                except (OSError, json.JSONDecodeError, TypeError):
+                    existing = set()
+                merged = existing | set(injected_ids)
+                seen_path.write_text(json.dumps(sorted(merged)))
             except OSError:
                 pass
 

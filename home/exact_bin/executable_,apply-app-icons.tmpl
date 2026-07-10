@@ -2,8 +2,18 @@
 set -e
 
 # Load icon mappings
-ICON_MAPPING="{{ .chezmoi.sourceDir }}/app_icons/icon_mapping.yaml"
+ICON_MAPPING="{{ .chezmoi.sourceDir }}/app_icons/readonly_icon_mapping.yaml"
 ICON_DIR="{{ .chezmoi.sourceDir }}/app_icons"
+
+# Refresh Dock/Finder by signaling only the current user's own numeric PIDs
+refresh_finder_dock() {
+  local name pid
+  for name in Dock Finder; do
+    for pid in $(pgrep -x -u "$(id -u)" "$name" 2>/dev/null || true); do
+      kill "$pid" 2>/dev/null || true
+    done
+  done
+}
 
 # Function to apply icon to an app
 apply_icon() {
@@ -36,8 +46,7 @@ apply_icon() {
   touch "$app_path"
 
   # Force refresh of Dock and Finder
-  killall Dock &>/dev/null || true
-  killall Finder &>/dev/null || true
+  refresh_finder_dock
 
   echo "Successfully applied custom icon ${icon} to $app"
 }

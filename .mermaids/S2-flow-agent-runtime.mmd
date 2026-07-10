@@ -50,8 +50,10 @@ flowchart TB
     subgraph RALPH["if work == Ralph orchestration (C11/C12)"]
         direction LR
         RR["roles.json + family_of() gate:<br/>reviewer ≠ re_reviewer family (C11)"]:::gate
-        SM["manifest phase advances; crash→park;<br/>supervisor/resume relaunch (C12)"]:::loop
+        SM["manifest phase advances; crash→park;<br/>supervisor/resume relaunch (C12);<br/>reviewer BLOCK verdict → needs_human park,<br/>cleared ONLY by ,ralph resume"]:::loop
+        XPORT["subprocess prompt transport:<br/>prompt.md is the source; cursor gets it as the<br/>trailing positional arg ($(cat prompt.md));<br/>pi/command read it via '< prompt.md';<br/>subprocess stdin is EMPTY (never double-supplied)"]:::gate
         RR --> SM
+        SM --> XPORT
     end
     WORK -. "ralph go" .-> RALPH
     SM -. "anchored like any agent" .-> ANCHOR

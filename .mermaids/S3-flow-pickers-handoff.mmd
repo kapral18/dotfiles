@@ -1,5 +1,5 @@
 %% ============================================================================
-%% S3-flow-pickers-handoff.mmd — FLOW: stale-while-revalidate UX + the file-based
+%% S3-flow-pickers-handoff.mmd — FLOW: stale-while-revalidate UX + the owner-scoped
 %% handoff bus that lets pickers cooperate. Realizes C9, C10 (and C3 work/home
 %% scope). Files are nodes ON the interaction. (drill: 05, 06)
 %% ============================================================================
@@ -9,6 +9,7 @@ flowchart TB
     classDef ui fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
     classDef bus fill:#3a1b2b,stroke:#f48fb1,color:#fce4ec;
     classDef run fill:#4a1f1f,stroke:#ef9a9a,color:#ffebee;
+    classDef own fill:#2b2b45,stroke:#9fa8da,color:#e8eaf6;
 
     subgraph SWR["C9 · stale-while-revalidate (never block on network)"]
         direction TB
@@ -21,20 +22,30 @@ flowchart TB
         KEEP --> VIEW
     end
 
-    subgraph BUS["C10 · file-based handoff bus ($XDG_CACHE_HOME/tmux)"]
+    subgraph OWN["C10 · owner-scoped namespace (pickers/lib/handoff_namespace.py)"]
+        direction TB
+        BEGIN["gh_popup.sh: begin --owner-role popup-loop --entry gh-popup<br/>→ random 32-hex token dir in $XDG_CACHE_HOME/tmux/handoff-v1/&lt;token&gt;/<br/>(dir 0700; immutable owner.json 0600 fingerprints pid+start+command)"]:::own
+        BEGIN --> INJECT["export TMUX_PICKER_HANDOFF_TOKEN; display-popup -e explicitly injects<br/>the token into every child; handoff_namespace path SLOT resolves only there<br/>a picker launched WITHOUT a token begins & owns its own standalone namespace"]:::own
+        INJECT --> ENDNS["every normal EXIT → end --owner-pid $$<br/>(owner-fingerprint checked, idempotent); no global mailbox<br/>Ralph also ends normally after retain-context copies .context.md outside the namespace"]:::own
+    end
+    LAUNCH -.begins/owns.-> BEGIN
+
+    subgraph BUS["C10 · owner-scoped handoff slots (path SLOT within the namespace)"]
         direction TB
         VIEW --> ACT{"action key"}:::ui
-        ACT -->|enter / checkout| PIN["write gh_picker_pin → abort picker"]:::bus
-        ACT -->|ralph hand-off| RPIN["handoff_to_ralph_pin.sh →<br/>gh_ralph_handoff_context.py → gh_picker_ralph_pin"]:::bus
-        ACT -->|create| CPIN["write gh_picker_create_pin"]:::bus
-        ACT -->|switch sessions| SENT["write gh_picker_switch_sessions sentinel"]:::bus
+        ACT -->|enter / checkout| CO["direct worktree checkout in place (,w · gh-worktree)<br/>no pin — the action runs, no successor needed"]:::run
+        ACT -->|"alt-g → sessions"| SENT["handoff_to_sessions.sh → pick_session_pin<br/>+ touch gh_picker_switch_sessions sentinel · abort"]:::bus
+        ACT -->|"alt-A → ralph"| RPIN["handoff_to_ralph_pin.sh →<br/>gh_ralph_handoff_context.py → gh_picker_ralph_pin (+ .context.md)"]:::bus
+        ACT -->|"alt-i / alt-E → create"| CPIN["create flow → gh_picker_create_pin<br/>(consumed on gh_picker EXIT → checkout)"]:::bus
     end
 
-    subgraph CONSUME["next tool consumes + deletes pin on its launch"]
-        PIN --> WT["worktree open / checkout (,w · gh-worktree)"]:::run
-        RPIN --> RALPH[",ralph go run seeded with PR/issue context"]:::run
+    subgraph CONSUME["successor consumes + deletes its seed pin at startup (same namespace)"]
+        SENT -->|popup loop relaunches| PICKSESS["pick_session picker: consume pick_session_pin<br/>(pin_session_first seeds top) · tmux attach/switch"]:::run
+        PICKSESS -->|"alt-g → GitHub"| GHPIN["handoff_to_gh.sh → gh_picker_pin<br/>+ touch pick_session_switch_gh sentinel · abort"]:::bus
+        GHPIN -->|popup loop relaunches| GHSEED["gh_picker: consume gh_picker_pin at startup<br/>(pin_gh_first seeds the PR/issue on top)"]:::run
+        RPIN --> RETAIN["handoff_to_ralph_apply → retain-context<br/>0600 random .md under retained-context/ · source removed<br/>copy survives namespace end; sweep reaps after 7 days (no cap)"]:::own
+        RETAIN --> RALPH[",ralph go run seeded with retained context path (async)"]:::run
         CPIN --> CREATE["new PR/issue/branch flow"]:::run
-        SENT --> PICKSESS["pick_session picker (pick_session_pin)<br/>tmux attach/switch"]:::run
     end
 
-    NOTE["WHY FILES, NOT ARGS: the popup loop must abort to release the TTY,<br/>so it can't return a value — it parks intent in a known cache path and the<br/>successor reads+clears it. Same bus links gh ↔ ralph ↔ session ↔ worktree."]:::bus
+    NOTE["WHY OWNER-SCOPED FILES, NOT ARGS/GLOBALS: the popup loop must abort to release<br/>the TTY, so it parks intent in a slot inside ITS OWN token namespace and the<br/>successor reads+clears it. Explicit env-token injection + owner.json fingerprinting<br/>keep concurrent popups isolated; there is no shared top-level mailbox."]:::bus

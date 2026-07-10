@@ -39,10 +39,10 @@ Chezmoi uses filename conventions to decide where things land.
 
 Common patterns in this setup:
 
-- [`home/dot_config/...`](../../home/dot_config/...) -> `~/.config/...`
+- Paths under [`home/dot_config/`](../../home/dot_config/) map to `~/.config/...`
 - [`home/exact_lib/...`](../../home/exact_lib/) -> `~/lib/...` for deployed command internals
-- [`home/dot_*`](../../home/dot_*) -> `~/.<name>` (for example: [`home/dot_zsh/`](../../home/dot_zsh/) -> `~/.zsh/`)
-- [`home/private_dot_ssh/...`](../../home/private_dot_ssh/...) -> `~/.ssh/...` (and treated as private by chezmoi)
+- `home/dot_*` maps to `~/.<name>` (for example: [`home/dot_zsh/`](../../home/dot_zsh/) -> `~/.zsh/`)
+- Paths under [`home/private_dot_ssh/`](../../home/private_dot_ssh/) map to `~/.ssh/...` (and are treated as private by chezmoi)
 - `executable_foo` -> installs as an executable file named `foo`
 - `readonly_foo` -> installs as `foo` with `0444` permissions (read-only); used for config files that should not be modified by external tools at runtime
 - `exact_` prefix in a directory name means "exact directory" (chezmoi does not merge it with existing contents)

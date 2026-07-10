@@ -15,7 +15,7 @@ it guards -- and (2) recomputes the real count from git's effective worktree fil
 set and fails on any divergence, printing ``claimed N, actual M``.
 
 Scope is deliberately the *file-census* claims (the "Every file under X (N)"
-contract plus the total tracked-file count): they are unambiguous, rot on every
+contract plus the total effective-file count): they are unambiguous, rot on every
 add/remove, and need only ``git`` + stdlib. Structural sub-counts that depend on
 toolchain semantics (Go packages via ``go list``, neovim plugin specs, skill
 dirs) are intentionally out of scope and are checked by inspection, not here.
@@ -41,9 +41,9 @@ class Claim:
 
     ``globs`` are git pathspecs whose matched-file count must equal ``claimed``;
     ``globs=None`` means the total file count. ``anchors`` are
-    ``(diagram_filename, substring)`` pairs: each ``substring`` (which embeds
-    ``claimed``) must appear verbatim in ``.mermaids/<diagram_filename>``,
-    keeping this table and the diagram prose in lockstep.
+    ``(filename, substring)`` pairs: each ``substring`` (which embeds ``claimed``)
+    must appear verbatim in ``.mermaids/<filename>``, keeping this table and the
+    prose it guards in lockstep.
     """
 
     name: str
@@ -52,14 +52,18 @@ class Claim:
     anchors: list[tuple[str, str]] = field(default_factory=list)
 
 
-# Census claims. When a subtree gains/loses a tracked file, update both the
+# Census claims. When a subtree gains/loses an effective file, update both the
 # diagram prose AND the matching ``claimed`` value here (documentation hygiene).
 CENSUS: list[Claim] = [
     Claim(
-        name="total tracked files",
+        name="total effective git files",
         globs=None,
-        claimed=1265,
-        anchors=[("README.md", "1265 tracked files")],
+        claimed=1276,
+        anchors=[
+            ("README.md", "1276 files in the effective git file set"),
+            ("00-overview.mmd", "1276 files in the effective git file set"),
+            ("00-overview.mmd", "file census (1276 total)"),
+        ],
     ),
     Claim(
         name="home/.chezmoitemplates/brews/",
@@ -76,20 +80,45 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/dot_config/exact_tmux/",
         globs=["home/dot_config/exact_tmux/*"],
-        claimed=119,
+        claimed=120,
         anchors=[
-            ("05-tmux-pickers.mmd", "exact_tmux/ (119)"),
-            ("README.md", "`exact_tmux/` (119)"),
+            ("05-tmux-pickers.mmd", "exact_tmux/ (120)"),
+            ("README.md", "`exact_tmux/` (120)"),
         ],
     ),
     Claim(
         name="home/dot_config/exact_nvim/",
         globs=["home/dot_config/exact_nvim/*"],
-        claimed=157,
+        claimed=155,
         anchors=[
-            ("07b-neovim.mmd", "exact_nvim/ (157)"),
-            ("README.md", "`exact_nvim/` (157)"),
+            ("07b-neovim.mmd", "exact_nvim/ (155)"),
+            ("README.md", "`exact_nvim/` (155)"),
+            ("00-overview.mmd", "nvim 155"),
         ],
+    ),
+    Claim(
+        name="home/dot_config/exact_nvim/exact_lua/exact_plugins_local/",
+        globs=["home/dot_config/exact_nvim/exact_lua/exact_plugins_local/*"],
+        claimed=14,
+        anchors=[
+            ("07b-neovim.mmd", "exact_plugins_local/ (loaders, 14 each)"),
+            ("README.md", "local plugins (14 each)"),
+        ],
+    ),
+    Claim(
+        name="home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/",
+        globs=["home/dot_config/exact_nvim/exact_lua/exact_plugins_local_src/*"],
+        claimed=14,
+        anchors=[
+            ("07b-neovim.mmd", "exact_plugins_local_src/ (implementations, 14 each)"),
+            ("README.md", "local plugins (14 each)"),
+        ],
+    ),
+    Claim(
+        name="home/dot_config/fish/",
+        globs=["home/dot_config/fish/*"],
+        claimed=76,
+        anchors=[("00-overview.mmd", "fish 76")],
     ),
     Claim(
         name="home/exact_bin/",
@@ -121,11 +150,18 @@ CENSUS: list[Claim] = [
     Claim(
         name="scripts/",
         globs=["scripts/*"],
-        claimed=66,
+        claimed=76,
         anchors=[
-            ("11-scripts-helpers.mmd", "scripts/ (66)"),
-            ("README.md", "`scripts/` (66)"),
+            ("11-scripts-helpers.mmd", "scripts/ (76)"),
+            ("README.md", "`scripts/` (76)"),
+            ("00-overview.mmd", "scripts 76"),
         ],
+    ),
+    Claim(
+        name="tools/ralph-tui/",
+        globs=["tools/ralph-tui/*"],
+        claimed=34,
+        anchors=[("00-overview.mmd", "ralph-tui 34")],
     ),
 ]
 

@@ -29,7 +29,7 @@ This repo ships a local pre-commit hook at [`.githooks/pre-commit`](.githooks/pr
 git config core.hooksPath .githooks
 ```
 
-On commit, the hook runs `make check` on staged files. If check fails, it runs `make fmt`, re-stages the formatted files, and re-runs check. It refuses to auto-format when a staged file still has unstaged edits (to avoid breaking partial staging).
+On commit, the hook first runs `bin/fmt --check` only on staged paths. If those staged files need repair, it runs `bin/fmt` on just those paths, re-stages them, and then runs the full `make check`. It refuses to auto-format when a staged file still has unstaged edits (to avoid breaking partial staging).
 
 ## Documentation
 

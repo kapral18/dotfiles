@@ -1,0 +1,39 @@
+name: Check docs
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Verify and build docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable Corepack
+        working-directory: website
+        run: |
+          corepack enable
+          yarn --version
+
+      - name: Install dependencies
+        working-directory: website
+        run: yarn install --frozen-lockfile
+
+      - name: Test docs navigation verifier
+        run: python3 scripts/test_verify_docs_navigation.py
+
+      - name: Verify docs navigation
+        run: python3 scripts/verify_docs_navigation.py
+
+      - name: Build docs site
+        run: make docs-build

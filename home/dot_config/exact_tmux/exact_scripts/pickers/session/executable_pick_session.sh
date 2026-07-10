@@ -8,8 +8,6 @@ if [ "${BASH_VERSINFO[0]:-0}" -lt 4 ]; then
 fi
 set -euo pipefail
 
-trap 'pkill -P $$ 2>/dev/null || true; exit 0' INT HUP TERM
-
 die() {
   tmux display-message "$1"
   exit 0
@@ -73,6 +71,24 @@ if [[ -z "${TMUX:-}" ]]; then
   die "tmux: not running inside tmux"
 fi
 
+handoff_namespace_cmd="$HOME/.config/tmux/scripts/pickers/lib/handoff_namespace.py"
+[ -x "$handoff_namespace_cmd" ] || die "tmux: missing script: $handoff_namespace_cmd"
+handoff_token="${TMUX_PICKER_HANDOFF_TOKEN:-}"
+handoff_namespace_owned=0
+if [ -z "$handoff_token" ]; then
+  handoff_token="$("$handoff_namespace_cmd" begin --owner-pid "$$" --owner-role standalone-picker --entry session-picker 2> /dev/null || true)"
+  [ -n "$handoff_token" ] || die "tmux: failed to initialize handoff namespace"
+  handoff_namespace_owned=1
+fi
+export TMUX_PICKER_HANDOFF_TOKEN="$handoff_token"
+handoff_slot_path() {
+  local slot="$1"
+  local path=""
+  path="$("$handoff_namespace_cmd" path "$slot" --token "$handoff_token" 2> /dev/null || true)"
+  [ -n "$path" ] || die "tmux: failed to resolve handoff slot: $slot"
+  printf '%s\n' "$path"
+}
+
 fzf_shell="$(command -v bash 2> /dev/null || printf '%s' '/usr/bin/env bash')"
 
 bulk_guard_key="@pick_session_bulk_create_in_progress"
@@ -95,7 +111,20 @@ _pick_session_cleanup_pid_scoped() {
     rm -f "$_f" 2> /dev/null || true
   done
 }
-trap 'bulk_guard_clear; pkill -P $$ 2>/dev/null || true; rm -f "${sort_daemon_sock:-}" 2>/dev/null || true; _pick_session_cleanup_pid_scoped; exit 0' EXIT
+_pick_session_cleanup_done=0
+_pick_session_cleanup_all() {
+  [ "${_pick_session_cleanup_done:-0}" -eq 0 ] || return 0
+  _pick_session_cleanup_done=1
+  bulk_guard_clear
+  pkill -P $$ 2> /dev/null || true
+  rm -f "${sort_daemon_sock:-}" 2> /dev/null || true
+  _pick_session_cleanup_pid_scoped
+  if [ "${handoff_namespace_owned:-0}" -eq 1 ] && [ -n "${handoff_token:-}" ]; then
+    "$handoff_namespace_cmd" end --owner-pid "$$" --token "$handoff_token" > /dev/null 2>&1 || true
+  fi
+}
+trap '_pick_session_cleanup_all; exit 0' INT HUP TERM
+trap _pick_session_cleanup_all EXIT
 
 __sess_cache_loaded=0
 sess_names=()
@@ -213,8 +242,9 @@ mkdir -p "$cache_dir" 2> /dev/null || true
 # selection file to clobber across rapid keypresses or concurrent pickers.
 primary_tmp="${cache_dir}/pick_session_fzf_primary.$$.tsv"
 _pick_session_pid_scoped_files+=("$primary_tmp")
-pin_file="${cache_dir}/pick_session_pin"
-gh_pin_file="${cache_dir}/gh_picker_pin"
+pin_file="$(handoff_slot_path pick_session_pin)"
+gh_pin_file="$(handoff_slot_path gh_picker_pin)"
+switch_to_gh_file="$(handoff_slot_path pick_session_switch_gh)"
 handoff_to_gh_cmd="$HOME/.config/tmux/scripts/pickers/lib/handoff_to_gh.sh"
 pin_first_cmd="$HOME/.config/tmux/scripts/pickers/lib/pin_session_first.sh"
 
@@ -358,7 +388,7 @@ fzf_common_binds=(
   --bind "alt-c:$wt_mode"
   --bind "alt-p:execute-silent($open_gh_cmd pr {f})"
   --bind "alt-i:execute-silent($open_gh_cmd issue {f})"
-  --bind "alt-g:execute-silent($(printf %q "$handoff_to_gh_cmd") {4} $(printf %q "$gh_pin_file") 2>/dev/null || true; touch ${cache_dir}/pick_session_switch_gh)+abort"
+  --bind "alt-g:execute-silent($(printf %q "$handoff_to_gh_cmd") {4} $(printf %q "$gh_pin_file") 2>/dev/null || true; touch $(printf %q "$switch_to_gh_file"))+abort"
   --header "$_modal_header"
 )
 
@@ -404,7 +434,7 @@ else
   )"
 fi
 
-if [ -f "${cache_dir}/pick_session_switch_gh" ]; then
+if [ -f "$switch_to_gh_file" ]; then
   exit 0
 fi
 

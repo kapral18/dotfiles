@@ -151,15 +151,15 @@ func scanVerdicts(dir, runID string) []Event {
 		if err := json.Unmarshal([]byte(ln), &rec); err != nil {
 			continue
 		}
-		role, _ := rec["role"].(string)
-		verdict, _ := rec["verdict"].(string)
+		role, verdict, reason := verdictSummary(rec)
 		if verdict == "" {
-			if v, ok := rec["final_verdict"].(string); ok {
-				verdict = v
-			}
+			continue
 		}
 		iter := iterField(rec)
 		msg := joinNonEmpty(" · ", iterPrefix(iter), role, verdict)
+		if reason != "" {
+			msg += " — " + reason
+		}
 		if msg == "" {
 			continue
 		}
@@ -171,6 +171,38 @@ func scanVerdicts(dir, runID string) []Event {
 		})
 	}
 	return out
+}
+
+func verdictSummary(rec map[string]any) (role, verdict, reason string) {
+	role, _ = rec["role"].(string)
+	raw, ok := rec["verdict"]
+	if !ok {
+		return "", "", ""
+	}
+	verdictMap, ok := raw.(map[string]any)
+	if !ok {
+		return "", "", ""
+	}
+	verdict = firstString(verdictMap, "final_verdict", "verdict")
+	if verdict == "" {
+		return "", "", ""
+	}
+	reason = firstString(verdictMap, "blocking_reason", "notes", "next_task")
+	return role, verdict, reason
+}
+
+func firstString(m map[string]any, keys ...string) string {
+	for _, key := range keys {
+		if v, ok := m[key]; ok {
+			if s, ok := v.(string); ok {
+				s = strings.TrimSpace(s)
+				if s != "" {
+					return s
+				}
+			}
+		}
+	}
+	return ""
 }
 
 func iterField(rec map[string]any) int {

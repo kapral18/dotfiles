@@ -1,4 +1,16 @@
 #!/usr/bin/env bash
+if [ "${BASH_VERSINFO[0]:-0}" -lt 4 ]; then
+  _brew="$(command -v brew 2>/dev/null || true)"
+  if [ -n "$_brew" ]; then
+    _prefix="$("$_brew" --prefix bash 2>/dev/null || true)"
+    _b="${_prefix:+$_prefix/bin/bash}"
+    if [ -n "$_b" ] && [ -x "$_b" ] && "$_b" -c "[ \"\${BASH_VERSINFO[0]:-0}\" -ge 4 ]" >/dev/null 2>&1; then
+      exec "$_b" "$0" "$@"
+    fi
+  fi
+  printf 'error: bash 4+ required (mapfile)\n' >&2
+  exit 1
+fi
 set -euo pipefail
 
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
@@ -17,21 +29,24 @@ if [ -z "$staged_paths" ]; then
 fi
 
 # Convert string of paths to an array, handling spaces correctly
-mapfile -t paths < <(echo "$staged_paths")
+mapfile -t paths < <(printf '%s\n' "$staged_paths")
 
 # Avoid breaking partial-staging: formatting rewrites the working tree file and
 # then stages it. If a file has unstaged changes, abort and let the user decide.
 for path in "${paths[@]}"; do
-  if [ -n "$(git diff --name-only -- "$path")" ]; then
+  if ! git diff --quiet -- "$path"; then
     echo "pre-commit: refusing to auto-format with unstaged changes in: $path" >&2
     echo "pre-commit: stage the whole file (or stash changes) then retry." >&2
     exit 1
   fi
 done
 
-# Run lint + test; on lint failure, auto-format, re-stage, and re-check.
-if ! make -s check 2>/dev/null; then
-  make -s fmt
+# Repair only staged files before the full repo check. The final make check still
+# guards the entire repo, but unrelated failures are surfaced rather than
+# auto-formatted.
+if ! bin/fmt --check "${paths[@]}"; then
+  bin/fmt "${paths[@]}"
   git add -- "${paths[@]}"
-  make -s check
 fi
+
+make -s check

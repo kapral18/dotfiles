@@ -1,12 +1,9 @@
 local fs_util = require("util.fs")
 local rjis = require("plugins_local_src.run-jest-in-split")
--- Set up the keymap only for terminal buffers
-vim.api.nvim_create_autocmd("TermOpen", {
-  pattern = "*",
-  callback = function()
-    vim.keymap.set("n", "q", rjis.close_terminal_buffer, { noremap = true, silent = true, buffer = true })
-  end,
-})
+-- Note: the "q" close keymap is scoped per-buffer inside
+-- util.terminal.run_in_split (only the Jest split's own terminal buffer),
+-- not via a global TermOpen autocmd, so unrelated terminal buffers never
+-- get rebound to the Jest close-all handler.
 
 return {
   dir = fs_util.get_plugin_src_dir(),

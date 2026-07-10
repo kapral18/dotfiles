@@ -28,6 +28,7 @@ verify-docs-navigation: ## Check docs/reference links and catalog coverage
 test: ## Run Python unit tests
 	PYTHONPATH=scripts python3 -m unittest discover -s scripts -p 'test_*.py' -t scripts
 	python3 home/exact_lib/exact_,history-sync/fish-history-merge.test.py -v
+	COPILOT_AGENT_MEMORY_EXTENSION_TEST=1 node scripts/tests/copilot_agent_memory_extension.test.mjs
 
 check: lint verify-templates verify-mermaids verify-bin-surface verify-docs-navigation test ## Run all checks
 

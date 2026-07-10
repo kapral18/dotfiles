@@ -64,8 +64,8 @@ func TestLoadRecentMergesDecisionsAndVerdictsAcrossRuns(t *testing.T) {
 	writeFile(t, filepath.Join(root, "go-foo", "decisions.log"),
 		"first decision\nsecond decision\n")
 	writeFile(t, filepath.Join(root, "go-foo", "verdicts.jsonl"),
-		`{"iter":1,"role":"reviewer-1","verdict":"pass"}`+"\n"+
-			`{"iter":2,"role":"reviewer-2","final_verdict":"needs_iteration"}`+"\n")
+		`{"iter": 1, "role": "reviewer-1", "verdict": {"verdict": "pass", "criteria_met": ["artifact exists", "content matches"], "criteria_unmet": [], "next_task": "", "blocking_reason": "", "notes": "passes on iter 1"}, "at": "2026-07-10T01:39:50Z"}`+"\n"+
+			`{"iter": 2, "role": "reviewer-2", "verdict": {"agree_with_primary": false, "final_verdict": "needs_iteration", "next_task": "retry creating the artifact", "blocking_reason": "", "notes": "re_reviewer says recoverable on iter 2"}, "at": "2026-07-10T01:39:51Z"}`+"\n")
 	touch(t, filepath.Join(root, "go-foo", "decisions.log"), now.Add(-30*time.Second))
 	touch(t, filepath.Join(root, "go-foo", "verdicts.jsonl"), now.Add(-10*time.Second))
 
@@ -85,7 +85,7 @@ func TestLoadRecentMergesDecisionsAndVerdictsAcrossRuns(t *testing.T) {
 
 	wantSubstrings := []string{
 		"first decision", "second decision",
-		"reviewer-1", "reviewer-2", "older decision",
+		"reviewer-1", "reviewer-2", "pass", "needs_iteration", "older decision",
 	}
 	merged := strings.Builder{}
 	for _, ev := range got {
@@ -132,6 +132,37 @@ func TestLoadRecentRespectsLimit(t *testing.T) {
 	got := LoadRecent(3)
 	if len(got) > 3 {
 		t.Errorf("limit=3 must cap output, got %d", len(got))
+	}
+}
+
+func TestLoadRecentParsesProducerVerdictObjects(t *testing.T) {
+	root := setStateRoot(t)
+	now := time.Now()
+
+	writeFile(t, filepath.Join(root, "go-foo", "manifest.json"), `{"id": "go-foo", "kind": "go"}`)
+	writeFile(t, filepath.Join(root, "go-foo", "verdicts.jsonl"),
+		`{"iter": 1, "role": "reviewer-1", "verdict": {"verdict": "pass", "criteria_met": ["artifact exists", "content matches"], "criteria_unmet": [], "next_task": "", "blocking_reason": "", "notes": "passes on iter 1"}, "at": "2026-07-10T01:39:50Z"}`+"\n"+
+			`{"iter": 2, "role": "reviewer-2", "verdict": {"verdict": "fail", "criteria_met": [], "criteria_unmet": ["forced fail"], "next_task": "", "blocking_reason": "RALPH_TEST_REVIEWER_VERDICT=fail", "notes": "forced fail on iter 2"}, "at": "2026-07-10T01:39:51Z"}`+"\n"+
+			`{"iter": 3, "role": "re_reviewer-1", "verdict": {"agree_with_primary": false, "final_verdict": "needs_iteration", "next_task": "retry creating the artifact", "blocking_reason": "", "notes": "re_reviewer says recoverable on iter 3"}, "at": "2026-07-10T01:39:52Z"}`+"\n")
+	touch(t, filepath.Join(root, "go-foo", "verdicts.jsonl"), now)
+
+	got := LoadRecent(10)
+	if len(got) != 3 {
+		t.Fatalf("expected 3 verdict events, got %d", len(got))
+	}
+
+	want := []string{
+		"iter 1 · reviewer-1 · pass — passes on iter 1",
+		"iter 2 · reviewer-2 · fail — RALPH_TEST_REVIEWER_VERDICT=fail",
+		"iter 3 · re_reviewer-1 · needs_iteration — re_reviewer says recoverable on iter 3",
+	}
+	for i, s := range want {
+		if got[i].Kind != KindVerdict {
+			t.Fatalf("event %d kind = %q, want verdict", i, got[i].Kind)
+		}
+		if got[i].Message != s {
+			t.Errorf("event %d message = %q, want %q", i, got[i].Message, s)
+		}
 	}
 }
 

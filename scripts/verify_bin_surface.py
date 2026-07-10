@@ -24,6 +24,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+COMMAND_TOKEN_CHARS = r"A-Za-z0-9-"
+
 
 @dataclass(frozen=True)
 class CommandSurface:
@@ -47,6 +49,15 @@ def _command_name(path: Path) -> str:
     if name.endswith(".tmpl"):
         name = name.removesuffix(".tmpl")
     return name
+
+
+def _command_token(name: str) -> str:
+    return f",{name}"
+
+
+def _command_token_regex(name: str) -> re.Pattern[str]:
+    token = re.escape(_command_token(name))
+    return re.compile(rf"(?<![{COMMAND_TOKEN_CHARS}]){token}(?![{COMMAND_TOKEN_CHARS}])")
 
 
 def discover_commands(repo_root: Path) -> list[CommandSurface]:
@@ -102,11 +113,11 @@ def _read_docs_dir(path: Path) -> str:
 
 
 def _docs_mentions_command(docs_text: str, name: str) -> bool:
-    return re.search(rf"`,{re.escape(name)}(?:`|\s)", docs_text) is not None
+    return re.search(rf"`{re.escape(_command_token(name))}`", docs_text) is not None
 
 
 def _mermaid_mentions_command(mermaid_text: str, name: str) -> bool:
-    return f",{name}" in mermaid_text
+    return _command_token_regex(name).search(mermaid_text) is not None
 
 
 def check_bin_surface(repo_root: Path) -> list[str]:
@@ -134,7 +145,7 @@ def check_bin_surface(repo_root: Path) -> list[str]:
     command_names = {command.name for command in commands}
 
     for command in commands:
-        display = f",{command.name}"
+        display = _command_token(command.name)
         if not command.fish_completion.is_file():
             failures.append(f"{display}: missing Fish completion {command.fish_completion.relative_to(repo_root)}")
         if docs_available and not _docs_mentions_command(docs_text, command.name):

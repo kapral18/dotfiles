@@ -42,13 +42,17 @@ State is per-user under `${XDG_STATE_HOME}/ralph/`. Knowledge capsules persist v
 - `,ralph runner RUN_ID` — internal: drive the resumable state-machine loop for a run.
   Idempotent: if a runner is already alive on the run, raises and exits non-zero
 - `,ralph resume RUN_ID [--foreground]` — re-launch the runner if it died (PID-file flock detects liveness).
-  No-op when the run is already terminal or a runner currently holds the lock
+  No-op when the run is already terminal or a runner currently holds the lock.
+  Also the **only** exit from a reviewer BLOCK park (`status=needs_human` + `phase=blocked` + `block_reason`, no role control):
+  it clears the park and starts the next iteration under the **same** spec (no replan; `spec_seq` unchanged).
 - `,ralph replan RUN_ID [--no-resume]` — queue a replan; the running runner consumes it at the next loop tick.
   Auto-resumes the runner unless `--no-resume`. Consuming a replan re-plans **and** resets any open (non-decided) iteration.
   It drops cached `executor-N`/`reviewer-N`/`re_reviewer-N` roles, so the new spec drives a fresh executor pass instead of resuming mid-iteration on stale output.
   This holds for every replan trigger: executor `RALPH_REPLAN`, a reviewer/re_reviewer/executor clarifying question answered via `,ralph answer`, and explicit `,ralph replan`.
+  Rejects a run parked at `needs_human` (a reviewer BLOCK park) — use `,ralph resume` to continue that run.
 - `,ralph supervisor [--loop] [--interval N] [--json]` — resume dead non-terminal runners that are safe to automate.
-  Skips runs parked for manual control. **Scheduling**: there is no built-in scheduler. Pick one of:
+  Only resumes runs in `running`/`needs_verification`; skips every parked run (manual control, `awaiting_human` questions, reviewer BLOCK).
+  **Scheduling**: there is no built-in scheduler. Pick one of:
   - tmux pane: `,ralph supervisor --loop --interval 60` (in a dedicated background pane / detached session — survives until tmux dies).
     Quickest setup; what the palette's `Ralph supervisor` entry runs (one-shot).
   - `launchd` user agent: drop a `~/Library/LaunchAgents/dev.kapral18.ralph-supervisor.plist` with a `StartInterval` of 60.
@@ -107,6 +111,10 @@ Defaults are cursor-first because cursor's frontier models give the best output/
 
 Prompt templates live at `~/.config/ralph/prompts/{planner,executor,reviewer,re_reviewer,reflector}.md`.
 
+Prompt transport (subprocess roles): the built prompt is written to `<run_dir>/prompt.md` and every harness reads it from that file —
+`cursor` takes it as the **trailing positional arg** via `$(cat prompt.md)`, while `pi` / `command` read it on stdin via `< prompt.md`.
+The subprocess is spawned with **empty stdin**; the prompt is never also piped in (a double-supplied prompt makes cursor-agent see it twice and stall).
+
 ## Knowledge base wiring
 
 Each role's prompt builder retrieves the top-K capsules from `,ai-kb` filtered by role-appropriate `kind` and injects them into a `## RECENT LEARNINGS` block.
@@ -140,6 +148,7 @@ Local models (llama-cpp/qwen) are opt-in only; defaults never depend on `,llama-
 - consuming a replan drops the open (non-decided) iteration and its cached role children before installing the new spec, so a replanned run always re-enters at a fresh `executor` pass rather than resuming a half-finished iteration against the new plan
 - a runner parks with `status=needs_human` when any role is `manual_control`, `dirty_control`, or `resume_requested`;
   it resumes only after role validation clears those states
+- a reviewer/re_reviewer **BLOCK** verdict parks the whole run with `status=needs_human`, `phase=blocked`, and a `block_reason`, with **no** role under a blocking control state; only an explicit `,ralph resume` clears this park (starting the next same-plan iteration) — verify, the direct runner, and the supervisor keep it parked, and `,ralph replan` rejects it
 - `spec.target_artifact` is promoted to top-level `manifest.artifact`; a passing run freezes `artifact_sha256` and validation requires the artifact hash to match
 - `executor_count` must be exactly `1` until Ralph implements real parallel executor orchestration;
   higher values fail fast instead of being silently ignored

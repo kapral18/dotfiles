@@ -31,6 +31,8 @@ Format specific files:
 bin/fmt docs/topics/code-quality/formatting.md home/dot_config/exact_nvim/readonly_init.lua
 ```
 
+The pre-commit hook uses this file-argument mode to repair only staged paths before it hands off to the full `make check`.
+
 ## Formatters
 
 | Type                      | Formatter               | Config file                                                                                                                  |
@@ -62,6 +64,8 @@ Neovim uses `conform.nvim` to run the same formatters on save. Both paths read f
 YAML uses a `printWidth: 200` override in `.prettierrc` so prettier handles indentation without wrapping long command strings that embed shell and Go template syntax.
 
 Template files (`.fish.tmpl`, `.lua.tmpl`) are excluded from `bin/fmt` because standalone formatters cannot parse Go template syntax. In Neovim, these are handled by chezmoi-aware formatter wrappers that strip template directives before formatting and restore them after.
+
+Extensionless shell and Python scripts are detected from a shebang only after a text-safe probe, so binary files without extensions are skipped instead of emitting null-byte warnings during `bin/fmt --check`.
 
 ## Ignored paths
 

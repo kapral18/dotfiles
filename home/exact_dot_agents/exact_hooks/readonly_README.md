@@ -88,7 +88,7 @@ Two disciplines that earlier lived in `stop` hooks now live in the SOP, enforced
 
 - Evidence anchoring: visible factual/runtime claims must carry a hard source anchor or an explicit `Unknown` demotion (`~/CLAUDE.md` §2.1 / §2.3).
   The earlier `evidence_anchor.py` hook re-prompted per turn and was removed as noise.
-- Durable-learning capture: as the last step of a substantive turn the agent self-vets and persists durable insights inline with `,ai-kb remember` (`~/CLAUDE.md` §4.3).
+- Durable-learning capture: as the last step of a substantive turn the agent self-vets and persists durable insights inline with `,ai-kb remember` (`~/CLAUDE.md` §4.1).
   This replaces the earlier `learning_reminder.py` stop hook, which auto-submitted a "persist learnings" prompt capped at once per conversation.
   The SOP habit has no cap and never injects a fake user turn.
 

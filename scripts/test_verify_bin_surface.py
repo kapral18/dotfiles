@@ -54,6 +54,12 @@ class TestVerifyBinSurface(unittest.TestCase):
 
         assert failures == []
 
+    def test_mermaid_matcher_requires_exact_command_token(self):
+        import verify_bin_surface
+
+        assert verify_bin_surface._mermaid_mentions_command('L[",w/main.sh"]\n', "w")
+        assert not verify_bin_surface._mermaid_mentions_command('A[",copilot-cloudflare"]\n', "copilot")
+
     def test_accepts_command_library_with_matching_command(self):
         import verify_bin_surface
 
@@ -94,6 +100,50 @@ class TestVerifyBinSurface(unittest.TestCase):
             failures = verify_bin_surface.check_bin_surface(root)
 
         assert any("command library" in failure and "has no matching" in failure for failure in failures)
+
+    def test_reports_provider_variant_without_matching_docs_token(self):
+        import verify_bin_surface
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "home/exact_bin").mkdir(parents=True)
+            (root / "home/dot_config/fish/completions").mkdir(parents=True)
+            (root / "docs/topics/workflow/custom-commands").mkdir(parents=True)
+            (root / ".mermaids").mkdir(parents=True)
+
+            (root / "home/exact_bin/executable_,copilot").write_text("#!/bin/sh\n")
+            (root / "home/dot_config/fish/completions/readonly_,copilot.fish").write_text(
+                "complete -c ,copilot --no-files\n"
+            )
+            (root / "docs/topics/workflow/custom-commands/catalog.md").write_text(
+                "| `,copilot-cloudflare` | Variant |\n"
+            )
+            (root / ".mermaids/07c-bin-commands.mmd").write_text('A[",copilot"]\n')
+
+            failures = verify_bin_surface.check_bin_surface(root)
+
+        assert any("missing docs token" in failure for failure in failures)
+
+    def test_reports_provider_variant_without_matching_catalog_token(self):
+        import verify_bin_surface
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "home/exact_bin").mkdir(parents=True)
+            (root / "home/dot_config/fish/completions").mkdir(parents=True)
+            (root / "docs/topics/workflow/custom-commands").mkdir(parents=True)
+            (root / ".mermaids").mkdir(parents=True)
+
+            (root / "home/exact_bin/executable_,copilot").write_text("#!/bin/sh\n")
+            (root / "home/dot_config/fish/completions/readonly_,copilot.fish").write_text(
+                "complete -c ,copilot --no-files\n"
+            )
+            (root / "docs/topics/workflow/custom-commands/catalog.md").write_text("| `,copilot` | Base |\n")
+            (root / ".mermaids/07c-bin-commands.mmd").write_text('A[",copilot-cloudflare"]\n')
+
+            failures = verify_bin_surface.check_bin_surface(root)
+
+        assert any("missing catalog token" in failure for failure in failures)
 
     def test_reports_empty_docs_directory(self):
         import verify_bin_surface

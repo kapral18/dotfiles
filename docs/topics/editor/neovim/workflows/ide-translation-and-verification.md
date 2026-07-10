@@ -33,6 +33,15 @@ nvim "+PackSync" +qa
 nvim "+checkhealth" +qa
 ```
 
+## Mason auto-install truth table
+
+`plugins/lsp.lua` keeps Mason's automatic `ensure_installed` flow for real editor sessions, but skips the repo-local auto-refresh/auto-install path when Neovim has no UI. That avoids headless startup mutating Mason state while preserving explicit Mason commands.
+
+| Context                                             | Registry refresh / auto-install from `ensure_installed` | Explicit `:MasonInstall` | Explicit `:MasonUpdate` |
+| --------------------------------------------------- | ------------------------------------------------------- | ------------------------ | ----------------------- |
+| Interactive Neovim (`nvim_list_uis() > 0`)          | Yes                                                     | Yes                      | Yes                     |
+| Headless startup / probe (`nvim --headless`, no UI) | No                                                      | Yes                      | Yes                     |
+
 Inside Neovim:
 
 - run `:map <leader>tt` and confirm Jest mapping exists.

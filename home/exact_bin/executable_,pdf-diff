@@ -82,7 +82,28 @@ check_existence "$leftarg"
 check_existence "$rightarg"
 
 temp_dir=$(mktemp -d)
-trap 'rm -rf "$temp_dir"; exit 1' EXIT INT TERM
+cleanup() {
+  rm -rf "$temp_dir"
+}
+
+on_exit() {
+  local status=$?
+  cleanup
+  exit "$status"
+}
+
+on_interrupt() {
+  local signal=$1
+  cleanup
+  case "$signal" in
+  INT) exit 130 ;;
+  TERM) exit 143 ;;
+  esac
+}
+
+trap on_exit EXIT
+trap 'on_interrupt INT' INT
+trap 'on_interrupt TERM' TERM
 
 # Convert PDFs to images and process them
 log_info "Converting PDFs to images..."

@@ -30,6 +30,10 @@ fi
 selection_file=""
 background=0
 branches_file=""
+dispatch_mode="${GH_PICKER_DISPATCH_MODE:-}"
+dispatch_scope="${GH_PICKER_DISPATCH_SCOPE:-}"
+dispatch_port="${GH_PICKER_DISPATCH_PORT:-}"
+dispatch_cache_file="${GH_PICKER_DISPATCH_CACHE_FILE:-}"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -40,6 +44,26 @@ while [ $# -gt 0 ]; do
     --branches-file)
       [ $# -ge 2 ] || die "missing value for --branches-file"
       branches_file="$2"
+      shift 2
+      ;;
+    --dispatch-mode)
+      [ $# -ge 2 ] || die "missing value for --dispatch-mode"
+      dispatch_mode="$2"
+      shift 2
+      ;;
+    --dispatch-scope)
+      [ $# -ge 2 ] || die "missing value for --dispatch-scope"
+      dispatch_scope="$2"
+      shift 2
+      ;;
+    --dispatch-port)
+      [ $# -ge 2 ] || die "missing value for --dispatch-port"
+      dispatch_port="$2"
+      shift 2
+      ;;
+    --dispatch-cache-file)
+      [ $# -ge 2 ] || die "missing value for --dispatch-cache-file"
+      dispatch_cache_file="$2"
       shift 2
       ;;
     -*)
@@ -55,6 +79,22 @@ while [ $# -gt 0 ]; do
 done
 
 [ -n "$selection_file" ] && [ -f "$selection_file" ] || die "missing or invalid selection file"
+
+if [ -z "$dispatch_mode" ]; then
+  dispatch_mode="$(cat "${cache_dir}/gh_picker_mode" 2> /dev/null || echo work)"
+fi
+if [ -z "$dispatch_scope" ]; then
+  dispatch_scope="$(cat "${cache_dir}/gh_picker_scope" 2> /dev/null || echo all)"
+fi
+if [ -z "$dispatch_port" ]; then
+  dispatch_port="${FZF_PORT:-}"
+fi
+if [ -z "$dispatch_port" ]; then
+  dispatch_port="$(cat "${cache_dir}/gh_picker_port" 2> /dev/null || true)"
+fi
+if [ -z "$dispatch_cache_file" ]; then
+  dispatch_cache_file="${cache_dir}/gh_picker_${dispatch_mode}.tsv"
+fi
 
 # Background mode is the last consumer of `$selection_file` (a per-binding
 # snapshot minted by gh_picker_ctrl_t.sh / gh_picker_enter.sh). Foreground
@@ -121,12 +161,12 @@ if [ "$background" -eq 0 ]; then
     trap 'rm -f "$tmpfile" "$branches_file" 2>/dev/null || true' EXIT
     cp "$tmpfile" "$branches_file" 2> /dev/null || die "failed to persist branches file"
 
-    tmux run-shell -b "$(printf %q "$0") $(printf %q "$selection_file") --background --branches-file $(printf %q "$branches_file")" \
+    tmux run-shell -b "$(printf %q "$0") $(printf %q "$selection_file") --background --branches-file $(printf %q "$branches_file") --dispatch-mode $(printf %q "$dispatch_mode") --dispatch-scope $(printf %q "$dispatch_scope") --dispatch-port $(printf %q "$dispatch_port") --dispatch-cache-file $(printf %q "$dispatch_cache_file")" \
       2> /dev/null || true
     # Background mode owns `$branches_file` and `$selection_file` from here.
     trap 'rm -f "$tmpfile" 2>/dev/null || true' EXIT
   else
-    tmux run-shell -b "$(printf %q "$0") $(printf %q "$selection_file") --background" \
+    tmux run-shell -b "$(printf %q "$0") $(printf %q "$selection_file") --background --dispatch-mode $(printf %q "$dispatch_mode") --dispatch-scope $(printf %q "$dispatch_scope") --dispatch-port $(printf %q "$dispatch_port") --dispatch-cache-file $(printf %q "$dispatch_cache_file")" \
       2> /dev/null || true
   fi
   exit 0
@@ -156,9 +196,9 @@ exec > /dev/null 2>&1
 
 _notify_fzf_reload() {
   local mode scope port items_cmd cache_load_cmd
-  mode="$(cat "${cache_dir}/gh_picker_mode" 2> /dev/null || echo work)"
-  scope="$(cat "${cache_dir}/gh_picker_scope" 2> /dev/null || echo all)"
-  port="$(cat "${cache_dir}/gh_picker_port" 2> /dev/null || true)"
+  mode="$dispatch_mode"
+  scope="$dispatch_scope"
+  port="$dispatch_port"
   [ -n "$port" ] || return 0
   items_cmd="$HOME/.config/tmux/scripts/pickers/github/gh_items.sh"
   cache_load_cmd="GH_PICKER_MODE=$(printf %q "$mode") GH_PICKER_SCOPE=$(printf %q "$scope") $(printf %q "$items_cmd") --cache-only 2>/dev/null"
@@ -174,9 +214,8 @@ _notify_fzf_reload() {
 
 _patch_cache_entry() {
   local kind="$1" repo="$2" num="$3" state="${4:-done}"
-  local mode cache_file script_dir patcher
-  mode="$(cat "${cache_dir}/gh_picker_mode" 2> /dev/null || echo work)"
-  cache_file="${cache_dir}/gh_picker_${mode}.tsv"
+  local cache_file script_dir patcher
+  cache_file="$dispatch_cache_file"
   script_dir="$HOME/.config/tmux/scripts/pickers/github"
   patcher="${script_dir}/lib/gh_patch_picker_cache.py"
   if [ -f "$patcher" ] && [ -f "$cache_file" ]; then

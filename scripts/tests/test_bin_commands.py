@@ -9,6 +9,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -27,7 +28,10 @@ from _test_support import (
     KBN_STACK_COMMAND,
     MCP_TOKEN_COMMAND,
     REPO,
+    modern_bash,
 )
+
+COPILOT_COMMAND = REPO / "home/exact_bin/executable_,copilot"
 
 
 def _load_artifact_command():
@@ -1104,6 +1108,145 @@ class TestKbnStackCommand(unittest.TestCase):
         assert rc == 0
         assert "/wt/B" in state["saved"][-1]
         assert state["killed"] == []
+
+
+class TestCopilotWrapper(unittest.TestCase):
+    """WHEN classifying Copilot args to decide whether to refresh MCP tokens.
+
+    The wrapper only skips the pre-launch token refresh for invocations that
+    provably never open an MCP session. These regressions pin the fail-closed
+    classifier against Copilot CLI 1.0.69's grammar using stubbed commands only
+    (no real token, network, or Copilot session).
+    """
+
+    HEADER_AUTH_CONFIG = {"mcpServers": {"slack": {"type": "http", "headers": {"Authorization": "old-token"}}}}
+    _USE_DEFAULT_CONFIG = object()
+
+    def _run(
+        self,
+        args: list[str],
+        *,
+        config: object = _USE_DEFAULT_CONFIG,
+        token_exit: int = 0,
+    ) -> tuple[subprocess.CompletedProcess[str], str]:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            bindir = root / "bin"
+            (home / ".copilot").mkdir(parents=True)
+            bindir.mkdir()
+            # Symlink python3 into the stub bindir so the wrapper's PATH can
+            # exclude chezmoi's install dir; the wrapper's rebake path is gated
+            # on `command -v chezmoi`, so an absent chezmoi keeps the test fully
+            # offline while python3 (for config parsing) stays available.
+            (bindir / "python3").symlink_to(sys.executable)
+            log = root / "mcp-token.log"
+            token = bindir / ",mcp-token"
+            token.write_text(f'#!/usr/bin/env bash\nprintf \'%s\\n\' "$*" >> "$MCP_TOKEN_LOG"\nexit {token_exit}\n')
+            token.chmod(0o755)
+            real = bindir / "copilot-real"
+            real.write_text("#!/usr/bin/env bash\nprintf 'REAL_COPILOT ARGS=%s\\n' \"$*\"\n")
+            real.chmod(0o755)
+            if config is not None:
+                payload = self.HEADER_AUTH_CONFIG if config is self._USE_DEFAULT_CONFIG else config
+                (home / ".copilot/mcp-config.json").write_text(json.dumps(payload))
+            path = os.pathsep.join([str(bindir), "/usr/bin", "/bin", "/usr/sbin", "/sbin"])
+            result = subprocess.run(
+                [modern_bash(), str(COPILOT_COMMAND), *args],
+                capture_output=True,
+                text=True,
+                cwd=str(REPO),
+                env={
+                    **os.environ,
+                    "HOME": str(home),
+                    "PATH": path,
+                    "COPILOT_REAL_BIN": str(real),
+                    "MCP_TOKEN_LOG": str(log),
+                },
+            )
+            token_calls = log.read_text() if log.exists() else ""
+            return result, token_calls
+
+    def _assert_refreshed(self, args: list[str]) -> None:
+        result, token_calls = self._run(args)
+        assert result.returncode == 0, result.stderr
+        assert "slack --login --quiet" in token_calls, f"expected refresh for {args!r}"
+        assert f"REAL_COPILOT ARGS={' '.join(args)}" in result.stdout
+
+    def _assert_skipped(self, args: list[str]) -> None:
+        result, token_calls = self._run(args)
+        assert result.returncode == 0, result.stderr
+        assert token_calls == "", f"expected no refresh for {args!r}, got {token_calls!r}"
+        assert f"REAL_COPILOT ARGS={' '.join(args)}" in result.stdout
+
+    def test_variadic_allow_tool_value_is_not_read_as_subcommand(self):
+        # --allow-tool[=tools...] takes no space-separated value, so the trailing
+        # `mcp` must not be misread as the admin subcommand: fail closed.
+        self._assert_refreshed(["--allow-tool", "bash", "mcp", "-p", "hi"])
+
+    def test_optional_value_resume_forces_refresh(self):
+        # -r/--resume[=value] is optional-valued; `login` after it is ambiguous.
+        self._assert_refreshed(["--resume", "login", "-p", "hi"])
+
+    def test_prompt_flow_refreshes(self):
+        self._assert_refreshed(["-p", "hi"])
+
+    def test_model_flow_refreshes(self):
+        self._assert_refreshed(["--model", "gpt-5.4", "-p", "hi"])
+
+    def test_plugins_subcommand_skips_refresh(self):
+        # `plugins` is a real 1.0.69 subcommand (distinct from `plugin`).
+        self._assert_skipped(["plugins", "list"])
+
+    def test_mcp_subcommand_skips_refresh(self):
+        self._assert_skipped(["mcp", "list"])
+
+    def test_help_after_global_flag_skips_refresh(self):
+        self._assert_skipped(["--no-color", "--help"])
+
+    def test_unknown_option_forces_refresh(self):
+        # An unrecognized option may consume the next token, so the trailing
+        # `mcp` must not be read as an admin subcommand: fail closed.
+        self._assert_refreshed(["--future-value-option", "mcp"])
+
+    def test_inline_ambiguous_allow_tool_forces_refresh(self):
+        # Inline value form must still refresh: --allow-tool is variadic, so a
+        # later bare `mcp` cannot be told apart from a swallowed value.
+        self._assert_refreshed(["--allow-tool=bash", "mcp"])
+
+    def test_inline_ambiguous_resume_forces_refresh(self):
+        self._assert_refreshed(["--resume=login", "mcp"])
+
+    def test_combined_short_flags_force_refresh(self):
+        # -sp is -s plus -p<value>; treating it as a bare boolean would wrongly
+        # skip, so unresolved short bundles fail closed.
+        self._assert_refreshed(["-sp", "mcp"])
+
+    def test_inline_required_value_model_stays_classifiable(self):
+        # --model=<value> is a required-value option whose inline value is
+        # self-contained, so the following `mcp` is an unambiguous subcommand.
+        self._assert_skipped(["--model=gpt", "mcp"])
+
+    def test_missing_config_generation_failure_blocks_launch(self):
+        result, token_calls = self._run(["-p", "hi"], config=None)
+
+        assert result.returncode == 1
+        assert "could not re-bake fresh MCP tokens into" in result.stderr
+        assert "REAL_COPILOT" not in result.stdout
+        assert token_calls == ""
+
+    def test_placeholder_authorization_blocks_launch(self):
+        # The wrapper's refresh sentinel means "token still needs refreshing"; if
+        # it survives into the config the wrapper must fail before launch.
+        sentinel = re.search(r'refresh_placeholder="([^"]*)"', COPILOT_COMMAND.read_text())
+        assert sentinel, "refresh_placeholder sentinel not found in wrapper"
+        placeholder = {"mcpServers": {"slack": {"type": "http", "headers": {"Authorization": sentinel.group(1)}}}}
+        result, token_calls = self._run(["-p", "hi"], config=placeholder)
+
+        assert result.returncode == 1
+        assert "MCP token refresh placeholder remains for: slack" in result.stderr
+        assert "slack --login --quiet" in token_calls
+        assert "REAL_COPILOT" not in result.stdout
 
 
 if __name__ == "__main__":

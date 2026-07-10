@@ -51,14 +51,15 @@ Tmux-native mode (default when `$TMUX` is set: the runner detaches and your shel
 
 Resumability is manifest-driven:
 
-| Case                   | Behavior                                                                   |
-| ---------------------- | -------------------------------------------------------------------------- |
-| runner dies            | `,ralph resume <run-id>` relaunches from the earliest pending phase        |
-| role already completed | manifest cache is reused; no duplicate role spawn                          |
-| role pane still alive  | runner reuses the pane and waits for its exit marker                       |
-| runner liveness check  | exclusive `flock` on `<run_dir>/runner.pid`                                |
-| supervisor             | resumes dead non-terminal runners and skips runs parked for manual control |
-| self-healing replan    | executor-emitted `RALPH_REPLAN` and manual `,ralph replan` queue replans   |
+| Case                   | Behavior                                                                                                                                                                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| runner dies            | `,ralph resume <run-id>` relaunches from the earliest pending phase                                                                                                                                                                        |
+| role already completed | manifest cache is reused; no duplicate role spawn                                                                                                                                                                                          |
+| role pane still alive  | runner reuses the pane and waits for its exit marker                                                                                                                                                                                       |
+| runner liveness check  | exclusive `flock` on `<run_dir>/runner.pid`                                                                                                                                                                                                |
+| supervisor             | resumes dead runners in `running`/`needs_verification` only; skips every parked run (manual control, questions, reviewer BLOCK)                                                                                                            |
+| reviewer BLOCK park    | `status=needs_human` + `phase=blocked` + `block_reason`, no role control; only `,ralph resume <run-id>` clears it and starts the next same-plan iteration (verify / direct runner / supervisor keep it parked; `,ralph replan` rejects it) |
+| self-healing replan    | executor-emitted `RALPH_REPLAN` and manual `,ralph replan` queue replans                                                                                                                                                                   |
 
 Per-iteration phases:
 

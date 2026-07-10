@@ -99,11 +99,32 @@ Local worktree markers come from git worktree state plus branch/metadata heurist
 
 Mutating actions are delegated to helper scripts and use the standard GitHub side-effect gates outside the read-only dashboard view.
 
+Batch worktree creation (`ctrl-t`) captures the launching picker's mode, scope, port, and cache file into an immutable dispatch packet before backgrounding. Completion markers and cache patches therefore always target the popup that started the batch, even if another popup rewrites the shared mode/scope globals before the background work finishes.
+
 ## Create issue / epic
 
 `alt-i` opens `$EDITOR` to create a new issue. `alt-E` creates an epic: parent issue plus authored sub-issues. Both can optionally create a worktree and tmux session.
 
-The creation helpers stage handoff files under the tmux cache dir so the popup can close and the next tool can consume the selection.
+The creation helpers stage a `gh_picker_create_pin` in the picker's handoff namespace (see [Handoff bus](#handoff-bus)) so the popup can close and `gh_picker` can consume the selection and check it out on exit.
+
+## Handoff bus
+
+Pickers cooperate through an owner-scoped file bus implemented by `pickers/lib/handoff_namespace.py` (verbs `begin`, `path`, `retain-context`, `end`, `sweep`). It replaces the earlier top-level cache mailbox: there are no shared well-known files, and stray top-level legacy files are ignored and never written.
+
+On launch, `gh_popup.sh` runs `begin --owner-role popup-loop --entry gh-popup`, which mints a random 32-hex token and publishes a private namespace at `${XDG_CACHE_HOME:-$HOME/.cache}/tmux/handoff-v1/<token>/`. The directory is created `0700` via an atomic `.new-<token>` staging rename, and its immutable `owner.json` (`0600`) fingerprints the owner `pid`, start time, and command. The token is exported as `TMUX_PICKER_HANDOFF_TOKEN` and explicitly injected into every child popup with `display-popup -e`; it is never passed in argv or inferred from a global mailbox. GitHub and session pickers resolve every slot inside that one namespace via `handoff_namespace path <slot>`.
+
+Producers stage a selection and abort; the successor consumes and deletes it on launch:
+
+| Slot                        | Producer → consumer                                                       |
+| --------------------------- | ------------------------------------------------------------------------- |
+| `pick_session_pin`          | GitHub picker `alt-g` → session picker startup seed (`pin_session_first`) |
+| `gh_picker_pin`             | session picker `alt-g` → GitHub picker startup seed (`pin_gh_first`)      |
+| `gh_picker_switch_sessions` | GitHub picker `alt-g` sentinel → popup loop relaunches the session picker |
+| `pick_session_switch_gh`    | session picker `alt-g` sentinel → popup loop relaunches the GitHub picker |
+| `gh_picker_create_pin`      | create flow → consumed on GitHub picker exit → checkout                   |
+| `gh_picker_ralph_pin`       | `alt-A` (+ derived `gh_picker_ralph_pin.context.md`) → `,ralph go`        |
+
+`enter`/checkout does not stage a pin — the worktree checkout runs in place. Every normal wrapper exit, including a Ralph hand-off, calls `end --owner-pid $$`; the fingerprint check makes cleanup idempotent and prevents one owner from removing another namespace. Before the asynchronous Ralph command prompt is queued, `handoff_to_ralph_apply.sh` calls `retain-context` with the inherited environment token. The core copies only that namespace's `gh_picker_ralph_pin.context.md` sibling to a random `0600` file under the private `0700` `retained-context/` directory, removes the source, and returns the retained path used in the prompt seed. The namespace then ends normally while the retained copy remains readable for seven days; retained copies are TTL-reaped without cap deletion. The separate dead-owner sweep still bounds abandoned namespaces after six hours with a 64-namespace cap and clears stale `.new-*` staging directories after a five-minute grace.
 
 ## Command palette (`alt-x`)
 
@@ -120,6 +141,8 @@ Main cache:
 ```
 
 The picker paints cache immediately, starts a background fetch, and posts a reload to fzf's listen socket only when the fresh fetch succeeds. Failed refreshes leave the visible cache intact.
+
+The fetch lock is publication-safe: a waiter that loses the `mkdir` race never reaps an owner that has claimed the lock directory but not yet written its pid file. It backs off during a short publish grace instead, so two popups can never launch competing fetches for the same cache.
 
 `ctrl-r` pre-empts any in-flight fetch, releases the fetch lock safely, and starts a fresh request.
 

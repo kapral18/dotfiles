@@ -1472,7 +1472,25 @@ class RalphRunner:
         self.save_manifest(manifest)
         return manifest
 
+    def _is_reviewer_block_park(self, manifest: dict[str, Any]) -> bool:
+        """True for a reviewer / re_reviewer BLOCK verdict park.
+
+        A BLOCK escalates the whole run to the human: it sets status=needs_human,
+        phase=blocked, and a block_reason, but puts NO role under a blocking
+        control_state. This distinguishes it from a manual-control park (a role
+        holds a blocking control_state) and a question park (status=awaiting_human).
+        Only an explicit ``,ralph resume`` clears it; verify, the direct runner,
+        and the supervisor must keep it parked, and replan must reject it.
+        """
+        if manifest.get("status") != "needs_human":
+            return False
+        if self._blocking_control_roles(manifest):
+            return False
+        return manifest.get("phase") == "blocked" or bool(manifest.get("block_reason"))
+
     def _unpark_if_control_clear(self, manifest: dict[str, Any]) -> dict[str, Any]:
+        if self._is_reviewer_block_park(manifest):
+            return manifest
         if self._blocking_control_roles(manifest):
             return manifest
         if manifest.get("status") in ("needs_human", "needs_verification"):
@@ -1481,6 +1499,25 @@ class RalphRunner:
             manifest.pop("blocked_roles", None)
         manifest["validation"] = self.validation_for_manifest(manifest)
         manifest["validation_status"] = manifest["validation"]["status"]
+        self.save_manifest(manifest)
+        return manifest
+
+    def _clear_block_park(self, manifest: dict[str, Any]) -> dict[str, Any]:
+        """Clear a reviewer BLOCK park via explicit resume and queue the next
+        same-plan iteration.
+
+        The blocked iteration stays ``decided``, so ``current_iteration`` returns
+        None and the state-machine loop starts a fresh iteration under the
+        unchanged spec (spec_seq is not bumped — this is not a replan).
+        """
+        manifest["status"] = "running"
+        manifest["phase"] = "executing"
+        manifest["control_state"] = "automated"
+        manifest.pop("block_reason", None)
+        manifest.pop("blocked_roles", None)
+        manifest["validation"] = self.validation_for_manifest(manifest)
+        manifest["validation_status"] = manifest["validation"]["status"]
+        self._append_decision(self.run_dir(manifest["id"]), "block park cleared via ,ralph resume")
         self.save_manifest(manifest)
         return manifest
 
@@ -1796,6 +1833,10 @@ class RalphRunner:
         if manifest.get("status") in ("completed", "failed", "killed"):
             return manifest
         if manifest.get("status") == "needs_human":
+            # A reviewer BLOCK park stays parked until an explicit `,ralph resume`;
+            # return immediately without acquiring the lock or entering the loop.
+            if self._is_reviewer_block_park(manifest):
+                return manifest
             if self._blocking_control_roles(manifest):
                 return manifest
             manifest = self._unpark_if_control_clear(manifest)
@@ -1851,9 +1892,12 @@ class RalphRunner:
         if manifest.get("status") in ("completed", "failed", "killed"):
             return manifest
         if manifest.get("status") == "needs_human":
-            if self._blocking_control_roles(manifest):
+            if self._is_reviewer_block_park(manifest):
+                manifest = self._clear_block_park(manifest)
+            elif self._blocking_control_roles(manifest):
                 return manifest
-            manifest = self._unpark_if_control_clear(manifest)
+            else:
+                manifest = self._unpark_if_control_clear(manifest)
         run_dir = self.run_dir(rid)
         if runner_alive(run_dir):
             return manifest
@@ -2948,7 +2992,11 @@ class RalphRunner:
         prompt_path.write_text(redact(prompt_body))
         # Run inside the workspace so relative paths resolve as the planner intended.
         cwd_command = f"cd {shlex.quote(str(workspace))} && {command}"
-        result = self.runtime_command(cwd_command, prompt_body, timeout)
+        # Every harness reads the prompt from prompt.md explicitly (pi/command via
+        # `< prompt.md`, cursor via `$(cat prompt.md)` as the trailing positional
+        # arg), so the subprocess must get EMPTY stdin. Piping the prompt on stdin
+        # too makes cursor-agent see it twice (argv AND stdin) and stall.
+        result = self.runtime_command(cwd_command, "", timeout)
         output = redact(result.output)
         output_path = directory / "output.log"
         output_path.write_text(output)
@@ -3881,7 +3929,11 @@ class RalphRunner:
             manifest["control_state"] = "manual_control"
         else:
             roles[role]["validation_status"] = role_validation_status(roles[role])
-            if not self._blocking_control_roles(manifest):
+            # A reviewer BLOCK park has no role under a blocking control state, so
+            # the `not blocking roles` test alone would let `control --action auto`
+            # (or any non-blocking control action) silently flip it to running.
+            # Only `,ralph resume` may clear a block park, so preserve it here.
+            if not self._blocking_control_roles(manifest) and not self._is_reviewer_block_park(manifest):
                 manifest["status"] = "running" if manifest.get("status") == "needs_human" else manifest.get("status")
                 manifest["control_state"] = "automated"
                 manifest.pop("blocked_roles", None)

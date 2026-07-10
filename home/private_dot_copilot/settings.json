@@ -30,6 +30,10 @@
       "live-ui-review": {
         "effortLevel": "xhigh",
         "contextTier": "long_context"
+      },
+      "criteria-verifier": {
+        "effortLevel": "xhigh",
+        "contextTier": "long_context"
       }
     }
   }

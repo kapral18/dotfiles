@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 if [ "${BASH_VERSINFO[0]:-0}" -lt 4 ]; then
-  _b="$(brew --prefix bash 2>/dev/null)/bin/bash"
-  [ -x "$_b" ] && exec "$_b" "$0" "$@"
+  _brew="$(command -v brew 2>/dev/null || true)"
+  if [ -n "$_brew" ]; then
+    _prefix="$("$_brew" --prefix bash 2>/dev/null || true)"
+    _b="${_prefix:+$_prefix/bin/bash}"
+    if [ -n "$_b" ] && [ -x "$_b" ] && "$_b" -c "[ \"\${BASH_VERSINFO[0]:-0}\" -ge 4 ]" >/dev/null 2>&1; then
+      exec "$_b" "$0" "$@"
+    fi
+  fi
   printf 'error: bash 4+ required (mapfile)\n' >&2
   exit 1
 fi
@@ -76,12 +82,21 @@ is_ignored() {
   return 1
 }
 
+read_text_shebang() {
+  local f="$1"
+  [[ -f "$f" ]] || return 1
+  LC_ALL=C grep -Iq . "$f" || return 1
+  local head=""
+  IFS= read -r head <"$f" || true
+  [[ "$head" == '#!'* ]] || return 1
+  printf '%s\n' "$head"
+}
+
 is_sh_file() {
   local f="$1"
   [[ "$f" == *.sh || "$f" == *.sh.tmpl || "$f" == *.bash || "$f" == *.ksh ]] && return 0
-  [[ ! -f "$f" ]] && return 1
-  local head
-  head="$(head -n 1 "$f" 2>/dev/null || true)"
+  local head=""
+  head="$(read_text_shebang "$f" 2>/dev/null || true)"
   [[ "$head" == '#!/usr/bin/env bash'* || "$head" == '#!/usr/bin/env sh'* || "$head" == '#!'*'/bash'* || "$head" == '#!'*'/sh'* ]] && return 0
   return 1
 }
@@ -89,9 +104,8 @@ is_sh_file() {
 is_py_file() {
   local f="$1"
   [[ "$f" == *.py ]] && return 0
-  [[ ! -f "$f" ]] && return 1
-  local head
-  head="$(head -n 1 "$f" 2>/dev/null || true)"
+  local head=""
+  head="$(read_text_shebang "$f" 2>/dev/null || true)"
   [[ "$head" == '#!/usr/bin/env python'* || "$head" == '#!'*'/python'* ]] && return 0
   return 1
 }

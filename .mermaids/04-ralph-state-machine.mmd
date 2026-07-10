@@ -11,8 +11,8 @@ stateDiagram-v2
     [*] --> planning : ralph go --goal
     [*] --> executing : ralph go --spec (operator spec, planner skipped)
 
-    planning --> blocked : RALPH_QUESTIONS (needs_human)
-    blocked --> planning : ralph answer
+    planning --> awaiting_human : role emits RALPH_QUESTIONS (status=awaiting_human)
+    awaiting_human --> replanning : ,ralph answer (sets replan_requested)
 
     planning --> executing : plan accepted (iteration starts)
 
@@ -29,6 +29,8 @@ stateDiagram-v2
     decided --> done : verdict=pass & all criteria checks green
     decided --> executing : verdict=pass over failing check → needs_iteration
     decided --> failed : max_iterations / max_minutes exceeded
+    decided --> blocked : verdict=block (status=needs_human, phase=blocked)
+    blocked --> executing : ,ralph resume (next same-plan iteration)
 
     done --> reflecting : workflow in {feature,bugfix} & reflector_enabled
     reflecting --> [*] : capsule → AI KB
@@ -40,6 +42,13 @@ stateDiagram-v2
         takeover→manual_control · dirty→dirty_control
         resume→resume_requested · auto→automated
         BLOCKING states pause the runner until cleared.
+    end note
+
+    note right of blocked
+        Reviewer/re_reviewer BLOCK park: status=needs_human, phase=blocked,
+        block_reason set, NO role control. Cleared ONLY by ,ralph resume
+        (starts the next same-plan iteration; spec_seq unchanged).
+        verify / direct runner / supervisor keep it parked; ,ralph replan rejects it.
     end note
 
     note right of planning

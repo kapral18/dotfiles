@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 07b-neovim.mmd — Every file under home/dot_config/exact_nvim/ (157).
+%% 07b-neovim.mmd — Every file under home/dot_config/exact_nvim/ (155).
 %% Deployed to ~/.config/nvim/. Loader init.lua → core → plugins → util.
 %% Plugin manager: native vim.pack (exact_core/exact_pack policy+semver).
 %% ============================================================================
@@ -23,9 +23,9 @@ flowchart TB
     end
     PLUGINS --- PG
 
-    CORE --> LOCAL["exact_lua/exact_plugins_local/ (loaders)<br/>+ exact_plugins_local_src/ (implementations, 14 each)"]:::local
+    CORE --> LOCAL["exact_lua/exact_plugins_local/ (loaders, 14 each)<br/>+ exact_plugins_local_src/ (implementations, 14 each)"]:::local
     subgraph LP["Local plugins (own code)"]
-        LP1["run-jest-in-split · summarize-commit.lua.tmpl · ts-move-exports<br/>switch-src-test · owner-code-search · show-file-owner<br/>open-eslint-path · send-to-tmux-right-pane · copy-to-qf · qf"]:::local
+        LP1["run-jest-in-split · summarize-commit.lua.tmpl · ts-move-exports<br/>switch-src-test · owner-code-search · show-file-owner<br/>send-to-tmux-right-pane · copy-to-qf · qf"]:::local
         LP2["toggle-win-width · winbar · unwrap-md · freeze · lsp-progress"]:::local
     end
     LOCAL --- LP

@@ -5,6 +5,7 @@ import { join } from "node:path";
 const HOOK_TIMEOUT_MS = 10_000;
 const SESSION_CONTEXT_HOOK = "session_context.py";
 const WORKLOG_RECORDER_HOOK = "worklog_recorder.py";
+const PERTURN_RECALL_HOOK = "perturn_recall.py";
 const EXTENSION_INFO = { source: "user", name: "agent-memory" };
 
 function hookPath(name) {
@@ -58,6 +59,16 @@ export function postToolUseFailurePayload(input, invocation = {}) {
     };
 }
 
+export function userPromptSubmittedPayload(input, invocation = {}) {
+    return {
+        hook_event_name: "UserPromptSubmit",
+        session_id: sessionIdFrom(input, invocation),
+        cwd: input?.workingDirectory,
+        workspace_roots: workspaceRoots(input),
+        prompt: input?.prompt,
+    };
+}
+
 export function contextFromHookResult(result) {
     return (
         result?.additionalContext ||
@@ -65,6 +76,19 @@ export function contextFromHookResult(result) {
         result?.hookSpecificOutput?.additionalContext ||
         ""
     );
+}
+
+// Per-turn recall must fail open: a missing hook, timeout, nonzero exit, or
+// invalid JSON must never reject prompt submission (mirrors the OpenCode
+// per-turn adapter). Returns the recalled additionalContext, or "" on any
+// failure. Only the optional per-turn injection uses this; session/worklog
+// hooks keep their existing propagate-on-failure semantics.
+export async function recallContext(scriptPath, payload) {
+    try {
+        return contextFromHookResult(await runHookScript(scriptPath, payload));
+    } catch {
+        return "";
+    }
 }
 
 export function runHookScript(scriptPath, payload, timeoutMs = HOOK_TIMEOUT_MS) {
@@ -130,6 +154,13 @@ async function main() {
                     sessionStartPayload(input, invocation),
                 );
                 const additionalContext = contextFromHookResult(result);
+                return additionalContext ? { additionalContext } : undefined;
+            },
+            onUserPromptSubmitted: async (input, invocation) => {
+                const additionalContext = await recallContext(
+                    hookPath(PERTURN_RECALL_HOOK),
+                    userPromptSubmittedPayload(input, invocation),
+                );
                 return additionalContext ? { additionalContext } : undefined;
             },
             onPostToolUse: async (input, invocation) => {
