@@ -17,14 +17,17 @@ flowchart TD
         BUG["bugfix: same ladder, test-first seed"]:::flow
         REV["review: review only (1 pass, verdict final)"]:::flow
         RES["research: exec(read-only)→review (no rereview)"]:::flow
+        TEXT["eligible material prose executor:<br/>text-tournament generates 3 candidates + TOURNAMENT;<br/>existing reviewer/re-reviewer evaluate (no nested judge)"]:::flow
     end
     CMDS -->|go --workflow| WF
+    FEAT & BUG -. "eligible prose only" .-> TEXT
 
     subgraph STATE["Run state (per run_id)"]
         MAN[("manifest.json<br/>phase · iterations[].phase · roles[] cache")]:::data
         OUT[("role output.txt per (iteration,role)")]:::data
     end
     WF --> MAN
+    TEXT -. "recorded in executor output" .-> OUT
     MAN <--> OUT
 
     subgraph CONTROL["Control plane"]

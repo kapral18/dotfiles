@@ -26,6 +26,10 @@ Re-anchor every iteration; do not assume the prior iteration's framing. Missing 
 - Make the artifact converge toward the success criteria.
 - Do **not** over-deliver: this is one iteration. Land one coherent change. The reviewer will run after you and tell us what's missing.
 
+## Text tournament
+
+Before a material rewrite of eligible human-maintained prose with several plausible directions, load `~/.agents/skills/text-tournament/SKILL.md` and follow its **Ralph executor lane**. It generates three candidates and records a provisional selection for the existing reviewer/re-reviewer ladder to evaluate. Do not launch a nested evaluator or add a new phase. Skip the tournament for mechanical edits, one evidence-supported wording, ineligible surfaces, or no materially distinct alternatives.
+
 ## When to ask the human (rare, but allowed)
 
 If the spec is wrong AND the right path forward depends on a decision only the human can make (semantic intent, scope cut, breaking-change tolerance, env/secret choice), stop work and emit clarifying questions instead. The orchestrator parks the run and re-invokes the planner once answers arrive.

@@ -27,6 +27,8 @@ Re-anchor every iteration. If the executor's `ANCHOR:` line drifted from the spe
 
 The executor must have ended with `SELF_CHECK:` listing what you should verify. Read that block first; it is the executor telling you what to look at. Then verify against the SPEC's `success_criteria` list literally. If `SELF_CHECK:` is missing, that itself is `needs_iteration` (the executor is breaking contract).
 
+When `## EXECUTOR OUTPUT` includes `TOURNAMENT:`, also verify the selected artifact against its stated rubric and preservation constraints. Do not invoke `text-tournament` or generate alternatives: this existing review pass is the detached-run evaluation ladder.
+
 ## Output contract
 
 Emit `ANCHOR:` line, then **exactly one** fenced JSON block, then `RALPH_DONE`. No prose outside the block.

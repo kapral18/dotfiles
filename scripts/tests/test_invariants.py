@@ -565,6 +565,27 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "Add `server.host=0.0.0.0` to `required_kbn_flags`",
         )
 
+    def test_text_tournament_joins_normal_iteration_with_cross_family_authority(self):
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_text-tournament/readonly_SKILL.md",
+            "Use when the agent is about to make a material rewrite of human-maintained prose",
+            "## Automatic in normal iteration",
+            "Run automatically only when the target has multiple materially different",
+            "State a short rubric",
+            "Do not use for code, generated artifacts, configuration, secret-bearing content, runtime/system behavior",
+            "Generate exactly three surgical candidates",
+            "both presentation orders",
+            "Apply a cross-family, two-order winner as the next normal edit",
+            "continue normal iteration without tournament authority",
+            "## Return exactly",
+            "`Rubric:`",
+        )
+        self.assert_file_not_contains(
+            "home/exact_dot_agents/exact_skills/exact_text-tournament/readonly_SKILL.md",
+            "disable-model-invocation",
+            "Decision needed:",
+        )
+
 
 class TestUvToolsHook(unittest.TestCase):
     """WHEN reconciling uv tool package specs."""

@@ -163,6 +163,20 @@ def _make_eval_env(
 class TestRalph(unittest.TestCase):
     """WHEN running ,ralph go end-to-end with a deterministic mock harness."""
 
+    def test_text_tournament_uses_existing_ralph_review_ladder(self):
+        prompts = REPO / "home/dot_config/ralph/prompts"
+        executor = (prompts / "executor.md").read_text()
+        reviewer = (prompts / "reviewer.md").read_text()
+        re_reviewer = (prompts / "re_reviewer.md").read_text()
+
+        assert "text-tournament/SKILL.md" in executor
+        assert "Ralph executor lane" in executor
+        assert "Do not launch a nested evaluator" in executor
+        assert "TOURNAMENT:" in reviewer
+        assert "Do not invoke `text-tournament` or generate alternatives" in reviewer
+        assert "TOURNAMENT:" in re_reviewer
+        assert "Do not invoke `text-tournament` or generate alternatives" in re_reviewer
+
     def test_missing_model_mirror_fails_with_actionable_hint(self):
         env = os.environ.copy()
         env["RALPH_MODEL_MIRROR"] = "/nonexistent/model-mirror.json"

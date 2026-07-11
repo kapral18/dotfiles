@@ -32,6 +32,9 @@ flowchart TB
     RECALL["ai-kb skill (when relevant): ,ai-kb search<br/>recall durable capsules before work (C13)"]:::mem
     RECALL --> WORK
     WORK["do work: investigate-first, external-truth,<br/>verify don't guess (C7)"]:::loop
+    TT["text-tournament (eligible material prose only):<br/>interactive → 3 candidates + cross-family two-order winner;<br/>Ralph executor → candidates + TOURNAMENT; existing reviewer/re-reviewer evaluate"]:::loop
+    WORK -. "material prose with real alternatives" .-> TT
+    TT -. "informs next edit" .-> WORK
     PROOF["proof skill + ,proof ledger only after hard triggers:<br/>criteria → evidence → review notes → check/report (C8/C13)"]:::loop
 
     WORK --> PHARD{"hard-triggered freeform proof<br/>needed?"}:::loop
@@ -60,8 +63,10 @@ flowchart TB
         RR["roles.json + family_of() gate:<br/>reviewer ≠ re_reviewer family (C11)"]:::gate
         SM["manifest phase advances; crash→park;<br/>supervisor/resume relaunch (C12);<br/>reviewer BLOCK verdict → needs_human park,<br/>cleared ONLY by ,ralph resume"]:::loop
         XPORT["subprocess prompt transport:<br/>prompt.md is the source; cursor gets it as the<br/>trailing positional arg ($(cat prompt.md));<br/>pi/command read it via '< prompt.md';<br/>subprocess stdin is EMPTY (never double-supplied)"]:::gate
+        RTT["executor prompt → text-tournament Ralph lane:<br/>3 candidates + TOURNAMENT; no nested evaluator;<br/>reviewer/re-reviewer evaluate the selected artifact"]:::loop
         RR --> SM
         SM --> XPORT
+        XPORT -. "executor only, eligible prose" .-> RTT
     end
     WORK -. "ralph go" .-> RALPH
     SM -. "anchored like any agent" .-> ANCHOR

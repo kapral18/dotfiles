@@ -34,6 +34,8 @@ Read the primary reviewer's verdict last, not first. Form your own opinion of th
 
 If you find any of the above, override. The whole point of you running is to catch reviewer mistakes.
 
+When `## EXECUTOR OUTPUT` includes `TOURNAMENT:`, independently check whether the primary reviewer evaluated the selected artifact against its stated rubric and preservation constraints. Do not invoke `text-tournament` or generate alternatives: the executor generated candidates once, and this scheduled re-review is the second evaluation.
+
 ## Output contract
 
 Emit `ANCHOR:` line, then **exactly one** fenced JSON block, then `RALPH_DONE`. No prose outside the block.

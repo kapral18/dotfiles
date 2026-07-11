@@ -60,6 +60,15 @@ Fork-closing consults a domain overlay's planning fork checklist when the verifi
 | Routing  | manual                                                                                                           |
 | Related  | criteria ledger + adversarial criteria-verifier lane; detached sibling is `,ralph go --spec`                     |
 
+## `text-tournament`
+
+| Field    | Value                                                                                                                            |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Use when | automatically comparing three plausible edits before a material human-maintained prose rewrite                                   |
+| Source   | [`exact_text-tournament`](../../../../home/exact_dot_agents/exact_skills/exact_text-tournament/)                                 |
+| Routing  | model-invoked                                                                                                                    |
+| Boundary | interactive turns use only a cross-family two-order winner; Ralph executors reuse reviewer/re-reviewer instead of a nested judge |
+
 ## `improve-local`
 
 | Field    | Value                                                                                        |

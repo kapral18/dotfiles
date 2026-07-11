@@ -41,6 +41,12 @@ The orchestrator enforces `family_of(re_reviewer.model) != family_of(reviewer.mo
 
 Per-role prompts live at [`home/dot_config/ralph/prompts/`](../../../../home/dot_config/ralph/prompts/).
 
+## Text tournament in detached runs
+
+For an executor iteration rewriting eligible human-maintained prose with materially different plausible directions, the executor prompt loads the shared `text-tournament` skill's Ralph executor lane. It generates three candidates, applies one provisional rubric-selected edit, and records its decision in `TOURNAMENT:` before `SELF_CHECK:`.
+
+The existing reviewer and re-reviewer ladder evaluates the selected artifact against that rubric. It does not start a nested evaluator, regenerate candidates, add a role, or alter the Ralph state machine; mechanical, ineligible, and one-wording edits skip this lane.
+
 Local models (llama-cpp / qwen3.6) are opt-in only; defaults never depend on `,llama-cpp serve` being up. Swap them in by editing `roles.json` (e.g. point `executor.harness=pi`, `executor.model=llama-cpp/local`). See [llama.cpp local inference](../llama-cpp/index.md).
 
 ## Domain-gated `/review` skill invocation
