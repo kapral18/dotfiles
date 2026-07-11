@@ -7,12 +7,13 @@ title: AI knowledge base
 
 `,ai-kb` is the durable memory layer Ralph reads from and writes to.
 
-| Piece          | Path                                                                               |
-| -------------- | ---------------------------------------------------------------------------------- |
-| CLI            | [`home/exact_bin/executable_,ai-kb`](../../../../home/exact_bin/executable_,ai-kb) |
-| Implementation | [`scripts/ai_kb.py`](../../../../scripts/ai_kb.py)                                 |
-| Capsules       | `~/.local/share/ai-kb/capsules/<id>.md`                                            |
-| SQLite mirror  | `~/.local/share/ai-kb/kb.sqlite3`                                                  |
+| Piece          | Path                                                                                                              |
+| -------------- | ----------------------------------------------------------------------------------------------------------------- |
+| CLI            | [`home/exact_bin/executable_,ai-kb`](../../../../home/exact_bin/executable_,ai-kb)                                |
+| Deployed core  | [`home/exact_lib/exact_,ai-kb/`](../../../../home/exact_lib/exact_,ai-kb/readonly_main.py.tmpl) → `~/lib/,ai-kb/` |
+| Source modules | [`scripts/ai_kb.py`](../../../../scripts/ai_kb.py) and the colocated retrieval/embedding modules                  |
+| Capsules       | `~/.local/share/ai-kb/capsules/<id>.md`                                                                           |
+| SQLite mirror  | `~/.local/share/ai-kb/kb.sqlite3`                                                                                 |
 
 Capsule markdown is canonical for authored capsule content/identity metadata. Mutable curation/runtime state (`superseded_by`, `decay_score`, embeddings, `updated_at`) lives in SQLite. When `CAPSULE_COLUMNS` drifts, `init()` transactionally rebuilds `capsules` from sidecars and overlays recoverable SQL-only state from the pre-drop table; when only `capsule_fts` / `kb_meta` drift, it rebuilds those derived tables from the current `capsules` rows. If a sidecar is malformed, rebuild fails closed before mutation instead of silently returning an empty KB.
 
@@ -41,16 +42,27 @@ Retrieval is hybrid by default:
 
 Workspace matches get a soft RRF boost, so project capsules outrank global ones in the active workspace. Superseded capsules are excluded by default. See `KnowledgeBase.search` in [`scripts/ai_kb.py`](../../../../scripts/ai_kb.py).
 
-Embeddings are isolated out of the orchestrator process:
+The public command runs directly from `~/lib/,ai-kb/main.py`; it no longer discovers or imports the chezmoi checkout at runtime. The deployed library is rendered from the repository modules, so the CLI, hooks, and resident worker share one implementation while remaining usable outside the source checkout.
 
-| Component                                                        | Role                                                    |
-| ---------------------------------------------------------------- | ------------------------------------------------------- |
-| [`scripts/embed.py`](../../../../scripts/embed.py)               | stdlib wrapper that shells out via JSON stdin/stdout    |
-| [`scripts/embed_runner.py`](../../../../scripts/embed_runner.py) | PEP 723 `uv run --script` runner that loads `fastembed` |
-| Model                                                            | `BAAI/bge-small-en-v1.5`, 384 dimensions                |
-| Escape hatch                                                     | `RALPH_KB_DISABLE_EMBED=1`                              |
+Embeddings are isolated out of the caller process, with two deliberately separate lanes:
 
-When embeddings are disabled, lexical retrieval still works.
+| Component                                                          | Role                                                                                                                                     |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| [`scripts/embed.py`](../../../../scripts/embed.py)                 | stdlib dispatch layer; defaults to the one-shot runner and uses resident connect-only mode only when `AI_EMBED_CONNECT_ONLY=1`           |
+| [`scripts/embed_runner.py`](../../../../scripts/embed_runner.py)   | PEP 723 `uv run --script` runner that loads `fastembed` for ordinary CLI, manual search, Ralph, `remember`, and `reembed` operations     |
+| [`scripts/embed_client.py`](../../../../scripts/embed_client.py)   | generation-specific Unix-socket client; session-start adapters may call bounded `ensure`, while per-turn callers always use connect-only |
+| [`scripts/embed_worker.py`](../../../../scripts/embed_worker.py)   | resident PEP 723 FastEmbed worker used only by automatic per-turn recall                                                                 |
+| [`scripts/worklog_queue.py`](../../../../scripts/worklog_queue.py) | bounded, crash-safe worklog queue flushed before harvest                                                                                 |
+| Model                                                              | `BAAI/bge-small-en-v1.5`, 384 dimensions                                                                                                 |
+| Escape hatch                                                       | `RALPH_KB_DISABLE_EMBED=1`                                                                                                               |
+
+The resident identity hashes the protocol version, complete worker source, model, and expected dimension. Each generation gets its own socket, so a new implementation cannot replace or send requests to an older process. Warm-up resolves the configured `RALPH_EMBED_MODEL` dimension from FastEmbed metadata; connect-only callers discover and validate that ready generation without spawning. The runtime root is user-owned `0700`, sockets and start locks are `0600`, startup markers are atomically published and bound to the expected worker command, and resident-worker request sizes and deadlines are bounded. The worker receives text only in the socket payload and never logs or echoes it.
+
+One resident `BAAI/bge-small-en-v1.5` worker measured about 320 MiB RSS; two coexisting deployment generations measured about 625 MiB total. The worker exits after 300 inactive seconds and removes only the socket inode it created, bounding that temporary overlap without cross-generation eviction.
+
+Claude, Gemini, OpenCode, Copilot, and Pi request a bounded, fail-open resident warm-up when `AI_AGENT_DEPTH` is `balanced` or `deep`; `fast` suppresses warm-up because it has no per-turn retrieval. Cursor and Codex do not start the worker because neither has a per-turn retrieval adapter. Every per-turn search sets `AI_EMBED_CONNECT_ONLY=1`: it never starts, restarts, or replaces a worker, and an unavailable resident simply suppresses that recall block without interrupting the user request. Default/manual CLI use and all Ralph, `remember`, and `reembed` work stay on the existing one-shot runner. The exact depth budgets and provenance are documented in [Cross-agent memory](cross-agent-memory.md).
+
+When embeddings are disabled or unavailable outside the cosine-gated per-turn lane, lexical retrieval still works.
 
 Vector search and curation pairs use the same subprocess-isolation pattern:
 
@@ -114,6 +126,8 @@ Use one of:
 | `failure_to_fix`   | A failing command later followed by a clean run of the same program         | `gotcha`       |
 | `recurring_error`  | The same digit-normalized error signature seen `--min-repeats`+ times       | `gotcha`       |
 | `repeated_command` | The same clean command run `--min-repeats`+ times (noise programs excluded) | `recipe`       |
+
+Before reading candidates, harvest flushes the bounded session-keyed worklog queue for the target spec directory. It exits nonzero when a queue record remains pending or an active error ledger exists, so asynchronous bookkeeping cannot be mistaken for a complete harvest.
 
 For each candidate it prints the evidence lines and a ready-to-edit `,ai-kb remember` line. Candidates already covered by a capsule are suppressed via a BM25 lookup plus a token-overlap match, so harvest does not re-suggest what is already remembered. Pass `--session-id <id>` to resolve the same `.session-topic-<id>.txt` binding used by hooks; without it, `agent_memory.py` applies its normal explicit-pointer/branch/default fallback. An explicit `--topic` overrides the session binding, `--worklog PATH` overrides topic resolution entirely, and `--json` emits the full candidate set (including suppressed ones flagged `known`).
 

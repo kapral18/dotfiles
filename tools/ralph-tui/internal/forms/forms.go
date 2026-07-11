@@ -66,7 +66,7 @@ type NewRunResult struct {
 
 // fieldKind enumerates the focus targets in the form, in tab order.
 // One harness picker + one model picker per role; both `cursor` and
-// `pi` always have a curated model list, so every slot is always
+// `pi` always have a generated recommended model list, so every slot is always
 // reachable in nav (no visibility logic needed).
 type fieldKind int
 
@@ -323,7 +323,7 @@ func (f NewRunForm) viewRoleRow(role string) string {
 }
 
 // modelDisplay renders the model picker for the role. Both cursor and
-// pi always have a curated model list (see state/models.go), so the
+// pi always have a generated recommended model list (see state/models.go), so the
 // empty-list path is treated as a defensive no-op rather than a
 // user-visible state.
 func (f NewRunForm) modelDisplay(role string, list []string, focused bool) string {

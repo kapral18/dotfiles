@@ -2203,7 +2203,12 @@ def build_parser() -> argparse.ArgumentParser:
     remember.add_argument("--json", action="store_true")
 
     search = sub.add_parser("search")
-    search.add_argument("query")
+    search.add_argument("query", nargs="?")
+    search.add_argument(
+        "--query-stdin",
+        action="store_true",
+        help="Read the query from stdin so automatic callers do not expose it in process argv",
+    )
     search.add_argument("--limit", type=int, default=5)
     search.add_argument("--scope", default=None, action="append")
     search.add_argument("--kind", default=None, action="append")
@@ -2267,7 +2272,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
     kb = KnowledgeBase(args.home)
 
     if args.cmd == "init":
@@ -2297,8 +2303,19 @@ def main(argv: list[str] | None = None) -> int:
         print_capsule(capsule, args.json)
         return 0
     if args.cmd == "search":
+        if args.query_stdin and args.query is not None:
+            parser.error("search accepts either a positional query or --query-stdin, not both")
+        if args.query_stdin:
+            query = sys.stdin.read(4097)
+            if len(query) > 4096:
+                parser.error("stdin search query exceeds 4096 characters")
+            query = query.strip()
+        else:
+            query = args.query or ""
+        if not query:
+            parser.error("search requires a positional query or --query-stdin")
         rows = kb.search(
-            args.query,
+            query,
             args.limit,
             scope=args.scope,
             kind=args.kind,
@@ -2375,6 +2392,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "harvest":
         workspace = Path(args.workspace or Path.cwd()).expanduser().resolve()
+        import worklog_queue
+
         if args.worklog:
             worklog = Path(args.worklog).expanduser()
             suffix = ".worklog.jsonl"
@@ -2382,6 +2401,17 @@ def main(argv: list[str] | None = None) -> int:
         else:
             topic = resolve_topic(workspace, args.topic, args.session_id)
             worklog = worklog_path(workspace, topic)
+        try:
+            flush_result = worklog_queue.flush_spec_dir(worklog.parent)
+        except (OSError, ValueError, worklog_queue.QueueError) as err:
+            print(f"harvest worklog flush failed: {err}", file=sys.stderr)
+            return 2
+        if flush_result.errors or flush_result.pending:
+            print(
+                f"harvest worklog flush incomplete: pending={flush_result.pending} errors={flush_result.errors}",
+                file=sys.stderr,
+            )
+            return 2
         entries = read_worklog(worklog)
         candidates = detect_candidates(entries, min_repeats=args.min_repeats)
         suppress_known(kb, candidates, workspace)

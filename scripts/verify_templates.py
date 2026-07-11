@@ -19,9 +19,12 @@ Exit status is non-zero if any template fails to render.
 
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 from pathlib import Path
+
+SINGLE_INCLUDE_RE = re.compile(r'\s*\{\{-?\s*include\s+"([^"]+)"\s*-?\}\}\s*\Z')
 
 
 def find_templates(source_dir: Path) -> list[Path]:
@@ -34,14 +37,50 @@ def find_templates(source_dir: Path) -> list[Path]:
     return sorted(p for p in source_dir.rglob("*.tmpl") if p.is_file() and not p.name.startswith(".chezmoi"))
 
 
-def render_template(path: Path) -> tuple[bool, str]:
+def exact_projection_error(path: Path, source_dir: Path, rendered: bytes) -> str | None:
+    """Return an error when an exact-lib single include changes source bytes."""
+    try:
+        path.relative_to(source_dir / "exact_lib")
+    except ValueError:
+        return None
+    match = SINGLE_INCLUDE_RE.fullmatch(path.read_text(encoding="utf-8"))
+    if match is None:
+        return None
+    included = (source_dir / match.group(1)).resolve()
+    repo_root = source_dir.resolve().parent
+    if not included.is_relative_to(repo_root) or not included.is_file():
+        return f"single-include projection source is unavailable: {included}"
+    if rendered != included.read_bytes():
+        return f"single-include projection must render byte-identically to {included.relative_to(repo_root)}"
+    return None
+
+
+def chezmoi_source_root(source_dir: Path) -> Path:
+    """Resolve a chezmoi source root without widening standalone fixture scope."""
+    source_dir = source_dir.resolve()
+    parent = source_dir.parent
+    marker = parent / ".chezmoiroot"
+    try:
+        configured_root = marker.read_text(encoding="utf-8").strip()
+    except OSError:
+        return source_dir
+    if configured_root and (parent / configured_root).resolve() == source_dir:
+        return parent
+    return source_dir
+
+
+def render_template(path: Path, source_dir: Path | None = None) -> tuple[bool, str]:
     """Render one template via ``chezmoi execute-template``.
 
     Returns ``(ok, message)``; ``message`` carries chezmoi's stderr on failure.
     """
+    command = ["chezmoi"]
+    if source_dir is not None:
+        command += ["--source", str(chezmoi_source_root(source_dir))]
+    command.append("execute-template")
     try:
         result = subprocess.run(
-            ["chezmoi", "execute-template"],
+            command,
             input=path.read_bytes(),
             capture_output=True,
             check=False,
@@ -49,6 +88,10 @@ def render_template(path: Path) -> tuple[bool, str]:
     except OSError as exc:
         return False, f"failed to run chezmoi execute-template: {exc}"
     if result.returncode == 0:
+        if source_dir is not None:
+            message = exact_projection_error(path, source_dir, result.stdout)
+            if message is not None:
+                return False, message
         return True, ""
     return False, result.stderr.decode("utf-8", "replace").strip()
 
@@ -82,7 +125,7 @@ def main(argv: list[str] | None = None) -> int:
 
     failures: list[tuple[Path, str]] = []
     for path in templates:
-        ok, message = render_template(path)
+        ok, message = render_template(path, source_dir)
         if not ok:
             failures.append((path, message))
 

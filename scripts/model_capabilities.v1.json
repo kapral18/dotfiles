@@ -1,0 +1,146 @@
+{
+  "harnesses": {
+    "claude": {
+      "catalog": {
+        "complete": false,
+        "mode": "fixed",
+        "models": ["fable", "opus", "sonnet", "claude-fable-5"],
+        "source": "claude --help model aliases and full-name example"
+      },
+      "identity": {
+        "binary": "claude",
+        "package": "@anthropic-ai/claude-code",
+        "version": "2.1.206"
+      },
+      "live_probe": {
+        "reason": "installed CLI exposes model selection but no complete catalog command",
+        "supported": false
+      }
+    },
+    "codex": {
+      "catalog": {
+        "mode": "unknown",
+        "reason": "installed CLI exposes --model but no offline complete catalog"
+      },
+      "identity": {
+        "binary": "codex",
+        "package": "Homebrew cask codex 0.144.1",
+        "version": "codex-cli 0.144.1"
+      },
+      "live_probe": {
+        "reason": "no locally verified complete catalog command",
+        "supported": false
+      }
+    },
+    "copilot": {
+      "catalog": {
+        "mode": "unknown",
+        "reason": "installed CLI exposes --model and BYOK providers but no complete catalog command"
+      },
+      "identity": {
+        "binary": "copilot",
+        "package": "Homebrew cask copilot-cli 1.0.68",
+        "version": "GitHub Copilot CLI 1.0.70"
+      },
+      "live_probe": {
+        "reason": "no locally verified complete catalog command",
+        "supported": false
+      }
+    },
+    "cursor": {
+      "catalog": {
+        "mode": "unknown",
+        "reason": "account catalog requires authentication unavailable in isolated static generation"
+      },
+      "identity": {
+        "binary": "cursor-agent",
+        "package": "Cursor Agent",
+        "version": "2026.07.09-a3815c0"
+      },
+      "live_probe": {
+        "adapter": "cursor-list-models",
+        "command": ["cursor-agent", "--list-models"],
+        "max_output_bytes": 4194304,
+        "network": "explicit",
+        "supported": true,
+        "timeout_seconds": 20
+      }
+    },
+    "gemini": {
+      "catalog": {
+        "complete": true,
+        "mode": "fixed",
+        "models": [
+          "auto",
+          "pro",
+          "flash",
+          "flash-lite",
+          "auto-gemini-3",
+          "auto-gemini-2.5",
+          "gemini-3.1-flash-lite",
+          "gemini-3.1-pro-preview",
+          "gemini-3.1-pro-preview-customtools",
+          "gemini-3-pro-preview",
+          "gemini-3-flash-preview",
+          "gemini-3.5-flash",
+          "gemini-2.5-pro",
+          "gemini-2.5-flash",
+          "gemini-2.5-flash-lite",
+          "gemma-4-31b-it",
+          "gemma-4-26b-a4b-it"
+        ],
+        "source": "@google/gemini-cli bundle DEFAULT_MODEL_CONFIGS.modelDefinitions"
+      },
+      "identity": {
+        "binary": "gemini",
+        "package": "@google/gemini-cli",
+        "version": "0.50.0"
+      },
+      "live_probe": {
+        "reason": "installed CLI exposes --model but no complete account catalog command",
+        "supported": false
+      }
+    },
+    "opencode": {
+      "catalog": {
+        "mode": "configured",
+        "reason": "static mirror includes configured provider routes; installed models.dev catalog is probed only on demand"
+      },
+      "identity": {
+        "binary": "opencode",
+        "package": "opencode-ai",
+        "version": "1.17.15"
+      },
+      "live_probe": {
+        "adapter": "opencode-models",
+        "command": ["opencode", "models"],
+        "max_output_bytes": 4194304,
+        "network": "explicit",
+        "supported": true,
+        "timeout_seconds": 20
+      }
+    },
+    "pi": {
+      "catalog": {
+        "mode": "configured",
+        "reason": "static mirror includes configured custom routes; built-in availability depends on auth"
+      },
+      "identity": {
+        "binary": "pi",
+        "package": "@earendil-works/pi-coding-agent",
+        "version": "0.80.6"
+      },
+      "live_probe": {
+        "adapter": "pi-list-models",
+        "command": ["pi", "--offline", "--list-models"],
+        "max_output_bytes": 4194304,
+        "network": "local-only",
+        "supported": true,
+        "timeout_seconds": 20
+      }
+    }
+  },
+  "kind": "ai.harness-capabilities",
+  "observed_at": "2026-07-11",
+  "schema_version": "1.0.0"
+}

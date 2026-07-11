@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 11-scripts-helpers.mmd — Every file in scripts/ (77). Repo-side Python
+%% 11-scripts-helpers.mmd — Every file in scripts/ (94). Repo-side Python
 %% (stdlib only, no PyYAML) called by chezmoi 07-* hooks + ,bin commands.
 %% Grouped by consumer. Shared parsers feed the generators/mergers.
 %% ============================================================================
@@ -13,48 +13,57 @@ flowchart TB
     subgraph SHARED["Shared parsers / libs"]
         YP["yaml_parser.py (minimal YAML, parse_scalar)"]:::shared
         AM["ai_models.py (parse ai_models.yaml)"]:::shared
+        MC["model_mirror_consumer.py (consumer_view.v1<br/>shared by repo generators and deployed ,ai)"]:::shared
         MD["model_display.py · jsonc_dump.py (JSONC writer)"]:::shared
-        CL["chezmoi_lib.sh (shared shell helpers for hooks)"]:::shared
+        CL["chezmoi_lib.sh (thin hook interface)<br/>managed_config_manifest.py (generic literal checksum ledger)<br/>generated_artifact_ledger.py (AI ownership-aware effective state + ,doctor ai)"]:::shared
         TS["_test_support.py (puts scripts/ on sys.path for direct script tests)"]:::shared
     end
 
     subgraph MCPGEN["MCP config generation (hook 07-generate-mcp-configs)"]
-        MR["mcp_registry.py (load mcp_servers.yaml, resolve $(pass), filter)"]:::mcp
-        GMC["generate_mcp_configs.py (per-tool MCP json)"]:::mcp
+        MR["mcp_registry.py (load mcp_servers.yaml, filter;<br/>default shell resolution + no-exec/override modes)"]:::mcp
+        GMC["generate_mcp_configs.py (per-tool MCP json;<br/>Copilot typed header-auth plan + stdin override render)"]:::mcp
         MCM["merge_claude_mcp.py (surgical mcpServers in ~/.claude.json)"]:::mcp
         ICT["inject_mcp_into_codex_toml.py (hook 07-merge-codex)"]:::mcp
         IOJ["inject_mcp_into_opencode_jsonc.py (hook 07-merge-opencode)"]:::mcp
     end
     YP --> MR --> GMC --> MCM & ICT & IOJ
 
+    subgraph RECON["Mixed-ownership config reconciliation"]
+        MCS["merge_copilot_settings.py (recursive policy merge;<br/>exact subagents.agents ownership)"]:::mcp
+    end
+
     subgraph MODELGEN["Model catalog generation"]
         GPM["generate_pi_models.py (hook 07-merge-pi → dot_pi/agent/models.json)"]:::model
         MOM["merge_opencode_models.py (LiteLLM aliases into opencode jsonc)"]:::model
+        MM["model_mirrors.py + model_capabilities.v1.json<br/>deterministic v1 available/curated/recommended mirror<br/>+ complete source provenance + fail-closed bounded live drift adapters"]:::model
         PLP["probe_litellm_prompt_cache.py (runtime probe; prompt-cache signals)"]:::model
     end
-    AM --> GPM & MOM
+    AM --> GPM & MOM & MM
+    MC --> MM
 
     subgraph AIKB["AI knowledgebase + embeddings"]
-        KB["ai_kb.py (markdown + SQLite FTS5 store; ,ai-kb;<br/>harvest = session-resolved worklog→remember candidates, read-only)"]:::ai
-        EMB["embed.py + embed_runner.py (fastembed subprocess)"]:::ai
+        KB["ai_kb.py (markdown + SQLite FTS5 store; deployed as ~/lib/,ai-kb/main.py;<br/>harvest flushes queued worklogs, then resolves worklog→remember candidates, read-only)"]:::ai
+        WQ["worklog_queue.py (fsynced session sequence queue;<br/>stable replay IDs · spec/target locks · chronological output · bounded errors/lifetime/cleanup;<br/>deployed to ~/.agents/hooks/ + ~/lib/,ai-kb/)"]:::ai
+        EMB["embed.py dispatch<br/>embed_runner.py = one-shot default/manual/Ralph/remember/reembed<br/>embed_client.py + embed_worker.py = generation-specific private resident;<br/>session-start ensure · per-turn connect-only · fail-open · 300s idle"]:::ai
         VEC["vec_runner.py (vector retrieval subprocess)"]:::ai
         AGM["agent_memory.py (/tmp/specs topic mgmt; ,agent-memory)"]:::ai
     end
-    KB --> AGM & EMB & VEC
+    KB --> AGM & EMB & VEC & WQ
 
     subgraph ORCH["Orchestrator + package ops"]
-        RALPH["ralph.py (177KB; see 04/04b)"]:::misc
+        RALPH["ralph.py (orchestrator; consumes mirror curated sets + opt-in live Cursor drift; see 04/04b)"]:::misc
         RCP["reconcile_custom_packages.py (hook 05-install-custom-packages)"]:::misc
         RGP["reconcile_golang_pkgs.py (hook 05-update-golang-pkgs; binary reconcile + state ledger)"]:::misc
         SLC["sync_llama_cpp_models.py (hook 07-sync-llama-cpp-models)"]:::misc
-        VT["verify_templates.py (make verify-templates)<br/>verify_mermaids.py (make verify-mermaids; .mermaids census + overview anchors)<br/>verify_bin_surface.py (make verify-bin-surface; ~/bin completions/docs/catalog + exact token matching + home/exact_lib orphans)<br/>verify_docs_navigation.py (make verify-docs-navigation; docs/reference links + catalog rows)"]:::misc
+        VT["verify_templates.py (make verify-templates; pins chezmoi --source to current repo)<br/>verify_mermaids.py (make verify-mermaids; .mermaids census + overview anchors)<br/>verify_bin_surface.py (make verify-bin-surface; ~/bin completions/docs/catalog + exact token matching + home/exact_lib orphans)<br/>verify_docs_navigation.py (make verify-docs-navigation; docs/reference links + catalog rows)"]:::misc
         YT["yt_search.py (,youtube-search backend)"]:::misc
     end
 
     subgraph TESTS["Tests + fixtures"]
-        TT["top-level tests:<br/>test_{agent_memory,ai_kb,ai_models,embed,generate_mcp_configs,generate_pi_models}.py<br/>test_{inject_mcp_into_codex_toml,inject_mcp_into_opencode_jsonc,mcp_registry}.py<br/>test_{merge_opencode_models,model_display,pre_commit,ralph}.py<br/>test_{verify_bin_surface,verify_docs_navigation,verify_mermaids,verify_templates,yaml_parser}.py"]:::shared
-        IT["scripts/tests/: __init__.py · copilot_agent_memory_extension.test.mjs<br/>test_{agent_hooks,bin_commands,gh_picker_dispatch_state,gh_picker_lock,git_gate,invariants}.py<br/>test_{plain_session_removal,proof_cli,session_github_cache,tmux_handoff_context,tmux_handoff_lifecycle,<br/>tmux_handoff_namespace,tmux_pickers,worktree_delete_boundaries}.py"]:::shared
-        FX["fixtures/: {ai_models,ai_models_with_claude,mcp_servers,mcp_servers_exclude}.yaml<br/>codex_base.toml · golden_codex_personal.toml · golden_mcp_{personal,work}.json<br/>golden_opencode_{models,models_with_claude,personal}.jsonc · golden_pi_models.json<br/>opencode_{base,work_base}.jsonc · mock_role.sh"]:::shared
+        TT["top-level tests:<br/>test_{agent_memory,ai_kb,ai_launcher,ai_models,chezmoi_lib,embed,generated_artifact_ledger,generate_mcp_configs,generate_pi_models}.py<br/>test_{inject_mcp_into_codex_toml,inject_mcp_into_opencode_jsonc,mcp_registry,model_mirrors}.py<br/>test_{merge_copilot_settings,merge_opencode_models,model_display,pre_commit,ralph}.py<br/>test_{verify_bin_surface,verify_docs_navigation,verify_mermaids,verify_templates,yaml_parser}.py"]:::shared
+        IT["scripts/tests/: __init__.py · copilot_agent_memory_extension.test.mjs<br/>recall_worklog_state_machine.py · test_{agent_hooks,recall_worklog,bin_commands,gh_picker_dispatch_state,gh_picker_lock,git_gate,invariants}.py<br/>test_{plain_session_removal,proof_cli,session_github_cache,tmux_handoff_context,tmux_handoff_lifecycle,<br/>tmux_handoff_namespace,tmux_pickers,worktree_delete_boundaries}.py"]:::shared
+        FX["fixtures/: {ai_models,ai_models_with_claude,mcp_servers,mcp_servers_exclude}.yaml<br/>codex_base.toml · golden_codex_personal.toml · golden_mcp_{personal,work}.json<br/>golden_opencode_{models,models_with_claude,personal}.jsonc · golden_pi_models.json<br/>model_probe_cases.json · opencode_{base,work_base}.jsonc · mock_role.sh"]:::shared
     end
     MCPGEN -.verified by golden.-> TESTS
+    RECON -.verified by focused tests.-> TESTS
     MODELGEN -.verified by golden.-> TESTS

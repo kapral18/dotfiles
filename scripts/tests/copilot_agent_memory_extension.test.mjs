@@ -47,6 +47,7 @@ test("sessionStartPayload maps SDK camelCase to the shared snake_case contract",
     assert.deepEqual(payload.workspace_roots, [ "/tmp/workspace" ]);
     assert.equal(payload.source, "new");
     assert.equal(payload.initial_prompt, "hello");
+    assert.equal(payload.warm_embedder, true);
 });
 
 test("sessionStartPayload falls back to the invocation session id", () => {
@@ -138,6 +139,25 @@ test("recallContext surfaces a successful hook's non-empty additionalContext", a
         chmodSync(stub, 0o755);
         assert.equal(await mod.recallContext(stub, { prompt: "x" }), "recalled");
     } finally {
+        rmSync(scratch, { recursive: true, force: true });
+    }
+});
+
+test("recordWorklog fails open and reports a nonzero recorder", async () => {
+    const scratch = mkdtempSync(join(here, "worklog-fail-"));
+    const warnings = [];
+    const originalWarn = console.warn;
+    try {
+        const stub = join(scratch, "hook.sh");
+        writeFileSync(stub, "#!/bin/sh\ncat >/dev/null\nprintf '%s' 'queue unavailable' >&2\nexit 4\n");
+        chmodSync(stub, 0o755);
+        console.warn = (message) => warnings.push(String(message));
+        await mod.recordWorklog(stub, { tool_name: "bash" });
+        assert.equal(warnings.length, 1);
+        assert.match(warnings[0], /worklog hook failed/);
+        assert.match(warnings[0], /queue unavailable/);
+    } finally {
+        console.warn = originalWarn;
         rmSync(scratch, { recursive: true, force: true });
     }
 });

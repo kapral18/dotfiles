@@ -6,6 +6,11 @@ set -euo pipefail
 # mcp_servers hash: {{ include ".chezmoidata/mcp_servers.yaml" | sha256sum }}
 # generate_mcp_configs.py hash: {{ include "../scripts/generate_mcp_configs.py" | sha256sum }}
 # mcp_registry.py hash: {{ include "../scripts/mcp_registry.py" | sha256sum }}
+# yaml_parser.py hash: {{ include "../scripts/yaml_parser.py" | sha256sum }}
+# merge_copilot_settings.py hash: {{ include "../scripts/merge_copilot_settings.py" | sha256sum }}
+# chezmoi_lib.sh hash: {{ include "../scripts/chezmoi_lib.sh" | sha256sum }}
+# managed_config_manifest.py hash: {{ include "../scripts/managed_config_manifest.py" | sha256sum }}
+# generated_artifact_ledger.py hash: {{ include "../scripts/generated_artifact_ledger.py" | sha256sum }}
 # copilot agent-memory extension hash: {{ include "private_dot_copilot/exact_extensions/exact_agent-memory/readonly_extension.mjs" | sha256sum }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
@@ -13,6 +18,7 @@ source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
 source "$source_dir/../scripts/chezmoi_lib.sh"
 
 is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
+profile="{{ if eq .isWork true }}work{{ else }}personal{{ end }}"
 yaml_src="$source_dir/.chezmoidata/mcp_servers.yaml"
 gen="$source_dir/../scripts/generate_mcp_configs.py"
 
@@ -23,27 +29,45 @@ mkdir -p "$HOME/.copilot"
 chmod 0700 "$HOME/.copilot"
 mcp_json="$(python3 "$gen" "$yaml_src" "$is_work" copilot)"
 chezmoi_write_if_changed "$mcp_json" "$HOME/.copilot/mcp-config.json" 0600
+chezmoi_record_artifact --id copilot-mcp \
+  --producer 07-merge-copilot-config --profile "$profile" \
+  --target "$HOME/.copilot/mcp-config.json" --ownership-adapter whole-file \
+  --input "$yaml_src" \
+  --transform "$gen" \
+  --transform "$source_dir/../scripts/mcp_registry.py" \
+  --transform "$source_dir/../scripts/yaml_parser.py" \
+  --transform "$source_dir/../scripts/chezmoi_lib.sh" \
+  --consumer copilot
 
 # User settings (~/.copilot/settings.json) — Copilot owns this file and
 # rewrites it at runtime (via /settings, /model, and config.json migration),
-# mixing interactive state (chosen model, allowedUrls) with our baseline. Merge
-# our declared keys ON TOP of whatever is live so they win without clobbering
-# the user's runtime choices; chezmoi ignores the live target.
+# mixing interactive state (chosen model, allowedUrls) with our baseline. The
+# typed reconciler preserves undeclared live keys, lets declared policy win
+# recursively, and replaces subagents.agents exactly; chezmoi ignores the live
+# target.
 settings_target="$HOME/.copilot/settings.json"
 settings_src="$source_dir/private_dot_copilot/settings.json"
-if [ -f "$settings_target" ]; then
-  desired_settings="$(jq -s '.[0] * .[1]' "$settings_target" "$settings_src")"
-else
-  desired_settings="$(cat "$settings_src")"
-fi
+settings_merge="$source_dir/../scripts/merge_copilot_settings.py"
+settings_live="$settings_target"
+[ -f "$settings_live" ] || settings_live="$settings_src"
+desired_settings="$(python3 "$settings_merge" "$settings_live" "$settings_src")"
 chezmoi_write_if_changed "$desired_settings" "$settings_target" 0600
+chezmoi_record_artifact --id copilot-settings \
+  --producer 07-merge-copilot-config --profile "$profile" \
+  --target "$settings_target" --ownership-adapter json-declared \
+  --baseline "$settings_src" --exact-selector subagents.agents \
+  --input "$settings_src" \
+  --transform "$settings_merge" \
+  --transform "$source_dir/../scripts/chezmoi_lib.sh" \
+  --consumer copilot
 
 # Copilot 1.0.68 still runs JSON command hooks from ~/.copilot/hooks/*.json, but
 # does not ingest their SessionStart context output. The native SDK extension at
 # ~/.copilot/extensions/agent-memory/extension.mjs owns the shared session,
 # per-turn recall, and worklog hooks (onSessionStart -> session_context.py,
-# onUserPromptSubmitted -> perturn_recall.py, onPostToolUse* -> worklog_recorder.py)
+# onUserPromptSubmitted -> perturn_recall.py, onPostToolUse* -> worklog_dispatcher.sh)
 # and translates Copilot's camelCase SDK payloads to the shared snake_case
 # script contract. Remove the stale generated command-hook file so worklog writes
 # do not double-fire.
 rm -f "$HOME/.copilot/hooks/agent-memory.json"
+chezmoi_forget_checksum "$HOME/.copilot/hooks/agent-memory.json"

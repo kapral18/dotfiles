@@ -6,12 +6,17 @@ set -euo pipefail
 # mcp_servers hash: {{ include ".chezmoidata/mcp_servers.yaml" | sha256sum }}
 # generate_mcp_configs.py hash: {{ include "../scripts/generate_mcp_configs.py" | sha256sum }}
 # mcp_registry.py hash: {{ include "../scripts/mcp_registry.py" | sha256sum }}
+# yaml_parser.py hash: {{ include "../scripts/yaml_parser.py" | sha256sum }}
+# chezmoi_lib.sh hash: {{ include "../scripts/chezmoi_lib.sh" | sha256sum }}
+# managed_config_manifest.py hash: {{ include "../scripts/managed_config_manifest.py" | sha256sum }}
+# generated_artifact_ledger.py hash: {{ include "../scripts/generated_artifact_ledger.py" | sha256sum }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
 # shellcheck source=../../../scripts/chezmoi_lib.sh
 source "$source_dir/../scripts/chezmoi_lib.sh"
 
 is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
+profile="{{ if eq .isWork true }}work{{ else }}personal{{ end }}"
 yaml_src="$source_dir/.chezmoidata/mcp_servers.yaml"
 gen="$source_dir/../scripts/generate_mcp_configs.py"
 
@@ -22,3 +27,13 @@ desired="$(jq -s '.[0] * .[1]' \
   <(echo "$mcp_json"))"
 
 chezmoi_write_if_changed "$desired" "$HOME/.gemini/settings.json"
+chezmoi_record_artifact --id gemini-settings \
+  --producer 07-merge-gemini-settings --profile "$profile" \
+  --target "$HOME/.gemini/settings.json" --ownership-adapter whole-file \
+  --input "$source_dir/dot_gemini/settings.json" \
+  --input "$yaml_src" \
+  --transform "$gen" \
+  --transform "$source_dir/../scripts/mcp_registry.py" \
+  --transform "$source_dir/../scripts/yaml_parser.py" \
+  --transform "$source_dir/../scripts/chezmoi_lib.sh" \
+  --consumer gemini

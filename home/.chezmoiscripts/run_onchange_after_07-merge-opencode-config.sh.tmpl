@@ -12,12 +12,20 @@ set -euo pipefail
 # mcp_servers hash: {{ include ".chezmoidata/mcp_servers.yaml" | sha256sum }}
 # inject_mcp_into_opencode_jsonc.py hash: {{ include "../scripts/inject_mcp_into_opencode_jsonc.py" | sha256sum }}
 # mcp_registry.py hash: {{ include "../scripts/mcp_registry.py" | sha256sum }}
+# yaml_parser.py hash: {{ include "../scripts/yaml_parser.py" | sha256sum }}
+# ai_models.py hash: {{ include "../scripts/ai_models.py" | sha256sum }}
+# jsonc_dump.py hash: {{ include "../scripts/jsonc_dump.py" | sha256sum }}
+# model_display.py hash: {{ include "../scripts/model_display.py" | sha256sum }}
+# chezmoi_lib.sh hash: {{ include "../scripts/chezmoi_lib.sh" | sha256sum }}
+# managed_config_manifest.py hash: {{ include "../scripts/managed_config_manifest.py" | sha256sum }}
+# generated_artifact_ledger.py hash: {{ include "../scripts/generated_artifact_ledger.py" | sha256sum }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
 # shellcheck source=../../../scripts/chezmoi_lib.sh
 source "$source_dir/../scripts/chezmoi_lib.sh"
 
 is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
+profile="{{ if eq .isWork true }}work{{ else }}personal{{ end }}"
 yaml_src="$source_dir/.chezmoidata/mcp_servers.yaml"
 inject="$source_dir/../scripts/inject_mcp_into_opencode_jsonc.py"
 src="$(chezmoi_pick_src "$is_work" "$source_dir" \
@@ -34,3 +42,28 @@ fi
 desired="$(printf '%s\n' "$desired" | python3 "$inject" "$yaml_src" "$is_work" opencode)"
 
 chezmoi_write_if_changed "$desired" "$HOME/.config/opencode/opencode.jsonc"
+
+artifact_args=(
+  --id opencode-config
+  --producer 07-merge-opencode-config
+  --profile "$profile"
+  --target "$HOME/.config/opencode/opencode.jsonc"
+  --ownership-adapter whole-file
+  --input "$src"
+  --input "$yaml_src"
+  --transform "$inject"
+  --transform "$source_dir/../scripts/mcp_registry.py"
+  --transform "$source_dir/../scripts/yaml_parser.py"
+  --transform "$source_dir/../scripts/chezmoi_lib.sh"
+  --consumer opencode
+)
+if [ "$is_work" = "true" ]; then
+  artifact_args+=(
+    --input "$source_dir/.chezmoidata/ai_models.yaml"
+    --transform "$source_dir/../scripts/merge_opencode_models.py"
+    --transform "$source_dir/../scripts/ai_models.py"
+    --transform "$source_dir/../scripts/jsonc_dump.py"
+    --transform "$source_dir/../scripts/model_display.py"
+  )
+fi
+chezmoi_record_artifact "${artifact_args[@]}" # --id opencode-config

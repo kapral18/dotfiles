@@ -1,0 +1,66 @@
+{
+  "target_cases": {
+    "harness:cursor": "cursor_success",
+    "harness:opencode": "opencode_success",
+    "harness:pi": "pi_success",
+    "provider:openrouter": "openrouter_success"
+  },
+  "cursor_command_failure": {
+    "returncode": 1,
+    "stderr": "Authorization failed: SENSITIVE-FIXTURE-TEXT",
+    "stdout": "",
+    "target": "harness:cursor"
+  },
+  "cursor_success": {
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "Available models\n\ncurated-stale - stale fixture model\ncurated-stable - stable fixture model\nnew-live - newly available fixture model\n\nTip: use --model <id> to switch.\n",
+    "target": "harness:cursor"
+  },
+  "cursor_unparseable": {
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "Available models\n\npartial-row\n",
+    "target": "harness:cursor"
+  },
+  "opencode_success": {
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "openrouter/curated-stable\nopenrouter/new-live\n",
+    "target": "harness:opencode"
+  },
+  "openrouter_success": {
+    "payload": {
+      "data": [
+        {
+          "architecture": {
+            "input_modalities": ["text"],
+            "output_modalities": ["text"]
+          },
+          "id": "curated-stable"
+        },
+        {
+          "architecture": {
+            "input_modalities": ["text", "image"],
+            "output_modalities": ["text"]
+          },
+          "id": "new-live"
+        },
+        {
+          "architecture": {
+            "input_modalities": ["image"],
+            "output_modalities": ["image"]
+          },
+          "id": "ignored-image-only"
+        }
+      ]
+    },
+    "target": "provider:openrouter"
+  },
+  "pi_success": {
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "provider    model                            context  max-out  thinking  images\nopenrouter  curated-stable                   128K     32K      yes       no\nopenrouter  new-live                         128K     32K      yes       no\nopenrouter  ~anthropic/claude-opus-latest    128K     32K      yes       yes\n",
+    "target": "harness:pi"
+  }
+}

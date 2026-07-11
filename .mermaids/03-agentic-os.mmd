@@ -20,7 +20,7 @@ flowchart TB
 
     subgraph CTX["2 · Context (single sources of truth)"]
         REG[[".chezmoidata/mcp_servers.yaml<br/>generic registry; current work/domain servers:<br/>scsi-main(http sso) · scsi-local (ES stdio) · slack(http oauth)"]]:::data
-        MODELS[[".chezmoidata/ai_models.yaml (litellm catalog)<br/>reasoning · thinkingBudgets · contextWindow · cost<br/>+ agent_review_models (review-lane registry: per-harness lanes/verifier → profile frontmatter)"]]:::data
+        MODELS[[".chezmoidata/ai_models.yaml (litellm catalog)<br/>reasoning · thinkingBudgets · contextWindow · cost<br/>+ agent_review_models (review-lane registry: per-harness lanes/verifier → profile frontmatter)<br/>+ cursor_models · pi_extra_models · provider_models (model-mirror registry sources)"]]:::data
         GEN["scripts/: mcp_registry.py · generate_mcp_configs.py<br/>resolve $(pass …) · filter by tool + work_only/isWork"]:::ctx
         REG --> GEN
     end
@@ -42,7 +42,7 @@ flowchart TB
     SK -. symlinked into .-> CURSOR & CLAUDE & OPENCODE & CODEX & COPILOT
 
     subgraph HOOKS["Cursor lifecycle hooks (dot_cursor/hooks.json) — detail in 03b"]
-        H["sessionStart→session_context · after*→worklog_recorder<br/>beforeShell→gemini-*-gate (failClosed)"]:::ctx
+        H["sessionStart→session_context · after*→worklog_dispatcher.sh → worklog_recorder/worklog_queue<br/>beforeShell→gemini-*-gate (failClosed)"]:::ctx
     end
     GOV -.enforced at runtime by.-> HOOKS
     MEM[("/tmp/specs/<pwd>/<topic>.* (ephemeral memory, ,agent-memory)")]:::data

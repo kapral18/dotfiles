@@ -14,8 +14,11 @@ from typing import Any
 
 DEFAULT_TOPIC = "current"
 DEFAULT_BRANCH_NAMES = {"main", "master", "dev", "develop", "trunk"}
-SPEC_ROOT = Path("/tmp/specs")
+SPEC_ROOT = Path(os.environ.get("AGENT_MEMORY_SPEC_ROOT", "/tmp/specs"))
 SESSION_TOPIC_PREFIX = ".session-topic-"
+AGENT_DEPTH_ENV = "AI_AGENT_DEPTH"
+AGENT_DEPTHS = {"fast", "balanced", "deep"}
+DEFAULT_AGENT_DEPTH = "balanced"
 
 
 def read_payload() -> dict[str, Any]:
@@ -31,6 +34,11 @@ def emit(data: dict[str, Any]) -> None:
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def agent_depth() -> str:
+    value = os.environ.get(AGENT_DEPTH_ENV, "").strip().lower()
+    return value if value in AGENT_DEPTHS else DEFAULT_AGENT_DEPTH
 
 
 def workspace_root(payload: dict[str, Any]) -> Path:

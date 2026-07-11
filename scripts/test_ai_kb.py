@@ -1143,6 +1143,54 @@ class TestKnowledgeBaseAsToolCLI(unittest.TestCase):
             assert row["kind"] == "gotcha"
             assert "wire exports" in row["body"]
 
+    def test_search_cli_reads_automatic_queries_from_bounded_stdin(self):
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "kb"
+            kb = ai_kb.KnowledgeBase(home)
+            kb.remember(
+                "Private hook query",
+                "Automatic recall keeps sensitive queries off process argv.",
+                kind="gotcha",
+                scope="project",
+                workspace_path="/ws/private",
+                embed_now=False,
+            )
+            query = "sensitive automatic recall argv"
+            command = [
+                sys.executable,
+                str(SCRIPTS / "ai_kb.py"),
+                "--home",
+                str(home),
+                "search",
+                "--query-stdin",
+                "--mode",
+                "bm25",
+                "--json",
+            ]
+            run = subprocess.run(
+                command,
+                input=query,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+
+            assert run.returncode == 0, run.stderr
+            assert query not in command
+            assert json.loads(run.stdout)[0]["title"] == "Private hook query"
+
+            oversized = subprocess.run(
+                command,
+                input="x" * 4097,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            assert oversized.returncode == 2
+            assert "exceeds 4096 characters" in oversized.stderr
+
 
 class TestKnowledgeBaseDocIngestion(unittest.TestCase):
     """Phase 5: bulk-ingest existing markdown documentation into the

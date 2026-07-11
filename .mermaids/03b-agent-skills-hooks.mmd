@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (103).
+%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (105).
 %% Skills → ~/.agents/skills/ (intent-routed SKILL.md). Shared hooks → ~/.agents/hooks/.
 %% ============================================================================
 flowchart TB
@@ -9,20 +9,23 @@ flowchart TB
     classDef data fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
 
     subgraph HOOKS["exact_hooks/ → ~/.agents/hooks/"]
-        HC["hook_common.py (shared lib) · readonly_README.md (state model)"]:::hook
+        HC["hook_common.py (shared identity/depth lib) · worklog_queue.py.tmpl (deployed queue core)<br/>readonly_README.md (state model) · .chezmoiignore"]:::hook
         SCx["session_context.py (sessionStart: inject verification/proof prefix.txt;<br/>if no session-bound topic, show bounded Topic Buckets index (newest-first + summary);<br/>after ,agent-memory select, inject selected topic spec/worklog;<br/>,ai-kb recall/remember reminder;<br/>session-bound warm-start: read-only ,ai-kb search → Relevant Learnings;<br/>persist injected IDs by canonical session key)"]:::hook
-        PRx["perturn_recall.py (UserPromptSubmit: per-turn ,ai-kb recall injected as additionalContext;<br/>cosine-gated hybrid retrieval, canonical-session dedup shared with session_context warm-start)"]:::hook
-        WLx["worklog_recorder.py (afterShell/postToolUse/Failure/afterFileEdit;<br/>native harness session ID selects the bound worklog)"]:::hook
+        PRx["perturn_recall.py (UserPromptSubmit depth profiles:<br/>fast=off · balanced=fetch6/inject3 · deep=fetch12/inject5;<br/>same cosine/scope/dedupe gates · stdin query · connect-only; fail-open)"]:::hook
+        WLx["worklog_dispatcher.sh → worklog_recorder.py<br/>(afterShell/postToolUse/Failure/afterFileEdit returns before I/O;<br/>fsynced session sequence → bounded transient flush;<br/>stable IDs + spec/target locks + visible error ledger)"]:::hook
         GG["gemini-git-gate.py (Cursor beforeShell + Gemini BeforeTool run_shell_command;<br/>shlex-classifies direct git commit/push across chains/env/-C/-c, denies ambiguous) — failClosed"]:::hook
     end
 
-    MEM[("/tmp/specs/<pwd>/<topic>.txt + .worklog.jsonl<br/>.session-topic-<id>.txt binds one session to a bucket<br/>.recall-seen-<session-key>.json dedupes warm/per-turn recall<br/>review topics → clean-room; default branch → session-<id> fallback")]:::data
+    MEM[("/tmp/specs/<pwd>/<topic>.txt + .worklog.jsonl<br/>.session-topic-<id>.txt binds one session to a bucket<br/>.recall-seen-<session-key>.json dedupes warm/per-turn recall<br/>.worklog-queue-v1/<session>/ + target locks; bounded + crash-safe<br/>review topics → clean-room; default branch → session-<id> fallback")]:::data
     SCx <--> MEM
     WLx --> MEM
 
-    KBDB[("~/.local/share/ai-kb/ (durable capsules)<br/>SQLite FTS5 + sqlite-vec · markdown sidecars<br/>shared: Ralph + cursor-cli + pi")]:::data
+    KBDB[("~/.local/share/ai-kb/ (durable capsules)<br/>SQLite FTS5 + sqlite-vec · markdown sidecars<br/>shared by Ralph and all interactive harnesses")]:::data
+    RESIDENT[("~/lib/,ai-kb/embed_client.py + embed_worker.py<br/>generation socket = protocol+worker+model+dimension<br/>0700 root · 0600 socket/lock · ~320 MiB each · 300s idle exit<br/>balanced/deep fail-open ensure: Claude/Gemini/OpenCode/Copilot/Pi;<br/>fast skips; Cursor/Codex never warm")]:::data
     SCx -. "named-topic warm-start (read-only)" .-> KBDB
     PRx -. "per-turn recall (read-only)" .-> KBDB
+    SCx -. "explicit adapter warm flag only" .-> RESIDENT
+    PRx -. "connect-only" .-> RESIDENT
 
     subgraph CORE["Core workflow skills"]
         S1["review/ (SKILL + references: judging_core [surface-agnostic engine:<br/>coverage, severity, gates incl. product-flow/signal-quality/systemic-risk, candidate refutation ladder, findings-set audit, post-review 4-dim lens, verify-and-fix loop], local_changes,<br/>pr_common [exhaustive GitHub context intake + ambient topic exploration + PR necessity audit + pending-review reconciliation], pr_fix, pr_review, plan_review, shared_rules;<br/>PR review anchor verification is instruction-owned)<br/>agent-review/ (/agent-review controller + role-specific runtime contracts: reviewer-worker [registry-model angle lanes], fresh-eyes [blind clarity lane; generic-task launch, Pi-only shim], adversarial-verifier [cross-family refutation over merged candidates], pr-necessity-auditor, findings-auditor, live-ui-review, live-ui-runtime [shared runtime contract for live-ui-review + ui-proof; local browser only], post-review, change-auditor, researcher, code-searcher [single source for every delegated subagent body; per-tool profiles are thin shims] + runtime-harness caveats; reuses review references)<br/>light-review/ (proportional-depth in-place audit; computed light-eligibility predicate = single source for light-vs-review routing; runs shared verify-and-fix loop; loads judging_core)"]:::skill

@@ -204,6 +204,251 @@ litellm_models:
 
 azure_models:
 
+# Harness policy consumed by the generated model mirror. `recommended` is the
+# narrower Ralph TUI picker; omitted means curated but not recommended. Live
+# availability never edits or promotes this policy.
+cursor_models:
+  - id: "claude-4-sonnet"
+  - id: "claude-4-sonnet-thinking"
+  - id: "claude-4.5-opus-high"
+  - id: "claude-4.5-opus-high-thinking"
+  - id: "claude-4.5-sonnet"
+  - id: "claude-4.5-sonnet-thinking"
+  - id: "claude-4.6-opus-high"
+  - id: "claude-4.6-opus-high-thinking"
+  - id: "claude-4.6-opus-max"
+  - id: "claude-4.6-opus-max-thinking"
+  - id: "claude-4.6-sonnet-medium"
+  - id: "claude-4.6-sonnet-medium-thinking"
+  - id: "claude-opus-4-7-high"
+  - id: "claude-opus-4-7-high-fast"
+  - id: "claude-opus-4-7-low"
+  - id: "claude-opus-4-7-low-fast"
+  - id: "claude-opus-4-7-max"
+  - id: "claude-opus-4-7-max-fast"
+  - id: "claude-opus-4-7-medium"
+  - id: "claude-opus-4-7-medium-fast"
+  - id: "claude-opus-4-7-thinking-high"
+  - id: "claude-opus-4-7-thinking-high-fast"
+  - id: "claude-opus-4-7-thinking-low"
+  - id: "claude-opus-4-7-thinking-low-fast"
+  - id: "claude-opus-4-7-thinking-max"
+  - id: "claude-opus-4-7-thinking-max-fast"
+  - id: "claude-opus-4-7-thinking-medium"
+  - id: "claude-opus-4-7-thinking-medium-fast"
+  - id: "claude-opus-4-7-thinking-xhigh"
+  - id: "claude-opus-4-7-thinking-xhigh-fast"
+  - id: "claude-opus-4-7-xhigh"
+  - id: "claude-opus-4-7-xhigh-fast"
+  - id: "claude-opus-4-8-high"
+  - id: "claude-opus-4-8-high-fast"
+  - id: "claude-opus-4-8-low"
+  - id: "claude-opus-4-8-low-fast"
+  - id: "claude-opus-4-8-max"
+  - id: "claude-opus-4-8-max-fast"
+  - id: "claude-opus-4-8-medium"
+  - id: "claude-opus-4-8-medium-fast"
+  - id: "claude-opus-4-8-thinking-high"
+  - id: "claude-opus-4-8-thinking-high-fast"
+  - id: "claude-opus-4-8-thinking-low"
+  - id: "claude-opus-4-8-thinking-low-fast"
+  - id: "claude-opus-4-8-thinking-max"
+  - id: "claude-opus-4-8-thinking-max-fast"
+  - id: "claude-opus-4-8-thinking-medium"
+  - id: "claude-opus-4-8-thinking-medium-fast"
+  - id: "claude-opus-4-8-thinking-xhigh"
+    recommended: true
+    recommendation_rank: 5
+  - id: "claude-opus-4-8-thinking-xhigh-fast"
+    recommended: true
+    recommendation_rank: 6
+  - id: "claude-opus-4-8-xhigh"
+    recommended: true
+    recommendation_rank: 3
+  - id: "claude-opus-4-8-xhigh-fast"
+    recommended: true
+    recommendation_rank: 4
+  - id: "composer-2.5"
+    recommended: true
+    recommendation_rank: 1
+  - id: "composer-2.5-fast"
+    recommended: true
+    recommendation_rank: 2
+  - id: "gemini-3.1-pro"
+    recommended: true
+    recommendation_rank: 25
+  - id: "gemini-3.5-flash"
+    recommended: true
+    recommendation_rank: 26
+  - id: "gpt-5-mini"
+  - id: "gpt-5.1"
+  - id: "gpt-5.1-codex-max-high"
+  - id: "gpt-5.1-codex-max-high-fast"
+  - id: "gpt-5.1-codex-max-low"
+  - id: "gpt-5.1-codex-max-low-fast"
+  - id: "gpt-5.1-codex-max-medium"
+  - id: "gpt-5.1-codex-max-medium-fast"
+  - id: "gpt-5.1-codex-max-xhigh"
+  - id: "gpt-5.1-codex-max-xhigh-fast"
+  - id: "gpt-5.1-codex-mini"
+  - id: "gpt-5.1-codex-mini-high"
+  - id: "gpt-5.1-codex-mini-low"
+  - id: "gpt-5.1-high"
+  - id: "gpt-5.1-low"
+  - id: "gpt-5.2"
+  - id: "gpt-5.2-codex"
+  - id: "gpt-5.2-codex-fast"
+  - id: "gpt-5.2-codex-high"
+  - id: "gpt-5.2-codex-high-fast"
+  - id: "gpt-5.2-codex-low"
+  - id: "gpt-5.2-codex-low-fast"
+  - id: "gpt-5.2-codex-xhigh"
+  - id: "gpt-5.2-codex-xhigh-fast"
+  - id: "gpt-5.2-fast"
+  - id: "gpt-5.2-high"
+  - id: "gpt-5.2-high-fast"
+  - id: "gpt-5.2-low"
+  - id: "gpt-5.2-low-fast"
+  - id: "gpt-5.2-xhigh"
+  - id: "gpt-5.2-xhigh-fast"
+  - id: "gpt-5.3-codex"
+    recommended: true
+    recommendation_rank: 19
+  - id: "gpt-5.3-codex-fast"
+    recommended: true
+    recommendation_rank: 20
+  - id: "gpt-5.3-codex-high"
+    recommended: true
+    recommendation_rank: 21
+  - id: "gpt-5.3-codex-high-fast"
+    recommended: true
+    recommendation_rank: 22
+  - id: "gpt-5.3-codex-low"
+    recommended: true
+    recommendation_rank: 17
+  - id: "gpt-5.3-codex-low-fast"
+    recommended: true
+    recommendation_rank: 18
+  - id: "gpt-5.3-codex-xhigh"
+    recommended: true
+    recommendation_rank: 23
+  - id: "gpt-5.3-codex-xhigh-fast"
+    recommended: true
+    recommendation_rank: 24
+  - id: "gpt-5.4-high"
+  - id: "gpt-5.4-high-fast"
+  - id: "gpt-5.4-low"
+  - id: "gpt-5.4-medium"
+  - id: "gpt-5.4-medium-fast"
+  - id: "gpt-5.4-mini-high"
+  - id: "gpt-5.4-mini-low"
+  - id: "gpt-5.4-mini-medium"
+  - id: "gpt-5.4-mini-none"
+  - id: "gpt-5.4-mini-xhigh"
+  - id: "gpt-5.4-nano-high"
+  - id: "gpt-5.4-nano-low"
+  - id: "gpt-5.4-nano-medium"
+  - id: "gpt-5.4-nano-none"
+  - id: "gpt-5.4-nano-xhigh"
+  - id: "gpt-5.4-xhigh"
+  - id: "gpt-5.4-xhigh-fast"
+  - id: "gpt-5.5-extra-high"
+    recommended: true
+    recommendation_rank: 15
+  - id: "gpt-5.5-extra-high-fast"
+    recommended: true
+    recommendation_rank: 16
+  - id: "gpt-5.5-high"
+    recommended: true
+    recommendation_rank: 7
+  - id: "gpt-5.5-high-fast"
+    recommended: true
+    recommendation_rank: 8
+  - id: "gpt-5.5-low"
+    recommended: true
+    recommendation_rank: 11
+  - id: "gpt-5.5-low-fast"
+    recommended: true
+    recommendation_rank: 12
+  - id: "gpt-5.5-medium"
+    recommended: true
+    recommendation_rank: 13
+  - id: "gpt-5.5-medium-fast"
+    recommended: true
+    recommendation_rank: 14
+  - id: "gpt-5.5-none"
+    recommended: true
+    recommendation_rank: 9
+  - id: "gpt-5.5-none-fast"
+    recommended: true
+    recommendation_rank: 10
+
+# Pi's LiteLLM entries are derived from `litellm_models`; only provider-routed
+# extras live here. All entries preserve the current Ralph/TUI picker.
+pi_extra_models:
+  - id: "openrouter/anthropic/claude-opus-4.7-thinking"
+    recommended: true
+  - id: "openrouter/anthropic/claude-opus-4.7"
+    recommended: true
+  - id: "openrouter/openai/gpt-5.5"
+    recommended: true
+  - id: "openrouter/openai/gpt-5.3-codex"
+    recommended: true
+  - id: "openrouter/google/gemini-3.1-pro-preview-customtools"
+    recommended: true
+  - id: "openrouter/google/gemini-3.5-flash"
+    recommended: true
+
+# Provider-route completion policy. `litellm`, `litellm-anthropic`,
+# `azure-foundry`, and `llama-cpp` are derived from their canonical registries
+# or configs; only explicit remote-route fallbacks are listed here.
+provider_models:
+  - provider: "cloudflare-workers-ai"
+    id: "@cf/zai-org/glm-5.2"
+    recommended: true
+  - provider: "cloudflare-workers-ai"
+    id: "@cf/moonshotai/kimi-k2.7-code"
+    recommended: true
+  - provider: "cloudflare-workers-ai"
+    id: "@cf/moonshotai/kimi-k2.6"
+    recommended: true
+  - provider: "cloudflare-workers-ai"
+    id: "minimax/m3"
+    recommended: true
+  - provider: "openrouter"
+    id: "z-ai/glm-5.2"
+    recommended: true
+  - provider: "openrouter"
+    id: "qwen/qwen3.7-plus"
+    recommended: true
+  - provider: "openrouter"
+    id: "moonshotai/kimi-k2.7-code"
+    recommended: true
+  - provider: "openrouter"
+    id: "openai/gpt-5.5"
+    recommended: true
+  - provider: "openrouter"
+    id: "anthropic/claude-opus-4.8"
+    recommended: true
+  - provider: "cloudflare-openai"
+    id: "gpt-5.5"
+    recommended: true
+  - provider: "cloudflare-openai"
+    id: "gpt-5.4"
+    recommended: true
+  - provider: "cloudflare-openai"
+    id: "gpt-5.3-codex"
+    recommended: true
+  - provider: "cloudflare-openai"
+    id: "gpt-5.2"
+    recommended: true
+  - provider: "cloudflare-openai"
+    id: "gpt-4o"
+    recommended: true
+  - provider: "cloudflare-openai"
+    id: "o4-mini"
+    recommended: true
+
 # Review-lane model registry: the single source for /agent-review model selection (C2: declare once, generate per tool).
 # Profile frontmatter is TEMPLATED from this block; edit here and `chezmoi apply` — never hand-edit model ids in profiles.
 # lanes = generation angle lanes + auditors + controller. verifier = cross-family adversarial verifier

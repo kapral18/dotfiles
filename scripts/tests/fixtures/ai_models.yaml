@@ -24,3 +24,25 @@ litellm_models:
       cacheWrite: 0
 
 azure_models:
+
+cursor_models:
+  - id: "cursor-model-a"
+    recommended: true
+  - id: "cursor-model-b"
+
+pi_extra_models:
+  - id: "openrouter/model-a"
+    recommended: true
+
+provider_models:
+  - provider: "openrouter"
+    id: "provider-model-a"
+    recommended: true
+
+agent_review_models:
+  cursor:
+    lanes: "cursor-model-a"
+    verifier: "cursor-model-b"
+  copilot:
+    lanes: "gpt-model"
+    verifier: "claude-model"

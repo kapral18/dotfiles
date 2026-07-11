@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.agents/hooks/worklog_recorder.py",
+            "command": "$HOME/.agents/hooks/worklog_dispatcher.sh",
             "timeout": 10
           }
         ]

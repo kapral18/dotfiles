@@ -8,12 +8,17 @@ set -euo pipefail
 # generate_mcp_configs.py hash: {{ include "../scripts/generate_mcp_configs.py" | sha256sum }}
 # merge_claude_mcp.py hash: {{ include "../scripts/merge_claude_mcp.py" | sha256sum }}
 # mcp_registry.py hash: {{ include "../scripts/mcp_registry.py" | sha256sum }}
+# yaml_parser.py hash: {{ include "../scripts/yaml_parser.py" | sha256sum }}
+# chezmoi_lib.sh hash: {{ include "../scripts/chezmoi_lib.sh" | sha256sum }}
+# managed_config_manifest.py hash: {{ include "../scripts/managed_config_manifest.py" | sha256sum }}
+# generated_artifact_ledger.py hash: {{ include "../scripts/generated_artifact_ledger.py" | sha256sum }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
 # shellcheck source=../../../scripts/chezmoi_lib.sh
 source "$source_dir/../scripts/chezmoi_lib.sh"
 
 is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
+profile="{{ if eq .isWork true }}work{{ else }}personal{{ end }}"
 yaml_src="$source_dir/.chezmoidata/mcp_servers.yaml"
 gen="$source_dir/../scripts/generate_mcp_configs.py"
 
@@ -23,12 +28,41 @@ trap 'rm -f "$tmp"' EXIT
 # Cursor — write full MCP file
 python3 "$gen" "$yaml_src" "$is_work" cursor >"$tmp"
 chezmoi_write_if_changed "$(cat "$tmp")" "$HOME/.cursor/mcp.json"
+chezmoi_record_artifact --id cursor-mcp \
+  --producer 07-generate-mcp-configs --profile "$profile" \
+  --target "$HOME/.cursor/mcp.json" --ownership-adapter whole-file \
+  --input "$yaml_src" \
+  --transform "$gen" \
+  --transform "$source_dir/../scripts/mcp_registry.py" \
+  --transform "$source_dir/../scripts/yaml_parser.py" \
+  --transform "$source_dir/../scripts/chezmoi_lib.sh" \
+  --consumer cursor-agent
 
 # Claude Code — merge mcpServers into existing .claude.json
 python3 "$gen" "$yaml_src" "$is_work" claude >"$tmp"
 python3 "$source_dir/../scripts/merge_claude_mcp.py" "$tmp" "$HOME/.claude.json"
 chezmoi_record_checksum "$HOME/.claude.json"
+chezmoi_record_artifact --id claude-mcp \
+  --producer 07-generate-mcp-configs --profile "$profile" \
+  --target "$HOME/.claude.json" --ownership-adapter json-selectors \
+  --selector mcpServers \
+  --input "$yaml_src" \
+  --transform "$gen" \
+  --transform "$source_dir/../scripts/merge_claude_mcp.py" \
+  --transform "$source_dir/../scripts/mcp_registry.py" \
+  --transform "$source_dir/../scripts/yaml_parser.py" \
+  --transform "$source_dir/../scripts/chezmoi_lib.sh" \
+  --consumer claude
 
 # Pi — install with restricted permissions
 python3 "$gen" "$yaml_src" "$is_work" pi >"$tmp"
 chezmoi_install_if_changed "$tmp" "$HOME/.pi/agent/mcp.json" 0444
+chezmoi_record_artifact --id pi-mcp \
+  --producer 07-generate-mcp-configs --profile "$profile" \
+  --target "$HOME/.pi/agent/mcp.json" --ownership-adapter whole-file \
+  --input "$yaml_src" \
+  --transform "$gen" \
+  --transform "$source_dir/../scripts/mcp_registry.py" \
+  --transform "$source_dir/../scripts/yaml_parser.py" \
+  --transform "$source_dir/../scripts/chezmoi_lib.sh" \
+  --consumer pi

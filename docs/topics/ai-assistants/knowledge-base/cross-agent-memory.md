@@ -34,6 +34,8 @@ Retrieval is mostly agent-driven too: the agent searches with the actual task as
 | allowed scopes             | workspace-local, `domain`, or `universal` capsules                                     |
 | result count               | up to three capsules under `### Relevant Learnings (,ai-kb)`                           |
 
+This named-topic capsule warm-start is BM25-only and does not load or contact the resident embedder. Resident model warm-up is a separate, explicit lifecycle used only by runtimes that also have per-turn retrieval.
+
 Unbound, ad-hoc `session-*`, and review topics get no warm-start. Cursor cannot inject context per turn (`beforeSubmitPrompt` drops `additional_context`), so `sessionStart` is the only injection point. Mid-task relevance comes from explicit agent searches.
 
 Persistence is the SOP's end-of-turn habit: the agent self-vets and writes inline as the last step of a substantive turn, with no hook and no auto-submitted prompt.
@@ -85,17 +87,17 @@ The scope gate is provenance-only. The relative floor prevents low-relevance cap
 
 Cross-runtime durable-memory retrieval:
 
-| Runtime      | Auto-retrieval mechanism                                                                                                                                                                         |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Ralph        | Mechanical push: top-K per role injected into the `## RECENT LEARNINGS` prompt block                                                                                                             |
-| Cursor CLI   | `session_context.py` gated `sessionStart` warm-start (session-bound named topic only); else Topic Buckets / agent-pull                                                                           |
-| Codex        | `session_context.py` gated `SessionStart` warm-start; else agent-pull                                                                                                                            |
-| Copilot      | `agent-memory` SDK extension calls `session_context.py` in `onSessionStart` and returns `additionalContext` **plus** per-turn via `onUserPromptSubmitted` (`perturn_recall.py`); else agent-pull |
-| Claude       | `session_context.py` gated `sessionStart` warm-start **plus** per-turn via `UserPromptSubmit`                                                                                                    |
-| Pi           | `ai-kb-recall.ts` warm-start (parity) **plus** per-turn prompt-query injection                                                                                                                   |
-| OpenCode     | `agent-memory.ts` plugin: warm-start in system prompt **plus** per-turn via `chat.message`                                                                                                       |
-| Gemini       | `SessionStart` warm-start **plus** per-turn via `BeforeAgent` (`additionalContext`)                                                                                                              |
-| Cursor cloud | No injection point available; agent-pull only                                                                                                                                                    |
+| Runtime      | Automatic retrieval mechanism                                                                                                                                                                    | Resident embedder startup                                |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
+| Ralph        | Mechanical push: top-K per role injected into the `## RECENT LEARNINGS` prompt block                                                                                                             | None; role retrieval keeps the one-shot embedding runner |
+| Cursor CLI   | `session_context.py` gated BM25 `sessionStart` recall (session-bound named topic only); else Topic Buckets / agent-pull                                                                          | None; Cursor has no per-turn context-injection path      |
+| Codex        | `session_context.py` gated BM25 `SessionStart` recall; else agent-pull                                                                                                                           | None; Codex is not wired to per-turn recall              |
+| Copilot      | `agent-memory` SDK extension calls `session_context.py` in `onSessionStart` and returns `additionalContext` **plus** per-turn via `onUserPromptSubmitted` (`perturn_recall.py`); else agent-pull | Explicit bounded warm-up in its session-start payload    |
+| Claude       | `session_context.py` gated BM25 startup recall **plus** per-turn via `UserPromptSubmit`                                                                                                          | Explicit bounded warm-up through `AI_EMBED_WARM=1`       |
+| Pi           | `ai-kb-recall.ts` BM25 startup recall (parity) **plus** per-turn prompt-query injection                                                                                                          | Explicit bounded warm-up during `session_start`          |
+| OpenCode     | `agent-memory.ts` plugin: BM25 startup recall in the system prompt **plus** per-turn via `chat.message`                                                                                          | Explicit bounded warm-up through `warm_embedder: true`   |
+| Gemini       | BM25 `SessionStart` recall **plus** per-turn via `BeforeAgent` (`additionalContext`)                                                                                                             | Explicit bounded warm-up through `AI_EMBED_WARM=1`       |
+| Cursor cloud | No injection point available; agent-pull only                                                                                                                                                    | None                                                     |
 
 `~/.agents/hooks/perturn_recall.py` is the shared per-turn implementation.
 
@@ -110,6 +112,18 @@ It mirrors Pi's `ai-kb-recall.ts` gates:
 | scope               | workspace-local, `domain`, or `universal`          |
 | dedupe              | per-session seen-file dedup shared with warm-start |
 
+`AI_AGENT_DEPTH` selects one bounded automatic-recall profile across Claude, Gemini, OpenCode, Copilot, and Pi. Unset, empty, or invalid values resolve to `balanced`, preserving the pre-depth behavior.
+
+| Depth      | Named-topic BM25 startup | Resident warm-up | Per-turn fetch / inject | Prompt cap | Body cap  | Timeout |
+| ---------- | ------------------------ | ---------------- | ----------------------- | ---------- | --------- | ------- |
+| `fast`     | unchanged                | skipped          | disabled                | n/a        | n/a       | n/a     |
+| `balanced` | unchanged                | requested        | 6 / 3                   | 600 chars  | 240 chars | 6s      |
+| `deep`     | unchanged                | requested        | 12 / 5                  | 1200 chars | 360 chars | 9s      |
+
+The prompt cap is applied before appending the single ellipsis character. Every enabled profile keeps `hybrid` mode, the `0.55` absolute cosine gate, the `0.85` relative floor, workspace/domain/universal scope filtering, canonical-session dedupe, query-over-stdin secrecy, and `AI_EMBED_CONNECT_ONLY=1`. `fast` therefore reduces work by removing per-turn retrieval rather than admitting weaker hits; `deep` spends more bounded retrieval and injection budget without changing relevance.
+
+The profile budgets are fixture-backed in [`scripts/tests/recall_worklog_state_machine.py`](../../../../scripts/tests/recall_worklog_state_machine.py). With a deterministic 80ms search fixture, median hook latency measured 46.2ms for `fast`, 164.6ms for `balanced`, and 164.2ms for `deep`; unset measured 161.8ms with the same search arguments as `balanced`. The relevance thresholds retain their earlier live calibration (`0.58-0.81` on-topic versus `0.44-0.48` off-topic) rather than being relaxed for either new mode.
+
 Runtime hooks:
 
 | Runtime     | Hook                                                   |
@@ -120,6 +134,20 @@ Runtime hooks:
 | Copilot     | `onUserPromptSubmitted` SDK hook delegates to the hook |
 
 All of these inject `additionalContext` into the current turn. They do not re-prompt the agent or start another request/response cycle.
+
+The per-turn hot path is connect-only:
+
+| Property                 | Contract                                                                                                                                             |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Deployed runtime         | `~/lib/,ai-kb/{main,agent_memory,embed,embed_runner,embed_client,embed_worker,vec_runner}.py`; `~/bin/,ai-kb` does not discover the chezmoi checkout |
+| Session-start ownership  | Claude, Gemini, OpenCode, Copilot, and Pi may call bounded `ensure` in `balanced`/`deep`; `fast` skips it and all calls are fail-open                |
+| Per-turn ownership       | `perturn_recall.py` and Pi set `AI_EMBED_CONNECT_ONLY=1`; they never spawn, restart, evict, or replace a worker                                      |
+| Generation identity      | Protocol + complete worker source + model + expected dimension produce a generation-specific socket                                                  |
+| Runtime isolation        | User-owned `0700` root, `0600` socket/start lock, bounded worker messages/deadlines; the worker never logs or echoes prompt text                     |
+| Idle lifecycle           | The worker exits after 300 inactive seconds and removes only its own socket inode                                                                    |
+| Unavailable/invalid path | The hook returns no recall context and the current request continues; default/manual/Ralph/`remember`/`reembed` continue to use the one-shot runner  |
+
+The default BGE-small worker measured about 320 MiB RSS; two coexisting deployment generations measured about 625 MiB total. The 300-second activity timeout bounds that temporary overlap.
 
 `,ai-kb` remains the sole durable semantic store. Harness-native memory features stay unused; Codex's experimental auto-memory is pinned off via `[features] memories = false`.
 
@@ -139,7 +167,7 @@ Interactive harnesses are wired for skill-based or explicit-path access (`agent-
 Automatic retrieval injection is narrower than skill access:
 
 - Ralph injects mechanically per role.
-- cursor-cli/Codex use session warm-start only.
-- Pi uses warm-start plus per-turn prompt retrieval.
-- Claude, Gemini, OpenCode, and Copilot use warm-start plus per-turn hook injection.
+- cursor-cli/Codex use BM25 session-start recall only and never warm the resident embedder.
+- Pi uses BM25 startup recall plus depth-controlled per-turn prompt retrieval and warms the resident embedder in `balanced`/`deep`.
+- Claude, Gemini, OpenCode, and Copilot use BM25 startup recall plus depth-controlled per-turn hook injection and warm the resident embedder in `balanced`/`deep`.
 - Cursor cloud uses explicit agent-pull only.

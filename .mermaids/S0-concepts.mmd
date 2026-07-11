@@ -28,8 +28,8 @@ graph TB
 
     %% ---- C4 Idempotent reconcile (hash-gate + manifest) --------------------
     C4{{"C4 · IDEMPOTENT RECONCILE<br/>apply is convergent, not imperative"}}:::concept
-    C4 --> I4["INVARIANT: a hook re-runs ONLY when its input hash changes,<br/>writes ONLY if content differs, and records a checksum.<br/>Re-applying is a no-op; declarative lists are authoritative<br/>(brew cleanup --force removes anything not listed)."]:::inv
-    I4 --> R4["realized by: run_onchange_after_* '# … hash:' lines<br/>scripts/chezmoi_lib.sh (write_if_changed/install_if_changed/<br/>record_checksum → managed_configs.tsv) · reconcile_*.py"]:::realize
+    C4 --> I4["INVARIANT: a hook re-runs when a declared input or any member of its<br/>complete local-transform closure changes, writes ONLY if content differs,<br/>and records or retires literal checksum rows. Re-applying is a no-op;<br/>declarative lists are authoritative (brew cleanup --force removes anything not listed)."]:::inv
+    I4 --> R4["realized by: run_onchange_after_* '# … hash:' dependency closure<br/>scripts/chezmoi_lib.sh + managed_config_manifest.py + generated_artifact_ledger.py<br/>(literal drift + ownership-aware AI effective state) · reconcile_*.py"]:::realize
 
     %% ---- C5 Secrets-at-runtime ---------------------------------------------
     C5{{"C5 · SECRETS NEVER ON DISK<br/>configs hold references, not values"}}:::concept
@@ -73,8 +73,8 @@ graph TB
 
     %% ---- C13 Persistent intent memory --------------------------------------
     C13{{"C13 · INTENT MEMORY<br/>sessions rehydrate, don't restart cold"}}:::concept
-    C13 --> I13["INVARIANT: per-(workspace,topic) spec/worklog persists in<br/>/tmp/specs; sessionStart injects it bounded; review topics<br/>run clean-room; default branches get session-scoped topics."]:::inv
-    I13 --> R13["realized by: hook_common.py (spec_dir_for/active_topic/<br/>session_topic) · session_context.py · ,agent-memory · ai_kb.py"]:::realize
+    C13 --> I13["INVARIANT: per-(workspace,topic) spec/worklog persists in<br/>/tmp/specs; sessionStart injects it bounded; review topics run clean-room;<br/>depth-bounded per-turn recall only connects to a session-warmed generation;<br/>tool events enter a bounded crash-safe session queue off the critical path."]:::inv
+    I13 --> R13["realized by: hook_common.py · session_context.py · perturn_recall.py<br/>worklog_dispatcher.sh → worklog_recorder.py/worklog_queue.py<br/>,agent-memory · ~/lib/,ai-kb/ (one-shot default;<br/>generation-specific resident only for connect-only per-turn recall)"]:::realize
 
     %% ---- how concepts compose ----------------------------------------------
     C1 -. "everything applies through" .-> C4

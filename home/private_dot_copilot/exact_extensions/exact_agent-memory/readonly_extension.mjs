@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 const HOOK_TIMEOUT_MS = 10_000;
 const SESSION_CONTEXT_HOOK = "session_context.py";
-const WORKLOG_RECORDER_HOOK = "worklog_recorder.py";
+const WORKLOG_RECORDER_HOOK = "worklog_dispatcher.sh";
 const PERTURN_RECALL_HOOK = "perturn_recall.py";
 const EXTENSION_INFO = { source: "user", name: "agent-memory" };
 
@@ -28,6 +28,7 @@ export function sessionStartPayload(input, invocation = {}) {
         workspace_roots: workspaceRoots(input),
         source: input?.source,
         initial_prompt: input?.initialPrompt,
+        warm_embedder: true,
     };
 }
 
@@ -81,13 +82,21 @@ export function contextFromHookResult(result) {
 // Per-turn recall must fail open: a missing hook, timeout, nonzero exit, or
 // invalid JSON must never reject prompt submission (mirrors the OpenCode
 // per-turn adapter). Returns the recalled additionalContext, or "" on any
-// failure. Only the optional per-turn injection uses this; session/worklog
-// hooks keep their existing propagate-on-failure semantics.
+// failure. Prompt and worklog hooks both fail open; worklog failures are
+// warned rather than rejecting a completed tool invocation.
 export async function recallContext(scriptPath, payload) {
     try {
         return contextFromHookResult(await runHookScript(scriptPath, payload));
     } catch {
         return "";
+    }
+}
+
+export async function recordWorklog(scriptPath, payload) {
+    try {
+        await runHookScript(scriptPath, payload);
+    } catch (error) {
+        console.warn(`[agent-memory] worklog hook failed: ${error.message}`);
     }
 }
 
@@ -164,13 +173,13 @@ async function main() {
                 return additionalContext ? { additionalContext } : undefined;
             },
             onPostToolUse: async (input, invocation) => {
-                await runHookScript(
+                await recordWorklog(
                     hookPath(WORKLOG_RECORDER_HOOK),
                     postToolUsePayload(input, invocation),
                 );
             },
             onPostToolUseFailure: async (input, invocation) => {
-                await runHookScript(
+                await recordWorklog(
                     hookPath(WORKLOG_RECORDER_HOOK),
                     postToolUseFailurePayload(input, invocation),
                 );

@@ -7,12 +7,22 @@ set -euo pipefail
 {{- else }}
 # claude code settings desired hash (non-work): {{ include "dot_claude/settings.personal.json" | sha256sum }}
 {{- end }}
+# chezmoi_lib.sh hash: {{ include "../scripts/chezmoi_lib.sh" | sha256sum }}
+# managed_config_manifest.py hash: {{ include "../scripts/managed_config_manifest.py" | sha256sum }}
+# generated_artifact_ledger.py hash: {{ include "../scripts/generated_artifact_ledger.py" | sha256sum }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
 # shellcheck source=../../../scripts/chezmoi_lib.sh
 source "$source_dir/../scripts/chezmoi_lib.sh"
 
 is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
+profile="{{ if eq .isWork true }}work{{ else }}personal{{ end }}"
 src="$(chezmoi_pick_src "$is_work" "$source_dir" "dot_claude/settings.work.json" "dot_claude/settings.personal.json")"
 
 chezmoi_install_if_changed "$src" "$HOME/.claude/settings.json"
+chezmoi_record_artifact --id claude-settings \
+  --producer 07-merge-claude-code-settings --profile "$profile" \
+  --target "$HOME/.claude/settings.json" --ownership-adapter whole-file \
+  --input "$src" \
+  --transform "$source_dir/../scripts/chezmoi_lib.sh" \
+  --consumer claude

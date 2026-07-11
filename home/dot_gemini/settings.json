@@ -57,7 +57,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.agents/hooks/session_context.py",
+            "command": "AI_EMBED_WARM=1 $HOME/.agents/hooks/session_context.py",
             "timeout": 10000
           }
         ]
@@ -79,7 +79,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.agents/hooks/worklog_recorder.py",
+            "command": "$HOME/.agents/hooks/worklog_dispatcher.sh",
             "timeout": 10000
           }
         ]

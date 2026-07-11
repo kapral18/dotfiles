@@ -32,7 +32,7 @@ An optional cross-run activity drawer aggregates recent decisions and verdicts.
   Pickers cycle with `h`/`l` or `←`/`→`; `j`/`k` (or `↓`/`↑`, or `tab`/`shift+tab`) move down/up between fields (gated so they still type literal characters into goal / workspace text inputs).
   `enter` advances harness → matching model → next role.
   Harness picker cycles `cursor → pi` (the `command` harness is a CLI/runtime escape hatch — see `,ralph go` flag docs in the core skill —
-  and is intentionally hidden from the dashboard); the model list is curated per harness in `tools/ralph-tui/internal/state/models.go`.
+  and is intentionally hidden from the dashboard); the picker consumes each harness's generated `recommended` set from the v1 model mirror.
   `auto` workflow lets the planner pick; selecting any other workflow forwards `--workflow <name>` to `,ralph go`.
   Per-role `extra_args` (e.g. `--mode plan`, `--force`) live in `~/.config/ralph/roles.json` because they are persistent configuration;
   per-run overrides go through `,ralph go --<role>-args` at the CLI.

@@ -1,4 +1,10 @@
 complete -c ',doctor' -f
-complete -c ',doctor' -s q -l quiet -d 'Only show warnings and failures'
-complete -c ',doctor' -s v -l verbose -d 'Show extra detail'
-complete -c ',doctor' -s h -l help -d 'Show help'
+complete -c ',doctor' -n 'not __fish_seen_subcommand_from ai' -a ai -d 'Inspect generated AI effective state'
+complete -c ',doctor' -n 'not __fish_seen_subcommand_from ai' -s q -l quiet -d 'Only show warnings and failures'
+complete -c ',doctor' -n 'not __fish_seen_subcommand_from ai' -s v -l verbose -d 'Show extra detail'
+complete -c ',doctor' -n 'not __fish_seen_subcommand_from ai' -s h -l help -d 'Show help'
+complete -c ',doctor' -n '__fish_seen_subcommand_from ai' -l json -d 'Emit machine-readable JSON'
+complete -c ',doctor' -n '__fish_seen_subcommand_from ai' -l live -d 'Run deduplicated local consumer probes'
+complete -c ',doctor' -n '__fish_seen_subcommand_from ai' -s q -l quiet -d 'Only show non-current artifacts'
+complete -c ',doctor' -n '__fish_seen_subcommand_from ai' -s v -l verbose -d 'Show the full artifact trace'
+complete -c ',doctor' -n '__fish_seen_subcommand_from ai' -s h -l help -d 'Show help'

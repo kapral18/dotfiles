@@ -14,6 +14,16 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 HOOKS = REPO / "home" / "exact_dot_agents" / "exact_hooks"
 AGENT_MEMORY = REPO / "scripts" / "agent_memory.py"
+SPEC_ROOT = Path(
+    os.environ.get("AGENT_MEMORY_SPEC_ROOT") or Path(os.environ.get("TMPDIR", "/tmp")) / "agent-hook-specs"
+)
+
+
+def hook_env(env: dict | None = None) -> dict:
+    effective_env = dict(os.environ) if env is None else dict(env)
+    effective_env["PYTHONPATH"] = f"{REPO / 'scripts'}{os.pathsep}{effective_env.get('PYTHONPATH', '')}"
+    effective_env.setdefault("AGENT_MEMORY_SPEC_ROOT", str(SPEC_ROOT))
+    return effective_env
 
 
 def run_hook(name: str, payload: dict, env: dict | None = None) -> dict:
@@ -23,7 +33,7 @@ def run_hook(name: str, payload: dict, env: dict | None = None) -> dict:
         capture_output=True,
         text=True,
         cwd=str(REPO),
-        env=env,
+        env=hook_env(env),
     )
     if result.returncode != 0:
         raise AssertionError(f"{name} failed:\nSTDOUT={result.stdout}\nSTDERR={result.stderr}")
@@ -42,9 +52,13 @@ def make_aikb_stub(directory: Path, rows: list[dict]) -> dict:
     payload = json.dumps(rows)
     stub.write_text(
         "#!/usr/bin/env python3\n"
-        "import json, sys\n"
+        "import json, os, sys\n"
         "args = sys.argv[1:]\n"
         "if args and args[0] == 'search':\n"
+        "    query = sys.stdin.read() if '--query-stdin' in args else (args[1] if len(args) > 1 else '')\n"
+        "    if os.environ.get('AI_KB_STUB_LOG'):\n"
+        "        with open(os.environ['AI_KB_STUB_LOG'], 'a') as stream:\n"
+        "            stream.write(json.dumps({'args': args, 'query': query}) + '\\n')\n"
         f"    sys.stdout.write({payload!r})\n"
         "    sys.exit(0)\n"
         "sys.exit(0)\n"
@@ -57,6 +71,14 @@ def make_aikb_stub(directory: Path, rows: list[dict]) -> dict:
 
 def bind_session_topic(spec_dir: Path, session_id: str, topic: str) -> None:
     (spec_dir / f".session-topic-{session_id}.txt").write_text(topic + "\n")
+
+
+def flush_worklog(spec_dir: Path) -> None:
+    import worklog_queue
+
+    result = worklog_queue.flush_spec_dir(spec_dir)
+    assert result.errors == 0
+    assert result.pending == 0
 
 
 def run_perturn_recall(tmp: str, payload: dict, env: dict) -> dict:
@@ -83,7 +105,7 @@ def run_perturn_recall(tmp: str, payload: dict, env: dict) -> dict:
         capture_output=True,
         text=True,
         cwd=str(REPO),
-        env=env,
+        env=hook_env(env),
     )
     if result.returncode != 0:
         raise AssertionError(f"perturn_recall.py failed:\nSTDOUT={result.stdout}\nSTDERR={result.stderr}")
@@ -112,7 +134,9 @@ class TestAgentHooks(unittest.TestCase):
 
             assert run_hook("executable_worklog_recorder.py", payload) == {}
             workspace = str(Path(tmp).resolve())
-            worklog = Path("/tmp/specs") / workspace.lstrip("/") / "current.worklog.jsonl"
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            flush_worklog(spec_dir)
+            worklog = spec_dir / "current.worklog.jsonl"
             entry = json.loads(worklog.read_text().splitlines()[-1])
 
             assert entry["event"] == "postToolUse"
@@ -135,13 +159,15 @@ class TestAgentHooks(unittest.TestCase):
                 assert run_hook("executable_worklog_recorder.py", payload) == {}
 
             workspace = str(Path(tmp).resolve())
-            worklog = Path("/tmp/specs") / workspace.lstrip("/") / "current.worklog.jsonl"
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            flush_worklog(spec_dir)
+            worklog = spec_dir / "current.worklog.jsonl"
             assert len(worklog.read_text().splitlines()) == 200
 
     def test_session_context_emits_cursor_and_claude_context(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = str(Path(tmp).resolve())
-            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
             spec_dir.mkdir(parents=True, exist_ok=True)
             bind_session_topic(spec_dir, "hook-session", "hook-test")
             (spec_dir / "hook-test.txt").write_text("target: prove context injection\n")
@@ -157,10 +183,79 @@ class TestAgentHooks(unittest.TestCase):
             assert result["hookSpecificOutput"]["hookEventName"] == "SessionStart"
             assert "target: prove context injection" in result["hookSpecificOutput"]["additionalContext"]
 
+    def test_session_context_warms_resident_embedder_only_when_adapter_opts_in(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            client = root / "lib/,ai-kb/embed_client.py"
+            client.parent.mkdir(parents=True)
+            marker = root / "warm-count"
+            client.write_text(
+                "#!/usr/bin/env python3\n"
+                "import os, pathlib\n"
+                "path = pathlib.Path(os.environ['WARM_MARKER'])\n"
+                "count = int(path.read_text()) if path.exists() else 0\n"
+                "path.write_text(str(count + 1))\n"
+            )
+            payload = {
+                "hook_event_name": "SessionStart",
+                "workspace_roots": [tmp],
+                "session_id": "warm-test",
+            }
+            base_env = {**os.environ, "HOME": tmp, "WARM_MARKER": str(marker)}
+
+            run_hook("executable_session_context.py", payload, env=base_env)
+            self.assertFalse(marker.exists())
+            run_hook(
+                "executable_session_context.py",
+                payload,
+                env={**base_env, "AI_EMBED_WARM": "1"},
+            )
+            self.assertEqual(marker.read_text(), "1")
+            run_hook(
+                "executable_session_context.py",
+                {**payload, "warm_embedder": True},
+                env=base_env,
+            )
+            self.assertEqual(marker.read_text(), "2")
+
+    def test_perturn_recall_marks_ai_kb_embedding_connect_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bindir = root / "bin"
+            bindir.mkdir()
+            marker = root / "connect-only"
+            stub = bindir / ",ai-kb"
+            stub.write_text(
+                "#!/usr/bin/env python3\n"
+                "import os, pathlib\n"
+                "pathlib.Path(os.environ['CONNECT_ONLY_MARKER']).write_text("
+                "os.environ.get('AI_EMBED_CONNECT_ONLY', ''))\n"
+                "print('[]')\n"
+            )
+            stub.chmod(0o755)
+            env = {
+                **os.environ,
+                "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
+                "CONNECT_ONLY_MARKER": str(marker),
+            }
+            result = run_perturn_recall(
+                tmp,
+                {
+                    "hook_event_name": "UserPromptSubmit",
+                    "workspace_roots": [tmp],
+                    "session_id": "connect-only-test",
+                    "prompt": "substantive prompt must not spawn an embed worker",
+                },
+                env,
+            )
+
+            self.assertEqual(result, {})
+            self.assertEqual(marker.read_text(), "1")
+
     def test_session_context_offers_bucket_creation_on_default_branch_without_topics(self):
         with self.make_git_workspace("main") as tmp:
             workspace = str(Path(tmp).resolve())
-            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
             spec_dir.mkdir(parents=True, exist_ok=True)
             (spec_dir / "current.txt").write_text("target: stale shared main context\n")
             (spec_dir / "current.worklog.jsonl").write_text('{"line": "stale"}\n')
@@ -197,7 +292,7 @@ class TestAgentHooks(unittest.TestCase):
     def test_session_context_offers_existing_topic_buckets_without_loading_active_topic(self):
         with self.make_git_workspace("main") as tmp:
             workspace = str(Path(tmp).resolve())
-            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
             spec_dir.mkdir(parents=True, exist_ok=True)
             (spec_dir / "_active_topic.txt").write_text("stale-homebrew\n")
             (spec_dir / "stale-homebrew.txt").write_text(
@@ -225,7 +320,7 @@ class TestAgentHooks(unittest.TestCase):
     def test_session_context_lists_buckets_newest_first_with_summary_and_age(self):
         with self.make_git_workspace("main") as tmp:
             workspace = str(Path(tmp).resolve())
-            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
             spec_dir.mkdir(parents=True, exist_ok=True)
 
             old = spec_dir / "old-topic.txt"
@@ -270,7 +365,8 @@ class TestAgentHooks(unittest.TestCase):
             }
 
             assert run_hook("executable_worklog_recorder.py", payload) == {}
-            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            flush_worklog(spec_dir)
 
             assert not (spec_dir / "current.worklog.jsonl").exists()
             assert (spec_dir / "session-abc-123.worklog.jsonl").exists()
@@ -278,7 +374,7 @@ class TestAgentHooks(unittest.TestCase):
     def test_worklog_recorder_does_not_write_to_workspace_active_topic_for_unbound_session(self):
         with self.make_git_workspace("main") as tmp:
             workspace = str(Path(tmp).resolve())
-            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
             spec_dir.mkdir(parents=True, exist_ok=True)
             (spec_dir / "_active_topic.txt").write_text("stale-homebrew\n")
             (spec_dir / "stale-homebrew.txt").write_text("target: stale cask task\n")
@@ -293,6 +389,7 @@ class TestAgentHooks(unittest.TestCase):
             }
 
             assert run_hook("executable_worklog_recorder.py", payload) == {}
+            flush_worklog(spec_dir)
 
             assert not (spec_dir / "stale-homebrew.worklog.jsonl").exists()
             assert (spec_dir / "session-abc-123.worklog.jsonl").exists()
@@ -300,7 +397,7 @@ class TestAgentHooks(unittest.TestCase):
     def test_session_context_keeps_current_topic_on_feature_branch(self):
         with self.make_git_workspace("feature-memory") as tmp:
             workspace = str(Path(tmp).resolve())
-            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
             spec_dir.mkdir(parents=True, exist_ok=True)
             (spec_dir / "current.txt").write_text("target: feature continuity\n")
 
@@ -332,7 +429,7 @@ class TestAgentHooks(unittest.TestCase):
     def test_session_context_can_be_disabled_by_workspace_sentinel(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = str(Path(tmp).resolve())
-            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
             spec_dir.mkdir(parents=True, exist_ok=True)
             (spec_dir / "_no_session_context").write_text("")
             (spec_dir / "current.txt").write_text("target: should not inject\n")
@@ -346,7 +443,7 @@ class TestAgentHooks(unittest.TestCase):
     def test_session_context_omits_oversized_spec_and_bounds_worklog_atomically(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = str(Path(tmp).resolve())
-            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
             spec_dir.mkdir(parents=True, exist_ok=True)
             (spec_dir / "current.txt").write_text("target: " + ("x" * 4000) + "\nnever inject partial")
             (spec_dir / "current.worklog.jsonl").write_text("\n".join(f'{{"line": {i}}}' for i in range(30)) + "\n")
@@ -367,7 +464,7 @@ class TestAgentHooks(unittest.TestCase):
     def test_session_context_sanitizes_review_specs(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = str(Path(tmp).resolve())
-            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
             spec_dir.mkdir(parents=True, exist_ok=True)
             bind_session_topic(spec_dir, "review-session", "review-123")
             (spec_dir / "review-123.txt").write_text(
@@ -411,7 +508,7 @@ class TestAgentHooks(unittest.TestCase):
         # an oversized normal-topic spec, never a partial/truncated dump.
         with tempfile.TemporaryDirectory() as tmp:
             workspace = str(Path(tmp).resolve())
-            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
             spec_dir.mkdir(parents=True, exist_ok=True)
             bind_session_topic(spec_dir, "review-big-session", "review-big")
             (spec_dir / "review-big.txt").write_text(
@@ -450,7 +547,7 @@ class TestAgentHooks(unittest.TestCase):
     def test_session_context_appends_aikb_reminder_with_named_topic(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = str(Path(tmp).resolve())
-            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
             spec_dir.mkdir(parents=True, exist_ok=True)
             bind_session_topic(spec_dir, "memory-session", "memory-systems")
             (spec_dir / "memory-systems.txt").write_text("target: wire memory systems\n")
@@ -470,7 +567,7 @@ class TestAgentHooks(unittest.TestCase):
     def test_session_context_warmstart_injects_relevant_learnings_for_named_topic(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = str(Path(tmp).resolve())
-            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
             spec_dir.mkdir(parents=True, exist_ok=True)
             bind_session_topic(spec_dir, "warm-session", "memory-systems")
             (spec_dir / "memory-systems.txt").write_text("target: wire memory systems\n")
@@ -498,7 +595,7 @@ class TestAgentHooks(unittest.TestCase):
     def test_session_context_warmstart_gates_out_unrelated_workspace_project_capsule(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = str(Path(tmp).resolve())
-            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
             spec_dir.mkdir(parents=True, exist_ok=True)
             bind_session_topic(spec_dir, "warm-gate-session", "memory-systems")
             (spec_dir / "memory-systems.txt").write_text("target: wire memory systems\n")
@@ -535,7 +632,7 @@ class TestAgentHooks(unittest.TestCase):
     def test_agent_memory_select_binds_only_one_session_to_topic_bucket(self):
         with self.make_git_workspace("main") as tmp:
             workspace = str(Path(tmp).resolve())
-            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
             spec_dir.mkdir(parents=True, exist_ok=True)
             (spec_dir / "stale-homebrew.txt").write_text("target: stale cask task\n")
             (spec_dir / "agent-topic-buckets.txt").write_text("target: improve agent topic selection\n")
@@ -554,6 +651,7 @@ class TestAgentHooks(unittest.TestCase):
                 cwd=str(REPO),
                 capture_output=True,
                 text=True,
+                env=hook_env(),
                 check=True,
             )
 
@@ -574,7 +672,7 @@ class TestAgentHooks(unittest.TestCase):
     def test_session_context_without_session_key_does_not_inject_current_on_default_branch(self):
         with self.make_git_workspace("main") as tmp:
             workspace = str(Path(tmp).resolve())
-            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
             spec_dir.mkdir(parents=True, exist_ok=True)
             (spec_dir / "current.txt").write_text("target: stale shared current\n")
             (spec_dir / "focused-topic.txt").write_text("target: focused work\n")
@@ -591,7 +689,7 @@ class TestAgentHooks(unittest.TestCase):
     def test_session_context_warmstart_skipped_for_generic_and_session_topics(self):
         with self.make_git_workspace("main") as tmp:
             workspace = str(Path(tmp).resolve())
-            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
             spec_dir.mkdir(parents=True, exist_ok=True)
             # No named pointer on a default branch -> session-* fallback; seed a session spec too.
             (spec_dir / "current.txt").write_text("target: generic fallback\n")
@@ -673,6 +771,7 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
         assert payload["sessionStart"]["session_id"] == "copilot-session"
         assert payload["sessionStart"]["workspace_roots"] == ["/tmp/workspace"]
         assert payload["sessionStart"]["initial_prompt"] == "hello"
+        assert payload["sessionStart"]["warm_embedder"] is True
         assert payload["postTool"]["tool_name"] == "bash"
         assert payload["postTool"]["tool_input"] == {"command": "printf ok"}
         assert payload["postTool"]["tool_output"] == "ok"
@@ -682,7 +781,7 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
     def test_warmstart_and_perturn_share_conversation_seen_state(self):
         with self.make_git_workspace("feature/conversation-seen") as tmp:
             workspace = str(Path(tmp).resolve())
-            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
             spec_dir.mkdir(parents=True, exist_ok=True)
             bind_session_topic(spec_dir, "conversation-a", "conversation-memory")
             (spec_dir / "conversation-memory.txt").write_text("target: preserve recall dedupe across hooks\n")
@@ -733,7 +832,7 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
                 capture_output=True,
                 text=True,
                 cwd=str(REPO),
-                env=env,
+                env=hook_env(env),
             )
             assert result.returncode == 0, result.stderr
             perturn = json.loads(result.stdout or "{}")
@@ -882,7 +981,7 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
         # re-injected. Overwrite semantics would clobber the prior id.
         with self.make_git_workspace("feature/warm-union") as tmp:
             workspace = str(Path(tmp).resolve())
-            spec_dir = Path("/tmp/specs") / workspace.lstrip("/")
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
             spec_dir.mkdir(parents=True, exist_ok=True)
             bind_session_topic(spec_dir, "warm-union", "union-memory")
             (spec_dir / "union-memory.txt").write_text("target: preserve recall dedupe across warm starts\n")
@@ -919,7 +1018,7 @@ console.log(JSON.stringify({ sessionStart, postTool, failedTool }));
         with tempfile.TemporaryDirectory() as tmp:
             hooks_dir = Path(tmp) / ".agents" / "hooks"
             hooks_dir.mkdir(parents=True)
-            for name in ("session_context.py", "worklog_recorder.py", "perturn_recall.py"):
+            for name in ("session_context.py", "worklog_dispatcher.sh", "perturn_recall.py"):
                 (hooks_dir / name).write_text("")
 
             script = """
@@ -932,7 +1031,7 @@ function shell(strings, ...values) {
     nothrow() { return Promise.resolve({ stdout: "{}", code: 0 }); }
   };
 }
-const hooks = await mod.AgentMemoryPlugin({ $: shell, directory: "/tmp/workspace" });
+const hooks = await mod.AgentMemoryPlugin({ $: shell, directory: process.argv[2] });
 await hooks["tool.execute.after"](
   { tool: "bash", sessionID: "opencode-session", callID: "call-a", args: {} },
   { title: "printf ok", output: "ok", metadata: {} }
@@ -943,7 +1042,7 @@ console.log(calls[0][0]);
             env["HOME"] = tmp
             env["NODE_NO_WARNINGS"] = "1"
             result = subprocess.run(
-                ["node", "--input-type=module", "-e", script, str(extension)],
+                ["node", "--input-type=module", "-e", script, str(extension), tmp],
                 cwd=str(REPO),
                 capture_output=True,
                 text=True,
@@ -959,6 +1058,18 @@ console.log(calls[0][0]);
         with tempfile.TemporaryDirectory() as tmp:
             spec_file = Path(tmp) / "pi-memory.txt"
             spec_file.write_text("target: persist pi recall dedupe\n")
+            rows = [
+                {
+                    "id": "capsule-a",
+                    "title": "Pi resume capsule",
+                    "body": "inject once",
+                    "kind": "gotcha",
+                    "scope": "project",
+                    "workspace_path": "/tmp/workspace",
+                    "bm25_score": -10.0,
+                }
+            ]
+            search_log = Path(tmp) / "search.jsonl"
             script = """
 import { readFile } from "node:fs/promises";
 const mod = await import(process.argv[1]);
@@ -1000,8 +1111,8 @@ function makePi() {
         return { code: 0, killed: false, stdout: "target: persist pi recall dedupe" };
       }
       if (command === "cat") return { code: 1, killed: false, stdout: "" };
-      if (command === ",ai-kb" && args[0] === "search") {
-        return { code: 0, killed: false, stdout: JSON.stringify([row]) };
+      if (command === "python3" && args[0].endsWith("/lib/,ai-kb/embed_client.py") && args[1] === "ensure") {
+        return { code: 0, killed: false, stdout: "{}" };
       }
       throw new Error(`unexpected exec: ${command} ${args.join(" ")}`);
     },
@@ -1011,6 +1122,7 @@ function makePi() {
 async function invokeFreshExtension() {
   const pi = makePi();
   await mod.default(pi);
+  await pi.handlers.session_start({ type: "session_start", reason: "startup" }, {});
   return pi.handlers.before_agent_start(
     { prompt: "short" },
     {
@@ -1028,8 +1140,9 @@ try {
 } catch {}
 console.log(JSON.stringify({ first, second, seen, statusCalls }));
 """
-            env = dict(os.environ)
+            env = make_aikb_stub(Path(tmp), rows)
             env["NODE_NO_WARNINGS"] = "1"
+            env["AI_KB_STUB_LOG"] = str(search_log)
             result = subprocess.run(
                 ["node", "--input-type=module", "-e", script, str(extension), str(spec_file)],
                 cwd=str(REPO),
@@ -1043,6 +1156,22 @@ console.log(JSON.stringify({ first, second, seen, statusCalls }));
             assert "Pi resume capsule" in payload["first"]["message"]["content"]
             assert payload.get("second") is None
             assert payload["seen"] == ["capsule-a"]
+            searches = [json.loads(line) for line in search_log.read_text().splitlines()]
+            expected_search = {
+                "args": [
+                    "search",
+                    "--query-stdin",
+                    "--limit",
+                    "6",
+                    "--mode",
+                    "bm25",
+                    "--workspace",
+                    "/tmp/workspace",
+                    "--json",
+                ],
+                "query": "target: persist pi recall dedupe",
+            }
+            assert searches == [expected_search, expected_search]
             assert payload["statusCalls"] == [
                 ["status", "--json", "--workspace", "/tmp/workspace", "--session-id", "pi/session"],
                 ["status", "--json", "--workspace", "/tmp/workspace", "--session-id", "pi/session"],
@@ -1059,6 +1188,40 @@ console.log(JSON.stringify({ first, second, seen, statusCalls }));
             # into this test's own tmpdir rather than a fixed path shared across test runs
             # (a fixed path would persist real .recall-seen-*.json state across invocations).
             spec_file = str(Path(tmp) / "hybrid-memory.txt")
+            rows = [
+                {
+                    "id": "capsule-first",
+                    "title": "First fused row missing cosine",
+                    "kind": "note",
+                    "scope": "project",
+                    "workspace_path": "/tmp/workspace",
+                },
+                {
+                    "id": "capsule-second",
+                    "title": "Second fused row strongest cosine",
+                    "kind": "gotcha",
+                    "scope": "project",
+                    "workspace_path": "/tmp/workspace",
+                    "cosine_score": 0.9,
+                },
+                {
+                    "id": "capsule-third",
+                    "title": "Third fused row within floor",
+                    "kind": "gotcha",
+                    "scope": "project",
+                    "workspace_path": "/tmp/workspace",
+                    "cosine_score": 0.8,
+                },
+                {
+                    "id": "capsule-fourth",
+                    "title": "Fourth fused row below floor",
+                    "kind": "gotcha",
+                    "scope": "project",
+                    "workspace_path": "/tmp/workspace",
+                    "cosine_score": 0.5,
+                },
+            ]
+            search_log = Path(tmp) / "search.jsonl"
             script = """
 const mod = await import(process.argv[1]);
 const specFile = process.argv[2];
@@ -1090,8 +1253,8 @@ function makePi() {
           })
         };
       }
-      if (command === ",ai-kb" && args[0] === "search" && args.includes("hybrid")) {
-        return { code: 0, killed: false, stdout: JSON.stringify(rows) };
+      if (command === "python3" && args[0].endsWith("/lib/,ai-kb/embed_client.py") && args[1] === "ensure") {
+        return { code: 0, killed: false, stdout: "{}" };
       }
       if (command === "cat") return { code: 1, killed: false, stdout: "" };
       throw new Error(`unexpected exec: ${command} ${args.join(" ")}`);
@@ -1101,6 +1264,7 @@ function makePi() {
 }
 const pi = makePi();
 await mod.default(pi);
+await pi.handlers.session_start({ type: "session_start", reason: "startup" }, {});
 const result = await pi.handlers.before_agent_start(
   { prompt: "recall guidance for this hybrid gate test" },
   {
@@ -1111,8 +1275,9 @@ const result = await pi.handlers.before_agent_start(
 );
 console.log(JSON.stringify({ result }));
 """
-            env = dict(os.environ)
+            env = make_aikb_stub(Path(tmp), rows)
             env["NODE_NO_WARNINGS"] = "1"
+            env["AI_KB_STUB_LOG"] = str(search_log)
             result = subprocess.run(
                 ["node", "--input-type=module", "-e", script, str(extension), spec_file],
                 cwd=str(REPO),
@@ -1129,6 +1294,20 @@ console.log(JSON.stringify({ result }));
             third_pos = content.index("Third fused row within floor")
             assert first_pos < second_pos < third_pos
             assert "Fourth fused row below floor" not in content
+            searches = [json.loads(line) for line in search_log.read_text().splitlines()]
+            assert len(searches) == 1
+            assert searches[0]["query"] == "recall guidance for this hybrid gate test"
+            assert searches[0]["args"] == [
+                "search",
+                "--query-stdin",
+                "--limit",
+                "6",
+                "--mode",
+                "hybrid",
+                "--workspace",
+                "/tmp/workspace",
+                "--json",
+            ]
 
 
 if __name__ == "__main__":

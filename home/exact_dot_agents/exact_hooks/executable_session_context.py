@@ -7,11 +7,13 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
 
 from hook_common import (
+    agent_depth,
     emit,
     is_default_branch_workspace,
     is_named_topic,
@@ -28,6 +30,9 @@ MAX_WORKLOG_CHARS = 3000
 MAX_WORKLOG_LINES = 12
 DISABLE_CONTEXT_ENV = "AGENT_HOOK_CONTEXT"
 DISABLE_CONTEXT_VALUES = {"0", "false", "no", "off", "disabled"}
+AI_EMBED_WARM_ENV = "AI_EMBED_WARM"
+TRUE_VALUES = {"1", "true", "yes", "on"}
+EMBED_WARM_TIMEOUT_SECONDS = 4
 
 PREFIX_REL_PATH = "tmux/agent_prompts/prefix.txt"
 MAX_PREFIX_CHARS = 3000
@@ -61,6 +66,29 @@ AIKB_REMINDER = (
 )
 
 
+def warm_resident_embedder(payload: dict) -> None:
+    """Bounded, fail-open warmup for adapters that also invoke per-turn recall."""
+    if agent_depth() == "fast":
+        return
+    env_requested = os.environ.get(AI_EMBED_WARM_ENV, "").strip().lower() in TRUE_VALUES
+    if not env_requested and payload.get("warm_embedder") is not True:
+        return
+    client = Path.home() / "lib/,ai-kb/embed_client.py"
+    if not client.is_file():
+        return
+    try:
+        subprocess.run(
+            [sys.executable, str(client), "ensure", "--timeout", str(EMBED_WARM_TIMEOUT_SECONDS)],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+            timeout=EMBED_WARM_TIMEOUT_SECONDS + 1,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+
+
 def aikb_warmstart(workspace: Path, query: str, injected_ids: list[str] | None = None) -> str:
     """Inject a small, relevance-gated block of durable learnings at session start.
 
@@ -81,7 +109,7 @@ def aikb_warmstart(workspace: Path, query: str, injected_ids: list[str] | None =
             [
                 aikb,
                 "search",
-                query,
+                "--query-stdin",
                 "--limit",
                 str(WARMSTART_LIMIT * 2),
                 "--mode",
@@ -92,6 +120,7 @@ def aikb_warmstart(workspace: Path, query: str, injected_ids: list[str] | None =
             ],
             capture_output=True,
             check=False,
+            input=query,
             text=True,
             timeout=WARMSTART_SEARCH_TIMEOUT,
         )
@@ -394,6 +423,24 @@ def main() -> None:
     if context_disabled(spec_path, topic):
         emit({})
         return
+
+    try:
+        import worklog_queue
+    except ImportError as err:
+        print(f"[agent-worklog] session-start flush failed: {err}", file=sys.stderr)
+    else:
+        try:
+            flush_result = worklog_queue.flush_spec_dir(spec_path.parent)
+            if flush_result.errors or flush_result.pending:
+                print(
+                    f"[agent-worklog] session-start flush incomplete: "
+                    f"pending={flush_result.pending} errors={flush_result.errors}",
+                    file=sys.stderr,
+                )
+        except (OSError, ValueError, worklog_queue.QueueError) as err:
+            print(f"[agent-worklog] session-start flush failed: {err}", file=sys.stderr)
+
+    warm_resident_embedder(payload)
 
     parts = [
         "## Agent Hook Context",

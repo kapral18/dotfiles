@@ -16,7 +16,7 @@ flowchart TD
         RUFFI["ruff check --select I scripts/ home/exact_lib/ (ruff.toml)"]:::tool
         GOV["(cd tools/ralph-tui && go vet ./… && go test ./…)"]:::tool
     end
-    VT["verify-templates → scripts/verify_templates.py<br/>(chezmoi execute-template every *.tmpl)"]:::tool
+    VT["verify-templates → scripts/verify_templates.py<br/>(chezmoi --source &lt;current repo&gt; execute-template every *.tmpl;<br/>isolated clones never render includes from the real source checkout)"]:::tool
     VM["verify-mermaids → scripts/verify_mermaids.py<br/>(.mermaids/ file-census counts vs effective git files)"]:::tool
     VB["verify-bin-surface → scripts/verify_bin_surface.py<br/>(~/bin commands have Fish completions + docs/catalog tokens;<br/>home/exact_lib command libraries are not orphaned)"]:::tool
     VDN["verify-docs-navigation → scripts/verify_docs_navigation.py<br/>(docs/reference links and implementation coverage catalog rows stay live)"]:::tool

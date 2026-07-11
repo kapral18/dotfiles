@@ -7,16 +7,23 @@ set -euo pipefail
 # pi models desired hash: {{ include "dot_pi/agent/readonly_models.json" | sha256sum }}
 # ai models hash: {{ include ".chezmoidata/ai_models.yaml" | sha256sum }}
 # generate_pi_models.py hash: {{ include "../scripts/generate_pi_models.py" | sha256sum }}
+# ai_models.py hash: {{ include "../scripts/ai_models.py" | sha256sum }}
+# model_display.py hash: {{ include "../scripts/model_display.py" | sha256sum }}
+# yaml_parser.py hash: {{ include "../scripts/yaml_parser.py" | sha256sum }}
 {{- else }}
 # pi settings desired hash (non-work): {{ include "dot_pi/agent/readonly_settings.personal.json" | sha256sum }}
 # pi models desired hash (non-work): {{ include "dot_pi/agent/readonly_models.personal.json" | sha256sum }}
 {{- end }}
+# chezmoi_lib.sh hash: {{ include "../scripts/chezmoi_lib.sh" | sha256sum }}
+# managed_config_manifest.py hash: {{ include "../scripts/managed_config_manifest.py" | sha256sum }}
+# generated_artifact_ledger.py hash: {{ include "../scripts/generated_artifact_ledger.py" | sha256sum }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
 # shellcheck source=../../../scripts/chezmoi_lib.sh
 source "$source_dir/../scripts/chezmoi_lib.sh"
 
 is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
+profile="{{ if eq .isWork true }}work{{ else }}personal{{ end }}"
 target_dir="$HOME/.pi/agent"
 
 src_settings="$(chezmoi_pick_src "$is_work" "$source_dir" \
@@ -24,6 +31,12 @@ src_settings="$(chezmoi_pick_src "$is_work" "$source_dir" \
   "dot_pi/agent/readonly_settings.personal.json")"
 
 chezmoi_install_if_changed "$src_settings" "$target_dir/settings.json" 0444
+chezmoi_record_artifact --id pi-settings \
+  --producer 07-merge-pi-config --profile "$profile" \
+  --target "$target_dir/settings.json" --ownership-adapter whole-file \
+  --input "$src_settings" \
+  --transform "$source_dir/../scripts/chezmoi_lib.sh" \
+  --consumer pi
 
 if [ "$is_work" = "true" ]; then
   src_models="$source_dir/dot_pi/agent/readonly_models.json"
@@ -39,7 +52,26 @@ if [ "$is_work" = "true" ]; then
     "$azure_endpoint" >"$tmp_models"
 
   chezmoi_install_if_changed "$tmp_models" "$target_dir/models.json" 0444
+  chezmoi_record_artifact --id pi-models \
+    --producer 07-merge-pi-config --profile "$profile" \
+    --target "$target_dir/models.json" --ownership-adapter whole-file \
+    --input "$src_models" \
+    --input "$source_dir/.chezmoidata/ai_models.yaml" \
+    --transform "$source_dir/../scripts/generate_pi_models.py" \
+    --transform "$source_dir/../scripts/ai_models.py" \
+    --transform "$source_dir/../scripts/model_display.py" \
+    --transform "$source_dir/../scripts/yaml_parser.py" \
+    --transform "$source_dir/../scripts/chezmoi_lib.sh" \
+    --reference pass:litellm/api/base \
+    --reference pass:azure/foundry/endpoint \
+    --consumer pi
 else
   src_models="$source_dir/dot_pi/agent/readonly_models.personal.json"
   chezmoi_install_if_changed "$src_models" "$target_dir/models.json" 0444
+  chezmoi_record_artifact --id pi-models \
+    --producer 07-merge-pi-config --profile "$profile" \
+    --target "$target_dir/models.json" --ownership-adapter whole-file \
+    --input "$src_models" \
+    --transform "$source_dir/../scripts/chezmoi_lib.sh" \
+    --consumer pi
 fi

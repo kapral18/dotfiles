@@ -16,14 +16,16 @@ capsule ids (shared with the session_context warm-start via the seen-file).
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 
-from hook_common import emit, read_payload, session_key, topic_paths
+from hook_common import agent_depth, emit, read_payload, session_key, topic_paths
 from session_context import context_disabled
 
-# Constants mirror home/dot_pi/agent/extensions/ai-kb-recall.ts — change both together.
+# Balanced constants mirror home/dot_pi/agent/extensions/ai-kb-recall.ts exactly.
 PERTURN_LIMIT = 3
 SEARCH_FETCH = 6
 QUERY_MAX_CHARS = 600
@@ -33,6 +35,23 @@ PERTURN_MIN_TOP_COSINE = 0.55
 PERTURN_COSINE_FLOOR_FRACTION = 0.85
 SEARCH_TIMEOUT = 6
 CROSS_PROJECT_SCOPES = {"domain", "universal"}
+
+
+@dataclass(frozen=True)
+class RecallProfile:
+    enabled: bool
+    limit: int
+    fetch: int
+    query_chars: int
+    body_chars: int
+    timeout: int
+
+
+RECALL_PROFILES = {
+    "fast": RecallProfile(False, 0, 0, 0, 0, 0),
+    "balanced": RecallProfile(True, PERTURN_LIMIT, SEARCH_FETCH, QUERY_MAX_CHARS, BODY_MAX_CHARS, SEARCH_TIMEOUT),
+    "deep": RecallProfile(True, 5, 12, 1200, 360, 9),
+}
 
 
 def collapse(text: str, max_chars: int) -> str:
@@ -96,9 +115,11 @@ def save_seen(path: Path | None, seen: set[str]) -> None:
         pass
 
 
-def search_capsules(workspace: Path, query: str) -> list:
+def search_capsules(workspace: Path, query: str, profile: RecallProfile) -> list:
+    if not profile.enabled:
+        return []
     aikb = shutil.which(",ai-kb")
-    flat = collapse(query, QUERY_MAX_CHARS)
+    flat = collapse(query, profile.query_chars)
     if not aikb or not flat:
         return []
     try:
@@ -106,9 +127,9 @@ def search_capsules(workspace: Path, query: str) -> list:
             [
                 aikb,
                 "search",
-                flat,
+                "--query-stdin",
                 "--limit",
-                str(SEARCH_FETCH),
+                str(profile.fetch),
                 "--mode",
                 "hybrid",
                 "--workspace",
@@ -117,8 +138,10 @@ def search_capsules(workspace: Path, query: str) -> list:
             ],
             capture_output=True,
             check=False,
+            env={**os.environ, "AI_EMBED_CONNECT_ONLY": "1"},
+            input=flat,
             text=True,
-            timeout=SEARCH_TIMEOUT,
+            timeout=profile.timeout,
         )
     except (OSError, subprocess.TimeoutExpired):
         return []
@@ -131,11 +154,11 @@ def search_capsules(workspace: Path, query: str) -> list:
     return apply_hybrid_floor(rows if isinstance(rows, list) else [])
 
 
-def gate_and_format(rows: list, workspace: Path, seen: set[str]) -> list[str]:
+def gate_and_format(rows: list, workspace: Path, seen: set[str], profile: RecallProfile) -> list[str]:
     workspace_str = str(workspace)
     lines: list[str] = []
     for row in rows:
-        if len(lines) >= PERTURN_LIMIT:
+        if len(lines) >= profile.limit:
             break
         scope = str(row.get("scope") or "")
         same_workspace = str(row.get("workspace_path") or "") == workspace_str
@@ -150,7 +173,7 @@ def gate_and_format(rows: list, workspace: Path, seen: set[str]) -> list[str]:
         if capsule_id:
             seen.add(capsule_id)
         kind = str(row.get("kind") or "note")
-        body = collapse(str(row.get("body") or ""), BODY_MAX_CHARS)
+        body = collapse(str(row.get("body") or ""), profile.body_chars)
         lines.append(f"- **{title}** ({kind}): {body}" if body else f"- **{title}** ({kind})")
     return lines
 
@@ -170,9 +193,10 @@ def main() -> None:
     key = session_key(payload)
     seen_path = seen_file_for(spec_path, key) if key else None
     seen = load_seen(seen_path)
+    profile = RECALL_PROFILES[agent_depth()]
 
-    rows = search_capsules(workspace, prompt)
-    lines = gate_and_format(rows, workspace, seen)
+    rows = search_capsules(workspace, prompt, profile)
+    lines = gate_and_format(rows, workspace, seen, profile)
     if not lines:
         emit({})
         return

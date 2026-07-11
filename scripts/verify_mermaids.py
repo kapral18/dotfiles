@@ -3,7 +3,7 @@
 
 The ``.mermaids/`` diagrams are the repo's mandated first-read navigation cloud
 (see ``AGENTS.md``). Several of them promise *exhaustive* per-file coverage of a
-subtree and state a hard count, e.g. ``Every file under home/exact_bin/ (77)``.
+subtree and state a hard count, e.g. ``Every file under home/exact_bin/ (73)``.
 Those counts rot the moment a file is added or removed, yet nothing checked them
 -- so an agent that trusts the map gets a false anchor (a C8 evidence-ledger
 violation baked into the one artifact every session reads first).
@@ -58,11 +58,11 @@ CENSUS: list[Claim] = [
     Claim(
         name="total effective git files",
         globs=None,
-        claimed=1278,
+        claimed=1313,
         anchors=[
-            ("README.md", "1278 files in the effective git file set"),
-            ("00-overview.mmd", "1278 files in the effective git file set"),
-            ("00-overview.mmd", "file census (1278 total)"),
+            ("README.md", "1313 files in the effective git file set"),
+            ("00-overview.mmd", "1313 files in the effective git file set"),
+            ("00-overview.mmd", "file census (1313 total)"),
         ],
     ),
     Claim(
@@ -117,51 +117,51 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/dot_config/fish/",
         globs=["home/dot_config/fish/*"],
-        claimed=76,
-        anchors=[("00-overview.mmd", "fish 76")],
+        claimed=77,
+        anchors=[("00-overview.mmd", "fish 77")],
     ),
     Claim(
         name="home/exact_bin/",
         globs=["home/exact_bin/*"],
-        claimed=73,
+        claimed=74,
         anchors=[
-            ("07c-bin-commands.mmd", "exact_bin/ (73 thin commands)"),
-            ("README.md", "`exact_bin/` (73)"),
+            ("07c-bin-commands.mmd", "exact_bin/ (74 thin commands)"),
+            ("README.md", "`exact_bin/` (74)"),
         ],
     ),
     Claim(
         name="home/exact_lib/",
         globs=["home/exact_lib/*"],
-        claimed=41,
+        claimed=53,
         anchors=[
-            ("07c-bin-commands.mmd", "home/exact_lib/ (41 command/shared library files)"),
-            ("README.md", "`home/exact_lib/` (41 command/shared library files)"),
+            ("07c-bin-commands.mmd", "home/exact_lib/ (53 command/shared library files)"),
+            ("README.md", "`home/exact_lib/` (53 command/shared library files)"),
         ],
     ),
     Claim(
         name="home/exact_dot_agents/",
         globs=["home/exact_dot_agents/*"],
-        claimed=103,
+        claimed=105,
         anchors=[
-            ("03b-agent-skills-hooks.mmd", "exact_dot_agents/ (103)"),
-            ("00-overview.mmd", "agents 103"),
+            ("03b-agent-skills-hooks.mmd", "exact_dot_agents/ (105)"),
+            ("00-overview.mmd", "agents 105"),
         ],
     ),
     Claim(
         name="scripts/",
         globs=["scripts/*"],
-        claimed=77,
+        claimed=94,
         anchors=[
-            ("11-scripts-helpers.mmd", "scripts/ (77)"),
-            ("README.md", "`scripts/` (77)"),
-            ("00-overview.mmd", "scripts 77"),
+            ("11-scripts-helpers.mmd", "scripts/ (94)"),
+            ("README.md", "`scripts/` (94)"),
+            ("00-overview.mmd", "scripts 94"),
         ],
     ),
     Claim(
         name="tools/ralph-tui/",
         globs=["tools/ralph-tui/*"],
-        claimed=34,
-        anchors=[("00-overview.mmd", "ralph-tui 34")],
+        claimed=35,
+        anchors=[("00-overview.mmd", "ralph-tui 35")],
     ),
 ]
 

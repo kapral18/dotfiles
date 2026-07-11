@@ -81,12 +81,14 @@ State is per-user under `${XDG_STATE_HOME}/ralph/`. Knowledge capsules persist v
   Falls back to a clear "ralph-tui not installed" error rather than printing a one-shot text snapshot.
   For a text view of one run use `,ralph preview RID`.
 - `,ralph statusline` — tmux status segment (running / needs verification counts) with a trailing dim `(^A)` hint pointing at the dashboard binding
-- `,ralph doctor` — env, ai-kb, runtimes health check
+- `,ralph doctor [--live-models]` — local health check; the opt-in flag compares the complete authenticated Cursor catalog with the generated mirror's curated set, never mutates policy, and reports auth/command failures as `Unknown`
 
 ## Roles + diversity gate
 
 Roles are defined in `~/.config/ralph/roles.json`.
 Defaults are cursor-first because cursor's frontier models give the best output/judgement quality. pi remains fully supported and is required for non-cursor providers (anthropic direct, openai direct, openrouter, llama-cpp).
+Preflight consumes the generated mirror's `curated` Cursor/Pi sets; the dashboard consumes its `recommended` subset and generated role fallback defaults.
+The same mirror is deployed at `~/.config/ai/model-mirrors.v1.json`, and live availability never promotes either policy set.
 
 - `planner` — emits a JSON spec (goal, target_artifact ABS, success_criteria, complexity, executor_count, max_iterations, max_minutes, iteration_task_seed).
   `success_criteria` entries are strings (judgment criteria) or `{"text", "check"}` objects;

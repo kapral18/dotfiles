@@ -19,11 +19,13 @@ Anthropic-side roles pin **Opus 4.8 at xhigh effort**.
 
 Why:
 
-- Fable 5 is listed by `cursor-agent models` but is not usable on this account.
-- other effort tiers (`max`, `high`, …) are deliberately not used.
-- the TUI picker and `CURSOR_MODELS` exclude Fable and non-xhigh Opus variants.
+- Fable 5 is listed by `cursor-agent --list-models` but is not usable on this account.
+- role defaults and the TUI's recommended picker deliberately use only xhigh Opus variants.
+- the broader generated `curated` set contains other approved effort tiers so explicit role overrides remain available.
 
-Cursor model ids are **Cursor-internal aliases**. They are resolved by Cursor's own routing and are not entries in `ai_models.yaml`. Refresh Ralph's `CURSOR_MODELS` snapshot from `cursor-agent models` when Cursor rotates model generations.
+Cursor model ids are **Cursor-internal aliases**. They are resolved by Cursor's own routing and live in the canonical `cursor_models` policy block in `ai_models.yaml`; the generated v1 mirror keeps that `curated` set separate from the narrower `recommended` picker. Run `,ralph doctor --live-models` to compare it with the complete authenticated catalog. A missing curated ID is drift; extra live IDs are not automatically recommended or added, and catalog failures remain `Unknown`.
+
+Ralph's Python preflight consumes mirror `curated` sets for Cursor and Pi. The TUI consumes generated `recommended` sets and generated role fallback defaults, so `scripts/ralph.py`, `tools/ralph-tui/`, and shell provider completion no longer maintain independent model lists. See [Model Registry & Routing](../model-registry.md).
 
 Role-scoping rules:
 

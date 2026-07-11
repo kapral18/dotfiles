@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Description: Resolve unified AI controls and delegate to an existing harness.
+
+set -euo pipefail
+
+lib="$HOME/lib/,ai/main.py"
+if [[ ! -f "$lib" ]]; then
+  echo "Error: ,ai library not found at $lib. Run chezmoi apply --no-tty ~/lib/,ai/main.py." >&2
+  exit 127
+fi
+
+exec python3 "$lib" "$@"

@@ -1,3 +1,4 @@
+# Direct deployed `,ai-kb` runtime; keep this interface aligned with main.py.
 set -l __ai_kb_subcommands init remember search get list reembed curate ingest harvest doctor
 set -l __ai_kb_kinds fact gotcha pattern anti_pattern recipe principle doc
 set -l __ai_kb_scopes workspace project domain universal
@@ -36,6 +37,7 @@ complete -c ',ai-kb' -n '__fish_seen_subcommand_from remember' -l no-embed -d 'S
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from remember' -l json -d 'Emit JSON'
 
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from search' -l limit -r -d 'Maximum hits'
+complete -c ',ai-kb' -n '__fish_seen_subcommand_from search' -l query-stdin -d 'Read the query from stdin'
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from search' -l scope -x -a "$__ai_kb_scopes" -d 'Filter scope'
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from search' -l kind -x -a "$__ai_kb_kinds" -d 'Filter kind'
 complete -c ',ai-kb' -n '__fish_seen_subcommand_from search' -l workspace -r -a '(__fish_complete_directories)' -d 'Workspace bias'

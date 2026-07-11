@@ -35,7 +35,7 @@ from _test_support import (
     modern_bash,
 )
 
-COPILOT_COMMAND = REPO / "home/exact_bin/executable_,copilot"
+COPILOT_COMMAND = REPO / "home/exact_lib/exact_,copilot/main.py"
 
 
 def _load_artifact_command():
@@ -65,6 +65,17 @@ def _load_mcp_token_module():
     if spec is None or spec.loader is None:
         raise AssertionError("could not load ,mcp-token command module")
     module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _load_copilot_command():
+    loader = SourceFileLoader("copilot_command", str(COPILOT_COMMAND))
+    spec = importlib.util.spec_from_loader("copilot_command", loader)
+    if spec is None or spec.loader is None:
+        raise AssertionError("could not load ,copilot command module")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 
@@ -1634,74 +1645,18 @@ class TestKbnStackCommand(unittest.TestCase):
         assert state["killed"] == []
 
 
-class TestCopilotWrapper(unittest.TestCase):
-    """WHEN classifying Copilot args to decide whether to refresh MCP tokens.
+class TestCopilotArgumentClassification(unittest.TestCase):
+    """WHEN classifying Copilot 1.0.70 arguments before MCP preflight."""
 
-    The wrapper only skips the pre-launch token refresh for invocations that
-    provably never open an MCP session. These regressions pin the fail-closed
-    classifier against Copilot CLI 1.0.69's grammar using stubbed commands only
-    (no real token, network, or Copilot session).
-    """
-
-    HEADER_AUTH_CONFIG = {"mcpServers": {"slack": {"type": "http", "headers": {"Authorization": "old-token"}}}}
-    _USE_DEFAULT_CONFIG = object()
-
-    def _run(
-        self,
-        args: list[str],
-        *,
-        config: object = _USE_DEFAULT_CONFIG,
-        token_exit: int = 0,
-    ) -> tuple[subprocess.CompletedProcess[str], str]:
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            home = root / "home"
-            bindir = root / "bin"
-            (home / ".copilot").mkdir(parents=True)
-            bindir.mkdir()
-            # Symlink python3 into the stub bindir so the wrapper's PATH can
-            # exclude chezmoi's install dir; the wrapper's rebake path is gated
-            # on `command -v chezmoi`, so an absent chezmoi keeps the test fully
-            # offline while python3 (for config parsing) stays available.
-            (bindir / "python3").symlink_to(sys.executable)
-            log = root / "mcp-token.log"
-            token = bindir / ",mcp-token"
-            token.write_text(f'#!/usr/bin/env bash\nprintf \'%s\\n\' "$*" >> "$MCP_TOKEN_LOG"\nexit {token_exit}\n')
-            token.chmod(0o755)
-            real = bindir / "copilot-real"
-            real.write_text("#!/usr/bin/env bash\nprintf 'REAL_COPILOT ARGS=%s\\n' \"$*\"\n")
-            real.chmod(0o755)
-            if config is not None:
-                payload = self.HEADER_AUTH_CONFIG if config is self._USE_DEFAULT_CONFIG else config
-                (home / ".copilot/mcp-config.json").write_text(json.dumps(payload))
-            path = os.pathsep.join([str(bindir), "/usr/bin", "/bin", "/usr/sbin", "/sbin"])
-            result = subprocess.run(
-                [modern_bash(), str(COPILOT_COMMAND), *args],
-                capture_output=True,
-                text=True,
-                cwd=str(REPO),
-                env={
-                    **os.environ,
-                    "HOME": str(home),
-                    "PATH": path,
-                    "COPILOT_REAL_BIN": str(real),
-                    "MCP_TOKEN_LOG": str(log),
-                },
-            )
-            token_calls = log.read_text() if log.exists() else ""
-            return result, token_calls
+    @classmethod
+    def setUpClass(cls):
+        cls.command = _load_copilot_command()
 
     def _assert_refreshed(self, args: list[str]) -> None:
-        result, token_calls = self._run(args)
-        assert result.returncode == 0, result.stderr
-        assert "slack --login --quiet" in token_calls, f"expected refresh for {args!r}"
-        assert f"REAL_COPILOT ARGS={' '.join(args)}" in result.stdout
+        assert self.command.should_refresh(args), f"expected refresh for {args!r}"
 
     def _assert_skipped(self, args: list[str]) -> None:
-        result, token_calls = self._run(args)
-        assert result.returncode == 0, result.stderr
-        assert token_calls == "", f"expected no refresh for {args!r}, got {token_calls!r}"
-        assert f"REAL_COPILOT ARGS={' '.join(args)}" in result.stdout
+        assert not self.command.should_refresh(args), f"expected bypass for {args!r}"
 
     def test_variadic_allow_tool_value_is_not_read_as_subcommand(self):
         # --allow-tool[=tools...] takes no space-separated value, so the trailing
@@ -1719,7 +1674,7 @@ class TestCopilotWrapper(unittest.TestCase):
         self._assert_refreshed(["--model", "gpt-5.4", "-p", "hi"])
 
     def test_plugins_subcommand_skips_refresh(self):
-        # `plugins` is a real 1.0.69 subcommand (distinct from `plugin`).
+        # `plugins` is a real 1.0.70 subcommand (distinct from `plugin`).
         self._assert_skipped(["plugins", "list"])
 
     def test_mcp_subcommand_skips_refresh(self):
@@ -1750,27 +1705,6 @@ class TestCopilotWrapper(unittest.TestCase):
         # --model=<value> is a required-value option whose inline value is
         # self-contained, so the following `mcp` is an unambiguous subcommand.
         self._assert_skipped(["--model=gpt", "mcp"])
-
-    def test_missing_config_generation_failure_blocks_launch(self):
-        result, token_calls = self._run(["-p", "hi"], config=None)
-
-        assert result.returncode == 1
-        assert "could not re-bake fresh MCP tokens into" in result.stderr
-        assert "REAL_COPILOT" not in result.stdout
-        assert token_calls == ""
-
-    def test_placeholder_authorization_blocks_launch(self):
-        # The wrapper's refresh sentinel means "token still needs refreshing"; if
-        # it survives into the config the wrapper must fail before launch.
-        sentinel = re.search(r'refresh_placeholder="([^"]*)"', COPILOT_COMMAND.read_text())
-        assert sentinel, "refresh_placeholder sentinel not found in wrapper"
-        placeholder = {"mcpServers": {"slack": {"type": "http", "headers": {"Authorization": sentinel.group(1)}}}}
-        result, token_calls = self._run(["-p", "hi"], config=placeholder)
-
-        assert result.returncode == 1
-        assert "MCP token refresh placeholder remains for: slack" in result.stderr
-        assert "slack --login --quiet" in token_calls
-        assert "REAL_COPILOT" not in result.stdout
 
 
 if __name__ == "__main__":

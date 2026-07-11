@@ -9,18 +9,34 @@ Output: JSON with { "mcpServers": { ... } } on stdout.
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
+import shlex
 import sys
+from collections.abc import Mapping
+from dataclasses import asdict, dataclass
 from typing import Any
 
-from mcp_registry import load_servers
+from mcp_registry import (
+    header_auth_refresh_placeholder,
+    load_servers,
+    shell_substitution_command,
+)
 
 # Tool-specific HTTP server spec transformations.
 # The registry emits a normalised shape:
 #   { "type": "http", "url": "…", "oauth": { "clientId": "…", … } }
 # Some tools expect a different wire format.
 _TOOL_TRANSFORMS: dict[str | None, Any] = {}
+HEADER_AUTH_PLAN_SCHEMA = 1
+
+
+@dataclass(frozen=True)
+class HeaderAuthRequirement:
+    server: str
+    token_source: str
+    shell_command: str
 
 
 def _transform_cursor(spec: dict[str, Any]) -> dict[str, Any]:
@@ -188,23 +204,131 @@ def _render_servers(servers: dict[str, dict[str, Any]], tool: str | None) -> dic
     return result
 
 
-def main():
-    if len(sys.argv) not in (3, 4):
-        sys.exit("Usage: generate_mcp_configs.py <mcp_servers_yaml> <is_work> [tool]")
+def _header_auth_requirement(server: str, raw_value: object) -> HeaderAuthRequirement:
+    shell_command = shell_substitution_command(raw_value)
+    if shell_command is None:
+        raise ValueError(f"{server}: copilot headerAuth must be a full command substitution")
+    try:
+        argv = shlex.split(shell_command)
+    except ValueError as err:
+        raise ValueError(f"{server}: invalid copilot headerAuth command") from err
+    if len(argv) != 3 or argv[0] != ",mcp-token" or argv[2] != "--bearer":
+        raise ValueError(f"{server}: copilot headerAuth must call ',mcp-token <server> --bearer'")
+    token_source = argv[1]
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", token_source):
+        raise ValueError(f"{server}: invalid MCP token source")
+    return HeaderAuthRequirement(server, token_source, shell_command)
 
-    yaml_path = sys.argv[1]
-    is_work = sys.argv[2] == "true"
-    tool = sys.argv[3] if len(sys.argv) == 4 else None
 
-    servers = load_servers(yaml_path, is_work, tool=tool)
+def copilot_header_auth_requirements(yaml_path: str, is_work: bool) -> list[HeaderAuthRequirement]:
+    servers = load_servers(
+        yaml_path,
+        is_work,
+        tool="copilot",
+        resolve_shell_values=False,
+    )
+    requirements: list[HeaderAuthRequirement] = []
+    for server, spec in servers.items():
+        oauth = spec.get("oauth")
+        if spec.get("type") != "http" or not isinstance(oauth, dict) or not oauth.get("headerAuth"):
+            continue
+        requirements.append(_header_auth_requirement(server, oauth["headerAuth"]))
+    return requirements
+
+
+def copilot_header_auth_plan(yaml_path: str, is_work: bool) -> dict[str, object]:
+    requirements = copilot_header_auth_requirements(yaml_path, is_work)
+    return {
+        "schema_version": HEADER_AUTH_PLAN_SCHEMA,
+        "refresh_placeholder": header_auth_refresh_placeholder(),
+        "header_auth_servers": [asdict(requirement) for requirement in requirements],
+    }
+
+
+def render_document(
+    yaml_path: str,
+    is_work: bool,
+    tool: str | None,
+    *,
+    shell_overrides: Mapping[str, str] | None = None,
+) -> dict[str, Any]:
+    servers = load_servers(
+        yaml_path,
+        is_work,
+        tool=tool,
+        shell_overrides=shell_overrides,
+    )
     servers = _render_servers(servers, tool)
-    doc: dict[str, Any] = {"mcpServers": servers}
-    # pi only: auto-run OAuth+reconnect on first tool call to a needs-auth
-    # server (still opens the browser interactively).
+    document: dict[str, Any] = {"mcpServers": servers}
     if tool == "pi":
-        doc["settings"] = {"autoAuth": True}
-    print(json.dumps(doc, indent=2))
+        document["settings"] = {"autoAuth": True}
+    return document
+
+
+def _read_header_auth_overrides(requirements: list[HeaderAuthRequirement]) -> dict[str, str]:
+    try:
+        payload = json.load(sys.stdin)
+    except (OSError, json.JSONDecodeError) as err:
+        raise ValueError("header-auth overrides stdin must be a JSON object") from err
+    if not isinstance(payload, dict):
+        raise ValueError("header-auth overrides stdin must be a JSON object")
+    expected = {requirement.shell_command for requirement in requirements}
+    supplied = {str(key) for key in payload}
+    missing = sorted(expected - supplied)
+    extra = sorted(supplied - expected)
+    if missing:
+        raise ValueError(f"missing header-auth override for: {', '.join(missing)}")
+    if extra:
+        raise ValueError(f"unexpected header-auth override for: {', '.join(extra)}")
+    overrides: dict[str, str] = {}
+    for command in sorted(expected):
+        value = payload.get(command)
+        if not isinstance(value, str) or "\n" in value or not value.startswith("Bearer ") or not value[7:]:
+            raise ValueError(f"invalid header-auth override for: {command}")
+        overrides[command] = value
+    return overrides
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        usage="generate_mcp_configs.py <mcp_servers_yaml> <is_work> [tool]",
+        description=__doc__,
+    )
+    parser.add_argument("mcp_servers_yaml")
+    parser.add_argument("is_work")
+    parser.add_argument("tool", nargs="?")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--copilot-header-auth-plan", action="store_true")
+    mode.add_argument("--header-auth-overrides-stdin", action="store_true")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    is_work = args.is_work == "true"
+    if (args.copilot_header_auth_plan or args.header_auth_overrides_stdin) and args.tool != "copilot":
+        raise ValueError("header-auth batch modes require tool=copilot")
+
+    if args.copilot_header_auth_plan:
+        print(json.dumps(copilot_header_auth_plan(args.mcp_servers_yaml, is_work), indent=2))
+        return 0
+
+    overrides = None
+    if args.header_auth_overrides_stdin:
+        requirements = copilot_header_auth_requirements(args.mcp_servers_yaml, is_work)
+        overrides = _read_header_auth_overrides(requirements)
+    document = render_document(
+        args.mcp_servers_yaml,
+        is_work,
+        args.tool,
+        shell_overrides=overrides,
+    )
+    print(json.dumps(document, indent=2))
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        raise SystemExit(main())
+    except (OSError, ValueError) as err:
+        raise SystemExit(f"Error: {err}") from err

@@ -10,10 +10,17 @@
 #   chezmoi_install_if_changed – file copy via install(1), skip if unchanged
 #   chezmoi_get_litellm_api_base – fetch and normalize LiteLLM base URL from pass
 #   chezmoi_record_checksum – record a file's sha256 in the managed-configs manifest
+#   chezmoi_forget_checksum – retire a literal path from the managed-configs manifest
+#   chezmoi_record_artifact – record one ownership-aware generated AI artifact
+#   chezmoi_forget_artifact – retire one generated AI artifact id
 
 set -euo pipefail
 
 _CHEZMOI_MANIFEST="${XDG_STATE_HOME:-$HOME/.local/state}/chezmoi/managed_configs.tsv"
+_CHEZMOI_ARTIFACT_LEDGER="${CHEZMOI_ARTIFACT_LEDGER:-${XDG_STATE_HOME:-$HOME/.local/state}/chezmoi/generated_artifacts.v1.json}"
+_CHEZMOI_LIB_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+_CHEZMOI_MANIFEST_HELPER="$_CHEZMOI_LIB_DIR/managed_config_manifest.py"
+_CHEZMOI_ARTIFACT_HELPER="$_CHEZMOI_LIB_DIR/generated_artifact_ledger.py"
 
 # ── Source selection ──────────────────────────────────────────────────────────
 
@@ -35,23 +42,28 @@ chezmoi_pick_src() {
 # Called automatically by the write helpers after a successful write.
 #   chezmoi_record_checksum <target_path>
 chezmoi_record_checksum() {
-  local target="$1"
-  [ -f "$target" ] || return 0
+  local target="${1:-}"
+  python3 "$_CHEZMOI_MANIFEST_HELPER" record "$_CHEZMOI_MANIFEST" "$target"
+}
 
-  local checksum
-  checksum="$(shasum -a 256 "$target" | cut -d' ' -f1)"
+# Remove every checksum row whose first TSV field exactly matches a retired
+# generated target. Missing manifests and absent rows are true no-ops.
+#   chezmoi_forget_checksum <target_path>
+chezmoi_forget_checksum() {
+  local target="${1:-}"
+  python3 "$_CHEZMOI_MANIFEST_HELPER" forget "$_CHEZMOI_MANIFEST" "$target"
+}
 
-  mkdir -p "$(dirname "$_CHEZMOI_MANIFEST")"
+# Record one generated AI artifact after its target write succeeds.
+# Metadata is passed through to the stdlib Python implementation.
+chezmoi_record_artifact() {
+  python3 "$_CHEZMOI_ARTIFACT_HELPER" --ledger "$_CHEZMOI_ARTIFACT_LEDGER" record "$@"
+}
 
-  local tmp_manifest
-  tmp_manifest="$(mktemp "${_CHEZMOI_MANIFEST}.XXXXXX")"
-
-  if [ -f "$_CHEZMOI_MANIFEST" ]; then
-    grep -v "^${target}	" "$_CHEZMOI_MANIFEST" > "$tmp_manifest" 2> /dev/null || true
-  fi
-
-  printf '%s\t%s\t%s\n' "$target" "$checksum" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$tmp_manifest"
-  mv "$tmp_manifest" "$_CHEZMOI_MANIFEST"
+# Retire one exact artifact id. Missing ledgers and absent ids are no-ops.
+chezmoi_forget_artifact() {
+  local artifact_id="${1:-}"
+  python3 "$_CHEZMOI_ARTIFACT_HELPER" --ledger "$_CHEZMOI_ARTIFACT_LEDGER" forget --id "$artifact_id"
 }
 
 # ── Idempotent write helpers ─────────────────────────────────────────────────

@@ -47,7 +47,10 @@ Tmux-native mode (default when `$TMUX` is set: the runner detaches and your shel
 ,ralph kill  --all                                     # bulk-kill every non-terminal run
 ,ralph rm    <run-id>                                  # archive + drop ai-kb capsules
 ,ralph statusline                                      # one-line tmux status segment + (^A) hint
+,ralph doctor --live-models                            # opt-in complete Cursor catalog drift check
 ```
+
+The live-model diagnostic uses the generated v1 mirror and is non-mutating: `ok` means every curated ID is still available, `drift` names curated IDs missing from the complete catalog, and command/auth/parse failures report `Unknown`. Newly available models are counted but never added automatically.
 
 Resumability is manifest-driven:
 

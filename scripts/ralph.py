@@ -20,7 +20,7 @@ Usage:
     ralph.py kill RUN_ID [--role ROLE]
     ralph.py rm RUN_ID|--all-completed [--keep-learnings]
     ralph.py statusline
-    ralph.py doctor
+    ralph.py doctor [--live-models]
 
 Roles config: ~/.config/ralph/roles.json (override with $RALPH_ROLES_CONFIG)
 Prompts:      ~/.config/ralph/prompts/{planner,executor,reviewer,re_reviewer}.md
@@ -94,6 +94,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
+import model_mirrors
 from ai_kb import CAPSULE_KINDS, CAPSULE_SCOPES, KnowledgeBase
 
 DONE_MARKER = "RALPH_DONE"
@@ -361,179 +362,26 @@ def render_criteria_checks(results: list[dict[str, Any]] | None) -> str:
 DEFAULT_ROLES_CONFIG = Path.home() / ".config" / "ralph" / "roles.json"
 DEFAULT_PROMPTS_DIR = Path.home() / ".config" / "ralph" / "prompts"
 
-# Curated model sets used for CLI preflight. Keep aligned with
-# tools/ralph-tui/internal/state/models.go; these are intentionally narrower
-# than all provider models because Ralph defaults to the user's known-good set.
-CURSOR_MODELS = {
-    "claude-4-sonnet",
-    "claude-4-sonnet-thinking",
-    "claude-4.5-opus-high",
-    "claude-4.5-opus-high-thinking",
-    "claude-4.5-sonnet",
-    "claude-4.5-sonnet-thinking",
-    "claude-4.6-opus-high",
-    "claude-4.6-opus-high-thinking",
-    "claude-4.6-opus-high-thinking-fast",
-    "claude-4.6-opus-max",
-    "claude-4.6-opus-max-thinking",
-    "claude-4.6-opus-max-thinking-fast",
-    "claude-4.6-sonnet-medium",
-    "claude-4.6-sonnet-medium-thinking",
-    "claude-opus-4-7-high",
-    "claude-opus-4-7-high-fast",
-    "claude-opus-4-7-low",
-    "claude-opus-4-7-low-fast",
-    "claude-opus-4-7-max",
-    "claude-opus-4-7-max-fast",
-    "claude-opus-4-7-medium",
-    "claude-opus-4-7-medium-fast",
-    "claude-opus-4-7-thinking-high",
-    "claude-opus-4-7-thinking-high-fast",
-    "claude-opus-4-7-thinking-low",
-    "claude-opus-4-7-thinking-low-fast",
-    "claude-opus-4-7-thinking-max",
-    "claude-opus-4-7-thinking-max-fast",
-    "claude-opus-4-7-thinking-medium",
-    "claude-opus-4-7-thinking-medium-fast",
-    "claude-opus-4-7-thinking-xhigh",
-    "claude-opus-4-7-thinking-xhigh-fast",
-    "claude-opus-4-7-xhigh",
-    "claude-opus-4-7-xhigh-fast",
-    "claude-opus-4-8-high",
-    "claude-opus-4-8-high-fast",
-    "claude-opus-4-8-low",
-    "claude-opus-4-8-low-fast",
-    "claude-opus-4-8-max",
-    "claude-opus-4-8-max-fast",
-    "claude-opus-4-8-medium",
-    "claude-opus-4-8-medium-fast",
-    "claude-opus-4-8-thinking-high",
-    "claude-opus-4-8-thinking-high-fast",
-    "claude-opus-4-8-thinking-low",
-    "claude-opus-4-8-thinking-low-fast",
-    "claude-opus-4-8-thinking-max",
-    "claude-opus-4-8-thinking-max-fast",
-    "claude-opus-4-8-thinking-medium",
-    "claude-opus-4-8-thinking-medium-fast",
-    "claude-opus-4-8-thinking-xhigh",
-    "claude-opus-4-8-thinking-xhigh-fast",
-    "claude-opus-4-8-xhigh",
-    "claude-opus-4-8-xhigh-fast",
-    "composer-2.5",
-    "composer-2.5-fast",
-    "gemini-3.1-pro",
-    "gemini-3.5-flash",
-    "gpt-5-mini",
-    "gpt-5.1",
-    "gpt-5.1-codex-max-high",
-    "gpt-5.1-codex-max-high-fast",
-    "gpt-5.1-codex-max-low",
-    "gpt-5.1-codex-max-low-fast",
-    "gpt-5.1-codex-max-medium",
-    "gpt-5.1-codex-max-medium-fast",
-    "gpt-5.1-codex-max-xhigh",
-    "gpt-5.1-codex-max-xhigh-fast",
-    "gpt-5.1-codex-mini",
-    "gpt-5.1-codex-mini-high",
-    "gpt-5.1-codex-mini-low",
-    "gpt-5.1-high",
-    "gpt-5.1-low",
-    "gpt-5.2",
-    "gpt-5.2-codex",
-    "gpt-5.2-codex-fast",
-    "gpt-5.2-codex-high",
-    "gpt-5.2-codex-high-fast",
-    "gpt-5.2-codex-low",
-    "gpt-5.2-codex-low-fast",
-    "gpt-5.2-codex-xhigh",
-    "gpt-5.2-codex-xhigh-fast",
-    "gpt-5.2-fast",
-    "gpt-5.2-high",
-    "gpt-5.2-high-fast",
-    "gpt-5.2-low",
-    "gpt-5.2-low-fast",
-    "gpt-5.2-xhigh",
-    "gpt-5.2-xhigh-fast",
-    "gpt-5.3-codex",
-    "gpt-5.3-codex-fast",
-    "gpt-5.3-codex-high",
-    "gpt-5.3-codex-high-fast",
-    "gpt-5.3-codex-low",
-    "gpt-5.3-codex-low-fast",
-    "gpt-5.3-codex-xhigh",
-    "gpt-5.3-codex-xhigh-fast",
-    "gpt-5.4-high",
-    "gpt-5.4-high-fast",
-    "gpt-5.4-low",
-    "gpt-5.4-medium",
-    "gpt-5.4-medium-fast",
-    "gpt-5.4-mini-high",
-    "gpt-5.4-mini-low",
-    "gpt-5.4-mini-medium",
-    "gpt-5.4-mini-none",
-    "gpt-5.4-mini-xhigh",
-    "gpt-5.4-nano-high",
-    "gpt-5.4-nano-low",
-    "gpt-5.4-nano-medium",
-    "gpt-5.4-nano-none",
-    "gpt-5.4-nano-xhigh",
-    "gpt-5.4-xhigh",
-    "gpt-5.4-xhigh-fast",
-    "gpt-5.5-extra-high",
-    "gpt-5.5-extra-high-fast",
-    "gpt-5.5-high",
-    "gpt-5.5-high-fast",
-    "gpt-5.5-low",
-    "gpt-5.5-low-fast",
-    "gpt-5.5-medium",
-    "gpt-5.5-medium-fast",
-    "gpt-5.5-none",
-    "gpt-5.5-none-fast",
-    "grok-4.3",
-    "grok-build-0.1",
-    "kimi-k2.5",
-}
-
-PI_MODELS = {
-    "llm-gateway/gemini-3.1-pro-preview",
-    "llm-gateway/gemini-3.1-pro-preview-customtools",
-    "llm-gateway/claude-haiku-4-5",
-    "llm-gateway/Kimi-K2.6",
-    "llm-gateway/gpt-5.6-luna",
-    "llm-gateway/gpt-5.6-terra",
-    "llm-gateway/gpt-5.6-sol",
-    "llm-gateway/gpt-5.5",
-    "llm-gateway/claude-opus-4-8",
-    "llm-gateway/claude-sonnet-5",
-    "llm-gateway/claude-fable-5",
-    "llm-gateway/claude-opus-4-7",
-    "llm-gateway/gemini-3.5-flash",
-    "openrouter/anthropic/claude-opus-4.7-thinking",
-    "openrouter/anthropic/claude-opus-4.7",
-    "openrouter/openai/gpt-5.5",
-    "openrouter/openai/gpt-5.3-codex",
-    "openrouter/google/gemini-3.1-pro-preview-customtools",
-    "openrouter/google/gemini-3.5-flash",
-}
-
-
-_FAMILY_KEYWORDS = (
-    ("claude", ("claude", "opus", "sonnet", "haiku", "anthropic")),
-    ("gpt", ("gpt", "openai", "o3", "o4")),
-    ("gemini", ("gemini", "google")),
-    ("llama", ("llama", "groq")),
-    ("mistral", ("mistral",)),
-    ("deepseek", ("deepseek",)),
+MODEL_MIRROR_PATH = Path(
+    os.environ.get(
+        "RALPH_MODEL_MIRROR",
+        Path(__file__).resolve().parents[1] / model_mirrors.MIRROR_REL,
+    )
 )
+try:
+    MODEL_MIRROR = model_mirrors.load_mirror(MODEL_MIRROR_PATH)
+except (OSError, ValueError) as err:
+    raise SystemExit(
+        f"model mirror not found or invalid at {MODEL_MIRROR_PATH}: {err}; "
+        "regenerate with scripts/model_mirrors.py generate or unset RALPH_MODEL_MIRROR."
+    )
+CURSOR_MODELS = set(model_mirrors.consumer_view(MODEL_MIRROR, "ralph", "cursor")["models"])
+PI_MODELS = set(model_mirrors.consumer_view(MODEL_MIRROR, "ralph", "pi")["models"])
 
 
 def family_of(model: str) -> str:
     """Map a model id to a coarse family bucket for the diversity gate."""
-    lowered = (model or "").lower()
-    for family, keywords in _FAMILY_KEYWORDS:
-        if any(k in lowered for k in keywords):
-            return family
-    return "unknown"
+    return model_mirrors.family_of(model)
 
 
 def load_roles_config(path: Path | None = None) -> dict[str, Any]:
@@ -621,6 +469,34 @@ def cursor_agent_binary() -> str:
     if shutil.which("cursor-agent"):
         return "cursor-agent"
     return "agent"
+
+
+def parse_cursor_model_catalog(output: str) -> set[str] | None:
+    """Parse one complete ``cursor-agent --list-models`` stdout artifact."""
+    models = model_mirrors.parse_cursor_catalog(output)
+    return set(models) if models is not None else None
+
+
+def cursor_model_catalog_status(run: Any = model_mirrors.run_bounded_command, which: Any = shutil.which) -> str:
+    """Return a bounded, non-mutating comparison with Cursor's live catalog."""
+    result = model_mirrors.probe_target(
+        MODEL_MIRROR,
+        "harness:cursor",
+        runner=run,
+        which=lambda _name: which("agent") or which("cursor-agent"),
+    )
+    if result["status"] in {"unknown", "error"}:
+        return f"cursor_models=Unknown reason={result['reason']}"
+    unavailable = result["stale_curated"]
+    if unavailable:
+        return (
+            f"cursor_models=drift curated={len(CURSOR_MODELS)} live={len(result['live']['models'])} "
+            f"unavailable={','.join(unavailable)}"
+        )
+    return (
+        f"cursor_models=ok curated={len(CURSOR_MODELS)} live={len(result['live']['models'])} "
+        f"available_uncurated={len(result['new_available'])}"
+    )
 
 
 def preflight_roles_config(cfg: dict[str, Any]) -> None:
@@ -4204,7 +4080,7 @@ class RalphRunner:
         # enough to make the binding discoverable from the status bar alone.
         return " ".join(parts) + " \x1b[2m(^A)\x1b[0m"
 
-    def doctor(self) -> list[str]:
+    def doctor(self, live_models: bool = False) -> list[str]:
         self.init()
         checks = [f"state_home={self.state_home}", f"runs_dir={self.runs_dir}"]
         checks.extend(self.kb.doctor())
@@ -4213,6 +4089,8 @@ class RalphRunner:
             checks.append(f"{binary}={found.stdout.strip() if found.returncode == 0 else 'missing'}")
         found = subprocess.run(["/usr/bin/env", "which", "tmux"], capture_output=True, text=True)
         checks.append(f"tmux={found.stdout.strip() if found.returncode == 0 else 'missing'}")
+        if live_models:
+            checks.append(cursor_model_catalog_status())
         return checks
 
 
@@ -4382,7 +4260,12 @@ def build_parser() -> argparse.ArgumentParser:
     rm.add_argument("--keep-learnings", action="store_true")
 
     sub.add_parser("statusline")
-    sub.add_parser("doctor")
+    doctor = sub.add_parser("doctor")
+    doctor.add_argument(
+        "--live-models",
+        action="store_true",
+        help="Compare the curated Cursor set with the complete authenticated live catalog",
+    )
     return parser
 
 
@@ -4689,7 +4572,7 @@ def main(argv: list[str] | None = None) -> int:
         print(runner.statusline())
         return 0
     if args.cmd == "doctor":
-        for check in runner.doctor():
+        for check in runner.doctor(live_models=args.live_models):
             print(check)
         return 0
     raise AssertionError(args.cmd)

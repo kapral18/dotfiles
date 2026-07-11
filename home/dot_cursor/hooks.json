@@ -9,25 +9,25 @@
     ],
     "afterShellExecution": [
       {
-        "command": "$HOME/.agents/hooks/worklog_recorder.py",
+        "command": "$HOME/.agents/hooks/worklog_dispatcher.sh",
         "timeout": 10
       }
     ],
     "postToolUse": [
       {
-        "command": "$HOME/.agents/hooks/worklog_recorder.py",
+        "command": "$HOME/.agents/hooks/worklog_dispatcher.sh",
         "timeout": 10
       }
     ],
     "postToolUseFailure": [
       {
-        "command": "$HOME/.agents/hooks/worklog_recorder.py",
+        "command": "$HOME/.agents/hooks/worklog_dispatcher.sh",
         "timeout": 10
       }
     ],
     "afterFileEdit": [
       {
-        "command": "$HOME/.agents/hooks/worklog_recorder.py",
+        "command": "$HOME/.agents/hooks/worklog_dispatcher.sh",
         "timeout": 10
       }
     ],

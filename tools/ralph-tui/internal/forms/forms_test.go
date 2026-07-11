@@ -1,7 +1,6 @@
 package forms
 
 import (
-	"slices"
 	"strings"
 	"testing"
 
@@ -11,7 +10,7 @@ import (
 )
 
 func defaults() state.RolesDefaults {
-	// Pick model ids that exist in the curated cursor list so the picker
+	// Pick model ids that exist in the recommended cursor list so the picker
 	// seeds at the matching index instead of falling back to 0.
 	return state.RolesDefaults{
 		Planner:    state.RoleSpec{Harness: "cursor", Model: "claude-opus-4-8-thinking-xhigh"},
@@ -139,29 +138,6 @@ func TestHarnessChangeReclampsModelIndex(t *testing.T) {
 	pi := state.AvailableModels("pi")
 	if f.modelIdx["planner"] >= len(pi) {
 		t.Errorf("model index %d not clamped to pi list len %d", f.modelIdx["planner"], len(pi))
-	}
-}
-
-func TestPiModelsIncludeLitellmGatewayCatalogIds(t *testing.T) {
-	pi := state.AvailableModels("pi")
-	for _, id := range []string{
-		"llm-gateway/gemini-3.1-pro-preview",
-		"llm-gateway/gemini-3.1-pro-preview-customtools",
-		"llm-gateway/claude-haiku-4-5",
-		"llm-gateway/Kimi-K2.6",
-		"llm-gateway/gpt-5.6-luna",
-		"llm-gateway/gpt-5.6-terra",
-		"llm-gateway/gpt-5.6-sol",
-		"llm-gateway/gpt-5.5",
-		"llm-gateway/claude-opus-4-8",
-		"llm-gateway/claude-sonnet-5",
-		"llm-gateway/claude-fable-5",
-		"llm-gateway/claude-opus-4-7",
-		"llm-gateway/gemini-3.5-flash",
-	} {
-		if !slices.Contains(pi, id) {
-			t.Fatalf("pi models missing LiteLLM gateway catalog id %q", id)
-		}
 	}
 }
 

@@ -10,7 +10,7 @@ flowchart TD
 
     ENTRY[",ralph → scripts/ralph.py<br/>(repo root resolved via chezmoi source-path)"]:::cli
 
-    ENTRY --> CMDS["subcommands<br/>go · runner · resume · replan · answer<br/>supervisor · status · runs · role · items<br/>preview · dashboard · tail · attach · verify<br/>control · kill · rm · statusline · doctor"]:::cli
+    ENTRY --> CMDS["subcommands<br/>go · runner · resume · replan · answer<br/>supervisor · status · runs · role · items<br/>preview · dashboard · tail · attach · verify<br/>control · kill · rm · statusline · doctor<br/>(--live-models: generated curated ↔ complete Cursor catalog; failure=Unknown)"]:::cli
 
     subgraph WF["Workflow registry (WORKFLOWS dict)"]
         FEAT["feature: exec→review→rereview (default)"]:::flow
@@ -37,9 +37,19 @@ flowchart TD
     TUI --> CONTROLCMD["control --action takeover|dirty|resume|auto"]:::cli
     CONTROLCMD --> MAN
 
+    subgraph MODELS["Generated model mirror"]
+        POLICY["ai_models.yaml + harness configs + roles.json<br/>remain canonical policy"]:::data
+        CAP["model_capabilities.v1.json<br/>exact installed identity + static capability evidence"]:::data
+        MIRROR[("model-mirrors.v1.json<br/>available · curated · recommended · provenance")]:::data
+        MODELGEN["model_mirrors.py<br/>deterministic static generation<br/>fail-closed Cursor policy + role default ∈ curated; live probe opt-in only"]:::flow
+    end
+    POLICY & CAP --> MODELGEN --> MIRROR
+    MIRROR -->|"curated preflight + doctor drift"| ENTRY
+    MIRROR -->|"generated recommended picker + role fallbacks"| TUI
+
     subgraph KB["Memory / learning"]
         REFLECT["reflector role → capsules"]:::flow
-        AIKB["scripts/ai_kb.py + agent_memory.py + embed.py + vec_runner.py<br/>kind: fact/gotcha/principle, top_k recall<br/>,ai-kb harvest: session-bound worklog→candidate remember lines (read-only)"]:::data
+        AIKB["~/lib/,ai-kb/ deployed from scripts/{ai_kb,agent_memory,embed,embed_runner,embed_client,embed_worker,vec_runner}.py<br/>kind: fact/gotcha/principle, top_k recall<br/>Ralph/default/manual/remember/reembed use one-shot embed_runner.py;<br/>resident embed_client+worker are only for interactive per-turn recall<br/>,ai-kb harvest: session-bound worklog→candidate remember lines (read-only)"]:::data
     end
     OUT --> REFLECT --> AIKB
     AIKB -.memory_top_k recall.-> WF

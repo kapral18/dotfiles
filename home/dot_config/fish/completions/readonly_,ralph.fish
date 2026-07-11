@@ -56,3 +56,4 @@ complete -c ',ralph' -n '__fish_seen_subcommand_from control' -l action -x -a "$
 complete -c ',ralph' -n '__fish_seen_subcommand_from kill' -l all -d 'Kill every non-terminal run'
 complete -c ',ralph' -n '__fish_seen_subcommand_from rm' -l all-completed -d 'Remove all completed runs'
 complete -c ',ralph' -n '__fish_seen_subcommand_from rm' -l keep-learnings -d 'Keep learnings'
+complete -c ',ralph' -n '__fish_seen_subcommand_from doctor' -l live-models -d 'Compare curated Cursor models with the authenticated live catalog'

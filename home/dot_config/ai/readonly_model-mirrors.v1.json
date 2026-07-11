@@ -1,0 +1,1309 @@
+{
+  "adapters": {
+    "launcher": {
+      "allowed_sets": [
+        "available",
+        "curated",
+        "recommended"
+      ],
+      "default_set": "recommended",
+      "output": "consumer_view.v1"
+    },
+    "ralph": {
+      "harnesses": {
+        "cursor": "curated",
+        "pi": "curated"
+      }
+    },
+    "ralph-tui": {
+      "harnesses": {
+        "cursor": "recommended",
+        "pi": "recommended"
+      }
+    }
+  },
+  "defaults": {
+    "harnesses": {
+      "claude": {
+        "personal": "opus[1m]",
+        "work": "fable"
+      },
+      "codex": {
+        "personal": "gpt-5.5",
+        "work": "gpt-5.5"
+      },
+      "copilot": {
+        "default": "auto"
+      },
+      "cursor": {},
+      "gemini": {
+        "default": "gemini-3.1-pro-preview"
+      },
+      "opencode": {
+        "personal": {
+          "agent": "main",
+          "model": "openrouter/qwen/qwen3.6-plus",
+          "small_model": "openrouter/z-ai/glm-5.1"
+        },
+        "work": {
+          "agent": "main",
+          "model": "litellm/google-vertex/gemini-flash-latest",
+          "small_model": "openrouter/z-ai/glm-5.1"
+        }
+      },
+      "pi": {
+        "personal": {
+          "model": "anthropic/claude-opus-4.8",
+          "provider": "openrouter",
+          "selector": "openrouter/anthropic/claude-opus-4.8",
+          "thinking": "xhigh"
+        },
+        "work": {
+          "model": "anthropic/claude-opus-4.8",
+          "provider": "openrouter",
+          "selector": "openrouter/anthropic/claude-opus-4.8",
+          "thinking": "xhigh"
+        }
+      }
+    },
+    "ralph": {
+      "executor": {
+        "family": "unknown",
+        "harness": "cursor",
+        "model": "composer-2.5"
+      },
+      "planner": {
+        "family": "claude",
+        "harness": "cursor",
+        "model": "claude-opus-4-8-thinking-xhigh"
+      },
+      "re_reviewer": {
+        "family": "gpt",
+        "harness": "cursor",
+        "model": "gpt-5.5-extra-high"
+      },
+      "reflector": {
+        "family": "claude",
+        "harness": "cursor",
+        "model": "claude-opus-4-8-thinking-xhigh"
+      },
+      "reviewer": {
+        "family": "claude",
+        "harness": "cursor",
+        "model": "claude-opus-4-8-thinking-xhigh"
+      }
+    }
+  },
+  "generated": {
+    "deterministic": true,
+    "generator": "scripts/model_mirrors.py",
+    "network": "forbidden",
+    "sources": [
+      "home/.chezmoidata/ai_models.yaml",
+      "scripts/model_capabilities.v1.json",
+      "home harness configs",
+      "home/dot_config/ralph/roles.json"
+    ]
+  },
+  "harnesses": {
+    "claude": {
+      "available": {
+        "complete": false,
+        "models": [
+          "fable",
+          "opus",
+          "sonnet",
+          "claude-fable-5"
+        ],
+        "provenance": [
+          {
+            "binary": "claude",
+            "kind": "installed-harness",
+            "observed_at": "2026-07-11",
+            "source": "claude --help model aliases and full-name example",
+            "version": "2.1.206"
+          },
+          {
+            "kind": "config",
+            "source": "home/dot_claude/settings.work.json"
+          },
+          {
+            "kind": "config",
+            "source": "home/dot_claude/settings.personal.json"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      },
+      "curated": {
+        "complete": true,
+        "models": [
+          "fable",
+          "opus[1m]"
+        ],
+        "provenance": [
+          {
+            "kind": "config",
+            "source": "home/dot_claude/settings.work.json"
+          },
+          {
+            "kind": "config",
+            "source": "home/dot_claude/settings.personal.json"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      },
+      "identity": {
+        "binary": "claude",
+        "package": "@anthropic-ai/claude-code",
+        "version": "2.1.206"
+      },
+      "live_probe": {
+        "reason": "installed CLI exposes model selection but no complete catalog command",
+        "supported": false
+      },
+      "recommended": {
+        "complete": true,
+        "models": [
+          "fable",
+          "opus[1m]"
+        ],
+        "provenance": [
+          {
+            "kind": "config",
+            "source": "home/dot_claude/settings.work.json"
+          },
+          {
+            "kind": "config",
+            "source": "home/dot_claude/settings.personal.json"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      }
+    },
+    "codex": {
+      "available": {
+        "complete": null,
+        "models": [],
+        "provenance": [
+          {
+            "binary": "codex",
+            "kind": "installed-harness",
+            "observed_at": "2026-07-11",
+            "source": "Homebrew cask codex 0.144.1",
+            "version": "codex-cli 0.144.1"
+          },
+          {
+            "kind": "config",
+            "source": "home/dot_codex/private_config.work.toml"
+          },
+          {
+            "kind": "config",
+            "source": "home/dot_codex/private_config.personal.toml"
+          }
+        ],
+        "reason": "installed CLI exposes --model but no offline complete catalog",
+        "status": "unknown"
+      },
+      "curated": {
+        "complete": true,
+        "models": [
+          "gpt-5.5"
+        ],
+        "provenance": [
+          {
+            "kind": "config",
+            "source": "home/dot_codex/private_config.work.toml"
+          },
+          {
+            "kind": "config",
+            "source": "home/dot_codex/private_config.personal.toml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      },
+      "identity": {
+        "binary": "codex",
+        "package": "Homebrew cask codex 0.144.1",
+        "version": "codex-cli 0.144.1"
+      },
+      "live_probe": {
+        "reason": "no locally verified complete catalog command",
+        "supported": false
+      },
+      "recommended": {
+        "complete": true,
+        "models": [
+          "gpt-5.5"
+        ],
+        "provenance": [
+          {
+            "kind": "config",
+            "source": "home/dot_codex/private_config.work.toml"
+          },
+          {
+            "kind": "config",
+            "source": "home/dot_codex/private_config.personal.toml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      }
+    },
+    "copilot": {
+      "available": {
+        "complete": null,
+        "models": [],
+        "provenance": [
+          {
+            "binary": "copilot",
+            "kind": "installed-harness",
+            "observed_at": "2026-07-11",
+            "source": "Homebrew cask copilot-cli 1.0.68",
+            "version": "GitHub Copilot CLI 1.0.70"
+          },
+          {
+            "kind": "registry",
+            "section": "agent_review_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": "installed CLI exposes --model and BYOK providers but no complete catalog command",
+        "status": "unknown"
+      },
+      "curated": {
+        "complete": true,
+        "models": [
+          "auto",
+          "gpt-5.5",
+          "claude-opus-4.8"
+        ],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "agent_review_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      },
+      "identity": {
+        "binary": "copilot",
+        "package": "Homebrew cask copilot-cli 1.0.68",
+        "version": "GitHub Copilot CLI 1.0.70"
+      },
+      "live_probe": {
+        "reason": "no locally verified complete catalog command",
+        "supported": false
+      },
+      "recommended": {
+        "complete": true,
+        "models": [
+          "auto",
+          "gpt-5.5",
+          "claude-opus-4.8"
+        ],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "agent_review_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      }
+    },
+    "cursor": {
+      "available": {
+        "complete": null,
+        "models": [],
+        "provenance": [
+          {
+            "binary": "cursor-agent",
+            "kind": "installed-harness",
+            "observed_at": "2026-07-11",
+            "source": "Cursor Agent",
+            "version": "2026.07.09-a3815c0"
+          },
+          {
+            "kind": "registry",
+            "section": "cursor_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": "account catalog requires authentication unavailable in isolated static generation",
+        "status": "unknown"
+      },
+      "curated": {
+        "complete": true,
+        "models": [
+          "claude-4-sonnet",
+          "claude-4-sonnet-thinking",
+          "claude-4.5-opus-high",
+          "claude-4.5-opus-high-thinking",
+          "claude-4.5-sonnet",
+          "claude-4.5-sonnet-thinking",
+          "claude-4.6-opus-high",
+          "claude-4.6-opus-high-thinking",
+          "claude-4.6-opus-max",
+          "claude-4.6-opus-max-thinking",
+          "claude-4.6-sonnet-medium",
+          "claude-4.6-sonnet-medium-thinking",
+          "claude-opus-4-7-high",
+          "claude-opus-4-7-high-fast",
+          "claude-opus-4-7-low",
+          "claude-opus-4-7-low-fast",
+          "claude-opus-4-7-max",
+          "claude-opus-4-7-max-fast",
+          "claude-opus-4-7-medium",
+          "claude-opus-4-7-medium-fast",
+          "claude-opus-4-7-thinking-high",
+          "claude-opus-4-7-thinking-high-fast",
+          "claude-opus-4-7-thinking-low",
+          "claude-opus-4-7-thinking-low-fast",
+          "claude-opus-4-7-thinking-max",
+          "claude-opus-4-7-thinking-max-fast",
+          "claude-opus-4-7-thinking-medium",
+          "claude-opus-4-7-thinking-medium-fast",
+          "claude-opus-4-7-thinking-xhigh",
+          "claude-opus-4-7-thinking-xhigh-fast",
+          "claude-opus-4-7-xhigh",
+          "claude-opus-4-7-xhigh-fast",
+          "claude-opus-4-8-high",
+          "claude-opus-4-8-high-fast",
+          "claude-opus-4-8-low",
+          "claude-opus-4-8-low-fast",
+          "claude-opus-4-8-max",
+          "claude-opus-4-8-max-fast",
+          "claude-opus-4-8-medium",
+          "claude-opus-4-8-medium-fast",
+          "claude-opus-4-8-thinking-high",
+          "claude-opus-4-8-thinking-high-fast",
+          "claude-opus-4-8-thinking-low",
+          "claude-opus-4-8-thinking-low-fast",
+          "claude-opus-4-8-thinking-max",
+          "claude-opus-4-8-thinking-max-fast",
+          "claude-opus-4-8-thinking-medium",
+          "claude-opus-4-8-thinking-medium-fast",
+          "claude-opus-4-8-thinking-xhigh",
+          "claude-opus-4-8-thinking-xhigh-fast",
+          "claude-opus-4-8-xhigh",
+          "claude-opus-4-8-xhigh-fast",
+          "composer-2.5",
+          "composer-2.5-fast",
+          "gemini-3.1-pro",
+          "gemini-3.5-flash",
+          "gpt-5-mini",
+          "gpt-5.1",
+          "gpt-5.1-codex-max-high",
+          "gpt-5.1-codex-max-high-fast",
+          "gpt-5.1-codex-max-low",
+          "gpt-5.1-codex-max-low-fast",
+          "gpt-5.1-codex-max-medium",
+          "gpt-5.1-codex-max-medium-fast",
+          "gpt-5.1-codex-max-xhigh",
+          "gpt-5.1-codex-max-xhigh-fast",
+          "gpt-5.1-codex-mini",
+          "gpt-5.1-codex-mini-high",
+          "gpt-5.1-codex-mini-low",
+          "gpt-5.1-high",
+          "gpt-5.1-low",
+          "gpt-5.2",
+          "gpt-5.2-codex",
+          "gpt-5.2-codex-fast",
+          "gpt-5.2-codex-high",
+          "gpt-5.2-codex-high-fast",
+          "gpt-5.2-codex-low",
+          "gpt-5.2-codex-low-fast",
+          "gpt-5.2-codex-xhigh",
+          "gpt-5.2-codex-xhigh-fast",
+          "gpt-5.2-fast",
+          "gpt-5.2-high",
+          "gpt-5.2-high-fast",
+          "gpt-5.2-low",
+          "gpt-5.2-low-fast",
+          "gpt-5.2-xhigh",
+          "gpt-5.2-xhigh-fast",
+          "gpt-5.3-codex",
+          "gpt-5.3-codex-fast",
+          "gpt-5.3-codex-high",
+          "gpt-5.3-codex-high-fast",
+          "gpt-5.3-codex-low",
+          "gpt-5.3-codex-low-fast",
+          "gpt-5.3-codex-xhigh",
+          "gpt-5.3-codex-xhigh-fast",
+          "gpt-5.4-high",
+          "gpt-5.4-high-fast",
+          "gpt-5.4-low",
+          "gpt-5.4-medium",
+          "gpt-5.4-medium-fast",
+          "gpt-5.4-mini-high",
+          "gpt-5.4-mini-low",
+          "gpt-5.4-mini-medium",
+          "gpt-5.4-mini-none",
+          "gpt-5.4-mini-xhigh",
+          "gpt-5.4-nano-high",
+          "gpt-5.4-nano-low",
+          "gpt-5.4-nano-medium",
+          "gpt-5.4-nano-none",
+          "gpt-5.4-nano-xhigh",
+          "gpt-5.4-xhigh",
+          "gpt-5.4-xhigh-fast",
+          "gpt-5.5-extra-high",
+          "gpt-5.5-extra-high-fast",
+          "gpt-5.5-high",
+          "gpt-5.5-high-fast",
+          "gpt-5.5-low",
+          "gpt-5.5-low-fast",
+          "gpt-5.5-medium",
+          "gpt-5.5-medium-fast",
+          "gpt-5.5-none",
+          "gpt-5.5-none-fast"
+        ],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "cursor_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      },
+      "identity": {
+        "binary": "cursor-agent",
+        "package": "Cursor Agent",
+        "version": "2026.07.09-a3815c0"
+      },
+      "live_probe": {
+        "adapter": "cursor-list-models",
+        "command": [
+          "cursor-agent",
+          "--list-models"
+        ],
+        "max_output_bytes": 4194304,
+        "network": "explicit",
+        "supported": true,
+        "timeout_seconds": 20
+      },
+      "recommended": {
+        "complete": true,
+        "models": [
+          "composer-2.5",
+          "composer-2.5-fast",
+          "claude-opus-4-8-xhigh",
+          "claude-opus-4-8-xhigh-fast",
+          "claude-opus-4-8-thinking-xhigh",
+          "claude-opus-4-8-thinking-xhigh-fast",
+          "gpt-5.5-high",
+          "gpt-5.5-high-fast",
+          "gpt-5.5-none",
+          "gpt-5.5-none-fast",
+          "gpt-5.5-low",
+          "gpt-5.5-low-fast",
+          "gpt-5.5-medium",
+          "gpt-5.5-medium-fast",
+          "gpt-5.5-extra-high",
+          "gpt-5.5-extra-high-fast",
+          "gpt-5.3-codex-low",
+          "gpt-5.3-codex-low-fast",
+          "gpt-5.3-codex",
+          "gpt-5.3-codex-fast",
+          "gpt-5.3-codex-high",
+          "gpt-5.3-codex-high-fast",
+          "gpt-5.3-codex-xhigh",
+          "gpt-5.3-codex-xhigh-fast",
+          "gemini-3.1-pro",
+          "gemini-3.5-flash"
+        ],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "cursor_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      }
+    },
+    "gemini": {
+      "available": {
+        "complete": true,
+        "models": [
+          "auto",
+          "pro",
+          "flash",
+          "flash-lite",
+          "auto-gemini-3",
+          "auto-gemini-2.5",
+          "gemini-3.1-flash-lite",
+          "gemini-3.1-pro-preview",
+          "gemini-3.1-pro-preview-customtools",
+          "gemini-3-pro-preview",
+          "gemini-3-flash-preview",
+          "gemini-3.5-flash",
+          "gemini-2.5-pro",
+          "gemini-2.5-flash",
+          "gemini-2.5-flash-lite",
+          "gemma-4-31b-it",
+          "gemma-4-26b-a4b-it"
+        ],
+        "provenance": [
+          {
+            "binary": "gemini",
+            "kind": "installed-harness",
+            "observed_at": "2026-07-11",
+            "source": "@google/gemini-cli bundle DEFAULT_MODEL_CONFIGS.modelDefinitions",
+            "version": "0.50.0"
+          },
+          {
+            "kind": "config",
+            "source": "home/dot_gemini/settings.json"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      },
+      "curated": {
+        "complete": true,
+        "models": [
+          "gemini-3.1-pro-preview"
+        ],
+        "provenance": [
+          {
+            "kind": "config",
+            "source": "home/dot_gemini/settings.json"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      },
+      "identity": {
+        "binary": "gemini",
+        "package": "@google/gemini-cli",
+        "version": "0.50.0"
+      },
+      "live_probe": {
+        "reason": "installed CLI exposes --model but no complete account catalog command",
+        "supported": false
+      },
+      "recommended": {
+        "complete": true,
+        "models": [
+          "gemini-3.1-pro-preview"
+        ],
+        "provenance": [
+          {
+            "kind": "config",
+            "source": "home/dot_gemini/settings.json"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      }
+    },
+    "opencode": {
+      "available": {
+        "complete": false,
+        "models": [
+          "openrouter/z-ai/glm-5.1",
+          "litellm/google-vertex/gemini-flash-latest",
+          "llama-cpp/local",
+          "llama-cpp/local-max",
+          "openrouter/qwen/qwen3.6-plus",
+          "cloudflare-workers-ai/@cf/zai-org/glm-5.2",
+          "cloudflare-workers-ai/@cf/moonshotai/kimi-k2.7-code",
+          "cloudflare-workers-ai/minimax/m3",
+          "litellm/llm-gateway/gemini-3.1-pro-preview",
+          "litellm/llm-gateway/gemini-3.1-pro-preview-customtools",
+          "litellm-anthropic/llm-gateway/claude-haiku-4-5",
+          "litellm/llm-gateway/Kimi-K2.6",
+          "litellm/llm-gateway/gpt-5.6-luna",
+          "litellm/llm-gateway/gpt-5.6-terra",
+          "litellm/llm-gateway/gpt-5.6-sol",
+          "litellm/llm-gateway/gpt-5.5",
+          "litellm-anthropic/llm-gateway/claude-opus-4-8",
+          "litellm-anthropic/llm-gateway/claude-sonnet-5",
+          "litellm-anthropic/llm-gateway/claude-fable-5",
+          "litellm-anthropic/llm-gateway/claude-opus-4-7",
+          "litellm/llm-gateway/gemini-3.5-flash"
+        ],
+        "provenance": [
+          {
+            "binary": "opencode",
+            "kind": "installed-harness",
+            "observed_at": "2026-07-11",
+            "source": "opencode-ai",
+            "version": "1.17.15"
+          },
+          {
+            "kind": "config",
+            "source": "home/dot_config/opencode/readonly_opencode.work.jsonc"
+          },
+          {
+            "kind": "config",
+            "source": "home/dot_config/opencode/readonly_opencode.personal.jsonc"
+          },
+          {
+            "kind": "registry",
+            "section": "litellm_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          },
+          {
+            "kind": "registry",
+            "section": "azure_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      },
+      "curated": {
+        "complete": true,
+        "models": [
+          "openrouter/z-ai/glm-5.1",
+          "litellm/google-vertex/gemini-flash-latest",
+          "llama-cpp/local",
+          "llama-cpp/local-max",
+          "openrouter/qwen/qwen3.6-plus",
+          "cloudflare-workers-ai/@cf/zai-org/glm-5.2",
+          "cloudflare-workers-ai/@cf/moonshotai/kimi-k2.7-code",
+          "cloudflare-workers-ai/minimax/m3",
+          "litellm/llm-gateway/gemini-3.1-pro-preview",
+          "litellm/llm-gateway/gemini-3.1-pro-preview-customtools",
+          "litellm-anthropic/llm-gateway/claude-haiku-4-5",
+          "litellm/llm-gateway/Kimi-K2.6",
+          "litellm/llm-gateway/gpt-5.6-luna",
+          "litellm/llm-gateway/gpt-5.6-terra",
+          "litellm/llm-gateway/gpt-5.6-sol",
+          "litellm/llm-gateway/gpt-5.5",
+          "litellm-anthropic/llm-gateway/claude-opus-4-8",
+          "litellm-anthropic/llm-gateway/claude-sonnet-5",
+          "litellm-anthropic/llm-gateway/claude-fable-5",
+          "litellm-anthropic/llm-gateway/claude-opus-4-7",
+          "litellm/llm-gateway/gemini-3.5-flash"
+        ],
+        "provenance": [
+          {
+            "kind": "config",
+            "source": "home/dot_config/opencode/readonly_opencode.work.jsonc"
+          },
+          {
+            "kind": "config",
+            "source": "home/dot_config/opencode/readonly_opencode.personal.jsonc"
+          },
+          {
+            "kind": "registry",
+            "section": "litellm_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          },
+          {
+            "kind": "registry",
+            "section": "azure_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      },
+      "identity": {
+        "binary": "opencode",
+        "package": "opencode-ai",
+        "version": "1.17.15"
+      },
+      "live_probe": {
+        "adapter": "opencode-models",
+        "command": [
+          "opencode",
+          "models"
+        ],
+        "max_output_bytes": 4194304,
+        "network": "explicit",
+        "supported": true,
+        "timeout_seconds": 20
+      },
+      "recommended": {
+        "complete": true,
+        "models": [
+          "openrouter/z-ai/glm-5.1",
+          "litellm/google-vertex/gemini-flash-latest",
+          "openrouter/qwen/qwen3.6-plus"
+        ],
+        "provenance": [
+          {
+            "kind": "config",
+            "source": "home/dot_config/opencode/readonly_opencode.work.jsonc"
+          },
+          {
+            "kind": "config",
+            "source": "home/dot_config/opencode/readonly_opencode.personal.jsonc"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      }
+    },
+    "pi": {
+      "available": {
+        "complete": false,
+        "models": [
+          "llm-gateway/gemini-3.1-pro-preview",
+          "llm-gateway/gemini-3.1-pro-preview-customtools",
+          "llm-gateway/claude-haiku-4-5",
+          "llm-gateway/Kimi-K2.6",
+          "llm-gateway/gpt-5.6-luna",
+          "llm-gateway/gpt-5.6-terra",
+          "llm-gateway/gpt-5.6-sol",
+          "llm-gateway/gpt-5.5",
+          "llm-gateway/claude-opus-4-8",
+          "llm-gateway/claude-sonnet-5",
+          "llm-gateway/claude-fable-5",
+          "llm-gateway/claude-opus-4-7",
+          "llm-gateway/gemini-3.5-flash",
+          "openrouter/anthropic/claude-opus-4.7-thinking",
+          "openrouter/anthropic/claude-opus-4.7",
+          "openrouter/openai/gpt-5.5",
+          "openrouter/openai/gpt-5.3-codex",
+          "openrouter/google/gemini-3.1-pro-preview-customtools",
+          "openrouter/google/gemini-3.5-flash"
+        ],
+        "provenance": [
+          {
+            "binary": "pi",
+            "kind": "installed-harness",
+            "observed_at": "2026-07-11",
+            "source": "@earendil-works/pi-coding-agent",
+            "version": "0.80.6"
+          },
+          {
+            "kind": "registry",
+            "section": "litellm_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          },
+          {
+            "kind": "registry",
+            "section": "pi_extra_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      },
+      "curated": {
+        "complete": true,
+        "models": [
+          "llm-gateway/gemini-3.1-pro-preview",
+          "llm-gateway/gemini-3.1-pro-preview-customtools",
+          "llm-gateway/claude-haiku-4-5",
+          "llm-gateway/Kimi-K2.6",
+          "llm-gateway/gpt-5.6-luna",
+          "llm-gateway/gpt-5.6-terra",
+          "llm-gateway/gpt-5.6-sol",
+          "llm-gateway/gpt-5.5",
+          "llm-gateway/claude-opus-4-8",
+          "llm-gateway/claude-sonnet-5",
+          "llm-gateway/claude-fable-5",
+          "llm-gateway/claude-opus-4-7",
+          "llm-gateway/gemini-3.5-flash",
+          "openrouter/anthropic/claude-opus-4.7-thinking",
+          "openrouter/anthropic/claude-opus-4.7",
+          "openrouter/openai/gpt-5.5",
+          "openrouter/openai/gpt-5.3-codex",
+          "openrouter/google/gemini-3.1-pro-preview-customtools",
+          "openrouter/google/gemini-3.5-flash"
+        ],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "litellm_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          },
+          {
+            "kind": "registry",
+            "section": "pi_extra_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      },
+      "identity": {
+        "binary": "pi",
+        "package": "@earendil-works/pi-coding-agent",
+        "version": "0.80.6"
+      },
+      "live_probe": {
+        "adapter": "pi-list-models",
+        "command": [
+          "pi",
+          "--offline",
+          "--list-models"
+        ],
+        "max_output_bytes": 4194304,
+        "network": "local-only",
+        "supported": true,
+        "timeout_seconds": 20
+      },
+      "recommended": {
+        "complete": true,
+        "models": [
+          "llm-gateway/gemini-3.1-pro-preview",
+          "llm-gateway/gemini-3.1-pro-preview-customtools",
+          "llm-gateway/claude-haiku-4-5",
+          "llm-gateway/Kimi-K2.6",
+          "llm-gateway/gpt-5.6-luna",
+          "llm-gateway/gpt-5.6-terra",
+          "llm-gateway/gpt-5.6-sol",
+          "llm-gateway/gpt-5.5",
+          "llm-gateway/claude-opus-4-8",
+          "llm-gateway/claude-sonnet-5",
+          "llm-gateway/claude-fable-5",
+          "llm-gateway/claude-opus-4-7",
+          "llm-gateway/gemini-3.5-flash",
+          "openrouter/anthropic/claude-opus-4.7-thinking",
+          "openrouter/anthropic/claude-opus-4.7",
+          "openrouter/openai/gpt-5.5",
+          "openrouter/openai/gpt-5.3-codex",
+          "openrouter/google/gemini-3.1-pro-preview-customtools",
+          "openrouter/google/gemini-3.5-flash"
+        ],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "litellm_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          },
+          {
+            "kind": "registry",
+            "section": "pi_extra_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      }
+    }
+  },
+  "kind": "ai.model-mirrors",
+  "providers": {
+    "azure-foundry": {
+      "available": {
+        "complete": null,
+        "models": [],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "azure_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": "live catalog requires an explicit provider probe",
+        "status": "unknown"
+      },
+      "curated": {
+        "complete": true,
+        "models": [],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "azure_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      },
+      "live_probe": {
+        "reason": "no locally verified complete catalog adapter",
+        "supported": false
+      },
+      "recommended": {
+        "complete": true,
+        "models": [],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "azure_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      }
+    },
+    "cloudflare-openai": {
+      "available": {
+        "complete": null,
+        "models": [],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "provider_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": "live catalog requires an explicit provider probe",
+        "status": "unknown"
+      },
+      "curated": {
+        "complete": true,
+        "models": [
+          "gpt-5.5",
+          "gpt-5.4",
+          "gpt-5.3-codex",
+          "gpt-5.2",
+          "gpt-4o",
+          "o4-mini"
+        ],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "provider_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      },
+      "live_probe": {
+        "adapter": "cloudflare-openai-models",
+        "max_response_bytes": 8388608,
+        "network": "explicit",
+        "supported": true,
+        "timeout_seconds": 10
+      },
+      "recommended": {
+        "complete": true,
+        "models": [
+          "gpt-5.5",
+          "gpt-5.4",
+          "gpt-5.3-codex",
+          "gpt-5.2",
+          "gpt-4o",
+          "o4-mini"
+        ],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "provider_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      }
+    },
+    "cloudflare-workers-ai": {
+      "available": {
+        "complete": null,
+        "models": [],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "provider_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": "live catalog requires an explicit provider probe",
+        "status": "unknown"
+      },
+      "curated": {
+        "complete": true,
+        "models": [
+          "@cf/zai-org/glm-5.2",
+          "@cf/moonshotai/kimi-k2.7-code",
+          "@cf/moonshotai/kimi-k2.6",
+          "minimax/m3"
+        ],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "provider_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      },
+      "live_probe": {
+        "adapter": "cloudflare-workers-models",
+        "max_response_bytes": 8388608,
+        "network": "explicit",
+        "supported": true,
+        "timeout_seconds": 10
+      },
+      "recommended": {
+        "complete": true,
+        "models": [
+          "@cf/zai-org/glm-5.2",
+          "@cf/moonshotai/kimi-k2.7-code",
+          "@cf/moonshotai/kimi-k2.6",
+          "minimax/m3"
+        ],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "provider_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      }
+    },
+    "litellm": {
+      "available": {
+        "complete": null,
+        "models": [],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "litellm_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": "live catalog requires an explicit provider probe",
+        "status": "unknown"
+      },
+      "curated": {
+        "complete": true,
+        "models": [
+          "llm-gateway/gemini-3.1-pro-preview",
+          "llm-gateway/gemini-3.1-pro-preview-customtools",
+          "llm-gateway/claude-haiku-4-5",
+          "llm-gateway/Kimi-K2.6",
+          "llm-gateway/gpt-5.6-luna",
+          "llm-gateway/gpt-5.6-terra",
+          "llm-gateway/gpt-5.6-sol",
+          "llm-gateway/gpt-5.5",
+          "llm-gateway/claude-opus-4-8",
+          "llm-gateway/claude-sonnet-5",
+          "llm-gateway/claude-fable-5",
+          "llm-gateway/claude-opus-4-7",
+          "llm-gateway/gemini-3.5-flash"
+        ],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "litellm_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      },
+      "live_probe": {
+        "adapter": "litellm-models",
+        "max_response_bytes": 8388608,
+        "network": "explicit",
+        "supported": true,
+        "timeout_seconds": 10
+      },
+      "recommended": {
+        "complete": true,
+        "models": [
+          "llm-gateway/gemini-3.1-pro-preview",
+          "llm-gateway/gemini-3.1-pro-preview-customtools",
+          "llm-gateway/claude-haiku-4-5",
+          "llm-gateway/Kimi-K2.6",
+          "llm-gateway/gpt-5.6-luna",
+          "llm-gateway/gpt-5.6-terra",
+          "llm-gateway/gpt-5.6-sol",
+          "llm-gateway/gpt-5.5",
+          "llm-gateway/claude-opus-4-8",
+          "llm-gateway/claude-sonnet-5",
+          "llm-gateway/claude-fable-5",
+          "llm-gateway/claude-opus-4-7",
+          "llm-gateway/gemini-3.5-flash"
+        ],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "litellm_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      }
+    },
+    "litellm-anthropic": {
+      "available": {
+        "complete": null,
+        "models": [],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "litellm_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": "live catalog requires an explicit provider probe",
+        "status": "unknown"
+      },
+      "curated": {
+        "complete": true,
+        "models": [
+          "llm-gateway/claude-haiku-4-5",
+          "llm-gateway/claude-opus-4-8",
+          "llm-gateway/claude-sonnet-5",
+          "llm-gateway/claude-fable-5",
+          "llm-gateway/claude-opus-4-7"
+        ],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "litellm_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      },
+      "live_probe": {
+        "reason": "no locally verified complete catalog adapter",
+        "supported": false
+      },
+      "recommended": {
+        "complete": true,
+        "models": [
+          "llm-gateway/claude-haiku-4-5",
+          "llm-gateway/claude-opus-4-8",
+          "llm-gateway/claude-sonnet-5",
+          "llm-gateway/claude-fable-5",
+          "llm-gateway/claude-opus-4-7"
+        ],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "litellm_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      }
+    },
+    "llama-cpp": {
+      "available": {
+        "complete": false,
+        "models": [
+          "local",
+          "local-max"
+        ],
+        "provenance": [
+          {
+            "kind": "config",
+            "source": "home/dot_pi/agent/readonly_models.json"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      },
+      "curated": {
+        "complete": true,
+        "models": [
+          "local",
+          "local-max"
+        ],
+        "provenance": [
+          {
+            "kind": "config",
+            "source": "home/dot_pi/agent/readonly_models.json"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      },
+      "live_probe": {
+        "adapter": "llama-cpp-models",
+        "max_response_bytes": 8388608,
+        "network": "local-only",
+        "supported": true,
+        "timeout_seconds": 10
+      },
+      "recommended": {
+        "complete": true,
+        "models": [
+          "local",
+          "local-max"
+        ],
+        "provenance": [
+          {
+            "kind": "config",
+            "source": "home/dot_pi/agent/readonly_models.json"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      }
+    },
+    "openrouter": {
+      "available": {
+        "complete": null,
+        "models": [],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "provider_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": "live catalog requires an explicit provider probe",
+        "status": "unknown"
+      },
+      "curated": {
+        "complete": true,
+        "models": [
+          "z-ai/glm-5.2",
+          "qwen/qwen3.7-plus",
+          "moonshotai/kimi-k2.7-code",
+          "openai/gpt-5.5",
+          "anthropic/claude-opus-4.8"
+        ],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "provider_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      },
+      "live_probe": {
+        "adapter": "openrouter-models",
+        "max_response_bytes": 8388608,
+        "network": "explicit",
+        "supported": true,
+        "timeout_seconds": 10
+      },
+      "recommended": {
+        "complete": true,
+        "models": [
+          "z-ai/glm-5.2",
+          "qwen/qwen3.7-plus",
+          "moonshotai/kimi-k2.7-code",
+          "openai/gpt-5.5",
+          "anthropic/claude-opus-4.8"
+        ],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "provider_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      }
+    }
+  },
+  "schema_version": "1.0.0"
+}

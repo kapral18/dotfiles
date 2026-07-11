@@ -1,10 +1,10 @@
-"""Embedding service abstraction for Ralph's KB.
+"""Embedding service abstraction for Ralph's KB and interactive recall.
 
 Stdlib-only consumer surface. The orchestrator (`ralph.py`) and the
 knowledge base (`ai_kb.py`) talk to this module; this module talks to
-the isolated `embed_runner.py` via subprocess. The runner declares its
-own deps (fastembed) via PEP 723 inline-script metadata, so no ML
-package leaks into the orchestrator's import graph.
+the isolated `embed_runner.py` via subprocess by default. Per-turn recall sets
+`AI_EMBED_CONNECT_ONLY=1` and instead uses the already-warm resident worker
+through `embed_client.py`; this hot path never starts a process.
 
 Protocol with the runner is defined in `embed_runner.py`:
 
@@ -37,6 +37,7 @@ from pathlib import Path
 DEFAULT_MODEL = "BAAI/bge-small-en-v1.5"
 DEFAULT_DIM = 384  # used when a placeholder zero-vector is needed (no embedder available)
 DEFAULT_TIMEOUT_SECONDS = 120
+TRUE_VALUES = {"1", "true", "yes", "on"}
 
 
 def runner_path() -> Path:
@@ -47,6 +48,11 @@ def runner_path() -> Path:
 def uv_binary() -> str | None:
     """`uv` is required to drive the PEP 723 inline-script invocation."""
     return shutil.which("uv")
+
+
+def resident_connect_only() -> bool:
+    """Whether this process may only use an already-running resident worker."""
+    return os.environ.get("AI_EMBED_CONNECT_ONLY", "").strip().lower() in TRUE_VALUES
 
 
 @dataclass
@@ -92,6 +98,16 @@ class Embedder:
         self.model = model or os.environ.get("RALPH_EMBED_MODEL") or DEFAULT_MODEL
         self.runner = runner or runner_path()
         self.timeout = timeout
+        self._resident_spec = None
+        self._resident_spec_resolved = False
+
+    def _resident_runtime_spec(self):
+        if not self._resident_spec_resolved:
+            import embed_client
+
+            self._resident_spec = embed_client.discover_ready_spec(model=self.model)
+            self._resident_spec_resolved = True
+        return self._resident_spec
 
     def is_available(self) -> bool:
         """`uv` plus the runner script must both be present.
@@ -101,6 +117,11 @@ class Embedder:
         rely on `embed()` returning an empty list if the runner errors
         at runtime.
         """
+        if resident_connect_only():
+            try:
+                return self._resident_runtime_spec() is not None
+            except (ImportError, OSError, RuntimeError, ValueError):
+                return False
         return uv_binary() is not None and self.runner.is_file()
 
     def embed(self, texts: list[str]) -> list[list[float]]:
@@ -130,10 +151,24 @@ class Embedder:
         Useful for tests and tooling (e.g. `,ralph kb-doctor`) that
         want to surface configuration errors loudly.
         """
-        if not self.is_available():
-            raise EmbedderUnavailable(f"embedder not available: uv={uv_binary()!r} runner={self.runner!s}")
         if not texts:
             return EmbedResult(model=self.model, dim=0, vectors=[])
+        if resident_connect_only():
+            import embed_client
+
+            spec = self._resident_runtime_spec()
+            if spec is None:
+                raise EmbedderUnavailable("resident embedder unavailable")
+            payload = embed_client.embed(spec, texts, connect_only=True)
+            if payload.get("ok") is not True:
+                raise EmbedderUnavailable("resident embedder unavailable")
+            return EmbedResult(
+                model=str(payload["model"]),
+                dim=int(payload["dim"]),
+                vectors=[[float(value) for value in vector] for vector in payload["vectors"]],
+            )
+        if not self.is_available():
+            raise EmbedderUnavailable(f"embedder not available: uv={uv_binary()!r} runner={self.runner!s}")
         request = {"model": self.model, "texts": texts}
         cmd = [
             uv_binary() or "uv",

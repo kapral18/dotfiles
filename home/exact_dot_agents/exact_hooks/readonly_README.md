@@ -3,7 +3,7 @@
 Shared lifecycle hooks for terminal AI agents.
 
 Cursor CLI is the primary runtime. Claude Code, Codex, Gemini, OpenCode, and Copilot reuse compatible shared scripts.
-Those scripts cover session context, per-turn recall where supported, and worklog recording.
+Those scripts cover session context, resident-embedder warm-up and per-turn recall where supported, and worklog recording.
 Each adapter passes its native session ID so topic selection, worklogs, and recall dedupe use the same binding.
 PR review anchor verification is instruction-owned by the review/GitHub skills, not enforced by a shell hook.
 Pi does not use this `hooks.json`-style lifecycle; it has its own TypeScript extension API.
@@ -19,6 +19,8 @@ Runtime state is kept outside chezmoi and outside worktrees:
 /tmp/specs/<workspace-path-without-leading-slash>/<topic>.txt
 /tmp/specs/<workspace-path-without-leading-slash>/<topic>.worklog.jsonl
 /tmp/specs/<workspace-path-without-leading-slash>/.recall-seen-<session-key>.json
+/tmp/specs/<workspace-path-without-leading-slash>/.worklog-queue-v1/<session-key>/
+/tmp/specs/<workspace-path-without-leading-slash>/.worklog-locks-v1/
 ```
 
 Session-scoped topic bindings live in `.session-topic-<session-id>.txt`.
@@ -38,16 +40,53 @@ For a session-bound named topic with a non-empty `<topic>.txt` spec, `session_co
 A session-bound named topic is neither `current` nor a `session-*` fallback.
 The hook runs `,ai-kb search` with the spec text as the query (`bm25` lane, no embedder, bounded by the hook timeout).
 It surfaces up to three capsules that are local to this workspace or scoped `domain`/`universal`, so durable memory seeds the session automatically.
-Unbound, ad-hoc/`session-*`, and review topics get no warm-start. This is the only automatic KB retrieval.
+Unbound, ad-hoc/`session-*`, and review topics get no capsule warm-start.
+This is the only automatic session-start capsule retrieval; supported runtimes also perform per-turn recall.
 Cursor cannot inject context per-turn (`beforeSubmitPrompt` carries no context-injection output), so mid-task relevance comes from the agent's own `,ai-kb search` calls against its actual task.
 The hook reads the KB but never writes it; persistence stays agent-driven.
 Warm-start and per-turn recall persist injected capsule IDs in `.recall-seen-<session-key>.json`.
 The canonical session key follows `conversation_id`, then `session_id`, then `generation_id`;
 Pi persists the same state across extension reloads and session resumes.
 
+Resident FastEmbed warm-up is a separate, explicit lifecycle for automatic per-turn consumers:
+
+- Claude and Gemini set `AI_EMBED_WARM=1` on their session-start command.
+- OpenCode and Copilot pass `warm_embedder: true` in their session-start payload.
+- Pi calls `~/lib/,ai-kb/embed_client.py ensure` from its TypeScript `session_start` handler.
+- Cursor and Codex do not warm the resident because neither has per-turn retrieval wiring.
+
+`AI_AGENT_DEPTH` applies one recall contract to Claude, Gemini, OpenCode, Copilot, and Pi:
+
+| Depth      | Startup BM25 | Resident warm-up | Per-turn fetch / inject | Prompt / body caps | Timeout |
+| ---------- | ------------ | ---------------- | ----------------------- | ------------------ | ------- |
+| `fast`     | unchanged    | skipped          | disabled                | n/a                | n/a     |
+| `balanced` | unchanged    | requested        | 6 / 3                   | 600 / 240 chars    | 6s      |
+| `deep`     | unchanged    | requested        | 12 / 5                  | 1200 / 360 chars   | 9s      |
+
+Unset, empty, or invalid values resolve to `balanced`, which is the prior behavior.
+Every enabled profile keeps the existing `hybrid` mode, `0.55` top-cosine gate, `0.85` tail floor, scope gate, session dedupe, stdin-only query transport, and connect-only resident contract.
+
+Requested warm-up is bounded and fail-open.
+Shared `perturn_recall.py` and Pi's hybrid query path set `AI_EMBED_CONNECT_ONLY=1`;
+the current-turn hot path never spawns, restarts, evicts, or replaces a worker.
+A missing or invalid worker yields no recall block and does not interrupt the request.
+Default/manual `,ai-kb`, Ralph, `remember`, and `reembed` remain on the one-shot `embed_runner.py` path.
+
+The deployed `~/lib/,ai-kb/embed_client.py` selects a generation-specific Unix socket from protocol version, complete worker source, model, and expected dimension.
+Warm-up resolves the configured model dimension; connect-only callers discover the matching ready generation without spawning.
+Its user-owned runtime root is `0700`, the socket and start lock are `0600`, startup markers are atomically published and tied to the expected worker command, resident socket messages are bounded, and the worker never logs or echoes their prompt text.
+One default BGE-small worker measured about 320 MiB RSS; two coexisting deployment generations measured about 625 MiB total.
+The worker exits after 300 inactive seconds while removing only its own socket inode.
+
 Session-start context is bounded without injecting partial memory.
 An oversized active topic spec is omitted with a pointer to the full file instead of being sliced into the prompt.
-Only whole recent worklog entries are included. Worklogs are also trimmed on write so runtime state does not grow forever.
+Only whole recent worklog entries are included. Worklogs are trimmed during serialized queue flush so runtime state does not grow forever.
+
+Tool adapters invoke `worklog_dispatcher.sh`, which captures the JSON payload and launches `worklog_recorder.py` without waiting for filesystem bookkeeping.
+The recorder durably enqueues a session-sequenced event, and a transient worker flushes it under a per-target lock.
+Queue records are atomically published and fsynced; stable IDs make crash replay idempotent, and target output is timestamp-ordered for harvest.
+Pending state is capped at 256 events and 1 MiB per session, output at 200 records, worker lifetime at 80ms idle/two seconds total, and drained queue/error directories at seven days.
+Failures stay in bounded error ledgers: agents fail open, session startup warns, and `,ai-kb harvest` refuses to report success while pending/error state remains.
 
 Review topics run in clean-room mode by default.
 When the active topic name starts with `review` or the spec targets a PR, startup context keeps neutral metadata such as target, state, diff, and files.

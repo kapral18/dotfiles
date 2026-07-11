@@ -12,6 +12,7 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
+from collections.abc import Mapping
 from typing import Any
 
 from yaml_parser import parse_scalar
@@ -20,7 +21,25 @@ _SHELL_SUBST = re.compile(r"^\$\((.+)\)$")
 _HEADER_AUTH_REFRESH_REQUIRED = "Bearer __MCP_TOKEN_REFRESH_REQUIRED__"
 
 
-def _resolve_shell(value: Any) -> Any:
+def header_auth_refresh_placeholder() -> str:
+    """Return the apply-time sentinel that launchers must reject."""
+    return _HEADER_AUTH_REFRESH_REQUIRED
+
+
+def shell_substitution_command(value: Any) -> str | None:
+    """Return the command from a full-value ``$(command)`` substitution."""
+    if not isinstance(value, str):
+        return None
+    match = _SHELL_SUBST.match(value)
+    return match.group(1) if match else None
+
+
+def _resolve_shell(
+    value: Any,
+    *,
+    shell_overrides: Mapping[str, str] | None = None,
+    resolve_shell_values: bool = True,
+) -> Any:
     """Resolve a ``$(command)`` string by running it in a login shell.
 
     Only full-value substitutions are resolved (the entire string must be
@@ -28,22 +47,30 @@ def _resolve_shell(value: Any) -> Any:
     as-is — those are intended for runtime expansion (e.g. stdio server
     args executed by bash -lc).
     """
-    if not isinstance(value, str):
+    if not resolve_shell_values:
         return value
-    m = _SHELL_SUBST.match(value)
-    if not m:
+    command = shell_substitution_command(value)
+    if command is None:
         return value
+    if shell_overrides is not None and command in shell_overrides:
+        return shell_overrides[command]
     result = subprocess.run(
-        ["bash", "-lc", m.group(1)],
+        ["bash", "-lc", command],
         capture_output=True,
         text=True,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"shell eval failed: {m.group(1)!r}\n{result.stderr}")
+        raise RuntimeError(f"shell eval failed: {command!r}\n{result.stderr}")
     return result.stdout.strip()
 
 
-def _resolve_oauth_value(key: str, value: Any) -> Any:
+def _resolve_oauth_value(
+    key: str,
+    value: Any,
+    *,
+    shell_overrides: Mapping[str, str] | None,
+    resolve_shell_values: bool,
+) -> Any:
     """Resolve an OAuth config value, keeping header-token refresh at launch time.
 
     ``headerAuth`` values often read short-lived local OAuth tokens. A stale token
@@ -51,7 +78,11 @@ def _resolve_oauth_value(key: str, value: Any) -> Any:
     re-bake these headers immediately before starting the client.
     """
     try:
-        return _resolve_shell(value)
+        return _resolve_shell(
+            value,
+            shell_overrides=shell_overrides,
+            resolve_shell_values=resolve_shell_values,
+        )
     except RuntimeError as exc:
         if key == "headerAuth":
             print(
@@ -62,7 +93,14 @@ def _resolve_oauth_value(key: str, value: Any) -> Any:
         raise
 
 
-def load_servers(path: str, is_work: bool, tool: str | None = None) -> dict[str, dict[str, Any]]:
+def load_servers(
+    path: str,
+    is_work: bool,
+    tool: str | None = None,
+    *,
+    shell_overrides: Mapping[str, str] | None = None,
+    resolve_shell_values: bool = True,
+) -> dict[str, dict[str, Any]]:
     """Load servers from the canonical YAML registry.
 
     Returns mapping:
@@ -217,13 +255,36 @@ def load_servers(path: str, is_work: bool, tool: str | None = None) -> dict[str,
             continue
 
         if s.get("type") == "http":
-            spec: dict[str, Any] = {"type": "http", "url": _resolve_shell(s["url"])}
+            spec: dict[str, Any] = {
+                "type": "http",
+                "url": _resolve_shell(
+                    s["url"],
+                    shell_overrides=shell_overrides,
+                    resolve_shell_values=resolve_shell_values,
+                ),
+            }
             if "oauth" in s:
-                spec["oauth"] = {k: _resolve_oauth_value(k, v) for k, v in s["oauth"].items()}
+                spec["oauth"] = {
+                    k: _resolve_oauth_value(
+                        k,
+                        v,
+                        shell_overrides=shell_overrides,
+                        resolve_shell_values=resolve_shell_values,
+                    )
+                    for k, v in s["oauth"].items()
+                }
             elif "oauth_by_tool" in s and tool:
                 tool_oauth = s["oauth_by_tool"].get(tool)
                 if tool_oauth:
-                    spec["oauth"] = {k: _resolve_oauth_value(k, v) for k, v in tool_oauth.items()}
+                    spec["oauth"] = {
+                        k: _resolve_oauth_value(
+                            k,
+                            v,
+                            shell_overrides=shell_overrides,
+                            resolve_shell_values=resolve_shell_values,
+                        )
+                        for k, v in tool_oauth.items()
+                    }
             if tool == "codex" and "codex_default_tools_approval_mode" in s:
                 spec["codex_default_tools_approval_mode"] = s["codex_default_tools_approval_mode"]
             if tool == "codex" and "codex_tool_approval_modes" in s:

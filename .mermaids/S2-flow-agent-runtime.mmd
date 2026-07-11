@@ -11,9 +11,17 @@ flowchart TB
     classDef gate fill:#4a1f1f,stroke:#ef9a9a,color:#ffebee;
     classDef mem fill:#3a1b2b,stroke:#f48fb1,color:#fce4ec;
 
+    AILAUNCH[",ai optional unified entry:<br/>generated consumer_view.v1 validates complete available catalogs;<br/>resolve aliases + depth/execution/connectivity → redacted InvocationPlan;<br/>unsupported explicit hard constraints stop before leaf launch"]:::gov
     START(["session start"]):::in
+    AILAUNCH -. "exec selected leaf" .-> START
     START --> SS["sessionStart hook → session_context.py<br/>native session ID resolves one topic binding;<br/>inject verification/proof prefix.txt +<br/>topic bucket index OR bounded /tmp/specs spec+worklog;<br/>warm-start IDs persist by canonical session key (C13)"]:::mem
-    SS --> SOP["load SOP entrypoints<br/>~/AGENTS.md · CLAUDE.md · GEMINI.md (C7)"]:::gov
+    SS -. "balanced/deep adapters only" .-> RESIDENT["resident FastEmbed ensure (fail-open):<br/>Claude · Gemini · OpenCode · Copilot · Pi;<br/>fast skips warm-up · generation-private socket · 300s idle;<br/>Cursor/Codex do not warm"]:::mem
+    SS --> PRTURN{"runtime has automatic<br/>per-turn context injection?"}:::mem
+    PRTURN -->|Claude/Gemini/OpenCode/Copilot/Pi| HOTRECALL["AI_AGENT_DEPTH recall:<br/>fast=off · balanced=fetch6/inject3 · deep=fetch12/inject5;<br/>same relevance/scope/dedupe gates · query stdin only;<br/>AI_EMBED_CONNECT_ONLY=1 · never spawn/restart"]:::mem
+    PRTURN -->|Cursor/Codex/other| SOP
+    HOTRECALL --> SOP
+    HOTRECALL -. "uses" .-> RESIDENT
+    SOP["load SOP entrypoints<br/>~/AGENTS.md · CLAUDE.md · GEMINI.md (C7)"]:::gov
     SOP --> SKILL{"intent matches a skill<br/>'Use when' clause?"}:::gov
     SKILL -->|yes| LOAD["read skill SKILL.md → follow as binding procedure"]:::gov
     SKILL -->|no| WORK
@@ -45,7 +53,7 @@ flowchart TB
     EMIT --> DONE
 
     DONE(["turn complete"]):::loop
-    DONE --> PERSIST["session-keyed postTool hooks → bound worklog;<br/>/tmp/specs spec + recall-seen state (C13)<br/>+ agent-driven ,ai-kb remember for verified durable insights"]:::mem
+    DONE --> PERSIST["postTool → worklog_dispatcher.sh returns early;<br/>fsynced session queue → bounded transient flush → bound worklog;<br/>startup/harvest expose pending errors (C13)<br/>+ agent-driven ,ai-kb remember for verified durable insights"]:::mem
 
     subgraph RALPH["if work == Ralph orchestration (C11/C12)"]
         direction LR

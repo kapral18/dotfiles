@@ -85,9 +85,17 @@ All `run_onchange_after_07-merge-*` scripts source a shared shell library at [`s
 | `chezmoi_write_if_changed`     | Atomic string write, skip if content unchanged        |
 | `chezmoi_install_if_changed`   | File copy via `install(1)`, skip if content unchanged |
 | `chezmoi_get_litellm_api_base` | Fetch and normalize LiteLLM URL from `pass`           |
-| `chezmoi_record_checksum`      | Record file sha256 in the managed-configs manifest    |
+| `chezmoi_record_checksum`      | Record one literal target and sha256 in the manifest  |
+| `chezmoi_forget_checksum`      | Retire one literal target from the manifest           |
+| `chezmoi_record_artifact`      | Record one ownership-aware generated AI artifact      |
+| `chezmoi_forget_artifact`      | Retire one generated AI artifact id                   |
 
-After each write, the helpers record the target file's sha256 checksum in `~/.local/state/chezmoi/managed_configs.tsv`. The `,doctor` command reads this manifest to detect config drift — files modified externally by AI tools at runtime.
+Two independent runtime ledgers serve different questions:
+
+- `~/.local/state/chezmoi/managed_configs.tsv` is the generic literal whole-file checksum manifest. [`scripts/managed_config_manifest.py`](../../scripts/managed_config_manifest.py) collapses exact duplicate rows and powers the existing `,doctor` Config Drift section.
+- `~/.local/state/chezmoi/generated_artifacts.v1.json` is the AI-specific effective-state ledger. [`scripts/generated_artifact_ledger.py`](../../scripts/generated_artifact_ledger.py) records source/transform hashes, selected profile, ownership projection, target, consumer, and local probe metadata. `,doctor ai` reads it, so runtime-owned Codex/Copilot fields do not create false drift.
+
+Both ledgers are atomic and mode `0600`. The AI ledger stores paths and hashes only, never generated config contents or resolved secret values.
 
 To add a new AI tool config, create work/personal source files and a merge script that sources the library — typically 5–10 lines of tool-specific logic.
 
@@ -110,7 +118,7 @@ Examples in this repo:
 | [`home/.chezmoiscripts/run_onchange_after_05-install-mise-runtimes.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-install-mise-runtimes.sh.tmpl)     | mise runtimes + shims |
 | [`home/.chezmoiscripts/run_onchange_after_05-install-uv-versions.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_05-install-uv-versions.sh.tmpl)         | UV Python versions    |
 
-Many hooks embed `sha256sum` comments that reference template content. That is how the "run on change" behavior is tied to specific files.
+Many hooks embed `sha256sum` comments that reference template content. The AI/config `07` hooks include every directly or transitively executed local transform, so changing a shared parser, reconciler, or shell helper schedules the affected projection again.
 
 The [Reference map](../reference/reference-map.md) lists every hook and helper script and the file each one drives.
 

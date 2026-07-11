@@ -44,18 +44,18 @@ func RolesConfigPath() string {
 
 // LoadRolesDefaults reads roles.json and returns the per-role harness/model
 // defaults. Missing file returns ErrNoDefaults; the caller should fall back
-// to in-code constants (see HardcodedFallback) so the form is always usable.
+// to the generated mirror (see GeneratedFallback) so the form is always usable.
 func LoadRolesDefaults() (RolesDefaults, error) {
 	path := RolesConfigPath()
 	if path == "" {
-		return HardcodedFallback(), ErrNoDefaults
+		return GeneratedFallback(), ErrNoDefaults
 	}
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			return HardcodedFallback(), ErrNoDefaults
+			return GeneratedFallback(), ErrNoDefaults
 		}
-		return HardcodedFallback(), fmt.Errorf("read %s: %w", path, err)
+		return GeneratedFallback(), fmt.Errorf("read %s: %w", path, err)
 	}
 	var probe struct {
 		Roles map[string]struct {
@@ -64,9 +64,9 @@ func LoadRolesDefaults() (RolesDefaults, error) {
 		} `json:"roles"`
 	}
 	if err := json.Unmarshal(raw, &probe); err != nil {
-		return HardcodedFallback(), fmt.Errorf("parse %s: %w", path, err)
+		return GeneratedFallback(), fmt.Errorf("parse %s: %w", path, err)
 	}
-	d := HardcodedFallback()
+	d := GeneratedFallback()
 	d.Path = path
 	if r, ok := probe.Roles["planner"]; ok {
 		d.Planner = RoleSpec{Harness: nonEmpty(r.Harness, d.Planner.Harness), Model: nonEmpty(r.Model, d.Planner.Model)}
@@ -83,22 +83,21 @@ func LoadRolesDefaults() (RolesDefaults, error) {
 	return d, nil
 }
 
-// HardcodedFallback returns the same defaults the chezmoi-deployed roles.json
-// ships with — the form must work even when roles.json is missing (e.g. fresh
-// machine, RALPH_ROLES_CONFIG points at a typo).
-func HardcodedFallback() RolesDefaults {
+// GeneratedFallback returns the generated mirror of the chezmoi-deployed
+// roles.json defaults, so a missing runtime file cannot leave a stale duplicate.
+func GeneratedFallback() RolesDefaults {
 	return RolesDefaults{
-		Planner:    RoleSpec{Harness: "cursor", Model: "claude-opus-4-7-thinking-max"},
-		Executor:   RoleSpec{Harness: "cursor", Model: "composer-2"},
-		Reviewer:   RoleSpec{Harness: "cursor", Model: "claude-opus-4-7-thinking-max"},
-		ReReviewer: RoleSpec{Harness: "cursor", Model: "gpt-5.5-extra-high"},
+		Planner:    generatedRalphRoleDefaults["planner"],
+		Executor:   generatedRalphRoleDefaults["executor"],
+		Reviewer:   generatedRalphRoleDefaults["reviewer"],
+		ReReviewer: generatedRalphRoleDefaults["re_reviewer"],
 	}
 }
 
-// ErrNoDefaults signals the caller fell back to HardcodedFallback because
+// ErrNoDefaults signals the caller fell back to GeneratedFallback because
 // no roles.json was readable. Not actually an error — the form should still
 // open with sane defaults.
-var ErrNoDefaults = errors.New("roles.json not found; using hardcoded defaults")
+var ErrNoDefaults = errors.New("roles.json not found; using generated defaults")
 
 func nonEmpty(s, fallback string) string {
 	if s == "" {

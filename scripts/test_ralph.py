@@ -13,6 +13,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import (
@@ -161,6 +162,20 @@ def _make_eval_env(
 
 class TestRalph(unittest.TestCase):
     """WHEN running ,ralph go end-to-end with a deterministic mock harness."""
+
+    def test_missing_model_mirror_fails_with_actionable_hint(self):
+        env = os.environ.copy()
+        env["RALPH_MODEL_MIRROR"] = "/nonexistent/model-mirror.json"
+        result = subprocess.run(
+            [sys.executable, "-c", "import ralph"],
+            capture_output=True,
+            text=True,
+            cwd=str(SCRIPTS),
+            env=env,
+        )
+        assert result.returncode == 1, result.stderr
+        assert "model mirror not found or invalid" in result.stderr
+        assert "Traceback" not in result.stderr
 
     def test_go_happy_path_completes_with_planner_executor_reviewer(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1031,6 +1046,134 @@ class TestRalph(unittest.TestCase):
         with self.assertRaises(SystemExit) as exc:
             ralph.preflight_roles_config(cfg)
         assert "not-supported" in str(exc.exception)
+
+
+class TestRalphCursorModelCatalog(unittest.TestCase):
+    """WHEN Ralph compares its curated Cursor set with a complete live catalog."""
+
+    @staticmethod
+    def _catalog(models: set[str]) -> str:
+        rows = "\n".join(f"{model} - model description" for model in sorted(models))
+        return f"Available models\n\n{rows}\n\nTip: use --model <id> to switch.\n"
+
+    @staticmethod
+    def _completed(stdout: str, returncode: int = 0) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(["cursor-agent", "--list-models"], returncode, stdout, "auth detail")
+
+    def test_SHOULD_report_healthy_without_promoting_extra_live_models(self):
+        import ralph
+
+        curated_before = set(ralph.CURSOR_MODELS)
+        live = curated_before | {"future-model-not-curated"}
+        run = mock.Mock(return_value=self._completed(self._catalog(live)))
+
+        status = ralph.cursor_model_catalog_status(run=run, which=lambda _name: "/usr/local/bin/cursor-agent")
+
+        self.assertIn("cursor_models=ok", status)
+        self.assertIn("available_uncurated=1", status)
+        self.assertEqual(ralph.CURSOR_MODELS, curated_before)
+        run.assert_called_once()
+
+    def test_SHOULD_report_every_curated_model_missing_from_live_catalog(self):
+        import ralph
+
+        missing = sorted(ralph.CURSOR_MODELS)[:2]
+        live = set(ralph.CURSOR_MODELS) - set(missing)
+        status = ralph.cursor_model_catalog_status(
+            run=mock.Mock(return_value=self._completed(self._catalog(live))),
+            which=lambda _name: "/usr/local/bin/cursor-agent",
+        )
+
+        self.assertIn("cursor_models=drift", status)
+        for model in missing:
+            self.assertIn(model, status)
+
+    def test_SHOULD_report_unknown_without_echoing_command_errors(self):
+        import ralph
+
+        cases = {
+            "missing_binary": (lambda *_args, **_kwargs: None, mock.Mock()),
+            "timeout": (
+                lambda _name: "/usr/local/bin/cursor-agent",
+                mock.Mock(side_effect=subprocess.TimeoutExpired(["cursor-agent"], 1)),
+            ),
+            "command_failed": (
+                lambda _name: "/usr/local/bin/cursor-agent",
+                mock.Mock(return_value=self._completed("", returncode=1)),
+            ),
+            "empty_output": (
+                lambda _name: "/usr/local/bin/cursor-agent",
+                mock.Mock(return_value=self._completed("")),
+            ),
+            "unparseable_output": (
+                lambda _name: "/usr/local/bin/cursor-agent",
+                mock.Mock(return_value=self._completed("not a model row\n")),
+            ),
+            "partial_output": (
+                lambda _name: "/usr/local/bin/cursor-agent",
+                mock.Mock(return_value=self._completed("Available models\n\ngpt-5.5 - GPT-5.5\n")),
+            ),
+            "mixed_output": (
+                lambda _name: "/usr/local/bin/cursor-agent",
+                mock.Mock(
+                    return_value=self._completed(
+                        "Available models\n\ngpt-5.5 - GPT-5.5\nauthentication expired\n\nTip: retry\n"
+                    )
+                ),
+            ),
+            "error_shaped_row": (
+                lambda _name: "/usr/local/bin/cursor-agent",
+                mock.Mock(return_value=self._completed("Available models\n\nERROR - auth detail\n\nTip: retry\n")),
+            ),
+        }
+        for reason, (which, run) in cases.items():
+            with self.subTest(reason=reason):
+                status = ralph.cursor_model_catalog_status(run=run, which=which)
+                expected_reason = (
+                    reason
+                    if reason
+                    in {
+                        "missing_binary",
+                        "timeout",
+                        "command_failed",
+                        "empty_output",
+                        "unparseable_output",
+                    }
+                    else "unparseable_output"
+                )
+                self.assertEqual(status, f"cursor_models=Unknown reason={expected_reason}")
+                self.assertNotIn("auth detail", status)
+
+    def test_SHOULD_keep_doctor_catalog_access_opt_in(self):
+        import ralph
+
+        with tempfile.TemporaryDirectory() as tmp:
+            runner = ralph.RalphRunner(Path(tmp) / "state", Path(tmp) / "kb")
+            command_result = subprocess.CompletedProcess(["which"], 0, "/usr/bin/tool\n", "")
+            with mock.patch.object(runner, "init"), mock.patch.object(runner.kb, "doctor", return_value=[]):
+                with (
+                    mock.patch.object(ralph.subprocess, "run", return_value=command_result),
+                    mock.patch.object(ralph, "cursor_model_catalog_status", return_value="cursor_models=ok") as catalog,
+                ):
+                    runner.doctor()
+                    catalog.assert_not_called()
+                    checks = runner.doctor(live_models=True)
+                    catalog.assert_called_once()
+        self.assertIn("cursor_models=ok", checks)
+        args = ralph.build_parser().parse_args(["doctor", "--live-models"])
+        self.assertTrue(args.live_models)
+
+    def test_SHOULD_exclude_verified_retired_cursor_model_ids(self):
+        import ralph
+
+        retired = {
+            "claude-4.6-opus-high-thinking-fast",
+            "claude-4.6-opus-max-thinking-fast",
+            "grok-4.3",
+            "grok-build-0.1",
+            "kimi-k2.5",
+        }
+        self.assertEqual(ralph.CURSOR_MODELS & retired, set())
 
 
 class TestRalphResumability(unittest.TestCase):

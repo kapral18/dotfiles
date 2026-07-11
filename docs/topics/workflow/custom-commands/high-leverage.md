@@ -10,12 +10,18 @@ These are the commands most likely to change how you work day to day.
 
 - Source: [`home/exact_bin/executable_,doctor`](../../../../home/exact_bin/executable_,doctor)
 - Checks: chezmoi state, Homebrew, shell, tmux+TPM, git+signing, SSH agent, pass/GPG, editors, AI tools, key CLIs, `~/bin` wrapper integrity, cursor-cli bundled `rg`, and worktrees.
+- AI effective state: `,doctor ai` traces each generated AI config from source declaration and transforms through selected profile, owned target projection, runtime consumer, and an optional local liveness probe.
 
 ```bash
 ,doctor
 ,doctor --quiet
 ,doctor --verbose
+,doctor ai
+,doctor ai --json
+,doctor ai --live --verbose
 ```
+
+`,doctor ai` is static by default and never applies configs, refreshes tokens, or contacts remote services. `--live` runs each distinct local harness `--version` probe once, even when several artifacts share that consumer.
 
 ## PR readiness: `,kbn-pr-audit`
 

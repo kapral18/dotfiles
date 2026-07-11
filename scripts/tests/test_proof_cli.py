@@ -259,7 +259,8 @@ class TestProofCli(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as proof_tmp:
             cwd = Path(tmp)
             proof_home = Path(proof_tmp)
-            spec_dir = Path("/tmp/specs") / str(cwd.resolve()).lstrip("/")
+            spec_root = Path(os.environ.get("AGENT_MEMORY_SPEC_ROOT", proof_home / "specs"))
+            spec_dir = spec_root / str(cwd.resolve()).lstrip("/")
             spec_dir.mkdir(parents=True, exist_ok=True)
             (spec_dir / "_active_topic.txt").write_text("stale-topic\n", encoding="utf-8")
 

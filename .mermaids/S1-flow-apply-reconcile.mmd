@@ -20,20 +20,22 @@ flowchart LR
     subgraph XFORM["TRANSFORM · template + ordered lifecycle (C4)"]
         TMPL["text/template render<br/>{{ if .isWork }} branches"]:::xf
         B["run_once_BEFORE_*<br/>bootstrap: brew, mise, dirs"]:::xf
-        OC["run_onchange_AFTER_*<br/>HASH-GATED: re-run iff input hash line changed"]:::gate
-        LIB["scripts/chezmoi_lib.sh + scripts/*.py (C6)<br/>pick_src(isWork) · write_if_changed · generators"]:::xf
+        OC["run_onchange_AFTER_*<br/>HASH-GATED: complete direct/transitive local transform closure"]:::gate
+        LIB["scripts/chezmoi_lib.sh + typed scripts/*.py (C6)<br/>pick_src(isWork) · ownership reconcile · checksum + artifact ledger lifecycle"]:::xf
         ONCE["run_once_AFTER_*<br/>one-shot: macOS defaults, app icons"]:::xf
     end
 
     subgraph OUTPUT["OUTPUT · $HOME build artifacts (C1)"]
         TGT["rendered dotfiles in $HOME<br/>~/.config/**, ~/.ssh/*.pub, rc files"]:::out
-        GEN["GENERATED per-tool configs<br/>.cursor/.claude/.codex/.gemini/.mcp.json"]:::out
-        MAN["managed_configs.tsv manifest<br/>(checksum ledger, C4)"]:::out
+        GEN["GENERATED per-tool configs<br/>source-owned policy + explicit runtime buckets"]:::out
+        MAN["managed_configs.tsv<br/>(generic literal checksum drift, C4)"]:::out
+        ART["generated_artifacts.v1.json<br/>(AI source→transform→owned target→consumer trace)"]:::out
     end
 
     subgraph RUNTIME["RUNTIME · who consumes the build"]
         SH["shell/editor/tmux read rc + configs"]:::run
         AG["AI tools read GENERATED configs + SOPs (C7)"]:::run
+        CP[",copilot launch-time reconcile:<br/>locked header-auth batch from canonical registry →<br/>semantic config write + conditional artifact row"]:::run
         PKG["declared packages installed/cleaned<br/>(brew bundle --cleanup = list is authoritative)"]:::run
     end
 
@@ -48,12 +50,18 @@ flowchart LR
     LIB --> TGT
     LIB --> GEN
     LIB --> MAN
+    LIB --> ART
     ONCE --> TGT
     DATA -->|"fan-out (C2)"| GEN
     INIT -->|"isWork picks pair (C3)"| GEN
 
     TGT --> SH
     GEN --> AG
+    ART --> DOC[",doctor ai static report<br/>--live deduped local probes"]:::run
+    DATA --> CP
+    CP --> GEN
+    CP --> ART
+    CP --> AG
     DATA --> PKG
 
     NOTE["MUTATION RULE: change INPUT, never OUTPUT.<br/>Touching a GENERATED node directly = drift erased next apply."]:::gate

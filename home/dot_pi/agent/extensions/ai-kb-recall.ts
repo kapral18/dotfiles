@@ -26,10 +26,12 @@
 // this workspace or scoped domain/universal, so a large/cross-project KB cannot stuff context.
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
+import { spawn } from "node:child_process"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
 
 const EXEC_TIMEOUT_MS = 6_000
+const SEARCH_STDOUT_MAX_BYTES = 1024 * 1024
 const WARMSTART_LIMIT = 3
 const PERTURN_LIMIT = 3
 const SEARCH_FETCH = 6
@@ -37,6 +39,7 @@ const QUERY_MAX_CHARS = 600
 const BODY_MAX_CHARS = 240
 const MIN_PROMPT_CHARS = 12
 const PREFIX_MAX_CHARS = 3000
+const AI_AGENT_DEPTH = "AI_AGENT_DEPTH"
 // bm25/warm-start relative relevance floor: after the top hit, drop any hit whose
 // bm25Relevance() is worse than this fraction of the best hit's magnitude. Absolute
 // score floors are fragile (bm25 magnitude shifts with query length and corpus), but the
@@ -123,6 +126,35 @@ interface RecallSessionState {
 }
 
 type SearchMode = "bm25" | "hybrid"
+type AgentDepth = "fast" | "balanced" | "deep"
+
+interface RecallProfile {
+  enabled: boolean
+  limit: number
+  fetch: number
+  queryChars: number
+  bodyChars: number
+  timeoutMs: number
+}
+
+const BALANCED_PROFILE: RecallProfile = {
+  enabled: true,
+  limit: PERTURN_LIMIT,
+  fetch: SEARCH_FETCH,
+  queryChars: QUERY_MAX_CHARS,
+  bodyChars: BODY_MAX_CHARS,
+  timeoutMs: EXEC_TIMEOUT_MS,
+}
+const RECALL_PROFILES: Record<AgentDepth, RecallProfile> = {
+  fast: { enabled: false, limit: 0, fetch: 0, queryChars: 0, bodyChars: 0, timeoutMs: 0 },
+  balanced: BALANCED_PROFILE,
+  deep: { enabled: true, limit: 5, fetch: 12, queryChars: 1200, bodyChars: 360, timeoutMs: 9_000 },
+}
+
+function agentDepth(): AgentDepth {
+  const value = (process.env[AI_AGENT_DEPTH] ?? "").trim().toLowerCase()
+  return value === "fast" || value === "deep" ? value : "balanced"
+}
 
 // bm25 relevance signal. In bm25 mode rrf_score is rank-derived and nearly constant, so
 // bm25_score (SQLite's negative log score, smaller = better) is the real signal; negate
@@ -225,18 +257,26 @@ async function saveSeen(path: string, seen: Set<string>): Promise<void> {
 }
 
 async function searchCapsules(
-  pi: ExtensionAPI,
   workspace: string,
   query: string,
   mode: SearchMode,
+  profile: RecallProfile = BALANCED_PROFILE,
 ): Promise<Capsule[]> {
-  const flat = collapse(query, QUERY_MAX_CHARS)
+  if (!profile.enabled) return []
+  const flat = collapse(query, profile.queryChars)
   if (!flat) return []
-  const result = await pi.exec(
-    ",ai-kb",
-    ["search", flat, "--limit", String(SEARCH_FETCH), "--mode", mode, "--workspace", workspace, "--json"],
-    { timeout: EXEC_TIMEOUT_MS },
-  )
+  const searchArgs = [
+    "search",
+    "--query-stdin",
+    "--limit",
+    String(profile.fetch),
+    "--mode",
+    mode,
+    "--workspace",
+    workspace,
+    "--json",
+  ]
+  const result = await runSearch(flat, searchArgs, mode === "hybrid", profile.timeoutMs)
   if (result.killed || result.code !== 0 || !result.stdout.trim()) return []
   try {
     const rows = JSON.parse(result.stdout)
@@ -246,9 +286,66 @@ async function searchCapsules(
   }
 }
 
+interface SearchExecResult {
+  stdout: string
+  code: number
+  killed: boolean
+}
+
+function runSearch(query: string, args: string[], connectOnly: boolean, timeoutMs: number): Promise<SearchExecResult> {
+  return new Promise((resolve) => {
+    let stdout = ""
+    let stdoutBytes = 0
+    let killed = false
+    let settled = false
+    const child = spawn(",ai-kb", args, {
+      env: connectOnly ? { ...process.env, AI_EMBED_CONNECT_ONLY: "1" } : process.env,
+      stdio: ["pipe", "pipe", "ignore"],
+    })
+    const finish = (result: SearchExecResult) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      resolve(result)
+    }
+    const timer = setTimeout(() => {
+      killed = true
+      child.kill("SIGKILL")
+    }, timeoutMs)
+    child.stdout.on("data", (chunk: Buffer) => {
+      stdoutBytes += chunk.length
+      if (stdoutBytes > SEARCH_STDOUT_MAX_BYTES) {
+        killed = true
+        child.kill("SIGKILL")
+        return
+      }
+      stdout += chunk.toString()
+    })
+    child.stdin.on("error", () => {})
+    child.on("error", () => finish({ stdout: "", code: 1, killed }))
+    child.on("close", (code) => finish({ stdout, code: code ?? 1, killed }))
+    child.stdin.end(query)
+  })
+}
+
+async function warmEmbedder(pi: ExtensionAPI, depth: AgentDepth): Promise<void> {
+  if (depth === "fast") return
+  const home = process.env.HOME ?? ""
+  if (!home) return
+  await pi.exec("python3", [join(home, "lib", ",ai-kb", "embed_client.py"), "ensure", "--timeout", "4"], {
+    timeout: 5_000,
+  })
+}
+
 // Same gate as session_context.py: workspace-local capsules, or deliberately cross-project
 // (domain/universal) ones. Skips capsules already injected this session.
-function gateAndFormat(rows: Capsule[], workspace: string, seen: Set<string>, limit: number): string[] {
+function gateAndFormat(
+  rows: Capsule[],
+  workspace: string,
+  seen: Set<string>,
+  limit: number,
+  bodyChars: number = BODY_MAX_CHARS,
+): string[] {
   const lines: string[] = []
   for (const row of rows) {
     if (lines.length >= limit) break
@@ -261,7 +358,7 @@ function gateAndFormat(rows: Capsule[], workspace: string, seen: Set<string>, li
     if (!title) continue
     if (id) seen.add(id)
     const kind = row.kind || "note"
-    const body = collapse(row.body ?? "", BODY_MAX_CHARS)
+    const body = collapse(row.body ?? "", bodyChars)
     lines.push(body ? `- **${title}** (${kind}): ${body}` : `- **${title}** (${kind})`)
   }
   return lines
@@ -276,6 +373,12 @@ export default async function (pi: ExtensionAPI) {
   }
 
   const stateBySession = new Map<string, RecallSessionState>()
+  const depth = agentDepth()
+  const perturnProfile = RECALL_PROFILES[depth]
+
+  pi.on("session_start", async () => {
+    await warmEmbedder(pi, depth)
+  })
 
   // session_compact cannot inject context (only before_agent_start can), so it flags a
   // forced re-inject that the next before_agent_start consumes.
@@ -334,7 +437,7 @@ export default async function (pi: ExtensionAPI) {
             // Warm-start query is the spec text (keyword-dense), and runs at session
             // start where the embedder may be cold/slow — bm25 keeps it fast and
             // dependency-light, floored on bm25_score.
-            const rows = await searchCapsules(pi, workspace, specText, "bm25")
+            const rows = await searchCapsules(workspace, specText, "bm25")
             const lines = gateAndFormat(rows, workspace, state.injectedIds, WARMSTART_LIMIT)
             if (lines.length) {
               blocks.push(
@@ -353,8 +456,14 @@ export default async function (pi: ExtensionAPI) {
         // Per-turn uses the actual prompt and hybrid retrieval: the vector lane + MMR
         // suppress capsules that only share surface words with the prompt, and rrf_score
         // is the floor signal. This is where cross-domain lexical noise was leaking in.
-        const rows = await searchCapsules(pi, workspace, prompt, "hybrid")
-        const lines = gateAndFormat(rows, workspace, state.injectedIds, PERTURN_LIMIT)
+        const rows = await searchCapsules(workspace, prompt, "hybrid", perturnProfile)
+        const lines = gateAndFormat(
+          rows,
+          workspace,
+          state.injectedIds,
+          perturnProfile.limit,
+          perturnProfile.bodyChars,
+        )
         if (lines.length) {
           blocks.push(
             ["### Relevant Learnings for this request (,ai-kb)", "Matched to your prompt; verify before relying on them.", ...lines].join("\n"),

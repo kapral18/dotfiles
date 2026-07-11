@@ -11,3 +11,4 @@ home/dot_config/exact_nvim/
 *.conf
 *.toml
 *.toml.tmpl
+home/dot_config/ai/readonly_model-mirrors.v1.json

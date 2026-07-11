@@ -8,7 +8,7 @@ import { join } from "node:path"
 // bringing OpenCode to parity with the Claude/Cursor/Gemini hooks.
 //
 // Thin delegating plugin: all logic lives in the shared hook scripts
-// (~/.agents/hooks/session_context.py and worklog_recorder.py, sourced from
+// (~/.agents/hooks/session_context.py and worklog_dispatcher.sh, sourced from
 // home/exact_dot_agents/exact_hooks/) — topic/spec resolution, worklog
 // format, and KB warm-start stay single-source. This file only adapts the
 // OpenCode plugin events to the hooks' stdin/stdout JSON protocol.
@@ -18,13 +18,13 @@ import { join } from "node:path"
 //     to the system prompt of every request — system is rebuilt per request,
 //     so re-appending is idempotent, never accumulating.
 //   - tool.execute.after: synthesizes a PostToolUse payload for the worklog
-//     recorder. `duration`/`status` are not exposed by the plugin API and
+//     dispatcher. `duration`/`status` are not exposed by the plugin API and
 //     are simply omitted (the recorder drops empty fields).
 
 export const AgentMemoryPlugin: Plugin = async ({ $, directory }) => {
   const hooksDir = join(homedir(), ".agents", "hooks")
   const sessionCtx = join(hooksDir, "session_context.py")
-  const recorder = join(hooksDir, "worklog_recorder.py")
+  const recorder = join(hooksDir, "worklog_dispatcher.sh")
   const perturn = join(hooksDir, "perturn_recall.py")
   if (!existsSync(sessionCtx) || !existsSync(recorder)) {
     console.warn("[agent-memory] ~/.agents/hooks scripts not found — plugin disabled")
@@ -52,6 +52,7 @@ export const AgentMemoryPlugin: Plugin = async ({ $, directory }) => {
       hook_event_name: "SessionStart",
       cwd: directory,
       session_id: sessionID,
+      warm_embedder: true,
     })
     contextBySession.set(sessionID, context)
     return context
@@ -102,9 +103,14 @@ export const AgentMemoryPlugin: Plugin = async ({ $, directory }) => {
           command: typeof output?.title === "string" ? output.title : "",
           output: typeof output?.output === "string" ? output.output.slice(0, 2000) : "",
         })
-        await $`echo ${payload} | python3 ${recorder}`.quiet().nothrow()
-      } catch {
-        // never block the tool loop on worklog failures
+        const result = await $`echo ${payload} | ${recorder}`.quiet().nothrow()
+        const status = result as { code?: number; exitCode?: number; stderr?: unknown }
+        const exitCode = status.exitCode ?? status.code ?? 0
+        if (exitCode !== 0) {
+          console.warn(`[agent-memory] worklog hook exited ${exitCode}: ${String(status.stderr ?? "").trim()}`)
+        }
+      } catch (error) {
+        console.warn("[agent-memory] worklog hook failed; tool execution continues", error)
       }
     },
   }

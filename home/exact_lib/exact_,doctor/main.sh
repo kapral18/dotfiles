@@ -3,6 +3,11 @@
 
 set -euo pipefail
 
+if [ "${1:-}" = "ai" ]; then
+  shift
+  exec python3 "$HOME/lib/,doctor/ai.py" report "$@"
+fi
+
 # ── ANSI helpers ─────────────────────────────────────────────────────────────
 
 C_PASS=$'\033[38;5;42m'
@@ -27,6 +32,7 @@ total_fail=0
 show_usage() {
   cat << 'EOF'
 Usage: ,doctor [options]
+       ,doctor ai [--json] [--live] [--quiet] [--verbose]
 
 Comprehensive health check for the dotfiles ecosystem.
 
