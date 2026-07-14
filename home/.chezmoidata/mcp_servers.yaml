@@ -87,25 +87,14 @@ mcp_servers:
         callbackPort: 3118
       cursor:
         ideClientId: "3660753192626.8903469228982"
-        callbackPort: 8787
-        clientId: "$(pass slack/mcp/client_id)"
-        clientSecret: "$(pass slack/mcp/client_secret)"
-        authorizationUrl: "https://slack.com/oauth/v2_user/authorize"
-        tokenUrl: "https://slack.com/api/oauth.v2.user.access"
-        issuer: "https://slack.com"
-        scopes: "$(pass slack/mcp/user_scopes)"
       gemini:
-        clientId: "$(pass slack/mcp/client_id)"
-        clientSecret: "$(pass slack/mcp/client_secret)"
+        clientId: "1601185624273.8899143856786"
         callbackPort: 3118
-        authorizationUrl: "https://slack.com/oauth/v2_user/authorize"
-        tokenUrl: "https://slack.com/api/oauth.v2.user.access"
-        issuer: "https://slack.com"
+        redirectUri: "http://localhost:3118/callback"
         scopes: "$(pass slack/mcp/user_scopes)"
       pi:
-        # Reuse Claude's public client (no secret); the $(pass slack/mcp/*)
-        # confidential client is not authorized for this user. Endpoints are
-        # auto-discovered from the server's protected-resource metadata.
+        # Reuse Claude's public client (no secret); the custom confidential client
+        # is not authorized for this user. Endpoints are auto-discovered.
         clientId: "1601185624273.8899143856786"
         scopes: "$(pass slack/mcp/user_scopes)"
         # http:// localhost required; must match a registered redirect URI.

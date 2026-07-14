@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (105).
+%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (106).
 %% Skills → ~/.agents/skills/ (intent-routed SKILL.md). Shared hooks → ~/.agents/hooks/.
 %% ============================================================================
 flowchart TB
@@ -45,7 +45,7 @@ flowchart TB
     end
 
     subgraph KBN["Elastic/Kibana domain overlay + skills"]
-        S8["elastic-domain/ (verified overlay; owns Elastic/Kibana policy<br/>+ refs: kibana-live-ui, pr-issue-templates, kibana-planning-forks)<br/>kbn-stack (local ES+Kibana stack lifecycle)<br/>kbn-backport (e2e; drives backport tool in tmux; +refs: backport-tool.md, conflict-resolution.md)<br/>kibana-console-monaco · kibana-labels-propose<br/>kibana-management-ownership · standup"]:::skill
+        S8["elastic-domain/ (verified overlay; owns Elastic/Kibana policy<br/>+ refs: kibana-live-ui, pr-issue-templates, kibana-planning-forks)<br/>kbn-stack (local ES+Kibana stack lifecycle)<br/>kbn-backport (e2e; drives backport tool in tmux; +refs: backport-tool.md, conflict-resolution.md)<br/>kibana-console-monaco · kibana-labels-propose<br/>kibana-management-ownership · kbn-standup (Elastic-org + private Slack/DM activity → Admin UX draft)"]:::skill
     end
 
     subgraph META["Meta / orchestration skills"]

@@ -1,6 +1,6 @@
 ---
 name: spec
-description: "Use when developing an idea, feature request, or bug report into a spec packet with red-capable acceptance checks — before implementing, filing an issue, or mustering a palantir legion. Also when another skill needs testable acceptance criteria for a change."
+description: "Use when developing an idea, feature request, or bug report into a spec packet with red-capable acceptance checks — before implementing, filing an issue, or summoning a palantir legion. Also when another skill needs testable acceptance criteria for a change."
 ---
 
 # Spec

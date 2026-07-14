@@ -1,4 +1,4 @@
-palantir	The stone (dashboard)	every legion: stage, attention, criteria	tmux:palantir-dashboard	display-popup -w 90% -h 85% -E "uv run $HOME/lib/,palantir/dashboard.py"
+palantir	The stone (dashboard)	every legion: stage, attention, criteria	tmux:palantir-dashboard	display-popup -E -w 90% -h 85% -T " palantír " "uv run $HOME/lib/,palantir/dashboard.py"
 palantir	Summon legion (prompt)	call a legion: worktree + coordinator + supervisor	palantir:summon	,palantir summon
 palantir	Farsee legions	survey legions with stage / attention	palantir:farsee	,palantir farsee
 palantir	Trial legion (prompt)	put acceptance criteria to machine trial	palantir:trial	,palantir trial

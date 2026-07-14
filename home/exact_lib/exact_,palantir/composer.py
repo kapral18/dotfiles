@@ -92,7 +92,13 @@ def _meaningful_lines(cleaned: str) -> list[str]:
     return [ln.rstrip() for ln in cleaned.split("\n") if ln.strip() != ""]
 
 
-def _pi_input_line(cleaned: str) -> "str | None":
+def _pending_line(line: str) -> bool:
+    return bool(
+        _SPINNER_RE.search(line) or _PENDING_WORDS_RE.search(line) or line.endswith("...") or line.endswith("…")
+    )
+
+
+def _pi_input_state(cleaned: str) -> "tuple[str, bool] | None":
     lines = [line.rstrip() for line in cleaned.split("\n")]
     while lines and not lines[-1].strip():
         lines.pop()
@@ -102,11 +108,12 @@ def _pi_input_line(cleaned: str) -> "str | None":
         and _SEPARATOR_RE.match(lines[-4].strip())
         and _SEPARATOR_RE.match(lines[-6].strip())
     ):
-        return lines[-5].strip()
+        activity = lines[-7].strip() if len(lines) >= 7 else ""
+        return lines[-5].strip(), _pending_line(activity)
     return None
 
 
-def _copilot_input_line(cleaned: str) -> "str | None":
+def _copilot_input_state(cleaned: str) -> "tuple[str, bool] | None":
     lines = [line.rstrip() for line in cleaned.split("\n")]
     while lines and not lines[-1].strip():
         lines.pop()
@@ -114,7 +121,9 @@ def _copilot_input_line(cleaned: str) -> "str | None":
         if "/ commands" not in lines[footer_index]:
             continue
         continuation = [line.strip() for line in lines[footer_index + 1 :] if line.strip()]
-        if len(continuation) > 2 or any(_COPILOT_FOOTER_CONTINUATION_RE.match(line) is None for line in continuation):
+        if len(continuation) > 3 or any(
+            _COPILOT_FOOTER_CONTINUATION_RE.match(line) is None and not _pending_line(line) for line in continuation
+        ):
             continue
         if not _SEPARATOR_RE.match(lines[footer_index - 1].strip()):
             continue
@@ -122,7 +131,7 @@ def _copilot_input_line(cleaned: str) -> "str | None":
             continue
         match = _COPILOT_INPUT_RE.match(lines[footer_index - 2])
         if match is not None:
-            return match.group(1).strip()
+            return match.group(1).strip(), any(_pending_line(line) for line in continuation)
     return None
 
 
@@ -133,13 +142,19 @@ def classify(text: str) -> tuple[str, str]:
     (last line carries a waiting marker) -> busy (content, no prompt, no marker).
     """
     cleaned = strip_ansi(text)
-    copilot_input = _copilot_input_line(cleaned)
-    if copilot_input is not None:
+    copilot_state = _copilot_input_state(cleaned)
+    if copilot_state is not None:
+        copilot_input, active = copilot_state
+        if active:
+            return ("pending", "Copilot is actively working")
         if not copilot_input:
             return ("empty", "Copilot input area is empty")
         return ("busy", "Copilot input area contains an active prompt")
-    pi_input = _pi_input_line(cleaned)
-    if pi_input is not None:
+    pi_state = _pi_input_state(cleaned)
+    if pi_state is not None:
+        pi_input, active = pi_state
+        if active:
+            return ("pending", "Pi is actively working")
         if not pi_input:
             return ("empty", "Pi input area is empty")
         return ("busy", "Pi input area contains an active prompt")
@@ -150,7 +165,7 @@ def classify(text: str) -> tuple[str, str]:
     last = lines[-1]
     if _PROMPT_RE.match(last) and len(last) <= 120:
         return ("empty", "last line is a fresh prompt")
-    if _SPINNER_RE.search(last) or _PENDING_WORDS_RE.search(last) or last.endswith("...") or last.endswith("…"):
+    if _pending_line(last):
         return ("pending", "last line carries a waiting marker")
     return ("busy", "content present with no fresh prompt")
 

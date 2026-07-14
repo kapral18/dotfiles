@@ -85,9 +85,14 @@ class LegionState:
 
     @contextmanager
     def lock(self, legion_id: str) -> Iterator[None]:
-        """Serialize read-modify-write operations for one legion."""
+        """Serialize read-modify-write operations for one legion.
+
+        Refuses to create the legion dir: locking a nonexistent legion would
+        otherwise leave unbanishable lock-only debris dirs behind.
+        """
         d = self.legion_dir(legion_id)
-        d.mkdir(parents=True, exist_ok=True)
+        if not d.is_dir():
+            raise SystemExit(f"legion not found: {legion_id}")
         with (d / ".manifest.lock").open("a+", encoding="utf-8") as handle:
             fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
             try:
@@ -119,6 +124,10 @@ class LegionState:
     def load(self, legion_id: str) -> dict:
         path = self.manifest_path(legion_id)
         if not path.exists():
+            if self.legion_dir(legion_id).is_dir():
+                raise SystemExit(
+                    f"legion {legion_id} has no manifest (lock-only debris); ',palantir banish {legion_id}' removes it"
+                )
             raise SystemExit(f"legion not found: {legion_id}")
         try:
             return json.loads(path.read_text(encoding="utf-8"))
@@ -138,21 +147,26 @@ class LegionState:
         """Create and persist a summoned legion; roles pass the diversity guard here."""
         self.init()
         legion_id = secrets.token_hex(4)
+        created_at = time.time_ns()
         manifest = {
             "id": legion_id,
             "goal": goal,
-            "created_at_unix_ns": time.time_ns(),
+            "created_at_unix_ns": created_at,
+            "stage_started_at_unix_ns": created_at,
             "stage": "summon",
             "session": session,
             "worktree": worktree,
             "owns_worktree": bool(git_root and worktree and Path(git_root).resolve() != Path(worktree).resolve()),
             "roles": machine.resolve_roles(roles or {}),
-            "criteria": list(criteria or []),
+            "criteria": machine.validate_criteria(criteria or []),
             "implement_attempts": 0,
             "max_implement_attempts": int(max_implement_attempts),
             "review_blockers": [],
             "wake_observations": {},
-            "memory_routed": False,
+            "pending_wakes": [],
+            "pending_actions": [],
+            "coordinator_transport": {"status": "starting", "last_error": ""},
+            "memory_packet_written": False,
         }
         if git_root:
             manifest["git_root"] = str(Path(git_root).resolve())
@@ -163,31 +177,68 @@ class LegionState:
         return manifest
 
     def list_legions(self) -> "list[str]":
+        """All legion dirs newest first, including manifest-less debris dirs
+        (surfaced as corrupt by summaries) so nothing is invisible to the stone."""
         if not self.legions_dir.exists():
             return []
-        paths = sorted(
-            self.legions_dir.glob(f"*/{MANIFEST_NAME}"),
-            key=lambda p: p.stat().st_mtime,
-            reverse=True,
-        )
-        return [p.parent.name for p in paths]
+
+        def mtime(d: Path) -> float:
+            manifest = d / MANIFEST_NAME
+            return (manifest if manifest.exists() else d).stat().st_mtime
+
+        dirs = [d for d in self.legions_dir.iterdir() if d.is_dir()]
+        return [d.name for d in sorted(dirs, key=mtime, reverse=True)]
 
     def summaries(self) -> "list[dict]":
         rows = []
         for legion_id in self.list_legions():
             try:
-                rows.append(machine.summarize(self.load(legion_id)))
+                manifest = self.load(legion_id)
+                stage = manifest.get("stage", "")
+                if stage not in machine.STAGES:
+                    rows.append(
+                        {
+                            "id": legion_id,
+                            "stage": "corrupt",
+                            "attention": "corrupt",
+                            "goal": manifest.get("goal", ""),
+                            "invalid_stage": stage,
+                        }
+                    )
+                else:
+                    rows.append(machine.summarize(manifest))
             except SystemExit:
-                rows.append({"id": legion_id, "stage": "corrupt", "attention": "holding", "goal": ""})
+                rows.append({"id": legion_id, "stage": "corrupt", "attention": "corrupt", "goal": ""})
         return rows
 
     def apply_event(self, legion_id: str, event: dict) -> "tuple[dict, list[dict]]":
         """Locked transition: load -> machine.transition -> save. Returns (manifest, actions)."""
         with self.lock(legion_id):
             manifest = self.load(legion_id)
+            previous_stage = manifest.get("stage")
             manifest, actions = machine.transition(manifest, event)
+            if manifest.get("stage") != previous_stage:
+                manifest["stage_started_at_unix_ns"] = time.time_ns()
+            actions = [{**action, "_action_id": secrets.token_hex(8)} for action in actions]
+            manifest["pending_actions"] = list(manifest.get("pending_actions") or []) + actions
             self.save(manifest)
         return manifest, actions
+
+    def enqueue_actions(self, legion_id: str, actions: list[dict]) -> list[dict]:
+        queued = [{**action, "_action_id": secrets.token_hex(8)} for action in actions]
+        with self.lock(legion_id):
+            manifest = self.load(legion_id)
+            manifest["pending_actions"] = list(manifest.get("pending_actions") or []) + queued
+            self.save(manifest)
+        return queued
+
+    def acknowledge_action(self, legion_id: str, action_id: str) -> None:
+        with self.lock(legion_id):
+            manifest = self.load(legion_id)
+            pending = list(manifest.get("pending_actions") or [])
+            if pending and pending[0].get("_action_id") == action_id:
+                manifest["pending_actions"] = pending[1:]
+                self.save(manifest)
 
     def remove(self, legion_id: str) -> None:
         d = self.legion_dir(legion_id)
@@ -252,6 +303,29 @@ def cmd_paths(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_remove(args: argparse.Namespace) -> int:
+    _state(args).remove(args.legion_id)
+    return 0
+
+
+def cmd_remove_debris(args: argparse.Namespace) -> int:
+    """Fail-closed removal of a lock-only debris dir (no manifest)."""
+    state = _state(args)
+    if not state.legion_dir(args.legion_id).is_dir():
+        raise SystemExit(f"legion not found: {args.legion_id}")
+    if state.manifest_path(args.legion_id).exists():
+        raise SystemExit(f"{args.legion_id} has a manifest; use ,palantir banish")
+    import supervisor  # lazy: supervisor imports this module at load time
+
+    if supervisor.SupervisorLock(state, args.legion_id).alive():
+        raise SystemExit(
+            f"{args.legion_id} has a live supervisor; run ,palantir keep-watch {args.legion_id} --stop first"
+        )
+    state.remove(args.legion_id)
+    print(f"removed debris legion dir {args.legion_id}")
+    return 0
+
+
 def cmd_doctor(args: argparse.Namespace) -> int:
     state = _state(args)
     problems = []
@@ -299,6 +373,14 @@ def build_parser() -> argparse.ArgumentParser:
     paths_p = sub.add_parser("paths", help="print legion paths as JSON")
     paths_p.add_argument("legion_id")
     paths_p.set_defaults(func=cmd_paths)
+
+    remove_p = sub.add_parser("remove", help=argparse.SUPPRESS)
+    remove_p.add_argument("legion_id")
+    remove_p.set_defaults(func=cmd_remove)
+
+    remove_debris_p = sub.add_parser("remove-debris", help=argparse.SUPPRESS)
+    remove_debris_p.add_argument("legion_id")
+    remove_debris_p.set_defaults(func=cmd_remove_debris)
 
     doctor_p = sub.add_parser("doctor", help="check dependencies and state home")
     doctor_p.set_defaults(func=cmd_doctor)

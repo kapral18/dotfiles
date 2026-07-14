@@ -25,19 +25,20 @@ Legions (1 legion = 1 effort = 1 tmux session; windows/panes are its organisatio
   behold <id>              Behold one legion: stage, supervisor liveness, criteria
   send-word <id> <msg>     Send composer-guarded word to a role window (--window, default: command)
   answer <id> <msg>        Answer a holding legion's question and resume it
-  grant <id>               Grant a cleared_for_human legion (closes it, routes memory)
+  grant <id>               Grant a cleared legion (persist closeout packet + teardown)
   banish <id> [--force]    Banish a legion; refuses in-flight work without --force
   keep-watch <id> [--stop] Keep or stop watch over the legion
   trial <id>               Put acceptance criteria to machine trial
 
 The stone:
   (no command)             Open the seeing-stone dashboard (Textual, via uv)
+  dashboard                Same as bare ,palantir (explicit form)
   statusline               Emit a tmux status-right fragment
 
 Foundations:
   doctor                   Check dependencies and state home
   composer <sub>           Pane composer classifier (classify / strip / idle)
-  state <sub>              Legion manifest I/O (ls / new / show / event / paths / doctor)
+  state <sub>              Legion manifest I/O (ls / new / show / set / paths / doctor)
 
 Options:
   -h, --help               Show this help message
@@ -55,6 +56,7 @@ case "$1" in
     ;;
   summon)
     shift
+    require_human_control summon # no recursive legions: role panes cannot summon
     exec bash "$SCRIPT_DIR/summon.sh" "$@"
     ;;
   banish)
@@ -93,7 +95,9 @@ case "$1" in
     shift
     require_human_control grant
     legion_id="${1:?usage: ,palantir grant <id>}"
-    exec python3 "$SCRIPT_DIR/supervisor.py" dispatch "$legion_id" --json-event '{"kind":"grant_clear"}'
+    bash "$SCRIPT_DIR/banish.sh" "$legion_id" --preflight
+    python3 "$SCRIPT_DIR/supervisor.py" dispatch "$legion_id" --json-event '{"kind":"grant_clear"}' > /dev/null
+    exec bash "$SCRIPT_DIR/banish.sh" "$legion_id" --teardown-only
     ;;
   keep-watch)
     shift

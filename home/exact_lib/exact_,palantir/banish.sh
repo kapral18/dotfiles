@@ -15,10 +15,29 @@ SUPERVISOR_PY="$SCRIPT_DIR/supervisor.py"
 
 legion_id=""
 force=0
+preflight=0
+teardown_only=0
+teardown_started=0
+
+record_teardown_failure() {
+  if [ "$teardown_started" = 1 ] && [ -n "$legion_id" ]; then
+    python3 "$LEGION_STATE_PY" set "$legion_id" teardown_status failed > /dev/null 2>&1 || true
+  fi
+}
+trap record_teardown_failure ERR
+
 while [ $# -gt 0 ]; do
   case "$1" in
     --force)
       force=1
+      shift
+      ;;
+    --preflight)
+      preflight=1
+      shift
+      ;;
+    --teardown-only)
+      teardown_only=1
       shift
       ;;
     *)
@@ -31,6 +50,14 @@ done
 if [ -z "$legion_id" ]; then
   echo "usage: ,palantir banish <id> [--force]" >&2
   exit 1
+fi
+
+# Lock-only debris dir (no manifest): fail-closed removal, full-banish mode only.
+if [ "$preflight" = 0 ] && [ "$teardown_only" = 0 ]; then
+  manifest_path="$(python3 "$LEGION_STATE_PY" paths "$legion_id" | python3 -c 'import sys,json; print(json.load(sys.stdin)["manifest"])')"
+  if [ -d "$(dirname "$manifest_path")" ] && [ ! -f "$manifest_path" ]; then
+    exec python3 "$LEGION_STATE_PY" remove-debris "$legion_id"
+  fi
 fi
 
 manifest="$(python3 "$LEGION_STATE_PY" show "$legion_id")"
@@ -48,17 +75,30 @@ if [ "$force" != 1 ]; then
       exit 1
       ;;
   esac
-  if [ -n "$worktree" ] && [ -d "$worktree" ] \
-    && [ -n "$(git -C "$worktree" status --porcelain=v1 2> /dev/null | head -1)" ]; then
-    echo "Error: legion worktree is dirty: $worktree; land or stash it, or use --force" >&2
-    exit 1
+  if [ "$owns_worktree" = "true" ] && [ -n "$worktree" ] && [ -d "$worktree" ]; then
+    if ! worktree_status="$(git -C "$worktree" status --porcelain=v1 2>&1)"; then
+      echo "Error: cannot verify legion worktree cleanliness: $worktree" >&2
+      echo "$worktree_status" >&2
+      exit 1
+    fi
+    if [ -n "$worktree_status" ]; then
+      echo "Error: legion worktree is dirty: $worktree; land or stash it, or use --force" >&2
+      exit 1
+    fi
   fi
 fi
 
-if [ "$stage" != "banished" ]; then
+if [ "$preflight" = 1 ]; then
+  exit 0
+fi
+
+if [ "$teardown_only" != 1 ] && [ "$stage" != "banished" ]; then
   python3 "$SUPERVISOR_PY" dispatch "$legion_id" --json-event '{"kind":"banish"}' > /dev/null
 fi
+teardown_started=1
+python3 "$LEGION_STATE_PY" set "$legion_id" teardown_status running
 python3 "$SUPERVISOR_PY" stop "$legion_id" > /dev/null 2>&1 || true
+python3 "$SUPERVISOR_PY" run "$legion_id" --once > /dev/null
 if [ -n "$session" ]; then
   _palantir_kill_session "$session"
 fi
@@ -77,4 +117,10 @@ if [ "$owns_worktree" = "true" ] && [ -d "$worktree" ]; then
     fi
   fi
 fi
-echo "legion $legion_id banished"
+python3 "$LEGION_STATE_PY" set "$legion_id" teardown_status complete
+trap - ERR
+if [ "$teardown_only" = 1 ]; then
+  echo "legion $legion_id granted and torn down"
+else
+  echo "legion $legion_id banished"
+fi

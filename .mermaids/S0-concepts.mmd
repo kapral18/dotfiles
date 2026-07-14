@@ -68,7 +68,7 @@ graph TB
 
     %% ---- C12 Resumable state machine ---------------------------------------
     C12{{"C12 · RESUMABLE STATE MACHINES<br/>death parks, relaunch continues"}}:::concept
-    C12 --> I12["INVARIANT: long work advances a persisted stage left→right;<br/>a crash leaves it parked at last-saved stage; a supervisor<br/>continues from there (no lost progress, no re-do)."]:::inv
+    C12 --> I12["INVARIANT: long work advances a persisted stage left→right;<br/>transition actions and coordinator wakes are durable until acknowledged;<br/>a crash leaves it parked at last-saved stage and the supervisor resumes<br/>without losing side effects or replaying acknowledged work; terminal state<br/>is not complete until the legion session/worktree teardown is recorded."]:::inv
     I12 --> R12["realized by: ~/.local/state/palantir/legions/<id>/manifest.json<br/>+ legion_state.py + supervisor.py + stage result handshakes<br/>+ state-machine-verification harness rule"]:::realize
 
     %% ---- C13 Persistent intent memory --------------------------------------

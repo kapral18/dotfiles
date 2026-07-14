@@ -362,32 +362,37 @@ The agent the human talks to (this session) MAY run these six sanctioned git ope
 - `git status` / `diff` / `log` / `show` / `blame` (read-only inspection).
 
 Any other project mutation — a content edit, a commit, a push, a PR/issue/comment/review, a force-push or history rewrite, a merge that creates a merge commit, a deletion, a migration — is **not** a chat-agent action.
-Muster a legion for it, or get explicit human approval first.
+Get explicit human approval for it, or hand it to a legion — and chat-agent-initiated summons are themselves propose-only:
+present the goal packet, acceptance criteria, and base ref, then wait for explicit approval before running `,palantir summon`.
+`--no-worktree` (run in the current directory instead of a disposable worktree) additionally requires the user to have asked for it by name.
+Legion role panes carry `PALANTIR_AGENT_ROLE` and cannot summon at all — no recursive legions.
 The chat agent applies the Ownership Gate (§3.2 `--owner-of`), Publication Gate (§3.6), and Proof (§3.4) to every legion's output before it lands.
 
-### 8.1 Muster, supervise, escalate
+### 8.1 Summon, keep watch, escalate
 
 - **Summon** with `,palantir summon <goal> [--criteria <json>]`: acceptance criteria ride the manifest;
   the machine re-runs their checks at `verify`, and `cleared_for_human` is unreachable without a green verify and a blocker-free adversarial review on a different model family than `implement`.
 - **Keep watch** with the per-legion supervisor (`,palantir keep-watch <id>`, started by summon in the command window).
-  It consumes role handshake files (`stages/<stage>.result.json`), drives the state machine, machine-runs verify, and re-nudges `implement` with failure evidence, bounded by the attempt budget, then parks in `holding`.
+  It consumes role handshake files (`stages/<stage>.result.json`), durably drains transition actions and coordinator wakes, drives the state machine, machine-runs verify, and sends `implement` back to work with failure evidence, bounded by the attempt budget, then parks in `holding`.
   All pane injects are composer-guarded: only an idle pane takes keys.
+  Stage dispatch records before/after changed-path provenance for dirty-worktree review.
 - **See** with `,palantir` (the stone: every legion's stage, attention, criteria) or `,palantir farsee` / `behold <id>`.
 - **Escalate only real decisions**: a `holding` legion carries one question — answer it with `,palantir answer <id> <msg>`;
   do not send word to a working role for narration.
   Identical unresolved conditions produce one coordinator wake until they resolve and recur.
-- **Grant** a `cleared_for_human` legion with `,palantir grant <id>` (closes it and routes memory);
-  `banish` is fail-closed on in-flight work and dirty worktrees.
+- **Grant** a `cleared_for_human` legion with `,palantir grant <id>` (persists its memory-routing packet, closes it, and tears down its session/worktree); `banish` is fail-closed on in-flight work and dirty worktrees.
 
 ### 8.2 Autonomy boundary
 
 The supervisor never publishes; the coordinator brief forbids PRs, comments, and pushes without explicit human approval.
+The coordinator reacts only to supervisor events; it does not poll progress, wait on result files, inspect panes, run stage checks, or kill/restart role agents.
 Destructive/irreversible/security-sensitive work and any human-visible publication always hit §3.2, §3.6, and §3.4 —
 the machine can clear a legion for human review, never past the human.
 
 ### 8.3 Memory routing
 
-Closing a legion (`grant` or `banish`) emits a three-layer routing packet the coordinator executes:
+Closing a legion (`grant` or `banish`) persists a three-layer `memory-routing.json` packet before teardown.
+The human-facing workflow executes the packet:
 
 - **Durable** (`,ai-kb remember`): generalizable, reusable findings with provenance and confidence —
   the verifiable insights a future session would recall.

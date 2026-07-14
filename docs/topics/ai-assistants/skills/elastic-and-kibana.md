@@ -70,10 +70,12 @@ Detached `,kbn-stack --detach` starts record the Kibana process log as `kbn_log`
 | Source   | [`exact_kbn-backport`](../../../../home/exact_dot_agents/exact_skills/exact_kbn-backport/) |
 | Routing  | manual                                                                                     |
 
-## `standup`
+## `kbn-standup`
 
-| Field    | Value                                                                            |
-| -------- | -------------------------------------------------------------------------------- |
-| Use when | preparing/posting a Kibana management standup update after approval              |
-| Source   | [`exact_standup`](../../../../home/exact_dot_agents/exact_skills/exact_standup/) |
-| Routing  | manual                                                                           |
+| Field    | Value                                                                                    |
+| -------- | ---------------------------------------------------------------------------------------- |
+| Use when | preparing a draft for the Admin UX daily update                                          |
+| Scope    | accessible public, internal, and private Elastic repositories plus Slack/DMs             |
+| Format   | bare URLs; per-artifact icons; `:merged:` per merge; direct `:sdh:` summary tag          |
+| Source   | [`exact_kbn-standup`](../../../../home/exact_dot_agents/exact_skills/exact_kbn-standup/) |
+| Routing  | manual                                                                                   |

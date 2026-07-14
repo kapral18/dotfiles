@@ -17,31 +17,33 @@ flowchart TB
     TMUX --> CFG["load ~/.config/palantir/config.toml<br/>role panes may be copilot / claude / pi / opencode"]:::gov
     CFG --> GOV["load SOP + palantir skill<br/>generic gates stay in SOP; stage roles receive bounded task prompts"]:::gov
 
-    GOV --> SUP["supervisor.py loop<br/>read manifest + machine.py transition tables<br/>read stages/<stage>.result.json handshakes"]:::loop
+    GOV --> SUP["supervisor.py loop<br/>read manifest + machine.py transition tables<br/>durably drain pending_actions + pending_wakes<br/>read stages/<stage>.result.json handshakes"]:::loop
     SUP --> COMPOSER{"composer.py pane classifier"}:::gate
     COMPOSER -->|empty| INJECT["send the next safe word into the owning pane"]:::loop
     COMPOSER -->|pending / busy / unknown| WAIT["wait + retry; do not interleave input or advance stage"]:::gate
     WAIT --> SUP
-    INJECT --> STAGE
+    INJECT --> SNAP["record stage baseline paths<br/>start role; record completion delta"]:::mem
+    SNAP --> STAGE
 
     STAGE["stage path:<br/>summon → triage → optional diagnose/investigate → implement<br/>→ adversarial_review → verify"]:::loop
     STAGE --> HANDSHAKE["role pane writes stages/<stage>.result.json<br/>schema carries status, blockers, family, checks, next hint"]:::mem
     HANDSHAKE --> REVIEW{"adversarial_review guard"}:::gate
     REVIEW -->|implement family == review family| HOLD
-    REVIEW -->|blockers > 0 and budget remains| RENUDGE["bounded return to implement<br/>wake dedupe suppresses repeated identical unresolved word"]:::loop
-    RENUDGE --> SUP
+    REVIEW -->|blockers > 0 and budget remains| RETURNS["bounded return to implement<br/>queued wakes survive blocked panes; identical unresolved word dedupes"]:::loop
+    RETURNS --> SUP
     REVIEW -->|blockers = 0| VERIFY
 
     VERIFY["machine-run verify criteria checks<br/>exit 0 = green"]:::loop
     VERIFY -->|green + blockers=0| READY["cleared_for_human"]:::gate
-    VERIFY -->|failed + budget remains| RENUDGE
+    VERIFY -->|failed + budget remains| RETURNS
     VERIFY -->|failed + budget exhausted| HOLD
 
     READY --> PROOF["evidence packet is path/cmd/probe anchored<br/>claims without anchors stay Unknown"]:::gate
-    PROOF --> DASH["dashboard.py popup via tmux prefix+A<br/>statusline.py emits P:n H:n C:n"]:::loop
-    DASH --> CLOSE["human operator grants or banishes legion<br/>PALANTIR_AGENT_ROLE callers are refused"]:::in
-    CLOSE --> MEMORY["memory routing on close:<br/>,ai-kb for verified durable learnings<br/>/tmp/specs for effort spec/worklog<br/>repo AGENTS.md for repo-intrinsic conventions"]:::mem
-    MEMORY --> DONE(["done"])
+    PROOF --> DASH["dashboard.py popup via tmux prefix+A<br/>socket-aware attach; stage age + transport/queue health<br/>typed close confirmation; statusline P/H/C + orphan O + corrupt E"]:::loop
+    DASH --> CLOSE["human operator grants or banishes legion<br/>PALANTIR_AGENT_ROLE callers are refused<br/>grant preflights teardown"]:::in
+    CLOSE --> MEMORY["persist memory-routing.json before teardown:<br/>,ai-kb for verified durable learnings<br/>/tmp/specs for effort spec/worklog<br/>repo AGENTS.md for repo-intrinsic conventions"]:::mem
+    MEMORY --> TEARDOWN["stop supervisor + kill legion session<br/>remove only an owned clean worktree<br/>record teardown status"]:::loop
+    TEARDOWN --> DONE(["done"])
 
     HOLD --> DASH
     HOLD -->|operator instruction| SUP

@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import fcntl
+import hashlib
 import json
 import os
 import signal
@@ -57,6 +58,8 @@ class SupervisorLock:
     """Single supervisor per legion; same fcntl discipline as the state lock."""
 
     def __init__(self, state: legion_state.LegionState, legion_id: str) -> None:
+        self.legion_id = legion_id
+        self.manifest_path = state.manifest_path(legion_id)
         self.lock_dir = state.legion_dir(legion_id) / ".supervisor.lock"
         self.lock_file = self.lock_dir / "lock"
         self.pid_file = self.lock_dir / "pid"
@@ -80,6 +83,10 @@ class SupervisorLock:
             return False
 
     def acquire(self) -> None:
+        # Guard before mkdir: watching a nonexistent legion must not leave
+        # lock-only debris dirs that farsee cannot see or banish remove.
+        if not self.manifest_path.exists():
+            raise SystemExit(f"legion not found: {self.legion_id}")
         self.lock_dir.mkdir(parents=True, exist_ok=True)
         handle = self.lock_file.open("a+", encoding="utf-8")
         try:
@@ -111,7 +118,11 @@ class SupervisorLock:
                 return True
             time.sleep(0.05)
         os.kill(pid, signal.SIGKILL)
-        return True
+        for _ in range(20):
+            if not _pid_alive(pid):
+                return True
+            time.sleep(0.05)
+        raise RuntimeError(f"supervisor pid {pid} did not stop after SIGKILL")
 
 
 def run_criteria(manifest: dict) -> dict:
@@ -148,6 +159,40 @@ def run_criteria(manifest: dict) -> dict:
     return {"kind": "criteria_report", "green": not failures, "failures": failures, "checked": checked}
 
 
+def workspace_snapshot(worktree: str) -> dict:
+    """Capture dirty-path identities so later roles can isolate one stage's edits."""
+    proc = subprocess.run(
+        ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all", "--no-renames"],
+        cwd=worktree,
+        capture_output=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        return {"error": proc.stderr.decode(errors="replace").strip(), "files": {}}
+    files: dict = {}
+    for raw in proc.stdout.split(b"\0"):
+        if len(raw) < 4:
+            continue
+        status = raw[:2].decode(errors="replace")
+        path = raw[3:].decode(errors="surrogateescape")
+        target = Path(worktree) / path
+        if target.is_file():
+            data = target.read_bytes()
+            files[path] = {"status": status, "sha256": hashlib.sha256(data).hexdigest(), "size": len(data)}
+        else:
+            files[path] = {"status": status, "sha256": None, "size": 0}
+    return {"files": files}
+
+
+def workspace_delta(before: dict, after: dict) -> dict:
+    before_files = before.get("files") or {}
+    after_files = after.get("files") or {}
+    changed = sorted(
+        path for path in set(before_files) | set(after_files) if before_files.get(path) != after_files.get(path)
+    )
+    return {"changed_paths": changed, "before_error": before.get("error", ""), "after_error": after.get("error", "")}
+
+
 class Supervisor:
     def __init__(self, state: legion_state.LegionState, legion_id: str, config: "Optional[dict]" = None) -> None:
         self.state = state
@@ -162,56 +207,166 @@ class Supervisor:
         with self.log_file.open("a", encoding="utf-8") as handle:
             handle.write(f"{stamp} {message}\n")
 
+    def record_transport(self, status: str, error: str = "") -> None:
+        """Persist coordinator transport health without churning unchanged manifests."""
+        with self.state.lock(self.legion_id):
+            manifest = self.state.load(self.legion_id)
+            current = manifest.get("coordinator_transport") or {}
+            if current.get("status") == status and current.get("last_error", "") == error:
+                return
+            manifest["coordinator_transport"] = {
+                "status": status,
+                "last_error": error,
+                "updated_at_unix_ns": time.time_ns(),
+            }
+            self.state.save(manifest)
+
+    def begin_stage(self, stage: str, action_id: str = "") -> None:
+        """Record an immutable workspace baseline for a newly dispatched stage."""
+        with self.state.lock(self.legion_id):
+            manifest = self.state.load(self.legion_id)
+            active = manifest.get("active_stage_run") or {}
+            if action_id and active.get("action_id") == action_id:
+                run = int(active.get("run", 0))
+            else:
+                runs = dict(manifest.get("stage_runs") or {})
+                run = int(runs.get(stage, 0)) + 1
+                runs[stage] = run
+                manifest["stage_runs"] = runs
+                manifest["active_stage_run"] = {"stage": stage, "run": run, "action_id": action_id}
+                self.state.save(manifest)
+        path = self.state.stages_dir(self.legion_id) / f"{stage}.{run}.baseline.json"
+        if path.is_file():
+            return
+        snapshot = workspace_snapshot(manifest.get("worktree") or ".")
+        self.state._atomic_write(path, json.dumps(snapshot, indent=2) + "\n")
+
+    def complete_stage(self, stage: str) -> dict:
+        """Persist and compare the active stage's before/after workspace identities."""
+        manifest = self.state.load(self.legion_id)
+        active = manifest.get("active_stage_run") or {}
+        if active.get("stage") != stage:
+            return {"changed_paths": [], "provenance": "unavailable"}
+        run = int(active.get("run", 0))
+        stages = self.state.stages_dir(self.legion_id)
+        baseline_path = stages / f"{stage}.{run}.baseline.json"
+        if not baseline_path.is_file():
+            return {"changed_paths": [], "provenance": "unavailable"}
+        before = json.loads(baseline_path.read_text(encoding="utf-8"))
+        after = workspace_snapshot(manifest.get("worktree") or ".")
+        after_path = stages / f"{stage}.{run}.completed.json"
+        self.state._atomic_write(after_path, json.dumps(after, indent=2) + "\n")
+        delta = workspace_delta(before, after)
+        delta.update(
+            {
+                "provenance": "captured",
+                "baseline": str(baseline_path),
+                "completed": str(after_path),
+            }
+        )
+        delta_path = stages / f"{stage}.{run}.delta.json"
+        self.state._atomic_write(delta_path, json.dumps(delta, indent=2) + "\n")
+        delta["delta"] = str(delta_path)
+        return delta
+
+    def drain_wakes(self) -> bool:
+        """Deliver the oldest durable coordinator event when its pane is idle."""
+        manifest = self.state.load(self.legion_id)
+        pending = list(manifest.get("pending_wakes") or [])
+        if not pending:
+            return True
+        item = pending[0]
+        if not panes.wake_coordinator(self.state, self.legion_id, item.get("event") or {}):
+            self.record_transport("blocked", "coordinator pane is not idle")
+            return False
+        with self.state.lock(self.legion_id):
+            latest = self.state.load(self.legion_id)
+            queue = list(latest.get("pending_wakes") or [])
+            latest["pending_wakes"] = [
+                queued for queued in queue if queued.get("fingerprint") != item.get("fingerprint")
+            ]
+            self.state.save(latest)
+        self.record_transport("ready")
+        self.log(f"wake {item.get('key', 'event')} delivered")
+        return True
+
     # -- actions ----------------------------------------------------------- #
 
-    def execute(self, actions: "list[dict]") -> None:
-        for action in actions:
-            kind = action.get("kind")
-            if kind == "start_stage":
-                try:
-                    info = panes.start_stage(self.state, self.legion_id, action["stage"], action.get("brief") or {})
-                except panes.PaneError as exc:
-                    self.log(f"start_stage {action['stage']} deferred: {exc}")
-                    continue
-                self.log(f"start_stage {action['stage']} injected={info['injected']}")
-            elif kind == "run_verify":
-                self.verify_pass()
-            elif kind == "wake_coordinator":
-                self.surface(action.get("event") or {})
-            elif kind == "route_memory":
-                packet = action.get("packet") or {}
-                self.state._atomic_write(
-                    self.state.legion_dir(self.legion_id) / "memory-routing.json",
-                    json.dumps(packet, indent=2) + "\n",
-                )
-                delivered = panes.wake_coordinator(
-                    self.state, self.legion_id, {"kind": "route_memory", "packet": packet}
-                )
-                self.log(f"route_memory delivered={delivered}")
-            else:
-                self.log(f"unknown action {kind!r} ignored")
+    def execute_action(self, action: dict) -> bool:
+        kind = action.get("kind")
+        if kind == "start_stage":
+            self.begin_stage(action["stage"], action.get("_action_id", ""))
+            try:
+                info = panes.start_stage(self.state, self.legion_id, action["stage"], action.get("brief") or {})
+            except panes.PaneError as exc:
+                self.log(f"start_stage {action['stage']} deferred: {exc}")
+                return False
+            if not info.get("injected") and not info.get("already_delivered"):
+                return False
+            (self.state.stages_dir(self.legion_id) / f"{action['stage']}.brief.json").unlink(missing_ok=True)
+            self.log(f"start_stage {action['stage']} delivered")
+            return True
+        if kind == "run_verify":
+            if self.state.load(self.legion_id).get("stage") != "verify":
+                return True
+            self.verify_pass(drain=False)
+            return True
+        if kind == "wake_coordinator":
+            self.surface(action.get("event") or {})
+            return True
+        if kind == "route_memory":
+            packet = action.get("packet") or {}
+            self.state._atomic_write(
+                self.state.legion_dir(self.legion_id) / "memory-routing.json",
+                json.dumps(packet, indent=2) + "\n",
+            )
+            with self.state.lock(self.legion_id):
+                manifest = self.state.load(self.legion_id)
+                manifest["memory_packet_written"] = True
+                self.state.save(manifest)
+            return True
+        self.log(f"unknown action {kind!r} refused")
+        return False
+
+    def execute(self, actions: "list[dict]") -> bool:
+        return all(self.execute_action(action) for action in actions)
+
+    def execute_pending(self) -> bool:
+        while True:
+            manifest = self.state.load(self.legion_id)
+            pending = list(manifest.get("pending_actions") or [])
+            if not pending:
+                return True
+            action = pending[0]
+            if not self.execute_action(action):
+                return False
+            self.state.acknowledge_action(self.legion_id, action.get("_action_id", ""))
 
     def surface(self, event: dict) -> None:
-        """Deliver one coordinator wake, deduplicated per unresolved condition."""
+        """Durably queue one coordinator wake, deduplicated per condition."""
         key = event.get("kind", "event")
         fingerprint = json.dumps(event, sort_keys=True)
         with self.state.lock(self.legion_id):
             manifest = self.state.load(self.legion_id)
             observations, enqueue = machine.dedupe_wake(manifest.get("wake_observations") or {}, key, fingerprint)
+            if not enqueue:
+                return
             manifest["wake_observations"] = observations
+            pending = [item for item in (manifest.get("pending_wakes") or []) if item.get("key") != key]
+            pending.append(
+                {
+                    "key": key,
+                    "fingerprint": fingerprint,
+                    "event": event,
+                    "queued_at_unix_ns": time.time_ns(),
+                }
+            )
+            manifest["pending_wakes"] = pending
             self.state.save(manifest)
-        if not enqueue:
-            return
-        delivered = panes.wake_coordinator(self.state, self.legion_id, event)
-        self.log(f"wake {key} delivered={delivered}")
-        if not delivered:
-            # Blocked pane: drop the observation so the next tick retries.
-            with self.state.lock(self.legion_id):
-                manifest = self.state.load(self.legion_id)
-                manifest["wake_observations"] = machine.resolve_wake(manifest.get("wake_observations") or {}, key)
-                self.state.save(manifest)
+        self.log(f"wake {key} queued")
+        self.drain_wakes()
 
-    def verify_pass(self) -> dict:
+    def verify_pass(self, drain: bool = True) -> dict:
         # Run the (potentially long) criteria checks without holding the
         # manifest lock so answer/grant/banish dispatches never block on a
         # slow check; re-lock only to persist the per-criterion status flips.
@@ -223,13 +378,14 @@ class Supervisor:
             self.state.save(latest)
         self.log(f"verify checked={report['checked']} green={report['green']}")
         try:
-            _manifest, actions = self.state.apply_event(self.legion_id, report)
+            self.state.apply_event(self.legion_id, report)
         except machine.MachineError as exc:
             # Stage moved while checks ran (e.g. a concurrent banish); the
             # report is stale, not fatal.
             self.log(f"criteria_report refused: {exc}")
             return report
-        self.execute(actions)
+        if drain:
+            self.execute_pending()
         return report
 
     def dispatch_event(self, event: dict) -> dict:
@@ -238,8 +394,8 @@ class Supervisor:
             raise machine.MachineError(
                 f"{event['kind']} is human-only (agent role: {os.environ['PALANTIR_AGENT_ROLE']})"
             )
-        manifest, actions = self.state.apply_event(self.legion_id, event)
-        self.execute(actions)
+        manifest, _actions = self.state.apply_event(self.legion_id, event)
+        self.execute_pending()
         return manifest
 
     # -- tick -------------------------------------------------------------- #
@@ -258,6 +414,8 @@ class Supervisor:
             self.log(f"unreadable {result_path.name}: {exc}")
             return False
         history = {**payload, "consumed_at_unix_ns": time.time_ns()}
+        payload["workspace_delta"] = self.complete_stage(stage)
+        history["workspace_delta"] = payload["workspace_delta"]
         with (self.state.stages_dir(self.legion_id) / "events.jsonl").open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(history, ensure_ascii=False) + "\n")
         result_path.unlink(missing_ok=True)
@@ -268,28 +426,41 @@ class Supervisor:
             payload.setdefault("stage", stage)
             event = payload
         try:
-            _manifest, actions = self.state.apply_event(self.legion_id, event)
+            self.state.apply_event(self.legion_id, event)
         except machine.MachineError as exc:
             self.log(f"transition refused for {stage} result: {exc}")
             self.surface({"kind": "transition_refused", "stage": stage, "error": str(exc)})
             return False
-        self.execute(actions)
+        self.execute_pending()
         return True
 
     def tick(self) -> None:
+        if not self.execute_pending():
+            return
         manifest = self.state.load(self.legion_id)
         stage = manifest.get("stage", "")
         if stage == "summon":
             # Entry edge: coordinator up, then triage. No stage_result needed.
             try:
-                panes.start_coordinator(self.state, self.legion_id)
+                info = panes.start_coordinator(self.state, self.legion_id)
             except panes.PaneError as exc:
                 self.log(f"coordinator launch deferred: {exc}")
+                self.record_transport("error", str(exc))
+                return
+            if not info.get("injected"):
+                self.record_transport("blocked", "coordinator brief is not delivered")
+                return
+            self.record_transport("ready")
             with self.state.lock(self.legion_id):
                 manifest = self.state.load(self.legion_id)
                 manifest["stage"] = "triage"
+                manifest["stage_started_at_unix_ns"] = time.time_ns()
                 self.state.save(manifest)
-            self.execute([{"kind": "start_stage", "stage": "triage", "role": "triage", "brief": {}}])
+            self.state.enqueue_actions(
+                self.legion_id,
+                [{"kind": "start_stage", "stage": "triage", "role": "triage", "brief": {}}],
+            )
+            self.execute_pending()
             return
         if stage in machine.TERMINAL_STAGES:
             self._stop = True
@@ -298,6 +469,11 @@ class Supervisor:
             panes.start_coordinator(self.state, self.legion_id)
         except panes.PaneError as exc:
             self.log(f"coordinator delivery retry deferred: {exc}")
+            self.record_transport("error", str(exc))
+        else:
+            if not (self.state.load(self.legion_id).get("pending_wakes") or []):
+                self.record_transport("ready")
+        self.drain_wakes()
         if self.consume_stage_result(manifest):
             return
         # Re-surface the parked/cleared condition every tick: dedupe_wake makes
@@ -312,7 +488,9 @@ class Supervisor:
                 try:
                     brief = json.loads(brief_path.read_text(encoding="utf-8"))
                     info = panes.start_stage(self.state, self.legion_id, stage, brief)
-                    self.log(f"retry_stage {stage} injected={info['injected']}")
+                    if info.get("injected") or info.get("already_delivered"):
+                        brief_path.unlink(missing_ok=True)
+                        self.log(f"retry_stage {stage} delivered")
                 except (OSError, json.JSONDecodeError, panes.PaneError) as exc:
                     self.log(f"retry_stage {stage} deferred: {exc}")
 
@@ -377,8 +555,11 @@ def main(argv: "Optional[list[str]]" = None) -> int:
             json.dumps(
                 {
                     "stage": manifest.get("stage"),
+                    "stage_started_at_unix_ns": manifest.get("stage_started_at_unix_ns"),
                     "supervisor_alive": lock.alive(),
                     "supervisor_pid": lock.holder_pid(),
+                    "pending_wakes": len(manifest.get("pending_wakes") or []),
+                    "coordinator_transport": manifest.get("coordinator_transport") or {},
                 }
             )
         )

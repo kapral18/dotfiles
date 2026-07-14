@@ -167,9 +167,12 @@ def launch_agent(
     target = ensure_window(session, window, cwd)
     if marker_path is not None and marker_path.is_file():
         # The marker says the harness was launched, but if the pane has fallen
-        # back to a plain shell (agent exited/crashed) an idle verdict would
-        # route the next brief into the shell as commands. Relaunch instead.
+        # back to a plain shell *and* the composer is empty, the agent exited.
+        # A shell-looking current command alone is insufficient during harness
+        # startup and must not erase a live marker.
         if pane_current_command(session, window) not in SHELL_COMMANDS:
+            return target
+        if pane_verdict(session, window) != "empty":
             return target
         marker_path.unlink(missing_ok=True)
         if delivered_path is not None:
@@ -208,6 +211,17 @@ def stage_brief_text(legion: dict, stage: str, brief: dict, result_path: Path) -
         + (", blockers (list; empty when none survive refutation)" if stage == "adversarial_review" else "")
         + (". Verdict is one of implement|diagnose|reject." if stage == "triage" else ". Verdict is done."),
     ]
+    if stage == "implement":
+        lines.append(
+            "The deterministic supervisor exclusively owns the final acceptance run. "
+            "Run focused development checks as needed, but do not run the full acceptance suite or claim its final status."
+        )
+    if stage == "adversarial_review":
+        lines.append(
+            "Audit the implementation and every acceptance check for observability; a vacuous check is a blocker even "
+            "when a manually corrected command passes. The deterministic supervisor owns verification, so do not rerun "
+            "the full acceptance suite."
+        )
     return " ".join(lines)
 
 
@@ -216,12 +230,14 @@ def coordinator_brief_text(legion: dict) -> str:
         f"You are the coordinator of legion {legion['id']}: {legion.get('goal', '')}. "
         "A deterministic supervisor owns lifecycle and safety; you own judgment calls. "
         "Structured events arrive here as [palantir] lines: triage rejections, review blockers, "
-        "verify failures, budget exhaustion, questions, cleared_for_human, closed. "
+        "verify failures, budget exhaustion, questions, and cleared_for_human. "
         "For each event, decide and act with the smallest correct step (answer via "
         "',palantir answer', send word via ',palantir send-word', or summarize for the human). "
+        "Do not poll role panes, wait on result files, inspect progress, run stage checks, use tmux send-keys, "
+        "or kill or restart role agents; the deterministic supervisor owns all lifecycle and progress monitoring. "
+        "After handling one event, finish the turn and remain idle until the supervisor sends another event. "
         "Never call `,palantir grant` or `,palantir banish`; those are human-only controls. "
-        "On a closed event, route memory: durable verified findings -> ',ai-kb remember'; "
-        "task-scoped notes -> /tmp/specs; repo-intrinsic conventions -> the repo AGENTS.md in this worktree. "
+        "Never call `,palantir summon`; one legion per effort, no nested legions. "
         "Never publish (PRs, comments, pushes) without explicit human approval."
     )
 
@@ -261,7 +277,7 @@ def start_stage(state: legion_state.LegionState, legion_id: str, stage: str, bri
     # Already-delivered identical brief: leave the pane (and any result the
     # role just wrote) untouched; this is the supervisor's retry path.
     if delivered_path.is_file() and delivered_path.read_text(encoding="utf-8").strip() == digest:
-        return {"target": target, "injected": True, "result_path": str(result_path)}
+        return {"target": target, "injected": False, "already_delivered": True, "result_path": str(result_path)}
     result_path.unlink(missing_ok=True)
     injected = inject_when_idle(session, stage, text, wait_secs=60)
     if injected:
@@ -291,9 +307,10 @@ def start_coordinator(state: legion_state.LegionState, legion_id: str) -> dict:
     if delivered_path.is_file() and delivered_path.read_text(encoding="utf-8").strip() == digest:
         return {"target": target, "injected": True}
     injected = inject_when_idle(session, COMMAND_WINDOW, text, wait_secs=60)
-    if injected:
-        delivered_path.write_text(f"{digest}\n", encoding="utf-8")
-    return {"target": target, "injected": injected}
+    if not injected:
+        raise PaneError(f"{session}:{COMMAND_WINDOW} did not become idle for coordinator brief")
+    delivered_path.write_text(f"{digest}\n", encoding="utf-8")
+    return {"target": target, "injected": True}
 
 
 def wake_coordinator(state: legion_state.LegionState, legion_id: str, event: dict) -> bool:

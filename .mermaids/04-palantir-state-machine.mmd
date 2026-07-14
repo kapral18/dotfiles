@@ -26,14 +26,16 @@ stateDiagram-v2
 
     holding --> triage : operator resumes with new instruction
     holding --> banished : ,palantir banish
-    cleared_for_human --> banished : closeout memory routed
-    banished --> [*]
+    cleared_for_human --> banished : closeout packet persisted + grant teardown
+    banished --> [*] : supervisor/session stopped; owned clean worktree removed
 
     note right of summon
         State root:
         ~/.local/state/palantir/legions/<id>/manifest.json.
         One legion = one effort = one tmux session on one `,w` worktree.
         window 0 "command" = coordinator agent pane + deterministic supervisor pane.
+        Locks refuse nonexistent legions (no lock-only debris dirs);
+        manifest-less dirs surface corrupt and banish removes them fail-closed.
     end note
 
     note right of implement
@@ -42,6 +44,8 @@ stateDiagram-v2
         ~/.config/palantir/config.toml.
         Each stage writes stages/<stage>.result.json as the handshake.
         The supervisor reads JSON handshakes; LLMs never drive transitions.
+        Stage baseline/completion snapshots derive changed-path provenance
+        for the successor and adversarial review.
     end note
 
     note right of adversarial_review
@@ -62,15 +66,22 @@ stateDiagram-v2
         supervisor.py loop:
         read manifest → classify pane with composer.py
         empty → inject; pending / busy / unknown → wait + retry.
-        Wake dedupe prevents repeating the same unresolved word.
+        pending_actions survive side-effect failure and supervisor restart.
+        pending_wakes survive blocked panes; dedupe suppresses only
+        the same unresolved condition.
         dashboard.py renders the textual popup via tmux prefix+A;
-        statusline.py prints P:n H:n C:n for status-right.
+        it shows age/transport/queue/criteria/teardown health and
+        requires typed confirmation for close actions.
+        statusline.py counts only real active/holding/cleared stages.
     end note
 
     note right of cleared_for_human
-        grant / banish are human-only:
-        agent panes carry PALANTIR_AGENT_ROLE and are refused.
-        Closeout memory routing:
+        grant / banish are human-only, summon refuses legion panes:
+        agent panes carry PALANTIR_AGENT_ROLE and are refused
+        (no recursive legions); chat-agent summons are propose-only per SOP §8.0.
+        Grant preflights teardown, persists memory-routing.json,
+        stops the supervisor/session, and removes only an owned
+        clean worktree. Closeout packet routes:
         durable verified learnings → ,ai-kb;
         effort worklog/spec → /tmp/specs;
         repo-intrinsic conventions → repo AGENTS.md.

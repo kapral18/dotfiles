@@ -20,9 +20,9 @@ Invariants:
     blockers. There is no other edge into it.
   * ``adversarial_review`` must run on a different model family than
     ``implement`` (enforced at role resolution, refused at summon time).
-  * A failed verify re-nudges ``implement`` with the failure evidence, bounded
-    by ``max_implement_attempts``; an exhausted budget parks the legion in
-    ``holding`` instead of looping.
+  * A failed verify returns ``implement`` to work with the failure evidence,
+    bounded by ``max_implement_attempts``; an exhausted budget parks the
+    legion in ``holding`` instead of looping.
   * Closing a legion (``banish`` from any stage, or ``grant_clear`` from
     ``cleared_for_human``) emits a memory-routing packet: durable findings ->
     ,ai-kb; task-scoped -> /tmp/specs; repo-intrinsic -> the target repo's
@@ -126,6 +126,24 @@ def resolve_roles(roles: dict) -> dict:
     return resolved
 
 
+def validate_criteria(criteria: object) -> list[dict]:
+    """Return a normalized criteria list or refuse malformed verify input."""
+    if not isinstance(criteria, list):
+        raise MachineError("criteria must be a JSON list")
+    normalized: list[dict] = []
+    for index, raw in enumerate(criteria):
+        if not isinstance(raw, dict):
+            raise MachineError(f"criterion {index + 1} must be an object")
+        text = raw.get("text")
+        if not isinstance(text, str) or not text.strip():
+            raise MachineError(f"criterion {index + 1} needs non-empty text")
+        check = raw.get("check")
+        if check is not None and (not isinstance(check, str) or not check.strip()):
+            raise MachineError(f"criterion {index + 1} check must be a non-empty string")
+        normalized.append(dict(raw))
+    return normalized
+
+
 # --------------------------------------------------------------------------- #
 # Events and actions                                                          #
 # --------------------------------------------------------------------------- #
@@ -185,13 +203,14 @@ def memory_routing_packet(manifest: dict) -> dict:
 
 def _close(manifest: dict, reason: str) -> "tuple[dict, list[dict]]":
     manifest = dict(manifest)
+    current_attention = attention_event(manifest)
+    if current_attention is not None:
+        manifest = resolve_condition(manifest, current_attention["kind"])
     actions: list = []
-    if not manifest.get("memory_routed"):
+    if not manifest.get("memory_packet_written"):
         actions.append({"kind": "route_memory", "packet": memory_routing_packet(manifest)})
-        manifest["memory_routed"] = True
     manifest["stage"] = "banished"
     manifest["closed_reason"] = reason
-    actions.append(_wake({"kind": "closed", "reason": reason}))
     return manifest, actions
 
 
@@ -226,6 +245,9 @@ def transition(manifest: dict, event: dict) -> "tuple[dict, list[dict]]":
     if kind == "answer":
         if stage != "holding":
             raise MachineError(f"answer while {stage}; only a holding legion takes an answer")
+        current_attention = attention_event(manifest)
+        if current_attention is not None:
+            manifest = resolve_condition(manifest, current_attention["kind"])
         holding = manifest.pop("holding", {}) or {}
         resume = holding.get("resume_stage", "triage")
         manifest["stage"] = resume
@@ -266,7 +288,15 @@ def transition(manifest: dict, event: dict) -> "tuple[dict, list[dict]]":
         if stage in _STAGE_SUCCESSOR:
             nxt = _STAGE_SUCCESSOR[stage]
             manifest["stage"] = nxt
-            return manifest, [_start(nxt, {"handoff": event.get("summary", "")})]
+            return manifest, [
+                _start(
+                    nxt,
+                    {
+                        "handoff": event.get("summary", ""),
+                        "workspace_delta": event.get("workspace_delta") or {},
+                    },
+                )
+            ]
 
         if stage == "adversarial_review":
             if "blockers" not in event:
@@ -280,8 +310,9 @@ def transition(manifest: dict, event: dict) -> "tuple[dict, list[dict]]":
                 manifest["stage"] = "implement"
                 return manifest, [
                     _start("implement", {"review_blockers": blockers}),
-                    _wake({"kind": "review_blockers", "count": len(blockers)}),
+                    _wake({"kind": "review_blockers", "blockers": blockers}),
                 ]
+            manifest = resolve_condition(manifest, "review_blockers")
             manifest["stage"] = "verify"
             return manifest, [{"kind": "run_verify"}]
 
@@ -293,6 +324,7 @@ def transition(manifest: dict, event: dict) -> "tuple[dict, list[dict]]":
         if manifest.get("review_blockers"):
             raise MachineError("verify ran with open review blockers; adversarial_review must clear first")
         if event.get("green"):
+            manifest = resolve_condition(manifest, "verify_failed")
             manifest["stage"] = "cleared_for_human"
             return manifest, [_wake(attention_event(manifest))]
         failures = list(event.get("failures") or [])
@@ -338,6 +370,14 @@ def resolve_wake(observations: dict, key: str) -> dict:
     return observations
 
 
+def resolve_condition(manifest: dict, key: str) -> dict:
+    """Drop delivered and queued wake state when a condition is no longer true."""
+    manifest = dict(manifest)
+    manifest["wake_observations"] = resolve_wake(manifest.get("wake_observations") or {}, key)
+    manifest["pending_wakes"] = [item for item in (manifest.get("pending_wakes") or []) if item.get("key") != key]
+    return manifest
+
+
 def attention(manifest: dict) -> Optional[str]:
     """The dashboard/statusline attention flag for one legion, or None."""
     stage = manifest.get("stage", "")
@@ -345,6 +385,8 @@ def attention(manifest: dict) -> Optional[str]:
         return "cleared"
     if stage == "holding":
         return "holding"
+    if stage == "banished" and manifest.get("teardown_status") != "complete":
+        return "orphan"
     return None
 
 
@@ -378,6 +420,7 @@ def attention_event(manifest: dict) -> Optional[dict]:
 def summarize(manifest: dict) -> dict:
     """Stable read-model row for the dashboard and ``,palantir farsee``."""
     holding = manifest.get("holding") or {}
+    transport = manifest.get("coordinator_transport") or {}
     return {
         "id": manifest.get("id", ""),
         "goal": manifest.get("goal", ""),
@@ -388,6 +431,12 @@ def summarize(manifest: dict) -> dict:
         "implement_attempts": int(manifest.get("implement_attempts", 0)),
         "review_blockers": len(manifest.get("review_blockers") or []),
         "holding_reason": holding.get("reason", ""),
+        "stage_started_at_unix_ns": int(manifest.get("stage_started_at_unix_ns", 0)),
+        "pending_wakes": len(manifest.get("pending_wakes") or []),
+        "coordinator_transport": transport.get("status", "unknown"),
+        "coordinator_error": transport.get("last_error", ""),
+        "teardown_status": manifest.get("teardown_status", ""),
+        "memory_packet_written": bool(manifest.get("memory_packet_written")),
         "criteria_total": len(manifest.get("criteria") or []),
         "criteria_green": sum(1 for c in (manifest.get("criteria") or []) if c.get("status") == "green"),
     }

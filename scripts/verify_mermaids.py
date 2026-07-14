@@ -141,10 +141,10 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/exact_dot_agents/",
         globs=["home/exact_dot_agents/*"],
-        claimed=105,
+        claimed=106,
         anchors=[
-            ("03b-agent-skills-hooks.mmd", "exact_dot_agents/ (105)"),
-            ("00-overview.mmd", "agents 105"),
+            ("03b-agent-skills-hooks.mmd", "exact_dot_agents/ (106)"),
+            ("00-overview.mmd", "agents 106"),
         ],
     ),
     Claim(

@@ -24,6 +24,7 @@ LIB = REPO / "home" / "exact_lib" / "exact_,palantir"
 sys.path[:0] = [str(LIB)]
 
 import composer  # noqa: E402
+import dashboard  # noqa: E402
 import legion_state  # noqa: E402
 import machine  # noqa: E402
 import palantir_config  # noqa: E402
@@ -96,7 +97,7 @@ class TransitionTableTests(unittest.TestCase):
             "max_implement_attempts": 3,
             "review_blockers": [],
             "criteria": [],
-            "memory_routed": False,
+            "memory_packet_written": False,
         }
         manifest.update(extra)
         return manifest
@@ -155,7 +156,7 @@ class TransitionTableTests(unittest.TestCase):
         m, _ = machine.transition(m, {"kind": "criteria_report", "green": True})
         self.assertEqual(m["stage"], "cleared_for_human")
 
-    def test_verify_failure_renudges_implementer(self) -> None:
+    def test_verify_failure_returns_implementer_to_work(self) -> None:
         """A red verify returns implement with the failure evidence."""
         m = self._legion("verify")
         failures = [{"text": "criterion 1", "check": "false", "exit": 1}]
@@ -215,6 +216,8 @@ class TransitionTableTests(unittest.TestCase):
         cleared = self._legion("cleared_for_human")
         self.assertEqual(machine.attention_event(cleared), {"kind": "cleared_for_human"})
         self.assertIsNone(machine.attention_event(self._legion("implement")))
+        self.assertEqual(machine.attention(self._legion("banished")), "orphan")
+        self.assertIsNone(machine.attention(self._legion("banished", teardown_status="complete")))
 
     def test_stage_result_for_wrong_stage_refuses(self) -> None:
         m = self._legion("implement")
@@ -225,23 +228,30 @@ class TransitionTableTests(unittest.TestCase):
 class MemoryRoutingTests(unittest.TestCase):
     def test_legion_close_routes_memory(self) -> None:
         """Closing emits exactly one three-layer memory-routing packet."""
-        m = {"id": "l1", "goal": "g", "stage": "cleared_for_human", "worktree": "/wt", "memory_routed": False}
+        m = {
+            "id": "l1",
+            "goal": "g",
+            "stage": "cleared_for_human",
+            "worktree": "/wt",
+            "memory_packet_written": False,
+        }
         m, actions = machine.transition(m, {"kind": "grant_clear"})
         self.assertEqual(m["stage"], "banished")
         packets = [a for a in actions if a["kind"] == "route_memory"]
         self.assertEqual(len(packets), 1)
+        self.assertEqual([a["kind"] for a in actions], ["route_memory"])
         routes = packets[0]["packet"]["routes"]
         self.assertIn(",ai-kb remember", routes["durable"])
         self.assertIn("/tmp/specs", routes["ephemeral"])
         self.assertIn("AGENTS.md", routes["repo"])
         # Idempotent: a second close (banish of a banished legion) refuses,
-        # and memory_routed guards double-routing on the banish edge.
-        m2 = {"id": "l2", "goal": "g", "stage": "implement", "memory_routed": True}
+        # and memory_packet_written guards double packet creation.
+        m2 = {"id": "l2", "goal": "g", "stage": "implement", "memory_packet_written": True}
         m2, actions2 = machine.transition(m2, {"kind": "banish"})
         self.assertEqual([a for a in actions2 if a["kind"] == "route_memory"], [])
 
     def test_banish_routes_memory_from_any_stage(self) -> None:
-        m = {"id": "l1", "goal": "g", "stage": "implement", "memory_routed": False}
+        m = {"id": "l1", "goal": "g", "stage": "implement", "memory_packet_written": False}
         m, actions = machine.transition(m, {"kind": "banish"})
         self.assertEqual(m["stage"], "banished")
         self.assertEqual(len([a for a in actions if a["kind"] == "route_memory"]), 1)
@@ -261,6 +271,54 @@ class WakeDedupeTests(unittest.TestCase):
         obs, _ = machine.dedupe_wake({}, "k", "fp1")
         _obs, again = machine.dedupe_wake(obs, "k", "fp2")
         self.assertTrue(again)
+
+
+class DebrisGuardTests(unittest.TestCase):
+    """Operations on nonexistent legions must not create lock-only debris dirs,
+    and any surviving debris must stay visible and banishable."""
+
+    def test_lock_refuses_to_create_missing_legion_dir(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = make_state(tmp)
+            state.init()
+            with self.assertRaises(SystemExit):
+                with state.lock("ghost"):
+                    pass
+            self.assertEqual(list(state.legions_dir.iterdir()), [])
+
+    def test_supervisor_acquire_refuses_missing_legion(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = make_state(tmp)
+            state.init()
+            with self.assertRaises(SystemExit):
+                supervisor.SupervisorLock(state, "ghost").acquire()
+            self.assertEqual(list(state.legions_dir.iterdir()), [])
+
+    def test_manifest_less_debris_is_visible_as_corrupt(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = make_state(tmp)
+            state.init()
+            (state.legions_dir / "debris1").mkdir()
+            self.assertEqual(state.list_legions(), ["debris1"])
+            rows = state.summaries()
+            self.assertEqual([(r["id"], r["stage"]) for r in rows], [("debris1", "corrupt")])
+
+    def test_remove_debris_removes_only_manifest_less_dirs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = make_state(tmp)
+            state.init()
+            (state.legions_dir / "debris1").mkdir()
+            manifest = summon(state)
+            with self.assertRaises(SystemExit):
+                legion_state.main(["--state-home", tmp, "remove-debris", manifest["id"]])
+            self.assertEqual(legion_state.main(["--state-home", tmp, "remove-debris", "debris1"]), 0)
+            self.assertFalse((state.legions_dir / "debris1").exists())
+            self.assertTrue(state.manifest_path(manifest["id"]).exists())
+
+    def test_dashboard_allows_banish_on_corrupt_rows(self) -> None:
+        self.assertTrue(dashboard.action_available("corrupt", "banish"))
+        self.assertFalse(dashboard.action_available("corrupt", "send-word"))
+        self.assertFalse(dashboard.action_available("corrupt", "grant"))
 
 
 class LegionStateTests(unittest.TestCase):
@@ -301,6 +359,23 @@ class LegionStateTests(unittest.TestCase):
                 state.load(manifest["id"])
             rows = state.summaries()
             self.assertEqual(rows[0]["stage"], "corrupt")
+            self.assertEqual(rows[0]["attention"], "corrupt")
+
+    def test_unknown_manifest_stage_is_reported_as_corrupt(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = make_state(tmp)
+            manifest = summon(state)
+            state.save({**manifest, "stage": "disbanded"})
+            row = state.summaries()[0]
+            self.assertEqual(row["stage"], "corrupt")
+            self.assertEqual(row["invalid_stage"], "disbanded")
+
+    def test_new_legion_refuses_malformed_criteria(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = make_state(tmp)
+            for criteria in ({"text": "not a list"}, ["not an object"], [{"text": "", "check": "true"}]):
+                with self.subTest(criteria=criteria), self.assertRaises(machine.MachineError):
+                    summon(state, criteria=criteria)
 
     def test_summarize_counts_criteria(self) -> None:
         m = {"id": "x", "stage": "verify", "criteria": [{"status": "green"}, {"status": "red"}]}
@@ -328,22 +403,107 @@ class VerifyRunnerTests(unittest.TestCase):
             self.assertEqual(manifest["criteria"][1]["status"], "red")
             self.assertNotIn("status", manifest["criteria"][2])
 
-    def test_verify_pass_feeds_machine_and_renudges(self) -> None:
+    def test_verify_pass_feeds_machine_and_returns_implement(self) -> None:
         """End-to-end: red check -> criteria_report -> implement return action."""
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as wt:
             state = make_state(tmp)
             manifest = summon(state, criteria=[{"text": "missing", "check": "test -f missing"}])
             state.save({**state.load(manifest["id"]), "stage": "verify", "worktree": wt})
             sup = supervisor.Supervisor(state, manifest["id"], config=dict(palantir_config.DEFAULTS))
-            executed = []
-            with mock.patch.object(sup, "execute", side_effect=lambda a: executed.extend(a)):
+            with mock.patch.object(sup, "execute_pending"):
                 report = sup.verify_pass()
             self.assertFalse(report["green"])
             self.assertEqual(state.load(manifest["id"])["stage"], "implement")
-            self.assertTrue(any(a["kind"] == "start_stage" and a["stage"] == "implement" for a in executed))
+            pending = state.load(manifest["id"])["pending_actions"]
+            self.assertTrue(any(a["kind"] == "start_stage" and a["stage"] == "implement" for a in pending))
 
 
 class SupervisorLoopTests(unittest.TestCase):
+    def test_workspace_delta_isolates_paths_changed_during_stage(self) -> None:
+        with tempfile.TemporaryDirectory() as wt:
+            subprocess.run(["git", "init", "-q", wt], check=True)
+            tracked = Path(wt, "existing.txt")
+            tracked.write_text("before\n", encoding="utf-8")
+            before = supervisor.workspace_snapshot(wt)
+            tracked.write_text("after\n", encoding="utf-8")
+            Path(wt, "new.txt").write_text("new\n", encoding="utf-8")
+            delta = supervisor.workspace_delta(before, supervisor.workspace_snapshot(wt))
+            self.assertEqual(delta["changed_paths"], ["existing.txt", "new.txt"])
+
+    def test_pending_action_survives_failed_side_effect_and_retries_once(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = make_state(tmp)
+            manifest = summon(state)
+            state.save({**state.load(manifest["id"]), "stage": "triage"})
+            state.apply_event(
+                manifest["id"],
+                {"kind": "stage_result", "stage": "triage", "verdict": "implement"},
+            )
+            sup = supervisor.Supervisor(state, manifest["id"], config=dict(palantir_config.DEFAULTS))
+            with (
+                mock.patch.object(sup, "begin_stage"),
+                mock.patch.object(
+                    panes,
+                    "start_stage",
+                    side_effect=[panes.PaneError("not ready"), {"injected": True}],
+                ) as start_stage,
+            ):
+                self.assertFalse(sup.execute_pending())
+                self.assertEqual(len(state.load(manifest["id"])["pending_actions"]), 1)
+                self.assertTrue(sup.execute_pending())
+            self.assertEqual(start_stage.call_count, 2)
+            self.assertEqual(state.load(manifest["id"])["pending_actions"], [])
+
+    def test_delivered_stage_action_removes_retry_brief(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = make_state(tmp)
+            manifest = summon(state)
+            brief_path = state.stages_dir(manifest["id"]) / "triage.brief.json"
+            brief_path.parent.mkdir(parents=True)
+            brief_path.write_text("{}\n", encoding="utf-8")
+            sup = supervisor.Supervisor(state, manifest["id"], config=dict(palantir_config.DEFAULTS))
+            with (
+                mock.patch.object(sup, "begin_stage"),
+                mock.patch.object(
+                    panes,
+                    "start_stage",
+                    return_value={"injected": False, "already_delivered": True},
+                ),
+            ):
+                self.assertTrue(
+                    sup.execute_action({"kind": "start_stage", "stage": "triage", "brief": {}, "_action_id": "a1"})
+                )
+            self.assertFalse(brief_path.exists())
+
+    def test_stage_baseline_recovers_after_crash_between_manifest_and_file_write(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = make_state(tmp)
+            manifest = summon(state)
+            state.save(
+                {
+                    **manifest,
+                    "stage": "triage",
+                    "stage_runs": {"triage": 1},
+                    "active_stage_run": {"stage": "triage", "run": 1, "action_id": "a1"},
+                }
+            )
+            sup = supervisor.Supervisor(state, manifest["id"], config=dict(palantir_config.DEFAULTS))
+            with mock.patch.object(supervisor, "workspace_snapshot", return_value={"files": {}}):
+                sup.begin_stage("triage", "a1")
+            baseline = state.stages_dir(manifest["id"]) / "triage.1.baseline.json"
+            self.assertTrue(baseline.is_file())
+            self.assertEqual(state.load(manifest["id"])["stage_runs"], {"triage": 1})
+
+    def test_replayed_verify_action_does_not_rerun_after_stage_advanced(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = make_state(tmp)
+            manifest = summon(state)
+            state.save({**manifest, "stage": "implement"})
+            sup = supervisor.Supervisor(state, manifest["id"], config=dict(palantir_config.DEFAULTS))
+            with mock.patch.object(supervisor, "run_criteria") as run_criteria:
+                self.assertTrue(sup.execute_action({"kind": "run_verify", "_action_id": "a1"}))
+            run_criteria.assert_not_called()
+
     def test_agent_role_cannot_dispatch_human_only_events(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             state = make_state(tmp)
@@ -372,12 +532,13 @@ class SupervisorLoopTests(unittest.TestCase):
                 }
             )
             sup = supervisor.Supervisor(state, manifest["id"], config=dict(palantir_config.DEFAULTS))
-            with mock.patch.object(sup, "execute") as execute:
+            with mock.patch.object(sup, "execute_pending") as execute_pending:
                 updated = sup.dispatch_event({"kind": "answer", "text": "9200"})
             self.assertEqual(updated["stage"], "implement")
-            actions = execute.call_args.args[0]
-            self.assertEqual(actions[0]["kind"], "start_stage")
-            self.assertEqual(actions[0]["brief"]["answer"], "9200")
+            execute_pending.assert_called_once_with()
+            action = state.load(manifest["id"])["pending_actions"][0]
+            self.assertEqual(action["kind"], "start_stage")
+            self.assertEqual(action["brief"]["answer"], "9200")
 
     def test_route_memory_action_persists_packet(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -385,10 +546,12 @@ class SupervisorLoopTests(unittest.TestCase):
             manifest = summon(state)
             sup = supervisor.Supervisor(state, manifest["id"], config=dict(palantir_config.DEFAULTS))
             packet = machine.memory_routing_packet(manifest)
-            with mock.patch.object(panes, "wake_coordinator", return_value=False):
+            with mock.patch.object(panes, "wake_coordinator", return_value=False) as wake:
                 sup.execute([{"kind": "route_memory", "packet": packet}])
             persisted = json.loads((state.legion_dir(manifest["id"]) / "memory-routing.json").read_text())
             self.assertEqual(persisted, packet)
+            self.assertTrue(state.load(manifest["id"])["memory_packet_written"])
+            wake.assert_not_called()
 
     def test_single_supervisor_lock(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -459,8 +622,21 @@ class SupervisorLoopTests(unittest.TestCase):
             with mock.patch.object(sup, "tick", side_effect=RuntimeError("boom")):
                 self.assertEqual(sup.run(once=True), 0)
 
+    def test_summon_waits_for_delivered_coordinator_brief(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = make_state(tmp)
+            manifest = summon(state)
+            sup = supervisor.Supervisor(state, manifest["id"], config=dict(palantir_config.DEFAULTS))
+            with (
+                mock.patch.object(panes, "start_coordinator", side_effect=panes.PaneError("not ready")),
+                mock.patch.object(panes, "start_stage") as start_stage,
+            ):
+                sup.tick()
+            self.assertEqual(state.load(manifest["id"])["stage"], "summon")
+            start_stage.assert_not_called()
+
     def test_tick_resurfaces_attention_wake_after_blocked_pane(self) -> None:
-        """A holding wake lost to a busy coordinator pane is re-delivered next tick."""
+        """A holding wake stays queued until the coordinator pane becomes idle."""
         with tempfile.TemporaryDirectory() as tmp:
             state = make_state(tmp)
             manifest = summon(state)
@@ -476,14 +652,17 @@ class SupervisorLoopTests(unittest.TestCase):
                 mock.patch.object(panes, "start_coordinator"),
                 mock.patch.object(panes, "wake_coordinator", return_value=False),
             ):
-                sup.tick()  # blocked pane: delivery fails, observation dropped
+                sup.tick()
+            queued = state.load(manifest["id"])["pending_wakes"]
+            self.assertEqual([item["key"] for item in queued], ["question"])
             with (
                 mock.patch.object(panes, "start_coordinator"),
                 mock.patch.object(panes, "wake_coordinator", return_value=True) as delivered,
             ):
-                sup.tick()  # retried
-                sup.tick()  # deduped after successful delivery
+                sup.tick()
+                sup.tick()
             self.assertEqual(delivered.call_count, 1)
+            self.assertEqual(state.load(manifest["id"])["pending_wakes"], [])
 
     def test_refused_stage_result_surfaces_transition_refused_wake(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -499,20 +678,43 @@ class SupervisorLoopTests(unittest.TestCase):
             self.assertFalse(consumed)
             self.assertEqual(surface.call_args.args[0]["kind"], "transition_refused")
 
-    def test_wake_dedupe_survives_blocked_pane(self) -> None:
+    def test_wake_queue_survives_blocked_pane_without_duplicate_delivery(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             state = make_state(tmp)
             manifest = summon(state)
             sup = supervisor.Supervisor(state, manifest["id"], config=dict(palantir_config.DEFAULTS))
-            with mock.patch.object(panes, "wake_coordinator", return_value=False):
+            with mock.patch.object(panes, "wake_coordinator", return_value=False) as blocked:
                 sup.surface({"kind": "verify_failed", "attempt": 1})
-            # Delivery failed -> observation dropped -> next tick retries.
-            obs = state.load(manifest["id"])["wake_observations"]
-            self.assertEqual(obs, {})
+                sup.surface({"kind": "verify_failed", "attempt": 1})
+            self.assertEqual(blocked.call_count, 1)
+            loaded = state.load(manifest["id"])
+            self.assertEqual(len(loaded["pending_wakes"]), 1)
+            self.assertEqual(loaded["coordinator_transport"]["status"], "blocked")
             with mock.patch.object(panes, "wake_coordinator", return_value=True) as delivered:
-                sup.surface({"kind": "verify_failed", "attempt": 1})
-                sup.surface({"kind": "verify_failed", "attempt": 1})
+                sup.drain_wakes()
+                sup.drain_wakes()
             self.assertEqual(delivered.call_count, 1)
+            self.assertEqual(state.load(manifest["id"])["pending_wakes"], [])
+
+    def test_answer_resolves_delivered_and_pending_question_wake(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = make_state(tmp)
+            manifest = summon(state)
+            state.save(
+                {
+                    **state.load(manifest["id"]),
+                    "stage": "holding",
+                    "holding": {"reason": "question", "text": "q?", "resume_stage": "implement"},
+                    "wake_observations": {"question": "fingerprint"},
+                    "pending_wakes": [{"key": "question", "fingerprint": "fingerprint", "event": {}}],
+                }
+            )
+            sup = supervisor.Supervisor(state, manifest["id"], config=dict(palantir_config.DEFAULTS))
+            with mock.patch.object(sup, "execute"):
+                sup.dispatch_event({"kind": "answer", "text": "a"})
+            loaded = state.load(manifest["id"])
+            self.assertNotIn("question", loaded["wake_observations"])
+            self.assertEqual(loaded["pending_wakes"], [])
 
 
 class PaneContractTests(unittest.TestCase):
@@ -558,6 +760,69 @@ class PaneContractTests(unittest.TestCase):
         self.assertIn('git -C "$git_root" worktree remove', source)
         self.assertIn('if [ "$owns_worktree" = "true" ]', source)
 
+    def test_grant_preflights_then_tears_down_legion(self) -> None:
+        source = (LIB / "main.sh").read_text()
+        self.assertIn('bash "$SCRIPT_DIR/banish.sh" "$legion_id" --preflight', source)
+        self.assertIn('exec bash "$SCRIPT_DIR/banish.sh" "$legion_id" --teardown-only', source)
+
+    def test_shared_no_worktree_legion_does_not_require_clean_repo_for_teardown(self) -> None:
+        with tempfile.TemporaryDirectory() as repo, tempfile.TemporaryDirectory() as state_home:
+            subprocess.run(["git", "init", "-q", repo], check=True)
+            Path(repo, "dirty.txt").write_text("intentional\n", encoding="utf-8")
+            state = make_state(state_home)
+            manifest = summon(state, git_root=repo, worktree=repo)
+            state.save({**manifest, "stage": "cleared_for_human"})
+            proc = subprocess.run(
+                ["bash", str(LIB / "banish.sh"), manifest["id"], "--preflight"],
+                env={**os.environ, "PALANTIR_STATE_HOME": state_home},
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+
+    def test_grant_persists_closeout_packet_and_completes_teardown(self) -> None:
+        with tempfile.TemporaryDirectory() as repo, tempfile.TemporaryDirectory() as state_home:
+            subprocess.run(["git", "init", "-q", repo], check=True)
+            state = make_state(state_home)
+            manifest = summon(state, git_root=repo, worktree=repo)
+            state.save({**manifest, "stage": "cleared_for_human"})
+            proc = subprocess.run(
+                ["bash", str(LIB / "main.sh"), "grant", manifest["id"]],
+                env={**os.environ, "PALANTIR_STATE_HOME": state_home},
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            closed = state.load(manifest["id"])
+            self.assertEqual(closed["stage"], "banished")
+            self.assertTrue(closed["memory_packet_written"])
+            self.assertEqual(closed["teardown_status"], "complete")
+            self.assertTrue((state.legion_dir(manifest["id"]) / "memory-routing.json").exists())
+            self.assertIn("granted and torn down", proc.stdout)
+
+    def test_teardown_drains_closeout_action_left_by_interrupted_dispatch(self) -> None:
+        with tempfile.TemporaryDirectory() as repo, tempfile.TemporaryDirectory() as state_home:
+            subprocess.run(["git", "init", "-q", repo], check=True)
+            state = make_state(state_home)
+            manifest = summon(state, git_root=repo, worktree=repo)
+            state.save({**manifest, "stage": "implement"})
+            state.apply_event(manifest["id"], {"kind": "banish"})
+            self.assertEqual(len(state.load(manifest["id"])["pending_actions"]), 1)
+            proc = subprocess.run(
+                ["bash", str(LIB / "banish.sh"), manifest["id"], "--teardown-only"],
+                env={**os.environ, "PALANTIR_STATE_HOME": state_home},
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            closed = state.load(manifest["id"])
+            self.assertEqual(closed["pending_actions"], [])
+            self.assertTrue(closed["memory_packet_written"])
+            self.assertEqual(closed["teardown_status"], "complete")
+
     def test_harness_argv_known_and_unknown(self) -> None:
         self.assertEqual(panes.harness_argv("copilot"), ["copilot", "--allow-all"])
         self.assertEqual(
@@ -582,9 +847,9 @@ class PaneContractTests(unittest.TestCase):
             "COPILOT_ALLOW_ALL=true PALANTIR_AGENT_ROLE=coordinator copilot --allow-all",
         )
 
-    def test_agent_role_cannot_grant_or_banish(self) -> None:
+    def test_agent_role_cannot_summon_grant_or_banish(self) -> None:
         env = {**os.environ, "PALANTIR_AGENT_ROLE": "coordinator"}
-        for command in ("grant", "banish"):
+        for command in ("summon", "grant", "banish"):
             proc = subprocess.run(
                 ["bash", str(LIB / "main.sh"), command, "not-a-legion"],
                 cwd=REPO,
@@ -674,14 +939,51 @@ class PaneContractTests(unittest.TestCase):
             self.assertFalse(delivered.exists())  # brief must be re-injected
             self.assertEqual(sent[0][:3], ("send-keys", "-t", "%7"))
 
+    def test_launch_agent_keeps_marker_when_shell_named_pane_is_busy(self) -> None:
+        """A transient shell command label must not erase a live harness marker."""
+        with tempfile.TemporaryDirectory() as tmp:
+            marker = Path(tmp) / "agent.json"
+            delivered = Path(tmp) / "stage.delivered"
+            marker.write_text("{}\n", encoding="utf-8")
+            delivered.write_text("digest\n", encoding="utf-8")
+            with (
+                mock.patch.object(panes, "ensure_window", return_value="%7"),
+                mock.patch.object(panes, "pane_current_command", return_value="fish"),
+                mock.patch.object(panes, "pane_verdict", return_value="pending"),
+                mock.patch.object(composer, "run_tmux") as run_tmux,
+            ):
+                panes.launch_agent(
+                    "s",
+                    "implement",
+                    "/wt",
+                    "copilot",
+                    "gpt-5.6-sol",
+                    marker_path=marker,
+                    settle_secs=2,
+                    delivered_path=delivered,
+                )
+            self.assertTrue(marker.is_file())
+            self.assertTrue(delivered.is_file())
+            run_tmux.assert_not_called()
+
     def test_stage_brief_names_handshake_contract(self) -> None:
-        legion = {"id": "l1", "goal": "fix the bug"}
+        legion = {
+            "id": "l1",
+            "goal": "fix the bug",
+            "criteria": [{"text": "observable behavior", "check": "test -f outcome"}],
+        }
         text = panes.stage_brief_text(legion, "adversarial_review", {"handoff": "done"}, Path("/tmp/x/result.json"))
         self.assertIn("adversarial-review", text)
         self.assertIn("/tmp/x/result.json", text)
         self.assertIn("blockers", text)
+        self.assertIn("vacuous", text)
+        self.assertIn("supervisor", text)
+        self.assertIn("do not rerun the full acceptance suite", text.lower())
         triage = panes.stage_brief_text(legion, "triage", {}, Path("/r.json"))
         self.assertIn("implement|diagnose|reject", triage)
+        implement = panes.stage_brief_text(legion, "implement", {}, Path("/r.json"))
+        self.assertIn("supervisor", implement)
+        self.assertIn("do not run the full acceptance suite", implement.lower())
 
     def test_stage_brief_retries_until_delivered_then_dedupes(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -697,7 +999,8 @@ class PaneContractTests(unittest.TestCase):
                 third = panes.start_stage(state, manifest["id"], "triage", {"attempt": 1})
             self.assertFalse(first["injected"])
             self.assertTrue(second["injected"])
-            self.assertTrue(third["injected"])
+            self.assertFalse(third["injected"])
+            self.assertTrue(third["already_delivered"])
             self.assertEqual(inject.call_count, 2)
             self.assertTrue((state.stages_dir(manifest["id"]) / "triage.delivered").is_file())
 
@@ -735,12 +1038,40 @@ class PaneContractTests(unittest.TestCase):
         self.assertIn('max_attempts="$(python3 "$CONFIG_PY" get max_implement_attempts)"', source)
         self.assertIn('--max-implement-attempts "$max_attempts"', source)
 
-    def test_coordinator_brief_owns_memory_routing_and_publication_gate(self) -> None:
+    def test_failed_summon_rolls_back_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as repo, tempfile.TemporaryDirectory() as state_home:
+            subprocess.run(["git", "init", "-q", repo], check=True)
+            fake_bin = Path(repo, "fake-bin")
+            fake_bin.mkdir()
+            fake_tmux = fake_bin / "tmux"
+            fake_tmux.write_text("#!/usr/bin/env sh\nexit 1\n", encoding="utf-8")
+            fake_tmux.chmod(0o755)
+            env = {
+                **os.environ,
+                "PALANTIR_STATE_HOME": state_home,
+                "PATH": f"{fake_bin}:{os.environ['PATH']}",
+            }
+            proc = subprocess.run(
+                ["bash", str(LIB / "summon.sh"), "--no-worktree", "rollback probe"],
+                cwd=repo,
+                env=env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertEqual(list((Path(state_home) / "legions").glob("*/manifest.json")), [])
+
+    def test_coordinator_brief_is_event_driven_and_keeps_publication_gate(self) -> None:
         text = panes.coordinator_brief_text({"id": "l1", "goal": "g"})
-        self.assertIn(",ai-kb remember", text)
-        self.assertIn("AGENTS.md", text)
+        self.assertNotIn("closed", text)
         self.assertIn("explicit human approval", text)
         self.assertIn("Never call `,palantir grant` or `,palantir banish`", text)
+        self.assertIn("Never call `,palantir summon`", text)
+        self.assertIn("Do not poll", text)
+        self.assertIn("tmux send-keys", text)
+        self.assertIn("kill or restart", text)
+        self.assertIn("remain idle", text)
 
     def test_inject_when_idle_blocks_on_busy_pane(self) -> None:
         with mock.patch.object(panes, "pane_verdict", return_value="busy"):
@@ -777,8 +1108,8 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(resolved[role]["harness"], "copilot")
             self.assertEqual(resolved[role]["model"], "gpt-5.6-sol")
             self.assertEqual(resolved[role]["family"], "gpt")
-        self.assertEqual(resolved["adversarial-review"]["harness"], "pi")
-        self.assertEqual(resolved["adversarial-review"]["model"], "anthropic/claude-opus-4.8")
+        self.assertEqual(resolved["adversarial-review"]["harness"], "copilot")
+        self.assertEqual(resolved["adversarial-review"]["model"], "claude-fable-5")
         self.assertEqual(resolved["adversarial-review"]["family"], "claude")
 
     def test_flat_toml_parsing_and_coercion(self) -> None:
@@ -899,6 +1230,33 @@ class ComposerTests(unittest.TestCase):
         verdict, _ = composer.classify(pane)
         self.assertEqual(verdict, "busy")
 
+    def test_pi_empty_input_with_active_work_indicator_is_pending(self) -> None:
+        pane = (
+            "Elapsed 539.5s\n"
+            "⠴ Working...\n"
+            "────────────────────────────────\n"
+            "\n"
+            "────────────────────────────────\n"
+            "/tmp/worktree\n"
+            "10.3%/1.0M (auto)  (openrouter) anthropic/claude-opus-4.8 • xhigh\n"
+            "MCP: 0/3 servers\n"
+        )
+        verdict, _ = composer.classify(pane)
+        self.assertEqual(verdict, "pending")
+
+    def test_copilot_empty_input_with_active_work_indicator_is_pending(self) -> None:
+        pane = (
+            "/tmp/worktree  Session: 490 AIC used\n"
+            "────────────────────────────────\n"
+            "❯ \n"
+            "────────────────────────────────\n"
+            "/ commands · ? help · → next tab\n"
+            " ◉ Working · 331 B esc interrupt\n"
+            " GPT-5.6 Sol · 1.1M context\n"
+        )
+        verdict, _ = composer.classify(pane)
+        self.assertEqual(verdict, "pending")
+
     def test_spinner_is_pending(self) -> None:
         verdict, _ = composer.classify("⠋ Thinking")
         self.assertEqual(verdict, "pending")
@@ -924,15 +1282,97 @@ class StatuslineTests(unittest.TestCase):
             {"stage": "implement"},
             {"stage": "holding"},
             {"stage": "cleared_for_human"},
-            {"stage": "banished"},
+            {"stage": "banished", "teardown_status": "complete"},
         ]
         with mock.patch.object(legion_state.LegionState, "summaries", return_value=rows):
             self.assertEqual(statusline.fragment(), "P:1 H:1 C:1")
         with mock.patch.object(legion_state.LegionState, "summaries", return_value=[]):
             self.assertEqual(statusline.fragment(), "")
 
+    def test_fragment_does_not_count_unknown_or_legacy_stages_as_active(self) -> None:
+        import statusline
+
+        rows = [{"stage": "disbanded"}, {"stage": "corrupt"}, {"stage": "bogus"}]
+        with mock.patch.object(legion_state.LegionState, "summaries", return_value=rows):
+            self.assertEqual(statusline.fragment(), "E:1")
+
+    def test_fragment_surfaces_orphaned_terminal_legions(self) -> None:
+        import statusline
+
+        rows = [
+            {"stage": "banished"},
+            {"stage": "banished", "teardown_status": "failed"},
+            {"stage": "banished", "teardown_status": "complete"},
+        ]
+        with mock.patch.object(legion_state.LegionState, "summaries", return_value=rows):
+            self.assertEqual(statusline.fragment(), "O:2")
+
 
 class DashboardSurfaceTests(unittest.TestCase):
+    def test_attach_command_honors_outer_tmux_socket(self) -> None:
+        with mock.patch.dict(os.environ, {"OUTER_TMUX_SOCKET": "/tmp/outer.sock"}):
+            self.assertEqual(
+                dashboard.tmux_switch_client_command("legion-l1"),
+                ["tmux", "-S", "/tmp/outer.sock", "switch-client", "-t", "=legion-l1"],
+            )
+
+    def test_attach_command_defaults_to_inherited_server(self) -> None:
+        """Popup jobs inherit $TMUX; bare tmux targets the owning server."""
+        env = {k: v for k, v in os.environ.items() if k != "OUTER_TMUX_SOCKET"}
+        with mock.patch.dict(os.environ, env, clear=True):
+            self.assertEqual(
+                dashboard.tmux_switch_client_command("legion-l1"),
+                ["tmux", "switch-client", "-t", "=legion-l1"],
+            )
+
+    def test_dashboard_theme_is_ecosystem_frappe(self) -> None:
+        self.assertEqual(dashboard.THEME, "catppuccin-frappe")
+        self.assertEqual(
+            dashboard.STAGE_COLOR_ROLES,
+            {"holding": "warning", "cleared_for_human": "success", "banished": "error", "corrupt": "error"},
+        )
+
+    def test_stage_glyphs_cover_exactly_the_semantic_stages(self) -> None:
+        self.assertEqual(set(dashboard.STAGE_GLYPHS), set(dashboard.STAGE_COLOR_ROLES))
+        for glyph in dashboard.STAGE_GLYPHS.values():
+            self.assertEqual(len(glyph), 1)
+            # Nerd Font private-use glyphs stay single-width in tmux/Textual.
+            self.assertGreaterEqual(ord(glyph), 0xE000)
+            self.assertLessEqual(ord(glyph), 0xF8FF)
+
+    def test_stage_age_is_compact_and_deterministic(self) -> None:
+        self.assertEqual(dashboard.stage_age(1_000_000_000, 3_000_000_000), "2s")
+        self.assertEqual(dashboard.stage_age(1_000_000_000, 3_662_000_000_000), "1h01m")
+
+    def test_dashboard_hides_only_successfully_torn_down_history(self) -> None:
+        rows = [
+            {"id": "active", "stage": "implement"},
+            {"id": "closed", "stage": "banished", "teardown_status": "complete"},
+            {"id": "orphan", "stage": "banished", "teardown_status": ""},
+            {"id": "failed", "stage": "banished", "teardown_status": "failed"},
+        ]
+        self.assertEqual(
+            [row["id"] for row in dashboard.visible_rows(rows, False)],
+            ["active", "orphan", "failed"],
+        )
+        self.assertEqual(dashboard.visible_rows(rows, True), rows)
+
+    def test_destructive_dashboard_actions_are_stage_gated(self) -> None:
+        self.assertTrue(dashboard.action_available("holding", "answer"))
+        self.assertFalse(dashboard.action_available("implement", "answer"))
+        self.assertTrue(dashboard.action_available("cleared_for_human", "grant"))
+        self.assertFalse(dashboard.action_available("holding", "grant"))
+        self.assertFalse(dashboard.action_available("implement", "banish"))
+        self.assertTrue(dashboard.action_available("implement", "send-word"))
+        self.assertFalse(dashboard.action_available("banished", "send-word"))
+
+    def test_dashboard_requires_typed_confirmation_for_close_actions(self) -> None:
+        source = (LIB / "dashboard.py").read_text()
+        self.assertIn('"grant-confirm"', source)
+        self.assertIn('"banish-confirm"', source)
+        self.assertIn('"force-banish-confirm"', source)
+        self.assertNotIn('self._run(self.palantir, "banish", legion_id)\n                self.reload()', source)
+
     def test_dashboard_puts_vim_navigation_first(self) -> None:
         source = (LIB / "dashboard.py").read_text()
         binding_lines = [line.strip() for line in source.splitlines() if line.strip().startswith("Binding(")]

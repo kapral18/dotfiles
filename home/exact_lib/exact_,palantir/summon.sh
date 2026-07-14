@@ -10,6 +10,13 @@
 
 set -euo pipefail
 
+# No recursive legions: legion role panes (PALANTIR_AGENT_ROLE) cannot summon.
+# main.sh guards the CLI entry; this covers direct script invocation.
+if [ -n "${PALANTIR_AGENT_ROLE:-}" ]; then
+  echo "Error: summon is refused for legion agent panes (agent role: $PALANTIR_AGENT_ROLE)" >&2
+  exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=tmux_lib.sh
 . "$SCRIPT_DIR/tmux_lib.sh"
@@ -89,10 +96,11 @@ sys.path.insert(0, sys.argv[2])
 import machine
 try:
     machine.resolve_roles(json.loads(sys.argv[1]))
+    machine.validate_criteria(json.loads(sys.argv[3]))
 except machine.MachineError as exc:
     print(f"Error: {exc}", file=sys.stderr)
     raise SystemExit(1)
-' "$roles_json" "$SCRIPT_DIR"; then
+' "$roles_json" "$SCRIPT_DIR" "$criteria"; then
   exit 1
 fi
 if ! python3 -c 'import json,sys; json.loads(sys.argv[1])' "$criteria" 2> /dev/null; then
@@ -100,6 +108,35 @@ if ! python3 -c 'import json,sys; json.loads(sys.argv[1])' "$criteria" 2> /dev/n
   exit 1
 fi
 max_attempts="$(python3 "$CONFIG_PY" get max_implement_attempts)"
+
+branch=""
+worktree=""
+legion_id=""
+session=""
+summon_complete=0
+
+cleanup_failed_summon() {
+  status=$?
+  trap - EXIT
+  if [ "$summon_complete" = 1 ]; then
+    exit "$status"
+  fi
+  set +e
+  if [ -n "$session" ]; then
+    _palantir_kill_session "$session"
+  fi
+  if [ -n "$legion_id" ]; then
+    python3 "$LEGION_STATE_PY" remove "$legion_id"
+  fi
+  if [ "$use_worktree" = 1 ] && [ -n "$worktree" ] && [ -d "$worktree" ]; then
+    git -C "$git_root" worktree remove --force "$worktree"
+  fi
+  if [ -n "$branch" ]; then
+    git -C "$git_root" branch -D "$branch" > /dev/null 2>&1
+  fi
+  exit "$status"
+}
+trap cleanup_failed_summon EXIT
 
 # --- allocate the worktree (mirror ,w add's local-branch path) -------------- #
 worktree="$git_root"
@@ -139,8 +176,13 @@ if ! _palantir_spawn_session "$session" "$worktree"; then
 fi
 
 # --- supervisor pane in window 0 (right split; coordinator owns pane 0) ------ #
-_palantir_tmux split-window -d -h -t "=${session}:command" -c "$worktree" \
-  "python3 $(_palantir_sh_quote "$SCRIPT_DIR/supervisor.py") run $(_palantir_sh_quote "$legion_id")" 2> /dev/null || true
+if ! _palantir_tmux split-window -d -h -t "=${session}:command" -c "$worktree" \
+  "python3 $(_palantir_sh_quote "$SCRIPT_DIR/supervisor.py") run $(_palantir_sh_quote "$legion_id")" 2> /dev/null; then
+  echo "Error: could not start supervisor pane in '$session'" >&2
+  exit 1
+fi
 
+summon_complete=1
+trap - EXIT
 echo "legion $legion_id summoned: session=$session worktree=$worktree"
 echo "attach: tmux switch-client -t '$session'   stone: ,palantir"
