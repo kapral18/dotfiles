@@ -112,7 +112,7 @@ Each registry has a declarative list plus the hook that converges it. See [Packa
 
 ## AI
 
-AI governance, harness configs, model/MCP generation, memory, Ralph, and local inference have a focused lookup page:
+AI governance, harness configs, model/MCP generation, memory, Palantír, and local inference have a focused lookup page:
 
 - [AI reference](ai-reference.md)
 
@@ -140,7 +140,7 @@ Helper scripts called by hooks and commands (stdlib-only by convention).
 | `generated_artifact_ledger.py`      | Record/evaluate generated artifacts for semantic drift (backs `,doctor ai`)                                                     |
 | `ai_models.py`                      | Parse the `litellm_models` / `azure_models` sections of `ai_models.yaml`                                                        |
 | `model_mirrors.py`                  | Generate/verify the committed model-mirror JSON + Go artifacts from the registry sources                                        |
-| `model_mirror_consumer.py`          | Stdlib fail-closed consumer views of the model mirror for deployed commands (`,ai`, `,ralph`)                                   |
+| `model_mirror_consumer.py`          | Stdlib fail-closed consumer views of the model mirror for deployed commands such as `,ai`                                       |
 | `model_capabilities.v1.json`        | Hand-verified harness capability snapshot consumed by model-mirror generation                                                   |
 | `generate_pi_models.py`             | Build Pi `models.json` from the shared base plus LiteLLM/Azure providers                                                        |
 | `model_display.py`                  | Shared display-name formatting for LiteLLM model entries                                                                        |
@@ -153,7 +153,6 @@ Helper scripts called by hooks and commands (stdlib-only by convention).
 | `vec_runner.py`                     | Isolated PEP 723 `sqlite-vec` KNN/pairs runner for the KB                                                                       |
 | `agent_memory.py`                   | Inspect/wipe hook memory under `/tmp/specs` for the current workspace                                                           |
 | `worklog_queue.py`                  | Crash-safe bounded per-session worklog event queue flushed into `/tmp/specs` topic worklogs                                     |
-| `ralph.py`                          | Ralph orchestrator state machine (planner -> executor -> reviewer -> re_reviewer)                                               |
 | `sync_llama_cpp_models.py`          | Download missing GGUF files declared in the llama.cpp manifest                                                                  |
 | `reconcile_golang_pkgs.py`          | Reconcile Go binaries against the manifest (hook 05-update-golang-pkgs)                                                         |
 | `reconcile_custom_packages.py`      | Reconcile source-installed custom package artifacts                                                                             |
@@ -164,11 +163,10 @@ Helper scripts called by hooks and commands (stdlib-only by convention).
 
 Idempotent housekeeping that removes orphaned generated state on apply.
 
-| Hook                                                                                                                                                                | Purpose                                      |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| [`run_onchange_after_08-cleanup-orphaned-agent-skill-dirs.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_08-cleanup-orphaned-agent-skill-dirs.sh.tmpl)     | Drop skill dirs no longer in the source tree |
-| [`run_onchange_after_08-cleanup-orphaned-ralph-fzf-scaffold.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_08-cleanup-orphaned-ralph-fzf-scaffold.sh.tmpl) | Remove stale Ralph fzf scaffold artifacts    |
-| [`run_onchange_after_08-cleanup-orphaned-tmux-pick_session.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_08-cleanup-orphaned-tmux-pick_session.sh.tmpl)   | Remove stale tmux `pick_session` artifacts   |
+| Hook                                                                                                                                                              | Purpose                                      |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| [`run_onchange_after_08-cleanup-orphaned-agent-skill-dirs.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_08-cleanup-orphaned-agent-skill-dirs.sh.tmpl)   | Drop skill dirs no longer in the source tree |
+| [`run_onchange_after_08-cleanup-orphaned-tmux-pick_session.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_08-cleanup-orphaned-tmux-pick_session.sh.tmpl) | Remove stale tmux `pick_session` artifacts   |
 
 ## Formatting
 

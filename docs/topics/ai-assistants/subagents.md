@@ -94,4 +94,4 @@ The phase order these profiles serve (necessity gate → angle fan-out → adver
 
 - [Review workflow](reviews/index.md)
 - [Tool configs](tool-configs/index.md)
-- [Ralph orchestrator](ralph/index.md)
+- [Palantír orchestrator](palantir.md)

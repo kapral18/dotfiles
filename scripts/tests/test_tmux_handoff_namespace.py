@@ -9,7 +9,7 @@ core binary or the real
 ``pin_session_first.sh`` helper against a private ``XDG_CACHE_HOME`` fake cache,
 so the assertions exercise the implemented directory protocol rather than a
 model. Static-source assertions guard the shell wrappers' handoff contract
-(token propagation, owner-checked ``end``, secure Ralph context retention,
+(token propagation, owner-checked ``end``, secure palantir context retention,
 standalone begin, no top-level legacy reads/writes).
 
 Compatibility impact: removed (requested). The former global pin/sentinel
@@ -44,7 +44,7 @@ GH_PICKER = TMUX_PICKERS / "github/executable_gh_picker.sh"
 GH_CREATE = TMUX_PICKERS / "github/executable_gh_create.sh"
 SESSION_POPUP = TMUX_PICKERS / "session/executable_popup.sh"
 PICK_SESSION = TMUX_PICKERS / "session/executable_pick_session.sh"
-RALPH_APPLY = TMUX_PICKERS / "lib/executable_handoff_to_ralph_apply.sh"
+PALANTIR_APPLY = TMUX_PICKERS / "lib/executable_handoff_to_palantir_apply.sh"
 
 TOKEN_RE = re.compile(r"^[0-9a-f]{32}$")
 DEAD_OWNER_TTL_SECONDS = 6 * 60 * 60
@@ -53,12 +53,12 @@ STAGING_GRACE_SECONDS = 5 * 60
 DEAD_PID = 999_999_999  # far above macOS PID_MAX; os.kill -> ESRCH -> dead
 ENV_TOKEN = "TMUX_PICKER_HANDOFF_TOKEN"
 
-# Every public slot the core allows, plus the derived Ralph context sibling.
+# Every public slot the core allows, plus the derived palantir context sibling.
 ALLOWED_SLOTS = (
     "gh_picker_pin",
     "pick_session_pin",
     "gh_picker_create_pin",
-    "gh_picker_ralph_pin",
+    "gh_picker_palantir_pin",
     "gh_picker_switch_sessions",
     "pick_session_switch_gh",
 )
@@ -66,7 +66,7 @@ ALLOWED_SLOTS = (
 # must never read or write these; tests poison them and assert byte-stability.
 LEGACY_TOP_LEVEL = ALLOWED_SLOTS
 
-WIRED_FILES = (GH_POPUP, GH_PICKER, GH_CREATE, SESSION_POPUP, PICK_SESSION, PIN_SESSION_FIRST, RALPH_APPLY)
+WIRED_FILES = (GH_POPUP, GH_PICKER, GH_CREATE, SESSION_POPUP, PICK_SESSION, PIN_SESSION_FIRST, PALANTIR_APPLY)
 
 
 class HandoffTestBase(unittest.TestCase):
@@ -422,12 +422,12 @@ class TestHandoffProtocolWiring(HandoffTestBase):
         # A second consume misses -> checkout cannot run twice.
         self.assertFalse(Path(self.path("gh_picker_create_pin", token)).exists())
 
-    def test_ralph_context_lives_in_namespace_and_end_removes_it(self):
+    def test_palantir_context_lives_in_namespace_and_end_removes_it(self):
         token = self.begin(role="popup-loop", entry="gh-popup")
-        pin = Path(self.path("gh_picker_ralph_pin", token))
+        pin = Path(self.path("gh_picker_palantir_pin", token))
         pin.write_text("pr\towner/repo\t9\turl\ttitle\t/wt\t\tseed\t1\n", encoding="utf-8")
         context = pin.with_suffix(pin.suffix + ".context.md")
-        context.write_text("RICH RALPH CONTEXT\n", encoding="utf-8")
+        context.write_text("RICH PALANTIR CONTEXT\n", encoding="utf-8")
         self.assertTrue(context.is_file())
         # Normal owner end removes the whole namespace, context sibling included.
         result = self.core("end", "--owner-pid", str(os.getpid()), "--token", token)
@@ -435,18 +435,18 @@ class TestHandoffProtocolWiring(HandoffTestBase):
         self.assertFalse((self.root / token).exists())
         self.assertFalse(context.exists())
 
-    def test_ralph_retained_context_copy_survives_normal_namespace_end(self):
+    def test_palantir_retained_context_copy_survives_normal_namespace_end(self):
         token = self.begin(role="popup-loop", entry="gh-popup")
-        pin = Path(self.path("gh_picker_ralph_pin", token))
+        pin = Path(self.path("gh_picker_palantir_pin", token))
         pin.write_text("pr\towner/repo\t9\turl\ttitle\t/wt\t\tseed\t1\n", encoding="utf-8")
         context = pin.with_suffix(pin.suffix + ".context.md")
-        context.write_text("RICH RALPH CONTEXT\n", encoding="utf-8")
+        context.write_text("RICH PALANTIR CONTEXT\n", encoding="utf-8")
 
         retained_result = self.core("retain-context", str(context), "--token", token)
         self.assertEqual(retained_result.returncode, 0, retained_result.stderr)
         retained = Path(retained_result.stdout.strip())
         self.assertEqual(stat.S_IMODE(retained.stat().st_mode), 0o600)
-        self.assertEqual(retained.read_text(), "RICH RALPH CONTEXT\n")
+        self.assertEqual(retained.read_text(), "RICH PALANTIR CONTEXT\n")
         self.assertFalse(context.exists())
 
         end = self.core("end", "--owner-pid", str(os.getpid()), "--token", token)
@@ -544,7 +544,7 @@ class TestWiredSourceContract(unittest.TestCase):
     def test_no_top_level_legacy_handoff_paths(self):
         legacy = re.compile(
             r"(cache_dir[}\"/]*/?|tmux/)(gh_picker_pin|pick_session_pin|gh_picker_create_pin"
-            r"|gh_picker_ralph_pin|gh_picker_switch_sessions|pick_session_switch_gh)\b"
+            r"|gh_picker_palantir_pin|gh_picker_switch_sessions|pick_session_switch_gh)\b"
         )
         for path, text in self.src.items():
             self.assertNotRegex(text, legacy, f"{path.name} references a legacy top-level handoff path")
@@ -553,7 +553,7 @@ class TestWiredSourceContract(unittest.TestCase):
         for path, text in self.src.items():
             if path in (GH_CREATE, PIN_SESSION_FIRST):
                 continue
-            for slot in ("gh_picker_pin", "pick_session_pin", "gh_picker_ralph_pin"):
+            for slot in ("gh_picker_pin", "pick_session_pin", "gh_picker_palantir_pin"):
                 if slot in text:
                     self.assertRegex(
                         text,
@@ -581,9 +581,9 @@ class TestWiredSourceContract(unittest.TestCase):
             self.assertIn("trap", text)
             self.assertRegex(text, r"\bend --owner-pid", f"{wrapper.name} must end the namespace by owner pid")
 
-    def test_gh_popup_ends_namespace_after_secure_ralph_context_copy(self):
+    def test_gh_popup_ends_namespace_after_secure_palantir_context_copy(self):
         popup = self.src[GH_POPUP]
-        apply_helper = self.src[RALPH_APPLY]
+        apply_helper = self.src[PALANTIR_APPLY]
         core = CORE.read_text(encoding="utf-8")
 
         # Every popup exit performs the same owner-checked namespace end.
@@ -592,7 +592,7 @@ class TestWiredSourceContract(unittest.TestCase):
         self.assertRegex(popup, r'end --owner-pid "\$\$" --token "\$TMUX_PICKER_HANDOFF_TOKEN"')
         self.assertIn("trap _gh_popup_cleanup EXIT", popup)
 
-        # Ralph context is copied securely before the asynchronous prompt is queued.
+        # palantir context is copied securely before the asynchronous prompt is queued.
         retain_at = apply_helper.index('retain-context "$context_file"')
         prompt_at = apply_helper.index("tmux command-prompt")
         self.assertLess(retain_at, prompt_at)

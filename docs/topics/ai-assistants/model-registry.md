@@ -6,7 +6,7 @@ sidebar_position: 9
 
 Canonical model policy stays in the existing YAML and per-harness configs; generated mirrors project that policy into one machine-readable view without becoming a competing source of truth. This is the model-side counterpart to the [MCP registry](mcp.md).
 
-Use when adding a model, changing reasoning/cost metadata, checking live catalog drift, or understanding how a model reaches Pi, OpenCode, Ralph, and provider launchers.
+Use when adding a model, changing reasoning/cost metadata, checking live catalog drift, or understanding how a model reaches Pi, OpenCode, and provider launchers.
 
 ## Registry: `ai_models.yaml`
 
@@ -16,8 +16,8 @@ Source of truth: [`home/.chezmoidata/ai_models.yaml`](../../../home/.chezmoidata
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `litellm_models`      | LiteLLM model definitions rendered into Pi/OpenCode                                                                             |
 | `azure_models`        | Azure Foundry model definitions rendered into Pi/OpenCode                                                                       |
-| `cursor_models`       | Ralph's curated Cursor aliases; `recommended: true` is the narrower TUI set                                                     |
-| `pi_extra_models`     | Non-LiteLLM Pi selectors retained by Ralph                                                                                      |
+| `cursor_models`       | Curated Cursor aliases; `recommended: true` is the narrower preferred set                                                       |
+| `pi_extra_models`     | Non-LiteLLM Pi selectors retained for Pi-specific launch paths                                                                  |
 | `provider_models`     | Static provider-route choices for shell completion                                                                              |
 | `agent_review_models` | Per-harness review `lanes`/`verifier` pairs; the verifier-family pairing is reviewed here rather than inferred or auto-promoted |
 
@@ -53,7 +53,7 @@ The Azure AI-backed GPT-5.5 and GPT-5.6 LiteLLM groups return reasoning output b
 
 ## Generated mirror v1
 
-[`home/dot_config/ai/readonly_model-mirrors.v1.json`](../../../home/dot_config/ai/readonly_model-mirrors.v1.json) deploys to `~/.config/ai/model-mirrors.v1.json`. It is generated from the registry, harness configs, Ralph roles, and the versioned installed-harness evidence in [`scripts/model_capabilities.v1.json`](../../../scripts/model_capabilities.v1.json).
+[`home/dot_config/ai/readonly_model-mirrors.v1.json`](../../../home/dot_config/ai/readonly_model-mirrors.v1.json) deploys to `~/.config/ai/model-mirrors.v1.json`. It is generated from the registry, harness configs, and the versioned installed-harness evidence in [`scripts/model_capabilities.v1.json`](../../../scripts/model_capabilities.v1.json).
 
 Every harness and provider route has three catalogs:
 
@@ -63,9 +63,9 @@ Every harness and provider route has three catalogs:
 | `curated`     | Operator-owned IDs allowed by current policy                                                          |
 | `recommended` | Deliberate subset shown as preferred choices; availability alone never promotes a model into this set |
 
-Each catalog carries `status`, `models`, `complete`, `reason`, and `provenance`. Status is `known`, `unknown`, or `error`; `unknown`/`error` catalogs must have no models, `complete: null`, and a reason, so a failed probe can never look like a successful empty catalog. Provenance enumerates every contributing config or registry source; registry entries also name the source section, such as `ai_models.yaml` → `agent_review_models` for Copilot policy. The mirror also records exact installed harness identity/version evidence, Ralph defaults, and consumer adapters.
+Each catalog carries `status`, `models`, `complete`, `reason`, and `provenance`. Status is `known`, `unknown`, or `error`; `unknown`/`error` catalogs must have no models, `complete: null`, and a reason, so a failed probe can never look like a successful empty catalog. Provenance enumerates every contributing config or registry source; registry entries also name the source section, such as `ai_models.yaml` → `agent_review_models` for Copilot policy. The mirror also records exact installed harness identity/version evidence and consumer adapters.
 
-Generation fails closed when the canonical `cursor_models` section is missing, empty, unrecognized, duplicated, or contains an invalid ID. Every non-command Ralph role default must also exist in the curated catalog for its Cursor/Pi harness; generation cannot publish a known mirror with a stale fallback.
+Generation fails closed when the canonical `cursor_models` section is missing, empty, unrecognized, duplicated, or contains an invalid ID. Curated catalogs must contain only recognized, non-duplicated IDs; generation cannot publish a known mirror with a stale fallback.
 
 Static generation has no network path:
 
@@ -82,7 +82,7 @@ python3 scripts/model_mirrors.py adapt \
   --consumer launcher --harness cursor --set available
 ```
 
-The deployed `,ai` launcher consumes the shared `consumer_view.v1` module with the `available` set. A known, complete catalog rejects an absent explicit model; incomplete or unknown catalogs preserve low-level explicit model control. The plan exposes bounded catalog status, count, and provenance without embedding the full model list, and planning performs no network access. Omitting `--set` in the repo-side adapter still selects the documented launcher default, `recommended`. Ralph preflight consumes `curated`, Ralph TUI consumes `recommended`, and `__comma_provider_models.fish` consumes provider `curated` catalogs. The generated Go consumer also mirrors Ralph's existing role fallback defaults, including the Claude/GPT reviewer-family split.
+The deployed `,ai` launcher consumes the shared `consumer_view.v1` module with the `available` set. A known, complete catalog rejects an absent explicit model; incomplete or unknown catalogs preserve low-level explicit model control. The plan exposes bounded catalog status, count, and provenance without embedding the full model list, and planning performs no network access. Omitting `--set` in the repo-side adapter still selects the documented launcher default, `recommended`. `__comma_provider_models.fish` consumes provider `curated` catalogs. Command consumers keep policy in their own config and use the mirror only for bounded availability/provenance checks.
 
 ## Opt-in live drift
 
@@ -98,7 +98,7 @@ Locally verified adapters cover Cursor (`cursor-agent --list-models`), Pi (`pi -
 
 Command probes are capped at 20 seconds and 4 MiB; HTTP probes are capped at 10 seconds and 8 MiB. Results never include stderr, response headers, credentials, or exception text. Every provider model ID in an HTTP payload must be a string accepted by `MODEL_ID_RE`; one malformed or non-string ID makes the whole payload `unknown`, never known drift. Missing credentials, authentication/command failures, timeouts, oversized/empty/unparseable output, and unsupported adapters also return `unknown`. A known result reports `stale_curated`, `new_available`, and `recommended_unavailable`, but never mutates the static mirror or auto-promotes a live ID.
 
-Fixture probes use a JSON `target_cases` map such as [`scripts/tests/fixtures/model_probe_cases.json`](../../../scripts/tests/fixtures/model_probe_cases.json); providing a fixture without a matching target fails closed instead of falling through to a live call. `,ralph doctor --live-models` uses the same mirror/probe seam for its non-mutating Cursor diagnostic.
+Fixture probes use a JSON `target_cases` map such as [`scripts/tests/fixtures/model_probe_cases.json`](../../../scripts/tests/fixtures/model_probe_cases.json); providing a fixture without a matching target fails closed instead of falling through to a live call. The same mirror/probe seam is available for non-mutating live catalog diagnostics.
 
 ## LiteLLM integration (work profile)
 

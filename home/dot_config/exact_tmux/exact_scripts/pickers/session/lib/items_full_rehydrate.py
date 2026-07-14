@@ -37,12 +37,6 @@ BADGE_REVIEW_PENDING = color("38;5;214", " \u25cb")
 BADGE_CI_SUCCESS = color("38;5;42", "\u25cf")
 BADGE_CI_FAILURE = color("38;5;196", "\u25cf")
 BADGE_CI_PENDING = color("38;5;220", "\u25cf")
-BADGE_RALPH = color("38;5;111", " ralph")
-BADGE_RALPH_PASSED = color("38;5;42", " ralph✓")
-BADGE_RALPH_NEEDS = color("38;5;214", " ralph?")
-BADGE_RALPH_FAILED = color("38;5;196", " ralph✗")
-BADGE_RALPH_RUNNING = color("38;5;220", " ralph●")
-BADGE_RALPH_KILLED = color("38;5;240", " ralph⨯")
 
 
 def _parse_status_flags(meta: str) -> set[str]:
@@ -102,75 +96,6 @@ def _ci_badge(state: str) -> str:
     if s in ("PENDING", "EXPECTED"):
         return BADGE_CI_PENDING
     return ""
-
-
-def _ralph_status_for_meta(meta: str) -> str:
-    for part in (meta or "").split("|"):
-        if part.startswith("ralph="):
-            return part[6:]
-    return ""
-
-
-def _ralph_badge(name: str, meta: str) -> str:
-    status = _ralph_status_for_meta(meta)
-    if not status:
-        return ""
-    if status in ("passed", "completed"):
-        return BADGE_RALPH_PASSED
-    if status == "needs_verification":
-        return BADGE_RALPH_NEEDS
-    if status in ("failed",):
-        return BADGE_RALPH_FAILED
-    if status in ("killed",):
-        return BADGE_RALPH_KILLED
-    if status in ("running", "in_progress"):
-        return BADGE_RALPH_RUNNING
-    return BADGE_RALPH
-
-
-def _load_ralph_session_status() -> dict[str, str]:
-    if os.environ.get("PICK_SESSION_DISABLE_RALPH"):
-        return {}
-    try:
-        out = subprocess.run(
-            [",ralph", "runs", "--json", "--limit", "200"],
-            check=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-            timeout=2,
-        ).stdout
-    except Exception:
-        return {}
-    out = out.strip()
-    if not out:
-        return {}
-    try:
-        import json as _json
-
-        runs = _json.loads(out)
-    except Exception:
-        return {}
-    result: dict[str, str] = {}
-    for run in runs:
-        tmux = run.get("tmux") or {}
-        sess = tmux.get("session")
-        if not sess:
-            continue
-        result[sess] = run.get("validation_status") or run.get("status") or "tracked"
-    return result
-
-
-_ralph_sessions = _load_ralph_session_status()
-
-
-def _augment_meta_with_ralph(meta: str, name: str) -> str:
-    status = _ralph_sessions.get(name)
-    if not status:
-        return meta or ""
-    parts = [p for p in (meta or "").split("|") if p and not p.startswith("ralph=")]
-    parts.append(f"ralph={status}")
-    return "|".join(parts)
 
 
 def _gh_badges_from_meta(meta: str) -> str:
@@ -624,15 +549,14 @@ def emit_missing_sessions():
         if name in printed_sessions or rp in printed_sessions:
             continue
         suffix = color("2;38;5;244", " (current)") if name == current_name else ""
-        meta = _augment_meta_with_ralph(_session_meta_from_cached_path(rp, cached_meta_by_rpath.get(rp, "")), name)
+        meta = _session_meta_from_cached_path(rp, cached_meta_by_rpath.get(rp, ""))
         gh_b = _gh_badges_from_meta(meta)
-        ralph_b = _ralph_badge(name, meta)
         if rp and not is_git_dir(rp):
             label = plain_session_label(rp)
-            disp = display_dir_session_entry_with_suffix(label, suffix) + gh_b + ralph_b
+            disp = display_dir_session_entry_with_suffix(label, suffix) + gh_b
             mk = match_key(label, name) if label == rp else match_key(label, name, rp)
         else:
-            disp = display_session_entry_with_suffix(name, "", suffix, _pr_is_review_meta(meta)) + gh_b + ralph_b
+            disp = display_session_entry_with_suffix(name, "", suffix, _pr_is_review_meta(meta)) + gh_b
             mk = match_key(name)
         print(f"{disp}\tsession\t{rp}\t{meta}\t{name}\t{mk}")
         printed_sessions.add(name)
@@ -715,8 +639,6 @@ with open(cache_file, "r", encoding="utf-8", errors="replace") as f:
             printed_sessions.add(rpath)
             suffix = color("2;38;5;244", " (current)") if target == current_name else ""
             gh_b = _gh_badges_from_meta(meta)
-            meta = _augment_meta_with_ralph(meta, target)
-            ralph_b = _ralph_badge(target, meta)
             meta_base = (meta or "").split("|", 1)[0]
             is_plain_dir_session = not meta_base.startswith(("sess_root:", "sess_wt:"))
             if is_plain_dir_session and rpath:
@@ -726,7 +648,7 @@ with open(cache_file, "r", encoding="utf-8", errors="replace") as f:
             else:
                 display = display_session_entry_with_suffix(target, "", suffix, _pr_is_review_meta(meta))
                 mk = match_key(target)
-            print(f"{display}{badge}{gh_b}{ralph_b}\tsession\t{path}\t{meta}\t{target}\t{mk}")
+            print(f"{display}{badge}{gh_b}\tsession\t{path}\t{meta}\t{target}\t{mk}")
             continue
 
         if rpath in sess_by_rpath and rpath not in scan_roots_set:

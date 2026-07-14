@@ -13,8 +13,8 @@ It has two layers: a **semantic cloud** (how it works together) and a **catalog*
 4. Before editing any file, consult [`.mermaids/SR-index.mmd`](.mermaids/SR-index.mmd) (reverse index).
    Use it to find the concept the file serves, what breaks if changed, and its co-edit set.
 5. Load the deeper flow/catalog diagram(s) for whatever the task touches — flows:
-   `S1-flow-apply-reconcile.mmd` (apply/hooks), `S2-flow-agent-runtime.mmd` (agents/Ralph), `S3-flow-pickers-handoff.mmd` (pickers);
-   catalog: e.g. `04-ralph-state-machine.mmd`, `05-tmux-pickers.mmd`, `01-chezmoi-pipeline.mmd`.
+   `S1-flow-apply-reconcile.mmd` (apply/hooks), `S2-flow-agent-runtime.mmd` (agents/Palantír), `S3-flow-pickers-handoff.mmd` (pickers);
+   catalog: e.g. `04-palantir-state-machine.mmd`, `05-tmux-pickers.mmd`, `01-chezmoi-pipeline.mmd`.
 
 These diagrams are documentation.
 When a change under `home/`, `scripts/`, or `tools/` alters a flow, command, or state shown in a `.mmd` file, update that file in the same change (see Documentation Hygiene below).
@@ -65,7 +65,7 @@ Examples include shell configs, scripts in `~/bin/`, app configs in `~/.config/`
 ## AI Setup Contribution Boundary
 
 When changing AI functionality in this chezmoi repo, keep generic mechanics and domain policy separate.
-AI functionality includes SOP files, skills, subagents, runtime profiles, hooks, MCP/model registries, review workflows, Ralph, and docs.
+AI functionality includes SOP files, skills, subagents, runtime profiles, hooks, MCP/model registries, review workflows, Palantír, and docs.
 
 - **Generic surfaces:** portable behavior such as global SOP mechanics, shared skills, generic subagent/runtime profiles, hooks, model/MCP/package generators, and registries.
   Cross-repo AI workflow docs are also generic surfaces.

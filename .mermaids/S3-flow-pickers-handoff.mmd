@@ -1,7 +1,7 @@
 %% ============================================================================
 %% S3-flow-pickers-handoff.mmd — FLOW: stale-while-revalidate UX + the owner-scoped
-%% handoff bus that lets pickers cooperate. Realizes C9, C10 (and C3 work/home
-%% scope). Files are nodes ON the interaction. (drill: 05, 06)
+%% handoff bus that lets pickers cooperate with Palantir summon. Realizes C9, C10
+%% (and C3 work/home scope). Files are nodes ON the interaction. (drill: 05, 06)
 %% ============================================================================
 flowchart TB
     classDef in fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
@@ -26,7 +26,7 @@ flowchart TB
         direction TB
         BEGIN["gh_popup.sh: begin --owner-role popup-loop --entry gh-popup<br/>→ random 32-hex token dir in $XDG_CACHE_HOME/tmux/handoff-v1/&lt;token&gt;/<br/>(dir 0700; immutable owner.json 0600 fingerprints pid+start+command)"]:::own
         BEGIN --> INJECT["export TMUX_PICKER_HANDOFF_TOKEN; display-popup -e explicitly injects<br/>the token into every child; handoff_namespace path SLOT resolves only there<br/>a picker launched WITHOUT a token begins & owns its own standalone namespace"]:::own
-        INJECT --> ENDNS["every normal EXIT → end --owner-pid $$<br/>(owner-fingerprint checked, idempotent); no global mailbox<br/>Ralph also ends normally after retain-context copies .context.md outside the namespace"]:::own
+        INJECT --> ENDNS["every normal EXIT → end --owner-pid $$<br/>(owner-fingerprint checked, idempotent); no global mailbox<br/>Palantir seeds are retained before namespace cleanup"]:::own
     end
     LAUNCH -.begins/owns.-> BEGIN
 
@@ -35,7 +35,7 @@ flowchart TB
         VIEW --> ACT{"action key"}:::ui
         ACT -->|enter / checkout| CO["direct worktree checkout in place (,w · gh-worktree)<br/>no pin — the action runs, no successor needed"]:::run
         ACT -->|"alt-g → sessions"| SENT["handoff_to_sessions.sh → pick_session_pin<br/>+ touch gh_picker_switch_sessions sentinel · abort"]:::bus
-        ACT -->|"alt-A → ralph"| RPIN["handoff_to_ralph_pin.sh →<br/>gh_ralph_handoff_context.py → gh_picker_ralph_pin (+ .context.md)"]:::bus
+        ACT -->|"alt-A → Palantir"| PPIN["Palantir summon handoff → retained context seed<br/>+ abort so the popup loop can release the TTY"]:::bus
         ACT -->|"alt-i / alt-E → create"| CPIN["create flow → gh_picker_create_pin<br/>(consumed on gh_picker EXIT → checkout)"]:::bus
     end
 
@@ -43,8 +43,8 @@ flowchart TB
         SENT -->|popup loop relaunches| PICKSESS["pick_session picker: consume pick_session_pin<br/>(pin_session_first seeds top) · tmux attach/switch"]:::run
         PICKSESS -->|"alt-g → GitHub"| GHPIN["handoff_to_gh.sh → gh_picker_pin<br/>+ touch pick_session_switch_gh sentinel · abort"]:::bus
         GHPIN -->|popup loop relaunches| GHSEED["gh_picker: consume gh_picker_pin at startup<br/>(pin_gh_first seeds the PR/issue on top)"]:::run
-        RPIN --> RETAIN["handoff_to_ralph_apply → retain-context<br/>0600 random .md under retained-context/ · source removed<br/>copy survives namespace end; sweep reaps after 7 days (no cap)"]:::own
-        RETAIN --> RALPH[",ralph go run seeded with retained context path (async)"]:::run
+        PPIN --> RETAIN["retain-context<br/>0600 random .md under retained-context/ · source removed<br/>copy survives namespace end; sweep reaps after 7 days (no cap)"]:::own
+        RETAIN --> PALRUN[",palantir summon seeded with retained context path"]:::run
         CPIN --> CREATE["new PR/issue/branch flow"]:::run
     end
 

@@ -194,7 +194,7 @@ pane_activity_status() {
   local cmd="$1"
   [ -n "$cmd" ] || return 0
   case "$cmd" in
-    claude | cursor-agent | cursor | aider | codex | opencode | goose | gemini | ralph | crush)
+    claude | cursor-agent | cursor | aider | codex | opencode | goose | gemini | crush)
       printf '%sagent%s (%s)' "$C_GREEN" "$C_R" "$cmd"
       ;;
     fish | zsh | bash | sh | nu | dash)
@@ -272,43 +272,9 @@ dir_preview() {
   fi
 }
 
-ralph_info_from_meta() {
-  local m="$1"
-  local sess="$2"
-  local status=""
-  local IFS='|'
-  for part in $m; do
-    case "$part" in
-      ralph=*) status="${part#ralph=}" ;;
-    esac
-  done
-  [ -z "$status" ] && return 0
-  local sc="$C_BLUE"
-  case "$status" in
-    passed | completed) sc="$C_GREEN" ;;
-    needs_verification) sc="$C_YELLOW" ;;
-    failed) sc="$C_RED" ;;
-    killed) sc="${C_DIM}" ;;
-  esac
-  printf '%s  %s%s%s\n' "${C_DIM}ralph${C_R}" "$sc" "$status" "$C_R"
-  if [ -n "$sess" ] && command -v ,ralph > /dev/null 2>&1; then
-    local match
-    match="$(,ralph runs --json --session "$sess" --limit 5 2> /dev/null || true)"
-    if [ -n "$match" ] && [ "$match" != "[]" ]; then
-      printf '%s  %s\n' "${C_DIM}runs${C_R}" "$(printf '%s' "$match" | python3 -c "
-import json, sys
-rows = json.load(sys.stdin)
-for r in rows[:3]:
-    print(f\"  {r.get('name') or r.get('short_id')}  {r.get('status')}/{r.get('validation_status') or '-'}  {(r.get('goal') or '')[:60]}\")
-" 2> /dev/null)"
-    fi
-  fi
-}
-
 case "$kind" in
   session)
     gh_info_from_meta "$meta"
-    ralph_info_from_meta "$meta" "$target"
     if [ -n "$target" ]; then
       pane_capture "$target"
     elif [ -n "$path" ] && [ -d "$path" ]; then
@@ -317,7 +283,6 @@ case "$kind" in
     ;;
   worktree)
     gh_info_from_meta "$meta"
-    ralph_info_from_meta "$meta" ""
     if [ -n "$path" ] && [ -d "$path" ]; then
       dir_preview "$path"
     fi

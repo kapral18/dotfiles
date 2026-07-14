@@ -58,23 +58,23 @@ graph TB
 
     %% ---- C10 Handoff bus ----------------------------------------------------
     C10{{"C10 · OWNER-SCOPED HANDOFF BUS<br/>tools cooperate via pin/sentinel files in a private namespace"}}:::concept
-    C10 --> I10["INVARIANT: a picker begins an owner-scoped namespace (random 32-hex<br/>token dir 0700 + immutable owner.json 0600 fingerprinting pid/start/command);<br/>the explicit TMUX_PICKER_HANDOFF_TOKEN env value routes every child to its slots,<br/>never a global mailbox or argv token. The owner ends its namespace on normal EXIT;<br/>Ralph context is copied to a secure retained-context file (0600, 7-day TTL) first."]:::inv
-    I10 --> R10["realized by: pickers/lib/handoff_namespace.py<br/>(begin/path/retain-context/end/sweep) + handoff_to_* + pin_*_first;<br/>token injected into child popups via display-popup -e<br/>gh_picker_{pin,ralph_pin,create_pin}, pick_session_pin + switch sentinels"]:::realize
+    C10 --> I10["INVARIANT: a picker begins an owner-scoped namespace (random 32-hex<br/>token dir 0700 + immutable owner.json 0600 fingerprinting pid/start/command);<br/>the explicit TMUX_PICKER_HANDOFF_TOKEN env value routes every child to its slots,<br/>never a global mailbox or argv token. The owner ends its namespace on normal EXIT;<br/>Palantir context is copied to a secure retained-context file (0600, 7-day TTL) first."]:::inv
+    I10 --> R10["realized by: pickers/lib/handoff_namespace.py<br/>(begin/path/retain-context/end/sweep) + handoff_to_* + pin_*_first;<br/>token injected into child popups via display-popup -e<br/>gh/session picker pins + Palantir summon retained context"]:::realize
 
     %% ---- C11 Diversity gate (adversarial review) ---------------------------
-    C11{{"C11 · ADVERSARIAL DIVERSITY<br/>a model may not approve its own family"}}:::concept
-    C11 --> I11["INVARIANT: reviewer and re_reviewer MUST be different model<br/>families; enforced at config load AND after CLI overrides."]:::inv
-    I11 --> R11["realized by: ralph.py family_of()+load_roles_config gate<br/>roles.json · prompts/{reviewer,re_reviewer}.md"]:::realize
+    C11{{"C11 · ADVERSARIAL DIVERSITY<br/>a model may not clear its own family"}}:::concept
+    C11 --> I11["INVARIANT: adversarial-review role panes MUST use a<br/>different model family than the implement role pane."]:::inv
+    I11 --> R11["realized by: ,palantir machine.py transition/guard tables<br/>+ palantir_config.py role-family resolution"]:::realize
 
     %% ---- C12 Resumable state machine ---------------------------------------
     C12{{"C12 · RESUMABLE STATE MACHINES<br/>death parks, relaunch continues"}}:::concept
-    C12 --> I12["INVARIANT: long work advances a persisted phase left→right;<br/>a crash leaves it parked at last-saved phase; a supervisor/<br/>resume relaunches from there (no lost progress, no re-do)."]:::inv
-    I12 --> R12["realized by: ralph.py manifest.iterations[].phase + runner/<br/>resume/supervisor · state-machine-verification harness rule<br/>(generalized: /tmp harness before 'merge-ready')"]:::realize
+    C12 --> I12["INVARIANT: long work advances a persisted stage left→right;<br/>a crash leaves it parked at last-saved stage; a supervisor<br/>continues from there (no lost progress, no re-do)."]:::inv
+    I12 --> R12["realized by: ~/.local/state/palantir/legions/<id>/manifest.json<br/>+ legion_state.py + supervisor.py + stage result handshakes<br/>+ state-machine-verification harness rule"]:::realize
 
     %% ---- C13 Persistent intent memory --------------------------------------
     C13{{"C13 · INTENT MEMORY<br/>sessions rehydrate, don't restart cold"}}:::concept
     C13 --> I13["INVARIANT: per-(workspace,topic) spec/worklog persists in<br/>/tmp/specs; sessionStart injects it bounded; review topics run clean-room;<br/>depth-bounded per-turn recall only connects to a session-warmed generation;<br/>tool events enter a bounded crash-safe session queue off the critical path."]:::inv
-    I13 --> R13["realized by: hook_common.py · session_context.py · perturn_recall.py<br/>worklog_dispatcher.sh → worklog_recorder.py/worklog_queue.py<br/>,agent-memory · ~/lib/,ai-kb/ (one-shot default;<br/>generation-specific resident only for connect-only per-turn recall)"]:::realize
+    I13 --> R13["realized by: hook_common.py · session_context.py · perturn_recall.py<br/>worklog_dispatcher.sh → worklog_recorder.py/worklog_queue.py<br/>,agent-memory · ~/lib/,ai-kb/ (one-shot default;<br/>generation-specific resident only for connect-only per-turn recall)<br/>+ Palantir closeout memory routing"]:::realize
 
     %% ---- how concepts compose ----------------------------------------------
     C1 -. "everything applies through" .-> C4

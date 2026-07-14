@@ -9,7 +9,7 @@ Actions
   alt-i       create issue (opens $EDITOR; optional worktree + session)
   alt-E       create epic (parent + authored sub-issues; optional worktree)
   alt-x       command palette (close, reopen, approve, merge, label, comment, rr)
-  alt-A       hand off selection to ,ralph go (workspace + context + goal prompt)
+  alt-A       hand off selection to ,palantir summon (worktree + context + goal prompt)
   alt-b       checkout + Octo review (PRs)
   alt-o       open in browser
   alt-y       copy URL(s) to clipboard (marked items; falls back to current)

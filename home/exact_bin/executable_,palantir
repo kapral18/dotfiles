@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+exec bash "$HOME/lib/,palantir/main.sh" "$@"

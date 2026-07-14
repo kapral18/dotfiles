@@ -12,15 +12,14 @@ flowchart TD
     EDIT["edit home/** · scripts/** · tools/** · docs/** · website/**"]:::mk --> CHECK["make check (lint + verify-templates + verify-mermaids + verify-bin-surface + verify-docs-navigation + test)"]:::mk
 
     subgraph LINT["lint"]
-        FMT["bin/fmt --check (over cached + untracked non-ignored files; ignores Alfred/)<br/>md: ,unwrap-md (AI instruction sentence / strong-clause wrap) + markdownlint(~/.markdownlint.jsonc) + prettier<br/>json/yaml: prettier · sh: shfmt · lua: stylua<br/>fish: fish_indent · py: ruff · go: goimports+gofumpt"]:::tool
+        FMT["bin/fmt --check (over cached + untracked non-ignored files; ignores Alfred/)<br/>md: ,unwrap-md (AI instruction sentence / strong-clause wrap) + markdownlint(~/.markdownlint.jsonc) + prettier<br/>json/yaml: prettier · sh: shfmt · lua: stylua<br/>fish: fish_indent · py: ruff"]:::tool
         RUFFI["ruff check --select I scripts/ home/exact_lib/ (ruff.toml)"]:::tool
-        GOV["(cd tools/ralph-tui && go vet ./… && go test ./…)"]:::tool
     end
     VT["verify-templates → scripts/verify_templates.py<br/>(chezmoi --source &lt;current repo&gt; execute-template every *.tmpl;<br/>isolated clones never render includes from the real source checkout)"]:::tool
     VM["verify-mermaids → scripts/verify_mermaids.py<br/>(.mermaids/ file-census counts vs effective git files)"]:::tool
     VB["verify-bin-surface → scripts/verify_bin_surface.py<br/>(~/bin commands have Fish completions + docs/catalog tokens;<br/>home/exact_lib command libraries are not orphaned)"]:::tool
     VDN["verify-docs-navigation → scripts/verify_docs_navigation.py<br/>(docs/reference links and implementation coverage catalog rows stay live)"]:::tool
-    TST["test → scripts/tests/test_scripts.py + test_agent_hooks.py<br/>+ copilot_agent_memory_extension.test.mjs (Node SDK adapter)<br/>fixtures/ (golden_*: mcp/codex/opencode/pi + ai_models + mock_role.sh)"]:::tool
+    TST["test → scripts/tests/test_scripts.py + test_agent_hooks.py<br/>+ scripts/test_palantir.py + copilot_agent_memory_extension.test.mjs (Node SDK adapter)<br/>fixtures/ (golden_*: mcp/codex/opencode/pi + ai_models)"]:::tool
     CHECK --> LINT & VT & VM & VB & VDN & TST
 
     CHECK -->|fail| FIX["fix in scope, else report output"]:::gate --> CHECK
@@ -30,7 +29,7 @@ flowchart TD
     subgraph CONFIG["Repo-side config / meta files"]
         C1["Makefile (help/fmt/lint/test/check/verify-templates/verify-mermaids/verify-bin-surface/verify-docs-navigation/docs*)<br/>package.json + .yarnrc (npm docs* shims; no root yarn.lock)<br/>bin/fmt (formatter orchestrator)"]:::cfg
         C2[".editorconfig · .prettierrc · .prettierignore · .stylua.toml<br/>ruff.toml · pyrightconfig.json · .python-version"]:::cfg
-        C3[".chezmoiroot(home) · .gitignore · .githooks/pre-commit(staged-only bin/fmt, then make check)<br/>.cursor/.gitignore · LICENSE · README.md · banner.png · AGENTS.md"]:::cfg
+        C3[".chezmoiroot(home) · .gitignore · .githooks/pre-commit(staged-only bin/fmt, then make check)<br/>.cursor/.gitignore · LICENSE · README.md · AGENTS.md"]:::cfg
         C4[".github/workflows/deploy-docs.yml (Pages CI)<br/>check-docs.yml (PR: verify-docs-navigation + docs-build)"]:::cfg
     end
 

@@ -13,7 +13,7 @@ Only propose it if it is genuinely compelling. It is fine to refrain when you ha
 Use when:
 
 - the user asks `/improve-targeted`
-- the user asks for the single smartest, most impactful, or highest-leverage addition to a targeted / specific part of the codebase (e.g. "the ralph skill", "the tmux pickers", "@src/components/foo")
+- the user asks for the single smartest, most impactful, or highest-leverage addition to a targeted / specific part of the codebase (e.g. "the palantir skill", "the tmux pickers", "@src/components/foo")
 - the target is a targeted part of the codebase (scoped dir/module/component), not the whole codebase, not only the current diff, and not the branch/PR/issue goal
 
 Do not use:

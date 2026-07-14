@@ -31,6 +31,8 @@ DEFAULT_MAX_WORKLOG_LINES = 200
 DEFAULT_WORKER_IDLE_SECONDS = 0.08
 DEFAULT_WORKER_MAX_SECONDS = 2.0
 DEFAULT_CLEANUP_AGE_SECONDS = 7 * 24 * 60 * 60
+STALE_STATE_GLOBS = ("session-*.worklog.jsonl", ".recall-seen-*.json")
+MAX_STALE_REMOVALS_PER_PASS = 64
 
 
 class QueueError(RuntimeError):
@@ -446,6 +448,7 @@ def flush_spec_dir(spec_dir: Path, *, config: QueueConfig = QueueConfig()) -> Fl
             errors=max(result.errors, recorded_errors),
         )
     cleanup_spec_dir(spec_dir, config=config)
+    cleanup_stale_state(spec_dir, config=config)
     return final
 
 
@@ -479,6 +482,7 @@ def run_worker(queue_dir: Path, *, config: QueueConfig = QueueConfig()) -> Flush
             errors=aggregate.errors,
         )
     cleanup_spec_dir(spec_dir, config=config)
+    cleanup_stale_state(spec_dir, config=config)
     return result
 
 
@@ -509,6 +513,98 @@ def start_flush_worker(queue_dir: Path, *, config: QueueConfig = QueueConfig()) 
         record_error(queue_dir.parent.parent, queue_dir.name, "worker_spawn_failed", str(err))
         return None
     return process.pid
+
+
+def migrate_worklog(spec_dir: Path, source_name: str, target_name: str, *, config: QueueConfig = QueueConfig()) -> int:
+    """Merge one worklog file into another and remove the source.
+
+    Bind-time seam for `,agent-memory select`: folds a session's pre-bind
+    `session-*` fallback worklog into the bound topic's worklog so the trail
+    is not split across buckets. Takes both per-target locks in deterministic
+    order, dedupes by `worklog_id`, rewrites the target chronologically under
+    the shared line cap, and unlinks the source. Returns migrated line count.
+    """
+    spec_dir = spec_dir.resolve()
+    source_name = _validate_target(spec_dir, spec_dir / source_name)
+    target_name = _validate_target(spec_dir, spec_dir / target_name)
+    if source_name == target_name:
+        return 0
+    first, second = sorted((source_name, target_name))
+    with _locked(_target_lock_path(spec_dir, first)):
+        with _locked(_target_lock_path(spec_dir, second)):
+            source = spec_dir / source_name
+            if not source.exists():
+                return 0
+            source_lines, _ = _load_worklog(source)
+            target = spec_dir / target_name
+            lines, existing_ids = _load_worklog(target)
+            migrated = 0
+            for line in source_lines:
+                try:
+                    value = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                worklog_id = str(value.get("worklog_id") or "") if isinstance(value, dict) else ""
+                if worklog_id and worklog_id in existing_ids:
+                    continue
+                if worklog_id:
+                    existing_ids.add(worklog_id)
+                lines.append(line)
+                migrated += 1
+            if migrated:
+                lines = _chronological_lines(lines)
+                _atomic_write(target, "\n".join(lines[-config.max_worklog_lines :]) + "\n")
+            source.unlink()
+            return migrated
+
+
+def cleanup_stale_state(spec_dir: Path, *, config: QueueConfig = QueueConfig()) -> int:
+    """Age-gated sweep of per-session state nothing will read again.
+
+    Removes `session-*` fallback worklogs and `.recall-seen-*` dedupe files
+    whose mtime is older than `cleanup_age_seconds` (same policy as drained
+    queue dirs). Named-topic worklogs are never candidates: the `session-`
+    prefix is reserved for per-session fallback buckets. Fallback worklog
+    removal takes the same per-target lock as flush and re-checks the mtime
+    under the lock; oldest files go first, bounded per pass.
+    """
+    spec_dir = spec_dir.resolve()
+    now = time.time()
+
+    def mtime_of(path: Path) -> float | None:
+        try:
+            return path.stat().st_mtime
+        except OSError:
+            return None
+
+    stale: list[tuple[float, Path]] = []
+    for pattern in STALE_STATE_GLOBS:
+        for path in spec_dir.glob(pattern):
+            mtime = mtime_of(path)
+            if mtime is not None and now - mtime >= config.cleanup_age_seconds:
+                stale.append((mtime, path))
+
+    removed = 0
+    for _, path in sorted(stale)[:MAX_STALE_REMOVALS_PER_PASS]:
+        if path.name.endswith(".worklog.jsonl"):
+            with _locked(_target_lock_path(spec_dir, path.name), blocking=False) as acquired:
+                if not acquired:
+                    continue
+                mtime = mtime_of(path)
+                if mtime is None or now - mtime < config.cleanup_age_seconds:
+                    continue
+                try:
+                    path.unlink()
+                except OSError:
+                    continue
+                removed += 1
+        else:
+            try:
+                path.unlink()
+            except OSError:
+                continue
+            removed += 1
+    return removed
 
 
 def cleanup_spec_dir(spec_dir: Path, *, config: QueueConfig = QueueConfig()) -> int:

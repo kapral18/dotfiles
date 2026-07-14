@@ -5,7 +5,7 @@ title: AI knowledge base
 
 # AI knowledge base (`,ai-kb`)
 
-`,ai-kb` is the durable memory layer Ralph reads from and writes to.
+`,ai-kb` is the durable memory layer shared by governed agents, manual searches, and Palantír close-out routing.
 
 | Piece          | Path                                                                                                              |
 | -------------- | ----------------------------------------------------------------------------------------------------------------- |
@@ -49,18 +49,18 @@ Embeddings are isolated out of the caller process, with two deliberately separat
 | Component                                                          | Role                                                                                                                                     |
 | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | [`scripts/embed.py`](../../../../scripts/embed.py)                 | stdlib dispatch layer; defaults to the one-shot runner and uses resident connect-only mode only when `AI_EMBED_CONNECT_ONLY=1`           |
-| [`scripts/embed_runner.py`](../../../../scripts/embed_runner.py)   | PEP 723 `uv run --script` runner that loads `fastembed` for ordinary CLI, manual search, Ralph, `remember`, and `reembed` operations     |
+| [`scripts/embed_runner.py`](../../../../scripts/embed_runner.py)   | PEP 723 `uv run --script` runner that loads `fastembed` for ordinary CLI, manual search, `remember`, and `reembed` operations            |
 | [`scripts/embed_client.py`](../../../../scripts/embed_client.py)   | generation-specific Unix-socket client; session-start adapters may call bounded `ensure`, while per-turn callers always use connect-only |
 | [`scripts/embed_worker.py`](../../../../scripts/embed_worker.py)   | resident PEP 723 FastEmbed worker used only by automatic per-turn recall                                                                 |
 | [`scripts/worklog_queue.py`](../../../../scripts/worklog_queue.py) | bounded, crash-safe worklog queue flushed before harvest                                                                                 |
 | Model                                                              | `BAAI/bge-small-en-v1.5`, 384 dimensions                                                                                                 |
-| Escape hatch                                                       | `RALPH_KB_DISABLE_EMBED=1`                                                                                                               |
+| Escape hatch                                                       | `AI_KB_DISABLE_EMBED=1`                                                                                                                  |
 
-The resident identity hashes the protocol version, complete worker source, model, and expected dimension. Each generation gets its own socket, so a new implementation cannot replace or send requests to an older process. Warm-up resolves the configured `RALPH_EMBED_MODEL` dimension from FastEmbed metadata; connect-only callers discover and validate that ready generation without spawning. The runtime root is user-owned `0700`, sockets and start locks are `0600`, startup markers are atomically published and bound to the expected worker command, and resident-worker request sizes and deadlines are bounded. The worker receives text only in the socket payload and never logs or echoes it.
+The resident identity hashes the protocol version, complete worker source, model, and expected dimension. Each generation gets its own socket, so a new implementation cannot replace or send requests to an older process. Warm-up resolves the configured `AI_EMBED_MODEL` dimension from FastEmbed metadata; connect-only callers discover and validate that ready generation without spawning. The runtime root is user-owned `0700`, sockets and start locks are `0600`, startup markers are atomically published and bound to the expected worker command, and resident-worker request sizes and deadlines are bounded. The worker receives text only in the socket payload and never logs or echoes it.
 
 One resident `BAAI/bge-small-en-v1.5` worker measured about 320 MiB RSS; two coexisting deployment generations measured about 625 MiB total. The worker exits after 300 inactive seconds and removes only the socket inode it created, bounding that temporary overlap without cross-generation eviction.
 
-Claude, Gemini, OpenCode, Copilot, and Pi request a bounded, fail-open resident warm-up when `AI_AGENT_DEPTH` is `balanced` or `deep`; `fast` suppresses warm-up because it has no per-turn retrieval. Cursor and Codex do not start the worker because neither has a per-turn retrieval adapter. Every per-turn search sets `AI_EMBED_CONNECT_ONLY=1`: it never starts, restarts, or replaces a worker, and an unavailable resident simply suppresses that recall block without interrupting the user request. Default/manual CLI use and all Ralph, `remember`, and `reembed` work stay on the existing one-shot runner. The exact depth budgets and provenance are documented in [Cross-agent memory](cross-agent-memory.md).
+Claude, Gemini, OpenCode, Copilot, and Pi request a bounded, fail-open resident warm-up when `AI_AGENT_DEPTH` is `balanced` or `deep`; `fast` suppresses warm-up because it has no per-turn retrieval. Cursor and Codex do not start the worker because neither has a per-turn retrieval adapter. Every per-turn search sets `AI_EMBED_CONNECT_ONLY=1`: it never starts, restarts, or replaces a worker, and an unavailable resident simply suppresses that recall block without interrupting the user request. Default/manual CLI use plus `remember` and `reembed` work stay on the existing one-shot runner. The exact depth budgets and provenance are documented in [Cross-agent memory](cross-agent-memory.md).
 
 When embeddings are disabled or unavailable outside the cosine-gated per-turn lane, lexical retrieval still works.
 
@@ -71,18 +71,17 @@ Vector search and curation pairs use the same subprocess-isolation pattern:
 | [`scripts/vec_runner.py`](../../../../scripts/vec_runner.py) | PEP 723 `uv run --script` runner that loads `sqlite-vec`     |
 | `vec_index`                                                  | Virtual table lazily created from `capsules.embedding` BLOBs |
 | Sync model                                                   | Delta-synced on every call                                   |
-| Escape hatch                                                 | `RALPH_KB_DISABLE_VEC=1`                                     |
+| Escape hatch                                                 | `AI_KB_DISABLE_VEC=1`                                        |
 
 The orchestrator process never loads SQLite extensions, which matters on Apple's stock Python. Errors hard-fail with `RuntimeError` rather than silently degrading to BM25-only.
 
 Curation also goes through `vec_runner`: KNN shortlist plus per-pair cosine replaces the old O(N²) Python loop for dedupe and contradiction scans.
 
-Memory flow during a Ralph run:
+Memory flow during a Palantír legion:
 
-1. Each role's prompt builder calls `KnowledgeBase.search(...)` filtered to that role's preferred kinds. Planner gets the broadest slice (no kind filter — anything prior may influence planning, with workspace bias surfacing project-local capsules first). Executor: `fact / recipe / gotcha / anti_pattern / pattern`. Reviewer: `gotcha / anti_pattern`. Re_reviewer: `gotcha / anti_pattern / principle`. Hits are injected into a `## RECENT LEARNINGS` block in the role prompt and a compressed copy is persisted to `manifest.json::roles[*].retrieval_log` for TUI replay.
-2. Roles can also call the KB on demand from inside their pane (`,ai-kb search "<q>" --kind gotcha,anti_pattern --json`) — see the `Tool: on-demand KB search` section in each prompt.
-3. Roles emit `LEARNING:` lines (free-form `gotcha`/`principle`/`fact`/`decision`); `,ralph` parses these in [`RalphRunner.capture_learnings`](../../../../scripts/ralph.py) and stores them with `kind` inferred from role and `scope=project` when a workspace is set.
-4. After a passing run the dedicated `reflector` role distills the run into a small JSON list of structured capsules (see [`reflector.md`](../../../../home/dot_config/ralph/prompts/reflector.md)) which are validated and persisted, giving the next run high-signal retrieval material.
+1. Coordinator and role panes are ordinary governed harness sessions, so they can use the `ai-kb` skill for explicit searches before non-trivial work.
+2. Role panes can call the KB on demand from inside their pane, for example `,ai-kb search "<q>" --kind gotcha --json`.
+3. On close, durable reusable findings route to `,ai-kb remember` with deliberate metadata; task-scoped notes stay in `/tmp/specs`; repo-intrinsic conventions belong in the target repo's `AGENTS.md` through the legion worktree.
 
 CLI surface:
 
@@ -133,4 +132,4 @@ For each candidate it prints the evidence lines and a ready-to-edit `,ai-kb reme
 
 `harvest` **never writes capsules** — you verify each candidate and run the emitted `remember` line yourself. It is a manual, on-demand aid with no hook, no `additionalContext` injection, and no auto-submit, so it adds no always-on token cost and cannot re-trigger a conversation. Persistence stays agent-driven per the [ai-kb skill](../skills/index.md) write contract.
 
-The Ralph TUI exposes the KB with a `K` keybinding: a modal launches `,ai-kb search ... --json` over stdin/stdout; navigation is `↑/↓`, `enter` to dispatch a search, `esc`/`q` to close. The status bar shows total capsule count (`KB:N`).
+The Palantír dashboard shows legion state; durable-memory search and writes remain explicit `,ai-kb` CLI or skill actions.

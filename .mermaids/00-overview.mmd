@@ -5,7 +5,7 @@
 %%     (S0), cross-cutting flows (S1/S2/S3), and a reverse index (SR) that maps
 %%     any file to its concept, blast radius, and co-edit set.
 %%   CATALOG (drill-down) — how the system is LAID OUT: 00-13 enumerate every
-%%     one of the 1314 files in the effective git file set by exact chezmoi source path.
+%%     one of the 1272 files in the effective git file set by exact chezmoi source path.
 %% `home/` is chezmoi source deployed to $HOME; scripts/tools/website/docs are
 %% repo-side (NOT deployed). Each node → a deeper .mmd.
 %% ============================================================================
@@ -23,8 +23,8 @@ graph TD
     ROOT ==> SEMHEAD["★ SEMANTIC CLOUD — read first<br/>how it works together, not where files live"]:::sem
     SEMHEAD --> S0["S0 · Concepts & invariants (C1–C13)<br/>S0-concepts.mmd — the 13 ideas the repo is built on"]:::sem
     SEMHEAD --> S1["S1 · Flow: apply → idempotent reconcile<br/>S1-flow-apply-reconcile.mmd"]:::sem
-    SEMHEAD --> S2["S2 · Flow: governed agent turn<br/>S2-flow-agent-runtime.mmd"]:::sem
-    SEMHEAD --> S3["S3 · Flow: picker SWR + handoff bus<br/>S3-flow-pickers-handoff.mmd"]:::sem
+    SEMHEAD --> S2["S2 · Flow: Palantir legion runtime<br/>S2-flow-agent-runtime.mmd"]:::sem
+    SEMHEAD --> S3["S3 · Flow: picker SWR + Palantir summon handoff<br/>S3-flow-pickers-handoff.mmd"]:::sem
     SEMHEAD --> SR["SR · Reverse index: file → concept →<br/>breaks-if → co-edit set · SR-index.mmd"]:::sem
     SR -. "each row points into" .-> CATHEAD
     S0 -. "instances enumerated in" .-> CATHEAD
@@ -36,8 +36,7 @@ graph TD
     CATHEAD --> PKG["02 · Package management ladder<br/>02-package-management.mmd"]:::sys
     CATHEAD --> AIOS["03 · Agentic OS (SOP+MCP+models)<br/>03-agentic-os.mmd"]:::ai
     CATHEAD --> SKILLS["03b · Skills + hooks (every file)<br/>03b-agent-skills-hooks.mmd"]:::ai
-    CATHEAD --> RALPH["04 · Ralph state machine<br/>04-ralph-state-machine.mmd"]:::ai
-    CATHEAD --> RALPHCP["04b · Ralph control plane + TUI<br/>04b-ralph-control-plane.mmd"]:::ai
+    CATHEAD --> PAL["04 · Palantir legion state machine<br/>04-palantir-state-machine.mmd"]:::ai
     CATHEAD --> TMUX["05 · Tmux config + pickers (every file)<br/>05-tmux-pickers.mmd"]:::sys
     CATHEAD --> WT["06 · Worktree / GitHub workflow<br/>06-worktree-workflow.mmd"]:::sys
     CATHEAD --> SEM["07 · Shell + terminals + macOS<br/>07-shell-editor-macos.mmd"]:::sys
@@ -54,6 +53,6 @@ graph TD
         K1["exact_=managed dir · dot_=leading '.' · readonly_=r--r--r--<br/>executable_=+x · private_=0600 · empty_=keep-if-empty<br/>symlink_=symlink · .tmpl=Go-template · .chezmoiignore=skip"]:::data
     end
 
-    subgraph COUNTS["file census (1314 total)"]
-        C1["nvim 155 · tmux 120 · Alfred 115 (86 png) · bin 74<br/>docs 177 · agents 106 + runtime profiles 46 · ralph-tui 35 · chezmoiscripts 31<br/>scripts 94 · fish 77 · command-lib 53 (28 command dirs + shared) · website 15 · home-root 33 · rest"]:::repo
+    subgraph COUNTS["file census (1272 total)"]
+        C1["nvim 155 · tmux 120 · Alfred 115 (86 png) · bin 74<br/>docs 170 · agents 105 + runtime profiles 46 · chezmoiscripts 29<br/>scripts 92 · fish 77 · command-lib 65 (29 command dirs + shared) · website 15 · home-root 33 · rest"]:::repo
     end

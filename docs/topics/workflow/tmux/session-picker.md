@@ -6,8 +6,6 @@ sidebar_position: 2
 
 The session picker is the daily navigation surface for tmux sessions, git worktrees, and recent directories. It runs in a tmux popup and opens with `prefix` + `T`.
 
-![Session picker popup over the natural tmux workbench, showing safe demo rows for dirty state, review status, CI, and directories](assets/session-picker-full.png)
-
 Press `alt-g` to switch to the [GitHub picker](github-picker.md) without leaving the popup loop.
 
 ## Reading the screen
@@ -18,8 +16,6 @@ Press `alt-g` to switch to the [GitHub picker](github-picker.md) without leaving
 | Badges   | Dirty state, stale/gone state, linked PR/issue, review status, and CI                 |
 | Preview  | Last pane output for sessions; git status/commits for worktrees; `ls` for directories |
 | Query    | Fuzzy filter; path-like queries turn fzf sorting on for better path ranking           |
-
-The screenshot uses safe demo rows so the colors and states are visible without exposing private repository data. The UI itself is the real picker launched with `prefix` + `T`.
 
 ## Entry types
 

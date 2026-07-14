@@ -62,8 +62,6 @@ When Neovim runs inside tmux, [`core/options.lua`](../../../../home/dot_config/e
    :PackDashboard
    ```
 
-![Neovim PackDashboard floating inside the editor pane while the rest of the tmux layout remains visible](../assets/neovim-pack-dashboard-inline.png)
-
 ## Customization entry points
 
 | Change          | Start here                                                                                               |

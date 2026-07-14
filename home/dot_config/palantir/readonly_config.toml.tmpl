@@ -1,0 +1,36 @@
+# ,palantir configuration (chezmoi-managed; edit the source template).
+# Flat key = value only — parsed by ~/lib/,palantir/palantir_config.py (stdlib).
+
+# Interactive agent CLI for role panes. Per-role overrides below; empty means
+# this default. Known harnesses: copilot, claude, pi, opencode.
+default_harness = "copilot"
+
+# The per-legion coordinator pane (window 0). Empty = default_harness.
+coordinator_harness = ""
+coordinator_model = "gpt-5.6-sol"
+coordinator_family = "gpt"
+
+# Per-role overrides. adversarial_review MUST resolve to a different model
+# family than implement (palantir refuses to summon otherwise). Current
+# fallbacks are copilot=gpt and claude/pi/opencode=claude; explicit family
+# values below keep the shipped contract stable if a harness default changes.
+triage_harness = ""
+triage_model = "gpt-5.6-sol"
+triage_family = "gpt"
+diagnose_harness = ""
+diagnose_model = "gpt-5.6-sol"
+diagnose_family = "gpt"
+investigate_harness = ""
+investigate_model = "gpt-5.6-sol"
+investigate_family = "gpt"
+implement_harness = ""
+adversarial_review_harness = "pi"
+implement_model = "gpt-5.6-sol"
+implement_family = "gpt"
+adversarial_review_model = "anthropic/claude-opus-4.8"
+adversarial_review_family = "claude"
+
+# Supervisor cadence and budgets.
+watch_interval_secs = 20
+max_implement_attempts = 3
+inject_settle_secs = 2

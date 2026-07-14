@@ -1,6 +1,6 @@
 ---
 name: spec
-description: "Use when developing an idea, feature request, or bug report into a spec packet with red-capable acceptance checks — before implementing, filing an issue, or launching a Ralph run. Also when another skill needs testable acceptance criteria for a change."
+description: "Use when developing an idea, feature request, or bug report into a spec packet with red-capable acceptance checks — before implementing, filing an issue, or mustering a palantir legion. Also when another skill needs testable acceptance criteria for a change."
 ---
 
 # Spec
@@ -11,7 +11,7 @@ same discipline, plus acceptance criteria a machine can check.
 
 The SOP owns the surrounding gates: the Intent Loop mechanics (§3.0), compatibility intent (§2.0), and external/runtime truth (§2.1/§2.2).
 This skill owns the packet contract and the acceptance-criteria discipline.
-Consumers: `/build` (in-session hands-free implementation), `,ralph go --spec` (detached run), `~/.agents/skills/compose-issue/SKILL.md` (GitHub issue text + publication packet), and the `review` skill's plan mode (adversarial review of the packet itself).
+Consumers: `/build` (in-session hands-free implementation), `,palantir summon --criteria` (detached legion), `~/.agents/skills/compose-issue/SKILL.md` (GitHub issue text + publication packet), and the `review` skill's plan mode (adversarial review of the packet itself).
 
 ## Do not use
 
@@ -63,13 +63,13 @@ Consumers: `/build` (in-session hands-free implementation), `,ralph go --spec` (
    Use the session id from the current Topic Buckets prompt when it is shown; do not write `_active_topic.txt`.
    Fill the template below, write it to `/tmp/specs/<pwd>/<topic>.spec.md` (same `<topic>` key as the active SOP intent spec), and show the full packet in the response — the packet is the deliverable.
    Then add or update a single `packet: /tmp/specs/<pwd>/<topic>.spec.md — <one-line status>` line in the intent spec `<topic>.txt`, so session-start injection carries the pointer and a fresh session knows the contract exists.
-   One packet in flight per topic: consumers (build lanes, plan review, Ralph) read this file mid-flow, so do not author the next packet until the current one's outcome is recorded in the `.txt` chain; parallel work belongs on separate topics.
+   One packet in flight per topic: consumers (build lanes, plan review, palantir legions) read this file mid-flow, so do not author the next packet until the current one's outcome is recorded in the `.txt` chain; parallel work belongs on separate topics.
    Never store secrets in it; `/tmp` is best-effort.
 
 5. **Hand off.** The packet is text only — this skill implements nothing and publishes nothing.
    Name the consumer moves and stop for the user's pick:
    - `/build` — hands-free implementation in this session, gated on this packet
-   - `,ralph go --spec <json-file>` — detached run; requires the Ralph JSON block below, saved to a file
+   - `,palantir summon "<goal>" --criteria '<json>'` — detached legion; criteria come from the packet's checks
    - `compose-issue` / `compose-pr` — publishable text from the packet (that skill owns sanitization and handoff packet)
    - `review` skill plan mode — adversarial review of the packet before any implementation, for high-stakes changes
 
@@ -108,30 +108,15 @@ External dependencies (omit section when none; consumers must not start blocked 
 Compatibility intent: none | removes existing behavior (requested) | preserves existing behavior (requested)
 ```
 
-Append the Ralph handoff block only when a detached run is intended (schema = the planner's Shape A output;
-`check` entries become machine-run gates):
+For a detached legion, pass the packet's checks as summon criteria (each `check` becomes a machine-run verify gate):
 
-```json
-{
-  "goal": "<one line>",
-  "workflow": "feature",
-  "target_artifact": "<ABSOLUTE path or 'none'>",
-  "success_criteria": [
-    { "text": "<criterion 1>", "check": "<command, exit 0 = pass>" },
-    "<judgment-only criterion>"
-  ],
-  "complexity": "simple",
-  "executor_count": 1,
-  "max_iterations": 5,
-  "max_minutes": 15,
-  "iteration_task_seed": "<first concrete executor action>",
-  "rationale": "<why this shape>"
-}
+```bash
+,palantir summon "<goal>" --criteria '[{"text": "<criterion 1>", "check": "<command, exit 0 = pass>"}]'
 ```
 
 ## Output
 
-- The full packet (and the JSON block when a Ralph handoff is intended).
+- The full packet (and the summon command when a detached legion is intended).
 - The path it was written to.
 - Each check's pasted red run.
 - Remaining `Unknown`s and the named consumer moves.

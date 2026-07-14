@@ -1,0 +1,22 @@
+# Previously-managed targets removed by the palantir migration (fleet + ralph
+# retirement). chezmoi deletes these from $HOME on apply; entries stay listed
+# so every machine converges, and cost nothing once absent.
+bin/,fleet
+bin/,ralph
+lib/,fleet
+lib/,palantir/disband.sh
+lib/,palantir/muster.sh
+.config/fleet
+.config/ralph
+.config/fish/completions/,fleet.fish
+.config/fish/completions/,ralph.fish
+.config/tmux/conf.d/44-ralph.conf
+.config/tmux/conf.d/4x-fleet.conf
+.config/tmux/palette.d/ralph.tsv
+.config/tmux/scripts/pickers/lib/handoff_to_ralph_pin.sh
+.config/tmux/scripts/pickers/lib/handoff_to_ralph_apply.sh
+.config/tmux/scripts/pickers/github/lib/gh_ralph_handoff_context.py
+.agents/skills/fleet-afk
+.agents/skills/fleet-yolo
+.agents/skills/ralph
+.local/bin/ralph-tui

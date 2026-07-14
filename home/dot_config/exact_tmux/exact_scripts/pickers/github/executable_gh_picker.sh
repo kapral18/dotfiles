@@ -124,9 +124,9 @@ create_pin_file="$("$handoff_namespace" path gh_picker_create_pin)"
 pick_session_pin_file="$("$handoff_namespace" path pick_session_pin)"
 switch_sessions_file="$("$handoff_namespace" path gh_picker_switch_sessions)"
 handoff_to_sessions_cmd="$HOME/.config/tmux/scripts/pickers/lib/handoff_to_sessions.sh"
-handoff_to_ralph_cmd="$HOME/.config/tmux/scripts/pickers/lib/handoff_to_ralph_pin.sh"
+handoff_to_palantir_cmd="$HOME/.config/tmux/scripts/pickers/lib/handoff_to_palantir_pin.sh"
 pin_first_cmd="$HOME/.config/tmux/scripts/pickers/lib/pin_gh_first.sh"
-ralph_pin_file="$("$handoff_namespace" path gh_picker_ralph_pin)"
+palantir_pin_file="$("$handoff_namespace" path gh_picker_palantir_pin)"
 
 fzf_color="prompt:111,query:223,input-bg:-1,input-fg:252,ghost:240,header:244,spinner:110,info:244,pointer:81,marker:214"
 
@@ -221,7 +221,7 @@ pick="$(
     --bind "alt-i:execute($(printf %q "$create_cmd") issue {3} $(printf %q "$mode_flag_file") $(printf %q "$scope_flag_file") $(printf %q "$items_cmd"))+transform([ -f $(printf %q "$create_pin_file") ] && echo abort || true)" \
     --bind "alt-E:execute($(printf %q "$create_cmd") epic {3} $(printf %q "$mode_flag_file") $(printf %q "$scope_flag_file") $(printf %q "$items_cmd"))+transform([ -f $(printf %q "$create_pin_file") ] && echo abort || true)" \
     --bind "alt-g:execute-silent($(printf %q "$handoff_to_sessions_cmd") {2} {3} {4} $(printf %q "$pick_session_pin_file") 2>/dev/null || true; touch $(printf %q "$switch_sessions_file"))+abort" \
-    --bind "alt-A:execute-silent($(printf %q "$handoff_to_ralph_cmd") {+f} $(printf %q "$ralph_pin_file") 2>/dev/null || true)+abort" \
+    --bind "alt-A:execute-silent($(printf %q "$handoff_to_palantir_cmd") {+f} $(printf %q "$palantir_pin_file") 2>/dev/null || true)+abort" \
     --bind "alt-o:execute-silent($action_cmd open {2} {3} {4} {5})" \
     --bind "alt-y:execute-silent(printf '%s\n' {+} | cut -f5 | grep -E '^https?://' | pbcopy 2>/dev/null || printf '%s\n' {+} | cut -f5 | grep -E '^https?://' | xclip -sel clip 2>/dev/null)" \
     --bind "alt-space:toggle" \

@@ -72,7 +72,6 @@ const sidebars: SidebarsConfig = {
           label: '🧭 Flow playbooks',
           items: [
             'topics/ai-assistants/flows/spec-and-build',
-            'topics/ai-assistants/flows/ralph-run',
             'topics/ai-assistants/flows/review-your-changes',
             'topics/ai-assistants/flows/debug-a-bug',
             'topics/ai-assistants/flows/prototype-and-design',
@@ -127,17 +126,7 @@ const sidebars: SidebarsConfig = {
             'topics/ai-assistants/knowledge-base/cross-agent-memory',
           ],
         },
-        {
-          type: 'category',
-          label: '🕹️ Ralph orchestrator',
-          link: { type: 'doc', id: 'topics/ai-assistants/ralph/index' },
-          items: [
-            'topics/ai-assistants/ralph/roles-and-diversity',
-            'topics/ai-assistants/ralph/state-and-runtime',
-            'topics/ai-assistants/ralph/dashboard-and-tmux',
-            'topics/ai-assistants/ralph/verification',
-          ],
-        },
+        'topics/ai-assistants/palantir',
         'topics/ai-assistants/mcp',
         'topics/ai-assistants/model-registry',
         {

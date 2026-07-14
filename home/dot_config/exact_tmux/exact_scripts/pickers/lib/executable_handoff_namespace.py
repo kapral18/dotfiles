@@ -18,7 +18,7 @@ Contract (fail-closed; empty stdout on any failure):
   end   --owner-pid PID [--token TOKEN]                    -> no output
   sweep                                                    -> no output
 
-``retain-context`` copies the active namespace's ``gh_picker_ralph_pin.context.md``
+``retain-context`` copies the active namespace's ``gh_picker_palantir_pin.context.md``
 sibling to a lifecycle-managed 0600 file under a retained-context directory in
 the handoff root, removes the source, and prints the retained path. Retained
 copies outlive their namespace and are reaped only after a long TTL (7 days).
@@ -52,9 +52,9 @@ DEAD_OWNER_TTL_SECONDS = 6 * 60 * 60
 DEAD_OWNER_CAP = 64
 STAGING_GRACE_SECONDS = 5 * 60
 
-# Retained Ralph contexts are lifecycle-managed copies that must outlive the
-# namespace they came from: gh_popup ends its namespace as soon as the Ralph
-# hand-off is queued, but the deferred `,ralph go` run only reads its context
+# Retained palantir contexts are lifecycle-managed copies that must outlive the
+# namespace they came from: gh_popup ends its namespace as soon as the palantir
+# hand-off is queued, but the deferred `,palantir summon` legion only reads its context
 # when the user finally answers the async command-prompt. That prompt may sit
 # unanswered for a long time, so retained copies are reaped only after a
 # deliberately long TTL (7 days) with no early cap deletion.
@@ -71,16 +71,17 @@ ALLOWED_SLOTS = frozenset(
         "gh_picker_pin",
         "pick_session_pin",
         "gh_picker_create_pin",
-        "gh_picker_ralph_pin",
+        "gh_picker_palantir_pin",
         "gh_picker_switch_sessions",
         "pick_session_switch_gh",
     }
 )
 
-# The only source a retained context may be copied from is the Ralph pin's
+# The only source a retained context may be copied from is the palantir pin's
 # context sibling inside its own namespace (``<slot>.context.md``).
-RALPH_CONTEXT_SLOT = "gh_picker_ralph_pin"
-RALPH_CONTEXT_NAME = RALPH_CONTEXT_SLOT + ".context.md"
+PALANTIR_CONTEXT_SLOT = "gh_picker_palantir_pin"
+PALANTIR_CONTEXT_NAME = PALANTIR_CONTEXT_SLOT + ".context.md"
+
 
 OWNER_ROLES = ("popup-loop", "standalone-picker")
 ENTRIES = ("gh-popup", "session-popup", "gh-picker", "session-picker")
@@ -454,7 +455,7 @@ def sweep_root(root: Path) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Retained Ralph context                                                       #
+# Retained palantir context                                                       #
 # --------------------------------------------------------------------------- #
 
 
@@ -468,7 +469,7 @@ def _best_effort_unlink(path: Path) -> None:
 
 
 def _sweep_retained(root: Path, now: float) -> None:
-    """Reap retained Ralph contexts older than the long TTL; never cap-delete.
+    """Reap retained palantir contexts older than the long TTL; never cap-delete.
 
     Robust by design: an anomalous retained directory (missing, symlinked,
     wrong owner, wrong mode) is skipped rather than raising, so retained-context
@@ -682,10 +683,10 @@ def cmd_retain_context(args: argparse.Namespace) -> int:
         raise HandoffError(f"namespace not found: {token}")
     _validate_secure_dir(namespace)
     load_owner(namespace)
-    expected = namespace / RALPH_CONTEXT_NAME
+    expected = namespace / PALANTIR_CONTEXT_NAME
     source = Path(os.path.abspath(args.source))
     if source != expected:
-        raise HandoffError(f"source is not the namespace ralph context: {source}")
+        raise HandoffError(f"source is not the namespace palantir context: {source}")
     payload = _read_source_bytes(source)
     retained = secure_retained_dir(root)
     final = _write_retained(retained, payload)
@@ -752,7 +753,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     retain = sub.add_parser(
         "retain-context",
-        help="copy the namespace ralph context to a retained 0600 file and print its path",
+        help="copy the namespace palantir context to a retained 0600 file and print its path",
     )
     retain.add_argument("source")
     retain.add_argument("--token", default=None)

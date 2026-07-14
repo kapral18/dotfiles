@@ -3,6 +3,9 @@
 
 set -euo pipefail
 
+export WORMHOLE_RELAY_URL="wss://mailbox.mw.leastauthority.com/v1"
+export WORMHOLE_TRANSIT_HELPER="tcp:relay.mw.leastauthority.com:4001"
+
 PATCH_FILE="${WH_PATCH_FILE:-/tmp/staged.patch}"
 DIR_ARCHIVE_SUFFIX=".wh-dir.tar.gz"
 CLIP_ENVELOPE_NAME="wh-clip"

@@ -13,13 +13,13 @@ packet approval before execution, and the final report. Everything between runs 
 The SOP owns the surrounding gates: per-step verification loops (§3.4), the state-machine harness (§3.5), requirements reset (§3.3), minimal edit scope (§5), and compatibility (§2.0).
 This skill owns the phase order, the criteria ledger, and the verification topology.
 
-The same packet drives `,ralph go --spec <file>` for a detached run; `/build` is the in-session form.
+The same packet's criteria drive `,palantir summon --criteria` for a detached legion; `/build` is the in-session form.
 
 ## Do not use
 
 - no spec packet exists and the change is trivial or intent is already unambiguous — work directly under the SOP
 - the target is reviewing existing changes or a PR: the `review` / `agent-review` skills
-- the user wants a detached/background run: the `ralph` skill (`,ralph go --spec`)
+- the user wants a detached/background run: the `palantir` skill (`,palantir summon --criteria`)
 
 ## Side-effect boundary
 

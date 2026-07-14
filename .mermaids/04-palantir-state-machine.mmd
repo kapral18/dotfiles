@@ -1,0 +1,77 @@
+%% ============================================================================
+%% 04-palantir-state-machine.mmd — Palantir legion state machine.
+%% `,palantir` launches one legion per effort: a tmux session on a `,w` worktree.
+%% Window 0 has coordinator + deterministic supervisor; each stage owns a window.
+%% Core deployed runtime lives in home/exact_lib/exact_,palantir/ (12).
+%% ============================================================================
+stateDiagram-v2
+    direction TB
+
+    [*] --> summon : ,palantir summon
+    summon --> triage : manifest.json + tmux session + command window ready
+    summon --> summon : pane not ready / composer non-empty; retry
+
+    triage --> diagnose : triage requests diagnosis
+    triage --> implement : direct-change path
+    diagnose --> investigate : diagnosis needs evidence
+    investigate --> implement : root cause + acceptance criteria recorded
+    diagnose --> implement : diagnosis already sufficient
+
+    implement --> adversarial_review : stages/implement.result.json accepted
+    adversarial_review --> implement : blockers>0 & budget remains
+    adversarial_review --> verify : blockers=0
+    verify --> cleared_for_human : criteria checks exit 0 & blockers=0
+    verify --> implement : checks fail & retry budget remains
+    verify --> holding : checks fail & retry budget exhausted
+
+    holding --> triage : operator resumes with new instruction
+    holding --> banished : ,palantir banish
+    cleared_for_human --> banished : closeout memory routed
+    banished --> [*]
+
+    note right of summon
+        State root:
+        ~/.local/state/palantir/legions/<id>/manifest.json.
+        One legion = one effort = one tmux session on one `,w` worktree.
+        window 0 "command" = coordinator agent pane + deterministic supervisor pane.
+    end note
+
+    note right of implement
+        Stage panes are interactive agent roles:
+        copilot / claude / pi / opencode selected from
+        ~/.config/palantir/config.toml.
+        Each stage writes stages/<stage>.result.json as the handshake.
+        The supervisor reads JSON handshakes; LLMs never drive transitions.
+    end note
+
+    note right of adversarial_review
+        Deterministic guard:
+        adversarial-review model family != implement model family.
+        Cleared-for-human is impossible unless verify is green
+        and the review blocker count is zero.
+    end note
+
+    note right of verify
+        machine.py transition tables own legal moves.
+        verify runs criteria checks as commands; exit 0 = green.
+        A verify failure returns implement while budget remains,
+        then parks in holding.
+    end note
+
+    note right of holding
+        supervisor.py loop:
+        read manifest → classify pane with composer.py
+        empty → inject; pending / busy / unknown → wait + retry.
+        Wake dedupe prevents repeating the same unresolved word.
+        dashboard.py renders the textual popup via tmux prefix+A;
+        statusline.py prints P:n H:n C:n for status-right.
+    end note
+
+    note right of cleared_for_human
+        grant / banish are human-only:
+        agent panes carry PALANTIR_AGENT_ROLE and are refused.
+        Closeout memory routing:
+        durable verified learnings → ,ai-kb;
+        effort worklog/spec → /tmp/specs;
+        repo-intrinsic conventions → repo AGENTS.md.
+    end note

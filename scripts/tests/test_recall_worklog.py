@@ -556,6 +556,127 @@ class TestWorklogQueue(unittest.TestCase):
         self.assertGreater(result.errors, 0)
         self.assertIn("invalid_record", worklog_queue.error_log_path(receipt.queue_dir).read_text(encoding="utf-8"))
 
+    def test_migrate_worklog_merges_dedupes_and_removes_source(self) -> None:
+        import worklog_queue
+
+        fallback = self.spec_dir / "session-abc.worklog.jsonl"
+        shared = {
+            "event": "postToolUse",
+            "session_key": "abc",
+            "worklog_id": "dup-1",
+            "ts": "2026-07-11T12:00:01+00:00",
+        }
+        early = {"event": "postToolUse", "session_key": "abc", "worklog_id": "pre-1", "ts": "2026-07-11T11:59:59+00:00"}
+        fallback.write_text(
+            "\n".join(json.dumps(entry, sort_keys=True) for entry in (early, shared)) + "\n",
+            encoding="utf-8",
+        )
+        later = {
+            "event": "postToolUse",
+            "session_key": "abc",
+            "worklog_id": "post-1",
+            "ts": "2026-07-11T12:00:02+00:00",
+        }
+        self.worklog.write_text(
+            "\n".join(json.dumps(entry, sort_keys=True) for entry in (shared, later)) + "\n",
+            encoding="utf-8",
+        )
+
+        migrated = worklog_queue.migrate_worklog(self.spec_dir, fallback.name, self.worklog.name)
+        entries = [json.loads(line) for line in self.worklog.read_text(encoding="utf-8").splitlines()]
+
+        self.assertEqual(migrated, 1)
+        self.assertFalse(fallback.exists())
+        self.assertEqual([entry["worklog_id"] for entry in entries], ["pre-1", "dup-1", "post-1"])
+
+    def test_migrate_worklog_rejects_targets_outside_spec_dir(self) -> None:
+        import worklog_queue
+
+        with self.assertRaises(worklog_queue.QueueError):
+            worklog_queue.migrate_worklog(self.spec_dir, "../escape.worklog.jsonl", self.worklog.name)
+
+    def test_migrate_worklog_noop_when_source_equals_target(self) -> None:
+        import worklog_queue
+
+        self.worklog.write_text(
+            json.dumps({"event": "postToolUse", "worklog_id": "keep-1"}, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        migrated = worklog_queue.migrate_worklog(self.spec_dir, self.worklog.name, self.worklog.name)
+
+        self.assertEqual(migrated, 0)
+        self.assertEqual(
+            [json.loads(line)["worklog_id"] for line in self.worklog.read_text(encoding="utf-8").splitlines()],
+            ["keep-1"],
+        )
+
+    def test_migrate_worklog_noop_when_source_missing(self) -> None:
+        import worklog_queue
+
+        self.worklog.write_text(
+            json.dumps({"event": "postToolUse", "worklog_id": "keep-1"}, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+        migrated = worklog_queue.migrate_worklog(self.spec_dir, "session-missing.worklog.jsonl", self.worklog.name)
+
+        self.assertEqual(migrated, 0)
+        self.assertFalse((self.spec_dir / "session-missing.worklog.jsonl").exists())
+        self.assertEqual(
+            [json.loads(line)["worklog_id"] for line in self.worklog.read_text(encoding="utf-8").splitlines()],
+            ["keep-1"],
+        )
+
+    def test_migrate_worklog_preserves_lines_without_worklog_id(self) -> None:
+        import worklog_queue
+
+        fallback = self.spec_dir / "session-idless.worklog.jsonl"
+        fallback.write_text(
+            json.dumps({"event": "postToolUse", "ts": "2026-07-11T12:00:00+00:00", "text": "no-id"}, sort_keys=True)
+            + "\n",
+            encoding="utf-8",
+        )
+        self.worklog.write_text(
+            json.dumps(
+                {"event": "postToolUse", "worklog_id": "keep-1", "ts": "2026-07-11T11:59:59+00:00"},
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        migrated = worklog_queue.migrate_worklog(self.spec_dir, fallback.name, self.worklog.name)
+        entries = [json.loads(line) for line in self.worklog.read_text(encoding="utf-8").splitlines()]
+
+        self.assertEqual(migrated, 1)
+        self.assertFalse(fallback.exists())
+        self.assertEqual([entry.get("worklog_id") for entry in entries], ["keep-1", None])
+
+    def test_cleanup_stale_state_removes_only_old_fallback_state(self) -> None:
+        import worklog_queue
+
+        old = time.time() - 200
+        stale_worklog = self.spec_dir / "session-stale.worklog.jsonl"
+        stale_seen = self.spec_dir / ".recall-seen-stale.json"
+        fresh_worklog = self.spec_dir / "session-fresh.worklog.jsonl"
+        named_worklog = self.spec_dir / "named-topic.worklog.jsonl"
+        for path in (stale_worklog, stale_seen, fresh_worklog, named_worklog):
+            path.write_text("{}\n", encoding="utf-8")
+        for path in (stale_worklog, stale_seen, named_worklog):
+            os.utime(path, (old, old))
+
+        removed = worklog_queue.cleanup_stale_state(
+            self.spec_dir,
+            config=worklog_queue.QueueConfig(cleanup_age_seconds=100),
+        )
+
+        self.assertEqual(removed, 2)
+        self.assertFalse(stale_worklog.exists())
+        self.assertFalse(stale_seen.exists())
+        self.assertTrue(fresh_worklog.exists())
+        self.assertTrue(named_worklog.exists())
+
     def test_cleanup_then_session_key_reuse_does_not_duplicate_event_ids(self) -> None:
         import worklog_queue
 
@@ -624,8 +745,8 @@ class TestWorklogQueue(unittest.TestCase):
                 start_worker=False,
             )
         env = _base_env(self.root)
-        env["RALPH_KB_DISABLE_EMBED"] = "1"
-        env["RALPH_KB_DISABLE_VEC"] = "1"
+        env["AI_KB_DISABLE_EMBED"] = "1"
+        env["AI_KB_DISABLE_VEC"] = "1"
         result = subprocess.run(
             [
                 sys.executable,
@@ -664,8 +785,8 @@ class TestWorklogQueue(unittest.TestCase):
                 start_worker=False,
             )
         env = _base_env(self.root)
-        env["RALPH_KB_DISABLE_EMBED"] = "1"
-        env["RALPH_KB_DISABLE_VEC"] = "1"
+        env["AI_KB_DISABLE_EMBED"] = "1"
+        env["AI_KB_DISABLE_VEC"] = "1"
 
         result = subprocess.run(
             [

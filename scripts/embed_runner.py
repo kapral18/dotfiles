@@ -24,7 +24,7 @@ Exit code: 0 on success, 1 on failure.
 This script intentionally lives outside the orchestrator's stdlib-only
 boundary: it declares its own deps via PEP 723 inline-script metadata
 and is invoked via `uv run --script embed_runner.py`. The orchestrator
-(scripts/ralph.py, scripts/ai_kb.py) only knows how to spawn a
+(scripts/ai_kb.py) only knows how to spawn a
 subprocess and parse JSON, keeping its own import surface stdlib-only.
 """
 

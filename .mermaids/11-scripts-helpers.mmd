@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 11-scripts-helpers.mmd — Every file in scripts/ (94). Repo-side Python
+%% 11-scripts-helpers.mmd — Every file in scripts/ (92). Repo-side Python
 %% (stdlib only, no PyYAML) called by chezmoi 07-* hooks + ,bin commands.
 %% Grouped by consumer. Shared parsers feed the generators/mergers.
 %% ============================================================================
@@ -44,14 +44,13 @@ flowchart TB
     subgraph AIKB["AI knowledgebase + embeddings"]
         KB["ai_kb.py (markdown + SQLite FTS5 store; deployed as ~/lib/,ai-kb/main.py;<br/>harvest flushes queued worklogs, then resolves worklog→remember candidates, read-only)"]:::ai
         WQ["worklog_queue.py (fsynced session sequence queue;<br/>stable replay IDs · spec/target locks · chronological output · bounded errors/lifetime/cleanup;<br/>deployed to ~/.agents/hooks/ + ~/lib/,ai-kb/)"]:::ai
-        EMB["embed.py dispatch<br/>embed_runner.py = one-shot default/manual/Ralph/remember/reembed<br/>embed_client.py + embed_worker.py = generation-specific private resident;<br/>session-start ensure · per-turn connect-only · fail-open · 300s idle"]:::ai
+        EMB["embed.py dispatch<br/>embed_runner.py = one-shot default/manual/remember/reembed<br/>embed_client.py + embed_worker.py = generation-specific private resident;<br/>session-start ensure · per-turn connect-only · fail-open · 300s idle"]:::ai
         VEC["vec_runner.py (vector retrieval subprocess)"]:::ai
         AGM["agent_memory.py (/tmp/specs topic mgmt; ,agent-memory)"]:::ai
     end
     KB --> AGM & EMB & VEC & WQ
 
-    subgraph ORCH["Orchestrator + package ops"]
-        RALPH["ralph.py (orchestrator; consumes mirror curated sets + opt-in live Cursor drift; see 04/04b)"]:::misc
+    subgraph ORCH["Package ops + validators"]
         RCP["reconcile_custom_packages.py (hook 05-install-custom-packages)"]:::misc
         RGP["reconcile_golang_pkgs.py (hook 05-update-golang-pkgs; binary reconcile + state ledger)"]:::misc
         SLC["sync_llama_cpp_models.py (hook 07-sync-llama-cpp-models)"]:::misc
@@ -60,9 +59,9 @@ flowchart TB
     end
 
     subgraph TESTS["Tests + fixtures"]
-        TT["top-level tests:<br/>test_{agent_memory,ai_kb,ai_launcher,ai_models,chezmoi_lib,embed,generated_artifact_ledger,generate_mcp_configs,generate_pi_models}.py<br/>test_{inject_mcp_into_codex_toml,inject_mcp_into_opencode_jsonc,mcp_registry,model_mirrors}.py<br/>test_{merge_copilot_settings,merge_opencode_models,model_display,pre_commit,ralph}.py<br/>test_{verify_bin_surface,verify_docs_navigation,verify_mermaids,verify_templates,yaml_parser}.py"]:::shared
+        TT["top-level tests:<br/>test_{agent_memory,ai_kb,ai_launcher,ai_models,chezmoi_lib,embed,generated_artifact_ledger,generate_mcp_configs,generate_pi_models}.py<br/>test_{inject_mcp_into_codex_toml,inject_mcp_into_opencode_jsonc,mcp_registry,model_mirrors,palantir}.py<br/>test_{merge_copilot_settings,merge_opencode_models,model_display,pre_commit}.py<br/>test_{verify_bin_surface,verify_docs_navigation,verify_mermaids,verify_templates,yaml_parser}.py"]:::shared
         IT["scripts/tests/: __init__.py · copilot_agent_memory_extension.test.mjs<br/>recall_worklog_state_machine.py · test_{agent_hooks,recall_worklog,bin_commands,gh_picker_dispatch_state,gh_picker_lock,git_gate,invariants}.py<br/>test_{plain_session_removal,proof_cli,session_github_cache,tmux_handoff_context,tmux_handoff_lifecycle,<br/>tmux_handoff_namespace,tmux_pickers,worktree_delete_boundaries}.py"]:::shared
-        FX["fixtures/: {ai_models,ai_models_with_claude,mcp_servers,mcp_servers_exclude}.yaml<br/>codex_base.toml · golden_codex_personal.toml · golden_mcp_{personal,work}.json<br/>golden_opencode_{models,models_with_claude,personal}.jsonc · golden_pi_models.json<br/>model_probe_cases.json · opencode_{base,work_base}.jsonc · mock_role.sh"]:::shared
+        FX["fixtures/: {ai_models,ai_models_with_claude,mcp_servers,mcp_servers_exclude}.yaml<br/>codex_base.toml · golden_codex_personal.toml · golden_mcp_{personal,work}.json<br/>golden_opencode_{models,models_with_claude,personal}.jsonc · golden_pi_models.json<br/>model_probe_cases.json · opencode_{base,work_base}.jsonc"]:::shared
     end
     MCPGEN -.verified by golden.-> TESTS
     RECON -.verified by focused tests.-> TESTS

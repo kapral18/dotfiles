@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1320" height="390" viewBox="0 0 1320 390" role="img" aria-labelledby="title desc">
   <title id="title">Daily tmux and agent workflow</title>
-  <desc id="desc">A daily workflow restores context, opens the GitHub dashboard, creates worktrees or hands off to Ralph, runs agents, reviews, and cleans up sessions and worktrees.</desc>
+  <desc id="desc">A daily workflow restores context, opens the GitHub dashboard, creates worktrees or hands off to Palantír, runs agents, reviews, and cleans up sessions and worktrees.</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#fbbf24"/></marker>
     <style>
@@ -19,5 +19,5 @@
   <path class="line" d="M960 188 H1020"/>
   <rect class="box" x="1020" y="135" width="185" height="105"/><text class="text" x="1052" y="176">Review</text><text class="small" x="1052" y="206">agent-review or tuicr</text>
   <path class="line" d="M1112 240 V300 H138 V240"/>
-  <rect class="alt" x="530" y="275" width="250" height="74"/><text class="small" x="562" y="320">alt-A can hand the selected PR/issue to Ralph instead.</text>
+  <rect class="alt" x="530" y="275" width="250" height="74"/><text class="small" x="562" y="320">alt-A can hand the selected PR/issue to Palantír.</text>
 </svg>

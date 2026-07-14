@@ -67,7 +67,7 @@ Resident FastEmbed warm-up is independently opt-in; it is not implied by calling
 | Pi                   | Its TypeScript extension calls `~/lib/,ai-kb/embed_client.py ensure` during `session_start` |
 | Cursor and Codex     | No warm-up because they have no automatic per-turn retrieval path                           |
 
-`session_context.py` runs a requested `ensure` with a four-second bound and discards failures, except that `AI_AGENT_DEPTH=fast` suppresses warm-up because that profile disables per-turn retrieval. Shared `perturn_recall.py` sets `AI_EMBED_CONNECT_ONLY=1` for its `,ai-kb search`; Pi applies the same environment contract to its hybrid searches. Per-turn code therefore never starts or replaces a worker. The generation-specific worker is served from `~/lib/,ai-kb/`, exits after 300 inactive seconds, and fails open by omitting the recall block if it is absent or invalid. Default/manual CLI, Ralph, `remember`, and `reembed` calls retain the one-shot `embed_runner.py` path. See [Cross-agent memory](cross-agent-memory.md) for the exact `fast`/`balanced`/`deep` budgets and fixture provenance.
+`session_context.py` runs a requested `ensure` with a four-second bound and discards failures, except that `AI_AGENT_DEPTH=fast` suppresses warm-up because that profile disables per-turn retrieval. Shared `perturn_recall.py` sets `AI_EMBED_CONNECT_ONLY=1` for its `,ai-kb search`; Pi applies the same environment contract to its hybrid searches. Per-turn code therefore never starts or replaces a worker. The generation-specific worker is served from `~/lib/,ai-kb/`, exits after 300 inactive seconds, and fails open by omitting the recall block if it is absent or invalid. Default/manual CLI, `remember`, and `reembed` calls retain the one-shot `embed_runner.py` path. See [Cross-agent memory](cross-agent-memory.md) for the exact `fast`/`balanced`/`deep` budgets and fixture provenance.
 
 Runtime state is intentionally outside chezmoi and outside worktrees:
 
@@ -89,6 +89,7 @@ Runtime state is intentionally outside chezmoi and outside worktrees:
 - a per-target lock plus timestamp ordering keeps shared-topic logs chronological enough for harvest;
 - pending state is capped at 256 events and 1 MiB per session; worklogs retain 200 complete JSONL records;
 - the transient flusher exits after 80ms idle or two seconds total, and drained queue/error directories age out after seven days;
+- the same seven-day age gate sweeps stale per-session fallback state after each flush pass: `session-*` fallback worklogs and `.recall-seen-*` dedupe files older than the gate are removed (named-topic worklogs are never candidates);
 - queue-full, invalid-record, spawn, and flush failures remain in bounded error ledgers. Session startup warns, and `,ai-kb harvest` exits nonzero, while the agent-facing tool path remains fail-open.
 
 The worklog is not only startup context — it is harvestable. `,ai-kb harvest --session-id <id>` first flushes all pending session queues, fails visibly if pending/error state remains, then resolves that session's binding through `agent_memory.py`, reads its `<topic>.worklog.jsonl`, and surfaces durable-memory candidates (failing-then-fixed commands, recurring errors, repeated commands) as prefilled `,ai-kb remember` lines. It is a manual, read-only aid that never writes capsules and never re-prompts the agent, so it stays inside the same no-`stop`-hook discipline described above. See [AI knowledge base](ai-kb.md#worklog-harvest).
@@ -122,7 +123,7 @@ or by placing `_no_session_context` / `<topic>.no_context` under the workspace's
 The user-facing control plane is `,agent-memory`:
 
 - `,agent-memory status [--session-id <id>]` — show the selected topic, including a session-bound bucket when a session id is given.
-- `,agent-memory select <topic> --session-id <id>` — bind one agent session to an existing topic bucket.
+- `,agent-memory select <topic> --session-id <id>` — bind one agent session to an existing topic bucket; pre-bind events from the session's `session-*` fallback worklog are flushed and folded into `<topic>.worklog.jsonl` so the trail is not split.
 - `,agent-memory select <topic> --create --session-id <id>` — seed a new topic bucket and bind only this session to it.
 - `,agent-memory use <topic>` — set the legacy workspace-level pointer used by the CLI control plane; shared-branch session-start context still uses `select` session bindings.
 - `,agent-memory wipe-current [--session-id <id>]` — delete the selected topic's spec, worklog, and no-context sentinel.

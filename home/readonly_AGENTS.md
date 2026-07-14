@@ -338,3 +338,60 @@ Artifact necessity:
   Evaluate honestly whether a proposed change is a genuine improvement or a reactive edit made to appear responsive;
   unnecessary churn is a defect, not diligence.
 - When uncertain whether to answer or act, answer first, then ask if action is needed.
+
+## 8. Palantír
+
+The palantír is the seeing stone over autonomous legions: `,palantir` orchestrates efforts, one legion per effort.
+A legion is one tmux session on a disposable `,w` worktree; its windows and panes are the effort's internal organisation.
+Inside each legion a deterministic supervisor owns lifecycle, safety gates, retry budgets, and wake deduplication —
+no model inference in the control loop.
+Plain-English roles run as interactive agent panes (`triage`, `diagnose`, `investigate`, `implement`, `adversarial-review`);
+`verify` is machine-run criteria checking, never agent judgment.
+A persistent coordinator agent pane (window 0) owns judgment calls; the supervisor wakes it with structured events.
+Unrelated efforts never share a session: you interact with each legion in its own session, or from the seeing-stone dashboard (`,palantir`, prefix+A).
+
+### 8.0 The chat agent is read-only over projects
+
+The agent the human talks to (this session) MAY run these six sanctioned git operations directly (read-only or fast-forward, within ownership, never publication):
+
+- `git fetch` (read-only remote sync).
+- `git pull --ff-only` and `git merge --ff-only` (fast-forward only; no merge commit, no history rewrite).
+- `git checkout` / `switch` / `restore` to inspect a branch or file (read-only tree state).
+- `git worktree add` / `remove` / `prune` via `,w` (disposable worktree management).
+- `git stash` / `pop` / `drop` (local tree hygiene).
+- `git status` / `diff` / `log` / `show` / `blame` (read-only inspection).
+
+Any other project mutation — a content edit, a commit, a push, a PR/issue/comment/review, a force-push or history rewrite, a merge that creates a merge commit, a deletion, a migration — is **not** a chat-agent action.
+Muster a legion for it, or get explicit human approval first.
+The chat agent applies the Ownership Gate (§3.2 `--owner-of`), Publication Gate (§3.6), and Proof (§3.4) to every legion's output before it lands.
+
+### 8.1 Muster, supervise, escalate
+
+- **Summon** with `,palantir summon <goal> [--criteria <json>]`: acceptance criteria ride the manifest;
+  the machine re-runs their checks at `verify`, and `cleared_for_human` is unreachable without a green verify and a blocker-free adversarial review on a different model family than `implement`.
+- **Keep watch** with the per-legion supervisor (`,palantir keep-watch <id>`, started by summon in the command window).
+  It consumes role handshake files (`stages/<stage>.result.json`), drives the state machine, machine-runs verify, and re-nudges `implement` with failure evidence, bounded by the attempt budget, then parks in `holding`.
+  All pane injects are composer-guarded: only an idle pane takes keys.
+- **See** with `,palantir` (the stone: every legion's stage, attention, criteria) or `,palantir farsee` / `behold <id>`.
+- **Escalate only real decisions**: a `holding` legion carries one question — answer it with `,palantir answer <id> <msg>`;
+  do not send word to a working role for narration.
+  Identical unresolved conditions produce one coordinator wake until they resolve and recur.
+- **Grant** a `cleared_for_human` legion with `,palantir grant <id>` (closes it and routes memory);
+  `banish` is fail-closed on in-flight work and dirty worktrees.
+
+### 8.2 Autonomy boundary
+
+The supervisor never publishes; the coordinator brief forbids PRs, comments, and pushes without explicit human approval.
+Destructive/irreversible/security-sensitive work and any human-visible publication always hit §3.2, §3.6, and §3.4 —
+the machine can clear a legion for human review, never past the human.
+
+### 8.3 Memory routing
+
+Closing a legion (`grant` or `banish`) emits a three-layer routing packet the coordinator executes:
+
+- **Durable** (`,ai-kb remember`): generalizable, reusable findings with provenance and confidence —
+  the verifiable insights a future session would recall.
+- **Ephemeral** (`/tmp/specs`): the task-scoped worklog and intent spec for this effort — not durable.
+- **Project-intrinsic** (project `AGENTS.md`): repo-specific conventions the legion discovered, landed via its own worktree so the project owns them.
+
+Routing never stores secrets, guesses, or session-only notes; dedup against `,ai-kb search` before writing durable memory.

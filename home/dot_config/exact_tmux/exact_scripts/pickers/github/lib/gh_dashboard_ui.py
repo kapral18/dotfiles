@@ -97,7 +97,7 @@ def status_line(cache_file: str, mode: str, scope: str) -> str:
     return (
         f"mode:{mode} scope:{scope} items:{total} prs:{prs} issues:{issues} "
         f"sections:{len(sections)} cache:{age} | "
-        "enter checkout ctrl-r refresh alt-A Ralph ? help"
+        "enter checkout ctrl-r refresh alt-A palantír ? help"
     )
 
 

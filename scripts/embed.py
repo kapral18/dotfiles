@@ -1,6 +1,6 @@
-"""Embedding service abstraction for Ralph's KB and interactive recall.
+"""Embedding service abstraction for the ai-kb store and interactive recall.
 
-Stdlib-only consumer surface. The orchestrator (`ralph.py`) and the
+Stdlib-only consumer surface. The KB CLI (`ai_kb.py`) and the
 knowledge base (`ai_kb.py`) talk to this module; this module talks to
 the isolated `embed_runner.py` via subprocess by default. Per-turn recall sets
 `AI_EMBED_CONNECT_ONLY=1` and instead uses the already-warm resident worker
@@ -15,7 +15,7 @@ Protocol with the runner is defined in `embed_runner.py`:
 The default model is `BAAI/bge-small-en-v1.5` (33M params, 384-dim,
 MTEB ~62.2 on English retrieval — a good balance of size vs quality
 for natural-language and code-related capsules). Override via the
-`RALPH_EMBED_MODEL` environment variable or the `model` keyword.
+`AI_KB_EMBED_MODEL` environment variable or the `model` keyword.
 
 Failure mode is intentionally soft: if the runner is unreachable or
 errors, callers receive an empty list (or `None` per call) and decide
@@ -82,7 +82,7 @@ class Embedder:
 
     Cold-start cost is paid by the runner subprocess on first invocation
     (model files load from HuggingFace cache, ~200-500ms). Subsequent
-    calls in a long-lived runner would amortize, but Ralph's call
+    calls in a long-lived runner would amortize, but the KB's call
     frequency at role-spawn time is low enough that subprocess-per-call
     keeps the design simple. A pooled long-lived runner can be added
     later if profiling shows it's needed.
@@ -95,7 +95,7 @@ class Embedder:
         runner: Path | None = None,
         timeout: int = DEFAULT_TIMEOUT_SECONDS,
     ) -> None:
-        self.model = model or os.environ.get("RALPH_EMBED_MODEL") or DEFAULT_MODEL
+        self.model = model or os.environ.get("AI_KB_EMBED_MODEL") or DEFAULT_MODEL
         self.runner = runner or runner_path()
         self.timeout = timeout
         self._resident_spec = None
@@ -148,7 +148,7 @@ class Embedder:
     def embed_strict(self, texts: list[str]) -> EmbedResult:
         """Like `embed`, but raises `EmbedderUnavailable` on failure.
 
-        Useful for tests and tooling (e.g. `,ralph kb-doctor`) that
+        Useful for tests and tooling (e.g. `,ai-kb doctor`) that
         want to surface configuration errors loudly.
         """
         if not texts:

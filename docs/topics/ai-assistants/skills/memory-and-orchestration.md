@@ -25,13 +25,13 @@ These skills coordinate long-running agent work, durable learning, and user-inte
 
 `proof` is available in two ways. Explicit requests route through the skill frontmatter and `SKILL.md`. Ordinary non-review/non-build iteration gets the same hard-trigger rule from the always-on SOP plus the shared verification prefix injected by session hooks, Pi, tmux prompt wrapping, and subagent profile templates. Both paths use the same boundary: start a `,proof` ledger only for hard-triggered freeform claims; use inline anchors for simple or single-evidence work.
 
-## `ralph`
+## `palantir`
 
-| Field    | Value                                                                        |
-| -------- | ---------------------------------------------------------------------------- |
-| Use when | spawning, steering, verifying, replanning, or attaching to `,ralph go` runs  |
-| Source   | [`exact_ralph`](../../../../home/exact_dot_agents/exact_skills/exact_ralph/) |
-| Related  | [Ralph orchestrator](../ralph/index.md)                                      |
+| Field    | Value                                                                                                        |
+| -------- | ------------------------------------------------------------------------------------------------------------ |
+| Use when | summoning, farseeing, beholding, sending word, answering, granting, banishing, or keeping watch over legions |
+| Source   | [`exact_palantir`](../../../../home/exact_dot_agents/exact_skills/exact_palantir/)                           |
+| Related  | [Palantír orchestrator](../palantir.md)                                                                      |
 
 ## `interview-me`
 
@@ -43,11 +43,11 @@ These skills coordinate long-running agent work, durable learning, and user-inte
 
 ## `spec`
 
-| Field    | Value                                                                                                                                                              |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Use when | developing an idea, feature request, or bug into a spec packet with red-capable acceptance checks                                                                  |
-| Source   | [`exact_spec`](../../../../home/exact_dot_agents/exact_skills/exact_spec/)                                                                                         |
-| Output   | packet at `/tmp/specs/<pwd>/<topic>.spec.md`; consumers: `/build`, `,ralph go --spec` (via its JSON handoff block), `compose-issue` issue text/packet, plan review |
+| Field    | Value                                                                                                                                            |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Use when | developing an idea, feature request, or bug into a spec packet with red-capable acceptance checks                                                |
+| Source   | [`exact_spec`](../../../../home/exact_dot_agents/exact_skills/exact_spec/)                                                                       |
+| Output   | packet at `/tmp/specs/<pwd>/<topic>.spec.md`; consumers: `/build`, `,palantir summon --criteria`, `compose-issue` issue text/packet, plan review |
 
 Fork-closing consults a domain overlay's planning fork checklist when the verified target repo has one (currently `elastic-domain` for `elastic/kibana`). Forks that cannot close locally (external sign-off, another team's decision) go in the packet's `External dependencies` section — owner, blocked criteria, recommended default — instead of blocking assembly; consumers must not start blocked criteria.
 
@@ -58,16 +58,16 @@ Fork-closing consults a domain overlay's planning fork checklist when the verifi
 | Use when | hands-free in-session implementation of an approved spec packet (two human gates: packet approval, final report) |
 | Source   | [`exact_build`](../../../../home/exact_dot_agents/exact_skills/exact_build/)                                     |
 | Routing  | manual                                                                                                           |
-| Related  | criteria ledger + adversarial criteria-verifier lane; detached sibling is `,ralph go --spec`                     |
+| Related  | criteria ledger + adversarial criteria-verifier lane; detached sibling is `,palantir summon --criteria`          |
 
 ## `text-tournament`
 
-| Field    | Value                                                                                                                            |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Use when | automatically comparing three plausible edits before a material human-maintained prose rewrite                                   |
-| Source   | [`exact_text-tournament`](../../../../home/exact_dot_agents/exact_skills/exact_text-tournament/)                                 |
-| Routing  | model-invoked                                                                                                                    |
-| Boundary | interactive turns use only a cross-family two-order winner; Ralph executors reuse reviewer/re-reviewer instead of a nested judge |
+| Field    | Value                                                                                                                                              |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Use when | automatically comparing three plausible edits before a material human-maintained prose rewrite                                                     |
+| Source   | [`exact_text-tournament`](../../../../home/exact_dot_agents/exact_skills/exact_text-tournament/)                                                   |
+| Routing  | model-invoked                                                                                                                                      |
+| Boundary | interactive turns use only a cross-family two-order winner; detached orchestration relies on its scheduled review stages instead of a nested judge |
 
 ## `improve-local`
 

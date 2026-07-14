@@ -19,4 +19,4 @@ Use this section when serving local GGUF models, wiring a local provider into Pi
 
 - [Add a llama.cpp model](../../core/packages/llama-cpp-model.md) — manifest recipe
 - [Model registry & routing](../model-registry.md) — cloud model definitions
-- [Ralph orchestrator](../ralph/index.md) — opt-in local models for roles
+- [Palantír orchestrator](../palantir.md) — role harnesses may use local models when configured

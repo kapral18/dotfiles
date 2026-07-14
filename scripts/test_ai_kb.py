@@ -29,9 +29,9 @@ class TestAiKb(unittest.TestCase):
                     tmp,
                     "remember",
                     "--title",
-                    "Ralph memory",
+                    "Agent memory",
                     "--body",
-                    "Ralph stores durable learnings across sessions.",
+                    "The KB stores durable learnings across sessions.",
                     "--source",
                     "test",
                     "--json",
@@ -42,7 +42,7 @@ class TestAiKb(unittest.TestCase):
             )
             assert result.returncode == 0, result.stderr
             capsule = json.loads(result.stdout)
-            assert capsule["title"] == "Ralph memory"
+            assert capsule["title"] == "Agent memory"
 
             result = subprocess.run(
                 [
@@ -240,8 +240,8 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
         import ai_kb
 
         with tempfile.TemporaryDirectory() as tmp:
-            saved_disable = os.environ.get("RALPH_KB_DISABLE_EMBED")
-            os.environ["RALPH_KB_DISABLE_EMBED"] = "1"
+            saved_disable = os.environ.get("AI_KB_DISABLE_EMBED")
+            os.environ["AI_KB_DISABLE_EMBED"] = "1"
             try:
                 kb = ai_kb.KnowledgeBase(home=Path(tmp))
                 old = kb.remember(
@@ -319,16 +319,16 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 assert tuple(cols) == ai_kb.CAPSULE_COLUMNS
             finally:
                 if saved_disable is None:
-                    os.environ.pop("RALPH_KB_DISABLE_EMBED", None)
+                    os.environ.pop("AI_KB_DISABLE_EMBED", None)
                 else:
-                    os.environ["RALPH_KB_DISABLE_EMBED"] = saved_disable
+                    os.environ["AI_KB_DISABLE_EMBED"] = saved_disable
 
     def test_stale_schema_rebuild_preserves_curated_sqlite_only_state(self):
         import ai_kb
 
         with tempfile.TemporaryDirectory() as tmp:
-            saved_disable = os.environ.get("RALPH_KB_DISABLE_EMBED")
-            os.environ["RALPH_KB_DISABLE_EMBED"] = "1"
+            saved_disable = os.environ.get("AI_KB_DISABLE_EMBED")
+            os.environ["AI_KB_DISABLE_EMBED"] = "1"
             try:
                 kb = ai_kb.KnowledgeBase(home=Path(tmp), embedder=self._fake_embedder())
                 old, keeper, loser = self._seed_curated_state(kb)
@@ -355,16 +355,16 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 assert loser.id not in hit_ids, hit_ids
             finally:
                 if saved_disable is None:
-                    os.environ.pop("RALPH_KB_DISABLE_EMBED", None)
+                    os.environ.pop("AI_KB_DISABLE_EMBED", None)
                 else:
-                    os.environ["RALPH_KB_DISABLE_EMBED"] = saved_disable
+                    os.environ["AI_KB_DISABLE_EMBED"] = saved_disable
 
     def test_stale_schema_rebuild_fails_closed_on_malformed_sidecar(self):
         import ai_kb
 
         with tempfile.TemporaryDirectory() as tmp:
-            saved_disable = os.environ.get("RALPH_KB_DISABLE_EMBED")
-            os.environ["RALPH_KB_DISABLE_EMBED"] = "1"
+            saved_disable = os.environ.get("AI_KB_DISABLE_EMBED")
+            os.environ["AI_KB_DISABLE_EMBED"] = "1"
             try:
                 kb = ai_kb.KnowledgeBase(home=Path(tmp))
                 good = kb.remember(
@@ -411,16 +411,16 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 assert (kb.capsules_dir / f"{good.id}.md").exists()
             finally:
                 if saved_disable is None:
-                    os.environ.pop("RALPH_KB_DISABLE_EMBED", None)
+                    os.environ.pop("AI_KB_DISABLE_EMBED", None)
                 else:
-                    os.environ["RALPH_KB_DISABLE_EMBED"] = saved_disable
+                    os.environ["AI_KB_DISABLE_EMBED"] = saved_disable
 
     def test_aux_table_repair_preserves_current_capsules_table_and_state(self):
         import ai_kb
 
         with tempfile.TemporaryDirectory() as tmp:
-            saved_disable = os.environ.get("RALPH_KB_DISABLE_EMBED")
-            os.environ["RALPH_KB_DISABLE_EMBED"] = "1"
+            saved_disable = os.environ.get("AI_KB_DISABLE_EMBED")
+            os.environ["AI_KB_DISABLE_EMBED"] = "1"
             try:
                 kb = ai_kb.KnowledgeBase(home=Path(tmp), embedder=self._fake_embedder())
                 old, keeper, loser = self._seed_curated_state(kb)
@@ -448,9 +448,9 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 assert state_after == state_before, (state_before, state_after)
             finally:
                 if saved_disable is None:
-                    os.environ.pop("RALPH_KB_DISABLE_EMBED", None)
+                    os.environ.pop("AI_KB_DISABLE_EMBED", None)
                 else:
-                    os.environ["RALPH_KB_DISABLE_EMBED"] = saved_disable
+                    os.environ["AI_KB_DISABLE_EMBED"] = saved_disable
 
     def test_schema_state_detects_same_count_fts_content_drift(self):
         """A corrupted capsule_fts row (same id, same row count, wrong text)
@@ -556,7 +556,7 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
         import ai_kb
 
         with tempfile.TemporaryDirectory() as tmp:
-            os.environ["RALPH_KB_DISABLE_EMBED"] = "1"
+            os.environ["AI_KB_DISABLE_EMBED"] = "1"
             try:
                 kb = ai_kb.KnowledgeBase(home=Path(tmp))
                 c = kb.remember(
@@ -566,7 +566,7 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                     scope="project",
                     workspace_path="/ws",
                     project_id="proj-1",
-                    domain_tags=["python", "ralph"],
+                    domain_tags=["python", "memory"],
                     confidence=0.8,
                     verified_by="go-rid-1",
                 )
@@ -574,7 +574,7 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 assert c.scope == "project"
                 assert c.workspace_path == "/ws"
                 assert c.project_id == "proj-1"
-                assert c.domain_tags == "python,ralph"
+                assert c.domain_tags == "python,memory"
                 assert c.confidence == 0.8
                 assert c.verified_by == "go-rid-1"
                 # No embedder under disable flag → embedding fields blank.
@@ -584,15 +584,15 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 got = kb.get(c.id)
                 assert got is not None
                 assert got.kind == "gotcha"
-                assert got.domain_tags == "python,ralph"
+                assert got.domain_tags == "python,memory"
             finally:
-                os.environ.pop("RALPH_KB_DISABLE_EMBED", None)
+                os.environ.pop("AI_KB_DISABLE_EMBED", None)
 
     def test_remember_rejects_unknown_kind_or_scope(self):
         import ai_kb
 
         with tempfile.TemporaryDirectory() as tmp:
-            os.environ["RALPH_KB_DISABLE_EMBED"] = "1"
+            os.environ["AI_KB_DISABLE_EMBED"] = "1"
             try:
                 kb = ai_kb.KnowledgeBase(home=Path(tmp))
                 try:
@@ -608,13 +608,13 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 else:
                     raise AssertionError("expected ValueError for unknown scope")
             finally:
-                os.environ.pop("RALPH_KB_DISABLE_EMBED", None)
+                os.environ.pop("AI_KB_DISABLE_EMBED", None)
 
     def test_supersedes_links_bidirectionally(self):
         import ai_kb
 
         with tempfile.TemporaryDirectory() as tmp:
-            os.environ["RALPH_KB_DISABLE_EMBED"] = "1"
+            os.environ["AI_KB_DISABLE_EMBED"] = "1"
             try:
                 kb = ai_kb.KnowledgeBase(home=Path(tmp))
                 old = kb.remember(title="v1", body="old fact")
@@ -626,7 +626,7 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 )
                 assert new.supersedes == old.id
             finally:
-                os.environ.pop("RALPH_KB_DISABLE_EMBED", None)
+                os.environ.pop("AI_KB_DISABLE_EMBED", None)
 
 
 class TestKnowledgeBaseEmbeddingRoundtrip(unittest.TestCase):
@@ -649,12 +649,12 @@ class TestKnowledgeBaseEmbeddingRoundtrip(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             # Ensure the disable flag is OFF for this test.
-            saved = os.environ.pop("RALPH_KB_DISABLE_EMBED", None)
+            saved = os.environ.pop("AI_KB_DISABLE_EMBED", None)
             try:
                 kb = ai_kb.KnowledgeBase(home=Path(tmp))
                 c = kb.remember(
-                    title="Ralph manifest layout",
-                    body="Ralph state under runs/*/manifest.json with kind values.",
+                    title="Legion manifest layout",
+                    body="Legion state under legions/*/manifest.json with kind values.",
                 )
                 assert c.embedding_dim == 384, c.embedding_dim
                 assert c.embedding_model == "BAAI/bge-small-en-v1.5"
@@ -666,7 +666,7 @@ class TestKnowledgeBaseEmbeddingRoundtrip(unittest.TestCase):
                 assert abs(cosine(vec, vec) - 1.0) < 1e-5
             finally:
                 if saved is not None:
-                    os.environ["RALPH_KB_DISABLE_EMBED"] = saved
+                    os.environ["AI_KB_DISABLE_EMBED"] = saved
 
 
 class TestKnowledgeBaseHybridRetrieval(unittest.TestCase):
@@ -683,11 +683,11 @@ class TestKnowledgeBaseHybridRetrieval(unittest.TestCase):
         if not embed.Embedder().is_available():
             self.skipTest("fastembed runner not available")
         # Embedding tests need the embedder ON.
-        self.saved_disable = os.environ.pop("RALPH_KB_DISABLE_EMBED", None)
+        self.saved_disable = os.environ.pop("AI_KB_DISABLE_EMBED", None)
 
     def tearDown(self):
         if self.saved_disable is not None:
-            os.environ["RALPH_KB_DISABLE_EMBED"] = self.saved_disable
+            os.environ["AI_KB_DISABLE_EMBED"] = self.saved_disable
 
     def test_vector_mode_finds_semantic_match_without_keyword_overlap(self):
         """Capsule says 'feline' / query asks 'cat'. BM25 misses, vector hits."""
@@ -723,15 +723,15 @@ class TestKnowledgeBaseHybridRetrieval(unittest.TestCase):
                 body="A manifest file describes packaging metadata.",
                 kind="fact",
             )
-            # cap_b: high semantic relevance to a Ralph-flavored query,
+            # cap_b: high semantic relevance to an orchestrator-flavored query,
             # but no shared tokens with the query.
             kb.remember(
                 title="Run state on disk",
-                body="Each Ralph execution stores its progress under its own directory.",
+                body="Each legion stores its progress under its own directory.",
                 kind="fact",
             )
 
-            hits = kb.search("ralph manifest layout", limit=3, mode="hybrid")
+            hits = kb.search("legion manifest layout", limit=3, mode="hybrid")
             assert len(hits) == 2
             ids = [h["id"] for h in hits]
             # Both capsules must appear in the fused result.
@@ -839,10 +839,10 @@ class TestKnowledgeBaseHybridRetrieval(unittest.TestCase):
             for i in range(3):
                 kb.remember(
                     title=f"capsule {i}",
-                    body=f"Lesson number {i} about Ralph orchestration.",
+                    body=f"Lesson number {i} about legion orchestration.",
                     kind="fact",
                 )
-            hits = kb.search("ralph orchestration", limit=2, mode="hybrid")
+            hits = kb.search("legion orchestration", limit=2, mode="hybrid")
             assert len(hits) == 2
             for h in hits:
                 assert h["mmr_selected"] is True, h
@@ -859,7 +859,7 @@ class TestKnowledgeBaseCurate(unittest.TestCase):
         import ai_kb
 
         with tempfile.TemporaryDirectory() as tmp:
-            os.environ["RALPH_KB_DISABLE_EMBED"] = "1"
+            os.environ["AI_KB_DISABLE_EMBED"] = "1"
             try:
                 kb = ai_kb.KnowledgeBase(home=Path(tmp))
                 kb.remember(title="a", body="A body")
@@ -887,7 +887,7 @@ class TestKnowledgeBaseCurate(unittest.TestCase):
                 # 0.2 + 0.5 = 0.7
                 assert all(abs(r["decay_score"] - 0.7) < 1e-6 for r in rows), [r["decay_score"] for r in rows]
             finally:
-                os.environ.pop("RALPH_KB_DISABLE_EMBED", None)
+                os.environ.pop("AI_KB_DISABLE_EMBED", None)
 
     def test_dedupe_marks_near_duplicates_as_superseded(self):
         import embed
@@ -898,7 +898,7 @@ class TestKnowledgeBaseCurate(unittest.TestCase):
         import ai_kb
 
         with tempfile.TemporaryDirectory() as tmp:
-            saved = os.environ.pop("RALPH_KB_DISABLE_EMBED", None)
+            saved = os.environ.pop("AI_KB_DISABLE_EMBED", None)
             try:
                 kb = ai_kb.KnowledgeBase(home=Path(tmp))
                 # Two near-duplicates of the same gotcha. Same kind,
@@ -948,7 +948,7 @@ class TestKnowledgeBaseCurate(unittest.TestCase):
                 assert refreshed_older.id not in ids, "search must hide superseded capsules"
             finally:
                 if saved is not None:
-                    os.environ["RALPH_KB_DISABLE_EMBED"] = saved
+                    os.environ["AI_KB_DISABLE_EMBED"] = saved
 
     def test_contradiction_scan_returns_candidate_pairs(self):
         import embed
@@ -959,7 +959,7 @@ class TestKnowledgeBaseCurate(unittest.TestCase):
         import ai_kb
 
         with tempfile.TemporaryDirectory() as tmp:
-            saved = os.environ.pop("RALPH_KB_DISABLE_EMBED", None)
+            saved = os.environ.pop("AI_KB_DISABLE_EMBED", None)
             try:
                 kb = ai_kb.KnowledgeBase(home=Path(tmp))
                 kb.remember(
@@ -986,7 +986,7 @@ class TestKnowledgeBaseCurate(unittest.TestCase):
                 assert pair["a_kind"] != pair["b_kind"]
             finally:
                 if saved is not None:
-                    os.environ["RALPH_KB_DISABLE_EMBED"] = saved
+                    os.environ["AI_KB_DISABLE_EMBED"] = saved
 
 
 class TestKnowledgeBaseVecRunner(unittest.TestCase):
@@ -1001,8 +1001,8 @@ class TestKnowledgeBaseVecRunner(unittest.TestCase):
         import ai_kb
 
         with tempfile.TemporaryDirectory() as tmp:
-            saved = os.environ.get("RALPH_KB_DISABLE_VEC")
-            os.environ["RALPH_KB_DISABLE_VEC"] = "1"
+            saved = os.environ.get("AI_KB_DISABLE_VEC")
+            os.environ["AI_KB_DISABLE_VEC"] = "1"
             try:
                 kb = ai_kb.KnowledgeBase(home=Path(tmp))
                 knn = kb._call_vec_runner({"mode": "knn", "db_path": str(kb.db_path)})
@@ -1011,9 +1011,9 @@ class TestKnowledgeBaseVecRunner(unittest.TestCase):
                 assert pairs == {"pairs": []}, pairs
             finally:
                 if saved is None:
-                    os.environ.pop("RALPH_KB_DISABLE_VEC", None)
+                    os.environ.pop("AI_KB_DISABLE_VEC", None)
                 else:
-                    os.environ["RALPH_KB_DISABLE_VEC"] = saved
+                    os.environ["AI_KB_DISABLE_VEC"] = saved
 
     def test_call_vec_runner_raises_when_runner_missing(self):
         """If the colocated `vec_runner.py` is absent, hard-fail with
@@ -1021,7 +1021,7 @@ class TestKnowledgeBaseVecRunner(unittest.TestCase):
         import ai_kb
 
         with tempfile.TemporaryDirectory() as tmp:
-            saved = os.environ.pop("RALPH_KB_DISABLE_VEC", None)
+            saved = os.environ.pop("AI_KB_DISABLE_VEC", None)
             try:
                 kb = ai_kb.KnowledgeBase(home=Path(tmp))
                 # Monkey-patch the runner path to a non-existent file.
@@ -1039,7 +1039,7 @@ class TestKnowledgeBaseVecRunner(unittest.TestCase):
                     kb._vec_runner_path = original
             finally:
                 if saved is not None:
-                    os.environ["RALPH_KB_DISABLE_VEC"] = saved
+                    os.environ["AI_KB_DISABLE_VEC"] = saved
 
     def test_doctor_reports_vec_runner_status(self):
         """`,ai-kb doctor` must surface vec_runner state so operators
@@ -1049,19 +1049,19 @@ class TestKnowledgeBaseVecRunner(unittest.TestCase):
         import ai_kb
 
         with tempfile.TemporaryDirectory() as tmp:
-            saved = os.environ.get("RALPH_KB_DISABLE_VEC")
-            os.environ["RALPH_KB_DISABLE_VEC"] = "1"
+            saved = os.environ.get("AI_KB_DISABLE_VEC")
+            os.environ["AI_KB_DISABLE_VEC"] = "1"
             try:
                 kb = ai_kb.KnowledgeBase(home=Path(tmp))
                 lines = kb.doctor()
                 vec_lines = [l for l in lines if l.startswith("vec_runner=")]
                 assert len(vec_lines) == 1, lines
-                assert "disabled via RALPH_KB_DISABLE_VEC" in vec_lines[0], vec_lines
+                assert "disabled via AI_KB_DISABLE_VEC" in vec_lines[0], vec_lines
             finally:
                 if saved is None:
-                    os.environ.pop("RALPH_KB_DISABLE_VEC", None)
+                    os.environ.pop("AI_KB_DISABLE_VEC", None)
                 else:
-                    os.environ["RALPH_KB_DISABLE_VEC"] = saved
+                    os.environ["AI_KB_DISABLE_VEC"] = saved
 
 
 class TestKnowledgeBaseAsToolCLI(unittest.TestCase):
@@ -1078,7 +1078,7 @@ class TestKnowledgeBaseAsToolCLI(unittest.TestCase):
         keys roles parse downstream."""
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            env = {**os.environ, "AI_KB_HOME": str(tmp_path / "kb"), "RALPH_KB_DISABLE_EMBED": "1"}
+            env = {**os.environ, "AI_KB_HOME": str(tmp_path / "kb"), "AI_KB_DISABLE_EMBED": "1"}
             seed = subprocess.run(
                 [
                     sys.executable,
@@ -1200,14 +1200,14 @@ class TestKnowledgeBaseDocIngestion(unittest.TestCase):
     """
 
     def setUp(self):
-        self.saved_disable = os.environ.get("RALPH_KB_DISABLE_EMBED")
-        os.environ["RALPH_KB_DISABLE_EMBED"] = "1"
+        self.saved_disable = os.environ.get("AI_KB_DISABLE_EMBED")
+        os.environ["AI_KB_DISABLE_EMBED"] = "1"
 
     def tearDown(self):
         if self.saved_disable is None:
-            os.environ.pop("RALPH_KB_DISABLE_EMBED", None)
+            os.environ.pop("AI_KB_DISABLE_EMBED", None)
         else:
-            os.environ["RALPH_KB_DISABLE_EMBED"] = self.saved_disable
+            os.environ["AI_KB_DISABLE_EMBED"] = self.saved_disable
 
     def test_ingest_file_chunks_on_h1_h2_headings(self):
         import ai_kb
@@ -1324,10 +1324,9 @@ class TestKnowledgeBaseDocIngestion(unittest.TestCase):
 
 class TestKnowledgeBaseSearchReturnsBody(unittest.TestCase):
     """Pin the regression where the FTS5 path returned `snippet` (the
-    bracketed match-highlight) but not the full `body`. Ralph's
-    `_fetch_learnings` indexed `h["body"]` and got `None`, so role
-    prompts saw only the capsule title (a meta-string like
-    `Ralph learning go-…-executor-1`) instead of the actual lesson.
+    bracketed match-highlight) but not the full `body`. Recall
+    consumers index `h["body"]`; when it was missing they injected only
+    the capsule title (a meta-string) instead of the actual lesson.
     """
 
     def test_search_includes_body_field_in_results(self):
@@ -1338,44 +1337,17 @@ class TestKnowledgeBaseSearchReturnsBody(unittest.TestCase):
             kb.init()
             kb.remember(
                 title="t1",
-                body="Ralph state layout uses runs/*/manifest.json with kind=='go' filter.",
-                source="ralph:test",
-                tags="ralph,test",
+                body="Legion state layout uses legions/*/manifest.json with a stage filter.",
+                source="palantir:test",
+                tags="palantir,test",
             )
-            hits = kb.search("Ralph manifest layout", limit=5)
+            hits = kb.search("Legion manifest layout", limit=5)
             assert len(hits) == 1, hits
             row = hits[0]
             assert "body" in row, f"search row must include body: keys={sorted(row.keys())}"
             assert "manifest.json" in (row["body"] or ""), row["body"]
             # snippet should still be present for CLI / UI consumers
             assert "snippet" in row, "search row must still include snippet for highlights"
-
-    def test_fetch_learnings_injects_body_text_not_title(self):
-        import ralph
-
-        with tempfile.TemporaryDirectory() as tmp:
-            tmp_path = Path(tmp)
-            state_home = tmp_path / "state"
-            kb_home = tmp_path / "kb"
-            state_home.mkdir()
-            kb_home.mkdir()
-            runner = ralph.RalphRunner(state_home=state_home, kb_home=kb_home)
-            runner.init()
-            runner.kb.remember(
-                title="Ralph learning go-foo-executor-1",
-                body="Concrete fact: spec target_artifact must be an absolute path.",
-                source="ralph:go-foo-executor-1",
-                tags="ralph,session-learning",
-            )
-            text, hits = runner._fetch_learnings("spec target_artifact path", top_k=5)
-            assert "Concrete fact" in text, f"role prompts must inject capsule body, not title:\n{text!r}"
-            assert "Ralph learning go-foo-executor-1" not in text, (
-                f"title (meta-string) must not be the injected content:\n{text!r}"
-            )
-            # The hits payload mirrors the ranked search results — caller-side
-            # consumers (TUI retrieval_log, future curator) read it directly.
-            assert len(hits) == 1, hits
-            assert hits[0]["title"].startswith("Ralph learning"), hits[0]
 
 
 class TestAiKbRememberSupersedes(unittest.TestCase):

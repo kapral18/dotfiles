@@ -1,0 +1,8 @@
+palantir	The stone (dashboard)	every legion: stage, attention, criteria	tmux:palantir-dashboard	display-popup -w 90% -h 85% -E "uv run $HOME/lib/,palantir/dashboard.py"
+palantir	Summon legion (prompt)	call a legion: worktree + coordinator + supervisor	palantir:summon	,palantir summon
+palantir	Farsee legions	survey legions with stage / attention	palantir:farsee	,palantir farsee
+palantir	Trial legion (prompt)	put acceptance criteria to machine trial	palantir:trial	,palantir trial
+palantir	Answer legion (prompt)	answer a holding legion's question	palantir:answer	,palantir answer
+palantir	Doctor	health check: state home, tmux, uv	palantir:doctor	,palantir doctor
+palantir	KB search	search the AI knowledge base by query	palantir:kb-search	,ai-kb search
+palantir	Statusline	print the tmux statusline fragment	palantir:statusline	,palantir statusline

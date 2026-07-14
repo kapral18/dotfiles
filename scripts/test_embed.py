@@ -560,7 +560,7 @@ class TestResidentEmbedRuntime(unittest.TestCase):
             worker = root / "worker.py"
             worker.write_text("# worker\n")
             with (
-                mock.patch.dict(os.environ, {"RALPH_EMBED_MODEL": custom_model}, clear=False),
+                mock.patch.dict(os.environ, {"AI_KB_EMBED_MODEL": custom_model}, clear=False),
                 mock.patch.object(embed_client, "_probe_model_dimension", return_value=768),
             ):
                 warm_spec = embed_client.resolve_start_spec(runtime_dir=runtime, worker=worker)

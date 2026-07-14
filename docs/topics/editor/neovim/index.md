@@ -6,8 +6,6 @@ title: "Editor: Neovim"
 
 Neovim is the inline editor pane in the tmux workbench. Pickers and dashboards appear around it; editor-specific UI, such as `:PackDashboard`, stays inside Neovim.
 
-![Natural tmux layout with Neovim inline in the left pane and an assistant workflow pane on the right](../assets/natural-neovim-layout.png)
-
 ## Read path
 
 | Slice                                                 | Owns                                                                                     |
@@ -27,8 +25,6 @@ Neovim is the inline editor pane in the tmux workbench. Pickers and dashboards a
 - Local plugins for daily repo workflows.
 - Project-aware formatting: Oxfmt when declared, else Biome, else Prettier.
 - ESLint and Oxlint diagnostics together, with a single formatter to avoid conflicts.
-
-![Neovim PackDashboard floating inside the editor pane while the rest of the tmux layout remains visible](../assets/neovim-pack-dashboard-inline.png)
 
 ## Related
 

@@ -20,14 +20,14 @@ The SOP turns "don't guess" into a workflow. A claim is either verified, labeled
 
 ## Evidence ladder
 
-| Question type       | Required evidence                                                                                                                          |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| CLI behavior        | binary path and provenance, then `--version`, `--help`, or source                                                                          |
-| Library behavior    | exact package/version from lockfile, import path, and local implementation when available                                                  |
-| Runtime setup       | source declaration, applied config, consumer implementation, safe live probe                                                               |
-| Build/test failure  | full output when compacted markers or capped lists appear                                                                                  |
-| Review judgment     | base truth, change truth, and smallest safe repro/probe when needed                                                                        |
-| Freeform completion | `,proof` ledger only when a hard trigger applies; otherwise inline evidence anchors; proof receipts are not /build/Ralph adversarial gates |
+| Question type       | Required evidence                                                                                                                           |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| CLI behavior        | binary path and provenance, then `--version`, `--help`, or source                                                                           |
+| Library behavior    | exact package/version from lockfile, import path, and local implementation when available                                                   |
+| Runtime setup       | source declaration, applied config, consumer implementation, safe live probe                                                                |
+| Build/test failure  | full output when compacted markers or capped lists appear                                                                                   |
+| Review judgment     | base truth, change truth, and smallest safe repro/probe when needed                                                                         |
+| Freeform completion | `,proof` ledger only when a hard trigger applies; otherwise inline evidence anchors; proof receipts are not /build or Palantír verify gates |
 
 Compacted output without full recovery is a hypothesis, not a fact. Unknowns are resolved in order: local probes, local source/tests, official docs fetched live, then user questions. When a public cloneable codebase can answer a web/source question, inspect it locally with `rg`, file reads, and `git log`.
 

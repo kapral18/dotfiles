@@ -205,7 +205,7 @@ litellm_models:
 azure_models:
 
 # Harness policy consumed by the generated model mirror. `recommended` is the
-# narrower Ralph TUI picker; omitted means curated but not recommended. Live
+# narrower curated pickers; omitted means curated but not recommended. Live
 # availability never edits or promotes this policy.
 cursor_models:
   - id: "claude-4-sonnet"
@@ -384,7 +384,7 @@ cursor_models:
     recommendation_rank: 10
 
 # Pi's LiteLLM entries are derived from `litellm_models`; only provider-routed
-# extras live here. All entries preserve the current Ralph/TUI picker.
+# extras live here. All entries preserve the current curated picker sets.
 pi_extra_models:
   - id: "openrouter/anthropic/claude-opus-4.7-thinking"
     recommended: true

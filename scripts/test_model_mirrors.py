@@ -15,7 +15,6 @@ import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import FIXTURES, REPO
 
 MIRROR_PATH = REPO / "home/dot_config/ai/readonly_model-mirrors.v1.json"
-GO_OUTPUT_PATH = REPO / "tools/ralph-tui/internal/state/model_mirrors_generated.go"
 PROBE_CASES = json.loads((FIXTURES / "model_probe_cases.json").read_text())
 
 
@@ -153,17 +152,6 @@ class TestStaticModelMirrors(unittest.TestCase):
             ):
                 model_mirrors.build_static_mirror(REPO)
 
-    def test_SHOULD_reject_ralph_defaults_outside_curated_catalogs(self):
-        import model_mirrors
-
-        defaults = model_mirrors._load_ralph_defaults(REPO)
-        defaults["planner"]["model"] = "not-curated"
-        with (
-            mock.patch.object(model_mirrors, "_load_ralph_defaults", return_value=defaults),
-            self.assertRaisesRegex(ValueError, "Ralph planner default.*curated"),
-        ):
-            model_mirrors.build_static_mirror(REPO)
-
     def test_SHOULD_record_every_canonical_catalog_source(self):
         import model_mirrors
 
@@ -217,17 +205,11 @@ class TestStaticModelMirrors(unittest.TestCase):
         mirror = model_mirrors.build_static_mirror(REPO)
 
         self.assertEqual(json.loads(MIRROR_PATH.read_text()), mirror)
-        self.assertEqual(GO_OUTPUT_PATH.read_text(), model_mirrors.render_go_consumer(mirror))
 
     def test_SHOULD_remove_manual_consumer_and_provider_fallback_lists(self):
         mirror = json.loads(MIRROR_PATH.read_text())
-        ralph_source = (REPO / "scripts/ralph.py").read_text()
-        tui_source = (REPO / "tools/ralph-tui/internal/state/models.go").read_text()
         fish_source = (REPO / "home/dot_config/fish/functions/readonly___comma_provider_models.fish").read_text()
 
-        self.assertNotIn('"claude-opus-4-8-thinking-xhigh",', ralph_source)
-        self.assertNotIn('"llm-gateway/gpt-5.6-sol",', ralph_source)
-        self.assertNotIn('"gpt-5.5-extra-high",', tui_source)
         self.assertIn("model-mirrors.v1.json", fish_source)
         for provider in ("openrouter", "cloudflare-workers-ai", "cloudflare-openai"):
             for model in mirror["providers"][provider]["curated"]["models"]:
@@ -236,28 +218,6 @@ class TestStaticModelMirrors(unittest.TestCase):
 
 class TestModelMirrorAdapters(unittest.TestCase):
     """WHEN consumers request a stable view of the generated mirror."""
-
-    def test_SHOULD_preserve_ralph_and_tui_model_sets(self):
-        import model_mirrors
-        import ralph
-
-        mirror = model_mirrors.load_mirror(MIRROR_PATH)
-        cursor_ralph = model_mirrors.consumer_view(mirror, "ralph", "cursor")
-        pi_ralph = model_mirrors.consumer_view(mirror, "ralph", "pi")
-        cursor_tui = model_mirrors.consumer_view(mirror, "ralph-tui", "cursor")
-
-        self.assertEqual(ralph.CURSOR_MODELS, set(cursor_ralph["models"]))
-        self.assertEqual(ralph.PI_MODELS, set(pi_ralph["models"]))
-        self.assertEqual(cursor_ralph["set"], "curated")
-        self.assertEqual(cursor_tui["set"], "recommended")
-        self.assertEqual(
-            mirror["defaults"]["ralph"]["reviewer"]["family"],
-            "claude",
-        )
-        self.assertEqual(
-            mirror["defaults"]["ralph"]["re_reviewer"]["family"],
-            "gpt",
-        )
 
     def test_SHOULD_expose_launcher_contract_without_choosing_policy(self):
         import model_mirrors

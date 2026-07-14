@@ -13,17 +13,18 @@ Two invocation kinds matter throughout: **model-invoked** skills fire on their o
 
 ## Build something
 
-| You want to…                                     | Flow                                                                           | Start it                                                 | Deeper                                                                      |
-| ------------------------------------------------ | ------------------------------------------------------------------------------ | -------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Turn an idea/bug into a testable contract        | `spec` → packet with red-proven acceptance checks                              | "develop a spec for …" (model-invoked)                   | [Playbook](flows/spec-and-build.md) · [architecture](creation-workflow.md)  |
-| Implement a contract hands-free, in this session | `/build` — criteria ledger, adversarial verify, 2 human gates                  | `/build` after approving a packet                        | [Playbook](flows/spec-and-build.md) · [architecture](creation-workflow.md)  |
-| Implement a contract detached, off your desk     | `,ralph go --spec <file>` — planner skipped, checks machine-run                | write the packet's JSON block to a file, run the command | [Playbook](flows/ralph-run.md) · [architecture](ralph/index.md)             |
-| Fire-and-forget from one sentence                | `,ralph go --goal "…"` — planner authors the contract                          | one shell command; observe via `prefix+A`                | [Playbook](flows/ralph-run.md) · [architecture](ralph/state-and-runtime.md) |
-| Fix a reported defect                            | `diagnosing-bugs` — tight red loop before any theory, 6 phases                 | "debug/diagnose this" (model-invoked)                    | [Playbook](flows/debug-a-bug.md)                                            |
-| Answer a design question cheaply                 | `prototype` — throwaway logic probe or 3 UI variants                           | "prototype this" (model-invoked)                         | [Playbook](flows/prototype-and-design.md)                                   |
-| Shape a module boundary or seam                  | `codebase-design` — deep-module vocabulary, design-it-twice                    | fires when designing interfaces                          | row in [skills](skills/repo-workflow-and-code-intelligence.md)              |
-| Get requirements out of your head                | `interview-me` — one fork-closing question at a time                           | `/interview-me` (manual)                                 | row in [skills](skills/memory-and-orchestration.md)                         |
-| Be told what's worth building next               | `improve-local` / `-branch` / `-targeted` / `-codebase` — exactly one proposal | `/improve-…` (manual)                                    | rows in [skills](skills/memory-and-orchestration.md)                        |
+| You want to…                                             | Flow                                                                                    | Start it                                                                               | Deeper                                                                                  |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Turn an idea/bug into a testable contract                | `spec` → packet with red-proven acceptance checks                                       | "develop a spec for …" (model-invoked)                                                 | [Playbook](flows/spec-and-build.md) · [architecture](creation-workflow.md)              |
+| Implement a contract hands-free, in this session         | `/build` — criteria ledger, adversarial verify, 2 human gates                           | `/build` after approving a packet                                                      | [Playbook](flows/spec-and-build.md) · [architecture](creation-workflow.md)              |
+| Implement a contract detached, off your desk             | `,palantir summon "…" --criteria '<json>'` — one legion, machine verify, tmux dashboard | pass the packet's criteria JSON to summon                                              | [architecture](palantir.md)                                                             |
+| Fire-and-forget from one sentence                        | `,palantir summon "…"` — start a governed legion from a goal                            | one shell command; observe via `prefix+A`                                              | [architecture](palantir.md)                                                             |
+| Run several isolated efforts across disposable worktrees | repeat `,palantir summon …` — one legion per effort, each in its own worktree/session   | summon one legion per independent goal; supervise via `prefix+A` or `,palantir farsee` | [architecture](palantir.md) · [command catalog](../workflow/custom-commands/catalog.md) |
+| Fix a reported defect                                    | `diagnosing-bugs` — tight red loop before any theory, 6 phases                          | "debug/diagnose this" (model-invoked)                                                  | [Playbook](flows/debug-a-bug.md)                                                        |
+| Answer a design question cheaply                         | `prototype` — throwaway logic probe or 3 UI variants                                    | "prototype this" (model-invoked)                                                       | [Playbook](flows/prototype-and-design.md)                                               |
+| Shape a module boundary or seam                          | `codebase-design` — deep-module vocabulary, design-it-twice                             | fires when designing interfaces                                                        | row in [skills](skills/repo-workflow-and-code-intelligence.md)                          |
+| Get requirements out of your head                        | `interview-me` — one fork-closing question at a time                                    | `/interview-me` (manual)                                                               | row in [skills](skills/memory-and-orchestration.md)                                     |
+| Be told what's worth building next                       | `improve-local` / `-branch` / `-targeted` / `-codebase` — exactly one proposal          | `/improve-…` (manual)                                                                  | rows in [skills](skills/memory-and-orchestration.md)                                    |
 
 ## Check something
 
@@ -73,9 +74,9 @@ Flows hand off to each other at defined points; pivoting is expected, not an exc
    to the packet            │ (build returns you here)
                 ┌────────┼─────────┐
                 ▼        ▼         ▼
-             /build   ,ralph go   compose-issue / compose-pr
-             in-session  --spec      publishable text + packet
-                │        │ replan → planner re-enters, spec superseded
+             /build   ,palantir   compose-issue / compose-pr
+             in-session  summon      publishable text + packet
+                │        │ holding → answer/send-word or revise packet
                 ▼        ▼
              light-review over the result … escalates to → review → /agent-review
 
@@ -88,15 +89,15 @@ Flows hand off to each other at defined points; pivoting is expected, not an exc
 When to pivot, concretely:
 
 - **spec → prototype and back.** A fork you cannot close by asking ("which ordering feels right?") is empirical: build the throwaway, observe, and the verdict — not an opinion — closes the fork in the packet. The prototype is deleted; the decision survives in the packet's Context line.
-- **spec → /build vs → Ralph.** Same contract, different runtime: `/build` when the work benefits from your session's context or you want blockers surfaced in-conversation; Ralph when you want it off your desk, parallel, or survivable past this session. You can do both across a topic — they read the same packet format.
+- **spec → /build vs → Palantír.** Same contract, different runtime: `/build` when the work benefits from your session's context or you want blockers surfaced in-conversation; Palantír when you want one detached tmux-governed legion that survives your chat session. You can do both across a topic — they read the same criteria packet.
 - **/build → spec (re-gate).** Mid-build evidence contradicting the packet (wrong premise, wrong scope) stops the build; revise the packet and re-approve. Never let a build quietly implement a different spec than the one you signed.
-- **Ralph → planner (replan).** `,ralph replan` on an operator-spec run hands contract authorship back to Ralph's planner — use it when the run parks on questions whose answers change the plan's shape.
+- **Palantír → holding.** A parked question or exhausted retry budget stops the legion in `holding`; answer with `,palantir answer <id> "…"` or send word to the coordinator with `,palantir send-word <id> "…"` after deciding the next move.
 - **light-review → review → /agent-review.** Escalate when the target turns out to be a PR/others' code, needs base-branch context, or is risky/stateful (light→full), and to `/agent-review` when you want independent lanes and cross-family adversarial verification instead of one reviewer's judgment. Escalation is mid-pass: stop, switch, don't half-do the heavy machinery in the light flow.
 - **diagnosing-bugs → codebase-design.** Two triggers: no correct seam exists for the regression test (the architecture is preventing the bug from being locked down), or the post-mortem answer to "what would have prevented this?" is architectural. Hand off after the fix, with specifics.
 - **anything → compose-issue.** Work that should be recorded rather than done now — a bug found mid-review, a packet worth filing upstream — becomes issue text; publication stays human-gated.
 
 ## Efficiency defaults
 
-- Smallest flow that fits: direct SOP work → `light-review` to check it. Reach for `spec`/`/build`/Ralph when the work is big enough that a contract pays for itself, and for `/agent-review` when the change is big enough to warrant independent readers.
-- One packet in flight per topic; parallel streams belong on separate topics (or separate Ralph runs — they isolate per run id).
-- Trust the machine floor: packet checks are executed, not read ([mechanics](ralph/state-and-runtime.md)) — your attention belongs at the two human gates, not in between.
+- Smallest flow that fits: direct SOP work → `light-review` to check it. Reach for `spec`/`/build`/Palantír when the work is big enough that a contract pays for itself, and for `/agent-review` when the change is big enough to warrant independent readers.
+- One packet in flight per topic; parallel streams belong on separate topics or separate Palantír legions — each has its own tmux session and manifest.
+- Trust the machine floor: packet checks are executed during Palantír `verify`, not judged by a role pane — your attention belongs at the human gates and parked questions, not in between.

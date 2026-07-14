@@ -18,7 +18,7 @@ flowchart TB
 
     subgraph TERMS["Terminals + multiplexer"]
         GHOSTTY["Ghostty: dot_config/exact_ghostty/readonly_config"]:::term
-        TMUX["tmux (C-Space) → see 05-tmux-pickers.mmd"]:::term
+        TMUX["tmux (C-Space) → see 05-tmux-pickers.mmd<br/>prefix+A = ,palantir dashboard popup"]:::term
         BTOP["dot_config/exact_btop/btop.conf · yazi (theme+yazi.toml)"]:::term
         GHOSTTY --> TMUX
     end

@@ -63,7 +63,7 @@ Skills live under `~/.agents/skills/`; the chezmoi source is [`home/exact_dot_ag
 | Review skill and agent-review topology | [Review workflow](reviews/index.md)             |
 | Spec packets and hands-free builds     | [Creation workflow](creation-workflow.md)       |
 | Hook memory + durable AI KB            | [Agent memory](knowledge-base/index.md)         |
-| Ralph planner/executor/reviewer loop   | [Ralph orchestrator](ralph/index.md)            |
+| Palantír detached orchestration        | [Palantír orchestrator](palantir.md)            |
 | Canonical MCP registry                 | [MCP servers](mcp.md)                           |
 | Model registry and routing             | [Model registry & routing](model-registry.md)   |
 | Per-tool config rendering              | [Tool configs](tool-configs/index.md)           |

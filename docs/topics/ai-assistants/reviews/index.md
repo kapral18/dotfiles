@@ -26,4 +26,4 @@ Use this section when continuing a review, addressing review threads, rechecking
 ## Related
 
 - [The Agentic Operating System](../index.md) — governance layer and skills
-- [Ralph orchestrator](../ralph/index.md) — reviewer/re-reviewer roles can invoke this skill through domain review policies
+- [Palantír orchestrator](../palantir.md) — detached legions can route review blockers through the same review methodology

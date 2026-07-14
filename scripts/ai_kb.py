@@ -766,13 +766,13 @@ class KnowledgeBase:
         error to the human operator since vec_runner is a hard
         runtime requirement of the BIG-tier KB.
 
-        Test escape hatch: setting `RALPH_KB_DISABLE_VEC=1` short-
+        Test escape hatch: setting `AI_KB_DISABLE_VEC=1` short-
         circuits to an empty result without spawning. Mirrors the
-        `RALPH_KB_DISABLE_EMBED` pattern so unit tests can run
+        `AI_KB_DISABLE_EMBED` pattern so unit tests can run
         without uv + the sqlite-vec wheel installed. Production
         never sets this var.
         """
-        if os.environ.get("RALPH_KB_DISABLE_VEC") in ("1", "true", "yes"):
+        if os.environ.get("AI_KB_DISABLE_VEC") in ("1", "true", "yes"):
             mode = payload.get("mode")
             return {"hits": []} if mode == "knn" else {"pairs": []}
         uv = shutil.which("uv")
@@ -812,13 +812,13 @@ class KnowledgeBase:
         We resolve once per KB instance and cache the result; subsequent
         calls don't re-import or re-probe `uv`. Tests bypass this by
         passing an embedder into the constructor or by setting the
-        `RALPH_KB_DISABLE_EMBED=1` env var (default in test fixtures
+        `AI_KB_DISABLE_EMBED=1` env var (default in test fixtures
         so subprocess-based tests don't pay fastembed cold start each
         run; tests that need embedding round-trips clear it).
         """
         if self._embedder_resolved:
             return self._embedder
-        if os.environ.get("RALPH_KB_DISABLE_EMBED") in ("1", "true", "yes"):
+        if os.environ.get("AI_KB_DISABLE_EMBED") in ("1", "true", "yes"):
             self._embedder = None
             self._embedder_resolved = True
             return None
@@ -1820,8 +1820,8 @@ class KnowledgeBase:
             checks.append(f"vec_runner=missing at {runner}")
         elif shutil.which("uv") is None:
             checks.append("vec_runner=present but uv not found on PATH")
-        elif os.environ.get("RALPH_KB_DISABLE_VEC") in ("1", "true", "yes"):
-            checks.append("vec_runner=disabled via RALPH_KB_DISABLE_VEC")
+        elif os.environ.get("AI_KB_DISABLE_VEC") in ("1", "true", "yes"):
+            checks.append("vec_runner=disabled via AI_KB_DISABLE_VEC")
         else:
             try:
                 self._call_vec_runner(

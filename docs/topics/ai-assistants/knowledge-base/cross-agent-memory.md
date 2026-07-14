@@ -5,7 +5,7 @@ title: Cross-agent memory
 
 # Cross-agent memory (`ai-kb` skill)
 
-Ralph is no longer the only consumer. Interactive harnesses reach the same durable KB through the `ai-kb` skill:
+Interactive harnesses reach the durable KB through the `ai-kb` skill, and Palantír routes durable close-out findings through the same CLI:
 
 | Surface | Path                                                                                                                                               |
 | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -87,17 +87,17 @@ The scope gate is provenance-only. The relative floor prevents low-relevance cap
 
 Cross-runtime durable-memory retrieval:
 
-| Runtime      | Automatic retrieval mechanism                                                                                                                                                                    | Resident embedder startup                                |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
-| Ralph        | Mechanical push: top-K per role injected into the `## RECENT LEARNINGS` prompt block                                                                                                             | None; role retrieval keeps the one-shot embedding runner |
-| Cursor CLI   | `session_context.py` gated BM25 `sessionStart` recall (session-bound named topic only); else Topic Buckets / agent-pull                                                                          | None; Cursor has no per-turn context-injection path      |
-| Codex        | `session_context.py` gated BM25 `SessionStart` recall; else agent-pull                                                                                                                           | None; Codex is not wired to per-turn recall              |
-| Copilot      | `agent-memory` SDK extension calls `session_context.py` in `onSessionStart` and returns `additionalContext` **plus** per-turn via `onUserPromptSubmitted` (`perturn_recall.py`); else agent-pull | Explicit bounded warm-up in its session-start payload    |
-| Claude       | `session_context.py` gated BM25 startup recall **plus** per-turn via `UserPromptSubmit`                                                                                                          | Explicit bounded warm-up through `AI_EMBED_WARM=1`       |
-| Pi           | `ai-kb-recall.ts` BM25 startup recall (parity) **plus** per-turn prompt-query injection                                                                                                          | Explicit bounded warm-up during `session_start`          |
-| OpenCode     | `agent-memory.ts` plugin: BM25 startup recall in the system prompt **plus** per-turn via `chat.message`                                                                                          | Explicit bounded warm-up through `warm_embedder: true`   |
-| Gemini       | BM25 `SessionStart` recall **plus** per-turn via `BeforeAgent` (`additionalContext`)                                                                                                             | Explicit bounded warm-up through `AI_EMBED_WARM=1`       |
-| Cursor cloud | No injection point available; agent-pull only                                                                                                                                                    | None                                                     |
+| Runtime      | Automatic retrieval mechanism                                                                                                                                                                    | Resident embedder startup                              |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
+| Palantír     | Role panes use their configured harness memory behavior; close-out durable findings route through explicit `,ai-kb remember`                                                                     | Inherits the selected harness behavior                 |
+| Cursor CLI   | `session_context.py` gated BM25 `sessionStart` recall (session-bound named topic only); else Topic Buckets / agent-pull                                                                          | None; Cursor has no per-turn context-injection path    |
+| Codex        | `session_context.py` gated BM25 `SessionStart` recall; else agent-pull                                                                                                                           | None; Codex is not wired to per-turn recall            |
+| Copilot      | `agent-memory` SDK extension calls `session_context.py` in `onSessionStart` and returns `additionalContext` **plus** per-turn via `onUserPromptSubmitted` (`perturn_recall.py`); else agent-pull | Explicit bounded warm-up in its session-start payload  |
+| Claude       | `session_context.py` gated BM25 startup recall **plus** per-turn via `UserPromptSubmit`                                                                                                          | Explicit bounded warm-up through `AI_EMBED_WARM=1`     |
+| Pi           | `ai-kb-recall.ts` BM25 startup recall (parity) **plus** per-turn prompt-query injection                                                                                                          | Explicit bounded warm-up during `session_start`        |
+| OpenCode     | `agent-memory.ts` plugin: BM25 startup recall in the system prompt **plus** per-turn via `chat.message`                                                                                          | Explicit bounded warm-up through `warm_embedder: true` |
+| Gemini       | BM25 `SessionStart` recall **plus** per-turn via `BeforeAgent` (`additionalContext`)                                                                                                             | Explicit bounded warm-up through `AI_EMBED_WARM=1`     |
+| Cursor cloud | No injection point available; agent-pull only                                                                                                                                                    | None                                                   |
 
 `~/.agents/hooks/perturn_recall.py` is the shared per-turn implementation.
 
@@ -145,7 +145,7 @@ The per-turn hot path is connect-only:
 | Generation identity      | Protocol + complete worker source + model + expected dimension produce a generation-specific socket                                                  |
 | Runtime isolation        | User-owned `0700` root, `0600` socket/start lock, bounded worker messages/deadlines; the worker never logs or echoes prompt text                     |
 | Idle lifecycle           | The worker exits after 300 inactive seconds and removes only its own socket inode                                                                    |
-| Unavailable/invalid path | The hook returns no recall context and the current request continues; default/manual/Ralph/`remember`/`reembed` continue to use the one-shot runner  |
+| Unavailable/invalid path | The hook returns no recall context and the current request continues; default/manual/`remember`/`reembed` continue to use the one-shot runner        |
 
 The default BGE-small worker measured about 320 MiB RSS; two coexisting deployment generations measured about 625 MiB total. The 300-second activity timeout bounds that temporary overlap.
 
@@ -154,7 +154,7 @@ The default BGE-small worker measured about 320 MiB RSS; two coexisting deployme
 Episodic `/tmp/specs` traces are snapshotted daily to `~/.local/share/agent-specs-archive/` via crontab rsync. The archive is raw preservation only; nothing auto-writes it to the KB.
 
 - **Read:** the `sessionStart` warm-start above seeds named-topic sessions automatically (pi also injects per prompt); beyond that, agents run `,ai-kb search "<q>" --limit 5 --json` (with `--kind` / `--scope` / `--workspace` / `--domain` / `--mode` filters) before non-trivial work, and `,ai-kb get <id> --json` to pull a full capsule.
-- **Write:** agents call `,ai-kb remember` (with deliberate `--kind`/`--scope`/`--source`/`--confidence`/`--domain` per the skill's write contract) only for verified, durable, reusable insights — the same quality bar as Ralph's `LEARNING:` lines. Guesses and session-only notes stay out of the KB (those belong in `,agent-memory`).
+- **Write:** agents call `,ai-kb remember` (with deliberate `--kind`/`--scope`/`--source`/`--confidence`/`--domain` per the skill's write contract) only for verified, durable, reusable insights — the same quality bar as any durable close-out finding. Guesses and session-only notes stay out of the KB (those belong in `,agent-memory`).
 
 The division of labor is explicit so agents do not confuse the two memory layers or the code index:
 
@@ -162,11 +162,11 @@ The division of labor is explicit so agents do not confuse the two memory layers
 - `,agent-memory` — ephemeral per-session working context under `/tmp/specs`.
 - `semantic-code-search` skill (SCSI) — semantic code search over a repo, not memory.
 
-Interactive harnesses are wired for skill-based or explicit-path access (`agent-pull`): cursor-cli, Pi, Claude, Gemini, OpenCode, Codex, and Copilot. Ralph remains wired through role prompts.
+Interactive harnesses are wired for skill-based or explicit-path access (`agent-pull`): cursor-cli, Pi, Claude, Gemini, OpenCode, Codex, and Copilot. Palantír panes use those same harness routes.
 
 Automatic retrieval injection is narrower than skill access:
 
-- Ralph injects mechanically per role.
+- Palantír role panes use the configured harness route for retrieval and route durable close-out findings through `,ai-kb remember`.
 - cursor-cli/Codex use BM25 session-start recall only and never warm the resident embedder.
 - Pi uses BM25 startup recall plus depth-controlled per-turn prompt retrieval and warms the resident embedder in `balanced`/`deep`.
 - Claude, Gemini, OpenCode, and Copilot use BM25 startup recall plus depth-controlled per-turn hook injection and warm the resident embedder in `balanced`/`deep`.

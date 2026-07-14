@@ -425,25 +425,6 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "node scripts/jest --config=<package>/jest.config.js <test-file>",
         )
 
-    def test_ralph_skill_extracts_dashboard_tui_reference(self):
-        self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_ralph/SKILL.md",
-            "`~/.agents/skills/ralph/references/dashboard-tui.md`",
-            "Default layout: runs list (left), run detail + roles table (top right), live tail of the selected role's output (bottom right).",
-        )
-        self.assert_file_not_contains(
-            "home/exact_dot_agents/exact_skills/exact_ralph/SKILL.md",
-            "## Fleet view (left pane)",
-            "## KB browser",
-            "opens an AI KB search modal",
-        )
-        self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_ralph/exact_references/readonly_dashboard-tui.md",
-            "## Fleet view (left pane)",
-            "## KB browser",
-            "opens an AI KB search modal",
-        )
-
     def test_letsfg_skill_extracts_flexible_date_search_reference(self):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_letsfg/readonly_SKILL.md",

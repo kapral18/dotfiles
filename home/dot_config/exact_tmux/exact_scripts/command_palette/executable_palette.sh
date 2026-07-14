@@ -115,7 +115,7 @@ describe_tmux_action() {
     *gh_dash/popup.sh*) printf 'GitHub dashboard (gh-dash)' ;;
     *gh_dash/restart.sh*) printf 'Restart gh-dash' ;;
     *gh_tfork/popup.sh*) printf 'Bootstrap repo (fork+clone)' ;;
-    *.local/bin/ralph-tui*) printf 'Ralph dashboard' ;;
+    *lib/,palantir/dashboard.py*) printf 'Palantír (the stone)' ;;
     *pick_url.sh*) printf 'URL picker' ;;
     *promote_pane.sh*) printf 'Promote pane to session' ;;
     *promote_window.sh*) printf 'Promote window to session' ;;
@@ -312,40 +312,28 @@ execute_entry() {
       local alias_name="${kind_key#git:}"
       tmux send-keys "git ${alias_name} " 2> /dev/null || true
       ;;
-    ralph:*)
-      case "${kind_key#ralph:}" in
-        start-go)
+    palantir:*)
+      case "${kind_key#palantir:}" in
+        summon)
           tmux command-prompt \
-            -p "ralph go goal:" \
-            'run-shell -b ",ralph go --goal \"%1\""' 2> /dev/null || true
+            -p "palantir summon goal:" \
+            'run-shell -b ",palantir summon \"%1\""' 2> /dev/null || true
           ;;
-        plan-only)
+        farsee)
+          tmux display-popup -w 90% -h 70% -E "bash -lc ',palantir farsee; printf \"\\npress enter\"; read -r _'" 2> /dev/null || true
+          ;;
+        trial)
           tmux command-prompt \
-            -p "ralph plan-only goal:" \
-            'run-shell -b ",ralph go --plan-only --goal \"%1\""' 2> /dev/null || true
+            -p "palantir trial legion id:" \
+            'display-popup -w 80% -h 60% -E "bash -lc \",palantir trial %1; printf \\\"\\npress enter\\\"; read -r _\""' 2> /dev/null || true
           ;;
-        verify-latest)
-          tmux display-popup -w 80% -h 60% -E "bash -lc ',ralph verify; printf \"\\npress enter\"; read -r _'" 2> /dev/null || true
+        answer)
+          tmux command-prompt \
+            -p "palantir answer (id message):" \
+            'run-shell -b ",palantir answer %1"' 2> /dev/null || true
           ;;
         doctor)
-          tmux display-popup -w 80% -h 60% -E "bash -lc ',ralph doctor; printf \"\\npress enter\"; read -r _'" 2> /dev/null || true
-          ;;
-        attach-latest)
-          tmux command-prompt \
-            -p "ralph attach role (blank for run):" \
-            'run-shell ",ralph attach $(if [ -n %% ]; then printf -- \"--role %%\"; fi)"' 2> /dev/null || true
-          ;;
-        runs)
-          tmux display-popup -w 90% -h 70% -E "bash -lc ',ralph runs; printf \"\\npress enter\"; read -r _'" 2> /dev/null || true
-          ;;
-        kill-all)
-          # Destructive: confirm before sending Ctrl-C to every live run.
-          tmux command-prompt \
-            -p "kill ALL non-terminal runs? type 'yes':" \
-            'run-shell -b "if [ \"%1\" = yes ]; then ,ralph kill --all; fi"' 2> /dev/null || true
-          ;;
-        supervisor)
-          tmux display-popup -w 80% -h 60% -E "bash -lc ',ralph supervisor; printf \"\\npress enter\"; read -r _'" 2> /dev/null || true
+          tmux display-popup -w 80% -h 60% -E "bash -lc ',palantir doctor; printf \"\\npress enter\"; read -r _'" 2> /dev/null || true
           ;;
         kb-search)
           tmux command-prompt \
@@ -353,7 +341,7 @@ execute_entry() {
             'display-popup -w 90% -h 80% -E "bash -lc \",ai-kb search %1; printf \\\"\\npress enter\\\"; read -r _\""' 2> /dev/null || true
           ;;
         statusline)
-          tmux display-popup -w 60% -h 30% -E "bash -lc ',ralph statusline; printf \"\\n\\npress enter\"; read -r _'" 2> /dev/null || true
+          tmux display-popup -w 60% -h 30% -E "bash -lc ',palantir statusline; printf \"\\n\\npress enter\"; read -r _'" 2> /dev/null || true
           ;;
         *)
           [ -n "$exec_col" ] || return 0

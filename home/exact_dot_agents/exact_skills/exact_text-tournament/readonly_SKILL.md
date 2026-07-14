@@ -36,9 +36,9 @@ Use the normal engineering flow for those surfaces.
 4. **Continue normally.** Record the rubric and tournament result in the next response only when it materially explains the edit.
    A later eligible rewrite starts a new round.
 
-## Ralph executor lane
+## Legion implement lane
 
-Ralph's executor loads this lane explicitly.
+A palantir legion's implement role loads this lane explicitly.
 Use it only for an executor iteration targeting eligible material prose with several plausible directions.
 
 1. Set the same rubric and generate exactly three surgical candidates.
@@ -53,9 +53,9 @@ Use it only for an executor iteration targeting eligible material prose with sev
    ```
 
 Do not launch a fresh evaluator or a second pairwise comparison.
-Ralph's scheduled reviewer and re-reviewer evaluate the selected artifact against this block; they do not regenerate candidates.
+The legion's adversarial-review role evaluates the selected artifact against this block; it does not regenerate candidates.
 
 ## Return exactly
 
 - Normal interactive: `Rubric:`, `Tournament:`, and `Edit:` when they materially explain the next edit.
-- Ralph executor: the `TOURNAMENT:` block plus the normal `SELF_CHECK:` output.
+- Legion implement role: the `TOURNAMENT:` block plus the normal `SELF_CHECK:` output.

@@ -11,7 +11,6 @@ fmt: ## Format all files
 lint: ## Check formatting and lint (no writes)
 	bin/fmt --check
 	ruff check --select I scripts/ home/exact_lib/
-	(cd tools/ralph-tui && go vet ./... && go test ./...)
 
 verify-templates: ## Render every chezmoi template to catch breakage before apply
 	python3 scripts/verify_templates.py

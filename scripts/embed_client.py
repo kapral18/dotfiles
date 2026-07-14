@@ -67,7 +67,7 @@ def default_runtime_dir() -> Path:
 
 def configured_model() -> str:
     """Return the model selected by the existing embedding override."""
-    return os.environ.get("RALPH_EMBED_MODEL", "").strip() or DEFAULT_MODEL
+    return os.environ.get("AI_KB_EMBED_MODEL", "").strip() or DEFAULT_MODEL
 
 
 def _worker_digest(worker: Path) -> str:

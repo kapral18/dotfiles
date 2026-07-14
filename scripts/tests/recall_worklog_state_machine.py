@@ -376,7 +376,7 @@ def main() -> int:
     manifest = {
         "worktree": str(REPO),
         "baseline": str(BASELINE),
-        "topic": "fleet-recall-worklog",
+        "topic": "legion-recall-worklog",
         "slug": "depth-recall-worklog-queue",
         "target_files": [
             "home/exact_dot_agents/exact_hooks/executable_perturn_recall.py",

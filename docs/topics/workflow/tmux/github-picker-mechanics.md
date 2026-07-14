@@ -84,18 +84,18 @@ Local worktree markers come from git worktree state plus branch/metadata heurist
 
 ## Actions
 
-| Key      | Action                                              |
-| -------- | --------------------------------------------------- |
-| `enter`  | Checkout worktree and focus it; batches marked rows |
-| `ctrl-t` | Batch worktree creation                             |
-| `alt-b`  | Checkout and open Octo review                       |
-| `alt-A`  | Stage selected PRs/issues for Ralph handoff         |
-| `alt-o`  | Open in browser                                     |
-| `alt-y`  | Copy URLs                                           |
-| `alt-c`  | New comment                                         |
-| `alt-r`  | Quote-reply                                         |
-| `alt-d`  | Edit your own comment                               |
-| `alt-x`  | Command palette for PR/issue actions                |
+| Key      | Action                                                   |
+| -------- | -------------------------------------------------------- |
+| `enter`  | Checkout worktree and focus it; batches marked rows      |
+| `ctrl-t` | Batch worktree creation                                  |
+| `alt-b`  | Checkout and open Octo review                            |
+| `alt-A`  | Stage selected PRs/issues for `,palantir summon` handoff |
+| `alt-o`  | Open in browser                                          |
+| `alt-y`  | Copy URLs                                                |
+| `alt-c`  | New comment                                              |
+| `alt-r`  | Quote-reply                                              |
+| `alt-d`  | Edit your own comment                                    |
+| `alt-x`  | Command palette for PR/issue actions                     |
 
 Mutating actions are delegated to helper scripts and use the standard GitHub side-effect gates outside the read-only dashboard view.
 
@@ -122,9 +122,9 @@ Producers stage a selection and abort; the successor consumes and deletes it on 
 | `gh_picker_switch_sessions` | GitHub picker `alt-g` sentinel → popup loop relaunches the session picker |
 | `pick_session_switch_gh`    | session picker `alt-g` sentinel → popup loop relaunches the GitHub picker |
 | `gh_picker_create_pin`      | create flow → consumed on GitHub picker exit → checkout                   |
-| `gh_picker_ralph_pin`       | `alt-A` (+ derived `gh_picker_ralph_pin.context.md`) → `,ralph go`        |
+| `gh_picker_palantir_pin`    | `alt-A` (+ derived context markdown) → `,palantir summon`                 |
 
-`enter`/checkout does not stage a pin — the worktree checkout runs in place. Every normal wrapper exit, including a Ralph hand-off, calls `end --owner-pid $$`; the fingerprint check makes cleanup idempotent and prevents one owner from removing another namespace. Before the asynchronous Ralph command prompt is queued, `handoff_to_ralph_apply.sh` calls `retain-context` with the inherited environment token. The core copies only that namespace's `gh_picker_ralph_pin.context.md` sibling to a random `0600` file under the private `0700` `retained-context/` directory, removes the source, and returns the retained path used in the prompt seed. The namespace then ends normally while the retained copy remains readable for seven days; retained copies are TTL-reaped without cap deletion. The separate dead-owner sweep still bounds abandoned namespaces after six hours with a 64-namespace cap and clears stale `.new-*` staging directories after a five-minute grace.
+`enter`/checkout does not stage a pin — the worktree checkout runs in place. Every normal wrapper exit, including a Palantír handoff, calls `end --owner-pid $$`; the fingerprint check makes cleanup idempotent and prevents one owner from removing another namespace. Before the asynchronous `,palantir summon` prompt is queued, the handoff helper calls `retain-context` with the inherited environment token. The core copies only that namespace's context sibling to a random `0600` file under the private `0700` `retained-context/` directory, removes the source, and returns the retained path used in the prompt seed. The namespace then ends normally while the retained copy remains readable for seven days; retained copies are TTL-reaped without cap deletion. The separate dead-owner sweep still bounds abandoned namespaces after six hours with a 64-namespace cap and clears stale `.new-*` staging directories after a five-minute grace.
 
 ## Command palette (`alt-x`)
 

@@ -6,10 +6,10 @@
 # ]
 # ///
 """Vector retrieval runner — isolated subprocess that loads the
-sqlite-vec extension and serves KNN / pairs queries against a Ralph
+sqlite-vec extension and serves KNN / pairs queries against an ai-kb
 KB SQLite database.
 
-Why a subprocess: the orchestrator process (`scripts/ralph.py`) is
+Why a subprocess: the caller (`scripts/ai_kb.py`) is
 launched via `/usr/bin/env python3`, which on macOS resolves to
 Apple's Xcode python whose stdlib `sqlite3` module is built without
 `enable_load_extension`. Loading vec0 in-process is therefore not

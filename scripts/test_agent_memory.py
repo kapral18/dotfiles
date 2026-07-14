@@ -245,6 +245,61 @@ class TestAgentMemory(unittest.TestCase):
             finally:
                 agent_memory.SPEC_ROOT = old_spec_root
 
+    def test_select_migrates_prebind_fallback_worklog_into_topic(self):
+        import agent_memory
+        import worklog_queue
+
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as spec_root:
+            old_spec_root = agent_memory.SPEC_ROOT
+            agent_memory.SPEC_ROOT = Path(spec_root)
+            try:
+                workspace = Path(tmp).resolve()
+                spec_dir = agent_memory.spec_dir_for(workspace)
+                spec_dir.mkdir(parents=True)
+                fallback = spec_dir / "session-sess-abc.worklog.jsonl"
+                flushed_entry = {
+                    "event": "postToolUse",
+                    "text": "pre-bind flushed",
+                    "ts": "2026-07-11T12:00:00+00:00",
+                    "worklog_id": "pre-1",
+                }
+                fallback.write_text(json.dumps(flushed_entry, sort_keys=True) + "\n")
+                worklog_queue.enqueue(
+                    spec_dir,
+                    "sess-abc",
+                    "session-sess-abc",
+                    fallback,
+                    {"event": "postToolUse", "text": "pre-bind pending", "ts": "2026-07-11T12:00:01+00:00"},
+                    start_worker=False,
+                )
+
+                buffer = io.StringIO()
+                with contextlib.redirect_stdout(buffer):
+                    assert (
+                        agent_memory.main(
+                            [
+                                "select",
+                                "memory-systems",
+                                "--create",
+                                "--workspace",
+                                str(workspace),
+                                "--session-id",
+                                "sess-abc",
+                            ]
+                        )
+                        == 0
+                    )
+
+                output = buffer.getvalue()
+                assert "migrated: 2 pre-bind worklog events from session-sess-abc" in output
+                assert not fallback.exists()
+                topic_worklog = spec_dir / "memory-systems.worklog.jsonl"
+                entries = [json.loads(line) for line in topic_worklog.read_text().splitlines()]
+                assert [entry["text"] for entry in entries] == ["pre-bind flushed", "pre-bind pending"]
+                assert "pre-bind flushed" in output
+            finally:
+                agent_memory.SPEC_ROOT = old_spec_root
+
     def test_select_sanitizes_review_topic_clean_room(self):
         import agent_memory
 

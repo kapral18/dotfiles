@@ -58,11 +58,11 @@ CENSUS: list[Claim] = [
     Claim(
         name="total effective git files",
         globs=None,
-        claimed=1314,
+        claimed=1272,
         anchors=[
-            ("README.md", "1314 files in the effective git file set"),
-            ("00-overview.mmd", "1314 files in the effective git file set"),
-            ("00-overview.mmd", "file census (1314 total)"),
+            ("README.md", "1272 files in the effective git file set"),
+            ("00-overview.mmd", "1272 files in the effective git file set"),
+            ("00-overview.mmd", "file census (1272 total)"),
         ],
     ),
     Claim(
@@ -74,8 +74,8 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/.chezmoiscripts/",
         globs=["home/.chezmoiscripts/*"],
-        claimed=31,
-        anchors=[("01-chezmoi-pipeline.mmd", ".chezmoiscripts/ (31)")],
+        claimed=29,
+        anchors=[("01-chezmoi-pipeline.mmd", ".chezmoiscripts/ (29)")],
     ),
     Claim(
         name="home/dot_config/exact_tmux/",
@@ -132,36 +132,36 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/exact_lib/",
         globs=["home/exact_lib/*"],
-        claimed=53,
+        claimed=65,
         anchors=[
-            ("07c-bin-commands.mmd", "home/exact_lib/ (53 command/shared library files)"),
-            ("README.md", "`home/exact_lib/` (53 command/shared library files)"),
+            ("07c-bin-commands.mmd", "home/exact_lib/ (65 command/shared library files)"),
+            ("README.md", "`home/exact_lib/` (65 command/shared library files)"),
         ],
     ),
     Claim(
         name="home/exact_dot_agents/",
         globs=["home/exact_dot_agents/*"],
-        claimed=106,
+        claimed=105,
         anchors=[
-            ("03b-agent-skills-hooks.mmd", "exact_dot_agents/ (106)"),
-            ("00-overview.mmd", "agents 106"),
+            ("03b-agent-skills-hooks.mmd", "exact_dot_agents/ (105)"),
+            ("00-overview.mmd", "agents 105"),
         ],
     ),
     Claim(
         name="scripts/",
         globs=["scripts/*"],
-        claimed=94,
+        claimed=92,
         anchors=[
-            ("11-scripts-helpers.mmd", "scripts/ (94)"),
-            ("README.md", "`scripts/` (94)"),
-            ("00-overview.mmd", "scripts 94"),
+            ("11-scripts-helpers.mmd", "scripts/ (92)"),
+            ("README.md", "`scripts/` (92)"),
+            ("00-overview.mmd", "scripts 92"),
         ],
     ),
     Claim(
-        name="tools/ralph-tui/",
-        globs=["tools/ralph-tui/*"],
-        claimed=35,
-        anchors=[("00-overview.mmd", "ralph-tui 35")],
+        name="home/exact_lib/exact_,palantir/",
+        globs=["home/exact_lib/exact_,palantir/*"],
+        claimed=12,
+        anchors=[("04-palantir-state-machine.mmd", "home/exact_lib/exact_,palantir/ (12)")],
     ),
 ]
 

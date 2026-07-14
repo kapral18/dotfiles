@@ -15,8 +15,8 @@ Two memory systems serve different jobs: short-lived topic context keeps the cur
 ## Read path
 
 1. Start with [Hook memory](hook-memory.md) to see how `/tmp/specs` rehydrates active work.
-2. Continue to [AI knowledge base](ai-kb.md) for capsule schema, search, embeddings, and Ralph learning.
-3. Finish with [Cross-agent memory](cross-agent-memory.md) for Cursor, Pi, Claude, Gemini, OpenCode, Codex, Copilot, and Ralph injection rules.
+2. Continue to [AI knowledge base](ai-kb.md) for capsule schema, search, embeddings, and durable learning.
+3. Finish with [Cross-agent memory](cross-agent-memory.md) for Cursor, Pi, Claude, Gemini, OpenCode, Codex, Copilot, and Palantír routing rules.
 
 ## Operating boundary
 
@@ -30,5 +30,5 @@ Completion-proof ledgers are separate from memory: `,proof` stores criteria, evi
 
 ## Related
 
-- [Ralph orchestrator](../ralph/index.md) — primary mechanical producer/consumer of KB capsules
+- [Palantír orchestrator](../palantir.md) — close-out routing for durable findings
 - [The Agentic Operating System](../index.md) — governance layer and skills

@@ -17,7 +17,7 @@ make check
 make fmt
 ```
 
-`make check` runs formatting lint (`bin/fmt --check`), Python import lint, Go vet/tests for `ralph-tui`, template rendering (`scripts/verify_templates.py`), mermaid file-census sync (`scripts/verify_mermaids.py`), bin command surface checks (`scripts/verify_bin_surface.py`), docs navigation checks (`scripts/verify_docs_navigation.py`), and the Python test suite.
+`make check` runs formatting lint (`bin/fmt --check`), Python import lint, template rendering (`scripts/verify_templates.py`), mermaid file-census sync (`scripts/verify_mermaids.py`), bin command surface checks (`scripts/verify_bin_surface.py`), docs navigation checks (`scripts/verify_docs_navigation.py`), and the Python test suite.
 
 Details on formatters: [`docs/topics/code-quality/formatting.md`](docs/topics/code-quality/formatting.md).
 

@@ -322,6 +322,35 @@ def cmd_status(args: argparse.Namespace) -> int:
     return 0
 
 
+def migrate_session_fallback_worklog(spec_dir: Path, session_id: str | None, topic: str) -> int:
+    """Fold this session's pre-bind fallback worklog into the bound topic.
+
+    Before a session binds, its hook events land in the per-session
+    `session-<key[:24]>` fallback bucket. At bind time the session's pending
+    queue is flushed and the fallback worklog is merged into
+    `<topic>.worklog.jsonl`, so the trail is not split across buckets and the
+    printed selected context already includes pre-bind events. Best-effort:
+    any failure returns 0 and never blocks binding.
+    """
+    fallback = session_fallback_topic(session_id)
+    if not fallback or fallback == topic:
+        return 0
+    try:
+        import worklog_queue
+    except ImportError:
+        return 0
+    try:
+        key = session_key(session_id)
+        if key:
+            worklog_queue.flush_session(worklog_queue.session_queue_dir(spec_dir, key))
+        source = spec_dir / f"{fallback}.worklog.jsonl"
+        if not source.exists():
+            return 0
+        return worklog_queue.migrate_worklog(spec_dir, source.name, f"{topic}.worklog.jsonl")
+    except (OSError, worklog_queue.QueueError):
+        return 0
+
+
 def cmd_select(args: argparse.Namespace) -> int:
     workspace = workspace_path(args.workspace)
     spec_dir = spec_dir_for(workspace)
@@ -343,10 +372,13 @@ def cmd_select(args: argparse.Namespace) -> int:
 
     binding = session_topic_path(spec_dir, key)
     binding.write_text(topic + "\n")
+    migrated = migrate_session_fallback_worklog(spec_dir, args.session_id, topic)
     print(f"session topic: {topic}")
     print(f"session_id: {key}")
     print(f"binding: {binding}")
     print(f"{'seeded' if seeded else 'exists'}: {spec_file}")
+    if migrated:
+        print(f"migrated: {migrated} pre-bind worklog events from {session_fallback_topic(args.session_id)}")
     print()
     print(selected_context(spec_dir, topic))
     return 0

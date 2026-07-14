@@ -1,6 +1,6 @@
 %% ============================================================================
 %% 05-tmux-pickers.mmd — Every file under home/dot_config/exact_tmux/ (120).
-%% Loader sources files explicitly: 00..43, 45, 90, 99, then 44-ralph after TPM.
+%% Loader sources files explicitly: 00..43, 45-agent-prompt-wrap, 45-palantir, 90, 99.
 %% Deployed to ~/.config/tmux/. Prefix = C-Space.
 %% ============================================================================
 flowchart TD
@@ -10,7 +10,7 @@ flowchart TD
     classDef data fill:#3a2b1b,stroke:#ffb74d,color:#fff3e0;
 
     LOADER["readonly_tmux.conf (loader) + readonly_gh-dash-popup.conf<br/>readonly_pick_session_dir_exclude.txt"]:::conf
-    LOADER --> CONFD["exact_conf.d/ (explicit order: 00→43, 45, 90, 99, then 44)<br/>00-base · 10-prefix-and-global-keys · 11-pane-and-window-nav<br/>20-copy · 30-lowfi · 40-session-tools · 41-pickers<br/>42-gh-dash · 43-repo-bootstrap · 45-agent-prompt-wrap<br/>90-plugins · 99-tpm · 44-ralph (last)"]:::conf
+    LOADER --> CONFD["exact_conf.d/ (explicit order: 00→43, 45-agent-prompt-wrap, 45-palantir, 90, 99)<br/>00-base · 10-prefix-and-global-keys · 11-pane-and-window-nav<br/>20-copy · 30-lowfi · 40-session-tools · 41-pickers<br/>42-gh-dash · 43-repo-bootstrap · 45-agent-prompt-wrap<br/>45-palantir · 90-plugins · 99-tpm"]:::conf
 
     CONFD -->|41-pickers prefix+G| GHP
     CONFD -->|41-pickers| SESS
@@ -19,6 +19,7 @@ flowchart TD
     CONFD -->|40-session-tools| SESSIONS
     CONFD -->|30-lowfi| LOWFI
     CONFD -->|45-agent-prompt-wrap| APW
+    CONFD -->|45-palantir prefix+A + status-right| PALTMUX
     CONFD -->|90/99 plugins| PLUGINS
 
     subgraph GH["scripts/pickers/github/ — GitHub picker"]
@@ -28,7 +29,7 @@ flowchart TD
         GHCFG[["readonly_gh-picker-{work,home}.yml (gh-dash-style sections)"]]:::data
         GHPREV["gh_preview.sh + lib/gh_preview_warm.sh"]:::sh
         GHACT["gh_action.sh · gh_comment.sh · gh_create.sh (lib/gh_create.py)<br/>gh_picker_palette.sh · gh_row_loader.sh · animated row loaders<br/>gh_batch_worktree.sh (immutable dispatch packet: mode/scope/port/cache-file<br/>so background batches target the initiating popup) · gh_popup.sh · keyhelp.sh"]:::sh
-        GHUI["lib/gh_dashboard_ui.py (status header)<br/>gh_palette_verbs.py · gh_patch_picker_cache.py<br/>gh_picker_follow_link.py · gh_ralph_handoff_context.py"]:::py
+        GHUI["lib/gh_dashboard_ui.py (status header)<br/>gh_palette_verbs.py · gh_patch_picker_cache.py · gh_picker_follow_link.py · gh_palantir_handoff_context.py"]:::py
         GHBIND["lib/ fzf-binding shims (.sh):<br/>collapse · ctrl_t · enter · jump · mark_subtree · palette<br/>scope · sort · toggle (+ collapse.py, mark_subtree.py)"]:::sh
         GHROUTER --> GHP --> GHITEMS --> GHCFG
         GHP --> GHPREV & GHACT & GHUI & GHBIND
@@ -47,7 +48,7 @@ flowchart TD
     end
 
     subgraph PLIB["scripts/pickers/lib/ — cross-picker handoff"]
-        HO["handoff_namespace.py (owner-scoped bus: begin/path/retain-context/end/sweep)<br/>explicit env token; normal owner EXIT cleanup; no global mailbox<br/>Ralph context → retained-context/ 0600 copy (7-day TTL)<br/>dispatch_async · snapshot_fzf_selection · handoff_to_{gh,sessions,ralph_*}<br/>pin_gh_first · pin_session_first"]:::sh
+        HO["handoff_namespace.py (owner-scoped picker bus: begin/path/retain-context/end/sweep)<br/>explicit env token; normal owner EXIT cleanup; no global mailbox<br/>Palantir summon context → retained-context/ 0600 copy (7-day TTL)<br/>dispatch_async · snapshot_fzf_selection · handoff_to_{gh,sessions,palantir_apply,palantir_pin}<br/>pin_gh_first · pin_session_first"]:::sh
     end
     GH <--> PLIB
     SE <--> PLIB
@@ -66,3 +67,10 @@ flowchart TD
     SACT --> WLINK[",w worktree (see 06)"]:::data
     GHACT --> WLINK
     TFORK --> WLINK
+
+    subgraph PAL["Palantir tmux surface"]
+        PALTMUX["45-palantir.conf: prefix+A popup → ,palantir dashboard<br/>status-right #(,palantir statusline) prints P:n H:n C:n"]:::conf
+        PALDASH["dashboard.py (PEP 723 via uv run): Vim-first textual legion overview<br/>j/k · Ctrl-D/U · g/G · l/Enter; stages, held reasons, cleared counts"]:::py
+        PALTMUX --> PALDASH
+        PALDASH --> PALLIB["~/lib/,palantir/ runtime (see 04, 07c)"]:::data
+    end

@@ -6,8 +6,6 @@ sidebar_position: 1
 
 This setup ships small, purpose-built commands into `~/bin`. Anything named `home/exact_bin/executable_,name` becomes a command called `,name`; larger commands keep that public launcher and put private implementation files under `~/lib/,name/`.
 
-![Command palette popup over the tmux workbench, indexing tmux bindings, git aliases, and custom comma commands](../tmux/assets/command-palette-full.png)
-
 ## How to discover them
 
 ```bash
@@ -28,7 +26,7 @@ The fastest visual entry point is the tmux command palette: `prefix` + `r`. It i
 | tmux helpers         | `,tmux-run-all`, `,tmux-lowfi`                                                             | [High-leverage commands](./high-leverage.md), [Tmux](../tmux/index.md)                  |
 | Search and discovery | `,grepo`, `,fuzzy-brew-search`, `,search-gh-topic`, `,youtube-search`                      | [Command catalog](./catalog.md)                                                         |
 | Testing and analysis | `,jest-test-title-report`, `,get-risky-tests`, `,get-age-buckets`, `,generate-git-sandbox` | [Command catalog](./catalog.md)                                                         |
-| AI and agents        | `,ai`, `,agent-memory`, `,artifact`, `,ai-kb`, `,ralph`, provider wrappers                 | [Command catalog](./catalog.md), [Agentic OS](../../ai-assistants/index.md)             |
+| AI and agents        | `,ai`, `,agent-memory`, `,artifact`, `,ai-kb`, `,palantir`, provider wrappers              | [Command catalog](./catalog.md), [Agentic OS](../../ai-assistants/index.md)             |
 | Utility / plumbing   | `,bat-preview`, `,fzf-*`, `,history-sync`, media helpers                                   | [Command catalog](./catalog.md)                                                         |
 
 ## Source and coverage contract
@@ -49,5 +47,5 @@ New `~/bin` commands must have a Fish completion, docs coverage, and `.mermaids/
 - [High-leverage commands](./high-leverage.md)
 - [Command catalog](./catalog.md)
 - [Worktree workflow](../git-identity/worktrees.md)
-- [Ralph orchestrator](../../ai-assistants/ralph/index.md)
+- [Palantír orchestrator](../../ai-assistants/palantir.md)
 - [Reference map](../../../reference/reference-map.md)

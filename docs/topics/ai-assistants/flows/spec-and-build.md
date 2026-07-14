@@ -5,7 +5,7 @@ title: "Spec a feature, build it hands-free"
 
 # Spec a feature, then build it hands-free
 
-You have an idea ("add a `done` command to my CLI") and want the agent to implement it without babysitting, but with proof it worked. Two steps: `spec` turns the idea into a contract; `/build` (or Ralph, next playbook) implements it. You touch exactly two gates.
+You have an idea ("add a `done` command to my CLI") and want the agent to implement it without babysitting, but with proof it worked. Two steps: `spec` turns the idea into a contract; `/build` implements it in-session, or `,palantir summon --criteria` runs it detached. You touch exactly two gates.
 
 **Prerequisites:** a Claude Code (or Cursor/Copilot) session in your repo. Nothing else.
 
@@ -74,6 +74,6 @@ Compatibility impact: none
 
 ## Pivots from here
 
-- Want it running detached instead of in this session → say `hand it to ralph instead` at gate 1 ([Ralph playbook](ralph-run.md)).
+- Want it running detached instead of in this session → say `hand it to Palantír instead` at gate 1, then pass the packet criteria JSON to `,palantir summon --criteria` ([architecture](../palantir.md)).
 - High-stakes change → say `plan-review the packet first` before approving; a reviewer tries to break the _contract_ before any code exists.
 - Just want the idea filed, not built → `draft an issue from this packet`.

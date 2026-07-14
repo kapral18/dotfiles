@@ -5,7 +5,7 @@ description: "Use when starting non-trivial repo/domain work, hitting known setu
 
 # AI Knowledge Base Skill
 
-Durable, structured, cross-session memory shared across agents (cursor-cli, pi, Ralph).
+Durable, structured, cross-session memory shared across agents (cursor-cli, pi, palantir legions).
 Backed by the local `,ai-kb` CLI: SQLite + FTS5 (BM25) + dense embeddings (`sqlite-vec`).
 Results are fused with Reciprocal Rank Fusion and diversified with Maximal Marginal Relevance. Fully local, no cloud, no MCP.
 Capsules persist under `~/.local/share/ai-kb/` (markdown sidecars + indexed SQLite mirror).

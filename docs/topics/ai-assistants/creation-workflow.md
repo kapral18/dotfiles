@@ -3,7 +3,7 @@ sidebar_position: 6
 title: Creation workflow
 ---
 
-# Creation workflow (spec → build / Ralph)
+# Creation workflow (spec → build / Palantír)
 
 The creation-side counterpart to the [review workflow](reviews/index.md): the same rigor primitives — evidence-gated phases, fixed return shapes, adversarial verification, a completion gate — applied to building things instead of judging them. The steering model is **two human gates**: approve the contract before execution, read the report after it. Everything between runs hands-free.
 
@@ -11,12 +11,12 @@ Ordinary freeform implementation does not have to enter this formal flow. For th
 
 ## The two artifacts (memory vs contract)
 
-| Artifact                           | Role                                                                                                     | Mutation rule                                                       |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `/tmp/specs/<pwd>/<topic>.txt`     | Conversation memory: what we currently believe the user wants. Hook-injected at session start.           | Rewritten freely as the intent loop converges. Allowed to be wrong. |
-| `/tmp/specs/<pwd>/<topic>.spec.md` | Contract snapshot: what counts as done and how to prove it. Consumed by `/build` and `,ralph go --spec`. | Frozen at approval; changing it is a premise correction + re-gate.  |
+| Artifact                           | Role                                                                                                                | Mutation rule                                                       |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `/tmp/specs/<pwd>/<topic>.txt`     | Conversation memory: what we currently believe the user wants. Hook-injected at session start.                      | Rewritten freely as the intent loop converges. Allowed to be wrong. |
+| `/tmp/specs/<pwd>/<topic>.spec.md` | Contract snapshot: what counts as done and how to prove it. Consumed by `/build` and `,palantir summon --criteria`. | Frozen at approval; changing it is a premise correction + re-gate.  |
 
-The intent spec remembers the discussion; the packet is a signed order. The packet is never a mechanical transform of the intent spec: nothing enters it on the `.txt`'s word alone — every criterion is re-derived from evidence and its check is run once, observed red, before it may appear. After approval the flow is one-way: Ralph snapshots the spec into the run manifest, `/build`'s ledger holds evidence, so later `.txt` drift cannot retro-poison an in-flight run.
+The intent spec remembers the discussion; the packet is a signed order. The packet is never a mechanical transform of the intent spec: nothing enters it on the `.txt`'s word alone — every criterion is re-derived from evidence and its check is run once, observed red, before it may appear. After approval the flow is one-way: Palantír snapshots the criteria into the legion manifest, `/build`'s ledger holds evidence, so later `.txt` drift cannot retro-poison in-flight work.
 
 The `spec` skill writes a `packet:` pointer line into `<topic>.txt` so session-start injection tells a fresh session the contract exists, and requires a named topic first on default branches (the `session-<id>` fallback would strand the packet).
 
@@ -31,7 +31,7 @@ idea/issue
      → packet written + shown
         └─ [HUMAN GATE 1: approve packet]
             ├─ /build ............ in-session hands-free implementation
-            ├─ ,ralph go --spec .. detached run, same contract
+            ├─ ,palantir summon ... detached legion, same criteria
             ├─ compose-issue ..... publishable issue text + publication packet
             └─ review (plan mode)  adversarial review of the packet itself
                 └─ [HUMAN GATE 2: read the report]
@@ -66,8 +66,10 @@ Both share one mode-neutral contract — [`agent-review/references/live-ui-runti
 
 Windows/VirtualBox coverage is a separate manual skill, [`live-ui-windows`](../../../home/exact_dot_agents/exact_skills/exact_live-ui-windows/) — connecting Playwriter to a guest browser over CDP through a host NAT port-forward. It is never auto-triggered by either mode; load it by hand only when the user explicitly asks for Windows/VirtualBox verification this turn.
 
-## Ralph as the detached form
+## Palantír as the detached form
 
-`,ralph go --spec <file>` consumes the packet's JSON handoff block (the planner's Shape A schema) and skips the planner entirely; `--goal` defaults from the spec, and `--plan-only`/`--workflow` are rejected as superseded. The machine-check floor holds in both forms: Ralph executes every criterion `check` each iteration (demotion mechanics in [State and runtime](ralph/state-and-runtime.md)); `/build` re-runs the checks at verification and blocks its completion gate on red rows. A `,ralph replan` re-enters the planner and replaces the operator spec — steering returns to Ralph at that point.
+`,palantir summon "<goal>" --criteria '<json>'` consumes the packet's criteria JSON and starts one tmux-native legion for the effort. The criteria must already be red-proven by the spec flow; Palantír does not turn unchecked prose into a completion gate.
 
-See [Ralph orchestrator](ralph/index.md) for the loop itself and [State and runtime](ralph/state-and-runtime.md) for where check results land (`manifest.criteria_check_results`, `summary.md`).
+The machine-check floor holds in both forms: Palantír's `verify` stage executes every criterion command and only a zero exit is green; `/build` re-runs checks inside its own verification phase and blocks its completion gate on red rows. A verify failure sends bounded evidence back to `implement`, retries up to the configured budget, and then parks the legion in `holding` for a human answer or sent word.
+
+See [Palantír orchestrator](palantir.md) for the stage machine, handshake files, dashboard, and state layout.

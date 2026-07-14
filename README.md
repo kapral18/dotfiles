@@ -1,8 +1,8 @@
-<!-- markdownlint-disable MD041 -->
-
-![image](./banner.png)
-
 # 🚀 kapral18/dotfiles
+
+![Current tmux and Neovim environment with the Palantír dashboard open over a sanitized three-legion fixture](docs/intro/assets/repository-banner.png)
+
+_Captured from the current tmux, Neovim, and Palantír runtime against sanitized fixture state; no UI or text was synthesized by an image model._
 
 Personal macOS development environment managed with Chezmoi. Keyboard-centric workflow with extensive automation and tool integration.
 
@@ -13,7 +13,7 @@ Personal macOS development environment managed with Chezmoi. Keyboard-centric wo
 | Feature                | Description                                                   |
 | ---------------------- | ------------------------------------------------------------- |
 | 🤖 **Agent Memory**    | `/tmp/specs` hook memory (`,agent-memory`) + durable `,ai-kb` |
-| 🔄 **Ralph**           | Multi-agent orchestrator (planner → executor → reviewers)     |
+| 🔮 **Palantír**        | Tmux-native detached orchestration (one legion per effort)    |
 | 🧠 **Local inference** | llama.cpp router + model sync (`,llama-cpp`)                  |
 | 🔐 **Secure Identity** | 1Password SSH agent with work/personal switching              |
 | 🌳 **Git Worktrees**   | Worktree management with PR integration                       |
@@ -44,19 +44,19 @@ For the full layout (naming conventions, hook lifecycle, AI config merging, exte
 
 ## 📚 Subsystems (read the docs)
 
-| Area                                     | Doc                                                         | Source-of-truth (edit here)                                                                              |
-| ---------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Packages (Homebrew, mise, cargo, go, …)  | [Packages](docs/topics/core/packages/index.md)              | [`home/.chezmoitemplates/brews/`](home/.chezmoitemplates/brews/), [`home/readonly_dot_default-*`](home/) |
-| Custom `~/bin` commands                  | [Custom commands](docs/topics/workflow/custom-commands/)    | [`home/exact_bin/`](home/exact_bin/), [`home/exact_lib/`](home/exact_lib/)                               |
-| Git identity & worktrees                 | [Worktrees](docs/topics/workflow/git-identity/worktrees.md) | [`home/exact_bin/executable_,w`](home/exact_bin/executable_,w)                                           |
-| GitHub picker & tmux                     | [Tmux](docs/topics/workflow/tmux/index.md)                  | [`home/dot_config/exact_tmux/`](home/dot_config/exact_tmux/)                                             |
-| Fish shell                               | [Shell: Fish](docs/topics/workflow/shell-fish.md)           | [`home/dot_config/fish/`](home/dot_config/fish/)                                                         |
-| Neovim                                   | [Neovim](docs/topics/editor/neovim/index.md)                | [`home/dot_config/exact_nvim/`](home/dot_config/exact_nvim/)                                             |
-| Agentic OS (SOPs, MCP, Ralph, llama.cpp) | [AI & assistants](docs/topics/ai-assistants/index.md)       | [`home/readonly_AGENTS.md`](home/readonly_AGENTS.md), [`home/exact_dot_agents/`](home/exact_dot_agents/) |
-| macOS automation                         | [macOS](docs/topics/macos/index.md)                         | [`home/dot_hammerspoon/`](home/dot_hammerspoon/), [`home/.osx.core`](home/.osx.core)                     |
-| Reference map (where to change X)        | [Reference map](docs/reference/reference-map.md)            | —                                                                                                        |
+| Area                                        | Doc                                                         | Source-of-truth (edit here)                                                                              |
+| ------------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Packages (Homebrew, mise, cargo, go, …)     | [Packages](docs/topics/core/packages/index.md)              | [`home/.chezmoitemplates/brews/`](home/.chezmoitemplates/brews/), [`home/readonly_dot_default-*`](home/) |
+| Custom `~/bin` commands                     | [Custom commands](docs/topics/workflow/custom-commands/)    | [`home/exact_bin/`](home/exact_bin/), [`home/exact_lib/`](home/exact_lib/)                               |
+| Git identity & worktrees                    | [Worktrees](docs/topics/workflow/git-identity/worktrees.md) | [`home/exact_bin/executable_,w`](home/exact_bin/executable_,w)                                           |
+| GitHub picker & tmux                        | [Tmux](docs/topics/workflow/tmux/index.md)                  | [`home/dot_config/exact_tmux/`](home/dot_config/exact_tmux/)                                             |
+| Fish shell                                  | [Shell: Fish](docs/topics/workflow/shell-fish.md)           | [`home/dot_config/fish/`](home/dot_config/fish/)                                                         |
+| Neovim                                      | [Neovim](docs/topics/editor/neovim/index.md)                | [`home/dot_config/exact_nvim/`](home/dot_config/exact_nvim/)                                             |
+| Agentic OS (SOPs, MCP, Palantír, llama.cpp) | [AI & assistants](docs/topics/ai-assistants/index.md)       | [`home/readonly_AGENTS.md`](home/readonly_AGENTS.md), [`home/exact_dot_agents/`](home/exact_dot_agents/) |
+| macOS automation                            | [macOS](docs/topics/macos/index.md)                         | [`home/dot_hammerspoon/`](home/dot_hammerspoon/), [`home/.osx.core`](home/.osx.core)                     |
+| Reference map (where to change X)           | [Reference map](docs/reference/reference-map.md)            | —                                                                                                        |
 
-High-leverage commands most people reach for first: `,w` (worktrees), `,doctor` (health check), `,update` (pull dotfiles + reconcile packages), `,ralph` (orchestrator). Discover the rest with `ls ~/bin | rg '^,'` or the custom-commands doc.
+High-leverage commands most people reach for first: `,w` (worktrees), `,doctor` (health check), `,update` (pull dotfiles + reconcile packages), `,palantir` (detached orchestration). Discover the rest with `ls ~/bin | rg '^,'` or the custom-commands doc.
 
 ## 🔄 Day-to-Day
 

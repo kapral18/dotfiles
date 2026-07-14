@@ -8,18 +8,6 @@
       ],
       "default_set": "recommended",
       "output": "consumer_view.v1"
-    },
-    "ralph": {
-      "harnesses": {
-        "cursor": "curated",
-        "pi": "curated"
-      }
-    },
-    "ralph-tui": {
-      "harnesses": {
-        "cursor": "recommended",
-        "pi": "recommended"
-      }
     }
   },
   "defaults": {
@@ -65,33 +53,6 @@
           "thinking": "xhigh"
         }
       }
-    },
-    "ralph": {
-      "executor": {
-        "family": "unknown",
-        "harness": "cursor",
-        "model": "composer-2.5"
-      },
-      "planner": {
-        "family": "claude",
-        "harness": "cursor",
-        "model": "claude-opus-4-8-thinking-xhigh"
-      },
-      "re_reviewer": {
-        "family": "gpt",
-        "harness": "cursor",
-        "model": "gpt-5.5-extra-high"
-      },
-      "reflector": {
-        "family": "claude",
-        "harness": "cursor",
-        "model": "claude-opus-4-8-thinking-xhigh"
-      },
-      "reviewer": {
-        "family": "claude",
-        "harness": "cursor",
-        "model": "claude-opus-4-8-thinking-xhigh"
-      }
     }
   },
   "generated": {
@@ -101,8 +62,7 @@
     "sources": [
       "home/.chezmoidata/ai_models.yaml",
       "scripts/model_capabilities.v1.json",
-      "home harness configs",
-      "home/dot_config/ralph/roles.json"
+      "home harness configs"
     ]
   },
   "harnesses": {

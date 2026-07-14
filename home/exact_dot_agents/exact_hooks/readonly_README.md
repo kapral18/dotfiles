@@ -70,7 +70,7 @@ Requested warm-up is bounded and fail-open.
 Shared `perturn_recall.py` and Pi's hybrid query path set `AI_EMBED_CONNECT_ONLY=1`;
 the current-turn hot path never spawns, restarts, evicts, or replaces a worker.
 A missing or invalid worker yields no recall block and does not interrupt the request.
-Default/manual `,ai-kb`, Ralph, `remember`, and `reembed` remain on the one-shot `embed_runner.py` path.
+Default/manual `,ai-kb`, `remember`, and `reembed` remain on the one-shot `embed_runner.py` path.
 
 The deployed `~/lib/,ai-kb/embed_client.py` selects a generation-specific Unix socket from protocol version, complete worker source, model, and expected dimension.
 Warm-up resolves the configured model dimension; connect-only callers discover the matching ready generation without spawning.
@@ -81,6 +81,8 @@ The worker exits after 300 inactive seconds while removing only its own socket i
 Session-start context is bounded without injecting partial memory.
 An oversized active topic spec is omitted with a pointer to the full file instead of being sliced into the prompt.
 Only whole recent worklog entries are included. Worklogs are trimmed during serialized queue flush so runtime state does not grow forever.
+The same flush pass also removes `session-*` fallback worklogs and `.recall-seen-*` dedupe files older than seven days;
+named-topic worklogs are never swept.
 
 Tool adapters invoke `worklog_dispatcher.sh`, which captures the JSON payload and launches `worklog_recorder.py` without waiting for filesystem bookkeeping.
 The recorder durably enqueues a session-sequenced event, and a transient worker flushes it under a per-target lock.
@@ -117,6 +119,7 @@ Use `,agent-memory` to set the active topic or as a dead switch for persisted ho
 
 `select` binds one agent session to a topic bucket by writing `.session-topic-<session-id>.txt`.
 It seeds `<topic>.txt` only with `--create`.
+At bind time it also flushes the session's pending queue and folds the session's pre-bind `session-*` fallback worklog into `<topic>.worklog.jsonl`, so the trail is not split across buckets.
 `use` manages the workspace-level default/suggested bucket: it writes `_active_topic.txt` and seeds `<topic>.txt` (rejecting the generic `current`).
 Use it only when you intentionally want to mark a default/suggested bucket for the workspace.
 `wipe-current` deletes only the selected topic files (`.txt`, `.worklog.jsonl`, `.no_context`). It keeps other topics in the same workspace.

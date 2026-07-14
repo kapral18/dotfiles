@@ -82,7 +82,7 @@ Rules:
 
 Use `,proof check --json` for automation.
 The JSON includes `allowed`, `verdict`, `goal`, `workspace`, `topic`, `proof_dir`, criterion counts, issues, blockers, and per-criterion status.
-The verdict means "proof recorded", not "the code is globally correct"; `,proof` does not run /build or Ralph adversarial/scope gates.
+The verdict means "proof recorded", not "the code is globally correct"; `,proof` does not run /build or palantir adversarial/scope gates.
 
 ## Reports
 

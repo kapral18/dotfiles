@@ -36,7 +36,7 @@ The screenshot uses safe demo rows so the states are visible without exposing pr
 | `alt-M`                     | Mark the current family                             |
 | `ctrl-r`                    | Refresh from GitHub                                 |
 | `alt-e`                     | Cycle preview expansion                             |
-| `alt-A`                     | Hand off selected PRs/issues to Ralph               |
+| `alt-A`                     | Hand off selected PRs/issues to `,palantir summon`  |
 | `alt-x`                     | Open action palette                                 |
 | `alt-g`                     | Switch to session picker                            |
 | `?`                         | Show help                                           |
@@ -70,7 +70,7 @@ The deeper implementation details live in [GitHub picker mechanics](github-picke
 - section jumps and sorting.
 - epic/backport/PR-issue hierarchy.
 - badges, hidden match tokens, worktree detection.
-- comment/review/action helpers and Ralph handoff.
+- comment/review/action helpers and Palantír handoff.
 - preview cache and popup sizing.
 
 ## Related
@@ -78,4 +78,4 @@ The deeper implementation details live in [GitHub picker mechanics](github-picke
 - [Session picker](session-picker.md)
 - [GitHub picker mechanics](github-picker-mechanics.md)
 - [Worktrees](../git-identity/worktrees.md)
-- [Ralph orchestrator](../../ai-assistants/ralph/index.md)
+- [Palantír orchestrator](../../ai-assistants/palantir.md)

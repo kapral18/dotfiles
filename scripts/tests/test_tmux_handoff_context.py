@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Tests for the lifecycle-managed Ralph handoff context copy.
+"""Tests for the lifecycle-managed palantir handoff context copy.
 
 Exercises the deployed core CLI
 ``home/dot_config/exact_tmux/exact_scripts/pickers/lib/executable_handoff_namespace.py``
 ``retain-context`` verb and the real
-``home/dot_config/exact_tmux/exact_scripts/pickers/lib/executable_handoff_to_ralph_apply.sh``
+``home/dot_config/exact_tmux/exact_scripts/pickers/lib/executable_handoff_to_palantir_apply.sh``
 helper against a private ``XDG_CACHE_HOME`` fake cache with a stub ``tmux`` on
 ``PATH``. No live tmux is used.
 
 The retained-context lifecycle replaces the former retained-dead-namespace
 workaround: ``retain-context`` copies the active namespace's
-``gh_picker_ralph_pin.context.md`` sibling to a secure 0600 file under a
+``gh_picker_palantir_pin.context.md`` sibling to a secure 0600 file under a
 ``retained-context`` directory in the handoff root, removes the source, and
 prints the retained path. That copy outlives its namespace (which gh_popup now
 always ends normally) and is reaped only after a long 7-day TTL with no early
@@ -42,13 +42,13 @@ import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import TMUX_PICKERS, modern_bash
 
 CORE = TMUX_PICKERS / "lib/executable_handoff_namespace.py"
-APPLY_HELPER = TMUX_PICKERS / "lib/executable_handoff_to_ralph_apply.sh"
+APPLY_HELPER = TMUX_PICKERS / "lib/executable_handoff_to_palantir_apply.sh"
 GH_POPUP = TMUX_PICKERS / "github/executable_gh_popup.sh"
 
 TOKEN_RE = re.compile(r"^[0-9a-f]{32}$")
 RETAINED_NAME_RE = re.compile(r"^[0-9a-f]{32}\.md$")
 RETAINED_DIR = "retained-context"
-RALPH_CONTEXT_NAME = "gh_picker_ralph_pin.context.md"
+PALANTIR_CONTEXT_NAME = "gh_picker_palantir_pin.context.md"
 RETAINED_CONTEXT_TTL_SECONDS = 7 * 24 * 60 * 60
 ENV_TOKEN = "TMUX_PICKER_HANDOFF_TOKEN"
 
@@ -99,9 +99,9 @@ class ContextTestBase(unittest.TestCase):
         os.chmod(self.root, mode)
 
     def context_path(self, token: str) -> Path:
-        return self.root / token / RALPH_CONTEXT_NAME
+        return self.root / token / PALANTIR_CONTEXT_NAME
 
-    def write_context(self, token: str, text: str = "RICH RALPH CONTEXT\n") -> Path:
+    def write_context(self, token: str, text: str = "RICH PALANTIR CONTEXT\n") -> Path:
         path = self.context_path(token)
         path.write_text(text, encoding="utf-8")
         return path
@@ -118,7 +118,7 @@ class ContextTestBase(unittest.TestCase):
 
 
 class TestRetainContextCore(ContextTestBase):
-    """WHEN copying a Ralph context through the real core retain-context verb."""
+    """WHEN copying a palantir context through the real core retain-context verb."""
 
     def test_retain_copies_source_out_and_survives_namespace_end(self):
         token = self.begin()
@@ -172,7 +172,7 @@ class TestRetainContextCore(ContextTestBase):
         token = "a" * 32
         namespace = self.root / token
         namespace.mkdir(mode=0o700)
-        source = namespace / RALPH_CONTEXT_NAME
+        source = namespace / PALANTIR_CONTEXT_NAME
         source.write_text("x\n", encoding="utf-8")
         result = self.retain(source, token)
         self.assertEqual(result.returncode, 1)
@@ -212,8 +212,8 @@ class TestRetainContextCore(ContextTestBase):
 
     def test_retain_refuses_non_context_source_path(self):
         token = self.begin()
-        # A real file inside the namespace, but not the ralph context sibling.
-        other = self.root / token / "gh_picker_ralph_pin"
+        # A real file inside the namespace, but not the palantir context sibling.
+        other = self.root / token / "gh_picker_palantir_pin"
         other.write_text("pin\n", encoding="utf-8")
         result = self.retain(other, token)
         self.assertEqual(result.returncode, 1)
@@ -275,8 +275,8 @@ class TestRetainContextCore(ContextTestBase):
         self.assertFalse(old.exists())
 
 
-class TestRalphApplyHelper(ContextTestBase):
-    """WHEN the real Ralph apply helper retains context before queuing tmux."""
+class TestPalantirApplyHelper(ContextTestBase):
+    """WHEN the real palantir apply helper retains context before queuing tmux."""
 
     def _deploy(self) -> None:
         """Lay out a deploy-style lib dir plus a recording ``tmux`` stub.
@@ -290,7 +290,7 @@ class TestRalphApplyHelper(ContextTestBase):
         self.core_copy = self.lib / "handoff_namespace.py"
         shutil.copy2(CORE, self.core_copy)
         os.chmod(self.core_copy, 0o755)
-        self.helper = self.lib / "handoff_to_ralph_apply.sh"
+        self.helper = self.lib / "handoff_to_palantir_apply.sh"
         shutil.copy2(APPLY_HELPER, self.helper)
         os.chmod(self.helper, 0o755)
 
@@ -322,7 +322,7 @@ class TestRalphApplyHelper(ContextTestBase):
         return [chunk.decode("utf-8") for chunk in raw.split(b"\0") if chunk]
 
     def _write_pin(self, token: str, context: Path, seed: str) -> Path:
-        pin = self.root / token / "gh_picker_ralph_pin"
+        pin = self.root / token / "gh_picker_palantir_pin"
         fields = [
             "pr",
             "owner/repo",

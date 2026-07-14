@@ -307,7 +307,7 @@ fmt_py() {
   return $rc
 }
 
-# go: Go (tools/ralph-tui and any future .go under repo root)
+# go: Go (any .go under repo root)
 # We deliberately use the same tools that Neovim's conform.nvim uses
 # (goimports then gofumpt) so that `bin/fmt --type go` and editor save
 # never fight. Falls back to plain gofmt only if the modern pair is absent.
