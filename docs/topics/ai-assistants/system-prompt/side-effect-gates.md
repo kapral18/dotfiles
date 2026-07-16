@@ -5,9 +5,9 @@ title: Side-effect gates
 
 # Side-effect gates
 
-The SOP separates local reasoning from actions that affect people, git history, or owned areas.
+The SOP separates local reasoning from actions that affect people, git history, or owned areas. These gates keep read-only investigation from silently turning into publication, ownership crossings, or history changes.
 
-## Gate map
+## Mental model
 
 | Gate                      | Blocks until                                                                   |
 | ------------------------- | ------------------------------------------------------------------------------ |
@@ -18,7 +18,9 @@ The SOP separates local reasoning from actions that affect people, git history, 
 | Bot thread carve-out      | author is verified as a bot and flow was explicitly invoked                    |
 | GitHub mutation           | `k-github` skill is loaded and side-effect rules are followed                  |
 
-## Publication split
+## Using it
+
+### Publication split
 
 | Target                        | Default                                                   |
 | ----------------------------- | --------------------------------------------------------- |
@@ -26,4 +28,6 @@ The SOP separates local reasoning from actions that affect people, git history, 
 | Mixed/unknown participants    | treat as human                                            |
 | Verified bot-authored thread  | auto-reply/resolve only inside an explicitly invoked flow |
 
-Wording of human-visible text is owned centrally by the [communication skill](../skills/review-and-delivery.md#k-communication) and is not re-derived per surface; a loaded mechanics skill (`k-github`, `k-google-workspace`, `k-review`, ...) does not own tone. The SOP states this as a boundary, not a routing trigger: skill discovery is driven by the skill's own `description`, not by a "load this skill" line in the SOP.
+Human-visible text has a single wording owner. The [communication skill](../skills/review-and-delivery.md#k-communication) owns tone, and loaded mechanics skills such as `k-github`, `k-google-workspace`, or `k-review` do not re-derive it per surface.
+
+The SOP states this as a boundary, not a routing trigger. Skill discovery is driven by the skill's own `description`, not by a "load this skill" line in the SOP.

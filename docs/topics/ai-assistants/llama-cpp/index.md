@@ -8,6 +8,14 @@ title: llama.cpp Local Inference
 
 Use this section when serving local GGUF models, wiring a local provider into Pi/Claude/Codex/OpenCode, or managing the model router.
 
+## Mental model
+
+The local stack has four layers: install the llama.cpp tooling, place curated GGUF files on disk, serve one of those files through the router, then point each agent harness at the local provider.
+
+Each page owns one layer.
+
+## Using it
+
 | Navigation slice                                | Owns                                                                           |
 | ----------------------------------------------- | ------------------------------------------------------------------------------ |
 | [Install and models](install-and-models.md)     | Homebrew install, GGUF manifest, opt-in sync hook                              |

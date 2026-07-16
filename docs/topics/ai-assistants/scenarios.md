@@ -5,11 +5,20 @@ title: Choose your flow
 
 # Choose your flow (scenario router)
 
-Every AI-development scenario this setup supports, routed by what you want to do — not by which subsystem implements it. Each row names the flow, how you start it, and where to go deeper. The [pivot map](#pivot-map) below shows how to move between flows mid-work; that mobility is the point of having many flows.
+Every AI-development scenario this setup supports is routed by what you want to do, not by which subsystem implements it. Each row names the flow, how you start it, and where to go deeper.
 
-The major flows have hands-on playbooks — what to type, what you'll see, what to answer at each gate — under Flow playbooks in the sidebar; table rows link to a playbook where one exists.
+The [pivot map](#pivot-map) shows how to move between flows mid-work. That mobility is the point of having many flows.
 
-Two invocation kinds matter throughout: **model-invoked** skills fire on their own when your prompt matches ("debug this"), while **manual** skills fire only when you type them (`/build`, `/agent-review`) — the high-blast-radius flows are deliberately manual.
+The major flows have hands-on playbooks — what to type, what you'll see, what to answer at each gate — under Flow playbooks in the sidebar. Table rows link to a playbook where one exists.
+
+## Mental model
+
+Two invocation kinds matter throughout:
+
+| Invocation kind      | Meaning                                                                                                             |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Model-invoked skills | Fire on their own when your prompt matches, such as "debug this".                                                   |
+| Manual skills        | Fire only when you type them, such as `/build` or `/agent-review`. High-blast-radius flows are deliberately manual. |
 
 ## Build something
 
@@ -58,11 +67,18 @@ Two invocation kinds matter throughout: **model-invoked** skills fire on their o
 | Help reviewers before they open the diff | `k-present-pr` — self-contained HTML review-readiness map                                          | `/present-pr` (manual)                            | [Playbook](flows/ship-text.md)                          |
 | Anything a human will read               | `k-communication` owns tone; publication always gated                                              | loaded automatically before drafting              | [Side-effect gates](system-prompt/side-effect-gates.md) |
 
-Cross-cutting: durable memory (`,ai-kb`) recalls before non-trivial work and persists verified lessons — [Agent memory](knowledge-base/index.md); `k-proof` records completion evidence for hard-triggered freeform work; the code-quality family loads itself on implementation edits; Kibana/Elastic work gets the domain overlay — [Elastic and Kibana](skills/elastic-and-kibana.md).
+## Cross-cutting rules
+
+- Durable memory (`,ai-kb`) recalls before non-trivial work and persists verified lessons; see [Agent memory](knowledge-base/index.md).
+- `k-proof` records completion evidence for hard-triggered freeform work.
+- The code-quality family loads itself on implementation edits.
+- Kibana/Elastic work gets the domain overlay; see [Elastic and Kibana](skills/elastic-and-kibana.md).
 
 ## Pivot map
 
-Flows hand off to each other at defined points; pivoting is expected, not an exception. The heavier arrows are contracts (the target consumes an artifact); the lighter ones are escalations (you stop one flow and enter another).
+Flows hand off to each other at defined points; pivoting is expected, not an exception.
+
+The heavier arrows are contracts: the target consumes an artifact. The lighter arrows are escalations: you stop one flow and enter another.
 
 ```text
                     interview-me
@@ -88,16 +104,18 @@ Flows hand off to each other at defined points; pivoting is expected, not an exc
 
 When to pivot, concretely:
 
-- **spec → prototype and back.** A fork you cannot close by asking ("which ordering feels right?") is empirical: build the throwaway, observe, and the verdict — not an opinion — closes the fork in the packet. The prototype is deleted; the decision survives in the packet's Context line.
+- **spec → prototype and back.** A fork you cannot close by asking, such as "which ordering feels right?", is empirical. Build the throwaway, observe, and let the verdict — not an opinion — close the fork in the packet. The prototype is deleted; the decision survives in the packet's Context line.
 - **spec → /build vs → Palantír.** Same contract, different runtime: `/build` when the work benefits from your session's context or you want blockers surfaced in-conversation; Palantír when you want one detached tmux-governed legion that survives your chat session. You can do both across a topic — they read the same criteria packet.
-- **/build → spec (re-gate).** Mid-build evidence contradicting the packet (wrong premise, wrong scope) stops the build; revise the packet and re-approve. Never let a build quietly implement a different spec than the one you signed.
-- **Palantír → holding.** A parked question or exhausted retry budget stops the legion in `holding`; answer with `,palantir answer <id> "…"` or send word to the coordinator with `,palantir send-word <id> "…"` after deciding the next move.
-- **light-review → review → /agent-review.** Escalate when the target turns out to be a PR/others' code, needs base-branch context, or is risky/stateful (light→full), and to `/agent-review` when you want independent lanes and cross-family adversarial verification instead of one reviewer's judgment. Escalation is mid-pass: stop, switch, don't half-do the heavy machinery in the light flow.
-- **diagnosing-bugs → codebase-design.** Two triggers: no correct seam exists for the regression test (the architecture is preventing the bug from being locked down), or the post-mortem answer to "what would have prevented this?" is architectural. Hand off after the fix, with specifics.
+- **/build → spec (re-gate).** Mid-build evidence contradicting the packet, such as a wrong premise or wrong scope, stops the build. Revise the packet and re-approve. Never let a build quietly implement a different spec than the one you signed.
+- **Palantír → holding.** A parked question or exhausted retry budget stops the legion in `holding`. Answer with `,palantir answer <id> "…"` or send word to the coordinator with `,palantir send-word <id> "…"` after deciding the next move.
+- **light-review → review → /agent-review.** Escalate when the target turns out to be a PR/others' code, needs base-branch context, or is risky/stateful. That is light→full review. Escalate to `/agent-review` when you want independent lanes and cross-family adversarial verification instead of one reviewer's judgment. Escalation is mid-pass: stop, switch, don't half-do the heavy machinery in the light flow.
+- **diagnosing-bugs → codebase-design.** Two triggers: no correct seam exists for the regression test, meaning the architecture is preventing the bug from being locked down; or the post-mortem answer to "what would have prevented this?" is architectural. Hand off after the fix, with specifics.
 - **anything → compose-issue.** Work that should be recorded rather than done now — a bug found mid-review, a packet worth filing upstream — becomes issue text; publication stays human-gated.
 
 ## Efficiency defaults
 
-- Smallest flow that fits: direct SOP work → `k-light-review` to check it. Reach for `k-spec`/`/build`/Palantír when the work is big enough that a contract pays for itself, and for `/agent-review` when the change is big enough to warrant independent readers.
-- One packet in flight per topic; parallel streams belong on separate topics or separate Palantír legions — each has its own tmux session and manifest.
-- Trust the machine floor: packet checks are executed during Palantír `verify`, not judged by a role pane — your attention belongs at the human gates and parked questions, not in between.
+- Smallest flow that fits: direct SOP work → `k-light-review` to check it.
+- Reach for `k-spec`/`/build`/Palantír when the work is big enough that a contract pays for itself.
+- Reach for `/agent-review` when the change is big enough to warrant independent readers.
+- One packet in flight per topic; parallel streams belong on separate topics or separate Palantír legions, each with its own tmux session and manifest.
+- Trust the machine floor: packet checks are executed during Palantír `verify`, not judged by a role pane. Your attention belongs at the human gates and parked questions, not in between.

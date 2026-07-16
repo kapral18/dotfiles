@@ -5,9 +5,18 @@ title: Claude and Gemini
 
 # Claude and Gemini
 
-## Claude Code settings
+Claude Code and Gemini CLI use small profile/config surfaces backed by the shared MCP registry. Claude keeps runtime-managed fields in `~/.claude.json`, while Gemini receives MCP server injection into its settings at apply time.
 
-Source: [`home/dot_claude/settings.{work,personal}.json`](../../../../home/dot_claude/) → `~/.claude/settings.json`.
+## Mental model
+
+| Tool        | Source                                                                          | Target                    | Registry path                                                                                      |
+| ----------- | ------------------------------------------------------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------- |
+| Claude Code | [`home/dot_claude/settings.{work,personal}.json`](../../../../home/dot_claude/) | `~/.claude/settings.json` | `~/.claude.json` top-level `mcpServers`                                                            |
+| Gemini CLI  | [`home/dot_gemini/settings.json`](../../../../home/dot_gemini/settings.json)    | `~/.gemini/settings.json` | shared [`mcp_servers.yaml`](../../../../home/.chezmoidata/mcp_servers.yaml) injected at apply time |
+
+## Using it
+
+### Claude Code settings
 
 Claude profile behavior:
 
@@ -21,6 +30,8 @@ Claude profile behavior:
 
 Interactive fish/bash/zsh sessions leave `claude` native. MCP wiring is handled only by the managed registry and apply-time config generation.
 
+### LetsFG
+
 **LetsFG** is intentionally not exposed through the shared MCP registry.
 
 | Decision               | Reason                                                                                                                                    |
@@ -33,9 +44,6 @@ Interactive fish/bash/zsh sessions leave `claude` native. MCP wiring is handled 
 
 Playwriter remains a fallback for rendered UI checks or booking-adjacent flows that need explicit user confirmation.
 
-## Gemini CLI settings
+### Gemini CLI settings
 
-Source: [`home/dot_gemini/settings.json`](../../../../home/dot_gemini/settings.json) → `~/.gemini/settings.json`.
-
-- MCP servers are injected from the shared [`mcp_servers.yaml`](../../../../home/.chezmoidata/mcp_servers.yaml) registry at apply time (no longer hardcoded in the settings file).
-- Tool approval is controlled by `general.defaultApprovalMode` (we use `auto_edit` to auto-approve edit tools).
+MCP servers are injected from the shared [`mcp_servers.yaml`](../../../../home/.chezmoidata/mcp_servers.yaml) registry at apply time. Tool approval is controlled by `general.defaultApprovalMode`; this repo uses `auto_edit` to auto-approve edit tools.

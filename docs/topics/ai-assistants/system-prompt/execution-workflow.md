@@ -5,9 +5,11 @@ title: Execution workflow
 
 # Execution workflow
 
-The SOP makes work resumable and testable before implementation starts.
+The SOP makes work resumable and testable before implementation starts. The agent removes ambiguity with read-only investigation first, stores task intent in a session-scoped spec, and validates each material step before calling work complete.
 
-## Intent loop
+The workflow is proportional. Simple answer-only work can stay direct; edits, runtime/setup claims, publication, reviews, stateful logic, or material uncertainty trigger deeper verification gates.
+
+## Mental model: intent loop
 
 | Stage              | Output                                                                                       |
 | ------------------ | -------------------------------------------------------------------------------------------- |
@@ -20,9 +22,11 @@ The SOP makes work resumable and testable before implementation starts.
 | Execute + validate | implementation plus acceptance checks                                                        |
 | Present results    | outcome, evidence, and remaining blockers                                                    |
 
-When advising or reviewing a plan, prefer probing questions that surface assumptions and forks over prescribing a solution; withhold readiness until the plan's success criteria are testable.
+When advising or reviewing a plan, prefer probing questions that surface assumptions and forks over prescribing a solution. Withhold readiness until the plan's success criteria are testable.
 
-## Persistent spec
+## Using it
+
+### Persistent spec
 
 | Artifact             | Path                                           |
 | -------------------- | ---------------------------------------------- |
@@ -30,11 +34,11 @@ When advising or reviewing a plan, prefer probing questions that surface assumpt
 | Topic spec           | `/tmp/specs/<workspace>/<topic>.txt`           |
 | Worklog              | `/tmp/specs/<workspace>/<topic>.worklog.jsonl` |
 
-Do not load specs broadly. Topic keys are broad, stable, kebab-case, and exactly one is active per prompt. `/tmp/specs` is ephemeral working memory used to rehydrate intent after pruning, not durable knowledge. Durable reusable learnings belong in [Agent memory](../knowledge-base/index.md).
+Do not load specs broadly. Topic keys are broad, stable, kebab-case, and exactly one is active per prompt.
 
-The workflow is proportional. Simple answer-only work can stay direct; edits, runtime/setup claims, publication, reviews, stateful logic, or material uncertainty trigger deeper verification gates.
+`/tmp/specs` is ephemeral working memory used to rehydrate intent after pruning, not durable knowledge. Durable reusable learnings belong in [Agent memory](../knowledge-base/index.md).
 
-## Verification loops
+### Verification loops
 
 | Situation                         | SOP response                                                                                                                                |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -47,6 +51,8 @@ The workflow is proportional. Simple answer-only work can stay direct; edits, ru
 
 Test-first framing never expands scope beyond the request.
 
-## Harness search interop
+## Reference: harness search interop
 
-Harness-native search/listing tools are the interop layer for broad code search. Prefer native Grep/Glob/search tools for first-pass broad searches; use shell `rg` only after narrowing by path, glob, or exact symbol. Never run bare repo-root `rg <pattern>` in a large repository.
+Harness-native search/listing tools are the interop layer for broad code search. Prefer native Grep/Glob/search tools for first-pass broad searches; use shell `rg` only after narrowing by path, glob, or exact symbol.
+
+Never run bare repo-root `rg <pattern>` in a large repository.

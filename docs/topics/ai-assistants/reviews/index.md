@@ -4,7 +4,11 @@ title: Review Workflow
 
 # Review Workflow
 
-This section covers the agent reviewing your diff. The inverse loop is [Reviewing agent diffs](../reviewing-diffs.md).
+This section is for the direction where an agent reviews your diff. The inverse loop — where you review the agent's diff — is [Reviewing agent diffs](../reviewing-diffs.md).
+
+Use these pages when continuing a review, addressing review threads, rechecking PR-related changes, or deciding whether the lighter in-place review is enough.
+
+## The moving parts
 
 | Navigation slice                                                        | Owns                                                                                   |
 | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
@@ -13,15 +17,15 @@ This section covers the agent reviewing your diff. The inverse loop is [Reviewin
 | [Post-review and light review](post-review-and-light-review.md)         | four-dimension hygiene lens and proportional self-review                               |
 | [Replies, publication, and history](replies-publication-and-history.md) | reply style, router behavior, human-visible gate, deletion/history safeguards          |
 
-## Direction map
+## Using it
+
+Pick the direction first; it decides which workflow rules apply.
 
 | Direction                   | Tooling                                                                                                                                                              |
 | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Agent reviews your diff     | `k-review` skill: [`home/exact_dot_agents/exact_skills/exact_k-review`](../../../../home/exact_dot_agents/exact_skills/exact_k-review)                               |
 | Agent reviews a plan/spec   | `k-review` plan mode (`references/plan_review.md`) — judges a design doc or [spec packet](../creation-workflow.md) before any implementation; no diff, no authorship |
 | You review the agent's diff | [Reviewing agent diffs](../reviewing-diffs.md)                                                                                                                       |
-
-Use this section when continuing a review, addressing review threads, rechecking PR-related changes, or deciding whether the lighter in-place review is enough.
 
 ## Related
 

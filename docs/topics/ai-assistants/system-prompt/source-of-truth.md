@@ -7,7 +7,9 @@ title: Source of truth
 
 `home/readonly_AGENTS.md` is the one real SOP file. Other entrypoints are symlinks or generated surfaces that point back to it.
 
-## Why it is first
+This page is the maintenance map for changing the prompt without editing rendered `$HOME` outputs directly.
+
+## Mental model
 
 | Rule                                               | Why it matters                                                   |
 | -------------------------------------------------- | ---------------------------------------------------------------- |
@@ -16,7 +18,9 @@ title: Source of truth
 | Load matching skills                               | moves intent-specific rules out of the global prompt             |
 | Do not pause mid-task                              | keeps execution aligned with the user's requested stopping point |
 
-## Update path
+## Using it
+
+Update the source and then verify the rendered effect.
 
 | Step          | Command / check                                                 |
 | ------------- | --------------------------------------------------------------- |
@@ -25,7 +29,7 @@ title: Source of truth
 | Apply         | `chezmoi apply`                                                 |
 | Verify effect | check only the rendered content or runtime behavior you changed |
 
-## Do not edit these directly
+## Reference: do not edit these directly
 
 | Target                               | Reason                                              |
 | ------------------------------------ | --------------------------------------------------- |
