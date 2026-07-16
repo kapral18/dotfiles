@@ -176,6 +176,45 @@ class TransitionTableTests(unittest.TestCase):
         self.assertEqual(m["holding"]["reason"], "verify-budget-exhausted")
         self.assertEqual(actions[0]["event"]["kind"], "budget_exhausted")
 
+    def test_review_blockers_spend_the_implement_budget(self) -> None:
+        """Each blockers>0 return to implement counts one shared budget attempt."""
+        m = self._legion("adversarial_review")
+        m, actions = machine.transition(
+            m, {"kind": "stage_result", "stage": "adversarial_review", "verdict": "done", "blockers": ["b1"]}
+        )
+        self.assertEqual(m["stage"], "implement")
+        self.assertEqual(m["implement_attempts"], 1)
+        start = [a for a in actions if a["kind"] == "start_stage"][0]
+        self.assertEqual(start["brief"]["review_blockers"], ["b1"])
+
+    def test_review_budget_exhaustion_parks_instead_of_looping(self) -> None:
+        """Blocker returns are bounded: an exhausted budget parks in holding."""
+        m = self._legion("adversarial_review", implement_attempts=2, max_implement_attempts=3)
+        m, actions = machine.transition(
+            m, {"kind": "stage_result", "stage": "adversarial_review", "verdict": "done", "blockers": ["b1", "b2"]}
+        )
+        self.assertEqual(m["stage"], "holding")
+        self.assertEqual(m["holding"]["reason"], "review-budget-exhausted")
+        self.assertEqual(m["holding"]["resume_stage"], "implement")
+        self.assertEqual(actions[0]["event"]["kind"], "budget_exhausted")
+        self.assertEqual(actions[0]["event"]["blockers"], ["b1", "b2"])
+        self.assertEqual(machine.attention_event(m), actions[0]["event"])
+
+    def test_mixed_verify_and_review_returns_share_one_budget(self) -> None:
+        """Two review returns plus one verify failure exhaust a budget of 3."""
+        m = self._legion("adversarial_review", max_implement_attempts=3)
+        blockers_event = {"kind": "stage_result", "stage": "adversarial_review", "verdict": "done", "blockers": ["b"]}
+        m, _ = machine.transition(m, blockers_event)
+        self.assertEqual((m["stage"], m["implement_attempts"]), ("implement", 1))
+        m["stage"] = "adversarial_review"
+        m, _ = machine.transition(m, blockers_event)
+        self.assertEqual((m["stage"], m["implement_attempts"]), ("implement", 2))
+        m["stage"] = "verify"
+        m["review_blockers"] = []
+        m, _ = machine.transition(m, {"kind": "criteria_report", "green": False, "failures": []})
+        self.assertEqual(m["stage"], "holding")
+        self.assertEqual(m["holding"]["reason"], "verify-budget-exhausted")
+
     def test_question_parks_and_answer_resumes(self) -> None:
         m = self._legion("implement")
         m, _ = machine.transition(m, {"kind": "question", "role": "implement", "text": "which db?"})
@@ -218,6 +257,31 @@ class TransitionTableTests(unittest.TestCase):
         self.assertIsNone(machine.attention_event(self._legion("implement")))
         self.assertEqual(machine.attention(self._legion("banished")), "orphan")
         self.assertIsNone(machine.attention(self._legion("banished", teardown_status="complete")))
+
+    def test_attention_flags_erroring_transport_on_inflight_legions(self) -> None:
+        """A dead coordinator transport is human-visible, not a silent retry loop."""
+        erroring = {"status": "error", "last_error": "no tmux server"}
+        m = self._legion("implement", coordinator_transport=erroring)
+        self.assertEqual(machine.attention(m), "transport")
+        # Parked/cleared/terminal states keep their own flag.
+        self.assertEqual(machine.attention(self._legion("holding", coordinator_transport=erroring)), "holding")
+        self.assertEqual(
+            machine.attention(self._legion("banished", teardown_status="complete", coordinator_transport=erroring)),
+            None,
+        )
+        self.assertIsNone(machine.attention(self._legion("implement", coordinator_transport={"status": "ready"})))
+
+    def test_attention_flags_unrouted_memory_packet_until_marked_routed(self) -> None:
+        """A closed legion with a persisted, unrouted packet stays visible."""
+        closed = self._legion("banished", teardown_status="complete", memory_packet_written=True)
+        self.assertEqual(machine.attention(closed), "unrouted")
+        self.assertEqual(machine.summarize(closed)["attention"], "unrouted")
+        routed = dict(closed, memory_packet_routed=True)
+        self.assertIsNone(machine.attention(routed))
+        self.assertTrue(machine.summarize(routed)["memory_packet_routed"])
+        # An incomplete teardown outranks the unrouted flag.
+        orphan = dict(closed, teardown_status="failed")
+        self.assertEqual(machine.attention(orphan), "orphan")
 
     def test_stage_result_for_wrong_stage_refuses(self) -> None:
         m = self._legion("implement")
@@ -350,6 +414,26 @@ class LegionStateTests(unittest.TestCase):
             self.assertEqual(new_manifest["stage"], "implement")
             self.assertEqual(state.load(manifest["id"])["stage"], "implement")
 
+    def test_mark_routed_requires_a_closed_legion_with_a_packet(self) -> None:
+        """mark-routed flips memory_packet_routed only on a banished legion with a persisted packet."""
+        with tempfile.TemporaryDirectory() as tmp:
+            state = make_state(tmp)
+            manifest = summon(state)
+            env = {**os.environ, "PALANTIR_STATE_HOME": tmp}
+            argv = ["python3", str(LIB / "legion_state.py"), "mark-routed", manifest["id"]]
+            proc = subprocess.run(argv, env=env, capture_output=True, text=True)
+            self.assertEqual(proc.returncode, 1)
+            self.assertIn("not closed", proc.stderr)
+            state.save({**state.load(manifest["id"]), "stage": "banished"})
+            proc = subprocess.run(argv, env=env, capture_output=True, text=True)
+            self.assertEqual(proc.returncode, 1)
+            self.assertIn("no persisted memory packet", proc.stderr)
+            state.save({**state.load(manifest["id"]), "memory_packet_written": True, "teardown_status": "complete"})
+            proc = subprocess.run(argv, env=env, capture_output=True, text=True)
+            self.assertEqual(proc.returncode, 0)
+            self.assertTrue(state.load(manifest["id"])["memory_packet_routed"])
+            self.assertIsNone(machine.attention(state.load(manifest["id"])))
+
     def test_corrupt_manifest_reports_not_widens(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             state = make_state(tmp)
@@ -402,6 +486,20 @@ class VerifyRunnerTests(unittest.TestCase):
             self.assertEqual(manifest["criteria"][0]["status"], "green")
             self.assertEqual(manifest["criteria"][1]["status"], "red")
             self.assertNotIn("status", manifest["criteria"][2])
+
+    def test_run_criteria_times_out_hanging_checks_as_red(self) -> None:
+        """A hanging criterion check is bounded and reported red, never waited on forever."""
+        with tempfile.TemporaryDirectory() as wt:
+            manifest = {
+                "worktree": wt,
+                "criteria": [{"text": "hangs", "check": "sleep 60"}],
+            }
+            with mock.patch.object(supervisor, "CHECK_TIMEOUT_SECS", 0.2):
+                report = supervisor.run_criteria(manifest)
+            self.assertFalse(report["green"])
+            self.assertEqual(report["failures"][0]["exit"], 124)
+            self.assertIn("timed out", report["failures"][0]["output"])
+            self.assertEqual(manifest["criteria"][0]["status"], "red")
 
     def test_verify_pass_feeds_machine_and_returns_implement(self) -> None:
         """End-to-end: red check -> criteria_report -> implement return action."""
@@ -717,6 +815,23 @@ class SupervisorLoopTests(unittest.TestCase):
             self.assertEqual(loaded["pending_wakes"], [])
 
 
+class GovernanceContractTests(unittest.TestCase):
+    def test_regular_chat_sessions_work_normally_and_palantir_is_strictly_opt_in(self) -> None:
+        sop = (REPO / "home/readonly_AGENTS.md").read_text()
+        skill = (REPO / "home/exact_dot_agents/exact_skills/exact_k-palantir/readonly_SKILL.md").read_text()
+        opt_in = (
+            "MUST NOT propose, summon, or hand work to a legion unless the user "
+            "explicitly asks to use Palantír in the current conversation"
+        )
+        self.assertIn(opt_in, sop)
+        self.assertIn(opt_in, skill)
+        self.assertIn("Task size, complexity, duration, or convenience never count as that request.", sop)
+        self.assertNotIn("The chat agent is read-only over projects", sop)
+        frontmatter = skill.split("---", 2)[1]
+        self.assertIn("Use only when the user explicitly asks to use Palantír", frontmatter)
+        self.assertNotIn("disable-model-invocation", frontmatter)
+
+
 class PaneContractTests(unittest.TestCase):
     def test_public_cli_uses_lore_heavy_actions_without_legacy_aliases(self) -> None:
         help_result = subprocess.run(
@@ -763,7 +878,9 @@ class PaneContractTests(unittest.TestCase):
     def test_grant_preflights_then_tears_down_legion(self) -> None:
         source = (LIB / "main.sh").read_text()
         self.assertIn('bash "$SCRIPT_DIR/banish.sh" "$legion_id" --preflight', source)
-        self.assertIn('exec bash "$SCRIPT_DIR/banish.sh" "$legion_id" --teardown-only', source)
+        self.assertIn('bash "$SCRIPT_DIR/banish.sh" "$legion_id" --teardown-only', source)
+        # Grant ends with the memory-routing reminder so the packet is never silently dropped.
+        self.assertIn(",palantir routed $legion_id", source)
 
     def test_shared_no_worktree_legion_does_not_require_clean_repo_for_teardown(self) -> None:
         with tempfile.TemporaryDirectory() as repo, tempfile.TemporaryDirectory() as state_home:
@@ -1098,6 +1215,27 @@ class PaneContractTests(unittest.TestCase):
         self.assertIn("-l", calls[1])  # literal: tmux never interprets the text
         self.assertEqual(calls[2][-1], "Enter")
 
+    def test_inject_when_idle_requires_two_consecutive_empty_verdicts(self) -> None:
+        """A pane that starts rendering between classify and send blocks the inject."""
+        calls = []
+
+        def fake_tmux(*args):
+            calls.append(args)
+            if args[0] == "list-panes":
+                return subprocess.CompletedProcess(args, 0, "%7\n", "")
+            return subprocess.CompletedProcess(args, 0, "", "")
+
+        with (
+            mock.patch.object(panes, "CONFIRM_DELAY_SECS", 0),
+            mock.patch.object(panes, "pane_verdict", side_effect=["empty", "busy", "empty", "empty"]) as verdict,
+            mock.patch.object(composer, "run_tmux", side_effect=fake_tmux),
+        ):
+            ok = panes.inject_when_idle("s", "w", "text", wait_secs=5, interval=0.01)
+        self.assertTrue(ok)
+        self.assertEqual(verdict.call_count, 4)
+        sends = [c for c in calls if c[0] == "send-keys"]
+        self.assertEqual(len(sends), 2)  # one literal payload + one Enter, after the re-check
+
 
 class ConfigTests(unittest.TestCase):
     def test_defaults_resolve_to_diverse_roles(self) -> None:
@@ -1306,6 +1444,16 @@ class StatuslineTests(unittest.TestCase):
         ]
         with mock.patch.object(legion_state.LegionState, "summaries", return_value=rows):
             self.assertEqual(statusline.fragment(), "O:2")
+
+    def test_fragment_surfaces_transport_errors_and_unrouted_packets(self) -> None:
+        import statusline
+
+        rows = [
+            {"stage": "implement", "attention": "transport"},
+            {"stage": "banished", "teardown_status": "complete", "attention": "unrouted"},
+        ]
+        with mock.patch.object(legion_state.LegionState, "summaries", return_value=rows):
+            self.assertEqual(statusline.fragment(), "P:1 T:1 U:1")
 
 
 class DashboardSurfaceTests(unittest.TestCase):

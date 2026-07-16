@@ -38,7 +38,7 @@ For non-trivial review decisions (accepting a suggestion, pushing back, or propo
 
 Skill support:
 
-Review modes live under `~/.agents/skills/review/references/`:
+Review modes live under `~/.agents/skills/k-review/references/`:
 
 | File               | Owns                                                                                                                                                                                      |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

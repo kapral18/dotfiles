@@ -29,6 +29,17 @@ def read_payload() -> dict[str, Any]:
 
 
 def emit(data: dict[str, Any]) -> None:
+    """Print the hook result, honoring the adapter's declared output shape.
+
+    Cursor ingests the top-level `additional_context` key and ignores
+    `hookSpecificOutput`; Claude-style consumers read `hookSpecificOutput`.
+    Codex strictly validates the result and rejects unknown top-level keys
+    (verified against codex 0.144.4: emitting `additional_context` fails the
+    hook), so its adapter sets `AGENT_HOOK_OUTPUT=hook_specific` to keep only
+    the `hookSpecificOutput` channel.
+    """
+    if os.environ.get("AGENT_HOOK_OUTPUT") == "hook_specific" and "hookSpecificOutput" in data:
+        data = {"hookSpecificOutput": data["hookSpecificOutput"]}
     print(json.dumps(data, sort_keys=True))
 
 

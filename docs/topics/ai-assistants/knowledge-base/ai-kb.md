@@ -15,20 +15,23 @@ title: AI knowledge base
 | Capsules       | `~/.local/share/ai-kb/capsules/<id>.md`                                                                           |
 | SQLite mirror  | `~/.local/share/ai-kb/kb.sqlite3`                                                                                 |
 
-Capsule markdown is canonical for authored capsule content/identity metadata. Mutable curation/runtime state (`superseded_by`, `decay_score`, embeddings, `updated_at`) lives in SQLite. When `CAPSULE_COLUMNS` drifts, `init()` transactionally rebuilds `capsules` from sidecars and overlays recoverable SQL-only state from the pre-drop table; when only `capsule_fts` / `kb_meta` drift, it rebuilds those derived tables from the current `capsules` rows. If a sidecar is malformed, rebuild fails closed before mutation instead of silently returning an empty KB.
+Capsule markdown is canonical for authored capsule content/identity metadata. Mutable curation/runtime state (`superseded_by`, `decay_score`, `retrieved_at`/`retrieval_count`, embeddings, `updated_at`) lives in SQLite. When `CAPSULE_COLUMNS` drifts, `init()` transactionally rebuilds `capsules` from sidecars and overlays recoverable SQL-only state from the pre-drop table; when only `capsule_fts` / `kb_meta` drift, it rebuilds those derived tables from the current `capsules` rows. If a sidecar is malformed, rebuild fails closed before mutation instead of silently returning an empty KB.
+
+Write-time dedup: `remember` refuses an exact (case-insensitive) title collision with a live capsule, and a same-kind embedding cosine ≥ 0.95, naming the existing capsule id. Pass `--supersedes <that-id>` to retire it, or `--force` for a genuine false positive. Degraded metadata (out-of-range `--confidence`, defaulted `--source`, missing `--domain`) prints a warning instead of being silently stored.
 
 Capsule shape:
 
-| Field                                   | Purpose                                                                                                |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `kind`                                  | `fact` / `gotcha` / `pattern` / `anti_pattern` / `recipe` / `principle` / `doc`                        |
-| `scope`                                 | `workspace` / `project` / `domain` / `universal` (controls reuse across runs and projects)             |
-| `tags` / `domain_tags`                  | Free-form (TUI badges) and structured taxonomy (e.g. `auth`, `tmux`, `rust`)                           |
-| `confidence` / `verified_by`            | Float 0-1 + role/run that verified it; reflectors and reviewers raise these                            |
-| `supersedes` / `superseded_by`          | Bidirectional links built by `,ai-kb curate dedupe`; superseded capsules drop out of search            |
-| `refs`                                  | Run / iteration / role / file refs so a hit can jump back to its origin                                |
-| `embedding` / `embedding_model` / `dim` | Packed `float32` vector + provenance; populated via [`scripts/embed.py`](../../../../scripts/embed.py) |
-| `decay_score`                           | Incremented by `,ai-kb curate decay` for capsules nobody retrieves; surfaces stale memory              |
+| Field                                   | Purpose                                                                                                        |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `kind`                                  | `fact` / `gotcha` / `pattern` / `anti_pattern` / `recipe` / `principle` / `doc`                                |
+| `scope`                                 | `workspace` / `project` / `domain` / `universal` (controls reuse across runs and projects)                     |
+| `tags` / `domain_tags`                  | Free-form (TUI badges) and structured taxonomy (e.g. `auth`, `tmux`, `rust`)                                   |
+| `confidence` / `verified_by`            | Float 0-1 + role/run that verified it; reflectors and reviewers raise these                                    |
+| `supersedes` / `superseded_by`          | Bidirectional links built by `,ai-kb curate dedupe`; superseded capsules drop out of search                    |
+| `refs`                                  | Run / iteration / role / file refs so a hit can jump back to its origin                                        |
+| `embedding` / `embedding_model` / `dim` | Packed `float32` vector + provenance; populated via [`scripts/embed.py`](../../../../scripts/embed.py)         |
+| `decay_score`                           | Incremented by `,ai-kb curate decay` for dormant capsules; any retrieval clears it, so live memory never sinks |
+| `retrieved_at` / `retrieval_count`      | SQLite-only usage state stamped by every `search` hit; shields a capsule from decay for 14 days                |
 
 Retrieval is hybrid by default:
 
@@ -79,7 +82,7 @@ Curation also goes through `vec_runner`: KNN shortlist plus per-pair cosine repl
 
 Memory flow during a Palantír legion:
 
-1. Coordinator and role panes are ordinary governed harness sessions, so they can use the `ai-kb` skill for explicit searches before non-trivial work.
+1. Coordinator and role panes are ordinary governed harness sessions, so they can use the `k-ai-kb` skill for explicit searches before non-trivial work.
 2. Role panes can call the KB on demand from inside their pane, for example `,ai-kb search "<q>" --kind gotcha --json`.
 3. On close, durable reusable findings route to `,ai-kb remember` with deliberate metadata; task-scoped notes stay in `/tmp/specs`; repo-intrinsic conventions belong in the target repo's `AGENTS.md` through the legion worktree.
 
@@ -88,20 +91,23 @@ CLI surface:
 ```bash
 # Metadata is not optional decoration — every field drives retrieval/curation.
 # Full write contract (field selection, --source/--confidence discipline, body
-# structure, supersede limitation): ~/.agents/skills/ai-kb/SKILL.md.
+# structure, supersede limitation): ~/.agents/skills/k-ai-kb/SKILL.md.
 ,ai-kb remember --title "chezmoi: generated state must stay out of git" \
                 --body "Keep generated state out of git; verified in scripts/foo.py:42." \
                 --kind principle --scope project --workspace "$(pwd)" \
                 --source "scripts/foo.py:42" --confidence 0.9 --domain chezmoi --tags lint
 ,ai-kb search "tmux capture-pane reuse"           # hybrid (lexical + vector)
 ,ai-kb search --kind gotcha --scope project --json
+,ai-kb search --workspace "$(pwd)" --workspace-gate "query"
+                                                   # hard-filter to workspace-local or domain/universal capsules
+                                                   # (the gate automatic hook/extension recall relies on)
 ,ai-kb remember --title "..." --body "..." --supersedes <old-id> --confidence 0.9
                                                    # retire a stale capsule (links both ways; --supersedes is validated)
 ,ai-kb get <capsule-id>                            # full body + metadata
 ,ai-kb ingest ./AGENTS.md ./docs                   # chunk markdown into kind=doc capsules; idempotent on sha256
 ,ai-kb reembed                                     # rebuild missing/stale embeddings
 ,ai-kb curate dedupe                               # mark near-duplicates as superseded
-,ai-kb curate decay                                # bump decay_score on dormant capsules
+,ai-kb curate decay                                # bump decay_score on dormant capsules (skips any retrieved in the last 14 days)
 ,ai-kb curate contradiction                       # flag suspicious gotcha vs fact pairs
 ,ai-kb harvest --session-id <id>                   # surface candidates from this session's bound topic (read-only)
 ,ai-kb harvest --worklog PATH --json               # explicit worklog + machine-readable candidates
@@ -118,13 +124,16 @@ Use one of:
 
 ## Worklog harvest
 
-`,ai-kb harvest` mines a topic worklog written by the agent hooks (`/tmp/specs/<workspace-without-leading-slash>/<topic>.worklog.jsonl`, see [hook memory](hook-memory.md)) and surfaces durable-memory candidates through three deterministic, stdlib-only detectors:
+`,ai-kb harvest` mines a topic worklog written by the agent hooks (`/tmp/specs/<workspace-without-leading-slash>/<topic>.worklog.jsonl`, see [hook memory](hook-memory.md)) and surfaces durable-memory candidates through four deterministic, stdlib-only detectors:
 
-| Detector           | Signal                                                                      | Suggested kind |
-| ------------------ | --------------------------------------------------------------------------- | -------------- |
-| `failure_to_fix`   | A failing command later followed by a clean run of the same program         | `gotcha`       |
-| `recurring_error`  | The same digit-normalized error signature seen `--min-repeats`+ times       | `gotcha`       |
-| `repeated_command` | The same clean command run `--min-repeats`+ times (noise programs excluded) | `recipe`       |
+| Detector           | Signal                                                                                           | Suggested kind                                                  |
+| ------------------ | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| `structured_note`  | A deliberate `,agent-memory note` event (one occurrence suffices; `question` notes are excluded) | The note's own kind — notes share the capsule taxonomy verbatim |
+| `failure_to_fix`   | A failing command later followed by a clean run of the same program                              | `gotcha`                                                        |
+| `recurring_error`  | The same digit-normalized error signature seen `--min-repeats`+ times                            | `gotcha`                                                        |
+| `repeated_command` | The same clean command run `--min-repeats`+ times (noise programs excluded)                      | `recipe`                                                        |
+
+The command lenses can only see shell activity, so they are structurally biased toward failures; `structured_note` is the deliberate capture surface for the decisions, ideas, and constraints that leave no failing command behind. Note kinds are the capsule kinds (minus `doc`) plus task-scoped `question`, so harvested candidates keep their kind verbatim.
 
 Before reading candidates, harvest flushes the bounded session-keyed worklog queue for the target spec directory. It exits nonzero when a queue record remains pending or an active error ledger exists, so asynchronous bookkeeping cannot be mistaken for a complete harvest.
 

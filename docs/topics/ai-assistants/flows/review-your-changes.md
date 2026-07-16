@@ -19,7 +19,7 @@ The agent walks your diff against the full coverage checklist (security, correct
 
 It will refuse and point up a rung when the target is a PR, someone else's code, or risky/stateful territory — that's the built-in escalation, not an error.
 
-## Rung 2 — full `review`: PRs, others' code, risky changes
+## Rung 2 — full `k-review`: PRs, others' code, risky changes
 
 ```text
 review PR #4321
@@ -47,6 +47,6 @@ Use it when the change is risky enough to fund five readers; it costs accordingl
 
 ## Pivots from here
 
-- Review found an architectural smell → hand it to `codebase-design` ("design a better seam for this").
+- Review found an architectural smell → hand it to `k-codebase-design` ("design a better seam for this").
 - Review found a bug worth its own work → `draft an issue from finding 2`.
 - A finding needs a live browser check → the agent does this itself in rungs 2–3; in rung 1 just ask `verify this in the browser`.

@@ -58,11 +58,11 @@ CENSUS: list[Claim] = [
     Claim(
         name="total effective git files",
         globs=None,
-        claimed=1272,
+        claimed=1275,
         anchors=[
-            ("README.md", "1272 files in the effective git file set"),
-            ("00-overview.mmd", "1272 files in the effective git file set"),
-            ("00-overview.mmd", "file census (1272 total)"),
+            ("README.md", "1275 files in the effective git file set"),
+            ("00-overview.mmd", "1275 files in the effective git file set"),
+            ("00-overview.mmd", "file census (1275 total)"),
         ],
     ),
     Claim(
@@ -74,8 +74,8 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/.chezmoiscripts/",
         globs=["home/.chezmoiscripts/*"],
-        claimed=29,
-        anchors=[("01-chezmoi-pipeline.mmd", ".chezmoiscripts/ (29)")],
+        claimed=28,
+        anchors=[("01-chezmoi-pipeline.mmd", ".chezmoiscripts/ (28)")],
     ),
     Claim(
         name="home/dot_config/exact_tmux/",
@@ -132,29 +132,29 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/exact_lib/",
         globs=["home/exact_lib/*"],
-        claimed=65,
+        claimed=66,
         anchors=[
-            ("07c-bin-commands.mmd", "home/exact_lib/ (65 command/shared library files)"),
-            ("README.md", "`home/exact_lib/` (65 command/shared library files)"),
+            ("07c-bin-commands.mmd", "home/exact_lib/ (66 command/shared library files)"),
+            ("README.md", "`home/exact_lib/` (66 command/shared library files)"),
         ],
     ),
     Claim(
         name="home/exact_dot_agents/",
         globs=["home/exact_dot_agents/*"],
-        claimed=106,
+        claimed=108,
         anchors=[
-            ("03b-agent-skills-hooks.mmd", "exact_dot_agents/ (106)"),
-            ("00-overview.mmd", "agents 106"),
+            ("03b-agent-skills-hooks.mmd", "exact_dot_agents/ (108)"),
+            ("00-overview.mmd", "agents 108"),
         ],
     ),
     Claim(
         name="scripts/",
         globs=["scripts/*"],
-        claimed=92,
+        claimed=93,
         anchors=[
-            ("11-scripts-helpers.mmd", "scripts/ (92)"),
+            ("11-scripts-helpers.mmd", "scripts/ (93)"),
             ("README.md", "`scripts/` (92)"),
-            ("00-overview.mmd", "scripts 92"),
+            ("00-overview.mmd", "scripts 93"),
         ],
     ),
     Claim(

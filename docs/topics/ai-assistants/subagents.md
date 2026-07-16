@@ -17,7 +17,7 @@ Subagents run a self-contained task in an isolated child context window and retu
 
 Every custom subagent profile is a chezmoi template that renders the shared tmux `prefix.txt` preamble before role instructions, so child contexts start with the same verification discipline as parent sessions.
 
-The role body itself is single-sourced. Each per-tool profile is a thin shim: per-tool frontmatter (model, tools, sandbox) + the `prefix.txt` preamble + `Load and follow ~/.agents/skills/agent-review/references/<role>.md`. The delegated-subagent contract for every role (`reviewer-worker`, `fresh-eyes`, `adversarial-verifier`, `pr-necessity-auditor`, `findings-auditor`, `live-ui-review`, `post-review`, `change-auditor`, `researcher`, `code-searcher`) lives once under `agent-review/references/`, which in turn loads the owning skill (`review`, `light-review`, `research`, `semantic-code-search`) — except `fresh-eyes`, the blind clarity lane, which deliberately loads no skill and launches through a generic task (only Pi carries a thin `fresh-eyes` profile, because Pi launches subagents solely through named profiles). Only genuinely harness-specific notes (e.g. "Claude subagents cannot spawn subagents") stay inline. Cursor and Copilot are the canonical shim shape; the other harnesses follow it. Not every harness ships every profile: Cursor, Copilot, and Claude carry an `agent-review` controller and Pi carries `review-controller`, while Codex and Gemini ship only worker/verifier/auditor lanes — on those, the controller role stays in the interactive session. The `/build` flow's `criteria-verifier` profile follows the same shim pattern with its contract under `build/references/criteria-verifier.md`, using the same `agent_review_models` verifier model; Claude carries no profile for it (same convention as `adversarial-verifier` — the lane runs degraded on the session model there).
+The role body itself is single-sourced. Each per-tool profile is a thin shim: per-tool frontmatter (model, tools, sandbox) + the `prefix.txt` preamble + `Load and follow ~/.agents/skills/k-agent-review/references/<role>.md`. The delegated-subagent contract for every role (`reviewer-worker`, `fresh-eyes`, `adversarial-verifier`, `pr-necessity-auditor`, `findings-auditor`, `live-ui-review`, `post-review`, `change-auditor`, `researcher`, `code-searcher`) lives once under `k-agent-review/references/`, which in turn loads the owning skill (`k-review`, `k-light-review`, `k-research`, `k-semantic-code-search`) — except `fresh-eyes`, the blind clarity lane, which deliberately loads no skill and launches through a generic task (only Pi carries a thin `fresh-eyes` profile, because Pi launches subagents solely through named profiles). Only genuinely harness-specific notes (e.g. "Claude subagents cannot spawn subagents") stay inline. Cursor and Copilot are the canonical shim shape; the other harnesses follow it. Not every harness ships every profile: Cursor, Copilot, and Claude carry an `k-agent-review` controller and Pi carries `review-controller`, while Codex and Gemini ship only worker/verifier/auditor lanes — on those, the controller role stays in the interactive session. The `/build` flow's `criteria-verifier` profile follows the same shim pattern with its contract under `k-build/references/criteria-verifier.md`, using the same `agent_review_models` verifier model; Claude carries no profile for it (same convention as `adversarial-verifier` — the lane runs degraded on the session model there).
 
 ## Runtime discovery
 
@@ -46,24 +46,24 @@ Runtime probes confirmed project custom-agent invocation in Cursor and Copilot, 
 
 ## Agent suite
 
-The "Loads contract" column is the `agent-review/references/<role>.md` file the profile delegates to; that contract loads the owning skill in turn.
+The "Loads contract" column is the `k-agent-review/references/<role>.md` file the profile delegates to; that contract loads the owning skill in turn.
 
-| Agent                                     | Loads contract                       | Work it owns                                                                            |
-| ----------------------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------- |
-| `agent-review`                            | `agent-review/SKILL`                 | Controller: route, PR-necessity gate, fan-out, live UI, audit, act                      |
-| `review-controller` (Pi)                  | `review/SKILL`                       | Pi controller for PR gates, reviews, audits, fixes/drafts/verdict                       |
-| `review-worker`                           | `reviewer-worker`                    | Registry-model angle lane (Cursor/Copilot/Codex/Gemini)                                 |
-| `reviewer`                                | `reviewer-worker`                    | Pi/Claude read-only angle lane (registry: default/inherit)                              |
-| `fresh-eyes` (Pi only; generic elsewhere) | `fresh-eyes`                         | Blind zero-context clarity lane                                                         |
-| `adversarial-verifier`                    | `adversarial-verifier`               | Cross-family refutation over merged candidates                                          |
-| `pr-necessity-auditor`                    | `pr-necessity-auditor`               | Blocking PR necessity / intent gate                                                     |
-| `findings-auditor`                        | `findings-auditor`                   | Non-trivial findings or named fix-diff audit                                            |
-| `live-ui-review`                          | `live-ui-review`                     | Verification-only live UI reviewer; screenshot handoff required for feedback candidates |
-| `post-review`                             | `post-review`                        | Four-dimension hygiene audit of a review's fix diff                                     |
-| `criteria-verifier`                       | `build/references/criteria-verifier` | `/build` refutation lane over the criteria ledger + scope audit                         |
-| `change-auditor`                          | `change-auditor`                     | Proportional-depth audit of a self-authored changeset                                   |
-| `researcher`                              | `researcher`                         | Clone and inspect external GitHub source                                                |
-| `code-searcher`                           | `code-searcher`                      | SCSI semantic investigation / base-branch context                                       |
+| Agent                                     | Loads contract                         | Work it owns                                                                            |
+| ----------------------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------- |
+| `k-agent-review`                          | `k-agent-review/SKILL`                 | Controller: route, PR-necessity gate, fan-out, live UI, audit, act                      |
+| `review-controller` (Pi)                  | `k-review/SKILL`                       | Pi controller for PR gates, reviews, audits, fixes/drafts/verdict                       |
+| `review-worker`                           | `reviewer-worker`                      | Registry-model angle lane (Cursor/Copilot/Codex/Gemini)                                 |
+| `reviewer`                                | `reviewer-worker`                      | Pi/Claude read-only angle lane (registry: default/inherit)                              |
+| `fresh-eyes` (Pi only; generic elsewhere) | `fresh-eyes`                           | Blind zero-context clarity lane                                                         |
+| `adversarial-verifier`                    | `adversarial-verifier`                 | Cross-family refutation over merged candidates                                          |
+| `pr-necessity-auditor`                    | `pr-necessity-auditor`                 | Blocking PR necessity / intent gate                                                     |
+| `findings-auditor`                        | `findings-auditor`                     | Non-trivial findings or named fix-diff audit                                            |
+| `live-ui-review`                          | `live-ui-review`                       | Verification-only live UI reviewer; screenshot handoff required for feedback candidates |
+| `post-review`                             | `post-review`                          | Four-dimension hygiene audit of a review's fix diff                                     |
+| `criteria-verifier`                       | `k-build/references/criteria-verifier` | `/build` refutation lane over the criteria ledger + scope audit                         |
+| `change-auditor`                          | `change-auditor`                       | Proportional-depth audit of a self-authored changeset                                   |
+| `researcher`                              | `researcher`                           | Clone and inspect external GitHub source                                                |
+| `code-searcher`                           | `code-searcher`                        | SCSI semantic investigation / base-branch context                                       |
 
 ## Review hierarchy
 
@@ -83,7 +83,7 @@ The phase order these profiles serve (necessity gate → angle fan-out → adver
 ## Design notes
 
 - Profile bodies start with `prefix.txt`, then instruct the child to load the wrapped skill or runtime contract.
-- Cursor/Copilot `agent-review` profiles load only the `/agent-review` skill; reviewer/auditor/live profiles load the runtime contracts, and reviewer workers load shared `review` methodology inside child contexts.
+- Cursor/Copilot `k-agent-review` profiles load only the `/agent-review` skill; reviewer/auditor/live profiles load the runtime contracts, and reviewer workers load shared `k-review` methodology inside child contexts.
 - Cursor profiles are real runtime shims, not dead files: Cursor loads `.cursor/agents`, and its internal Task protocol has a custom subagent-name field. Whether the controller can address those profiles depends on the active model-facing Task schema.
 - Profiles stay generic. Domain-specific targets or rules are selected by the controller from a verified domain overlay and passed to workers as concrete packets.
 - Hard runtime read-only flags are not the review safety boundary. Review/audit profile shims keep shell-capable permissions so workers can run safe verification commands; the shared role contracts enforce behavior-level read-only/no-mutation.

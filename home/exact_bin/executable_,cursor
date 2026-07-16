@@ -7,12 +7,10 @@
 # started against a stale cache silently loses those MCP servers until you notice
 # and re-authenticate from inside cursor.
 #
-# This wrapper closes that gap by refreshing BEFORE launch: for every OAuth HTTP
-# server declared in ~/.cursor/mcp.json it runs `,mcp-token <server> --login`
-# (a no-op when the cached token is still valid; opens cursor's browser flow only
-# when actually stale), then execs the real cursor-agent so the just-refreshed
-# tokens are read at connect time. Unlike ,copilot, no config re-bake is needed:
-# cursor-agent reads its own cache directly, so refreshing that cache is enough.
+# This wrapper closes that gap by validating before launch. Critically short,
+# expired, or revoked tokens refresh synchronously; proactive rotation stays off
+# the launch path because cursor-agent owns the cache and can refresh a
+# still-valid token itself. Unlike ,copilot, no config re-bake is needed.
 #
 # Refresh is skipped for admin/introspection subcommands (login, logout, mcp,
 # update, help, about, status/whoami, models) and for --help/--version, which do
@@ -107,10 +105,10 @@ PY
   refresh_failures=()
   for server in "${oauth_servers[@]}"; do
     [[ -z "$server" ]] && continue
-    # Refresh cursor's cache if the token is stale (no-op when still valid).
-    # Keep auth helper output quiet so bearer tokens never stream into the
-    # cursor launch transcript.
-    if ! ",mcp-token" "$server" --login --quiet >/dev/null 2>&1; then
+    # Cursor can refresh its own still-valid token after launch. Keep proactive
+    # rotation off this wrapper's critical path, but retain blocking refresh for
+    # critically short, expired, or revoked tokens.
+    if ! ",mcp-token" "$server" --login --quiet --launch-json >/dev/null 2>&1; then
       refresh_failures+=("$server")
     fi
   done

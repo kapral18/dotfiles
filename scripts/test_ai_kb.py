@@ -123,6 +123,7 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
             rows = db.execute(
                 f"""
                 SELECT id, supersedes, superseded_by, decay_score,
+                       retrieved_at, retrieval_count,
                        created_at, updated_at,
                        hex(embedding) AS embedding_hex,
                        embedding_model, embedding_dim
@@ -137,6 +138,8 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 "supersedes": row["supersedes"],
                 "superseded_by": row["superseded_by"],
                 "decay_score": row["decay_score"],
+                "retrieved_at": row["retrieved_at"],
+                "retrieval_count": row["retrieval_count"],
                 "created_at": row["created_at"],
                 "updated_at": row["updated_at"],
                 "embedding_hex": row["embedding_hex"],
@@ -342,12 +345,27 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 hits_before = kb.search("shared-needle", limit=10, mode="bm25")
                 assert loser.id not in [hit["id"] for hit in hits_before], hits_before
 
+                # The search stamps retrieval on the returned capsules and
+                # clears their decay. The simulated stale schema predates the
+                # retrieval columns, so the rebuild preserves the cleared
+                # decay but cannot recover retrieval state (a real v2->v3
+                # migration starts every capsule as never-retrieved).
+                expected = {cid: dict(state) for cid, state in state_before.items()}
+                for hit in hits_before:
+                    hid = hit["id"]
+                    if hid in expected:
+                        expected[hid]["decay_score"] = 0.0
+                retrieved_state = self._capsule_state(kb, old.id, keeper.id, loser.id)
+                for hit in hits_before:
+                    if hit["id"] in retrieved_state:
+                        assert retrieved_state[hit["id"]]["retrieved_at"] is not None
+
                 self._force_capsules_schema_mismatch(kb)
 
                 rebuilt = kb.list(limit=10)
                 assert sorted(c.id for c in rebuilt) == sorted([old.id, keeper.id, loser.id]), rebuilt
                 state_after = self._capsule_state(kb, old.id, keeper.id, loser.id)
-                assert state_after == state_before, (state_before, state_after)
+                assert state_after == expected, (expected, state_after)
 
                 hits_after = kb.search("shared-needle", limit=10, mode="bm25")
                 hit_ids = [hit["id"] for hit in hits_after]
@@ -445,7 +463,16 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 state_after = self._capsule_state(kb, old.id, keeper.id, loser.id)
                 assert rootpage_after == rootpage_before, (rootpage_before, rootpage_after)
                 assert fts_count == 3, fts_count
-                assert state_after == state_before, (state_before, state_after)
+                # Aux repair must not touch capsule rows beyond the search's
+                # own retrieval stamp (decay cleared, retrieval counted).
+                expected = {cid: dict(state) for cid, state in state_before.items()}
+                for hid in hit_ids:
+                    if hid in expected:
+                        expected[hid]["decay_score"] = 0.0
+                        expected[hid]["retrieval_count"] = state_before[hid]["retrieval_count"] + 1
+                        assert state_after[hid]["retrieved_at"] is not None
+                        expected[hid]["retrieved_at"] = state_after[hid]["retrieved_at"]
+                assert state_after == expected, (expected, state_after)
             finally:
                 if saved_disable is None:
                     os.environ.pop("AI_KB_DISABLE_EMBED", None)
@@ -841,11 +868,201 @@ class TestKnowledgeBaseHybridRetrieval(unittest.TestCase):
                     title=f"capsule {i}",
                     body=f"Lesson number {i} about legion orchestration.",
                     kind="fact",
+                    # These near-identical bodies intentionally exercise MMR;
+                    # bypass the write-time duplicate probe.
+                    force=True,
                 )
             hits = kb.search("legion orchestration", limit=2, mode="hybrid")
             assert len(hits) == 2
             for h in hits:
                 assert h["mmr_selected"] is True, h
+
+
+class TestKnowledgeBaseWriteDedupe(unittest.TestCase):
+    """Write-time duplicate refusal in remember()."""
+
+    def test_remember_refuses_exact_title_collision_without_force(self):
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            os.environ["AI_KB_DISABLE_EMBED"] = "1"
+            try:
+                kb = ai_kb.KnowledgeBase(home=Path(tmp))
+                first = kb.remember(title="Postgres locks explained", body="Original body.")
+                with self.assertRaisesRegex(ValueError, first.id):
+                    kb.remember(title="postgres locks EXPLAINED", body="Different body.")
+                forced = kb.remember(title="Postgres locks explained", body="Different body.", force=True)
+                assert forced.id != first.id
+            finally:
+                os.environ.pop("AI_KB_DISABLE_EMBED", None)
+
+    def test_remember_refuses_near_duplicate_embedding_without_force(self):
+        import embed
+
+        if not embed.Embedder().is_available():
+            self.skipTest("fastembed runner not available")
+
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            saved = os.environ.pop("AI_KB_DISABLE_EMBED", None)
+            try:
+                kb = ai_kb.KnowledgeBase(home=Path(tmp))
+                first = kb.remember(
+                    title="JWT must be validated",
+                    body="Always validate JWT signature before reading claims.",
+                    kind="gotcha",
+                )
+                with self.assertRaisesRegex(ValueError, first.id):
+                    kb.remember(
+                        title="Validate JWT signatures",
+                        body="Always validate the JWT signature before using any claims.",
+                        kind="gotcha",
+                    )
+                # An explicit supersedes for the colliding capsule is the
+                # sanctioned update path and must not be refused.
+                replacement = kb.remember(
+                    title="Validate JWT signatures",
+                    body="Always validate the JWT signature before using any claims.",
+                    kind="gotcha",
+                    supersedes=first.id,
+                )
+                assert kb.get(first.id).superseded_by == replacement.id
+            finally:
+                if saved is not None:
+                    os.environ["AI_KB_DISABLE_EMBED"] = saved
+
+    def test_superseded_capsules_do_not_block_new_titles(self):
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            os.environ["AI_KB_DISABLE_EMBED"] = "1"
+            try:
+                kb = ai_kb.KnowledgeBase(home=Path(tmp))
+                first = kb.remember(title="Old truth", body="v1")
+                second = kb.remember(title="New truth", body="v2", supersedes=first.id)
+                assert second.supersedes == first.id
+                # first is retired; reusing its title is legitimate.
+                third = kb.remember(title="Old truth", body="v3")
+                assert third.id != first.id
+            finally:
+                os.environ.pop("AI_KB_DISABLE_EMBED", None)
+
+
+class TestKnowledgeBaseWorkspaceGate(unittest.TestCase):
+    """The hard cross-repo leakage gate owned by search()."""
+
+    def _seed(self, kb):
+        local = kb.remember(
+            title="Local workspace note",
+            body="build pipeline quirk",
+            scope="project",
+            workspace_path="/ws/here",
+        )
+        foreign = kb.remember(
+            title="Foreign workspace note",
+            body="build pipeline quirk elsewhere",
+            scope="project",
+            workspace_path="/ws/other",
+            force=True,
+        )
+        universal = kb.remember(
+            title="Universal build note",
+            body="build pipeline quirk everywhere",
+            scope="universal",
+            force=True,
+        )
+        return local, foreign, universal
+
+    def test_gate_keeps_local_and_cross_project_scopes_only(self):
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            os.environ["AI_KB_DISABLE_EMBED"] = "1"
+            try:
+                kb = ai_kb.KnowledgeBase(home=Path(tmp))
+                local, foreign, universal = self._seed(kb)
+                open_ids = {
+                    h["id"] for h in kb.search("build pipeline quirk", limit=10, mode="bm25", workspace="/ws/here")
+                }
+                assert foreign.id in open_ids, open_ids
+                gated = kb.search(
+                    "build pipeline quirk",
+                    limit=10,
+                    mode="bm25",
+                    workspace="/ws/here",
+                    workspace_gate=True,
+                )
+                gated_ids = {h["id"] for h in gated}
+                assert gated_ids == {local.id, universal.id}, gated_ids
+            finally:
+                os.environ.pop("AI_KB_DISABLE_EMBED", None)
+
+    def test_gate_requires_workspace(self):
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            os.environ["AI_KB_DISABLE_EMBED"] = "1"
+            try:
+                kb = ai_kb.KnowledgeBase(home=Path(tmp))
+                with self.assertRaisesRegex(ValueError, "workspace_gate"):
+                    kb.search("anything", workspace_gate=True)
+            finally:
+                os.environ.pop("AI_KB_DISABLE_EMBED", None)
+
+
+class TestKnowledgeBaseRetrievalTracking(unittest.TestCase):
+    """search() stamps retrieval; curate decay only touches dormant capsules."""
+
+    def test_search_stamps_retrieval_and_clears_decay(self):
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            os.environ["AI_KB_DISABLE_EMBED"] = "1"
+            try:
+                kb = ai_kb.KnowledgeBase(home=Path(tmp))
+                hit = kb.remember(title="Retrieved note", body="alpha needle body")
+                miss = kb.remember(title="Dormant note", body="unrelated content entirely", force=True)
+                with kb.connect() as db:
+                    db.execute("UPDATE capsules SET decay_score = 0.5")
+                rows = kb.search("alpha needle", limit=5, mode="bm25")
+                assert [r["id"] for r in rows] == [hit.id], rows
+                with kb.connect() as db:
+                    got = {
+                        r["id"]: r
+                        for r in db.execute(
+                            "SELECT id, retrieved_at, retrieval_count, decay_score FROM capsules"
+                        ).fetchall()
+                    }
+                assert got[hit.id]["retrieval_count"] == 1
+                assert got[hit.id]["retrieved_at"] is not None
+                assert got[hit.id]["decay_score"] == 0.0
+                assert got[miss.id]["retrieval_count"] == 0
+                assert got[miss.id]["retrieved_at"] is None
+                assert abs(got[miss.id]["decay_score"] - 0.5) < 1e-6
+            finally:
+                os.environ.pop("AI_KB_DISABLE_EMBED", None)
+
+    def test_curate_decay_shields_recently_retrieved_capsules(self):
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            os.environ["AI_KB_DISABLE_EMBED"] = "1"
+            try:
+                kb = ai_kb.KnowledgeBase(home=Path(tmp))
+                live = kb.remember(title="Live note", body="alpha needle body")
+                dormant = kb.remember(title="Dormant note", body="unrelated content entirely", force=True)
+                kb.search("alpha needle", limit=5, mode="bm25")
+                summary = kb.curate(decay=True, dedupe=False, contradiction_scan=False, decay_step=0.2)
+                assert summary["decayed"] == 1, summary
+                with kb.connect() as db:
+                    scores = {
+                        r["id"]: r["decay_score"] for r in db.execute("SELECT id, decay_score FROM capsules").fetchall()
+                    }
+                assert scores[live.id] == 0.0, scores
+                assert abs(scores[dormant.id] - 0.2) < 1e-6, scores
+            finally:
+                os.environ.pop("AI_KB_DISABLE_EMBED", None)
 
 
 class TestKnowledgeBaseCurate(unittest.TestCase):
@@ -918,6 +1135,9 @@ class TestKnowledgeBaseCurate(unittest.TestCase):
                     body="Always validate the JWT signature before using any claims.",
                     kind="gotcha",
                     confidence=0.7,
+                    # The near-duplicate is the fixture under test: curate
+                    # dedupe must retire it, so bypass the write-time probe.
+                    force=True,
                 )
                 kb.remember(
                     title="Unrelated note",
@@ -1481,6 +1701,44 @@ class TestWorklogHarvest(unittest.TestCase):
         assert f2f[0]["program"] == "pytest"
         # digit-normalized signature so line numbers collapse
         assert "line <n>" in f2f[0]["signature"]
+
+    def test_detect_structured_notes_keep_the_capsule_kind_verbatim(self):
+        """A single deliberate `,agent-memory note` is a candidate; kinds share the capsule taxonomy and min_repeats never applies."""
+        import ai_kb
+
+        entries = [
+            self._entry(
+                event="note", note_kind="principle", text="keep /tmp/specs primary", refs="scripts/spec_mirror.py"
+            ),
+            self._entry(event="note", note_kind="gotcha", text="hooks must fail open"),
+            self._entry(event="note", note_kind="fact", text="codex spawns hooks without a shell"),
+            self._entry(event="note", note_kind="pattern", text="mirror named topics to XDG state"),
+            self._entry(event="note", note_kind="anti_pattern", text="do not move the spec root wholesale"),
+            self._entry(event="note", note_kind="recipe", text="chezmoi execute-template < x.tmpl verifies rendering"),
+        ]
+        cands = ai_kb.detect_candidates(entries, min_repeats=99)
+        notes = {c["note_kind"]: c for c in cands if c["detector"] == "structured_note"}
+        assert set(notes) == {"principle", "gotcha", "fact", "pattern", "anti_pattern", "recipe"}, cands
+        for kind, candidate in notes.items():
+            assert candidate["kind"] == kind, candidate
+        assert notes["principle"]["title"].startswith("principle: keep /tmp/specs primary")
+        assert "Refs: scripts/spec_mirror.py." in notes["principle"]["body"]
+        assert notes["principle"]["count"] == 1
+
+    def test_question_notes_and_duplicates_are_not_candidates(self):
+        import ai_kb
+
+        entries = [
+            self._entry(event="note", note_kind="question", text="should sessions mirror too?"),
+            self._entry(event="note", note_kind="fact", text="same text"),
+            self._entry(event="note", note_kind="fact", text="same text"),
+            self._entry(event="note", note_kind="doc", text="ingestion-only kind ignored"),
+            self._entry(event="note", note_kind="bogus-kind", text="ignored"),
+            self._entry(event="note", note_kind="fact", text=""),
+        ]
+        cands = [c for c in ai_kb.detect_candidates(entries) if c["detector"] == "structured_note"]
+        assert len(cands) == 1, cands
+        assert cands[0]["title"].startswith("fact: same text"), cands
 
     def test_failure_without_later_fix_yields_no_f2f(self):
         import ai_kb

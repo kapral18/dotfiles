@@ -23,15 +23,15 @@ The AI package set spans casks, Homebrew formulae, yarn globals, uv tools, custo
 
 ## Agent extensions and support packages
 
-| Tool                                                                        | Source                  | Why it is here                                             |
-| --------------------------------------------------------------------------- | ----------------------- | ---------------------------------------------------------- |
-| [`pi-mcp-adapter`](https://github.com/nicobailon/pi-mcp-adapter)            | `yarn`                  | MCP adapter extension loaded by Pi settings                |
-| [`pi-subagents`](https://github.com/nicobailon/pi-subagents)                | `yarn`                  | subagent delegation extension for Pi child contexts        |
-| [`tuicr`](https://github.com/agavra/tuicr)                                  | `brew` tap `agavra/tap` | terminal review UI used around agent diff review flows     |
-| [`llmfit`](https://github.com/AlexsJones/llmfit)                            | `brew`                  | AI/model utility in the local toolbox                      |
-| [`letsfg`](https://github.com/LetsFG/LetsFG)                                | `uv`                    | local flight search CLI exposed through the `letsfg` skill |
-| [`lexy`](https://github.com/antoniorodr/lexy)                               | `uv git+`               | data/RAG pipeline tool used as a local AI utility          |
-| [`terminaltexteffects`](https://github.com/ChrisBuilds/terminaltexteffects) | `uv`                    | terminal text effects for generated/presentation output    |
+| Tool                                                                        | Source                  | Why it is here                                               |
+| --------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------ |
+| [`pi-mcp-adapter`](https://github.com/nicobailon/pi-mcp-adapter)            | `yarn`                  | MCP adapter extension loaded by Pi settings                  |
+| [`pi-subagents`](https://github.com/nicobailon/pi-subagents)                | `yarn`                  | subagent delegation extension for Pi child contexts          |
+| [`tuicr`](https://github.com/agavra/tuicr)                                  | `brew` tap `agavra/tap` | terminal review UI used around agent diff review flows       |
+| [`llmfit`](https://github.com/AlexsJones/llmfit)                            | `brew`                  | AI/model utility in the local toolbox                        |
+| [`k-letsfg`](https://github.com/LetsFG/LetsFG)                              | `uv`                    | local flight search CLI exposed through the `k-letsfg` skill |
+| [`lexy`](https://github.com/antoniorodr/lexy)                               | `uv git+`               | data/RAG pipeline tool used as a local AI utility            |
+| [`terminaltexteffects`](https://github.com/ChrisBuilds/terminaltexteffects) | `uv`                    | terminal text effects for generated/presentation output      |
 
 ## Local inference and model assets
 

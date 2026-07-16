@@ -28,18 +28,21 @@ OpenCode reuses both scripts through [`agent-memory.ts`](../../../../home/dot_co
 
 `duration` and `status` are not exposed by the OpenCode plugin API and are omitted.
 
-Codex has the same wiring in [`home/dot_codex/hooks.json`](../../../../home/dot_codex/hooks.json):
+Codex has the same wiring in [`home/dot_codex/hooks.json.tmpl`](../../../../home/dot_codex/hooks.json.tmpl):
 
-| Codex event    | Script                  |
-| -------------- | ----------------------- |
-| `SessionStart` | `session_context.py`    |
-| `PostToolUse`  | `worklog_dispatcher.sh` |
+| Codex event        | Script                                                         |
+| ------------------ | -------------------------------------------------------------- |
+| `SessionStart`     | `session_context.py` (with `AI_EMBED_WARM=1` via `/bin/sh -c`) |
+| `UserPromptSubmit` | `perturn_recall.py`                                            |
+| `PostToolUse`      | `worklog_dispatcher.sh`                                        |
 
-Payload shapes are Claude-compatible as of codex source tag `rust-v0.139.0`. Hook trust hashes are baked into config templates because the codex merge script regenerates `config.toml` wholesale.
+Payload shapes are Claude-compatible (re-verified against codex 0.144.4: `SessionStart` and `UserPromptSubmit` carry `session_id`, `cwd`, and `prompt`, and `hookSpecificOutput.additionalContext` from `UserPromptSubmit` lands in the transcript as a developer message).
 
-Codex does not request resident-embedder warm-up: it has session-start BM25 retrieval but no per-turn recall adapter. Cursor follows the same split.
+**Codex executes hook commands without a shell**: a literal `$HOME/...` command never expands and the hook fails with `hook: <name> Failed`. The adapter is therefore a chezmoi template that renders absolute paths; env for the session-start warm-up is set through an explicit `/bin/sh -c` wrapper. Codex also strictly validates hook results and rejects unknown top-level keys, so the wrapper sets `AGENT_HOOK_OUTPUT=hook_specific`, which makes the shared `emit()` keep only the `hookSpecificOutput` channel (the top-level `additional_context` key exists for Cursor, which reads nothing else).
 
-**Caveat:** `,codex exec` 0.139.0 was verified to dispatch no hooks, even with `--dangerously-bypass-hook-trust` and `[features] hooks = true`. This wiring is currently inert in exec mode. For interactive TUI sessions, run `/hooks` and verify both hooks are trusted and fire.
+**Trust:** changing `hooks.json` invalidates the `[hooks.state]` trusted hashes that codex appends to `config.toml`. After deploying a hook change, run an interactive codex session and re-trust via `/hooks` (or use `--dangerously-bypass-hook-trust` for one-off exec runs). The earlier claim that `codex exec` dispatches no hooks was re-tested against 0.144.4 and is obsolete: exec dispatches `SessionStart`, `UserPromptSubmit`, and `PostToolUse` once the hooks are trusted or the bypass flag is set.
+
+Cursor keeps the session-start-only split: its `beforeSubmitPrompt` hook output is allow/block only (verified in the installed 2026.07.09 bundle — the result is read as `{continue, user_message}`, with no context-injection channel), so `session_context.py` appends a `### Recall Notice` telling the model to run its own `,ai-kb search` mid-task. The notice keys off the adapter's warm-up signal: any adapter that neither sets `AI_EMBED_WARM=1` nor sends `warm_embedder: true` is treated as having no per-turn recall.
 
 No hook runs on `stop`. Hooks observe and inject context; they do not re-prompt the agent. Two disciplines that earlier lived in `stop` hooks now live in the SOP, enforced by instruction rather than by an auto-submitted follow-up message:
 
@@ -60,12 +63,12 @@ At session start, interactive harnesses inject the verification-discipline prefi
 
 Resident FastEmbed warm-up is independently opt-in; it is not implied by calling `session_context.py`:
 
-| Consumer             | Warm-up path                                                                                |
-| -------------------- | ------------------------------------------------------------------------------------------- |
-| Claude and Gemini    | Session-start command sets `AI_EMBED_WARM=1`                                                |
-| OpenCode and Copilot | Session-start payload sets `warm_embedder: true`                                            |
-| Pi                   | Its TypeScript extension calls `~/lib/,ai-kb/embed_client.py ensure` during `session_start` |
-| Cursor and Codex     | No warm-up because they have no automatic per-turn retrieval path                           |
+| Consumer                  | Warm-up path                                                                                |
+| ------------------------- | ------------------------------------------------------------------------------------------- |
+| Claude, Gemini, and Codex | Session-start command sets `AI_EMBED_WARM=1`                                                |
+| OpenCode and Copilot      | Session-start payload sets `warm_embedder: true`                                            |
+| Pi                        | Its TypeScript extension calls `~/lib/,ai-kb/embed_client.py ensure` during `session_start` |
+| Cursor                    | No warm-up because it has no automatic per-turn retrieval path                              |
 
 `session_context.py` runs a requested `ensure` with a four-second bound and discards failures, except that `AI_AGENT_DEPTH=fast` suppresses warm-up because that profile disables per-turn retrieval. Shared `perturn_recall.py` sets `AI_EMBED_CONNECT_ONLY=1` for its `,ai-kb search`; Pi applies the same environment contract to its hybrid searches. Per-turn code therefore never starts or replaces a worker. The generation-specific worker is served from `~/lib/,ai-kb/`, exits after 300 inactive seconds, and fails open by omitting the recall block if it is absent or invalid. Default/manual CLI, `remember`, and `reembed` calls retain the one-shot `embed_runner.py` path. See [Cross-agent memory](cross-agent-memory.md) for the exact `fast`/`balanced`/`deep` budgets and fixture provenance.
 
@@ -92,7 +95,7 @@ Runtime state is intentionally outside chezmoi and outside worktrees:
 - the same seven-day age gate sweeps stale per-session fallback state after each flush pass: `session-*` fallback worklogs and `.recall-seen-*` dedupe files older than the gate are removed (named-topic worklogs are never candidates);
 - queue-full, invalid-record, spawn, and flush failures remain in bounded error ledgers. Session startup warns, and `,ai-kb harvest` exits nonzero, while the agent-facing tool path remains fail-open.
 
-The worklog is not only startup context — it is harvestable. `,ai-kb harvest --session-id <id>` first flushes all pending session queues, fails visibly if pending/error state remains, then resolves that session's binding through `agent_memory.py`, reads its `<topic>.worklog.jsonl`, and surfaces durable-memory candidates (failing-then-fixed commands, recurring errors, repeated commands) as prefilled `,ai-kb remember` lines. It is a manual, read-only aid that never writes capsules and never re-prompts the agent, so it stays inside the same no-`stop`-hook discipline described above. See [AI knowledge base](ai-kb.md#worklog-harvest).
+The worklog is not only startup context — it is harvestable. `,ai-kb harvest --session-id <id>` first flushes all pending session queues, fails visibly if pending/error state remains, then resolves that session's binding through `agent_memory.py`, reads its `<topic>.worklog.jsonl`, and surfaces durable-memory candidates (structured `,agent-memory note` events, failing-then-fixed commands, recurring errors, repeated commands) as prefilled `,ai-kb remember` lines. It is a manual, read-only aid that never writes capsules and never re-prompts the agent, so it stays inside the same no-`stop`-hook discipline described above. See [AI knowledge base](ai-kb.md#worklog-harvest).
 
 BM25 capsule warm-start and per-turn recall share `.recall-seen-<session-key>.json`, keyed by the canonical payload identity (`conversation_id`, then `session_id`, then `generation_id`). This capsule warm-start is separate from resident embedder warm-up. Pi uses the canonical key returned by `,agent-memory status`, preserving dedupe when its extension reloads or a session resumes.
 
@@ -125,6 +128,7 @@ The user-facing control plane is `,agent-memory`:
 - `,agent-memory status [--session-id <id>]` — show the selected topic, including a session-bound bucket when a session id is given.
 - `,agent-memory select <topic> --session-id <id>` — bind one agent session to an existing topic bucket; pre-bind events from the session's `session-*` fallback worklog are flushed and folded into `<topic>.worklog.jsonl` so the trail is not split.
 - `,agent-memory select <topic> --create --session-id <id>` — seed a new topic bucket and bind only this session to it.
+- `,agent-memory merge <source-topic> <dest-topic> [--dry-run]` — merge a duplicate topic into a named destination. It flushes pending worklog queues first, merges source/dest worklogs by `ts` under the existing 200-line write cap, rewrites session bindings plus `_active_topic.txt`, and deletes the source `.no_context` sentinel instead of propagating it so context is not silently suppressed.
 - `,agent-memory use <topic>` — set the legacy workspace-level pointer used by the CLI control plane; shared-branch session-start context still uses `select` session bindings.
 - `,agent-memory wipe-current [--session-id <id>]` — delete the selected topic's spec, worklog, and no-context sentinel.
 
@@ -136,9 +140,11 @@ Sources:
 - [`scripts/agent_memory.py`](../../../../scripts/agent_memory.py)
 - [`home/dot_config/fish/completions/readonly_,agent-memory.fish`](../../../../home/dot_config/fish/completions/readonly_,agent-memory.fish)
 
-`select` is the normal agent-facing path for session continuity; it writes `.session-topic-<session-id>.txt` and never changes another live session's bucket. `use <topic>` rejects the generic `current` and manages only the workspace-level default/suggestion path. On default branches without an explicit active topic or session binding, `wipe-current` targets the latest `session-*` topic.
+`select` is the normal agent-facing path for session continuity; it writes `.session-topic-<session-id>.txt` and never changes another live session's bucket. `use <topic>` rejects the generic `current` and manages only the workspace-level default/suggestion path. On default branches without an explicit active topic or session binding, `wipe-current` targets the latest `session-*` topic. `note <kind> "<text>" [--ref <anchor>]` records a structured insight into the bound topic's worklog through the crash-safe queue; kinds are the `,ai-kb` capsule kinds (minus `doc`) plus task-scoped `question`, and non-question notes become `,ai-kb harvest` candidates with their kind kept verbatim.
 
-Claude Code mirrors the shared subset through `settings.personal.json` and `settings.work.json`: session context plus depth-controlled resident warm-up, asynchronous tool worklog recording, and depth-controlled per-turn AI-KB recall (`UserPromptSubmit` → `perturn_recall.py`; see [Cross-agent memory](cross-agent-memory.md)). The local llama.cpp settings file is intentionally excluded. Copilot uses `~/.copilot/extensions/agent-memory/extension.mjs` for the same shared scripts — session context (`onSessionStart` → `session_context.py`), per-turn AI-KB recall (`onUserPromptSubmitted` → `perturn_recall.py`), and asynchronous tool worklog dispatch (`onPostToolUse*` → `worklog_dispatcher.sh`) — because JSON command hooks run but do not ingest `SessionStart` context output. Pi applies the same depth profile during `session_start` and `before_agent_start`.
+Named topics also survive reboots: [`scripts/spec_mirror.py`](../../../../scripts/spec_mirror.py) (deployed beside the hooks and `,agent-memory`) mirrors named-topic files and the `_active_topic.txt` pointer to `~/.local/state/agent-specs/` at session start and on `,agent-memory` checkpoints, and restores only missing files when `/tmp/specs` was wiped. `wipe-current` and `merge` forget the mirror copies of removed topics; `current` and `session-*` buckets are never mirrored.
+
+Claude Code mirrors the shared subset through `settings.personal.json` and `settings.work.json`: session context plus depth-controlled resident warm-up, asynchronous tool worklog recording, and depth-controlled per-turn AI-KB recall (`UserPromptSubmit` → `perturn_recall.py`; see [Cross-agent memory](cross-agent-memory.md)). The local llama.cpp settings file is intentionally excluded. Copilot uses `~/.copilot/extensions/agent-memory/extension.mjs` for the same shared scripts — session context (`onSessionStart` → `session_context.py`), per-turn AI-KB recall (`onUserPromptSubmitted` → `perturn_recall.py`), and asynchronous tool worklog dispatch (`onPostToolUse*` → `worklog_dispatcher.sh`) — because JSON command hooks run but do not ingest `SessionStart` context output. Pi applies the same depth profile during `session_start` and `before_agent_start`, and forwards `tool_result` events to `worklog_dispatcher.sh` with the Copilot-shaped `postToolUse*` payload, so pi sessions feed the same `<topic>.worklog.jsonl` trail as the other harnesses.
 
 Verification:
 

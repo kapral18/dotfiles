@@ -57,8 +57,9 @@ mcp_servers:
         # headerAuth becomes Copilot's Authorization header (verified: bearer
         # token -> POST initialize https://semantic-code-search.elastic.dev/mcp
         # -> HTTP 200). NOTE: SCSI tokens expire after ~1h (expires_in=3600),
-        # much sooner than Slack's ~12h, so re-using SCSI in cursor keeps it
-        # fresh; when every cursor cache is stale, use SCSI in cursor once.
+        # much sooner than Slack's ~12h. The launch wrappers capture a
+        # still-valid short token with --launch-json, then rotate proactively
+        # after capture; critical, expired, or revoked tokens still block.
         headerAuth: "$(,mcp-token scsi-main --bearer)"
       codex:
         # Codex can run streamable HTTP MCP natively, but its native OAuth
@@ -113,12 +114,13 @@ mcp_servers:
         # in place. ,mcp-token reads the freshest still-valid token from
         # cursor's per-project caches; headerAuth becomes Copilot's
         # Authorization header (Slack MCP bearer_methods_supported = [header]).
-        # When every cursor cache is stale, re-auth Slack MCP in cursor once.
+        # Launch capture defers proactive rotation, while critical/stale/revoked
+        # tokens still rotate synchronously; cursor's browser flow is last.
         headerAuth: "$(,mcp-token slack --bearer)"
       codex:
         # Codex's native streamable HTTP transport supports bearer_token_env_var
-        # and rejects inline bearer_token secrets. ,codex fills this env var
-        # from cursor's Slack MCP cache via ,mcp-token --login --quiet.
+        # and rejects inline bearer_token secrets. ,codex captures this value
+        # with ,mcp-token --login --quiet --launch-json before deferred rotation.
         bearerTokenEnvVar: "CODEX_MCP_TOKEN_SLACK"
     codex_tool_approval_modes:
       slack_read_canvas: approve

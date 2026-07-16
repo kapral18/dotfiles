@@ -69,7 +69,7 @@ flowchart TD
     TFORK --> WLINK
 
     subgraph PAL["Palantir tmux surface"]
-        PALTMUX["45-palantir.conf: prefix+A popup → ,palantir dashboard<br/>status-right #(,palantir statusline) prints P/H/C + teardown-orphan O + corrupt E"]:::conf
+        PALTMUX["45-palantir.conf: prefix+A popup → ,palantir dashboard<br/>status-right #(,palantir statusline) prints P/H/C + transport T + teardown-orphan O + unrouted-packet U + corrupt E"]:::conf
         PALDASH["dashboard.py (PEP 723 via uv run): Vim-first textual legion overview<br/>catppuccin-frappe theme + semantic stage colors/nerd-glyphs (warning/success/error)<br/>j/k · Ctrl-D/U · g/G · l/Enter; attach via inherited $TMUX exits popup<br/>x toggles successfully closed history; orphan/failed teardown stays visible<br/>stage age + coordinator transport + queued wakes + criteria/teardown health<br/>stage-gated typed confirmation for answer/grant/banish"]:::py
         PALTMUX --> PALDASH
         PALDASH --> PALLIB["~/lib/,palantir/ runtime (see 04, 07c)"]:::data

@@ -35,4 +35,4 @@ The agent records the verdict **with the deciding observation**, deletes the pro
 ## Pivots from here
 
 - The verdict feeds a feature → continue straight into [spec + build](spec-and-build.md); the closed fork is already in the packet.
-- The question turned out architectural (seams, module boundaries) → `codebase-design` picks it up ("design this interface twice and compare").
+- The question turned out architectural (seams, module boundaries) → `k-codebase-design` picks it up ("design this interface twice and compare").

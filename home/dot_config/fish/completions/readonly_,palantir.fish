@@ -1,4 +1,4 @@
-set -l __palantir_subcommands summon farsee behold send-word answer grant banish keep-watch trial statusline doctor composer state dashboard
+set -l __palantir_subcommands summon farsee behold send-word answer grant routed banish keep-watch trial statusline doctor composer state dashboard
 set -l __palantir_state_subs ls new show set paths doctor
 set -l __palantir_composer_subs classify strip idle
 
@@ -21,6 +21,7 @@ complete -c ,palantir -n "not __fish_seen_subcommand_from $__palantir_subcommand
 complete -c ,palantir -n "not __fish_seen_subcommand_from $__palantir_subcommands" -a send-word -d 'Send composer-guarded word to a role window'
 complete -c ,palantir -n "not __fish_seen_subcommand_from $__palantir_subcommands" -a answer -d "Answer a holding legion's question"
 complete -c ,palantir -n "not __fish_seen_subcommand_from $__palantir_subcommands" -a grant -d 'Grant a cleared_for_human legion'
+complete -c ,palantir -n "not __fish_seen_subcommand_from $__palantir_subcommands" -a routed -d "Mark a closed legion's memory packet as routed"
 complete -c ,palantir -n "not __fish_seen_subcommand_from $__palantir_subcommands" -a banish -d 'Banish a legion (fail-closed; --force overrides)'
 complete -c ,palantir -n "not __fish_seen_subcommand_from $__palantir_subcommands" -a keep-watch -d "Keep or stop the legion's supervisor watch"
 complete -c ,palantir -n "not __fish_seen_subcommand_from $__palantir_subcommands" -a trial -d 'Put acceptance criteria to machine trial'
@@ -36,7 +37,7 @@ complete -c ,palantir -n '__fish_seen_subcommand_from summon' -l criteria -r -d 
 complete -c ,palantir -n '__fish_seen_subcommand_from summon' -l no-worktree -d 'run in the current directory'
 
 # legion-id positionals
-complete -c ,palantir -n '__fish_seen_subcommand_from behold send-word answer grant banish keep-watch trial' -a '(__palantir_legions)' -d legion
+complete -c ,palantir -n '__fish_seen_subcommand_from behold send-word answer grant routed banish keep-watch trial' -a '(__palantir_legions)' -d legion
 complete -c ,palantir -n '__fish_seen_subcommand_from send-word' -l window -r -d 'target role window (default: command)'
 complete -c ,palantir -n '__fish_seen_subcommand_from banish' -l force -d 'override fail-closed checks'
 complete -c ,palantir -n '__fish_seen_subcommand_from keep-watch' -l stop -d 'stop the running supervisor'

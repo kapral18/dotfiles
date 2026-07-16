@@ -43,8 +43,8 @@ graph TB
 
     %% ---- C7 Intent-routed governance ---------------------------------------
     C7{{"C7 · GOVERNED AGENTS<br/>LLMs are deterministic systems, not chatbots"}}:::concept
-    C7 --> I7["INVARIANT: agents load SOP entrypoints + intent-matched skills,<br/>keep generic workflows domain-neutral, verify before overlays,<br/>and pass fail-closed gates before human-visible side effects."]:::inv
-    I7 --> R7["realized by: ~/AGENTS.md/CLAUDE.md/GEMINI.md · skills 'Use when'<br/>domain overlays such as elastic-domain · hooks.json gates<br/>SOP External Truth (C8) · session_context memory"]:::realize
+    C7 --> I7["INVARIANT: agents load SOP entrypoints + intent-matched skills,<br/>keep generic workflows domain-neutral, use detached orchestration only on<br/>an explicit user request, and pass fail-closed gates before human-visible side effects."]:::inv
+    I7 --> R7["realized by: ~/AGENTS.md/CLAUDE.md/GEMINI.md · skills 'Use when'<br/>Palantir strict opt-in + domain overlays such as elastic-domain · hooks.json gates<br/>SOP External Truth (C8) · session_context memory"]:::realize
 
     %% ---- C8 Evidence anchoring (SOP discipline) ----------------------------
     C8{{"C8 · EVIDENCE ANCHORING<br/>claims must be anchored or demoted"}}:::concept
@@ -73,8 +73,8 @@ graph TB
 
     %% ---- C13 Persistent intent memory --------------------------------------
     C13{{"C13 · INTENT MEMORY<br/>sessions rehydrate, don't restart cold"}}:::concept
-    C13 --> I13["INVARIANT: per-(workspace,topic) spec/worklog persists in<br/>/tmp/specs; sessionStart injects it bounded; review topics run clean-room;<br/>depth-bounded per-turn recall only connects to a session-warmed generation;<br/>tool events enter a bounded crash-safe session queue off the critical path."]:::inv
-    I13 --> R13["realized by: hook_common.py · session_context.py · perturn_recall.py<br/>worklog_dispatcher.sh → worklog_recorder.py/worklog_queue.py<br/>,agent-memory · ~/lib/,ai-kb/ (one-shot default;<br/>generation-specific resident only for connect-only per-turn recall)<br/>+ Palantir closeout memory routing"]:::realize
+    C13 --> I13["INVARIANT: per-(workspace,topic) spec/worklog persists in<br/>/tmp/specs with named topics mirrored/restored via persistent state;<br/>sessionStart injects it bounded; review topics run clean-room;<br/>depth-bounded per-turn recall only connects to a session-warmed generation;<br/>tool events enter a bounded crash-safe session queue off the critical path."]:::inv
+    I13 --> R13["realized by: hook_common.py · session_context.py · perturn_recall.py<br/>spec_mirror.py (named-topic mirror/restore) · worklog_dispatcher.sh → worklog_recorder.py/worklog_queue.py<br/>,agent-memory (incl. structured `note` capture) · ~/lib/,ai-kb/ (one-shot default;<br/>generation-specific resident only for connect-only per-turn recall)<br/>+ Palantir closeout memory routing"]:::realize
 
     %% ---- how concepts compose ----------------------------------------------
     C1 -. "everything applies through" .-> C4

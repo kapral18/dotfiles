@@ -15,16 +15,16 @@ Apply the discipline above before following the role-specific instructions below
 
 # Agent Review
 
-Load and follow `~/.agents/skills/agent-review/SKILL.md`.
+Load and follow `~/.agents/skills/k-agent-review/SKILL.md`.
 
 Claude bridge:
 
 - Use `Task` for isolated reviewer/auditor work; follow `runtime-harnesses.md` only for capability caveats.
 - For other-authored or unknown-author PRs, run `pr-necessity-auditor` first and block reviewer fan-out until it greenlights that the PR is worth reviewing further.
-- After any required PR necessity greenlight, build the angle roster per `agent-review/SKILL.md` step 3 and launch one concurrency-safe `reviewer` task per angle (two to five) in a single parallel batch (`model: inherit` per the `agent_review_models` registry; do not pass model overrides).
-- When the blind fresh-eyes clarity lane applies (see `agent-review/SKILL.md` step 3), launch it in the same batch as a general-purpose `Task` carrying `agent-review/references/fresh-eyes.md` — not the `reviewer` profile, which preloads the `review` skill and PR context.
-- After all lanes return, merge duplicates and run the adversarial verification phase as a general-purpose `Task` carrying `agent-review/references/adversarial-verifier.md`. Claude subagents are single-family, so report `families=same (degraded)`; the refutation framing carries the decorrelation.
-- After adversarial verification returns, apply the controller parity filter from `agent-review/SKILL.md`; select the concrete live-UI target packet and run `live-ui-review` when changed paths or non-refuted candidate findings touch UI/runtime behavior and runtime evidence is applicable, then carry any screenshot handoff into final output.
+- After any required PR necessity greenlight, build the angle roster per `k-agent-review/SKILL.md` step 3 and launch one concurrency-safe `reviewer` task per angle (two to five) in a single parallel batch (`model: inherit` per the `agent_review_models` registry; do not pass model overrides).
+- When the blind fresh-eyes clarity lane applies (see `k-agent-review/SKILL.md` step 3), launch it in the same batch as a general-purpose `Task` carrying `agent-review/references/fresh-eyes.md` — not the `reviewer` profile, which preloads the `k-review` skill and PR context.
+- After all lanes return, merge duplicates and run the adversarial verification phase as a general-purpose `Task` carrying `k-agent-review/references/adversarial-verifier.md`. Claude subagents are single-family, so report `families=same (degraded)`; the refutation framing carries the decorrelation.
+- After adversarial verification returns, apply the controller parity filter from `k-agent-review/SKILL.md`; select the concrete live-UI target packet and run `live-ui-review` when changed paths or non-refuted candidate findings touch UI/runtime behavior and runtime evidence is applicable, then carry any screenshot handoff into final output.
 - Run the findings audit after live UI returns or is explicitly skipped; delegate to `findings-auditor` only for non-trivial candidate sets or fix diffs, otherwise audit inline.
 - Treat reviewer-reported `verification_needed` as controller-owned: run needed heavy/mutating/shared-resource checks serially only after aggregation, or surface them as blockers/uncertainty.
 - Keep all worker/auditor/live tasks investigation-only; this controller owns judgment and gated side effects.

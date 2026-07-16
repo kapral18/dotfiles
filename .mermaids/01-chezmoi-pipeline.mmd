@@ -1,6 +1,6 @@
 %% ============================================================================
 %% 01-chezmoi-pipeline.mmd — `chezmoi apply` lifecycle. Names EVERY hook in
-%% home/.chezmoiscripts/ (29) and every config/data input. Hooks run in
+%% home/.chezmoiscripts/ (28) and every config/data input. Hooks run in
 %% filename order: run_once_before < run_once_after < run_onchange_after,
 %% then numeric 00..08 within each class. *.tmpl = templated; .fish.tmpl run
 %% under fish; .sh / .sh.tmpl run under bash.
@@ -35,7 +35,7 @@ flowchart TD
     C04 --> C05["05-* (hash-gated sync)<br/>apply-app-icons.sh.tmpl · install-crontab.sh.tmpl<br/>install-custom-packages.sh.tmpl · install-gh-extensions.fish.tmpl<br/>install-mise-runtimes.sh.tmpl · install-uv-versions.sh.tmpl<br/>osx.core/osx.extra.sh.tmpl<br/>update-cargo-crates/gems/golang-pkgs/yarn-pkgs.sh.tmpl"]:::script
     C05 --> C06["06-update-uv-tools.sh.tmpl"]:::script
     C06 --> C07["07-* agent config gen/merge (complete local-transform hash closure)<br/>generate-mcp-configs · merge-claude-code-settings<br/>merge-codex-config · merge-copilot-config · merge-gemini-settings<br/>merge-opencode-config · merge-pi-config<br/>sync-llama-cpp-models"]:::script
-    C07 --> C08["08-* cleanup orphans<br/>agent-skill-dirs · tmux pick_session"]:::script
+    C07 --> C08["08-* cleanup orphans<br/>tmux pick_session"]:::script
 
     C07 -. delegates logic to .-> HELP["scripts/ helpers (see 11-scripts-helpers.mmd)<br/>RULE: .chezmoiscripts shell = thin glue → scripts/*.py"]:::script
     DATA -.parsed by.-> HELP

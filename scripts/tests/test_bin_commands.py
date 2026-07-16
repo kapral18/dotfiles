@@ -525,7 +525,7 @@ class TestUnwrapMdCommand(unittest.TestCase):
         unwrap_md = _load_unwrap_md_command()
         text = "Use when the exact trigger matches.\nLoad the skill before acting.\n"
 
-        result = unwrap_md.unwrap(text, "home/exact_dot_agents/exact_skills/exact_review/readonly_SKILL.md")
+        result = unwrap_md.unwrap(text, "home/exact_dot_agents/exact_skills/exact_k-review/readonly_SKILL.md")
 
         assert result == "Use when the exact trigger matches. Load the skill before acting.\n"
 
@@ -533,7 +533,7 @@ class TestUnwrapMdCommand(unittest.TestCase):
         unwrap_md = _load_unwrap_md_command()
         text = "Finish a sentence before moving\nto the next line. Start the next sentence on its own line.\n"
 
-        result = unwrap_md.unwrap(text, "home/exact_dot_agents/exact_skills/exact_review/readonly_SKILL.md")
+        result = unwrap_md.unwrap(text, "home/exact_dot_agents/exact_skills/exact_k-review/readonly_SKILL.md")
 
         assert result == "Finish a sentence before moving to the next line. Start the next sentence on its own line.\n"
 
@@ -541,7 +541,7 @@ class TestUnwrapMdCommand(unittest.TestCase):
         unwrap_md = _load_unwrap_md_command()
         text = "- Finish a sentence before moving\n  to the next line. Start the next sentence on its own line.\n"
 
-        result = unwrap_md.unwrap(text, "home/exact_dot_agents/exact_skills/exact_review/readonly_SKILL.md")
+        result = unwrap_md.unwrap(text, "home/exact_dot_agents/exact_skills/exact_k-review/readonly_SKILL.md")
 
         assert (
             result == "- Finish a sentence before moving to the next line. Start the next sentence on its own line.\n"
@@ -551,7 +551,7 @@ class TestUnwrapMdCommand(unittest.TestCase):
         unwrap_md = _load_unwrap_md_command()
         text = "   Finish a sentence before moving\n   to the next line. Start the next sentence on its own line.\n"
 
-        result = unwrap_md.unwrap(text, "home/exact_dot_agents/exact_skills/exact_review/readonly_SKILL.md")
+        result = unwrap_md.unwrap(text, "home/exact_dot_agents/exact_skills/exact_k-review/readonly_SKILL.md")
 
         assert (
             result == "   Finish a sentence before moving to the next line. Start the next sentence on its own line.\n"
@@ -564,7 +564,7 @@ class TestUnwrapMdCommand(unittest.TestCase):
             "without needing to split this sentence. Start the next sentence on its own line.\n"
         )
 
-        result = unwrap_md.unwrap(text, "home/exact_dot_agents/exact_skills/exact_review/readonly_SKILL.md")
+        result = unwrap_md.unwrap(text, "home/exact_dot_agents/exact_skills/exact_k-review/readonly_SKILL.md")
 
         assert result == (
             "This sentence is deliberately long enough that appending the next sentence would cross the formatter boundary without needing to split this sentence.\n"
@@ -578,7 +578,7 @@ class TestUnwrapMdCommand(unittest.TestCase):
             "and return verification needs instead of running destructive probes inside parallel lanes.\n"
         )
 
-        result = unwrap_md.unwrap(text, "home/exact_dot_agents/exact_skills/exact_review/readonly_SKILL.md")
+        result = unwrap_md.unwrap(text, "home/exact_dot_agents/exact_skills/exact_k-review/readonly_SKILL.md")
 
         assert result == (
             "Keep the review gate visible for the controller because workers cannot mutate shared state safely;\n"
@@ -592,7 +592,7 @@ class TestUnwrapMdCommand(unittest.TestCase):
             "to keep every prompt input readable during later audits while retaining the exact details reviewers need.\n"
         )
 
-        result = unwrap_md.unwrap(text, "home/exact_dot_agents/exact_skills/exact_review/readonly_SKILL.md")
+        result = unwrap_md.unwrap(text, "home/exact_dot_agents/exact_skills/exact_k-review/readonly_SKILL.md")
 
         assert result == text
 
@@ -608,7 +608,7 @@ class TestUnwrapMdCommand(unittest.TestCase):
         unwrap_md = _load_unwrap_md_command()
         text = 'Use examples, e.g. "the review skill", before acting. Then continue.\n'
 
-        result = unwrap_md.unwrap(text, "home/exact_dot_agents/exact_skills/exact_review/readonly_SKILL.md")
+        result = unwrap_md.unwrap(text, "home/exact_dot_agents/exact_skills/exact_k-review/readonly_SKILL.md")
 
         assert result == 'Use examples, e.g. "the review skill", before acting. Then continue.\n'
 
@@ -618,7 +618,7 @@ class TestUnwrapMdCommand(unittest.TestCase):
 
         result = unwrap_md.unwrap(
             text,
-            "home/exact_dot_agents/exact_skills/exact_review/exact_references/readonly_pr_common.md",
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_pr_common.md",
         )
 
         assert result == "Keep the review gate visible. Do not bury it after another clause.\n"
@@ -1253,6 +1253,344 @@ class TestMcpTokenLoginLiveness(unittest.TestCase):
         )
 
 
+class TestMcpTokenSilentRotation(unittest.TestCase):
+    """WHEN ``--login`` rotates a short or stale token via cursor's refresh grant.
+
+    cursor silently executes the provider's ``refresh_token`` grant whenever a
+    stored access token stops working, so ``--login`` invalidates the cached
+    access token and runs a targeted ``cursor-agent mcp list-tools <server>``
+    in the cache's trusted workspace instead of popping a browser. These are
+    real-seam tests: an isolated ``HOME`` holds caches/ledger/config and a stub
+    cursor-agent records its argv/cwd and plays the provider's rotation.
+    """
+
+    def _jwt(self, exp: int) -> str:
+        def encode(value: dict[str, object]) -> str:
+            raw = json.dumps(value, separators=(",", ":")).encode()
+            return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+
+        return f"{encode({'alg': 'none'})}.{encode({'exp': exp})}.sig"
+
+    def _sha(self, token: str) -> str:
+        return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+    def _write_rotatable_cache(
+        self,
+        home: Path,
+        name: str,
+        server: str,
+        token: str,
+        *,
+        refresh_token: str | None = "refresh-chain",
+        workspace: Path | None = None,
+    ) -> Path:
+        project = home / ".cursor/projects" / name
+        project.mkdir(parents=True, exist_ok=True)
+        tokens: dict[str, object] = {"access_token": token, "expires_in": 3600}
+        if refresh_token is not None:
+            tokens["refresh_token"] = refresh_token
+        cache = project / "mcp-auth.json"
+        cache.write_text(json.dumps({server: {"tokens": tokens}}))
+        if workspace is not None:
+            workspace.mkdir(parents=True, exist_ok=True)
+            (project / ".workspace-trusted").write_text(json.dumps({"workspacePath": str(workspace)}))
+        return cache
+
+    def _write_mcp_json(self, home: Path, server: str, url: str | None) -> None:
+        cfg = home / ".cursor/mcp.json"
+        cfg.parent.mkdir(parents=True, exist_ok=True)
+        entry: dict[str, object] = {}
+        if url is not None:
+            entry["url"] = url
+        cfg.write_text(json.dumps({"mcpServers": {server: entry}}))
+
+    def _write_ledger(self, home: Path, server: str, token: str, source: str) -> None:
+        state_dir = home / ".cache/mcp-token"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        (state_dir / "opaque-refresh.json").write_text(
+            json.dumps({server: {"source": source, "token_sha256": self._sha(token), "refreshed_at": time.time()}})
+        )
+
+    def _read_ledger(self, home: Path, server: str) -> dict[str, object]:
+        try:
+            with open(home / ".cache/mcp-token/opaque-refresh.json") as f:
+                return json.load(f).get(server, {})
+        except (OSError, ValueError):
+            return {}
+
+    def _stub_rotating_cursor_agent(
+        self,
+        bindir: Path,
+        home: Path,
+        cache: Path,
+        server: str,
+        *,
+        rotates_to: str | None,
+    ) -> Path:
+        """Stub cursor-agent: logs ``cwd argv`` per call; ``mcp list-tools`` plays the refresh grant."""
+        log = home / "cursor-agent.log"
+        lines = ["#!/usr/bin/env bash", f'echo "$PWD $*" >> {shlex.quote(str(log))}']
+        if rotates_to is not None:
+            payload = json.dumps(
+                {server: {"tokens": {"access_token": rotates_to, "refresh_token": "rotated-chain", "expires_in": 3600}}}
+            )
+            lines += [
+                'if [ "$1 $2" = "mcp list-tools" ]; then',
+                f"cat > {shlex.quote(str(cache))} <<'EOF'\n{payload}\nEOF",
+                "fi",
+            ]
+        lines.append("exit 0")
+        agent = bindir / "cursor-agent"
+        agent.write_text("\n".join(lines) + "\n")
+        agent.chmod(0o755)
+        return log
+
+    def _run(self, home: Path, bindir: Path, args: list[str]) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(MCP_TOKEN_COMMAND), *args],
+            capture_output=True,
+            text=True,
+            env={
+                **os.environ,
+                "HOME": str(home),
+                "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
+            },
+        )
+
+    def test_short_jwt_rotates_silently_in_trusted_workspace_without_browser(self):
+        mod = _load_mcp_token_module()
+        short = self._jwt(int(time.time()) + mod.MIN_TTL_SECONDS - 600)
+        fresh = self._jwt(int(time.time()) + 3600)
+        with _liveness_server({}) as (url, handler), tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir, workspace = root / "home", root / "bin", root / "ws"
+            home.mkdir()
+            bindir.mkdir()
+            self._write_mcp_json(home, "scsi-main", url)
+            cache = self._write_rotatable_cache(home, "p", "scsi-main", short, workspace=workspace)
+            log = self._stub_rotating_cursor_agent(bindir, home, cache, "scsi-main", rotates_to=fresh)
+            result = self._run(home, bindir, ["scsi-main", "--login", "--quiet"])
+            calls = log.read_text().splitlines() if log.exists() else []
+            hits = list(handler.hits)
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == fresh, "the rotated token must be selected"
+        assert len(calls) == 1, calls
+        cwd_str, sep, invoked = calls[0].partition(" mcp ")
+        assert sep and invoked == "list-tools scsi-main", calls
+        assert Path(cwd_str).resolve() == workspace.resolve(), "rotation must run in the cache's trusted workspace"
+        assert hits == [], "JWT rotation must not probe the server"
+
+    def test_launch_json_defers_proactive_jwt_rotation(self):
+        mod = _load_mcp_token_module()
+        short = self._jwt(int(time.time()) + mod.MIN_TTL_SECONDS - 600)
+        fresh = self._jwt(int(time.time()) + 3600)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir, workspace = root / "home", root / "bin", root / "ws"
+            home.mkdir()
+            bindir.mkdir()
+            cache = self._write_rotatable_cache(home, "p", "scsi-main", short, workspace=workspace)
+            log = self._stub_rotating_cursor_agent(bindir, home, cache, "scsi-main", rotates_to=fresh)
+            result = self._run(home, bindir, ["scsi-main", "--login", "--quiet", "--launch-json"])
+            cursor_ran = log.exists()
+
+        assert result.returncode == 0, result.stderr
+        payload = json.loads(result.stdout)
+        assert payload["token"] == short, "launch mode must return the still-valid token without waiting"
+        assert payload["rotation_due"] is True
+        assert not cursor_ran, "proactive rotation must stay off the launcher critical path"
+
+    def test_launch_json_keeps_critical_rotation_blocking(self):
+        mod = _load_mcp_token_module()
+        critical = self._jwt(int(time.time()) + mod.BLOCKING_ROTATE_TTL_SECONDS - 60)
+        fresh = self._jwt(int(time.time()) + 3600)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir, workspace = root / "home", root / "bin", root / "ws"
+            home.mkdir()
+            bindir.mkdir()
+            cache = self._write_rotatable_cache(home, "p", "scsi-main", critical, workspace=workspace)
+            log = self._stub_rotating_cursor_agent(bindir, home, cache, "scsi-main", rotates_to=fresh)
+            result = self._run(home, bindir, ["scsi-main", "--login", "--quiet", "--launch-json"])
+            calls = log.read_text().splitlines() if log.exists() else []
+
+        assert result.returncode == 0, result.stderr
+        payload = json.loads(result.stdout)
+        assert payload["token"] == fresh
+        assert payload["rotation_due"] is False
+        assert any("mcp list-tools scsi-main" in call for call in calls)
+
+    def test_rotate_mints_a_deferred_token_without_browser(self):
+        mod = _load_mcp_token_module()
+        short = self._jwt(int(time.time()) + mod.MIN_TTL_SECONDS - 600)
+        fresh = self._jwt(int(time.time()) + 3600)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir, workspace = root / "home", root / "bin", root / "ws"
+            home.mkdir()
+            bindir.mkdir()
+            cache = self._write_rotatable_cache(home, "p", "scsi-main", short, workspace=workspace)
+            log = self._stub_rotating_cursor_agent(bindir, home, cache, "scsi-main", rotates_to=fresh)
+            result = self._run(home, bindir, ["scsi-main", "--rotate", "--quiet"])
+            calls = log.read_text().splitlines() if log.exists() else []
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == fresh
+        assert any("mcp list-tools scsi-main" in call for call in calls)
+        assert not any("mcp login" in call for call in calls)
+
+    def test_concurrent_deferred_workers_rotate_once(self):
+        mod = _load_mcp_token_module()
+        short = self._jwt(int(time.time()) + mod.MIN_TTL_SECONDS - 600)
+        fresh = self._jwt(int(time.time()) + 3600)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir, workspace = root / "home", root / "bin", root / "ws"
+            home.mkdir()
+            bindir.mkdir()
+            cache = self._write_rotatable_cache(home, "p", "scsi-main", short, workspace=workspace)
+            log = self._stub_rotating_cursor_agent(bindir, home, cache, "scsi-main", rotates_to=fresh)
+            env = {
+                **os.environ,
+                "HOME": str(home),
+                "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
+            }
+            command = [sys.executable, str(MCP_TOKEN_COMMAND), "scsi-main", "--rotate", "--quiet"]
+            workers = [
+                subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
+                for _ in range(2)
+            ]
+            results = [worker.communicate(timeout=5) + (worker.returncode,) for worker in workers]
+            calls = log.read_text().splitlines() if log.exists() else []
+
+        assert all(returncode == 0 for _stdout, _stderr, returncode in results), results
+        assert len(calls) == 1, "the rotation lock and due recheck must deduplicate concurrent workers"
+
+    def test_jwt_with_runway_skips_rotation(self):
+        mod = _load_mcp_token_module()
+        token = self._jwt(int(time.time()) + mod.MIN_TTL_SECONDS + 900)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir, workspace = root / "home", root / "bin", root / "ws"
+            home.mkdir()
+            bindir.mkdir()
+            cache = self._write_rotatable_cache(home, "p", "scsi-main", token, workspace=workspace)
+            log = self._stub_rotating_cursor_agent(bindir, home, cache, "scsi-main", rotates_to=None)
+            result = self._run(home, bindir, ["scsi-main", "--login", "--quiet"])
+            cursor_ran = log.exists()
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == token
+        assert not cursor_ran, "a token above the min-TTL floor must skip rotation entirely"
+
+    def test_failed_rotation_restores_cache_and_keeps_valid_token(self):
+        mod = _load_mcp_token_module()
+        short = self._jwt(int(time.time()) + mod.MIN_TTL_SECONDS - 600)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir, workspace = root / "home", root / "bin", root / "ws"
+            home.mkdir()
+            bindir.mkdir()
+            cache = self._write_rotatable_cache(home, "p", "scsi-main", short, workspace=workspace)
+            log = self._stub_rotating_cursor_agent(bindir, home, cache, "scsi-main", rotates_to=None)
+            result = self._run(home, bindir, ["scsi-main", "--login", "--quiet"])
+            cache_token = json.loads(cache.read_text())["scsi-main"]["tokens"]["access_token"]
+            calls = log.read_text().splitlines() if log.exists() else []
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == short, "a still-valid token must survive a failed rotation"
+        assert cache_token == short, "the invalidated access token must be restored on failure"
+        assert not any("mcp login" in call for call in calls), "a still-valid token must never escalate to a browser"
+
+    def test_expired_tokens_rotate_silently_before_browser(self):
+        expired = self._jwt(int(time.time()) - 100)
+        fresh = self._jwt(int(time.time()) + 3600)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir, workspace = root / "home", root / "bin", root / "ws"
+            home.mkdir()
+            bindir.mkdir()
+            cache = self._write_rotatable_cache(home, "p", "scsi-main", expired, workspace=workspace)
+            log = self._stub_rotating_cursor_agent(bindir, home, cache, "scsi-main", rotates_to=fresh)
+            result = self._run(home, bindir, ["scsi-main", "--login", "--quiet"])
+            calls = log.read_text().splitlines() if log.exists() else []
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == fresh
+        assert not any("mcp login" in call for call in calls), "rotation must run before any browser flow"
+
+    def test_revoked_opaque_rotation_earns_full_window_not_adoption_lease(self):
+        revoked = "opaque-revoked-nominal"
+        old_live = "opaque-old-live-alternative"
+        fresh = "opaque-fresh-rotated"
+        with (
+            _liveness_server({revoked: 401, old_live: 200, fresh: 200}) as (url, handler),
+            tempfile.TemporaryDirectory() as tmp,
+        ):
+            root = Path(tmp)
+            home, bindir, workspace = root / "home", root / "bin", root / "ws"
+            home.mkdir()
+            bindir.mkdir()
+            self._write_mcp_json(home, "slack", url)
+            cache = self._write_rotatable_cache(home, "new", "slack", revoked, workspace=workspace)
+            self._write_rotatable_cache(home, "old", "slack", old_live, refresh_token=None)
+            os.utime(home / ".cursor/projects/old/mcp-auth.json", (time.time() - 100, time.time() - 100))
+            self._write_ledger(home, "slack", revoked, str(cache))
+            log = self._stub_rotating_cursor_agent(bindir, home, cache, "slack", rotates_to=fresh)
+            result = self._run(home, bindir, ["slack", "--login", "--quiet", "--json"])
+            ledger = self._read_ledger(home, "slack")
+            calls = log.read_text().splitlines() if log.exists() else []
+
+        assert result.returncode == 0, result.stderr
+        payload = json.loads(result.stdout)
+        assert payload["token"] == fresh, "a fresh rotation must beat adopting an aged cached alternative"
+        mod = _load_mcp_token_module()
+        assert payload["seconds_left"] > mod.VERIFIED_ADOPTION_TTL_SECONDS, (
+            "a provider-minted rotation earns the full nominal window, not an adoption lease"
+        )
+        assert ledger.get("token_sha256") == self._sha(fresh)
+        assert "valid_until" not in ledger
+        assert not any("mcp login" in call for call in calls)
+
+    def test_rotation_requires_refresh_token_and_trusted_workspace(self):
+        expired = self._jwt(int(time.time()) - 100)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir = root / "home", root / "bin"
+            home.mkdir()
+            bindir.mkdir()
+            # refresh_token present but no .workspace-trusted; and vice versa.
+            self._write_rotatable_cache(home, "no-ws", "scsi-main", expired, workspace=None)
+            self._write_rotatable_cache(home, "no-rt", "scsi-main", expired, refresh_token=None, workspace=root / "ws")
+            cache = home / ".cursor/projects/no-ws/mcp-auth.json"
+            log = self._stub_rotating_cursor_agent(bindir, home, cache, "scsi-main", rotates_to=None)
+            result = self._run(home, bindir, ["scsi-main", "--login", "--quiet"])
+            calls = log.read_text().splitlines() if log.exists() else []
+
+        assert result.returncode == 1, "no rotatable cache and a failed browser login must fail"
+        assert not any("list-tools" in call for call in calls), "rotation must not run without a rotatable cache"
+        assert any("mcp login scsi-main" in call for call in calls), "the browser flow remains the last resort"
+
+    def test_rotation_sentinel_never_leaks_to_output(self):
+        mod = _load_mcp_token_module()
+        short = self._jwt(int(time.time()) + mod.MIN_TTL_SECONDS - 600)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir, workspace = root / "home", root / "bin", root / "ws"
+            home.mkdir()
+            bindir.mkdir()
+            cache = self._write_rotatable_cache(home, "p", "scsi-main", short, workspace=workspace)
+            self._stub_rotating_cursor_agent(bindir, home, cache, "scsi-main", rotates_to=None)
+            # Not --quiet: status text streams to stderr, mimicking wrappers.
+            result = self._run(home, bindir, ["scsi-main", "--login"])
+
+        assert result.returncode == 0, result.stderr
+        assert mod.ROTATION_SENTINEL not in result.stdout
+        assert mod.ROTATION_SENTINEL not in result.stderr
+        assert short not in result.stderr
+
+
 class TestCodexWrapper(unittest.TestCase):
     """WHEN launching Codex through the managed wrapper."""
 
@@ -1261,6 +1599,7 @@ class TestCodexWrapper(unittest.TestCase):
         *,
         token_helper_exit: int = 0,
         token: str = "fresh-token",
+        rotation_due: bool = False,
         args: list[str] | None = None,
         config_lines: list[str] | None = None,
     ) -> subprocess.CompletedProcess[str]:
@@ -1282,16 +1621,32 @@ class TestCodexWrapper(unittest.TestCase):
                     ]
                 )
             )
+            launch_payload = json.dumps(
+                {
+                    "token": token,
+                    "source": "fixture",
+                    "seconds_left": 1800,
+                    "rotation_due": rotation_due,
+                }
+            )
             (bindir / ",mcp-token").write_text(
                 "#!/usr/bin/env bash\n"
                 'printf \'%s\\n\' "$*" >> "$MCP_TOKEN_LOG"\n'
                 f"if [[ {token_helper_exit} -ne 0 ]]; then exit {token_helper_exit}; fi\n"
-                f"printf '%s\\n' {shlex.quote(token)}\n"
+                'if [[ "$*" == *"--rotate"* ]]; then\n'
+                '  : > "$MCP_ROTATION_MARKER"\n'
+                "  exit 0\n"
+                "fi\n"
+                f"printf '%s\\n' {shlex.quote(launch_payload)}\n"
             )
             (bindir / ",mcp-token").chmod(0o755)
             real_codex = bindir / "codex-real"
             real_codex.write_text(
                 "#!/usr/bin/env bash\n"
+                'if [[ "${EXPECT_DEFERRED_ROTATION:-0}" == 1 ]]; then\n'
+                '  for _ in {1..100}; do [[ -f "$MCP_ROTATION_MARKER" ]] && break; sleep 0.01; done\n'
+                '  [[ -f "$MCP_ROTATION_MARKER" ]] && echo ROTATION_SEEN\n'
+                "fi\n"
                 "echo REAL_CODEX_STARTED\n"
                 "echo TOKEN=${CODEX_MCP_TOKEN_SLACK-}\n"
                 "printf 'ARGS=%s\\n' \"$*\"\n"
@@ -1309,6 +1664,8 @@ class TestCodexWrapper(unittest.TestCase):
                     "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
                     "CODEX_REAL_BIN": str(real_codex),
                     "MCP_TOKEN_LOG": str(root / "mcp-token.log"),
+                    "MCP_ROTATION_MARKER": str(root / "rotation.marker"),
+                    "EXPECT_DEFERRED_ROTATION": "1" if rotation_due else "0",
                 },
             )
 
@@ -1318,6 +1675,13 @@ class TestCodexWrapper(unittest.TestCase):
         assert result.returncode == 0
         assert "REAL_CODEX_STARTED" in result.stdout
         assert "TOKEN=fresh-token" in result.stdout
+
+    def test_starts_deferred_rotation_after_capturing_launch_token(self):
+        result = self._run_wrapper(rotation_due=True)
+
+        assert result.returncode == 0
+        assert "TOKEN=fresh-token" in result.stdout
+        assert "ROTATION_SEEN" in result.stdout
 
     def test_token_refresh_failure_blocks_launch(self):
         result = self._run_wrapper(token_helper_exit=1)
@@ -1371,6 +1735,50 @@ class TestCodexWrapper(unittest.TestCase):
 
         assert result.returncode == 0
         assert f'model_catalog_json="{catalog}"' in result.stdout
+
+
+class TestCursorWrapper(unittest.TestCase):
+    """WHEN Cursor launches with a still-valid token due for proactive rotation."""
+
+    def test_defers_proactive_rotation_to_cursor_runtime(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir = root / "home", root / "bin"
+            config = home / ".cursor/mcp.json"
+            config.parent.mkdir(parents=True)
+            bindir.mkdir()
+            config.write_text(json.dumps({"mcpServers": {"slack": {"oauth": {"clientId": "fixture"}}}}))
+            token_log = root / "mcp-token.log"
+            token_helper = bindir / ",mcp-token"
+            token_helper.write_text(
+                "#!/usr/bin/env bash\n"
+                'printf \'%s\\n\' "$*" >> "$MCP_TOKEN_LOG"\n'
+                'printf \'%s\\n\' \'{"token":"launch-token","source":"fixture","seconds_left":1800,'
+                '"rotation_due":true}\'\n'
+            )
+            token_helper.chmod(0o755)
+            real_cursor = bindir / "cursor-agent"
+            real_cursor.write_text("#!/usr/bin/env bash\necho REAL_CURSOR_STARTED\n")
+            real_cursor.chmod(0o755)
+
+            result = subprocess.run(
+                [modern_bash(), str(REPO / "home/exact_bin/executable_,cursor")],
+                capture_output=True,
+                text=True,
+                cwd=str(REPO),
+                env={
+                    **os.environ,
+                    "HOME": str(home),
+                    "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
+                    "CURSOR_AGENT_REAL_BIN": str(real_cursor),
+                    "MCP_TOKEN_LOG": str(token_log),
+                },
+            )
+            calls = token_log.read_text().splitlines()
+
+        assert result.returncode == 0, result.stderr
+        assert "REAL_CURSOR_STARTED" in result.stdout
+        assert calls == ["slack --login --quiet --launch-json"]
 
 
 class TestKbnStackCommand(unittest.TestCase):
@@ -1643,6 +2051,72 @@ class TestKbnStackCommand(unittest.TestCase):
         assert rc == 0
         assert "/wt/B" in state["saved"][-1]
         assert state["killed"] == []
+
+
+class TestCopilotDeferredRotation(unittest.TestCase):
+    """WHEN Copilot captures launch headers before proactive rotation."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.command = _load_copilot_command()
+
+    def test_header_resolution_returns_deferred_token_sources(self):
+        source = self.command.SourceContext(
+            source_dir=Path("/source/home"),
+            is_work=True,
+            registry=Path("/source/home/.chezmoidata/mcp_servers.yaml"),
+            generator=Path("/source/scripts/generate_mcp_configs.py"),
+            artifact_helper=Path("/source/scripts/generated_artifact_ledger.py"),
+            ledger=Path("/state/generated_artifacts.v1.json"),
+        )
+        requirement = self.command.HeaderAuthRequirement(
+            server="slack",
+            token_source="slack",
+            shell_command=",mcp-token slack --bearer",
+        )
+        plan = self.command.BatchPlan(source, Path("/target/mcp-config.json"), "placeholder", (requirement,))
+        payload = json.dumps(
+            {
+                "token": "launch-token",
+                "source": "fixture",
+                "seconds_left": 1800,
+                "rotation_due": True,
+            }
+        )
+        result = subprocess.CompletedProcess([], 0, stdout=payload, stderr="")
+
+        with mock.patch.object(self.command.subprocess, "run", return_value=result) as run:
+            headers = self.command._resolve_headers(plan)
+
+        assert headers.by_command[requirement.shell_command] == "Bearer launch-token"
+        assert headers.deferred_sources == ("slack",)
+        assert run.call_args.args[0] == [",mcp-token", "slack", "--login", "--quiet", "--launch-json"]
+
+    def test_main_starts_deferred_rotation_after_preflight(self):
+        events: list[str] = []
+
+        def preflight() -> tuple[str, ...]:
+            events.append("preflight")
+            return ("slack",)
+
+        def spawn(servers: tuple[str, ...]) -> None:
+            assert servers == ("slack",)
+            events.append("rotate")
+
+        def execv(_binary: str, _argv: list[str]) -> None:
+            events.append("exec")
+            raise RuntimeError("stop after observing exec")
+
+        with (
+            mock.patch.object(self.command.os, "access", return_value=True),
+            mock.patch.object(self.command, "_preflight", side_effect=preflight),
+            mock.patch.object(self.command, "_spawn_deferred_rotations", side_effect=spawn),
+            mock.patch.object(self.command.os, "execv", side_effect=execv),
+            self.assertRaisesRegex(RuntimeError, "stop after observing exec"),
+        ):
+            self.command.main([])
+
+        assert events == ["preflight", "rotate", "exec"]
 
 
 class TestCopilotArgumentClassification(unittest.TestCase):

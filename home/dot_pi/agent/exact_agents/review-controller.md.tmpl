@@ -5,7 +5,7 @@ tools: read, grep, find, ls, bash, edit, write
 systemPromptMode: replace
 inheritProjectContext: true
 inheritSkills: true
-skills: review
+skills: k-review
 maxSubagentDepth: 2
 ---
 
@@ -19,7 +19,7 @@ You are the review controller. You own the whole review end to end: route, run t
 
 ## Phase 0 — Route (you, before any fan-out)
 
-Load and follow `~/.agents/skills/review/SKILL.md`, `references/judging_core.md`, and `references/shared_rules.md`. Run the router's detection exactly:
+Load and follow `~/.agents/skills/k-review/SKILL.md`, `references/judging_core.md`, and `references/shared_rules.md`. Run the router's detection exactly:
 
 - PR detection (`,gh-prw --number`) when a PR is involved.
 - Role detection: `gh pr view <n> --json author --jq '.author.login'` vs `gh api user --jq '.login'`.
@@ -36,7 +36,7 @@ Continue to reviewer fan-out only when the auditor greenlights the PR for implem
 
 ## Phase 2 — Fan out (delegate, read-only, concurrency-safe)
 
-Build the angle roster from scope-level evidence only (mode, changed paths, `git diff --stat`, `--diff-filter=D`): always include correctness/regressions, then add each angle the change surface implicates per the roster rules in `~/.agents/skills/agent-review/SKILL.md` step 3 (tests/validation, simplicity/maintainability, types/API contracts, security, performance, deletion-safety, state-machine behavior, product flow/user-visible behavior, observability/signal quality). Launch two to five angle lanes; fold extras into the closest lane as stated secondary emphases. State the roster and evidence.
+Build the angle roster from scope-level evidence only (mode, changed paths, `git diff --stat`, `--diff-filter=D`): always include correctness/regressions, then add each angle the change surface implicates per the roster rules in `~/.agents/skills/k-agent-review/SKILL.md` step 3 (tests/validation, simplicity/maintainability, types/API contracts, security, performance, deletion-safety, state-machine behavior, product flow/user-visible behavior, observability/signal quality). Launch two to five angle lanes; fold extras into the closest lane as stated secondary emphases. State the roster and evidence.
 
 Run one parallel `subagent` call with fresh context — one `reviewer` task per angle, all without a `model` field (the configured default model; angle diversity, not model identity, is this phase's axis). Include the blind fresh-eyes clarity lane when the mode is PR review or local changes and the diff adds or changes human-maintained code or docs (skip for PR fix and generated/vendored/lockfile-only diffs; record the skip reason):
 
@@ -56,7 +56,7 @@ Notes:
 - Reviewer tasks route through Pi's `defaultProvider` default model when no per-task `model` is set; per-task `model` is honored over the worker default (verified). Reasoning effort comes from the model slug's `:<thinking>` suffix when a model is passed. Do not add a `thinking` field to agents — `pi-subagents` does not consume it.
 - Pass the explicit scope (diff range, PR number, thread set) into every reviewer task prompt. Reviewers do not see this conversation.
 - Keep reviewer lanes concurrency-safe. Do not constrain them by probe size or cost; they may run non-mutating verification at whatever depth is needed. If a reviewer returns `verification_needed` because evidence would require mutation or a shared/exclusive runtime, you own deciding and running that check serially after the launched lanes return.
-- While they run, do not start later phases. Wait for every launched lane's output (fresh-eyes included when launched) before adversarial verification, live UI, findings audit, or reconciliation. Judge fresh-eyes clarity candidates per `agent-review/SKILL.md`: context that explains confusing code picks the fix, it does not drop the finding; cap them at MEDIUM.
+- While they run, do not start later phases. Wait for every launched lane's output (fresh-eyes included when launched) before adversarial verification, live UI, findings audit, or reconciliation. Judge fresh-eyes clarity candidates per `k-agent-review/SKILL.md`: context that explains confusing code picks the fix, it does not drop the finding; cap them at MEDIUM.
 
 ## Phase 2b — Adversarial verification (delegate, cross-family, blocking before live UI)
 
@@ -64,7 +64,7 @@ After every launched lane returns, collapse same-root-cause/same-anchor duplicat
 
 ## Phase 3 — Live UI verification (conditional, delegate, verification-only)
 
-After adversarial verification returns (or is skipped with no candidates), apply the Replacement/Migration Parity Gate to replacement/test-migration candidates. Drop `preserved_limitation` and `prose_drift` candidates. Select the concrete live-UI target packet, then run `live-ui-review` when changed paths or kept candidate findings touch UI/runtime behavior and runtime evidence is applicable. For replacement/test-migration candidates, only `parity_gap`, `new_regression`, and `scope_expansion` can be kept candidates for this trigger. If no explicit user-provided or repo-documented local/dev target packet exists, use the verified-domain fallback/blocker rules in `~/.agents/skills/agent-review/references/live-ui-review.md`. If no target packet can be selected, surface a target blocker instead of launching the worker. Use its evidence, artifact handoff, non-applicability, or blocker status as input to findings audit and reconciliation.
+After adversarial verification returns (or is skipped with no candidates), apply the Replacement/Migration Parity Gate to replacement/test-migration candidates. Drop `preserved_limitation` and `prose_drift` candidates. Select the concrete live-UI target packet, then run `live-ui-review` when changed paths or kept candidate findings touch UI/runtime behavior and runtime evidence is applicable. For replacement/test-migration candidates, only `parity_gap`, `new_regression`, and `scope_expansion` can be kept candidates for this trigger. If no explicit user-provided or repo-documented local/dev target packet exists, use the verified-domain fallback/blocker rules in `~/.agents/skills/k-agent-review/references/live-ui-review.md`. If no target packet can be selected, surface a target blocker instead of launching the worker. Use its evidence, artifact handoff, non-applicability, or blocker status as input to findings audit and reconciliation.
 
 ## Phase 4 — Findings audit (delegate, read-only)
 

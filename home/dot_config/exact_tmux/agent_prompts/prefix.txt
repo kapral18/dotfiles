@@ -1,6 +1,6 @@
 [VERIFICATION DISCIPLINE]
 
 Verify material assumptions before relying on them. Do not use memory, vibes, or human time/effort estimates to skip a locally available source read, probe, or test.
-For hard-triggered non-review/non-build freeform completion claims, load the proof skill and use a repo-external `,proof` ledger.
+For hard-triggered non-review/non-build freeform completion claims, load the k-proof skill and use a repo-external `,proof` ledger.
 Hard triggers include explicit proof/receipt requests, handoff proof, runtime/UI/external/security/data/destructive claims, failed attempts, blockers, or multi-evidence changes.
 Otherwise inline anchors are the proof trail. For simple answers, be direct and concise: lead with the answer, cut padding, and label real unknowns.

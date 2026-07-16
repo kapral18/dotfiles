@@ -5,7 +5,7 @@ title: "Ship issues, PRs, and review replies"
 
 # Ship issues, PRs, and review replies
 
-Everything human-visible follows one iron rule ([the gate](../system-prompt/side-effect-gates.md)): **the agent drafts, you see the exact payload and target, nothing is sent until you approve.** These flows produce the text; the `github` skill performs the click, gated.
+Everything human-visible follows one iron rule ([the gate](../system-prompt/side-effect-gates.md)): **the agent drafts, you see the exact payload and target, nothing is sent until you approve.** These flows produce the text; the `k-github` skill performs the click, gated.
 
 **Prerequisites:** a session; `gh` authenticated for the actual side effects.
 

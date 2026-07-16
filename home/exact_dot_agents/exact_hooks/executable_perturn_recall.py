@@ -34,7 +34,6 @@ MIN_PROMPT_CHARS = 12
 PERTURN_MIN_TOP_COSINE = 0.55
 PERTURN_COSINE_FLOOR_FRACTION = 0.85
 SEARCH_TIMEOUT = 6
-CROSS_PROJECT_SCOPES = {"domain", "universal"}
 
 
 @dataclass(frozen=True)
@@ -134,6 +133,7 @@ def search_capsules(workspace: Path, query: str, profile: RecallProfile) -> list
                 "hybrid",
                 "--workspace",
                 str(workspace),
+                "--workspace-gate",
                 "--json",
             ],
             capture_output=True,
@@ -154,16 +154,16 @@ def search_capsules(workspace: Path, query: str, profile: RecallProfile) -> list
     return apply_hybrid_floor(rows if isinstance(rows, list) else [])
 
 
-def gate_and_format(rows: list, workspace: Path, seen: set[str], profile: RecallProfile) -> list[str]:
-    workspace_str = str(workspace)
+def gate_and_format(rows: list, seen: set[str], profile: RecallProfile) -> list[str]:
+    """Format rows the KB already workspace-gated, deduped per session.
+
+    The cross-repo scope gate is owned by `,ai-kb search --workspace-gate`;
+    this hook only enforces the per-session seen-id dedupe and prompt caps.
+    """
     lines: list[str] = []
     for row in rows:
         if len(lines) >= profile.limit:
             break
-        scope = str(row.get("scope") or "")
-        same_workspace = str(row.get("workspace_path") or "") == workspace_str
-        if not same_workspace and scope not in CROSS_PROJECT_SCOPES:
-            continue
         capsule_id = str(row.get("id") or "")
         if capsule_id and capsule_id in seen:
             continue
@@ -196,7 +196,7 @@ def main() -> None:
     profile = RECALL_PROFILES[agent_depth()]
 
     rows = search_capsules(workspace, prompt, profile)
-    lines = gate_and_format(rows, workspace, seen, profile)
+    lines = gate_and_format(rows, seen, profile)
     if not lines:
         emit({})
         return

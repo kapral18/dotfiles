@@ -13,22 +13,43 @@ flow with its own approved client and refreshes the token in place; this command
 just reads whatever cursor most recently minted, picking the cache with the most
 remaining validity.
 
-``--login`` delegates to ``cursor-agent mcp login <server>``, which runs the
-browser flow using cursor's approved client (e.g. Slack's admin-gated workspace
-app, or the SCSI Okta app) and writes the refreshed token back into cursor's
-cache. This is the supported way to (re)authenticate without reimplementing each
-provider's OAuth here, and avoids the ``k-slack`` confidential client that the
-Elastic workspace has not approved.
+``--login`` delegates re-authentication to cursor, never reimplementing each
+provider's OAuth here. It prefers a **silent refresh-grant rotation**: cursor
+executes the provider's ``refresh_token`` grant whenever a stored access token
+stops working, so ``--login`` invalidates the access token in the newest
+rotatable project cache (one holding a ``refresh_token`` whose
+``.workspace-trusted`` records an existing workspace directory) and runs a
+bounded ``cursor-agent mcp list-tools <server>`` there; cursor writes the
+freshly minted chain back in place with no browser and without revoking the
+in-flight token running sessions already hold. Only when no rotatable cache
+exists or rotation fails does ``cursor-agent mcp login <server>`` run the
+browser flow with cursor's approved client (e.g. Slack's admin-gated workspace
+app, or the SCSI Okta app); this avoids the ``k-slack`` confidential client
+that the Elastic workspace has not approved.
 
-``--login`` skips the browser when it can prove the current token still works.
-For JWT servers (SCSI) that is the token's ``exp``. For opaque servers (Slack)
-expiry is not visible, and the local refresh ledger can pin a token that the
-provider has since revoked, so ``--login`` validates the ledger-selected token
-against the server's URL (read from the generated ``~/.cursor/mcp.json``) with a
-minimal MCP ``initialize`` probe. A ``2xx`` keeps it; a ``401``/``403`` means the
-token is revoked, so other distinct cached opaque tokens are probed newest-cache
-first and a live one is adopted (repointing the ledger) without a browser. An
-adopted cached alternative is trusted only for a short verification lease
+``--login`` guarantees runway, not just validity. Header-auth consumers
+(Copilot, Codex) read the token once at launch and never reload it, so a token
+with only minutes left still dies mid-session; when the selected token has less
+than ``MIN_TTL_SECONDS`` remaining, ``--login`` rotates silently even though
+the token is technically valid (keeping the short token if rotation is
+unavailable, never escalating a still-valid token to a browser). Managed
+launchers use ``--launch-json`` to capture that still-valid token first and
+defer proactive rotation until after launch; the final
+``BLOCKING_ROTATE_TTL_SECONDS`` window, expired tokens, and revoked tokens still
+rotate synchronously. ``--rotate`` performs the deferred silent rotation with
+no browser fallback.
+
+``--login`` skips even the silent rotation when it can prove the current token
+still works and has runway. For JWT servers (SCSI) that is the token's ``exp``.
+For opaque servers (Slack) expiry is not visible, and the local refresh ledger
+can pin a token that the provider has since revoked, so ``--login`` validates
+the ledger-selected token against the server's URL (read from the generated
+``~/.cursor/mcp.json``) with a minimal MCP ``initialize`` probe. A ``2xx``
+keeps it; a ``401``/``403`` means the token is revoked, so a silent rotation is
+tried first (a fresh mint earns the full nominal window in the ledger), then
+other distinct cached opaque tokens are probed newest-cache first and a live
+one is adopted (repointing the ledger) without a browser. An adopted cached
+alternative is trusted only for a short verification lease
 (``VERIFIED_ADOPTION_TTL_SECONDS``), not the provider's full nominal lifetime,
 since its true remaining life is unknown. The probe never follows redirects: a
 ``3xx`` is inconclusive and the bearer is never resent to the ``Location``. Only
@@ -44,7 +65,10 @@ Usage:
   ,mcp-token <server>                   Print the raw access token
   ,mcp-token <server> --bearer          Print "Bearer <token>" (Authorization header)
   ,mcp-token <server> --json            Print {token, source, seconds_left} as JSON
-  ,mcp-token <server> --login           Refresh via cursor if stale, then print the token
+  ,mcp-token <server> --login           Ensure a fresh token (silent rotation, browser last resort)
+  ,mcp-token <server> --login --launch-json
+                                        Capture launch metadata; defer proactive rotation
+  ,mcp-token <server> --rotate          Perform a due silent rotation without browser fallback
   ,mcp-token <server> --login --quiet   Refresh without streaming auth helper output
   ,mcp-token <server> --login --force   Re-authenticate even if the token is still valid
 
@@ -61,6 +85,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import fcntl
 import glob
 import hashlib
 import json
@@ -68,12 +93,15 @@ import os
 import subprocess
 import sys
 import time
+from contextlib import contextmanager
+from typing import Iterator, NamedTuple
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 CURSOR_CACHE_GLOB = os.path.expanduser("~/.cursor/projects/*/mcp-auth.json")
 CURSOR_MCP_CONFIG = os.path.expanduser("~/.cursor/mcp.json")
 OPAQUE_REFRESH_STATE = os.path.expanduser("~/.cache/mcp-token/opaque-refresh.json")
+ROTATION_LOCK = os.path.expanduser("~/.cache/mcp-token/rotation.lock")
 # Treat a token as stale this many seconds before its nominal expiry, so a
 # token that would die mid-session is skipped in favour of a fresher one.
 EXPIRY_SKEW_SECONDS = 300
@@ -84,6 +112,23 @@ EXPIRY_SKEW_SECONDS = 300
 # wrapper's immediate follow-up plain read / config re-bake (> EXPIRY_SKEW_SECONDS)
 # yet stay far below a fresh token's ``expires_in``. Recorded as ``valid_until``.
 VERIFIED_ADOPTION_TTL_SECONDS = 600
+# Minimum remaining validity ``--login`` guarantees before letting a wrapper
+# launch with the selected token. Copilot/Codex read the Authorization value
+# once at launch and never reload it, so a technically-valid token with only
+# minutes left still dies mid-session; below this floor ``--login`` first
+# attempts a silent refresh-grant rotation (no browser).
+MIN_TTL_SECONDS = 2700
+# Launchers may use a still-valid token while rotating proactively after they
+# have captured it. Inside this final window they keep rotation synchronous so
+# a failed background refresh cannot leave a newly launched session with only
+# moments of token life.
+BLOCKING_ROTATE_TTL_SECONDS = 600
+# Placeholder written over a cache's ``access_token`` to force cursor's next
+# connection to run the provider's refresh grant. Never printed, and never a
+# selectable candidate: it is not a JWT and can never match the opaque ledger.
+ROTATION_SENTINEL = "mcp-token-rotation-pending"
+# Bound for the cursor-agent invocation that executes the refresh grant.
+ROTATE_TIMEOUT_SECONDS = 60
 # MCP protocol version sent in the liveness ``initialize`` probe. A revoked
 # opaque token is rejected at the auth layer (401/403) before protocol
 # negotiation, so the exact value only matters for the live 2xx path.
@@ -95,6 +140,11 @@ PROBE_TIMEOUT_SECONDS = 5.0
 LIVE = "live"
 REVOKED = "revoked"
 UNKNOWN = "unknown"
+
+
+class LoginResult(NamedTuple):
+    success: bool
+    rotation_due: bool = False
 
 
 class _NoRedirectHandler(HTTPRedirectHandler):
@@ -393,6 +443,195 @@ def _post_login_candidates(server: str, login_started_at: float) -> list[tuple[s
     return [(token, source, is_opaque, expires_in) for _, token, source, is_opaque, expires_in in out]
 
 
+def _trusted_workspace(project_dir: str) -> str | None:
+    """Return the project cache's recorded workspace directory when it exists.
+
+    cursor keys its OAuth caches by a project slug derived from the workspace
+    path; the slug is not reversible, but every trusted project records its
+    real path in ``.workspace-trusted``. That path is where cursor-agent must
+    run for it to read (and rotate) this cache.
+    """
+    try:
+        with open(os.path.join(project_dir, ".workspace-trusted")) as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return None
+    workspace = data.get("workspacePath") if isinstance(data, dict) else None
+    if isinstance(workspace, str) and os.path.isdir(workspace):
+        return workspace
+    return None
+
+
+def _rotation_candidate(server: str) -> tuple[str, str] | None:
+    """Return ``(cache_path, workspace)`` for the newest rotatable cache.
+
+    A cache is rotatable when it holds a ``refresh_token`` for *server* and its
+    project records an existing trusted workspace directory. Newest cache mtime
+    first: providers with rotating (single-use) refresh tokens keep only the
+    most recently written chain alive, so older caches are strictly worse bets.
+    mtime orders attempts only; it never proves validity — the rotation result
+    is re-read and verified before being trusted.
+    """
+    best: list[tuple[float, str, str]] = []
+    for path in glob.glob(CURSOR_CACHE_GLOB):
+        try:
+            with open(path) as f:
+                data = json.load(f)
+        except (OSError, ValueError):
+            continue
+        tokens = data.get(server, {}).get("tokens")
+        if not isinstance(tokens, dict):
+            continue
+        if not tokens.get("refresh_token") or not tokens.get("access_token"):
+            continue
+        workspace = _trusted_workspace(os.path.dirname(path))
+        if workspace is None:
+            continue
+        try:
+            mtime = os.path.getmtime(path)
+        except OSError:
+            continue
+        best.append((mtime, path, workspace))
+    if not best:
+        return None
+    best.sort(reverse=True)
+    return best[0][1], best[0][2]
+
+
+def _rewrite_cache(path: str, data: dict) -> bool:
+    """Atomically rewrite *path* with *data*, preserving its file mode."""
+    try:
+        mode = os.stat(path).st_mode & 0o777
+        tmp = f"{path}.{os.getpid()}.mcp-token.tmp"
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, mode)
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f)
+        os.replace(tmp, path)
+    except OSError:
+        return False
+    return True
+
+
+def _read_cache_tokens(path: str, server: str) -> dict | None:
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return None
+    tokens = data.get(server, {}).get("tokens")
+    return tokens if isinstance(tokens, dict) else None
+
+
+def _restore_access_token(path: str, server: str, expected: str, original: str) -> None:
+    """Compare-and-swap *expected* back to *original*; never clobber other writers."""
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return
+    tokens = data.get(server, {}).get("tokens")
+    if isinstance(tokens, dict) and tokens.get("access_token") == expected:
+        tokens["access_token"] = original
+        _rewrite_cache(path, data)
+
+
+@contextmanager
+def _rotation_lock() -> Iterator[None]:
+    """Serialize cache rewrites from concurrent deferred rotations."""
+    state_dir = os.path.dirname(ROTATION_LOCK)
+    os.makedirs(state_dir, mode=0o700, exist_ok=True)
+    os.chmod(state_dir, 0o700)
+    descriptor = os.open(ROTATION_LOCK, os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        os.fchmod(descriptor, 0o600)
+        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        yield
+    finally:
+        fcntl.flock(descriptor, fcntl.LOCK_UN)
+        os.close(descriptor)
+
+
+def _silent_rotate_unlocked(server: str, *, quiet: bool = False) -> bool:
+    """Mint a fresh token chain via cursor's refresh grant, without a browser.
+
+    ``cursor-agent mcp login`` always runs the full browser flow, but cursor
+    silently executes the provider's ``refresh_token`` grant whenever a stored
+    access token stops working. This invalidates the cached access token in the
+    newest rotatable project cache and runs a bounded, targeted
+    ``cursor-agent mcp list-tools <server>`` in that cache's workspace, forcing
+    exactly that grant; cursor writes the freshly minted chain (new access
+    token, and for rotating providers a new refresh token) back in place.
+    Rotation never revokes the in-flight token a running session already holds.
+    On any failure the original access token is restored (compare-and-swap, so
+    a concurrent legitimate writer is never clobbered) and the caller falls
+    back to its existing probe/adoption/browser chain.
+    """
+    candidate = _rotation_candidate(server)
+    if candidate is None:
+        return False
+    path, workspace = candidate
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return False
+    tokens = data.get(server, {}).get("tokens")
+    if not isinstance(tokens, dict):
+        return False
+    original = tokens.get("access_token")
+    if not original:
+        return False
+    tokens["access_token"] = ROTATION_SENTINEL
+    if not _rewrite_cache(path, data):
+        return False
+    if not quiet:
+        print(f",mcp-token: rotating {server} token via cursor refresh grant …", file=sys.stderr)
+    rotate_started_at = time.time()
+    try:
+        subprocess.run(
+            ["cursor-agent", "mcp", "list-tools", server],
+            cwd=workspace,
+            check=False,
+            timeout=ROTATE_TIMEOUT_SECONDS,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        pass
+    rotated = _read_cache_tokens(path, server)
+    access_token = rotated.get("access_token") if rotated is not None else None
+    if not isinstance(access_token, str) or not access_token or access_token == ROTATION_SENTINEL:
+        _restore_access_token(path, server, ROTATION_SENTINEL, original)
+        if not quiet:
+            print(f",mcp-token: {server} silent rotation failed.", file=sys.stderr)
+        return False
+    now = time.time()
+    seconds_left = _jwt_seconds_left(access_token, now)
+    if seconds_left is not None:
+        return seconds_left > EXPIRY_SKEW_SECONDS
+    # Opaque: the provider minted this chain during this attempt, so it earns
+    # the full nominal window in the ledger — unlike an adopted aged alternative.
+    expires_in = rotated.get("expires_in") if rotated is not None else None
+    if isinstance(expires_in, (int, float)):
+        _record_opaque_refresh(server, access_token, path, rotate_started_at)
+        return True
+    return False
+
+
+def _silent_rotate(server: str, *, quiet: bool = False) -> bool:
+    with _rotation_lock():
+        return _silent_rotate_unlocked(server, quiet=quiet)
+
+
+def _rotate_if_due(server: str, *, quiet: bool = False) -> bool:
+    """Rotate *server* only when its selected token still lacks full runway."""
+    with _rotation_lock():
+        current = _pick_record(server)
+        if current is not None and current[0] > MIN_TTL_SECONDS:
+            return True
+        return _silent_rotate_unlocked(server, quiet=quiet)
+
+
 def _browser_login(server: str, *, quiet: bool = False) -> bool:
     """Run cursor's browser OAuth flow and confirm it yielded a live token.
 
@@ -451,33 +690,64 @@ def _browser_login(server: str, *, quiet: bool = False) -> bool:
     return False
 
 
-def _login(server: str, *, force: bool = False, quiet: bool = False) -> bool:
-    """Ensure *server* has a live token, running the browser flow only if needed.
+def _login(
+    server: str,
+    *,
+    force: bool = False,
+    quiet: bool = False,
+    defer_short_rotation: bool = False,
+) -> LoginResult:
+    """Ensure *server* has a token with real remaining runway, browser last.
 
-    ``--force`` always runs the browser flow. Otherwise a fresh JWT keeps its
-    exp-based short-circuit; an opaque server's ledger-selected token is
-    validated with a liveness probe against its ``~/.cursor/mcp.json`` URL, and
-    a live cached alternative is adopted before the browser flow is considered.
-    Unknown liveness (network error, timeout, 5xx, or missing URL) preserves the
-    existing ledger token rather than forcing an unnecessary login.
+    ``--force`` always runs the browser flow. Otherwise the selected token must
+    keep at least ``MIN_TTL_SECONDS`` of validity: header-auth consumers
+    (Copilot, Codex) read the token once at launch and never reload it, so a
+    short-but-valid token still dies mid-session. Launch mode may defer a
+    proactive rotation until after the caller captures that token, but keeps the
+    final ``BLOCKING_ROTATE_TTL_SECONDS`` synchronous. Expired or revoked tokens
+    always rotate synchronously. A live cached alternative is adopted next for
+    revoked opaque tokens, and only then does the browser flow run.
     """
     if force:
-        return _browser_login(server, quiet=quiet)
+        return LoginResult(_browser_login(server, quiet=quiet))
 
     nominal = _pick_record(server)
-    if nominal is not None and not nominal[3]:
-        # JWT (or non-expiring) candidate still valid: keep exp short-circuit.
+    if nominal is None:
+        # Nothing valid in any cache: rotate silently before any browser flow.
+        if _rotate_if_due(server, quiet=quiet):
+            return LoginResult(True)
+        return LoginResult(_browser_login(server, quiet=quiet))
+
+    seconds_left, nominal_token, _source, is_opaque, _expires_in = nominal
+
+    if not is_opaque:
+        # JWT (or non-expiring) candidate: exp is authoritative.
+        if seconds_left > MIN_TTL_SECONDS:
+            if not quiet:
+                print(
+                    f",mcp-token: {server} token still valid; skipping login (use --force to re-authenticate anyway).",
+                    file=sys.stderr,
+                )
+            return LoginResult(True)
+        if defer_short_rotation and seconds_left > BLOCKING_ROTATE_TTL_SECONDS:
+            return LoginResult(True, rotation_due=True)
+        if _rotate_if_due(server, quiet=quiet):
+            return LoginResult(True)
+        # Still exp-valid: a short token beats an unnecessary browser flow.
         if not quiet:
             print(
-                f",mcp-token: {server} token still valid; skipping login (use --force to re-authenticate anyway).",
+                f",mcp-token: {server} token near expiry and rotation unavailable; keeping current token.",
                 file=sys.stderr,
             )
-        return True
-    if nominal is None:
-        # No ledger/exp-valid candidate to trust: run the browser flow.
-        return _browser_login(server, quiet=quiet)
+        return LoginResult(True)
 
-    nominal_token = nominal[1]
+    rotation_due = defer_short_rotation and BLOCKING_ROTATE_TTL_SECONDS < seconds_left <= MIN_TTL_SECONDS
+    rotation_failed = False
+    if seconds_left <= MIN_TTL_SECONDS and not rotation_due:
+        if _rotate_if_due(server, quiet=quiet):
+            return LoginResult(True)
+        rotation_failed = True
+
     url = _server_url(server)
     if url is None:
         # Cannot probe; do not force a browser login merely because liveness is
@@ -487,22 +757,25 @@ def _login(server: str, *, force: bool = False, quiet: bool = False) -> bool:
                 f",mcp-token: {server} token still valid; skipping login (use --force to re-authenticate anyway).",
                 file=sys.stderr,
             )
-        return True
+        return LoginResult(True, rotation_due=rotation_due)
 
     verdict = _probe_liveness(url, nominal_token)
     if verdict == LIVE:
         if not quiet:
             print(f",mcp-token: {server} token verified live; skipping login.", file=sys.stderr)
-        return True
+        return LoginResult(True, rotation_due=rotation_due)
     if verdict == UNKNOWN:
         if not quiet:
             print(
                 f",mcp-token: {server} liveness could not be verified; keeping current token (skipping login).",
                 file=sys.stderr,
             )
-        return True
+        return LoginResult(True, rotation_due=rotation_due)
 
-    # verdict == REVOKED: try other distinct cached opaque tokens, newest first.
+    # verdict == REVOKED: a silent rotation mints a full-life chain, which beats
+    # adopting an aged cached alternative on a short verification lease.
+    if (rotation_due or not rotation_failed) and _silent_rotate(server, quiet=quiet):
+        return LoginResult(True)
     for token, source in _opaque_cache_candidates(server):
         if token == nominal_token:
             continue
@@ -516,9 +789,9 @@ def _login(server: str, *, force: bool = False, quiet: bool = False) -> bool:
                     f",mcp-token: {server} ledger token revoked; switched to a live cached token (skipping login).",
                     file=sys.stderr,
                 )
-            return True
+            return LoginResult(True)
 
-    return _browser_login(server, quiet=quiet)
+    return LoginResult(_browser_login(server, quiet=quiet))
 
 
 def main(argv: list[str]) -> int:
@@ -541,10 +814,20 @@ def main(argv: list[str]) -> int:
         action="store_true",
         help="Print {token, source, seconds_left} as JSON",
     )
+    group.add_argument(
+        "--launch-json",
+        action="store_true",
+        help="With --login, return launch-safe token metadata and defer proactive rotation",
+    )
     parser.add_argument(
         "--login",
         action="store_true",
-        help="Run cursor's browser OAuth flow (cursor-agent mcp login) if the token is stale",
+        help="Ensure a fresh token: silent refresh-grant rotation via cursor when short or stale, browser flow (cursor-agent mcp login) as last resort",
+    )
+    parser.add_argument(
+        "--rotate",
+        action="store_true",
+        help="Silently rotate a token below the min-TTL floor without a browser fallback",
     )
     parser.add_argument(
         "--force",
@@ -558,13 +841,27 @@ def main(argv: list[str]) -> int:
     )
     args = parser.parse_args(argv)
 
-    if args.login:
-        if not _login(args.server, force=args.force, quiet=args.quiet):
-            return 1
-    elif args.force:
+    if args.login and args.rotate:
+        parser.error("--login and --rotate are mutually exclusive")
+    if args.launch_json and not args.login:
+        parser.error("--launch-json requires --login")
+    if args.force and not args.login:
         parser.error("--force requires --login")
-    elif args.quiet:
-        parser.error("--quiet requires --login")
+    if args.quiet and not (args.login or args.rotate):
+        parser.error("--quiet requires --login or --rotate")
+
+    login_result = LoginResult(True)
+    if args.login:
+        login_result = _login(
+            args.server,
+            force=args.force,
+            quiet=args.quiet,
+            defer_short_rotation=args.launch_json,
+        )
+        if not login_result.success:
+            return 1
+    elif args.rotate and not _rotate_if_due(args.server, quiet=args.quiet):
+        return 1
 
     picked = _pick(args.server)
     if picked is None:
@@ -575,7 +872,19 @@ def main(argv: list[str]) -> int:
         return 1
 
     token, source, seconds_left = picked
-    if args.json:
+    if args.launch_json:
+        left = None if seconds_left == float("inf") else int(seconds_left)
+        print(
+            json.dumps(
+                {
+                    "token": token,
+                    "source": source,
+                    "seconds_left": left,
+                    "rotation_due": login_result.rotation_due,
+                }
+            )
+        )
+    elif args.json:
         left = None if seconds_left == float("inf") else int(seconds_left)
         print(json.dumps({"token": token, "source": source, "seconds_left": left}))
     elif args.bearer:

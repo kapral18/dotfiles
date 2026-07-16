@@ -127,7 +127,7 @@ token = tokens.get(source)
 if not isinstance(token, str):
     raise SystemExit(4)
 print("provider diagnostic " + token, file=sys.stderr)
-print("Bearer " + token)
+print(json.dumps({"token": token, "source": "fixture", "seconds_left": 3600, "rotation_due": False}))
 """
 
 
@@ -514,8 +514,8 @@ class TestCopilotBatchWrapper(unittest.TestCase):
             assert result.returncode == 0, result.stderr
             assert "REAL_COPILOT_STARTED" in result.stdout
             assert fixture.token_log.read_text().splitlines() == [
-                "jwt-source --login --quiet --bearer",
-                "opaque-source --login --quiet --bearer",
+                "jwt-source --login --quiet --launch-json",
+                "opaque-source --login --quiet --launch-json",
             ]
             generator_calls = fixture.generator_log.read_text().splitlines()
             assert generator_calls[:2] == ["plan", "render"]

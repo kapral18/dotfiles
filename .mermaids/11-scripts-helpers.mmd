@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 11-scripts-helpers.mmd — Every file in scripts/ (92). Repo-side Python
+%% 11-scripts-helpers.mmd — Every file in scripts/ (93). Repo-side Python
 %% (stdlib only, no PyYAML) called by chezmoi 07-* hooks + ,bin commands.
 %% Grouped by consumer. Shared parsers feed the generators/mergers.
 %% ============================================================================
@@ -43,7 +43,7 @@ flowchart TB
 
     subgraph AIKB["AI knowledgebase + embeddings"]
         KB["ai_kb.py (markdown + SQLite FTS5 store; deployed as ~/lib/,ai-kb/main.py;<br/>harvest flushes queued worklogs, then resolves worklog→remember candidates, read-only)"]:::ai
-        WQ["worklog_queue.py (fsynced session sequence queue;<br/>stable replay IDs · spec/target locks · chronological output · bounded errors/lifetime/cleanup;<br/>deployed to ~/.agents/hooks/ + ~/lib/,ai-kb/)"]:::ai
+        WQ["worklog_queue.py (fsynced session sequence queue;<br/>stable replay IDs · spec/target locks · chronological output · bounded errors/lifetime/cleanup;<br/>deployed to ~/.agents/hooks/ + ~/lib/,ai-kb/)<br/>spec_mirror.py (best-effort persistent mirror of named topics;<br/>sync at session/CLI checkpoints · restore-only-missing after /tmp loss;<br/>deployed to the same two homes)"]:::ai
         EMB["embed.py dispatch<br/>embed_runner.py = one-shot default/manual/remember/reembed<br/>embed_client.py + embed_worker.py = generation-specific private resident;<br/>session-start ensure · per-turn connect-only · fail-open · 300s idle"]:::ai
         VEC["vec_runner.py (vector retrieval subprocess)"]:::ai
         AGM["agent_memory.py (/tmp/specs topic mgmt; ,agent-memory)"]:::ai

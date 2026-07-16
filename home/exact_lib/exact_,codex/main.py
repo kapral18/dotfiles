@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import ast
+import json
 import os
 import re
 import subprocess
@@ -152,24 +153,53 @@ def _refresh_mcp_token_env(argv: list[str]) -> bool:
         return True
 
     servers = _configured_token_servers(_codex_home() / "config.toml")
+    rotation_env = os.environ.copy()
+    for server in servers:
+        rotation_env.pop(server.env_var, None)
     failures: list[str] = []
+    deferred: list[str] = []
     for server in servers:
         result = subprocess.run(
-            [MCP_TOKEN, server.name, "--login", "--quiet"],
+            [MCP_TOKEN, server.name, "--login", "--quiet", "--launch-json"],
             capture_output=True,
             text=True,
         )
-        token = result.stdout.strip()
-        if result.returncode != 0 or not token:
+        try:
+            payload = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            payload = {}
+        token = payload.get("token") if isinstance(payload, dict) else None
+        rotation_due = payload.get("rotation_due") if isinstance(payload, dict) else None
+        if (
+            result.returncode != 0
+            or not isinstance(token, str)
+            or not token
+            or "\n" in token
+            or not isinstance(rotation_due, bool)
+        ):
             failures.append(server.name)
             continue
         os.environ[server.env_var] = token
+        if rotation_due:
+            deferred.append(server.name)
 
     if failures:
         joined = ", ".join(failures)
         print(f",codex: could not refresh MCP token(s): {joined}.", file=sys.stderr)
         print(",codex: run ',mcp-token <server> --login' without --quiet to inspect the OAuth flow.", file=sys.stderr)
         return False
+    for server in deferred:
+        try:
+            subprocess.Popen(
+                [MCP_TOKEN, server, "--rotate", "--quiet"],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                env=rotation_env,
+                start_new_session=True,
+            )
+        except OSError:
+            pass
     return True
 
 

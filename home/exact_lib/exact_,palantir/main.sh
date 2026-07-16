@@ -26,6 +26,7 @@ Legions (1 legion = 1 effort = 1 tmux session; windows/panes are its organisatio
   send-word <id> <msg>     Send composer-guarded word to a role window (--window, default: command)
   answer <id> <msg>        Answer a holding legion's question and resume it
   grant <id>               Grant a cleared legion (persist closeout packet + teardown)
+  routed <id>              Mark a closed legion's memory packet as routed (clears the U flag)
   banish <id> [--force]    Banish a legion; refuses in-flight work without --force
   keep-watch <id> [--stop] Keep or stop watch over the legion
   trial <id>               Put acceptance criteria to machine trial
@@ -97,7 +98,16 @@ case "$1" in
     legion_id="${1:?usage: ,palantir grant <id>}"
     bash "$SCRIPT_DIR/banish.sh" "$legion_id" --preflight
     python3 "$SCRIPT_DIR/supervisor.py" dispatch "$legion_id" --json-event '{"kind":"grant_clear"}' > /dev/null
-    exec bash "$SCRIPT_DIR/banish.sh" "$legion_id" --teardown-only
+    bash "$SCRIPT_DIR/banish.sh" "$legion_id" --teardown-only
+    packet_path="$(python3 "$SCRIPT_DIR/legion_state.py" paths "$legion_id" | python3 -c 'import sys,json,os; print(os.path.join(os.path.dirname(json.load(sys.stdin)["manifest"]), "memory-routing.json"))')"
+    echo "memory packet: $packet_path"
+    echo "route it (ai-kb / /tmp/specs / repo AGENTS.md), then run: ,palantir routed $legion_id"
+    ;;
+  routed)
+    shift
+    require_human_control routed
+    legion_id="${1:?usage: ,palantir routed <id>}"
+    exec python3 "$SCRIPT_DIR/legion_state.py" mark-routed "$legion_id"
     ;;
   keep-watch)
     shift

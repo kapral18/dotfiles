@@ -1,7 +1,7 @@
 %% ============================================================================
 %% 04-palantir-state-machine.mmd — Palantir legion state machine.
 %% `,palantir` launches one legion per effort: a tmux session on a `,w` worktree.
-%% Window 0 has coordinator + deterministic supervisor; each stage owns a window.
+%% Window 0 has coordinator + deterministic supervisor; interactive role stages own windows.
 %% Core deployed runtime lives in home/exact_lib/exact_,palantir/ (12).
 %% ============================================================================
 stateDiagram-v2
@@ -19,6 +19,7 @@ stateDiagram-v2
 
     implement --> adversarial_review : stages/implement.result.json accepted
     adversarial_review --> implement : blockers>0 & budget remains
+    adversarial_review --> holding : blockers>0 & budget exhausted
     adversarial_review --> verify : blockers=0
     verify --> cleared_for_human : criteria checks exit 0 & blockers=0
     verify --> implement : checks fail & retry budget remains
@@ -58,7 +59,8 @@ stateDiagram-v2
     note right of verify
         machine.py transition tables own legal moves.
         verify runs criteria checks as commands; exit 0 = green.
-        A verify failure returns implement while budget remains,
+        Every return of implement to work (failed verify or review
+        blockers) spends the shared max_implement_attempts budget,
         then parks in holding.
     end note
 
@@ -72,17 +74,23 @@ stateDiagram-v2
         dashboard.py renders the textual popup via tmux prefix+A;
         it shows age/transport/queue/criteria/teardown health and
         requires typed confirmation for close actions.
-        statusline.py counts only real active/holding/cleared stages.
+        statusline.py counts active/holding/cleared stages plus
+        transport errors (T), teardown orphans (O), and closed
+        legions with an unrouted memory packet (U).
     end note
 
     note right of cleared_for_human
+        Palantir is strictly opt-in for ordinary chat sessions;
+        only an explicit user request permits a propose-only summon.
         grant / banish are human-only, summon refuses legion panes:
         agent panes carry PALANTIR_AGENT_ROLE and are refused
-        (no recursive legions); chat-agent summons are propose-only per SOP §8.0.
+        (no recursive legions).
         Grant preflights teardown, persists memory-routing.json,
         stops the supervisor/session, and removes only an owned
         clean worktree. Closeout packet routes:
         durable verified learnings → ,ai-kb;
         effort worklog/spec → /tmp/specs;
         repo-intrinsic conventions → repo AGENTS.md.
+        The packet stays flagged (attention U) until the human
+        marks it executed with `,palantir routed <id>`.
     end note

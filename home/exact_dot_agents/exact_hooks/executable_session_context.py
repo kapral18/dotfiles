@@ -41,7 +41,6 @@ WARMSTART_LIMIT = 3
 WARMSTART_QUERY_CHARS = 600
 WARMSTART_BODY_CHARS = 240
 WARMSTART_SEARCH_TIMEOUT = 6
-CROSS_PROJECT_SCOPES = {"domain", "universal"}
 TOPIC_BUCKET_LIMIT = 8
 TOPIC_BUCKET_SUMMARY_CHARS = 180
 TOPIC_BUCKET_TIME_FORMAT = "%Y-%m-%d %H:%M"
@@ -64,14 +63,19 @@ AIKB_REMINDER = (
     '--confidence <0..1, honest> --domain <tag>` — add `--workspace "$(pwd)"` only for '
     "workspace/project scope. See the ai-kb skill for the full write contract."
 )
+NO_PERTURN_RECALL_NOTICE = (
+    "### Recall Notice\n"
+    "This harness has no automatic per-turn `,ai-kb` recall: only session-start context is injected. "
+    'Run `,ai-kb search "<the concrete thing you are working on>" --limit 5` yourself whenever the task shifts, '
+    "and record mid-task decisions/ideas with `,agent-memory note` so they survive the session."
+)
 
 
 def warm_resident_embedder(payload: dict) -> None:
     """Bounded, fail-open warmup for adapters that also invoke per-turn recall."""
     if agent_depth() == "fast":
         return
-    env_requested = os.environ.get(AI_EMBED_WARM_ENV, "").strip().lower() in TRUE_VALUES
-    if not env_requested and payload.get("warm_embedder") is not True:
+    if not per_turn_recall_requested(payload):
         return
     client = Path.home() / "lib/,ai-kb/embed_client.py"
     if not client.is_file():
@@ -89,15 +93,30 @@ def warm_resident_embedder(payload: dict) -> None:
         pass
 
 
+def per_turn_recall_requested(payload: dict) -> bool:
+    """True when the invoking adapter has per-turn recall wiring.
+
+    Adapters with per-turn retrieval (Claude, Gemini, OpenCode, Copilot)
+    request the resident warm-up via `AI_EMBED_WARM=1` or the
+    `warm_embedder` payload flag; Cursor and Codex have no per-turn hook
+    surface and send neither, so this signal identifies harnesses whose
+    mid-session recall must come from the agent's own `,ai-kb search`.
+    """
+    if os.environ.get(AI_EMBED_WARM_ENV, "").strip().lower() in TRUE_VALUES:
+        return True
+    return payload.get("warm_embedder") is True
+
+
 def aikb_warmstart(workspace: Path, query: str, injected_ids: list[str] | None = None) -> str:
     """Inject a small, relevance-gated block of durable learnings at session start.
 
     Fires only for named-topic sessions (gated by the caller). Uses the active
     topic spec as the query and the bm25 lane (no embedder) to stay fast and
-    dependency-light inside the hook timeout. Keeps only capsules that are local
-    to this workspace or are deliberately cross-project (domain/universal scope),
-    so a large or unrelated KB cannot stuff the context with noise. Returns an
-    empty string on any failure or when no relevant capsule clears the gate.
+    dependency-light inside the hook timeout. `--workspace-gate` makes the KB
+    itself keep only capsules that are local to this workspace or deliberately
+    cross-project (domain/universal scope), so a large or unrelated KB cannot
+    stuff the context with noise. Returns an empty string on any failure or
+    when no relevant capsule clears the gate.
     """
     aikb = shutil.which(",ai-kb")
     query = " ".join(query.split())[:WARMSTART_QUERY_CHARS].strip()
@@ -116,6 +135,7 @@ def aikb_warmstart(workspace: Path, query: str, injected_ids: list[str] | None =
                 "bm25",
                 "--workspace",
                 str(workspace),
+                "--workspace-gate",
                 "--json",
             ],
             capture_output=True,
@@ -137,15 +157,12 @@ def aikb_warmstart(workspace: Path, query: str, injected_ids: list[str] | None =
 
     rows = _apply_relevance_floor(rows if isinstance(rows, list) else [])
 
-    workspace_str = str(workspace)
+    # Cross-repo scope gating is owned by `,ai-kb search --workspace-gate`;
+    # this hook only applies the relevance floor, caps, and formatting.
     selected: list[str] = []
     for row in rows if isinstance(rows, list) else []:
         if len(selected) >= WARMSTART_LIMIT:
             break
-        scope = str(row.get("scope") or "")
-        same_workspace = str(row.get("workspace_path") or "") == workspace_str
-        if not same_workspace and scope not in CROSS_PROJECT_SCOPES:
-            continue
         title = " ".join(str(row.get("title") or "").split()).strip()
         if not title:
             continue
@@ -420,6 +437,16 @@ def main() -> None:
     payload = read_payload()
     workspace, topic, spec_path, worklog_path = topic_paths(payload)
 
+    # Self-heal named topics from the persistent mirror after a /tmp wipe
+    # (macOS reboot), then re-resolve: a restored _active_topic.txt or spec
+    # can change which topic this session loads. Best-effort by design.
+    try:
+        import spec_mirror
+    except ImportError:
+        spec_mirror = None
+    if spec_mirror is not None and spec_mirror.restore_topics(spec_path.parent, workspace):
+        workspace, topic, spec_path, worklog_path = topic_paths(payload)
+
     if context_disabled(spec_path, topic):
         emit({})
         return
@@ -458,6 +485,8 @@ def main() -> None:
     no_session_key_default_branch = not key and is_default_branch_workspace(workspace)
     if not has_session_binding and should_offer_topic_buckets(spec_path, topic, no_session_key_default_branch):
         parts.extend(["", topic_buckets_context(spec_dir, payload)])
+        if not per_turn_recall_requested(payload):
+            parts.extend(["", NO_PERTURN_RECALL_NOTICE])
         parts.extend(["", AIKB_REMINDER])
         context = "\n".join(parts)
         emit(
@@ -507,7 +536,12 @@ def main() -> None:
             except OSError:
                 pass
 
+    if not per_turn_recall_requested(payload):
+        parts.extend(["", NO_PERTURN_RECALL_NOTICE])
     parts.extend(["", AIKB_REMINDER])
+
+    if spec_mirror is not None:
+        spec_mirror.sync_topic(spec_dir, workspace, topic)
 
     context = "\n".join(parts)
     emit(

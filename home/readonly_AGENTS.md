@@ -245,7 +245,7 @@ GitHub PRs/issues/comments/reviews/releases/gists, Slack, email, chat, review th
   Without a verified domain overlay, classify bots only from platform evidence such as GitHub `user.type == "Bot"` or a login ending in `[bot]`.
   This gate does not restrict read-only inspection, local working-tree edits, or `/tmp` work.
 - Wording of human-visible text for anyone other than the in-session user is owned centrally, not re-derived per surface.
-  This is independent of which mechanics skill (`github`, `google-workspace`, `review`, ...) is already loaded;
+  This is independent of which mechanics skill (`k-github`, `k-google-workspace`, `k-review`, ...) is already loaded;
   a loaded mechanics skill does not own tone.
 
 ## 4. Tooling And Memory
@@ -269,6 +269,7 @@ Durable cross-session knowledge lives in `,ai-kb`; ephemeral working context liv
   run `,ai-kb search` before acting.
 - When you verify a durable reusable insight, persist it with `,ai-kb remember`.
 - Store only verified durable/reusable insights; never store guesses or session-only notes.
+- Mid-task decisions, ideas, and constraints that are worth keeping but not yet verified go to `,agent-memory note <kind> "<text>" --ref <anchor>` (same kinds as `,ai-kb remember`, plus `question`); `,ai-kb harvest` later surfaces them as durable-memory candidates for the verified-write path.
 - Resolve the live interface from `,ai-kb --help` / `,ai-kb remember --help`, not memory.
 - At the end of any substantive turn, silently self-check whether a durable verified reusable insight was produced.
   If yes, persist it inline with deliberate metadata; otherwise skip.
@@ -350,19 +351,15 @@ Plain-English roles run as interactive agent panes (`triage`, `diagnose`, `inves
 A persistent coordinator agent pane (window 0) owns judgment calls; the supervisor wakes it with structured events.
 Unrelated efforts never share a session: you interact with each legion in its own session, or from the seeing-stone dashboard (`,palantir`, prefix+A).
 
-### 8.0 The chat agent is read-only over projects
+### 8.0 Palantír is opt-in
 
-The agent the human talks to (this session) MAY run these six sanctioned git operations directly (read-only or fast-forward, within ownership, never publication):
+The agent the human talks to works normally in the current session: it may inspect, edit, test, and perform other user-authorized project work under the applicable SOP gates.
+Palantír is never an automatic routing fallback.
+The chat agent MUST NOT propose, summon, or hand work to a legion unless the user explicitly asks to use Palantír in the current conversation.
+Task size, complexity, duration, or convenience never count as that request.
+Generic instructions such as "continue", "fix it", "do it", or approval for ordinary project edits are not Palantír authorization.
 
-- `git fetch` (read-only remote sync).
-- `git pull --ff-only` and `git merge --ff-only` (fast-forward only; no merge commit, no history rewrite).
-- `git checkout` / `switch` / `restore` to inspect a branch or file (read-only tree state).
-- `git worktree add` / `remove` / `prune` via `,w` (disposable worktree management).
-- `git stash` / `pop` / `drop` (local tree hygiene).
-- `git status` / `diff` / `log` / `show` / `blame` (read-only inspection).
-
-Any other project mutation — a content edit, a commit, a push, a PR/issue/comment/review, a force-push or history rewrite, a merge that creates a merge commit, a deletion, a migration — is **not** a chat-agent action.
-Get explicit human approval for it, or hand it to a legion — and chat-agent-initiated summons are themselves propose-only:
+After an explicit Palantír request, a chat-agent-initiated summon is still propose-only:
 present the goal packet, acceptance criteria, and base ref, then wait for explicit approval before running `,palantir summon`.
 `--no-worktree` (run in the current directory instead of a disposable worktree) additionally requires the user to have asked for it by name.
 Legion role panes carry `PALANTIR_AGENT_ROLE` and cannot summon at all — no recursive legions.
@@ -400,3 +397,4 @@ The human-facing workflow executes the packet:
 - **Project-intrinsic** (project `AGENTS.md`): repo-specific conventions the legion discovered, landed via its own worktree so the project owns them.
 
 Routing never stores secrets, guesses, or session-only notes; dedup against `,ai-kb search` before writing durable memory.
+An unrouted packet stays visible (`U` attention in the stone/statusline) until `,palantir routed <id>` records that its contents were executed.

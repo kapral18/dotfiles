@@ -30,7 +30,8 @@ implement_family = "gpt"
 adversarial_review_model = "claude-fable-5"
 adversarial_review_family = "claude"
 
-# Supervisor cadence and budgets.
+# Supervisor cadence and budgets. max_implement_attempts bounds every return of
+# implement to work (failed verify or review blockers) before the legion parks in holding.
 watch_interval_secs = 20
 max_implement_attempts = 3
 inject_settle_secs = 2

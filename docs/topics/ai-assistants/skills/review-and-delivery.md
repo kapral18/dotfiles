@@ -7,75 +7,75 @@ title: Review and delivery
 
 These skills govern review methodology, GitHub side effects, and human-readable text.
 
-## `review`
+## `k-review`
 
 | Field    | Value                                                                                            |
 | -------- | ------------------------------------------------------------------------------------------------ |
 | Use when | reviewing local changes, PRs, or plan/design docs; continuing reviews; addressing review threads |
-| Source   | [`exact_review`](../../../../home/exact_dot_agents/exact_skills/exact_review/)                   |
+| Source   | [`exact_k-review`](../../../../home/exact_dot_agents/exact_skills/exact_k-review/)               |
 | Related  | [Review workflow](../reviews/index.md)                                                           |
 
-## `agent-review`
+## `k-agent-review`
 
-| Field    | Value                                                                                      |
-| -------- | ------------------------------------------------------------------------------------------ |
-| Use when | multi-agent review orchestration, reviewer fan-out, findings aggregation                   |
-| Source   | [`exact_agent-review`](../../../../home/exact_dot_agents/exact_skills/exact_agent-review/) |
-| Routing  | manual                                                                                     |
-| Related  | [Agent-review topology](../reviews/agent-review-topology.md)                               |
+| Field    | Value                                                                                          |
+| -------- | ---------------------------------------------------------------------------------------------- |
+| Use when | multi-agent review orchestration, reviewer fan-out, findings aggregation                       |
+| Source   | [`exact_k-agent-review`](../../../../home/exact_dot_agents/exact_skills/exact_k-agent-review/) |
+| Routing  | manual                                                                                         |
+| Related  | [Agent-review topology](../reviews/agent-review-topology.md)                                   |
 
-## `light-review`
+## `k-light-review`
 
-| Field    | Value                                                                                        |
-| -------- | -------------------------------------------------------------------------------------------- |
-| Use when | proportional-depth in-place audit of low-risk self-authored changes                          |
-| Source   | [`exact_light-review`](../../../../home/exact_dot_agents/exact_skills/exact_light-review/)   |
-| Boundary | escalate to `review` for PRs, others' code, risky/stateful changes, or required base context |
+| Field    | Value                                                                                          |
+| -------- | ---------------------------------------------------------------------------------------------- |
+| Use when | proportional-depth in-place audit of low-risk self-authored changes                            |
+| Source   | [`exact_k-light-review`](../../../../home/exact_dot_agents/exact_skills/exact_k-light-review/) |
+| Boundary | escalate to `k-review` for PRs, others' code, risky/stateful changes, or required base context |
 
-## `github`
+## `k-github`
 
 | Field    | Value                                                                               |
 | -------- | ----------------------------------------------------------------------------------- |
 | Use when | GitHub mutations via `gh`: PRs, issues, comments, reviews, labels, releases, merges |
-| Source   | [`exact_github`](../../../../home/exact_dot_agents/exact_skills/exact_github/)      |
+| Source   | [`exact_k-github`](../../../../home/exact_dot_agents/exact_skills/exact_k-github/)  |
 | Boundary | not for read-only review analysis or draft-only writing                             |
 
 PR creation and edits are human-visible publication flows. The skill requires full context intake before composition, an explicit publication preflight ledger for title/body/Test Plan/metadata, user approval for invented human-visible text, and read-back comparison after `gh pr create` or `gh pr edit`. Review-comment posting preserves review-side UI evidence attachments in the approval/preflight handoff, including folder-open/provided status, while keeping local screenshot paths out of GitHub bodies.
 
-## `compose-pr`
+## `k-compose-pr`
 
-| Field    | Value                                                                                  |
-| -------- | -------------------------------------------------------------------------------------- |
-| Use when | drafting PR title/body or publication packet before creating or editing a PR           |
-| Source   | [`exact_compose-pr`](../../../../home/exact_dot_agents/exact_skills/exact_compose-pr/) |
-| Boundary | draft + publication packet only; no GitHub side effects                                |
+| Field    | Value                                                                                      |
+| -------- | ------------------------------------------------------------------------------------------ |
+| Use when | drafting PR title/body or publication packet before creating or editing a PR               |
+| Source   | [`exact_k-compose-pr`](../../../../home/exact_dot_agents/exact_skills/exact_k-compose-pr/) |
+| Boundary | draft + publication packet only; no GitHub side effects                                    |
 
-When a draft feeds a GitHub side effect, it carries a PR publication packet outside the PR body so `github` can verify template compliance, screenshot proof status, linked issue intake, Test Plan completeness, metadata status, and unresolved placeholders before publishing.
+When a draft feeds a GitHub side effect, it carries a PR publication packet outside the PR body so `k-github` can verify template compliance, screenshot proof status, linked issue intake, Test Plan completeness, metadata status, and unresolved placeholders before publishing.
 
 When the change embodies decisions with observable consequences for others (API shape, privilege model, error responses, defaults), the body carries a `## Decisions` section — one bullet per decision with the risk if it was the wrong call; internal implementation choices are excluded (decision-log discipline adapted from [`elastic/plan`](https://github.com/elastic/plan)).
 
-## `compose-issue`
+## `k-compose-issue`
 
-| Field    | Value                                                                                        |
-| -------- | -------------------------------------------------------------------------------------------- |
-| Use when | drafting issue title/body or publication packet before creating or editing an issue          |
-| Source   | [`exact_compose-issue`](../../../../home/exact_dot_agents/exact_skills/exact_compose-issue/) |
-| Boundary | draft + publication packet only; no GitHub side effects                                      |
+| Field    | Value                                                                                            |
+| -------- | ------------------------------------------------------------------------------------------------ |
+| Use when | drafting issue title/body or publication packet before creating or editing an issue              |
+| Source   | [`exact_k-compose-issue`](../../../../home/exact_dot_agents/exact_skills/exact_k-compose-issue/) |
+| Boundary | draft + publication packet only; no GitHub side effects                                          |
 
-When a draft feeds a GitHub issue side effect, it carries an issue publication packet outside the issue body so `github` can verify GitHub issue type, metadata, duplicate checks, parent/sub-issue links, intake, approval, and read-back before publishing.
+When a draft feeds a GitHub issue side effect, it carries an issue publication packet outside the issue body so `k-github` can verify GitHub issue type, metadata, duplicate checks, parent/sub-issue links, intake, approval, and read-back before publishing.
 
-## `communication`
+## `k-communication`
 
-| Field    | Value                                                                                        |
-| -------- | -------------------------------------------------------------------------------------------- |
-| Use when | wording anything another human will read                                                     |
-| Source   | [`exact_communication`](../../../../home/exact_dot_agents/exact_skills/exact_communication/) |
-| Boundary | governs wording, not whether publishing is allowed                                           |
+| Field    | Value                                                                                            |
+| -------- | ------------------------------------------------------------------------------------------------ |
+| Use when | wording anything another human will read                                                         |
+| Source   | [`exact_k-communication`](../../../../home/exact_dot_agents/exact_skills/exact_k-communication/) |
+| Boundary | governs wording, not whether publishing is allowed                                               |
 
-## `present-pr`
+## `k-present-pr`
 
-| Field    | Value                                                                                  |
-| -------- | -------------------------------------------------------------------------------------- |
-| Use when | building an HTML scrollytelling walkthrough of a PR or local diff                      |
-| Source   | [`exact_present-pr`](../../../../home/exact_dot_agents/exact_skills/exact_present-pr/) |
-| Routing  | manual                                                                                 |
+| Field    | Value                                                                                      |
+| -------- | ------------------------------------------------------------------------------------------ |
+| Use when | building an HTML scrollytelling walkthrough of a PR or local diff                          |
+| Source   | [`exact_k-present-pr`](../../../../home/exact_dot_agents/exact_skills/exact_k-present-pr/) |
+| Routing  | manual                                                                                     |

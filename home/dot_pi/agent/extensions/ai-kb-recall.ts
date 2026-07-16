@@ -22,8 +22,13 @@
 //   2. Per-turn (every substantive prompt): query = the user's actual prompt — the
 //      highest-relevance signal — deduped against capsules already injected this session.
 //
-// Both share the same relevance gate as the Python warm-start: keep only capsules local to
-// this workspace or scoped domain/universal, so a large/cross-project KB cannot stuff context.
+// Both share the same relevance gate as the Python warm-start: `,ai-kb search
+// --workspace-gate` keeps only capsules local to this workspace or scoped
+// domain/universal, so a large/cross-project KB cannot stuff context.
+//
+// Worklog capture: tool_result events are forwarded to the shared
+// worklog_dispatcher.sh (same payload shape as the Copilot adapter), so pi
+// sessions feed the same <topic>.worklog.jsonl trail as every other harness.
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { spawn } from "node:child_process"
@@ -75,7 +80,6 @@ const PERTURN_COSINE_FLOOR_FRACTION = 0.85
 // many percentage points since it was last injected (decay proxy). Compaction forces a
 // re-inject regardless, since it summarizes/drops the prior prefix.
 const PREFIX_REINJECT_DELTA_PCT = 20
-const CROSS_PROJECT_SCOPES = new Set(["domain", "universal"])
 
 // Same verification-discipline core the tmux wrap pastes manually and that
 // session_context.py injects for cursor-agent/claude. Read from the deployed file
@@ -274,6 +278,7 @@ async function searchCapsules(
     mode,
     "--workspace",
     workspace,
+    "--workspace-gate",
     "--json",
   ]
   const result = await runSearch(flat, searchArgs, mode === "hybrid", profile.timeoutMs)
@@ -328,6 +333,35 @@ function runSearch(query: string, args: string[], connectOnly: boolean, timeoutM
   })
 }
 
+// Fire-and-forget worklog forwarding to the shared dispatcher. The dispatcher
+// detaches its recorder, so this only needs to deliver the payload; every
+// failure is swallowed (worklog capture must never break a tool call).
+const WORKLOG_OUTPUT_MAX_CHARS = 2_000
+
+function recordWorklog(payload: Record<string, unknown>): void {
+  const home = process.env.HOME ?? ""
+  if (!home) return
+  const dispatcher = join(home, ".agents", "hooks", "worklog_dispatcher.sh")
+  try {
+    const child = spawn(dispatcher, [], { stdio: ["pipe", "ignore", "ignore"] })
+    child.on("error", () => {})
+    child.stdin.on("error", () => {})
+    child.stdin.end(JSON.stringify(payload))
+  } catch {
+    // fail open
+  }
+}
+
+function toolResultText(content: unknown): string {
+  if (!Array.isArray(content)) return ""
+  const parts: string[] = []
+  for (const item of content) {
+    const text = (item as { text?: unknown })?.text
+    if (typeof text === "string" && text) parts.push(text)
+  }
+  return parts.join("\n").slice(0, WORKLOG_OUTPUT_MAX_CHARS)
+}
+
 async function warmEmbedder(pi: ExtensionAPI, depth: AgentDepth): Promise<void> {
   if (depth === "fast") return
   const home = process.env.HOME ?? ""
@@ -337,11 +371,10 @@ async function warmEmbedder(pi: ExtensionAPI, depth: AgentDepth): Promise<void> 
   })
 }
 
-// Same gate as session_context.py: workspace-local capsules, or deliberately cross-project
-// (domain/universal) ones. Skips capsules already injected this session.
+// Cross-repo scope gating is owned by `,ai-kb search --workspace-gate` (same
+// contract as the shared hooks). Skips capsules already injected this session.
 function gateAndFormat(
   rows: Capsule[],
-  workspace: string,
   seen: Set<string>,
   limit: number,
   bodyChars: number = BODY_MAX_CHARS,
@@ -349,9 +382,6 @@ function gateAndFormat(
   const lines: string[] = []
   for (const row of rows) {
     if (lines.length >= limit) break
-    const sameWorkspace = (row.workspace_path ?? "") === workspace
-    const scope = row.scope ?? ""
-    if (!sameWorkspace && !CROSS_PROJECT_SCOPES.has(scope)) continue
     const id = row.id ?? ""
     if (id && seen.has(id)) continue
     const title = collapse(row.title ?? "", 200)
@@ -387,6 +417,24 @@ export default async function (pi: ExtensionAPI) {
     if (!state) return
     state.forceReinject = true
     state.lastPrefixPercent = null
+  })
+
+  // Worklog capture: mirror the Copilot adapter's postToolUse payload so the
+  // shared recorder treats pi like every other harness. Fail-open by design.
+  pi.on("tool_result", (event, ctx) => {
+    try {
+      recordWorklog({
+        hook_event_name: event.isError ? "postToolUseFailure" : "postToolUse",
+        session_id: ctx.sessionManager.getSessionId(),
+        cwd: ctx.cwd,
+        tool_name: event.toolName,
+        tool_input: event.input,
+        tool_output: toolResultText(event.content),
+        status: event.isError ? "failure" : "success",
+      })
+    } catch {
+      // fail open
+    }
   })
 
   pi.on("before_agent_start", async (event, ctx) => {
@@ -438,7 +486,7 @@ export default async function (pi: ExtensionAPI) {
             // start where the embedder may be cold/slow — bm25 keeps it fast and
             // dependency-light, floored on bm25_score.
             const rows = await searchCapsules(workspace, specText, "bm25")
-            const lines = gateAndFormat(rows, workspace, state.injectedIds, WARMSTART_LIMIT)
+            const lines = gateAndFormat(rows, state.injectedIds, WARMSTART_LIMIT)
             if (lines.length) {
               blocks.push(
                 ["### Relevant Learnings (,ai-kb)", "Surfaced from durable memory for this topic; verify before relying on them.", ...lines].join(
@@ -459,7 +507,6 @@ export default async function (pi: ExtensionAPI) {
         const rows = await searchCapsules(workspace, prompt, "hybrid", perturnProfile)
         const lines = gateAndFormat(
           rows,
-          workspace,
           state.injectedIds,
           perturnProfile.limit,
           perturnProfile.bodyChars,

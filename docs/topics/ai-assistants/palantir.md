@@ -18,7 +18,7 @@ _Rendered from the current dashboard source against a sanitized two-legion fixtu
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Legion           | One effort. It owns one tmux session, one manifest, one worktree unless `--no-worktree` is used, and one stage timeline.                            |
 | Session          | The tmux container for the effort. Window 0 is `command`: coordinator agent pane plus deterministic supervisor pane.                                |
-| Stage window     | A tmux window dedicated to one stage such as `implement`, `adversarial_review`, or `verify`.                                                        |
+| Role window      | A tmux window dedicated to an interactive role stage such as `implement` or `adversarial_review`; machine-run `verify` stays in the supervisor.     |
 | Coordinator pane | A persistent agent harness that receives structured `[palantir]` events and makes judgment calls that the deterministic supervisor must not invent. |
 | Supervisor pane  | The Python control loop. It owns lifecycle, state transitions, retries, wake dedupe, and safety guards without putting an LLM in the control path.  |
 
@@ -39,20 +39,20 @@ Two non-success states matter:
 | State      | Meaning                                                                                                              |
 | ---------- | -------------------------------------------------------------------------------------------------------------------- |
 | `holding`  | The legion is parked because a role asked a question, a premise needs human input, or the retry budget is exhausted. |
-| `banished` | Terminal state after explicit teardown or final closure.                                                             |
+| `banished` | Terminal lifecycle stage entered when closure is accepted; teardown status records whether cleanup completed.        |
 
 The supervisor enforces the hard guards:
 
 - `adversarial_review` cannot clear the same model family that implemented the change.
-- `verify` is machine-run acceptance criteria only: command exit 0 is green, nonzero is red or blocked with evidence.
+- `verify` is machine-run acceptance criteria only: command exit 0 is green and nonzero is red with evidence.
 - `cleared_for_human` is reachable only after green verify and zero review blockers.
-- A verify failure wakes `implement` with bounded evidence, up to `max_implement_attempts`, then parks the legion in `holding`.
+- A verify failure or an adversarial review with open blockers wakes `implement` with bounded evidence; every such return spends the shared `max_implement_attempts` budget, then parks the legion in `holding`.
 - Repeated identical wake states are deduped, so the coordinator sees one actionable event instead of log spam.
 - State transitions persist their runtime actions before execution; a supervisor restart retries an unacknowledged pane launch, verify, wake, or closeout packet instead of losing it.
 - Coordinator events are durably queued while its pane is busy and removed only after composer-authorized delivery.
 - Pane input is fail-closed: only composer `empty` authorizes injection; `pending`, `busy`, and `unknown` wait and retry without advancing the stage.
 - Role harnesses carry `PALANTIR_AGENT_ROLE`; the dispatcher and supervisor refuse agent-originated `grant` and `banish` events, and `summon` refuses legion panes outright (no recursive legions), keeping clearance, teardown, and legion creation human-controlled.
-- Chat-agent-initiated summons are propose-only (SOP §8.0): the agent presents the goal packet, acceptance criteria, and base ref and waits for explicit approval; `--no-worktree` requires the user to have asked for it by name.
+- Palantír is strictly opt-in in ordinary chat sessions (SOP §8.0): the agent must not propose, summon, or hand work to a legion unless the user explicitly asks to use Palantír in the current conversation. After that request, the agent presents the goal packet, acceptance criteria, and base ref and waits for explicit approval; `--no-worktree` requires the user to have asked for it by name.
 
 ## Hybrid control
 
@@ -109,20 +109,20 @@ Every dispatched stage records before/after dirty-path identities under `stages/
 
 ## Criteria discipline
 
-Specs should hand Palantír criteria that have already been proven red. The `spec` flow produces criteria JSON from acceptance checks that were run before implementation and observed failing for the right reason. `,palantir summon --criteria '<json>'` consumes that criteria block for detached execution.
+Specs should hand Palantír criteria that have already been proven red. The `k-spec` flow produces criteria JSON from acceptance checks that were run before implementation and observed failing for the right reason. `,palantir summon --criteria '<json>'` consumes that criteria block for detached execution.
 
-During `verify`, Palantír runs the criteria as machine checks. A green status means the configured command exited 0 under the legion worktree. A red status returns evidence to implementation; it does not become a coordinator judgment call.
+During `verify`, Palantír runs criteria with configured commands as machine checks. A green status means the command exited 0 under the legion worktree. A red status returns evidence to implementation; it does not become a coordinator judgment call. Judgment-only criteria without a `check` remain for the human and do not block machine verification.
 
 Implementation roles may run focused development checks, but the supervisor owns the full acceptance run. Adversarial review audits both the implementation and criterion observability; a command that exits 0 without exercising the stated behavior is a blocker, not a passing criterion.
 
 ## Dashboard and tmux surface
 
-| Surface          | Behavior                                                                                                                                                                    |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Bare `,palantir` | Opens the Textual dashboard via `uv run` from the deployed PEP 723 entrypoint.                                                                                              |
-| `prefix+A`       | Opens the same dashboard in a tmux popup.                                                                                                                                   |
-| Status-right     | Calls `,palantir statusline`: `P:n H:n C:n` for progressing/holding/cleared, `O:n` for incomplete teardown, and `E:n` for corrupt state. Clean closed history stays silent. |
-| Tmux config      | `home/dot_config/exact_tmux/exact_conf.d/readonly_45-palantir.conf`.                                                                                                        |
+| Surface          | Behavior                                                                                                                                                                                                                                                                                         |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Bare `,palantir` | Opens the Textual dashboard via `uv run` from the deployed PEP 723 entrypoint.                                                                                                                                                                                                                   |
+| `prefix+A`       | Opens the same dashboard in a tmux popup.                                                                                                                                                                                                                                                        |
+| Status-right     | Calls `,palantir statusline`: `P:n H:n C:n` for progressing/holding/cleared, `T:n` for erroring coordinator transport, `O:n` for incomplete teardown, `U:n` for closed legions whose memory packet is still unrouted, and `E:n` for corrupt state. Clean closed-and-routed history stays silent. |
+| Tmux config      | `home/dot_config/exact_tmux/exact_conf.d/readonly_45-palantir.conf`.                                                                                                                                                                                                                             |
 
 Nothing is invisible to the stone: legion dirs without a readable manifest (including lock-only debris) surface as `corrupt` rows in `farsee`, the dashboard, and the `E:n` statusline count. Locking a nonexistent legion is refused rather than creating such a dir, and `banish` removes a manifest-less dir fail-closed (never while its supervisor lock is live).
 
@@ -132,22 +132,23 @@ The dashboard uses Textual's built-in `catppuccin-frappe` theme (Textual ≥ 8),
 
 ## CLI surface
 
-| Command                                                                          | Purpose                                                                                                |
-| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `,palantir`                                                                      | Open the dashboard.                                                                                    |
-| `,palantir summon "<goal>" [--criteria '<json>'] [--base <ref>] [--no-worktree]` | Summon a new legion.                                                                                   |
-| `,palantir farsee`                                                               | Survey every legion.                                                                                   |
-| `,palantir behold <id>`                                                          | Behold manifest-derived status for one legion.                                                         |
-| `,palantir send-word <id> [--window W] "<msg>"`                                  | Send structured word into a legion window.                                                             |
-| `,palantir answer <id> "<msg>"`                                                  | Answer a parked question and let the supervisor continue.                                              |
-| `,palantir grant <id>`                                                           | Grant the human clearance gate, persist closeout memory instructions, and tear down the legion.        |
-| `,palantir banish <id> [--force]`                                                | Banish and tear down a legion. On a lock-only debris dir (no manifest) it removes the dir fail-closed. |
-| `,palantir keep-watch <id> [--stop]`                                             | Keep or stop the deterministic supervisor watch.                                                       |
-| `,palantir trial <id>`                                                           | Put the acceptance criteria to machine trial again.                                                    |
-| `,palantir statusline`                                                           | Print the compact tmux status segment.                                                                 |
-| `,palantir doctor`                                                               | Check local wiring and configuration.                                                                  |
-| `,palantir composer <sub>`                                                       | Access composer helpers.                                                                               |
-| `,palantir state <sub>`                                                          | Inspect or adjust state internals.                                                                     |
+| Command                                                                          | Purpose                                                                                                                                   |
+| -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `,palantir`                                                                      | Open the dashboard.                                                                                                                       |
+| `,palantir summon "<goal>" [--criteria '<json>'] [--base <ref>] [--no-worktree]` | Summon a new legion.                                                                                                                      |
+| `,palantir farsee`                                                               | Survey every legion.                                                                                                                      |
+| `,palantir behold <id>`                                                          | Behold manifest-derived status for one legion.                                                                                            |
+| `,palantir send-word <id> [--window W] "<msg>"`                                  | Send structured word into a legion window.                                                                                                |
+| `,palantir answer <id> "<msg>"`                                                  | Answer a parked question and let the supervisor continue.                                                                                 |
+| `,palantir grant <id>`                                                           | Grant the human clearance gate, persist closeout memory instructions, tear down the legion, and print the packet path + routing reminder. |
+| `,palantir routed <id>`                                                          | Mark a closed legion's memory-routing packet as executed (clears the `U:n` attention flag).                                               |
+| `,palantir banish <id> [--force]`                                                | Banish and tear down a legion. On a lock-only debris dir (no manifest) it removes the dir fail-closed.                                    |
+| `,palantir keep-watch <id> [--stop]`                                             | Keep or stop the deterministic supervisor watch.                                                                                          |
+| `,palantir trial <id>`                                                           | Put the acceptance criteria to machine trial again.                                                                                       |
+| `,palantir statusline`                                                           | Print the compact tmux status segment.                                                                                                    |
+| `,palantir doctor`                                                               | Check local wiring and configuration.                                                                                                     |
+| `,palantir composer <sub>`                                                       | Access composer helpers.                                                                                                                  |
+| `,palantir state <sub>`                                                          | Inspect or adjust state internals.                                                                                                        |
 
 ## State layout
 
@@ -158,7 +159,7 @@ ${PALANTIR_STATE_HOME:-~/.local/state/palantir}/legions/<id>/manifest.json
 ${PALANTIR_STATE_HOME:-~/.local/state/palantir}/legions/<id>/stages/<stage>.result.json
 ```
 
-`manifest.json` is the supervisor's source of truth for the legion id, goal, worktree, base ref, active stage, retry counters, role assignments, blocker state, and verify results.
+`manifest.json` is the supervisor's source of truth for the legion id, goal, worktree, active stage, retry counters, role assignments, blocker state, and verify results.
 
 ## Memory routing on close
 
@@ -170,11 +171,13 @@ When a legion closes, Palantír atomically persists a `memory-routing.json` clos
 | Task-scoped worklog or intent notes                     | `/tmp/specs`.                                              |
 | Repo-intrinsic conventions discovered during the effort | The target repo's `AGENTS.md` through the legion worktree. |
 
+Routing is human-executed and tracked: `grant` prints the packet path and a reminder, and the legion keeps a `U` (unrouted) attention flag in `farsee`, the dashboard, and the statusline until `,palantir routed <id>` records that the packet's contents were routed.
+
 Do not store secrets, guesses, or one-off observations in durable memory.
 
 ## Where to go deeper
 
 - SOP §8 in `~/AGENTS.md` defines the chat agent's Palantír operating boundary.
-- Skill source: `home/exact_dot_agents/exact_skills/exact_palantir/readonly_SKILL.md`.
+- Skill source: `home/exact_dot_agents/exact_skills/exact_k-palantir/readonly_SKILL.md`.
 - State-machine map: `.mermaids/04-palantir-state-machine.mmd`.
 - Governed agent runtime flow: `.mermaids/S2-flow-agent-runtime.mmd`.

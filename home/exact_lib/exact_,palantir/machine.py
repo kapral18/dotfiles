@@ -20,8 +20,9 @@ Invariants:
     blockers. There is no other edge into it.
   * ``adversarial_review`` must run on a different model family than
     ``implement`` (enforced at role resolution, refused at summon time).
-  * A failed verify returns ``implement`` to work with the failure evidence,
-    bounded by ``max_implement_attempts``; an exhausted budget parks the
+  * Every return of ``implement`` to work — a failed verify or an
+    adversarial review with open blockers — spends one shared
+    ``max_implement_attempts`` budget; an exhausted budget parks the
     legion in ``holding`` instead of looping.
   * Closing a legion (``banish`` from any stage, or ``grant_clear`` from
     ``cleared_for_human``) emits a memory-routing packet: durable findings ->
@@ -307,6 +308,18 @@ def transition(manifest: dict, event: dict) -> "tuple[dict, list[dict]]":
             blockers = list(event.get("blockers") or [])
             manifest["review_blockers"] = blockers
             if blockers:
+                attempts = int(manifest.get("implement_attempts", 0)) + 1
+                manifest["implement_attempts"] = attempts
+                budget = int(manifest.get("max_implement_attempts", 3))
+                if attempts >= budget:
+                    manifest["stage"] = "holding"
+                    manifest["holding"] = {
+                        "reason": "review-budget-exhausted",
+                        "text": f"{attempts} implement attempts still carry review blockers",
+                        "blockers": blockers,
+                        "resume_stage": "implement",
+                    }
+                    return manifest, [_wake(attention_event(manifest))]
                 manifest["stage"] = "implement"
                 return manifest, [
                     _start("implement", {"review_blockers": blockers}),
@@ -387,6 +400,11 @@ def attention(manifest: dict) -> Optional[str]:
         return "holding"
     if stage == "banished" and manifest.get("teardown_status") != "complete":
         return "orphan"
+    if stage == "banished" and manifest.get("memory_packet_written") and not manifest.get("memory_packet_routed"):
+        return "unrouted"
+    transport = manifest.get("coordinator_transport") or {}
+    if stage not in TERMINAL_STAGES and transport.get("status") == "error":
+        return "transport"
     return None
 
 
@@ -414,6 +432,12 @@ def attention_event(manifest: dict) -> Optional[dict]:
             "attempts": int(manifest.get("implement_attempts", 0)),
             "failures": list(holding.get("failures") or []),
         }
+    if reason == "review-budget-exhausted":
+        return {
+            "kind": "budget_exhausted",
+            "attempts": int(manifest.get("implement_attempts", 0)),
+            "blockers": list(holding.get("blockers") or []),
+        }
     return {"kind": "holding", "reason": reason, "text": holding.get("text", "")}
 
 
@@ -437,6 +461,7 @@ def summarize(manifest: dict) -> dict:
         "coordinator_error": transport.get("last_error", ""),
         "teardown_status": manifest.get("teardown_status", ""),
         "memory_packet_written": bool(manifest.get("memory_packet_written")),
+        "memory_packet_routed": bool(manifest.get("memory_packet_routed")),
         "criteria_total": len(manifest.get("criteria") or []),
         "criteria_green": sum(1 for c in (manifest.get("criteria") or []) if c.get("status") == "green"),
     }

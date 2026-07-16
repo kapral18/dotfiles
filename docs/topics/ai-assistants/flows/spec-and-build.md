@@ -5,7 +5,7 @@ title: "Spec a feature, build it hands-free"
 
 # Spec a feature, then build it hands-free
 
-You have an idea ("add a `done` command to my CLI") and want the agent to implement it without babysitting, but with proof it worked. Two steps: `spec` turns the idea into a contract; `/build` implements it in-session, or `,palantir summon --criteria` runs it detached. You touch exactly two gates.
+You have an idea ("add a `done` command to my CLI") and want the agent to implement it without babysitting, but with proof it worked. Two steps: `k-spec` turns the idea into a contract; `/build` implements it in-session, or `,palantir summon --criteria` runs it detached. You touch exactly two gates.
 
 **Prerequisites:** a Claude Code (or Cursor/Copilot) session in your repo. Nothing else.
 
@@ -17,7 +17,7 @@ Type, in your own words:
 develop a spec for: a `done <id>` command that marks a todo completed and hides it from list
 ```
 
-The `spec` skill fires on "develop a spec". The agent will now:
+The `k-spec` skill fires on "develop a spec". The agent will now:
 
 1. Check the work isn't already done (git log, issues, memory).
 2. Ask you fork-closing questions — **one at a time, always with a recommended answer**, like:
@@ -62,7 +62,7 @@ Completion gate: clear
 Compatibility impact: none
 ```
 
-`confirmed` means the adversarial verifier failed to break it. A `refuted` row never reaches you silently — it goes back to implementation first. If a criterion was visual, the build ran `ui-proof` against the running app and its row is backed by a screenshot saved in its own distinct `/tmp/<folder-name>/` folder, with the folder opened or provided — proof the intended visual was actually built. Nothing is committed yet: say `commit it` / `draft the PR` (which embeds those screenshots as attach placeholders you drag into GitHub) when satisfied.
+`confirmed` means the adversarial verifier failed to break it. A `refuted` row never reaches you silently — it goes back to implementation first. If a criterion was visual, the build ran `k-ui-proof` against the running app and its row is backed by a screenshot saved in its own distinct `/tmp/<folder-name>/` folder, with the folder opened or provided — proof the intended visual was actually built. Nothing is committed yet: say `commit it` / `draft the PR` (which embeds those screenshots as attach placeholders you drag into GitHub) when satisfied.
 
 ## When things go sideways
 

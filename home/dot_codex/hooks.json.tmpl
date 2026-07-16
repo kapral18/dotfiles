@@ -1,0 +1,37 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/bin/sh -c 'AI_EMBED_WARM=1 AGENT_HOOK_OUTPUT=hook_specific exec {{ .chezmoi.homeDir }}/.agents/hooks/session_context.py'",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{{ .chezmoi.homeDir }}/.agents/hooks/perturn_recall.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{{ .chezmoi.homeDir }}/.agents/hooks/worklog_dispatcher.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

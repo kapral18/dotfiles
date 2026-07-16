@@ -163,10 +163,9 @@ Helper scripts called by hooks and commands (stdlib-only by convention).
 
 Idempotent housekeeping that removes orphaned generated state on apply.
 
-| Hook                                                                                                                                                              | Purpose                                      |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| [`run_onchange_after_08-cleanup-orphaned-agent-skill-dirs.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_08-cleanup-orphaned-agent-skill-dirs.sh.tmpl)   | Drop skill dirs no longer in the source tree |
-| [`run_onchange_after_08-cleanup-orphaned-tmux-pick_session.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_08-cleanup-orphaned-tmux-pick_session.sh.tmpl) | Remove stale tmux `pick_session` artifacts   |
+| Hook                                                                                                                                                              | Purpose                                    |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| [`run_onchange_after_08-cleanup-orphaned-tmux-pick_session.sh.tmpl`](../../home/.chezmoiscripts/run_onchange_after_08-cleanup-orphaned-tmux-pick_session.sh.tmpl) | Remove stale tmux `pick_session` artifacts |
 
 ## Formatting
 

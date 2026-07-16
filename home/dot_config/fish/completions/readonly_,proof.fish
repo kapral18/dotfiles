@@ -1,6 +1,6 @@
 # Completions for ,proof.
 
-set -l __proof_subcommands start path add-criterion add-evidence show review block resolve-blocker status check report
+set -l __proof_subcommands start path list add-criterion add-evidence show review block resolve-blocker finalize reopen prune status check report
 set -l __proof_evidence_types test build lint typecheck diff screenshot browser log file-read manual-user-confirmation
 set -l __proof_verdicts supports does-not-support unclear
 
@@ -27,11 +27,18 @@ complete -c ',proof' -n '__fish_seen_subcommand_from add-evidence' -l command -r
 complete -c ',proof' -n '__fish_seen_subcommand_from add-evidence' -l artifact-path -r -d 'Artifact to copy into proof state'
 complete -c ',proof' -n '__fish_seen_subcommand_from add-evidence' -l exit-code -r -d 'Exit code for external command evidence'
 complete -c ',proof' -n '__fish_seen_subcommand_from add-evidence' -l summary -r -d 'Evidence summary'
+complete -c ',proof' -n '__fish_seen_subcommand_from add-evidence' -l allow-secrets -d 'Allow secret-like content with a warning'
 
 complete -c ',proof' -n '__fish_seen_subcommand_from review' -s e -l evidence -r -d 'Evidence id'
 complete -c ',proof' -n '__fish_seen_subcommand_from review' -s v -l verdict -x -a "$__proof_verdicts" -d 'Review verdict'
 complete -c ',proof' -n '__fish_seen_subcommand_from review' -s n -l notes -r -d 'Review notes'
 complete -c ',proof' -n '__fish_seen_subcommand_from review' -l reviewer -r -d 'Reviewer name'
+
+complete -c ',proof' -n '__fish_seen_subcommand_from finalize' -l allow-failing -d 'Seal even when check fails'
+complete -c ',proof' -n '__fish_seen_subcommand_from list' -l json -d 'Print JSON'
+complete -c ',proof' -n '__fish_seen_subcommand_from list' -l all-workspaces -d 'List every workspace hash'
+complete -c ',proof' -n '__fish_seen_subcommand_from prune' -l older-than -r -d 'Remove ledgers older than DAYS'
+complete -c ',proof' -n '__fish_seen_subcommand_from prune' -l dry-run -d 'Print removals without deleting'
 
 complete -c ',proof' -n '__fish_seen_subcommand_from status check' -l json -d 'Print JSON'
 complete -c ',proof' -n '__fish_seen_subcommand_from status' -s v -l verbose -d 'Print gate issues'

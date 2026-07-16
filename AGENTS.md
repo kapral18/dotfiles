@@ -69,7 +69,7 @@ AI functionality includes SOP files, skills, subagents, runtime profiles, hooks,
 
 - **Generic surfaces:** portable behavior such as global SOP mechanics, shared skills, generic subagent/runtime profiles, hooks, model/MCP/package generators, and registries.
   Cross-repo AI workflow docs are also generic surfaces.
-- **Domain surfaces:** repo/org/product policy such as `elastic-domain`, `kibana-*`, Elastic/Kibana labels, ownership, Buildkite routing, and bot allowlists.
+- **Domain surfaces:** repo/org/product policy such as `k-elastic-domain`, `k-kibana-*`, Elastic/Kibana labels, ownership, Buildkite routing, and bot allowlists.
   PR templates, live-UI targets, endpoints, and data setup are also domain surfaces.
 - **Future domains:** any future repo/org/product overlay with comparable policy.
 

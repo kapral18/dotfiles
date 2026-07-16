@@ -545,5 +545,26 @@ class TestAiLauncher(unittest.TestCase):
         self.assertLessEqual(len(LAUNCHER.read_text(encoding="utf-8").splitlines()), 15)
 
 
+class CapabilityDriftTests(unittest.TestCase):
+    """WHEN the hand-authored CAPABILITIES table and the observed
+    model_capabilities.v1.json snapshot drift, the suite fails loudly."""
+
+    CAPABILITIES_SNAPSHOT = REPO / "scripts" / "model_capabilities.v1.json"
+
+    def test_verified_versions_match_the_capability_snapshot(self) -> None:
+        core = load_core()
+        snapshot = json.loads(self.CAPABILITIES_SNAPSHOT.read_text(encoding="utf-8"))["harnesses"]
+        self.assertEqual(sorted(core.CAPABILITIES), sorted(snapshot))
+        for name, capability in core.CAPABILITIES.items():
+            observed = str(snapshot[name].get("identity", {}).get("version", ""))
+            self.assertIn(
+                capability.verified_version,
+                observed,
+                f"{name}: CAPABILITIES.verified_version {capability.verified_version!r} is not part of "
+                f"the observed identity version {observed!r}; re-verify the harness and update both "
+                f"home/exact_lib/exact_,ai/main.py and scripts/model_capabilities.v1.json together",
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

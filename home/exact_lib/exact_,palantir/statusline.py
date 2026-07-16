@@ -4,10 +4,12 @@
 Prints a terse segment (empty when no legions exist) so the statusline stays
 clean on machines that never summoned anything:
 
-    P:2 H:1 C:1 O:1 E:1
+    P:2 H:1 C:1 T:1 O:1 U:1 E:1
 
-P/H/C are in-flight, holding, and cleared-for-human counts. O surfaces a
-terminal legion whose teardown is absent/incomplete; E surfaces corrupt state.
+P/H/C are in-flight, holding, and cleared-for-human counts. T surfaces an
+in-flight legion whose coordinator transport is erroring. O surfaces a
+terminal legion whose teardown is absent/incomplete; U one whose closeout
+memory packet is still unrouted; E surfaces corrupt state.
 """
 
 from __future__ import annotations
@@ -28,9 +30,11 @@ def fragment() -> str:
     active = sum(1 for r in rows if r.get("stage") in ACTIVE_STAGES)
     holding = sum(1 for r in rows if r.get("stage") == "holding")
     cleared = sum(1 for r in rows if r.get("stage") == "cleared_for_human")
+    transport = sum(1 for r in rows if r.get("attention") == "transport")
     orphaned = sum(1 for r in rows if r.get("stage") == "banished" and r.get("teardown_status") != "complete")
+    unrouted = sum(1 for r in rows if r.get("attention") == "unrouted")
     corrupt = sum(1 for r in rows if r.get("stage") == "corrupt")
-    if not (active or holding or cleared or orphaned or corrupt):
+    if not (active or holding or cleared or transport or orphaned or unrouted or corrupt):
         return ""
     parts = []
     if active:
@@ -39,8 +43,12 @@ def fragment() -> str:
         parts.append(f"H:{holding}")
     if cleared:
         parts.append(f"C:{cleared}")
+    if transport:
+        parts.append(f"T:{transport}")
     if orphaned:
         parts.append(f"O:{orphaned}")
+    if unrouted:
+        parts.append(f"U:{unrouted}")
     if corrupt:
         parts.append(f"E:{corrupt}")
     return " ".join(parts)

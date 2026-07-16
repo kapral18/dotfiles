@@ -43,7 +43,7 @@ import sqlite3
 import subprocess
 import sys
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import agent_memory
@@ -65,7 +65,7 @@ CAPSULE_KINDS = (
     "doc",
 )
 CAPSULE_SCOPES = ("workspace", "project", "domain", "universal")
-SCHEMA_VERSION = 2  # bumped any time the table shape changes
+SCHEMA_VERSION = 3  # bumped any time the table shape changes
 
 # RRF constant used by hybrid retrieval; 60 is the canonical value from
 # the original RRF paper and works well for top-K in [5, 50] without
@@ -77,12 +77,24 @@ RRF_K = 60
 MMR_LAMBDA = 0.7
 
 # Soft penalty applied to the RRF score for dormant capsules. `curate
-# decay` raises a capsule's `decay_score` (0..1) every pass it is not
-# retrieved; here that score is subtracted (scaled) from the RRF score so
-# stale memory sinks without being filtered out. Mirrors the magnitude of
+# decay` raises a capsule's `decay_score` (0..1) on every pass in which
+# the capsule has not been retrieved within DECAY_RECENT_DAYS; here that
+# score is subtracted (scaled) from the RRF score so stale memory sinks
+# without being filtered out. Retrieval resets `decay_score` to 0, so a
+# capsule that keeps proving useful never sinks. Mirrors the magnitude of
 # the same-workspace boost (+0.1) so a fully-decayed capsule (score 1.0)
 # is penalized by the same amount a workspace match is rewarded.
 DECAY_PENALTY_WEIGHT = 0.1
+
+# A capsule retrieved within this many days is shielded from `curate
+# decay`: decay measures dormancy (no retrievals), not mere age.
+DECAY_RECENT_DAYS = 14
+
+# Write-time near-duplicate refusal threshold: `remember` refuses a new
+# capsule whose embedding cosine against an existing same-kind live
+# capsule is at or above this value (mirrors the `curate` dedupe
+# threshold) unless --force or --supersedes covers the collision.
+DUPLICATE_COSINE_THRESHOLD = 0.95
 
 # --- Worklog harvest -------------------------------------------------------
 # `,ai-kb harvest` mines a hook worklog for durable-memory CANDIDATES; it
@@ -207,6 +219,8 @@ CAPSULE_COLUMNS: tuple[str, ...] = (
     "embedding_model",
     "embedding_dim",
     "decay_score",
+    "retrieved_at",  # mutable SQLite-only retrieval state, not on sidecars
+    "retrieval_count",
     "created_at",
     "updated_at",
 )
@@ -220,6 +234,9 @@ def row_to_capsule(row: sqlite3.Row | dict) -> Capsule:
     """
     d = dict(row)
     d.pop("embedding", None)
+    # Mutable SQLite-only retrieval state; not part of the capsule shape.
+    d.pop("retrieved_at", None)
+    d.pop("retrieval_count", None)
     return Capsule(**d)
 
 
@@ -359,6 +376,8 @@ class KnowledgeBase:
                 embedding_model TEXT,
                 embedding_dim INTEGER NOT NULL,
                 decay_score REAL NOT NULL,
+                retrieved_at TEXT,
+                retrieval_count INTEGER NOT NULL,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )
@@ -437,6 +456,8 @@ class KnowledgeBase:
             "embedding_model",
             "embedding_dim",
             "decay_score",
+            "retrieved_at",
+            "retrieval_count",
             "updated_at",
         ]
         select_cols = [col for col in allowed if col in cols]
@@ -466,6 +487,15 @@ class KnowledgeBase:
                     state["decay_score"] = float(row["decay_score"] or 0.0)
                 except (TypeError, ValueError):
                     state["decay_score"] = 0.0
+            state["retrieved_at"] = (
+                row["retrieved_at"] if "retrieved_at" in row.keys() and row["retrieved_at"] else None
+            )
+            state["retrieval_count"] = 0
+            if "retrieval_count" in row.keys():
+                try:
+                    state["retrieval_count"] = max(0, int(row["retrieval_count"] or 0))
+                except (TypeError, ValueError):
+                    state["retrieval_count"] = 0
             if state["embedding"] is None:
                 state["embedding_model"] = None
                 state["embedding_dim"] = 0
@@ -518,6 +548,8 @@ class KnowledgeBase:
                 "embedding_model": state.get("embedding_model"),
                 "embedding_dim": int(state.get("embedding_dim", 0) or 0),
                 "decay_score": float(state.get("decay_score", capsule.decay_score) or 0.0),
+                "retrieved_at": state.get("retrieved_at"),
+                "retrieval_count": int(state.get("retrieval_count", 0) or 0),
                 "created_at": capsule.created_at,
                 "updated_at": str(state.get("updated_at") or capsule.updated_at),
             }
@@ -637,14 +669,14 @@ class KnowledgeBase:
                 workspace_path, project_id, domain_tags, confidence,
                 verified_by, supersedes, superseded_by, refs,
                 embedding, embedding_model, embedding_dim,
-                decay_score, created_at, updated_at
+                decay_score, retrieved_at, retrieval_count, created_at, updated_at
             )
             VALUES(
                 :id, :kind, :title, :body, :source, :tags, :path, :scope,
                 :workspace_path, :project_id, :domain_tags, :confidence,
                 :verified_by, :supersedes, :superseded_by, :refs,
                 :embedding, :embedding_model, :embedding_dim,
-                :decay_score, :created_at, :updated_at
+                :decay_score, :retrieved_at, :retrieval_count, :created_at, :updated_at
             )
             """,
             capsule,
@@ -853,10 +885,17 @@ class KnowledgeBase:
         supersedes: str | None = None,
         refs: list[str] | None = None,
         embed_now: bool = True,
+        force: bool = False,
     ) -> Capsule:
         """Persist a new capsule with structured metadata and (optional)
         embedding. The kind, scope, and tags determine how downstream
         retrieval will filter and bias the result.
+
+        Duplicate refusal: an exact (case-insensitive) title match against
+        a live capsule, or a same-kind embedding cosine at or above
+        `DUPLICATE_COSINE_THRESHOLD`, raises ``ValueError`` naming the
+        existing capsule — pass ``supersedes`` for that capsule to update
+        it, or ``force`` to store anyway.
         """
         if kind not in CAPSULE_KINDS:
             raise ValueError(f"unknown kind {kind!r}; expected one of {CAPSULE_KINDS}")
@@ -871,6 +910,35 @@ class KnowledgeBase:
         now = utc_now()
         path = self.capsules_dir / f"{note_id}.md"
         body_clean = body.strip()
+
+        embedding_blob: bytes | None = None
+        embedding_model: str | None = None
+        embedding_dim: int = 0
+        embedding_vec: list[float] | None = None
+        if embed_now:
+            embedder = self.embedder()
+            if embedder is not None:
+                # We embed `title + "\n" + body` so capsules with a
+                # short body still get a meaningful vector and titles
+                # contribute to lexical-vs-semantic divergence handling.
+                vec = embedder.embed_one(self._embed_text(title, body_clean))
+                if vec:
+                    from embed import pack_vector  # local import — see embedder()
+
+                    embedding_blob = pack_vector(vec)
+                    embedding_model = embedder.model
+                    embedding_dim = len(vec)
+                    embedding_vec = vec
+
+        if not force:
+            duplicate = self._find_duplicate(title, kind, embedding_vec, embedding_model, exempt_id=supersedes)
+            if duplicate is not None:
+                dup_id, dup_reason = duplicate
+                raise ValueError(
+                    f"duplicate capsule: {dup_reason} matches existing {dup_id!r}; "
+                    f"pass supersedes={dup_id!r} to update it or force=True to store anyway"
+                )
+
         front = (
             "---\n"
             f"id: {note_id}\n"
@@ -893,23 +961,6 @@ class KnowledgeBase:
         )
         path.write_text(front)
 
-        embedding_blob: bytes | None = None
-        embedding_model: str | None = None
-        embedding_dim: int = 0
-        if embed_now:
-            embedder = self.embedder()
-            if embedder is not None:
-                # We embed `title + "\n" + body` so capsules with a
-                # short body still get a meaningful vector and titles
-                # contribute to lexical-vs-semantic divergence handling.
-                vec = embedder.embed_one(self._embed_text(title, body_clean))
-                if vec:
-                    from embed import pack_vector  # local import — see embedder()
-
-                    embedding_blob = pack_vector(vec)
-                    embedding_model = embedder.model
-                    embedding_dim = len(vec)
-
         # If we set supersedes, also flip the parent's superseded_by
         # pointer so the link is bidirectional.
         if supersedes:
@@ -927,14 +978,14 @@ class KnowledgeBase:
                     workspace_path, project_id, domain_tags, confidence,
                     verified_by, supersedes, superseded_by, refs,
                     embedding, embedding_model, embedding_dim,
-                    decay_score, created_at, updated_at
+                    decay_score, retrieved_at, retrieval_count, created_at, updated_at
                 )
                 VALUES(
                     :id, :kind, :title, :body, :source, :tags, :path, :scope,
                     :workspace_path, :project_id, :domain_tags, :confidence,
                     :verified_by, :supersedes, NULL, :refs,
                     :embedding, :embedding_model, :embedding_dim,
-                    0.0, :created_at, :updated_at
+                    0.0, NULL, 0, :created_at, :updated_at
                 )
                 """,
                 {
@@ -1005,6 +1056,80 @@ class KnowledgeBase:
         title (e.g. doc-chunks with empty body fallback) still get a
         useful vector."""
         return f"{title}\n{body}".strip()
+
+    def _find_duplicate(
+        self,
+        title: str,
+        kind: str,
+        embedding_vec: "list[float] | None",
+        embedding_model: str | None,
+        *,
+        exempt_id: str | None = None,
+    ) -> "tuple[str, str] | None":
+        """Write-time duplicate probe over live (non-superseded) capsules.
+
+        Returns ``(existing_id, reason)`` for an exact case-insensitive
+        title collision (any kind) or a same-kind embedding cosine at or
+        above `DUPLICATE_COSINE_THRESHOLD`; ``None`` when the capsule is
+        novel. ``exempt_id`` skips the capsule an explicit ``supersedes``
+        already covers. Fail-open on the vector lane: without a comparable
+        embedding only the title check applies.
+        """
+        with self.connect() as db:
+            row = db.execute(
+                "SELECT id FROM capsules WHERE superseded_by IS NULL AND lower(title) = lower(?) LIMIT 1",
+                (title,),
+            ).fetchone()
+            if row is not None and row["id"] != exempt_id:
+                return str(row["id"]), "title"
+            if not embedding_vec or not embedding_model:
+                return None
+            candidates = db.execute(
+                """
+                SELECT id, embedding FROM capsules
+                WHERE superseded_by IS NULL
+                  AND kind = ?
+                  AND embedding IS NOT NULL
+                  AND embedding_model = ?
+                """,
+                (kind, embedding_model),
+            ).fetchall()
+        from embed import cosine, unpack_vector  # local import — see embedder()
+
+        for candidate in candidates:
+            if candidate["id"] == exempt_id:
+                continue
+            try:
+                existing_vec = unpack_vector(candidate["embedding"])
+            except Exception:
+                continue
+            if cosine(embedding_vec, existing_vec) >= DUPLICATE_COSINE_THRESHOLD:
+                return str(candidate["id"]), f"embedding cosine >= {DUPLICATE_COSINE_THRESHOLD}"
+        return None
+
+    def _record_retrieval(self, capsule_ids: "list[str]") -> None:
+        """Mark returned capsules as live: stamp retrieval and clear decay.
+
+        This is the usage signal `curate decay` keys off — a capsule
+        retrieved within `DECAY_RECENT_DAYS` is shielded from decay, and a
+        retrieval clears any decay it accumulated while dormant.
+        `updated_at` is left untouched: it tracks content edits only.
+        """
+        if not capsule_ids:
+            return
+        now = utc_now()
+        placeholders = ",".join("?" for _ in capsule_ids)
+        with self.connect() as db:
+            db.execute(
+                f"""
+                UPDATE capsules
+                SET retrieved_at = ?,
+                    retrieval_count = retrieval_count + 1,
+                    decay_score = 0.0
+                WHERE id IN ({placeholders})
+                """,
+                (now, *capsule_ids),
+            )
 
     def reembed(self, *, limit: int | None = None) -> int:
         """Re-embed capsules whose embedding is missing or whose model
@@ -1148,6 +1273,10 @@ class KnowledgeBase:
                     workspace_path=workspace_path,
                     domain_tags=inferred,
                     confidence=0.9,
+                    # Ingest owns replacement through doc_ingests (stale
+                    # chunks are removed above); re-chunked docs would
+                    # otherwise trip the write-time duplicate probe.
+                    force=True,
                 )
                 new_ids.append(capsule.id)
             capsule_count += len(new_ids)
@@ -1278,6 +1407,7 @@ class KnowledgeBase:
         workspace: str | None = None,
         domain: str | list[str] | None = None,
         mode: str = "hybrid",
+        workspace_gate: bool = False,
     ) -> list[dict[str, object]]:
         """Hybrid retrieval: BM25 + cosine + RRF + MMR.
 
@@ -1296,11 +1426,21 @@ class KnowledgeBase:
         `workspace_path` exactly matches the supplied path; it does not
         filter — universal/domain capsules still surface.
 
+        `workspace_gate=True` turns the workspace into a hard candidate
+        filter: only capsules local to `workspace` or scoped
+        `domain`/`universal` remain. This is the single owner of the
+        cross-repo leakage gate that automatic injectors (session-start
+        warm-start, per-turn recall) rely on; it requires `workspace`.
+
         A capsule's `decay_score` (raised by `curate decay` on dormant
         capsules) applies a soft RRF penalty of
         `DECAY_PENALTY_WEIGHT * decay_score`, so stale memory sinks in the
         ranking without being filtered out — a still-relevant decayed
         capsule can still surface.
+
+        Every returned capsule is stamped as retrieved
+        (`retrieved_at`/`retrieval_count`, decay cleared) so curation can
+        distinguish dormant memory from memory that keeps earning recall.
 
         Returned dicts are JSON-friendly (no embedding BLOB) and include
         all `Hit` fields plus `body` and `snippet` for prompt injection.
@@ -1308,6 +1448,8 @@ class KnowledgeBase:
         self.init()
         if mode not in ("hybrid", "bm25", "vector"):
             raise ValueError(f"unknown search mode {mode!r}")
+        if workspace_gate and not workspace:
+            raise ValueError("workspace_gate requires a workspace path")
 
         scopes = _normalize_filter(scope)
         kinds = _normalize_filter(kind)
@@ -1342,6 +1484,14 @@ class KnowledgeBase:
         rows = self._fetch_rows(candidate_ids)
         # Stable order: rows in insertion order from candidate_ids.
         ordered_rows = [rows[h] for h in candidate_ids if h in rows]
+        if workspace_gate:
+            ordered_rows = [
+                row
+                for row in ordered_rows
+                if row["workspace_path"] == workspace or row["scope"] in ("domain", "universal")
+            ]
+            if not ordered_rows:
+                return []
 
         bm25_rank = {hid: i + 1 for i, (hid, _, _) in enumerate(bm25_hits)}
         bm25_score = {hid: s for hid, s, _ in bm25_hits}
@@ -1398,6 +1548,7 @@ class KnowledgeBase:
                 h.mmr_selected = True
             hits = hits[:limit]
 
+        self._record_retrieval([h.id for h in hits])
         return [asdict(h) for h in hits]
 
     # --- retrieval internals ----------------------------------------------
@@ -1735,18 +1886,21 @@ class KnowledgeBase:
         decayed = 0
         if decay:
             now = utc_now()
+            cutoff = (datetime.now(timezone.utc) - timedelta(days=DECAY_RECENT_DAYS)).replace(microsecond=0).isoformat()
             with self.connect() as db:
-                # Increment decay_score for all rows that haven't been
-                # touched in this curate call. Using a single UPDATE
-                # keeps the operation cheap regardless of KB size.
+                # Decay is dormancy, not age: only capsules with no
+                # retrieval inside DECAY_RECENT_DAYS accumulate decay.
+                # A single UPDATE keeps the operation cheap regardless
+                # of KB size; ISO-8601 UTC strings compare lexically.
                 cur = db.execute(
                     """
                     UPDATE capsules
                     SET decay_score = MIN(?, decay_score + ?),
                         updated_at = ?
                     WHERE superseded_by IS NULL
+                      AND (retrieved_at IS NULL OR retrieved_at < ?)
                     """,
-                    (decay_max, decay_step, now),
+                    (decay_max, decay_step, now, cutoff),
                 )
                 decayed = cur.rowcount or 0
 
@@ -1951,16 +2105,60 @@ def _evidence(entry: dict) -> dict:
     return ev
 
 
+# Structured `,agent-memory note` kinds share the capsule taxonomy, so a
+# harvested note keeps its kind verbatim. `question` is intentionally not
+# harvestable: open questions are task-scoped spec context, not durable
+# memory candidates; `doc` is ingestion-only and cannot be noted.
+HARVESTABLE_NOTE_KINDS = frozenset(CAPSULE_KINDS) - {"doc"}
+
+
 def detect_candidates(entries: list[dict], *, min_repeats: int = 2) -> list[dict]:
     """Deterministic worklog detectors returning durable-memory candidates.
 
-    Three lenses over the worklog: (1) a failing command later followed by a
-    clean run of the same program (`failure_to_fix`), (2) an error signature
-    seen `min_repeats`+ times (`recurring_error`), and (3) a clean command run
-    `min_repeats`+ times (`repeated_command`). No capsule is written; each
-    candidate is a suggestion the caller must verify before remembering.
+    Four lenses over the worklog: (0) a structured `,agent-memory note`
+    (`structured_note`) — deliberate capture, so a single occurrence is a
+    candidate and `min_repeats` does not apply; (1) a failing command later
+    followed by a clean run of the same program (`failure_to_fix`); (2) an
+    error signature seen `min_repeats`+ times (`recurring_error`); and (3) a
+    clean command run `min_repeats`+ times (`repeated_command`). No capsule
+    is written; each candidate is a suggestion the caller must verify before
+    remembering.
     """
     candidates: list[dict] = []
+
+    # 0. structured notes recorded via `,agent-memory note`. These are the
+    # idea/decision capture surface: unlike command lenses they carry intent,
+    # so one deliberate note is enough. Identical (kind, text) notes collapse.
+    seen_notes: set[tuple[str, str]] = set()
+    for entry in entries:
+        if entry.get("event") != "note":
+            continue
+        note_kind = str(entry.get("note_kind") or "")
+        text = str(entry.get("text") or "").strip()
+        if note_kind not in HARVESTABLE_NOTE_KINDS or not text:
+            continue
+        note_key = (note_kind, text)
+        if note_key in seen_notes:
+            continue
+        seen_notes.add(note_key)
+        refs = str(entry.get("refs") or "")
+        body = text
+        if refs:
+            body += f" Refs: {refs}."
+        body += " Recorded deliberately via `,agent-memory note`; verify before remembering."
+        evidence = _evidence(entry)
+        evidence["note_kind"] = note_kind
+        candidates.append(
+            {
+                "detector": "structured_note",
+                "kind": note_kind,
+                "title": f"{note_kind}: {text}"[:120],
+                "body": body,
+                "count": 1,
+                "evidence": [evidence],
+                "note_kind": note_kind,
+            }
+        )
 
     # 1. failure -> later clean run of the same program. Anchor on a real
     # error message (not a bare nonzero exit) and skip noise programs, so a
@@ -2003,7 +2201,7 @@ def detect_candidates(entries: list[dict], *, min_repeats: int = 2) -> list[dict
             }
         )
 
-    fixed_sigs = {c["signature"] for c in candidates}
+    fixed_sigs = {c["signature"] for c in candidates if "signature" in c}
 
     # 2. recurring error signature (real error messages only).
     err_groups: dict[str, list[dict]] = {}
@@ -2200,6 +2398,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Related capsule ID or external reference (repeat for multiple)",
     )
     remember.add_argument("--no-embed", action="store_true")
+    remember.add_argument(
+        "--force",
+        action="store_true",
+        help="Store even when an existing capsule collides on title or near-duplicate embedding",
+    )
     remember.add_argument("--json", action="store_true")
 
     search = sub.add_parser("search")
@@ -2213,6 +2416,11 @@ def build_parser() -> argparse.ArgumentParser:
     search.add_argument("--scope", default=None, action="append")
     search.add_argument("--kind", default=None, action="append")
     search.add_argument("--workspace", default=None)
+    search.add_argument(
+        "--workspace-gate",
+        action="store_true",
+        help="Hard-filter to capsules local to --workspace or scoped domain/universal (requires --workspace)",
+    )
     search.add_argument("--domain", default=None, action="append")
     search.add_argument("--mode", default="hybrid", choices=("hybrid", "bm25", "vector"))
     search.add_argument("--json", action="store_true")
@@ -2284,22 +2492,42 @@ def main(argv: list[str] | None = None) -> int:
         if args.supersedes is not None and kb.get(args.supersedes) is None:
             print(f"error: --supersedes target {args.supersedes!r} not found", file=sys.stderr)
             return 1
-        capsule = kb.remember(
-            args.title,
-            args.body,
-            kind=args.kind,
-            scope=args.scope,
-            source=args.source,
-            tags=args.tags,
-            workspace_path=args.workspace_path,
-            project_id=args.project_id,
-            domain_tags=args.domain_tags or [],
-            confidence=args.confidence,
-            verified_by=args.verified_by,
-            supersedes=args.supersedes,
-            refs=args.refs or [],
-            embed_now=not args.no_embed,
-        )
+        if not 0.0 <= args.confidence <= 1.0:
+            print(
+                f"warning: confidence {args.confidence} is outside [0, 1] and will be clamped",
+                file=sys.stderr,
+            )
+        degraded = [
+            label
+            for label, missing in (
+                ("--source left at the 'manual' default", args.source == "manual"),
+                ("no --domain tag", not args.domain_tags),
+            )
+            if missing
+        ]
+        if degraded:
+            print(f"warning: degraded capsule metadata: {'; '.join(degraded)}", file=sys.stderr)
+        try:
+            capsule = kb.remember(
+                args.title,
+                args.body,
+                kind=args.kind,
+                scope=args.scope,
+                source=args.source,
+                tags=args.tags,
+                workspace_path=args.workspace_path,
+                project_id=args.project_id,
+                domain_tags=args.domain_tags or [],
+                confidence=args.confidence,
+                verified_by=args.verified_by,
+                supersedes=args.supersedes,
+                refs=args.refs or [],
+                embed_now=not args.no_embed,
+                force=args.force,
+            )
+        except ValueError as err:
+            print(f"error: {err}", file=sys.stderr)
+            return 1
         print_capsule(capsule, args.json)
         return 0
     if args.cmd == "search":
@@ -2314,6 +2542,8 @@ def main(argv: list[str] | None = None) -> int:
             query = args.query or ""
         if not query:
             parser.error("search requires a positional query or --query-stdin")
+        if args.workspace_gate and not args.workspace:
+            parser.error("--workspace-gate requires --workspace")
         rows = kb.search(
             query,
             args.limit,
@@ -2322,6 +2552,7 @@ def main(argv: list[str] | None = None) -> int:
             workspace=args.workspace,
             domain=args.domain,
             mode=args.mode,
+            workspace_gate=args.workspace_gate,
         )
         if args.json:
             print(json.dumps(rows, indent=2))

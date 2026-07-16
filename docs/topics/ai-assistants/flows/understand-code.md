@@ -23,7 +23,7 @@ You get an evidence-anchored explanation — every claim points at a file:line y
 figure out how playwriter's session isolation works
 ```
 
-The `research` skill clones the public repo to `/tmp` and answers **from the actual source** — not from training memory, not from blog posts. Expect answers with paths into the clone (`src/relay/session.ts:42`). The clone stays cached in `/tmp` for follow-up questions.
+The `k-research` skill clones the public repo to `/tmp` and answers **from the actual source** — not from training memory, not from blog posts. Expect answers with paths into the clone (`src/relay/session.ts:42`). The clone stays cached in `/tmp` for follow-up questions.
 
 ## Concept search in a big repo: describe what you're looking for
 

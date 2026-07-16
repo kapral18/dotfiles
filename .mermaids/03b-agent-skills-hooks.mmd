@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (106).
+%% 03b-agent-skills-hooks.mmd — Every file under home/exact_dot_agents/ (108).
 %% Skills → ~/.agents/skills/ (intent-routed SKILL.md). Shared hooks → ~/.agents/hooks/.
 %% ============================================================================
 flowchart TB
@@ -9,7 +9,7 @@ flowchart TB
     classDef data fill:#1d3b53,stroke:#7fb3d5,color:#eaf2f8;
 
     subgraph HOOKS["exact_hooks/ → ~/.agents/hooks/"]
-        HC["hook_common.py (shared identity/depth lib) · worklog_queue.py.tmpl (deployed queue core)<br/>readonly_README.md (state model) · .chezmoiignore"]:::hook
+        HC["hook_common.py (shared identity/depth lib) · worklog_queue.py.tmpl (deployed queue core)<br/>spec_mirror.py.tmpl (persistent named-topic mirror/restore)<br/>readonly_README.md (state model) · .chezmoiignore"]:::hook
         SCx["session_context.py (sessionStart: inject verification/proof prefix.txt;<br/>if no session-bound topic, show bounded Topic Buckets index (newest-first + summary);<br/>after ,agent-memory select, inject selected topic spec/worklog;<br/>,ai-kb recall/remember reminder;<br/>session-bound warm-start: read-only ,ai-kb search → Relevant Learnings;<br/>persist injected IDs by canonical session key)"]:::hook
         PRx["perturn_recall.py (UserPromptSubmit depth profiles:<br/>fast=off · balanced=fetch6/inject3 · deep=fetch12/inject5;<br/>same cosine/scope/dedupe gates · stdin query · connect-only; fail-open)"]:::hook
         WLx["worklog_dispatcher.sh → worklog_recorder.py<br/>(afterShell/postToolUse/Failure/afterFileEdit returns before I/O;<br/>fsynced session sequence → bounded transient flush;<br/>stable IDs + spec/target locks + visible error ledger)"]:::hook
@@ -28,28 +28,28 @@ flowchart TB
     PRx -. "connect-only" .-> RESIDENT
 
     subgraph CORE["Core workflow skills"]
-        S1["review/ (SKILL + references: judging_core [surface-agnostic engine:<br/>coverage, severity, gates incl. product-flow/signal-quality/systemic-risk, candidate refutation ladder, findings-set audit, post-review 4-dim lens, verify-and-fix loop], local_changes,<br/>pr_common [exhaustive GitHub context intake + ambient topic exploration + PR necessity audit + pending-review reconciliation], pr_fix, pr_review, plan_review, shared_rules;<br/>PR review anchor verification is instruction-owned)<br/>agent-review/ (/agent-review controller + role-specific runtime contracts: reviewer-worker [registry-model angle lanes], fresh-eyes [blind clarity lane; generic-task launch, Pi-only shim], adversarial-verifier [cross-family refutation over merged candidates], pr-necessity-auditor, findings-auditor, live-ui-review, live-ui-runtime [shared runtime contract for live-ui-review + ui-proof; local browser only], post-review, change-auditor, researcher, code-searcher [single source for every delegated subagent body; per-tool profiles are thin shims] + runtime-harness caveats; reuses review references)<br/>light-review/ (proportional-depth in-place audit; computed light-eligibility predicate = single source for light-vs-review routing; runs shared verify-and-fix loop; loads judging_core)"]:::skill
-        S2["git/ · github/ (+refs: pr-reviews, pr-comments, sub-issues) · worktrees/ · compose-pr/ · compose-issue/<br/>communication/ (centralized tone/style; referenced by other skills)<br/>code-quality family: code-quality · code-quality-react · code-quality-tests · code-quality-web · codebase-design (+ref: going-deeper; deep-module vocab, loaded by code-quality)"]:::skill
-        S3["walkthrough/ · interview-me/ (decision-tree + recommended-answer intent loop) · research/<br/>diagnosing-bugs/ (tight red loop first → SOP §3.4/§3.5) · prototype/ (+refs: logic, ui; throwaway design probes)<br/>spec/ (idea → spec packet with run-once red acceptance checks; feeds /build and compose-issue)<br/>proof/ (freeform completion ledger; wraps ,proof CLI + CLI reference)<br/>build/ (/build controller: criteria ledger + adversarial criteria-verifier lane + live-UI-proof phase + post-review; +ref: criteria-verifier)<br/>text-tournament/ (model-invoked; interactive lane applies a cross-family two-order winner when material prose has real alternatives)<br/>ui-proof/ (head-only live-UI proof + screenshots for a PR; creation-side sibling of live-ui-review; runs inline in /build + compose-pr; shares agent-review/references/live-ui-runtime)<br/>live-ui-windows/ (manual-only; Windows guest in VirtualBox over CDP through a host NAT port-forward; adds to ui-proof/live-ui-review by hand, never auto-triggered; shares agent-review/references/live-ui-runtime)<br/>present-pr/ (+refs: authoring.md, template.html;<br/>review-readiness map + introduced-concepts primer<br/>+ fixed notes sidebars)"]:::skill
+        S1["k-review/ (SKILL + references: judging_core [surface-agnostic engine:<br/>coverage, severity, gates incl. product-flow/signal-quality/systemic-risk, candidate refutation ladder, findings-set audit, post-review 4-dim lens, verify-and-fix loop], local_changes,<br/>pr_common [exhaustive GitHub context intake + ambient topic exploration + PR necessity audit + pending-review reconciliation], pr_fix, pr_review, plan_review, shared_rules;<br/>PR review anchor verification is instruction-owned)<br/>k-agent-review/ (/agent-review controller + role-specific runtime contracts: reviewer-worker [registry-model angle lanes], fresh-eyes [blind clarity lane; generic-task launch, Pi-only shim], adversarial-verifier [cross-family refutation over merged candidates], pr-necessity-auditor, findings-auditor, live-ui-review, live-ui-runtime [shared runtime contract for live-ui-review + k-ui-proof; local browser only], post-review, change-auditor, researcher, code-searcher [single source for every delegated subagent body; per-tool profiles are thin shims] + runtime-harness caveats; reuses k-review references)<br/>k-light-review/ (proportional-depth in-place audit; computed light-eligibility predicate = single source for light-vs-review routing; runs shared verify-and-fix loop; loads judging_core)"]:::skill
+        S2["k-git/ · k-github/ (+refs: pr-reviews, pr-comments, sub-issues) · k-worktrees/ · k-compose-pr/ · k-compose-issue/<br/>k-communication/ (centralized tone/style; referenced by other skills)<br/>k-code-quality family: k-code-quality · k-code-quality-react · k-code-quality-tests · k-code-quality-web · k-codebase-design (+ref: going-deeper; deep-module vocab, loaded by k-code-quality)"]:::skill
+        S3["k-walkthrough/ · k-interview-me/ (decision-tree + recommended-answer intent loop) · k-research/<br/>k-diagnosing-bugs/ (tight red loop first → SOP §3.4/§3.5) · k-prototype/ (+refs: logic, ui; throwaway design probes)<br/>k-spec/ (idea → spec packet with run-once red acceptance checks; feeds /build and k-compose-issue)<br/>k-proof/ (freeform completion ledger; wraps ,proof CLI + CLI reference)<br/>k-build/ (/build controller: criteria ledger + adversarial criteria-verifier lane + live-UI-proof phase + post-review; +ref: criteria-verifier)<br/>k-text-tournament/ (model-invoked; interactive lane applies a cross-family two-order winner when material prose has real alternatives)<br/>k-ui-proof/ (head-only live-UI proof + screenshots for a PR; creation-side sibling of live-ui-review; runs inline in /build + k-compose-pr; shares k-agent-review/references/live-ui-runtime)<br/>k-live-ui-windows/ (manual-only; Windows guest in VirtualBox over CDP through a host NAT port-forward; adds to k-ui-proof/live-ui-review by hand, never auto-triggered; shares k-agent-review/references/live-ui-runtime)<br/>k-present-pr/ (+refs: authoring.md, template.html;<br/>review-readiness map + introduced-concepts primer<br/>+ fixed notes sidebars)"]:::skill
         S1 --> R1["exact_references/*.md"]:::ref
     end
 
     subgraph IMPROVE["improve-* family (SKILL + agents/openai.yaml)"]
-        S4["improve-branch · improve-codebase<br/>improve-local · improve-targeted"]:::skill
+        S4["k-improve-branch · k-improve-codebase<br/>k-improve-local · k-improve-targeted"]:::skill
     end
 
     subgraph TOOLS["Tool-backed skills (wrap a CLI; some have references)"]
-        S5["buildkite/ (+refs: bk-commands, build-debugging, troubleshooting)<br/>tmux/ (safe tmux sockets, panes, observations, interactive CLIs)<br/>sem skill (uses ,sem CLI) · weave · knip · jscpd · semantic-code-search"]:::skill
-        S6["google-workspace · playwriter · letsfg(assets/Dockerfile; +ref: flexible-date-search) · nano-banana · artifact"]:::skill
-        S7["ai-kb/ (wrap ,ai-kb; durable cross-session memory read/write)"]:::skill
+        S5["k-buildkite/ (+refs: bk-commands, build-debugging, troubleshooting)<br/>k-tmux/ (safe tmux sockets, panes, observations, interactive CLIs)<br/>k-sem skill (uses ,sem CLI) · k-weave · k-knip · k-jscpd · k-semantic-code-search"]:::skill
+        S6["k-google-workspace · k-playwriter · k-letsfg(assets/Dockerfile; +ref: flexible-date-search) · k-nano-banana · k-artifact"]:::skill
+        S7["k-ai-kb/ (wrap ,ai-kb; durable cross-session memory read/write)"]:::skill
     end
 
     subgraph KBN["Elastic/Kibana domain overlay + skills"]
-        S8["elastic-domain/ (verified overlay; owns Elastic/Kibana policy<br/>+ refs: kibana-live-ui, pr-issue-templates, kibana-planning-forks)<br/>kbn-stack (local ES+Kibana stack lifecycle)<br/>kbn-backport (e2e; drives backport tool in tmux; +refs: backport-tool.md, conflict-resolution.md)<br/>kibana-console-monaco · kibana-labels-propose<br/>kibana-management-ownership · kbn-standup (Elastic-org + private Slack/DM activity → Admin UX draft)"]:::skill
+        S8["k-elastic-domain/ (verified overlay; owns Elastic/Kibana policy<br/>+ refs: kibana-live-ui, pr-issue-templates, kibana-planning-forks)<br/>k-kbn-stack (local ES+Kibana stack lifecycle)<br/>k-kbn-backport (e2e; drives backport tool in tmux; +refs: backport-tool.md, conflict-resolution.md)<br/>k-kibana-console-monaco · k-kibana-labels-propose<br/>k-kibana-management-ownership · k-kbn-standup (Elastic-org + private Slack/DM activity → Admin UX draft)"]:::skill
     end
 
     subgraph META["Meta / orchestration skills"]
-        S9["palantir/SKILL.md (drive ,palantir; see 04)<br/>cli-skills/ (author CLI-tool skills) · writing-great-skills/ (general skill craft; auto-loads when authoring a skill)"]:::skill
+        S9["k-palantir/SKILL.md (drive ,palantir; see 04)<br/>k-cli-skills/ (author CLI-tool skills) · k-writing-great-skills/ (general skill craft; auto-loads when authoring a skill)"]:::skill
     end
 
     SOPS["~/AGENTS.md + ~/CLAUDE.md route 'Use when' → load SKILL.md"]:::data

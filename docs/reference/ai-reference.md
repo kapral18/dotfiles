@@ -81,7 +81,7 @@ See [Palantír orchestrator](../topics/ai-assistants/palantir.md).
 | CLI entry             | [`home/exact_bin/executable_,palantir`](../../home/exact_bin/executable_,palantir)                                                             |
 | Deployed core         | [`home/exact_lib/exact_,palantir/`](../../home/exact_lib/exact_,palantir/)                                                                     |
 | Role config           | [`home/dot_config/palantir/`](../../home/dot_config/palantir/)                                                                                 |
-| Skill                 | [`home/exact_dot_agents/exact_skills/exact_palantir/`](../../home/exact_dot_agents/exact_skills/exact_palantir/)                               |
+| Skill                 | [`home/exact_dot_agents/exact_skills/exact_k-palantir/`](../../home/exact_dot_agents/exact_skills/exact_k-palantir/)                           |
 | Fish completion       | [`home/dot_config/fish/completions/readonly_,palantir.fish`](../../home/dot_config/fish/completions/readonly_,palantir.fish)                   |
 | Tmux dashboard/status | [`home/dot_config/exact_tmux/exact_conf.d/readonly_45-palantir.conf`](../../home/dot_config/exact_tmux/exact_conf.d/readonly_45-palantir.conf) |
 

@@ -15,7 +15,7 @@ For bugs where the cause isn't obvious from the stack trace. The discipline is: 
 debug this: `todo.py list` crashes with "TypeError: string indices must be integers" when the db file came from the old version
 ```
 
-Give the exact symptom text and how you triggered it. The `diagnosing-bugs` skill fires on "debug/diagnose/broken/flaky/slow".
+Give the exact symptom text and how you triggered it. The `k-diagnosing-bugs` skill fires on "debug/diagnose/broken/flaky/slow".
 
 ## What happens, phase by phase
 

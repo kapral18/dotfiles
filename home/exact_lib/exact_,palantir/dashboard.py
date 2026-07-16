@@ -255,7 +255,12 @@ def main() -> int:
             elif manifest.get("stage") == "banished":
                 lines.append("[$error]teardown[/]: incomplete or unrecorded")
             if manifest.get("memory_packet_written"):
-                lines.append("memory packet: persisted")
+                if manifest.get("memory_packet_routed"):
+                    lines.append("memory packet: routed")
+                else:
+                    lines.append(
+                        "[$warning]memory packet[/]: persisted, unrouted — run ,palantir routed <id> after routing"
+                    )
             detail.update("\n".join(lines))
 
         def on_data_table_row_highlighted(self, _event) -> None:

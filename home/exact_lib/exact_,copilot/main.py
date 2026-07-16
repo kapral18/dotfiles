@@ -175,6 +175,7 @@ class BatchPlan:
 @dataclass(frozen=True)
 class ResolvedHeaders:
     by_command: Mapping[str, str] = field(repr=False)
+    deferred_sources: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -347,10 +348,11 @@ def _resolve_headers(plan: BatchPlan) -> ResolvedHeaders:
     token_binary = os.environ.get("COPILOT_MCP_TOKEN_BIN", MCP_TOKEN)
     resolved: dict[str, str] = {}
     failed_servers: list[str] = []
+    deferred_sources: list[str] = []
     for source, requirements in grouped.items():
         try:
             result = subprocess.run(
-                [token_binary, source, "--login", "--quiet", "--bearer"],
+                [token_binary, source, "--login", "--quiet", "--launch-json"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL,
                 check=False,
@@ -358,15 +360,26 @@ def _resolve_headers(plan: BatchPlan) -> ResolvedHeaders:
             )
         except OSError:
             result = None
-        authorization = result.stdout.strip() if result is not None and result.returncode == 0 else ""
+        try:
+            payload = json.loads(result.stdout) if result is not None and result.returncode == 0 else {}
+        except json.JSONDecodeError:
+            payload = {}
+        token = payload.get("token") if isinstance(payload, dict) else None
+        rotation_due = payload.get("rotation_due") if isinstance(payload, dict) else None
+        authorization = f"Bearer {token}" if isinstance(token, str) and "\n" not in token else ""
         if not _valid_authorization(authorization):
             failed_servers.extend(requirement.server for requirement in requirements)
             continue
+        if not isinstance(rotation_due, bool):
+            failed_servers.extend(requirement.server for requirement in requirements)
+            continue
         resolved[source] = authorization
+        if rotation_due:
+            deferred_sources.append(source)
     if failed_servers:
         raise LaunchError(f"could not refresh MCP token(s): {', '.join(failed_servers)}.")
     by_command = {requirement.shell_command: resolved[requirement.token_source] for requirement in plan.requirements}
-    return ResolvedHeaders(by_command)
+    return ResolvedHeaders(by_command, tuple(deferred_sources))
 
 
 def _render_config(plan: BatchPlan, headers: ResolvedHeaders) -> RenderedConfig:
@@ -570,7 +583,7 @@ def _prepare_target() -> tuple[Path, Path]:
     return target, lock
 
 
-def _preflight() -> None:
+def _preflight() -> tuple[str, ...]:
     target, lock = _prepare_target()
     with _exclusive_lock(lock):
         source = _source_context()
@@ -578,6 +591,22 @@ def _preflight() -> None:
         headers = _resolve_headers(plan)
         rendered = _render_config(plan, headers)
         _apply_rendered(plan, rendered)
+    return headers.deferred_sources
+
+
+def _spawn_deferred_rotations(servers: tuple[str, ...]) -> None:
+    token_binary = os.environ.get("COPILOT_MCP_TOKEN_BIN", MCP_TOKEN)
+    for server in servers:
+        try:
+            subprocess.Popen(
+                [token_binary, server, "--rotate", "--quiet"],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+        except OSError:
+            pass
 
 
 def main(argv: list[str]) -> int:
@@ -585,9 +614,10 @@ def main(argv: list[str]) -> int:
     if not os.access(real_copilot, os.X_OK):
         print(f"Error: real copilot CLI not found at {real_copilot}.", file=sys.stderr)
         return 127
+    deferred_sources: tuple[str, ...] = ()
     if should_refresh(argv):
         try:
-            _preflight()
+            deferred_sources = _preflight()
         except LaunchError as err:
             print(f",copilot: {err}", file=sys.stderr)
             print(
@@ -595,6 +625,7 @@ def main(argv: list[str]) -> int:
                 file=sys.stderr,
             )
             return 1
+    _spawn_deferred_rotations(deferred_sources)
     os.execv(real_copilot, [real_copilot, *argv])
     return 127
 

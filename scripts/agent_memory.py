@@ -9,12 +9,20 @@ import os
 import re
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 DEFAULT_TOPIC = "current"
 DEFAULT_BRANCH_NAMES = {"main", "master", "dev", "develop", "trunk"}
 SPEC_ROOT = Path(os.environ.get("AGENT_MEMORY_SPEC_ROOT", "/tmp/specs"))
 SESSION_TOPIC_PREFIX = ".session-topic-"
+# One vocabulary with the durable store: note kinds are the `,ai-kb` capsule
+# kinds (minus ingestion-only `doc`) plus task-scoped `question`. The kind is
+# the knowledge TYPE; verification status is carried by where the item lives
+# (worklog note = unverified candidate, capsule = verified). Keep in sync with
+# CAPSULE_KINDS in scripts/ai_kb.py.
+NOTE_KINDS = ("fact", "gotcha", "pattern", "anti_pattern", "recipe", "principle", "question")
+NOTE_TEXT_MAX_CHARS = 2000
 TOPIC_SUFFIXES = (
     ".txt",
     ".worklog.jsonl",
@@ -249,6 +257,57 @@ def wipe_topic(spec_dir: Path, topic: str, dry_run: bool) -> list[Path]:
     return removed
 
 
+def topic_material_exists(spec_dir: Path, topic: str) -> bool:
+    return (spec_dir / f"{topic}.txt").exists() or (spec_dir / f"{topic}.worklog.jsonl").exists()
+
+
+def utc_merge_timestamp() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def pointer_targets_topic(path: Path, topic: str) -> bool:
+    try:
+        raw_topic = path.read_text().strip()
+    except OSError:
+        return False
+    try:
+        return safe_topic(raw_topic or DEFAULT_TOPIC) == topic
+    except SystemExit:
+        return False
+
+
+def source_topic_bindings(spec_dir: Path, source: str) -> list[Path]:
+    return sorted(path for path in spec_dir.glob(f"{SESSION_TOPIC_PREFIX}*.txt") if pointer_targets_topic(path, source))
+
+
+def append_merged_spec(spec_dir: Path, source: str, dest: str, merged_at: str) -> tuple[Path, bool, bool]:
+    source_path = spec_dir / f"{source}.txt"
+    dest_path = spec_dir / f"{dest}.txt"
+    dest_existed = dest_path.exists()
+    source_existed = source_path.exists()
+    if not source_existed and dest_existed:
+        return dest_path, dest_existed, source_existed
+
+    if dest_existed:
+        dest_text = dest_path.read_text(encoding="utf-8", errors="replace")
+    else:
+        dest_text = f"topic: {dest}\n"
+
+    if source_existed:
+        source_text = source_path.read_text(encoding="utf-8", errors="replace")
+        if dest_text and not dest_text.endswith("\n"):
+            dest_text += "\n"
+        if dest_text:
+            dest_text += "\n"
+        dest_text += f"--- merged from {source} on {merged_at} ---\n"
+        dest_text += source_text
+        if source_text and not source_text.endswith("\n"):
+            dest_text += "\n"
+
+    dest_path.write_text(dest_text, encoding="utf-8")
+    return dest_path, dest_existed, source_existed
+
+
 def is_named_topic(topic: str) -> bool:
     """A deliberate named topic: not the generic fallback, not a per-session key."""
     return topic != DEFAULT_TOPIC and not topic.startswith("session-")
@@ -286,10 +345,42 @@ def resolve_selected_topic(
     return DEFAULT_TOPIC
 
 
+def _mirror_module():
+    """Best-effort import of the persistent named-topic mirror (fail-open)."""
+    try:
+        import spec_mirror
+    except ImportError:
+        return None
+    return spec_mirror
+
+
+def mirror_restore(spec_dir: Path, workspace: Path) -> "list[str]":
+    mirror = _mirror_module()
+    if mirror is None:
+        return []
+    return mirror.restore_topics(spec_dir, workspace)
+
+
+def mirror_sync(spec_dir: Path, workspace: Path, topic: str) -> "list[str]":
+    mirror = _mirror_module()
+    if mirror is None:
+        return []
+    return mirror.sync_topic(spec_dir, workspace, topic)
+
+
+def mirror_forget(workspace: Path, topic: str) -> "list[str]":
+    mirror = _mirror_module()
+    if mirror is None:
+        return []
+    return mirror.forget_topic(workspace, topic)
+
+
 def cmd_status(args: argparse.Namespace) -> int:
     workspace = workspace_path(args.workspace)
     spec_dir = spec_dir_for(workspace)
+    mirror_restore(spec_dir, workspace)
     topic = resolve_selected_topic(spec_dir, workspace, args.topic, args.session_id)
+    mirror_sync(spec_dir, workspace, topic)
     key = session_key(args.session_id)
     branch = current_git_branch(workspace)
     spec_file = spec_dir / f"{topic}.txt"
@@ -362,6 +453,7 @@ def cmd_select(args: argparse.Namespace) -> int:
         raise SystemExit("--session-id is required for session-scoped topic selection.")
 
     spec_dir.mkdir(parents=True, exist_ok=True)
+    mirror_restore(spec_dir, workspace)
     spec_file = spec_dir / f"{topic}.txt"
     seeded = False
     if not spec_file.exists():
@@ -373,6 +465,7 @@ def cmd_select(args: argparse.Namespace) -> int:
     binding = session_topic_path(spec_dir, key)
     binding.write_text(topic + "\n")
     migrated = migrate_session_fallback_worklog(spec_dir, args.session_id, topic)
+    mirror_sync(spec_dir, workspace, topic)
     print(f"session topic: {topic}")
     print(f"session_id: {key}")
     print(f"binding: {binding}")
@@ -399,10 +492,166 @@ def cmd_use(args: argparse.Namespace) -> int:
     if not spec_file.exists():
         spec_file.write_text(f"topic: {topic}\n")
         seeded = True
+    mirror_sync(spec_dir, workspace, topic)
 
     print(f"active topic: {topic}")
     print(f"pointer: {spec_dir / '_active_topic.txt'}")
     print(f"{'seeded' if seeded else 'exists'}: {spec_file}")
+    return 0
+
+
+def cmd_merge(args: argparse.Namespace) -> int:
+    workspace = workspace_path(args.workspace)
+    spec_dir = spec_dir_for(workspace)
+    source = safe_topic(args.source_topic)
+    dest = safe_topic(args.dest_topic)
+    if source == dest:
+        raise SystemExit("Refusing to merge a topic into itself.")
+    if dest == DEFAULT_TOPIC:
+        raise SystemExit(f"Refusing to merge into the generic topic {DEFAULT_TOPIC!r}; choose a named topic.")
+
+    worklog_queue = None
+    flush_result = None
+    if not args.dry_run:
+        try:
+            import worklog_queue as loaded_worklog_queue
+        except ImportError as err:
+            raise SystemExit(f"Unable to load worklog queue before merge: {err}") from err
+        worklog_queue = loaded_worklog_queue
+        try:
+            flush_result = worklog_queue.flush_spec_dir(spec_dir)
+        except (OSError, worklog_queue.QueueError) as err:
+            raise SystemExit(f"Unable to flush pending worklog queues before merge: {err}") from err
+
+    if not topic_material_exists(spec_dir, source):
+        raise SystemExit(f"Source topic {source!r} does not exist; expected {source}.txt or {source}.worklog.jsonl.")
+
+    source_spec = spec_dir / f"{source}.txt"
+    source_worklog = spec_dir / f"{source}.worklog.jsonl"
+    source_sentinel = spec_dir / f"{source}.no_context"
+    dest_spec = spec_dir / f"{dest}.txt"
+    dest_worklog = spec_dir / f"{dest}.worklog.jsonl"
+    bindings = source_topic_bindings(spec_dir, source)
+    active_pointer = spec_dir / "_active_topic.txt"
+    active_rewrite = pointer_targets_topic(active_pointer, source)
+
+    if args.dry_run:
+        print(f"dry-run merge: {source} -> {dest}")
+        print(f"workspace: {workspace}")
+        print(f"spec_dir: {spec_dir}")
+        print("would flush pending worklog queues before merging")
+        print(f"would {'append into' if dest_spec.exists() else 'create'} dest spec: {dest_spec}")
+        if source_spec.exists():
+            print(f"would append source spec under merge separator: {source_spec}")
+        if source_worklog.exists():
+            print(
+                f"would merge worklogs by ts under the existing 200-line write cap: {source_worklog} -> {dest_worklog}"
+            )
+        else:
+            print(f"no source worklog to merge: {source_worklog}")
+        for binding in bindings:
+            print(f"would rewrite session binding: {binding}")
+        if active_rewrite:
+            print(f"would rewrite active pointer: {active_pointer}")
+        if source_sentinel.exists():
+            print(f"would remove source no-context sentinel without propagating it: {source_sentinel}")
+        for path in (source_spec, source_worklog, source_sentinel):
+            if path.exists():
+                print(f"would remove source file: {path}")
+        return 0
+
+    source_sentinel_existed = source_sentinel.exists()
+    migrated = 0
+    if source_worklog.exists():
+        try:
+            migrated = worklog_queue.migrate_worklog(spec_dir, source_worklog.name, dest_worklog.name)
+        except (OSError, worklog_queue.QueueError) as err:
+            raise SystemExit(f"Unable to merge worklog files: {err}") from err
+
+    merged_at = utc_merge_timestamp()
+    dest_spec, dest_existed, source_spec_existed = append_merged_spec(spec_dir, source, dest, merged_at)
+    for binding in bindings:
+        binding.write_text(dest + "\n")
+    if active_rewrite:
+        active_pointer.write_text(dest + "\n")
+    for path in (source_spec, source_sentinel):
+        if path.exists():
+            path.unlink()
+
+    print(f"merged topic: {source} -> {dest}")
+    print(
+        "flushed pending worklog events: "
+        f"{flush_result.flushed} (duplicates: {flush_result.duplicates}, pending: {flush_result.pending}, errors: {flush_result.errors})"
+    )
+    print(f"{'updated' if dest_existed else 'created'} dest spec: {dest_spec}")
+    if source_spec_existed:
+        print(f"appended source spec under separator: {merged_at}")
+    print(f"migrated worklog events: {migrated}")
+    for binding in bindings:
+        print(f"rewrote session binding: {binding}")
+    if active_rewrite:
+        print(f"rewrote active pointer: {active_pointer}")
+    if source_sentinel_existed:
+        print(f"removed source no-context sentinel without propagation: {source_sentinel}")
+    mirror_forget(workspace, source)
+    mirror_sync(spec_dir, workspace, dest)
+    return 0
+
+
+def cmd_note(args: argparse.Namespace) -> int:
+    """Record one structured insight into the bound topic's worklog.
+
+    Notes are the deliberate capture surface for decisions, insights, ideas,
+    and constraints that leave no failing command behind — `,ai-kb harvest`
+    turns them into durable-memory candidates, and `question` notes stay
+    task-scoped context. Events ride the same crash-safe queue as tool
+    worklogs, flushed synchronously so the note lands before the CLI exits.
+    """
+    workspace = workspace_path(args.workspace)
+    spec_dir = spec_dir_for(workspace)
+    mirror_restore(spec_dir, workspace)
+    topic = resolve_selected_topic(spec_dir, workspace, args.topic, args.session_id)
+    text = " ".join(args.text.split()).strip()
+    if not text:
+        raise SystemExit("note text must not be empty")
+    if len(text) > NOTE_TEXT_MAX_CHARS:
+        raise SystemExit(f"note text exceeds {NOTE_TEXT_MAX_CHARS} characters; front-load the insight instead")
+    try:
+        import worklog_queue
+    except ImportError as err:
+        raise SystemExit(f"Unable to load worklog queue: {err}") from err
+
+    key = session_key(args.session_id) or f"topic-{topic}"
+    entry = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "workspace": str(workspace),
+        "topic": topic,
+        "event": "note",
+        "note_kind": args.kind,
+        "text": text,
+        "refs": ",".join(args.ref or []),
+    }
+    spec_dir.mkdir(parents=True, exist_ok=True)
+    worklog_path = spec_dir / f"{topic}.worklog.jsonl"
+    try:
+        receipt = worklog_queue.enqueue(
+            spec_dir,
+            key,
+            topic,
+            worklog_path,
+            {k: v for k, v in entry.items() if v not in (None, "")},
+            start_worker=False,
+        )
+        worklog_queue.run_worker(receipt.queue_dir)
+    except (OSError, worklog_queue.QueueError) as err:
+        raise SystemExit(f"Unable to record note: {err}") from err
+    mirror_sync(spec_dir, workspace, topic)
+    print(f"note recorded: {args.kind} -> {topic}")
+    print(f"worklog: {worklog_path}")
+    if args.kind == "question":
+        print("questions stay task-scoped context; they are not harvested as durable candidates")
+    else:
+        print("surface it later with: ,ai-kb harvest")
     return 0
 
 
@@ -411,6 +660,8 @@ def cmd_wipe_current(args: argparse.Namespace) -> int:
     spec_dir = spec_dir_for(workspace)
     topic = resolve_selected_topic(spec_dir, workspace, args.topic, args.session_id)
     removed = wipe_topic(spec_dir, topic, args.dry_run)
+    if not args.dry_run:
+        mirror_forget(workspace, topic)
 
     action = "would remove" if args.dry_run else "removed"
     print(f"{action} topic: {topic}")
@@ -463,6 +714,46 @@ def parser() -> argparse.ArgumentParser:
         help="Workspace path. Defaults to the current directory.",
     )
     use.set_defaults(func=cmd_use)
+
+    merge = subcommands.add_parser(
+        "merge",
+        help="Merge a duplicate topic into a destination topic.",
+        description=(
+            "Merge <source-topic> into <dest-topic>. Pending worklog queues are flushed before the real merge. "
+            "Source .no_context is deleted, not propagated, so merging cannot silently suppress destination context."
+        ),
+    )
+    merge.add_argument("source_topic", help="Existing source topic with a spec or worklog file.")
+    merge.add_argument(
+        "dest_topic", help="Destination named topic; created if missing. The generic 'current' is rejected."
+    )
+    merge.add_argument("--dry-run", action="store_true", help="Print the full merge plan without touching files.")
+    merge.add_argument(
+        "--workspace",
+        default=None,
+        help="Workspace path. Defaults to the current directory.",
+    )
+    merge.set_defaults(func=cmd_merge)
+
+    note = subcommands.add_parser(
+        "note",
+        help="Record a structured insight (fact/gotcha/pattern/anti_pattern/recipe/principle/question) into the topic worklog.",
+        description=(
+            "Deliberate capture surface for insights that leave no failing command behind. "
+            "Kinds are the `,ai-kb` capsule kinds plus task-scoped `question`; the kind is the knowledge type, "
+            "and living in the worklog (not the KB) is what marks it unverified. "
+            "Non-question notes become `,ai-kb harvest` candidates; front-load literal identifiers a future query would use."
+        ),
+    )
+    note.add_argument("kind", choices=NOTE_KINDS, help="Structured note category.")
+    note.add_argument("text", help="The insight itself; front-load exact symbols, paths, and terms.")
+    note.add_argument(
+        "--ref",
+        action="append",
+        help="Evidence anchor such as path:line, command, or URL (repeat for multiple).",
+    )
+    add_shared_options(note, subcommand=True)
+    note.set_defaults(func=cmd_note)
 
     wipe = subcommands.add_parser("wipe-current", help="Delete files for the selected active topic.")
     add_shared_options(wipe, subcommand=True)

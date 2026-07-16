@@ -23,6 +23,8 @@ def hook_env(env: dict | None = None) -> dict:
     effective_env = dict(os.environ) if env is None else dict(env)
     effective_env["PYTHONPATH"] = f"{REPO / 'scripts'}{os.pathsep}{effective_env.get('PYTHONPATH', '')}"
     effective_env.setdefault("AGENT_MEMORY_SPEC_ROOT", str(SPEC_ROOT))
+    # Keep hook subprocesses away from the real persistent topic mirror.
+    effective_env.setdefault("AGENT_MEMORY_MIRROR_ROOT", str(SPEC_ROOT / ".mirror-test"))
     return effective_env
 
 
@@ -59,7 +61,13 @@ def make_aikb_stub(directory: Path, rows: list[dict]) -> dict:
         "    if os.environ.get('AI_KB_STUB_LOG'):\n"
         "        with open(os.environ['AI_KB_STUB_LOG'], 'a') as stream:\n"
         "            stream.write(json.dumps({'args': args, 'query': query}) + '\\n')\n"
-        f"    sys.stdout.write({payload!r})\n"
+        f"    rows = json.loads({payload!r})\n"
+        "    if '--workspace-gate' in args:\n"
+        "        # Mirror the real KB contract: --workspace-gate keeps only\n"
+        "        # workspace-local or domain/universal capsules.\n"
+        "        ws = args[args.index('--workspace') + 1] if '--workspace' in args else ''\n"
+        "        rows = [r for r in rows if r.get('workspace_path') == ws or r.get('scope') in ('domain', 'universal')]\n"
+        "    sys.stdout.write(json.dumps(rows))\n"
         "    sys.exit(0)\n"
         "sys.exit(0)\n"
     )
@@ -591,6 +599,66 @@ class TestAgentHooks(unittest.TestCase):
             assert "Local capsule that should surface" in context
             assert "(gotcha)" in context
             assert "…" in context  # body truncated to the bound
+
+    def test_session_context_restores_named_topic_from_mirror_after_spec_loss(self):
+        """A wiped /tmp/specs (reboot) self-heals named topics from the persistent mirror."""
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as mirror_root:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            spec_dir.mkdir(parents=True, exist_ok=True)
+            env = hook_env()
+            env["AGENT_MEMORY_MIRROR_ROOT"] = str(Path(mirror_root) / "mirror")
+
+            (spec_dir / "reboot-survivor.txt").write_text("target: survive the reboot\nsummary: durability probe\n")
+            (spec_dir / "_active_topic.txt").write_text("reboot-survivor\n")
+            import spec_mirror
+
+            saved_mirror = os.environ.get("AGENT_MEMORY_MIRROR_ROOT")
+            os.environ["AGENT_MEMORY_MIRROR_ROOT"] = env["AGENT_MEMORY_MIRROR_ROOT"]
+            try:
+                assert "reboot-survivor.txt" in spec_mirror.sync_topic(spec_dir, Path(workspace), "reboot-survivor")
+            finally:
+                if saved_mirror is None:
+                    os.environ.pop("AGENT_MEMORY_MIRROR_ROOT", None)
+                else:
+                    os.environ["AGENT_MEMORY_MIRROR_ROOT"] = saved_mirror
+
+            for path in sorted(spec_dir.iterdir()):
+                path.unlink()
+
+            payload = {"hook_event_name": "sessionStart", "workspace_roots": [tmp], "session_id": "mirror-restore"}
+            context = run_hook("executable_session_context.py", payload, env=env)["additional_context"]
+
+            assert (spec_dir / "reboot-survivor.txt").exists()
+            assert "reboot-survivor" in context
+
+    def test_hook_specific_output_shape_drops_top_level_context_key(self):
+        """Codex rejects unknown top-level result keys; AGENT_HOOK_OUTPUT=hook_specific keeps only hookSpecificOutput."""
+        with tempfile.TemporaryDirectory() as tmp:
+            payload = {"hook_event_name": "SessionStart", "workspace_roots": [tmp], "session_id": "shape-probe"}
+            env = hook_env()
+            env["AGENT_HOOK_OUTPUT"] = "hook_specific"
+            result = run_hook("executable_session_context.py", payload, env=env)
+            assert "additional_context" not in result, sorted(result)
+            assert result["hookSpecificOutput"]["hookEventName"] == "SessionStart"
+            assert result["hookSpecificOutput"]["additionalContext"]
+
+    def test_session_context_notices_harnesses_without_per_turn_recall(self):
+        """Adapters that never request embedder warm-up (Cursor) get the recall notice; warm adapters do not."""
+        with tempfile.TemporaryDirectory() as tmp:
+            payload = {"hook_event_name": "sessionStart", "workspace_roots": [tmp], "session_id": "notice-probe"}
+            env = hook_env()
+            env.pop("AI_EMBED_WARM", None)
+            cold = run_hook("executable_session_context.py", payload, env=env)["additional_context"]
+            assert "Recall Notice" in cold
+            assert ",agent-memory note" in cold
+
+            warm = run_hook(
+                "executable_session_context.py",
+                {**payload, "session_id": "notice-probe-warm", "warm_embedder": True},
+                env={**env, "AI_AGENT_DEPTH": "fast"},
+            )["additional_context"]
+            assert "Recall Notice" not in warm
 
     def test_session_context_warmstart_gates_out_unrelated_workspace_project_capsule(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1167,6 +1235,7 @@ console.log(JSON.stringify({ first, second, seen, statusCalls }));
                     "bm25",
                     "--workspace",
                     "/tmp/workspace",
+                    "--workspace-gate",
                     "--json",
                 ],
                 "query": "target: persist pi recall dedupe",
@@ -1306,6 +1375,7 @@ console.log(JSON.stringify({ result }));
                 "hybrid",
                 "--workspace",
                 "/tmp/workspace",
+                "--workspace-gate",
                 "--json",
             ]
 

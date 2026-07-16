@@ -298,6 +298,23 @@ def cmd_set(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_mark_routed(args: argparse.Namespace) -> int:
+    """Record that the human executed the closeout memory-routing packet."""
+    state = _state(args)
+    with state.lock(args.legion_id):
+        manifest = state.load(args.legion_id)
+        if manifest.get("stage") != "banished":
+            print(f"Error: legion {args.legion_id} is not closed (stage={manifest.get('stage')})", file=sys.stderr)
+            return 1
+        if not manifest.get("memory_packet_written"):
+            print(f"Error: legion {args.legion_id} has no persisted memory packet to route", file=sys.stderr)
+            return 1
+        manifest["memory_packet_routed"] = True
+        state.save(manifest)
+    print(f"legion {args.legion_id} memory packet marked routed")
+    return 0
+
+
 def cmd_paths(args: argparse.Namespace) -> int:
     print(json.dumps(_state(args).paths(args.legion_id), indent=2))
     return 0
@@ -369,6 +386,10 @@ def build_parser() -> argparse.ArgumentParser:
     set_p.add_argument("key")
     set_p.add_argument("value")
     set_p.set_defaults(func=cmd_set)
+
+    routed_p = sub.add_parser("mark-routed", help="record the closeout memory packet as routed by the human")
+    routed_p.add_argument("legion_id")
+    routed_p.set_defaults(func=cmd_mark_routed)
 
     paths_p = sub.add_parser("paths", help="print legion paths as JSON")
     paths_p.add_argument("legion_id")

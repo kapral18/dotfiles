@@ -343,15 +343,19 @@ class TestRecallDepth(unittest.TestCase):
         ).read_text(encoding="utf-8")
         pi = PI_EXTENSION.read_text(encoding="utf-8")
         cursor = (REPO / "home/dot_cursor/hooks.json").read_text(encoding="utf-8")
-        codex = (REPO / "home/dot_codex/hooks.json").read_text(encoding="utf-8")
+        codex = (REPO / "home/dot_codex/hooks.json.tmpl").read_text(encoding="utf-8")
 
-        for adapter in (claude, gemini, opencode, copilot):
+        for adapter in (claude, gemini, opencode, copilot, codex):
             self.assertIn("perturn_recall.py", adapter)
         for adapter in (claude, gemini, opencode, copilot, cursor, codex):
             self.assertIn("worklog_dispatcher.sh", adapter)
         self.assertIn("AI_AGENT_DEPTH", pi)
         self.assertNotIn("perturn_recall.py", cursor)
-        self.assertNotIn("perturn_recall.py", codex)
+        # Codex spawns hook commands without a shell (verified against codex
+        # 0.144.4: a literal `$HOME/...` command never expands and the hook
+        # fails), so its adapter must use templated absolute paths.
+        self.assertNotIn("$HOME", codex)
+        self.assertIn("{{ .chezmoi.homeDir }}", codex)
 
 
 class TestWorklogQueue(unittest.TestCase):

@@ -1,0 +1,44 @@
+---
+name: k-improve-branch
+description: Manual-only workflow for proposing one evidence-backed, high-leverage improvement to the current branch, PR, or issue goal.
+disable-model-invocation: true
+---
+
+# Improve Branch
+
+What is the single most compelling, high-leverage addition you could make toward the goal of the current branch (and its PR/issue, when they exist)?
+
+Only propose it if it is genuinely compelling. It is fine to refrain when you have no strong suggestion — no change beats a marginal one.
+
+Use when:
+
+- the user asks `/improve-branch`
+- the user asks for the single smartest, most impactful, or highest-leverage addition to the current branch, PR, or issue
+- the target is the branch/PR/issue goal, not only the uncommitted local diff, the whole codebase, or a targeted part
+
+Do not use:
+
+- whole-codebase improvements: `~/.agents/skills/k-improve-codebase/SKILL.md`
+- current uncommitted/staged diff only: `~/.agents/skills/k-improve-local/SKILL.md`
+- targeted part of the codebase: `~/.agents/skills/k-improve-targeted/SKILL.md`
+- broad brainstorming where the user wants many ideas instead of one recommendation
+
+First actions:
+
+1. Inspect current git status, branch name, branch diff/history, and any discoverable PR or issue context.
+2. Identify up to three candidate improvements internally, grounded in the observed branch, PR, or issue goal.
+3. Choose exactly one candidate only if it is clearly smart, accretive, useful, and compelling for this branch now.
+4. If no candidate clears that bar, say so and do not propose a marginal change.
+
+Selection rules:
+
+- Prefer changes that advance the branch goal: stronger acceptance coverage, cleaner integration, sharper UX/API behavior, clearer migration path, or reduced review risk.
+- Scope the recommendation to the real opportunity: small when small is enough, broad when breadth is where the leverage lives.
+- Do not recommend unrelated cleanup, package churn, or speculative abstractions unless the branch context makes the payoff unusually clear.
+- Treat "suggest" literally: present the recommendation first. Do not edit files unless the user explicitly approves implementation.
+
+Output:
+
+- If recommending a change: name the single change, explain why it matters, cite the branch/PR/issue evidence, and state the expected validation.
+- If implementing after approval: keep the edit scoped to the branch goal, update docs when behavior/workflow changes, validate, and report `Compatibility impact: none | removed (requested) | kept existing (requested)`.
+- If declining: state that no compelling branch addition was found and mention the strongest rejected candidate briefly.

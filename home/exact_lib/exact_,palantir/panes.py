@@ -40,6 +40,10 @@ import palantir_config
 
 COMMAND_WINDOW = "command"
 
+# Second composer check before send-keys: two consecutive ``empty`` verdicts
+# this far apart are required, narrowing the classify-then-send race window.
+CONFIRM_DELAY_SECS = 0.15
+
 # Launch argv per harness. Each starts an interactive session in the pane's
 # cwd (the legion worktree); the role brief arrives as the first injected turn.
 # Roles run unattended, so each harness gets its own full-autonomy flag; the
@@ -128,8 +132,11 @@ def inject_when_idle(session: str, window: str, text: str, wait_secs: int = 30, 
     """Composer-guarded literal inject. Returns False when the pane never idles.
 
     Fail-safe: only the ``empty`` verdict authorizes keys; ``busy``/``pending``/
-    ``unknown`` all block. The text is sent literally (``send-keys -l``) so tmux
-    never interprets it, then a single Enter.
+    ``unknown`` all block. Two consecutive ``empty`` verdicts (re-checked after
+    ``CONFIRM_DELAY_SECS``) are required before any key is sent, narrowing the
+    classify-then-send race against a pane that starts rendering mid-gap. The
+    text is sent literally (``send-keys -l``) so tmux never interprets it, then
+    a single Enter.
     """
     try:
         target = pane_target(session, window)
@@ -138,10 +145,12 @@ def inject_when_idle(session: str, window: str, text: str, wait_secs: int = 30, 
     deadline = time.monotonic() + wait_secs
     while True:
         if pane_verdict(session, window) == "empty":
-            proc = composer.run_tmux("send-keys", "-t", target, "-l", text)
-            if proc.returncode != 0:
-                return False
-            return composer.run_tmux("send-keys", "-t", target, "Enter").returncode == 0
+            time.sleep(CONFIRM_DELAY_SECS)
+            if pane_verdict(session, window) == "empty":
+                proc = composer.run_tmux("send-keys", "-t", target, "-l", text)
+                if proc.returncode != 0:
+                    return False
+                return composer.run_tmux("send-keys", "-t", target, "Enter").returncode == 0
         if time.monotonic() >= deadline:
             return False
         time.sleep(interval)

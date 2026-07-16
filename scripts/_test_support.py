@@ -17,6 +17,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -34,6 +35,13 @@ KBN_STACK_COMMAND = REPO / "home/exact_lib/exact_,kbn-stack/main.py"
 # directly (python3 scripts/test_x.py) rather than via discover.
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
+
+# Never let tests touch the real persistent named-topic mirror
+# (~/.local/state/agent-specs): spec_mirror resolves this env per call, and
+# any test that patches SPEC_ROOT would otherwise sync into the live mirror.
+os.environ.setdefault(
+    "AGENT_MEMORY_MIRROR_ROOT", os.path.join(tempfile.mkdtemp(prefix="agent-specs-mirror-test-"), "mirror")
+)
 
 
 def run_script(args: list[str], *, stdin: str | None = None) -> str:

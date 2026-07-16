@@ -20,7 +20,7 @@ Resolved keys:
   adversarial_review_model   str
   adversarial_review_family  str   explicit family when the model name hides it
   watch_interval_secs        int   supervisor poll interval
-  max_implement_attempts     int   verify-failure return budget per legion
+  max_implement_attempts     int   implement rework budget per legion (verify failures + review-blocker returns)
   inject_settle_secs         int   wait after pane spawn before first inject
 
 CLI (stdlib):

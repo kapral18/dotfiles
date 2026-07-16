@@ -8,7 +8,7 @@ Each adapter passes its native session ID so topic selection, worklogs, and reca
 PR review anchor verification is instruction-owned by the review/GitHub skills, not enforced by a shell hook.
 Pi does not use this `hooks.json`-style lifecycle; it has its own TypeScript extension API.
 Pi's durable-memory recall therefore lives in a pi extension (`home/dot_pi/agent/extensions/ai-kb-recall.ts`) rather than here.
-That extension reuses the same `/tmp/specs` topic resolution (via `,agent-memory status --json --session-id <id>`) and the same `,ai-kb` retrieval.
+That extension reuses the same `/tmp/specs` topic resolution (via `,agent-memory status --json --session-id <id>`) and the same `,ai-kb` retrieval, and forwards `tool_result` events to `worklog_dispatcher.sh` so pi sessions feed the shared worklog trail.
 This keeps behavior consistent across runtimes — see the AI knowledge base doc for the cross-runtime retrieval table.
 
 Runtime state is kept outside chezmoi and outside worktrees:
@@ -22,6 +22,13 @@ Runtime state is kept outside chezmoi and outside worktrees:
 /tmp/specs/<workspace-path-without-leading-slash>/.worklog-queue-v1/<session-key>/
 /tmp/specs/<workspace-path-without-leading-slash>/.worklog-locks-v1/
 ```
+
+`/tmp/specs` stays the primary, best-effort store, but named topics no longer die with a reboot:
+`spec_mirror.py` copies each named topic's spec, worklog, sentinel, and the `_active_topic.txt` pointer to a persistent per-workspace mirror (`~/.local/state/agent-specs/`, override via `AGENT_MEMORY_MIRROR_ROOT`).
+Sync happens at deliberate checkpoints — session start and `,agent-memory` status/select/use/note/merge —
+never on the per-tool-event hot path.
+When `/tmp/specs` is wiped, session start and `,agent-memory` restore only the missing named-topic files (live `/tmp` state always wins), while `wipe-current` and `merge` also forget the mirror copies so a deleted topic cannot resurrect.
+`current` and `session-*` fallback buckets are intentionally never mirrored.
 
 Session-scoped topic bindings live in `.session-topic-<session-id>.txt`.
 They select which shared topic bucket this one agent session loads, without changing any other live session.
@@ -39,7 +46,7 @@ Feature/topic worktrees keep `current` continuity by default when no `_active_to
 For a session-bound named topic with a non-empty `<topic>.txt` spec, `session_context.py` injects the full spec/worklog context and a relevance-gated `### Relevant Learnings (,ai-kb)` block.
 A session-bound named topic is neither `current` nor a `session-*` fallback.
 The hook runs `,ai-kb search` with the spec text as the query (`bm25` lane, no embedder, bounded by the hook timeout).
-It surfaces up to three capsules that are local to this workspace or scoped `domain`/`universal`, so durable memory seeds the session automatically.
+It surfaces up to three capsules via `--workspace-gate`, which makes the KB itself keep only capsules local to this workspace or scoped `domain`/`universal`, so durable memory seeds the session automatically.
 Unbound, ad-hoc/`session-*`, and review topics get no capsule warm-start.
 This is the only automatic session-start capsule retrieval; supported runtimes also perform per-turn recall.
 Cursor cannot inject context per-turn (`beforeSubmitPrompt` carries no context-injection output), so mid-task relevance comes from the agent's own `,ai-kb search` calls against its actual task.
@@ -50,12 +57,13 @@ Pi persists the same state across extension reloads and session resumes.
 
 Resident FastEmbed warm-up is a separate, explicit lifecycle for automatic per-turn consumers:
 
-- Claude and Gemini set `AI_EMBED_WARM=1` on their session-start command.
+- Claude, Gemini, and Codex set `AI_EMBED_WARM=1` on their session-start command.
 - OpenCode and Copilot pass `warm_embedder: true` in their session-start payload.
 - Pi calls `~/lib/,ai-kb/embed_client.py ensure` from its TypeScript `session_start` handler.
-- Cursor and Codex do not warm the resident because neither has per-turn retrieval wiring.
+- Cursor does not warm the resident because it has no per-turn retrieval wiring;
+  its session context therefore carries a `### Recall Notice` directing the agent to run `,ai-kb search` itself mid-task and to capture insights with `,agent-memory note`.
 
-`AI_AGENT_DEPTH` applies one recall contract to Claude, Gemini, OpenCode, Copilot, and Pi:
+`AI_AGENT_DEPTH` applies one recall contract to Claude, Gemini, OpenCode, Copilot, Codex, and Pi:
 
 | Depth      | Startup BM25 | Resident warm-up | Per-turn fetch / inject | Prompt / body caps | Timeout |
 | ---------- | ------------ | ---------------- | ----------------------- | ------------------ | ------- |
@@ -64,7 +72,7 @@ Resident FastEmbed warm-up is a separate, explicit lifecycle for automatic per-t
 | `deep`     | unchanged    | requested        | 12 / 5                  | 1200 / 360 chars   | 9s      |
 
 Unset, empty, or invalid values resolve to `balanced`, which is the prior behavior.
-Every enabled profile keeps the existing `hybrid` mode, `0.55` top-cosine gate, `0.85` tail floor, scope gate, session dedupe, stdin-only query transport, and connect-only resident contract.
+Every enabled profile keeps the existing `hybrid` mode, `0.55` top-cosine gate, `0.85` tail floor, the KB-owned `--workspace-gate` scope gate, session dedupe, stdin-only query transport, and connect-only resident contract.
 
 Requested warm-up is bounded and fail-open.
 Shared `perturn_recall.py` and Pi's hybrid query path set `AI_EMBED_CONNECT_ONLY=1`;
@@ -112,6 +120,8 @@ Use `,agent-memory` to set the active topic or as a dead switch for persisted ho
 ,agent-memory select <topic> --session-id <id>
 ,agent-memory select <new-topic> --create --session-id <id>
 ,agent-memory use <topic>
+,agent-memory merge <source-topic> <dest-topic> [--dry-run]
+,agent-memory note <fact|gotcha|pattern|anti_pattern|recipe|principle|question> "<text>" [--ref <anchor>]
 ,agent-memory wipe-current
 ,agent-memory wipe-current --dry-run
 ,agent-memory wipe-current --reset-active
@@ -122,6 +132,16 @@ It seeds `<topic>.txt` only with `--create`.
 At bind time it also flushes the session's pending queue and folds the session's pre-bind `session-*` fallback worklog into `<topic>.worklog.jsonl`, so the trail is not split across buckets.
 `use` manages the workspace-level default/suggested bucket: it writes `_active_topic.txt` and seeds `<topic>.txt` (rejecting the generic `current`).
 Use it only when you intentionally want to mark a default/suggested bucket for the workspace.
+`note` is the deliberate mid-task capture surface for insights that leave no failing command behind:
+it records a structured event (`note_kind`, text, refs) through the same crash-safe queue as tool worklogs.
+Note kinds are the `,ai-kb` capsule kinds (minus ingestion-only `doc`) plus task-scoped `question` —
+one vocabulary, so a model never translates between capture and storage taxonomies.
+The kind is the knowledge type; verification status is carried by where the item lives (worklog note = unverified candidate, capsule = verified).
+`,ai-kb harvest` turns non-question notes into durable-memory candidates via its `structured_note` detector, keeping the kind verbatim;
+`question` notes stay task-scoped context.
+Use `anti_pattern` for approaches that were tried and rejected — the knowledge a future session would otherwise re-attempt —
+and `recipe` for a working command/step sequence worth deferring to the verified-write path.
+Front-load the literal identifiers a future query would use — the note text becomes the candidate title/body.
 `wipe-current` deletes only the selected topic files (`.txt`, `.worklog.jsonl`, `.no_context`). It keeps other topics in the same workspace.
 On default branches without an explicit active topic, it targets the latest `session-*` topic.
 
