@@ -11,6 +11,7 @@ import importlib.util
 import io
 import json
 import os
+import queue
 import re
 import shlex
 import socket
@@ -34,8 +35,6 @@ from _test_support import (
     REPO,
     modern_bash,
 )
-
-COPILOT_COMMAND = REPO / "home/exact_lib/exact_,copilot/main.py"
 
 
 def _load_artifact_command():
@@ -65,17 +64,6 @@ def _load_mcp_token_module():
     if spec is None or spec.loader is None:
         raise AssertionError("could not load ,mcp-token command module")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-def _load_copilot_command():
-    loader = SourceFileLoader("copilot_command", str(COPILOT_COMMAND))
-    spec = importlib.util.spec_from_loader("copilot_command", loader)
-    if spec is None or spec.loader is None:
-        raise AssertionError("could not load ,copilot command module")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 
@@ -1381,7 +1369,7 @@ class TestMcpTokenSilentRotation(unittest.TestCase):
         assert Path(cwd_str).resolve() == workspace.resolve(), "rotation must run in the cache's trusted workspace"
         assert hits == [], "JWT rotation must not probe the server"
 
-    def test_launch_json_defers_proactive_jwt_rotation(self):
+    def test_no_proactive_rotation_defers_short_jwt_rotation(self):
         mod = _load_mcp_token_module()
         short = self._jwt(int(time.time()) + mod.MIN_TTL_SECONDS - 600)
         fresh = self._jwt(int(time.time()) + 3600)
@@ -1392,16 +1380,14 @@ class TestMcpTokenSilentRotation(unittest.TestCase):
             bindir.mkdir()
             cache = self._write_rotatable_cache(home, "p", "scsi-main", short, workspace=workspace)
             log = self._stub_rotating_cursor_agent(bindir, home, cache, "scsi-main", rotates_to=fresh)
-            result = self._run(home, bindir, ["scsi-main", "--login", "--quiet", "--launch-json"])
+            result = self._run(home, bindir, ["scsi-main", "--login", "--quiet", "--no-proactive-rotation"])
             cursor_ran = log.exists()
 
         assert result.returncode == 0, result.stderr
-        payload = json.loads(result.stdout)
-        assert payload["token"] == short, "launch mode must return the still-valid token without waiting"
-        assert payload["rotation_due"] is True
-        assert not cursor_ran, "proactive rotation must stay off the launcher critical path"
+        assert result.stdout.strip() == short, "the still-valid token must be returned without waiting"
+        assert not cursor_ran, "proactive rotation must stay off the caller's critical path"
 
-    def test_launch_json_keeps_critical_rotation_blocking(self):
+    def test_no_proactive_rotation_keeps_critical_rotation_blocking(self):
         mod = _load_mcp_token_module()
         critical = self._jwt(int(time.time()) + mod.BLOCKING_ROTATE_TTL_SECONDS - 60)
         fresh = self._jwt(int(time.time()) + 3600)
@@ -1412,35 +1398,46 @@ class TestMcpTokenSilentRotation(unittest.TestCase):
             bindir.mkdir()
             cache = self._write_rotatable_cache(home, "p", "scsi-main", critical, workspace=workspace)
             log = self._stub_rotating_cursor_agent(bindir, home, cache, "scsi-main", rotates_to=fresh)
-            result = self._run(home, bindir, ["scsi-main", "--login", "--quiet", "--launch-json"])
+            result = self._run(home, bindir, ["scsi-main", "--login", "--quiet", "--no-proactive-rotation"])
             calls = log.read_text().splitlines() if log.exists() else []
 
         assert result.returncode == 0, result.stderr
-        payload = json.loads(result.stdout)
-        assert payload["token"] == fresh
-        assert payload["rotation_due"] is False
+        assert result.stdout.strip() == fresh
         assert any("mcp list-tools scsi-main" in call for call in calls)
 
-    def test_rotate_mints_a_deferred_token_without_browser(self):
+    def test_rotate_after_reject_adopts_concurrent_rotation_without_regrant(self):
+        # Worker 1 already rotated the chain; worker 2's 401-triggered rotation
+        # must adopt the fresh token under the lock instead of overwriting it
+        # with another sentinel-and-grant cycle.
         mod = _load_mcp_token_module()
-        short = self._jwt(int(time.time()) + mod.MIN_TTL_SECONDS - 600)
+        rejected = self._jwt(int(time.time()) + 1200)
         fresh = self._jwt(int(time.time()) + 3600)
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             home, bindir, workspace = root / "home", root / "bin", root / "ws"
             home.mkdir()
             bindir.mkdir()
-            cache = self._write_rotatable_cache(home, "p", "scsi-main", short, workspace=workspace)
+            cache = self._write_rotatable_cache(home, "p", "scsi-main", fresh, workspace=workspace)
             log = self._stub_rotating_cursor_agent(bindir, home, cache, "scsi-main", rotates_to=fresh)
-            result = self._run(home, bindir, ["scsi-main", "--rotate", "--quiet"])
+            env_home, env_path = os.environ.get("HOME"), os.environ.get("PATH")
+            os.environ["HOME"] = str(home)
+            os.environ["PATH"] = f"{bindir}{os.pathsep}{env_path}"
+            try:
+                mod.CURSOR_CACHE_GLOB = str(home / ".cursor/projects/*/mcp-auth.json")
+                mod.ROTATION_LOCK = str(home / ".cache/mcp-token/rotation.lock")
+                mod.OPAQUE_REFRESH_STATE = str(home / ".cache/mcp-token/opaque-refresh.json")
+                adopted = mod._rotate_after_reject("scsi-main", rejected)
+                rotated_same = mod._rotate_after_reject("scsi-main", fresh)
+            finally:
+                os.environ["HOME"] = env_home
+                os.environ["PATH"] = env_path
             calls = log.read_text().splitlines() if log.exists() else []
 
-        assert result.returncode == 0, result.stderr
-        assert result.stdout.strip() == fresh
-        assert any("mcp list-tools scsi-main" in call for call in calls)
-        assert not any("mcp login" in call for call in calls)
+        assert adopted is True, "a differing cached token proves another worker already rotated"
+        assert rotated_same is True, "rejecting the currently cached token must execute the grant"
+        assert len(calls) == 1, f"only the same-token rejection may run cursor-agent, got {calls}"
 
-    def test_concurrent_deferred_workers_rotate_once(self):
+    def test_concurrent_logins_rotate_once(self):
         mod = _load_mcp_token_module()
         short = self._jwt(int(time.time()) + mod.MIN_TTL_SECONDS - 600)
         fresh = self._jwt(int(time.time()) + 3600)
@@ -1456,7 +1453,7 @@ class TestMcpTokenSilentRotation(unittest.TestCase):
                 "HOME": str(home),
                 "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
             }
-            command = [sys.executable, str(MCP_TOKEN_COMMAND), "scsi-main", "--rotate", "--quiet"]
+            command = [sys.executable, str(MCP_TOKEN_COMMAND), "scsi-main", "--login", "--quiet"]
             workers = [
                 subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
                 for _ in range(2)
@@ -1465,7 +1462,7 @@ class TestMcpTokenSilentRotation(unittest.TestCase):
             calls = log.read_text().splitlines() if log.exists() else []
 
         assert all(returncode == 0 for _stdout, _stderr, returncode in results), results
-        assert len(calls) == 1, "the rotation lock and due recheck must deduplicate concurrent workers"
+        assert len(calls) == 1, "the rotation lock and due recheck must deduplicate concurrent rotations"
 
     def test_jwt_with_runway_skips_rotation(self):
         mod = _load_mcp_token_module()
@@ -1592,69 +1589,29 @@ class TestMcpTokenSilentRotation(unittest.TestCase):
 
 
 class TestCodexWrapper(unittest.TestCase):
-    """WHEN launching Codex through the managed wrapper."""
+    """WHEN launching Codex through the managed wrapper.
 
-    def _run_wrapper(
-        self,
-        *,
-        token_helper_exit: int = 0,
-        token: str = "fresh-token",
-        rotation_due: bool = False,
-        args: list[str] | None = None,
-        config_lines: list[str] | None = None,
-    ) -> subprocess.CompletedProcess[str]:
+    MCP auth needs no launch-time work: hosted OAuth servers run as
+    ",mcp-token --bridge" stdio entries in the rendered config, so the wrapper
+    only injects local llama.cpp model metadata and execs the real binary.
+    """
+
+    def test_launches_without_token_machinery(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             home = root / "home"
             bindir = root / "bin"
-            codex_home = home / ".codex"
-            codex_home.mkdir(parents=True)
+            home.mkdir()
             bindir.mkdir()
-            (codex_home / "config.toml").write_text(
-                "\n".join(
-                    config_lines
-                    or [
-                        "[mcp_servers.slack]",
-                        'url = "https://mcp.slack.com/mcp"',
-                        'bearer_token_env_var = "CODEX_MCP_TOKEN_SLACK"',
-                        "",
-                    ]
-                )
-            )
-            launch_payload = json.dumps(
-                {
-                    "token": token,
-                    "source": "fixture",
-                    "seconds_left": 1800,
-                    "rotation_due": rotation_due,
-                }
-            )
-            (bindir / ",mcp-token").write_text(
-                "#!/usr/bin/env bash\n"
-                'printf \'%s\\n\' "$*" >> "$MCP_TOKEN_LOG"\n'
-                f"if [[ {token_helper_exit} -ne 0 ]]; then exit {token_helper_exit}; fi\n"
-                'if [[ "$*" == *"--rotate"* ]]; then\n'
-                '  : > "$MCP_ROTATION_MARKER"\n'
-                "  exit 0\n"
-                "fi\n"
-                f"printf '%s\\n' {shlex.quote(launch_payload)}\n"
-            )
-            (bindir / ",mcp-token").chmod(0o755)
+            token_log = root / "mcp-token.log"
+            token_helper = bindir / ",mcp-token"
+            token_helper.write_text('#!/usr/bin/env bash\nprintf \'%s\\n\' "$*" >> "$MCP_TOKEN_LOG"\n')
+            token_helper.chmod(0o755)
             real_codex = bindir / "codex-real"
-            real_codex.write_text(
-                "#!/usr/bin/env bash\n"
-                'if [[ "${EXPECT_DEFERRED_ROTATION:-0}" == 1 ]]; then\n'
-                '  for _ in {1..100}; do [[ -f "$MCP_ROTATION_MARKER" ]] && break; sleep 0.01; done\n'
-                '  [[ -f "$MCP_ROTATION_MARKER" ]] && echo ROTATION_SEEN\n'
-                "fi\n"
-                "echo REAL_CODEX_STARTED\n"
-                "echo TOKEN=${CODEX_MCP_TOKEN_SLACK-}\n"
-                "printf 'ARGS=%s\\n' \"$*\"\n"
-            )
+            real_codex.write_text("#!/usr/bin/env bash\necho REAL_CODEX_STARTED\nprintf 'ARGS=%s\\n' \"$*\"\n")
             real_codex.chmod(0o755)
-
-            return subprocess.run(
-                [sys.executable, str(CODEX_COMMAND), *(args or [])],
+            result = subprocess.run(
+                [sys.executable, str(CODEX_COMMAND), "exec", "hi"],
                 capture_output=True,
                 text=True,
                 cwd=str(REPO),
@@ -1663,49 +1620,14 @@ class TestCodexWrapper(unittest.TestCase):
                     "HOME": str(home),
                     "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
                     "CODEX_REAL_BIN": str(real_codex),
-                    "MCP_TOKEN_LOG": str(root / "mcp-token.log"),
-                    "MCP_ROTATION_MARKER": str(root / "rotation.marker"),
-                    "EXPECT_DEFERRED_ROTATION": "1" if rotation_due else "0",
+                    "MCP_TOKEN_LOG": str(token_log),
                 },
             )
+            token_calls = token_log.read_text().splitlines() if token_log.exists() else []
 
-    def test_refreshes_mcp_token_env_before_launch(self):
-        result = self._run_wrapper()
-
-        assert result.returncode == 0
+        assert result.returncode == 0, result.stderr
         assert "REAL_CODEX_STARTED" in result.stdout
-        assert "TOKEN=fresh-token" in result.stdout
-
-    def test_starts_deferred_rotation_after_capturing_launch_token(self):
-        result = self._run_wrapper(rotation_due=True)
-
-        assert result.returncode == 0
-        assert "TOKEN=fresh-token" in result.stdout
-        assert "ROTATION_SEEN" in result.stdout
-
-    def test_token_refresh_failure_blocks_launch(self):
-        result = self._run_wrapper(token_helper_exit=1)
-
-        assert result.returncode == 1
-        assert "REAL_CODEX_STARTED" not in result.stdout
-        assert "could not refresh MCP token(s): slack" in result.stderr
-
-    def test_disabled_mcp_server_does_not_block_launch(self):
-        result = self._run_wrapper(
-            token_helper_exit=1,
-            config_lines=[
-                "[mcp_servers.slack]",
-                "enabled = false",
-                'url = "https://mcp.slack.com/mcp"',
-                'bearer_token_env_var = "CODEX_MCP_TOKEN_SLACK"',
-                "",
-            ],
-        )
-
-        assert result.returncode == 0
-        assert "REAL_CODEX_STARTED" in result.stdout
-        assert "TOKEN=" in result.stdout
-        assert "could not refresh MCP token(s): slack" not in result.stderr
+        assert token_calls == [], "launch must not touch ,mcp-token; the bridge owns auth per request"
 
     def test_local_model_injects_catalog_metadata(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1751,10 +1673,7 @@ class TestCursorWrapper(unittest.TestCase):
             token_log = root / "mcp-token.log"
             token_helper = bindir / ",mcp-token"
             token_helper.write_text(
-                "#!/usr/bin/env bash\n"
-                'printf \'%s\\n\' "$*" >> "$MCP_TOKEN_LOG"\n'
-                'printf \'%s\\n\' \'{"token":"launch-token","source":"fixture","seconds_left":1800,'
-                '"rotation_due":true}\'\n'
+                "#!/usr/bin/env bash\nprintf '%s\\n' \"$*\" >> \"$MCP_TOKEN_LOG\"\nprintf 'fixture-token\\n'\n"
             )
             token_helper.chmod(0o755)
             real_cursor = bindir / "cursor-agent"
@@ -1778,7 +1697,7 @@ class TestCursorWrapper(unittest.TestCase):
 
         assert result.returncode == 0, result.stderr
         assert "REAL_CURSOR_STARTED" in result.stdout
-        assert calls == ["slack --login --quiet --launch-json"]
+        assert calls == ["slack --login --quiet --no-proactive-rotation"]
 
 
 class TestKbnStackCommand(unittest.TestCase):
@@ -2053,132 +1972,227 @@ class TestKbnStackCommand(unittest.TestCase):
         assert state["killed"] == []
 
 
-class TestCopilotDeferredRotation(unittest.TestCase):
-    """WHEN Copilot captures launch headers before proactive rotation."""
+class _BridgeMcpHandler(http.server.BaseHTTPRequestHandler):
+    """Fake streamable-HTTP MCP endpoint for bridge tests.
 
-    @classmethod
-    def setUpClass(cls):
-        cls.command = _load_copilot_command()
+    Accepts only tokens in ``live_tokens``; answers ``initialize`` with a JSON
+    body plus ``Mcp-Session-Id``; answers requests via JSON or SSE (methods in
+    ``sse_methods``); records every POST/DELETE with token and session id.
+    """
 
-    def test_header_resolution_returns_deferred_token_sources(self):
-        source = self.command.SourceContext(
-            source_dir=Path("/source/home"),
-            is_work=True,
-            registry=Path("/source/home/.chezmoidata/mcp_servers.yaml"),
-            generator=Path("/source/scripts/generate_mcp_configs.py"),
-            artifact_helper=Path("/source/scripts/generated_artifact_ledger.py"),
-            ledger=Path("/state/generated_artifacts.v1.json"),
+    live_tokens: set[str] = set()
+    sse_methods: set[str] = set()
+    hits: list[tuple] = []
+    lock = threading.Lock()
+
+    def log_message(self, *args):
+        pass
+
+    def do_DELETE(self):
+        with self.lock:
+            self.hits.append(("DELETE", None, self.headers.get("Mcp-Session-Id")))
+        self.send_response(200)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def _reply(self, status: int, data: bytes = b"", content_type: str | None = None, session: str | None = None):
+        self.send_response(status)
+        if session:
+            self.send_header("Mcp-Session-Id", session)
+        if content_type:
+            self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def do_POST(self):
+        body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
+        token = self.headers.get("Authorization", "").rpartition(" ")[2]
+        method = body.get("method")
+        with self.lock:
+            self.hits.append(("POST", method, token, self.headers.get("Mcp-Session-Id")))
+        if token not in self.live_tokens:
+            self._reply(401)
+            return
+        if method == "initialize":
+            payload = {"jsonrpc": "2.0", "id": body.get("id"), "result": {"serverInfo": {"name": "fake"}}}
+            self._reply(200, json.dumps(payload).encode(), "application/json", session="bridge-session")
+            return
+        if "id" not in body:
+            self._reply(202)
+            return
+        if method in self.sse_methods:
+            progress = {"jsonrpc": "2.0", "method": "notifications/progress", "params": {"step": 1}}
+            result = {"jsonrpc": "2.0", "id": body["id"], "result": {"via": "sse"}}
+            data = (
+                b"event: message\ndata: " + json.dumps(progress).encode() + b"\n\n"
+                b"data: " + json.dumps(result).encode() + b"\n\n"
+            )
+            self._reply(200, data, "text/event-stream")
+            return
+        payload = {"jsonrpc": "2.0", "id": body["id"], "result": {"echo": method}}
+        self._reply(200, json.dumps(payload).encode(), "application/json")
+
+
+@contextlib.contextmanager
+def _bridge_mcp_server(live_tokens: set[str], sse_methods: set[str] | None = None):
+    _BridgeMcpHandler.live_tokens = set(live_tokens)
+    _BridgeMcpHandler.sse_methods = set(sse_methods or ())
+    _BridgeMcpHandler.hits = []
+    httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _BridgeMcpHandler)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{httpd.server_address[1]}/mcp", _BridgeMcpHandler
+    finally:
+        httpd.shutdown()
+
+
+class _BridgeSession:
+    """Drive a ,mcp-token --bridge subprocess over stdio, one message at a time."""
+
+    def __init__(self, home: Path, bindir: Path, server: str, url: str):
+        self.process = subprocess.Popen(
+            [sys.executable, str(MCP_TOKEN_COMMAND), server, "--bridge", "--url", url],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            env={
+                **os.environ,
+                "HOME": str(home),
+                "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
+            },
         )
-        requirement = self.command.HeaderAuthRequirement(
-            server="slack",
-            token_source="slack",
-            shell_command=",mcp-token slack --bearer",
+        self._lines: queue.Queue[bytes] = queue.Queue()
+        threading.Thread(target=self._pump, daemon=True).start()
+
+    def _pump(self):
+        assert self.process.stdout is not None
+        for line in self.process.stdout:
+            self._lines.put(line)
+
+    def send(self, message: dict) -> None:
+        assert self.process.stdin is not None
+        self.process.stdin.write(json.dumps(message).encode() + b"\n")
+        self.process.stdin.flush()
+
+    def recv(self, timeout: float = 10.0) -> dict:
+        return json.loads(self._lines.get(timeout=timeout))
+
+    def close(self, timeout: float = 10.0) -> int:
+        assert self.process.stdin is not None
+        self.process.stdin.close()
+        return self.process.wait(timeout=timeout)
+
+
+class TestMcpTokenBridge(unittest.TestCase):
+    """WHEN an agent session runs a hosted OAuth MCP server through the bridge.
+
+    Real-seam tests: an isolated ``HOME`` holds cursor caches, a stub
+    cursor-agent plays the refresh grant, and a fake streamable-HTTP server
+    classifies bearers. The deep state table (resurrection, same-token retry,
+    malformed stdin, concurrency) lives in the /tmp state-machine harness.
+    """
+
+    def _jwt(self, exp: int, subject: str = "a") -> str:
+        def encode(value: dict[str, object]) -> str:
+            raw = json.dumps(value, separators=(",", ":")).encode()
+            return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+
+        return f"{encode({'alg': 'none'})}.{encode({'exp': exp, 'sub': subject})}.sig"
+
+    def _write_cache(self, home: Path, server: str, token: str, *, workspace: Path | None = None) -> Path:
+        project = home / ".cursor/projects/p"
+        project.mkdir(parents=True, exist_ok=True)
+        cache = project / "mcp-auth.json"
+        cache.write_text(
+            json.dumps({server: {"tokens": {"access_token": token, "refresh_token": "chain", "expires_in": 3600}}})
         )
-        plan = self.command.BatchPlan(source, Path("/target/mcp-config.json"), "placeholder", (requirement,))
-        payload = json.dumps(
-            {
-                "token": "launch-token",
-                "source": "fixture",
-                "seconds_left": 1800,
-                "rotation_due": True,
-            }
-        )
-        result = subprocess.CompletedProcess([], 0, stdout=payload, stderr="")
+        if workspace is not None:
+            workspace.mkdir(parents=True, exist_ok=True)
+            (project / ".workspace-trusted").write_text(json.dumps({"workspacePath": str(workspace)}))
+        return cache
 
-        with mock.patch.object(self.command.subprocess, "run", return_value=result) as run:
-            headers = self.command._resolve_headers(plan)
+    INITIALIZE = {"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {"protocolVersion": "2025-06-18"}}
 
-        assert headers.by_command[requirement.shell_command] == "Bearer launch-token"
-        assert headers.deferred_sources == ("slack",)
-        assert run.call_args.args[0] == [",mcp-token", "slack", "--login", "--quiet", "--launch-json"]
+    def test_serves_requests_with_fresh_bearer_and_session_id(self):
+        token = self._jwt(int(time.time()) + 3600)
+        with tempfile.TemporaryDirectory() as tmp, _bridge_mcp_server({token}) as (url, handler):
+            root = Path(tmp)
+            home, bindir = root / "home", root / "bin"
+            home.mkdir()
+            bindir.mkdir()
+            self._write_cache(home, "scsi-main", token)
+            session = _BridgeSession(home, bindir, "scsi-main", url)
+            session.send(self.INITIALIZE)
+            init_response = session.recv()
+            session.send({"jsonrpc": "2.0", "method": "notifications/initialized"})
+            session.send({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
+            list_response = session.recv()
+            returncode = session.close()
+            hits = list(handler.hits)
 
-    def test_main_starts_deferred_rotation_after_preflight(self):
-        events: list[str] = []
+        assert returncode == 0
+        assert init_response["result"]["serverInfo"]["name"] == "fake"
+        assert list_response["id"] == 1 and list_response["result"]["echo"] == "tools/list"
+        posts = [hit for hit in hits if hit[0] == "POST"]
+        assert all(hit[2] == token for hit in posts), "every request must carry the cached bearer"
+        assert posts[-1][3] == "bridge-session", "captured session id must be echoed"
+        assert ("DELETE", None, "bridge-session") in hits, "stdin EOF must close the server session"
 
-        def preflight() -> tuple[str, ...]:
-            events.append("preflight")
-            return ("slack",)
+    def test_rejected_bearer_rotates_and_retries_within_session(self):
+        stale = self._jwt(int(time.time()) + 3600, "stale")
+        fresh = self._jwt(int(time.time()) + 3600, "fresh")
+        with tempfile.TemporaryDirectory() as tmp, _bridge_mcp_server({fresh}) as (url, handler):
+            root = Path(tmp)
+            home, bindir, workspace = root / "home", root / "bin", root / "ws"
+            home.mkdir()
+            bindir.mkdir()
+            cache = self._write_cache(home, "scsi-main", stale, workspace=workspace)
+            rotated = json.dumps(
+                {"scsi-main": {"tokens": {"access_token": fresh, "refresh_token": "next", "expires_in": 3600}}}
+            )
+            agent = bindir / "cursor-agent"
+            agent.write_text(
+                "#!/usr/bin/env bash\n"
+                'if [ "$1 $2" = "mcp list-tools" ]; then\n'
+                f"cat > {shlex.quote(str(cache))} <<'EOF'\n{rotated}\nEOF\n"
+                "fi\nexit 0\n"
+            )
+            agent.chmod(0o755)
+            session = _BridgeSession(home, bindir, "scsi-main", url)
+            session.send(self.INITIALIZE)
+            init_response = session.recv(timeout=30)
+            returncode = session.close()
+            hits = list(handler.hits)
 
-        def spawn(servers: tuple[str, ...]) -> None:
-            assert servers == ("slack",)
-            events.append("rotate")
+        assert returncode == 0
+        assert "result" in init_response, f"rotated retry must succeed: {init_response}"
+        tokens_seen = [hit[2] for hit in hits if hit[0] == "POST" and hit[1] == "initialize"]
+        assert tokens_seen == [stale, fresh], "exactly one rejected then one rotated retry"
 
-        def execv(_binary: str, _argv: list[str]) -> None:
-            events.append("exec")
-            raise RuntimeError("stop after observing exec")
-
+    def test_sse_response_streams_messages_in_order(self):
+        token = self._jwt(int(time.time()) + 3600)
         with (
-            mock.patch.object(self.command.os, "access", return_value=True),
-            mock.patch.object(self.command, "_preflight", side_effect=preflight),
-            mock.patch.object(self.command, "_spawn_deferred_rotations", side_effect=spawn),
-            mock.patch.object(self.command.os, "execv", side_effect=execv),
-            self.assertRaisesRegex(RuntimeError, "stop after observing exec"),
+            tempfile.TemporaryDirectory() as tmp,
+            _bridge_mcp_server({token}, sse_methods={"tools/call"}) as (url, _handler),
         ):
-            self.command.main([])
+            root = Path(tmp)
+            home, bindir = root / "home", root / "bin"
+            home.mkdir()
+            bindir.mkdir()
+            self._write_cache(home, "scsi-main", token)
+            session = _BridgeSession(home, bindir, "scsi-main", url)
+            session.send(self.INITIALIZE)
+            session.recv()
+            session.send({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "x"}})
+            progress = session.recv()
+            response = session.recv()
+            returncode = session.close()
 
-        assert events == ["preflight", "rotate", "exec"]
-
-
-class TestCopilotArgumentClassification(unittest.TestCase):
-    """WHEN classifying Copilot 1.0.70 arguments before MCP preflight."""
-
-    @classmethod
-    def setUpClass(cls):
-        cls.command = _load_copilot_command()
-
-    def _assert_refreshed(self, args: list[str]) -> None:
-        assert self.command.should_refresh(args), f"expected refresh for {args!r}"
-
-    def _assert_skipped(self, args: list[str]) -> None:
-        assert not self.command.should_refresh(args), f"expected bypass for {args!r}"
-
-    def test_variadic_allow_tool_value_is_not_read_as_subcommand(self):
-        # --allow-tool[=tools...] takes no space-separated value, so the trailing
-        # `mcp` must not be misread as the admin subcommand: fail closed.
-        self._assert_refreshed(["--allow-tool", "bash", "mcp", "-p", "hi"])
-
-    def test_optional_value_resume_forces_refresh(self):
-        # -r/--resume[=value] is optional-valued; `login` after it is ambiguous.
-        self._assert_refreshed(["--resume", "login", "-p", "hi"])
-
-    def test_prompt_flow_refreshes(self):
-        self._assert_refreshed(["-p", "hi"])
-
-    def test_model_flow_refreshes(self):
-        self._assert_refreshed(["--model", "gpt-5.4", "-p", "hi"])
-
-    def test_plugins_subcommand_skips_refresh(self):
-        # `plugins` is a real 1.0.70 subcommand (distinct from `plugin`).
-        self._assert_skipped(["plugins", "list"])
-
-    def test_mcp_subcommand_skips_refresh(self):
-        self._assert_skipped(["mcp", "list"])
-
-    def test_help_after_global_flag_skips_refresh(self):
-        self._assert_skipped(["--no-color", "--help"])
-
-    def test_unknown_option_forces_refresh(self):
-        # An unrecognized option may consume the next token, so the trailing
-        # `mcp` must not be read as an admin subcommand: fail closed.
-        self._assert_refreshed(["--future-value-option", "mcp"])
-
-    def test_inline_ambiguous_allow_tool_forces_refresh(self):
-        # Inline value form must still refresh: --allow-tool is variadic, so a
-        # later bare `mcp` cannot be told apart from a swallowed value.
-        self._assert_refreshed(["--allow-tool=bash", "mcp"])
-
-    def test_inline_ambiguous_resume_forces_refresh(self):
-        self._assert_refreshed(["--resume=login", "mcp"])
-
-    def test_combined_short_flags_force_refresh(self):
-        # -sp is -s plus -p<value>; treating it as a bare boolean would wrongly
-        # skip, so unresolved short bundles fail closed.
-        self._assert_refreshed(["-sp", "mcp"])
-
-    def test_inline_required_value_model_stays_classifiable(self):
-        # --model=<value> is a required-value option whose inline value is
-        # self-contained, so the following `mcp` is an unambiguous subcommand.
-        self._assert_skipped(["--model=gpt", "mcp"])
+        assert returncode == 0
+        assert progress["method"] == "notifications/progress", "SSE events must stream before the response"
+        assert response["id"] == 2 and response["result"]["via"] == "sse"
 
 
 if __name__ == "__main__":

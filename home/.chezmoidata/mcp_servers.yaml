@@ -52,22 +52,21 @@ mcp_servers:
         # are registered).
         #
         # Instead, ride the rotating token cursor-cli already minted via its
-        # confidential Okta authorization_code flow. ,mcp-token reads the
-        # freshest still-valid scsi-main token from cursor's per-project caches;
-        # headerAuth becomes Copilot's Authorization header (verified: bearer
-        # token -> POST initialize https://semantic-code-search.elastic.dev/mcp
-        # -> HTTP 200). NOTE: SCSI tokens expire after ~1h (expires_in=3600),
-        # much sooner than Slack's ~12h. The launch wrappers capture a
-        # still-valid short token with --launch-json, then rotate proactively
-        # after capture; critical, expired, or revoked tokens still block.
-        headerAuth: "$(,mcp-token scsi-main --bearer)"
+        # confidential Okta authorization_code flow. tokenBridge spawns
+        # ",mcp-token scsi-main --bridge --url <this url>" as a local stdio
+        # MCP server that injects a freshly selected bearer per request, so a
+        # Copilot session outlives any single token: SCSI tokens expire after
+        # ~1h (expires_in=3600) and the bridge rotates behind the seam via
+        # cursor's refresh grant instead of dying with a launch-time capture.
+        tokenBridge: "scsi-main"
       codex:
         # Codex can run streamable HTTP MCP natively, but its native OAuth
         # client has the same redirect/client-registration mismatch as
-        # Copilot for this Okta app. Use Codex's bearer_token_env_var support
-        # instead: ,codex refreshes cursor's cached token with ,mcp-token and
-        # exports the raw token before launching the real Codex binary.
-        bearerTokenEnvVar: "CODEX_MCP_TOKEN_SCSI_MAIN"
+        # Copilot for this Okta app. Its bearer_token_env_var support reads
+        # the env var once at launch and never reloads it, so sessions died
+        # with the captured token; spawn the same per-request stdio bridge
+        # Copilot uses instead.
+        tokenBridge: "scsi-main"
     codex_default_tools_approval_mode: approve
 
   - name: scsi-local
@@ -111,17 +110,16 @@ mcp_servers:
         #
         # Instead, ride the rotating user token cursor-cli already minted: it
         # runs the confidential authorization_code flow and refreshes the token
-        # in place. ,mcp-token reads the freshest still-valid token from
-        # cursor's per-project caches; headerAuth becomes Copilot's
-        # Authorization header (Slack MCP bearer_methods_supported = [header]).
-        # Launch capture defers proactive rotation, while critical/stale/revoked
-        # tokens still rotate synchronously; cursor's browser flow is last.
-        headerAuth: "$(,mcp-token slack --bearer)"
+        # in place. tokenBridge spawns ",mcp-token slack --bridge --url <this
+        # url>" as a local stdio MCP server injecting a freshly selected
+        # bearer per request (Slack MCP bearer_methods_supported = [header]),
+        # so the session outlives Slack's 12h tokens; cursor's browser flow is
+        # last.
+        tokenBridge: "slack"
       codex:
-        # Codex's native streamable HTTP transport supports bearer_token_env_var
-        # and rejects inline bearer_token secrets. ,codex captures this value
-        # with ,mcp-token --login --quiet --launch-json before deferred rotation.
-        bearerTokenEnvVar: "CODEX_MCP_TOKEN_SLACK"
+        # Codex's bearer_token_env_var reads the env once at launch and never
+        # reloads it; spawn the same per-request stdio bridge Copilot uses.
+        tokenBridge: "slack"
     codex_tool_approval_modes:
       slack_read_canvas: approve
       slack_read_channel: approve

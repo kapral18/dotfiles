@@ -12,31 +12,18 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import shlex
-import sys
-from collections.abc import Mapping
-from dataclasses import asdict, dataclass
 from typing import Any
 
-from mcp_registry import (
-    header_auth_refresh_placeholder,
-    load_servers,
-    shell_substitution_command,
-)
+from mcp_registry import load_servers
 
 # Tool-specific HTTP server spec transformations.
 # The registry emits a normalised shape:
 #   { "type": "http", "url": "…", "oauth": { "clientId": "…", … } }
 # Some tools expect a different wire format.
 _TOOL_TRANSFORMS: dict[str | None, Any] = {}
-HEADER_AUTH_PLAN_SCHEMA = 1
-
-
-@dataclass(frozen=True)
-class HeaderAuthRequirement:
-    server: str
-    token_source: str
-    shell_command: str
+# Deployed launcher for per-request bearer-injecting stdio bridges.
+TOKEN_BRIDGE_COMMAND = ",mcp-token"
+_TOKEN_SOURCE_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
 
 
 def _transform_cursor(spec: dict[str, Any]) -> dict[str, Any]:
@@ -140,6 +127,18 @@ def _scopes_list(oauth: dict[str, Any]) -> list[str]:
     return []
 
 
+def token_bridge_args(server: str, spec: dict[str, Any]) -> list[str]:
+    """Return the stdio bridge argv tail for a ``tokenBridge`` server spec."""
+    oauth = spec.get("oauth")
+    source = oauth.get("tokenBridge") if isinstance(oauth, dict) else None
+    if not isinstance(source, str) or not _TOKEN_SOURCE_PATTERN.fullmatch(source):
+        raise ValueError(f"{server}: invalid tokenBridge token source")
+    url = spec.get("url")
+    if not isinstance(url, str) or not url.startswith(("http://", "https://")):
+        raise ValueError(f"{server}: tokenBridge requires an http(s) url")
+    return [source, "--bridge", "--url", url]
+
+
 def _transform_copilot(spec: dict[str, Any]) -> dict[str, Any]:
     """GitHub Copilot CLI (~/.copilot/mcp-config.json).
 
@@ -152,10 +151,11 @@ def _transform_copilot(spec: dict[str, Any]) -> dict[str, Any]:
     the browser ``authorization_code`` flow and discovers endpoints from the
     server's protected-resource metadata, so no client secret is stored.
 
-    A server may instead supply ``headerAuth`` (a pre-resolved Authorization
-    header value such as ``Bearer <token>``) when Copilot cannot run the
-    server's OAuth flow itself. In that case the browser flow is bypassed and
-    the value is emitted as ``headers.Authorization``.
+    A server may instead supply ``tokenBridge`` (a ,mcp-token token source)
+    when Copilot cannot run the server's OAuth flow itself. The server is then
+    emitted as a *local* stdio bridge (",mcp-token <source> --bridge --url
+    <url>") that injects a freshly selected bearer per request, so the session
+    never depends on a launch-time token capture.
     """
     if spec.get("type") != "http":
         return {
@@ -165,13 +165,16 @@ def _transform_copilot(spec: dict[str, Any]) -> dict[str, Any]:
             "tools": ["*"],
         }
 
-    out: dict[str, Any] = {"type": "http", "url": spec["url"], "tools": ["*"]}
     oauth = spec.get("oauth")
+    if isinstance(oauth, dict) and oauth.get("tokenBridge"):
+        return {
+            "type": "local",
+            "command": TOKEN_BRIDGE_COMMAND,
+            "args": token_bridge_args(str(spec.get("url")), spec),
+            "tools": ["*"],
+        }
+    out: dict[str, Any] = {"type": "http", "url": spec["url"], "tools": ["*"]}
     if oauth:
-        header_auth = oauth.get("headerAuth")
-        if header_auth:
-            out["headers"] = {"Authorization": header_auth}
-            return out
         client_id = oauth.get("clientId")
         if client_id:
             out["oauthClientId"] = client_id
@@ -204,89 +207,13 @@ def _render_servers(servers: dict[str, dict[str, Any]], tool: str | None) -> dic
     return result
 
 
-def _header_auth_requirement(server: str, raw_value: object) -> HeaderAuthRequirement:
-    shell_command = shell_substitution_command(raw_value)
-    if shell_command is None:
-        raise ValueError(f"{server}: copilot headerAuth must be a full command substitution")
-    try:
-        argv = shlex.split(shell_command)
-    except ValueError as err:
-        raise ValueError(f"{server}: invalid copilot headerAuth command") from err
-    if len(argv) != 3 or argv[0] != ",mcp-token" or argv[2] != "--bearer":
-        raise ValueError(f"{server}: copilot headerAuth must call ',mcp-token <server> --bearer'")
-    token_source = argv[1]
-    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", token_source):
-        raise ValueError(f"{server}: invalid MCP token source")
-    return HeaderAuthRequirement(server, token_source, shell_command)
-
-
-def copilot_header_auth_requirements(yaml_path: str, is_work: bool) -> list[HeaderAuthRequirement]:
-    servers = load_servers(
-        yaml_path,
-        is_work,
-        tool="copilot",
-        resolve_shell_values=False,
-    )
-    requirements: list[HeaderAuthRequirement] = []
-    for server, spec in servers.items():
-        oauth = spec.get("oauth")
-        if spec.get("type") != "http" or not isinstance(oauth, dict) or not oauth.get("headerAuth"):
-            continue
-        requirements.append(_header_auth_requirement(server, oauth["headerAuth"]))
-    return requirements
-
-
-def copilot_header_auth_plan(yaml_path: str, is_work: bool) -> dict[str, object]:
-    requirements = copilot_header_auth_requirements(yaml_path, is_work)
-    return {
-        "schema_version": HEADER_AUTH_PLAN_SCHEMA,
-        "refresh_placeholder": header_auth_refresh_placeholder(),
-        "header_auth_servers": [asdict(requirement) for requirement in requirements],
-    }
-
-
-def render_document(
-    yaml_path: str,
-    is_work: bool,
-    tool: str | None,
-    *,
-    shell_overrides: Mapping[str, str] | None = None,
-) -> dict[str, Any]:
-    servers = load_servers(
-        yaml_path,
-        is_work,
-        tool=tool,
-        shell_overrides=shell_overrides,
-    )
+def render_document(yaml_path: str, is_work: bool, tool: str | None) -> dict[str, Any]:
+    servers = load_servers(yaml_path, is_work, tool=tool)
     servers = _render_servers(servers, tool)
     document: dict[str, Any] = {"mcpServers": servers}
     if tool == "pi":
         document["settings"] = {"autoAuth": True}
     return document
-
-
-def _read_header_auth_overrides(requirements: list[HeaderAuthRequirement]) -> dict[str, str]:
-    try:
-        payload = json.load(sys.stdin)
-    except (OSError, json.JSONDecodeError) as err:
-        raise ValueError("header-auth overrides stdin must be a JSON object") from err
-    if not isinstance(payload, dict):
-        raise ValueError("header-auth overrides stdin must be a JSON object")
-    expected = {requirement.shell_command for requirement in requirements}
-    supplied = {str(key) for key in payload}
-    missing = sorted(expected - supplied)
-    extra = sorted(supplied - expected)
-    if missing:
-        raise ValueError(f"missing header-auth override for: {', '.join(missing)}")
-    if extra:
-        raise ValueError(f"unexpected header-auth override for: {', '.join(extra)}")
-    overrides: dict[str, str] = {}
-    for command in sorted(expected):
-        value = payload.get(command)
-        if not isinstance(value, str) or "\n" in value or not value.startswith("Bearer ") or not value[7:]:
-            raise ValueError(f"invalid header-auth override for: {command}")
-        overrides[command] = value
-    return overrides
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -297,32 +224,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("mcp_servers_yaml")
     parser.add_argument("is_work")
     parser.add_argument("tool", nargs="?")
-    mode = parser.add_mutually_exclusive_group()
-    mode.add_argument("--copilot-header-auth-plan", action="store_true")
-    mode.add_argument("--header-auth-overrides-stdin", action="store_true")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     is_work = args.is_work == "true"
-    if (args.copilot_header_auth_plan or args.header_auth_overrides_stdin) and args.tool != "copilot":
-        raise ValueError("header-auth batch modes require tool=copilot")
-
-    if args.copilot_header_auth_plan:
-        print(json.dumps(copilot_header_auth_plan(args.mcp_servers_yaml, is_work), indent=2))
-        return 0
-
-    overrides = None
-    if args.header_auth_overrides_stdin:
-        requirements = copilot_header_auth_requirements(args.mcp_servers_yaml, is_work)
-        overrides = _read_header_auth_overrides(requirements)
-    document = render_document(
-        args.mcp_servers_yaml,
-        is_work,
-        args.tool,
-        shell_overrides=overrides,
-    )
+    document = render_document(args.mcp_servers_yaml, is_work, args.tool)
     print(json.dumps(document, indent=2))
     return 0
 

@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
-# Description: Launch Copilot after one locked header-auth MCP preflight batch.
+# Description: Launch the real GitHub Copilot CLI.
+#
+# MCP auth needs no launch-time work: hosted OAuth servers (slack, scsi-main)
+# run as ",mcp-token <server> --bridge" stdio bridges declared in the
+# chezmoi-rendered ~/.copilot/mcp-config.json, injecting a fresh bearer per
+# request. This wrapper stays as the stable ,copilot entry point that the
+# BYOK wrappers (,copilot-litellm, ,copilot-openrouter, ,copilot-cloudflare)
+# exec through.
 
 set -euo pipefail
 
-lib="${COPILOT_WRAPPER_LIB:-$HOME/lib/,copilot/main.py}"
-if [[ ! -f "$lib" ]]; then
-  echo "Error: ,copilot library not found at $lib. Run chezmoi apply --no-tty ~/lib/,copilot/main.py." >&2
+real_copilot="${COPILOT_REAL_BIN:-/opt/homebrew/bin/copilot}"
+if [[ ! -x "$real_copilot" ]]; then
+  echo "Error: real copilot CLI not found at $real_copilot." >&2
   exit 127
 fi
 
-exec python3 "$lib" "$@"
+exec "$real_copilot" "$@"

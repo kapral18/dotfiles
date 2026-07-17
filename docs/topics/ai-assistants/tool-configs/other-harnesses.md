@@ -11,15 +11,15 @@ Use it to answer three questions: which repo source owns the deployed config, wh
 
 ## Mental model
 
-| Area                      | Current rule                                                                                      |
-| ------------------------- | ------------------------------------------------------------------------------------------------- |
-| Codex and OpenCode        | profile merging plus MCP injection                                                                |
-| Codex launcher            | interactive shells route `codex` through managed `~/bin/,codex`                                   |
-| Copilot launcher wrappers | custom providers are BYOK environment variables only and wrapper commands `exec ,copilot`         |
-| Copilot MCP               | generated as stdio `type: "local"`, OAuth HTTP, or header-auth HTTP depending on the server block |
-| Copilot memory            | native SDK extension supplies context and worklog hooks                                           |
-| tuicr                     | single-sourced readonly review TUI config; labels are categories, not severity                    |
-| secrets                   | runtime API keys come from `pass`, not committed tool config files                                |
+| Area                      | Current rule                                                                                        |
+| ------------------------- | --------------------------------------------------------------------------------------------------- |
+| Codex and OpenCode        | profile merging plus MCP injection                                                                  |
+| Codex launcher            | interactive shells route `codex` through managed `~/bin/,codex`                                     |
+| Copilot launcher wrappers | custom providers are BYOK environment variables only and wrapper commands `exec ,copilot`           |
+| Copilot MCP               | generated as stdio `type: "local"`, OAuth HTTP, or token-bridge stdio depending on the server block |
+| Copilot memory            | native SDK extension supplies context and worklog hooks                                             |
+| tuicr                     | single-sourced readonly review TUI config; labels are categories, not severity                      |
+| secrets                   | runtime API keys come from `pass`, not committed tool config files                                  |
 
 ## Codex and OpenCode
 
@@ -32,7 +32,7 @@ Use it to answer three questions: which repo source owns the deployed config, wh
 
 Codex and OpenCode use profile merging with MCP injection.
 
-The interactive `codex` command routes through the managed `~/bin/,codex` shim in interactive shells. The shim captures Codex bearer-token MCP env vars for hosted work servers, starts any due proactive rotations after capture, injects the local llama.cpp model catalog when needed, and then falls through to the real Codex binary.
+The interactive `codex` command routes through the managed `~/bin/,codex` shim in interactive shells. The shim injects the local llama.cpp model catalog when needed and then falls through to the real Codex binary; hosted MCP auth needs no launch-time work because those servers run as `,mcp-token --bridge` stdio bridges.
 
 ### Codex profiles and approvals
 
@@ -98,7 +98,7 @@ Other provider wrappers:
 - `,copilot-litellm`
 - `,copilot-openrouter`
 
-Copilot custom providers are BYOK environment variables only, so its wrappers set those variables for OpenAI-compatible endpoints. The provider wrappers `exec ,copilot` rather than `copilot`, so the header-auth MCP token refresh below runs before the custom upstream starts.
+Copilot custom providers are BYOK environment variables only, so its wrappers set those variables for OpenAI-compatible endpoints. The provider wrappers `exec ,copilot` rather than `copilot` to keep one stable entry point.
 
 `,copilot-litellm` uses `LITELLM_API_BASE` / `LITELLM_PROXY_KEY`, falling back to the `litellm/api/base` and `litellm/api/token` pass entries when the environment is not already populated.
 
@@ -124,11 +124,11 @@ Reason:
 
 So there is intentionally no `,claude-cloudflare` wrapper.
 
-### Codex hosted MCP bearer-token env vars
+### Codex hosted MCP token bridges
 
-`inject_mcp_into_codex_toml.py` emits `slack` and `scsi-main` as streamable HTTP servers with `bearer_token_env_var`, not inline secrets.
+`inject_mcp_into_codex_toml.py` emits `slack` and `scsi-main` as `,mcp-token <source> --bridge --url <url>` command servers, not inline secrets or env-var contracts.
 
-The `,codex` wrapper reads those declarations from `~/.codex/config.toml`, captures each token through `,mcp-token <server> --login --quiet --launch-json`, exports the raw token into the configured env var, starts due proactive rotations after capture, and exits before launch if a valid token cannot be obtained.
+The bridge injects a freshly selected bearer per request, rotating through cursor's refresh grant behind the seam, so a Codex session outlives any single token.
 
 ## GitHub Copilot CLI
 
@@ -170,25 +170,23 @@ Internal worker profiles are model-invocable but not user-invocable. `disable-mo
 
 The `copilot` transform in `generate_mcp_configs.py` emits three MCP server shapes.
 
-| Server shape             | Generated form                                                                                                |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| stdio servers            | `type: "local"`                                                                                               |
-| OAuth HTTP servers       | `type: "http"` with `oauthClientId` + `auth.redirectPort` + `oauthScopes`                                     |
-| header-auth HTTP servers | `type: "http"` with `headers.Authorization`; OAuth keys skipped when the `copilot` block carries `headerAuth` |
+| Server shape              | Generated form                                                                                                    |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| stdio servers             | `type: "local"`                                                                                                   |
+| OAuth HTTP servers        | `type: "http"` with `oauthClientId` + `auth.redirectPort` + `oauthScopes`                                         |
+| token-bridge HTTP servers | `type: "local"` running `,mcp-token <source> --bridge --url <url>` when the `copilot` block carries `tokenBridge` |
 
 Copilot cannot run the SCSI/Slack browser OAuth flows itself. It hardcodes its OAuth redirect to `http://127.0.0.1:{port}/`, where only the port is configurable, which neither the SCSI Okta app nor the public Slack client registers.
 
-Slack's MCP authorization server offers no dynamic client registration and requires a client secret at the token endpoint. Both `scsi-main` and `slack` therefore give their `copilot` block a `headerAuth: "$(,mcp-token <server> --bearer)"`, and Copilot reaches each with a bearer token minted by cursor-cli; both servers accept header bearer auth.
+Slack's MCP authorization server offers no dynamic client registration and requires a client secret at the token endpoint. Both `scsi-main` and `slack` therefore give their `copilot` block a `tokenBridge` source, and Copilot reaches each through a local stdio bridge that injects a bearer token minted by cursor-cli per request; both servers accept header bearer auth.
 
-If the cursor cache is stale during `chezmoi apply`, the generator emits a refresh placeholder for that header instead of failing the apply. The `,copilot` wrapper obtains a typed header-auth plan from the registry, deduplicates token sources, captures each source once with `--login --quiet --launch-json`, and passes the in-memory values to one render before launch.
+The rendered config carries no Authorization values, so `chezmoi apply` owns it entirely and `,copilot` is a thin exec of the real binary. Direct `,mcp-token --login` still guarantees runway, not just validity.
 
-If no valid token is returned, render fails, or a placeholder remains, the wrapper exits before starting Copilot. Direct `,mcp-token --login` still guarantees runway, not just validity.
+When a request finds the current token missing, inside the blocking window, or rejected, the bridge rotates synchronously by invalidating the access token in the newest cursor project cache holding a `refresh_token` and running a bounded `cursor-agent mcp list-tools <server>` in that cache's trusted workspace.
 
-Managed launchers use `--launch-json` so a still-valid token short of the min-TTL floor can be captured immediately and proactively rotated with detached `--rotate` only after the fixed header or env value is ready. The final blocking window, expired tokens, and revoked tokens still rotate synchronously by invalidating the access token in the newest cursor project cache holding a `refresh_token` and running a bounded `cursor-agent mcp list-tools <server>` in that cache's trusted workspace.
+Cursor then executes the provider's refresh grant and writes a freshly minted chain in place, with no browser, and in-flight tokens of running sessions stay live. Concurrent rotations serialize through `~/.cache/mcp-token/rotation.lock` and recheck whether rotation is still due before touching the shared cursor cache.
 
-Cursor then executes the provider's refresh grant and writes a freshly minted chain in place, with no browser, and in-flight tokens of running sessions stay live. Concurrent deferred workers serialize through `~/.cache/mcp-token/rotation.lock` and recheck whether rotation is still due before touching the shared cursor cache.
-
-For opaque tokens such as Slack, ledger state and cursor cache mtime cannot prove the token is still live because the provider can revoke it while the ledger still lists it as fresh. Launch capture validates the ledger-selected opaque token with a minimal MCP `initialize` probe against the server URL from `~/.cursor/mcp.json`, adopts a live cached alternative when rotation is unavailable and the ledger token is revoked, and only runs the cursor browser flow when no live candidate exists, confirming the post-login token by the same probe.
+For opaque tokens such as Slack, ledger state and cursor cache mtime cannot prove the token is still live because the provider can revoke it while the ledger still lists it as fresh. `--login` validates the ledger-selected opaque token with a minimal MCP `initialize` probe against the server URL from `~/.cursor/mcp.json`, adopts a live cached alternative when rotation is unavailable and the ledger token is revoked, and only runs the cursor browser flow when no live candidate exists, confirming the post-login token by the same probe.
 
 SCSI JWTs use their `exp`.
 

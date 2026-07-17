@@ -65,7 +65,7 @@ class TestInjectMcpIntoCodexToml(unittest.TestCase):
                         "[mcp_servers.work-tool.tools.hidden]",
                         'approval_mode = "approve"',
                         "",
-                        "[mcp_servers.header-tool.tools.invalid]",
+                        "[mcp_servers.bridge-tool.tools.invalid]",
                         'approval_mode = "bogus"',
                         "",
                     ]
@@ -84,13 +84,13 @@ class TestInjectMcpIntoCodexToml(unittest.TestCase):
             )
 
         assert 'default_tools_approval_mode = "approve"' in actual
-        assert "[mcp_servers.http-tool]\nurl = " in actual
+        assert '[mcp_servers.http-tool]\ncommand = ",mcp-token"' in actual
         assert 'default_tools_approval_mode = "prompt"' in actual
         assert "[mcp_servers.public-tool.tools.search]" in actual
         assert "[mcp_servers.http-tool.tools.list_indices]" in actual
         assert 'approval_mode = "approve"' in actual
         assert "work-tool.tools.hidden" not in actual
-        assert "header-tool.tools.invalid" not in actual
+        assert "bridge-tool.tools.invalid" not in actual
 
     def test_preserves_existing_hook_trust_state(self):
         with tempfile.TemporaryDirectory() as tmp:

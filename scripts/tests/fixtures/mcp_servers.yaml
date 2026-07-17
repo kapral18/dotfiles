@@ -34,22 +34,14 @@ mcp_servers:
         callbackPort: 4242
         scopes: "openid, email"
       codex:
-        bearerTokenEnvVar: "CODEX_MCP_TOKEN_HTTP_TOOL"
+        tokenBridge: "http-tool"
 
-  - name: header-tool
+  - name: bridge-tool
     work_only: false
     type: http
-    url: https://mcp.header.com/mcp
+    url: https://mcp.bridge.com/mcp
     oauth_by_tool:
       copilot:
-        headerAuth: "$(echo Bearer resolved-token)"
+        tokenBridge: "bridge-source"
       codex:
-        bearerTokenEnvVar: "CODEX_MCP_TOKEN_HEADER_TOOL"
-
-  - name: stale-header-tool
-    work_only: false
-    type: http
-    url: https://mcp.stale-header.com/mcp
-    oauth_by_tool:
-      copilot:
-        headerAuth: "$(bash -lc 'echo stale token >&2; exit 7')"
+        tokenBridge: "bridge-source"

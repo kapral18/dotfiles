@@ -35,7 +35,7 @@ flowchart LR
     subgraph RUNTIME["RUNTIME · who consumes the build"]
         SH["shell/editor/tmux read rc + configs"]:::run
         AG["AI tools read GENERATED configs + SOPs (C7)"]:::run
-        CP[",copilot launch-time reconcile:<br/>locked header-auth batch from canonical registry →<br/>semantic config write + conditional artifact row"]:::run
+        BR[",mcp-token --bridge stdio servers (Copilot/Codex hosted MCP):<br/>per-request bearer injection from cursor's OAuth caches →<br/>silent refresh-grant rotation behind the seam"]:::run
         PKG["declared packages installed/cleaned<br/>(brew bundle --cleanup = list is authoritative)"]:::run
     end
 
@@ -58,10 +58,8 @@ flowchart LR
     TGT --> SH
     GEN --> AG
     ART --> DOC[",doctor ai static report<br/>--live deduped local probes"]:::run
-    DATA --> CP
-    CP --> GEN
-    CP --> ART
-    CP --> AG
+    GEN --> BR
+    BR --> AG
     DATA --> PKG
 
     NOTE["MUTATION RULE: change INPUT, never OUTPUT.<br/>Touching a GENERATED node directly = drift erased next apply."]:::gate

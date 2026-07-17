@@ -18,9 +18,19 @@ approval_mode = "approve"
 approval_mode = "prompt"
 
 [mcp_servers.http-tool]
-url = "https://mcp.example.com/mcp"
-bearer_token_env_var = "CODEX_MCP_TOKEN_HTTP_TOOL"
+command = ",mcp-token"
+args = [
+  "http-tool",
+  "--bridge",
+  "--url",
+  "https://mcp.example.com/mcp",
+]
 
-[mcp_servers.header-tool]
-url = "https://mcp.header.com/mcp"
-bearer_token_env_var = "CODEX_MCP_TOKEN_HEADER_TOOL"
+[mcp_servers.bridge-tool]
+command = ",mcp-token"
+args = [
+  "bridge-source",
+  "--bridge",
+  "--url",
+  "https://mcp.bridge.com/mcp",
+]

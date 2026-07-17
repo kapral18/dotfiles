@@ -108,7 +108,7 @@ PY
     # Cursor can refresh its own still-valid token after launch. Keep proactive
     # rotation off this wrapper's critical path, but retain blocking refresh for
     # critically short, expired, or revoked tokens.
-    if ! ",mcp-token" "$server" --login --quiet --launch-json >/dev/null 2>&1; then
+    if ! ",mcp-token" "$server" --login --quiet --no-proactive-rotation >/dev/null 2>&1; then
       refresh_failures+=("$server")
     fi
   done

@@ -10,13 +10,13 @@ Use this page when adding, removing, or debugging an MCP server, or when tracing
 
 ## Mental model
 
-| Piece                                                                               | Role                                                                                                      |
-| ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| [`home/.chezmoidata/mcp_servers.yaml`](../../../home/.chezmoidata/mcp_servers.yaml) | Source of truth for server declarations                                                                   |
-| [`scripts/mcp_registry.py`](../../../scripts/mcp_registry.py)                       | Normalizes registry entries and resolves `$(command)` strings through a login shell                       |
-| [`scripts/generate_mcp_configs.py`](../../../scripts/generate_mcp_configs.py)       | Emits tool-specific `{ "mcpServers": { ... } }` documents                                                 |
-| Tool injectors                                                                      | Preserve live runtime-owned config while replacing only the MCP section                                   |
-| Launch wrappers                                                                     | Fill bearer headers or env vars at process launch when a tool cannot perform the hosted OAuth flow itself |
+| Piece                                                                               | Role                                                                                      |
+| ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| [`home/.chezmoidata/mcp_servers.yaml`](../../../home/.chezmoidata/mcp_servers.yaml) | Source of truth for server declarations                                                   |
+| [`scripts/mcp_registry.py`](../../../scripts/mcp_registry.py)                       | Normalizes registry entries and resolves `$(command)` strings through a login shell       |
+| [`scripts/generate_mcp_configs.py`](../../../scripts/generate_mcp_configs.py)       | Emits tool-specific `{ "mcpServers": { ... } }` documents                                 |
+| Tool injectors                                                                      | Preserve live runtime-owned config while replacing only the MCP section                   |
+| [`,mcp-token` bridge](../workflow/custom-commands/catalog.md)                       | Inject a fresh bearer per request when a tool cannot perform the hosted OAuth flow itself |
 
 The registry mechanics are generic. The currently declared server set is work-profile-only and Elastic-domain-specific.
 
@@ -39,7 +39,7 @@ The work set includes `scsi-main`, `scsi-local`, and `slack`:
 | `scsi-local` | Local SCSI stdio backend. It is excluded from Copilot once the hosted server is omitted there.                                                                                                  |
 | `slack`      | Slack MCP server with per-tool OAuth metadata.                                                                                                                                                  |
 
-Copilot gets `scsi-local` as a stdio server and `scsi-main` plus `slack` via bearer headers. Codex gets all three, with hosted servers backed by bearer-token env vars.
+Copilot and Codex get `scsi-local` as a stdio server and `scsi-main` plus `slack` as local `,mcp-token --bridge` stdio servers that forward to the hosted endpoints with per-request bearer injection.
 
 ### Hosted OAuth exceptions
 
@@ -47,11 +47,11 @@ Copilot cannot run the hosted servers' OAuth flows itself. It hardcodes its OAut
 
 Slack's MCP authorization server offers no dynamic client registration and requires a client secret at the token endpoint: `grant_types = [authorization_code, refresh_token]`, `token_endpoint_auth_methods = [client_secret_post]`.
 
-Both `scsi-main` and `slack` therefore give their `copilot` block a `headerAuth` value: a pre-resolved `Authorization: ******`. Copilot rides the rotating token cursor-cli already minted rather than running OAuth itself.
+Both `scsi-main` and `slack` therefore give their `copilot` block a `tokenBridge` value naming the `,mcp-token` token source. Copilot rides the rotating token cursor-cli already minted rather than running OAuth itself, and the bridge re-reads that cache per request, so a session never depends on a token captured at launch.
 
-Codex supports streamable HTTP MCP natively, but its OAuth callback settings are global: `mcp_oauth_callback_port` / `mcp_oauth_callback_url`. The hosted SCSI and Slack apps need different approved callback registrations.
+Codex supports streamable HTTP MCP natively, but its OAuth callback settings are global: `mcp_oauth_callback_port` / `mcp_oauth_callback_url`. The hosted SCSI and Slack apps need different approved callback registrations, and its `bearer_token_env_var` support reads the env var once at launch, dying with that token.
 
-Both `scsi-main` and `slack` therefore give their `codex` block a `bearerTokenEnvVar`. Codex's config names only the env var, and `,codex` fills it with the raw token from `,mcp-token` before launch.
+Both `scsi-main` and `slack` therefore give their `codex` block the same `tokenBridge` value, so Codex spawns the identical per-request stdio bridge.
 
 ## Using it
 
@@ -76,7 +76,7 @@ Verification:
 chezmoi apply
 python3 -m json.tool < ~/.cursor/mcp.json
 python3 -c "import json; print(list(json.load(open('$HOME/.claude.json')).get('mcpServers', {})))"
-codex mcp list     # via shell function -> ,codex, so bearer env vars are populated
+codex mcp list     # bridge servers appear as local command servers
 copilot mcp list   # lists the loaded Copilot servers and their transport types
 ```
 
@@ -90,7 +90,7 @@ To refresh manually, run:
 
 Add `--quiet` when you do not want cursor-agent auth output in the terminal.
 
-You normally do not run this by hand. Launch Copilot via [`,copilot`](../workflow/custom-commands/catalog.md), which handles token capture, config rendering, validation, rotation, and the final `copilot` exec.
+You normally do not run this by hand. The `,mcp-token --bridge` stdio servers rotate behind the seam whenever a request finds the current token short, missing, or rejected.
 
 ## Generation pipeline
 
@@ -135,46 +135,49 @@ Tools whose config is not plain JSON get dedicated injectors with explicit owner
 
 Copilot transform behavior:
 
-| Server class     | Emitted shape                                                                                           |
-| ---------------- | ------------------------------------------------------------------------------------------------------- |
-| stdio            | `type: "local"` with `tools: ["*"]`                                                                     |
-| OAuth HTTP       | `type: "http"` with `oauthClientId`, `auth.redirectPort`, and `oauthScopes`                             |
-| Header-auth HTTP | `type: "http"` with `headers.Authorization` when the block carries `headerAuth`; OAuth keys are skipped |
+| Server class      | Emitted shape                                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------------------------- |
+| stdio             | `type: "local"` with `tools: ["*"]`                                                                     |
+| OAuth HTTP        | `type: "http"` with `oauthClientId`, `auth.redirectPort`, and `oauthScopes`                             |
+| Token-bridge HTTP | `type: "local"` running `,mcp-token <source> --bridge --url <url>` when the block carries `tokenBridge` |
 
 Copilot's wired servers:
 
-- `slack` and `scsi-main` are emitted as header-auth HTTP servers.
-- Each `copilot` block sets `headerAuth: "$(,mcp-token <server> --bearer)"`, which the generator resolves into `headers.Authorization` when a fresh token exists.
-- If the local cursor-cli cache is stale during `chezmoi apply`, the generator emits a refresh placeholder instead of failing the apply.
+- `slack` and `scsi-main` are emitted as token-bridge stdio servers.
+- Each `copilot` block sets `tokenBridge: "<source>"`; the generator emits the bridge command with the server's registry URL, so no Authorization value or placeholder is ever baked into the config.
 - `scsi-local` is emitted as a stdio server (`type: "local"`). It has no OAuth because it runs locally with `pass` Elasticsearch credentials, so no token is needed.
 
 The built-in `github-mcp-server` is provided by Copilot and is not emitted.
 
-### Copilot launch plan
+### Per-request token bridge
 
-[`,copilot`](../workflow/custom-commands/catalog.md) asks the generator for a typed plan from the canonical registry, deduplicates token sources, runs `,mcp-token <source> --login --quiet --launch-json` once per source, and passes those in-memory headers into one render immediately before launch.
+[`,mcp-token`](../workflow/custom-commands/catalog.md) `--bridge --url <endpoint>` speaks stdio MCP to the agent and forwards each message as an HTTP POST to the hosted endpoint with a freshly selected bearer. Copilot and Codex spawn it like any local MCP server, so their sessions no longer depend on any single token's lifetime.
 
-If no valid token is returned, config render fails, or a placeholder remains, `,copilot` stops before launching so Copilot never starts with a known-bad bearer header.
+Per request, the bridge reads the freshest still-valid token from cursor-cli's per-project OAuth caches at `~/.cursor/projects/*/mcp-auth.json`. Cursor runs the `authorization_code` flow with its own approved clients (Slack workspace app / SCSI Elastic Okta) and refreshes the rotating token in place.
 
-[`,mcp-token`](../workflow/custom-commands/catalog.md) reads the freshest still-valid token for that server from cursor-cli's per-project OAuth caches at `~/.cursor/projects/*/mcp-auth.json`. Cursor runs the `authorization_code` flow with its own approved clients (Slack workspace app / SCSI Elastic Okta) and refreshes the rotating token in place.
+| Bridge event                                         | Behavior                                                                                                                                                      |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Token missing or below `BLOCKING_ROTATE_TTL_SECONDS` | Rotate synchronously through cursor's refresh grant before sending; repeated rotation failures are throttled.                                                 |
+| `401` / `403` mid-session                            | Re-acquire (rotating), retry once, and only when the retry would use a different token.                                                                       |
+| `404` after a session was established                | Re-play the cached `initialize` handshake (new `Mcp-Session-Id`, response suppressed) and retry, so server-side session expiry never kills the agent session. |
+| SSE response                                         | Every `data:` event streams through in order (progress notifications before the response).                                                                    |
+| stdin EOF                                            | Best-effort `DELETE` of the server session, then exit.                                                                                                        |
 
 SCSI tokens are JWTs, so `,mcp-token` uses their `exp`. Direct `--login` still guarantees runway.
 
 ### Rotation rules
 
-Managed launchers use `--launch-json` to capture a still-valid token short of `MIN_TTL_SECONDS` immediately, then start detached `--rotate` after the fixed header or env value is ready.
-
-The final `BLOCKING_ROTATE_TTL_SECONDS` window, expired tokens, and revoked tokens still rotate synchronously.
+`--login` rotates silently below `MIN_TTL_SECONDS`; `--login --no-proactive-rotation` (used by `,cursor`, whose runtime refreshes tokens itself) keeps that proactive rotation off the critical path while the final `BLOCKING_ROTATE_TTL_SECONDS` window, expired tokens, and revoked tokens still rotate synchronously.
 
 Silent rotation relies on cursor running the provider's `refresh_token` grant whenever a stored access token stops working. `,mcp-token` invalidates the access token in the newest project cache that holds a `refresh_token` and whose `.workspace-trusted` records an existing workspace directory, runs a bounded `cursor-agent mcp list-tools <server>` in that workspace, and cursor writes the freshly minted chain back in place with no browser and without revoking the in-flight token running sessions already hold.
 
-Concurrent deferred workers serialize through `~/.cache/mcp-token/rotation.lock` and recheck whether rotation remains due before touching the shared cache.
+Concurrent rotations serialize through `~/.cache/mcp-token/rotation.lock` and recheck whether rotation remains due before touching the shared cache.
 
 ### Opaque token liveness
 
 Opaque tokens such as Slack expose no expiry. The local refresh ledger under `~/.cache/mcp-token/` can pin a token the provider has since revoked, so ledger state and cache mtime alone do not prove an opaque token is live.
 
-Launch capture validates the ledger-selected opaque token with a minimal MCP `initialize` probe against the server's URL from the generated `~/.cursor/mcp.json`:
+`--login` validates the ledger-selected opaque token with a minimal MCP `initialize` probe against the server's URL from the generated `~/.cursor/mcp.json`:
 
 | Probe result                                    | Behavior                                                                                                                                                       |
 | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -187,19 +190,16 @@ Plain reads stay local and never probe.
 
 ### Copilot config safety
 
-The `,copilot` wrapper holds a private lock across the batch, validates every rendered Authorization value, rejects placeholders, atomically replaces `mcp-config.json` only when its parsed JSON changes, starts due proactive rotations, updates only the `copilot-mcp` generated-artifact row after a semantic change, and then execs `copilot` with the original arguments.
+The rendered `~/.copilot/mcp-config.json` carries no secrets — bridge entries name only the command, token source, and URL — and rendering happens entirely at `chezmoi apply` time. `,copilot` is a thin exec of the real binary; all `,copilot-*` provider wrappers route through it.
 
-The token-bearing `~/.copilot/mcp-config.json` is written `0600` and `~/.copilot/` is forced to `0700`. All `,copilot-*` provider wrappers route through `,copilot`.
+The config is still written `0600` and `~/.copilot/` is forced to `0700`.
 
-This keeps token refresh out of `chezmoi apply`, which only deploys the static config.
-
-## Codex bearer-env wiring
+## Codex bridge wiring
 
 Codex's wired servers:
 
-- `slack` and `scsi-main` are emitted by [`scripts/inject_mcp_into_codex_toml.py`](../../../scripts/inject_mcp_into_codex_toml.py) as streamable HTTP TOML blocks with `url` and `bearer_token_env_var`. No bearer value is written to `~/.codex/config.toml`.
-- `,codex` reads those env-var declarations from `~/.codex/config.toml`, runs `,mcp-token <server> --login --quiet --launch-json` for each configured hosted server, exports the captured raw token into the configured env var, starts due proactive rotations after capture, and then execs the real Codex binary.
-- If no valid token is returned, `,codex` exits before launch so Codex does not start with known-missing MCP auth.
+- `slack` and `scsi-main` are emitted by [`scripts/inject_mcp_into_codex_toml.py`](../../../scripts/inject_mcp_into_codex_toml.py) as `,mcp-token --bridge` command servers. No bearer value or env-var contract is written to `~/.codex/config.toml`.
+- `,codex` performs no token work at launch; the bridge owns auth per request. The wrapper only injects local llama.cpp model catalog metadata when a local model is selected.
 - `scsi-local` is emitted as a normal stdio server in `~/.codex/config.toml`.
 
 LetsFG is intentionally not exposed through the shared MCP registry because its tools are irrelevant to most sessions. Agents load its skill on demand instead. See [Tool configs](tool-configs/index.md) for details.

@@ -27,17 +27,23 @@ browser flow with cursor's approved client (e.g. Slack's admin-gated workspace
 app, or the SCSI Okta app); this avoids the ``k-slack`` confidential client
 that the Elastic workspace has not approved.
 
-``--login`` guarantees runway, not just validity. Header-auth consumers
-(Copilot, Codex) read the token once at launch and never reload it, so a token
-with only minutes left still dies mid-session; when the selected token has less
-than ``MIN_TTL_SECONDS`` remaining, ``--login`` rotates silently even though
-the token is technically valid (keeping the short token if rotation is
-unavailable, never escalating a still-valid token to a browser). Managed
-launchers use ``--launch-json`` to capture that still-valid token first and
-defer proactive rotation until after launch; the final
-``BLOCKING_ROTATE_TTL_SECONDS`` window, expired tokens, and revoked tokens still
-rotate synchronously. ``--rotate`` performs the deferred silent rotation with
-no browser fallback.
+``--login`` guarantees runway, not just validity. A caller that reads the
+token once (a launcher printing it, or a config baking it) would die with it
+mid-session, so when the selected token has less than ``MIN_TTL_SECONDS``
+remaining ``--login`` rotates silently even though the token is technically
+valid (keeping the short token if rotation is unavailable, never escalating a
+still-valid token to a browser). ``--no-proactive-rotation`` keeps that
+proactive rotation off the caller's critical path for consumers whose runtime
+refreshes tokens itself (cursor); the final ``BLOCKING_ROTATE_TTL_SECONDS``
+window, expired tokens, and revoked tokens still rotate synchronously.
+
+``--bridge --url <endpoint>`` runs a stdio <-> streamable-HTTP MCP bridge
+(``bridge.py``) that injects a freshly selected bearer per request instead of
+ever printing one. Copilot and Codex spawn it as a local MCP server, so their
+sessions no longer depend on any single token's lifetime: the bridge re-reads
+the cursor caches per request, rotates when runway drops below
+``BLOCKING_ROTATE_TTL_SECONDS`` (throttled on repeated failure), retries once
+on auth rejection, and transparently re-initializes a server-expired session.
 
 ``--login`` skips even the silent rotation when it can prove the current token
 still works and has runway. For JWT servers (SCSI) that is the token's ``exp``.
@@ -66,15 +72,17 @@ Usage:
   ,mcp-token <server> --bearer          Print "Bearer <token>" (Authorization header)
   ,mcp-token <server> --json            Print {token, source, seconds_left} as JSON
   ,mcp-token <server> --login           Ensure a fresh token (silent rotation, browser last resort)
-  ,mcp-token <server> --login --launch-json
-                                        Capture launch metadata; defer proactive rotation
-  ,mcp-token <server> --rotate          Perform a due silent rotation without browser fallback
+  ,mcp-token <server> --login --no-proactive-rotation
+                                        Skip proactive rotation; critical/expired/revoked still block
+  ,mcp-token <server> --bridge --url <endpoint>
+                                        Serve a stdio MCP bridge with per-request bearer injection
   ,mcp-token <server> --login --quiet   Refresh without streaming auth helper output
   ,mcp-token <server> --login --force   Re-authenticate even if the token is still valid
 
 Examples:
   ,mcp-token slack --bearer
   ,mcp-token scsi-main --login
+  ,mcp-token scsi-main --bridge --url https://semantic-code-search.elastic.dev/mcp
 
 Exit codes:
   0  a valid token was found and printed
@@ -94,7 +102,7 @@ import subprocess
 import sys
 import time
 from contextlib import contextmanager
-from typing import Iterator, NamedTuple
+from typing import Iterator
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
@@ -112,17 +120,20 @@ EXPIRY_SKEW_SECONDS = 300
 # wrapper's immediate follow-up plain read / config re-bake (> EXPIRY_SKEW_SECONDS)
 # yet stay far below a fresh token's ``expires_in``. Recorded as ``valid_until``.
 VERIFIED_ADOPTION_TTL_SECONDS = 600
-# Minimum remaining validity ``--login`` guarantees before letting a wrapper
-# launch with the selected token. Copilot/Codex read the Authorization value
-# once at launch and never reload it, so a technically-valid token with only
-# minutes left still dies mid-session; below this floor ``--login`` first
-# attempts a silent refresh-grant rotation (no browser).
+# Minimum remaining validity ``--login`` guarantees before letting a caller
+# read the selected token: a printed/baked token with only minutes left still
+# dies with its consumer, so below this floor ``--login`` first attempts a
+# silent refresh-grant rotation (no browser).
 MIN_TTL_SECONDS = 2700
-# Launchers may use a still-valid token while rotating proactively after they
-# have captured it. Inside this final window they keep rotation synchronous so
-# a failed background refresh cannot leave a newly launched session with only
+# Consumers whose runtime refreshes tokens itself (cursor) and the per-request
+# bridge treat this as the synchronous floor: above it a still-valid token is
+# used as-is, below it rotation blocks so a session never proceeds with only
 # moments of token life.
 BLOCKING_ROTATE_TTL_SECONDS = 600
+# A bridge whose rotation keeps failing must not pay the cursor-agent
+# invocation (up to ROTATE_TIMEOUT_SECONDS) on every request; retry rotation
+# at most this often while the current token still works.
+ROTATION_RETRY_INTERVAL_SECONDS = 60.0
 # Placeholder written over a cache's ``access_token`` to force cursor's next
 # connection to run the provider's refresh grant. Never printed, and never a
 # selectable candidate: it is not a JWT and can never match the opaque ledger.
@@ -140,11 +151,6 @@ PROBE_TIMEOUT_SECONDS = 5.0
 LIVE = "live"
 REVOKED = "revoked"
 UNKNOWN = "unknown"
-
-
-class LoginResult(NamedTuple):
-    success: bool
-    rotation_due: bool = False
 
 
 class _NoRedirectHandler(HTTPRedirectHandler):
@@ -632,6 +638,22 @@ def _rotate_if_due(server: str, *, quiet: bool = False) -> bool:
         return _silent_rotate_unlocked(server, quiet=quiet)
 
 
+def _rotate_after_reject(server: str, rejected: str, *, quiet: bool = True) -> bool:
+    """Rotate after the server rejected *rejected*, deduplicating concurrent workers.
+
+    Under concurrent 401s every in-flight request asks for a rotation; only the
+    first should execute the refresh grant. Under the lock, a selected token
+    that already differs from the rejected one proves another worker rotated,
+    so this worker just adopts it instead of overwriting the fresh chain with
+    another sentinel-and-grant cycle.
+    """
+    with _rotation_lock():
+        current = _pick_record(server)
+        if current is not None and current[1] != rejected:
+            return True
+        return _silent_rotate_unlocked(server, quiet=quiet)
+
+
 def _browser_login(server: str, *, quiet: bool = False) -> bool:
     """Run cursor's browser OAuth flow and confirm it yielded a live token.
 
@@ -695,28 +717,28 @@ def _login(
     *,
     force: bool = False,
     quiet: bool = False,
-    defer_short_rotation: bool = False,
-) -> LoginResult:
+    skip_proactive_rotation: bool = False,
+) -> bool:
     """Ensure *server* has a token with real remaining runway, browser last.
 
     ``--force`` always runs the browser flow. Otherwise the selected token must
-    keep at least ``MIN_TTL_SECONDS`` of validity: header-auth consumers
-    (Copilot, Codex) read the token once at launch and never reload it, so a
-    short-but-valid token still dies mid-session. Launch mode may defer a
-    proactive rotation until after the caller captures that token, but keeps the
-    final ``BLOCKING_ROTATE_TTL_SECONDS`` synchronous. Expired or revoked tokens
+    keep at least ``MIN_TTL_SECONDS`` of validity, since a caller that reads
+    the token once dies with it mid-session. ``--no-proactive-rotation`` keeps
+    that proactive rotation off the caller's critical path (its runtime, or
+    the per-request bridge, refreshes later) but keeps the final
+    ``BLOCKING_ROTATE_TTL_SECONDS`` synchronous. Expired or revoked tokens
     always rotate synchronously. A live cached alternative is adopted next for
     revoked opaque tokens, and only then does the browser flow run.
     """
     if force:
-        return LoginResult(_browser_login(server, quiet=quiet))
+        return _browser_login(server, quiet=quiet)
 
     nominal = _pick_record(server)
     if nominal is None:
         # Nothing valid in any cache: rotate silently before any browser flow.
         if _rotate_if_due(server, quiet=quiet):
-            return LoginResult(True)
-        return LoginResult(_browser_login(server, quiet=quiet))
+            return True
+        return _browser_login(server, quiet=quiet)
 
     seconds_left, nominal_token, _source, is_opaque, _expires_in = nominal
 
@@ -728,24 +750,24 @@ def _login(
                     f",mcp-token: {server} token still valid; skipping login (use --force to re-authenticate anyway).",
                     file=sys.stderr,
                 )
-            return LoginResult(True)
-        if defer_short_rotation and seconds_left > BLOCKING_ROTATE_TTL_SECONDS:
-            return LoginResult(True, rotation_due=True)
+            return True
+        if skip_proactive_rotation and seconds_left > BLOCKING_ROTATE_TTL_SECONDS:
+            return True
         if _rotate_if_due(server, quiet=quiet):
-            return LoginResult(True)
+            return True
         # Still exp-valid: a short token beats an unnecessary browser flow.
         if not quiet:
             print(
                 f",mcp-token: {server} token near expiry and rotation unavailable; keeping current token.",
                 file=sys.stderr,
             )
-        return LoginResult(True)
+        return True
 
-    rotation_due = defer_short_rotation and BLOCKING_ROTATE_TTL_SECONDS < seconds_left <= MIN_TTL_SECONDS
+    rotation_deferred = skip_proactive_rotation and BLOCKING_ROTATE_TTL_SECONDS < seconds_left <= MIN_TTL_SECONDS
     rotation_failed = False
-    if seconds_left <= MIN_TTL_SECONDS and not rotation_due:
+    if seconds_left <= MIN_TTL_SECONDS and not rotation_deferred:
         if _rotate_if_due(server, quiet=quiet):
-            return LoginResult(True)
+            return True
         rotation_failed = True
 
     url = _server_url(server)
@@ -757,25 +779,25 @@ def _login(
                 f",mcp-token: {server} token still valid; skipping login (use --force to re-authenticate anyway).",
                 file=sys.stderr,
             )
-        return LoginResult(True, rotation_due=rotation_due)
+        return True
 
     verdict = _probe_liveness(url, nominal_token)
     if verdict == LIVE:
         if not quiet:
             print(f",mcp-token: {server} token verified live; skipping login.", file=sys.stderr)
-        return LoginResult(True, rotation_due=rotation_due)
+        return True
     if verdict == UNKNOWN:
         if not quiet:
             print(
                 f",mcp-token: {server} liveness could not be verified; keeping current token (skipping login).",
                 file=sys.stderr,
             )
-        return LoginResult(True, rotation_due=rotation_due)
+        return True
 
     # verdict == REVOKED: a silent rotation mints a full-life chain, which beats
     # adopting an aged cached alternative on a short verification lease.
-    if (rotation_due or not rotation_failed) and _silent_rotate(server, quiet=quiet):
-        return LoginResult(True)
+    if (rotation_deferred or not rotation_failed) and _silent_rotate(server, quiet=quiet):
+        return True
     for token, source in _opaque_cache_candidates(server):
         if token == nominal_token:
             continue
@@ -789,9 +811,41 @@ def _login(
                     f",mcp-token: {server} ledger token revoked; switched to a live cached token (skipping login).",
                     file=sys.stderr,
                 )
-            return LoginResult(True)
+            return True
 
-    return LoginResult(_browser_login(server, quiet=quiet))
+    return _browser_login(server, quiet=quiet)
+
+
+def _bridge_token_acquirer(server: str):
+    """Build the bridge's ``acquire(rejected)`` token callable.
+
+    A plain cache read serves most requests. Rotation happens when the current
+    token is missing, inside the blocking window, or was just rejected by the
+    server (*rejected* carries that token so concurrent workers deduplicate);
+    repeated rotation failures are throttled so a broken refresh chain does
+    not pay the bounded cursor-agent invocation on every request.
+    """
+    last_failed_rotation = 0.0
+
+    def rotate(rejected: str | None) -> None:
+        nonlocal last_failed_rotation
+        if time.time() - last_failed_rotation < ROTATION_RETRY_INTERVAL_SECONDS:
+            return
+        if rejected is not None:
+            rotated = _rotate_after_reject(server, rejected)
+        else:
+            rotated = _rotate_if_due(server, quiet=True)
+        if not rotated:
+            last_failed_rotation = time.time()
+
+    def acquire(rejected: str | None = None) -> str | None:
+        picked = _pick(server)
+        if rejected is not None or picked is None or picked[2] < BLOCKING_ROTATE_TTL_SECONDS:
+            rotate(rejected)
+            picked = _pick(server)
+        return picked[0] if picked else None
+
+    return acquire
 
 
 def main(argv: list[str]) -> int:
@@ -815,9 +869,9 @@ def main(argv: list[str]) -> int:
         help="Print {token, source, seconds_left} as JSON",
     )
     group.add_argument(
-        "--launch-json",
+        "--bridge",
         action="store_true",
-        help="With --login, return launch-safe token metadata and defer proactive rotation",
+        help="Serve a stdio MCP bridge that injects a fresh bearer per request",
     )
     parser.add_argument(
         "--login",
@@ -825,9 +879,13 @@ def main(argv: list[str]) -> int:
         help="Ensure a fresh token: silent refresh-grant rotation via cursor when short or stale, browser flow (cursor-agent mcp login) as last resort",
     )
     parser.add_argument(
-        "--rotate",
+        "--url",
+        help="With --bridge, the streamable-HTTP MCP endpoint to forward to",
+    )
+    parser.add_argument(
+        "--no-proactive-rotation",
         action="store_true",
-        help="Silently rotate a token below the min-TTL floor without a browser fallback",
+        help="With --login, keep proactive rotation off the critical path; critical/expired/revoked tokens still rotate synchronously",
     )
     parser.add_argument(
         "--force",
@@ -841,26 +899,30 @@ def main(argv: list[str]) -> int:
     )
     args = parser.parse_args(argv)
 
-    if args.login and args.rotate:
-        parser.error("--login and --rotate are mutually exclusive")
-    if args.launch_json and not args.login:
-        parser.error("--launch-json requires --login")
+    if args.bridge and not args.url:
+        parser.error("--bridge requires --url")
+    if args.url and not args.bridge:
+        parser.error("--url requires --bridge")
+    if args.bridge and args.login:
+        parser.error("--bridge and --login are mutually exclusive")
+    if args.no_proactive_rotation and not args.login:
+        parser.error("--no-proactive-rotation requires --login")
     if args.force and not args.login:
         parser.error("--force requires --login")
-    if args.quiet and not (args.login or args.rotate):
-        parser.error("--quiet requires --login or --rotate")
+    if args.quiet and not args.login:
+        parser.error("--quiet requires --login")
 
-    login_result = LoginResult(True)
-    if args.login:
-        login_result = _login(
-            args.server,
-            force=args.force,
-            quiet=args.quiet,
-            defer_short_rotation=args.launch_json,
-        )
-        if not login_result.success:
-            return 1
-    elif args.rotate and not _rotate_if_due(args.server, quiet=args.quiet):
+    if args.bridge:
+        from bridge import run_bridge
+
+        return run_bridge(args.url, _bridge_token_acquirer(args.server), _NO_REDIRECT_OPENER)
+
+    if args.login and not _login(
+        args.server,
+        force=args.force,
+        quiet=args.quiet,
+        skip_proactive_rotation=args.no_proactive_rotation,
+    ):
         return 1
 
     picked = _pick(args.server)
@@ -872,19 +934,7 @@ def main(argv: list[str]) -> int:
         return 1
 
     token, source, seconds_left = picked
-    if args.launch_json:
-        left = None if seconds_left == float("inf") else int(seconds_left)
-        print(
-            json.dumps(
-                {
-                    "token": token,
-                    "source": source,
-                    "seconds_left": left,
-                    "rotation_due": login_result.rotation_due,
-                }
-            )
-        )
-    elif args.json:
+    if args.json:
         left = None if seconds_left == float("inf") else int(seconds_left)
         print(json.dumps({"token": token, "source": source, "seconds_left": left}))
     elif args.bearer:

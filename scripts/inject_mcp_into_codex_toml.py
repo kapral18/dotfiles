@@ -28,6 +28,8 @@ import sys
 from mcp_registry import load_servers
 
 MARKER = "# __MCP_SERVERS__"
+# Deployed launcher for per-request bearer-injecting stdio bridges.
+TOKEN_BRIDGE_COMMAND = ",mcp-token"
 VALID_APPROVAL_MODES = {"approve", "auto", "prompt"}
 VALID_PROJECT_TRUST_LEVELS = {"trusted", "untrusted"}
 MAX_U32 = 2**32 - 1
@@ -274,25 +276,24 @@ def _render_codex_mcp_toml(
     out_lines: list[str] = []
     for name, spec in servers.items():
         if spec.get("type") == "http":
+            # Codex reads bearer_token_env_var once at launch and never
+            # reloads it, so header-auth sessions died with the captured
+            # token; hosted OAuth servers instead run as local stdio bridges
+            # (",mcp-token <source> --bridge --url <url>") that inject a
+            # freshly selected bearer per request.
             oauth = spec.get("oauth", {})
-            bearer_token_env_var = oauth.get("bearerTokenEnvVar")
-            if not bearer_token_env_var:
+            token_source = oauth.get("tokenBridge")
+            if not token_source:
                 continue
-            out_lines.append(f"[mcp_servers.{_toml_key(name)}]")
-            out_lines.append(f"url = {_toml_string(spec['url'])}")
-            out_lines.append(f"bearer_token_env_var = {_toml_string(str(bearer_token_env_var))}")
-            _append_preserved_mcp_approvals(
-                out_lines,
-                name,
-                spec.get("codex_default_tools_approval_mode"),
-                spec.get("codex_tool_approval_modes"),
-                preserved_approvals,
-            )
-            continue
+            command = TOKEN_BRIDGE_COMMAND
+            args = [str(token_source), "--bridge", "--url", str(spec["url"])]
+        else:
+            command = spec["command"]
+            args = spec["args"]
         out_lines.append(f"[mcp_servers.{_toml_key(name)}]")
-        out_lines.append(f"command = {_toml_string(spec['command'])}")
+        out_lines.append(f"command = {_toml_string(str(command))}")
         out_lines.append("args = [")
-        for arg in spec["args"]:
+        for arg in args:
             out_lines.append(f"  {_toml_string(str(arg))},")
         out_lines.append("]")
         _append_preserved_mcp_approvals(
