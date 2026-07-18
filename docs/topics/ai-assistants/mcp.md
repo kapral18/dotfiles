@@ -36,10 +36,10 @@ The work set includes `scsi-main`, `scsi-local`, and `slack`:
 | Server       | Current behavior                                                                                                                                                                                |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `scsi-main`  | Hosted Semantic Code Search server using Elastic SSO/OAuth. Cursor, Claude, Gemini, and Pi each have tool-specific OAuth metadata because they expect different field shapes and redirect URIs. |
-| `scsi-local` | Local SCSI stdio backend. It is excluded from Copilot once the hosted server is omitted there.                                                                                                  |
+| `scsi-local` | Local SCSI stdio backend emitted to every work-profile harness, including Copilot and Codex.                                                                                                    |
 | `slack`      | Slack MCP server with per-tool OAuth metadata.                                                                                                                                                  |
 
-Copilot and Codex get `scsi-local` as a stdio server and `scsi-main` plus `slack` as local `,mcp-token --bridge` stdio servers that forward to the hosted endpoints with per-request bearer injection.
+Copilot and Codex get `scsi-local` as a stdio server and `scsi-main` plus `slack` as local `,mcp-token --bridge` stdio servers that forward to the hosted endpoints with per-request bearer injection. OpenCode gets `scsi-local` only: its injector intentionally emits command servers and skips every HTTP entry.
 
 ### Hosted OAuth exceptions
 
@@ -116,7 +116,7 @@ Tools whose config is not plain JSON get dedicated injectors with explicit owner
 | Injector                                                                                          | Ownership rule                                                                                                                                                                                                                                            |
 | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [`scripts/inject_mcp_into_codex_toml.py`](../../../scripts/inject_mcp_into_codex_toml.py)         | Replaces a `# __MCP_SERVERS__` marker in the authoritative profile base, then reattaches only valid runtime MCP approvals, hook trust hashes, project trust levels, and unsigned-32-bit TUI model-availability counters. Other live tables are discarded. |
-| [`scripts/inject_mcp_into_opencode_jsonc.py`](../../../scripts/inject_mcp_into_opencode_jsonc.py) | Replaces a `"mcp": "__MCP_SERVERS__"` placeholder in the OpenCode JSONC.                                                                                                                                                                                  |
+| [`scripts/inject_mcp_into_opencode_jsonc.py`](../../../scripts/inject_mcp_into_opencode_jsonc.py) | Replaces a `"mcp": "__MCP_SERVERS__"` placeholder with local command servers; HTTP entries are intentionally skipped.                                                                                                                                     |
 | [`scripts/merge_claude_mcp.py`](../../../scripts/merge_claude_mcp.py)                             | Surgically updates only the `mcpServers` key in `~/.claude.json`, which Claude Code also writes runtime state into.                                                                                                                                       |
 
 ## Per-tool targets

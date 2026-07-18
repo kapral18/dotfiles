@@ -176,27 +176,9 @@ The `copilot` transform in `generate_mcp_configs.py` emits three MCP server shap
 | OAuth HTTP servers        | `type: "http"` with `oauthClientId` + `auth.redirectPort` + `oauthScopes`                                         |
 | token-bridge HTTP servers | `type: "local"` running `,mcp-token <source> --bridge --url <url>` when the `copilot` block carries `tokenBridge` |
 
-Copilot cannot run the SCSI/Slack browser OAuth flows itself. It hardcodes its OAuth redirect to `http://127.0.0.1:{port}/`, where only the port is configurable, which neither the SCSI Okta app nor the public Slack client registers.
+Because Copilot cannot run the SCSI/Slack browser OAuth flows itself, both `scsi-main` and `slack` carry a `copilot` `tokenBridge` source and reach the hosted endpoint through a local stdio bridge that injects a bearer token minted by cursor-cli per request. `scsi-local` has no OAuth, so it is emitted as a `type: "local"` stdio server with local `pass` Elasticsearch credentials. Copilot's generated `mcp-config.json` therefore carries `scsi-main`, `scsi-local`, and `slack` plus its built-in servers; the built-in `github-mcp-server` is Copilot-provided and not emitted.
 
-Slack's MCP authorization server offers no dynamic client registration and requires a client secret at the token endpoint. Both `scsi-main` and `slack` therefore give their `copilot` block a `tokenBridge` source, and Copilot reaches each through a local stdio bridge that injects a bearer token minted by cursor-cli per request; both servers accept header bearer auth.
-
-The rendered config carries no Authorization values, so `chezmoi apply` owns it entirely and `,copilot` is a thin exec of the real binary. Direct `,mcp-token --login` still guarantees runway, not just validity.
-
-When a request finds the current token missing, inside the blocking window, or rejected, the bridge rotates synchronously by invalidating the access token in the newest cursor project cache holding a `refresh_token` and running a bounded `cursor-agent mcp list-tools <server>` in that cache's trusted workspace.
-
-Cursor then executes the provider's refresh grant and writes a freshly minted chain in place, with no browser, and in-flight tokens of running sessions stay live. Concurrent rotations serialize through `~/.cache/mcp-token/rotation.lock` and recheck whether rotation is still due before touching the shared cursor cache.
-
-For opaque tokens such as Slack, ledger state and cursor cache mtime cannot prove the token is still live because the provider can revoke it while the ledger still lists it as fresh. `--login` validates the ledger-selected opaque token with a minimal MCP `initialize` probe against the server URL from `~/.cursor/mcp.json`, adopts a live cached alternative when rotation is unavailable and the ledger token is revoked, and only runs the cursor browser flow when no live candidate exists, confirming the post-login token by the same probe.
-
-SCSI JWTs use their `exp`.
-
-Before launch, `,copilot` holds a private config lock, asks `generate_mcp_configs.py` for the canonical plan, captures each unique source, sends the Authorization values to a single generator render over stdin, verifies exact headers and no placeholders, and atomically writes only a semantic change.
-
-It then starts due proactive rotations and execs Copilot. A changed target records the existing `copilot-mcp` row in `generated_artifacts.v1.json`; a no-op leaves both target and ledger inode/mtime unchanged, and an artifact-recording failure rolls the target back before Copilot can start.
-
-The token-bearing `~/.copilot/mcp-config.json` is written `0600` under a `0700` `~/.copilot/` directory.
-
-`scsi-local` has no OAuth, so it is emitted as a `type: "local"` server with local stdio and `pass` Elasticsearch credentials. Copilot's generated `mcp-config.json` therefore carries `scsi-main`, `scsi-local`, and `slack` plus its built-in servers. The built-in `github-mcp-server` is provided by Copilot and is not emitted. See [MCP servers](../mcp.md).
+The rendered config carries no Authorization values, so `chezmoi apply` owns it entirely and `,copilot` is a thin exec of the real binary. The full OAuth-exception rationale, synchronous rotation grant, and opaque-token liveness probe are owned by [MCP servers](../mcp.md). The bearer-free `~/.copilot/mcp-config.json` is written `0600` under a `0700` `~/.copilot/` directory.
 
 ### Copilot settings reconciliation
 
@@ -208,11 +190,11 @@ The target is in `.chezmoiignore`.
 
 ### Copilot agent memory
 
-Copilot 1.0.68 runs JSON command hooks from `~/.copilot/hooks/*.json`, but live probes showed their `SessionStart` stdout is not ingested as context.
+A live probe of Copilot 1.0.68 showed that its JSON command hooks run from `~/.copilot/hooks/*.json`, but their `SessionStart` stdout is not ingested as context.
 
 The active context path is the `agent-memory` extension. It registers `onSessionStart`, `onPostToolUse`, and `onPostToolUseFailure`, translates Copilot's camelCase SDK payloads to the shared snake_case script contract, and returns SDK `additionalContext`.
 
-Command-hook files are cleaned up by the apply hook along with their exact generated-config ledger row. Copilot has no shell-gate hooks; PR review anchor verification is instruction-owned by the review/GitHub skills.
+The command-hook file and its legacy checksum row are cleaned up by the apply hook. Copilot has no shell-gate hooks; PR review anchor verification is instruction-owned by the review/GitHub skills.
 
 ## tuicr (review TUI)
 

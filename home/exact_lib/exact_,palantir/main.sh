@@ -24,7 +24,7 @@ Legions (1 legion = 1 effort = 1 tmux session; windows/panes are its organisatio
   farsee                    Survey all legions (stage, attention, criteria)
   behold <id>              Behold one legion: stage, supervisor liveness, criteria
   send-word <id> <msg>     Send composer-guarded word to a role window (--window, default: command)
-  answer <id> <msg>        Answer a holding legion's question and resume it
+  answer <id> <msg>        Answer a holding condition and resume its stored stage
   grant <id>               Grant a cleared legion (persist closeout packet + teardown)
   routed <id>              Mark a closed legion's memory packet as routed (clears the U flag)
   banish <id> [--force]    Banish a legion; refuses in-flight work without --force

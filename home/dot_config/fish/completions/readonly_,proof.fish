@@ -1,12 +1,16 @@
-# Completions for ,proof.
+# Completions for ,proof 0.2.0.
 
 set -l __proof_subcommands start path list add-criterion add-evidence show review block resolve-blocker finalize reopen prune status check report
+set -l __proof_generic_subcommands path list add-criterion add-evidence show review block resolve-blocker finalize reopen prune status check
 set -l __proof_evidence_types test build lint typecheck diff screenshot browser log file-read manual-user-confirmation
 set -l __proof_verdicts supports does-not-support unclear
 
 complete -c ',proof' -f
 
-for subcommand in $__proof_subcommands
+complete -c ',proof' -n "not __fish_seen_subcommand_from $__proof_subcommands" -a start -d 'Create or confirm the current proof ledger'
+complete -c ',proof' -n "not __fish_seen_subcommand_from $__proof_subcommands" -a report -d 'Write a finalized proof receipt'
+
+for subcommand in $__proof_generic_subcommands
     complete -c ',proof' -n "not __fish_seen_subcommand_from $__proof_subcommands" -a $subcommand
 end
 

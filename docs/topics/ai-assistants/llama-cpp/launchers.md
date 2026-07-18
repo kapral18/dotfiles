@@ -21,9 +21,9 @@ Claude Code has one global `autoCompactWindow`, but cloud `opus[1m]` and local l
 
 Codex only has first-class model metadata for slugs present in its model catalog; unknown local slugs use fallback metadata and emit a warning. This repo ships a transparent `,codex` wrapper plus a small local catalog for the llama.cpp models.
 
-The wrapper refreshes any configured Codex hosted-MCP bearer-token env vars, then injects `-c model_catalog_json="$HOME/.codex/llama-cpp-model-catalog.json"` when the selected model is one of the local llama.cpp ids (`local` or `local-max`), in either `--model <id>` or `--model=<id>` form.
+The wrapper injects `-c model_catalog_json="$HOME/.codex/llama-cpp-model-catalog.json"` when the selected model is one of the local llama.cpp ids (`local` or `local-max`), in either `--model <id>` or `--model=<id>` form.
 
-Other Codex invocations execute `/opt/homebrew/bin/codex` directly after the MCP env-var setup.
+Other Codex invocations execute `/opt/homebrew/bin/codex` directly. Hosted MCP authentication is owned by the per-request stdio bridges declared in `~/.codex/config.toml`, not by this launcher.
 
 ### Codex launcher (`,codex-llama-cpp`)
 

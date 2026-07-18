@@ -1,6 +1,6 @@
 # `,proof` CLI reference
 
-`tool_version`: `,proof 0.1.0`
+`tool_version`: `,proof 0.2.0`
 
 `--help` truth:
 
@@ -23,6 +23,9 @@ $XDG_STATE_HOME/agent-proof/<workspace-hash>/<topic>/
 The current workspace is the git root when available, otherwise `cwd`.
 The topic is `--topic`, `$AGENT_PROOF_TOPIC`, `$PROOF_TOPIC`, or `current`.
 Agent-run proof should pass `--topic` explicitly so unrelated freeform proof is not mixed into `current`.
+`start` refuses an existing topic when its non-empty goal differs from the requested goal.
+Choose a new topic, or use `--force` only when intentionally replacing that ledger.
+`start --force` replaces the state and removes that topic's prior managed evidence and reports; finalized ledgers must be reopened first.
 Only `start` creates a ledger; other commands fail instead of creating hidden proof state.
 If the resolved proof directory would sit under the selected workspace, the CLI fails;
 proof state is always repo-external unless the selected workspace is the home directory itself.
@@ -98,14 +101,17 @@ Rules:
 
 Use `,proof check --json` for automation.
 The JSON includes `allowed`, `verdict`, `goal`, `workspace`, `topic`, `proof_dir`, criterion counts, finalized seal status, issues, blockers, and per-criterion status plus provenance counts.
+`check` is a read-only diagnostic: a passing unfinalized ledger reports that its evidence gate passes but its receipt is not sealed.
 The verdict means "proof recorded", not "the code is globally correct"; `,proof` does not run /k-build or palantir adversarial/scope gates.
+`review` is likewise an evidence assessment, not independent certification; `--reviewer` records attribution but does not prove independence.
 
 ## Finalize and reopen
 
 `finalize` stores `finalized_at` and a SHA-256 seal over the canonical criteria, evidence, reviews, and blockers state.
 It refuses to seal a failing ledger unless `--allow-failing` is passed.
 After finalization, `start` on that ledger and other mutating commands refuse until `reopen` clears the seal and appends `{reopened_at, previous_seal}` to `reopen_history`.
-`status`, `check`, `show`, and `report` recompute the seal; a mismatch reports `seal broken`, and `check` fails.
+`status`, `check`, and `show` recompute the seal; a mismatch reports `seal broken`, and `check` fails.
+`report` additionally refuses an unfinalized ledger or a broken seal.
 
 ## Prune
 
@@ -114,7 +120,7 @@ After finalization, `start` on that ledger and other mutating commands refuse un
 
 ## Reports
 
-`,proof report` writes a Markdown receipt under the proof directory's `reports/`.
+`,proof report` writes a Markdown receipt under the proof directory's `reports/` only after finalization.
 Reports include seal status and per-criterion provenance counts.
 Reports are handoff artifacts; they do not replace the final answer's concise evidence summary.
 Treat reports as local proof receipts unless a publication skill sanitizes them for an external surface.

@@ -19,7 +19,7 @@ There are two portable layers:
 
 Every custom subagent profile is a chezmoi template that renders the shared tmux `prefix.txt` preamble before role instructions. Child contexts therefore start with the same verification discipline as parent sessions.
 
-The role body itself is single-sourced. Each per-tool profile is a thin shim: per-tool frontmatter (`model`, `tools`, `sandbox`) + the `prefix.txt` preamble + `Load and follow ~/.agents/skills/k-agent-review/references/<role>.md`.
+The role body itself is single-sourced. Each per-tool profile is a thin shim: harness-native model, tool/permission, and sandbox metadata + the `prefix.txt` preamble + `Load and follow ~/.agents/skills/k-agent-review/references/<role>.md`.
 
 ## Using it
 

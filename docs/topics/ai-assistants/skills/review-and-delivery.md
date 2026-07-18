@@ -58,7 +58,7 @@ Requested local-file uploads use the destination repository's web editor because
 | Source   | [`exact_k-compose-pr`](../../../../home/exact_dot_agents/exact_skills/exact_k-compose-pr/) |
 | Boundary | draft + publication packet only; no GitHub side effects                                    |
 
-When a draft feeds a GitHub side effect, it carries a PR publication packet outside the PR body so `k-github` can verify template compliance, screenshot proof status, linked issue intake, Test Plan completeness, metadata status, and unresolved placeholders before publishing.
+When a draft feeds a GitHub side effect, it carries a PR publication packet outside the PR body so `k-github` can verify template compliance, screenshot proof status, linked issue intake, Test Plan completeness, metadata status, and unresolved placeholders before publishing. If the effort already has a `,proof` receipt, `k-compose-pr` treats it as completion proof only when its status is allowed, finalized, and sealed intact. A failing, incomplete, or broken ledger is surfaced, never retroactively completed during PR composition; independently verified Test Plan evidence remains usable.
 
 When the change embodies decisions with observable consequences for others (API shape, privilege model, error responses, defaults), the body carries a `## Decisions` section — one bullet per decision with the risk if it was the wrong call; internal implementation choices are excluded (decision-log discipline adapted from [`elastic/plan`](https://github.com/elastic/plan)).
 

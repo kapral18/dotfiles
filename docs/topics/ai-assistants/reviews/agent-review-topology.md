@@ -136,9 +136,9 @@ Model selection is registry-driven and deterministic.
 | adversarial verifier                       | `agent_review_models.<harness>.verifier` — a different family than lanes, by review                                                               |
 | verifier on single-family harnesses        | registry leaves it empty/inherit; runs on the lane model as `families=same (degraded)`                                                            |
 
-Every profile's `model` frontmatter is a chezmoi template over the single `agent_review_models` block in `ai_models.yaml`. Updating a model is a one-line registry edit, and neither skills nor controllers steer models at runtime.
+Every profile's `model` frontmatter is a chezmoi template over the single `agent_review_models` block in `ai_models.yaml`. Updating a model is a one-line registry edit, and neither skills nor controllers steer models at runtime; the only runtime pass-through is generic fresh-eyes (table above), which cannot use a context-bearing profile.
 
-The only profile-equivalent runtime model pass-through is generic fresh-eyes, which uses the same registry lane value because it cannot use context-bearing reviewer profiles. The review's diversity comes from angles plus the cross-family verify pass; the registry keeps the family pairing a human decision instead of a launch-time inference.
+The review's diversity comes from angles plus the cross-family verify pass; the registry keeps the family pairing a human decision instead of a launch-time inference.
 
 ### Live UI target selection
 
@@ -150,11 +150,9 @@ The only profile-equivalent runtime model pass-through is generic fresh-eyes, wh
 
 For verified `elastic/kibana` targets, `k-elastic-domain` supplies Kibana targets, mapped Elasticsearch endpoints, Dev Tools Console fallback, and runtime-blocker rules. Generic review contracts do not inline those targets.
 
-`live-ui-review`/`k-ui-proof` verify the local browser only. Windows/VirtualBox coverage lives in the separate manual `k-live-ui-windows` skill, never auto-triggered.
+`live-ui-review`/`k-ui-proof` verify the local browser only; there is no automatic or context-inferred Windows/VirtualBox path in this flow. Windows/VirtualBox coverage is the separate manual [`k-live-ui-windows`](../../../../home/exact_dot_agents/exact_skills/exact_k-live-ui-windows/) skill: load it by hand only when the user explicitly asks for Windows/VirtualBox verification this turn, never from PR/issue/spec inference.
 
 When `k-live-ui-windows` is used against a Kibana target, `k-elastic-domain` rewrites `kbn_url`/`es_url` to the guest-reachable NAT gateway address and folds `server.host=0.0.0.0` into the required Kibana flags. The manual skill owns only the CDP connection mechanics, never Kibana-specific hostnames or flags.
-
-`live-ui-review` verifies the local browser only — there is no automatic or context-inferred Windows/VirtualBox path in this flow. Windows/VirtualBox coverage is a separate manual skill, [`k-live-ui-windows`](../../../../home/exact_dot_agents/exact_skills/exact_k-live-ui-windows/): load it by hand only when the user explicitly asks for Windows/VirtualBox verification this turn, never from PR/issue/spec inference.
 
 ![Live UI target-packet handoff: controller selects an explicit or verified overlay packet, worker verifies, and returns evidence, not applicable, or blocker](../assets/live-ui-target-packet.svg)
 

@@ -25,7 +25,14 @@ stateDiagram-v2
     verify --> implement : checks fail & retry budget remains
     verify --> holding : checks fail & retry budget exhausted
 
-    holding --> triage : operator resumes with new instruction
+    state resume <<choice>>
+    holding --> resume : ,palantir answer uses stored resume_stage
+    resume --> triage : triage
+    resume --> diagnose : diagnose
+    resume --> investigate : investigate
+    resume --> implement : implement / exhausted retry budget
+    resume --> adversarial_review : adversarial_review
+    resume --> verify : verify
     holding --> banished : ,palantir banish
     cleared_for_human --> banished : closeout packet persisted + grant teardown
     banished --> [*] : supervisor/session stopped; owned clean worktree removed
@@ -71,12 +78,14 @@ stateDiagram-v2
         pending_actions survive side-effect failure and supervisor restart.
         pending_wakes survive blocked panes; dedupe suppresses only
         the same unresolved condition.
+        Questions, triage rejections, and exhausted retry budgets store
+        the stage that `,palantir answer` resumes.
         dashboard.py renders the textual popup via tmux prefix+A;
         it shows age/transport/queue/criteria/teardown health and
         requires typed confirmation for close actions.
         statusline.py counts active/holding/cleared stages plus
         transport errors (T), teardown orphans (O), and closed
-        legions with an unrouted memory packet (U).
+        legions with an unrouted memory packet (U), plus corrupt state (E).
     end note
 
     note right of cleared_for_human

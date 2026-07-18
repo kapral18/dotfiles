@@ -17,13 +17,14 @@ These skills coordinate long-running agent work, durable learning, and user-inte
 
 ## `k-proof`
 
-| Field    | Value                                                                                                                                        |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Use when | explicit proof/receipt requests, handoffs, risky/runtime claims, failed attempts, blockers, or multi-evidence freeform changes need a ledger |
-| Source   | [`exact_k-proof`](../../../../home/exact_dot_agents/exact_skills/exact_k-proof/)                                                             |
-| CLI      | `,proof` stores proof state outside worktrees under `$AGENT_PROOF_HOME`, `$XDG_STATE_HOME`, or `~/.local/state`                              |
+| Field    | Value                                                                                                                                                                            |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Use when | an explicit proof-ledger/receipt request, auditable security/auth/data-migration/destructive effect, or named handoff/resume consumer needs a durable freeform receipt           |
+| Source   | [`exact_k-proof`](../../../../home/exact_dot_agents/exact_skills/exact_k-proof/)                                                                                                 |
+| CLI      | `,proof` stores proof state outside worktrees under `$AGENT_PROOF_HOME`, `$XDG_STATE_HOME`, or `~/.local/state`; reports require a finalized ledger with an intact seal          |
+| Boundary | runtime/UI/external checks, multi-file scope, failed commands, and late completion challenges use inline evidence unless one of the receipt triggers above independently applies |
 
-`k-proof` is available in two ways. Explicit requests route through the skill frontmatter and `SKILL.md`. Ordinary non-review/non-build iteration gets the same hard-trigger rule from the always-on SOP plus the shared verification prefix injected by session hooks, Pi, tmux prompt wrapping, and subagent profile templates. Both paths use the same boundary: start a `,proof` ledger only for hard-triggered freeform claims; use inline anchors for simple or single-evidence work.
+`k-proof` is available in two ways. Explicit receipt requests route through the skill frontmatter and `SKILL.md`. Non-review/non-build iteration gets the same narrow receipt gate from the always-on SOP and the shared verification prefix injected by session hooks, Pi, tmux prompt wrapping, and subagent profile templates. The ledger is a durable receipt, not verification itself: evidence collection remains mandatory and inline by default. When a receipt trigger applies, choose the topic and criteria before ledger-bound evidence collection, finalize the ledger, and only then generate a report.
 
 ## `k-palantir`
 

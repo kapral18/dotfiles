@@ -210,9 +210,17 @@ Make success observable.
 - Bug fix reframe: write a test that reproduces the bug, then make it pass.
 - Refactor: keep the existing behavior surface green.
 - Non-code work: verify by command output, file state, or a safe runtime probe.
-- A repo-external `,proof` ledger is required before a freeform completion claim only when a hard trigger applies:
-  explicit proof/receipt request, handoff proof, runtime/UI/external/security/data/destructive behavior claim, repeated/failed attempt, unresolved blocker, or a multi-file/subsystem change needing two or more independent evidence items.
-  Otherwise inline anchors are the proof trail; do not invoke `,proof` merely because the task feels "non-trivial".
+- A repo-external `,proof` ledger is a durable receipt, not verification itself.
+  It is required for non-review/non-build freeform work only when the user explicitly requests a proof ledger/receipt;
+  a security/auth, data-migration, or destructive effect needs an auditable record;
+  or a named handoff/resume consumer needs multiple criteria, flaky-attempt history, or a blocker preserved.
+- Runtime/UI/browser/external checks, multi-file/subsystem scope, one failed command, and "are you sure/is it done?" are not ledger triggers by themselves.
+  Verify those inline.
+- Decide whether a receipt trigger applies at intent/readiness, or as soon as its audit/handoff need becomes known.
+  Do not create a ledger retroactively near the final answer merely to repackage checks already sufficient inline.
+- Formal review, `/k-build`, Palantír, and publication flows own their existing gates.
+  Do not layer `,proof` onto them unless the user explicitly requests a separate proof receipt.
+- Otherwise inline anchors are the proof trail; do not invoke `,proof` merely because the task feels "non-trivial".
 - Multi-step plans need per-step verification.
 - Each plan step must be independently verifiable.
 - Do not proceed past a failing verification step; stop, back up, or replan.
@@ -380,9 +388,10 @@ The chat agent applies the Ownership Gate (§3.2 `--owner-of`), Publication Gate
   It consumes role handshake files (`stages/<stage>.result.json`), durably drains transition actions and coordinator wakes, drives the state machine, machine-runs verify, and sends `implement` back to work with failure evidence, bounded by the attempt budget, then parks in `holding`.
   All pane injects are composer-guarded: only an idle pane takes keys.
   Stage dispatch records before/after changed-path provenance for dirty-worktree review.
-- **See** with `,palantir` (the stone: every legion's stage, attention, criteria) or `,palantir farsee` / `behold <id>`.
-- **Escalate only real decisions**: a `holding` legion carries one question — answer it with `,palantir answer <id> <msg>`;
-  do not send word to a working role for narration.
+- **See** with bare `,palantir` for the dashboard, `,palantir farsee` for the text survey, or `,palantir behold <id>` for one legion.
+- **Escalate only real decisions**: a `holding` legion carries one actionable condition —
+  a question, triage rejection, or exhausted retry budget.
+  Answer it with `,palantir answer <id> <msg>` to resume the stored stage; do not send word to a working role for narration.
   Identical unresolved conditions produce one coordinator wake until they resolve and recur.
 - **Grant** a `cleared_for_human` legion with `,palantir grant <id>` (persists its memory-routing packet, closes it, and tears down its session/worktree); `banish` is fail-closed on in-flight work and dirty worktrees.
 

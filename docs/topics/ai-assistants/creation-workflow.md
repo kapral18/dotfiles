@@ -9,7 +9,7 @@ The creation-side counterpart to the [review workflow](reviews/index.md) applies
 
 The steering model is **two human gates**: approve the contract before execution, then read the report after it. Everything between runs hands-free.
 
-Ordinary freeform implementation does not have to enter this formal flow. For that main path, the `k-proof` skill and `,proof` CLI provide a smaller repo-external criteria/evidence ledger only when a hard trigger fires.
+Ordinary freeform implementation does not have to enter this formal flow. Verification stays inline by default; `k-proof` and `,proof` add a smaller repo-external receipt only for an explicit receipt request, an auditable risky effect, or a named handoff/resume consumer.
 
 ## The two artifacts (memory vs contract)
 
@@ -42,7 +42,7 @@ idea/issue
         └─ [HUMAN GATE 1: approve packet]
             ├─ /k-build ............ in-session hands-free implementation
             ├─ ,palantir summon ... detached legion, same criteria
-            ├─ compose-issue ..... publishable issue text + publication packet
+            ├─ k-compose-issue ... publishable issue text + publication packet
             └─ review (plan mode)  adversarial review of the packet itself
                 └─ [HUMAN GATE 2: read the report]
 ```
@@ -68,7 +68,7 @@ Verdicts are evidence, not decisions. The controller flips a row only after chec
 
 ## The criteria-verifier lane
 
-Worker contract: [`build/references/criteria-verifier.md`](../../../home/exact_dot_agents/exact_skills/exact_k-build/exact_references/readonly_criteria-verifier.md).
+Worker contract: [`k-build/references/criteria-verifier.md`](../../../home/exact_dot_agents/exact_skills/exact_k-build/exact_references/readonly_criteria-verifier.md).
 
 The lane owns refutation order (claim truth → criterion truth → reachability → durability), a scope audit against the packet's binding out-of-scope list, and missing-criteria candidates.
 
@@ -82,7 +82,7 @@ When any acceptance criterion's evidence is visual — a `judgment:` criterion n
 
 It is the creation-side sibling of the review flow's `live-ui-review`: same runtime machinery, opposite direction. `live-ui-review` compares PR/head against base to find regressions; `k-ui-proof` verifies the **built** runtime head-only against its **intended visual** and captures the screenshot set that proves it.
 
-Both share one mode-neutral contract — [`agent-review/references/live-ui-runtime.md`](../../../home/exact_dot_agents/exact_skills/exact_k-agent-review/exact_references/readonly_live-ui-runtime.md) — for target-packet resolution, Playwriter preflight, readiness, runtime start, the data/setup ladder, screenshot artifacts, and the runtime safety boundary.
+Both share one mode-neutral contract — [`k-agent-review/references/live-ui-runtime.md`](../../../home/exact_dot_agents/exact_skills/exact_k-agent-review/exact_references/readonly_live-ui-runtime.md) — for target-packet resolution, Playwriter preflight, readiness, runtime start, the data/setup ladder, screenshot artifacts, and the runtime safety boundary.
 
 Each mode file adds only its oracle, comparison model, and return shape.
 
@@ -92,9 +92,7 @@ It returns a per-criterion `met` / `unmet` / `blocked` verdict. The controller s
 
 The controller opens/provides the screenshot folder and reports the screenshot manifest. Each screenshot/pair/set lives in its own distinct `/tmp/<folder-name>/` folder with folder-open/provided status, so `k-compose-pr` can embed the shots.
 
-Windows/VirtualBox coverage is a separate manual skill, [`k-live-ui-windows`](../../../home/exact_dot_agents/exact_skills/exact_k-live-ui-windows/), connecting Playwriter to a guest browser over CDP through a host NAT port-forward.
-
-It is never auto-triggered by either mode. Load it by hand only when the user explicitly asks for Windows/VirtualBox verification this turn.
+Windows/VirtualBox coverage is a separate manual skill, [`k-live-ui-windows`](../../../home/exact_dot_agents/exact_skills/exact_k-live-ui-windows/), connecting Playwriter to a guest browser over CDP through a host NAT port-forward. It is never auto-triggered by either mode; load it by hand only when the user explicitly asks for Windows/VirtualBox verification this turn.
 
 ## Palantír as the detached form
 

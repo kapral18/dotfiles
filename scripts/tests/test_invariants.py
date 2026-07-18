@@ -120,7 +120,9 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "Do not make further speculative changes until alignment is restored",
             "Reframe imperative tasks to verifiable goals when practical",
             "Bug fix reframe: write a test that reproduces the bug, then make it pass",
-            "A repo-external `,proof` ledger is required before a freeform completion claim only when a hard trigger applies",
+            "A repo-external `,proof` ledger is a durable receipt, not verification itself",
+            "are not ledger triggers by themselves",
+            "Do not create a ledger retroactively near the final answer",
             "do not invoke `,proof` merely because the task feels",
             "repo-external `,proof` ledger",
             "Test-first framing does not license touching code outside the request",
@@ -153,19 +155,104 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             assert match, f"{entry} has no frontmatter name"
             assert match.group("name") == expected, f"{entry} frontmatter name {match.group('name')!r} != {expected!r}"
 
-    def test_proof_access_is_explicit_and_implicit(self):
+    def test_proof_access_requires_a_receipt_consumer_or_audit_need(self):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-proof/readonly_SKILL.md",
-            "Use when the user explicitly asks how do you know/prove it/receipt",
-            "when a freeform completion claim depends on multiple evidence sources",
-            "Start a ledger only after a hard trigger fires",
+            "Use only for non-review/non-build freeform work",
+            "No other task property is a trigger by itself",
+            "Do not create a ledger near the final answer",
+            "Finalize the receipt",
+            'tool_version: ",proof 0.2.0"',
         )
         self.assert_file_contains(
             "home/dot_config/exact_tmux/agent_prompts/prefix.txt",
-            "hard-triggered non-review/non-build freeform completion claims",
-            "load the k-proof skill and use a repo-external `,proof` ledger",
-            "explicit proof/receipt requests",
+            "Treat `,proof` as a durable receipt, not verification itself",
+            "only when a durable receipt has a concrete consumer or audit need",
+            "not ledger triggers",
+            "never start a ledger near the final answer",
             "Otherwise inline anchors are the proof trail",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-compose-pr/readonly_SKILL.md",
+            "Consume it as completion proof only when `allowed` is true, `finalized_at` is set, and `seal_status` is `ok`",
+            "do not present it as proof or finish it retroactively during PR composition",
+        )
+        self.assert_file_not_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-proof/readonly_SKILL.md",
+            "when verifying runtime/UI/external behavior",
+            "when a freeform completion claim depends on multiple evidence sources",
+        )
+        self.assert_file_not_contains(
+            "home/dot_config/exact_tmux/agent_prompts/prefix.txt",
+            "runtime/UI/external/security/data/destructive claims, failed attempts, blockers, or multi-evidence changes",
+        )
+
+    def test_ai_docs_track_current_runtime_contracts(self):
+        self.assert_file_contains(
+            "docs/topics/ai-assistants/tool-configs/other-harnesses.md",
+            "injects a bearer token minted by cursor-cli per request",
+            "`,copilot` is a thin exec of the real binary",
+            "The bearer-free `~/.copilot/mcp-config.json`",
+        )
+        self.assert_file_not_contains(
+            "docs/topics/ai-assistants/tool-configs/other-harnesses.md",
+            "Before launch, `,copilot` holds a private config lock",
+            "sends the Authorization values to a single generator render over stdin",
+            "The token-bearing `~/.copilot/mcp-config.json`",
+        )
+        self.assert_file_contains(
+            "docs/topics/ai-assistants/tool-configs/profile-merging.md",
+            "Copilot MCP rendering is apply-time only",
+            "Runtime `,copilot` does not render config or change the ledger",
+        )
+        self.assert_file_contains(
+            "docs/topics/ai-assistants/llama-cpp/launchers.md",
+            "Hosted MCP authentication is owned by the per-request stdio bridges",
+        )
+        self.assert_file_not_contains(
+            "docs/topics/ai-assistants/llama-cpp/launchers.md",
+            "refreshes any configured Codex hosted-MCP bearer-token env vars",
+            "after the MCP env-var setup",
+        )
+        self.assert_file_contains(
+            "docs/topics/ai-assistants/mcp.md",
+            "emitted to every work-profile harness, including Copilot and Codex",
+            "OpenCode gets `scsi-local` only",
+            "HTTP entries are intentionally skipped",
+        )
+        self.assert_file_contains(
+            "docs/topics/ai-assistants/tool-configs/claude-gemini.md",
+            "`alwaysThinkingEnabled: false`; `effortLevel: xhigh`",
+        )
+        self.assert_file_contains(
+            "home/readonly_AGENTS.md",
+            "a `holding` legion carries one actionable condition",
+            "to resume the stored stage",
+        )
+        self.assert_file_contains(
+            ".mermaids/04-palantir-state-machine.mmd",
+            "holding --> resume : ,palantir answer uses stored resume_stage",
+            "resume --> implement : implement / exhausted retry budget",
+        )
+        self.assert_file_not_contains(
+            "docs/topics/ai-assistants/scenarios.md",
+            "`/improve-…`",
+            "**anything → compose-issue.**",
+        )
+        self.assert_file_not_contains(
+            ".mermaids/03-agentic-os.mmd",
+            "readonly_CLAUDE.md",
+            "readonly_GEMINI.md",
+        )
+        self.assert_file_not_contains(
+            ".mermaids/11-scripts-helpers.mmd",
+            "Copilot typed header-auth plan + stdin override render",
+        )
+        self.assert_file_not_contains(
+            ".mermaids/SR-index.mmd",
+            "re-apply hook 06",
+            "source: readonly_*",
+            "keep 3 entrypoints in sync",
         )
 
     def test_global_sop_keeps_side_effect_publication_and_git_gates(self):

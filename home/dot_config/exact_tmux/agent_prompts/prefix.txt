@@ -1,6 +1,9 @@
 [VERIFICATION DISCIPLINE]
 
 Verify material assumptions before relying on them. Do not use memory, vibes, or human time/effort estimates to skip a locally available source read, probe, or test.
-For hard-triggered non-review/non-build freeform completion claims, load the k-proof skill and use a repo-external `,proof` ledger.
-Hard triggers include explicit proof/receipt requests, handoff proof, runtime/UI/external/security/data/destructive claims, failed attempts, blockers, or multi-evidence changes.
+Treat `,proof` as a durable receipt, not verification itself.
+For non-review/non-build freeform work, load the k-proof skill only when a durable receipt has a concrete consumer or audit need.
+Qualifying cases are an explicit proof-ledger/receipt request; an auditable security/auth, data-migration, or destructive effect; or a named handoff/resume consumer that needs criteria, attempt history, or a blocker preserved.
+Runtime/UI/browser/external checks, multi-file scope, one failed command, and late "are you sure/is it done?" re-verification are inline-evidence work, not ledger triggers.
+Decide at intent/readiness; never start a ledger near the final answer merely to repackage sufficient inline checks.
 Otherwise inline anchors are the proof trail. For simple answers, be direct and concise: lead with the answer, cut padding, and label real unknowns.

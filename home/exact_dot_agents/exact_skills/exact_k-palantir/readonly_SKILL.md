@@ -15,7 +15,7 @@ Run `,palantir --help` (and `<sub> --help`) rather than trusting memory; the CLI
 ## Model
 
 - **Legion**: tmux session `legion-<id>` + `,w` worktree + manifest under `$PALANTIR_STATE_HOME/legions/<id>/` (default `~/.local/state/palantir`).
-- **Stages**: `summon → triage → [diagnose → investigate →] implement → adversarial_review → verify → cleared_for_human`, with `holding` (parked on a question or exhausted budget) and `banished` (terminal).
+- **Stages**: `summon → triage → [diagnose → investigate →] implement → adversarial_review → verify → cleared_for_human`, with `holding` (parked on a question, triage rejection, or exhausted budget) and `banished` (terminal).
 - **Deterministic supervisor** (one per legion, fcntl-locked): consumes role handshake files (`stages/<stage>.result.json`), drives the machine, durably drains transition actions and coordinator wakes, machine-runs `verify` (criteria checks from the worktree, exit 0 = green), and records per-stage changed-path provenance.
 - **Roles are interactive agent panes** (per-role harness/model in `~/.config/palantir/config.toml`);
   `adversarial-review` must resolve to a different model family than `implement` — summon refuses otherwise.
@@ -33,17 +33,18 @@ Run `,palantir --help` (and `<sub> --help`) rather than trusting memory; the CLI
 
 ## Commands
 
-| Move                      | Command                                                                          |
-| ------------------------- | -------------------------------------------------------------------------------- |
-| Summon a legion           | `,palantir summon "<goal>" [--criteria '<json>'] [--base <ref>] [--no-worktree]` |
-| Farsee every legion       | `,palantir` (Textual stone; also tmux prefix+A) / `,palantir farsee`             |
-| Behold one legion         | `,palantir behold <id>`                                                          |
-| Answer a holding question | `,palantir answer <id> "<msg>"`                                                  |
-| Send word to a role       | `,palantir send-word <id> [--window <stage>] "<msg>"`                            |
-| Put criteria to trial     | `,palantir trial <id>`                                                           |
-| Grant landed work         | `,palantir grant <id>` (persists closeout packet + tears down)                   |
-| Banish a legion           | `,palantir banish <id> [--force]` (fail-closed)                                  |
-| Keep supervisor watch     | `,palantir keep-watch <id> [--stop]`                                             |
+| Move                       | Command                                                                          |
+| -------------------------- | -------------------------------------------------------------------------------- |
+| Summon a legion            | `,palantir summon "<goal>" [--criteria '<json>'] [--base <ref>] [--no-worktree]` |
+| Open the dashboard         | `,palantir` (Textual stone; also tmux prefix+A)                                  |
+| Survey every legion        | `,palantir farsee`                                                               |
+| Behold one legion          | `,palantir behold <id>`                                                          |
+| Answer a holding condition | `,palantir answer <id> "<msg>"`                                                  |
+| Send word to a role        | `,palantir send-word <id> [--window <stage>] "<msg>"`                            |
+| Put criteria to trial      | `,palantir trial <id>`                                                           |
+| Grant landed work          | `,palantir grant <id>` (persists closeout packet + tears down)                   |
+| Banish a legion            | `,palantir banish <id> [--force]` (fail-closed)                                  |
+| Keep supervisor watch      | `,palantir keep-watch <id> [--stop]`                                             |
 
 ## Handshake contract (for agents running inside a legion)
 

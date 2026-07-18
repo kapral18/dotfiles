@@ -56,7 +56,7 @@ Current file map:
 - `45-agent-prompt-wrap.conf`: agent prompt-wrap bindings (`Alt-Enter`, `prefix` + `W`)
 - `90-plugins.conf`: TPM plugin declarations + plugin options
 - `99-tpm.conf`: TPM init (plugin bootstrap; Palantír status wiring follows)
-- `45-palantir.conf`: `prefix+A` dashboard popup and `,palantir statusline` wiring (`P:n H:n C:n`)
+- `45-palantir.conf`: `prefix+A` dashboard popup and `,palantir statusline` wiring (`P/H/C` lifecycle, `T` transport, `O` teardown, `U` unrouted memory, `E` corrupt state)
 
 ## Cheat sheet (this config)
 

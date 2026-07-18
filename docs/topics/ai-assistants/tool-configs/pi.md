@@ -59,7 +59,7 @@ Automatic context compaction triggers when context exceeds `contextWindow − re
 
 Pi loads packages from yarn global `node_modules` paths to avoid Pi-managed npm update prompts; `pi install` is not used. Each package's `package.json` `pi` field declares its extension/skills/prompts, which Pi auto-loads.
 
-`pi-skills` exposes `~/.agents/skills/` to Pi; see [Cross-agent memory](../knowledge-base/cross-agent-memory.md). `@earendil-works/pi-tui` stays yarn-managed but is not loaded as a Pi extension package.
+`pi-skills` exposes `~/.agents/skills/` to Pi; see [Runtime recall wiring](../knowledge-base/cross-agent-memory.md). `@earendil-works/pi-tui` stays yarn-managed but is not loaded as a Pi extension package.
 
 The `subagent` tool supports review, scout, and parallel audits while keeping the parent session's token use bounded on long tasks. It is fully local: no network/telemetry beyond the model calls the child agents make.
 

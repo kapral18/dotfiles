@@ -35,7 +35,7 @@ The main CLI surface:
 | `,palantir farsee`                                                               | Survey every legion.                                                                                                                      |
 | `,palantir behold <id>`                                                          | Behold manifest-derived status for one legion.                                                                                            |
 | `,palantir send-word <id> [--window W] "<msg>"`                                  | Send structured word into a legion window.                                                                                                |
-| `,palantir answer <id> "<msg>"`                                                  | Answer a parked question and let the supervisor continue.                                                                                 |
+| `,palantir answer <id> "<msg>"`                                                  | Answer a parked condition and resume its stored stage.                                                                                    |
 | `,palantir grant <id>`                                                           | Grant the human clearance gate, persist closeout memory instructions, tear down the legion, and print the packet path + routing reminder. |
 | `,palantir routed <id>`                                                          | Mark a closed legion's memory-routing packet as executed, clearing the `U:n` attention flag.                                              |
 | `,palantir banish <id> [--force]`                                                | Banish and tear down a legion. On a lock-only debris dir with no manifest, it removes the dir fail-closed.                                |
@@ -49,6 +49,8 @@ The main CLI surface:
 Palantír is strictly opt-in in ordinary chat sessions (SOP §8.0). The agent must not propose, summon, or hand work to a legion unless the user explicitly asks to use Palantír in the current conversation.
 
 After that request, the agent presents the goal packet, acceptance criteria, and base ref and waits for explicit approval. `--no-worktree` requires the user to have asked for it by name.
+
+Direct human CLI use may omit `--criteria`, but `verify` then runs zero acceptance commands. A goal-only summon remains supervised and adversarially reviewed; it does not provide machine-tested acceptance.
 
 ## Stage machine
 
@@ -177,7 +179,7 @@ The detail panel shows stage age, supervisor/coordinator transport health, queue
 
 The dashboard uses Textual's built-in `catppuccin-frappe` theme (Textual ≥ 8), matching the tmux `@catppuccin_flavor 'frappe'` theme the rest of the terminal ecosystem runs.
 
-Stages carry semantic color and a single-width Nerd Font glyph: `holding` in warning yellow (question circle), `cleared_for_human` in success green (check circle), `banished`/`corrupt` in error red (ban circle / warning triangle). Fully green criteria render in success green, and detail-panel transport errors, blockers, and holding questions use the same theme roles.
+Stages carry semantic color and a single-width Nerd Font glyph: `holding` in warning yellow (question circle), `cleared_for_human` in success green (check circle), `banished`/`corrupt` in error red (ban circle / warning triangle). Fully green criteria render in success green, and detail-panel transport errors, blockers, and holding conditions use the same theme roles.
 
 Color emoji are deliberately avoided because they ignore theming and their double-width cells drift tmux table alignment.
 

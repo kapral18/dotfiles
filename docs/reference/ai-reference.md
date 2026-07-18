@@ -17,7 +17,7 @@ See [The Agentic Operating System](../topics/ai-assistants/index.md).
 | Shared assistant hooks        | [`home/exact_dot_agents/exact_hooks/`](../../home/exact_dot_agents/exact_hooks/)   |
 | Cursor CLI hooks              | [`home/dot_cursor/hooks.json`](../../home/dot_cursor/hooks.json)                   |
 
-`~/CLAUDE.md`, `~/.gemini/GEMINI.md`, `~/.cursor/AGENTS.md`, and `~/.config/opencode/AGENTS.md` are symlinks to `~/AGENTS.md`.
+`~/CLAUDE.md`, `~/.gemini/GEMINI.md`, `~/.cursor/AGENTS.md`, `~/.codex/AGENTS.md`, `~/.config/opencode/AGENTS.md`, and `~/.copilot/copilot-instructions.md` are symlinks to `~/AGENTS.md`.
 
 ## Harness configs
 
@@ -35,7 +35,7 @@ Per-tool config sources and the `run_onchange_after_07-*` hooks that render them
 
 ## Model registry
 
-Single source of truth for LiteLLM/Azure model definitions; per-tool model configs are generated from it. See [Model registry & routing](../topics/ai-assistants/model-registry.md).
+Single source of truth for LiteLLM/Azure definitions, curated Cursor models, Pi extras, provider routes, and review-lane model policy; per-tool model configs and the generated mirror derive from it. See [Model registry & routing](../topics/ai-assistants/model-registry.md).
 
 | Component               | Source path                                                                            |
 | ----------------------- | -------------------------------------------------------------------------------------- |

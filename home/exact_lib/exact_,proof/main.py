@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 APP = "agent-proof"
 STATE_FILE = "proof.json"
 EVIDENCE_DIR = "evidence"
@@ -661,11 +661,25 @@ def command_start(args: argparse.Namespace) -> int:
             if finalized(state):
                 return refuse_finalized()
             if not args.force:
-                if goal and not state.get("goal"):
+                existing_goal = str(state.get("goal") or "").strip()
+                if goal and existing_goal and goal != existing_goal:
+                    print(
+                        f"Proof topic {ctx['topic']!r} already belongs to a different goal.\n"
+                        f"Existing goal: {existing_goal}\n"
+                        f"Requested goal: {goal}\n"
+                        "Use a new --topic, or pass --force only when intentionally replacing this ledger.",
+                        file=sys.stderr,
+                    )
+                    return 2
+                if goal and not existing_goal:
                     state["goal"] = goal
                     save_state(ctx, state)
                 print(f"Proof ledger already exists: {path}")
                 return 0
+            for managed_dir in (EVIDENCE_DIR, REPORTS_DIR):
+                managed_path = Path(ctx["proof_dir"]) / managed_dir
+                if managed_path.exists():
+                    shutil.rmtree(managed_path)
         state = default_state(ctx, goal=goal)
         save_state(ctx, state)
     print(f"Proof ledger: {path}")
@@ -1107,7 +1121,11 @@ def command_check(args: argparse.Namespace) -> int:
         sys.stdout.write("\n")
     elif evaluation["allowed"]:
         print("PASS")
-        print("Completion proof recorded: every criterion has reviewed current evidence.")
+        print("Evidence gate passes: every criterion has reviewed current evidence.")
+        if finalized(state):
+            print("Receipt sealed: yes")
+        else:
+            print("Receipt sealed: no (run `,proof finalize` before handoff)")
     else:
         print("FAIL")
         for issue in evaluation["issues"]:
@@ -1148,6 +1166,13 @@ def status_payload(ctx: dict[str, str], state: dict[str, Any], evaluation: dict[
 def command_report(args: argparse.Namespace) -> int:
     ctx = context(args)
     state = load_state(ctx, create=False)
+    if not finalized(state):
+        print("Cannot report: proof ledger is not finalized. Run `,proof finalize` first.", file=sys.stderr)
+        return 1
+    issue = seal_issue(state)
+    if issue:
+        print(f"Cannot report: {issue}.", file=sys.stderr)
+        return 1
     evaluation = evaluate(ctx, state)
     report_path = (
         Path(ctx["proof_dir"]) / REPORTS_DIR / f"report-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')}.md"
@@ -1302,7 +1327,7 @@ def command_show(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog=",proof", description="Repo-external proof ledger for agent completion claims."
+        prog=",proof", description="Repo-external durable receipts for qualifying freeform work."
     )
     parser.add_argument("--version", action="version", version=f",proof {VERSION}")
     parser.add_argument("--workspace", help="Workspace path. Defaults to the current git root or cwd.")
@@ -1318,7 +1343,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Proof topic. Defaults to AGENT_PROOF_TOPIC, PROOF_TOPIC, or current.",
     )
 
-    start = subcommands.add_parser("start", parents=[parent], help="Create or reuse the current proof ledger.")
+    start = subcommands.add_parser("start", parents=[parent], help="Create or confirm the current proof ledger.")
     start.add_argument("--force", action="store_true", help="Replace the current proof ledger.")
     start.add_argument("goal", nargs="*", help="Goal text.")
     start.set_defaults(func=command_start)
@@ -1396,7 +1421,7 @@ def build_parser() -> argparse.ArgumentParser:
     check.add_argument("--json", action="store_true", help="Print JSON gate output.")
     check.set_defaults(func=command_check)
 
-    subcommands.add_parser("report", parents=[parent], help="Write a Markdown proof report.").set_defaults(
+    subcommands.add_parser("report", parents=[parent], help="Write a finalized Markdown proof receipt.").set_defaults(
         func=command_report
     )
     return parser

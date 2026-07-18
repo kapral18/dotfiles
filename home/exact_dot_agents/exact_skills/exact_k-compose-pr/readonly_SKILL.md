@@ -49,7 +49,10 @@ First actions:
      For UI behavior bugs whose key assertion is non-visual (clipboard, keyboard, focus, network), still capture human-visible trigger/result states and record the non-visual assertion in the Test Plan.
      Captured proof includes folder/filename mapping and folder-open/provided status; explicit skips include user approval evidence.
    - `test_plan`: issue reproduction/expected/actual coverage, commands run, and observed results.
-     When the effort carries a `,proof` ledger, check `,proof list`, run `,proof --topic <topic> report` for the matching topic, and fold the receipt into the evidence/Test Plan section.
+     When the effort already carries a receipt-gated `,proof` ledger, select it with `,proof list --json`, then inspect `,proof --topic <topic> status --json`.
+     Consume it as completion proof only when `allowed` is true, `finalized_at` is set, and `seal_status` is `ok`.
+     Run `,proof --topic <topic> report` and fold that receipt into the evidence/Test Plan section.
+     If the matching ledger is failing, unfinalized, or has a broken seal, do not present it as proof or finish it retroactively during PR composition; use independently verified Test Plan evidence and surface the incomplete or blocked receipt.
      Quote criteria, evidence IDs, and verdicts instead of pasting raw logs; never include artifacts that could carry secrets.
    - `metadata`: proposed labels/assignees/milestone/projects, source skill/rationale, and `status: none | not_applicable | approved_to_apply | applied | deferred | pending_approval`.
      If metadata is proposed but not approved for application, the packet status is `pending_approval` unless the user explicitly defers it.

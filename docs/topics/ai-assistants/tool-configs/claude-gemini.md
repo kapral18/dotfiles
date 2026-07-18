@@ -22,7 +22,7 @@ Claude profile behavior:
 
 | Area                  | Behavior                                                                         |
 | --------------------- | -------------------------------------------------------------------------------- |
-| Extended thinking     | enabled in both profiles                                                         |
+| Thinking and effort   | `alwaysThinkingEnabled: false`; `effortLevel: xhigh` persisted in both profiles  |
 | Dangerous-mode prompt | skipped in both profiles                                                         |
 | Work auth             | native Claude enterprise auth; no `apiKeyHelper` / `ANTHROPIC_BASE_URL` override |
 | MCP storage           | `~/.claude.json` top-level `mcpServers`                                          |
@@ -34,13 +34,13 @@ Interactive fish/bash/zsh sessions leave `claude` native. MCP wiring is handled 
 
 **LetsFG** is intentionally not exposed through the shared MCP registry.
 
-| Decision               | Reason                                                                                                                                    |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| not in MCP registry    | flight tools are irrelevant to most sessions                                                                                              |
-| skill-loaded on demand | agents load [`letsfg/SKILL.md`](../../../../home/exact_dot_agents/exact_skills/exact_k-letsfg/readonly_SKILL.md) only for travel searches |
-| local CLI              | `letsfg` uv tool comes from [`home/readonly_dot_default-uv-tools.tmpl`](../../../../home/readonly_dot_default-uv-tools.tmpl)              |
-| normal agent mode      | passes `LETSFG_BROWSERS=0` per invocation                                                                                                 |
-| browser connectors     | explicit opt-in                                                                                                                           |
+| Decision               | Reason                                                                                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| not in MCP registry    | flight tools are irrelevant to most sessions                                                                                                |
+| skill-loaded on demand | agents load [`k-letsfg/SKILL.md`](../../../../home/exact_dot_agents/exact_skills/exact_k-letsfg/readonly_SKILL.md) only for travel searches |
+| local CLI              | `letsfg` uv tool comes from [`home/readonly_dot_default-uv-tools.tmpl`](../../../../home/readonly_dot_default-uv-tools.tmpl)                |
+| normal agent mode      | passes `LETSFG_BROWSERS=0` per invocation                                                                                                   |
+| browser connectors     | explicit opt-in                                                                                                                             |
 
 Playwriter remains a fallback for rendered UI checks or booking-adjacent flows that need explicit user confirmation.
 

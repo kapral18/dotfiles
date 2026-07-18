@@ -4,29 +4,38 @@ title: Agent Memory
 
 # Agent Memory
 
-Two memory systems serve different jobs: short-lived topic context keeps the current session coherent, while the durable KB carries reusable lessons across agents and runs.
+Two memory layers serve different jobs: **topic context** resumes current work, while the **durable KB** carries reusable lessons across sessions.
 
-| Layer              | Lifetime                | Storage                   | Main controls             | Details                                     |
-| ------------------ | ----------------------- | ------------------------- | ------------------------- | ------------------------------------------- |
-| Hook memory        | current workspace/topic | `/tmp/specs/...`          | `,agent-memory`           | [Hook memory](hook-memory.md)               |
-| Durable KB         | cross-session           | `~/.local/share/ai-kb/`   | `,ai-kb`                  | [AI knowledge base](ai-kb.md)               |
-| Cross-agent recall | runtime-specific        | shared KB + hooks/plugins | skill-driven search/write | [Cross-agent memory](cross-agent-memory.md) |
+| Need                        | System         | Surface                               | Details                                        |
+| --------------------------- | -------------- | ------------------------------------- | ---------------------------------------------- |
+| Resume the current work     | Hook memory    | `/tmp/specs/...` + `,agent-memory`    | [Hook memory](hook-memory.md)                  |
+| Reuse a verified lesson     | Durable KB     | `~/.local/share/ai-kb/` + `,ai-kb`    | [AI knowledge base](ai-kb.md)                  |
+| Understand automatic recall | Runtime wiring | shared KB + harness hooks and plugins | [Runtime recall wiring](cross-agent-memory.md) |
 
-## Read path
+## Quickstart
 
-1. Start with [Hook memory](hook-memory.md) to see how `/tmp/specs` rehydrates active work.
-2. Continue to [AI knowledge base](ai-kb.md) for capsule schema, search, embeddings, and durable learning.
-3. Finish with [Cross-agent memory](cross-agent-memory.md) for Cursor, Pi, Claude, Gemini, OpenCode, Codex, Copilot, and Palantír routing rules.
+```bash
+# Session topic (ephemeral — not durable lessons)
+,agent-memory status --session-id <id>
+,agent-memory select <topic> --session-id <id>          # bind session to bucket
+,agent-memory note gotcha "..." --ref scripts/foo.py:42   # task-scoped; harvest later
 
-## Operating boundary
+# Durable KB (verified reusable insights only)
+,ai-kb search "<actual task query>" --limit 5 --json
+,ai-kb remember --title "..." --body "..." --kind gotcha --scope project \
+                --workspace "$(pwd)" --source "path:line" --confidence 0.9 --domain chezmoi
+,ai-kb harvest --session-id <id>                          # read-only candidates from worklog
+```
 
-| System                      | Use for                                    | Do not use for          |
-| --------------------------- | ------------------------------------------ | ----------------------- |
-| `,agent-memory`             | session topic, hook worklog/evidence trace | durable lessons         |
-| `,ai-kb`                    | verified reusable facts, gotchas, recipes  | transient scratch notes |
-| SCSI / semantic-code-search | repository code search                     | agent memory            |
+## Boundaries
 
-Completion-proof ledgers are separate from memory: `,proof` stores criteria, evidence artifacts, reviews, and blockers under repo-external agent-proof state when a hard trigger requires a receipt.
+| System                      | Use for                               | Not for           |
+| --------------------------- | ------------------------------------- | ----------------- |
+| `,agent-memory`             | session topic, worklog/evidence trace | durable lessons   |
+| `,ai-kb`                    | verified facts, gotchas, recipes      | transient scratch |
+| SCSI / semantic-code-search | repository code                       | agent memory      |
+
+Proof receipts are separate: `,proof` tracks criteria, evidence, assessments, and blockers in repo-external agent-proof state only for a requested, auditable, or named-handoff receipt.
 
 ## Related
 

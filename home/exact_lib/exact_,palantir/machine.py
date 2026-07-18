@@ -10,7 +10,7 @@ Stages (one legion = one effort = one tmux session):
 
     summon -> triage -> [diagnose -> investigate ->] implement
            -> adversarial_review -> verify -> cleared_for_human
-    holding    (parked for a human decision; question or exhausted budget)
+    holding    (parked for a human decision; question, triage rejection, or exhausted budget)
     banished   (terminal)
 
 Invariants:
@@ -233,7 +233,7 @@ def transition(manifest: dict, event: dict) -> "tuple[dict, list[dict]]":
 
     if kind == "question":
         if stage == "holding":
-            raise MachineError("legion is already holding; answer the parked question instead")
+            raise MachineError("legion is already holding; answer the parked condition instead")
         manifest["stage"] = "holding"
         manifest["holding"] = {
             "reason": "question",

@@ -1,5 +1,5 @@
 # Canonical MCP server registry.
-# Single source of truth for Cursor, Claude Code, Gemini, and Pi MCP configs.
+# Single source of truth for every generated harness MCP config.
 #
 # Each entry:
 #   name        – server key in the mcpServers object

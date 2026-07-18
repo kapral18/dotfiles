@@ -19,7 +19,7 @@ complete -c ,palantir -n "not __fish_seen_subcommand_from $__palantir_subcommand
 complete -c ,palantir -n "not __fish_seen_subcommand_from $__palantir_subcommands" -a farsee -d 'Survey all legions (stage, attention, criteria)'
 complete -c ,palantir -n "not __fish_seen_subcommand_from $__palantir_subcommands" -a behold -d 'Behold one legion: stage + supervisor liveness'
 complete -c ,palantir -n "not __fish_seen_subcommand_from $__palantir_subcommands" -a send-word -d 'Send composer-guarded word to a role window'
-complete -c ,palantir -n "not __fish_seen_subcommand_from $__palantir_subcommands" -a answer -d "Answer a holding legion's question"
+complete -c ,palantir -n "not __fish_seen_subcommand_from $__palantir_subcommands" -a answer -d 'Answer a holding condition and resume its stored stage'
 complete -c ,palantir -n "not __fish_seen_subcommand_from $__palantir_subcommands" -a grant -d 'Grant a cleared_for_human legion'
 complete -c ,palantir -n "not __fish_seen_subcommand_from $__palantir_subcommands" -a routed -d "Mark a closed legion's memory packet as routed"
 complete -c ,palantir -n "not __fish_seen_subcommand_from $__palantir_subcommands" -a banish -d 'Banish a legion (fail-closed; --force overrides)'

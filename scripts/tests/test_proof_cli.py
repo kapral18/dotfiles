@@ -99,6 +99,42 @@ class TestProofCli(unittest.TestCase):
             self.assertFalse((cwd / ".proof").exists())
             self.assertFalse((cwd / ".fable-verify").exists())
 
+    def test_when_existing_topic_has_a_different_goal_start_refuses_without_mutating(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as proof_tmp:
+            cwd = Path(tmp)
+            proof_home = Path(proof_tmp)
+            self.run_proof(cwd, proof_home, "--topic", "shared", "start", "First goal", check=True)
+            proof_dir = Path(self.run_proof(cwd, proof_home, "--topic", "shared", "path", check=True).stdout.strip())
+            state_file = proof_dir / "proof.json"
+            before = state_file.read_bytes()
+
+            result = self.run_proof(cwd, proof_home, "--topic", "shared", "start", "Different goal")
+
+            self.assertEqual(2, result.returncode)
+            self.assertIn("already belongs to a different goal", result.stderr)
+            self.assertIn("Use a new --topic", result.stderr)
+            self.assertEqual(before, state_file.read_bytes())
+
+    def test_when_force_replaces_a_reopened_ledger_it_removes_old_artifacts_and_reports(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as proof_tmp:
+            cwd = Path(tmp)
+            proof_home = Path(proof_tmp)
+            proof_dir = self.complete_test_proof(cwd, proof_home)
+            self.run_proof(cwd, proof_home, "finalize", check=True)
+            self.run_proof(cwd, proof_home, "report", check=True)
+            self.run_proof(cwd, proof_home, "reopen", check=True)
+            self.assertTrue(any((proof_dir / "evidence").iterdir()))
+            self.assertTrue(any((proof_dir / "reports").iterdir()))
+
+            self.run_proof(cwd, proof_home, "start", "--force", "Replacement goal", check=True)
+
+            state = json.loads((proof_dir / "proof.json").read_text(encoding="utf-8"))
+            self.assertEqual("Replacement goal", state["goal"])
+            self.assertEqual([], state["criteria"])
+            self.assertEqual([], state["evidence"])
+            self.assertEqual([], list((proof_dir / "evidence").iterdir()))
+            self.assertEqual([], list((proof_dir / "reports").iterdir()))
+
     def test_when_proof_home_is_inside_workspace_it_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             cwd = Path(tmp)
@@ -172,12 +208,16 @@ class TestProofCli(unittest.TestCase):
                 check=True,
             )
 
-            result = self.run_proof(cwd, proof_home, "check", "--json")
-            payload = json.loads(result.stdout)
+            result = self.run_proof(cwd, proof_home, "check")
+            json_result = self.run_proof(cwd, proof_home, "check", "--json")
+            payload = json.loads(json_result.stdout)
 
             self.assertEqual(result.returncode, 0)
+            self.assertIn("Evidence gate passes", result.stdout)
+            self.assertIn("Receipt sealed: no", result.stdout)
             self.assertTrue(payload["allowed"])
             self.assertEqual("PROOF RECORDED", payload["verdict"])
+            self.assertIsNone(payload["finalized_at"])
 
     def test_when_evidence_is_unreviewed_check_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as proof_tmp:
@@ -458,8 +498,8 @@ class TestProofCli(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as proof_tmp:
             cwd = Path(tmp)
             proof_home = Path(proof_tmp)
-            self.add_test_criterion(cwd, proof_home)
-            proof_dir = Path(self.run_proof(cwd, proof_home, "path", check=True).stdout.strip())
+            proof_dir = self.complete_test_proof(cwd, proof_home)
+            self.run_proof(cwd, proof_home, "finalize", check=True)
 
             first = self.run_proof(cwd, proof_home, "report", check=True).stdout.splitlines()[0]
             second = self.run_proof(cwd, proof_home, "report", check=True).stdout.splitlines()[0]
@@ -468,12 +508,24 @@ class TestProofCli(unittest.TestCase):
             reports = sorted((proof_dir / "reports").iterdir())
             self.assertEqual(len(reports), 2, f"Expected two report files, got {[p.name for p in reports]}")
 
+    def test_when_report_runs_before_finalize_it_refuses_without_writing_a_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as proof_tmp:
+            cwd = Path(tmp)
+            proof_home = Path(proof_tmp)
+            proof_dir = self.complete_test_proof(cwd, proof_home)
+
+            result = self.run_proof(cwd, proof_home, "report")
+
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn("proof ledger is not finalized", result.stderr)
+            self.assertEqual([], list((proof_dir / "reports").iterdir()))
+
     def test_when_status_or_check_runs_it_does_not_bump_updated_at(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as proof_tmp:
             cwd = Path(tmp)
             proof_home = Path(proof_tmp)
-            self.add_test_criterion(cwd, proof_home)
-            proof_dir = Path(self.run_proof(cwd, proof_home, "path", check=True).stdout.strip())
+            proof_dir = self.complete_test_proof(cwd, proof_home)
+            self.run_proof(cwd, proof_home, "finalize", check=True)
             state_file = proof_dir / "proof.json"
             baseline = json.loads(state_file.read_text())["updated_at"]
 
@@ -611,6 +663,7 @@ class TestProofCli(unittest.TestCase):
             state["criteria"][0]["description"] = "Tampered after finalize"
             (proof_dir / "proof.json").write_text(json.dumps(state, indent=2, sort_keys=True) + "\n", encoding="utf-8")
             broken = self.run_proof(cwd, proof_home, "check")
+            broken_report = self.run_proof(cwd, proof_home, "report")
             reopened = self.run_proof(cwd, proof_home, "reopen", check=True)
             reopened_state = json.loads((proof_dir / "proof.json").read_text(encoding="utf-8"))
             mutable = self.run_proof(
@@ -628,6 +681,8 @@ class TestProofCli(unittest.TestCase):
             self.assertIn("finalized", mutation.stderr)
             self.assertNotEqual(broken.returncode, 0)
             self.assertIn("seal broken", broken.stdout)
+            self.assertNotEqual(broken_report.returncode, 0)
+            self.assertIn("seal broken", broken_report.stderr)
             self.assertIn("Reopened proof ledger", reopened.stdout)
             self.assertEqual(0, mutable.returncode)
             self.assertNotIn("seal", reopened_state)
@@ -646,6 +701,19 @@ class TestProofCli(unittest.TestCase):
             self.assertIn("proof check fails", result.stderr)
             state = json.loads((proof_dir / "proof.json").read_text(encoding="utf-8"))
             self.assertNotIn("seal", state)
+
+    def test_when_failing_ledger_is_intentionally_sealed_report_preserves_the_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as proof_tmp:
+            cwd = Path(tmp)
+            proof_home = Path(proof_tmp)
+            self.add_test_criterion(cwd, proof_home)
+
+            self.run_proof(cwd, proof_home, "finalize", "--allow-failing", check=True)
+            report = self.run_proof(cwd, proof_home, "report", check=True)
+            report_path = Path(report.stdout.splitlines()[0])
+
+            self.assertIn("Final verdict: NOT RECORDED", report.stdout)
+            self.assertIn("Final verdict: NOT RECORDED", report_path.read_text(encoding="utf-8"))
 
     def test_when_evidence_provenance_is_legacy_it_is_backfilled_and_reported(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as proof_tmp:
@@ -712,6 +780,7 @@ class TestProofCli(unittest.TestCase):
             check = self.run_proof(cwd, proof_home, "check", "--json", check=True)
             show = self.run_proof(cwd, proof_home, "show", "EV-001", check=True)
             status = self.run_proof(cwd, proof_home, "status", check=True)
+            self.run_proof(cwd, proof_home, "finalize", check=True)
             report = self.run_proof(cwd, proof_home, "report", check=True)
             report_path = Path(report.stdout.splitlines()[0])
 

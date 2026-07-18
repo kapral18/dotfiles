@@ -29,10 +29,11 @@ Plain `Enter` is never touched. Press it when the wrapped prompt is ready to sen
 
 The same `prefix.txt` is also injected automatically:
 
-| Consumer                            | Injection path                                          |
-| ----------------------------------- | ------------------------------------------------------- |
-| `cursor-agent`, `claude`, `copilot` | `session_context.py` at `SessionStart`                  |
-| `pi`                                | `ai-kb-recall.ts` at first `before_agent_start`         |
-| custom subagents                    | rendered as the first body/developer-instructions block |
+| Consumer                 | Injection path                                              |
+| ------------------------ | ----------------------------------------------------------- |
+| `cursor-agent`, `claude` | command hook runs `session_context.py` at `SessionStart`    |
+| `copilot`                | agent-memory SDK `onSessionStart` runs `session_context.py` |
+| `pi`                     | `ai-kb-recall.ts` at first `before_agent_start`             |
+| custom subagents         | rendered as the first body/developer-instructions block     |
 
 `Alt-Enter` remains the manual way to prepend the prefix to a specific prompt as a direct user message.

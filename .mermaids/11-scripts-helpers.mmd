@@ -21,7 +21,7 @@ flowchart TB
 
     subgraph MCPGEN["MCP config generation (hook 07-generate-mcp-configs)"]
         MR["mcp_registry.py (load mcp_servers.yaml, filter;<br/>default shell resolution + no-exec/override modes)"]:::mcp
-        GMC["generate_mcp_configs.py (per-tool MCP json;<br/>Copilot typed header-auth plan + stdin override render)"]:::mcp
+        GMC["generate_mcp_configs.py (per-tool MCP json;<br/>Copilot/Codex tokenBridge entries → local ,mcp-token stdio bridges)"]:::mcp
         MCM["merge_claude_mcp.py (surgical mcpServers in ~/.claude.json)"]:::mcp
         ICT["inject_mcp_into_codex_toml.py (hook 07-merge-codex)"]:::mcp
         IOJ["inject_mcp_into_opencode_jsonc.py (hook 07-merge-opencode)"]:::mcp

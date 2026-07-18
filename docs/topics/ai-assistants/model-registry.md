@@ -105,6 +105,8 @@ This matches `,copilot-litellm`, whose working tool-call payload omits `reasonin
 
 It is generated from the registry, harness configs, and the versioned installed-harness evidence in [`scripts/model_capabilities.v1.json`](../../../scripts/model_capabilities.v1.json).
 
+`observed_at` is the verification date for that evidence snapshot, not a claim about the currently installed binaries. Refresh the identities and their catalog/capability claims together before advancing it; a newer `--version` alone is not equivalent evidence.
+
 Every harness and provider route has three catalogs:
 
 | Catalog       | Meaning                                                                                               |

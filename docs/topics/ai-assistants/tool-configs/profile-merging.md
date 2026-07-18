@@ -59,7 +59,7 @@ The row carries:
 - consumer
 - local version probe
 
-The runtime `,copilot` preflight also refreshes only the existing `copilot-mcp` row when its locked render changes the semantic `mcp-config.json` target. A no-op launch does not touch either file.
+Copilot MCP rendering is apply-time only: `run_onchange_after_07-merge-copilot-config.sh.tmpl` owns the target and its `copilot-mcp` ledger row. Runtime `,copilot` does not render config or change the ledger; hosted authentication rotates inside the per-request stdio bridges.
 
 ### `,doctor ai`
 
