@@ -119,7 +119,7 @@ The runtime root is user-owned `0700`, sockets and start locks are `0600`, start
 
 One resident `BAAI/bge-small-en-v1.5` worker measured about 320 MiB RSS; two coexisting deployment generations measured about 625 MiB total. The worker exits after 300 inactive seconds and removes only the socket inode it created, bounding that temporary overlap without cross-generation eviction.
 
-Claude, Gemini, Codex, OpenCode, Copilot, and Pi request a bounded, fail-open resident warm-up when `AI_AGENT_DEPTH` is `balanced` or `deep`; `fast` suppresses warm-up because it has no per-turn retrieval. Cursor does not start the worker because it has no per-turn retrieval adapter.
+Claude, Gemini, Codex, Cursor, OpenCode, Copilot, and Pi request a bounded, fail-open resident warm-up when `AI_AGENT_DEPTH` is `balanced` or `deep`; `fast` suppresses warm-up because it has no per-turn retrieval.
 
 Every per-turn search sets `AI_EMBED_CONNECT_ONLY=1`: it never starts, restarts, or replaces a worker, and an unavailable resident simply suppresses that recall block without interrupting the user request. Default/manual CLI use plus `remember` and `reembed` work stay on the existing one-shot runner. The exact depth budgets and provenance are documented in [Cross-agent memory](cross-agent-memory.md).
 
@@ -151,7 +151,7 @@ The public command runs directly from `~/lib/,ai-kb/main.py` and does not discov
 | `recurring_error`  | The same digit-normalized error signature seen `--min-repeats`+ times                            | `gotcha`                                                        |
 | `repeated_command` | The same clean command run `--min-repeats`+ times (noise programs excluded)                      | `recipe`                                                        |
 
-The command lenses can only see shell activity, so they are structurally biased toward failures. `structured_note` is the deliberate capture surface for the decisions, ideas, and constraints that leave no failing command behind. Note kinds are the capsule kinds (minus `doc`) plus task-scoped `question`, so harvested candidates keep their kind verbatim.
+The command lenses can only see shell activity, so they are structurally biased toward failures. `structured_note` is the deliberate capture surface for the decisions, ideas, and constraints that leave no failing command behind. Note kinds are the capsule kinds (minus `doc`) plus task-scoped `question` and `decision`; harvested candidates keep their kind verbatim except `decision`, which becomes a `fact` capsule candidate.
 
 Before reading candidates, harvest flushes the bounded session-keyed worklog queue for the target spec directory. It exits nonzero when a queue record remains pending or an active error ledger exists, so asynchronous bookkeeping cannot be mistaken for a complete harvest.
 

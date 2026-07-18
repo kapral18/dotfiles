@@ -11,7 +11,7 @@ same discipline, plus acceptance criteria a machine can check.
 
 The SOP owns the surrounding gates: the Intent Loop mechanics (§3.0), compatibility intent (§2.0), and external/runtime truth (§2.1/§2.2).
 This skill owns the packet contract and the acceptance-criteria discipline.
-Consumers: `/build` (in-session hands-free implementation), `,palantir summon --criteria` (detached legion), `~/.agents/skills/k-compose-issue/SKILL.md` (GitHub issue text + publication packet), and the `k-review` skill's plan mode (adversarial review of the packet itself).
+Consumers: `/k-build` (in-session hands-free implementation), `,palantir summon --criteria` (detached legion), `~/.agents/skills/k-compose-issue/SKILL.md` (GitHub issue text + publication packet), and the `k-review` skill's plan mode (adversarial review of the packet itself).
 
 ## Do not use
 
@@ -68,7 +68,7 @@ Consumers: `/build` (in-session hands-free implementation), `,palantir summon --
 
 5. **Hand off.** The packet is text only — this skill implements nothing and publishes nothing.
    Name the consumer moves and stop for the user's pick:
-   - `/build` — hands-free implementation in this session, gated on this packet
+   - `/k-build` — hands-free implementation in this session, gated on this packet
    - `,palantir summon "<goal>" --criteria '<json>'` — detached legion; criteria come from the packet's checks
    - `k-compose-issue` / `k-compose-pr` — publishable text from the packet (that skill owns sanitization and handoff packet)
    - `k-review` skill plan mode — adversarial review of the packet before any implementation, for high-stakes changes
@@ -85,7 +85,7 @@ In scope:
 
 - <...>
 
-Out of scope (binding for /build):
+Out of scope (binding for /k-build):
 
 - <...>
 

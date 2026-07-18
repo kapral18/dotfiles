@@ -42,5 +42,5 @@ Give the exact symptom text and how you triggered it. The `k-diagnosing-bugs` sk
 ## Pivots from here
 
 - "No correct seam" or the post-mortem answer to _what would have prevented this?_ is architectural → say `hand this to codebase-design` — that's the built-in escalation.
-- The fix deserves scrutiny → `/light-review` ([review flow](review-your-changes.md)).
+- The fix deserves scrutiny → `/k-light-review` ([review flow](review-your-changes.md)).
 - The bug should be recorded, not fixed now → `draft an issue from the repro`.

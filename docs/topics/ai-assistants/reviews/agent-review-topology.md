@@ -5,22 +5,23 @@ title: Agent-review topology
 
 # Multi-agent topology
 
-`/agent-review` is the orchestration entrypoint. Cursor, Copilot, Claude, Codex, and Gemini bridge it through their native isolation mechanisms where available.
+`/k-agent-review` is the orchestration entrypoint. Cursor, Copilot, Claude, Codex, and Gemini bridge it through their native isolation mechanisms where available.
 
 The flow is a phased investigation pipeline, not a loose collection of agents. The key invariant is phase ownership: workers investigate; the controller judges and performs any gated side effect.
 
-![Agent-review phase order: route, blocking PR necessity, parallel registry-model angle lanes, cross-family adversarial verification, live UI, findings audit, controller judgment, and gated action](../assets/agent-review-flow.svg)
+![Agent-review phase order: route, blocking PR necessity, parallel registry-model angle lanes, lane merge/dedup, cross-family adversarial verification concurrent with live UI, findings audit, controller judgment, and gated action](../assets/agent-review-flow.svg)
 
 ## Mental model: phase ownership
 
 | Phase                 | Starts only after                                                     | Owns                                                                                          | Stops the flow when                                                                    |
 | --------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Route + scope         | user invokes review flow                                              | mode, authorship, target packet, constraints, intent dependencies                             | authorship/scope/intent dependency cannot be resolved safely                           |
+| Route + scope         | user invokes review flow                                              | mode, authorship, target packet, constraints, intent dependencies, context-pack packet        | authorship/scope/intent dependency cannot be resolved safely                           |
 | PR necessity / intent | route says PR + other/unknown author, or local changes need PR intent | whether the PR is worth implementation review and whether intent artifacts are current        | PR is blocked, superseded, unclear, not needed, incorrectly open, or intent is unclear |
-| Reviewer fan-out      | PR necessity/intent greenlight or non-applicable skip                 | read-only candidate findings and `verification_needed`                                        | every launched lane finishes; individual blockers become controller input              |
-| Adversarial verify    | every reviewer lane returned and merged candidates exist              | per-candidate confirmed/refuted/undecidable verdicts on a cross-family model                  | merged candidate set is empty (phase reports skipped)                                  |
-| Live UI               | adversarial verification returns and UI/runtime is relevant           | UI reality, required screenshot handoff for feedback candidates, target/runtime/data blockers | target packet, runtime, data, or required screenshots are blocked                      |
-| Findings audit        | reviewer + verifier + live UI outputs exist                           | actionability, duplication, gaps, overengineering, verification-ledger audit                  | audit finds no actionable surviving finding or reports blocker                         |
+| Reviewer fan-out      | PR necessity/intent greenlight or non-applicable skip                 | read-only candidate findings and `verification_needed` from the shared context pack when used | every launched lane finishes; individual blockers become controller input              |
+| Lane merge/dedup      | every reviewer lane returned                                          | one merged candidate set and UI/runtime applicability trigger                                 | merged candidate set is empty (later phases report skipped)                            |
+| Adversarial verify    | lane merge/dedup returns candidates                                   | per-candidate confirmed/refuted/undecidable verdicts on a cross-family model                  | verifier cannot complete or produces unusable evidence                                 |
+| Live UI               | lane merge/dedup returns and UI/runtime is relevant                   | UI reality, required screenshot handoff for feedback candidates, target/runtime/data blockers | target packet, runtime, data, or required screenshots are blocked                      |
+| Findings audit        | verifier + live UI outputs exist or are explicitly skipped            | actionability, duplication, gaps, overengineering, verification-ledger audit                  | audit finds no actionable surviving finding or reports blocker                         |
 | Controller judgment   | all investigation phases are complete                                 | keep/drop, serial verification ledger, PR pending-review reconciliation                       | unsupported or conflicting payload would be produced                                   |
 | Act                   | judgment is complete and blocking ledger items are resolved           | fixes, drafts, gated posting                                                                  | human-visible gate or quality gate blocks                                              |
 | Post-act verification | the working tree was edited this flow                                 | quality gates, fix-diff four-dimension stage, carried `verification_needed`                   | setup itself fails or the toolchain is genuinely unavailable                           |
@@ -46,6 +47,8 @@ Review greenlight is separate from merge readiness. Unknown mergeability or fail
 ### Reviewer fan-out
 
 After any required PR necessity greenlight, the controller builds an **angle roster** from scope-level evidence: changed paths and diff stats, never code reading. It launches two to five read-only reviewer lanes in parallel, all on the **registry lane model** for the harness.
+
+Before that fan-out, the controller materializes a read-only context pack for PR metadata, comments, reviews, checks, diff, and changed-file/base snapshots, then includes the pack root and expected `head_sha` in every worker scope packet. Workers consume it through `context-pack.md`, verify `manifest.head_sha`, and report `pack_used`, `pack_stale`, or `pack_missing`.
 
 Correctness/regressions always runs. Additional implicated angles include tests, types/API, security, performance, deletion-safety, state-machine, product flow, observability, and simplicity.
 
@@ -77,18 +80,18 @@ On single-family harnesses (Claude, Codex, Gemini), the phase runs on the lane m
 
 ### Live UI and evidence handoff
 
-`live-ui-review` checks applicable UI/runtime candidates with Playwriter against a controller-supplied target packet. Any UI-related finding that may become review feedback needs screenshot handoff evidence, unless the worker returns a valid blocker or non-applicability result.
+`live-ui-review` starts after lane merge/dedup, concurrently with adversarial verification when UI/runtime is relevant, and checks applicable candidates with Playwriter against a controller-supplied target packet. Any UI-related finding that may become review feedback needs screenshot handoff evidence, unless the worker returns a valid blocker or non-applicability result.
 
 Live UI can return:
 
-| Result              | Meaning                                                                                                                                                                                               |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| comparison evidence | UI/runtime finding is verified                                                                                                                                                                        |
-| screenshot handoff  | required focused local screenshots under `/tmp` for UI findings that may become review feedback; the enclosing folder is opened/provided and the handoff is reported separately for manual attachment |
-| `Not applicable`    | target does not apply to the introduced surface                                                                                                                                                       |
-| blocker             | target, branch, runtime, data setup, or screenshot capture is blocked                                                                                                                                 |
+| Result              | Meaning                                                                                                                                                                                                |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| comparison evidence | UI/runtime finding is verified                                                                                                                                                                         |
+| screenshot handoff  | required focused local screenshots under `/tmp` for UI findings that may become review feedback; the enclosing folder is opened/provided and the handoff includes md5s, dimensions, and self-QA status |
+| `Not applicable`    | target does not apply to the introduced surface                                                                                                                                                        |
+| blocker             | target, branch, runtime, data setup, or screenshot capture is blocked                                                                                                                                  |
 
-For UI-facing PR findings, the controller keeps image paths out of GitHub review bodies and reports a separate `UI evidence attachments:` handoff. That handoff includes local paths, descriptions, target branch/URL, suggested comment placement, and folder-open/provided status.
+For UI-facing PR findings, the controller keeps image paths out of GitHub review bodies and reports a separate `UI evidence attachments:` handoff. That handoff includes local paths, descriptions, target branch/URL, suggested comment placement, folder-open/provided status, md5s, dimensions, and whether the controller viewed the image before human-visible use. If adversarial verification refutes a candidate, any matching UI evidence is discarded as moot.
 
 If a kept UI finding lacks screenshots without a valid blocker or non-applicability result, the controller reruns live UI or blocks instead of drafting text-only feedback.
 
@@ -147,7 +150,7 @@ The only profile-equivalent runtime model pass-through is generic fresh-eyes, wh
 
 For verified `elastic/kibana` targets, `k-elastic-domain` supplies Kibana targets, mapped Elasticsearch endpoints, Dev Tools Console fallback, and runtime-blocker rules. Generic review contracts do not inline those targets.
 
-`live-ui-review`/`ui-proof` verify the local browser only. Windows/VirtualBox coverage lives in the separate manual `k-live-ui-windows` skill, never auto-triggered.
+`live-ui-review`/`k-ui-proof` verify the local browser only. Windows/VirtualBox coverage lives in the separate manual `k-live-ui-windows` skill, never auto-triggered.
 
 When `k-live-ui-windows` is used against a Kibana target, `k-elastic-domain` rewrites `kbn_url`/`es_url` to the guest-reachable NAT gateway address and folds `server.host=0.0.0.0` into the required Kibana flags. The manual skill owns only the CDP connection mechanics, never Kibana-specific hostnames or flags.
 
@@ -160,18 +163,19 @@ When `k-live-ui-windows` is used against a Kibana target, `k-elastic-domain` rew
 Controller responsibilities:
 
 - route and scope.
+- materialize a read-only context pack and pass its path plus expected `head_sha` in worker packets.
 - run PR necessity gate when required.
 - fan out after greenlight.
-- run live UI.
+- run live UI concurrently with adversarial verification after lane merge/dedup when UI/runtime is relevant.
 - audit findings inline or by delegation.
 - aggregate, filter, and reconcile pending-review context.
 - act after normal gates: apply fixes when `fix_authorized: yes` (own, assigned, adopted PR, or local-changes self flow), otherwise draft only.
 - run post-act verification whenever the working tree was edited: quality gates plus the fix-diff four-dimension stage.
-- restart from the earliest invalidated phase when the user supplies new context that changes target, intent, or accepted behavior; if leaving `/agent-review`, state that downgrade before editing.
+- restart from the earliest invalidated phase when the user supplies new context that changes target, intent, or accepted behavior; if leaving `/k-agent-review`, state that downgrade before editing.
 - block completion while decisive verification-ledger items, intent dependencies, pending-review reconciliation blockers, required live-UI triggers without valid blockers, or post-act verification items remain unresolved.
 
 Worker profiles are read-only, concurrency-safe, and recursion-safe. They load review methodology in isolated contexts and return candidate findings plus `verification_needed`.
 
 Each delegated phase emits a `Worker selection:` line before launch with the phase, profile, task agent type, model, named/fallback invocation, and fallback reason. This keeps markdown session exports auditable even when the runtime hides raw task arguments.
 
-When a phase needs a follow-up turn in an existing worker, the controller sends the follow-up and waits for the completion notification instead of repeatedly polling with long `read_agent` waits. The phase remains blocking, but the controller does not burn time on status checks.
+When a phase needs a follow-up turn in an existing worker, the controller sends the follow-up and waits for the completion notification instead of repeatedly polling with long `read_agent` waits. The phase remains blocking, but the controller does not burn time on status checks. Delivery acknowledgement is not progress; request-too-large failures and empty turns mark the worker dead, so the controller respawns a fresh worker or takes over inline. Follow-ups are capped, and worker-reported numbers are self-reports until checked against independent evidence.

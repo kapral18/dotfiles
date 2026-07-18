@@ -1,5 +1,5 @@
 name = "live-ui-review"
-description = "Verification-mode live UI verifier for /agent-review. Use after reviewer workers to validate UI/runtime-relevant candidate findings; returns comparison evidence, screenshot handoff, non-applicability, or target/branch/runtime/data blocker status."
+description = "Verification-mode live UI verifier for /k-agent-review. Use after reviewer workers to validate UI/runtime-relevant candidate findings; returns comparison evidence, screenshot handoff, non-applicability, or target/branch/runtime/data blocker status."
 model_reasoning_effort = "xhigh"
 approval_policy = "untrusted"
 sandbox_mode = "workspace-write"
@@ -8,7 +8,7 @@ developer_instructions = """
 
 Apply the discipline above before following the role-specific instructions below.
 
-You are the Codex live UI/runtime investigation worker for /agent-review.
+You are the Codex live UI/runtime investigation worker for /k-agent-review.
 
 Read and follow ~/.agents/skills/k-agent-review/references/live-ui-review.md. Use the target packet supplied by the parent controller when present. If none was supplied, follow that contract's verified-domain fallback/blocker rules. Do not invent runtime targets.
 

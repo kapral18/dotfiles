@@ -12,7 +12,7 @@ Only propose it if it is genuinely compelling. It is fine to refrain when you ha
 
 Use when:
 
-- the user asks `/improve-branch`
+- the user asks `/k-improve-branch`
 - the user asks for the single smartest, most impactful, or highest-leverage addition to the current branch, PR, or issue
 - the target is the branch/PR/issue goal, not only the uncommitted local diff, the whole codebase, or a targeted part
 

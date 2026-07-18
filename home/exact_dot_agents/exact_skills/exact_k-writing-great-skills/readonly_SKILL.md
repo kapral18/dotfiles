@@ -92,6 +92,10 @@ Hunt for restatements a leading word retires: "fast, deterministic, low-overhead
   A line loses relevance by never bearing on the task or by going stale.
 - **No-ops** — hunt sentence by sentence: does this line change behaviour versus the model's default?
   A line the model already obeys pays load to say nothing. Delete the whole sentence rather than trim words. Be aggressive.
+- **Hard size bound (references)** — keep every reference file under 20 KB (20480 bytes;
+  `make check` enforces this for `home/exact_dot_agents/` sources): the strictest harness view tool truncates larger files, so a "load this file" pointer to an oversized reference breaks mid-flow.
+  `SKILL.md` itself is delivered by skill loaders and exempt from the gate, but the same bound is a healthy sprawl signal for it too.
+  Approaching the bound is a sprawl signal — disclose sections behind pointers or split before hitting it, rather than trimming qualifiers to squeeze under.
 
 A weak leading word is a no-op (_be thorough_ when the agent is already thorough-ish);
 the fix is a stronger word (_relentless_), not a different technique.

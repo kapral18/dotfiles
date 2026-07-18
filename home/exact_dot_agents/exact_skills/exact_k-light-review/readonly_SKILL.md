@@ -13,7 +13,7 @@ Load `~/.agents/skills/k-review/references/judging_core.md` and apply its Covera
 
 Use when:
 
-- the user asks `/light-review`, or for a local/ad-hoc review of the current changes
+- the user asks `/k-light-review`, or for a local/ad-hoc review of the current changes
 - the change is **light-eligible** by the predicate below (self-authored, no PR, none of the escalation triggers)
 
 ## Light-Eligibility Predicate (Evaluate First)

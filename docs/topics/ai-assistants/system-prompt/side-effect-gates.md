@@ -9,14 +9,14 @@ The SOP separates local reasoning from actions that affect people, git history, 
 
 ## Mental model
 
-| Gate                      | Blocks until                                                                   |
-| ------------------------- | ------------------------------------------------------------------------------ |
-| Git commit                | explicit approval for the exact commit command                                 |
-| Git push                  | explicit push request; rejected pushes stop instead of auto-rebasing           |
-| CODEOWNERS                | affected paths are in the user's ownership or user approves crossing ownership |
-| Human-visible publication | exact payload and target are approved                                          |
-| Bot thread carve-out      | author is verified as a bot and flow was explicitly invoked                    |
-| GitHub mutation           | `k-github` skill is loaded and side-effect rules are followed                  |
+| Gate                      | Blocks until                                                                                                 |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Git commit                | explicit user request in the current conversation; content approval is not enough                            |
+| Git push                  | explicit push request; its described commit is authorized, and rejected pushes stop instead of auto-rebasing |
+| CODEOWNERS                | affected paths are in the user's ownership or user approves crossing ownership                               |
+| Human-visible publication | exact payload and target are approved                                                                        |
+| Bot thread carve-out      | author is verified as a bot and flow was explicitly invoked                                                  |
+| GitHub mutation           | `k-github` skill is loaded and side-effect rules are followed                                                |
 
 ## Using it
 

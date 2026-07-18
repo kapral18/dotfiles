@@ -90,7 +90,7 @@ Run readiness before any UI observation.
 - Prefer selector state, URL, title, and focused DOM/accessibility observations before snapshots or screenshots.
   Do not capture full page snapshots/screenshots unless they are needed to decide or explain the finding or proof under capture.
 - Capture concrete evidence: URLs, steps, observed state, uncertainty, and screenshots/paths when required by the caller or useful.
-- UI-related review findings that may become drafted feedback after `/agent-review` or `live-ui-review` need screenshot proof as supporting evidence.
+- UI-related review findings that may become drafted feedback after `/k-agent-review` or `live-ui-review` need screenshot proof as supporting evidence.
   Capture the smallest useful screenshot set unless a valid blocker or non-applicability result prevents it.
 - Observable UI blockers and uncertainty states should include screenshot proof when it materially explains the blocker;
   pre-navigation blockers must record why no screenshot exists.
@@ -100,11 +100,16 @@ Run readiness before any UI observation.
   Name the folder for what it captures (the finding, candidate, or acceptance criterion) so sibling sets stay separate and openable on their own.
   After storing a screenshot set, open each distinct enclosing folder for the user when the local environment supports it;
   otherwise report that the folder could not be opened and provide the folder path. Do not screenshot every navigation or duplicate state.
-- For each screenshot, record a handoff entry with its folder and file path, description, target classification (the runtime under verification, base, or both selected targets), exact URL, the linked candidate/finding or acceptance criterion, suggested placement, and `folder_opened_or_provided` status.
+- For each screenshot, record a handoff entry with its folder and file path, description, target classification (the runtime under verification, base, or both selected targets), exact URL, the linked candidate/finding or acceptance criterion, suggested placement, `folder_opened_or_provided` status, md5, and pixel dimensions.
   Include any fidelity note for mocks or partial setup. Preserve handoff files; cleanup applies to seeded runtime data and owned pages.
+- Before returning, self-verify every handoff artifact while the environment is still up: each file exists and is non-empty;
+  md5s are pairwise distinct across the handoff set; every capture supporting a finding includes enough surrounding UI to identify the screen, with a rough floor of 600px wide unless the finding is intrinsically about a tiny element, in which case capture both a context shot and the crop; transitions/fades are settled before capture, for example by verifying computed opacity is `1` or using a settled-state wait; and you have viewed/inspected each saved image and confirmed it shows what its caption claims.
+  If two claimed moments or states are genuinely pixel-identical, keep one file, merge the captions, and state that explicitly.
+  Re-capture immediately on any failure; after teardown, each artifact defect costs a full environment restart.
+- Numeric claims in your report, including timings and counts, must come from measured evidence such as file mtimes, logs, or explicit waits; never report numbers from impression.
+  The controller treats unmeasured numbers as unusable.
 - The screenshot handoff is for the controller/user only.
-  Never upload images or put local paths in GitHub review bodies/comments, and never add extra comments solely for image paths;
-  when screenshots belong in a PR body, the user attaches them.
+  Never upload images or put local paths in GitHub review bodies/comments from this worker, and never add extra comments solely for image paths; when screenshots belong in a PR body, the user attaches them, or the controller embeds them with explicit user approval via the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md`.
 - Bound observation to the focused flow that can verify the finding or acceptance criterion.
 - Do not wander outside that focused flow.
   After five UI actions for a single finding or criterion, continue only when the next action is specifically tied to it and still inside the selected local/dev safety boundary.

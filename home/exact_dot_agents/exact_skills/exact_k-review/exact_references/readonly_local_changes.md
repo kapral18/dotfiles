@@ -30,7 +30,7 @@ If authorship is `other` or `unknown`:
 
 ## Agent-Review Worker Override
 
-When this mode is loaded inside a `/agent-review` reviewer worker, `~/.agents/skills/k-agent-review/references/reviewer-worker.md` takes precedence over this file's fix directives.
+When this mode is loaded inside a `/k-agent-review` reviewer worker, `~/.agents/skills/k-agent-review/references/reviewer-worker.md` takes precedence over this file's fix directives.
 
 ## Core Principle: Verify and Fix (when `authorship: self`)
 

@@ -13,16 +13,16 @@ Ordinary freeform implementation does not have to enter this formal flow. For th
 
 ## The two artifacts (memory vs contract)
 
-| Artifact                           | Role                                                                                                                | Mutation rule                                                       |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `/tmp/specs/<pwd>/<topic>.txt`     | Conversation memory: what we currently believe the user wants. Hook-injected at session start.                      | Rewritten freely as the intent loop converges. Allowed to be wrong. |
-| `/tmp/specs/<pwd>/<topic>.spec.md` | Contract snapshot: what counts as done and how to prove it. Consumed by `/build` and `,palantir summon --criteria`. | Frozen at approval; changing it is a premise correction + re-gate.  |
+| Artifact                           | Role                                                                                                                  | Mutation rule                                                       |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `/tmp/specs/<pwd>/<topic>.txt`     | Conversation memory: what we currently believe the user wants. Hook-injected at session start.                        | Rewritten freely as the intent loop converges. Allowed to be wrong. |
+| `/tmp/specs/<pwd>/<topic>.spec.md` | Contract snapshot: what counts as done and how to prove it. Consumed by `/k-build` and `,palantir summon --criteria`. | Frozen at approval; changing it is a premise correction + re-gate.  |
 
 The intent spec remembers the discussion; the packet is a signed order.
 
 The packet is never a mechanical transform of the intent spec. Nothing enters it on the `.txt`'s word alone: every criterion is re-derived from evidence and its check is run once, observed red, before it may appear.
 
-After approval the flow is one-way. Palantír snapshots the criteria into the legion manifest, and `/build`'s ledger holds evidence, so later `.txt` drift cannot retro-poison in-flight work.
+After approval the flow is one-way. Palantír snapshots the criteria into the legion manifest, and `/k-build`'s ledger holds evidence, so later `.txt` drift cannot retro-poison in-flight work.
 
 The `k-spec` skill writes a `packet:` pointer line into `<topic>.txt` so session-start injection tells a fresh session the contract exists.
 
@@ -40,16 +40,16 @@ idea/issue
      empirical forks → prototype) → acceptance criteria with run-once RED checks
      → packet written + shown
         └─ [HUMAN GATE 1: approve packet]
-            ├─ /build ............ in-session hands-free implementation
+            ├─ /k-build ............ in-session hands-free implementation
             ├─ ,palantir summon ... detached legion, same criteria
             ├─ compose-issue ..... publishable issue text + publication packet
             └─ review (plan mode)  adversarial review of the packet itself
                 └─ [HUMAN GATE 2: read the report]
 ```
 
-Choose `/build` when the work benefits from the current session's context or blockers should surface in-conversation. Choose `,palantir summon "<goal>" --criteria '<json>'` when the same criteria should run in a detached legion.
+Choose `/k-build` when the work benefits from the current session's context or blockers should surface in-conversation. Choose `,palantir summon "<goal>" --criteria '<json>'` when the same criteria should run in a detached legion.
 
-## `/build` phase topology
+## `/k-build` phase topology
 
 | Phase                 | Owner                    | Gate                                                                                                                                                |
 | --------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -78,7 +78,7 @@ Claude runs the lane degraded on the session model with refutation framing, repo
 
 ## Live-UI proof (phase 5)
 
-When any acceptance criterion's evidence is visual — a `judgment:` criterion naming a screenshot/visual comparison, or an in-scope UI-facing change with a stated visual goal — `/build` runs the [`k-ui-proof`](../../../home/exact_dot_agents/exact_skills/exact_k-ui-proof/readonly_SKILL.md) skill.
+When any acceptance criterion's evidence is visual — a `judgment:` criterion naming a screenshot/visual comparison, or an in-scope UI-facing change with a stated visual goal — `/k-build` runs the [`k-ui-proof`](../../../home/exact_dot_agents/exact_skills/exact_k-ui-proof/readonly_SKILL.md) skill.
 
 It is the creation-side sibling of the review flow's `live-ui-review`: same runtime machinery, opposite direction. `live-ui-review` compares PR/head against base to find regressions; `k-ui-proof` verifies the **built** runtime head-only against its **intended visual** and captures the screenshot set that proves it.
 
@@ -86,7 +86,7 @@ Both share one mode-neutral contract — [`agent-review/references/live-ui-runti
 
 Each mode file adds only its oracle, comparison model, and return shape.
 
-`k-ui-proof` runs **inline** in `/build`, which already holds Playwriter and local/dev mutation permissions, so it needs no isolated subagent profile.
+`k-ui-proof` runs **inline** in `/k-build`, which already holds Playwriter and local/dev mutation permissions, so it needs no isolated subagent profile.
 
 It returns a per-criterion `met` / `unmet` / `blocked` verdict. The controller sets the ledger's `judgment-met`/`judgment-unmet` row from it; an `unmet` returns to phase 3 like a red step.
 
@@ -102,7 +102,7 @@ It is never auto-triggered by either mode. Load it by hand only when the user ex
 
 The criteria must already be red-proven by the spec flow; Palantír does not turn unchecked prose into a completion gate.
 
-The machine-check floor holds in both forms. Palantír's `verify` stage executes every criterion command and only a zero exit is green; `/build` re-runs checks inside its own verification phase and blocks its completion gate on red rows.
+The machine-check floor holds in both forms. Palantír's `verify` stage executes every criterion command and only a zero exit is green; `/k-build` re-runs checks inside its own verification phase and blocks its completion gate on red rows.
 
 A verify failure sends bounded evidence back to `implement`, retries up to the configured budget, and then parks the legion in `holding` for a human answer or sent word.
 

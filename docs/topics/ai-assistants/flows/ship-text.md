@@ -38,7 +38,7 @@ Fixable comments get fixed in code; the rest get drafted replies, shown to you p
 ## Present a PR before review
 
 ```text
-/present-pr
+/k-present-pr
 ```
 
 Builds a self-contained HTML walkthrough of the PR (what changed, in what order to read it, which files are load-bearing vs mechanical) that you can hand to reviewers. It verifies its own output renders (browser-checked, zero console errors) before showing you. Nothing is posted anywhere.

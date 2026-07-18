@@ -72,7 +72,7 @@ The "Loads contract" column is the `k-agent-review/references/<role>.md` file th
 | `findings-auditor`                        | `findings-auditor`                     | Non-trivial findings or named fix-diff audit                                            |
 | `live-ui-review`                          | `live-ui-review`                       | Verification-only live UI reviewer; screenshot handoff required for feedback candidates |
 | `post-review`                             | `post-review`                          | Four-dimension hygiene audit of a review's fix diff                                     |
-| `criteria-verifier`                       | `k-build/references/criteria-verifier` | `/build` refutation lane over the criteria ledger + scope audit                         |
+| `criteria-verifier`                       | `k-build/references/criteria-verifier` | `/k-build` refutation lane over the criteria ledger + scope audit                       |
 | `change-auditor`                          | `change-auditor`                       | Proportional-depth audit of a self-authored changeset                                   |
 | `researcher`                              | `researcher`                           | Clone and inspect external GitHub source                                                |
 | `code-searcher`                           | `code-searcher`                        | SCSI semantic investigation / base-branch context                                       |
@@ -96,7 +96,7 @@ Not every harness ships every profile:
 - Pi carries `review-controller`.
 - Codex and Gemini ship only worker/verifier/auditor lanes, so the controller role stays in the interactive session.
 
-The `/build` flow's `criteria-verifier` profile follows the same shim pattern with its contract under `k-build/references/criteria-verifier.md`, using the same `agent_review_models` verifier model.
+The `/k-build` flow's `criteria-verifier` profile follows the same shim pattern with its contract under `k-build/references/criteria-verifier.md`, using the same `agent_review_models` verifier model.
 
 Claude carries no profile for `criteria-verifier`. This follows the same convention as `adversarial-verifier`: the lane runs degraded on the session model there.
 
@@ -109,7 +109,7 @@ Workers never edit files, post comments, resolve threads, or decide final action
 ## Design notes
 
 - Profile bodies start with `prefix.txt`, then instruct the child to load the wrapped skill or runtime contract.
-- Cursor/Copilot `k-agent-review` profiles load only the `/agent-review` skill.
+- Cursor/Copilot `k-agent-review` profiles load only the `/k-agent-review` skill.
 - Reviewer/auditor/live profiles load the runtime contracts, and reviewer workers load shared `k-review` methodology inside child contexts.
 - Cursor profiles are real runtime shims, not dead files: Cursor loads `.cursor/agents`, and its internal Task protocol has a custom subagent-name field.
 - Whether the controller can address those profiles depends on the active model-facing Task schema.

@@ -64,6 +64,9 @@ Reply mechanics (in addition to everything above):
 
 - Reply directly; do not quote the whole message.
   If you must reference a fragment, quote only the minimum needed (one short blockquote), then reply. Avoid email-style interleaved quoting.
+- Replying to a reviewer's finding on the user's work: acknowledge, state what changed (link the fix commit), name the verification done, ask for re-review.
+  Do not explain the reviewer's own domain or how the system they flagged works back at them — they found the issue;
+  skip the mechanism lecture unless they ask for it.
 - Match the existing register.
   For Slack or casual threads, do not write like a report: avoid phrases such as "I checked the history around the hypothesis" when "I had a quick look" or no reply would be more natural.
 

@@ -12,7 +12,7 @@ Only propose it if it is genuinely compelling. It is fine to refrain when you ha
 
 Use when:
 
-- the user asks `/improve-local`
+- the user asks `/k-improve-local`
 - the user asks for the single smartest, most impactful, or highest-leverage addition to the current local changes
 - the target is the uncommitted and/or staged diff, not the whole codebase, a targeted part, or long-running branch goal
 

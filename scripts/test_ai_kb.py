@@ -1725,6 +1725,21 @@ class TestWorklogHarvest(unittest.TestCase):
         assert "Refs: scripts/spec_mirror.py." in notes["principle"]["body"]
         assert notes["principle"]["count"] == 1
 
+    def test_decision_notes_harvest_as_fact_candidates(self):
+        """A `decision` note is deliberate capture too, but its capsule candidate kind is `fact`."""
+        import ai_kb
+
+        entries = [
+            self._entry(
+                event="note", note_kind="decision", text="ship the bridge behind the seam", refs="mcp_servers.yaml"
+            ),
+        ]
+        cands = [c for c in ai_kb.detect_candidates(entries, min_repeats=99) if c["detector"] == "structured_note"]
+        assert len(cands) == 1, cands
+        assert cands[0]["note_kind"] == "decision"
+        assert cands[0]["kind"] == "fact"
+        assert cands[0]["title"].startswith("decision: ship the bridge behind the seam")
+
     def test_question_notes_and_duplicates_are_not_candidates(self):
         import ai_kb
 

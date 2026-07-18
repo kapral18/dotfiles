@@ -11,7 +11,7 @@ Load when posting inline, file-level, reply, or PR-timeline comments outside the
 - Follow the relevant PR review mode for anchoring and comment placement:
   - `~/.agents/skills/k-review/references/pr_review.md`
   - `~/.agents/skills/k-review/references/pr_fix.md`
-- For UI-related comments, replies, or PR-level feedback drafted after `/agent-review` or `live-ui-review`, require screenshot handoff evidence outside the body or a valid blocker/non-applicability reason.
+- For UI-related comments, replies, or PR-level feedback drafted after `/k-agent-review` or `live-ui-review`, require screenshot handoff evidence outside the body or a valid blocker/non-applicability reason.
   Never put local screenshot paths in GitHub comment, reply, review, or PR-level bodies.
   Show folder-open/provided status in the approval/preflight handoff.
 
@@ -54,6 +54,19 @@ Notes:
 - zsh gotcha: avoid unquoted `?ref=...` in endpoints (it can trigger `no matches found`).
   Prefer: `gh api -X GET repos/OWNER/REPO/contents/PATH -F ref=main`
 - If you _are_ posting an anchored comment that requires `commit_id`, and GitHub rejects it as "commit_id is not part of the pull request", use the `commit_id` from the target review comment you're replying to.
+
+## Reply to a submitted review body (Quote reply)
+
+A submitted review's top-level body (`pullrequestreview-<id>`) has no API reply endpoint;
+`in_reply_to` works only for inline review comments. To respond to the review body itself:
+
+- Post a **new** PR timeline comment that opens with a markdown blockquote of the exact sentence(s) being answered, then the reply below the quote.
+  This is the shape GitHub's own **Quote reply** menu action produces; a plain timeline comment without the quote loses the thread context and reads as unrelated.
+- When quote fidelity matters or the user says "quote reply", drive the real UI action via `k-playwriter`:
+  open the review body's `Show options` menu -> `Quote reply`, which prefills the full quoted body; append the reply and post.
+- Never repurpose or edit an unrelated existing comment into a reply.
+- Wording per `~/.agents/skills/k-communication/SKILL.md` (reviewer-reply register):
+  acknowledge, link the fix commit, name the verification, ask for re-review.
 
 ## PR-level timeline comment (use sparingly)
 

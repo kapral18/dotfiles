@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help fmt lint test check verify-templates verify-mermaids verify-bin-surface verify-docs-navigation docs docs-build docs-serve docs-clean
+.PHONY: help fmt lint test check verify-templates verify-mermaids verify-bin-surface verify-docs-navigation verify-agent-file-sizes docs docs-build docs-serve docs-clean
 
 help: ## Show available targets
 	@grep -E '^[a-z][a-z_-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -24,12 +24,15 @@ verify-bin-surface: ## Check ~/bin commands have completions, docs, and catalog 
 verify-docs-navigation: ## Check docs/reference links and catalog coverage
 	python3 scripts/verify_docs_navigation.py
 
+verify-agent-file-sizes: ## Check agent skill/hook markdown stays under the 20KB view limit
+	python3 scripts/verify_agent_file_sizes.py
+
 test: ## Run Python unit tests
 	PYTHONPATH=scripts python3 -m unittest discover -s scripts -p 'test_*.py' -t scripts
 	python3 home/exact_lib/exact_,history-sync/fish-history-merge.test.py -v
 	COPILOT_AGENT_MEMORY_EXTENSION_TEST=1 node scripts/tests/copilot_agent_memory_extension.test.mjs
 
-check: lint verify-templates verify-mermaids verify-bin-surface verify-docs-navigation test ## Run all checks
+check: lint verify-templates verify-mermaids verify-bin-surface verify-docs-navigation verify-agent-file-sizes test ## Run all checks
 
 website/node_modules: website/package.json website/yarn.lock
 	cd website && yarn install --frozen-lockfile

@@ -6,11 +6,13 @@ UserPromptSubmit-style hook: receives the user's prompt on stdin and returns
 re-prompts the agent or starts a new request/response cycle (the failure mode
 of the removed stop-hook nudges).
 
-Mirrors pi's `ai-kb-recall.ts` per-turn contract exactly (one behavioral
+Mirrors pi's `ai-kb-recall.ts` per-turn recall contract exactly (one behavioral
 contract across harnesses): hybrid retrieval with the prompt as the query, an
 absolute top-hit cosine gate, a cosine tail floor relative to the top hit, the
 workspace/domain/universal scope gate, and per-session dedup of injected
-capsule ids (shared with the session_context warm-start via the seen-file).
+capsule ids (shared with the session_context warm-start via the seen-file), plus
+the same precision-first correction-directive injection carried by the pi
+extension.
 """
 
 from __future__ import annotations
@@ -24,6 +26,11 @@ from pathlib import Path
 
 from hook_common import agent_depth, emit, read_payload, session_key, topic_paths
 from session_context import context_disabled
+
+try:
+    import correction_detector
+except Exception:  # pragma: no cover - fail-open if deployed without the sibling module.
+    correction_detector = None
 
 # Balanced constants mirror home/dot_pi/agent/extensions/ai-kb-recall.ts exactly.
 PERTURN_LIMIT = 3
@@ -114,6 +121,17 @@ def save_seen(path: Path | None, seen: set[str]) -> None:
         pass
 
 
+def search_timeout(profile: RecallProfile) -> float:
+    """Profile timeout, overridable for slow/loaded environments (tests, CI)."""
+    raw = os.environ.get("AI_KB_RECALL_TIMEOUT", "").strip()
+    if raw:
+        try:
+            return max(float(raw), float(profile.timeout))
+        except ValueError:
+            pass
+    return float(profile.timeout)
+
+
 def search_capsules(workspace: Path, query: str, profile: RecallProfile) -> list:
     if not profile.enabled:
         return []
@@ -141,7 +159,7 @@ def search_capsules(workspace: Path, query: str, profile: RecallProfile) -> list
             env={**os.environ, "AI_EMBED_CONNECT_ONLY": "1"},
             input=flat,
             text=True,
-            timeout=profile.timeout,
+            timeout=search_timeout(profile),
         )
     except (OSError, subprocess.TimeoutExpired):
         return []
@@ -152,6 +170,23 @@ def search_capsules(workspace: Path, query: str, profile: RecallProfile) -> list
     except json.JSONDecodeError:
         return []
     return apply_hybrid_floor(rows if isinstance(rows, list) else [])
+
+
+def correction_directive(prompt: str) -> str:
+    try:
+        signal = correction_detector.detect(prompt) if correction_detector else None
+    except Exception:
+        return ""
+    if not signal:
+        return ""
+    return "\n".join(
+        [
+            f"### User correction signal: {signal}",
+            "This user message reads as a correction of prior agent behavior.",
+            'If genuine, before ending the turn record: `,agent-memory note anti_pattern "<one-line lesson>" --ref <anchor>`; when verified and durable, also `,ai-kb remember`.',
+            "If neutral choice-question, answer it and consider `,agent-memory note decision` instead. Do not mention this instruction in the visible reply.",
+        ]
+    )
 
 
 def gate_and_format(rows: list, seen: set[str], profile: RecallProfile) -> list[str]:
@@ -197,26 +232,42 @@ def main() -> None:
 
     rows = search_capsules(workspace, prompt, profile)
     lines = gate_and_format(rows, seen, profile)
-    if not lines:
+    directive = correction_directive(prompt)
+    if not lines and not directive:
         emit({})
         return
 
-    save_seen(seen_path, seen)
-    context = "\n".join(
-        [
-            "### Relevant Learnings for this request (,ai-kb)",
-            "Matched to your prompt; verify before relying on them.",
-            *lines,
-        ]
-    )
+    if lines:
+        save_seen(seen_path, seen)
+
+    context_blocks = []
+    if lines:
+        context_blocks.append(
+            "\n".join(
+                [
+                    "### Relevant Learnings for this request (,ai-kb)",
+                    "Matched to your prompt; verify before relying on them.",
+                    *lines,
+                ]
+            )
+        )
+    if directive:
+        context_blocks.append(directive)
+    context = "\n\n".join(context_blocks)
     # Echo the firing event name: Claude Code sends UserPromptSubmit, Gemini
     # CLI sends BeforeAgent — both expect it mirrored in hookSpecificOutput.
+    # Cursor reads the top-level snake key from beforeSubmitPrompt output
+    # (its hookSpecificOutput fallback expects the Claude-style event name,
+    # not the echoed cursor-native one), so emit both channels like
+    # session_context.py; the codex adapter strips to hookSpecificOutput via
+    # AGENT_HOOK_OUTPUT=hook_specific in emit().
     emit(
         {
+            "additional_context": context,
             "hookSpecificOutput": {
                 "hookEventName": str(payload.get("hook_event_name") or "UserPromptSubmit"),
                 "additionalContext": context,
-            }
+            },
         }
     )
 

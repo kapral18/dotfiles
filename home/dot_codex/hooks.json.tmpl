@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "{{ .chezmoi.homeDir }}/.agents/hooks/perturn_recall.py",
+            "command": "/bin/sh -c 'AGENT_HOOK_OUTPUT=hook_specific exec {{ .chezmoi.homeDir }}/.agents/hooks/perturn_recall.py'",
             "timeout": 10
           }
         ]

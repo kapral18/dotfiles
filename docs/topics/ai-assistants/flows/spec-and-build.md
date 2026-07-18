@@ -5,7 +5,7 @@ title: "Spec a feature, build it hands-free"
 
 # Spec a feature, then build it hands-free
 
-You have an idea ("add a `done` command to my CLI") and want the agent to implement it without babysitting, but with proof it worked. Two steps: `k-spec` turns the idea into a contract; `/build` implements it in-session, or `,palantir summon --criteria` runs it detached. You touch exactly two gates.
+You have an idea ("add a `done` command to my CLI") and want the agent to implement it without babysitting, but with proof it worked. Two steps: `k-spec` turns the idea into a contract; `/k-build` implements it in-session, or `,palantir summon --criteria` runs it detached. You touch exactly two gates.
 
 **Prerequisites:** a Claude Code (or Cursor/Copilot) session in your repo. Nothing else.
 
@@ -38,14 +38,14 @@ The `k-spec` skill fires on "develop a spec". The agent will now:
 The agent shows the full spec packet: goal, in/out of scope, criteria with red-proven checks, compatibility intent. This is your steering wheel — **read it like a contract**, because everything after runs unattended against it.
 
 - Wrong scope or missing criterion? Say so in plain words ("also cover the empty-list case") — the packet is revised and re-shown.
-- Good? Say `approved, /build it`.
+- Good? Say `approved, /k-build it`.
 
 ## Step 3 — hands-free build
 
 Type:
 
 ```text
-/build
+/k-build
 ```
 
 Then do something else. The agent plans, implements, runs each check as it goes, runs the repo's lint/tests, sends an adversarial verifier subagent to try to _disprove_ every criterion, and cleans up its own diff. It will **not** ask you anything unless it hits a genuine blocker or discovers the packet's premise was wrong (then it stops and returns to gate 1 — by design).

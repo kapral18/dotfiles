@@ -29,7 +29,8 @@ Use `,kbn-stack` from an `elastic/kibana` git worktree to start an isolated loca
 ,kbn-stack -K key=value
 ```
 
-`--detach` is the agent mode: it starts ES and Kibana in the background, waits until Kibana answers `/api/status`, records `ready: true`, marks `started_by: "agent"`, and returns.
+`--detach` is the agent mode: it starts ES and Kibana in the background, waits until Kibana answers `/api/status` and the port listener belongs to the spawned Kibana's process tree (a port-squatting orphan answering the probe is named and the stack is not marked ready), records `ready: true`, marks `started_by: "agent"`, and returns.
+Starts also fail fast when a foreign process already holds the slot's Kibana/ES ports, naming the owning pid to kill or stop first.
 
 `-K key=value` is repeatable and becomes `--key=value` for `yarn start`.
 Use it for runtime settings that the UI path requires, for example `-K xpack.index_management.dev.enableSemanticField=true`.

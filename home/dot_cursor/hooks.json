@@ -3,7 +3,13 @@
   "hooks": {
     "sessionStart": [
       {
-        "command": "$HOME/.agents/hooks/session_context.py",
+        "command": "AI_EMBED_WARM=1 $HOME/.agents/hooks/session_context.py",
+        "timeout": 10
+      }
+    ],
+    "beforeSubmitPrompt": [
+      {
+        "command": "$HOME/.agents/hooks/perturn_recall.py",
         "timeout": 10
       }
     ],

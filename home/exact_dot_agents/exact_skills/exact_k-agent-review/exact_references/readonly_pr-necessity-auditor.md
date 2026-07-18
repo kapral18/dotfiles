@@ -1,6 +1,6 @@
 # Agent Review PR Necessity Auditor Contract
 
-Shared contract for `/agent-review` runtime subagents. Load this file only for the matching worker role.
+Shared contract for `/k-agent-review` runtime subagents. Load this file only for the matching worker role.
 
 ## Role: PR necessity auditor
 
@@ -23,6 +23,7 @@ Load:
 - `~/.agents/skills/k-review/references/shared_rules.md`
 - `~/.agents/skills/k-review/references/pr_common.md`
 - the PR mode file named by the parent under `~/.agents/skills/k-review/references/`
+- When the scope packet names a context pack, load `~/.agents/skills/k-agent-review/references/context-pack.md` and consume the pack per that contract before any live PR fetch.
 
 Do not launch more subagents.
 

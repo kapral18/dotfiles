@@ -1,12 +1,12 @@
 ---
 name: agent-review
-description: Claude-native /agent-review controller for multi-agent review orchestration.
+description: Claude-native /k-agent-review controller for multi-agent review orchestration.
 model: inherit
 readonly: false
 tools: Read, Grep, Glob, Bash, Edit, Write, Task
 skills:
-  - agent-review
-  - review
+  - k-agent-review
+  - k-review
 ---
 
 {{ include "dot_config/exact_tmux/agent_prompts/prefix.txt" }}

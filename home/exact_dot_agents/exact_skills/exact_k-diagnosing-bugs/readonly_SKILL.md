@@ -115,6 +115,8 @@ Before declaring done:
 
 - Original repro no longer reproduces (re-run the Phase 1 loop).
 - Regression test passes (or absence of seam is documented).
+- Defect-class sweep: enumerate the class of defect the root cause implies, then sweep the codebase (and sibling repos when the class spans them) for other instances; account for each hit as fixed, out-of-scope (say where it goes), or clean.
+  A fix for instance N is not complete while unexamined siblings remain.
 - All `[DEBUG-...]` instrumentation removed (grep the prefix).
 - Throwaway prototypes deleted or clearly marked.
 - The correct hypothesis is stated in the commit / PR message so the next debugger learns.

@@ -1,6 +1,6 @@
 # Agent Review Adversarial Verifier Contract
 
-Cross-family refutation lane for `/agent-review`. Load this file only for the adversarial-verifier role.
+Cross-family refutation lane for `/k-agent-review`. Load this file only for the adversarial-verifier role.
 
 ## Role: Adversarial verifier
 
@@ -15,6 +15,7 @@ The parent controller supplies:
 
 Load `~/.agents/skills/k-review/references/judging_core.md` for the severity definitions, Truth Validation Framework, and Replacement/Migration Parity Gate classes.
 Load nothing else from the review tree; discovery is not your job.
+When the scope packet names a context pack, load `~/.agents/skills/k-agent-review/references/context-pack.md` and consume the pack per that contract before any live PR fetch.
 
 Per candidate, attempt refutation in this order and stop at the first decisive result:
 

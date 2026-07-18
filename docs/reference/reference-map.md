@@ -127,6 +127,7 @@ Helper scripts called by hooks and commands (stdlib-only by convention).
 | `verify_mermaids.py`                | Check `.mermaids/` file-census counts against the effective git file set (part of `make check`)                                 |
 | `verify_bin_surface.py`             | Check comma-command completions, docs tokens, catalog tokens, and library ownership                                             |
 | `verify_docs_navigation.py`         | Check `docs/reference/` links and implementation coverage catalog rows                                                          |
+| `verify_agent_file_sizes.py`        | Check agent skill reference markdown stays under the 20 KB harness view limit (`SKILL.md` exempt)                               |
 | `yaml_parser.py`                    | Minimal dependency-free YAML parser for project data files                                                                      |
 | `jsonc_dump.py`                     | JSONC serializer matching OpenCode's trailing-comma config style                                                                |
 | `mcp_registry.py`                   | Read/normalize the canonical MCP registry                                                                                       |

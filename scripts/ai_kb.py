@@ -2106,10 +2106,12 @@ def _evidence(entry: dict) -> dict:
 
 
 # Structured `,agent-memory note` kinds share the capsule taxonomy, so a
-# harvested note keeps its kind verbatim. `question` is intentionally not
-# harvestable: open questions are task-scoped spec context, not durable
-# memory candidates; `doc` is ingestion-only and cannot be noted.
-HARVESTABLE_NOTE_KINDS = frozenset(CAPSULE_KINDS) - {"doc"}
+# harvested note keeps its kind verbatim, with one mapping: a `decision` note
+# becomes a `fact` capsule candidate (what was decided and why is durable as a
+# fact once verified). `question` is intentionally not harvestable: open
+# questions are task-scoped spec context, not durable memory candidates;
+# `doc` is ingestion-only and cannot be noted.
+HARVESTABLE_NOTE_KINDS = (frozenset(CAPSULE_KINDS) - {"doc"}) | {"decision"}
 
 
 def detect_candidates(entries: list[dict], *, min_repeats: int = 2) -> list[dict]:
@@ -2151,7 +2153,7 @@ def detect_candidates(entries: list[dict], *, min_repeats: int = 2) -> list[dict
         candidates.append(
             {
                 "detector": "structured_note",
-                "kind": note_kind,
+                "kind": "fact" if note_kind == "decision" else note_kind,
                 "title": f"{note_kind}: {text}"[:120],
                 "body": body,
                 "count": 1,

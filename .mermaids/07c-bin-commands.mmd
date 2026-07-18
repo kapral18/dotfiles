@@ -33,7 +33,7 @@ flowchart TB
     end
 
     subgraph KBNC["Kibana dev"]
-        K[",kbn-stack (per-worktree ES+Kibana, snapshot|serverless, auto slot + dead-slot reclaim via ES/Kibana port liveness guarded by launcher/stack pid-alive checks so bootstrapping stacks are never reclaimed, -E/-K passthrough, started_by ownership + registry-safe/port-reclaiming stop)<br/>,jest-test-title-report"]:::sys
+        K[",kbn-stack (per-worktree ES+Kibana, snapshot|serverless, auto slot + dead-slot reclaim via ES/Kibana port liveness guarded by launcher/stack pid-alive checks so bootstrapping stacks are never reclaimed, pre-start port-squatter fail-fast naming the owning pid, detached ready gated on /api/status plus listener process-tree identity so an orphan serving stale code is never marked ready, -E/-K passthrough, started_by ownership + registry-safe/port-reclaiming stop)<br/>,jest-test-title-report"]:::sys
     end
 
     subgraph MEDIA["Media / misc utilities"]

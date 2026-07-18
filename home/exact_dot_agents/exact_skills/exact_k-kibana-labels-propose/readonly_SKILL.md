@@ -56,4 +56,6 @@ Common patterns (verify in repo):
   - `backport:skip` (default if no backport is needed) (no version tag if skipping)
   - `backport:all-open` (backport to all open minor versions) (no version tag)
   - `backport:version` + `vX.Y.Z` (backport to a specific version) (version tag required)
+  - eligibility follows change substance, not issue-type metadata: a fix for existing wrong behavior (bug/regression) is backportable to the open branches in `versions.json`; a change filling absent behavior (new coverage, enhancement) stays main-only (`backport:skip`) even when the linked issue is typed or labelled `bug`
+  - when the linked issue's type/labels contradict the change's substance, flag the mismatch and propose retyping the issue instead of inheriting its type for the backport decision
 - docs tags: `docs`

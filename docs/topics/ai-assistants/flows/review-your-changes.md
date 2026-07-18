@@ -9,10 +9,10 @@ Three rungs, same judging engine, increasing independence. Start at the lightest
 
 **Prerequisites:** a session in the repo with the changes (uncommitted, staged, a branch, or a PR number).
 
-## Rung 1 — `/light-review`: your own low-risk changes, fixed in place
+## Rung 1 — `/k-light-review`: your own low-risk changes, fixed in place
 
 ```text
-/light-review
+/k-light-review
 ```
 
 The agent walks your diff against the full coverage checklist (security, correctness, data-loss, perf, tests, docs), **fixes findings directly in the working tree**, runs the repo's lint/type/tests, then audits its own fixes with the four-dimension hygiene lens (redundancy, verbosity, semantic + logical duplication, gaps). Output: findings → what was fixed → gates run → anything remaining.
@@ -29,10 +29,10 @@ or for local work that needs base-branch context: `review my branch against main
 
 What you get that rung 1 doesn't: exhaustive PR context intake (every comment thread, linked issue, CI check — read in full, not previews), base-branch verification (what does `main` actually do today), and for stateful logic a disposable verification harness under `/tmp`. On your own PR it can apply fixes; on someone else's it drafts comments and **never posts without showing you the exact payload first** — publication is always human-gated.
 
-## Rung 3 — `/agent-review`: independent lanes + adversarial verification
+## Rung 3 — `/k-agent-review`: independent lanes + adversarial verification
 
 ```text
-/agent-review PR #4321
+/k-agent-review PR #4321
 ```
 
 The controller launches several reviewer subagents in parallel (each with a different focus — correctness, tests, security…), plus a blind "fresh eyes" lane that sees zero PR context, then sends every candidate finding to a **different-family model whose only job is to refute it**.

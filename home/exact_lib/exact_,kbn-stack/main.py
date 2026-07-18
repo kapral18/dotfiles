@@ -321,6 +321,89 @@ def pid_alive(pid: object) -> bool:
     return True
 
 
+def describe_pid(pid: int) -> str:
+    """Best-effort command line for ``pid`` (diagnostics only)."""
+    result = subprocess.run(
+        ["ps", "-o", "command=", "-p", str(pid)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return result.stdout.strip() or "unknown command"
+
+
+def pid_ancestors(pid: int, limit: int = 20) -> set[int]:
+    """Return the ancestor pids of ``pid`` via repeated ``ps -o ppid=`` walks."""
+    ancestors: set[int] = set()
+    current = pid
+    for _ in range(limit):
+        result = subprocess.run(
+            ["ps", "-o", "ppid=", "-p", str(current)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        try:
+            parent = int(result.stdout.strip())
+        except ValueError:
+            break
+        if parent <= 1 or parent in ancestors:
+            break
+        ancestors.add(parent)
+        current = parent
+    return ancestors
+
+
+def ensure_ports_free(cfg: dict) -> None:
+    """Fail fast when a foreign process already holds the slot's ports.
+
+    A leftover/orphaned stack (e.g. a Kibana whose registry entry was dropped)
+    keeps the port bound: the new Kibana then FATALs with "Port ... is already
+    in use" while the orphan keeps answering ``/api/status`` with stale code,
+    so the failure surfaces late and looks like a ready stack serving old
+    bundles. Name the owner up front instead of starting into that state.
+    """
+    conflicts: list[str] = []
+    for label, port in (("Kibana", cfg["kbn_port"]), ("Elasticsearch", cfg["es_http"])):
+        for pid in port_listener_pids(port):
+            conflicts.append(f"  {label} port {port}: pid {pid} ({describe_pid(pid)})")
+    if conflicts:
+        detail = "\n".join(conflicts)
+        fail(
+            f"slot {cfg['slot']} ports are already in use:\n{detail}\n"
+            "Stop that stack (,kbn-stack --stop from its worktree) or kill the pid, then rerun."
+        )
+
+
+def listener_identity_ok(port: int, owner_pid: int) -> tuple[bool, list[int]]:
+    """Check the ``port`` listener belongs to the process tree led by ``owner_pid``.
+
+    A 200 from ``/api/status`` alone does not prove the spawned Kibana is the
+    process answering: an orphan from another worktree can hold the port while
+    the spawned Kibana already FATALed on bind. Accept a listener in
+    ``owner_pid``'s process group (spawn uses ``start_new_session=True``) or
+    with ``owner_pid`` among its ancestors; anything else is a squatter.
+    Returns (ok, listener_pids).
+    """
+    listeners = port_listener_pids(port)
+    if not listeners:
+        return False, []
+    try:
+        owner_pgid = os.getpgid(owner_pid)
+    except (ProcessLookupError, PermissionError):
+        owner_pgid = None
+    for listener in listeners:
+        if listener == owner_pid or owner_pid in pid_ancestors(listener):
+            return True, listeners
+        if owner_pgid is not None:
+            try:
+                if os.getpgid(listener) == owner_pgid:
+                    return True, listeners
+            except (ProcessLookupError, PermissionError):
+                continue
+    return False, listeners
+
+
 def entry_has_live_processes(entry: dict) -> bool:
     """True when any process recorded for this stack is still running.
 
@@ -570,7 +653,7 @@ def start_kibana_on_trigger(
     """Wait for the ES setup trigger, ensure trial license, then launch Kibana.
 
     When Kibana is launched into a tmux pane, poll its /api/status afterwards and
-    flip the registry ``ready`` flag so an agent running ``/agent-review`` from the
+    flip the registry ``ready`` flag so an agent running ``/k-agent-review`` from the
     same worktree can discover the interactively-started stack. The poll runs in
     this background thread, so it never blocks the foreground ES log stream.
     """
@@ -673,14 +756,25 @@ def run_detached(
     print(f",kbn-stack: Kibana starting (pid {kbn_pid}) -> {kbn_logfile}", flush=True)
 
     ready = kibana_ready(cfg["kbn_url"], timeout=600)
+    identity_ok, squatters = (False, [])
+    if ready:
+        identity_ok, squatters = listener_identity_ok(cfg["kbn_port"], kbn_pid)
     registry[worktree]["es_pid"] = es_pid
     registry[worktree]["kbn_pid"] = kbn_pid
     registry[worktree]["kbn_log"] = str(kbn_logfile)
-    registry[worktree]["ready"] = ready
+    registry[worktree]["ready"] = ready and identity_ok
     save_registry(registry)
 
     if not ready:
         fail(f"Kibana did not answer /api/status within 600s (see {kbn_logfile})")
+    if not identity_ok:
+        detail = ", ".join(f"pid {pid} ({describe_pid(pid)})" for pid in squatters) or "no listener found"
+        fail(
+            f"Kibana answered /api/status on port {cfg['kbn_port']}, but the listener is not the Kibana"
+            f" spawned by this start (pid {kbn_pid}): {detail}.\n"
+            f"An orphan stack is squatting the port and serving stale code; the spawned Kibana likely"
+            f" FATALed on bind (see {kbn_logfile}). Kill the squatter, then rerun."
+        )
 
     print(
         f",kbn-stack: ready. Kibana -> {cfg['kbn_url']} (cookie {cfg['cookie_name']}), ES -> {cfg['es_url']}",
@@ -903,6 +997,7 @@ def main(argv: list[str]) -> int:
         slot = allocate_slot(registry, worktree, args.slot)
     cfg = derive(slot)
     cfg["slot"] = slot
+    ensure_ports_free(cfg)
 
     data_path = ES_DATA_ROOT / data_name
     logfile = Path(f"/tmp/es-slot{slot}.log")

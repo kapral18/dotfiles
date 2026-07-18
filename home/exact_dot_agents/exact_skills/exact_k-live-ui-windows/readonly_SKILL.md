@@ -11,7 +11,7 @@ Connects Playwriter to a Windows guest's browser running in VirtualBox over CDP 
 
 ## Manual only — never automatic
 
-`/agent-review`, `live-ui-review`, `/build`, and `k-ui-proof` verify the local browser only.
+`/k-agent-review`, `live-ui-review`, `/k-build`, and `k-ui-proof` verify the local browser only.
 None of them resolve, infer, or accept a Windows/VirtualBox requirement anymore —
 that entire environment-selection concept was purged from those flows and lives only here.
 

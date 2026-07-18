@@ -1,10 +1,10 @@
 # Agent Review Findings Auditor Contract
 
-Shared contract for `/agent-review` runtime subagents. Load this file only for the matching worker role.
+Shared contract for `/k-agent-review` runtime subagents. Load this file only for the matching worker role.
 
 ## Role: Findings auditor
 
-Use only when the controller delegates the findings audit under `agent-review/SKILL.md` step 6 before controller action.
+Use only when the controller delegates the findings audit under `k-agent-review/SKILL.md` step 5 before controller action.
 That means the blocking PR necessity gate, reviewer workers, adversarial verification (verdicts or skip status), and live UI phase or explicit live-UI skip have already finished.
 
 The subject is:
@@ -19,6 +19,7 @@ The subject is:
   - include these because they affect duplication, actionability, or proposed payload merging
 
 Load `~/.agents/skills/k-review/references/judging_core.md`.
+When the scope packet names a context pack, load `~/.agents/skills/k-agent-review/references/context-pack.md` and consume the pack per that contract before any live PR fetch.
 
 Apply only the **Post-Review Lens (The Four Dimensions)**.
 

@@ -9,10 +9,10 @@ Three tools depending on whose code and what kind of answer you need.
 
 **Prerequisites:** a session; for your own repo, opened inside it.
 
-## Your repo, guided tour: `/walkthrough`
+## Your repo, guided tour: `/k-walkthrough`
 
 ```text
-/walkthrough how does the session picker decide what to show?
+/k-walkthrough how does the session picker decide what to show?
 ```
 
 You get an evidence-anchored explanation — every claim points at a file:line you can click — or, for structure questions, an ASCII architecture map. It's read-only by contract; nothing gets edited. Steer it like a conversation: `go deeper on the caching part`, `draw the flow between these three modules`.

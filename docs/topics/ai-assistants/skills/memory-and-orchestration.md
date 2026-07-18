@@ -44,11 +44,11 @@ These skills coordinate long-running agent work, durable learning, and user-inte
 
 ## `k-spec`
 
-| Field    | Value                                                                                                                                              |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Use when | developing an idea, feature request, or bug into a spec packet with red-capable acceptance checks                                                  |
-| Source   | [`exact_k-spec`](../../../../home/exact_dot_agents/exact_skills/exact_k-spec/)                                                                     |
-| Output   | packet at `/tmp/specs/<pwd>/<topic>.spec.md`; consumers: `/build`, `,palantir summon --criteria`, `k-compose-issue` issue text/packet, plan review |
+| Field    | Value                                                                                                                                                |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Use when | developing an idea, feature request, or bug into a spec packet with red-capable acceptance checks                                                    |
+| Source   | [`exact_k-spec`](../../../../home/exact_dot_agents/exact_skills/exact_k-spec/)                                                                       |
+| Output   | packet at `/tmp/specs/<pwd>/<topic>.spec.md`; consumers: `/k-build`, `,palantir summon --criteria`, `k-compose-issue` issue text/packet, plan review |
 
 Fork-closing consults a domain overlay's planning fork checklist when the verified target repo has one (currently `k-elastic-domain` for `elastic/kibana`). Forks that cannot close locally (external sign-off, another team's decision) go in the packet's `External dependencies` section — owner, blocked criteria, recommended default — instead of blocking assembly; consumers must not start blocked criteria.
 

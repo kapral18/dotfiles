@@ -6,7 +6,7 @@ tool_version: ",proof 0.1.0"
 
 # Proof
 
-Use `,proof` to turn a hard-triggered non-review/non-build freeform task into a small proof ledger without forcing `/spec`, `/build`, or a palantir legion.
+Use `,proof` to turn a hard-triggered non-review/non-build freeform task into a small proof ledger without forcing `/k-spec`, `/k-build`, or a palantir legion.
 The ledger records criteria, evidence, explicit review notes, blockers, and a machine-readable gate.
 
 Use `,proof` only when at least one hard trigger applies:
@@ -21,8 +21,8 @@ Do not use:
 - trivial answer-only work where inline anchors are enough
 - docs-only, wording-only, or single-file mechanical edits that can be verified with one inline anchor or one command
 - ordinary single-step code edits whose final answer can cite the command/diff directly
-- formal `/build` or palantir legions that already carry a criteria ledger, unless the user asks for a separate freeform proof receipt
-- `k-review`, `k-light-review`, `/agent-review`, or PR-fix flows unless the user explicitly asks for a separate freeform proof receipt
+- formal `/k-build` or palantir legions that already carry a criteria ledger, unless the user asks for a separate freeform proof receipt
+- `k-review`, `k-light-review`, `/k-agent-review`, or PR-fix flows unless the user explicitly asks for a separate freeform proof receipt
 - human-visible publication; compose/posting skills still own publication packets and approval gates
 - evidence likely to contain secrets, tokens, private customer data, or paste-only local paths that would be unsafe in a handoff
 - because the task merely feels "non-trivial"

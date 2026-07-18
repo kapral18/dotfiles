@@ -1,6 +1,6 @@
 # Kibana Live UI Overlay
 
-Kibana live UI target packet for verified `elastic/kibana` `/agent-review`, `live-ui-review`, `k-ui-proof`, and (when manually invoked) `k-live-ui-windows` flows.
+Kibana live UI target packet for verified `elastic/kibana` `/k-agent-review`, `live-ui-review`, `k-ui-proof`, and (when manually invoked) `k-live-ui-windows` flows.
 Use it when no explicit parent/user/repo target packet was supplied.
 The runtime targets, preflight, and data/setup ladder below are mode-neutral:
 review flows compare PR/head against base, and `k-ui-proof` verifies the built runtime head-only against its intended visual.
@@ -12,7 +12,8 @@ Load and follow `~/.agents/skills/k-kbn-stack/SKILL.md` for command mechanics, r
 Each entry has `slot`, `branch`, `backend`, `kbn_url`, `es_url`, `cookie_name`, `kbn_flags`, `ready`, `started_by`, and `start_mode`.
 Detached agent starts also record `kbn_log`.
 `kbn_flags` is the list of extra `key=value` Kibana settings the stack was started with via `,kbn-stack -K`;
-it is empty when none were supplied. `ready` is true only once Kibana has answered `/api/status`.
+it is empty when none were supplied.
+`ready` is true only once Kibana has answered `/api/status`; detached starts additionally require the port listener to belong to the spawned Kibana's process tree before flipping it.
 `started_by` is `user` for interactive/manual starts and `agent` for `--detach`;
 for legacy entries with no `started_by`, infer `agent` only when recorded process ids are present, otherwise treat the entry as user-owned.
 Stacks run on plain `http://localhost:<port>` with a per-slot cookie name, so there are no fixed hostnames or fixed ports to assume.
@@ -190,72 +191,7 @@ The rungs below apply only once every selected required stack reports `ready:tru
 8. Clean up seeded data before returning when cleanup is safe.
    If cleanup is not possible or not verified, report the exact leftover objects and why.
 
-## Safety boundary
+## Evidence & conduct contract
 
-- Verification only: no repo edits, GitHub mutations, git writes, commits, pushes, or decisions.
-- Never use ApplyPatch or file-editing tools.
-- Never write files except Playwriter artifacts under `/tmp`, including focused screenshots;
-  store each screenshot/pair/set in its own distinct `/tmp/<folder-name>/` directory, never loose directly in `/tmp`.
-- Mutating local/dev runtime data via Playwriter/browser actions, local Kibana APIs, Dev Tools Console, or local Elasticsearch API calls is allowed for verification after target readiness/identity is established.
-- Do not mutate production, shared cloud, GitHub, git, repo files, committed files, labels, reviews, comments, branches, or user-visible external state.
-- Runtime data mutations must be local/dev-only, focused, named in the evidence, tied to the exact target/Elasticsearch endpoint used, and cleaned up or reported.
-- Do not apply ES/Kibana runtime environment changes or restart services from this worker.
-  Surface them as `Blocked` instructions for the user to apply, then continue in a later run after reload.
-- If target identity is ambiguous or appears non-local/non-dev, return `Blocked` instead of mutating.
-
-## Screenshot handoff
-
-- Capture screenshots whenever the generic `live-ui-review` contract requires them for UI findings that may become review feedback.
-  Otherwise capture screenshots only when they materially improve a candidate finding or blocker.
-  For pre-navigation blockers, record why no screenshot exists.
-- Store screenshots as Playwriter artifacts in a distinct `/tmp/<folder-name>/` directory —
-  one dedicated folder per single screenshot, per comparison pair (base + PR/head), or per grouped set;
-  never loose in `/tmp` and never mixed with an unrelated set. Use descriptive names and preserve handoff files.
-  After storing a set, open the enclosing folder for the user when the local environment supports it;
-  otherwise report that the folder could not be opened and provide the folder path.
-- For each screenshot, record:
-  - folder + local file path
-  - folder-open/provided status
-  - description
-  - target classification: PR/head, base, or both selected targets
-  - exact URL
-  - linked candidate/finding
-  - suggested manual review comment placement
-  - fidelity note for mocks or partial setup
-- The screenshot handoff is for the controller/user only: no image uploads, local paths in GitHub review comments or bodies, or extra comments solely for image paths.
-- Proof-mode (`k-ui-proof`) stores each visual criterion's proof set in its own distinct `/tmp/<folder-name>/` folder (e.g. `/tmp/<topic>-<criterion-slug>/`) and hands the manifest to `compose-pr`; the user attaches the files to the PR body.
-  The agent still never uploads images or writes local paths into GitHub.
-
-## Live feedback overlay
-
-When the user wants to point at specific real Kibana UI elements, use `,artifact live` after Playwriter has verified the registry-resolved local/dev `kbn_url`.
-
-- Load and follow `~/.agents/skills/k-artifact/SKILL.md`.
-- Use `,artifact live script <name>` and inject the returned JavaScript into the verified Playwriter page with `page.evaluate`.
-- Tell the user capture is armed.
-  The overlay intercepts page clicks until paused, uses Shadow DOM, and can be removed without changing the app.
-- Keep `,artifact poll <name>` running and treat returned `source: live-overlay` items as user-guided live UI feedback.
-- Preserve the screenshot handoff path for async review, visual comparison, or cases where live injection is blocked.
-
-## Controller validation for Kibana overlay
-
-Reject and rerun any `live-ui-review` result for this overlay that:
-
-- reports only generic localhost probing
-- omits any selected exact target URL
-- uses WebFetch or shell/HTTP probes as readiness evidence
-- skips Playwriter target checks
-- claims targets are unavailable without showing the exact target/preflight evidence above
-- omits the selected `target_packet` / overlay source
-- uses browser/route/network mocks for a data-dependent UI finding without first attempting or explicitly ruling out faithful local/dev data setup through existing data, local Kibana/Elasticsearch APIs, or Kibana Dev Tools Console
-- uses browser/route/network mocks when faithful verification is blocked by a required ES/Kibana runtime environment change;
-  that must be returned as `Blocked` with setup instructions instead
-- returns `Blocked` citing a missing/un-started `,kbn-stack` (no `ready:true` registry entry) in a shell-capable harness, instead of starting it with `,kbn-stack --detach` and continuing (Rung 0); rerun after the stack is started
-- lists screenshot artifacts without local paths, descriptions, target URL/branch, or linked candidate/finding placement
-- omits applicability, exact URLs checked, Playwriter preflight status, readiness result for each target, branch/runtime evidence, comparison evidence for each checked candidate, UI evidence artifact manifest or `none`, page cleanup/owned-page URLs, and blockers/uncertainty
-
-Do not reject or rerun a result that reports a valid Playwriter harness blocker:
-
-- read-only/Ask-mode blocked `playwriter skill` or Playwriter commands
-- every selected exact browser target URL was attempted or explicitly blocked before navigation
-- repeated reload/same-URL/same-snapshot loop was detected within the readiness stability guard
+The safety boundary, screenshot handoff, live feedback overlay, and controller validation for this overlay live in `~/.agents/skills/k-elastic-domain/references/kibana-live-ui-evidence.md`.
+Load it together with this packet before running or validating any Kibana live UI work.

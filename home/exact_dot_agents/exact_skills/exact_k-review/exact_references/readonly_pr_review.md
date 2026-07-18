@@ -91,7 +91,7 @@ Return a `Pending review draft` containing:
   - Why it matters (1-2 lines)
   - How to verify (minimal)
   - Proposed fix (smallest change)
-- `ui_evidence_attachments`: for UI-related findings drafted after `/agent-review` or `live-ui-review`, screenshot handoff paths/descriptions/placement and folder-open/provided status for the user to attach, or the blocker/non-applicability reason screenshots are absent.
+- `ui_evidence_attachments`: for UI-related findings drafted after `/k-agent-review` or `live-ui-review`, screenshot handoff paths/descriptions/placement and folder-open/provided status for the user to attach, or the blocker/non-applicability reason screenshots are absent.
   Do not put local screenshot paths in comment bodies.
 - `pr_necessity_audit` (for other-authored/unknown PRs): classifications and any draft feedback/questions about intent, correctly-open status, need, or overlapping work
 - `summary_comment` (optional): short PR-level comment
@@ -109,7 +109,7 @@ If the user says "one at a time", "next comment", or "continue the review":
   - Why it matters (impact)
   - How to verify (minimal repro/test)
   - Proposed fix (smallest change)
-  - `ui_evidence_attachments` when the comment is UI-related and drafted after `/agent-review` or `live-ui-review`:
+  - `ui_evidence_attachments` when the comment is UI-related and drafted after `/k-agent-review` or `live-ui-review`:
     screenshot handoff paths/descriptions/placement and folder-open/provided status, or the blocker/non-applicability reason screenshots are absent.
     Do not put local screenshot paths in the comment body.
 - If you need to reply to an existing review thread instead of creating a new comment, switch to PR fix mode for that thread.

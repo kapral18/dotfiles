@@ -1,6 +1,6 @@
 # Agent Review Live UI Review Contract
 
-Shared contract for `/agent-review` runtime subagents. Load this file only for the matching worker role.
+Shared contract for `/k-agent-review` runtime subagents. Load this file only for the matching worker role.
 
 ## Role: Live UI review
 
@@ -9,6 +9,7 @@ Use after the blocking PR necessity gate and reviewer workers as the conditional
 Load `~/.agents/skills/k-agent-review/references/live-ui-runtime.md` for the shared runtime contract:
 mode boundary, terminology, target-packet resolution, Playwriter preflight, readiness stability guard, screenshot & evidence capture, runtime-start rung, data/setup ladder, and the hard runtime constraints.
 This file adds only the review-mode specifics: the base-vs-head comparison model, the candidate-finding oracle, and the review return shape.
+When the scope packet names a context pack, load `~/.agents/skills/k-agent-review/references/context-pack.md` and consume the pack per that contract before any live PR fetch.
 
 Review-mode fix boundary (adds to the shared mode boundary):
 
@@ -70,7 +71,7 @@ When applicable targets pass the shared preflight, use Playwriter for UI compari
 
 ### Review return authority
 
-- Return findings to the user or `/agent-review` as evidence input. `/agent-review` performs any judgment or side effects.
+- Return findings to the user or `/k-agent-review` as evidence input. `/k-agent-review` performs any judgment or side effects.
 
 Return exactly:
 

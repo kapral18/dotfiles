@@ -1,19 +1,19 @@
 ---
 name: k-build
-description: "Manual-only controller contract for /build: hands-free implementation of an approved spec packet, gated by a criteria ledger, adversarial verification, and a final report."
+description: "Manual-only controller contract for /k-build: hands-free implementation of an approved spec packet, gated by a criteria ledger, adversarial verification, and a final report."
 disable-model-invocation: true
 ---
 
 # Build
 
-This is the controller contract for `/build` — the creation-side sibling of `/agent-review`.
+This is the controller contract for `/k-build` — the creation-side sibling of `/k-agent-review`.
 It implements an approved **spec packet** (from the `k-spec` skill) hands-free: the human touches the flow at exactly two gates —
 packet approval before execution, and the final report. Everything between runs without asking, inside the side-effect boundary below.
 
 The SOP owns the surrounding gates: per-step verification loops (§3.4), the state-machine harness (§3.5), requirements reset (§3.3), minimal edit scope (§5), and compatibility (§2.0).
 This skill owns the phase order, the criteria ledger, and the verification topology.
 
-The same packet's criteria drive `,palantir summon --criteria` for a detached legion; `/build` is the in-session form.
+The same packet's criteria drive `,palantir summon --criteria` for a detached legion; `/k-build` is the in-session form.
 
 ## Do not use
 
@@ -81,7 +81,7 @@ Do not start a later phase until the current one completes.
 6. **Adversarial verification.** First re-run every packet check once from the current tree — machine truth before judgment.
    Then delegate one isolated **read-only** refutation lane with the packet, the full implementation diff, and the ledger.
    Launch it via the harness's named `criteria-verifier` profile (rendered per harness with the `agent_review_models` **verifier** model —
-   the same cross-family pick `/agent-review` uses); on a harness without that profile (Claude), run the lane as a generic read-only subagent on the session model that loads `~/.agents/skills/k-build/references/criteria-verifier.md`, with refutation framing, and report `families=same (degraded)` — never skip the phase silently.
+   the same cross-family pick `/k-agent-review` uses); on a harness without that profile (Claude), run the lane as a generic read-only subagent on the session model that loads `~/.agents/skills/k-build/references/criteria-verifier.md`, with refutation framing, and report `families=same (degraded)` — never skip the phase silently.
    Judge the returned verdicts; a `refuted` row goes back to phase 3 (or `blocked` with the reason).
 
 7. **Post-review stage.**
@@ -92,7 +92,7 @@ Do not start a later phase until the current one completes.
 
 ## Completion gate
 
-Do not declare `/build` complete while any ledger row is `red`, `judgment-unmet`, or `undecidable` without an explicit blocker, while a mechanical gate is un-run, while a triggered live-UI proof was skipped without a valid blocker, or while the verification lane was skipped.
+Do not declare `/k-build` complete while any ledger row is `red`, `judgment-unmet`, or `undecidable` without an explicit blocker, while a mechanical gate is un-run, while a triggered live-UI proof was skipped without a valid blocker, or while the verification lane was skipped.
 A blocked flow ends as `blocked` with the ledger as-is — never as a success summary with hedged wording.
 
 ## Output

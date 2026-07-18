@@ -151,7 +151,14 @@ Execution order:
    forks are empty and success criteria are testable — then validate against the acceptance criteria.
 7. Present concise results with evidence and remaining blockers.
 
-### 3.1 Git Push Safety
+### 3.1 Git Commit and Push Safety
+
+Never run `git commit` unless the user explicitly requested a commit in the current conversation.
+
+- Content approval is not commit authorization: "make it generic", "fix it", "do it", or approval of file edits authorizes the edits, not a commit.
+- When a task would conventionally end with a commit, stop at the working tree and report the change set;
+  the user commits or asks for one explicitly.
+- An explicit push request covers committing the changes it describes; absent that, leave the tree uncommitted.
 
 When the user asks to push, treat that as explicit approval for `git push --force-with-lease`.
 
@@ -269,7 +276,7 @@ Durable cross-session knowledge lives in `,ai-kb`; ephemeral working context liv
   run `,ai-kb search` before acting.
 - When you verify a durable reusable insight, persist it with `,ai-kb remember`.
 - Store only verified durable/reusable insights; never store guesses or session-only notes.
-- Mid-task decisions, ideas, and constraints that are worth keeping but not yet verified go to `,agent-memory note <kind> "<text>" --ref <anchor>` (same kinds as `,ai-kb remember`, plus `question`); `,ai-kb harvest` later surfaces them as durable-memory candidates for the verified-write path.
+- Mid-task decisions, ideas, and constraints that are worth keeping but not yet verified go to `,agent-memory note <kind> "<text>" --ref <anchor>` (same kinds as `,ai-kb remember`, plus `question` and `decision`); `,ai-kb harvest` later surfaces them as durable-memory candidates for the verified-write path.
 - Resolve the live interface from `,ai-kb --help` / `,ai-kb remember --help`, not memory.
 - At the end of any substantive turn, silently self-check whether a durable verified reusable insight was produced.
   If yes, persist it inline with deliberate metadata; otherwise skip.

@@ -51,8 +51,8 @@ complete -c ',agent-memory' -n '__fish_seen_subcommand_from use' \
     -x -a '(__agent_memory_topics)' -d 'Named topic to activate'
 complete -c ',agent-memory' -n '__fish_seen_subcommand_from merge' \
     -x -a '(__agent_memory_topics)' -d 'Source or destination topic'
-complete -c ',agent-memory' -n '__fish_seen_subcommand_from note; and not __fish_seen_subcommand_from fact gotcha pattern anti_pattern recipe principle question' \
-    -x -a 'fact gotcha pattern anti_pattern recipe principle question' -d 'Structured note kind (capsule taxonomy + question)'
+complete -c ',agent-memory' -n '__fish_seen_subcommand_from note; and not __fish_seen_subcommand_from fact gotcha pattern anti_pattern recipe principle question decision' \
+    -x -a 'fact gotcha pattern anti_pattern recipe principle question decision' -d 'Structured note kind (capsule taxonomy + question/decision)'
 complete -c ',agent-memory' -n '__fish_seen_subcommand_from note' \
     -l ref -r -d 'Evidence anchor (path:line, command, or URL; repeatable)'
 

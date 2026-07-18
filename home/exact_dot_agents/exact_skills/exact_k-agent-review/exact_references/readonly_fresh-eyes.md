@@ -1,6 +1,6 @@
 # Agent Review Fresh-Eyes Worker Contract
 
-Blind clarity lane for `/agent-review`. Load this file only for the fresh-eyes role.
+Blind clarity lane for `/k-agent-review`. Load this file only for the fresh-eyes role.
 
 ## Role: Fresh-eyes reviewer
 
@@ -12,6 +12,10 @@ The parent controller supplies a deliberately minimal packet:
 
 - diff scope: base ref plus changed paths, or an explicit diff command
 - nothing else — no PR identifiers, no narrative
+- When the scope packet names a context pack, consume only its `diff.patch`, `files/`, and `base/` content;
+  never read `manifest.json`, `pr.json`, or any pack metadata (they carry PR identity and authorship).
+  The parent supplies any needed freshness assurance; on a missing or unusable pack, report `pack_missing`/`pack_stale` and stop —
+  never fall back to `gh` or PR reads (blindness constraints below stay absolute).
 
 Blindness constraints (they define this lane):
 

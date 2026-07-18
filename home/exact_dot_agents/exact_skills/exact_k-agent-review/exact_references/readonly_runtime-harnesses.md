@@ -3,7 +3,7 @@
 This file is not a subagent registry.
 
 - The active harness owns discovery and invocation for its configured agents, tasks, or native isolation tools.
-- `/agent-review` uses those native mechanisms plus the role-specific contracts in `references/`.
+- `/k-agent-review` uses those native mechanisms plus the role-specific contracts in `references/`.
 
 Read this file only for capability caveats that affect orchestration.
 
@@ -36,7 +36,7 @@ No per-task model mechanism is verified for `spawn_agent`; report the model used
 
 ## Gemini CLI
 
-Gemini subagents cannot call other subagents, so run `/agent-review` in the main Gemini session.
+Gemini subagents cannot call other subagents, so run `/k-agent-review` in the main Gemini session.
 Do not run the controller itself as a Gemini subagent.
 The model surface is Gemini-only: the adversarial verifier is `families=same (degraded)`; launch it as the `adversarial-verifier` profile.
 Registry: both values empty — profiles omit `model` and the configured Gemini default applies. No per-task model mechanism is verified.
@@ -49,7 +49,7 @@ Registry: both values empty — profiles omit `model` and the configured Gemini 
 - The registry pins a concrete Cursor lane model deliberately: verified (Cursor subagent docs + cursor-agent 2026.06.04), omitted `model` frontmatter defaults to inherit and the live CLI default is `composer-2.5-fast`, so inheritance would silently run the fan-out on Composer from a default-model session.
 - When the active Task schema exposes only generic subagent types, pass the same registry values as explicit `model` arguments —
   the registry stays the single source either way. Generic fresh-eyes launches pass the registry lane model.
-- Cursor's `readonly` flag is a hard tool restriction, not the `/agent-review` behavior-level read-only boundary.
+- Cursor's `readonly` flag is a hard tool restriction, not the `/k-agent-review` behavior-level read-only boundary.
   Cursor source shows `readonly: true` blocks shell, write, delete, and MCP operations.
   Keep Cursor profile frontmatter and Task launches at `readonly: false`; the worker contracts enforce no-mutation behavior.
 - If a Cursor worker reports Ask/read-only mode blocked shell/git/`gh`/SCSI/Playwriter, discard that launch result and rerun with `readonly: false` before accepting `verification_needed`.

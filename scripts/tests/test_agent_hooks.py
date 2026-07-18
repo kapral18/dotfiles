@@ -17,10 +17,17 @@ AGENT_MEMORY = REPO / "scripts" / "agent_memory.py"
 SPEC_ROOT = Path(
     os.environ.get("AGENT_MEMORY_SPEC_ROOT") or Path(os.environ.get("TMPDIR", "/tmp")) / "agent-hook-specs"
 )
+PARENT_SESSION_ENV = "COPILOT_AGENT_SESSION_ID"
+KEEP_PARENT_SESSION_ENV = "AGENT_HOOK_TEST_KEEP_COPILOT_PARENT"
 
 
 def hook_env(env: dict | None = None) -> dict:
     effective_env = dict(os.environ) if env is None else dict(env)
+    parent_session = effective_env.get(PARENT_SESSION_ENV, "")
+    keep_parent_session = effective_env.pop(KEEP_PARENT_SESSION_ENV, "") == "1"
+    effective_env.pop(PARENT_SESSION_ENV, None)
+    if keep_parent_session and parent_session:
+        effective_env[PARENT_SESSION_ENV] = parent_session
     effective_env["PYTHONPATH"] = f"{REPO / 'scripts'}{os.pathsep}{effective_env.get('PYTHONPATH', '')}"
     effective_env.setdefault("AGENT_MEMORY_SPEC_ROOT", str(SPEC_ROOT))
     # Keep hook subprocesses away from the real persistent topic mirror.
@@ -40,6 +47,13 @@ def run_hook(name: str, payload: dict, env: dict | None = None) -> dict:
     if result.returncode != 0:
         raise AssertionError(f"{name} failed:\nSTDOUT={result.stdout}\nSTDERR={result.stderr}")
     return json.loads(result.stdout or "{}")
+
+
+def keep_parent_env(parent_session: str) -> dict:
+    env = dict(os.environ)
+    env[PARENT_SESSION_ENV] = parent_session
+    env[KEEP_PARENT_SESSION_ENV] = "1"
+    return env
 
 
 def make_aikb_stub(directory: Path, rows: list[dict]) -> dict:
@@ -87,6 +101,32 @@ def flush_worklog(spec_dir: Path) -> None:
     result = worklog_queue.flush_spec_dir(spec_dir)
     assert result.errors == 0
     assert result.pending == 0
+
+
+def worklog_entries(path: Path) -> list[dict]:
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+
+
+def topic_paths_result(payload: dict, env: dict | None = None) -> dict:
+    effective_env = hook_env(env)
+    effective_env["PYTHONPATH"] = f"{HOOKS}{os.pathsep}{effective_env.get('PYTHONPATH', '')}"
+    script = (
+        "import json, sys\n"
+        "from hook_common import topic_paths\n"
+        "payload = json.loads(sys.stdin.read())\n"
+        "workspace, topic, spec_path, worklog_path = topic_paths(payload)\n"
+        "print(json.dumps({'workspace': str(workspace), 'topic': topic, 'spec': str(spec_path), 'worklog': str(worklog_path)}))\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        input=json.dumps(payload),
+        capture_output=True,
+        text=True,
+        cwd=str(REPO),
+        env=effective_env,
+        check=True,
+    )
+    return json.loads(result.stdout)
 
 
 def run_perturn_recall(tmp: str, payload: dict, env: dict) -> dict:
@@ -378,6 +418,135 @@ class TestAgentHooks(unittest.TestCase):
 
             assert not (spec_dir / "current.worklog.jsonl").exists()
             assert (spec_dir / "session-abc-123.worklog.jsonl").exists()
+
+    def test_worklog_recorder_uses_parent_selected_topic_for_copilot_subagent_writes(self):
+        with self.make_git_workspace("main") as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            spec_dir.mkdir(parents=True, exist_ok=True)
+            parent_session = "ff17ae29-3a1f-4409-bd73-1ee3ebbcb6c5"
+            bind_session_topic(spec_dir, parent_session, "kibana-pr-review-277247")
+            payload = {
+                "session_id": "toolu_01EoFakeSubagentCall",
+                "hook_event_name": "postToolUse",
+                "workspace_roots": [tmp],
+                "tool_name": "Shell",
+                "tool_input": {"command": "printf subagent"},
+                "tool_output": "ok",
+            }
+
+            assert run_hook("executable_worklog_recorder.py", payload, env=keep_parent_env(parent_session)) == {}
+            flush_worklog(spec_dir)
+            entries = worklog_entries(spec_dir / "kibana-pr-review-277247.worklog.jsonl")
+
+            assert len(entries) == 1
+            assert entries[0]["topic"] == "kibana-pr-review-277247"
+            assert entries[0]["session_key"] == "toolu_01EoFakeSubagentCall"
+            assert not (spec_dir / "session-toolu_01EoFakeSubagentCa.worklog.jsonl").exists()
+
+    def test_worklog_recorder_uses_parent_fallback_bucket_for_unselected_copilot_subagent_on_default_branch(self):
+        with self.make_git_workspace("main") as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            parent_session = "ff17ae29-3a1f-4409-bd73-1ee3ebbcb6c5"
+            parent_bucket = f"session-{parent_session[:24]}"
+            payload = {
+                "session_id": "toolu_01EoFakeSubagentCall",
+                "hook_event_name": "postToolUse",
+                "workspace_roots": [tmp],
+                "tool_name": "Shell",
+                "tool_input": {"command": "printf fallback"},
+                "tool_output": "ok",
+            }
+
+            assert run_hook("executable_worklog_recorder.py", payload, env=keep_parent_env(parent_session)) == {}
+            flush_worklog(spec_dir)
+            entries = worklog_entries(spec_dir / f"{parent_bucket}.worklog.jsonl")
+
+            assert entries[0]["topic"] == parent_bucket
+            assert entries[0]["session_key"] == "toolu_01EoFakeSubagentCall"
+            assert not (spec_dir / "session-toolu_01EoFakeSubagentCa.worklog.jsonl").exists()
+
+    def test_worklog_recorder_without_parent_env_keeps_payload_session_fallback(self):
+        with self.make_git_workspace("main") as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            payload = {
+                "session_id": "toolu_01EoFakeSubagentCall",
+                "hook_event_name": "postToolUse",
+                "workspace_roots": [tmp],
+                "tool_name": "Shell",
+                "tool_input": {"command": "printf legacy"},
+                "tool_output": "ok",
+            }
+
+            assert run_hook("executable_worklog_recorder.py", payload) == {}
+            flush_worklog(spec_dir)
+
+            assert (spec_dir / "session-toolu_01EoFakeSubagentCa.worklog.jsonl").exists()
+
+    def test_worklog_recorder_payload_selection_wins_over_parent_selection(self):
+        with self.make_git_workspace("main") as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            spec_dir.mkdir(parents=True, exist_ok=True)
+            parent_session = "ff17ae29-3a1f-4409-bd73-1ee3ebbcb6c5"
+            payload_session = "toolu_01EoFakeSubagentCall"
+            bind_session_topic(spec_dir, parent_session, "parent-topic")
+            bind_session_topic(spec_dir, payload_session, "payload-topic")
+            payload = {
+                "session_id": payload_session,
+                "hook_event_name": "postToolUse",
+                "workspace_roots": [tmp],
+                "tool_name": "Shell",
+                "tool_input": {"command": "printf selected"},
+                "tool_output": "ok",
+            }
+
+            assert run_hook("executable_worklog_recorder.py", payload, env=keep_parent_env(parent_session)) == {}
+            flush_worklog(spec_dir)
+
+            assert (spec_dir / "payload-topic.worklog.jsonl").exists()
+            assert not (spec_dir / "parent-topic.worklog.jsonl").exists()
+
+    def test_worklog_recorder_keeps_current_topic_on_feature_branch_without_selections(self):
+        with self.make_git_workspace("feature/worklog-parent") as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            parent_session = "ff17ae29-3a1f-4409-bd73-1ee3ebbcb6c5"
+            payload = {
+                "session_id": "toolu_01EoFakeSubagentCall",
+                "hook_event_name": "postToolUse",
+                "workspace_roots": [tmp],
+                "tool_name": "Shell",
+                "tool_input": {"command": "printf feature"},
+                "tool_output": "ok",
+            }
+
+            assert run_hook("executable_worklog_recorder.py", payload, env=keep_parent_env(parent_session)) == {}
+            flush_worklog(spec_dir)
+
+            assert (spec_dir / "current.worklog.jsonl").exists()
+            assert not (spec_dir / f"session-{parent_session[:24]}.worklog.jsonl").exists()
+
+    def test_read_topic_paths_ignore_parent_session_env(self):
+        with self.make_git_workspace("main") as tmp:
+            workspace = str(Path(tmp).resolve())
+            spec_dir = SPEC_ROOT / workspace.lstrip("/")
+            spec_dir.mkdir(parents=True, exist_ok=True)
+            parent_session = "ff17ae29-3a1f-4409-bd73-1ee3ebbcb6c5"
+            bind_session_topic(spec_dir, parent_session, "parent-topic")
+            payload = {
+                "session_id": "toolu_01EoFakeSubagentCall",
+                "hook_event_name": "SessionStart",
+                "workspace_roots": [tmp],
+            }
+
+            without_parent = topic_paths_result(payload)
+            with_parent = topic_paths_result(payload, env=keep_parent_env(parent_session))
+
+            self.assertEqual(with_parent, without_parent)
+            self.assertEqual(with_parent["topic"], "session-toolu_01EoFakeSubagentCa")
 
     def test_worklog_recorder_does_not_write_to_workspace_active_topic_for_unbound_session(self):
         with self.make_git_workspace("main") as tmp:
@@ -783,6 +952,23 @@ class TestAgentHooks(unittest.TestCase):
 
             assert "### Relevant Learnings (,ai-kb)" not in context
             assert "Should never surface" not in context
+
+    def test_cursor_and_codex_perturn_recall_wiring(self):
+        # Cursor 2026.07.16+ supports additionalContext on beforeSubmitPrompt
+        # (10k cap, verified from the installed bundle); the hook rides that
+        # event and the sessionStart warm signal suppresses the Recall Notice.
+        cursor = json.loads((REPO / "home" / "dot_cursor" / "hooks.json").read_text())
+        before_submit = cursor["hooks"]["beforeSubmitPrompt"]
+        assert any("perturn_recall.py" in hook["command"] for hook in before_submit)
+        session_start = cursor["hooks"]["sessionStart"]
+        assert any("AI_EMBED_WARM=1" in hook["command"] for hook in session_start)
+
+        # Codex rejects unknown top-level output keys, so its perturn entry must
+        # strip the dual-channel emit down to hookSpecificOutput.
+        codex = (REPO / "home" / "dot_codex" / "hooks.json.tmpl").read_text()
+        prompt_block = codex.split('"UserPromptSubmit"', 1)[1].split('"PostToolUse"', 1)[0]
+        assert "perturn_recall.py" in prompt_block
+        assert "AGENT_HOOK_OUTPUT=hook_specific" in prompt_block
 
     def test_pr_anchor_verification_is_instruction_only(self):
         files_to_check = [

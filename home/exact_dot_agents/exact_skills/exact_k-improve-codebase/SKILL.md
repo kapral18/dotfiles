@@ -12,7 +12,7 @@ Only propose it if it is genuinely compelling. It is fine to refrain when you ha
 
 Use when:
 
-- the user asks `/improve-codebase`
+- the user asks `/k-improve-codebase`
 - the user asks for the single smartest, most impactful, or highest-leverage addition to the current repository
 - the target is the whole codebase, not only the current diff, branch, PR, issue, or a targeted part
 

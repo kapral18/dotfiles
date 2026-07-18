@@ -1737,6 +1737,61 @@ class TestKbnStackCommand(unittest.TestCase):
         with mock.patch.object(kbn_stack.os, "kill", side_effect=PermissionError):
             assert kbn_stack.pid_alive(1234) is True
 
+    def test_ensure_ports_free_names_the_squatting_pid(self):
+        kbn_stack = _load_kbn_stack_command()
+        cfg = kbn_stack.derive(0)
+        cfg["slot"] = 0
+
+        with mock.patch.object(
+            kbn_stack, "port_listener_pids", lambda port: [49880] if port == cfg["kbn_port"] else []
+        ):
+            with mock.patch.object(kbn_stack, "describe_pid", lambda pid: "node scripts/kibana --dev"):
+                with contextlib.redirect_stderr(io.StringIO()) as err:
+                    with self.assertRaises(SystemExit):
+                        kbn_stack.ensure_ports_free(cfg)
+        message = err.getvalue()
+        assert "already in use" in message
+        assert "49880" in message
+        assert "node scripts/kibana --dev" in message
+
+    def test_ensure_ports_free_passes_when_ports_are_free(self):
+        kbn_stack = _load_kbn_stack_command()
+        cfg = kbn_stack.derive(0)
+        cfg["slot"] = 0
+
+        with mock.patch.object(kbn_stack, "port_listener_pids", lambda port: []):
+            kbn_stack.ensure_ports_free(cfg)
+
+    def test_listener_identity_accepts_own_process_group_and_descendants(self):
+        kbn_stack = _load_kbn_stack_command()
+
+        with mock.patch.object(kbn_stack, "port_listener_pids", lambda port: [222]):
+            with mock.patch.object(kbn_stack.os, "getpgid", lambda pid: 111):
+                ok, listeners = kbn_stack.listener_identity_ok(5601, 111)
+        assert ok is True
+        assert listeners == [222]
+
+        with mock.patch.object(kbn_stack, "port_listener_pids", lambda port: [333]):
+            with mock.patch.object(kbn_stack.os, "getpgid", lambda pid: {111: 111, 333: 999}[pid]):
+                with mock.patch.object(kbn_stack, "pid_ancestors", lambda pid: {111, 1}):
+                    ok, _ = kbn_stack.listener_identity_ok(5601, 111)
+        assert ok is True
+
+    def test_listener_identity_rejects_foreign_squatter(self):
+        kbn_stack = _load_kbn_stack_command()
+
+        with mock.patch.object(kbn_stack, "port_listener_pids", lambda port: [49880]):
+            with mock.patch.object(kbn_stack.os, "getpgid", lambda pid: {111: 111, 49880: 777}[pid]):
+                with mock.patch.object(kbn_stack, "pid_ancestors", lambda pid: {777, 1}):
+                    ok, listeners = kbn_stack.listener_identity_ok(5601, 111)
+        assert ok is False
+        assert listeners == [49880]
+
+        with mock.patch.object(kbn_stack, "port_listener_pids", lambda port: []):
+            ok, listeners = kbn_stack.listener_identity_ok(5601, 111)
+        assert ok is False
+        assert listeners == []
+
     def test_agent_start_does_not_stop_user_owned_serverless(self):
         kbn_stack = _load_kbn_stack_command()
         registry = {

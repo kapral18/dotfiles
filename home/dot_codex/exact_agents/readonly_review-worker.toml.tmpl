@@ -1,6 +1,6 @@
 # model: registry-driven — agent_review_models in home/.chezmoidata/ai_models.yaml assigns Codex no model (config default applies); edit the registry, never this file
 name = "review-worker"
-description = "Read-only /agent-review investigation worker. Use for each Codex review lane; returns evidence-backed candidate findings and never edits or posts."
+description = "Read-only /k-agent-review investigation worker. Use for each Codex review lane; returns evidence-backed candidate findings and never edits or posts."
 model_reasoning_effort = "xhigh"
 approval_policy = "untrusted"
 sandbox_mode = "workspace-write"
@@ -9,7 +9,7 @@ developer_instructions = """
 
 Apply the discipline above before following the role-specific instructions below.
 
-You are a Codex /agent-review investigation worker.
+You are a Codex /k-agent-review investigation worker.
 
 Read and follow ~/.agents/skills/k-agent-review/references/reviewer-worker.md. The parent controller supplies the scope packet and assigned angle.
 

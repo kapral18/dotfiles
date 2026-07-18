@@ -171,6 +171,8 @@ class TestAgentInstructionInvariants(unittest.TestCase):
     def test_global_sop_keeps_side_effect_publication_and_git_gates(self):
         self.assert_file_contains(
             "home/readonly_AGENTS.md",
+            "Never run `git commit` unless the user explicitly requested a commit in the current conversation",
+            "Content approval is not commit authorization",
             "never run `git pull`, `git pull --rebase`, `git rebase <remote>/<branch>`, or `git merge <remote>/<branch>` automatically before pushing",
             "If a human will see the result, draft it, show the exact payload and target, and wait for explicit approval before sending",
             "Never publish spontaneously, even to bots",
@@ -512,7 +514,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
 
     def test_live_ui_windows_is_manual_only_and_purged_from_automatic_flows(self):
         # The Windows/VirtualBox environment is a standalone manual-only skill now;
-        # `/agent-review`, `/build`, `live-ui-review`, and `ui-proof` must carry none of its
+        # `/k-agent-review`, `/k-build`, `live-ui-review`, and `ui-proof` must carry none of its
         # auto-inference or environment-selection machinery.
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-live-ui-windows/readonly_SKILL.md",

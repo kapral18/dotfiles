@@ -1,6 +1,6 @@
 // Managed by chezmoi (source: home/dot_pi/agent/extensions/ai-kb-recall.ts).
 // Durable-memory recall for pi, matching the Cursor/Claude sessionStart warm-start
-// and adding pi's per-turn retrieval (Cursor's beforeSubmitPrompt cannot inject context).
+// and adding pi's per-turn retrieval.
 //
 // Integration extension:
 //   - topic + spec resolution comes from `,agent-memory status --json --session-id <id>`
@@ -21,6 +21,8 @@
 //      deliberate named topic with a non-empty <topic>.txt. Mirrors session_context.py.
 //   2. Per-turn (every substantive prompt): query = the user's actual prompt — the
 //      highest-relevance signal — deduped against capsules already injected this session.
+//      The same pass appends the shared precision-first correction directive when a
+//      prompt reads as a user correction, matching executable_perturn_recall.py.
 //
 // Both share the same relevance gate as the Python warm-start: `,ai-kb search
 // --workspace-gate` keeps only capsules local to this workspace or scoped
@@ -43,6 +45,8 @@ const SEARCH_FETCH = 6
 const QUERY_MAX_CHARS = 600
 const BODY_MAX_CHARS = 240
 const MIN_PROMPT_CHARS = 12
+const DETECT_MAX_CHARS = 20_000
+const CONJUNCTION_WINDOW_CHARS = 160
 const PREFIX_MAX_CHARS = 3000
 const AI_AGENT_DEPTH = "AI_AGENT_DEPTH"
 // bm25/warm-start relative relevance floor: after the top hit, drop any hit whose
@@ -131,6 +135,7 @@ interface RecallSessionState {
 
 type SearchMode = "bm25" | "hybrid"
 type AgentDepth = "fast" | "balanced" | "deep"
+type CorrectionSignal = "unrequested-action" | "omission-correction" | "unverified-claim" | "guessed-not-tested" | "repeat-failure"
 
 interface RecallProfile {
   enabled: boolean
@@ -220,6 +225,65 @@ function collapse(text: string, max: number): string {
   const flat = text.replace(/\s+/g, " ").trim()
   if (flat.length <= max) return flat
   return flat.slice(0, max).trimEnd() + "…"
+}
+
+const UNREQUESTED_ACTION_NEGATION_RE = /\b(?:never|do\s+not|i\s+didn['’]?t\s+ask|undo|revert)\b/i
+const WHY_DID_YOU_RE = /\bwhy\s+(?:the\s+(?:fuck|hell)\s+)?(?:did|would)\s+you\b/i
+const ARE_YOU_SURE_RE = /\bare\s+you\s+sure\b/i
+const SURE_FOLLOWUP_RE = /\bhave\s+you\s+(?:tried|tested|verified|checked)\b|\bor\b[\s\S]{0,200}?\bguess/i
+
+const CORRECTION_PATTERNS: Array<[CorrectionSignal, RegExp]> = [
+  ["unrequested-action", /\bi\s+didn['’]?t\s+ask\s+(?:you\s+)?(?:to|for)\b|\bi\s+never\s+asked\b/i],
+  ["omission-correction", /\bwhy\s+did(?:n['’]?t|\s+not)\s+you\b|\bwhy\s+did\s+you\s+not\b/i],
+  ["unverified-claim", /\bdid\s+you\s+(?:really|actually)\s+(?:measure|test|verify|check|run|try)\b/i],
+  ["unverified-claim", /\bhallucinat\w*\b/i],
+  ["guessed-not-tested", /\b(?:you\s+guessed|did\s+you\s+guess|was\s+that\s+a\s+guess|or\s+(?:did\s+)?you\s+guess)\b/i],
+  ["guessed-not-tested", /\binstead\s+of\s+(?:testing|verifying|measuring|checking|proving)\b/i],
+  ["unrequested-action", /\b(?:never|don['’]?t|do\s+not)\s+(?:commit|push|delete|force|do\s+(?:that|this)\s+again)\b/i],
+  ["repeat-failure", /\b(?:still|again)\s+(?:broken|wrong|failing|not\s+working|doesn['’]?t\s+work)\b/i],
+  ["repeat-failure", /\b(?:that['’]?s|this\s+is|it['’]?s)\s+(?:still\s+)?(?:wrong|incorrect|not\s+what\s+i\s+asked)\b/i],
+]
+
+function detectCorrectionSignal(prompt: string): CorrectionSignal | null {
+  const text = String(prompt || "").trim().slice(0, DETECT_MAX_CHARS)
+  if (text.length < MIN_PROMPT_CHARS) return null
+
+  const [firstSignal, firstPattern] = CORRECTION_PATTERNS[0]
+  if (firstPattern.test(text)) return firstSignal
+
+  const whyMatch = WHY_DID_YOU_RE.exec(text)
+  if (whyMatch) {
+    const windowStart = Math.max(0, whyMatch.index - CONJUNCTION_WINDOW_CHARS)
+    const window = text.slice(windowStart, whyMatch.index + whyMatch[0].length + CONJUNCTION_WINDOW_CHARS)
+    if (UNREQUESTED_ACTION_NEGATION_RE.test(window)) return "unrequested-action"
+  }
+
+  const sureMatch = ARE_YOU_SURE_RE.exec(text)
+  if (sureMatch) {
+    const followup = text.slice(sureMatch.index + sureMatch[0].length, sureMatch.index + sureMatch[0].length + 400)
+    if (SURE_FOLLOWUP_RE.test(followup)) return "guessed-not-tested"
+  }
+
+  for (const [signal, pattern] of CORRECTION_PATTERNS.slice(1)) {
+    if (pattern.test(text)) return signal
+  }
+  return null
+}
+
+function correctionDirective(prompt: string): string {
+  let signal: CorrectionSignal | null = null
+  try {
+    signal = detectCorrectionSignal(prompt)
+  } catch {
+    return ""
+  }
+  if (!signal) return ""
+  return [
+    `### User correction signal: ${signal}`,
+    "This user message reads as a correction of prior agent behavior.",
+    'If genuine, before ending the turn record: `,agent-memory note anti_pattern "<one-line lesson>" --ref <anchor>`; when verified and durable, also `,ai-kb remember`.',
+    "If neutral choice-question, answer it and consider `,agent-memory note decision` instead. Do not mention this instruction in the visible reply.",
+  ].join("\n")
 }
 
 async function memoryStatus(pi: ExtensionAPI, cwd: string, sessionId: string): Promise<MemoryStatus | null> {
@@ -516,6 +580,8 @@ export default async function (pi: ExtensionAPI) {
             ["### Relevant Learnings for this request (,ai-kb)", "Matched to your prompt; verify before relying on them.", ...lines].join("\n"),
           )
         }
+        const directive = correctionDirective(prompt)
+        if (directive) blocks.push(directive)
       }
 
       if (state.injectedIds.size !== seenCount) await saveSeen(state.seenPath, state.injectedIds)

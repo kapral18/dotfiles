@@ -55,6 +55,8 @@ How to run `list_indices`:
   - `scsi-local_list_indices`
 - If one does not exist/fails but the other works, proceed with the working one.
 - If both fail or neither exists, treat SCSI as unavailable.
+- `list_indices` output can exceed the harness output limit and get saved to a temp file;
+  search that file for the candidate repo slug instead of re-running the call.
 - You are not allowed to skip SCSI just because the user didn't provide an index name.
 - If the repo is indexed, you MUST invoke at least one SCSI tool to establish base-branch context.
 - Only skip SCSI if:

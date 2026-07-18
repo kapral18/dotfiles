@@ -1,13 +1,13 @@
 ---
 name: k-ui-proof
-description: "Use when verifying that a built or changed UI matches its intended visual, state, or behavior and capturing screenshot proof for a PR — during feature building (/build) or PR composition (compose-pr). Head-only; not for reviewing others' changes."
+description: "Use when verifying that a built or changed UI matches its intended visual, state, or behavior and capturing screenshot proof for a PR — during feature building (/k-build) or PR composition (compose-pr). Head-only; not for reviewing others' changes."
 ---
 
 # UI Proof
 
 Head-only live-UI verification that a **built or changed** UI matches its **intended visual, state, or behavior**, capturing the screenshot set that proves it for a PR.
 This is the creation-side sibling of `live-ui-review.md`: same runtime machinery, opposite direction.
-`live-ui-review` compares PR/head against base to find regressions for `/agent-review` to judge;
+`live-ui-review` compares PR/head against base to find regressions for `/k-agent-review` to judge;
 `k-ui-proof` checks the built runtime against the intended UI state/behavior and captures proof to attach to a PR.
 
 Load `~/.agents/skills/k-agent-review/references/live-ui-runtime.md` for the shared runtime contract:
@@ -17,7 +17,7 @@ This file adds only the proof-mode specifics: the head-only model, the intended 
 ## Do not use
 
 - reviewing an existing PR or someone else's changes, or hunting regressions:
-  `~/.agents/skills/k-review/SKILL.md` / `/agent-review` (which owns `live-ui-review`)
+  `~/.agents/skills/k-review/SKILL.md` / `/k-agent-review` (which owns `live-ui-review`)
 - a change with no UI/runtime surface: there is no UI proof to capture — skip
 - generic browser automation with no intended UI state/behavior to check against: `~/.agents/skills/k-playwriter/SKILL.md` directly
 
@@ -25,11 +25,11 @@ This file adds only the proof-mode specifics: the head-only model, the intended 
 
 `k-ui-proof` runs **inline** in its caller, which already holds Playwriter and local/dev mutation permissions:
 
-- `/build` — a phase after the mechanical gates verifies any acceptance criterion whose evidence is visual (see the `k-build` skill).
-- `k-compose-pr` — captures/embeds proof at PR-composition time when the diff is UI-facing and no `/build` manifest exists.
+- `/k-build` — a phase after the mechanical gates verifies any acceptance criterion whose evidence is visual (see the `k-build` skill).
+- `k-compose-pr` — captures/embeds proof at PR-composition time when the diff is UI-facing and no `/k-build` manifest exists.
 - ad-hoc — fired directly when the user asks to verify a UI and capture screenshots.
 
-It is not a `/agent-review` read-only reviewer lane and needs no isolated subagent profile;
+It is not a `/k-agent-review` read-only reviewer lane and needs no isolated subagent profile;
 the shared read-only constraints still bind everything except Playwriter/browser commands and packet-permitted local/dev data setup.
 
 ## Caller supplies
@@ -37,7 +37,7 @@ the shared read-only constraints still bind everything except Playwriter/browser
 - the built/changed worktree path and branch/sha (the runtime under verification)
 - changed UI paths
 - the **intended visual/UI state or behavior** to check against — exactly one of:
-  - a spec acceptance criterion tagged `judgment:` whose evidence is visual (`/build`)
+  - a spec acceptance criterion tagged `judgment:` whose evidence is visual (`/k-build`)
   - a linked issue/design mockup, screenshot, UI behavior repro, or the PR's stated UI goal (`k-compose-pr`)
   - the user's described target (ad-hoc)
 - selected target packet, including overlay source when an overlay supplied it (`elastic/kibana` → `~/.agents/skills/k-elastic-domain/references/kibana-live-ui.md`)
@@ -74,7 +74,8 @@ Decide whether the changed paths touch UI/runtime behavior and whether an intend
 - Capture the smallest set that proves each visual/UI criterion — the key state(s) the intended behavior describes, not every navigation.
 - For each shot, record a manifest entry: its folder, filename, caption (what it proves), exact URL, the linked acceptance criterion or visual goal, `folder_opened_or_provided` status, and any fidelity note (mocked/partial data).
 - The manifest and the `/tmp` paths are a handoff to the caller and the user only.
-  Do not upload images or put local paths in a PR body/comment; the user attaches the files to the PR (see `k-compose-pr`).
+  Do not upload images or put local paths in a PR body/comment from this proof phase;
+  the user attaches the files to the PR (see `k-compose-pr`), or the publication step embeds them with explicit user approval via the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md`.
 
 ## Return exactly
 

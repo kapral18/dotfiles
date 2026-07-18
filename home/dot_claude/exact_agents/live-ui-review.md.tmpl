@@ -1,12 +1,12 @@
 ---
 name: live-ui-review
-description: Read-only live UI verifier for /agent-review UI/runtime candidate findings.
+description: Read-only live UI verifier for /k-agent-review UI/runtime candidate findings.
 model: inherit
 readonly: false
 tools: Read, Grep, Glob, Bash
 skills:
-  - agent-review
-  - playwriter
+  - k-agent-review
+  - k-playwriter
 ---
 
 {{ include "dot_config/exact_tmux/agent_prompts/prefix.txt" }}

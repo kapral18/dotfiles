@@ -29,7 +29,7 @@ Applies to:
 - local-changes verify-and-fix.
 - PR-fix self-fixes.
 - self-review.
-- light-review.
+- k-light-review.
 
 The stage applies the canonical **four dimensions** defined verbatim in `judging_core.md`, never renamed:
 
@@ -58,11 +58,11 @@ Two engine passes run _before_ fixing or drafting, distinct from the post-review
 
 A candidate survives only when refutation fails with evidence. Every kept finding states reachability, and an unreachable path loses its severity.
 
-Direct `k-review`/`light-review` run this as single-model self-refutation. In `/agent-review`, the cross-family adversarial lane owns it and read-only finder lanes only return candidates plus reachability.
+Direct `k-review`/`k-light-review` run this as single-model self-refutation. In `/k-agent-review`, the cross-family adversarial lane owns it and read-only finder lanes only return candidates plus reachability.
 
 **Findings-set audit** runs before acting on the survivors. The same four dimensions apply to the _finding list and its proposed fixes_, not the fix diff: collapse same-root-cause duplicates, trim verbose findings, and drop unanchored, unactionable, or overengineered items.
 
-In `/agent-review`, this is the `findings-auditor`'s job.
+In `/k-agent-review`, this is the `findings-auditor`'s job.
 
 ## Reference: light review
 

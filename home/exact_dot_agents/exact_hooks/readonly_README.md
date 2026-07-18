@@ -43,13 +43,17 @@ The agent should bind automatically when exactly one bucket clearly matches the 
 It then runs `,agent-memory select <topic> --session-id <id>` or `,agent-memory select <new-topic> --create --session-id <id>` itself.
 Feature/topic worktrees keep `current` continuity by default when no `_active_topic.txt` hint is present.
 
+Copilot sub-agents run with `COPILOT_AGENT_SESSION_ID` set to the parent session id.
+Worklog writes (`worklog_recorder.py` via `topic_paths_for_write`) and the `,agent-memory` CLI resolve the parent's selected topic, or its `session-<parent>` fallback on default branches, so sub-agent activity lands in the parent's bucket.
+Hook startup/read/inject paths ignore that variable, so blind lanes receive no parent context.
+
 For a session-bound named topic with a non-empty `<topic>.txt` spec, `session_context.py` injects the full spec/worklog context and a relevance-gated `### Relevant Learnings (,ai-kb)` block.
 A session-bound named topic is neither `current` nor a `session-*` fallback.
 The hook runs `,ai-kb search` with the spec text as the query (`bm25` lane, no embedder, bounded by the hook timeout).
 It surfaces up to three capsules via `--workspace-gate`, which makes the KB itself keep only capsules local to this workspace or scoped `domain`/`universal`, so durable memory seeds the session automatically.
 Unbound, ad-hoc/`session-*`, and review topics get no capsule warm-start.
 This is the only automatic session-start capsule retrieval; supported runtimes also perform per-turn recall.
-Cursor cannot inject context per-turn (`beforeSubmitPrompt` carries no context-injection output), so mid-task relevance comes from the agent's own `,ai-kb search` calls against its actual task.
+Adapters that send neither `AI_EMBED_WARM=1` nor `warm_embedder: true` have no per-turn injection wiring, so their session context carries a `### Recall Notice` directing the agent to run `,ai-kb search` itself mid-task.
 The hook reads the KB but never writes it; persistence stays agent-driven.
 Warm-start and per-turn recall persist injected capsule IDs in `.recall-seen-<session-key>.json`.
 The canonical session key follows `conversation_id`, then `session_id`, then `generation_id`;
@@ -57,13 +61,12 @@ Pi persists the same state across extension reloads and session resumes.
 
 Resident FastEmbed warm-up is a separate, explicit lifecycle for automatic per-turn consumers:
 
-- Claude, Gemini, and Codex set `AI_EMBED_WARM=1` on their session-start command.
+- Claude, Gemini, Codex, and Cursor set `AI_EMBED_WARM=1` on their session-start command (Cursor gained per-prompt `beforeSubmitPrompt` injection in `2026.07.16`).
 - OpenCode and Copilot pass `warm_embedder: true` in their session-start payload.
 - Pi calls `~/lib/,ai-kb/embed_client.py ensure` from its TypeScript `session_start` handler.
-- Cursor does not warm the resident because it has no per-turn retrieval wiring;
-  its session context therefore carries a `### Recall Notice` directing the agent to run `,ai-kb search` itself mid-task and to capture insights with `,agent-memory note`.
+- Adapters that send neither signal do not warm the resident and get the `### Recall Notice` fallback described above.
 
-`AI_AGENT_DEPTH` applies one recall contract to Claude, Gemini, OpenCode, Copilot, Codex, and Pi:
+`AI_AGENT_DEPTH` applies one recall contract to Claude, Gemini, OpenCode, Copilot, Codex, Cursor, and Pi:
 
 | Depth      | Startup BM25 | Resident warm-up | Per-turn fetch / inject | Prompt / body caps | Timeout |
 | ---------- | ------------ | ---------------- | ----------------------- | ------------------ | ------- |
@@ -121,7 +124,7 @@ Use `,agent-memory` to set the active topic or as a dead switch for persisted ho
 ,agent-memory select <new-topic> --create --session-id <id>
 ,agent-memory use <topic>
 ,agent-memory merge <source-topic> <dest-topic> [--dry-run]
-,agent-memory note <fact|gotcha|pattern|anti_pattern|recipe|principle|question> "<text>" [--ref <anchor>]
+,agent-memory note <fact|gotcha|pattern|anti_pattern|recipe|principle|question|decision> "<text>" [--ref <anchor>]
 ,agent-memory wipe-current
 ,agent-memory wipe-current --dry-run
 ,agent-memory wipe-current --reset-active

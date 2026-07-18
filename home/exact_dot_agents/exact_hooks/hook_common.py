@@ -19,6 +19,7 @@ SESSION_TOPIC_PREFIX = ".session-topic-"
 AGENT_DEPTH_ENV = "AI_AGENT_DEPTH"
 AGENT_DEPTHS = {"fast", "balanced", "deep"}
 DEFAULT_AGENT_DEPTH = "balanced"
+PARENT_SESSION_ENV = "COPILOT_AGENT_SESSION_ID"
 
 
 def read_payload() -> dict[str, Any]:
@@ -96,12 +97,16 @@ def session_key(payload: dict[str, Any]) -> str:
     return ""
 
 
+def parent_session_key() -> str:
+    topic = safe_topic(os.environ.get(PARENT_SESSION_ENV, ""))
+    return "" if topic == DEFAULT_TOPIC else topic
+
+
 def session_topic_path(spec_dir: Path, key: str) -> Path:
     return spec_dir / f"{SESSION_TOPIC_PREFIX}{key}.txt"
 
 
-def session_selected_topic(spec_dir: Path, payload: dict[str, Any]) -> str:
-    key = session_key(payload)
+def selected_topic_for_session_key(spec_dir: Path, key: str) -> str:
     if not key:
         return ""
     try:
@@ -110,6 +115,10 @@ def session_selected_topic(spec_dir: Path, payload: dict[str, Any]) -> str:
         return ""
     topic = safe_topic(raw_topic)
     return "" if topic == DEFAULT_TOPIC else topic
+
+
+def session_selected_topic(spec_dir: Path, payload: dict[str, Any]) -> str:
+    return selected_topic_for_session_key(spec_dir, session_key(payload))
 
 
 def is_session_topic(topic: str) -> bool:
@@ -152,10 +161,44 @@ def active_topic(spec_dir: Path, workspace: Path, payload: dict[str, Any]) -> st
     return DEFAULT_TOPIC
 
 
+def active_topic_for_write(spec_dir: Path, workspace: Path, payload: dict[str, Any]) -> str:
+    """Resolve the worklog write bucket.
+
+    Parent-session inheritance is write-only: read/inject paths keep using
+    topic_paths()/active_topic() so blind sub-agents do not receive parent topic
+    context.
+    """
+    payload_key = session_key(payload)
+    topic = selected_topic_for_session_key(spec_dir, payload_key)
+    if topic:
+        return topic
+
+    parent_key = parent_session_key()
+    has_distinct_parent = bool(parent_key and parent_key != payload_key)
+    if has_distinct_parent:
+        topic = selected_topic_for_session_key(spec_dir, parent_key)
+        if topic:
+            return topic
+
+    if is_default_branch_workspace(workspace):
+        if has_distinct_parent:
+            return f"session-{parent_key[:24]}"
+        return session_topic(payload)
+
+    return DEFAULT_TOPIC
+
+
 def topic_paths(payload: dict[str, Any]) -> tuple[Path, str, Path, Path]:
     workspace = workspace_root(payload)
     spec_dir = spec_dir_for(workspace)
     topic = active_topic(spec_dir, workspace, payload)
+    return workspace, topic, spec_dir / f"{topic}.txt", spec_dir / f"{topic}.worklog.jsonl"
+
+
+def topic_paths_for_write(payload: dict[str, Any]) -> tuple[Path, str, Path, Path]:
+    workspace = workspace_root(payload)
+    spec_dir = spec_dir_for(workspace)
+    topic = active_topic_for_write(spec_dir, workspace, payload)
     return workspace, topic, spec_dir / f"{topic}.txt", spec_dir / f"{topic}.worklog.jsonl"
 
 

@@ -227,7 +227,7 @@ Loop control:
   - proposed change
   - verification run: lint / type_check / tests (what you ran, pass/fail, key error signal if failed)
 - Draft reply body
-- `ui_evidence_attachments` when the reply is UI-related and drafted after `/agent-review` or `live-ui-review`:
+- `ui_evidence_attachments` when the reply is UI-related and drafted after `/k-agent-review` or `live-ui-review`:
   screenshot handoff paths/descriptions/placement and folder-open/provided status, or the blocker/non-applicability reason screenshots are absent.
   Do not put local screenshot paths in the reply body.
 - Recommendation: `resolve` | `keep_open`

@@ -157,10 +157,12 @@ For `elastic/kibana` live UI verification, load:
 
 ```text
 ~/.agents/skills/k-elastic-domain/references/kibana-live-ui.md
+~/.agents/skills/k-elastic-domain/references/kibana-live-ui-evidence.md
 ```
 
-That reference owns the Kibana runtime targets, Elasticsearch endpoint mapping, data/setup ladder, Dev Tools Console fallback, runtime-environment blocker rule, and screenshot handoff details.
-Generic `/agent-review` runtime contracts should select and pass that overlay, not inline Kibana targets themselves.
+The first reference owns the Kibana runtime targets, Elasticsearch endpoint mapping, data/setup ladder, Dev Tools Console fallback, and runtime-environment blocker rule.
+Its companion `kibana-live-ui-evidence.md` owns the safety boundary, screenshot handoff, live feedback overlay, and controller validation.
+Generic `/k-agent-review` runtime contracts should select and pass that overlay, not inline Kibana targets themselves.
 
 ## Output
 

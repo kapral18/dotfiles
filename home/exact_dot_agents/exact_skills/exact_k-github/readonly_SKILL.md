@@ -1,6 +1,6 @@
 ---
 name: k-github
-description: "Use when the user wants a GitHub side effect via gh/API or provides a gist URL: PRs, issues, comments, reviews, labels, releases, merges, or gists."
+description: "Use when the user wants a GitHub side effect or provides a gist URL: PRs, issues, comments, reviews, labels, releases, merges, attachment uploads, or gists."
 ---
 
 # GitHub + gh Skill
@@ -12,6 +12,9 @@ Defaults & constraints:
 - Never merge into the base branch via CLI; merges happen via the GitHub UI.
 - For non-interactive reliability, set `GH_PAGER=cat` for all `gh` calls.
 - GitHub gists: use `gh gist` (or `gh api`) for all gist interactions; do not fetch gist URLs directly (HTML wrappers, auth/rate limits, non-canonical).
+- Attachment uploads (local images/videos/files -> `user-attachments` URLs) are impossible via the REST/GraphQL API;
+  for any flow that needs one — including a plain "upload this image" request —
+  use the browser-assisted flow in `~/.agents/skills/k-github/references/attachments.md`.
 
 PR targeting (avoid searching):
 
@@ -85,16 +88,17 @@ PR review side effects (draft / pending reviews):
 
 - Before any create/delete-recreate/submit action, read existing current-account pending reviews and reconcile them with the new payload;
   do not create or submit fragmented review feedback.
-- For UI-related review feedback drafted after `/agent-review` or `live-ui-review`, require the approved draft's `ui_evidence_attachments` handoff or a valid blocker/non-applicability reason before creating/submitting the review.
+- For UI-related review feedback drafted after `/k-agent-review` or `live-ui-review`, require the approved draft's `ui_evidence_attachments` handoff or a valid blocker/non-applicability reason before creating/submitting the review.
   Keep local screenshot paths out of review bodies and inline comment bodies;
   show the handoff and folder-open/provided status separately in the approval payload.
+  With explicit user approval, screenshots may instead be embedded as `user-attachments` URLs via the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md`.
 - Full mechanics — pre-flight checklist, pending-review definition/constraints, the existing-pending-review merge guard, the batch draft-posting procedure (including `position` math), and post-submit verification — live in `~/.agents/skills/k-github/references/pr-reviews.md`.
 
 Posting PR review comments:
 
 - Use bash/zsh `$'...'` so `\n` becomes real line breaks. Do NOT send literal `\n`.
 - Commit references in comment bodies must be clickable links (full GitHub URL), never bare or backtick-wrapped hashes.
-- For UI-related comments/replies/PR-level feedback drafted after `/agent-review` or `live-ui-review`, require screenshot handoff evidence outside the body or a valid blocker/non-applicability reason.
+- For UI-related comments/replies/PR-level feedback drafted after `/k-agent-review` or `live-ui-review`, require screenshot handoff evidence outside the body or a valid blocker/non-applicability reason.
   Never put local screenshot paths in GitHub comment, reply, review, or PR-level bodies.
   Show folder-open/provided status in the approval/preflight handoff.
 - Follow the relevant PR review mode for anchoring and comment placement: `~/.agents/skills/k-review/references/pr_review.md` or `~/.agents/skills/k-review/references/pr_fix.md`.

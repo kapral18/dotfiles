@@ -8,7 +8,7 @@ description: "Use when checking elastic/kibana ownership, reviewer targets, who 
 Use when:
 
 - composing or reviewing an `elastic/kibana` PR and reviewer/ownership guidance is needed
-- checking whether changed paths fall under `@elastic/kibana-management` (the user's team) before a side effect, per SOP §3.1 Ownership Gate
+- checking whether changed paths fall under `@elastic/kibana-management` (the user's team) before a side effect, per SOP §3.2 Ownership Gate
 - asked "who owns this path / who should review this?"
 
 Do not use:
@@ -38,7 +38,7 @@ The team identity is `@elastic/kibana-management`.
      A descendant path can be in-team because its nearest matching CODEOWNERS root is in-team.
 3. Classify:
    - All paths in-team -> proceed normally; no extra reviewers needed beyond team norms.
-   - Any path out-of-team -> list those paths with their owning teams; propose the owning teams as reviewers and flag that the side effect needs explicit approval (SOP §3.1).
+   - Any path out-of-team -> list those paths with their owning teams; propose the owning teams as reviewers and flag that the side effect needs explicit approval (SOP §3.2).
    - Unowned paths -> say so explicitly; do not guess an owner.
 4. Present the proposal (paths -> owners -> suggested reviewers). Stop there; apply nothing.
 

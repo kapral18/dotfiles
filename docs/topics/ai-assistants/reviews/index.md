@@ -10,12 +10,12 @@ Use these pages when continuing a review, addressing review threads, rechecking 
 
 ## The moving parts
 
-| Navigation slice                                                        | Owns                                                                                   |
-| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| [Agent-review topology](agent-review-topology.md)                       | `/agent-review` phases, worker ownership, live UI handoff, controller responsibilities |
-| [Base context and truth validation](base-context-and-truth.md)          | SCSI/base-branch context, strict verification, PR intake, necessity audit              |
-| [Post-review and light review](post-review-and-light-review.md)         | four-dimension hygiene lens and proportional self-review                               |
-| [Replies, publication, and history](replies-publication-and-history.md) | reply style, router behavior, human-visible gate, deletion/history safeguards          |
+| Navigation slice                                                        | Owns                                                                                     |
+| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| [Agent-review topology](agent-review-topology.md)                       | `/k-agent-review` phases, worker ownership, live UI handoff, controller responsibilities |
+| [Base context and truth validation](base-context-and-truth.md)          | SCSI/base-branch context, strict verification, PR intake, necessity audit                |
+| [Post-review and light review](post-review-and-light-review.md)         | four-dimension hygiene lens and proportional self-review                                 |
+| [Replies, publication, and history](replies-publication-and-history.md) | reply style, router behavior, human-visible gate, deletion/history safeguards            |
 
 ## Using it
 

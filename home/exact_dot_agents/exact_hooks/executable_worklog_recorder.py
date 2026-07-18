@@ -7,7 +7,7 @@ import json
 import os
 import sys
 
-from hook_common import bounded_text, emit, read_payload, session_key, topic_paths, utc_now
+from hook_common import bounded_text, emit, read_payload, session_key, topic_paths_for_write, utc_now
 
 QUEUE_DIR_NAME = ".worklog-queue-v1"
 FALLBACK_ERROR_MAX_BYTES = 64 * 1024
@@ -70,7 +70,7 @@ def main() -> None:
         except OSError:
             pass
     payload = read_payload()
-    workspace, topic, spec_path, worklog_path = topic_paths(payload)
+    workspace, topic, spec_path, worklog_path = topic_paths_for_write(payload)
     key = session_key(payload) or f"topic-{topic}"
     entry = {
         "ts": utc_now(),

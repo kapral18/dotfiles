@@ -45,7 +45,7 @@ First actions:
      If the repo/domain overlay provides templates, load the referenced template file before drafting and draft against one selected template, not a freeform section list.
    - `screenshots`: `captured | not_applicable | blocked | explicitly_skipped`.
      Screenshot proof is required when the diff touches UI/runtime behavior, linked context includes screenshots/media, or the Test Plan includes manual UI steps.
-     Required proof means reuse a `/build` `k-ui-proof` manifest, or load `~/.agents/skills/k-ui-proof/SKILL.md` and run it head-only.
+     Required proof means reuse a `/k-build` `k-ui-proof` manifest, or load `~/.agents/skills/k-ui-proof/SKILL.md` and run it head-only.
      For UI behavior bugs whose key assertion is non-visual (clipboard, keyboard, focus, network), still capture human-visible trigger/result states and record the non-visual assertion in the Test Plan.
      Captured proof includes folder/filename mapping and folder-open/provided status; explicit skips include user approval evidence.
    - `test_plan`: issue reproduction/expected/actual coverage, commands run, and observed results.
@@ -81,7 +81,7 @@ Rules:
   - when screenshot proof is captured, add a `## Screenshots` section listing each shot as a caption plus an `attach: <filename>` placeholder the user drags into the GitHub PR
   - never put the local `/tmp/<folder-name>/` path in the PR body (the sanitize rule above);
     keep the folder + filename→path mapping in the PR publication packet so the user knows which file to attach
-  - the agent does not upload images; GitHub image embedding is a manual drag-drop the user performs, so leave the attach placeholder rather than a fabricated image URL
+  - by default the agent does not upload images — GitHub image embedding is a manual drag-drop the user performs, so leave the attach placeholder rather than a fabricated image URL; with explicit user approval, images may instead be embedded as `user-attachments` URLs via the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md` (a GitHub side effect behind the publication gate)
   - before any PR create/edit handoff, open the screenshot folder or otherwise give the user the folder path plus filename mapping so the files can be dragged into GitHub
   - omit the section only for `not_applicable` or `explicitly_skipped`; do not omit it for `required` or `blocked`
 - decision log: when the change embodies a decision with observable consequences for someone else —

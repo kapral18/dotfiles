@@ -35,6 +35,10 @@ def _base_env(root: Path) -> dict[str, str]:
     env = dict(os.environ)
     env["AGENT_MEMORY_SPEC_ROOT"] = str(root / "specs")
     env["PYTHONPATH"] = f"{SCRIPTS}{os.pathsep}{env.get('PYTHONPATH', '')}"
+    # The hook's per-profile search timeout races the stub subprocess under
+    # full-suite load; a generous floor keeps depth-parity assertions
+    # deterministic without changing production defaults.
+    env["AI_KB_RECALL_TIMEOUT"] = "60"
     return env
 
 
@@ -334,7 +338,7 @@ class TestRecallDepth(unittest.TestCase):
         self.assertEqual(deep_searches[0]["args"][3], "12")
         self.assertEqual(deep_searches[0]["connect_only"], "1")
 
-    def test_adapter_inventory_keeps_shared_depth_contract_and_no_cursor_codex_per_turn(self) -> None:
+    def test_adapter_inventory_keeps_shared_depth_contract_and_perturn_wiring(self) -> None:
         claude = (REPO / "home/dot_claude/settings.personal.json").read_text(encoding="utf-8")
         gemini = (REPO / "home/dot_gemini/settings.json").read_text(encoding="utf-8")
         opencode = (REPO / "home/dot_config/opencode/plugins/agent-memory.ts").read_text(encoding="utf-8")
@@ -345,12 +349,16 @@ class TestRecallDepth(unittest.TestCase):
         cursor = (REPO / "home/dot_cursor/hooks.json").read_text(encoding="utf-8")
         codex = (REPO / "home/dot_codex/hooks.json.tmpl").read_text(encoding="utf-8")
 
-        for adapter in (claude, gemini, opencode, copilot, codex):
+        for adapter in (claude, gemini, opencode, copilot, codex, cursor):
             self.assertIn("perturn_recall.py", adapter)
         for adapter in (claude, gemini, opencode, copilot, cursor, codex):
             self.assertIn("worklog_dispatcher.sh", adapter)
         self.assertIn("AI_AGENT_DEPTH", pi)
-        self.assertNotIn("perturn_recall.py", cursor)
+        # Cursor >= 2026.07.16 injects additionalContext from beforeSubmitPrompt
+        # (verified from the installed bundle); the hook must ride that event and
+        # sessionStart must request the resident warm-up.
+        self.assertIn("beforeSubmitPrompt", cursor)
+        self.assertIn("AI_EMBED_WARM=1", cursor)
         # Codex spawns hook commands without a shell (verified against codex
         # 0.144.4: a literal `$HOME/...` command never expands and the hook
         # fails), so its adapter must use templated absolute paths.
