@@ -91,7 +91,7 @@ Live UI can return:
 | `Not applicable`    | target does not apply to the introduced surface                                                                                                                                                        |
 | blocker             | target, branch, runtime, data setup, or screenshot capture is blocked                                                                                                                                  |
 
-For UI-facing PR findings, the controller keeps image paths out of GitHub review bodies and reports a separate `UI evidence attachments:` handoff. That handoff includes local paths, descriptions, target branch/URL, suggested comment placement, folder-open/provided status, md5s, dimensions, and whether the controller viewed the image before human-visible use. If adversarial verification refutes a candidate, any matching UI evidence is discarded as moot.
+For UI-facing PR findings, the controller keeps image paths out of GitHub review bodies and reports a separate `UI evidence attachments:` handoff. That handoff includes local paths, descriptions, target branch/URL, suggested comment placement, md5s, dimensions, and whether the controller viewed the image before human-visible use. If adversarial verification refutes a candidate, any matching UI evidence is discarded as moot.
 
 If a kept UI finding lacks screenshots without a valid blocker or non-applicability result, the controller reruns live UI or blocks instead of drafting text-only feedback.
 

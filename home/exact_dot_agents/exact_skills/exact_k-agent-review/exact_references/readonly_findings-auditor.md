@@ -48,7 +48,7 @@ Hard constraints:
 - Check whether parent-supplied existing pending/submitted review content changes a candidate's disposition.
   It may make the candidate redundant, stale, conflicting, or mergeable into a single cleaner payload.
 - Check whether each screenshot is tied to a candidate the controller kept.
-  It must have a useful description, folder-open/provided status, and be worth handing to the user for manual attachment.
+  It must have a useful description and be worth handing to the publication step for upload.
 - For UI-related kept findings that may become draft review feedback, missing screenshot handoff is a gap unless `live-ui-review` returned a valid blocker or non-applicability result.
   Recommend rerun/block rather than drafting a UI-related comment from text-only UI evidence.
   Drop handoff entries only for findings the controller should drop, redundant screenshots, or screenshots with no useful link to the candidate; do not drop a relevant screenshot merely because text evidence also exists.

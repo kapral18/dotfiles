@@ -89,9 +89,8 @@ PR review side effects (draft / pending reviews):
 - Before any create/delete-recreate/submit action, read existing current-account pending reviews and reconcile them with the new payload;
   do not create or submit fragmented review feedback.
 - For UI-related review feedback drafted after `/k-agent-review` or `live-ui-review`, require the approved draft's `ui_evidence_attachments` handoff or a valid blocker/non-applicability reason before creating/submitting the review.
-  Keep local screenshot paths out of review bodies and inline comment bodies;
-  show the handoff and folder-open/provided status separately in the approval payload.
-  With explicit user approval, screenshots may instead be embedded as `user-attachments` URLs via the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md`.
+  Keep local screenshot paths out of review bodies and inline comment bodies; show the handoff separately in the approval payload.
+  With explicit user approval, upload and embed screenshots as `user-attachments` URLs via the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md`.
 - Full mechanics — pre-flight checklist, pending-review definition/constraints, the existing-pending-review merge guard, the batch draft-posting procedure (including `position` math), and post-submit verification — live in `~/.agents/skills/k-github/references/pr-reviews.md`.
 
 Posting PR review comments:
@@ -100,7 +99,6 @@ Posting PR review comments:
 - Commit references in comment bodies must be clickable links (full GitHub URL), never bare or backtick-wrapped hashes.
 - For UI-related comments/replies/PR-level feedback drafted after `/k-agent-review` or `live-ui-review`, require screenshot handoff evidence outside the body or a valid blocker/non-applicability reason.
   Never put local screenshot paths in GitHub comment, reply, review, or PR-level bodies.
-  Show folder-open/provided status in the approval/preflight handoff.
 - Follow the relevant PR review mode for anchoring and comment placement: `~/.agents/skills/k-review/references/pr_review.md` or `~/.agents/skills/k-review/references/pr_fix.md`.
 - Inline/range, file-level, reply, and PR-timeline comment examples live in `~/.agents/skills/k-github/references/pr-comments.md`.
 
@@ -121,7 +119,7 @@ PR creation:
 - Always propose labels/assignees/milestone/projects first and get explicit confirmation before applying any of them.
 - Before `gh pr create` or any PR body/title edit, require the `k-compose-pr` PR publication packet.
   Stop before the GitHub side effect if the packet is missing, any required field is missing, or any required field is `blocked`.
-  For UI-facing changes and linked screenshots/media, the packet must include screenshot status and any captured proof folder/filename mapping plus folder-open/provided status.
+  For UI-facing changes and linked screenshots/media, the packet must include screenshot status and any captured proof folder/filename mapping.
   For repos with PR templates, the packet must include selected template and required-section checklist.
   If metadata is proposed, the packet must mark it `approved_to_apply`, `applied`, `deferred`, or `pending_approval`.
   Do not treat `pending_approval` as "no"; surface it in the approval request or immediately after PR creation/readback.

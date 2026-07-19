@@ -37,7 +37,7 @@ What you get that rung 1 doesn't: exhaustive PR context intake (every comment th
 
 The controller launches several reviewer subagents in parallel (each with a different focus — correctness, tests, security…), plus a blind "fresh eyes" lane that sees zero PR context, then sends every candidate finding to a **different-family model whose only job is to refute it**.
 
-Findings that survive get a live UI check when the diff touches one. Expect a structured report: roster, verdict counts (`confirmed/refuted/undecidable`), kept/dropped findings with reasons, draft comments awaiting your go-ahead, and UI evidence attachments for UI feedback with the screenshot folder opened or provided.
+Findings that survive get a live UI check when the diff touches one. Expect a structured report: roster, verdict counts (`confirmed/refuted/undecidable`), kept/dropped findings with reasons, draft comments awaiting your go-ahead, and UI evidence attachments for UI feedback.
 
 Use it when the change is risky enough to fund five readers; it costs accordingly.
 

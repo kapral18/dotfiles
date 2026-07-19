@@ -27,8 +27,8 @@ verify-docs-navigation: ## Check docs/reference links and catalog coverage
 verify-agent-file-sizes: ## Check agent skill/hook markdown stays under the 20KB view limit
 	python3 scripts/verify_agent_file_sizes.py
 
-test: ## Run Python unit tests
-	PYTHONPATH=scripts python3 -m unittest discover -s scripts -p 'test_*.py' -t scripts
+test: ## Run Python unit tests (file-sharded in parallel via scripts/test_runner.py)
+	python3 scripts/test_runner.py
 	python3 home/exact_lib/exact_,history-sync/fish-history-merge.test.py -v
 	COPILOT_AGENT_MEMORY_EXTENSION_TEST=1 node scripts/tests/copilot_agent_memory_extension.test.mjs
 

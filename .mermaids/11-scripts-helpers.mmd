@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 11-scripts-helpers.mmd — Every file in scripts/ (96). Repo-side Python
+%% 11-scripts-helpers.mmd — Every file in scripts/ (97). Repo-side Python
 %% (stdlib only, no PyYAML) called by chezmoi 07-* hooks + ,bin commands.
 %% Grouped by consumer. Shared parsers feed the generators/mergers.
 %% ============================================================================
@@ -16,7 +16,7 @@ flowchart TB
         MC["model_mirror_consumer.py (consumer_view.v1<br/>shared by repo generators and deployed ,ai)"]:::shared
         MD["model_display.py · jsonc_dump.py (JSONC writer)"]:::shared
         CL["chezmoi_lib.sh (thin hook interface)<br/>managed_config_manifest.py (generic literal checksum ledger)<br/>generated_artifact_ledger.py (AI ownership-aware effective state + ,doctor ai)"]:::shared
-        TS["_test_support.py (puts scripts/ on sys.path for direct script tests)"]:::shared
+        TS["_test_support.py (puts scripts/ on sys.path for direct script tests)<br/>test_runner.py (file-sharded parallel unittest runner for make test;<br/>per-file AGENT_MEMORY_SPEC_ROOT isolation)"]:::shared
     end
 
     subgraph MCPGEN["MCP config generation (hook 07-generate-mcp-configs)"]

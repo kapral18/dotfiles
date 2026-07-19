@@ -445,7 +445,7 @@ The measured reason for this controller cache is concrete: one real review had 4
      If screenshot handoff is missing, rerun `live-ui-review` or block with the exact reason;
      do not draft a UI-related comment from text-only UI evidence.
      Never put local paths in GitHub review bodies, and never create extra comments just to carry image paths;
-     with explicit user approval, embed screenshots as `user-attachments` URLs via the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md` instead of manual attachment.
+     with explicit user approval, upload and embed screenshots as `user-attachments` URLs via the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md`.
    - Drop only with source/API/runtime evidence for one of these hard reasons:
      - unsupported claims
      - unreachable-path findings
@@ -543,7 +543,7 @@ Controller validation: reject and rerun any `live-ui-review` result that:
 - uses browser/route/network mocks when faithful verification is blocked by a required runtime environment change;
   that must be returned as `Blocked` with setup instructions instead
 - returns `Blocked` for a missing/un-started local runtime in a shell-capable harness when the selected target packet documents a start command (the runtime-start rung); the worker should start it and continue, so rerun after the runtime is started
-- lists screenshot artifacts without local paths, descriptions, target URL/branch, linked candidate/finding placement, suggested manual attachment placement, folder-open/provided status, or fidelity/cleanup notes
+- lists screenshot artifacts without local paths, descriptions, target URL/branch, linked candidate/finding placement, suggested embedding placement, or fidelity/cleanup notes
 - returns applicable UI comparison evidence for a finding that may become draft review feedback with `ui_evidence_artifacts: none` and no valid blocker/non-applicability result
 - omits applicability, exact URLs checked, Playwriter preflight status, readiness result for each target, branch/runtime evidence, comparison evidence for each checked candidate, UI evidence artifact manifest or `none`, page cleanup/owned-page URLs, and blockers/uncertainty
 - omits the selected `target_packet` source, including overlay source when an overlay supplied the packet
@@ -572,9 +572,9 @@ Return:
 - Action taken or draft payloads, depending on mode.
 - Post-act verification: for any flow that edited the working tree, report quality gates (run with command evidence, or blocked with the exact blocker and the command the user must run), the fix-diff Post-Review Stage result per dimension (redundancy, verbosity, semantic + logical duplication, gaps), and each carried `verification_needed` run/blocked decision.
   Omit only when no working-tree edit occurred.
-- UI evidence attachments: for kept UI findings, local screenshot artifact paths with descriptions, target URL/branch, suggested manual attachment placement, and folder-open/provided status.
+- UI evidence attachments: for kept UI findings, local screenshot artifact paths with descriptions, target URL/branch, and suggested embedding placement.
   Use `none` only when no kept UI finding needs draft feedback, or when a valid blocker/non-applicability result explains why no screenshot exists.
-  Keep this separate from GitHub review bodies because local paths are only for the user.
+  Keep this separate from GitHub review bodies because local paths are only for the upload step.
 - Closeout memory: persist verified reusable insights via `,ai-kb remember` and record correction-class lessons via `,agent-memory note anti_pattern`; write only verified, durable items.
 - Remaining uncertainty or gated side effects.
 - Completion gate: clear, or blocked with the unresolved item.

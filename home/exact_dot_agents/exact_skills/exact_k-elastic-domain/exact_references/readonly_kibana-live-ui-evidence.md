@@ -24,19 +24,16 @@ This file carries the worker conduct and evidence contract: safety boundary, scr
 - Store screenshots as Playwriter artifacts in a distinct `/tmp/<folder-name>/` directory —
   one dedicated folder per single screenshot, per comparison pair (base + PR/head), or per grouped set;
   never loose in `/tmp` and never mixed with an unrelated set. Use descriptive names and preserve handoff files.
-  After storing a set, open the enclosing folder for the user when the local environment supports it;
-  otherwise report that the folder could not be opened and provide the folder path.
 - For each screenshot, record:
   - folder + local file path
-  - folder-open/provided status
   - description
   - target classification: PR/head, base, or both selected targets
   - exact URL
   - linked candidate/finding
-  - suggested manual review comment placement
+  - suggested review comment placement
   - fidelity note for mocks or partial setup
-- The screenshot handoff is for the controller/user only: no image uploads or local paths in GitHub review comments or bodies from this worker, and no extra comments solely for image paths; the controller may embed screenshots only with explicit user approval via the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md`.
-- Proof-mode (`k-ui-proof`) stores each visual criterion's proof set in its own distinct `/tmp/<folder-name>/` folder (e.g. `/tmp/<topic>-<criterion-slug>/`) and hands the manifest to `k-compose-pr`; the user attaches the files to the PR body, or they are embedded through that same explicitly approved upload flow.
+- The screenshot handoff is for the controller's upload step only: no image uploads or local paths in GitHub review comments or bodies from this worker, and no extra comments solely for image paths; the controller uploads and embeds screenshots via the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md` behind explicit user approval.
+- Proof-mode (`k-ui-proof`) stores each visual criterion's proof set in its own distinct `/tmp/<folder-name>/` folder (e.g. `/tmp/<topic>-<criterion-slug>/`) and hands the manifest to `k-compose-pr`; the files are embedded through that same explicitly approved upload flow.
   The worker itself still never uploads images or writes local paths into GitHub.
 
 ## Live feedback overlay

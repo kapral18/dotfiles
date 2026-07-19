@@ -90,7 +90,7 @@ Each mode file adds only its oracle, comparison model, and return shape.
 
 It returns a per-criterion `met` / `unmet` / `blocked` verdict. The controller sets the ledger's `judgment-met`/`judgment-unmet` row from it; an `unmet` returns to phase 3 like a red step.
 
-The controller opens/provides the screenshot folder and reports the screenshot manifest. Each screenshot/pair/set lives in its own distinct `/tmp/<folder-name>/` folder with folder-open/provided status, so `k-compose-pr` can embed the shots.
+The controller reports the screenshot manifest. Each screenshot/pair/set lives in its own distinct `/tmp/<folder-name>/` folder, so `k-compose-pr` can upload and embed the shots.
 
 Windows/VirtualBox coverage is a separate manual skill, [`k-live-ui-windows`](../../../home/exact_dot_agents/exact_skills/exact_k-live-ui-windows/), connecting Playwriter to a guest browser over CDP through a host NAT port-forward. It is never auto-triggered by either mode; load it by hand only when the user explicitly asks for Windows/VirtualBox verification this turn.
 

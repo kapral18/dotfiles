@@ -83,6 +83,6 @@ Return exactly:
 - `branch_evidence`: branch/runtime identity evidence for each target, or what could not be verified
 - `data_setup`: media/artifacts inspected, fixture/mocks considered, existing data checked, selected-target-packet local/dev data seeded/mutated, domain interactive fallback usage, browser/route mocks if used as last resort, cleanup result, runtime environment blocker instructions, or exact data/mutation still needed
 - `comparison_evidence`: candidate-by-candidate UI/runtime evidence, including `Not applicable` only for candidates disproved by reachability or absent functionality
-- `ui_evidence_artifacts`: a list of screenshot handoff entries with local path, description, target URL/branch, linked candidate/finding, suggested manual attachment placement, `folder_opened_or_provided` status, and fidelity/cleanup notes; use `none` only when no applicable UI candidate may become review feedback or when `blockers_or_uncertainty` explains why screenshots could not be captured
+- `ui_evidence_artifacts`: a list of screenshot handoff entries with local path, description, target URL/branch, linked candidate/finding, suggested embedding placement, and fidelity/cleanup notes; use `none` only when no applicable UI candidate may become review feedback or when `blockers_or_uncertainty` explains why screenshots could not be captured
 - `pages`: pages created and closed, or URLs left open
 - `blockers_or_uncertainty`: none, or precise blockers/remaining uncertainty

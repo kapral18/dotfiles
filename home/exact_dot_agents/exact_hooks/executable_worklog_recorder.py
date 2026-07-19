@@ -48,7 +48,9 @@ def _record(spec_dir, key: str, topic: str, worklog_path, entry: dict) -> str:
         import worklog_queue
 
         receipt = worklog_queue.enqueue(spec_dir, key, topic, worklog_path, entry, start_worker=False)
-        worklog_queue.run_worker(receipt.queue_dir)
+        # This process exits right after flushing, so the worker's idle linger is
+        # pure latency here: flush synchronously with no idle wait.
+        worklog_queue.run_worker(receipt.queue_dir, config=worklog_queue.QueueConfig(worker_idle_seconds=0))
     except Exception as err:
         try:
             import worklog_queue

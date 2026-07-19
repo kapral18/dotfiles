@@ -86,7 +86,7 @@ Known tool labels:
 - fill the `template` field in the PR publication packet before handoff: `selected_template`, selection evidence, required headings present, and any omitted section with a template-allowed reason.
   For `Bugfix`, `## Root Cause` and `## Fix` are required standalone sections; do not merge them into `## Summary`.
   For `Bugfix`, handle `## Before/After Screenshots (or Video)` through the `screenshots` field in the PR publication packet:
-  include the section with attach placeholders when captured, or record explicit skip approval before publication.
+  include the section with the uploaded `user-attachments` embeds when captured, or record explicit skip approval before publication.
 - PR titles should use Kibana's bracketed area style when there is a clear owning area, e.g. `[Console] Fix ...`.
   Derive the bracket from the linked issue title, owning changed paths, or recent same-area PR precedent.
   Do not use a Conventional Commit header as the PR title unless local Kibana precedent for that exact area uses it.

@@ -17,7 +17,7 @@ make check
 make fmt
 ```
 
-`make check` runs formatting lint (`bin/fmt --check`), Python import lint, template rendering (`scripts/verify_templates.py`), mermaid file-census sync (`scripts/verify_mermaids.py`), bin command surface checks (`scripts/verify_bin_surface.py`), docs navigation checks (`scripts/verify_docs_navigation.py`), and the Python test suite.
+`make check` runs formatting lint (`bin/fmt --check`), Python import lint, template rendering (`scripts/verify_templates.py`), mermaid file-census sync (`scripts/verify_mermaids.py`), bin command surface checks (`scripts/verify_bin_surface.py`), docs navigation checks (`scripts/verify_docs_navigation.py`), and the Python test suite. The Python tests run file-sharded in parallel via [`scripts/test_runner.py`](scripts/test_runner.py) (one subprocess per `test_*.py` file, per-file `AGENT_MEMORY_SPEC_ROOT` isolation); tests that snapshot the working tree (`test_verify_mermaids.py`) run in a lead phase so they cannot race shard `__pycache__` churn.
 
 Details on formatters: [`docs/topics/code-quality/formatting.md`](docs/topics/code-quality/formatting.md).
 

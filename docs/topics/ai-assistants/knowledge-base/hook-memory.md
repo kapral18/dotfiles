@@ -72,15 +72,15 @@ _active_topic.txt
 .worklog-queue-v1/<session-key>/  .worklog-locks-v1/
 ```
 
-| Contract          | Behavior                                                                                                                                                                                    |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Ordering          | Atomic sequence files and stable `worklog_id`/`session_key`/`worklog_seq` make replay idempotent; activity and target locks keep harvest complete and shared-topic logs ordered             |
-| Bounds            | At most 256 pending events or 1 MiB per session; each worklog retains 200 complete JSONL records                                                                                            |
-| Lifecycle         | Flusher exits after 80 ms idle or two seconds total; seven-day cleanup covers drained queue/error state plus stale `session-*` worklogs and `.recall-seen-*` files                          |
-| Failure behavior  | Tool calls fail open; startup warns about queue errors; harvest refuses pending/error state                                                                                                 |
-| Copilot subagents | `COPILOT_AGENT_SESSION_ID` routes writes to the parent session key; startup/read injection remains isolated                                                                                 |
-| Recall dedupe     | `.recall-seen-<session-key>.json` uses `conversation_id` → `session_id` → `generation_id` and is shared by BM25 warm-start and per-turn recall                                              |
-| Reboot survival   | `spec_mirror.py` mirrors named topics and `_active_topic.txt` to `~/.local/state/agent-specs/`, restores only missing files, and excludes `current`/`session-*`; wipe/merge forget removals |
+| Contract          | Behavior                                                                                                                                                                                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ordering          | Atomic sequence files and stable `worklog_id`/`session_key`/`worklog_seq` make replay idempotent; activity and target locks keep harvest complete and shared-topic logs ordered                                                                   |
+| Bounds            | At most 256 pending events or 1 MiB per session; each worklog retains 200 complete JSONL records                                                                                                                                                  |
+| Lifecycle         | The tool-call recorder flushes synchronously with no idle wait; the background flusher exits after 80 ms idle or two seconds total; seven-day cleanup covers drained queue/error state plus stale `session-*` worklogs and `.recall-seen-*` files |
+| Failure behavior  | Tool calls fail open; startup warns about queue errors; harvest refuses pending/error state                                                                                                                                                       |
+| Copilot subagents | `COPILOT_AGENT_SESSION_ID` routes writes to the parent session key; startup/read injection remains isolated                                                                                                                                       |
+| Recall dedupe     | `.recall-seen-<session-key>.json` uses `conversation_id` → `session_id` → `generation_id` and is shared by BM25 warm-start and per-turn recall                                                                                                    |
+| Reboot survival   | `spec_mirror.py` mirrors named topics and `_active_topic.txt` to `~/.local/state/agent-specs/`, restores only missing files, and excludes `current`/`session-*`; wipe/merge forget removals                                                       |
 
 ## Sources and verification
 

@@ -47,7 +47,7 @@ First actions:
      Screenshot proof is required when the diff touches UI/runtime behavior, linked context includes screenshots/media, or the Test Plan includes manual UI steps.
      Required proof means reuse a `/k-build` `k-ui-proof` manifest, or load `~/.agents/skills/k-ui-proof/SKILL.md` and run it head-only.
      For UI behavior bugs whose key assertion is non-visual (clipboard, keyboard, focus, network), still capture human-visible trigger/result states and record the non-visual assertion in the Test Plan.
-     Captured proof includes folder/filename mapping and folder-open/provided status; explicit skips include user approval evidence.
+     Captured proof includes the folder/filename mapping; explicit skips include user approval evidence.
    - `test_plan`: issue reproduction/expected/actual coverage, commands run, and observed results.
      When the effort already carries a receipt-gated `,proof` ledger, select it with `,proof list --json`, then inspect `,proof --topic <topic> status --json`.
      Consume it as completion proof only when `allowed` is true, `finalized_at` is set, and `seal_status` is `ok`.
@@ -81,11 +81,12 @@ Rules:
   - examples to avoid: private hostnames, non-standard local domains, `/tmp/...`, absolute `$HOME` paths, Playwriter/session IDs, one-off account names that are not part of the repro setup
   - use portable wording instead, such as `local app`, `http://localhost:<port>`, `a user with only <privilege>`, or explicit setup steps to create the role/user
 - screenshots (UI-facing changes only):
-  - when screenshot proof is captured, add a `## Screenshots` section listing each shot as a caption plus an `attach: <filename>` placeholder the user drags into the GitHub PR
+  - when screenshot proof is captured, add a `## Screenshots` section listing each shot as a bold caption plus its `user-attachments` URL
+  - the agent uploads every captured image/video itself via the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md` and embeds the resulting `user-attachments` URLs — never use `attach:` placeholders, never fabricate image URLs, and never leave files for the user to drag into GitHub.
+    The upload is a GitHub side effect that stays behind the publication gate:
+    perform it only with explicit user approval of the exact side effect.
   - never put the local `/tmp/<folder-name>/` path in the PR body (the sanitize rule above);
-    keep the folder + filename→path mapping in the PR publication packet so the user knows which file to attach
-  - by default the agent does not upload images — GitHub image embedding is a manual drag-drop the user performs, so leave the attach placeholder rather than a fabricated image URL; with explicit user approval, images may instead be embedded as `user-attachments` URLs via the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md` (a GitHub side effect behind the publication gate)
-  - before any PR create/edit handoff, open the screenshot folder or otherwise give the user the folder path plus filename mapping so the files can be dragged into GitHub
+    keep the folder + filename→path mapping in the PR publication packet so the upload flow can resolve each file to its caption
   - omit the section only for `not_applicable` or `explicitly_skipped`; do not omit it for `required` or `blocked`
 - decision log: when the change embodies a decision with observable consequences for someone else —
   a different API shape, privilege model, error response, storage format, or default —
@@ -103,7 +104,7 @@ Output:
 - Always include the PR publication packet. A packet with a `blocked` required field cannot be handed to `k-github` for publication.
   Include template status: selected template, why it applies, required sections present, sections omitted with template-allowed reasons, and blockers.
   Include screenshot status.
-  When screenshots were captured, include the `## Screenshots` section in the body with attach placeholders, list each proof set's `/tmp/<folder-name>/` + filename→path mapping outside the body, and open/provide the folder so the user can attach the files to the PR.
+  When screenshots were captured, include the `## Screenshots` section in the body with the embedded `user-attachments` URLs, and list each proof set's `/tmp/<folder-name>/` + filename→path mapping outside the body so the publication step can resolve uploads.
   When screenshots were not captured, the ledger must say `not_applicable`, `blocked`, or `explicitly_skipped` with evidence;
   `blocked` cannot be handed to `k-github` for publication.
   Include metadata status: proposed metadata, source skill/rationale, and whether it is approved to apply, applied, deferred, or still pending approval.
@@ -124,7 +125,9 @@ Closes #X | Addresses #X
 
 ## Screenshots
 
-<!-- UI-facing changes only; omit otherwise. One bullet per captured shot; attach the file from its /tmp/<folder-name>/ folder (see the PR publication packet). -->
+<!-- UI-facing changes only; omit otherwise. One titled block per captured shot, uploaded via the browser-assisted flow (see `k-github/references/attachments.md`) and embedded by URL. -->
 
-- <caption — what this proves> — attach: `<filename>.png`
+**<caption — what this proves>:**
+
+<img src="https://github.com/user-attachments/assets/<uuid>" alt="<caption>" />
 ```

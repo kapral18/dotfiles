@@ -205,7 +205,7 @@ class TestPreCommitHook(unittest.TestCase):
 
     def test_WHEN_path_bash_is_legacy_and_brew_is_missing_SHOULD_exit_promptly_with_error(self):
         """SHOULD fail fast instead of recursively execing /bin/bash."""
-        result = self._run_hook(env=self.fixture.hook_env(include_brew=False), timeout=2)
+        result = self._run_hook(env=self.fixture.hook_env(include_brew=False), timeout=10)
 
         assert result.returncode == 1
         assert result.stdout == ""
@@ -427,7 +427,7 @@ class TestBinFmtClassification(unittest.TestCase):
             cwd=self.root,
             env=self.env,
             check=False,
-            timeout=2,
+            timeout=10,
         )
 
         assert result.returncode == 1
@@ -446,7 +446,7 @@ class TestBinFmtClassification(unittest.TestCase):
             cwd=self.root,
             env=self.env,
             check=False,
-            timeout=2,
+            timeout=10,
         )
 
         assert result.returncode == 0, result.stderr

@@ -97,10 +97,9 @@ Run readiness before any UI observation.
 - When visual proof is needed, capture the smallest useful screenshot set as Playwriter artifacts.
   Store them in a distinct `/tmp/<folder-name>/` directory — one dedicated folder per single screenshot, per comparison pair (e.g. base + the runtime under verification), or per logically grouped set that proves one thing.
   Never write screenshots loose in `/tmp`, and never mix an unrelated screenshot/pair/set into the same folder.
-  Name the folder for what it captures (the finding, candidate, or acceptance criterion) so sibling sets stay separate and openable on their own.
-  After storing a screenshot set, open each distinct enclosing folder for the user when the local environment supports it;
-  otherwise report that the folder could not be opened and provide the folder path. Do not screenshot every navigation or duplicate state.
-- For each screenshot, record a handoff entry with its folder and file path, description, target classification (the runtime under verification, base, or both selected targets), exact URL, the linked candidate/finding or acceptance criterion, suggested placement, `folder_opened_or_provided` status, md5, and pixel dimensions.
+  Name the folder for what it captures (the finding, candidate, or acceptance criterion) so sibling sets stay separate.
+  Do not screenshot every navigation or duplicate state.
+- For each screenshot, record a handoff entry with its folder and file path, description, target classification (the runtime under verification, base, or both selected targets), exact URL, the linked candidate/finding or acceptance criterion, suggested placement, md5, and pixel dimensions.
   Include any fidelity note for mocks or partial setup. Preserve handoff files; cleanup applies to seeded runtime data and owned pages.
 - Before returning, self-verify every handoff artifact while the environment is still up: each file exists and is non-empty;
   md5s are pairwise distinct across the handoff set; every capture supporting a finding includes enough surrounding UI to identify the screen, with a rough floor of 600px wide unless the finding is intrinsically about a tiny element, in which case capture both a context shot and the crop; transitions/fades are settled before capture, for example by verifying computed opacity is `1` or using a settled-state wait; and you have viewed/inspected each saved image and confirmed it shows what its caption claims.
@@ -108,8 +107,8 @@ Run readiness before any UI observation.
   Re-capture immediately on any failure; after teardown, each artifact defect costs a full environment restart.
 - Numeric claims in your report, including timings and counts, must come from measured evidence such as file mtimes, logs, or explicit waits; never report numbers from impression.
   The controller treats unmeasured numbers as unusable.
-- The screenshot handoff is for the controller/user only.
-  Never upload images or put local paths in GitHub review bodies/comments from this worker, and never add extra comments solely for image paths; when screenshots belong in a PR body, the user attaches them, or the controller embeds them with explicit user approval via the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md`.
+- The screenshot handoff is for the controller's upload step only.
+  Never upload images or put local paths in GitHub review bodies/comments from this worker, and never add extra comments solely for image paths; when screenshots belong in a PR body, the controller uploads and embeds them via the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md` behind explicit user approval.
 - Bound observation to the focused flow that can verify the finding or acceptance criterion.
 - Do not wander outside that focused flow.
   After five UI actions for a single finding or criterion, continue only when the next action is specifically tied to it and still inside the selected local/dev safety boundary.

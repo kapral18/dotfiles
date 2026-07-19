@@ -14,8 +14,12 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 HOOKS = REPO / "home" / "exact_dot_agents" / "exact_hooks"
 AGENT_MEMORY = REPO / "scripts" / "agent_memory.py"
+# Default spec root is namespaced per test file so direct invocations
+# (python3 scripts/tests/test_agent_hooks.py) and the parallel shard runner
+# never share the mutable queue/worklog state with other test files. The shard
+# runner additionally overrides AGENT_MEMORY_SPEC_ROOT per file.
 SPEC_ROOT = Path(
-    os.environ.get("AGENT_MEMORY_SPEC_ROOT") or Path(os.environ.get("TMPDIR", "/tmp")) / "agent-hook-specs"
+    os.environ.get("AGENT_MEMORY_SPEC_ROOT") or Path(os.environ.get("TMPDIR", "/tmp")) / "agent-hook-specs-agent-hooks"
 )
 PARENT_SESSION_ENV = "COPILOT_AGENT_SESSION_ID"
 KEEP_PARENT_SESSION_ENV = "AGENT_HOOK_TEST_KEEP_COPILOT_PARENT"

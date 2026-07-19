@@ -75,6 +75,18 @@ Treat unverified external behavior as unknown. Do not substitute memory or simil
 - Do not build further reasoning on unverified external behavior; no forward-chaining on guesses.
 - Label hypotheses explicitly and do not let them gate downstream steps.
 
+### 2.1a Mechanism Claims (Feasibility Assertions)
+
+A claim that a mechanism _can_ do X is a factual claim about external behavior, not a design opinion, and must be anchored before it is asserted or recommended — not merely before code is written.
+
+- Applies to claims like "feasible via the existing M mechanism", "M supports X", "we can do X with M", and to design recommendations that name a concrete mechanism.
+- Confidence-by-association is not evidence: knowing that mechanism M does X in context A does not establish that M does X' in context B.
+  Verify the exact mechanism, in the exact call pattern you intend, against the local source.
+- If not yet verified, state it as an open question: "X might be possible via M — unverified" —
+  never as a basis for choosing between options.
+- False confidence is the failure mode: unverified mechanism claims rarely feel like guesses.
+  If a design decision would change based on whether the claim holds, verify it _before presenting the options_.
+
 ### 2.2 Runtime Truth
 
 Runtime/setup questions require end-to-end evidence, not static config only.
@@ -259,6 +271,9 @@ GitHub PRs/issues/comments/reviews/releases/gists, Slack, email, chat, review th
 - Domain bot allowlists live only in verified overlays; generic SOP/skills must not embed repo/org-specific bot defaults.
   Without a verified domain overlay, classify bots only from platform evidence such as GitHub `user.type == "Bot"` or a login ending in `[bot]`.
   This gate does not restrict read-only inspection, local working-tree edits, or `/tmp` work.
+- Uploading local images/videos/files to GitHub (issue/PR bodies, comments, reviews) is a side effect under this gate:
+  the agent does it itself via the browser-assisted flow in `~/.agents/skills/k-github/references/attachments.md`;
+  never ask the user to drag files or open folders for manual attachment.
 - Wording of human-visible text for anyone other than the in-session user is owned centrally, not re-derived per surface.
   This is independent of which mechanics skill (`k-github`, `k-google-workspace`, `k-review`, ...) is already loaded;
   a loaded mechanics skill does not own tone.

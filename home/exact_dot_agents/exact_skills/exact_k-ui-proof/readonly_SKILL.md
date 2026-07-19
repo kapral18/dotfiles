@@ -69,13 +69,11 @@ Decide whether the changed paths touch UI/runtime behavior and whether an intend
 
 - Follow the shared Screenshot & evidence capture rules.
   Store each visual/UI criterion's proof set as Playwriter artifacts in its own distinct `/tmp/<folder-name>/` folder with descriptive filenames — never combine unrelated criteria/sets in one folder.
-- After storing a proof set, open/reveal its enclosing folder for the user when possible;
-  otherwise clearly provide the folder path and record why opening was not possible.
 - Capture the smallest set that proves each visual/UI criterion — the key state(s) the intended behavior describes, not every navigation.
-- For each shot, record a manifest entry: its folder, filename, caption (what it proves), exact URL, the linked acceptance criterion or visual goal, `folder_opened_or_provided` status, and any fidelity note (mocked/partial data).
-- The manifest and the `/tmp` paths are a handoff to the caller and the user only.
+- For each shot, record a manifest entry: its folder, filename, caption (what it proves), exact URL, the linked acceptance criterion or visual goal, and any fidelity note (mocked/partial data).
+- The manifest and the `/tmp` paths are a handoff to the caller for the upload step only.
   Do not upload images or put local paths in a PR body/comment from this proof phase;
-  the user attaches the files to the PR (see `k-compose-pr`), or the publication step embeds them with explicit user approval via the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md`.
+  the publication step uploads and embeds them via the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md` behind explicit user approval.
 
 ## Return exactly
 
@@ -87,6 +85,6 @@ Decide whether the changed paths touch UI/runtime behavior and whether an intend
 - `branch_evidence`: branch/runtime identity evidence, or what could not be verified
 - `data_setup`: existing data checked, local/dev data seeded/mutated, cleanup result, or exact data/mutation still needed
 - `criteria_verdicts`: per intended visual/UI criterion, `met` / `unmet` / `blocked` with the linked screenshot and observed state
-- `screenshot_manifest`: `none`, or the list of proof entries (folder, filename, caption, URL, linked criterion, `folder_opened_or_provided` status, fidelity note)
+- `screenshot_manifest`: `none`, or the list of proof entries (folder, filename, caption, URL, linked criterion, fidelity note)
 - `pages`: pages created and closed, or URLs left open
 - `blockers_or_uncertainty`: none, or precise blockers/remaining uncertainty
