@@ -105,6 +105,8 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "Do not stop at a partial investigation, partial answer, or partial implementation",
             "A summary not verified against full output is a hypothesis, not a fact",
             "Do not use human time or perceived effort as a reason to skip verification, simplification, or a locally available probe.",
+            "every numeric literal in the claim must occur verbatim in that quote",
+            "reject the unverifiable claim, not the source or entity",
         )
 
     def test_global_sop_keeps_workflow_and_state_machine_gates(self):

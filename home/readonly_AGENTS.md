@@ -72,6 +72,9 @@ Treat unverified external behavior as unknown. Do not substitute memory or simil
 - Resolve material unknowns before proceeding: local probes, local source/tests, official docs fetched live, then user questions.
 - Ask only when a required truth cannot be verified locally and proceeding would require guessing.
 - Every visible factual/runtime claim must carry an anchor: path, command/probe output, fetched doc, or explicit `Unknown because ...`.
+- Web/doc-sourced factual claims (pricing, benchmarks, support matrices, version facts) additionally need a primary-source URL and an exact supporting quote; every numeric literal in the claim must occur verbatim in that quote.
+- When synthesizing across multiple sources, verify each claim independently before drawing conclusions;
+  reject the unverifiable claim, not the source or entity.
 - Do not build further reasoning on unverified external behavior; no forward-chaining on guesses.
 - Label hypotheses explicitly and do not let them gate downstream steps.
 

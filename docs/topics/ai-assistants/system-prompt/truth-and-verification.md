@@ -37,14 +37,15 @@ Compacted output without full recovery is a hypothesis, not a fact.
 
 ### Evidence ladder
 
-| Question type       | Required evidence                                                                                                                                    |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CLI behavior        | binary path and provenance, then `--version`, `--help`, or source                                                                                    |
-| Library behavior    | exact package/version from lockfile, import path, and local implementation when available                                                            |
-| Runtime setup       | source declaration, applied config, consumer implementation, safe live probe                                                                         |
-| Build/test failure  | full output when compacted markers or capped lists appear                                                                                            |
-| Review judgment     | base truth, change truth, and smallest safe repro/probe when needed                                                                                  |
-| Freeform completion | inline evidence by default; `,proof` only for a requested receipt, auditable risky effect, or named handoff/resume consumer; never as a late wrapper |
+| Question type             | Required evidence                                                                                                                                    |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CLI behavior              | binary path and provenance, then `--version`, `--help`, or source                                                                                    |
+| Library behavior          | exact package/version from lockfile, import path, and local implementation when available                                                            |
+| External claim (web/docs) | primary-source URL and exact supporting quote; numeric literals verbatim in the quote; per-claim verification before multi-source synthesis          |
+| Runtime setup             | source declaration, applied config, consumer implementation, safe live probe                                                                         |
+| Build/test failure        | full output when compacted markers or capped lists appear                                                                                            |
+| Review judgment           | base truth, change truth, and smallest safe repro/probe when needed                                                                                  |
+| Freeform completion       | inline evidence by default; `,proof` only for a requested receipt, auditable risky effect, or named handoff/resume consumer; never as a late wrapper |
 
 ## Reference: compatibility line
 
