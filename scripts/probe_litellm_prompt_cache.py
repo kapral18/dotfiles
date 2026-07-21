@@ -4,6 +4,7 @@
 
 Usage:
     probe_litellm_prompt_cache.py [--models a,b] [--repeat 2] [--sleep 0.8]
+                                      [--tool-schema-change]
 
 Environment variables:
     LITELLM_API_BASE
@@ -18,6 +19,40 @@ import os
 import sys
 import time
 import urllib.request
+
+BASE_TOOL_SCHEMA = [
+    {
+        "type": "function",
+        "function": {
+            "name": "cache_probe_lookup",
+            "description": "Look up one cache-probe value.",
+            "parameters": {
+                "type": "object",
+                "properties": {"key": {"type": "string"}},
+                "required": ["key"],
+                "additionalProperties": False,
+            },
+        },
+    }
+]
+CHANGED_TOOL_SCHEMA = [
+    {
+        "type": "function",
+        "function": {
+            "name": "cache_probe_lookup",
+            "description": "Look up one cache-probe value with an optional namespace.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "key": {"type": "string"},
+                    "namespace": {"type": "string"},
+                },
+                "required": ["key"],
+                "additionalProperties": False,
+            },
+        },
+    }
+]
 
 
 def http_json(url: str, api_key: str, payload: dict | None = None) -> dict:
@@ -49,25 +84,52 @@ def extract_usage(usage: dict) -> dict:
     }
 
 
-def probe_model(base_url: str, api_key: str, model: str, repeat: int, sleep_s: float) -> dict:
+def build_payload(model: str, prompt: str, tools: list[dict] | None = None) -> dict:
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": "Reply with exactly: OK"},
+            {"role": "user", "content": prompt},
+        ],
+        "max_tokens": 8,
+        "temperature": 0,
+    }
+    if tools is not None:
+        payload["tools"] = tools
+    return payload
+
+
+def call_plan(repeat: int, tool_schema_change: bool) -> list[tuple[str, list[dict] | None]]:
+    if tool_schema_change:
+        return [
+            ("baseline", BASE_TOOL_SCHEMA),
+            ("baseline-repeat", BASE_TOOL_SCHEMA),
+            ("changed-schema", CHANGED_TOOL_SCHEMA),
+            ("changed-schema-repeat", CHANGED_TOOL_SCHEMA),
+        ]
+    return [("baseline", None), *[(f"repeat-{index}", None) for index in range(1, repeat)]]
+
+
+def probe_model(
+    base_url: str,
+    api_key: str,
+    model: str,
+    repeat: int,
+    sleep_s: float,
+    tool_schema_change: bool = False,
+) -> dict:
     prompt = "CACHE_PROBE_" + ("abcd1234" * 350)
     calls = []
+    plan = call_plan(repeat, tool_schema_change)
 
-    for i in range(repeat):
-        payload = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": "Reply with exactly: OK"},
-                {"role": "user", "content": prompt},
-            ],
-            "max_tokens": 8,
-            "temperature": 0,
-        }
+    for index, (label, tools) in enumerate(plan):
+        payload = build_payload(model, prompt, tools)
         body = http_json(f"{base_url}/chat/completions", api_key, payload)
         usage = extract_usage(body.get("usage", {}) or {})
-        usage["call"] = i + 1
+        usage["call"] = index + 1
+        usage["label"] = label
         calls.append(usage)
-        if i < repeat - 1:
+        if index < len(plan) - 1:
             time.sleep(sleep_s)
 
     cache_signals = [
@@ -80,6 +142,7 @@ def probe_model(base_url: str, api_key: str, model: str, repeat: int, sleep_s: f
 
     return {
         "model": model,
+        "mode": "tool_schema_change" if tool_schema_change else "repeated_prompt",
         "cache_signal_detected": any(cache_signals),
         "calls": calls,
     }
@@ -90,6 +153,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--models", default="", help="Comma-separated model IDs to probe")
     parser.add_argument("--repeat", type=int, default=2, help="Calls per model")
     parser.add_argument("--sleep", type=float, default=0.8, help="Seconds between repeated calls")
+    parser.add_argument(
+        "--tool-schema-change",
+        action="store_true",
+        help="Run baseline/repeat/change/repeat calls to expose tool-schema cache invalidation",
+    )
     return parser.parse_args()
 
 
@@ -102,7 +170,7 @@ def main() -> None:
     if not base_url or not api_key:
         sys.exit("Missing env vars: LITELLM_API_BASE and/or LITELLM_PROXY_KEY")
 
-    if args.repeat < 2:
+    if not args.tool_schema_change and args.repeat < 2:
         sys.exit("--repeat must be >= 2")
 
     if args.models:
@@ -113,7 +181,7 @@ def main() -> None:
     results = []
     for model in models:
         try:
-            results.append(probe_model(base_url, api_key, model, args.repeat, args.sleep))
+            results.append(probe_model(base_url, api_key, model, args.repeat, args.sleep, args.tool_schema_change))
         except Exception as exc:
             results.append({"model": model, "error": f"{type(exc).__name__}: {exc}"})
 

@@ -145,7 +145,8 @@ Helper scripts called by hooks and commands (stdlib-only by convention).
 | `model_capabilities.v1.json`        | Hand-verified harness capability snapshot consumed by model-mirror generation                                                   |
 | `generate_pi_models.py`             | Build Pi `models.json` from the shared base plus LiteLLM/Azure providers                                                        |
 | `model_display.py`                  | Shared display-name formatting for LiteLLM model entries                                                                        |
-| `probe_litellm_prompt_cache.py`     | Probe prompt-cache signals across LiteLLM models                                                                                |
+| `probe_litellm_prompt_cache.py`     | Probe repeated-prompt and tool-schema cache signals across LiteLLM models                                                       |
+| `analyze_pi_session.py`             | Report privacy-safe token/cache/compaction/re-read metrics from one Pi v3 session                                               |
 | `ai_kb.py`                          | Local markdown + SQLite FTS5/vector knowledge base for agent runs                                                               |
 | `embed.py`                          | Stdlib embedding-service abstraction: one-shot `embed_runner.py` runs plus connect-only resident dispatch via `embed_client.py` |
 | `embed_runner.py`                   | Isolated PEP 723 `fastembed` runner (`BAAI/bge-small-en-v1.5`, 384-d)                                                           |

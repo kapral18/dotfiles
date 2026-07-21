@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 11-scripts-helpers.mmd — Every file in scripts/ (97). Repo-side Python
+%% 11-scripts-helpers.mmd — Every file in scripts/ (100). Repo-side Python
 %% (stdlib only, no PyYAML) called by chezmoi 07-* hooks + ,bin commands.
 %% Grouped by consumer. Shared parsers feed the generators/mergers.
 %% ============================================================================
@@ -36,7 +36,8 @@ flowchart TB
         GPM["generate_pi_models.py (hook 07-merge-pi → dot_pi/agent/models.json)"]:::model
         MOM["merge_opencode_models.py (LiteLLM aliases into opencode jsonc)"]:::model
         MM["model_mirrors.py + model_capabilities.v1.json<br/>deterministic v1 available/curated/recommended mirror<br/>+ complete source provenance + fail-closed bounded live drift adapters"]:::model
-        PLP["probe_litellm_prompt_cache.py (runtime probe; prompt-cache signals)"]:::model
+        PLP["probe_litellm_prompt_cache.py (runtime probe;<br/>repeated-prompt default + tool-schema change sequence)"]:::model
+        APS["analyze_pi_session.py (offline Pi v3 active-branch aggregate:<br/>tokens/cache/compactions + structured post-compaction re-reads;<br/>privacy-safe JSON + optional failing thresholds)"]:::model
     end
     AM --> GPM & MOM & MM
     MC --> MM
@@ -59,7 +60,7 @@ flowchart TB
     end
 
     subgraph TESTS["Tests + fixtures"]
-        TT["top-level tests:<br/>test_{agent_memory,ai_kb,ai_launcher,ai_models,chezmoi_lib,embed,generated_artifact_ledger,generate_mcp_configs,generate_pi_models}.py<br/>test_{inject_mcp_into_codex_toml,inject_mcp_into_opencode_jsonc,mcp_registry,model_mirrors,palantir}.py<br/>test_{merge_copilot_settings,merge_opencode_models,model_display,pre_commit}.py<br/>test_{verify_agent_file_sizes,verify_bin_surface,verify_docs_navigation,verify_mermaids,verify_templates,yaml_parser}.py"]:::shared
+        TT["top-level tests:<br/>test_{agent_memory,ai_kb,ai_launcher,ai_models,analyze_pi_session,chezmoi_lib,embed,generated_artifact_ledger,generate_mcp_configs,generate_pi_models}.py<br/>test_{inject_mcp_into_codex_toml,inject_mcp_into_opencode_jsonc,mcp_registry,model_mirrors,palantir,probe_litellm_prompt_cache}.py<br/>test_{merge_copilot_settings,merge_opencode_models,model_display,pre_commit}.py<br/>test_{verify_agent_file_sizes,verify_bin_surface,verify_docs_navigation,verify_mermaids,verify_templates,yaml_parser}.py"]:::shared
         IT["scripts/tests/: __init__.py · copilot_agent_memory_extension.test.mjs<br/>recall_worklog_state_machine.py · test_{agent_hooks,correction_detector,recall_worklog,bin_commands,gh_picker_dispatch_state,gh_picker_lock,git_gate,invariants}.py<br/>test_{plain_session_removal,proof_cli,session_github_cache,tmux_handoff_context,tmux_handoff_lifecycle,<br/>tmux_handoff_namespace,tmux_pickers,worktree_delete_boundaries}.py"]:::shared
         FX["fixtures/: {ai_models,ai_models_with_claude,mcp_servers,mcp_servers_exclude}.yaml<br/>codex_base.toml · golden_codex_personal.toml · golden_mcp_{personal,work}.json<br/>golden_opencode_{models,models_with_claude,personal}.jsonc · golden_pi_models.json<br/>model_probe_cases.json · opencode_{base,work_base}.jsonc"]:::shared
     end

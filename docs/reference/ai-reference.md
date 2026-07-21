@@ -45,6 +45,7 @@ Single source of truth for LiteLLM/Azure definitions, curated Cursor models, Pi 
 | OpenCode models merge   | [`scripts/merge_opencode_models.py`](../../scripts/merge_opencode_models.py)           |
 | Display-name formatting | [`scripts/model_display.py`](../../scripts/model_display.py)                           |
 | Prompt-cache probe      | [`scripts/probe_litellm_prompt_cache.py`](../../scripts/probe_litellm_prompt_cache.py) |
+| Pi session analyzer     | [`scripts/analyze_pi_session.py`](../../scripts/analyze_pi_session.py)                 |
 
 ## MCP
 

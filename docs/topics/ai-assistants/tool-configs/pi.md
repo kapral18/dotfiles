@@ -9,12 +9,13 @@ Pi is configured from yarn-managed packages plus readonly chezmoi sources under 
 
 ## Mental model
 
-| Piece             | Source                                                                                                                                                                                                                                                                                             | Target / effect                                                 |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| Pi packages       | [`home/readonly_dot_default-yarn-pkgs`](../../../../home/readonly_dot_default-yarn-pkgs)                                                                                                                                                                                                           | yarn globals used by Pi                                         |
-| Settings + models | [`home/dot_pi/agent/readonly_settings.{work,personal}.json`](../../../../home/dot_pi/agent/) + work/shared [`readonly_models.json`](../../../../home/dot_pi/agent/readonly_models.json) or personal [`readonly_models.personal.json`](../../../../home/dot_pi/agent/readonly_models.personal.json) | `~/.pi/agent/`                                                  |
-| MCP servers       | [`home/.chezmoidata/mcp_servers.yaml`](../../../../home/.chezmoidata/mcp_servers.yaml)                                                                                                                                                                                                             | `~/.pi/agent/mcp.json`                                          |
-| System prompt     | [`home/dot_pi/agent/readonly_APPEND_SYSTEM.md`](../../../../home/dot_pi/agent/readonly_APPEND_SYSTEM.md)                                                                                                                                                                                           | `~/.pi/agent/APPEND_SYSTEM.md`, appended to Pi's default prompt |
+| Piece               | Source                                                                                                                                                                                                                                                                                             | Target / effect                                                 |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Pi packages         | [`home/readonly_dot_default-yarn-pkgs`](../../../../home/readonly_dot_default-yarn-pkgs)                                                                                                                                                                                                           | yarn globals used by Pi                                         |
+| Settings + models   | [`home/dot_pi/agent/readonly_settings.{work,personal}.json`](../../../../home/dot_pi/agent/) + work/shared [`readonly_models.json`](../../../../home/dot_pi/agent/readonly_models.json) or personal [`readonly_models.personal.json`](../../../../home/dot_pi/agent/readonly_models.personal.json) | `~/.pi/agent/`                                                  |
+| MCP servers         | [`home/.chezmoidata/mcp_servers.yaml`](../../../../home/.chezmoidata/mcp_servers.yaml)                                                                                                                                                                                                             | `~/.pi/agent/mcp.json`                                          |
+| System prompt       | [`home/dot_pi/agent/readonly_APPEND_SYSTEM.md`](../../../../home/dot_pi/agent/readonly_APPEND_SYSTEM.md)                                                                                                                                                                                           | `~/.pi/agent/APPEND_SYSTEM.md`, appended to Pi's default prompt |
+| Session diagnostics | [`scripts/analyze_pi_session.py`](../../../../scripts/analyze_pi_session.py)                                                                                                                                                                                                                       | privacy-safe aggregate metrics from one saved Pi v3 session     |
 
 ## Using it
 
@@ -45,6 +46,7 @@ The work-profile LiteLLM provider, the personal Cloudflare Workers AI provider, 
 | Setting area       | Behavior                                                                                                                                                              |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Context compaction | Automatic context compaction uses a hybrid sliding window.                                                                                                            |
+| Cache visibility   | Significant prompt-cache misses appear in the transcript; the footer and `/session` expose Pi's own cache accounting.                                                 |
 | Retries            | Exponential backoff retries.                                                                                                                                          |
 | Extension loading  | Pi loads `pi-skills`, `pi-mcp-adapter`, and `pi-subagents` from yarn global `node_modules` paths in Pi settings `packages`.                                           |
 | Delegation         | `pi-subagents` adds a `subagent` tool so Pi can delegate work to child agents with isolated context windows.                                                          |
@@ -56,6 +58,24 @@ Automatic context compaction triggers when context exceeds `contextWindow − re
 `keepRecentTokens` is raised from Pi's `20000` default to preserve far more high-fidelity recent context before any lossy summarization. The setting is global, not per-model.
 
 `80000` is sized for the smallest window in play: the local Qwen3.6 model at 262144 tokens, ~30% recent-verbatim. It stays comfortably safe on the larger OpenRouter default `anthropic/claude-opus-4.8` with a 1000000-token window.
+
+### Prompt-cache and compaction diagnostics
+
+Both profiles set `showCacheMissNotices: true`. Pi emits a transcript notice only for a significant miss after cache activity has been observed; providers that never report cache counters are not treated as misses. The interactive footer shows the latest cache-hit rate, and `/session` shows cached versus uncached prompt tokens plus cumulative cache re-billing.
+
+The repo does not duplicate Pi's cache-miss algorithm. [`scripts/analyze_pi_session.py`](../../../../scripts/analyze_pi_session.py) adds the offline view Pi lacks:
+
+```bash
+python3 scripts/analyze_pi_session.py /path/to/session.jsonl
+python3 scripts/analyze_pi_session.py /path/to/session.jsonl \
+  --max-compactions 2 \
+  --max-reread-ratio 0.25 \
+  --min-cache-hit-rate 0.50
+```
+
+The analyzer accepts only Pi session format v3. It follows the active `parentId` chain, aggregates assistant token/cache/cost fields, records compaction `tokensBefore`, and compares structured built-in `read` calls after compaction with the compaction's `details.readFiles`. It reports only counts and ratios: prompts, summaries, tool output, and file paths never appear.
+
+`cache.hit_rate` is `null` until a positive provider cache counter is observed. `compaction.reread_ratio` is `null` when no post-compaction reads can be measured, and `read_tracking_complete` shows whether every active-branch compaction exposed default read-file details. Exit status `2` means an explicit threshold failed; malformed input or an unsupported format exits `1`.
 
 Pi loads packages from yarn global `node_modules` paths to avoid Pi-managed npm update prompts; `pi install` is not used. Each package's `package.json` `pi` field declares its extension/skills/prompts, which Pi auto-loads.
 

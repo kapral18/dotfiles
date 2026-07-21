@@ -5,7 +5,7 @@ title: Repo workflow and code intelligence
 
 # Repo workflow and code intelligence
 
-These skills operate on local repositories, code search, cleanup, and external source inspection.
+These skills operate on local repositories, code search, cleanup, external source inspection, and evidence-gated public research.
 
 ## `k-code-quality`
 
@@ -115,11 +115,13 @@ These skills operate on local repositories, code search, cleanup, and external s
 
 ## `k-research`
 
-| Field    | Value                                                                                  |
-| -------- | -------------------------------------------------------------------------------------- |
-| Use when | inspecting a public GitHub repo/library/tool source to answer how it works             |
-| Source   | [`exact_k-research`](../../../../home/exact_dot_agents/exact_skills/exact_k-research/) |
-| Boundary | source-first repo inspection, not generic web browsing                                 |
+| Field    | Value                                                                                                                 |
+| -------- | --------------------------------------------------------------------------------------------------------------------- |
+| Use when | inspecting public source, or synthesizing factual claims across multiple public sources                               |
+| Source   | [`exact_k-research`](../../../../home/exact_dot_agents/exact_skills/exact_k-research/)                                |
+| Boundary | explicit repo URLs stay source-first; multi-source synthesis requires quoted primary evidence and a separate verifier |
+
+The multi-source branch separates candidate finding, independent verification, and deepening. Every numeric literal must occur verbatim in the supporting quote; unsupported claims are rejected without discarding the entity. Deepening sees verified claims only, and every new claim loops back through verification before synthesis or durable `,ai-kb` storage. Cross-family verification is preferred; a fresh same-family verifier is labeled degraded.
 
 ## `k-jscpd`
 

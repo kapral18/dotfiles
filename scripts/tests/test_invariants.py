@@ -679,6 +679,20 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "Decision needed:",
         )
 
+    def test_research_separates_finding_verification_and_deepening(self):
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-research/readonly_SKILL.md",
+            "## Multi-source claim branch",
+            "A finder never verifies its own claim.",
+            "primary-source URL",
+            "exact supporting quote",
+            "Every numeric literal in the claim must occur verbatim in that quote.",
+            "Reject the claim, not the entity or source.",
+            "Deepening goes last.",
+            "Any new claim from deepening returns to candidate collection and independent verification.",
+            "Only verified claims may enter `,ai-kb`",
+        )
+
 
 class TestUvToolsHook(unittest.TestCase):
     """WHEN reconciling uv tool package specs."""

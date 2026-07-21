@@ -80,16 +80,18 @@ python3 scripts/model_mirrors.py probe \
 
 ## Generators
 
-| Generator                                                                                 | Output                                                                            |
-| ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| [`scripts/generate_pi_models.py`](../../../scripts/generate_pi_models.py)                 | Builds Pi `models.json` from a shared base plus work-only LiteLLM/Azure providers |
-| [`scripts/merge_opencode_models.py`](../../../scripts/merge_opencode_models.py)           | Merges LiteLLM/Azure models into the OpenCode JSONC config                        |
-| [`scripts/model_mirrors.py`](../../../scripts/model_mirrors.py)                           | Generates/verifies the v1 static mirror and runs explicit live drift probes       |
-| [`scripts/probe_litellm_prompt_cache.py`](../../../scripts/probe_litellm_prompt_cache.py) | Diagnostic: probes prompt-cache signals across LiteLLM models                     |
+| Generator                                                                                 | Output                                                                                 |
+| ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| [`scripts/generate_pi_models.py`](../../../scripts/generate_pi_models.py)                 | Builds Pi `models.json` from a shared base plus work-only LiteLLM/Azure providers      |
+| [`scripts/merge_opencode_models.py`](../../../scripts/merge_opencode_models.py)           | Merges LiteLLM/Azure models into the OpenCode JSONC config                             |
+| [`scripts/model_mirrors.py`](../../../scripts/model_mirrors.py)                           | Generates/verifies the v1 static mirror and runs explicit live drift probes            |
+| [`scripts/probe_litellm_prompt_cache.py`](../../../scripts/probe_litellm_prompt_cache.py) | Diagnostic: probes repeated-prompt and tool-schema cache signals across LiteLLM models |
 
 The Pi/OpenCode generators run inside their per-tool merge hooks: `run_onchange_after_07-merge-pi-config.sh.tmpl` and `run_onchange_after_07-merge-opencode-config.sh.tmpl`.
 
 The mirror is a committed generated artifact verified by tests and `make check`. Diagnostic probes are operator initiated. See [Tool configs](tool-configs/index.md).
+
+The prompt-cache probe keeps the repeated-prompt sequence as its default. `--tool-schema-change` runs four calls with identical model, messages, and generation options: baseline, unchanged repeat, changed tool schema, and unchanged changed-schema repeat. The JSON output labels each call and reports provider usage fields without treating missing cache counters as proof of a miss.
 
 ### Azure reasoning-effort compatibility
 

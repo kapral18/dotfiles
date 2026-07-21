@@ -2,6 +2,7 @@
   "defaultProvider": "openrouter",
   "defaultModel": "anthropic/claude-opus-4.8",
   "defaultThinkingLevel": "xhigh",
+  "showCacheMissNotices": true,
   "theme": "dark",
   "compaction": {
     "enabled": true,
