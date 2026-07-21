@@ -317,6 +317,8 @@ check_editors_ai() {
     "codex:OpenAI Codex"
     "opencode:OpenCode"
     "gemini:Gemini CLI"
+    "copilot:Copilot CLI"
+    "cursor-agent:Cursor Agent"
   )
   for entry in "${ai_checks[@]}"; do
     local cmd="${entry%%:*}"

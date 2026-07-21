@@ -1565,8 +1565,17 @@ if _gh_all:
 _tmux_session = subprocess.run(["tmux", "display-message", "-p", "#S"], check=False, stdout=subprocess.PIPE, text=True)
 current_session = (_tmux_session.stdout or "").strip()
 _tmux_sessions = subprocess.run(
-    ["tmux", "list-sessions", "-F", "#{session_name}\t#{session_path}"], check=False, stdout=subprocess.PIPE, text=True
+    ["tmux", "list-sessions", "-F", "#{session_name}\t#{session_path}"],
+    check=False,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    text=True,
 )
+if _tmux_sessions.returncode != 0:
+    error = (_tmux_sessions.stderr or "").strip()
+    detail = f": {error}" if error else ""
+    print(f"tmux list-sessions failed ({_tmux_sessions.returncode}){detail}", file=sys.stderr)
+    sys.exit(1)
 sess_out = _tmux_sessions.stdout or ""
 sessions = []
 home = os.path.expanduser("~")

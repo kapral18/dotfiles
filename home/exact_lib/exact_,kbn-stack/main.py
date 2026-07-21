@@ -657,9 +657,9 @@ def start_kibana_on_trigger(
     same worktree can discover the interactively-started stack. The poll runs in
     this background thread, so it never blocks the foreground ES log stream.
     """
-    # Follow the log from its end, like `tail -n 0 -F`.
+    # The caller clears the log before ES starts. Read from byte zero so the
+    # trigger remains visible if ES writes it before this thread is scheduled.
     with logfile.open("r", encoding="utf-8", errors="replace") as handle:
-        handle.seek(0, os.SEEK_END)
         while True:
             line = handle.readline()
             if not line:
@@ -685,8 +685,9 @@ def start_kibana_on_trigger(
 def wait_for_trigger(logfile: Path, timeout: float) -> bool:
     """Block until the ES setup trigger appears in the log, or timeout elapses."""
     deadline = time.monotonic() + timeout
+    # spawn_background truncates the log before launching ES. Reading from byte
+    # zero also detects a trigger written before this reader opens the file.
     with logfile.open("r", encoding="utf-8", errors="replace") as handle:
-        handle.seek(0, os.SEEK_END)
         while time.monotonic() < deadline:
             line = handle.readline()
             if not line:
@@ -1036,11 +1037,13 @@ def main(argv: list[str]) -> int:
 
     subprocess.run(["yarn", "kbn", "bootstrap"], check=True)
 
-    logfile.touch()
+    # Clear stale output before either trigger reader starts. Both readers begin
+    # at byte zero, so they cannot miss a trigger written before they open.
+    logfile.write_text("", encoding="utf-8")
     if args.detach:
         return run_detached(args, cfg, worktree, data_path, logfile, kbn_cmd, registry)
 
-    # logfile already touched above so the watcher never races a missing path.
+    # The log already exists so the watcher never races a missing path.
     watcher = threading.Thread(
         target=start_kibana_on_trigger,
         args=(logfile, cfg["es_url"], kbn_cmd, target_pane, worktree, cfg["kbn_url"]),

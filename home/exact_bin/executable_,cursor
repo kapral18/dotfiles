@@ -8,9 +8,11 @@
 # and re-authenticate from inside cursor.
 #
 # This wrapper closes that gap by validating before launch. Critically short,
-# expired, or revoked tokens refresh synchronously; proactive rotation stays off
-# the launch path because cursor-agent owns the cache and can refresh a
-# still-valid token itself. Unlike ,copilot, no config re-bake is needed.
+# expired, or revoked tokens refresh synchronously, and each server must have a
+# usable current-workspace cache; a workspace missing auth runs cursor's browser
+# login before the session starts. Proactive rotation stays off the launch path
+# because cursor-agent can refresh a still-valid token itself. Unlike ,copilot,
+# no config re-bake is needed.
 #
 # Refresh is skipped for admin/introspection subcommands (login, logout, mcp,
 # update, help, about, status/whoami, models) and for --help/--version, which do
@@ -107,7 +109,8 @@ PY
     [[ -z "$server" ]] && continue
     # Cursor can refresh its own still-valid token after launch. Keep proactive
     # rotation off this wrapper's critical path, but retain blocking refresh for
-    # critically short, expired, or revoked tokens.
+    # critically short, expired, or revoked tokens and verify this workspace has
+    # its own usable OAuth cache before launch.
     if ! ",mcp-token" "$server" --login --quiet --no-proactive-rotation >/dev/null 2>&1; then
       refresh_failures+=("$server")
     fi

@@ -75,7 +75,7 @@ class TestStaticModelMirrors(unittest.TestCase):
         import model_mirrors
 
         mirror = model_mirrors.build_static_mirror(REPO)
-        for harness in ("codex", "copilot"):
+        for harness in ("codex",):
             state = mirror["harnesses"][harness]["available"]
             self.assertEqual(state["status"], "unknown")
             self.assertEqual(state["models"], [])
@@ -172,6 +172,10 @@ class TestStaticModelMirrors(unittest.TestCase):
         self.assertEqual(
             sources("copilot", "recommended"),
             {(registry, "agent_review_models")},
+        )
+        self.assertEqual(
+            sources("copilot", "available"),
+            {(registry, "copilot_models")},
         )
 
         expected = {

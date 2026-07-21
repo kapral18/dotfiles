@@ -65,7 +65,7 @@ When the command creates sessions, `action_send_command.sh` posts a reload to fz
 
 The picker prioritizes active sessions above worktrees and directories. Rows are de-duplicated by path with priority `session > worktree > dir`.
 
-Path-like queries containing `/` toggle fzf sorting on so the narrowest matching path wins. Non-path queries keep `--no-sort`, preserving grouped picker order. A tiny Python daemon watches fzf's listen socket and toggles sort without forking a shell on every keystroke.
+The empty picker keeps `--no-sort`, preserving grouped/frecency order. For a non-empty query, matches remain in strict `session > worktree > dir` tiers and fzf relevance determines order within each tier. After the query is idle for 120 ms, a tiny Python daemon ranks the complete source rows with an off-screen fzf filter, stable-partitions them by kind, and reloads that order once. Interactive sorting stays disabled, so continuous typing neither forks a shell nor repeatedly reorders the visible list. Input reloads atomically refresh the source snapshot, and clearing the query restores it.
 
 ### Frecency
 
@@ -105,6 +105,8 @@ Removing a plain (non-worktree) directory row also kills its tmux session. The p
 After tmux-resurrect/continuum restores saved sessions, a post-restore hook waits for restore-time quick-only session hooks to settle, then runs a fast full worktree scan (`--skip-dirty --skip-gh`) followed by the normal enriched full scan in the background. That keeps session-only restore caches from hiding worktrees that do not currently have live tmux sessions.
 
 Refresh preserves query and cursor position by reloading through the same ordered cache pipeline and using fzf tracking actions.
+
+Session enumeration fails closed: if `tmux list-sessions` fails, index updates keep the last good cache and cache rehydration preserves existing rows rather than presenting worktrees/directories without sessions. Ordered snapshots also verify that their cache, mutation, pending, and frecency inputs did not change while ordering; a raced snapshot is discarded.
 
 Main cache files live under `~/.cache/tmux/`:
 

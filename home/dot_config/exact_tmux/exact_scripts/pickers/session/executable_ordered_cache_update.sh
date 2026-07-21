@@ -14,6 +14,17 @@ mtime_epoch() {
   stat -f %m "$f"
 }
 
+input_signature() {
+  local f
+  for f in "$cache_file" "$mutation_file" "$pending_file" "$frecency_file"; do
+    if [ -f "$f" ]; then
+      cksum "$f" || return 1
+    else
+      printf 'missing %s\n' "$f"
+    fi
+  done
+}
+
 force=0
 quiet=0
 while [ $# -gt 0 ]; do
@@ -71,6 +82,8 @@ printf '%s\n' "$$" > "${lock_dir}/pid" 2> /dev/null || true
 filter_cmd="$HOME/.config/tmux/scripts/pickers/session/filter.sh"
 items_cmd="$HOME/.config/tmux/scripts/pickers/session/items.sh"
 tmp_out="$(mktemp -t pick_session_items_ordered.XXXXXX)"
+source_signature="$(input_signature 2> /dev/null || true)"
+[ -n "$source_signature" ] || exit 0
 
 if [ -x "$filter_cmd" ]; then
   "$filter_cmd" --force-order > "$tmp_out" 2> /dev/null || true
@@ -79,6 +92,7 @@ elif [ -x "$items_cmd" ]; then
 fi
 
 [ -s "$tmp_out" ] || exit 0
+[ "$(input_signature 2> /dev/null || true)" = "$source_signature" ] || exit 0
 mv -f "$tmp_out" "$ordered_file"
 
 if [ "$quiet" -ne 1 ] && command -v tmux > /dev/null 2>&1 && [ -n "${TMUX:-}" ]; then

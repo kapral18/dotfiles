@@ -29,6 +29,10 @@ def load_provider_models(path):
     return _load_section(path, "provider_models")
 
 
+def load_copilot_models(path):
+    return _load_section(path, "copilot_models")
+
+
 def load_agent_review_models(path):
     """Load the harness -> lane/verifier mapping from ``agent_review_models``."""
     with open(path, encoding="utf-8") as f:

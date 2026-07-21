@@ -382,6 +382,18 @@ cursor_models:
   - id: "gpt-5.5-none-fast"
     recommended: true
     recommendation_rank: 10
+  - id: "gpt-5.6-sol-high"
+  - id: "gpt-5.6-sol-high-fast"
+  - id: "gpt-5.6-sol-low"
+  - id: "gpt-5.6-sol-low-fast"
+  - id: "gpt-5.6-sol-max"
+  - id: "gpt-5.6-sol-max-fast"
+  - id: "gpt-5.6-sol-medium"
+  - id: "gpt-5.6-sol-medium-fast"
+  - id: "gpt-5.6-sol-none"
+  - id: "gpt-5.6-sol-none-fast"
+  - id: "gpt-5.6-sol-xhigh"
+  - id: "gpt-5.6-sol-xhigh-fast"
 
 # Pi's LiteLLM entries are derived from `litellm_models`; only provider-routed
 # extras live here. All entries preserve the current curated picker sets.
@@ -391,6 +403,8 @@ pi_extra_models:
   - id: "openrouter/anthropic/claude-opus-4.7"
     recommended: true
   - id: "openrouter/openai/gpt-5.5"
+    recommended: true
+  - id: "openrouter/openai/gpt-5.6-sol"
     recommended: true
   - id: "openrouter/openai/gpt-5.3-codex"
     recommended: true
@@ -428,6 +442,9 @@ provider_models:
     id: "openai/gpt-5.5"
     recommended: true
   - provider: "openrouter"
+    id: "openai/gpt-5.6-sol"
+    recommended: true
+  - provider: "openrouter"
     id: "anthropic/claude-opus-4.8"
     recommended: true
   - provider: "cloudflare-openai"
@@ -449,6 +466,32 @@ provider_models:
     id: "o4-mini"
     recommended: true
 
+# Copilot CLI available-model catalog. Snapshot of the Copilot CLI 1.0.71 model list (extracted via an
+# isolated tmux-socket probe; the CLI exposes no --list-models command). Refresh by re-probing and
+# editing here — the mirror generator consumes this as the copilot "available" set. Excludes the
+# `auto` selector (not a model) and `kimi-k2.7-code` (recognized but currently unavailable).
+copilot_models:
+  - id: "claude-sonnet-5"
+  - id: "claude-sonnet-4.6"
+  - id: "claude-sonnet-4.5"
+  - id: "claude-haiku-4.5"
+  - id: "claude-fable-5"
+  - id: "claude-opus-4.8"
+  - id: "claude-opus-4.8-fast"
+  - id: "claude-opus-4.7"
+  - id: "claude-opus-4.6"
+  - id: "claude-opus-4.5"
+  - id: "gpt-5.6-sol"
+  - id: "gpt-5.6-terra"
+  - id: "gpt-5.6-luna"
+  - id: "gpt-5.5"
+  - id: "gpt-5.4"
+  - id: "gpt-5.3-codex"
+  - id: "gpt-5.4-mini"
+  - id: "gpt-5-mini"
+  - id: "gemini-3.1-pro-preview"
+  - id: "gemini-3.5-flash"
+
 # Review-lane model registry: the single source for /agent-review model selection (C2: declare once, generate per tool).
 # Profile frontmatter is TEMPLATED from this block; edit here and `chezmoi apply` — never hand-edit model ids in profiles.
 # lanes = generation angle lanes + auditors + controller. verifier = cross-family adversarial verifier
@@ -456,10 +499,10 @@ provider_models:
 # Empty value = the profile omits the field (harness config default). inherit = harness-native parent inheritance.
 agent_review_models:
   cursor:
-    lanes: "gpt-5.5-extra-high" # deliberate pin: Cursor omitted-model inherits, and the CLI default is composer-2.5-fast
+    lanes: "gpt-5.6-sol-xhigh" # deliberate pin: Cursor omitted-model inherits, and the CLI default is composer-2.5-fast
     verifier: "claude-opus-4-8-xhigh"
   copilot:
-    lanes: "gpt-5.5"
+    lanes: "gpt-5.6-sol"
     verifier: "claude-opus-4.8"
   claude:
     lanes: "inherit" # Claude sessions are launched on a deliberate model; single-family => verifier degraded
@@ -472,4 +515,4 @@ agent_review_models:
     verifier: ""
   pi:
     lanes: "" # pi worker default (config-owned)
-    verifier: "openrouter/openai/gpt-5.5:xhigh" # cross-family vs the anthropic default lanes
+    verifier: "openrouter/openai/gpt-5.6-sol:xhigh" # cross-family vs the anthropic default lanes

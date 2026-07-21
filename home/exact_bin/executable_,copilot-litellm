@@ -62,7 +62,7 @@ if [[ -z "$litellm_api_key" ]]; then
   exit 1
 fi
 
-model="${COPILOT_LITELLM_MODEL:-llm-gateway/gpt-5.5}"
+model="${COPILOT_LITELLM_MODEL:-llm-gateway/gpt-5.6-sol}"
 wire_model="${COPILOT_LITELLM_WIRE_MODEL:-$model}"
 model_id="${COPILOT_LITELLM_MODEL_ID:-$(well_known_model_id "$model")}"
 

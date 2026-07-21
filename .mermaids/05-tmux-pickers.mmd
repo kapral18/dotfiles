@@ -37,10 +37,10 @@ flowchart TD
 
     subgraph SE["scripts/pickers/session/ — Session picker"]
         SESS["pick_session.sh + popup.sh + preview.sh + keyhelp.sh"]:::sh
-        SIDX["index.sh / index_update.sh / index_update_hook.sh<br/>ordered_cache_update.sh → lib/index_main.py + frecency.py<br/>GH PR/issue metadata + PR-review color tags<br/>gh lookup tri-state (success/absent/failure): transient failure keeps last-known badge<br/>legacy PR-author cache refresh"]:::py
+        SIDX["index.sh / index_update.sh / index_update_hook.sh<br/>ordered_cache_update.sh → lib/index_main.py + frecency.py<br/>tmux enumeration fails closed; raced ordered snapshots are discarded<br/>GH PR/issue metadata + PR-review color tags<br/>gh lookup tri-state (success/absent/failure): transient failure keeps last-known badge<br/>legacy PR-author cache refresh"]:::py
         SFILT["filter.sh → lib/filter_main.py + pick_session_grouping.py"]:::py
-        SITEMS["items.sh / items_hide_selected.sh / open_items.sh<br/>→ lib/items_full_rehydrate · items_light_rehydrate · items_hide_selected_main<br/>rehydrates cached PR-review row color"]:::py
-        SLIVE["live_refresh.sh · fzf_reload.sh · on_start.sh<br/>on_session_switch.sh · lib/sort_toggle_daemon.py<br/>starts PR-author metadata refresh immediately"]:::sh
+        SITEMS["items.sh / items_hide_selected.sh / open_items.sh<br/>→ lib/items_full_rehydrate · items_light_rehydrate · items_hide_selected_main<br/>rehydration preserves cache on failed tmux enumeration<br/>rehydrates cached PR-review row color"]:::py
+        SLIVE["live_refresh.sh · fzf_reload.sh · on_start.sh<br/>on_session_switch.sh · lib/sort_toggle_daemon.py<br/>empty query keeps grouped order; settled query gets one off-screen tiered relevance reload<br/>starts PR-author metadata refresh immediately"]:::sh
         SCACHE["lib/cache_prune_paths.py · cache_prune_sessions.py<br/>publish_cache_filter.py · bag_preserve_non_wt.py<br/>fixup_current_marker.py · session_naming.sh"]:::py
         SACT["action_create_worktree · action_kill_sessions · action_only_cycle<br/>action_open_gh · action_remove_worktrees (row-aligned session names) · action_send_command<br/>remove_all_worktrees (deletes only HOME/scan-root descendants; keeps sibling git roots)<br/>remove_plain_dir (kills the caller-named session)"]:::sh
         SESS --> SIDX --> SFILT --> SITEMS

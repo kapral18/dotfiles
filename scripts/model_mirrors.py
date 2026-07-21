@@ -377,6 +377,23 @@ def _load_copilot_policy(
     return models, models, {"default": "auto"}
 
 
+def _load_copilot_available(registry_path: Path) -> list[str]:
+    entries = ai_models.load_copilot_models(registry_path)
+    available: list[str] = []
+    seen: set[str] = set()
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            raise ValueError(f"copilot_models[{index}] must be a mapping")
+        model_id = entry.get("id")
+        if not isinstance(model_id, str) or MODEL_ID_RE.fullmatch(model_id) is None:
+            raise ValueError(f"copilot_models[{index}].id is invalid")
+        if model_id in seen:
+            raise ValueError(f"copilot_models contains duplicate id: {model_id}")
+        seen.add(model_id)
+        available.append(model_id)
+    return available
+
+
 def _validate_cursor_policy(policy: Any) -> list[dict[str, Any]]:
     if not isinstance(policy, list) or not policy:
         raise ValueError("cursor_models must contain at least one model")
@@ -522,6 +539,7 @@ def build_static_mirror(repo_root: str | Path) -> dict[str, Any]:
     opencode_curated, opencode_recommended, opencode_defaults = _load_opencode_policy(root, litellm, azure)
     pi_curated, pi_recommended, pi_defaults = _load_pi_policy(root, litellm, pi_extras)
     copilot_curated, copilot_recommended, copilot_defaults = _load_copilot_policy(agent_review)
+    copilot_available = _load_copilot_available(registry_path)
 
     policies = {
         "cursor": (cursor_curated, cursor_recommended, {}),
@@ -553,6 +571,13 @@ def build_static_mirror(repo_root: str | Path) -> dict[str, Any]:
             "recommended": _catalog_policy(recommended, provenance=recommended_provenance),
         }
         harness_defaults[harness] = defaults
+
+    if copilot_available:
+        harnesses["copilot"]["available"] = _catalog_policy(
+            copilot_available,
+            provenance=[_registry_provenance("copilot_models")],
+            complete=True,
+        )
 
     mirror = {
         "adapters": {
@@ -627,6 +652,8 @@ def _harness_policy_provenance(harness: str, set_name: str) -> list[dict[str, An
             _registry_provenance("pi_extra_models"),
         ]
     if harness == "copilot":
+        if set_name == "available":
+            return [_registry_provenance("copilot_models")]
         return [_registry_provenance("agent_review_models")]
     return profile_sources[harness]
 

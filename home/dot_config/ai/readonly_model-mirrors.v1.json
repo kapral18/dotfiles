@@ -17,8 +17,8 @@
         "work": "fable"
       },
       "codex": {
-        "personal": "gpt-5.5",
-        "work": "gpt-5.5"
+        "personal": "gpt-5.6-sol",
+        "work": "gpt-5.6-sol"
       },
       "copilot": {
         "default": "auto"
@@ -170,7 +170,7 @@
       "curated": {
         "complete": true,
         "models": [
-          "gpt-5.5"
+          "gpt-5.6-sol"
         ],
         "provenance": [
           {
@@ -197,7 +197,7 @@
       "recommended": {
         "complete": true,
         "models": [
-          "gpt-5.5"
+          "gpt-5.6-sol"
         ],
         "provenance": [
           {
@@ -215,30 +215,44 @@
     },
     "copilot": {
       "available": {
-        "complete": null,
-        "models": [],
+        "complete": true,
+        "models": [
+          "claude-sonnet-5",
+          "claude-sonnet-4.6",
+          "claude-sonnet-4.5",
+          "claude-haiku-4.5",
+          "claude-fable-5",
+          "claude-opus-4.8",
+          "claude-opus-4.8-fast",
+          "claude-opus-4.7",
+          "claude-opus-4.6",
+          "claude-opus-4.5",
+          "gpt-5.6-sol",
+          "gpt-5.6-terra",
+          "gpt-5.6-luna",
+          "gpt-5.5",
+          "gpt-5.4",
+          "gpt-5.3-codex",
+          "gpt-5.4-mini",
+          "gpt-5-mini",
+          "gemini-3.1-pro-preview",
+          "gemini-3.5-flash"
+        ],
         "provenance": [
           {
-            "binary": "copilot",
-            "kind": "installed-harness",
-            "observed_at": "2026-07-11",
-            "source": "Homebrew cask copilot-cli 1.0.68",
-            "version": "GitHub Copilot CLI 1.0.70"
-          },
-          {
             "kind": "registry",
-            "section": "agent_review_models",
+            "section": "copilot_models",
             "source": "home/.chezmoidata/ai_models.yaml"
           }
         ],
-        "reason": "installed CLI exposes --model and BYOK providers but no complete catalog command",
-        "status": "unknown"
+        "reason": null,
+        "status": "known"
       },
       "curated": {
         "complete": true,
         "models": [
           "auto",
-          "gpt-5.5",
+          "gpt-5.6-sol",
           "claude-opus-4.8"
         ],
         "provenance": [
@@ -264,7 +278,7 @@
         "complete": true,
         "models": [
           "auto",
-          "gpt-5.5",
+          "gpt-5.6-sol",
           "claude-opus-4.8"
         ],
         "provenance": [
@@ -423,7 +437,19 @@
           "gpt-5.5-medium",
           "gpt-5.5-medium-fast",
           "gpt-5.5-none",
-          "gpt-5.5-none-fast"
+          "gpt-5.5-none-fast",
+          "gpt-5.6-sol-high",
+          "gpt-5.6-sol-high-fast",
+          "gpt-5.6-sol-low",
+          "gpt-5.6-sol-low-fast",
+          "gpt-5.6-sol-max",
+          "gpt-5.6-sol-max-fast",
+          "gpt-5.6-sol-medium",
+          "gpt-5.6-sol-medium-fast",
+          "gpt-5.6-sol-none",
+          "gpt-5.6-sol-none-fast",
+          "gpt-5.6-sol-xhigh",
+          "gpt-5.6-sol-xhigh-fast"
         ],
         "provenance": [
           {
@@ -729,6 +755,7 @@
           "openrouter/anthropic/claude-opus-4.7-thinking",
           "openrouter/anthropic/claude-opus-4.7",
           "openrouter/openai/gpt-5.5",
+          "openrouter/openai/gpt-5.6-sol",
           "openrouter/openai/gpt-5.3-codex",
           "openrouter/google/gemini-3.1-pro-preview-customtools",
           "openrouter/google/gemini-3.5-flash"
@@ -774,6 +801,7 @@
           "openrouter/anthropic/claude-opus-4.7-thinking",
           "openrouter/anthropic/claude-opus-4.7",
           "openrouter/openai/gpt-5.5",
+          "openrouter/openai/gpt-5.6-sol",
           "openrouter/openai/gpt-5.3-codex",
           "openrouter/google/gemini-3.1-pro-preview-customtools",
           "openrouter/google/gemini-3.5-flash"
@@ -829,6 +857,7 @@
           "openrouter/anthropic/claude-opus-4.7-thinking",
           "openrouter/anthropic/claude-opus-4.7",
           "openrouter/openai/gpt-5.5",
+          "openrouter/openai/gpt-5.6-sol",
           "openrouter/openai/gpt-5.3-codex",
           "openrouter/google/gemini-3.1-pro-preview-customtools",
           "openrouter/google/gemini-3.5-flash"
@@ -1225,6 +1254,7 @@
           "qwen/qwen3.7-plus",
           "moonshotai/kimi-k2.7-code",
           "openai/gpt-5.5",
+          "openai/gpt-5.6-sol",
           "anthropic/claude-opus-4.8"
         ],
         "provenance": [
@@ -1251,6 +1281,7 @@
           "qwen/qwen3.7-plus",
           "moonshotai/kimi-k2.7-code",
           "openai/gpt-5.5",
+          "openai/gpt-5.6-sol",
           "anthropic/claude-opus-4.8"
         ],
         "provenance": [

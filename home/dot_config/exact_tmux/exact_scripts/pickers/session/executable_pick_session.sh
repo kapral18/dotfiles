@@ -299,32 +299,44 @@ rm -f "$help_flag" 2> /dev/null || true
 preview_cmd_0="$preview_cmd {f}"
 preview_with_help="if [ -f $(printf %q "$help_flag") ]; then $(printf %q "$help_cmd"); else $(printf %q "$preview_cmd") {f}; fi"
 
-# Auto-toggle fzf sort on path-like queries (contains `/`):
-# - default: `--no-sort` preserves sessions-first ordering
-# - pathy: sort ON so fzf ranks the narrowest matching path highest
-# Scan-root dir labels include a trailing `/` (e.g. `~/work/`) so `work/`
-# matches them in column 1.
+# Relevance-rank matches without crossing kind tiers:
+# - empty query: `--no-sort` preserves grouped/frecency ordering
+# - non-empty query: sessions, worktrees, and directories remain strict tiers;
+#   fzf relevance determines order only within each tier
 #
 # Correctness + speed:
-# - Correctness: sort state must follow the query on every keystroke
-#   (typing, paste, backspace, ctrl-u, ctrl-w, select-all+overwrite, ...).
+# - Correctness: every input reload refreshes the daemon's complete source rows;
+#   clearing the query restores that source order.
 # - Speed: no per-keystroke shell fork. fzf's `change:transform:<sh>` forks
 #   bash (~10ms) on each keystroke, which made held-backspace visibly laggy.
 #
 # Solution: fzf's `--listen=<sock>` Unix-socket HTTP server exposes the live
-# query + sort state and accepts `toggle-sort` POSTs. A tiny Python daemon
-# polls that endpoint at 20ms and syncs sort to the query's pathy-ness.
-# fzf's `change` binding stays on the zero-cost `first` action, so every
-# keystroke is fzf-native and lag-free. `alt-s` remains as a manual toggle.
+# query and globally ranked matches. A tiny Python daemon polls at 20ms,
+# stable-partitions those matches by kind, and reloads the complete row set with
+# sorting disabled. fzf's `change` binding stays on the zero-cost `first` action,
+# so typing remains fzf-native.
 sort_daemon_cmd="$HOME/.config/tmux/scripts/pickers/session/lib/sort_toggle_daemon.py"
 sort_daemon_sock="${cache_dir}/pick_session_fzf.$$.sock"
-rm -f "$sort_daemon_sock" 2> /dev/null || true
+sort_source_file="${cache_dir}/pick_session_fzf_source.$$.tsv"
+sort_ranked_file="${cache_dir}/pick_session_fzf_ranked.$$.tsv"
+_pick_session_pid_scoped_files+=("$sort_source_file" "$sort_ranked_file")
+export PICK_SESSION_SORT_SOURCE_FILE="$sort_source_file"
+rm -f "$sort_daemon_sock" "$sort_source_file" "$sort_ranked_file" 2> /dev/null || true
 if command -v python3 > /dev/null 2>&1 && [ -r "$sort_daemon_cmd" ]; then
-  python3 "$sort_daemon_cmd" "$sort_daemon_sock" > /dev/null 2>&1 &
+  python3 "$sort_daemon_cmd" "$sort_daemon_sock" "$sort_source_file" "$sort_ranked_file" > /dev/null 2>&1 &
   sort_daemon_pid=$!
 else
   sort_daemon_pid=""
 fi
+
+snapshot_reload_command() {
+  local command="$1"
+  printf '{ %s | tee "${PICK_SESSION_SORT_SOURCE_FILE}.new.$$"; mv -f "${PICK_SESSION_SORT_SOURCE_FILE}.new.$$" "$PICK_SESSION_SORT_SOURCE_FILE"; }' "$command"
+}
+ctrl_r_reload="$(snapshot_reload_command "$filter_cmd --refresh --force-order")"
+alt_r_reload="$(snapshot_reload_command "$filter_cmd --force-refresh --force-order")"
+kill_reload="$(snapshot_reload_command "$hide_selected_cmd {+f} kill {q}")"
+remove_reload="$(snapshot_reload_command "$hide_selected_cmd {+f} remove {q}")"
 
 # fzf send-mode: ctrl-s enters a modal where the query line becomes a command
 # prompt. enter dispatches the command to selected sessions; esc cancels.
@@ -360,8 +372,8 @@ enter_transform="enter:transform:if [ -f $mode_flag ]; then printf '%s' {q} > $c
 # Maintaining a single array avoids the two copies drifting as bindings grow.
 fzf_common_binds=(
   --bind "start:execute-silent($live_refresh_cmd >/dev/null 2>&1 &)"
-  --bind "ctrl-r:reload($filter_cmd --refresh --force-order)+track"
-  --bind "alt-r:reload($filter_cmd --force-refresh --force-order)+track"
+  --bind "ctrl-r:reload($ctrl_r_reload)+track"
+  --bind "alt-r:reload($alt_r_reload)+track"
   --bind "alt-j:half-page-down"
   --bind "alt-k:half-page-up"
   --bind "alt-h:first"
@@ -378,8 +390,8 @@ fzf_common_binds=(
   --bind "$enter_transform"
   --bind "ctrl-s:$send_mode"
   --bind "esc:execute-silent(rm -f $mode_flag $wt_mode_flag)+$send_restore"
-  --bind "ctrl-x:execute-silent($(printf %q "$dispatch_async_cmd") $(printf %q "$kill_cmd") {+f})+reload($hide_selected_cmd {+f} kill {q})+deselect-all"
-  --bind "alt-x:execute-silent($(printf %q "$dispatch_async_cmd") $(printf %q "$rm_cmd") {+f})+reload($hide_selected_cmd {+f} remove {q})+deselect-all"
+  --bind "ctrl-x:execute-silent($(printf %q "$dispatch_async_cmd") $(printf %q "$kill_cmd") {+f})+reload($kill_reload)+deselect-all"
+  --bind "alt-x:execute-silent($(printf %q "$dispatch_async_cmd") $(printf %q "$rm_cmd") {+f})+reload($remove_reload)+deselect-all"
   --bind "alt-y:execute-silent(printf '%s\n' {+} | cut -f3 | sed '/^[[:space:]]*$/d' | pbcopy 2>/dev/null || printf '%s\n' {+} | cut -f3 | sed '/^[[:space:]]*$/d' | xclip -sel clip 2>/dev/null)"
   --bind "alt-Y:execute-silent(printf '%s\n' {+} | cut -f5 | sed '/^[[:space:]]*$/d' | pbcopy 2>/dev/null || printf '%s\n' {+} | cut -f5 | sed '/^[[:space:]]*$/d' | xclip -sel clip 2>/dev/null)"
   --bind "alt-1:change-query(${filter_quick_1}/)"
@@ -402,6 +414,7 @@ fzf_base_args=(
   --reverse
   --tiebreak=begin,length,index
   --delimiter=$'\t'
+  --id-nth=2,3
   --nth=1
   --with-nth=1
   --multi
@@ -419,13 +432,13 @@ else
   # shellcheck disable=SC2086
   pick="$(
     if [ -n "$pin_kind" ] && [ -n "$pin_num" ] && [ -x "$pin_first_cmd" ]; then
-      FZF_DEFAULT_OPTS="" "$open_items_cmd" | "$pin_first_cmd" "$pin_kind" "$pin_repo" "$pin_num" | SHELL="$fzf_shell" fzf \
+      FZF_DEFAULT_OPTS="" "$open_items_cmd" | "$pin_first_cmd" "$pin_kind" "$pin_repo" "$pin_num" | tee "$sort_source_file" | SHELL="$fzf_shell" fzf \
         "${fzf_base_args[@]}" \
         "${fzf_common_binds[@]}" \
         ${fzf_args} \
         || true
     else
-      FZF_DEFAULT_OPTS="" "$open_items_cmd" | SHELL="$fzf_shell" fzf \
+      FZF_DEFAULT_OPTS="" "$open_items_cmd" | tee "$sort_source_file" | SHELL="$fzf_shell" fzf \
         "${fzf_base_args[@]}" \
         "${fzf_common_binds[@]}" \
         ${fzf_args} \

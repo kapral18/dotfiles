@@ -35,7 +35,10 @@ valid (keeping the short token if rotation is unavailable, never escalating a
 still-valid token to a browser). ``--no-proactive-rotation`` keeps that
 proactive rotation off the caller's critical path for consumers whose runtime
 refreshes tokens itself (cursor); the final ``BLOCKING_ROTATE_TTL_SECONDS``
-window, expired tokens, and revoked tokens still rotate synchronously.
+window, expired tokens, and revoked tokens still rotate synchronously. It also
+checks the current cursor workspace's own OAuth cache and runs that workspace's
+browser login only when the access token is missing, or a stale JWT has no
+refresh chain.
 
 ``--bridge --url <endpoint>`` runs a stdio <-> streamable-HTTP MCP bridge
 (``bridge.py``) that injects a freshly selected bearer per request instead of
@@ -73,7 +76,7 @@ Usage:
   ,mcp-token <server> --json            Print {token, source, seconds_left} as JSON
   ,mcp-token <server> --login           Ensure a fresh token (silent rotation, browser last resort)
   ,mcp-token <server> --login --no-proactive-rotation
-                                        Skip proactive rotation; critical/expired/revoked still block
+                                        Skip proactive rotation; verify current-workspace auth
   ,mcp-token <server> --bridge --url <endpoint>
                                         Serve a stdio MCP bridge with per-request bearer injection
   ,mcp-token <server> --login --quiet   Refresh without streaming auth helper output
@@ -98,6 +101,7 @@ import glob
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -151,6 +155,8 @@ PROBE_TIMEOUT_SECONDS = 5.0
 LIVE = "live"
 REVOKED = "revoked"
 UNKNOWN = "unknown"
+WORKSPACE_READY = "ready"
+WORKSPACE_REQUIRES_AUTH = "requires_authentication"
 
 
 class _NoRedirectHandler(HTTPRedirectHandler):
@@ -712,6 +718,51 @@ def _browser_login(server: str, *, quiet: bool = False) -> bool:
     return False
 
 
+def _cursor_workspace_cache_path(workspace: str | None = None) -> str:
+    """Return cursor's per-project OAuth cache path for *workspace*."""
+    workspace = os.path.abspath(workspace or os.getcwd())
+    projects_dir = os.path.dirname(os.path.dirname(CURSOR_CACHE_GLOB))
+    for trusted_path in glob.glob(os.path.join(projects_dir, "*/.workspace-trusted")):
+        try:
+            with open(trusted_path) as f:
+                trusted_workspace = json.load(f).get("workspacePath")
+        except (OSError, ValueError):
+            continue
+        if isinstance(trusted_workspace, str) and os.path.realpath(trusted_workspace) == os.path.realpath(workspace):
+            return os.path.join(os.path.dirname(trusted_path), "mcp-auth.json")
+    project_slug = re.sub(r"[^A-Za-z0-9]+", "-", workspace).strip("-")
+    return os.path.join(projects_dir, project_slug, "mcp-auth.json")
+
+
+def _cursor_workspace_auth_status(server: str) -> str:
+    """Read whether cursor's current workspace cache can authenticate *server*."""
+    tokens = _read_cache_tokens(_cursor_workspace_cache_path(), server)
+    if tokens is None:
+        return WORKSPACE_REQUIRES_AUTH
+    access_token = tokens.get("access_token")
+    if not isinstance(access_token, str) or not access_token or access_token == ROTATION_SENTINEL:
+        return WORKSPACE_REQUIRES_AUTH
+    seconds_left = _jwt_seconds_left(access_token, time.time())
+    if seconds_left is not None and seconds_left <= EXPIRY_SKEW_SECONDS and not tokens.get("refresh_token"):
+        return WORKSPACE_REQUIRES_AUTH
+    return WORKSPACE_READY
+
+
+def _ensure_cursor_workspace_auth(server: str, *, quiet: bool = False) -> bool:
+    """Authenticate cursor's current workspace when its MCP cache requires it."""
+    status = _cursor_workspace_auth_status(server)
+    if status != WORKSPACE_REQUIRES_AUTH:
+        return True
+    if not _browser_login(server, quiet=quiet):
+        return False
+    status = _cursor_workspace_auth_status(server)
+    if status != WORKSPACE_REQUIRES_AUTH:
+        return True
+    if not quiet:
+        print(f",mcp-token: {server} remains unauthenticated in the current workspace.", file=sys.stderr)
+    return False
+
+
 def _login(
     server: str,
     *,
@@ -885,7 +936,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument(
         "--no-proactive-rotation",
         action="store_true",
-        help="With --login, keep proactive rotation off the critical path; critical/expired/revoked tokens still rotate synchronously",
+        help="With --login, skip proactive rotation but verify current-workspace auth; critical/expired/revoked tokens still rotate synchronously",
     )
     parser.add_argument(
         "--force",
@@ -917,13 +968,16 @@ def main(argv: list[str]) -> int:
 
         return run_bridge(args.url, _bridge_token_acquirer(args.server), _NO_REDIRECT_OPENER)
 
-    if args.login and not _login(
-        args.server,
-        force=args.force,
-        quiet=args.quiet,
-        skip_proactive_rotation=args.no_proactive_rotation,
-    ):
-        return 1
+    if args.login:
+        if not _login(
+            args.server,
+            force=args.force,
+            quiet=args.quiet,
+            skip_proactive_rotation=args.no_proactive_rotation,
+        ):
+            return 1
+        if args.no_proactive_rotation and not _ensure_cursor_workspace_auth(args.server, quiet=args.quiet):
+            return 1
 
     picked = _pick(args.server)
     if picked is None:

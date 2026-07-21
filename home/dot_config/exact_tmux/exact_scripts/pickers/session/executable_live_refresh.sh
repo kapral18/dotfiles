@@ -132,6 +132,15 @@ if [ ! -x "$filter_cmd" ]; then
   filter_cmd="$items_cmd"
 fi
 
+snapshot_reload_command() {
+  local command="$1"
+  if [ -z "${PICK_SESSION_SORT_SOURCE_FILE:-}" ]; then
+    printf '%s' "$command"
+    return
+  fi
+  printf '{ %s | tee "${PICK_SESSION_SORT_SOURCE_FILE}.new.$$"; mv -f "${PICK_SESSION_SORT_SOURCE_FILE}.new.$$" "$PICK_SESSION_SORT_SOURCE_FILE"; }' "$command"
+}
+
 [ -x "$update_cmd" ] || exit 0
 [ -x "$items_cmd" ] || exit 0
 command -v curl > /dev/null 2>&1 || exit 0
@@ -233,7 +242,9 @@ maybe_reload_on_change() {
   # `+track` keeps the user's highlighted row stable when a daemon tick
   # reloads underneath them. pause_on_query/pause_on_multi already guard
   # against the most disruptive cases; +track covers the rest.
-  post_action "reload($filter_cmd --force-order)+track" || return 1
+  local reload_cmd
+  reload_cmd="$(snapshot_reload_command "$filter_cmd --force-order")"
+  post_action "reload($reload_cmd)+track" || return 1
   printf '%s\n' "$after"
 }
 

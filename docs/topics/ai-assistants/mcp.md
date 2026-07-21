@@ -169,6 +169,8 @@ SCSI tokens are JWTs, so `,mcp-token` uses their `exp`. Direct `--login` still g
 
 `--login` rotates silently below `MIN_TTL_SECONDS`; `--login --no-proactive-rotation` (used by `,cursor`, whose runtime refreshes tokens itself) keeps that proactive rotation off the critical path while the final `BLOCKING_ROTATE_TTL_SECONDS` window, expired tokens, and revoked tokens still rotate synchronously.
 
+The Cursor mode checks the current working workspace's own `mcp-auth.json` before the session starts. It resolves Cursor's project directory from matching `.workspace-trusted` metadata, with Cursor's deterministic path slug as the fallback. Missing access tokens and stale JWTs without a refresh chain run `cursor-agent mcp login <server>` in that working directory; an existing refresh chain remains runtime-owned. This prevents a valid token in another project cache from masking an unauthenticated current workspace without adding a live MCP handshake to every launch.
+
 Silent rotation relies on cursor running the provider's `refresh_token` grant whenever a stored access token stops working. `,mcp-token` invalidates the access token in the newest project cache that holds a `refresh_token` and whose `.workspace-trusted` records an existing workspace directory, runs a bounded `cursor-agent mcp list-tools <server>` in that workspace, and cursor writes the freshly minted chain back in place with no browser and without revoking the in-flight token running sessions already hold.
 
 Concurrent rotations serialize through `~/.cache/mcp-token/rotation.lock` and recheck whether rotation remains due before touching the shared cache.

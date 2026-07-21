@@ -1,47 +1,117 @@
 #!/usr/bin/env python3
-"""Sync fzf sort state with pathy-query intent over a Unix socket --listen.
+"""Rank session-picker queries by relevance without crossing kind tiers.
 
-Motivation: emitting `toggle-sort` from an fzf `change:transform:<sh>` binding
-forks a new shell on every keystroke (~10ms each on macOS bash), which makes
-holding backspace visibly laggy. Shifting that work into a background daemon
-that talks to fzf via its `--listen` Unix socket keeps every keystroke on the
-fzf-native fast path (`change:first`) while still reacting correctly to every
-pathy-mode transition.
+Motivation: sorting and reloading on every keystroke visibly flickers, while an
+fzf `change:transform:<sh>` binding adds a shell fork to the input path.
+Debouncing off-screen ranking in this daemon keeps typing fzf-native and makes
+each settled query produce at most one list reorder.
 
 Contract:
-- fzf starts with `--no-sort` so sessions-first ordering is preserved.
-- When the current query contains `/`, fzf sort must be ON so path scoring
-  surfaces the narrowest matching path first.
-- When it does not, fzf sort must be OFF.
+- The empty picker preserves its grouped/frecency source order.
+- A non-empty query uses fzf's own score order within each kind tier.
+- Kind tiers remain strict: session, then worktree, then directory.
 
 Approach:
 - Wait for the socket path to appear.
-- Poll `GET /?limit=0` at a short interval. fzf returns JSON including both
-  the live `query` and the current `sort` boolean.
-- Compare the desired sort state (derived from query) to the actual sort state
-  (from the response). If they disagree, `POST toggle-sort`.
+- Poll the fzf state over its Unix socket without forking per keystroke.
+- After the query settles, run fzf filter mode off-screen against the complete
+  source rows and stable-partition its ranked matches by kind.
+- Atomically write that order and `reload-sync` it once; interactive sorting
+  remains disabled throughout.
+- Restore the grouped source rows when the query is cleared.
 - Exit quietly on repeated connection failures (fzf is gone).
-
-Reading actual sort state (instead of tracking last-known intent locally) makes
-the daemon self-healing: a dropped toggle or a manual `alt-s` flip is observed
-on the next poll and corrected if it conflicts with the query. `alt-s` pressed
-in plain mode (off -> on while no `/`) is still honored briefly but will be
-reverted on the next poll; for manual override use `alt-s` while in path mode
-instead.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import shlex
+import shutil
 import socket
+import subprocess
 import sys
 import time
+from pathlib import Path
 
 SOCK_WAIT_TIMEOUT_S = 5.0
 POLL_INTERVAL_S = 0.02
+DEBOUNCE_S = 0.12
 MAX_CONSECUTIVE_FAILURES = 25
 HTTP_TIMEOUT_S = 0.5
+KIND_TIER = {"session": 0, "worktree": 1, "dir": 2}
+
+
+def row_identity(line: str) -> str:
+    parts = line.split("\t")
+    if len(parts) > 2 and parts[1] and parts[2]:
+        return f"{parts[1]}\t{parts[2]}"
+    return line
+
+
+def rank_rows_by_kind(source_rows: list[str], fzf_matches: list[str]) -> list[str]:
+    """Keep kind tiers strict while preserving fzf relevance within each tier."""
+    match_rank: dict[str, int] = {}
+    for rank, line in enumerate(fzf_matches):
+        match_rank.setdefault(row_identity(line), rank)
+    unmatched_base = len(fzf_matches)
+
+    def key(item: tuple[int, str]) -> tuple[int, int, int]:
+        source_rank, line = item
+        parts = line.split("\t")
+        kind = parts[1] if len(parts) > 1 else ""
+        tier = KIND_TIER.get(kind, 3)
+        relevance_rank = match_rank.get(row_identity(line), unmatched_base + source_rank)
+        return tier, relevance_rank, source_rank
+
+    return [line for _source_rank, line in sorted(enumerate(source_rows), key=key)]
+
+
+def file_signature(path: Path) -> tuple[int, int] | None:
+    try:
+        stat = path.stat()
+    except OSError:
+        return None
+    return stat.st_mtime_ns, stat.st_size
+
+
+def read_rows(path: Path) -> list[str]:
+    return path.read_text(encoding="utf-8", errors="replace").splitlines()
+
+
+def write_rows_atomic(path: Path, rows: list[str]) -> None:
+    tmp = path.with_name(f"{path.name}.new.{os.getpid()}")
+    tmp.write_text("".join(f"{line}\n" for line in rows), encoding="utf-8")
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, path)
+
+
+def reload_action(path: Path) -> bytes:
+    return f"reload-sync(cat {shlex.quote(str(path))})+first".encode()
+
+
+def fzf_ranked_matches(fzf_path: str, source_rows: list[str], query: str) -> list[str]:
+    env = os.environ.copy()
+    env["FZF_DEFAULT_OPTS"] = ""
+    result = subprocess.run(
+        [
+            fzf_path,
+            f"--filter={query}",
+            "--ansi",
+            "--scheme=path",
+            "--tiebreak=begin,length,index",
+            "--delimiter=\t",
+            "--nth=1",
+        ],
+        input="".join(f"{line}\n" for line in source_rows),
+        capture_output=True,
+        text=True,
+        env=env,
+        check=False,
+    )
+    if result.returncode not in (0, 1):
+        raise RuntimeError(f"fzf filter failed with exit code {result.returncode}")
+    return result.stdout.splitlines()
 
 
 def _recv_all(conn: socket.socket) -> bytes:
@@ -115,15 +185,18 @@ def wait_for_socket(sock_path: str, timeout_s: float) -> bool:
     return False
 
 
-def is_pathy(query: str) -> bool:
-    return "/" in (query or "")
-
-
-def run(sock_path: str) -> int:
+def run(sock_path: str, source_path: Path, ranked_path: Path, fzf_path: str) -> int:
     if not wait_for_socket(sock_path, SOCK_WAIT_TIMEOUT_S):
         return 1
 
     failures = 0
+    pending_query = ""
+    pending_source_signature: tuple[int, int] | None = None
+    pending_since = time.monotonic()
+    ranked_query = ""
+    ranked_source_signature: tuple[int, int] | None = None
+    input_is_ranked = False
+
     while True:
         try:
             status, body = http_get(sock_path, "/?limit=0")
@@ -144,27 +217,85 @@ def run(sock_path: str) -> int:
         failures = 0
         query = data.get("query", "") or ""
         sort_on = bool(data.get("sort", False))
-        want_sort = is_pathy(query)
+        source_signature = file_signature(source_path)
+        if source_signature is None or bool(data.get("reading", False)):
+            time.sleep(POLL_INTERVAL_S)
+            continue
 
-        if want_sort != sort_on:
+        now = time.monotonic()
+        if query != pending_query or source_signature != pending_source_signature:
+            pending_query = query
+            pending_source_signature = source_signature
+            pending_since = now
+
+        if sort_on:
             try:
-                code = http_post_action(sock_path, b"toggle-sort")
-                if code != 200:
-                    # Treat non-200 as a transient failure; next poll will retry.
-                    pass
+                http_post_action(sock_path, b"toggle-sort")
             except OSError:
                 pass
+            time.sleep(POLL_INTERVAL_S)
+            continue
+
+        if not query:
+            ranked_query = ""
+            ranked_source_signature = None
+            if input_is_ranked:
+                try:
+                    code = http_post_action(sock_path, reload_action(source_path))
+                    if code == 200:
+                        input_is_ranked = False
+                except OSError:
+                    pass
+            time.sleep(POLL_INTERVAL_S)
+            continue
+
+        same_ranked_input = input_is_ranked and query == ranked_query and source_signature == ranked_source_signature
+        if same_ranked_input:
+            time.sleep(POLL_INTERVAL_S)
+            continue
+
+        if now - pending_since < DEBOUNCE_S:
+            time.sleep(POLL_INTERVAL_S)
+            continue
+
+        try:
+            source_rows = read_rows(source_path)
+            fzf_matches = fzf_ranked_matches(fzf_path, source_rows, query)
+            status, body = http_get(sock_path, "/?limit=0")
+            if status != 200:
+                time.sleep(POLL_INTERVAL_S)
+                continue
+            current_state = json.loads(body.decode(errors="replace") or "{}")
+            if (
+                (current_state.get("query", "") or "") != query
+                or bool(current_state.get("sort", False))
+                or bool(current_state.get("reading", False))
+                or file_signature(source_path) != source_signature
+            ):
+                time.sleep(POLL_INTERVAL_S)
+                continue
+
+            write_rows_atomic(ranked_path, rank_rows_by_kind(source_rows, fzf_matches))
+            code = http_post_action(sock_path, reload_action(ranked_path))
+            if code == 200:
+                ranked_query = query
+                ranked_source_signature = source_signature
+                input_is_ranked = True
+        except (OSError, RuntimeError, ValueError):
+            pass
 
         time.sleep(POLL_INTERVAL_S)
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 2:
-        print("usage: sort_toggle_daemon.py <socket-path>", file=sys.stderr)
+    if len(argv) != 4:
+        print("usage: sort_toggle_daemon.py <socket-path> <source-path> <ranked-path>", file=sys.stderr)
         return 2
-    sock_path = argv[1]
+    fzf_path = shutil.which("fzf")
+    if not fzf_path:
+        return 1
     try:
-        return run(sock_path)
+        return run(argv[1], Path(argv[2]), Path(argv[3]), fzf_path)
     except KeyboardInterrupt:
         return 0
 

@@ -853,6 +853,36 @@ def _redirecting_endpoint(status: int = 302):
             t.join()
 
 
+class TestMcpTokenWorkspaceCache(unittest.TestCase):
+    """WHEN resolving Cursor's current-workspace OAuth cache locally."""
+
+    def test_trusted_workspace_metadata_matches_resolved_paths(self):
+        mod = _load_mcp_token_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            projects = root / "home/.cursor/projects"
+            project = projects / "p"
+            workspace = root / "workspace"
+            logical_workspace = root / "logical-workspace"
+            project.mkdir(parents=True)
+            workspace.mkdir()
+            logical_workspace.symlink_to(workspace)
+            (project / ".workspace-trusted").write_text(json.dumps({"workspacePath": str(logical_workspace)}))
+            with mock.patch.object(mod, "CURSOR_CACHE_GLOB", str(projects / "*/mcp-auth.json")):
+                path = mod._cursor_workspace_cache_path(str(workspace))
+
+        assert path == str(project / "mcp-auth.json")
+
+    def test_deterministic_slug_fallback_matches_cursor_project_paths(self):
+        mod = _load_mcp_token_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            projects = Path(tmp) / "home/.cursor/projects"
+            with mock.patch.object(mod, "CURSOR_CACHE_GLOB", str(projects / "*/mcp-auth.json")):
+                path = mod._cursor_workspace_cache_path("/Users/example/work/a_b")
+
+        assert path == str(projects / "Users-example-work-a-b/mcp-auth.json")
+
+
 class TestMcpTokenLoginLiveness(unittest.TestCase):
     """WHEN ``,mcp-token <server> --login`` validates opaque-token liveness.
 
@@ -1333,11 +1363,19 @@ class TestMcpTokenSilentRotation(unittest.TestCase):
         agent.chmod(0o755)
         return log
 
-    def _run(self, home: Path, bindir: Path, args: list[str]) -> subprocess.CompletedProcess[str]:
+    def _run(
+        self,
+        home: Path,
+        bindir: Path,
+        args: list[str],
+        *,
+        cwd: Path | None = None,
+    ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             [sys.executable, str(MCP_TOKEN_COMMAND), *args],
             capture_output=True,
             text=True,
+            cwd=cwd,
             env={
                 **os.environ,
                 "HOME": str(home),
@@ -1372,20 +1410,24 @@ class TestMcpTokenSilentRotation(unittest.TestCase):
     def test_no_proactive_rotation_defers_short_jwt_rotation(self):
         mod = _load_mcp_token_module()
         short = self._jwt(int(time.time()) + mod.MIN_TTL_SECONDS - 600)
-        fresh = self._jwt(int(time.time()) + 3600)
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             home, bindir, workspace = root / "home", root / "bin", root / "ws"
             home.mkdir()
             bindir.mkdir()
             cache = self._write_rotatable_cache(home, "p", "scsi-main", short, workspace=workspace)
-            log = self._stub_rotating_cursor_agent(bindir, home, cache, "scsi-main", rotates_to=fresh)
-            result = self._run(home, bindir, ["scsi-main", "--login", "--quiet", "--no-proactive-rotation"])
+            log = self._stub_rotating_cursor_agent(bindir, home, cache, "scsi-main", rotates_to=None)
+            result = self._run(
+                home,
+                bindir,
+                ["scsi-main", "--login", "--quiet", "--no-proactive-rotation"],
+                cwd=workspace,
+            )
             cursor_ran = log.exists()
 
         assert result.returncode == 0, result.stderr
         assert result.stdout.strip() == short, "the still-valid token must be returned without waiting"
-        assert not cursor_ran, "proactive rotation must stay off the caller's critical path"
+        assert not cursor_ran, "a ready workspace cache must not launch cursor-agent during preflight"
 
     def test_no_proactive_rotation_keeps_critical_rotation_blocking(self):
         mod = _load_mcp_token_module()
@@ -1398,7 +1440,12 @@ class TestMcpTokenSilentRotation(unittest.TestCase):
             bindir.mkdir()
             cache = self._write_rotatable_cache(home, "p", "scsi-main", critical, workspace=workspace)
             log = self._stub_rotating_cursor_agent(bindir, home, cache, "scsi-main", rotates_to=fresh)
-            result = self._run(home, bindir, ["scsi-main", "--login", "--quiet", "--no-proactive-rotation"])
+            result = self._run(
+                home,
+                bindir,
+                ["scsi-main", "--login", "--quiet", "--no-proactive-rotation"],
+                cwd=workspace,
+            )
             calls = log.read_text().splitlines() if log.exists() else []
 
         assert result.returncode == 0, result.stderr
@@ -1660,7 +1707,98 @@ class TestCodexWrapper(unittest.TestCase):
 
 
 class TestCursorWrapper(unittest.TestCase):
-    """WHEN Cursor launches with a still-valid token due for proactive rotation."""
+    """WHEN Cursor launches with OAuth MCP preflight."""
+
+    def test_authenticates_current_workspace_when_only_another_workspace_has_tokens(self):
+        global_token = "opaque-global-workspace-token"
+        workspace_token = "opaque-current-workspace-token"
+        with (
+            _liveness_server({global_token: 200, workspace_token: 200}) as (url, _handler),
+            tempfile.TemporaryDirectory() as tmp,
+        ):
+            root = Path(tmp)
+            home, bindir, workspace = root / "home", root / "bin", root / "workspace"
+            config = home / ".cursor/mcp.json"
+            global_cache = home / ".cursor/projects/global/mcp-auth.json"
+            workspace_cache = home / ".cursor/projects/workspace/mcp-auth.json"
+            ledger = home / ".cache/mcp-token/opaque-refresh.json"
+            marker = root / "workspace-authenticated"
+            log = root / "cursor-agent.log"
+            for path in (
+                bindir,
+                workspace,
+                config.parent,
+                global_cache.parent,
+                workspace_cache.parent,
+                ledger.parent,
+            ):
+                path.mkdir(parents=True, exist_ok=True)
+            (workspace_cache.parent / ".workspace-trusted").write_text(json.dumps({"workspacePath": str(workspace)}))
+            config.write_text(json.dumps({"mcpServers": {"slack": {"url": url, "oauth": {"clientId": "fixture"}}}}))
+            global_cache.write_text(
+                json.dumps({"slack": {"tokens": {"access_token": global_token, "expires_in": 3600}}})
+            )
+            ledger.write_text(
+                json.dumps(
+                    {
+                        "slack": {
+                            "source": str(global_cache),
+                            "token_sha256": hashlib.sha256(global_token.encode()).hexdigest(),
+                            "refreshed_at": time.time(),
+                        }
+                    }
+                )
+            )
+
+            token_helper = bindir / ",mcp-token"
+            token_helper.write_text(
+                f'#!/usr/bin/env bash\nexec {shlex.quote(sys.executable)} {shlex.quote(str(MCP_TOKEN_COMMAND))} "$@"\n'
+            )
+            token_helper.chmod(0o755)
+            payload = json.dumps({"slack": {"tokens": {"access_token": workspace_token, "expires_in": 3600}}})
+            real_cursor = bindir / "cursor-agent"
+            real_cursor.write_text(
+                "#!/usr/bin/env bash\n"
+                f"printf '%s\\n' \"$*\" >> {shlex.quote(str(log))}\n"
+                'if [[ "${1:-} ${2:-} ${3:-}" == "mcp list-tools slack" ]]; then\n'
+                "  exit 0\n"
+                "fi\n"
+                'if [[ "${1:-} ${2:-} ${3:-}" == "mcp login slack" ]]; then\n'
+                f"  mkdir -p {shlex.quote(str(workspace_cache.parent))}\n"
+                f"  cat > {shlex.quote(str(workspace_cache))} <<'EOF'\n{payload}\nEOF\n"
+                f"  touch {shlex.quote(str(marker))}\n"
+                "  exit 0\n"
+                "fi\n"
+                f"if [[ -e {shlex.quote(str(marker))} ]]; then\n"
+                "  echo 'SESSION_MCP_STATUS=ready'\n"
+                "else\n"
+                "  echo 'SESSION_MCP_STATUS=requires_authentication'\n"
+                "fi\n"
+            )
+            real_cursor.chmod(0o755)
+
+            result = subprocess.run(
+                [
+                    modern_bash(),
+                    str(REPO / "home/exact_bin/executable_,cursor"),
+                    "--force",
+                    "--approve-mcps",
+                ],
+                capture_output=True,
+                text=True,
+                cwd=workspace,
+                env={
+                    **os.environ,
+                    "HOME": str(home),
+                    "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
+                    "CURSOR_AGENT_REAL_BIN": str(real_cursor),
+                },
+            )
+            calls = log.read_text().splitlines()
+
+        assert result.returncode == 0, result.stderr
+        assert "SESSION_MCP_STATUS=ready" in result.stdout
+        assert calls[:2] == ["mcp login slack", "--force --approve-mcps"]
 
     def test_defers_proactive_rotation_to_cursor_runtime(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1719,6 +1857,57 @@ class TestKbnStackCommand(unittest.TestCase):
         assert kbn_stack.start_mode(kbn_stack.parse_args(["--detach"]), None) == "agent-detach"
         assert kbn_stack.start_mode(kbn_stack.parse_args([]), "%1") == "interactive-tmux"
         assert kbn_stack.start_mode(kbn_stack.parse_args([]), None) == "manual-command"
+
+    def test_when_trigger_precedes_detached_reader_should_detect_it(self):
+        kbn_stack = _load_kbn_stack_command()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            logfile = Path(tmp) / "es.log"
+            logfile.write_text(f"{kbn_stack.TRIGGER_STRING}\n", encoding="utf-8")
+            with mock.patch.object(kbn_stack.time, "monotonic", side_effect=[0.0, 0.0, 2.0]):
+                with mock.patch.object(kbn_stack.time, "sleep"):
+                    detected = kbn_stack.wait_for_trigger(logfile, timeout=1)
+
+        assert detected is True
+
+    def test_when_trigger_follows_detached_reader_should_detect_it(self):
+        kbn_stack = _load_kbn_stack_command()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            logfile = Path(tmp) / "es.log"
+            logfile.write_text("", encoding="utf-8")
+
+            def write_trigger(_seconds):
+                logfile.write_text(f"{kbn_stack.TRIGGER_STRING}\n", encoding="utf-8")
+
+            with mock.patch.object(kbn_stack.time, "monotonic", side_effect=[0.0, 0.0, 0.0]):
+                with mock.patch.object(kbn_stack.time, "sleep", side_effect=write_trigger):
+                    detected = kbn_stack.wait_for_trigger(logfile, timeout=1)
+
+        assert detected is True
+
+    def test_when_trigger_precedes_interactive_reader_should_launch_kibana(self):
+        kbn_stack = _load_kbn_stack_command()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            logfile = Path(tmp) / "es.log"
+            logfile.write_text(f"{kbn_stack.TRIGGER_STRING}\n", encoding="utf-8")
+            with mock.patch.object(kbn_stack, "ensure_trial_license") as ensure_trial:
+                with mock.patch.object(kbn_stack.subprocess, "run") as run:
+                    with mock.patch.object(kbn_stack, "kibana_ready", return_value=True):
+                        with mock.patch.object(kbn_stack, "mark_ready") as mark_ready:
+                            kbn_stack.start_kibana_on_trigger(
+                                logfile,
+                                "http://localhost:9200",
+                                "yarn start",
+                                "%2",
+                                "/worktree",
+                                "http://localhost:5601",
+                            )
+
+        ensure_trial.assert_called_once_with("http://localhost:9200")
+        run.assert_called_once_with(["tmux", "send-keys", "-t", "%2", "yarn start", "C-m"], check=False)
+        mark_ready.assert_called_once_with("/worktree", True)
 
     def test_pid_alive_rejects_non_pid_values(self):
         kbn_stack = _load_kbn_stack_command()

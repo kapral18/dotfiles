@@ -7,6 +7,10 @@ delay_ms="${2:-0}"
 [ -n "$cmd" ] || exit 0
 command -v curl > /dev/null 2>&1 || exit 0
 
+if [ -n "${PICK_SESSION_SORT_SOURCE_FILE:-}" ]; then
+  cmd="{ $cmd | tee \"\${PICK_SESSION_SORT_SOURCE_FILE}.new.\$\$\"; mv -f \"\${PICK_SESSION_SORT_SOURCE_FILE}.new.\$\$\" \"\$PICK_SESSION_SORT_SOURCE_FILE\"; }"
+fi
+
 case "$delay_ms" in
   '' | *[!0-9]*) delay_ms=0 ;;
 esac

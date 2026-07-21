@@ -27,16 +27,21 @@ printf '%s' "$next" > "$mode_flag" 2> /dev/null || true
 case "$next" in
   dirty)
     header='filter: dirty only   alt-o=next'
-    reload="reload($filter_cmd --force-order --only=dirty)"
+    command="$filter_cmd --force-order --only=dirty"
     ;;
   review)
     header='filter: review-needed only   alt-o=next'
-    reload="reload($filter_cmd --force-order --only=review)"
+    command="$filter_cmd --force-order --only=review"
     ;;
   *)
     header='?=help  ctrl-/=preview  alt-y=copy  alt-o=filter  alt-c=new wt  alt-g=GitHub'
-    reload="reload($filter_cmd --force-order)"
+    command="$filter_cmd --force-order"
     ;;
 esac
+
+if [ -n "${PICK_SESSION_SORT_SOURCE_FILE:-}" ]; then
+  command="{ $command | tee \"\${PICK_SESSION_SORT_SOURCE_FILE}.new.\$\$\"; mv -f \"\${PICK_SESSION_SORT_SOURCE_FILE}.new.\$\$\" \"\$PICK_SESSION_SORT_SOURCE_FILE\"; }"
+fi
+reload="reload($command)"
 
 printf '%s+change-header(%s)+first' "$reload" "$header"

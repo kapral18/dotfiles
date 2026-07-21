@@ -6,7 +6,7 @@ complete -c ,mcp-token -l json -d "Print {token, source, seconds_left} as JSON"
 complete -c ,mcp-token -l login -d "Ensure a fresh token: silent refresh-grant rotation via cursor when short/stale, browser flow as last resort"
 complete -c ,mcp-token -l bridge -d "Serve a stdio MCP bridge that injects a fresh bearer per request"
 complete -c ,mcp-token -l url -d "With --bridge, the streamable-HTTP MCP endpoint to forward to" -r
-complete -c ,mcp-token -l no-proactive-rotation -d "With --login, keep proactive rotation off the critical path; critical/expired/revoked still block"
+complete -c ,mcp-token -l no-proactive-rotation -d "With --login, skip proactive rotation but verify current-workspace auth; critical/expired/revoked still block"
 complete -c ,mcp-token -l force -d "With --login, re-authenticate even if the cached token is still valid"
 complete -c ,mcp-token -l quiet -d "With --login, suppress status and auth helper output"
 complete -c ,mcp-token -s h -l help -d "Show help"

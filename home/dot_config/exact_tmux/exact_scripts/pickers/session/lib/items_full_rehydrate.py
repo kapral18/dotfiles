@@ -214,8 +214,14 @@ def is_bag_path(p: str) -> bool:
     return "/.bag/" in s or s.endswith("/.bag")
 
 
-def tmux_out(args):
-    return subprocess.run(args, check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True).stdout
+def tmux_out(args, *, required=False):
+    result = subprocess.run(args, check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if required and result.returncode != 0:
+        error = (result.stderr or "").strip()
+        detail = f": {error}" if error else ""
+        print(f"tmux list-sessions failed ({result.returncode}){detail}", file=sys.stderr)
+        sys.exit(1)
+    return result.stdout
 
 
 def is_git_dir(p: str) -> bool:
@@ -460,7 +466,7 @@ def path_tombstoned(kind: str, p: str) -> bool:
 
 
 current_name = tmux_out(["tmux", "display-message", "-p", "#S"]).strip()
-sess_out = tmux_out(["tmux", "list-sessions", "-F", "#{session_name}\t#{session_path}"])
+sess_out = tmux_out(["tmux", "list-sessions", "-F", "#{session_name}\t#{session_path}"], required=True)
 sess_by_rpath = {}
 sess_raw_path = {}
 live_session_names = set()
