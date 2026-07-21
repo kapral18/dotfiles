@@ -1635,6 +1635,184 @@ class TestMcpTokenSilentRotation(unittest.TestCase):
         assert short not in result.stderr
 
 
+class TestMcpTokenWorkspaceSeeding(unittest.TestCase):
+    """WHEN ``--login --no-proactive-rotation`` runs in a workspace cursor has never seen.
+
+    cursor-agent reads only its own per-project OAuth cache, so a fresh worktree
+    starts unauthenticated even when other project caches hold live chains.
+    Token chains are not workspace-bound, so the workspace-auth gate must seed
+    the missing cache from the newest verified cached chain and reserve the
+    browser flow for the case where no verifiable chain exists. These are
+    real-seam tests: an isolated ``HOME``, a local liveness endpoint, and a stub
+    cursor-agent standing in for the browser flow.
+    """
+
+    def _sha(self, token: str) -> str:
+        return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+    def _jwt(self, exp: int) -> str:
+        def encode(value: dict[str, object]) -> str:
+            raw = json.dumps(value, separators=(",", ":")).encode()
+            return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+
+        return f"{encode({'alg': 'none'})}.{encode({'exp': exp})}.sig"
+
+    def _slug(self, workspace: Path) -> str:
+        return re.sub(r"[^A-Za-z0-9]+", "-", os.path.realpath(workspace)).strip("-")
+
+    def _write_cache(self, home: Path, name: str, server: str, tokens: dict[str, object]) -> Path:
+        cache = home / ".cursor/projects" / name / "mcp-auth.json"
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_text(json.dumps({server: {"tokens": tokens}}))
+        return cache
+
+    def _write_mcp_json(self, home: Path, server: str, url: str) -> None:
+        cfg = home / ".cursor/mcp.json"
+        cfg.parent.mkdir(parents=True, exist_ok=True)
+        cfg.write_text(json.dumps({"mcpServers": {server: {"url": url}}}))
+
+    def _write_ledger(self, home: Path, server: str, token: str, source: str) -> None:
+        state_dir = home / ".cache/mcp-token"
+        state_dir.mkdir(parents=True, exist_ok=True)
+        (state_dir / "opaque-refresh.json").write_text(
+            json.dumps({server: {"source": source, "token_sha256": self._sha(token), "refreshed_at": time.time()}})
+        )
+
+    def _stub_cursor_agent(self, bindir: Path, log: Path, *, login_writes: tuple[Path, str] | None = None) -> None:
+        lines = ["#!/usr/bin/env bash", f"printf '%s\\n' \"$*\" >> {shlex.quote(str(log))}"]
+        if login_writes is not None:
+            cache, payload = login_writes
+            lines += [
+                'if [[ "${1:-} ${2:-}" == "mcp login" ]]; then',
+                f"  mkdir -p {shlex.quote(str(cache.parent))}",
+                f"  cat > {shlex.quote(str(cache))} <<'EOF'\n{payload}\nEOF",
+                "fi",
+            ]
+        lines.append("exit 0")
+        agent = bindir / "cursor-agent"
+        agent.write_text("\n".join(lines) + "\n")
+        agent.chmod(0o755)
+
+    def _run(self, home: Path, bindir: Path, workspace: Path, args: list[str]) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(MCP_TOKEN_COMMAND), *args],
+            capture_output=True,
+            text=True,
+            cwd=workspace,
+            env={
+                **os.environ,
+                "HOME": str(home),
+                "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
+            },
+        )
+
+    def test_missing_workspace_cache_is_seeded_from_live_opaque_chain_without_browser(self):
+        live = "opaque-live-donor"
+        with _liveness_server({live: 200}) as (url, handler), tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir, workspace = root / "home", root / "bin", root / "ws"
+            bindir.mkdir()
+            workspace.mkdir()
+            self._write_mcp_json(home, "slack", url)
+            donor_tokens = {"access_token": live, "expires_in": 3600, "refresh_token": "refresh-chain"}
+            donor = self._write_cache(home, "donor", "slack", donor_tokens)
+            self._write_ledger(home, "slack", live, str(donor))
+            log = root / "cursor-agent.log"
+            self._stub_cursor_agent(bindir, log)
+
+            result = self._run(home, bindir, workspace, ["slack", "--login", "--quiet", "--no-proactive-rotation"])
+            calls = log.read_text().splitlines() if log.exists() else []
+            seeded_path = home / ".cursor/projects" / self._slug(workspace) / "mcp-auth.json"
+            seeded = json.loads(seeded_path.read_text()) if seeded_path.exists() else {}
+            seeded_mode = seeded_path.stat().st_mode & 0o777 if seeded_path.exists() else None
+            donor_after = json.loads(donor.read_text())
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == live
+        assert not any("mcp login" in call for call in calls), "a live cached chain must seed, not pop a browser"
+        assert seeded.get("slack", {}).get("tokens") == donor_tokens, "the full donor chain must be copied"
+        assert seeded_mode == 0o600, "a seeded token cache must be owner-only"
+        assert donor_after["slack"]["tokens"] == donor_tokens, "the donor cache must stay untouched"
+        assert live not in result.stderr
+
+    def test_fresh_jwt_seeds_workspace_cache_without_any_liveness_probe(self):
+        fresh = self._jwt(int(time.time()) + 7200)
+        with _liveness_server({}) as (url, handler), tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir, workspace = root / "home", root / "bin", root / "ws"
+            bindir.mkdir()
+            workspace.mkdir()
+            self._write_mcp_json(home, "scsi-main", url)
+            self._write_cache(home, "donor", "scsi-main", {"access_token": fresh, "expires_in": 3600})
+            log = root / "cursor-agent.log"
+            self._stub_cursor_agent(bindir, log)
+
+            result = self._run(home, bindir, workspace, ["scsi-main", "--login", "--quiet", "--no-proactive-rotation"])
+            calls = log.read_text().splitlines() if log.exists() else []
+            hits = list(handler.hits)
+            seeded_path = home / ".cursor/projects" / self._slug(workspace) / "mcp-auth.json"
+            seeded = json.loads(seeded_path.read_text()) if seeded_path.exists() else {}
+
+        assert result.returncode == 0, result.stderr
+        assert hits == [], "a JWT's exp is authoritative; seeding must not probe"
+        assert calls == [], "no cursor-agent invocation is needed to seed a fresh JWT"
+        assert seeded.get("scsi-main", {}).get("tokens", {}).get("access_token") == fresh
+
+    def test_unverifiable_opaque_chain_is_never_seeded_and_browser_runs_last(self):
+        nominal = "opaque-unverifiable"
+        fresh = "opaque-browser-minted"
+        with _liveness_server({nominal: 500, fresh: 200}) as (url, handler), tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir, workspace = root / "home", root / "bin", root / "ws"
+            bindir.mkdir()
+            workspace.mkdir()
+            self._write_mcp_json(home, "slack", url)
+            donor = self._write_cache(
+                home, "donor", "slack", {"access_token": nominal, "expires_in": 3600, "refresh_token": "rt"}
+            )
+            self._write_ledger(home, "slack", nominal, str(donor))
+            workspace_cache = home / ".cursor/projects" / self._slug(workspace) / "mcp-auth.json"
+            payload = json.dumps({"slack": {"tokens": {"access_token": fresh, "expires_in": 3600}}})
+            log = root / "cursor-agent.log"
+            self._stub_cursor_agent(bindir, log, login_writes=(workspace_cache, payload))
+
+            result = self._run(home, bindir, workspace, ["slack", "--login", "--quiet", "--no-proactive-rotation"])
+            calls = log.read_text().splitlines() if log.exists() else []
+            seeded = json.loads(workspace_cache.read_text()) if workspace_cache.exists() else {}
+
+        assert result.returncode == 0, result.stderr
+        assert any("mcp login slack" in call for call in calls), (
+            "an unverifiable chain must not be seeded; the browser flow remains the fallback"
+        )
+        assert seeded.get("slack", {}).get("tokens", {}).get("access_token") == fresh
+
+    def test_seeding_preserves_other_servers_in_existing_workspace_cache(self):
+        live = "opaque-live-donor"
+        with _liveness_server({live: 200}) as (url, handler), tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir, workspace = root / "home", root / "bin", root / "ws"
+            bindir.mkdir()
+            workspace.mkdir()
+            self._write_mcp_json(home, "slack", url)
+            donor = self._write_cache(
+                home, "donor", "slack", {"access_token": live, "expires_in": 3600, "refresh_token": "rt"}
+            )
+            self._write_ledger(home, "slack", live, str(donor))
+            other_tokens = {"access_token": "other-server-token", "expires_in": 3600}
+            workspace_cache = self._write_cache(home, self._slug(workspace), "kibana", other_tokens)
+            log = root / "cursor-agent.log"
+            self._stub_cursor_agent(bindir, log)
+
+            result = self._run(home, bindir, workspace, ["slack", "--login", "--quiet", "--no-proactive-rotation"])
+            calls = log.read_text().splitlines() if log.exists() else []
+            seeded = json.loads(workspace_cache.read_text())
+
+        assert result.returncode == 0, result.stderr
+        assert not any("mcp login" in call for call in calls)
+        assert seeded.get("slack", {}).get("tokens", {}).get("access_token") == live
+        assert seeded.get("kibana", {}).get("tokens") == other_tokens, "other servers' entries must be preserved"
+
+
 class TestCodexWrapper(unittest.TestCase):
     """WHEN launching Codex through the managed wrapper.
 
@@ -1709,11 +1887,10 @@ class TestCodexWrapper(unittest.TestCase):
 class TestCursorWrapper(unittest.TestCase):
     """WHEN Cursor launches with OAuth MCP preflight."""
 
-    def test_authenticates_current_workspace_when_only_another_workspace_has_tokens(self):
+    def test_seeds_current_workspace_from_live_cache_without_browser(self):
         global_token = "opaque-global-workspace-token"
-        workspace_token = "opaque-current-workspace-token"
         with (
-            _liveness_server({global_token: 200, workspace_token: 200}) as (url, _handler),
+            _liveness_server({global_token: 200}) as (url, _handler),
             tempfile.TemporaryDirectory() as tmp,
         ):
             root = Path(tmp)
@@ -1722,7 +1899,6 @@ class TestCursorWrapper(unittest.TestCase):
             global_cache = home / ".cursor/projects/global/mcp-auth.json"
             workspace_cache = home / ".cursor/projects/workspace/mcp-auth.json"
             ledger = home / ".cache/mcp-token/opaque-refresh.json"
-            marker = root / "workspace-authenticated"
             log = root / "cursor-agent.log"
             for path in (
                 bindir,
@@ -1736,7 +1912,17 @@ class TestCursorWrapper(unittest.TestCase):
             (workspace_cache.parent / ".workspace-trusted").write_text(json.dumps({"workspacePath": str(workspace)}))
             config.write_text(json.dumps({"mcpServers": {"slack": {"url": url, "auth": {"CLIENT_ID": "fixture"}}}}))
             global_cache.write_text(
-                json.dumps({"slack": {"tokens": {"access_token": global_token, "expires_in": 3600}}})
+                json.dumps(
+                    {
+                        "slack": {
+                            "tokens": {
+                                "access_token": global_token,
+                                "expires_in": 3600,
+                                "refresh_token": "refresh-chain",
+                            }
+                        }
+                    }
+                )
             )
             ledger.write_text(
                 json.dumps(
@@ -1755,21 +1941,14 @@ class TestCursorWrapper(unittest.TestCase):
                 f'#!/usr/bin/env bash\nexec {shlex.quote(sys.executable)} {shlex.quote(str(MCP_TOKEN_COMMAND))} "$@"\n'
             )
             token_helper.chmod(0o755)
-            payload = json.dumps({"slack": {"tokens": {"access_token": workspace_token, "expires_in": 3600}}})
             real_cursor = bindir / "cursor-agent"
             real_cursor.write_text(
                 "#!/usr/bin/env bash\n"
                 f"printf '%s\\n' \"$*\" >> {shlex.quote(str(log))}\n"
-                'if [[ "${1:-} ${2:-} ${3:-}" == "mcp list-tools slack" ]]; then\n'
+                'if [[ "${1:-}" == "mcp" ]]; then\n'
                 "  exit 0\n"
                 "fi\n"
-                'if [[ "${1:-} ${2:-} ${3:-}" == "mcp login slack" ]]; then\n'
-                f"  mkdir -p {shlex.quote(str(workspace_cache.parent))}\n"
-                f"  cat > {shlex.quote(str(workspace_cache))} <<'EOF'\n{payload}\nEOF\n"
-                f"  touch {shlex.quote(str(marker))}\n"
-                "  exit 0\n"
-                "fi\n"
-                f"if [[ -e {shlex.quote(str(marker))} ]]; then\n"
+                f"if [[ -s {shlex.quote(str(workspace_cache))} ]]; then\n"
                 "  echo 'SESSION_MCP_STATUS=ready'\n"
                 "else\n"
                 "  echo 'SESSION_MCP_STATUS=requires_authentication'\n"
@@ -1795,10 +1974,15 @@ class TestCursorWrapper(unittest.TestCase):
                 },
             )
             calls = log.read_text().splitlines()
+            seeded = json.loads(workspace_cache.read_text()) if workspace_cache.exists() else {}
+            donor = json.loads(global_cache.read_text())
 
         assert result.returncode == 0, result.stderr
         assert "SESSION_MCP_STATUS=ready" in result.stdout
-        assert calls[:2] == ["mcp login slack", "--force --approve-mcps"]
+        assert not any("mcp login" in call for call in calls), "a live cached chain must seed, not pop a browser"
+        assert seeded.get("slack", {}).get("tokens", {}).get("access_token") == global_token
+        assert seeded["slack"]["tokens"].get("refresh_token") == "refresh-chain"
+        assert donor["slack"]["tokens"]["access_token"] == global_token, "the donor cache must stay untouched"
 
     def test_preflights_cursor_oauth_and_auth_client_id_servers(self):
         with tempfile.TemporaryDirectory() as tmp:

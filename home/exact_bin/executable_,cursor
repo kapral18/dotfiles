@@ -9,8 +9,9 @@
 #
 # This wrapper closes that gap by validating before launch. Critically short,
 # expired, or revoked tokens refresh synchronously, and each server must have a
-# usable current-workspace cache; a workspace missing auth runs cursor's browser
-# login before the session starts. Proactive rotation stays off the launch path
+# usable current-workspace cache; a workspace missing auth is seeded from the
+# newest verified cached chain, with cursor's browser login as last resort
+# before the session starts. Proactive rotation stays off the launch path
 # because cursor-agent can refresh a still-valid token itself. Unlike ,copilot,
 # no config re-bake is needed.
 #

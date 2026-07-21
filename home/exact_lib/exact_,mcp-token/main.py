@@ -36,9 +36,13 @@ still-valid token to a browser). ``--no-proactive-rotation`` keeps that
 proactive rotation off the caller's critical path for consumers whose runtime
 refreshes tokens itself (cursor); the final ``BLOCKING_ROTATE_TTL_SECONDS``
 window, expired tokens, and revoked tokens still rotate synchronously. It also
-checks the current cursor workspace's own OAuth cache and runs that workspace's
-browser login only when the access token is missing, or a stale JWT has no
-refresh chain.
+checks the current cursor workspace's own OAuth cache (cursor-agent only reads
+its own per-project cache at runtime, so a fresh worktree starts
+unauthenticated even when other project caches hold live chains). A workspace
+that requires auth is first seeded by copying the newest verified cached chain
+into its cache — token chains are not workspace-bound, so cursor accepts the
+copy — and only when no verifiable chain exists does that workspace's browser
+login run.
 
 ``--bridge --url <endpoint>`` runs a stdio <-> streamable-HTTP MCP bridge
 (``bridge.py``) that injects a freshly selected bearer per request instead of
@@ -76,7 +80,8 @@ Usage:
   ,mcp-token <server> --json            Print {token, source, seconds_left} as JSON
   ,mcp-token <server> --login           Ensure a fresh token (silent rotation, browser last resort)
   ,mcp-token <server> --login --no-proactive-rotation
-                                        Skip proactive rotation; verify current-workspace auth
+                                        Skip proactive rotation; ensure current-workspace auth
+                                        (seed from a verified cached chain, browser last)
   ,mcp-token <server> --bridge --url <endpoint>
                                         Serve a stdio MCP bridge with per-request bearer injection
   ,mcp-token <server> --login --quiet   Refresh without streaming auth helper output
@@ -748,10 +753,75 @@ def _cursor_workspace_auth_status(server: str) -> str:
     return WORKSPACE_READY
 
 
+def _seed_workspace_cache(server: str, *, quiet: bool = False) -> bool:
+    """Copy the newest verified cached chain into the current workspace's cache.
+
+    cursor-agent reads only its own per-project cache at runtime, so a fresh
+    workspace starts unauthenticated even when other project caches hold live
+    chains. Token chains are not workspace-bound (verified live: cursor accepts
+    a copied chain in a brand-new project cache), so seeding avoids a browser
+    login for every new worktree. The candidate must be verified before it is
+    copied: a JWT by its ``exp`` (already guaranteed by selection), an opaque
+    token by a liveness probe — an unverifiable chain is never seeded into a
+    cache cursor will trust. Only *server*'s entry is written; other servers in
+    an existing workspace cache are preserved.
+    """
+    record = _pick_record(server)
+    if record is None:
+        return False
+    _seconds_left, token, source, is_opaque, _expires_in = record
+    if is_opaque:
+        url = _server_url(server)
+        if url is None or _probe_liveness(url, token) != LIVE:
+            return False
+    dest = _cursor_workspace_cache_path()
+    if os.path.realpath(dest) == os.path.realpath(source):
+        return False
+    # The lock serializes the read-modify-replace against concurrent seeders
+    # (two launches in one workspace must not drop each other's entries) and
+    # against rotation rewrites of the donor cache.
+    with _rotation_lock():
+        try:
+            with open(source) as f:
+                donor = json.load(f)
+        except (OSError, ValueError):
+            return False
+        entry = donor.get(server)
+        if not isinstance(entry, dict) or entry.get("tokens", {}).get("access_token") != token:
+            # The donor cache changed under us; do not seed an unverified chain.
+            return False
+        try:
+            with open(dest) as f:
+                dest_data = json.load(f)
+        except (OSError, ValueError):
+            dest_data = {}
+        if not isinstance(dest_data, dict):
+            dest_data = {}
+        dest_data[server] = entry
+        tmp = f"{dest}.{os.getpid()}.mcp-token.tmp"
+        try:
+            os.makedirs(os.path.dirname(dest), exist_ok=True)
+            fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "w") as f:
+                json.dump(dest_data, f)
+            os.replace(tmp, dest)
+        except OSError:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            return False
+    if not quiet:
+        print(f",mcp-token: seeded {server} workspace cache from a verified cached chain.", file=sys.stderr)
+    return True
+
+
 def _ensure_cursor_workspace_auth(server: str, *, quiet: bool = False) -> bool:
     """Authenticate cursor's current workspace when its MCP cache requires it."""
     status = _cursor_workspace_auth_status(server)
     if status != WORKSPACE_REQUIRES_AUTH:
+        return True
+    if _seed_workspace_cache(server, quiet=quiet) and _cursor_workspace_auth_status(server) != WORKSPACE_REQUIRES_AUTH:
         return True
     if not _browser_login(server, quiet=quiet):
         return False
@@ -936,7 +1006,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument(
         "--no-proactive-rotation",
         action="store_true",
-        help="With --login, skip proactive rotation but verify current-workspace auth; critical/expired/revoked tokens still rotate synchronously",
+        help="With --login, skip proactive rotation but ensure current-workspace auth (seeding a missing workspace cache from a verified cached chain, browser last); critical/expired/revoked tokens still rotate synchronously",
     )
     parser.add_argument(
         "--force",
