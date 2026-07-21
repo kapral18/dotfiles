@@ -430,12 +430,27 @@ class KnowledgeBase:
         db.execute("DROP TABLE IF EXISTS kb_meta")
 
     def _load_sidecar_capsules(self) -> list[Capsule]:
+        """Parse every canonical sidecar, quarantining the unparseable.
+
+        This feeds the stale-schema rebuild, which runs inside every
+        command's init(). Failing closed per *store* would let one bad
+        file (e.g. a sidecar written by a pre-schema tool) brick every
+        read and write path with no remediation short of hand-editing
+        the data dir. Instead we fail closed per *file*: a sidecar that
+        does not parse (or collides with an already-loaded id) is moved
+        to `<home>/quarantine/` with a stderr warning, preserving the
+        artifact for triage while the rest of the store stays usable.
+        """
         capsules: list[Capsule] = []
         by_id: dict[str, Capsule] = {}
         for path in sorted(self.capsules_dir.glob("*.md")):
-            capsule = self._parse_sidecar(path)
-            if capsule.id in by_id:
-                raise ValueError(f"duplicate capsule sidecar id {capsule.id!r} at {path}")
+            try:
+                capsule = self._parse_sidecar(path)
+                if capsule.id in by_id:
+                    raise ValueError(f"duplicate capsule sidecar id {capsule.id!r} at {path}")
+            except ValueError as err:
+                self._quarantine_sidecar(path, str(err))
+                continue
             by_id[capsule.id] = capsule
             capsules.append(capsule)
         capsules.sort(key=lambda c: (c.created_at, c.id))
@@ -443,6 +458,20 @@ class KnowledgeBase:
             if capsule.supersedes and capsule.supersedes in by_id:
                 by_id[capsule.supersedes].superseded_by = capsule.id
         return capsules
+
+    def _quarantine_sidecar(self, path: Path, reason: str) -> None:
+        quarantine_dir = self.home / "quarantine"
+        quarantine_dir.mkdir(parents=True, exist_ok=True)
+        dest = quarantine_dir / path.name
+        counter = 1
+        while dest.exists():
+            dest = quarantine_dir / f"{path.stem}.{counter}{path.suffix}"
+            counter += 1
+        path.rename(dest)
+        print(
+            f"ai-kb: quarantined capsule sidecar {path.name} -> {dest} ({reason})",
+            file=sys.stderr,
+        )
 
     def _load_recoverable_capsule_state(self, db: sqlite3.Connection) -> dict[str, dict[str, object]]:
         cols = {r[1] for r in db.execute("PRAGMA table_info(capsules)").fetchall()}
@@ -1964,6 +1993,10 @@ class KnowledgeBase:
         checks.append("sqlite_fts5=ok")
         checks.append(f"capsules={total}")
         checks.append(f"capsules_with_embedding={with_embed}")
+        quarantined = sorted((self.home / "quarantine").glob("*.md"))
+        checks.append(f"quarantined_sidecars={len(quarantined)}")
+        for q in quarantined:
+            checks.append(f"quarantined: {q.name}")
         embedder = self.embedder()
         if embedder is None:
             checks.append("embedder=unavailable (BM25-only retrieval)")

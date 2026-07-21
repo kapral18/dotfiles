@@ -377,7 +377,10 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                 else:
                     os.environ["AI_KB_DISABLE_EMBED"] = saved_disable
 
-    def test_stale_schema_rebuild_fails_closed_on_malformed_sidecar(self):
+    def test_stale_schema_rebuild_quarantines_malformed_sidecar(self):
+        """One unparseable sidecar must not brick the whole store: the
+        rebuild quarantines it (preserving the artifact for triage) and
+        completes with every healthy capsule intact."""
         import ai_kb
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -391,18 +394,16 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                     source="tests:good",
                     embed_now=False,
                 )
-                (kb.capsules_dir / "broken.md").write_text(
+                broken_text = (
                     "---\n"
                     "id: broken\n"
-                    "kind: fact\n"
-                    "scope: project\n"
                     "source: tests:broken\n"
-                    "confidence: 0.5\n"
                     "created_at: 2026-07-10T00:00:00+00:00\n"
                     "---\n\n"
                     "# broken\n\n"
-                    "missing title frontmatter should fail closed\n"
+                    "pre-schema sidecar missing title/kind/scope/confidence\n"
                 )
+                (kb.capsules_dir / "broken.md").write_text(broken_text)
                 with kb.connect() as db:
                     db.execute("DROP TABLE IF EXISTS capsule_fts")
                     db.execute("DROP TABLE IF EXISTS kb_meta")
@@ -418,15 +419,55 @@ class TestKnowledgeBaseSchemaV2(unittest.TestCase):
                     )
                     db.execute("INSERT INTO capsules(id,title,body) VALUES('bogus','bogus','bogus')")
 
-                with self.assertRaisesRegex(ValueError, "broken.md"):
-                    kb.list(limit=10)
+                rows = kb.list(limit=10)
 
+                assert [r.id for r in rows] == [good.id], rows
                 with kb.connect() as db:
                     cols = [r[1] for r in db.execute("PRAGMA table_info(capsules)").fetchall()]
                     count = db.execute("SELECT COUNT(*) FROM capsules").fetchone()[0]
-                assert cols == ["id", "title", "body"], cols
+                assert tuple(cols) == ai_kb.CAPSULE_COLUMNS, cols
                 assert count == 1, count
                 assert (kb.capsules_dir / f"{good.id}.md").exists()
+                # The malformed sidecar is moved out of the canonical dir,
+                # byte-identical, so a later fix can restore it.
+                assert not (kb.capsules_dir / "broken.md").exists()
+                quarantined = kb.home / "quarantine" / "broken.md"
+                assert quarantined.read_text() == broken_text
+            finally:
+                if saved_disable is None:
+                    os.environ.pop("AI_KB_DISABLE_EMBED", None)
+
+    def test_stale_schema_rebuild_quarantines_sidecar_with_mismatched_filename(self):
+        """A stray copy of a sidecar under a different filename (filename
+        must equal the capsule id) is quarantined; the original keeps
+        the id."""
+        import ai_kb
+
+        with tempfile.TemporaryDirectory() as tmp:
+            saved_disable = os.environ.get("AI_KB_DISABLE_EMBED")
+            os.environ["AI_KB_DISABLE_EMBED"] = "1"
+            try:
+                kb = ai_kb.KnowledgeBase(home=Path(tmp))
+                good = kb.remember(
+                    title="Original id owner",
+                    body="First sidecar with this id wins.",
+                    source="tests:good",
+                    embed_now=False,
+                )
+                dupe_name = f"zzz-{good.id}-dupe.md"
+                (kb.capsules_dir / dupe_name).write_text((kb.capsules_dir / f"{good.id}.md").read_text())
+                with kb.connect() as db:
+                    db.execute("DROP TABLE IF EXISTS capsule_fts")
+                    db.execute("DROP TABLE IF EXISTS kb_meta")
+                    db.execute("DROP TABLE IF EXISTS capsules")
+                    db.execute("CREATE TABLE capsules (id TEXT PRIMARY KEY)")
+
+                rows = kb.list(limit=10)
+
+                assert [r.id for r in rows] == [good.id], rows
+                assert (kb.capsules_dir / f"{good.id}.md").exists()
+                assert not (kb.capsules_dir / dupe_name).exists()
+                assert (kb.home / "quarantine" / dupe_name).exists()
             finally:
                 if saved_disable is None:
                     os.environ.pop("AI_KB_DISABLE_EMBED", None)

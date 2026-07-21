@@ -47,7 +47,7 @@ Sidecar markdown is canonical for content/identity; SQLite holds curation/runtim
 | `decay_score`                       | Incremented by the `curate` decay pass; cleared on retrieval (14-day shield)          |
 | `embedding`/`embedding_model`/`dim` | Default `BAAI/bge-small-en-v1.5`, 384d via [`embed.py`](../../../../scripts/embed.py) |
 
-Write-time dedup refuses a case-insensitive title collision or same-kind cosine ≥ 0.95 unless the caller explicitly supersedes the old capsule or confirms a false positive with `--force`. Degraded metadata warns rather than silently storing. Schema drift rebuilds from sidecars and fails before mutation when a sidecar is malformed.
+Write-time dedup refuses a case-insensitive title collision or same-kind cosine ≥ 0.95 unless the caller explicitly supersedes the old capsule or confirms a false positive with `--force`. Degraded metadata warns rather than silently storing. Schema drift rebuilds from sidecars; a sidecar that does not parse is moved to `<home>/quarantine/` with a stderr warning (surfaced by `doctor`) so one bad file cannot block the rebuild, and the rest of the store stays usable.
 
 ## Retrieval
 
