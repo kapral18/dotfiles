@@ -1734,7 +1734,7 @@ class TestCursorWrapper(unittest.TestCase):
             ):
                 path.mkdir(parents=True, exist_ok=True)
             (workspace_cache.parent / ".workspace-trusted").write_text(json.dumps({"workspacePath": str(workspace)}))
-            config.write_text(json.dumps({"mcpServers": {"slack": {"url": url, "oauth": {"clientId": "fixture"}}}}))
+            config.write_text(json.dumps({"mcpServers": {"slack": {"url": url, "auth": {"CLIENT_ID": "fixture"}}}}))
             global_cache.write_text(
                 json.dumps({"slack": {"tokens": {"access_token": global_token, "expires_in": 3600}}})
             )
@@ -1800,14 +1800,23 @@ class TestCursorWrapper(unittest.TestCase):
         assert "SESSION_MCP_STATUS=ready" in result.stdout
         assert calls[:2] == ["mcp login slack", "--force --approve-mcps"]
 
-    def test_defers_proactive_rotation_to_cursor_runtime(self):
+    def test_preflights_cursor_oauth_and_auth_client_id_servers(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             home, bindir = root / "home", root / "bin"
             config = home / ".cursor/mcp.json"
             config.parent.mkdir(parents=True)
             bindir.mkdir()
-            config.write_text(json.dumps({"mcpServers": {"slack": {"oauth": {"clientId": "fixture"}}}}))
+            config.write_text(
+                json.dumps(
+                    {
+                        "mcpServers": {
+                            "scsi-main": {"url": "https://scsi.invalid/mcp", "oauth": {"clientId": "fixture"}},
+                            "slack": {"url": "https://slack.invalid/mcp", "auth": {"CLIENT_ID": "fixture"}},
+                        }
+                    }
+                )
+            )
             token_log = root / "mcp-token.log"
             token_helper = bindir / ",mcp-token"
             token_helper.write_text(
@@ -1835,7 +1844,10 @@ class TestCursorWrapper(unittest.TestCase):
 
         assert result.returncode == 0, result.stderr
         assert "REAL_CURSOR_STARTED" in result.stdout
-        assert calls == ["slack --login --quiet --no-proactive-rotation"]
+        assert calls == [
+            "scsi-main --login --quiet --no-proactive-rotation",
+            "slack --login --quiet --no-proactive-rotation",
+        ]
 
 
 class TestKbnStackCommand(unittest.TestCase):

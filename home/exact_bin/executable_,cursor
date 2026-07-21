@@ -84,8 +84,9 @@ should_refresh() {
 }
 
 if should_refresh "$@" && command -v python3 >/dev/null 2>&1 && [[ -f "$config" ]]; then
-  # OAuth HTTP servers needing a fresh token = servers in ~/.cursor/mcp.json that
-  # carry an "oauth" block (cursor-agent mcp login knows how to refresh these).
+  # Authenticated HTTP servers needing a fresh token = servers carrying either
+  # cursor-cli's "oauth" block or Cursor IDE's "auth.CLIENT_ID" shape. Slack
+  # currently emits only the latter, while scsi-main emits both.
   # Deriving the list from the config keeps this in sync with the registry.
   mapfile -t oauth_servers < <(
     python3 - "$config" <<'PY'
@@ -99,7 +100,10 @@ except (OSError, ValueError):
     sys.exit(0)
 
 for name, spec in servers.items():
-    if isinstance(spec, dict) and spec.get("oauth"):
+    auth = spec.get("auth") if isinstance(spec, dict) else None
+    if isinstance(spec, dict) and (
+        spec.get("oauth") or (isinstance(auth, dict) and auth.get("CLIENT_ID"))
+    ):
         print(name)
 PY
   )
