@@ -1479,6 +1479,7 @@ def inject_client_script(content: str) -> str:
   const STYLE_ID = "__agent_artifact_highlight_style";
   let hovered = null;
   let selected = null;
+  let captureEnabled = false;
 
   function ensureStyle() {
     if (document.getElementById(STYLE_ID)) return;
@@ -1539,6 +1540,18 @@ def inject_client_script(content: str) -> str:
     return el.closest("a, button, input, textarea, select, [role], [data-card], article, section, li, tr, th, td, h1, h2, h3, p, pre, blockquote") || el;
   }
 
+  function clearHighlights() {
+    if (hovered) hovered.classList.remove("__agent_artifact_hover");
+    if (selected) selected.classList.remove("__agent_artifact_selected");
+    hovered = null;
+    selected = null;
+  }
+
+  function setCaptureEnabled(enabled) {
+    captureEnabled = Boolean(enabled);
+    if (!captureEnabled) clearHighlights();
+  }
+
   function expandedTargetFor(el) {
     const base = selected && selected.contains(el) ? selected : targetFor(el, true);
     if (!base || base === document.documentElement) return document.documentElement;
@@ -1573,9 +1586,11 @@ def inject_client_script(content: str) -> str:
 
   let last = {};
   document.addEventListener("pointermove", (event) => {
+    if (!captureEnabled) return;
     hover(event.target);
   }, true);
   document.addEventListener("click", (event) => {
+    if (!captureEnabled) return;
     const selection = selectionText();
     if (event.altKey) {
       event.preventDefault();
@@ -1586,11 +1601,17 @@ def inject_client_script(content: str) -> str:
     parent.postMessage({ type: "agent-artifact-context", context: last }, "*");
   }, true);
   document.addEventListener("mouseup", (event) => {
+    if (!captureEnabled) return;
     const selection = selectionText();
     if (selection) {
       const el = mark(event.target, true);
       last = { ...contextFor(el, selection), selection };
       parent.postMessage({ type: "agent-artifact-context", context: last }, "*");
+    }
+  });
+  window.addEventListener("message", (event) => {
+    if (event.source === parent && event.data && event.data.type === "agent-artifact-capture") {
+      setCaptureEnabled(event.data.enabled);
     }
   });
   parent.postMessage({ type: "agent-artifact-ready" }, "*");
@@ -1635,12 +1656,14 @@ def chrome_page(name: str) -> str:
     top: 12px;
     left: 12px;
     right: 12px;
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: flex-start;
     gap: 12px;
     pointer-events: none;
+    z-index: 2;
   }}
+  .feedback-active .topbar {{ display: flex; }}
   .badge, .status-pill {{
     pointer-events: auto;
     border: 1px solid rgba(148, 163, 184, 0.28);
@@ -1673,6 +1696,7 @@ def chrome_page(name: str) -> str:
     white-space: nowrap;
   }}
   .dock {{
+    display: none;
     position: fixed;
     left: 50%;
     bottom: 16px;
@@ -1686,8 +1710,9 @@ def chrome_page(name: str) -> str:
     box-shadow: 0 22px 58px rgba(2, 6, 23, 0.38);
     overflow: hidden;
     transition: width 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+    z-index: 2;
   }}
-  .dock.compact .dock-body {{ display: none; }}
+  .feedback-active .dock {{ display: block; }}
   .dock.expanded {{
     width: min(860px, calc(100vw - 28px));
     border-color: rgba(125, 211, 252, 0.38);
@@ -1696,8 +1721,6 @@ def chrome_page(name: str) -> str:
   .dock-head {{
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 14px;
     padding: 10px 12px 8px 14px;
   }}
   .context {{
@@ -1823,12 +1846,26 @@ def chrome_page(name: str) -> str:
     cursor: pointer;
   }}
   button:hover {{ background: rgba(148, 163, 184, 0.28); }}
+  .feedback-toggle {{
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 3;
+    border: 1px solid rgba(196, 181, 253, 0.34);
+    background: rgba(15, 23, 42, 0.82);
+    color: #eef2ff;
+    backdrop-filter: blur(18px);
+    box-shadow: 0 14px 34px rgba(2, 6, 23, 0.24);
+  }}
+  .feedback-toggle[aria-expanded="true"] {{
+    background: linear-gradient(135deg, #a78bfa, #38bdf8);
+    color: #07111f;
+  }}
   .primary {{
     background: linear-gradient(135deg, #a78bfa, #38bdf8);
     color: #07111f;
   }}
   .primary:hover {{ background: linear-gradient(135deg, #c4b5fd, #7dd3fc); }}
-  .quiet {{ color: #cbd5e1; }}
   .hint {{
     color: #94a3b8;
     font-size: 11px;
@@ -1844,13 +1881,13 @@ def chrome_page(name: str) -> str:
 </head>
 <body>
 <iframe id="artifact" src="/artifact/{safe_name}" sandbox="allow-scripts allow-forms allow-popups allow-downloads"></iframe>
+<button class="feedback-toggle" id="feedbackToggle" type="button" aria-expanded="false" aria-controls="dock">Feedback</button>
 <div class="topbar">
   <div class="badge"><span class="dot"></span><span>Cache review</span><code>{safe_name}</code></div>
 </div>
 <section class="dock" id="dock" aria-label="Agent feedback dock">
   <div class="dock-head">
     <div class="context" id="context"><strong>No anchor yet.</strong><span>Click or select content. Alt-click expands the pinned area.</span></div>
-    <button class="quiet" id="toggle" type="button">Hide</button>
   </div>
   <div class="dock-body">
     <div class="anchor-card" id="anchorCard" aria-live="polite">
@@ -1880,7 +1917,7 @@ def chrome_page(name: str) -> str:
 const $ = (id) => document.getElementById(id);
 let context = {{}};
 let tray = [];
-let collapsed = false;
+let feedbackActive = false;
 
 function summarizeContext(value) {{
   if (value.selection) return ["Selection", value.selection];
@@ -1899,15 +1936,30 @@ function resetAnchorContext() {{
   $("anchorTitle").textContent = "Pinned selection";
   $("anchorSelector").textContent = "";
   $("anchorText").textContent = "";
-  if (!collapsed) $("dock").classList.remove("expanded");
+  $("dock").classList.remove("expanded");
   setStatus("Artifact loaded. Click, select text, or Alt-click a pinned area to expand.");
 }}
 
 function expandDock() {{
-  collapsed = false;
-  $("dock").classList.remove("compact");
   $("dock").classList.add("expanded");
-  $("toggle").textContent = "Hide";
+}}
+
+function postCaptureState() {{
+  const frame = $("artifact");
+  if (frame.contentWindow) {{
+    frame.contentWindow.postMessage({{ type: "agent-artifact-capture", enabled: feedbackActive }}, "*");
+  }}
+}}
+
+function setFeedbackActive(enabled) {{
+  feedbackActive = Boolean(enabled);
+  document.body.classList.toggle("feedback-active", feedbackActive);
+  $("feedbackToggle").setAttribute("aria-expanded", String(feedbackActive));
+  $("feedbackToggle").textContent = feedbackActive ? "Close feedback" : "Feedback";
+  postCaptureState();
+  if (feedbackActive) {{
+    setStatus("Feedback mode enabled. Click or select content to pin an anchor.");
+  }}
 }}
 
 function renderAnchorCard(value) {{
@@ -1964,7 +2016,8 @@ function addCurrentToTray() {{
 window.addEventListener("message", (event) => {{
   if (event.data && event.data.type === "agent-artifact-ready") {{
     resetAnchorContext();
-  }} else if (event.data && event.data.type === "agent-artifact-context") {{
+    postCaptureState();
+  }} else if (feedbackActive && event.data && event.data.type === "agent-artifact-context") {{
     context = event.data.context || {{}};
     const [label, detail] = summarizeContext(context);
     $("context").innerHTML = "<strong>" + label + "</strong><span></span>";
@@ -2018,16 +2071,7 @@ document.querySelectorAll("[data-prompt]").forEach((button) => {{
     $("prompt").focus();
   }});
 }});
-$("toggle").onclick = () => {{
-  collapsed = !collapsed;
-  $("dock").classList.toggle("compact", collapsed);
-  if (collapsed) {{
-    $("dock").classList.remove("expanded");
-  }} else {{
-    $("dock").classList.toggle("expanded", Boolean(context.selector || context.text || context.selection));
-  }}
-  $("toggle").textContent = collapsed ? "Show" : "Hide";
-}};
+$("feedbackToggle").onclick = () => setFeedbackActive(!feedbackActive);
 $("end").onclick = async () => {{
   await fetch("/api/end/{safe_name}", {{ method: "POST" }});
   setStatus("Session ended.");

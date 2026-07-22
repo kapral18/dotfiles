@@ -432,6 +432,22 @@ class TestArtifactCommand(unittest.TestCase):
         assert "dock expanded upward" in chrome
         assert "expanded" in chrome
 
+    def test_generated_feedback_mode_starts_hidden_and_gates_capture(self):
+        artifact = _load_artifact_command()
+
+        injected = artifact.inject_client_script("<html><body><button>Save</button></body></html>")
+        chrome = artifact.chrome_page("demo.html")
+
+        assert "let captureEnabled = false;" in injected
+        assert 'event.data.type === "agent-artifact-capture"' in injected
+        assert injected.count("if (!captureEnabled) return;") == 3
+        assert "if (!captureEnabled) clearHighlights();" in injected
+        assert 'id="feedbackToggle"' in chrome
+        assert 'aria-expanded="false"' in chrome
+        assert "let feedbackActive = false;" in chrome
+        assert 'document.body.classList.toggle("feedback-active", feedbackActive)' in chrome
+        assert "agent-artifact-capture" in chrome
+
     def test_live_overlay_script_exposes_pause_teardown_and_minimal_context(self):
         artifact = _load_artifact_command()
 

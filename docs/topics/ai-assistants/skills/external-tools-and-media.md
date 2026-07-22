@@ -15,6 +15,7 @@ These skills route non-code tools, browser automation, and generated visual asse
 | Source   | [`exact_k-artifact`](../../../../home/exact_dot_agents/exact_skills/exact_k-artifact/)                                |
 | Tool     | `,artifact`                                                                                                           |
 | Boundary | writes only under `~/.cache/agent-artifacts`; worktrees are identity metadata, not storage                            |
+| UX       | generated artifacts start with feedback capture hidden behind a fixed top-right Feedback button                       |
 
 ## `k-google-workspace`
 

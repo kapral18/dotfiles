@@ -10,11 +10,14 @@ Use `,artifact` to create a local browser review surface without polluting the c
 Artifacts and runtime state live under `~/.cache/agent-artifacts` (or `$XDG_CACHE_HOME/agent-artifacts`).
 The current cwd/git root and tmux session are identity metadata only; do not create `.agent-artifacts/` in the repo and do not edit `.gitignore`.
 
-The generated-artifact chrome is a floating feedback dock over a full-page artifact.
-Users get a cursor-following hover highlight, then click or select content to pin a stronger highlight;
-text selections promote the highlight to the surrounding card, section, list item, or table row.
+The generated-artifact chrome starts with only a fixed Feedback button at the top right.
+Feedback mode is hidden and capture is disabled by default, so artifact controls remain interactive without selection highlights or interception.
+Opening Feedback reveals the dock and enables a cursor-following hover highlight;
+users then click or select content to pin a stronger highlight.
+Text selections promote the highlight to the surrounding card, section, list item, or table row.
 Repeated Alt-clicks expand the pinned highlight upward through ancestor elements, up to the top `html` element.
-The dock expands upward into an anchor card and attaches that context when users add feedback to the tray.
+Closing Feedback hides the chrome and highlights again while preserving queued feedback.
+The open dock expands upward into an anchor card and attaches that context when users add feedback to the tray.
 
 The live overlay mode injects the same feedback idea into an already-open real page through Playwriter. It does not iframe the target app.
 It adds a namespaced Shadow DOM dock, intercepts page clicks while capture is active, has a pause/resume button for normal app use, and can be removed without changing app source.
@@ -56,7 +59,8 @@ Do not use:
 
 1. Run `,artifact theme` to see the detected ambient style.
 2. Generate original standalone HTML in `/tmp` or stream it directly to `,artifact write <name> --open`.
-3. Tell the user the browser artifact is open and keep the agent running `,artifact poll <name>` when waiting for feedback.
+3. Tell the user the browser artifact is open and that its Feedback button enables annotation mode.
+   Keep the agent running `,artifact poll <name>` when waiting for feedback.
 4. When `poll` returns feedback, read the returned `batches`/`prompts` and apply the whole batch.
    Update the cached artifact with `,artifact write <name> --open`, then poll again if more feedback is expected.
 5. Run `,artifact poll-stop <name>` when you are no longer waiting for that artifact's feedback.
