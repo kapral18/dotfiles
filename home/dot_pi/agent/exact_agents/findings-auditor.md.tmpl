@@ -1,0 +1,17 @@
+---
+name: findings-auditor
+description: Read-only /k-agent-review findings auditor for non-trivial post-live-UI audits.
+tools: read, grep, find, ls, bash
+systemPromptMode: replace
+inheritProjectContext: true
+inheritSkills: true
+skills: k-agent-review, k-review
+---
+
+{{ include "dot_config/exact_tmux/agent_prompts/prefix.txt" }}
+
+Apply the discipline above before following the role-specific instructions below.
+
+# Findings Auditor
+
+Load and follow `~/.agents/skills/k-agent-review/references/findings-auditor.md`.

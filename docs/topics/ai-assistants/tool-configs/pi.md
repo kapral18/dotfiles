@@ -43,15 +43,18 @@ The work-profile LiteLLM provider, the personal Cloudflare Workers AI provider, 
 
 ### Shared settings
 
-| Setting area       | Behavior                                                                                                                                                              |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Context compaction | Automatic context compaction uses a hybrid sliding window.                                                                                                            |
-| Cache visibility   | Significant prompt-cache misses appear in the transcript; the footer and `/session` expose Pi's own cache accounting.                                                 |
-| Retries            | Exponential backoff retries.                                                                                                                                          |
-| Extension loading  | Pi loads `pi-skills`, `pi-mcp-adapter`, and `pi-subagents` from yarn global `node_modules` paths in Pi settings `packages`.                                           |
-| Delegation         | `pi-subagents` adds a `subagent` tool so Pi can delegate work to child agents with isolated context windows.                                                          |
-| PATH               | Shell PATH order keeps `~/.yarn/bin` ahead of runtime-manager shims so `pi` resolves to the yarn-managed binary.                                                      |
-| Secrets            | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, and `OPENROUTER_API_KEY` are picked up from environment variables exported via `pass` in `config.fish.tmpl`. |
+| Setting area       | Behavior                                                                                                                                                               |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Context compaction | Automatic context compaction uses a hybrid sliding window.                                                                                                             |
+| Cache visibility   | Significant prompt-cache misses appear in the transcript; the footer and `/session` expose Pi's own cache accounting.                                                  |
+| Retries            | Exponential backoff retries.                                                                                                                                           |
+| Extension loading  | Pi loads the chezmoi-managed runtime extensions plus `pi-mcp-adapter` and `pi-subagents` from yarn global `node_modules`.                                              |
+| Native tools       | `runtime-parity.ts` enables `grep`, `find`, and `ls` alongside Pi's default tools unless explicit CLI tool-selection flags override the defaults.                      |
+| Delegation         | `pi-subagents` adds `subagent` and `subagent_wait` for isolated child contexts; named review profiles cover reviewer, verifier, live-UI, and findings-audit phases.    |
+| Session hooks      | `ai-kb-recall.ts` invokes the shared session-context hook, performs depth-aware per-turn recall/correction injection, and forwards tool results to the shared worklog. |
+| Git safety         | `runtime-parity.ts` sends bash calls through the shared commit/push classifier and requires interactive approval for commit or push.                                   |
+| PATH               | Shell PATH order keeps `~/.yarn/bin` ahead of runtime-manager shims so `pi` resolves to the yarn-managed binary.                                                       |
+| Secrets            | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, and `OPENROUTER_API_KEY` are picked up from environment variables exported via `pass` in `config.fish.tmpl`.  |
 
 Automatic context compaction triggers when context exceeds `contextWindow − reserveTokens` (16384), keeps the most recent `keepRecentTokens` (80000) verbatim, and LLM-summarizes older turns. It merges iteratively with the prior summary so it never decays into a summary-of-a-summary.
 
@@ -79,7 +82,7 @@ The analyzer accepts only Pi session format v3. It follows the active `parentId`
 
 Pi loads packages from yarn global `node_modules` paths to avoid Pi-managed npm update prompts; `pi install` is not used. Each package's `package.json` `pi` field declares its extension/skills/prompts, which Pi auto-loads.
 
-`pi-skills` exposes `~/.agents/skills/` to Pi; see [Runtime recall wiring](../knowledge-base/cross-agent-memory.md). `@earendil-works/pi-tui` stays yarn-managed but is not loaded as a Pi extension package.
+The installed Pi discovers `~/.agents/skills/` natively, so no skills bridge package is configured. See [Runtime recall wiring](../knowledge-base/cross-agent-memory.md). `@earendil-works/pi-tui` stays yarn-managed but is not loaded as a Pi extension package.
 
 The `subagent` tool supports review, scout, and parallel audits while keeping the parent session's token use bounded on long tasks. It is fully local: no network/telemetry beyond the model calls the child agents make.
 

@@ -194,7 +194,10 @@ const pi = {
   on(event, handler) { handlers[event] = handler; }
 };
 await mod.default(pi);
-await handlers.session_start({ type: "session_start", reason: "startup" }, {});
+await handlers.session_start(
+  { type: "session_start", reason: "startup" },
+  { sessionManager: { getSessionId() { return "pi-depth-session"; } } }
+);
 const result = await handlers.before_agent_start(
   { prompt: "pi depth aware automatic recall " + "detail ".repeat(250) },
   {
@@ -325,7 +328,7 @@ class TestRecallDepth(unittest.TestCase):
             {**invalid_searches[0], "args": [*invalid_searches[0]["args"][:7], "<workspace>", "--json"]},
             {**balanced_searches[0], "args": [*balanced_searches[0]["args"][:7], "<workspace>", "--json"]},
         )
-        self.assertEqual(unset["warmCalls"], 1)
+        self.assertEqual(unset["warmCalls"], 0)
         self.assertEqual(unset["content"].count("- **"), 3)
         self.assertEqual(unset_searches[0]["args"][3], "6")
         self.assertEqual(unset_searches[0]["connect_only"], "1")
@@ -333,7 +336,7 @@ class TestRecallDepth(unittest.TestCase):
         self.assertEqual(fast, {"warmCalls": 0, "content": ""})
         self.assertEqual(fast_searches, [])
 
-        self.assertEqual(deep["warmCalls"], 1)
+        self.assertEqual(deep["warmCalls"], 0)
         self.assertEqual(deep["content"].count("- **"), 5)
         self.assertEqual(deep_searches[0]["args"][3], "12")
         self.assertEqual(deep_searches[0]["connect_only"], "1")

@@ -97,7 +97,7 @@ def per_turn_recall_requested(payload: dict) -> bool:
     """True when the invoking adapter has per-turn recall wiring.
 
     Adapters with per-turn retrieval (Claude, Gemini, OpenCode, Copilot,
-    Codex, Cursor) request the resident warm-up via `AI_EMBED_WARM=1` or the
+    Codex, Cursor, Pi) request the resident warm-up via `AI_EMBED_WARM=1` or the
     `warm_embedder` payload flag; an adapter that sends neither has no
     per-turn hook surface, so its mid-session recall must come from the
     agent's own `,ai-kb search` (the Recall Notice below).

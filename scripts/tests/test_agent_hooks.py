@@ -1311,6 +1311,259 @@ console.log(calls[0][0]);
 
             assert payload["session_id"] == "opencode-session"
 
+    def test_pi_recall_injects_shared_session_context_once_per_session_start(self):
+        extension = REPO / "home/dot_pi/agent/extensions/ai-kb-recall.ts"
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            hooks_dir = home / ".agents" / "hooks"
+            hooks_dir.mkdir(parents=True)
+            payload_log = Path(tmp) / "session-context-payloads.jsonl"
+            session_context = hooks_dir / "session_context.py"
+            session_context.write_text(
+                f"""#!/usr/bin/env python3
+import json
+import sys
+
+payload = json.load(sys.stdin)
+with open({str(payload_log)!r}, "a", encoding="utf-8") as handle:
+    handle.write(json.dumps(payload, sort_keys=True) + "\\n")
+context = "SHARED_SESSION_CONTEXT::" + payload["session_id"] + "::" + payload["initial_prompt"]
+print(json.dumps({{"additional_context": context}}))
+"""
+            )
+            session_context.chmod(0o755)
+            spec_file = Path(tmp) / "current.txt"
+            script = """
+const mod = await import(process.argv[1]);
+const workspace = process.argv[2];
+let specFile = process.argv[3];
+let selectedTopic = "current";
+const handlers = {};
+const pi = {
+  async exec(command, args) {
+    if (command === ",ai-kb" && args[0] === "--help") return { code: 0, killed: false, stdout: "" };
+    if (command === ",agent-memory") {
+      return {
+        code: 0,
+        killed: false,
+        stdout: JSON.stringify({
+          workspace,
+          selected_topic: selectedTopic,
+          session_key: "pi-session-context",
+          is_named_topic: false,
+          spec_file: specFile,
+          spec_exists: false
+        })
+      };
+    }
+    if (command === "python3" && args[0].endsWith("/lib/,ai-kb/embed_client.py")) {
+      return { code: 0, killed: false, stdout: "{}" };
+    }
+    if (command === "cat" && args[0].endsWith("/tmux/agent_prompts/prefix.txt")) {
+      return { code: 0, killed: false, stdout: "VERIFICATION_PREFIX" };
+    }
+    if (command === "cat") return { code: 1, killed: false, stdout: "" };
+    throw new Error(`unexpected exec: ${command} ${args.join(" ")}`);
+  },
+  on(event, handler) { handlers[event] = handler; }
+};
+let contextPercent = 5;
+const ctx = {
+  cwd: workspace,
+  getContextUsage() { return { percent: contextPercent }; },
+  sessionManager: { getSessionId() { return "pi-session-context"; } }
+};
+await mod.default(pi);
+await handlers.session_start({ type: "session_start", reason: "startup" }, ctx);
+const first = await handlers.before_agent_start({ prompt: "first" }, ctx);
+const second = await handlers.before_agent_start({ prompt: "next" }, ctx);
+contextPercent = 26;
+const grown = await handlers.before_agent_start({ prompt: "growth" }, ctx);
+selectedTopic = "next-topic";
+specFile = specFile.replace("current.txt", "next-topic.txt");
+const topicChanged = await handlers.before_agent_start({ prompt: "topic shift" }, ctx);
+await handlers.session_compact({ type: "session_compact" }, ctx);
+contextPercent = null;
+const compacted = await handlers.before_agent_start({ prompt: "compacted" }, ctx);
+contextPercent = 7;
+const afterCompactionBaseline = await handlers.before_agent_start({ prompt: "baseline" }, ctx);
+contextPercent = 28;
+const grownAfterCompaction = await handlers.before_agent_start({ prompt: "regrowth" }, ctx);
+await handlers.session_start({ type: "session_start", reason: "resume" }, ctx);
+const resumed = await handlers.before_agent_start({ prompt: "resume" }, ctx);
+console.log(JSON.stringify({
+  first,
+  second: second ?? null,
+  grown,
+  topicChanged,
+  compacted,
+  afterCompactionBaseline: afterCompactionBaseline ?? null,
+  grownAfterCompaction,
+  resumed
+}));
+"""
+            env = dict(os.environ)
+            env["HOME"] = str(home)
+            env["AI_AGENT_DEPTH"] = "balanced"
+            env["NODE_NO_WARNINGS"] = "1"
+            result = subprocess.run(
+                ["node", "--input-type=module", "-e", script, str(extension), str(Path(tmp).resolve()), str(spec_file)],
+                cwd=str(REPO),
+                capture_output=True,
+                text=True,
+                env=env,
+                check=True,
+            )
+            payload = json.loads(result.stdout)
+
+            assert "SHARED_SESSION_CONTEXT::pi-session-context" in payload["first"]["message"]["content"]
+            assert payload["second"] is None
+            assert "VERIFICATION_PREFIX" in payload["grown"]["message"]["content"]
+            assert (
+                "SHARED_SESSION_CONTEXT::pi-session-context::topic shift"
+                in payload["topicChanged"]["message"]["content"]
+            )
+            assert "VERIFICATION_PREFIX" in payload["compacted"]["message"]["content"]
+            assert payload["afterCompactionBaseline"] is None
+            assert "VERIFICATION_PREFIX" in payload["grownAfterCompaction"]["message"]["content"]
+            assert "SHARED_SESSION_CONTEXT::pi-session-context" in payload["resumed"]["message"]["content"]
+            hook_payloads = [json.loads(line) for line in payload_log.read_text().splitlines()]
+            assert hook_payloads == [
+                {
+                    "cwd": str(Path(tmp).resolve()),
+                    "hook_event_name": "sessionStart",
+                    "initial_prompt": "first",
+                    "session_id": "pi-session-context",
+                    "source": "pi",
+                    "warm_embedder": True,
+                    "workspace_roots": [str(Path(tmp).resolve())],
+                },
+                {
+                    "cwd": str(Path(tmp).resolve()),
+                    "hook_event_name": "sessionStart",
+                    "initial_prompt": "topic shift",
+                    "session_id": "pi-session-context",
+                    "source": "pi",
+                    "warm_embedder": True,
+                    "workspace_roots": [str(Path(tmp).resolve())],
+                },
+                {
+                    "cwd": str(Path(tmp).resolve()),
+                    "hook_event_name": "sessionStart",
+                    "initial_prompt": "resume",
+                    "session_id": "pi-session-context",
+                    "source": "pi",
+                    "warm_embedder": True,
+                    "workspace_roots": [str(Path(tmp).resolve())],
+                },
+            ]
+
+    def test_pi_runtime_extension_enables_search_tools_and_gates_git_mutation(self):
+        extension = REPO / "home/dot_pi/agent/extensions/runtime-parity.ts"
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            hooks_dir = home / ".agents" / "hooks"
+            hooks_dir.mkdir(parents=True)
+            gate = hooks_dir / "gemini-git-gate.py"
+            gate.write_text((HOOKS / "executable_gemini-git-gate.py").read_text())
+            gate.chmod(0o755)
+            script = """
+const mod = await import(process.argv[1]);
+function makePi() {
+  const handlers = {};
+  let active = ["read", "bash", "edit", "write"];
+  return {
+    handlers,
+    getActiveTools() { return [...active]; },
+    setActiveTools(tools) { active = [...tools]; },
+    on(event, handler) { handlers[event] = handler; }
+  };
+}
+const pi = makePi();
+await mod.default(pi);
+await pi.handlers.session_start({ type: "session_start", reason: "startup" }, {});
+const ctxWithoutUi = { hasUI: false };
+const ctxAllowing = { hasUI: true, ui: { async confirm() { return true; } } };
+const safe = await pi.handlers.tool_call(
+  { type: "tool_call", toolCallId: "safe", toolName: "bash", input: { command: "git config push.default" } },
+  ctxWithoutUi
+);
+const blocked = await pi.handlers.tool_call(
+  { type: "tool_call", toolCallId: "blocked", toolName: "bash", input: { command: "git push" } },
+  ctxWithoutUi
+);
+const caseVariantBlocked = await pi.handlers.tool_call(
+  { type: "tool_call", toolCallId: "case-variant", toolName: "bash", input: { command: "GIT push" } },
+  ctxWithoutUi
+);
+const aliasBlocked = await pi.handlers.tool_call(
+  { type: "tool_call", toolCallId: "alias", toolName: "bash", input: { command: "git -c alias.p=push p" } },
+  ctxWithoutUi
+);
+const concatenatedBlocked = await pi.handlers.tool_call(
+  { type: "tool_call", toolCallId: "concatenated", toolName: "bash", input: { command: 'g""it push' } },
+  ctxWithoutUi
+);
+const escapedBlocked = await pi.handlers.tool_call(
+  { type: "tool_call", toolCallId: "escaped", toolName: "bash", input: { command: String.raw`g\\it commit` } },
+  ctxWithoutUi
+);
+const expandedBlocked = await pi.handlers.tool_call(
+  { type: "tool_call", toolCallId: "expanded", toolName: "bash", input: { command: String.raw`g$'it' push` } },
+  ctxWithoutUi
+);
+const inertGitText = await pi.handlers.tool_call(
+  { type: "tool_call", toolCallId: "inert", toolName: "bash", input: { command: "rg 'git push' home" } },
+  ctxWithoutUi
+);
+const approved = await pi.handlers.tool_call(
+  { type: "tool_call", toolCallId: "approved", toolName: "bash", input: { command: "git commit -m ok" } },
+  ctxAllowing
+);
+process.argv.push("--tools", "read,bash");
+const explicit = makePi();
+await mod.default(explicit);
+await explicit.handlers.session_start({ type: "session_start", reason: "startup" }, {});
+console.log(JSON.stringify({
+  active: pi.getActiveTools(),
+  safe: safe ?? null,
+  blocked,
+  caseVariantBlocked,
+  aliasBlocked,
+  concatenatedBlocked,
+  escapedBlocked,
+  expandedBlocked,
+  inertGitText: inertGitText ?? null,
+  approved: approved ?? null,
+  explicit: explicit.getActiveTools()
+}));
+"""
+            env = dict(os.environ)
+            env["HOME"] = str(home)
+            env["NODE_NO_WARNINGS"] = "1"
+            result = subprocess.run(
+                ["node", "--input-type=module", "-e", script, str(extension)],
+                cwd=str(REPO),
+                capture_output=True,
+                text=True,
+                env=env,
+                check=True,
+            )
+            payload = json.loads(result.stdout)
+
+            assert payload["active"] == ["read", "bash", "edit", "write", "grep", "find", "ls"]
+            assert payload["safe"] is None
+            assert payload["blocked"]["block"] is True
+            assert "explicit approval" in payload["blocked"]["reason"]
+            assert payload["caseVariantBlocked"]["block"] is True
+            assert payload["aliasBlocked"]["block"] is True
+            assert payload["concatenatedBlocked"]["block"] is True
+            assert payload["escapedBlocked"]["block"] is True
+            assert payload["expandedBlocked"]["block"] is True
+            assert payload["inertGitText"] is None
+            assert payload["approved"] is None
+            assert payload["explicit"] == ["read", "bash", "edit", "write"]
+
     def test_pi_recall_uses_session_binding_and_persists_seen_capsules(self):
         extension = REPO / "home/dot_pi/agent/extensions/ai-kb-recall.ts"
         with tempfile.TemporaryDirectory() as tmp:
@@ -1380,7 +1633,10 @@ function makePi() {
 async function invokeFreshExtension() {
   const pi = makePi();
   await mod.default(pi);
-  await pi.handlers.session_start({ type: "session_start", reason: "startup" }, {});
+  await pi.handlers.session_start(
+    { type: "session_start", reason: "startup" },
+    { sessionManager: { getSessionId() { return sessionId; } } }
+  );
   return pi.handlers.before_agent_start(
     { prompt: "short" },
     {
@@ -1401,6 +1657,7 @@ console.log(JSON.stringify({ first, second, seen, statusCalls }));
             env = make_aikb_stub(Path(tmp), rows)
             env["NODE_NO_WARNINGS"] = "1"
             env["AI_KB_STUB_LOG"] = str(search_log)
+            env["HOME"] = str(Path(tmp) / "home")
             result = subprocess.run(
                 ["node", "--input-type=module", "-e", script, str(extension), str(spec_file)],
                 cwd=str(REPO),
@@ -1523,7 +1780,10 @@ function makePi() {
 }
 const pi = makePi();
 await mod.default(pi);
-await pi.handlers.session_start({ type: "session_start", reason: "startup" }, {});
+await pi.handlers.session_start(
+  { type: "session_start", reason: "startup" },
+  { sessionManager: { getSessionId() { return sessionId; } } }
+);
 const result = await pi.handlers.before_agent_start(
   { prompt: "recall guidance for this hybrid gate test" },
   {
@@ -1537,6 +1797,7 @@ console.log(JSON.stringify({ result }));
             env = make_aikb_stub(Path(tmp), rows)
             env["NODE_NO_WARNINGS"] = "1"
             env["AI_KB_STUB_LOG"] = str(search_log)
+            env["HOME"] = str(Path(tmp) / "home")
             result = subprocess.run(
                 ["node", "--input-type=module", "-e", script, str(extension), spec_file],
                 cwd=str(REPO),

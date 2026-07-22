@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import ast
+import json
 import re
 import unittest
 from pathlib import Path
@@ -156,6 +157,32 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             match = name_re.search(entry.read_text(encoding="utf-8"))
             assert match, f"{entry} has no frontmatter name"
             assert match.group("name") == expected, f"{entry} frontmatter name {match.group('name')!r} != {expected!r}"
+
+    def test_pi_review_controller_named_roles_have_profiles(self):
+        agents_dir = REPO / "home/dot_pi/agent/exact_agents"
+        profiles = {path.name.removesuffix(".md.tmpl") for path in agents_dir.glob("*.md.tmpl")}
+        controller = (agents_dir / "review-controller.md.tmpl").read_text(encoding="utf-8")
+        required = {
+            "reviewer",
+            "fresh-eyes",
+            "adversarial-verifier",
+            "pr-necessity-auditor",
+            "live-ui-review",
+            "findings-auditor",
+        }
+
+        assert required <= profiles, f"Pi review controller references missing profiles: {sorted(required - profiles)}"
+        for role in required:
+            assert role in controller
+
+    def test_pi_settings_use_native_shared_skills_and_real_extension_packages(self):
+        for profile in ("work", "personal"):
+            path = REPO / f"home/dot_pi/agent/readonly_settings.{profile}.json"
+            settings = json.loads(path.read_text(encoding="utf-8"))
+            assert settings["packages"] == [
+                "~/.local/share/yarn/global/node_modules/pi-mcp-adapter",
+                "~/.local/share/yarn/global/node_modules/pi-subagents",
+            ]
 
     def test_proof_access_requires_a_receipt_consumer_or_audit_need(self):
         self.assert_file_contains(

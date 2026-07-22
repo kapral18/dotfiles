@@ -1,6 +1,5 @@
 // Managed by chezmoi (source: home/dot_pi/agent/extensions/ai-kb-recall.ts).
-// Durable-memory recall for pi, matching the Cursor/Claude sessionStart warm-start
-// and adding pi's per-turn retrieval.
+// Shared session context and durable-memory recall for Pi.
 //
 // Integration extension:
 //   - topic + spec resolution comes from `,agent-memory status --json --session-id <id>`
@@ -8,17 +7,11 @@
 //   - retrieval + ranking comes from `,ai-kb search` (scripts/ai_kb.py)
 //   - Pi lifecycle state and persisted per-session recall dedupe stay here
 //
-// Injection points, all via before_agent_start (pi's only context-injection hook):
-//   0. Verification prefix: injected at session start, then re-injected when it has
-//      decayed — either after a compaction (session_compact summarizes/drops it) or once
-//      context-window fill has grown by PREFIX_REINJECT_DELTA_PCT points since the last
-//      injection. Context fill + compaction track real decay far better than a turn count
-//      (turn size varies wildly). The tmux wrap pastes the same prefix.txt manually;
-//      session_context.py injects it once for cursor-agent/claude. before_agent_start is
-//      pi's only context-injection hook, so session_compact merely flags a forced
-//      re-inject that the next before_agent_start consumes.
-//   1. Warm-start (first prompt of a session): query = the active topic spec, gated to a
-//      deliberate named topic with a non-empty <topic>.txt. Mirrors session_context.py.
+// Injection points, all delivered through before_agent_start:
+//   0. Shared session context: session_context.py supplies the verification prefix,
+//      topic buckets or active topic spec/worklog, and named-topic BM25 warm-start.
+//   1. Verification prefix re-injection after compaction or material context growth.
+//      Context fill + compaction track real decay better than a turn count.
 //   2. Per-turn (every substantive prompt): query = the user's actual prompt — the
 //      highest-relevance signal — deduped against capsules already injected this session.
 //      The same pass appends the shared precision-first correction directive when a
@@ -35,10 +28,14 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { spawn } from "node:child_process"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 
 const EXEC_TIMEOUT_MS = 6_000
+// The shared hook can spend up to 5s warming embeddings, then 6s on BM25.
+const SESSION_CONTEXT_TIMEOUT_MS = 15_000
 const SEARCH_STDOUT_MAX_BYTES = 1024 * 1024
+const SESSION_CONTEXT_HOOK = "session_context.py"
 const WARMSTART_LIMIT = 3
 const PERTURN_LIMIT = 3
 const SEARCH_FETCH = 6
@@ -126,11 +123,17 @@ interface Capsule {
 }
 
 interface RecallSessionState {
+  contextKey: string
   seenPath: string
   injectedIds: Set<string>
-  warmStartDone: boolean
+  initialContextDone: boolean
   lastPrefixPercent: number | null
   forceReinject: boolean
+}
+
+interface SessionContextResult {
+  ok: boolean
+  context: string
 }
 
 type SearchMode = "bm25" | "hybrid"
@@ -301,8 +304,78 @@ async function memoryStatus(pi: ExtensionAPI, cwd: string, sessionId: string): P
   }
 }
 
+function contextFromHookResult(result: Record<string, unknown>): string {
+  const hookSpecificOutput = result.hookSpecificOutput as Record<string, unknown> | undefined
+  const context = result.additionalContext ?? result.additional_context ?? hookSpecificOutput?.additionalContext
+  return typeof context === "string" ? context : ""
+}
+
+function loadSessionContext(
+  cwd: string,
+  sessionId: string,
+  prompt: string,
+  warmEmbedder: boolean,
+): Promise<SessionContextResult> {
+  const script = join(process.env.HOME || homedir(), ".agents", "hooks", SESSION_CONTEXT_HOOK)
+  const payload = {
+    hook_event_name: "sessionStart",
+    session_id: sessionId,
+    cwd,
+    workspace_roots: [cwd],
+    source: "pi",
+    initial_prompt: prompt,
+    warm_embedder: warmEmbedder,
+  }
+  return new Promise((resolve) => {
+    let stdout = ""
+    let stdoutBytes = 0
+    let killed = false
+    let settled = false
+    const child = spawn(script, [], { stdio: ["pipe", "pipe", "ignore"] })
+    const finish = (result: SessionContextResult) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      resolve(result)
+    }
+    const timer = setTimeout(() => {
+      killed = true
+      child.kill("SIGKILL")
+    }, SESSION_CONTEXT_TIMEOUT_MS)
+
+    child.stdout.on("data", (chunk: Buffer) => {
+      stdoutBytes += chunk.length
+      if (stdoutBytes > SEARCH_STDOUT_MAX_BYTES) {
+        killed = true
+        child.kill("SIGKILL")
+        return
+      }
+      stdout += chunk.toString()
+    })
+    child.stdin.on("error", () => {})
+    child.on("error", () => finish({ ok: false, context: "" }))
+    child.on("close", (code) => {
+      if (killed || code !== 0) {
+        finish({ ok: false, context: "" })
+        return
+      }
+      try {
+        const result = JSON.parse(stdout || "{}") as Record<string, unknown>
+        finish({ ok: true, context: contextFromHookResult(result) })
+      } catch {
+        finish({ ok: false, context: "" })
+      }
+    })
+    child.stdin.end(JSON.stringify(payload))
+  })
+}
+
 function seenFileFor(specFile: string, sessionId: string): string {
   return join(dirname(specFile), `.recall-seen-${sessionId}.json`)
+}
+
+function contextKeyFor(status: MemoryStatus): string {
+  return `${status.selected_topic}\0${status.spec_file}`
 }
 
 async function loadSeen(path: string): Promise<Set<string>> {
@@ -426,15 +499,6 @@ function toolResultText(content: unknown): string {
   return parts.join("\n").slice(0, WORKLOG_OUTPUT_MAX_CHARS)
 }
 
-async function warmEmbedder(pi: ExtensionAPI, depth: AgentDepth): Promise<void> {
-  if (depth === "fast") return
-  const home = process.env.HOME ?? ""
-  if (!home) return
-  await pi.exec("python3", [join(home, "lib", ",ai-kb", "embed_client.py"), "ensure", "--timeout", "4"], {
-    timeout: 5_000,
-  })
-}
-
 // Cross-repo scope gating is owned by `,ai-kb search --workspace-gate` (same
 // contract as the shared hooks). Skips capsules already injected this session.
 function gateAndFormat(
@@ -470,8 +534,8 @@ export default async function (pi: ExtensionAPI) {
   const depth = agentDepth()
   const perturnProfile = RECALL_PROFILES[depth]
 
-  pi.on("session_start", async () => {
-    await warmEmbedder(pi, depth)
+  pi.on("session_start", (_event, ctx) => {
+    stateBySession.delete(ctx.sessionManager.getSessionId())
   })
 
   // session_compact cannot inject context (only before_agent_start can), so it flags a
@@ -504,33 +568,59 @@ export default async function (pi: ExtensionAPI) {
   pi.on("before_agent_start", async (event, ctx) => {
     try {
       const sessionId = ctx.sessionManager.getSessionId()
-      const status = await memoryStatus(pi, ctx.cwd, sessionId)
-      if (!status) return
-      const workspace = status.workspace || ctx.cwd
-      const seenPath = seenFileFor(status.spec_file, status.session_key)
       let state = stateBySession.get(sessionId)
-      if (!state || state.seenPath !== seenPath) {
+      let sharedContext = state
+        ? { ok: true, context: "" }
+        : await loadSessionContext(ctx.cwd, sessionId, event.prompt, perturnProfile.enabled)
+      if (!sharedContext.ok) {
+        console.warn("[ai-kb-recall] shared session context hook failed; using local recall fallback")
+      }
+      const status = await memoryStatus(pi, ctx.cwd, sessionId)
+      if (!status) {
+        if (!sharedContext.context) return
+        return {
+          message: {
+            customType: "ai-kb-recall",
+            content: sharedContext.context,
+            display: true,
+          },
+        }
+      }
+      const workspace = status.workspace || ctx.cwd
+      const contextKey = contextKeyFor(status)
+      const seenPath = seenFileFor(status.spec_file, status.session_key)
+      if (state && state.contextKey !== contextKey) {
+        sharedContext = await loadSessionContext(ctx.cwd, sessionId, event.prompt, perturnProfile.enabled)
+        if (!sharedContext.ok) {
+          console.warn("[ai-kb-recall] shared session context hook failed after topic change; using local recall fallback")
+        }
+      }
+      if (!state || state.contextKey !== contextKey) {
         state = {
+          contextKey,
           seenPath,
           injectedIds: await loadSeen(seenPath),
-          warmStartDone: false,
+          initialContextDone: sharedContext.ok,
           lastPrefixPercent: null,
           forceReinject: false,
         }
         stateBySession.set(sessionId, state)
       }
       const seenCount = state.injectedIds.size
-      const blocks: string[] = []
+      const blocks: string[] = sharedContext.context ? [sharedContext.context] : []
 
       // 0. Verification prefix: warm-start, after a compaction, or once context fill has
       //    grown PREFIX_REINJECT_DELTA_PCT points since the last injection.
       const usage = ctx.getContextUsage()
       const percent = usage && usage.percent != null ? usage.percent : null
+      if (state.lastPrefixPercent == null && percent != null && !state.forceReinject) {
+        state.lastPrefixPercent = percent
+      }
       const grewEnough =
         state.lastPrefixPercent != null &&
         percent != null &&
         percent - state.lastPrefixPercent >= PREFIX_REINJECT_DELTA_PCT
-      if (!state.warmStartDone || state.forceReinject || grewEnough) {
+      if (!state.initialContextDone || state.forceReinject || grewEnough) {
         const prefix = await readPrefix(pi)
         if (prefix) {
           blocks.push(prefix)
@@ -539,9 +629,9 @@ export default async function (pi: ExtensionAPI) {
         }
       }
 
-      // 1. Warm-start: once per session, named-topic + spec only (parity with Cursor/Claude).
-      if (!state.warmStartDone) {
-        state.warmStartDone = true
+      // 1. Fallback warm-start when the shared session-context hook is unavailable.
+      if (!state.initialContextDone) {
+        state.initialContextDone = true
         if (status.is_named_topic && status.spec_exists) {
           const spec = await pi.exec("cat", [status.spec_file], { timeout: EXEC_TIMEOUT_MS })
           const specText = spec.code === 0 ? spec.stdout : ""

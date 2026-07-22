@@ -14,7 +14,6 @@
     "maxRetries": 5
   },
   "packages": [
-    "pi-skills",
     "~/.local/share/yarn/global/node_modules/pi-mcp-adapter",
     "~/.local/share/yarn/global/node_modules/pi-subagents"
   ],
