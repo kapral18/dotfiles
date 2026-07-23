@@ -14,7 +14,7 @@ Exit status is non-zero if any command is missing:
 - ``home/dot_config/fish/completions/readonly_,<name>.fish``
 - a backticked command token under ``docs/topics/workflow/custom-commands/``
 - a command token in ``.mermaids/07c-bin-commands.mmd``
-- no orphaned command-library directory under ``home/exact_lib/exact_,<name>/``
+- no unreferenced command-library directory under ``home/exact_lib/exact_,<name>/``
 """
 
 from __future__ import annotations
@@ -97,6 +97,14 @@ def discover_command_libraries(repo_root: Path) -> list[CommandLibrary]:
     return libraries
 
 
+def _command_references_library(command: CommandSurface, library_name: str) -> bool:
+    try:
+        source = command.source.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return f"lib/,{library_name}/" in source
+
+
 def _read_required(path: Path) -> str:
     if not path.is_file():
         raise FileNotFoundError(path)
@@ -154,10 +162,12 @@ def check_bin_surface(repo_root: Path) -> list[str]:
             failures.append(f"{display}: missing catalog token in {mermaid_path.relative_to(repo_root)}")
 
     for library in discover_command_libraries(repo_root):
-        if library.name not in command_names:
+        if library.name not in command_names and not any(
+            _command_references_library(command, library.name) for command in commands
+        ):
             failures.append(
                 f",{library.name}: command library {library.source.relative_to(repo_root)} "
-                f"has no matching home/exact_bin/executable_,{library.name}"
+                "has no matching command or explicit launcher reference"
             )
 
     return failures

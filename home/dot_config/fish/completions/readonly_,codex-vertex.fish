@@ -1,0 +1,7 @@
+complete -c ',codex-vertex' -w ',codex'
+complete -c ',codex-vertex' -s m -l model -x -a '(__comma_provider_models vertex)' -d 'Select curated Vertex model'
+complete -c ',codex-vertex' -l effort -x -a 'minimal low medium high xhigh max' -d 'Set provider reasoning effort'
+complete -c ',codex-vertex' -l reasoning-effort -x -a 'minimal low medium high xhigh max' -d 'Set provider reasoning effort'
+complete -c ',codex-vertex' -l thinking -a 'minimal low medium high xhigh max' -d 'Enable provider thinking'
+complete -c ',codex-vertex' -l no-thinking -d 'Disable thinking for supported Claude models'
+complete -c ',codex-vertex' -s h -l help -d 'Show Vertex wrapper help'

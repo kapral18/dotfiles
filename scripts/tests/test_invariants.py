@@ -220,7 +220,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         self.assert_file_contains(
             "docs/topics/ai-assistants/tool-configs/other-harnesses.md",
             "injects a bearer token minted by cursor-cli per request",
-            "`,copilot` is a thin exec of the real binary",
+            "`,copilot` passes through to the real binary except for bare `--resume`",
             "The bearer-free `~/.copilot/mcp-config.json`",
         )
         self.assert_file_not_contains(

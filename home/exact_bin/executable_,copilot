@@ -1,19 +1,12 @@
 #!/usr/bin/env bash
-# Description: Launch the real GitHub Copilot CLI.
+# Description: Launch GitHub Copilot CLI through the managed resume-safe wrapper.
 #
 # MCP auth needs no launch-time work: hosted OAuth servers (slack, scsi-main)
 # run as ",mcp-token <server> --bridge" stdio bridges declared in the
 # chezmoi-rendered ~/.copilot/mcp-config.json, injecting a fresh bearer per
-# request. This wrapper stays as the stable ,copilot entry point that the
-# BYOK wrappers (,copilot-litellm, ,copilot-openrouter, ,copilot-cloudflare)
-# exec through.
+# request. The Python core also replaces bare --resume with an external session
+# selection followed by --session-id=<id>, avoiding Copilot 1.0.73's MCP startup race.
 
 set -euo pipefail
 
-real_copilot="${COPILOT_REAL_BIN:-/opt/homebrew/bin/copilot}"
-if [[ ! -x "$real_copilot" ]]; then
-  echo "Error: real copilot CLI not found at $real_copilot." >&2
-  exit 127
-fi
-
-exec "$real_copilot" "$@"
+exec python3 "$HOME/lib/,copilot/main.py" "$@"

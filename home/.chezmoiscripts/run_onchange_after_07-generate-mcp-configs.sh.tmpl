@@ -25,7 +25,7 @@ gen="$source_dir/../scripts/generate_mcp_configs.py"
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 
-# Cursor — write full MCP file
+# Cursor — write full MCP file (tokenBridge stdio for hosted OAuth servers)
 python3 "$gen" "$yaml_src" "$is_work" cursor >"$tmp"
 chezmoi_write_if_changed "$(cat "$tmp")" "$HOME/.cursor/mcp.json"
 chezmoi_record_artifact --id cursor-mcp \
@@ -37,6 +37,45 @@ chezmoi_record_artifact --id cursor-mcp \
   --transform "$source_dir/../scripts/yaml_parser.py" \
   --transform "$source_dir/../scripts/chezmoi_lib.sh" \
   --consumer cursor-agent
+
+# Cursor OAuth mint workspace — project mcp.json keeps OAuth HTTP shapes so
+# ,mcp-token silent rotate / browser login can still drive cursor-agent against
+# a config that is not the user-level bridge runtime.
+mint_root="$HOME/.cache/mcp-token/oauth-mint"
+mint_mcp="$mint_root/.cursor/mcp.json"
+mkdir -p "$mint_root/.cursor"
+python3 "$gen" "$yaml_src" "$is_work" cursor-oauth-mint >"$tmp"
+chezmoi_write_if_changed "$(cat "$tmp")" "$mint_mcp"
+# Seed ~/.cursor/projects/<slug>/.workspace-trusted so mcp-token and cursor-agent
+# agree on the mint workspace path before the first interactive visit.
+python3 - "$mint_root" <<'PY'
+import json, os, re, sys
+
+root = os.path.realpath(sys.argv[1])
+slug = re.sub(r"[^A-Za-z0-9]+", "-", root).strip("-")
+project_dir = os.path.join(os.path.expanduser("~/.cursor/projects"), slug)
+os.makedirs(project_dir, exist_ok=True)
+path = os.path.join(project_dir, ".workspace-trusted")
+desired = {"workspacePath": root}
+try:
+    with open(path) as f:
+        current = json.load(f)
+except (OSError, ValueError):
+    current = None
+if current != desired:
+    with open(path, "w") as f:
+        json.dump(desired, f)
+        f.write("\n")
+PY
+chezmoi_record_artifact --id cursor-mcp-oauth-mint \
+  --producer 07-generate-mcp-configs --profile "$profile" \
+  --target "$mint_mcp" --ownership-adapter whole-file \
+  --input "$yaml_src" \
+  --transform "$gen" \
+  --transform "$source_dir/../scripts/mcp_registry.py" \
+  --transform "$source_dir/../scripts/yaml_parser.py" \
+  --transform "$source_dir/../scripts/chezmoi_lib.sh" \
+  --consumer mcp-token
 
 # Claude Code — merge mcpServers into existing .claude.json
 python3 "$gen" "$yaml_src" "$is_work" claude >"$tmp"

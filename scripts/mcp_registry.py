@@ -16,6 +16,8 @@ from typing import Any
 from yaml_parser import parse_scalar
 
 _SHELL_SUBST = re.compile(r"^\$\((.+)\)$")
+TOKEN_BRIDGE_COMMAND = ",mcp-token"
+_TOKEN_SOURCE_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
 
 
 def _resolve_shell(value: Any) -> Any:
@@ -40,6 +42,21 @@ def _resolve_shell(value: Any) -> Any:
     if result.returncode != 0:
         raise RuntimeError(f"shell eval failed: {command!r}\n{result.stderr}")
     return result.stdout.strip()
+
+
+def token_bridge_args(server: str, spec: dict[str, Any]) -> list[str]:
+    """Return the shared stdio bridge argv tail for a ``tokenBridge`` server."""
+    oauth = spec.get("oauth")
+    source = oauth.get("tokenBridge") if isinstance(oauth, dict) else None
+    if not isinstance(source, str) or not _TOKEN_SOURCE_PATTERN.fullmatch(source):
+        raise ValueError(f"{server}: invalid tokenBridge token source")
+    url = spec.get("url")
+    if not isinstance(url, str) or not url.startswith(("http://", "https://")):
+        raise ValueError(f"{server}: tokenBridge requires an http(s) url")
+    args = [source, "--bridge", "--url", url]
+    if oauth.get("retryConnectTimeouts") is True:
+        args.append("--retry-connect-timeouts")
+    return args
 
 
 def load_servers(

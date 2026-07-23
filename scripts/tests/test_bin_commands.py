@@ -15,6 +15,7 @@ import queue
 import re
 import shlex
 import socket
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -30,6 +31,7 @@ import _test_support  # noqa: F401  (puts scripts/ on sys.path)
 from _test_support import (
     ARTIFACT_COMMAND,
     CODEX_COMMAND,
+    COPILOT_COMMAND,
     KBN_STACK_COMMAND,
     MCP_TOKEN_COMMAND,
     REPO,
@@ -1293,7 +1295,7 @@ class TestMcpTokenSilentRotation(unittest.TestCase):
     cursor silently executes the provider's ``refresh_token`` grant whenever a
     stored access token stops working, so ``--login`` invalidates the cached
     access token and runs a targeted ``cursor-agent mcp list-tools <server>``
-    in the cache's trusted workspace instead of popping a browser. These are
+    in the cache's resolvable workspace instead of popping a browser. These are
     real-seam tests: an isolated ``HOME`` holds caches/ledger/config and a stub
     cursor-agent records its argv/cwd and plays the provider's rotation.
     """
@@ -1422,6 +1424,131 @@ class TestMcpTokenSilentRotation(unittest.TestCase):
         assert sep and invoked == "list-tools scsi-main", calls
         assert Path(cwd_str).resolve() == workspace.resolve(), "rotation must run in the cache's trusted workspace"
         assert hits == [], "JWT rotation must not probe the server"
+
+    def test_mint_workspace_forces_rotation_cwd_when_user_config_is_bridge(self):
+        """WHEN user mcp.json is a bridge, rotate/login must use the mint OAuth cwd."""
+        mod = _load_mcp_token_module()
+        short = self._jwt(int(time.time()) + mod.MIN_TTL_SECONDS - 600)
+        fresh = self._jwt(int(time.time()) + 3600)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir, workspace = root / "home", root / "bin", root / "ws"
+            home.mkdir()
+            bindir.mkdir()
+            workspace.mkdir()
+            mint = home / ".cache/mcp-token/oauth-mint"
+            mint_mcp = mint / ".cursor/mcp.json"
+            mint_mcp.parent.mkdir(parents=True)
+            mint_mcp.write_text(
+                json.dumps(
+                    {
+                        "mcpServers": {
+                            "scsi-main": {
+                                "url": "https://semantic-code-search.example/mcp",
+                                "oauth": {"clientId": "mint-client"},
+                            }
+                        }
+                    }
+                )
+            )
+            (home / ".cursor").mkdir(parents=True)
+            (home / ".cursor/mcp.json").write_text(
+                json.dumps(
+                    {
+                        "mcpServers": {
+                            "scsi-main": {
+                                "command": ",mcp-token",
+                                "args": [
+                                    "scsi-main",
+                                    "--bridge",
+                                    "--url",
+                                    "https://semantic-code-search.example/mcp",
+                                ],
+                            }
+                        }
+                    }
+                )
+            )
+            donor = self._write_rotatable_cache(home, "donor", "scsi-main", short, workspace=workspace)
+            mint_slug = re.sub(r"[^A-Za-z0-9]+", "-", str(mint.resolve())).strip("-")
+            mint_cache = home / ".cursor/projects" / mint_slug / "mcp-auth.json"
+            log = self._stub_rotating_cursor_agent(bindir, home, mint_cache, "scsi-main", rotates_to=fresh)
+            result = self._run(home, bindir, ["scsi-main", "--login", "--quiet"], cwd=workspace)
+            calls = log.read_text().splitlines() if log.exists() else []
+            donor_token = json.loads(donor.read_text())["scsi-main"]["tokens"]["access_token"]
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == fresh
+        assert len(calls) == 1, calls
+        cwd_str, sep, invoked = calls[0].partition(" mcp ")
+        assert sep and invoked == "list-tools scsi-main", calls
+        assert Path(cwd_str).resolve() == mint.resolve(), calls
+        assert donor_token == short, "donor cache must not be the rotation target when mint exists"
+
+    def test_expired_jwt_with_refresh_is_not_workspace_ready(self):
+        mod = _load_mcp_token_module()
+        expired = self._jwt(int(time.time()) - 60)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, workspace = root / "home", root / "ws"
+            home.mkdir()
+            workspace.mkdir()
+            env_home = os.environ.get("HOME")
+            os.environ["HOME"] = str(home)
+            try:
+                mod.CURSOR_CACHE_GLOB = str(home / ".cursor/projects/*/mcp-auth.json")
+                cache = home / ".cursor/projects" / re.sub(r"[^A-Za-z0-9]+", "-", str(workspace.resolve())).strip("-")
+                cache.mkdir(parents=True)
+                (cache / "mcp-auth.json").write_text(
+                    json.dumps(
+                        {
+                            "scsi-main": {
+                                "tokens": {
+                                    "access_token": expired,
+                                    "refresh_token": "still-here",
+                                    "expires_in": 3600,
+                                }
+                            }
+                        }
+                    )
+                )
+                status = None
+                cwd = os.getcwd()
+                try:
+                    os.chdir(workspace)
+                    status = mod._cursor_workspace_auth_status("scsi-main")
+                finally:
+                    os.chdir(cwd)
+            finally:
+                os.environ["HOME"] = env_home
+
+        assert status == mod.WORKSPACE_REQUIRES_AUTH
+
+    def test_expired_untrusted_cache_rotates_through_the_current_workspace(self):
+        expired = self._jwt(int(time.time()) - 100)
+        fresh = self._jwt(int(time.time()) + 3600)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir, workspace = root / "home", root / "bin", root / "current-workspace"
+            home.mkdir()
+            bindir.mkdir()
+            workspace.mkdir()
+            source = self._write_rotatable_cache(home, "untrusted-source", "scsi-main", expired)
+            project_slug = re.sub(r"[^A-Za-z0-9]+", "-", str(workspace.resolve())).strip("-")
+            current_cache = home / ".cursor/projects" / project_slug / "mcp-auth.json"
+            log = self._stub_rotating_cursor_agent(bindir, home, current_cache, "scsi-main", rotates_to=fresh)
+            result = self._run(home, bindir, ["scsi-main", "--login", "--quiet"], cwd=workspace)
+            calls = log.read_text().splitlines() if log.exists() else []
+            source_access_token = json.loads(source.read_text())["scsi-main"]["tokens"]["access_token"]
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == fresh
+        assert len(calls) == 1, calls
+        cwd_str, sep, invoked = calls[0].partition(" mcp ")
+        assert sep and invoked == "list-tools scsi-main", calls
+        assert Path(cwd_str).resolve() == workspace.resolve()
+        assert not any("mcp login" in call for call in calls)
+        assert source_access_token == expired
 
     def test_no_proactive_rotation_defers_short_jwt_rotation(self):
         mod = _load_mcp_token_module()
@@ -1613,14 +1740,16 @@ class TestMcpTokenSilentRotation(unittest.TestCase):
         assert "valid_until" not in ledger
         assert not any("mcp login" in call for call in calls)
 
-    def test_rotation_requires_refresh_token_and_trusted_workspace(self):
+    def test_failed_untrusted_refresh_falls_back_to_browser(self):
         expired = self._jwt(int(time.time()) - 100)
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             home, bindir = root / "home", root / "bin"
             home.mkdir()
             bindir.mkdir()
-            # refresh_token present but no .workspace-trusted; and vice versa.
+            # The first cache has a refresh token but belongs to neither the
+            # current workspace nor a trusted recorded workspace. The second
+            # has a resolvable workspace but no refresh token.
             self._write_rotatable_cache(home, "no-ws", "scsi-main", expired, workspace=None)
             self._write_rotatable_cache(home, "no-rt", "scsi-main", expired, refresh_token=None, workspace=root / "ws")
             cache = home / ".cursor/projects/no-ws/mcp-auth.json"
@@ -1629,7 +1758,7 @@ class TestMcpTokenSilentRotation(unittest.TestCase):
             calls = log.read_text().splitlines() if log.exists() else []
 
         assert result.returncode == 1, "no rotatable cache and a failed browser login must fail"
-        assert not any("list-tools" in call for call in calls), "rotation must not run without a rotatable cache"
+        assert any("list-tools scsi-main" in call for call in calls), "the newest refresh chain must be tried"
         assert any("mcp login scsi-main" in call for call in calls), "the browser flow remains the last resort"
 
     def test_rotation_sentinel_never_leaks_to_output(self):
@@ -1827,6 +1956,229 @@ class TestMcpTokenWorkspaceSeeding(unittest.TestCase):
         assert not any("mcp login" in call for call in calls)
         assert seeded.get("slack", {}).get("tokens", {}).get("access_token") == live
         assert seeded.get("kibana", {}).get("tokens") == other_tokens, "other servers' entries must be preserved"
+
+
+class TestVertexWrappers(unittest.TestCase):
+    """WHEN launching a supported harness through the shared Vertex adapter."""
+
+    def test_SHOULD_forward_the_harness_name_and_every_argument_to_the_shared_core(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fake_core = Path(tmp) / "main.py"
+            fake_core.write_text(
+                "import json\nimport sys\nprint(json.dumps(sys.argv[1:]))\n",
+                encoding="utf-8",
+            )
+            for harness in ("codex", "copilot", "claude"):
+                with self.subTest(harness=harness):
+                    result = subprocess.run(
+                        [
+                            modern_bash(),
+                            str(REPO / f"home/exact_bin/executable_,{harness}-vertex"),
+                            "--model",
+                            "claude-opus-4-7",
+                            "--effort",
+                            "xhigh",
+                            "-p",
+                            "prompt",
+                        ],
+                        capture_output=True,
+                        text=True,
+                        env={**os.environ, "VERTEX_ADAPTER_LIB": str(fake_core)},
+                    )
+
+                    assert result.returncode == 0, result.stderr
+                    assert json.loads(result.stdout) == [
+                        harness,
+                        "--model",
+                        "claude-opus-4-7",
+                        "--effort",
+                        "xhigh",
+                        "-p",
+                        "prompt",
+                    ]
+
+
+class TestCopilotWrapper(unittest.TestCase):
+    """WHEN launching or resuming Copilot through the managed wrapper."""
+
+    def _write_session(
+        self,
+        home: Path,
+        session_id: str,
+        *,
+        cwd: Path,
+        summary: str,
+        updated_at: str,
+    ) -> None:
+        copilot_home = home / ".copilot"
+        copilot_home.mkdir(parents=True, exist_ok=True)
+        database = sqlite3.connect(copilot_home / "session-store.db")
+        database.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sessions (
+                id TEXT PRIMARY KEY,
+                cwd TEXT,
+                repository TEXT,
+                branch TEXT,
+                summary TEXT,
+                created_at TEXT,
+                updated_at TEXT,
+                host_type TEXT
+            )
+            """
+        )
+        database.execute(
+            """
+            INSERT INTO sessions (id, cwd, repository, branch, summary, created_at, updated_at, host_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                session_id,
+                str(cwd),
+                "owner/repo",
+                "main",
+                summary,
+                updated_at,
+                updated_at,
+                "github",
+            ),
+        )
+        database.commit()
+        database.close()
+        state = copilot_home / "session-state" / session_id
+        state.mkdir(parents=True)
+        (state / "events.jsonl").write_text("{}\n")
+
+    def _write_real_copilot(self, bindir: Path) -> Path:
+        real = bindir / "copilot-real"
+        real.write_text("#!/usr/bin/env bash\nprintf 'ARGS='; printf '<%s>' \"$@\"; printf '\\n'\n")
+        real.chmod(0o755)
+        return real
+
+    def test_SHOULD_replace_bare_resume_with_the_selected_exact_session_id(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir, workspace = root / "home", root / "bin", root / "workspace"
+            home.mkdir()
+            bindir.mkdir()
+            workspace.mkdir()
+            older = "11111111-1111-4111-8111-111111111111"
+            selected = "22222222-2222-4222-8222-222222222222"
+            self._write_session(
+                home,
+                older,
+                cwd=workspace,
+                summary="Older session",
+                updated_at="2026-07-21T10:00:00.000Z",
+            )
+            self._write_session(
+                home,
+                selected,
+                cwd=workspace,
+                summary="Selected session",
+                updated_at="2026-07-22T10:00:00.000Z",
+            )
+            fzf_input = root / "fzf-input"
+            fzf = bindir / "fzf"
+            fzf.write_text(
+                "#!/usr/bin/env python3\n"
+                "import os, sys\n"
+                "rows = sys.stdin.read().splitlines()\n"
+                "open(os.environ['FZF_INPUT'], 'w').write('\\n'.join(rows))\n"
+                "print(rows[0])\n"
+            )
+            fzf.chmod(0o755)
+            real = self._write_real_copilot(bindir)
+
+            result = subprocess.run(
+                [sys.executable, str(COPILOT_COMMAND), "--yolo", "--resume"],
+                capture_output=True,
+                text=True,
+                cwd=workspace,
+                env={
+                    **os.environ,
+                    "HOME": str(home),
+                    "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
+                    "COPILOT_REAL_BIN": str(real),
+                    "FZF_INPUT": str(fzf_input),
+                },
+            )
+            picker_rows = fzf_input.read_text()
+
+        assert result.returncode == 0, result.stderr
+        assert f"<--session-id={selected}>" in result.stdout
+        assert "<--resume>" not in result.stdout
+        assert "Selected session" in picker_rows
+        assert older in picker_rows
+
+    def test_SHOULD_pass_explicit_resume_through_without_opening_the_picker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir = root / "home", root / "bin"
+            home.mkdir()
+            bindir.mkdir()
+            real = self._write_real_copilot(bindir)
+
+            result = subprocess.run(
+                [sys.executable, str(COPILOT_COMMAND), "--yolo", "--resume=abc1234"],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "HOME": str(home),
+                    "PATH": f"{bindir}{os.pathsep}/bin:/usr/bin",
+                    "COPILOT_REAL_BIN": str(real),
+                },
+            )
+
+        assert result.returncode == 0, result.stderr
+        assert "ARGS=<--yolo><--resume=abc1234>" in result.stdout
+
+    def test_SHOULD_pass_a_space_separated_resume_value_through(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir = root / "home", root / "bin"
+            home.mkdir()
+            bindir.mkdir()
+            real = self._write_real_copilot(bindir)
+
+            result = subprocess.run(
+                [sys.executable, str(COPILOT_COMMAND), "--resume", "session name", "--yolo"],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "HOME": str(home),
+                    "PATH": f"{bindir}{os.pathsep}/bin:/usr/bin",
+                    "COPILOT_REAL_BIN": str(real),
+                },
+            )
+
+        assert result.returncode == 0, result.stderr
+        assert "ARGS=<--resume><session name><--yolo>" in result.stdout
+
+    def test_SHOULD_resolve_a_path_searchable_real_copilot_override(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home, bindir = root / "home", root / "bin"
+            home.mkdir()
+            bindir.mkdir()
+            self._write_real_copilot(bindir)
+
+            result = subprocess.run(
+                [sys.executable, str(COPILOT_COMMAND), "--version"],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "HOME": str(home),
+                    "PATH": f"{bindir}{os.pathsep}/bin:/usr/bin",
+                    "COPILOT_REAL_BIN": "copilot-real",
+                },
+            )
+
+        assert result.returncode == 0, result.stderr
+        assert "ARGS=<--version>" in result.stdout
 
 
 class TestCodexWrapper(unittest.TestCase):
@@ -2438,6 +2790,7 @@ class _BridgeMcpHandler(http.server.BaseHTTPRequestHandler):
 
     live_tokens: set[str] = set()
     sse_methods: set[str] = set()
+    connect_timeouts_remaining: dict[str, int] = {}
     hits: list[tuple] = []
     lock = threading.Lock()
 
@@ -2467,6 +2820,16 @@ class _BridgeMcpHandler(http.server.BaseHTTPRequestHandler):
         method = body.get("method")
         with self.lock:
             self.hits.append(("POST", method, token, self.headers.get("Mcp-Session-Id")))
+            connect_timeouts_remaining = self.connect_timeouts_remaining.get(method, 0)
+            if connect_timeouts_remaining:
+                self.connect_timeouts_remaining[method] = connect_timeouts_remaining - 1
+        if connect_timeouts_remaining:
+            self._reply(
+                503,
+                b"upstream connect error or disconnect/reset before headers. reset reason: connection timeout",
+                "text/plain",
+            )
+            return
         if token not in self.live_tokens:
             self._reply(401)
             return
@@ -2491,9 +2854,14 @@ class _BridgeMcpHandler(http.server.BaseHTTPRequestHandler):
 
 
 @contextlib.contextmanager
-def _bridge_mcp_server(live_tokens: set[str], sse_methods: set[str] | None = None):
+def _bridge_mcp_server(
+    live_tokens: set[str],
+    sse_methods: set[str] | None = None,
+    connect_timeouts: dict[str, int] | None = None,
+):
     _BridgeMcpHandler.live_tokens = set(live_tokens)
     _BridgeMcpHandler.sse_methods = set(sse_methods or ())
+    _BridgeMcpHandler.connect_timeouts_remaining = dict(connect_timeouts or {})
     _BridgeMcpHandler.hits = []
     httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _BridgeMcpHandler)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
@@ -2502,17 +2870,27 @@ def _bridge_mcp_server(live_tokens: set[str], sse_methods: set[str] | None = Non
         yield f"http://127.0.0.1:{httpd.server_address[1]}/mcp", _BridgeMcpHandler
     finally:
         httpd.shutdown()
+        httpd.server_close()
 
 
 class _BridgeSession:
     """Drive a ,mcp-token --bridge subprocess over stdio, one message at a time."""
 
-    def __init__(self, home: Path, bindir: Path, server: str, url: str):
+    def __init__(
+        self,
+        home: Path,
+        bindir: Path,
+        server: str,
+        url: str,
+        *extra_args: str,
+        cwd: Path | None = None,
+    ):
         self.process = subprocess.Popen(
-            [sys.executable, str(MCP_TOKEN_COMMAND), server, "--bridge", "--url", url],
+            [sys.executable, str(MCP_TOKEN_COMMAND), server, "--bridge", "--url", url, *extra_args],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
+            cwd=cwd,
             env={
                 **os.environ,
                 "HOME": str(home),
@@ -2538,7 +2916,10 @@ class _BridgeSession:
     def close(self, timeout: float = 10.0) -> int:
         assert self.process.stdin is not None
         self.process.stdin.close()
-        return self.process.wait(timeout=timeout)
+        returncode = self.process.wait(timeout=timeout)
+        if self.process.stdout is not None:
+            self.process.stdout.close()
+        return returncode
 
 
 class TestMcpTokenBridge(unittest.TestCase):
@@ -2627,6 +3008,51 @@ class TestMcpTokenBridge(unittest.TestCase):
         tokens_seen = [hit[2] for hit in hits if hit[0] == "POST" and hit[1] == "initialize"]
         assert tokens_seen == [stale, fresh], "exactly one rejected then one rotated retry"
 
+    def test_expired_untrusted_cache_rotates_through_the_bridge_workspace(self):
+        expired = self._jwt(int(time.time()) - 100, "expired")
+        fresh = self._jwt(int(time.time()) + 3600, "fresh")
+        with tempfile.TemporaryDirectory() as tmp, _bridge_mcp_server({fresh}) as (url, _handler):
+            root = Path(tmp)
+            home, bindir, workspace = root / "home", root / "bin", root / "current-workspace"
+            home.mkdir()
+            bindir.mkdir()
+            workspace.mkdir()
+            source = home / ".cursor/projects/untrusted-source/mcp-auth.json"
+            source.parent.mkdir(parents=True)
+            source.write_text(
+                json.dumps(
+                    {
+                        "scsi-main": {
+                            "tokens": {
+                                "access_token": expired,
+                                "refresh_token": "chain",
+                                "expires_in": 3600,
+                            }
+                        }
+                    }
+                )
+            )
+            project_slug = re.sub(r"[^A-Za-z0-9]+", "-", str(workspace.resolve())).strip("-")
+            current_cache = home / ".cursor/projects" / project_slug / "mcp-auth.json"
+            rotated = json.dumps(
+                {"scsi-main": {"tokens": {"access_token": fresh, "refresh_token": "next", "expires_in": 3600}}}
+            )
+            agent = bindir / "cursor-agent"
+            agent.write_text(
+                "#!/usr/bin/env bash\n"
+                'if [ "$1 $2" = "mcp list-tools" ]; then\n'
+                f"cat > {shlex.quote(str(current_cache))} <<'EOF'\n{rotated}\nEOF\n"
+                "fi\nexit 0\n"
+            )
+            agent.chmod(0o755)
+            session = _BridgeSession(home, bindir, "scsi-main", url, cwd=workspace)
+            session.send(self.INITIALIZE)
+            init_response = session.recv(timeout=3)
+            returncode = session.close()
+
+        assert returncode == 0
+        assert "result" in init_response, f"current-workspace refresh chain must recover the bridge: {init_response}"
+
     def test_sse_response_streams_messages_in_order(self):
         token = self._jwt(int(time.time()) + 3600)
         with (
@@ -2649,6 +3075,55 @@ class TestMcpTokenBridge(unittest.TestCase):
         assert returncode == 0
         assert progress["method"] == "notifications/progress", "SSE events must stream before the response"
         assert response["id"] == 2 and response["result"]["via"] == "sse"
+
+    def test_opt_in_retries_upstream_connect_timeout_once(self):
+        token = self._jwt(int(time.time()) + 3600)
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            _bridge_mcp_server({token}, connect_timeouts={"tools/call": 1}) as (url, handler),
+        ):
+            root = Path(tmp)
+            home, bindir = root / "home", root / "bin"
+            home.mkdir()
+            bindir.mkdir()
+            self._write_cache(home, "scsi-main", token)
+            session = _BridgeSession(home, bindir, "scsi-main", url, "--retry-connect-timeouts")
+            session.send(self.INITIALIZE)
+            session.recv(timeout=2)
+            session.send({"jsonrpc": "2.0", "method": "notifications/initialized"})
+            session.send({"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "list_indices"}})
+            response = session.recv(timeout=2)
+            returncode = session.close()
+            calls = [hit for hit in handler.hits if hit[0] == "POST" and hit[1] == "tools/call"]
+
+        assert returncode == 0
+        assert response["id"] == 3 and response["result"]["echo"] == "tools/call"
+        assert len(calls) == 2, "the exact upstream connect timeout should be retried once"
+
+    def test_connect_timeout_without_opt_in_is_not_retried(self):
+        token = self._jwt(int(time.time()) + 3600)
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            _bridge_mcp_server({token}, connect_timeouts={"tools/call": 1}) as (url, handler),
+        ):
+            root = Path(tmp)
+            home, bindir = root / "home", root / "bin"
+            home.mkdir()
+            bindir.mkdir()
+            self._write_cache(home, "slack", token)
+            session = _BridgeSession(home, bindir, "slack", url)
+            session.send(self.INITIALIZE)
+            session.recv(timeout=2)
+            session.send({"jsonrpc": "2.0", "method": "notifications/initialized"})
+            session.send({"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "send_message"}})
+            response = session.recv(timeout=2)
+            returncode = session.close()
+            calls = [hit for hit in handler.hits if hit[0] == "POST" and hit[1] == "tools/call"]
+
+        assert returncode == 0
+        assert response["id"] == 4
+        assert response["error"]["message"] == "bridge request failed: HTTP 503"
+        assert len(calls) == 1, "side-effecting endpoints must remain non-retriable by default"
 
 
 if __name__ == "__main__":

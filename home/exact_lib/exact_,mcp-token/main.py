@@ -21,11 +21,14 @@ rotatable project cache (one holding a ``refresh_token`` whose
 ``.workspace-trusted`` records an existing workspace directory) and runs a
 bounded ``cursor-agent mcp list-tools <server>`` there; cursor writes the
 freshly minted chain back in place with no browser and without revoking the
-in-flight token running sessions already hold. Only when no rotatable cache
-exists or rotation fails does ``cursor-agent mcp login <server>`` run the
-browser flow with cursor's approved client (e.g. Slack's admin-gated workspace
-app, or the SCSI Okta app); this avoids the ``k-slack`` confidential client
-that the Elastic workspace has not approved.
+in-flight token running sessions already hold. When the OAuth mint workspace
+(``~/.cache/mcp-token/oauth-mint``) exists — used once user ``mcp.json`` hosts
+``,mcp-token --bridge`` entries — rotate and browser login always run in that
+cwd so project OAuth config wins over the user-level bridge. Only when no
+rotatable cache exists or rotation fails does ``cursor-agent mcp login
+<server>`` run the browser flow with cursor's approved client (e.g. Slack's
+admin-gated workspace app, or the SCSI Okta app); this avoids the ``k-slack``
+confidential client that the Elastic workspace has not approved.
 
 ``--login`` guarantees runway, not just validity. A caller that reads the
 token once (a launcher printing it, or a config baking it) would die with it
@@ -51,6 +54,12 @@ sessions no longer depend on any single token's lifetime: the bridge re-reads
 the cursor caches per request, rotates when runway drops below
 ``BLOCKING_ROTATE_TTL_SECONDS`` (throttled on repeated failure), retries once
 on auth rejection, and transparently re-initializes a server-expired session.
+Rotation uses the newest cached refresh chain even when its project lacks
+``.workspace-trusted`` metadata: the chain is copied into the bridge process's
+current-workspace cache, then cursor-agent runs there.
+``--retry-connect-timeouts`` additionally retries one exact upstream
+connection-timeout response; generated configs enable it only for endpoints
+whose tool calls are safe to repeat.
 
 ``--login`` skips even the silent rotation when it can prove the current token
 still works and has runway. For JWT servers (SCSI) that is the token's ``exp``.
@@ -84,6 +93,8 @@ Usage:
                                         (seed from a verified cached chain, browser last)
   ,mcp-token <server> --bridge --url <endpoint>
                                         Serve a stdio MCP bridge with per-request bearer injection
+  ,mcp-token <server> --bridge --url <endpoint> --retry-connect-timeouts
+                                        Retry one upstream connection timeout
   ,mcp-token <server> --login --quiet   Refresh without streaming auth helper output
   ,mcp-token <server> --login --force   Re-authenticate even if the token is still valid
 
@@ -117,6 +128,12 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 CURSOR_CACHE_GLOB = os.path.expanduser("~/.cursor/projects/*/mcp-auth.json")
 CURSOR_MCP_CONFIG = os.path.expanduser("~/.cursor/mcp.json")
+# Relative mint layout under $HOME (expanded at call time so isolated-HOME tests
+# and live runs stay consistent). Project cwd whose .cursor/mcp.json keeps OAuth
+# HTTP shapes after user ~/.cursor/mcp.json switches hosted servers to
+# ,mcp-token --bridge. Silent rotate and browser login must run there so
+# cursor-agent still sees an OAuth server (project config wins over user bridge).
+_MINT_WORKSPACE_REL = ".cache/mcp-token/oauth-mint"
 OPAQUE_REFRESH_STATE = os.path.expanduser("~/.cache/mcp-token/opaque-refresh.json")
 ROTATION_LOCK = os.path.expanduser("~/.cache/mcp-token/rotation.lock")
 # Treat a token as stale this many seconds before its nominal expiry, so a
@@ -322,27 +339,85 @@ def _pick(server: str) -> tuple[str, str, float] | None:
     return token, source, seconds_left
 
 
-def _server_url(server: str) -> str | None:
-    """Return *server*'s HTTP(S) URL from the generated ``~/.cursor/mcp.json``.
+def _mint_paths() -> tuple[str, str]:
+    root = os.path.expanduser(f"~/{_MINT_WORKSPACE_REL}")
+    return root, os.path.join(root, ".cursor", "mcp.json")
 
-    This is the canonical server→URL registry the command already depends on; a
-    stdio server (no ``url``) or a missing/malformed config yields ``None``.
-    """
-    try:
-        with open(CURSOR_MCP_CONFIG) as f:
-            data = json.load(f)
-    except (OSError, ValueError):
-        return None
-    servers = data.get("mcpServers") if isinstance(data, dict) else None
-    if not isinstance(servers, dict):
-        return None
-    entry = servers.get(server)
+
+def _mint_workspace() -> str | None:
+    """Return the OAuth mint workspace when its project mcp.json exists."""
+    root, config = _mint_paths()
+    if os.path.isfile(config):
+        return os.path.realpath(root)
+    return None
+
+
+def _url_from_mcp_entry(entry: object) -> str | None:
+    """Extract an HTTP(S) URL from a Cursor mcpServers entry (url or bridge args)."""
     if not isinstance(entry, dict):
         return None
     url = entry.get("url")
     if isinstance(url, str) and url.startswith(("http://", "https://")):
         return url
+    args = entry.get("args")
+    if isinstance(args, list):
+        for index, arg in enumerate(args):
+            if arg == "--url" and index + 1 < len(args):
+                candidate = args[index + 1]
+                if isinstance(candidate, str) and candidate.startswith(("http://", "https://")):
+                    return candidate
     return None
+
+
+def _server_url(server: str) -> str | None:
+    """Return *server*'s HTTP(S) URL from Cursor MCP configs.
+
+    Prefers the mint-workspace OAuth config (authoritative URL after user config
+    becomes a bridge), then the user ``~/.cursor/mcp.json`` ``url`` field, then
+    a ``--url`` argument on a bridge stdio entry.
+    """
+    _mint_root, mint_config = _mint_paths()
+    for path in (mint_config, CURSOR_MCP_CONFIG):
+        try:
+            with open(path) as f:
+                data = json.load(f)
+        except (OSError, ValueError):
+            continue
+        servers = data.get("mcpServers") if isinstance(data, dict) else None
+        if not isinstance(servers, dict):
+            continue
+        url = _url_from_mcp_entry(servers.get(server))
+        if url is not None:
+            return url
+    return None
+
+
+def _prepare_mint_rotation(server: str) -> tuple[str, str] | None:
+    """Return ``(cache_path, workspace)`` for mint-based silent rotation.
+
+    Seeds the mint project's OAuth cache from the newest rotatable chain when
+    the mint cache lacks a refresh token, so ``cursor-agent mcp list-tools``
+    run in the mint cwd refreshes a cache the bridge can pick globally.
+    """
+    mint = _mint_workspace()
+    if mint is None:
+        return None
+    mint_cache = _cursor_workspace_cache_path(mint)
+    tokens = _read_cache_tokens(mint_cache, server)
+    if isinstance(tokens, dict) and tokens.get("refresh_token") and tokens.get("access_token"):
+        return mint_cache, mint
+    candidate = _rotation_candidate(server)
+    if candidate is None:
+        return None
+    source_path, _source_workspace = candidate
+    source_tokens = _read_cache_tokens(source_path, server)
+    access_token = source_tokens.get("access_token") if source_tokens is not None else None
+    if not isinstance(access_token, str) or not access_token:
+        return None
+    if os.path.realpath(source_path) != os.path.realpath(mint_cache):
+        if not _copy_server_entry(server, source_path, mint_cache, access_token):
+            return None
+    return mint_cache, mint
 
 
 def _probe_liveness(url: str, access_token: str) -> str:
@@ -479,17 +554,20 @@ def _trusted_workspace(project_dir: str) -> str | None:
     return None
 
 
-def _rotation_candidate(server: str) -> tuple[str, str] | None:
-    """Return ``(cache_path, workspace)`` for the newest rotatable cache.
+def _rotation_candidate(server: str) -> tuple[str, str | None] | None:
+    """Return the newest refresh chain and its workspace when directly resolvable.
 
-    A cache is rotatable when it holds a ``refresh_token`` for *server* and its
-    project records an existing trusted workspace directory. Newest cache mtime
-    first: providers with rotating (single-use) refresh tokens keep only the
-    most recently written chain alive, so older caches are strictly worse bets.
-    mtime orders attempts only; it never proves validity — the rotation result
-    is re-read and verified before being trusted.
+    A cache is a candidate when it holds both access and refresh tokens. Newest
+    cache mtime wins: providers with rotating (single-use) refresh tokens keep
+    only the most recently written chain alive, so older caches are strictly
+    worse bets. The current workspace is inferred from its deterministic cache
+    path; other workspaces use ``.workspace-trusted`` when present. A missing
+    workspace is handled by copying the chosen chain into the current cache
+    before rotation.
     """
-    best: list[tuple[float, str, str]] = []
+    best: list[tuple[float, str, str | None]] = []
+    current_workspace = os.path.realpath(os.getcwd())
+    current_cache = os.path.realpath(_cursor_workspace_cache_path(current_workspace))
     for path in glob.glob(CURSOR_CACHE_GLOB):
         try:
             with open(path) as f:
@@ -501,9 +579,10 @@ def _rotation_candidate(server: str) -> tuple[str, str] | None:
             continue
         if not tokens.get("refresh_token") or not tokens.get("access_token"):
             continue
-        workspace = _trusted_workspace(os.path.dirname(path))
-        if workspace is None:
-            continue
+        if os.path.realpath(path) == current_cache:
+            workspace = current_workspace
+        else:
+            workspace = _trusted_workspace(os.path.dirname(path))
         try:
             mtime = os.path.getmtime(path)
         except OSError:
@@ -537,6 +616,40 @@ def _read_cache_tokens(path: str, server: str) -> dict | None:
         return None
     tokens = data.get(server, {}).get("tokens")
     return tokens if isinstance(tokens, dict) else None
+
+
+def _copy_server_entry(server: str, source: str, destination: str, expected_access_token: str) -> bool:
+    """Copy one unchanged server entry between cursor caches."""
+    try:
+        with open(source) as f:
+            source_data = json.load(f)
+    except (OSError, ValueError):
+        return False
+    entry = source_data.get(server)
+    if not isinstance(entry, dict) or entry.get("tokens", {}).get("access_token") != expected_access_token:
+        return False
+    try:
+        with open(destination) as f:
+            destination_data = json.load(f)
+    except (OSError, ValueError):
+        destination_data = {}
+    if not isinstance(destination_data, dict):
+        destination_data = {}
+    destination_data[server] = entry
+    tmp = f"{destination}.{os.getpid()}.mcp-token.tmp"
+    try:
+        os.makedirs(os.path.dirname(destination), exist_ok=True)
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as f:
+            json.dump(destination_data, f)
+        os.replace(tmp, destination)
+    except OSError:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        return False
+    return True
 
 
 def _restore_access_token(path: str, server: str, expected: str, original: str) -> None:
@@ -582,11 +695,29 @@ def _silent_rotate_unlocked(server: str, *, quiet: bool = False) -> bool:
     On any failure the original access token is restored (compare-and-swap, so
     a concurrent legitimate writer is never clobbered) and the caller falls
     back to its existing probe/adoption/browser chain.
+
+    When the OAuth mint workspace exists (user ``mcp.json`` uses bridges),
+    rotation always targets that workspace so list-tools hits the mint project's
+    OAuth HTTP config rather than the user-level bridge entry.
     """
-    candidate = _rotation_candidate(server)
-    if candidate is None:
-        return False
-    path, workspace = candidate
+    prepared = _prepare_mint_rotation(server)
+    if prepared is not None:
+        path, workspace = prepared
+    else:
+        candidate = _rotation_candidate(server)
+        if candidate is None:
+            return False
+        path, workspace = candidate
+        if workspace is None:
+            tokens = _read_cache_tokens(path, server)
+            access_token = tokens.get("access_token") if tokens is not None else None
+            if not isinstance(access_token, str) or not access_token:
+                return False
+            destination = _cursor_workspace_cache_path()
+            if not _copy_server_entry(server, path, destination, access_token):
+                return False
+            path = destination
+            workspace = os.path.realpath(os.getcwd())
     try:
         with open(path) as f:
             data = json.load(f)
@@ -677,9 +808,11 @@ def _browser_login(server: str, *, quiet: bool = False) -> bool:
     if not quiet:
         print(f",mcp-token: running cursor-agent mcp login {server} …", file=sys.stderr)
     login_started_at = time.time()
+    login_cwd = _mint_workspace() or os.getcwd()
     try:
         subprocess.run(
             ["cursor-agent", "mcp", "login", server],
+            cwd=login_cwd,
             check=False,
             stdout=subprocess.DEVNULL if quiet else None,
             stderr=subprocess.DEVNULL if quiet else None,
@@ -748,7 +881,10 @@ def _cursor_workspace_auth_status(server: str) -> str:
     if not isinstance(access_token, str) or not access_token or access_token == ROTATION_SENTINEL:
         return WORKSPACE_REQUIRES_AUTH
     seconds_left = _jwt_seconds_left(access_token, time.time())
-    if seconds_left is not None and seconds_left <= EXPIRY_SKEW_SECONDS and not tokens.get("refresh_token"):
+    # Expired / near-expiry JWTs need seed or rotate even when a refresh_token
+    # is present: cursor-agent only reads this workspace's cache, and treating
+    # expired+refresh as ready left long-lived sessions on a dead access token.
+    if seconds_left is not None and seconds_left <= EXPIRY_SKEW_SECONDS:
         return WORKSPACE_REQUIRES_AUTH
     return WORKSPACE_READY
 
@@ -781,35 +917,8 @@ def _seed_workspace_cache(server: str, *, quiet: bool = False) -> bool:
     # (two launches in one workspace must not drop each other's entries) and
     # against rotation rewrites of the donor cache.
     with _rotation_lock():
-        try:
-            with open(source) as f:
-                donor = json.load(f)
-        except (OSError, ValueError):
-            return False
-        entry = donor.get(server)
-        if not isinstance(entry, dict) or entry.get("tokens", {}).get("access_token") != token:
+        if not _copy_server_entry(server, source, dest, token):
             # The donor cache changed under us; do not seed an unverified chain.
-            return False
-        try:
-            with open(dest) as f:
-                dest_data = json.load(f)
-        except (OSError, ValueError):
-            dest_data = {}
-        if not isinstance(dest_data, dict):
-            dest_data = {}
-        dest_data[server] = entry
-        tmp = f"{dest}.{os.getpid()}.mcp-token.tmp"
-        try:
-            os.makedirs(os.path.dirname(dest), exist_ok=True)
-            fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-            with os.fdopen(fd, "w") as f:
-                json.dump(dest_data, f)
-            os.replace(tmp, dest)
-        except OSError:
-            try:
-                os.unlink(tmp)
-            except OSError:
-                pass
             return False
     if not quiet:
         print(f",mcp-token: seeded {server} workspace cache from a verified cached chain.", file=sys.stderr)
@@ -1004,6 +1113,11 @@ def main(argv: list[str]) -> int:
         help="With --bridge, the streamable-HTTP MCP endpoint to forward to",
     )
     parser.add_argument(
+        "--retry-connect-timeouts",
+        action="store_true",
+        help="With --bridge, retry one exact upstream connection-timeout response",
+    )
+    parser.add_argument(
         "--no-proactive-rotation",
         action="store_true",
         help="With --login, skip proactive rotation but ensure current-workspace auth (seeding a missing workspace cache from a verified cached chain, browser last); critical/expired/revoked tokens still rotate synchronously",
@@ -1024,6 +1138,8 @@ def main(argv: list[str]) -> int:
         parser.error("--bridge requires --url")
     if args.url and not args.bridge:
         parser.error("--url requires --bridge")
+    if args.retry_connect_timeouts and not args.bridge:
+        parser.error("--retry-connect-timeouts requires --bridge")
     if args.bridge and args.login:
         parser.error("--bridge and --login are mutually exclusive")
     if args.no_proactive_rotation and not args.login:
@@ -1036,7 +1152,12 @@ def main(argv: list[str]) -> int:
     if args.bridge:
         from bridge import run_bridge
 
-        return run_bridge(args.url, _bridge_token_acquirer(args.server), _NO_REDIRECT_OPENER)
+        return run_bridge(
+            args.url,
+            _bridge_token_acquirer(args.server),
+            _NO_REDIRECT_OPENER,
+            retry_connect_timeouts=args.retry_connect_timeouts,
+        )
 
     if args.login:
         if not _login(

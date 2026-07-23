@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Description: Launch Codex through the repo-owned Google Vertex adapter.
+
+set -euo pipefail
+
+lib="${VERTEX_ADAPTER_LIB:-$HOME/lib/,vertex-adapter/main.py}"
+if [[ ! -f "$lib" ]]; then
+  echo "Error: Vertex adapter not found at $lib. Run chezmoi apply --no-tty ~/lib/,vertex-adapter." >&2
+  exit 127
+fi
+
+exec python3 "$lib" codex "$@"

@@ -99,7 +99,38 @@ class TestVerifyBinSurface(unittest.TestCase):
 
             failures = verify_bin_surface.check_bin_surface(root)
 
-        assert any("command library" in failure and "has no matching" in failure for failure in failures)
+        assert any(
+            "command library" in failure and "has no matching command or explicit launcher reference" in failure
+            for failure in failures
+        )
+
+    def test_accepts_shared_command_library_referenced_by_multiple_launchers(self):
+        import verify_bin_surface
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "home/exact_bin").mkdir(parents=True)
+            (root / "home/exact_lib/exact_,adapter").mkdir(parents=True)
+            (root / "home/dot_config/fish/completions").mkdir(parents=True)
+            (root / "docs/topics/workflow/custom-commands").mkdir(parents=True)
+            (root / ".mermaids").mkdir(parents=True)
+
+            (root / "home/exact_lib/exact_,adapter/main.py").write_text("print('adapter')\n")
+            for name in ("one", "two"):
+                (root / f"home/exact_bin/executable_,{name}").write_text(
+                    '#!/bin/sh\nexec python3 "$HOME/lib/,adapter/main.py"\n'
+                )
+                (root / f"home/dot_config/fish/completions/readonly_,{name}.fish").write_text(
+                    f"complete -c ,{name} --no-files\n"
+                )
+            (root / "docs/topics/workflow/custom-commands/catalog.md").write_text(
+                "| `,one` | Adapter |\n| `,two` | Adapter |\n"
+            )
+            (root / ".mermaids/07c-bin-commands.mmd").write_text('G[",one · ,two"]\n')
+
+            failures = verify_bin_surface.check_bin_surface(root)
+
+        assert failures == []
 
     def test_reports_provider_variant_without_matching_docs_token(self):
         import verify_bin_surface

@@ -19,7 +19,7 @@ complete -c ',copilot' -l effort -l reasoning-effort -r -d 'Set the reasoning ef
 complete -c ',copilot' -l context -r -d 'Set the context window tier (overrides persisted setting)' -a 'default long_context'
 complete -c ',copilot' -l enable-reasoning-summaries -f -d 'Request reasoning summaries for OpenAI models'
 complete -c ',copilot' -l agent -r -d 'Specify a custom agent to use'
-complete -c ',copilot' -l resume -s r -r -d 'Resume from a previous session (optionally specify existing session ID, task ID, ID prefix, or name; name matching is exact, case-insensitive)'
+complete -c ',copilot' -l resume -s r -r -d 'Resume a previous session; bare --resume uses the managed picker and launches --session-id=<id>'
 complete -c ',copilot' -l continue -f -d 'Resume the most recent session'
 complete -c ',copilot' -l name -s n -r -d 'Set a name for the new session'
 complete -c ',copilot' -l session-id -r -d 'Resume an existing session or task by ID, or set the UUID for a new session'

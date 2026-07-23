@@ -26,6 +26,9 @@ Behavior, per client message:
   server-side session expiry never kills the agent session. Resurrection is
   single-flight: concurrent losers wait, observe the new session id, and
   retry instead of failing.
+- When explicitly enabled by the registry, an Envoy ``503`` that states the
+  upstream connection timed out before headers is retried once with the same
+  token. This is opt-in because generic MCP tools may have side effects.
 - Failures surface as JSON-RPC ``-32603`` errors for requests and are dropped
   for notifications; the bridge itself only exits on stdin EOF.
 
@@ -53,6 +56,11 @@ DELETE_TIMEOUT_SECONDS = 5.0
 # Concurrent in-flight client requests (agents issue parallel tool calls).
 MAX_WORKERS = 8
 JSONRPC_INTERNAL_ERROR = -32603
+CONNECT_TIMEOUT_STATUS = 503
+CONNECT_TIMEOUT_MARKERS = (
+    "upstream connect error or disconnect/reset before headers",
+    "reset reason: connection timeout",
+)
 
 AcquireToken = Callable[[Optional[str]], Optional[str]]
 
@@ -67,12 +75,14 @@ class Bridge:
         opener: OpenerDirector,
         stdin: IO[bytes],
         stdout: IO[bytes],
+        retry_connect_timeouts: bool = False,
     ) -> None:
         self._url = url
         self._acquire = acquire
         self._opener = opener
         self._stdin = stdin
         self._stdout = stdout
+        self._retry_connect_timeouts = retry_connect_timeouts
         self._emit_lock = threading.Lock()
         self._session_lock = threading.Lock()
         # Serializes session resurrection: one worker replays the handshake
@@ -122,6 +132,12 @@ class Bridge:
             self._post(message, token, emit=emit)
             return
         except HTTPError as error:
+            if self._retry_connect_timeouts and self._is_connect_timeout(error):
+                try:
+                    self._post(message, token, emit=emit)
+                    return
+                except HTTPError as retry_error:
+                    error = retry_error
             retry_token = self._recovery_token(
                 error,
                 token,
@@ -131,6 +147,16 @@ class Bridge:
             if retry_token is None:
                 raise RuntimeError(f"HTTP {error.code}") from error
         self._post(message, retry_token, emit=emit)
+
+    @staticmethod
+    def _is_connect_timeout(error: HTTPError) -> bool:
+        if error.code != CONNECT_TIMEOUT_STATUS:
+            return False
+        try:
+            body = error.read().decode("utf-8", errors="replace").lower()
+        except OSError:
+            return False
+        return all(marker in body for marker in CONNECT_TIMEOUT_MARKERS)
 
     def _recovery_token(
         self,
@@ -283,6 +309,19 @@ class Bridge:
         )
 
 
-def run_bridge(url: str, acquire: AcquireToken, opener: OpenerDirector) -> int:
-    bridge = Bridge(url, acquire, opener, sys.stdin.buffer, sys.stdout.buffer)
+def run_bridge(
+    url: str,
+    acquire: AcquireToken,
+    opener: OpenerDirector,
+    *,
+    retry_connect_timeouts: bool = False,
+) -> int:
+    bridge = Bridge(
+        url,
+        acquire,
+        opener,
+        sys.stdin.buffer,
+        sys.stdout.buffer,
+        retry_connect_timeouts=retry_connect_timeouts,
+    )
     return bridge.serve()

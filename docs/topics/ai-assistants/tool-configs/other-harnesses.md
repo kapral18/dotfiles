@@ -16,6 +16,7 @@ Use it to answer three questions: which repo source owns the deployed config, wh
 | Codex and OpenCode        | profile merging plus MCP injection                                                                  |
 | Codex launcher            | interactive shells route `codex` through managed `~/bin/,codex`                                     |
 | Copilot launcher wrappers | custom providers are BYOK environment variables only and wrapper commands `exec ,copilot`           |
+| Vertex adapter            | per-wrapper loopback process translates Responses, Chat Completions, and Anthropic Messages         |
 | Copilot MCP               | generated as stdio `type: "local"`, OAuth HTTP, or token-bridge stdio depending on the server block |
 | Copilot memory            | native SDK extension supplies context and worklog hooks                                             |
 | tuicr                     | single-sourced readonly review TUI config; labels are categories, not severity                      |
@@ -112,6 +113,26 @@ Every other OpenRouter model, including GLM, DeepSeek, Qwen, Kimi, GPT, and Gemi
 
 Setting `COPILOT_PROVIDER_TYPE` explicitly before invoking the wrapper always overrides this auto-detection.
 
+### Repo-owned Vertex adapter
+
+`,codex-vertex`, `,copilot-vertex`, and `,claude-vertex` start one authenticated adapter on a random `127.0.0.1` port and stop it with the harness. The adapter uses the configured Google Cloud project and refreshes `gcloud auth print-access-token` credentials behind the local protocol boundary; no Google bearer or project credential is written to generated config.
+
+The three local frontends map to the two Vertex transports:
+
+| Wrapper           | Local protocol          | Vertex transport                                                                   |
+| ----------------- | ----------------------- | ---------------------------------------------------------------------------------- |
+| `,codex-vertex`   | OpenAI Responses        | Gemini OpenAI Chat Completions or Claude publisher `rawPredict`/`streamRawPredict` |
+| `,copilot-vertex` | OpenAI Chat Completions | Gemini OpenAI Chat Completions or Claude publisher `rawPredict`/`streamRawPredict` |
+| `,claude-vertex`  | Anthropic Messages      | Gemini OpenAI Chat Completions or Claude publisher `rawPredict`/`streamRawPredict` |
+
+The canonical `provider_models` entries in `home/.chezmoidata/ai_models.yaml` own the four allowed IDs, backend wire IDs, token limits, and effort matrix. `home/dot_config/vertex-adapter/readonly_models.json.tmpl` renders that data for the deployed core in `~/lib/,vertex-adapter/`. For Codex, the launcher also renders an owner-only, per-session `model_catalog_json` from the same registry and removes it on exit; the loopback `/v1/models` route exposes the equivalent Codex schema so these non-OpenAI IDs use their declared context, effort, shell, and freeform `apply_patch` metadata instead of fallback metadata.
+
+All wrappers use `gemini-3.6-flash` unless `--model`/`-m` selects `gemini-3.1-pro-preview`, `claude-opus-4-6`, or `claude-opus-4-7`. `--thinking` enables the model's declared default, `--effort` selects a supported level, and `--no-thinking` is accepted only for the Claude models. Gemini 3.6 Flash's closest low-reasoning mode is `--effort minimal`; Gemini 3.1 Pro cannot disable thinking.
+
+Streaming text and parallel function/custom tools are translated incrementally. Gemini tool-call thought signatures and Claude signed thinking blocks that cannot cross another protocol directly are stored by call ID in owner-only runtime state under `${XDG_STATE_HOME:-~/.local/state}/vertex-adapter/`; no user prompts, credentials, or general conversation transcript are added to that store.
+
+Cursor is intentionally absent: Cursor Agent has no custom model-provider/base-URL route, so a `,cursor-vertex` command would not make Cursor use Vertex. Native `vlaude` also remains unchanged for direct Claude Code → Vertex Claude use.
+
 ### Claude Code and Cloudflare
 
 Claude Code is not wired to Cloudflare.
@@ -178,7 +199,7 @@ The `copilot` transform in `generate_mcp_configs.py` emits three MCP server shap
 
 Because Copilot cannot run the SCSI/Slack browser OAuth flows itself, both `scsi-main` and `slack` carry a `copilot` `tokenBridge` source and reach the hosted endpoint through a local stdio bridge that injects a bearer token minted by cursor-cli per request. `scsi-local` has no OAuth, so it is emitted as a `type: "local"` stdio server with local `pass` Elasticsearch credentials. Copilot's generated `mcp-config.json` therefore carries `scsi-main`, `scsi-local`, and `slack` plus its built-in servers; the built-in `github-mcp-server` is Copilot-provided and not emitted.
 
-The rendered config carries no Authorization values, so `chezmoi apply` owns it entirely and `,copilot` is a thin exec of the real binary. The full OAuth-exception rationale, synchronous rotation grant, and opaque-token liveness probe are owned by [MCP servers](../mcp.md). The bearer-free `~/.copilot/mcp-config.json` is written `0600` under a `0700` `~/.copilot/` directory.
+The rendered config carries no Authorization values, so `chezmoi apply` owns it entirely. `,copilot` passes through to the real binary except for bare `--resume`, which selects a local session before launching `--session-id=<id>` to avoid Copilot 1.0.73's MCP startup race. The full OAuth-exception rationale, synchronous rotation grant, and opaque-token liveness probe are owned by [MCP servers](../mcp.md). The bearer-free `~/.copilot/mcp-config.json` is written `0600` under a `0700` `~/.copilot/` directory.
 
 ### Copilot settings reconciliation
 

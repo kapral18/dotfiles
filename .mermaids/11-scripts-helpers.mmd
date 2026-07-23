@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 11-scripts-helpers.mmd — Every file in scripts/ (100). Repo-side Python
+%% 11-scripts-helpers.mmd — Every file in scripts/ (101). Repo-side Python
 %% (stdlib only, no PyYAML) called by chezmoi 07-* hooks + ,bin commands.
 %% Grouped by consumer. Shared parsers feed the generators/mergers.
 %% ============================================================================
@@ -20,8 +20,8 @@ flowchart TB
     end
 
     subgraph MCPGEN["MCP config generation (hook 07-generate-mcp-configs)"]
-        MR["mcp_registry.py (load mcp_servers.yaml, filter;<br/>default shell resolution + no-exec/override modes)"]:::mcp
-        GMC["generate_mcp_configs.py (per-tool MCP json;<br/>Copilot/Codex tokenBridge entries → local ,mcp-token stdio bridges)"]:::mcp
+        MR["mcp_registry.py (load mcp_servers.yaml, filter;<br/>default shell resolution + shared tokenBridge argv policy)"]:::mcp
+        GMC["generate_mcp_configs.py (per-tool MCP json;<br/>Copilot/Codex tokenBridge entries → local ,mcp-token stdio bridges;<br/>registry-gated connect-timeout retry for repeat-safe endpoints)"]:::mcp
         MCM["merge_claude_mcp.py (surgical mcpServers in ~/.claude.json)"]:::mcp
         ICT["inject_mcp_into_codex_toml.py (hook 07-merge-codex)"]:::mcp
         IOJ["inject_mcp_into_opencode_jsonc.py (hook 07-merge-opencode)"]:::mcp
@@ -61,7 +61,7 @@ flowchart TB
 
     subgraph TESTS["Tests + fixtures"]
         TT["top-level tests:<br/>test_{agent_memory,ai_kb,ai_launcher,ai_models,analyze_pi_session,chezmoi_lib,embed,generated_artifact_ledger,generate_mcp_configs,generate_pi_models}.py<br/>test_{inject_mcp_into_codex_toml,inject_mcp_into_opencode_jsonc,mcp_registry,model_mirrors,palantir,probe_litellm_prompt_cache}.py<br/>test_{merge_copilot_settings,merge_opencode_models,model_display,pre_commit}.py<br/>test_{verify_agent_file_sizes,verify_bin_surface,verify_docs_navigation,verify_mermaids,verify_templates,yaml_parser}.py"]:::shared
-        IT["scripts/tests/: __init__.py · copilot_agent_memory_extension.test.mjs<br/>recall_worklog_state_machine.py · test_{agent_hooks,correction_detector,recall_worklog,bin_commands,gh_picker_dispatch_state,gh_picker_lock,git_gate,invariants}.py<br/>test_{plain_session_removal,proof_cli,session_github_cache,tmux_handoff_context,tmux_handoff_lifecycle,<br/>tmux_handoff_namespace,tmux_pickers,worktree_delete_boundaries}.py"]:::shared
+        IT["scripts/tests/: __init__.py · copilot_agent_memory_extension.test.mjs<br/>recall_worklog_state_machine.py · test_{agent_hooks,correction_detector,recall_worklog,bin_commands,gh_picker_dispatch_state,gh_picker_lock,git_gate,invariants}.py<br/>test_{plain_session_removal,proof_cli,session_github_cache,tmux_handoff_context,tmux_handoff_lifecycle,<br/>tmux_handoff_namespace,tmux_pickers,vertex_adapter,worktree_delete_boundaries}.py"]:::shared
         FX["fixtures/: {ai_models,ai_models_with_claude,mcp_servers,mcp_servers_exclude}.yaml<br/>codex_base.toml · golden_codex_personal.toml · golden_mcp_{personal,work}.json<br/>golden_opencode_{models,models_with_claude,personal}.jsonc · golden_pi_models.json<br/>model_probe_cases.json · opencode_{base,work_base}.jsonc"]:::shared
     end
     MCPGEN -.verified by golden.-> TESTS

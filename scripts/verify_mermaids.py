@@ -58,11 +58,11 @@ CENSUS: list[Claim] = [
     Claim(
         name="total effective git files",
         globs=None,
-        claimed=1288,
+        claimed=1305,
         anchors=[
-            ("README.md", "1288 files in the effective git file set"),
-            ("00-overview.mmd", "1288 files in the effective git file set"),
-            ("00-overview.mmd", "file census (1288 total)"),
+            ("README.md", "1305 files in the effective git file set"),
+            ("00-overview.mmd", "1305 files in the effective git file set"),
+            ("00-overview.mmd", "file census (1305 total)"),
         ],
     ),
     Claim(
@@ -117,25 +117,25 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/dot_config/fish/",
         globs=["home/dot_config/fish/*"],
-        claimed=77,
-        anchors=[("00-overview.mmd", "fish 77")],
+        claimed=80,
+        anchors=[("00-overview.mmd", "fish 80")],
     ),
     Claim(
         name="home/exact_bin/",
         globs=["home/exact_bin/*"],
-        claimed=74,
+        claimed=77,
         anchors=[
-            ("07c-bin-commands.mmd", "exact_bin/ (74 thin commands)"),
-            ("README.md", "`exact_bin/` (74)"),
+            ("07c-bin-commands.mmd", "exact_bin/ (77 thin commands)"),
+            ("README.md", "`exact_bin/` (77)"),
         ],
     ),
     Claim(
         name="home/exact_lib/",
         globs=["home/exact_lib/*"],
-        claimed=66,
+        claimed=75,
         anchors=[
-            ("07c-bin-commands.mmd", "home/exact_lib/ (66 command/shared library files)"),
-            ("README.md", "`home/exact_lib/` (66 command/shared library files)"),
+            ("07c-bin-commands.mmd", "home/exact_lib/ (75 command/shared library files)"),
+            ("README.md", "`home/exact_lib/` (75 command/shared library files)"),
         ],
     ),
     Claim(
@@ -150,11 +150,11 @@ CENSUS: list[Claim] = [
     Claim(
         name="scripts/",
         globs=["scripts/*"],
-        claimed=100,
+        claimed=101,
         anchors=[
-            ("11-scripts-helpers.mmd", "scripts/ (100)"),
-            ("README.md", "`scripts/` (100)"),
-            ("00-overview.mmd", "scripts 100"),
+            ("11-scripts-helpers.mmd", "scripts/ (101)"),
+            ("README.md", "`scripts/` (101)"),
+            ("00-overview.mmd", "scripts 101"),
         ],
     ),
     Claim(

@@ -29,7 +29,7 @@ Source of truth: [`home/.chezmoidata/ai_models.yaml`](../../../home/.chezmoidata
 | `azure_models`        | Azure Foundry model definitions rendered into Pi/OpenCode                                                                       |
 | `cursor_models`       | Curated Cursor aliases; `recommended: true` is the narrower preferred set                                                       |
 | `pi_extra_models`     | Non-LiteLLM Pi selectors retained for Pi-specific launch paths                                                                  |
-| `provider_models`     | Static provider-route choices for shell completion                                                                              |
+| `provider_models`     | Static provider-route choices for shell completion; Vertex entries also own adapter wire/capability metadata                    |
 | `agent_review_models` | Per-harness review `lanes`/`verifier` pairs; the verifier-family pairing is reviewed here rather than inferred or auto-promoted |
 
 Recommended Cursor entries use `recommendation_rank` to preserve the deliberate TUI picker order independently of the broader curated registry order.
@@ -46,6 +46,8 @@ The LiteLLM/Azure model-dict fields are:
 | `contextWindow`           | Max context tokens                                                 |
 | `maxTokens`               | Max output tokens                                                  |
 | `cost`                    | Per-model `input`/`output`/`cacheRead`/`cacheWrite` pricing        |
+
+Vertex entries keep the adapter's routing contract in the same canonical section: `backend` selects Gemini Chat Completions or Claude publisher raw prediction, `wire_model` is the exact upstream ID, `efforts` and `supports_no_thinking` define accepted reasoning controls, and one `adapter_default` selects the no-argument model. `home/dot_config/vertex-adapter/readonly_models.json.tmpl` projects the registry into `~/.config/vertex-adapter/models.json`; the deployed adapter filters the `vertex` provider and fails if the default or model IDs are ambiguous.
 
 ## Using it
 
@@ -80,12 +82,13 @@ python3 scripts/model_mirrors.py probe \
 
 ## Generators
 
-| Generator                                                                                 | Output                                                                                 |
-| ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| [`scripts/generate_pi_models.py`](../../../scripts/generate_pi_models.py)                 | Builds Pi `models.json` from a shared base plus work-only LiteLLM/Azure providers      |
-| [`scripts/merge_opencode_models.py`](../../../scripts/merge_opencode_models.py)           | Merges LiteLLM/Azure models into the OpenCode JSONC config                             |
-| [`scripts/model_mirrors.py`](../../../scripts/model_mirrors.py)                           | Generates/verifies the v1 static mirror and runs explicit live drift probes            |
-| [`scripts/probe_litellm_prompt_cache.py`](../../../scripts/probe_litellm_prompt_cache.py) | Diagnostic: probes repeated-prompt and tool-schema cache signals across LiteLLM models |
+| Generator                                                                                                                       | Output                                                                                 |
+| ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| [`scripts/generate_pi_models.py`](../../../scripts/generate_pi_models.py)                                                       | Builds Pi `models.json` from a shared base plus work-only LiteLLM/Azure providers      |
+| [`scripts/merge_opencode_models.py`](../../../scripts/merge_opencode_models.py)                                                 | Merges LiteLLM/Azure models into the OpenCode JSONC config                             |
+| [`scripts/model_mirrors.py`](../../../scripts/model_mirrors.py)                                                                 | Generates/verifies the v1 static mirror and runs explicit live drift probes            |
+| [`home/dot_config/vertex-adapter/readonly_models.json.tmpl`](../../../home/dot_config/vertex-adapter/readonly_models.json.tmpl) | Renders provider metadata consumed by the three per-session Vertex wrappers            |
+| [`scripts/probe_litellm_prompt_cache.py`](../../../scripts/probe_litellm_prompt_cache.py)                                       | Diagnostic: probes repeated-prompt and tool-schema cache signals across LiteLLM models |
 
 The Pi/OpenCode generators run inside their per-tool merge hooks: `run_onchange_after_07-merge-pi-config.sh.tmpl` and `run_onchange_after_07-merge-opencode-config.sh.tmpl`.
 

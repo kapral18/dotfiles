@@ -15,6 +15,7 @@ provider_aliases = {
     "cloudflare-openai": "cloudflare-openai",
     "litellm": "litellm",
     "openrouter": "openrouter",
+    "vertex": "vertex",
 }
 
 provider = provider_aliases.get(sys.argv[1])

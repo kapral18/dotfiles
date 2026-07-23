@@ -66,7 +66,13 @@ class TestGenerateMcpConfigs(unittest.TestCase):
         assert bridge == {
             "type": "local",
             "command": ",mcp-token",
-            "args": ["bridge-source", "--bridge", "--url", "https://mcp.bridge.com/mcp"],
+            "args": [
+                "bridge-source",
+                "--bridge",
+                "--url",
+                "https://mcp.bridge.com/mcp",
+                "--retry-connect-timeouts",
+            ],
             "tools": ["*"],
         }
         assert "headers" not in bridge
@@ -99,6 +105,50 @@ mcp_servers:
 
         assert result.returncode != 0
         assert "invalid tokenBridge token source" in result.stderr
+
+    def test_copilot_token_bridge_does_not_retry_connect_timeouts_by_default(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            registry = self._bridge_registry(Path(temporary), "bridge-source")
+            actual = json.loads(run_script(["generate_mcp_configs.py", str(registry), "false", "copilot"]))
+
+        assert actual["mcpServers"]["first"]["args"] == [
+            "bridge-source",
+            "--bridge",
+            "--url",
+            "https://first.example/mcp",
+        ]
+
+    def test_cursor_token_bridge_emits_stdio_bridge_without_oauth_url(self):
+        actual = json.loads(
+            run_script(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "false", "cursor"])
+        )
+        bridge = actual["mcpServers"]["bridge-tool"]
+        assert bridge == {
+            "command": ",mcp-token",
+            "args": [
+                "bridge-source",
+                "--bridge",
+                "--url",
+                "https://mcp.bridge.com/mcp",
+                "--retry-connect-timeouts",
+            ],
+        }
+        assert "url" not in bridge
+        assert "oauth" not in bridge
+        assert "auth" not in bridge
+
+    def test_cursor_oauth_mint_keeps_http_oauth_and_strips_bridge(self):
+        actual = json.loads(
+            run_script(["generate_mcp_configs.py", str(FIXTURES / "mcp_servers.yaml"), "false", "cursor-oauth-mint"])
+        )
+        assert "public-tool" not in actual["mcpServers"]
+        mint = actual["mcpServers"]["bridge-tool"]
+        assert mint["url"] == "https://mcp.bridge.com/mcp"
+        assert mint["auth"] == {"CLIENT_ID": "cursor-bridge-client"}
+        assert mint["oauth"]["clientId"] == "cursor-bridge-client"
+        assert mint["oauth"]["scopes"] == ["user"]
+        assert "tokenBridge" not in mint.get("oauth", {})
+        assert mint.get("command") != ",mcp-token"
 
 
 if __name__ == "__main__":

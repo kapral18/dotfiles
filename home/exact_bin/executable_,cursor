@@ -85,9 +85,37 @@ should_refresh() {
 }
 
 if should_refresh "$@" && command -v python3 >/dev/null 2>&1 && [[ -f "$config" ]]; then
+  # Bridge runtime needs the OAuth mint workspace (chezmoi 07-generate-mcp-configs).
+  # Without it, ,mcp-token --login cannot drive cursor-agent against OAuth HTTP shapes.
+  mint_mcp="${HOME}/.cache/mcp-token/oauth-mint/.cursor/mcp.json"
+  if ! [[ -f "$mint_mcp" ]]; then
+    if python3 - "$config" <<'PY'; then
+import json, sys
+try:
+    servers = json.load(open(sys.argv[1])).get("mcpServers", {})
+except (OSError, ValueError):
+    raise SystemExit(1)
+for spec in servers.values():
+    if not isinstance(spec, dict):
+        continue
+    args = spec.get("args") if isinstance(spec.get("args"), list) else []
+    if spec.get("command") == ",mcp-token" and "--bridge" in args:
+        raise SystemExit(0)
+raise SystemExit(1)
+PY
+      echo ",cursor: MCP bridge servers are configured but OAuth mint workspace is missing:" >&2
+      echo "  $mint_mcp" >&2
+      echo ",cursor: re-run chezmoi apply (hook 07-generate-mcp-configs) then retry." >&2
+      exit 1
+    fi
+  fi
+
+  # Derive oauth / bridge-auth servers from ~/.cursor/mcp.json.
   # Authenticated HTTP servers needing a fresh token = servers carrying either
-  # cursor-cli's "oauth" block or Cursor IDE's "auth.CLIENT_ID" shape. Slack
-  # currently emits only the latter, while scsi-main emits both.
+  # cursor-cli's "oauth" block, Cursor IDE's "auth.CLIENT_ID" shape, or a
+  # ,mcp-token --bridge command entry (tokenBridge runtime). Slack may be
+  # CLIENT_ID-only or bridge-only; scsi-main historically emitted both oauth
+  # shapes and now uses the bridge at runtime with mint-workspace OAuth.
   # Deriving the list from the config keeps this in sync with the registry.
   mapfile -t oauth_servers < <(
     python3 - "$config" <<'PY'
@@ -101,9 +129,15 @@ except (OSError, ValueError):
     sys.exit(0)
 
 for name, spec in servers.items():
-    auth = spec.get("auth") if isinstance(spec, dict) else None
-    if isinstance(spec, dict) and (
-        spec.get("oauth") or (isinstance(auth, dict) and auth.get("CLIENT_ID"))
+    if not isinstance(spec, dict):
+        continue
+    auth = spec.get("auth")
+    args = spec.get("args") if isinstance(spec.get("args"), list) else []
+    is_bridge = spec.get("command") == ",mcp-token" and "--bridge" in args
+    if (
+        spec.get("oauth")
+        or (isinstance(auth, dict) and auth.get("CLIENT_ID"))
+        or is_bridge
     ):
         print(name)
 PY

@@ -33,13 +33,13 @@ Each entry is one of two shapes:
 
 The work set includes `scsi-main`, `scsi-local`, and `slack`:
 
-| Server       | Current behavior                                                                                                                                                                                |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `scsi-main`  | Hosted Semantic Code Search server using Elastic SSO/OAuth. Cursor, Claude, Gemini, and Pi each have tool-specific OAuth metadata because they expect different field shapes and redirect URIs. |
-| `scsi-local` | Local SCSI stdio backend emitted to every work-profile harness, including Copilot and Codex.                                                                                                    |
-| `slack`      | Slack MCP server with per-tool OAuth metadata.                                                                                                                                                  |
+| Server       | Current behavior                                                                                                                                                                                                                                          |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scsi-main`  | Hosted Semantic Code Search server using Elastic SSO/OAuth. Claude, Gemini, and Pi keep tool-specific OAuth metadata. Cursor, Copilot, and Codex use `,mcp-token --bridge` at runtime; Cursor keeps OAuth client metadata for a dedicated mint workspace. |
+| `scsi-local` | Local SCSI stdio backend emitted to every work-profile harness, including Copilot and Codex.                                                                                                                                                              |
+| `slack`      | Slack MCP server with per-tool OAuth metadata. Cursor/Copilot/Codex use the shared token bridge at runtime.                                                                                                                                               |
 
-Copilot and Codex get `scsi-local` as a stdio server and `scsi-main` plus `slack` as local `,mcp-token --bridge` stdio servers that forward to the hosted endpoints with per-request bearer injection. OpenCode gets `scsi-local` only: its injector intentionally emits command servers and skips every HTTP entry.
+Copilot, Codex, and Cursor get `scsi-local` as a stdio server and `scsi-main` plus `slack` as local `,mcp-token --bridge` stdio servers that forward to the hosted endpoints with per-request bearer injection. OpenCode gets `scsi-local` only: its injector intentionally emits command servers and skips every HTTP entry.
 
 ### Hosted OAuth exceptions
 
@@ -52,6 +52,8 @@ Both `scsi-main` and `slack` therefore give their `copilot` block a `tokenBridge
 Codex supports streamable HTTP MCP natively, but its OAuth callback settings are global: `mcp_oauth_callback_port` / `mcp_oauth_callback_url`. The hosted SCSI and Slack apps need different approved callback registrations, and its `bearer_token_env_var` support reads the env var once at launch, dying with that token.
 
 Both `scsi-main` and `slack` therefore give their `codex` block the same `tokenBridge` value, so Codex spawns the identical per-request stdio bridge.
+
+Cursor can run the hosted OAuth flows, but its native HTTP MCP client has been observed mid-session as `enabled` with `0 tools` after token/session failure. The Cursor `tokenBridge` entries therefore match Copilot/Codex for runtime transport. OAuth minting stays on a dedicated mint workspace at `~/.cache/mcp-token/oauth-mint/.cursor/mcp.json` (OAuth HTTP shapes only): `,mcp-token` silent rotate and browser login always use that cwd so project OAuth config wins over the user-level bridge (cursor-agent loads project then user MCP config; project wins).
 
 ## Using it
 
@@ -167,13 +169,13 @@ SCSI tokens are JWTs, so `,mcp-token` uses their `exp`. Direct `--login` still g
 
 ### Rotation rules
 
-`--login` rotates silently below `MIN_TTL_SECONDS`; `--login --no-proactive-rotation` (used by `,cursor`, whose runtime refreshes tokens itself) keeps that proactive rotation off the critical path while the final `BLOCKING_ROTATE_TTL_SECONDS` window, expired tokens, and revoked tokens still rotate synchronously.
+`--login` rotates silently below `MIN_TTL_SECONDS`; `--login --no-proactive-rotation` (used by `,cursor`) keeps that proactive rotation off the critical path while the final `BLOCKING_ROTATE_TTL_SECONDS` window, expired tokens, and revoked tokens still rotate synchronously.
 
-The Cursor mode checks the current working workspace's own `mcp-auth.json` before the session starts. The wrapper includes authenticated HTTP servers carrying either cursor-cli's `oauth` block or Cursor IDE's `auth.CLIENT_ID` shape; Slack currently emits only the latter, while SCSI emits both. It resolves Cursor's project directory from matching `.workspace-trusted` metadata, with Cursor's deterministic path slug as the fallback. A workspace with a missing access token or a stale JWT without a refresh chain is first seeded by copying the newest verified cached chain into its cache — token chains are not workspace-bound, so cursor accepts the copy; opaque candidates must pass the liveness probe and JWTs are `exp`-checked before seeding, and only that server's entry is written. Only when no verifiable chain exists does `cursor-agent mcp login <server>` run in that working directory; an existing refresh chain remains runtime-owned. This prevents a valid token in another project cache from masking an unauthenticated current workspace without adding a live MCP handshake to every launch, and without a browser login for every fresh worktree.
+The Cursor mode checks the current working workspace's own `mcp-auth.json` before the session starts. The wrapper includes authenticated HTTP servers carrying either cursor-cli's `oauth` block, Cursor IDE's `auth.CLIENT_ID` shape, or a `,mcp-token --bridge` command entry (tokenBridge runtime). It resolves Cursor's project directory from matching `.workspace-trusted` metadata, with Cursor's deterministic path slug as the fallback. A workspace with a missing access token or a JWT at/under `EXPIRY_SKEW_SECONDS` is first seeded by copying the newest verified cached chain into its cache — token chains are not workspace-bound, so cursor accepts the copy; opaque candidates must pass the liveness probe and JWTs are `exp`-checked before seeding, and only that server's entry is written. Only when no verifiable chain exists does `cursor-agent mcp login <server>` run (in the mint workspace when present); an existing refresh chain remains runtime-owned. This prevents a valid token in another project cache from masking an unauthenticated current workspace without adding a live MCP handshake to every launch, and without a browser login for every fresh worktree.
 
 Why cursor-agent cannot do this itself: hourly access-token expiry is already handled silently by cursor's own refresh grant, but the refresh grant needs an existing `refresh_token` as input, and cursor's per-project caches are its trust boundary — it never reads another project's chain. A brand-new worktree therefore has nothing to refresh, and cursor's only built-in recovery is the browser `authorization_code` flow. Seeding is the one row in the matrix where the wrapper and a bare `cursor-agent` launch genuinely differ; a browser login is only ever required again when the refresh chain itself dies (revocation, admin policy, long idle), not on any expiry schedule. Launching `cursor-agent` directly stays fine when a mid-session popup is acceptable — the wrapper's value is eliminating the guaranteed one-popup-per-server cost of each fresh worktree.
 
-Silent rotation relies on cursor running the provider's `refresh_token` grant whenever a stored access token stops working. `,mcp-token` invalidates the access token in the newest project cache that holds a `refresh_token` and whose `.workspace-trusted` records an existing workspace directory, runs a bounded `cursor-agent mcp list-tools <server>` in that workspace, and cursor writes the freshly minted chain back in place with no browser and without revoking the in-flight token running sessions already hold.
+Silent rotation relies on cursor running the provider's `refresh_token` grant whenever a stored access token stops working. When the mint workspace exists, `,mcp-token` seeds/rotates that project's cache and runs `cursor-agent mcp list-tools <server>` there so list-tools hits OAuth HTTP config rather than the user-level bridge. Otherwise it invalidates the access token in the newest project cache that holds a `refresh_token` and whose `.workspace-trusted` records an existing workspace directory, runs the same bounded list-tools there, and cursor writes the freshly minted chain back in place with no browser and without revoking the in-flight token running sessions already hold.
 
 Concurrent rotations serialize through `~/.cache/mcp-token/rotation.lock` and recheck whether rotation remains due before touching the shared cache.
 
@@ -181,7 +183,7 @@ Concurrent rotations serialize through `~/.cache/mcp-token/rotation.lock` and re
 
 Opaque tokens such as Slack expose no expiry. The local refresh ledger under `~/.cache/mcp-token/` can pin a token the provider has since revoked, so ledger state and cache mtime alone do not prove an opaque token is live.
 
-`--login` validates the ledger-selected opaque token with a minimal MCP `initialize` probe against the server's URL from the generated `~/.cursor/mcp.json`:
+`--login` validates the ledger-selected opaque token with a minimal MCP `initialize` probe against the server's URL from the mint-workspace OAuth config when present, otherwise from `~/.cursor/mcp.json` (including a bridge entry's `--url` argument):
 
 | Probe result                                    | Behavior                                                                                                                                                       |
 | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -194,7 +196,7 @@ Plain reads stay local and never probe.
 
 ### Copilot config safety
 
-The rendered `~/.copilot/mcp-config.json` carries no secrets — bridge entries name only the command, token source, and URL — and rendering happens entirely at `chezmoi apply` time. `,copilot` is a thin exec of the real binary; all `,copilot-*` provider wrappers route through it.
+The rendered `~/.copilot/mcp-config.json` carries no secrets — bridge entries name only the command, token source, and URL — and rendering happens entirely at `chezmoi apply` time. `,copilot` remains the stable launcher all `,copilot-*` provider wrappers route through; it passes arguments through except for bare `--resume`, where it selects from `~/.copilot/session-store.db` and invokes `--session-id=<id>` to avoid Copilot 1.0.73's temporary-session MCP startup race.
 
 The config is still written `0600` and `~/.copilot/` is forced to `0700`.
 

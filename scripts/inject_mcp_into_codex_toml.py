@@ -25,11 +25,9 @@ import json
 import re
 import sys
 
-from mcp_registry import load_servers
+from mcp_registry import TOKEN_BRIDGE_COMMAND, load_servers, token_bridge_args
 
 MARKER = "# __MCP_SERVERS__"
-# Deployed launcher for per-request bearer-injecting stdio bridges.
-TOKEN_BRIDGE_COMMAND = ",mcp-token"
 VALID_APPROVAL_MODES = {"approve", "auto", "prompt"}
 VALID_PROJECT_TRUST_LEVELS = {"trusted", "untrusted"}
 MAX_U32 = 2**32 - 1
@@ -286,7 +284,7 @@ def _render_codex_mcp_toml(
             if not token_source:
                 continue
             command = TOKEN_BRIDGE_COMMAND
-            args = [str(token_source), "--bridge", "--url", str(spec["url"])]
+            args = token_bridge_args(name, spec)
         else:
             command = spec["command"]
             args = spec["args"]

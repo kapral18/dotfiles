@@ -29,6 +29,7 @@ TMUX_PICKERS = REPO / "home/dot_config/exact_tmux/exact_scripts/pickers"
 ARTIFACT_COMMAND = REPO / "home/exact_lib/exact_,artifact/main.py"
 MCP_TOKEN_COMMAND = REPO / "home/exact_lib/exact_,mcp-token/main.py"
 CODEX_COMMAND = REPO / "home/exact_lib/exact_,codex/main.py"
+COPILOT_COMMAND = REPO / "home/exact_lib/exact_,copilot/main.py"
 KBN_STACK_COMMAND = REPO / "home/exact_lib/exact_,kbn-stack/main.py"
 
 # Belt-and-suspenders: ensure scripts/ is importable even when a test file is run

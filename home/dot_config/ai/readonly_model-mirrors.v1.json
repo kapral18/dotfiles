@@ -1294,6 +1294,61 @@
         "reason": null,
         "status": "known"
       }
+    },
+    "vertex": {
+      "available": {
+        "complete": null,
+        "models": [],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "provider_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": "live catalog requires an explicit provider probe",
+        "status": "unknown"
+      },
+      "curated": {
+        "complete": true,
+        "models": [
+          "gemini-3.6-flash",
+          "gemini-3.1-pro-preview",
+          "claude-opus-4-6",
+          "claude-opus-4-7"
+        ],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "provider_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      },
+      "live_probe": {
+        "reason": "no locally verified complete catalog adapter",
+        "supported": false
+      },
+      "recommended": {
+        "complete": true,
+        "models": [
+          "gemini-3.6-flash",
+          "gemini-3.1-pro-preview",
+          "claude-opus-4-6",
+          "claude-opus-4-7"
+        ],
+        "provenance": [
+          {
+            "kind": "registry",
+            "section": "provider_models",
+            "source": "home/.chezmoidata/ai_models.yaml"
+          }
+        ],
+        "reason": null,
+        "status": "known"
+      }
     }
   },
   "schema_version": "1.0.0"

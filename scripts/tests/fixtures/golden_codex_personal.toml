@@ -33,4 +33,5 @@ args = [
   "--bridge",
   "--url",
   "https://mcp.bridge.com/mcp",
+  "--retry-connect-timeouts",
 ]

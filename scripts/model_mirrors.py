@@ -39,8 +39,9 @@ PROVIDERS = (
     "litellm-anthropic",
     "llama-cpp",
     "openrouter",
+    "vertex",
 )
-EXPLICIT_POLICY_PROVIDERS = ("openrouter", "cloudflare-workers-ai", "cloudflare-openai")
+EXPLICIT_POLICY_PROVIDERS = ("openrouter", "cloudflare-workers-ai", "cloudflare-openai", "vertex")
 MODEL_ID_RE = re.compile(r"^[A-Za-z0-9@~][A-Za-z0-9@~+._:/\[\]=-]*$")
 CURSOR_MODEL_ROW_RE = re.compile(r"^([a-z0-9][a-z0-9._-]*) - .+$")
 MAX_COMMAND_OUTPUT_BYTES = 4 * 1024 * 1024

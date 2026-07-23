@@ -59,7 +59,7 @@ The row carries:
 - consumer
 - local version probe
 
-Copilot MCP rendering is apply-time only: `run_onchange_after_07-merge-copilot-config.sh.tmpl` owns the target and its `copilot-mcp` ledger row. Runtime `,copilot` does not render config or change the ledger; hosted authentication rotates inside the per-request stdio bridges.
+Copilot MCP rendering is apply-time only: `run_onchange_after_07-merge-copilot-config.sh.tmpl` owns the target and its `copilot-mcp` ledger row. Runtime `,copilot` does not render config or change the ledger; it only replaces bare `--resume` with a locally selected `--session-id=<id>` to avoid Copilot 1.0.73's MCP startup race. Hosted authentication rotates inside the per-request stdio bridges.
 
 ### `,doctor ai`
 

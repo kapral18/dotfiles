@@ -465,6 +465,51 @@ provider_models:
   - provider: "cloudflare-openai"
     id: "o4-mini"
     recommended: true
+  - provider: "vertex"
+    id: "gemini-3.6-flash"
+    backend: "gemini-chat"
+    wire_model: "google/gemini-3.6-flash"
+    efforts: "minimal,low,medium,high"
+    default_effort: "medium"
+    thinking_default: "medium"
+    supports_no_thinking: false
+    adapter_default: true
+    context_window: 1048576
+    max_output_tokens: 65536
+    recommended: true
+  - provider: "vertex"
+    id: "gemini-3.1-pro-preview"
+    backend: "gemini-chat"
+    wire_model: "google/gemini-3.1-pro-preview"
+    efforts: "low,medium,high"
+    default_effort: "high"
+    thinking_default: "high"
+    supports_no_thinking: false
+    context_window: 1048576
+    max_output_tokens: 65536
+    recommended: true
+  - provider: "vertex"
+    id: "claude-opus-4-6"
+    backend: "claude-raw"
+    wire_model: "claude-opus-4-6"
+    efforts: "low,medium,high,max"
+    default_effort: "none"
+    thinking_default: "high"
+    supports_no_thinking: true
+    context_window: 1000000
+    max_output_tokens: 128000
+    recommended: true
+  - provider: "vertex"
+    id: "claude-opus-4-7"
+    backend: "claude-raw"
+    wire_model: "claude-opus-4-7"
+    efforts: "low,medium,high,xhigh,max"
+    default_effort: "none"
+    thinking_default: "high"
+    supports_no_thinking: true
+    context_window: 1000000
+    max_output_tokens: 128000
+    recommended: true
 
 # Copilot CLI available-model catalog. Snapshot of the Copilot CLI 1.0.71 model list (extracted via an
 # isolated tmux-socket probe; the CLI exposes no --list-models command). Refresh by re-probing and

@@ -41,7 +41,15 @@ mcp_servers:
     type: http
     url: https://mcp.bridge.com/mcp
     oauth_by_tool:
+      cursor:
+        ideClientId: "cursor-bridge-client"
+        clientId: "cursor-bridge-client"
+        scopes: "user"
+        tokenBridge: "bridge-source"
+        retryConnectTimeouts: true
       copilot:
         tokenBridge: "bridge-source"
+        retryConnectTimeouts: true
       codex:
         tokenBridge: "bridge-source"
+        retryConnectTimeouts: true

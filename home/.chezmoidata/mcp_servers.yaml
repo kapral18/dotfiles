@@ -20,9 +20,16 @@ mcp_servers:
         clientId: "0oa1aviou3pe7dITS1t8"
         scope: "user"
       cursor:
+        # Runtime transport is the shared ,mcp-token --bridge (same mid-session
+        # recovery as Copilot/Codex). OAuth minting stays on a dedicated mint
+        # workspace whose project mcp.json keeps these client fields so
+        # cursor-agent mcp list-tools/login can still run the Okta refresh and
+        # authorization_code flows (project config wins over user bridge).
         ideClientId: "0oa1aviou3pe7dITS1t8"
         clientId: "0oa1aviou3pe7dITS1t8"
         scopes: "user"
+        tokenBridge: "scsi-main"
+        retryConnectTimeouts: true
       gemini:
         clientId: "0oa1aviou3pe7dITS1t8"
         callbackPort: 12345
@@ -59,6 +66,10 @@ mcp_servers:
         # ~1h (expires_in=3600) and the bridge rotates behind the seam via
         # cursor's refresh grant instead of dying with a launch-time capture.
         tokenBridge: "scsi-main"
+        # The hosted ingress intermittently returns an Envoy connection-timeout
+        # 503 before a request reaches SCSI. All SCSI tools are read-only, so
+        # retrying that exact transport failure once is safe.
+        retryConnectTimeouts: true
       codex:
         # Codex can run streamable HTTP MCP natively, but its native OAuth
         # client has the same redirect/client-registration mismatch as
@@ -67,6 +78,7 @@ mcp_servers:
         # with the captured token; spawn the same per-request stdio bridge
         # Copilot uses instead.
         tokenBridge: "scsi-main"
+        retryConnectTimeouts: true
     codex_default_tools_approval_mode: approve
 
   - name: scsi-local
@@ -86,7 +98,10 @@ mcp_servers:
         clientId: "1601185624273.8899143856786"
         callbackPort: 3118
       cursor:
+        # Bridge for mid-session recovery; OAuth client fields feed the mint
+        # workspace used by ,mcp-token silent rotate / browser login.
         ideClientId: "3660753192626.8903469228982"
+        tokenBridge: "slack"
       gemini:
         clientId: "1601185624273.8899143856786"
         callbackPort: 3118
