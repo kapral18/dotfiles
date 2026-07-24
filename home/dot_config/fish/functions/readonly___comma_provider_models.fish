@@ -13,6 +13,7 @@ from pathlib import Path
 provider_aliases = {
     "cloudflare": "cloudflare-workers-ai",
     "cloudflare-openai": "cloudflare-openai",
+    "codex": "codex",
     "litellm": "litellm",
     "openrouter": "openrouter",
     "vertex": "vertex",
@@ -24,7 +25,10 @@ if provider is None:
 
 try:
     mirror = json.loads(Path(sys.argv[2]).read_text())
-    catalog = mirror["providers"][provider]["curated"]
+    if provider == "codex":
+        catalog = mirror["harnesses"]["codex"]["curated"]
+    else:
+        catalog = mirror["providers"][provider]["curated"]
 except (OSError, KeyError, TypeError, ValueError):
     raise SystemExit(1)
 

@@ -16,7 +16,7 @@ Use it to answer three questions: which repo source owns the deployed config, wh
 | Codex and OpenCode        | profile merging plus MCP injection                                                                  |
 | Codex launcher            | interactive shells route `codex` through managed `~/bin/,codex`                                     |
 | Copilot launcher wrappers | custom providers are BYOK environment variables only and wrapper commands `exec ,copilot`           |
-| Vertex adapter            | per-wrapper loopback process translates Responses, Chat Completions, and Anthropic Messages         |
+| Local provider adapters   | per-wrapper loopback processes translate harness protocols while keeping upstream credentials local |
 | Copilot MCP               | generated as stdio `type: "local"`, OAuth HTTP, or token-bridge stdio depending on the server block |
 | Copilot memory            | native SDK extension supplies context and worklog hooks                                             |
 | tuicr                     | single-sourced readonly review TUI config; labels are categories, not severity                      |
@@ -113,6 +113,23 @@ Every other OpenRouter model, including GLM, DeepSeek, Qwen, Kimi, GPT, and Gemi
 
 Setting `COPILOT_PROVIDER_TYPE` explicitly before invoking the wrapper always overrides this auto-detection.
 
+### Repo-owned Codex subscription adapter
+
+`,copilot-codex` and `,claude-codex` start one authenticated adapter on a random `127.0.0.1` port and stop it with the harness. The child receives only a random per-launch loopback token. The adapter reads the existing Codex ChatGPT OAuth state from `${CODEX_HOME:-~/.codex}/auth.json`; it never copies the upstream access token into the Copilot or Claude environment.
+
+| Wrapper          | Harness protocol   | Codex backend adaptation                                                                                                     |
+| ---------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `,copilot-codex` | OpenAI Responses   | forces the backend's required SSE mode, relays streaming callers, and assembles `response.output_item.done` for JSON callers |
+| `,claude-codex`  | Anthropic Messages | translates messages, images, tools/tool results, structured output, usage, and streaming events to and from OpenAI Responses |
+
+The adapter sends requests to the same ChatGPT Codex Responses backend used by the installed Codex CLI. If the backend rejects the current bearer with `401`, the adapter asks `codex app-server` to run `account/read` with `refreshToken: true`, reloads `auth.json`, and retries once. Other failures are not retried.
+
+Both wrappers accept `--model <id>` / `-m <id>` and `--effort <level>` / `--reasoning-effort <level>`. An explicit wrapper value overrides the model or reasoning effort emitted by the harness. Without `--model`, the wrapper reads the top-level `model` from the active Codex `config.toml`; without `--effort`, it preserves the harness-generated effort. Put `--` before an underlying Claude or Copilot flag with the same name.
+
+For Claude, the wrapper reads the selected model's `max_context_window` from `${CODEX_HOME:-~/.codex}/models_cache.json`, falling back to `context_window`. It sets Claude Code's auto-compact window to that value and adds Claude's `[1m]` frontend capability marker when the window exceeds Claude's default `200k`; the adapter still sends the original, unsuffixed model ID to Codex. If the model metadata is unavailable, Claude keeps its native default instead of guessing a larger window.
+
+Claude token counting is a local byte-based estimate because the Codex backend does not expose an Anthropic token-count endpoint. Claude's required `max_tokens` field is not forwarded because the installed Codex request schema has no output-token-cap field. Opaque encrypted reasoning attached to a tool turn stays in bounded process memory only, keyed by the following tool call ID, so it can be restored on the tool-result turn without writing prompts or credentials to disk.
+
 ### Repo-owned Vertex adapter
 
 `,codex-vertex`, `,copilot-vertex`, and `,claude-vertex` start one authenticated adapter on a random `127.0.0.1` port and stop it with the harness. The adapter uses the configured Google Cloud project and refreshes `gcloud auth print-access-token` credentials behind the local protocol boundary; no Google bearer or project credential is written to generated config.
@@ -135,15 +152,7 @@ Cursor is intentionally absent: Cursor Agent has no custom model-provider/base-U
 
 ### Claude Code and Cloudflare
 
-Claude Code is not wired to Cloudflare.
-
-Reason:
-
-- Claude's Anthropic-compatible custom base URL path sends `x-api-key` for `ANTHROPIC_API_KEY`.
-- Cloudflare's `/ai/v1/messages` endpoint requires `Authorization: Bearer ...`.
-- the `ANTHROPIC_AUTH_TOKEN` path did not issue a request in the local probe.
-
-So there is intentionally no `,claude-cloudflare` wrapper.
+Claude Code is not wired to Cloudflare. The Codex subscription adapter above is provider-specific and does not create a general Claude-to-Cloudflare path, so there is still no `,claude-cloudflare` wrapper.
 
 ### Codex hosted MCP token bridges
 

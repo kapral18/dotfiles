@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Description: Launch Claude Code through the current Codex ChatGPT subscription.
+
+set -euo pipefail
+
+adapter="$HOME/lib/,codex-adapter/main.py"
+if [[ ! -f "$adapter" ]]; then
+  echo "Error: Codex adapter not found at $adapter. Run chezmoi apply --no-tty ~/lib/,codex-adapter." >&2
+  exit 127
+fi
+
+exec python3 "$adapter" claude "$@"
