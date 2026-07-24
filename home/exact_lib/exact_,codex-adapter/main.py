@@ -276,13 +276,16 @@ def launch(harness: str, argv: list[str]) -> int:
     server, thread = start_server(context)
     base_url = f"http://127.0.0.1:{server.server_port}"
     try:
+        forwarded = options.forwarded
+        if harness == "copilot" and options.effort is not None:
+            forwarded = [*forwarded, "--effort", options.effort]
         command, env = child_command(
             harness,
             binary,
             base_url,
             token,
             model,
-            options.forwarded,
+            forwarded,
             context_window,
         )
         return run_child(command, env)

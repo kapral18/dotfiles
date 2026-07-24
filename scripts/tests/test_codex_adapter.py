@@ -227,7 +227,7 @@ class TestLauncherOptions(unittest.TestCase):
                 self.assertEqual(env["COPILOT_PROVIDER_MAX_PROMPT_TOKENS"], str(expected_prompt))
                 self.assertEqual(env["COPILOT_PROVIDER_MAX_OUTPUT_TOKENS"], "128000")
 
-    def test_SHOULD_resolve_codex_context_metadata_when_launching_copilot(self) -> None:
+    def test_SHOULD_apply_copilot_launch_overrides_and_context_metadata(self) -> None:
         server = mock.Mock()
         server.server_port = 3210
         thread = mock.Mock()
@@ -246,7 +246,10 @@ class TestLauncherOptions(unittest.TestCase):
             mock.patch("main.child_command", child),
             mock.patch("main.run_child", return_value=0),
         ):
-            result = main.launch("copilot", ["--model", "gpt-selected"])
+            result = main.launch(
+                "copilot",
+                ["--model", "gpt-selected", "--effort", "high", "--", "--effort", "low"],
+            )
 
         self.assertEqual(result, 0)
         resolve_context.assert_called_once_with("gpt-selected")
@@ -256,7 +259,7 @@ class TestLauncherOptions(unittest.TestCase):
             "http://127.0.0.1:3210",
             "local-token",
             "gpt-selected",
-            [],
+            ["--effort", "low", "--effort", "high"],
             272_000,
         )
         server.shutdown.assert_called_once_with()
