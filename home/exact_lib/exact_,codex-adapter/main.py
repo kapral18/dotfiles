@@ -21,6 +21,8 @@ from state import OpaqueReasoningStore
 
 CLAUDE_DEFAULT_CONTEXT_WINDOW = 200_000
 CLAUDE_EXTENDED_CONTEXT_SUFFIX = "[1m]"
+COPILOT_GPT5_MAX_OUTPUT_TOKENS = 128_000
+COPILOT_GPT5_MODEL = re.compile(r"^gpt-5\.[456](?:$|-)")
 EFFORTS = {"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"}
 
 
@@ -196,6 +198,12 @@ def child_command(
                 "COPILOT_PROVIDER_WIRE_MODEL": model,
             }
         )
+        if context_window is not None:
+            max_prompt_tokens = context_window
+            if COPILOT_GPT5_MODEL.match(model) and context_window > COPILOT_GPT5_MAX_OUTPUT_TOKENS:
+                max_prompt_tokens -= COPILOT_GPT5_MAX_OUTPUT_TOKENS
+                env["COPILOT_PROVIDER_MAX_OUTPUT_TOKENS"] = str(COPILOT_GPT5_MAX_OUTPUT_TOKENS)
+            env["COPILOT_PROVIDER_MAX_PROMPT_TOKENS"] = str(max_prompt_tokens)
         return [binary, *forwarded], env
     for key in (
         "CLAUDE_CODE_USE_VERTEX",
@@ -248,7 +256,7 @@ def launch(harness: str, argv: list[str]) -> int:
             print(usage(harness))
             return 0
         model = options.model_id or resolve_default_model()
-        context_window = resolve_model_context_window(model) if harness == "claude" else None
+        context_window = resolve_model_context_window(model)
         binary = harness_binary(harness)
         refresh_binary = codex_binary()
         credentials = CodexAuth(codex_binary=refresh_binary)

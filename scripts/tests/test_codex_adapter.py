@@ -202,8 +202,66 @@ class TestLauncherOptions(unittest.TestCase):
         self.assertEqual(copilot_env["COPILOT_PROVIDER_WIRE_API"], "responses")
         self.assertEqual(copilot_env["COPILOT_PROVIDER_TRANSPORT"], "http")
         self.assertEqual(copilot_env["COPILOT_PROVIDER_MODEL_ID"], "gpt-selected")
+        self.assertEqual(copilot_env["COPILOT_PROVIDER_MAX_PROMPT_TOKENS"], "1000000")
         self.assertNotIn("COPILOT_PROVIDER_API_KEY", copilot_env)
         self.assertNotIn("OPENAI_API_KEY", copilot_env)
+
+    def test_SHOULD_split_gpt5_context_between_copilot_prompt_and_output_limits(self) -> None:
+        with mock.patch.dict(os.environ, {"PATH": "/usr/bin"}, clear=True):
+            for model, context_window, expected_prompt in (
+                ("gpt-5.4", 1_000_000, 872_000),
+                ("gpt-5.5", 272_000, 144_000),
+                ("gpt-5.6-sol", 272_000, 144_000),
+            ):
+                with self.subTest(model=model):
+                    _, env = main.child_command(
+                        "copilot",
+                        "/usr/bin/copilot",
+                        "http://127.0.0.1:3210",
+                        "local-token",
+                        model,
+                        [],
+                        context_window,
+                    )
+
+                self.assertEqual(env["COPILOT_PROVIDER_MAX_PROMPT_TOKENS"], str(expected_prompt))
+                self.assertEqual(env["COPILOT_PROVIDER_MAX_OUTPUT_TOKENS"], "128000")
+
+    def test_SHOULD_resolve_codex_context_metadata_when_launching_copilot(self) -> None:
+        server = mock.Mock()
+        server.server_port = 3210
+        thread = mock.Mock()
+        credentials = mock.Mock()
+        auth_provider = mock.Mock(return_value=credentials)
+        child = mock.Mock(return_value=(["/usr/bin/copilot"], {"PATH": "/usr/bin"}))
+
+        with (
+            mock.patch("main.resolve_model_context_window", return_value=272_000) as resolve_context,
+            mock.patch("main.harness_binary", return_value="/usr/bin/copilot"),
+            mock.patch("main.codex_binary", return_value="/usr/bin/codex"),
+            mock.patch("main.CodexAuth", auth_provider),
+            mock.patch("main.CodexClient"),
+            mock.patch("main.start_server", return_value=(server, thread)),
+            mock.patch("main.secrets.token_urlsafe", return_value="local-token"),
+            mock.patch("main.child_command", child),
+            mock.patch("main.run_child", return_value=0),
+        ):
+            result = main.launch("copilot", ["--model", "gpt-selected"])
+
+        self.assertEqual(result, 0)
+        resolve_context.assert_called_once_with("gpt-selected")
+        child.assert_called_once_with(
+            "copilot",
+            "/usr/bin/copilot",
+            "http://127.0.0.1:3210",
+            "local-token",
+            "gpt-selected",
+            [],
+            272_000,
+        )
+        server.shutdown.assert_called_once_with()
+        server.server_close.assert_called_once_with()
+        thread.join.assert_called_once_with(timeout=5)
 
     def test_SHOULD_cap_claude_compaction_at_each_backend_context_window(self) -> None:
         with mock.patch.dict(os.environ, {"PATH": "/usr/bin"}, clear=True):
