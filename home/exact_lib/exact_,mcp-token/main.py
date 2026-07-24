@@ -681,6 +681,25 @@ def _rotation_lock() -> Iterator[None]:
         os.close(descriptor)
 
 
+def _enable_cursor_server(server: str, workspace: str) -> bool:
+    """Ensure Cursor permits the configured MCP server to load in *workspace*."""
+    try:
+        result = subprocess.run(
+            ["cursor-agent", "mcp", "enable", server],
+            cwd=workspace,
+            check=False,
+            timeout=ROTATE_TIMEOUT_SECONDS,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except FileNotFoundError:
+        print(",mcp-token: cursor-agent not found; cannot approve MCP server.", file=sys.stderr)
+        return False
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+    return result.returncode == 0
+
+
 def _silent_rotate_unlocked(server: str, *, quiet: bool = False) -> bool:
     """Mint a fresh token chain via cursor's refresh grant, without a browser.
 
@@ -735,6 +754,11 @@ def _silent_rotate_unlocked(server: str, *, quiet: bool = False) -> bool:
     if not quiet:
         print(f",mcp-token: rotating {server} token via cursor refresh grant …", file=sys.stderr)
     rotate_started_at = time.time()
+    if not _enable_cursor_server(server, workspace):
+        _restore_access_token(path, server, ROTATION_SENTINEL, original)
+        if not quiet:
+            print(f",mcp-token: could not approve {server} in Cursor.", file=sys.stderr)
+        return False
     try:
         subprocess.run(
             ["cursor-agent", "mcp", "list-tools", server],
@@ -796,6 +820,21 @@ def _rotate_after_reject(server: str, rejected: str, *, quiet: bool = True) -> b
         return _silent_rotate_unlocked(server, quiet=quiet)
 
 
+def _recover_bridge_token(server: str, rejected: str | None) -> bool:
+    """Recover a bridge token, escalating one lock owner to browser OAuth."""
+    with _rotation_lock():
+        current = _pick_record(server)
+        if rejected is not None:
+            if current is not None and current[1] != rejected:
+                return True
+        elif current is not None and current[0] >= BLOCKING_ROTATE_TTL_SECONDS:
+            return True
+        if _silent_rotate_unlocked(server, quiet=True):
+            return True
+        print(f",mcp-token bridge: {server} needs browser authentication; opening login …", file=sys.stderr)
+        return _browser_login(server, quiet=True)
+
+
 def _browser_login(server: str, *, quiet: bool = False) -> bool:
     """Run cursor's browser OAuth flow and confirm it yielded a live token.
 
@@ -809,6 +848,10 @@ def _browser_login(server: str, *, quiet: bool = False) -> bool:
         print(f",mcp-token: running cursor-agent mcp login {server} …", file=sys.stderr)
     login_started_at = time.time()
     login_cwd = _mint_workspace() or os.getcwd()
+    if not _enable_cursor_server(server, login_cwd):
+        if not quiet:
+            print(f",mcp-token: could not approve {server} in Cursor.", file=sys.stderr)
+        return False
     try:
         subprocess.run(
             ["cursor-agent", "mcp", "login", server],
@@ -1049,11 +1092,13 @@ def _login(
 def _bridge_token_acquirer(server: str):
     """Build the bridge's ``acquire(rejected)`` token callable.
 
-    A plain cache read serves most requests. Rotation happens when the current
+    A plain cache read serves most requests. Recovery happens when the current
     token is missing, inside the blocking window, or was just rejected by the
-    server (*rejected* carries that token so concurrent workers deduplicate);
-    repeated rotation failures are throttled so a broken refresh chain does
-    not pay the bounded cursor-agent invocation on every request.
+    server (*rejected* carries that token so concurrent workers deduplicate).
+    The cross-process rotation lock gives one worker ownership of silent refresh
+    and browser-login fallback while waiters reuse the resulting token. Repeated
+    complete recovery failures are throttled so a broken auth flow does not open
+    a browser on every request.
     """
     last_failed_rotation = 0.0
 
@@ -1061,11 +1106,7 @@ def _bridge_token_acquirer(server: str):
         nonlocal last_failed_rotation
         if time.time() - last_failed_rotation < ROTATION_RETRY_INTERVAL_SECONDS:
             return
-        if rejected is not None:
-            rotated = _rotate_after_reject(server, rejected)
-        else:
-            rotated = _rotate_if_due(server, quiet=True)
-        if not rotated:
+        if not _recover_bridge_token(server, rejected):
             last_failed_rotation = time.time()
 
     def acquire(rejected: str | None = None) -> str | None:

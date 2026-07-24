@@ -289,6 +289,10 @@ GitHub PRs/issues/comments/reviews/releases/gists, Slack, email, chat, review th
   Never run bare repo-root `rg <pattern>` in a large repository.
 - Use structured reasoning tools when available for complex investigations.
 - Use `/tmp` for experiments and troubleshooting.
+- The Bash tool executes commands via zsh with `NOMATCH` on (not the interactive login shell, even when the environment reports fish).
+  An unquoted token containing a glob such as `[...]` that matches no file aborts the whole command with `no matches found`;
+  unquoted `(...)` is not command substitution and fails the same way.
+  Quote any argument carrying `[`/`]`/`(`/`)` (e.g. model ids like `claude-opus-4-8[1m]`), use `$(...)` for substitution, or wrap the command in `bash -c '...'`.
 - Debug by exploring multiple hypotheses, edge cases, logs, code paths, reproductions, and probes.
   Think laterally about root causes and indirect effects. Do not stop at the first plausible explanation; verify thoroughly.
 - Web/GitHub research priority: `gh` first for GitHub, clone public source to `/tmp` when source can answer, web search only for non-code artifacts or unavailable source, then `gh api` for discovered GitHub objects.

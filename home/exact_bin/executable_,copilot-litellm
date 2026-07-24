@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Description: Launch GitHub Copilot CLI through the LiteLLM gateway.
+# Description: Launch GitHub Copilot CLI through the LiteLLM gateway, via a
+# loopback shim that injects `allowed_openai_params:['tool_choice']` so
+# background compaction stops looping on 400 UnsupportedParamsError.
 
 set -euo pipefail
 
@@ -22,6 +24,12 @@ normalize_base_url() {
   */v1) printf '%s' "$base" ;;
   *) printf '%s/v1' "$base" ;;
   esac
+}
+
+strip_v1_suffix() {
+  local base="$1"
+  base="${base%/}"
+  printf '%s' "${base%/v1}"
 }
 
 well_known_model_id() {
@@ -52,6 +60,7 @@ if [[ -z "$litellm_api_base" ]]; then
   exit 1
 fi
 litellm_api_base="$(normalize_base_url "$litellm_api_base")"
+upstream_origin="$(strip_v1_suffix "$litellm_api_base")"
 
 litellm_api_key="${LITELLM_PROXY_KEY:-}"
 if [[ -z "$litellm_api_key" ]]; then
@@ -117,7 +126,41 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-export COPILOT_PROVIDER_BASE_URL="$litellm_api_base"
+shim_main="${COPILOT_LITELLM_SHIM_MAIN:-$HOME/lib/,copilot-litellm/main.py}"
+if [[ ! -f "$shim_main" ]]; then
+  echo "Error: shim missing at $shim_main; run 'chezmoi apply' to install it." >&2
+  exit 1
+fi
+
+shim_stdout="$(mktemp -t copilot-litellm-shim.XXXXXX)"
+trap 'rm -f "$shim_stdout" 2>/dev/null || true' EXIT
+
+python3 "$shim_main" "$upstream_origin" >"$shim_stdout" 2>&1 &
+shim_pid=$!
+trap 'kill "$shim_pid" 2>/dev/null || true; rm -f "$shim_stdout" 2>/dev/null || true' EXIT
+
+shim_port=""
+for _ in $(seq 1 200); do
+  if line="$(grep -m1 '^PORT=' "$shim_stdout" 2>/dev/null)"; then
+    shim_port="${line#PORT=}"
+    if [[ -n "$shim_port" ]]; then
+      break
+    fi
+  fi
+  if ! kill -0 "$shim_pid" 2>/dev/null; then
+    echo "Error: copilot-litellm shim exited before it was ready:" >&2
+    cat "$shim_stdout" >&2 || true
+    exit 1
+  fi
+  sleep 0.05
+done
+if [[ -z "$shim_port" ]]; then
+  echo "Error: copilot-litellm shim did not report a port in time." >&2
+  cat "$shim_stdout" >&2 || true
+  exit 1
+fi
+
+export COPILOT_PROVIDER_BASE_URL="http://127.0.0.1:${shim_port}/v1"
 export COPILOT_PROVIDER_TYPE="${COPILOT_PROVIDER_TYPE:-openai}"
 export COPILOT_PROVIDER_API_KEY="$litellm_api_key"
 export COPILOT_PROVIDER_WIRE_API="${COPILOT_LITELLM_WIRE_API:-${COPILOT_PROVIDER_WIRE_API:-completions}}"
@@ -127,4 +170,4 @@ export COPILOT_PROVIDER_WIRE_MODEL="$wire_model"
 export COPILOT_PROVIDER_MAX_PROMPT_TOKENS="${COPILOT_LITELLM_MAX_PROMPT_TOKENS:-272000}"
 export COPILOT_PROVIDER_MAX_OUTPUT_TOKENS="${COPILOT_LITELLM_MAX_OUTPUT_TOKENS:-128000}"
 
-exec ",copilot" "${args[@]}"
+",copilot" "${args[@]}"

@@ -1,0 +1,5 @@
+complete -c ',codex-litellm' -w ',codex'
+complete -c ',codex-litellm' -l target -x -a 'sol terra luna gpt-5.2 gpt-5.2-codex gpt-5.6-sol gpt-5.6-terra gpt-5.6-luna llm-gateway/gpt-5.2 llm-gateway/gpt-5.2-codex llm-gateway/gpt-5.6-sol llm-gateway/gpt-5.6-terra llm-gateway/gpt-5.6-luna' -d 'Select LiteLLM gateway target'
+complete -c ',codex-litellm' -s c -r -d 'Pass Codex config override'
+complete -c ',codex-litellm' -s p -l profile -x -d 'Load Codex profile'
+complete -c ',codex-litellm' -s h -l help -d 'Show Codex help'

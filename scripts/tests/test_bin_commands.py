@@ -705,16 +705,26 @@ class TestMcpTokenCommand(unittest.TestCase):
             bindir = root / "bin"
             bindir.mkdir()
             cache = self._write_cache(home, "opaque-slack-token", server="slack")
-            (bindir / "cursor-agent").write_text(f"#!/usr/bin/env bash\ntouch {shlex.quote(str(cache))}\nexit 0\n")
+            (bindir / "cursor-agent").write_text(
+                "#!/usr/bin/env bash\n"
+                'if [ "$1 $2" = "mcp login" ]; then\n'
+                f"  touch {shlex.quote(str(cache))}\n"
+                "fi\n"
+                "exit 0\n"
+            )
             (bindir / "cursor-agent").chmod(0o755)
             result = subprocess.run(
                 [sys.executable, str(MCP_TOKEN_COMMAND), "slack", "--login"],
                 capture_output=True,
                 text=True,
-                env={**os.environ, "HOME": str(home), "PATH": str(bindir)},
+                env={
+                    **os.environ,
+                    "HOME": str(home),
+                    "PATH": f"{bindir}{os.pathsep}{os.environ.get('PATH', '')}",
+                },
             )
 
-        assert result.returncode == 0
+        assert result.returncode == 0, result.stderr
         assert "running cursor-agent mcp login slack" in result.stderr
         assert result.stdout.strip() == "opaque-slack-token"
 
@@ -1401,6 +1411,18 @@ class TestMcpTokenSilentRotation(unittest.TestCase):
             },
         )
 
+    def test_SHOULD_bound_cursor_server_approval(self):
+        mod = _load_mcp_token_module()
+        with mock.patch.object(
+            mod.subprocess,
+            "run",
+            side_effect=subprocess.TimeoutExpired(["cursor-agent", "mcp", "enable"], 1),
+        ) as run:
+            approved = mod._enable_cursor_server("scsi-main", "/tmp")
+
+        assert approved is False
+        assert run.call_args.kwargs["timeout"] == mod.ROTATE_TIMEOUT_SECONDS
+
     def test_short_jwt_rotates_silently_in_trusted_workspace_without_browser(self):
         mod = _load_mcp_token_module()
         short = self._jwt(int(time.time()) + mod.MIN_TTL_SECONDS - 600)
@@ -1419,8 +1441,9 @@ class TestMcpTokenSilentRotation(unittest.TestCase):
 
         assert result.returncode == 0, result.stderr
         assert result.stdout.strip() == fresh, "the rotated token must be selected"
-        assert len(calls) == 1, calls
-        cwd_str, sep, invoked = calls[0].partition(" mcp ")
+        assert len(calls) == 2, calls
+        assert calls[0].endswith(" mcp enable scsi-main"), calls
+        cwd_str, sep, invoked = calls[1].partition(" mcp ")
         assert sep and invoked == "list-tools scsi-main", calls
         assert Path(cwd_str).resolve() == workspace.resolve(), "rotation must run in the cache's trusted workspace"
         assert hits == [], "JWT rotation must not probe the server"
@@ -1479,10 +1502,11 @@ class TestMcpTokenSilentRotation(unittest.TestCase):
 
         assert result.returncode == 0, result.stderr
         assert result.stdout.strip() == fresh
-        assert len(calls) == 1, calls
-        cwd_str, sep, invoked = calls[0].partition(" mcp ")
-        assert sep and invoked == "list-tools scsi-main", calls
-        assert Path(cwd_str).resolve() == mint.resolve(), calls
+        assert len(calls) == 2, calls
+        for call, expected in zip(calls, ("enable scsi-main", "list-tools scsi-main")):
+            cwd_str, sep, invoked = call.partition(" mcp ")
+            assert sep and invoked == expected, calls
+            assert Path(cwd_str).resolve() == mint.resolve(), calls
         assert donor_token == short, "donor cache must not be the rotation target when mint exists"
 
     def test_expired_jwt_with_refresh_is_not_workspace_ready(self):
@@ -1543,8 +1567,9 @@ class TestMcpTokenSilentRotation(unittest.TestCase):
 
         assert result.returncode == 0, result.stderr
         assert result.stdout.strip() == fresh
-        assert len(calls) == 1, calls
-        cwd_str, sep, invoked = calls[0].partition(" mcp ")
+        assert len(calls) == 2, calls
+        assert calls[0].endswith(" mcp enable scsi-main"), calls
+        cwd_str, sep, invoked = calls[1].partition(" mcp ")
         assert sep and invoked == "list-tools scsi-main", calls
         assert Path(cwd_str).resolve() == workspace.resolve()
         assert not any("mcp login" in call for call in calls)
@@ -1625,7 +1650,7 @@ class TestMcpTokenSilentRotation(unittest.TestCase):
 
         assert adopted is True, "a differing cached token proves another worker already rotated"
         assert rotated_same is True, "rejecting the currently cached token must execute the grant"
-        assert len(calls) == 1, f"only the same-token rejection may run cursor-agent, got {calls}"
+        assert len(calls) == 2, f"only one enable plus the same-token grant may run cursor-agent, got {calls}"
 
     def test_concurrent_logins_rotate_once(self):
         mod = _load_mcp_token_module()
@@ -1652,7 +1677,7 @@ class TestMcpTokenSilentRotation(unittest.TestCase):
             calls = log.read_text().splitlines() if log.exists() else []
 
         assert all(returncode == 0 for _stdout, _stderr, returncode in results), results
-        assert len(calls) == 1, "the rotation lock and due recheck must deduplicate concurrent rotations"
+        assert len(calls) == 2, "one enable plus one grant must serve concurrent rotations"
 
     def test_jwt_with_runway_skips_rotation(self):
         mod = _load_mcp_token_module()
@@ -1996,6 +2021,145 @@ class TestVertexWrappers(unittest.TestCase):
                         "-p",
                         "prompt",
                     ]
+
+
+class TestLitellmWrappers(unittest.TestCase):
+    """WHEN launching Claude or Codex through the LiteLLM gateway."""
+
+    def test_SHOULD_clear_claude_api_credentials(self):
+        source = (REPO / "home/exact_bin/executable_,claude-litellm").read_text()
+        assert 'export ANTHROPIC_API_KEY=""' in source
+        assert 'export ANTHROPIC_AUTH_TOKEN="$litellm_api_key"' in source
+        assert "unset ANTHROPIC_CUSTOM_HEADERS" in source
+        assert 'export CLAUDE_CODE_DISABLE_THINKING="${CLAUDE_CODE_DISABLE_THINKING:-1}"' in source
+        assert 'export CLAUDE_CODE_EFFORT_LEVEL="${CLAUDE_CODE_EFFORT_LEVEL:-high}"' in source
+
+    def test_SHOULD_apply_1m_selector_to_native_1m_defaults_only(self):
+        # Claude Code short-circuits BM(e) -> 1e6 when the model id ends in
+        # `[1m]`. Without it, `llm-gateway/`-prefixed ids miss the client
+        # registry and fall back to ~200k (autocompact fires at ~180k). Haiku
+        # 4.5 is NOT in the recognized [1m] set, so it must stay bare.
+        source = (REPO / "home/exact_bin/executable_,claude-litellm").read_text()
+        assert "ANTHROPIC_DEFAULT_OPUS_MODEL:-llm-gateway/claude-opus-4-8[1m]" in source
+        assert "ANTHROPIC_DEFAULT_SONNET_MODEL:-llm-gateway/claude-sonnet-5[1m]" in source
+        assert "CLAUDE_CODE_SUBAGENT_MODEL:-llm-gateway/claude-opus-4-8[1m]" in source
+        assert "ANTHROPIC_DEFAULT_HAIKU_MODEL:-llm-gateway/claude-haiku-4-5}" in source
+        assert "claude-haiku-4-5[1m]" not in source
+
+    def test_SHOULD_strip_openai_v1_suffix_before_claude_appends_messages_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bindir = Path(tmp)
+            claude = bindir / "claude"
+            claude.write_text('#!/usr/bin/env bash\nprintf "%s" "$ANTHROPIC_BASE_URL"\n', encoding="utf-8")
+            claude.chmod(0o755)
+            result = subprocess.run(
+                [modern_bash(), str(REPO / "home/exact_bin/executable_,claude-litellm")],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "PATH": f"{bindir}:{os.environ['PATH']}",
+                    "LITELLM_API_BASE": "https://litellm.invalid/v1/",
+                    "LITELLM_PROXY_KEY": "fixture-key",
+                },
+            )
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout == "https://litellm.invalid"
+
+    def test_SHOULD_configure_codex_with_the_gateway_key(self):
+        source = (REPO / "home/exact_bin/executable_,codex-litellm").read_text()
+        assert 'model_providers.${provider_id}.wire_api=\\"responses\\"' in source
+        assert 'model_providers.${provider_id}.env_key=\\"CODEX_LITELLM_API_KEY\\"' in source
+        assert 'model_provider=\\"${provider_id}\\"' in source
+
+    def test_SHOULD_encode_target_in_provider_id_for_visibility(self):
+        # Codex's banner/`/status` print the provider id, not the upstream model,
+        # so the wrapper names the provider after the target (dots -> dashes so
+        # the -c config key does not split) and echoes a launch line.
+        source = (REPO / "home/exact_bin/executable_,codex-litellm").read_text()
+        assert "provider_id_for_target()" in source
+        assert "printf 'gateway-%s' \"${1//./-}\"" in source
+        assert ",codex-litellm → target ${gateway_model}" in source
+
+    def test_SHOULD_route_codex_through_the_drop_params_loopback_shim(self):
+        # Codex sends tool_choice on /responses, which LiteLLM's azure_ai
+        # backend rejects for gpt-5.x. Neither drop_params server-side (not our
+        # proxy) nor a Codex request-body knob is available, so the launcher
+        # points base_url at a local shim that injects drop_params:true.
+        source = (REPO / "home/exact_bin/executable_,codex-litellm").read_text()
+        assert "CODEX_LITELLM_SHIM_MAIN:-$HOME/lib/,codex-litellm/main.py" in source
+        assert 'model_providers.${provider_id}.base_url=\\"${shim_base_url}\\"' in source
+        assert 'shim_base_url="http://127.0.0.1:${shim_port}/v1"' in source
+        # Must not exec: the EXIT trap needs to run to kill the shim.
+        assert "exec ,codex" not in source
+
+    def test_SHOULD_launch_codex_with_a_codex_family_client_slug(self):
+        # Tools attach only for a Codex-family client slug. gpt-5.2/gpt-5.2-codex
+        # are family-recognized and used directly; the gpt-5.6-* deployments ride
+        # behind a gpt-5.2-codex disguise (they attach zero tools as a client).
+        source = (REPO / "home/exact_bin/executable_,codex-litellm").read_text()
+        assert "CODEX_LITELLM_CLIENT_MODEL:-$default_client" in source
+        assert "gpt-5.2 | gpt-5.2-codex) printf '%s'" in source
+        assert "*) printf 'gpt-5.2-codex'" in source
+
+    def test_SHOULD_always_remap_wire_model_to_qualified_slug(self):
+        # The gateway key only accepts llm-gateway/-prefixed ids (a bare gpt-5.2
+        # 401s), while Codex's client slug is bare, so the shim always rewrites
+        # `model` to the fully-qualified target.
+        source = (REPO / "home/exact_bin/executable_,codex-litellm").read_text()
+        assert 'shim_target="$gateway_model"' in source
+        assert '"$upstream_origin" "$shim_target" "$effort_ceiling"' in source
+
+    def test_SHOULD_select_gateway_target_via_target_flag(self):
+        # --target picks the upstream (sol/terra/luna, gpt-5.2*, or a full slug)
+        # while tools stay attached; the flag is stripped before ,codex.
+        source = (REPO / "home/exact_bin/executable_,codex-litellm").read_text()
+        assert "--target)" in source
+        assert "--target=*)" in source
+        assert "sol | terra | luna) printf 'llm-gateway/gpt-5.6-%s'" in source
+
+    def test_SHOULD_reject_empty_gateway_target(self):
+        # An empty --target would otherwise normalize to llm-gateway/ and hit the
+        # gateway with a nonsense model id; fail closed before starting the shim.
+        source = REPO / "home/exact_bin/executable_,codex-litellm"
+        for argv in (["--target="], ["--target", ""]):
+            result = subprocess.run(
+                [modern_bash(), str(source), *argv],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "LITELLM_API_BASE": "https://litellm.invalid/v1",
+                    "LITELLM_PROXY_KEY": "fixture-key",
+                },
+            )
+            assert result.returncode == 2, (argv, result.stderr)
+            assert "--target requires a value" in result.stderr
+
+    def test_SHOULD_complete_gateway_target_instead_of_client_model(self):
+        completion = (REPO / "home/dot_config/fish/completions/readonly_,codex-litellm.fish").read_text()
+        assert "-l target" in completion
+        assert "sol terra luna gpt-5.2 gpt-5.2-codex" in completion
+        assert "llm-gateway/gpt-5.6-luna" in completion
+        assert "gpt-5.5" not in completion
+        assert "claude-" not in completion
+        assert "-l model" not in completion
+
+    def test_SHOULD_cap_effort_at_the_target_ceiling(self):
+        # gpt-5.2-codex accepts xhigh; every other deployment caps at high.
+        source = (REPO / "home/exact_bin/executable_,codex-litellm").read_text()
+        assert "gpt-5.2-codex) printf 'xhigh'" in source
+        assert "*) printf 'high'" in source
+        assert 'effort="${CODEX_LITELLM_EFFORT:-$effort_ceiling}"' in source
+
+    def test_SHOULD_force_verbosity_medium_for_gpt_5_2_codex(self):
+        # gpt-5.2-codex 400s on any text.verbosity but medium; the wrapper passes
+        # a per-target override to the shim (empty for other models).
+        source = (REPO / "home/exact_bin/executable_,codex-litellm").read_text()
+        assert "verbosity_for_target()" in source
+        assert "gpt-5.2-codex) printf 'medium'" in source
+        assert '"$effort_ceiling" "$verbosity"' in source
 
 
 class TestCopilotWrapper(unittest.TestCase):
@@ -3052,6 +3216,79 @@ class TestMcpTokenBridge(unittest.TestCase):
 
         assert returncode == 0
         assert "result" in init_response, f"current-workspace refresh chain must recover the bridge: {init_response}"
+
+    def test_failed_refresh_chain_opens_browser_login_and_recovers(self):
+        expired = self._jwt(int(time.time()) - 100, "expired")
+        fresh = self._jwt(int(time.time()) + 3600, "fresh")
+        with tempfile.TemporaryDirectory() as tmp, _bridge_mcp_server({fresh}) as (url, _handler):
+            root = Path(tmp)
+            home, bindir, workspace = root / "home", root / "bin", root / "ws"
+            home.mkdir()
+            bindir.mkdir()
+            cache = self._write_cache(home, "scsi-main", expired, workspace=workspace)
+            calls = root / "cursor-agent.log"
+            logged_in = json.dumps(
+                {"scsi-main": {"tokens": {"access_token": fresh, "refresh_token": "next", "expires_in": 3600}}}
+            )
+            agent = bindir / "cursor-agent"
+            agent.write_text(
+                "#!/usr/bin/env bash\n"
+                f'printf "%s\\n" "$*" >> {shlex.quote(str(calls))}\n'
+                'if [ "$1 $2" = "mcp login" ]; then\n'
+                f"cat > {shlex.quote(str(cache))} <<'EOF'\n{logged_in}\nEOF\n"
+                "fi\n"
+                "exit 0\n"
+            )
+            agent.chmod(0o755)
+            session = _BridgeSession(home, bindir, "scsi-main", url)
+            session.send(self.INITIALIZE)
+            init_response = session.recv(timeout=5)
+            returncode = session.close()
+            invocations = calls.read_text().splitlines()
+
+        assert returncode == 0
+        assert "result" in init_response, f"browser login must recover the active bridge: {init_response}"
+        assert invocations == [
+            "mcp enable scsi-main",
+            "mcp list-tools scsi-main",
+            "mcp enable scsi-main",
+            "mcp login scsi-main",
+        ]
+
+    def test_concurrent_bridges_share_one_browser_login(self):
+        expired = self._jwt(int(time.time()) - 100, "expired")
+        fresh = self._jwt(int(time.time()) + 3600, "fresh")
+        with tempfile.TemporaryDirectory() as tmp, _bridge_mcp_server({fresh}) as (url, _handler):
+            root = Path(tmp)
+            home, bindir, workspace = root / "home", root / "bin", root / "ws"
+            home.mkdir()
+            bindir.mkdir()
+            cache = self._write_cache(home, "scsi-main", expired, workspace=workspace)
+            calls = root / "cursor-agent.log"
+            logged_in = json.dumps(
+                {"scsi-main": {"tokens": {"access_token": fresh, "refresh_token": "next", "expires_in": 3600}}}
+            )
+            agent = bindir / "cursor-agent"
+            agent.write_text(
+                "#!/usr/bin/env bash\n"
+                f'printf "%s\\n" "$*" >> {shlex.quote(str(calls))}\n'
+                'if [ "$1 $2" = "mcp login" ]; then\n'
+                "sleep 1\n"
+                f"cat > {shlex.quote(str(cache))} <<'EOF'\n{logged_in}\nEOF\n"
+                "fi\n"
+                "exit 0\n"
+            )
+            agent.chmod(0o755)
+            sessions = [_BridgeSession(home, bindir, "scsi-main", url) for _ in range(2)]
+            for session in sessions:
+                session.send(self.INITIALIZE)
+            responses = [session.recv(timeout=8) for session in sessions]
+            returncodes = [session.close() for session in sessions]
+            invocations = calls.read_text().splitlines()
+
+        assert returncodes == [0, 0]
+        assert all("result" in response for response in responses)
+        assert invocations.count("mcp login scsi-main") == 1
 
     def test_sse_response_streams_messages_in_order(self):
         token = self._jwt(int(time.time()) + 3600)

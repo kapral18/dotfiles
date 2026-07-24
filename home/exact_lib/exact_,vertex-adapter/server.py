@@ -58,9 +58,9 @@ class AdapterHandler(BaseHTTPRequestHandler):
 
     def _authorized(self) -> bool:
         token = self.context.token
-        return hmac.compare_digest(
-            self.headers.get("Authorization", ""), f"Bearer {token}"
-        ) or hmac.compare_digest(self.headers.get("x-api-key", ""), token)
+        return hmac.compare_digest(self.headers.get("Authorization", ""), f"Bearer {token}") or hmac.compare_digest(
+            self.headers.get("x-api-key", ""), token
+        )
 
     def _json(self, status: int, payload: dict[str, Any]) -> None:
         body = json.dumps(payload, separators=(",", ":")).encode()

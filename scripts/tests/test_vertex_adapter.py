@@ -627,6 +627,9 @@ class TestLoopbackServerAndLaunchers(unittest.TestCase):
         self.assertEqual(no_effort_cmd, ["/bin/copilot", "-p", "hi"])
         self.assertEqual(claude[:3], ["/bin/claude", "--model", "gemini-3.6-flash"])
         self.assertEqual(claude_env["ANTHROPIC_BASE_URL"], "http://127.0.0.1:1")
+        self.assertEqual(claude_env["ANTHROPIC_API_KEY"], "")
+        self.assertEqual(claude_env["ANTHROPIC_CUSTOM_HEADERS"], "x-api-key: secret")
+        self.assertNotIn("ANTHROPIC_AUTH_TOKEN", claude_env)
 
     def test_SHOULD_remove_the_per_session_codex_catalog_after_exit(self):
         server = mock.Mock(server_port=1234)

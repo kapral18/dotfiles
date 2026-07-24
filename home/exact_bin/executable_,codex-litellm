@@ -1,0 +1,243 @@
+#!/usr/bin/env bash
+# Description: Launch Codex through the LiteLLM gateway.
+
+set -euo pipefail
+
+if ! command -v ,codex >/dev/null 2>&1; then
+  echo "Error: ,codex wrapper not found on PATH." >&2
+  exit 127
+fi
+
+read_pass_secret() {
+  local path="$1"
+  if command -v pass >/dev/null 2>&1; then
+    pass show "$path" 2>/dev/null | tr -d '\n'
+  fi
+}
+
+normalize_base_url() {
+  local base="${1%/}"
+  case "$base" in
+  */v1) printf '%s' "$base" ;;
+  *) printf '%s/v1' "$base" ;;
+  esac
+}
+
+strip_v1_suffix() {
+  local base="$1"
+  base="${base%/}"
+  printf '%s' "${base%/v1}"
+}
+
+litellm_api_base="${LITELLM_API_BASE:-}"
+if [[ -z "$litellm_api_base" ]]; then
+  litellm_api_base="$(read_pass_secret litellm/api/base)"
+fi
+if [[ -z "$litellm_api_base" ]]; then
+  echo "Error: set LITELLM_API_BASE or pass entry litellm/api/base." >&2
+  exit 1
+fi
+litellm_api_base="$(normalize_base_url "$litellm_api_base")"
+
+litellm_api_key="${LITELLM_PROXY_KEY:-}"
+if [[ -z "$litellm_api_key" ]]; then
+  litellm_api_key="$(read_pass_secret litellm/api/token)"
+fi
+if [[ -z "$litellm_api_key" ]]; then
+  echo "Error: set LITELLM_PROXY_KEY or pass entry litellm/api/token." >&2
+  exit 1
+fi
+
+# Codex speaks the Responses API to LiteLLM against the gpt-5.x azure_ai
+# deployments, which have no native Responses adapter. We can neither set
+# request params server-side (not our proxy) nor inject them through Codex's
+# provider config, so we route Codex through a local loopback shim that rewrites
+# /responses bodies to get past the bridge (model remap, drop_params, tool
+# coercion, tool-output reordering; see the shim's module docstring).
+upstream_origin="$(strip_v1_suffix "$litellm_api_base")"
+
+# Normalize a `--target` value to a full gateway slug. Accepts a bare tier
+# (sol/terra/luna -> gpt-5.6-<tier>), a bare model id (gpt-5.2, gpt-5.6-terra),
+# or an already-qualified id (llm-gateway/...). gpt-5.5 has no /responses
+# deployment on the gateway, so it is not offered here.
+normalize_target() {
+  local t="$1"
+  case "$t" in
+  llm-gateway/*) printf '%s' "$t" ;;
+  sol | terra | luna) printf 'llm-gateway/gpt-5.6-%s' "$t" ;;
+  *) printf 'llm-gateway/%s' "$t" ;;
+  esac
+}
+
+# Bare model id (drop the llm-gateway/ prefix) for a full gateway slug.
+bare_model() { printf '%s' "${1#llm-gateway/}"; }
+
+# Codex attaches its tool set only for a Codex-family client slug. gpt-5.2 and
+# gpt-5.2-codex are family-recognized and can be the client slug directly (so
+# the picker/banner show the true model); the gpt-5.6-* deployments attach zero
+# tools as a client slug, so they must ride behind a gpt-5.2-codex disguise and
+# be remapped on the wire. Returns the client slug for a bare target id.
+client_for_target() {
+  case "$1" in
+  gpt-5.2 | gpt-5.2-codex) printf '%s' "$1" ;;
+  *) printf 'gpt-5.2-codex' ;;
+  esac
+}
+
+# Highest reasoning effort a target accepts. Only the native gpt-5.2-codex
+# Responses model takes xhigh; every azure_ai-bridged deployment caps at high.
+effort_ceiling_for_target() {
+  case "$1" in
+  gpt-5.2-codex) printf 'xhigh' ;;
+  *) printf 'high' ;;
+  esac
+}
+
+# text.verbosity the target requires, or empty to leave Codex's value untouched.
+# gpt-5.2-codex 400s on anything but `medium`; other deployments accept Codex's
+# default, so they need no override.
+verbosity_for_target() {
+  case "$1" in
+  gpt-5.2-codex) printf 'medium' ;;
+  *) printf '' ;;
+  esac
+}
+
+# Provider id encoding the target, so Codex's banner/`/status` show it as
+# `provider: gateway-<target>` (Codex prints the client slug, not the real
+# upstream, so this is the only in-TUI signal of which model answers). Dots
+# become dashes: `-c model_providers.<id>.*` splits the id on the first dot, so
+# a literal `gpt-5.6-terra` would break the config key.
+provider_id_for_target() {
+  printf 'gateway-%s' "${1//./-}"
+}
+
+# Parse and strip `--target <tier|slug>` from the args before they reach
+# ,codex; the rest pass through untouched.
+target_arg=""
+codex_args=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  --target)
+    if [[ $# -lt 2 || -z "${2}" ]]; then
+      echo "Error: --target requires a value (sol|terra|luna or a gateway slug)." >&2
+      exit 2
+    fi
+    target_arg="$2"
+    shift 2
+    ;;
+  --target=*)
+    target_arg="${1#--target=}"
+    if [[ -z "$target_arg" ]]; then
+      echo "Error: --target requires a value (sol|terra|luna or a gateway slug)." >&2
+      exit 2
+    fi
+    shift
+    ;;
+  *)
+    codex_args+=("$1")
+    shift
+    ;;
+  esac
+done
+set -- "${codex_args[@]}"
+
+shim_main="${CODEX_LITELLM_SHIM_MAIN:-$HOME/lib/,codex-litellm/main.py}"
+if [[ ! -f "$shim_main" ]]; then
+  echo "Error: codex-litellm shim not found at $shim_main." >&2
+  exit 1
+fi
+
+# The upstream model. Precedence: --target flag, then CODEX_LITELLM_MODEL, then
+# sol. From it derive the client slug (self when tool-capable, else a
+# gpt-5.2-codex disguise), the wire remap (only when client != target), and the
+# effort ceiling. Any of these is still overridable by its env var below.
+if [[ -n "$target_arg" ]]; then
+  gateway_model="$(normalize_target "$target_arg")"
+else
+  gateway_model="${CODEX_LITELLM_MODEL:-llm-gateway/gpt-5.6-sol}"
+fi
+gateway_bare="$(bare_model "$gateway_model")"
+default_client="$(client_for_target "$gateway_bare")"
+effort_ceiling="$(effort_ceiling_for_target "$gateway_bare")"
+verbosity="$(verbosity_for_target "$gateway_bare")"
+provider_id="$(provider_id_for_target "$gateway_bare")"
+
+# The shim always rewrites the wire `model` to the fully-qualified
+# "$gateway_model": the gateway key's allowlist only accepts `llm-gateway/`-
+# prefixed ids (a bare `gpt-5.2` 401s), while Codex's client slug is bare (for
+# tool attachment / the picker). For gpt-5.6-* the rewrite also swaps the
+# gpt-5.2-codex disguise for the real deployment; for gpt-5.2* it just adds the
+# required prefix.
+shim_target="$gateway_model"
+
+shim_stdout="$(mktemp -t codex-litellm-shim.XXXXXX)"
+trap 'rm -f "$shim_stdout" 2>/dev/null || true' EXIT
+python3 "$shim_main" "$upstream_origin" "$shim_target" "$effort_ceiling" "$verbosity" >"$shim_stdout" 2>&1 &
+shim_pid=$!
+trap 'kill "$shim_pid" 2>/dev/null || true; rm -f "$shim_stdout" 2>/dev/null || true' EXIT
+
+shim_port=""
+for _ in $(seq 1 200); do
+  if line="$(grep -m1 '^PORT=' "$shim_stdout" 2>/dev/null)"; then
+    shim_port="${line#PORT=}"
+    if [[ -n "$shim_port" ]]; then
+      break
+    fi
+  fi
+  if ! kill -0 "$shim_pid" 2>/dev/null; then
+    echo "Error: codex-litellm shim exited before reporting a port." >&2
+    cat "$shim_stdout" >&2 || true
+    exit 1
+  fi
+  sleep 0.05
+done
+if [[ -z "$shim_port" ]]; then
+  echo "Error: codex-litellm shim did not report a port in time." >&2
+  cat "$shim_stdout" >&2 || true
+  exit 1
+fi
+
+shim_base_url="http://127.0.0.1:${shim_port}/v1"
+
+# Codex-family client slug so Codex attaches its tool set. For gpt-5.2 /
+# gpt-5.2-codex this is the target itself (no wire remap); otherwise it is the
+# gpt-5.2-codex disguise and the shim remaps the wire model to "$gateway_model".
+# Override with CODEX_LITELLM_CLIENT_MODEL.
+model="${CODEX_LITELLM_CLIENT_MODEL:-$default_client}"
+# Reasoning effort defaulted to the target's ceiling so the picker/banner match
+# what the gateway accepts (the shim also clamps to it defensively). Override
+# with CODEX_LITELLM_EFFORT or the caller's own -c/-m.
+effort="${CODEX_LITELLM_EFFORT:-$effort_ceiling}"
+caller_set_model=false
+caller_set_effort=false
+for arg in "$@"; do
+  case "$arg" in
+  --model | -m | --model=*) caller_set_model=true ;;
+  -c) : ;;
+  model_reasoning_effort=* | *model_reasoning_effort=*) caller_set_effort=true ;;
+  esac
+done
+
+export CODEX_LITELLM_API_KEY="$litellm_api_key"
+args=(
+  -c "model_providers.${provider_id}.base_url=\"${shim_base_url}\""
+  -c "model_providers.${provider_id}.name=\"LiteLLM ${gateway_bare}\""
+  -c "model_providers.${provider_id}.wire_api=\"responses\""
+  -c "model_providers.${provider_id}.env_key=\"CODEX_LITELLM_API_KEY\""
+  -c "model_provider=\"${provider_id}\""
+)
+if [[ "$caller_set_model" == false && -n "$model" ]]; then
+  args+=(--model "$model")
+fi
+if [[ "$caller_set_effort" == false && -n "$effort" ]]; then
+  args+=(-c "model_reasoning_effort=\"${effort}\"")
+fi
+
+# Codex's banner prints the client slug, not the upstream. Echo the real target
+# once before launch; the `provider: ${provider_id}` line in the banner/`/status`
+# keeps it visible after this scrolls off.
+echo ",codex-litellm → target ${gateway_model} (client ${model}, effort ${effort})" >&2
+
+# Not exec: the EXIT trap must run after ,codex returns to kill the shim.
+,codex "${args[@]}" "$@"

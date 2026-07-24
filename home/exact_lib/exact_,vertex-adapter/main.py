@@ -191,7 +191,8 @@ def _child(
     env.update(
         {
             "ANTHROPIC_BASE_URL": base_url,
-            "ANTHROPIC_API_KEY": token,
+            "ANTHROPIC_API_KEY": "",
+            "ANTHROPIC_CUSTOM_HEADERS": f"x-api-key: {token}",
             "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1",
             "ANTHROPIC_MODEL": model.model_id,
             "ANTHROPIC_DEFAULT_OPUS_MODEL": model.model_id,
