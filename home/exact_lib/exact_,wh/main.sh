@@ -30,11 +30,12 @@ Commands:
                        With no path, sends the current repo's staged diff.
                        Use --clip to send the clipboard, or - to send stdin.
   recv [code-word...]  Receive a transfer, prompting for the code when omitted.
-                       A received *.patch is applied with `git apply`; a clipboard
-                       envelope is loaded into the clipboard (and echoed for text);
-                       any other file or directory is saved into the destination.
-                       Directories are archived before transfer and extracted
-                       after receipt.
+                       A received *.patch uses direct `git apply`, then falls back
+                       to `git apply --3way`. A clean fallback is staged; conflicts
+                       are preserved for resolution. A clipboard envelope is
+                       loaded into the clipboard (and echoed for text); any other
+                       file or directory is saved into the destination. Directories
+                       are archived before transfer and extracted after receipt.
 
 Options (send):
   --clip               Send the current clipboard instead of a path.
@@ -235,7 +236,29 @@ apply_received_patch() {
   mv "$src" "$patch_path"
   echo "Received patch: $patch_path"
   echo "Applying patch: git apply $patch_path"
-  git apply "$patch_path"
+  if git apply "$patch_path"; then
+    return
+  fi
+
+  if git ls-files -u | grep -q .; then
+    echo "Error: direct apply failed and the repository already has unresolved conflicts; not attempting a three-way apply." >&2
+    return 1
+  fi
+
+  echo "Direct apply failed; attempting: git apply --3way $patch_path" >&2
+  if git apply --3way "$patch_path"; then
+    echo "Patch applied with a three-way merge; Git staged the result."
+    return
+  fi
+
+  if git ls-files -u | grep -q .; then
+    echo "Patch applied with conflicts. Resolve these paths, then stage them with git add:" >&2
+    git diff --name-only --diff-filter=U | sed 's/^/  /' >&2
+    return 1
+  fi
+
+  echo "Error: Patch could not be applied directly or with a three-way merge." >&2
+  return 1
 }
 
 save_received_item() {

@@ -75,7 +75,7 @@ Sources live under [`home/exact_bin/`](../../../../home/exact_bin/).
 - `,wh send <path>` sends a single file or archives a directory first.
 - `,wh send --clip` sends the clipboard: text is sent as text, images are sent as PNG.
 - `cmd | ,wh send -` sends piped stdin.
-- `,wh recv` receives and auto-detects: apply patch, load a clipboard envelope, extract archive, or save file/dir. A received clipboard envelope is loaded into the clipboard (text is also echoed to stdout, PNG restores the image); add `--save` to write the payload to `-o`/CWD instead.
+- `,wh recv` receives and auto-detects: apply patch, load a clipboard envelope, extract archive, or save file/dir. Patches first use direct `git apply`, preserving the existing unstaged behavior when it succeeds. If direct application fails, `,wh` attempts `git apply --3way`; Git stages a clean three-way result. A conflict leaves standard conflict markers and unmerged index entries for later resolution, and the command exits non-zero. A received clipboard envelope is loaded into the clipboard (text is also echoed to stdout, PNG restores the image); add `--save` to write the payload to `-o`/CWD instead.
 - Fish and Zsh completions cover `send`, `recv`, `--clip`, path arguments, `--save`, and `-o/--output`.
 
 ```bash
