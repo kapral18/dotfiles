@@ -595,6 +595,43 @@ class TestLoopbackServerAndLaunchers(unittest.TestCase):
         self.assertEqual(codex_catalog["models"][0]["apply_patch_tool_type"], "freeform")
         self.assertEqual(codex_catalog["models"][0]["context_window"], 1_000_000)
 
+    def test_SHOULD_silently_ignore_broken_pipe_during_stream_and_error_handling(self):
+        fake = FakeVertex(
+            {
+                "choices": [
+                    {
+                        "message": {"role": "assistant", "content": "OK"},
+                        "finish_reason": "stop",
+                    }
+                ],
+                "usage": {"prompt_tokens": 3, "completion_tokens": 1},
+            }
+        )
+        context = AdapterContext(
+            registry=self.registry,
+            model=model(),
+            effort="medium",
+            token="secret",
+            vertex=fake,
+            store=OpaqueContextStore(Path(self.temporary.name) / "state.json"),
+        )
+        server, thread = start_server(context)
+        self.addCleanup(thread.join, 2)
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        base_url = f"http://127.0.0.1:{server.server_port}/v1"
+        url = f"{base_url}/messages"
+        body = json.dumps({"model": "gemini-3.6-flash", "stream": True, "messages": [{"role": "user", "content": "hi"}]}).encode()
+
+        req = urllib.request.Request(
+            url,
+            data=body,
+            headers={"x-api-key": "secret", "Content-Type": "application/json"},
+        )
+        with mock.patch("server.AdapterHandler.end_headers", side_effect=BrokenPipeError("[Errno 32] Broken pipe")):
+            with self.assertRaises((urllib.error.URLError, OSError)):
+                urllib.request.urlopen(req, timeout=2)
+
     def test_SHOULD_wire_each_harness_without_leaking_adapter_flags(self):
         selected = model()
         codex, codex_env = main._child(

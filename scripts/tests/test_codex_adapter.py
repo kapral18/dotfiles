@@ -831,6 +831,16 @@ class TestLoopbackServer(unittest.TestCase):
         self.assertEqual(sent["reasoning"]["effort"], "high")
         self.assertTrue(sent["stream"])
 
+    def test_SHOULD_silently_ignore_broken_pipe_during_stream_and_error_handling(self) -> None:
+        self.fake_client.open.return_value = sse_response(*completed_text_events("server"))
+
+        with mock.patch("server.AdapterHandler.end_headers", side_effect=BrokenPipeError("[Errno 32] Broken pipe")):
+            with self.assertRaises((urllib.error.URLError, OSError)):
+                self.request(
+                    "/v1/responses",
+                    {"model": "gpt-test", "input": "hello", "stream": True},
+                )
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

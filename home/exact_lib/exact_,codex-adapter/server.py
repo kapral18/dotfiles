@@ -62,11 +62,14 @@ class AdapterHandler(BaseHTTPRequestHandler):
 
     def _json(self, status: int, payload: dict[str, Any]) -> None:
         body = json.dumps(payload, separators=(",", ":")).encode()
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError):
+            return
 
     def _error(self, frontend: str, status: int, error_type: str, message: str) -> None:
         if frontend == "anthropic":
@@ -143,6 +146,8 @@ class AdapterHandler(BaseHTTPRequestHandler):
                 self._responses(body)
             else:
                 self._anthropic(body)
+        except (BrokenPipeError, ConnectionResetError):
+            return
         except ValueError as error:
             self._error(frontend, HTTPStatus.BAD_REQUEST, "invalid_request_error", str(error))
         except UpstreamError as error:
@@ -208,15 +213,13 @@ class AdapterHandler(BaseHTTPRequestHandler):
         finally:
             upstream.close()
 
-    def _stream_headers(self) -> None:
-        self.send_response(HTTPStatus.OK)
-        self.send_header("Content-Type", "text/event-stream")
-        self.send_header("Cache-Control", "no-cache")
-        self.send_header("Connection", "close")
-        self.end_headers()
-
     def _write_stream(self, chunks: Iterable[bytes]) -> None:
         try:
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Connection", "close")
+            self.end_headers()
             for chunk in chunks:
                 self.wfile.write(chunk)
                 self.wfile.flush()
@@ -226,8 +229,6 @@ class AdapterHandler(BaseHTTPRequestHandler):
             self.close_connection = True
 
     def _stream_responses(self, events: Iterable[dict[str, Any]]) -> None:
-        self._stream_headers()
-
         def chunks() -> Iterable[bytes]:
             try:
                 for event in events:
@@ -243,8 +244,6 @@ class AdapterHandler(BaseHTTPRequestHandler):
         self._write_stream(chunks())
 
     def _stream_anthropic(self, events: Iterable[dict[str, Any]]) -> None:
-        self._stream_headers()
-
         def chunks() -> Iterable[bytes]:
             try:
                 for event in events:

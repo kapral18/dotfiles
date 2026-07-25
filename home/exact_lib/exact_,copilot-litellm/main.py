@@ -124,44 +124,52 @@ class ShimHandler(BaseHTTPRequestHandler):
         except urllib.error.HTTPError as exc:
             self._pipe_response(exc)
         except (urllib.error.URLError, TimeoutError, ssl.SSLError, ConnectionError) as exc:
+            if isinstance(exc, (BrokenPipeError, ConnectionResetError)):
+                return
             payload = {"error": {"type": "upstream_unreachable", "message": str(exc)}}
             data = json.dumps(payload).encode()
-            self.send_response(HTTPStatus.BAD_GATEWAY)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(data)))
-            self.end_headers()
-            self.wfile.write(data)
+            try:
+                self.send_response(HTTPStatus.BAD_GATEWAY)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+            except (BrokenPipeError, ConnectionResetError):
+                return
 
     def _pipe_response(self, resp: object) -> None:
         status = resp.status if hasattr(resp, "status") else resp.code  # type: ignore[attr-defined]
         transfer_encoding = resp.headers.get("Transfer-Encoding", "")  # type: ignore[attr-defined]
         chunked = "chunked" in {value.strip().lower() for value in transfer_encoding.split(",")}
         content_length = resp.headers.get("Content-Length")  # type: ignore[attr-defined]
-        self.send_response(status)
-        for key, value in resp.headers.items():  # type: ignore[attr-defined]
-            if key.lower() in HOP_BY_HOP or (chunked and key.lower() == "content-length"):
-                continue
-            self.send_header(key, value)
-        if chunked:
-            self.send_header("Transfer-Encoding", "chunked")
-        elif content_length is None:
-            self.send_header("Connection", "close")
-            self.close_connection = True
-        self.end_headers()
-        while True:
-            chunk = resp.read1(STREAM_CHUNK)  # type: ignore[attr-defined]
-            if not chunk:
-                break
+        try:
+            self.send_response(status)
+            for key, value in resp.headers.items():  # type: ignore[attr-defined]
+                if key.lower() in HOP_BY_HOP or (chunked and key.lower() == "content-length"):
+                    continue
+                self.send_header(key, value)
             if chunked:
-                self.wfile.write(f"{len(chunk):X}\r\n".encode())
-                self.wfile.write(chunk)
-                self.wfile.write(b"\r\n")
-            else:
-                self.wfile.write(chunk)
-            self.wfile.flush()
-        if chunked:
-            self.wfile.write(b"0\r\n\r\n")
-            self.wfile.flush()
+                self.send_header("Transfer-Encoding", "chunked")
+            elif content_length is None:
+                self.send_header("Connection", "close")
+                self.close_connection = True
+            self.end_headers()
+            while True:
+                chunk = resp.read1(STREAM_CHUNK)  # type: ignore[attr-defined]
+                if not chunk:
+                    break
+                if chunked:
+                    self.wfile.write(f"{len(chunk):X}\r\n".encode())
+                    self.wfile.write(chunk)
+                    self.wfile.write(b"\r\n")
+                else:
+                    self.wfile.write(chunk)
+                self.wfile.flush()
+            if chunked:
+                self.wfile.write(b"0\r\n\r\n")
+                self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError):
+            return
 
     def do_GET(self) -> None:
         self._forward("GET")
