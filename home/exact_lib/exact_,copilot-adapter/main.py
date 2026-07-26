@@ -20,6 +20,10 @@ DEFAULT_MODELS = {
     "claude": "claude-sonnet-5",
     "codex": "gpt-5.3-codex",
 }
+DEFAULT_EFFORTS = {
+    "claude": None,
+    "codex": "high",
+}
 CLAUDE_DEFAULT_CONTEXT_WINDOW = 200_000
 
 
@@ -33,6 +37,9 @@ class LaunchOptions:
 
 
 def usage(harness: str) -> str:
+    default = DEFAULT_MODELS[harness]
+    if DEFAULT_EFFORTS[harness] is not None:
+        default = f"{default} with {DEFAULT_EFFORTS[harness]} effort"
     return f"""Usage: ,{harness}-copilot [adapter options] [harness arguments]
 
 Launch {harness} through an authenticated loopback backed by the current
@@ -45,7 +52,7 @@ Adapter options:
       --context TIER         Select default or long_context
   -h, --help                 Show this wrapper help
 
-The default is {DEFAULT_MODELS[harness]}. Use -- before an underlying harness
+The default is {default}. Use -- before an underlying harness
 flag that has the same name as an adapter option.
 """
 
@@ -220,6 +227,12 @@ def launch(harness: str, argv: list[str]) -> int:
             return 0
         tokens = TokenProvider()
         models = fetch_models(tokens)
+        if options.effort is None:
+            default_effort = DEFAULT_EFFORTS[harness]
+            model_id = options.model_id or DEFAULT_MODELS[harness]
+            model = models.get(model_id)
+            if default_effort is not None and model is not None and default_effort in model.efforts:
+                options = replace(options, effort=default_effort)
         model = resolve_model(harness, options, models)
         binary = harness_binary(harness)
     except (CopilotError, OSError, RuntimeError, ValueError) as error:

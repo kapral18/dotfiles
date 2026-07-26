@@ -621,7 +621,9 @@ class TestLoopbackServerAndLaunchers(unittest.TestCase):
         self.addCleanup(server.shutdown)
         base_url = f"http://127.0.0.1:{server.server_port}/v1"
         url = f"{base_url}/messages"
-        body = json.dumps({"model": "gemini-3.6-flash", "stream": True, "messages": [{"role": "user", "content": "hi"}]}).encode()
+        body = json.dumps(
+            {"model": "gemini-3.6-flash", "stream": True, "messages": [{"role": "user", "content": "hi"}]}
+        ).encode()
 
         req = urllib.request.Request(
             url,

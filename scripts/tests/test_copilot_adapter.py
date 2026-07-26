@@ -237,6 +237,48 @@ class TestChildIsolation(unittest.TestCase):
 class TestLifecycle(unittest.TestCase):
     """WHEN the child exits after an interactive interrupt."""
 
+    def test_SHOULD_default_codex_effort_to_high_when_unspecified(self) -> None:
+        selected = model("gpt-5.3-codex", ("/responses",), ("low", "high"))
+        adapter = mock.Mock(server_port=3210)
+        thread = mock.Mock()
+        captured: dict[str, list[str]] = {}
+
+        def fake_run_child(command: list[str], _env: dict[str, str]) -> int:
+            captured["command"] = command
+            return 0
+
+        with (
+            mock.patch("main.fetch_models", return_value={selected.model_id: selected}),
+            mock.patch("main.harness_binary", return_value="/usr/bin/codex"),
+            mock.patch("main.start_server", return_value=(adapter, thread)),
+            mock.patch("main.run_child", side_effect=fake_run_child),
+        ):
+            result = main.launch("codex", [])
+
+        self.assertEqual(result, 0)
+        self.assertIn('model_reasoning_effort="high"', captured["command"])
+
+    def test_SHOULD_not_force_default_effort_for_models_that_do_not_support_it(self) -> None:
+        selected = model("claude-haiku-4.5", ("/v1/messages",), ())
+        adapter = mock.Mock(server_port=3210)
+        thread = mock.Mock()
+        captured: dict[str, list[str]] = {}
+
+        def fake_run_child(command: list[str], _env: dict[str, str]) -> int:
+            captured["command"] = command
+            return 0
+
+        with (
+            mock.patch("main.fetch_models", return_value={selected.model_id: selected}),
+            mock.patch("main.harness_binary", return_value="/usr/bin/codex"),
+            mock.patch("main.start_server", return_value=(adapter, thread)),
+            mock.patch("main.run_child", side_effect=fake_run_child),
+        ):
+            result = main.launch("codex", ["--model", "claude-haiku-4.5"])
+
+        self.assertEqual(result, 0)
+        self.assertFalse(any("model_reasoning_effort" in item for item in captured["command"]))
+
     def test_SHOULD_not_raise_when_sigint_arrives_during_loopback_shutdown(self) -> None:
         selected = model("gpt-5.3-codex", ("/responses",))
         for child_status in (0, 130):
