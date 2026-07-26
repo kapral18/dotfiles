@@ -144,6 +144,20 @@ Both wrappers read the selected model's `max_context_window` from `${CODEX_HOME:
 
 Claude token counting is a local byte-based estimate because the Codex backend does not expose an Anthropic token-count endpoint. Claude's required `max_tokens` field is not forwarded because the installed Codex request schema has no output-token-cap field. Opaque encrypted reasoning attached to a tool turn stays in bounded process memory only, keyed by the following tool call ID, so it can be restored on the tool-result turn without writing prompts or credentials to disk.
 
+### Repo-owned Copilot subscription adapter
+
+`,claude-copilot` and `,codex-copilot` start one authenticated adapter on a random `127.0.0.1` port and stop it with the harness. The adapter resolves the active GitHub credential with `gh auth token`, while the child receives only a random per-launch loopback token.
+
+The adapter asks the installed Copilot CLI SDK for its entitlement-filtered live model catalog before launch and rejects unavailable models, models without a supported completion endpoint, unsupported effort values, or unsupported context tiers. Every Messages-, Responses-, or Chat-Completions-capable catalog model is selectable from either harness. `,claude-copilot` defaults to `claude-sonnet-5`; `,codex-copilot` defaults to `gpt-5.3-codex`. Both accept `--model` / `-m`, `--effort` / `--reasoning-effort`, and `--context default|long_context`, with `--` separating colliding native harness flags.
+
+Native Claude Code Messages traffic and native Codex Responses traffic remain pass-through. For a cross-protocol selection, the loopback reuses the repo's tested subscription translation modules: Messages ↔ Responses for Claude/GPT crossings, and either native harness protocol ↔ Chat Completions for models such as Gemini. Tool calls, tool results, streaming terminal events, effort, and provider-owned opaque tool context are translated with the conversation. Opaque context remains in bounded process memory for the lifetime of the adapter; the GitHub bearer remains confined to that process.
+
+Without `--context`, both wrappers use Copilot's `default` tier. When the selected model advertises `long_context`, `--context long_context` uses the tier's catalogued prompt allowance plus the model's output allowance, capped by its maximum context window. Models without that tier fail before the child starts. This matches Copilot CLI's [`--context` contract](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference).
+
+Claude's selected Copilot context window becomes `CLAUDE_CODE_AUTO_COMPACT_WINDOW`. Windows above Claude's default `200k` also add Claude's `[1m]` frontend capability marker; the loopback strips that marker before sending the exact catalog model ID to Copilot. The loopback removes only Copilot-incompatible Anthropic beta values, currently Claude Code's `advisor-tool-2026-03-01`, while preserving the rest of a native Messages request. Codex receives a provider-owned `/v1/models` projection of the same live catalog so every translated model retains its prompt limit, reasoning levels, shell, and freeform patch tool metadata instead of falling back.
+
+The GitHub bearer is added only on the adapter's upstream request together with Copilot's `copilot-developer-cli` integration ID. A `401` refreshes the value from `gh auth token` and retries once; other failures pass through without retry. Interactive interrupts propagate to the native harness, while adapter shutdown suppresses follow-up `SIGINT` delivery so cleanup does not emit a Python traceback.
+
 ### Repo-owned Vertex adapter
 
 `,codex-vertex`, `,copilot-vertex`, and `,claude-vertex` start one authenticated adapter on a random `127.0.0.1` port and stop it with the harness. The adapter uses the configured Google Cloud project and refreshes `gcloud auth print-access-token` credentials behind the local protocol boundary; no Google bearer or project credential is written to generated config.
