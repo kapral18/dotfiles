@@ -31,8 +31,6 @@ Durable cross-session memory: markdown capsules, SQLite mirror, subprocess-isola
 
 Search also supports kind, scope, workspace, domain, and mode filters. `curate` runs dedupe, decay, and contradiction detection together; `--no-*` flags skip individual lanes. Metadata drives retrieval and curation; the complete write contract lives in `~/.agents/skills/k-ai-kb/SKILL.md`. Markdown backticks in a double-quoted `--body` trigger shell substitution, so use single quotes or escape them.
 
-**Palantír:** role panes use explicit `,ai-kb search`/`remember`; close-out durable findings → `remember`; task notes stay in `/tmp/specs`; repo conventions → target `AGENTS.md`.
-
 ## Capsule model
 
 Sidecar markdown is canonical for content/identity; SQLite holds curation/runtime state.

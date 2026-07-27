@@ -29,6 +29,7 @@ class WhPatchReceiveTests(unittest.TestCase):
         self.git("init", "-q")
         self.git("config", "user.name", "WH Test")
         self.git("config", "user.email", "wh-test@example.invalid")
+        self.git("config", "commit.gpgsign", "false")
         self.target = self.worktree / "conflict.txt"
         self.target.write_text("base\n", encoding="utf-8")
         self.git("add", "conflict.txt")

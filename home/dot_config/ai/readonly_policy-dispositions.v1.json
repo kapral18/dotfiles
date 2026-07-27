@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "overrides": {
+    "sop.5.code-quality": {
+      "disposition": "skill",
+      "consumer": "home/exact_dot_agents/exact_skills/exact_k-code-quality/readonly_SKILL.md",
+      "risk_tier": "standard",
+      "eval_ref": "sop.5.code-quality.mechanical-only",
+      "text": "## 5. Code Quality\n\nMinimal edit scope:\n\n- Change only what the request requires.\n- All existing behavior outside the explicit scope of the change MUST be preserved.\n- Do not rewrite surrounding code, remove unrelated behavior, or clean up unrelated lines without explicit approval.\n- Dropping unrelated behavior, even if it looks like cleanup, requires explicit user approval.\n- Use targeted edits, not full-file rewrites, unless the user asks for a rewrite.\n- If a full rewrite is necessary, diff against the original and verify no unrelated behavior was dropped.\n- Remove only dead imports/variables/functions introduced by your changes; mention pre-existing dead code instead of deleting it.\n  Every changed line must trace to the request; remove any line that does not.\n\nSemantic dedupe and simplicity:\n\n- Remove duplication only after proving it is not a point-of-use guard.\n- Check whether each repeated check, instruction, config, or workflow step protects an independently reachable entry point.\n- Keep local guards unless every entry path necessarily passes through the shared rule/helper.\n- If extracting, route every entry point through the shared helper/reference and verify each one.\n- Do not add features, abstractions, flexibility, configurability, or error handling not requested.\n- No abstractions for single-use code; no error handling for impossible scenarios.\n- If 200 lines would do as 50, rewrite.\n- If a senior engineer would call it overcomplicated, simplify.\n- Simplicity never licenses dropping behavior or adding unrequested compatibility/legacy paths.\n\nArtifact necessity:\n\n- Before introducing any new file, config, dependency, service, wrapper, generated artifact, or tool-specific metadata, identify the runtime/tooling consumer.\n- Prove the required behavior is missing without it and present with it.\n- A \"works with it\" check is insufficient unless the user explicitly requested that artifact by name.\n- If the without-it probe passes, do not add the artifact; if already added, remove it.\n\n"
+    },
+    "sop.3.5.state-machine-verification": {
+      "disposition": "skill",
+      "consumer": "home/exact_dot_agents/exact_skills/exact_k-code-quality/readonly_SKILL.md",
+      "risk_tier": "compatibility",
+      "eval_ref": "sop.3.5.state-machine-verification.mechanical-only",
+      "text": "### 3.5 State-Machine Verification\n\nUse this for stateful, parser-like, branch-heavy, ordered, retry/workflow, permission, compatibility-sensitive, or flag-dependent behavior.\n\nBefore calling such behavior final or merge-ready, build or inspect a disposable harness under `/tmp/state-machine-verification/<pwd>/<topic>/<slug>/`.\n\n- Include `manifest.json` with worktree, topic, slug, target files/symbols, branch/base/head when relevant, requested behavior, and compatibility intent.\n- Reuse an existing harness only after reading its manifest and confirming it still matches.\n- Name states, transitions, inputs, terminal actions, existing buckets, requested behavior, boundaries, malformed inputs, and regression-sensitive cases.\n- Compare implementation behavior against an independent model/table, not just itself;\n  when preserving behavior, compare against base and classify every difference.\n- Treat unexpected differences as bugs or true `Unknown`s before finalizing.\n- Keep the harness in `/tmp` unless asked to promote compact high-value tests;\n  this verifies complexity, not a reason to add production state machines.\n\n"
+    }
+  }
+}

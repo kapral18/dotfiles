@@ -39,5 +39,4 @@ Proof receipts are separate: `,proof` tracks criteria, evidence, assessments, an
 
 ## Related
 
-- [Palantír orchestrator](../palantir.md) — close-out routing for durable findings
 - [The Agentic Operating System](../index.md) — governance layer and skills

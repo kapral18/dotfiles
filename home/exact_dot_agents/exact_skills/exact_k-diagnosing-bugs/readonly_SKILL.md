@@ -1,13 +1,14 @@
 ---
 name: k-diagnosing-bugs
-description: "Disciplined diagnosis loop for hard bugs and performance regressions: build a tight red loop first, then reproduce, minimise, hypothesise, instrument, fix, regression-test. Use when the user says diagnose/debug this, or reports something broken, throwing, failing, flaky, or slow."
+description: "Use for hard bugs, regressions, flaky failures, crashes, thrown errors, or slowness."
 ---
 
 # Diagnosing Bugs
 
 A discipline for hard bugs. Skip phases only when explicitly justified.
 
-The SOP owns the surrounding gates: verification loops (§3.4), the `/tmp/state-machine-verification` harness for stateful/branch-heavy behaviour (§3.5), and runtime truth (§2.2).
+The SOP owns the surrounding gates: verification loops (§3.4) and runtime truth (§2.2).
+The `k-code-quality` skill owns the `/tmp/state-machine-verification` harness for stateful/branch-heavy behaviour.
 This skill is the debugging front-end that forces a **tight** feedback loop before any theorising, then routes into those gates.
 When you write the regression test, load `~/.agents/skills/k-code-quality-tests/SKILL.md`.
 
@@ -20,8 +21,8 @@ When you write the regression test, load `~/.agents/skills/k-code-quality-tests/
 
 **This is the skill.** Everything else is mechanical.
 With a **tight** pass/fail signal that goes red on _this_ bug, you will find the cause;
-bisection, hypothesis-testing, and instrumentation all just consume it. Without one, no amount of staring at code will save you.
-Spend disproportionate effort here. Be aggressive, be creative, refuse to give up.
+bisection, hypotheses, and instrumentation all consume it. Without one, staring at code will not save you.
+Spend disproportionate effort here.
 
 Ways to construct one — try roughly in this order:
 
@@ -50,9 +51,7 @@ Ways to construct one — try roughly in this order:
 
 Treat the loop as a product.
 Once you have one, **tighten** it: faster (cache setup, skip unrelated init, narrow scope), sharper signal (assert the specific symptom, not "didn't crash"), more deterministic (pin time, seed RNG, isolate filesystem, freeze network).
-A 30-second flaky loop is barely better than none; a 2-second deterministic one is a superpower.
-For non-deterministic bugs the goal is not a clean repro but a **higher reproduction rate** —
-loop the trigger, parallelise, add stress, inject sleeps, until it is debuggable.
+For non-deterministic bugs, chase a **higher reproduction rate**: loop the trigger, parallelise, add stress, inject sleeps, until debuggable.
 
 ### When you genuinely cannot build a loop
 
@@ -107,7 +106,7 @@ Write the regression test **before the fix**, but only if there is a **correct s
 one where the test exercises the real bug pattern as it occurs at the call site. A too-shallow seam gives false confidence.
 **If no correct seam exists, that itself is the finding** — note it; the architecture is preventing the bug from being locked down, and it is a candidate for `~/.agents/skills/k-codebase-design/SKILL.md`.
 If a correct seam exists: turn the minimised repro into a failing test, watch it fail, apply the fix, watch it pass, then re-run the Phase 1 loop against the original (un-minimised) scenario.
-For stateful/branch-heavy fixes, verify against base behaviour buckets via the SOP §3.5 harness.
+For stateful/branch-heavy fixes, load `k-code-quality` and verify against base behaviour buckets with its state-machine verification harness.
 
 ## Phase 6 — Cleanup + post-mortem
 

@@ -10,16 +10,14 @@ This is the controller contract for `/k-build` — the creation-side sibling of 
 It implements an approved **spec packet** (from the `k-spec` skill) hands-free: the human touches the flow at exactly two gates —
 packet approval before execution, and the final report. Everything between runs without asking, inside the side-effect boundary below.
 
-The SOP owns the surrounding gates: per-step verification loops (§3.4), the state-machine harness (§3.5), requirements reset (§3.3), minimal edit scope (§5), and compatibility (§2.0).
+The SOP owns the surrounding gates: per-step verification loops (§3.4), requirements reset (§3.3), and compatibility (§2.0).
+The `k-code-quality` skill owns minimal edit scope and state-machine verification at point of use.
 This skill owns the phase order, the criteria ledger, and the verification topology.
-
-The same packet's criteria drive `,palantir summon --criteria` for a detached legion; `/k-build` is the in-session form.
 
 ## Do not use
 
 - no spec packet exists and the change is trivial or intent is already unambiguous — work directly under the SOP
 - the target is reviewing existing changes or a PR: the `k-review` / `k-agent-review` skills
-- the user wants a detached/background run: the `k-palantir` skill (`,palantir summon --criteria`)
 
 ## Side-effect boundary
 
@@ -53,7 +51,7 @@ Do not start a later phase until the current one completes.
 
 2. **Plan.** Decompose into steps, each with its own verification (SOP §3.4) — a criterion check, a targeted test, or a probe.
    Run the Ownership Gate (SOP §3.2) over the paths the plan touches before any edit.
-   For stateful/parser-like/branch-heavy targets, plan the §3.5 harness now, not after the fact.
+   For stateful/parser-like/branch-heavy targets, plan the k-code-quality State-Machine Verification harness now, not after the fact.
 
 3. **Execute.** Work the steps in order; after each, run its verification and update the ledger.
    Run checks bare — a piped check (`cmd | tail`) reports the pipe's exit code, not the check's.
@@ -85,7 +83,9 @@ Do not start a later phase until the current one completes.
 
 7. **Post-review stage.**
    Run the Post-Review Stage from `~/.agents/skills/k-review/references/judging_core.md` over the full implementation diff, applying the four canonical dimensions by name — redundancy, verbosity, semantic + logical duplication, gaps.
-   Resolve each finding in the working tree; re-run the mechanical gates if the cleanup touched code.
+   Resolve each finding in the working tree; re-run mechanical gates for changed artifacts when applicable.
+   Repeat the Post-Review Stage until it returns clean, or until a verified blocker/requirements reset stops the loop.
+   If cleanup changed any in-scope artifact, rerun packet checks and adversarial verification before reporting.
 
 8. **Report (human gate 2).** Emit the Output block. Nothing is committed, pushed, or published here.
 

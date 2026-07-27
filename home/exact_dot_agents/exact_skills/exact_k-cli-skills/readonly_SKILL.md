@@ -53,12 +53,12 @@ Source is for understanding; `--help` is the truth. Do not include anything that
 1. Read `tool_version` from frontmatter (the **anchor version**).
 2. Run `<tool> --version` to get the **installed version**.
 3. If they match, stop — no upgrade needed.
-4. Clone the repo to `/tmp` (or pull if already cloned):
+4. Clone/reuse the repo under `/tmp`; refresh without `git pull`:
 
 ```bash
 git clone <repo-url> /tmp/<tool-name>
 # or if reusing an existing clone:
-cd /tmp/<tool-name> && git fetch --all --tags && git pull
+cd /tmp/<tool-name> && git fetch --prune --tags
 ```
 
 1. Find the version tags and diff between them:

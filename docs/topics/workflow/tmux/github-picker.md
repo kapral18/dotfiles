@@ -17,7 +17,7 @@ Open it with `prefix` + `G`. Press `alt-g` to switch to the [session picker](ses
 | Header   | mode, scope, counts, cache age, and primary actions                         |
 | Sections | Intent groups: `Action:`, `Mine:`, `Watching:`, `Maintenance:`              |
 | Rows     | PRs/issues with review, CI, hierarchy, relation, and local-worktree signals |
-| Preview  | Dashboard summary plus PR/issue details, body, activity, and handoff hints  |
+| Preview  | Dashboard summary plus PR/issue details, body, and activity                 |
 | Query    | Search visible labels and hidden status/relation tokens                     |
 
 The screenshot uses safe demo rows so the states are visible without exposing private GitHub data. The UI itself is the real picker launched with `prefix` + `G`.
@@ -36,7 +36,6 @@ The screenshot uses safe demo rows so the states are visible without exposing pr
 | `alt-M`                     | Mark the current family                             |
 | `ctrl-r`                    | Refresh from GitHub                                 |
 | `alt-e`                     | Cycle preview expansion                             |
-| `alt-A`                     | Hand off selected PRs/issues to `,palantir summon`  |
 | `alt-x`                     | Open action palette                                 |
 | `alt-g`                     | Switch to session picker                            |
 | `?`                         | Show help                                           |
@@ -70,7 +69,6 @@ The deeper implementation details live in [GitHub picker mechanics](github-picke
 - section jumps and sorting.
 - epic/backport/PR-issue hierarchy.
 - badges, hidden match tokens, worktree detection.
-- comment/review/action helpers and Palantír handoff.
 - preview cache and popup sizing.
 
 ## Related
@@ -78,4 +76,3 @@ The deeper implementation details live in [GitHub picker mechanics](github-picke
 - [Session picker](session-picker.md)
 - [GitHub picker mechanics](github-picker-mechanics.md)
 - [Worktrees](../git-identity/worktrees.md)
-- [Palantír orchestrator](../../ai-assistants/palantir.md)

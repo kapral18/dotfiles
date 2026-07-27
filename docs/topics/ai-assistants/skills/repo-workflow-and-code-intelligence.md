@@ -9,11 +9,11 @@ These skills operate on local repositories, code search, cleanup, external sourc
 
 ## `k-code-quality`
 
-| Field    | Value                                                                                          |
-| -------- | ---------------------------------------------------------------------------------------------- |
-| Use when | editing, reviewing, or refactoring implementation code in any language                         |
-| Source   | [`exact_k-code-quality`](../../../../home/exact_dot_agents/exact_skills/exact_k-code-quality/) |
-| Boundary | style and maintainability details only; SOP owns compatibility, scope, and verification gates  |
+| Field    | Value                                                                                                                                                    |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Use when | editing, reviewing, or refactoring implementation code or repository artifacts                                                                           |
+| Source   | [`exact_k-code-quality`](../../../../home/exact_dot_agents/exact_skills/exact_k-code-quality/)                                                           |
+| Boundary | implementation-quality details, including minimal edit-scope detail, artifact necessity, semantic dedupe, and state-machine verification at point of use |
 
 `k-code-quality` routes to narrower skills when the surface is present: `k-code-quality-react` for React/JSX/TSX/hooks, `k-code-quality-tests` for tests/fixtures/assertions, and `k-code-quality-web` for HTML/CSS/accessibility/browser UI.
 
@@ -49,12 +49,12 @@ These skills operate on local repositories, code search, cleanup, external sourc
 
 ## `k-diagnosing-bugs`
 
-| Field    | Value                                                                                                       |
-| -------- | ----------------------------------------------------------------------------------------------------------- |
-| Use when | diagnosing a hard bug, failure, flake, or performance regression — build a tight red loop first             |
-| Source   | [`exact_k-diagnosing-bugs`](../../../../home/exact_dot_agents/exact_skills/exact_k-diagnosing-bugs/)        |
-| Boundary | routes into SOP §3.4/§3.5 gates; not the runtime-truth chain for "is X set up right"                        |
-| Pivots   | no-correct-seam / architectural post-mortem → `k-codebase-design`; regression test → `k-code-quality-tests` |
+| Field    | Value                                                                                                                    |
+| -------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Use when | diagnosing a hard bug, failure, flake, or performance regression — build a tight red loop first                          |
+| Source   | [`exact_k-diagnosing-bugs`](../../../../home/exact_dot_agents/exact_skills/exact_k-diagnosing-bugs/)                     |
+| Boundary | routes into SOP §3.4 plus k-code-quality State-Machine Verification; not the runtime-truth chain for "is X set up right" |
+| Pivots   | no-correct-seam / architectural post-mortem → `k-codebase-design`; regression test → `k-code-quality-tests`              |
 
 ## `k-prototype`
 

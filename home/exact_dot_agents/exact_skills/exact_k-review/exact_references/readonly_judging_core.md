@@ -242,44 +242,30 @@ Merging duplicate findings is a deduplication task, never evidence that the unde
 
 ## Post-Review Stage (Run On Any Change-Producing Flow)
 
-Trigger: a flow has **applied fixes** and mechanical quality gates are green.
+Trigger: a flow has applied fixes and mechanical quality gates are green.
+Applied-fix flows include local-changes verify-and-fix, PR-fix self-fixes, k-light-review, or any pass that edited the working tree.
+Mechanical quality gates: lint, type_check, tests. Subject: the **fixes themselves** (the changes the review just made).
 
-Applied-fix flows include:
+1. **Derive the fix diff.** Scope to what this pass changed; original diff under review is not the subject.
+2. **Run the four dimensions** over that fix diff: redundancy, verbosity, semantic + logical duplication, gaps.
+3. **Resolve in the working tree.** Fix the smallest correct change now. In read-only contexts, surface a finding + proposed fix.
+4. **Re-gate if edited.** If post-review fixes touched code, re-run lint + type_check + tests.
+5. **Fixed point.** Re-run this Post-Review Stage after cleanup.
+   Repeat until the four dimensions return clean, or until a verified blocker/Requirements Reset stops the loop.
 
-- local-changes verify-and-fix, PR-fix self-fixes, k-light-review, any pass that edited the working tree
-
-Mechanical quality gates: lint, type_check, tests.
-
-Subject: the **fixes themselves** (the changes the review just made).
-
-1. **Derive the fix diff.**
-   - Scope to what this pass changed; use `git diff` for uncommitted fixes, or the commit range / staged set the pass produced when applicable.
-   - This fix diff only is the subject; original diff under review is not.
-2. **Run the four dimensions** (Post-Review Lens above) over that fix diff: redundancy, verbosity, semantic + logical duplication, gaps.
-3. **Resolve in the working tree.**
-   - Treat each hygiene finding like any other finding in a verify-and-fix mode.
-   - Fix the smallest correct change now: collapse the duplication, trim the verbosity, fill the gap, remove the redundancy.
-   - In a read-only context, surface each as a finding with a proposed fix instead of editing.
-   - Read-only contexts include reviewing someone else's PR and read-only subagents.
-4. **Re-gate if you edited.** If the post-review fixes touched code, re-run lint + type_check + tests before declaring the change done.
-
-This stage closes the loop the mechanical gates leave open: lint/types/tests prove the fixes _work_;
-the four dimensions prove the fixes are _clean_.
+This stage closes the loop: lint/types/tests prove fixes _work_; the four dimensions prove fixes are _clean_.
 
 ## Verify-and-Fix Loop (Self-Authored Change-Producing Review)
 
-Shared verify-and-fix spine for self-authored, fix-authorized review surfaces (k-light-review, local-changes mode, or a fix-authorized controller).
-Each surface sets its own scope and base-context stance first, then runs this loop.
-Read-only lanes do not run this loop's fixes: where a step says fix, they report the precise fix (file, location, smallest change) for the parent to apply.
+Shared verify-and-fix spine for self-authored, fix-authorized review surfaces. Each surface sets scope and base-context stance first.
+Read-only lanes report precise fixes for the parent to apply instead of editing.
 
-1. **Build the findings queue.** Walk the whole diff against the Coverage Checklist, ordered by severity (CRITICAL first).
-2. **Refute.**
-   Run the Candidate Refutation Ladder on each candidate; keep only survivors, record reachability, and drop refuted or unverified findings.
-3. **Audit the set.** Run the Findings-Set Audit over the survivors and their proposed fixes before acting.
-4. **Fix each finding** (highest severity first): state what is wrong and why in 1-2 lines, verify from evidence (base-context comparison, `/tmp` reproduction, or test run — do not assert without evidence), and apply the smallest correct change.
-   For a non-trivial or ambiguous fix, state the options and recommended default, then proceed with the default unless the user intervenes.
-   Do not commit or push unless explicitly asked.
-5. **Quality gates.** Run the repo's lint + type_check + tests (discover the commands from the repo; do not guess).
-   Fix until green or report what remains and why.
-6. **Post-Review Stage.**
-   Run the Post-Review Stage over the fix diff (the changes this pass made), then re-run the quality gates if the cleanup touched code.
+1. **Build the findings queue.** Walk the whole diff against the Coverage Checklist, ordered by severity.
+2. **Refute.** Run the Candidate Refutation Ladder; keep only survivors, record reachability, and drop refuted/unverified findings.
+3. **Audit the set.** Run the Findings-Set Audit over survivors and proposed fixes before acting.
+4. **Fix each finding** highest severity first: verify from evidence, apply the smallest correct change, and do not commit/push unless asked.
+   For non-trivial or ambiguous fixes, state options and proceed with the recommended default unless the user intervenes.
+5. **Quality gates.** Run repo lint + type_check + tests; fix until green or report what remains and why.
+6. **Post-Review Stage.** Run it over this pass's fix diff, then re-run quality gates if cleanup touched code.
+7. **Fixed point.** Re-run this verify-and-fix loop over the current scoped diff.
+   Repeat until no new surviving findings or hygiene findings remain; stop only for a verified blocker, Requirements Reset, or user fork.

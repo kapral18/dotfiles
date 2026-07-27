@@ -29,7 +29,6 @@ Shared scripts: `session_context.py` (start), `perturn_recall.py` (per-turn), `w
 | OpenCode     | system transform; payload warm-up                  | `chat.message`          | `tool.execute.after`  | Adapter synthesizes the shared payload shape                                               |
 | Pi           | `session_start` ensure; first `before_agent_start` | `before_agent_start`    | `tool_result`         | Uses session-aware `,agent-memory status --json`                                           |
 | Gemini       | `SessionStart`; `AI_EMBED_WARM=1`                  | `BeforeAgent`           | `AfterTool`           |                                                                                            |
-| Palantír     | inherits the configured harness                    | inherits harness        | inherits harness      | Close-out durable findings route through explicit `remember`                               |
 | Cursor cloud | none                                               | none                    | none                  | Explicit agent-pull only                                                                   |
 
 Shared prefix source: [`prefix.txt`](../../../../home/dot_config/exact_tmux/agent_prompts/prefix.txt). Custom subagent profiles render it directly; manual tmux prompt wrapping uses the same text.

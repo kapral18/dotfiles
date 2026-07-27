@@ -1,6 +1,6 @@
 ---
 name: k-compose-issue
-description: "Use when drafting an issue title/body or issue publication packet before creating or editing a GitHub issue; includes issue_type/metadata/relationships handoff, no gh side effects."
+description: "Use when drafting GitHub issue title/body or publication packet; no gh side effects."
 ---
 
 # Compose Issue
@@ -30,8 +30,7 @@ Repo/org-specific overlays:
 First actions:
 
 1. If the problem statement, repro, logs, screenshots, or notes reference any PR, issue, comment, thread, asset, URL, or media, run the GitHub Context Intake + Reference Resolution gate.
-   The gate lives in `~/.agents/skills/k-review/references/pr_common.md`.
-   The gate is not complete from previews or sliced fields; read full raw bodies/comments first, then summarize.
+   The gate lives in `~/.agents/skills/k-review/references/pr_common.md`; complete it before summarizing.
 2. If the issue body needs contested, historical, product, or team-precedent context not settled by direct references, run Ambient Topic Exploration.
    That workflow lives in `~/.agents/skills/k-review/references/pr_common.md`.
 3. Identify the problem statement, expected behavior, actual behavior, and reproduction from verified evidence.

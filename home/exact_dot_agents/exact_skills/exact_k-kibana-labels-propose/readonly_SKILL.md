@@ -1,6 +1,6 @@
 ---
 name: k-kibana-labels-propose
-description: "Use when proposing elastic/kibana PR/issue labels, backports, or version targets, including while drafting or after creating a Kibana PR; propose-only."
+description: "Use when proposing elastic/kibana labels, backports, or version targets for PRs/issues; propose-only."
 ---
 
 # Elastic / Kibana Label Guidance (Propose-Only)

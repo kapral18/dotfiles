@@ -103,7 +103,7 @@ If the user says "one at a time" or "step by step":
 
 - Process exactly one finding per turn through the loop: state it, verify and refute it, fix it, run quality gates.
 - Stop and wait for the user before the next finding.
-- Run the Post-Review Stage once, after the last finding is resolved.
+- Run the Post-Review Stage after the last finding is resolved, following its fixed-point repeat rule until clean or blocked.
 
 ## Extra Constraints
 

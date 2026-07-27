@@ -1,6 +1,6 @@
 ---
 name: k-nano-banana
-description: "Use when generating raster images, pictures, icons, stickers, or illustrations from a text prompt with ,nano-banana."
+description: "Use when generating raster images, pictures, icons, stickers, or illustrations with ,nano-banana."
 ---
 
 # Nano Banana (image generation)

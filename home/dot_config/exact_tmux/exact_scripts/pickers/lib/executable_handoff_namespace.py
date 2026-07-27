@@ -14,14 +14,8 @@ Contract (fail-closed; empty stdout on any failure):
 
   begin --owner-pid PID --owner-role ROLE --entry ENTRY   -> prints one hex token
   path  SLOT [--token TOKEN]                               -> prints one absolute path
-  retain-context SOURCE [--token TOKEN]                    -> prints one absolute path
   end   --owner-pid PID [--token TOKEN]                    -> no output
   sweep                                                    -> no output
-
-``retain-context`` copies the active namespace's ``gh_picker_palantir_pin.context.md``
-sibling to a lifecycle-managed 0600 file under a retained-context directory in
-the handoff root, removes the source, and prints the retained path. Retained
-copies outlive their namespace and are reaped only after a long TTL (7 days).
 
 Token precedence is ``--token`` then ``TMUX_PICKER_HANDOFF_TOKEN``. Missing or
 malformed tokens fail closed. There is no PID fallback and no legacy global path.
@@ -52,18 +46,6 @@ DEAD_OWNER_TTL_SECONDS = 6 * 60 * 60
 DEAD_OWNER_CAP = 64
 STAGING_GRACE_SECONDS = 5 * 60
 
-# Retained palantir contexts are lifecycle-managed copies that must outlive the
-# namespace they came from: gh_popup ends its namespace as soon as the palantir
-# hand-off is queued, but the deferred `,palantir summon` legion only reads its context
-# when the user finally answers the async command-prompt. That prompt may sit
-# unanswered for a long time, so retained copies are reaped only after a
-# deliberately long TTL (7 days) with no early cap deletion.
-RETAINED_DIR = "retained-context"
-RETAINED_FILE_MODE = 0o600
-RETAINED_NAME_BYTES = 16
-RETAINED_NAME_RE = re.compile(r"^[0-9a-f]{32}\.md$")
-RETAINED_CONTEXT_TTL_SECONDS = 7 * 24 * 60 * 60
-
 ENV_TOKEN = "TMUX_PICKER_HANDOFF_TOKEN"
 
 ALLOWED_SLOTS = frozenset(
@@ -71,16 +53,10 @@ ALLOWED_SLOTS = frozenset(
         "gh_picker_pin",
         "pick_session_pin",
         "gh_picker_create_pin",
-        "gh_picker_palantir_pin",
         "gh_picker_switch_sessions",
         "pick_session_switch_gh",
     }
 )
-
-# The only source a retained context may be copied from is the palantir pin's
-# context sibling inside its own namespace (``<slot>.context.md``).
-PALANTIR_CONTEXT_SLOT = "gh_picker_palantir_pin"
-PALANTIR_CONTEXT_NAME = PALANTIR_CONTEXT_SLOT + ".context.md"
 
 
 OWNER_ROLES = ("popup-loop", "standalone-picker")
@@ -451,149 +427,6 @@ def sweep_root(root: Path) -> None:
             continue
         dead.append((info.st_mtime, namespace))
     _reap_dead(dead, now)
-    _sweep_retained(root, now)
-
-
-# --------------------------------------------------------------------------- #
-# Retained palantir context                                                       #
-# --------------------------------------------------------------------------- #
-
-
-def _best_effort_unlink(path: Path) -> None:
-    try:
-        os.unlink(path)
-    except FileNotFoundError:
-        return
-    except OSError:
-        return
-
-
-def _sweep_retained(root: Path, now: float) -> None:
-    """Reap retained palantir contexts older than the long TTL; never cap-delete.
-
-    Robust by design: an anomalous retained directory (missing, symlinked,
-    wrong owner, wrong mode) is skipped rather than raising, so retained-context
-    hygiene can never break unrelated namespace cleanup.
-    """
-    retained = root / RETAINED_DIR
-    try:
-        info = os.lstat(retained)
-    except FileNotFoundError:
-        return
-    except OSError as exc:
-        raise HandoffError(f"cannot stat retained dir: {retained}") from exc
-    if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
-        return
-    if info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) != 0o700:
-        return
-    try:
-        entries = list(os.scandir(retained))
-    except OSError as exc:
-        raise HandoffError(f"cannot inspect retained dir: {retained}") from exc
-    for entry in entries:
-        name = entry.name
-        try:
-            fileinfo = entry.stat(follow_symlinks=False)
-        except FileNotFoundError:
-            continue
-        except OSError as exc:
-            raise HandoffError(f"cannot stat retained entry: {entry.path}") from exc
-        if stat.S_ISLNK(fileinfo.st_mode) or not stat.S_ISREG(fileinfo.st_mode):
-            continue
-        if name.startswith(STAGING_PREFIX):
-            if now - fileinfo.st_mtime > STAGING_GRACE_SECONDS:
-                _best_effort_unlink(Path(entry.path))
-            continue
-        if not RETAINED_NAME_RE.match(name):
-            continue
-        if now - fileinfo.st_mtime >= RETAINED_CONTEXT_TTL_SECONDS:
-            _best_effort_unlink(Path(entry.path))
-
-
-def secure_retained_dir(root: Path) -> Path:
-    """Create if needed and validate the retained-context dir; fatal on insecurity."""
-    retained = root / RETAINED_DIR
-    created = False
-    if not os.path.lexists(retained):
-        try:
-            os.mkdir(retained, 0o700)
-            created = True
-        except FileExistsError:
-            created = False
-        except OSError as exc:
-            raise HandoffError(f"cannot create retained dir {retained}: {exc}") from exc
-    if created:
-        try:
-            os.chmod(retained, 0o700)
-        except OSError as exc:
-            raise HandoffError(f"cannot secure retained dir {retained}: {exc}") from exc
-    _validate_secure_dir(retained)
-    return retained
-
-
-def _validate_regular_source(path: Path, info: os.stat_result) -> None:
-    if stat.S_ISLNK(info.st_mode):
-        raise HandoffError(f"refusing symlinked source: {path}")
-    if not stat.S_ISREG(info.st_mode):
-        raise HandoffError(f"source is not a regular file: {path}")
-    if info.st_uid != os.getuid():
-        raise HandoffError(f"source not owned by current uid: {path}")
-
-
-def _read_source_bytes(path: Path) -> bytes:
-    """Read a current-user regular file with O_NOFOLLOW and TOCTOU guards."""
-    try:
-        initial = os.lstat(path)
-    except OSError as exc:
-        raise HandoffError(f"cannot stat source: {path}") from exc
-    _validate_regular_source(path, initial)
-    fd = -1
-    try:
-        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
-        current = os.fstat(fd)
-        _validate_regular_source(path, current)
-        if (current.st_dev, current.st_ino) != (initial.st_dev, initial.st_ino):
-            raise HandoffError(f"source changed while reading: {path}")
-        with os.fdopen(fd, "rb") as handle:
-            fd = -1
-            return handle.read()
-    except HandoffError:
-        raise
-    except OSError as exc:
-        raise HandoffError(f"cannot read source: {path}") from exc
-    finally:
-        if fd >= 0:
-            os.close(fd)
-
-
-def _write_retained(retained: Path, payload: bytes) -> Path:
-    """Atomically publish ``payload`` to a random 32-hex 0600 .md file, fsync'd."""
-    final = retained / (secrets.token_hex(RETAINED_NAME_BYTES) + ".md")
-    staging = retained / (STAGING_PREFIX + secrets.token_hex(RETAINED_NAME_BYTES) + ".md")
-    fd = -1
-    try:
-        fd = os.open(
-            staging,
-            os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0),
-            RETAINED_FILE_MODE,
-        )
-        os.fchmod(fd, RETAINED_FILE_MODE)
-        with os.fdopen(fd, "wb") as handle:
-            fd = -1
-            handle.write(payload)
-            handle.flush()
-            os.fsync(handle.fileno())
-    except OSError as exc:
-        if fd >= 0:
-            os.close(fd)
-        _best_effort_unlink(staging)
-        raise HandoffError(f"cannot stage retained context: {exc}") from exc
-    try:
-        os.rename(staging, final)
-    except OSError as exc:
-        _best_effort_unlink(staging)
-        raise HandoffError(f"cannot publish retained context: {exc}") from exc
-    return final
 
 
 # --------------------------------------------------------------------------- #
@@ -675,32 +508,6 @@ def cmd_path(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_retain_context(args: argparse.Namespace) -> int:
-    token = resolve_token(args.token)
-    root = require_root()
-    namespace = root / token
-    if not os.path.lexists(namespace):
-        raise HandoffError(f"namespace not found: {token}")
-    _validate_secure_dir(namespace)
-    load_owner(namespace)
-    expected = namespace / PALANTIR_CONTEXT_NAME
-    source = Path(os.path.abspath(args.source))
-    if source != expected:
-        raise HandoffError(f"source is not the namespace palantir context: {source}")
-    payload = _read_source_bytes(source)
-    retained = secure_retained_dir(root)
-    final = _write_retained(retained, payload)
-    try:
-        os.unlink(source)
-    except FileNotFoundError:
-        pass
-    except OSError as exc:
-        _best_effort_unlink(final)
-        raise HandoffError(f"cannot remove retained source: {source}") from exc
-    sys.stdout.write(str(final) + "\n")
-    return 0
-
-
 def cmd_end(args: argparse.Namespace) -> int:
     if args.owner_pid <= 0:
         raise HandoffError(f"invalid owner pid: {args.owner_pid}")
@@ -750,14 +557,6 @@ def build_parser() -> argparse.ArgumentParser:
     path.add_argument("slot")
     path.add_argument("--token", default=None)
     path.set_defaults(func=cmd_path)
-
-    retain = sub.add_parser(
-        "retain-context",
-        help="copy the namespace palantir context to a retained 0600 file and print its path",
-    )
-    retain.add_argument("source")
-    retain.add_argument("--token", default=None)
-    retain.set_defaults(func=cmd_retain_context)
 
     end = sub.add_parser("end", help="remove the caller's namespace when it owns it")
     end.add_argument("--owner-pid", type=int, required=True)

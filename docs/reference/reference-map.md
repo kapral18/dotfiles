@@ -112,8 +112,6 @@ Each registry has a declarative list plus the hook that converges it. See [Packa
 
 ## AI
 
-AI governance, harness configs, model/MCP generation, memory, Palantír, and local inference have a focused lookup page:
-
 - [AI reference](ai-reference.md)
 
 ## Scripts (`scripts/`)

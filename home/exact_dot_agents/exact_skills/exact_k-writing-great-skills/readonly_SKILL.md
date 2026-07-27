@@ -1,127 +1,94 @@
 ---
 name: k-writing-great-skills
-description: "Use when authoring or refactoring a skill (SKILL.md): choosing model- vs user-invocation, writing its frontmatter description/triggers, structuring references, applying leading words, or pruning for predictability. Pairs with k-cli-skills for CLI-tool skill mechanics."
+description: "Use when authoring/refactoring skills: invocation, triggers, references, leading words, pruning."
 ---
 
 # Writing Great Skills
 
-A skill exists to wrangle determinism out of a stochastic system.
-**Predictability** — the agent taking the same _process_ every run, not producing the same output — is the root virtue;
-every lever below serves it.
+A skill wrangles predictability from a stochastic system: the agent should take the same **process** every run.
+Every lever below serves that.
 
-This skill owns the craft of skills.
-For CLI-tool skill mechanics (the `tool_version` frontmatter, `--help` verification, source layout), load `~/.agents/skills/k-cli-skills/SKILL.md`; it owns that surface and the skill source-layout table.
-The SOP still owns evidence, minimal edit scope, and the human-visible gates — a skill never restates them.
+This skill owns skill craft.
+For CLI-tool mechanics (`tool_version`, `--help`, source layout), load `~/.agents/skills/k-cli-skills/SKILL.md`.
+The SOP still owns evidence, minimal edit scope, and human-visible gates; a skill never restates them.
 
-## Invocation — the one axis that splits every skill
+## Invocation
 
-Every `SKILL.md` is either **model-invoked** or **user-invoked**, decided by one field:
+Every `SKILL.md` is either model-invoked or user-invoked.
 
-- **Model-invoked** (default; omit `disable-model-invocation`) — keeps a `description`, so the agent can fire it autonomously _and_ other skills can reach it (you can still type its name).
-  It pays **context load**: the description sits in the window every turn.
-  The `description` is model-facing — rich trigger phrasing ("Use when the user wants…, mentions…, asks for…").
-- **User-invoked** (`disable-model-invocation: true`) — strips the description from the agent's reach:
-  only the human, typing its name, can invoke it, and no other skill can.
-  Zero context load, but it spends **cognitive load**: the human is the index that must remember it exists.
-  The `description` becomes a human-facing one-liner; strip trigger lists.
+- **Model-invoked** (default; omit `disable-model-invocation`) keeps a model-facing `description`.
+  The agent can fire it autonomously and other skills can reach it, but the description is permanent context load.
+- **User-invoked** (`disable-model-invocation: true`) is reachable only when the human types it.
+  It has zero model context load and a human-facing one-line description, but the human must remember it exists.
+  A user-invoked skill can invoke model-invoked skills but cannot reach another user-invoked one.
 
-Pick model-invocation only when the agent must reach the skill on its own, or another skill must.
-If it only ever fires by hand, make it user-invoked and pay no context load.
-Because a user-invoked skill has no description, it can invoke model-invoked skills but can never reach another user-invoked one.
+Stay model-invoked only when the agent or another skill must reach the skill autonomously.
+Reuse is a reason to extract a skill, not a reason to make it model-invoked.
 
-The test for staying model-invoked: _could the model usefully reach for this autonomously?_
-Reuse alone is not the test — reuse is the reason to extract a skill, not the reason to make it model-invoked.
+## Description
 
-## Writing the description
+The `description` is the routing surface: put `Use when` triggers there because the body loads only after routing.
+Prune harder than the body.
 
-A model-invoked `description` does two jobs — state what the skill is, and list the **branches** that should trigger it.
-Every word is permanent context load, so it earns harder pruning than the body:
-
-- **Front-load the leading word** — the description is where it does its invocation work.
-- **One trigger per branch.**
-  Synonyms that rename a single branch are **duplication** — collapse them; keep only genuinely distinct branches.
-- **Cut identity already in the body.** Keep the description to triggers plus any "when another skill needs…" reach clause.
-- Match this repo's entry contract: put the routing `Use when` in the `description`, since the body only loads after routing.
-  Detailed applicability checks may live in the body.
+- Front-load the leading word.
+- One trigger per distinct branch; collapse synonyms.
+- Cut identity and detailed applicability checks already in the body.
+- Keep a “when another skill needs …” reach clause only when real.
 
 ## Information hierarchy
 
-A skill is built from two content types — **steps** (ordered actions the agent performs) and **reference** (definitions, rules, facts consulted on demand) — that mix freely.
-Rank each piece by how immediately the agent needs it, on a ladder with three rungs:
+Use three rungs:
 
-1. **In-skill step** — an ordered action in `SKILL.md`, the primary tier. Each step ends on a **completion criterion**.
-2. **In-skill reference** — a rule or fact in `SKILL.md`, consulted on demand.
-   Often a legitimately flat peer-set (every rule on one rung) — a fine arrangement, not a smell.
-3. **External reference** — reference pushed into a separate file under the skill folder, reached by a **context pointer**, loaded only when that pointer fires.
+1. **In-skill step** — ordered action in `SKILL.md`; each step ends with a completion criterion.
+2. **In-skill reference** — rule/fact consulted on demand; flat peer-sets are fine.
+3. **External reference** — separate file loaded through a context pointer only when that branch needs it.
 
-**Progressive disclosure** is the move down the ladder: inline what every **branch** needs, and push behind a pointer what only some branches reach.
-Branching is the cleanest disclosure test.
-A context pointer's _wording_, not its target, decides when and how reliably the agent reaches the material —
-a must-have behind a weak pointer is a variance bug; sharpen the wording before inlining.
-Push too little down and the top bloats; push too much and you hide material the agent needs. That tension is the whole decision.
-
-**Co-location** decides what sits beside a piece once placed: keep a concept's definition, rules, and caveats under one heading rather than scattered, so reading one part brings its neighbours.
+Progressive disclosure: inline what every branch needs; move branch-only material behind a sharp pointer.
+The pointer wording controls reliability; a must-have behind a weak pointer is a variance bug.
+Too little disclosure bloats the top; too much hides needed material.
+Co-locate each concept's definition, rules, and caveats under one heading.
 
 ## Completion criteria
 
-Every step ends on the condition that tells the agent the work is done. Two properties make it a lever:
+Every step needs a done condition. Strong criteria are both checkable and exhaustive.
 
-- **Clarity** — can the agent tell done from not-done?
-  A vague bound ("understanding reached") lets attention slip to _being done_ and invites **premature completion**.
-- **Demand** — how much it requires. "Every modified file accounted for" forces thorough **legwork** where "produce a change list" does not.
-  Demand binds flat reference too ("every rule applied"), which is how a skill with no steps still carries an exhaustiveness bar.
-
-The strongest criteria are both checkable and exhaustive.
+- **Clarity**: can the agent tell done from not-done? Fuzzy criteria invite premature completion.
+- **Demand**: “every modified file accounted for” forces legwork; “produce a list” does not.
+  Demand also applies to flat reference: “every rule applied.”
 
 ## Leading words
 
-A **leading word** (Leitwort) is a compact concept already living in the model's pretraining that the agent thinks with while running the skill (e.g. _tracer bullet_, _fog of war_, _tight loop_, _red_).
-Repeated as a token — not restated as a sentence — it accumulates a distributed definition and anchors a whole region of behaviour in the fewest tokens, by recruiting priors the model already holds.
+A leading word is a compact pretrained concept the model can think with (_tracer bullet_, _fog of war_, _tight loop_, _red_).
+Repeat the token instead of restating its definition.
 
-It serves predictability twice: in the body it anchors _execution_ (the agent reaches for the same behaviour every time the word appears);
-in the description it anchors _invocation_ (when the same word lives in your prompts, docs, and code, the agent links that shared language to the skill and fires it more reliably).
-Reach for an existing pretrained word first — a coined word recruits no priors, so you pay in definition tokens what a pretrained word gives free.
-
-Hunt for restatements a leading word retires: "fast, deterministic, low-overhead" → a _tight_ loop;
-"a loop you believe in" → the loop goes _red_ or it doesn't. You win twice: fewer tokens, and a sharper hook.
+It anchors execution in the body and invocation in the description.
+Prefer pretrained words; coined words recruit no priors and require definition tokens.
+Hunt restatements a leading word retires: “fast, deterministic, low-overhead” → _tight_; “a loop you believe in” → _red_ or not.
 
 ## Pruning
 
-- **Single source of truth** — keep each meaning in exactly one authoritative place, so changing behaviour is a one-place edit.
-- **Relevance** — check every line: does it still bear on what the skill does?
-  A line loses relevance by never bearing on the task or by going stale.
-- **No-ops** — hunt sentence by sentence: does this line change behaviour versus the model's default?
-  A line the model already obeys pays load to say nothing. Delete the whole sentence rather than trim words. Be aggressive.
-- **Hard size bound (references)** — keep every reference file under 20 KB (20480 bytes;
-  `make check` enforces this for `home/exact_dot_agents/` sources): the strictest harness view tool truncates larger files, so a "load this file" pointer to an oversized reference breaks mid-flow.
-  `SKILL.md` itself is delivered by skill loaders and exempt from the gate, but the same bound is a healthy sprawl signal for it too.
-  Approaching the bound is a sprawl signal — disclose sections behind pointers or split before hitting it, rather than trimming qualifiers to squeeze under.
+- **Single source of truth**: one meaning, one authoritative place.
+- **Relevance**: every line must still bear on the skill; stale or never-used lines go.
+- **No-ops**: if a line changes no behavior versus the model default, delete it rather than trimming it.
+- **Hard size bound (references)**: keep reference files under 20 KB (`make check` enforces this under `home/exact_dot_agents/`).
+  `SKILL.md` is skill-loader delivered and exempt, but nearing the bound is a sprawl signal;
+  disclose sections behind pointers or split before squeezing qualifiers.
 
-A weak leading word is a no-op (_be thorough_ when the agent is already thorough-ish);
-the fix is a stronger word (_relentless_), not a different technique.
+A weak leading word is a no-op (_be thorough_); fix with a stronger word (_relentless_), not a new technique.
 
 ## Failure modes
 
-Use these to diagnose a skill that misbehaves:
-
-- **Premature completion** — ending a step before it is genuinely done, attention slipping to _being done_.
-  Defence, in order: sharpen the completion criterion first (cheap, local); only if it is irreducibly fuzzy _and_ you observe the rush, hide the later steps by splitting across a real context boundary (a user-invoked hand-off or a subagent — an inline model-invoked call leaves the later steps in context and clears nothing).
-- **Duplication** — the same meaning in more than one place.
-  Costs maintenance and tokens, and inflates a meaning's prominence past its real rank. The accidental inverse of a leading word.
-- **Sediment** — stale layers that settle because adding feels safe and removing feels risky.
-  The default fate of any skill without a pruning discipline.
-- **Sprawl** — a skill simply too long, even when every line is live and unique.
-  Cure with the hierarchy: disclose reference behind pointers, split by branch or sequence so each path carries only what it needs.
-- **No-op** — a line the model already obeys by default. Distinct from irrelevance: a line can be perfectly relevant and still be a no-op.
+- **Premature completion**: the agent ends before done.
+  First sharpen the completion criterion; if it is inherently fuzzy and rush is observed, hide later steps across a real context boundary (user-invoked hand-off or subagent, not an inline model-invoked call).
+- **Duplication**: one meaning in multiple places; maintenance drift and false prominence.
+- **Sediment**: stale layers retained because adding feels safer than removing.
+- **Sprawl**: too long even when live and unique; fix with hierarchy, branch disclosure, or sequence split.
+- **No-op**: relevant but already model-default behavior.
 
 ## When to split
 
-Granularity spends one of the two loads, so split only when the cut earns it:
+Split only when the cut earns its load.
 
-- **By invocation** — split off a model-invoked skill when you have a distinct leading word that should trigger it, or another skill must reach it.
-  You pay context load for the new always-loaded description.
-- **By sequence** — split a run of steps when the steps still ahead tempt the agent to rush the one in front of it.
-  Hiding them encourages more legwork on the current task.
-
-When user-invoked skills multiply past what you can remember, that piled-up cognitive load is cured by a **router skill**:
-one user-invoked skill that names the others and when to reach each.
+- **By invocation**: split a model-invoked skill only for a distinct leading word that should trigger it, or when another skill must reach it.
+- **By sequence**: split steps when seeing later steps tempts the agent to rush the current one.
+- If user-invoked skills exceed memory, create a router skill that names them and when to use each.

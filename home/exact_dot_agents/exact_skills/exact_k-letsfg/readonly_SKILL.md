@@ -1,6 +1,6 @@
 ---
 name: k-letsfg
-description: "Use when searching flight tickets, fares, routes, airline options, dates, or travel prices with local LetsFG connectors."
+description: "Use when searching flights, fares, routes, airlines, dates, or prices with LetsFG connectors."
 tool_version: "letsfg 2026.4.66 (uv tool; --version unavailable); playwriter 0.1.0 fallback"
 ---
 

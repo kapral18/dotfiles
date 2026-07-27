@@ -154,12 +154,8 @@ Review-specific mechanics only:
 - Verify the outcome against the current head before replying/resolving (the author's claim is not proof).
 - If the thread asked for a code/doc change you made: reply `Fixed in <full commit URL>` (avoid long explanations in-thread).
 - If a thread is obsolete because later commits superseded the hunk: `Superseded by <commit link>` (optionally one link to the new canonical thread).
-- Resolve/unresolve and any reply to a human author stay gated:
-  - draft first
-  - show the exact payload + target
-  - wait for approval
-  - follow Posting Boundary in `shared_rules.md`
-  - follow Human-Visible Publication Gate in `~/AGENTS.md`
+- Resolve/unresolve and any reply to a human author stay gated by `shared_rules.md` Posting Boundary and the SOP publication gate:
+  draft first, show exact payload + target, then wait for approval.
 
 ## Drain Mode (Batch, Explicitly Invoked)
 
@@ -246,14 +242,16 @@ Use the **fix diff** as the subject:
 Do not use the original PR diff as the subject.
 
 - Apply the four dimensions (redundancy, verbosity, semantic + logical duplication, gaps) to that fix diff.
-- Resolve each hygiene finding in the working tree (this is your own PR's code) and re-run quality gates if the post-review fixes touched code.
+- Resolve each hygiene finding in the working tree and re-run quality gates for changed artifacts when applicable.
+- Follow the Post-Review Stage fixed-point rule until clean or blocked.
+- If post-review cleanup changed any in-scope artifact, rerun current-head outcome verification for affected threads before completion.
 - This is distinct from "verify the outcome against current head" (step 9): that confirms the fix _works_; this confirms the fix is _clean_.
 - If no code was changed this session (reply-only threads), skip this stage.
 
 ## Boundaries
 
-- Do not commit/push unless explicitly asked.
-- Do not post to GitHub or resolve threads unless explicitly asked.
-- Exception: verified bot-authored threads inside an explicitly-invoked Drain Mode flow (SOP, `~/AGENTS.md`).
-- Human-visible replies/resolves are always supervised.
+Follow `shared_rules.md` Posting Boundary and the SOP commit/push + publication gates. Mode-specific deltas:
+
+- Drain Mode may auto-reply/auto-resolve only verified bot-authored threads inside an explicitly invoked Drain Mode flow.
+- Human-visible human-authored replies/resolves are always supervised.
 - Ambiguous/mixed threads fail safe to human.

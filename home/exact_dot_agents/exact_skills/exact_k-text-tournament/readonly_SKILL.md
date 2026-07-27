@@ -1,6 +1,6 @@
 ---
 name: k-text-tournament
-description: "Use when the agent is about to make a material rewrite of human-maintained prose with several plausible directions; compare three candidates before choosing the next edit."
+description: "Use before a material prose rewrite with several plausible directions; compare three candidates."
 ---
 
 # Text Tournament
@@ -36,26 +36,7 @@ Use the normal engineering flow for those surfaces.
 4. **Continue normally.** Record the rubric and tournament result in the next response only when it materially explains the edit.
    A later eligible rewrite starts a new round.
 
-## Legion implement lane
-
-A palantir legion's implement role loads this lane explicitly.
-Use it only for an executor iteration targeting eligible material prose with several plausible directions.
-
-1. Set the same rubric and generate exactly three surgical candidates.
-2. Apply the provisional candidate that best satisfies the rubric as the iteration's one normal edit.
-3. Include this compact block in the work narrative before `SELF_CHECK:`:
-
-   ```text
-   TOURNAMENT:
-   - rubric: <goal, preservation constraints, dimensions>
-   - candidates: A=<short distinction>; B=<short distinction>; C=<short distinction>
-   - selected: <A|B|C and why>
-   ```
-
-Do not launch a fresh evaluator or a second pairwise comparison.
-The legion's adversarial-review role evaluates the selected artifact against this block; it does not regenerate candidates.
-
 ## Return exactly
 
 - Normal interactive: `Rubric:`, `Tournament:`, and `Edit:` when they materially explain the next edit.
-- Legion implement role: the `TOURNAMENT:` block plus the normal `SELF_CHECK:` output.
+- Worker implement role: include the `TOURNAMENT:` block plus the normal `SELF_CHECK:` output.

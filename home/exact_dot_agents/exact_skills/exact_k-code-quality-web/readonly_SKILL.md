@@ -1,6 +1,6 @@
 ---
 name: k-code-quality-web
-description: "Use when editing, reviewing, or refactoring browser-rendered markup, styling, or presentation (HTML, CSS, layout, visual states, accessibility, keyboard/focus)."
+description: "Use for browser-rendered markup, CSS, layout, visual states, accessibility, or focus behavior edits/reviews."
 ---
 
 # Web Markup And Styling Quality

@@ -1,6 +1,6 @@
 ---
 name: k-light-review
-description: "Use when running a local/ad-hoc proportional audit of low-risk self-authored changes; escalate PRs/risky changes to `k-review`."
+description: "Use for local/ad-hoc audits of low-risk self-authored changes; escalate PRs/risky changes to k-review."
 ---
 
 # Light Review

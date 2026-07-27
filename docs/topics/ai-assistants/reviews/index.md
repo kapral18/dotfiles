@@ -30,4 +30,3 @@ Pick the direction first; it decides which workflow rules apply.
 ## Related
 
 - [The Agentic Operating System](../index.md) — governance layer and skills
-- [Palantír orchestrator](../palantir.md) — detached legions can route review blockers through the same review methodology

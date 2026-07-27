@@ -3,7 +3,7 @@
 
 Covers an isolated deployed-layout fixture that copies the actual
 ``gh_popup.sh`` wrapper, the actual session ``popup.sh`` wrapper, the real
-``handoff_namespace.py`` core, and the real palantir apply helper into a fake
+``handoff_namespace.py`` core into a fake
 ``$HOME``. Inner GH/session picker commands and ``tmux`` are stubbed so the
 wrappers execute synchronously, record every ``display-popup -e`` token
 injection and command chain, and never talk to a live tmux server.
@@ -17,7 +17,6 @@ import json
 import os
 import re
 import shutil
-import stat
 import subprocess
 import sys
 import tempfile
@@ -37,18 +36,15 @@ from _test_support import TMUX_PICKERS, modern_bash
 GH_POPUP_SRC = TMUX_PICKERS / "github/executable_gh_popup.sh"
 SESSION_POPUP_SRC = TMUX_PICKERS / "session/executable_popup.sh"
 CORE_SRC = TMUX_PICKERS / "lib/executable_handoff_namespace.py"
-PALANTIR_HELPER_SRC = TMUX_PICKERS / "lib/executable_handoff_to_palantir_apply.sh"
 
 LEGACY_TOP_LEVEL = (
     "gh_picker_pin",
     "pick_session_pin",
     "gh_picker_create_pin",
-    "gh_picker_palantir_pin",
     "gh_picker_switch_sessions",
     "pick_session_switch_gh",
 )
 TOKEN_RE = re.compile(r"^[0-9a-f]{32}$")
-RETAINED_NAME_RE = re.compile(r"^[0-9a-f]{32}\.md$")
 
 TMUX_STUB_SCRIPT = textwrap.dedent(
     """\
@@ -214,7 +210,6 @@ POPUP_ACTOR_SCRIPT = textwrap.dedent(
 
     import json
     import os
-    import stat
     import subprocess
     import sys
     import time
@@ -337,25 +332,6 @@ POPUP_ACTOR_SCRIPT = textwrap.dedent(
         raise SystemExit(99)
 
 
-    def write_palantir_handoff() -> None:
-        pin = slot_path("gh_picker_palantir_pin")
-        context = pin.with_suffix(pin.suffix + ".context.md")
-        context.write_text("RICH PALANTIR CONTEXT\\n", encoding="utf-8")
-        fields = [
-            "pr",
-            "owner/repo",
-            "9",
-            "https://example.test/9",
-            "Some Title",
-            "/some/worktree",
-            str(context),
-            "pr owner/repo#9: Some Title",
-            "1",
-        ]
-        pin.write_text("\t".join(fields) + "\\n", encoding="utf-8")
-        record("write-palantir", path=str(pin), context=str(context), token=TOKEN)
-
-
     def main() -> int:
         record("inner-start", command=COMMAND, count=COUNT, token=TOKEN)
         if COMMAND == "gh_dashboard.sh":
@@ -374,8 +350,6 @@ POPUP_ACTOR_SCRIPT = textwrap.dedent(
                 return 0
             if SCENARIO == "normal-exit-cleanup":
                 return 0
-            if SCENARIO == "palantir-retained-context":
-                write_palantir_handoff()
                 return 0
         if COMMAND == "pick_session.sh":
             if SCENARIO in {"gh-wrapper-roundtrip", "legacy-globals-unchanged", "gh-concurrent-isolation"}:
@@ -481,7 +455,6 @@ class HandoffLifecycleFixture:
 
         self._copy_exec(GH_POPUP_SRC, self.github_dir / "gh_popup.sh")
         self._copy_exec(SESSION_POPUP_SRC, self.session_dir / "popup.sh")
-        self._copy_exec(PALANTIR_HELPER_SRC, self.lib_dir / "handoff_to_palantir_apply.sh")
         if include_core:
             if failing_core:
                 self._write_exec(
@@ -574,12 +547,6 @@ class HandoffLifecycleFixture:
             return []
         return sorted(path for path in root.iterdir() if path.is_dir() and TOKEN_RE.match(path.name))
 
-    def retained_files(self) -> list[Path]:
-        retained_dir = self.handoff_root() / "retained-context"
-        if not retained_dir.exists():
-            return []
-        return sorted(path for path in retained_dir.iterdir() if RETAINED_NAME_RE.match(path.name))
-
     def events(self) -> list[dict[str, Any]]:
         return read_jsonl(self.events_log)
 
@@ -609,7 +576,6 @@ class HandoffLifecycleFixture:
                 lines.append(
                     f"INNER label={row.get('label')} command={row.get('command')} count={row.get('count')} token={row.get('token')}"
                 )
-            elif source == "actor" and event in {"write-slot", "consume-slot", "consume-miss", "write-palantir"}:
                 parts = [f"ACTOR {event}", f"label={row.get('label')}"]
                 for key in ("slot", "owner", "token", "path", "context"):
                     if row.get(key) is not None:
@@ -772,36 +738,6 @@ class HandoffLifecycleFixture:
             "returncode": result.returncode,
             "popup_commands": [Path(row["command"]).name for row in popup_events],
             "namespace_removed": bool(token and not (self.handoff_root() / token).exists()),
-            "retained_context_files": len(self.retained_files()),
-            "stdout": result.stdout,
-            "stderr": result.stderr,
-        }
-        self.emit_trace()
-        return observed
-
-    def case_palantir_retained_context(self) -> dict[str, Any]:
-        self.reset()
-        result = self.run_wrapper("gh_popup.sh", scenario="palantir-retained-context")
-        tmux_events = self.tmux_events()
-        popup_events = [row for row in tmux_events if row["event"] == "display-popup"]
-        tokens = [row.get("env", {}).get("TMUX_PICKER_HANDOFF_TOKEN") for row in popup_events]
-        token = tokens[0] if tokens else None
-        command_prompt = next((row for row in tmux_events if row["event"] == "command-prompt"), None)
-        retained = self.retained_files()
-        retained_path = retained[0] if retained else None
-        observed = {
-            "returncode": result.returncode,
-            "popup_commands": [Path(row["command"]).name for row in popup_events],
-            "command_prompt_queued": command_prompt is not None,
-            "retained_context_readable_after_end": bool(
-                retained_path
-                and retained_path.is_file()
-                and retained_path.read_text(encoding="utf-8") == "RICH PALANTIR CONTEXT\n"
-            ),
-            "retained_context_mode": oct(stat.S_IMODE(retained_path.stat().st_mode)) if retained_path else None,
-            "retained_path": str(retained_path) if retained_path else None,
-            "seed": command_prompt.get("seed") if command_prompt else None,
-            "namespace_removed": bool(token and not (self.handoff_root() / token).exists()),
             "stdout": result.stdout,
             "stderr": result.stderr,
         }
@@ -861,7 +797,6 @@ REAL_WRAPPER_CASES = {
     "session_wrapper_round_trip_token": "case_session_wrapper_roundtrip",
     "concurrent_wrappers_isolated": "case_concurrent_wrappers_isolated",
     "normal_exit_cleanup": "case_normal_exit_cleanup",
-    "palantir_retained_context": "case_palantir_retained_context",
     "legacy_globals_unchanged": "case_legacy_globals_unchanged",
     "missing_core_blocks_popup": "case_missing_core_blocks_popup",
     "failed_core_blocks_popup": "case_failed_core_blocks_popup",
@@ -926,21 +861,6 @@ class TestRealWrapperLifecycle(unittest.TestCase):
         self.assertEqual(observed["returncode"], 0, observed["stderr"])
         self.assertEqual(observed["popup_commands"], ["gh_dashboard.sh"])
         self.assertTrue(observed["namespace_removed"])
-        self.assertEqual(observed["retained_context_files"], 0)
-
-    def test_should_retain_palantir_context_after_normal_namespace_end(self) -> None:
-        observed = run_real_wrapper_harness_case(
-            "palantir_retained_context",
-            root=self.root / "palantir",
-        )
-        self.assertEqual(observed["returncode"], 0, observed["stderr"])
-        self.assertEqual(observed["popup_commands"], ["gh_dashboard.sh"])
-        self.assertTrue(observed["command_prompt_queued"])
-        self.assertEqual(observed["retained_context_mode"], "0o600")
-        self.assertTrue(observed["retained_context_readable_after_end"])
-        self.assertTrue(observed["namespace_removed"])
-        self.assertIn("retained-context", observed["seed"])
-        self.assertIn(observed["retained_path"], observed["seed"])
 
     def test_should_leave_poisoned_legacy_global_files_byte_identical(self) -> None:
         observed = run_real_wrapper_harness_case(

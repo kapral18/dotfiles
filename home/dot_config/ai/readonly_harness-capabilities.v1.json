@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "harnesses": [
+    {
+      "harness": "claude",
+      "version_evidence": "home/dot_claude/settings.personal.json hooks keys: SessionStart, PostToolUse, PostToolUseFailure, UserPromptSubmit (no PreToolUse) — probed 2026-07-26",
+      "instruction_entrypoints": ["home/symlink_CLAUDE.md -> AGENTS.md"],
+      "hook_support": "advisory",
+      "model_mutable": true,
+      "subagent_model_binding": "static",
+      "evidence_freshness": "2026-07-26"
+    },
+    {
+      "harness": "codex",
+      "version_evidence": "home/dot_codex/symlink_AGENTS.md -> ../AGENTS.md; no hook config file found under home/dot_codex/ during exploration",
+      "instruction_entrypoints": [
+        "home/dot_codex/symlink_AGENTS.md -> ../AGENTS.md"
+      ],
+      "hook_support": "none",
+      "model_mutable": true,
+      "subagent_model_binding": "runtime",
+      "evidence_freshness": "2026-07-26"
+    },
+    {
+      "harness": "cursor",
+      "version_evidence": "home/dot_cursor/symlink_AGENTS.md -> ../AGENTS.md; no hook config file found under home/dot_cursor/ during exploration",
+      "instruction_entrypoints": [
+        "home/dot_cursor/symlink_AGENTS.md -> ../AGENTS.md"
+      ],
+      "hook_support": "none",
+      "model_mutable": true,
+      "subagent_model_binding": "runtime",
+      "evidence_freshness": "2026-07-26"
+    },
+    {
+      "harness": "opencode",
+      "version_evidence": "home/dot_config/opencode/symlink_AGENTS.md -> ../../AGENTS.md; no hook config file found during exploration",
+      "instruction_entrypoints": [
+        "home/dot_config/opencode/symlink_AGENTS.md -> ../../AGENTS.md"
+      ],
+      "hook_support": "none",
+      "model_mutable": true,
+      "subagent_model_binding": "runtime",
+      "evidence_freshness": "2026-07-26"
+    },
+    {
+      "harness": "gemini",
+      "version_evidence": "home/dot_gemini/symlink_GEMINI.md -> ../AGENTS.md (unified 2026-07-21 commit 07c0ff1a3b87, replacing a separate readonly_GEMINI.md)",
+      "instruction_entrypoints": [
+        "home/dot_gemini/symlink_GEMINI.md -> ../AGENTS.md"
+      ],
+      "hook_support": "none",
+      "model_mutable": true,
+      "subagent_model_binding": "runtime",
+      "evidence_freshness": "2026-07-26"
+    },
+    {
+      "harness": "copilot",
+      "version_evidence": "home/private_dot_copilot/symlink_copilot-instructions.md -> ../AGENTS.md (shared core); home/private_dot_copilot/exact_agents/ is a separate per-role profile directory",
+      "instruction_entrypoints": [
+        "home/private_dot_copilot/symlink_copilot-instructions.md -> ../AGENTS.md"
+      ],
+      "hook_support": "none",
+      "model_mutable": true,
+      "subagent_model_binding": "runtime",
+      "evidence_freshness": "2026-07-26"
+    },
+    {
+      "harness": "pi",
+      "version_evidence": "home/dot_pi/agent/exact_agents/*.md.tmpl are per-role profiles (verified by scripts/tests/test_invariants.py test_pi_review_controller_named_roles_have_profiles); no shared-core AGENTS.md symlink target found",
+      "instruction_entrypoints": ["home/dot_pi/agent/exact_agents/*.md.tmpl"],
+      "hook_support": "none",
+      "model_mutable": true,
+      "subagent_model_binding": "static",
+      "evidence_freshness": "2026-07-26"
+    },
+    {
+      "harness": "generic",
+      "version_evidence": "home/readonly_AGENTS.md is the canonical source, deployed to ~/AGENTS.md directly (home/ maps to ~/ per .chezmoiroot; verified no dot_agents/AGENTS.md sibling exists)",
+      "instruction_entrypoints": ["home/readonly_AGENTS.md -> ~/AGENTS.md"],
+      "hook_support": "none",
+      "model_mutable": true,
+      "subagent_model_binding": "runtime",
+      "evidence_freshness": "2026-07-26"
+    }
+  ]
+}

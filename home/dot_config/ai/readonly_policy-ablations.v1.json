@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "ablations": {
+    "sop.5.code-quality": {
+      "status": "mechanical-only",
+      "date": "2026-07-27",
+      "method": "mechanical clause-presence sweep (no live model eval available this run)",
+      "target_disposition": "skill",
+      "consumer": "home/exact_dot_agents/exact_skills/exact_k-code-quality/readonly_SKILL.md",
+      "evidence": "minimal edit scope, no unrelated cleanup/removal without approval, targeted edits/full-rewrite diffing, introduced-only dead-code removal, semantic dedupe guard preservation, no unrequested abstractions/features/error handling, simplicity/no behavior loss, and artifact necessity without-it probe requirements were confirmed present in k-code-quality before this pass",
+      "rule_sha256": "4b2d1c447aa70c367f9ab15accc59c566befcf15b2f8002e129c0f0dbd2c4f78",
+      "eval_ref": "sop.5.code-quality.mechanical-only",
+      "consumer_sha256": "e54a858e4514e53a7c368de294437491311647e5477e4f7c33812518e286dde4"
+    },
+    "sop.3.5.state-machine-verification": {
+      "status": "mechanical-only",
+      "date": "2026-07-27",
+      "method": "mechanical clause-presence sweep (no live model eval available this run)",
+      "target_disposition": "skill",
+      "consumer": "home/exact_dot_agents/exact_skills/exact_k-code-quality/readonly_SKILL.md",
+      "evidence": "stateful/parser-like/branch-heavy/retry/workflow/permission/compatibility-sensitive/flag-dependent trigger, /tmp state-machine-verification harness path, manifest.json requirements, matching existing harness reuse rule, state/transition/input/boundary enumeration, independent model/table comparison, unexpected-difference handling, and /tmp-only harness guidance were confirmed present in k-code-quality before this pass",
+      "rule_sha256": "196b0258d77a009ee40ab574f8296ab1c915ac1ce197ecb4762dbce9fdf8bc17",
+      "eval_ref": "sop.3.5.state-machine-verification.mechanical-only",
+      "consumer_sha256": "e54a858e4514e53a7c368de294437491311647e5477e4f7c33812518e286dde4"
+    }
+  }
+}

@@ -126,7 +126,6 @@ const sidebars: SidebarsConfig = {
             'topics/ai-assistants/knowledge-base/cross-agent-memory',
           ],
         },
-        'topics/ai-assistants/palantir',
         'topics/ai-assistants/mcp',
         'topics/ai-assistants/model-registry',
         {

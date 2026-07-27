@@ -1,6 +1,6 @@
 ---
 name: k-kbn-stack
-description: "Use when an elastic/kibana live UI or browser test needs local ES+Kibana URLs, -K runtime flags, kbn-stack registry checks, or stack start/stop/reuse."
+description: "Use for elastic/kibana UI/browser tests needing ES+Kibana URLs, -K flags, stack registry, start/stop/reuse."
 tool_version: ",kbn-stack ownership registry surface verified 2026-06-30"
 ---
 

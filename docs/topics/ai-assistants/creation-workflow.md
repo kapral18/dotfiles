@@ -3,8 +3,6 @@ sidebar_position: 6
 title: Creation workflow
 ---
 
-# Creation workflow (spec → build / Palantír)
-
 The creation-side counterpart to the [review workflow](reviews/index.md) applies the same rigor primitives to building things instead of judging them: evidence-gated phases, fixed return shapes, adversarial verification, and a completion gate.
 
 The steering model is **two human gates**: approve the contract before execution, then read the report after it. Everything between runs hands-free.
@@ -13,16 +11,13 @@ Ordinary freeform implementation does not have to enter this formal flow. Verifi
 
 ## The two artifacts (memory vs contract)
 
-| Artifact                           | Role                                                                                                                  | Mutation rule                                                       |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `/tmp/specs/<pwd>/<topic>.txt`     | Conversation memory: what we currently believe the user wants. Hook-injected at session start.                        | Rewritten freely as the intent loop converges. Allowed to be wrong. |
-| `/tmp/specs/<pwd>/<topic>.spec.md` | Contract snapshot: what counts as done and how to prove it. Consumed by `/k-build` and `,palantir summon --criteria`. | Frozen at approval; changing it is a premise correction + re-gate.  |
+| Artifact                       | Role                                                                                           | Mutation rule                                                       |
+| ------------------------------ | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `/tmp/specs/<pwd>/<topic>.txt` | Conversation memory: what we currently believe the user wants. Hook-injected at session start. | Rewritten freely as the intent loop converges. Allowed to be wrong. |
 
 The intent spec remembers the discussion; the packet is a signed order.
 
 The packet is never a mechanical transform of the intent spec. Nothing enters it on the `.txt`'s word alone: every criterion is re-derived from evidence and its check is run once, observed red, before it may appear.
-
-After approval the flow is one-way. Palantír snapshots the criteria into the legion manifest, and `/k-build`'s ledger holds evidence, so later `.txt` drift cannot retro-poison in-flight work.
 
 The `k-spec` skill writes a `packet:` pointer line into `<topic>.txt` so session-start injection tells a fresh session the contract exists.
 
@@ -41,13 +36,10 @@ idea/issue
      → packet written + shown
         └─ [HUMAN GATE 1: approve packet]
             ├─ /k-build ............ in-session hands-free implementation
-            ├─ ,palantir summon ... detached legion, same criteria
             ├─ k-compose-issue ... publishable issue text + publication packet
             └─ review (plan mode)  adversarial review of the packet itself
                 └─ [HUMAN GATE 2: read the report]
 ```
-
-Choose `/k-build` when the work benefits from the current session's context or blockers should surface in-conversation. Choose `,palantir summon "<goal>" --criteria '<json>'` when the same criteria should run in a detached legion.
 
 ## `/k-build` phase topology
 
@@ -94,14 +86,4 @@ The controller reports the screenshot manifest. Each screenshot/pair/set lives i
 
 Windows/VirtualBox coverage is a separate manual skill, [`k-live-ui-windows`](../../../home/exact_dot_agents/exact_skills/exact_k-live-ui-windows/), connecting Playwriter to a guest browser over CDP through a host NAT port-forward. It is never auto-triggered by either mode; load it by hand only when the user explicitly asks for Windows/VirtualBox verification this turn.
 
-## Palantír as the detached form
-
-`,palantir summon "<goal>" --criteria '<json>'` consumes the packet's criteria JSON and starts one tmux-native legion for the effort.
-
-The criteria must already be red-proven by the spec flow; Palantír does not turn unchecked prose into a completion gate.
-
-The machine-check floor holds in both forms. Palantír's `verify` stage executes every criterion command and only a zero exit is green; `/k-build` re-runs checks inside its own verification phase and blocks its completion gate on red rows.
-
-A verify failure sends bounded evidence back to `implement`, retries up to the configured budget, and then parks the legion in `holding` for a human answer or sent word.
-
-See [Palantír orchestrator](palantir.md) for the stage machine, handshake files, dashboard, and state layout.
+A verify failure sends bounded evidence back to implementation, retries up to the configured budget, and then reports a blocker for human decision.

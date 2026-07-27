@@ -6,12 +6,10 @@ If you are coming from VSCode/JetBrains, you can still use tmux incrementally. T
 
 ## Mental model
 
-| Layer                | What it does                                                                                    |
-| -------------------- | ----------------------------------------------------------------------------------------------- |
-| Session layout       | Keeps editor, shell, agents, servers, and logs alive across context switches                    |
-| Popups               | Opens short-lived UI for picking sessions, GitHub items, URLs, commands, and Palantír dashboard |
-| Handoff files        | Let one picker stage a selection for another picker or Palantír without fragile shell arguments |
-| Cache-first indexing | Shows stale data immediately, refreshes in the background, and only reloads on success          |
+| Layer                | What it does                                                                           |
+| -------------------- | -------------------------------------------------------------------------------------- |
+| Session layout       | Keeps editor, shell, agents, servers, and logs alive across context switches           |
+| Cache-first indexing | Shows stale data immediately, refreshes in the background, and only reloads on success |
 
 ## Config location
 
@@ -36,7 +34,6 @@ Conventions:
 - numeric prefixes define load order and are the contract
 - one concern per file (base, keys, copy-mode, integrations, tools, plugins)
 - feature bindings and feature options should live in the same file when possible
-- `90-plugins.conf` declares plugin options/plugins; `99-tpm.conf` bootstraps TPM; `45-palantir.conf` is sourced after TPM so its `,palantir statusline` append survives the theme
 - add new files by range, not by appending random names:
   - `00-39`: core tmux behavior and global keymaps
   - `40-89`: custom tools / popups / integrations
@@ -55,8 +52,6 @@ Current file map:
 - `43-repo-bootstrap.conf`: repo bootstrap popup (`owner/repo` → `,gh-tfork`)
 - `45-agent-prompt-wrap.conf`: agent prompt-wrap bindings (`Alt-Enter`, `prefix` + `W`)
 - `90-plugins.conf`: TPM plugin declarations + plugin options
-- `99-tpm.conf`: TPM init (plugin bootstrap; Palantír status wiring follows)
-- `45-palantir.conf`: `prefix+A` dashboard popup and `,palantir statusline` wiring (`P/H/C` lifecycle, `T` transport, `O` teardown, `U` unrouted memory, `E` corrupt state)
 
 ## Cheat sheet (this config)
 
@@ -81,7 +76,6 @@ Current file map:
 - Command palette popup: `prefix` + `r` (`\,tmux-run-all`)
 - GitHub picker popup: `prefix` + `G` (fzf PR/issue picker, standalone config; `alt-g` switches to/from session picker; `ctrl-s` switches work/home; `?` help)
 - Agent prompt wrap: `Alt-Enter` (inserts verification scaffold and leaves prompt editable), `prefix` + `W` (toggle on/off)
-- Palantír dashboard popup: `prefix` + `A`
 
 For details:
 

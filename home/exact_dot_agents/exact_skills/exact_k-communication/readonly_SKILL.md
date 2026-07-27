@@ -1,6 +1,6 @@
 ---
 name: k-communication
-description: "Use when drafting human-visible communication on the user's behalf; apply canonical tone/style before composing external text."
+description: "Use when drafting human-visible communication; apply canonical tone/style before external text."
 ---
 
 # Communication (Centralized Tone & Style)

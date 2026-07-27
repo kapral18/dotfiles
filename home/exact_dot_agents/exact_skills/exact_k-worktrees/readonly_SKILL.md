@@ -1,6 +1,6 @@
 ---
 name: k-worktrees
-description: "Use when managing worktrees with ,w or ,gh-worktree: create, switch, open, list, prune, remove, or PR checkout."
+description: "Use for worktrees with ,w or ,gh-worktree: create, switch, open, list, prune, remove, PR checkout."
 ---
 
 # ,w Worktree Skill (Worktrees + tmux)

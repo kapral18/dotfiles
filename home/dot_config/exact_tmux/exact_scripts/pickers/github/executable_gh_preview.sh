@@ -86,7 +86,6 @@ _dashboard_summary() {
   if [ -n "$mergeable" ]; then
     printf -- '- Mergeable: %s\n' "$mergeable"
   fi
-  printf -- '- Agent handoff: mark a coherent cluster, then press alt-A\n'
   printf '\n---\n\n'
 }
 

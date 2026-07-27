@@ -16,13 +16,12 @@ At a high level, the AI layer is a set of governed routes, not a pile of prompts
 
 ## Mental model
 
-| Layer      | What it owns                                                               | Where to read next                                                                                                                                            |
-| ---------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Governance | Always-on SOP entrypoints installed into `$HOME`                           | [System Prompt (SOP)](system-prompt/index.md)                                                                                                                 |
-| Routing    | Skills under `~/.agents/skills/` that load by intent                       | [Skills](skills/index.md)                                                                                                                                     |
-| Execution  | Subagents, reviews, `/k-build`, and Palantír legions                       | [Cross-harness subagents](subagents.md), [Review workflow](reviews/index.md), [Creation workflow](creation-workflow.md), [Palantír orchestrator](palantir.md) |
-| Memory     | Hook memory plus durable AI KB                                             | [Agent memory](knowledge-base/index.md)                                                                                                                       |
-| Tooling    | MCP servers, model routing, per-tool config rendering, and local inference | [MCP servers](mcp.md), [Model registry & routing](model-registry.md), [Tool configs](tool-configs/index.md), [llama.cpp local inference](llama-cpp/index.md)  |
+| Layer      | What it owns                                                               | Where to read next                                                                                                                                           |
+| ---------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Governance | Always-on SOP entrypoints installed into `$HOME`                           | [System Prompt (SOP)](system-prompt/index.md)                                                                                                                |
+| Routing    | Skills under `~/.agents/skills/` that load by intent                       | [Skills](skills/index.md)                                                                                                                                    |
+| Memory     | Hook memory plus durable AI KB                                             | [Agent memory](knowledge-base/index.md)                                                                                                                      |
+| Tooling    | MCP servers, model routing, per-tool config rendering, and local inference | [MCP servers](mcp.md), [Model registry & routing](model-registry.md), [Tool configs](tool-configs/index.md), [llama.cpp local inference](llama-cpp/index.md) |
 
 ## Using this section
 
@@ -42,7 +41,6 @@ Use the subsystem pages when you already know the layer you are changing or debu
 | Review skill and agent-review topology | [Review workflow](reviews/index.md)             |
 | Spec packets and hands-free builds     | [Creation workflow](creation-workflow.md)       |
 | Hook memory + durable AI KB            | [Agent memory](knowledge-base/index.md)         |
-| Palantír detached orchestration        | [Palantír orchestrator](palantir.md)            |
 | Canonical MCP registry                 | [MCP servers](mcp.md)                           |
 | Model registry and routing             | [Model registry & routing](model-registry.md)   |
 | Per-tool config rendering              | [Tool configs](tool-configs/index.md)           |

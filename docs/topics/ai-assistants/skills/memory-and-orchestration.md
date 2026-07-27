@@ -26,14 +26,9 @@ These skills coordinate long-running agent work, durable learning, and user-inte
 
 `k-proof` is available in two ways. Explicit receipt requests route through the skill frontmatter and `SKILL.md`. Non-review/non-build iteration gets the same narrow receipt gate from the always-on SOP and the shared verification prefix injected by session hooks, Pi, tmux prompt wrapping, and subagent profile templates. The ledger is a durable receipt, not verification itself: evidence collection remains mandatory and inline by default. When a receipt trigger applies, choose the topic and criteria before ledger-bound evidence collection, finalize the ledger, and only then generate a report.
 
-## `k-palantir`
-
-| Field    | Value                                                                                                                            |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Use when | the user explicitly asks to use Palantír, summon a legion, operate an existing legion, or open the seeing-stone dashboard        |
-| Routing  | model-invoked only after that explicit user intent; ordinary task size, complexity, or instructions to continue never trigger it |
-| Source   | [`exact_k-palantir`](../../../../home/exact_dot_agents/exact_skills/exact_k-palantir/)                                           |
-| Related  | [Palantír orchestrator](../palantir.md)                                                                                          |
+| Field   | Value                                                                                                                            |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Routing | model-invoked only after that explicit user intent; ordinary task size, complexity, or instructions to continue never trigger it |
 
 ## `k-interview-me`
 
@@ -45,11 +40,10 @@ These skills coordinate long-running agent work, durable learning, and user-inte
 
 ## `k-spec`
 
-| Field    | Value                                                                                                                                                |
-| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Use when | developing an idea, feature request, or bug into a spec packet with red-capable acceptance checks                                                    |
-| Source   | [`exact_k-spec`](../../../../home/exact_dot_agents/exact_skills/exact_k-spec/)                                                                       |
-| Output   | packet at `/tmp/specs/<pwd>/<topic>.spec.md`; consumers: `/k-build`, `,palantir summon --criteria`, `k-compose-issue` issue text/packet, plan review |
+| Field    | Value                                                                                             |
+| -------- | ------------------------------------------------------------------------------------------------- |
+| Use when | developing an idea, feature request, or bug into a spec packet with red-capable acceptance checks |
+| Source   | [`exact_k-spec`](../../../../home/exact_dot_agents/exact_skills/exact_k-spec/)                    |
 
 Fork-closing consults a domain overlay's planning fork checklist when the verified target repo has one (currently `k-elastic-domain` for `elastic/kibana`). Forks that cannot close locally (external sign-off, another team's decision) go in the packet's `External dependencies` section — owner, blocked criteria, recommended default — instead of blocking assembly; consumers must not start blocked criteria.
 
@@ -60,7 +54,6 @@ Fork-closing consults a domain overlay's planning fork checklist when the verifi
 | Use when | hands-free in-session implementation of an approved spec packet (two human gates: packet approval, final report) |
 | Source   | [`exact_k-build`](../../../../home/exact_dot_agents/exact_skills/exact_k-build/)                                 |
 | Routing  | manual                                                                                                           |
-| Related  | criteria ledger + adversarial criteria-verifier lane; detached sibling is `,palantir summon --criteria`          |
 
 ## `k-text-tournament`
 

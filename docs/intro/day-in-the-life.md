@@ -34,8 +34,6 @@ Because it indexes worktrees on disk, the sessions you create with `,w` (or via 
 
 Open the GitHub picker (`prefix` + `G`) for a PR/issue dashboard with review/CI badges, hierarchy (epics, backport families), and inline actions. Switch scope with `alt-1` (Focus: work you own or must act on) and `alt-2` (Explore: team queues, mentions, radar), and toggle work/home with `ctrl-s`.
 
-![Daily tmux workflow: restore context, open GitHub dashboard, create worktree, hand off to agents or Palantír, review, and clean up](./assets/day-in-life-flow.svg)
-
 ![GitHub picker popup over the tmux workbench, with safe demo rows for own PRs, external reviews, issues, epics, and pending backports](../topics/workflow/tmux/assets/github-picker-full.png)
 
 From the dashboard, without leaving tmux:
@@ -43,7 +41,6 @@ From the dashboard, without leaving tmux:
 - **Create tickets** — `alt-i` opens `$EDITOR` to file a new issue; `alt-E` files an epic (parent + sub-issues).
 - **Clone and check out** — `enter` on a PR/issue creates a worktree and focuses its session. If the repo isn't local yet, it's bootstrapped first (`,gh-tfork`), so cloning, worktree creation, session creation, and issue↔branch linking all happen in one step. `ctrl-t` batches this across marked rows.
 - **Act on PRs** — `alt-x` opens a command palette (approve, request-changes, merge, label, comment, request review); `alt-c` adds a comment; `alt-b` checks out and opens an Octo review; `alt-o` opens in the browser.
-- **Hand off to Palantír** — `alt-A` seeds `,palantir summon` with the selected PR/issue context (see below).
 
 `alt-g` switches between this dashboard and the session picker in place. See [GitHub picker](../topics/workflow/tmux/github-picker.md).
 
@@ -66,8 +63,6 @@ claude
 ```
 
 Per-tool configuration (auth, models, MCP, profile merging) lives in [Tool configs](../topics/ai-assistants/tool-configs/index.md). When you run `claude`, `cursor-agent`, `pi`, or `copilot` inside tmux, `Alt-Enter` prepends a calibrated verification scaffold and leaves the prompt editable (toggle with `prefix` + `W`); plain `Enter` is never touched.
-
-For larger, multi-step work, hand off to **Palantír** with `,palantir summon` (or `alt-A` from the GitHub picker). It opens one tmux-native legion per effort, keeps deterministic supervision in the control loop, and shows progress in the seeing-stone dashboard at `prefix+A`. See [Palantír orchestrator](../topics/ai-assistants/palantir.md).
 
 Across sessions, agents carry context through two memory layers: short-lived per-workspace hook memory (`/tmp/specs`) and a durable knowledge base (`,ai-kb`). See [Agent memory](../topics/ai-assistants/knowledge-base/index.md).
 

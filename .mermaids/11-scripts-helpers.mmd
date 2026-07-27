@@ -1,5 +1,5 @@
 %% ============================================================================
-%% 11-scripts-helpers.mmd — Every file in scripts/ (106). Repo-side Python
+%% 11-scripts-helpers.mmd — Every file in scripts/ (110). Repo-side Python
 %% (stdlib only, no PyYAML) called by chezmoi 07-* hooks + ,bin commands.
 %% Grouped by consumer. Shared parsers feed the generators/mergers.
 %% ============================================================================
@@ -59,10 +59,19 @@ flowchart TB
         YT["yt_search.py (,youtube-search backend)"]:::misc
     end
 
+    subgraph POLICY["SOP policy compiler (make verify-agent-policy; Stage 1: byte-for-byte)"]
+        PIR["ai_policy_ir.py (Rule dataclass + split_legacy_sop/render;<br/>one opaque rule per numbered SOP heading)"]:::ai
+        PCAP["ai_harness_capabilities.py (HarnessCapability snapshot loader;<br/>fails closed on unsupported hook/pinned-model claims)"]:::ai
+        PCOMP["compile_ai_policy.py (generate/verify/verify-budgets/audit-coverage/explain/measure;<br/>atomic write-if-changed; provenance manifest emission)"]:::ai
+        PEVAL["eval_ai_policy.py (plan emits cross-product cell count/cost estimate;<br/>verify-routing/verify-behavior report every cell blocked — no live requests)"]:::ai
+    end
+    PIR --> PCOMP
+    PCAP --> PCOMP
+
     subgraph TESTS["Tests + fixtures"]
-        TT["top-level tests:<br/>test_{agent_memory,ai_kb,ai_launcher,ai_models,analyze_pi_session,chezmoi_lib,embed,generated_artifact_ledger,generate_mcp_configs,generate_pi_models}.py<br/>test_{inject_mcp_into_codex_toml,inject_mcp_into_opencode_jsonc,mcp_registry,model_mirrors,palantir,probe_litellm_prompt_cache}.py<br/>test_{merge_copilot_settings,merge_opencode_models,model_display,pre_commit}.py<br/>test_{verify_agent_file_sizes,verify_bin_surface,verify_docs_navigation,verify_mermaids,verify_templates,yaml_parser}.py"]:::shared
-        IT["scripts/tests/: __init__.py · copilot_agent_memory_extension.test.mjs<br/>recall_worklog_state_machine.py · test_{agent_hooks,codex_adapter,copilot_adapter,correction_detector,recall_worklog,bin_commands,codex_litellm_shim,copilot_litellm_shim,gh_picker_dispatch_state,gh_picker_lock,git_gate,invariants}.py<br/>test_{plain_session_removal,proof_cli,session_github_cache,tmux_handoff_context,tmux_handoff_lifecycle,<br/>tmux_handoff_namespace,tmux_pickers,vertex_adapter,wh,worktree_delete_boundaries}.py"]:::shared
-        FX["fixtures/: {ai_models,ai_models_with_claude,mcp_servers,mcp_servers_exclude}.yaml<br/>codex_base.toml · golden_codex_personal.toml · golden_mcp_{personal,work}.json<br/>golden_opencode_{models,models_with_claude,personal}.jsonc · golden_pi_models.json<br/>model_probe_cases.json · opencode_{base,work_base}.jsonc"]:::shared
+        TTOP["top-level tests: test_{agent_memory,ai_kb,ai_launcher,ai_models,analyze_pi_session,chezmoi_lib,embed,<br/>generate_mcp_configs,generate_pi_models,generated_artifact_ledger,inject_mcp_into_codex_toml,<br/>inject_mcp_into_opencode_jsonc,mcp_registry,merge_copilot_settings,merge_opencode_models,model_display,<br/>model_mirrors,pre_commit,probe_litellm_prompt_cache,runner,verify_agent_file_sizes,<br/>verify_bin_surface,verify_docs_navigation,verify_mermaids,verify_templates,yaml_parser}.py"]:::shared
+        IT["scripts/tests/: __init__.py · copilot_agent_memory_extension.test.mjs<br/>recall_worklog_state_machine.py · test_{agent_hooks,codex_adapter,copilot_adapter,correction_detector,recall_worklog,bin_commands,codex_litellm_shim,copilot_litellm_shim,gh_picker_dispatch_state,gh_picker_lock,git_gate,invariants}.py<br/>test_ai_policy_compiler.py (IR/capability/compiler offline contract tests)<br/>test_{plain_session_removal,proof_cli,session_github_cache,tmux_handoff_lifecycle,<br/>tmux_handoff_namespace,tmux_pickers,vertex_adapter,wh,worktree_delete_boundaries}.py"]:::shared
+        FX["fixtures/: {ai_models,ai_models_with_claude,mcp_servers,mcp_servers_exclude}.yaml<br/>codex_base.toml · golden_codex_personal.toml · golden_mcp_{personal,work}.json<br/>golden_opencode_{models,models_with_claude,personal}.jsonc · golden_pi_models.json<br/>model_probe_cases.json · opencode_{base,work_base}.jsonc<br/>ai_policy_eval/matrix.yaml (routing/behavioral scenario fixture, one triple per compiled rule)"]:::shared
     end
     MCPGEN -.verified by golden.-> TESTS
     RECON -.verified by focused tests.-> TESTS

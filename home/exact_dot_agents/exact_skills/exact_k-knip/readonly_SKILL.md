@@ -1,6 +1,6 @@
 ---
 name: k-knip
-description: "Use when finding unused JS/TS files, dependencies, exports, package.json entries, or missing/unlisted dependencies with knip."
+description: "Use when finding unused JS/TS files, deps, exports, package entries, or missing/unlisted deps with knip."
 tool_version: knip 5.88.0
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: k-codebase-design
-description: "Shared vocabulary for designing deep modules. Use when designing or improving a module's interface, deciding where a seam goes, finding deepening opportunities, making code more testable or AI-navigable, or when another skill needs the deep-module vocabulary."
+description: "Use for module interfaces, seams, deepening, testability, AI navigation, or deep-module vocabulary."
 ---
 
 # Codebase Design

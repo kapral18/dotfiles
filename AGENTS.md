@@ -12,9 +12,7 @@ It has two layers: a **semantic cloud** (how it works together) and a **catalog*
 3. Read [`.mermaids/00-overview.mmd`](.mermaids/00-overview.mmd) (master map: semantic layer + catalog index).
 4. Before editing any file, consult [`.mermaids/SR-index.mmd`](.mermaids/SR-index.mmd) (reverse index).
    Use it to find the concept the file serves, what breaks if changed, and its co-edit set.
-5. Load the deeper flow/catalog diagram(s) for whatever the task touches — flows:
-   `S1-flow-apply-reconcile.mmd` (apply/hooks), `S2-flow-agent-runtime.mmd` (agents/Palantír), `S3-flow-pickers-handoff.mmd` (pickers);
-   catalog: e.g. `04-palantir-state-machine.mmd`, `05-tmux-pickers.mmd`, `01-chezmoi-pipeline.mmd`.
+5. Load the deeper flow/catalog diagram(s) for whatever the task touches: `S1-flow-apply-reconcile.mmd`, `S3-flow-pickers-handoff.mmd`, or the catalog file named by `SR-index.mmd`.
 
 These diagrams are documentation.
 When a change under `home/`, `scripts/`, or `tools/` alters a flow, command, or state shown in a `.mmd` file, update that file in the same change (see Documentation Hygiene below).
@@ -65,7 +63,6 @@ Examples include shell configs, scripts in `~/bin/`, app configs in `~/.config/`
 ## AI Setup Contribution Boundary
 
 When changing AI functionality in this chezmoi repo, keep generic mechanics and domain policy separate.
-AI functionality includes SOP files, skills, subagents, runtime profiles, hooks, MCP/model registries, review workflows, Palantír, and docs.
 
 - **Generic surfaces:** portable behavior such as global SOP mechanics, shared skills, generic subagent/runtime profiles, hooks, model/MCP/package generators, and registries.
   Cross-repo AI workflow docs are also generic surfaces.
@@ -271,7 +268,8 @@ tar_gz_bin|mdtt|szktkfm/mdtt|v0.3.1|mdtt_Darwin_arm64.tar.gz|mdtt|mdtt
 ## Updating Home SOP Files
 
 Home SOPs are installed into `$HOME` by chezmoi.
-`home/readonly_AGENTS.md` is the single SOP source; the other entrypoints are symlinks to it.
+`home/readonly_AGENTS.md` is the generated always-loaded core SOP; the other entrypoints are symlinks to it.
+The compiled ownership model lives in `docs/topics/ai-assistants/system-prompt/source-of-truth.md`.
 
 | Source                                                     | Target                               |
 | ---------------------------------------------------------- | ------------------------------------ |
@@ -286,6 +284,7 @@ Home SOPs are installed into `$HOME` by chezmoi.
 
 Rules:
 
-1. Edit `home/readonly_AGENTS.md`, not rendered `$HOME` targets.
-2. Keep referenced skill files under `home/exact_dot_agents/` in sync.
-3. Review with `chezmoi diff`, apply with `chezmoi apply`, and verify only the rendered content or runtime behavior relevant to the change.
+1. Edit the compiled source set: `home/readonly_AGENTS.md` for core text, plus disposition/consumer files for moved rules.
+2. Run `python3 scripts/compile_ai_policy.py generate` and `make verify-agent-policy` after policy edits.
+3. Keep referenced skill files under `home/exact_dot_agents/` in sync.
+4. Review with `chezmoi diff`, apply with `chezmoi apply`, and verify only the rendered content or runtime behavior relevant to the change.

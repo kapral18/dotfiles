@@ -1,6 +1,6 @@
 ---
 name: k-playwriter
-description: "Use when controlling a real browser for browsing, rendered UI checks, screenshots, automation, live app verification, or visual QA."
+description: "Use for real browser: browsing, UI checks, screenshots, automation, verification, visual QA."
 ---
 
 # Playwriter

@@ -1,22 +1,30 @@
-# Previously-managed targets removed by the palantir migration (fleet + ralph
-# retirement). chezmoi deletes these from $HOME on apply; entries stay listed
-# so every machine converges, and cost nothing once absent.
+# Previously-managed targets intentionally removed from this chezmoi source.
+# Chezmoi deletes these from $HOME on apply; entries stay listed so every
+# machine converges, and cost nothing once absent.
 bin/,fleet
 bin/,ralph
+bin/,palantir
 lib/,fleet
-lib/,palantir/disband.sh
-lib/,palantir/muster.sh
+lib/,palantir
 .config/fleet
 .config/ralph
+.config/palantir
 .config/fish/completions/,fleet.fish
 .config/fish/completions/,ralph.fish
+.config/fish/completions/,palantir.fish
 .config/tmux/conf.d/44-ralph.conf
 .config/tmux/conf.d/4x-fleet.conf
+.config/tmux/conf.d/45-palantir.conf
 .config/tmux/palette.d/ralph.tsv
+.config/tmux/palette.d/palantir.tsv
 .config/tmux/scripts/pickers/lib/handoff_to_ralph_pin.sh
 .config/tmux/scripts/pickers/lib/handoff_to_ralph_apply.sh
+.config/tmux/scripts/pickers/lib/handoff_to_palantir_pin.sh
+.config/tmux/scripts/pickers/lib/handoff_to_palantir_apply.sh
 .config/tmux/scripts/pickers/github/lib/gh_ralph_handoff_context.py
+.config/tmux/scripts/pickers/github/lib/gh_palantir_handoff_context.py
 .agents/skills/fleet-afk
 .agents/skills/fleet-yolo
 .agents/skills/ralph
+.agents/skills/k-palantir
 .local/bin/ralph-tui

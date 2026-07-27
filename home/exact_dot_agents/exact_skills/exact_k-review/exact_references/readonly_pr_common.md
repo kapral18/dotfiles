@@ -20,21 +20,14 @@ All PR review modes load this file; do not duplicate these rules in mode files.
 
 ## Large-PR Triage
 
-- After reading `git diff --stat`, assess the PR size:
-  - If the diff touches more than 20 files or exceeds ~1000 changed lines:
-    - Prioritize files containing business logic, security-sensitive code, and API changes.
-    - Deprioritize generated files (lockfiles, snapshots, generated code, vendored deps).
-    - State triage order at the start so the user knows what was prioritized and deferred.
-  - For smaller PRs: review everything; no triage.
+After `git diff --stat`, if the diff touches >20 files or ~1000 changed lines, prioritize business logic, security-sensitive code, and API changes; deprioritize generated/lock/snapshot/vendored files; state triage order.
+For smaller PRs, review everything.
 
 ## File-Type Awareness
 
-Adjust review depth by file type:
-
-- **Skip or skim** (unless explicitly asked): lockfiles (`package-lock.json`, `yarn.lock`, `Cargo.lock`), generated code, snapshots, `.min.js`, vendored dependencies.
-- **Full depth**: business logic, API routes, auth/authz, data models, migrations, configuration that affects runtime behavior.
-- **Medium depth**: test files (check coverage and correctness, but do not nitpick style), documentation, CI config.
-- If a finding exists only in a skimmed file, still report it — but note the file type context.
+- **Skip/skim unless asked:** lockfiles, generated code, snapshots, `.min.js`, vendored dependencies.
+- **Full depth:** business logic, API routes, auth/authz, data models, migrations, runtime-affecting config.
+- **Medium depth:** tests, docs, CI config. Report real findings in skimmed files, with file-type context.
 
 ## CI Coverage Gate (scoping — complete before drafting findings)
 
@@ -62,6 +55,11 @@ Avoid redundant findings:
    Do not assume a class is covered just because CI usually covers it elsewhere.
 5. State one line before drafting: `CI coverage: covered=[...] -> exempt; in-scope=[...]`.
 
+## Pending Review Intake (blocking before diff analysis)
+
+Before PR diff analysis/dedup, seed the current-account review ledger from GitHub API truth:
+resolve login, list reviews, select `PENDING` reviews by that login, read their draft comments, and mark submitted review/comment/reply content from normal PR intake that was authored by the same login.
+
 ## GitHub Context Intake + Reference Resolution (blocking — complete before diff analysis)
 
 Use this gate for the primary PR and every recursively discovered item that could inform the review:
@@ -85,7 +83,7 @@ Keep a short intake ledger for composition/review work: object read, full-body/c
 2. Seed the queue from the primary PR:
    - PR description/body, reading every line including template text, checkboxes, code blocks, quotes, collapsible sections, and footnotes
    - PR conversation/timeline comments, review bodies/comments/threads, and every reply, including resolved/outdated state when available
-   - any `PENDING` review and draft comments authored by the current account, using `shared_rules.md` Existing Pending Review Awareness
+   - any `PENDING` review and draft comments authored by the current account, using Pending Review Intake above
    - linked/closing issues, linked PRs, commits, check/build links, URLs, and image/media/attachment links found anywhere above
 3. For each queued item, read the complete artifact before extracting references from it:
    - PRs:

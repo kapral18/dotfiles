@@ -1,6 +1,6 @@
 ---
 name: k-weave
-description: "Use when preparing or previewing merges, resolving semantic Git conflicts, setting up weave, or parsing weave conflict markers."
+description: "Use when preparing/previewing merges, resolving semantic Git conflicts, setting up weave, or parsing markers."
 ---
 
 # weave

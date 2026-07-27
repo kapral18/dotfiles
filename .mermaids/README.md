@@ -2,8 +2,8 @@
 
 A navigation cloud for this chezmoi dotfiles repo, in **two layers**:
 
-- **Semantic cloud** (`S0`, `S1`–`S3`, `SR`) — how the system _thinks_: the 13 concepts and invariants it is built on, the cross-cutting flows that wire subsystems together, and a reverse index from any file to its concept, blast radius, and co-edit set. **Read this first** — it makes the catalog legible.
-- **Catalog** (`00`–`13`) — how the system is _laid out_: exhaustive coverage of every one of the 1334 files in the effective git file set, named or grouped by exact chezmoi source path. Use it to drill from a concept to the precise file.
+- **Semantic cloud** (`S0`, `S1`, `S3`, `SR`) — how the system _thinks_: the 13 concepts and invariants it is built on, the cross-cutting flows that wire subsystems together, and a reverse index from any file to its concept, blast radius, and co-edit set. **Read this first** — it makes the catalog legible.
+- **Catalog** (`00`–`13`) — how the system is _laid out_: exhaustive coverage of every one of the 1322 files in the effective git file set, named or grouped by exact chezmoi source path. Use it to drill from a concept to the precise file.
 
 Together they let an agent understand the whole solution in one pass and then map straight down to any particle. They complement the prose in `docs/` and the rules in `AGENTS.md` / `CLAUDE.md`.
 
@@ -13,29 +13,27 @@ Each file is a standalone [Mermaid](https://mermaid.js.org/) diagram (`.mmd`), l
 
 - [`S0-concepts.mmd`](S0-concepts.mmd) — the 13 core concepts (C1–C13), each with its **invariant** (the rule that must hold) and the files that realize it. This is the heart of the cloud; everything else is an instance.
 - [`S1-flow-apply-reconcile.mmd`](S1-flow-apply-reconcile.mmd) — flow: source + data + `isWork` → template + hash-gated hooks → `$HOME` build → runtime consumers. The idempotent reconcile (C1–C6).
-- [`S2-flow-agent-runtime.mmd`](S2-flow-agent-runtime.mmd) — flow: one Palantir legion (summon → staged panes → deterministic supervisor → gated verify → human-ready handoff), including C7/C8/C11–C13.
-- [`S3-flow-pickers-handoff.mmd`](S3-flow-pickers-handoff.mmd) — flow: stale-while-revalidate UX and the owner-scoped handoff bus that lets the gh / session / Palantir summon paths cooperate (C9, C10).
+- [`S3-flow-pickers-handoff.mmd`](S3-flow-pickers-handoff.mmd) — flow: owner-scoped tmux picker handoff pins and successor popup relaunch.
 - [`SR-index.mmd`](SR-index.mmd) — reverse index: pick the row for the file you are about to touch → concept it serves → what breaks → minimum co-edit set → which catalog diagram holds the exhaustive view.
 
 ## Catalog layer (exhaustive per-file drill-down)
 
 1. [`00-overview.mmd`](00-overview.mmd) — master map (semantic + catalog) + file census; start here.
-2. [`01-chezmoi-pipeline.mmd`](01-chezmoi-pipeline.mmd) — `chezmoi apply` lifecycle; every `.chezmoiscripts/` hook (29) + data/external/ignore inputs.
+2. [`01-chezmoi-pipeline.mmd`](01-chezmoi-pipeline.mmd) — `chezmoi apply` lifecycle; every `.chezmoiscripts/` hook (28) + data/external/ignore inputs.
 3. [`02-package-management.mmd`](02-package-management.mmd) — the "add X" ladder and every `default-*` package list + sync hook (incl. runtimes, local AI, system hooks).
 4. [`03-agentic-os.mmd`](03-agentic-os.mmd) — governance + context + execution layers (SOP entrypoints, MCP/model registries, per-tool generation).
-5. [`03b-agent-skills-hooks.mmd`](03b-agent-skills-hooks.mmd) — every file under `exact_dot_agents/` (53 skills + 11 hook files + references).
-6. [`04-palantir-state-machine.mmd`](04-palantir-state-machine.mmd) — Palantir legion stage machine, deterministic supervisor, pane handshakes, verify gate, and closeout memory routing.
-7. [`05-tmux-pickers.mmd`](05-tmux-pickers.mmd) — every file under `exact_tmux/` (120): conf.d loader, GitHub picker, session picker, handoff, sessions, palettes, resurrect, Palantir dashboard popup.
-8. [`06-worktree-workflow.mmd`](06-worktree-workflow.mmd) — `,w` subcommands, `,gh-tfork`, gh-dash, and 1Password identity switching.
-9. [`07-shell-editor-macos.mmd`](07-shell-editor-macos.mmd) — fish/zsh/bash, terminals, and macOS automation (Hammerspoon, Karabiner, Alfred, icons, osx defaults).
-10. [`07b-neovim.mmd`](07b-neovim.mmd) — every file under `exact_nvim/` (155): core, 57 plugin specs, local plugins (14 each), util, queries, syntax.
-11. [`07c-bin-commands.mmd`](07c-bin-commands.mmd) — every thin command in `exact_bin/` (83) grouped by purpose + deployed command/shared internals in `home/exact_lib/` (87 command/shared library files), spanning 34 command libraries plus shared helpers.
-12. [`08-security-and-dotfiles.mmd`](08-security-and-dotfiles.mmd) — SSH/GPG identity, 1Password agent, git signing, pass stores, and every shell/tool rc dotfile.
-13. [`09-repo-validation.mmd`](09-repo-validation.mmd) — `make check` / `make fmt`, hygiene gates, and every repo-side config/meta file.
-14. [`10-docs-and-repo-meta.mmd`](10-docs-and-repo-meta.mmd) — the Docusaurus site (`website/` + `docs/`) and GitHub Pages CI; every page named.
-15. [`11-scripts-helpers.mmd`](11-scripts-helpers.mmd) — every file in `scripts/` (106): shared parsers, reconcilers, MCP/model/mirror generators, AI KB, session/cache diagnostics, artifact ledger, tests.
-16. [`12-ai-tool-configs.mmd`](12-ai-tool-configs.mmd) — every per-tool AI config (Cursor, Claude, Codex, Gemini, OpenCode, Pi, tuicr).
-17. [`13-app-configs.mmd`](13-app-configs.mmd) — remaining app configs (lazygit, gitui, tig, gh, bat, btop, yazi, ghostty, starship, llama.cpp, karabiner, Palantir).
+5. [`03b-agent-skills-hooks.mmd`](03b-agent-skills-hooks.mmd) — every file under `exact_dot_agents/` (52 skill entrypoints + 11 hook files + references).
+6. [`05-tmux-pickers.mmd`](05-tmux-pickers.mmd) — tmux pickers, owner-scoped handoff pins, and popup lifecycle.
+7. [`06-worktree-workflow.mmd`](06-worktree-workflow.mmd) — `,w` subcommands, `,gh-tfork`, gh-dash, and 1Password identity switching.
+8. [`07-shell-editor-macos.mmd`](07-shell-editor-macos.mmd) — fish/zsh/bash, terminals, and macOS automation (Hammerspoon, Karabiner, Alfred, icons, osx defaults).
+9. [`07b-neovim.mmd`](07b-neovim.mmd) — every file under `exact_nvim/` (155): core, 57 plugin specs, local plugins (14 each), util, queries, syntax.
+10. [`07c-bin-commands.mmd`](07c-bin-commands.mmd) — every thin command in `exact_bin/` (82) grouped by purpose + deployed command/shared internals in `home/exact_lib/` (75 command/shared library files), spanning 33 command libraries plus shared helpers.
+11. [`08-security-and-dotfiles.mmd`](08-security-and-dotfiles.mmd) — SSH/GPG identity, 1Password agent, git signing, pass stores, and every shell/tool rc dotfile.
+12. [`09-repo-validation.mmd`](09-repo-validation.mmd) — `make check` / `make fmt`, hygiene gates, and every repo-side config/meta file.
+13. [`10-docs-and-repo-meta.mmd`](10-docs-and-repo-meta.mmd) — the Docusaurus site (`website/` + `docs/`) and GitHub Pages CI; every page named.
+14. [`11-scripts-helpers.mmd`](11-scripts-helpers.mmd) — every file in `scripts/` (110): shared parsers, reconcilers, MCP/model/mirror generators, AI KB, session/cache diagnostics, artifact ledger, tests.
+15. [`12-ai-tool-configs.mmd`](12-ai-tool-configs.mmd) — every per-tool AI config (Cursor, Claude, Codex, Gemini, OpenCode, Pi, tuicr).
+16. [`13-app-configs.mmd`](13-app-configs.mmd) — app/runtime configs for Ghostty, Starship, local LLMs, and input/window management.
 
 ## Concept → catalog map (semantic to particle)
 
@@ -51,9 +49,9 @@ Each file is a standalone [Mermaid](https://mermaid.js.org/) diagram (`.mmd`), l
 | C8 evidence ledger           | claims anchored or demoted to Unknown                                           | 03b      |
 | C9 stale-while-revalidate    | cached first paint, bg refetch, no block                                        | 05       |
 | C10 owner-scoped handoff bus | cooperate via pin/sentinel slots in a per-owner token namespace                 | 05,06    |
-| C11 adversarial diversity    | adversarial review family differs from implement family                         | 04       |
-| C12 resumable state machines | crash parks a persisted stage, supervisor continues                             | 04,12    |
-| C13 intent memory            | sessions rehydrate from `/tmp/specs`                                            | 03b,04   |
+| C11 adversarial diversity    | adversarial review family differs from implement family                         | 03b      |
+| C12 resumable state machines | crash-safe hook/worklog queues preserve progress                                | 03b,12   |
+| C13 intent memory            | sessions rehydrate from `/tmp/specs`                                            | 03b      |
 
 ## Coverage map (where each top-level area lives)
 
@@ -62,8 +60,6 @@ Each file is a standalone [Mermaid](https://mermaid.js.org/) diagram (`.mmd`), l
 | `home/.chezmoiscripts/`, data       | 01, 02     |
 | `home/readonly_dot_default-*`       | 02         |
 | `home/exact_dot_agents/`            | 03, 03b    |
-| `home/exact_lib/exact_,palantir/`   | 04, 07c    |
-| `home/dot_config/palantir/`         | 04, 13     |
 | `home/dot_config/exact_tmux/`       | 05         |
 | `home/exact_bin/` (incl. `,w`)      | 06, 07c    |
 | `home/exact_lib/` command internals | 07c        |

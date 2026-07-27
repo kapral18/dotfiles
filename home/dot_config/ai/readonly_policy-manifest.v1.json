@@ -1,0 +1,261 @@
+{
+  "version": 1,
+  "output_path": "home/readonly_AGENTS.md",
+  "output_sha256": "5a71144282b0a1c0179a6f0797522a7c3e32e78947b66899e1ba1650de993b30",
+  "output_bytes": 19603,
+  "rules": [
+    {
+      "id": "sop.0.binding-contract",
+      "sha256": "7acfc23c5330b5d1a66c67347c2bdf6ed1010dcbb3db5ff1907f03d742d9b8a5",
+      "bytes": 1047,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "safety",
+      "eval_ref": "sop.0.binding-contract.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.1.purpose-and-hierarchy",
+      "sha256": "0f4f1e0053dcfa99645fe325899bcf7e10e54eb51569adf7bca01664591eeeed",
+      "bytes": 1287,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "secret",
+      "eval_ref": "sop.1.purpose-and-hierarchy.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.2.truth-and-verification",
+      "sha256": "4799424d9084bed98b39e7224492b490aef0ccbe08124f6cfdf8c46f4cdf8cd5",
+      "bytes": 30,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "standard",
+      "eval_ref": "sop.2.truth-and-verification.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.2.0.compatibility-gate",
+      "sha256": "08c51aa6a64f75197d86c911507480c79d2cb23a9286552ca63b6ee800cadbbc",
+      "bytes": 572,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "compatibility",
+      "eval_ref": "sop.2.0.compatibility-gate.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.2.1.external-truth",
+      "sha256": "4d6876b5f34282ed8c7ff2724022d29df04cdb491c1f8a084aaa0e5435c670e7",
+      "bytes": 1663,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "standard",
+      "eval_ref": "sop.2.1.external-truth.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.2.1a.mechanism-claims-feasibility-assertions",
+      "sha256": "2f530b464b1d300f464f79b2f3b67dd0c45b8909b729186f0a615dfbee7798bf",
+      "bytes": 674,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "standard",
+      "eval_ref": "sop.2.1a.mechanism-claims-feasibility-assertions.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.2.2.runtime-truth",
+      "sha256": "57865619a8b84fd4a12d8c1a8778d71b9138706dff1e895751c18fff88cdf4fd",
+      "bytes": 467,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "standard",
+      "eval_ref": "sop.2.2.runtime-truth.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.2.3.completion",
+      "sha256": "8cbb6cfb76cfc163770cf85f586771e32ee910e694d4c4cf041c705fffe6d0cc",
+      "bytes": 743,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "standard",
+      "eval_ref": "sop.2.3.completion.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.2.4.complete-artifacts",
+      "sha256": "ddff3fc1754ecbc61a08e6b6c88fd134f56effb19b6744a2be79ee8a4a516b87",
+      "bytes": 813,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "standard",
+      "eval_ref": "sop.2.4.complete-artifacts.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.2.5.self-report-skepticism",
+      "sha256": "d1147387b5a6f5ba88751a9e33303b88879293c25402a3bbce28e11052fa648f",
+      "bytes": 705,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "standard",
+      "eval_ref": "sop.2.5.self-report-skepticism.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.3.workflow-and-side-effects",
+      "sha256": "7c4db8575e06091e5b04901bad073967d251f53f5052cf448df2b07bfa2af0c8",
+      "bytes": 358,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "standard",
+      "eval_ref": "sop.3.workflow-and-side-effects.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.3.0.intent-loop",
+      "sha256": "e5af49f7eaedd7581cea6dfa264be254df88190ffa17a045891f80f1ce285694",
+      "bytes": 1321,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "standard",
+      "eval_ref": "sop.3.0.intent-loop.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.3.1.git-commit-and-push-safety",
+      "sha256": "2cc2e2f3c451f08516d9d229856a41b35101d82e322ea8f81de6ba9612fa7b07",
+      "bytes": 766,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "git-gate",
+      "eval_ref": "sop.3.1.git-commit-and-push-safety.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.3.2.ownership-gate",
+      "sha256": "0d8abe82546f12266c832c046f4e7d4abbf46437ae327e3c56365d381f5e3397",
+      "bytes": 817,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "ownership",
+      "eval_ref": "sop.3.2.ownership-gate.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.3.3.requirements-reset",
+      "sha256": "4f14a062bc0b718b64b8db2180b631cb5da54768e38a092223a3707a1691a3a3",
+      "bytes": 638,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "standard",
+      "eval_ref": "sop.3.3.requirements-reset.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.3.4.verification-loops",
+      "sha256": "0af144c94c2b935e0e558bb670fe1bbfb2fce395c580cae15db90f0142f519ad",
+      "bytes": 1688,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "safety",
+      "eval_ref": "sop.3.4.verification-loops.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.3.5.state-machine-verification",
+      "sha256": "196b0258d77a009ee40ab574f8296ab1c915ac1ce197ecb4762dbce9fdf8bc17",
+      "bytes": 1130,
+      "disposition": "skill",
+      "consumer": "home/exact_dot_agents/exact_skills/exact_k-code-quality/readonly_SKILL.md",
+      "risk_tier": "compatibility",
+      "eval_ref": "sop.3.5.state-machine-verification.mechanical-only",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.3.6.human-visible-publication",
+      "sha256": "55bb2ace3d155a0c187d96fb6c47569cc5ff25e84cd2d557f02ca7475f64329c",
+      "bytes": 1582,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "publication",
+      "eval_ref": "sop.3.6.human-visible-publication.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.4.tooling-and-memory",
+      "sha256": "27ec854c9986caf574db12b34b67efbfa369608659d5b9eb70e4aaa0dad705cc",
+      "bytes": 1165,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "standard",
+      "eval_ref": "sop.4.tooling-and-memory.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.4.1.durable-memory",
+      "sha256": "0fd8e3b16036050c7623ce20034df588f0d0a33765bbdab6261b71e718702abc",
+      "bytes": 1045,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "secret",
+      "eval_ref": "sop.4.1.durable-memory.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.5.code-quality",
+      "sha256": "4b2d1c447aa70c367f9ab15accc59c566befcf15b2f8002e129c0f0dbd2c4f78",
+      "bytes": 2026,
+      "disposition": "skill",
+      "consumer": "home/exact_dot_agents/exact_skills/exact_k-code-quality/readonly_SKILL.md",
+      "risk_tier": "standard",
+      "eval_ref": "sop.5.code-quality.mechanical-only",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.6.communication",
+      "sha256": "91618d2ef6f1b7e87d6307d961694a5198c0c0fa0f8a935edc03886e9595887b",
+      "bytes": 1578,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "standard",
+      "eval_ref": "sop.6.communication.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.7.exceptions",
+      "sha256": "724a6a3ce574352cc1e35cc7153411277aaaf6eab252931cd20921cbe13260fd",
+      "bytes": 644,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "standard",
+      "eval_ref": "sop.7.exceptions.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    }
+  ]
+}

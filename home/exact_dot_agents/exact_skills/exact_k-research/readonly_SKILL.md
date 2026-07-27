@@ -1,6 +1,6 @@
 ---
 name: k-research
-description: "Use when inspecting an external public repository from source or synthesizing factual claims across multiple public sources."
+description: "Use when inspecting external public repos from source or synthesizing factual claims across public sources."
 ---
 
 # Research

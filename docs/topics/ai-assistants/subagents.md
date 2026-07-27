@@ -125,4 +125,3 @@ Workers never edit files, post comments, resolve threads, or decide final action
 
 - [Review workflow](reviews/index.md)
 - [Tool configs](tool-configs/index.md)
-- [Palantír orchestrator](palantir.md)

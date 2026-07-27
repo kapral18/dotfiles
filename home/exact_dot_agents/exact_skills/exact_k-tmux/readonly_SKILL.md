@@ -1,6 +1,6 @@
 ---
 name: k-tmux
-description: "Use when running, probing, or automating tmux commands, panes, sessions, sockets, popups, capture-pane observations, source-file/config parsing, or interactive CLI workflows inside tmux."
+description: "Use when running/probing tmux panes, sessions, sockets, popups, captures, config, or tmux-hosted CLIs."
 ---
 
 # Tmux

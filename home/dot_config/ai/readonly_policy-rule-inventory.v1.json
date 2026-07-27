@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "rule_ids": [
+    "sop.0.binding-contract",
+    "sop.1.purpose-and-hierarchy",
+    "sop.2.0.compatibility-gate",
+    "sop.2.1.external-truth",
+    "sop.2.1a.mechanism-claims-feasibility-assertions",
+    "sop.2.2.runtime-truth",
+    "sop.2.3.completion",
+    "sop.2.4.complete-artifacts",
+    "sop.2.5.self-report-skepticism",
+    "sop.2.truth-and-verification",
+    "sop.3.0.intent-loop",
+    "sop.3.1.git-commit-and-push-safety",
+    "sop.3.2.ownership-gate",
+    "sop.3.3.requirements-reset",
+    "sop.3.4.verification-loops",
+    "sop.3.5.state-machine-verification",
+    "sop.3.6.human-visible-publication",
+    "sop.3.workflow-and-side-effects",
+    "sop.4.1.durable-memory",
+    "sop.4.tooling-and-memory",
+    "sop.5.code-quality",
+    "sop.6.communication",
+    "sop.7.exceptions"
+  ],
+  "removed_rule_sha256": [
+    "15cf52e9f12abf6bd27a4220be8bf26d9c402fef68ffdd60be65c7c34ca711e1",
+    "21ae1bcbada0fc1aab4288b44c0df44db407e9f92c705c2967c9ada2d65f541d",
+    "6000978b8f3796ea5bef82b9d3d5132d2ac549fd54057e6cf4fb49110e41f77e",
+    "da202fd330e510f0c13caf5f526d851d3ffdbcf829dfbc78ab450c1d5f1d313f",
+    "f4fe9283fe6bf8e9a9bed9a7f2dd7c47dedb5d053e1f1f7c897f82ce6656c8f1"
+  ]
+}

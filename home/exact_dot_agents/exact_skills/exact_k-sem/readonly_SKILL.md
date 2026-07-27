@@ -1,6 +1,6 @@
 ---
 name: k-sem
-description: "Use when entity-level Git diff, blame, impact analysis, dependency graphs, history tracing, or review granularity needs ,sem."
+description: "Use when entity-level diff, blame, impact, dependency graph, history, or review granularity needs ,sem."
 ---
 
 # ,sem

@@ -1,6 +1,6 @@
 ---
 name: k-ui-proof
-description: "Use when verifying that a built or changed UI matches its intended visual, state, or behavior and capturing screenshot proof for a PR — during feature building (/k-build) or PR composition (compose-pr). Head-only; not for reviewing others' changes."
+description: "Use when proving a built/changed UI matches intended visual, state, or behavior and capturing PR screenshots."
 ---
 
 # UI Proof

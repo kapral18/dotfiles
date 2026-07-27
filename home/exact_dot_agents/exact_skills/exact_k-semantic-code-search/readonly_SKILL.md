@@ -1,6 +1,6 @@
 ---
 name: k-semantic-code-search
-description: "Use when conceptual code search, SCSI index selection, symbol analysis, or base-branch context requires semantic-code-search."
+description: "Use when conceptual code search, SCSI index selection, symbols, or base context needs semantic-code-search."
 ---
 
 # Semantic Code Search Skill

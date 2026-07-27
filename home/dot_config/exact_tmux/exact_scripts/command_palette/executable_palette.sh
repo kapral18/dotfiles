@@ -115,7 +115,6 @@ describe_tmux_action() {
     *gh_dash/popup.sh*) printf 'GitHub dashboard (gh-dash)' ;;
     *gh_dash/restart.sh*) printf 'Restart gh-dash' ;;
     *gh_tfork/popup.sh*) printf 'Bootstrap repo (fork+clone)' ;;
-    *lib/,palantir/dashboard.py*) printf 'Palantír (the stone)' ;;
     *pick_url.sh*) printf 'URL picker' ;;
     *promote_pane.sh*) printf 'Promote pane to session' ;;
     *promote_window.sh*) printf 'Promote window to session' ;;
@@ -311,43 +310,6 @@ execute_entry() {
     git:*)
       local alias_name="${kind_key#git:}"
       tmux send-keys "git ${alias_name} " 2> /dev/null || true
-      ;;
-    palantir:*)
-      case "${kind_key#palantir:}" in
-        summon)
-          tmux command-prompt \
-            -p "palantir summon goal:" \
-            'run-shell -b ",palantir summon \"%1\""' 2> /dev/null || true
-          ;;
-        farsee)
-          tmux display-popup -w 90% -h 70% -E "bash -lc ',palantir farsee; printf \"\\npress enter\"; read -r _'" 2> /dev/null || true
-          ;;
-        trial)
-          tmux command-prompt \
-            -p "palantir trial legion id:" \
-            'display-popup -w 80% -h 60% -E "bash -lc \",palantir trial %1; printf \\\"\\npress enter\\\"; read -r _\""' 2> /dev/null || true
-          ;;
-        answer)
-          tmux command-prompt \
-            -p "palantir answer (id message):" \
-            'run-shell -b ",palantir answer %1"' 2> /dev/null || true
-          ;;
-        doctor)
-          tmux display-popup -w 80% -h 60% -E "bash -lc ',palantir doctor; printf \"\\npress enter\"; read -r _'" 2> /dev/null || true
-          ;;
-        kb-search)
-          tmux command-prompt \
-            -p "ai-kb search:" \
-            'display-popup -w 90% -h 80% -E "bash -lc \",ai-kb search %1; printf \\\"\\npress enter\\\"; read -r _\""' 2> /dev/null || true
-          ;;
-        statusline)
-          tmux display-popup -w 60% -h 30% -E "bash -lc ',palantir statusline; printf \"\\n\\npress enter\"; read -r _'" 2> /dev/null || true
-          ;;
-        *)
-          [ -n "$exec_col" ] || return 0
-          tmux send-keys "$exec_col " 2> /dev/null || true
-          ;;
-      esac
       ;;
     *)
       [ -n "$exec_col" ] || return 0

@@ -4,18 +4,16 @@ sidebar_position: 4
 
 # AI reference
 
-Source map for AI governance, harness configs, model/MCP generation, memory, Palantír, and local inference.
-
 ## Governance + skills
 
-See [The Agentic Operating System](../topics/ai-assistants/index.md).
+See [The Agentic Operating System](../topics/ai-assistants/index.md) and [SOP source of truth](../topics/ai-assistants/system-prompt/source-of-truth.md).
 
-| Component                     | Source path                                                                        |
-| ----------------------------- | ---------------------------------------------------------------------------------- |
-| Assistant SOP (single source) | [`home/readonly_AGENTS.md`](../../home/readonly_AGENTS.md)                         |
-| Assistant skills              | [`home/exact_dot_agents/exact_skills/`](../../home/exact_dot_agents/exact_skills/) |
-| Shared assistant hooks        | [`home/exact_dot_agents/exact_hooks/`](../../home/exact_dot_agents/exact_hooks/)   |
-| Cursor CLI hooks              | [`home/dot_cursor/hooks.json`](../../home/dot_cursor/hooks.json)                   |
+| Component              | Source path                                                                        |
+| ---------------------- | ---------------------------------------------------------------------------------- |
+| Assistant core SOP     | [`home/readonly_AGENTS.md`](../../home/readonly_AGENTS.md)                         |
+| Assistant skills       | [`home/exact_dot_agents/exact_skills/`](../../home/exact_dot_agents/exact_skills/) |
+| Shared assistant hooks | [`home/exact_dot_agents/exact_hooks/`](../../home/exact_dot_agents/exact_hooks/)   |
+| Cursor CLI hooks       | [`home/dot_cursor/hooks.json`](../../home/dot_cursor/hooks.json)                   |
 
 `~/CLAUDE.md`, `~/.gemini/GEMINI.md`, `~/.cursor/AGENTS.md`, `~/.codex/AGENTS.md`, `~/.config/opencode/AGENTS.md`, and `~/.copilot/copilot-instructions.md` are symlinks to `~/AGENTS.md`.
 
@@ -72,19 +70,6 @@ Two distinct memory layers. See [Agent memory](../topics/ai-assistants/knowledge
 | Embedding service             | [`scripts/embed.py`](../../scripts/embed.py), [`scripts/embed_runner.py`](../../scripts/embed_runner.py)                                                         |
 | Vector retrieval              | [`scripts/vec_runner.py`](../../scripts/vec_runner.py)                                                                                                           |
 | Hook memory (`,agent-memory`) | [`home/exact_bin/executable_,agent-memory`](../../home/exact_bin/executable_,agent-memory), [`scripts/agent_memory.py`](../../scripts/agent_memory.py)           |
-
-## Palantír orchestrator
-
-See [Palantír orchestrator](../topics/ai-assistants/palantir.md).
-
-| Component             | Source path                                                                                                                                    |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| CLI entry             | [`home/exact_bin/executable_,palantir`](../../home/exact_bin/executable_,palantir)                                                             |
-| Deployed core         | [`home/exact_lib/exact_,palantir/`](../../home/exact_lib/exact_,palantir/)                                                                     |
-| Role config           | [`home/dot_config/palantir/`](../../home/dot_config/palantir/)                                                                                 |
-| Skill                 | [`home/exact_dot_agents/exact_skills/exact_k-palantir/`](../../home/exact_dot_agents/exact_skills/exact_k-palantir/)                           |
-| Fish completion       | [`home/dot_config/fish/completions/readonly_,palantir.fish`](../../home/dot_config/fish/completions/readonly_,palantir.fish)                   |
-| Tmux dashboard/status | [`home/dot_config/exact_tmux/exact_conf.d/readonly_45-palantir.conf`](../../home/dot_config/exact_tmux/exact_conf.d/readonly_45-palantir.conf) |
 
 ## Local inference
 

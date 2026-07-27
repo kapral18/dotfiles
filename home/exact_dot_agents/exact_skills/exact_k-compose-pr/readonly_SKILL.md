@@ -1,6 +1,6 @@
 ---
 name: k-compose-pr
-description: "Use when drafting a PR title/body or PR publication packet before creating or editing a PR; includes template/screenshots/test-plan/metadata handoff, no gh side effects."
+description: "Use when drafting PR title/body or publication packet; no gh side effects."
 ---
 
 # Compose PR Body
@@ -8,126 +8,46 @@ description: "Use when drafting a PR title/body or PR publication packet before 
 Use when:
 
 - the user wants a PR title/body draft or PR publication packet only (no `gh` side effects)
-- `~/.agents/skills/k-github/SKILL.md` needs a draft body before creating/editing a PR
+- `~/.agents/skills/k-github/SKILL.md` needs a draft before creating/editing a PR
 
 Scope:
 
-- produces a PR title/body draft and PR publication packet only
+- produce a PR title/body draft and PR publication packet only
 - do not change PR metadata; use `~/.agents/skills/k-github/SKILL.md` for side effects
-- read-only `gh`/GitHub API use is allowed only to resolve and fully read PR/issue/comment/media references needed for the draft
+- read-only `gh`/GitHub API use is allowed only to resolve and fully read references needed for the draft
 
 Do not use:
 
-- user wants to create/edit PR in GitHub: `~/.agents/skills/k-github/SKILL.md`
-- user is asking for PR review feedback: `~/.agents/skills/k-review/SKILL.md`
+- creating/editing PRs in GitHub: `~/.agents/skills/k-github/SKILL.md`
+- PR review feedback: `~/.agents/skills/k-review/SKILL.md`
 
 Repo/org-specific overlays:
 
 - A domain overlay is a repo/org-specific skill selected from the verified target repo/org, not guessed from wording.
-  It layers repo-specific PR body policy onto this generic composer.
-- Current concrete overlay: for the `elastic` org / `elastic/kibana`, load `~/.agents/skills/k-elastic-domain/SKILL.md`.
-- The overlay decides footer, release-note, label, ownership, and environment additions. This skill stays the generic PR body composer.
+- For `elastic` org / `elastic/kibana`, load `~/.agents/skills/k-elastic-domain/SKILL.md`.
+- The overlay decides footer, release-note, label, ownership, and environment additions. This skill stays generic.
 
 First actions:
 
-1. Inspect the current diff/branch context and the user-supplied issue/PR refs.
-2. For any PR, issue, comment, thread, asset, URL, or media reference the draft depends on, run the GitHub Context Intake + Reference Resolution gate.
-   The gate lives in `~/.agents/skills/k-review/references/pr_common.md`.
-   The gate is not complete from previews or sliced fields; read full raw bodies/comments first, then summarize.
-3. If the PR body needs contested, historical, product, or team-precedent context not settled by direct references, run Ambient Topic Exploration.
-   That workflow lives in `~/.agents/skills/k-review/references/pr_common.md`.
-4. Extract only evidence you can verify (summary, test plan, migration notes).
+1. Inspect current diff/branch context and user-supplied issue/PR refs.
+2. For any PR, issue, comment, thread, asset, URL, or media reference the draft depends on, run GitHub Context Intake + Reference Resolution from `~/.agents/skills/k-review/references/pr_common.md`.
+   Complete that gate per `pr_common.md` before summarizing.
+3. If the body needs contested, historical, product, or team-precedent context not settled by direct refs, run Ambient Topic Exploration from the same reference.
+4. Extract only verified evidence: summary, Test Plan, migration notes.
 5. If issue linkage or test evidence is missing after intake, keep placeholders instead of inventing details.
-6. If the repo belongs to the `elastic` org, load `~/.agents/skills/k-elastic-domain/SKILL.md` and apply its GitHub/PR composition section.
-7. Build the PR publication packet.
-   This is the single handoff gate to `k-github`; do not hand off while any required field is missing or `blocked`. Required fields:
-   - `template`: selected template, selection reason, required-section checklist, and `status: satisfied | blocked`.
-     If the repo/domain overlay provides templates, load the referenced template file before drafting and draft against one selected template, not a freeform section list.
-   - `screenshots`: `captured | not_applicable | blocked | explicitly_skipped`.
-     Screenshot proof is required when the diff touches UI/runtime behavior, linked context includes screenshots/media, or the Test Plan includes manual UI steps.
-     Required proof means reuse a `/k-build` `k-ui-proof` manifest, or load `~/.agents/skills/k-ui-proof/SKILL.md` and run it head-only.
-     For UI behavior bugs whose key assertion is non-visual (clipboard, keyboard, focus, network), still capture human-visible trigger/result states and record the non-visual assertion in the Test Plan.
-     Captured proof includes the folder/filename mapping; explicit skips include user approval evidence.
-   - `test_plan`: issue reproduction/expected/actual coverage, commands run, and observed results.
-     When the effort already carries a receipt-gated `,proof` ledger, select it with `,proof list --json`, then inspect `,proof --topic <topic> status --json`.
-     Consume it as completion proof only when `allowed` is true, `finalized_at` is set, and `seal_status` is `ok`.
-     Run `,proof --topic <topic> report` and fold that receipt into the evidence/Test Plan section.
-     If the matching ledger is failing, unfinalized, or has a broken seal, do not present it as proof or finish it retroactively during PR composition; use independently verified Test Plan evidence and surface the incomplete or blocked receipt.
-     Quote criteria, evidence IDs, and verdicts instead of pasting raw logs; never include artifacts that could carry secrets.
-   - `metadata`: proposed labels/assignees/milestone/projects, source skill/rationale, and `status: none | not_applicable | approved_to_apply | applied | deferred | pending_approval`.
-     If metadata is proposed but not approved for application, the packet status is `pending_approval` unless the user explicitly defers it.
-     Completion criterion: the packet is complete, or the composition is blocked with exact missing fields.
-8. Keep the packet with the draft for any handoff to `k-github`: title source, body source, linked issue intake, template, screenshots, Test Plan, metadata, and unresolved placeholders.
+6. If the repo is in `elastic`, load `~/.agents/skills/k-elastic-domain/SKILL.md` and apply its GitHub/PR composition section.
+7. Load `~/.agents/skills/k-compose-pr/references/publication-packet.md`, then build the PR publication packet.
+   Do not hand off while any required field is missing or `blocked`.
+8. Keep the packet with the draft for `k-github`: title source, body source, linked issue intake, template, screenshots, Test Plan, metadata, and unresolved placeholders.
 
 Rules:
 
-- keep it short and reviewable
-- prefer bullets over prose
-- test plan must be evidence: commands run + observed result
-- template compliance:
-  - do not collapse required template sections into `## Summary`
-  - required explanatory sections such as `## Root Cause`, `## Fix`, `## Rationale`, or `## User-Facing Behavior` must appear as their own headings when the selected template includes them
-  - before handoff, compare the final draft headings against the selected template's required-section checklist
-- PR Test Plan completeness gate:
-  - if any linked/closing issue has `## Reproduction`, `Expected`, or `Actual`, adapt the observable steps into `## Test Plan`
-  - include the expected observable result after the fix
-  - include commands run + observed results separately from manual/observable verification steps
-  - if manual repro was not run, say so and keep the portable steps as reviewer-run verification
-- when the change removes/replaces long-lived or "legacy"/"obsolete" infrastructure, `## Root Cause` must carry the historical reason it existed and why it no longer applies (see the review skill's Historical-Rationale Gate); do not assert "this was always wrong" without the origin evidence
-- for behavior/UI bugs, include portable local reproduction steps that another reviewer can run from a normal checkout;
-  do not replace the repro with only session-specific validation notes
-- sanitize public PR text before returning it:
-  - do not include machine-specific hosts, ports, paths, temp files, workspace names, browser-session URLs, or local usernames from the author's environment
-  - examples to avoid: private hostnames, non-standard local domains, `/tmp/...`, absolute `$HOME` paths, Playwriter/session IDs, one-off account names that are not part of the repro setup
-  - use portable wording instead, such as `local app`, `http://localhost:<port>`, `a user with only <privilege>`, or explicit setup steps to create the role/user
-- screenshots (UI-facing changes only):
-  - when screenshot proof is captured, add a `## Screenshots` section listing each shot as a bold caption plus its `user-attachments` URL
-  - the agent uploads every captured image/video itself via the browser-assisted upload flow in `~/.agents/skills/k-github/references/attachments.md` and embeds the resulting `user-attachments` URLs — never use `attach:` placeholders, never fabricate image URLs, and never leave files for the user to drag into GitHub.
-    The upload is a GitHub side effect that stays behind the publication gate:
-    perform it only with explicit user approval of the exact side effect.
-  - never put the local `/tmp/<folder-name>/` path in the PR body (the sanitize rule above);
-    keep the folder + filename→path mapping in the PR publication packet so the upload flow can resolve each file to its caption
-  - omit the section only for `not_applicable` or `explicitly_skipped`; do not omit it for `required` or `blocked`
-- decision log: when the change embodies a decision with observable consequences for someone else —
-  a different API shape, privilege model, error response, storage format, or default —
-  add a `## Decisions` section with one bullet per decision: `**<decision>** — risk: <what goes wrong if this was the wrong call>`.
-  Internal implementation choices do not qualify; omit the section when no qualifying decision exists.
-- link issues explicitly:
-  - `Closes #X` only when merging should close the issue
-  - `Addresses #X` when it should not auto-close
-  - never invent issue numbers
+- Follow `k-compose-pr/references/publication-packet.md` body rules for reviewability, Test Plan evidence, templates, sanitization, screenshots/uploads, and issue links.
+- Keep composer-only unresolved placeholders outside the PR body and in the publication packet.
 
 Output:
 
-- Return the PR title/body draft and PR publication packet, ready to hand to `~/.agents/skills/k-github/SKILL.md`.
-- If important inputs are missing, say exactly which placeholders still need confirmation.
+- Return the PR title/body draft and PR publication packet, ready for `~/.agents/skills/k-github/SKILL.md`.
+- If important inputs are missing, name the placeholders needing confirmation.
 - Always include the PR publication packet. A packet with a `blocked` required field cannot be handed to `k-github` for publication.
-  Include template status: selected template, why it applies, required sections present, sections omitted with template-allowed reasons, and blockers.
-  Include screenshot status.
-  When screenshots were captured, include the `## Screenshots` section in the body with the embedded `user-attachments` URLs, and list each proof set's `/tmp/<folder-name>/` + filename→path mapping outside the body so the publication step can resolve uploads.
-  When screenshots were not captured, the ledger must say `not_applicable`, `blocked`, or `explicitly_skipped` with evidence;
-  `blocked` cannot be handed to `k-github` for publication.
-  Include metadata status: proposed metadata, source skill/rationale, and whether it is approved to apply, applied, deferred, or still pending approval.
-- When handing the draft to `k-github` for PR creation/editing, include the packet outside the PR body so the GitHub skill can build its publication preflight.
-
-## General template
-
-```markdown
-Closes #X | Addresses #X
-
-## Summary
-
--
-
-## Test Plan
-
--
-
-## Screenshots
-
-<!-- UI-facing changes only; omit otherwise. One titled block per captured shot, uploaded via the browser-assisted flow (see `k-github/references/attachments.md`) and embedded by URL. -->
-
-**<caption — what this proves>:**
-
-<img src="https://github.com/user-attachments/assets/<uuid>" alt="<caption>" />
-```
+- When handing off, include the packet outside the PR body so `k-github` can build its publication preflight.

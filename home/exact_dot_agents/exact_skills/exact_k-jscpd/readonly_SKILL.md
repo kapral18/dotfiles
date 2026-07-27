@@ -1,6 +1,6 @@
 ---
 name: k-jscpd
-description: "Use when detecting duplicated code during refactors, cleanup, DRY work, clone investigation, or duplication reporting with jscpd."
+description: "Use for duplicated-code checks during refactors, cleanup, DRY work, clone investigation, or jscpd reporting."
 tool_version: jscpd 4.0.8
 ---
 

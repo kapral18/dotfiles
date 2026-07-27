@@ -1,6 +1,6 @@
 ---
 name: k-kibana-management-ownership
-description: "Use when checking elastic/kibana ownership, reviewer targets, who owns a path, or kibana-management CODEOWNERS/Ownership Gate paths; propose-only."
+description: "Use when checking elastic/kibana ownership, reviewers, path owners, or CODEOWNERS; propose-only."
 ---
 
 # Kibana Management Ownership (Propose-Only)

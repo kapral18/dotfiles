@@ -77,6 +77,5 @@ What to focus on:
 Where to read:
 
 - [AI & Assistants](../topics/ai-assistants/index.md) — the governance hub
-- [Palantír orchestrator](../topics/ai-assistants/palantir.md) — tmux-native detached orchestration
 - [MCP servers](../topics/ai-assistants/mcp.md) and [Model registry & routing](../topics/ai-assistants/model-registry.md) — how tools get context and models
 - [Agent memory](../topics/ai-assistants/knowledge-base/index.md) — session memory and the durable knowledge base

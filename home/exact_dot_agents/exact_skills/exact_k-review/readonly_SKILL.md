@@ -1,6 +1,6 @@
 ---
 name: k-review
-description: "Use when reviewing local changes or PRs, continuing a review, addressing review threads, rechecking PR-related changes, or reviewing a plan/design document before implementation."
+description: "Use when reviewing local changes, PRs, review threads, PR fixes, or a plan/design before implementation."
 ---
 
 # Review Router

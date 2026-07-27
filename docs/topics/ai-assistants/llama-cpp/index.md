@@ -27,4 +27,3 @@ Each page owns one layer.
 
 - [Add a llama.cpp model](../../core/packages/llama-cpp-model.md) — manifest recipe
 - [Model registry & routing](../model-registry.md) — cloud model definitions
-- [Palantír orchestrator](../palantir.md) — role harnesses may use local models when configured

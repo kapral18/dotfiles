@@ -58,11 +58,11 @@ CENSUS: list[Claim] = [
     Claim(
         name="total effective git files",
         globs=None,
-        claimed=1334,
+        claimed=1322,
         anchors=[
-            ("README.md", "1334 files in the effective git file set"),
-            ("00-overview.mmd", "1334 files in the effective git file set"),
-            ("00-overview.mmd", "file census (1334 total)"),
+            ("README.md", "1322 files in the effective git file set"),
+            ("00-overview.mmd", "1322 files in the effective git file set"),
+            ("00-overview.mmd", "file census (1322 total)"),
         ],
     ),
     Claim(
@@ -75,16 +75,16 @@ CENSUS: list[Claim] = [
         name="home/.chezmoiscripts/",
         globs=["home/.chezmoiscripts/*"],
         claimed=28,
-        anchors=[("01-chezmoi-pipeline.mmd", ".chezmoiscripts/ (28)")],
+        anchors=[
+            ("01-chezmoi-pipeline.mmd", ".chezmoiscripts/ (28)"),
+            ("README.md", "`.chezmoiscripts/` hook (28)"),
+        ],
     ),
     Claim(
         name="home/dot_config/exact_tmux/",
         globs=["home/dot_config/exact_tmux/*"],
-        claimed=120,
-        anchors=[
-            ("05-tmux-pickers.mmd", "exact_tmux/ (120)"),
-            ("README.md", "`exact_tmux/` (120)"),
-        ],
+        claimed=115,
+        anchors=[("05-tmux-pickers.mmd", "exact_tmux/ (115)"), ("00-overview.mmd", "tmux 115")],
     ),
     Claim(
         name="home/dot_config/exact_nvim/",
@@ -117,51 +117,54 @@ CENSUS: list[Claim] = [
     Claim(
         name="home/dot_config/fish/",
         globs=["home/dot_config/fish/*"],
-        claimed=86,
-        anchors=[("00-overview.mmd", "fish 86")],
+        claimed=85,
+        anchors=[("00-overview.mmd", "fish 85")],
     ),
     Claim(
         name="home/exact_bin/",
         globs=["home/exact_bin/*"],
-        claimed=83,
+        claimed=82,
         anchors=[
-            ("07c-bin-commands.mmd", "exact_bin/ (83 thin commands)"),
-            ("README.md", "`exact_bin/` (83)"),
+            ("07c-bin-commands.mmd", "exact_bin/ (82 thin commands)"),
+            ("README.md", "`exact_bin/` (82)"),
+            ("00-overview.mmd", "bin 82"),
         ],
     ),
     Claim(
         name="home/exact_lib/",
         globs=["home/exact_lib/*"],
-        claimed=87,
+        claimed=75,
         anchors=[
-            ("07c-bin-commands.mmd", "home/exact_lib/ (87 command/shared library files)"),
-            ("README.md", "`home/exact_lib/` (87 command/shared library files)"),
+            ("07c-bin-commands.mmd", "home/exact_lib/ (75 command/shared library files)"),
+            ("README.md", "`home/exact_lib/` (75 command/shared library files)"),
+            ("README.md", "33 command libraries plus shared helpers"),
+            ("00-overview.mmd", "command-lib 75 (33 command dirs + shared)"),
         ],
+    ),
+    Claim(
+        name="docs/",
+        globs=["docs/*"],
+        claimed=166,
+        anchors=[("00-overview.mmd", "docs 166")],
     ),
     Claim(
         name="home/exact_dot_agents/",
         globs=["home/exact_dot_agents/*"],
-        claimed=111,
+        claimed=114,
         anchors=[
-            ("03b-agent-skills-hooks.mmd", "exact_dot_agents/ (111)"),
-            ("00-overview.mmd", "agents 111"),
+            ("03b-agent-skills-hooks.mmd", "exact_dot_agents/ (114)"),
+            ("00-overview.mmd", "agents 114"),
         ],
     ),
     Claim(
         name="scripts/",
         globs=["scripts/*"],
-        claimed=106,
+        claimed=110,
         anchors=[
-            ("11-scripts-helpers.mmd", "scripts/ (106)"),
-            ("README.md", "`scripts/` (106)"),
-            ("00-overview.mmd", "scripts 106"),
+            ("11-scripts-helpers.mmd", "scripts/ (110)"),
+            ("README.md", "`scripts/` (110)"),
+            ("00-overview.mmd", "scripts 110"),
         ],
-    ),
-    Claim(
-        name="home/exact_lib/exact_,palantir/",
-        globs=["home/exact_lib/exact_,palantir/*"],
-        claimed=12,
-        anchors=[("04-palantir-state-machine.mmd", "home/exact_lib/exact_,palantir/ (12)")],
     ),
 ]
 

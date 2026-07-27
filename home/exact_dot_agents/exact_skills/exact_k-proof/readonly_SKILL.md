@@ -1,12 +1,12 @@
 ---
 name: k-proof
-description: "Use only for non-review/non-build freeform work when the user explicitly requests a proof ledger/receipt, a security/auth, data-migration, or destructive effect needs an auditable record, or a named handoff/resume consumer needs criteria, attempt history, or a blocker preserved."
+description: "Use only for non-review/non-build proof receipts: requested receipt, audit record, or handoff ledger."
 tool_version: ",proof 0.2.0"
 ---
 
 # Proof
 
-Use `,proof` to create a durable local receipt for qualifying non-review/non-build freeform work without forcing `/k-spec`, `/k-build`, or a Palantír legion.
+Use `,proof` to create a durable local receipt for qualifying non-review/non-build freeform work without forcing `/k-spec` or `/k-build`.
 The ledger records criteria, evidence assessments, blockers, and a machine-readable gate.
 It is not verification itself: the SOP's source reads, probes, tests, and inline evidence remain mandatory whether or not a ledger exists.
 
@@ -25,7 +25,7 @@ Do not use:
 - a failed command, retry, or Requirements Reset unless a named handoff/resume consumer needs that history
 - "are you sure?", "is it done?", "verify this", or "how do you know?" when re-running and citing the relevant evidence inline answers the question
 - ordinary answer-only, docs, wording, mechanical, or code work whose final answer can cite evidence directly
-- formal `/k-build` or palantir legions that already carry a criteria ledger, unless the user asks for a separate freeform proof receipt
+- formal `/k-build` flows that already carry a criteria ledger, unless the user asks for a separate freeform proof receipt
 - `k-review`, `k-light-review`, `/k-agent-review`, or PR-fix flows unless the user explicitly asks for a separate freeform proof receipt
 - human-visible publication; compose/posting skills own publication packets and may consume an already-finalized receipt
 - evidence likely to contain secrets, tokens, private customer data, or paste-only local paths that would be unsafe in a handoff

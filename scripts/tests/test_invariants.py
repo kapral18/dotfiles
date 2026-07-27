@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 import re
 import unittest
@@ -53,16 +54,43 @@ def _transform_closure(paths: set[Path]) -> set[Path]:
     return result
 
 
+SOP_MANIFEST_PATH = "home/dot_config/ai/readonly_policy-manifest.v1.json"
+
+
+def _sop_rule_text() -> str:
+    """Return the compiled core SOP after checking manifest hash consistency.
+
+    Stage 2 moves some rules to skill/hook/overlay consumers instead of
+    home/readonly_AGENTS.md; frozen moved-rule text lives in the disposition
+    records for provenance. Core assertions should read the actual generated
+    core file, but fail first if the policy manifest hash is stale.
+    """
+    manifest = json.loads((REPO / SOP_MANIFEST_PATH).read_text(encoding="utf-8"))
+    actual_core = (REPO / "home/readonly_AGENTS.md").read_text(encoding="utf-8")
+    actual_hash = hashlib.sha256(actual_core.encode("utf-8")).hexdigest()
+    if manifest.get("output_sha256") != actual_hash:
+        raise AssertionError("policy manifest output_sha256 is stale relative to home/readonly_AGENTS.md")
+    return actual_core
+
+
 class TestAgentInstructionInvariants(unittest.TestCase):
     """WHEN guarding high-risk agent workflow instructions."""
 
     def assert_file_contains(self, relative_path: str, *snippets: str) -> None:
-        text = (REPO / relative_path).read_text(encoding="utf-8")
+        text = (
+            _sop_rule_text()
+            if relative_path == "home/readonly_AGENTS.md"
+            else (REPO / relative_path).read_text(encoding="utf-8")
+        )
         for snippet in snippets:
             assert snippet in text, f"{relative_path} is missing instruction: {snippet}"
 
     def assert_file_not_contains(self, relative_path: str, *snippets: str) -> None:
-        text = (REPO / relative_path).read_text(encoding="utf-8")
+        text = (
+            _sop_rule_text()
+            if relative_path == "home/readonly_AGENTS.md"
+            else (REPO / relative_path).read_text(encoding="utf-8")
+        )
         for snippet in snippets:
             assert snippet not in text, f"{relative_path} should not contain: {snippet}"
 
@@ -82,9 +110,9 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "Platform/system/developer instructions remain authoritative",
             "When a `Use when` clause matches, load the referenced skill file and follow it",
             "Do not deviate from specified procedures without explicit user approval",
-            "This global SOP overrides project-local or repo-local SOP files when they conflict",
-            "Project-local instructions may add repo-specific constraints but must not weaken this SOP",
-            "continue working until the user's goal is complete",
+            "This global SOP overrides weaker project-local SOP files",
+            "project-local instructions may add constraints but must not weaken this SOP",
+            "Continue working until the user's goal is complete",
             "Any premature stopping, including checkpoint commentary, is an operational failure",
         )
 
@@ -94,7 +122,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "Every implementation summary must include: `Compatibility impact: none | removed (requested) | kept existing (requested)`",
             "with no shim, alias, wrapper, or deprecation path",
             "Do not build further reasoning on unverified external behavior",
-            "Label hypotheses explicitly and do not let them gate downstream steps",
+            "label hypotheses explicitly and do not let them gate downstream steps",
             "Any locally verifiable assumption or guess must be verified via probes",
             "Resolve material unknowns before proceeding",
             "keep `/tmp` clones for reuse",
@@ -121,14 +149,17 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "repeat until forks are empty and success criteria are testable",
             "For non-trivial or risky work, make the plan and per-step verification explicit enough to test",
             "Do not make further speculative changes until alignment is restored",
-            "Reframe imperative tasks to verifiable goals when practical",
-            "Bug fix reframe: write a test that reproduces the bug, then make it pass",
+            "Reframe tasks into observable checks when practical",
+            "bug fixes get reproducing tests",
             "A repo-external `,proof` ledger is a durable receipt, not verification itself",
             "are not ledger triggers by themselves",
             "Do not create a ledger retroactively near the final answer",
             "do not invoke `,proof` merely because the task feels",
             "repo-external `,proof` ledger",
             "Test-first framing does not license touching code outside the request",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-code-quality/readonly_SKILL.md",
             "Before calling such behavior final or merge-ready",
             "Reuse an existing harness only after reading its manifest",
             "Compare implementation behavior against an independent model/table",
@@ -187,7 +218,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
     def test_proof_access_requires_a_receipt_consumer_or_audit_need(self):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-proof/readonly_SKILL.md",
-            "Use only for non-review/non-build freeform work",
+            "Use `,proof` only when at least one receipt trigger applies",
             "No other task property is a trigger by itself",
             "Do not create a ledger near the final answer",
             "Finalize the receipt",
@@ -202,7 +233,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "Otherwise inline anchors are the proof trail",
         )
         self.assert_file_contains(
-            "home/exact_dot_agents/exact_skills/exact_k-compose-pr/readonly_SKILL.md",
+            "home/exact_dot_agents/exact_skills/exact_k-compose-pr/exact_references/readonly_publication-packet.md",
             "Consume it as completion proof only when `allowed` is true, `finalized_at` is set, and `seal_status` is `ok`",
             "do not present it as proof or finish it retroactively during PR composition",
         )
@@ -253,16 +284,6 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "docs/topics/ai-assistants/tool-configs/claude-gemini.md",
             "`alwaysThinkingEnabled: false`; `effortLevel: xhigh`",
         )
-        self.assert_file_contains(
-            "home/readonly_AGENTS.md",
-            "a `holding` legion carries one actionable condition",
-            "to resume the stored stage",
-        )
-        self.assert_file_contains(
-            ".mermaids/04-palantir-state-machine.mmd",
-            "holding --> resume : ,palantir answer uses stored resume_stage",
-            "resume --> implement : implement / exhausted retry budget",
-        )
         self.assert_file_not_contains(
             "docs/topics/ai-assistants/scenarios.md",
             "`/improve-…`",
@@ -286,10 +307,19 @@ class TestAgentInstructionInvariants(unittest.TestCase):
 
     def test_global_sop_keeps_side_effect_publication_and_git_gates(self):
         self.assert_file_contains(
-            "home/readonly_AGENTS.md",
+            "home/exact_dot_agents/exact_skills/exact_k-git/readonly_SKILL.md",
             "Never run `git commit` unless the user explicitly requested a commit in the current conversation",
             "Content approval is not commit authorization",
-            "never run `git pull`, `git pull --rebase`, `git rebase <remote>/<branch>`, or `git merge <remote>/<branch>` automatically before pushing",
+            "`git pull`, `git pull --rebase`, `git rebase <remote>/<branch>`, or `git merge <remote>/<branch>` automatically before pushing",
+            "If push is rejected for divergence, non-fast-forward, lease failure, or diverged history, stop and ask how to proceed",
+        )
+        self.assert_file_contains(
+            "home/readonly_AGENTS.md",
+            "Never run `git commit` unless the user explicitly requested a commit in the current conversation",
+            "content approval is not commit authorization",
+            "git push --force-with-lease",
+            "Never run `git pull`, `git pull --rebase`, `git rebase <remote>/<branch>`, or `git merge <remote>/<branch>` automatically before pushing",
+            "If push is rejected for divergence, non-fast-forward, lease failure, or diverged history, stop and ask how to proceed",
             "If a human will see the result, draft it, show the exact payload and target, and wait for explicit approval before sending",
             "Never publish spontaneously, even to bots",
             "Classify author type from platform API evidence, not display-name heuristics",
@@ -304,9 +334,8 @@ class TestAgentInstructionInvariants(unittest.TestCase):
 
     def test_global_sop_keeps_quality_communication_and_memory_gates(self):
         self.assert_file_contains(
-            "home/readonly_AGENTS.md",
-            "Do not commit, reveal, or write secrets or plaintext credentials.",
-            "All existing behavior outside the explicit scope of the change MUST be preserved",
+            "home/exact_dot_agents/exact_skills/exact_k-code-quality/readonly_SKILL.md",
+            "Preserve all existing behavior outside the explicit scope of the change",
             "Dropping unrelated behavior, even if it looks like cleanup, requires explicit user approval",
             "Use targeted edits, not full-file rewrites",
             "Remove duplication only after proving it is not a point-of-use guard",
@@ -316,25 +345,62 @@ class TestAgentInstructionInvariants(unittest.TestCase):
             "explicitly requested that artifact by name",
             "No abstractions for single-use code",
             "If 200 lines would do as 50, rewrite",
+        )
+        self.assert_file_contains(
+            "home/readonly_AGENTS.md",
+            "Do not commit, reveal, or write secrets or plaintext credentials.",
             "Pre-send self-check",
             "first sentence carries the answer, not narration",
             "last sentence adds new information, not recap",
             "Strip filler, hedging, narrative padding",
             "Anchor with evidence; do not paraphrase the verification chain in prose",
-            "choose no reply if the message would only restate the thread",
+            "choose no reply if it would only restate the thread",
             "Match the user's/surface's register",
             "Use natural wording or say that no message is worth sending",
             "Also use that shape when the user asked for a trace/comparison/audit",
             "Ask exactly one clarifying question per message and wait for the answer before asking the next",
             "Use code citation format (`startLine:endLine:filepath`) for existing code",
             "Concise result summaries inside the response are required when they carry evidence, outcomes, or next-step constraints",
-            "When prior knowledge could help (starting non-trivial work, or hitting a problem the setup likely saw before)",
-            "not a checkpoint and not a reason to stop early",
-            "no announcement, no separate summary",
             "Think laterally about root causes and indirect effects",
             "Do not stop at the first plausible explanation; verify thoroughly",
             '"Concise" is the opposite of "padded," not the opposite of "thorough."',
             "unnecessary churn is a defect, not diligence",
+        )
+        self.assert_file_contains(
+            "home/readonly_AGENTS.md",
+            "Recall first with `,ai-kb search` when prior knowledge could help",
+            "never store guesses or session-only notes",
+            "Mid-task decisions, ideas, and unverified constraints worth keeping go to `,agent-memory note",
+            "At the end of any substantive turn, silently self-check whether a durable verified reusable insight was produced",
+            "not a checkpoint and not a reason to stop early",
+            "no announcement or separate summary",
+            "No per-session cap; dedup before writing",
+        )
+
+    def test_review_flows_iterate_to_fixed_point(self):
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_judging_core.md",
+            "**Fixed point.**",
+            "Repeat until no new surviving findings or hygiene findings remain",
+            "Repeat until the four dimensions return clean",
+            "verified blocker/Requirements Reset stops the loop",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-build/readonly_SKILL.md",
+            "Repeat the Post-Review Stage until it returns clean",
+            "rerun packet checks and adversarial verification before reporting",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_local_changes.md",
+            "following its fixed-point repeat rule until clean or blocked",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_pr_fix.md",
+            "rerun current-head outcome verification for affected threads before completion",
+        )
+        self.assert_file_not_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-review/exact_references/readonly_local_changes.md",
+            "Post-Review Stage once",
         )
 
     def test_global_sop_does_not_carry_skill_routing_triggers(self):
@@ -369,7 +435,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
     def test_code_quality_skills_preserve_extracted_style_guidance(self):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-code-quality/readonly_SKILL.md",
-            "Use when editing, reviewing, or refactoring implementation code in any language",
+            "Use when editing, reviewing, or refactoring implementation code or any repository artifact",
             "Match local style, structure, terminology, formatting, and contract strength",
             "Follow `.editorconfig` and existing project conventions",
             "## Secondary Skill Escalation",
@@ -408,7 +474,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-code-quality-web/readonly_SKILL.md",
-            "Use when editing, reviewing, or refactoring browser-rendered markup, styling, or presentation",
+            "Use for browser-rendered markup, CSS, layout, visual states, accessibility, or focus behavior edits/reviews",
             "## Secondary Skill Escalation",
             "If the concrete web surface is React/JSX/TSX, also load the `~/.agents/skills/k-code-quality-react/SKILL.md` skill.",
             "Prefer semantic HTML and existing design-system primitives",
@@ -439,15 +505,19 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-github/readonly_SKILL.md",
             "PR creation is a composition action; it is not exempt.",
-            "show a PR publication preflight ledger",
+            "Load `~/.agents/skills/k-github/references/pr-create.md`",
             'Approval to "create a PR" authorizes the GitHub side effect, but not invented human-visible content.',
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-github/exact_references/readonly_pr-create.md",
+            "Before the side effect, show:",
             "Compare each field against the approved preflight ledger",
         )
 
     def test_issue_publication_requires_type_packet(self):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-compose-issue/readonly_SKILL.md",
-            "issue title/body or issue publication packet",
+            "issue title/body draft or issue publication packet",
             "issue publication packet",
             "`issue_type`: exact GitHub issue type",
             "labels do not satisfy it",
@@ -456,6 +526,11 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-github/readonly_SKILL.md",
+            "Load `~/.agents/skills/k-github/references/issue-create.md`",
+            "issue type gate",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-github/exact_references/readonly_issue-create.md",
             "Before `gh issue create`",
             "`k-compose-issue` issue publication packet",
             "gh issue create --type <IssueType>",
@@ -466,11 +541,15 @@ class TestAgentInstructionInvariants(unittest.TestCase):
     def test_compose_pr_preserves_context_and_test_plan_gates(self):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-compose-pr/readonly_SKILL.md",
-            "PR title/body or PR publication packet",
+            "PR title/body or publication packet",
+            "Load `~/.agents/skills/k-compose-pr/references/publication-packet.md`",
+            "PR publication packet",
+        )
+        self.assert_file_contains(
+            "home/exact_dot_agents/exact_skills/exact_k-compose-pr/exact_references/readonly_publication-packet.md",
             "The gate is not complete from previews or sliced fields",
             "PR Test Plan completeness gate",
             "include the expected observable result after the fix",
-            "PR publication packet",
             "pending_approval",
         )
 
@@ -690,7 +769,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
     def test_text_tournament_joins_normal_iteration_with_cross_family_authority(self):
         self.assert_file_contains(
             "home/exact_dot_agents/exact_skills/exact_k-text-tournament/readonly_SKILL.md",
-            "Use when the agent is about to make a material rewrite of human-maintained prose",
+            "Use before a material prose rewrite with several plausible directions",
             "## Automatic in normal iteration",
             "Run automatically only when the target has multiple materially different",
             "State a short rubric",

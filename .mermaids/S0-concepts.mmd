@@ -44,7 +44,7 @@ graph TB
     %% ---- C7 Intent-routed governance ---------------------------------------
     C7{{"C7 · GOVERNED AGENTS<br/>LLMs are deterministic systems, not chatbots"}}:::concept
     C7 --> I7["INVARIANT: agents load SOP entrypoints + intent-matched skills,<br/>keep generic workflows domain-neutral, use detached orchestration only on<br/>an explicit user request, and pass fail-closed gates before human-visible side effects."]:::inv
-    I7 --> R7["realized by: ~/AGENTS.md/CLAUDE.md/GEMINI.md · skills 'Use when'<br/>Palantir strict opt-in + domain overlays such as elastic-domain · hooks.json gates<br/>SOP External Truth (C8) · session_context memory"]:::realize
+    I7 --> R7["realized by: home/readonly_AGENTS.md + symlinked harness entrypoints<br/>exact_skills Use when routing · domain overlays · exact_hooks fail-closed gates"]:::realize
 
     %% ---- C8 Evidence anchoring (SOP discipline) ----------------------------
     C8{{"C8 · EVIDENCE ANCHORING<br/>claims must be anchored or demoted"}}:::concept
@@ -58,23 +58,23 @@ graph TB
 
     %% ---- C10 Handoff bus ----------------------------------------------------
     C10{{"C10 · OWNER-SCOPED HANDOFF BUS<br/>tools cooperate via pin/sentinel files in a private namespace"}}:::concept
-    C10 --> I10["INVARIANT: a picker begins an owner-scoped namespace (random 32-hex<br/>token dir 0700 + immutable owner.json 0600 fingerprinting pid/start/command);<br/>the explicit TMUX_PICKER_HANDOFF_TOKEN env value routes every child to its slots,<br/>never a global mailbox or argv token. The owner ends its namespace on normal EXIT;<br/>Palantir context is copied to a secure retained-context file (0600, 7-day TTL) first."]:::inv
-    I10 --> R10["realized by: pickers/lib/handoff_namespace.py<br/>(begin/path/retain-context/end/sweep) + handoff_to_* + pin_*_first;<br/>token injected into child popups via display-popup -e<br/>gh/session picker pins + Palantir summon retained context"]:::realize
+    C10 --> I10["INVARIANT: picker handoffs use token-scoped files, not globals;<br/>successors consume+delete pins, and namespace cleanup is owner-checked."]:::inv
+    I10 --> R10["realized by: pickers/lib/handoff_namespace.py<br/>handoff_to_{gh,sessions}.sh · pin_{gh,session}_first.sh<br/>TMUX_PICKER_HANDOFF_TOKEN injection"]:::realize
 
     %% ---- C11 Diversity gate (adversarial review) ---------------------------
     C11{{"C11 · ADVERSARIAL DIVERSITY<br/>a model may not clear its own family"}}:::concept
-    C11 --> I11["INVARIANT: adversarial-review role panes MUST use a<br/>different model family than the implement role pane."]:::inv
-    I11 --> R11["realized by: ,palantir machine.py transition/guard tables<br/>+ palantir_config.py role-family resolution"]:::realize
+    C11 --> I11["INVARIANT: verifier/adversarial review lanes use a<br/>different model family than the implement lane they judge."]:::inv
+    I11 --> R11["realized by: agent_review_models registry<br/>/k-agent-review adversarial/verifier lanes · /k-build criteria-verifier lane"]:::realize
 
     %% ---- C12 Resumable state machine ---------------------------------------
     C12{{"C12 · RESUMABLE STATE MACHINES<br/>death parks, relaunch continues"}}:::concept
-    C12 --> I12["INVARIANT: long work advances a persisted stage left→right;<br/>transition actions and coordinator wakes are durable until acknowledged;<br/>a crash leaves it parked at last-saved stage and the supervisor resumes<br/>without losing side effects or replaying acknowledged work; terminal state<br/>is not complete until the legion session/worktree teardown is recorded."]:::inv
-    I12 --> R12["realized by: ~/.local/state/palantir/legions/<id>/manifest.json<br/>+ legion_state.py + supervisor.py + stage result handshakes<br/>+ state-machine-verification harness rule"]:::realize
+    C12 --> I12["INVARIANT: long work advances through persisted queues/states;<br/>a crash leaves it restartable from saved state without losing side effects<br/>or replaying acknowledged work; terminal state is not complete until<br/>terminal cleanup is recorded."]:::inv
+    I12 --> R12["realized by: worklog_queue.py + spec/worklog queues<br/>hook dispatch state · k-code-quality state-machine verification harness policy"]:::realize
 
     %% ---- C13 Persistent intent memory --------------------------------------
     C13{{"C13 · INTENT MEMORY<br/>sessions rehydrate, don't restart cold"}}:::concept
     C13 --> I13["INVARIANT: per-(workspace,topic) spec/worklog persists in<br/>/tmp/specs with named topics mirrored/restored via persistent state;<br/>sessionStart injects it bounded; review topics run clean-room;<br/>depth-bounded per-turn recall only connects to a session-warmed generation;<br/>tool events enter a bounded crash-safe session queue off the critical path."]:::inv
-    I13 --> R13["realized by: hook_common.py · session_context.py · perturn_recall.py<br/>spec_mirror.py (named-topic mirror/restore) · worklog_dispatcher.sh → worklog_recorder.py/worklog_queue.py<br/>,agent-memory (incl. structured `note` capture) · ~/lib/,ai-kb/ (one-shot default;<br/>generation-specific resident only for connect-only per-turn recall)<br/>+ Palantir closeout memory routing"]:::realize
+    I13 --> R13["realized by: session_context.py · perturn_recall.py<br/>spec_mirror.py · worklog_queue.py · ,agent-memory · ,ai-kb"]:::realize
 
     %% ---- how concepts compose ----------------------------------------------
     C1 -. "everything applies through" .-> C4

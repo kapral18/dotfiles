@@ -3,13 +3,13 @@
 
 Covers the deployed core CLI
 ``home/dot_config/exact_tmux/exact_scripts/pickers/lib/executable_handoff_namespace.py``
-(``begin``/``path``/``retain-context``/``end``/``sweep``) plus the wiring
+(``begin``/``path``/``end``/``sweep``) plus the wiring
 contract the GitHub and session pickers rely on. Every check drives the *real*
 core binary or the real
 ``pin_session_first.sh`` helper against a private ``XDG_CACHE_HOME`` fake cache,
 so the assertions exercise the implemented directory protocol rather than a
 model. Static-source assertions guard the shell wrappers' handoff contract
-(token propagation, owner-checked ``end``, secure palantir context retention,
+(token propagation, owner-checked ``end``,
 standalone begin, no top-level legacy reads/writes).
 
 Compatibility impact: removed (requested). The former global pin/sentinel
@@ -44,7 +44,6 @@ GH_PICKER = TMUX_PICKERS / "github/executable_gh_picker.sh"
 GH_CREATE = TMUX_PICKERS / "github/executable_gh_create.sh"
 SESSION_POPUP = TMUX_PICKERS / "session/executable_popup.sh"
 PICK_SESSION = TMUX_PICKERS / "session/executable_pick_session.sh"
-PALANTIR_APPLY = TMUX_PICKERS / "lib/executable_handoff_to_palantir_apply.sh"
 
 TOKEN_RE = re.compile(r"^[0-9a-f]{32}$")
 DEAD_OWNER_TTL_SECONDS = 6 * 60 * 60
@@ -53,12 +52,11 @@ STAGING_GRACE_SECONDS = 5 * 60
 DEAD_PID = 999_999_999  # far above macOS PID_MAX; os.kill -> ESRCH -> dead
 ENV_TOKEN = "TMUX_PICKER_HANDOFF_TOKEN"
 
-# Every public slot the core allows, plus the derived palantir context sibling.
+# Every public slot the core allows.
 ALLOWED_SLOTS = (
     "gh_picker_pin",
     "pick_session_pin",
     "gh_picker_create_pin",
-    "gh_picker_palantir_pin",
     "gh_picker_switch_sessions",
     "pick_session_switch_gh",
 )
@@ -66,7 +64,7 @@ ALLOWED_SLOTS = (
 # must never read or write these; tests poison them and assert byte-stability.
 LEGACY_TOP_LEVEL = ALLOWED_SLOTS
 
-WIRED_FILES = (GH_POPUP, GH_PICKER, GH_CREATE, SESSION_POPUP, PICK_SESSION, PIN_SESSION_FIRST, PALANTIR_APPLY)
+WIRED_FILES = (GH_POPUP, GH_PICKER, GH_CREATE, SESSION_POPUP, PICK_SESSION, PIN_SESSION_FIRST)
 
 
 class HandoffTestBase(unittest.TestCase):
@@ -422,38 +420,6 @@ class TestHandoffProtocolWiring(HandoffTestBase):
         # A second consume misses -> checkout cannot run twice.
         self.assertFalse(Path(self.path("gh_picker_create_pin", token)).exists())
 
-    def test_palantir_context_lives_in_namespace_and_end_removes_it(self):
-        token = self.begin(role="popup-loop", entry="gh-popup")
-        pin = Path(self.path("gh_picker_palantir_pin", token))
-        pin.write_text("pr\towner/repo\t9\turl\ttitle\t/wt\t\tseed\t1\n", encoding="utf-8")
-        context = pin.with_suffix(pin.suffix + ".context.md")
-        context.write_text("RICH PALANTIR CONTEXT\n", encoding="utf-8")
-        self.assertTrue(context.is_file())
-        # Normal owner end removes the whole namespace, context sibling included.
-        result = self.core("end", "--owner-pid", str(os.getpid()), "--token", token)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertFalse((self.root / token).exists())
-        self.assertFalse(context.exists())
-
-    def test_palantir_retained_context_copy_survives_normal_namespace_end(self):
-        token = self.begin(role="popup-loop", entry="gh-popup")
-        pin = Path(self.path("gh_picker_palantir_pin", token))
-        pin.write_text("pr\towner/repo\t9\turl\ttitle\t/wt\t\tseed\t1\n", encoding="utf-8")
-        context = pin.with_suffix(pin.suffix + ".context.md")
-        context.write_text("RICH PALANTIR CONTEXT\n", encoding="utf-8")
-
-        retained_result = self.core("retain-context", str(context), "--token", token)
-        self.assertEqual(retained_result.returncode, 0, retained_result.stderr)
-        retained = Path(retained_result.stdout.strip())
-        self.assertEqual(stat.S_IMODE(retained.stat().st_mode), 0o600)
-        self.assertEqual(retained.read_text(), "RICH PALANTIR CONTEXT\n")
-        self.assertFalse(context.exists())
-
-        end = self.core("end", "--owner-pid", str(os.getpid()), "--token", token)
-        self.assertEqual(end.returncode, 0, end.stderr)
-        self.assertFalse((self.root / token).exists())
-        self.assertTrue(retained.is_file())
-
     def test_standalone_begin_end_leaves_no_namespace_or_legacy_residue(self):
         # Poison the legacy top-level mailbox first.
         cache_tmux = self.cache / "tmux"
@@ -544,7 +510,7 @@ class TestWiredSourceContract(unittest.TestCase):
     def test_no_top_level_legacy_handoff_paths(self):
         legacy = re.compile(
             r"(cache_dir[}\"/]*/?|tmux/)(gh_picker_pin|pick_session_pin|gh_picker_create_pin"
-            r"|gh_picker_palantir_pin|gh_picker_switch_sessions|pick_session_switch_gh)\b"
+            r"|gh_picker_switch_sessions|pick_session_switch_gh)\b"
         )
         for path, text in self.src.items():
             self.assertNotRegex(text, legacy, f"{path.name} references a legacy top-level handoff path")
@@ -553,7 +519,7 @@ class TestWiredSourceContract(unittest.TestCase):
         for path, text in self.src.items():
             if path in (GH_CREATE, PIN_SESSION_FIRST):
                 continue
-            for slot in ("gh_picker_pin", "pick_session_pin", "gh_picker_palantir_pin"):
+            for slot in ("gh_picker_pin", "pick_session_pin"):
                 if slot in text:
                     self.assertRegex(
                         text,
@@ -580,28 +546,6 @@ class TestWiredSourceContract(unittest.TestCase):
             self.assertRegex(text, r"export TMUX_PICKER_HANDOFF_TOKEN=", f"{wrapper.name} must export the token")
             self.assertIn("trap", text)
             self.assertRegex(text, r"\bend --owner-pid", f"{wrapper.name} must end the namespace by owner pid")
-
-    def test_gh_popup_ends_namespace_after_secure_palantir_context_copy(self):
-        popup = self.src[GH_POPUP]
-        apply_helper = self.src[PALANTIR_APPLY]
-        core = CORE.read_text(encoding="utf-8")
-
-        # Every popup exit performs the same owner-checked namespace end.
-        self.assertNotIn("_gh_popup_retain", popup)
-        self.assertRegex(popup, r"_gh_popup_cleanup\(\)\s*\{")
-        self.assertRegex(popup, r'end --owner-pid "\$\$" --token "\$TMUX_PICKER_HANDOFF_TOKEN"')
-        self.assertIn("trap _gh_popup_cleanup EXIT", popup)
-
-        # palantir context is copied securely before the asynchronous prompt is queued.
-        retain_at = apply_helper.index('retain-context "$context_file"')
-        prompt_at = apply_helper.index("tmux command-prompt")
-        self.assertLess(retain_at, prompt_at)
-        self.assertIn(
-            'retained_context="$("$handoff_namespace" retain-context "$context_file")" || exit 0', apply_helper
-        )
-        self.assertIn('[ -n "$retained_context" ] || exit 0', apply_helper)
-        self.assertIn('RETAINED_DIR = "retained-context"', core)
-        self.assertIn("RETAINED_FILE_MODE = 0o600", core)
 
     def test_pickers_begin_standalone_when_token_absent(self):
         for picker in (GH_PICKER, PICK_SESSION):

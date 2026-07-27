@@ -1,6 +1,6 @@
 ---
 name: k-git
-description: "Use when doing local git operations: status, diff, log, staging, branches, commits, pushes, rebases, or conflicts."
+description: "Use for local git operations: status, diff, log, staging, branches, commits, pushes, rebases, conflicts."
 ---
 
 # Git Workflow Skill
@@ -19,7 +19,7 @@ First actions:
 
 1. Establish repo state with the smallest relevant read-only probes (`git status`, `git diff`, `git log`, branch name).
 2. Use the actual repo's history/configuration as the source of truth for workflow conventions.
-3. Before any commit/push, restate the exact command and get approval.
+3. Before any commit/push, restate the exact command and apply the approvals/push policy below.
 
 Large-repo probe safety:
 
@@ -38,16 +38,21 @@ Safety protocol:
 
 Approvals:
 
-- always get explicit approval before `git commit`
-- always get explicit approval before `git push`
+- Never run `git commit` unless the user explicitly requested a commit in the current conversation.
+- Content approval is not commit authorization: "make it generic", "fix it", "do it", or approval of file edits authorizes the edits, not a commit.
+- When a task would conventionally end with a commit, stop at the working tree and report the change set;
+  the user commits or asks for one explicitly.
+- An explicit push request covers committing the changes it describes; absent that, leave the tree uncommitted.
+- Do not push without an explicit push request.
 
 Push policy (mandatory):
 
-- interpret a user request to "push" as explicit approval for `git push --force-with-lease`
-- prefer explicit remote/branch in the restated command (example: `git push --force-with-lease origin <branch>`)
-- if upstream is missing, `git push --force-with-lease -u <remote> <branch>` is allowed (still requires approval)
-- never run `git pull`, `git pull --rebase`, `git rebase <remote>/<branch>`, or `git merge <remote>/<branch>` automatically before pushing
-- if push fails due to divergence/non-fast-forward/lease checks, stop and ask for user direction; do not reconcile on your own
+- Interpret a user request to "push" as explicit approval for `git push --force-with-lease`.
+- Prefer explicit remote/branch in the restated command (example: `git push --force-with-lease origin <branch>`).
+- If upstream is missing, `git push --force-with-lease -u <remote> <branch>` is allowed.
+- Never run `git pull`, `git pull --rebase`, `git rebase <remote>/<branch>`, or `git merge <remote>/<branch>` automatically before pushing.
+- If push is rejected for divergence, non-fast-forward, lease failure, or diverged history, stop and ask how to proceed.
+- Do not reconcile branch history unless the user explicitly asks for that exact action.
 
 Amend policy (mandatory):
 

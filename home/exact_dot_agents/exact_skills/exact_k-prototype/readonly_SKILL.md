@@ -1,13 +1,14 @@
 ---
 name: k-prototype
-description: "Build a throwaway prototype to answer a design question. Use when the user wants to sanity-check whether a state model or logic feels right, or explore what a UI should look like before committing."
+description: "Use when building a throwaway prototype to sanity-check logic/state or explore UI direction before committing."
 ---
 
 # Prototype
 
 A prototype is **throwaway code that answers a question**. The question decides the shape.
 
-The SOP owns minimal edit scope and artifact necessity; a prototype is the explicit exception where throwaway code is the deliverable, so mark it as such and delete or absorb it when done.
+`k-code-quality` owns artifact necessity; the core SOP owns minimal edit scope.
+`k-prototype` is the point-of-use throwaway exception: mark the prototype as throwaway, then delete or absorb it when done.
 
 ## Pick a branch
 

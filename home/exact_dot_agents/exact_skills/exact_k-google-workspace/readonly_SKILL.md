@@ -1,6 +1,6 @@
 ---
 name: k-google-workspace
-description: "Use when inspecting or changing Gmail, Drive, Calendar, Admin Reports, Docs, Sheets, Slides, Forms, People/Contacts, Chat, Tasks, Keep, Meet, Classroom, or other Google Workspace data via gws."
+description: "Use for gws Google Workspace: Gmail, Drive, Calendar, Docs, Sheets, Slides, Forms, Contacts, Chat, Tasks."
 tool_version: gws 0.18.1
 ---
 

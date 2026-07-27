@@ -102,7 +102,7 @@ Rules:
 Use `,proof check --json` for automation.
 The JSON includes `allowed`, `verdict`, `goal`, `workspace`, `topic`, `proof_dir`, criterion counts, finalized seal status, issues, blockers, and per-criterion status plus provenance counts.
 `check` is a read-only diagnostic: a passing unfinalized ledger reports that its evidence gate passes but its receipt is not sealed.
-The verdict means "proof recorded", not "the code is globally correct"; `,proof` does not run /k-build or palantir adversarial/scope gates.
+The verdict means "proof recorded", not "the code is globally correct"; `,proof` does not run /k-build adversarial/scope gates.
 `review` is likewise an evidence assessment, not independent certification; `--reviewer` records attribution but does not prove independence.
 
 ## Finalize and reopen

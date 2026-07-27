@@ -1,6 +1,6 @@
 ---
 name: k-artifact
-description: "Use when creating cache-only HTML artifacts, visual review/report/diagram surfaces, or already-open live-page feedback overlays without worktree writes."
+description: "Use for cache-only HTML artifacts, visual reports/diagrams, or live-page overlays without worktree writes."
 ---
 
 # Agent Artifact

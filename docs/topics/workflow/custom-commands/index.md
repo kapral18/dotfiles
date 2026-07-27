@@ -21,12 +21,12 @@ The fastest visual entry point is the tmux command palette: `prefix` + `r`. It i
 | Family               | Use it for                                                                                 | Details                                                                                 |
 | -------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
 | Health and readiness | `,doctor`, `,kbn-pr-audit`                                                                 | [High-leverage commands](./high-leverage.md)                                            |
+| AI and agents        | `,ai`, `,agent-memory`, `,artifact`, `,ai-kb`, provider wrappers                           | [Command catalog](./catalog.md), [AI & assistants](../../ai-assistants/index.md)        |
 | Worktrees and GitHub | `,w`, `,gh-worktree`, `,gh-prw`, `,gh-issuew`, `,gh-tfork`                                 | [High-leverage commands](./high-leverage.md), [Worktrees](../git-identity/worktrees.md) |
 | Patch/file transfer  | `,wh`, `,add-patch-to-prs`                                                                 | [High-leverage commands](./high-leverage.md)                                            |
 | tmux helpers         | `,tmux-run-all`, `,tmux-lowfi`                                                             | [High-leverage commands](./high-leverage.md), [Tmux](../tmux/index.md)                  |
 | Search and discovery | `,grepo`, `,fuzzy-brew-search`, `,search-gh-topic`, `,youtube-search`                      | [Command catalog](./catalog.md)                                                         |
 | Testing and analysis | `,jest-test-title-report`, `,get-risky-tests`, `,get-age-buckets`, `,generate-git-sandbox` | [Command catalog](./catalog.md)                                                         |
-| AI and agents        | `,ai`, `,agent-memory`, `,artifact`, `,ai-kb`, `,palantir`, provider wrappers              | [Command catalog](./catalog.md), [Agentic OS](../../ai-assistants/index.md)             |
 | Utility / plumbing   | `,bat-preview`, `,fzf-*`, `,history-sync`, media helpers                                   | [Command catalog](./catalog.md)                                                         |
 
 ## Source and coverage contract
@@ -47,5 +47,4 @@ New `~/bin` commands must have a Fish completion, docs coverage, and `.mermaids/
 - [High-leverage commands](./high-leverage.md)
 - [Command catalog](./catalog.md)
 - [Worktree workflow](../git-identity/worktrees.md)
-- [Palantír orchestrator](../../ai-assistants/palantir.md)
 - [Reference map](../../../reference/reference-map.md)

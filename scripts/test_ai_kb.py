@@ -721,8 +721,8 @@ class TestKnowledgeBaseEmbeddingRoundtrip(unittest.TestCase):
             try:
                 kb = ai_kb.KnowledgeBase(home=Path(tmp))
                 c = kb.remember(
-                    title="Legion manifest layout",
-                    body="Legion state under legions/*/manifest.json with kind values.",
+                    title="Workflow manifest layout",
+                    body="Workflow state under runs/*/manifest.json with kind values.",
                 )
                 assert c.embedding_dim == 384, c.embedding_dim
                 assert c.embedding_model == "BAAI/bge-small-en-v1.5"
@@ -795,11 +795,11 @@ class TestKnowledgeBaseHybridRetrieval(unittest.TestCase):
             # but no shared tokens with the query.
             kb.remember(
                 title="Run state on disk",
-                body="Each legion stores its progress under its own directory.",
+                body="Each run stores its progress under its own directory.",
                 kind="fact",
             )
 
-            hits = kb.search("legion manifest layout", limit=3, mode="hybrid")
+            hits = kb.search("workflow manifest layout", limit=3, mode="hybrid")
             assert len(hits) == 2
             ids = [h["id"] for h in hits]
             # Both capsules must appear in the fused result.
@@ -907,13 +907,13 @@ class TestKnowledgeBaseHybridRetrieval(unittest.TestCase):
             for i in range(3):
                 kb.remember(
                     title=f"capsule {i}",
-                    body=f"Lesson number {i} about legion orchestration.",
+                    body=f"Lesson number {i} about run orchestration.",
                     kind="fact",
                     # These near-identical bodies intentionally exercise MMR;
                     # bypass the write-time duplicate probe.
                     force=True,
                 )
-            hits = kb.search("legion orchestration", limit=2, mode="hybrid")
+            hits = kb.search("run orchestration", limit=2, mode="hybrid")
             assert len(hits) == 2
             for h in hits:
                 assert h["mmr_selected"] is True, h
@@ -1598,11 +1598,11 @@ class TestKnowledgeBaseSearchReturnsBody(unittest.TestCase):
             kb.init()
             kb.remember(
                 title="t1",
-                body="Legion state layout uses legions/*/manifest.json with a stage filter.",
-                source="palantir:test",
-                tags="palantir,test",
+                body="Workflow state layout uses runs/*/manifest.json with a stage filter.",
+                source="agent:test",
+                tags="agent,test",
             )
-            hits = kb.search("Legion manifest layout", limit=5)
+            hits = kb.search("Workflow manifest layout", limit=5)
             assert len(hits) == 1, hits
             row = hits[0]
             assert "body" in row, f"search row must include body: keys={sorted(row.keys())}"
