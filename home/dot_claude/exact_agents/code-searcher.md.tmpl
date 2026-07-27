@@ -1,7 +1,7 @@
 ---
 name: code-searcher
 description: Delegate SCSI semantic code investigation or base-context gathering to an isolated context.
-model: inherit
+model: "{{ .model_tier_map.claude_code.gruntwork.model }}"
 readonly: false
 skills:
   - k-semantic-code-search

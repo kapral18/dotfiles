@@ -1,6 +1,7 @@
 name = "pr-necessity-auditor"
 description = "First blocking read-only /k-agent-review PR necessity and intent auditor. Use for other-authored or unknown-author PRs before reviewer fan-out to check whether the PR is sensible, correctly open, still needed, and worth reviewing further."
-model_reasoning_effort = "xhigh"
+model = "{{ .agent_review_models.codex.lanes }}"
+model_reasoning_effort = "medium"
 approval_policy = "untrusted"
 sandbox_mode = "workspace-write"
 developer_instructions = """

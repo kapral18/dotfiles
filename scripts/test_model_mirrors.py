@@ -61,6 +61,7 @@ class TestStaticModelMirrors(unittest.TestCase):
         mirror = model_mirrors.build_static_mirror(REPO)
         cursor = mirror["harnesses"]["cursor"]
         gemini = mirror["harnesses"]["gemini"]
+        pi_recommended = mirror["harnesses"]["pi"]["recommended"]["models"]
 
         self.assertLess(
             set(cursor["recommended"]["models"]),
@@ -71,6 +72,9 @@ class TestStaticModelMirrors(unittest.TestCase):
             set(gemini["curated"]["models"]),
         )
         self.assertNotIn("new-live", cursor["curated"]["models"])
+        self.assertIn("llm-gateway/gpt-5.6-luna", pi_recommended)
+        self.assertNotIn("llm-gateway/gpt-5.6-sol", pi_recommended)
+        self.assertNotIn("llm-gateway/claude-fable-5", pi_recommended)
 
     def test_SHOULD_encode_unknown_and_error_without_empty_success(self):
         import model_mirrors
@@ -203,6 +207,15 @@ class TestStaticModelMirrors(unittest.TestCase):
             with self.subTest(harness=harness):
                 self.assertEqual(sources(harness, "curated"), expected_sources)
                 self.assertLessEqual(expected_sources, sources(harness, "available"))
+
+    def test_SHOULD_pin_gemini_builtin_agent_overrides(self):
+        settings = json.loads((REPO / "home/dot_gemini/settings.json").read_text())
+        overrides = settings["agents"]["overrides"]
+
+        self.assertEqual(overrides["codebase_investigator"]["modelConfig"]["model"], "gemini-3.6-flash")
+        self.assertEqual(overrides["cli_help"]["modelConfig"]["model"], "gemini-3.6-flash")
+        self.assertEqual(overrides["generalist"]["modelConfig"]["model"], "gemini-3.1-pro-preview")
+        self.assertEqual(overrides["browser_agent"]["modelConfig"]["model"], "gemini-3.1-pro-preview")
 
     def test_SHOULD_match_committed_json_and_generated_go_outputs(self):
         import model_mirrors

@@ -2,6 +2,7 @@
 ---
 name: review-worker
 description: Read-only review lane for one /k-agent-review fan-out angle; returns findings only.
+model: "{{ .agent_review_models.gemini.lanes }}"
 kind: local
 tools:
   - read_file

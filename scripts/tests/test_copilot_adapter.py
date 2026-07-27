@@ -3,14 +3,18 @@
 
 from __future__ import annotations
 
+import contextlib
 import io
 import json
 import os
 import signal
+import socket
+import struct
 import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -233,12 +237,36 @@ class TestChildIsolation(unittest.TestCase):
         self.assertNotIn("GITHUB_TOKEN", codex_env)
         self.assertNotIn("OPENAI_API_KEY", codex_env)
 
+    def test_SHOULD_suppress_tracebacks_when_clients_reset_before_request_line(self) -> None:
+        server = copilot_server.AdapterServer(
+            ("127.0.0.1", 0),
+            copilot_server.AdapterContext("local-token", copilot_auth.TokenProvider(), {}),
+        )
+        stderr = io.StringIO()
+        thread = threading.Thread(target=lambda: server.serve_forever(poll_interval=0.01), daemon=True)
+
+        try:
+            with contextlib.redirect_stderr(stderr):
+                thread.start()
+                for _ in range(5):
+                    client = socket.create_connection(("127.0.0.1", server.server_port))
+                    client.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0))
+                    client.close()
+                time.sleep(0.2)
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=1)
+
+        self.assertNotIn("Exception occurred during processing of request", stderr.getvalue())
+        self.assertNotIn("ConnectionResetError", stderr.getvalue())
+
 
 class TestLifecycle(unittest.TestCase):
     """WHEN the child exits after an interactive interrupt."""
 
-    def test_SHOULD_default_codex_effort_to_high_when_unspecified(self) -> None:
-        selected = model("gpt-5.3-codex", ("/responses",), ("low", "high"))
+    def test_SHOULD_default_codex_effort_to_medium_when_unspecified(self) -> None:
+        selected = model("gpt-5.3-codex", ("/responses",), ("low", "medium", "high"))
         adapter = mock.Mock(server_port=3210)
         thread = mock.Mock()
         captured: dict[str, list[str]] = {}
@@ -256,7 +284,7 @@ class TestLifecycle(unittest.TestCase):
             result = main.launch("codex", [])
 
         self.assertEqual(result, 0)
-        self.assertIn('model_reasoning_effort="high"', captured["command"])
+        self.assertIn('model_reasoning_effort="medium"', captured["command"])
 
     def test_SHOULD_not_force_default_effort_for_models_that_do_not_support_it(self) -> None:
         selected = model("claude-haiku-4.5", ("/v1/messages",), ())

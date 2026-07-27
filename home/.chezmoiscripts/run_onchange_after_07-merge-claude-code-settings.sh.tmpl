@@ -10,6 +10,11 @@ set -euo pipefail
 # chezmoi_lib.sh hash: {{ include "../scripts/chezmoi_lib.sh" | sha256sum }}
 # managed_config_manifest.py hash: {{ include "../scripts/managed_config_manifest.py" | sha256sum }}
 # generated_artifact_ledger.py hash: {{ include "../scripts/generated_artifact_ledger.py" | sha256sum }}
+{{- if eq .isWork true }}
+# model_tier_map.claude_code.orchestration_work hash: {{ .model_tier_map.claude_code.orchestration_work | toJson | sha256sum }}
+{{- else }}
+# model_tier_map.claude_code.orchestration_personal hash: {{ .model_tier_map.claude_code.orchestration_personal | toJson | sha256sum }}
+{{- end }}
 
 source_dir="${CHEZMOI_SOURCE_DIR:-{{ .chezmoi.sourceDir }}}"
 # shellcheck source=../../../scripts/chezmoi_lib.sh
@@ -19,7 +24,26 @@ is_work="{{ if eq .isWork true }}true{{ else }}false{{ end }}"
 profile="{{ if eq .isWork true }}work{{ else }}personal{{ end }}"
 src="$(chezmoi_pick_src "$is_work" "$source_dir" "dot_claude/settings.work.json" "dot_claude/settings.personal.json")"
 
-chezmoi_install_if_changed "$src" "$HOME/.claude/settings.json"
+# The orchestrator's own default model/effort is centrally declared in
+# ai_models.yaml's model_tier_map (see docs/topics/ai-assistants/model-tiering.md)
+# rather than hand-maintained separately in each static settings.*.json. Patch both
+# fields from the rendered registry values before installing. include() does not
+# recursively render .tmpl content, so this substitution happens here, at apply time,
+# not by making settings.*.json themselves .tmpl files.
+{{- if eq .isWork true }}
+tier_model="{{ .model_tier_map.claude_code.orchestration_work.model }}"
+tier_effort="{{ .model_tier_map.claude_code.orchestration_work.effort }}"
+{{- else }}
+tier_model="{{ .model_tier_map.claude_code.orchestration_personal.model }}"
+tier_effort="{{ .model_tier_map.claude_code.orchestration_personal.effort }}"
+{{- end }}
+patched="$(mktemp)"
+trap 'rm -f "$patched"' EXIT
+jq --arg model "$tier_model" --arg effort "$tier_effort" \
+  '.model = $model | .effortLevel = $effort' \
+  "$src" >"$patched"
+
+chezmoi_install_if_changed "$patched" "$HOME/.claude/settings.json"
 chezmoi_record_artifact --id claude-settings \
   --producer 07-merge-claude-code-settings --profile "$profile" \
   --target "$HOME/.claude/settings.json" --ownership-adapter whole-file \

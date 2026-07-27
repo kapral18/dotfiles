@@ -104,6 +104,7 @@ const sidebars: SidebarsConfig = {
           ],
         },
         'topics/ai-assistants/subagents',
+        'topics/ai-assistants/model-tiering',
         'topics/ai-assistants/creation-workflow',
         {
           type: 'category',

@@ -35,15 +35,17 @@ if [[ -z "$litellm_api_key" ]]; then
   exit 1
 fi
 
-# Opus, Sonnet, Fable, and subagent defaults carry the [1m] selector so Claude
-# Code's BM(e) short-circuit sets the model window to 1e6 for autocompact math;
-# without it, `llm-gateway/`-prefixed ids miss the client registry and fall
-# back to the ~200k default (autocompact fires at ~180k). Haiku 4.5 has no
-# `haiku[1m]` selector in the client registry, so it stays bare.
+# Opus and Sonnet defaults carry the [1m] selector so Claude Code's BM(e)
+# short-circuit sets the model window to 1e6 for autocompact math; without it,
+# `llm-gateway/`-prefixed ids miss the client registry and fall back to the ~200k
+# default (autocompact fires at ~180k). Haiku 4.5 has no `haiku[1m]` selector in
+# the client registry, so it stays bare. Subagents default to inherit so profile
+# frontmatter / Task model arguments can enforce the matrix instead of this wrapper
+# globally overriding every subagent lane.
 export ANTHROPIC_DEFAULT_OPUS_MODEL="${ANTHROPIC_DEFAULT_OPUS_MODEL:-llm-gateway/claude-opus-4-8[1m]}"
 export ANTHROPIC_DEFAULT_HAIKU_MODEL="${ANTHROPIC_DEFAULT_HAIKU_MODEL:-llm-gateway/claude-haiku-4-5}"
 export ANTHROPIC_DEFAULT_SONNET_MODEL="${ANTHROPIC_DEFAULT_SONNET_MODEL:-llm-gateway/claude-sonnet-5[1m]}"
-export CLAUDE_CODE_SUBAGENT_MODEL="${CLAUDE_CODE_SUBAGENT_MODEL:-llm-gateway/claude-opus-4-8[1m]}"
+export CLAUDE_CODE_SUBAGENT_MODEL="${CLAUDE_CODE_SUBAGENT_MODEL:-inherit}"
 export CLAUDE_CODE_DISABLE_THINKING="${CLAUDE_CODE_DISABLE_THINKING:-1}"
 export CLAUDE_CODE_EFFORT_LEVEL="${CLAUDE_CODE_EFFORT_LEVEL:-high}"
 export ANTHROPIC_BASE_URL="$litellm_api_base"

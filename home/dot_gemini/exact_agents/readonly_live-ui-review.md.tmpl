@@ -1,6 +1,7 @@
 ---
 name: live-ui-review
 description: Read-only live UI verifier for /k-agent-review UI/runtime candidate findings.
+model: "{{ .agent_review_models.gemini.lanes }}"
 kind: local
 tools:
   - read_file

@@ -1,5 +1,7 @@
 name = "criteria-verifier"
 description = "Refutation lane over a /k-build criteria ledger. Returns verdicts and scope audit only; never edits or posts."
+model = "{{ .agent_review_models.codex.verifier }}"
+model_reasoning_effort = "medium"
 approval_policy = "untrusted"
 sandbox_mode = "workspace-write"
 developer_instructions = """

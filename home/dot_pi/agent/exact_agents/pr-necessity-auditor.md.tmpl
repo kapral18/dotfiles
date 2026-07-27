@@ -1,6 +1,8 @@
+{{- /* model frontmatter is rendered from the model registries in home/.chezmoidata/ai_models.yaml; edit the registry + chezmoi apply, never this file */ -}}
 ---
 name: pr-necessity-auditor
 description: Blocking read-only PR necessity and intent auditor before reviewer fan-out.
+model: "{{ .agent_review_models.pi.lanes }}"
 tools: read, grep, find, ls, bash
 systemPromptMode: replace
 inheritProjectContext: true

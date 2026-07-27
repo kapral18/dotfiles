@@ -2,6 +2,7 @@
 ---
 name: criteria-verifier
 description: Cross-family refutation lane over a /k-build criteria ledger; returns verdicts and scope audit only.
+model: "{{ .agent_review_models.pi.verifier }}"
 tools: read, grep, find, ls, bash
 systemPromptMode: replace
 inheritProjectContext: true

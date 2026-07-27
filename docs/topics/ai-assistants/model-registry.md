@@ -31,6 +31,7 @@ Source of truth: [`home/.chezmoidata/ai_models.yaml`](../../../home/.chezmoidata
 | `pi_extra_models`     | Non-LiteLLM Pi selectors retained for Pi-specific launch paths                                                                  |
 | `provider_models`     | Static provider-route choices for shell completion; Vertex entries also own adapter wire/capability metadata                    |
 | `agent_review_models` | Per-harness review `lanes`/`verifier` pairs; the verifier-family pairing is reviewed here rather than inferred or auto-promoted |
+| `model_tier_map`      | Per-harness, per-work-type-bucket model/effort picks; see [Model tiering](model-tiering.md) for the full policy and rationale   |
 
 Recommended Cursor entries use `recommendation_rank` to preserve the deliberate TUI picker order independently of the broader curated registry order.
 

@@ -289,6 +289,12 @@ def _rewrite_responses_body(
 class ShimServer(ThreadingHTTPServer):
     daemon_threads = True
 
+    def handle_error(self, request: object, client_address: object) -> None:
+        error = sys.exc_info()[1]
+        if isinstance(error, (BrokenPipeError, ConnectionAbortedError, ConnectionResetError)):
+            return
+        super().handle_error(request, client_address)
+
     def __init__(
         self,
         address: tuple[str, int],

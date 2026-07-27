@@ -3,8 +3,8 @@
   "permissions": {
     "defaultMode": "bypassPermissions"
   },
-  "model": "opus[1m]",
-  "effortLevel": "xhigh",
+  "model": "gpt-5.5",
+  "effortLevel": "medium",
   "hooks": {
     "SessionStart": [
       {

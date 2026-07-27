@@ -8,32 +8,79 @@
   "subagents": {
     "agents": {
       "agent-review": {
-        "effortLevel": "xhigh",
-        "contextTier": "long_context"
+        "effortLevel": "medium",
+        "contextTier": "long_context",
+        "model": "gpt-5.5"
       },
       "review-worker": {
-        "effortLevel": "xhigh",
-        "contextTier": "long_context"
+        "effortLevel": "medium",
+        "contextTier": "long_context",
+        "model": "gpt-5.5"
       },
       "adversarial-verifier": {
-        "effortLevel": "xhigh",
-        "contextTier": "long_context"
+        "effortLevel": "high",
+        "contextTier": "long_context",
+        "model": "claude-opus-4.8"
       },
       "findings-auditor": {
-        "effortLevel": "xhigh",
-        "contextTier": "long_context"
+        "effortLevel": "medium",
+        "contextTier": "long_context",
+        "model": "gpt-5.5"
       },
       "pr-necessity-auditor": {
-        "effortLevel": "xhigh",
-        "contextTier": "long_context"
+        "effortLevel": "medium",
+        "contextTier": "long_context",
+        "model": "gpt-5.5"
       },
       "live-ui-review": {
-        "effortLevel": "xhigh",
-        "contextTier": "long_context"
+        "effortLevel": "medium",
+        "contextTier": "long_context",
+        "model": "gpt-5.5"
       },
       "criteria-verifier": {
-        "effortLevel": "xhigh",
-        "contextTier": "long_context"
+        "effortLevel": "high",
+        "contextTier": "long_context",
+        "model": "claude-opus-4.8"
+      },
+      "explore": {
+        "effortLevel": "medium",
+        "contextTier": "default",
+        "model": "gpt-5.3-codex"
+      },
+      "task": {
+        "effortLevel": "medium",
+        "contextTier": "default",
+        "model": "gpt-5.3-codex"
+      },
+      "research": {
+        "effortLevel": "medium",
+        "contextTier": "long_context",
+        "model": "gpt-5.5"
+      },
+      "rubber-duck": {
+        "effortLevel": "medium",
+        "contextTier": "long_context",
+        "model": "gpt-5.5"
+      },
+      "general-purpose": {
+        "effortLevel": "medium",
+        "contextTier": "long_context",
+        "model": "gpt-5.5"
+      },
+      "rem-agent": {
+        "effortLevel": "medium",
+        "contextTier": "long_context",
+        "model": "gpt-5.5"
+      },
+      "code-review": {
+        "effortLevel": "high",
+        "contextTier": "long_context",
+        "model": "claude-opus-4.8"
+      },
+      "security-review": {
+        "effortLevel": "high",
+        "contextTier": "long_context",
+        "model": "claude-opus-4.8"
       }
     }
   }

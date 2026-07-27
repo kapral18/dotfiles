@@ -2,6 +2,7 @@
 ---
 name: criteria-verifier
 description: Refutation lane over a /k-build criteria ledger; returns verdicts and scope audit only.
+model: "{{ .agent_review_models.gemini.verifier }}"
 kind: local
 tools:
   - read_file

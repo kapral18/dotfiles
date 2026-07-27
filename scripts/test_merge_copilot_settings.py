@@ -37,8 +37,16 @@ class TestMergeCopilotSettings(unittest.TestCase):
             "effortLevel": "xhigh",
             "subagents": {
                 "agents": {
-                    "review-worker": {"effortLevel": "xhigh", "contextTier": "long_context"},
-                    "adversarial-verifier": {"effortLevel": "xhigh", "contextTier": "long_context"},
+                    "review-worker": {
+                        "model": "gpt-5.5",
+                        "effortLevel": "medium",
+                        "contextTier": "long_context",
+                    },
+                    "adversarial-verifier": {
+                        "model": "claude-opus-4.8",
+                        "effortLevel": "high",
+                        "contextTier": "long_context",
+                    },
                 }
             },
             "ui": {"density": "compact", "nested": {"baselineWins": "baseline", "declaredOnly": True}},
@@ -98,6 +106,17 @@ class TestMergeCopilotSettings(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, "")
                 self.assertIn("Error:", result.stderr)
+
+    def test_SHOULD_declare_builtin_agent_model_overrides(self):
+        settings = json.loads((REPO / "home/private_dot_copilot/settings.json").read_text())
+        agents = settings["subagents"]["agents"]
+
+        self.assertEqual(agents["explore"]["model"], "gpt-5.3-codex")
+        self.assertEqual(agents["task"]["model"], "gpt-5.3-codex")
+        self.assertEqual(agents["general-purpose"]["model"], "gpt-5.5")
+        self.assertEqual(agents["research"]["model"], "gpt-5.5")
+        self.assertEqual(agents["code-review"]["model"], "claude-opus-4.8")
+        self.assertEqual(agents["security-review"]["model"], "claude-opus-4.8")
 
     def test_SHOULD_wire_the_typed_reconciler_into_the_hash_gated_hook(self):
         hook = (REPO / "home/.chezmoiscripts/run_onchange_after_07-merge-copilot-config.sh.tmpl").read_text()

@@ -1,6 +1,8 @@
+{{- /* model frontmatter is rendered from the model registries in home/.chezmoidata/ai_models.yaml; edit the registry + chezmoi apply, never this file */ -}}
 ---
 name: code-searcher
 description: Delegate SCSI semantic code investigation or base-context gathering to an isolated context.
+model: "{{ .model_tier_map.pi.gruntwork.model }}"
 systemPromptMode: replace
 inheritProjectContext: true
 inheritSkills: true

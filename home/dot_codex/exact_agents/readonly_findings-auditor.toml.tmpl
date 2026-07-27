@@ -1,6 +1,7 @@
 name = "findings-auditor"
 description = "Read-only /k-agent-review findings auditor. Use when the controller delegates a non-trivial post-live-UI findings audit before action; tiny candidate sets may be audited inline."
-model_reasoning_effort = "xhigh"
+model = "{{ .agent_review_models.codex.lanes }}"
+model_reasoning_effort = "medium"
 approval_policy = "untrusted"
 sandbox_mode = "workspace-write"
 developer_instructions = """

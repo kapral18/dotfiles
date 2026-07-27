@@ -1,7 +1,7 @@
 ---
 name: researcher
 description: Delegate source-first investigation of external public GitHub repos, libraries, or tools.
-model: inherit
+model: "{{ .model_tier_map.claude_code.routine_edit.model }}"
 readonly: false
 tools: Read, Grep, Glob, Bash
 skills:

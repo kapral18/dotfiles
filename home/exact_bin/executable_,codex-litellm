@@ -149,13 +149,13 @@ if [[ ! -f "$shim_main" ]]; then
 fi
 
 # The upstream model. Precedence: --target flag, then CODEX_LITELLM_MODEL, then
-# sol. From it derive the client slug (self when tool-capable, else a
+# luna. From it derive the client slug (self when tool-capable, else a
 # gpt-5.2-codex disguise), the wire remap (only when client != target), and the
 # effort ceiling. Any of these is still overridable by its env var below.
 if [[ -n "$target_arg" ]]; then
   gateway_model="$(normalize_target "$target_arg")"
 else
-  gateway_model="${CODEX_LITELLM_MODEL:-llm-gateway/gpt-5.6-sol}"
+  gateway_model="${CODEX_LITELLM_MODEL:-llm-gateway/gpt-5.6-luna}"
 fi
 gateway_bare="$(bare_model "$gateway_model")"
 default_client="$(client_for_target "$gateway_bare")"

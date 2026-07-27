@@ -66,6 +66,65 @@ def load_agent_review_models(path):
     return result
 
 
+_FLOW_MAP_ENTRY_RE = re.compile(r"(\w+):\s*(\{.*?\}|\"(?:[^\"\\]|\\.)*\"|[^,}]+?)\s*(?:,|$)")
+
+
+def _parse_flow_map(raw):
+    """Parse a single-line YAML flow map such as ``{ model: "x", effort: "high" }``."""
+    inner = raw.strip()
+    assert inner.startswith("{") and inner.endswith("}")
+    inner = inner[1:-1].strip()
+    result = {}
+    pos = 0
+    while pos < len(inner):
+        while pos < len(inner) and inner[pos] in " \t":
+            pos += 1
+        match = _FLOW_MAP_ENTRY_RE.match(inner, pos)
+        if not match:
+            break
+        key, value = match.group(1), match.group(2).strip()
+        if value.startswith("{"):
+            result[key] = _parse_flow_map(value)
+        else:
+            result[key] = parse_scalar(value)
+        pos = match.end()
+    return result
+
+
+def load_model_tier_map(path):
+    """Load the harness -> work-type-bucket -> tiering-pick mapping from ``model_tier_map``."""
+    with open(path, encoding="utf-8") as f:
+        lines = f.readlines()
+
+    result = {}
+    in_section = False
+    current_harness = None
+    for line in lines:
+        stripped = line.rstrip()
+        if not stripped or stripped.lstrip().startswith("#"):
+            continue
+        if stripped == "model_tier_map:":
+            in_section = True
+            continue
+        if not in_section:
+            continue
+        if not line.startswith(" "):
+            break
+
+        harness_match = re.match(r"^  (\w+):\s*$", stripped)
+        if harness_match:
+            current_harness = harness_match.group(1)
+            result[current_harness] = {}
+            continue
+
+        bucket_match = re.match(r"^    (\w+):\s*(\{.*\})(?:\s+#.*)?\s*$", stripped)
+        if bucket_match and current_harness is not None:
+            bucket, raw_map = bucket_match.group(1), bucket_match.group(2)
+            result[current_harness][bucket] = _parse_flow_map(raw_map)
+
+    return result
+
+
 def _load_section(path, section_key, *, required=False):
     """Load a list-of-dicts section with up to one level of nested dicts."""
     with open(path, "r") as f:

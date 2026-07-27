@@ -1,6 +1,7 @@
 ---
 name: findings-auditor
 description: Read-only /k-agent-review findings auditor for non-trivial post-live-UI audits.
+model: "{{ .agent_review_models.gemini.lanes }}"
 kind: local
 tools:
   - read_file

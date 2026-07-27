@@ -111,3 +111,4 @@ When to pivot, concretely:
 
 - Smallest flow that fits: direct SOP work → `k-light-review` to check it.
 - Reach for `/k-agent-review` when the change is big enough to warrant independent readers.
+- Which model/effort a task runs on, and whether it belongs inline or in a subagent, follows [Model tiering](model-tiering.md) — the two are the same decision, keyed off task complexity rather than scenario alone.

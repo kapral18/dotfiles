@@ -86,6 +86,12 @@ def _inject_allowed_params(body: bytes) -> bytes:
 class ShimServer(ThreadingHTTPServer):
     daemon_threads = True
 
+    def handle_error(self, request: object, client_address: object) -> None:
+        error = sys.exc_info()[1]
+        if isinstance(error, (BrokenPipeError, ConnectionAbortedError, ConnectionResetError)):
+            return
+        super().handle_error(request, client_address)
+
     def __init__(self, address: tuple[str, int], upstream: str) -> None:
         self.upstream = upstream.rstrip("/")
         super().__init__(address, ShimHandler)

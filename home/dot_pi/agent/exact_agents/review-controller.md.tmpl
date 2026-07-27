@@ -1,6 +1,8 @@
+{{- /* model frontmatter is rendered from the model registries in home/.chezmoidata/ai_models.yaml; edit the registry + chezmoi apply, never this file */ -}}
 ---
 name: review-controller
 description: Orchestrate multi-model reviews, reconcile findings, and perform the approved act phase.
+model: "{{ .agent_review_models.pi.lanes }}"
 tools: read, grep, find, ls, bash, edit, write
 systemPromptMode: replace
 inheritProjectContext: true

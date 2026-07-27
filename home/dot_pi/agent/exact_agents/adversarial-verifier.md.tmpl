@@ -2,6 +2,7 @@
 ---
 name: adversarial-verifier
 description: Cross-family refutation lane over merged review-controller candidates; returns verdicts only.
+model: "{{ .agent_review_models.pi.verifier }}"
 tools: read, grep, find, ls, bash
 systemPromptMode: replace
 inheritProjectContext: true

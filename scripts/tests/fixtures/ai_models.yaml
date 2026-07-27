@@ -46,3 +46,8 @@ agent_review_models:
   copilot:
     lanes: "gpt-model"
     verifier: "claude-model"
+
+model_tier_map:
+  claude_code:
+    gruntwork: { model: "model-b", effort: "high", thinking: "no", context: "short", band: "cheap" }
+    orchestration: { model: "model-a", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "model-fallback", effort: "medium", context: "long" } }

@@ -85,5 +85,30 @@
         ]
       }
     ]
+  },
+  "agents": {
+    "overrides": {
+      "codebase_investigator": {
+        "modelConfig": {
+          "model": "gemini-3.6-flash"
+        }
+      },
+      "cli_help": {
+        "modelConfig": {
+          "model": "gemini-3.6-flash"
+        }
+      },
+      "generalist": {
+        "modelConfig": {
+          "model": "gemini-3.1-pro-preview"
+        }
+      },
+      "browser_agent": {
+        "modelConfig": {
+          "model": "gemini-3.1-pro-preview"
+        },
+        "enabled": false
+      }
+    }
   }
 }

@@ -22,7 +22,7 @@ DEFAULT_MODELS = {
 }
 DEFAULT_EFFORTS = {
     "claude": None,
-    "codex": "high",
+    "codex": "medium",
 }
 CLAUDE_DEFAULT_CONTEXT_WINDOW = 200_000
 

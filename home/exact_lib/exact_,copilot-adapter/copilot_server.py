@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hmac
 import json
+import sys
 import re
 import urllib.error
 import urllib.request
@@ -66,6 +67,12 @@ class AdapterContext:
 
 class AdapterServer(ThreadingHTTPServer):
     daemon_threads = True
+
+    def handle_error(self, request: object, client_address: object) -> None:
+        error = sys.exc_info()[1]
+        if isinstance(error, (BrokenPipeError, ConnectionAbortedError, ConnectionResetError)):
+            return
+        super().handle_error(request, client_address)
 
     def __init__(self, address: tuple[str, int], context: AdapterContext) -> None:
         self.context = context
