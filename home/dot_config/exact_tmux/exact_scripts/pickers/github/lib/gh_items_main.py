@@ -1743,10 +1743,15 @@ def _section_reason(filters: str, source: str = "") -> str:
     reasons: list[str] = []
     if source == "backport-failures":
         reasons.append("pending backports")
-    if "review-requested:@me" in positive:
+    elif source == "review-requested-direct":
         reasons.append("needs my review")
-    if any(tok.startswith("team-review-requested:") for tok in positive):
+    elif source.startswith("review-requested-team:"):
         reasons.append("team review queue")
+    else:
+        if "review-requested:@me" in positive:
+            reasons.append("needs my review")
+        if any(tok.startswith("team-review-requested:") for tok in positive):
+            reasons.append("team review queue")
     if "author:@me" in positive:
         reasons.append("created by me")
     if "assignee:@me" in positive:
@@ -1910,8 +1915,8 @@ def _matches_user_filter(current_values: list[str], filter_value: str, viewer_lo
 
 def _matches_is_filter(kind: str, item: dict[str, Any], value: str) -> bool | None:
     value = value.lower()
-    state = (item.get("s") or "open").lower()
-    merged = kind == "pr" and bool(item.get("m"))
+    state = str(item.get("s") or item.get("state") or "open").lower()
+    merged = kind == "pr" and (bool(item.get("m")) or state == "merged")
     if value == "pr":
         return kind == "pr"
     if value == "issue":
@@ -1923,7 +1928,7 @@ def _matches_is_filter(kind: str, item: dict[str, Any], value: str) -> bool | No
     if value == "merged":
         return merged
     if value == "draft":
-        return kind == "pr" and bool(item.get("d"))
+        return kind == "pr" and bool(item.get("d") if "d" in item else item.get("draft"))
     return None
 
 
@@ -1939,9 +1944,9 @@ def _matches_current_search_filters(
     still carries current-ish item fields, so re-check the qualifiers we can
     prove locally from that payload before writing a refreshed picker cache.
     """
-    repo = str(item.get("r") or "")
+    repo = str(item.get("r") or item.get("repo") or "")
     owner = repo.split("/", 1)[0].lower() if "/" in repo else ""
-    author = str(item.get("a") or "")
+    author = str(item.get("a") or item.get("author") or "")
     assignees = [str(v) for v in (item.get("assignees") or []) if v]
     labels = {str(v).lower() for v in (item.get("labels") or []) if v}
 
@@ -1978,6 +1983,140 @@ def _matches_current_search_filters(
             return False
 
     return True
+
+
+def _review_request_actor_keys(pr: dict[str, Any]) -> set[str]:
+    """Return stable user/team keys from a pull request's review requests."""
+    actors: set[str] = set()
+    requests = pr.get("reviewRequests") or {}
+    for request in requests.get("nodes") or []:
+        reviewer = request.get("requestedReviewer") or {}
+        typename = reviewer.get("__typename")
+        if typename == "User" and reviewer.get("login"):
+            actors.add(f"user:{reviewer['login'].lower()}")
+        elif typename == "Team":
+            org = (reviewer.get("organization") or {}).get("login")
+            slug = reviewer.get("slug")
+            if org and slug:
+                actors.add(f"team:{org.lower()}/{slug.lower()}")
+    return actors
+
+
+def _review_request_target(source: str, viewer_login: str) -> str:
+    if source == "review-requested-direct":
+        return f"user:{viewer_login.lower()}" if viewer_login else ""
+    prefix = "review-requested-team:"
+    if source.startswith(prefix):
+        return f"team:{source[len(prefix) :].lower()}"
+    return ""
+
+
+def _graphql_review_request_item(pr: dict[str, Any], kind: str) -> dict[str, Any]:
+    repository = pr.get("repository") or {}
+    author = pr.get("author") or {}
+    assignees = [
+        node.get("login", "") for node in ((pr.get("assignees") or {}).get("nodes") or []) if node.get("login")
+    ]
+    labels = [node.get("name", "") for node in ((pr.get("labels") or {}).get("nodes") or []) if node.get("name")]
+    comments = (pr.get("comments") or {}).get("totalCount", 0) or 0
+    return {
+        "num": pr.get("number"),
+        "title": pr.get("title", ""),
+        "repo": repository.get("nameWithOwner", ""),
+        "updated": str(pr.get("updatedAt") or "").split("T", 1)[0],
+        "created": pr.get("createdAt", ""),
+        "url": pr.get("url", ""),
+        "draft": bool(pr.get("isDraft")),
+        "author": author.get("login", ""),
+        "assignee": assignees[0] if assignees else "",
+        "assignees": assignees,
+        "labels": labels,
+        "comments": comments,
+        "kind": kind,
+        "state": "merged" if pr.get("mergedAt") else str(pr.get("state") or "open").lower(),
+    }
+
+
+def fetch_review_request_section(
+    kind: str,
+    idx: int,
+    title: str,
+    filters: str,
+    source: str,
+    limit: int = 30,
+    viewer_login: str = "",
+) -> list[dict[str, Any]]:
+    """Fetch a section whose review-request actor is exactly the configured user or team."""
+    header: dict[str, Any] = {"_header": True, "kind": kind, "idx": idx, "title": title, "_fetch_error": False}
+    target = _review_request_target(source, viewer_login)
+    if not target:
+        header["_fetch_error"] = True
+        return [header]
+
+    result: list[dict[str, Any]] = [header]
+    cursor: str | None = None
+    query_filters = f"{filters} sort:created-desc"
+    while len(result) - 1 < limit:
+        after = "null" if cursor is None else json.dumps(cursor)
+        query = f"""
+        query {{
+          search(query: {json.dumps(query_filters)}, type: ISSUE, first: 100, after: {after}) {{
+            pageInfo {{ hasNextPage endCursor }}
+            nodes {{
+              ... on PullRequest {{
+                number title url isDraft state mergedAt createdAt updatedAt
+                repository {{ nameWithOwner }}
+                author {{ login }}
+                assignees(first: 100) {{ nodes {{ login }} }}
+                labels(first: 100) {{ nodes {{ name }} }}
+                comments {{ totalCount }}
+                reviewRequests(first: 100) {{
+                  nodes {{ requestedReviewer {{
+                    __typename
+                    ... on User {{ login }}
+                    ... on Team {{ slug organization {{ login }} }}
+                  }} }}
+                }}
+              }}
+            }}
+          }}
+        }}
+        """
+        try:
+            proc = subprocess.run(
+                ["gh", "api", "graphql", "-f", f"query={query}"],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            payload = json.loads(proc.stdout) if proc.returncode == 0 and proc.stdout.strip() else {}
+            search = (payload.get("data") or {}).get("search") or {}
+            if not search:
+                header["_fetch_error"] = True
+                return [header]
+        except Exception:
+            header["_fetch_error"] = True
+            return [header]
+
+        for pr in search.get("nodes") or []:
+            if target not in _review_request_actor_keys(pr):
+                continue
+            item = _graphql_review_request_item(pr, kind)
+            if item.get("num") and _matches_current_search_filters(item, kind, filters, viewer_login):
+                result.append(item)
+                if len(result) - 1 >= limit:
+                    break
+
+        page_info = search.get("pageInfo") or {}
+        if len(result) - 1 >= limit or not page_info.get("hasNextPage"):
+            break
+        cursor = page_info.get("endCursor")
+        if not cursor:
+            break
+
+    result[1:] = sorted(result[1:], key=lambda item: str(item.get("created") or ""), reverse=True)
+    return result
 
 
 def fetch_section(
@@ -2997,11 +3136,14 @@ def main():
     with concurrent.futures.ThreadPoolExecutor(max_workers=section_workers) as pool:
         section_futs: dict[concurrent.futures.Future[list[dict[str, Any]]], int] = {}
         for task_idx, (kind, idx, title, filters, source, _scopes) in enumerate(tasks):
-            fetcher = _SOURCE_FETCHERS.get(source, fetch_section)
-            if fetcher is fetch_section:
-                fut = pool.submit(fetcher, kind, idx, title, filters, 30, viewer_login)
+            if source.startswith("review-requested-"):
+                fut = pool.submit(fetch_review_request_section, kind, idx, title, filters, source, 30, viewer_login)
             else:
-                fut = pool.submit(fetcher, kind, idx, title, filters)
+                fetcher = _SOURCE_FETCHERS.get(source, fetch_section)
+                if fetcher is fetch_section:
+                    fut = pool.submit(fetcher, kind, idx, title, filters, 30, viewer_login)
+                else:
+                    fut = pool.submit(fetcher, kind, idx, title, filters)
             section_futs[fut] = task_idx
 
         for fut in concurrent.futures.as_completed(section_futs):

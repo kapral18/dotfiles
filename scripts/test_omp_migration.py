@@ -31,8 +31,7 @@ class TestOmpMigration(unittest.TestCase):
                     "--config",
                     config.name,
                     "execute-template",
-                    "--file",
-                    "home/dot_omp/private_agent/config.yml.tmpl",
+                    (REPO / "home/dot_omp/private_agent/config.yml.tmpl").read_text(),
                 ],
                 cwd=REPO,
                 check=True,
@@ -44,16 +43,16 @@ class TestOmpMigration(unittest.TestCase):
     def test_config_renders_profile_specific_model_roles(self):
         expected_values = {
             True: (
-                "default: github-copilot/gpt-5.6-terra:medium",
-                "smol: github-copilot/gpt-5.6-terra:low",
+                "default: github-copilot/gpt-5.3-codex:high",
+                "smol: github-copilot/claude-sonnet-5:medium",
                 "slow: github-copilot/gpt-5.5:medium",
                 "plan: github-copilot/gpt-5.5:medium",
                 "advisor: github-copilot/gpt-5.5:medium",
                 "modelProviderOrder:\n  - github-copilot\n  - openrouter\n  - anthropic\n  - openai\n",
             ),
             False: (
-                "default: openai-codex/gpt-5.6-terra:medium",
-                "smol: openai-codex/gpt-5.6-terra:low",
+                "default: openai-codex/gpt-5.5:medium",
+                "smol: openai-codex/gpt-5.6-terra:medium",
                 "slow: openai-codex/gpt-5.5:medium",
                 "plan: openai-codex/gpt-5.5:medium",
                 "advisor: openai-codex/gpt-5.5:medium",
@@ -62,7 +61,7 @@ class TestOmpMigration(unittest.TestCase):
         }
         shared_values = (
             "modelRoles:\n",
-            "advisor:\n  enabled: true\n",
+            "advisor:\n  enabled: true\n  subagents: true\n  syncBacklog: 1\n  immuneTurns: 0\n",
             "defaultThinkingLevel: medium\n",
             "memory:\n  backend: off\n",
             "autolearn:\n  enabled: false\n  autoContinue: false\n",

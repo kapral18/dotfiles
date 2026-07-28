@@ -1,13 +1,13 @@
 prSections:
   - title: "Action: PRs awaiting your review"
     scopes: [focus]
+    source: review-requested-direct
     filters: >-
       is:open is:pr
       review-requested:@me
       org:elastic
       -is:draft
       -author:@me
-      -team-review-requested:elastic/kibana-management
 
   - title: "Mine: Your open PRs"
     scopes: [focus]
@@ -16,11 +16,42 @@ prSections:
       author:@me
       org:elastic
 
-  - title: "Watching: Team review queue"
+  - title: "Watching: Kibana Management review queue"
     scopes: [explore]
+    source: review-requested-team:elastic/kibana-management
     filters: >-
       is:open is:pr
-      team-review-requested:elastic/kibana-management
+      review-requested:@me
+      org:elastic
+      -is:draft
+      -author:@me
+
+  - title: "Watching: Cloud UI review queue"
+    scopes: [explore]
+    source: review-requested-team:elastic/cloud-ui
+    filters: >-
+      is:open is:pr
+      review-requested:@me
+      org:elastic
+      -is:draft
+      -author:@me
+
+  - title: "Watching: AI Guild review queue"
+    scopes: [explore]
+    source: review-requested-team:elastic/ai-guild
+    filters: >-
+      is:open is:pr
+      review-requested:@me
+      org:elastic
+      -is:draft
+      -author:@me
+
+  - title: "Watching: AI Guild Docs review queue"
+    scopes: [explore]
+    source: review-requested-team:elastic/ai-guild-docs
+    filters: >-
+      is:open is:pr
+      review-requested:@me
       org:elastic
       -is:draft
       -author:@me

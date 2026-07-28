@@ -24,7 +24,7 @@ flowchart TD
     subgraph GH["scripts/pickers/github/ — GitHub picker"]
         GHROUTER["gh_dashboard.sh.tmpl router<br/>(default mode from .isWork)"]:::sh
         GHP["gh_picker.sh (fzf TUI; --mode work|home --scope all|focus|explore)<br/>stale-while-revalidate: start→cache, bg fetch→POST reload($FZF_PORT)"]:::sh
-        GHITEMS["gh_items.sh → lib/gh_items_main.py (rows from gh + YAML)<br/>fetch-lock publication grace: a waiter never reaps an owner between mkdir and pid publish"]:::py
+        GHITEMS["gh_items.sh → lib/gh_items_main.py (rows from gh + YAML;<br/>GraphQL review-request actors separate direct-user and selected-team queues)<br/>fetch-lock publication grace: a waiter never reaps an owner between mkdir and pid publish"]:::py
         GHCFG[["readonly_gh-picker-{work,home}.yml (gh-dash-style sections)"]]:::data
         GHUI["lib/gh_dashboard_ui.py + gh_* Python helpers"]:::py
         GHPREV["gh_preview.sh + lib/gh_preview_warm.sh"]:::sh

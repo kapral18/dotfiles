@@ -44,12 +44,12 @@ The screenshot uses safe demo rows so the states are visible without exposing pr
 
 ## Sections by intent
 
-| Prefix         | Meaning                                                        |
-| -------------- | -------------------------------------------------------------- |
-| `Action:`      | You are the bottleneck: review requested, assigned issue, etc. |
-| `Mine:`        | You authored it and it is still open                           |
-| `Watching:`    | Informational queues, mentions, radar, team views              |
-| `Maintenance:` | Special workflows such as pending backports                    |
+| Prefix         | Meaning                                                                            |
+| -------------- | ---------------------------------------------------------------------------------- |
+| `Action:`      | You are explicitly the requested reviewer or the bottleneck for an assigned issue. |
+| `Mine:`        | You authored it and it is still open                                               |
+| `Watching:`    | Informational queues, mentions, radar, team views                                  |
+| `Maintenance:` | Special workflows such as pending backports                                        |
 
 PRs and issues share the same intent prefixes. The YAML config still splits PR and issue sections for query ergonomics, but the dashboard groups by workflow intent.
 

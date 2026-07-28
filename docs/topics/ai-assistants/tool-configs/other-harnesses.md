@@ -203,11 +203,11 @@ The bridge injects a freshly selected bearer per request, rotating through curso
 
 | Setting                                                                                | Work value                                            | Personal value                          |
 | -------------------------------------------------------------------------------------- | ----------------------------------------------------- | --------------------------------------- |
-| `modelRoles.default`                                                                   | `github-copilot/gpt-5.6-terra:medium`                 | `openai-codex/gpt-5.6-terra:medium`     |
-| `modelRoles.smol`                                                                      | `github-copilot/gpt-5.6-terra:low`                    | `openai-codex/gpt-5.6-terra:low`        |
+| `modelRoles.default`                                                                   | `github-copilot/gpt-5.3-codex:high`                   | `openai-codex/gpt-5.5:medium`           |
+| `modelRoles.smol`                                                                      | `github-copilot/claude-sonnet-5:medium`               | `openai-codex/gpt-5.6-terra:medium`     |
 | `modelRoles.slow`, `modelRoles.plan`, `modelRoles.advisor`                             | `github-copilot/gpt-5.5:medium`                       | `openai-codex/gpt-5.5:medium`           |
 | `modelProviderOrder`                                                                   | `github-copilot`, `openrouter`, `anthropic`, `openai` | `openai-codex`, then the work providers |
-| `advisor.enabled`                                                                      | `true`                                                | `true`                                  |
+| `advisor.enabled`, `advisor.subagents`, `advisor.syncBacklog`, `advisor.immuneTurns`   | `true`, `true`, `1`, `0`                              | `true`, `true`, `1`, `0`                |
 | `defaultThinkingLevel`                                                                 | `medium`                                              | `medium`                                |
 | `memory.backend`                                                                       | `off`                                                 | `off`                                   |
 | `autolearn.enabled`, `autolearn.autoContinue`                                          | `false`, `false`                                      | `false`, `false`                        |
@@ -219,7 +219,7 @@ The bridge injects a freshly selected bearer per request, rotating through curso
 
 These native defaults are distinct from the explicit `model_tier_map.omp` selections used by repo-managed custom agent profiles.
 
-The OMP advisor is enabled for primary turns. It uses the configured `modelRoles.advisor` model to passively review each turn and injects actionable notes as `<advisory>` context; the primary weighs them rather than following them blindly. Advisor coverage for spawned agents remains disabled by OMP's default `advisor.subagents: false`.
+The OMP advisor is enabled for primary turns and spawned agents. It uses the configured `modelRoles.advisor` model to inject actionable notes as `<advisory>` context. `syncBacklog: 1` pauses the primary for up to 30 seconds at every pending advisor review, waiting for the backlog to clear before continuing. `immuneTurns: 0` keeps every later `concern` or `blocker` eligible for steering instead of downgrading it to a non-interrupting aside. These settings make advisor recommendations reach the primary promptly; OMP still marks them as `guidance="weigh, don't blindly obey"`, so it does not mechanically enforce compliance.
 
 AutoQA consent is source-managed as `granted`, so OMP records and uploads concise `xd://report_issue` tool-grievance reports without prompting again.
 

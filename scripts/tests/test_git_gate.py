@@ -83,6 +83,20 @@ class TestClassifyCommand(unittest.TestCase):
         assert gate.classify_command("rg 'git push' home") == "allow"
         assert gate.classify_command('rg "$(git push)" home') == "deny"
 
+    def test_allows_git_paths_and_non_mutating_wrapped_git(self):
+        assert gate.classify_command("stat .git/FETCH_HEAD.lock .git/index.lock") == "allow"
+        assert gate.classify_command("sudo stat .git/FETCH_HEAD.lock") == "allow"
+        assert gate.classify_command("sudo git status") == "allow"
+        assert gate.classify_command("sudo git push") == "deny"
+        assert gate.classify_command("env sudo git commit") == "deny"
+        assert gate.classify_command("bash -lc 'git commit -m wip'") == "deny"
+        assert gate.classify_command("sh -ec 'git push'") == "deny"
+        assert gate.classify_command("command -p git push") == "deny"
+        assert gate.classify_command("time -p git push") == "deny"
+        assert gate.classify_command("bash --norc -c 'git push'") == "deny"
+        # `push` is `$0`, not part of Bash's `-c` command string.
+        assert gate.classify_command("bash -c git push") == "allow"
+
     def test_denies_alias_through_env_options(self):
         assert gate.classify_command("env -C . git -c alias.p=push p") == "deny"
         assert gate.classify_command("env -P /usr/bin git -c alias.p=push p") == "deny"

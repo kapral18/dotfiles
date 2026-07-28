@@ -1516,6 +1516,11 @@ const inertGitText = await pi.handlers.tool_call(
   { type: "tool_call", toolCallId: "inert", toolName: "bash", input: { command: "rg 'git push' home" } },
   ctxWithoutUi
 );
+const gitLockProbe = await pi.handlers.tool_call(
+  { type: "tool_call", toolCallId: "lock-probe", toolName: "bash", input: { command: "stat .git/FETCH_HEAD.lock .git/index.lock" } },
+  ctxWithoutUi
+);
+
 const approved = await pi.handlers.tool_call(
   { type: "tool_call", toolCallId: "approved", toolName: "bash", input: { command: "git commit -m ok" } },
   ctxAllowing
@@ -1534,6 +1539,8 @@ console.log(JSON.stringify({
   escapedBlocked,
   expandedBlocked,
   inertGitText: inertGitText ?? null,
+  gitLockProbe: gitLockProbe ?? null,
+
   approved: approved ?? null,
   explicit: explicit.getActiveTools()
 }));
@@ -1561,6 +1568,7 @@ console.log(JSON.stringify({
             assert payload["escapedBlocked"]["block"] is True
             assert payload["expandedBlocked"]["block"] is True
             assert payload["inertGitText"] is None
+            assert payload["gitLockProbe"] is None
             assert payload["approved"] is None
             assert payload["explicit"] == ["read", "bash", "edit", "write"]
 

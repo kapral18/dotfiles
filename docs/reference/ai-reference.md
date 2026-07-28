@@ -17,6 +17,10 @@ See [The Agentic Operating System](../topics/ai-assistants/index.md) and [SOP so
 
 `~/CLAUDE.md`, `~/.gemini/GEMINI.md`, `~/.cursor/AGENTS.md`, `~/.codex/AGENTS.md`, `~/.config/opencode/AGENTS.md`, and `~/.copilot/copilot-instructions.md` are symlinks to `~/AGENTS.md`.
 
+### Git commit/push safety gate
+
+[`executable_gemini-git-gate.py`](../../home/exact_dot_agents/exact_hooks/executable_gemini-git-gate.py) is a shared pre-shell hook (Cursor `beforeShellExecution`, Gemini `BeforeTool`, and the Pi/OMP runtime extensions) that asks for approval before a `git commit` or `git push`. It classifies the real subcommand behind chains, `env`/`-C`/`-c`, and recognized wrappers (`sudo`, `command`, `time`, `bash -c`, ...), and fails closed on anything ambiguous. Non-git commands are allowed even when they mention git, so `.git` path probes such as `stat .git/index.lock` run without prompting.
+
 ## Harness configs
 
 Per-tool config sources and the `run_onchange_after_07-*` hooks that render them. See [Tool configs](../topics/ai-assistants/tool-configs/index.md).

@@ -12,12 +12,7 @@ The command line is tokenized with `shlex` (respecting quotes, splitting on
 `;`, `&&`, `||`, `|`, `&`, `(`, `)`, and newline) so the actual git
 subcommand can be found after global options (`git -C . commit`,
 `env X=1 git -c foo=bar push`). This is intentionally not a full shell
-parser: any segment that mentions the word "git" but cannot be safely
-classified as a direct, fully-recognized git invocation (unrecognized global
-option, nested/quoted sub-shell such as `bash -c "git commit"`, unparseable
-quoting) is treated as unclassifiable and denied. Only segments that are
-definitely not git, or definitely a non-commit/non-push git subcommand, are
-allowed.
+parser: direct Git invocations and recognized shell/direct-execution wrappers are classified to their actual Git subcommand. Unrecognized Git options, ambiguous wrappers, nested shell code, and unparseable quoting fail closed. Non-Git arguments, including `.git` paths, are allowed.
 
 Gemini CLI blocks a tool ONLY on exit code 2 (stderr becomes the reason);
 any other non-zero exit is treated as a non-fatal warning and the tool still
@@ -82,6 +77,36 @@ ENV_OPTS_WITH_VALUE = {"-a", "-C", "-P", "-u", "--argv0", "--chdir", "--unset"}
 ENV_SPLIT_OPTS = {"-S", "--split-string"}
 ENV_TERMINAL_OPTS = {"--help", "--version"}
 INERT_TEXT_COMMANDS = {"cat", "echo", "egrep", "fgrep", "grep", "head", "printf", "rg", "tail", "wc"}
+SHELL_COMMAND_WRAPPERS = {"bash", "dash", "fish", "ksh", "sh", "zsh"}
+DIRECT_EXECUTION_WRAPPERS = {"command", "doas", "env", "nohup", "sudo", "time"}
+WRAPPER_FLAGS = {
+    "command": {"-p", "-v", "-V"},
+    "doas": {"-n", "-s"},
+    "nohup": set(),
+    "sudo": {"-A", "-b", "-E", "-e", "-H", "-i", "-k", "-K", "-l", "-n", "-s", "-S", "-U", "-V", "-v"},
+    "time": {"-p", "--portability"},
+}
+WRAPPER_OPTS_WITH_VALUE = {
+    "doas": {"-C", "-u"},
+    "sudo": {
+        "-C",
+        "-g",
+        "-h",
+        "-p",
+        "-r",
+        "-t",
+        "-u",
+        "--chdir",
+        "--group",
+        "--host",
+        "--other-user",
+        "--prompt",
+        "--role",
+        "--type",
+        "--user",
+    },
+    "time": {"-f", "-o", "--format", "--output"},
+}
 
 
 def _looks_like_git(token: str) -> bool:
@@ -202,6 +227,62 @@ def _tokenize(command: str) -> list[str]:
     return list(lexer)
 
 
+def _wrapper_command_index(wrapper: str, tokens: list[str], start: int) -> int | None:
+    """Locate a direct-execution wrapper's target command, failing closed on unknown options."""
+    if wrapper == "env":
+        result = _env_command_index(tokens, start, dict(os.environ))
+        return None if result is None else result[0]
+
+    flags = WRAPPER_FLAGS[wrapper]
+    options_with_value = WRAPPER_OPTS_WITH_VALUE.get(wrapper, set())
+    i = start
+    while i < len(tokens):
+        token = tokens[i]
+        if token == "--":
+            return i + 1 if i + 1 < len(tokens) else None
+        if token in flags:
+            i += 1
+            continue
+        if token in options_with_value:
+            if i + 1 >= len(tokens):
+                return None
+            i += 2
+            continue
+        if token.startswith("-"):
+            return None
+        return i
+    return None
+
+
+def _wrapped_command_can_run_mutating_git(tokens: list[str]) -> bool:
+    """Return whether a recognized wrapper can hide a gated Git command."""
+    i = 0
+    while i < len(tokens) and ENV_ASSIGNMENT.match(tokens[i]):
+        i += 1
+    if i >= len(tokens):
+        return False
+
+    wrapper = _command_name(tokens[i])
+    arguments = tokens[i + 1 :]
+    if wrapper in SHELL_COMMAND_WRAPPERS:
+        for index, argument in enumerate(arguments):
+            if argument == "--":
+                return False
+            if argument.startswith("-") and not argument.startswith("--") and "c" in argument[1:]:
+                return index + 1 < len(arguments) and classify_command(arguments[index + 1]) == "deny"
+        return False
+    if wrapper not in DIRECT_EXECUTION_WRAPPERS:
+        return False
+
+    target = _wrapper_command_index(wrapper, tokens, i + 1)
+    if target is None:
+        return bool(GIT_WORD.search(" ".join(arguments)))
+    verdict = _classify_segment(tokens[target:])
+    if verdict in MUTATING_SUBCOMMANDS or verdict == "unclassifiable":
+        return True
+    return verdict is None and _wrapped_command_can_run_mutating_git(tokens[target:])
+
+
 def _split_segments(tokens: list[str]) -> list[list[str]]:
     segments: list[list[str]] = [[]]
     for token in tokens:
@@ -296,10 +377,11 @@ def classify_command(command: str) -> str:
         verdict = _classify_segment(segment)
         if verdict in MUTATING_SUBCOMMANDS or verdict == "unclassifiable":
             return "deny"
-        if verdict is None and GIT_WORD.search(" ".join(segment)):
-            # Not a direct git invocation we can parse (e.g. `bash -c "git
-            # commit"`, `sudo git push`), but git is mentioned in this
-            # segment -> can't safely clear it.
+        if verdict is None and _has_command_substitution(segment) and GIT_WORD.search(" ".join(segment)):
+            return "deny"
+        if verdict is None and _wrapped_command_can_run_mutating_git(segment):
+            # Shell and direct-execution wrappers can hide the real executable.
+            # Arbitrary argv text such as a `.git` path cannot.
             return "deny"
 
     return "allow"

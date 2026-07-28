@@ -2,8 +2,8 @@
 # Keep OMP native guidance/features as the base; this file only pins user policy.
 {{ if eq .isWork true -}}
 modelRoles:
-  default: github-copilot/gpt-5.6-terra:medium
-  smol: github-copilot/gpt-5.6-terra:low
+  default: github-copilot/gpt-5.3-codex:high
+  smol: github-copilot/claude-sonnet-5:medium
   slow: github-copilot/gpt-5.5:medium
   plan: github-copilot/gpt-5.5:medium
   advisor: github-copilot/gpt-5.5:medium
@@ -15,8 +15,8 @@ modelProviderOrder:
   - openai
 {{ else -}}
 modelRoles:
-  default: openai-codex/gpt-5.6-terra:medium
-  smol: openai-codex/gpt-5.6-terra:low
+  default: openai-codex/gpt-5.5:medium
+  smol: openai-codex/gpt-5.6-terra:medium
   slow: openai-codex/gpt-5.5:medium
   plan: openai-codex/gpt-5.5:medium
   advisor: openai-codex/gpt-5.5:medium
@@ -30,6 +30,9 @@ modelProviderOrder:
 {{ end -}}
 advisor:
   enabled: true
+  subagents: true
+  syncBacklog: 1
+  immuneTurns: 0
 
 defaultThinkingLevel: medium
 
