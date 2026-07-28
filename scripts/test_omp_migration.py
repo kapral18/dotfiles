@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import subprocess
+import tempfile
 import unittest
 
 import _test_support  # noqa: F401  (puts scripts/ on sys.path)
@@ -19,17 +21,48 @@ class TestOmpMigration(unittest.TestCase):
         self.assertIn('tap "can1357/tap"', text)
         self.assertIn('brew "can1357/tap/omp"', text)
 
-    def test_config_preserves_managed_omp_values(self):
-        config = (REPO / "home/dot_omp/private_agent/config.yml").read_text()
-        expected_values = (
+    def render_omp_config(self, is_work: bool) -> str:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".toml") as config:
+            config.write(f"[data]\nisWork = {str(is_work).lower()}\n")
+            config.flush()
+            result = subprocess.run(
+                [
+                    "chezmoi",
+                    "--config",
+                    config.name,
+                    "execute-template",
+                    "--file",
+                    "home/dot_omp/private_agent/config.yml.tmpl",
+                ],
+                cwd=REPO,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        return result.stdout
+
+    def test_config_renders_profile_specific_model_roles(self):
+        expected_values = {
+            True: (
+                "default: github-copilot/gpt-5.6-terra:medium",
+                "smol: github-copilot/gpt-5.6-terra:low",
+                "slow: github-copilot/gpt-5.5:medium",
+                "plan: github-copilot/gpt-5.5:medium",
+                "advisor: github-copilot/gpt-5.5:medium",
+                "modelProviderOrder:\n  - github-copilot\n  - openrouter\n  - anthropic\n  - openai\n",
+            ),
+            False: (
+                "default: openai-codex/gpt-5.6-terra:medium",
+                "smol: openai-codex/gpt-5.6-terra:low",
+                "slow: openai-codex/gpt-5.5:medium",
+                "plan: openai-codex/gpt-5.5:medium",
+                "advisor: openai-codex/gpt-5.5:medium",
+                "modelProviderOrder:\n  - openai-codex\n  - github-copilot\n  - openrouter\n  - anthropic\n  - openai\n",
+            ),
+        }
+        shared_values = (
             "modelRoles:\n",
-            "default: github-copilot/gpt-5.6-terra:medium",
-            "smol: github-copilot/gpt-5.6-terra:low",
-            "slow: github-copilot/gpt-5.5:medium",
-            "plan: github-copilot/gpt-5.5:medium",
-            "advisor: github-copilot/gpt-5.5:medium",
             "advisor:\n  enabled: true\n",
-            "modelProviderOrder:\n  - github-copilot\n  - openrouter\n  - anthropic\n  - openai\n",
             "defaultThinkingLevel: medium\n",
             "memory:\n  backend: off\n",
             "autolearn:\n  enabled: false\n  autoContinue: false\n",
@@ -42,9 +75,13 @@ class TestOmpMigration(unittest.TestCase):
             "setupVersion: 1\n",
         )
 
-        for value in expected_values:
-            with self.subTest(value=value):
-                self.assertIn(value, config)
+        for is_work, values in expected_values.items():
+            with self.subTest(is_work=is_work):
+                config = self.render_omp_config(is_work)
+
+                self.assertNotIn("{{", config)
+                for value in (*values, *shared_values):
+                    self.assertIn(value, config)
 
     def test_system_policy_appends_without_replacing_omp_prompt(self):
         agent_dir = REPO / "home/dot_omp/private_agent"

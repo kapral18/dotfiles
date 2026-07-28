@@ -1,5 +1,6 @@
-# Managed by chezmoi (source: home/dot_omp/private_agent/config.yml).
+# Managed by chezmoi (source: home/dot_omp/private_agent/config.yml.tmpl).
 # Keep OMP native guidance/features as the base; this file only pins user policy.
+{{ if eq .isWork true -}}
 modelRoles:
   default: github-copilot/gpt-5.6-terra:medium
   smol: github-copilot/gpt-5.6-terra:low
@@ -7,14 +8,28 @@ modelRoles:
   plan: github-copilot/gpt-5.5:medium
   advisor: github-copilot/gpt-5.5:medium
 
-advisor:
-  enabled: true
-
 modelProviderOrder:
   - github-copilot
   - openrouter
   - anthropic
   - openai
+{{ else -}}
+modelRoles:
+  default: openai-codex/gpt-5.6-terra:medium
+  smol: openai-codex/gpt-5.6-terra:low
+  slow: openai-codex/gpt-5.5:medium
+  plan: openai-codex/gpt-5.5:medium
+  advisor: openai-codex/gpt-5.5:medium
+
+modelProviderOrder:
+  - openai-codex
+  - github-copilot
+  - openrouter
+  - anthropic
+  - openai
+{{ end -}}
+advisor:
+  enabled: true
 
 defaultThinkingLevel: medium
 

@@ -190,32 +190,32 @@ The bridge injects a freshly selected bearer per request, rotating through curso
 
 ## Oh My Pi
 
-| Surface       | Source                                                                                       | Target                     |
-| ------------- | -------------------------------------------------------------------------------------------- | -------------------------- |
-| Agent config  | [`home/dot_omp/private_agent/config.yml`](../../../../home/dot_omp/private_agent/config.yml) | `~/.omp/agent/config.yml`  |
-| MCP servers   | `mcp_servers.yaml` via `generate_mcp_configs.py omp`                                         | `~/.omp/agent/mcp.json`    |
-| Shared skills | `symlink_skills` → `~/.agents/skills`                                                        | `~/.omp/agent/skills`      |
-| Runtime hooks | `extensions/`                                                                                | `~/.omp/agent/extensions/` |
+| Surface       | Source                                                                                                 | Target                     |
+| ------------- | ------------------------------------------------------------------------------------------------------ | -------------------------- |
+| Agent config  | [`home/dot_omp/private_agent/config.yml.tmpl`](../../../../home/dot_omp/private_agent/config.yml.tmpl) | `~/.omp/agent/config.yml`  |
+| MCP servers   | `mcp_servers.yaml` via `generate_mcp_configs.py omp`                                                   | `~/.omp/agent/mcp.json`    |
+| Shared skills | `symlink_skills` → `~/.agents/skills`                                                                  | `~/.omp/agent/skills`      |
+| Runtime hooks | `extensions/`                                                                                          | `~/.omp/agent/extensions/` |
 
 ### Managed configuration
 
-`config.yml` is the complete declarative OMP contract. `omp config list --json` reports the effective typed settings; inspect all model-role pins together with `omp config get modelRoles`, not with dotted child keys.
+`config.yml.tmpl` is the complete declarative OMP contract. Its `isWork` branch keeps work on GitHub Copilot and makes the personal profile use OMP's native Codex subscription provider. `omp config list --json` reports the effective typed settings; inspect all model-role pins together with `omp config get modelRoles`, not with dotted child keys.
 
-| Setting                                                                                | Managed value                                         |
-| -------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `modelRoles.default`                                                                   | `github-copilot/gpt-5.6-terra:medium`                 |
-| `modelRoles.smol`                                                                      | `github-copilot/gpt-5.6-terra:low`                    |
-| `modelRoles.slow`, `modelRoles.plan`, `modelRoles.advisor`                             | `github-copilot/gpt-5.5:medium`                       |
-| `advisor.enabled`                                                                      | `true`                                                |
-| `modelProviderOrder`                                                                   | `github-copilot`, `openrouter`, `anthropic`, `openai` |
-| `defaultThinkingLevel`                                                                 | `medium`                                              |
-| `memory.backend`                                                                       | `off`                                                 |
-| `autolearn.enabled`, `autolearn.autoContinue`                                          | `false`, `false`                                      |
-| `dev.autoqaConsent`                                                                    | `granted`                                             |
-| `skills.enabled`, `skills.enableSkillCommands`                                         | `true`, `true`                                        |
-| `task.isolation.mode`, `task.enableEffort`, `task.enableLsp`, `task.maxRecursionDepth` | `auto`, `true`, `true`, `2`                           |
-| `retry.enabled`, `retry.maxRetries`                                                    | `true`, `5`                                           |
-| `symbolPreset`, `theme.dark`, `setupVersion`                                           | `nerd`, `titanium`, `1`                               |
+| Setting                                                                                | Work value                                            | Personal value                          |
+| -------------------------------------------------------------------------------------- | ----------------------------------------------------- | --------------------------------------- |
+| `modelRoles.default`                                                                   | `github-copilot/gpt-5.6-terra:medium`                 | `openai-codex/gpt-5.6-terra:medium`     |
+| `modelRoles.smol`                                                                      | `github-copilot/gpt-5.6-terra:low`                    | `openai-codex/gpt-5.6-terra:low`        |
+| `modelRoles.slow`, `modelRoles.plan`, `modelRoles.advisor`                             | `github-copilot/gpt-5.5:medium`                       | `openai-codex/gpt-5.5:medium`           |
+| `modelProviderOrder`                                                                   | `github-copilot`, `openrouter`, `anthropic`, `openai` | `openai-codex`, then the work providers |
+| `advisor.enabled`                                                                      | `true`                                                | `true`                                  |
+| `defaultThinkingLevel`                                                                 | `medium`                                              | `medium`                                |
+| `memory.backend`                                                                       | `off`                                                 | `off`                                   |
+| `autolearn.enabled`, `autolearn.autoContinue`                                          | `false`, `false`                                      | `false`, `false`                        |
+| `dev.autoqaConsent`                                                                    | `granted`                                             | `granted`                               |
+| `skills.enabled`, `skills.enableSkillCommands`                                         | `true`, `true`                                        | `true`, `true`                          |
+| `task.isolation.mode`, `task.enableEffort`, `task.enableLsp`, `task.maxRecursionDepth` | `auto`, `true`, `true`, `2`                           | `auto`, `true`, `true`, `2`             |
+| `retry.enabled`, `retry.maxRetries`                                                    | `true`, `5`                                           | `true`, `5`                             |
+| `symbolPreset`, `theme.dark`, `setupVersion`                                           | `nerd`, `titanium`, `1`                               | `nerd`, `titanium`, `1`                 |
 
 These native defaults are distinct from the explicit `model_tier_map.omp` selections used by repo-managed custom agent profiles.
 
