@@ -30,7 +30,7 @@ This file adds only the proof-mode specifics: the head-only model, the intended 
 - ad-hoc — fired directly when the user asks to verify a UI and capture screenshots.
 
 It is not a `/k-agent-review` read-only reviewer lane and needs no isolated subagent profile;
-the shared read-only constraints still bind everything except Playwriter/browser commands and packet-permitted local/dev data setup.
+the shared read-only constraints still bind everything except Playwriter commands and packet-permitted local/dev data setup.
 
 ## Caller supplies
 
@@ -80,8 +80,9 @@ Decide whether the changed paths touch UI/runtime behavior and whether an intend
 - `applicability`: applicable / not applicable, with changed-path evidence
 - `target_packet`: selected packet name/source, including overlay source when an overlay supplied it
 - `urls_checked`: the exact runtime-under-verification URL(s), or an explicit blocker before navigation
-- `playwriter_preflight`: whether the Playwriter skill was loaded and `playwriter skill` was run; if not, why
-- `target_readiness`: readiness result for each URL, from Playwriter evidence
+- `browser_preflight`: Playwriter and its completed preflight, or why it could not run
+- `target_readiness`: readiness result for each URL from Playwriter evidence
+
 - `branch_evidence`: branch/runtime identity evidence, or what could not be verified
 - `data_setup`: existing data checked, local/dev data seeded/mutated, cleanup result, or exact data/mutation still needed
 - `criteria_verdicts`: per intended visual/UI criterion, `met` / `unmet` / `blocked` with the linked screenshot and observed state

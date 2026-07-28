@@ -1,8 +1,8 @@
 {
   "version": 1,
   "output_path": "home/readonly_AGENTS.md",
-  "output_sha256": "5a71144282b0a1c0179a6f0797522a7c3e32e78947b66899e1ba1650de993b30",
-  "output_bytes": 19603,
+  "output_sha256": "00f573a098f92c0070f98ef97dfe707db3c522a51ebf3496f695b11fe3460d7d",
+  "output_bytes": 20707,
   "rules": [
     {
       "id": "sop.0.binding-contract",
@@ -237,8 +237,8 @@
     },
     {
       "id": "sop.6.communication",
-      "sha256": "91618d2ef6f1b7e87d6307d961694a5198c0c0fa0f8a935edc03886e9595887b",
-      "bytes": 1578,
+      "sha256": "ded24002cf903c6835119282b19f3e7280565919fcb991fbc140e139eba8de20",
+      "bytes": 2682,
       "disposition": "core",
       "consumer": "home/readonly_AGENTS.md",
       "risk_tier": "standard",

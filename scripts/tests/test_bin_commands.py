@@ -2042,7 +2042,8 @@ class TestLitellmWrappers(unittest.TestCase):
         source = (REPO / "home/exact_bin/executable_,claude-litellm").read_text()
         assert "ANTHROPIC_DEFAULT_OPUS_MODEL:-llm-gateway/claude-opus-4-8[1m]" in source
         assert "ANTHROPIC_DEFAULT_SONNET_MODEL:-llm-gateway/claude-sonnet-5[1m]" in source
-        assert "CLAUDE_CODE_SUBAGENT_MODEL:-llm-gateway/claude-opus-4-8[1m]" in source
+        assert "CLAUDE_CODE_SUBAGENT_MODEL:-inherit" in source
+        assert "CLAUDE_CODE_SUBAGENT_MODEL:-llm-gateway/claude-opus-4-8[1m]" not in source
         assert "ANTHROPIC_DEFAULT_HAIKU_MODEL:-llm-gateway/claude-haiku-4-5}" in source
         assert "claude-haiku-4-5[1m]" not in source
 

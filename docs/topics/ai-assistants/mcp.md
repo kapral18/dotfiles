@@ -4,7 +4,7 @@ sidebar_position: 8
 
 # MCP Servers
 
-A single canonical registry defines every MCP server once. At `chezmoi apply` time, generators render per-tool configs for Cursor, Claude Code, Gemini, Pi, Codex, OpenCode, and GitHub Copilot CLI, avoiding seven hand-maintained copies of the same server list.
+A single canonical registry defines every MCP server once. At `chezmoi apply` time, generators render per-tool configs for Cursor, Claude Code, Gemini, Pi, OMP, Codex, OpenCode, and GitHub Copilot CLI, avoiding eight hand-maintained copies of the same server list.
 
 Use this page when adding, removing, or debugging an MCP server, or when tracing how a server reaches a given assistant.
 
@@ -33,13 +33,13 @@ Each entry is one of two shapes:
 
 The work set includes `scsi-main`, `scsi-local`, and `slack`:
 
-| Server       | Current behavior                                                                                                                                                                                                                                          |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `scsi-main`  | Hosted Semantic Code Search server using Elastic SSO/OAuth. Claude, Gemini, and Pi keep tool-specific OAuth metadata. Cursor, Copilot, and Codex use `,mcp-token --bridge` at runtime; Cursor keeps OAuth client metadata for a dedicated mint workspace. |
-| `scsi-local` | Local SCSI stdio backend emitted to every work-profile harness, including Copilot and Codex.                                                                                                                                                              |
-| `slack`      | Slack MCP server with per-tool OAuth metadata. Cursor/Copilot/Codex use the shared token bridge at runtime.                                                                                                                                               |
+| Server       | Current behavior                                                                                                                                                                                                                                               |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scsi-main`  | Hosted Semantic Code Search server using Elastic SSO/OAuth. Claude, Gemini, and Pi keep tool-specific OAuth metadata. Cursor, OMP, Copilot, and Codex use `,mcp-token --bridge` at runtime; Cursor keeps OAuth client metadata for a dedicated mint workspace. |
+| `scsi-local` | Local SCSI stdio backend emitted to every work-profile harness, including OMP, Copilot, and Codex.                                                                                                                                                             |
+| `slack`      | Slack MCP server with per-tool OAuth metadata. Cursor, OMP, Copilot, and Codex use the shared token bridge at runtime.                                                                                                                                         |
 
-Copilot, Codex, and Cursor get `scsi-local` as a stdio server and `scsi-main` plus `slack` as local `,mcp-token --bridge` stdio servers that forward to the hosted endpoints with per-request bearer injection. OpenCode gets `scsi-local` only: its injector intentionally emits command servers and skips every HTTP entry.
+OMP, Copilot, Codex, and Cursor get `scsi-local` as a stdio server and `scsi-main` plus `slack` as local `,mcp-token --bridge` stdio servers that forward to the hosted endpoints with per-request bearer injection. OpenCode gets `scsi-local` only: its injector intentionally emits command servers and skips every HTTP entry.
 
 ### Hosted OAuth exceptions
 
@@ -128,6 +128,7 @@ Tools whose config is not plain JSON get dedicated injectors with explicit owner
 | Cursor      | `~/.cursor/mcp.json`                | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)   |
 | Claude Code | `~/.claude.json` (`mcpServers` key) | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)   |
 | Pi          | `~/.pi/agent/mcp.json`              | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)   |
+| OMP         | `~/.omp/agent/mcp.json`             | [`run_onchange_after_07-generate-mcp-configs.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-generate-mcp-configs.sh.tmpl)   |
 | Gemini      | `~/.gemini/settings.json`           | [`run_onchange_after_07-merge-gemini-settings.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-merge-gemini-settings.sh.tmpl) |
 | OpenCode    | `~/.config/opencode/opencode.jsonc` | [`run_onchange_after_07-merge-opencode-config.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-merge-opencode-config.sh.tmpl) |
 | Codex       | `~/.codex/config.toml`              | [`run_onchange_after_07-merge-codex-config.sh.tmpl`](../../../home/.chezmoiscripts/run_onchange_after_07-merge-codex-config.sh.tmpl)       |
@@ -153,7 +154,7 @@ The built-in `github-mcp-server` is provided by Copilot and is not emitted.
 
 ### Per-request token bridge
 
-[`,mcp-token`](../workflow/custom-commands/catalog.md) `--bridge --url <endpoint>` speaks stdio MCP to the agent and forwards each message as an HTTP POST to the hosted endpoint with a freshly selected bearer. Copilot and Codex spawn it like any local MCP server, so their sessions no longer depend on any single token's lifetime.
+[`mcp-token`](../workflow/custom-commands/catalog.md) `--bridge --url <endpoint>` speaks stdio MCP to the agent and forwards each message as an HTTP POST with a freshly selected bearer. OMP, Copilot, and Codex spawn it like any local MCP server, so their sessions no longer depend on any single token's lifetime.
 
 Per request, the bridge reads the freshest still-valid token from cursor-cli's per-project OAuth caches at `~/.cursor/projects/*/mcp-auth.json`. Cursor runs the `authorization_code` flow with its own approved clients (Slack workspace app / SCSI Elastic Okta) and refreshes the rotating token in place.
 

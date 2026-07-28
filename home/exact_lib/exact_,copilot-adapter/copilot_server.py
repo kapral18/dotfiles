@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import hmac
 import json
-import sys
 import re
+import sys
 import urllib.error
 import urllib.request
 from collections.abc import Iterable

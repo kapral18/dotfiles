@@ -41,6 +41,14 @@ These skills route non-code tools, browser automation, and generated visual asse
 | Source   | [`exact_k-nano-banana`](../../../../home/exact_dot_agents/exact_skills/exact_k-nano-banana/) |
 | Tool     | `,nano-banana`                                                                               |
 
+## `k-omp`
+
+| Field    | Value                                                                                                                              |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Use when | operating under OMP and selecting native structured-read, code-intelligence, or agent-handoff tools                                |
+| Source   | [`exact_k-omp`](../../../../home/exact_dot_agents/exact_skills/exact_k-omp/)                                                       |
+| Boundary | runtime adapter only; generic skills retain workflow, evidence, and publication rules. Real-browser work stays with `k-playwriter` |
+
 ## `k-playwriter`
 
 | Field    | Value                                                                                      |

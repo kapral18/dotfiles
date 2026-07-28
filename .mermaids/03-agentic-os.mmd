@@ -32,6 +32,7 @@ flowchart TB
         OPENCODE["OpenCode: dot_config/opencode/*.jsonc (LiteLLM aliases)"]:::exec
         CODEX["Codex: dot_codex/private_config.{work,personal}.toml<br/>+ ,codex bearer-token env wrapper for hosted MCP"]:::exec
         PI["Pi: dot_pi/agent/* (OpenRouter Claude Opus 4.8 default)"]:::exec
+        OMP["OMP: dot_omp/private_agent/config.yml<br/>+ generated ~/.omp/agent/mcp.json token bridges"]:::exec
         COPILOT["Copilot CLI: private_dot_copilot/* (settings + gates + review agents;<br/>MCP stdio-only, OAuth http unusable)"]:::exec
         TUICR["tuicr: dot_config/tuicr/readonly_config.toml"]:::exec
         LOCAL["llama.cpp (local, opt-in)"]:::exec
@@ -39,7 +40,7 @@ flowchart TB
 
     GEN -->|07-generate-mcp-configs + 07-merge-* hooks| EXECL
     MODELS -->|generate_pi_models / merge_opencode_models| EXECL
-    SK -. symlinked or natively discovered by .-> CURSOR & CLAUDE & OPENCODE & CODEX & PI & COPILOT
+    SK -. symlinked or natively discovered by .-> CURSOR & CLAUDE & OPENCODE & CODEX & PI & OMP & COPILOT
 
     subgraph HOOKS["Cursor lifecycle hooks (dot_cursor/hooks.json) — detail in 03b"]
         H["sessionStart→session_context · after*→worklog_dispatcher.sh → worklog_recorder/worklog_queue<br/>beforeShell→gemini-*-gate (failClosed)"]:::ctx

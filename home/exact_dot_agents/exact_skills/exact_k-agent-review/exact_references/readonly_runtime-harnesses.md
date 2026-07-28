@@ -12,10 +12,12 @@ Read this file only for capability caveats that affect orchestration.
 - Model selection is **registry-driven and deterministic**: every repo-owned profile's `model` frontmatter is rendered from the single `agent_review_models` block in the chezmoi model registry (`home/.chezmoidata/ai_models.yaml`).
   Updating a model is a one-line registry edit plus `chezmoi apply`; model ids never live hand-written in profile files.
 - Registry values per harness: `lanes` (angle lanes, auditors, controller, and generic fresh-eyes launches) and `verifier` (the adversarial verifier — a **different model family than `lanes`**, paired by human review in the registry, not inferred at launch).
-  Generic fresh-eyes launches and any harness-served generic/default subagent must pass the registry lane model as the profile-equivalent model;
-  never let the runtime pick an implicit default when the registry has a concrete lane value.
+  Generic fresh-eyes launches must pass the registry lane model as the profile-equivalent model.
+  Any harness-served generic/default subagent must also receive that model; never let the runtime pick an implicit default when the registry has a concrete lane value.
 - Empty registry value = the profile omits the field and the harness config default applies; `inherit` = harness-native parent inheritance.
-  Empty is allowed only for a deliberately documented default path. Current `/k-agent-review` registry values are concrete for Cursor, Copilot, Codex, Gemini, and Pi; launches that omit a model in those harnesses are a bug because they bypass the matrix.
+  Empty is allowed only for a deliberately documented default path.
+  Current `/k-agent-review` registry values are concrete for Cursor, Copilot, Codex, Gemini, and Pi;
+  launches that omit a model in those harnesses are a bug because they bypass the matrix.
   Claude uses `inherit` intentionally because Claude sessions are launched on a deliberate model and the installed Task resolver has been verified to inherit from the parent.
 - A model unavailable in the active runtime is a fail-visible launch error to surface; fix the registry, never substitute at launch.
 
@@ -25,7 +27,8 @@ Claude subagent model overrides are limited to the installed SDK schema (`sonnet
 
 - Registry: `lanes: inherit` — Claude sessions run a deliberately chosen model, and review profiles use `model: inherit`.
 - Built-in shadows: repo-owned same-name profiles override high-risk embedded builtins (`Explore`, `Plan`, `general-purpose`, `claude-code-guide`, `claude`) so normal Task launches use our profile frontmatter instead of embedded defaults.
-- Wrapper guard: `,claude-litellm` defaults `CLAUDE_CODE_SUBAGENT_MODEL=inherit`; setting it to a concrete model overrides **all** subagent frontmatter and should be treated as a deliberate global override.
+- Wrapper guard: `,claude-litellm` defaults `CLAUDE_CODE_SUBAGENT_MODEL=inherit`;
+  setting it to a concrete model overrides **all** subagent frontmatter and should be treated as a deliberate global override.
 - Adversarial verifier: single-family surface, always `families=same (degraded)`;
   launch a general-purpose `Task` carrying `adversarial-verifier.md`.
 
@@ -41,18 +44,24 @@ Never launch a native Codex `spawn_agent`/generic subagent without a model: the 
 Gemini subagents cannot call other subagents, so run `/k-agent-review` in the main Gemini session.
 Do not run the controller itself as a Gemini subagent.
 The model surface is Gemini-only: the adversarial verifier is `families=same (degraded)`; launch it as the `adversarial-verifier` profile.
-Registry: both values are concrete (`gemini-3.1-pro-preview`). Profiles carry registry-rendered `model` frontmatter; do not rely on the configured Gemini default for review workers.
+Registry: both values are concrete (`gemini-3.1-pro-preview`).
+Profiles carry registry-rendered `model` frontmatter; do not rely on the configured Gemini default for review workers.
 
 ## Cursor
 
 - Cursor source supports custom subagent types (`SubagentType.custom.name`) and loads `.cursor/agents` profile files.
   Launch angle lanes through the `review-worker` profile and the verifier through the `adversarial-verifier` profile;
   both carry registry-rendered `model` frontmatter.
-- The registry pins concrete Cursor lane/verifier models deliberately. The user verified via expenditure dashboard that Cursor-served omitted/default subagents can resolve to `composer-2.5-fast`; local safe probes also show the CLI default selector as `auto` and `composer-2.5-fast` as an available legacy alias target.
+- The registry pins concrete Cursor lane/verifier models deliberately.
+  The user verified via expenditure dashboard that Cursor-served omitted/default subagents can resolve to `composer-2.5-fast`;
+  local safe probes also show the CLI default selector as `auto` and `composer-2.5-fast` as an available legacy alias target.
   Treat any omitted Cursor subagent model as a matrix bypass.
-- Same-name custom profiles do **not** shadow native Cursor enum agents (`explore`, `debug`, `cursor_guide`, `unspecified`): custom profiles are carried as a separate `custom` oneof with a `name`, while native cases are distinct empty oneof variants. Do not add same-name templates expecting them to override native Explore.
+- Same-name custom profiles do **not** shadow native Cursor enum agents (`explore`, `debug`, `cursor_guide`, `unspecified`):
+  custom profiles are carried as a separate `custom` oneof with a `name`, while native cases are distinct empty oneof variants.
+  Do not add same-name templates expecting them to override native Explore.
 - When the active Task schema exposes only generic subagent types, pass the same registry values as explicit `model` arguments —
-  the registry stays the single source either way. Generic fresh-eyes launches pass the registry lane model; never let Cursor `auto` choose the model for review workers.
+  the registry stays the single source either way.
+  Generic fresh-eyes launches pass the registry lane model; never let Cursor `auto` choose the model for review workers.
 - Cursor's `readonly` flag is a hard tool restriction, not the `/k-agent-review` behavior-level read-only boundary.
   Cursor source shows `readonly: true` blocks shell, write, delete, and MCP operations.
   Keep Cursor profile frontmatter and Task launches at `readonly: false`; the worker contracts enforce no-mutation behavior.
@@ -74,5 +83,6 @@ Registry: both values are concrete (`gemini-3.1-pro-preview`). Profiles carry re
 ## Pi
 
 - Pi launches subagents through named profiles; per-task/per-profile `model` is honored over the worker default, and thinking is encoded as a `:<thinking>` suffix on the model string.
-- Registry: both `lanes` and `verifier` are concrete. Review workers use `openrouter/anthropic/claude-opus-4.8:high`; adversarial/criteria verifier use `openrouter/openai/gpt-5.5:medium`.
+- Registry: both `lanes` and `verifier` are concrete.
+  Review workers use `openrouter/anthropic/claude-opus-4.8:high`; adversarial/criteria verifier use `openrouter/openai/gpt-5.5:medium`.
 - Other repo-owned Pi profiles are pinned from `model_tier_map` so they do not fall through to `defaultProvider`/`defaultModel` unless a future profile deliberately omits `model` and documents why.

@@ -9,7 +9,7 @@ This file carries the worker conduct and evidence contract: safety boundary, scr
 - Never use ApplyPatch or file-editing tools.
 - Never write files except Playwriter artifacts under `/tmp`, including focused screenshots;
   store each screenshot/pair/set in its own distinct `/tmp/<folder-name>/` directory, never loose directly in `/tmp`.
-- Mutating local/dev runtime data via Playwriter/browser actions, local Kibana APIs, Dev Tools Console, or local Elasticsearch API calls is allowed for verification after target readiness/identity is established.
+- Mutating local/dev runtime data via Playwriter actions, local Kibana APIs, Dev Tools Console, or local Elasticsearch API calls is allowed for verification after target readiness/identity is established.
 - Do not mutate production, shared cloud, GitHub, git, repo files, committed files, labels, reviews, comments, branches, or user-visible external state.
 - Runtime data mutations must be local/dev-only, focused, named in the evidence, tied to the exact target/Elasticsearch endpoint used, and cleaned up or reported.
 - Do not apply ES/Kibana runtime environment changes or restart services from this worker.
@@ -41,7 +41,7 @@ This file carries the worker conduct and evidence contract: safety boundary, scr
 When the user wants to point at specific real Kibana UI elements, use `,artifact live` after Playwriter has verified the registry-resolved local/dev `kbn_url`.
 
 - Load and follow `~/.agents/skills/k-artifact/SKILL.md`.
-- Use `,artifact live script <name>` and inject the returned JavaScript into the verified Playwriter page with `page.evaluate`.
+- Use `,artifact live script <name>` and inject the returned JavaScript through Playwriter's page-evaluation capability.
 - Tell the user capture is armed.
   The overlay intercepts page clicks until paused, uses Shadow DOM, and can be removed without changing the app.
 - Keep `,artifact poll <name>` running and treat returned `source: live-overlay` items as user-guided live UI feedback.
@@ -62,10 +62,10 @@ Reject and rerun any `live-ui-review` result for this overlay that:
   that must be returned as `Blocked` with setup instructions instead
 - returns `Blocked` citing a missing/un-started `,kbn-stack` (no `ready:true` registry entry) in a shell-capable harness, instead of starting it with `,kbn-stack --detach` and continuing (Rung 0); rerun after the stack is started
 - lists screenshot artifacts without local paths, descriptions, target URL/branch, or linked candidate/finding placement
-- omits applicability, exact URLs checked, Playwriter preflight status, readiness result for each target, branch/runtime evidence, comparison evidence for each checked candidate, UI evidence artifact manifest or `none`, page cleanup/owned-page URLs, and blockers/uncertainty
+- omits applicability, exact URLs checked, browser preflight status, readiness result for each target, branch/runtime evidence, comparison evidence for each checked candidate, UI evidence artifact manifest or `none`, page cleanup/owned-page URLs, and blockers/uncertainty
 
 Do not reject or rerun a result that reports a valid Playwriter harness blocker:
 
-- read-only/Ask-mode blocked `playwriter skill` or Playwriter commands
+- read-only/Ask-mode blocked Playwriter
 - every selected exact browser target URL was attempted or explicitly blocked before navigation
 - repeated reload/same-URL/same-snapshot loop was detected within the readiness stability guard

@@ -349,7 +349,7 @@ The measured reason for this controller cache is concrete: one real review had 4
      If the runtime is startable (runtime-start rung), start it and verify.
    - Hard runtime read-only/sandbox modes are not the review safety boundary.
      Use harness permissions that allow the lane's permitted verification tools, and enforce no-mutation behavior through the role contract.
-   - Use those permissions only for the lane's permitted verification tools: read-only shell/git/`gh`/SCSI for investigation workers, or Playwriter/browser commands for `live-ui-review`.
+   - Use those permissions only for the lane's permitted verification tools: read-only shell/git/`gh`/SCSI for investigation workers, or Playwriter commands for `live-ui-review`.
      `live-ui-review` may also run explicit local/dev runtime data setup against verified targets.
    - Mode boundary: default `live-ui-review` is verification-only.
    - Keep behavior-level read-only constraints in the prompt:
@@ -545,12 +545,13 @@ Controller validation: reject and rerun any `live-ui-review` result that:
 - returns `Blocked` for a missing/un-started local runtime in a shell-capable harness when the selected target packet documents a start command (the runtime-start rung); the worker should start it and continue, so rerun after the runtime is started
 - lists screenshot artifacts without local paths, descriptions, target URL/branch, linked candidate/finding placement, suggested embedding placement, or fidelity/cleanup notes
 - returns applicable UI comparison evidence for a finding that may become draft review feedback with `ui_evidence_artifacts: none` and no valid blocker/non-applicability result
-- omits applicability, exact URLs checked, Playwriter preflight status, readiness result for each target, branch/runtime evidence, comparison evidence for each checked candidate, UI evidence artifact manifest or `none`, page cleanup/owned-page URLs, and blockers/uncertainty
+- omits applicability, exact URLs checked, browser preflight status, readiness result for each target, branch/runtime evidence, comparison evidence for each checked candidate, UI evidence artifact manifest or `none`, page cleanup/owned-page URLs, and blockers/uncertainty
 - omits the selected `target_packet` source, including overlay source when an overlay supplied the packet
 
 Do not reject or rerun a result that reports a valid Playwriter harness blocker:
 
-- read-only/Ask-mode blocked `playwriter skill` or Playwriter commands
+- read-only/Ask-mode blocked Playwriter
+
 - every selected exact browser/runtime target URL was attempted or explicitly blocked before navigation
 - repeated reload/same-URL/same-snapshot loop was detected within the readiness stability guard
 

@@ -360,9 +360,7 @@ def _load_pi_policy(
         "llm-gateway/gpt-5.6-terra",
         "llm-gateway/claude-fable-5",
     )
-    recommended = [
-        model["id"] for model in litellm_models if not model["id"].startswith(excluded_recommended)
-    ]
+    recommended = [model["id"] for model in litellm_models if not model["id"].startswith(excluded_recommended)]
     recommended.extend(model["id"] for model in extras if model.get("recommended") is True)
     defaults = {}
     for profile in ("work", "personal"):

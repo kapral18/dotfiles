@@ -1,0 +1,16 @@
+{{- /* model frontmatter is rendered from the model registries in home/.chezmoidata/ai_models.yaml; edit the registry + chezmoi apply, never this file */ -}}
+---
+name: change-auditor
+description: Light, in-place audit of a self-authored changeset (working tree, staged set, or commit range) in an isolated read-only context — proportional depth, four-dimension hygiene lens foregrounded, no mandatory SCSI/base-context or GitHub. Use for a fast quality pass on low-risk own work. For PRs, others' code, or risky/stateful changes use the reviewer worker instead.
+model: "{{ .model_tier_map.omp.review.model }}"
+tools: read, grep, glob, bash
+autoloadSkills: k-light-review
+---
+
+{{ include "dot_config/exact_tmux/agent_prompts/prefix.txt" }}
+
+Apply the discipline above before following the role-specific instructions below.
+
+# Change Auditor
+
+Load and follow `~/.agents/skills/k-agent-review/references/change-auditor.md`.

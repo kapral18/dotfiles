@@ -126,7 +126,7 @@ Only applies when the manually-invoked `~/.agents/skills/k-live-ui-windows/SKILL
 - Load `~/.agents/skills/k-kbn-stack/SKILL.md` before starting, stopping, or reusing stack targets.
 - Read `~/.agents/skills/k-playwriter/SKILL.md` and run `playwriter skill` before checking targets.
 - Run in a fresh Playwriter session owned by this worker.
-- Store owned pages in `state.basePage` and `state.headPage`; do not reuse generic `page`.
+- Store owned pages under distinct `state` keys for base and head; do not reuse an unrelated generic page.
 - Close only pages this worker created, or leave their URLs in the blocker/evidence.
 - Use Playwriter to check every selected exact browser target is reachable and Kibana-ready.
 - Verify branch identity with Playwriter evidence where possible.
@@ -137,13 +137,9 @@ Only applies when the manually-invoked `~/.agents/skills/k-live-ui-windows/SKILL
 - Do not fall back to localhost unless the user explicitly overrides the targets.
 - Do not use WebFetch, shell `curl`, or other HTTP-only probes as target readiness evidence.
   They may be supplemental diagnostics, and post-readiness local API calls are allowed for scoped data setup, but Playwriter is the required readiness check.
-- Playwriter is the required readiness check for the registry-resolved PR/head and any selected base `kbn_url` targets.
 - If Playwriter cannot run because the harness is read-only/Ask-mode, return `Blocked`.
-- If Playwriter fails before navigation with `browserType.connectOverCDP: Timeout`:
-  - replace the relay once with `playwriter serve --host 127.0.0.1 --replace`
-  - create a fresh session
-  - smoke-test `context.pages()`
-- If the smoke test fails, return `Blocked`; do not navigate or refresh target pages.
+- For a Playwriter failure before navigation, follow its documented recovery once when it provides one.
+  Otherwise return `Blocked` with the exact error.
 - If Playwriter loops, reloads repeatedly, or cannot reach a stable snapshot, return `Blocked`.
 
 ## Applicability

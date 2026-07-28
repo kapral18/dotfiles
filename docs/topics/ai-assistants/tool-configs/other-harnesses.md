@@ -5,7 +5,7 @@ title: Other harnesses
 
 # Other harnesses
 
-This page covers assistant-adjacent tools that do not have their own page in this section: Codex, OpenCode, GitHub Copilot CLI, and tuicr. It stays at the configuration and rendering layer; [Cross-harness subagents](../subagents.md) owns runtime discovery, review fan-out hierarchy, source paths, and design notes.
+This page covers assistant-adjacent tools that do not have their own page in this section: Codex, OpenCode, Oh My Pi, GitHub Copilot CLI, and tuicr. It stays at the configuration and rendering layer; [Cross-harness subagents](../subagents.md) owns runtime discovery, review fan-out hierarchy, source paths, and design notes.
 
 Use it to answer three questions: which repo source owns the deployed config, which wrapper runs before the native binary, and which runtime-owned fields are allowed to survive a merge.
 
@@ -187,6 +187,43 @@ Claude Code is not wired to Cloudflare. The Codex subscription adapter above is 
 `inject_mcp_into_codex_toml.py` emits `slack` and `scsi-main` as `,mcp-token <source> --bridge --url <url>` command servers, not inline secrets or env-var contracts.
 
 The bridge injects a freshly selected bearer per request, rotating through cursor's refresh grant behind the seam, so a Codex session outlives any single token.
+
+## Oh My Pi
+
+| Surface       | Source                                                                                       | Target                     |
+| ------------- | -------------------------------------------------------------------------------------------- | -------------------------- |
+| Agent config  | [`home/dot_omp/private_agent/config.yml`](../../../../home/dot_omp/private_agent/config.yml) | `~/.omp/agent/config.yml`  |
+| MCP servers   | `mcp_servers.yaml` via `generate_mcp_configs.py omp`                                         | `~/.omp/agent/mcp.json`    |
+| Shared skills | `symlink_skills` → `~/.agents/skills`                                                        | `~/.omp/agent/skills`      |
+| Runtime hooks | `extensions/`                                                                                | `~/.omp/agent/extensions/` |
+
+### Managed configuration
+
+`config.yml` is the complete declarative OMP contract. `omp config list --json` reports the effective typed settings; inspect all model-role pins together with `omp config get modelRoles`, not with dotted child keys.
+
+| Setting                                                                                | Managed value                                         |
+| -------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `modelRoles.default`                                                                   | `github-copilot/gpt-5.6-terra:medium`                 |
+| `modelRoles.smol`                                                                      | `github-copilot/gpt-5.6-terra:low`                    |
+| `modelRoles.slow`, `modelRoles.plan`, `modelRoles.advisor`                             | `github-copilot/gpt-5.5:medium`                       |
+| `advisor.enabled`                                                                      | `true`                                                |
+| `modelProviderOrder`                                                                   | `github-copilot`, `openrouter`, `anthropic`, `openai` |
+| `defaultThinkingLevel`                                                                 | `medium`                                              |
+| `memory.backend`                                                                       | `off`                                                 |
+| `autolearn.enabled`, `autolearn.autoContinue`                                          | `false`, `false`                                      |
+| `dev.autoqaConsent`                                                                    | `granted`                                             |
+| `skills.enabled`, `skills.enableSkillCommands`                                         | `true`, `true`                                        |
+| `task.isolation.mode`, `task.enableEffort`, `task.enableLsp`, `task.maxRecursionDepth` | `auto`, `true`, `true`, `2`                           |
+| `retry.enabled`, `retry.maxRetries`                                                    | `true`, `5`                                           |
+| `symbolPreset`, `theme.dark`, `setupVersion`                                           | `nerd`, `titanium`, `1`                               |
+
+These native defaults are distinct from the explicit `model_tier_map.omp` selections used by repo-managed custom agent profiles.
+
+The OMP advisor is enabled for primary turns. It uses the configured `modelRoles.advisor` model to passively review each turn and injects actionable notes as `<advisory>` context; the primary weighs them rather than following them blindly. Advisor coverage for spawned agents remains disabled by OMP's default `advisor.subagents: false`.
+
+AutoQA consent is source-managed as `granted`, so OMP records and uploads concise `xd://report_issue` tool-grievance reports without prompting again.
+
+OMP receives a native `mcp.json` generated from the shared registry. `scsi-main` and `slack` run as `,mcp-token --bridge` stdio servers, so fresh cursor-minted bearer tokens are injected per request; `scsi-local` remains a direct stdio server.
 
 ## GitHub Copilot CLI
 

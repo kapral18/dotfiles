@@ -11,7 +11,7 @@ the reviewed PR/head worktree in review mode, or the built/changed worktree in p
 ## Mode boundary
 
 - Default: verification only.
-- Tool-level non-read-only is allowed only for Playwriter/browser commands.
+- Tool-level non-read-only is allowed only for Playwriter commands.
   It is also allowed for explicit local/dev runtime data setup permitted by the selected target packet.
 - Behavior-level read-only still applies to the repository, GitHub, git, and publishing surfaces.
 - Local/dev runtime data setup is allowed when required to verify an applicable UI/runtime path.
@@ -80,10 +80,8 @@ Run readiness before any UI observation.
 - Stop on a repeated same-URL/same-snapshot observation.
 - Stop on repeated reloads or page instability.
 - Return `Blocked`; do not keep refreshing until the page becomes stable.
-- If Playwriter fails before navigation with `browserType.connectOverCDP: Timeout`, replace the relay once.
-  Use `playwriter serve --host 127.0.0.1 --replace`.
-- After relay replacement, create a fresh session and smoke-test `context.pages()`.
-- If the smoke test fails, return `Blocked`; do not navigate or refresh target pages.
+- If Playwriter fails before navigation with `browserType.connectOverCDP: Timeout`, replace its relay once with `playwriter serve --host 127.0.0.1 --replace`, then create a fresh session and smoke-test `context.pages()`.
+- If Playwriter fails before navigation for another reason, return `Blocked` with the exact error; do not retry indefinitely.
 
 ## Screenshot & evidence capture
 

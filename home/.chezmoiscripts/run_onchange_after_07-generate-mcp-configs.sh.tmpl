@@ -105,3 +105,16 @@ chezmoi_record_artifact --id pi-mcp \
   --transform "$source_dir/../scripts/yaml_parser.py" \
   --transform "$source_dir/../scripts/chezmoi_lib.sh" \
   --consumer pi
+
+# OMP — native MCP file; tokenBridge servers remain local stdio bridges.
+python3 "$gen" "$yaml_src" "$is_work" omp >"$tmp"
+chezmoi_write_if_changed "$(cat "$tmp")" "$HOME/.omp/agent/mcp.json" 0600
+chezmoi_record_artifact --id omp-mcp \
+  --producer 07-generate-mcp-configs --profile "$profile" \
+  --target "$HOME/.omp/agent/mcp.json" --ownership-adapter whole-file \
+  --input "$yaml_src" \
+  --transform "$gen" \
+  --transform "$source_dir/../scripts/mcp_registry.py" \
+  --transform "$source_dir/../scripts/yaml_parser.py" \
+  --transform "$source_dir/../scripts/chezmoi_lib.sh" \
+  --consumer omp

@@ -70,7 +70,7 @@ For older entries without `started_by`, infer `agent` only when recorded process
 7. If a ready stack with `started_by: "user"` is missing required `kbn_flags`, do not restart it.
    Report the exact `,kbn-stack --stop && ,kbn-stack --detach -K ...` command the user should run.
 8. If a ready stack with `started_by: "agent"` is missing required `kbn_flags`, or its liveness/process evidence contradicts the registry, an agent may stop/recreate it only when that does not conflict with another active task; record the replacement in the evidence.
-9. Load and follow the Playwriter skill before using `kbn_url` for readiness or UI verification.
+9. Load Playwriter before using `kbn_url` for readiness or UI verification.
 10. If using `,artifact live`, inject the overlay only after Playwriter verifies the local/dev Kibana target.
 
 ## Teardown

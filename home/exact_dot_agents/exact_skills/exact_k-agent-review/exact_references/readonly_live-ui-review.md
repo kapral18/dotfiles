@@ -78,8 +78,9 @@ Return exactly:
 - `applicability`: applicable / not applicable, with changed-path or finding evidence
 - `target_packet`: selected packet name/source, including overlay source when an overlay supplied the packet
 - `urls_checked`: the exact PR/head and any selected base URLs from the selected packet, or an explicit blocker before navigation
-- `playwriter_preflight`: whether the Playwriter skill was loaded and `playwriter skill` was run; if not, say why
-- `target_readiness`: readiness result for each exact URL, from Playwriter evidence
+- `browser_preflight`: Playwriter and its completed preflight, or why it could not run
+- `target_readiness`: readiness result for each exact URL from Playwriter evidence
+
 - `branch_evidence`: branch/runtime identity evidence for each target, or what could not be verified
 - `data_setup`: media/artifacts inspected, fixture/mocks considered, existing data checked, selected-target-packet local/dev data seeded/mutated, domain interactive fallback usage, browser/route mocks if used as last resort, cleanup result, runtime environment blocker instructions, or exact data/mutation still needed
 - `comparison_evidence`: candidate-by-candidate UI/runtime evidence, including `Not applicable` only for candidates disproved by reachability or absent functionality

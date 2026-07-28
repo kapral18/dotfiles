@@ -77,7 +77,7 @@ class TestGenerateMcpConfigs(unittest.TestCase):
         }
         assert "headers" not in bridge
 
-    def _bridge_registry(self, root: Path, token_source: str) -> Path:
+    def _bridge_registry(self, root: Path, token_source: str, tool: str = "copilot") -> Path:
         registry = root / "mcp_servers.yaml"
         registry.write_text(
             f"""
@@ -87,7 +87,7 @@ mcp_servers:
     type: http
     url: https://first.example/mcp
     oauth_by_tool:
-      copilot:
+      {tool}:
         tokenBridge: "{token_source}"
 """.lstrip()
         )
@@ -136,6 +136,22 @@ mcp_servers:
         assert "url" not in bridge
         assert "oauth" not in bridge
         assert "auth" not in bridge
+
+    def test_omp_token_bridge_emits_native_stdio_bridge(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            registry = self._bridge_registry(Path(temporary), "bridge-source", tool="omp")
+            actual = json.loads(run_script(["generate_mcp_configs.py", str(registry), "false", "omp"]))
+
+        assert actual == {
+            "$schema": "https://raw.githubusercontent.com/can1357/oh-my-pi/main/packages/coding-agent/src/config/mcp-schema.json",
+            "mcpServers": {
+                "first": {
+                    "type": "stdio",
+                    "command": ",mcp-token",
+                    "args": ["bridge-source", "--bridge", "--url", "https://first.example/mcp"],
+                }
+            },
+        }
 
     def test_cursor_oauth_mint_keeps_http_oauth_and_strips_bridge(self):
         actual = json.loads(

@@ -2,6 +2,11 @@
 # https://github.com/sst/opencode
 brew "opencode"
 
+# AI coding agent with IDE-wired terminal harness
+# https://github.com/can1357/oh-my-pi
+tap "can1357/tap"
+brew "can1357/tap/omp"
+
 # Terminal tool to right-size LLM models to your hardware (RAM, CPU, GPU)
 # https://github.com/AlexsJones/llmfit
 brew "llmfit"

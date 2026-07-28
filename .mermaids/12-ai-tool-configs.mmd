@@ -10,6 +10,7 @@ flowchart TB
     classDef gem fill:#1b3a2b,stroke:#81c784,color:#e8f5e9;
     classDef oc fill:#3a1b2b,stroke:#f48fb1,color:#fce4ec;
     classDef cop fill:#22343a,stroke:#4dd0e1,color:#e0f7fa;
+    classDef omp fill:#233a22,stroke:#a5d66d,color:#f1f8e9;
 
     LAUNCH[",ai → ~/lib/,ai/{main,model_mirror_consumer}.py<br/>depth=fast|balanced|deep is soft; explicit execution/connectivity is hard<br/>aliases expand before resolution; contradictions and unsupported hard constraints fail<br/>no verified provider-isolating offline transport; Pi provider selection requires a concrete model<br/>generated consumer_view.v1 validates known complete available catalogs<br/>redacted InvocationPlan carries bounded catalog provenance + exact leaf argv/env<br/>exports AI_AGENT_DEPTH / AI_AGENT_EXECUTION / AI_AGENT_CONNECTIVITY<br/>harness defaults stay authoritative; planning never contacts providers"]:::cop
 
@@ -37,6 +38,10 @@ flowchart TB
         PIA["readonly_settings.work.json · readonly_settings.personal.json<br/>hybrid context compaction + showCacheMissNotices:true;<br/>offline active-branch diagnostics: scripts/analyze_pi_session.py<br/>readonly_models.json · readonly_models.personal.json (personal Cloudflare Workers AI)<br/>readonly_APPEND_SYSTEM.md → ~/.pi/agent/APPEND_SYSTEM.md (operating layer; Cursor parity)<br/>extensions/ai-kb-recall.ts → shared session_context + AI_AGENT_DEPTH per-turn recall/correction + worklog;<br/>extensions/runtime-parity.ts → grep/find/ls defaults (explicit CLI flags win) + pre-bash git commit/push gate;<br/>native ~/.agents/skills discovery · packages: pi-mcp-adapter + pi-subagents (yarn node_modules)<br/>subagents.disableBuiltins:true · exact_agents/ → ~/.pi/agent/agents/ (review controller/workers + fresh-eyes/adversarial/criteria/PR necessity/live-UI/findings/post-review)<br/>work: readonly_models.json + generate_pi_models.py; personal: llama-cpp + cloudflare-workers-ai<br/>,pi-cloudflare wrapper selects Cloudflare models with shell completion<br/>openrouter anthropic/claude-opus-4.8 default; hook 07-merge-pi-config"]:::gem
     end
 
+    subgraph OMP["OMP (dot_omp/private_agent/)"]
+        OMPA["config.yml (GitHub Copilot model roles; advisor enabled for parent turns; native memory/autolearn off; AutoQA consent granted; skills on)<br/>generated ~/.omp/agent/mcp.json: scsi-main/slack → ,mcp-token --bridge stdio, scsi-local → direct stdio<br/>readonly_APPEND_SYSTEM.md extends OMP native prompt; readonly_RULES.md sticky side-effect/verification rules<br/>symlink_skills → ~/.agents/skills<br/>extensions/ai-kb-recall.ts → shared session_context + AI_AGENT_DEPTH per-turn recall/correction + worklog;<br/>extensions/runtime-parity.ts → search-tool defaults + pre-bash git commit/push gate<br/>exact_agents/ → ~/.omp/agent/agents/ (review controller/workers + fresh-eyes/adversarial/criteria/PR necessity/live-UI/findings/post-review)<br/>private_agent source keeps ~/.omp/agent mode 0700 to match OMP runtime<br/>Homebrew: can1357/tap/omp"]:::omp
+    end
+
     subgraph COPILOT["GitHub Copilot CLI (private_dot_copilot/)"]
         COP["settings.json (effortLevel xhigh · keepAlive busy · autoUpdate false · banner never<br/>+ exact source-owned subagents.agents review-worker/adversarial-verifier/criteria-verifier/PR necessity/findings/live-ui/controller; models registry-rendered in profiles)<br/>agent-memory SDK extension → ~/.copilot/extensions/agent-memory/extension.mjs<br/>(AI_AGENT_DEPTH shared session/per-turn contract; onPostToolUse* → async worklog_dispatcher.sh); no PreToolUse shell gate<br/>symlink_copilot-instructions.md → ~/AGENTS.md · symlink_skills → ~/.agents/skills<br/>exact_agents/ review .agent.md profiles → ~/.copilot/agents/<br/>hook 07-merge-copilot-config (mcp-config.json 0600; typed recursive declared-over-live settings merge; exact agents; retired command hook+checksum row removed)<br/>,copilot → ~/lib/,copilot/main.py: passthrough except bare --resume, which selects from session-store.db then launches --session-id=&lt;id&gt; to avoid the 1.0.73 MCP session-switch race; stable BYOK entry point<br/>,copilot-cloudflare / ,copilot-litellm / ,copilot-openrouter set Copilot BYOK env then exec ,copilot<br/>,copilot-codex → per-session OpenAI Responses frontend for Codex subscription Responses<br/>,copilot-vertex → per-session OpenAI Chat Completions frontend<br/>MCP: stdio→type local · own OAuth http unused (redirect 127.0.0.1:{port}/ unregistered)<br/>slack + scsi-main→type local ,mcp-token &lt;source&gt; --bridge --url &lt;url&gt; (per-request bearer from cursor's rotating tokens; Copilot can't run Slack/Okta OAuth; bridge rotates the current-cwd refresh chain even without .workspace-trusted, retries once on 401, resurrects server-expired sessions; SCSI alone opts into one exact upstream connection-timeout retry; no secrets in the rendered config)<br/>scsi-local→type local (stdio, pass creds); mcpServers = slack + scsi-main + scsi-local (+ built-ins)"]:::cop
     end
@@ -46,7 +51,7 @@ flowchart TB
     end
 
     REG[[".chezmoidata/mcp_servers.yaml + ai_models.yaml<br/>harness configs + scripts/model_capabilities.v1.json<br/>canonical policy/evidence inputs (see 11)"]]:::cursor
-    REG --> CURSOR & CLAUDE & CODEX & GEMINI & OPENCODE & PI & COPILOT & OTHER
+    REG --> CURSOR & CLAUDE & CODEX & GEMINI & OPENCODE & PI & OMP & COPILOT & OTHER
     VERTEX[("dot_config/vertex-adapter/readonly_models.json.tmpl → ~/.config/vertex-adapter/models.json<br/>~/lib/,vertex-adapter/{main,auth,models,protocols,server,state,streaming,vertex}.py<br/>random authenticated loopback per wrapper; gcloud bearer refresh<br/>per-session Codex model_catalog_json uses curated context/effort/shell/apply_patch metadata<br/>Responses · Chat Completions · Anthropic Messages → Vertex Gemini chat / Claude rawPredict<br/>opaque tool-call signatures only → ~/.local/state/vertex-adapter/ (0600)")]:::cop
     REG -->|"provider_models vertex metadata"| VERTEX
     VERTEX --> CLAUDE & CODEX & COPILOT
@@ -59,11 +64,11 @@ flowchart TB
     MIRROR[("dot_config/ai/readonly_model-mirrors.v1.json<br/>generated available · curated · recommended<br/>per harness/provider; source+section provenance + Unknown/Error states")]:::oc
     REG -->|"model_mirrors.py; static path forbids network; canonical policy fails closed"| MIRROR
     MIRROR -->|"consumer_view.v1 available catalog"| LAUNCH
-    MIRROR -->|"curated shell-provider completion"| OPENCODE & PI & COPILOT
+    MIRROR -->|"curated shell-provider completion"| OPENCODE & PI & OMP & COPILOT
     MIRROR -->|"Codex curated wrapper completion"| CODEXGATE
-    LAUNCH --> CURSOR & CLAUDE & CODEX & GEMINI & OPENCODE & PI & COPILOT
-    LEDGER[("~/.local/state/chezmoi/generated_artifacts.v1.json<br/>11 AI artifacts · source/transform/profile/ownership/consumer<br/>,doctor ai = static; --live = deduped local version probes")]:::oc
-    CURSOR & CLAUDE & CODEX & GEMINI & OPENCODE & PI & COPILOT --> LEDGER
+    LAUNCH --> CURSOR & CLAUDE & CODEX & GEMINI & OPENCODE & PI & OMP & COPILOT
+    LEDGER[("~/.local/state/chezmoi/generated_artifacts.v1.json<br/>12 AI artifacts · source/transform/profile/ownership/consumer<br/>,doctor ai = static; --live = deduped local probes")]:::oc
+    CURSOR & CLAUDE & CODEX & GEMINI & OPENCODE & PI & OMP & COPILOT --> LEDGER
 
     SUBA[["Skill-backed subagents (isolated child context)<br/>all custom profile templates render prefix.txt preamble before role instructions<br/>agent-review: native harness discovery + role-specific runtime contracts<br/>PR necessity/intent gate when required → 2-5 angle lanes (review-worker/reviewer profiles; models rendered from agent_review_models registry) + conditional blind fresh-eyes clarity lane using the same registry lane model as profile-equivalent → cross-family adversarial-verifier over merged candidates (registry-paired families; families=same (degraded) on single-family harnesses)<br/>review-controller (Pi): PR necessity gate when required → default-model reviewer angle lanes + conditional fresh-eyes shim → adversarial-verifier (cross-family via openrouter) → live-ui → inline/delegated findings audit → pending-review reconciliation → act<br/>reviewer lanes return candidate findings + verification_needed; controller owns sticky verification ledger + mutation/contention serial checks<br/>local adopted/assigned PR changes that need PR intent route through PR intent audit before fixes<br/>pr-necessity-auditor→k-agent-review/pr-necessity-auditor contract + k-review/pr_common<br/>findings-auditor/post-review→k-review/judging_core 4-dim<br/>live-ui-review returns applicability/comparison/screenshot handoff/target-packet/branch/runtime/data blocker; screenshot handoff is required for UI findings drafted as review feedback unless blocked/not applicable; Elastic/Kibana concrete targets live in elastic-domain overlay<br/>change-auditor→k-light-review (proportional in-place audit)<br/>criteria-verifier→k-build/references/criteria-verifier (/k-build refutation lane; agent_review_models verifier)<br/>skills stay the source of truth"]]:::claude
     SUBA -.->|"~/.cursor/agents/ (Cursor; model lanes selected by controller)"| CURSOR
@@ -72,3 +77,4 @@ flowchart TB
     SUBA -.->|"~/.codex/agents/ (Codex multi_agent roles)"| CODEX
     SUBA -.->|"~/.gemini/agents/ (Gemini subagent tools; main session controls)"| GEMINI
     SUBA -.->|"~/.pi/agent/agents/ (Pi; hierarchy; builtins disabled)"| PI
+    SUBA -.->|"~/.omp/agent/agents/ (OMP; native hierarchy retained)"| OMP

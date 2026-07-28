@@ -276,7 +276,7 @@ class TestAgentInstructionInvariants(unittest.TestCase):
         )
         self.assert_file_contains(
             "docs/topics/ai-assistants/mcp.md",
-            "emitted to every work-profile harness, including Copilot and Codex",
+            "emitted to every work-profile harness, including OMP, Copilot, and Codex",
             "OpenCode gets `scsi-local` only",
             "HTTP entries are intentionally skipped",
         )

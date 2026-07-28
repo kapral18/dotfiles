@@ -79,6 +79,9 @@ mcp_servers:
         # Copilot uses instead.
         tokenBridge: "scsi-main"
         retryConnectTimeouts: true
+      omp:
+        tokenBridge: "scsi-main"
+        retryConnectTimeouts: true
     codex_default_tools_approval_mode: approve
 
   - name: scsi-local
@@ -134,6 +137,8 @@ mcp_servers:
       codex:
         # Codex's bearer_token_env_var reads the env once at launch and never
         # reloads it; spawn the same per-request stdio bridge Copilot uses.
+        tokenBridge: "slack"
+      omp:
         tokenBridge: "slack"
     codex_tool_approval_modes:
       slack_read_canvas: approve

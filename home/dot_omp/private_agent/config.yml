@@ -1,0 +1,51 @@
+# Managed by chezmoi (source: home/dot_omp/private_agent/config.yml).
+# Keep OMP native guidance/features as the base; this file only pins user policy.
+modelRoles:
+  default: github-copilot/gpt-5.6-terra:medium
+  smol: github-copilot/gpt-5.6-terra:low
+  slow: github-copilot/gpt-5.5:medium
+  plan: github-copilot/gpt-5.5:medium
+  advisor: github-copilot/gpt-5.5:medium
+
+advisor:
+  enabled: true
+
+modelProviderOrder:
+  - github-copilot
+  - openrouter
+  - anthropic
+  - openai
+
+defaultThinkingLevel: medium
+
+memory:
+  backend: off
+
+autolearn:
+  enabled: false
+  autoContinue: false
+
+dev:
+  autoqaConsent: granted
+
+skills:
+  enabled: true
+  enableSkillCommands: true
+
+task:
+  isolation:
+    mode: auto
+  enableEffort: true
+  enableLsp: true
+  maxRecursionDepth: 2
+
+retry:
+  enabled: true
+  maxRetries: 5
+
+symbolPreset: nerd
+
+theme:
+  dark: titanium
+
+setupVersion: 1

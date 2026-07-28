@@ -9,6 +9,8 @@ title: Source of truth
 
 This page is the maintenance map for changing the prompt without editing rendered `$HOME` outputs directly.
 
+The core SOP owns the default response style: lead with the answer or next action, use bounded actionable steps, show current state and errors, cut filler and tangents, and keep prose direct and specific without weakening evidence or uncertainty. It synthesizes the applicable guidance from [Stop Slop](https://github.com/hardikpandya/stop-slop) and [i-have-adhd](https://github.com/ayghri/i-have-adhd): their core skills, linked style references, examples, evaluation cases/rubric, and always-on implementation patterns.
+
 ## Mental model
 
 | Rule                                               | Why it matters                                                   |

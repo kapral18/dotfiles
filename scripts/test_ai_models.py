@@ -7,8 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import _test_support  # noqa: F401  (puts scripts/ on sys.path)
-from _test_support import FIXTURES
+from _test_support import FIXTURES, REPO
 
 
 class TestAiModels(unittest.TestCase):
@@ -131,7 +130,7 @@ class TestAiModels(unittest.TestCase):
         assert tiers == {"claude_code": {"gruntwork": {"model": "x", "effort": "high"}}}
 
     def test_claude_builtin_agent_shadows_are_declared(self):
-        agents = Path("home/dot_claude/exact_agents")
+        agents = REPO / "home/dot_claude/exact_agents"
         expected = {
             "Explore.md.tmpl": "name: Explore",
             "Plan.md.tmpl": "name: Plan",
@@ -146,10 +145,10 @@ class TestAiModels(unittest.TestCase):
                 assert "model:" in text
 
     def test_claude_litellm_does_not_override_subagent_models_by_default(self):
-        wrapper = Path("home/exact_bin/executable_,claude-litellm").read_text()
+        wrapper = (REPO / "home/exact_bin/executable_,claude-litellm").read_text()
 
-        assert 'CLAUDE_CODE_SUBAGENT_MODEL:-inherit' in wrapper
-        assert 'CLAUDE_CODE_SUBAGENT_MODEL:-llm-gateway/claude-opus-4-8[1m]' not in wrapper
+        assert "CLAUDE_CODE_SUBAGENT_MODEL:-inherit" in wrapper
+        assert "CLAUDE_CODE_SUBAGENT_MODEL:-llm-gateway/claude-opus-4-8[1m]" not in wrapper
 
 
 if __name__ == "__main__":

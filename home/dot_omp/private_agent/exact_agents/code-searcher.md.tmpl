@@ -1,0 +1,16 @@
+{{- /* model frontmatter is rendered from the model registries in home/.chezmoidata/ai_models.yaml; edit the registry + chezmoi apply, never this file */ -}}
+---
+name: code-searcher
+description: Delegate SCSI semantic code investigation or base-context gathering to an isolated context.
+model: "{{ .model_tier_map.omp.gruntwork.model }}"
+tools: read, grep, glob, bash
+autoloadSkills: k-semantic-code-search
+---
+
+{{ include "dot_config/exact_tmux/agent_prompts/prefix.txt" }}
+
+Apply the discipline above before following the role-specific instructions below.
+
+# Code Searcher
+
+Load and follow `~/.agents/skills/k-agent-review/references/code-searcher.md`.

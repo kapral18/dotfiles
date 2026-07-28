@@ -83,6 +83,28 @@ _TOOL_TRANSFORMS["cursor"] = _transform_cursor
 _TOOL_TRANSFORMS["cursor-oauth-mint"] = _transform_cursor_oauth_mint
 
 
+def _transform_omp(spec: dict[str, Any]) -> dict[str, Any]:
+    """Emit OMP-native stdio bridges for hosted tokenBridge servers."""
+    if spec.get("type") != "http":
+        return {
+            "type": "stdio",
+            "command": spec["command"],
+            "args": spec.get("args", []),
+        }
+
+    oauth = spec.get("oauth")
+    if isinstance(oauth, dict) and oauth.get("tokenBridge"):
+        return {
+            "type": "stdio",
+            "command": TOKEN_BRIDGE_COMMAND,
+            "args": token_bridge_args(str(spec.get("url")), spec),
+        }
+    return {"type": "http", "url": spec["url"]}
+
+
+_TOOL_TRANSFORMS["omp"] = _transform_omp
+
+
 def _transform_gemini(spec: dict[str, Any]) -> dict[str, Any]:
     """Gemini CLI expects 'url' (infers SSE from it) and uses 'redirectUri'
     instead of 'callbackPort' for OAuth.
@@ -200,7 +222,7 @@ def _transform_copilot(spec: dict[str, Any]) -> dict[str, Any]:
 _TOOL_TRANSFORMS["copilot"] = _transform_copilot
 
 # Tools whose transform must also rewrite stdio (not only http) specs.
-_TRANSFORM_ALL_TYPES = {"copilot"}
+_TRANSFORM_ALL_TYPES = {"copilot", "omp"}
 
 
 def _render_servers(servers: dict[str, dict[str, Any]], tool: str | None) -> dict[str, dict[str, Any]]:
@@ -228,6 +250,10 @@ def render_document(yaml_path: str, is_work: bool, tool: str | None) -> dict[str
     servers = load_servers(yaml_path, is_work, tool=load_tool)
     servers = _render_servers(servers, tool)
     document: dict[str, Any] = {"mcpServers": servers}
+    if tool == "omp":
+        document["$schema"] = (
+            "https://raw.githubusercontent.com/can1357/oh-my-pi/main/packages/coding-agent/src/config/mcp-schema.json"
+        )
     if tool == "pi":
         document["settings"] = {"autoAuth": True}
     return document
