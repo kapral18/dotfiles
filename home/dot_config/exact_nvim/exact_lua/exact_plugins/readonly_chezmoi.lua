@@ -34,39 +34,148 @@ return {
         gotexttmpl = true,
         gohtmltmpl = true,
       }
+      local comment_prefixes_by_ft = {
+        bash = { "#" },
+        conf = { "#" },
+        dotenv = { "#" },
+        fish = { "#" },
+        gitconfig = { "#", ";" },
+        ini = { "#", ";" },
+        jsonc = { "//" },
+        lua = { "--" },
+        python = { "#" },
+        ruby = { "#" },
+        sh = { "#" },
+        toml = { "#" },
+        yaml = { "#" },
+        zsh = { "#" },
+      }
+
+      local function escaped_pattern(text)
+        return (text:gsub("([^%w])", "%%%1"))
+      end
+
+      local function comment_prefixes(filetype)
+        if type(filetype) ~= "string" or filetype == "" then
+          return nil
+        end
+        return comment_prefixes_by_ft[filetype] or comment_prefixes_by_ft[filetype:match("^[^.]+")]
+      end
+
+      local function template_syntax_is_comment_wrapped(bufnr, filetype)
+        local prefixes = comment_prefixes(filetype)
+        if not prefixes then
+          return false
+        end
+
+        local saw_template = false
+        for _, line in ipairs(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)) do
+          if line:find("{{", 1, true) or line:find("}}", 1, true) then
+            saw_template = true
+            local is_comment_directive = false
+            for _, prefix in ipairs(prefixes) do
+              if line:find("^%s*" .. escaped_pattern(prefix)) then
+                is_comment_directive = true
+                break
+              end
+            end
+            if not is_comment_directive then
+              return false
+            end
+          end
+        end
+
+        return saw_template
+      end
+
+      local function source_dir()
+        local dir = vim.g["chezmoi#source_dir_path"]
+        if type(dir) ~= "string" or dir == "" then
+          return nil
+        end
+        return dir:gsub("/+$", "")
+      end
+
+      local function is_under_source_dir(name, dir)
+        return name == dir or name:sub(1, #dir + 1) == dir .. "/"
+      end
+
+      local function is_source_template(name)
+        local dir = source_dir()
+        return dir ~= nil and name ~= "" and is_under_source_dir(name, dir) and name:sub(-5) == ".tmpl"
+      end
+
+      local function valid_native_filetype(filetype)
+        return type(filetype) == "string"
+          and filetype ~= ""
+          and filetype ~= "chezmoitmpl"
+          and not hijack_fts[filetype]
+          and not filetype:find("chezmoitmpl", 1, true)
+      end
+
+      local function native_filetype(bufnr, name)
+        local original_ft = vim.b[bufnr].chezmoi_original_filetype
+        if valid_native_filetype(original_ft) then
+          return original_ft
+        end
+
+        local stripped_name = name:gsub("%.tmpl$", "")
+        local matched_ft = vim.filetype.match({ filename = stripped_name, buf = bufnr })
+        if valid_native_filetype(matched_ft) then
+          return matched_ft
+        end
+      end
+
+      local function target_template_filetype(bufnr, name)
+        if vim.fn.fnamemodify(name, ":t") == "readonly_dot_Brewfile.tmpl" then
+          return "conf"
+        end
+
+        local native_ft = native_filetype(bufnr, name)
+        if native_ft then
+          if template_syntax_is_comment_wrapped(bufnr, native_ft) then
+            return native_ft
+          end
+          return native_ft .. ".chezmoitmpl"
+        end
+
+        return "chezmoitmpl"
+      end
+
+      local function apply_template_filetype(bufnr)
+        if not vim.api.nvim_buf_is_valid(bufnr) then
+          return
+        end
+
+        local name = vim.api.nvim_buf_get_name(bufnr)
+        if not is_source_template(name) then
+          return
+        end
+
+        local target_ft = target_template_filetype(bufnr, name)
+        if vim.bo[bufnr].filetype ~= target_ft then
+          vim.bo[bufnr].filetype = target_ft
+        end
+      end
+
       local group = vim.api.nvim_create_augroup("chezmoi_reclaim_filetype", { clear = true })
+      vim.api.nvim_create_autocmd({ "BufReadPost", "BufNewFile" }, {
+        group = group,
+        pattern = "*.tmpl",
+        callback = function(ev)
+          vim.schedule(function()
+            apply_template_filetype(ev.buf)
+          end)
+        end,
+      })
       vim.api.nvim_create_autocmd("FileType", {
         group = group,
         callback = function(ev)
           if not hijack_fts[ev.match] then
             return
           end
-          local source_dir = vim.g["chezmoi#source_dir_path"]
-          if type(source_dir) ~= "string" or source_dir == "" then
-            return
-          end
-          local name = vim.api.nvim_buf_get_name(ev.buf)
-          if name == "" or name:find(source_dir, 1, true) ~= 1 then
-            return
-          end
           vim.schedule(function()
-            if not vim.api.nvim_buf_is_valid(ev.buf) then
-              return
-            end
-            local target_ft = "chezmoitmpl"
-            if vim.fn.fnamemodify(name, ":t") == "readonly_dot_Brewfile.tmpl" then
-              target_ft = "conf"
-            end
-            local original_ft = vim.b[ev.buf].chezmoi_original_filetype
-            if
-              target_ft == "chezmoitmpl"
-              and type(original_ft) == "string"
-              and original_ft ~= ""
-              and original_ft ~= "chezmoitmpl"
-            then
-              target_ft = original_ft .. ".chezmoitmpl"
-            end
-            vim.bo[ev.buf].filetype = target_ft
+            apply_template_filetype(ev.buf)
           end)
         end,
       })

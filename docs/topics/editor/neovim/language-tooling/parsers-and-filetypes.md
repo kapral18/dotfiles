@@ -46,6 +46,8 @@ au BufRead,BufNewFile *.tmpl set filetype=gotexttmpl
 
 Because plugin `ftdetect/` files are sourced eagerly, that detector can win before go.nvim itself is lazy-loaded. The result can pull in Go syntax and mis-highlight comments with apostrophes.
 
-Defense: [`plugins/chezmoi.lua`](../../../../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_chezmoi.lua) installs an eager `FileType` autocmd. When a buffer under the chezmoi source tree is set to `gotexttmpl` or `gohtmltmpl`, it restores the composite filetype captured by `chezmoi.vim` or falls back to `chezmoitmpl`.
+Defense: [`plugins/chezmoi.lua`](../../../../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_chezmoi.lua) installs eager repo-scoped classification for every `*.tmpl` buffer under the chezmoi source tree. It strips the trailing `.tmpl`, asks Neovim for the native host filetype, then keeps either `host.chezmoitmpl` or plain `host`.
 
-`readonly_dot_Brewfile.tmpl` is intentionally reclaimed to plain `conf`, not `conf.chezmoitmpl`, because the Brewfile source is managed as configuration text here.
+Plain `host` is opt-in: every line containing `{{` or `}}` must have a host line-comment prefix as its first non-space text. Example: `home/dot_omp/private_agent/readonly_config.yml.tmpl` uses `# {{ if ... }}` / `# {{ else }}` / `# {{ end }}`, so Neovim treats it as `yaml` and the YAML parser stays active. A hash-comment dependency line such as `# Brewfile hash: {{ ... }}` is also safe because the host parser sees only a comment.
+
+Inline actions such as `model = "{{ .value }}"`, non-commented full-line includes, and non-commented control blocks keep the composite `*.chezmoitmpl` filetype. `readonly_dot_Brewfile.tmpl` is intentionally reclaimed to plain `conf`, not `conf.chezmoitmpl`, because the Brewfile source is managed as configuration text here.

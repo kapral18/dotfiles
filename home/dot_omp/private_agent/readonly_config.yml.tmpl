@@ -1,6 +1,6 @@
 # Managed by chezmoi (source: home/dot_omp/private_agent/readonly_config.yml.tmpl).
 # Keep OMP native guidance/features as the base; this file only pins user policy.
-{{ if eq .isWork true -}}
+# {{ if eq .isWork true }}
 modelRoles:
   default: openai-codex/gpt-5.5:high
   smol: openai-codex/gpt-5.3-codex-spark:xhigh
@@ -16,7 +16,7 @@ modelProviderOrder:
   - openrouter
   - anthropic
   - openai
-{{ else -}}
+# {{ else }}
 modelRoles:
   default: openai-codex/gpt-5.5:high
   smol: openai-codex/gpt-5.3-codex-spark:xhigh
@@ -32,7 +32,7 @@ modelProviderOrder:
   - openrouter
   - anthropic
   - openai
-{{ end -}}
+# {{ end }}
 advisor:
   enabled: true
   subagents: true
