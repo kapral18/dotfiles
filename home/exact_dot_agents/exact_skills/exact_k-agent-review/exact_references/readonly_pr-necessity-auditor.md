@@ -22,6 +22,7 @@ Load:
 - `~/.agents/skills/k-review/references/judging_core.md`
 - `~/.agents/skills/k-review/references/shared_rules.md`
 - `~/.agents/skills/k-review/references/pr_common.md`
+- `~/.agents/skills/k-review/references/pr_context_audits.md`
 - the PR mode file named by the parent under `~/.agents/skills/k-review/references/`
 - When the scope packet names a context pack, load `~/.agents/skills/k-agent-review/references/context-pack.md` and consume the pack per that contract before any live PR fetch.
 

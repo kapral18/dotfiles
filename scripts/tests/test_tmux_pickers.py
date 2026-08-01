@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import runpy
 import shlex
 import subprocess
@@ -478,6 +479,308 @@ exit 1
         ranked = daemon["rank_rows_by_kind"](source_rows, fzf_matches)
 
         assert ranked == [session_strong, session_weak, session_nonmatch, worktree, directory]
+
+    def test_pick_url_strip_cr_preserves_osc8_target_and_cleans_noise(self):
+        strip_cr = TMUX_PICKERS.parent / "pick_url/lib/strip_cr.py"
+        hidden_target = "https://github.com/elastic/kibana/pull/281311"
+        visible_url = "https://github.com/elastic/kibana/pull/281299"
+        wrapped_target = "https://github.com/elastic/kibana/pull/281312"
+        href_split_target = "https://github.com/elastic/kibana/pull/28131\n3"
+        href_split_normalized = "https://github.com/elastic/kibana/pull/281313"
+        href_escaped_target = "https://github.com/elastic/kibana/pull/28131\\n4"
+        href_escaped_normalized = "https://github.com/elastic/kibana/pull/281314"
+        href_repeated_escape_target = "https://github.com/elastic/kibana/pull/28131\\\\\\\\n5"
+        href_repeated_escape_normalized = "https://github.com/elastic/kibana/pull/281315"
+        bare_repeated_escape = "https://github.com/elastic/kibana/pull/28131\\\\\\\\n6"
+        bare_repeated_escape_normalized = "https://github.com/elastic/kibana/pull/281316"
+        payload = (
+            f"\x1b]8;;{hidden_target}\x1b\\review\x1b]8;;\x1b\\\n"
+            f"\x1b]8;;{visible_url}\x1b\\{visible_url}\x1b]8;;\x1b\\\n"
+            f"\x1b]8;;{wrapped_target}\x1b\\https://github.com/elastic/kibana/pull/28131\n2\x1b]8;;\x1b\\\n"
+            f"\x1b]8;;{href_split_target}\x1b\\href-split\x1b]8;;\x1b\\\n"
+            f"\x1b]8;;{href_escaped_target}\x1b\\href-escaped\x1b]8;;\x1b\\\n"
+            f"\x1b]8;;{href_repeated_escape_target}\x1b\\href-repeated-escape\x1b]8;;\x1b\\\n"
+            f"{bare_repeated_escape}\n"
+            "\x1b[31mcolor\x1b[0m\n"
+            "progress 1\rprogress 2\n"
+            "https://github.com/elastic/kibana/pull/281298\u200b8\n"
+        )
+        result = subprocess.run(["python3", str(strip_cr)], input=payload, capture_output=True, text=True)
+
+        assert result.returncode == 0, result.stderr
+        assert "\x1b" not in result.stdout
+        assert "]8;;" not in result.stdout
+        assert [line.rstrip() for line in result.stdout.splitlines()] == [
+            hidden_target,
+            visible_url,
+            wrapped_target,
+            href_split_normalized,
+            href_escaped_normalized,
+            href_repeated_escape_normalized,
+            # Visible text keeps its literal escapes; only the extracted
+            # candidate is normalized (asserted below).
+            bare_repeated_escape,
+            "color",
+            "progress 2",
+            "https://github.com/elastic/kibana/pull/2812988",
+        ]
+
+        candidates = subprocess.run(
+            ["python3", str(strip_cr), "--extract-candidates"], input=payload, capture_output=True, text=True
+        )
+
+        assert candidates.returncode == 0, candidates.stderr
+        assert bare_repeated_escape_normalized in candidates.stdout.splitlines()
+
+    def test_pick_url_strip_cr_joins_wrapped_url_continuations(self):
+        strip_cr = TMUX_PICKERS.parent / "pick_url/lib/strip_cr.py"
+        blob_url = (
+            "https://github.com/elastic/kibana/blob/68b7d8f46562cd075e5e3a566dd666c3626cee5d/"
+            "src/platform/plugins/shared/console/server/routes/api/console/proxy/validation_config.ts#L35"
+        )
+
+        def extract_url_candidates(text: str) -> list[str]:
+            candidates = [
+                match.group(0).rstrip(r"""])>}"'.,;:!?""")
+                for match in re.finditer(r"(?:https?|ftp|file)://[^\s]+", text)
+            ]
+            unique = sorted(candidate for candidate in set(candidates) if candidate)
+            pruned: list[str] = []
+            for index, candidate in enumerate(unique):
+                drop = False
+                for next_candidate in unique[index + 1 :]:
+                    if not next_candidate.startswith(candidate):
+                        break
+                    if len(next_candidate) > len(candidate) and (
+                        candidate.endswith("/") or next_candidate[len(candidate)] == "/"
+                    ):
+                        drop = True
+                        break
+                if not drop:
+                    pruned.append(candidate)
+            return pruned
+
+        slash_wrapped_url = "https://github.com/elastic/kibana/blob/main/src/plugins/validation_config.ts#L35"
+        payload = (
+            "│ [`path`](https://github.com/elastic/kibana/blob/68b7d8f46562cd075e5e3a566dd666c3626cee5d/src/platform/ │\n"
+            "│ plugins/shared/console/server/routes/api/console/proxy/validation_config.ts#L35)? It comes straight │\n"
+            "│ https://github.com/elastic/kibana/blob/main/src/plugins/ │\n"
+            "│ validation_config.ts#L35 │\n"
+        )
+
+        result = subprocess.run(["python3", str(strip_cr)], input=payload, capture_output=True, text=True)
+
+        assert result.returncode == 0, result.stderr
+        assert extract_url_candidates(result.stdout) == [blob_url, slash_wrapped_url]
+        assert (
+            "https://github.com/elastic/kibana/blob/68b7d8f46562cd075e5e3a566dd666c3626cee5d/src/platform/ │"
+            not in result.stdout
+        )
+
+    def test_pick_url_canonicalizes_discussion_anchor_offset_variants(self):
+        strip_cr = TMUX_PICKERS.parent / "pick_url/lib/strip_cr.py"
+        canonical = "https://github.com/elastic/kibana/pull/281262#discussion_r3669015246"
+        payload = "\n".join(
+            [
+                canonical,
+                f"{canonical}-",
+                f"{canonical}-13",
+                f"{canonical}_+13|Resolved",
+                f"{canonical}_-13",
+                f"{canonical}.+13",
+                f"{canonical}.-13",
+                f"{canonical}+13",
+            ]
+        )
+
+        result = subprocess.run(
+            ["python3", str(strip_cr), "--extract-candidates"], input=payload, capture_output=True, text=True
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines() == [canonical]
+
+    def test_pick_url_keeps_other_github_anchors(self):
+        strip_cr = TMUX_PICKERS.parent / "pick_url/lib/strip_cr.py"
+        payload = (
+            "https://github.com/o/r/issues/1#issuecomment-987654\n"
+            "https://github.com/o/r/pull/1#pullrequestreview-123\n"
+            "https://github.com/o/r/pull/1/files#diff-abc123\n"
+            "https://example.com/x#discussion_r123-suffix\n"
+        )
+
+        result = subprocess.run(
+            ["python3", str(strip_cr), "--extract-candidates"], input=payload, capture_output=True, text=True
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines() == [
+            "https://example.com/x#discussion_r123-suffix",
+            "https://github.com/o/r/issues/1#issuecomment-987654",
+            "https://github.com/o/r/pull/1#pullrequestreview-123",
+            "https://github.com/o/r/pull/1/files#diff-abc123",
+        ]
+
+    def test_pick_url_keeps_legitimate_dash_suffixes(self):
+        strip_cr = TMUX_PICKERS.parent / "pick_url/lib/strip_cr.py"
+        payload = (
+            "https://github.com/elastic/kibana/blob/main/x.ts#L10-L20\n"
+            "https://example.com/a/b-1\n"
+            "https://en.wikipedia.org/wiki/Foo-bar\n"
+        )
+
+        result = subprocess.run(
+            ["python3", str(strip_cr), "--extract-candidates"], input=payload, capture_output=True, text=True
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines() == [
+            "https://en.wikipedia.org/wiki/Foo-bar",
+            "https://example.com/a/b-1",
+            "https://github.com/elastic/kibana/blob/main/x.ts#L10-L20",
+        ]
+
+    def test_pick_url_keeps_unwrapped_url_line_separate_from_next_line(self):
+        strip_cr = TMUX_PICKERS.parent / "pick_url/lib/strip_cr.py"
+        payload = (
+            "Check https://github.com/elastic/kibana/pull/1?tab=files\n"
+            "src/plugins/foo.ts needs work\n"
+            "  see https://github.com/o/r/pull/1?tab=files\n"
+            "  src/foo.ts needs work\n"
+            "done: https://ex.com/a#top\n"
+            "  notes/today.md updated\n"
+        )
+
+        result = subprocess.run(
+            ["python3", str(strip_cr), "--extract-candidates"], input=payload, capture_output=True, text=True
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines() == [
+            "https://ex.com/a#top",
+            "https://github.com/elastic/kibana/pull/1?tab=files",
+            "https://github.com/o/r/pull/1?tab=files",
+        ]
+
+    def test_pick_url_extra_filter_keeps_non_url_matches(self):
+        strip_cr = TMUX_PICKERS.parent / "pick_url/lib/strip_cr.py"
+        payload = "ticket ABC-123 here\nsee https://ex.com/a\n"
+
+        result = subprocess.run(
+            ["python3", str(strip_cr), "--extract-candidates", "--extra-filter", "grep -oE '[A-Z]+-[0-9]+'"],
+            input=payload,
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines() == ["ABC-123", "https://ex.com/a"]
+
+    def test_pick_url_extra_filter_keeps_stdout_from_nonzero_filter(self):
+        strip_cr = TMUX_PICKERS.parent / "pick_url/lib/strip_cr.py"
+        payload = "ticket ABC-123 here\nsee https://ex.com/a\n"
+
+        result = subprocess.run(
+            [
+                "python3",
+                str(strip_cr),
+                "--extract-candidates",
+                "--extra-filter",
+                "grep -oE '[A-Z]+-[0-9]+'; exit 3",
+            ],
+            input=payload,
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines() == ["ABC-123", "https://ex.com/a"]
+
+    def test_pick_url_extra_filter_drops_blank_lines(self):
+        strip_cr = TMUX_PICKERS.parent / "pick_url/lib/strip_cr.py"
+        payload = "alpha\n\nbeta\n"
+
+        result = subprocess.run(
+            ["python3", str(strip_cr), "--extract-candidates", "--extra-filter", "cat"],
+            input=payload,
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.splitlines() == ["alpha", "beta"]
+
+    def test_pick_url_preserves_literal_escape_sequences_outside_urls(self):
+        strip_cr = TMUX_PICKERS.parent / "pick_url/lib/strip_cr.py"
+        payload = "rename foo\\nbar.txt -> baz\nregex used: \\n and \\t here\n"
+
+        result = subprocess.run(["python3", str(strip_cr)], input=payload, capture_output=True, text=True)
+
+        assert result.returncode == 0, result.stderr
+        assert result.stdout == payload
+
+    def test_pick_url_drops_elided_ellipsis_url_candidates(self):
+        script = TMUX_PICKERS.parent / "pick_url/executable_pick_url.sh"
+        full_url = (
+            "https://github.com/elastic/kibana/blob/68b7d8f46562cd075e5e3a566dd666c3626cee5d/"
+            "src/platform/plugins/shared/console/server/routes/api/console/proxy/validation_config.ts#L35"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            fixture = tmp_path / "pane.txt"
+            fixture.write_text(
+                "see https://github.com/elastic/kibana/blob/.../src/platform/pl. Regression\n"
+                "also https://github.com/elastic/kibana/blob/68b7d8f46562cd075e5e3a566dd666c3626cee5d/src/plat…\n"
+                f"full {full_url} done\n"
+                "short `https://site/x` and deeper `https://site/x/y`\n"
+                "escaped https://site/x\\ and cited https://site/x/y:577:620:scripts/tests/test_tmux_pickers.py\n"
+                "discussion https://github.com/elastic/kibana/pull/281262#discussion_r3669015246_+13|Resolved\n"
+                "remote git@github.com:elastic/kibana.git\n"
+            )
+            items = tmp_path / "items.txt"
+            fake_bin = tmp_path / "bin"
+            fake_bin.mkdir()
+            fake_tmux = fake_bin / "tmux"
+            fake_tmux.write_text(
+                "#!/usr/bin/env bash\n"
+                'case "$1" in\n'
+                '  capture-pane) cat "$TMUX_FIXTURE" ;;\n'
+                "  show | display-message) exit 0 ;;\n"
+                "  *) exit 0 ;;\n"
+                "esac\n"
+            )
+            fake_tmux.chmod(0o755)
+            fake_fzf = fake_bin / "fzf"
+            fake_fzf.write_text('#!/usr/bin/env bash\ncat > "$FZF_ITEMS"\nexit 1\n')
+            fake_fzf.chmod(0o755)
+
+            result = subprocess.run(
+                [modern_bash(), str(script)],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,
+                    "PATH": f"{fake_bin}:{os.environ['PATH']}",
+                    "TMUX": "fake",
+                    "TMUX_FIXTURE": str(fixture),
+                    "FZF_ITEMS": str(items),
+                },
+            )
+
+            assert result.returncode == 0, result.stderr
+            offered = items.read_text()
+            assert full_url in offered
+            assert "https://site/x/y" in offered
+            assert "https://site/x`" not in offered
+            assert "https://site/x\n" not in offered
+            assert "https://site/x\\" not in offered
+            assert "https://site/x/y:577" not in offered
+            assert "https://github.com/elastic/kibana/pull/281262#discussion_r3669015246" in offered
+            assert "#discussion_r3669015246_+13" not in offered
+            assert "|Resolved" not in offered
+            assert "https://github.com/elastic/kibana.git" in offered
+            assert "blob/.../src/platform/pl" not in offered
+            assert "…" not in offered
 
 
 if __name__ == "__main__":

@@ -241,8 +241,6 @@ cursor_models:
   - id: "claude-opus-4-7-xhigh"
   - id: "claude-opus-4-7-xhigh-fast"
   - id: "claude-opus-4-8-high"
-    recommended: true
-    recommendation_rank: 3
   - id: "claude-opus-4-8-high-fast"
   - id: "claude-opus-4-8-low"
   - id: "claude-opus-4-8-low-fast"
@@ -373,6 +371,8 @@ cursor_models:
   - id: "claude-opus-5-medium"
   - id: "claude-opus-5-medium-fast"
   - id: "claude-opus-5-high"
+    recommended: true
+    recommendation_rank: 3
   - id: "claude-opus-5-high-fast"
   - id: "claude-opus-5-thinking-low"
   - id: "claude-opus-5-thinking-low-fast"
@@ -401,6 +401,10 @@ pi_extra_models:
   - id: "openrouter/anthropic/claude-opus-4.7"
     recommended: true
   - id: "openrouter/openai/gpt-5.5"
+    recommended: true
+  - id: "openrouter/anthropic/claude-sonnet-5"
+    recommended: true
+  - id: "openrouter/anthropic/claude-opus-5"
     recommended: true
   - id: "openrouter/anthropic/claude-opus-4.8"
     recommended: true
@@ -443,9 +447,18 @@ provider_models:
     id: "openai/gpt-5.5"
     recommended: true
   - provider: "openrouter"
+    id: "openai/gpt-5.3-codex"
+    recommended: true
+  - provider: "openrouter"
     id: "openai/gpt-5.6-sol"
   - provider: "openrouter"
     id: "anthropic/claude-opus-4.8"
+    recommended: true
+  - provider: "openrouter"
+    id: "anthropic/claude-sonnet-5"
+    recommended: true
+  - provider: "openrouter"
+    id: "anthropic/claude-opus-5"
     recommended: true
   - provider: "cloudflare-openai"
     id: "gpt-5.5"
@@ -520,6 +533,7 @@ copilot_models:
   - id: "claude-sonnet-4.5"
   - id: "claude-haiku-4.5"
   - id: "claude-fable-5"
+  - id: "claude-opus-5"
   - id: "claude-opus-4.8"
   - id: "claude-opus-4.8-fast"
   - id: "claude-opus-4.7"
@@ -544,10 +558,10 @@ copilot_models:
 agent_review_models:
   cursor:
     lanes: "gpt-5.5-medium" # deliberate pin: Cursor omitted-model resolves through auto; keep model explicit to avoid native default takeover
-    verifier: "claude-opus-4-8-high"
+    verifier: "claude-opus-5-high"
   copilot:
     lanes: "gpt-5.5"
-    verifier: "claude-opus-4.8"
+    verifier: "claude-opus-5"
   claude:
     lanes: "inherit" # Claude sessions are launched on a deliberate model; single-family => verifier degraded
     verifier: "inherit"
@@ -558,11 +572,11 @@ agent_review_models:
     lanes: "gemini-3.1-pro-preview" # closed 2026-07-27: previously "" (unaudited config-default); kept in sync BY HAND with model_tier_map.gemini.orchestration.model — not templated/derived, update both on change
     verifier: "gemini-3.1-pro-preview" # single-family harness; families=same (degraded) is expected, not a defect
   pi:
-    lanes: "openrouter/anthropic/claude-opus-4.8:high"
+    lanes: "openrouter/anthropic/claude-opus-5:high"
     verifier: "openrouter/openai/gpt-5.5:medium" # cross-family vs the anthropic lanes
   omp:
-    lanes: "github-copilot/claude-opus-4.8:high"
-    verifier: "github-copilot/gpt-5.5:medium" # cross-family vs the anthropic lanes
+    lanes: "github-copilot/claude-opus-5:high"
+    verifier: "github-copilot/gpt-5.5:high" # cross-family vs the anthropic lanes
 
 # Per-harness, per-work-type model tiering policy (declare once, generate per tool — same
 # pattern as agent_review_models above). Full policy/rationale/native-takeover-risk writeup:
@@ -587,10 +601,10 @@ model_tier_map:
     orchestration_personal: { model: "gpt-5.5", effort: "medium", thinking: "", context: "long", band: "max" }
     orchestration_work: { model: "gpt-5.5", effort: "medium", thinking: "", context: "long", band: "max" }
     design_ambiguous: { model: "gpt-5.5", effort: "medium", thinking: "", context: "long", band: "max" }
-    review: { model: "claude-opus-4-8", effort: "high", thinking: "off", context: "long", band: "max" }
-    adversarial_verification: { model: "claude-opus-4-8", effort: "high", thinking: "off", context: "long", band: "max" }
-    findings_audit: { model: "claude-opus-4-8", effort: "high", thinking: "off", context: "long", band: "max" }
-    post_act_verification: { model: "claude-opus-4-8", effort: "high", thinking: "off", context: "long", band: "max" }
+    review: { model: "claude-opus-5", effort: "high", thinking: "off", context: "long", band: "max" }
+    adversarial_verification: { model: "claude-opus-5", effort: "high", thinking: "off", context: "long", band: "max" }
+    findings_audit: { model: "claude-opus-5", effort: "high", thinking: "off", context: "long", band: "max" }
+    post_act_verification: { model: "claude-opus-5", effort: "high", thinking: "off", context: "long", band: "max" }
   codex:
     gruntwork: { model: "gpt-5.6-luna", effort: "high", thinking: "", context: "long", band: "cheap" }
     routine_edit: { model: "gpt-5.5", effort: "medium", thinking: "", context: "long", band: "standard" }
@@ -605,19 +619,19 @@ model_tier_map:
     routine_edit: { model: "claude-sonnet-5", effort: "high", thinking: "off", context: "long", band: "standard" }
     orchestration: { model: "gpt-5.5", effort: "medium", thinking: "", context: "long", band: "max" }
     design_ambiguous: { model: "gpt-5.5", effort: "medium", thinking: "", context: "long", band: "max" }
-    review: { model: "claude-opus-4.8", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "gpt-5.5", effort: "medium", context: "long" } }
-    adversarial_verification: { model: "claude-opus-4.8", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "gpt-5.5", effort: "medium", context: "long" } }
-    findings_audit: { model: "claude-opus-4.8", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "gpt-5.5", effort: "medium", context: "long" } }
-    post_act_verification: { model: "claude-opus-4.8", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "gpt-5.5", effort: "medium", context: "long" } }
+    review: { model: "claude-opus-5", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "gpt-5.5", effort: "medium", context: "long" } }
+    adversarial_verification: { model: "claude-opus-5", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "gpt-5.5", effort: "medium", context: "long" } }
+    findings_audit: { model: "claude-opus-5", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "gpt-5.5", effort: "medium", context: "long" } }
+    post_act_verification: { model: "claude-opus-5", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "gpt-5.5", effort: "medium", context: "long" } }
   cursor:
     gruntwork: { model: "gpt-5.3-codex", effort: "medium", thinking: "", context: "default", band: "cheap" }
     routine_edit: { model: "claude-sonnet-5-high", effort: "high", thinking: "off", context: "", band: "standard" }
     orchestration: { model: "gpt-5.5-medium", effort: "medium", thinking: "", context: "long", band: "max" }
     design_ambiguous: { model: "gpt-5.5-medium", effort: "medium", thinking: "", context: "long", band: "max" }
-    review: { model: "claude-opus-4-8-high", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "gpt-5.5-medium", effort: "medium", context: "long" } }
-    adversarial_verification: { model: "claude-opus-4-8-high", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "gpt-5.5-medium", effort: "medium", context: "long" } }
-    findings_audit: { model: "claude-opus-4-8-high", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "gpt-5.5-medium", effort: "medium", context: "long" } }
-    post_act_verification: { model: "claude-opus-4-8-high", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "gpt-5.5-medium", effort: "medium", context: "long" } }
+    review: { model: "claude-opus-5-high", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "gpt-5.5-medium", effort: "medium", context: "long" } }
+    adversarial_verification: { model: "claude-opus-5-high", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "gpt-5.5-medium", effort: "medium", context: "long" } }
+    findings_audit: { model: "claude-opus-5-high", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "gpt-5.5-medium", effort: "medium", context: "long" } }
+    post_act_verification: { model: "claude-opus-5-high", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "gpt-5.5-medium", effort: "medium", context: "long" } }
   gemini:
     # gemini-3.1-pro (Cursor spelling) / gemini-3.1-pro-preview (LiteLLM/Vertex/Copilot spelling) —
     # deliberately not normalized to one name; see docs/topics/ai-assistants/model-tiering.md.
@@ -635,21 +649,21 @@ model_tier_map:
     orchestration: { model: "openrouter/openai/gpt-5.5:medium", effort: "medium", thinking: "", context: "long", band: "max" }
     design_ambiguous: { model: "openrouter/openai/gpt-5.5:medium", effort: "medium", thinking: "", context: "long", band: "max" }
     # prettier-ignore
-    review: { model: "openrouter/anthropic/claude-opus-4.8:high", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "openrouter/openai/gpt-5.5:medium", effort: "medium", context: "long" } }
+    review: { model: "openrouter/anthropic/claude-opus-5:high", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "openrouter/openai/gpt-5.5:medium", effort: "medium", context: "long" } }
     adversarial_verification: { model: "openrouter/openai/gpt-5.5:medium", effort: "medium", thinking: "", context: "long", band: "max" }
     # prettier-ignore
-    findings_audit: { model: "openrouter/anthropic/claude-opus-4.8:high", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "openrouter/openai/gpt-5.5:medium", effort: "medium", context: "long" } }
+    findings_audit: { model: "openrouter/anthropic/claude-opus-5:high", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "openrouter/openai/gpt-5.5:medium", effort: "medium", context: "long" } }
     # prettier-ignore
-    post_act_verification: { model: "openrouter/anthropic/claude-opus-4.8:high", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "openrouter/openai/gpt-5.5:medium", effort: "medium", context: "long" } }
+    post_act_verification: { model: "openrouter/anthropic/claude-opus-5:high", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "openrouter/openai/gpt-5.5:medium", effort: "medium", context: "long" } }
   omp:
     gruntwork: { model: "github-copilot/gpt-5.3-codex:medium", effort: "medium", thinking: "", context: "default", band: "cheap" }
     routine_edit: { model: "github-copilot/claude-sonnet-5:high", effort: "high", thinking: "off", context: "long", band: "standard" }
     orchestration: { model: "github-copilot/gpt-5.6-terra:medium", effort: "medium", thinking: "", context: "long", band: "max" }
-    design_ambiguous: { model: "github-copilot/gpt-5.5:medium", effort: "medium", thinking: "", context: "long", band: "max" }
+    design_ambiguous: { model: "github-copilot/gpt-5.5:high", effort: "high", thinking: "", context: "long", band: "max" }
     # prettier-ignore
-    review: { model: "github-copilot/claude-opus-4.8:high", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "github-copilot/gpt-5.5:medium", effort: "medium", context: "long" } }
-    adversarial_verification: { model: "github-copilot/gpt-5.5:medium", effort: "medium", thinking: "", context: "long", band: "max" }
+    review: { model: "github-copilot/claude-opus-5:high", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "github-copilot/gpt-5.5:high", effort: "high", context: "long" } }
+    adversarial_verification: { model: "github-copilot/gpt-5.5:high", effort: "high", thinking: "", context: "long", band: "max" }
     # prettier-ignore
-    findings_audit: { model: "github-copilot/claude-opus-4.8:high", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "github-copilot/gpt-5.5:medium", effort: "medium", context: "long" } }
+    findings_audit: { model: "github-copilot/claude-opus-5:high", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "github-copilot/gpt-5.5:high", effort: "high", context: "long" } }
     # prettier-ignore
-    post_act_verification: { model: "github-copilot/claude-opus-4.8:high", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "github-copilot/gpt-5.5:medium", effort: "medium", context: "long" } }
+    post_act_verification: { model: "github-copilot/claude-opus-5:high", effort: "high", thinking: "off", context: "long", band: "max", fallback: { model: "github-copilot/gpt-5.5:high", effort: "high", context: "long" } }

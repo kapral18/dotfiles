@@ -31,8 +31,8 @@ flowchart TB
         GEMINI["Gemini CLI: dot_gemini/settings.json + exact_commands/"]:::exec
         OPENCODE["OpenCode: dot_config/opencode/*.jsonc (LiteLLM aliases)"]:::exec
         CODEX["Codex: dot_codex/private_config.{work,personal}.toml<br/>+ ,codex bearer-token env wrapper for hosted MCP"]:::exec
-        PI["Pi: dot_pi/agent/* (OpenRouter Claude Opus 4.8 default)"]:::exec
-        OMP["OMP: dot_omp/private_agent/config.yml.tmpl<br/>work: GitHub Copilot roles; personal: native OpenAI Codex subscription roles<br/>+ generated ~/.omp/agent/mcp.json token bridges"]:::exec
+        PI["Pi: dot_pi/agent/* (OpenRouter GPT-5.5 default; review lanes pin Opus 5)"]:::exec
+        OMP["OMP: dot_omp/private_agent/readonly_config.yml.tmpl<br/>work + personal: native OpenAI Codex subscription roles; GitHub Copilot kept as fallback route<br/>+ generated ~/.omp/agent/mcp.json token bridges"]:::exec
         COPILOT["Copilot CLI: private_dot_copilot/* (settings + gates + review agents;<br/>MCP stdio-only, OAuth http unusable)"]:::exec
         TUICR["tuicr: dot_config/tuicr/readonly_config.toml"]:::exec
         LOCAL["llama.cpp (local, opt-in)"]:::exec

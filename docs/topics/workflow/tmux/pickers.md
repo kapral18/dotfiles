@@ -34,7 +34,12 @@ The session and GitHub pickers are siblings: `alt-g` switches between them in pl
 
 - De-duplicates path-prefix URLs: if both `https://site/x` and `https://site/x/y` are detected, it keeps the deeper path entry.
 - Runs `fzf` with `FZF_DEFAULT_OPTS` cleared so global defaults don't distort the popup UI.
-- Strips invisible Unicode formatting characters (zero-width space `U+200B`, ZWJ/ZWNJ, BOM, bidi marks, etc.) from captured pane content before URL extraction. These commonly leak in via copy-paste from web pages and would otherwise be appended to URLs (the bash extractor's `[^[:space:]]+` regex doesn't treat them as whitespace), causing 404s.
+- Sanitizes captured pane text before extraction: strips ANSI/control sequences, rewrites OSC 8 hyperlinks to their target URL (including wrapped labels), normalizes embedded whitespace and escaped-whitespace corruption (`\\n`, `\\r`, `\\t`) in OSC targets and in each extracted candidate, and strips invisible Unicode format characters (for example zero-width space `U+200B`, ZWJ/ZWNJ, BOM, bidi marks). Visible pane text is left otherwise intact, so a literal `\n` in prose is not silently deleted.
+- Rejoins URLs split across a render-time wrap only when box-border evidence proves the break was a wrap. A plain or merely indented line that ends in a URL is treated as complete, so a following line like `src/plugins/foo.ts` is never glued onto it.
+- Strips trailing Markdown/code punctuation, including backticks, before de-duplicating path-prefix URLs so inline-code examples like `` `https://site/x` `` do not survive as separate broken candidates.
+- Validates cleaned candidates with Python's stdlib URL parser after terminal/Markdown boundary cleanup, so malformed leftovers are rejected without adding non-stdlib dependencies.
+- Drops display-abbreviated candidates that contain a literal ellipsis (`...` or `…`): these are terminal/pager truncations of a longer URL and cannot be resolved, so they are never offered.
+- Canonicalizes GitHub discussion anchors by dropping UI status offsets, leaving the stable `#discussion_r123` anchor. The anchor ends at its numeric id, so any trailing render noise a wrapped pane produces is dropped regardless of separator (`_+13|Resolved`, `-13`, `.+13`, or a bare trailing `-`). Other anchors are untouched: line ranges like `#L10-L20`, slugs ending in `-1`, and GitHub's `#issuecomment-`, `#pullrequestreview-`, and `#diff-` forms.
 
 ## Related
 

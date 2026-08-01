@@ -48,7 +48,7 @@ If `authorship` is `other`/`unknown` and no explicit fix request exists:
     - threads
     - media
     - recursive references
-  - run Ambient Topic Exploration in pr_common.md when disagreement, unclear shared understanding, or missing topic history matters
+  - run Ambient Topic Exploration in pr_context_audits.md when disagreement, unclear shared understanding, or missing topic history matters
   - run Existing Pending Review Reconciliation in pr_common.md before drafting any new review feedback or publishing/submitting review content
   - all review threads (end-to-end)
   - full diff

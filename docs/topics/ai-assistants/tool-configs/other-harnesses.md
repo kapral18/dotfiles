@@ -190,34 +190,35 @@ The bridge injects a freshly selected bearer per request, rotating through curso
 
 ## Oh My Pi
 
-| Surface       | Source                                                                                                 | Target                     |
-| ------------- | ------------------------------------------------------------------------------------------------------ | -------------------------- |
-| Agent config  | [`home/dot_omp/private_agent/config.yml.tmpl`](../../../../home/dot_omp/private_agent/config.yml.tmpl) | `~/.omp/agent/config.yml`  |
-| MCP servers   | `mcp_servers.yaml` via `generate_mcp_configs.py omp`                                                   | `~/.omp/agent/mcp.json`    |
-| Shared skills | `symlink_skills` → `~/.agents/skills`                                                                  | `~/.omp/agent/skills`      |
-| Runtime hooks | `extensions/`                                                                                          | `~/.omp/agent/extensions/` |
+| Surface       | Source                                                                                                                   | Target                     |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------- |
+| Agent config  | [`home/dot_omp/private_agent/readonly_config.yml.tmpl`](../../../../home/dot_omp/private_agent/readonly_config.yml.tmpl) | `~/.omp/agent/config.yml`  |
+| MCP servers   | `mcp_servers.yaml` via `generate_mcp_configs.py omp`                                                                     | `~/.omp/agent/mcp.json`    |
+| Shared skills | `symlink_skills` → `~/.agents/skills`                                                                                    | `~/.omp/agent/skills`      |
+| Runtime hooks | `extensions/`                                                                                                            | `~/.omp/agent/extensions/` |
 
 ### Managed configuration
 
-`config.yml.tmpl` is the complete declarative OMP contract. Its `isWork` branch keeps work on GitHub Copilot and makes the personal profile use OMP's native Codex subscription provider. `omp config list --json` reports the effective typed settings; inspect all model-role pins together with `omp config get modelRoles`, not with dotted child keys.
+`readonly_config.yml.tmpl` is the complete declarative OMP contract. Both profile branches prefer OMP's native Codex subscription provider while keeping the work providers as fallback routes. `omp config list --json` reports the effective typed settings; inspect all model-role pins together with `omp config get modelRoles`, not with dotted child keys.
 
-| Setting                                                                                | Work value                                            | Personal value                          |
-| -------------------------------------------------------------------------------------- | ----------------------------------------------------- | --------------------------------------- |
-| `modelRoles.default`                                                                   | `github-copilot/gpt-5.3-codex:high`                   | `openai-codex/gpt-5.5:medium`           |
-| `modelRoles.smol`                                                                      | `github-copilot/claude-sonnet-5:medium`               | `openai-codex/gpt-5.6-terra:medium`     |
-| `modelRoles.slow`, `modelRoles.plan`, `modelRoles.advisor`                             | `github-copilot/gpt-5.5:medium`                       | `openai-codex/gpt-5.5:medium`           |
-| `modelProviderOrder`                                                                   | `github-copilot`, `openrouter`, `anthropic`, `openai` | `openai-codex`, then the work providers |
-| `advisor.enabled`, `advisor.subagents`, `advisor.syncBacklog`, `advisor.immuneTurns`   | `true`, `true`, `1`, `0`                              | `true`, `true`, `1`, `0`                |
-| `defaultThinkingLevel`                                                                 | `medium`                                              | `medium`                                |
-| `memory.backend`                                                                       | `off`                                                 | `off`                                   |
-| `autolearn.enabled`, `autolearn.autoContinue`                                          | `false`, `false`                                      | `false`, `false`                        |
-| `dev.autoqaConsent`                                                                    | `granted`                                             | `granted`                               |
-| `skills.enabled`, `skills.enableSkillCommands`                                         | `true`, `true`                                        | `true`, `true`                          |
-| `task.isolation.mode`, `task.enableEffort`, `task.enableLsp`, `task.maxRecursionDepth` | `auto`, `true`, `true`, `2`                           | `auto`, `true`, `true`, `2`             |
-| `retry.enabled`, `retry.maxRetries`                                                    | `true`, `5`                                           | `true`, `5`                             |
-| `symbolPreset`, `theme.dark`, `setupVersion`                                           | `nerd`, `titanium`, `1`                               | `nerd`, `titanium`, `1`                 |
+| Setting                                                                                | Work value                               | Personal value                           |
+| -------------------------------------------------------------------------------------- | ---------------------------------------- | ---------------------------------------- |
+| `modelRoles.default`                                                                   | `openai-codex/gpt-5.5:high`              | `openai-codex/gpt-5.5:high`              |
+| `modelRoles.smol`                                                                      | `openai-codex/gpt-5.3-codex-spark:xhigh` | `openai-codex/gpt-5.3-codex-spark:xhigh` |
+| `modelRoles.vision`, `modelRoles.slow`, `modelRoles.plan`                              | `openai-codex/gpt-5.5:high`              | `openai-codex/gpt-5.5:high`              |
+| `modelRoles.task`, `modelRoles.advisor`                                                | `openai-codex/gpt-5.5:high`              | `openai-codex/gpt-5.5:high`              |
+| `modelProviderOrder`                                                                   | `openai-codex`, then the work providers  | `openai-codex`, then the work providers  |
+| `advisor.enabled`, `advisor.subagents`, `advisor.syncBacklog`, `advisor.immuneTurns`   | `true`, `true`, `1`, `0`                 | `true`, `true`, `1`, `0`                 |
+| `defaultThinkingLevel`                                                                 | `medium`                                 | `medium`                                 |
+| `memory.backend`                                                                       | `off`                                    | `off`                                    |
+| `autolearn.enabled`, `autolearn.autoContinue`                                          | `false`, `false`                         | `false`, `false`                         |
+| `dev.autoqaConsent`                                                                    | `granted`                                | `granted`                                |
+| `skills.enabled`, `skills.enableSkillCommands`                                         | `true`, `true`                           | `true`, `true`                           |
+| `task.isolation.mode`, `task.enableEffort`, `task.enableLsp`, `task.maxRecursionDepth` | `auto`, `true`, `true`, `2`              | `auto`, `true`, `true`, `2`              |
+| `retry.enabled`, `retry.maxRetries`                                                    | `true`, `5`                              | `true`, `5`                              |
+| `symbolPreset`, `theme.dark`, `setupVersion`                                           | `nerd`, `titanium`, `1`                  | `nerd`, `titanium`, `1`                  |
 
-These native defaults are distinct from the explicit `model_tier_map.omp` selections used by repo-managed custom agent profiles.
+These native defaults are distinct from the explicit `model_tier_map.omp` selections used by repo-managed custom agent profiles; OMP GPT-5.5 custom-profile verifier/design/fallback pins use `github-copilot/gpt-5.5:high`.
 
 The OMP advisor is enabled for primary turns and spawned agents. It uses the configured `modelRoles.advisor` model to inject actionable notes as `<advisory>` context. `syncBacklog: 1` pauses the primary for up to 30 seconds at every pending advisor review, waiting for the backlog to clear before continuing. `immuneTurns: 0` keeps every later `concern` or `blocker` eligible for steering instead of downgrading it to a non-interrupting aside. These settings make advisor recommendations reach the primary promptly; OMP still marks them as `guidance="weigh, don't blindly obey"`, so it does not mechanically enforce compliance.
 

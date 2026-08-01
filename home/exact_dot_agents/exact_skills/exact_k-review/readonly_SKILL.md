@@ -20,6 +20,7 @@ Contract:
   - `~/.agents/skills/k-review/references/shared_rules.md`
 - Mode files reference both files but do not re-load them.
 - For PR modes, also load `~/.agents/skills/k-review/references/pr_common.md` once.
+  Load `~/.agents/skills/k-review/references/pr_context_audits.md` only when `pr_common.md`'s conditional Ambient Topic Exploration or PR Necessity + Correctly-Open Audit gate triggers.
 - Do not invoke the `k-github` skill for read-only PR inspection/review.
   Only invoke it (via the Skill tool) when the user explicitly asks to post/submit anything to GitHub.
 - If the user wants review analysis and GitHub posting in the same request:

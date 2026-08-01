@@ -1253,25 +1253,25 @@ class EvalScaffoldTest(unittest.TestCase):
             ],
         )
         assert code == 0
-        assert report["cell_count"] == 2760
-        assert report["estimated_requests"] == 2760
-        assert report["estimated_input_tokens"] == 11_040_000
-        assert report["estimated_output_tokens"] == 2_760_000
-        assert report["estimated_total_tokens"] == 13_800_000
-        assert report["unsupported_cell_count"] == 1656
+        assert report["cell_count"] == 3600
+        assert report["estimated_requests"] == 3600
+        assert report["estimated_input_tokens"] == 14_400_000
+        assert report["estimated_output_tokens"] == 3_600_000
+        assert report["estimated_total_tokens"] == 18_000_000
+        assert report["unsupported_cell_count"] == 2160
         assert "unsupported_cells" not in report
         expected_unsupported = [
             {
                 "reason": "subagent_model_binding is 'runtime', not 'static'",
                 "harness": harness,
                 "agent_role": "subagent-static-pinned",
-                "count": 276,
+                "count": 360,
             }
             for harness in ("codex", "copilot", "cursor", "gemini", "generic", "opencode")
         ]
         assert report["unsupported_summary"] == expected_unsupported
         assert sum(item["count"] for item in report["unsupported_summary"]) == report["unsupported_cell_count"]
-        assert report["risk_tiers"]["scenario_counts"]["standard"] == 42
+        assert report["risk_tiers"]["scenario_counts"]["standard"] == 63
         assert report["risk_tiers"]["cell_counts"]["safety"] == 240
         assert report["risk_tiers"]["unknown_rule_ids"] == []
         assert report["max_authorized_spend"] is None
@@ -1306,9 +1306,9 @@ class EvalScaffoldTest(unittest.TestCase):
             code, report = self._capture_json(evals.main, command)
             assert code == 2
             assert report["unblocked_count"] == 0
-            assert report["blocked_count"] == 2760
-            assert report["unsupported_cell_count"] == 1656
-            assert sum(item["count"] for item in report["unsupported_summary"]) == 1656
+            assert report["blocked_count"] == 3600
+            assert report["unsupported_cell_count"] == 2160
+            assert sum(item["count"] for item in report["unsupported_summary"]) == 2160
             assert {cell["status"] for cell in report["cells"]} == {"blocked"}
             assert {cell["repetition"] for cell in report["cells"]} == {1}
 

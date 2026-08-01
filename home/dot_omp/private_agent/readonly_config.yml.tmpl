@@ -1,0 +1,100 @@
+# Managed by chezmoi (source: home/dot_omp/private_agent/readonly_config.yml.tmpl).
+# Keep OMP native guidance/features as the base; this file only pins user policy.
+{{ if eq .isWork true -}}
+modelRoles:
+  default: openai-codex/gpt-5.5:high
+  smol: openai-codex/gpt-5.3-codex-spark:xhigh
+  vision: openai-codex/gpt-5.5:high
+  slow: openai-codex/gpt-5.5:high
+  plan: openai-codex/gpt-5.5:high
+  task: openai-codex/gpt-5.5:high
+  advisor: openai-codex/gpt-5.5:high
+
+modelProviderOrder:
+  - openai-codex
+  - github-copilot
+  - openrouter
+  - anthropic
+  - openai
+{{ else -}}
+modelRoles:
+  default: openai-codex/gpt-5.5:high
+  smol: openai-codex/gpt-5.3-codex-spark:xhigh
+  vision: openai-codex/gpt-5.5:high
+  slow: openai-codex/gpt-5.5:high
+  plan: openai-codex/gpt-5.5:high
+  task: openai-codex/gpt-5.5:high
+  advisor: openai-codex/gpt-5.5:high
+
+modelProviderOrder:
+  - openai-codex
+  - github-copilot
+  - openrouter
+  - anthropic
+  - openai
+{{ end -}}
+advisor:
+  enabled: true
+  subagents: true
+  syncBacklog: 1
+  immuneTurns: 0
+
+defaultThinkingLevel: medium
+
+memory:
+  backend: off
+
+autolearn:
+  enabled: false
+  autoContinue: false
+
+dev:
+  autoqaConsent: granted
+
+skills:
+  enabled: true
+  enableSkillCommands: true
+
+task:
+  isolation:
+    mode: auto
+  enableEffort: true
+  enableLsp: true
+  maxRecursionDepth: 2
+
+retry:
+  enabled: true
+  maxRetries: 5
+
+symbolPreset: nerd
+
+theme:
+  dark: titanium
+
+setupVersion: 1
+
+providers:
+  webSearchOrder:
+    - perplexity
+    - gemini
+    - anthropic
+    - codex
+    - xai
+    - zai
+    - exa
+    - tinyfish
+    - jina
+    - kagi
+    - tavily
+    - firecrawl
+    - brave
+    - kimi
+    - parallel
+    - synthetic
+    - searxng
+    - startpage
+    - duckduckgo
+    - ecosia
+    - google
+    - mojeek
+    - public

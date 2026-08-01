@@ -32,10 +32,10 @@ Pi globals are installed via yarn from [`home/readonly_dot_default-yarn-pkgs`](.
 
 ### Profile defaults
 
-| Profile  | Default                                    | Extra providers/models  |
-| -------- | ------------------------------------------ | ----------------------- |
-| work     | `openrouter` / `anthropic/claude-opus-4.8` | configured work models  |
-| personal | `openrouter` / `anthropic/claude-opus-4.8` | `cloudflare-workers-ai` |
+| Profile  | Default                         | Extra providers/models  |
+| -------- | ------------------------------- | ----------------------- |
+| work     | `openrouter` / `openai/gpt-5.5` | configured work models  |
+| personal | `openrouter` / `openai/gpt-5.5` | `cloudflare-workers-ai` |
 
 Personal Cloudflare uses `CLOUDFLARE_WORKERS_AI_ACCOUNT_ID` and `CLOUDFLARE_WORKERS_AI_API_KEY`. Selectable models include `@cf/zai-org/glm-5.2` and `@cf/moonshotai/kimi-k2.7-code`.
 
@@ -60,7 +60,7 @@ Automatic context compaction triggers when context exceeds `contextWindow − re
 
 `keepRecentTokens` is raised from Pi's `20000` default to preserve far more high-fidelity recent context before any lossy summarization. The setting is global, not per-model.
 
-`80000` is sized for the smallest window in play: the local Qwen3.6 model at 262144 tokens, ~30% recent-verbatim. It stays comfortably safe on the larger OpenRouter default `anthropic/claude-opus-4.8` with a 1000000-token window.
+`80000` is sized for the smallest window in play: the local Qwen3.6 model at 262144 tokens, ~30% recent-verbatim. It stays safe on the larger OpenRouter default `openai/gpt-5.5` with a 272000-token window.
 
 ### Prompt-cache and compaction diagnostics
 

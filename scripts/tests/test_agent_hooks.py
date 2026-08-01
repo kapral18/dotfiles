@@ -36,6 +36,7 @@ def hook_env(env: dict | None = None) -> dict:
     effective_env.setdefault("AGENT_MEMORY_SPEC_ROOT", str(SPEC_ROOT))
     # Keep hook subprocesses away from the real persistent topic mirror.
     effective_env.setdefault("AGENT_MEMORY_MIRROR_ROOT", str(SPEC_ROOT / ".mirror-test"))
+    effective_env.setdefault("XDG_CONFIG_HOME", str(SPEC_ROOT / ".xdg-config-test"))
     return effective_env
 
 
@@ -723,7 +724,9 @@ class TestAgentHooks(unittest.TestCase):
             assert "stale finding should never appear" not in context
             assert "verdict: Approve" not in context
             assert "Recent Hook Worklog" not in context
-            assert len(context) < 3000
+            assert (
+                len(context) <= len((REPO / "home/dot_config/exact_tmux/agent_prompts/prefix.txt").read_text()) + 1700
+            )
 
     def test_session_context_appends_aikb_reminder_with_named_topic(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1458,16 +1461,21 @@ console.log(JSON.stringify({
                 },
             ]
 
-    def test_pi_runtime_extension_enables_search_tools_and_gates_git_mutation(self):
-        extension = REPO / "home/dot_pi/agent/extensions/runtime-parity.ts"
-        with tempfile.TemporaryDirectory() as tmp:
-            home = Path(tmp) / "home"
-            hooks_dir = home / ".agents" / "hooks"
-            hooks_dir.mkdir(parents=True)
-            gate = hooks_dir / "gemini-git-gate.py"
-            gate.write_text((HOOKS / "executable_gemini-git-gate.py").read_text())
-            gate.chmod(0o755)
-            script = """
+    def test_runtime_extensions_enable_search_tools_and_gate_git_mutation(self):
+        extension_cases = [
+            REPO / "home/dot_pi/agent/extensions/runtime-parity.ts",
+            REPO / "home/dot_omp/private_agent/extensions/runtime-parity.ts",
+        ]
+        for extension in extension_cases:
+            with self.subTest(extension=str(extension.relative_to(REPO))):
+                with tempfile.TemporaryDirectory() as tmp:
+                    home = Path(tmp) / "home"
+                    hooks_dir = home / ".agents" / "hooks"
+                    hooks_dir.mkdir(parents=True)
+                    gate = hooks_dir / "gemini-git-gate.py"
+                    gate.write_text((HOOKS / "executable_gemini-git-gate.py").read_text())
+                    gate.chmod(0o755)
+                    script = """
 const mod = await import(process.argv[1]);
 function makePi() {
   const handlers = {};
@@ -1484,6 +1492,15 @@ await mod.default(pi);
 await pi.handlers.session_start({ type: "session_start", reason: "startup" }, {});
 const ctxWithoutUi = { hasUI: false };
 const ctxAllowing = { hasUI: true, ui: { async confirm() { return true; } } };
+const ctxHanging = { hasUI: true, ui: { async confirm() { return new Promise(() => {}); } } };
+const heredocCommand = [
+  "node - <<'NODE'",
+  "const root = `${process.env.HOME}/tmp/demo`;",
+  "const lockPath = `${root}/.git/index.lock`;",
+  "const body = JSON.stringify({ path: lockPath, message: 'not a git command' });",
+  "await fetch(`${root}/api/items`, { method: 'PUT', body });",
+  "NODE",
+].join("\\n");
 const safe = await pi.handlers.tool_call(
   { type: "tool_call", toolCallId: "safe", toolName: "bash", input: { command: "git config push.default" } },
   ctxWithoutUi
@@ -1520,10 +1537,18 @@ const gitLockProbe = await pi.handlers.tool_call(
   { type: "tool_call", toolCallId: "lock-probe", toolName: "bash", input: { command: "stat .git/FETCH_HEAD.lock .git/index.lock" } },
   ctxWithoutUi
 );
+const heredocAllowed = await pi.handlers.tool_call(
+  { type: "tool_call", toolCallId: "heredoc", toolName: "bash", input: { command: heredocCommand } },
+  ctxWithoutUi
+);
 
 const approved = await pi.handlers.tool_call(
   { type: "tool_call", toolCallId: "approved", toolName: "bash", input: { command: "git commit -m ok" } },
   ctxAllowing
+);
+const hangingConfirmBlocked = await pi.handlers.tool_call(
+  { type: "tool_call", toolCallId: "hanging-confirm", toolName: "bash", input: { command: "git commit -m timeout" } },
+  ctxHanging
 );
 process.argv.push("--tools", "read,bash");
 const explicit = makePi();
@@ -1540,37 +1565,41 @@ console.log(JSON.stringify({
   expandedBlocked,
   inertGitText: inertGitText ?? null,
   gitLockProbe: gitLockProbe ?? null,
-
+  heredocAllowed: heredocAllowed ?? null,
   approved: approved ?? null,
+  hangingConfirmBlocked,
   explicit: explicit.getActiveTools()
 }));
 """
-            env = dict(os.environ)
-            env["HOME"] = str(home)
-            env["NODE_NO_WARNINGS"] = "1"
-            result = subprocess.run(
-                ["node", "--input-type=module", "-e", script, str(extension)],
-                cwd=str(REPO),
-                capture_output=True,
-                text=True,
-                env=env,
-                check=True,
-            )
-            payload = json.loads(result.stdout)
+                    env = dict(os.environ)
+                    env["HOME"] = str(home)
+                    env["NODE_NO_WARNINGS"] = "1"
+                    env["AGENT_RUNTIME_CONFIRM_TIMEOUT_MS"] = "20"
+                    result = subprocess.run(
+                        ["node", "--input-type=module", "-e", script, str(extension)],
+                        cwd=str(REPO),
+                        capture_output=True,
+                        text=True,
+                        env=env,
+                        check=True,
+                    )
+                    payload = json.loads(result.stdout)
 
-            assert payload["active"] == ["read", "bash", "edit", "write", "grep", "find", "ls"]
-            assert payload["safe"] is None
-            assert payload["blocked"]["block"] is True
-            assert "explicit approval" in payload["blocked"]["reason"]
-            assert payload["caseVariantBlocked"]["block"] is True
-            assert payload["aliasBlocked"]["block"] is True
-            assert payload["concatenatedBlocked"]["block"] is True
-            assert payload["escapedBlocked"]["block"] is True
-            assert payload["expandedBlocked"]["block"] is True
-            assert payload["inertGitText"] is None
-            assert payload["gitLockProbe"] is None
-            assert payload["approved"] is None
-            assert payload["explicit"] == ["read", "bash", "edit", "write"]
+                    assert payload["active"] == ["read", "bash", "edit", "write", "grep", "find", "ls"]
+                    assert payload["safe"] is None
+                    assert payload["blocked"]["block"] is True
+                    assert "explicit approval" in payload["blocked"]["reason"]
+                    assert payload["caseVariantBlocked"]["block"] is True
+                    assert payload["aliasBlocked"]["block"] is True
+                    assert payload["concatenatedBlocked"]["block"] is True
+                    assert payload["escapedBlocked"]["block"] is True
+                    assert payload["expandedBlocked"]["block"] is True
+                    assert payload["inertGitText"] is None
+                    assert payload["gitLockProbe"] is None
+                    assert payload["heredocAllowed"] is None
+                    assert payload["approved"] is None
+                    assert payload["hangingConfirmBlocked"]["block"] is True
+                    assert payload["explicit"] == ["read", "bash", "edit", "write"]
 
     def test_pi_recall_uses_session_binding_and_persists_seen_capsules(self):
         extension = REPO / "home/dot_pi/agent/extensions/ai-kb-recall.ts"

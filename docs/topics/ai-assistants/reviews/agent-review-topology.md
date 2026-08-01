@@ -111,7 +111,7 @@ PR modes use PR dedup, PR artifact truth filtering, the PR necessity/correctly-o
 
 Before final PR-mode drafting or posting, the controller reconciles against existing review feedback already authored by the current account: API `PENDING` reviews and draft comments, plus submitted review comments/replies from previous sessions.
 
-It merges still-valid pending feedback with net-new findings into one payload, drops stale pending findings, and blocks rather than producing conflicting or fragmented review comments. Only the controller acts.
+It merges still-valid pending feedback with net-new findings into one payload, drops stale pending findings, and blocks rather than producing conflicting or fragmented review comments. Only the controller acts. A purely additive payload is appended to the existing pending review; delete/recreate is reserved for changing or dropping existing draft comments.
 
 ## Reference: runtime wiring
 

@@ -22,6 +22,13 @@
     "sop.4.1.durable-memory",
     "sop.4.tooling-and-memory",
     "sop.5.code-quality",
+    "sop.6.0.accessibility-contract-why-this-style-exists",
+    "sop.6.1.debloat-hard-requirement",
+    "sop.6.2.time-neutrality-hard-requirement",
+    "sop.6.3.response-shape",
+    "sop.6.4.substance-floor-what-debloating-must-never-remove",
+    "sop.6.5.external-human-replies",
+    "sop.6.6.examples",
     "sop.6.communication",
     "sop.7.exceptions"
   ],

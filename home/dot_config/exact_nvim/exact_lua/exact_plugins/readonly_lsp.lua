@@ -3,7 +3,7 @@ local format = require("util.format")
 local lsp = require("util.lsp")
 local lsp_references = require("util.lsp_references")
 
-local mason_lspconfig_auto_enable_exclude = { "rust_analyzer", "taplo" }
+local mason_lspconfig_auto_enable_exclude = { "rust_analyzer", "taplo", "ts_ls" }
 
 ---@param action_opts? { context?: table, filter?: function, apply?: boolean }
 local function lsp_code_actions_fzf(action_opts)

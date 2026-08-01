@@ -30,7 +30,7 @@ Check Role Detection from the router (`SKILL.md`):
 - **Reviewing others (`authorship: other` or `unknown`):**
   - draft comments/suggestions
   - do not change code
-  - run the PR Necessity + Correctly-Open Audit in `pr_common.md`
+  - run the PR Necessity + Correctly-Open Audit in `pr_context_audits.md`
   - apply the Post-Review Lens (`judging_core.md`) to the PR diff
   - surface redundancy / verbosity / semantic + logical duplication / gaps as read-only findings
 - **Self-review (user is the author):**
@@ -52,8 +52,8 @@ On the first turn (or when starting a fresh review):
   - threads
   - media
   - recursive references
-- run Ambient Topic Exploration in pr_common.md when disagreement, unclear shared understanding, or missing topic history matters
-- run the PR Necessity + Correctly-Open Audit in pr_common.md when reviewing someone else's PR or when authorship is unknown
+- run Ambient Topic Exploration in pr_context_audits.md when disagreement, unclear shared understanding, or missing topic history matters
+- run the PR Necessity + Correctly-Open Audit in pr_context_audits.md when reviewing someone else's PR or when authorship is unknown
 - run Existing Pending Review Reconciliation in pr_common.md before producing the final review draft
 - all review threads/replies (end-to-end)
 - full diff
@@ -85,6 +85,8 @@ Return a `Pending review draft` containing:
 
 - `Base context:` line (see shared_rules.md)
 - `Pending review reconciliation:` line (see pr_common.md)
+- `review_submission`: the exact submit `event` recommendation and PR-level review `body`;
+  keep the body neutral and short (for example, `Left a few inline comments on <topics>.`) and include it in any posting approval payload
 - `inline_comments`: one draft per finding worth commenting, each with:
   - Where (file path + line/range when possible)
   - Comment body

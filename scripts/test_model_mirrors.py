@@ -124,6 +124,37 @@ class TestStaticModelMirrors(unittest.TestCase):
         self.assertLessEqual(litellm_ids, set(mirror["providers"]["litellm"]["curated"]["models"]))
         self.assertLessEqual(litellm_ids, set(mirror["harnesses"]["pi"]["curated"]["models"]))
 
+    def test_SHOULD_keep_pi_review_policy_pins_in_pi_catalogs(self):
+        import ai_models
+        import model_mirrors
+
+        registry = REPO / "home/.chezmoidata/ai_models.yaml"
+        mirror = model_mirrors.build_static_mirror(REPO)
+        pi_curated = set(mirror["harnesses"]["pi"]["curated"]["models"])
+        openrouter_curated = set(mirror["providers"]["openrouter"]["curated"]["models"])
+
+        def catalog_id(model: str) -> str:
+            head, separator, suffix = model.rpartition(":")
+            if separator and suffix in {"minimal", "none", "low", "medium", "high", "xhigh", "max"}:
+                return head
+            return model
+
+        pins = [
+            ai_models.load_agent_review_models(registry)["pi"]["lanes"],
+            ai_models.load_agent_review_models(registry)["pi"]["verifier"],
+        ]
+        for bucket in ai_models.load_model_tier_map(registry)["pi"].values():
+            pins.append(bucket["model"])
+            fallback = bucket.get("fallback")
+            if fallback:
+                pins.append(fallback["model"])
+
+        for model in {catalog_id(pin) for pin in pins}:
+            with self.subTest(model=model):
+                self.assertIn(model, pi_curated)
+                if model.startswith("openrouter/"):
+                    self.assertIn(model.removeprefix("openrouter/"), openrouter_curated)
+
     def test_SHOULD_fail_generation_for_invalid_cursor_policy(self):
         import model_mirrors
 

@@ -54,15 +54,16 @@ For non-trivial review decisions — accepting a suggestion, pushing back, or pr
 
 Review modes live under `~/.agents/skills/k-review/references/`.
 
-| File               | Owns                                                                                                                                                                                      |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `judging_core.md`  | truth validation, state-machine gate, deletion safety, historical rationale, product-flow lens, signal-quality gate, systemic-risk checks, coverage checklist, severity, post-review lens |
-| `shared_rules.md`  | PR/SCSI/GitHub delivery rules, base-context gate, pending-review semantics, posting boundary                                                                                              |
-| `pr_common.md`     | PR resolution, GitHub intake, ambient topic exploration, PR necessity/correctly-open audit, media evidence, anchoring                                                                     |
-| `local_changes.md` | local diff / branch-delta review                                                                                                                                                          |
-| `pr_review.md`     | initial or continued PR review                                                                                                                                                            |
-| `pr_fix.md`        | address reviewer feedback                                                                                                                                                                 |
-| `plan_review.md`   | plan/design-doc review against codebase reality before implementation                                                                                                                     |
+| File                   | Owns                                                                                                                                                                                      |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `judging_core.md`      | truth validation, state-machine gate, deletion safety, historical rationale, product-flow lens, signal-quality gate, systemic-risk checks, coverage checklist, severity, post-review lens |
+| `shared_rules.md`      | PR/SCSI/GitHub delivery rules, base-context gate, pending-review semantics, posting boundary                                                                                              |
+| `pr_common.md`         | PR resolution, GitHub intake, pending-review reconciliation, media evidence, anchoring                                                                                                    |
+| `pr_context_audits.md` | conditional ambient topic exploration and PR necessity/correctly-open audit, loaded only when `pr_common.md` triggers them                                                                |
+| `local_changes.md`     | local diff / branch-delta review                                                                                                                                                          |
+| `pr_review.md`         | initial or continued PR review                                                                                                                                                            |
+| `pr_fix.md`            | address reviewer feedback                                                                                                                                                                 |
+| `plan_review.md`       | plan/design-doc review against codebase reality before implementation                                                                                                                     |
 
 ## Internals (for maintainers)
 
@@ -87,7 +88,9 @@ Pending-review awareness is part of the PR-mode gate:
 4. compare with submitted comments/replies by the same account.
 5. include `Pending review reconciliation:` in output.
 
-That lets a later posting session reuse, merge, replace, or drop previous-session feedback instead of creating a competing review.
+That lets a later posting session reuse, append to, merge, replace, or drop previous-session feedback instead of creating a competing review.
+
+Net-new findings are appended to the existing pending review with GraphQL `addPullRequestReviewThread`. Delete/recreate is reserved for changing or dropping existing draft comments, which are not PATCH-editable.
 
 ### Ambient topic exploration
 

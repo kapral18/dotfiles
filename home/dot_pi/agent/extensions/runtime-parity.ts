@@ -3,12 +3,14 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent"
 import { spawn } from "node:child_process"
+import { setTimeout as delay } from "node:timers/promises"
 import { homedir } from "node:os"
 import { join } from "node:path"
 
 const SEARCH_TOOLS = ["grep", "find", "ls"]
 const TOOL_SELECTION_FLAGS = ["--tools", "-t", "--exclude-tools", "-xt", "--no-tools", "-nt", "--no-builtin-tools", "-nbt"]
 const GATE_TIMEOUT_MS = 10_000
+const CONFIRM_TIMEOUT_MS = Math.max(1, Number.parseInt(process.env.AGENT_RUNTIME_CONFIRM_TIMEOUT_MS || "30000", 10))
 const GATE_STDOUT_MAX_BYTES = 64 * 1024
 const BLOCK_REASON = "Git commit/push requires explicit approval; the Pi safety gate refused this command."
 
@@ -85,6 +87,18 @@ async function gitGateDecision(command: string): Promise<GateDecision> {
   }
 }
 
+async function confirmWithTimeout(request: Promise<boolean>): Promise<boolean> {
+  const timeout = new AbortController()
+  try {
+    return await Promise.race([
+      request.catch(() => false),
+      delay(CONFIRM_TIMEOUT_MS, false, { signal: timeout.signal }).catch(() => false),
+    ])
+  } finally {
+    timeout.abort()
+  }
+}
+
 export default function (pi: ExtensionAPI) {
   pi.on("session_start", () => {
     enableSearchTools(pi)
@@ -96,9 +110,11 @@ export default function (pi: ExtensionAPI) {
     const decision = await gitGateDecision(event.input.command)
     if (decision === "allow") return
     if (decision === "ask" && ctx.hasUI) {
-      const approved = await ctx.ui.confirm(
-        "Git commit/push safety gate",
-        `Command:\n\n${event.input.command}\n\nAllow only when the user explicitly requested this commit or push.`,
+      const approved = await confirmWithTimeout(
+        ctx.ui.confirm(
+          "Git commit/push safety gate",
+          `Command:\n\n${event.input.command}\n\nAllow only when the user explicitly requested this commit or push.`,
+        ),
       )
       if (approved) return
     }

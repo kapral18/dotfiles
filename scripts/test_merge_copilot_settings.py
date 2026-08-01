@@ -115,8 +115,8 @@ class TestMergeCopilotSettings(unittest.TestCase):
         self.assertEqual(agents["task"]["model"], "gpt-5.3-codex")
         self.assertEqual(agents["general-purpose"]["model"], "gpt-5.5")
         self.assertEqual(agents["research"]["model"], "gpt-5.5")
-        self.assertEqual(agents["code-review"]["model"], "claude-opus-4.8")
-        self.assertEqual(agents["security-review"]["model"], "claude-opus-4.8")
+        self.assertEqual(agents["code-review"]["model"], "claude-opus-5")
+        self.assertEqual(agents["security-review"]["model"], "claude-opus-5")
 
     def test_SHOULD_wire_the_typed_reconciler_into_the_hash_gated_hook(self):
         hook = (REPO / "home/.chezmoiscripts/run_onchange_after_07-merge-copilot-config.sh.tmpl").read_text()

@@ -84,5 +84,5 @@ Profiles carry registry-rendered `model` frontmatter; do not rely on the configu
 
 - Pi launches subagents through named profiles; per-task/per-profile `model` is honored over the worker default, and thinking is encoded as a `:<thinking>` suffix on the model string.
 - Registry: both `lanes` and `verifier` are concrete.
-  Review workers use `openrouter/anthropic/claude-opus-4.8:high`; adversarial/criteria verifier use `openrouter/openai/gpt-5.5:medium`.
+  Review workers use `openrouter/anthropic/claude-opus-5:high`; adversarial/criteria verifier use `openrouter/openai/gpt-5.5:medium`.
 - Other repo-owned Pi profiles are pinned from `model_tier_map` so they do not fall through to `defaultProvider`/`defaultModel` unless a future profile deliberately omits `model` and documents why.

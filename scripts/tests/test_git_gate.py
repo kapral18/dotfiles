@@ -83,6 +83,53 @@ class TestClassifyCommand(unittest.TestCase):
         assert gate.classify_command("rg 'git push' home") == "allow"
         assert gate.classify_command('rg "$(git push)" home') == "deny"
 
+    def test_allows_heredoc_with_template_strings_and_git_path_text(self):
+        command = """node - <<'NODE'
+const fs = require('fs');
+const root = `${process.env.HOME}/tmp/demo`;
+const lockPath = `${root}/.git/index.lock`;
+const body = JSON.stringify({ path: lockPath, message: 'not a git command' });
+await fetch(`${root}/api/items`, { method: 'PUT', body });
+NODE"""
+        assert gate.classify_command(command) == "allow"
+
+    def test_denies_mutating_git_in_shell_heredoc_body(self):
+        assert gate.classify_command("bash <<EOF\ngit push\nEOF") == "deny"
+        assert gate.classify_command("sh <<EOF\ngit commit -m x\nEOF") == "deny"
+        assert gate.classify_command("env bash <<EOF\ngit push\nEOF") == "deny"
+        assert gate.classify_command("sudo bash <<EOF\ngit push\nEOF") == "deny"
+        assert gate.classify_command("bash -s <<-EOF\n\tgit push\nEOF") == "deny"
+        assert gate.classify_command("<<EOF bash\ngit push\nEOF") == "deny"
+        assert gate.classify_command("env <<EOF bash\ngit push\nEOF") == "deny"
+        assert gate.classify_command("bash 2>out <<EOF\ngit push\nEOF") == "deny"
+
+    def test_allows_non_shell_heredoc_body_with_git_text(self):
+        assert gate.classify_command("cat <<EOF\ngit push\nEOF") == "allow"
+        assert gate.classify_command("node - <<'NODE'\nconsole.log('git push')\nNODE") == "allow"
+
+    def test_keeps_heredoc_operator_order(self):
+        command = "cat <<A <<-B\nbody\nA\n\tgit push\nB"
+        assert gate.classify_command(command) == "allow"
+
+    def test_denies_git_after_heredoc_redirection(self):
+        assert gate.classify_command("cat <<EOF && git push\nbody\nEOF") == "deny"
+
+    def test_denies_git_after_commented_heredoc_text(self):
+        assert gate.classify_command("echo ok # <<EOF\ngit push\nEOF") == "deny"
+
+    def test_allows_git_text_inside_shell_comment(self):
+        assert gate.classify_command("echo ok # ; git push") == "allow"
+
+    def test_denies_git_after_comment_glued_to_separator(self):
+        assert gate.classify_command("echo a;#c\ngit push") == "deny"
+        assert gate.classify_command("(echo a)#c\ngit push") == "deny"
+        assert gate.classify_command("echo a&&#c\ngit push") == "deny"
+        assert gate.classify_command("echo a|#c\ngit push") == "deny"
+        assert gate.classify_command("(echo a)\ngit push") == "deny"
+
+    def test_denies_unterminated_heredoc(self):
+        assert gate.classify_command("cat <<EOF\n# git push") == "deny"
+
     def test_allows_git_paths_and_non_mutating_wrapped_git(self):
         assert gate.classify_command("stat .git/FETCH_HEAD.lock .git/index.lock") == "allow"
         assert gate.classify_command("sudo stat .git/FETCH_HEAD.lock") == "allow"

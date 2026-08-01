@@ -34,23 +34,53 @@ Scope boundaries:
 
 ## Concision
 
-- Be concise and to the point.
-  Length must never come at the cost of clarity, correctness, or completeness — "concise" means unpadded, not shallow.
-- Cut anything the reader can already infer from context (the thread, the diff, the prior message, the PR title).
-  Do not restate the original concern, the file path, the obvious effect of a change, or what the reader just said.
+Length is a hard budget per artifact class, not a vibe.
+"Concise" means unpadded, not shallow: if a cut removes a fact, real hedge, or safety qualifier, restore it and cut elsewhere.
+
+Budgets (words of narrative; code blocks and links do not count):
+
+- Thread reply, chat message, ack: ≤40.
+- PR/issue comment, review reply: ≤80.
+- PR description, issue body, release note: ≤200 + optional short bullet list.
+
+- No water. Every sentence carries a fact, request, or decision. Delete the rest.
+- Cut anything the reader infers from context (thread, diff, prior message, PR title).
+  Do not restate the concern, file path, obvious effect, or what the reader just said.
 - Prefer no message over a low-signal message.
-  If the thread already contains the useful correction or next step, and the only remaining contribution is historical color, attribution cleanup, or a rephrasing of someone else's point, do not draft or post a reply.
+  If the thread already has the correction or next step, and the only remaining contribution is historical color, attribution cleanup, or rephrasing someone else's point, do not draft.
 - No headline summaries, status prefixes, or `RE:`-style headers. Get to the substance.
-- Prefer the shortest form that carries the full meaning: a one-line comment, a tight PR description, a single-sentence status update.
+- Prefer the shortest form that carries full meaning: a one-line comment, a tight PR description, a single-sentence status update.
+- PR review summary bodies describe inline topics, not commands: prefer `Left inline comments on <topics>.`
+
+## Default Shape
+
+For most messages, this covers it:
+
+1. **The point**, in the first sentence: what changed, what you're asking, or what you found.
+2. **The doubt**, when one exists: the assumption you're unsure of, or what you could not verify. One clause, stated plainly.
+3. **The close**: `wdyt` / `lmk` / a short question.
+
+That is the whole message. Add sections only when the content genuinely needs them.
+
+- One idea per bullet or line. Split any sentence carrying two facts.
+- Put paths, commands, IDs, and links on their own line, not buried mid-sentence.
+- Never use time or effort as an argument ("didn't have time to", "for now", "quick fix").
+  State the technical reason, or state the open question.
 
 ## Structure (Longer-Form Artifacts)
 
-For PR/issue descriptions, release notes, or any multi-point message:
+Brevity outranks structure here too: the shortest form that carries the full meaning wins.
+For PR/issue descriptions, release notes, or any multi-point message, structure must earn its space —
+reach for a density primitive before prose, and never add sections to fill a template:
 
-- Use structure only when it improves comprehension (a short bullet list, a `## Summary` / `## Why`);
-  never add scaffolding for its own sake.
-- Lead with what changed / what's being asked; put rationale and detail after.
-- One idea per bullet; drop bullets that restate each other.
+- **Verdict line** for status / decision / ack.
+- **Bulleted anchor list** for a set of findings, changes, or asks — one clause per bullet with a link/anchor.
+- **Short table** for comparisons or before/after (≤5 columns).
+- **`## Summary` / `## Why`** only when the content genuinely needs sections.
+
+- Lead with what changed / what's being asked; rationale and detail after.
+- One idea per bullet. Drop bullets that restate each other or the section heading.
+- A later section may not restate an item already given in an earlier list; refer by name and add only new information.
 
 ## References To Code / Commits / Artifacts
 
@@ -84,5 +114,7 @@ Then reply by outcome:
 
 ## Optional Niceties
 
-- A light collaborative close (`Wdyt`, `lmk`) is optional — use only when it fits naturally; never as boilerplate.
+- A light collaborative close (`Wdyt`, `lmk`) is the default nicety and covers most of what politeness needs here.
+  It replaces longer warmth; do not add both. Drop it when it would not fit naturally (a pure factual answer, a resolve/close).
+- Honest doubt is a nicety, not a weakness: naming the assumption you could not verify invites correction and reads as collaborative.
 - Match the surface's register: terser for chat/Slack, slightly more structured for long-form email or a PR description when the content genuinely needs it.

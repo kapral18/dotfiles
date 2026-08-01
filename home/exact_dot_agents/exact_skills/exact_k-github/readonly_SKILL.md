@@ -38,7 +38,7 @@ For `elastic` / `elastic/kibana`, load `~/.agents/skills/k-elastic-domain/SKILL.
    run GitHub Context Intake + Reference Resolution in `~/.agents/skills/k-review/references/pr_common.md` before composing or mutating.
    PR creation is a composition action; it is not exempt.
    Fully specified mechanical actions, such as applying an explicitly named label, are exempt.
-3. If context is contested, historical, or precedent-dependent, also run Ambient Topic Exploration from the same reference.
+3. If context is contested, historical, or precedent-dependent, also run Ambient Topic Exploration from `~/.agents/skills/k-review/references/pr_context_audits.md`.
 4. If authored text, review reasoning, labels, ownership, or repo-specific metadata are needed, invoke the required secondary skill/overlay before posting/applying.
 5. Before public PR/issue text changes, sanitize session-specific hosts, ports, workspace/temp paths, browser sessions, and local usernames;
    replace local-only validation with reproducible steps.
@@ -58,9 +58,10 @@ For `elastic` / `elastic/kibana`, load `~/.agents/skills/k-elastic-domain/SKILL.
 
 ## PR review side effects
 
-- Never include `event` in create-review payloads unless the user explicitly asked to publish;
-  `POST /reviews` without `event` creates a pending draft.
-- Before create/delete-recreate/submit, reconcile current-account pending reviews with the new payload; do not fragment feedback.
+- Never include `event` in create-review payloads; `POST /reviews` without `event` creates a pending draft.
+  Publish only via a separate submit call after explicit approval.
+- Before create/append/delete-recreate/submit, reconcile current-account pending reviews with the new payload; do not fragment feedback.
+  Append net-new comments to an existing pending review; delete/recreate only to change or drop existing ones.
 - UI-related review feedback needs screenshot handoff evidence outside the body, or a valid blocker/non-applicability reason.
 - Full mechanics live in `~/.agents/skills/k-github/references/pr-reviews.md`.
 

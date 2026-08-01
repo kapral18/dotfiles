@@ -57,82 +57,15 @@ open_url() {
   fi
 }
 
-prune_prefix_urls() {
-  awk '
-    NF { lines[++n] = $0 }
-    END {
-      for (i = 1; i <= n; i++) {
-        cur = lines[i]
-        drop = 0
-        for (j = i + 1; j <= n; j++) {
-          nxt = lines[j]
-          if (index(nxt, cur) != 1) {
-            break
-          }
-          if (length(nxt) > length(cur)) {
-            if (cur ~ /\/$/ || substr(nxt, length(cur) + 1, 1) == "/") {
-              drop = 1
-              break
-            }
-          }
-        }
-        if (!drop) {
-          print cur
-        }
-      }
-    }'
-}
-
 if [[ -z "${TMUX:-}" ]]; then
   die "tmux: not running inside tmux"
 fi
 
 if [[ "${limit}" == 'screen' ]]; then
-  content="$(tmux capture-pane -J -p -e | sed -E 's/\x1B\[[0-9;]*[mK]//g' | python3 "$script_dir/lib/strip_cr.py")"
+  items="$(tmux capture-pane -J -p -e | python3 "$script_dir/lib/strip_cr.py" --extract-candidates --extra-filter "${extra_filter}" | nl -w3 -s '  ')"
 else
-  content="$(tmux capture-pane -J -p -e -S -"${limit}" | sed -E 's/\x1B\[[0-9;]*[mK]//g' | python3 "$script_dir/lib/strip_cr.py")"
+  items="$(tmux capture-pane -J -p -e -S -"${limit}" | python3 "$script_dir/lib/strip_cr.py" --extract-candidates --extra-filter "${extra_filter}" | nl -w3 -s '  ')"
 fi
-
-urls="$(
-  echo "${content}" \
-    | grep -oE '(https?|ftp|file)://[^[:space:]]+' \
-    | sed -E 's/[])>}"'\''.,;:!?]+$//' || true
-)"
-wwws="$(
-  echo "${content}" \
-    | grep -oE 'www\\.[^[:space:]]+' \
-    | sed -E 's/[])>}"'\''.,;:!?]+$//' \
-    | grep -vE '^https?://' \
-    | sed -E 's/^(.*)$/http:\\/\\/\\1/' || true
-)"
-ips="$(
-  echo "${content}" \
-    | grep -oE '[0-9]{1,3}(\\.[0-9]{1,3}){3}(:[0-9]{1,5})?(/[^[:space:]]+)?' \
-    | sed -E 's/[])>}"'\''.,;:!?]+$//' \
-    | sed -E 's/^(.*)$/http:\\/\\/\\1/' || true
-)"
-gits="$(
-  echo "${content}" \
-    | grep -oE '(ssh://)?git@[^[:space:]]+' \
-    | sed -E 's/[])>}"'\''.,;:!?]+$//' \
-    | sed 's/:/\\//g' \
-    | sed -E 's/^(ssh\\/\\/\\/){0,1}git@(.*)$/https:\\/\\/\\2/' || true
-)"
-gh="$(echo "${content}" | grep -oE "['\"]([_A-Za-z0-9-]*/[_.A-Za-z0-9-]*)['\"]" | sed -E "s/['\"]//g" | sed 's#.#https://github.com/&#' || true)"
-
-extras=""
-if [[ -n "${extra_filter}" ]]; then
-  # shellcheck disable=SC2086
-  extras="$(echo "${content}" | eval "${extra_filter}" || true)"
-fi
-
-items="$(
-  printf '%s\n' "${urls}" "${wwws}" "${gh}" "${ips}" "${gits}" "${extras}" \
-    | awk 'NF' \
-    | LC_ALL=C sort -u \
-    | prune_prefix_urls \
-    | nl -w3 -s '  '
-)"
 
 if [[ -z "${items}" ]]; then
   tmux display-message 'tmux: no URLs found'

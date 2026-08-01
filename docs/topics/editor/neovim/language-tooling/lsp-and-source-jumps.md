@@ -11,6 +11,10 @@ title: LSP and source jumps
 
 `fzf-lua` is key-triggered and registers `vim.ui.select` globally only after first load, so these mappings call `fzf-lua`'s `lsp_code_actions` helper directly. That keeps the code-action picker consistent even early in a session.
 
+## TypeScript tools
+
+[`plugins/typescript-tools.lua`](../../../../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_typescript-tools.lua) disables the generic `ts_ls` client and uses `pmizio/typescript-tools.nvim` for JS/TS buffers. Mason installs `typescript-language-server` because that package vendors `node_modules/typescript/lib/tsserver.js`, which `typescript-tools` uses when the project and global npm installs do not provide `typescript`. The same config narrowly filters known false-positive diagnostics for managed Pi/OMP runtime extensions: their package and Node types come from the consuming runtime, not from a local chezmoi `node_modules`.
+
 ## Rust analyzer
 
 [`plugins/rust.lua`](../../../../../home/dot_config/exact_nvim/exact_lua/exact_plugins/readonly_rust.lua) configures rustaceanvim with:

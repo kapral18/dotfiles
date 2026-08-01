@@ -430,7 +430,7 @@ The measured reason for this controller cache is concrete: one real review had 4
    - Apply mode-correct reconciliation:
      - all modes: collapse duplicate worker findings, apply the severity model, and keep findings that are implementation-verified, not covered by existing evidence, and not dropped by the parity/deduplication filters.
        If a candidate is not yet implementation-verified because verification was unsafe, mutating, or required a shared/exclusive resource, carry its `verification_needed` in the ledger instead of dropping it.
-     - PR modes: apply `pr_common.md` Deduplication + Truth Filter, Existing Pending Review Reconciliation, CI Coverage Gate, and PR Necessity + Correctly-Open Audit classifications
+     - PR modes: apply `pr_common.md` Deduplication + Truth Filter, Existing Pending Review Reconciliation, and CI Coverage Gate, plus `pr_context_audits.md` PR Necessity + Correctly-Open Audit classifications
      - local-changes mode: do not apply PR-thread deduplication or PR CI coverage exemptions;
        judge against the staged/unstaged/range scope in the packet
    - Judge fresh-eyes clarity candidates with full context, with one guard: a PR body, commit message, or thread that explains the confusing code does not refute the finding — the lane's premise is that the code alone failed to carry that context.

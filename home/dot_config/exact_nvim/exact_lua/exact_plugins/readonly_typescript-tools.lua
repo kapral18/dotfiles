@@ -12,6 +12,57 @@ local ft_js = {
   "typescript.tsx",
 }
 
+local runtime_extension_path_markers = {
+  "/home/dot_pi/agent/extensions/",
+  "/home/dot_omp/private_agent/extensions/",
+  "/.pi/agent/extensions/",
+  "/.omp/agent/extensions/",
+}
+
+local function is_runtime_extension_false_positive(diagnostic)
+  local code = tonumber(diagnostic.code)
+  local message = diagnostic.message or ""
+  if code == 2307 then
+    return message:find("@earendil-works/pi-coding-agent", 1, true) ~= nil
+      or message:find("@oh-my-pi/pi-coding-agent", 1, true) ~= nil
+      or message:find("'node:", 1, true) ~= nil
+  end
+  if code == 2580 or code == 2591 then
+    return message:find("'node:", 1, true) ~= nil
+      or message:find("'process'", 1, true) ~= nil
+      or message:find("'Buffer'", 1, true) ~= nil
+  end
+  if code == 7006 then
+    return message == "Parameter 'code' implicitly has an 'any' type."
+      or message == "Parameter 'event' implicitly has an 'any' type."
+      or message == "Parameter 'ctx' implicitly has an 'any' type."
+  end
+  return false
+end
+
+local function is_runtime_extension_uri(uri)
+  if type(uri) ~= "string" then
+    return false
+  end
+  local path = vim.uri_to_fname(uri):gsub("\\", "/")
+  for _, marker in ipairs(runtime_extension_path_markers) do
+    if path:find(marker, 1, true) then
+      return true
+    end
+  end
+  return false
+end
+
+local function filter_runtime_extension_diagnostics(err, res, ctx, config)
+  if res and is_runtime_extension_uri(res.uri) and type(res.diagnostics) == "table" then
+    res.diagnostics = vim.tbl_filter(function(diagnostic)
+      local is_typescript_diagnostic = diagnostic.source == "tsserver" or diagnostic.source == "typescript"
+      return not is_typescript_diagnostic or not is_runtime_extension_false_positive(diagnostic)
+    end, res.diagnostics)
+  end
+  vim.lsp.diagnostic.on_publish_diagnostics(err, res, ctx, config)
+end
+
 return {
   {
     "nvim-treesitter/nvim-treesitter",
@@ -24,8 +75,10 @@ return {
   {
     "mason-org/mason.nvim",
     opts = function(_, opts)
-      opts.ensure_installed =
-        vim.list_extend(opts.ensure_installed or {}, { "biome", "oxfmt", "oxlint", "prettierd", "prettier" })
+      opts.ensure_installed = vim.list_extend(
+        opts.ensure_installed or {},
+        { "biome", "oxfmt", "oxlint", "prettierd", "prettier", "typescript-language-server" }
+      )
       return opts
     end,
   },
@@ -88,6 +141,9 @@ return {
     },
     ft = ft_js,
     opts = {
+      handlers = {
+        ["textDocument/publishDiagnostics"] = filter_runtime_extension_diagnostics,
+      },
       settings = {
         code_lens = "off",
         complete_function_calls = false,

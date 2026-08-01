@@ -42,7 +42,7 @@ Precedence for `elastic/kibana` PR composition:
 
 - this overlay owns Kibana-specific title style, PR body sections, release-note inclusion, and assistance footer policy
 - `k-kibana-labels-propose` owns Kibana label/backport/version classification; invoke it and use its packet
-- `k-github` / `kbn-github` own GitHub mechanics and approval gates for applying metadata
+- `k-github` owns GitHub mechanics and approval gates for applying metadata
 - once this overlay applies, generic skills must not invent fallback Kibana title style, labels, release-note state, or footer policy;
   stop and obtain the domain packet instead of guessing
 

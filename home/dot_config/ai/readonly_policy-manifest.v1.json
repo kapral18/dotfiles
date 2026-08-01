@@ -1,8 +1,8 @@
 {
   "version": 1,
   "output_path": "home/readonly_AGENTS.md",
-  "output_sha256": "00f573a098f92c0070f98ef97dfe707db3c522a51ebf3496f695b11fe3460d7d",
-  "output_bytes": 20707,
+  "output_sha256": "ae584c316170fdad326b7701a757953daf48d748376b89b115a3c8af83a93219",
+  "output_bytes": 23515,
   "rules": [
     {
       "id": "sop.0.binding-contract",
@@ -237,12 +237,89 @@
     },
     {
       "id": "sop.6.communication",
-      "sha256": "ded24002cf903c6835119282b19f3e7280565919fcb991fbc140e139eba8de20",
-      "bytes": 2682,
+      "sha256": "471adadf1610bf15e4d8d724dcd706de544483585da39a07ac2998e51ff085f0",
+      "bytes": 21,
       "disposition": "core",
       "consumer": "home/readonly_AGENTS.md",
       "risk_tier": "standard",
       "eval_ref": "sop.6.communication.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.6.0.accessibility-contract-why-this-style-exists",
+      "sha256": "0b16c646cda6110250f7aa8939ac35a9127c4558e773f18b975b8f61a4025d1a",
+      "bytes": 604,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "standard",
+      "eval_ref": "sop.6.0.accessibility-contract-why-this-style-exists.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.6.1.debloat-hard-requirement",
+      "sha256": "98a5b00883490ed5a9a6bef8ba9f6c0f5364cf6e4e63f6ef8fb6b7c6c942dafe",
+      "bytes": 962,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "standard",
+      "eval_ref": "sop.6.1.debloat-hard-requirement.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.6.2.time-neutrality-hard-requirement",
+      "sha256": "12f01ef4ea05e0981a2d33ccfc403d2a90bf9c437e58e2a9caadd05749c98921",
+      "bytes": 587,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "standard",
+      "eval_ref": "sop.6.2.time-neutrality-hard-requirement.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.6.3.response-shape",
+      "sha256": "0d3f57af3d286a0a936ff68b270eff5ec223421d81cee2b1a598defc3a21f0dc",
+      "bytes": 1411,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "standard",
+      "eval_ref": "sop.6.3.response-shape.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.6.4.substance-floor-what-debloating-must-never-remove",
+      "sha256": "548c1bdcdfa382e5abdf146a6b0c76fc6f50a099ba70b4734db75a9f18f4af94",
+      "bytes": 485,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "standard",
+      "eval_ref": "sop.6.4.substance-floor-what-debloating-must-never-remove.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.6.5.external-human-replies",
+      "sha256": "eeb95ad036a65cb80b6a8bb983e9c6602fdf0e78bfe6cbd7a4f481b7e58f67d3",
+      "bytes": 497,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "standard",
+      "eval_ref": "sop.6.5.external-human-replies.stage1-opaque",
+      "model_scope": "*",
+      "harness_scope": "*"
+    },
+    {
+      "id": "sop.6.6.examples",
+      "sha256": "538a1f47204511a22f79095318e09ab18bf6977a3c9a75dfbc640ca1b771bdb7",
+      "bytes": 923,
+      "disposition": "core",
+      "consumer": "home/readonly_AGENTS.md",
+      "risk_tier": "standard",
+      "eval_ref": "sop.6.6.examples.stage1-opaque",
       "model_scope": "*",
       "harness_scope": "*"
     },

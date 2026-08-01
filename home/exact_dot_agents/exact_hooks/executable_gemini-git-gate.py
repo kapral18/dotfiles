@@ -71,6 +71,7 @@ GIT_GLOBAL_OPTS_NO_VALUE = {
 }
 
 SEPARATORS = {";", "&&", "||", "&", "|", "(", ")", "\n"}
+_SEPARATOR_CHARS = frozenset("".join(SEPARATORS))
 ENV_ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 GIT_WORD = re.compile(r"\bgit\b", re.IGNORECASE)
 ENV_OPTS_WITH_VALUE = {"-a", "-C", "-P", "-u", "--argv0", "--chdir", "--unset"}
@@ -222,9 +223,171 @@ def _tokenize(command: str) -> list[str]:
     Raises ValueError on unbalanced quotes (caller decides how to fail closed).
     """
     lexer = shlex.shlex(command, posix=True, punctuation_chars="();<>|&\n")
+    lexer.commenters = ""
     lexer.whitespace = " \t\r"
     lexer.whitespace_split = True
     return list(lexer)
+
+
+def _read_heredoc_word(command_line: str, start: int) -> tuple[str, int] | None:
+    """Read a here-doc delimiter word with shell quoting removed."""
+    i = start
+    while i < len(command_line) and command_line[i] in " \t":
+        i += 1
+    if i >= len(command_line):
+        return None
+
+    chars: list[str] = []
+    quote = ""
+    while i < len(command_line):
+        char = command_line[i]
+        if quote == "'":
+            if char == "'":
+                quote = ""
+            else:
+                chars.append(char)
+            i += 1
+            continue
+        if quote == '"':
+            if char == '"':
+                quote = ""
+            elif char == "\\" and i + 1 < len(command_line):
+                i += 1
+                chars.append(command_line[i])
+            else:
+                chars.append(char)
+            i += 1
+            continue
+        if char == "\\" and i + 1 < len(command_line):
+            i += 1
+            chars.append(command_line[i])
+        elif char in {"'", '"'}:
+            quote = char
+        elif char.isspace() or char in "();<>|&":
+            break
+        else:
+            chars.append(char)
+        i += 1
+
+    delimiter = "".join(chars)
+    return (delimiter, i) if delimiter else None
+
+
+def _is_shell_comment_start(command_line: str, index: int) -> bool:
+    if command_line[index] != "#":
+        return False
+    return index == 0 or command_line[index - 1].isspace() or command_line[index - 1] in "();<>|&"
+
+
+def _strip_shell_comments(command: str) -> str:
+    """Remove shell comments while preserving line boundaries."""
+    output: list[str] = []
+    quote = ""
+    i = 0
+    while i < len(command):
+        char = command[i]
+        if quote == "'":
+            output.append(char)
+            quote = "" if char == "'" else quote
+            i += 1
+            continue
+        if quote == '"':
+            output.append(char)
+            if char == "\\" and i + 1 < len(command):
+                i += 1
+                output.append(command[i])
+            else:
+                quote = "" if char == '"' else quote
+            i += 1
+            continue
+        if char == "\\" and i + 1 < len(command):
+            output.extend([char, command[i + 1]])
+            i += 2
+            continue
+        if char in {"'", '"'}:
+            quote = char
+            output.append(char)
+            i += 1
+            continue
+        if _is_shell_comment_start(command, i):
+            while i < len(command) and command[i] not in "\r\n":
+                i += 1
+            # Keep a separator so a comment never glues the preceding
+            # metacharacter to the following newline (`;#c\ngit push`).
+            output.append(" ")
+            continue
+        output.append(char)
+        i += 1
+    return "".join(output)
+
+
+def _heredoc_delimiters(command_line: str) -> list[tuple[str, bool]]:
+    """Return here-doc delimiters declared by one shell command line."""
+    delimiters: list[tuple[str, bool]] = []
+    quote = ""
+    i = 0
+    while i < len(command_line):
+        char = command_line[i]
+        if quote == "'":
+            quote = "" if char == "'" else quote
+            i += 1
+            continue
+        if quote == '"':
+            if char == "\\":
+                i += 2
+                continue
+            quote = "" if char == '"' else quote
+            i += 1
+            continue
+        if char == "\\":
+            i += 2
+            continue
+        if char in {"'", '"'}:
+            quote = char
+            i += 1
+            continue
+        if _is_shell_comment_start(command_line, i):
+            break
+        if command_line.startswith("<<<", i):
+            i += 3
+            continue
+        if command_line.startswith("<<", i):
+            strip_tabs = command_line.startswith("<<-", i)
+            word = _read_heredoc_word(command_line, i + (3 if strip_tabs else 2))
+            if word is None:
+                i += 2
+                continue
+            delimiter, i = word
+            delimiters.append((delimiter, strip_tabs))
+            continue
+        i += 1
+    return delimiters
+
+
+def _extract_heredoc_bodies(command: str) -> tuple[str, list[tuple[str, str]]] | None:
+    """Remove here-doc bodies and return each body with its declaring command line."""
+    output_lines: list[str] = []
+    bodies: list[tuple[str, str]] = []
+    pending: list[tuple[str, bool, str, list[str]]] = []
+
+    for line in command.splitlines(keepends=True):
+        if pending:
+            delimiter, strip_tabs, declaration, body_lines = pending[0]
+            candidate = line.rstrip("\r\n")
+            if strip_tabs:
+                candidate = candidate.lstrip("\t")
+            if candidate == delimiter:
+                bodies.append((declaration, "".join(body_lines)))
+                pending.pop(0)
+            else:
+                body_lines.append(line)
+            continue
+
+        output_lines.append(line)
+        for delimiter, strip_tabs in _heredoc_delimiters(line):
+            pending.append((delimiter, strip_tabs, line, []))
+
+    return None if pending else ("".join(output_lines), bodies)
 
 
 def _wrapper_command_index(wrapper: str, tokens: list[str], start: int) -> int | None:
@@ -286,11 +449,58 @@ def _wrapped_command_can_run_mutating_git(tokens: list[str]) -> bool:
 def _split_segments(tokens: list[str]) -> list[list[str]]:
     segments: list[list[str]] = [[]]
     for token in tokens:
-        if token in SEPARATORS:
+        # shlex merges adjacent punctuation into one token (e.g. `)\n`, `;\n`),
+        # so treat any all-separator token as a separator.
+        if token in SEPARATORS or (token and all(char in _SEPARATOR_CHARS for char in token)):
             segments.append([])
         else:
             segments[-1].append(token)
     return [segment for segment in segments if segment]
+
+
+def _tokens_without_redirections(tokens: list[str]) -> list[str]:
+    command_tokens: list[str] = []
+    i = 0
+    while i < len(tokens):
+        token = tokens[i]
+        if token.isdigit() and i + 1 < len(tokens) and any(char in tokens[i + 1] for char in "<>"):
+            i += 1
+            continue
+        if "<" in token or ">" in token:
+            i += 1
+            if i < len(tokens):
+                i += 1
+            continue
+        command_tokens.append(token)
+        i += 1
+    return command_tokens
+
+
+def _tokens_resolve_to_shell(tokens: list[str]) -> bool:
+    i = 0
+    while i < len(tokens) and ENV_ASSIGNMENT.match(tokens[i]):
+        i += 1
+    if i >= len(tokens):
+        return False
+
+    command = _command_name(tokens[i])
+    if command in SHELL_COMMAND_WRAPPERS:
+        return True
+    if command not in DIRECT_EXECUTION_WRAPPERS:
+        return False
+
+    target = _wrapper_command_index(command, tokens, i + 1)
+    if target is None:
+        return any(_command_name(token) in SHELL_COMMAND_WRAPPERS for token in tokens[i + 1 :])
+    return _tokens_resolve_to_shell(tokens[target:])
+
+
+def _heredoc_declaration_runs_shell(declaration: str) -> bool:
+    try:
+        segments = _split_segments(_tokenize(_strip_shell_comments(declaration)))
+    except ValueError:
+        return bool(GIT_WORD.search(declaration))
+    return any(_tokens_resolve_to_shell(_tokens_without_redirections(segment)) for segment in segments)
 
 
 def _classify_segment(tokens: list[str]) -> str | None:
@@ -366,7 +576,14 @@ def _classify_segment(tokens: list[str]) -> str | None:
 
 def classify_command(command: str) -> str:
     """Return "deny" or "allow" for a raw shell command line."""
-    command = re.sub(r"\\\r?\n", "", command)
+    extracted = _extract_heredoc_bodies(re.sub(r"\\\r?\n", "", command))
+    if extracted is None:
+        return "deny"
+    heredoc_stripped, heredoc_bodies = extracted
+    for declaration, body in heredoc_bodies:
+        if _heredoc_declaration_runs_shell(declaration) and classify_command(body) == "deny":
+            return "deny"
+    command = _strip_shell_comments(heredoc_stripped)
     try:
         tokens = _tokenize(command)
     except ValueError:

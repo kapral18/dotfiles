@@ -32,7 +32,7 @@ First actions:
 1. Inspect current diff/branch context and user-supplied issue/PR refs.
 2. For any PR, issue, comment, thread, asset, URL, or media reference the draft depends on, run GitHub Context Intake + Reference Resolution from `~/.agents/skills/k-review/references/pr_common.md`.
    Complete that gate per `pr_common.md` before summarizing.
-3. If the body needs contested, historical, product, or team-precedent context not settled by direct refs, run Ambient Topic Exploration from the same reference.
+3. If the body needs contested, historical, product, or team-precedent context not settled by direct refs, run Ambient Topic Exploration from `~/.agents/skills/k-review/references/pr_context_audits.md`.
 4. Extract only verified evidence: summary, Test Plan, migration notes.
 5. If issue linkage or test evidence is missing after intake, keep placeholders instead of inventing details.
 6. If the repo is in `elastic`, load `~/.agents/skills/k-elastic-domain/SKILL.md` and apply its GitHub/PR composition section.
